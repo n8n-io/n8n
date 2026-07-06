@@ -353,7 +353,10 @@ export function parseStoredMessages(
 
 	function pushSnapshotMessage(snapshot: AgentTreeSnapshot): void {
 		const built = buildSnapshotMessage(snapshot);
-		messagesWithSnapshotTree.add(built);
+		// A degenerate (empty) orphan snapshot must not count as authoritative: when the
+		// turn also has message rows, their reconstructed flat tree must win the dedup
+		// collapse instead of this empty tree clobbering it. Mirrors the paired-row guard.
+		if (isRenderableTree(snapshot.tree)) messagesWithSnapshotTree.add(built);
 		messages.push(built);
 	}
 
@@ -446,9 +449,11 @@ export function parseStoredMessages(
 			// Prefer the snapshot tree, but when it carries no renderable content (e.g. an
 			// empty `cancelled` tree from a run whose events were lost before the snapshot
 			// was built) fall back to the message-derived flat tree so the turn's work still
-			// renders on reload.
+			// renders on reload. A non-renderable snapshot is never authoritative — if there
+			// is no flat tree either, leave the tree undefined rather than re-admitting the
+			// empty one.
 			const snapshotIsRenderable = snapshot !== undefined && isRenderableTree(snapshot.tree);
-			const agentTree = snapshotIsRenderable ? snapshot.tree : (messageFlatTree ?? snapshot?.tree);
+			const agentTree = snapshotIsRenderable ? snapshot.tree : messageFlatTree;
 
 			const assistantMessage: InstanceAiMessage = {
 				id: msg.id,

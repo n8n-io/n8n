@@ -16,13 +16,9 @@ import {
 	WORKFLOW_PREVIEW_APP_URI,
 	type McpAppTelemetryConfig,
 } from '@n8n/mcp-apps/server';
+import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { InstanceSettings } from 'n8n-core';
-import {
-	createDeferredPromise,
-	ManualExecutionCancelledError,
-	type IDeferredPromise,
-	type IRun,
-} from 'n8n-workflow';
+import { ManualExecutionCancelledError, type IRun } from 'n8n-workflow';
 
 import {
 	createAddDataTableColumnTool,

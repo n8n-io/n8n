@@ -25,10 +25,12 @@ const initialSettings = (): McpToolSettings =>
 const inclusionMode = ref<McpToolInclusionMode>(initialSettings().inclusionMode);
 const selectedTools = ref<string[]>([...initialSettings().selectedTools]);
 const excludedTools = ref<string[]>([...initialSettings().excludedTools]);
+const hasSavedBefore = ref(false);
 
 watch(
 	() => props.item.id,
 	() => {
+		hasSavedBefore.value = false;
 		const next = initialSettings();
 		inclusionMode.value = next.inclusionMode;
 		selectedTools.value = [...next.selectedTools];
@@ -43,13 +45,54 @@ const inclusionOptions: Array<{ value: McpToolInclusionMode; label: string }> = 
 ];
 
 const toolOptions = computed(() =>
-	props.item.availableTools.map((tool) => ({ value: tool.id, label: tool.name })),
+	props.item.availableTools.map((tool) => ({
+		value: tool.id,
+		label: tool.name,
+		description: tool.description,
+	})),
 );
 
-const showIncludeList = computed(() => inclusionMode.value === 'selected');
-const showExcludeList = computed(() => inclusionMode.value === 'except');
+const showToolList = computed(
+	() => inclusionMode.value === 'selected' || inclusionMode.value === 'except',
+);
+const toolListLabel = computed(() =>
+	inclusionMode.value === 'selected'
+		? i18n.baseText('tools.connection.settings.toolsToInclude')
+		: i18n.baseText('tools.connection.settings.toolsToExclude'),
+);
+const toolListTestId = computed(() =>
+	inclusionMode.value === 'selected'
+		? 'tools-connection-settings-selected'
+		: 'tools-connection-settings-excluded',
+);
+const toolListSelection = computed<string[]>({
+	get: () => (inclusionMode.value === 'except' ? excludedTools.value : selectedTools.value),
+	set: (value) => {
+		if (inclusionMode.value === 'except') excludedTools.value = value;
+		else selectedTools.value = value;
+	},
+});
+
+function toolsKey(tools: string[]): string {
+	return JSON.stringify([...tools].sort());
+}
+
+const hasChanges = computed(() => {
+	if (!hasSavedBefore.value) return true;
+	const saved = initialSettings();
+	if (inclusionMode.value !== saved.inclusionMode) return true;
+	if (inclusionMode.value === 'selected') {
+		return toolsKey(selectedTools.value) !== toolsKey(saved.selectedTools);
+	}
+	if (inclusionMode.value === 'except') {
+		return toolsKey(excludedTools.value) !== toolsKey(saved.excludedTools);
+	}
+	return false;
+});
 
 function handleSave() {
+	if (!hasChanges.value) return;
+	hasSavedBefore.value = true;
 	emit('save', {
 		inclusionMode: inclusionMode.value,
 		selectedTools: [...selectedTools.value],
@@ -79,47 +122,32 @@ function handleSave() {
 				</N8nSelect>
 			</div>
 
-			<div v-if="showIncludeList" :class="$style.field">
+			<div v-if="showToolList" :class="$style.field">
 				<N8nText :class="$style.fieldLabel" tag="label" size="small">
-					{{ i18n.baseText('tools.connection.settings.toolsToInclude') }}
+					{{ toolListLabel }}
 				</N8nText>
 				<N8nSelect
-					v-model="selectedTools"
+					v-model="toolListSelection"
 					multiple
 					filterable
 					size="small"
 					:class="$style.multiSelect"
 					:placeholder="i18n.baseText('tools.connection.settings.toolsPlaceholder')"
-					data-test-id="tools-connection-settings-selected"
+					:data-test-id="toolListTestId"
 				>
 					<N8nOption
 						v-for="opt in toolOptions"
 						:key="opt.value"
 						:value="opt.value"
 						:label="opt.label"
-					/>
-				</N8nSelect>
-			</div>
-
-			<div v-if="showExcludeList" :class="$style.field">
-				<N8nText :class="$style.fieldLabel" tag="label" size="small">
-					{{ i18n.baseText('tools.connection.settings.toolsToExclude') }}
-				</N8nText>
-				<N8nSelect
-					v-model="excludedTools"
-					multiple
-					filterable
-					size="small"
-					:class="$style.multiSelect"
-					:placeholder="i18n.baseText('tools.connection.settings.toolsPlaceholder')"
-					data-test-id="tools-connection-settings-excluded"
-				>
-					<N8nOption
-						v-for="opt in toolOptions"
-						:key="opt.value"
-						:value="opt.value"
-						:label="opt.label"
-					/>
+					>
+						<div :class="$style.listOption">
+							<div :class="$style.optionHeadline">{{ opt.label }}</div>
+							<div v-if="opt.description" :class="$style.optionDescription">
+								{{ opt.description }}
+							</div>
+						</div>
+					</N8nOption>
 				</N8nSelect>
 			</div>
 		</div>
@@ -138,6 +166,7 @@ function handleSave() {
 				variant="solid"
 				size="small"
 				:label="i18n.baseText('tools.connection.settings.save')"
+				:disabled="!hasChanges"
 				data-test-id="tools-connection-settings-save"
 				@click="handleSave"
 			/>
@@ -178,6 +207,31 @@ function handleSave() {
 
 .fieldLabel {
 	color: var(--color--text);
+}
+
+.listOption {
+	margin: 6px 0;
+	padding-right: 20px;
+	white-space: normal;
+}
+
+.optionHeadline {
+	font-weight: var(--font-weight--medium);
+	line-height: var(--line-height--md);
+	overflow-wrap: break-word;
+}
+
+.optionDescription {
+	margin-top: 2px;
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--regular);
+	line-height: var(--line-height--xl);
+	overflow: hidden;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	text-overflow: ellipsis;
 }
 
 .footer {

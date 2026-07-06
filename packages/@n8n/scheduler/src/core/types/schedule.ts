@@ -41,17 +41,13 @@ export interface OneOffSchedule {
 
 export type Schedule = CronSchedule | IntervalSchedule | OneOffSchedule;
 
-/**
- * A schedule definition (`scheduled_job`). Recurrence lives in `schedule`;
- * `nextRunAt` is the next instant the sweep materialises from.
- */
 export interface ScheduledJob {
 	id: string;
+	taskType: string;
+	payload: Record<string, unknown>;
 	schedule: Schedule;
 	enabled: boolean;
-	nextRunAt: Date | null;
+	nextRunAt: Date | null; // the next instant the materializer materializes from.
 	lastFiredAt: Date | null;
-	taskType: string;
-	payload: unknown;
 	maxAttempts: number;
 }

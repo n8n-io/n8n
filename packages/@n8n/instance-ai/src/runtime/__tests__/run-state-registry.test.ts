@@ -580,6 +580,34 @@ describe('RunStateRegistry', () => {
 				expect(registry.hasSuspendedRun('thread-1')).toBe(true);
 				expect(registry.getSuspendedRun('thread-1')).toBe(suspendedState);
 			});
+
+			it('rehydrates the message-group indexes when they start empty (restart-resumed orphan)', () => {
+				// Simulate a restart: no prior startRun, so threadMessageGroupId /
+				// runIdsByMessageGroup are empty when the orphan is re-suspended.
+				const suspendedState = createSuspendedRunState({
+					threadId: 'thread-1',
+					runId: 'run_orphan',
+					messageGroupId: 'mg_orphan',
+				});
+
+				registry.suspendRun('thread-1', suspendedState);
+
+				expect(registry.getMessageGroupId('thread-1')).toBe('mg_orphan');
+				expect(registry.getRunIdsForMessageGroup('mg_orphan')).toEqual(['run_orphan']);
+			});
+
+			it('does not duplicate the runId in the group when suspending a run started normally', () => {
+				const started = registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
+				const suspendedState = createSuspendedRunState({
+					threadId: 'thread-1',
+					runId: started.runId,
+					messageGroupId: started.messageGroupId,
+				});
+
+				registry.suspendRun('thread-1', suspendedState);
+
+				expect(registry.getRunIdsForMessageGroup(started.messageGroupId!)).toEqual([started.runId]);
+			});
 		});
 
 		describe('activateSuspendedRun', () => {
@@ -624,6 +652,24 @@ describe('RunStateRegistry', () => {
 				const result = registry.activateSuspendedRun('nonexistent');
 
 				expect(result).toBeUndefined();
+			});
+
+			it('rehydrates the message-group indexes on activation when they start empty', () => {
+				// Restart-resume path: orphan re-suspended then reactivated on a main
+				// that never ran startRun for this thread.
+				const suspendedState = createSuspendedRunState({
+					threadId: 'thread-1',
+					runId: 'run_orphan',
+					messageGroupId: 'mg_orphan',
+				});
+				registry.suspendRun('thread-1', suspendedState);
+				// Clear the group indexes to isolate activation's own rehydration.
+				registry.deleteMessageGroup('mg_orphan');
+
+				registry.activateSuspendedRun('thread-1');
+
+				expect(registry.getMessageGroupId('thread-1')).toBe('mg_orphan');
+				expect(registry.getRunIdsForMessageGroup('mg_orphan')).toEqual(['run_orphan']);
 			});
 		});
 

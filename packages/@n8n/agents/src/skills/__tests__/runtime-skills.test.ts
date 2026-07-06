@@ -381,7 +381,6 @@ Use the workflow SDK.`,
 			skillId: 'summarize_notes',
 			name: 'Summarize notes',
 			content: 'Extract decisions.',
-			instructions: 'Extract decisions.',
 		});
 		await expect(
 			loadTool.handler?.({ skillId: 'summarize_notes', filePath: 'SKILL.md' }, {}),
@@ -391,7 +390,6 @@ Use the workflow SDK.`,
 			skillId: 'summarize_notes',
 			name: 'Summarize notes',
 			content: 'Extract decisions.',
-			instructions: 'Extract decisions.',
 		});
 		await expect(loadTool.handler?.({ name: 'Summarize notes' }, {})).resolves.toMatchObject({
 			ok: true,
@@ -627,7 +625,6 @@ Use the workflow SDK.`,
 			skillId: 'summarize_notes',
 			name: 'Summarize notes',
 			content: 'Extract decisions.',
-			instructions: 'Extract decisions.',
 		});
 
 		await expect(

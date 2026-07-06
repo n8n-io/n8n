@@ -8,85 +8,10 @@
  */
 
 import { type BaseTextKey } from '@n8n/i18n';
-import { type RESOURCES, type Scope } from '@n8n/permissions';
+import { GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS, type Scope } from '@n8n/permissions';
+export { GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS as INSTANCE_SCOPE_GROUPS } from '@n8n/permissions';
 
-type ResourceScope<R extends keyof typeof RESOURCES> =
-	`${R & string}:${(typeof RESOURCES)[R][number]}`;
-
-type InstanceScopeGroups = {
-	[R in keyof typeof RESOURCES]?: Record<string, ReadonlyArray<ResourceScope<R>>>;
-} & {
-	settings?: Record<string, readonly Scope[]>;
-};
-
-export const INSTANCE_SCOPE_GROUPS = {
-	settings: {
-		// Grants access to every instance Settings page. Each scope below gates a
-		// specific page; granting all of them lets the role see and manage all of them.
-		Manage: [
-			'securitySettings:manage', // Security & Policies
-			'credentialResolver:read', // Resolvers (requires the full CRUD set)
-			'credentialResolver:list',
-			'credentialResolver:create',
-			'credentialResolver:update',
-			'credentialResolver:delete',
-			'sourceControl:manage', // Environments (Source Control)
-			'externalSecretsProvider:list', // External Secrets
-			'externalSecretsProvider:update',
-			'saml:manage', // Single Sign-On
-			'logStreaming:manage', // Log Streaming
-			'ldap:manage', // LDAP
-			'otel:manage', // OpenTelemetry
-			'eventBusDestination:create', // Log Streaming
-			'eventBusDestination:read',
-			'eventBusDestination:update',
-			'eventBusDestination:delete',
-			'eventBusDestination:list',
-			'eventBusDestination:test',
-			'variable:list',
-			'variable:read',
-			'dataTable:list',
-		],
-	},
-	user: {
-		Manage: [
-			'user:create',
-			'user:update',
-			'user:delete',
-			'user:changeRole',
-			'user:resetPassword',
-			'user:generateInviteLink',
-			'user:enforceMfa',
-			'user:read',
-			'user:list',
-		],
-	},
-	role: {
-		Manage: ['role:read', 'role:manage'],
-	},
-	apiKey: {
-		'Manage own': ['apiKey:create', 'apiKey:list', 'apiKey:delete', 'apiKey:update'],
-		'Manage all': [
-			'apiKey:create',
-			'apiKey:list',
-			'apiKey:delete',
-			'apiKey:update',
-			'apiKey:manage',
-		],
-	},
-	tag: {
-		View: ['tag:read', 'tag:list'],
-		Manage: ['tag:create', 'tag:update', 'tag:delete'],
-	},
-	project: {
-		Create: ['project:create'],
-	},
-	insights: {
-		View: ['insights:read', 'insights:list'],
-	},
-} as const satisfies InstanceScopeGroups;
-
-export type InstanceResource = keyof typeof INSTANCE_SCOPE_GROUPS;
+export type InstanceResource = keyof typeof GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS;
 
 /** Display order of the resource groups in the editor. */
 export const INSTANCE_RESOURCE_ORDER: InstanceResource[] = [
@@ -156,7 +81,7 @@ const sortByOrder = (order: string[]) => (a: string, b: string) => {
  */
 export const INSTANCE_SCOPE_GROUP_LIST: InstanceScopeGroup[] = INSTANCE_RESOURCE_ORDER.map(
 	(resource) => {
-		const optionMap = INSTANCE_SCOPE_GROUPS[resource] as Record<string, readonly Scope[]>;
+		const optionMap = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS[resource] as Record<string, readonly Scope[]>;
 		const options = Object.keys(optionMap)
 			.sort(sortByOrder(INSTANCE_OPTION_ORDER))
 			.map<InstanceScopeOption>((key) => ({
