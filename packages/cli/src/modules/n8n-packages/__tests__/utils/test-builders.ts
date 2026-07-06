@@ -1,5 +1,5 @@
 import { createWorkflow } from '@n8n/backend-test-utils';
-import type { CredentialsEntity, Project, WorkflowEntity } from '@n8n/db';
+import type { CredentialsEntity, Folder, Project, WorkflowEntity } from '@n8n/db';
 
 interface BuildWorkflowReferencingCredentialByIdOptions {
 	name: string;
@@ -7,6 +7,8 @@ interface BuildWorkflowReferencingCredentialByIdOptions {
 	credentialId: string;
 	credentialName: string;
 	credentialType: string;
+	/** Places the workflow inside a folder, so folder-with-workflows export can pick it up. */
+	parentFolder?: Folder;
 }
 
 /**
@@ -20,6 +22,7 @@ export async function buildWorkflowReferencingCredentialById({
 	credentialId,
 	credentialName,
 	credentialType,
+	parentFolder,
 }: BuildWorkflowReferencingCredentialByIdOptions): Promise<WorkflowEntity> {
 	return await createWorkflow(
 		{
@@ -38,6 +41,7 @@ export async function buildWorkflowReferencingCredentialById({
 				},
 			],
 			connections: {},
+			parentFolder,
 		},
 		project,
 	);
@@ -47,6 +51,8 @@ interface BuildWorkflowReferencingCredentialOptions {
 	name: string;
 	project: Project;
 	credential: Pick<CredentialsEntity, 'id' | 'name' | 'type'>;
+	/** Places the workflow inside a folder, so folder-with-workflows export can pick it up. */
+	parentFolder?: Folder;
 }
 
 /**
@@ -57,6 +63,7 @@ export async function buildWorkflowReferencingCredential({
 	name,
 	project,
 	credential,
+	parentFolder,
 }: BuildWorkflowReferencingCredentialOptions): Promise<WorkflowEntity> {
 	return await buildWorkflowReferencingCredentialById({
 		name,
@@ -64,5 +71,6 @@ export async function buildWorkflowReferencingCredential({
 		credentialId: credential.id,
 		credentialName: credential.name,
 		credentialType: credential.type,
+		parentFolder,
 	});
 }

@@ -86,6 +86,8 @@ const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY: BaseTextKey =
 // the placeholder text — the examples list below it never shifts.
 const INSTANCE_AI_SPLIT_FIXED_ROWS = 5;
 const PERSONALIZED_PROMPT_METADATA_TIMEOUT_MS = 2000;
+const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPOSURE_EVENT =
+	'Instance AI personalized prompt suggestions exposed';
 
 const store = useInstanceAiStore();
 const appSettingsStore = useSettingsStore();
@@ -97,6 +99,7 @@ const { isLowCredits } = storeToRefs(store);
 const rootStore = useRootStore();
 const router = useRouter();
 const toast = useToast();
+const telemetry = useTelemetry();
 const i18n = useI18n();
 const { goToUpgrade } = usePageRedirectionHelper();
 const creditBanner = useCreditWarningBanner(isLowCredits);
@@ -125,12 +128,6 @@ watch(
 const { isVariantEnabled: isSplitVariantEnabled } = useInstanceAiSplitEmptyStateExperiment();
 // Experiment cleanup: remove with instanceAiSplitEmptyState.
 const splitPreviewPromptKey = ref<BaseTextKey | null>(null);
-// Experiment cleanup: remove with instanceAiSplitEmptyState. The split layout
-// hosts the view header inside its chat column; the proactive starter (082)
-// keeps precedence.
-const isSplitLayoutActive = computed(
-	() => isSplitVariantEnabled.value && !showProactiveStarter.value,
-);
 const splitWriting = ref(false);
 const {
 	currentVariant: personalizedPromptSuggestionsVariant,
@@ -138,6 +135,19 @@ const {
 	suggestionFormat: personalizedPromptSuggestionsFormat,
 } = useInstanceAiPersonalizedPromptSuggestionsExperiment();
 const showProactiveStarter = computed(() => isProactiveAgentExperimentEnabled.value);
+// Experiment cleanup: remove with instanceAiSplitEmptyState. The split layout
+// hosts the view header inside its chat column; the proactive starter (082)
+// keeps precedence.
+const isSplitLayoutActive = computed(
+	() => isSplitVariantEnabled.value && !showProactiveStarter.value,
+);
+const shouldTrackPersonalizedPromptSuggestionsExposure = computed(
+	() =>
+		typeof personalizedPromptSuggestionsVariant.value === 'string' &&
+		!showProactiveStarter.value &&
+		!isSplitLayoutActive.value &&
+		settingsStore.isWorkflowBuilderAvailable,
+);
 const activeWorkflowPreviewFile = ref<string | null>(null);
 const activeWorkflowPreview = computed(() => {
 	if (!activeWorkflowPreviewFile.value) return null;
@@ -148,6 +158,7 @@ const personalizedPromptSuggestionResolution = ref<PersonalizedPromptSuggestionR
 );
 const personalizedPromptProfileOverride = usePersonalizedPromptProfileOverride();
 let personalizedPromptMetadataTimeout: ReturnType<typeof setTimeout> | null = null;
+let hasTrackedPersonalizedPromptSuggestionsExposure = false;
 
 const personalizedPromptFallbackSuggestions = computed(() =>
 	getTopUsedV2FallbackSuggestions((key) => i18n.baseText(key)),
@@ -217,6 +228,30 @@ watch(
 		() => appSettingsStore.isCloudDeployment,
 	],
 	resolvePersonalizedPromptMetadata,
+	{ immediate: true },
+);
+
+watch(
+	shouldTrackPersonalizedPromptSuggestionsExposure,
+	(shouldTrackExposure) => {
+		const variant = personalizedPromptSuggestionsVariant.value;
+		if (
+			!shouldTrackExposure ||
+			hasTrackedPersonalizedPromptSuggestionsExposure ||
+			typeof variant !== 'string'
+		) {
+			return;
+		}
+
+		telemetry.track(
+			INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPOSURE_EVENT,
+			getExperimentTelemetryPayload(
+				INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT,
+				variant,
+			),
+		);
+		hasTrackedPersonalizedPromptSuggestionsExposure = true;
+	},
 	{ immediate: true },
 );
 
@@ -454,6 +489,7 @@ function handleShelfSuggestionInsert(payload: {
 				<div :class="$style.proactiveInput">
 					<CreditWarningBanner
 						v-if="creditBanner.visible.value"
+						variant="standalone"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
@@ -523,6 +559,7 @@ function handleShelfSuggestionInsert(payload: {
 				<div ref="centeredInput" :class="[$style.centeredInput, inputPulsing && $style.inputPulse]">
 					<CreditWarningBanner
 						v-if="creditBanner.visible.value"
+						variant="standalone"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"

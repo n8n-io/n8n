@@ -17,6 +17,19 @@ export const ScheduledTaskStatus = {
 
 export type ScheduledTaskStatus = (typeof ScheduledTaskStatus)[keyof typeof ScheduledTaskStatus];
 
+/** All statuses as a runtime list. */
+export const ScheduledTaskStatusList = Object.values(ScheduledTaskStatus);
+
+/** Statuses of finished work: the only rows retention may delete. */
+export const TerminalTaskStatusList = [
+	ScheduledTaskStatus.Succeeded,
+	ScheduledTaskStatus.Failed,
+	ScheduledTaskStatus.Missed,
+	ScheduledTaskStatus.Cancelled,
+] as const;
+
+export type TerminalTaskStatus = (typeof TerminalTaskStatusList)[number];
+
 /**
  * One concrete run of a {@link ScheduledJob} at a specific time.
  *

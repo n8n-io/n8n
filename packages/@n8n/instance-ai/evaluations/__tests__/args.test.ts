@@ -1,4 +1,6 @@
-import { parseCliArgs, partialIsolationWarning } from '../cli/args';
+import { vi } from 'vitest';
+
+import { DEFAULT_MCP_BUILD_MODEL, parseCliArgs, partialIsolationWarning } from '../cli/args';
 
 describe('parseCliArgs --base-url', () => {
 	it('defaults to a single localhost URL when --base-url is not provided', () => {
@@ -172,5 +174,125 @@ describe('parseCliArgs --source langtracer dataset isolation', () => {
 	it('sanitizes the suite into the dataset name', () => {
 		const args = parseCliArgs(['--source', 'langtracer', '--suite', 'My Suite!']);
 		expect(args.dataset).toBe('instance-ai-langtracer-my-suite');
+	});
+});
+
+describe('parseCliArgs --build-via-mcp', () => {
+	beforeEach(() => {
+		// --build-via-mcp is LangSmith-only; give every test in this suite a key
+		// so the requirement doesn't drown out what each test actually asserts.
+		vi.stubEnv('LANGSMITH_API_KEY', 'test-key');
+	});
+
+	afterEach(() => {
+		vi.unstubAllEnvs();
+	});
+
+	it('requires LANGSMITH_API_KEY (the direct loop does not support MCP builds)', () => {
+		vi.stubEnv('LANGSMITH_API_KEY', '');
+		expect(() => parseCliArgs(['--build-via-mcp'])).toThrow(/--build-via-mcp requires LangSmith/);
+	});
+
+	it('defaults to disabled with sensible build knobs', () => {
+		vi.stubEnv('ANTHROPIC_MODEL', '');
+		const args = parseCliArgs([]);
+		expect(args.buildViaMcp).toBe(false);
+		expect(args.mcpServerName).toBe('n8n-local');
+		expect(args.buildModel).toBe(DEFAULT_MCP_BUILD_MODEL);
+		expect(args.buildCwd).toBeUndefined();
+		expect(args.buildMaxAttempts).toBe(3);
+		expect(args.buildMcpTimeoutMs).toBe(120_000);
+		expect(args.buildTimeoutMs).toBe(1_800_000);
+	});
+
+	it('enables the mode and parses the build knobs', () => {
+		const args = parseCliArgs([
+			'--build-via-mcp',
+			'--mcp-server',
+			'n8n-eval',
+			'--build-cwd',
+			'/tmp/mcp-workspace',
+			'--build-max-attempts',
+			'5',
+			'--build-mcp-timeout-ms',
+			'90000',
+			'--build-timeout-ms',
+			'600000',
+		]);
+		expect(args.buildViaMcp).toBe(true);
+		expect(args.mcpServerName).toBe('n8n-eval');
+		expect(args.buildCwd).toBe('/tmp/mcp-workspace');
+		expect(args.buildMaxAttempts).toBe(5);
+		expect(args.buildMcpTimeoutMs).toBe(90_000);
+		expect(args.buildTimeoutMs).toBe(600_000);
+	});
+
+	it('allows --build-timeout-ms 0 to disable the build killer', () => {
+		expect(parseCliArgs(['--build-via-mcp', '--build-timeout-ms', '0']).buildTimeoutMs).toBe(0);
+	});
+
+	it('reads the build model from ANTHROPIC_MODEL', () => {
+		vi.stubEnv('ANTHROPIC_MODEL', 'claude-opus-4-5');
+		expect(parseCliArgs(['--build-via-mcp']).buildModel).toBe('claude-opus-4-5');
+	});
+
+	it('pins the default model when ANTHROPIC_MODEL is unset, so builds never float', () => {
+		vi.stubEnv('ANTHROPIC_MODEL', '');
+		expect(parseCliArgs(['--build-via-mcp']).buildModel).toBe(DEFAULT_MCP_BUILD_MODEL);
+	});
+
+	it('treats a whitespace-only ANTHROPIC_MODEL as unset', () => {
+		vi.stubEnv('ANTHROPIC_MODEL', '   ');
+		expect(parseCliArgs(['--build-via-mcp']).buildModel).toBe(DEFAULT_MCP_BUILD_MODEL);
+	});
+
+	it('rejects the removed --build-model flag', () => {
+		// The model is env-configured (ANTHROPIC_MODEL); the old flag must fail
+		// loudly instead of parsing and being silently ignored.
+		expect(() => parseCliArgs(['--build-model', 'claude-opus-4-5'])).toThrow(
+			/Unknown flag: --build-model/,
+		);
+	});
+
+	it.each([
+		['--mcp-server', 'n8n-eval'],
+		['--build-cwd', '/tmp/mcp-workspace'],
+		['--build-max-attempts', '5'],
+		['--build-mcp-timeout-ms', '90000'],
+		['--build-timeout-ms', '600000'],
+	])('rejects %s without --build-via-mcp instead of silently ignoring it', (flag, value) => {
+		expect(() => parseCliArgs([flag, value])).toThrow(/only takes? effect with --build-via-mcp/);
+	});
+
+	it('lists every build-only flag passed without --build-via-mcp', () => {
+		expect(() => parseCliArgs(['--mcp-server', 'n8n-eval', '--build-timeout-ms', '0'])).toThrow(
+			/--mcp-server, --build-timeout-ms only take effect with --build-via-mcp/,
+		);
+	});
+
+	it('works with multiple --base-url lanes (unlike --prebuilt-workflows)', () => {
+		const args = parseCliArgs([
+			'--build-via-mcp',
+			'--base-url',
+			'http://localhost:5678,http://localhost:5679',
+		]);
+		expect(args.buildViaMcp).toBe(true);
+		expect(args.baseUrls).toHaveLength(2);
+	});
+
+	it('rejects combining --build-via-mcp with --prebuilt-workflows', () => {
+		expect(() =>
+			parseCliArgs(['--build-via-mcp', '--prebuilt-workflows', '/tmp/manifest.json']),
+		).toThrow(/incompatible with --prebuilt-workflows/);
+	});
+
+	it('rejects --delete-prebuilt-workflows with --build-via-mcp', () => {
+		expect(() => parseCliArgs(['--build-via-mcp', '--delete-prebuilt-workflows'])).toThrow(
+			/applies to --prebuilt-workflows/,
+		);
+	});
+
+	it('rejects a non-integer --build-max-attempts', () => {
+		expect(() => parseCliArgs(['--build-max-attempts', 'lots'])).toThrow();
 	});
 });

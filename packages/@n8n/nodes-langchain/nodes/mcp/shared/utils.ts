@@ -1,6 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { fetchFollowingRedirects, proxyFetch } from '@n8n/ai-utilities';
 import type { ClientOAuth2TokenData } from '@n8n/client-oauth2';
 import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
 import type {
@@ -11,8 +12,6 @@ import type {
 	ISupplyDataFunctions,
 } from 'n8n-workflow';
 import { assertCredentialAllowsUrl, assertUrlAllowed, NodeOperationError } from 'n8n-workflow';
-
-import { fetchFollowingRedirects, proxyFetch } from '@n8n/ai-utilities';
 
 import {
 	isMcpOAuth2Authentication,
@@ -200,13 +199,13 @@ export async function connectMcpClient({
 			await client.connect(transport);
 			return createResultOk(client);
 		} catch (error) {
-			const err = error instanceof Error ? error : new Error(String(error));
-			if ((signal && err.name === 'AbortError') || signal?.aborted) {
+			const connectionError = error instanceof Error ? error : new Error(String(error));
+			if ((signal && connectionError.name === 'AbortError') || signal?.aborted) {
 				if (onAbort && signal) {
 					signal.removeEventListener('abort', onAbort);
 					onAbort = undefined;
 				}
-				return createResultError({ type: 'cancelled', error: err });
+				return createResultError({ type: 'cancelled', error: connectionError });
 			}
 
 			// Clean up the abort listener so a failed client doesn't stay pinned to the execution signal
@@ -241,13 +240,13 @@ export async function connectMcpClient({
 		await client.connect(sseTransport);
 		return createResultOk(client);
 	} catch (error) {
-		const err = error instanceof Error ? error : new Error(String(error));
-		if ((signal && err.name === 'AbortError') || signal?.aborted) {
+		const connectionError = error instanceof Error ? error : new Error(String(error));
+		if ((signal && connectionError.name === 'AbortError') || signal?.aborted) {
 			if (onAbort && signal) {
 				signal.removeEventListener('abort', onAbort);
 				onAbort = undefined;
 			}
-			return createResultError({ type: 'cancelled', error: err });
+			return createResultError({ type: 'cancelled', error: connectionError });
 		}
 
 		// Clean up the abort listener so a failed client doesn't stay pinned to the execution signal
@@ -333,10 +332,14 @@ export async function getAuthHeaders(
 }> {
 	if (isMcpOAuth2Authentication(authentication)) {
 		const credentials = await ctx
-			.getCredentials<{ oauthTokenData: { access_token: string } }>(authentication)
+			.getCredentials<{ oauthTokenData?: { access_token?: string } }>(authentication)
 			.catch(() => null);
 
 		if (!credentials) return {};
+
+		if (!credentials.oauthTokenData?.access_token) {
+			return { credentials };
+		}
 
 		return {
 			headers: { Authorization: `Bearer ${credentials.oauthTokenData.access_token}` },
@@ -371,9 +374,9 @@ export async function getAuthHeaders(
 		}
 		case 'multipleHeadersAuth': {
 			const credentials = await ctx
-				.getCredentials<{ headers: { values: Array<{ name: string; value: string }> } }>(
-					'httpMultipleHeadersAuth',
-				)
+				.getCredentials<{
+					headers: { values: Array<{ name: string; value: string }> };
+				}>('httpMultipleHeadersAuth')
 				.catch(() => null);
 
 			if (!credentials) return {};

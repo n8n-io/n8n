@@ -104,6 +104,9 @@ export type RelayEventMap = {
 
 	'n8n-package-exported': {
 		user: UserLike;
+		workflowIds?: string[];
+		folderIds?: string[];
+		projectIds?: string[];
 		counts: ExportPackageEventCounts;
 	};
 
