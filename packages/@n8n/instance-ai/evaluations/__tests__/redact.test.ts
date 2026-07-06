@@ -31,6 +31,48 @@ describe('redactSecrets', () => {
 		});
 	});
 
+	it('keeps credential setup hints readable (secret-free by contract)', () => {
+		const input = {
+			action: 'setup',
+			credentialHints: [
+				{
+					credentialType: 'httpHeaderAuth',
+					suggestedName: 'fal.ai API Key',
+					prefill: {
+						name: 'Authorization',
+						value: 'Key <__PLACEHOLDER_VALUE__fal.ai API key__>',
+						// A field named like a secret must survive when it carries a sentinel.
+						apiKey: '<__PLACEHOLDER_VALUE__api key__>',
+					},
+					docsUrl: 'https://fal.ai/dashboard/keys',
+				},
+			],
+		};
+
+		expect(redactSecrets(input)).toEqual(input);
+	});
+
+	it('masks inline secret-shaped content inside a hint, but not sentinels', () => {
+		const input = {
+			setupHint: {
+				prefill: {
+					name: 'Authorization',
+					// A misbehaving model inlining a real token still gets masked.
+					value: 'token=sk-live-12345',
+				},
+			},
+		};
+
+		expect(redactSecrets(input)).toEqual({
+			setupHint: {
+				prefill: {
+					name: 'Authorization',
+					value: 'token=[REDACTED]',
+				},
+			},
+		});
+	});
+
 	it('walks nested objects and arrays', () => {
 		const input = {
 			outer: {
