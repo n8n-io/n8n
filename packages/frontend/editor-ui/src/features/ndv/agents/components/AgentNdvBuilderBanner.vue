@@ -2,7 +2,7 @@
 /**
  * Agent Builder promo banner at the top of the AI Agent node's NDV Parameters
  * tab. The "Agent Builder" link is the NDV's builder entry point: with an
- * agent referenced it deep-links to it; with none it inline-creates a draft,
+ * agent referenced it deep-links to it; with none it creates a draft,
  * references it, and opens the builder for it. Both paths set the "Back to
  * workflow" return context (unlike the picker's "+ Create agent", which stays
  * in the current flow).
@@ -13,7 +13,7 @@ import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
-import { useAgentInlineCreate } from '@/features/agents/composables/useAgentInlineCreate';
+import { useAgentCreate } from '@/features/agents/composables/useAgentCreate';
 
 import { NdvAgentConfigKey } from '../composables/useNdvAgentConfig';
 
@@ -35,10 +35,10 @@ const projectId = computed(() => ndv?.projectId.value ?? '');
 
 const { canCreate } = useAgentPermissions(projectId);
 
-// The banner's affordance is "go to the builder", so inline create here also
+// The banner's affordance is "go to the builder", so creation here also
 // navigates: the reference lands on the node, the workflow is saved, and the
 // builder opens on the fresh draft.
-const inlineCreate = useAgentInlineCreate({
+const agentCreate = useAgentCreate({
 	projectId,
 	telemetrySource: 'ndv_banner',
 	getOriginNodeId: () => props.originNodeId,
@@ -55,7 +55,7 @@ const inlineCreate = useAgentInlineCreate({
 // creates a draft agent, which needs create permission and an editable workflow.
 const isLinkEnabled = computed(() => {
 	if (agentId.value) return true;
-	return canCreate.value && !props.isReadOnly && !inlineCreate.isCreating.value;
+	return canCreate.value && !props.isReadOnly && !agentCreate.isCreating.value;
 });
 
 async function onLinkClick() {
@@ -64,7 +64,7 @@ async function onLinkClick() {
 		await ndv?.openBuilder();
 		return;
 	}
-	await inlineCreate.createAndOpenBuilder();
+	await agentCreate.createAndOpenBuilder();
 }
 </script>
 

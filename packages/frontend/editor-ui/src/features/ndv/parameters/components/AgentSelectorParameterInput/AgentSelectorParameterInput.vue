@@ -21,7 +21,7 @@ import { useAgentResourcesLocator } from '../../composables/useAgentResourcesLoc
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useAgentScopeProjectId } from '@/features/agents/composables/useAgentScopeProjectId';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
-import { useAgentInlineCreate } from '@/features/agents/composables/useAgentInlineCreate';
+import { useAgentCreate } from '@/features/agents/composables/useAgentCreate';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants';
@@ -248,7 +248,7 @@ function onKeyDown(e: KeyboardEvent) {
 	}
 }
 
-const inlineCreate = useAgentInlineCreate({
+const inlineCreate = useAgentCreate({
 	projectId,
 	telemetrySource: 'node_picker',
 	setReference: (agent) => {

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { useAgentInlineCreate } from './useAgentInlineCreate';
+import { useAgentCreate } from './useAgentCreate';
 import type { AgentResource } from '../types';
 
 const { createAgent } = vi.hoisted(() => ({ createAgent: vi.fn() }));
@@ -32,7 +32,7 @@ vi.mock('@n8n/i18n', () => ({
 
 const agent = { id: 'agent-1', name: 'New agent' } as AgentResource;
 
-describe('useAgentInlineCreate', () => {
+describe('useAgentCreate', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		createAgent.mockResolvedValue(agent);
@@ -42,7 +42,7 @@ describe('useAgentInlineCreate', () => {
 	it('creates a draft agent and references it, staying in the current flow', async () => {
 		const setReference = vi.fn();
 		const onCreated = vi.fn();
-		const { createAndSelect } = useAgentInlineCreate({
+		const { createAndSelect } = useAgentCreate({
 			projectId: 'project-1',
 			telemetrySource: 'ndv_banner',
 			setReference,
@@ -76,7 +76,7 @@ describe('useAgentInlineCreate', () => {
 
 	it('createAndOpenBuilder saves the workflow, then opens the builder with the origin node', async () => {
 		const setReference = vi.fn();
-		const { createAndOpenBuilder } = useAgentInlineCreate({
+		const { createAndOpenBuilder } = useAgentCreate({
 			projectId: 'project-1',
 			telemetrySource: 'ndv_banner',
 			getOriginNodeId: () => 'node-7',
@@ -99,7 +99,7 @@ describe('useAgentInlineCreate', () => {
 	it('createAndOpenBuilder keeps the reference but skips navigation when the save fails', async () => {
 		saveCurrentWorkflow.mockResolvedValue(false);
 		const setReference = vi.fn();
-		const { createAndOpenBuilder, isCreating } = useAgentInlineCreate({
+		const { createAndOpenBuilder, isCreating } = useAgentCreate({
 			projectId: 'project-1',
 			telemetrySource: 'ndv_banner',
 			setReference,
@@ -114,7 +114,7 @@ describe('useAgentInlineCreate', () => {
 
 	it('shows an error and does not create when no project is resolved', async () => {
 		const setReference = vi.fn();
-		const { createAndSelect } = useAgentInlineCreate({
+		const { createAndSelect } = useAgentCreate({
 			projectId: '',
 			telemetrySource: 'node_picker',
 			setReference,
@@ -130,7 +130,7 @@ describe('useAgentInlineCreate', () => {
 	it('shows an error and references nothing when the create call fails', async () => {
 		createAgent.mockRejectedValue(new Error('boom'));
 		const setReference = vi.fn();
-		const { createAndSelect, isCreating } = useAgentInlineCreate({
+		const { createAndSelect, isCreating } = useAgentCreate({
 			projectId: 'project-1',
 			telemetrySource: 'node_picker',
 			setReference,
@@ -148,7 +148,7 @@ describe('useAgentInlineCreate', () => {
 		createAgent.mockImplementation(
 			async () => await new Promise<AgentResource>((resolve) => (resolveCreate = resolve)),
 		);
-		const { createAndSelect } = useAgentInlineCreate({
+		const { createAndSelect } = useAgentCreate({
 			projectId: 'project-1',
 			telemetrySource: 'node_picker',
 			setReference: vi.fn(),

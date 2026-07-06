@@ -25,7 +25,7 @@ import type { AgentResource } from '../types';
  * Callers differ only in how they write the reference onto the node
  * (`setReference`) and their telemetry source.
  */
-export function useAgentInlineCreate(options: {
+export function useAgentCreate(options: {
 	projectId: MaybeRefOrGetter<string>;
 	telemetrySource: string;
 	/** Origin node for the builder's "Back to workflow" return context. */
