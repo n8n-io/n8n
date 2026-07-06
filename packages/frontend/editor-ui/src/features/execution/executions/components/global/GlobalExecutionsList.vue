@@ -352,6 +352,8 @@ const goToUpgrade = () => {
 				:running-executions-count="concurrentTotal"
 				:concurrency-cap="settingsStore.concurrency"
 				:is-cloud-deployment="settingsStore.isCloudDeployment"
+				:executions="props.executions"
+				:loading="executionsStore.loading && !props.executions.length"
 				@go-to-upgrade="goToUpgrade"
 			/>
 			<N8nCheckbox

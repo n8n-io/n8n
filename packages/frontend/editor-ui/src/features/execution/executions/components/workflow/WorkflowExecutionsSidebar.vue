@@ -181,6 +181,8 @@ const goToUpgrade = () => {
 				:running-executions-count="executionsStore.concurrentExecutionsCount"
 				:concurrency-cap="settingsStore.concurrency"
 				:is-cloud-deployment="settingsStore.isCloudDeployment"
+				:executions="props.executions"
+				:loading="executionsStore.loading"
 				@go-to-upgrade="goToUpgrade"
 			/>
 			<ExecutionStopAllText :executions="props.executions" />

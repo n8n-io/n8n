@@ -3,6 +3,7 @@ import { waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import ConcurrentExecutionsHeader from './ConcurrentExecutionsHeader.vue';
+import { ExecutionSummary } from 'n8n-workflow';
 
 vi.mock('vue-router', () => {
 	return {
@@ -16,6 +17,10 @@ vi.mock('vue-router', () => {
 
 const renderComponent = createComponentRenderer(ConcurrentExecutionsHeader, {
 	pinia: createTestingPinia(),
+	props: {
+		executions: [],
+		loading: false,
+	},
 });
 
 describe('ConcurrentExecutionsHeader', () => {
@@ -25,6 +30,8 @@ describe('ConcurrentExecutionsHeader', () => {
 				props: {
 					runningExecutionsCount: 0,
 					concurrencyCap: 0,
+					executions: [],
+					loading: false,
 				},
 			}),
 		).not.toThrow();
@@ -40,12 +47,40 @@ describe('ConcurrentExecutionsHeader', () => {
 				props: {
 					runningExecutionsCount,
 					concurrencyCap,
+					executions: [],
+					loading: false,
 				},
 			});
 
 			expect(getByText(text)).toBeVisible();
 		},
 	);
+
+	it('hides the concurrency header while executions are loading', () => {
+		const { queryByTestId } = renderComponent({
+			props: {
+				runningExecutionsCount: 0,
+				concurrencyCap: 5,
+				executions: [{ status: 'success' } as ExecutionSummary],
+				loading: true,
+			},
+		});
+
+		expect(queryByTestId('concurrent-executions-header')).not.toBeInTheDocument();
+	});
+
+	it('hides the concurrency header when count is 0 but a manual run is active', () => {
+		const { queryByTestId } = renderComponent({
+			props: {
+				runningExecutionsCount: 0,
+				concurrencyCap: 5,
+				executions: [{ status: 'running' } as ExecutionSummary],
+				loading: false,
+			},
+		});
+
+		expect(queryByTestId('concurrent-executions-header')).not.toBeInTheDocument();
+	});
 
 	it('should show tooltip on hover with Upgrade link when on cloud', async () => {
 		const { container } = renderComponent({
