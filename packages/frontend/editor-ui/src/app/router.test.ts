@@ -345,6 +345,13 @@ describe('router', () => {
 			expect(router.currentRoute.value.name).toBe(VIEWS.ROLES_SETTINGS);
 			expect(router.currentRoute.value.query.tab).toBe('project');
 		});
+
+		test('redirects /settings/instance-roles to the Roles shell (instance tab)', async () => {
+			await router.push('/settings/instance-roles');
+
+			expect(router.currentRoute.value.name).toBe(VIEWS.ROLES_SETTINGS);
+			expect(router.currentRoute.value.query.tab).toBe('instance');
+		});
 	});
 
 	test('should set props: true for PROJECT_ROLE_SETTINGS route', () => {

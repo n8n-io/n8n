@@ -846,6 +846,12 @@ export const routes: RouteRecordRaw[] = [
 				component: RouterView,
 				children: [
 					{
+						path: '',
+						// Instance roles are listed inside the tabbed Roles shell; the bare
+						// path has no standalone page, so redirect it to the instance tab.
+						redirect: () => ({ name: VIEWS.ROLES_SETTINGS, query: { tab: 'instance' } }),
+					},
+					{
 						path: 'new',
 						name: VIEWS.INSTANCE_NEW_ROLE,
 						component: async () => await import('@/features/roles/instance/InstanceRoleView.vue'),
