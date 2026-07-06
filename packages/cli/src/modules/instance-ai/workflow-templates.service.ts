@@ -1,13 +1,17 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import axios from 'axios';
+import { OperationalError } from 'n8n-workflow';
 
 export const TEMPLATE_REQUEST_TIMEOUT_MS = 5000;
 
 export type WorkflowTemplateResult =
 	| { available: true; template: Record<string, unknown> }
 	| { available: false };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
 @Service()
 export class WorkflowTemplatesService {
@@ -24,12 +28,16 @@ export class WorkflowTemplatesService {
 
 		const url = `${host.replace(/\/?$/, '/')}templates/workflows/${encodeURIComponent(templateId)}`;
 		try {
-			const response = await axios.get<{ workflow?: Record<string, unknown> }>(url, {
-				headers: { 'Content-Type': 'application/json' },
-				timeout: TEMPLATE_REQUEST_TIMEOUT_MS,
+			const response = await fetch(url, {
+				headers: { Accept: 'application/json' },
+				signal: AbortSignal.timeout(TEMPLATE_REQUEST_TIMEOUT_MS),
 			});
-			const workflow = response.data?.workflow;
-			if (workflow === undefined || workflow === null || typeof workflow !== 'object') {
+			if (!response.ok) {
+				throw new OperationalError(`Template request failed with status ${response.status}`);
+			}
+			const body: unknown = await response.json();
+			const workflow = isRecord(body) ? body.workflow : undefined;
+			if (!isRecord(workflow)) {
 				this.logger.warn('Workflow template response missing workflow payload', { templateId });
 				return { available: false };
 			}
