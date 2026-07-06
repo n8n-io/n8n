@@ -2,7 +2,9 @@
 import { N8nBadge, N8nCheckbox, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 
+import { VIEWS } from '@/app/constants';
 import type { EvalVersionEntry } from '../../evalCollections.types';
 import VersionAvatar from '../shared/VersionAvatar.vue';
 
@@ -10,14 +12,29 @@ const props = defineProps<{
 	versions: EvalVersionEntry[];
 	selectedVersionIds: Set<string>;
 	datasetLabel: string;
+	workflowId: string;
 }>();
 
 const emit = defineEmits<{
 	'toggle-version': [versionKey: string];
-	'open-quick-view': [versionKey: string];
 }>();
 
 const i18n = useI18n();
+const router = useRouter();
+
+// The "View" action opens the version in a new browser tab for now — a
+// same-page in-app preview is tracked as follow-up. Versioned rows link to
+// the workflow-history snapshot; the "Current draft" row (null version) links
+// to the workflow editor.
+const versionHref = (v: EvalVersionEntry) =>
+	router.resolve(
+		v.workflowVersionId
+			? {
+					name: VIEWS.WORKFLOW_HISTORY,
+					params: { workflowId: props.workflowId, versionId: v.workflowVersionId },
+				}
+			: { name: VIEWS.WORKFLOW, params: { workflowId: props.workflowId } },
+	).href;
 
 // Canonical key for a version row. `workflowVersionId === null` represents
 // the "Current draft" row — the server will snapshot it on submit, so we
@@ -30,6 +47,7 @@ interface Row {
 	index: number; // assigned only after sort, so avatar color follows display order
 	version: EvalVersionEntry;
 	checked: boolean;
+	href: string;
 }
 
 const rows = computed<Row[]>(() =>
@@ -38,6 +56,7 @@ const rows = computed<Row[]>(() =>
 		index: idx,
 		version,
 		checked: props.selectedVersionIds.has(rowKey(version)),
+		href: versionHref(version),
 	})),
 );
 
@@ -149,15 +168,17 @@ const formatRunAt = (iso: string | null) => {
 				</N8nBadge>
 			</div>
 			<div :class="$style.col_action">
-				<button
-					type="button"
+				<a
+					:href="row.href"
+					target="_blank"
+					rel="noopener noreferrer"
 					:class="$style.viewLink"
 					data-test-id="versions-table-row-view"
-					@click.stop="emit('open-quick-view', row.key)"
+					@click.stop
 				>
 					<N8nIcon icon="arrow-up-right" size="xsmall" />
 					{{ i18n.baseText('evaluation.setup.versions.viewAction') }}
-				</button>
+				</a>
 			</div>
 		</div>
 	</div>

@@ -9,7 +9,6 @@ import { useEvaluationStore } from '../../evaluation.store';
 import type { EvalCollectionVersionEntry, EvalVersionEntry } from '../../evalCollections.types';
 
 import DatasetPicker from './DatasetPicker.vue';
-import QuickViewDrawer from './QuickViewDrawer.vue';
 import VersionsTable from './VersionsTable.vue';
 
 // State machine matches the setup flow. We collapse INITIAL/NAME_PROVIDED into
@@ -36,7 +35,6 @@ const name = ref('');
 const selectedConfigId = ref<string | null>(null);
 const selectedVersionKeys = ref<Set<string>>(new Set());
 const state = ref<WizardState>('collecting');
-const quickViewVersionKey = ref<string | null>(null);
 
 // Filters the user can apply on the versions table. `Source: All` is the
 // default — narrows by the `sourceLabel` returned on each version row.
@@ -201,19 +199,6 @@ const onToggleVersion = (versionKey: string) => {
 	selectedVersionKeys.value = next;
 };
 
-const onOpenQuickView = (versionKey: string) => {
-	quickViewVersionKey.value = versionKey;
-};
-
-const quickViewVersion = computed<EvalVersionEntry | null>(() => {
-	if (!quickViewVersionKey.value) return null;
-	return allVersions.value.find((v) => rowKey(v) === quickViewVersionKey.value) ?? null;
-});
-
-const onCloseQuickView = () => {
-	quickViewVersionKey.value = null;
-};
-
 const close = () => {
 	emit('update:open', false);
 };
@@ -226,7 +211,6 @@ const reset = () => {
 	state.value = 'collecting';
 	sourceFilter.value = 'all';
 	sortOrder.value = 'recent';
-	quickViewVersionKey.value = null;
 };
 
 watch(
@@ -347,8 +331,8 @@ const onSubmit = async () => {
 					:versions="visibleVersions"
 					:selected-version-ids="selectedVersionKeys"
 					:dataset-label="datasetLabel"
+					:workflow-id="workflowId"
 					@toggle-version="onToggleVersion"
-					@open-quick-view="onOpenQuickView"
 				/>
 			</div>
 
@@ -423,13 +407,6 @@ const onSubmit = async () => {
 				/>
 			</div>
 		</footer>
-
-		<QuickViewDrawer
-			:open="quickViewVersion !== null"
-			:version="quickViewVersion"
-			:dataset-label="datasetLabel"
-			@update:open="onCloseQuickView"
-		/>
 	</N8nDialog>
 </template>
 

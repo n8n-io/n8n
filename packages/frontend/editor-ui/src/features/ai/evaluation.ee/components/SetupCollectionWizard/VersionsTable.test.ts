@@ -1,9 +1,21 @@
 import { fireEvent } from '@testing-library/vue';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import type { EvalVersionEntry } from '../../evalCollections.types';
 import VersionsTable from './VersionsTable.vue';
+
+// The "View" link resolves a route to an href via the router. Override only
+// `useRouter` with a deterministic resolver; keep the rest of vue-router real
+// so components like ConditionalRouterLink (which read RouterLink.props) work.
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRouter: () => ({
+		resolve: (to: { name: string; params: Record<string, string> }) => ({
+			href: `/${to.name}/${to.params.versionId ?? to.params.workflowId}`,
+		}),
+	}),
+}));
 
 const renderComponent = createComponentRenderer(VersionsTable);
 
@@ -35,6 +47,7 @@ describe('VersionsTable', () => {
 				],
 				selectedVersionIds: new Set<string>(),
 				datasetLabel: 'Q&A v1',
+				workflowId: 'wf-1',
 			},
 		});
 		expect(getAllByTestId('versions-table-row')).toHaveLength(2);
@@ -59,6 +72,7 @@ describe('VersionsTable', () => {
 				],
 				selectedVersionIds: new Set<string>(),
 				datasetLabel: 'Q&A v1',
+				workflowId: 'wf-1',
 			},
 		});
 		expect(container.querySelector('[data-test-id="versions-table-row-best"]')).not.toBeNull();
@@ -82,6 +96,7 @@ describe('VersionsTable', () => {
 				],
 				selectedVersionIds: new Set<string>(),
 				datasetLabel: 'Q&A v1',
+				workflowId: 'wf-1',
 			},
 		});
 		expect(container.querySelector('[data-test-id="versions-table-row-low"]')).not.toBeNull();
@@ -94,6 +109,7 @@ describe('VersionsTable', () => {
 				versions: [baseVersion({ lastRun: null })],
 				selectedVersionIds: new Set<string>(),
 				datasetLabel: 'Q&A v1',
+				workflowId: 'wf-1',
 			},
 		});
 		expect(container.textContent).toMatch(/no run yet/i);
@@ -105,6 +121,7 @@ describe('VersionsTable', () => {
 				versions: [baseVersion({ workflowVersionId: 'v1' })],
 				selectedVersionIds: new Set<string>(),
 				datasetLabel: 'Q&A v1',
+				workflowId: 'wf-1',
 			},
 		});
 
@@ -115,22 +132,44 @@ describe('VersionsTable', () => {
 		expect(emitted()['toggle-version']?.[0]).toEqual(['v1']);
 	});
 
-	it('emits open-quick-view when the View link is clicked', async () => {
+	it('View links to the version in a new tab without toggling the row', async () => {
 		const { container, emitted } = renderComponent({
 			props: {
 				versions: [baseVersion({ workflowVersionId: 'v1' })],
 				selectedVersionIds: new Set<string>(),
 				datasetLabel: 'Q&A v1',
+				workflowId: 'wf-1',
 			},
 		});
 
-		const viewBtn = container.querySelector('[data-test-id="versions-table-row-view"]');
-		if (viewBtn) await fireEvent.click(viewBtn);
+		const view = container.querySelector<HTMLAnchorElement>(
+			'[data-test-id="versions-table-row-view"]',
+		);
+		expect(view?.tagName).toBe('A');
+		expect(view?.getAttribute('target')).toBe('_blank');
+		// Versioned row → workflow-history route for that snapshot.
+		expect(view?.getAttribute('href')).toContain('v1');
 
-		expect(emitted()['open-quick-view']).toBeTruthy();
-		expect(emitted()['open-quick-view']?.[0]).toEqual(['v1']);
-		// Row click should NOT have fired — `.stop` modifier on the View button.
+		if (view) await fireEvent.click(view);
+		// Row click should NOT have fired — `.stop` modifier on the View link.
 		expect(emitted()['toggle-version']).toBeUndefined();
+	});
+
+	it('View for the "Current draft" row links to the workflow editor', () => {
+		const { container } = renderComponent({
+			props: {
+				versions: [baseVersion({ workflowVersionId: null, label: 'Current draft' })],
+				selectedVersionIds: new Set<string>(),
+				datasetLabel: 'Q&A v1',
+				workflowId: 'wf-1',
+			},
+		});
+
+		const view = container.querySelector<HTMLAnchorElement>(
+			'[data-test-id="versions-table-row-view"]',
+		);
+		// Draft row has no version id → falls back to the workflow route (wf-1).
+		expect(view?.getAttribute('href')).toContain('wf-1');
 	});
 
 	it('marks the "Current draft" row with the __draft__ key', async () => {
@@ -146,6 +185,7 @@ describe('VersionsTable', () => {
 				],
 				selectedVersionIds: new Set<string>(),
 				datasetLabel: 'Q&A v1',
+				workflowId: 'wf-1',
 			},
 		});
 
