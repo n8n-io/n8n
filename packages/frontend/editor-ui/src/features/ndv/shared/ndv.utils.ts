@@ -433,6 +433,12 @@ export function parseFromExpression(
 			: null;
 	}
 
+	// `json` fields (e.g. HTTP Request "JSON Body") store raw text. Switching back to
+	// fixed mode must drop the internal "=" expression marker so the value parses as JSON.
+	if (parameterType === 'json' && typeof currentParameterValue === 'string') {
+		return currentParameterValue ? currentParameterValue.replace(/^=+/, '') : null;
+	}
+
 	if (typeof evaluatedExpressionValue !== 'undefined') {
 		return evaluatedExpressionValue;
 	}
