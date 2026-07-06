@@ -220,7 +220,7 @@ const isDefaultResolver = computed(() => {
 // Nodes without an operation selected are treated as supported so gateway
 // auto-selection still works for operation-agnostic nodes.
 const isCurrentActionSupported = computed(() => {
-	const params = props.node.parameters ?? {};
+	const params = props.node.parameters;
 	const operation = params.operation as string | undefined;
 	if (!operation) return true;
 	const resource = params.resource as string | undefined;

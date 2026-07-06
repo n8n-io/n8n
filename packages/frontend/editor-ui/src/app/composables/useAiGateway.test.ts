@@ -147,6 +147,23 @@ describe('useAiGateway', () => {
 		});
 	});
 
+	describe('isNodeTypeVersionSupported()', () => {
+		it('should delegate to the store', async () => {
+			mockGetGatewayConfig.mockResolvedValue({
+				nodes: [],
+				credentialTypes: [],
+				providerConfig: {},
+				minNodeTypeVersion: { 'n8n-nodes-base.browserbase': 2 },
+			});
+			const aiGatewayStore = useAiGatewayStore();
+			await aiGatewayStore.fetchConfig();
+
+			const { isNodeTypeVersionSupported } = useAiGateway();
+			expect(isNodeTypeVersionSupported('n8n-nodes-base.browserbase', 2)).toBe(true);
+			expect(isNodeTypeVersionSupported('n8n-nodes-base.browserbase', 1)).toBe(false);
+		});
+	});
+
 	describe('isActionOptionVisible()', () => {
 		const managedNode = {
 			type: 'n8n-nodes-base.browserbase',

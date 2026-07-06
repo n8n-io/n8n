@@ -313,6 +313,19 @@ describe('ParameterInput.vue', () => {
 			expect(options.length).toEqual(1);
 			expect(options[0].querySelector('.option-headline')).toHaveTextContent('Append Row');
 		});
+
+		test('passes a null node to the gateway check when there is no active node', async () => {
+			mockNdvState.activeNode = undefined;
+			mockIsActionOptionVisible.mockReturnValue(false);
+
+			const { container } = renderComponent({
+				props: { path: 'operation', parameter: operationParameter, modelValue: 'append' },
+			});
+
+			await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+
+			expect(mockIsActionOptionVisible).toHaveBeenCalledWith(null, 'operation', 'appendOrUpdate');
+		});
 	});
 
 	test('should render an options parameter even if it has invalid fields (like displayName)', async () => {
