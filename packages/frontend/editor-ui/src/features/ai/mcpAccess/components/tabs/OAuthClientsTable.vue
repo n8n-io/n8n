@@ -168,11 +168,9 @@ function onRevoke(item: OAuthClientResponseDto) {
 				</template>
 				<template #[`item.name`]="{ item }">
 					<div :class="$style.client">
-						<component
-							:is="getClientBrand(item.name).icon"
-							v-if="getClientBrand(item.name).icon"
-							:class="$style['client-icon']"
-						/>
+						<span v-if="getClientBrand(item.name).icon" :class="$style['client-icon-chip']">
+							<component :is="getClientBrand(item.name).icon" :class="$style['client-icon']" />
+						</span>
 						<div :class="$style['client-name']">
 							<N8nText data-test-id="mcp-client-name" color="text-dark">
 								{{ item.name }}
@@ -189,7 +187,7 @@ function onRevoke(item: OAuthClientResponseDto) {
 					</div>
 				</template>
 				<template #[`item.scopes`]="{ item }">
-					<N8nText data-test-id="mcp-client-access" color="text-light">
+					<N8nText data-test-id="mcp-client-access" color="text-light" :class="$style.access">
 						{{ accessSummary(item) }}
 					</N8nText>
 				</template>
@@ -241,10 +239,29 @@ function onRevoke(item: OAuthClientResponseDto) {
 	gap: var(--spacing--2xs);
 }
 
+.client-icon-chip {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--spacing--xl);
+	height: var(--spacing--xl);
+	flex-shrink: 0;
+	/* fixed white tile so dark brand marks stay visible on the dark theme */
+	background-color: var(--color--neutral-white);
+	border: var(--border);
+	border-radius: var(--radius);
+}
+
 .client-icon {
 	width: var(--spacing--md);
 	height: var(--spacing--md);
-	flex-shrink: 0;
+}
+
+/* the whole row opens the details modal; hint that on the access summary */
+.access:hover {
+	color: var(--color--primary);
+	text-decoration: underline;
+	cursor: pointer;
 }
 
 .client-name {

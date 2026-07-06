@@ -70,7 +70,9 @@ function onRevoke() {
 			<N8nDialogHeader>
 				<N8nDialogTitle>
 					<span :class="$style.title">
-						<component :is="brand?.icon" v-if="brand?.icon" :class="$style.icon" />
+						<span v-if="brand?.icon" :class="$style['icon-chip']">
+							<component :is="brand.icon" :class="$style.icon" />
+						</span>
 						{{ client.name }}
 					</span>
 				</N8nDialogTitle>
@@ -151,10 +153,22 @@ function onRevoke() {
 	gap: var(--spacing--2xs);
 }
 
+.icon-chip {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--spacing--xl);
+	height: var(--spacing--xl);
+	flex-shrink: 0;
+	/* fixed white tile so dark brand marks stay visible on the dark theme */
+	background-color: var(--color--neutral-white);
+	border: var(--border);
+	border-radius: var(--radius);
+}
+
 .icon {
 	width: var(--spacing--md);
 	height: var(--spacing--md);
-	flex-shrink: 0;
 }
 
 .details {
