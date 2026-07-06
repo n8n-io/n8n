@@ -5663,7 +5663,6 @@
 	"evaluation.setup.versions.lowPill": "Low",
 	"evaluation.setup.versions.viewAction": "View",
 	"evaluation.setup.versions.empty": "No versions found for this dataset.",
-	"evaluation.setup.versions.previewPlaceholder": "A read-only preview of this version will appear here.",
 	"evaluation.setup.metrics": "Metrics",
 	"evaluation.setup.metrics.helper": "Metrics recorded for every version in this collection",
 	"evaluation.setup.metrics.addMetric": "Add metric",
