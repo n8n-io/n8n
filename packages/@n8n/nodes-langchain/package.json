@@ -253,6 +253,8 @@
     "@langchain/google-genai": "2.1.24",
     "@langchain/google-vertexai": "2.1.24",
     "@langchain/groq": "1.0.2",
+    "@langchain/langgraph": "catalog:",
+    "@langchain/langgraph-checkpoint": "catalog:",
     "@langchain/mistralai": "1.0.1",
     "@langchain/mongodb": "1.0.1",
     "@langchain/ollama": "1.2.6",
