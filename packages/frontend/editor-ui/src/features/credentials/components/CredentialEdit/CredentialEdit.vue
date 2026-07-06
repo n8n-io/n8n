@@ -198,6 +198,7 @@ const {
 	testCredential,
 	retestCredential,
 	initialize,
+	getChangedSharedFields,
 } = form;
 
 const hideAskAssistant = computed<boolean>(() => {
@@ -600,6 +601,19 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
 			credentialDetails.sharedWithProjects = credentialData.value
 				.sharedWithProjects as ProjectSharingData[];
+		}
+
+		// Changing a private credential's shared (static) fields invalidates every
+		// end user's connection, so warn before saving.
+		const savedData = (data ?? {}) as unknown as ICredentialDataDecryptedObject;
+		if (isResolvable.value && getChangedSharedFields(savedData).length) {
+			const confirmAction = await confirmModal('sharedFieldsChanged', {
+				credentialName: credentialName.value,
+			});
+			if (confirmAction !== MODAL_CONFIRM) {
+				isSaving.value = false;
+				return null;
+			}
 		}
 
 		credential = await updateCredential(credentialDetails);
