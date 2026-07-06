@@ -285,14 +285,14 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 		() => latestUpdateResult.value?.toolCallId,
 		(toolCallId) => {
 			if (!toolCallId || !latestUpdateResult.value) return;
+			if (thread.isHydratingThread) return;
 
 			const targetId = latestUpdateResult.value.workflowId;
 
-			// Only refresh if the update targeted the currently active workflow tab
-			if (activeTabId.value === targetId) {
-				workflowRefreshKey.value++;
-			}
+			activeTabId.value = targetId;
+			workflowRefreshKey.value++;
 		},
+		{ flush: 'sync' },
 	);
 
 	// --- Auto-open data table preview when AI creates/modifies a data table ---
