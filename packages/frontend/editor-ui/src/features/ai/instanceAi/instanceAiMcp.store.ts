@@ -28,7 +28,10 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 	const connectionToolsById = reactive(new Map<string, InstanceAiMcpConnectionToolResponse[]>());
 	const isLoadingConnections = ref(false);
 	const isLoadingCatalog = ref(false);
-	const inFlightConnectionToolsById = new Map<string, Promise<void>>();
+	const inFlightConnectionToolsById = new Map<
+		string,
+		Promise<InstanceAiMcpConnectionToolResponse[]>
+	>();
 
 	const connectionsByServerSlug = computed(() => {
 		const map = new Map<string, InstanceAiMcpConnectionResponse[]>();
@@ -65,27 +68,34 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 
 	function clearConnectionTools(id: string): void {
 		connectionToolsById.delete(id);
+		inFlightConnectionToolsById.delete(id);
 	}
 
 	async function fetchConnectionToolsLazy(id: string): Promise<void> {
 		if (connectionToolsById.has(id)) return;
 
 		const inFlight = inFlightConnectionToolsById.get(id);
-		if (inFlight) return await inFlight;
+		if (inFlight) {
+			await inFlight.catch(() => undefined);
+			return;
+		}
 
-		const promise = (async () => {
-			try {
-				connectionToolsById.set(id, await fetchMcpConnectionTools(rootStore.restApiContext, id));
-			} catch (error) {
-				toast.showError(error, i18n.baseText('instanceAi.mcp.error.fetchTools'));
-			}
-		})();
-
+		const promise = fetchMcpConnectionTools(rootStore.restApiContext, id);
+		const isCurrent = () => inFlightConnectionToolsById.get(id) === promise;
 		inFlightConnectionToolsById.set(id, promise);
 		try {
-			await promise;
+			const tools = await promise;
+			if (isCurrent()) {
+				connectionToolsById.set(id, tools);
+			}
+		} catch (error) {
+			if (isCurrent()) {
+				toast.showError(error, i18n.baseText('instanceAi.mcp.error.fetchTools'));
+			}
 		} finally {
-			inFlightConnectionToolsById.delete(id);
+			if (isCurrent()) {
+				inFlightConnectionToolsById.delete(id);
+			}
 		}
 	}
 
@@ -107,9 +117,12 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 		body: UpdateMcpConnectionBody,
 	): Promise<InstanceAiMcpConnectionResponse | null> {
 		try {
-			if (body.credentialId) clearConnectionTools(id);
 			const updated = await updateMcpConnection(rootStore.restApiContext, id, body);
 			connections.value = connections.value.map((c) => (c.id === id ? updated : c));
+			if (body.credentialId) {
+				clearConnectionTools(id);
+				void fetchConnectionToolsLazy(id);
+			}
 			return updated;
 		} catch (error) {
 			toast.showError(error, i18n.baseText('instanceAi.mcp.error.updateSettings'));
