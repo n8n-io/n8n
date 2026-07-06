@@ -95,7 +95,7 @@ describe('model-discovery', () => {
 	});
 
 	describe('google', () => {
-		it('lists models from /v1beta/models with key query auth, excluding embedding/imagen', async () => {
+		it('lists models from /v1beta/models with header auth, excluding embedding/imagen', async () => {
 			const fetch = mockFetch({
 				models: [
 					{ name: 'models/gemini-2.5-flash', description: 'Fast' },
@@ -107,9 +107,10 @@ describe('model-discovery', () => {
 
 			const models = await listModelsForProvider('google', { apiKey: 'g-key', fetch });
 
-			expect(calledUrl(fetch)).toBe(
-				'https://generativelanguage.googleapis.com/v1beta/models?key=g-key',
-			);
+			// The API key goes in the x-goog-api-key header, never the query string,
+			// so it cannot leak through access logs or proxies.
+			expect(calledUrl(fetch)).toBe('https://generativelanguage.googleapis.com/v1beta/models');
+			expect(calledHeaders(fetch)['x-goog-api-key']).toBe('g-key');
 			expect(models).toEqual([
 				{ id: 'models/gemini-2.5-flash', name: 'models/gemini-2.5-flash' },
 				{ id: 'models/gemini-2.5-pro', name: 'models/gemini-2.5-pro' },

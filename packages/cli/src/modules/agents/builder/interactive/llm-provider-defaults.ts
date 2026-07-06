@@ -38,7 +38,7 @@ export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
 	},
 	groqApi: {
 		provider: 'groq',
-		defaultModel: 'llama-3.1-70b-versatile',
+		defaultModel: 'llama-3.3-70b-versatile',
 	},
 	mistralCloudApi: {
 		provider: 'mistral',

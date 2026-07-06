@@ -136,4 +136,25 @@ describe('searchModels', () => {
 
 		expect(result.results).toHaveLength(0);
 	});
+
+	it('should include the credential custom header in the request', async () => {
+		mockContext.getCredentials = vi.fn().mockResolvedValue({
+			apiKey: 'test-api-key',
+			header: true,
+			headerName: 'X-Gateway-Auth',
+			headerValue: 'gateway-value',
+		});
+
+		await searchModels.call(mockContext);
+
+		expect(fetchSpy).toHaveBeenCalledWith(
+			'https://api.anthropic.com/v1/models',
+			expect.objectContaining({
+				headers: expect.objectContaining({
+					'x-api-key': 'test-api-key',
+					'X-Gateway-Auth': 'gateway-value',
+				}),
+			}),
+		);
+	});
 });
