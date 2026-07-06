@@ -110,6 +110,7 @@ import { Telemetry } from '@/telemetry';
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
+import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiCreditService } from './instance-ai-credit.service';
 import { BROWSER_TOOL_CATEGORY, InstanceAiGatewayService } from './instance-ai-gateway.service';
@@ -511,6 +512,7 @@ export class InstanceAiService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly adapterService: InstanceAiAdapterService,
 		private readonly eventBus: InProcessEventBus,
+		private readonly eventLog: DurableEventLog,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly gatewayService: InstanceAiGatewayService,
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
@@ -5278,10 +5280,18 @@ export class InstanceAiService {
 					const snapshot = await snapshotStorage.getLatest(threadId, { messageGroupId, runId });
 					groupRunIds = snapshot?.runIds?.length ? snapshot.runIds : [runId];
 				}
-				events = this.eventBus.getEventsForRuns(threadId, groupRunIds);
+				events = await this.eventLog.getEventsForRuns(threadId, groupRunIds);
 			} else {
-				events = this.eventBus.getEventsForRun(threadId, runId);
+				events = await this.eventLog.getEventsForRuns(threadId, [runId]);
 			}
+			// PHASE 2 (fold-on-read): the tree is now derived from the DURABLE log,
+			// so long runs can no longer out-evict their own snapshot input (the
+			// empty-agentTree bug class). End state: stop persisting the tree here
+			// entirely — the messages endpoint derives it on read via
+			// buildAgentTreeFromEvents(eventLog.getEventsForRuns(...)), and
+			// instance_ai_run_snapshots demotes to a read cache / gets dropped.
+			// The write below stays during migration so pre-log threads keep
+			// rendering; delete it after the thread TTL sunsets them.
 			if (isUpdate && events.length === 0) {
 				this.logger.warn('Skipped updating empty Instance AI agent tree snapshot', {
 					threadId,
