@@ -95,6 +95,27 @@ gated tier, not as a routine step (each iteration is a full build + execution).
 Gut-check: if you can't picture a plausible *wrong* build that this case
 reliably turns **red**, the assertions are too loose to guard anything.
 
+**Confirm the precondition fired, not just the green.** For any *conditional*
+assertion — "when X happened, the agent did Y" (most `processExpectations`, and
+any behaviour case) — a pass has two readings: the agent did Y, or **X never
+happened** and the assertion passed vacuously. A behaviour case that hinges on
+the mock producing a specific failure (e.g. an AI node simulated to empty so a
+downstream parse node fails) is the classic trap: if the mock instead returns
+parseable data, the failure never occurs and the case guards nothing while
+showing green. Calibration must read the execution trace and the agent's
+`finalText` (`buildTrace.finalText` in the verifier snapshot, or the HTML report)
+and verify X actually materialised — the direct-loop `eval-results.json` does not
+persist per-expectation judge reasoning, so pass/fail alone can't tell you which
+reading you got.
+
+**A sourced failure that no longer reproduces is still worth keeping — it's now a
+regression guard.** When you encode a real failure and calibration shows the
+current build handling it correctly (behaviour drifts across versions), the case
+doesn't lose value: it flips from *capability-gap* (currently red) to *regression
+guard* (currently green, catches a re-introduction). Keep it — but only after the
+non-vacuous check above proves it *would* turn red on the bad behaviour, else the
+"guard" guards nothing.
+
 ## Example
 
 Minimal build case:
@@ -311,6 +332,16 @@ existing workflows). Narrow a run with `--filter <slug>` / `--tier <name>` /
 parallel lanes, tiers, and baselines, and the
 [README](../../../packages/@n8n/instance-ai/evaluations/README.md) for the full
 flag list.
+
+## After authoring: where a case lives
+
+The JSON file in `data/workflows/` is the durable artifact — commit it. Once
+merged, the **managed `n8n-workflows` LangTracer suite mirrors the repo
+automatically** (it's the synced baseline; you don't hand-add cases to it). The
+**LangTracer MCP is read-only** — `list_*` / `get_*` / `export_suite` only, no
+create/add tool — so a case can't be written into a suite through it;
+manually-curated (non-managed) suites are edited in the LangTracer UI. In short:
+repo file → merged PR → managed mirror; manual suites are UI-only.
 
 ## Other eval harnesses (not this skill)
 
