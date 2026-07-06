@@ -61,6 +61,9 @@ const collectionPath = computed(() => `parameters.${props.parameter.name}`);
 const localConfig = computed(() => ndv?.localConfig.value ?? null);
 // A read-only NDV must not edit the shared agent, regardless of agent:update.
 const canUpdate = computed(() => (ndv?.canUpdate.value ?? false) && !props.isReadOnly);
+// The NDV lives outside the agent routes — pass the orchestrator's resolved
+// scope down so panels don't fall back to the route/personal project.
+const projectId = computed(() => ndv?.projectId?.value ?? '');
 
 // Agent settings need a loaded, editable agent config to write to.
 const agentOptionsAvailable = computed(
@@ -268,6 +271,7 @@ function onSectionKeydown(event: KeyboardEvent) {
 					v-if="option === 'episodicMemory'"
 					:config="localConfig"
 					:disabled="!canUpdate"
+					:project-id="projectId"
 					embedded
 					stacked
 					@update:config="ndv?.scheduleConfigUpdate"

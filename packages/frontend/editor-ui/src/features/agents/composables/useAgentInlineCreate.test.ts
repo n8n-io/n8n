@@ -49,6 +49,11 @@ describe('useAgentInlineCreate', () => {
 		expect(upsertProjectAgentsListCache).toHaveBeenCalledWith('project-1', agent);
 		expect(setReference).toHaveBeenCalledWith(agent);
 		expect(onCreated).toHaveBeenCalledWith(agent);
+		// Ordering is a contract: the canvas card opens the NDV on the created
+		// signal assuming the agent reference has already been written.
+		expect(setReference.mock.invocationCallOrder[0]).toBeLessThan(
+			onCreated.mock.invocationCallOrder[0],
+		);
 		expect(track).toHaveBeenCalledWith('User created agent', {
 			agent_id: 'agent-1',
 			source: 'ndv_banner',

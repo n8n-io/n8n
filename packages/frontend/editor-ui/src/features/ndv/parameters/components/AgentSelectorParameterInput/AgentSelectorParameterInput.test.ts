@@ -41,8 +41,10 @@ vi.mock('@/features/agents/composables/useProjectAgentsList', () => ({
 	upsertProjectAgentsListCache,
 }));
 
-// Navigation is unit-tested separately (useAgentNavigation.test.ts); here we
-// only assert the picker delegates to it.
+// Inline create deliberately stays in the workflow (no builder navigation, no
+// forced workflow save). This mock is a regression tripwire: the create test
+// asserts openBuilder/saveCurrentWorkflow are NOT called, guarding against
+// the old round-trip being reintroduced.
 vi.mock('@/features/agents/composables/useAgentNavigation', () => ({
 	useAgentNavigation: () => ({ openBuilder, openAgent: vi.fn(), rememberOrigin: vi.fn() }),
 }));

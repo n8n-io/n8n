@@ -446,6 +446,33 @@ describe('MessageAnAgent Node', () => {
 		expect(result[0]).toHaveLength(1);
 	});
 
+	it('defaults to once-for-all-items when Invoke Agent is not set in Advanced', async () => {
+		executeFunctions.getInputData.mockReturnValue([{ json: { i: 0 } }, { json: { i: 1 } }]);
+		// No 'advanced.invokeMode' branch: the mock returns the caller's fallback,
+		// mirroring the real getNodeParameter for an unset collection option.
+		executeFunctions.getNodeParameter.mockImplementation(
+			(param: string, _itemIndex?: number, fallback?: unknown) => {
+				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
+				if (param === 'promptType') return 'define';
+				if (param === 'text') return 'Summarize all items';
+				if (param === 'advanced') return fallback ?? {};
+				return fallback as NodeParameterValueType;
+			},
+		);
+		executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
+
+		const result = await node.execute.call(executeFunctions);
+
+		expect(executeFunctions.executeAgent).toHaveBeenCalledTimes(1);
+		expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
+			expect.objectContaining({ inputDataScope: 'all' }),
+			'Summarize all items',
+			'exec-123',
+			0,
+		);
+		expect(result[0]).toHaveLength(1);
+	});
+
 	it('passes exposeWorkflowData when "Allow agent to access other nodes data" is on', async () => {
 		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
 		executeFunctions.getNodeParameter.mockImplementation(

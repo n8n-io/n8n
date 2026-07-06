@@ -34,6 +34,11 @@ const props = withDefaults(
 		 * toggle leads and the recall-model row stacks vertically beneath it.
 		 */
 		stacked?: boolean;
+		/**
+		 * Project scope override for hosts outside the agent routes (the NDV),
+		 * where the route-based fallback would resolve the wrong project.
+		 */
+		projectId?: string;
 	}>(),
 	{
 		disabled: false,
@@ -48,7 +53,7 @@ const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const { ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
-const projectId = useAgentProjectId();
+const projectId = useAgentProjectId(() => props.projectId);
 const { credentialsByProvider, selectCredential } = useAgentModelCredentials(
 	usersStore.currentUserId ?? 'anonymous',
 	projectId,

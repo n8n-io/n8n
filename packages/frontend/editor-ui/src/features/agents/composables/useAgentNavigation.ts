@@ -8,10 +8,10 @@ import { AGENT_BUILDER_VIEW, AGENT_VIEW } from '../constants';
  * Navigates into the agent feature while remembering the workflow + node the
  * user came from, so `AgentView` can render a "Back to workflow" banner.
  *
- * `openBuilder` powers the AI Agent node's inline-create round-trip and the
- * canvas agent card's open (→) affordance (AGENT-274), so opening an existing
- * agent from the card also sets the return context. `openAgent` is the same
- * seam for the agent detail view.
+ * `openBuilder` powers the canvas agent card's open (→) affordance (AGENT-274)
+ * and the NDV banner's open-builder path for an already-referenced agent, so
+ * opening an agent from the workflow also sets the return context. `openAgent`
+ * is the same seam for the agent detail view.
  */
 export function useAgentNavigation() {
 	const router = useRouter();
@@ -38,8 +38,7 @@ export function useAgentNavigation() {
 	) {
 		// Set before push so the destination view finds the context on mount, but
 		// clear it if the navigation is aborted (e.g. an unsaved-changes guard
-		// declined) — otherwise a stale "Back to workflow" banner shows on a
-		// later, unrelated visit to this agent's pages.
+		// declined).
 		rememberOrigin(agentId, originNodeId);
 		try {
 			const failure = await router.push({ name, params: { projectId, agentId } });

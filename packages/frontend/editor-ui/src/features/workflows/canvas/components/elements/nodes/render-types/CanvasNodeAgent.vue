@@ -244,7 +244,6 @@ watch(
 
 .card {
 	--agent-card--border-color: var(--border-color);
-	--agent-card--body-border-color: var(--border-color);
 	--agent-card--header-dot-color: var(--border-color);
 	--agent-card--radius: 12px;
 
@@ -362,7 +361,6 @@ watch(
 	gap: var(--spacing--sm);
 	padding: var(--spacing--sm);
 	border: 2px solid var(--agent-card--border-color);
-	border-top-color: var(--agent-card--body-border-color);
 	border-radius: var(--agent-card--radius);
 	background: var(--background--surface);
 }
@@ -432,6 +430,9 @@ watch(
 .running::after,
 .waiting::after {
 	@include styles.status-animated-after;
+	// success/error can apply at the same time (e.g. a succeeded node waiting
+	// for its next run) — drop their 2px ring border while the glow shows.
+	border: none;
 	border-radius: calc(var(--agent-card--radius) + 3px);
 }
 
