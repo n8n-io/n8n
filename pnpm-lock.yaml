@@ -2338,6 +2338,9 @@ importers:
       '@n8n/agents':
         specifier: workspace:*
         version: link:../agents
+      '@n8n/ai-utilities':
+        specifier: workspace:*
+        version: link:../ai-utilities
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../api-types
@@ -2420,9 +2423,6 @@ importers:
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
-      '@n8n/ai-workflow-builder':
-        specifier: workspace:*
-        version: link:../ai-workflow-builder.ee
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -3191,6 +3191,15 @@ importers:
 
   packages/@n8n/scheduler:
     dependencies:
+      '@n8n/backend-common':
+        specifier: workspace:*
+        version: link:../backend-common
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../config
+      '@n8n/constants':
+        specifier: workspace:*
+        version: link:../constants
       '@n8n/db':
         specifier: workspace:*
         version: link:../db
@@ -3200,6 +3209,9 @@ importers:
       '@n8n/typeorm':
         specifier: workspace:*
         version: link:../typeorm
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       cron-parser:
         specifier: 'catalog:'
         version: 5.6.1
