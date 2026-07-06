@@ -350,7 +350,17 @@ async function reconstructWithClient(
 	const byStartTime = (a: Run, b: Run) =>
 		new Date(a.start_time).getTime() - new Date(b.start_time).getTime();
 	const rootRuns = runs.filter((r) => r.run_type === 'chain' && !r.parent_run_id).sort(byStartTime);
-	const toolRuns = runs.filter((r) => r.run_type === 'tool').sort(byStartTime);
+	// Real agent tool calls only — the compiled-workflow bookkeeping event is
+	// excluded BY NAME (it must never become a tool-call block in the rebuilt
+	// transcript, whatever run_type it was emitted with).
+	const toolRuns = runs
+		.filter((r) => r.run_type === 'tool' && r.name !== COMPILED_WORKFLOW_TRACE_RUN_NAME)
+		.sort(byStartTime);
+	// Workflow reconstruction additionally scans the compiled-workflow events
+	// (chain-typed; matched by name so legacy tool-typed events still count).
+	const workflowScanRuns = runs
+		.filter((r) => r.run_type === 'tool' || r.name === COMPILED_WORKFLOW_TRACE_RUN_NAME)
+		.sort(byStartTime);
 
 	// Split point: the live turn is sent live; everything strictly before it is the
 	// seed. Default = the last user turn; a `liveTurnRunId` pin (LangTracer's live-turn
@@ -388,7 +398,7 @@ async function reconstructWithClient(
 	const sdkVersion = rootRuns
 		.map((r) => asString(metadata(r).workflow_sdk_version))
 		.find((v) => v !== undefined);
-	const workflows = buildSeedWorkflows(toolRuns, boundaryMs, ref.threadId, sdkVersion);
+	const workflows = buildSeedWorkflows(workflowScanRuns, boundaryMs, ref.threadId, sdkVersion);
 	const dataTables = buildSeedDataTables(toolRuns, boundaryMs);
 
 	return {

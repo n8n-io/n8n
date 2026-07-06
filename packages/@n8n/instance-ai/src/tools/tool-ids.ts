@@ -13,9 +13,10 @@ export const DOMAIN_TOOL_IDS = {
 	PARSE_FILE: 'parse-file',
 } as const;
 
-/** Trace-only child run emitted by `build-workflow` with the compiled workflow
- *  JSON — not an agent-facing tool. Consumed by the eval harness
- *  (`langsmith-seed.ts`) so seed reconstruction can skip the SDK re-parse. */
+/** Trace-only chain-typed child run emitted by `build-workflow` with the
+ *  compiled workflow JSON — bookkeeping, not an agent-facing tool. Consumed by
+ *  the eval harness (`langsmith-seed.ts`) so seed reconstruction can skip the
+ *  SDK re-parse; excluded by name from rebuilt transcripts. */
 export const COMPILED_WORKFLOW_TRACE_RUN_NAME = 'compiled-workflow';
 
 export const ORCHESTRATION_TOOL_IDS = {

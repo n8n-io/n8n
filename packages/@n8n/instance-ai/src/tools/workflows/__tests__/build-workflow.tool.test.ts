@@ -270,7 +270,8 @@ describe('createBuildWorkflowTool', () => {
 		expect(parentRun).toBe(actorRun);
 		expect(init).toMatchObject({
 			name: 'compiled-workflow',
-			runType: 'tool',
+			// Bookkeeping span, not an agent tool call.
+			runType: 'chain',
 			metadata: { workflow_id: 'wf-1', source_hash: hashWorkflowSource(source) },
 		});
 		// The compiled workflow JSON lands in the child run's outputs...

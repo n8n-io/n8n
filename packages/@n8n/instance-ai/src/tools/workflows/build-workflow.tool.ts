@@ -754,7 +754,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							context.tracing,
 							{
 								name: COMPILED_WORKFLOW_TRACE_RUN_NAME,
-								runType: 'tool',
+								// 'chain' like other bookkeeping spans (HITL) — a tool-typed run
+								// reads as a real agent tool call in trace UIs.
+								runType: 'chain',
 								canonicalName: `instance-ai.${COMPILED_WORKFLOW_TRACE_RUN_NAME}`,
 								tags: [COMPILED_WORKFLOW_TRACE_RUN_NAME],
 								metadata: { workflow_id: saved.id, source_hash: sourceHash },

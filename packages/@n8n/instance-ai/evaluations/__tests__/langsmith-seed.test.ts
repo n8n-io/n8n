@@ -40,6 +40,11 @@ function fakeClient(runs: FakeRun[]) {
 	} as unknown as Client;
 }
 
+/** The compiled-workflow bookkeeping event — chain-typed (not an agent tool call). */
+function compiledEvent(id: string, sec: number, outputs: Record<string, unknown>): FakeRun {
+	return { ...tool(id, sec, 'compiled-workflow', {}, outputs), run_type: 'chain' };
+}
+
 const t = (s: number) => `2026-06-12T08:00:${String(s).padStart(2, '0')}.000Z`;
 
 function turn(id: string, sec: number, message: string): FakeRun {
@@ -613,13 +618,7 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 			// consumer fell back to re-parsing, reconstruction would differ/fail.
 			tool('w1', 2, 'workspace_write_file', { path: FILE, content: "const x = [].join('\\n');" }),
 			// Trace-only event carrying the builder's own compiled JSON, keyed by workflowId.
-			tool(
-				'c1',
-				3,
-				'compiled-workflow',
-				{},
-				{ workflowId: 'WF1', sourceHash: 'h1', workflow: compiledWorkflow },
-			),
+			compiledEvent('c1', 3, { workflowId: 'WF1', sourceHash: 'h1', workflow: compiledWorkflow }),
 			tool(
 				'b1',
 				4,
@@ -643,17 +642,11 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Building…' } },
 			tool('w1', 2, 'workspace_write_file', { path: FILE, content: 'CODE_V1' }),
 			// Event from the first build only (the rebuild's was dropped) — stale hash.
-			tool(
-				'c1',
-				3,
-				'compiled-workflow',
-				{},
-				{
-					workflowId: 'WF1',
-					sourceHash: 'h1',
-					workflow: { name: 'Old', nodes: [{ type: 'stale' }], connections: {} },
-				},
-			),
+			compiledEvent('c1', 3, {
+				workflowId: 'WF1',
+				sourceHash: 'h1',
+				workflow: { name: 'Old', nodes: [{ type: 'stale' }], connections: {} },
+			}),
 			tool(
 				'b1',
 				4,
@@ -682,23 +675,17 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 		const runs: FakeRun[] = [
 			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Building…' } },
 			tool('w1', 2, 'workspace_write_file', { path: FILE, content: 'CODE_V1' }),
-			tool(
-				'c1',
-				3,
-				'compiled-workflow',
-				{},
-				{
-					workflowId: 'WF1',
-					sourceHash: 'h1',
-					// Sanitizer-mangled shape as observed live: connections collapsed to
-					// placeholder strings.
-					workflow: {
-						name: 'Main',
-						nodes: [{ type: 'n8n-nodes-base.webhook', parameters: {} }],
-						connections: { Webhook: { main: ['[array(1)]'] } },
-					},
+			compiledEvent('c1', 3, {
+				workflowId: 'WF1',
+				sourceHash: 'h1',
+				// Sanitizer-mangled shape as observed live: connections collapsed to
+				// placeholder strings.
+				workflow: {
+					name: 'Main',
+					nodes: [{ type: 'n8n-nodes-base.webhook', parameters: {} }],
+					connections: { Webhook: { main: ['[array(1)]'] } },
 				},
-			),
+			}),
 			tool(
 				'b1',
 				4,
@@ -718,13 +705,7 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 		const runs: FakeRun[] = [
 			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Building…' } },
 			tool('w1', 2, 'workspace_write_file', { path: FILE, content: 'CODE_V1' }),
-			tool(
-				'c1',
-				3,
-				'compiled-workflow',
-				{},
-				{ workflowId: 'WF1', sourceHash: 'h1', truncated: true },
-			),
+			compiledEvent('c1', 3, { workflowId: 'WF1', sourceHash: 'h1', truncated: true }),
 			tool(
 				'b1',
 				4,
@@ -744,28 +725,22 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 		const runs: FakeRun[] = [
 			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Building…' } },
 			tool('w1', 2, 'workspace_write_file', { path: FILE, content: 'CODE_V1' }),
-			tool(
-				'c1',
-				3,
-				'compiled-workflow',
-				{},
-				{
-					workflowId: 'WF1',
-					sourceHash: 'h1',
-					workflow: {
-						name: 'Main',
-						nodes: [
-							{ name: 'Slack', type: 'n8n-nodes-base.slack', credentials: '[redacted]' },
-							{
-								name: 'Sheets',
-								type: 'n8n-nodes-base.googleSheets',
-								credentials: { googleSheetsOAuth2Api: { id: 'c1', name: 'Sheets' } },
-							},
-						],
-						connections: {},
-					},
+			compiledEvent('c1', 3, {
+				workflowId: 'WF1',
+				sourceHash: 'h1',
+				workflow: {
+					name: 'Main',
+					nodes: [
+						{ name: 'Slack', type: 'n8n-nodes-base.slack', credentials: '[redacted]' },
+						{
+							name: 'Sheets',
+							type: 'n8n-nodes-base.googleSheets',
+							credentials: { googleSheetsOAuth2Api: { id: 'c1', name: 'Sheets' } },
+						},
+					],
+					connections: {},
 				},
-			),
+			}),
 			tool(
 				'b1',
 				4,
@@ -783,24 +758,56 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 		expect(sheets).toMatchObject({ credentials: { googleSheetsOAuth2Api: { id: 'c1' } } });
 	});
 
+	it('never rebuilds the compiled event as a transcript tool-call block, even when legacy tool-typed', async () => {
+		// Legacy shape: emitted with run_type 'tool' before the switch to 'chain'.
+		const legacyEvent = tool(
+			'c1',
+			3,
+			'compiled-workflow',
+			{},
+			{
+				workflowId: 'WF1',
+				sourceHash: 'h1',
+				workflow: { name: 'Main', nodes: [{ type: 'n8n-nodes-base.webhook' }], connections: {} },
+			},
+		);
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Building…' } },
+			tool('w1', 2, 'workspace_write_file', { path: FILE, content: 'CODE_V1' }),
+			legacyEvent,
+			tool(
+				'b1',
+				4,
+				'build-workflow',
+				{ filePath: FILE, name: 'Main' },
+				{ success: true, workflowId: 'WF1', sourceHash: 'h1' },
+			),
+			turn('r2', 30, 'change'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+
+		// Still consumed for workflow reconstruction (matched by name)…
+		expect(result.seed.workflows[0].nodes[0]).toMatchObject({ type: 'n8n-nodes-base.webhook' });
+		// …but the full workflow JSON never re-enters the agent's context as a
+		// phantom tool call in the seeded transcript.
+		const toolBlocks = result.seed.messages.flatMap((m) =>
+			(m.content as Array<Record<string, unknown>>).filter((b) => b.type === 'tool-call'),
+		);
+		expect(toolBlocks.map((b) => b.toolName)).not.toContain('compiled-workflow');
+	});
+
 	it('rejects a compiled payload whose node entry degraded to a primitive and replays source', async () => {
 		const runs: FakeRun[] = [
 			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Building…' } },
 			tool('w1', 2, 'workspace_write_file', { path: FILE, content: 'CODE_V1' }),
-			tool(
-				'c1',
-				3,
-				'compiled-workflow',
-				{},
-				{
-					workflowId: 'WF1',
-					sourceHash: 'h1',
-					// A bare '[redacted]' node is not a structural placeholder; without the
-					// entry-type check, `'credentials' in node` throws and kills the whole
-					// reconstruction instead of falling back.
-					workflow: { name: 'Main', nodes: ['[redacted]'], connections: {} },
-				},
-			),
+			compiledEvent('c1', 3, {
+				workflowId: 'WF1',
+				sourceHash: 'h1',
+				// A bare '[redacted]' node is not a structural placeholder; without the
+				// entry-type check, `'credentials' in node` throws and kills the whole
+				// reconstruction instead of falling back.
+				workflow: { name: 'Main', nodes: ['[redacted]'], connections: {} },
+			}),
 			tool(
 				'b1',
 				4,
