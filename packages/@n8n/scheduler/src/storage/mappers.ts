@@ -3,19 +3,20 @@ import type {
 	ScheduledTask as ScheduledTaskEntity,
 } from '@n8n/db';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
-import { type CronExpression, UnexpectedError } from 'n8n-workflow';
+import type { CronExpression } from 'n8n-workflow';
 
-import type { Schedule, ScheduledJob, ScheduledTask } from '../core/types';
+import { CorruptStorageRowError } from '../core/errors';
+import type { ClaimedTask, Schedule, ScheduledJob, ScheduledTask } from '../core/types';
 
 /**
- * Maps between the flat `@n8n/db` entity rows and the scheduler's domain types.
+ * Maps the flat `@n8n/db` entity rows to the scheduler's domain types.
  * The entities store a schedule as discriminator + per-kind columns; the domain
  * carries it as a `Schedule` union. Kept as pure functions so it's unit-testable
  * without a database.
  */
 
 /** Assemble the domain `Schedule` union from a job row's discriminator + columns. */
-function toSchedule(entity: ScheduledJobEntity): Schedule {
+function toSchedule(entity: ScheduledJobEntity, instanceTimezone: string): Schedule {
 	switch (entity.kind) {
 		case 'cron':
 			// The DB column is a plain varchar validated on write; narrow to the
@@ -23,7 +24,7 @@ function toSchedule(entity: ScheduledJobEntity): Schedule {
 			return {
 				kind: 'cron',
 				cronExpression: required(entity, 'cronExpression') as CronExpression,
-				timezone: entity.timezone,
+				timezone: entity.timezone ?? instanceTimezone,
 			};
 		case 'interval':
 			return { kind: 'interval', intervalSeconds: required(entity, 'intervalSeconds') };
@@ -39,17 +40,24 @@ function required<K extends keyof ScheduledJobEntity>(
 ): NonNullable<ScheduledJobEntity[K]> {
 	const value = entity[key];
 	if (value === null || value === undefined) {
-		throw new UnexpectedError(
+		throw new CorruptStorageRowError(
 			`scheduled_job ${entity.id} of kind '${entity.kind}' is missing '${String(key)}'`,
 		);
 	}
 	return value as NonNullable<ScheduledJobEntity[K]>;
 }
 
-export function entityToScheduledJob(entity: ScheduledJobEntity): ScheduledJob {
+/**
+ * @param instanceTimezone the instance-default IANA zone, used to resolve a cron
+ * job's null timezone before it reaches the recurrence math.
+ */
+export function entityToScheduledJob(
+	entity: ScheduledJobEntity,
+	instanceTimezone: string,
+): ScheduledJob {
 	return {
 		id: String(entity.id),
-		schedule: toSchedule(entity),
+		schedule: toSchedule(entity, instanceTimezone),
 		enabled: entity.enabled,
 		nextRunAt: entity.nextRunAt,
 		lastFiredAt: entity.lastFiredAt,
@@ -77,5 +85,33 @@ export function scheduledTaskToRow(
 		status: task.status,
 		attempts: task.attempts,
 		maxAttempts: task.maxAttempts,
+	};
+}
+
+/**
+ * Map a freshly claimed `scheduled_task` row to the domain `ClaimedTask`. A claimed
+ * row is `running` and owned, so `claimedBy` and `leaseExpiresAt` are set; a null in
+ * either is a corrupt row (the running-lease CHECK should make it impossible).
+ */
+export function entityToClaimedTask(entity: ScheduledTaskEntity): ClaimedTask {
+	if (entity.claimedBy === null || entity.leaseExpiresAt === null) {
+		throw new CorruptStorageRowError(
+			`scheduled_task ${entity.id} was claimed but is missing 'claimedBy' or 'leaseExpiresAt'`,
+		);
+	}
+	return {
+		id: String(entity.id),
+		jobId: String(entity.jobId),
+		taskType: entity.taskType,
+		payload: entity.payload,
+		scheduledFor: entity.scheduledFor,
+		runAt: entity.runAt,
+		status: entity.status,
+		attempts: entity.attempts,
+		maxAttempts: entity.maxAttempts,
+		claimedBy: entity.claimedBy,
+		leaseExpiresAt: entity.leaseExpiresAt,
+		leaseEpoch: entity.leaseEpoch,
+		startedAt: entity.startedAt,
 	};
 }

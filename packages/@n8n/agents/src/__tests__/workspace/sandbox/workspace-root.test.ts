@@ -2,6 +2,7 @@ import {
 	DAYTONA_HOME,
 	N8N_SANDBOX_HOME,
 	getPromptWorkspaceRoot,
+	getPromptSandboxInstructions,
 	getWorkspaceRoot,
 	WORKSPACE_DIR,
 	type SandboxWorkspace,
@@ -14,6 +15,16 @@ describe('getPromptWorkspaceRoot', () => {
 
 	it('returns n8n-sandbox workspace root', () => {
 		expect(getPromptWorkspaceRoot('n8n-sandbox')).toBe('/home/user/workspace');
+	});
+});
+
+describe('getPromptSandboxInstructions', () => {
+	// Same text across providers keeps the agent's cached prompt prefix stable.
+	it('returns the same stable text for every provider', () => {
+		expect(getPromptSandboxInstructions('daytona')).toBe(
+			getPromptSandboxInstructions('n8n-sandbox'),
+		);
+		expect(getPromptSandboxInstructions('daytona')).toContain('Cloud sandbox');
 	});
 });
 

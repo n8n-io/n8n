@@ -17,7 +17,10 @@ export const mailboxRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'id', value: '' },
 	required: true,
-	description: 'The mailbox the Service Principal should act on',
+	// Resolved once per run (from the first item) and reused for every item, so it accepts a fixed
+	// value or an expression; for per-item targeting, feed a single item or use Loop Over Items.
+	description:
+		'The mailbox the Service Principal should act on. Applies to the whole node (every item in the execution).',
 	modes: [
 		{
 			displayName: 'By ID',

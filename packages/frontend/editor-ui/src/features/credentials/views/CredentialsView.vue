@@ -3,7 +3,7 @@ import CredentialCard from '../components/CredentialCard.vue';
 import EmptySharedSectionActionBox from '@/features/core/folders/components/EmptySharedSectionActionBox.vue';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
 import type { BaseFilters, Resource } from '@/Interface';
-import type { ICredentialTypeMap } from '../credentials.types';
+import type { ICredentialsResponse, ICredentialTypeMap } from '../credentials.types';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
@@ -81,8 +81,12 @@ const filters = ref<Filters>({
 } as Filters);
 const loading = ref(false);
 
-const needsSetup = (data: string | undefined): boolean => {
-	const dataObject = data as unknown as ICredentialsDecrypted['data'];
+const needsSetup = (credential: ICredentialsResponse): boolean => {
+	// Private (resolvable) credentials store their connection data per-user via a
+	// resolver, so their own `data` is always empty and they never need setup.
+	if (credential.isResolvable) return false;
+
+	const dataObject = credential.data as unknown as ICredentialsDecrypted['data'];
 	if (!dataObject) return false;
 
 	if (Object.keys(dataObject).length === 0) return true;
@@ -102,7 +106,7 @@ const allCredentials = computed<Resource[]>(() =>
 		scopes: credential.scopes,
 		sharedWithProjects: credential.sharedWithProjects,
 		readOnly: !getResourcePermissions(credential.scopes).credential.update,
-		needsSetup: needsSetup(credential.data),
+		needsSetup: needsSetup(credential),
 		isGlobal: credential.isGlobal,
 		isResolvable: credential.isResolvable,
 		connectedByMe: credential.connectedByMe,

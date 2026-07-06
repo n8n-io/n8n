@@ -23,6 +23,12 @@ export interface UseRoleEditorFormOptions {
 	viewRoute: string;
 	/** Returns the default scopes for a brand-new (not-yet-saved) role. */
 	defaultScopes?: () => string[];
+	/**
+	 * Filter applied to every scope set entering the form (default seed, fetched role,
+	 * reset). Keeps the editor — and anything it saves — limited to scopes it exposes,
+	 * so a role loaded with non-assignable scopes is sanitized rather than forwarded.
+	 */
+	filterScopes?: (scopes: string[]) => string[];
 	/** Error message shown when the initial role fetch fails. */
 	fetchError: string;
 }
@@ -31,6 +37,7 @@ export function useRoleEditorForm({
 	roleSlug,
 	viewRoute,
 	defaultScopes,
+	filterScopes,
 	fetchError,
 }: UseRoleEditorFormOptions) {
 	const rolesStore = useRolesStore();
@@ -50,10 +57,13 @@ export function useRoleEditorForm({
 		{ label: i18n.baseText('projectRoles.tab.assignments'), value: 'assignments' },
 	]);
 
+	const sanitizeScopes = (scopes: string[]): string[] =>
+		filterScopes ? filterScopes(scopes) : scopes;
+
 	const defaultForm = (): RoleEditorForm => ({
 		displayName: '',
 		description: '',
-		scopes: defaultScopes?.() ?? [],
+		scopes: sanitizeScopes(defaultScopes?.() ?? []),
 	});
 
 	const initialState = ref<Role | undefined>();
@@ -67,11 +77,13 @@ export function useRoleEditorForm({
 
 			try {
 				const role = await rolesStore.fetchRoleBySlug({ slug });
-				initialState.value = structuredClone(role);
+				const scopes = sanitizeScopes(role.scopes);
+				// Sanitize initialState too so the form isn't falsely dirty on load.
+				initialState.value = structuredClone({ ...role, scopes });
 				return {
 					displayName: role.displayName,
 					description: role.description,
-					scopes: role.scopes,
+					scopes,
 				};
 			} catch (error) {
 				showError(error, fetchError);
@@ -137,7 +149,7 @@ export function useRoleEditorForm({
 			? {
 					displayName: payload.displayName,
 					description: payload.description,
-					scopes: payload.scopes,
+					scopes: sanitizeScopes(payload.scopes),
 				}
 			: defaultForm();
 	}

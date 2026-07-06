@@ -83,6 +83,7 @@ export const eventNamesAudit = [
 	'n8n.audit.package.updated',
 	'n8n.audit.package.deleted',
 	'n8n.audit.n8n-package.imported',
+	'n8n.audit.n8n-package.exported',
 	'n8n.audit.workflow.created',
 	'n8n.audit.workflow.deleted',
 	'n8n.audit.workflow.updated',

@@ -290,6 +290,32 @@ describe('settings.store', () => {
 		});
 	});
 
+	describe('isWorkflowPublicationServiceEnabled', () => {
+		it('should return true when useWorkflowPublicationService is true', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				useWorkflowPublicationService: true,
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isWorkflowPublicationServiceEnabled).toBe(true);
+		});
+
+		it('should return false when useWorkflowPublicationService is undefined', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				useWorkflowPublicationService: undefined,
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isWorkflowPublicationServiceEnabled).toBe(false);
+		});
+	});
+
 	describe('isOtelCustomSpanAttributesEnabled', () => {
 		it('should return false when otel module is not active', async () => {
 			getSettings.mockResolvedValueOnce({

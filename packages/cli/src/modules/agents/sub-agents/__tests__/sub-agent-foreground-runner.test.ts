@@ -24,7 +24,6 @@ import type {
 } from '../sub-agent-source-resolver';
 
 const projectId = 'project-1';
-const userId = 'user-1';
 const parentThreadId = 'parent-thread-1';
 const parentAgentId = 'parent-agent-1';
 
@@ -127,7 +126,6 @@ describe('SubAgentForegroundRunner', () => {
 	it('resolves reconstruction from the container at run time', async () => {
 		await runner.runForeground(spawnRequest, {
 			projectId,
-			userId,
 			credentialProvider,
 		});
 
@@ -137,7 +135,6 @@ describe('SubAgentForegroundRunner', () => {
 	it('rebuilds the child through the shared reconstruction service and runs it with a fresh prompt', async () => {
 		const result = await runner.runForeground(spawnRequest, {
 			projectId,
-			userId,
 			credentialProvider,
 		});
 
@@ -159,7 +156,6 @@ describe('SubAgentForegroundRunner', () => {
 			toolDescriptors: runtimeSource.toolDescriptors,
 			toolCodeByName: runtimeSource.toolCodeByName,
 			skills: runtimeSource.skills,
-			userId,
 			runtimeProfile: 'sub-agent',
 			parentAgentIdForDelegation: undefined,
 		});
@@ -196,7 +192,6 @@ describe('SubAgentForegroundRunner', () => {
 			{ ...spawnRequest, parentResourceId: 'draft-chat:user-1' },
 			{
 				projectId,
-				userId,
 				credentialProvider,
 			},
 		);
@@ -233,7 +228,6 @@ describe('SubAgentForegroundRunner', () => {
 			},
 			{
 				projectId,
-				userId,
 				parentAgentId,
 				credentialProvider,
 			},
@@ -242,7 +236,6 @@ describe('SubAgentForegroundRunner', () => {
 		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
 			expect.objectContaining({
 				memoryOwnerAgentId: 'agent-2',
-				userId,
 				runtimeProfile: 'sub-agent',
 				parentAgentIdForDelegation: parentAgentId,
 			}),
@@ -288,7 +281,6 @@ describe('SubAgentForegroundRunner', () => {
 		await expect(
 			runner.runForeground(spawnRequest, {
 				projectId,
-				userId,
 				credentialProvider,
 			}),
 		).resolves.toMatchObject({
@@ -313,7 +305,6 @@ describe('SubAgentForegroundRunner', () => {
 		await expect(
 			runner.runForeground(spawnRequest, {
 				projectId,
-				userId,
 				credentialProvider,
 			}),
 		).resolves.toMatchObject({
@@ -341,7 +332,6 @@ describe('SubAgentForegroundRunner', () => {
 
 		const run = runner.runForeground(spawnRequest, {
 			projectId,
-			userId,
 			credentialProvider,
 			abortSignal: parentAbort.signal,
 		});

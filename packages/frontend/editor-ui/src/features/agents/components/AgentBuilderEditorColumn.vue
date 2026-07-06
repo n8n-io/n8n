@@ -151,6 +151,7 @@ const i18n = useI18n();
 							:loading="agentFilesLoading"
 							:uploading="agentFilesUploading"
 							:deleting-file-id="deletingAgentFileId"
+							:is-published="Boolean(agent?.activeVersionId)"
 							data-testid="agent-files-card"
 							@upload-files="emit('upload-files', $event)"
 							@delete-file="emit('delete-file', $event)"

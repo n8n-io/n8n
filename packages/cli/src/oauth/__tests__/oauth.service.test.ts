@@ -203,6 +203,33 @@ describe('OauthService', () => {
 		});
 	});
 
+	describe('extractCallbackErrorReason', () => {
+		it('should return the stringified body when the error has one', () => {
+			const error = Object.assign(new Error('request failed'), {
+				body: { error: 'invalid_grant' },
+			});
+
+			expect(service.extractCallbackErrorReason(error)).toBe('{"error":"invalid_grant"}');
+		});
+
+		it('should surface the wrapped cause chain when there is no body', () => {
+			const inner = new Error('Unauthorized');
+			const root = new Error('resolver rejected the identity', { cause: inner });
+			const wrapper = new Error('Failed to store dynamic credentials data for "Google Drive"', {
+				cause: root,
+			});
+
+			// The wrapper message is rendered as the heading; the reason surfaces the cause chain.
+			expect(service.extractCallbackErrorReason(wrapper)).toBe(
+				'resolver rejected the identity: Unauthorized',
+			);
+		});
+
+		it('should return undefined when there is neither a body nor a cause', () => {
+			expect(service.extractCallbackErrorReason(new Error('boom'))).toBeUndefined();
+		});
+	});
+
 	describe('getCredentialForAuthFlow', () => {
 		it('should throw BadRequestError when credential ID is missing', async () => {
 			const req = {
@@ -5110,7 +5137,10 @@ describe('OauthService', () => {
 			await service.refreshOAuth2CredentialById(credentialId, projectId);
 
 			expect(service.encryptAndSaveData).toHaveBeenCalledWith(credential, {
-				oauthTokenData: refreshedData,
+				oauthTokenData: {
+					refresh_token: 'refresh-tok',
+					...refreshedData,
+				},
 			});
 		});
 
@@ -5139,6 +5169,42 @@ describe('OauthService', () => {
 			expect(result).toEqual({ Authorization: 'Bearer cc-token' });
 			expect(getToken).toHaveBeenCalledTimes(1);
 			expect(mockToken.refresh).not.toHaveBeenCalled();
+		});
+
+		it('passes resource to token refresh and preserves it when the provider does not echo it', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const resource = 'https://mcp.example.com/mcp';
+			const refreshed = { data: { access_token: 'cc-token' }, accessToken: 'cc-token' };
+			const getToken = vi.fn().mockResolvedValue(refreshed);
+			const mockToken = { refresh: vi.fn(), client: { credentials: { getToken } } };
+			const credential = makeCredential({ isGlobal: true });
+			let capturedOptions: unknown;
+			vi.mocked(ClientOAuth2).mockImplementation(function (options) {
+				capturedOptions = options;
+				return { createToken: vi.fn().mockReturnValue(mockToken) } as never;
+			});
+
+			credentialsRepository.findOne.mockResolvedValue(credential as never);
+			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				clientId: 'id',
+				clientSecret: 'secret',
+				accessTokenUrl: 'https://example.com/token',
+				grantType: 'clientCredentials',
+				authentication: 'header',
+				oauthTokenData: { access_token: 'stale', resource },
+			} as unknown as OAuth2CredentialData);
+			vi.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			const result = await service.refreshOAuth2CredentialById(credentialId, projectId);
+
+			expect(result).toEqual({ Authorization: 'Bearer cc-token' });
+			expect(capturedOptions).toEqual(expect.objectContaining({ resource }));
+			expect(service.encryptAndSaveData).toHaveBeenCalledWith(credential, {
+				oauthTokenData: {
+					access_token: 'cc-token',
+					resource,
+				},
+			});
 		});
 
 		it('returns null and logs a warning when the refresh call throws', async () => {
