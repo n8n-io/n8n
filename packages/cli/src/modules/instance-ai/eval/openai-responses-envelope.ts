@@ -301,7 +301,12 @@ export function normalizeOpenAiResponsesMockResponse(
 	model: string,
 ): EvalMockHttpResponse {
 	const body = mockResponse.body;
-	if (isPlainRecord(body) && ('_evalMockError' in body || body.error != null)) return mockResponse;
+	if (
+		isPlainRecord(body) &&
+		('_evalMockError' in body || (body.error !== null && body.error !== undefined))
+	) {
+		return mockResponse;
+	}
 
 	if (isPlainRecord(body) && Array.isArray(body.output)) {
 		const output = body.output
