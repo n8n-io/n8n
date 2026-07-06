@@ -81,11 +81,15 @@ import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
 // Constants
 // ---------------------------------------------------------------------------
 
-// 25 min. Heavy multi-agent scenarios with large mocked payloads legitimately
-// run past 15 min (observed: trading-bot at 863s with a 15-row dataset, hard
-// timeouts across all builds at 32+ rows) — and a timed-out attempt is retried
-// once, so an under-sized budget wastes 2x the lane time it tries to cap.
-const DEFAULT_TIMEOUT_MS = 1_500_000;
+// 15 min. Lanes with heavy multi-agent scenarios (large mocked payloads)
+// legitimately need more — the MCP CI workflow passes --timeout-ms 1500000
+// explicitly (observed: trading-bot at 863s with a 15-row dataset, hard
+// timeouts at 32 rows). Do NOT raise this default: a timed-out attempt is
+// retried once, so under high-concurrency contention (the Instance AI
+// experiments suite runs ~4x the MCP lane's concurrency) a generous default
+// lets starved scenarios hold lane slots for 2x the budget and amplify the
+// very contention that starved them (observed: run 28779266673).
+const DEFAULT_TIMEOUT_MS = 900_000;
 const EVAL_DATA_DIR = path.join(__dirname, '..', '..', '.data');
 
 function getMaxConcurrentScenarios(): number {

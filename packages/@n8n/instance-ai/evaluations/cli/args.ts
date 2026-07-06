@@ -124,8 +124,9 @@ export interface CliArgs {
 // ---------------------------------------------------------------------------
 
 const cliArgsSchema = z.object({
-	// 25 min — keep in sync with DEFAULT_TIMEOUT_MS in harness/runner.ts.
-	timeoutMs: z.number().int().positive().default(1_500_000),
+	// Keep in sync with DEFAULT_TIMEOUT_MS in harness/runner.ts (and its
+	// rationale for why this default must stay conservative).
+	timeoutMs: z.number().int().positive().default(900_000),
 	baseUrls: z.array(z.string().url()).min(1).default(['http://localhost:5678']),
 	email: z.string().optional(),
 	password: z.string().optional(),
@@ -320,7 +321,7 @@ interface RawArgs {
 
 function parseRawArgs(argv: string[]): RawArgs {
 	const result: RawArgs = {
-		timeoutMs: 1_500_000,
+		timeoutMs: 900_000,
 		baseUrls: ['http://localhost:5678'],
 		verbose: false,
 		keepWorkflows: false,
