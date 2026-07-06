@@ -8,7 +8,7 @@ import {
 	Label,
 	RadioGroupIndicator,
 	RadioGroupItem as RekaRadioGroupItem,
-} from './reka-ui';
+} from 'reka-ui';
 
 defineOptions({ inheritAttrs: false });
 

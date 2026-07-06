@@ -4,7 +4,7 @@ import { provide, ref } from 'vue';
 
 import type { RadioGroupEmits, RadioGroupProps, RadioGroupSlots } from './RadioGroup.types';
 import { RADIO_GROUP_ARROW_KEYS, radioGroupArrowKeyPressedKey } from './radio-group-context';
-import { RadioGroupRoot, useForwardPropsEmits } from './reka-ui';
+import { RadioGroupRoot, useForwardPropsEmits } from 'reka-ui';
 
 defineOptions({ inheritAttrs: false });
 
