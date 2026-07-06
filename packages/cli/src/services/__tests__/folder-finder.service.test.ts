@@ -95,4 +95,23 @@ describe('FolderFinderService', () => {
 			expect(folderRepository.find.mock.calls).toHaveLength(0);
 		});
 	});
+
+	describe('findExistingFolderIds', () => {
+		it('returns an empty set without querying when no ids are given', async () => {
+			const { finder, folderRepository } = makeFinder([]);
+
+			const result = await finder.findExistingFolderIds([]);
+
+			expect(result.size).toBe(0);
+			expect(folderRepository.find.mock.calls).toHaveLength(0);
+		});
+
+		it('returns the ids that exist in the database, unscoped by access', async () => {
+			const { finder } = makeFinder([makeFolder({ id: 'fld-1' })]);
+
+			const result = await finder.findExistingFolderIds(['fld-1', 'fld-missing']);
+
+			expect(result).toEqual(new Set(['fld-1']));
+		});
+	});
 });
