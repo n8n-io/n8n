@@ -99,16 +99,11 @@ const projectFilterFn = (p: ProjectListItem): boolean =>
 const isResourceInTeamProject = computed(() => isHomeProjectTeam(props.data.resource));
 const isResourceWorkflow = computed(() => props.data.resourceType === ResourceType.Workflow);
 
-const connectedUserCount = ref(0);
 const isResolvableCredential = computed(
 	() =>
 		privateCredentials.isEnabled.value &&
 		props.data.resourceType === ResourceType.Credential &&
 		(props.data.resource as ICredentialsResponse).isResolvable === true,
-);
-// Only warn when there are connections to lose.
-const showResolvableConnectionWarning = computed(
-	() => isResolvableCredential.value && connectedUserCount.value > 0,
 );
 const targetProjectName = computed(() => {
 	return getTruncatedProjectName(selectedProject.value?.name);
@@ -198,18 +193,6 @@ onMounted(async () => {
 
 		usedCredentials.value = workflow?.usedCredentials ?? [];
 		allCredentials.value = credentials ?? [];
-	}
-
-	// The list payload omits connectedUserCount, so fetch the detail for it.
-	if (isResolvableCredential.value) {
-		try {
-			const credential = await credentialsStore.getCredentialData({
-				id: props.data.resource.id,
-			});
-			connectedUserCount.value = credential?.connectedUserCount ?? 0;
-		} catch {
-			connectedUserCount.value = 0;
-		}
 	}
 });
 </script>
@@ -351,7 +334,7 @@ onMounted(async () => {
 					</N8nCallout>
 				</N8nText>
 				<N8nCallout
-					v-if="showResolvableConnectionWarning"
+					v-if="isResolvableCredential"
 					theme="warning"
 					:class="$style.textBlock"
 					data-test-id="project-move-resource-modal-resolvable-warning"

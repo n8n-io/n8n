@@ -261,8 +261,8 @@ describe('ProjectMoveResourceModal', () => {
 		);
 	});
 
-	describe('resolvable credential connection warning', () => {
-		const makeResolvableCredential = (): ICredentialsResponse =>
+	describe('resolvable credential warning', () => {
+		const makeCredential = (isResolvable: boolean): ICredentialsResponse =>
 			({
 				id: '1',
 				name: 'My private credential',
@@ -270,16 +270,16 @@ describe('ProjectMoveResourceModal', () => {
 				createdAt: '2021-01-01T00:00:00Z',
 				updatedAt: '2021-01-01T00:00:00Z',
 				isManaged: false,
-				isResolvable: true,
+				isResolvable,
 				homeProject: { id: '2', name: 'My Project' } as ProjectSharingData,
 			}) as ICredentialsResponse;
 
-		const props = (): ComponentProps<typeof ProjectMoveResourceModal> => ({
+		const props = (isResolvable: boolean): ComponentProps<typeof ProjectMoveResourceModal> => ({
 			modalName: PROJECT_MOVE_RESOURCE_MODAL,
 			data: {
 				resourceType: ResourceType.Credential,
 				resourceTypeLabel: 'credential',
-				resource: makeResolvableCredential(),
+				resource: makeCredential(isResolvable),
 			},
 		});
 
@@ -288,37 +288,25 @@ describe('ProjectMoveResourceModal', () => {
 			projectsStore.searchProjects.mockResolvedValue({ count: 1, data: [createProjectListItem()] });
 		});
 
-		it('warns when a resolvable credential has connected users', async () => {
-			credentialsStore.getCredentialData.mockResolvedValue({
-				...makeResolvableCredential(),
-				connectedUserCount: 3,
-			} as ICredentialsResponse);
-
-			const { findByTestId } = renderComponent({ props: props() });
+		it('warns when moving a resolvable credential', async () => {
+			const { findByTestId } = renderComponent({ props: props(true) });
 
 			expect(await findByTestId('project-move-resource-modal-resolvable-warning')).toBeVisible();
-			expect(credentialsStore.getCredentialData).toHaveBeenCalledWith({ id: '1' });
 		});
 
-		it('does not warn when the resolvable credential has no connected users', async () => {
-			credentialsStore.getCredentialData.mockResolvedValue({
-				...makeResolvableCredential(),
-				connectedUserCount: 0,
-			} as ICredentialsResponse);
-
-			const { queryByTestId } = renderComponent({ props: props() });
-			await vi.waitFor(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+		it('does not warn when moving a non-resolvable credential', async () => {
+			const { queryByTestId } = renderComponent({ props: props(false) });
+			await vi.waitFor(() => expect(projectsStore.searchProjects).toHaveBeenCalled());
 
 			expect(queryByTestId('project-move-resource-modal-resolvable-warning')).toBeNull();
 		});
 
-		it('does not warn or fetch when private credentials are disabled', async () => {
+		it('does not warn when private credentials are disabled', async () => {
 			isPrivateCredentialsEnabled.value = false;
 
-			const { queryByTestId } = renderComponent({ props: props() });
+			const { queryByTestId } = renderComponent({ props: props(true) });
 			await vi.waitFor(() => expect(projectsStore.searchProjects).toHaveBeenCalled());
 
-			expect(credentialsStore.getCredentialData).not.toHaveBeenCalled();
 			expect(queryByTestId('project-move-resource-modal-resolvable-warning')).toBeNull();
 		});
 	});
