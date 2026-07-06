@@ -18,20 +18,9 @@ import type { VectorFilter } from '../types/sdk/vector-store';
 const DEFAULT_TOP_K = 4;
 
 /**
- * Builder that pairs a vector store backend with an embedding model and owns
- * the embed-then-search / embed-then-upsert orchestration. Backends operate
- * purely on vectors; this class is the only place text gets embedded.
- *
- * Usage:
- * ```typescript
- * const knowledge = new VectorStore('product-docs')
- *   .store(new PgVectorStore('product-docs', { connectionString: '...' }))
- *   .embeddingModel('openai/text-embedding-3-small')
- *   .description('Search the product documentation');
- *
- * await knowledge.addDocuments([{ content: 'Refunds take 5 days.' }]);
- * agent.vectorStore(knowledge);
- * ```
+ * Pairs a vector store backend with an embedding model and owns the
+ * embed-then-search / embed-then-upsert orchestration. Backends operate
+ * purely on vectors — this is the only place text gets embedded.
  */
 export class VectorStore {
 	private backend?: BuiltVectorStoreBackend;
@@ -41,8 +30,6 @@ export class VectorStore {
 	private topKValue: number = DEFAULT_TOP_K;
 
 	private descriptionValue?: string;
-
-	private ensureReadyPromise?: Promise<void>;
 
 	constructor(private readonly name: string) {}
 
@@ -87,7 +74,6 @@ export class VectorStore {
 		const { backend, embeddingModel } = this.ensureBuilt();
 		const { embed } = await import('ai');
 		const { embedding } = await embed({ model: embeddingModel, value: query });
-		await this.ensureBackendReady(backend, embedding.length);
 		const filter = this.resolveFilter(opts?.filter);
 		return await backend.query(embedding, {
 			topK: opts?.topK ?? this.topKValue,
@@ -106,7 +92,6 @@ export class VectorStore {
 			model: embeddingModel,
 			values: docs.map((doc) => doc.content),
 		});
-		await this.ensureBackendReady(backend, embeddings[0]?.length ?? 0);
 		await backend.upsert(
 			docs.map((doc, index) => ({
 				id: ids[index],
@@ -126,13 +111,8 @@ export class VectorStore {
 	}
 
 	/**
-	 * Expose this store as an agent tool. The model calls it with a natural
-	 * language `query` and receives ranked search results.
-	 *
-	 * Pass `filterableKeys` to also let the model narrow results with a
-	 * metadata filter — a map from each filterable metadata key to a
-	 * human-readable description of its values, injected into the tool's
-	 * input schema.
+	 * Expose this store as an agent tool. Pass `filterableKeys` (metadata key
+	 * -> description) to also let the model narrow results with a filter.
 	 */
 	asTool(opts?: {
 		name?: string;
@@ -186,30 +166,12 @@ export class VectorStore {
 		return { backend: this.backend, embeddingModel: this.embeddingModelValue };
 	}
 
-	/**
-	 * Normalize and validate a per-call/model filter. Returns `undefined` for
-	 * an empty filter (e.g. `{}`) so it never turns into a no-op `WHERE` clause.
-	 */
+	/** Normalizes and validates a filter; returns `undefined` for an empty one so it's never a no-op `WHERE`. */
 	private resolveFilter(input?: VectorFilterInput): VectorFilter | undefined {
 		if (input === undefined) return undefined;
 		const normalized = normalizeFilterInput(input);
 		assertValidFilter(normalized);
 		return normalized.conditions.length > 0 ? normalized : undefined;
-	}
-
-	private async ensureBackendReady(
-		backend: BuiltVectorStoreBackend,
-		dimensions: number,
-	): Promise<void> {
-		if (!backend.ensureReady) return;
-		if (!this.ensureReadyPromise) {
-			const p = backend.ensureReady({ dimensions });
-			this.ensureReadyPromise = p;
-			p.catch(() => {
-				if (this.ensureReadyPromise === p) this.ensureReadyPromise = undefined;
-			});
-		}
-		await this.ensureReadyPromise;
 	}
 }
 

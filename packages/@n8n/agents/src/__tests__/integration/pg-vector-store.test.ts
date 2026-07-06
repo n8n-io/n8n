@@ -1,10 +1,7 @@
 /**
- * Integration tests for PgVectorStore against a real Postgres + pgvector instance.
- *
- * Gated on PG_VECTOR_TEST_URL rather than the package's usual API-key/cassette
- * convention: Postgres is a raw TCP connection, not HTTP, so nock/cassettes
- * don't apply here. These tests simply skip when the env var is unset
- * (including in CI replay mode, unless the var is explicitly provided).
+ * Integration tests against a real Postgres + pgvector instance. Gated on
+ * PG_VECTOR_TEST_URL (not the usual API-key/cassette convention) since
+ * Postgres is raw TCP, not HTTP — these self-skip when the var is unset.
  */
 import { MockEmbeddingModelV3 } from 'ai/test';
 import type { Pool } from 'pg';
@@ -15,6 +12,33 @@ import { PgVectorStore } from '../../vector-stores/postgres';
 
 const PG_URL = process.env.PG_VECTOR_TEST_URL;
 
+/** Stands in for the BYO user's own setup, since PgVectorStore itself never runs DDL. */
+async function createVectorTable(
+	pool: Pool,
+	tableName: string,
+	opts: { dimensions: number; hnswIndex?: boolean; ginIndex?: boolean },
+): Promise<void> {
+	await pool.query('CREATE EXTENSION IF NOT EXISTS vector;');
+	await pool.query(
+		`CREATE TABLE IF NOT EXISTS "${tableName}" (
+			id TEXT PRIMARY KEY,
+			content TEXT NOT NULL,
+			metadata JSONB NOT NULL DEFAULT '{}',
+			embedding vector(${opts.dimensions}) NOT NULL
+		);`,
+	);
+	if (opts.hnswIndex) {
+		await pool.query(
+			`CREATE INDEX IF NOT EXISTS "${tableName}_embedding_idx" ON "${tableName}" USING hnsw (embedding vector_cosine_ops);`,
+		);
+	}
+	if (opts.ginIndex) {
+		await pool.query(
+			`CREATE INDEX IF NOT EXISTS "${tableName}_metadata_idx" ON "${tableName}" USING gin (metadata jsonb_path_ops);`,
+		);
+	}
+}
+
 describe.skipIf(!PG_URL)('PgVectorStore', () => {
 	const tableName = `vs_test_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
 	let store: PgVectorStore;
@@ -23,6 +47,7 @@ describe.skipIf(!PG_URL)('PgVectorStore', () => {
 	beforeAll(async () => {
 		const { Pool: PoolCtor } = await import('pg');
 		adminPool = new PoolCtor({ connectionString: PG_URL });
+		await createVectorTable(adminPool, tableName, { dimensions: 3 });
 		store = new PgVectorStore('pg-integration', { connectionString: PG_URL!, tableName });
 	});
 
@@ -30,11 +55,6 @@ describe.skipIf(!PG_URL)('PgVectorStore', () => {
 		await adminPool.query(`DROP TABLE IF EXISTS "${tableName}";`);
 		await store.close();
 		await adminPool.end();
-	});
-
-	it('ensureReady is idempotent', async () => {
-		await store.ensureReady({ dimensions: 3 });
-		await expect(store.ensureReady({ dimensions: 3 })).resolves.toBeUndefined();
 	});
 
 	it('upserts vectors with metadata and queries by similarity', async () => {
@@ -74,6 +94,7 @@ describe.skipIf(!PG_URL)('PgVectorStore', () => {
 
 	it('round-trips through the VectorStore orchestrator with a mock embedding model', async () => {
 		const roundTripTable = `${tableName}_roundtrip`;
+		await createVectorTable(adminPool, roundTripTable, { dimensions: 3 });
 		const roundTripStore = new PgVectorStore('pg-integration-roundtrip', {
 			connectionString: PG_URL!,
 			tableName: roundTripTable,
@@ -109,11 +130,11 @@ describe.skipIf(!PG_URL)('PgVectorStore — metadata filtering', () => {
 	beforeAll(async () => {
 		const { Pool: PoolCtor } = await import('pg');
 		adminPool = new PoolCtor({ connectionString: PG_URL });
+		await createVectorTable(adminPool, filterTableName, { dimensions: 3, ginIndex: true });
 		filterStore = new PgVectorStore('pg-filter-integration', {
 			connectionString: PG_URL!,
 			tableName: filterTableName,
 		});
-		await filterStore.ensureReady({ dimensions: 3 });
 		await filterStore.upsert([
 			{
 				id: 'a',
@@ -205,15 +226,6 @@ describe.skipIf(!PG_URL)('PgVectorStore — metadata filtering', () => {
 			}),
 		).toEqual(['a', 'b']);
 	});
-
-	it('creates a GIN index on metadata during ensureReady', async () => {
-		const result = await adminPool.query<{ indexname: string }>(
-			'SELECT indexname FROM pg_indexes WHERE tablename = $1;',
-			[filterTableName],
-		);
-		const indexNames = result.rows.map((r) => r.indexname);
-		expect(indexNames).toContain(`${filterTableName}_metadata_idx`);
-	});
 });
 
 describe.skipIf(!PG_URL)('PgVectorStore — filtered HNSW under-return (iterative scan)', () => {
@@ -235,11 +247,11 @@ describe.skipIf(!PG_URL)('PgVectorStore — filtered HNSW under-return (iterativ
 	beforeAll(async () => {
 		const { Pool: PoolCtor } = await import('pg');
 		adminPool = new PoolCtor({ connectionString: PG_URL });
+		await createVectorTable(adminPool, iterTableName, { dimensions: 3, hnswIndex: true });
 		iterStore = new PgVectorStore('pg-iterative-scan', {
 			connectionString: PG_URL!,
 			tableName: iterTableName,
 		});
-		await iterStore.ensureReady({ dimensions: 3 });
 
 		const random = mulberry32(42);
 		const records: Array<{
@@ -249,9 +261,7 @@ describe.skipIf(!PG_URL)('PgVectorStore — filtered HNSW under-return (iterativ
 			metadata: Record<string, string>;
 		}> = [];
 
-		// 1995 vectors clustered tightly around the query vector — HNSW's default
-		// candidate search (ef_search) is satisfied by these alone and has little
-		// reason to traverse toward the distant "target" cluster below.
+		// Noise: tightly clustered around the query vector, satisfying HNSW's default candidate search alone.
 		for (let i = 0; i < 1995; i++) {
 			records.push({
 				id: `noise-${i}`,
@@ -261,8 +271,7 @@ describe.skipIf(!PG_URL)('PgVectorStore — filtered HNSW under-return (iterativ
 			});
 		}
 
-		// 5 vectors far from the query, clustered near the opposite corner —
-		// these are the only rows matching the filter below.
+		// Target: far from the query, the only rows matching the filter below.
 		targetIds = [];
 		for (let i = 0; i < 5; i++) {
 			const id = `target-${i}`;

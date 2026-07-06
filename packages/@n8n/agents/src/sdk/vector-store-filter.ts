@@ -15,11 +15,7 @@ function isVectorFilter(input: VectorFilterInput): input is VectorFilter {
 	return Array.isArray(input.conditions);
 }
 
-/**
- * Normalize the shorthand accepted by `.search({ filter })` into a canonical
- * `VectorFilter`. A plain object is equality-only sugar; a `VectorFilter`
- * passes through unchanged.
- */
+/** Normalizes the `.search({ filter })` shorthand into a canonical `VectorFilter`. */
 export function normalizeFilterInput(input: VectorFilterInput): VectorFilter {
 	if (isVectorFilter(input)) {
 		return input;
@@ -32,12 +28,7 @@ export function normalizeFilterInput(input: VectorFilterInput): VectorFilter {
 	return { conditions, combineWith: 'and' };
 }
 
-/**
- * Validate operator/value pairing for every condition in a filter group.
- * Throws with a message naming the offending key and operator rather than
- * silently ignoring or coercing an invalid condition — an unenforced filter
- * (e.g. one meant to scope a tenant) is a correctness bug, not a fallback.
- */
+/** Validates operator/value pairing per condition; throws rather than silently ignoring a bad filter. */
 export function assertValidFilter(filter: VectorFilter): void {
 	for (const condition of filter.conditions) {
 		assertValidCondition(condition);
@@ -74,11 +65,7 @@ function isNonEmptyArray(arr: string[]): arr is [string, ...string[]] {
 	return arr.length > 0;
 }
 
-/**
- * Build the zod schema for the model-facing `filter` tool input field, scoped
- * to the given filterable keys. `keys` maps each filterable key to a
- * human-readable description so the model knows what values it may pass.
- */
+/** Builds the zod schema for the model-facing `filter` tool input, scoped to `keys` (key -> description). */
 export function buildFilterInputSchema(keys: Record<string, string>) {
 	const keyNames = Object.keys(keys);
 	if (!isNonEmptyArray(keyNames)) {

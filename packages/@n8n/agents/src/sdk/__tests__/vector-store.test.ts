@@ -101,20 +101,6 @@ describe('VectorStore — search()', () => {
 		await expect(vectorStore.search('hello')).resolves.toEqual(results);
 	});
 
-	it('calls ensureReady only once across multiple searches', async () => {
-		const ensureReady = vi.fn().mockResolvedValue(undefined);
-		const backend = makeBackend({ ensureReady });
-		const vectorStore = new VectorStore('kb')
-			.store(backend)
-			.embeddingModel(makeEmbeddingModel([1, 0, 0]));
-
-		await vectorStore.search('one');
-		await vectorStore.search('two');
-
-		expect(ensureReady).toHaveBeenCalledTimes(1);
-		expect(ensureReady).toHaveBeenCalledWith({ dimensions: 3 });
-	});
-
 	it('normalizes an object-shorthand per-call filter before reaching the backend', async () => {
 		const backend = makeBackend();
 		const vectorStore = new VectorStore('kb').store(backend).embeddingModel(makeEmbeddingModel());

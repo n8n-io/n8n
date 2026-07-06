@@ -28,6 +28,5 @@ export abstract class BaseVectorStore<TConstructorOptions extends JSONObject = J
 		throw new Error('Method not implemented.');
 	}
 
-	ensureReady?(_opts: { dimensions: number }): Promise<void>;
 	close?(): Promise<void>;
 }

@@ -1,14 +1,7 @@
 /**
- * End-to-end integration test: Agent + VectorStore + PgVectorStore.
- *
- * Exercises the entire flow — a real Anthropic model decides to call the
- * vector search tool, the orchestrator embeds the query with real OpenAI
- * embeddings, PgVectorStore retrieves from a real Postgres + pgvector
- * instance, and the model answers from the retrieved content.
- *
- * Gated on PG_VECTOR_TEST_URL plus both provider keys. Postgres is raw TCP
- * (not HTTP), so this flow cannot be replayed from cassettes — the test
- * self-skips in CI replay mode because PG_VECTOR_TEST_URL is unset there.
+ * End-to-end: a real model searches a real Postgres-backed VectorStore and
+ * answers from the results. Gated on PG_VECTOR_TEST_URL plus both provider
+ * keys; self-skips in CI replay since Postgres can't be replayed from cassettes.
  */
 import type { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -20,6 +13,19 @@ import { PgVectorStore } from '../../vector-stores/postgres';
 const PG_URL = process.env.PG_VECTOR_TEST_URL;
 const hasKeys = Boolean(process.env.ANTHROPIC_API_KEY) && Boolean(process.env.OPENAI_API_KEY);
 
+/** Stands in for the BYO user's own setup; dimensions match `openai/text-embedding-3-small`. */
+async function createVectorTable(pool: Pool, tableName: string): Promise<void> {
+	await pool.query('CREATE EXTENSION IF NOT EXISTS vector;');
+	await pool.query(
+		`CREATE TABLE IF NOT EXISTS "${tableName}" (
+			id TEXT PRIMARY KEY,
+			content TEXT NOT NULL,
+			metadata JSONB NOT NULL DEFAULT '{}',
+			embedding vector(1536) NOT NULL
+		);`,
+	);
+}
+
 describe.skipIf(!PG_URL || !hasKeys)('Agent + PgVectorStore end-to-end', () => {
 	const tableName = `vs_e2e_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
 	let adminPool: Pool;
@@ -29,6 +35,7 @@ describe.skipIf(!PG_URL || !hasKeys)('Agent + PgVectorStore end-to-end', () => {
 	beforeAll(async () => {
 		const { Pool: PoolCtor } = await import('pg');
 		adminPool = new PoolCtor({ connectionString: PG_URL });
+		await createVectorTable(adminPool, tableName);
 
 		store = new PgVectorStore('product-docs', { connectionString: PG_URL!, tableName });
 		knowledge = new VectorStore('product-docs')
@@ -85,15 +92,14 @@ describe.skipIf(!PG_URL || !hasKeys)('Agent + PgVectorStore end-to-end', () => {
 
 	it('narrows results with a model-controlled metadata filter', async () => {
 		const filterTableName = `${tableName}_filter`;
+		await createVectorTable(adminPool, filterTableName);
 		const filterStore = new PgVectorStore('product-line-docs', {
 			connectionString: PG_URL!,
 			tableName: filterTableName,
 		});
 
 		try {
-			// Two near-identical documents that differ only in metadata and one
-			// fact — similarity alone cannot reliably distinguish them, so only
-			// a correct metadata filter makes the right answer deterministic.
+			// Near-identical docs differing only in metadata — only a correct filter makes the answer deterministic.
 			const productDocs = new VectorStore('product-line-docs')
 				.store(filterStore)
 				.embeddingModel('openai/text-embedding-3-small')

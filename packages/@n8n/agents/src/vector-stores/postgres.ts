@@ -28,8 +28,11 @@ export type PgVectorStoreOptions = {
 };
 
 /**
- * Postgres + pgvector backend. Requires the `pg` package (optional peer
- * dependency) and a Postgres instance with the `vector` extension available.
+ * Postgres + pgvector backend (`pg` is an optional peer dependency).
+ * Never creates or alters schema: expects an existing table with the
+ * standard pgvector layout — id (unique), content text, metadata jsonb,
+ * embedding vector(n). The embedding model must match the one that produced
+ * the stored vectors.
  *
  * @example
  * ```typescript
@@ -53,27 +56,6 @@ export class PgVectorStore extends BaseVectorStore<PgVectorStoreOptions> {
 				`Invalid PgVectorStore table name "${this.tableName}": must match ${IDENTIFIER_PATTERN}`,
 			);
 		}
-	}
-
-	async ensureReady({ dimensions }: { dimensions: number }): Promise<void> {
-		const pool = await this.getPool();
-		await pool.query('CREATE EXTENSION IF NOT EXISTS vector;');
-		await this.assertDimensionsMatch(pool, dimensions);
-		await pool.query(
-			`CREATE TABLE IF NOT EXISTS "${this.tableName}" (
-				id TEXT PRIMARY KEY,
-				content TEXT NOT NULL,
-				metadata JSONB NOT NULL DEFAULT '{}',
-				embedding vector(${dimensions}) NOT NULL
-			);`,
-		);
-		await pool.query(
-			`CREATE INDEX IF NOT EXISTS "${this.tableName}_embedding_idx" ON "${this.tableName}" USING hnsw (embedding vector_cosine_ops);`,
-		);
-		// Accelerates the `@>` containment checks used by the eq/ne filter operators.
-		await pool.query(
-			`CREATE INDEX IF NOT EXISTS "${this.tableName}_metadata_idx" ON "${this.tableName}" USING gin (metadata jsonb_path_ops);`,
-		);
 	}
 
 	async upsert(records: VectorRecord[]): Promise<void> {
@@ -107,11 +89,12 @@ export class PgVectorStore extends BaseVectorStore<PgVectorStoreOptions> {
 		opts: { topK: number; filter?: VectorFilter },
 	): Promise<VectorQueryResult[]> {
 		const pool = await this.getPool();
+		const selectSql = `SELECT id, content, metadata, 1 - (embedding <=> $1::vector) AS score
+			 FROM "${this.tableName}"`;
 
 		if (!opts.filter || opts.filter.conditions.length === 0) {
 			const result = await pool.query<PgVectorRow>(
-				`SELECT id, content, metadata, 1 - (embedding <=> $1::vector) AS score
-				 FROM "${this.tableName}"
+				`${selectSql}
 				 ORDER BY embedding <=> $1::vector
 				 LIMIT $2;`,
 				[serializeVector(vector), opts.topK],
@@ -120,8 +103,7 @@ export class PgVectorStore extends BaseVectorStore<PgVectorStoreOptions> {
 		}
 
 		const { whereSql, params } = this.buildFilterClause(opts.filter, 2);
-		const sql = `SELECT id, content, metadata, 1 - (embedding <=> $1::vector) AS score
-			 FROM "${this.tableName}"
+		const sql = `${selectSql}
 			 WHERE ${whereSql}
 			 ORDER BY embedding <=> $1::vector
 			 LIMIT $2;`;
@@ -132,18 +114,11 @@ export class PgVectorStore extends BaseVectorStore<PgVectorStoreOptions> {
 			return result.rows.map(toQueryResult);
 		}
 
-		// A filtered HNSW query can under-return: the index gathers candidates by
-		// distance alone before the WHERE clause is applied, so a selective filter
-		// can leave fewer than `topK` (or zero) surviving rows even when matches
-		// exist elsewhere in the graph. Iterative scan keeps walking until the
-		// LIMIT is satisfied or the graph is exhausted, at the cost of returning
-		// rows in slightly relaxed distance order — hence the JS re-sort below.
-		// We deliberately don't force `enable_seqscan = off` here: pgvector's own
-		// guidance treats planner-forcing as a debugging technique, not a
-		// production default, and with the GIN metadata index in place the
-		// planner can legitimately (and correctly) prefer a bitmap scan over the
-		// GIN index for a selective filter — iterative_scan is simply a no-op
-		// when that happens, so trusting the planner costs nothing.
+		// Filtered HNSW scans can under-return: the index gathers candidates by
+		// distance alone before the filter applies, so a selective filter can
+		// leave fewer than `topK` rows even when matches exist elsewhere in the
+		// graph. Iterative scan keeps walking until LIMIT is met; `relaxed_order`
+		// trades strict distance ordering for that guarantee, hence the re-sort.
 		const client = await pool.connect();
 		try {
 			await client.query('BEGIN');
@@ -171,13 +146,7 @@ export class PgVectorStore extends BaseVectorStore<PgVectorStoreOptions> {
 		this.pool = undefined;
 	}
 
-	/**
-	 * Translate a filter group into a parameterized WHERE clause. Every key
-	 * and value is bound as a query parameter — no filter-derived string is
-	 * ever interpolated into the SQL text. `paramOffset` is the number of
-	 * parameters already used by the caller's query (e.g. the query vector and
-	 * topK), so filter parameters continue numbering from there.
-	 */
+	/** Keys and values are always bind parameters; only the regex-validated table name is interpolated. */
 	private buildFilterClause(
 		filter: VectorFilter,
 		paramOffset: number,
@@ -228,24 +197,6 @@ export class PgVectorStore extends BaseVectorStore<PgVectorStoreOptions> {
 			}
 			default:
 				throw new Error(`Unsupported filter operator: "${String(operator)}"`);
-		}
-	}
-
-	/** Guard against a pre-existing table with a different embedding dimension, which would
-	 *  otherwise fail later with a confusing pgvector error on insert/query. */
-	private async assertDimensionsMatch(pool: Pool, dimensions: number): Promise<void> {
-		const result = await pool.query<{ atttypmod: number }>(
-			`SELECT atttypmod FROM pg_attribute
-			 WHERE attrelid = to_regclass(quote_ident($1)) AND attname = 'embedding' AND NOT attisdropped;`,
-			[this.tableName],
-		);
-		const existingDimensions = result.rows[0]?.atttypmod;
-		if (existingDimensions !== undefined && existingDimensions !== dimensions) {
-			throw new Error(
-				`PgVectorStore table "${this.tableName}" already stores ${existingDimensions}-dimensional ` +
-					`embeddings, but the configured embedding model produces ${dimensions} dimensions. ` +
-					'Use a different tableName or a matching embedding model.',
-			);
 		}
 	}
 
