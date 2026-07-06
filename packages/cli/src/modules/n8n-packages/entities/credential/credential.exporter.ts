@@ -20,13 +20,8 @@ export interface CredentialExportRequest {
 	user: User;
 	requirements: WorkflowCredentialRequirement[];
 	writer: PackageWriter;
-	/**
-	 * Exported project id → target prefix (e.g. `projects/team-ligo`). A credential
-	 * OWNED by a project in this map is namespaced under `<prefix>/credentials/`;
-	 * everything else (owned by a non-exported project, or global) stays at the
-	 * package top-level `credentials/`. Absent for a plain workflow/folder export →
-	 * every credential lands top-level (unchanged behaviour).
-	 */
+	// Contains a map of projectId to export location
+	// p123 -> /project/p123/
 	projectTargetsById?: Map<string, string>;
 }
 
