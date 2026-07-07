@@ -300,12 +300,12 @@ export class AgentsBuilderToolsService {
 					if (dynamicSelectorFromAi) {
 						return { ok: false, errors: dynamicSelectorFromAi };
 					}
-						// Seed the builder's "native model gets web search by default" ergonomic
-						// as an explicit flag; updateConfig owns the actual provider-tool
-						// reconciliation so the write and read paths can't disagree.
-						const configWithDefaults = applyPromptCachingBuilderDefaults(
-							applyNativeWebSearchDefaultOn(zodResult.data),
-						);
+					// Seed the builder's "native model gets web search by default" ergonomic
+					// as an explicit flag; updateConfig owns the actual provider-tool
+					// reconciliation so the write and read paths can't disagree.
+					const configWithDefaults = applyPromptCachingBuilderDefaults(
+						applyNativeWebSearchDefaultOn(zodResult.data),
+					);
 					try {
 						const result = await this.agentConfigService.updateConfig(
 							agentId,
@@ -425,11 +425,11 @@ export class AgentsBuilderToolsService {
 					if (dynamicSelectorFromAi) {
 						return { ok: false, stage: 'schema', errors: dynamicSelectorFromAi };
 					}
-						const configWithDefaults = applyPromptCachingBuilderDefaults(
-							applyNativeWebSearchDefaultOn(zodResult.data),
-						);
+					const configWithDefaults = applyPromptCachingBuilderDefaults(
+						applyNativeWebSearchDefaultOn(zodResult.data),
+					);
 
-						try {
+					try {
 						const result = await this.agentConfigService.updateConfig(
 							agentId,
 							projectId,
@@ -692,11 +692,21 @@ export class AgentsBuilderToolsService {
 				'List the n8n workflows that can be attached as tools via `type: "workflow"` in the agent config. ' +
 					'ALWAYS call this at the start — workflows are the preferred way to give agents real capabilities ' +
 					'(sending emails, creating calendar events, querying databases, calling APIs, etc.). ' +
-					'Only returns workflows with supported trigger types.',
+					'Only returns workflows with supported trigger types. Pass `searchTerm` to narrow by workflow name; ' +
+					'omitting it returns the 50 most recently updated attachable workflows.',
 			)
-			.input(z.object({}))
-			.handler(async () => {
-				return { workflows: await this.attachableWorkflowsService.list(user, projectId) };
+			.input(
+				z.object({
+					searchTerm: z
+						.string()
+						.optional()
+						.describe('Optional workflow-name search term. Omit to return the first 50 results.'),
+				}),
+			)
+			.handler(async ({ searchTerm }: { searchTerm?: string }) => {
+				return {
+					workflows: await this.attachableWorkflowsService.list(user, projectId, searchTerm),
+				};
 			})
 			.build();
 

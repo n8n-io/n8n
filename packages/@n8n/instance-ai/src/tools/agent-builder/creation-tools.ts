@@ -191,13 +191,23 @@ export function createListWorkflowsTool(context: InstanceAiContext) {
 			'List the n8n workflows that can be attached as tools via `type: "workflow"` in the agent ' +
 				'config. Workflows are the preferred way to give agents real capabilities (sending emails, ' +
 				'creating calendar events, querying databases, calling APIs). Only returns workflows with ' +
-				'supported trigger types.',
+				'supported trigger types. Pass `searchTerm` to narrow by workflow name; omit it to return the ' +
+				'50 most recently updated attachable workflows.',
 		)
-		.input(z.object({}))
-		.handler(async () => {
+		.input(
+			z.object({
+				searchTerm: z
+					.string()
+					.optional()
+					.describe('Optional workflow-name search term. Omit to return the first 50 results.'),
+			}),
+		)
+		.handler(async ({ searchTerm }: { searchTerm?: string }) => {
 			if (!context.agentBuilderService) return { workflows: [] };
 			const projectId = context.agentBuilderTarget?.projectId ?? context.projectId;
-			return { workflows: await context.agentBuilderService.listAttachableWorkflows(projectId) };
+			return {
+				workflows: await context.agentBuilderService.listAttachableWorkflows(projectId, searchTerm),
+			};
 		})
 		.build();
 }

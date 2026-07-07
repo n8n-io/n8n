@@ -229,9 +229,9 @@ describe('InstanceAiAgentBuilderAdapterService scope enforcement', () => {
 			const workflows = [{ name: 'Send Email', active: true, triggerType: 'manual' }];
 			attachableWorkflowsService.list.mockResolvedValue(workflows);
 
-			const result = await adapter.listAttachableWorkflows('project-1');
+			const result = await adapter.listAttachableWorkflows('project-1', 'billing');
 
-			expect(attachableWorkflowsService.list).toHaveBeenCalledWith(user, 'project-1');
+			expect(attachableWorkflowsService.list).toHaveBeenCalledWith(user, 'project-1', 'billing');
 			expect(result).toBe(workflows);
 		});
 	});

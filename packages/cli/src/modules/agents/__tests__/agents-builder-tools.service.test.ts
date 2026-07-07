@@ -116,6 +116,7 @@ function makeService() {
 		service,
 		agentsService: purposeServices,
 		secureRuntime,
+		attachableWorkflowsService,
 		agentTaskService,
 		agentRepository,
 		nodeTypes,
@@ -778,12 +779,12 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
-			// Native web-search provider-tool derivation (add defaults, fill missing
-			// settings, swap on provider change, strip stale tools for fallback
-			// providers) now lives in AgentConfigService.updateConfig and is covered by
-			// config-normalization.test.ts.
+		// Native web-search provider-tool derivation (add defaults, fill missing
+		// settings, swap on provider change, strip stale tools for fallback
+		// providers) now lives in AgentConfigService.updateConfig and is covered by
+		// config-normalization.test.ts.
 
-			it('write_config rejects native web search for unsupported providers', async () => {
+		it('write_config rejects native web search for unsupported providers', async () => {
 			const { service, agentsService } = makeService();
 			const currentConfig = { ...baseConfig, integrations: [] };
 			const updatedConfig: AgentJsonConfig = {
@@ -849,7 +850,7 @@ describe('AgentsBuilderToolsService', () => {
 			expect(agentsService.updateConfig).not.toHaveBeenCalled();
 		});
 
-			it('write_config rejects draft LLM config without updating', async () => {
+		it('write_config rejects draft LLM config without updating', async () => {
 			const { service, agentsService } = makeService();
 			const currentConfig = { ...baseConfig, integrations: [] };
 			const draftConfig = { ...currentConfig, model: '', credential: undefined };
@@ -1059,6 +1060,28 @@ describe('AgentsBuilderToolsService', () => {
 					projectId,
 					normalizedConfig,
 				);
+			});
+		});
+	});
+
+	describe('list_workflows tool', () => {
+		function getListWorkflowsTool(service: AgentsBuilderToolsService) {
+			return service
+				.getTools(agentId, projectId, credentialProvider, user)
+				.shared.find((tool) => tool.name === 'list_workflows')!;
+		}
+
+		it('passes the search term to the attachable workflows service', async () => {
+			const { service, attachableWorkflowsService } = makeService();
+			attachableWorkflowsService.list.mockResolvedValue([
+				{ name: 'Billing follow-up', active: true, triggerType: 'manual' },
+			]);
+
+			const result = await getListWorkflowsTool(service).handler!({ searchTerm: 'billing' }, ctx);
+
+			expect(attachableWorkflowsService.list).toHaveBeenCalledWith(user, projectId, 'billing');
+			expect(result).toEqual({
+				workflows: [{ name: 'Billing follow-up', active: true, triggerType: 'manual' }],
 			});
 		});
 	});

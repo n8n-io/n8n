@@ -34,7 +34,7 @@ describe('AttachableWorkflowsService', () => {
 		const { service, workflowFinderService, user } = setup();
 		workflowFinderService.findAllWorkflowsForUser.mockResolvedValue([]);
 
-		await service.list(user, 'project-9');
+		await service.list(user, 'project-9', 'billing');
 
 		expect(workflowFinderService.findAllWorkflowsForUser).toHaveBeenCalledWith(
 			user,
@@ -66,6 +66,46 @@ describe('AttachableWorkflowsService', () => {
 		const result = await service.list(user, 'project-1');
 
 		expect(result).toHaveLength(1);
+	});
+
+	it('filters workflows by search term', async () => {
+		const { service, workflowFinderService, user } = setup();
+		workflowFinderService.findAllWorkflowsForUser.mockResolvedValue([
+			wf({ id: 'a', name: 'Billing follow-up', nodes: [manualTrigger] }),
+			wf({ id: 'b', name: 'Sales outreach', nodes: [manualTrigger] }),
+		]);
+
+		const result = await service.list(user, 'project-1', 'billing');
+
+		expect(result).toEqual([{ name: 'Billing follow-up', active: false, triggerType: 'manual' }]);
+	});
+
+	it('returns at most 50 most recently updated workflows when search term is omitted', async () => {
+		const { service, workflowFinderService, user } = setup();
+		workflowFinderService.findAllWorkflowsForUser.mockResolvedValue(
+			Array.from({ length: 60 }, (_, index) =>
+				wf({
+					id: `wf-${index}`,
+					name: `Workflow ${index}`,
+					nodes: [manualTrigger],
+					updatedAt: new Date(Date.UTC(2026, 0, index + 1)),
+				}),
+			),
+		);
+
+		const result = await service.list(user, 'project-1');
+
+		expect(result).toHaveLength(50);
+		expect(result[0]).toEqual({
+			name: 'Workflow 59',
+			active: false,
+			triggerType: 'manual',
+		});
+		expect(result.at(-1)).toEqual({
+			name: 'Workflow 10',
+			active: false,
+			triggerType: 'manual',
+		});
 	});
 
 	it('returns nothing when the user cannot read any workflow', async () => {

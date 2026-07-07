@@ -264,9 +264,9 @@ export class InstanceAiAgentBuilderAdapterService {
 				});
 			},
 
-			listAttachableWorkflows: async (projectId): Promise<AttachableWorkflow[]> => {
+			listAttachableWorkflows: async (projectId, searchTerm): Promise<AttachableWorkflow[]> => {
 				const resolvedProjectId = await resolveProjectId(projectId);
-				return await this.attachableWorkflowsService.list(user, resolvedProjectId);
+				return await this.attachableWorkflowsService.list(user, resolvedProjectId, searchTerm);
 			},
 		};
 	}

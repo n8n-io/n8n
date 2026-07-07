@@ -916,7 +916,10 @@ export interface InstanceAiAgentBuilderService {
 	 * triggers). Scoped to the caller's `workflow:read` access — it never returns
 	 * workflows the user cannot already see.
 	 */
-	listAttachableWorkflows(projectId?: string): Promise<AttachableWorkflow[]>;
+	listAttachableWorkflows(
+		projectId: string | undefined,
+		searchTerm?: string,
+	): Promise<AttachableWorkflow[]>;
 }
 
 // ── Local gateway status ─────────────────────────────────────────────────────

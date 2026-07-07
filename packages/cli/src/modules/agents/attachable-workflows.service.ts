@@ -20,6 +20,8 @@ const SUPPORTED_TRIGGERS: Record<string, string> = {
 	'n8n-nodes-base.formTrigger': 'form',
 };
 
+const ATTACHABLE_WORKFLOWS_LIMIT = 50;
+
 /**
  * Lists the workflows a user may attach to an agent as `type: "workflow"` tools.
  * Shared by the CLI agent-builder tool and the instance-ai adapter so the trigger
@@ -31,13 +33,14 @@ const SUPPORTED_TRIGGERS: Record<string, string> = {
 export class AttachableWorkflowsService {
 	constructor(private readonly workflowFinderService: WorkflowFinderService) {}
 
-	async list(user: User, projectId: string): Promise<AttachableWorkflow[]> {
+	async list(user: User, projectId: string, searchTerm = ''): Promise<AttachableWorkflow[]> {
 		const workflows = await this.workflowFinderService.findAllWorkflowsForUser(
 			user,
 			['workflow:read'],
 			undefined,
 			projectId,
 		);
+		const normalizedSearchTerm = searchTerm.trim().toLowerCase();
 
 		// A workflow can surface via several share paths; dedupe by id.
 		const byId = new Map<string, (typeof workflows)[number]>();
@@ -46,6 +49,10 @@ export class AttachableWorkflowsService {
 		}
 
 		return Array.from(byId.values())
+			.filter(
+				(workflow) =>
+					normalizedSearchTerm === '' || workflow.name.toLowerCase().includes(normalizedSearchTerm),
+			)
 			.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
 			.flatMap((workflow) => {
 				const triggerNode = (workflow.nodes ?? []).find((node) => SUPPORTED_TRIGGERS[node.type]);
@@ -57,6 +64,7 @@ export class AttachableWorkflowsService {
 						triggerType: SUPPORTED_TRIGGERS[triggerNode.type],
 					},
 				];
-			});
+			})
+			.slice(0, ATTACHABLE_WORKFLOWS_LIMIT);
 	}
 }
