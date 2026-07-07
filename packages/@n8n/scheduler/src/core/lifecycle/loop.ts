@@ -78,7 +78,11 @@ export class Loop {
 
 	private readonly inFlight = new Set<Promise<void>>();
 
-	private started = false;
+	/**
+	 * The one timeline this loop follows, anchored once at {@link start};
+	 * its presence is what marks the loop as started.
+	 */
+	private timeline?: Timeline;
 
 	private stopped = false;
 
@@ -101,21 +105,14 @@ export class Loop {
 	 * A stopped loop stays stopped (one-shot lifecycle).
 	 */
 	start(): void {
-		if (!this.started && !this.stopped) {
-			this.started = true;
-			const timeline = new Timeline(
+		if (this.timeline === undefined && !this.stopped) {
+			this.timeline = new Timeline(
 				this.options.intervalMs,
 				this.options.jitterRatio,
 				this.random,
 				this.now(),
 			);
-			const tick = (): void => {
-				// Arm the next tick before running the pass:
-				// the timeline must not depend on how long the pass takes.
-				this.alarm.set(timeline.nextTickAt(this.now()), tick);
-				this.launch();
-			};
-			this.alarm.set(timeline.firstTickAt, tick);
+			this.alarm.set(this.timeline.firstTickAt, () => this.tick());
 		}
 	}
 
@@ -127,6 +124,15 @@ export class Loop {
 		this.stopped = true;
 		this.alarm.cancel();
 		await Promise.all(this.inFlight);
+	}
+
+	private tick(): void {
+		if (this.timeline) {
+			// Arm the next tick before running the pass:
+			// the timeline must not depend on how long the pass takes.
+			this.alarm.set(this.timeline.nextTickAt(this.now()), () => this.tick());
+			this.launch();
+		}
 	}
 
 	/** Run the pass for one tick, unless every slot is taken (then the tick is dropped). */
