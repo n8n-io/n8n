@@ -80,7 +80,7 @@ describe('AttachableWorkflowsService', () => {
 		expect(result).toEqual([{ name: 'Billing follow-up', active: false, triggerType: 'manual' }]);
 	});
 
-	it('returns at most 50 most recently updated workflows when search term is omitted', async () => {
+	it('returns at most 10 most recently updated workflows when search term is omitted', async () => {
 		const { service, workflowFinderService, user } = setup();
 		workflowFinderService.findAllWorkflowsForUser.mockResolvedValue(
 			Array.from({ length: 60 }, (_, index) =>
@@ -95,14 +95,14 @@ describe('AttachableWorkflowsService', () => {
 
 		const result = await service.list(user, 'project-1');
 
-		expect(result).toHaveLength(50);
+		expect(result).toHaveLength(10);
 		expect(result[0]).toEqual({
 			name: 'Workflow 59',
 			active: false,
 			triggerType: 'manual',
 		});
 		expect(result.at(-1)).toEqual({
-			name: 'Workflow 10',
+			name: 'Workflow 50',
 			active: false,
 			triggerType: 'manual',
 		});

@@ -192,14 +192,14 @@ export function createListWorkflowsTool(context: InstanceAiContext) {
 				'config. Workflows are the preferred way to give agents real capabilities (sending emails, ' +
 				'creating calendar events, querying databases, calling APIs). Only returns workflows with ' +
 				'supported trigger types. Pass `searchTerm` to narrow by workflow name; omit it to return the ' +
-				'50 most recently updated attachable workflows.',
+				'10 most recently updated attachable workflows.',
 		)
 		.input(
 			z.object({
 				searchTerm: z
 					.string()
 					.optional()
-					.describe('Optional workflow-name search term. Omit to return the first 50 results.'),
+					.describe('Optional workflow-name search term. Omit to return the first 10 results.'),
 			}),
 		)
 		.handler(async ({ searchTerm }: { searchTerm?: string }) => {

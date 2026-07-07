@@ -20,7 +20,7 @@ const SUPPORTED_TRIGGERS: Record<string, string> = {
 	'n8n-nodes-base.formTrigger': 'form',
 };
 
-const ATTACHABLE_WORKFLOWS_LIMIT = 50;
+const ATTACHABLE_WORKFLOWS_LIMIT = 10;
 
 /**
  * Lists the workflows a user may attach to an agent as `type: "workflow"` tools.
