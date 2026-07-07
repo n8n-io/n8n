@@ -1,5 +1,5 @@
 import type { ZodClass } from '@n8n/api-types';
-import { inProduction, Logger } from '@n8n/backend-common';
+import { inProduction } from '@n8n/backend-common';
 import { type BooleanLicenseFeature } from '@n8n/constants';
 import { isAuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
