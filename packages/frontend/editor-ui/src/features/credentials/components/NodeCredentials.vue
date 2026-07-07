@@ -290,6 +290,7 @@ watch(
 	credentialTypesNodeDescriptionDisplayed,
 	(types) => {
 		if (props.skipAutoSelect) return;
+		if (types.length === 0) return;
 
 		const isInitialEvaluation = !hasEvaluatedCredentials;
 		hasEvaluatedCredentials = true;
@@ -305,7 +306,7 @@ watch(
 			}
 		}
 
-		if (types.length === 0 || !isEmpty(selected.value)) return;
+		if (!isEmpty(selected.value)) return;
 
 		const allOptions = types.map((type) => type.options).flat();
 

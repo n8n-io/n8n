@@ -327,6 +327,7 @@ const parameterOptions = computed(() => {
 	// the unsupported-action notice instead of showing a blank dropdown.
 	const paramName = props.parameter.name;
 	if (paramName !== 'resource' && paramName !== 'operation') return displayableOptions;
+	if (shortPath.value !== paramName) return displayableOptions;
 
 	const currentValue = isResourceLocatorValue(props.modelValue)
 		? props.modelValue.value

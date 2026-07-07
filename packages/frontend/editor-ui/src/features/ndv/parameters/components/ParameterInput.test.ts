@@ -270,7 +270,11 @@ describe('ParameterInput.vue', () => {
 			);
 
 			const { container, baseElement } = renderComponent({
-				props: { path: 'operation', parameter: operationParameter, modelValue: 'appendOrUpdate' },
+				props: {
+					path: 'parameters.operation',
+					parameter: operationParameter,
+					modelValue: 'appendOrUpdate',
+				},
 			});
 
 			await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
@@ -286,7 +290,11 @@ describe('ParameterInput.vue', () => {
 			mockIsActionOptionVisible.mockReturnValue(false);
 
 			const { container, baseElement } = renderComponent({
-				props: { path: 'operation', parameter: operationParameter, modelValue: 'append' },
+				props: {
+					path: 'parameters.operation',
+					parameter: operationParameter,
+					modelValue: 'append',
+				},
 			});
 
 			await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
@@ -301,7 +309,7 @@ describe('ParameterInput.vue', () => {
 
 			const { container, baseElement } = renderComponent({
 				props: {
-					path: 'operation',
+					path: 'parameters.operation',
 					parameter: operationParameter,
 					modelValue: { __rl: true, value: 'append', mode: 'list' },
 				},
@@ -319,12 +327,34 @@ describe('ParameterInput.vue', () => {
 			mockIsActionOptionVisible.mockReturnValue(false);
 
 			const { container } = renderComponent({
-				props: { path: 'operation', parameter: operationParameter, modelValue: 'append' },
+				props: {
+					path: 'parameters.operation',
+					parameter: operationParameter,
+					modelValue: 'append',
+				},
 			});
 
 			await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
 
 			expect(mockIsActionOptionVisible).toHaveBeenCalledWith(null, 'operation', 'appendOrUpdate');
+		});
+
+		test('does not filter nested operation parameters', async () => {
+			mockIsActionOptionVisible.mockReturnValue(false);
+
+			const { container, baseElement } = renderComponent({
+				props: {
+					path: 'parameters.filters.operation',
+					parameter: operationParameter,
+					modelValue: 'appendOrUpdate',
+				},
+			});
+
+			await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+
+			const options = baseElement.querySelectorAll('.list-option');
+			expect(options.length).toEqual(2);
+			expect(mockIsActionOptionVisible).not.toHaveBeenCalled();
 		});
 	});
 
