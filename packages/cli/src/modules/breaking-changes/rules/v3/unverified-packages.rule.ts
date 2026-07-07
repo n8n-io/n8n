@@ -1,5 +1,6 @@
 import { BreakingChangeRule } from '@n8n/decorators';
 
+import { CommunityPackagesConfig } from '../../../community-packages/community-packages.config';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
@@ -9,6 +10,8 @@ import { BreakingChangeCategory } from '../../types';
 
 @BreakingChangeRule({ version: 'v3' })
 export class UnverifiedPackagesRule implements IBreakingChangeInstanceRule {
+	constructor(private readonly communityPackagesConfig: CommunityPackagesConfig) {}
+
 	id: string = 'unverified-packages-v3';
 
 	getMetadata(): BreakingChangeRuleMetadata {
@@ -23,9 +26,9 @@ export class UnverifiedPackagesRule implements IBreakingChangeInstanceRule {
 	}
 
 	async detect(): Promise<InstanceDetectionReport> {
-		const communityPackagesDisabled = process.env.N8N_COMMUNITY_PACKAGES_ENABLED === 'false';
 		const isAffected =
-			!communityPackagesDisabled && process.env.N8N_UNVERIFIED_PACKAGES_ENABLED === undefined;
+			this.communityPackagesConfig.enabled &&
+			process.env.N8N_UNVERIFIED_PACKAGES_ENABLED === undefined;
 
 		if (!isAffected) return { isAffected: false, instanceIssues: [], recommendations: [] };
 

@@ -1,14 +1,18 @@
+import { mock } from 'vitest-mock-extended';
+
+import type { CommunityPackagesConfig } from '../../../../community-packages/community-packages.config';
 import { UnverifiedPackagesRule } from '../unverified-packages.rule';
 
 describe('UnverifiedPackagesRule', () => {
 	let rule: UnverifiedPackagesRule;
+	const communityPackagesConfig: CommunityPackagesConfig = mock<CommunityPackagesConfig>();
 	const originalEnv = process.env;
 
 	beforeEach(() => {
 		process.env = { ...originalEnv };
 		delete process.env.N8N_UNVERIFIED_PACKAGES_ENABLED;
-		delete process.env.N8N_COMMUNITY_PACKAGES_ENABLED;
-		rule = new UnverifiedPackagesRule();
+		communityPackagesConfig.enabled = true;
+		rule = new UnverifiedPackagesRule(communityPackagesConfig);
 	});
 
 	afterAll(() => {
@@ -42,7 +46,7 @@ describe('UnverifiedPackagesRule', () => {
 		});
 
 		it('should not be affected when community packages are disabled', async () => {
-			process.env.N8N_COMMUNITY_PACKAGES_ENABLED = 'false';
+			communityPackagesConfig.enabled = false;
 
 			const result = await rule.detect();
 
