@@ -147,6 +147,9 @@ catalogs:
     '@openrouter/ai-sdk-provider':
       specifier: ^2.8.0
       version: 2.9.0
+    '@pinecone-database/pinecone':
+      specifier: ^5.0.2
+      version: 5.1.2
     '@qdrant/js-client-rest':
       specifier: ^1.16.2
       version: 1.16.2
@@ -978,6 +981,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@pinecone-database/pinecone':
+        specifier: 'catalog:'
+        version: 5.1.2
       '@qdrant/js-client-rest':
         specifier: 'catalog:'
         version: 1.16.2(typescript@6.0.2)

@@ -149,10 +149,8 @@ export class SupabaseVectorStore extends BaseVectorStore<SupabaseVectorStoreOpti
 		if (error) throw new Error(`Supabase delete failed: ${error.message}`);
 	}
 
-	// eslint-disable-next-line @typescript-eslint/promise-function-async -- no await needed; matches `require-await`
-	close(): Promise<void> {
+	close(): void {
 		this.client = undefined;
-		return Promise.resolve();
 	}
 
 	private async getClient(): Promise<SupabaseClient> {

@@ -1,9 +1,10 @@
 /**
  * Shared helpers for the vector-store integration suites (Postgres, Qdrant,
- * Supabase) — fixture loading, locally computed ground truth, Postgres/
- * Supabase DDL setup, and shared test-body registration, deduplicated from
- * the per-backend test files.
+ * Supabase, Pinecone) — fixture loading, locally computed ground truth,
+ * Postgres/Supabase DDL setup, Pinecone index provisioning, and shared
+ * test-body registration, deduplicated from the per-backend test files.
  */
+import type { Index, Pinecone } from '@pinecone-database/pinecone';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import type { Pool } from 'pg';
@@ -143,6 +144,36 @@ export async function waitUntilQueryable(
 	}
 }
 
+/** Stands in for the BYO user's own setup, since PineconeVectorStore itself never creates indexes. */
+export async function createPineconeIndex(
+	pc: Pinecone,
+	name: string,
+	dimensions: number,
+): Promise<void> {
+	await pc.createIndex({
+		name,
+		dimension: dimensions,
+		metric: 'cosine',
+		spec: { serverless: { cloud: 'aws', region: 'us-east-1' } },
+		waitUntilReady: true,
+	});
+}
+
+/** Pinecone writes are eventually consistent — poll index stats until the expected record count is visible. */
+export async function waitForPineconeRecordCount(index: Index, expected: number): Promise<void> {
+	const deadline = Date.now() + SCHEMA_WAIT_TIMEOUT_MS * 4;
+	for (;;) {
+		const stats = await index.describeIndexStats();
+		if (stats.totalRecordCount === expected) return;
+		if (Date.now() > deadline) {
+			throw new Error(
+				`Timed out waiting for Pinecone record count to reach ${expected} (last seen: ${stats.totalRecordCount ?? 0}).`,
+			);
+		}
+		await new Promise((resolve) => setTimeout(resolve, 1000));
+	}
+}
+
 export async function upsertFixtureDocuments(
 	store: BaseVectorStore,
 	fixture: BulkFixture,
@@ -158,7 +189,7 @@ export async function upsertFixtureDocuments(
 }
 
 /**
- * Registers the bulk retrieval-quality `it` blocks shared by all three
+ * Registers the bulk retrieval-quality `it` blocks shared by all four
  * backends' `vector-store-bulk-*.test.ts` suites. Must be called inside the
  * suite's `describe` body, after `getStore` is guaranteed to resolve (i.e.
  * after `beforeAll` populates the store). Order matters: the delete test
@@ -167,6 +198,7 @@ export async function upsertFixtureDocuments(
 export function registerBulkVectorStoreTests(
 	fixture: BulkFixture,
 	getStore: () => BaseVectorStore,
+	opts?: { afterDelete?: () => Promise<void> },
 ): void {
 	it('returns the expected best match for each known-answer query', async () => {
 		const store = getStore();
@@ -217,6 +249,7 @@ export function registerBulkVectorStoreTests(
 		expect(idsToDelete).toContain(fixture.queries[1].expectedTopId);
 
 		await store.delete({ ids: idsToDelete });
+		await opts?.afterDelete?.();
 
 		const remaining = fixture.documents.filter((doc) => !idsToDelete.includes(doc.id));
 		const expectedTopIds = localTopIds(remaining, fixture.queries[1].vector, 5);
@@ -230,7 +263,7 @@ export function registerBulkVectorStoreTests(
 }
 
 /**
- * Registers the agent end-to-end `it` blocks shared by all three backends'
+ * Registers the agent end-to-end `it` blocks shared by all four backends'
  * `agent-vector-store-*.test.ts` suites. Must be called inside the suite's
  * `describe` body, after `getKnowledge` is guaranteed to resolve.
  */
