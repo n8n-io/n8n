@@ -203,6 +203,23 @@ export class WorkflowFinderService {
 	}
 
 	/**
+	 * List root workflows of a project only.
+	 */
+	async findRootWorkflowIdsInProject(projectId: string): Promise<string[]> {
+		const rows = await this.sharedWorkflowRepository.find({
+			where: {
+				project: { id: projectId },
+				role: 'workflow:owner',
+				workflow: { parentFolder: IsNull() },
+			},
+			relations: { workflow: { parentFolder: true } },
+			select: { workflowId: true, workflow: { id: true, parentFolder: { id: true } } },
+		});
+
+		return rows.map((row) => row.workflowId);
+	}
+
+	/**
 	 * Finds owned workflows in a project that may match package workflows either
 	 * by `sourceWorkflowId` or, when unset, by local id (re-import of workflows
 	 * authored on this instance).
