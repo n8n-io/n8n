@@ -176,30 +176,93 @@ export const awsCredentialsTest: ICredentialTestRequest = {
 };
 
 /**
+ * PrivateLink (VPC interface endpoint) hostnames shift the service and region
+ * one label to the right compared to public endpoints, e.g.
+ * `vpce-0abc123[-az].bedrock-runtime.us-east-1.vpce.amazonaws.com`. The optional
+ * `.cn` suffix covers the China regions, whose endpoints use `vpce.amazonaws.com.cn`.
+ *
+ * Only the endpoint-specific hostname (which starts with the `vpce-` id label) is
+ * matched. S3's bucket/access-point/control interface endpoints prefix another
+ * label before the id (e.g. `bucket.vpce-0abc123.s3.us-east-1.vpce.amazonaws.com`)
+ * and are intentionally not covered here.
+ *
+ * @see {@link https://docs.aws.amazon.com/vpc/latest/privatelink/privatelink-share-your-services.html AWS PrivateLink}
+ */
+const VPCE_HOSTNAME_PATTERN = /^vpce-[^.]+\.([^.]+)\.([^.]+)\.vpce\.amazonaws\.com(?:\.cn)?$/;
+
+function isSupportedAwsRegion(region: string): region is AWSRegion {
+	return SUPPORTED_AWS_REGIONS.has(region);
+}
+
+/**
  * Ensures the region value belongs to the supported AWS regions list before it
  * is interpolated into request URLs or signing options. Anything outside the
  * known set is rejected with a controlled error.
  */
 export function assertSupportedAwsRegion(region: unknown): asserts region is AWSRegion {
-	if (typeof region !== 'string' || !SUPPORTED_AWS_REGIONS.has(region)) {
+	if (typeof region !== 'string' || !isSupportedAwsRegion(region)) {
 		throw new UserError('Unsupported AWS region');
 	}
 }
 
 /**
  * Parses an AWS service URL to extract the service name and region.
- * Some AWS services are global and don't have a region.
+ * Some AWS services are global and don't have a region. Recognizes both
+ * public endpoints (`<service>.<region>.amazonaws.com`) and PrivateLink
+ * endpoints (`vpce-<id>.<service>.<region>.vpce.amazonaws.com`).
+ *
+ * The returned region is not validated against the supported region list;
+ * callers must check it (e.g. with {@link assertSupportedAwsRegion}) before
+ * using it for signing.
  *
  * @param url - The AWS service URL to parse
  * @returns Object containing the service name and region (null for global services)
  *
  * @see {@link https://docs.aws.amazon.com/general/latest/gr/rande.html#global-endpoints AWS Global Endpoints}
  */
-export function parseAwsUrl(url: URL): { region: AWSRegion | null; service: string } {
+export function parseAwsUrl(url: URL): { region: string | null; service: string } {
 	const hostname = url.hostname;
+	const vpceMatch = hostname.match(VPCE_HOSTNAME_PATTERN);
+	if (vpceMatch) {
+		const [, service, region] = vpceMatch;
+		return { service, region };
+	}
 	// Handle both .amazonaws.com and .amazonaws.com.cn domains
 	const [service, region] = hostname.replace(/\.amazonaws\.com.*$/, '').split('.');
-	return { service, region };
+	return { service, region: region ?? null };
+}
+
+/**
+ * Derives the signing service and region from a request URL, without
+ * regressing a caller-supplied value.
+ *
+ * - `service` is only taken from the URL when the caller didn't already
+ *   supply one (e.g. via qs.service). This lets callers force a signing
+ *   service that URL parsing can't reliably infer, without regressing
+ *   callers that rely on the URL as the source of truth (the common case:
+ *   no qs.service is set).
+ * - `region` is only taken from the URL when it's a recognized AWS region;
+ *   an unrecognized label (e.g. a malformed vpce host) is logged and the
+ *   credential-resolved region is kept instead of signing with garbage.
+ */
+function resolveServiceAndRegion(
+	url: URL,
+	service: string,
+	region: AWSRegion,
+): { service: string; region: AWSRegion } {
+	const parsed = parseAwsUrl(url);
+	const resolvedService = service || parsed.service;
+	let resolvedRegion = region;
+	if (parsed.region) {
+		if (isSupportedAwsRegion(parsed.region)) {
+			resolvedRegion = parsed.region;
+		} else {
+			console.warn(
+				`AWS credentials: ignoring unrecognized region "${parsed.region}" parsed from ${url.hostname}; signing with "${region}" instead.`,
+			);
+		}
+	}
+	return { service: resolvedService, region: resolvedRegion };
 }
 
 /**
@@ -255,11 +318,7 @@ export function awsGetSignInOptionsAndUpdateRequest(
 			// a nested `query` key, so merge the whole object to sign and send them.
 			query = requestWithUri.qs as IDataObject;
 		}
-		const parsed = parseAwsUrl(endpoint);
-		service = parsed.service;
-		if (parsed.region) {
-			region = parsed.region;
-		}
+		({ service, region } = resolveServiceAndRegion(endpoint, service, region));
 	} else {
 		if (!requestOptions.baseURL && !requestOptions.url) {
 			let endpointString: string;
@@ -285,11 +344,7 @@ export function awsGetSignInOptionsAndUpdateRequest(
 		} else {
 			// If no endpoint is set, we try to decompose the path and use the default endpoint
 			const customUrl = new URL(`${requestOptions.baseURL!}${requestOptions.url}${path}`);
-			const parsed = parseAwsUrl(customUrl);
-			service = parsed.service;
-			if (parsed.region) {
-				region = parsed.region;
-			}
+			({ service, region } = resolveServiceAndRegion(customUrl, service, region));
 			if (service === 'sts') {
 				try {
 					customUrl.searchParams.set('Action', 'GetCallerIdentity');

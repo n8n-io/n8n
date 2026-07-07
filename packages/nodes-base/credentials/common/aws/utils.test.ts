@@ -40,7 +40,12 @@ vi.mock('aws4', () => ({
 	sign: vi.fn(),
 }));
 
-import { assertSupportedAwsRegion, assumeRole, awsGetSignInOptionsAndUpdateRequest } from './utils';
+import {
+	assertSupportedAwsRegion,
+	assumeRole,
+	awsGetSignInOptionsAndUpdateRequest,
+	parseAwsUrl,
+} from './utils';
 import * as systemCredentialsUtils from './system-credentials-utils';
 
 type FromTemporaryCredentialsCallArg = {
@@ -608,6 +613,53 @@ describe('assertSupportedAwsRegion', () => {
 	);
 });
 
+describe('parseAwsUrl', () => {
+	it('parses a PrivateLink (vpce) Bedrock host', () => {
+		const url = new URL('https://vpce-0abc123.bedrock-runtime.us-east-1.vpce.amazonaws.com/model');
+		expect(parseAwsUrl(url)).toEqual({ service: 'bedrock-runtime', region: 'us-east-1' });
+	});
+
+	it('parses a PrivateLink (vpce) host for a non-Bedrock service', () => {
+		const url = new URL('https://vpce-0abc123.sqs.us-west-2.vpce.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'sqs', region: 'us-west-2' });
+	});
+
+	it('parses a PrivateLink (vpce) host whose vpce-id label includes an availability-zone suffix', () => {
+		const url = new URL('https://vpce-0abc123-usw2-az1.sqs.us-west-2.vpce.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'sqs', region: 'us-west-2' });
+	});
+
+	it('extracts a vpce region label verbatim even when unsupported (validation is a call-site concern)', () => {
+		const url = new URL('https://vpce-0abc.sqs.not-a-region.vpce.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'sqs', region: 'not-a-region' });
+	});
+
+	it('parses a PrivateLink (vpce) host in a GovCloud region', () => {
+		const url = new URL('https://vpce-0abc123.sqs.us-gov-west-1.vpce.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'sqs', region: 'us-gov-west-1' });
+	});
+
+	it('parses a PrivateLink (vpce) host on the China domain', () => {
+		const url = new URL('https://vpce-0abc123.sqs.cn-north-1.vpce.amazonaws.com.cn/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'sqs', region: 'cn-north-1' });
+	});
+
+	it('parses a standard public hostname (regression)', () => {
+		const url = new URL('https://lambda.us-east-1.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'lambda', region: 'us-east-1' });
+	});
+
+	it('parses a China domain hostname (regression)', () => {
+		const url = new URL('https://lambda.cn-north-1.amazonaws.com.cn/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'lambda', region: 'cn-north-1' });
+	});
+
+	it('returns a null region for a global no-region service (regression)', () => {
+		const url = new URL('https://iam.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'iam', region: null });
+	});
+});
+
 describe('awsGetSignInOptionsAndUpdateRequest', () => {
 	const baseCredentials: AwsIamCredentialsType = {
 		region: 'us-east-1',
@@ -723,5 +775,118 @@ describe('awsGetSignInOptionsAndUpdateRequest', () => {
 		const sentUrl = new URL(url);
 		expect(sentUrl.searchParams.get('Action')).toBe('GetCallerIdentity');
 		expect(sentUrl.searchParams.get('Version')).toBe('2011-06-15');
+	});
+
+	describe('PrivateLink (vpce) endpoints', () => {
+		it('normalizes a vpce Bedrock host to the bedrock signing service (uri branch)', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://vpce-0abc123.bedrock-runtime.us-east-1.vpce.amazonaws.com/foundation-models',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('bedrock');
+			expect(signOpts.region).toBe('us-east-1');
+		});
+
+		it('normalizes a vpce Bedrock host to the bedrock signing service (baseURL/url branch)', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					baseURL: 'https://vpce-0abc123.bedrock-runtime.us-east-1.vpce.amazonaws.com',
+					url: '/foundation-models',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('bedrock');
+			expect(signOpts.region).toBe('us-east-1');
+		});
+
+		it('signs a vpce host for a non-Bedrock service using its own service name', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					baseURL: 'https://vpce-0abc123.sqs.us-west-2.vpce.amazonaws.com',
+					url: '/',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-west-2',
+			);
+
+			expect(signOpts.service).toBe('sqs');
+			expect(signOpts.region).toBe('us-west-2');
+		});
+
+		it('falls back to the credential-resolved region when the vpce host has an unsupported region label', () => {
+			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					baseURL: 'https://vpce-0abc123.sqs.not-a-region.vpce.amazonaws.com',
+					url: '/',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.region).toBe('us-east-1');
+			expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('not-a-region'));
+
+			warnSpy.mockRestore();
+		});
+
+		it('does not overwrite an explicitly supplied service with the URL-derived one', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					baseURL: 'https://vpce-0abc123.sqs.us-west-2.vpce.amazonaws.com',
+					url: '/',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'custom-service',
+				'us-west-2',
+			);
+
+			expect(signOpts.service).toBe('custom-service');
+		});
+
+		it('always populates signOpts.service for a vpce host (protects the signOptions fallback invariant)', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					baseURL: 'https://vpce-0abc123.bedrock-runtime.us-east-1.vpce.amazonaws.com',
+					url: '/foundation-models',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			// signOptions falls back to splitting the raw hostname when service is
+			// nullish; asserting the resolved value proves that fallback never fires.
+			expect(signOpts.service).toBe('bedrock');
+		});
 	});
 });
