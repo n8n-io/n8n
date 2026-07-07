@@ -217,6 +217,7 @@ import { CreateWorkflowPublicationTriggerStatusTable1784000000040 } from '../com
 import { AddUsedPrivateCredentialsToExecutionEntity1784000000041 } from '../common/1784000000041-AddUsedPrivateCredentialsToExecutionEntity';
 import { CreateSchedulerTables1784000000042 } from '../common/1784000000042-CreateSchedulerTables';
 import { CreateInstanceAiEventsTable1784000000043 } from '../common/1784000000043-CreateInstanceAiEventsTable';
+import { AddHostRunIdToInstanceAiCheckpoints1784000000044 } from '../common/1784000000044-AddHostRunIdToInstanceAiCheckpoints';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -439,4 +440,5 @@ export const postgresMigrations: Migration[] = [
 	AddUsedPrivateCredentialsToExecutionEntity1784000000041,
 	CreateSchedulerTables1784000000042,
 	CreateInstanceAiEventsTable1784000000043,
+	AddHostRunIdToInstanceAiCheckpoints1784000000044,
 ];

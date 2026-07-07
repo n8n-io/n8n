@@ -85,10 +85,18 @@ function appendTerminalOutcomeToAgentTree(
 // The slice of each collaborator the terminal-outcome coordinator actually
 // uses. Anchored to the concrete types via `Pick` so the signatures stay in
 // sync with the source.
-export type InstanceAiTerminalOutcomeEventBus = Pick<
-	InProcessEventBus,
-	'getEventsForRun' | 'getEventsForRuns' | 'publish'
->;
+// Reads may be sync (in-memory bus, flag off) or async (durable log, flag on);
+// the host injects a flag-resolved adapter.
+export type InstanceAiTerminalOutcomeEventBus = Pick<InProcessEventBus, 'publish'> & {
+	getEventsForRun(
+		threadId: string,
+		runId: string,
+	): InstanceAiEvent[] | Promise<InstanceAiEvent[]>;
+	getEventsForRuns(
+		threadId: string,
+		runIds: string[],
+	): InstanceAiEvent[] | Promise<InstanceAiEvent[]>;
+};
 
 export type InstanceAiTerminalOutcomeSnapshotStorage = Pick<
 	DbSnapshotStorage,
@@ -197,7 +205,7 @@ export class InstanceAiTerminalOutcomeService {
 		this.saveAgentTreeSnapshot = options.saveAgentTreeSnapshot;
 	}
 
-	evaluateTerminalResponse(
+	async evaluateTerminalResponse(
 		threadId: string,
 		runId: string,
 		status: Exclude<TerminalResponseStatus, 'waiting'>,
@@ -208,7 +216,7 @@ export class InstanceAiTerminalOutcomeService {
 			errorMessage?: string;
 			suppressCompletedFallback?: boolean;
 		} = {},
-	): TerminalResponseDecision | undefined {
+	): Promise<TerminalResponseDecision | undefined> {
 		const guard = new InstanceAiTerminalResponseGuard({
 			runId,
 			rootAgentId: orchestratorAgentId(runId),
@@ -216,7 +224,7 @@ export class InstanceAiTerminalOutcomeService {
 			correlationId: options.correlationId,
 		});
 		const decision = guard.evaluateTerminal(
-			this.getTerminalGuardEvents(threadId, runId, options.messageGroupId),
+			await this.getTerminalGuardEvents(threadId, runId, options.messageGroupId),
 			status,
 			{
 				workSummary: options.workSummary,
@@ -228,12 +236,12 @@ export class InstanceAiTerminalOutcomeService {
 		return decision;
 	}
 
-	evaluateWaitingResponse(
+	async evaluateWaitingResponse(
 		threadId: string,
 		runId: string,
 		confirmationEvent: Extract<InstanceAiEvent, { type: 'confirmation-request' }> | undefined,
 		options: { messageGroupId?: string; correlationId?: string } = {},
-	): TerminalResponseDecision | undefined {
+	): Promise<TerminalResponseDecision | undefined> {
 		const guard = new InstanceAiTerminalResponseGuard({
 			runId,
 			rootAgentId: orchestratorAgentId(runId),
@@ -241,24 +249,24 @@ export class InstanceAiTerminalOutcomeService {
 			correlationId: options.correlationId,
 		});
 		const decision = guard.evaluateWaiting(
-			this.getTerminalGuardEvents(threadId, runId, options.messageGroupId),
+			await this.getTerminalGuardEvents(threadId, runId, options.messageGroupId),
 			confirmationEvent,
 		);
 		this.handleTerminalResponseDecision(threadId, runId, decision, options.messageGroupId);
 		return decision;
 	}
 
-	private getTerminalGuardEvents(
+	private async getTerminalGuardEvents(
 		threadId: string,
 		runId: string,
 		messageGroupId?: string,
-	): InstanceAiEvent[] {
-		if (!messageGroupId) return this.eventBus.getEventsForRun(threadId, runId);
+	): Promise<InstanceAiEvent[]> {
+		if (!messageGroupId) return await this.eventBus.getEventsForRun(threadId, runId);
 
 		const groupRunIds = this.runState.getRunIdsForMessageGroup(messageGroupId);
 		return groupRunIds.length > 0
-			? this.eventBus.getEventsForRuns(threadId, groupRunIds)
-			: this.eventBus.getEventsForRun(threadId, runId);
+			? await this.eventBus.getEventsForRuns(threadId, groupRunIds)
+			: await this.eventBus.getEventsForRun(threadId, runId);
 	}
 
 	private handleTerminalResponseDecision(
@@ -394,7 +402,7 @@ export class InstanceAiTerminalOutcomeService {
 					error: getErrorMessage(error),
 				});
 				if (delivery === 'event') {
-					const published = this.publishTerminalOutcomeLine(outcome, responseId);
+					const published = await this.publishTerminalOutcomeLine(outcome, responseId);
 					this.telemetry.track('instance_ai_terminal_response_decision', {
 						thread_id: threadId,
 						run_id: outcome.runId,
@@ -413,7 +421,7 @@ export class InstanceAiTerminalOutcomeService {
 
 			let action = 'replay_snapshot';
 			if (delivery === 'event') {
-				const published = this.publishTerminalOutcomeLine(outcome, responseId);
+				const published = await this.publishTerminalOutcomeLine(outcome, responseId);
 				action = published ? 'replay_event' : 'already-emitted';
 			}
 
@@ -476,10 +484,13 @@ export class InstanceAiTerminalOutcomeService {
 		return true;
 	}
 
-	private publishTerminalOutcomeLine(outcome: TerminalOutcome, responseId: string): boolean {
-		const alreadyPublished = this.eventBus
-			.getEventsForRun(outcome.threadId, outcome.runId)
-			.some((event) => event.responseId === responseId);
+	private async publishTerminalOutcomeLine(
+		outcome: TerminalOutcome,
+		responseId: string,
+	): Promise<boolean> {
+		const alreadyPublished = (
+			await this.eventBus.getEventsForRun(outcome.threadId, outcome.runId)
+		).some((event) => event.responseId === responseId);
 		if (alreadyPublished) return false;
 
 		this.eventBus.publish(outcome.threadId, {
@@ -516,7 +527,7 @@ export class InstanceAiTerminalOutcomeService {
 		}
 
 		const responseId = getBackgroundOutcomeResponseId(outcome);
-		const published = this.publishTerminalOutcomeLine(outcome, responseId);
+		const published = await this.publishTerminalOutcomeLine(outcome, responseId);
 
 		this.telemetry.track('instance_ai_terminal_response_decision', {
 			thread_id: task.threadId,

@@ -160,12 +160,16 @@ export class InterruptedRunSweeper {
 			this.metrics.sweep.toolInterruptedFacts++;
 		}
 
-		// ponytail: newest running orchestrator checkpoint for the thread is
-		// assumed to belong to this run (one orchestrator run per thread); a
-		// runId column on checkpoints would make this exact.
-		const runningCheckpoint = orchestratorCheckpoints.find(
-			(row) => row.state?.status === 'running',
-		);
+		// Exact match on the host run id (persisted with every orchestrator
+		// checkpoint); rows written before the hostRunId column existed fall
+		// back to the newest running orchestrator checkpoint for the thread.
+		const runningCheckpoint =
+			orchestratorCheckpoints.find(
+				(row) => row.state?.status === 'running' && row.hostRunId === runId,
+			) ??
+			orchestratorCheckpoints.find(
+				(row) => row.state?.status === 'running' && row.hostRunId == null,
+			);
 		if (runningCheckpoint?.state && this.resumeHost) {
 			const userId = findRunUserId(events);
 			const messageGroupId = findRunMessageGroupId(events);

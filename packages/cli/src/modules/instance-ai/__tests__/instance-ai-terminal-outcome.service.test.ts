@@ -407,10 +407,10 @@ describe('InstanceAiTerminalOutcomeService — background outcome recording', ()
 });
 
 describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', () => {
-	it('publishes fallback output before run-finish on a silent completed run', () => {
+	it('publishes fallback output before run-finish on a silent completed run', async () => {
 		const { service, deps } = createService();
 
-		service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
+		await service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
 			messageGroupId: 'group-1',
 		});
 		deps.publishRunFinish('thread-a', 'run-1', 'completed');
@@ -418,10 +418,10 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 		expect(deps.eventBus.events.map((event) => event.type)).toEqual(['text-delta', 'run-finish']);
 	});
 
-	it('does not publish completed fallback output when silence is expected', () => {
+	it('does not publish completed fallback output when silence is expected', async () => {
 		const { service, deps } = createService();
 
-		const decision = service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
+		const decision = await service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
 			messageGroupId: 'group-1',
 			suppressCompletedFallback: true,
 		});
@@ -433,10 +433,10 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 		expect(deps.eventBus.events).toEqual([]);
 	});
 
-	it('publishes fallback error before run-finish on a silent failed run', () => {
+	it('publishes fallback error before run-finish on a silent failed run', async () => {
 		const { service, deps } = createService();
 
-		service.evaluateTerminalResponse('thread-a', 'run-1', 'errored', {
+		await service.evaluateTerminalResponse('thread-a', 'run-1', 'errored', {
 			messageGroupId: 'group-1',
 			errorMessage: 'Safe user-facing error',
 		});
@@ -449,7 +449,7 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 		const { service, deps } = createService();
 		const abortController = new AbortController();
 
-		const decision = service.evaluateWaitingResponse('thread-a', 'run-1', undefined, {
+		const decision = await service.evaluateWaitingResponse('thread-a', 'run-1', undefined, {
 			messageGroupId: 'group-1',
 		});
 		expect(decision?.reason).toBe('confirmation-invalid');
