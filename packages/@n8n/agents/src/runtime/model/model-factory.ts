@@ -224,9 +224,11 @@ export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel
 	// Host configs (e.g. Instance AI's `{ id, url }` for OpenAI-compatible
 	// endpoints) spell the base URL as `url`; the provider schemas only know
 	// `baseURL`, and Zod strips unknown keys, so normalize before validation.
+	// An EMPTY url means "no custom endpoint" (Instance AI emits `url: ''` for
+	// the api-key-only config) and must keep the provider default.
 	if (typeof credFields.url === 'string' && credFields.baseURL === undefined) {
 		const { url, ...restCreds } = credFields;
-		credFields = { ...restCreds, baseURL: url };
+		credFields = url ? { ...restCreds, baseURL: url } : restCreds;
 	}
 
 	const schema = PROVIDER_CREDENTIAL_SCHEMAS[provider];

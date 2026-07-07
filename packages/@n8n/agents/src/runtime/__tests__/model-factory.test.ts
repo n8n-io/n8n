@@ -230,6 +230,18 @@ describe('createModel', () => {
 		expect(model.api).toBe('chat-completions');
 	});
 
+	it('treats an empty url as no custom endpoint (api-key-only host config)', () => {
+		// Instance AI emits { id, url: '', apiKey } when only the API key is set;
+		// the provider default endpoint and default model must be preserved.
+		const model = createModel({
+			id: 'anthropic/claude-sonnet-4-6',
+			apiKey: 'sk-ant-test',
+			url: '',
+		}) as unknown as Record<string, unknown>;
+		expect(model.baseURL).toBeUndefined();
+		expect(model.apiKey).toBe('sk-ant-test');
+	});
+
 	it('keeps the default Responses API model for plain OpenAI (no baseURL)', () => {
 		const model = createModel({
 			id: 'openai/gpt-4o',
