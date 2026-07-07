@@ -1,6 +1,9 @@
 import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
 
-import { getInlineDelegateSubAgentToolOptions } from './delegate-sub-agent-tool';
+import {
+	getInlineDelegateSubAgentToolOptions,
+	isDelegateSubAgentTool,
+} from './delegate-sub-agent-tool';
 import { toJsonValue } from '../json-value';
 import { DEFAULT_SUB_AGENT_MAX_CHILDREN } from './sub-agent-task-path';
 import { executeTool, isSuspendedToolResult, type SuspendedToolResult } from './tool-adapter';
@@ -185,15 +188,14 @@ export class ToolCallExecutor {
 
 	private isDelegateSubAgentCall(toolName: string, toolMap: Map<string, BuiltTool>): boolean {
 		const tool = toolMap.get(toolName);
-		return tool !== undefined && getInlineDelegateSubAgentToolOptions(tool) !== undefined;
+		return tool !== undefined && isDelegateSubAgentTool(tool);
 	}
 
 	private getToolCallBatchSize(toolName: string, toolMap: Map<string, BuiltTool>): number {
-		if (!this.isDelegateSubAgentCall(toolName, toolMap)) return this.concurrency;
-
 		const tool = toolMap.get(toolName);
 		const delegateOptions = tool ? getInlineDelegateSubAgentToolOptions(tool) : undefined;
-		return delegateOptions?.policy?.maxChildren ?? DEFAULT_SUB_AGENT_MAX_CHILDREN;
+		if (!delegateOptions) return this.concurrency;
+		return delegateOptions.policy?.maxChildren ?? DEFAULT_SUB_AGENT_MAX_CHILDREN;
 	}
 
 	private takeNextToolCallBatch<T extends { toolName: string }>(
