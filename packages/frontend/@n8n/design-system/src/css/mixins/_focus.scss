@@ -18,7 +18,7 @@
 }
 
 @mixin focus-ring-offset {
-	outline: var(--focus--border-width) solid var(--focus--outline-color);
+	outline: var(--focus--border-width) solid var(--focus--border-color);
 	outline-offset: var(--spacing--5xs);
 }
 
@@ -26,10 +26,4 @@
 	&:focus-visible {
 		@include focus-ring-offset;
 	}
-}
-
-@mixin focus-ring-gap {
-	box-shadow:
-		0 0 0 var(--spacing--5xs) var(--background--surface),
-		0 0 0 calc(var(--spacing--5xs) + var(--focus--border-width)) var(--focus--outline-color);
 }

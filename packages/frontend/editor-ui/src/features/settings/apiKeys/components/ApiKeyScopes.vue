@@ -15,6 +15,7 @@ import {
 	N8nInputLabel,
 	N8nRadioGroup,
 	N8nRadioGroupItem,
+	type AcceptableValue,
 } from '@n8n/design-system';
 
 import {
@@ -133,8 +134,14 @@ const modeOptions = computed<ScopeModeOption[]>(() => [
 	},
 ]);
 
-function onModeChange(newMode: ApiKeyScopeSelectionMode | undefined) {
-	if (newMode === undefined) {
+function isScopeSelectionMode(
+	value: AcceptableValue | undefined,
+): value is ApiKeyScopeSelectionMode {
+	return value === 'all' || value === 'readOnly' || value === 'custom';
+}
+
+function onModeChange(newMode: AcceptableValue | undefined) {
+	if (!isScopeSelectionMode(newMode)) {
 		return;
 	}
 

@@ -1,19 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
-import { defineComponent, ref, type Component } from 'vue';
+import { defineComponent, ref } from 'vue';
 
 import RadioGroup from './RadioGroup.vue';
 import RadioGroupItem from './RadioGroupItem.vue';
 
-const radioGroupComponents = {
-	RadioGroup: RadioGroup as unknown as Component,
-	RadioGroupItem: RadioGroupItem as unknown as Component,
-};
-
-const meta: Meta = {
+const meta = {
 	title: 'Experimental/RadioGroup',
-	// Generic SFCs are not assignable to Storybook's Meta component type.
-	// @ts-expect-error Generic SFC is not assignable to Storybook's Meta component type
 	component: RadioGroup,
 	parameters: {
 		docs: {
@@ -35,11 +28,13 @@ const meta: Meta = {
 			description: 'Initial selected value when used without v-model (uncontrolled)',
 		},
 	},
-};
+} satisfies Meta<typeof RadioGroup>;
 
 export default meta;
 
 type Story = StoryObj<typeof meta>;
+
+const radioItemId = (group: string, value: string) => `${group}-${value}`;
 
 const scopeOptions = [
 	{ value: 'all', label: 'All', description: 'Grant every available scope' },
@@ -70,7 +65,7 @@ const longLabelOptions = [
 
 const RadioGroupDefaultDemo = defineComponent({
 	name: 'RadioGroupDefaultDemo',
-	components: radioGroupComponents,
+	components: { RadioGroup, RadioGroupItem },
 	props: {
 		orientation: { type: String, default: 'vertical' },
 		disabled: { type: Boolean, default: false },
@@ -78,7 +73,7 @@ const RadioGroupDefaultDemo = defineComponent({
 	},
 	setup() {
 		const value = ref('all');
-		return { value, scopeOptions, onUpdate: action('update:modelValue') };
+		return { value, scopeOptions, radioItemId, onUpdate: action('update:modelValue') };
 	},
 	template: `
 		<div style="padding: 40px;">
@@ -94,6 +89,7 @@ const RadioGroupDefaultDemo = defineComponent({
 				<RadioGroupItem
 					v-for="option in scopeOptions"
 					:key="option.value"
+					:id="radioItemId('radio-group-default', option.value)"
 					:value="option.value"
 					:label="option.label"
 					:description="option.description"
@@ -107,10 +103,10 @@ const RadioGroupDefaultDemo = defineComponent({
 
 const RadioGroupControlledUncontrolledDemo = defineComponent({
 	name: 'RadioGroupControlledUncontrolledDemo',
-	components: radioGroupComponents,
+	components: { RadioGroup, RadioGroupItem },
 	setup() {
 		const value = ref('all');
-		return { value, scopeOptions, onUpdate: action('update:modelValue') };
+		return { value, scopeOptions, radioItemId, onUpdate: action('update:modelValue') };
 	},
 	template: `
 		<div style="padding: 40px; display: flex; flex-direction: column; gap: 32px;">
@@ -129,6 +125,7 @@ const RadioGroupControlledUncontrolledDemo = defineComponent({
 					<RadioGroupItem
 						v-for="option in scopeOptions"
 						:key="'controlled-' + option.value"
+						:id="radioItemId('radio-group-controlled', option.value)"
 						:value="option.value"
 						:label="option.label"
 						:description="option.description"
@@ -161,6 +158,7 @@ const RadioGroupControlledUncontrolledDemo = defineComponent({
 					<RadioGroupItem
 						v-for="option in scopeOptions"
 						:key="'uncontrolled-' + option.value"
+						:id="radioItemId('radio-group-uncontrolled', option.value)"
 						:value="option.value"
 						:label="option.label"
 						:description="option.description"
@@ -173,11 +171,11 @@ const RadioGroupControlledUncontrolledDemo = defineComponent({
 
 const RadioGroupOrientationDemo = defineComponent({
 	name: 'RadioGroupOrientationDemo',
-	components: radioGroupComponents,
+	components: { RadioGroup, RadioGroupItem },
 	setup() {
 		const verticalValue = ref('all');
 		const horizontalValue = ref('light');
-		return { verticalValue, horizontalValue, scopeOptions };
+		return { verticalValue, horizontalValue, scopeOptions, radioItemId };
 	},
 	template: `
 		<div style="padding: 40px; display: flex; flex-direction: column; gap: 32px;">
@@ -193,6 +191,7 @@ const RadioGroupOrientationDemo = defineComponent({
 					<RadioGroupItem
 						v-for="option in scopeOptions"
 						:key="'vertical-' + option.value"
+						:id="radioItemId('radio-group-orientation-vertical', option.value)"
 						:value="option.value"
 						:label="option.label"
 						:description="option.description"
@@ -209,9 +208,9 @@ const RadioGroupOrientationDemo = defineComponent({
 					orientation="horizontal"
 					aria-label="Theme (horizontal)"
 				>
-					<RadioGroupItem value="system" label="System" />
-					<RadioGroupItem value="light" label="Light" />
-					<RadioGroupItem value="dark" label="Dark" />
+					<RadioGroupItem id="radio-group-orientation-horizontal-system" value="system" label="System" />
+					<RadioGroupItem id="radio-group-orientation-horizontal-light" value="light" label="Light" />
+					<RadioGroupItem id="radio-group-orientation-horizontal-dark" value="dark" label="Dark" />
 				</RadioGroup>
 				<p style="margin-top: 16px; font-size: 14px;">Selected: {{ horizontalValue }}</p>
 			</section>
@@ -221,7 +220,7 @@ const RadioGroupOrientationDemo = defineComponent({
 
 const RadioGroupDisabledOptionDemo = defineComponent({
 	name: 'RadioGroupDisabledOptionDemo',
-	components: radioGroupComponents,
+	components: { RadioGroup, RadioGroupItem },
 	setup() {
 		const value = ref('spain');
 		return { value };
@@ -229,10 +228,10 @@ const RadioGroupDisabledOptionDemo = defineComponent({
 	template: `
 		<div style="padding: 40px;">
 			<RadioGroup v-model="value" name="radio-group-disabled-option" aria-label="Country">
-				<RadioGroupItem value="france" label="France" />
-				<RadioGroupItem value="germany" label="Germany" />
-				<RadioGroupItem value="italy" label="Italy" disabled />
-				<RadioGroupItem value="spain" label="Spain" disabled />
+				<RadioGroupItem id="radio-group-disabled-option-france" value="france" label="France" />
+				<RadioGroupItem id="radio-group-disabled-option-germany" value="germany" label="Germany" />
+				<RadioGroupItem id="radio-group-disabled-option-italy" value="italy" label="Italy" disabled />
+				<RadioGroupItem id="radio-group-disabled-option-spain" value="spain" label="Spain" disabled />
 			</RadioGroup>
 		</div>
 	`,
@@ -240,7 +239,7 @@ const RadioGroupDisabledOptionDemo = defineComponent({
 
 const RadioGroupCustomLabelDemo = defineComponent({
 	name: 'RadioGroupCustomLabelDemo',
-	components: radioGroupComponents,
+	components: { RadioGroup, RadioGroupItem },
 	setup() {
 		const value = ref('terms');
 		return { value };
@@ -248,12 +247,12 @@ const RadioGroupCustomLabelDemo = defineComponent({
 	template: `
 		<div style="padding: 40px;">
 			<RadioGroup v-model="value" name="radio-group-custom-label" aria-label="Agreement">
-				<RadioGroupItem value="terms">
+				<RadioGroupItem id="radio-group-custom-label-terms" value="terms">
 					<template #label>
 						I accept the <a href="#">terms and conditions</a>
 					</template>
 				</RadioGroupItem>
-				<RadioGroupItem value="privacy">
+				<RadioGroupItem id="radio-group-custom-label-privacy" value="privacy">
 					<template #label>
 						I accept the <a href="#">privacy policy</a>
 					</template>
@@ -265,10 +264,10 @@ const RadioGroupCustomLabelDemo = defineComponent({
 
 const RadioGroupLongLabelsDemo = defineComponent({
 	name: 'RadioGroupLongLabelsDemo',
-	components: radioGroupComponents,
+	components: { RadioGroup, RadioGroupItem },
 	setup() {
 		const value = ref('passthrough');
-		return { value, longLabelOptions };
+		return { value, longLabelOptions, radioItemId };
 	},
 	template: `
 		<div style="padding: 40px; max-width: 360px;">
@@ -276,6 +275,7 @@ const RadioGroupLongLabelsDemo = defineComponent({
 				<RadioGroupItem
 					v-for="option in longLabelOptions"
 					:key="option.value"
+					:id="radioItemId('radio-group-long-labels', option.value)"
 					:value="option.value"
 					:label="option.label"
 					:description="option.description"

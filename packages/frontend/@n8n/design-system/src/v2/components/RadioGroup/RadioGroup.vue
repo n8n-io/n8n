@@ -1,31 +1,24 @@
-<script setup lang="ts" generic="T extends AcceptableValue = AcceptableValue">
-import { computed, provide, ref } from 'vue';
+<script setup lang="ts">
+import { reactivePick } from '@vueuse/core';
+import { provide, ref } from 'vue';
 
 import { RADIO_GROUP_ARROW_KEYS, radioGroupArrowKeyPressedKey } from './radio-group-context';
 import type { RadioGroupProps, RadioGroupSlots } from './RadioGroup.types';
-import { RadioGroupRoot, useForwardProps, type AcceptableValue } from './reka-ui';
+import { RadioGroupRoot, useForwardProps } from './reka-ui';
 
 defineOptions({ inheritAttrs: false });
 
-const props = withDefaults(defineProps<Omit<RadioGroupProps<T>, 'modelValue'>>(), {
+const props = withDefaults(defineProps<Omit<RadioGroupProps, 'modelValue'>>(), {
 	orientation: 'vertical',
 	disabled: false,
 });
 
 defineSlots<RadioGroupSlots>();
 
-const modelValue = defineModel<T>();
+const modelValue = defineModel<RadioGroupProps['modelValue']>();
 
 const rootProps = useForwardProps(
-	computed(() => ({
-		disabled: props.disabled,
-		orientation: props.orientation,
-		name: props.name,
-		required: props.required,
-		loop: props.loop,
-		dir: props.dir,
-		defaultValue: props.defaultValue,
-	})),
+	reactivePick(props, 'disabled', 'orientation', 'name', 'required', 'loop', 'dir', 'defaultValue'),
 );
 
 // reka-ui selects on arrow keys by listening on window (bubble phase): when roving focus

@@ -1,4 +1,4 @@
-<script setup lang="ts" generic="T extends AcceptableValue = AcceptableValue">
+<script setup lang="ts">
 import { computed, inject, useAttrs, useId } from 'vue';
 
 import { radioGroupArrowKeyPressedKey } from './radio-group-context';
@@ -8,15 +8,15 @@ import {
 	Label,
 	RadioGroupIndicator,
 	RadioGroupItem as RekaRadioGroupItem,
-	type AcceptableValue,
 } from './reka-ui';
 
 defineOptions({ inheritAttrs: false });
 
-const props = defineProps<RadioGroupItemProps<T>>();
+const props = defineProps<RadioGroupItemProps>();
 const slots = defineSlots<RadioGroupItemSlots>();
 const attrs = useAttrs();
-const uuid = computed(() => props.id ?? useId());
+const generatedId = useId();
+const uuid = computed(() => props.id ?? generatedId);
 const groupContext = injectRadioGroupRootContext(null);
 const arrowKeyPressed = inject(radioGroupArrowKeyPressedKey, null);
 const isVertical = computed(() => (groupContext?.orientation.value ?? 'vertical') === 'vertical');
@@ -115,10 +115,7 @@ function onItemFocusIn(event: FocusEvent) {
 		border-color: var(--background--disabled);
 	}
 
-	&:focus-visible {
-		outline: none;
-		@include focus.focus-ring-gap;
-	}
+	@include focus.focus-visible-ring-offset;
 }
 
 .dot {
