@@ -25,7 +25,7 @@ pnpm install
 
 pnpm <anything>
   └─ pnpm shim → runs pnpm.n8n-real, then (backgrounded) →
-       track.mjs  (found by walking up from $PWD) → RudderStack (n8n-dev)
+       track.mjs  (installed copy in ~/.n8n/bin) → RudderStack (n8n-dev)
 ```
 
 - Replaced **in place**, so it works regardless of PATH order. If the binary's
@@ -33,15 +33,17 @@ pnpm <anything>
   dir).
 - `N8N_DEV_SHIM_ACTIVE` guards against double-counting nested calls (e.g.
   `turbo -> pnpm`) and the tracker's own `<bin> --version` probe.
-- The tracker (`track.mjs`) is a committed file found by walking up from `$PWD`,
-  so each checkout uses its own and pnpm runs outside any n8n checkout are
-  ignored. pnpm prompts via `/dev/tty` because it pipes lifecycle-script stdio.
+- The tracker (`track.mjs`) is **copied to `~/.n8n/bin` on each install** and run
+  from there, so it's always the latest committed version regardless of which
+  checkout (or none) you're in. It self-scopes: it checks the monorepo root from
+  the command's cwd, so pnpm runs outside any n8n checkout send nothing. pnpm
+  prompts via `/dev/tty` because it pipes lifecycle-script stdio.
 
 | File | Role |
 | --- | --- |
 | `setup.mjs` | Consent prompt; replaces/restores binaries; `--status`/`--enable`/`--disable`/`--reset`. |
 | `shadow-shim.sh` | Shim template (versioned via `# n8n-shadow-shim-version`); rendered per binary with the binary name, saved-real path, and its dir baked in. |
-| `track.mjs` | Builds the anonymous event and POSTs it to RudderStack (fire-and-forget). |
+| `track.mjs` | Builds the anonymous event and POSTs it to RudderStack (fire-and-forget). Copied to `~/.n8n/bin` on install; the shim runs that copy. |
 | `capture-server.mjs` | Local capture stub for testing — logs every event instead of sending it upstream. |
 
 State lives in `~/.n8n/dev-telemetry.json` (separate from n8n's secret `config`):
@@ -85,7 +87,8 @@ someone who just declined it.
   week**, so individuals cannot be followed across weeks. Weekly unique
   `anonymousId` counts give "how many developers" without identifying anyone.
 - **Scoped.** Only commands run inside an n8n checkout are considered; the
-  wrapper looks for `scripts/dev-metrics/track.mjs` by walking up from `$PWD`.
+  tracker resolves the monorepo root from the command's cwd and sends nothing
+  otherwise.
 - **Non-disruptive.** The tracker runs detached with a 2s network timeout and
   swallows all errors; it can never slow or fail your command.
 

@@ -44,6 +44,7 @@ import { fileURLToPath } from 'node:url';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const SHADOW_SHIM_SRC = join(SCRIPT_DIR, 'shadow-shim.sh');
+const TRACK_SRC = join(SCRIPT_DIR, 'track.mjs');
 const SHIM_MARKER = '# n8n-shadow-shim-version';
 const SAVED_SUFFIX = '.n8n-real';
 
@@ -58,6 +59,28 @@ function n8nDir() {
 
 function statePath() {
 	return join(n8nDir(), 'dev-telemetry.json');
+}
+
+/** Stable copy of the tracker the shim runs — refreshed on each install, so it's
+ * the latest committed version regardless of which checkout you're in. */
+function trackerDest() {
+	return join(n8nDir(), 'bin', 'track.mjs');
+}
+
+function syncTracker() {
+	const dest = trackerDest();
+	const src = readFileSync(TRACK_SRC, 'utf8');
+	let current = '';
+	try {
+		current = readFileSync(dest, 'utf8');
+	} catch {
+		// not installed yet
+	}
+	if (current !== src) {
+		mkdirSync(dirname(dest), { recursive: true });
+		writeFileSync(dest, src);
+	}
+	return dest;
 }
 
 function readState() {
@@ -146,7 +169,8 @@ function writeShim(destPath, realExec, bin) {
 	const rendered = readFileSync(SHADOW_SHIM_SRC, 'utf8')
 		.replaceAll('__N8N_BIN__', bin)
 		.replaceAll('__N8N_REAL__', realExec)
-		.replaceAll('__N8N_BINDIR__', dirname(destPath));
+		.replaceAll('__N8N_BINDIR__', dirname(destPath))
+		.replaceAll('__N8N_TRACKER__', trackerDest());
 	let current = '';
 	try {
 		current = readFileSync(destPath, 'utf8');
@@ -185,6 +209,7 @@ function installOne(bin) {
 }
 
 function installBinaries() {
+	syncTracker();
 	return SHADOWED_BINARIES.map(installOne);
 }
 
@@ -259,8 +284,16 @@ function reset() {
 	} catch {
 		// nothing to remove
 	}
+	let trackerRemoved = false;
+	try {
+		rmSync(trackerDest());
+		trackerRemoved = true;
+	} catch {
+		// not installed
+	}
 	console.log('✓ n8n dev metrics reset to first-run state (consent undecided).');
 	console.log(`  state file: ${stateRemoved ? 'removed' : '(none)'}`);
+	console.log(`  tracker:    ${trackerRemoved ? 'removed' : '(none)'}`);
 	console.log(`  restored:   ${restored.length ? restored.join(', ') : '(nothing)'}`);
 }
 
@@ -272,6 +305,7 @@ function status() {
 		`  weekly id:  ${state?.anonId ?? '(none yet — assigned on first tracked command)'}${state?.week ? ` (week ${state.week})` : ''}`,
 	);
 	console.log(`  shim src:   ${SHADOW_SHIM_SRC}`);
+	console.log(`  tracker:    ${existsSync(trackerDest()) ? trackerDest() : '(not installed)'}`);
 	for (const bin of SHADOWED_BINARIES) {
 		const front = whichOnPath(bin);
 		const shimmed = front && isOurShim(front);

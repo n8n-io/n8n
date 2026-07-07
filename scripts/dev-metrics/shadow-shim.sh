@@ -16,6 +16,7 @@
 __bin='__N8N_BIN__'
 __real='__N8N_REAL__'
 __bindir='__N8N_BINDIR__'
+__tracker='__N8N_TRACKER__' # installed copy of track.mjs, refreshed on each install
 
 # If the baked real binary moved (e.g. corepack/pnpm upgrade), re-resolve it via
 # PATH with our own directory removed — never resolving back to this shim.
@@ -44,18 +45,9 @@ N8N_DEV_SHIM_ACTIVE=1 "$__real" "$@"
 __code=$?
 __end=$(__now_ms)
 
-# Locate the tracker by walking up from the current directory (the n8n checkout).
-__dir=$PWD
-__tracker=
-while [ -n "$__dir" ] && [ "$__dir" != "/" ]; do
-	if [ -f "$__dir/scripts/dev-metrics/track.mjs" ]; then
-		__tracker="$__dir/scripts/dev-metrics/track.mjs"
-		break
-	fi
-	__dir=${__dir%/*}
-done
-
-if [ -n "$__tracker" ] && command -v node >/dev/null 2>&1; then
+# Run the installed tracker (a stable copy in ~/.n8n, not the checkout's) — it
+# self-scopes to n8n checkouts, so we just hand it the cwd and let it decide.
+if [ -f "$__tracker" ] && command -v node >/dev/null 2>&1; then
 	# Background in a subshell so no "[job] PID" notice reaches the terminal.
 	(
 		N8N_DEV_TRACK_BIN="$__bin" \
