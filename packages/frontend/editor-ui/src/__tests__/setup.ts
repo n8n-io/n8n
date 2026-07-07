@@ -108,6 +108,7 @@ class JsonDomPointerEvent extends MouseEvent implements PointerEvent {
 	readonly altitudeAngle: number;
 
 	readonly azimuthAngle: number;
+
 	readonly persistentDeviceId: number;
 
 	constructor(type: string, params: PointerEventInit = {}) {
@@ -452,6 +453,138 @@ XMLHttpRequest.prototype.send = function (this: XMLHttpRequest) {
 		this.dispatchEvent(new Event('loadend'));
 	});
 };
+
+// DEVP-206: leaked-timer guard — make the recurring leaked-timer class
+// deterministic and local (pre-merge), instead of a flaky post-merge crash.
+//
+// Lineage: DEVP-201 (bare-global rAF) → DEVP-206 (CodeMirror leaked timers),
+// the same class the rAF polyfill above defends against. A debounce, interval
+// or timeout scheduled during a test but never cancelled or flushed fires
+// AFTER Vitest 4 tears down the jsdom environment; the callback then reads a
+// revoked global and throws `ReferenceError: document is not defined` /
+// `EnvironmentTeardownError`, which Vitest promotes to a run-level failure.
+// Because editor-ui tests run on real timers, such a leak escapes the PR's own
+// `vitest related` scope and only surfaces — non-deterministically — in the
+// post-merge full suite (e.g. `autoSaveWorkflowDebounced`, a 1500ms debounce,
+// in useWorkflowSaving).
+//
+// The guard puts every test that doesn't manage its own timers onto fake
+// timers, then after the test asserts no non-trivial timer is still pending. A
+// leaked debounce/interval/timeout becomes a reliable RED in the changed file's
+// OWN `vitest related` scope, pre-merge, naming this lineage so the fix lands
+// at the source. (It also drops fake timers in afterEach, so even an unflagged
+// leak can no longer fire post-teardown — the assertion is the signal, the
+// teardown is defence-in-depth.)
+//
+// Blast radius is deliberately kept small — three carve-outs:
+//  1. Only take over when the test is on the DEFAULT (real) timers. If the test
+//     or its file already installed fake timers (e.g. a module-scope
+//     `vi.useFakeTimers({ now })`), we don't clobber that config, don't assert,
+//     and don't restore. Tracked by `guardOwnsTimers`.
+//  2. Stand down the moment a test touches timer control itself. We wrap
+//     `vi.useFakeTimers` / `vi.useRealTimers` so any call from test code flips
+//     `testManagesTimers` and exempts that test — tests that advance/flush and
+//     clean up their own timers (or intentionally leave fake timers pending,
+//     which never crash) are untouched, no edits needed.
+//  3. `shouldAdvanceTime: true` lets the fake clock track real wall-clock, so
+//     tests that await real short async (`setTimeout(0)`, testing-library
+//     `waitFor`) still resolve instead of hanging, and the ~0ms timers the rAF
+//     polyfill / jsdom storage events schedule fire on their own. A short drain
+//     in afterEach mops up any immediate stragglers before the check, so only
+//     timers with a real delay (the smallest debounce in use is 300ms; autosave
+//     is 1500ms) survive to be flagged.
+//
+// Genuine real-timer needs (or an intentional pending timer) opt out via
+// `useRealTimersForTest()` below, rather than us mass-editing every test.
+
+// Bound originals so the guard's own timer calls don't count as the test
+// managing timers (carve-out 2).
+const guardUseFakeTimers = vi.useFakeTimers.bind(vi);
+const guardUseRealTimers = vi.useRealTimers.bind(vi);
+
+let guardOwnsTimers = false;
+let testManagesTimers = false;
+let leakedTimerGuardOptOut = false;
+
+// Detect test code taking over timer control. Same object as `vitest.*`, so
+// tests using either alias are covered.
+vi.useFakeTimers = (...args: Parameters<typeof guardUseFakeTimers>) => {
+	testManagesTimers = true;
+	return guardUseFakeTimers(...args);
+};
+vi.useRealTimers = () => {
+	testManagesTimers = true;
+	return guardUseRealTimers();
+};
+
+// How far we advance the fake clock in afterEach to drain benign, immediate
+// environment timers before checking for leaks. Kept far below the smallest
+// real debounce/interval delay (300ms) so genuine leaks still survive the drain.
+const LEAKED_TIMER_DRAIN_MS = 5;
+
+/**
+ * Opt a single test out of the DEVP-206 leaked-timer guard: switch back to real
+ * timers (so real async keeps working) and skip the pending-timer assertion for
+ * the current test. Call at the top of the test or a scoped `beforeEach`:
+ *
+ *   import { useRealTimersForTest } from '@/__tests__/setup';
+ *   it('waits on real async', async () => {
+ *     useRealTimersForTest();
+ *     // ...
+ *   });
+ */
+export function useRealTimersForTest() {
+	leakedTimerGuardOptOut = true;
+	guardUseRealTimers();
+}
+
+beforeEach(() => {
+	leakedTimerGuardOptOut = false;
+	testManagesTimers = false;
+	// Carve-out 1: only take over when nothing else already installed fake
+	// timers (e.g. a module-scope `vi.useFakeTimers`). Otherwise leave that
+	// config — and its clock — untouched.
+	guardOwnsTimers = !vi.isFakeTimers();
+	if (guardOwnsTimers) {
+		guardUseFakeTimers({ shouldAdvanceTime: true });
+	}
+});
+
+afterEach(() => {
+	// Nothing to do (and nothing to restore) unless the guard installed the
+	// fake timers for this test.
+	if (!guardOwnsTimers) return;
+	try {
+		// Carve-outs 2 & 3: skip when the test took timer control itself or opted
+		// out — its timers aren't ours to police.
+		if (!leakedTimerGuardOptOut && !testManagesTimers && vi.isFakeTimers()) {
+			// Drain the benign, immediate (~0ms) timers the environment schedules
+			// on its own — jsdom's `storage` event dispatch on Storage.setItem, the
+			// rAF polyfill above (setTimeout(cb, 0)), microtask shims — which would
+			// otherwise trip the assertion in almost every test. jsdom is still
+			// alive here so these fire harmlessly. The window is well under any real
+			// debounce delay, so a genuinely leaked debounce/interval survives and
+			// is still flagged below.
+			vi.advanceTimersByTime(LEAKED_TIMER_DRAIN_MS);
+			const leaked = vi.getTimerCount();
+			if (leaked > 0) {
+				throw new Error(
+					`DEVP-206 leaked-timer guard: ${leaked} timer(s) still pending after the test. A ` +
+						'debounce/interval/timeout was scheduled but never cancelled or flushed. Left ' +
+						'leaked, it fires after jsdom teardown and crashes an unrelated test ' +
+						'(ReferenceError: document is not defined / EnvironmentTeardownError). This is the ' +
+						'recurring leaked-timer class (lineage DEVP-201 → DEVP-206). Fix it at the source ' +
+						'(cancel the timer on scope dispose / in an afterEach), or, if the test legitimately ' +
+						'needs real timers, opt out with useRealTimersForTest() from \'@/__tests__/setup\'.',
+				);
+			}
+		}
+	} finally {
+		// Always drop the fake timers we installed so nothing bleeds into the
+		// next test (and no leaked timer can fire post-teardown).
+		guardUseRealTimers();
+	}
+});
 
 // DEVP-209: Vite emits Vue SFC `<style module lang="scss">` blocks as virtual
 // modules (e.g. `Foo.vue?vue&type=style&index=0&lang.module.scss`). The SCSS
