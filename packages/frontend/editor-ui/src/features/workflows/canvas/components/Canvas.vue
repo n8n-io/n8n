@@ -53,7 +53,7 @@ import type {
 import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
 import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
-import { NodeConnectionTypes, type IConnections } from 'n8n-workflow';
+import { NodeConnectionTypes, type IConnections, type IWorkflowGroup } from 'n8n-workflow';
 import type { CanvasRenderData } from '../canvas.utils';
 import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
 import {
@@ -405,6 +405,7 @@ function onNodeGroupTitleFocused(groupId: string) {
 const {
 	canGroup: canGroupSelection,
 	canUngroup: canUngroupSelection,
+	groupNodes,
 	groupSelection,
 	renameGroup,
 	ungroup,
@@ -415,11 +416,15 @@ const {
 
 const groupTelemetry = useCanvasNodeGroupTelemetry();
 
+function handleGroupCreated(group: IWorkflowGroup, source: CanvasNodeGroupEventSource) {
+	autofocusGroupTitleId.value = group.id;
+	groupTelemetry.trackGrouped(group, source);
+}
+
 function onKeyboardGroup() {
 	const group = groupSelection();
 	if (group) {
-		autofocusGroupTitleId.value = group.id;
-		groupTelemetry.trackGrouped(group, 'keyboard-shortcut');
+		handleGroupCreated(group, 'keyboard-shortcut');
 	}
 }
 
@@ -1126,6 +1131,13 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 			return await onTidyUp({ source: 'context-menu' });
 		case 'extract_sub_workflow':
 			return emit('extract-workflow', nodeIds);
+		case 'group_nodes': {
+			const group = groupNodes(nodeIds);
+			if (group) {
+				handleGroupCreated(group, 'context-menu');
+			}
+			return;
+		}
 		case 'open_sub_workflow': {
 			return emit('open:sub-workflow', nodeIds[0]);
 		}

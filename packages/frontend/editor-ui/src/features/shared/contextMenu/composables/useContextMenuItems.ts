@@ -3,8 +3,10 @@ import {
 	NOT_DUPLICATABLE_NODE_TYPES,
 	STICKY_NODE_TYPE,
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
+	CANVAS_NODES_GROUPING_EXPERIMENT,
 } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
@@ -17,6 +19,7 @@ import { computed, type ComputedRef } from 'vue';
 import { isPresent } from '@/app/utils/typesUtils';
 import { useEditorContext } from '@/app/composables/useEditorContext';
 import { usePinnedData } from '@/app/composables/usePinnedData';
+import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 export type ContextMenuAction =
@@ -39,6 +42,7 @@ export type ContextMenuAction =
 	| 'open_sub_workflow'
 	| 'tidy_up'
 	| 'extract_sub_workflow'
+	| 'group_nodes'
 	| 'focus_ai_on_selected';
 
 /**
@@ -62,6 +66,8 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 	const sourceControlStore = useSourceControlStore();
 	const collaborationStore = useCollaborationStore();
 	const focusedNodesStore = useFocusedNodesStore();
+	const posthogStore = usePostHog();
+	const { isSelectionGroupable, expandSelectionWithSubNodes } = useSelectionValidation();
 	const i18n = useI18n();
 
 	// Per-editor host overrides (already ANDed with the instance-wide store
@@ -97,6 +103,18 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 			.map((nodeId) => workflowDocumentStore?.value?.getNodeById(nodeId))
 			.filter(isPresent),
 	);
+
+	const isNodeGroupingEnabled = computed(() =>
+		posthogStore.isFeatureEnabled(CANVAS_NODES_GROUPING_EXPERIMENT.name),
+	);
+
+	// Mirrors the Cmd+G eligibility: expand the selection with attached AI
+	// sub-nodes, then validate it as a groupable subgraph.
+	const canGroupTargetNodes = computed(() => {
+		if (targetNodes.value.length === 0) return false;
+		const expandedIds = expandSelectionWithSubNodes(targetNodes.value.map((node) => node.id));
+		return isSelectionGroupable(expandedIds).valid;
+	});
 
 	const canAddNodeOfType = (nodeType: INodeTypeDescription) => {
 		const sameTypeNodes = (workflowDocumentStore?.value?.allNodes ?? []).filter(
@@ -185,6 +203,19 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 			},
 		];
 
+		const groupingActions: Item[] = isNodeGroupingEnabled.value
+			? [
+					{
+						id: 'group_nodes',
+						// Starts its own section when the extraction item above is hidden
+						divided: !canExtract,
+						label: i18n.baseText('contextMenu.group', { adjustToNumber: nodes.length }),
+						shortcut: { metaKey: true, keys: ['G'] },
+						disabled: isReadOnly.value || !canGroupTargetNodes.value,
+					},
+				]
+			: [];
+
 		const aiActions: Item[] = [
 			!onlyStickies &&
 				(aiAssistant.value || aiBuilder.value) &&
@@ -261,6 +292,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 				},
 				...layoutActions,
 				...(canExtract ? extractionActions : []),
+				...groupingActions,
 				...aiActions,
 				...selectionActions,
 				{

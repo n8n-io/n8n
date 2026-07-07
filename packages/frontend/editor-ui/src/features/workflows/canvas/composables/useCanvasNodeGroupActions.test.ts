@@ -42,11 +42,11 @@ describe('useCanvasNodeGroupActions', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-test'));
-		isSelectionGroupableMock.mockReturnValue({
+		isSelectionGroupableMock.mockClear().mockReturnValue({
 			valid: true,
 			subGraphData: { start: 'A', end: 'B' },
 		});
-		expandSelectionWithSubNodesMock.mockImplementation((ids: string[]) => ids);
+		expandSelectionWithSubNodesMock.mockClear().mockImplementation((ids: string[]) => ids);
 	});
 
 	describe('canGroup', () => {
@@ -58,6 +58,12 @@ describe('useCanvasNodeGroupActions', () => {
 				},
 			);
 			expect(canGroup.value).toBe(false);
+		});
+
+		it('is false when the selection is empty', () => {
+			const { canGroup } = useCanvasNodeGroupActions(computed(() => []));
+			expect(canGroup.value).toBe(false);
+			expect(isSelectionGroupableMock).not.toHaveBeenCalled();
 		});
 
 		it('is true when validation succeeds and no node is grouped', () => {
@@ -88,7 +94,69 @@ describe('useCanvasNodeGroupActions', () => {
 		});
 	});
 
+	describe('groupNodes', () => {
+		it('creates a group from the given ids expanded with sub-nodes, independently of the selection', () => {
+			expandSelectionWithSubNodesMock.mockImplementation((ids: string[]) => [...ids, 'memory']);
+			const { groupNodes } = useCanvasNodeGroupActions(
+				computed(() => [createCanvasGraphNode({ id: 'unrelated-selection' })]),
+			);
+
+			const group = groupNodes(['a', 'agent']);
+
+			expect(expandSelectionWithSubNodesMock).toHaveBeenCalledWith(['a', 'agent']);
+			expect(group?.nodeIds).toEqual(['a', 'agent', 'memory']);
+			expect(workflowDocumentStore.allGroups).toHaveLength(1);
+		});
+
+		it('returns null for an empty id list without validating', () => {
+			const { groupNodes } = useCanvasNodeGroupActions(computed(() => []));
+
+			expect(groupNodes([])).toBeNull();
+			expect(isSelectionGroupableMock).not.toHaveBeenCalled();
+			expect(workflowDocumentStore.allGroups).toHaveLength(0);
+		});
+
+		it('returns null in read-only mode', () => {
+			const { groupNodes } = useCanvasNodeGroupActions(
+				computed(() => []),
+				{
+					readOnly: () => true,
+				},
+			);
+
+			expect(groupNodes(['a', 'b'])).toBeNull();
+			expect(workflowDocumentStore.allGroups).toHaveLength(0);
+		});
+
+		it('returns null when validation rejects the nodes', () => {
+			isSelectionGroupableMock.mockReturnValue({ valid: false, reason: 'invalid-subgraph' });
+			const { groupNodes } = useCanvasNodeGroupActions(computed(() => []));
+
+			expect(groupNodes(['a', 'b'])).toBeNull();
+			expect(workflowDocumentStore.allGroups).toHaveLength(0);
+		});
+
+		it('records an AddNodeGroupCommand when a group is created', () => {
+			const historyStore = useHistoryStore();
+			const { groupNodes } = useCanvasNodeGroupActions(computed(() => []));
+
+			const group = groupNodes(['a', 'b']);
+
+			expect(historyStore.undoStack).toHaveLength(1);
+			const command = historyStore.undoStack[0];
+			expect(command).toBeInstanceOf(AddNodeGroupCommand);
+			expect((command as AddNodeGroupCommand).group).toEqual(group);
+		});
+	});
+
 	describe('groupSelection', () => {
+		it('returns null when the selection is empty', () => {
+			const { groupSelection } = useCanvasNodeGroupActions(computed(() => []));
+
+			expect(groupSelection()).toBeNull();
+			expect(workflowDocumentStore.allGroups).toHaveLength(0);
+		});
+
 		it('creates a group from the expanded selection', () => {
 			expandSelectionWithSubNodesMock.mockImplementation((ids: string[]) => [...ids, 'memory']);
 			const { groupSelection } = useCanvasNodeGroupActions(
