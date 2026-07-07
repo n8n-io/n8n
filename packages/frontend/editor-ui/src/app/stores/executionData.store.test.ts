@@ -1441,6 +1441,29 @@ describe('executionData.store', () => {
 			});
 		});
 
+		it('keeps the slot reference when an update leaves the aggregation unchanged', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const node = createTestNode({ id: 'node-1', name: 'Node 1' });
+
+			setExecutionWithSnapshot(store, {
+				nodes: [node],
+				runData: { 'Node 1': [createTask(2)] },
+			});
+			const slotBefore = store.executionRunDataOutputMapByNodeId.get('node-1');
+
+			// Replacing a placeholder task with real data of identical item counts
+			// (the common nodeExecuteAfterData backfill) must not swap the slot
+			// reference — consumers gate invalidation on slot identity.
+			store.updateNodeExecutionRunData({
+				executionId: 'exec-1',
+				nodeName: 'Node 1',
+				data: { ...createTask(2), executionStatus: 'success' },
+				itemCountByConnectionType: {},
+			} as never);
+
+			expect(store.executionRunDataOutputMapByNodeId.get('node-1')).toBe(slotBefore);
+		});
+
 		it('keeps other node slots referentially stable when one node updates', () => {
 			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
 			const nodeA = createTestNode({ id: 'node-a', name: 'Node A' });

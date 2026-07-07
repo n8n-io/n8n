@@ -128,6 +128,37 @@ describe('executions.store', () => {
 			expect(params.filter?.workflowId).toBeUndefined();
 		});
 
+		it('queues a trailing re-fetch instead of dropping an overlapping refresh', async () => {
+			await executionsStore.startAutoRefreshInterval();
+
+			let resolveFirst!: (value: unknown) => void;
+			vi.mocked(makeRestApiRequest)
+				.mockImplementationOnce(
+					async () =>
+						await new Promise((resolve) => {
+							resolveFirst = resolve;
+						}),
+				)
+				.mockResolvedValue({
+					count: 0,
+					results: [],
+					estimated: false,
+					concurrentExecutionsCount: 0,
+				});
+
+			const first = executionsStore.refreshExecutionsListNow();
+			const second = executionsStore.refreshExecutionsListNow();
+
+			// The overlapping call did not start a concurrent fetch.
+			expect(makeRestApiRequest).toHaveBeenCalledTimes(1);
+
+			resolveFirst({ count: 0, results: [], estimated: false, concurrentExecutionsCount: 0 });
+			await Promise.all([first, second]);
+
+			// It was queued as a trailing re-fetch, not dropped.
+			expect(makeRestApiRequest).toHaveBeenCalledTimes(2);
+		});
+
 		it('uses the poller workflow scope and ignores events for other workflows', async () => {
 			await executionsStore.startAutoRefreshInterval('wf-1');
 

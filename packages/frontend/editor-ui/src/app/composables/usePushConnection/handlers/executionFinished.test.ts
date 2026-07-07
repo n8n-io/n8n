@@ -636,8 +636,14 @@ describe('executionFinished', () => {
 			},
 			opts,
 		);
+		await flushPromises();
 
 		expect(fetchSpy).toHaveBeenCalledWith('exec-x');
+		// The slot is still pending (null) when the fetch resolves. Since this
+		// finish already matched the pending slot at dispatch, it must be treated
+		// as ours — not as a newer run — so the failed fetch clears the active
+		// execution instead of leaving the document stuck in the running state.
+		expect(workflowExecutionStateStore.setActiveExecutionId).toHaveBeenCalledWith(undefined);
 	});
 
 	it('keeps fetched execution pin data available after a live execution finishes', async () => {

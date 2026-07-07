@@ -800,8 +800,16 @@ describe('Execution Lifecycle Hooks', () => {
 					source: [],
 					data: { main: [[{ json: { key: 'value' } }]] },
 				};
+				// Prior run data makes the executionStarted path actually resolve
+				// the user (retry/resume redaction), not just the node events.
+				const executionDataWithPriorRun = createRunExecutionData({
+					resultData: { runData: { [nodeName]: [mockTaskData] } },
+				});
 
-				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+				await lifecycleHooks.runHook('workflowExecuteBefore', [
+					workflow,
+					executionDataWithPriorRun,
+				]);
 				await lifecycleHooks.runHook('nodeExecuteAfter', [
 					nodeName,
 					mockTaskData,
@@ -815,6 +823,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 				// The eager warm-up at hook setup is the only lookup; every awaiter reuses it.
 				expect(userRepository.findOne).toHaveBeenCalledTimes(1);
+				expect(redactionProxy.processExecution).toHaveBeenCalledTimes(3);
 			});
 
 			it('should retry the user lookup after a failed attempt', async () => {
@@ -823,6 +832,9 @@ describe('Execution Lifecycle Hooks', () => {
 					.mockRejectedValueOnce(new Error('lookup failed'))
 					.mockResolvedValue(mock<User>());
 				lifecycleHooks = createHooks(); // warm-up consumes the rejection
+				// Drain the warm-up rejection deterministically so the retry below
+				// doesn't depend on incidental microtask ordering of other handlers.
+				await vi.advanceTimersByTimeAsync(0);
 
 				const mockTaskData: ITaskData = {
 					startTime: 1,

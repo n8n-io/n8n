@@ -206,6 +206,30 @@ export const useExecutionsStore = defineStore('executions', () => {
 		return response ? unflattenExecutionData(response) : undefined;
 	}
 
+	// Serializes all automated list fetches (poll ticks and push-triggered
+	// refreshes). Two concurrent fetches can resolve out of order and let the
+	// staler response win; instead of racing, an overlapping request queues a
+	// trailing re-fetch so its newer state is still picked up.
+	let listFetchInFlight = false;
+	let listFetchQueued = false;
+
+	async function fetchExecutionsSerialized(filter: ExecutionsQueryFilter) {
+		if (listFetchInFlight) {
+			listFetchQueued = true;
+			return;
+		}
+
+		listFetchInFlight = true;
+		try {
+			do {
+				listFetchQueued = false;
+				await fetchExecutions(filter);
+			} while (listFetchQueued);
+		} finally {
+			listFetchInFlight = false;
+		}
+	}
+
 	async function loadAutoRefresh(workflowId?: string): Promise<void> {
 		const autoRefreshExecutionFilters = {
 			...executionsFilters.value,
@@ -214,7 +238,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 		autoRefreshTimeout.value = setTimeout(async () => {
 			if (autoRefresh.value) {
-				await fetchExecutions(autoRefreshExecutionFilters);
+				await fetchExecutionsSerialized(autoRefreshExecutionFilters);
 				void startAutoRefreshInterval(workflowId);
 			}
 		}, autoRefreshDelay.value);
@@ -233,8 +257,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 		}
 	}
 
-	let pushRefreshInFlight = false;
-
 	/**
 	 * Refreshes the executions list immediately in response to an execution
 	 * push event instead of waiting for the next auto-refresh tick. No-op
@@ -251,17 +273,11 @@ export const useExecutionsStore = defineStore('executions', () => {
 		) {
 			return;
 		}
-		if (pushRefreshInFlight) return;
 
-		pushRefreshInFlight = true;
-		try {
-			await fetchExecutions({
-				...executionsFilters.value,
-				...(autoRefreshWorkflowId.value ? { workflowId: autoRefreshWorkflowId.value } : {}),
-			});
-		} finally {
-			pushRefreshInFlight = false;
-		}
+		await fetchExecutionsSerialized({
+			...executionsFilters.value,
+			...(autoRefreshWorkflowId.value ? { workflowId: autoRefreshWorkflowId.value } : {}),
+		});
 	}
 
 	async function annotateExecution(
