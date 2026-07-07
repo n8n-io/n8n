@@ -133,7 +133,7 @@ describe('formCompletionUtils', () => {
 				formTitle: 'Form Title',
 				message: 'Form has been submitted successfully',
 				redirectUrl: undefined,
-				responseBinary: encodeURIComponent(JSON.stringify('')),
+				responseBinary: encodeURIComponent(JSON.stringify([])),
 				responseText: '',
 				title: 'Form Completion',
 			});
@@ -220,7 +220,7 @@ describe('formCompletionUtils', () => {
 				formTitle: 'Form Title',
 				message: 'Safe message<b>bold</b>',
 				redirectUrl: undefined,
-				responseBinary: encodeURIComponent(JSON.stringify('')),
+				responseBinary: encodeURIComponent(JSON.stringify([])),
 				responseText: 'Response text',
 				title: 'Form Completion',
 				dangerousCustomCss: undefined,
@@ -252,7 +252,7 @@ describe('formCompletionUtils', () => {
 				formTitle: 'Form Title',
 				message: `Some message${replacement}Other text`,
 				redirectUrl: undefined,
-				responseBinary: encodeURIComponent(JSON.stringify('')),
+				responseBinary: encodeURIComponent(JSON.stringify([])),
 				responseText: 'Response text',
 				title: 'Form Completion',
 				dangerousCustomCss: undefined,
@@ -330,11 +330,13 @@ describe('formCompletionUtils', () => {
 					message: 'Form has been submitted successfully',
 					redirectUrl: undefined,
 					responseBinary: encodeURIComponent(
-						JSON.stringify({
-							data: buffer,
-							fileName: expectedBinaryResponse.inputData.fileName,
-							type: expectedBinaryResponse.inputData.mimeType,
-						}),
+						JSON.stringify([
+							{
+								data: buffer,
+								fileName: expectedBinaryResponse.inputData.fileName,
+								type: expectedBinaryResponse.inputData.mimeType,
+							},
+						]),
 					),
 					responseText: '',
 					title: 'Form Completion',
@@ -384,11 +386,13 @@ describe('formCompletionUtils', () => {
 					message: 'Form has been submitted successfully',
 					redirectUrl: undefined,
 					responseBinary: encodeURIComponent(
-						JSON.stringify({
-							data: atob(expectedBinaryResponse.inputData.data),
-							fileName: expectedBinaryResponse.inputData.fileName,
-							type: expectedBinaryResponse.inputData.mimeType,
-						}),
+						JSON.stringify([
+							{
+								data: atob(expectedBinaryResponse.inputData.data),
+								fileName: expectedBinaryResponse.inputData.fileName,
+								type: expectedBinaryResponse.inputData.mimeType,
+							},
+						]),
 					),
 					responseText: '',
 					title: 'Form Completion',
@@ -524,11 +528,13 @@ describe('formCompletionUtils', () => {
 
 			const result = await binaryResponse(mockWebhookFunctions);
 
-			expect(result).toEqual({
-				data: atob(expectedBinaryResponse.inputData.data),
-				fileName: expectedBinaryResponse.inputData.fileName,
-				type: expectedBinaryResponse.inputData.mimeType,
-			});
+			expect(result).toEqual([
+				{
+					data: atob(expectedBinaryResponse.inputData.data),
+					fileName: expectedBinaryResponse.inputData.fileName,
+					type: expectedBinaryResponse.inputData.mimeType,
+				},
+			]);
 		});
 	});
 });
