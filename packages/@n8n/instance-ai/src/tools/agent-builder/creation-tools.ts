@@ -190,8 +190,8 @@ export function createListWorkflowsTool(context: InstanceAiContext) {
 		.description(
 			'List the n8n workflows that can be attached as tools via `type: "workflow"` in the agent ' +
 				'config. Workflows are the preferred way to give agents real capabilities (sending emails, ' +
-				'creating calendar events, querying databases, calling APIs). Only returns workflows with ' +
-				'supported trigger types.',
+				'creating calendar events, querying databases, calling APIs). Returns up to 100 most ' +
+				'recently updated workflows with supported trigger types.',
 		)
 		.input(z.object({}))
 		.handler(async () => {

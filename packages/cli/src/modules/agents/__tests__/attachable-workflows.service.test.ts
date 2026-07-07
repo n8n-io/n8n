@@ -74,4 +74,48 @@ describe('AttachableWorkflowsService', () => {
 
 		expect(await service.list(user, 'project-1')).toEqual([]);
 	});
+
+	it('caps the result at 100 most recently updated workflows', async () => {
+		const { service, workflowFinderService, user } = setup();
+		workflowFinderService.findAllWorkflowsForUser.mockResolvedValue(
+			Array.from({ length: 150 }, (_, i) =>
+				wf({
+					id: `wf-${i}`,
+					name: `Workflow ${i}`,
+					nodes: [manualTrigger],
+					updatedAt: new Date(Date.UTC(2026, 0, 1, 0, 0, i)),
+				}),
+			),
+		);
+
+		const result = await service.list(user, 'project-1');
+
+		expect(result).toHaveLength(100);
+		// Sorted by updatedAt desc — the newest (highest index) comes first and
+		// the 50 oldest fall off the end.
+		expect(result[0].name).toBe('Workflow 149');
+		expect(result[99].name).toBe('Workflow 50');
+	});
+
+	it('applies the cap after trigger filtering, not before', async () => {
+		const { service, workflowFinderService, user } = setup();
+		// 170 workflows interleaved: indices divisible by 17 have no trigger
+		// (10 of them land in the newest 170), the rest have a manual trigger.
+		const workflows = Array.from({ length: 170 }, (_, i) =>
+			wf({
+				id: `wf-${i}`,
+				name: `Workflow ${i}`,
+				nodes: i % 17 === 0 ? [noTrigger] : [manualTrigger],
+				updatedAt: new Date(Date.UTC(2026, 0, 1, 0, 0, i)),
+			}),
+		);
+		workflowFinderService.findAllWorkflowsForUser.mockResolvedValue(workflows);
+
+		const result = await service.list(user, 'project-1');
+
+		// 160 trigger-bearing workflows exist; a cap applied before filtering
+		// would waste slots on the no-trigger entries and return fewer than 100.
+		expect(result).toHaveLength(100);
+		expect(result.every((w) => w.triggerType === 'manual')).toBe(true);
+	});
 });

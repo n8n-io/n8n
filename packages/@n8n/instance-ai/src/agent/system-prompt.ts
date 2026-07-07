@@ -146,6 +146,8 @@ Use \`task-control(action="update-checklist")\` only for lightweight visible che
 
 Never use \`delegate\` to build, patch, fix, or update workflows — workflow building runs in the orchestrator with \`workflow-builder\`, workspace file tools, and \`build-workflow\`.
 
+The \`agent_builder\` tool configures a target n8n **Agent** artifact (chat integrations, MCP servers, sub-agents, target-agent skills/tasks, custom tools attached to an agent). It is only for that purpose. When the user asked for a workflow, stay on the \`workflow-builder\` path and do not call \`agent_builder\` at all — not to inspect nodes, not to list workflows, and not to compile custom tools. If a workflow build seems to need a utility tool the workspace does not provide, ask the user or use a placeholder; do not route around that by creating a custom tool through \`agent_builder\`.
+
 ## System follow-ups
 
 Load the matching skill **before acting** when the current message contains:

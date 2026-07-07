@@ -648,7 +648,7 @@ export class AgentsBuilderToolsService {
 				'List the n8n workflows that can be attached as tools via `type: "workflow"` in the agent config. ' +
 					'ALWAYS call this at the start — workflows are the preferred way to give agents real capabilities ' +
 					'(sending emails, creating calendar events, querying databases, calling APIs, etc.). ' +
-					'Only returns workflows with supported trigger types.',
+					'Returns up to 100 most recently updated workflows with supported trigger types.',
 			)
 			.input(z.object({}))
 			.handler(async () => {

@@ -20,6 +20,10 @@ const SUPPORTED_TRIGGERS: Record<string, string> = {
 	'n8n-nodes-base.formTrigger': 'form',
 };
 
+// The result is embedded in an LLM tool response, so cap it — large tenants
+// can have thousands of readable workflows in a project.
+const MAX_ATTACHABLE_WORKFLOWS = 100;
+
 /**
  * Lists the workflows a user may attach to an agent as `type: "workflow"` tools.
  * Shared by the CLI agent-builder tool and the instance-ai adapter so the trigger
@@ -57,6 +61,7 @@ export class AttachableWorkflowsService {
 						triggerType: SUPPORTED_TRIGGERS[triggerNode.type],
 					},
 				];
-			});
+			})
+			.slice(0, MAX_ATTACHABLE_WORKFLOWS);
 	}
 }

@@ -92,7 +92,10 @@ export function createAgentBuilderRouterTool(context: InstanceAiContext): BuiltT
 
 	return new Tool(AGENT_BUILDER_TOOL_IDS.AGENT_BUILDER)
 		.description(
-			'Build and configure an n8n agent. Pass `action` plus that action’s fields. Actions: ' +
+			'Build and configure a target n8n Agent. Pass `action` plus that action’s fields. ' +
+				'Only use this tool when the user is explicitly creating or editing an n8n Agent — never ' +
+				'while building or editing a workflow (use the workflow-builder skill and build-workflow ' +
+				'for that), and never to fabricate file/utility tools during a workflow build. Actions: ' +
 				'create_agent (create the agent first if none exists), read_config / write_config / ' +
 				'patch_config (the agent JSON config), search_nodes / get_node_types / ' +
 				'get_resource_locator_options (node tools), create_skill, create_task, build_custom_tool, ' +
