@@ -253,4 +253,19 @@ describe('DurableEventLog', () => {
 		expect(blocks).toHaveLength(1);
 		expect(blocks[0].event.payload).toEqual({ text: 'tail of a streamed answer' });
 	});
+	it('clearThread drops the stale seq cache so a reused thread reseeds from the DB', async () => {
+		const repo = new FakeRepo();
+		const { log } = buildLog(repo);
+		await publishAll(log, [toolCall('tc-1'), toolCall('tc-2')]);
+		expect(repo.rows.map((r) => r.seq)).toEqual([1, 2]);
+
+		// Thread deleted: rows cascade away, the log's per-thread state clears.
+		repo.rows = [];
+		log.clearThread(THREAD);
+
+		// A later publish for the (re)created thread starts clean at seq 1,
+		// with no conflict retries against the stale cached counter.
+		await publishAll(log, [toolCall('tc-3')]);
+		expect(repo.rows.map((r) => r.seq)).toEqual([1]);
+	});
 });

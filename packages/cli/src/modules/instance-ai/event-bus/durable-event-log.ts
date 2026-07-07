@@ -101,6 +101,28 @@ export class DurableEventLog {
 	}
 
 	/**
+	 * Drop per-thread drain state (seq cache, pending queue, open buffers,
+	 * emitter). Called when a thread is cleared or deleted: a straggler publish
+	 * after deletion would otherwise append against a stale seq cache and burn
+	 * the retry loop on the thread FK, and the per-thread maps would grow
+	 * unbounded across a long-lived process.
+	 */
+	clearThread(threadId: string): void {
+		this.pendingByThread.delete(threadId);
+		this.lastSeq.delete(threadId);
+		this.buffers.delete(threadId);
+		this.emitters.delete(threadId);
+	}
+
+	/** Drop all per-thread drain state. Used during module shutdown. */
+	clear(): void {
+		this.pendingByThread.clear();
+		this.lastSeq.clear();
+		this.buffers.clear();
+		this.emitters.clear();
+	}
+
+	/**
 	 * Await the thread's in-flight drain, then persist any still-open coalesce
 	 * buffers as blocks so streamed text survives a shutdown mid-segment.
 	 */

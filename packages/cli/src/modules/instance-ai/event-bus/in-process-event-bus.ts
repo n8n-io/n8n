@@ -175,6 +175,7 @@ export class InProcessEventBus implements InstanceAiEventBus {
 		this.store.delete(threadId);
 		this.sizeBytes.delete(threadId);
 		this.nextId.delete(threadId);
+		this.eventLog.clearThread(threadId);
 		this.emitter.removeAllListeners(threadId);
 	}
 
@@ -183,6 +184,7 @@ export class InProcessEventBus implements InstanceAiEventBus {
 		this.store.clear();
 		this.sizeBytes.clear();
 		this.nextId.clear();
+		this.eventLog.clear();
 		this.emitter.removeAllListeners();
 	}
 
