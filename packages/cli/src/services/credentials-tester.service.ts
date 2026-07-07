@@ -316,6 +316,46 @@ export class CredentialsTester {
 	}
 
 	/**
+	 * Decide an auth-probe outcome from a failed probe request. The routing
+	 * engine wraps HTTP failures in NodeApiError — the status lives in the
+	 * string `httpCode` (and `context.data.status`), NOT in `cause.response`,
+	 * which only appears on raw axios errors. Only an explicit auth rejection
+	 * (401/403, minus service-declared accepted codes) fails the probe: any
+	 * other response means the endpoint accepted the credential (it may still
+	 * dislike the method or path), and transport-level or unknown failures are
+	 * inconclusive — never block the save on them.
+	 */
+	private resolveAuthProbeVerdict(
+		error: {
+			httpCode?: unknown;
+			context?: { data?: { status?: unknown } };
+			cause?: { response?: { status?: unknown }; code?: unknown };
+		},
+		acceptedStatusCodes?: number[],
+	): INodeCredentialTestResult {
+		const statusCode =
+			Number(error.httpCode) ||
+			Number(error.context?.data?.status) ||
+			Number(error.cause?.response?.status) ||
+			undefined;
+
+		if (statusCode) {
+			const isRejection =
+				(statusCode === 401 || statusCode === 403) && !acceptedStatusCodes?.includes(statusCode);
+			if (isRejection) {
+				return {
+					status: 'Error',
+					message: `The service rejected the credential (HTTP ${statusCode}). Check the key and try again.`,
+				};
+			}
+			return { status: 'OK', message: 'Connection successful!' };
+		}
+
+		this.logger.debug('Credential auth probe inconclusive', error);
+		return { status: 'OK', message: 'Could not reach the service to verify the credential.' };
+	}
+
+	/**
 	 * Execute a request-based credential test through the declarative routing
 	 * engine. The `authProbe` verdict treats only 401/403 as rejection and an
 	 * unreachable service as inconclusive (OK) — used for ad-hoc probes of
@@ -432,6 +472,9 @@ export class CredentialsTester {
 			response = await routingNode.runNode();
 		} catch (error) {
 			this.errorReporter.error(error);
+			if (verdict === 'authProbe') {
+				return this.resolveAuthProbeVerdict(error, acceptedStatusCodes);
+			}
 			// Do not fail any requests to allow custom error messages and
 			// make logic easier
 			if (error.cause?.response) {
@@ -439,24 +482,6 @@ export class CredentialsTester {
 					statusCode: error.cause.response.status,
 					statusMessage: error.cause.response.statusText,
 				};
-
-				if (verdict === 'authProbe') {
-					// Only an explicit auth rejection fails the probe — any other
-					// response means the endpoint accepted the credential (it may
-					// still dislike the method or path). A service known to answer
-					// 401/403 even to valid credentials can declare those codes as
-					// accepted — the declaration can only relax the verdict.
-					const isRejection =
-						(errorResponseData.statusCode === 401 || errorResponseData.statusCode === 403) &&
-						!acceptedStatusCodes?.includes(errorResponseData.statusCode);
-					if (isRejection) {
-						return {
-							status: 'Error',
-							message: `The service rejected the credential (HTTP ${errorResponseData.statusCode}). Check the key and try again.`,
-						};
-					}
-					return { status: 'OK', message: 'Connection successful!' };
-				}
 
 				if (credentialTestFunction.testRequest.rules) {
 					// Special testing rules are defined so check all in order
@@ -482,22 +507,12 @@ export class CredentialsTester {
 					};
 				}
 			} else if (error.cause?.code) {
-				if (verdict === 'authProbe') {
-					// Unreachable service — inconclusive, never block the save on it.
-					return {
-						status: 'OK',
-						message: 'Could not reach the service to verify the credential.',
-					};
-				}
 				return {
 					status: 'Error',
 					message: error.cause.code,
 				};
 			}
 			this.logger.debug('Credential test failed', error);
-			if (verdict === 'authProbe') {
-				return { status: 'OK', message: 'Could not verify the credential.' };
-			}
 			return {
 				status: 'Error',
 				message: error.message.toString(),

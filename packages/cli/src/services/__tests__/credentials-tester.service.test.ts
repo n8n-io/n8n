@@ -1,5 +1,11 @@
 import { RoutingNode } from 'n8n-core';
-import type { ICredentialType, INodeType, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import type {
+	ICredentialType,
+	INode,
+	INodeType,
+	IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -293,6 +299,68 @@ describe('CredentialsTester', () => {
 
 		it('accepts a declared service-specific status code instead of rejecting on it', async () => {
 			mockRoutingNodeResult({ reject: httpError(401) });
+
+			const result = await credentialsTester.probeCredentialAuth(
+				'user-id',
+				'httpHeaderAuth',
+				credentials(),
+				targetUrl,
+				{ acceptedStatusCodes: [401] },
+			);
+
+			expect(result.status).toBe('OK');
+		});
+
+		// The routing engine wraps HTTP failures in NodeApiError: the status is
+		// the string `httpCode` (plus context.data.status) — NOT cause.response,
+		// which only raw axios errors carry. A wrong Replicate key probed as
+		// "inconclusive" in production because the verdict read only the axios
+		// shape; these cases pin the real one.
+		function nodeApiError(status: number) {
+			const node = {
+				id: 'temp',
+				name: 'Temp-Node',
+				type: 'n8n-nodes-base.noOp',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			} as INode;
+			return new NodeApiError(
+				node,
+				{ message: `Request failed with status code ${status}` },
+				{ httpCode: String(status) },
+			);
+		}
+
+		it('rejects a NodeApiError-wrapped 401 — the shape the routing engine actually throws', async () => {
+			mockRoutingNodeResult({ reject: nodeApiError(401) });
+
+			const result = await credentialsTester.probeCredentialAuth(
+				'user-id',
+				'httpHeaderAuth',
+				credentials(),
+				targetUrl,
+			);
+
+			expect(result.status).toBe('Error');
+			expect(result.message).toContain('401');
+		});
+
+		it('passes a NodeApiError-wrapped non-auth status', async () => {
+			mockRoutingNodeResult({ reject: nodeApiError(405) });
+
+			const result = await credentialsTester.probeCredentialAuth(
+				'user-id',
+				'httpHeaderAuth',
+				credentials(),
+				targetUrl,
+			);
+
+			expect(result.status).toBe('OK');
+		});
+
+		it('accepts a declared code on the NodeApiError shape too', async () => {
+			mockRoutingNodeResult({ reject: nodeApiError(401) });
 
 			const result = await credentialsTester.probeCredentialAuth(
 				'user-id',
