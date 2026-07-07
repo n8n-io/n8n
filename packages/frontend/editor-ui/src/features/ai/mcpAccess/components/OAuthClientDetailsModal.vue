@@ -5,7 +5,6 @@ import type { OAuthClientResponseDto } from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nDialog,
-	N8nDialogClose,
 	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nDialogHeader,
@@ -84,7 +83,7 @@ function onRevoke() {
 					{{ i18n.baseText('settings.mcp.oAuthClients.details.connectedOn') }}
 				</N8nText>
 				<N8nText color="text-dark" size="small" data-test-id="mcp-client-details-connected-on">
-					<TimeAgo :date="new Date(client.grantedAt).toISOString()" />
+					<TimeAgo :date="new Date(client.grantedAt).toISOString()" capitalize />
 				</N8nText>
 
 				<N8nText color="text-light" size="small">
@@ -94,6 +93,7 @@ function onRevoke() {
 					<TimeAgo
 						v-if="client.lastActiveAt !== null"
 						:date="new Date(client.lastActiveAt).toISOString()"
+						capitalize
 					/>
 					<template v-else>&ndash;</template>
 				</N8nText>
@@ -127,11 +127,13 @@ function onRevoke() {
 			</div>
 
 			<N8nDialogFooter>
-				<N8nDialogClose>
-					<N8nButton variant="subtle" data-test-id="mcp-client-details-close">
-						{{ i18n.baseText('generic.close') }}
-					</N8nButton>
-				</N8nDialogClose>
+				<N8nButton
+					variant="subtle"
+					data-test-id="mcp-client-details-close"
+					@click="emit('update:open', false)"
+				>
+					{{ i18n.baseText('generic.close') }}
+				</N8nButton>
 				<N8nButton variant="destructive" data-test-id="mcp-client-details-revoke" @click="onRevoke">
 					{{ i18n.baseText('settings.mcp.oAuthClients.table.action.revokeAccess') }}
 				</N8nButton>

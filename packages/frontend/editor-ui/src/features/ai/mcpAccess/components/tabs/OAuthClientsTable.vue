@@ -196,13 +196,14 @@ function onRevoke(item: OAuthClientResponseDto) {
 						<TimeAgo
 							v-if="item.lastActiveAt !== null"
 							:date="new Date(item.lastActiveAt).toISOString()"
+							capitalize
 						/>
 						<template v-else>&ndash;</template>
 					</N8nText>
 				</template>
 				<template #[`item.grantedAt`]="{ item }">
 					<N8nText data-test-id="mcp-client-created-at" color="text-base">
-						<TimeAgo :date="new Date(item.grantedAt).toISOString()" />
+						<TimeAgo :date="new Date(item.grantedAt).toISOString()" capitalize />
 					</N8nText>
 				</template>
 				<template #[`item.actions`]="{ item }">
