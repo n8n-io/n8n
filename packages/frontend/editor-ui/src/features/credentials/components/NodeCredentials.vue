@@ -283,11 +283,16 @@ watch(
 	{ immediate: true, deep: true },
 );
 
+let hasEvaluatedCredentials = false;
+
 // Select most recent credential by default
 watch(
 	credentialTypesNodeDescriptionDisplayed,
 	(types) => {
 		if (props.skipAutoSelect) return;
+
+		const isInitialEvaluation = !hasEvaluatedCredentials;
+		hasEvaluatedCredentials = true;
 
 		if (
 			aiGateway.isEnabled.value &&
@@ -305,8 +310,10 @@ watch(
 		const allOptions = types.map((type) => type.options).flat();
 
 		if (allOptions.length === 0) {
-			// No credentials configured — auto-enable AI Gateway for supported types
-			if (aiGateway.isEnabled.value) {
+			// No credentials configured — auto-enable AI Gateway for supported types,
+			// but only on the initial setup so a later action change doesn't redirect
+			// the user onto n8n Connect.
+			if (aiGateway.isEnabled.value && isInitialEvaluation) {
 				for (const { type } of types) {
 					if (
 						aiGateway.isCredentialTypeSupported(type.name) &&
