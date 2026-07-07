@@ -46,6 +46,9 @@ function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemo
 		},
 	};
 	const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
+	// Flag off: the event log repository and metrics are never touched.
+	const mockEventLogRepository = { getForThread: vi.fn().mockResolvedValue([]) };
+	const mockDurableLogMetrics = { recordFoldRead: vi.fn() };
 	return new InstanceAiMemoryService(
 		mockLogger as never,
 		mockConfig as never,
@@ -53,6 +56,8 @@ function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemo
 		mockDbSnapshotStorage as never,
 		mockCheckpointRepository as never,
 		mockPendingConfirmationRepository as never,
+		mockEventLogRepository as never,
+		mockDurableLogMetrics as never,
 	);
 }
 

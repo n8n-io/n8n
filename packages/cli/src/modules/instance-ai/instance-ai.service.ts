@@ -1468,6 +1468,10 @@ export class InstanceAiService {
 		this.domainAccessTrackersByThread.clear();
 		this.tracing.clear();
 
+		// Durable-log flag: flush in-flight drains + open coalesce buffers so the
+		// tail of every streamed segment survives the restart. No-op when off.
+		await this.eventLog.flushAll();
+
 		this.eventBus.clear();
 		await this._mcpClientManager?.disconnect();
 		this.logger.debug('Instance AI service shut down');
@@ -5280,14 +5284,18 @@ export class InstanceAiService {
 					const snapshot = await snapshotStorage.getLatest(threadId, { messageGroupId, runId });
 					groupRunIds = snapshot?.runIds?.length ? snapshot.runIds : [runId];
 				}
-				events = await this.eventLog.getEventsForRuns(threadId, groupRunIds);
+				events = this.instanceAiConfig.durableLog
+					? await this.eventLog.getEventsForRuns(threadId, groupRunIds)
+					: this.eventBus.getEventsForRuns(threadId, groupRunIds);
 			} else {
-				events = await this.eventLog.getEventsForRuns(threadId, [runId]);
+				events = this.instanceAiConfig.durableLog
+					? await this.eventLog.getEventsForRuns(threadId, [runId])
+					: this.eventBus.getEventsForRun(threadId, runId);
 			}
-			// PHASE 2 (fold-on-read): the tree is now derived from the DURABLE log,
-			// so long runs can no longer out-evict their own snapshot input (the
-			// empty-agentTree bug class). End state: stop persisting the tree here
-			// entirely — the messages endpoint derives it on read via
+			// PHASE 2 (fold-on-read), flag on: the tree derives from the DURABLE
+			// log, so long runs can no longer out-evict their own snapshot input
+			// (the empty-agentTree bug class). End state: stop persisting the tree
+			// here entirely — the messages endpoint derives it on read via
 			// buildAgentTreeFromEvents(eventLog.getEventsForRuns(...)), and
 			// instance_ai_run_snapshots demotes to a read cache / gets dropped.
 			// The write below stays during migration so pre-log threads keep
