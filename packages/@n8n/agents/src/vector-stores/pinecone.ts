@@ -12,6 +12,9 @@ import type { JSONObject, JSONValue } from '../types/utils/json';
 /** Metadata key reserved for document content — Pinecone has no separate content column. */
 const CONTENT_KEY = '_content';
 
+/** Pinecone caps upserts at 1,000 records / 2MB per request and the client does not auto-batch. */
+const UPSERT_BATCH_SIZE = 200;
+
 export type PineconeVectorStoreOptions = {
 	apiKey: string;
 	indexName: string;
@@ -28,7 +31,9 @@ export type PineconeVectorStoreOptions = {
  * values — no nested objects, no null), so document content is stored under
  * a reserved `_content` metadata key alongside the caller's metadata spread
  * at the top level. Metadata containing that reserved key, or a value of an
- * unsupported shape, is rejected before any request is sent.
+ * unsupported shape, is rejected before any request is sent. Because content
+ * is stored as metadata, Pinecone's 40KB per-record metadata limit applies
+ * to the document content plus its metadata combined.
  *
  * Pinecone's `$ne`/`$nin` filter operators do not match records missing the
  * filtered key, unlike `PgVectorStore`/`QdrantVectorStore`/`SupabaseVectorStore`
@@ -57,13 +62,14 @@ export class PineconeVectorStore extends BaseVectorStore<PineconeVectorStoreOpti
 		if (records.length === 0) return;
 
 		const index = await this.getIndex();
-		await index.upsert(
-			records.map((record) => ({
-				id: record.id,
-				values: record.vector,
-				metadata: toPineconeMetadata(record.content, record.metadata),
-			})),
-		);
+		const mapped = records.map((record) => ({
+			id: record.id,
+			values: record.vector,
+			metadata: toPineconeMetadata(record.content, record.metadata),
+		}));
+		for (let i = 0; i < mapped.length; i += UPSERT_BATCH_SIZE) {
+			await index.upsert(mapped.slice(i, i + UPSERT_BATCH_SIZE));
+		}
 	}
 
 	async query(
@@ -119,14 +125,19 @@ function toPineconeMetadata(content: string, metadata: JSONObject): RecordMetada
 			`Metadata key "${CONTENT_KEY}" is reserved for the document content and cannot be set.`,
 		);
 	}
+	const result: RecordMetadata = { [CONTENT_KEY]: content };
 	for (const [key, value] of Object.entries(metadata)) {
 		assertValidMetadataValue(key, value);
+		result[key] = value;
 	}
-	return { [CONTENT_KEY]: content, ...metadata } as RecordMetadata;
+	return result;
 }
 
 /** Pinecone metadata values are flat: string, number, boolean, or an array of strings — no nested objects or null. */
-function assertValidMetadataValue(key: string, value: JSONValue | undefined): void {
+function assertValidMetadataValue(
+	key: string,
+	value: JSONValue | undefined,
+): asserts value is string | number | boolean | string[] {
 	if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
 		return;
 	}

@@ -245,4 +245,38 @@ describe('PineconeVectorStore filter translation', () => {
 			{ id: '1', values: [0], metadata: { _content: 'hi', tags: ['a', 'b'] } },
 		]);
 	});
+
+	it('splits large upserts into sequential batches of 200', async () => {
+		const { store, stub } = createStore();
+		const records = Array.from({ length: 401 }, (_, i) => ({
+			id: String(i),
+			vector: [0],
+			content: 'c',
+			metadata: {},
+		}));
+
+		await store.upsert(records);
+
+		expect(stub.upsert).toHaveBeenCalledTimes(3);
+		const calls = stub.upsert.mock.calls as Array<[Array<{ id: string }>]>;
+		expect(calls[0][0]).toHaveLength(200);
+		expect(calls[1][0]).toHaveLength(200);
+		expect(calls[2][0]).toHaveLength(1);
+		expect(calls[0][0][0].id).toBe('0');
+		expect(calls[1][0][0].id).toBe('200');
+		expect(calls[2][0][0].id).toBe('400');
+	});
+
+	it('rejects invalid metadata without sending any batch', async () => {
+		const { store, stub } = createStore();
+		const records = Array.from({ length: 201 }, (_, i) => ({
+			id: String(i),
+			vector: [0],
+			content: 'c',
+			metadata: i === 200 ? { nested: { a: 1 } } : {},
+		}));
+
+		await expect(store.upsert(records)).rejects.toThrow(/unsupported/);
+		expect(stub.upsert).not.toHaveBeenCalled();
+	});
 });
