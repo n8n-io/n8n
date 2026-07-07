@@ -356,31 +356,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01A5bFwJciY8V7w5j4UCnha8\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01Vimp6aAWDMdhvTkAkRSRZc\",\"name\":\"workspace_str_replace_file\",\"input\":{\"path\":\"/project/config.ts\",\"old_str\":\"OLD_REGION\",\"new_str\":\"EU_CENTRAL\"},\"caller\":{\"type\":\"direct\"}},{\"type\":\"tool_use\",\"id\":\"toolu_01R9HVgz4oCg1U9v9tG2s8Hp\",\"name\":\"workspace_batch_str_replace_file\",\"input\":{\"path\":\"/project/config.ts\",\"replacements\":[{\"old_str\":\"OLD_OWNER\",\"new_str\":\"API_TEAM\"},{\"old_str\":\"OLD_STATUS\",\"new_str\":\"READY\"}]},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2695,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":219,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_016dfmhE8qzLins851cV3H8y\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01SfNPaEFaLMtWjQ5VwTscF3\",\"name\":\"workspace_str_replace_file\",\"input\":{\"path\":\"/project/config.ts\",\"old_str\":\"OLD_REGION\",\"new_str\":\"EU_CENTRAL\"},\"caller\":{\"type\":\"direct\"}},{\"type\":\"tool_use\",\"id\":\"toolu_015nqvmWf68HbECwWegWz8sc\",\"name\":\"workspace_batch_str_replace_file\",\"input\":{\"path\":\"/project/config.ts\",\"replacements\":[{\"old_str\":\"OLD_OWNER\",\"new_str\":\"API_TEAM\"},{\"old_str\":\"OLD_STATUS\",\"new_str\":\"READY\"}]},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2695,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":235,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:22Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:49:02Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:22Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:49:02Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:21Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-03T09:49:01Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:22Z",
+			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:49:02Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a103723ddd065a90-VIE",
+			"cf-ray": "a154fa52091b9cca-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 23 Jun 2026 12:20:22 GMT",
-			"request-id": "req_011CcLBT1f7ETMGVJeigZaVK",
+			"date": "Fri, 03 Jul 2026 09:49:02 GMT",
+			"request-id": "req_011CceuzsFwTUirDKjA1WcAd",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=WdUcvCU8jUkKFRdSSQnNn9BQP504yiaoVg3vE__Xbyo-1782217220.774294-1.0.1.1-okguqRmDvko_ax1Neitm.KgxWNUVrpItu4Qoby9zB84; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-d9f1de8590c956f54a0f607c55dc7640-122de6979572469d-01",
+			"traceresponse": "00-e40b64c96d7fb552737d103ae83cada7-5a55d8fabfc4d941-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -414,7 +413,7 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_01Vimp6aAWDMdhvTkAkRSRZc",
+							"id": "toolu_01SfNPaEFaLMtWjQ5VwTscF3",
 							"name": "workspace_str_replace_file",
 							"input": {
 								"path": "/project/config.ts",
@@ -427,7 +426,7 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01R9HVgz4oCg1U9v9tG2s8Hp",
+							"id": "toolu_015nqvmWf68HbECwWegWz8sc",
 							"name": "workspace_batch_str_replace_file",
 							"input": {
 								"path": "/project/config.ts",
@@ -453,12 +452,12 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01Vimp6aAWDMdhvTkAkRSRZc",
+							"tool_use_id": "toolu_01SfNPaEFaLMtWjQ5VwTscF3",
 							"content": "{\"success\":true,\"result\":\"Edit applied successfully.\"}"
 						},
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01R9HVgz4oCg1U9v9tG2s8Hp",
+							"tool_use_id": "toolu_015nqvmWf68HbECwWegWz8sc",
 							"content": "{\"success\":true,\"result\":\"All 2 replacements applied successfully.\"}"
 						}
 					]
@@ -797,31 +796,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_019ZQ2Cf7wMyumJTwrvEr5mo\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"done.\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":3010,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":5,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01T4otvEXmVvxBiiMoLzNgeq\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"done.\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":3010,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":5,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:24Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:49:03Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:24Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:49:03Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:23Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-03T09:49:02Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:24Z",
+			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:49:03Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a103724bef655a90-VIE",
+			"cf-ray": "a154fa5ccad49cca-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 23 Jun 2026 12:20:24 GMT",
-			"request-id": "req_011CcLBTBHYhm39cX1u7eQTc",
+			"date": "Fri, 03 Jul 2026 09:49:03 GMT",
+			"request-id": "req_011CceuzzcTFdAF5b7BKHiNL",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=ujcTAdrZRN4_hxeMPpY1EmTCqgPmVNsuYXlpicmsW4M-1782217223.024298-1.0.1.1-DHi1LpqAFhPJP6s1LeWCpm5fhTE5a__FxbfNDZlOvyQ; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-3b1b93196bf078be740590ac04b3e41e-496de3de226410f5-01",
+			"traceresponse": "00-55b4e50bd84506d145e265639d6be8a7-6aca1a5a81b91f13-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},

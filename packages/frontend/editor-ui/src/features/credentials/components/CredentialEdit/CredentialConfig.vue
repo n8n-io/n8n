@@ -49,6 +49,7 @@ import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect'
 import QuickConnectButton from '../../quickConnect/components/QuickConnectButton.vue';
 import QuickConnectBanner from '../../quickConnect/components/QuickConnectBanner.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 
 type Props = {
 	mode: string;
@@ -68,7 +69,6 @@ type Props = {
 	isManaged?: boolean;
 	isPrivateCredentialsEnabled?: boolean;
 	isResolvable?: boolean;
-	isShared?: boolean;
 	connectedByMe?: boolean;
 	isNewCredential?: boolean;
 	managedOauthAvailable?: boolean;
@@ -114,10 +114,6 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const { getQuickConnectOption } = useQuickConnect();
 
-// A shared credential can't be turned into a dynamic credential (they're mutually exclusive).
-// Toggling back from dynamic to static stays allowed.
-const isDynamicToggleDisabled = computed(() => Boolean(props.isShared) && !props.isResolvable);
-
 onBeforeMount(async () => {
 	uiStore.activeCredentialType = props.credentialType.name;
 
@@ -150,6 +146,14 @@ const appName = computed(
 const credentialTypeName = computed(() => props.credentialType?.name);
 const credentialOwnerName = computed(() =>
 	credentialsStore.getCredentialOwnerNameById(`${props.credentialId}`),
+);
+// Team-owned credentials don't have a single human "owner", so naming the
+// project ("Only My project can edit…") is misleading — point at the edit
+// permission instead. Personal/shared credentials keep naming the owner.
+const isHomeTeamProject = computed(
+	() =>
+		credentialsStore.getCredentialById(`${props.credentialId}`)?.homeProject?.type ===
+		ProjectTypes.Team,
 );
 const documentationUrl = computed(() => {
 	const type = props.credentialType;
@@ -243,6 +247,16 @@ const canEdit = computed(() => {
 
 const canWrite = computed(() => {
 	return canCreate.value || canEdit.value;
+});
+
+// Connecting an existing private credential only needs the `connect` capability
+// (no edit rights); shared/static credentials store the token on the shared
+// credential itself, so connecting them follows the write permission.
+const canConnect = computed(() => {
+	if (!isNewCredential.value && props.isResolvable) {
+		return !!props.credentialPermissions.connect;
+	}
+	return canWrite.value;
 });
 
 // When Instance AI is available it supersedes the legacy assistant for setup
@@ -435,9 +449,9 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				>
 					<template #button>
 						<div :class="$style.bannerActions">
-							<GoogleAuthButton v-if="isGoogleOAuthType" @click="$emit('oauth')" />
+							<GoogleAuthButton v-if="isGoogleOAuthType && canConnect" @click="$emit('oauth')" />
 							<QuickConnectButton
-								v-else
+								v-else-if="canConnect"
 								size="small"
 								:service-name="serviceName"
 								:credential-type-name="credentialType.name"
@@ -446,7 +460,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 								@click="$emit('oauth')"
 							/>
 							<N8nButton
-								v-if="showDisconnectButton"
+								v-if="showDisconnectButton && canConnect"
 								variant="outline"
 								:size="isGoogleOAuthType ? 'xlarge' : 'small'"
 								:label="i18n.baseText('credentialEdit.credentialConfig.disconnect')"
@@ -477,12 +491,6 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 						canWrite
 					"
 					:model-value="Boolean(isResolvable)"
-					:end-user-disabled="isDynamicToggleDisabled"
-					:end-user-disabled-tooltip="
-						i18n.baseText(
-							'credentialEdit.credentialConfig.dynamicCredentials.sharedDisabledTooltip',
-						)
-					"
 					:info-tip="i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.infoTip')"
 					@update:model-value="(val) => $emit('update:isResolvable', val)"
 				/>
@@ -497,12 +505,13 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					@click="$emit('oauth')"
 				>
 					<template v-if="isGoogleOAuthType" #button>
-						<div data-test-id="quick-connect-button">
+						<div v-if="canConnect" data-test-id="quick-connect-button">
 							<GoogleAuthButton @click="$emit('oauth')" />
 						</div>
 					</template>
 					<template v-else #button>
 						<QuickConnectButton
+							v-if="canConnect"
 							size="small"
 							:service-name="serviceName"
 							:credential-type-name="credentialType.name"
@@ -577,9 +586,11 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					<div>
 						<N8nInfoTip :bold="false">
 							{{
-								i18n.baseText('credentialEdit.credentialEdit.info.sharee', {
-									interpolate: { credentialOwnerName },
-								})
+								isHomeTeamProject
+									? i18n.baseText('credentialEdit.credentialEdit.info.sharee.team')
+									: i18n.baseText('credentialEdit.credentialEdit.info.sharee', {
+											interpolate: { credentialOwnerName },
+										})
 							}}
 						</N8nInfoTip>
 					</div>

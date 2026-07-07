@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-workflow-builder",
-  "version": "1.28.0",
+  "version": "1.29.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
@@ -58,7 +58,8 @@
   "dependencies": {
     "@langchain/anthropic": "catalog:",
     "@langchain/core": "catalog:",
-    "@langchain/langgraph": "1.0.2",
+    "@langchain/langgraph": "catalog:",
+    "@langchain/langgraph-checkpoint": "catalog:",
     "@langchain/openai": "catalog:",
     "@mozilla/readability": "catalog:",
     "@n8n/api-types": "workspace:*",
@@ -97,6 +98,7 @@
     "cli-table3": "^0.6.3",
     "madge": "^8.0.0",
     "tsx": "catalog:",
+    "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },

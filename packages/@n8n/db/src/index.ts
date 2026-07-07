@@ -10,7 +10,8 @@ export {
 	DateTimeColumn,
 } from './entities/abstract-entity';
 
-export { generateNanoId } from '@n8n/utils';
+export { generateNanoId } from '@n8n/utils/generate-nano-id';
+export { dbNowLiteral, dbNowPlusMsLiteral, parseDbTime } from './utils/dialect-time';
 export { generateHostInstanceId } from './utils/generators';
 export { isStringArray } from './utils/is-string-array';
 export { isUniqueConstraintError } from './utils/is-unique-constraint-error';

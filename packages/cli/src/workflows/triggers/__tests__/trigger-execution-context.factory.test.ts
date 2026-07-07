@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
 import type { WorkflowEntity } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ErrorReporter, StorageConfig } from 'n8n-core';
+import { sleep, UnexpectedError } from 'n8n-workflow';
 import type {
 	ExecutionError,
 	IConnections,
@@ -13,9 +14,9 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
+	Workflow,
 } from 'n8n-workflow';
-import { createDeferredPromise, sleep, UnexpectedError } from 'n8n-workflow';
-import type { Workflow } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
@@ -28,12 +29,13 @@ import type {
 	WorkflowPublishedDataService,
 } from '@/workflows/workflow-published-data.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+
 import {
 	TriggerExecutionContextFactory,
 	type TriggerFailureHandler,
 } from '../trigger-execution-context.factory';
 
-jest.mock('@/execution-lifecycle/execute-error-workflow');
+vi.mock('@/execution-lifecycle/execute-error-workflow');
 
 describe('TriggerExecutionContextFactory', () => {
 	const workflowStaticDataService = mock<WorkflowStaticDataService>();
@@ -47,13 +49,13 @@ describe('TriggerExecutionContextFactory', () => {
 	let factory: TriggerExecutionContextFactory;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		workflowStaticDataService.saveStaticData.mockResolvedValue(undefined);
 		workflowExecutionService.runWorkflow.mockResolvedValue('exec-123');
 		executionService.createErrorExecution.mockResolvedValue(undefined);
 
 		const scopedLogger = mock<Logger>();
-		const rootLogger = mock<Logger>({ scoped: jest.fn().mockReturnValue(scopedLogger) });
+		const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 
 		factory = new TriggerExecutionContextFactory(
 			rootLogger,
@@ -85,7 +87,7 @@ describe('TriggerExecutionContextFactory', () => {
 					mode,
 					activation,
 					async () => workflowData,
-					jest.fn(),
+					vi.fn(),
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
@@ -124,7 +126,7 @@ describe('TriggerExecutionContextFactory', () => {
 					mode,
 					activation,
 					async () => workflowData,
-					jest.fn(),
+					vi.fn(),
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
@@ -158,7 +160,7 @@ describe('TriggerExecutionContextFactory', () => {
 					mode,
 					activation,
 					async () => workflowData,
-					jest.fn(),
+					vi.fn(),
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 				const donePromise = createDeferredPromise<IRun>();
@@ -188,7 +190,7 @@ describe('TriggerExecutionContextFactory', () => {
 					mode,
 					activation,
 					async () => workflowData,
-					jest.fn(),
+					vi.fn(),
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
@@ -216,7 +218,7 @@ describe('TriggerExecutionContextFactory', () => {
 					mode,
 					activation,
 					async () => workflowData,
-					jest.fn(),
+					vi.fn(),
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 				const donePromise = createDeferredPromise<IRun>();
@@ -229,7 +231,8 @@ describe('TriggerExecutionContextFactory', () => {
 
 		describe('emitError', () => {
 			test('delegates to the injected onTriggerFailure callback', () => {
-				const onTriggerFailure = jest.fn<() => void, Parameters<TriggerFailureHandler>>();
+				const onTriggerFailure =
+					vi.fn<(...args: Parameters<TriggerFailureHandler>) => () => void>();
 				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
 				const additionalData = mock<IWorkflowExecuteAdditionalData>();
 				const mode: WorkflowExecuteMode = 'trigger';
@@ -262,7 +265,7 @@ describe('TriggerExecutionContextFactory', () => {
 
 		describe('saveFailedExecution', () => {
 			test('calls createErrorExecution then executeErrorWorkflow', async () => {
-				const executeErrorWorkflowSpy = jest
+				const executeErrorWorkflowSpy = vi
 					.spyOn(factory, 'executeErrorWorkflow')
 					.mockImplementation(() => {});
 
@@ -279,7 +282,7 @@ describe('TriggerExecutionContextFactory', () => {
 					mode,
 					activation,
 					async () => workflowData,
-					jest.fn(),
+					vi.fn(),
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 				const executionError = mock<ExecutionError>();
@@ -364,7 +367,7 @@ describe('TriggerExecutionContextFactory', () => {
 
 		describe('__emitError', () => {
 			test('calls createErrorExecution then executeErrorWorkflow', async () => {
-				const executeErrorWorkflowSpy = jest
+				const executeErrorWorkflowSpy = vi
 					.spyOn(factory, 'executeErrorWorkflow')
 					.mockImplementation(() => {});
 

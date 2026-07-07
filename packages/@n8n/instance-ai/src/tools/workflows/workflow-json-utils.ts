@@ -1,4 +1,5 @@
-import { findPlaceholderDetails, isPlaceholderString, isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
+import { findPlaceholderDetails, isPlaceholderString } from '@n8n/utils/placeholder';
 import type { IDataObject, WorkflowJSON } from '@n8n/workflow-sdk';
 import { randomUUID } from 'node:crypto';
 

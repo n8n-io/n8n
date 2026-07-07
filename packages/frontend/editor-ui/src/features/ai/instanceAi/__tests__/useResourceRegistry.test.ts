@@ -48,11 +48,11 @@ function makeMessage(overrides: Partial<InstanceAiMessage> = {}): InstanceAiMess
 
 function setup(workflowNameLookup?: (id: string) => string | undefined) {
 	const messages = ref<InstanceAiMessage[]>([]);
-	const { producedArtifacts, resourceNameIndex } = useResourceRegistry(
+	const { producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = useResourceRegistry(
 		() => messages.value,
 		workflowNameLookup,
 	);
-	return { messages, producedArtifacts, resourceNameIndex };
+	return { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex };
 }
 
 // ---------------------------------------------------------------------------
@@ -62,7 +62,7 @@ function setup(workflowNameLookup?: (id: string) => string | undefined) {
 describe('useResourceRegistry', () => {
 	describe('producedArtifacts — workflow registration', () => {
 		test('registers workflow with workflowName from result', async () => {
-			const { messages, producedArtifacts, resourceNameIndex } = setup();
+			const { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = setup();
 
 			messages.value = [
 				makeMessage({
@@ -82,10 +82,11 @@ describe('useResourceRegistry', () => {
 				expect.objectContaining({ type: 'workflow', id: 'wf-1', name: 'My Workflow' }),
 			);
 			expect(resourceNameIndex.get('my workflow')?.id).toBe('wf-1');
+			expect(linkableResourceNameIndex.get('my workflow')?.id).toBe('wf-1');
 		});
 
 		test('falls back to args.name when result has no workflowName', async () => {
-			const { messages, producedArtifacts } = setup();
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
 
 			messages.value = [
 				makeMessage({
@@ -105,6 +106,7 @@ describe('useResourceRegistry', () => {
 			expect(producedArtifacts.get('wf-2')).toEqual(
 				expect.objectContaining({ type: 'workflow', id: 'wf-2', name: 'From Args' }),
 			);
+			expect(linkableResourceNameIndex.get('from args')?.id).toBe('wf-2');
 		});
 
 		test('falls back to Untitled when neither workflowName nor args.name is present', async () => {
@@ -128,6 +130,67 @@ describe('useResourceRegistry', () => {
 			expect(producedArtifacts.get('wf-3')).toEqual(
 				expect.objectContaining({ type: 'workflow', id: 'wf-3', name: 'Untitled' }),
 			);
+		});
+
+		test('registers successful workflow updates from workflowId in args', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'workflows',
+								args: { action: 'update', workflowId: 'wf-update', name: 'Updated Workflow' },
+								result: { success: true },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-update')).toEqual(
+				expect.objectContaining({
+					type: 'workflow',
+					id: 'wf-update',
+					name: 'Updated Workflow',
+				}),
+			);
+		});
+
+		test('registers workflow document returned by workflows get-json', async () => {
+			const { messages, producedArtifacts, resourceNameIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'workflows',
+								args: { action: 'get-json', workflowId: 'wf-existing' },
+								result: {
+									id: 'wf-existing',
+									name: 'Existing Workflow',
+									nodes: [],
+									connections: {},
+									settings: {},
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-existing')).toEqual(
+				expect.objectContaining({
+					type: 'workflow',
+					id: 'wf-existing',
+					name: 'Existing Workflow',
+				}),
+			);
+			expect(resourceNameIndex.get('existing workflow')?.id).toBe('wf-existing');
 		});
 
 		test('does not collide when multiple workflows have no name', async () => {
@@ -342,7 +405,7 @@ describe('useResourceRegistry', () => {
 		});
 
 		test('mutation result enriches an existing data-table entry with projectId', async () => {
-			const { messages, producedArtifacts } = setup();
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
 
 			messages.value = [
 				makeMessage({
@@ -377,12 +440,13 @@ describe('useResourceRegistry', () => {
 					projectId: 'proj-2',
 				}),
 			);
+			expect(linkableResourceNameIndex.get('signups')?.id).toBe('dt-1');
 		});
 	});
 
 	describe('list results do not populate producedArtifacts', () => {
 		test('workflows action=list result is indexed by name only, never in producedArtifacts', async () => {
-			const { messages, producedArtifacts, resourceNameIndex } = setup();
+			const { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = setup();
 
 			messages.value = [
 				makeMessage({
@@ -407,10 +471,11 @@ describe('useResourceRegistry', () => {
 			expect(producedArtifacts.size).toBe(0);
 			expect(resourceNameIndex.get('workspace workflow 1')?.id).toBe('wf-list-1');
 			expect(resourceNameIndex.get('workspace workflow 2')?.id).toBe('wf-list-2');
+			expect(linkableResourceNameIndex.size).toBe(0);
 		});
 
 		test('data-tables action=list result is indexed by name only', async () => {
-			const { messages, producedArtifacts, resourceNameIndex } = setup();
+			const { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = setup();
 
 			messages.value = [
 				makeMessage({
@@ -431,6 +496,7 @@ describe('useResourceRegistry', () => {
 
 			expect(producedArtifacts.size).toBe(0);
 			expect(resourceNameIndex.get('existing table')?.id).toBe('dt-a');
+			expect(linkableResourceNameIndex.get('existing table')).toBeUndefined();
 		});
 
 		test('a later write promotes a previously-listed resource into producedArtifacts', async () => {
@@ -538,7 +604,7 @@ describe('useResourceRegistry', () => {
 		test.each(['insert-data-table-rows', 'update-data-table-rows', 'delete-data-table-rows'])(
 			'registers data table from %s result with name and projectId',
 			async (toolName) => {
-				const { messages, producedArtifacts } = setup();
+				const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
 
 				messages.value = [
 					makeMessage({
@@ -565,6 +631,7 @@ describe('useResourceRegistry', () => {
 					name: 'Orders',
 					projectId: 'proj-1',
 				});
+				expect(linkableResourceNameIndex.get('orders')?.id).toBe('dt-mut-1');
 			},
 		);
 
@@ -600,7 +667,7 @@ describe('useResourceRegistry', () => {
 		test.each(['schema', 'query'] as const)(
 			'registers data table from data-tables %s result with resolved metadata',
 			async (action) => {
-				const { messages, producedArtifacts } = setup();
+				const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
 
 				messages.value = [
 					makeMessage({
@@ -628,6 +695,7 @@ describe('useResourceRegistry', () => {
 					name: 'Signups',
 					projectId: 'proj-4',
 				});
+				expect(linkableResourceNameIndex.get('signups')).toBeUndefined();
 			},
 		);
 	});

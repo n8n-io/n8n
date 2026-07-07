@@ -381,7 +381,6 @@ Use the workflow SDK.`,
 			skillId: 'summarize_notes',
 			name: 'Summarize notes',
 			content: 'Extract decisions.',
-			instructions: 'Extract decisions.',
 		});
 		await expect(
 			loadTool.handler?.({ skillId: 'summarize_notes', filePath: 'SKILL.md' }, {}),
@@ -391,7 +390,6 @@ Use the workflow SDK.`,
 			skillId: 'summarize_notes',
 			name: 'Summarize notes',
 			content: 'Extract decisions.',
-			instructions: 'Extract decisions.',
 		});
 		await expect(loadTool.handler?.({ name: 'Summarize notes' }, {})).resolves.toMatchObject({
 			ok: true,
@@ -564,6 +562,13 @@ Use the workflow SDK.`,
 			'list_skills',
 			'load_skill',
 		]);
+		const fileBackedList = await createListSkillsTool(fileBackedSource).handler?.({}, {});
+		const fileBackedSkill = (fileBackedList as { skills: Array<Record<string, unknown>> })
+			.skills[0];
+		expect(fileBackedSkill).toMatchObject({
+			name: 'Summarize notes',
+		});
+		expect(fileBackedSkill?.linkedFiles).toBeUndefined();
 
 		const unsupportedLoadTool = createSkillLoadTool(registeredFileSource);
 		expect(unsupportedLoadTool.description).toContain('do not pass filePath');
@@ -596,6 +601,12 @@ Use the workflow SDK.`,
 				filePath: 'references/guide.md',
 			}).data,
 		).toEqual({ skillId: 'summarize_notes', filePath: 'references/guide.md' });
+		expect(
+			loadTool.inputSchema.safeParse({ skillId: 'summarize_notes', filePath: '' }).data,
+		).toEqual({
+			skillId: 'summarize_notes',
+			filePath: '',
+		});
 		await expect(
 			loadTool.handler?.({ skillId: 'summarize_notes', filePath: 'references/missing.md' }, {}),
 		).resolves.toMatchObject({
@@ -605,6 +616,16 @@ Use the workflow SDK.`,
 				'File is not registered for skill Summarize notes: references/missing.md. To load the main skill instructions, retry without filePath.',
 		});
 		expect(loadFile).not.toHaveBeenCalledWith('summarize_notes', 'references/missing.md');
+
+		await expect(
+			loadTool.handler?.({ skillId: 'summarize_notes', filePath: '' }, {}),
+		).resolves.toMatchObject({
+			ok: true,
+			success: true,
+			skillId: 'summarize_notes',
+			name: 'Summarize notes',
+			content: 'Extract decisions.',
+		});
 
 		await expect(
 			loadTool.handler?.({ skillId: 'summarize_notes', filePath: 'references/guide.md' }, {}),

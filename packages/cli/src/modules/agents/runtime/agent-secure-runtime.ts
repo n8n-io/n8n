@@ -12,7 +12,7 @@ import type { ToolExecutor } from '../json-config/from-json-config';
  * Location of the pre-built library bundle (see scripts/bundle-agent-library.mjs).
  *
  * This path resolves the same way whether the current file is running from
- * `src/modules/agents/runtime/` (ts-jest) or `dist/modules/agents/runtime/`
+ * `src/modules/agents/runtime/` (ts-vi) or `dist/modules/agents/runtime/`
  * (production), because both trees have the same depth under the cli package.
  */
 const LIBRARY_BUNDLE_PATH = path.resolve(__dirname, '../../../../dist/agent-library-bundle.js');

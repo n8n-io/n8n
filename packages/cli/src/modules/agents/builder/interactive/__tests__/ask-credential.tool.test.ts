@@ -1,19 +1,21 @@
 import type { CredentialListItem, CredentialProvider } from '@n8n/agents';
+import type { Mock } from 'vitest';
+
 import { buildAskCredentialTool, buildAskEmbeddingCredentialTool } from '../ask-credential.tool';
 
 interface TestCtx {
 	resumeData?: unknown;
-	suspend: jest.Mock;
+	suspend: Mock;
 }
 
 function makeCtx(overrides?: { resumeData?: unknown }): TestCtx {
-	return { resumeData: overrides?.resumeData, suspend: jest.fn(async (x: unknown) => x) };
+	return { resumeData: overrides?.resumeData, suspend: vi.fn(async (x: unknown) => x) };
 }
 
 function makeProvider(creds: CredentialListItem[]): CredentialProvider {
 	return {
-		list: jest.fn(async () => creds),
-		resolve: jest.fn(async () => ({})),
+		list: vi.fn(async () => creds),
+		resolve: vi.fn(async () => ({})),
 	};
 }
 

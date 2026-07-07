@@ -30,7 +30,7 @@ interface UseCanvasPreviewOptions {
 	threadId: () => string;
 }
 
-export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) {
+export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 	// --- Tab state ---
 	const activeTabId = ref<string>();
 
@@ -156,20 +156,6 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 		}
 	});
 
-	// --- Reset preview on thread switch ---
-	// Each thread is stateless for the preview panel: switching threads
-	// closes the panel. Past artifacts are reachable via their inline
-	// references in the message timeline.
-	watch(threadId, (nextThreadId, oldThreadId) => {
-		// Skip if this is the initial route setup (e.g. URL updated from
-		// /instance-ai to /instance-ai/:threadId after the first message)
-		if (!oldThreadId) return;
-		// Skip if the thread ID hasn't actually changed
-		if (nextThreadId === oldThreadId) return;
-
-		activeTabId.value = undefined;
-	});
-
 	// --- Auto-open canvas when AI creates/modifies a workflow ---
 
 	const workflowRefreshKey = ref(0);
@@ -285,14 +271,14 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 		() => latestUpdateResult.value?.toolCallId,
 		(toolCallId) => {
 			if (!toolCallId || !latestUpdateResult.value) return;
+			if (thread.isHydratingThread) return;
 
 			const targetId = latestUpdateResult.value.workflowId;
 
-			// Only refresh if the update targeted the currently active workflow tab
-			if (activeTabId.value === targetId) {
-				workflowRefreshKey.value++;
-			}
+			activeTabId.value = targetId;
+			workflowRefreshKey.value++;
 		},
+		{ flush: 'sync' },
 	);
 
 	// --- Auto-open data table preview when AI creates/modifies a data table ---

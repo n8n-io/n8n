@@ -1,20 +1,11 @@
 import type { PushPayload } from '@n8n/api-types';
-import type { User } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
+import { UserRepository } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import type { IWorkflowSettings, Workflow } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
-
-import type {
-	WorkflowClosedMessage,
-	WorkflowOpenedMessage,
-	WriteAccessRequestedMessage,
-	WriteAccessReleaseRequestedMessage,
-	WriteAccessHeartbeatMessage,
-} from './collaboration.message';
-import { parseWorkflowMessage } from './collaboration.message';
 
 import { CollaborationState } from '@/collaboration/collaboration.state';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -22,6 +13,15 @@ import { LockedError } from '@/errors/response-errors/locked.error';
 import { Push } from '@/push';
 import type { OnPushMessage } from '@/push/types';
 import { AccessService } from '@/services/access.service';
+
+import { parseWorkflowMessage } from './collaboration.message';
+import type {
+	WorkflowClosedMessage,
+	WorkflowOpenedMessage,
+	WriteAccessRequestedMessage,
+	WriteAccessReleaseRequestedMessage,
+	WriteAccessHeartbeatMessage,
+} from './collaboration.message';
 
 const OPEN_WORKFLOW_CHECK_BATCH_SIZE = 100;
 
