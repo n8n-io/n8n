@@ -87,6 +87,17 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 		}));
 	}
 
+	/** Timestamp of the run's most recent durable fact (sweep liveness proxy). */
+	async lastFactAt(threadId: string, runId: string): Promise<Date | null> {
+		const row = await this.createQueryBuilder('e')
+			.select('MAX(e.createdAt)', 'max')
+			.where('e.threadId = :threadId', { threadId })
+			.andWhere('e.runId = :runId', { runId })
+			.getRawOne<{ max: string | Date | null }>();
+		if (!row?.max) return null;
+		return row.max instanceof Date ? row.max : new Date(row.max);
+	}
+
 	/**
 	 * Interrupted-run sweep source: runs whose log has a `run-start` but no
 	 * `run-finish`. Pure log query — liveness (is a main still driving it?) is

@@ -4369,6 +4369,17 @@ export class InstanceAiService {
 		});
 		this.runState.activateSuspendedRun(request.threadId);
 
+		// User-visible marker, durable and live: the run continues, but the
+		// interruption is attributable in the timeline and in history.
+		this.eventBus.publish(request.threadId, {
+			type: 'text-block',
+			runId: request.runId,
+			agentId: orchestratorAgentId(request.runId),
+			payload: {
+				text: '\n\n*Resumed after an unexpected restart; verifying any interrupted work before continuing.*\n\n',
+			},
+		});
+
 		this.trackInFlightExecution(
 			this.processCrashResumedStream(agent, {
 				runId: request.runId,
@@ -4380,6 +4391,8 @@ export class InstanceAiService {
 				snapshotStorage: this.dbSnapshotStorage,
 				modelId: environment.modelId,
 				contextNotes: request.contextNotes,
+				messageGroupId: request.messageGroupId,
+				runHandoff: runControl.state,
 			}),
 		);
 		return true;
@@ -4388,9 +4401,9 @@ export class InstanceAiService {
 	/**
 	 * Run body for a crash-resumed orchestrator run. Tracked via
 	 * `trackInFlightExecution` (same shutdown-drain contract as the other run
-	 * bodies). ponytail: a crash-resumed run that re-suspends at HITL is
-	 * finalized as cancelled instead of re-wiring pending-confirmation
-	 * persistence — production work for the full phase 3.
+	 * bodies). A run that re-suspends at HITL is registered exactly like the
+	 * resumed path (in-memory suspension + persisted pending confirmation), so
+	 * the confirm endpoint and a later restart both keep working.
 	 */
 	private async processCrashResumedStream(
 		agent: unknown,
@@ -4404,10 +4417,14 @@ export class InstanceAiService {
 			snapshotStorage: DbSnapshotStorage;
 			modelId?: ModelConfig;
 			contextNotes?: string[];
+			messageGroupId?: string;
+			runHandoff?: OrchestratorRunHandoffState;
 		},
 	): Promise<void> {
 		try {
 			this.instanceAiErrorReporter.beginRun(opts.runId);
+			const runControl = createOrchestratorRunControlForState(opts.runHandoff);
+			const stopSignal = (): OrchestratorRunStopSignal | undefined => runControl.getStopSignal();
 			const result = await crashResumeAgentRun(
 				agent,
 				{
@@ -4427,22 +4444,58 @@ export class InstanceAiService {
 					logger: this.logger,
 					agentRunId: opts.agentRunId,
 					onActivity: () => this.runState.touchActiveRun(opts.threadId),
+					stopSignal,
 					outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 				},
 			);
 
 			if (result.status === 'suspended') {
-				this.logger.warn(
-					'Crash-resumed run suspended at HITL; finalizing as cancelled (prototype limitation)',
-					{ threadId: opts.threadId, runId: opts.runId },
-				);
-				this.runState.cancelActiveRun(opts.threadId);
-				await this.finalizeRun(opts.threadId, opts.runId, 'cancelled', opts.snapshotStorage, {
-					userId: opts.user.id,
-					...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
-					workSummary: result.workSummary,
-					usage: result.usage,
-				});
+				if (result.suspension) {
+					this.runState.suspendRun(opts.threadId, {
+						runId: opts.runId,
+						agentRunId: result.agentRunId,
+						agent,
+						threadId: opts.threadId,
+						user: opts.user,
+						toolCallId: result.suspension.toolCallId,
+						...(result.suspension.toolName ? { toolName: result.suspension.toolName } : {}),
+						...(result.suspension.suspendPayload
+							? { suspendPayload: result.suspension.suspendPayload }
+							: {}),
+						requestId: result.suspension.requestId,
+						abortController: opts.abortController,
+						messageGroupId: opts.messageGroupId,
+						createdAt: Date.now(),
+						tracing: undefined,
+						...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
+						runHandoff: opts.runHandoff,
+					});
+					// Persisted index row so this suspension survives ANOTHER restart
+					// (the orphan-confirmation path picks it up, same as any HITL wait).
+					void this.suspendedThreads.persistPendingConfirmation({
+						requestId: result.suspension.requestId,
+						threadId: opts.threadId,
+						userId: opts.user.id,
+						runId: opts.runId,
+						messageGroupId: opts.messageGroupId,
+						kind: 'suspended',
+						toolCallId: result.suspension.toolCallId,
+						checkpointKey: result.agentRunId,
+					});
+					void this.creditService.claimRunUsage(
+						opts.user,
+						opts.threadId,
+						`${result.agentRunId || opts.runId}:${result.suspension.requestId}`,
+						result.usage?.usage ?? [],
+						'suspended',
+					);
+				}
+				if (result.confirmationEvent) {
+					this.trackConfirmationRequest(opts.threadId, result.confirmationEvent);
+					this.eventBus.publish(opts.threadId, result.confirmationEvent);
+				}
+				// Persist the refreshed tree so the HITL wait survives a page reload.
+				await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
 				return;
 			}
 

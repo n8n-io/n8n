@@ -3,6 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { createSubAgentResourceIdPrefix, orchestratorAgentId } from '@n8n/instance-ai';
+import { InstanceSettings } from 'n8n-core';
 
 import { DurableLogMetrics } from './durable-log-metrics';
 import { InProcessEventBus } from './in-process-event-bus';
@@ -61,13 +62,20 @@ export interface InterruptedRunResumeHost {
  * Runs whose checkpoint is HITL-`suspended` are skipped: the pending
  * confirmation orphan path (SuspendedRunRestorer) owns their recovery.
  *
- * ponytail: startup-only sweep, no lease/heartbeat — a sibling main actively
- * driving a run would appear "unfinished" here, so multi-main needs the lease
- * before this runs anywhere but single-main. Startup-only covers the measured
- * crash scenarios.
+ * Multi-main safety, without a dedicated lease table: durable activity is the
+ * heartbeat. Step checkpoints upsert per step and log facts append per step,
+ * so a run whose newest fact or checkpoint write is younger than the grace
+ * window is treated as live on a sibling main and skipped. Before a
+ * crash-resume, the checkpoint is claimed with an atomic compare-and-swap so
+ * two sweeping mains can never double-drive one run. Single-main skips the
+ * grace window (no siblings; an unfinished run with no local live run is
+ * dead), which keeps immediate post-crash sweeps instant.
  */
 @Service()
 export class InterruptedRunSweeper {
+	/** Multi-main only: durable activity younger than this means "still driven". */
+	static readonly LIVENESS_GRACE_MS = 2 * 60 * 1000;
+
 	private resumeHost: InterruptedRunResumeHost | undefined;
 
 	private readonly durableLogEnabled: boolean;
@@ -79,6 +87,7 @@ export class InterruptedRunSweeper {
 		private readonly eventBus: InProcessEventBus,
 		private readonly metrics: DurableLogMetrics,
 		globalConfig: GlobalConfig,
+		private readonly instanceSettings: InstanceSettings,
 	) {
 		this.logger = this.logger.scoped('instance-ai');
 		this.durableLogEnabled = globalConfig.instanceAi.durableLog;
@@ -125,6 +134,19 @@ export class InterruptedRunSweeper {
 		// orphan path; marking them interrupted would destroy that recovery.
 		if (orchestratorCheckpoints.some((row) => row.state?.status === 'suspended')) return;
 
+		// Multi-main: durable activity is the liveness heartbeat — a sibling
+		// main driving this run appends facts and upserts its checkpoint every
+		// step, so recent writes mean "not a zombie, skip this round".
+		if (this.instanceSettings.isMultiMain) {
+			const cutoff = Date.now() - InterruptedRunSweeper.LIVENESS_GRACE_MS;
+			const lastFact = await this.eventLogRepo.lastFactAt(threadId, runId);
+			const newestCheckpointAt = orchestratorCheckpoints
+				.map((row) => row.updatedAt?.getTime() ?? 0)
+				.reduce((a, b) => Math.max(a, b), 0);
+			const lastActivity = Math.max(lastFact?.getTime() ?? 0, newestCheckpointAt);
+			if (lastActivity > cutoff) return;
+		}
+
 		const events = await this.eventLogRepo.getForRuns(threadId, [runId]);
 		const inFlight = collectInFlightToolCalls(events);
 
@@ -147,7 +169,21 @@ export class InterruptedRunSweeper {
 		if (runningCheckpoint?.state && this.resumeHost) {
 			const userId = findRunUserId(events);
 			const messageGroupId = findRunMessageGroupId(events);
-			if (userId) {
+			// Atomic claim: exactly one sweeping main may re-drive this run.
+			const claimed =
+				userId !== undefined &&
+				(await this.checkpointRepo.claimForCrashResume(
+					runningCheckpoint.key,
+					runningCheckpoint.updatedAt,
+				));
+			if (userId && !claimed) {
+				this.logger.info('Crash-resume claim lost to a concurrent sweeper, skipping run', {
+					threadId,
+					runId,
+				});
+				return;
+			}
+			if (userId && claimed) {
 				const contextNotes = this.buildContextNotes(inFlight, events, runningCheckpoint.state);
 				const resumed = await this.resumeHost.crashResumeInterruptedRun({
 					threadId,
