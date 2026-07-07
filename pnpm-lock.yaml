@@ -3206,24 +3206,9 @@ importers:
 
   packages/@n8n/scheduler:
     dependencies:
-      '@n8n/backend-common':
-        specifier: workspace:*
-        version: link:../backend-common
-      '@n8n/config':
-        specifier: workspace:*
-        version: link:../config
       '@n8n/constants':
         specifier: workspace:*
         version: link:../constants
-      '@n8n/db':
-        specifier: workspace:*
-        version: link:../db
-      '@n8n/di':
-        specifier: workspace:*
-        version: link:../di
-      '@n8n/typeorm':
-        specifier: workspace:*
-        version: link:../typeorm
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
@@ -3783,6 +3768,9 @@ importers:
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../@n8n/permissions
+      '@n8n/scheduler':
+        specifier: workspace:*
+        version: link:../@n8n/scheduler
       '@n8n/syslog-client':
         specifier: workspace:*
         version: link:../@n8n/syslog-client
@@ -4126,9 +4114,6 @@ importers:
       '@n8n/playwright-janitor':
         specifier: workspace:*
         version: link:../testing/janitor
-      '@n8n/scheduler':
-        specifier: workspace:*
-        version: link:../@n8n/scheduler
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config

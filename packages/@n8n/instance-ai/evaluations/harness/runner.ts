@@ -288,7 +288,9 @@ export async function runWorkflowTestCase(
 	if (!build.success || !build.workflowId) {
 		result.buildError = build.error;
 		const expectationResults = await expectationsPromise;
-		if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
+		const buildExpectationResults = expectationResults;
+		if (buildExpectationResults.length > 0)
+			result.buildExpectationResults = buildExpectationResults;
 		return result;
 	}
 
@@ -347,7 +349,8 @@ export async function runWorkflowTestCase(
 		expectationsPromise,
 	]);
 	result.executionScenarioResults = scenarioResults;
-	if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
+	const buildExpectationResults = expectationResults;
+	if (buildExpectationResults.length > 0) result.buildExpectationResults = buildExpectationResults;
 
 	const scenarioMs = Date.now() - scenarioStart;
 	logger.info(
@@ -474,7 +477,7 @@ export interface BuildWorkflowConfig {
 	preRunWorkflowIds: Set<string>;
 	claimedWorkflowIds: Set<string>;
 	logger: EvalLogger;
-	/** Optional " [lane N/M]" suffix appended to the build log line. */
+	/** Optional " [lane N/M]" suffix appended to the scenario log line. */
 	laneTag?: string;
 	/**
 	 * Last-resort workflow discovery by list-diffing visible workflows. Keep this
@@ -557,7 +560,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		const openingMessage = conversation[0]?.text ?? '';
 		const isMultiTurn = isMultiTurnConversation(conversation);
 		logger.info(
-			`  Building workflow${isMultiTurn ? ' [multi-turn]' : ''}: "${truncate(openingMessage, 60)}"${config.laneTag ?? ''}`,
+			`  Running case${isMultiTurn ? ' [multi-turn]' : ''}: "${truncate(openingMessage, 60)}"${config.laneTag ?? ''}`,
 		);
 
 		const projectId = await client.getPersonalProjectId();

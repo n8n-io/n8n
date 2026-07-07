@@ -240,7 +240,6 @@ describe('ExecutionPersistence', () => {
 						workflowData: expectedWorkflowSnapshot,
 						workflowVersionId: 'version-abc',
 					}),
-					mockTx,
 				);
 			});
 
@@ -721,7 +720,6 @@ describe('ExecutionPersistence', () => {
 						// from the entity row, not the incoming workflowData.versionId
 						workflowVersionId: 'v-entity',
 					}),
-					mockTx,
 				);
 				expect(fsStore.read).not.toHaveBeenCalled();
 			});
@@ -751,7 +749,6 @@ describe('ExecutionPersistence', () => {
 				expect(fsStore.write).toHaveBeenCalledWith(
 					{ workflowId, executionId },
 					expect.objectContaining({ workflowVersionId: existingBundle.workflowVersionId }),
-					mockTx,
 				);
 			});
 
@@ -772,7 +769,6 @@ describe('ExecutionPersistence', () => {
 						workflowData: existingBundle.workflowData,
 						workflowVersionId: existingBundle.workflowVersionId,
 					}),
-					mockTx,
 				);
 			});
 
@@ -2220,7 +2216,6 @@ describe('ExecutionPersistence', () => {
 			expect(s3Store.write).toHaveBeenCalledWith(
 				{ workflowId: 'workflow-123', executionId: 'exec-1' },
 				expect.objectContaining({ workflowVersionId: 'version-abc' }),
-				mockTx,
 			);
 			expect(dbStore.write).not.toHaveBeenCalled();
 			expect(fsStore.write).not.toHaveBeenCalled();
@@ -2330,7 +2325,6 @@ describe('ExecutionPersistence', () => {
 			expect(azStore.write).toHaveBeenCalledWith(
 				{ workflowId: 'workflow-123', executionId: 'exec-1' },
 				expect.objectContaining({ workflowVersionId: 'version-abc' }),
-				mockTx,
 			);
 			expect(dbStore.write).not.toHaveBeenCalled();
 			expect(fsStore.write).not.toHaveBeenCalled();

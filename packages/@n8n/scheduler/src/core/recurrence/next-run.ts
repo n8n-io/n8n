@@ -1,10 +1,9 @@
+import { Time } from '@n8n/constants';
 import { CronExpressionParser } from 'cron-parser';
 
 import { InvalidScheduleError } from '../errors';
 import type { CronSchedule, IntervalSchedule, OneOffSchedule, Schedule } from '../types';
 import { validateSchedule } from './validate';
-
-const MS_PER_SECOND = 1000;
 
 /**
  * Cron: next fire strictly after `after`, in the schedule's IANA timezone.
@@ -34,7 +33,7 @@ function cronNextRun(schedule: CronSchedule, after: Date, timezone: string): Dat
  * shifts a fire. Always strictly after `after` (intervalSeconds is positive).
  */
 function intervalNextRun(schedule: IntervalSchedule, after: Date): Date {
-	return new Date(after.getTime() + schedule.intervalSeconds * MS_PER_SECOND);
+	return new Date(after.getTime() + schedule.intervalSeconds * Time.seconds.toMilliseconds);
 }
 
 /** One-off: `fireAt` when it is strictly after `after`, otherwise `null` (exhausted). */
