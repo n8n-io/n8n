@@ -134,7 +134,7 @@ function buildMessageContent(
 	toolInput: IDataObject,
 	toolId: string,
 	toolName: string,
-): string | Array<ThinkingContentBlock | RedactedThinkingContentBlock | ToolUseContentBlock> {
+): null | Array<ThinkingContentBlock | RedactedThinkingContentBlock | ToolUseContentBlock> {
 	const { thinkingContent, thinkingType, thinkingSignature } = providerMetadata;
 
 	// Anthropic thinking mode: build content blocks
@@ -149,8 +149,7 @@ function buildMessageContent(
 		);
 	}
 
-	// Default: simple string content
-	return `Calling ${toolName} with input: ${JSON.stringify(toolInput)}`;
+	return null;
 }
 
 function resolveToolName(tool: EngineResult<RequestResponseMetadata>): string {
@@ -231,9 +230,9 @@ function buildIndividualAIMessage(
 	const content = buildMessageContent(providerMetadata, toolInput, toolId, toolName);
 
 	return new AIMessage({
-		content,
+		content: content ?? [],
 		// When content is an array (Anthropic thinking), LangChain ignores tool_calls
-		...(typeof content === 'string' && { tool_calls: [toolCall] }),
+		...(content === null && { tool_calls: [toolCall] }),
 		...(providerMetadata.thoughtSignature && {
 			additional_kwargs: buildGeminiAdditionalKwargs(
 				[{ id: toolId, name: toolName, args: toolInput }],
@@ -387,11 +386,14 @@ export function buildSteps(
 				: []
 			: [buildIndividualAIMessage(toolId, toolName, toolInput, providerMetadata)];
 
+		const logFallback = messageLog[0]?.content?.length
+			? messageLog[0]?.content
+			: `Calling ${nodeName}`;
 		steps.push({
 			action: {
 				tool: toolName,
 				toolInput: toolInputForResult,
-				log: toolInput.log || (messageLog[0]?.content ?? `Calling ${nodeName}`),
+				log: toolInput.log || logFallback,
 				messageLog,
 				toolCallId: toolInput?.id,
 				type: toolInput.type || 'tool_call',

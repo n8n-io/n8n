@@ -9,6 +9,8 @@ import {
 	agentSkillSchema,
 	agentTaskSchema,
 	formatZodErrors,
+	PROVIDER_CAPABILITIES,
+	resolvePromptCaching,
 	RunnableAgentJsonConfigSchema,
 	sanitizeAgentJsonConfig,
 	tryParseConfigJson,
@@ -41,7 +43,7 @@ import { AgentSkillsService } from '../agent-skills.service';
 import { AgentTaskService } from '../agent-task.service';
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
-import { BuilderModelLookupService } from './builder-model-lookup.service';
+import { BuilderModelLiveLookupService } from './builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from './builder-tool-names';
 import {
 	collectFromAiParameterReferences,
@@ -62,6 +64,7 @@ import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-templa
 import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
 import { buildVerifyMcpServerTool } from './verify-mcp-server.tool';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
+import { getProviderPrefix } from '../json-config/model-id';
 import {
 	getNativeWebSearchProviderTools,
 	hasNativeWebSearchProvider,
@@ -260,6 +263,38 @@ function applyNativeWebSearchBuilderDefaults(config: AgentJsonConfig): AgentJson
 	};
 }
 
+/**
+ * Prompt caching is mandatory for OpenAI/Anthropic: this write-path
+ * normalizer guarantees `config.promptCaching` is force-enabled for those
+ * providers (the user cannot disable it, even if the LLM wrote
+ * `{ enabled: false }`), preserves an explicit Anthropic TTL, and strips the
+ * field entirely for every other provider — regardless of what the builder
+ * LLM wrote.
+ */
+function applyPromptCachingBuilderDefaults(config: AgentJsonConfig): AgentJsonConfig {
+	const providerPrefix = getProviderPrefix(config.model);
+	const capability = PROVIDER_CAPABILITIES[providerPrefix]?.promptCaching ?? false;
+	const resolved = resolvePromptCaching(config.config?.promptCaching, capability);
+
+	if (!resolved) {
+		if (!config.config || !('promptCaching' in config.config)) return config;
+		const { promptCaching: _promptCaching, ...restConfig } = config.config;
+		const { config: _config, ...restAgentConfig } = config;
+		return {
+			...restAgentConfig,
+			...(Object.keys(restConfig).length > 0 ? { config: restConfig } : {}),
+		};
+	}
+
+	return {
+		...config,
+		config: {
+			...(config.config ?? {}),
+			promptCaching: resolved,
+		},
+	};
+}
+
 export interface BuilderTools {
 	json: BuiltTool[];
 	shared: BuiltTool[];
@@ -276,7 +311,7 @@ export class AgentsBuilderToolsService {
 		private readonly secureRuntime: AgentSecureRuntime,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly agentsToolsService: AgentsToolsService,
-		private readonly builderModelLookupService: BuilderModelLookupService,
+		private readonly builderModelLiveLookupService: BuilderModelLiveLookupService,
 		private readonly mcpRegistryService: McpRegistryService,
 		private readonly oauthService: OauthService,
 		private readonly credentialTypes: CredentialTypes,
@@ -457,7 +492,9 @@ export class AgentsBuilderToolsService {
 					if (dynamicSelectorFromAi) {
 						return { ok: false, errors: dynamicSelectorFromAi.errors };
 					}
-					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
+					const normalizedConfig = applyPromptCachingBuilderDefaults(
+						applyNativeWebSearchBuilderDefaults(zodResult.data),
+					);
 					try {
 						const result = await this.agentConfigService.updateConfig(
 							agentId,
@@ -572,7 +609,9 @@ export class AgentsBuilderToolsService {
 					if (dynamicSelectorFromAi) {
 						return { ok: false, stage: 'schema', errors: dynamicSelectorFromAi.errors };
 					}
-					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
+					const normalizedConfig = applyPromptCachingBuilderDefaults(
+						applyNativeWebSearchBuilderDefaults(zodResult.data),
+					);
 
 					try {
 						const result = await this.agentConfigService.updateConfig(
@@ -632,8 +671,14 @@ export class AgentsBuilderToolsService {
 			.build();
 
 		const modelLookup: ModelLookup = {
-			list: async (credentialId, credentialType, lookup) =>
-				await this.builderModelLookupService.list(user, credentialId, credentialType, lookup),
+			list: async (credentialId, credentialType, provider) =>
+				await this.builderModelLiveLookupService.list(
+					user,
+					projectId,
+					credentialId,
+					credentialType,
+					provider,
+				),
 		};
 
 		const tools: BuiltTool[] = [

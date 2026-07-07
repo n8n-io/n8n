@@ -56,6 +56,10 @@ const alias = [
 		replacement: resolve(packagesDir, '@n8n', 'constants', 'src$1'),
 	},
 	{
+		find: /^@n8n\/design-system$/,
+		replacement: resolve(packagesDir, 'frontend', '@n8n', 'design-system', 'src/index.ts'),
+	},
+	{
 		find: /^@n8n\/design-system(.+)$/,
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'design-system', 'src$1'),
 	},

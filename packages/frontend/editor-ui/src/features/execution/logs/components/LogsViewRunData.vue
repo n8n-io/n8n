@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import RunData from '@/features/ndv/runData/components/RunData.vue';
-import { type LogEntry } from '@/features/execution/logs/logs.types';
+import { type NodeLogEntry } from '@/features/execution/logs/logs.types';
 import { useI18n } from '@n8n/i18n';
 import type { IRunDataDisplayMode } from '@/Interface';
 import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
@@ -25,13 +25,19 @@ const {
 	paneType,
 	collapsingTableColumnName,
 	showRedactedOverlay = true,
+	sourceIndex = 0,
+	overrideOutputs,
 } = defineProps<{
 	title: string;
 	paneType: NodePanelType;
-	logEntry: LogEntry;
+	logEntry: NodeLogEntry;
 	collapsingTableColumnName: string | null;
 	searchShortcut?: SearchShortcut;
 	showRedactedOverlay?: boolean;
+	/** Input pane: which runData.source[] entry to render (for group boundary crossings) */
+	sourceIndex?: number;
+	/** Output pane: scope to specific output branch(es) (for group boundary crossings) */
+	overrideOutputs?: number[];
 }>();
 
 const emit = defineEmits<{
@@ -53,10 +59,10 @@ const runDataProps = computed<
 	Pick<InstanceType<typeof RunData>['$props'], 'node' | 'runIndex' | 'overrideOutputs'> | undefined
 >(() => {
 	if (isSubNodeLog(logEntry) || paneType === 'output') {
-		return { node: logEntry.node, runIndex: logEntry.runIndex };
+		return { node: logEntry.node, runIndex: logEntry.runIndex, overrideOutputs };
 	}
 
-	const source = logEntry.runData?.source[0];
+	const source = logEntry.runData?.source[sourceIndex];
 	const node = source && logEntry.workflow.getNode(source.previousNode);
 
 	if (!source || !node) {

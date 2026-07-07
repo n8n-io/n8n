@@ -11,6 +11,11 @@ export interface RedactionOptions {
 	detect?: readonly PiiDetectionType[];
 	/** Replacement text for a match. Defaults to `[REDACTED]`. */
 	placeholder?: string;
+	/** For `url` matches, keep origin + path + query names and redact the
+	 *  value-bearing parts: query values, token-like path segments (webhook
+	 *  secrets), userinfo, fragment. Off by default so guardrail behavior is
+	 *  unchanged; telemetry/trace scrubbing opts in. */
+	preserveUrlStructure?: boolean;
 }
 
 export interface RedactionResult {
@@ -42,21 +47,71 @@ export function redactText(input: string, opts: RedactionOptions = {}): Redactio
 		secrets: opts.secrets ?? true,
 		detect: opts.detect ?? [],
 	});
+	// In preserve mode the url pass runs FIRST: it rewrites URLs with a URL-safe
+	// placeholder before other patterns can plant one containing `]` mid-URL —
+	// `]` stops the url regex, which would hide the URL's tail (and any secrets
+	// in it) from this pass entirely.
+	const ordered = opts.preserveUrlStructure
+		? [
+				...patterns.filter((pattern) => pattern.category === 'url'),
+				...patterns.filter((pattern) => pattern.category !== 'url'),
+			]
+		: patterns;
 
 	const matches: Array<{ category: RedactionCategory }> = [];
 	let text = input;
 
-	for (const pattern of patterns) {
+	for (const pattern of ordered) {
 		// `replace` with a global regex scans from 0 and resets lastIndex, so the
 		// shared precompiled regex is safe to reuse across calls.
 		text = text.replace(pattern.regex, (match) => {
 			if (pattern.validate && !pattern.validate(match)) return match;
+			if (opts.preserveUrlStructure && pattern.category === 'url') {
+				const rebuilt = stripUrlSensitiveParts(match, placeholder);
+				if (rebuilt !== match) matches.push({ category: pattern.category });
+				return rebuilt;
+			}
 			matches.push({ category: pattern.category });
 			return placeholder;
 		});
 	}
 
 	return { text, matches };
+}
+
+/** True for a path segment that looks like an embedded token — webhook-style
+ *  services (Slack/Discord/Telegram, …) carry their secret as a path segment.
+ *  Shape-based on purpose: per-service URL grammars don't scale across hundreds
+ *  of integrations. Conservative: words, readable slugs and digit-only ids are
+ *  kept. */
+function isTokenLikeSegment(segment: string): boolean {
+	if (segment.length >= 16 && /[A-Za-z]/.test(segment) && /\d/.test(segment)) return true;
+	// Long single-class opaque blob (e.g. a letters-only token) — real words stay
+	// shorter and readable slugs contain separators.
+	return segment.length >= 24 && /^[A-Za-z]+$/.test(segment);
+}
+
+/** Keep origin + path (token-like segments redacted) + query names; redact
+ *  query values, drop userinfo and fragment. The replacement is URL-safe (no
+ *  `]`, which the url regex stops at) so re-scrubbing is stable. Unparseable ⇒
+ *  fully redacted. */
+function stripUrlSensitiveParts(match: string, placeholder: string): string {
+	const urlPlaceholder = placeholder.replace(/[^A-Za-z0-9_.~-]/g, '') || 'REDACTED';
+	try {
+		const url = new URL(match);
+		const pathname = url.pathname
+			.split('/')
+			.map((segment) => (isTokenLikeSegment(segment) ? urlPlaceholder : segment))
+			.join('/');
+		const names = [...url.searchParams.keys()];
+		const query =
+			names.length > 0
+				? `?${names.map((name) => `${encodeURIComponent(name)}=${urlPlaceholder}`).join('&')}`
+				: '';
+		return `${url.origin}${pathname}${query}`;
+	} catch {
+		return placeholder;
+	}
 }
 
 /**

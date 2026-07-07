@@ -41,27 +41,17 @@ export const askUserResumeSchema = z.object({
 export function createAskUserTool() {
 	return new Tool(ASK_USER_TOOL_ID)
 		.description(
-			'Ask the user only when a human choice is needed. Each question can be ' +
-				'single-select (pick one), multi-select (pick many), or free-text. ' +
-				'The agent is suspended until the user responds. ' +
-				'Before the first build-workflow call for a workflow build, use this only ' +
-				'for choices that change workflow intent or topology, such as which destination ' +
-				'service to use. Do not use this before the first build for setup values ' +
-				'after the service is known, such as recipients, account labels or IDs, ' +
-				'resource IDs, channel IDs, credential choices, credential fields, or timezone; ' +
-				'use placeholders or unresolved newCredential() calls instead. ' +
-				'IMPORTANT: The UI already provides a built-in "Something else" free-text ' +
-				'input for every single/multi question, so NEVER include generic catch-all ' +
-				'options like "Something else", "Other", "None of the above", or similar in ' +
-				'the options array — they duplicate the built-in input and confuse users. ' +
-				'Also NEVER add a separate follow-up question asking the user to elaborate ' +
-				'on a previous "other" choice. Keep questions concise and ' +
-				'avoid questions that reference answers to previous questions. ' +
-				'A question is asked at most once: if the user skips or dismisses it (you ' +
-				'receive answered: false, or an individual answer with skipped: true), treat that ' +
-				'as a deliberate "proceed without this" — ' +
-				'make a sensible default assumption where one exists, otherwise leave the detail ' +
-				'for setup, and NEVER re-present a question the user has already answered, deferred, or skipped. ' +
+			'Ask the user when only a human can decide; the run suspends until they respond. ' +
+				'Questions are single-select, multi-select, or free-text. ' +
+				'Before the first build-workflow call, use only for choices that change workflow intent or topology ' +
+				'(e.g. destination service) — setup values (recipients, accounts, resources, channels, credentials, ' +
+				'timezone) use placeholders or unresolved newCredential() calls instead. ' +
+				'The UI adds a built-in "Something else" free-text input to every select question: NEVER include ' +
+				'catch-all options ("Something else", "Other", "None of the above") in the options array, and NEVER ' +
+				'add a follow-up question elaborating a previous "other" answer. Keep questions concise and independent ' +
+				"of each other's answers. A question is asked at most once — a skip or dismissal (answered: false, or " +
+				'skipped: true) means "proceed without this": assume a sensible default or leave the detail for setup, ' +
+				'and NEVER re-present an answered, deferred, or skipped question. ' +
 				'NEVER ask the user to paste passwords, API keys, tokens, cookies, connection strings, or private keys here.',
 		)
 		.input(askUserInputSchema)

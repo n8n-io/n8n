@@ -106,6 +106,7 @@ export const defaultSettings: FrontendSettings = {
 	timezone: '',
 	urlBaseEditor: '',
 	urlBaseWebhook: '',
+	urlBaseWebhookTest: '',
 	authCookie: {
 		secure: false,
 	},
@@ -192,4 +193,5 @@ export const defaultSettings: FrontendSettings = {
 			publishedWorkflowCount: 0,
 		},
 	},
+	useWorkflowPublicationService: false,
 };

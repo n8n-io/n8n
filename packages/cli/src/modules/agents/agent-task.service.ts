@@ -1,7 +1,6 @@
 import type { AgentTaskDto, CreateAgentTaskDto, UpdateAgentTaskDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { ProjectRelationRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { IsNull, Not } from '@n8n/typeorm';
@@ -58,7 +57,6 @@ export class AgentTaskService {
 		private readonly taskSnapshotRepository: AgentTaskSnapshotRepository,
 		private readonly taskRunLockRepository: AgentTaskRunLockRepository,
 		private readonly agentRepository: AgentRepository,
-		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly scheduledTaskManager: ScheduledTaskManager,
@@ -438,16 +436,6 @@ export class AgentTaskService {
 				return;
 			}
 
-			const executionUserId = await this.resolveExecutionUserId(agent);
-			if (!executionUserId) {
-				this.logger.warn('[AgentTaskService] No project member available for task run', {
-					taskId,
-					agentId,
-					projectId,
-				});
-				return;
-			}
-
 			const { message, threadId } = this.buildTaskRunMessage(taskId, snapshot.objective);
 
 			this.logger.info('[AgentTaskService] Task fired', {
@@ -561,18 +549,6 @@ export class AgentTaskService {
 				taskId: task.id,
 			}),
 		);
-	}
-
-	private async resolveExecutionUserId(agent: Agent): Promise<string | undefined> {
-		const userIds = await this.projectRelationRepository.findUserIdsByProjectId(agent.projectId);
-		if (userIds.length === 0) return undefined;
-
-		const publishedById = agent.activeVersion?.publishedById;
-		if (publishedById && userIds.includes(publishedById)) {
-			return publishedById;
-		}
-
-		return undefined;
 	}
 
 	// ── Helpers ───────────────────────────────────────────────────────────

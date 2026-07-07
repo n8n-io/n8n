@@ -102,6 +102,36 @@ export async function hubspotApiRequestAllItems(
 	return returnData;
 }
 
+export type HubspotObjectType = 'contacts' | 'companies' | 'deals' | 'tickets';
+
+export interface HubspotProperty {
+	name: string;
+	label: string;
+	type?: string;
+	hubspotDefined?: boolean;
+	options?: Array<{ label: string; value: string }>;
+}
+
+export async function getAllProperties(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	objectType: HubspotObjectType,
+): Promise<HubspotProperty[]> {
+	const returnData: HubspotProperty[] = [];
+	const endpoint = `/crm/v3/properties/${objectType}`;
+	const query: IDataObject = { limit: 100 };
+
+	let responseData;
+	do {
+		responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, query);
+		if (Array.isArray(responseData?.results)) {
+			returnData.push(...(responseData.results as HubspotProperty[]));
+		}
+		query.after = responseData?.paging?.next?.after;
+	} while (query.after);
+
+	return returnData;
+}
+
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {

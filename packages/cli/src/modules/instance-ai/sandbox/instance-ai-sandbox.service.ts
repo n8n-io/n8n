@@ -116,7 +116,7 @@ export type InstanceAiSandboxProxy = {
 	getClient: () => Promise<{
 		getSandboxProxyConfig: () => Promise<{ image?: string }>;
 		getSandboxProxyBaseUrl: () => string;
-		getBuilderApiProxyToken: (
+		getInstanceAiApiProxyToken: (
 			user: { id: string },
 			options: { userMessageId: string },
 		) => Promise<{ accessToken: string }>;
@@ -236,7 +236,7 @@ export class InstanceAiSandboxService {
 					image: proxyConfig.image,
 					logger: this.logger,
 					getAuthToken: async () => {
-						const token = await client.getBuilderApiProxyToken(
+						const token = await client.getInstanceAiApiProxyToken(
 							{ id: user.id },
 							{ userMessageId: nanoid() },
 						);

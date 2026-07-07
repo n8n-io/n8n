@@ -239,7 +239,7 @@ describe('Init', () => {
 			const sourceControlSpy = vi.spyOn(sourceControlStore, 'getPreferences');
 			const nodeTranslationSpy = vi.spyOn(nodeTypesStore, 'getNodeTranslationHeaders');
 			const versionsSpy = vi.spyOn(versionsStore, 'checkForNewVersions');
-			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['*'] });
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
 
 			await initializeAuthenticatedFeatures(false);
 
@@ -261,7 +261,7 @@ describe('Init', () => {
 			const sourceControlSpy = vi.spyOn(sourceControlStore, 'getPreferences');
 			const nodeTranslationSpy = vi.spyOn(nodeTypesStore, 'getNodeTranslationHeaders');
 			const versionsSpy = vi.spyOn(versionsStore, 'checkForNewVersions');
-			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['*'] });
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
 
 			await initializeAuthenticatedFeatures(false);
 
@@ -278,7 +278,7 @@ describe('Init', () => {
 			const sourceControlSpy = vi.spyOn(sourceControlStore, 'getPreferences');
 			const nodeTranslationSpy = vi.spyOn(nodeTypesStore, 'getNodeTranslationHeaders');
 			const versionsSpy = vi.spyOn(versionsStore, 'checkForNewVersions');
-			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['*'] });
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
 
 			await initializeAuthenticatedFeatures(false);
 
@@ -290,7 +290,7 @@ describe('Init', () => {
 
 		it('should handle source control initialization error', async () => {
 			vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValue();
-			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['*'] });
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
 			vi.spyOn(sourceControlStore, 'getPreferences').mockRejectedValueOnce(
 				new AxiosError('Something went wrong', '404'),
 			);
@@ -308,7 +308,7 @@ describe('Init', () => {
 			settingsStore.settings.banners = { dismissed: [] };
 			settingsStore.settings.versionCli = '1.2.3';
 			settingsStore.isCloudDeployment = false;
-			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['*'] });
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
 
 			const pushBannerSpy = vi.spyOn(bannersStore, 'pushBannerToStack');
 

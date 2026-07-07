@@ -39,6 +39,8 @@ export { InstanceAiMcpUpdateConnectionRequestDto } from './instance-ai/instance-
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';
 
+export { BreakingChangeReportQueryDto } from './breaking-changes/breaking-change-report-query.dto';
+
 export { LoginRequestDto } from './auth/login-request.dto';
 export { ResolveSignupTokenQueryDto } from './auth/resolve-signup-token-query.dto';
 export { EmbedLoginQueryDto } from './auth/embed-login-query.dto';
@@ -213,11 +215,11 @@ export {
 export { DownloadDataTableCsvQueryDto } from './data-table/download-data-table-csv-query.dto';
 export { ImportCsvToDataTableDto } from './data-table/import-csv-to-data-table.dto';
 
-export { ExportWorkflowsRequestDto } from './packages/export-workflows-request.dto';
 export {
 	ImportPackageRequestDto,
 	IMPORT_PACKAGE_REQUEST_FORM_FIELDS,
 } from './packages/import-package-request.dto';
+export { ExportPackageRequestDto } from './packages/export-package-request.dto';
 
 export * from './evaluations';
 

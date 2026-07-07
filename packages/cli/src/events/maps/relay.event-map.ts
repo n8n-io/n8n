@@ -13,7 +13,9 @@ import type {
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
 import type {
+	ExportPackageEventCounts,
 	ImportAuditCredentialIds,
+	ImportPackageEventCounts,
 	ImportPackageEventOptions,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-exchange.types';
@@ -88,7 +90,7 @@ export type RelayEventMap = {
 		source?: WorkflowActionSource;
 	};
 
-	'workflows-imported': {
+	'n8n-package-imported': {
 		user: UserLike;
 		projectId: string;
 		folderId: string | null;
@@ -97,6 +99,15 @@ export type RelayEventMap = {
 		packageSourceId: string;
 		packageVersion: string;
 		credentialIds: ImportAuditCredentialIds;
+		counts: ImportPackageEventCounts;
+	};
+
+	'n8n-package-exported': {
+		user: UserLike;
+		workflowIds?: string[];
+		folderIds?: string[];
+		projectIds?: string[];
+		counts: ExportPackageEventCounts;
 	};
 
 	'workflow-deleted': {
@@ -414,6 +425,8 @@ export type RelayEventMap = {
 		isDynamic?: boolean;
 		usesExternalSecrets?: boolean;
 		jweEnabled?: boolean;
+		supportsManagedAuth?: boolean;
+		usesManagedAuth?: boolean;
 	};
 
 	'credentials-shared': {
@@ -432,6 +445,8 @@ export type RelayEventMap = {
 		isDynamic?: boolean;
 		usesExternalSecrets?: boolean;
 		jweEnabled?: boolean;
+		supportsManagedAuth?: boolean;
+		usesManagedAuth?: boolean;
 	};
 
 	'credentials-deleted': {
@@ -472,6 +487,12 @@ export type RelayEventMap = {
 		credentialId: string;
 	};
 
+	'private-credential-connections-cleared': {
+		user: UserLike;
+		credentialType: string;
+		credentialId: string;
+	};
+
 	'private-credential-deleted': {
 		user: UserLike;
 		credentialType: string;
@@ -482,6 +503,8 @@ export type RelayEventMap = {
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
+		supportsManagedAuth?: boolean;
+		usesManagedAuth?: boolean;
 	};
 
 	// #endregion

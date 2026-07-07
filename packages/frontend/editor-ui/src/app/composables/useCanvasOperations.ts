@@ -3041,17 +3041,26 @@ export function useCanvasOperations() {
 		const workflowTags = workflowData.tags as ITag[];
 		const notFound = workflowTags.filter((tag) => !tagNames.has(tag.name));
 
-		const creatingTagPromises: Array<Promise<ITag>> = [];
-		for (const tag of notFound) {
-			const creationPromise = tagsStore.create(tag.name).then((newTag: ITag) => {
-				allTags.push(newTag);
-				return newTag;
-			});
+		// Tag creation is scope-gated (tag:create). A user may be allowed to import
+		// a workflow without being able to create tags — don't let that abort the
+		// whole import. Link the tags that succeed and warn about the rest.
+		const results = await Promise.allSettled(
+			notFound.map(async (tag) => await tagsStore.create(tag.name)),
+		);
 
-			creatingTagPromises.push(creationPromise);
+		for (const result of results) {
+			if (result.status === 'fulfilled') {
+				allTags.push(result.value);
+			}
 		}
 
-		await Promise.all(creatingTagPromises);
+		if (results.some((result) => result.status === 'rejected')) {
+			toast.showToast({
+				title: i18n.baseText('nodeView.showMessage.importWorkflowTags.title'),
+				message: i18n.baseText('nodeView.showMessage.importWorkflowTags.message'),
+				type: 'warning',
+			});
+		}
 
 		const tagIds = workflowTags.reduce((accu: string[], imported: ITag) => {
 			const tag = allTags.find((t) => t.name === imported.name);
