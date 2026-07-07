@@ -140,7 +140,7 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--base-url` | `http://localhost:5678` | n8n instance URL |
 | `--email` | E2E test owner | Override login email (or `N8N_EVAL_EMAIL`) |
 | `--password` | E2E test owner | Override login password (or `N8N_EVAL_PASSWORD`) |
-| `--timeout-ms` | `900000` | Per-test-case timeout |
+| `--timeout-ms` | `900000` | Per-test-case timeout (the MCP CI workflow passes `1500000` — its multi-agent cases with large mocked payloads legitimately run past 15 min) |
 | `--output-dir` | cwd | Where to write `eval-results.json` |
 | `--dataset` | `instance-ai-workflow-evals` | LangSmith dataset name. Synced from the JSON test cases (honoring `--filter`/`--exclude`/`--tier`) before each run — point an isolated cohort (e.g. MCP) at its own dataset to avoid writing to the shared one |
 | `--baseline-prefix` | `instance-ai-baseline-` | Experiment-name prefix the regression comparison uses to find the baseline. Override (e.g. `mcp-baseline-`) so a cohort compares against its own baselines instead of the Instance AI one |
@@ -150,6 +150,13 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--tier` | — | Filter to test cases whose `datasets` array contains this value (e.g. `--tier pr` for the PR-time set). Combines with `--filter`/`--exclude`. |
 | `--source` | `disk` | Where test cases come from. `disk` (default) reads `data/workflows/`; `langtracer` pulls a suite from LangTracer's REST API — see [Sourcing from LangTracer](#sourcing-test-cases-from-langtracer) |
 | `--suite` | — | LangTracer suite slug (or numeric id) to pull when `--source langtracer` (required in that mode) |
+| `--build-via-mcp` | `false` | Build each workflow by driving the lane's MCP server with `claude -p`, then verify it on that same lane — see [Building via MCP (`--build-via-mcp`)](#building-via-mcp---build-via-mcp). Works across multiple `--base-url` lanes; requires `LANGSMITH_API_KEY`; mutually exclusive with `--prebuilt-workflows` |
+| `--mcp-server` | `n8n-local` | MCP server name for the staged `claude` config + tool allowlist (`--build-via-mcp`) |
+| `ANTHROPIC_MODEL` (env) | `claude-opus-4-8` | Anthropic model for the `claude` MCP build (`--build-via-mcp`); distinct from the verifier model. Not a flag: it rides `claude`'s native env var, and the CLI pins the default when unset so builds never float with claude-code's bundled default |
+| `--build-cwd` | — | Working directory for the `claude` build subprocess (`--build-via-mcp`); loads that project's Claude config/skills |
+| `--build-max-attempts` | `3` | Retries per workflow when `claude` returns no id (`--build-via-mcp`) |
+| `--build-mcp-timeout-ms` | `120000` | `MCP_TIMEOUT` passed to the `claude` build subprocess — bounds one MCP tool call (`--build-via-mcp`) |
+| `--build-timeout-ms` | `1800000` | Wall-clock cap per build attempt; on expiry the `claude` process is killed so a hung build can't hold its lane. `0` disables. A timed-out build is not retried (`--build-via-mcp`) |
 
 **pass@k / pass^k**: with `--iterations N`, each scenario runs N times. `pass@k` is the fraction of scenarios that passed *at least once*; `pass^k` is the fraction that passed *every* time. `pass@k` shows whether something is *possible*; `pass^k` shows whether it's *reliable*.
 
@@ -290,7 +297,7 @@ Evals auto-run when a PR is **opened / reopened / marked ready** (path-filtered)
 gh workflow run ci-instance-ai-evals.yml -f pr=<number>
 ```
 
-…or use the **Run workflow** button on the **CI: Instance AI Evals** workflow and set `pr=<number>`. A `resolve` job looks up the PR's current head at dispatch time (preferring the merge ref when it reflects the latest push, so it tests the merged state like a PR-open run; otherwise it uses the head), runs the eval against it, and posts results back to the PR. A dispatched run rebuilds the docker image either way — the prebuilt image cache is scoped to `refs/pull/<n>/merge`, which a dispatch can't restore. GitHub's built-in "Re-run jobs" instead replays the original PR-open commit, so use the dispatch above. Each eval PR comment also embeds this `gh workflow run -f pr=<n>` line.
+…or use the **Run workflow** button on the **Instance AI Evals: PR Gate** workflow and set `pr=<number>`. A `resolve` job looks up the PR's current head at dispatch time (preferring the merge ref when it reflects the latest push, so it tests the merged state like a PR-open run; otherwise it uses the head), runs the eval against it, and posts results back to the PR. A dispatched run rebuilds the docker image either way — the prebuilt image cache is scoped to `refs/pull/<n>/merge`, which a dispatch can't restore. GitHub's built-in "Re-run jobs" instead replays the original PR-open commit, so use the dispatch above. Each eval PR comment also embeds this `gh workflow run -f pr=<n>` line.
 
 ### Refreshing the baseline
 
@@ -377,6 +384,71 @@ For runs that need to leave the n8n repo (for example, driving the build from a 
 - `--project-id <id>` — instructs the model to pass `projectId` to `create_workflow_from_code` so workflows land in a specific n8n project instead of the user's personal one.
 
 Run `pnpm eval:build-mcp-manifest --help` for the full flag list.
+
+## Building via MCP (`--build-via-mcp`)
+
+`--build-via-mcp` folds the MCP build into the eval run: instead of the two-phase
+`eval:build-mcp-manifest` → `--prebuilt-workflows` flow, one `eval:instance-ai`
+process builds each workflow by driving a lane's own MCP server with `claude -p`,
+then verifies it on that **same** lane. This is the recommended way to run the
+`mcp` tier — one process means one LangSmith experiment (no manifest hop, no
+shard/merge step), and the work-stealing allocator spreads builds across lanes
+(capped per-lane), so N lanes parallelize the whole build+verify pipeline.
+
+How it differs from the manifest flow:
+
+- **No manifest.** Each `(slug, iteration)` is built on demand and verified in
+  place, so every iteration gets a genuinely fresh build (clean `pass@k`/`pass^k`
+  variance) instead of rotating a fixed list of prebuilt IDs.
+- **Multi-lane.** Unlike `--prebuilt-workflows` (single instance), `--build-via-mcp`
+  accepts a comma-separated `--base-url`. Each lane enables MCP, mints its own API
+  key, and stages its own `claude` MCP config — the CLI does this setup for you.
+- **Throwaway cleanup.** Built workflows are deleted after the run unless you pass
+  `--keep-workflows`. Known limitation: cleanup keys off the `WORKFLOW_ID` trailer
+  `claude` prints, so a build that times out or never emits the trailer can leave
+  its workflow behind on the lane even though cleanup is on.
+
+**Prerequisites**: `LANGSMITH_API_KEY` set — MCP builds only run on the
+LangSmith path, whose lane allocator caps builds at 4 per lane globally (the
+keyless direct loop parallelizes iterations, which would multiply concurrent
+`claude` sessions by the iteration count). Plus the `claude` CLI installed and
+authenticated (the build subprocess reads `ANTHROPIC_API_KEY`; set
+`ANTHROPIC_MODEL` to pick the build model, defaulting to `claude-opus-4-8` when
+unset); each lane reachable and seeded with the E2E owner. The MCP module is on
+by default, so no server-side config is needed beyond a running instance.
+
+Local run against a pool of container lanes (reuses `scripts/run-eval-lanes.sh`,
+which starts + seeds the lanes and forwards everything after `--`):
+
+```bash
+# 6 lanes; build via MCP + verify the mcp tier, one experiment.
+# --concurrency 12 = lanes * 2 (the script's own default is lanes * 4).
+./scripts/run-eval-lanes.sh --instance-count 6 --tier mcp --concurrency 12 -- \
+  --build-via-mcp \
+  --dataset mcp-workflow-evals \
+  --baseline-prefix mcp-baseline-
+```
+
+Or point at lanes you started yourself:
+
+```bash
+dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai \
+  --base-url http://localhost:5678,http://localhost:5679 \
+  --build-via-mcp \
+  --tier mcp \
+  --iterations 3 \
+  --concurrency 4 \
+  --dataset mcp-workflow-evals \
+  --baseline-prefix mcp-baseline-
+```
+
+In CI this is what `ci-mcp-evals.yml` runs (see `test-evals-mcp.yml`): a single
+job starts `lanes` containers and runs one `--build-via-mcp` process, defaulting
+`--concurrency` to `lanes * 2`. Use the same ratio locally: `claude` builds,
+mock generation, and the verifier all draw on one Anthropic budget, and running
+lanes flat-out at `lanes * 4` (each lane's per-lane build cap) starves it,
+surfacing as verifier/MCP timeouts. Treat `lanes * 4` as an aggressive upper
+bound for keys with rate-limit headroom, not the starting point.
 
 ## Discovery evals
 

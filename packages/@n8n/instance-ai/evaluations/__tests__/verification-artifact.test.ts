@@ -1,7 +1,7 @@
 import type { InstanceAiEvalExecutionResult, InstanceAiEvalNodeResult } from '@n8n/api-types';
 
 import type { WorkflowResponse } from '../clients/n8n-client';
-import { buildVerificationArtifact } from '../harness/runner';
+import { buildVerificationArtifact, selectScenarioWorkflowId } from '../harness/runner';
 import type { ExecutionScenario } from '../types';
 
 function makeNodeResult(
@@ -69,6 +69,151 @@ describe('buildVerificationArtifact', () => {
 		expect(artifact.scenarioContext).toContain('happy-path');
 		expect(artifact.scenarioContext).toContain('Execution trace');
 		expect(artifact.scenarioContext).not.toContain('Workflow structure');
+	});
+
+	it('uses the routed workflow JSON for verification context', () => {
+		const primary: WorkflowResponse = {
+			id: 'w1',
+			name: 'primary-router',
+			active: false,
+			versionId: 'v1',
+			nodes: [
+				{
+					id: 'a',
+					name: 'Primary Switch',
+					type: 'n8n-nodes-base.switch',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'b',
+					name: 'Primary Action',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				'Primary Switch': { main: [[{ node: 'Primary Action', type: 'main', index: 0 }]] },
+			},
+		};
+		const routed: WorkflowResponse = {
+			id: 'w2',
+			name: 'routed-router',
+			active: false,
+			versionId: 'v1',
+			nodes: [
+				{
+					id: 'c',
+					name: 'Switch',
+					type: 'n8n-nodes-base.switch',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'd',
+					name: 'Routed Action',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Switch: { main: [[{ node: 'Routed Action', type: 'main', index: 0 }]] },
+			},
+		};
+		const evalResult = makeEvalResult({
+			Switch: makeNodeResult({
+				outputs: { main: [[{ json: { ok: true } }]] },
+				outputCount: 1,
+				iterationCount: 1,
+			}),
+		});
+
+		const artifact = buildVerificationArtifact(scenario, evalResult, [primary, routed], 'w2');
+
+		expect(artifact.workflowContext).toContain('Routed Action');
+		expect(artifact.workflowContext).not.toContain('Primary Action');
+		expect(artifact.scenarioContext).toContain('Did not run');
+		expect(artifact.scenarioContext).toContain('Routed Action');
+		expect(artifact.scenarioContext).not.toContain('Primary Action');
+	});
+
+	it('does not route scenarios to sub-workflow or error-trigger workflows', () => {
+		const logger = { info: vi.fn() };
+		const primary: WorkflowResponse = {
+			id: 'primary',
+			name: 'incoming webhook',
+			active: false,
+			versionId: 'v1',
+			nodes: [
+				{
+					id: 'a',
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+		};
+		const subWorkflow: WorkflowResponse = {
+			id: 'sub',
+			name: 'urgent invoice handler',
+			active: false,
+			versionId: 'v1',
+			nodes: [
+				{
+					id: 'b',
+					name: 'Execute Workflow Trigger',
+					type: 'n8n-nodes-base.executeWorkflowTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'c',
+					name: 'Urgent Invoice Slack',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+		};
+		const errorWorkflow: WorkflowResponse = {
+			id: 'error',
+			name: 'urgent invoice error workflow',
+			active: false,
+			versionId: 'v1',
+			nodes: [
+				{
+					id: 'd',
+					name: 'Error Trigger',
+					type: 'n8n-nodes-base.errorTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+		};
+
+		const selected = selectScenarioWorkflowId(
+			{ ...scenario, dataSetup: 'urgent invoice should alert Slack' },
+			'primary',
+			[primary, subWorkflow, errorWorkflow],
+			logger as never,
+		);
+
+		expect(selected).toBe('primary');
+		expect(logger.info).not.toHaveBeenCalled();
 	});
 
 	it('labels Filter branches with downstream node names so verifier can tell where items went', () => {

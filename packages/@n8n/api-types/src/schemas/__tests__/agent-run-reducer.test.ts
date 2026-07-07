@@ -6,6 +6,8 @@ import {
 	findAgent,
 	toAgentTree,
 	stateFromAgentTree,
+	normalizeLegacyReasoningTimeline,
+	normalizeAgentTree,
 } from '../agent-run-reducer';
 import type { AgentRunState } from '../agent-run-reducer';
 import type {
@@ -30,8 +32,9 @@ function makeRunFinish(
 	runId: string,
 	agentId: string,
 	status: 'completed' | 'cancelled' | 'error',
+	reason?: string,
 ): Extract<InstanceAiEvent, { type: 'run-finish' }> {
-	return { type: 'run-finish', runId, agentId, payload: { status } };
+	return { type: 'run-finish', runId, agentId, payload: { status, ...(reason ? { reason } : {}) } };
 }
 
 function makeTextDelta(
@@ -46,8 +49,15 @@ function makeReasoningDelta(
 	runId: string,
 	agentId: string,
 	text: string,
+	responseId?: string,
 ): Extract<InstanceAiEvent, { type: 'reasoning-delta' }> {
-	return { type: 'reasoning-delta', runId, agentId, payload: { text } };
+	return {
+		type: 'reasoning-delta',
+		runId,
+		agentId,
+		...(responseId ? { responseId } : {}),
+		payload: { text },
+	};
 }
 
 function makeToolCall(
@@ -224,6 +234,27 @@ describe('agent-run-reducer', () => {
 			expect(state.agentsById['root'].status).toBe('cancelled');
 		});
 
+		it('run-finish(cancelled) categorizes the cancellation reason', () => {
+			const cases: Array<[string | undefined, string | undefined]> = [
+				['user_cancelled', 'user'],
+				['timeout', 'timeout'],
+				['service_shutdown', 'shutdown'],
+				['some-unknown-reason', undefined],
+				[undefined, undefined],
+			];
+			for (const [reason, expected] of cases) {
+				const state = stateWithRun('run-1', 'root');
+				reduceEvent(state, makeRunFinish('run-1', 'root', 'cancelled', reason));
+				expect(state.agentsById['root'].cancellationReason).toBe(expected);
+			}
+		});
+
+		it('run-finish(completed) does not set a cancellation reason', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'completed', 'user_cancelled'));
+			expect(state.agentsById['root'].cancellationReason).toBeUndefined();
+		});
+
 		it('run-finish(error) sets status to error', () => {
 			const state = stateWithRun('run-1', 'root');
 			reduceEvent(state, makeRunFinish('run-1', 'root', 'error'));
@@ -361,11 +392,28 @@ describe('agent-run-reducer', () => {
 			expect(state.agentsById['root'].textContent).toBe('');
 		});
 
-		it('reasoning-delta appends to agent reasoning', () => {
+		it('reasoning-delta appends to agent reasoning and timeline', () => {
 			const state = stateWithRun('run-1', 'root');
 			reduceEvent(state, makeReasoningDelta('run-1', 'root', 'thinking'));
+			reduceEvent(state, makeReasoningDelta('run-1', 'root', ' hard'));
 
-			expect(state.agentsById['root'].reasoning).toBe('thinking');
+			expect(state.agentsById['root'].reasoning).toBe('thinking hard');
+			// Consecutive reasoning should merge into one timeline entry
+			expect(state.agentsById['root'].timeline).toEqual([
+				{ type: 'reasoning', content: 'thinking hard' },
+			]);
+		});
+
+		it('reasoning deltas with different responseIds create separate timeline entries', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeReasoningDelta('run-1', 'root', 'step one', 'run-1:step:1'));
+			reduceEvent(state, makeReasoningDelta('run-1', 'root', 'step two', 'run-1:step:2'));
+
+			expect(state.agentsById['root'].reasoning).toBe('step onestep two');
+			expect(state.agentsById['root'].timeline).toEqual([
+				{ type: 'reasoning', content: 'step one', responseId: 'run-1:step:1' },
+				{ type: 'reasoning', content: 'step two', responseId: 'run-1:step:2' },
+			]);
 		});
 
 		it('reasoning-delta for sub-agent appends only to sub-agent', () => {
@@ -661,6 +709,23 @@ describe('agent-run-reducer', () => {
 			expect(timeline[0]).toEqual({ type: 'text', content: 'before tool' });
 			expect(timeline[1]).toEqual({ type: 'tool-call', toolCallId: 'tc-1' });
 			expect(timeline[2]).toEqual({ type: 'text', content: 'after tool' });
+		});
+
+		it('preserves reasoning entries interleaved with tool calls in timeline', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeReasoningDelta('run-1', 'root', 'plan the search'));
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'search'));
+			reduceEvent(state, makeToolResult('run-1', 'root', 'tc-1', 'found'));
+			reduceEvent(state, makeReasoningDelta('run-1', 'root', 'evaluate the result'));
+			reduceEvent(state, makeTextDelta('run-1', 'root', 'the answer'));
+
+			const timeline = state.agentsById['root'].timeline;
+			expect(timeline).toHaveLength(4);
+			expect(timeline[0]).toEqual({ type: 'reasoning', content: 'plan the search' });
+			expect(timeline[1]).toEqual({ type: 'tool-call', toolCallId: 'tc-1' });
+			expect(timeline[2]).toEqual({ type: 'reasoning', content: 'evaluate the result' });
+			expect(timeline[3]).toEqual({ type: 'text', content: 'the answer' });
+			expect(state.agentsById['root'].reasoning).toBe('plan the searchevaluate the result');
 		});
 	});
 
@@ -1024,6 +1089,112 @@ describe('agent-run-reducer', () => {
 				false,
 			);
 			expectStateMapsNotPolluted(state!);
+		});
+
+		it('normalizes aggregate reasoning into the timeline when adopting legacy trees', () => {
+			const tree: InstanceAiAgentNode = {
+				agentId: 'root',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: 'Answer',
+				reasoning: 'Old aggregate reasoning',
+				toolCalls: [],
+				children: [],
+				timeline: [{ type: 'text', content: 'Answer' }],
+			};
+
+			stateFromAgentTree(tree);
+
+			expect(tree.timeline).toEqual([
+				{ type: 'reasoning', content: 'Old aggregate reasoning' },
+				{ type: 'text', content: 'Answer' },
+			]);
+		});
+	});
+
+	describe('normalizeLegacyReasoningTimeline', () => {
+		it('copies aggregate reasoning into an empty timeline once', () => {
+			const node: InstanceAiAgentNode = {
+				agentId: 'root',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: 'Legacy reasoning',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			};
+
+			normalizeLegacyReasoningTimeline(node);
+
+			expect(node.timeline).toEqual([{ type: 'reasoning', content: 'Legacy reasoning' }]);
+		});
+
+		it('is a no-op when the timeline already has reasoning entries', () => {
+			const timeline: InstanceAiTimelineEntry[] = [{ type: 'reasoning', content: 'Already here' }];
+			const node: InstanceAiAgentNode = {
+				agentId: 'root',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: 'Legacy reasoning',
+				toolCalls: [],
+				children: [],
+				timeline,
+			};
+
+			normalizeLegacyReasoningTimeline(node);
+
+			expect(node.timeline).toEqual([{ type: 'reasoning', content: 'Already here' }]);
+		});
+
+		it('preserves legacy reasoning when a resumed run appends new timeline reasoning', () => {
+			const tree: InstanceAiAgentNode = {
+				agentId: 'root',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: 'Old aggregate reasoning',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			};
+			const state = stateFromAgentTree(tree)!;
+
+			reduceEvent(state, makeRunStart('run-2', 'root'));
+			reduceEvent(state, makeReasoningDelta('run-2', 'root', 'New reasoning', 'resp-2'));
+
+			expect(tree.timeline).toEqual([
+				{ type: 'reasoning', content: 'Old aggregate reasoning' },
+				{ type: 'reasoning', content: 'New reasoning', responseId: 'resp-2' },
+			]);
+		});
+
+		it('normalizes nested child nodes via normalizeAgentTree', () => {
+			const child: InstanceAiAgentNode = {
+				agentId: 'sub-1',
+				role: 'builder',
+				status: 'completed',
+				textContent: '',
+				reasoning: 'Child reasoning',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			};
+			const tree: InstanceAiAgentNode = {
+				agentId: 'root',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [child],
+				timeline: [],
+			};
+
+			normalizeAgentTree(tree);
+
+			expect(child.timeline).toEqual([{ type: 'reasoning', content: 'Child reasoning' }]);
 		});
 	});
 });

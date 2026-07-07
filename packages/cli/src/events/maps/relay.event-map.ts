@@ -104,6 +104,9 @@ export type RelayEventMap = {
 
 	'n8n-package-exported': {
 		user: UserLike;
+		workflowIds?: string[];
+		folderIds?: string[];
+		projectIds?: string[];
 		counts: ExportPackageEventCounts;
 	};
 
@@ -422,6 +425,8 @@ export type RelayEventMap = {
 		isDynamic?: boolean;
 		usesExternalSecrets?: boolean;
 		jweEnabled?: boolean;
+		supportsManagedAuth?: boolean;
+		usesManagedAuth?: boolean;
 	};
 
 	'credentials-shared': {
@@ -440,6 +445,8 @@ export type RelayEventMap = {
 		isDynamic?: boolean;
 		usesExternalSecrets?: boolean;
 		jweEnabled?: boolean;
+		supportsManagedAuth?: boolean;
+		usesManagedAuth?: boolean;
 	};
 
 	'credentials-deleted': {
@@ -480,6 +487,12 @@ export type RelayEventMap = {
 		credentialId: string;
 	};
 
+	'private-credential-connections-cleared': {
+		user: UserLike;
+		credentialType: string;
+		credentialId: string;
+	};
+
 	'private-credential-deleted': {
 		user: UserLike;
 		credentialType: string;
@@ -490,6 +503,8 @@ export type RelayEventMap = {
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
+		supportsManagedAuth?: boolean;
+		usesManagedAuth?: boolean;
 	};
 
 	// #endregion

@@ -16,7 +16,7 @@ import { Logger } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
 import { GlobalConfig, SsrfProtectionConfig, type InstanceAiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
-import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
+import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import {
 	MAX_STEPS,
@@ -26,6 +26,8 @@ import {
 	createLazyWorkspaceRuntimeSkillSource,
 	createScopedWorkspace,
 	getPromptWorkspaceRoot,
+	getPromptSandboxInstructions,
+	getPromptFilesystemInstructions,
 	getWorkspaceRoot,
 	loadInstanceAiRuntimeSkillSource,
 	createInstanceAiTraceContext,
@@ -98,6 +100,8 @@ import { nanoid } from 'nanoid';
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { UrlService } from '@/services/url.service';
@@ -122,6 +126,7 @@ import {
 	EDITOR_CONTEXT_CLOSE_TAG,
 	CREDENTIAL_CONTEXT_OPEN_TAG,
 	CREDENTIAL_CONTEXT_CLOSE_TAG,
+	cleanStoredUserMessage,
 	withCurrentDateTime,
 } from './internal-messages';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
@@ -303,6 +308,8 @@ function getAbortReason(signal: AbortSignal): string {
 
 const MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD = 5;
 
+const TITLE_REFINE_HISTORY_LIMIT = 50;
+
 function stringifyForContextValue(value: unknown): string {
 	if (typeof value === 'string') return value;
 	try {
@@ -382,6 +389,8 @@ function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData
 			return { approved: true, answers: request.answers };
 		case 'credentialSelection':
 			return { approved: true, credentials: request.credentials };
+		case 'credentialAutoSetup':
+			return { approved: true, autoSetup: { credentialType: request.credentialType } };
 		case 'resourceDecision':
 			return { approved: true, resourceDecision: request.resourceDecision };
 		case 'setupWorkflowApply':
@@ -411,6 +420,7 @@ export class InstanceAiService {
 		if (!this._mcpClientManager) {
 			this._mcpClientManager = new McpClientManager(
 				this._ssrfProtectionConfig.enabled ? this._ssrfProtectionService : undefined,
+				{ onToolCallSettled: (event) => this.trackMcpToolCall(event) },
 			);
 		}
 		return this._mcpClientManager;
@@ -529,6 +539,7 @@ export class InstanceAiService {
 		runProbe: InstanceAiRunProbe,
 		private readonly modelService: InstanceAiModelService,
 		private readonly creditService: InstanceAiCreditService,
+		private readonly publisher: Publisher,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 	) {
 		this.logger = logger.scoped('instance-ai');
@@ -841,6 +852,12 @@ export class InstanceAiService {
 			// Keep billing stopped/errored resumed runs (see stream-options builder).
 			recoverUsageOnAbort: true,
 			persistence: { resourceId: user.id, threadId },
+			// Must mirror buildOrchestratorAgentStreamOptions: without this request-level
+			// cache directive, resumed (HITL) turns send no cache_control, so Anthropic
+			// reprocesses the whole conversation uncached on every resume (~100K tokens).
+			providerOptions: {
+				anthropic: { cacheControl: { type: 'ephemeral' } },
+			},
 			...(this.isRunDebugEnabled()
 				? createRunDebugStepHooks(this.runDebugBuffer, { runId, threadId })
 				: {}),
@@ -1040,6 +1057,108 @@ export class InstanceAiService {
 		const user = this.runState.getThreadUser(threadId);
 		if (user) {
 			void this.handlePlannedTaskSettlement(user, task, 'cancelled');
+		}
+	}
+
+	// ── Cross-main task-control routing ───────────────────────────────────────
+	// User actions (correct/cancel/clear) can land on a different main than the
+	// one running the task/run. Each `route*` method applies the action locally
+	// and, when the target isn't local (or is thread-wide), broadcasts so the
+	// owning main applies it. Broadcast + local-gate — no shared ownership store.
+	// `applyTaskControlLocally` is the single action → local-method mapping,
+	// shared by the route entry points and the `@OnPubSubEvent` relay handler
+	// (which never re-broadcasts, so there's no loop). These wrappers are the
+	// controller entry points; internal callers keep using the local methods
+	// directly so they don't trigger cross-main broadcasts.
+
+	private broadcastTaskControl(payload: PubSubCommandMap['relay-instance-ai-task-control']): void {
+		if (!this.instanceSettings.isMultiMain) return;
+		void this.publisher
+			.publishCommand({ command: 'relay-instance-ai-task-control', payload })
+			.catch((error: unknown) =>
+				this.logger.error('Failed to relay Instance AI task-control to sibling mains', {
+					threadId: payload.threadId,
+					action: payload.action,
+					error,
+				}),
+			);
+	}
+
+	/** Apply a task-control action to this main's local slice of the thread.
+	 *  Returns whether the action's target was found locally: task-scoped
+	 *  actions report a local hit to gate re-broadcast, thread-wide actions
+	 *  always report a miss so they fan out to every main. */
+	private async applyTaskControlLocally({
+		threadId,
+		taskId,
+		action,
+		correction,
+	}: PubSubCommandMap['relay-instance-ai-task-control']): Promise<boolean> {
+		switch (action) {
+			case 'correct':
+				// A relay without its correction text is malformed: nothing to apply.
+				if (!taskId || correction === undefined) return true;
+				return this.sendCorrectionToTask(threadId, taskId, correction) !== 'task-not-found';
+			case 'cancel-task': {
+				if (!taskId) return true;
+				const isLocal = this.backgroundTasks
+					.getTaskSnapshots(threadId)
+					.some((task) => task.taskId === taskId);
+				this.cancelBackgroundTask(threadId, taskId);
+				return isLocal;
+			}
+			case 'cancel-thread':
+				// A thread's run + tasks can be spread across mains, so always fan out.
+				this.cancelRun(threadId);
+				return false;
+			case 'clear-thread':
+				await this.clearThreadState(threadId);
+				return false;
+		}
+	}
+
+	private async routeTaskControl(
+		payload: PubSubCommandMap['relay-instance-ai-task-control'],
+	): Promise<void> {
+		const foundLocally = await this.applyTaskControlLocally(payload);
+		if (!foundLocally) this.broadcastTaskControl(payload);
+	}
+
+	async routeCorrectionToTask(threadId: string, taskId: string, correction: string): Promise<void> {
+		await this.routeTaskControl({ threadId, taskId, action: 'correct', correction });
+	}
+
+	async routeCancelBackgroundTask(threadId: string, taskId: string): Promise<void> {
+		await this.routeTaskControl({ threadId, taskId, action: 'cancel-task' });
+	}
+
+	async routeCancelRun(threadId: string): Promise<void> {
+		await this.routeTaskControl({ threadId, action: 'cancel-thread' });
+	}
+
+	async routeClearThreadState(threadId: string): Promise<void> {
+		await this.routeTaskControl({ threadId, action: 'clear-thread' });
+	}
+
+	/** Apply a task-control action relayed from another main to this main's local
+	 *  slice of the thread. Never re-broadcasts. Not self-sent, so this never
+	 *  fires on the originating main. */
+	@OnPubSubEvent('relay-instance-ai-task-control', { instanceType: 'main' })
+	async handleRelayTaskControl(
+		payload: PubSubCommandMap['relay-instance-ai-task-control'],
+	): Promise<void> {
+		// Guard the whole handler: it runs as a fire-and-forget pubsub listener, so
+		// a throw (e.g. from the async clearThreadState) would surface as an
+		// unhandled rejection on this sibling main instead of being contained.
+		try {
+			await this.applyTaskControlLocally(payload);
+		} catch (error) {
+			this.logger.error('Failed to apply relayed Instance AI task-control', {
+				threadId: payload.threadId,
+				taskId: payload.taskId,
+				action: payload.action,
+				error,
+			});
 		}
 	}
 
@@ -1813,12 +1932,6 @@ export class InstanceAiService {
 			context.branchReadOnly = true;
 		}
 
-		let domainTracker = this.domainAccessTrackersByThread.get(threadId);
-		if (!domainTracker) {
-			domainTracker = createDomainAccessTracker();
-			this.domainAccessTrackersByThread.set(threadId, domainTracker);
-		}
-		context.domainAccessTracker = domainTracker;
 		context.runId = runId;
 
 		// Per-user, thread-level "always allow" grants are persisted in the DB so they survive
@@ -1828,10 +1941,22 @@ export class InstanceAiService {
 		// run — the next run reloads it from the DB anyway.
 		const sessionGrants = await this.loadThreadSessionGrants(threadId, user.id);
 		context.sessionApprovedToolKeys = sessionGrants;
-		context.grantSessionToolApproval = async (key: string) => {
+		const grantSessionToolApproval = async (key: string) => {
 			await this.persistThreadSessionGrant(threadId, user.id, key);
 			sessionGrants.add(key);
 		};
+		context.grantSessionToolApproval = grantSessionToolApproval;
+
+		// Domain-access approvals are stored as grant keys in `instance_ai_thread_grants` (via
+		// the same load/persist path as above), so they survive restart and are visible
+		// cross-main. Recreate the tracker per run seeded from the freshly loaded grants;
+		// transient (allow_once) approvals are run-scoped and don't carry across runs.
+		const domainTracker = createDomainAccessTracker({
+			grantedKeys: sessionGrants,
+			persistGrant: grantSessionToolApproval,
+		});
+		this.domainAccessTrackersByThread.set(threadId, domainTracker);
+		context.domainAccessTracker = domainTracker;
 		if (this.isRunDebugEnabled()) {
 			context.recordWorkflowCodeSnapshot = (snapshot) => {
 				this.runDebugBuffer.ensure(runId, threadId);
@@ -1936,6 +2061,11 @@ export class InstanceAiService {
 				};
 
 				runtimeWorkspace = createLazyRuntimeWorkspace({
+					// Stable across resumes: keeps the sandbox/filesystem description out
+					// of the cache-busting path (the lazy handle isn't rehydrated per
+					// rebuild, so resolution-dependent text would shift the cached prefix).
+					sandboxInstructions: getPromptSandboxInstructions(sandboxConfig.provider),
+					filesystemInstructions: getPromptFilesystemInstructions(sandboxConfig.provider),
 					ensureWorkspace: async () =>
 						await scopeWorkspaceForAgent((await getSetupSandboxEntry())?.workspace),
 				});
@@ -2941,24 +3071,6 @@ export class InstanceAiService {
 				return;
 			}
 
-			const staticMcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
-			const registryMcpServers = this.settingsService.isMcpAccessEnabled()
-				? await this.instanceAiErrorReporter.withBoundary(
-						'instance-ai-mcp-setup',
-						{
-							threadId,
-							runId,
-							tracing,
-							agentId: orchestratorAgentId(runId),
-							userId: user.id,
-							messageGroupId,
-							messageId,
-						},
-						async () => await this.mcpRegistryService.getRegistryMcpServers(user),
-					)
-				: [];
-			const mcpServers = [...staticMcpServers, ...registryMcpServers];
-
 			const executionPushRef = this.threadPushRef.get(threadId);
 			const environment = await this.createExecutionEnvironment(
 				user,
@@ -3039,7 +3151,6 @@ export class InstanceAiService {
 			if (fileAttachments.length > 0) {
 				context.currentUserAttachments = fileAttachments;
 			}
-			const memoryConfig = this.createAgentMemoryOptions();
 
 			// When trace replay is enabled but LangSmith isn't configured,
 			// create a minimal context that only supports replay/record wrapping.
@@ -3205,19 +3316,13 @@ export class InstanceAiService {
 			const runControl = createOrchestratorRunControl(orchestrationContext);
 			const stopSignal = (): OrchestratorRunStopSignal | undefined => runControl.getStopSignal();
 
-			const agent = await createInstanceAgent({
-				modelId,
-				context,
-				orchestrationContext,
-				mcpServers,
-				mcpManager: this.mcpClientManager,
-				memoryConfig,
-				memory,
-				checkpointStore: this.checkpointStore,
-				onMemoryTaskEvent: this.memoryTaskObserverFor(threadId),
-				thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
-			});
-			this.subscribeToAgentErrors(agent, threadId, runId);
+			const agent = await this.createAgentFromEnvironment(
+				environment,
+				threadId,
+				runId,
+				user,
+				tracing,
+			);
 
 			const streamOptions = this.buildOrchestratorAgentStreamOptions(user, threadId, runId, signal);
 
@@ -3248,6 +3353,12 @@ export class InstanceAiService {
 						outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 					});
 			if (result.status === 'suspended') {
+				// finalizeRun only fires on terminal outcomes; record suspended-segment usage here.
+				this.emitRunMetrics(threadId, 'suspended', {
+					modelId,
+					workSummary: result.workSummary,
+					usage: result.usage,
+				});
 				if (result.suspension) {
 					this.runState.suspendRun(threadId, {
 						runId,
@@ -3913,6 +4024,99 @@ export class InstanceAiService {
 		);
 	}
 
+	private async buildMcpServers(
+		user: User,
+		threadId: string,
+		runId: string,
+		tracing: InstanceAiTraceContext | undefined,
+		messageGroupId?: string,
+	): Promise<McpServerConfig[]> {
+		const staticMcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
+		const registryMcpServers = this.settingsService.isMcpAccessEnabled()
+			? await this.instanceAiErrorReporter.withBoundary(
+					'instance-ai-mcp-setup',
+					{
+						threadId,
+						runId,
+						tracing,
+						agentId: orchestratorAgentId(runId),
+						userId: user.id,
+						messageGroupId,
+					},
+					async () => await this.mcpRegistryService.getRegistryMcpServers(user),
+				)
+			: [];
+		return [...staticMcpServers, ...registryMcpServers];
+	}
+
+	private async createAgentFromEnvironment(
+		environment: Awaited<ReturnType<InstanceAiService['createExecutionEnvironment']>>,
+		threadId: string,
+		runId: string,
+		user: User,
+		tracing: InstanceAiTraceContext | undefined,
+	): Promise<Awaited<ReturnType<typeof createInstanceAgent>>> {
+		if (tracing) {
+			environment.orchestrationContext.tracing = tracing;
+		}
+		const mcpServers = await this.buildMcpServers(
+			user,
+			threadId,
+			runId,
+			tracing,
+			environment.orchestrationContext.messageGroupId,
+		);
+		const agent = await createInstanceAgent({
+			modelId: environment.modelId,
+			context: environment.context,
+			orchestrationContext: environment.orchestrationContext,
+			mcpServers,
+			mcpManager: this.mcpClientManager,
+			memoryConfig: this.createAgentMemoryOptions(),
+			memory: environment.memory,
+			checkpointStore: this.checkpointStore,
+			onMemoryTaskEvent: this.memoryTaskObserverFor(threadId),
+			thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
+		});
+		this.subscribeToAgentErrors(agent, threadId, runId);
+		return agent;
+	}
+
+	private async buildFreshInstanceAgent(
+		user: User,
+		threadId: string,
+		runId: string,
+		abortSignal: AbortSignal,
+		tracing: InstanceAiTraceContext | undefined,
+		messageGroupId?: string,
+		pushRef?: string,
+	): Promise<{
+		agent: Awaited<ReturnType<typeof createInstanceAgent>>;
+		modelId: ModelConfig;
+		orchestrationContext: OrchestrationContext;
+	}> {
+		const environment = await this.createExecutionEnvironment(
+			user,
+			threadId,
+			runId,
+			abortSignal,
+			messageGroupId,
+			pushRef,
+		);
+		const agent = await this.createAgentFromEnvironment(
+			environment,
+			threadId,
+			runId,
+			user,
+			tracing,
+		);
+		return {
+			agent,
+			modelId: environment.modelId,
+			orchestrationContext: environment.orchestrationContext,
+		};
+	}
+
 	/**
 	 * Rebuild the in-memory pieces a suspended run needs (user, agent,
 	 * execution environment) from a persisted orphan row + checkpoint, and
@@ -3957,23 +4161,16 @@ export class InstanceAiService {
 			return { kind: 'env-failure', error };
 		}
 
-		const mcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
 		const runControl = createOrchestratorRunControl(environment.orchestrationContext);
 		let agent;
 		try {
-			agent = await createInstanceAgent({
-				modelId: environment.modelId,
-				context: environment.context,
-				orchestrationContext: environment.orchestrationContext,
-				mcpServers,
-				mcpManager: this.mcpClientManager,
-				memoryConfig: this.createAgentMemoryOptions(),
-				memory: environment.memory,
-				checkpointStore: this.checkpointStore,
-				onMemoryTaskEvent: this.memoryTaskObserverFor(orphan.threadId),
-				thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
-			});
-			this.subscribeToAgentErrors(agent, orphan.threadId, orphan.runId);
+			agent = await this.createAgentFromEnvironment(
+				environment,
+				orphan.threadId,
+				orphan.runId,
+				user,
+				undefined,
+			);
 		} catch (error: unknown) {
 			return { kind: 'agent-failure', error };
 		}
@@ -4017,6 +4214,39 @@ export class InstanceAiService {
 				error: getErrorMessage(error),
 			});
 			return null;
+		}
+	}
+
+	private async rebuildAgentForAutoSetupResume(
+		user: User,
+		threadId: string,
+		runId: string,
+		abortController: AbortController,
+		tracing: InstanceAiTraceContext | undefined,
+		runHandoff: OrchestratorRunHandoffState | undefined,
+		messageGroupId?: string,
+	): Promise<
+		{ agent: Awaited<ReturnType<typeof createInstanceAgent>>; modelId: ModelConfig } | undefined
+	> {
+		try {
+			const rebuilt = await this.buildFreshInstanceAgent(
+				user,
+				threadId,
+				runId,
+				abortController.signal,
+				tracing,
+				messageGroupId,
+				this.threadPushRef.get(threadId),
+			);
+			createOrchestratorRunControl(rebuilt.orchestrationContext, runHandoff ?? {});
+			return { agent: rebuilt.agent, modelId: rebuilt.modelId };
+		} catch (error: unknown) {
+			this.logger.warn('Failed to rebuild agent for credential auto-setup resume', {
+				threadId,
+				runId,
+				error: getErrorMessage(error),
+			});
+			return undefined;
 		}
 	}
 
@@ -4087,6 +4317,7 @@ export class InstanceAiService {
 			...(data.answers ? { answers: data.answers } : {}),
 			...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
 			...(data.scope ? { scope: data.scope } : {}),
+			...(data.autoSetup ? { autoSetup: data.autoSetup } : {}),
 		};
 
 		const resumeTracing = await this.tracing.createOrchestratorResumeTraceContext({
@@ -4116,8 +4347,29 @@ export class InstanceAiService {
 					: {}),
 			},
 		});
+		const effectiveTracing = resumeTracing ?? tracing;
 
-		this.startProcessResumedStream(agent, resumeData, {
+		let resumeAgent = agent;
+		let resumeModelId = modelId;
+		if (data.autoSetup) {
+			const rebuilt = await this.rebuildAgentForAutoSetupResume(
+				activeUser,
+				threadId,
+				runId,
+				abortController,
+				effectiveTracing,
+				runHandoff,
+				messageGroupId,
+			);
+			if (!rebuilt) {
+				this.cancelRun(threadId, 'agent_rebuild_failed');
+				return null;
+			}
+			resumeAgent = rebuilt.agent;
+			resumeModelId = rebuilt.modelId;
+		}
+
+		this.startProcessResumedStream(resumeAgent, resumeData, {
 			runId,
 			agentRunId,
 			threadId,
@@ -4128,8 +4380,8 @@ export class InstanceAiService {
 			signal: abortController.signal,
 			abortController,
 			snapshotStorage: this.dbSnapshotStorage,
-			tracing: resumeTracing ?? tracing,
-			modelId,
+			tracing: effectiveTracing,
+			modelId: resumeModelId,
 			checkpoint,
 			plannedBuild,
 			runHandoff,
@@ -4228,6 +4480,12 @@ export class InstanceAiService {
 					});
 
 			if (result.status === 'suspended') {
+				// As in the initial-run path, record suspended-segment usage here.
+				this.emitRunMetrics(opts.threadId, 'suspended', {
+					modelId: opts.modelId,
+					workSummary: result.workSummary,
+					usage: result.usage,
+				});
 				if (result.suspension) {
 					const resumeMessageGroupId = this.tracing.getMessageGroupId(opts.runId);
 					this.runState.suspendRun(opts.threadId, {
@@ -4408,6 +4666,9 @@ export class InstanceAiService {
 			);
 			await this.finalizeRun(opts.threadId, opts.runId, result.status, opts.snapshotStorage, {
 				userId: opts.user.id,
+				// Forward modelId so title refinement fires on the resume path too — a run
+				// that suspends for HITL and completes here would otherwise never be titled.
+				...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
 				archivedWorkflowIds,
 				workSummary: result.workSummary,
 				usage: result.usage,
@@ -4992,13 +5253,15 @@ export class InstanceAiService {
 	/** Emit a typed event consumed by the Prometheus Instance AI metrics collector. */
 	private emitRunMetrics(
 		threadId: string,
-		status: 'completed' | 'cancelled' | 'errored',
+		status: 'completed' | 'cancelled' | 'errored' | 'suspended',
 		options?: { modelId?: ModelConfig; workSummary?: WorkSummary; usage?: RunTokenUsage },
 	): void {
 		const startedAt = this.runState.getActiveRun(threadId)?.startedAt;
 		this.eventService.emit('instance-ai-run-finished', {
 			status: status === 'errored' ? 'error' : status,
-			durationMs: startedAt !== undefined ? Date.now() - startedAt : undefined,
+			// Duration is reported once, by the run's terminal event.
+			durationMs:
+				status !== 'suspended' && startedAt !== undefined ? Date.now() - startedAt : undefined,
 			model: typeof options?.modelId === 'string' ? options.modelId : 'custom',
 			toolCalls: options?.workSummary?.totalToolCalls ?? 0,
 			toolErrors: options?.workSummary?.totalToolErrors ?? 0,
@@ -5023,14 +5286,18 @@ export class InstanceAiService {
 			// Skip if thread already has an LLM-refined title
 			if (thread.metadata?.titleRefined) return;
 
-			// Concat recent user messages so retries after a trivial first message
-			// (e.g. "hey") have enough signal to produce a good title.
-			const history = await memory.getMessages(threadId, { limit: 5 });
-			const userTexts = history.flatMap((m) => {
-				if (!('role' in m) || m.role !== 'user') return [];
-				const text = this.extractStoredMessageText(m.content);
-				return text.length > 0 ? [text] : [];
-			});
+			// Title the conversation from its opening user turns.
+			const history = await memory.getMessages(threadId, { limit: TITLE_REFINE_HISTORY_LIMIT });
+			const userTexts: string[] = [];
+			for (const m of history) {
+				if (!('role' in m) || m.role !== 'user') continue;
+				// Stored user messages carry service-injected blocks (<current-date-time>,
+				// task context). Strip them or a trivial "hey" looks substantial enough to
+				// title, and the injected blocks leak into the title prompt.
+				const text = cleanStoredUserMessage(this.extractStoredMessageText(m.content));
+				if (text && text.length > 0) userTexts.push(text);
+				if (userTexts.length >= 5) break;
+			}
 			if (userTexts.length === 0) return;
 			const userText = userTexts.join('\n');
 
@@ -5189,5 +5456,26 @@ export class InstanceAiService {
 			const [name, url] = entry.trim().split('=');
 			return { name: name.trim(), url: url?.trim() };
 		});
+	}
+
+	private trackMcpToolCall({
+		server,
+		toolName,
+		success,
+	}: {
+		server: McpServerConfig;
+		toolName: string;
+		success: boolean;
+	}): void {
+		const serverSlug = server.metadata?.serverSlug;
+		const userId = server.metadata?.userId;
+		if (serverSlug && userId) {
+			this.telemetry.track('Instance AI mcp tool called', {
+				user_id: userId,
+				server_slug: serverSlug,
+				tool_name: toolName,
+				success,
+			});
+		}
 	}
 }

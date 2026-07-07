@@ -23,9 +23,20 @@ import { getRenderHint, isSafeObjectKey } from './instance-ai.schema';
 import type {
 	InstanceAiEvent,
 	InstanceAiAgentNode,
+	InstanceAiCancellationReason,
 	InstanceAiTimelineEntry,
 	InstanceAiToolCallState,
 } from './instance-ai.schema';
+
+/** Map the backend's run-finish reason string to a semantic cancellation cause. */
+function categorizeCancellation(
+	reason: string | undefined,
+): InstanceAiCancellationReason | undefined {
+	if (reason === 'timeout') return 'timeout';
+	if (reason === 'service_shutdown') return 'shutdown';
+	if (reason === 'user_cancelled') return 'user';
+	return undefined;
+}
 
 // ---------------------------------------------------------------------------
 // State types
@@ -113,6 +124,42 @@ function appendTimelineText(
 }
 
 /**
+ * Append reasoning to timeline — merges consecutive reasoning entries within
+ * the same responseId, so each LLM step (and anything interleaved with tool
+ * calls or text) gets its own reasoning segment.
+ */
+function appendTimelineReasoning(
+	timeline: InstanceAiTimelineEntry[],
+	text: string,
+	responseId?: string,
+): void {
+	const last = timeline.at(-1);
+	if (last?.type === 'reasoning' && last.responseId === responseId) {
+		last.content += text;
+	} else {
+		timeline.push({ type: 'reasoning', content: text, ...(responseId ? { responseId } : {}) });
+	}
+}
+
+/**
+ * Trees persisted before reasoning became a timeline entry carry only the
+ * aggregate `reasoning` string. Copy it into the timeline once so resumed
+ * runs can append new reasoning segments without dropping the old block.
+ */
+export function normalizeLegacyReasoningTimeline(node: InstanceAiAgentNode): void {
+	if (!node.reasoning || node.timeline.some((entry) => entry.type === 'reasoning')) return;
+	node.timeline.unshift({ type: 'reasoning', content: node.reasoning });
+}
+
+/** Walk an agent tree and normalize legacy reasoning on every node. */
+export function normalizeAgentTree(tree: InstanceAiAgentNode): void {
+	normalizeLegacyReasoningTimeline(tree);
+	for (const child of tree.children) {
+		normalizeAgentTree(child);
+	}
+}
+
+/**
  * Whether a node carries any content worth preserving across a follow-up
  * `run-start`. Covers every renderable field a turn can populate — not just
  * text/tools/children — so a reasoning-, status-, result-, or error-only tree
@@ -188,6 +235,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				agent.reasoning += event.payload.text;
+				appendTimelineReasoning(agent.timeline, event.payload.text, event.responseId);
 			}
 			break;
 		}
@@ -349,6 +397,9 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const root = state.agentsById[state.rootAgentId];
 			if (root) {
 				root.status = state.status;
+				if (state.status === 'cancelled') {
+					root.cancellationReason = categorizeCancellation(event.payload.reason);
+				}
 			}
 			// A terminated run can't have tool calls still in-flight.
 			// Clear isLoading so persisted snapshots don't show stale confirmations.
@@ -448,6 +499,7 @@ function adoptNode(
 	for (const tc of node.toolCalls) {
 		state.toolCallsById[tc.toolCallId] = tc;
 	}
+	normalizeLegacyReasoningTimeline(node);
 	for (const child of node.children) {
 		adoptNode(state, child, node.agentId);
 	}

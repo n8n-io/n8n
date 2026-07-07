@@ -8,8 +8,9 @@ import set from 'lodash/set';
 import split from 'lodash/split';
 import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { jsonParse, jsonStringify } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
+import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
@@ -24,6 +25,7 @@ export class OAuth2CredentialController {
 		private readonly externalHooks: ExternalHooks,
 		private readonly oauthJweServiceProxy: OAuthJweServiceProxy,
 		private readonly eventService: EventService,
+		private readonly credentialsOverwrites: CredentialsOverwrites,
 	) {}
 
 	/** Get Authorization url */
@@ -149,6 +151,11 @@ export class OAuth2CredentialController {
 						user: { id: state.userId },
 						credentialType: credential.type,
 						credentialId: credential.id,
+						supportsManagedAuth: this.credentialsOverwrites.supportsManagedAuth(credential.type),
+						usesManagedAuth: this.credentialsOverwrites.usesManagedAuth(
+							credential.type,
+							decryptedDataOriginal,
+						),
 					});
 				}
 
@@ -156,10 +163,11 @@ export class OAuth2CredentialController {
 			}
 		} catch (e) {
 			const error = ensureError(e);
+			this.logger.error('OAuth2 callback failed', { error, cause: error.cause });
 			return this.oauthService.renderCallbackError(
 				res,
 				error.message,
-				'body' in error ? jsonStringify(error.body) : undefined,
+				this.oauthService.extractCallbackErrorReason(error),
 			);
 		}
 	}

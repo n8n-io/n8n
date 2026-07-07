@@ -150,13 +150,13 @@ describe('ConnectionsCard', () => {
 			expect(queryByText('computer-use-row')).toBeNull();
 		});
 
-		it('hides the empty-state CTA and shows the simplified title', () => {
+		it('hides the empty-state CTA when no connection can be added', () => {
 			settingsStoreMock.mockReturnValue(
 				makeSettingsStore({ connections: [COMPUTER_USE_CONNECTION] }),
 			);
 			const { queryByTestId, getByText } = renderComponent();
 			expect(queryByTestId('instance-ai-connections-empty-cta')).toBeNull();
-			expect(getByText('instanceAi.connections.empty.titleNoComputerUse')).toBeVisible();
+			expect(getByText('instanceAi.connections.empty.title')).toBeVisible();
 		});
 
 		it('omits computer use from the add menu', () => {

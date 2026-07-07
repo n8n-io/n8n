@@ -30,6 +30,7 @@ import type {
 } from '@n8n/permissions';
 import {
 	combineScopes,
+	CUSTOM_ROLE_SCOPE_WHITELIST,
 	getAuthPrincipalScopes,
 	getRoleScopes,
 	isBuiltInRole,
@@ -168,7 +169,10 @@ export class RoleService {
 		return this.dbRoleToRoleDTO(role);
 	}
 
-	private async resolveScopes(scopeSlugs: string[] | undefined): Promise<DBScope[] | undefined> {
+	private async resolveScopes(
+		scopeSlugs: string[] | undefined,
+		roleType: 'project' | 'global',
+	): Promise<DBScope[] | undefined> {
 		if (!scopeSlugs) {
 			return undefined;
 		}
@@ -183,17 +187,30 @@ export class RoleService {
 			throw new Error(`The following scopes are invalid: ${invalidScopes.join(', ')}`);
 		}
 
+		const resolvedScopes = scopes.map((s) => s.slug);
+
+		if (resolvedScopes.some((slug) => !CUSTOM_ROLE_SCOPE_WHITELIST[roleType].has(slug))) {
+			const invalidScopes = resolvedScopes.filter(
+				(slug) => !CUSTOM_ROLE_SCOPE_WHITELIST[roleType].has(slug),
+			);
+			throw new BadRequestError(
+				`The following scopes are not allowed for ${roleType} roles: ${invalidScopes.join(', ')}`,
+			);
+		}
+
 		return scopes;
 	}
 
 	async updateCustomRole(slug: string, newData: UpdateRoleDto) {
 		const { displayName, description, scopes: scopeSlugs } = newData;
 
+		const roleType = slug.startsWith('project:') ? 'project' : 'global';
+
 		try {
 			const updatedRole = await this.roleRepository.updateRole(slug, {
 				displayName,
 				description,
-				scopes: await this.resolveScopes(scopeSlugs),
+				scopes: await this.resolveScopes(scopeSlugs, roleType),
 			});
 
 			// Invalidate cache after role update
@@ -223,7 +240,7 @@ export class RoleService {
 		if (newRole.description) {
 			role.description = newRole.description;
 		}
-		const scopes = await this.resolveScopes(newRole.scopes);
+		const scopes = await this.resolveScopes(newRole.scopes, newRole.roleType);
 		if (scopes === undefined) throw new BadRequestError('Scopes are required');
 		role.scopes = scopes;
 		role.systemRole = false;

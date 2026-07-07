@@ -31,8 +31,14 @@ import {
 import { reconstructSeedFromThread, type SeedThreadRef } from './langsmith-seed';
 import { type EvalLogger } from './logger';
 import { fetchPrebuiltBuild } from './prebuilt-workflows';
-import { extractErrorMessage, isTransientNetworkError, MAX_EXEC_ATTEMPTS } from './transient-error';
+import {
+	extractErrorMessage,
+	isTransientExecutionAbort,
+	MAX_EXEC_ATTEMPTS,
+	shouldRetryScenarioExecution,
+} from './transient-error';
 import { buildWorkflowContextBlock } from './workflow-context';
+import { isMockableTriggerNodeType } from '../../src/tools/workflows/workflow-json-utils';
 import { SONNET_MODEL } from '../../src/utils/eval-agents';
 import { runBinaryChecks } from '../binaryChecks/index';
 import type { BinaryCheckContext, CheckOutcome } from '../binaryChecks/types';
@@ -75,6 +81,14 @@ import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
 // Constants
 // ---------------------------------------------------------------------------
 
+// 15 min. Lanes with heavy multi-agent scenarios (large mocked payloads)
+// legitimately need more — the MCP CI workflow passes --timeout-ms 1500000
+// explicitly (observed: trading-bot at 863s with a 15-row dataset, hard
+// timeouts at 32 rows). Do NOT raise this default: a timed-out attempt is
+// retried once, so under high-concurrency contention (the Instance AI
+// experiments suite runs ~4x the MCP lane's concurrency) a generous default
+// lets starved scenarios hold lane slots for 2x the budget and amplify the
+// very contention that starved them (observed: run 28779266673).
 const DEFAULT_TIMEOUT_MS = 900_000;
 const EVAL_DATA_DIR = path.join(__dirname, '..', '..', '.data');
 
@@ -201,6 +215,7 @@ export async function runWorkflowTestCase(
 		n8nBaseUrl: config.baseUrl,
 	};
 
+	const isPrebuilt = config.prebuiltWorkflowId !== undefined;
 	const build = config.prebuiltWorkflowId
 		? await fetchPrebuiltBuild(client, config.prebuiltWorkflowId, logger)
 		: await buildWorkflow({
@@ -219,7 +234,7 @@ export async function runWorkflowTestCase(
 				laneTag: config.laneTag,
 			});
 
-	if (config.prebuiltWorkflowId && build.success && !build.workflowChecks) {
+	if (isPrebuilt && build.success && !build.workflowChecks) {
 		// No transcript in prebuilt mode, but the authored conversation still
 		// carries the user's request — feed it so prompt-aware checks (e.g.
 		// fulfills_user_request) grade against real intent instead of "".
@@ -236,7 +251,7 @@ export async function runWorkflowTestCase(
 	}
 	if (build.threadId) {
 		result.threadId = build.threadId;
-		if (!config.prebuiltWorkflowId) {
+		if (!isPrebuilt) {
 			result.runDebug = await captureThreadRunDebug(client, build.threadId, logger);
 		}
 	}
@@ -253,7 +268,7 @@ export async function runWorkflowTestCase(
 			testCase,
 			transcript: build.transcript,
 			buildSucceeded: build.success,
-			isPrebuilt: config.prebuiltWorkflowId !== undefined,
+			isPrebuilt,
 			logger,
 		});
 	const expectationsPromise: Promise<BuildExpectationResult[]> =
@@ -302,7 +317,7 @@ export async function runWorkflowTestCase(
 					);
 				} catch (error: unknown) {
 					const errorMessage = extractErrorMessage(error);
-					if (isTransientNetworkError(errorMessage) && attempt < MAX_EXEC_ATTEMPTS) {
+					if (shouldRetryScenarioExecution(errorMessage, attempt)) {
 						logger.warn(
 							`    [${scenario.name}] execution attempt ${attempt}/${MAX_EXEC_ATTEMPTS} failed (${errorMessage}); retrying`,
 						);
@@ -856,6 +871,92 @@ export async function cleanupBuild(
 // Scenario execution (internal)
 // ---------------------------------------------------------------------------
 
+const SCENARIO_MATCH_STOPWORDS = new Set([
+	'the',
+	'and',
+	'for',
+	'with',
+	'that',
+	'this',
+	'from',
+	'tool',
+	'test',
+	'node',
+	'workflow',
+	'when',
+	'then',
+	'should',
+	'returns',
+	'return',
+]);
+
+function scenarioMatchTokens(text: string): Set<string> {
+	return new Set(
+		text
+			.toLowerCase()
+			.split(/[^a-z0-9]+/)
+			.filter((t) => t.length >= 3 && !SCENARIO_MATCH_STOPWORDS.has(t)),
+	);
+}
+
+/**
+ * Compositional builds split the system across multiple workflows (SKILL.md
+ * endorses this), but execution historically always ran `build.workflowId` —
+ * scenarios targeting a sibling workflow failed as phantom builder issues
+ * while the expectations judge (which sees every workflowJson) passed the
+ * same build. Mirror reality instead: a caller hits the specific endpoint, so
+ * route the scenario to the workflow whose trigger-bearing content best
+ * matches it. Single-workflow builds and ties keep the original id.
+ */
+export function selectScenarioWorkflowId(
+	scenario: ExecutionScenario,
+	workflowId: string,
+	workflowJsons: WorkflowResponse[],
+	logger: EvalLogger,
+): string {
+	const candidates = workflowJsons.filter(
+		(wf) =>
+			wf?.id && Array.isArray(wf.nodes) && wf.nodes.some((n) => isMockableTriggerNodeType(n.type)),
+	);
+	if (candidates.length <= 1) return workflowId;
+
+	const scenarioTokens = scenarioMatchTokens(`${scenario.name} ${scenario.dataSetup}`);
+	if (scenarioTokens.size === 0) return workflowId;
+
+	let bestId = workflowId;
+	let bestScore = -1;
+	let tied = false;
+	for (const wf of candidates) {
+		const haystackParts: string[] = [wf.name ?? ''];
+		for (const node of wf.nodes) {
+			haystackParts.push(String(node.name ?? ''));
+			try {
+				haystackParts.push(JSON.stringify(node.parameters ?? {}).slice(0, 500));
+			} catch {
+				// skip unserializable parameters
+			}
+		}
+		const haystackTokens = scenarioMatchTokens(haystackParts.join(' '));
+		let score = 0;
+		for (const token of scenarioTokens) if (haystackTokens.has(token)) score++;
+		if (score > bestScore) {
+			bestScore = score;
+			bestId = wf.id;
+			tied = false;
+		} else if (score === bestScore) {
+			tied = true;
+		}
+	}
+
+	if (tied || bestScore <= 0) return workflowId;
+	if (bestId !== workflowId) {
+		logger.info(
+			`    [${scenario.name}] multi-workflow build: routing to workflow ${bestId} (score ${String(bestScore)})`,
+		);
+	}
+	return bestId;
+}
+
 async function runScenario(
 	client: N8nClient,
 	scenario: ExecutionScenario,
@@ -868,14 +969,36 @@ async function runScenario(
 	pinAiRoots?: string[],
 ): Promise<ExecutionScenarioResult> {
 	const pinNodes = pinAiRoots && pinAiRoots.length > 0 ? pinAiRoots : undefined;
+	const targetWorkflowId = selectScenarioWorkflowId(scenario, workflowId, workflowJsons, logger);
 
 	const execStart = Date.now();
-	const evalResult = await client.executeWithLlmMock(
-		workflowId,
+	let evalResult = await client.executeWithLlmMock(
+		targetWorkflowId,
 		scenario.dataSetup,
 		timeoutMs,
 		pinNodes,
 	);
+	// DB write races abort the execution before any node runs and are reported
+	// in-band (success:false), bypassing the throw-based transient retry —
+	// retry them here so they don't pollute builder reliability stats.
+	for (
+		let attempt = 1;
+		!evalResult.success &&
+		isTransientExecutionAbort(evalResult.errors) &&
+		attempt < MAX_EXEC_ATTEMPTS;
+		attempt++
+	) {
+		logger.warn(
+			`    [${scenario.name}] execution aborted by transient DB error (attempt ${String(attempt)}/${String(MAX_EXEC_ATTEMPTS)}: ${evalResult.errors.join('; ')}); retrying`,
+		);
+		await delay(500 * attempt);
+		evalResult = await client.executeWithLlmMock(
+			targetWorkflowId,
+			scenario.dataSetup,
+			timeoutMs,
+			pinNodes,
+		);
+	}
 	const execMs = Date.now() - execStart;
 
 	const pinTag = pinNodes ? ` pinned=${pinNodes.join(',')}` : '';
@@ -884,7 +1007,7 @@ async function runScenario(
 	);
 
 	const verifyStart = Date.now();
-	const artifact = buildVerificationArtifact(scenario, evalResult, workflowJsons);
+	const artifact = buildVerificationArtifact(scenario, evalResult, workflowJsons, targetWorkflowId);
 
 	const scenarioChecklist: ChecklistItem[] = [
 		{
@@ -904,7 +1027,7 @@ async function runScenario(
 	await writeScenarioVerificationSnapshot({
 		testCaseName: testCaseName ?? `workflow-${workflowId}`,
 		scenarioName: scenario.name,
-		workflowId,
+		workflowId: targetWorkflowId,
 		passed,
 		result,
 		verificationResults,
@@ -928,6 +1051,7 @@ async function runScenario(
 		scenario,
 		success: passed,
 		evalResult,
+		workflowId: targetWorkflowId,
 		score: passed ? 1 : 0,
 		reasoning,
 		failureCategory,
@@ -1167,8 +1291,9 @@ export function buildVerificationArtifact(
 	scenario: ExecutionScenario,
 	evalResult: InstanceAiEvalExecutionResult,
 	workflowJsons: WorkflowResponse[],
+	workflowId?: string,
 ): VerificationArtifact {
-	const wf = workflowJsons[0];
+	const wf = workflowJsons.find((w) => w.id === workflowId) ?? workflowJsons[0];
 	return {
 		workflowContext: buildWorkflowContextBlock(wf),
 		scenarioContext: buildScenarioContextBlock(scenario, evalResult, wf),

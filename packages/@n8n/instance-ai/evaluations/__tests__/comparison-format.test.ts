@@ -151,6 +151,33 @@ describe('formatComparisonMarkdown', () => {
 		expect(md).toMatch(/-100pp ↓/);
 	});
 
+	it('renders run-level pass metrics and the LangSmith experiment link when provided', () => {
+		const pr = bucket('pr', [s('a', 'happy', 0, 3)]);
+		const base = bucket('master-abc', [s('a', 'happy', 10, 10)]);
+		const md = formatComparisonMarkdown(evalFixture, ok(compareBuckets(pr, base)), {
+			passMetrics: { passAtK: 0.892, passHatK: 0.757 },
+			experimentUrl:
+				'https://eu.smith.langchain.com/o/org-1/datasets/ds-1/compare?selectedSessions=sess-1',
+		});
+
+		expect(md).toContain(
+			'_pass@3 89.2% · pass^3 75.7% · [LangSmith experiment](https://eu.smith.langchain.com/o/org-1/datasets/ds-1/compare?selectedSessions=sess-1)_',
+		);
+		// Rendered inside the header area, above the regression tables.
+		expect(md.indexOf('_pass@3 89.2%')).toBeLessThan(md.indexOf('#### Regressions'));
+	});
+
+	it('omits the run-meta line entirely when neither metrics nor URL are provided', () => {
+		const pr = bucket('pr', [s('a', 'happy', 0, 3)]);
+		const base = bucket('master-abc', [s('a', 'happy', 10, 10)]);
+		const md = formatComparisonMarkdown(evalFixture, ok(compareBuckets(pr, base)));
+
+		// The per-test-case table legitimately mentions pass@3 — assert only the
+		// meta line (leading underscore) is absent.
+		expect(md).not.toMatch(/_pass@3 /);
+		expect(md).not.toContain('LangSmith experiment');
+	});
+
 	it('uses TIP alert when there are only improvements', () => {
 		const pr = bucket('pr', [s('a', 'happy', 3, 3)]);
 		const base = bucket('master', [s('a', 'happy', 0, 10)]);
@@ -283,7 +310,7 @@ describe('formatComparisonMarkdown', () => {
 	it('falls back to a generic re-run instruction when no rerun hint is given', () => {
 		const md = formatComparisonMarkdown(evalFixture, { kind: 'no_baseline' });
 		expect(md).toContain('does not re-run on new commits');
-		expect(md).toContain('dispatching the **CI: Instance AI Evals** workflow');
+		expect(md).toContain('dispatching the **Instance AI Evals: PR Gate** workflow');
 		expect(md).not.toContain('gh workflow run');
 	});
 

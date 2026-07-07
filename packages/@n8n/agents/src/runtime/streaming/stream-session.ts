@@ -24,6 +24,11 @@ export interface StreamSessionDeps {
 	updateState: (status: 'failed' | 'cancelled') => void;
 	emitError: (error: unknown) => void;
 	/**
+	 * Durably persist the turn-so-far when the run is aborted, so a cancelled stream still
+	 * leaves its assistant work in memory. Best-effort — must not throw out of the catch.
+	 */
+	persistTurnOnAbort?: () => Promise<void>;
+	/**
 	 * Usage + model to stamp on the terminal finish chunk of an aborted run, so a
 	 * cancelled run still bills the tokens consumed before the stop.
 	 */
@@ -84,7 +89,15 @@ export function startStreamSession(deps: StreamSessionDeps): ReadableStream<Stre
 		.catch(async (error: unknown) => {
 			const isAbort = deps.abortScope.isAborted;
 			deps.updateState(isAbort ? 'cancelled' : 'failed');
-			if (!isAbort) {
+			if (isAbort) {
+				// Best-effort: a persistence failure must never skip the shutdown steps
+				// below (cleanup, telemetry flush, terminal failure signal).
+				try {
+					await deps.persistTurnOnAbort?.();
+				} catch {
+					// swallowed — persistTurnDelta already logs; shutdown must proceed
+				}
+			} else {
 				deps.emitError(error);
 			}
 			await deps.cleanupRun();

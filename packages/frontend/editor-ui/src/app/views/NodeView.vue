@@ -2000,6 +2000,7 @@ onBeforeUnmount(() => {
 			@update:logs:input-open="logsStore.toggleInputOpen"
 			@update:logs:output-open="logsStore.toggleOutputOpen"
 			@update:has-range-selection="canvasStore.setHasRangeSelection"
+			@update:selected-group="canvasStore.setSelectedGroupId"
 			@open:sub-workflow="onOpenSubWorkflow"
 			@click:node="onClickNode"
 			@click:node:add="onClickNodeAdd"
