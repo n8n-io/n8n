@@ -475,10 +475,10 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 		});
 	});
 
-	it('reads events across the message group when a group id is provided', () => {
+	it('reads events across the message group when a group id is provided', async () => {
 		const { service, deps } = createService();
 
-		service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
+		await service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
 			messageGroupId: 'group-1',
 		});
 
@@ -486,11 +486,11 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 		expect(deps.eventBus.getEventsForRuns).toHaveBeenCalledWith('thread-a', ['run-1']);
 	});
 
-	it('falls back to the single run when the message group has no runs', () => {
+	it('falls back to the single run when the message group has no runs', async () => {
 		const { service, deps } = createService();
 		deps.runState.getRunIdsForMessageGroup.mockReturnValue([]);
 
-		service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
+		await service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
 			messageGroupId: 'group-1',
 		});
 
