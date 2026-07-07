@@ -1,0 +1,26 @@
+{
+	"description": "Single-request array body: all line items from the webhook payload are sent in one POST with an items array — not one HTTP call per line. When line_items arrive nested in one webhook item, referencing the array directly is valid; Aggregate is only required after per-item fan-out.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "When the webhook fires with a payload containing a line_items array, send all line items in one request to POST https://api.example.com/quote — it expects a single JSON body with an items array, not one call per line."
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "medium",
+	"tags": ["build", "loops", "single-request", "webhook", "http-request"],
+	"triggerType": "webhook",
+	"datasets": ["full"],
+	"outcomeExpectations": [
+		"All line items from the webhook payload are included in a single POST body under an items array sent to https://api.example.com/quote.",
+		"POST https://api.example.com/quote is invoked once per webhook execution, not once per line item."
+	],
+	"executionScenarios": [
+		{
+			"name": "three-lines-one-quote",
+			"description": "Three line items sent in one POST body",
+			"dataSetup": "The webhook receives { \"line_items\": [{ \"sku\": \"WIDGET-A\", \"qty\": 2 }, { \"sku\": \"WIDGET-B\", \"qty\": 1 }, { \"sku\": \"WIDGET-C\", \"qty\": 5 }] }. POST https://api.example.com/quote returns { \"total\": 199.99 }.",
+			"successCriteria": "The workflow executes without errors. POST https://api.example.com/quote is called exactly once and the request body includes all three SKUs (WIDGET-A, WIDGET-B, WIDGET-C). A workflow that POSTs three separate quote requests FAILS."
+		}
+	]
+}

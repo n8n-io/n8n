@@ -98,6 +98,7 @@ export interface FrontendSettings {
 	timezone: string;
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
+	urlBaseWebhookTest: string;
 	versionCli: string;
 	nodeJsVersion: string;
 	nodeEnv: string | undefined;
@@ -166,6 +167,7 @@ export interface FrontendSettings {
 	};
 	workflowTagsDisabled: boolean;
 	workflowsAutosaveDisabled: boolean;
+	useWorkflowPublicationService: boolean;
 	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
 	previewMode: boolean;

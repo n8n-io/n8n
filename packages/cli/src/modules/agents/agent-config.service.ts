@@ -109,8 +109,9 @@ export class AgentConfigService {
 		const accessibleCredentialIds = new Set(
 			(await credentialProvider.list()).map((credential) => credential.id),
 		);
+		const sanitizedBaseConfig = sanitizeAgentJsonConfig(config);
 		const sanitizedConfig = sanitizeUnknownAgentCredentials(
-			sanitizeAgentJsonConfig(config),
+			sanitizedBaseConfig,
 			accessibleCredentialIds,
 		);
 
@@ -120,19 +121,17 @@ export class AgentConfigService {
 		}
 
 		// Reconcile native web-search provider tools with the config's explicit
-		// `webSearch` state. This is the single write path, so the persisted config
-		// always agrees with the read/compose path — the builder tool layers no
-		// longer normalize, which is what let an explicit `webSearch.enabled: false`
-		// get stripped on write and resurrected on read.
-		result.config = reconcileNativeWebSearch(result.config);
+		// `webSearch` state. This is the single write path, so persisted config
+		// always agrees with read/compose paths.
+		const validatedConfig = reconcileNativeWebSearch(result.config);
 
-		const tasksProvided = result.config.tasks !== undefined;
+		const tasksProvided = validatedConfig.tasks !== undefined;
 		const existingTaskIds = tasksProvided
 			? (await this.agentTaskRepository.findByAgentId(agentId)).map((task) => task.id)
 			: [];
 
 		const resolvedSubAgents = await this.removeMissingConfigRefs(
-			result.config,
+			validatedConfig,
 			entity,
 			new Set(existingTaskIds),
 		);
@@ -141,20 +140,28 @@ export class AgentConfigService {
 		const previousIntegrations = entity.integrations ?? [];
 		const previousSchema = entity.schema ?? null;
 
-		const integrationsProvided = result.config.integrations !== undefined;
-		const toolsProvided = result.config.tools !== undefined;
-		const skillsProvided = result.config.skills !== undefined;
-		const credentialProvided = result.config.credential !== undefined;
-		const memoryProvided = result.config.memory !== undefined;
-		const subAgentsProvided = result.config.subAgents !== undefined;
-		const providerToolsProvided = result.config.providerTools !== undefined;
-		const configBlockProvided = result.config.config !== undefined;
-		const mcpServersProvided = result.config.mcpServers !== undefined;
+		const integrationsProvided = validatedConfig.integrations !== undefined;
+		const toolsProvided = validatedConfig.tools !== undefined;
+		const skillsProvided = validatedConfig.skills !== undefined;
+		const credentialProvided = validatedConfig.credential !== undefined;
+		const personalisationProvided = validatedConfig.personalisation !== undefined;
+		const memoryProvided = validatedConfig.memory !== undefined;
+		const subAgentsProvided = validatedConfig.subAgents !== undefined;
+		const providerToolsProvided = validatedConfig.providerTools !== undefined;
+		const configBlockProvided = validatedConfig.config !== undefined;
+		const mcpServersProvided = validatedConfig.mcpServers !== undefined;
 
 		const { schemaConfig: decomposedSchema, integrations: decomposedIntegrations } =
-			decomposeJsonConfig(result.config);
+			decomposeJsonConfig(validatedConfig);
 
 		const nextIntegrations = integrationsProvided ? decomposedIntegrations : previousIntegrations;
+		const nextPersonalisation = personalisationProvided
+			? mergePersonalisationWithPreviousGradient(
+					decomposedSchema.personalisation,
+					previousSchema,
+					config,
+				)
+			: undefined;
 
 		const nextSchema: AgentJsonConfig = {
 			...omitLegacyAgentDescription(previousSchema),
@@ -162,6 +169,7 @@ export class AgentConfigService {
 			model: decomposedSchema.model,
 			instructions: decomposedSchema.instructions,
 			...(credentialProvided ? { credential: decomposedSchema.credential } : {}),
+			...(personalisationProvided ? { personalisation: nextPersonalisation } : {}),
 			...(memoryProvided ? { memory: decomposedSchema.memory } : {}),
 			...(subAgentsProvided ? { subAgents: decomposedSchema.subAgents } : {}),
 			...(toolsProvided ? { tools: decomposedSchema.tools } : {}),
@@ -173,13 +181,13 @@ export class AgentConfigService {
 		};
 
 		entity.schema = nextSchema;
-		entity.name = result.config.name;
+		entity.name = validatedConfig.name;
 		entity.integrations = nextIntegrations;
 		markAgentDraftDirty(entity);
 
 		if (toolsProvided) {
 			const referencedIds = new Set(
-				(result.config.tools ?? [])
+				(validatedConfig.tools ?? [])
 					.filter((t): t is Extract<AgentJsonToolConfig, { type: 'custom' }> => t.type === 'custom')
 					.map((t) => t.id),
 			);
@@ -194,7 +202,7 @@ export class AgentConfigService {
 		}
 
 		if (skillsProvided) {
-			this.agentSkillsService.removeUnreferencedSkills(entity, result.config);
+			this.agentSkillsService.removeUnreferencedSkills(entity, validatedConfig);
 		}
 
 		this.runtimeCacheService.clearRuntimes(agentId);
@@ -203,7 +211,7 @@ export class AgentConfigService {
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
 
 		if (tasksProvided) {
-			const referencedTaskIds = new Set((result.config.tasks ?? []).map((ref) => ref.id));
+			const referencedTaskIds = new Set((validatedConfig.tasks ?? []).map((ref) => ref.id));
 			const orphanTaskIds = existingTaskIds.filter((id) => !referencedTaskIds.has(id));
 			if (orphanTaskIds.length > 0) {
 				await this.agentTaskRepository.delete(orphanTaskIds);
@@ -215,7 +223,7 @@ export class AgentConfigService {
 		}
 
 		return {
-			config: composeJsonConfig(saved) ?? result.config,
+			config: composeJsonConfig(saved) ?? validatedConfig,
 			updatedAt: saved.updatedAt.toISOString(),
 			versionId: saved.versionId,
 		};
@@ -312,6 +320,26 @@ export class AgentConfigService {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function mergePersonalisationWithPreviousGradient(
+	personalisation: AgentJsonConfig['personalisation'],
+	previousSchema: AgentJsonConfig | null,
+	rawConfig: unknown,
+): AgentJsonConfig['personalisation'] {
+	if (!personalisation || !isRecord(rawConfig) || !isRecord(rawConfig.personalisation)) {
+		return personalisation;
+	}
+
+	if (rawConfig.personalisation.gradient !== undefined) return personalisation;
+
+	const previousGradient = previousSchema?.personalisation?.gradient;
+	if (!previousGradient) return personalisation;
+
+	return {
+		...personalisation,
+		gradient: previousGradient,
+	};
 }
 
 function hasNodeToolInputSchema(raw: unknown): boolean {

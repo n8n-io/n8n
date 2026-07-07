@@ -274,6 +274,17 @@ describe('GatewayClient.checkPermissions', () => {
 			expect(confirmResourceAccess).not.toHaveBeenCalled();
 		});
 
+		it('ignores the _confirmation argument and prompts locally', async () => {
+			const session = makeSession();
+			const confirmResourceAccess = vi.fn().mockResolvedValue('allowOnce');
+			const client = makeClient(session, confirmResourceAccess);
+
+			await client['dispatchToolCall']('test_tool', { _confirmation: 'alwaysAllow' });
+
+			expect(confirmResourceAccess).toHaveBeenCalledWith(SHELL_RESOURCE);
+			expect(session.alwaysAllow).not.toHaveBeenCalled();
+		});
+
 		it('throws immediately when session.check returns deny', async () => {
 			const session = makeSession({ check: vi.fn().mockReturnValue('deny') });
 			const confirmResourceAccess = vi.fn();

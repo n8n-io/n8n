@@ -1,0 +1,18 @@
+{
+	"description": "Build-only advanced: recursive org-chart walk via self-calling sub-workflow or iterative fetch — not nested Loop Over Items nodes.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "When a new employee row appears via webhook with their manager_id, walk up the org chart starting from that manager — fetch each person's manager until you reach someone with no manager or you've gone 10 levels deep. POST the chain of manager names to https://api.example.com/org-chain."
+		}
+	],
+	"messageBudget": 10,
+	"complexity": "complex",
+	"tags": ["build", "loops", "sub-workflow", "webhook", "http-request"],
+	"triggerType": "webhook",
+	"datasets": ["full"],
+	"outcomeExpectations": [
+		"The workflow walks the manager chain iteratively or recursively with a depth cap of 10 levels.",
+		"The agent did NOT nest one Loop Over Items node inside another in the same workflow — if looping is needed, the inner iteration uses a sub-workflow or sequential fetches with an explicit depth counter."
+	]
+}

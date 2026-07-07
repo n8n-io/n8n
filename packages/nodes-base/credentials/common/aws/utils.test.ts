@@ -665,4 +665,63 @@ describe('awsGetSignInOptionsAndUpdateRequest', () => {
 			),
 		).toThrow(UserError);
 	});
+
+	it('signs and sends UI Query Parameters supplied via qs (not only qs.query)', () => {
+		const { url, signOpts } = awsGetSignInOptionsAndUpdateRequest(
+			{
+				uri: 'https://bedrock.us-east-1.amazonaws.com/foundation-models',
+				qs: { byProvider: 'anthropic', byOutputModality: 'TEXT' },
+				headers: {},
+			} as any,
+			baseCredentials,
+			'',
+			'GET',
+			'bedrock',
+			'us-east-1',
+		);
+
+		// Present in the outgoing URL...
+		const sentUrl = new URL(url);
+		expect(sentUrl.searchParams.get('byProvider')).toBe('anthropic');
+		expect(sentUrl.searchParams.get('byOutputModality')).toBe('TEXT');
+		// ...and in the signed path, so they are part of the SigV4 canonical request.
+		expect(signOpts.path).toContain('byProvider=anthropic');
+		expect(signOpts.path).toContain('byOutputModality=TEXT');
+	});
+
+	it('keeps query parameters embedded directly in the URL', () => {
+		const { url, signOpts } = awsGetSignInOptionsAndUpdateRequest(
+			{
+				uri: 'https://bedrock.us-east-1.amazonaws.com/foundation-models?byProvider=amazon',
+				headers: {},
+			} as any,
+			baseCredentials,
+			'',
+			'GET',
+			'bedrock',
+			'us-east-1',
+		);
+
+		expect(new URL(url).searchParams.get('byProvider')).toBe('amazon');
+		expect(signOpts.path).toContain('byProvider=amazon');
+	});
+
+	it('preserves the STS GetCallerIdentity special case', () => {
+		const { url } = awsGetSignInOptionsAndUpdateRequest(
+			{
+				uri: 'https://sts.us-east-1.amazonaws.com/',
+				qs: { Action: 'GetCallerIdentity' },
+				headers: {},
+			} as any,
+			baseCredentials,
+			'',
+			'POST',
+			'sts',
+			'us-east-1',
+		);
+
+		const sentUrl = new URL(url);
+		expect(sentUrl.searchParams.get('Action')).toBe('GetCallerIdentity');
+		expect(sentUrl.searchParams.get('Version')).toBe('2011-06-15');
+	});
 });

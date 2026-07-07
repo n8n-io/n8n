@@ -37,6 +37,7 @@ import { CredentialsService } from './credentials.service';
 import { EnterpriseCredentialsService } from './credentials.service.ee';
 import { getExternalSecretExpressionPaths } from './external-secrets.utils';
 
+import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -64,6 +65,7 @@ export class CredentialsController {
 		private readonly eventService: EventService,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
+		private readonly credentialsOverwrites: CredentialsOverwrites,
 	) {}
 
 	@Get('/', { middlewares: listQueryMiddleware })
@@ -179,6 +181,8 @@ export class CredentialsController {
 			isDynamic: newCredential.isResolvable ?? false,
 			usesExternalSecrets: getExternalSecretExpressionPaths(payload.data).length > 0,
 			jweEnabled: payload.data.jweEnabled === true,
+			supportsManagedAuth: this.credentialsOverwrites.supportsManagedAuth(newCredential.type),
+			usesManagedAuth: this.credentialsOverwrites.usesManagedAuth(newCredential.type, payload.data),
 		});
 
 		if (newCredential.isResolvable) {
@@ -231,22 +235,6 @@ export class CredentialsController {
 		// eslint-disable-next-line @typescript-eslint/no-unnecessary-boolean-literal-compare
 		const isTogglingToStatic = body.isResolvable === false && credential.isResolvable === true;
 
-		// Dynamic credentials and sharing are mutually exclusive: a credential that
-		// is already shared with other projects (or globally) can't become dynamic.
-		// Every credential has exactly one `credential:owner` sharing row, so any other
-		// row means it's shared — checking against the owner role keeps this robust if
-		// new sharing roles are introduced.
-		if (isTogglingToPrivate) {
-			const isShared =
-				credential.isGlobal ||
-				(credential.shared ?? []).some((sc) => sc.role !== 'credential:owner');
-			if (isShared) {
-				throw new BadRequestError(
-					'This credential is shared. Remove sharing before making it private.',
-				);
-			}
-		}
-
 		const preparedCredentialData = await this.credentialsService.prepareUpdateData(
 			req.user,
 			req.body,
@@ -275,21 +263,29 @@ export class CredentialsController {
 				);
 			}
 
-			// Global sharing is sharing too, so it can't be combined with dynamic credentials.
-			if (isGlobal && (body.isResolvable ?? credential.isResolvable)) {
-				throw new BadRequestError('Private credentials cannot be shared');
-			}
 			newCredentialData.isGlobal = isGlobal;
 		}
 
 		newCredentialData.isResolvable = body.isResolvable ?? credential.isResolvable;
+
+		// A private credential's per-user connections are minted against its shared
+		// (static) config, so changing that config makes them stale — invalidate them.
+		let sharedFieldsChanged = false;
+		if (body.data && !isTogglingToStatic && newCredentialData.isResolvable) {
+			const changedFields = await this.credentialsService.getChangedSharedFields(
+				credential,
+				preparedCredentialData.data as unknown as ICredentialDataDecryptedObject,
+			);
+			sharedFieldsChanged = changedFields.length > 0;
+		}
+
 		const responseData = await this.credentialsService.update(
 			credentialId,
 			newCredentialData,
 			body.data
 				? (preparedCredentialData.data as unknown as ICredentialDataDecryptedObject)
 				: undefined,
-			{ deleteUserEntries: isTogglingToStatic },
+			{ deleteUserEntries: isTogglingToStatic || sharedFieldsChanged },
 		);
 
 		if (responseData === null) {
@@ -301,15 +297,16 @@ export class CredentialsController {
 
 		this.logger.debug('Credential updated', { credentialId });
 
+		const updatedData = preparedCredentialData.data as unknown as ICredentialDataDecryptedObject;
 		this.eventService.emit('credentials-updated', {
 			user: req.user,
 			credentialType: credential.type,
 			credentialId: credential.id,
 			isDynamic: newCredentialData.isResolvable ?? false,
 			usesExternalSecrets: getExternalSecretExpressionPaths(preparedCredentialData.data).length > 0,
-			jweEnabled:
-				(preparedCredentialData.data as unknown as ICredentialDataDecryptedObject).jweEnabled ===
-				true,
+			jweEnabled: updatedData.jweEnabled === true,
+			supportsManagedAuth: this.credentialsOverwrites.supportsManagedAuth(credential.type),
+			usesManagedAuth: this.credentialsOverwrites.usesManagedAuth(credential.type, updatedData),
 		});
 
 		const wasResolvable = Boolean(credential.isResolvable);
@@ -322,6 +319,12 @@ export class CredentialsController {
 			});
 		} else if (wasResolvable && !willBeResolvable) {
 			this.eventService.emit('private-credential-toggled-to-static', {
+				user: req.user,
+				credentialType: credential.type,
+				credentialId: credential.id,
+			});
+		} else if (sharedFieldsChanged) {
+			this.eventService.emit('private-credential-connections-cleared', {
 				user: req.user,
 				credentialType: credential.type,
 				credentialId: credential.id,
@@ -404,12 +407,6 @@ export class CredentialsController {
 		const toShare = utils.rightDiff([currentProjectIds, (id) => id], [newProjectIds, (id) => id]);
 		const toUnshare = utils.rightDiff([newProjectIds, (id) => id], [currentProjectIds, (id) => id]);
 
-		// Dynamic credentials can't be shared: each user connects their own at run time.
-		// Unsharing (cleanup of any pre-existing shares) stays allowed.
-		if (credential.isResolvable && toShare.length > 0) {
-			throw new BadRequestError('Private credentials cannot be shared');
-		}
-
 		if (toShare.length > 0) {
 			const canShare = await userHasScopes(req.user, ['credential:share'], false, {
 				credentialId,
@@ -427,12 +424,6 @@ export class CredentialsController {
 				throw new ForbiddenError();
 			}
 		}
-
-		const unsharedProjectMembers =
-			toUnshare.length > 0
-				? await this.projectRelationRepository.findBy({ projectId: In(toUnshare) })
-				: [];
-		const affectedUserIds = [...new Set(unsharedProjectMembers.map((pr) => pr.userId))];
 
 		let amountRemoved: number | null = null;
 		let newShareeIds: string[] = [];
@@ -452,7 +443,11 @@ export class CredentialsController {
 
 			if (deleteResult.affected) {
 				amountRemoved = deleteResult.affected;
-				await this.connectionStatusProxy.cleanupOrphanedEntriesForUsers(affectedUserIds, trx);
+				await this.connectionStatusProxy.cleanupOrphanedEntriesForProjects(
+					credentialId,
+					toUnshare,
+					trx,
+				);
 			}
 
 			newShareeIds = toShare;

@@ -27,7 +27,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { AgentsConfig, SsrfProtectionConfig } from '@n8n/config';
-import { UserRepository, WorkflowRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
@@ -41,7 +41,6 @@ import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiMcpFetch, createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 import { WorkflowRunner } from '@/workflow-runner';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
@@ -87,8 +86,6 @@ export interface ReconstructAgentRuntimeParams {
 	toolDescriptors: Record<string, ToolDescriptor>;
 	toolCodeByName: Record<string, string>;
 	skills: Record<string, AgentSkill>;
-	/** Required for workflow tool resolution. */
-	userId: string;
 	runtimeProfile: AgentRuntimeProfile;
 	/** Delegating parent agent id for sub-agent runs; defaults to memoryOwnerAgentId for top-level. */
 	parentAgentIdForDelegation?: string;
@@ -132,8 +129,6 @@ export class AgentRuntimeReconstructionService {
 		private readonly agentFileRepository: AgentFileRepository,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly userRepository: UserRepository,
-		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly urlService: UrlService,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly secureRuntime: AgentSecureRuntime,
@@ -151,7 +146,6 @@ export class AgentRuntimeReconstructionService {
 	async reconstructFromAgentEntity(
 		agentEntity: Agent,
 		credentialProvider: CredentialProvider,
-		userId: string,
 		integrationType?: string,
 	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
 		const config = agentEntity.schema;
@@ -179,7 +173,6 @@ export class AgentRuntimeReconstructionService {
 			toolDescriptors,
 			toolCodeByName: toolsByName,
 			skills: agentEntity.skills ?? {},
-			userId,
 			runtimeProfile: 'top-level',
 			parentAgentIdForDelegation: agentEntity.id,
 			integrationType,
@@ -211,7 +204,6 @@ export class AgentRuntimeReconstructionService {
 		toolDescriptors: Record<string, ToolDescriptor>;
 		toolCodeByName: Record<string, string>;
 		skills: Record<string, AgentSkill>;
-		userId: string;
 		runtimeProfile: AgentRuntimeProfile;
 		parentAgentIdForDelegation?: string;
 		integrationType?: string;
@@ -226,7 +218,6 @@ export class AgentRuntimeReconstructionService {
 			toolDescriptors,
 			toolCodeByName,
 			skills,
-			userId,
 			runtimeProfile,
 			parentAgentIdForDelegation,
 			integrationType,
@@ -235,7 +226,7 @@ export class AgentRuntimeReconstructionService {
 		} = options;
 
 		const toolExecutor = this.secureRuntime.createToolExecutor(toolCodeByName);
-		const toolResolver = this.makeToolResolver(projectId, userId);
+		const toolResolver = this.makeToolResolver(projectId);
 		const resolvedTools: BuiltTool[] = [];
 
 		// Transport for LLM calls
@@ -267,7 +258,7 @@ export class AgentRuntimeReconstructionService {
 			memoryFactory: this.getMemoryFactory(memoryOwnerAgentId),
 			buildMcpClient,
 			resolveManagedEmbeddingProviderOptions: async () =>
-				await this.resolveManagedEmbeddingProviderOptions(userId),
+				await this.resolveManagedEmbeddingProviderOptions(projectId),
 			modelFetch: aiProxyFetch,
 		});
 
@@ -276,7 +267,6 @@ export class AgentRuntimeReconstructionService {
 			agentId: memoryOwnerAgentId,
 			projectId,
 			credentialProvider,
-			userId,
 			runtimeProfile,
 			config,
 			subAgentDelegation,
@@ -318,15 +308,20 @@ export class AgentRuntimeReconstructionService {
 		return (_params: AgentJsonMemoryConfig) => this.n8nMemory.getImplementation(agentId);
 	}
 
+	/**
+	 * `ownerId` is the proxy token subject — the proxy treats it as an opaque scope and
+	 * does not verify it against n8n users. Agent runtimes pass their project id; a user
+	 * id works equally if a caller ever has one.
+	 */
 	private async resolveManagedEmbeddingProviderOptions(
-		userId: string,
+		ownerId: string,
 	): Promise<ManagedEmbeddingProviderOptions | null> {
 		if (!this.aiService.isProxyEnabled()) return null;
 		// TODO: switch to n8n connect endpoints, don't use ai-proxy endpoints
 		const client = await this.aiService.getClient();
 		const baseURL = client.getApiProxyBaseUrl().replace(/\/$/, '') + '/openai/';
 		const tokenManager = new ProxyTokenManager(async () => {
-			return await client.getBuilderApiProxyToken({ id: userId }, { userMessageId: nanoid() });
+			return await client.getBuilderApiProxyToken({ id: ownerId }, { userMessageId: nanoid() });
 		});
 
 		return {
@@ -350,20 +345,14 @@ export class AgentRuntimeReconstructionService {
 			},
 		};
 	}
-	private makeToolResolver(projectId: string, userId: string): ToolResolver {
+	private makeToolResolver(projectId: string): ToolResolver {
 		return async (ref: AgentJsonToolConfig) => {
 			if (ref.type === 'workflow') {
-				if (!userId) {
-					throw new UserError('userId is required when agent uses workflow tools');
-				}
 				const { resolveWorkflowTool } = await import('./tools/workflow-tool-factory');
 				return await resolveWorkflowTool(ref, {
 					workflowRepository: this.workflowRepository,
 					workflowRunner: await getWorkflowRunner(),
 					activeExecutions: this.activeExecutions,
-					workflowFinderService: this.workflowFinderService,
-					userRepository: this.userRepository,
-					userId,
 					projectId,
 					webhookBaseUrl: this.urlService.getWebhookBaseUrl(),
 				});
@@ -386,7 +375,6 @@ export class AgentRuntimeReconstructionService {
 		agentId: string;
 		projectId: string;
 		credentialProvider: CredentialProvider;
-		userId: string;
 		runtimeProfile: AgentRuntimeProfile;
 		config: AgentJsonConfig;
 		subAgentDelegation: SubAgentDelegationConfig;
@@ -399,7 +387,6 @@ export class AgentRuntimeReconstructionService {
 			agentId,
 			projectId,
 			credentialProvider,
-			userId,
 			runtimeProfile,
 			config,
 			subAgentDelegation,
@@ -421,7 +408,6 @@ export class AgentRuntimeReconstructionService {
 				createKnowledgeRetrievalTools({
 					projectId,
 					agentId,
-					userId,
 					sandboxService: this.agentKnowledgeSandboxService,
 				}),
 			);
@@ -492,7 +478,6 @@ export class AgentRuntimeReconstructionService {
 				parentAgentId: parentAgentIdForDelegation,
 				projectId,
 				credentialProvider,
-				userId,
 				delegation: subAgentDelegation,
 			});
 			this.attachWriteTodosTool(agent, agentId);
@@ -509,11 +494,9 @@ export class AgentRuntimeReconstructionService {
 		parentAgentId: string;
 		projectId: string;
 		credentialProvider: CredentialProvider;
-		userId: string;
 		delegation: SubAgentDelegationConfig;
 	}): Promise<void> {
-		const { agent, config, parentAgentId, projectId, credentialProvider, userId, delegation } =
-			params;
+		const { agent, config, parentAgentId, projectId, credentialProvider, delegation } = params;
 		const inlineSubAgentModelsByDifficulty = await this.resolveInlineSubAgentModelsByDifficulty(
 			config,
 			credentialProvider,
@@ -524,7 +507,6 @@ export class AgentRuntimeReconstructionService {
 				...delegation,
 				projectId,
 				parentAgentId,
-				userId,
 				credentialProvider,
 				policy: this.buildSubAgentPolicy(config),
 				...(inlineSubAgentModelsByDifficulty !== undefined

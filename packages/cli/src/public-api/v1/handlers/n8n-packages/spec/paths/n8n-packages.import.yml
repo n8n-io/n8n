@@ -6,8 +6,7 @@ post:
     - N8nPackage
   summary: 'Beta: Import an n8n package into a project'
   description: |
-    **Beta — disabled by default.** Set `N8N_PUBLIC_API_PACKAGES_ENABLED=true` on the
-    instance to enable this endpoint. While disabled, requests return `404`.
+    **Beta** — breaking changes may still occur without major version bump.
 
     Imports a gzip-compressed tar package (`.n8np`) into the target project. Send the
     archive as the multipart field `package`. Optional routing uses form fields

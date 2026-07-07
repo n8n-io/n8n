@@ -31,12 +31,10 @@ const props = withDefaults(
 		filters: ExecutionFilterType;
 		total?: number;
 		concurrentTotal?: number;
-		estimated?: boolean;
 	}>(),
 	{
 		total: 0,
 		concurrentTotal: 0,
-		estimated: false,
 	},
 );
 
@@ -452,7 +450,7 @@ const goToUpgrade = () => {
 										{{ i18n.baseText('executionsList.empty') }}
 									</span>
 								</template>
-								<template v-else-if="total > executions.length || estimated">
+								<template v-else-if="executionsStore.hasMoreExecutions">
 									<N8nButton
 										ref="loadMoreButton"
 										icon="refresh-cw"

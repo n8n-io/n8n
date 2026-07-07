@@ -1,0 +1,102 @@
+[
+	{
+		"type": "fetch",
+		"timestamp": 1782371203481,
+		"method": "POST",
+		"url": "https://api.telegram.org/bot123456789:abcdefghijkl/getMe",
+		"durationMs": 31,
+		"requestHeaders": {
+			"Content-Type": "application/json"
+		},
+		"requestBody": "{}",
+		"status": 200,
+		"responseHeaders": {
+			"access-control-allow-methods": "GET, POST, OPTIONS",
+			"access-control-allow-origin": "*",
+			"access-control-expose-headers": "Content-Length,Content-Type,Date,Server,Connection",
+			"connection": "keep-alive",
+			"content-length": "419",
+			"content-type": "application/json",
+			"date": "Thu, 25 Jun 2026 07:06:43 GMT",
+			"server": "nginx/1.30.1",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload"
+		},
+		"responseBody": "{\"ok\":true,\"result\":{\"id\":987654321,\"is_bot\":true,\"first_name\":\"TestBot\",\"username\":\"test_bot\",\"can_join_groups\":true,\"can_read_all_group_messages\":false,\"supports_inline_queries\":false,\"supports_guest_queries\":false,\"can_connect_to_business\":false,\"has_main_web_app\":false,\"has_topics_enabled\":false,\"allows_users_to_create_topics\":false,\"can_manage_bots\":false,\"supports_join_request_queries\":false}}"
+	},
+	{
+		"type": "webhook",
+		"timestamp": 1782371293351,
+		"platform": "telegram",
+		"method": "POST",
+		"url": "https://n8n.host.com/rest/projects/n1hfKHngCcLMKhwm/agents/v2/cUXaKtBmyOGVvl9j/webhooks/telegram",
+		"headers": {
+			"accept-encoding": "gzip, deflate",
+			"content-length": "337",
+			"content-type": "application/json",
+			"host": "n8n.host.com",
+			"x-forwarded-for": "11.111.1.111",
+			"x-forwarded-host": "n8n.host.com",
+			"x-forwarded-proto": "https",
+			"x-telegram-bot-api-secret-token": "[REDACTED]"
+		},
+		"body": "{\"update_id\":202827072,\n\"message\":{\"message_id\":178,\"from\":{\"id\":123456789,\"is_bot\":false,\"first_name\":\"Sofia\",\"last_name\":\"García \\ud83c\\udf3f\",\"username\":\"sofiadev\",\"language_code\":\"en\"},\"chat\":{\"id\":123456789,\"first_name\":\"Sofia\",\"last_name\":\"García \\ud83c\\udf3f\",\"username\":\"sofiadev\",\"type\":\"private\"},\"date\":1782371215,\"text\":\"hey\"}}"
+	},
+	{
+		"type": "fetch",
+		"timestamp": 1782371303784,
+		"method": "POST",
+		"url": "https://api.telegram.org/bot123456789:abcdefghijkl/sendMessage",
+		"durationMs": 4304,
+		"requestHeaders": {
+			"Content-Type": "application/json"
+		},
+		"requestBody": "{\"chat_id\":\"123456789\",\"text\":\"Test response\",\"parse_mode\":\"MarkdownV2\"}",
+		"status": 200,
+		"responseHeaders": {
+			"access-control-allow-methods": "GET, POST, OPTIONS",
+			"access-control-allow-origin": "*",
+			"access-control-expose-headers": "Content-Length,Content-Type,Date,Server,Connection",
+			"connection": "keep-alive",
+			"content-length": "489",
+			"content-type": "application/json",
+			"date": "Thu, 25 Jun 2026 07:08:24 GMT",
+			"server": "nginx/1.30.1",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload"
+		},
+		"responseBody": "{\"ok\":true,\"result\":{\"message_id\":179,\"from\":{\"id\":987654321,\"is_bot\":true,\"first_name\":\"TestBot\",\"username\":\"test_bot\"},\"chat\":{\"id\":123456789,\"first_name\":\"Sofia\",\"last_name\":\"García \\ud83c\\udf3f\",\"username\":\"sofiadev\",\"type\":\"private\"},\"date\":1782371304,\"text\":\"Test response\"}}"
+	},
+	{
+		"type": "api-call",
+		"timestamp": 1782371305143,
+		"platform": "telegram",
+		"method": "postMessage",
+		"args": [
+			"telegram:123456789",
+			{
+				"markdown": "Test response"
+			}
+		],
+		"response": {
+			"id": "123456789:179",
+			"threadId": "telegram:123456789",
+			"raw": {
+				"message_id": 179,
+				"from": {
+					"id": 987654321,
+					"is_bot": true,
+					"first_name": "TestBot",
+					"username": "test_bot"
+				},
+				"chat": {
+					"id": 123456789,
+					"first_name": "Sofia",
+					"last_name": "García 🌿",
+					"username": "sofiadev",
+					"type": "private"
+				},
+				"date": 1782371304,
+				"text": "Test response"
+			}
+		}
+	}
+]

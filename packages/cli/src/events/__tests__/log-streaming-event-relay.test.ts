@@ -54,8 +54,8 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
-		it('should log on `workflows-imported` event', () => {
-			const event: RelayEventMap['workflows-imported'] = {
+		it('should log on `n8n-package-imported` event', () => {
+			const event: RelayEventMap['n8n-package-imported'] = {
 				user: {
 					id: 'user-import',
 					email: 'importer@example.com',
@@ -80,9 +80,22 @@ describe('LogStreamingEventRelay', () => {
 					created: [],
 					updated: [],
 				},
+				// Telemetry-only; must not appear in the audit payload below.
+				counts: {
+					workflows: {
+						created: 1,
+						updated: 1,
+						skipped: 0,
+					},
+					credentials: {
+						matched: 1,
+						created: 0,
+						requirements: 1,
+					},
+				},
 			};
 
-			eventService.emit('workflows-imported', event);
+			eventService.emit('n8n-package-imported', event);
 
 			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
 				eventName: 'n8n.audit.n8n-package.imported',
@@ -109,6 +122,43 @@ describe('LogStreamingEventRelay', () => {
 						created: [],
 						updated: [],
 					},
+				},
+			});
+		});
+
+		it('should log on `n8n-package-exported` event', () => {
+			const event: RelayEventMap['n8n-package-exported'] = {
+				user: {
+					id: 'user-export',
+					email: 'exporter@example.com',
+					firstName: 'Export',
+					lastName: 'User',
+					role: { slug: 'global:admin' },
+				},
+				workflowIds: ['wf-cheddar', 'wf-brie'],
+				folderIds: ['folder-gouda'],
+				projectIds: ['proj-stilton'],
+				// Telemetry-only; must not appear in the audit payload below.
+				counts: {
+					workflows: 2,
+					folders: 1,
+					credentials: 1,
+				},
+			};
+
+			eventService.emit('n8n-package-exported', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.n8n-package.exported',
+				payload: {
+					userId: 'user-export',
+					_email: 'exporter@example.com',
+					_firstName: 'Export',
+					_lastName: 'User',
+					globalRole: 'global:admin',
+					workflowIds: ['wf-cheddar', 'wf-brie'],
+					folderIds: ['folder-gouda'],
+					projectIds: ['proj-stilton'],
 				},
 			});
 		});

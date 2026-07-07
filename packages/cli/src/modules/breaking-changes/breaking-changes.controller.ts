@@ -1,12 +1,13 @@
 import {
 	BreakingChangeInstanceRuleResult,
 	BreakingChangeLightReportResult,
+	BreakingChangeReportQueryDto,
 	BreakingChangeReportResult,
-	BreakingChangeVersion,
 	BreakingChangeWorkflowRuleResult,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, RestController, GlobalScope, Query, Post, Param } from '@n8n/decorators';
+import { Response } from 'express';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -34,7 +35,9 @@ export class BreakingChangesController {
 	@Get('/report')
 	@GlobalScope('breakingChanges:list')
 	async getDetectionReport(
-		@Query query: { version?: BreakingChangeVersion },
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: BreakingChangeReportQueryDto,
 	): Promise<BreakingChangeLightReportResult> {
 		const report = await this.service.getDetectionResults(query.version ?? 'v2');
 		return {
@@ -46,7 +49,9 @@ export class BreakingChangesController {
 	@Post('/report/refresh')
 	@GlobalScope('breakingChanges:list')
 	async refreshCache(
-		@Query query: { version?: BreakingChangeVersion },
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: BreakingChangeReportQueryDto,
 	): Promise<BreakingChangeLightReportResult> {
 		const report = await this.service.refreshDetectionResults(query.version ?? 'v2');
 		return {

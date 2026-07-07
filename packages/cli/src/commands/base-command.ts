@@ -23,7 +23,8 @@ import {
 } from 'n8n-core';
 import { ObjectStoreConfig } from 'n8n-core/dist/binary-data/object-store/object-store.config';
 import { AzureBlobConfig } from 'n8n-core/dist/binary-data/azure-blob/azure-blob.config';
-import { ensureError, Expression, sleep, UnexpectedError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { Expression, sleep, UnexpectedError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
 import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
@@ -97,6 +98,7 @@ export abstract class BaseCommand<F = never> {
 			profilesSampleRate,
 			tracesSampleRate,
 			tracesSlowSpanThresholdMs,
+			webhookTracesSampleRate,
 			eventLoopBlockThreshold,
 			eventLoopBlockMaxEventsPerHour,
 			eventLoopBlockDetectionEnabled,
@@ -113,6 +115,8 @@ export abstract class BaseCommand<F = never> {
 			eventLoopBlockMaxEventsPerHour,
 			tracesSampleRate,
 			slowSpanThresholdMs: tracesSlowSpanThresholdMs,
+			webhookEndpoint: this.globalConfig.endpoints.webhook,
+			webhookTracesSampleRate,
 			profilesSampleRate,
 			healthEndpoint: resolveBackendHealthEndpointPath(this.globalConfig),
 			eligibleIntegrations: {

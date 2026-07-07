@@ -88,6 +88,10 @@ describe('AgentConfigService', () => {
 		vi.clearAllMocks();
 	});
 
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
 	describe('validateConfig', () => {
 		it('rejects unsafe node tool schemas before deeper validation', async () => {
 			const { service } = makeService();
@@ -289,6 +293,89 @@ describe('AgentConfigService', () => {
 			);
 			expect(saved.integrations).toEqual([{ type: 'slack', credentialId: '' }]);
 			expect(savedConfig.mcpServers?.[0].credential).toBe('');
+		});
+
+		it('persists personalisation changes from the config payload', async () => {
+			const { service, agentRepository } = makeService();
+			const agent = makeAgent({
+				schema: {
+					...baseConfig,
+					personalisation: {
+						icon: 'bot',
+						gradient: {
+							from: '#111111',
+							to: '#222222',
+							angle: 135,
+							fromStop: 0,
+							toStop: 100,
+						},
+					},
+				},
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.updateConfig(agentId, projectId, {
+				...baseConfig,
+				personalisation: {
+					icon: 'mail',
+					gradient: {
+						from: '#333333',
+						to: '#444444',
+						angle: 42,
+						fromStop: 12,
+						toStop: 88,
+					},
+				},
+			});
+
+			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			expect(saved.schema?.personalisation).toEqual({
+				icon: 'mail',
+				gradient: {
+					from: '#333333',
+					to: '#444444',
+					angle: 42,
+					fromStop: 12,
+					toStop: 88,
+				},
+			});
+		});
+
+		it('preserves an existing personalisation gradient when only the icon changes', async () => {
+			const { service, agentRepository } = makeService();
+			const agent = makeAgent({
+				schema: {
+					...baseConfig,
+					personalisation: {
+						icon: 'bot',
+						gradient: {
+							from: '#111111',
+							to: '#222222',
+							angle: 42,
+							fromStop: 12,
+							toStop: 88,
+						},
+					},
+				},
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.updateConfig(agentId, projectId, {
+				...baseConfig,
+				personalisation: { icon: 'mail' },
+			});
+
+			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			expect(saved.schema?.personalisation).toEqual({
+				icon: 'mail',
+				gradient: {
+					from: '#111111',
+					to: '#222222',
+					angle: 42,
+					fromStop: 12,
+					toStop: 88,
+				},
+			});
 		});
 
 		it('stores only existing published subagents and rejects invalid subagent refs', async () => {
