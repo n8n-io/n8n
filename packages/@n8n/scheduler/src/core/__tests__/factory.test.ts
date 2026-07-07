@@ -83,6 +83,39 @@ describe('createScheduler prune', () => {
 	});
 });
 
+describe('createScheduler event sink', () => {
+	it('completes a pass even when the onEvent sink throws', async () => {
+		const { scheduler, taskStore } = makeScheduler({
+			onEvent: () => {
+				throw new Error('logger down');
+			},
+		});
+		// Every batch full: the pass emits its backlog warning through the sink.
+		taskStore.deleteFinishedOlderThan.mockResolvedValue(DEFAULT_RETENTION_OPTIONS.batchSize);
+
+		const summary = await scheduler.prune();
+
+		expect(summary.drained).toBe(false);
+	});
+});
+
+describe('createScheduler tuning defaults', () => {
+	it('treats an explicitly-undefined override as absent instead of clobbering the default', () => {
+		// With a plain spread merge, `retentionSeconds: undefined` would erase the
+		// default (1 day) and the misconfiguration comparison would go silent.
+		const { onEvent } = makeScheduler({
+			retention: { retentionSeconds: undefined, failedRetentionSeconds: 3600 },
+		});
+
+		expect(onEvent).toHaveBeenCalledWith({
+			level: 'warn',
+			message:
+				'Scheduler retention keeps failed runs shorter than succeeded ones; failure evidence will be deleted first',
+			context: { retentionSeconds: 86_400, failedRetentionSeconds: 3600 },
+		});
+	});
+});
+
 describe('createScheduler retention config', () => {
 	it('emits a warn event at composition when failed runs are kept shorter than clean ones', () => {
 		const { onEvent } = makeScheduler({

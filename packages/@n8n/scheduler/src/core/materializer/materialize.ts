@@ -107,7 +107,11 @@ function planOrDeferJob(
 			deferred: false,
 		};
 	} catch (error) {
-		onPlanError?.(job, error);
+		try {
+			onPlanError?.(job, error);
+		} catch {
+			// The pass still owns the other jobs.
+		}
 		// Defer: record nothing and retry after a backoff. Keeping nextRunAt set (never
 		// null) reserves null for its one meaning: the schedule is exhausted.
 		// The row passed validation at write time but can't be planned at claim time, e.g.:

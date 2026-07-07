@@ -130,6 +130,26 @@ describe('reap', () => {
 		expect(onRowError).toHaveBeenCalledWith('poison', failure);
 	});
 
+	it('keeps sweeping when the row-error reporter itself throws', async () => {
+		const { store, onRowError, run } = setup();
+		const failure = new Error('db down');
+		store.reclaimExpired.mockRejectedValueOnce(failure);
+		// The reporter is host-supplied; a broken one must not re-break the isolation
+		// it reports on, or the poison row would also abort every younger row.
+		onRowError.mockImplementation(() => {
+			throw new Error('logger down');
+		});
+		store.findExpiredLeases.mockResolvedValue([
+			expiredTask({ id: 'poison', attempts: 0, maxAttempts: 3 }),
+			expiredTask({ id: 'ok', attempts: 0, maxAttempts: 3 }),
+		]);
+
+		const result = await run();
+
+		expect(result).toEqual({ reclaimed: 1, deadLettered: 0 });
+		expect(onRowError).toHaveBeenCalledWith('poison', failure);
+	});
+
 	it('counts only rows actually changed (a lost race is a benign no-op)', async () => {
 		const { store, run } = setup();
 		// The owner finished (or another reaper won the row) between read and write.

@@ -114,4 +114,28 @@ describe('materialize', () => {
 		expect(badEntry.plan.nextRunAt).toEqual(new Date('2026-01-01T01:00:00.000Z'));
 		expect(badEntry.plan.lastFiredAt).toBeNull();
 	});
+
+	it('still defers and completes the pass when the plan-error reporter itself throws', async () => {
+		const good = makeJob(1);
+		const bad: ScheduledJob = {
+			...makeJob(2),
+			kind: 'cron',
+			cronExpression: null,
+			intervalSeconds: null,
+		};
+		const tx = mock<MaterializerTransaction>();
+		tx.claimDueJobs.mockResolvedValue({ now: NOW, jobs: [good, bad] });
+		tx.recordOccurrences.mockResolvedValue(1);
+		// The reporter is host-supplied; a broken one must not turn a deferred job
+		// into a rolled-back pass.
+		const onPlanError = vi.fn(() => {
+			throw new Error('logger down');
+		});
+
+		const summary = await materialize(runnerWith(tx), options, onPlanError);
+
+		expect(summary).toEqual({ claimedJobs: 2, occurrences: 1, deferredJobs: 1 });
+		expect(tx.recordOccurrences).toHaveBeenCalledTimes(1);
+		expect(tx.advanceJobs).toHaveBeenCalledTimes(1);
+	});
 });

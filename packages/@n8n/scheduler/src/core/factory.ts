@@ -54,6 +54,22 @@ export interface SchedulerDeps {
 }
 
 /**
+ * A plain `{ ...defaults, ...overrides }` would let an explicitly-undefined
+ * override clobber a default (turning e.g. `leaseMs` into `NaN` downstream),
+ * so undefined entries are treated as absent.
+ */
+function withDefaults<T extends object>(defaults: T, overrides: Partial<T> = {}): T {
+	const merged = { ...defaults };
+	for (const key of Object.keys(overrides) as Array<keyof T>) {
+		const value = overrides[key];
+		if (value !== undefined) {
+			merged[key] = value;
+		}
+	}
+	return merged;
+}
+
+/**
  * Compose the core algorithms into a {@link Scheduler}: a registry and an
  * {@link Executor} over `taskStore`, plus the materializer, reaper and
  * retention passes bound to their options, with every incident routed to
@@ -61,13 +77,20 @@ export interface SchedulerDeps {
  */
 export function createScheduler(deps: SchedulerDeps): Scheduler {
 	const { hostId, materializerTransaction, taskStore, onEvent } = deps;
-	const materializerOptions = { ...DEFAULT_MATERIALIZER_OPTIONS, ...deps.materializer };
-	const executorOptions = { ...DEFAULT_EXECUTOR_OPTIONS, ...deps.executor };
-	const reaperOptions = { ...DEFAULT_REAPER_OPTIONS, ...deps.reaper };
-	const retentionOptions = { ...DEFAULT_RETENTION_OPTIONS, ...deps.retention };
+	const materializerOptions = withDefaults(DEFAULT_MATERIALIZER_OPTIONS, deps.materializer);
+	const executorOptions = withDefaults(DEFAULT_EXECUTOR_OPTIONS, deps.executor);
+	const reaperOptions = withDefaults(DEFAULT_REAPER_OPTIONS, deps.reaper);
+	const retentionOptions = withDefaults(DEFAULT_RETENTION_OPTIONS, deps.retention);
 
 	const emit = (level: SchedulerEventLevel, message: string, context: Record<string, unknown>) => {
-		onEvent?.({ level, message, context });
+		// The sink is the reporting channel itself: if it throws (a broken logger),
+		// there is nothing left to report through, and the pass that emitted must
+		// not be broken by its own observability.
+		try {
+			onEvent?.({ level, message, context });
+		} catch {
+			// Deliberately swallowed; see above.
+		}
 	};
 	const described = (error: unknown) => ensureError(error).message;
 

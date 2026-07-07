@@ -104,7 +104,11 @@ export async function reap(
 				);
 			}
 		} catch (error) {
-			onRowError?.(task.id, error);
+			try {
+				onRowError?.(task.id, error);
+			} catch {
+				// The remaining rows still need recovering.
+			}
 		}
 	}
 
