@@ -72,6 +72,7 @@ vi.mock('../components/ProjectMembersTable.vue', () => ({
 			currentUserId: { type: String, required: false },
 			projectRoles: { type: Array, required: true },
 			actions: { type: Array, required: false },
+			canEditRole: { type: Boolean, required: false },
 		},
 		emits: ['update:options', 'update:role', 'action', 'show-upgrade-dialog'],
 		setup(_, { emit }) {
@@ -88,7 +89,7 @@ vi.mock('../components/ProjectMembersTable.vue', () => ({
 			};
 		},
 		template:
-			'<div data-test-id="project-members-table">' +
+			'<div data-test-id="project-members-table" :data-can-edit-role="canEditRole" :data-actions-count="actions?.length">' +
 			'<div data-test-id="members-count">{{ data.items.length }}</div>' +
 			'<div data-test-id="members-page">{{ tableOptions.page }}</div>' +
 			'</div>',
@@ -112,13 +113,14 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 				users: { type: Array, required: true },
 				currentUserId: { type: String, required: false },
 				placeholder: { type: String, required: false },
+				disabled: { type: Boolean, required: false },
 			},
 			emits: ['update:model-value'],
 			setup(_, { emit }) {
 				addEmitter('n8nUserSelect', emit as unknown as Emitter);
 				return {};
 			},
-			template: '<div data-test-id="project-members-select"></div>',
+			template: '<div data-test-id="project-members-select" :data-disabled="disabled"></div>',
 		}),
 		N8nIconPicker: defineComponent({
 			name: 'N8nIconPickerStub',
@@ -233,6 +235,7 @@ describe('ProjectSettings', () => {
 				},
 			],
 			scopes: ['project:read', 'project:update'],
+			rolesManaged: false,
 		};
 
 		projectsStore.currentProject = mockProject;
@@ -328,6 +331,40 @@ describe('ProjectSettings', () => {
 		const actualDesc = getTextarea(descriptionInput);
 		expect(actualName.value).toBe('Test Project');
 		expect(actualDesc.value).toBe('');
+	});
+
+	describe('Managed project roles', () => {
+		it('disables member management and shows notice when roles are managed', async () => {
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				rolesManaged: true,
+			};
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			await nextTick();
+
+			expect(queryByTestId('project-roles-managed-notice')).toBeInTheDocument();
+			expect(getByTestId('project-members-select')).toHaveAttribute('data-disabled', 'true');
+			expect(getByTestId('project-members-table')).toHaveAttribute('data-can-edit-role', 'false');
+			// remove action is suppressed -> empty actions array
+			expect(getByTestId('project-members-table')).toHaveAttribute('data-actions-count', '0');
+		});
+
+		it('allows member management and hides notice when roles are not managed', async () => {
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				rolesManaged: false,
+			};
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			await nextTick();
+
+			expect(queryByTestId('project-roles-managed-notice')).not.toBeInTheDocument();
+			expect(getByTestId('project-members-select')).toHaveAttribute('data-disabled', 'false');
+			expect(getByTestId('project-members-table')).toHaveAttribute('data-can-edit-role', 'true');
+			// remove action is available -> non-empty actions array
+			expect(getByTestId('project-members-table')).toHaveAttribute('data-actions-count', '1');
+		});
 	});
 
 	describe('Form interactions', () => {
@@ -741,14 +778,14 @@ describe('ProjectSettings', () => {
 		});
 	});
 
-	describe('Custom telemetry tags', () => {
+	describe('Custom span attributes', () => {
 		beforeEach(() => {
-			settingsStore.isOtelEnabled = true;
+			settingsStore.isOtelCustomSpanAttributesEnabled = true;
 			projectsStore.updateProject.mockResolvedValue(undefined);
 		});
 
 		it('should not render telemetry tags section when OTel is disabled', () => {
-			settingsStore.isOtelEnabled = false;
+			settingsStore.isOtelCustomSpanAttributesEnabled = false;
 			const { queryByTestId } = renderComponent();
 			expect(queryByTestId('project-telemetry-tag-add')).not.toBeInTheDocument();
 		});
@@ -763,7 +800,7 @@ describe('ProjectSettings', () => {
 			expect(queryAllByTestId('project-telemetry-tag-key')).toHaveLength(0);
 		});
 
-		it('should add a new tag row when clicking Add tag', async () => {
+		it('should add a new attribute row when clicking Add attribute', async () => {
 			const { getByTestId, getAllByTestId } = renderComponent();
 			await userEvent.click(getByTestId('project-telemetry-tag-add'));
 			await nextTick();
@@ -843,7 +880,7 @@ describe('ProjectSettings', () => {
 		});
 
 		it('should not include customTelemetryTags in payload when OTel is disabled', async () => {
-			settingsStore.isOtelEnabled = false;
+			settingsStore.isOtelCustomSpanAttributesEnabled = false;
 			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
 			const { getByTestId } = renderComponent();
 

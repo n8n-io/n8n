@@ -156,7 +156,7 @@ function extractPlainTextContent(attachment: AttachmentInfo) {
 export function createParseFileTool(context: InstanceAiContext) {
 	return new Tool('parse-file')
 		.description(
-			'Parse a file attachment from the current message. ' +
+			'Parse parseable user attachments from the current message. ' +
 				'For CSV, TSV, JSON, and XLSX, returns column metadata (with normalized names and inferred types) and paginated rows. ' +
 				'For text, Markdown, HTML, PDF, and DOCX, returns extracted content. ' +
 				'Use nextStartRow to page through large tabular files. ' +

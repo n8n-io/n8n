@@ -19,7 +19,12 @@ import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentia
 import { DynamicCredentialUserEntryRepository } from '@/modules/dynamic-credentials.ee/database/repositories/dynamic-credential-user-entry.repository';
 import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config';
 import { Telemetry } from '@/telemetry';
-import { saveCredential } from '../shared/db/credentials';
+
+import {
+	getCredentialSharings,
+	saveCredential,
+	shareCredentialWithProjects,
+} from '../shared/db/credentials';
 import { createMember } from '../shared/db/users';
 import { setupTestServer } from '../shared/utils';
 
@@ -157,7 +162,7 @@ describe('GET /credentials — connectedByMe', () => {
 		await seedUserEntry(r3.id, memberA.id);
 
 		const repository = Container.get(DynamicCredentialUserEntryRepository);
-		const findSpy = jest.spyOn(repository, 'find');
+		const findSpy = vi.spyOn(repository, 'find');
 
 		try {
 			await testServer.authAgentFor(memberA).get('/credentials').expect(200);
@@ -384,5 +389,92 @@ describe('PATCH /credentials/:id — isResolvable toggle cleanup', () => {
 		const entryRepository = Container.get(DynamicCredentialUserEntryRepository);
 		const count = await entryRepository.countBy({ credentialId: resolvable.id });
 		expect(count).toBe(0);
+	});
+});
+
+describe('Sharing dynamic credentials', () => {
+	test('PUT /credentials/:id/share — allows sharing a dynamic credential', async () => {
+		const resolvable = await saveResolvableCredential();
+		const otherProject = await createTeamProject(undefined, memberA);
+
+		await testServer
+			.authAgentFor(memberA)
+			.put(`/credentials/${resolvable.id}/share`)
+			.send({ shareWithIds: [otherProject.id] })
+			.expect(200);
+
+		const sharings = await getCredentialSharings(resolvable);
+		expect(sharings.some((s) => s.role === 'credential:user')).toBe(true);
+	});
+
+	test('a sharee of a dynamic credential receives the credential:connect scope', async () => {
+		const resolvable = await saveResolvableCredential();
+		// memberA owns the sharee project so it can share into it; memberC only belongs
+		// to that project (not the credential's home project), so the scopes it gets on
+		// the credential come from its project role masked by the sharing role.
+		const shareeProject = await createTeamProject(undefined, memberA);
+		const memberC = await createMember();
+		await linkUserToProject(memberC, shareeProject, 'project:editor');
+
+		await testServer
+			.authAgentFor(memberA)
+			.put(`/credentials/${resolvable.id}/share`)
+			.send({ shareWithIds: [shareeProject.id] })
+			.expect(200);
+
+		const response = await testServer
+			.authAgentFor(memberC)
+			.get(`/credentials/${resolvable.id}`)
+			.expect(200);
+
+		expect(response.body.data.scopes).toContain('credential:connect');
+		expect(response.body.data.scopes).toContain('credential:read');
+		expect(response.body.data.scopes).not.toContain('credential:update');
+	});
+
+	test('PATCH /credentials/:id — allows setting a shared credential as dynamic', async () => {
+		const staticCred = await saveStaticCredential();
+		const otherProject = await createTeamProject(undefined, memberA);
+
+		await testServer
+			.authAgentFor(memberA)
+			.put(`/credentials/${staticCred.id}/share`)
+			.send({ shareWithIds: [otherProject.id] })
+			.expect(200);
+
+		const existing = await testServer
+			.authAgentFor(memberA)
+			.get(`/credentials/${staticCred.id}`)
+			.query({ includeData: true })
+			.expect(200);
+		const { name, type, data } = existing.body.data;
+
+		await testServer
+			.authAgentFor(memberA)
+			.patch(`/credentials/${staticCred.id}`)
+			.send({ name, type, data: data ?? {}, isResolvable: true })
+			.expect(200);
+
+		const after = await testServer
+			.authAgentFor(memberA)
+			.get(`/credentials/${staticCred.id}`)
+			.query({ includeData: true })
+			.expect(200);
+		expect(after.body.data.isResolvable).toBe(true);
+	});
+
+	test('PUT /credentials/:id/share — allows unsharing a shared dynamic credential', async () => {
+		const resolvable = await saveResolvableCredential();
+		const otherProject = await createTeamProject(undefined, memberA);
+		await shareCredentialWithProjects(resolvable, [otherProject]);
+
+		await testServer
+			.authAgentFor(memberA)
+			.put(`/credentials/${resolvable.id}/share`)
+			.send({ shareWithIds: [] })
+			.expect(200);
+
+		const sharings = await getCredentialSharings(resolvable);
+		expect(sharings.some((s) => s.role === 'credential:user')).toBe(false);
 	});
 });

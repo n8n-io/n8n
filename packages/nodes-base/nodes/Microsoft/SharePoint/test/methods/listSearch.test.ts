@@ -1,19 +1,20 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import { MicrosoftSharePoint } from '../../MicrosoftSharePoint.node';
 import { credentials } from '../credentials';
+import type { Mock } from 'vitest';
 
 describe('Microsoft SharePoint Node', () => {
 	describe('List search', () => {
 		let loadOptionsFunctions: MockProxy<ILoadOptionsFunctions>;
-		let mockRequestWithAuthentication: jest.Mock;
+		let mockRequestWithAuthentication: Mock;
 		let node: MicrosoftSharePoint;
 
 		beforeEach(() => {
 			loadOptionsFunctions = mock<ILoadOptionsFunctions>();
-			mockRequestWithAuthentication = jest.fn();
+			mockRequestWithAuthentication = vi.fn();
 			loadOptionsFunctions.helpers.httpRequestWithAuthentication = mockRequestWithAuthentication;
 			loadOptionsFunctions.getCredentials.mockResolvedValue(
 				credentials.microsoftSharePointOAuth2Api,
@@ -22,7 +23,7 @@ describe('Microsoft SharePoint Node', () => {
 		});
 
 		afterEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		it('should list search files', async () => {

@@ -6,17 +6,20 @@ export const DOMAIN_TOOL_IDS = {
 	DATA_TABLES: 'data-tables',
 	WORKSPACE: 'workspace',
 	RESEARCH: 'research',
+	N8N_DOCS: 'n8n-docs',
 	NODES: 'nodes',
 	ASK_USER: 'ask-user',
 	BUILD_WORKFLOW: 'build-workflow',
 	PARSE_FILE: 'parse-file',
 } as const;
 
+/** Trace-only chain-typed child run emitted by `build-workflow` with the
+ *  compiled workflow JSON — bookkeeping, not an agent-facing tool. Consumed by
+ *  the eval harness (`langsmith-seed.ts`) so seed reconstruction can skip the
+ *  SDK re-parse; excluded by name from rebuilt transcripts. */
+export const COMPILED_WORKFLOW_TRACE_RUN_NAME = 'compiled-workflow';
+
 export const ORCHESTRATION_TOOL_IDS = {
-	PLAN: 'plan',
-	SUBMIT_PLAN: 'submit-plan',
-	ADD_PLAN_ITEM: 'add-plan-item',
-	REMOVE_PLAN_ITEM: 'remove-plan-item',
 	CREATE_TASKS: 'create-tasks',
 	TASK_CONTROL: 'task-control',
 	DELEGATE: 'delegate',
@@ -30,17 +33,16 @@ export const ORCHESTRATION_TOOL_IDS = {
 
 export const WORKSPACE_TOOL_IDS = {
 	WRITE_FILE: 'write-file',
-	SUBMIT_WORKFLOW: 'submit-workflow',
 } as const;
 
 export const CREDENTIALS_TOOL_ID = DOMAIN_TOOL_IDS.CREDENTIALS;
 export const DATA_TABLES_TOOL_ID = DOMAIN_TOOL_IDS.DATA_TABLES;
 export const ASK_USER_TOOL_ID = DOMAIN_TOOL_IDS.ASK_USER;
+export const N8N_DOCS_TOOL_ID = DOMAIN_TOOL_IDS.N8N_DOCS;
 
 export const ORCHESTRATION_TOOL_NAMES = new Set<string>(Object.values(ORCHESTRATION_TOOL_IDS));
 
 export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
-	ORCHESTRATION_TOOL_IDS.PLAN,
 	ORCHESTRATION_TOOL_IDS.CREATE_TASKS,
 	ORCHESTRATION_TOOL_IDS.DELEGATE,
 	DOMAIN_TOOL_IDS.ASK_USER,
@@ -51,6 +53,7 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	DOMAIN_TOOL_IDS.PARSE_FILE,
 	DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
 	DOMAIN_TOOL_IDS.NODES,
+	DOMAIN_TOOL_IDS.N8N_DOCS,
 	ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
 	DOMAIN_TOOL_IDS.RESEARCH,
 	DOMAIN_TOOL_IDS.EVALS,

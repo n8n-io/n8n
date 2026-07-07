@@ -2,15 +2,15 @@ import { LicenseState, Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { IRunExecutionData, ITaskData, WorkflowExecuteMode } from 'n8n-workflow';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error';
+import type { EventService } from '@/events/event.service';
 import type {
 	ExecutionRedactionOptions,
 	RedactableExecution,
 } from '@/executions/execution-redaction';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error';
-import type { EventService } from '@/events/event.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { ExecutionRedactionService } from '../execution-redaction.service';
@@ -34,7 +34,7 @@ describe('ExecutionRedactionService', () => {
 	} as unknown as User;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		licenseState.isDataRedactionLicensed.mockReturnValue(true);
 		service = new ExecutionRedactionService(
 			logger,
@@ -53,6 +53,7 @@ describe('ExecutionRedactionService', () => {
 			mode?: WorkflowExecuteMode;
 			workflowId?: string;
 			policy?: 'none' | 'all' | 'non-manual';
+			channels?: { production: boolean; manual: boolean };
 			workflowSettingsPolicy?: 'none' | 'all' | 'non-manual';
 			withRuntimeData?: boolean;
 			withDynamicCredentials?: boolean;
@@ -63,6 +64,7 @@ describe('ExecutionRedactionService', () => {
 			mode = 'manual',
 			workflowId = 'workflow-123',
 			policy,
+			channels,
 			workflowSettingsPolicy,
 			withRuntimeData = true,
 			withDynamicCredentials = false,
@@ -77,12 +79,15 @@ describe('ExecutionRedactionService', () => {
 			waitingExecutionSource: null,
 		};
 
-		if (withRuntimeData && policy !== undefined) {
+		if (withRuntimeData && (policy !== undefined || channels !== undefined)) {
+			const redaction = channels
+				? { version: 2 as const, production: channels.production, manual: channels.manual }
+				: { version: 1 as const, policy: policy! };
 			executionData.runtimeData = {
 				version: 1 as const,
 				establishedAt: Date.now(),
 				source: mode,
-				redaction: { version: 1 as const, policy },
+				redaction,
 				...(withDynamicCredentials ? { credentials: 'encrypted-credential-context' } : {}),
 			};
 		} else if (withDynamicCredentials) {
@@ -134,7 +139,7 @@ describe('ExecutionRedactionService', () => {
 			const execution = makeExecution({ policy: 'all', mode: 'trigger' });
 			const options: ExecutionRedactionOptions = { user: mockUser };
 
-			const spy = jest.spyOn(service, 'processExecutions');
+			const spy = vi.spyOn(service, 'processExecutions');
 			const result = await service.processExecution(execution, options);
 
 			expect(spy).toHaveBeenCalledWith([execution], options);
@@ -580,6 +585,45 @@ describe('ExecutionRedactionService', () => {
 
 		it('defaults to none when both runtimeData and workflow settings are missing', async () => {
 			const execution = makeExecution({ withRuntimeData: false, mode: 'trigger' });
+			await service.processExecution(execution, { user: mockUser });
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+
+		it('clears items for a production execution when V2 snapshot redacts production', async () => {
+			const execution = makeExecution({
+				channels: { production: true, manual: false },
+				mode: 'trigger',
+			});
+			await service.processExecution(execution, { user: mockUser });
+			// production channel on + non-manual mode → reconstructs 'non-manual' → clears
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not clear a manual execution when V2 snapshot redacts production only', async () => {
+			const execution = makeExecution({
+				channels: { production: true, manual: false },
+				mode: 'manual',
+			});
+			await service.processExecution(execution, { user: mockUser });
+			// 'non-manual' policy exempts manual executions
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+
+		it('clears a manual execution when V2 snapshot redacts both channels', async () => {
+			const execution = makeExecution({
+				channels: { production: true, manual: true },
+				mode: 'manual',
+			});
+			await service.processExecution(execution, { user: mockUser });
+			// reconstructs 'all' → clears regardless of mode
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not clear when V2 snapshot redacts neither channel', async () => {
+			const execution = makeExecution({
+				channels: { production: false, manual: false },
+				mode: 'trigger',
+			});
 			await service.processExecution(execution, { user: mockUser });
 			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
 		});

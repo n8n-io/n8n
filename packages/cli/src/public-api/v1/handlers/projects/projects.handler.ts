@@ -12,7 +12,9 @@ import pick from 'lodash/pick';
 
 import { ProjectController } from '@/controllers/project.controller';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import type { PaginatedRequest } from '@/public-api/types';
 import { ProjectService } from '@/services/project.service.ee';
 
@@ -41,6 +43,15 @@ type ProjectHandlers = {
 		AuthenticatedRequest<{ projectId: string; userId: string }>
 	>;
 };
+
+/** Mirrors the ProjectController guard: manual membership changes are disallowed when roles are provisioned. */
+async function assertProjectRolesNotManaged() {
+	if (await Container.get(ProvisioningService).isProjectRoleManaged()) {
+		throw new ForbiddenError(
+			'Project roles are managed automatically and cannot be changed manually',
+		);
+	}
+}
 
 const projectHandlers: ProjectHandlers = {
 	createProject: [
@@ -169,6 +180,8 @@ const projectHandlers: ProjectHandlers = {
 		isLicensed('feat:projectRole:admin'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:update' }),
 		async (req, res) => {
+			await assertProjectRolesNotManaged();
+
 			const payload = AddUsersToProjectDto.safeParse(req.body);
 			if (payload.error) {
 				throw new BadRequestError(payload.error.errors[0].message);
@@ -186,6 +199,8 @@ const projectHandlers: ProjectHandlers = {
 		isLicensed('feat:projectRole:admin'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:update' }),
 		async (req, res) => {
+			await assertProjectRolesNotManaged();
+
 			const payload = ChangeUserRoleInProject.safeParse(req.body);
 			if (payload.error) {
 				throw new BadRequestError(payload.error.errors[0].message);
@@ -202,6 +217,8 @@ const projectHandlers: ProjectHandlers = {
 		isLicensed('feat:projectRole:admin'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:update' }),
 		async (req, res) => {
+			await assertProjectRolesNotManaged();
+
 			const { projectId, userId } = req.params;
 
 			await Container.get(ProjectService).deleteUserFromProject(projectId, userId);

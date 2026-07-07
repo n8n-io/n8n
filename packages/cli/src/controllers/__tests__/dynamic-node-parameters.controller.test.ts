@@ -5,20 +5,21 @@ import type {
 	ActionResultRequestDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type {
 	ILoadOptions,
 	IWorkflowExecuteAdditionalData,
 	INodePropertyOptions,
 	NodeParameterValueType,
 } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { DynamicNodeParametersController } from '@/controllers/dynamic-node-parameters.controller';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import * as AdditionalData from '@/workflow-execute-additional-data';
 
 describe('DynamicNodeParametersController', () => {
-	let service: jest.Mocked<DynamicNodeParametersService>;
+	let service: Mocked<DynamicNodeParametersService>;
 	let controller: DynamicNodeParametersController;
 	let mockUser: { id: string };
 	let baseAdditionalData: IWorkflowExecuteAdditionalData;
@@ -30,7 +31,7 @@ describe('DynamicNodeParametersController', () => {
 		mockUser = { id: 'user123' };
 		baseAdditionalData = mock<IWorkflowExecuteAdditionalData>();
 
-		jest.spyOn(AdditionalData, 'getBase').mockResolvedValue(baseAdditionalData);
+		vi.spyOn(AdditionalData, 'getBase').mockResolvedValue(baseAdditionalData);
 	});
 
 	describe('getOptions', () => {

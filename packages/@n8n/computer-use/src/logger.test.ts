@@ -1,3 +1,5 @@
+import type { MockInstance } from 'vitest';
+
 import type { GatewayConfig } from './config';
 import { logger, printModuleStatus } from './logger';
 
@@ -14,7 +16,7 @@ const BASE_CONFIG: GatewayConfig = {
 };
 
 /** Find the message logged for a specific module by inspecting the meta argument. */
-function messageFor(spy: jest.SpyInstance, module: string): string {
+function messageFor(spy: MockInstance, module: string): string {
 	const call: [string, Record<string, unknown>] | undefined = (
 		spy.mock.calls as Array<[string, Record<string, unknown>]>
 	).find(([, meta]) => meta?.module === module);
@@ -22,10 +24,10 @@ function messageFor(spy: jest.SpyInstance, module: string): string {
 }
 
 describe('printModuleStatus', () => {
-	let infoSpy: jest.SpyInstance;
+	let infoSpy: MockInstance;
 
 	beforeEach(() => {
-		infoSpy = jest.spyOn(logger, 'info').mockImplementation(() => {});
+		infoSpy = vi.spyOn(logger, 'info').mockImplementation(() => {});
 	});
 
 	afterEach(() => {

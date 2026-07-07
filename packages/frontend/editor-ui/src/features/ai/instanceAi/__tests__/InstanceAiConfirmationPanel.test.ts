@@ -242,12 +242,17 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 				},
 				{ action: 'run' },
 			);
-			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 			const addKeySpy = vi.spyOn(thread, 'addAlwaysAllowKey');
 
 			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
 			await userEvent.click(getByTestId('instance-ai-panel-confirm-always-allow'));
 
+			expect(confirmSpy).toHaveBeenCalledWith('req-always', {
+				kind: 'approval',
+				approved: true,
+				scope: 'session',
+			});
 			expect(addKeySpy).toHaveBeenCalledWith('test-tool', { action: 'run' });
 			expect(mockTelemetryTrack).toHaveBeenCalledWith(
 				'User finished providing input',

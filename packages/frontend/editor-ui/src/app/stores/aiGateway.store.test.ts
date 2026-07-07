@@ -1,5 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { describe, it, vi, beforeEach, expect } from 'vitest';
+import type { INode } from 'n8n-workflow';
 import { useAiGatewayStore } from './aiGateway.store';
 
 const mockGetGatewayConfig = vi.fn();
@@ -17,6 +18,8 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 		restApiContext: { baseUrl: 'http://localhost:5678', sessionId: '' },
 	})),
 }));
+
+const OPERATION_ONLY = '__operation_only__';
 
 const MOCK_CONFIG = {
 	nodes: ['@n8n/n8n-nodes-langchain.lmChatGoogleGemini'],
@@ -39,6 +42,12 @@ const MOCK_CONFIG = {
 			image: ['analyze'],
 			document: ['analyze'],
 		},
+		'n8n-nodes-pdfco.PDFco Api': {
+			[OPERATION_ONLY]: ['AI Invoice Parser', 'Merge PDF'],
+		},
+	},
+	hiddenNodeProperties: {
+		'n8n-nodes-browserbase.browserbase': ['modelSource'],
 	},
 };
 
@@ -332,6 +341,217 @@ describe('aiGateway.store', () => {
 			expect(store.isActionSupported('@n8n/n8n-nodes-langchain.openAi', 'file', 'upload')).toBe(
 				true,
 			);
+		});
+
+		it('should fall back to the base node name for Tool-suffixed node types', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			// "openAiTool" is not a config key, but its base "openAi" is.
+			expect(
+				store.isActionSupported('@n8n/n8n-nodes-langchain.openAiTool', 'text', 'message'),
+			).toBe(true);
+			expect(store.isActionSupported('@n8n/n8n-nodes-langchain.openAiTool', 'file', 'upload')).toBe(
+				false,
+			);
+		});
+
+		describe('operation-only nodes (no resource)', () => {
+			it('should return true when operation is in the OPERATION_ONLY list', async () => {
+				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+				const store = useAiGatewayStore();
+				await store.fetchConfig();
+
+				expect(
+					store.isActionSupported('n8n-nodes-pdfco.PDFco Api', undefined, 'AI Invoice Parser'),
+				).toBe(true);
+			});
+
+			it('should return false when operation is not in the OPERATION_ONLY list', async () => {
+				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+				const store = useAiGatewayStore();
+				await store.fetchConfig();
+
+				expect(
+					store.isActionSupported('n8n-nodes-pdfco.PDFco Api', undefined, 'Unknown Operation'),
+				).toBe(false);
+			});
+
+			it('should return false when resource is undefined and node has only resource-based actions', async () => {
+				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+				const store = useAiGatewayStore();
+				await store.fetchConfig();
+
+				expect(
+					store.isActionSupported('@n8n/n8n-nodes-langchain.openAi', undefined, 'message'),
+				).toBe(false);
+			});
+		});
+	});
+
+	describe('isNodePropertyHidden()', () => {
+		const managedNode = {
+			type: 'n8n-nodes-browserbase.browserbase',
+			credentials: { browserbaseApi: { id: null, name: '', __aiGatewayManaged: true } },
+		} as unknown as INode;
+
+		it('should return true when a managed credential is attached and the property is listed', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isNodePropertyHidden(managedNode, 'modelSource')).toBe(true);
+		});
+
+		it('should return false when a managed credential is attached but the property is not listed', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isNodePropertyHidden(managedNode, 'driverModel')).toBe(false);
+		});
+
+		it('should return false when the node type has no hiddenNodeProperties entry', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			const node = {
+				type: '@n8n/n8n-nodes-langchain.openAi',
+				credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+			} as unknown as INode;
+
+			expect(store.isNodePropertyHidden(node, 'modelSource')).toBe(false);
+		});
+
+		it('should return false when config has no hiddenNodeProperties field', async () => {
+			const configWithout = { ...MOCK_CONFIG, hiddenNodeProperties: undefined };
+			mockGetGatewayConfig.mockResolvedValue(configWithout);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isNodePropertyHidden(managedNode, 'modelSource')).toBe(false);
+		});
+
+		it('should return false when config has not been loaded', () => {
+			const store = useAiGatewayStore();
+
+			expect(store.isNodePropertyHidden(managedNode, 'modelSource')).toBe(false);
+		});
+
+		it('should return false when no credential is gateway-managed', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			const node = {
+				type: 'n8n-nodes-browserbase.browserbase',
+				credentials: { browserbaseApi: { id: 'cred-1', name: 'My Key' } },
+			} as unknown as INode;
+
+			expect(store.isNodePropertyHidden(node, 'modelSource')).toBe(false);
+		});
+
+		it('should return false when the node has no credentials', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			const node = { type: 'n8n-nodes-browserbase.browserbase' } as unknown as INode;
+
+			expect(store.isNodePropertyHidden(node, 'modelSource')).toBe(false);
+		});
+
+		it('should return false when the node is null', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isNodePropertyHidden(null, 'modelSource')).toBe(false);
+		});
+
+		it('should fall back to the base node name for Tool-suffixed node types', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			const toolNode = {
+				type: 'n8n-nodes-browserbase.browserbaseTool',
+				credentials: { browserbaseApi: { id: null, name: '', __aiGatewayManaged: true } },
+			} as unknown as INode;
+
+			expect(store.isNodePropertyHidden(toolNode, 'modelSource')).toBe(true);
+		});
+	});
+
+	describe('isNodeTypeVersionSupported()', () => {
+		const CONFIG_WITH_VERSION_REQ = {
+			...MOCK_CONFIG,
+			nodes: [...MOCK_CONFIG.nodes, 'some-package.SomeNode'],
+			credentialTypes: [...MOCK_CONFIG.credentialTypes, 'someApi'],
+			minNodeTypeVersion: { 'some-package.SomeNode': 1.1 },
+		};
+
+		it('should return true when typeVersion meets the minimum', async () => {
+			mockGetGatewayConfig.mockResolvedValue(CONFIG_WITH_VERSION_REQ);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isNodeTypeVersionSupported('some-package.SomeNode', 1.1)).toBe(true);
+		});
+
+		it('should return true when typeVersion exceeds the minimum', async () => {
+			mockGetGatewayConfig.mockResolvedValue(CONFIG_WITH_VERSION_REQ);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isNodeTypeVersionSupported('some-package.SomeNode', 2)).toBe(true);
+		});
+
+		it('should return false when typeVersion is below the minimum', async () => {
+			mockGetGatewayConfig.mockResolvedValue(CONFIG_WITH_VERSION_REQ);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isNodeTypeVersionSupported('some-package.SomeNode', 1.0)).toBe(false);
+		});
+
+		it('should return true when no minNodeTypeVersion entry exists for the node (no version gate)', async () => {
+			mockGetGatewayConfig.mockResolvedValue(CONFIG_WITH_VERSION_REQ);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(
+				store.isNodeTypeVersionSupported('@n8n/n8n-nodes-langchain.lmChatGoogleGemini', 1),
+			).toBe(true);
+		});
+
+		it('should return true for a node with no version requirement (even if unknown)', async () => {
+			mockGetGatewayConfig.mockResolvedValue(CONFIG_WITH_VERSION_REQ);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			// No minNodeTypeVersion entry = no version gate; node support is a separate concern
+			expect(store.isNodeTypeVersionSupported('unknown-package.UnknownNode', 2)).toBe(true);
+		});
+
+		it('should return true when config has not been loaded (no version gate defined)', () => {
+			const store = useAiGatewayStore();
+
+			// config not loaded → no minNodeTypeVersion entry → no version gate → pass through
+			// node support when config is unloaded is handled by isCredentialTypeSupported / isNodeSupported
+			expect(store.isNodeTypeVersionSupported('some-package.SomeNode', 1.1)).toBe(true);
+		});
+
+		it('should fall back to the base node name for Tool-suffixed node types', async () => {
+			mockGetGatewayConfig.mockResolvedValue(CONFIG_WITH_VERSION_REQ);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			// "SomeNodeTool" has no entry, but the base "SomeNode" requires >= 1.1.
+			expect(store.isNodeTypeVersionSupported('some-package.SomeNodeTool', 1.1)).toBe(true);
+			expect(store.isNodeTypeVersionSupported('some-package.SomeNodeTool', 1.0)).toBe(false);
 		});
 	});
 });

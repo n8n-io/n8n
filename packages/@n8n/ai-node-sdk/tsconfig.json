@@ -4,8 +4,7 @@
 		"@n8n/typescript-config/tsconfig.backend.json"
 	],
 	"compilerOptions": {
-		"types": ["node", "vitest/globals"],
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
+		"types": ["node", "vitest/globals"]
 	},
 	"include": ["src/**/*.ts"]
 }

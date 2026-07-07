@@ -12,6 +12,8 @@ export function targetSkillsSkill(): RuntimeSkill {
 		name: 'Agent Builder Target Skills',
 		description:
 			'Use when creating reusable target-agent skills, playbooks, policies, style guides, or domain instructions with create_skill that should load only for relevant future requests; not for builder guidance or one-off instructions.',
+		recommendedTools: ['create_skill', 'ask_question', 'read_config', 'patch_config'],
+		allowedTools: ['create_skill', 'ask_question', 'read_config', 'patch_config', 'write_config'],
 		instructions: `\
 ## Purpose
 
@@ -55,13 +57,30 @@ for open-ended) until you can write it. Never create a placeholder or vague skil
 - Gather the domain detail you need, asking clarifying questions until the
   description and every applicable body section can be written with concrete
   content.
-- Write the \`description\` as the routing contract and the \`body\` using the
+- Write the \`description\` as the routing contract and \`instructions\` using the
   template above. Put all "when to use" / "when not to use" guidance in the
   description, never in the body (the body is invisible until the skill loads).
-- Call \`create_skill\` with \`name\`, \`description\`, and \`body\`.
-- \`create_skill\` stores the body only; it does not attach the skill.
+- Call \`create_skill\` with \`name\`, \`description\`, and \`instructions\`.
+- \`create_skill\` stores the skill only; it does not attach the skill.
 - After it returns an id, call \`read_config\`.
 - Use \`patch_config\` or \`write_config\` to add \`{ "type": "skill", "id": "<returned id>" }\` to \`skills\`.
+
+## Extended fields
+
+- Use \`allowedTools\` only for exact tool names already attached to the target
+  agent that this skill may use.
+- Add \`references\` for longer markdown-only supporting files under
+  \`references/...\`, such as rubrics, examples, policies, templates, or
+  checklists. References are not automatically loaded when the skill loads.
+  If you add references, the main \`instructions\` must say exactly when to load
+  each reference by path.
+- Example reference load rules: "Before scoring renewal risk, load
+  \`references/risk-rubric.md\`"; "Before drafting negotiation copy, load
+  \`references/negotiation-playbook.md\`"; "Before asking intake questions, load
+  \`references/intake-checklist.md\`".
+- Omit fields you cannot fill confidently. Do not invent tool names or file paths.
+- Scripts are not supported in this phase. Do not pass scripts or non-markdown
+  linked files to \`create_skill\`.
 
 ## Rules
 

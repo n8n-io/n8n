@@ -1,11 +1,12 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import type { AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
+import { ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { SimplifiedNodeType } from '@/Interface';
 import AgentCapabilitiesSection from '../components/AgentCapabilitiesSection.vue';
-import type { AgentJsonConfig, AgentJsonToolRef, CustomToolEntry } from '../types';
-import { AGENT_TASK_MODAL_KEY } from '../constants';
+import type { AgentJsonConfig, AgentJsonToolRef, AgentResource, CustomToolEntry } from '../types';
+import { AGENT_SUB_AGENTS_MODAL_KEY, AGENT_TASK_MODAL_KEY } from '../constants';
 
 const getNodeType = vi.fn<(type: string, version?: number) => SimplifiedNodeType | null>(
 	() => null,
@@ -42,6 +43,20 @@ vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({ openModalWithData: openModalWithDataSpy }),
 }));
 
+const showErrorSpy = vi.fn();
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({ showError: showErrorSpy }),
+}));
+
+const projectAgentsListRef = ref<AgentResource[] | null>([]);
+const ensureProjectAgentsLoadedSpy = vi.fn();
+vi.mock('../composables/useProjectAgentsList', () => ({
+	useProjectAgentsList: () => ({
+		list: projectAgentsListRef,
+		ensureLoaded: ensureProjectAgentsLoadedSpy,
+	}),
+}));
+
 const getAgentTasksSpy = vi.fn();
 vi.mock('../composables/useAgentApi', () => ({
 	getAgentTasks: (...args: unknown[]) => getAgentTasksSpy(...args),
@@ -64,7 +79,10 @@ function mountSection(
 	customTools: Record<string, CustomToolEntry> = {},
 	config: AgentJsonConfig | null = null,
 	taskRefs: AgentJsonTaskConfig[] = [],
+	projectAgents: AgentResource[] = [],
 ) {
+	projectAgentsListRef.value = projectAgents;
+
 	return mount(AgentCapabilitiesSection, {
 		props: {
 			config,
@@ -112,6 +130,24 @@ function makeTask(overrides: Partial<AgentTaskDto> = {}): AgentTaskDto {
 	};
 }
 
+function makeAgent(overrides: Partial<AgentResource> = {}): AgentResource {
+	return {
+		id: 'agent-2',
+		name: 'Helper Agent',
+		projectId: 'project-id',
+		resourceType: 'agent',
+		isCompiled: true,
+		createdAt: '2026-01-01T00:00:00.000Z',
+		updatedAt: '2026-01-01T00:00:00.000Z',
+		versionId: 'version-2',
+		activeVersionId: 'version-2',
+		tools: {},
+		skills: {},
+		activeVersion: null,
+		...overrides,
+	};
+}
+
 function taskRef(id = 'task-1', enabled = true): AgentJsonTaskConfig {
 	return { type: 'task', id, enabled };
 }
@@ -132,6 +168,8 @@ describe('AgentCapabilitiesSection', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		getAgentTasksSpy.mockResolvedValue([]);
+		projectAgentsListRef.value = [];
+		ensureProjectAgentsLoadedSpy.mockResolvedValue([]);
 	});
 
 	it('formats node and custom tool chip labels for display', () => {
@@ -305,6 +343,202 @@ describe('AgentCapabilitiesSection', () => {
 
 		expect(wrapper.text()).toContain('Github');
 		expect(wrapper.findAll('[data-testid="agent-capabilities-tool-row"]').length).toBe(1);
+	});
+
+	it('renders selected sub-agents as chips and opens the add modal from capabilities', async () => {
+		const config: AgentJsonConfig = {
+			name: 'Test Agent',
+			model: '',
+			instructions: '',
+			tools: [],
+			subAgents: {
+				maxChildren: 7,
+				agents: [{ agentId: 'agent-2', useWhen: 'Use for billing support requests.' }],
+			},
+		};
+		const wrapper = mountSection(
+			[],
+			{},
+			config,
+			[],
+			[
+				makeAgent(),
+				makeAgent({ id: 'agent-3', name: 'Research Agent', versionId: 'version-3' }),
+				makeAgent({
+					id: 'agent-4',
+					name: 'Draft Agent',
+					versionId: 'version-4',
+					activeVersionId: null,
+				}),
+				makeAgent({ id: 'agent-id', name: 'Current Agent', versionId: 'version-current' }),
+			],
+		);
+		await flushPromises();
+
+		expect(wrapper.text()).toContain('Helper Agent');
+		expect(wrapper.findAll('[data-testid="agent-capabilities-sub-agent-row"]').length).toBe(1);
+
+		await wrapper.find('[data-testid="agent-capabilities-add-sub-agent"]').trigger('click');
+		await flushPromises();
+
+		expect(openModalWithDataSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: AGENT_SUB_AGENTS_MODAL_KEY,
+				data: expect.objectContaining({
+					agents: [{ id: 'agent-3', name: 'Research Agent' }],
+				}),
+			}),
+		);
+
+		const modalCall = openModalWithDataSpy.mock.calls[0]?.[0] as {
+			data: { onConfirm: (payload: { agentId: string; useWhen?: string }) => void };
+		};
+		modalCall.data.onConfirm({
+			agentId: 'agent-3',
+			useWhen: 'Use for research requests.',
+		});
+
+		expect(wrapper.emitted('update:config')?.[0]).toEqual([
+			{
+				subAgents: {
+					maxChildren: 7,
+					agents: [
+						{ agentId: 'agent-2', useWhen: 'Use for billing support requests.' },
+						{ agentId: 'agent-3', useWhen: 'Use for research requests.' },
+					],
+				},
+			},
+		]);
+	});
+
+	it('opens an existing sub-agent chip for editing and removal', async () => {
+		const config: AgentJsonConfig = {
+			name: 'Test Agent',
+			model: '',
+			instructions: '',
+			tools: [],
+			subAgents: {
+				maxChildren: 7,
+				agents: [
+					{ agentId: 'agent-2', useWhen: 'Use for billing support requests.' },
+					{ agentId: 'agent-3', useWhen: 'Use for research tasks.' },
+				],
+			},
+		};
+		const wrapper = mountSection(
+			[],
+			{},
+			config,
+			[],
+			[makeAgent(), makeAgent({ id: 'agent-3', name: 'Research Agent', versionId: 'version-3' })],
+		);
+		await flushPromises();
+
+		await wrapper.findAll('[data-testid="agent-capabilities-sub-agent-row"]')[0].trigger('click');
+
+		expect(openModalWithDataSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: AGENT_SUB_AGENTS_MODAL_KEY,
+				data: expect.objectContaining({
+					selectedAgent: { id: 'agent-2', name: 'Helper Agent' },
+					useWhen: 'Use for billing support requests.',
+				}),
+			}),
+		);
+
+		const modalCall = openModalWithDataSpy.mock.calls[0]?.[0] as {
+			data: {
+				onConfirm: (payload: { agentId: string; useWhen?: string }) => void;
+				onRemove: (agentId: string) => void;
+			};
+		};
+		modalCall.data.onConfirm({
+			agentId: 'agent-2',
+		});
+
+		expect(wrapper.emitted('update:config')?.[0]).toEqual([
+			{
+				subAgents: {
+					maxChildren: 7,
+					agents: [
+						{ agentId: 'agent-2' },
+						{ agentId: 'agent-3', useWhen: 'Use for research tasks.' },
+					],
+				},
+			},
+		]);
+
+		modalCall.data.onRemove('agent-2');
+
+		expect(wrapper.emitted('update:config')?.[1]).toEqual([
+			{
+				subAgents: {
+					maxChildren: 7,
+					agents: [{ agentId: 'agent-3', useWhen: 'Use for research tasks.' }],
+				},
+			},
+		]);
+	});
+
+	it('keeps legacy sub-agent refs without useWhen editable and removable', async () => {
+		const config: AgentJsonConfig = {
+			name: 'Test Agent',
+			model: '',
+			instructions: '',
+			tools: [],
+			subAgents: {
+				maxChildren: 7,
+				agents: [{ agentId: 'agent-2' }],
+			},
+		};
+		const wrapper = mountSection([], {}, config, [], [makeAgent()]);
+		await flushPromises();
+
+		expect(wrapper.text()).toContain('Helper Agent');
+		expect(wrapper.findAll('[data-testid="agent-capabilities-sub-agent-row"]').length).toBe(1);
+
+		await wrapper.find('[data-testid="agent-capabilities-sub-agent-row"]').trigger('click');
+
+		expect(openModalWithDataSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: AGENT_SUB_AGENTS_MODAL_KEY,
+				data: expect.objectContaining({
+					selectedAgent: { id: 'agent-2', name: 'Helper Agent' },
+					useWhen: '',
+				}),
+			}),
+		);
+
+		const modalCall = openModalWithDataSpy.mock.calls[0]?.[0] as {
+			data: {
+				onConfirm: (payload: { agentId: string; useWhen?: string }) => void;
+				onRemove: (agentId: string) => void;
+			};
+		};
+		modalCall.data.onConfirm({
+			agentId: 'agent-2',
+			useWhen: 'Use for billing support requests.',
+		});
+
+		expect(wrapper.emitted('update:config')?.[0]).toEqual([
+			{
+				subAgents: {
+					maxChildren: 7,
+					agents: [{ agentId: 'agent-2', useWhen: 'Use for billing support requests.' }],
+				},
+			},
+		]);
+
+		modalCall.data.onRemove('agent-2');
+
+		expect(wrapper.emitted('update:config')?.[1]).toEqual([
+			{
+				subAgents: {
+					maxChildren: 7,
+					agents: [],
+				},
+			},
+		]);
 	});
 
 	it('renders task chips from task refs and fetched bodies', async () => {

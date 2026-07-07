@@ -28,6 +28,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	ExecutionStatusList,
 	ManualExecutionCancelledError,
@@ -35,8 +36,8 @@ import {
 	UserError,
 	Workflow,
 	WorkflowOperationError,
+	createEmptyRunExecutionData,
 	createErrorExecutionData,
-	ensureError,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -51,11 +52,13 @@ import { EventService } from '@/events/event.service';
 import type { IExecutionFlattedResponse } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
+import { ExecutionStopService } from '@/scaling/execution-stop.service';
 import { RoleService } from '@/services/role.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
+import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
 import { ExecutionPersistence } from './execution-persistence';
 import { ExecutionRedactionServiceProxy } from './execution-redaction-proxy.service';
 import type { ExecutionRequest, StopResult } from './execution.types';
@@ -127,6 +130,7 @@ export class ExecutionService {
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly eventService: EventService,
 		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
+		private readonly executionStopService: ExecutionStopService,
 	) {}
 
 	/**
@@ -154,10 +158,21 @@ export class ExecutionService {
 		if (!sharedWorkflowIds.length) return undefined;
 
 		const { id: executionId } = req.params;
-		const execution = await this.executionRepository.findIfSharedUnflatten(
-			executionId,
-			sharedWorkflowIds,
-		);
+		let execution: IExecutionResponse | undefined;
+		try {
+			execution = await this.executionPersistence.findIfSharedUnflatten(
+				executionId,
+				sharedWorkflowIds,
+				this.globalConfig.executions.maxDisplaySize,
+			);
+		} catch (error) {
+			if (error instanceof MissingExecutionDataError) {
+				throw new NotFoundError(
+					'Data for this execution is unavailable. It may have already been deleted based on your data retention settings.',
+				);
+			}
+			throw error;
+		}
 
 		if (!execution) {
 			this.logger.info('Attempt to read execution was blocked due to insufficient permissions', {
@@ -186,6 +201,7 @@ export class ExecutionService {
 		return {
 			...execution,
 			data: stringify(processedExecution.data),
+			dataTooLargeToDisplay: execution.dataTooLargeToDisplay,
 		};
 	}
 
@@ -194,9 +210,9 @@ export class ExecutionService {
 		user: User,
 		redactExecutionData?: boolean,
 	): Promise<IExecutionResponse | undefined> {
-		const executions = await this.executionRepository.findMultipleExecutions(
+		const executions = await this.executionPersistence.findMultipleExecutions(
 			{
-				select: ['id', 'mode', 'startedAt', 'stoppedAt', 'workflowId'],
+				select: ['id', 'mode', 'startedAt', 'stoppedAt', 'workflowId', 'jsonSizeBytes'],
 				where: {
 					workflowId,
 					status: 'success',
@@ -207,6 +223,7 @@ export class ExecutionService {
 			{
 				includeData: true,
 				unflattenData: true,
+				maxDataSizeBytes: this.globalConfig.executions.maxDisplaySize,
 			},
 		);
 
@@ -225,7 +242,7 @@ export class ExecutionService {
 		sharedWorkflowIds: string[],
 	): Promise<Omit<IExecutionResponse, 'createdAt'>> {
 		const { id: executionId } = req.params;
-		const execution = await this.executionRepository.findWithUnflattenedData(
+		const execution = await this.executionPersistence.findWithUnflattenedData(
 			executionId,
 			sharedWorkflowIds,
 		);
@@ -268,14 +285,15 @@ export class ExecutionService {
 		if (lastNodeExecuted) {
 			// Remove the old error and the data of the last run of the node that it can be replaced
 			delete data.executionData!.resultData.error;
-			const { length } = data.executionData!.resultData.runData[lastNodeExecuted];
+			const nodeRunData = data.executionData!.resultData.runData?.[lastNodeExecuted];
 			if (
-				length > 0 &&
-				data.executionData!.resultData.runData[lastNodeExecuted][length - 1].error !== undefined
+				nodeRunData &&
+				nodeRunData.length > 0 &&
+				nodeRunData[nodeRunData.length - 1].error !== undefined
 			) {
 				// Remove results only if it is an error.
 				// If we are retrying due to a crash, the information is simply success info from last node
-				data.executionData!.resultData.runData[lastNodeExecuted].pop();
+				nodeRunData.pop();
 				// Stack will determine what to run next
 			}
 		}
@@ -556,7 +574,7 @@ export class ExecutionService {
 	}
 
 	async findAllEnqueuedExecutions() {
-		return await this.executionRepository.findMultipleExecutions(
+		return await this.executionPersistence.findMultipleExecutions(
 			{
 				select: ['id', 'mode'],
 				where: { status: 'new' },
@@ -567,7 +585,7 @@ export class ExecutionService {
 	}
 
 	async stop(executionId: string, sharedWorkflowIds: string[]): Promise<StopResult> {
-		const execution = await this.executionRepository.findWithUnflattenedData(
+		const execution = await this.executionPersistence.findWithUnflattenedData(
 			executionId,
 			sharedWorkflowIds,
 		);
@@ -647,7 +665,7 @@ export class ExecutionService {
 			this.waitTracker.stopExecution(execution.id);
 		}
 
-		return await this.executionRepository.stopDuringRun(execution);
+		return await this.stopDuringRun(execution);
 	}
 
 	private async stopInScalingMode(execution: IExecutionResponse) {
@@ -662,7 +680,32 @@ export class ExecutionService {
 			this.waitTracker.stopExecution(execution.id);
 		}
 
-		return await this.executionRepository.stopDuringRun(execution);
+		// Broadcast a stop to whichever worker is running this execution; it cancels the execution
+		// from its own ActiveExecutions, and workers not running it ignore the command. This is the
+		// only way to reach a subworkflow execution, which runs inline in the parent's worker process
+		// and has no Bull job to abort. For a top-level execution this is redundant with the
+		// abort-job triggered above via ActiveExecutions, but both paths are idempotent.
+		await this.executionStopService.requestStop(execution.id);
+
+		return await this.stopDuringRun(execution);
+	}
+
+	private async stopDuringRun(execution: IExecutionResponse) {
+		const error = new ManualExecutionCancelledError(execution.id);
+
+		execution.data = execution.data ?? createEmptyRunExecutionData();
+		execution.data.resultData.error = {
+			...error,
+			message: error.message,
+			stack: error.stack,
+		};
+		execution.stoppedAt = new Date();
+		execution.waitTill = null;
+		execution.status = 'canceled';
+
+		await this.executionPersistence.updateExistingExecution(execution.id, execution);
+
+		return execution;
 	}
 
 	async addScopes(user: User, summaries: ExecutionSummaries.ExecutionSummaryWithScopes[]) {

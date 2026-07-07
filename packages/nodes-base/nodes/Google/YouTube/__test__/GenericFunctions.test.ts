@@ -4,7 +4,7 @@ import { NodeOperationError, type IExecuteFunctions } from 'n8n-workflow';
 import { validateAndSetDate } from '../../GenericFunctions';
 
 const mockContext = {
-	getNode: jest.fn().mockReturnValue('Youtube'),
+	getNode: vi.fn().mockReturnValue('Youtube'),
 } as unknown as IExecuteFunctions;
 
 describe('validateAndSetDate', () => {

@@ -1,5 +1,6 @@
 import type { User, WorkflowEntity } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { jsonParse } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -85,6 +86,60 @@ describe('WorkflowExporter', () => {
 		]);
 		expect(writer.files.filter((f) => f.path === 'workflows/repeated/workflow.json')).toHaveLength(
 			1,
+		);
+	});
+
+	it('exports AI Gateway-managed credentials with null ids', async () => {
+		const workflow = makeWorkflow({
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'AI Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+					credentials: {
+						googlePalmApi: { id: null, name: '', __aiGatewayManaged: true },
+					},
+				},
+			],
+		});
+		const { exporter } = makeExporter([workflow]);
+		const writer = new CapturingWriter();
+
+		await exporter.export({ user, workflowIds: [workflow.id], writer });
+
+		const workflowFile = writer.files.find((f) => f.path === 'workflows/my-workflow/workflow.json');
+		expect(workflowFile).toBeDefined();
+		expect(jsonParse<unknown>(workflowFile!.content)).toMatchObject({
+			nodes: [
+				{
+					credentials: {
+						googlePalmApi: { id: null, name: '', __aiGatewayManaged: true },
+					},
+				},
+			],
+		});
+	});
+
+	it('nests output under `<basePrefix>/workflows` when a basePrefix is given', async () => {
+		// This is the seam the folder exporter uses to place contained workflows
+		// under their folder's directory.
+		const workflow = makeWorkflow({ id: 'wf-nested', name: 'Triage' });
+		const { exporter } = makeExporter([workflow]);
+		const writer = new CapturingWriter();
+
+		const { entries } = await exporter.export({
+			user,
+			workflowIds: [workflow.id],
+			writer,
+			basePrefix: 'folders/in_progress',
+		});
+
+		expect(entries[0].target).toBe('folders/in_progress/workflows/triage');
+		expect(writer.files.map((f) => f.path)).toContain(
+			'folders/in_progress/workflows/triage/workflow.json',
 		);
 	});
 

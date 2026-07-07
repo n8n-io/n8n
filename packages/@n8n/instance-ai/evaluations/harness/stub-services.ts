@@ -18,6 +18,7 @@
 // even though they synchronously return canned data — there's nothing to
 // await here.
 
+import { isRecord } from '@n8n/utils/is-record';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { jsonParse } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
@@ -47,6 +48,12 @@ import type {
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
+
+// Single version id reported for every stubbed workflow. The stub doesn't model
+// version increments, so create/update, getWorkflowHead, and getWorkflowSnapshot
+// must all report the same value — otherwise the build-workflow patch cache
+// always sees a version mismatch and the cache-hit path is never exercised.
+const EVAL_WORKFLOW_VERSION_ID = 'eval-version';
 
 export interface StubServiceHandle {
 	context: InstanceAiContext;
@@ -82,6 +89,17 @@ export async function createStubServices(
 		async getAsWorkflowJSON(workflowId: string) {
 			const latest = capturedWorkflows[capturedWorkflows.length - 1];
 			return latest ?? { id: workflowId, name: 'empty', nodes: [], connections: {} };
+		},
+		async getWorkflowHead() {
+			return { versionId: EVAL_WORKFLOW_VERSION_ID, updatedAt: 0 };
+		},
+		async getWorkflowSnapshot(workflowId: string) {
+			const latest = capturedWorkflows[capturedWorkflows.length - 1];
+			return {
+				json: latest ?? { id: workflowId, name: 'empty', nodes: [], connections: {} },
+				versionId: EVAL_WORKFLOW_VERSION_ID,
+				updatedAt: 0,
+			};
 		},
 		async createFromWorkflowJSON(json: WorkflowJSON) {
 			capturedWorkflows.push(json);
@@ -487,10 +505,6 @@ function coerceHintPortMap(
 	return Object.keys(result).length > 0 ? result : undefined;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
 function coerceVersion(value: unknown): number | number[] {
 	if (typeof value === 'number') return value;
 	if (Array.isArray(value)) {
@@ -514,7 +528,7 @@ function emptyWorkflowDetail(id: string): WorkflowDetail {
 	return {
 		id,
 		name: 'eval-workflow',
-		versionId: 'v1',
+		versionId: EVAL_WORKFLOW_VERSION_ID,
 		activeVersionId: null,
 		isArchived: false,
 		createdAt: now,

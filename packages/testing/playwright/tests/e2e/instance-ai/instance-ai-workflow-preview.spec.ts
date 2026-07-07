@@ -1,21 +1,22 @@
 import { test, expect, instanceAiTestConfig } from './fixtures';
 
-test.use(instanceAiTestConfig);
-test.skip(true, 'Instance AI expectations are refreshed in the stacked recordings branch');
+const TERMINAL_FALLBACK_TEXT = 'I finished the run, but I did not generate a final response';
 
+test.use(instanceAiTestConfig);
 test.describe(
 	'Instance AI workflow preview @capability:proxy',
 	{
-		annotation: [{ type: 'owner', description: 'Instance AI' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
+		test.describe.configure({ timeout: 180_000 });
+
 		test('should auto-open preview panel when workflow is built', async ({ n8n }) => {
 			await n8n.navigate.toInstanceAi();
 
 			await n8n.instanceAi.sendMessage(
-				'Build a simple workflow with a manual trigger and a set node called "preview auto-open test"',
+				'Build a simple workflow with a manual trigger and a set node called "preview auto-open test". Save it only; do not run or execute it after building.',
 			);
-			await n8n.instanceAi.approveBuildPlan();
 
 			// Preview should auto-open with canvas nodes visible (no confirmation for simple builds)
 			const firstNode = n8n.instanceAi.getPreviewCanvasNodes().first();
@@ -28,6 +29,13 @@ test.describe(
 			await expect
 				.poll(async () => (await firstNode.boundingBox())?.width ?? 0, { timeout: 5_000 })
 				.toBeGreaterThan(50);
+			await Promise.race([
+				n8n.instanceAi.getSendButton().waitFor({ state: 'visible', timeout: 120_000 }),
+				n8n.instanceAi.getConfirmDenyButton().click({ timeout: 120_000 }),
+			]);
+			await n8n.instanceAi.waitForResponseComplete();
+			await expect(n8n.instanceAi.getAssistantMessageText(TERMINAL_FALLBACK_TEXT)).toHaveCount(0);
+			await expect(n8n.instanceAi.getBackgroundTaskIndicator()).toBeHidden();
 		});
 
 		test('should display canvas nodes in preview iframe', async ({ n8n }) => {
@@ -36,22 +44,16 @@ test.describe(
 			await n8n.instanceAi.sendMessage(
 				'Build a workflow with manual trigger connected to a set node called "canvas nodes test"',
 			);
-			await n8n.instanceAi.approveBuildPlan();
 
 			// Should show canvas nodes in the preview
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
 				timeout: 120_000,
 			});
 			await expect(n8n.instanceAi.getPreviewCanvasNodes()).not.toHaveCount(0);
+			await n8n.instanceAi.waitForResponseComplete();
 		});
 
-		test('should mark all nodes as success after execution completes', async ({
-			n8n,
-		}, testInfo) => {
-			test.skip(
-				testInfo.project.name.includes('multi-main'),
-				'Execution preview replay is not yet stable in multi-main mode',
-			);
+		test('should mark all nodes as success after execution completes', async ({ n8n }) => {
 			// End-to-end: plan + approve + build + execute + final assertions take >60s
 			// when recording against the real Anthropic API.
 			test.setTimeout(180_000);
@@ -64,15 +66,11 @@ test.describe(
 				'Build a workflow with a manual trigger, a Wait node set to 1 second, ' +
 					'and a Set node called "running state test".',
 			);
-			await n8n.instanceAi.approveBuildPlan();
 
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
 				timeout: 120_000,
 			});
-			await expect(n8n.instanceAi.getPreviewRunWorkflowButton()).toBeVisible({
-				timeout: 10_000,
-			});
-			await n8n.instanceAi.getPreviewRunWorkflowButton().click();
+			await n8n.instanceAi.runPreviewWorkflow();
 
 			// All three nodes should show the success indicator.
 			await expect(n8n.instanceAi.getPreviewSuccessIndicators()).toHaveCount(3, {
@@ -88,7 +86,6 @@ test.describe(
 			await n8n.instanceAi.sendMessage(
 				'Build a simple workflow with a manual trigger and a set node called "close preview test"',
 			);
-			await n8n.instanceAi.approveBuildPlan();
 
 			// Wait for preview to auto-open
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({

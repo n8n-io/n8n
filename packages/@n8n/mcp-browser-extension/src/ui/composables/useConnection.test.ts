@@ -639,6 +639,25 @@ describe('useConnection', () => {
 
 			wrapper.unmount();
 		});
+
+		it('strips the stale connection params from the page URL', async () => {
+			window.history.replaceState(
+				{},
+				'',
+				'/?mcpRelayUrl=' + encodeURIComponent('ws://localhost:1111') + '&autoConnect=1',
+			);
+
+			const { wrapper, result } = mountComposable();
+			await flush();
+
+			pushMessage({ type: 'relayUrlReady', relayUrl: 'ws://localhost:9999' });
+			await flush();
+
+			expect(result().relayUrl.value).toBe('ws://localhost:9999');
+			expect(window.location.search).toBe('');
+
+			wrapper.unmount();
+		});
 	});
 
 	describe('cleanup', () => {

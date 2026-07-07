@@ -2,8 +2,10 @@ import {
 	buildConversationMetrics,
 	buildMetrics,
 	extractOutcomeFromEvents,
+	mergeSeededConversationMetrics,
+	seededTurnCounters,
 } from '../outcome/event-parser';
-import type { CapturedEvent } from '../types';
+import type { CapturedEvent, ConversationMetrics, TranscriptTurn } from '../types';
 
 // ---------------------------------------------------------------------------
 // extractOutcomeFromEvents
@@ -156,6 +158,128 @@ describe('extractOutcomeFromEvents', () => {
 
 		const result = extractOutcomeFromEvents(events);
 		expect(result.dataTableIds).toContain('dt-001');
+	});
+
+	const dataTablesToolEvents = (
+		args: Record<string, unknown>,
+		result: unknown,
+	): CapturedEvent[] => [
+		{
+			timestamp: 1000,
+			type: 'tool-call',
+			data: {
+				type: 'tool-call',
+				payload: { toolCallId: 'tc-1', toolName: 'data-tables', args },
+			},
+		},
+		{
+			timestamp: 1100,
+			type: 'tool-result',
+			data: {
+				type: 'tool-result',
+				payload: { toolCallId: 'tc-1', toolName: 'data-tables', result },
+			},
+		},
+	];
+
+	it('extracts the nested table id from consolidated data-tables create results', () => {
+		const events = dataTablesToolEvents(
+			{ action: 'create', name: 'posted_leads' },
+			{ table: { id: 'dt-777', name: 'posted_leads' } },
+		);
+
+		const result = extractOutcomeFromEvents(events);
+		expect(result.dataTableIds).toEqual(['dt-777']);
+	});
+
+	it('extracts the table id from stringified data-tables create results', () => {
+		const events = dataTablesToolEvents(
+			{ action: 'create', name: 'posted_leads' },
+			JSON.stringify({ table: { id: 'dt-999' } }),
+		);
+
+		const result = extractOutcomeFromEvents(events);
+		expect(result.dataTableIds).toEqual(['dt-999']);
+	});
+
+	it('does not track data-tables schema results even though they carry a top-level id', () => {
+		const events = dataTablesToolEvents(
+			{ action: 'schema', tableName: 'posted_leads' },
+			{ id: 'dt-888', name: 'posted_leads', columns: [] },
+		);
+
+		const result = extractOutcomeFromEvents(events);
+		expect(result.dataTableIds).toEqual([]);
+	});
+
+	it('does not track denied data-tables create results', () => {
+		const events = dataTablesToolEvents(
+			{ action: 'create', name: 'posted_leads' },
+			{ denied: true, reason: 'User denied the action' },
+		);
+
+		const result = extractOutcomeFromEvents(events);
+		expect(result.dataTableIds).toEqual([]);
+	});
+
+	it('extracts execution IDs from consolidated executions run results', () => {
+		const events: CapturedEvent[] = [
+			{
+				timestamp: 1000,
+				type: 'tool-call',
+				data: {
+					type: 'tool-call',
+					payload: { toolCallId: 'tc-1', toolName: 'executions', args: { action: 'run' } },
+				},
+			},
+			{
+				timestamp: 1100,
+				type: 'tool-result',
+				data: {
+					type: 'tool-result',
+					payload: {
+						toolCallId: 'tc-1',
+						toolName: 'executions',
+						result: { executionId: 'exec-321', status: 'success' },
+					},
+				},
+			},
+		];
+
+		const result = extractOutcomeFromEvents(events);
+		expect(result.executionIds).toContain('exec-321');
+	});
+
+	it('does not track executions get results', () => {
+		const events: CapturedEvent[] = [
+			{
+				timestamp: 1000,
+				type: 'tool-call',
+				data: {
+					type: 'tool-call',
+					payload: {
+						toolCallId: 'tc-1',
+						toolName: 'executions',
+						args: { action: 'get', executionId: 'exec-555' },
+					},
+				},
+			},
+			{
+				timestamp: 1100,
+				type: 'tool-result',
+				data: {
+					type: 'tool-result',
+					payload: {
+						toolCallId: 'tc-1',
+						toolName: 'executions',
+						result: { executionId: 'exec-555', status: 'running' },
+					},
+				},
+			},
+		];
+
+		const result = extractOutcomeFromEvents(events);
+		expect(result.executionIds).toEqual([]);
 	});
 
 	it('captures tool errors', () => {
@@ -527,14 +651,14 @@ describe('buildConversationMetrics', () => {
 		expect(result.perTurn[0].replanAfterErrorCount).toBe(1);
 	});
 
-	it('counts replan_after_error when a tool-error is followed by a plan-typed tool-call', () => {
+	it('counts replan_after_error when a tool-error is followed by create-tasks', () => {
 		const events: CapturedEvent[] = [
 			{ timestamp: 1, type: 'run-start', data: { type: 'run-start' } },
 			{ timestamp: 2, type: 'tool-error', data: { type: 'tool-error' } },
 			{
 				timestamp: 3,
 				type: 'tool-call',
-				data: { type: 'tool-call', payload: { toolName: 'plan' } },
+				data: { type: 'tool-call', payload: { toolName: 'create-tasks' } },
 			},
 			{ timestamp: 4, type: 'run-finish', data: { type: 'run-finish' } },
 		];
@@ -576,5 +700,133 @@ describe('buildConversationMetrics', () => {
 		const result = buildConversationMetrics(events);
 		expect(result.reachedRunFinishCleanly).toBe(false);
 		expect(result.perTurn[1].runFinishStatus).toBe('cancelled');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// seededTurnCounters / mergeSeededConversationMetrics
+// ---------------------------------------------------------------------------
+
+const seededTurn = (steps: TranscriptTurn['steps']): TranscriptTurn => ({ steps, seeded: true });
+
+describe('seededTurnCounters', () => {
+	it('counts tool-call steps and their errors', () => {
+		const [counter] = seededTurnCounters([
+			seededTurn([
+				{ kind: 'tool-call', toolName: 'a' },
+				{ kind: 'tool-call', toolName: 'b', error: 'boom' },
+			]),
+		]);
+		expect(counter).toMatchObject({ toolCallCount: 2, toolErrorCount: 1 });
+	});
+
+	it('counts a plan step as a tool call', () => {
+		const [counter] = seededTurnCounters([seededTurn([{ kind: 'plan', tasks: [] }])]);
+		expect(counter.toolCallCount).toBe(1);
+	});
+
+	it('dual-counts ask-user as a tool call and a questions confirmation (mirrors live)', () => {
+		const [counter] = seededTurnCounters([seededTurn([{ kind: 'ask-user', questions: [] }])]);
+		expect(counter.toolCallCount).toBe(1);
+		expect(counter.confirmationAskedTotal).toBe(1);
+		expect(counter.confirmationAskedByKind).toEqual({ questions: 1 });
+	});
+
+	it('counts setup-card as a tool call and a setup confirmation', () => {
+		const [counter] = seededTurnCounters([
+			seededTurn([{ kind: 'setup-card', requests: [], outcome: 'pending' }]),
+		]);
+		expect(counter.toolCallCount).toBe(1);
+		expect(counter.confirmationAskedByKind).toEqual({ setup: 1 });
+	});
+
+	it('counts a confirmation as a tool call, keyed by its resumeReason', () => {
+		const [counter] = seededTurnCounters([
+			seededTurn([{ kind: 'confirmation', toolName: 'workflows', resumeReason: 'plan-review' }]),
+		]);
+		expect(counter.toolCallCount).toBe(1);
+		expect(counter.confirmationAskedTotal).toBe(1);
+		expect(counter.confirmationAskedByKind).toEqual({ 'plan-review': 1 });
+	});
+
+	it('counts setup-wizard as a tool call, ignores agent-text, leaves non-derivable counters at default', () => {
+		const [counter] = seededTurnCounters([
+			seededTurn([
+				{ kind: 'agent-text', text: 'hello' },
+				{ kind: 'setup-wizard', completedNodes: [], skippedNodes: [] },
+			]),
+		]);
+		expect(counter.toolCallCount).toBe(1); // setup-wizard is a tool call; agent-text is not
+		expect(counter.confirmationAskedTotal).toBe(0);
+		expect(counter.replanAfterErrorCount).toBe(0);
+		expect(counter.repeatQuestionCount).toBe(0);
+		expect(counter.runFinishStatus).toBeUndefined();
+	});
+
+	it('returns one counter per turn (numbered) and [] for no turns', () => {
+		expect(seededTurnCounters([])).toEqual([]);
+		expect(seededTurnCounters([seededTurn([]), seededTurn([])]).map((c) => c.turn)).toEqual([1, 2]);
+	});
+});
+
+describe('mergeSeededConversationMetrics', () => {
+	const live: ConversationMetrics = {
+		turnCount: 1,
+		perTurn: [
+			{
+				turn: 1,
+				toolCallCount: 3,
+				toolErrorCount: 0,
+				confirmationAskedTotal: 2,
+				confirmationAskedByKind: { questions: 2 },
+				replanAfterErrorCount: 0,
+				repeatQuestionCount: 0,
+				runFinishStatus: 'completed',
+			},
+		],
+		confirmationAskedTotal: 2,
+		confirmationAskedByKind: { questions: 2 },
+		reachedRunFinishCleanly: true,
+	};
+
+	it('prepends seeded turns, renumbers, sums aggregates, and preserves the live finish status', () => {
+		const seeded: TranscriptTurn[] = [
+			seededTurn([{ kind: 'ask-user', questions: [] }]),
+			seededTurn([{ kind: 'setup-card', requests: [], outcome: 'pending' }]),
+		];
+		const merged = mergeSeededConversationMetrics(seeded, live);
+		expect(merged.perTurn.map((c) => c.turn)).toEqual([1, 2, 3]);
+		expect(merged.turnCount).toBe(3); // 2 seeded + live turnCount 1
+		expect(merged.confirmationAskedTotal).toBe(4); // seeded 2 + live 2
+		expect(merged.confirmationAskedByKind).toEqual({ questions: 3, setup: 1 });
+		expect(merged.reachedRunFinishCleanly).toBe(true);
+		// The live turn is last, unchanged apart from its new turn number.
+		expect(merged.perTurn[2]).toMatchObject({
+			turn: 3,
+			toolCallCount: 3,
+			runFinishStatus: 'completed',
+		});
+	});
+
+	it('preserves a false live finish status regardless of seeded content', () => {
+		const merged = mergeSeededConversationMetrics(
+			[seededTurn([{ kind: 'agent-text', text: 'x' }])],
+			{
+				...live,
+				reachedRunFinishCleanly: false,
+			},
+		);
+		expect(merged.reachedRunFinishCleanly).toBe(false);
+	});
+
+	it('an empty seeded prefix yields metrics deep-equal to the live metrics (no live regression)', () => {
+		expect(mergeSeededConversationMetrics([], live)).toEqual(live);
+	});
+
+	it('does not mutate the passed-in live metrics', () => {
+		mergeSeededConversationMetrics([seededTurn([{ kind: 'ask-user', questions: [] }])], live);
+		expect(live.perTurn[0].turn).toBe(1);
+		expect(live.confirmationAskedByKind).toEqual({ questions: 2 });
+		expect(live.turnCount).toBe(1);
 	});
 });

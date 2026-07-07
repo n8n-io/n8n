@@ -1,9 +1,7 @@
 // Type guards for pulling fields off `unknown` records — used wherever we
 // inspect event payloads, run inputs/outputs, or other loosely-typed JSON.
 
-export function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+import { isRecord } from '@n8n/utils/is-record';
 
 export function getNestedRecord(
 	obj: Record<string, unknown>,

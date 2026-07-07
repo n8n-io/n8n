@@ -190,7 +190,34 @@ if (excludeTestController) {
 	echo(chalk.gray('  - Excluded test controller from packages/cli/package.json'));
 }
 
+// The release SBOM is built by cdxgen inventorying the top-level node_modules of this
+// deployed closure. Since #32569 dropped shamefully-hoist, only direct deps surface at
+// top level, so cdxgen would miss the transitive tree (the manifest would be incomplete).
+// Re-enable hoisting for the licenses build only — shipped images keep the non-hoisted
+// layout, since regular builds leave N8N_GENERATE_LICENSES unset.
+const generateLicenses = process.env.N8N_GENERATE_LICENSES === 'true';
+if (generateLicenses) {
+	process.env.npm_config_shamefully_hoist = 'true';
+}
+
 await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n --prod --legacy deploy --no-optional ./compiled`;
+
+// Strip test/example/benchmark dirs shipped inside production deps that lack a
+// `files` field in their package.json. These are valid runtime deps but their
+// authors published full source trees; syft inventories the subdirs as phantom
+// packages with no license, which fails enterprise SBOM license gates.
+echo(chalk.yellow('INFO: Stripping test/example/benchmark dirs from production closure...'));
+const phantomDirs = [
+	'resolve/*/test',
+	'import-in-the-middle/*/test',
+	'github-from-package/*/example',
+	'tedious/*/benchmarks',
+];
+for (const pattern of phantomDirs) {
+	await $`find ${config.compiledAppDir}/node_modules/.pnpm -type d -path "*/${pattern}" -exec rm -rf {} + 2>/dev/null || true`;
+}
+echo(chalk.green('✅ Phantom dirs stripped'));
+
 await fs.ensureDir(config.compiledTaskRunnerDir);
 
 echo(
@@ -212,7 +239,7 @@ const packageDeployTime = getElapsedTime('package_deploy');
 // Default: skip. cdxgen + license rendering adds ~minutes to every build:deploy and
 // is only needed for the release SBOM job. The release-publish workflow opts in by
 // setting N8N_GENERATE_LICENSES=true; regular CI Docker prepare runs skip it.
-if (process.env.N8N_GENERATE_LICENSES === 'true') {
+if (generateLicenses) {
 	echo(chalk.yellow('INFO: Generating SBOM and rendering THIRD_PARTY_LICENSES.md...'));
 	try {
 		const toolingDir = path.join(config.rootDir, '.github', 'scripts');

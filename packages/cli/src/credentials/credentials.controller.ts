@@ -31,6 +31,7 @@ import { In } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
 import { CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
 import { EnterpriseCredentialsService } from './credentials.service.ee';
@@ -62,6 +63,7 @@ export class CredentialsController {
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly eventService: EventService,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
 	) {}
 
 	@Get('/', { middlewares: listQueryMiddleware })
@@ -256,17 +258,30 @@ export class CredentialsController {
 					'You do not have permission to change global sharing for credentials',
 				);
 			}
+
 			newCredentialData.isGlobal = isGlobal;
 		}
 
 		newCredentialData.isResolvable = body.isResolvable ?? credential.isResolvable;
+
+		// A private credential's per-user connections are minted against its shared
+		// (static) config, so changing that config makes them stale — invalidate them.
+		let sharedFieldsChanged = false;
+		if (body.data && !isTogglingToStatic && newCredentialData.isResolvable) {
+			const changedFields = await this.credentialsService.getChangedSharedFields(
+				credential,
+				preparedCredentialData.data as unknown as ICredentialDataDecryptedObject,
+			);
+			sharedFieldsChanged = changedFields.length > 0;
+		}
+
 		const responseData = await this.credentialsService.update(
 			credentialId,
 			newCredentialData,
 			body.data
 				? (preparedCredentialData.data as unknown as ICredentialDataDecryptedObject)
 				: undefined,
-			{ deleteUserEntries: isTogglingToStatic },
+			{ deleteUserEntries: isTogglingToStatic || sharedFieldsChanged },
 		);
 
 		if (responseData === null) {
@@ -299,6 +314,12 @@ export class CredentialsController {
 			});
 		} else if (wasResolvable && !willBeResolvable) {
 			this.eventService.emit('private-credential-toggled-to-static', {
+				user: req.user,
+				credentialType: credential.type,
+				credentialId: credential.id,
+			});
+		} else if (sharedFieldsChanged) {
+			this.eventService.emit('private-credential-connections-cleared', {
 				user: req.user,
 				credentialType: credential.type,
 				credentialId: credential.id,
@@ -399,6 +420,12 @@ export class CredentialsController {
 			}
 		}
 
+		const unsharedProjectMembers =
+			toUnshare.length > 0
+				? await this.projectRelationRepository.findBy({ projectId: In(toUnshare) })
+				: [];
+		const affectedUserIds = [...new Set(unsharedProjectMembers.map((pr) => pr.userId))];
+
 		let amountRemoved: number | null = null;
 		let newShareeIds: string[] = [];
 
@@ -417,6 +444,7 @@ export class CredentialsController {
 
 			if (deleteResult.affected) {
 				amountRemoved = deleteResult.affected;
+				await this.connectionStatusProxy.cleanupOrphanedEntriesForUsers(affectedUserIds, trx);
 			}
 
 			newShareeIds = toShare;

@@ -7,20 +7,20 @@ import * as image from './image';
 import * as video from './video';
 
 export const versionDescription: INodeTypeDescription = {
-	displayName: 'Alibaba Cloud Model Studio',
+	displayName: 'Qwen Cloud',
 	name: 'alibabaCloud',
 	icon: 'file:alibaba.svg',
 	group: ['transform'],
 	version: [1, 1.1],
 	defaultVersion: 1.1,
 	subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
-	description: 'Interact with Alibaba Cloud Qwen models via Model Studio',
+	description: 'Interact with all models available on Qwen Cloud',
 	defaults: {
-		name: 'Alibaba Cloud Model Studio',
+		name: 'Qwen Cloud',
 	},
 	usableAsTool: true,
 	codex: {
-		alias: ['qwen', 'dashscope', 'alibaba', 'model studio', 'video', 'image'],
+		alias: ['qwen', 'happyhorse', 'wan', 'dashscope', 'alibaba', 'model studio', 'video', 'image'],
 		categories: ['AI'],
 		subcategories: {
 			AI: ['Agents', 'Miscellaneous', 'Root Nodes'],

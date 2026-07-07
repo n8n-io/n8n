@@ -29,7 +29,7 @@ ${getSchemaReferenceSection()}
 - Follow the Config schema reference exactly; do not invent top-level fields.
 - Keep each feature in the schema path where it belongs.
 - Preserve unrelated existing config unless the user asked to change it.
-- Never write placeholder instructions or descriptions.
+- Never write placeholder instructions, tool descriptions, or skill descriptions.
 - Never copy credential IDs from \`list_credentials\`; use \`resolve_llm\`, \`ask_llm\`, or \`ask_credential\`.
 - Valid provider tool keys are complete provider tool IDs documented in the Tool Guidance section.
 - \`providerTools\` keys must be complete provider tool IDs from the valid key list.
@@ -38,15 +38,13 @@ ${getSchemaReferenceSection()}
 
 #### Create Or Replace A Fresh Runnable Agent
 
-- Requires \`name\`, \`description\`, \`model\`, \`credential\`, and \`instructions\`.
-- \`description\` must be a brief, specific summary of what the agent does.
+- Requires \`name\`, \`model\`, \`credential\`, and \`instructions\`.
 - Keep \`tools\` and \`skills\` arrays if present.
 
 Good minimal shape:
 \`\`\`json
 {
   "name": "Support assistant",
-  "description": "Answers support questions and helps triage customer issues.",
   "model": "openrouter/openai/gpt-5.5",
   "credential": "<main-llm-credential-id>",
   "instructions": "Help the user with support questions.",
@@ -68,23 +66,15 @@ Use \`patch_config\` with:
 - If \`skills\` is missing, add \`/skills\` with an array.
 - Ref shape: \`{ "type": "skill", "id": "<returned-id>" }\`.
 
-#### Add Saved Agents As Subagents
-
-- Call \`list_sub_agents\` before asking or writing. Only persist agent IDs
-  returned by that tool.
-- If \`subAgents\` is missing, add it as
-  \`{ "agents": [{ "agentId": "<selected-agent-id>" }] }\`.
-- If \`subAgents\` exists without \`agents\`, add \`/subAgents/agents\` with the
-  selected refs.
-- If \`subAgents.agents\` exists, append new refs to \`/subAgents/agents/-\`.
-- Avoid duplicate refs. Ref shape: \`{ "agentId": "<selected-agent-id>" }\`.
-- Never write \`subAgents.enabled\`; saved agent refs alone enable delegation.
-- If an \`ask_question\` resume value is not one of the listed agent IDs, do not
-  write it into config.
-
 #### Configure Native Provider Features
 
 - Thinking lives under \`config.thinking\`.
+- Prompt caching lives under \`config.promptCaching\` and is OpenAI/Anthropic-only.
+  It is mandatory: write \`{ "enabled": true }\` for those providers and never
+  disable it, and omit the field entirely for every other provider. For
+  Anthropic only, an optional \`anthropic: { "ttl": "5m" | "1h" }\` sub-object
+  tunes cache-breakpoint duration (default \`"1h"\`); OpenAI has no sub-config.
+  The write path also enforces all of this automatically.
 - Web search lives under \`config.webSearch\`.
 - Only OpenAI and Anthropic models support native web search. For those models, set
   \`config.webSearch = { "enabled": true, "provider": "native" }\` unless the
@@ -140,7 +130,7 @@ Bad: replacing \`config\` while dropping unrelated settings
 - \`patch_config\` cannot create a config when none exists; use \`write_config\` first.
 - \`/array/-\` appends to an array; \`/array/0\` inserts before the current first item.
 - Model-only changes must preserve existing Brave or SearXNG \`config.webSearch\`.
-- Empty, placeholder, or guessed \`instructions\` or \`description\` values are rejected; ask for details instead.
+- Empty, placeholder, or guessed \`instructions\` values are rejected; ask for details instead.
 
 ### Verify
 

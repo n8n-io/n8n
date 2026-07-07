@@ -4,8 +4,6 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import { test, expect, instanceAiTestConfig } from './fixtures';
 
 test.use(instanceAiTestConfig);
-test.skip(true, 'Instance AI expectations are refreshed in the stacked recordings branch');
-
 const { privateKey: GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY } = generateKeyPairSync('rsa', {
 	modulusLength: 2048,
 	privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
@@ -456,7 +454,7 @@ function expectNodeParameter(
 test.describe(
 	'Instance AI workflow setup @capability:proxy @db:reset',
 	{
-		annotation: [{ type: 'owner', description: 'Instance AI' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		test.describe.configure({ timeout: 180_000 });
@@ -464,7 +462,11 @@ test.describe(
 		test.beforeEach(({}, testInfo) => {
 			test.skip(
 				testInfo.project.name.includes('multi-main'),
-				'Setup confirmation replay is not yet stable in multi-main mode',
+				'Setup confirmation replay is not yet stable on the multi-main project',
+			);
+			test.fixme(
+				testInfo.project.name.includes('sqlite'),
+				'Setup confirmation proxy replay is flaky on sqlite:e2e and was gating community/fork PRs while internal PRs skipped on multi-main. Quarantined until the replay is stabilised (DEVP-366). Nightly coverage project still runs the suite.',
 			);
 		});
 

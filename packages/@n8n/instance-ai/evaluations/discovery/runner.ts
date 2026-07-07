@@ -111,7 +111,7 @@ export async function runDiscoveryScenario(
 		});
 
 		// `OrchestrationContext` is required for the orchestrator to receive tools like
-		// `delegate`, `plan`, and runtime skills. We provide stubs for the heavy fields:
+		// `delegate`, `create-tasks`, and runtime skills. We provide stubs for the heavy fields:
 		// discovery scenarios measure first-step tool-call decisions, not background
 		// execution.
 		const orchestrationContext = createStubOrchestrationContext({
@@ -133,6 +133,7 @@ export async function runDiscoveryScenario(
 			// Eager tool loading — discovery measures dispatch given the full toolset,
 			// not whether the orchestrator can find a tool through search.
 			disableDeferredTools: true,
+			thinkingEnabled: false,
 		});
 
 		const streamSource = normalizeStreamSource(

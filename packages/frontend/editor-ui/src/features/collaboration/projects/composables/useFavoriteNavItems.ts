@@ -47,7 +47,7 @@ export function useFavoriteNavItems() {
 					menuItem: {
 						id: f.resourceId,
 						label: f.resourceName,
-						icon: (project?.icon as IMenuItem['icon']) ?? DEFAULT_PROJECT_ICON,
+						icon: (project?.icon ?? DEFAULT_PROJECT_ICON) as IMenuItem['icon'],
 						route: { to: { name: VIEWS.PROJECTS_WORKFLOWS, params: { projectId: f.resourceId } } },
 					},
 					resourceId: f.resourceId,

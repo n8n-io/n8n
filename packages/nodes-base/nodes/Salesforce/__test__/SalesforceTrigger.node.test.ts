@@ -1,34 +1,35 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import { DateTime } from 'luxon';
 import type { IPollFunctions, INode, ILoadOptionsFunctions, IDataObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { SalesforceTrigger } from '../SalesforceTrigger.node';
+import type { Mock, Mocked } from 'vitest';
 
-jest.mock('../GenericFunctions', () => ({
-	getQuery: jest.fn(),
-	salesforceApiRequest: jest.fn(),
-	salesforceApiRequestAllItems: jest.fn(),
-	sortOptions: jest.fn(),
-	getPollStartDate: jest.fn(),
-	filterAndManageProcessedItems: jest.fn(),
+vi.mock('../GenericFunctions', () => ({
+	getQuery: vi.fn(),
+	salesforceApiRequest: vi.fn(),
+	salesforceApiRequestAllItems: vi.fn(),
+	sortOptions: vi.fn(),
+	getPollStartDate: vi.fn(),
+	filterAndManageProcessedItems: vi.fn(),
 }));
 
 describe('SalesforceTrigger', () => {
 	let trigger: SalesforceTrigger;
-	let mockPollFunctions: jest.Mocked<IPollFunctions>;
+	let mockPollFunctions: Mocked<IPollFunctions>;
 	let mockNode: INode;
 
-	const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
-	const salesforceApiRequestSpy = jest.spyOn(GenericFunctions, 'salesforceApiRequest');
-	const salesforceApiRequestAllItemsSpy = jest.spyOn(
+	const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
+	const salesforceApiRequestSpy = vi.spyOn(GenericFunctions, 'salesforceApiRequest');
+	const salesforceApiRequestAllItemsSpy = vi.spyOn(
 		GenericFunctions,
 		'salesforceApiRequestAllItems',
 	);
-	const sortOptionsSpy = jest.spyOn(GenericFunctions, 'sortOptions');
-	const getPollStartDateSpy = jest.spyOn(GenericFunctions, 'getPollStartDate');
-	const filterAndManageProcessedItemsSpy = jest.spyOn(
+	const sortOptionsSpy = vi.spyOn(GenericFunctions, 'sortOptions');
+	const getPollStartDateSpy = vi.spyOn(GenericFunctions, 'getPollStartDate');
+	const filterAndManageProcessedItemsSpy = vi.spyOn(
 		GenericFunctions,
 		'filterAndManageProcessedItems',
 	);
@@ -45,20 +46,20 @@ describe('SalesforceTrigger', () => {
 			parameters: {},
 		};
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockPollFunctions.getNode.mockReturnValue(mockNode);
 		mockPollFunctions.getWorkflowStaticData.mockReturnValue({});
 		mockPollFunctions.getMode.mockReturnValue('trigger');
 		mockPollFunctions.getWorkflow.mockReturnValue({ id: 'test-workflow', active: true });
-		mockPollFunctions.logger.error = jest.fn();
-		(mockPollFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation((data: unknown[]) =>
+		mockPollFunctions.logger.error = vi.fn();
+		(mockPollFunctions.helpers.returnJsonArray as Mock).mockImplementation((data: unknown[]) =>
 			data.map((item: unknown, index: number) => ({ json: item, pairedItem: { item: index } })),
 		);
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('Methods', () => {
@@ -426,7 +427,7 @@ describe('SalesforceTrigger', () => {
 				expect.objectContaining({
 					node: 'Salesforce Trigger Test',
 					workflowId: 'test-workflow',
-					error: testError,
+					error: expect.objectContaining({ message: 'API Error' }),
 				}),
 			);
 		});

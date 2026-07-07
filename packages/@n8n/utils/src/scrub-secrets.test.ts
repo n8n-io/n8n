@@ -10,10 +10,12 @@ const join = (prefix: string, suffix: string) => prefix + suffix;
 
 describe('scrubSecretsInText', () => {
 	it('redacts Bearer/Basic/Token authorization values', () => {
-		// The Bearer/Basic/Token-prefix pattern consumes the prefix and value
-		// together, and the generic `authorization: ...` pattern then collapses
-		// the whole header to a single placeholder.
-		expect(scrubSecretsInText('Authorization: Bearer abc.def-ghi_jkl/mno=')).toBe('[REDACTED]');
+		// The Bearer/Basic/Token-prefix pattern consumes the prefix and value;
+		// the generic `authorization: ...` pattern then skips the already-redacted
+		// value (idempotency lookahead), keeping the header label.
+		expect(scrubSecretsInText('Authorization: Bearer abc.def-ghi_jkl/mno=')).toBe(
+			'Authorization: [REDACTED]',
+		);
 		expect(scrubSecretsInText('header is Basic dXNlcjpwYXNzd29yZA==')).toBe('header is [REDACTED]');
 		expect(scrubSecretsInText('header is Token abcdef1234567890')).toBe('header is [REDACTED]');
 	});
@@ -41,6 +43,28 @@ describe('scrubSecretsInText', () => {
 
 	it('redacts AWS access key ids', () => {
 		expect(scrubSecretsInText('AKIAIOSFODNN7EXAMPLE is the key')).toBe('[REDACTED] is the key');
+	});
+
+	it('redacts a PEM private-key block', () => {
+		const pem = `-----BEGIN PRIVATE KEY-----\n${'FAKEKEYMATERIAL'}\n-----END PRIVATE KEY-----`;
+		expect(scrubSecretsInText(`key:\n${pem}\ndone`)).toBe('key:\n[REDACTED]\ndone');
+	});
+
+	it('redacts a JWT', () => {
+		const jwt = `${join('eyJ', 'hbGciOiJIUzI1NiJ9')}.${join('eyJ', 'zdWIiOiIxMjMifQ')}.${'c2lnbmF0dXJl'}`;
+		expect(scrubSecretsInText(`token ${jwt} end`)).toBe('token [REDACTED] end');
+	});
+
+	it('redacts Stripe, Google, and GitHub fine-grained tokens', () => {
+		expect(scrubSecretsInText(join('sk', '_live_abcdefghijklmnop1234'))).toBe('[REDACTED]');
+		expect(scrubSecretsInText(join('AIza', 'B'.repeat(35)))).toBe('[REDACTED]');
+		expect(scrubSecretsInText(join('github_pat_', 'A'.repeat(30)))).toBe('[REDACTED]');
+	});
+
+	it('redacts credentials embedded in a URL, keeping scheme and host', () => {
+		const out = scrubSecretsInText('fetch https://alice:s3cretPass@db.example.com/items');
+		expect(out).not.toContain('s3cretPass');
+		expect(out).toBe('fetch https://[REDACTED]@db.example.com/items');
 	});
 
 	it('redacts generic key=value assignments regardless of separator', () => {
@@ -99,6 +123,22 @@ describe('scrubSecretsInText', () => {
 		expect(scrubSecretsInText(ownOutput)).toBe(ownOutput);
 	});
 
+	it('leaves typed redaction markers untouched instead of nesting them', () => {
+		expect(scrubSecretsInText('[REDACTED:secret:1]')).toBe('[REDACTED:secret:1]');
+		expect(scrubSecretsInText('[REDACTED:password:2]')).toBe('[REDACTED:password:2]');
+		const out = scrubSecretsInText('button "Copy [REDACTED:secret:1]" and [REDACTED:secret:2]');
+		expect(out).not.toContain('[REDACTED:[REDACTED');
+		expect(out).toContain('[REDACTED:secret:1]');
+		expect(out).toContain('[REDACTED:secret:2]');
+	});
+
+	it('leaves typed redaction markers untouched inside serialized JSON/JS fields', () => {
+		const json = '{"password":"[REDACTED:secret:1]","apiKey":"[REDACTED:anthropic_api_key:2]"}';
+		expect(scrubSecretsInText(json)).toBe(json);
+		const js = "{'password': '[REDACTED:secret:1]'}";
+		expect(scrubSecretsInText(js)).toBe(js);
+	});
+
 	it('leaves opaque strings alone to avoid false positives', () => {
 		expect(scrubSecretsInText('feedback about the workflow plan')).toBe(
 			'feedback about the workflow plan',
@@ -111,5 +151,22 @@ describe('scrubSecretsInText', () => {
 	it('returns the input unchanged when no patterns match', () => {
 		const input = 'this is a normal sentence with no secrets in it';
 		expect(scrubSecretsInText(input)).toBe(input);
+	});
+
+	it('redacts a Telegram bot token, including inside a /bot… URL', () => {
+		const url = join(
+			'https://api.telegram.org/bot',
+			'123456789:AAEabcDEFghiJKLmnoPQRstuVWX01234567/sendMessage',
+		);
+		expect(scrubSecretsInText(url)).toBe('https://api.telegram.org/[REDACTED]/sendMessage');
+	});
+
+	it('skips already-redacted generic assignments (idempotent, incl. URL-safe form)', () => {
+		expect(scrubSecretsInText('api_key=[REDACTED] and password=[redacted]')).toBe(
+			'api_key=[REDACTED] and password=[redacted]',
+		);
+		expect(scrubSecretsInText('?X-Amz-Credential=REDACTED&X-Amz-Signature=abc')).toBe(
+			'?X-Amz-Credential=REDACTED&X-Amz-Signature=abc',
+		);
 	});
 });

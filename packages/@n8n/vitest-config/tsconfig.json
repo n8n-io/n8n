@@ -3,8 +3,7 @@
 	"compilerOptions": {
 		"types": ["node"],
 		"module": "ESNext",
-		"moduleResolution": "bundler",
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
+		"moduleResolution": "bundler"
 	},
 	"include": ["**/*.ts"],
 	"exclude": ["dist"]

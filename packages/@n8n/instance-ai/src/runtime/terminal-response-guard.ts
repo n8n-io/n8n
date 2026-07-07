@@ -101,7 +101,16 @@ export class InstanceAiTerminalResponseGuard {
 					reason: 'already-visible',
 				};
 			}
-			if (options.suppressCompletedFallback) {
+			if (visibility.hasMessageGroupRootText) {
+				return {
+					status,
+					visibilitySource: 'root-text',
+					action: 'none',
+					reason: 'already-visible',
+				};
+			}
+			// Only suppress when some agent already produced text; a turn with no text at all must still emit.
+			if (options.suppressCompletedFallback && visibility.hasAgentText) {
 				return {
 					status,
 					visibilitySource: 'none',
@@ -119,6 +128,7 @@ export class InstanceAiTerminalResponseGuard {
 		}
 
 		if (status === 'cancelled') {
+			// A cancelled run needs no assistant placeholder: the stopped state is self-evident in the UI.
 			if (visibility.hasRootText || visibility.hasRootError) {
 				return {
 					status,
@@ -127,11 +137,12 @@ export class InstanceAiTerminalResponseGuard {
 					reason: 'already-visible',
 				};
 			}
-			return this.emitText(
+			return {
 				status,
-				'cancelled-silent',
-				'The run was cancelled before I could send a response.',
-			);
+				visibilitySource: 'none',
+				action: 'none',
+				reason: 'cancelled-silent',
+			};
 		}
 
 		if (visibility.hasRootError) {
@@ -196,16 +207,28 @@ export class InstanceAiTerminalResponseGuard {
 	private getVisibility(events: InstanceAiEvent[]): {
 		hasRootText: boolean;
 		hasRootError: boolean;
+		hasMessageGroupRootText: boolean;
 		hasCurrentRunFallback: boolean;
+		hasAgentText: boolean;
 	} {
 		const currentRunEvents = events.filter((event) => event.runId === this.options.runId);
 		return {
 			hasRootText: currentRunEvents.some(
 				(event) => event.agentId === this.options.rootAgentId && hasText(event),
 			),
+			// Any agent's text this run. Tool calls don't count — internal calls (e.g. complete-checkpoint) aren't a visible answer.
+			hasAgentText: currentRunEvents.some((event) => hasText(event)),
 			hasRootError: currentRunEvents.some(
 				(event) => event.agentId === this.options.rootAgentId && event.type === 'error',
 			),
+			hasMessageGroupRootText:
+				this.options.messageGroupId !== undefined &&
+				events.some(
+					(event) =>
+						event.runId !== this.options.runId &&
+						event.agentId === this.options.rootAgentId &&
+						hasText(event),
+				),
 			hasCurrentRunFallback: currentRunEvents.some((event) =>
 				event.responseId?.startsWith(`${FALLBACK_RESPONSE_PREFIX}:${this.options.runId}:`),
 			),
