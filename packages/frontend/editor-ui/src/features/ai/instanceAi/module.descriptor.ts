@@ -46,15 +46,13 @@ export const InstanceAiModule: FrontendModuleDescription = {
 					path: 'new',
 					component: InstanceAiEmptyView,
 					beforeEnter: async (to) => {
-						// Template deep-link entry (e.g. the n8n website). Only a numeric
-						// template id is accepted — anything else lands on the empty view.
+						// Numeric ids only, so a crafted URL can't inject prompt text.
 						const raw = to.query.templateId;
 						if (typeof raw !== 'string' || !/^\d+$/.test(raw)) {
 							return { name: INSTANCE_AI_VIEW };
 						}
 						const templateId = raw;
 
-						// AI disabled → fall back to the classic template setup flow.
 						const settings = useInstanceAiSettingsStore();
 						if (settings.isInstanceAiDisabled) {
 							return { name: VIEWS.TEMPLATE_SETUP, params: { id: templateId } };

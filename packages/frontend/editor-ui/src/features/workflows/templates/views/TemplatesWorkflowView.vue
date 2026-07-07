@@ -280,11 +280,8 @@ const previewDocumentId = computed(() =>
 	gap: var(--spacing--xs);
 }
 
-// Assistant-branded action: gradient border + gradient label with a purple
-// sparkle, using the same layered-background technique as the design system's
-// Ask Assistant button (surface gradient in padding-box over the highlight
-// gradient in border-box) at the large size of the sibling Try template
-// button. Doubled class selector outranks N8nButton's own background rules.
+// Same layered-background technique as the design system's Ask Assistant
+// button; the doubled class selector outranks N8nButton's background rules.
 .startWithAi.startWithAi {
 	// Icon inherits currentColor; the label is repainted with the gradient below.
 	--button--color: var(--assistant--color--highlight-2);

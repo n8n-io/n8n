@@ -179,7 +179,7 @@ export function useInstanceAiHandoff() {
 				else await router.push(route); // popup blocked → same tab; it consumes the message
 				return;
 			}
-			// Same tab: persist, seed the runtime, send, and redirect — it survives the nav.
+			// Same tab: send through a runtime seeded here, which survives the navigation.
 			const threadId = uuidv4();
 			try {
 				await instanceAiStore.syncThread(threadId, projectId, options?.launch);
