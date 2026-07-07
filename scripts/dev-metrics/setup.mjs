@@ -265,9 +265,12 @@ function reset() {
 }
 
 function status() {
-	const consent = readState()?.consent ?? '(undecided)';
-	console.log(`n8n dev metrics: consent=${consent}`);
+	const state = readState();
+	console.log(`n8n dev metrics: consent=${state?.consent ?? '(undecided)'}`);
 	console.log(`  state file: ${statePath()}`);
+	console.log(
+		`  weekly id:  ${state?.anonId ?? '(none yet — assigned on first tracked command)'}${state?.week ? ` (week ${state.week})` : ''}`,
+	);
 	console.log(`  shim src:   ${SHADOW_SHIM_SRC}`);
 	for (const bin of SHADOWED_BINARIES) {
 		const front = whichOnPath(bin);
