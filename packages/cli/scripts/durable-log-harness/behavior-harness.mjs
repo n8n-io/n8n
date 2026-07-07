@@ -97,6 +97,34 @@ function request(port, method, urlPath, { body, cookie, timeoutMs = 15000 } = {}
 	});
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** Spawn the scripted OpenAI-compatible mock (mock-openai-server.mjs). */
+async function startMockLlm() {
+	const child = spawn(process.execPath, [path.join(__dirname, 'mock-openai-server.mjs')], {
+		stdio: ['ignore', 'pipe', 'pipe'],
+	});
+	const port = await new Promise((resolve, reject) => {
+		let out = '';
+		const timer = setTimeout(() => reject(new Error('mock LLM did not start')), 10_000);
+		child.stdout.on('data', (c) => {
+			out += c.toString('utf8');
+			const m = out.match(/MOCK_LLM_LISTENING (\d+)/);
+			if (m) {
+				clearTimeout(timer);
+				resolve(Number(m[1]));
+			}
+		});
+	});
+	return {
+		url: `http://127.0.0.1:${port}/v1`,
+		port,
+		setMode: async (mode) => await request(port, 'POST', '/__mode', { body: { mode } }),
+		state: async () => (await request(port, 'GET', '/__state', {})).body,
+		stop: () => child.kill('SIGKILL'),
+	};
+}
+
 /**
  * Minimal SSE client over raw http. Collects frames; each frame is
  * { id?: number, event?: string, data: object, at: ms-timestamp }.
@@ -177,7 +205,7 @@ function openSse(port, threadId, cookie, { lastEventId } = {}) {
 // n8n process lifecycle
 // ---------------------------------------------------------------------------
 
-async function startN8n({ port, userFolder, durableLog, label }) {
+async function startN8n({ port, userFolder, durableLog, label, mockLlmUrl }) {
 	const child = spawn(process.execPath, [path.join(CLI_DIR, 'bin', 'n8n'), 'start'], {
 		cwd: CLI_DIR,
 		env: {
@@ -194,6 +222,13 @@ async function startN8n({ port, userFolder, durableLog, label }) {
 			N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED: 'true',
 			N8N_INSTANCE_AI_DURABLE_LOG: durableLog ? 'true' : 'false',
 			DB_SQLITE_POOL_SIZE: '4',
+			...(mockLlmUrl
+				? {
+						N8N_INSTANCE_AI_MODEL: 'openai/mock-model',
+						N8N_INSTANCE_AI_MODEL_URL: mockLlmUrl,
+						N8N_INSTANCE_AI_MODEL_API_KEY: 'sk-test',
+					}
+				: {}),
 		},
 		stdio: ['ignore', 'pipe', 'pipe'],
 	});
@@ -370,7 +405,13 @@ async function scenarioRestartMidRun(ctx, flagOn) {
 	sse1.close();
 
 	await stopN8n(proc, 'SIGTERM');
-	proc = await startN8n({ port, userFolder, durableLog: flagOn, label: 'restarted' });
+	proc = await startN8n({
+		port,
+		userFolder,
+		durableLog: flagOn,
+		label: 'restarted',
+		mockLlmUrl: ctx.mockLlmUrl,
+	});
 	ctx.proc = proc;
 	const auth = await setupAuth(port); // fresh cookie for the new process
 	ctx.auth = auth;
@@ -432,7 +473,13 @@ async function scenarioKillNineSweep(ctx) {
 	await new Promise((r) => setTimeout(r, 500)); // let the drain persist
 
 	await stopN8n(ctx.proc, 'SIGKILL'); // kill -9
-	ctx.proc = await startN8n({ port, userFolder, durableLog: true, label: 'post-crash' });
+	ctx.proc = await startN8n({
+		port,
+		userFolder,
+		durableLog: true,
+		label: 'post-crash',
+		mockLlmUrl: ctx.mockLlmUrl,
+	});
 	ctx.auth = await setupAuth(port);
 
 	// The sweep runs on module init; poll the log via SSE replay from 0.
@@ -514,6 +561,103 @@ async function scenarioMidBlockReconnect(port, cookie, userId, flagLabel) {
 	};
 }
 
+async function scenarioRealCrashResume(ctx, mock) {
+	// A REAL orchestrator run against the scripted mock model: the first model
+	// turn issues one tool call (step checkpoint written at the boundary), the
+	// second turn hangs (crash window), kill -9, restart, the startup sweep
+	// claims the checkpoint and crash-resumes, the mock completes the run.
+	const { port, userFolder } = ctx;
+	const { cookie, userId } = ctx.auth;
+	const threadId = newThreadId();
+	await publish(port, cookie, userId, threadId, [], { ensureThread: true });
+	await mock.setMode('script');
+
+	const chat = await request(port, 'POST', `/rest/instance-ai/chat/${threadId}`, {
+		cookie,
+		body: { message: 'Please look something up for me.', timeZone: 'Europe/Madrid' },
+	});
+	const runId = chat.body?.data?.runId ?? chat.body?.runId;
+	if (chat.status !== 200 || !runId) {
+		return { scenario: 'R5 real crash-resume (mock LLM)', pass: false, chat: chat.body };
+	}
+
+	// Wait for the crash window: the mock parks the SECOND tools request,
+	// which the loop only reaches after persisting the step checkpoint.
+	let hanging = false;
+	const deadline = Date.now() + 60_000;
+	while (Date.now() < deadline) {
+		const s = await mock.state();
+		if (s.hanging) {
+			hanging = true;
+			break;
+		}
+		if (ctx.proc.child.exitCode !== null) break;
+		await sleep(300);
+	}
+	if (!hanging) {
+		const s = await mock.state();
+		return {
+			scenario: 'R5 real crash-resume (mock LLM)',
+			pass: false,
+			reason: 'model never reached the crash window',
+			mockState: s,
+		};
+	}
+	await sleep(750); // let the drain persist the step's facts
+
+	await stopN8n(ctx.proc, 'SIGKILL');
+	await mock.setMode('complete');
+	ctx.proc = await startN8n({
+		port,
+		userFolder,
+		durableLog: true,
+		label: 'crash-resume',
+		mockLlmUrl: ctx.mockLlmUrl,
+	});
+	ctx.auth = await setupAuth(port);
+
+	// The startup sweep claims the running checkpoint and re-drives the run to
+	// completion; watch the durable log until the run's terminal fact appears.
+	let facts = [];
+	const dl2 = Date.now() + 90_000;
+	while (Date.now() < dl2) {
+		const sse = openSse(port, threadId, ctx.auth.cookie, { lastEventId: 0 });
+		await sleep(1500);
+		sse.close();
+		facts = sse.frames.filter((f) => f.id !== undefined).map((f) => f.data);
+		if (facts.some((e) => e?.type === 'run-finish' && e.runId === runId)) break;
+	}
+	const finish = facts.find((e) => e?.type === 'run-finish' && e.runId === runId);
+	const resumeMarker = facts.find(
+		(e) =>
+			e?.type === 'text-block' &&
+			typeof e?.payload?.text === 'string' &&
+			e.payload.text.includes('Resumed after an unexpected restart'),
+	);
+	const toolCalls = facts.filter((e) => e?.type === 'tool-call' && e.runId === runId);
+	const metrics = await request(port, 'GET', '/rest/instance-ai/test/durable-log-metrics', {});
+	const sweep = metrics.body?.data?.sweep ?? metrics.body?.sweep;
+	const messages = await request(port, 'GET', `/rest/instance-ai/threads/${threadId}/messages`, {
+		cookie: ctx.auth.cookie,
+	});
+	const msgs = messages.body?.data?.messages ?? messages.body?.messages ?? [];
+
+	return {
+		scenario: 'R5 real crash-resume (mock LLM)',
+		flag: 'on',
+		runId,
+		runFinishStatus: finish?.payload?.status,
+		resumeMarkerSeen: Boolean(resumeMarker),
+		realToolCallsInLog: toolCalls.length,
+		sweepCounters: sweep,
+		assistantMessages: msgs.filter((m) => m.role === 'assistant').length,
+		pass:
+			finish?.payload?.status === 'completed' &&
+			Boolean(resumeMarker) &&
+			(sweep?.runsCrashResumed ?? 0) >= 1,
+	};
+}
+
 async function scenarioFirstEventLatency(port, cookie, userId, flagLabel) {
 	const samples = [];
 	for (let i = 0; i < 15; i++) {
@@ -542,7 +686,15 @@ async function runArm(flagOn) {
 	const port = 5700 + Math.floor(Math.random() * 200);
 	const userFolder = mkdtempSync(path.join(tmpdir(), `n8n-durable-${label}-`));
 	const ctx = { port, userFolder };
-	ctx.proc = await startN8n({ port, userFolder, durableLog: flagOn, label: 'boot' });
+	const mock = flagOn ? await startMockLlm() : undefined;
+	ctx.mockLlmUrl = mock?.url;
+	ctx.proc = await startN8n({
+		port,
+		userFolder,
+		durableLog: flagOn,
+		label: 'boot',
+		mockLlmUrl: ctx.mockLlmUrl,
+	});
 	try {
 		ctx.auth = await setupAuth(port);
 		const { cookie, userId } = ctx.auth;
@@ -567,9 +719,14 @@ async function runArm(flagOn) {
 			const r4 = await scenarioKillNineSweep(ctx);
 			console.log('  ', r4.scenario, r4.pass ? 'PASS' : 'FAIL');
 			recordResult('behavior.killNineSweep.on', r4);
+
+			const r5 = await scenarioRealCrashResume(ctx, mock);
+			console.log('  ', r5.scenario, r5.pass ? 'PASS' : 'FAIL', JSON.stringify(r5));
+			recordResult('behavior.realCrashResume.on', r5);
 		}
 	} finally {
 		await stopN8n(ctx.proc, 'SIGKILL');
+		mock?.stop();
 		rmSync(userFolder, { recursive: true, force: true });
 	}
 }

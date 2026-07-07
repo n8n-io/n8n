@@ -754,6 +754,7 @@ describe('durable event log harness', () => {
 			stack.bus,
 			stack.metrics,
 			{ instanceAi: { durableLog: true } } as GlobalConfig,
+			{ isMultiMain: false } as InstanceSettings,
 		);
 		sweeper.setResumeHost({
 			hasActiveRun: () => false,
@@ -850,6 +851,7 @@ describe('durable event log harness', () => {
 			stack.bus,
 			stack.metrics,
 			{ instanceAi: { durableLog: true } } as GlobalConfig,
+			{ isMultiMain: false } as InstanceSettings,
 		);
 		const resumeCalls: Array<Record<string, unknown>> = [];
 		sweeper.setResumeHost({
@@ -916,6 +918,7 @@ describe('durable event log harness', () => {
 			stack.bus,
 			stack.metrics,
 			{ instanceAi: { durableLog: true } } as GlobalConfig,
+			{ isMultiMain: false } as InstanceSettings,
 		);
 		sweeper.setResumeHost({
 			hasActiveRun: () => false,
