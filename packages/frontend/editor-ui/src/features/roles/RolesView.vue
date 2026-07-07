@@ -102,7 +102,7 @@ onMounted(async () => {
 		</div>
 
 		<InstanceRolesView v-if="activeTab === 'instance' && canManageInstanceRoles" />
-		<ProjectRolesView v-else embedded />
+		<ProjectRolesView v-else />
 	</div>
 </template>
 

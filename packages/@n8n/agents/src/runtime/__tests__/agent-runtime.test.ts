@@ -2376,6 +2376,51 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		}
 	});
 
+	it('batches a renamed delegate tool by maxChildren via metadata, not by tool name', async () => {
+		let activeDelegations = 0;
+		let peakDelegations = 0;
+
+		const runSubAgent: DelegateSubAgentRunner = async (request) => {
+			activeDelegations++;
+			peakDelegations = Math.max(peakDelegations, activeDelegations);
+			await new Promise((resolve) => setTimeout(resolve, 30));
+			activeDelegations--;
+			return {
+				status: 'completed',
+				taskPath: request.taskPath,
+				answer: `done:${request.taskName}`,
+			};
+		};
+
+		const delegateTool = createDelegateSubAgentTool({
+			name: 'agent',
+			policy: { maxChildren: 2 },
+			runSubAgent,
+		});
+		const { runtime } = createRuntimeWithTools([delegateTool], 1);
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls(
+					Array.from({ length: 4 }, (_, index) => ({
+						toolCallId: `tc-${index + 1}`,
+						toolName: 'agent',
+						args: {
+							subAgentId: 'inline',
+							taskName: `ping_${index + 1}`,
+							goal: 'Reply with ping.',
+						},
+					})),
+				),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
+
+		const result = await runtime.generate('spawn 4 sub agents');
+
+		expect(result.finishReason).toBe('stop');
+		expect(peakDelegations).toBe(2);
+	});
+
 	it('fails fast when delegate metadata has an invalid maxChildren batch size', async () => {
 		const malformedDelegateTool: BuiltTool = {
 			name: DELEGATE_SUB_AGENT_TOOL_NAME,
@@ -6436,5 +6481,111 @@ describe('AgentRuntime — toModelOutput error resilience', () => {
 		) as (StreamChunk & { type: 'tool-result' }) | undefined;
 		expect(toolResultChunk).toBeDefined();
 		expect(toolResultChunk!.isError).toBe(true);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// empty model responses (e.g. provider safety blocks)
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — empty model responses', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	function makeEmptyStream(finishReason: string, extraChunks: Array<Record<string, unknown>> = []) {
+		return {
+			fullStream: makeChunkStream(extraChunks),
+			finishReason: Promise.resolve(finishReason),
+			usage: Promise.resolve({ inputTokens: 10, outputTokens: 0, totalTokens: 10 }),
+			response: Promise.resolve({ messages: [] }),
+			toolCalls: Promise.resolve([]),
+		};
+	}
+
+	it.each(['other', 'unknown', 'content-filter'])(
+		'stream: yields an error chunk when the model returns no output with finish reason "%s"',
+		async (finishReason) => {
+			streamText.mockReturnValue(makeEmptyStream(finishReason));
+
+			const { runtime } = createRuntime();
+			const { stream: readableStream } = await runtime.stream('hello');
+			const chunks = await collectChunks(readableStream);
+
+			const errorChunk = chunks.find((c) => c.type === 'error') as
+				| (StreamChunk & { type: 'error' })
+				| undefined;
+			expect(errorChunk).toBeDefined();
+			expect(String((errorChunk!.error as Error).message)).toContain('no output');
+			expect(String((errorChunk!.error as Error).message)).toContain(finishReason);
+
+			const finishChunk = chunks.find((c) => c.type === 'finish') as
+				| (StreamChunk & { type: 'finish' })
+				| undefined;
+			expect(finishChunk).toBeDefined();
+			expect(finishChunk!.finishReason).toBe('error');
+		},
+	);
+
+	it('stream: includes the Google prompt block reason captured from raw chunks', async () => {
+		streamText.mockReturnValue(
+			makeEmptyStream('other', [
+				{
+					type: 'raw',
+					rawValue: { promptFeedback: { blockReason: 'PROHIBITED_CONTENT' } },
+				},
+			]),
+		);
+
+		const { runtime } = createRuntime(undefined, 'google/gemini-2.5-flash');
+		const { stream: readableStream } = await runtime.stream('hello');
+		const chunks = await collectChunks(readableStream);
+
+		const errorChunk = chunks.find((c) => c.type === 'error') as
+			| (StreamChunk & { type: 'error' })
+			| undefined;
+		expect(errorChunk).toBeDefined();
+		expect(String((errorChunk!.error as Error).message)).toContain('PROHIBITED_CONTENT');
+	});
+
+	it('stream: requests raw chunks for google models so block reasons are observable', async () => {
+		streamText.mockReturnValue(makeStreamSuccess());
+
+		const { runtime } = createRuntime(undefined, 'google/gemini-2.5-flash');
+		const { stream: readableStream } = await runtime.stream('hello');
+		await collectChunks(readableStream);
+
+		const args = streamText.mock.calls[0][0] as Record<string, unknown>;
+		expect(args.includeRawChunks).toBe(true);
+	});
+
+	it('stream: an empty response finishing with "stop" is not treated as an error', async () => {
+		streamText.mockReturnValue(makeEmptyStream('stop'));
+
+		const { runtime } = createRuntime();
+		const { stream: readableStream } = await runtime.stream('hello');
+		const chunks = await collectChunks(readableStream);
+
+		expect(chunks.find((c) => c.type === 'error')).toBeUndefined();
+		const finishChunk = chunks.find((c) => c.type === 'finish') as
+			| (StreamChunk & { type: 'finish' })
+			| undefined;
+		expect(finishChunk!.finishReason).not.toBe('error');
+	});
+
+	it('generate: returns finishReason "error" with a descriptive error when the model returns no output', async () => {
+		generateText.mockResolvedValue({
+			finishReason: 'other',
+			usage: { inputTokens: 10, outputTokens: 0, totalTokens: 10 },
+			response: { messages: [] },
+			toolCalls: [],
+		});
+
+		const { runtime } = createRuntime();
+		const result = await runtime.generate('hello');
+
+		expect(result.finishReason).toBe('error');
+		expect(String((result.error as Error).message)).toContain('no output');
 	});
 });

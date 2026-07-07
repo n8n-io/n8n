@@ -1,0 +1,26 @@
+{
+	"description": "executeOnce: after fan-out processing, post one Slack summary for all items — not one message per item.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every weekday at 9am, fetch this week's open issues from GET https://api.example.com/repos/acme/widgets/issues and post one Slack summary to #eng-bugs listing all of them — not a separate message per issue."
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "medium",
+	"tags": ["build", "loops", "execute-once", "schedule", "http-request", "slack"],
+	"triggerType": "schedule",
+	"datasets": ["full"],
+	"outcomeExpectations": [
+		"The Slack notification step runs once per workflow execution (executeOnce or equivalent), producing a single digest message that covers multiple issues.",
+		"The agent did NOT wire Slack to fire once per issue without collapsing — that would flood the channel with separate messages."
+	],
+	"executionScenarios": [
+		{
+			"name": "three-issues-one-slack-message",
+			"description": "Three issues fetched; exactly one Slack post",
+			"dataSetup": "GET https://api.example.com/repos/acme/widgets/issues returns { \"issues\": [{ \"title\": \"Login 500\" }, { \"title\": \"Timezone off by one\" }, { \"title\": \"CSV export truncates\" }] }. Slack postMessage returns { \"ok\": true, \"ts\": \"1700000000.0002\" }.",
+			"successCriteria": "The workflow executes without errors. Exactly one Slack message is posted to #eng-bugs and it references all three issue titles (Login 500, Timezone off by one, CSV export truncates). A workflow that posts three separate Slack messages FAILS."
+		}
+	]
+}

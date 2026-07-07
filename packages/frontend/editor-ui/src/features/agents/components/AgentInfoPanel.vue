@@ -184,7 +184,6 @@ function onInstructionsInput(value: string) {
 				:is-loading="isLoading"
 				:project-id="projectId"
 				:warn-missing-credentials="true"
-				horizontal
 				data-testid="agent-model-selector"
 				@change="onModelChange"
 				@select-credential="onSelectCredential"
@@ -201,7 +200,6 @@ function onInstructionsInput(value: string) {
 				:class="$style.instructionsDocument"
 				:model-value="instructions"
 				:readonly="props.disabled"
-				:placeholder="i18n.baseText('agents.builder.agent.instructions.placeholder')"
 				:variant="instructionsEditorVariant"
 				:show-toolbar="instructionsToolbarMode"
 				max-height="none"

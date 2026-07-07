@@ -1,6 +1,5 @@
-import { Time } from '@n8n/constants';
+import { ScheduledTaskStatus, type TerminalTaskStatus, Time } from '@n8n/constants';
 
-import { ScheduledTaskStatus, type TerminalTaskStatus } from '../enums';
 import { InvalidRetentionOptionsError } from '../errors';
 import { DEFAULT_RETENTION_OPTIONS, type RetentionOptions } from './options';
 import type { RetentionStore } from './store';

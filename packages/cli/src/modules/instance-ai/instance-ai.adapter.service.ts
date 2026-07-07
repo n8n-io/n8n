@@ -90,6 +90,8 @@ import {
 	type DataTableRows,
 	type WorkflowExecuteMode,
 	type ExecutionError,
+	type IRunData,
+	type ITaskData,
 	NodeHelpers,
 	Workflow,
 	CHAT_TRIGGER_NODE_TYPE,
@@ -2365,7 +2367,16 @@ export class InstanceAiAdapterService {
 				const workflowNode = workflow.getNode(nodeName);
 				if (!workflowNode) return [];
 
-				return NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType.description);
+				// Dynamic `inputs` expressions resolve via workflow.expression, which
+				// needs a V8 isolate acquired for this workflow when
+				// N8N_EXPRESSION_ENGINE=vm — otherwise the VM bridge throws "No bridge
+				// acquired" and getNodeInputs silently returns []. No-op in legacy mode.
+				await workflow.expression.acquireIsolate();
+				try {
+					return NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType.description);
+				} finally {
+					await workflow.expression.releaseIsolate();
+				}
 			},
 
 			exploreResources: async (params: ExploreResourcesParams): Promise<ExploreResourcesResult> =>
@@ -2710,6 +2721,56 @@ function wrapResultDataEntries(data: Record<string, unknown>): Record<string, un
 	return wrapped;
 }
 
+const MAX_NODE_ERRORS = 10;
+
+function isFailedNodeRun(nodeRun: ITaskData): boolean {
+	return (
+		nodeRun.executionStatus === 'error' ||
+		nodeRun.error !== undefined ||
+		nodeRun.redactedError !== undefined
+	);
+}
+
+function nodeContinuesOnError(node: INode | undefined): boolean {
+	return (
+		node?.continueOnFail === true ||
+		node?.onError === 'continueRegularOutput' ||
+		node?.onError === 'continueErrorOutput'
+	);
+}
+
+function extractNodeErrors(
+	runData: IRunData | undefined,
+	includeUpstreamDetails: boolean,
+	workflowNodes: INode[] = [],
+): NonNullable<ExecutionResult['nodeErrors']> {
+	if (!runData) return [];
+
+	const nodesByName = new Map(workflowNodes.map((node) => [node.name, node]));
+	const nodeErrors: NonNullable<ExecutionResult['nodeErrors']> = [];
+	for (const [nodeName, nodeRuns] of Object.entries(runData)) {
+		if (nodeErrors.length >= MAX_NODE_ERRORS) break;
+		if (nodeContinuesOnError(nodesByName.get(nodeName))) continue;
+
+		const failedRun = nodeRuns.find(isFailedNodeRun);
+		if (!failedRun) continue;
+
+		const message = failedRun.error
+			? formatExecutionError(failedRun.error, includeUpstreamDetails)
+			: failedRun.redactedError
+				? `${failedRun.redactedError.type} error${
+						failedRun.redactedError.httpCode ? ` (${failedRun.redactedError.httpCode})` : ''
+					}`
+				: undefined;
+		nodeErrors.push({
+			nodeName,
+			...(message ? { message } : {}),
+		});
+	}
+
+	return nodeErrors;
+}
+
 export async function extractExecutionResult(
 	executionId: string,
 	includeOutputData = true,
@@ -2739,9 +2800,9 @@ export async function extractExecutionResult(
 	// omits. Verification uses this to tell "ran and returned nothing" apart
 	// from "never reached". Node names only, so it is safe regardless of the
 	// parameter-values privacy setting.
-	const executedNodeNames = Object.keys(execution.data?.resultData?.runData ?? {});
+	const runData = execution.data?.resultData?.runData;
+	const executedNodeNames = Object.keys(runData ?? {});
 	if (includeOutputData) {
-		const runData = execution.data?.resultData?.runData;
 		if (runData) {
 			for (const [nodeName, nodeRuns] of Object.entries(runData)) {
 				const lastRun = nodeRuns[nodeRuns.length - 1];
@@ -2761,6 +2822,7 @@ export async function extractExecutionResult(
 	// Extract error if present
 	const error = execution.data?.resultData?.error;
 	const errorMessage = error ? formatExecutionError(error, includeOutputData) : undefined;
+	const nodeErrors = extractNodeErrors(runData, includeOutputData, execution.workflowData?.nodes);
 
 	return {
 		executionId,
@@ -2770,6 +2832,7 @@ export async function extractExecutionResult(
 				? wrapResultDataEntries(truncateResultData(resultData))
 				: undefined,
 		executedNodeNames: executedNodeNames.length > 0 ? executedNodeNames : undefined,
+		nodeErrors: nodeErrors.length > 0 ? nodeErrors : undefined,
 		lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
 		error: errorMessage,
 		startedAt: execution.startedAt?.toISOString(),
@@ -3001,7 +3064,7 @@ export async function extractExecutionDebugInfo(
 			nodeTrace.push({
 				name: nodeName,
 				type: nodeType,
-				status: lastRun.error !== undefined ? 'error' : 'success',
+				status: isFailedNodeRun(lastRun) ? 'error' : 'success',
 				startedAt:
 					lastRun.startTime !== undefined ? new Date(lastRun.startTime).toISOString() : undefined,
 				finishedAt:

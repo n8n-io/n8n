@@ -12,7 +12,6 @@ All Instance AI configuration is done via environment variables.
 | `N8N_INSTANCE_AI_MODEL_URL` | string | `''` | Base URL for an OpenAI-compatible endpoint (e.g. `http://localhost:1234/v1` for LM Studio). When set, model requests go to this URL instead of the built-in provider. |
 | `N8N_INSTANCE_AI_MODEL_API_KEY` | string | `''` | API key for the custom model endpoint. Optional — some local servers don't require one. |
 | `N8N_INSTANCE_AI_MCP_SERVERS` | string | `''` | Comma-separated MCP server configs. Format: `name=url,name=url` |
-| `N8N_INSTANCE_AI_SUB_AGENT_MAX_STEPS` | number | `100` | Maximum LLM reasoning steps for sub-agents spawned via delegate tool |
 | `N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED` | boolean | `false` | Disable the local gateway (filesystem, shell, browser) for all users |
 
 ### Tracing
@@ -107,7 +106,7 @@ Observer and Reflector use the same model as the orchestrator agent (see `@n8n/a
 
 Agent output is scanned for secrets/PII and redacted before it reaches the user.
 The scan covers streamed assistant text, reasoning, and tool results/errors, for
-both the orchestrator and delegated sub-agents. A filtering event (categories
+both the orchestrator and eval-setup background tasks. A filtering event (categories
 and counts only — never the values) is logged whenever a redaction occurs.
 
 | Variable | Type | Default | Description |
@@ -146,8 +145,7 @@ N8N_INSTANCE_AI_MCP_SERVERS="github=https://mcp.github.com/sse,database=https://
 ```
 
 Each MCP server's tools are merged with the native tools and made available to
-the orchestrator agent. Sub-agents currently do not receive MCP tools — only
-native tools specified in the `delegate` call.
+the orchestrator agent. Sub-agents currently do not receive MCP tools.
 
 ## Storage
 
