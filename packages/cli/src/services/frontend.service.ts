@@ -363,6 +363,7 @@ export class FrontendService {
 				personalSpacePolicy: false,
 				dataRedaction: false,
 				otelCustomSpanAttributes: false,
+				workflowReviews: false,
 			},
 			mfa: {
 				enabled: false,
@@ -528,6 +529,7 @@ export class FrontendService {
 			personalSpacePolicy: this.licenseState.isPersonalSpacePolicyLicensed(),
 			dataRedaction: this.licenseState.isDataRedactionLicensed(),
 			otelCustomSpanAttributes: this.licenseState.isOtelCustomSpanAttributesLicensed(),
+			workflowReviews: this.licenseState.isWorkflowReviewsLicensed(),
 		});
 
 		if (this.license.isLdapEnabled()) {
