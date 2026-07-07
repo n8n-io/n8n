@@ -14,7 +14,7 @@ import type { SDKFunctions } from './interpreter';
 import { interpretSDKCode } from './interpreter';
 import { parseSDKCode } from './parser';
 
-/** Helper to get the first call argument from a Jest mock with proper typing */
+/** Helper to get the first call argument from a Vitest mock with proper typing */
 function getFirstCallArg<T>(mockFn: Mock): T {
 	const calls = mockFn.mock.calls as unknown[][];
 	return calls[0][0] as T;

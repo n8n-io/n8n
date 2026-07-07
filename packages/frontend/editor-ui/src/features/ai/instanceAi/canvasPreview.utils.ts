@@ -7,6 +7,16 @@ export interface ExecutionResult {
 	finishedAt?: string;
 }
 
+/**
+ * A user-triggered (non-agent) preview run remembered on the thread runtime so it
+ * survives the preview canvas remounting on a tab switch and is re-seeded on remount.
+ */
+export interface RememberedManualExecution {
+	executionId: string;
+	// Agent run shown when the user took over; a different current one means the agent ran again since.
+	agentExecutionId: string | undefined;
+}
+
 export interface BuildResult {
 	workflowId: string;
 	/** Unique per build — changes even when the same workflow is rebuilt. */

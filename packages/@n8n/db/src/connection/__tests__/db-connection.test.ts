@@ -23,6 +23,12 @@ vi.mock('@n8n/typeorm', async () => ({
 
 vi.mock('../db-connection-monitor');
 
+vi.mock('timers/promises', async () => ({
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	...(await vi.importActual<typeof import('timers/promises')>('timers/promises')),
+	setTimeout: vi.fn().mockResolvedValue(undefined),
+}));
+
 describe('DbConnection', () => {
 	let dbConnection: DbConnection;
 	const migrations = [{ name: 'TestMigration1' }, { name: 'TestMigration2' }] as Migration[];
@@ -48,6 +54,10 @@ describe('DbConnection', () => {
 		vi.resetAllMocks();
 
 		connectionOptions.getOptions.mockReturnValue(postgresOptions);
+		// Default to legacy single-attempt behavior; retry tests override startupConnectMaxRetries.
+		databaseConfig.startupConnectMaxRetries = 0;
+		databaseConfig.minRecoveryBackoffMs = 1;
+		databaseConfig.maxRecoveryBackoffMs = 1;
 		vi.mocked(DbConnectionMonitor).mockImplementation(function () {
 			return monitor;
 		});
@@ -107,6 +117,36 @@ describe('DbConnection', () => {
 			dataSource.initialize.mockRejectedValue(error);
 
 			await expect(dbConnection.init()).rejects.toThrow('Some other error');
+		});
+
+		it('should retry a transient failure and succeed', async () => {
+			databaseConfig.startupConnectMaxRetries = 3;
+			dataSource.initialize
+				.mockRejectedValueOnce(new Error('getaddrinfo ENOTFOUND'))
+				.mockResolvedValue(dataSource);
+
+			await dbConnection.init();
+
+			expect(dataSource.initialize).toHaveBeenCalledTimes(2);
+			expect(dbConnection.connectionState.connected).toBe(true);
+			expect(monitor.start).toHaveBeenCalled();
+		});
+
+		it('should give up after exhausting retries', async () => {
+			databaseConfig.startupConnectMaxRetries = 2;
+			dataSource.initialize.mockRejectedValue(new Error('getaddrinfo ENOTFOUND'));
+
+			await expect(dbConnection.init()).rejects.toThrow('getaddrinfo ENOTFOUND');
+			expect(dataSource.initialize).toHaveBeenCalledTimes(3);
+			expect(dbConnection.connectionState.connected).toBe(false);
+		});
+
+		it('should not retry when startupConnectMaxRetries is 0', async () => {
+			databaseConfig.startupConnectMaxRetries = 0;
+			dataSource.initialize.mockRejectedValue(new Error('getaddrinfo ENOTFOUND'));
+
+			await expect(dbConnection.init()).rejects.toThrow('getaddrinfo ENOTFOUND');
+			expect(dataSource.initialize).toHaveBeenCalledTimes(1);
 		});
 	});
 

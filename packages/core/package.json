@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "2.28.0",
+  "version": "2.30.0",
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -33,7 +33,7 @@
   "devDependencies": {
     "@n8n/playwright-janitor": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
-    "@n8n/typeorm": "catalog:",
+    "@n8n/typeorm": "workspace:*",
     "@types/express": "catalog:",
     "@types/jsonwebtoken": "catalog:",
     "@types/lodash": "catalog:",
@@ -46,11 +46,12 @@
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
     "axios": "catalog:",
-    "jest-mock-extended": "^3.0.4",
     "nock": "catalog:",
     "reflect-metadata": "catalog:",
+    "vite": "catalog:",
     "vitest": "catalog:",
-    "vitest-mock-extended": "catalog:"
+    "vitest-mock-extended": "catalog:",
+    "zod": "catalog:"
   },
   "peerDependencies": {
     "zod": "catalog:"
@@ -68,6 +69,7 @@
     "@n8n/decorators": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/errors": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "@sentry/core": "catalog:sentry",
     "@sentry/node": "catalog:sentry",
     "@sentry/node-native": "catalog:sentry",
@@ -95,7 +97,6 @@
     "uuid": "catalog:",
     "winston": "3.14.2",
     "xml2js": "catalog:",
-    "zod": "catalog:",
     "qs": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"

@@ -1,7 +1,8 @@
+import type { Mock } from 'vitest';
 import type { TagEntity, TagRepository } from '@n8n/db';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { FindOperator, QueryFailedError } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { ExternalHooks } from '@/external-hooks';
 import { TagService } from '@/services/tag.service';
@@ -21,19 +22,19 @@ describe('TagService', () => {
 	const tagService = new TagService(externalHooks, tagRepository);
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('listWithUsageCount', () => {
 		test('builds a limited ordered query and returns data + totalCount in parallel', async () => {
-			const limitFn = jest.fn().mockReturnThis();
-			const orderByFn = jest.fn().mockReturnThis();
-			const orderByCallOrder: jest.Mock = orderByFn;
-			const limitCallOrder: jest.Mock = limitFn;
-			const getMany = jest.fn().mockResolvedValue([makeTag()]);
+			const limitFn = vi.fn().mockReturnThis();
+			const orderByFn = vi.fn().mockReturnThis();
+			const orderByCallOrder: Mock = orderByFn;
+			const limitCallOrder: Mock = limitFn;
+			const getMany = vi.fn().mockResolvedValue([makeTag()]);
 			const builder = {
-				select: jest.fn().mockReturnThis(),
-				loadRelationCountAndMap: jest.fn().mockReturnThis(),
+				select: vi.fn().mockReturnThis(),
+				loadRelationCountAndMap: vi.fn().mockReturnThis(),
 				orderBy: orderByFn,
 				limit: limitFn,
 				getMany,
@@ -55,13 +56,13 @@ describe('TagService', () => {
 		});
 
 		test('does not order when called via getAll without orderByName', async () => {
-			const orderByFn = jest.fn().mockReturnThis();
+			const orderByFn = vi.fn().mockReturnThis();
 			const builder = {
-				select: jest.fn().mockReturnThis(),
-				loadRelationCountAndMap: jest.fn().mockReturnThis(),
+				select: vi.fn().mockReturnThis(),
+				loadRelationCountAndMap: vi.fn().mockReturnThis(),
 				orderBy: orderByFn,
-				limit: jest.fn().mockReturnThis(),
-				getMany: jest.fn().mockResolvedValue([]),
+				limit: vi.fn().mockReturnThis(),
+				getMany: vi.fn().mockResolvedValue([]),
 			};
 			tagRepository.createQueryBuilder.mockReturnValue(builder as never);
 

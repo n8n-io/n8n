@@ -5,7 +5,7 @@ import type { Mock } from 'vitest';
 
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import type { EvalLogger } from '../harness/logger';
-import { syncDataset } from '../langsmith/dataset-sync';
+import { ARCHIVED_SPLIT, BUILD_ONLY_SCENARIO_NAME, syncDataset } from '../langsmith/dataset-sync';
 
 function scenarioFixture(testCaseFile: string, scenarioName: string): WorkflowTestCaseWithFile {
 	return {
@@ -22,6 +22,21 @@ function scenarioFixture(testCaseFile: string, scenarioName: string): WorkflowTe
 					successCriteria: `criteria for ${scenarioName}`,
 				},
 			],
+			datasets: ['full'],
+		},
+		fileSlug: testCaseFile,
+	};
+}
+
+function buildOnlyFixture(testCaseFile: string): WorkflowTestCaseWithFile {
+	return {
+		testCase: {
+			conversation: [{ role: 'user' as const, text: `prompt for ${testCaseFile}` }],
+			complexity: 'medium' as const,
+			tags: ['test'],
+			triggerType: 'manual' as const,
+			executionScenarios: [],
+			outcomeExpectations: ['The workflow posts to Slack.'],
 			datasets: ['full'],
 		},
 		fileSlug: testCaseFile,
@@ -53,7 +68,11 @@ function existingExample(id: string, testCaseFile: string, scenarioName: string)
 	} as unknown as Example;
 }
 
-type UpsertArg = Array<{ id: string; inputs: Record<string, unknown> }>;
+type UpsertArg = Array<{
+	id: string;
+	inputs?: Record<string, unknown>;
+	split?: string[];
+}>;
 
 function buildClient(existing: Example[] = []): {
 	client: Client;
@@ -118,6 +137,20 @@ describe('syncDataset', () => {
 		expect(created[0].inputs).toMatchObject({ testCaseFile: 'foo', scenarioName: 'happy-path' });
 	});
 
+	it('emits one build-only sentinel example for a 0-scenario case', async () => {
+		const { client, createExamples } = buildClient([]);
+
+		await syncDataset(client, 'ds', logger, [buildOnlyFixture('build-only')]);
+
+		expect(createExamples).toHaveBeenCalledTimes(1);
+		const created = createExamples.mock.calls[0][0];
+		expect(created).toHaveLength(1);
+		expect(created[0].inputs).toMatchObject({
+			testCaseFile: 'build-only',
+			scenarioName: BUILD_ONLY_SCENARIO_NAME,
+		});
+	});
+
 	it('updates existing examples in place when inputs change, preserving the existing UUID', async () => {
 		const existingId = '11111111-2222-3333-4444-555555555555';
 		const existing = existingExample(existingId, 'foo', 'happy-path');
@@ -136,15 +169,69 @@ describe('syncDataset', () => {
 		expect(updated[0].id).toBe(existingId);
 	});
 
-	it('never calls deleteExamples, even when a previously-synced scenario is no longer selected', async () => {
-		const orphan = existingExample('orphan-uuid', 'gone-file', 'gone-scenario');
-		const { client, deleteExamples, createExamples } = buildClient([orphan]);
+	it('archives a removed scenario of a synced case (split-only update) instead of deleting it', async () => {
+		// 'foo' is in the sync, but its 'gone-scenario' no longer exists.
+		const current = existingExample('current-uuid', 'foo', 'happy-path');
+		const stale = existingExample('stale-uuid', 'foo', 'gone-scenario');
+		const { client, deleteExamples, createExamples, updateExamples } = buildClient([
+			current,
+			stale,
+		]);
 
 		await syncDataset(client, 'ds', logger, [scenarioFixture('foo', 'happy-path')]);
 
 		expect(deleteExamples).not.toHaveBeenCalled();
-		// The present scenario should still be created
+		expect(createExamples).not.toHaveBeenCalled();
+
+		// The stale example moves to the archived split; inputs/metadata are
+		// untouched so the example stays inspectable in the UI.
+		expect(updateExamples).toHaveBeenCalledTimes(1);
+		const archived = updateExamples.mock.calls[0][0];
+		expect(archived).toEqual([
+			{ id: 'stale-uuid', split: [ARCHIVED_SPLIT], dataset_id: 'dataset-1' },
+		]);
+	});
+
+	it('does NOT archive examples of test cases outside the sync selection (filtered runs)', async () => {
+		// A --filter/--exclude/--tier run syncs a subset of cases; examples of
+		// unselected cases must survive untouched — a filtered-out case is
+		// indistinguishable from a deleted one.
+		const unselected = existingExample('other-uuid', 'other-file', 'some-scenario');
+		const { client, updateExamples, deleteExamples, createExamples } = buildClient([unselected]);
+
+		await syncDataset(client, 'ds', logger, [scenarioFixture('foo', 'happy-path')]);
+
+		expect(deleteExamples).not.toHaveBeenCalled();
+		expect(updateExamples).not.toHaveBeenCalled();
+		// The selected scenario is still created.
 		expect(createExamples).toHaveBeenCalledTimes(1);
+	});
+
+	it('leaves an already-archived stale example alone (idempotent sync)', async () => {
+		const current = existingExample('current-uuid', 'foo', 'happy-path');
+		const stale = existingExample('stale-uuid', 'foo', 'gone-scenario');
+		(stale as unknown as { split: string[] }).split = [ARCHIVED_SPLIT];
+		const { client, updateExamples, deleteExamples } = buildClient([current, stale]);
+
+		await syncDataset(client, 'ds', logger, [scenarioFixture('foo', 'happy-path')]);
+
+		expect(updateExamples).not.toHaveBeenCalled();
+		expect(deleteExamples).not.toHaveBeenCalled();
+	});
+
+	it('restores an archived example to its active splits when the scenario is re-added', async () => {
+		const archived = existingExample('archived-uuid', 'foo', 'happy-path');
+		(archived as unknown as { split: string[] }).split = [ARCHIVED_SPLIT];
+		const { client, createExamples, updateExamples } = buildClient([archived]);
+
+		await syncDataset(client, 'ds', logger, [scenarioFixture('foo', 'happy-path')]);
+
+		// Found by inputs — restored via update, never re-created (no 409 risk).
+		expect(createExamples).not.toHaveBeenCalled();
+		expect(updateExamples).toHaveBeenCalledTimes(1);
+		const updated = updateExamples.mock.calls[0][0];
+		expect(updated[0].id).toBe('archived-uuid');
+		expect(updated[0].split).toEqual(['foo', 'full']);
 	});
 
 	it('is a no-op when every current scenario matches an existing example', async () => {

@@ -1,14 +1,14 @@
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { ModuleSettings } from '@n8n/decorators';
 import type { NextFunction, Request, Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { sendErrorResponse } from '@/response-helper';
 
 import { ChatHubController } from '../chat-hub.controller';
 
-jest.mock('@/response-helper');
+vi.mock('@/response-helper');
 
 describe('ChatHubController', () => {
 	const settingsMap = new Map<string, ModuleSettings>();
@@ -20,9 +20,9 @@ describe('ChatHubController', () => {
 	let next: NextFunction;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		settingsMap.clear();
-		next = jest.fn();
+		next = vi.fn();
 	});
 
 	describe('checkChatEnabled middleware', () => {

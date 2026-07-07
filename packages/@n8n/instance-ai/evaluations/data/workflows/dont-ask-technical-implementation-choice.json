@@ -31,12 +31,7 @@
 		"The agent did not ask the user to approve or choose a technical implementation detail — for example which node type or API to use, whether to use the built-in Linear node or an HTTP Request to Linear's API (e.g. its GraphQL API), or which endpoint. It made any such decision itself.",
 		"Any questions the agent did ask were about the user's goal or desired outcome, never about how to build the workflow technically. The agent never described an implementation approach and asked whether it was acceptable."
 	],
-	"executionScenarios": [
-		{
-			"name": "happy-path",
-			"description": "Linear returns a couple of issues labeled 'bug' with descriptions; a summary is posted to Slack",
-			"dataSetup": "The Linear source returns 2 issues labeled 'bug': 'Login button unresponsive' and 'Export times out', each with a one-sentence description. The Slack postMessage call returns { \"ok\": true, \"ts\": \"1700000000.000100\" }.",
-			"successCriteria": "Judge only the built workflow's structure, not the conversation. A pass is a weekday 9am schedule trigger that retrieves Linear issues filtered to the 'bug' label (including their descriptions) and posts a summary to Slack #bugs. Because no credentials are provided, empty/placeholder values (e.g. an unset Linear team or Slack channel) that cause a validation failure before any request is made are acceptable and count as a pass — they are values to fill in at setup, not build mistakes. If values are set and the run succeeds, that is also a pass."
-		}
+	"outcomeExpectations": [
+		"The built workflow triggers on a weekday 9am schedule, retrieves Linear issues filtered to the 'bug' label and including each issue's description (via whichever node or HTTP Request achieves this), and posts a summary of them to Slack #bugs. Unset or placeholder credential values (e.g. an unset Linear team or Slack channel) are acceptable — they are values to fill in at setup, not build mistakes."
 	]
 }

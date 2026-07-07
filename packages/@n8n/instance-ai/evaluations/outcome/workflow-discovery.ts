@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
 import type { AgentOutcome, EventOutcome, ExecutionSummary, WorkflowSummary } from '../types';
@@ -105,11 +105,16 @@ export async function buildAgentOutcome(
 		}
 	}
 
-	// Fetch execution details
-	for (const execId of eventOutcome.executionIds) {
+	// Fetch execution details (one listing for all ids)
+	if (eventOutcome.executionIds.length > 0) {
+		let executions: Awaited<ReturnType<typeof client.listExecutions>> | undefined;
 		try {
-			const executions = await client.listExecutions();
-			const match = executions.find((e) => e.id === execId);
+			executions = await client.listExecutions();
+		} catch {
+			executions = undefined;
+		}
+		for (const execId of eventOutcome.executionIds) {
+			const match = executions?.find((e) => e.id === execId);
 			if (match) {
 				executionsRun.push({
 					id: match.id,
@@ -120,15 +125,9 @@ export async function buildAgentOutcome(
 				executionsRun.push({
 					id: execId,
 					workflowId: 'unknown',
-					status: 'not-found',
+					status: executions ? 'not-found' : 'fetch-failed',
 				});
 			}
-		} catch {
-			executionsRun.push({
-				id: execId,
-				workflowId: 'unknown',
-				status: 'fetch-failed',
-			});
 		}
 	}
 

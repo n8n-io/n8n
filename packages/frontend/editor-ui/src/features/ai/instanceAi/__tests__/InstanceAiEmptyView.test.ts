@@ -29,11 +29,12 @@ const {
 	appSettingsStoreMock,
 	replaceMock,
 	showErrorMock,
+	telemetryTrack,
 } = vi.hoisted(() => ({
 	experimentMocks: {
 		proactiveAgentEnabled: { value: false },
 		promptSuggestionsV2Enabled: { value: false },
-		workflowPreviewEnabled: { value: false },
+		workflowPreviewEnabled: { value: true }, // Experiment cleanup: remove with InstanceAiWorkflowPreviewSuggestionsExperiment
 		splitBelowInputVariant: { value: false },
 		personalizedPromptVariant: { value: undefined as string | undefined },
 		personalizedPromptFormat: { value: null as 'cards' | 'list' | null },
@@ -93,6 +94,7 @@ const {
 	personalizedPromptSuggestionsComponent: { name: 'InstanceAiPersonalizedPromptSuggestionsStub' },
 	replaceMock: vi.fn(),
 	showErrorMock: vi.fn(),
+	telemetryTrack: vi.fn(),
 }));
 
 vi.mock('@/experiments/instanceAiProactiveAgent', () => ({
@@ -226,6 +228,10 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showError: showErrorMock }),
+}));
+
+vi.mock('@/app/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: telemetryTrack }),
 }));
 
 vi.mock('@/app/stores/cloudPlan.store', () => ({
@@ -389,13 +395,14 @@ describe('InstanceAiEmptyView', () => {
 		store.getOrCreateRuntime.mockReturnValue(thread);
 		experimentMocks.proactiveAgentEnabled.value = false;
 		experimentMocks.promptSuggestionsV2Enabled.value = false;
-		experimentMocks.workflowPreviewEnabled.value = false;
+		experimentMocks.workflowPreviewEnabled.value = true; // Experiment cleanup: remove with InstanceAiWorkflowPreviewSuggestionsExperiment
 		experimentMocks.splitBelowInputVariant.value = false;
 		experimentMocks.personalizedPromptVariant.value = undefined;
 		experimentMocks.personalizedPromptFormat.value = null;
 		experimentMocks.personalizedPromptTreatmentEnabled.value = false;
 		experimentMocks.personalizedPromptProfileOverride.value = null;
 		experimentMocks.resolvePersonalizedPromptSuggestions.mockClear();
+		telemetryTrack.mockClear();
 		cloudPlanStoreMock.state.initialized = false;
 		cloudPlanStoreMock.currentUserCloudInfo = null;
 		appSettingsStoreMock.isCloudDeployment = false;
@@ -409,13 +416,15 @@ describe('InstanceAiEmptyView', () => {
 
 	it('passes the fixed suggestions to the empty-state composer', () => {
 		const { getByTestId, getByText } = renderView();
-		// 4 suggestions in INSTANCE_AI_EMPTY_STATE_SUGGESTIONS — suggestions array
-		// renders as its `.length`.
-		expect(getByText('AI Assistant')).toBeVisible();
+		expect(getByText('What do you want to automate?')).toBeVisible();
 		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('4');
-		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('unset');
-		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent('unset');
-		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent('unset');
+		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('set');
+		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
+			'v3-workflow-preview',
+		);
+		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
+			'experiments.instanceAiWorkflowPreviewSuggestions.input.placeholder',
+		);
 	});
 
 	it('passes v2 copy, suggestions, component, and catalog version when prompt suggestions v2 is enabled', () => {
@@ -454,7 +463,7 @@ describe('InstanceAiEmptyView', () => {
 			'v4-personalized',
 		);
 		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
-			'experiments.instanceAiPromptSuggestionsV2.input.placeholder',
+			'experiments.instanceAiPersonalizedPromptSuggestions.input.placeholder',
 		);
 		expect(getByTestId('instance-ai-input-suggestions-component-props')).toHaveTextContent(
 			'"format":"cards"',
@@ -466,7 +475,7 @@ describe('InstanceAiEmptyView', () => {
 			'"suggestion_catalog_version":"v4-personalized"',
 		);
 		expect(getByTestId('instance-ai-input-suggestion-telemetry-payload')).toHaveTextContent(
-			'"$feature/090_instance_ai_personalized_prompt_suggestions":"variant-cards"',
+			'"$feature/093_instance_ai_personalized_prompt_suggestions":"variant-cards"',
 		);
 	});
 
@@ -511,7 +520,7 @@ describe('InstanceAiEmptyView', () => {
 		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('0');
 		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('unset');
 		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
-			'experiments.instanceAiPromptSuggestionsV2.input.placeholder',
+			'experiments.instanceAiPersonalizedPromptSuggestions.input.placeholder',
 		);
 	});
 
@@ -535,6 +544,9 @@ describe('InstanceAiEmptyView', () => {
 		);
 		expect(getByTestId('instance-ai-input-suggestions-component-props')).toHaveTextContent(
 			'"showSeeMore":false',
+		);
+		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
+			'experiments.instanceAiPersonalizedPromptSuggestions.input.placeholder',
 		);
 		expect(getByTestId('instance-ai-input-suggestion-telemetry-payload')).toHaveTextContent(
 			'"metadata_load_state":"timed_out"',
@@ -647,6 +659,83 @@ describe('InstanceAiEmptyView', () => {
 
 		expect(getByTestId('instance-ai-empty-state')).toBeInTheDocument();
 		expect(queryByTestId('instance-ai-split-empty-state')).not.toBeInTheDocument();
+	});
+
+	it('tracks personalized prompt suggestions exposure for the control variant', () => {
+		experimentMocks.personalizedPromptVariant.value = 'control';
+
+		renderView();
+
+		const exposureCalls = telemetryTrack.mock.calls.filter(
+			([event]) => event === 'Instance AI personalized prompt suggestions exposed',
+		);
+
+		expect(exposureCalls).toHaveLength(1);
+		expect(exposureCalls[0]).toEqual([
+			'Instance AI personalized prompt suggestions exposed',
+			{
+				variant: 'control',
+				'$feature/093_instance_ai_personalized_prompt_suggestions': 'control',
+			},
+		]);
+	});
+
+	it('tracks personalized prompt suggestions exposure for treatment variants', () => {
+		experimentMocks.personalizedPromptVariant.value = 'variant-cards';
+		experimentMocks.personalizedPromptFormat.value = 'cards';
+		experimentMocks.personalizedPromptTreatmentEnabled.value = true;
+
+		renderView();
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			'Instance AI personalized prompt suggestions exposed',
+			{
+				variant: 'variant-cards',
+				'$feature/093_instance_ai_personalized_prompt_suggestions': 'variant-cards',
+			},
+		);
+	});
+
+	it('does not track personalized prompt suggestions exposure when split empty state is active', () => {
+		experimentMocks.personalizedPromptVariant.value = 'control';
+		experimentMocks.splitBelowInputVariant.value = true;
+
+		renderView();
+
+		expect(telemetryTrack).not.toHaveBeenCalledWith(
+			'Instance AI personalized prompt suggestions exposed',
+			expect.anything(),
+		);
+	});
+
+	it('does not track personalized prompt suggestions exposure when the proactive starter is active', () => {
+		experimentMocks.personalizedPromptVariant.value = 'control';
+		experimentMocks.proactiveAgentEnabled.value = true;
+
+		renderView();
+
+		expect(telemetryTrack).not.toHaveBeenCalledWith(
+			'Instance AI personalized prompt suggestions exposed',
+			expect.anything(),
+		);
+	});
+
+	it('does not track personalized prompt suggestions exposure when workflow builder is unavailable', () => {
+		experimentMocks.personalizedPromptVariant.value = 'control';
+		useSettingsStore().moduleSettings = {
+			'instance-ai': {
+				...defaultModuleSettings,
+				sandboxEnabled: false,
+				workflowBuilderAvailable: false,
+			},
+		};
+
+		renderView();
+
+		expect(telemetryTrack).not.toHaveBeenCalledWith(
+			'Instance AI personalized prompt suggestions exposed',
+			expect.anything(),
+		);
 	});
 
 	it('renders the proactive starter and hides the split layout when both 082 and 089 are enabled', () => {

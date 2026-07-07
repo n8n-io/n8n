@@ -83,7 +83,8 @@ describe('useContextMenu', () => {
 	const selectedNodes = nodes.slice(0, 2);
 	const testWorkflowId = 'test-workflow-id';
 
-	beforeAll(() => {
+	// `restoreMocks` restores spies before each test, so re-establish them per-test.
+	beforeEach(() => {
 		setActivePinia(createPinia());
 		sourceControlStore = useSourceControlStore();
 		vi.spyOn(sourceControlStore, 'preferences', 'get').mockReturnValue({
@@ -266,7 +267,7 @@ describe('useContextMenu', () => {
 		const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 		const subNode = nodeFactory({ type: 'n8n-nodes-base.hackerNewsTool' });
 		vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(subNode);
-		vi.spyOn(NodeHelpers, 'isExecutable').mockReturnValueOnce(false);
+		vi.spyOn(NodeHelpers, 'isExecutable').mockReturnValueOnce(false).mockReturnValueOnce(false);
 		open(mockEvent, { source: 'node-right-click', nodeId: subNode.id });
 
 		expect(isOpen.value).toBe(true);

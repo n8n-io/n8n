@@ -21,7 +21,6 @@ import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { Telemetry } from '@/telemetry';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
-
 import { LicenseMocker } from '@test-integration/license';
 
 import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
@@ -99,6 +98,7 @@ export const setupTestServer = ({
 	enabledFeatures,
 	quotas,
 	modules,
+	setupTimeout,
 }: SetupProps): TestServer => {
 	const app = express();
 	app.use(rawBodyReader);
@@ -373,14 +373,14 @@ export const setupTestServer = ({
 
 			await Container.get(AuthHandlerRegistry).init();
 		}
-	});
+	}, setupTimeout);
 
 	afterAll(async () => {
 		// Close the HTTP server first so any in-flight requests can't reach the
 		// DI container after testDb.terminate() resets it. Await the close so
 		// pending handlers drain before the next file's beforeAll runs in
 		// persistent Jest workers — otherwise stale handlers call
-		// Container.get(Logger), construct a fresh Logger, and trip Jest's
+		// Container.get(Logger), construct a fresh Logger, and trip Vitest's
 		// "environment torn down" guard when winston is imported.
 		// Skip when the server never started listening (some suites bail in
 		// beforeAll); calling close() on a non-listening server throws

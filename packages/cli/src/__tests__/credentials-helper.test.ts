@@ -6,7 +6,6 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { EntityNotFoundError } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
 import {
 	type InstanceSettings,
 	Cipher,
@@ -14,6 +13,7 @@ import {
 	CipherAes256CBC,
 	EncryptionKeyProxy,
 } from 'n8n-core';
+import { SalesforceJwtApi } from 'n8n-nodes-base/credentials/SalesforceJwtApi.credentials';
 import type {
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
@@ -28,15 +28,16 @@ import type {
 } from 'n8n-workflow';
 import { deepCopy, Workflow } from 'n8n-workflow';
 import { generateKeyPairSync } from 'node:crypto';
-import { SalesforceJwtApi } from 'n8n-nodes-base/credentials/SalesforceJwtApi.credentials';
+import type { MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
-jest.mock('@n8n/utils', () => ({ formatPemBlock: (key: string) => key }));
+vi.mock('@n8n/utils/format-pem-block', () => ({ formatPemBlock: (key: string) => key }));
 
 // SalesforceJwtApi.preAuthentication exchanges its signed JWT for a token through the
 // shared outbound HTTP client (`getTokenRequestClient`), not `this.helpers.httpRequest`.
 // Mock that client so the token POST is observable and never hits the network.
-const mockTokenRequest = jest.fn();
-jest.mock('n8n-nodes-base/credentials/common/token-request', () => ({
+const mockTokenRequest = vi.fn();
+vi.mock('n8n-nodes-base/credentials/common/token-request', () => ({
 	getTokenRequestClient: () => ({ request: mockTokenRequest }),
 	TOKEN_REQUEST_TIMEOUT: 30_000,
 }));
@@ -577,12 +578,12 @@ describe('CredentialsHelper', () => {
 				},
 			};
 
-			let storeOAuthTokenDataSpy: jest.SpyInstance;
+			let storeOAuthTokenDataSpy: MockInstance;
 
 			beforeEach(() => {
-				jest.clearAllMocks();
+				vi.clearAllMocks();
 				// Spy on the dynamicCredentialProxy's storeOAuthTokenDataIfNeeded method
-				storeOAuthTokenDataSpy = jest
+				storeOAuthTokenDataSpy = vi
 					.spyOn(dynamicCredentialProxy, 'storeOAuthTokenDataIfNeeded')
 					.mockResolvedValue(undefined);
 			});
@@ -654,8 +655,8 @@ describe('CredentialsHelper', () => {
 				credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
 
 				const resolverProvider = {
-					resolveIfNeeded: jest.fn(),
-					getSystemResolverId: jest.fn().mockReturnValue('system-resolver'),
+					resolveIfNeeded: vi.fn(),
+					getSystemResolverId: vi.fn().mockReturnValue('system-resolver'),
 				};
 				dynamicCredentialProxy.setResolverProvider(resolverProvider);
 
@@ -795,7 +796,7 @@ describe('CredentialsHelper', () => {
 
 	describe('getDecrypted - AI Gateway managed credentials', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should pass workflowId and projectId for owner resolution when userId is absent', async () => {
@@ -956,7 +957,7 @@ describe('CredentialsHelper', () => {
 		} as CredentialsEntity;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntityForLicense);
 			secretsProviderRepository.findAllAccessibleProviderKeysByCredentialId.mockResolvedValue([]);
 			mockAdditionalDataForLicense.externalSecretProviderKeysAccessibleByCredential = undefined;
@@ -1008,8 +1009,8 @@ describe('CredentialsHelper', () => {
 
 	describe('getDecrypted - credential resolution integration', () => {
 		const mockCredentialResolutionProvider = {
-			resolveIfNeeded: jest.fn(),
-			getSystemResolverId: jest.fn(),
+			resolveIfNeeded: vi.fn(),
+			getSystemResolverId: vi.fn(),
 		};
 
 		const mockAdditionalData = {
@@ -1041,7 +1042,7 @@ describe('CredentialsHelper', () => {
 		} as CredentialsEntity;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
 			// Clear the provider between tests to ensure clean state
 			dynamicCredentialProxy.setResolverProvider(undefined as any);
@@ -1514,7 +1515,7 @@ describe('CredentialsHelper', () => {
 		} as any;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			dynamicCredentialProxy.setResolverProvider(undefined as any);
 
 			credentialsRepository.findOneByOrFail.mockImplementation(async (query: any) => {
@@ -1722,11 +1723,11 @@ describe('CredentialsHelper', () => {
 		};
 
 		const helpers = mock<IHttpRequestHelper>();
-		let updateSpy: jest.SpyInstance;
+		let updateSpy: MockInstance;
 		let credentials: ICredentialDataDecryptedObject;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			mockNodesAndCredentials.getCredential
 				.calledWith('salesforceJwtApi')
 				.mockReturnValue({ type: salesforceJwt, sourcePath: '' });
@@ -1741,7 +1742,7 @@ describe('CredentialsHelper', () => {
 			// Stub persistence so the test does not touch the DB. The returned token is
 			// what the request helper merges back into the in-memory credentials for the
 			// next request (see httpRequestWithAuthentication).
-			updateSpy = jest.spyOn(credentialsHelper, 'updateCredentials').mockResolvedValue();
+			updateSpy = vi.spyOn(credentialsHelper, 'updateCredentials').mockResolvedValue();
 
 			credentials = {
 				accessToken: '',

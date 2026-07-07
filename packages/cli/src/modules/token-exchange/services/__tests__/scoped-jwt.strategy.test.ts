@@ -1,7 +1,8 @@
 import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
 import { ALL_API_KEY_SCOPES, type Scope as ScopeType } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { JwtService } from '@/services/jwt.service';
 
@@ -47,7 +48,7 @@ function makeBearerReq(token: string): AuthenticatedRequest {
 
 describe('ScopedJwtStrategy', () => {
 	let strategy: ScopedJwtStrategy;
-	let userRepository: jest.Mocked<UserRepository>;
+	let userRepository: Mocked<UserRepository>;
 
 	beforeEach(() => {
 		userRepository = mock<UserRepository>();

@@ -7,16 +7,15 @@ import {
 	type WorkflowEntity,
 	type WorkflowTagMapping,
 } from '@n8n/db';
-import type { DataTable } from '@/modules/data-table/data-table.entity';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere } from '@n8n/typeorm';
 
-import { SourceControlContext } from './types/source-control-context';
-import { SourceControlContextFactory } from './source-control-context.factory';
-
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import type { DataTable } from '@/modules/data-table/data-table.entity';
+
+import { SourceControlContextFactory } from './source-control-context.factory';
+import { SourceControlContext } from './types/source-control-context';
 
 @Service()
 export class SourceControlScopedService {
