@@ -273,7 +273,12 @@ export class Server extends AbstractServer {
 				Container.get(CredentialsOverwrites).getOverwriteEndpointMiddleware();
 
 			if (overwriteEndpointMiddleware) {
-				this.app.use(`/${this.endpointPresetCredentials}`, overwriteEndpointMiddleware);
+				// Mount the guard on the same resolved path as the handler below, so it
+				// still runs when n8n is hosted under N8N_BASE_PATH.
+				this.app.use(
+					pathResolvingService.resolveEndpoint(this.endpointPresetCredentials),
+					overwriteEndpointMiddleware,
+				);
 			}
 
 			const authenticationEnforced = overwriteEndpointMiddleware !== null;
