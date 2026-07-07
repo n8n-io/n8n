@@ -12,7 +12,12 @@ interface ResolvedTextOptions {
 }
 
 function getTextOptions(parameters: Record<string, unknown>): ResolvedTextOptions | undefined {
-	const textFormat = parameters.textFormat;
+	// The Response operation nests its format config under the `options`
+	// collection (`parameters.options.textFormat` — this is where built
+	// workflows carry it); the top level is checked too as a defensive
+	// fallback for future param layouts.
+	const optionsParam = isRecord(parameters.options) ? parameters.options : undefined;
+	const textFormat = optionsParam?.textFormat ?? parameters.textFormat;
 	if (!isRecord(textFormat)) return undefined;
 	const raw = textFormat.textOptions;
 	if (isRecord(raw)) return { options: raw, storedAsArray: false };

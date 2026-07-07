@@ -24,13 +24,16 @@ function workflow(
 	};
 }
 
+/** Real built-workflow shape: the Response operation nests textFormat under `options`. */
 function jsonSchemaParams(schema: unknown, textOptionsShape: 'object' | 'array' = 'object') {
 	const textOptions = { type: 'json_schema', name: 'my_schema', schema };
 	return {
 		resource: 'text',
 		operation: 'response',
-		textFormat: {
-			textOptions: textOptionsShape === 'object' ? textOptions : [textOptions],
+		options: {
+			textFormat: {
+				textOptions: textOptionsShape === 'object' ? textOptions : [textOptions],
+			},
 		},
 	};
 }
@@ -104,5 +107,23 @@ describe('detectUnparseableOpenAiSchema', () => {
 	it('ignores an empty or absent schema value', () => {
 		expect(codes(workflow(jsonSchemaParams('   ')))).toEqual([]);
 		expect(codes(workflow(jsonSchemaParams(undefined)))).toEqual([]);
+	});
+
+	it('also inspects a top-level textFormat (defensive fallback)', () => {
+		const topLevel = {
+			resource: 'text',
+			operation: 'response',
+			textFormat: { textOptions: { type: 'json_schema', name: 's', schema: '{ broken' } },
+		};
+		expect(codes(workflow(topLevel))).toEqual(['OPENAI_STRUCTURED_OUTPUT_SCHEMA_INVALID']);
+	});
+
+	it('ignores non-json_schema formats under options.textFormat too', () => {
+		const textParams = {
+			resource: 'text',
+			operation: 'response',
+			options: { textFormat: { textOptions: { type: 'text' } } },
+		};
+		expect(codes(workflow(textParams))).toEqual([]);
 	});
 });
