@@ -1028,6 +1028,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					:connected-account-name="usersStore.currentUser?.email ?? undefined"
 					:can-modify="canEditPrivateCredential(type.name)"
 					:can-connect="canConnectPrivateCredential(type.name)"
+					:readonly="readonly"
 					data-test-id="node-credential-private-row"
 					@connect="onConnectFromRow(type.name)"
 					@modify="editCredential(type.name)"

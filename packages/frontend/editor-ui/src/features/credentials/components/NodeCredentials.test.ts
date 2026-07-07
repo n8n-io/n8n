@@ -1773,6 +1773,32 @@ describe('NodeCredentials', () => {
 			expect(screen.getByTestId('node-credential-private-connect')).toBeDisabled();
 		});
 
+		it('disables the Connect button in readonly (execution view) mode', async () => {
+			credentialsStore.state.credentials = {
+				'private-cred-id': { ...privateCredential, connectedByMe: false },
+			};
+			renderComponent({
+				props: { node: notionNode, overrideCredType: 'openAiApi', readonly: true },
+			});
+
+			expect(screen.getByTestId('node-credential-private-connect')).toBeDisabled();
+		});
+
+		it('disables the Connected actions dropdown in readonly (execution view) mode', async () => {
+			credentialsStore.state.credentials = {
+				'private-cred-id': { ...privateCredential, connectedByMe: true },
+			};
+			renderComponent({
+				props: { node: notionNode, overrideCredType: 'openAiApi', readonly: true },
+			});
+
+			const dropdown = screen.getByTestId('node-credential-private-connected-actions');
+			await userEvent.click(dropdown);
+
+			// The connected/disconnect actions menu must not open while readonly
+			expect(screen.queryByText('Disconnect')).not.toBeInTheDocument();
+		});
+
 		it('clicking the Connect button runs the OAuth flow without opening the edit modal', async () => {
 			credentialsStore.state.credentials = {
 				'private-cred-id': { ...privateCredential, connectedByMe: false },
