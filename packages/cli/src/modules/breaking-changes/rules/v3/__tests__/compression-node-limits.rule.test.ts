@@ -34,6 +34,16 @@ describe('CompressionNodeLimitsRule', () => {
 			expect(result.instanceIssues[0].title).toContain('ZIP entries');
 		});
 
+		it('should report only the unset size limit', async () => {
+			process.env.N8N_COMPRESSION_NODE_MAX_ZIP_ENTRIES = '5000';
+
+			const result = await rule.detect();
+
+			expect(result.isAffected).toBe(true);
+			expect(result.instanceIssues).toHaveLength(1);
+			expect(result.instanceIssues[0].title).toContain('decompressed size');
+		});
+
 		it('should not be affected when both variables are set', async () => {
 			process.env.N8N_COMPRESSION_NODE_MAX_DECOMPRESSED_SIZE_BYTES = '2147483648';
 			process.env.N8N_COMPRESSION_NODE_MAX_ZIP_ENTRIES = '5000';
