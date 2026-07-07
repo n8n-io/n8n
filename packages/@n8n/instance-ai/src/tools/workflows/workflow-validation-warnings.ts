@@ -21,7 +21,12 @@ export function partitionWarnings(warnings: ValidationWarning[]): {
 	errors: ValidationWarning[];
 	informational: ValidationWarning[];
 } {
-	const informationalCodes = new Set(['MISSING_TRIGGER', 'DISCONNECTED_NODE']);
+	// auto_imported_sdk_symbols marks a recovered build; it must not fail validation.
+	const informationalCodes = new Set([
+		'MISSING_TRIGGER',
+		'DISCONNECTED_NODE',
+		'auto_imported_sdk_symbols',
+	]);
 
 	const errors: ValidationWarning[] = [];
 	const informational: ValidationWarning[] = [];

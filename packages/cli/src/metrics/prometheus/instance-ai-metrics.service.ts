@@ -77,9 +77,12 @@ export class PrometheusInstanceAiMetricsService implements PrometheusMetricsColl
 		this.eventService.on(
 			'instance-ai-run-finished',
 			({ status, durationMs, model, toolCalls, toolErrors, usage }) => {
-				runsTotal.inc({ status, model }, 1);
-				if (durationMs !== undefined) {
-					runDurationHistogram.observe({ status }, durationMs / 1000);
+				// Suspended segments count usage only; the terminal event counts the run.
+				if (status !== 'suspended') {
+					runsTotal.inc({ status, model }, 1);
+					if (durationMs !== undefined) {
+						runDurationHistogram.observe({ status }, durationMs / 1000);
+					}
 				}
 				if (toolCalls > 0) toolCallsTotal.inc(toolCalls);
 				if (toolErrors > 0) toolErrorsTotal.inc(toolErrors);

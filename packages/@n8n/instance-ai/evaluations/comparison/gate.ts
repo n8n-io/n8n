@@ -9,9 +9,10 @@
 //
 // A "unit" is an execution scenario or an evaluated build expectation (the
 // same units the pass rate is computed over). Always-failing scenarios are
-// deleted from the curated tier rather than flagged; build expectations with
-// no verdict (evaluatedCount 0) are excluded automatically since there's
-// nothing to judge.
+// deleted from the curated tier rather than flagged; units with no verdict
+// (evaluatedCount 0 — judge never returned for expectations, verifier
+// exhausted for scenarios) are excluded automatically since there's nothing
+// to judge.
 // ---------------------------------------------------------------------------
 
 import type { MultiRunEvaluation, WorkflowTestCase } from '../types';
@@ -98,9 +99,12 @@ export function evaluateGate(
 		const prefix = fileSlug ?? 'unknown';
 
 		for (const sa of tc.executionScenarios) {
-			const total = sa.runs.length;
+			// Verifier-incomplete runs carry no verdict — out of the denominator and
+			// the failure tally, mirroring build expectations.
+			const evaluated = sa.runs.filter((r) => !r.incomplete);
+			const total = evaluated.length;
 			const failureCategories: Record<string, number> = {};
-			for (const r of sa.runs) {
+			for (const r of evaluated) {
 				if (!r.success) {
 					const cat = r.failureCategory ?? 'uncategorized';
 					failureCategories[cat] = (failureCategories[cat] ?? 0) + 1;
@@ -115,7 +119,9 @@ export function evaluateGate(
 				green: unitGreen(sa.passCount, total, criterion),
 				...(Object.keys(failureCategories).length > 0 ? { failureCategories } : {}),
 			};
-			gated.push(unit);
+			// No verdict in any run → nothing to gate on; surface for visibility.
+			if (total === 0) excluded.push(unit);
+			else gated.push(unit);
 		}
 
 		for (const ea of tc.buildExpectations) {
@@ -139,10 +145,12 @@ export function evaluateGate(
 	const aggregate = { passed, total, rate: total > 0 ? passed / total : 0 };
 
 	const failing = gated.filter((u) => !u.green);
+	// A gate with zero measured units (e.g. verifier outage excluded everything)
+	// must not read as green — there is nothing the verdict could stand on.
 	const green =
 		criterion.kind === 'minAggregatePassRate'
 			? gated.length > 0 && aggregate.rate >= criterion.minRate
-			: failing.length === 0;
+			: gated.length > 0 && failing.length === 0;
 
 	return {
 		criterion,
