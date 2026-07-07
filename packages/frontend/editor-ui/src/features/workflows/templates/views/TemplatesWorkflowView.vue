@@ -12,7 +12,7 @@ import {
 	ensurePersonalProjectId,
 	useInstanceAiHandoff,
 } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
-import { useInstanceAiSettingsStore } from '@/features/ai/instanceAi/instanceAiSettings.store';
+import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import WorkflowPreviewHost from '@/app/components/WorkflowPreviewHost.vue';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import TemplatesView from './TemplatesView.vue';
@@ -31,7 +31,7 @@ const telemetry = useTelemetry();
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
 const instanceAiHandoff = useInstanceAiHandoff();
-const instanceAiSettings = useInstanceAiSettingsStore();
+const instanceAiAvailable = useInstanceAiAvailable();
 
 const loading = ref(true);
 const showPreview = ref(true);
@@ -60,7 +60,7 @@ const openTemplateSetup = async (id: string, e: PointerEvent) => {
 };
 
 const startWithAi = async () => {
-	if (!template.value) return;
+	if (!template.value || !instanceAiAvailable.value) return;
 	const projectId = await ensurePersonalProjectId();
 	if (!projectId) return;
 
@@ -204,7 +204,7 @@ const previewDocumentId = computed(() =>
 										@click.stop="openTemplateSetup(templateId, $event)"
 									/>
 									<N8nButton
-										v-if="!instanceAiSettings.isInstanceAiDisabled"
+										v-if="instanceAiAvailable"
 										data-test-id="start-with-ai-button"
 										:class="$style.startWithAi"
 										:label="i18n.baseText('template.buttons.startWithAi')"

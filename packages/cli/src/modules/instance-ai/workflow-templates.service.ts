@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp, type HttpRequestClient } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { OperationalError } from 'n8n-workflow';
 
 export const TEMPLATE_REQUEST_TIMEOUT_MS = 5000;
 
@@ -15,10 +15,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 @Service()
 export class WorkflowTemplatesService {
+	private readonly http: HttpRequestClient;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
-	) {}
+		outboundHttp: OutboundHttp,
+	) {
+		this.http = outboundHttp.requests({
+			ssrf: 'disabled', // Fixed, n8n-controlled templates host.
+			timeout: TEMPLATE_REQUEST_TIMEOUT_MS,
+		});
+	}
 
 	async getTemplate(templateId: string): Promise<WorkflowTemplateResult> {
 		const { enabled, host } = this.globalConfig.templates;
@@ -28,14 +36,12 @@ export class WorkflowTemplatesService {
 
 		const url = `${host.replace(/\/?$/, '/')}templates/workflows/${encodeURIComponent(templateId)}`;
 		try {
-			const response = await fetch(url, {
+			const body = await this.http.request<{ workflow?: unknown }>({
+				url,
+				method: 'GET',
 				headers: { Accept: 'application/json' },
-				signal: AbortSignal.timeout(TEMPLATE_REQUEST_TIMEOUT_MS),
+				json: true,
 			});
-			if (!response.ok) {
-				throw new OperationalError(`Template request failed with status ${response.status}`);
-			}
-			const body: unknown = await response.json();
 			const workflow = isRecord(body) ? body.workflow : undefined;
 			if (!isRecord(workflow)) {
 				this.logger.warn('Workflow template response missing workflow payload', { templateId });
