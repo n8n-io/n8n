@@ -18,6 +18,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 
@@ -177,10 +178,11 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 
 	// Capabilities beaconed to the website alongside utm_instance, so n8n.io can
 	// offer instance-aware entry points (e.g. "Customize with AI" on templates)
-	// only for instances that support them.
+	// only when this user can actually use them on this instance.
+	const instanceAiAvailable = useInstanceAiAvailable();
 	const instanceFeatures = computed(() => {
 		const features: string[] = [];
-		if (settingsStore.moduleSettings?.['instance-ai']?.enabled === true) {
+		if (instanceAiAvailable.value) {
 			features.push('assistant');
 		}
 		return features;
