@@ -48,6 +48,17 @@ export const INSTANCE_OPTION_LABEL_KEYS: Record<string, BaseTextKey> = {
 	'Manage project roles': 'instanceRoles.option.manageProjectRoles',
 };
 
+/**
+ * Per-resource label overrides. "Manage" is shared across resources, but under
+ * Roles it must read "Manage all roles (instance and project)" to distinguish it
+ * from "Manage project roles".
+ */
+export const INSTANCE_OPTION_LABEL_OVERRIDES: Partial<
+	Record<InstanceResource, Record<string, BaseTextKey>>
+> = {
+	role: { Manage: 'instanceRoles.option.manageAllRoles' },
+};
+
 /** Display order of options within a resource group. */
 export const INSTANCE_OPTION_ORDER: string[] = [
 	'View',
@@ -88,7 +99,8 @@ export const INSTANCE_SCOPE_GROUP_LIST: InstanceScopeGroup[] = INSTANCE_RESOURCE
 			.sort(sortByOrder(INSTANCE_OPTION_ORDER))
 			.map<InstanceScopeOption>((key) => ({
 				key,
-				labelKey: INSTANCE_OPTION_LABEL_KEYS[key],
+				labelKey:
+					INSTANCE_OPTION_LABEL_OVERRIDES[resource]?.[key] ?? INSTANCE_OPTION_LABEL_KEYS[key],
 				scopes: [...optionMap[key]],
 			}));
 		return { resource, labelKey: INSTANCE_RESOURCE_LABEL_KEYS[resource], options };
@@ -195,6 +207,31 @@ export function toggleOption(scopes: readonly string[], optionScopes: readonly s
 		else next.add(scope);
 	}
 	return [...next];
+}
+
+/** Resource groups whose scopes enable privilege escalation, with the warning to show. */
+export const ESCALATION_WARNING_SCOPES: Partial<
+	Record<InstanceResource, { scopes: Scope[]; messageKey: BaseTextKey }>
+> = {
+	user: {
+		scopes: [...GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.user.Manage],
+		messageKey: 'instanceRoles.warning.manageMembers',
+	},
+	role: {
+		// Only full instance-role management ("Manage all roles") enables self-escalation;
+		// managing project roles alone cannot edit the holder's own instance role.
+		scopes: ['role:manage'],
+		messageKey: 'instanceRoles.warning.manageRoles',
+	},
+};
+
+/** Warning i18n key for a resource group given the current scopes, or undefined. */
+export function getEscalationWarningKey(
+	resource: InstanceResource,
+	scopes: readonly string[],
+): BaseTextKey | undefined {
+	const cfg = ESCALATION_WARNING_SCOPES[resource];
+	return cfg?.scopes.some((s) => scopes.includes(s)) ? cfg.messageKey : undefined;
 }
 
 /** Total number of permission options shown in the instance role editor. */
