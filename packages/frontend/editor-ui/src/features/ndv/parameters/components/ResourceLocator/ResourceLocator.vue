@@ -57,7 +57,9 @@ import { completeExpressionSyntax } from '@/app/utils/expressions';
 import { DEBOUNCE_TIME, ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
+import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
 import { DATA_TABLE_NODES } from '@/app/constants/nodeTypes';
+import { useRouter } from 'vue-router';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import FromAiOverrideButton from '../ParameterInputOverrides/FromAiOverrideButton.vue';
 import FromAiOverrideField from '../ParameterInputOverrides/FromAiOverrideField.vue';
@@ -163,6 +165,7 @@ const rootStore = useRootStore();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const dataTableStore = useDataTableStore();
+const router = useRouter();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
@@ -284,7 +287,13 @@ const urlValue = computedAsync(async () => {
 		const id = typeof raw === 'string' ? raw.trim() : '';
 		if (!id || id.includes('{{') || id.includes('}}')) return null;
 		const table = await dataTableStore.fetchDataTableById(id);
-		return table ? `/projects/${table.projectId}/datatables/${table.id}` : null;
+		// Resolve via the router so the link honours the configured base path (N8N_PATH).
+		return table
+			? router.resolve({
+					name: DATA_TABLE_DETAILS,
+					params: { projectId: table.projectId, id: table.id },
+				}).href
+			: null;
 	}
 
 	if (currentMode.value.url) {
