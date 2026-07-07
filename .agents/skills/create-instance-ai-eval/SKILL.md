@@ -237,9 +237,15 @@ nodes get LLM-generated pin data). So:
   state.
 - The strongest scenarios exercise **external-service responses** — that's what
   the harness reproduces most faithfully.
-- **Data tables are never mocked.** Any scenario that reads a stored value and
-  compares (change-detection, dedup, "last seen") is unreliable — see "harness
-  flakiness" below.
+- **Data Table *reads* are pinned to the scenario.** A read op (`get` /
+  `rowExists` / `rowNotExists`) is treated as the scenario's "stored state" and
+  pinned with data derived from your `dataSetup`, so change-detection / dedup /
+  "last seen" scenarios *can* be exercised — describe the stored rows in
+  `dataSetup`. Two caveats: the pinned rows are LLM-generated (steered, not
+  byte-exact — don't assert exact values off them), and *writes/inserts* aren't
+  pinned (they hit the real per-thread table, recreated schema-only with **no
+  rows**), so read-after-write within one run isn't faithful — the read reflects
+  `dataSetup`, not what the run just wrote.
 - Don't assert exact counts that depend on mock generation ("exactly 7 posts").
   Say "fewer than the original 10".
 
@@ -256,12 +262,13 @@ red is harness-caused (per "A red is signal", above):
   ("Sheet with ID __evalMockResource not found", or "Cannot read properties of
   undefined"). Any scenario whose success path runs *through* such a node
   hard-fails before anything downstream executes.
-- **Data tables are never mocked** — reads return empty, so dedup /
-  change-detection / stored-list scenarios (and any "one action per stored row")
-  can't be exercised.
-- **Trigger input can't be forced** — triggers get LLM-generated pin data, so you
-  can't simulate "no new email", "empty inbox", or "no matching rows", and
-  polling / form triggers occasionally fail to load ("workflow not found").
+- **Trigger and Data-Table-read pin data is *LLM-generated*, so not byte-exact.**
+  Both are steered by your `dataSetup` (see the mock-layer section above — you
+  *can* influence what a trigger emits or what a stored-row read returns), but
+  because the values are generated, a scenario that asserts exact values or counts
+  off them is flaky. Assert shape/branch/relative facts, not exact figures. (The
+  residual hard red here: polling / form triggers still occasionally fail to load
+  entirely — "workflow not found".)
 - **Mock response shape** — for a less-common API the LLM-generated response can
   omit the real envelope (e.g. Gemini's top-level `candidates`), crashing a
   downstream parse/format node.
@@ -337,11 +344,14 @@ Two different things — keep them apart:
 - **Robust assertion design (always do this).** The agent's unspecified choices
   vary run to run. Source-agnostic `outcomeExpectations` for an unspecified
   source aren't a concession to flakiness — they're the *correct* assertion.
-- **Harness limitations (surface them, don't hide them).** The mock layer doesn't
-  reliably honour `dataSetup` for **state-bearing reads** (a data-table "previous
-  value"), and other paths hard-fail on a correct build (see "Known harness
-  limitations" above). The fix is to *document*, not to *work around*: note the
-  limitation in `description` and keep a hard-failing scenario out of gated tiers.
+- **Harness limitations (surface them, don't hide them).** Some paths hard-fail
+  on a correct build regardless of `dataSetup` — empty resource-locator fields
+  that crash Sheets/Drive/Calendar nodes, polling triggers failing to load (see
+  "Known harness limitations" above). (State-bearing Data Table *reads* are no
+  longer in this bucket — they're pinned from `dataSetup`; only the write path and
+  exact-value assertions stay unreliable.) The fix is to *document*, not to *work
+  around*: note the limitation in `description` and keep a hard-failing scenario
+  out of gated tiers.
   Only when a scenario flips **non-deterministically** run to run is it genuine
   noise worth removing — a scenario that reliably fails for a documented harness
   reason is a standing record of what the harness can't yet test, and stays.
