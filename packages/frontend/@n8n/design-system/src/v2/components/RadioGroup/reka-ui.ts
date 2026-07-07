@@ -8,13 +8,9 @@
  *   src/v2/components/RadioGroup/ → ../../../node_modules/reka-ui/dist/index.js
  *   (resolves to src/node_modules/…, which does not exist)
  *
- * AcceptableValue is defined inline because vue-docgen follows `export type {
- * … } from 'reka-ui'` re-exports and hits the same broken path. Runtime exports
- * and other types are re-exported here so .vue files in this folder never import
+ * Types are re-exported here so .vue files in this folder never import
  * 'reka-ui' directly.
  */
-export type AcceptableValue = string | number | bigint | Record<string, unknown> | null;
-
 export {
 	injectRadioGroupRootContext,
 	Label,

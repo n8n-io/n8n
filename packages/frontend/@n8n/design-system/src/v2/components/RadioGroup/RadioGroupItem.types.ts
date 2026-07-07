@@ -1,7 +1,9 @@
-import type { AcceptableValue, RadioGroupItemProps as RekaRadioGroupItemProps } from './reka-ui';
+import type { RadioGroupItemProps as RekaRadioGroupItemProps } from './reka-ui';
+
+import type { RadioGroupValue } from './RadioGroup.types';
 
 export type RadioGroupItemProps = Omit<RekaRadioGroupItemProps, 'value'> & {
-	value: AcceptableValue;
+	value: RadioGroupValue;
 	label?: string;
 	description?: string;
 };
