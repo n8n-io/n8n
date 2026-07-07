@@ -29,54 +29,11 @@ export const sharedVersionDescription: Pick<
 	outputs: [NodeConnectionTypes.Main],
 };
 
-/** Every property after `agentId` is identical across versions. */
+/**
+ * Every property after the version-specific `agentId` picker and prompt input
+ * (v1: `message`; v2: `promptType`/`text`) is identical across versions.
+ */
 export const commonProperties: INodeProperties[] = [
-	// Prompt source selector, mirroring the legacy `@n8n/n8n-nodes-langchain.agent`
-	// node (promptType + text). Defined inline to avoid a cross-package dependency
-	// on nodes-langchain.
-	{
-		displayName: 'Source for Prompt (User Message)',
-		name: 'promptType',
-		type: 'options',
-		options: [
-			{
-				name: 'Connected Chat Trigger Node',
-				value: 'auto',
-				description:
-					"Looks for an input field called 'chatInput' that is coming from a directly connected Chat Trigger",
-			},
-			{
-				name: 'Define Below',
-				value: 'define',
-				description: 'Use an expression to reference data in previous nodes or enter static text',
-			},
-		],
-		default: 'auto',
-	},
-	{
-		displayName: 'Prompt (User Message)',
-		name: 'text',
-		type: 'string',
-		required: true,
-		default: '={{ $json.chatInput }}',
-		typeOptions: {
-			rows: 2,
-		},
-		disabledOptions: { show: { promptType: ['auto'] } },
-		displayOptions: { show: { promptType: ['auto'] } },
-	},
-	{
-		displayName: 'Prompt (User Message)',
-		name: 'text',
-		type: 'string',
-		required: true,
-		default: '',
-		placeholder: 'e.g. Hello, how can you help me?',
-		typeOptions: {
-			rows: 2,
-		},
-		displayOptions: { show: { promptType: ['define'] } },
-	},
 	{
 		displayName: 'Require Specific Output Format',
 		name: 'useStructuredOutput',
@@ -238,8 +195,8 @@ export function getStructuredOutputSchema(
 
 /**
  * Expressions can resolve to any JSON value (object, number, …); only string
- * values are usable prompts. Non-strings fall through to the next fallback and
- * ultimately to the "Prompt cannot be empty" error instead of crashing `.trim()`.
+ * values are usable prompts. Non-strings resolve to the "Prompt cannot be
+ * empty" error instead of crashing `.trim()`.
  */
 function asPromptString(value: unknown): string {
 	return typeof value === 'string' ? value : '';
@@ -266,21 +223,19 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				value: string;
 			};
 			const agentId = agentIdRlc.value;
-			// Resolve the prompt the same way the legacy AI Agent node does. `auto`
-			// reads `chatInput` from a connected Chat Trigger (and nothing else);
-			// `define` uses the `text` param, honoring a legacy `message` value
-			// from pre-existing (v1) workflows as a fallback.
-			const promptType = this.getNodeParameter('promptType', i, 'define') as string;
+			// The prompt input is version-specific: v1 has a single `message`
+			// param; v2 mirrors the legacy AI Agent node's prompt source
+			// (`auto` reads `chatInput` from a connected Chat Trigger,
+			// `define` uses the `text` param).
 			let prompt = '';
-			if (promptType === 'auto') {
-				prompt = asPromptString(this.evaluateExpression('{{ $json["chatInput"] }}', i));
+			if (this.getNode().typeVersion >= 2) {
+				const promptType = this.getNodeParameter('promptType', i, 'auto') as string;
+				prompt =
+					promptType === 'auto'
+						? asPromptString(this.evaluateExpression('{{ $json["chatInput"] }}', i))
+						: asPromptString(this.getNodeParameter('text', i, ''));
 			} else {
-				if (!prompt) {
-					prompt = asPromptString(this.getNodeParameter('text', i, ''));
-				}
-				if (!prompt) {
-					prompt = asPromptString(this.getNodeParameter('message', i, ''));
-				}
+				prompt = asPromptString(this.getNodeParameter('message', i, ''));
 			}
 
 			const advanced = this.getNodeParameter('advanced', i, {}) as {

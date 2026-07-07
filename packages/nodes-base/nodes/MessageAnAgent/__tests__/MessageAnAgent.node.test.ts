@@ -188,17 +188,25 @@ describe('MessageAnAgent Node', () => {
 			expect(executeFunctions.executeAgent).not.toHaveBeenCalled();
 		});
 
-		it('honors a legacy "message" value from a pre-existing workflow', async () => {
+		it('reads the message param on a v1 node (prompt input is version-specific)', async () => {
+			executeFunctions.getNode.mockReturnValue({
+				id: 'test-node-id',
+				name: 'Message an Agent',
+				type: 'n8n-nodes-base.messageAnAgent',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			});
 			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
-			// New prompt fields empty, but the node still has a stored legacy `message`.
-			mockParams({ promptType: 'define', text: '', message: 'legacy message' });
+			mockParams({ message: 'v1 message' });
 			executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
 
-			await node.execute.call(executeFunctions);
+			const v1 = new MessageAnAgentV1(baseDescription);
+			await v1.execute.call(executeFunctions);
 
 			expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
 				expect.objectContaining({ agentId: 'agent-1' }),
-				'legacy message',
+				'v1 message',
 				'exec-123',
 				0,
 			);
@@ -420,7 +428,8 @@ describe('MessageAnAgent Node', () => {
 		executeFunctions.getNodeParameter.mockImplementation(
 			(param: string, _itemIndex?: number, fallback?: unknown) => {
 				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
-				if (param === 'message') return 'Summarize all items';
+				if (param === 'promptType') return 'define';
+				if (param === 'text') return 'Summarize all items';
 				if (param === 'advanced') return fallback ?? {};
 				if (param === 'advanced.invokeMode') return 'allItems';
 				if (param === 'allowOtherNodesData') return false;
@@ -478,7 +487,8 @@ describe('MessageAnAgent Node', () => {
 		executeFunctions.getNodeParameter.mockImplementation(
 			(param: string, _itemIndex?: number, fallback?: unknown) => {
 				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
-				if (param === 'message') return 'Hello';
+				if (param === 'promptType') return 'define';
+				if (param === 'text') return 'Hello';
 				if (param === 'advanced') return { allowOtherNodesData: true };
 				if (param === 'advanced.invokeMode') return 'perItem';
 				return fallback as NodeParameterValueType;
@@ -506,7 +516,8 @@ describe('MessageAnAgent Node', () => {
 		executeFunctions.getNodeParameter.mockImplementation(
 			(param: string, _itemIndex?: number, fallback?: unknown) => {
 				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
-				if (param === 'message') return 'Summarize all items';
+				if (param === 'promptType') return 'define';
+				if (param === 'text') return 'Summarize all items';
 				if (param === 'advanced') return fallback ?? {};
 				if (param === 'advanced.invokeMode') return 'allItems';
 				return fallback as NodeParameterValueType;
@@ -546,15 +557,15 @@ describe('MessageAnAgent versioning', () => {
 		expect(agentId?.type).toBe('agentSelector');
 	});
 
-	it('exposes the promptType source selector and drops the legacy message field on both versions', () => {
-		// `commonProperties` is shared by V1 and V2, so the prompt-source change
-		// applies to both. Safe because the whole node is `hidden` and unreleased.
-		for (const NodeVersion of [MessageAnAgentV1, MessageAnAgentV2]) {
-			const instance = new NodeVersion(baseDescription);
-			const names = instance.description.properties.map((p) => p.name);
-			expect(names).toContain('promptType');
-			expect(names).toContain('text');
-			expect(names).not.toContain('message');
-		}
+	it('keeps the message field on v1 and the promptType source selector on v2', () => {
+		const v1Names = new MessageAnAgentV1(baseDescription).description.properties.map((p) => p.name);
+		expect(v1Names).toContain('message');
+		expect(v1Names).not.toContain('promptType');
+		expect(v1Names).not.toContain('text');
+
+		const v2Names = new MessageAnAgentV2(baseDescription).description.properties.map((p) => p.name);
+		expect(v2Names).toContain('promptType');
+		expect(v2Names).toContain('text');
+		expect(v2Names).not.toContain('message');
 	});
 });

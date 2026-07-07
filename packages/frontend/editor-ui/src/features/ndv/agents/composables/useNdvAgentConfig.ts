@@ -278,13 +278,20 @@ export function useNdvAgentConfig(
 		[agentId, projectId] as const,
 		async ([id, pId], previous) => {
 			const [previousId] = previous ?? [];
-			if (previousId) await flush().catch(() => {});
-			if (id && pId && isAgentNode.value) {
-				await load(pId, id);
-			} else if (!id) {
+			// Drop the previous working copy synchronously, BEFORE the async load:
+			// keeping it would leave the old agent's config on screen and editable
+			// while the new agent's fetch is in flight, and an edit in that window
+			// would autosave the old agent's content onto the new one.
+			if (previous) {
 				localConfig.value = null;
 				agent.value = null;
 				connectedTriggers.value = [];
+			}
+
+			if (previousId) await flush().catch(() => {});
+
+			if (id && pId && isAgentNode.value) {
+				await load(pId, id);
 			}
 			// `id && !pId`: project scope not resolved yet — skip the load instead
 			// of latching a 404 terminal state; the watcher refires once it resolves.

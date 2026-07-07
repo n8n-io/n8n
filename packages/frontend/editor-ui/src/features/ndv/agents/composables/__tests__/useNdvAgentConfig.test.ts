@@ -232,6 +232,40 @@ describe('useNdvAgentConfig', () => {
 		expect(configCallOrder).toEqual(['agent-A', 'agent-B']);
 	});
 
+	it('drops the working copy during an agent switch so mid-load edits cannot write A onto B', async () => {
+		let resolveB: (value: ReturnType<typeof makeConfig>) => void = () => {};
+		getAgentConfigMock.mockImplementation(async (_ctx, _pid, aid: string) => {
+			if (aid === 'agent-B') {
+				return await new Promise<ReturnType<typeof makeConfig>>((resolve) => (resolveB = resolve));
+			}
+			return makeConfig({ instructions: `config-${aid}` });
+		});
+		getAgentMock.mockImplementation(async (_ctx, _pid, aid: string) =>
+			makeAgent({ id: aid, name: `agent-${aid}` }),
+		);
+
+		const node = ref<INodeUi | null>(makeAgentNode('agent-A'));
+		const { api } = mountComposable(node);
+		await flushPromises();
+		expect(api.localConfig.value?.instructions).toBe('config-agent-A');
+
+		// Switch to B; its config fetch stays in flight.
+		node.value = makeAgentNode('agent-B');
+		await flushPromises();
+
+		// The old working copy is dropped for the duration of the load — an edit
+		// in this window must not autosave agent A's content onto agent B.
+		expect(api.localConfig.value).toBeNull();
+		api.scheduleConfigUpdate({ instructions: 'typed during load' });
+		await vi.advanceTimersByTimeAsync(1000);
+		await flushPromises();
+		expect(updateAgentConfigMock).not.toHaveBeenCalled();
+
+		resolveB(makeConfig({ instructions: 'config-agent-B' }));
+		await flushPromises();
+		expect(api.localConfig.value?.instructions).toBe('config-agent-B');
+	});
+
 	it('does not schedule a save when canUpdate is false', async () => {
 		canUpdateRef.value = false;
 		const node = ref<INodeUi | null>(makeAgentNode('agent-1'));
