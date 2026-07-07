@@ -10,6 +10,7 @@ import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/app/event-bus';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
+import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -111,6 +112,11 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 	if (!belongsToThisDocument) {
 		return;
 	}
+
+	// Reflect the finished execution in the executions list right away instead
+	// of waiting for its next poll tick. Not awaited — must not block the
+	// sequential push event queue.
+	void useExecutionsStore().refreshExecutionsListNow(data.workflowId);
 
 	const telemetry = useTelemetry();
 

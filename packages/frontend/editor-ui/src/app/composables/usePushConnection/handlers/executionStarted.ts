@@ -1,4 +1,5 @@
 import type { ExecutionStarted } from '@n8n/api-types/push/execution';
+import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
@@ -27,6 +28,11 @@ export async function executionStarted(
 	if (!isIframe && data.workflowId !== workflowExecutionStateStore.workflowId) {
 		return;
 	}
+
+	// Reflect the new execution in the executions list right away instead of
+	// waiting for its next poll tick. Not awaited — must not block the
+	// sequential push event queue.
+	void useExecutionsStore().refreshExecutionsListNow(data.workflowId);
 
 	// In non-iframe context, undefined means "not tracking executions" → skip.
 	// In iframe context, executionFinished resets activeExecutionId to undefined,

@@ -3,9 +3,17 @@ import { setActivePinia, createPinia } from 'pinia';
 
 import type { ExecutionSummaryWithScopes } from './executions.types';
 import { useExecutionsStore } from './executions.store';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
 
 vi.mock('@n8n/rest-api-client', () => ({
 	makeRestApiRequest: vi.fn(),
+}));
+
+// The projects store (used by executionsFilters) reads the current route.
+vi.mock('vue-router', () => ({
+	useRoute: vi.fn().mockReturnValue({ params: {}, query: {} }),
+	useRouter: vi.fn(),
+	RouterLink: vi.fn(),
 }));
 
 describe('executions.store', () => {
@@ -72,6 +80,67 @@ describe('executions.store', () => {
 			await executionsStore.deleteExecutions({ deleteBefore: new Date() });
 
 			expect(executionsStore.executions).toEqual([]);
+		});
+	});
+
+	describe('refreshExecutionsListNow', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+			vi.mocked(makeRestApiRequest).mockClear();
+			vi.mocked(makeRestApiRequest).mockResolvedValue({
+				count: 0,
+				results: [],
+				estimated: false,
+				concurrentExecutionsCount: 0,
+			});
+		});
+
+		afterEach(() => {
+			executionsStore.stopAutoRefreshInterval();
+			vi.useRealTimers();
+			vi.mocked(makeRestApiRequest).mockReset();
+		});
+
+		it('is a no-op when no poller is armed', async () => {
+			await executionsStore.refreshExecutionsListNow('wf-1');
+
+			expect(makeRestApiRequest).not.toHaveBeenCalled();
+		});
+
+		it('is a no-op when auto-refresh is disabled', async () => {
+			await executionsStore.startAutoRefreshInterval();
+			executionsStore.autoRefresh = false;
+
+			await executionsStore.refreshExecutionsListNow('wf-1');
+
+			expect(makeRestApiRequest).not.toHaveBeenCalled();
+		});
+
+		it('fetches immediately when a global poller is armed, without the trigger workflow filter', async () => {
+			await executionsStore.startAutoRefreshInterval();
+
+			await executionsStore.refreshExecutionsListNow('wf-1');
+
+			expect(makeRestApiRequest).toHaveBeenCalledTimes(1);
+			const params = vi.mocked(makeRestApiRequest).mock.calls[0][3] as {
+				filter?: { workflowId?: string };
+			};
+			expect(params.filter?.workflowId).toBeUndefined();
+		});
+
+		it('uses the poller workflow scope and ignores events for other workflows', async () => {
+			await executionsStore.startAutoRefreshInterval('wf-1');
+
+			await executionsStore.refreshExecutionsListNow('wf-2');
+			expect(makeRestApiRequest).not.toHaveBeenCalled();
+
+			await executionsStore.refreshExecutionsListNow('wf-1');
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				expect.anything(),
+				'GET',
+				'/executions',
+				expect.objectContaining({ filter: expect.objectContaining({ workflowId: 'wf-1' }) }),
+			);
 		});
 	});
 

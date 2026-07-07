@@ -55,6 +55,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	const autoRefresh = ref(true);
 	const autoRefreshTimeout = ref<NodeJS.Timeout | null>(null);
 	const autoRefreshDelay = ref(4 * 1000); // Refresh data every 4 secs
+	const autoRefreshWorkflowId = ref<string | undefined>();
 
 	const executionsById = ref<Record<string, ExecutionSummaryWithScopes>>({});
 	const executionsCount = ref(0);
@@ -221,6 +222,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	async function startAutoRefreshInterval(workflowId?: string) {
 		stopAutoRefreshInterval();
+		autoRefreshWorkflowId.value = workflowId;
 		await loadAutoRefresh(workflowId);
 	}
 
@@ -228,6 +230,37 @@ export const useExecutionsStore = defineStore('executions', () => {
 		if (autoRefreshTimeout.value) {
 			clearTimeout(autoRefreshTimeout.value);
 			autoRefreshTimeout.value = null;
+		}
+	}
+
+	let pushRefreshInFlight = false;
+
+	/**
+	 * Refreshes the executions list immediately in response to an execution
+	 * push event instead of waiting for the next auto-refresh tick. No-op
+	 * unless a view has an armed poller. Reuses the poller's own workflow
+	 * scope (never the trigger's) so a push can't narrow a global view's
+	 * filter, and leaves the poll timer untouched.
+	 */
+	async function refreshExecutionsListNow(triggerWorkflowId?: string) {
+		if (!autoRefresh.value || autoRefreshTimeout.value === null) return;
+		if (
+			autoRefreshWorkflowId.value &&
+			triggerWorkflowId &&
+			autoRefreshWorkflowId.value !== triggerWorkflowId
+		) {
+			return;
+		}
+		if (pushRefreshInFlight) return;
+
+		pushRefreshInFlight = true;
+		try {
+			await fetchExecutions({
+				...executionsFilters.value,
+				...(autoRefreshWorkflowId.value ? { workflowId: autoRefreshWorkflowId.value } : {}),
+			});
+		} finally {
+			pushRefreshInFlight = false;
 		}
 	}
 
@@ -361,6 +394,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		autoRefreshTimeout,
 		startAutoRefreshInterval,
 		stopAutoRefreshInterval,
+		refreshExecutionsListNow,
 		initialize,
 		filters,
 		setFilters,
