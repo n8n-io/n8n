@@ -484,6 +484,10 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.inlineExpressionEditor.selectPrevItem();
 	}
 
+	async moveMouseAwayFromRunData() {
+		await this.inlineExpressionEditor.moveMouseAway();
+	}
+
 	async openExpressionEditorModal(parameterName: string) {
 		await this.inlineExpressionEditor.openModal(parameterName);
 	}
