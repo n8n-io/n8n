@@ -402,6 +402,46 @@ describe('parseFromExpression', () => {
 	it('returns null for other types if value is undefined', () => {
 		expect(parseFromExpression({}, undefined, 'json', null, [])).toBeNull();
 	});
+
+	// Repro for ADO-5517 (GH #33046): the HTTP Request node's "JSON Body" field is
+	// a `json` parameter. Toggling it into Expression mode and back to Fixed mode must
+	// drop n8n's internal "=" expression marker, otherwise the stored value stays
+	// `={...}` and later fails JSON.parse() with "not valid JSON". This is hit when the
+	// expression cannot be evaluated (e.g. it contains template variables and there is
+	// no input data), so the evaluated value is undefined and the raw value must be kept
+	// verbatim minus the leading "=".
+	it('removes leading "=" from json parameter when switching back to fixed mode', () => {
+		const stored = '={"msgtype": "markdown", "markdown": {"content": "test"}}';
+		expect(parseFromExpression(stored, undefined, 'json', null, [])).toBe(
+			'{"msgtype": "markdown", "markdown": {"content": "test"}}',
+		);
+	});
+
+	it('strips only the leading "=" run from a json parameter, leaving inner "=" intact', () => {
+		// Anchored, greedy strip: every leading "=" goes, but an "=" inside the JSON
+		// (e.g. inside a query-string value) must be preserved.
+		expect(parseFromExpression('=={"url": "a=b"}', undefined, 'json', null, [])).toBe(
+			'{"url": "a=b"}',
+		);
+	});
+
+	it('leaves a json parameter with no leading "=" untouched even if it contains "="', () => {
+		// A fixed-mode value that was never an expression must be returned verbatim;
+		// the strip is anchored to the start, so an inner "=" is not touched.
+		expect(parseFromExpression('{"url": "a=b"}', undefined, 'json', null, [])).toBe(
+			'{"url": "a=b"}',
+		);
+	});
+
+	it('returns null for an empty json parameter', () => {
+		expect(parseFromExpression('', undefined, 'json', null, [])).toBeNull();
+	});
+
+	it('does not strip string values for non-json parameter types', () => {
+		// The "=" strip must be gated on the `json` type, so a stray string value on a
+		// number field still falls through to the default rather than being returned raw.
+		expect(parseFromExpression('=5', undefined, 'number', 0, [])).toBe(0);
+	});
 });
 
 describe('shouldSkipParamValidation', () => {

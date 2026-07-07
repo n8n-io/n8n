@@ -114,6 +114,21 @@ export function getChangedFiles(baseRef) {
 		.filter(Boolean);
 }
 
+// Files added (not merely modified) in this PR. Same merge-base scoping as
+// getChangedFiles; assumes the fetch it performs has already run.
+export function getAddedFiles(baseRef) {
+	if (!SAFE_REF.test(baseRef)) {
+		throw new Error(`Unsafe base ref: "${baseRef}"`);
+	}
+	const output = execSync('git diff --name-only --diff-filter=A --merge-base FETCH_HEAD HEAD', {
+		encoding: 'utf-8',
+	});
+	return output
+		.split('\n')
+		.map((f) => f.trim())
+		.filter(Boolean);
+}
+
 /**
  * Deepen the shallow clone until the merge base between the fetched base ref
  * (FETCH_HEAD) and HEAD is reliably reachable.
@@ -273,6 +288,7 @@ export function runFilter() {
 
 	const filters = parseFilters(filtersInput);
 	const changedFiles = getChangedFiles(baseRef);
+	const addedFiles = getAddedFiles(baseRef);
 	const mergeBase = getMergeBase();
 
 	console.log(`Merge base: ${mergeBase}`);
@@ -291,6 +307,7 @@ export function runFilter() {
 
 	setOutput('results', JSON.stringify(results));
 	setOutput('changed-files', formatChangedFilesOutput(changedFiles));
+	setOutput('added-files', formatChangedFilesOutput(addedFiles));
 	setOutput('base-ref', baseRef);
 	setOutput('merge-base', mergeBase);
 }

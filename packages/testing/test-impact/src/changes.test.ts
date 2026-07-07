@@ -82,6 +82,7 @@ describe('forcesBroad', () => {
 		'packages/cli/Dockerfile',
 		'Dockerfile.dev',
 		'packages/cli/worker.Dockerfile',
+		'packages/nodes-base/credentials/MicrosoftOAuth2Api.credentials.ts',
 	])('treats %s as runtime-defining (force broad)', (file) => {
 		expect(forcesBroad(file)).toBe(true);
 	});

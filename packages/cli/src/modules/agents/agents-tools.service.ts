@@ -8,10 +8,10 @@ import { Service } from '@n8n/di';
 import { isToolType, isTriggerNodeType } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { MCP_REGISTRY_PACKAGE_NAME } from '../mcp-registry/node-description-transform';
-
 import { NodeCatalogService } from '@/node-catalog';
 import { isAgentProviderNode } from '@/node-execution';
+
+import { MCP_REGISTRY_PACKAGE_NAME } from '../mcp-registry/node-description-transform';
 
 type NodeRequest =
 	| string

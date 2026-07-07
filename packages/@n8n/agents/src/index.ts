@@ -65,12 +65,16 @@ export type {
 	RetrievedEpisodicMemoryEntry,
 	ResumeOptions,
 	McpServerConfig,
+	McpToolCallSettledEvent,
 	McpVerifyResult,
 	ModelConfig,
 	ExecutionOptions,
 	SmoothStreamOptions,
 	AgentExecutionCounter,
 	PersistedExecutionOptions,
+	AnthropicPromptCachingConfig,
+	OpenAIPromptCachingConfig,
+	PromptCachingConfig,
 	BuiltTelemetry,
 	AttributeValue,
 	ObservationCursor,
@@ -153,6 +157,7 @@ export {
 	validateRuntimeSkill,
 } from './skills';
 export type {
+	LoadRuntimeSkillSourceFromDirectoryOptions,
 	RenderSkillCatalogOptions,
 	RuntimeSkill,
 	RuntimeSkillContent,
@@ -203,8 +208,6 @@ export {
 	isLlmMessage,
 } from './sdk/message';
 export { fetchProviderCatalog } from './sdk/catalog';
-export { providerCapabilities } from './sdk/provider-capabilities';
-export type { ProviderCapability } from './sdk/provider-capabilities';
 export type {
 	ProviderCatalog,
 	ProviderInfo,

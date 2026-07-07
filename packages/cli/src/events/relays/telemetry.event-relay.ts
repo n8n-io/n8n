@@ -148,6 +148,8 @@ export class TelemetryEventRelay extends EventRelay {
 				this.privateCredentialToggledToPrivate(event),
 			'private-credential-toggled-to-static': (event) =>
 				this.privateCredentialToggledToStatic(event),
+			'private-credential-connections-cleared': (event) =>
+				this.privateCredentialConnectionsCleared(event),
 			'private-credential-deleted': (event) => this.privateCredentialDeleted(event),
 			'private-credential-user-connected': (event) => this.privateCredentialUserConnected(event),
 			'ldap-general-sync-finished': (event) => this.ldapGeneralSyncFinished(event),
@@ -161,6 +163,8 @@ export class TelemetryEventRelay extends EventRelay {
 			'workflow-unarchived': (event) => this.workflowUnarchived(event),
 			'workflow-deleted': (event) => this.workflowDeleted(event),
 			'workflow-sharing-updated': (event) => this.workflowSharingUpdated(event),
+			'n8n-package-imported': (event) => this.packageImported(event),
+			'n8n-package-exported': (event) => this.packageExported(event),
 			'workflow-saved': async (event) => await this.workflowSaved(event),
 			'workflow-activated': (event) => this.workflowActivated(event),
 			'workflow-deactivated': (event) => this.workflowDeactivated(event),
@@ -622,6 +626,8 @@ export class TelemetryEventRelay extends EventRelay {
 		isDynamic,
 		usesExternalSecrets,
 		jweEnabled,
+		supportsManagedAuth,
+		usesManagedAuth,
 	}: RelayEventMap['credentials-created']) {
 		this.telemetry.track('User created credentials', {
 			user_id: user.id,
@@ -634,6 +640,8 @@ export class TelemetryEventRelay extends EventRelay {
 			is_private: isDynamic ?? false,
 			uses_external_secrets: usesExternalSecrets ?? false,
 			jwe_enabled: jweEnabled ?? false,
+			credential_supports_managed_auth: supportsManagedAuth ?? false,
+			credential_uses_managed_auth: usesManagedAuth ?? false,
 		});
 	}
 
@@ -663,6 +671,8 @@ export class TelemetryEventRelay extends EventRelay {
 		isDynamic,
 		usesExternalSecrets,
 		jweEnabled,
+		supportsManagedAuth,
+		usesManagedAuth,
 	}: RelayEventMap['credentials-updated']) {
 		this.telemetry.track('User updated credentials', {
 			user_id: user.id,
@@ -672,6 +682,8 @@ export class TelemetryEventRelay extends EventRelay {
 			is_private: isDynamic ?? false,
 			uses_external_secrets: usesExternalSecrets ?? false,
 			jwe_enabled: jweEnabled ?? false,
+			credential_supports_managed_auth: supportsManagedAuth ?? false,
+			credential_uses_managed_auth: usesManagedAuth ?? false,
 		});
 	}
 
@@ -744,6 +756,19 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
+	private privateCredentialConnectionsCleared({
+		user,
+		credentialId,
+		credentialType,
+	}: RelayEventMap['private-credential-connections-cleared']) {
+		this.telemetry.track('User cleared private credential connections', {
+			user_id: user.id,
+			user_role: user.role?.slug,
+			credential_type: credentialType,
+			credential_id: credentialId,
+		});
+	}
+
 	private privateCredentialDeleted({
 		user,
 		credentialId,
@@ -761,12 +786,16 @@ export class TelemetryEventRelay extends EventRelay {
 		user,
 		credentialId,
 		credentialType,
+		supportsManagedAuth,
+		usesManagedAuth,
 	}: RelayEventMap['private-credential-user-connected']) {
 		this.telemetry.track('User connected to private credential', {
 			user_id: user.id,
 			user_role: user.role?.slug,
 			credential_type: credentialType,
 			credential_id: credentialId,
+			credential_supports_managed_auth: supportsManagedAuth ?? false,
+			credential_uses_managed_auth: usesManagedAuth ?? false,
 		});
 	}
 
@@ -949,6 +978,32 @@ export class TelemetryEventRelay extends EventRelay {
 			workflow_id: workflowId,
 			user_id_sharer: userIdSharer,
 			user_id_list: userIdList,
+		});
+	}
+
+	private packageImported({ user, options, counts }: RelayEventMap['n8n-package-imported']) {
+		this.telemetry.track('User imported n8n package', {
+			user_id: user.id,
+			workflow_conflict_policy: options.workflowConflictPolicy,
+			workflow_id_policy: options.workflowIdPolicy,
+			credential_matching_mode: options.credentialMatchingMode,
+			credential_missing_mode: options.credentialMissingMode,
+			workflow_publishing_policy: options.workflowPublishingPolicy,
+			workflows_created: counts.workflows.created,
+			workflows_updated: counts.workflows.updated,
+			workflows_skipped: counts.workflows.skipped,
+			credentials_matched: counts.credentials.matched,
+			credentials_created: counts.credentials.created,
+			credentials_required: counts.credentials.requirements,
+		});
+	}
+
+	private packageExported({ user, counts }: RelayEventMap['n8n-package-exported']) {
+		this.telemetry.track('User exported n8n package', {
+			user_id: user.id,
+			workflow_count: counts.workflows,
+			folder_count: counts.folders,
+			credential_count: counts.credentials,
 		});
 	}
 

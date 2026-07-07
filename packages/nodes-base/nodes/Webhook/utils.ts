@@ -1,4 +1,4 @@
-import { formatPemBlock } from '@n8n/utils';
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import basicAuth from 'basic-auth';
 import { rm } from 'fs/promises';
 import jwt from 'jsonwebtoken';
@@ -243,7 +243,7 @@ export async function validateWebhookAuthentication(
 	const headers = ctx.getHeaderData();
 
 	if (authentication === 'basicAuth') {
-		// Basic authorization is needed to call webhook
+		// Basic authentication is needed to call webhook
 		let expectedAuth: ICredentialDataDecryptedObject | undefined;
 		try {
 			expectedAuth = await ctx.getCredentials<ICredentialDataDecryptedObject>('httpBasicAuth');
@@ -276,7 +276,7 @@ export async function validateWebhookAuthentication(
 			providedAuth.pass !== expectedAuth.password
 		) {
 			// Provided authentication data is wrong
-			throw new WebhookAuthorizationError(403);
+			throw new WebhookAuthorizationError(401, 'Authentication data is wrong!');
 		}
 	} else if (authentication === 'bearerAuth') {
 		let expectedAuth: ICredentialDataDecryptedObject | undefined;

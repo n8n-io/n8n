@@ -1,4 +1,3 @@
-import { mock } from 'jest-mock-extended';
 import {
 	GLOBAL_ADMIN_ROLE,
 	GLOBAL_MEMBER_ROLE,
@@ -8,14 +7,15 @@ import {
 	type User,
 	type WorkflowRepository,
 } from '@n8n/db';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 
 import type { UserFavorite } from '../database/entities/user-favorite.entity';
 import type { UserFavoriteRepository } from '../database/repositories/user-favorite.repository';
 import { FavoritesService } from '../favorites.service';
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 
 const makeUserFavorite = (overrides: Partial<UserFavorite> = {}): UserFavorite =>
 	({
@@ -56,7 +56,7 @@ describe('FavoritesService', () => {
 		folderRepository,
 	);
 
-	afterEach(() => jest.clearAllMocks());
+	afterEach(() => vi.clearAllMocks());
 
 	describe('getEnrichedFavorites', () => {
 		it('should return empty array when user has no favorites', async () => {

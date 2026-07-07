@@ -1,0 +1,27 @@
+{
+	"description": "Loop Over Items with reset:true for polling a long-running job — Wait between checks, status IF with $runIndex ceiling, termination via break-out branch not natural done output.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "On form submit, start a background export by POSTing to https://api.example.com/exports, then poll GET https://api.example.com/exports/{job_id}/status every 2 seconds — include an incrementing attempt query parameter on each check (1, 2, …) — until status is complete or you've checked 10 times, whichever comes first. Then grab the download URL from the result."
+		}
+	],
+	"messageBudget": 10,
+	"complexity": "complex",
+	"tags": ["build", "loops", "loop-over-items", "polling", "form", "http-request"],
+	"triggerType": "form",
+	"datasets": ["full"],
+	"outcomeExpectations": [
+		"After starting the export, the workflow polls job status in a loop (Loop Over Items with reset or equivalent) with a delay between checks (around 2 seconds).",
+		"Polling terminates when status is complete OR an iteration cap of 10 is reached — explicit stop condition, not an unbounded loop.",
+		"The final step reads the download URL from the completed job response."
+	],
+	"executionScenarios": [
+		{
+			"name": "completes-on-second-poll",
+			"description": "Job pending then complete; download URL extracted",
+			"dataSetup": "POST https://api.example.com/exports returns { \"job_id\": \"exp-42\" }. Status polling uses GET https://api.example.com/exports/exp-42/status with an incrementing attempt query parameter — identical request URLs are cached in mock execution, so each poll MUST use a distinct attempt value. GET .../status?attempt=1 returns { \"status\": \"pending\", \"poll_count\": 1 }. GET .../status?attempt=2 (and any attempt>=2) returns { \"status\": \"complete\", \"download_url\": \"https://cdn.example.com/files/report.csv\", \"poll_count\": 2 }. Never return identical JSON for different attempt values or n8n stops with 'identical response 5x'.",
+			"successCriteria": "The workflow executes without errors. At least two status GET requests occur (attempt=1 then attempt=2 or higher) before succeeding. The workflow output or final step references the download URL https://cdn.example.com/files/report.csv (or the path report.csv). Polling stops after completion — it does not continue indefinitely."
+		}
+	]
+}

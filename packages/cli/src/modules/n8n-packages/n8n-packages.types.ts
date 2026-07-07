@@ -35,9 +35,11 @@ export type WorkflowConflictPolicy =
 
 export type WorkflowIdPolicy = (typeof WorkflowIdPolicy)[keyof typeof WorkflowIdPolicy];
 
-export interface ExportWorkflowsRequest {
+export interface ExportPackageRequest {
 	user: User;
-	workflowIds: string[];
+	workflowIds?: string[];
+	folderIds?: string[];
+	projectIds?: string[];
 }
 
 export type ImportPackageRequest = {
@@ -81,6 +83,30 @@ export type ImportAuditCredentialIds = {
 	matched: string[];
 	created: string[];
 	updated: string[];
+};
+
+/**
+ * Per-entity counts for an import, carried on `n8n-package-imported` for telemetry.
+ * Counts only — no ids — so they can be relayed to analytics without leaking data.
+ */
+export type ImportPackageEventCounts = {
+	workflows: {
+		created: number;
+		updated: number;
+		skipped: number;
+	};
+	credentials: {
+		matched: number;
+		created: number;
+		requirements: number;
+	};
+};
+
+/** Per-entity counts for an export, carried on `n8n-package-exported` for telemetry. */
+export type ExportPackageEventCounts = {
+	workflows: number;
+	folders: number;
+	credentials: number;
 };
 
 export interface ImportedWorkflowSummary {

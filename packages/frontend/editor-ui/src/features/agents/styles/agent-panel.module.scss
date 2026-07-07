@@ -2,3 +2,15 @@
 	pointer-events: none;
 	opacity: 0.6;
 }
+
+.dataEntryLabel {
+	color: var(--text-color);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--medium);
+}
+
+.dataEntrySubLabel {
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--regular);
+}
