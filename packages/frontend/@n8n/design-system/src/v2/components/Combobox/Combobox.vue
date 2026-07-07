@@ -295,10 +295,14 @@ function getDisplayValue(value: unknown): string {
 }
 
 .comboboxSeparator {
+	--combobox-separator-outline-inset: 1px;
+
+	box-sizing: border-box;
 	height: 0;
-	border: 0;
+	width: calc(100% + 2 * var(--spacing--4xs) - 2 * var(--combobox-separator-outline-inset));
 	margin-block: var(--spacing--3xs);
-	margin-inline: calc(-1 * var(--spacing--4xs));
-	box-shadow: inset 0 -1px 0 0 var(--border-color);
+	margin-inline: calc(-1 * var(--spacing--4xs) + var(--combobox-separator-outline-inset));
+	border: 0;
+	border-top: 1px solid var(--border-color);
 }
 </style>
