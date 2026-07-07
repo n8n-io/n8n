@@ -4,7 +4,7 @@
 # opt-in flags) and 3.x is "master + breaking-change commits". This workflow
 # fast-forwards 3.x when possible, falls back to a three-way merge when 3.x has
 # diverged, and — when a merge conflict occurs — opens a draft conflict PR and
-# posts to #v3-sync. No further syncs run until that PR is resolved and merged.
+# posts to #alerts-v3-sync. No further syncs run until that PR is resolved and merged.
 #
 # See .github/DEVELOPING_V3.md for the full v3 development model.
 
@@ -141,7 +141,7 @@ jobs:
           OWNERS_TEXT: ${{ needs.sync.outputs.conflict_owners }}
         run: |
           node .github/scripts/slack/notify.mjs \
-            --channel '#v3-sync' \
+            --channel '#alerts-v3-sync' \
             --text "<${PR_URL}|master→3.x sync hit a conflict — resolve this PR>. Daily syncs are paused until it is merged. ${OWNERS_TEXT}"
 
   notify-on-failure:
@@ -163,5 +163,5 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           node .github/scripts/slack/notify.mjs \
-            --channel '#v3-sync' \
+            --channel '#alerts-v3-sync' \
             --text "<${RUN_URL}|master→3.x sync workflow failed unexpectedly>"

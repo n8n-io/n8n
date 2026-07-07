@@ -8,16 +8,22 @@
  * who to nudge. Must run while the merge is unresolved — HEAD still at the pre-merge
  * 3.x tip and unmerged paths present in the index.
  *
+ * git log gives only the author name/email, and ~2/3 of n8n authors commit with a
+ * non-noreply email that carries no GitHub username. So the conflicted files → breaking
+ * SHAs analysis is done locally, and a SINGLE GraphQL call maps those few SHAs to GitHub
+ * logins. Bot- and unlinked-account commits resolve to a null user and are skipped.
+ *
  * Emits a JSON object to stdout: { ownersCsv, slack, body }.
  *
  * Usage:
  *   node .github/scripts/sync-conflict-owners.mjs --base <masterSha> --sync-branch <name>
  *
- * Env: GITHUB_REPOSITORY (owner/repo), GH_TOKEN or GITHUB_TOKEN (for the commits API).
+ * Env: GITHUB_REPOSITORY (owner/repo), GH_TOKEN or GITHUB_TOKEN (for the GraphQL API).
  * Requires Node 18+ (global fetch).
  */
 
 import { execFileSync } from 'node:child_process';
+import { parseArgs } from 'node:util';
 
 export function runGit(args) {
 	return execFileSync('git', args, { encoding: 'utf8' }).trim();
@@ -39,23 +45,36 @@ export function breakingShas(base, files, git = runGit) {
 	return [...shas];
 }
 
-// Resolve a commit SHA to its GitHub login, or null for bots / unlinked accounts.
-export async function resolveLogin(repo, sha, token, fetchFn = fetch) {
-	const res = await fetchFn(`https://api.github.com/repos/${repo}/commits/${sha}`, {
+// Resolve commit SHAs to GitHub logins in one GraphQL call. Commits whose author has
+// no linked account (unverified email, bots) resolve to a null user and are dropped.
+export async function resolveLogins(repo, shas, token, fetchFn = fetch) {
+	if (shas.length === 0) return [];
+	const [owner, name] = repo.split('/');
+	const aliases = shas
+		.map((sha, i) => `c${i}: object(oid: "${sha}") { ... on Commit { author { user { login } } } }`)
+		.join('\n');
+	const query = `query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { ${aliases} } }`;
+
+	const res = await fetchFn('https://api.github.com/graphql', {
+		method: 'POST',
 		headers: {
 			Authorization: `Bearer ${token}`,
-			Accept: 'application/vnd.github+json',
-			'X-GitHub-Api-Version': '2022-11-28',
+			'Content-Type': 'application/json',
 			'User-Agent': 'n8n-sync-conflict-owners',
 		},
+		body: JSON.stringify({ query, variables: { owner, name } }),
 	});
-	if (!res.ok) return null;
-	const body = await res.json();
-	const author = body.author;
-	// `author` is the linked GitHub account (null when the commit email matches none).
-	// Skip bots per our bot-detection convention (type, not a `[bot]` name match).
-	if (!author || author.type === 'Bot' || !author.login) return null;
-	return author.login;
+	if (!res.ok) throw new Error(`GitHub GraphQL request failed: ${res.status}`);
+	const json = await res.json();
+	if (json.errors) throw new Error(`GitHub GraphQL error: ${JSON.stringify(json.errors)}`);
+
+	const repository = json.data?.repository ?? {};
+	const logins = new Set();
+	for (const node of Object.values(repository)) {
+		const login = node?.author?.user?.login;
+		if (login) logins.add(login);
+	}
+	return [...logins].sort();
 }
 
 // Build the conflict-PR body, reviewer CSV, and Slack owner line.
@@ -80,14 +99,16 @@ export function buildOutputs({ syncBranch, files, owners }) {
 	return { ownersCsv: owners.join(','), slack, body };
 }
 
-function getArg(name) {
-	const i = process.argv.indexOf(`--${name}`);
-	return i !== -1 && process.argv[i + 1] ? process.argv[i + 1] : undefined;
-}
-
 async function main() {
-	const base = getArg('base');
-	const syncBranch = getArg('sync-branch') ?? 'sync/master-to-3x';
+	const { values } = parseArgs({
+		options: {
+			base: { type: 'string' },
+			'sync-branch': { type: 'string', default: 'sync/master-to-3x' },
+		},
+	});
+
+	const base = values.base;
+	const syncBranch = values['sync-branch'];
 	const repo = process.env.GITHUB_REPOSITORY;
 	const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
 
@@ -98,12 +119,14 @@ async function main() {
 	const files = conflictedFiles();
 	const shas = breakingShas(base, files);
 
-	const logins = new Set();
-	for (const sha of shas) {
-		const login = await resolveLogin(repo, sha, token);
-		if (login) logins.add(login);
+	// Degrade gracefully: a transient API failure should still open the PR
+	// (unattributed) rather than fail the whole sync.
+	let owners = [];
+	try {
+		owners = await resolveLogins(repo, shas, token);
+	} catch (error) {
+		console.error(`warning: could not resolve owners: ${error.message}`);
 	}
-	const owners = [...logins].sort();
 
 	process.stdout.write(JSON.stringify(buildOutputs({ syncBranch, files, owners })));
 }

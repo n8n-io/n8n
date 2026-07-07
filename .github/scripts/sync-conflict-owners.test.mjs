@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { breakingShas, resolveLogin, buildOutputs } from './sync-conflict-owners.mjs';
+import { breakingShas, resolveLogins, buildOutputs } from './sync-conflict-owners.mjs';
 
 test('breakingShas collects unique SHAs across the conflicted files only', () => {
 	const calls = [];
@@ -19,18 +19,47 @@ test('breakingShas collects unique SHAs across the conflicted files only', () =>
 	assert.deepEqual(calls[0], ['log', 'BASE..HEAD', '--format=%H', '--', 'a.ts']);
 });
 
-test('resolveLogin returns the linked login for a human author', async () => {
-	const fetchFn = async () => ({ ok: true, json: async () => ({ author: { login: 'alice', type: 'User' } }) });
-	assert.equal(await resolveLogin('n8n-io/n8n', 'sha1', 't', fetchFn), 'alice');
+test('resolveLogins maps SHAs to logins in one call, dropping unlinked/bot authors', async () => {
+	let calls = 0;
+	const fetchFn = async (url, opts) => {
+		calls++;
+		assert.equal(url, 'https://api.github.com/graphql');
+		const query = JSON.parse(opts.body).query;
+		assert.match(query, /c0: object\(oid: "sha1"\)/);
+		assert.match(query, /c2: object\(oid: "sha3"\)/);
+		return {
+			ok: true,
+			json: async () => ({
+				data: {
+					repository: {
+						c0: { author: { user: { login: 'bob' } } },
+						c1: { author: { user: { login: 'alice' } } },
+						c2: { author: { user: null } }, // unlinked / bot -> dropped
+					},
+				},
+			}),
+		};
+	};
+	const owners = await resolveLogins('n8n-io/n8n', ['sha1', 'sha2', 'sha3'], 't', fetchFn);
+	assert.equal(calls, 1); // single batched request
+	assert.deepEqual(owners, ['alice', 'bob']); // sorted, deduped, null dropped
 });
 
-test('resolveLogin skips bots, unlinked accounts, and API errors', async () => {
-	const bot = async () => ({ ok: true, json: async () => ({ author: { login: 'dependabot[bot]', type: 'Bot' } }) });
-	const unlinked = async () => ({ ok: true, json: async () => ({ author: null }) });
-	const errored = async () => ({ ok: false, json: async () => ({}) });
-	assert.equal(await resolveLogin('r', 's', 't', bot), null);
-	assert.equal(await resolveLogin('r', 's', 't', unlinked), null);
-	assert.equal(await resolveLogin('r', 's', 't', errored), null);
+test('resolveLogins makes no request when there are no SHAs', async () => {
+	let calls = 0;
+	const fetchFn = async () => {
+		calls++;
+		return { ok: true, json: async () => ({ data: { repository: {} } }) };
+	};
+	assert.deepEqual(await resolveLogins('r', [], 't', fetchFn), []);
+	assert.equal(calls, 0);
+});
+
+test('resolveLogins throws on API/GraphQL errors (caller degrades gracefully)', async () => {
+	const httpError = async () => ({ ok: false, status: 502, json: async () => ({}) });
+	const gqlError = async () => ({ ok: true, json: async () => ({ errors: [{ message: 'bad' }] }) });
+	await assert.rejects(resolveLogins('r', ['s'], 't', httpError), /502/);
+	await assert.rejects(resolveLogins('r', ['s'], 't', gqlError), /GraphQL error/);
 });
 
 test('buildOutputs formats reviewers, slack line, and PR body with owners', () => {

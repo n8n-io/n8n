@@ -127,7 +127,7 @@ and merges `master` into `3.x`:
 1. **Fast-forward** when `3.x` hasn't diverged.
 2. **Three-way merge** when it has.
 3. On a **merge conflict** it opens a **draft conflict PR** (labeled
-   `automation:v3-sync`) and posts to the **`#v3-sync`** Slack channel.
+   `automation:v3-sync`) and posts to the **`#alerts-v3-sync`** Slack channel.
    **Syncs pause until that PR is resolved and merged** — so conflicts never pile
    up silently.
 
@@ -135,7 +135,7 @@ and merges `master` into `3.x`:
 breaking commits touching the conflicted files (computed by
 `.github/scripts/sync-conflict-owners.mjs`: the `master..HEAD` commits per
 conflicted file, mapped to GitHub accounts). Those authors are **requested as
-reviewers** on the conflict PR and listed in the `#v3-sync` message. So if you
+reviewers** on the conflict PR and listed in the `#alerts-v3-sync` message. So if you
 authored the breaking commit that caused a conflict, you'll be nudged to resolve
 it: fix the conflict markers on the `sync/master-to-3x` branch and merge the PR;
 the next daily run then resumes normally.

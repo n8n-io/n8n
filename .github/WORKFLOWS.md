@@ -424,7 +424,7 @@ During the v3 release window, `master` carries normal feature work (behind opt-i
 flags) and the long-lived `3.x` branch carries breaking changes. `master` is
 synced into `3.x` daily by `util-sync-master-to-3x.yml` (conflicts open a draft PR
 labeled `automation:v3-sync`, request the breaking-commit authors as reviewers via
-`sync-conflict-owners.mjs`, post to `#v3-sync`, and pause further syncs).
+`sync-conflict-owners.mjs`, post to `#alerts-v3-sync`, and pause further syncs).
 `build-v3-nightly.yml` publishes `n8nio/n8n:v3-nightly[-<date>]` images from `3.x`
 by calling `docker-build-push.yml` with `ref: 3.x` + `date_tag`.
 
