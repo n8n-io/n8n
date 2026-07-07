@@ -456,18 +456,24 @@ export class KeycloakHelper {
 						`Keycloak authorization page redirected (HTTP ${authPageResult.statusCode}) without a Location header`,
 					);
 				}
-				const nextUrl = new URL(location, currentUrl).toString();
+				const nextUrl = new URL(location, currentUrl);
 
 				// Already-authenticated short circuit: Keycloak redirected straight to the
 				// n8n OAuth2 callback with the authorization code — no login form needed.
-				if (nextUrl.includes('/rest/oauth2-credential/callback')) {
-					return nextUrl;
+				// Match on the pathname and require `code`, so a Keycloak restart redirect
+				// that merely echoes `redirect_uri=…/callback` in its query isn't mistaken
+				// for the final callback.
+				if (
+					nextUrl.pathname.endsWith('/rest/oauth2-credential/callback') &&
+					nextUrl.searchParams.has('code')
+				) {
+					return nextUrl.toString();
 				}
 				if (hop >= 5) {
 					throw new Error('Too many redirects loading the Keycloak authorization page');
 				}
 
-				currentUrl = nextUrl;
+				currentUrl = nextUrl.toString();
 				authPageResult = await undiciRequest(currentUrl, {
 					method: 'GET',
 					headers: cookieJar.size ? { Cookie: cookieHeaderFrom(cookieJar) } : undefined,
