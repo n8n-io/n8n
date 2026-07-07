@@ -62,6 +62,16 @@ export class SchedulerConfig {
 	sweepIntervalSeconds: number = 10;
 
 	/**
+	 * How long, in seconds, a single scan for upcoming runs may take before it is
+	 * abandoned and retried on its next interval. Guards against a scan stuck on
+	 * a slow or unresponsive database holding its slot forever.
+	 * Defaults to 60 seconds.
+	 * Must be greater than 0.
+	 */
+	@Env('N8N_SCHEDULER_SWEEP_TIMEOUT', positiveIntSchema)
+	sweepTimeoutSeconds: number = Time.minutes.toSeconds;
+
+	/**
 	 * How often, in seconds, the scheduler checks for recorded runs whose time has
 	 * arrived and starts them. Defaults to 5 seconds.
 	 *
@@ -71,6 +81,16 @@ export class SchedulerConfig {
 	 */
 	@Env('N8N_SCHEDULER_EXECUTOR_INTERVAL', positiveIntSchema)
 	executorIntervalSeconds: number = 5;
+
+	/**
+	 * How long, in seconds, a single check for due runs may take before it is
+	 * abandoned and retried on its next interval.
+	 * Guards against a check stuck on a slow or unresponsive database holding its slot forever.
+	 * Defaults to 60 seconds.
+	 * Must be greater than 0.
+	 */
+	@Env('N8N_SCHEDULER_EXECUTOR_TIMEOUT', positiveIntSchema)
+	executorTimeoutSeconds: number = Time.minutes.toSeconds;
 
 	/**
 	 * The most runs a single claim takes from the queue in one pass. Defaults to 100.
@@ -96,6 +116,16 @@ export class SchedulerConfig {
 	 */
 	@Env('N8N_SCHEDULER_REAPER_BATCH_SIZE', positiveIntSchema)
 	reaperBatchSize: number = 100;
+
+	/**
+	 * How long, in seconds, a single recovery sweep may take
+	 * before it is abandoned and retried on its next interval.
+	 * Guards against a sweep stuck on a slow or unresponsive database holding its slot forever.
+	 * Defaults to 60 seconds.
+	 * Must be greater than 0.
+	 */
+	@Env('N8N_SCHEDULER_REAPER_TIMEOUT', positiveIntSchema)
+	reaperTimeoutSeconds: number = Time.minutes.toSeconds;
 
 	/**
 	 * How long, in seconds, a single instance holds an exclusive claim on a run it
@@ -148,6 +178,27 @@ export class SchedulerConfig {
 	 */
 	@Env('N8N_SCHEDULER_RETENTION_INTERVAL', positiveIntSchema)
 	retentionIntervalSeconds: number = Time.hours.toSeconds;
+
+	/**
+	 * How long, in seconds, a single cleanup of old finished tasks may take
+	 * before it is abandoned and retried on its next interval.
+	 * Defaults to 300 seconds.
+	 * Must be greater than 0.
+	 */
+	@Env('N8N_SCHEDULER_RETENTION_TIMEOUT', positiveIntSchema)
+	retentionTimeoutSeconds: number = 5 * Time.minutes.toSeconds;
+
+	/**
+	 * The most background checks of the same kind (for example several scans for
+	 * upcoming runs) allowed to run at the same time on one instance, when the
+	 * database supports overlapping checks (Postgres).
+	 * When a check is due while this many are still running, it is skipped.
+	 * On SQLite checks never overlap and this setting has no effect.
+	 * Defaults to 10.
+	 * Must be greater than 0.
+	 */
+	@Env('N8N_SCHEDULER_MAX_CONCURRENT_PASSES', positiveIntSchema)
+	maxConcurrentPasses: number = 10;
 
 	/**
 	 * Adds a small random variation to the timing of the scheduler's periodic

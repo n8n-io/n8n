@@ -497,6 +497,164 @@ describe('createScheduler lifecycle config', () => {
 			InvalidLifecycleOptionsError,
 		);
 	});
+
+	it('rejects a pass timeout that would abandon every pass as it starts', () => {
+		expect(() => makeScheduler({ lifecycle: { materializerTimeoutSeconds: 0 } })).toThrow(
+			InvalidLifecycleOptionsError,
+		);
+		expect(() => makeScheduler({ lifecycle: { executorTimeoutSeconds: -5 } })).toThrow(
+			InvalidLifecycleOptionsError,
+		);
+		expect(() => makeScheduler({ lifecycle: { reaperTimeoutSeconds: NaN } })).toThrow(
+			InvalidLifecycleOptionsError,
+		);
+		expect(() => makeScheduler({ lifecycle: { retentionTimeoutSeconds: Infinity } })).toThrow(
+			InvalidLifecycleOptionsError,
+		);
+	});
+
+	it('rejects an unknown concurrency mode', () => {
+		expect(() =>
+			makeScheduler({ lifecycle: { concurrencyMode: 'parallel' as 'concurrent' } }),
+		).toThrow(InvalidLifecycleOptionsError);
+	});
+
+	it('rejects a concurrency ceiling below one pass', () => {
+		expect(() => makeScheduler({ lifecycle: { maxConcurrentPasses: 0 } })).toThrow(
+			InvalidLifecycleOptionsError,
+		);
+		expect(() => makeScheduler({ lifecycle: { maxConcurrentPasses: 2.5 } })).toThrow(
+			InvalidLifecycleOptionsError,
+		);
+	});
+});
+
+describe('createScheduler pass timeout and overlap', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+		// Midpoint random: first ticks at half the interval, no per-tick jitter.
+		vi.spyOn(Math, 'random').mockReturnValue(0.5);
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+		vi.restoreAllMocks();
+	});
+
+	it('abandons a pass at its configured timeout and reports it as an error event', async () => {
+		const { scheduler, taskStore, onEvent } = makeScheduler({
+			lifecycle: { reaperIntervalSeconds: 10, reaperTimeoutSeconds: 2 },
+		});
+		// The sweep hangs on its first storage read.
+		taskStore.findExpiredLeases.mockImplementation(async () => await new Promise(() => {}));
+
+		scheduler.start();
+		await vi.advanceTimersByTimeAsync(5000);
+		expect(taskStore.findExpiredLeases).toHaveBeenCalledTimes(1);
+
+		await vi.advanceTimersByTimeAsync(2000);
+		expect(onEvent).toHaveBeenCalledWith({
+			level: 'error',
+			message: 'Scheduler pass timed out and was abandoned; retrying on its next tick',
+			context: { pass: 'reaper', timeoutMs: 2000 },
+		});
+
+		// The abandoned pass freed its slot: the next tick sweeps again.
+		await vi.advanceTimersByTimeAsync(8000);
+		expect(taskStore.findExpiredLeases).toHaveBeenCalledTimes(2);
+
+		const stopping = scheduler.stop();
+		await vi.advanceTimersByTimeAsync(2000);
+		await stopping;
+	});
+
+	it('gives each pass type its own timeout', async () => {
+		// Both passes hang on storage; only their timeouts differ.
+		const materializerTransaction: RunInTransaction = vi.fn(
+			async () => await new Promise<never>(() => {}),
+		);
+		const { scheduler, taskStore, onEvent } = makeScheduler({
+			materializerTransaction,
+			lifecycle: {
+				materializerIntervalSeconds: 10,
+				materializerTimeoutSeconds: 2,
+				reaperIntervalSeconds: 10,
+				reaperTimeoutSeconds: 60,
+			},
+		});
+		taskStore.findExpiredLeases.mockImplementation(async () => await new Promise(() => {}));
+
+		scheduler.start();
+		// Both first ticks fire at 5000; only the materializer's 2s budget elapses.
+		await vi.advanceTimersByTimeAsync(5000 + 2000);
+		expect(onEvent).toHaveBeenCalledWith({
+			level: 'error',
+			message: 'Scheduler pass timed out and was abandoned; retrying on its next tick',
+			context: { pass: 'materializer', timeoutMs: 2000 },
+		});
+		expect(onEvent).not.toHaveBeenCalledWith({
+			level: 'error',
+			message: 'Scheduler pass timed out and was abandoned; retrying on its next tick',
+			context: { pass: 'reaper', timeoutMs: 60_000 },
+		});
+
+		// The reaper's own budget only elapses at 65000, during the stop drain.
+		const stopping = scheduler.stop();
+		await vi.advanceTimersByTimeAsync(60_000);
+		await stopping;
+		expect(onEvent).toHaveBeenCalledWith({
+			level: 'error',
+			message: 'Scheduler pass timed out and was abandoned; retrying on its next tick',
+			context: { pass: 'reaper', timeoutMs: 60_000 },
+		});
+	});
+
+	it('drops an overlapping tick in sequential mode and reports it as a warn event', async () => {
+		const { scheduler, taskStore, onEvent } = makeScheduler({
+			lifecycle: { reaperIntervalSeconds: 10, reaperTimeoutSeconds: 60 },
+		});
+		taskStore.findExpiredLeases.mockImplementation(async () => await new Promise(() => {}));
+
+		scheduler.start();
+		// First sweep at 5000 hangs; the 15000 tick finds it still in flight.
+		await vi.advanceTimersByTimeAsync(15_000);
+		expect(taskStore.findExpiredLeases).toHaveBeenCalledTimes(1);
+		expect(onEvent).toHaveBeenCalledWith({
+			level: 'warn',
+			message: 'Scheduler pass tick dropped; in-flight passes at the concurrency limit',
+			context: { pass: 'reaper', inFlight: 1, limit: 1 },
+		});
+
+		const stopping = scheduler.stop();
+		await vi.advanceTimersByTimeAsync(60_000);
+		await stopping;
+	});
+
+	it('lets passes overlap up to the ceiling in concurrent mode', async () => {
+		const { scheduler, taskStore, onEvent } = makeScheduler({
+			lifecycle: {
+				reaperIntervalSeconds: 10,
+				reaperTimeoutSeconds: 60,
+				concurrencyMode: 'concurrent',
+				maxConcurrentPasses: 2,
+			},
+		});
+		taskStore.findExpiredLeases.mockImplementation(async () => await new Promise(() => {}));
+
+		scheduler.start();
+		// Sweeps at 5000 and 15000 overlap; the 25000 tick exceeds the ceiling.
+		await vi.advanceTimersByTimeAsync(25_000);
+		expect(taskStore.findExpiredLeases).toHaveBeenCalledTimes(2);
+		expect(onEvent).toHaveBeenCalledWith({
+			level: 'warn',
+			message: 'Scheduler pass tick dropped; in-flight passes at the concurrency limit',
+			context: { pass: 'reaper', inFlight: 2, limit: 2 },
+		});
+
+		const stopping = scheduler.stop();
+		await vi.advanceTimersByTimeAsync(60_000);
+		await stopping;
+	});
 });
 
 describe('createScheduler reap', () => {

@@ -100,19 +100,40 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 
 	// A non-positive or NaN interval collapses to setTimeout's 1ms floor,
 	// turning the pass into a hot loop against task storage.
-	const intervalKeys = [
+	// A non-positive or NaN timeout would abandon every pass the moment it starts.
+	const durationKeys = [
 		'materializerIntervalSeconds',
 		'executorIntervalSeconds',
 		'reaperIntervalSeconds',
 		'retentionIntervalSeconds',
+		'materializerTimeoutSeconds',
+		'executorTimeoutSeconds',
+		'reaperTimeoutSeconds',
+		'retentionTimeoutSeconds',
 	] as const;
-	for (const key of intervalKeys) {
+	for (const key of durationKeys) {
 		const value = lifecycleOptions[key];
 		if (!(Number.isFinite(value) && value > 0)) {
 			throw new InvalidLifecycleOptionsError(
 				`${key} must be a positive number of seconds, got ${value}`,
 			);
 		}
+	}
+
+	if (
+		lifecycleOptions.concurrencyMode !== 'sequential' &&
+		lifecycleOptions.concurrencyMode !== 'concurrent'
+	) {
+		throw new InvalidLifecycleOptionsError(
+			`concurrencyMode must be 'sequential' or 'concurrent', got ${String(lifecycleOptions.concurrencyMode)}`,
+		);
+	}
+
+	const { maxConcurrentPasses } = lifecycleOptions;
+	if (!(Number.isInteger(maxConcurrentPasses) && maxConcurrentPasses >= 1)) {
+		throw new InvalidLifecycleOptionsError(
+			`maxConcurrentPasses must be a positive integer, got ${maxConcurrentPasses}`,
+		);
 	}
 
 	const emit = (level: SchedulerEventLevel, message: string, context: Record<string, unknown>) => {
@@ -211,24 +232,69 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 		return summary;
 	};
 
-	const loopOver = (pass: string, run: () => Promise<unknown>, intervalSeconds: number) =>
+	const loopOver = (
+		pass: string,
+		run: () => Promise<unknown>,
+		intervalSeconds: number,
+		timeoutSeconds: number,
+	) =>
 		new Loop(
 			run,
-			intervalSeconds * Time.seconds.toMilliseconds,
-			lifecycleOptions.jitterRatio,
-			(error) => {
-				emit('error', 'Scheduler pass failed; retrying on its next tick', {
-					pass,
-					error: described(error),
-				});
+			{
+				intervalMs: intervalSeconds * Time.seconds.toMilliseconds,
+				jitterRatio: lifecycleOptions.jitterRatio,
+				timeoutMs: timeoutSeconds * Time.seconds.toMilliseconds,
+				concurrency: lifecycleOptions.concurrencyMode,
+				maxConcurrent: lifecycleOptions.maxConcurrentPasses,
+			},
+			{
+				onError: (error) => {
+					emit('error', 'Scheduler pass failed; retrying on its next tick', {
+						pass,
+						error: described(error),
+					});
+				},
+				onTimeout: ({ timeoutMs }) => {
+					emit('error', 'Scheduler pass timed out and was abandoned; retrying on its next tick', {
+						pass,
+						timeoutMs,
+					});
+				},
+				onSkippedTick: ({ inFlight, limit }) => {
+					emit('warn', 'Scheduler pass tick dropped; in-flight passes at the concurrency limit', {
+						pass,
+						inFlight,
+						limit,
+					});
+				},
 			},
 		);
 
 	const loops = [
-		loopOver('materializer', runMaterialize, lifecycleOptions.materializerIntervalSeconds),
-		loopOver('executor', runExecute, lifecycleOptions.executorIntervalSeconds),
-		loopOver('reaper', runReap, lifecycleOptions.reaperIntervalSeconds),
-		loopOver('retention', runPrune, lifecycleOptions.retentionIntervalSeconds),
+		loopOver(
+			'materializer',
+			runMaterialize,
+			lifecycleOptions.materializerIntervalSeconds,
+			lifecycleOptions.materializerTimeoutSeconds,
+		),
+		loopOver(
+			'executor',
+			runExecute,
+			lifecycleOptions.executorIntervalSeconds,
+			lifecycleOptions.executorTimeoutSeconds,
+		),
+		loopOver(
+			'reaper',
+			runReap,
+			lifecycleOptions.reaperIntervalSeconds,
+			lifecycleOptions.reaperTimeoutSeconds,
+		),
+		loopOver(
+			'retention',
+			runPrune,
+			lifecycleOptions.retentionIntervalSeconds,
+			lifecycleOptions.retentionTimeoutSeconds,
+		),
 	];
 
 	let started = false;
@@ -260,8 +326,8 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 		async stop() {
 			if (!stopped) {
 				stopped = true;
-				// Loops first, each waiting out its in-flight pass, so no executor tick
-				// overlaps the executor teardown (the contract `Executor.stop` requires).
+				// Loops first, each draining its in-flight passes (bounded by their
+				// timeouts), so no executor tick overlaps the executor teardown.
 				await Promise.all(loops.map(async (loop) => await loop.stop()));
 				await executor.stop();
 				if (started) {

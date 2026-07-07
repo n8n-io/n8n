@@ -11,7 +11,7 @@ import { DurableScheduler } from '../durable-scheduler';
 vi.mock('@n8n/scheduler', () => ({ createScheduler: vi.fn() }));
 
 describe('DurableScheduler', () => {
-	function makeScheduler({ enabled = true, instanceType = 'main' } = {}) {
+	function makeScheduler({ enabled = true, instanceType = 'main', dbType = 'sqlite' } = {}) {
 		const inner = mock<Scheduler & SchedulerPasses>();
 		vi.mocked(createScheduler).mockReturnValue(inner);
 		const logger = mockLogger();
@@ -23,6 +23,7 @@ describe('DurableScheduler', () => {
 			mock<InstanceSettings>({ instanceType: instanceType as 'main' | 'worker' | 'webhook' }),
 			mock<GlobalConfig>({
 				generic: { timezone: 'UTC' },
+				database: { type: dbType as 'sqlite' | 'postgresdb' },
 				scheduler: { enabled, executorIntervalSeconds: 5, jitterRatio: 0.1 },
 			}),
 		);
@@ -37,6 +38,20 @@ describe('DurableScheduler', () => {
 			// the claim horizon must cover the stretched gap or tasks fire late.
 			const deps = vi.mocked(createScheduler).mock.calls.at(-1)?.[0];
 			expect(deps?.executor?.lookaheadSeconds).toBeCloseTo(5.5);
+		});
+
+		it('runs passes concurrently on Postgres, which claims with row locks', () => {
+			makeScheduler({ dbType: 'postgresdb' });
+
+			const deps = vi.mocked(createScheduler).mock.calls.at(-1)?.[0];
+			expect(deps?.lifecycle?.concurrencyMode).toBe('concurrent');
+		});
+
+		it('runs passes sequentially on SQLite, which serialises writers', () => {
+			makeScheduler({ dbType: 'sqlite' });
+
+			const deps = vi.mocked(createScheduler).mock.calls.at(-1)?.[0];
+			expect(deps?.lifecycle?.concurrencyMode).toBe('sequential');
 		});
 	});
 

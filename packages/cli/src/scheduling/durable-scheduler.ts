@@ -54,7 +54,14 @@ export class DurableScheduler implements Scheduler {
 						executorIntervalSeconds: config.executorIntervalSeconds,
 						reaperIntervalSeconds: config.reaperIntervalSeconds,
 						retentionIntervalSeconds: config.retentionIntervalSeconds,
+						materializerTimeoutSeconds: config.sweepTimeoutSeconds,
+						executorTimeoutSeconds: config.executorTimeoutSeconds,
+						reaperTimeoutSeconds: config.reaperTimeoutSeconds,
+						retentionTimeoutSeconds: config.retentionTimeoutSeconds,
 						jitterRatio: config.jitterRatio,
+						concurrencyMode:
+							globalConfig.database.type === 'postgresdb' ? 'concurrent' : 'sequential',
+						maxConcurrentPasses: config.maxConcurrentPasses,
 					},
 					onEvent: ({ level, message, context }) => logger[level](message, context),
 				})

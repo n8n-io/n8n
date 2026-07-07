@@ -1,7 +1,9 @@
 import { Loop } from '../loop';
+import type { LoopHooks } from '../loop';
 
 const INTERVAL_MS = 10_000;
 const JITTER_RATIO = 0.1;
+const TIMEOUT_MS = 60_000;
 const TICKS = 500;
 
 /** Fake-timer scheduling may land on sub-millisecond boundaries; allow 1ms of rounding. */
@@ -22,6 +24,31 @@ function mulberry32(seed: number): () => number {
 	};
 }
 
+function mockHooks(): LoopHooks {
+	return { onError: vi.fn(), onTimeout: vi.fn(), onSkippedTick: vi.fn() };
+}
+
+/** A loop over `pass` with the default cadence and a scripted random stream. */
+function makeLoop(
+	pass: () => Promise<unknown>,
+	random: () => number,
+	jitterRatio = JITTER_RATIO,
+	concurrency: 'sequential' | 'concurrent' = 'sequential',
+) {
+	return new Loop(
+		pass,
+		{
+			intervalMs: INTERVAL_MS,
+			jitterRatio,
+			timeoutMs: TIMEOUT_MS,
+			concurrency,
+			maxConcurrent: 10,
+		},
+		mockHooks(),
+		random,
+	);
+}
+
 describe('Loop jitter (stress)', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
@@ -31,28 +58,29 @@ describe('Loop jitter (stress)', () => {
 		vi.useRealTimers();
 	});
 
-	/** Run one loop for at least `ticks` passes; return the first-tick phase and every inter-tick delay. */
+	/** Run one loop for at least `ticks` passes; return every absolute fire time and inter-tick delay. */
 	async function collect(seed: number, jitterRatio = JITTER_RATIO, ticks = TICKS) {
 		const startedAt = Date.now();
 		const fireTimes: number[] = [];
-		const loop = new Loop(
+		// Concurrent so a near-zero jittered gap can never drop a tick while the
+		// previous (instant) pass is still settling its microtasks.
+		const loop = makeLoop(
 			async () => {
 				fireTimes.push(Date.now() - startedAt);
 				await Promise.resolve();
 			},
-			INTERVAL_MS,
-			jitterRatio,
-			vi.fn(),
 			mulberry32(seed),
+			jitterRatio,
+			'concurrent',
 		);
 
 		loop.start();
-		// Worst case every delay lands at the top of the window; budget for it plus the initial phase.
+		// Worst case every tick lands at the top of its jitter window; budget for it plus the initial phase.
 		await vi.advanceTimersByTimeAsync(Math.ceil((ticks + 1) * INTERVAL_MS * (1 + jitterRatio)));
 		await loop.stop();
 
 		const delays = fireTimes.slice(1).map((time, i) => time - fireTimes[i]);
-		return { firstTickAt: fireTimes[0], delays };
+		return { fireTimes, firstTickAt: fireTimes[0], delays };
 	}
 
 	/** Start a fleet of loops together, each with its own random stream, and record every fire time. */
@@ -60,37 +88,53 @@ describe('Loop jitter (stress)', () => {
 		const startedAt = Date.now();
 		return Array.from({ length: size }, (_, i) => {
 			const fireTimes: number[] = [];
-			const loop = new Loop(
+			const loop = makeLoop(
 				async () => {
 					fireTimes.push(Date.now() - startedAt);
 					await Promise.resolve();
 				},
-				INTERVAL_MS,
-				JITTER_RATIO,
-				vi.fn(),
 				mulberry32(seedBase + i),
 			);
 			return { loop, fireTimes };
 		});
 	}
 
-	it('keeps every delay across hundreds of ticks inside the jitter window', async () => {
-		const { firstTickAt, delays } = await collect(1);
+	it('keeps every tick across hundreds of slots inside its jitter window on the fixed timeline', async () => {
+		const { fireTimes, firstTickAt } = await collect(1);
 
-		expect(delays.length).toBeGreaterThanOrEqual(TICKS);
+		expect(fireTimes.length).toBeGreaterThan(TICKS);
 		expect(firstTickAt).toBeGreaterThanOrEqual(0);
 		expect(firstTickAt).toBeLessThanOrEqual(INTERVAL_MS);
-		for (const delay of delays) {
-			expect(delay).toBeGreaterThanOrEqual(INTERVAL_MS * (1 - JITTER_RATIO) - ROUNDING_MS);
-			expect(delay).toBeLessThanOrEqual(INTERVAL_MS * (1 + JITTER_RATIO) + ROUNDING_MS);
+		// The first tick anchors the timeline; every later tick must sit within
+		// one jitter offset of its own slot — deviations never accumulate.
+		for (let k = 1; k < fireTimes.length; k++) {
+			const slotAt = firstTickAt + k * INTERVAL_MS;
+			expect(Math.abs(fireTimes[k] - slotAt)).toBeLessThanOrEqual(
+				INTERVAL_MS * JITTER_RATIO + ROUNDING_MS,
+			);
 		}
 	});
 
-	it('exercises the whole jitter window rather than hugging the interval', async () => {
-		const { delays } = await collect(2);
+	it('keeps every delay inside interval ± twice the jitter window', async () => {
+		const { delays } = await collect(6);
 
-		expect(Math.min(...delays)).toBeLessThan(INTERVAL_MS * (1 - JITTER_RATIO * 0.8));
-		expect(Math.max(...delays)).toBeGreaterThan(INTERVAL_MS * (1 + JITTER_RATIO * 0.8));
+		expect(delays.length).toBeGreaterThanOrEqual(TICKS);
+		// Consecutive ticks each carry their own offset, so a gap can deviate by
+		// up to two offsets while the timeline itself stays fixed.
+		for (const delay of delays) {
+			expect(delay).toBeGreaterThanOrEqual(INTERVAL_MS * (1 - 2 * JITTER_RATIO) - ROUNDING_MS);
+			expect(delay).toBeLessThanOrEqual(INTERVAL_MS * (1 + 2 * JITTER_RATIO) + ROUNDING_MS);
+		}
+	});
+
+	it('exercises the whole jitter window rather than hugging the slots', async () => {
+		const { fireTimes, firstTickAt } = await collect(2);
+
+		const offsets = fireTimes
+			.slice(1)
+			.map((time, i) => time - (firstTickAt + (i + 1) * INTERVAL_MS));
+		expect(Math.min(...offsets)).toBeLessThan(-INTERVAL_MS * JITTER_RATIO * 0.8);
+		expect(Math.max(...offsets)).toBeGreaterThan(INTERVAL_MS * JITTER_RATIO * 0.8);
 	});
 
 	it('stays unbiased: the average cadence converges on the interval', async () => {
@@ -120,9 +164,9 @@ describe('Loop jitter (stress)', () => {
 		expect(maxGap).toBeLessThan(INTERVAL_MS * 0.3);
 	});
 
-	it('keeps a fleet from drifting back into lockstep over many intervals', async () => {
+	it('keeps a fleet spread out over many intervals', async () => {
 		const HORIZON_INTERVALS = 100;
-		// Every loop reaches this tick within the horizon even if all its delays draw the top of the window.
+		// Every loop reaches this slot well within the horizon.
 		const TICK_INDEX = 80;
 
 		const fleet = makeFleet(20, 200);
@@ -134,7 +178,7 @@ describe('Loop jitter (stress)', () => {
 
 		const nthTick = fleet.map(({ fireTimes }) => fireTimes[TICK_INDEX]);
 		expect(nthTick).not.toContain(undefined);
-		// Accumulated jitter must widen the initial phase spread, not collapse it.
+		// The random anchor phases must survive: no collapse into lockstep.
 		const spread = Math.max(...nthTick) - Math.min(...nthTick);
 		expect(spread).toBeGreaterThan(INTERVAL_MS * 0.5);
 	});
@@ -154,7 +198,7 @@ describe('Loop jitter (stress)', () => {
 			});
 			inFlight--;
 		};
-		const loop = new Loop(pass, INTERVAL_MS, JITTER_RATIO, vi.fn(), mulberry32(8));
+		const loop = makeLoop(pass, mulberry32(8));
 
 		loop.start();
 		await vi.advanceTimersByTimeAsync(200 * INTERVAL_MS);
@@ -163,7 +207,9 @@ describe('Loop jitter (stress)', () => {
 		await vi.advanceTimersByTimeAsync(2 * INTERVAL_MS);
 		await stopping;
 
+		// Ticks that would overlap are dropped, so fewer passes run than slots fire.
 		expect(calls).toBeGreaterThan(100);
+		expect(calls).toBeLessThan(200);
 		expect(maxInFlight).toBe(1);
 	});
 
@@ -174,11 +220,11 @@ describe('Loop jitter (stress)', () => {
 		expect(new Set(delays)).toEqual(new Set([INTERVAL_MS]));
 	});
 
-	it('a full jitter ratio stays within [0, 2×interval] and reaches both extremes', async () => {
-		const { delays } = await collect(5, 1, 300);
+	it('a large jitter ratio (0.5) stays within [0, 2×interval] and reaches both extremes', async () => {
+		const { delays } = await collect(5, 0.5, 300);
 
 		expect(delays.length).toBeGreaterThanOrEqual(300);
-		expect(Math.min(...delays)).toBeGreaterThanOrEqual(0);
+		expect(Math.min(...delays)).toBeGreaterThanOrEqual(-ROUNDING_MS);
 		expect(Math.max(...delays)).toBeLessThanOrEqual(2 * INTERVAL_MS + ROUNDING_MS);
 		expect(Math.min(...delays)).toBeLessThan(INTERVAL_MS * 0.2);
 		expect(Math.max(...delays)).toBeGreaterThan(INTERVAL_MS * 1.8);

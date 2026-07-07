@@ -15,6 +15,6 @@ export type {
 	NewOccurrence,
 	RunInTransaction,
 } from './materializer';
-export type { LifecycleOptions } from './lifecycle';
+export type { ConcurrencyMode, LifecycleOptions } from './lifecycle';
 export type { ReaperOptions, ReapResult } from './reaper';
 export type { RetentionOptions, RetentionSummary } from './retention';
