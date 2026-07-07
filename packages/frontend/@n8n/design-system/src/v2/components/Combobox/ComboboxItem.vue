@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useSlots } from 'vue';
+
 import { ComboboxItem, ComboboxItemIndicator } from './reka-ui';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
@@ -9,8 +11,10 @@ import ComboboxItemDefault from './ComboboxItemDefault.vue';
 
 defineOptions({ inheritAttrs: false });
 
+defineSlots<ComboboxItemDefaultSlots>();
+
 const props = defineProps<ComboboxListItem>();
-const slots = defineSlots<ComboboxItemDefaultSlots>();
+const slots = useSlots();
 </script>
 
 <template>

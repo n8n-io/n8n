@@ -201,7 +201,7 @@ function getDisplayValue(value: unknown): string {
 
 							<slot v-else name="item" :item="item">
 								<N8nComboboxItem v-bind="item">
-									<template #item-leading="{ ui }">
+									<template v-if="$slots['item-leading']" #item-leading="{ ui }">
 										<slot name="item-leading" :item="item" :ui="ui" />
 									</template>
 									<template #item-label>
@@ -209,7 +209,7 @@ function getDisplayValue(value: unknown): string {
 											{{ item.label }}
 										</slot>
 									</template>
-									<template #item-trailing="{ ui }">
+									<template v-if="$slots['item-trailing']" #item-trailing="{ ui }">
 										<slot name="item-trailing" :item="item" :ui="ui" />
 									</template>
 								</N8nComboboxItem>

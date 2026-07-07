@@ -127,6 +127,22 @@ describe('v2/components/Combobox', () => {
 			});
 		});
 
+		it('should render item icons without a custom item-leading slot', async () => {
+			const items = [
+				{ value: 'workflows', label: 'Workflows', icon: 'bolt-filled' as const },
+				{ value: 'credentials', label: 'Credentials', icon: 'lock' as const },
+			];
+
+			const wrapper = render(Combobox, {
+				props: { items, defaultOpen: true },
+			});
+
+			await waitFor(() => {
+				const option = wrapper.getByText('Workflows').closest('[role="option"]');
+				expect(option?.querySelector('svg')).toBeInTheDocument();
+			});
+		});
+
 		it('should render empty state text', async () => {
 			const wrapper = render(Combobox, {
 				props: {
