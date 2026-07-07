@@ -123,34 +123,6 @@ function appendTimelineText(
 	}
 }
 
-/** Returns the reasoning block new deltas should append to, if any structural entry does not block merge. */
-function findReasoningMergeTarget(
-	timeline: InstanceAiTimelineEntry[],
-): Extract<InstanceAiTimelineEntry, { type: 'reasoning' }> | undefined {
-	for (let i = timeline.length - 1; i >= 0; i--) {
-		const entry = timeline[i];
-		if (entry.type === 'reasoning') return entry;
-		if (entry.type === 'text') continue;
-		return undefined;
-	}
-	return undefined;
-}
-
-/** Append reasoning to timeline — merges into the previous reasoning block when only text separates them. */
-function appendTimelineReasoning(
-	timeline: InstanceAiTimelineEntry[],
-	text: string,
-	responseId?: string,
-): void {
-	const mergeTarget = findReasoningMergeTarget(timeline);
-	if (mergeTarget) {
-		mergeTarget.content += text;
-		return;
-	}
-
-	timeline.push({ type: 'reasoning', content: text, ...(responseId ? { responseId } : {}) });
-}
-
 /**
  * Append reasoning to timeline — merges consecutive reasoning entries within
  * the same responseId, so each LLM step (and anything interleaved with tool
