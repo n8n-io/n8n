@@ -9,7 +9,15 @@ import type {
 } from '../types/sdk/vector-store';
 import type { JSONObject } from '../types/utils/json';
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// Qdrant parses point-id UUIDs with Rust's `Uuid::parse_str`, which accepts all
+// four representations below — not just hyphenated — so this must match them too:
+// simple `936da01f9abd4d9d80c702af85c822a8`, hyphenated `550e8400-e29b-...-440000`,
+// urn `urn:uuid:550e8400-e29b-...-440000`, and braced `{550e8400-e29b-...-440000}`.
+const UUID_HYPHENATED = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+const UUID_PATTERN = new RegExp(
+	`^(${UUID_HYPHENATED}|[0-9a-f]{32}|urn:uuid:${UUID_HYPHENATED}|\\{${UUID_HYPHENATED}\\})$`,
+	'i',
+);
 const UNSIGNED_INT_PATTERN = /^\d+$/;
 
 interface QdrantPayload {
