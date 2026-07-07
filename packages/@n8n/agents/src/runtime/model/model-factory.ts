@@ -74,7 +74,12 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 	openai: {
 		build: (creds, model, fetch) => {
 			const { createOpenAI } = require('@ai-sdk/openai') as typeof import('@ai-sdk/openai');
-			return createOpenAI({ ...creds, fetch })(model);
+			const provider = createOpenAI({ ...creds, fetch });
+			// A custom baseURL means an OpenAI-COMPATIBLE server (LM Studio, vLLM,
+			// Ollama, gateways), which speaks /chat/completions; the provider's
+			// default model targets OpenAI's own Responses API (/responses) that
+			// those servers do not implement.
+			return creds.baseURL ? provider.chat(model) : provider(model);
 		},
 	},
 	anthropic: {
@@ -215,6 +220,13 @@ export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel
 	if (typeof config !== 'string') {
 		const { id: _id, ...rest } = config as { id: string; [k: string]: unknown };
 		credFields = rest;
+	}
+	// Host configs (e.g. Instance AI's `{ id, url }` for OpenAI-compatible
+	// endpoints) spell the base URL as `url`; the provider schemas only know
+	// `baseURL`, and Zod strips unknown keys, so normalize before validation.
+	if (typeof credFields.url === 'string' && credFields.baseURL === undefined) {
+		const { url, ...restCreds } = credFields;
+		credFields = { ...restCreds, baseURL: url };
 	}
 
 	const schema = PROVIDER_CREDENTIAL_SCHEMAS[provider];
