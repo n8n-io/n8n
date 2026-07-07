@@ -770,7 +770,9 @@ export class GSuiteAdmin implements INodeType {
 							body.primaryEmail = updateFields.primaryEmail as string;
 						}
 
-						if (updateFields.suspendUi) {
+						// Explicit undefined check: the field is a three-state boolean, so
+						// setting it OFF (false) must still send `suspended: false` to reactivate.
+						if (updateFields.suspendUi !== undefined) {
 							body.suspended = updateFields.suspendUi as boolean;
 						}
 
