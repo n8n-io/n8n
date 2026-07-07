@@ -33,6 +33,7 @@ jobs:
       pull-requests: write
     outputs:
       conflict_pr: ${{ steps.sync.outputs.conflict_pr }}
+      conflict_owners: ${{ steps.sync.outputs.conflict_owners }}
     steps:
       - name: Generate GitHub App Token
         id: app-token
@@ -76,15 +77,27 @@ jobs:
           git config user.email "n8n-assistant[bot]@users.noreply.github.com"
 
           git fetch origin master
+          # Pin to the fetched SHA — a command-line refspec doesn't reliably update
+          # the origin/master tracking ref, so FETCH_HEAD is the unambiguous target.
+          MASTER_SHA=$(git rev-parse FETCH_HEAD)
 
           # `git merge` fast-forwards when 3.x has not diverged from master, and
           # does a three-way merge otherwise. A non-zero exit means a conflict.
-          if git merge --no-edit origin/master; then
+          if git merge --no-edit "$MASTER_SHA"; then
             git push "$PUSH_URL" HEAD:3.x
             echo "Synced master into 3.x."
           else
-            echo "Merge conflict encountered — opening a conflict PR."
-            # Record the conflicted state (with markers) on a PR branch so it can
+            echo "Merge conflict encountered — attributing owners and opening a conflict PR."
+
+            # Attribute the conflict to the authors of the 3.x breaking commits touching
+            # the conflicted files. Runs while the merge is unresolved (HEAD still at the
+            # pre-merge 3.x tip, unmerged paths present) — before we commit below.
+            ATTRIBUTION=$(node .github/scripts/sync-conflict-owners.mjs --base "$MASTER_SHA" --sync-branch "$SYNC_BRANCH")
+            PR_BODY=$(printf '%s' "$ATTRIBUTION" | jq -r '.body')
+            REVIEWERS=$(printf '%s' "$ATTRIBUTION" | jq -r '.ownersCsv')
+            OWNERS_SLACK=$(printf '%s' "$ATTRIBUTION" | jq -r '.slack')
+
+            # Record the conflicted state (with markers) on the PR branch so it can
             # be resolved in review, mirroring the backport conflict convention.
             git add -A
             git commit --no-edit
@@ -95,8 +108,17 @@ jobs:
             PR_URL=$(gh pr create --draft --base 3.x --head "$SYNC_BRANCH" \
               --label "$CONFLICT_LABEL" \
               --title "chore: Resolve master→3.x sync conflict" \
-              --body "Automated \`master\`→\`3.x\` sync hit a merge conflict. Resolve the conflict markers on \`${SYNC_BRANCH}\`, then merge this PR. **Daily syncs are paused until it is merged.**")
+              --body "$PR_BODY")
+
+            # Request owners as reviewers (best-effort: the API rejects the PR author
+            # and non-collaborators, so a failure here must not fail the sync).
+            if [ -n "$REVIEWERS" ]; then
+              gh pr edit "$PR_URL" --add-reviewer "$REVIEWERS" \
+                || echo "::warning::could not request some reviewers: $REVIEWERS"
+            fi
+
             echo "conflict_pr=$PR_URL" >> "$GITHUB_OUTPUT"
+            echo "conflict_owners=$OWNERS_SLACK" >> "$GITHUB_OUTPUT"
           fi
 
   notify-conflict:
@@ -116,10 +138,11 @@ jobs:
         env:
           SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
           PR_URL: ${{ needs.sync.outputs.conflict_pr }}
+          OWNERS_TEXT: ${{ needs.sync.outputs.conflict_owners }}
         run: |
           node .github/scripts/slack/notify.mjs \
             --channel '#v3-sync' \
-            --text "<${PR_URL}|master→3.x sync hit a conflict — resolve this PR>. Daily syncs are paused until it is merged."
+            --text "<${PR_URL}|master→3.x sync hit a conflict — resolve this PR>. Daily syncs are paused until it is merged. ${OWNERS_TEXT}"
 
   notify-on-failure:
     name: Notify Slack on failure

@@ -131,9 +131,14 @@ and merges `master` into `3.x`:
    **Syncs pause until that PR is resolved and merged** — so conflicts never pile
    up silently.
 
-If you authored the breaking commit that caused a conflict, you'll typically be
-the one to resolve the conflict PR. Resolve the conflict markers on the
-`sync/master-to-3x` branch and merge the PR; the next daily run resumes normally.
+**Who gets pinged.** The conflict is attributed to the authors of the `3.x`
+breaking commits touching the conflicted files (computed by
+`.github/scripts/sync-conflict-owners.mjs`: the `master..HEAD` commits per
+conflicted file, mapped to GitHub accounts). Those authors are **requested as
+reviewers** on the conflict PR and listed in the `#v3-sync` message. So if you
+authored the breaking commit that caused a conflict, you'll be nudged to resolve
+it: fix the conflict markers on the `sync/master-to-3x` branch and merge the PR;
+the next daily run then resumes normally.
 
 ## Trialing v3
 
