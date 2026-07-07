@@ -981,6 +981,9 @@ importers:
       '@qdrant/js-client-rest':
         specifier: 'catalog:'
         version: 1.16.2(typescript@6.0.2)
+      '@supabase/supabase-js':
+        specifier: 'catalog:'
+        version: 2.50.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       '@types/json-schema':
         specifier: 'catalog:'
         version: 7.0.15
