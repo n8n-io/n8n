@@ -155,7 +155,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 	private async generateStaticAssets() {
 		// Read the index file and replace the path placeholder
 		const pathResolvingService = Container.get(PathResolvingService);
-		const n8nPath = pathResolvingService.getBasePath();
+		const n8nPath = pathResolvingService.getUrlBasePath();
 		// For template replacements, we need the path with trailing slash for proper asset URLs
 		const n8nPathWithSlash = n8nPath.endsWith('/') ? n8nPath : `${n8nPath}/`;
 		const hooksUrls = this.globalConfig.externalFrontendHooksUrls;

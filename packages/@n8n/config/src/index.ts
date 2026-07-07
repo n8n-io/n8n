@@ -142,7 +142,7 @@ export class GlobalConfig {
 	@Env('N8N_PATH')
 	path: string = '/';
 
-	/** Base path n8n is deployed to */
+	/** Base path n8n is deployed to. Accepts `n8n` or `/n8n`; normalized to `/n8n`. */
 	@Env('N8N_BASE_PATH')
 	basePath: string = '';
 

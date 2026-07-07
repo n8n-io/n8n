@@ -3,12 +3,60 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import {
+	assertPathAndBasePathAreNotBothSet,
 	isContainedWithin,
+	normalizeBasePath,
 	safeJoinPath,
 	pathComponents,
 	pathSegmentsBetween,
 	containsSymlinkedComponent,
 } from '../path-util';
+
+describe('normalizeBasePath', () => {
+	it('should return root for empty and root paths', () => {
+		expect(normalizeBasePath('')).toBe('/');
+		expect(normalizeBasePath('/')).toBe('/');
+	});
+
+	it('should add a leading slash', () => {
+		expect(normalizeBasePath('app')).toBe('/app');
+		expect(normalizeBasePath('app/path')).toBe('/app/path');
+	});
+
+	it('should strip trailing slashes', () => {
+		expect(normalizeBasePath('/app/')).toBe('/app');
+		expect(normalizeBasePath('app///')).toBe('/app');
+	});
+
+	it('should preserve nested paths', () => {
+		expect(normalizeBasePath('/apps/n8n')).toBe('/apps/n8n');
+		expect(normalizeBasePath('apps/n8n/')).toBe('/apps/n8n');
+	});
+});
+
+describe('assertPathAndBasePathAreNotBothSet', () => {
+	it('should allow unset path with unset base path', () => {
+		expect(() => assertPathAndBasePathAreNotBothSet('/', '')).not.toThrow();
+	});
+
+	it('should allow configured path with unset base path', () => {
+		expect(() => assertPathAndBasePathAreNotBothSet('/app', '')).not.toThrow();
+	});
+
+	it('should allow unset path with configured base path', () => {
+		expect(() => assertPathAndBasePathAreNotBothSet('/', '/app')).not.toThrow();
+	});
+
+	it('should treat slash as unset', () => {
+		expect(() => assertPathAndBasePathAreNotBothSet('/', '/')).not.toThrow();
+	});
+
+	it('should throw when path and base path are both configured', () => {
+		expect(() => assertPathAndBasePathAreNotBothSet('/legacy', '/app')).toThrow(
+			'N8N_PATH and N8N_BASE_PATH cannot both be configured',
+		);
+	});
+});
 
 describe('isContainedWithin', () => {
 	it('should return true when parent and child paths are the same', () => {

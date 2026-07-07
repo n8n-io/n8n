@@ -1,4 +1,4 @@
-import { normalizeBasePath } from '@n8n/backend-common';
+import { assertPathAndBasePathAreNotBothSet, normalizeBasePath } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
@@ -10,22 +10,32 @@ import { Service } from '@n8n/di';
  */
 @Service()
 export class PathResolvingService {
-	/** The normalized base path combining N8N_BASE_PATH and N8N_PATH */
+	/** The normalized mount base path from N8N_BASE_PATH. */
 	private readonly basePath: string;
 
+	/** The normalized URL base path from N8N_BASE_PATH or legacy N8N_PATH. */
+	private readonly urlBasePath: string;
+
 	constructor(private readonly globalConfig: GlobalConfig) {
-		this.basePath = normalizeBasePath(globalConfig.basePath, globalConfig.path);
+		assertPathAndBasePathAreNotBothSet(globalConfig.path, globalConfig.basePath);
+		this.basePath = normalizeBasePath(globalConfig.basePath);
+		this.urlBasePath = this.basePath === '/' ? normalizeBasePath(globalConfig.path) : this.basePath;
 	}
 
 	/**
-	 * Returns the normalized base path.
-	 * This is the combination of N8N_BASE_PATH and N8N_PATH, normalized to:
-	 * - Start with `/`
-	 * - NOT end with `/`
-	 * - Return `/` for root path
+	 * Returns the normalized mount base path. Only N8N_BASE_PATH affects backend
+	 * Express route registration; legacy N8N_PATH must not move backend routes.
 	 */
 	getBasePath(): string {
 		return this.basePath;
+	}
+
+	/**
+	 * Returns the normalized URL base path. N8N_BASE_PATH takes precedence, while
+	 * legacy N8N_PATH still prefixes generated/frontend-facing URLs when set alone.
+	 */
+	getUrlBasePath(): string {
+		return this.urlBasePath;
 	}
 
 	/**
@@ -34,16 +44,25 @@ export class PathResolvingService {
 	 * @returns The full path (e.g., '/custom-path/healthz')
 	 */
 	resolveEndpoint(endpoint: string): string {
-		// Remove leading slash from endpoint if present
-		const normalizedEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+		const normalizedEndpoint = this.stripLeadingSlash(endpoint);
 		if (!normalizedEndpoint) {
 			return this.basePath;
 		}
-		// Handle root basePath case to avoid double slashes
 		if (this.basePath === '/') {
 			return `/${normalizedEndpoint}`;
 		}
 		return `${this.basePath}/${normalizedEndpoint}`;
+	}
+
+	private stripLeadingSlash(path: string) {
+		return path.startsWith('/') ? path.slice(1) : path;
+	}
+
+	private resolveConfiguredEndpoint(endpoint: string, path: string = ''): string {
+		const normalizedPath = this.stripLeadingSlash(path);
+		return this.resolveEndpoint(
+			normalizedPath ? `${this.stripLeadingSlash(endpoint)}/${normalizedPath}` : endpoint,
+		);
 	}
 
 	// ==================== REST API ====================
@@ -54,12 +73,7 @@ export class PathResolvingService {
 	 * @returns The full REST path (e.g., '/custom-path/rest/workflows')
 	 */
 	resolveRestEndpoint(path: string = ''): string {
-		const restEndpoint = this.globalConfig.endpoints.rest;
-		const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
-		if (!normalizedPath) {
-			return this.resolveEndpoint(restEndpoint);
-		}
-		return this.resolveEndpoint(`${restEndpoint}/${normalizedPath}`);
+		return this.resolveConfiguredEndpoint(this.globalConfig.endpoints.rest, path);
 	}
 
 	// ==================== Webhooks ====================
@@ -70,12 +84,7 @@ export class PathResolvingService {
 	 * @returns The full webhook path (e.g., '/custom-path/webhook/my-webhook-id')
 	 */
 	resolveWebhookEndpoint(path: string = ''): string {
-		const webhookEndpoint = this.globalConfig.endpoints.webhook;
-		const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
-		if (!normalizedPath) {
-			return this.resolveEndpoint(webhookEndpoint);
-		}
-		return this.resolveEndpoint(`${webhookEndpoint}/${normalizedPath}`);
+		return this.resolveConfiguredEndpoint(this.globalConfig.endpoints.webhook, path);
 	}
 
 	/**
@@ -84,12 +93,7 @@ export class PathResolvingService {
 	 * @returns The full test webhook path (e.g., '/custom-path/webhook-test/my-webhook-id')
 	 */
 	resolveWebhookTestEndpoint(path: string = ''): string {
-		const webhookTestEndpoint = this.globalConfig.endpoints.webhookTest;
-		const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
-		if (!normalizedPath) {
-			return this.resolveEndpoint(webhookTestEndpoint);
-		}
-		return this.resolveEndpoint(`${webhookTestEndpoint}/${normalizedPath}`);
+		return this.resolveConfiguredEndpoint(this.globalConfig.endpoints.webhookTest, path);
 	}
 
 	/**
@@ -98,12 +102,7 @@ export class PathResolvingService {
 	 * @returns The full waiting webhook path (e.g., '/custom-path/webhook-waiting/path')
 	 */
 	resolveWebhookWaitingEndpoint(path: string = ''): string {
-		const webhookWaitingEndpoint = this.globalConfig.endpoints.webhookWaiting;
-		const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
-		if (!normalizedPath) {
-			return this.resolveEndpoint(webhookWaitingEndpoint);
-		}
-		return this.resolveEndpoint(`${webhookWaitingEndpoint}/${normalizedPath}`);
+		return this.resolveConfiguredEndpoint(this.globalConfig.endpoints.webhookWaiting, path);
 	}
 
 	// ==================== Forms ====================
@@ -114,12 +113,7 @@ export class PathResolvingService {
 	 * @returns The full form path (e.g., '/custom-path/form/my-form-id')
 	 */
 	resolveFormEndpoint(path: string = ''): string {
-		const formEndpoint = this.globalConfig.endpoints.form;
-		const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
-		if (!normalizedPath) {
-			return this.resolveEndpoint(formEndpoint);
-		}
-		return this.resolveEndpoint(`${formEndpoint}/${normalizedPath}`);
+		return this.resolveConfiguredEndpoint(this.globalConfig.endpoints.form, path);
 	}
 
 	/**
@@ -128,12 +122,7 @@ export class PathResolvingService {
 	 * @returns The full test form path (e.g., '/custom-path/form-test/my-form-id')
 	 */
 	resolveFormTestEndpoint(path: string = ''): string {
-		const formTestEndpoint = this.globalConfig.endpoints.formTest;
-		const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
-		if (!normalizedPath) {
-			return this.resolveEndpoint(formTestEndpoint);
-		}
-		return this.resolveEndpoint(`${formTestEndpoint}/${normalizedPath}`);
+		return this.resolveConfiguredEndpoint(this.globalConfig.endpoints.formTest, path);
 	}
 
 	/**
@@ -142,12 +131,7 @@ export class PathResolvingService {
 	 * @returns The full waiting form path (e.g., '/custom-path/form-waiting/path')
 	 */
 	resolveFormWaitingEndpoint(path: string = ''): string {
-		const formWaitingEndpoint = this.globalConfig.endpoints.formWaiting;
-		const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
-		if (!normalizedPath) {
-			return this.resolveEndpoint(formWaitingEndpoint);
-		}
-		return this.resolveEndpoint(`${formWaitingEndpoint}/${normalizedPath}`);
+		return this.resolveConfiguredEndpoint(this.globalConfig.endpoints.formWaiting, path);
 	}
 
 	// ==================== MCP ====================
@@ -158,12 +142,7 @@ export class PathResolvingService {
 	 * @returns The full MCP path (e.g., '/custom-path/mcp/path')
 	 */
 	resolveMcpEndpoint(path: string = ''): string {
-		const mcpEndpoint = this.globalConfig.endpoints.mcp;
-		const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
-		if (!normalizedPath) {
-			return this.resolveEndpoint(mcpEndpoint);
-		}
-		return this.resolveEndpoint(`${mcpEndpoint}/${normalizedPath}`);
+		return this.resolveConfiguredEndpoint(this.globalConfig.endpoints.mcp, path);
 	}
 
 	/**
@@ -172,12 +151,7 @@ export class PathResolvingService {
 	 * @returns The full test MCP path (e.g., '/custom-path/mcp-test/path')
 	 */
 	resolveMcpTestEndpoint(path: string = ''): string {
-		const mcpTestEndpoint = this.globalConfig.endpoints.mcpTest;
-		const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
-		if (!normalizedPath) {
-			return this.resolveEndpoint(mcpTestEndpoint);
-		}
-		return this.resolveEndpoint(`${mcpTestEndpoint}/${normalizedPath}`);
+		return this.resolveConfiguredEndpoint(this.globalConfig.endpoints.mcpTest, path);
 	}
 
 	// ==================== Public API ====================
@@ -188,12 +162,7 @@ export class PathResolvingService {
 	 * @returns The full public API path (e.g., '/custom-path/api/v1/workflows')
 	 */
 	resolvePublicApiEndpoint(path: string = ''): string {
-		const publicApiEndpoint = this.globalConfig.publicApi.path;
-		const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
-		if (!normalizedPath) {
-			return this.resolveEndpoint(publicApiEndpoint);
-		}
-		return this.resolveEndpoint(`${publicApiEndpoint}/${normalizedPath}`);
+		return this.resolveConfiguredEndpoint(this.globalConfig.publicApi.path, path);
 	}
 
 	// ==================== Static Assets ====================
@@ -204,11 +173,7 @@ export class PathResolvingService {
 	 * @returns The full icons path (e.g., '/custom-path/icons/n8n-nodes-base/...')
 	 */
 	resolveIconsEndpoint(path: string = ''): string {
-		const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
-		if (!normalizedPath) {
-			return this.resolveEndpoint('icons');
-		}
-		return this.resolveEndpoint(`icons/${normalizedPath}`);
+		return this.resolveConfiguredEndpoint('icons', path);
 	}
 
 	/**
@@ -217,11 +182,7 @@ export class PathResolvingService {
 	 * @returns The full types path (e.g., '/custom-path/types/nodes.json')
 	 */
 	resolveTypesEndpoint(path: string = ''): string {
-		const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
-		if (!normalizedPath) {
-			return this.resolveEndpoint('types');
-		}
-		return this.resolveEndpoint(`types/${normalizedPath}`);
+		return this.resolveConfiguredEndpoint('types', path);
 	}
 
 	/**
@@ -230,11 +191,7 @@ export class PathResolvingService {
 	 * @returns The full schemas path (e.g., '/custom-path/schemas/...')
 	 */
 	resolveSchemasEndpoint(path: string = ''): string {
-		const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
-		if (!normalizedPath) {
-			return this.resolveEndpoint('schemas');
-		}
-		return this.resolveEndpoint(`schemas/${normalizedPath}`);
+		return this.resolveConfiguredEndpoint('schemas', path);
 	}
 
 	// ==================== Health Check ====================
@@ -245,14 +202,6 @@ export class PathResolvingService {
 	 * @returns The full healthz path (e.g., '/custom-path/healthz/readiness')
 	 */
 	resolveHealthzEndpoint(path: string = ''): string {
-		const healthEndpoint = this.globalConfig.endpoints.health;
-		const normalizedHealth = healthEndpoint.startsWith('/')
-			? healthEndpoint.slice(1)
-			: healthEndpoint;
-		const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
-		if (!normalizedPath) {
-			return this.resolveEndpoint(normalizedHealth);
-		}
-		return this.resolveEndpoint(`${normalizedHealth}/${normalizedPath}`);
+		return this.resolveConfiguredEndpoint(this.globalConfig.endpoints.health, path);
 	}
 }

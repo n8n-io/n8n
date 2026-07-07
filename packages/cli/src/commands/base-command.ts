@@ -43,6 +43,7 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
+import { PathResolvingService } from '@/services/path-resolving.service';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
 
@@ -103,6 +104,13 @@ export abstract class BaseCommand<F = never> {
 			eventLoopBlockMaxEventsPerHour,
 			eventLoopBlockDetectionEnabled,
 		} = this.globalConfig.sentry;
+		// Main process health routes are mounted under N8N_BASE_PATH; worker
+		// health routes stay bare because workers are reached directly.
+		const healthEndpoint =
+			this.instanceSettings.instanceType === 'worker'
+				? resolveBackendHealthEndpointPath(this.globalConfig)
+				: Container.get(PathResolvingService).resolveHealthzEndpoint();
+
 		await this.errorReporter.init({
 			serverType: this.instanceSettings.instanceType,
 			dsn: backendDsn,
@@ -118,7 +126,7 @@ export abstract class BaseCommand<F = never> {
 			webhookEndpoint: this.globalConfig.endpoints.webhook,
 			webhookTracesSampleRate,
 			profilesSampleRate,
-			healthEndpoint: resolveBackendHealthEndpointPath(this.globalConfig),
+			healthEndpoint,
 			eligibleIntegrations: {
 				Express: true,
 				Http: true,

@@ -3,6 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Router, ErrorRequestHandler, RequestHandler } from 'express';
+import type { OpenAPIV3 } from 'express-openapi-validator/dist/framework/types';
 import express from 'express';
 import fs from 'fs/promises';
 import { UnexpectedError } from 'n8n-workflow';
@@ -18,6 +19,7 @@ import { License } from '@/license';
 import { createN8nPackageMulterOptions } from '@/modules/n8n-packages/utils/import-package-upload';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
+import { PathResolvingService } from '@/services/path-resolving.service';
 import { UrlService } from '@/services/url.service';
 
 import './v1/controllers/tags.public.controller';
@@ -37,6 +39,41 @@ type SwaggerUiSystem = {
 	};
 };
 type OperationSummaryProps = { specPath?: ImmutableListLike };
+
+function joinUrlPaths(prefix: string, urlPath: string) {
+	const normalizedPrefix = prefix === '/' ? '' : prefix.replace(/\/+$/, '');
+	const normalizedPath = urlPath.replace(/^\/+/, '');
+
+	return normalizedPath ? `${normalizedPrefix}/${normalizedPath}` : normalizedPrefix || '/';
+}
+
+function stripLeadingSlash(urlPath: string) {
+	return urlPath.startsWith('/') ? urlPath.slice(1) : urlPath;
+}
+
+export function patchOpenApiServers(
+	openApiDocument: OpenAPIV3.DocumentV3,
+	basePath: string,
+): OpenAPIV3.DocumentV3 {
+	if (basePath === '/') return openApiDocument;
+
+	return {
+		...openApiDocument,
+		servers: openApiDocument.servers?.map((server) => ({
+			...server,
+			url: server.url.startsWith('/') ? joinUrlPaths(basePath, server.url) : server.url,
+		})),
+	};
+}
+
+async function loadOpenApiDocument(openApiSpecPath: string, basePath: string) {
+	if (basePath === '/') return openApiSpecPath;
+
+	const { bundle } = await import('@apidevtools/json-schema-ref-parser');
+	const openApiDocument = await bundle<OpenAPIV3.DocumentV3>(openApiSpecPath);
+
+	return patchOpenApiServers(openApiDocument, basePath);
+}
 
 function scopeBadgePlugin() {
 	const wrapOperationSummary =
@@ -83,7 +120,9 @@ function createLazySwaggerMiddleware(openApiSpecPath: string, version: string): 
 	return async (req, res, next) => {
 		if (!cachedRouter) {
 			const globalConfig = Container.get(GlobalConfig);
-			const n8nPath = globalConfig.path;
+			const pathResolvingService = Container.get(PathResolvingService);
+			const urlBasePath = pathResolvingService.getUrlBasePath();
+			const faviconPath = joinUrlPaths(urlBasePath, 'favicon.ico');
 
 			const YAML = await import('yaml');
 			const spec = await fs.readFile(openApiSpecPath, 'utf-8');
@@ -93,7 +132,7 @@ function createLazySwaggerMiddleware(openApiSpecPath: string, version: string): 
 			// `getInstanceBaseUrl()` already includes the configured base path, so we must
 			// combine it with the *bare* public API endpoint name to avoid double-prefixing.
 			const bareApiEndpoint = globalConfig.publicApi.path;
-			swaggerDocument.server = [
+			swaggerDocument.servers = [
 				{
 					url: `${Container.get(UrlService).getInstanceBaseUrl()}/${bareApiEndpoint}/${version}`,
 				},
@@ -106,7 +145,7 @@ function createLazySwaggerMiddleware(openApiSpecPath: string, version: string): 
 			const swaggerSetupOpts = {
 				customCss: swaggerThemeCss,
 				customSiteTitle: 'n8n Public API UI',
-				customfavIcon: `${n8nPath}favicon.ico`,
+				customfavIcon: faviconPath,
 				swaggerOptions: {
 					plugins: [scopeBadgePlugin],
 				},
@@ -196,6 +235,7 @@ function createLazyValidatorMiddleware(
 	openApiSpecPath: string,
 	handlersDirectory: string,
 	version: string,
+	basePath: string,
 ): RequestHandler {
 	let cachedRouter: Router | undefined;
 	let initPromise: Promise<Router> | undefined;
@@ -211,6 +251,7 @@ function createLazyValidatorMiddleware(
 				const eventService = Container.get(EventService);
 				const lastActiveAtService = Container.get(LastActiveAtService);
 				const logger = Container.get(Logger);
+				const openApiDocument = await loadOpenApiDocument(openApiSpecPath, basePath);
 
 				const authenticate = async (req: AuthenticatedRequest) => {
 					const authenticated = await authStrategyRegistry.authenticate(req);
@@ -235,7 +276,7 @@ function createLazyValidatorMiddleware(
 				const router = express.Router();
 				router.use(
 					openApiValidatorMiddleware({
-						apiSpec: openApiSpecPath,
+						apiSpec: openApiDocument,
 						// Production/e2e use eov's default resolver (synchronous `require`). Under Vitest,
 						// where handler modules are `.ts` served by Vite, swap in an `import()`-based
 						// resolver so route handlers can load. See `importOperationHandlerResolver`.
@@ -294,19 +335,21 @@ function createApiRouter(
 	openApiSpecPath: string,
 	handlersDirectory: string,
 	publicApiEndpoint: string,
+	basePath: string,
 ): Router {
 	const globalConfig = Container.get(GlobalConfig);
 	const payloadLimit = `${globalConfig.endpoints.payloadSizeMax}mb`;
 	const apiController = express.Router();
+	const mountedPublicApiEndpoint = stripLeadingSlash(joinUrlPaths(basePath, publicApiEndpoint));
 
 	if (!globalConfig.publicApi.swaggerUiDisabled) {
 		apiController.use(
-			`/${publicApiEndpoint}/${version}/docs`,
+			`/${mountedPublicApiEndpoint}/${version}/docs`,
 			createLazySwaggerMiddleware(openApiSpecPath, version),
 		);
 	}
 
-	apiController.get(`/${publicApiEndpoint}/${version}/openapi.yml`, (_, res) => {
+	apiController.get(`/${mountedPublicApiEndpoint}/${version}/openapi.yml`, (_, res) => {
 		// Public, read-only spec with no auth or sensitive data - safe to expose
 		// cross-origin for documentation playgrounds
 		res.header('Access-Control-Allow-Origin', '*');
@@ -325,11 +368,11 @@ function createApiRouter(
 	};
 
 	apiController.use(
-		`/${publicApiEndpoint}/${version}`,
+		`/${mountedPublicApiEndpoint}/${version}`,
 		express.json({ limit: payloadLimit }),
 		jsonParseErrorHandler,
 		createPublicControllerMiddleware(version),
-		createLazyValidatorMiddleware(openApiSpecPath, handlersDirectory, version),
+		createLazyValidatorMiddleware(openApiSpecPath, handlersDirectory, version, basePath),
 	);
 
 	const publicApiErrorHandler: ErrorRequestHandler = (
@@ -348,13 +391,14 @@ function createApiRouter(
 
 export const loadPublicApiVersions = async (
 	publicApiEndpoint: string,
+	basePath: string = Container.get(PathResolvingService).getBasePath(),
 ): Promise<{ apiRouters: express.Router[]; apiLatestVersion: number }> => {
 	const folders = await fs.readdir(__dirname);
 	const versions = folders.filter((folderName) => folderName.startsWith('v'));
 
 	const apiRouters = versions.map((version) => {
 		const openApiPath = path.join(__dirname, version, 'openapi.yml');
-		return createApiRouter(version, openApiPath, __dirname, publicApiEndpoint);
+		return createApiRouter(version, openApiPath, __dirname, publicApiEndpoint, basePath);
 	});
 
 	const version = versions.pop()?.charAt(1);

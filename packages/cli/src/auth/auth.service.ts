@@ -200,7 +200,7 @@ export class AuthService {
 
 	clearCookie(res: Response) {
 		// Clear cookie with the same path it was set with
-		res.clearCookie(AUTH_COOKIE_NAME, { path: this.urlService.basePath });
+		res.clearCookie(AUTH_COOKIE_NAME, { path: this.pathResolvingService.getBasePath() });
 	}
 
 	async invalidateToken(req: AuthenticatedRequest) {
@@ -241,8 +241,8 @@ export class AuthService {
 			httpOnly: true,
 			sameSite: cookieOverrides?.sameSite ?? samesite,
 			secure: cookieOverrides?.secure ?? secure,
-			// Scope the cookie to the base path so it's only sent for requests under this path
-			path: this.urlService.basePath,
+			// Scope the cookie to the backend mount path, not legacy generated URL path.
+			path: this.pathResolvingService.getBasePath(),
 		});
 	}
 
