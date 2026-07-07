@@ -34,6 +34,10 @@ type PgPoolClient = NonNullable<Parameters<NonNullable<Parameters<PgPool['connec
  * - After `databaseConfig.pingMaxFailuresBeforeRecovery` consecutive failures, destroys
  *   and reinitializes the DataSource with exponential backoff
  *   (`databaseConfig.minRecoveryBackoffMs` .. `databaseConfig.maxRecoveryBackoffMs`).
+ *   Postgres-only: for sqlite the database is a local file, so a failed ping means a
+ *   saturated pool rather than a lost connection, and destroying the pool would abort
+ *   every pending acquisition (failing in-flight executions) with nothing to re-establish.
+ *   Non-Postgres drivers only get ping-based `connected` state tracking.
  * - Attaches an error listener to the pg pool (Postgres only) so terminated
  *   idle clients are caught instead of crashing the process.
  * - Suspends connection acquisition during recovery so in-flight queries wait
@@ -152,14 +156,21 @@ export class DbConnectionMonitor {
 		} catch (error) {
 			this.setConnected(false);
 			this.consecutiveFailures += 1;
-			this.logger.warn(
-				`Database ping failed (${this.consecutiveFailures}/${this.databaseConfig.pingMaxFailuresBeforeRecovery}): ${ensureError(error).message}`,
-			);
+
+			// Only Postgres counts toward a recovery threshold; showing it for sqlite would suggest a teardown that never comes.
+			const failureCount = this.recoveryEnabled
+				? `${this.consecutiveFailures}/${this.databaseConfig.pingMaxFailuresBeforeRecovery}`
+				: `${this.consecutiveFailures}`;
+
+			this.logger.warn(`Database ping failed (${failureCount}): ${ensureError(error).message}`);
 			if (!(error instanceof OperationalError) && !this.isRecoverableConnectionError(error)) {
 				this.errorReporter.error(error);
 			}
 
-			if (this.consecutiveFailures >= this.databaseConfig.pingMaxFailuresBeforeRecovery) {
+			if (
+				this.recoveryEnabled &&
+				this.consecutiveFailures >= this.databaseConfig.pingMaxFailuresBeforeRecovery
+			) {
 				this.logger.warn(
 					`Triggering database connection recovery after ${this.consecutiveFailures} consecutive ping failures`,
 				);
@@ -262,7 +273,7 @@ export class DbConnectionMonitor {
 	}
 
 	private async recoverDataSource() {
-		if (this.recovering || this.stopped) {
+		if (this.recovering || this.stopped || !this.recoveryEnabled) {
 			return;
 		}
 		this.startRecovery();
@@ -332,6 +343,15 @@ export class DbConnectionMonitor {
 
 	private get isPostgres(): boolean {
 		return this.dataSource.options.type === 'postgres';
+	}
+
+	/**
+	 * Teardown/reinit recovery is Postgres-only.
+	 * Sqlite is a local file with no connection to re-establish,
+	 * and destroying its pool aborts pending acquisitions.
+	 */
+	private get recoveryEnabled(): boolean {
+		return this.isPostgres;
 	}
 
 	/**
