@@ -14,6 +14,11 @@ export function useAgentNavigation() {
 	const workflowsStore = useWorkflowsStore();
 	const returnContext = useAgentReturnContextStore();
 
+	/**
+	 * Pass `originNodeId` ONLY when the trip starts from the node's NDV: a set
+	 * node id makes "Back to workflow" reopen that node's NDV. Canvas-initiated
+	 * trips omit it so the return lands on the canvas.
+	 */
 	function rememberOrigin(agentId: string, originNodeId?: string) {
 		// Only a persisted workflow has a real id to return to; a brand-new
 		// (unsaved) workflow has no meaningful "back to workflow" target.

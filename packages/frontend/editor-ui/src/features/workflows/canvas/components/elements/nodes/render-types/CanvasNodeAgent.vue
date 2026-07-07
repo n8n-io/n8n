@@ -147,9 +147,10 @@ function onOpenContextMenu(event: MouseEvent) {
 function openAgent() {
 	if (!isConfigured.value || !projectId.value) return;
 
-	// Pass this node as the origin so the builder's "Back to workflow" banner
-	// can re-focus it on return (same round-trip the NDV banner uses).
-	void nav.openBuilder(projectId.value, agentId.value, id.value);
+	// No origin node id: this trip starts from the canvas, so "Back to
+	// workflow" must land on the canvas — a set node id would reopen the
+	// node's NDV on return (that's the NDV banner's round-trip, not ours).
+	void nav.openBuilder(projectId.value, agentId.value);
 }
 
 // Resolve the friendly model name once the project scope is known. projectId is

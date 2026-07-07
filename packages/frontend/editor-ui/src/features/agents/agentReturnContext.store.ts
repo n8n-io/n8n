@@ -7,7 +7,11 @@ import { ref } from 'vue';
  */
 export interface AgentReturnContext {
 	workflowId: string;
-	/** Origin node id so the canvas can re-focus it on return. */
+	/**
+	 * Node whose NDV reopens on return. Set only when the round-trip started
+	 * from the node's NDV; empty for trips that started from the canvas (the
+	 * return then lands on the canvas without reopening the NDV).
+	 */
 	nodeId: string;
 	/** Agent navigated to — the banner only shows on this agent's pages. */
 	agentId: string;
