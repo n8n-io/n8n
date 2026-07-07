@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
+import { DurableLogMetrics } from './event-bus/durable-log-metrics';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiService } from './instance-ai.service';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
@@ -22,7 +23,22 @@ export class InstanceAiTestController {
 		private readonly userRepo: UserRepository,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly projectRepo: ProjectRepository,
+		private readonly durableLogMetrics: DurableLogMetrics,
 	) {}
+
+	/** Durable-log prototype instrumentation snapshot (measurement harness). */
+	@Get('/test/durable-log-metrics', { skipAuth: true })
+	getDurableLogMetrics() {
+		this.assertTraceReplayEnabled();
+		return this.durableLogMetrics.snapshot();
+	}
+
+	@Post('/test/durable-log-metrics/reset', { skipAuth: true })
+	resetDurableLogMetrics() {
+		this.assertTraceReplayEnabled();
+		this.durableLogMetrics.reset();
+		return { ok: true };
+	}
 
 	@Post('/test/tool-trace', { skipAuth: true })
 	loadToolTrace(req: Request) {

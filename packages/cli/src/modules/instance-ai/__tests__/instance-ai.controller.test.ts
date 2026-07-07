@@ -66,6 +66,8 @@ import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-bro
 import type { EvalExecutionService } from '../eval/execution.service';
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import type { EvalThreadRestoreService } from '../eval/thread-restore.service';
+import type { DurableEventLog } from '../event-bus/durable-event-log';
+import type { DurableLogMetrics } from '../event-bus/durable-log-metrics';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { LocalGateway } from '../filesystem/local-gateway';
 import type { InstanceAiGatewayService } from '../instance-ai-gateway.service';
@@ -95,11 +97,13 @@ describe('InstanceAiController', () => {
 	const memoryService = mock<InstanceAiMemoryService>();
 	const settingsService = mock<InstanceAiSettingsService>();
 	const eventBus = mock<InProcessEventBus>();
+	const eventLog = mock<DurableEventLog>();
+	const durableLogMetrics = mock<DurableLogMetrics>();
 	const moduleRegistry = mock<ModuleRegistry>();
 	const push = mock<Push>();
 	const urlService = mock<UrlService>();
 	const globalConfig = mock<GlobalConfig>({
-		instanceAi: { gatewayApiKey: 'static-key' },
+		instanceAi: { gatewayApiKey: 'static-key', durableLog: false },
 		editorBaseUrl: 'http://localhost:5678',
 		port: 5678,
 	});
@@ -122,6 +126,8 @@ describe('InstanceAiController', () => {
 		evalCredentialAllowlists,
 		evalThreadRestore,
 		eventBus,
+		eventLog,
+		durableLogMetrics,
 		moduleRegistry,
 		push,
 		urlService,

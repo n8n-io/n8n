@@ -1,10 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
 import type { InstanceAiEvent } from '@n8n/api-types';
+import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import type { DurableEventLog } from '../durable-event-log';
 import { InProcessEventBus } from '../in-process-event-bus';
 
 function makeEvent(type: string, runId: string): InstanceAiEvent {
@@ -26,7 +28,16 @@ describe('InProcessEventBus', () => {
 		logger.scoped.mockReturnValue(logger);
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue(undefined);
-		return new InProcessEventBus(logger, instanceSettings as InstanceSettings, publisher);
+		// Flag off: the durable log is never touched, so a bare mock suffices.
+		const eventLog = mock<DurableEventLog>();
+		const globalConfig = { instanceAi: { durableLog: false } } as GlobalConfig;
+		return new InProcessEventBus(
+			logger,
+			instanceSettings as InstanceSettings,
+			publisher,
+			eventLog,
+			globalConfig,
+		);
 	}
 
 	beforeEach(() => {

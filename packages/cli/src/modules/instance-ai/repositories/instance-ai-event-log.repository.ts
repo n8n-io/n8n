@@ -1,9 +1,15 @@
 import { Service } from '@n8n/di';
 import type { InstanceAiEvent } from '@n8n/api-types';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, MoreThan, Repository } from '@n8n/typeorm';
 import type { StoredEvent } from '@n8n/instance-ai';
 
 import { InstanceAiEventLogEntry } from '../entities/instance-ai-event-log-entry.entity';
+
+/** A run that has a `run-start` fact but no terminal `run-finish` in the log. */
+export interface UnfinishedRun {
+	threadId: string;
+	runId: string;
+}
 
 @Service()
 export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogEntry> {
@@ -24,34 +30,38 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 	 * Append a batch of events with contiguous seq values starting at `firstSeq`,
 	 * in one transaction. The (threadId, seq) PK makes a concurrent-writer race
 	 * fail loudly instead of silently interleaving — the caller re-reads maxSeq
-	 * and retries.
+	 * and retries. Returns the serialized payload bytes written (instrumentation).
 	 *
-	 * SKETCH: when #33558 lands, its per-thread drain calls this instead of
-	 * Redis INCRBY — id assignment and durable insert collapse into one round trip.
+	 * When #33558 lands, its per-thread drain calls this instead of Redis
+	 * INCRBY — id assignment and durable insert collapse into one round trip.
 	 */
-	async appendBatch(threadId: string, firstSeq: number, events: InstanceAiEvent[]): Promise<void> {
-		const rows = events.map((event, i) =>
-			this.create({
+	async appendBatch(
+		threadId: string,
+		firstSeq: number,
+		events: InstanceAiEvent[],
+	): Promise<number> {
+		let bytes = 0;
+		const rows = events.map((event, i) => {
+			const payload = JSON.stringify(event);
+			bytes += Buffer.byteLength(payload, 'utf8');
+			return {
 				threadId,
 				seq: firstSeq + i,
 				runId: event.runId,
 				type: event.type,
-				payload: JSON.stringify(event),
-			}),
-		);
+				payload,
+			};
+		});
 		await this.insert(rows);
+		return bytes;
 	}
 
 	async getAfter(threadId: string, afterSeq: number): Promise<StoredEvent[]> {
 		const rows = await this.find({
-			where: { threadId },
+			where: { threadId, seq: MoreThan(afterSeq) },
 			order: { seq: 'ASC' },
 		});
-		// SKETCH: move the cursor filter into SQL (seq > :afterSeq) — kept in JS
-		// here only to reuse the parse step below.
-		return rows
-			.filter((r) => r.seq > afterSeq)
-			.map((r) => ({ id: r.seq, event: JSON.parse(r.payload) as InstanceAiEvent }));
+		return rows.map((r) => ({ id: r.seq, event: JSON.parse(r.payload) as InstanceAiEvent }));
 	}
 
 	async getForRuns(threadId: string, runIds: string[]): Promise<InstanceAiEvent[]> {
@@ -62,5 +72,43 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 			.orderBy('e.seq', 'ASC')
 			.getMany();
 		return rows.map((r) => JSON.parse(r.payload) as InstanceAiEvent);
+	}
+
+	/** All events of a thread with their run + timing metadata, seq order. */
+	async getForThread(
+		threadId: string,
+	): Promise<Array<{ runId: string; createdAt: Date; event: InstanceAiEvent }>> {
+		const rows = await this.find({ where: { threadId }, order: { seq: 'ASC' } });
+		return rows.map((r) => ({
+			runId: r.runId,
+			createdAt: r.createdAt,
+			event: JSON.parse(r.payload) as InstanceAiEvent,
+		}));
+	}
+
+	/**
+	 * Interrupted-run sweep source: runs whose log has a `run-start` but no
+	 * `run-finish`. Pure log query — liveness (is a main still driving it?) is
+	 * the caller's concern.
+	 */
+	async findUnfinishedRuns(): Promise<UnfinishedRun[]> {
+		const rows = await this.createQueryBuilder('e')
+			.select('e.threadId', 'threadId')
+			.addSelect('e.runId', 'runId')
+			.where("e.type = 'run-start'")
+			.andWhere(
+				(qb) =>
+					'NOT EXISTS ' +
+					qb
+						.subQuery()
+						.select('1')
+						.from(InstanceAiEventLogEntry, 'f')
+						.where('f.threadId = e.threadId')
+						.andWhere('f.runId = e.runId')
+						.andWhere("f.type = 'run-finish'")
+						.getQuery(),
+			)
+			.getRawMany<UnfinishedRun>();
+		return rows;
 	}
 }

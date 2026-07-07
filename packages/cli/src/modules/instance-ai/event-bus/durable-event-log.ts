@@ -3,6 +3,7 @@ import type { InstanceAiEvent } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { StoredEvent } from '@n8n/instance-ai';
 
+import { DurableLogMetrics } from './durable-log-metrics';
 import { InstanceAiEventLogRepository } from '../repositories/instance-ai-event-log.repository';
 
 /**
@@ -25,11 +26,19 @@ import { InstanceAiEventLogRepository } from '../repositories/instance-ai-event-
  */
 const EPHEMERAL_TYPES = new Set(['text-delta', 'reasoning-delta', 'status', 'filesystem-request']);
 
+/** Retries per batch on (threadId, seq) PK collision before giving up. */
+const MAX_APPEND_ATTEMPTS = 5;
+
 /** How a drained event reaches the bus. `id` set = durable; `live` = emit to SSE. */
 export interface DrainedEvent {
 	id?: number;
 	event: InstanceAiEvent;
 	live: boolean;
+}
+
+interface PendingEvent {
+	event: InstanceAiEvent;
+	enqueuedAt: number;
 }
 
 interface CoalesceBuffer {
@@ -46,21 +55,23 @@ type EmitFn = (drained: DrainedEvent) => void;
 @Service()
 export class DurableEventLog {
 	/** publish() stays synchronous: events queue here, a per-thread drain assigns seq. */
-	private readonly pendingByThread = new Map<string, InstanceAiEvent[]>();
+	private readonly pendingByThread = new Map<string, PendingEvent[]>();
 
-	private readonly drainingThreads = new Set<string>();
+	/** In-flight drain per thread, awaited by flush(). */
+	private readonly draining = new Map<string, Promise<void>>();
 
 	/** Last assigned seq per thread; lazily seeded from MAX(seq) in the DB. */
 	private readonly lastSeq = new Map<string, number>();
 
-	/** Open text/reasoning blocks per `${runId}:${agentId}`. */
-	private readonly buffers = new Map<string, CoalesceBuffer>();
+	/** Open text/reasoning blocks per thread, keyed `${runId}:${agentId}`. */
+	private readonly buffers = new Map<string, Map<string, CoalesceBuffer>>();
 
 	private readonly emitters = new Map<string, EmitFn>();
 
 	constructor(
 		private readonly logger: Logger,
 		private readonly repo: InstanceAiEventLogRepository,
+		private readonly metrics: DurableLogMetrics,
 	) {
 		this.logger = this.logger.scoped('instance-ai');
 	}
@@ -69,9 +80,10 @@ export class DurableEventLog {
 	publish(threadId: string, event: InstanceAiEvent, emit: EmitFn): void {
 		this.emitters.set(threadId, emit);
 		const pending = this.pendingByThread.get(threadId);
-		if (pending) pending.push(event);
-		else this.pendingByThread.set(threadId, [event]);
-		void this.drain(threadId);
+		const entry: PendingEvent = { event, enqueuedAt: Date.now() };
+		if (pending) pending.push(entry);
+		else this.pendingByThread.set(threadId, [entry]);
+		this.ensureDraining(threadId);
 	}
 
 	async getEventsAfter(threadId: string, afterSeq: number): Promise<StoredEvent[]> {
@@ -88,79 +100,151 @@ export class DurableEventLog {
 		return (await this.repo.maxSeq(threadId)) + 1;
 	}
 
-	private async drain(threadId: string): Promise<void> {
-		if (this.drainingThreads.has(threadId)) return;
-		this.drainingThreads.add(threadId);
-		try {
-			let batch = this.takePending(threadId);
-			while (batch.length > 0) {
-				await this.drainBatch(threadId, batch);
-				batch = this.takePending(threadId);
+	/**
+	 * Await the thread's in-flight drain, then persist any still-open coalesce
+	 * buffers as blocks so streamed text survives a shutdown mid-segment.
+	 */
+	async flush(threadId: string): Promise<void> {
+		await this.draining.get(threadId);
+		const threadBuffers = this.buffers.get(threadId);
+		if (!threadBuffers || threadBuffers.size === 0) return;
+
+		const blocks: InstanceAiEvent[] = [];
+		for (const [key, buffer] of threadBuffers) {
+			const separator = key.indexOf(':');
+			const runId = key.slice(0, separator);
+			const agentId = key.slice(separator + 1);
+			const reasoning = this.takeBlock('reasoning', runId, agentId, buffer);
+			if (reasoning) blocks.push(reasoning);
+			const text = this.takeBlock('text', runId, agentId, buffer);
+			if (text) blocks.push(text);
+		}
+		this.buffers.delete(threadId);
+		if (blocks.length === 0) return;
+
+		await this.persistWithRetry(threadId, blocks);
+	}
+
+	/** Drain shutdown flush: called from module shutdown so no thread loses its tail. */
+	async flushAll(): Promise<void> {
+		const threadIds = new Set([...this.draining.keys(), ...this.buffers.keys()]);
+		for (const threadId of threadIds) {
+			try {
+				await this.flush(threadId);
+			} catch (error) {
+				this.logger.error('Failed to flush Instance AI event log on shutdown', {
+					threadId,
+					error,
+				});
 			}
-		} finally {
-			this.drainingThreads.delete(threadId);
 		}
 	}
 
-	private async drainBatch(threadId: string, batch: InstanceAiEvent[]): Promise<void> {
+	private ensureDraining(threadId: string): void {
+		if (this.draining.has(threadId)) return;
+		const drain = (async () => {
+			try {
+				let batch = this.takePending(threadId);
+				while (batch.length > 0) {
+					await this.drainBatch(threadId, batch);
+					batch = this.takePending(threadId);
+				}
+			} finally {
+				this.draining.delete(threadId);
+			}
+		})();
+		this.draining.set(threadId, drain);
+	}
+
+	private async drainBatch(threadId: string, batch: PendingEvent[]): Promise<void> {
 		const emit = this.emitters.get(threadId);
 		if (!emit) return;
 
-		let seq = await this.currentSeq(threadId);
+		// Build the batch plan first; seqs are assigned inside persistWithRetry so
+		// an append conflict can re-assign them from a re-seeded counter.
 		const toPersist: InstanceAiEvent[] = [];
-		const toEmit: DrainedEvent[] = [];
+		const toEmit: Array<{ event: InstanceAiEvent; persistIndex?: number; live: boolean }> = [];
 
-		for (const event of batch) {
+		for (const { event } of batch) {
 			if (EPHEMERAL_TYPES.has(event.type)) {
 				// A delta with a new responseId starts a new segment: close the old
 				// one as a block first, so blocks stay exactly 1:1 with segments and
 				// the reducer's open-segment replacement stays exact.
-				for (const rolled of this.rollSegmentOnResponseChange(event)) {
+				for (const rolled of this.rollSegmentOnResponseChange(threadId, event)) {
+					toEmit.push({ event: rolled, persistIndex: toPersist.length, live: false });
 					toPersist.push(rolled);
-					toEmit.push({ id: ++seq, event: rolled, live: false });
 				}
-				this.bufferDelta(event);
+				this.bufferDelta(threadId, event);
 				toEmit.push({ event, live: true });
 				continue;
 			}
 			// Structural fact: flush this agent's open blocks first so replay
 			// order matches live order (block content precedes the fact).
-			for (const block of this.flushBlocks(event)) {
+			for (const block of this.flushBlocks(threadId, event)) {
+				toEmit.push({ event: block, persistIndex: toPersist.length, live: false });
 				toPersist.push(block);
-				toEmit.push({ id: ++seq, event: block, live: false });
 			}
+			toEmit.push({ event, persistIndex: toPersist.length, live: true });
 			toPersist.push(event);
-			toEmit.push({ id: ++seq, event, live: true });
 		}
 
+		let firstSeq: number | undefined;
 		if (toPersist.length > 0) {
-			const firstSeq = seq - toPersist.length + 1;
-			try {
-				await this.repo.appendBatch(threadId, firstSeq, toPersist);
-			} catch (error) {
-				// (threadId, seq) PK collision — another main won the range (multi-main
-				// only). Re-seed from DB and retry once. SKETCH: bounded retry loop +
-				// metrics; merges with #33558's drain when that lands.
-				this.lastSeq.delete(threadId);
-				this.logger.error('Event log append conflict, retrying', { threadId, error });
-				await this.drainBatch(threadId, batch);
-				return;
-			}
-			this.lastSeq.set(threadId, seq);
+			firstSeq = await this.persistWithRetry(threadId, toPersist);
+			const persistedAt = Date.now();
+			for (const { enqueuedAt } of batch) this.metrics.recordQueueLatency(persistedAt - enqueuedAt);
 		}
 
-		for (const drained of toEmit) emit(drained);
+		for (const drained of toEmit) {
+			const id =
+				drained.persistIndex !== undefined && firstSeq !== undefined
+					? firstSeq + drained.persistIndex
+					: undefined;
+			emit({ ...(id !== undefined ? { id } : {}), event: drained.event, live: drained.live });
+		}
+	}
+
+	/**
+	 * Append `events` with contiguous seqs, retrying on (threadId, seq) PK
+	 * collision — another main won the range (multi-main only), so re-seed from
+	 * the DB and try again. Returns the first assigned seq, or undefined when
+	 * the batch had to be dropped (logged; live delivery still happens).
+	 * When #33558 lands, its drain merges here: Redis INCRBY becomes this
+	 * batch-INSERT's id assignment, one round trip.
+	 */
+	private async persistWithRetry(
+		threadId: string,
+		events: InstanceAiEvent[],
+	): Promise<number | undefined> {
+		for (let attempt = 1; attempt <= MAX_APPEND_ATTEMPTS; attempt++) {
+			const firstSeq = (await this.currentSeq(threadId)) + 1;
+			try {
+				const bytes = await this.repo.appendBatch(threadId, firstSeq, events);
+				this.lastSeq.set(threadId, firstSeq + events.length - 1);
+				this.metrics.recordDrainBatch(events.length, bytes);
+				return firstSeq;
+			} catch (error) {
+				this.metrics.drain.appendConflicts++;
+				this.lastSeq.delete(threadId);
+				this.logger.warn('Instance AI event log append conflict, retrying', {
+					threadId,
+					attempt,
+					error,
+				});
+			}
+		}
+		this.metrics.drain.appendFailures++;
+		this.logger.error('Instance AI event log append failed, dropping batch', {
+			threadId,
+			events: events.length,
+		});
+		return undefined;
 	}
 
 	/** Append a delta to its agent's open block. */
-	private bufferDelta(event: InstanceAiEvent): void {
+	private bufferDelta(threadId: string, event: InstanceAiEvent): void {
 		if (event.type !== 'text-delta' && event.type !== 'reasoning-delta') return;
-		const key = `${event.runId}:${event.agentId}`;
-		let buffer = this.buffers.get(key);
-		if (!buffer) {
-			buffer = { text: [], reasoning: [] };
-			this.buffers.set(key, buffer);
-		}
+		const buffer = this.getOrCreateBuffer(threadId, `${event.runId}:${event.agentId}`);
 		if (event.type === 'text-delta') {
 			buffer.text.push(event.payload.text);
 			buffer.textResponseId = event.responseId ?? buffer.textResponseId;
@@ -177,17 +261,19 @@ export class DurableEventLog {
 	 * on replay the reducer REPLACES the segment's streamed deltas, so a client
 	 * that reconnects mid-block never sees partial text or reasoning twice.
 	 */
-	private flushBlocks(fact: InstanceAiEvent): InstanceAiEvent[] {
+	private flushBlocks(threadId: string, fact: InstanceAiEvent): InstanceAiEvent[] {
+		const threadBuffers = this.buffers.get(threadId);
+		if (!threadBuffers) return [];
 		const keys =
 			fact.type === 'run-finish'
-				? [...this.buffers.keys()].filter((k) => k.startsWith(`${fact.runId}:`))
+				? [...threadBuffers.keys()].filter((k) => k.startsWith(`${fact.runId}:`))
 				: [`${fact.runId}:${fact.agentId}`];
 
 		const flushed: InstanceAiEvent[] = [];
 		for (const key of keys) {
-			const buffer = this.buffers.get(key);
+			const buffer = threadBuffers.get(key);
 			if (!buffer) continue;
-			this.buffers.delete(key);
+			threadBuffers.delete(key);
 			const agentId = key.slice(fact.runId.length + 1);
 			const reasoning = this.takeBlock('reasoning', fact.runId, agentId, buffer);
 			if (reasoning) flushed.push(reasoning);
@@ -202,9 +288,9 @@ export class DurableEventLog {
 	 * segment (e.g. consecutive reasoning-only steps with no tool call between).
 	 * Close the previous segment as a block so blocks stay 1:1 with segments.
 	 */
-	private rollSegmentOnResponseChange(event: InstanceAiEvent): InstanceAiEvent[] {
+	private rollSegmentOnResponseChange(threadId: string, event: InstanceAiEvent): InstanceAiEvent[] {
 		if (event.type !== 'text-delta' && event.type !== 'reasoning-delta') return [];
-		const buffer = this.buffers.get(`${event.runId}:${event.agentId}`);
+		const buffer = this.buffers.get(threadId)?.get(`${event.runId}:${event.agentId}`);
 		if (!buffer) return [];
 		const kind = event.type === 'text-delta' ? 'text' : 'reasoning';
 		const openResponseId = kind === 'text' ? buffer.textResponseId : buffer.reasoningResponseId;
@@ -252,13 +338,27 @@ export class DurableEventLog {
 		const cached = this.lastSeq.get(threadId);
 		if (cached !== undefined) return cached;
 		const max = await this.repo.maxSeq(threadId);
-		// SKETCH (cutover, RFC Q&A #3): when landing after #33558, seed from
+		// Cutover note (RFC Q&A on cursors): when landing after #33558, seed from
 		// max(DB, Redis high-water mark) so pre-cutover cursors stay valid.
 		this.lastSeq.set(threadId, max);
 		return max;
 	}
 
-	private takePending(threadId: string): InstanceAiEvent[] {
+	private getOrCreateBuffer(threadId: string, key: string): CoalesceBuffer {
+		let threadBuffers = this.buffers.get(threadId);
+		if (!threadBuffers) {
+			threadBuffers = new Map();
+			this.buffers.set(threadId, threadBuffers);
+		}
+		let buffer = threadBuffers.get(key);
+		if (!buffer) {
+			buffer = { text: [], reasoning: [] };
+			threadBuffers.set(key, buffer);
+		}
+		return buffer;
+	}
+
+	private takePending(threadId: string): PendingEvent[] {
 		const pending = this.pendingByThread.get(threadId);
 		if (!pending) return [];
 		this.pendingByThread.delete(threadId);
