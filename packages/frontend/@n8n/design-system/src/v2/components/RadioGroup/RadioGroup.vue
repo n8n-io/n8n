@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import { reactivePick } from '@vueuse/core';
 import { provide, ref } from 'vue';
 
 import { RADIO_GROUP_ARROW_KEYS, radioGroupArrowKeyPressedKey } from './radio-group-context';
 import type { RadioGroupProps, RadioGroupSlots } from './RadioGroup.types';
-import { RadioGroupRoot, useForwardProps } from './reka-ui';
+import { RadioGroupRoot } from './reka-ui';
 
 defineOptions({ inheritAttrs: false });
 
-const props = withDefaults(defineProps<Omit<RadioGroupProps, 'modelValue'>>(), {
+withDefaults(defineProps<Omit<RadioGroupProps, 'modelValue'>>(), {
 	orientation: 'vertical',
 	disabled: false,
 });
@@ -16,10 +15,6 @@ const props = withDefaults(defineProps<Omit<RadioGroupProps, 'modelValue'>>(), {
 defineSlots<RadioGroupSlots>();
 
 const modelValue = defineModel<RadioGroupProps['modelValue']>();
-
-const rootProps = useForwardProps(
-	reactivePick(props, 'disabled', 'orientation', 'name', 'required', 'loop', 'dir', 'defaultValue'),
-);
 
 // reka-ui selects on arrow keys by listening on window (bubble phase): when roving focus
 // moves to the next radio it programmatically clicks it. Parent containers that call
@@ -43,8 +38,15 @@ function onKeyUp() {
 
 <template>
 	<RadioGroupRoot
-		v-bind="{ ...rootProps, ...$attrs }"
+		v-bind="$attrs"
 		v-model="modelValue"
+		:disabled="disabled"
+		:orientation="orientation"
+		:name="name"
+		:required="required"
+		:loop="loop"
+		:dir="dir"
+		:default-value="defaultValue"
 		:class="[$style.root, $style[orientation]]"
 		@keydown.capture="onKeyDownCapture"
 		@keyup="onKeyUp"
