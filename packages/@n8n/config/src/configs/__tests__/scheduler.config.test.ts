@@ -33,6 +33,7 @@ describe('SchedulerConfig', () => {
 			expect(scheduler.failedRetentionSeconds).toBe(7 * 24 * 60 * 60);
 			expect(scheduler.retentionIntervalSeconds).toBe(60 * 60);
 			expect(scheduler.minIntervalSeconds).toBe(0);
+			expect(scheduler.jitterRatio).toBe(0.1);
 		});
 	});
 
@@ -55,6 +56,7 @@ describe('SchedulerConfig', () => {
 			vi.stubEnv('N8N_SCHEDULER_FAILED_RETENTION', '86400');
 			vi.stubEnv('N8N_SCHEDULER_RETENTION_INTERVAL', '600');
 			vi.stubEnv('N8N_SCHEDULER_MIN_INTERVAL', '15');
+			vi.stubEnv('N8N_SCHEDULER_JITTER_RATIO', '0.25');
 
 			const { scheduler } = Container.get(GlobalConfig);
 
@@ -67,6 +69,7 @@ describe('SchedulerConfig', () => {
 			expect(scheduler.failedRetentionSeconds).toBe(86400);
 			expect(scheduler.retentionIntervalSeconds).toBe(600);
 			expect(scheduler.minIntervalSeconds).toBe(15);
+			expect(scheduler.jitterRatio).toBe(0.25);
 		});
 
 		it('should allow disabling the min-interval clamp with 0', () => {

@@ -450,6 +450,7 @@ describe('GlobalConfig', () => {
 			retentionSeconds: 86400,
 			failedRetentionSeconds: 604800,
 			retentionIntervalSeconds: 3600,
+			jitterRatio: 0.1,
 			minIntervalSeconds: 0,
 		},
 		evaluation: {

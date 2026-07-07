@@ -11,6 +11,12 @@ import { positiveIntSchema } from '../schemas';
 const nonNegativeIntSchema = z.number({ coerce: true }).int().nonnegative();
 
 /**
+ * A jitter ratio: a fraction in [0, 1). 0 disables jitter; 1 or above would
+ * allow a zero or negative delay between ticks, so they are rejected.
+ */
+const jitterRatioSchema = z.number({ coerce: true }).nonnegative().lt(1);
+
+/**
  * Configuration for the durable scheduler: the engine that runs time-based
  * workflows (such as Schedule Trigger nodes) from a database-backed queue.
  *
@@ -142,6 +148,23 @@ export class SchedulerConfig {
 	 */
 	@Env('N8N_SCHEDULER_RETENTION_INTERVAL', positiveIntSchema)
 	retentionIntervalSeconds: number = Time.hours.toSeconds;
+
+	/**
+	 * Adds a small random variation to the timing of the scheduler's periodic
+	 * background checks (the intervals configured above), as a fraction of each
+	 * interval. For example, with 0.1 a check configured to run every 10 seconds
+	 * actually runs every 9 to 11 seconds. Defaults to 0.1.
+	 *
+	 * Without this variation, several n8n instances started at the same time
+	 * (for example during a rolling deploy) would all query the database at the
+	 * same moments; the randomness spreads those queries out.
+	 *
+	 * Must be at least 0 and below 1. Set it to 0 to make the checks run at
+	 * exact intervals, or raise it to spread database load across instances
+	 * more evenly.
+	 */
+	@Env('N8N_SCHEDULER_JITTER_RATIO', jitterRatioSchema)
+	jitterRatio: number = 0.1;
 
 	/**
 	 * The smallest gap, in seconds, allowed between consecutive runs of the same
