@@ -148,13 +148,18 @@ describe('OAuthClientsTable', () => {
 		it('should open the details modal when a row is clicked', async () => {
 			const client = createOAuthClient({
 				name: 'Cursor',
-				scopes: ['workflow:read', 'workflow:write'],
+				scopes: ['workflow:read', 'workflow:write', 'execution:read'],
 			});
 
 			const { getByTestId, queryByTestId } = createComponent({
 				props: {
 					clients: [client],
 					loading: false,
+					scopeTools: {
+						'workflow:read': ['search_workflows', 'search_nodes'],
+						'workflow:write': ['update_workflow', 'search_nodes'],
+						'execution:read': ['get_execution'],
+					},
 				},
 			});
 
@@ -164,12 +169,23 @@ describe('OAuthClientsTable', () => {
 
 			const modal = document.querySelector('[data-test-id="mcp-client-details-modal"]');
 			expect(modal).not.toBeNull();
-			expect(
-				within(modal as HTMLElement).getByTestId('mcp-client-details-access'),
-			).toHaveTextContent('List workflows');
-			expect(
-				within(modal as HTMLElement).getByTestId('mcp-client-details-access'),
-			).toHaveTextContent('Create and update workflows');
+
+			// granted scopes are grouped, with per-group deduplicated tool counts
+			const workflowsGroup = within(modal as HTMLElement).getByTestId(
+				'mcp-client-details-group-workflows',
+			);
+			expect(workflowsGroup).toHaveTextContent('Workflows');
+			expect(workflowsGroup).toHaveTextContent('3 tools');
+			expect(workflowsGroup).toHaveTextContent('List workflows');
+			expect(workflowsGroup).toHaveTextContent('Create and update workflows');
+			expect(workflowsGroup).toHaveTextContent('search_workflows');
+			expect(workflowsGroup).toHaveTextContent('update_workflow');
+
+			const executionsGroup = within(modal as HTMLElement).getByTestId(
+				'mcp-client-details-group-executions',
+			);
+			expect(executionsGroup).toHaveTextContent('1 tool');
+			expect(executionsGroup).toHaveTextContent('get_execution');
 		});
 
 		it('should emit revokeClient from the details modal revoke button', async () => {

@@ -502,6 +502,7 @@ onMounted(async () => {
 					v-else-if="selectedTab === 'oauth'"
 					:data-test-id="'mcp-oauth-clients-table'"
 					:clients="connectedOAuthClients"
+					:scope-tools="mcpStore.oauthClientScopeTools"
 					:loading="oAuthClientsLoading"
 					@revoke-client="revokeClientAccess"
 					@refresh="onTableRefresh"

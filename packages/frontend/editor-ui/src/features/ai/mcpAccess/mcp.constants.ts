@@ -1,3 +1,5 @@
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+
 import type { ScopeGroupDefinition } from '@/app/components/scopes/scopes.utils';
 
 export const MCP_ENDPOINT = 'mcp-server/http';
@@ -12,6 +14,15 @@ export const MCP_SCOPE_GROUPS: ScopeGroupDefinition[] = [
 	{ key: 'dataTables', resources: ['dataTable'] },
 	{ key: 'projectsAndFolders', resources: ['project'] },
 ];
+
+/** Icons for the scope groups above, shown in the client details modal. */
+export const MCP_SCOPE_GROUP_ICONS: Record<string, IconName> = {
+	workflows: 'workflow',
+	executions: 'history',
+	credentials: 'key-round',
+	dataTables: 'table',
+	projectsAndFolders: 'folder',
+};
 export const ELIGIBLE_WORKFLOWS_DOCS_SECTION = 'workflow-eligibility';
 
 export const MCP_SETTINGS_VIEW = 'McpSettings';
