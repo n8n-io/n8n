@@ -28,26 +28,8 @@ export class DurableScheduler implements Scheduler {
 			async (manager) =>
 				await work({
 					claimDueJobs: async (limit) => await this.jobs.claimDue(manager, limit),
-					recordOccurrences: async (planned) => {
-						const occurrences = planned.flatMap(({ job, plan }) =>
-							plan.occurrences.map((when) => ({
-								jobId: job.id,
-								taskType: job.taskType,
-								payload: job.payload,
-								scheduledFor: when,
-								runAt: when,
-								maxAttempts: job.maxAttempts,
-							})),
-						);
-						const recorded = await this.tasks.insertIgnoringDuplicates(manager, occurrences);
-						if (recorded < occurrences.length) {
-							this.logger.debug('Materializer skipped occurrences that were already recorded', {
-								planned: occurrences.length,
-								recorded,
-							});
-						}
-						return recorded;
-					},
+					recordOccurrences: async (occurrences) =>
+						await this.tasks.insertIgnoringDuplicates(manager, occurrences),
 					advanceJobs: async (planned) => {
 						await this.jobs.advanceMany(
 							manager,

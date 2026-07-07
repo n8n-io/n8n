@@ -3,8 +3,9 @@ import { mock } from 'vitest-mock-extended';
 
 import { createScheduler } from '../factory';
 import type { SchedulerDeps, SchedulerTaskStore } from '../factory';
-import type { RunInTransaction } from '../materializer';
+import type { MaterializerTransaction, RunInTransaction } from '../materializer';
 import { DEFAULT_RETENTION_OPTIONS } from '../retention';
+import type { ClaimedTask, ScheduledJob } from '../types';
 
 /** Compose a scheduler over mocks, with non-default retention windows. */
 function makeScheduler(deps: Partial<SchedulerDeps> = {}) {
@@ -152,6 +153,21 @@ describe('createScheduler executor config', () => {
 	});
 });
 
+/** A task claimed for this host whose `runAt` has passed, so it fires on the next tick. */
+const claimedTask = (overrides: Partial<ClaimedTask> = {}): ClaimedTask => ({
+	id: '1',
+	jobId: 10,
+	taskType: 'test-task',
+	payload: {},
+	scheduledFor: new Date('2026-01-01T00:00:00.000Z'),
+	runAt: new Date('2026-01-01T00:00:00.000Z'),
+	status: ScheduledTaskStatus.Running,
+	attempts: 0,
+	maxAttempts: 3,
+	leaseEpoch: 1,
+	...overrides,
+});
+
 describe('createScheduler execute', () => {
 	it('claims nothing while no handler is registered, then scopes the claim to registered types', async () => {
 		const { scheduler, taskStore } = makeScheduler();
@@ -166,6 +182,139 @@ describe('createScheduler execute', () => {
 		expect(taskStore.claimDueTasks).toHaveBeenCalledWith(
 			expect.objectContaining({ host: 'main-test', taskTypes: ['test-task'] }),
 		);
+	});
+
+	it('releases a claim whose handler is gone at fire time and reports it as a warn event', async () => {
+		const { scheduler, taskStore, onEvent } = makeScheduler();
+		scheduler.registerTaskHandler('test-task', { execute: vi.fn() });
+		// Claimed under a type no longer registered (e.g. deregistered by a rolling restart).
+		taskStore.claimDueTasks.mockResolvedValue([claimedTask({ taskType: 'gone-task' })]);
+		taskStore.releaseClaim.mockResolvedValue(1);
+
+		await scheduler.execute();
+
+		// The fire is detached from the claim: wait for the timer to deliver it.
+		await vi.waitFor(() => {
+			expect(onEvent).toHaveBeenCalledWith({
+				level: 'warn',
+				message: 'Scheduler claimed a task with no registered handler; claim released',
+				context: { taskId: '1', taskType: 'gone-task' },
+			});
+		});
+		expect(taskStore.releaseClaim).toHaveBeenCalledWith({
+			host: 'main-test',
+			id: '1',
+			claimedEpoch: 1,
+		});
+		expect(taskStore.markStarted).not.toHaveBeenCalled();
+	});
+
+	it('routes a mid-fire failure to an error event and leaves the row to the reaper', async () => {
+		const { scheduler, taskStore, onEvent } = makeScheduler();
+		scheduler.registerTaskHandler('test-task', { execute: vi.fn() });
+		taskStore.claimDueTasks.mockResolvedValue([claimedTask()]);
+		// The outcome write fails outside the handler-failure path.
+		taskStore.markStarted.mockRejectedValue(new Error('db down'));
+
+		await scheduler.execute();
+
+		await vi.waitFor(() => {
+			expect(onEvent).toHaveBeenCalledWith({
+				level: 'error',
+				message: 'Scheduler could not record a task outcome; left for the reaper',
+				context: { taskId: '1', error: 'db down' },
+			});
+		});
+	});
+
+	it('routes a failed claim release to an error event', async () => {
+		const { scheduler, taskStore, onEvent } = makeScheduler();
+		scheduler.registerTaskHandler('test-task', { execute: vi.fn() });
+		taskStore.claimDueTasks.mockResolvedValue([claimedTask({ taskType: 'gone-task' })]);
+		taskStore.releaseClaim.mockRejectedValue(new Error('db down'));
+
+		await scheduler.execute();
+
+		await vi.waitFor(() => {
+			expect(onEvent).toHaveBeenCalledWith({
+				level: 'error',
+				message: 'Scheduler failed to release a claimed task; left for the reaper',
+				context: { taskId: '1', error: 'db down' },
+			});
+		});
+	});
+});
+
+describe('createScheduler materialize', () => {
+	it('routes a job that cannot be planned to an error event and defers it', async () => {
+		// A cron job missing its expression (a corrupt row): planning throws for it.
+		const corrupt: ScheduledJob = {
+			id: 7,
+			taskType: 'test-task',
+			payload: {},
+			kind: 'cron',
+			cronExpression: null,
+			timezone: null,
+			intervalSeconds: null,
+			fireAt: null,
+			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
+			lastFiredAt: null,
+			maxAttempts: 3,
+		};
+		const tx = mock<MaterializerTransaction>();
+		tx.claimDueJobs.mockResolvedValue({
+			now: new Date('2026-01-01T00:00:00.000Z'),
+			jobs: [corrupt],
+		});
+		tx.recordOccurrences.mockResolvedValue(0);
+		const materializerTransaction: RunInTransaction = async (work) => await work(tx);
+		const { scheduler, onEvent } = makeScheduler({ materializerTransaction });
+
+		const summary = await scheduler.materialize();
+
+		expect(summary).toEqual({ claimedJobs: 1, occurrences: 0, deferredJobs: 1 });
+		expect(onEvent).toHaveBeenCalledWith({
+			level: 'error',
+			message: 'Scheduler could not plan a job schedule; deferred for retry',
+			context: { jobId: 7, error: "scheduled_job 7 of kind 'cron' is missing 'cronExpression'" },
+		});
+	});
+
+	it('routes skipped duplicate occurrences to a debug event', async () => {
+		const due: ScheduledJob = {
+			id: 7,
+			taskType: 'test-task',
+			payload: {},
+			kind: 'interval',
+			cronExpression: null,
+			timezone: null,
+			intervalSeconds: 10,
+			fireAt: null,
+			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
+			lastFiredAt: null,
+			maxAttempts: 3,
+		};
+		const tx = mock<MaterializerTransaction>();
+		tx.claimDueJobs.mockResolvedValue({
+			now: new Date('2026-01-01T00:00:00.000Z'),
+			jobs: [due],
+		});
+		// The one planned occurrence already exists (recorded by a concurrent pass).
+		tx.recordOccurrences.mockResolvedValue(0);
+		const materializerTransaction: RunInTransaction = async (work) => await work(tx);
+		// windowSeconds: 0 keeps the plan to the single due fire.
+		const { scheduler, onEvent } = makeScheduler({
+			materializerTransaction,
+			materializer: { windowSeconds: 0 },
+		});
+
+		await scheduler.materialize();
+
+		expect(onEvent).toHaveBeenCalledWith({
+			level: 'debug',
+			message: 'Scheduler materializer skipped occurrences that were already recorded',
+			context: { planned: 1, recorded: 0 },
+		});
 	});
 });
 

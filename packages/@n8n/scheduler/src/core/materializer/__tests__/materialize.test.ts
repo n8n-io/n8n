@@ -62,17 +62,26 @@ describe('materialize', () => {
 		expect(tx.recordOccurrences).toHaveBeenCalledTimes(1);
 		expect(tx.advanceJobs).toHaveBeenCalledTimes(1);
 
+		// The recorded rows are the flattened occurrences, ready for the store to insert.
+		const occurrence = (jobId: number) => ({
+			jobId,
+			taskType: 'test',
+			payload: {},
+			scheduledFor: NOW,
+			runAt: NOW,
+			maxAttempts: 1,
+		});
+		expect(tx.recordOccurrences).toHaveBeenCalledWith([occurrence(1), occurrence(2)]);
+
 		const plan = {
 			occurrences: [NOW],
 			nextRunAt: new Date('2026-01-01T00:00:10.000Z'),
 			lastFiredAt: NOW,
 		};
-		const planned = [
+		expect(tx.advanceJobs).toHaveBeenCalledWith([
 			{ job: makeJob(1), plan },
 			{ job: makeJob(2), plan },
-		];
-		expect(tx.recordOccurrences).toHaveBeenCalledWith(planned);
-		expect(tx.advanceJobs).toHaveBeenCalledWith(planned);
+		]);
 	});
 
 	it('claims at most batchSize jobs', async () => {
@@ -82,6 +91,33 @@ describe('materialize', () => {
 		await materialize(runnerWith(tx), { ...options, batchSize: 25 });
 
 		expect(tx.claimDueJobs).toHaveBeenCalledWith(25);
+	});
+
+	it('reports skipped duplicates, and a throwing reporter does not fail the pass', async () => {
+		const tx = mock<MaterializerTransaction>();
+		tx.claimDueJobs.mockResolvedValue({ now: NOW, jobs: [makeJob(1), makeJob(2)] });
+		// Two planned, one already recorded (e.g. by a concurrent pass).
+		tx.recordOccurrences.mockResolvedValue(1);
+		const onSkippedDuplicates = vi.fn(() => {
+			throw new Error('logger down');
+		});
+
+		const summary = await materialize(runnerWith(tx), options, { onSkippedDuplicates });
+
+		expect(onSkippedDuplicates).toHaveBeenCalledWith({ planned: 2, recorded: 1 });
+		expect(summary).toEqual({ claimedJobs: 2, occurrences: 1, deferredJobs: 0 });
+		expect(tx.advanceJobs).toHaveBeenCalledTimes(1);
+	});
+
+	it('stays silent when every planned occurrence is newly recorded', async () => {
+		const tx = mock<MaterializerTransaction>();
+		tx.claimDueJobs.mockResolvedValue({ now: NOW, jobs: [makeJob(1)] });
+		tx.recordOccurrences.mockResolvedValue(1);
+		const onSkippedDuplicates = vi.fn();
+
+		await materialize(runnerWith(tx), options, { onSkippedDuplicates });
+
+		expect(onSkippedDuplicates).not.toHaveBeenCalled();
 	});
 
 	it('defers an un-plannable job instead of failing the whole batch', async () => {
@@ -98,7 +134,7 @@ describe('materialize', () => {
 		tx.recordOccurrences.mockResolvedValue(1);
 		const onPlanError = vi.fn();
 
-		const summary = await materialize(runnerWith(tx), options, onPlanError);
+		const summary = await materialize(runnerWith(tx), options, { onPlanError });
 
 		expect(summary).toEqual({ claimedJobs: 2, occurrences: 1, deferredJobs: 1 });
 		expect(onPlanError).toHaveBeenCalledTimes(1);
@@ -132,7 +168,7 @@ describe('materialize', () => {
 			throw new Error('logger down');
 		});
 
-		const summary = await materialize(runnerWith(tx), options, onPlanError);
+		const summary = await materialize(runnerWith(tx), options, { onPlanError });
 
 		expect(summary).toEqual({ claimedJobs: 2, occurrences: 1, deferredJobs: 1 });
 		expect(tx.recordOccurrences).toHaveBeenCalledTimes(1);

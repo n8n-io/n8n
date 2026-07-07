@@ -9,6 +9,11 @@ export type {
 
 export type { ClaimedTask } from './types';
 export type { ExecutorOptions, TaskHandler } from './executor';
-export type { MaterializerOptions, MaterializerSummary, RunInTransaction } from './materializer';
+export type {
+	MaterializerOptions,
+	MaterializerSummary,
+	NewOccurrence,
+	RunInTransaction,
+} from './materializer';
 export type { ReaperOptions, ReapResult } from './reaper';
 export type { RetentionOptions, RetentionSummary } from './retention';

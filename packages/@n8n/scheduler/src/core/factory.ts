@@ -140,11 +140,18 @@ export function createScheduler(deps: SchedulerDeps): Scheduler {
 		},
 
 		async materialize() {
-			return await materialize(materializerTransaction, materializerOptions, (job, error) => {
-				emit('error', 'Scheduler could not plan a job schedule; deferred for retry', {
-					jobId: job.id,
-					error: described(error),
-				});
+			return await materialize(materializerTransaction, materializerOptions, {
+				onPlanError: (job, error) => {
+					emit('error', 'Scheduler could not plan a job schedule; deferred for retry', {
+						jobId: job.id,
+						error: described(error),
+					});
+				},
+				onSkippedDuplicates: (context) => {
+					emit('debug', 'Scheduler materializer skipped occurrences that were already recorded', {
+						...context,
+					});
+				},
 			});
 		},
 
