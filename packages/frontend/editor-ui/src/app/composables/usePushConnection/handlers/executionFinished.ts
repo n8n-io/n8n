@@ -65,7 +65,7 @@ export type SimplifiedExecution = Pick<
  * Handles the 'executionFinished' event, which happens when a workflow execution is finished.
  */
 export async function executionFinished({ data }: ExecutionFinished, options: PushHandlerOptions) {
-	const { documentId, suppressExecutionSuccessToasts, suppressExecutionErrorToasts } = options;
+	const { documentId, suppressExecutionSuccessToasts } = options;
 	const workflowsListStore = useWorkflowsListStore();
 	const uiStore = useUIStore();
 	const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();

@@ -273,7 +273,7 @@ function hookFunctionsPush(
 	// below so the query runs concurrently with execution startup instead of
 	// delaying the first push.
 	let userPromise: Promise<User | null> | undefined;
-	function getUser(): Promise<User | null> {
+	async function getUser(): Promise<User | null> {
 		userPromise ??= (
 			userId
 				? userRepository.findOne({ where: { id: userId }, relations: ['role'] })
@@ -282,7 +282,7 @@ function hookFunctionsPush(
 			userPromise = undefined;
 			throw error;
 		});
-		return userPromise;
+		return await userPromise;
 	}
 	// Swallow the warm-up rejection — the first real awaiter retries and surfaces it.
 	void getUser().catch(() => {});
