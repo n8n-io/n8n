@@ -145,6 +145,16 @@ onErrorCaptured((e, component) => {
 
 const node = computed(() => props.node ?? ndvStore.value.activeNode);
 
+// Whether the active Agent v3+ node has a Chat Trigger (or Manual Chat Trigger) in its
+// main-connection ancestry. Used as a reactive dependency of the parameter watch so the
+// prompt-source dropdown re-filters when a chat trigger is wired/removed while the NDV is open.
+const hasChatOrManualChatParent = computed(() =>
+	Boolean(
+		node.value &&
+			workflowDocumentStore?.value?.checkIfNodeHasChatOrManualChatParent(node.value.name),
+	),
+);
+
 const nodeType = computed(() => {
 	if (node.value) {
 		return nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion);
@@ -173,7 +183,7 @@ const parameterItems = ref<ParameterComputedData[]>([]);
 let previousParameterNames: string[] = [];
 
 throttledWatch(
-	[() => props.parameters, () => props.nodeValues, node],
+	[() => props.parameters, () => props.nodeValues, node, hasChatOrManualChatParent],
 	async () => {
 		// Pre-calculate disabled state map
 		const disabledMap: Record<string, boolean> = {};

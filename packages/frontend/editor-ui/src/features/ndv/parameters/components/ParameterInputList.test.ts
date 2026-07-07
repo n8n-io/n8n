@@ -6,7 +6,7 @@ import { fireEvent, waitFor } from '@testing-library/vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { flushPromises } from '@vue/test-utils';
-import { nextTick, shallowRef } from 'vue';
+import { nextTick, ref, shallowRef } from 'vue';
 import {
 	injectWorkflowDocumentStore,
 	useWorkflowDocumentStore,
@@ -1257,6 +1257,48 @@ describe('ParameterInputList', () => {
 
 			expect(await findByText('Connected Chat Trigger Node')).toBeInTheDocument();
 			expect(await findByText('Define below')).toBeInTheDocument();
+		});
+
+		it('should re-filter the auto option when chat-trigger ancestry changes live', async () => {
+			// Drive the ancestry check from a reactive ref so toggling it mimics wiring/removing a
+			// chat trigger upstream while the Agent NDV is open. The computed watch source must pick
+			// up the change and re-run the parameter transform without a full re-render.
+			const hasChatParent = ref(false);
+			workflowDocumentStoreMock.checkIfNodeHasChatOrManualChatParent = vi.fn(
+				() => hasChatParent.value,
+			);
+
+			ndvStore.activeNode = agentNode(3.1);
+
+			const { queryByText, findByText } = renderComponent({
+				props: {
+					parameters: agentParameters,
+					nodeValues: {},
+				},
+				global: {
+					stubs: {
+						ParameterInputFull: optionsListStub,
+						Suspense: { template: '<div data-test-id="suspense-stub"><slot></slot></div>' },
+					},
+				},
+			});
+
+			// Initially no chat-trigger ancestry: 'auto' is filtered out.
+			expect(await findByText('Define below')).toBeInTheDocument();
+			expect(queryByText('Connected Chat Trigger Node')).not.toBeInTheDocument();
+
+			// Wire a chat trigger upstream (ancestry flips to true): 'auto' reappears.
+			hasChatParent.value = true;
+
+			expect(await findByText('Connected Chat Trigger Node')).toBeInTheDocument();
+			expect(await findByText('Define below')).toBeInTheDocument();
+
+			// Remove the chat trigger upstream (ancestry flips back to false): 'auto' is hidden again.
+			hasChatParent.value = false;
+
+			await waitFor(() =>
+				expect(queryByText('Connected Chat Trigger Node')).not.toBeInTheDocument(),
+			);
 		});
 	});
 
