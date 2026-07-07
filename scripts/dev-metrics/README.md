@@ -94,6 +94,9 @@ someone who just declined it.
 - **Scoped.** Only commands run inside an n8n checkout are considered; the
   tracker resolves the monorepo root from the command's cwd and sends nothing
   otherwise.
+- **No IP.** Each event is sent with `context.ip` = `0.0.0.0`, so RudderStack
+  records no caller IP and does no geo-lookup — the weekly id is the only
+  identifier.
 - **Non-disruptive.** The tracker runs detached with a 2s network timeout and
   swallows all errors; it can never slow or fail your command.
 

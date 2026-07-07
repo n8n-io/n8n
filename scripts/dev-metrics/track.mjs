@@ -172,7 +172,15 @@ async function sendEvent(event, anonymousId, properties) {
 			// RudderStack HTTP API: HTTP Basic auth, username = source write key.
 			Authorization: `Basic ${Buffer.from(`${RUDDERSTACK_KEY}:`).toString('base64')}`,
 		},
-		body: JSON.stringify({ type: 'track', event, anonymousId, properties }),
+		// context.ip "0.0.0.0" tells RudderStack not to record the caller's IP
+		// (or geo-locate from it) — the id is meant to be the only identifier.
+		body: JSON.stringify({
+			type: 'track',
+			event,
+			anonymousId,
+			properties,
+			context: { ip: '0.0.0.0' },
+		}),
 		signal: AbortSignal.timeout(POST_TIMEOUT_MS),
 	});
 }
