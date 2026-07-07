@@ -46,5 +46,5 @@ export interface BuiltVectorStoreBackend {
 	): Promise<VectorQueryResult[]>;
 	delete(opts: { ids: string[] }): Promise<void>;
 	/** Close the connection pool / release resources. */
-	close?(): Promise<void>;
+	close?(): void | Promise<void>;
 }

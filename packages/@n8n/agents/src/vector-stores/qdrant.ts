@@ -105,10 +105,8 @@ export class QdrantVectorStore extends BaseVectorStore<QdrantVectorStoreOptions>
 		await client.delete(this.collectionName, { wait: true, points: ids.map(toPointId) });
 	}
 
-	// eslint-disable-next-line @typescript-eslint/promise-function-async -- no await needed; matches `require-await`
-	close(): Promise<void> {
+	close(): void {
 		this.client = undefined;
-		return Promise.resolve();
 	}
 
 	private async getClient(): Promise<QdrantClient> {

@@ -53,7 +53,7 @@ describe.skipIf(!QDRANT_URL)('QdrantVectorStore', () => {
 
 	afterAll(async () => {
 		await adminClient.deleteCollection(collectionName);
-		await store.close();
+		store.close();
 	});
 
 	it('upserts vectors with metadata and queries by similarity', async () => {
@@ -129,7 +129,7 @@ describe.skipIf(!QDRANT_URL)('QdrantVectorStore', () => {
 			expect(results[0].content).toBe('refunds take 5 days');
 		} finally {
 			await adminClient.deleteCollection(roundTripCollection);
-			await roundTripStore.close();
+			roundTripStore.close();
 		}
 	});
 });
@@ -190,7 +190,7 @@ describe.skipIf(!QDRANT_URL)('QdrantVectorStore — metadata filtering', () => {
 
 	afterAll(async () => {
 		await adminClient.deleteCollection(filterCollectionName);
-		await filterStore.close();
+		filterStore.close();
 	});
 
 	async function idsFor(filter: Parameters<QdrantVectorStore['query']>[1]['filter']) {

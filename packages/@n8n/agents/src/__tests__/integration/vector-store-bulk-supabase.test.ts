@@ -52,7 +52,7 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_API_KEY || !SUPABASE_DB_URL)(
 
 		afterAll(async () => {
 			await dropSupabaseVectorTableAndFunction(pool, tableName, queryName);
-			await store.close();
+			store.close();
 			await pool.end();
 		});
 

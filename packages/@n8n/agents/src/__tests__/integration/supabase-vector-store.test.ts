@@ -49,7 +49,7 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_API_KEY || !SUPABASE_DB_URL)(
 
 		afterAll(async () => {
 			await dropSupabaseVectorTableAndFunction(adminPool, tableName, queryName);
-			await store.close();
+			store.close();
 			await adminPool.end();
 		});
 
@@ -124,7 +124,7 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_API_KEY || !SUPABASE_DB_URL)(
 					expect(results[0].content).toBe('refunds take 5 days');
 				} finally {
 					await dropSupabaseVectorTableAndFunction(adminPool, roundTripTable, roundTripQueryName);
-					await roundTripStore.close();
+					roundTripStore.close();
 				}
 			},
 			HOOK_TIMEOUT_MS,
@@ -174,7 +174,7 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_API_KEY || !SUPABASE_DB_URL)(
 
 		afterAll(async () => {
 			await dropSupabaseVectorTableAndFunction(adminPool, filterTableName, filterQueryName);
-			await filterStore.close();
+			filterStore.close();
 			await adminPool.end();
 		});
 

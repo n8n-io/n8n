@@ -19,6 +19,9 @@
       "vector-stores/postgres": [
         "dist/vector-stores/postgres.d.ts"
       ],
+      "vector-stores/pinecone": [
+        "dist/vector-stores/pinecone.d.ts"
+      ],
       "vector-stores/qdrant": [
         "dist/vector-stores/qdrant.d.ts"
       ],
@@ -48,6 +51,10 @@
     "./vector-stores/postgres": {
       "types": "./dist/vector-stores/postgres.d.ts",
       "default": "./dist/vector-stores/postgres.js"
+    },
+    "./vector-stores/pinecone": {
+      "types": "./dist/vector-stores/pinecone.d.ts",
+      "default": "./dist/vector-stores/pinecone.js"
     },
     "./vector-stores/qdrant": {
       "types": "./dist/vector-stores/qdrant.d.ts",
@@ -111,6 +118,7 @@
     "zod-to-json-schema": "catalog:"
   },
   "peerDependencies": {
+    "@pinecone-database/pinecone": "catalog:",
     "@qdrant/js-client-rest": "catalog:",
     "@supabase/supabase-js": "catalog:",
     "pg": "catalog:",
@@ -132,6 +140,9 @@
     "pg": {
       "optional": true
     },
+    "@pinecone-database/pinecone": {
+      "optional": true
+    },
     "@qdrant/js-client-rest": {
       "optional": true
     },
@@ -142,6 +153,7 @@
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@pinecone-database/pinecone": "catalog:",
     "@qdrant/js-client-rest": "catalog:",
     "@supabase/supabase-js": "catalog:",
     "@types/json-schema": "catalog:",

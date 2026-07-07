@@ -53,7 +53,7 @@ describe.skipIf(!QDRANT_URL || !hasKeys)('Agent + QdrantVectorStore end-to-end',
 
 	afterAll(async () => {
 		await adminClient.deleteCollection(collectionName);
-		await store.close();
+		store.close();
 	});
 
 	registerAgentVectorStoreTests(() => knowledge);

@@ -63,7 +63,7 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_API_KEY || !SUPABASE_DB_URL || !hasKe
 
 		afterAll(async () => {
 			await dropSupabaseVectorTableAndFunction(adminPool, tableName, queryName);
-			await store.close();
+			store.close();
 			await adminPool.end();
 		});
 
