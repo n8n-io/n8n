@@ -2,11 +2,12 @@ import { z } from 'zod';
 
 import type { FilterCondition, FilterOperator, VectorFilter } from '../types/sdk/vector-store';
 
+const SCALAR_OPERATORS = ['eq', 'ne'] as const satisfies readonly FilterOperator[];
+const ARRAY_OPERATORS = ['in', 'nin'] as const satisfies readonly FilterOperator[];
+
 export const FILTER_OPERATORS = [
-	'eq',
-	'ne',
-	'in',
-	'nin',
+	...SCALAR_OPERATORS,
+	...ARRAY_OPERATORS,
 ] as const satisfies readonly FilterOperator[];
 
 export type VectorFilterInput = VectorFilter | Record<string, string | number | boolean>;
@@ -50,6 +51,11 @@ function assertValidCondition(condition: FilterCondition): void {
 				`Filter operator "${operator}" on key "${key}" requires a non-empty array value.`,
 			);
 		}
+		if (value.some((v) => typeof v !== 'string' && typeof v !== 'number')) {
+			throw new Error(
+				`Filter operator "${operator}" on key "${key}" requires array elements to be strings or numbers.`,
+			);
+		}
 		return;
 	}
 
@@ -74,18 +80,23 @@ export function buildFilterInputSchema(keys: Record<string, string>) {
 
 	const keyDescriptions = keyNames.map((key) => `- ${key}: ${keys[key]}`).join('\n');
 
+	// Discriminated by `operator` so the model-facing schema rejects the same
+	// operator/value mismatches the runtime validator does (e.g. an array for
+	// "eq", or a scalar for "in"), instead of failing later during search.
 	return z
 		.array(
-			z.object({
-				key: z.enum(keyNames),
-				operator: z.enum(FILTER_OPERATORS),
-				value: z.union([
-					z.string(),
-					z.number(),
-					z.boolean(),
-					z.array(z.union([z.string(), z.number()])),
-				]),
-			}),
+			z.discriminatedUnion('operator', [
+				z.object({
+					key: z.enum(keyNames),
+					operator: z.enum(SCALAR_OPERATORS),
+					value: z.union([z.string(), z.number(), z.boolean()]),
+				}),
+				z.object({
+					key: z.enum(keyNames),
+					operator: z.enum(ARRAY_OPERATORS),
+					value: z.array(z.union([z.string(), z.number()])).min(1),
+				}),
+			]),
 		)
 		.optional()
 		.describe(

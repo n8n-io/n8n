@@ -189,11 +189,15 @@ export class PgVectorStore extends BaseVectorStore<PgVectorStoreOptions> {
 						`Filter operator "${operator}" on key "${key}" requires a non-empty array value.`,
 					);
 				}
-				const k = nextParam(key);
-				const v = nextParam(value.map(String));
-				return operator === 'in'
-					? `metadata->>${k} = ANY(${v})`
-					: `NOT COALESCE(metadata->>${k} = ANY(${v}), false)`;
+				// Containment per candidate (rather than `metadata->>key = ANY(text[])`) keeps
+				// numeric and string metadata distinct — text extraction would otherwise make
+				// the number 5 and the string "5" match the same filter value.
+				const anyMatch = value
+					.map(
+						(candidate) => `metadata @> ${nextParam(JSON.stringify({ [key]: candidate }))}::jsonb`,
+					)
+					.join(' OR ');
+				return operator === 'in' ? `(${anyMatch})` : `NOT (${anyMatch})`;
 			}
 			default:
 				throw new Error(`Unsupported filter operator: "${String(operator)}"`);

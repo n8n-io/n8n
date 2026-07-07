@@ -58,6 +58,14 @@ describe('assertValidFilter', () => {
 		).toThrow(/"eq" on key "plan" requires a string, number, or boolean value/);
 	});
 
+	it('throws when in/nin has a non-string/number array element', () => {
+		expect(() =>
+			assertValidFilter({
+				conditions: [{ key: 'plan', operator: 'in', value: [true as never] }],
+			}),
+		).toThrow(/"in" on key "plan" requires array elements to be strings or numbers/);
+	});
+
 	it('throws on an unknown (removed) operator', () => {
 		expect(() =>
 			assertValidFilter({
@@ -283,6 +291,32 @@ describe('VectorStore — asTool()', () => {
 			const parsed = tool.inputSchema.safeParse({
 				query: 'hello',
 				filter: [{ key: 'plan', operator: 'text_match', value: 'x' }],
+			});
+			expect(parsed.success).toBe(false);
+		});
+
+		it('rejects an array value for a scalar operator (eq/ne)', () => {
+			const vectorStore = new VectorStore('product-docs').description('Search the docs');
+			const tool = vectorStore.asTool({ filterableKeys: { plan: 'cloud or self-hosted' } }).build();
+
+			expect(isZodSchema(tool.inputSchema)).toBe(true);
+			if (!isZodSchema(tool.inputSchema)) return;
+			const parsed = tool.inputSchema.safeParse({
+				query: 'hello',
+				filter: [{ key: 'plan', operator: 'eq', value: ['cloud'] }],
+			});
+			expect(parsed.success).toBe(false);
+		});
+
+		it('rejects a scalar value for an array operator (in/nin)', () => {
+			const vectorStore = new VectorStore('product-docs').description('Search the docs');
+			const tool = vectorStore.asTool({ filterableKeys: { plan: 'cloud or self-hosted' } }).build();
+
+			expect(isZodSchema(tool.inputSchema)).toBe(true);
+			if (!isZodSchema(tool.inputSchema)) return;
+			const parsed = tool.inputSchema.safeParse({
+				query: 'hello',
+				filter: [{ key: 'plan', operator: 'in', value: 'cloud' }],
 			});
 			expect(parsed.success).toBe(false);
 		});

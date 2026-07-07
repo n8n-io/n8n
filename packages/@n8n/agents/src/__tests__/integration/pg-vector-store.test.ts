@@ -100,7 +100,7 @@ describe.skipIf(!PG_URL)('PgVectorStore', () => {
 			tableName: roundTripTable,
 		});
 		const embeddingModel = new MockEmbeddingModelV3({
-			doEmbed: async ({ values }) => ({
+			doEmbed: async ({ values }: { values: string[] }) => ({
 				embeddings: values.map(() => [1, 0, 0]),
 				warnings: [],
 			}),
@@ -204,6 +204,15 @@ describe.skipIf(!PG_URL)('PgVectorStore — metadata filtering', () => {
 		expect(
 			await idsFor({ conditions: [{ key: 'topic', operator: 'in', value: ['billing', 'ops'] }] }),
 		).toEqual(['a', 'b']);
+	});
+
+	it('in is type-correct: a numeric candidate does not match a string-valued row', async () => {
+		expect(await idsFor({ conditions: [{ key: 'count', operator: 'in', value: [5] }] })).toEqual([
+			'a',
+		]);
+		expect(await idsFor({ conditions: [{ key: 'count', operator: 'in', value: ['5'] }] })).toEqual([
+			'd',
+		]);
 	});
 
 	it('nin excludes listed values but matches rows missing the key (the reference NIN bug case)', async () => {
