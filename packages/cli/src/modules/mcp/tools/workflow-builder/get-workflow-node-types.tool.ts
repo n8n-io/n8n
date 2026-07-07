@@ -7,7 +7,11 @@ import type { Telemetry } from '@/telemetry';
 
 import { CODE_BUILDER_GET_NODE_TYPES_TOOL } from './constants';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import type {
+	AiGatewayCoverage,
+	ToolDefinition,
+	UserCalledMCPToolEventPayload,
+} from '../../mcp.types';
 
 const nodeRequestSchema = z.object({
 	nodeId: z.string().describe('The node type ID (e.g. "n8n-nodes-base.gmail")'),
@@ -87,7 +91,7 @@ export const createGetWorkflowNodeTypesTool = (
 
 			const structured: {
 				definitions: string;
-				aiGateway?: { credentialTypes: string[]; nodes: string[] };
+				aiGateway?: AiGatewayCoverage;
 			} = { definitions: result };
 			if (availability.available) {
 				structured.aiGateway = {

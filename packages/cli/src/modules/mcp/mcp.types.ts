@@ -124,6 +124,16 @@ export type UserCalledMCPToolEventPayload = {
 	};
 };
 
+/**
+ * n8n Connect ("AI Gateway") coverage snapshot surfaced in tool output when the
+ * gateway is available: the credential and node types it can provide managed
+ * credentials for.
+ */
+export type AiGatewayCoverage = {
+	credentialTypes: string[];
+	nodes: string[];
+};
+
 export type McpCredentialsAutoassignEventPayload = {
 	user_id: string;
 	tool_name: 'create_workflow_from_code' | 'update_workflow';

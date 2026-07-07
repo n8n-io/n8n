@@ -7,7 +7,11 @@ import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
+import type {
+	AiGatewayCoverage,
+	ToolDefinition,
+	UserCalledMCPToolEventPayload,
+} from '../mcp.types';
 import { createLimitSchema } from './schemas';
 
 const MAX_RESULTS = 200;
@@ -100,7 +104,7 @@ export type ListCredentialsItem = {
 export type ListCredentialsResult = {
 	data: ListCredentialsItem[];
 	count: number;
-	aiGateway?: { credentialTypes: string[]; nodes: string[] };
+	aiGateway?: AiGatewayCoverage;
 	error?: string;
 };
 

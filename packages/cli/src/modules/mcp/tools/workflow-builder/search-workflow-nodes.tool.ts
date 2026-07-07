@@ -7,7 +7,11 @@ import type { Telemetry } from '@/telemetry';
 
 import { CODE_BUILDER_SEARCH_NODES_TOOL } from './constants';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import type {
+	AiGatewayCoverage,
+	ToolDefinition,
+	UserCalledMCPToolEventPayload,
+} from '../../mcp.types';
 
 const inputSchema = {
 	queries: z
@@ -86,7 +90,7 @@ export const createSearchWorkflowNodesTool = (
 
 			const structured: {
 				results: string;
-				aiGateway?: { credentialTypes: string[]; nodes: string[] };
+				aiGateway?: AiGatewayCoverage;
 			} = {
 				results,
 			};

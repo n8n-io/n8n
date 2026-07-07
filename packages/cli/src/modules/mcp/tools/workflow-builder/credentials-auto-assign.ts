@@ -171,7 +171,7 @@ export async function autoPopulateNodeCredentials(
 						id: null,
 						name: AI_GATEWAY_CREDENTIAL_NAME,
 						__aiGatewayManaged: true,
-					} as unknown as { id: string; name: string };
+					};
 					assignments.push({
 						nodeName: node.name,
 						credentialName: AI_GATEWAY_CREDENTIAL_NAME,
@@ -213,7 +213,7 @@ export async function autoPopulateNodeCredentials(
 }
 
 /**
- * Emits an `mcp.credentials.autoassign` telemetry event for each slot outcome.
+ * Emits a `MCP credentials autoassign` telemetry event for each slot outcome.
  * Callers use this after `autoPopulateNodeCredentials` to record how each
  * credential slot resolved (user cred / AI Gateway sentinel / empty + reason).
  */

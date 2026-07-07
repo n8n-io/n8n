@@ -291,11 +291,9 @@ export class AiGatewayService {
 	}
 
 	/**
-	 * Fail-open availability check: returns `{ available: true, config }` when
-	 * the AI Gateway is both licensed AND its config fetches successfully;
-	 * `{ available: false }` otherwise. Never propagates gateway or config
-	 * errors — callers that want to distinguish "unlicensed" from "gateway
-	 * down" should check `licenseState.isAiGatewayLicensed()` themselves.
+	 * Returns `{ available: true, config }` when the AI Gateway is both licensed
+	 * AND its config fetches successfully; `{ available: false }` otherwise.
+	 * Never propagates gateway or config errors.
 	 */
 	async isAvailable(): Promise<AiGatewayAvailability> {
 		if (!this.licenseState.isAiGatewayLicensed()) return { available: false };
