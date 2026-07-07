@@ -14,6 +14,7 @@ import {
 	type IWorkflowExecuteAdditionalData,
 	Workflow,
 	NodeConnectionTypes,
+	NodeOperationError,
 	createRunExecutionData,
 	type IRunExecutionData,
 	type WorkflowExecuteMode,
@@ -1415,6 +1416,248 @@ describe('JobProcessor', () => {
 					}),
 				}),
 			);
+		});
+
+		it('still returns the tool result to the client when persisting the run data fails', async () => {
+			const executionRepository = mock<ExecutionRepository>();
+			const executionPersistence = mock<ExecutionPersistence>();
+			const toolNode = {
+				name: 'Calculator',
+				type: '@n8n/n8n-nodes-langchain.toolCalculator',
+				typeVersion: 1,
+				parameters: {},
+				position: [0, 0] as [number, number],
+			};
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'trigger',
+					workflowData: { id: 'wf-1', nodes: [toolNode], staticData: {} },
+					data: mock<IRunExecutionData>({ executionData: undefined }),
+				}),
+			);
+			executionPersistence.updateExistingExecution.mockRejectedValueOnce(new Error('db down'));
+
+			const run: IRun = {
+				mode: 'trigger',
+				status: 'success',
+				finished: true,
+				startedAt: new Date(),
+				stoppedAt: new Date(),
+				storedAt: 'db',
+				data: createRunExecutionData({}),
+			};
+			const manualExecutionService = createManualExecutionServiceMock(run);
+			const mcpInstanceSettings = { hostId: 'worker-host-123' } as unknown as InstanceSettings;
+
+			const nodeTypes = mock<NodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: {
+					name: 'toolCalculator',
+					outputs: [NodeConnectionTypes.AiTool],
+					properties: [],
+				},
+				execute: vi.fn().mockResolvedValue([[{ json: { response: 42 } }]]),
+			} as never);
+
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				executionPersistence,
+				mock(),
+				nodeTypes,
+				mcpInstanceSettings,
+				manualExecutionService,
+				executionsConfig,
+				mock(),
+			);
+
+			const job = mock<Job>();
+			job.data = {
+				workflowId: 'wf-1',
+				executionId: 'exec-mcp-persist-fail',
+				loadStaticData: false,
+				isMcpExecution: true,
+				mcpType: 'trigger',
+				mcpSessionId: 'session-persist-fail',
+				mcpMessageId: 'msg-persist-fail',
+				mcpToolCall: {
+					toolName: 'Calculator',
+					arguments: { input: '2 + 2' },
+					sourceNodeName: 'Calculator',
+				},
+			};
+
+			await expect(jobProcessor.processJob(job)).resolves.toEqual({ success: true });
+
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to persist tool call run data for MCP Trigger',
+				expect.objectContaining({
+					executionId: 'exec-mcp-persist-fail',
+					sourceNodeName: 'Calculator',
+				}),
+			);
+
+			// The mcp-response with the tool result must still reach the client.
+			const mcpResponseCalls = (job.progress as Mock).mock.calls.filter(
+				(call: unknown[]) => (call[0] as { kind: string }).kind === 'mcp-response',
+			);
+			expect(mcpResponseCalls[mcpResponseCalls.length - 1][0]).toMatchObject({
+				kind: 'mcp-response',
+				executionId: 'exec-mcp-persist-fail',
+			});
+		});
+
+		it('initializes execution data when the completed run lacks it', async () => {
+			const executionRepository = mock<ExecutionRepository>();
+			const executionPersistence = mock<ExecutionPersistence>();
+			const toolNode = {
+				name: 'Calculator',
+				type: '@n8n/n8n-nodes-langchain.toolCalculator',
+				typeVersion: 1,
+				parameters: {},
+				position: [0, 0] as [number, number],
+			};
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'trigger',
+					workflowData: { id: 'wf-1', nodes: [toolNode], staticData: {} },
+					data: mock<IRunExecutionData>({ executionData: undefined }),
+				}),
+			);
+
+			// `executionData: null` leaves the run without an executionData object, forcing
+			// invokeTool to initialize it before recording the tool call.
+			const run: IRun = {
+				mode: 'trigger',
+				status: 'success',
+				finished: true,
+				startedAt: new Date(),
+				stoppedAt: new Date(),
+				storedAt: 'db',
+				data: createRunExecutionData({ executionData: null }),
+			};
+			expect(run.data.executionData).toBeUndefined();
+			const manualExecutionService = createManualExecutionServiceMock(run);
+			const mcpInstanceSettings = { hostId: 'worker-host-123' } as unknown as InstanceSettings;
+
+			const nodeTypes = mock<NodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: {
+					name: 'toolCalculator',
+					outputs: [NodeConnectionTypes.AiTool],
+					properties: [],
+				},
+				execute: vi.fn().mockResolvedValue([[{ json: { response: 42 } }]]),
+			} as never);
+
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				executionPersistence,
+				mock(),
+				nodeTypes,
+				mcpInstanceSettings,
+				manualExecutionService,
+				executionsConfig,
+				mock(),
+			);
+
+			const job = mock<Job>();
+			job.data = {
+				workflowId: 'wf-1',
+				executionId: 'exec-mcp-init-data',
+				loadStaticData: false,
+				isMcpExecution: true,
+				mcpType: 'trigger',
+				mcpSessionId: 'session-init-data',
+				mcpMessageId: 'msg-init-data',
+				mcpToolCall: {
+					toolName: 'Calculator',
+					arguments: { input: '2 + 2' },
+					sourceNodeName: 'Calculator',
+				},
+			};
+
+			await jobProcessor.processJob(job);
+
+			expect(run.data.executionData).toBeDefined();
+			expect(run.data.resultData.runData.Calculator?.[0]?.executionStatus).toBe('success');
+		});
+
+		it('records a NodeOperationError from the tool without re-wrapping it', async () => {
+			const executionRepository = mock<ExecutionRepository>();
+			const executionPersistence = mock<ExecutionPersistence>();
+			const toolNode = {
+				id: 'calc-node',
+				name: 'Calculator',
+				type: '@n8n/n8n-nodes-langchain.toolCalculator',
+				typeVersion: 1,
+				parameters: {},
+				position: [0, 0] as [number, number],
+			};
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'trigger',
+					workflowData: { id: 'wf-1', nodes: [toolNode], staticData: {} },
+					data: mock<IRunExecutionData>({ executionData: undefined }),
+				}),
+			);
+
+			const run: IRun = {
+				mode: 'trigger',
+				status: 'success',
+				finished: true,
+				startedAt: new Date(),
+				stoppedAt: new Date(),
+				storedAt: 'db',
+				data: createRunExecutionData({}),
+			};
+			const manualExecutionService = createManualExecutionServiceMock(run);
+			const mcpInstanceSettings = { hostId: 'worker-host-123' } as unknown as InstanceSettings;
+
+			const toolError = new NodeOperationError(toolNode, 'boom');
+			const nodeTypes = mock<NodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: {
+					name: 'toolCalculator',
+					outputs: [NodeConnectionTypes.AiTool],
+					properties: [],
+				},
+				execute: vi.fn().mockRejectedValue(toolError),
+			} as never);
+
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				executionPersistence,
+				mock(),
+				nodeTypes,
+				mcpInstanceSettings,
+				manualExecutionService,
+				executionsConfig,
+				mock(),
+			);
+
+			const job = mock<Job>();
+			job.data = {
+				workflowId: 'wf-1',
+				executionId: 'exec-mcp-node-error',
+				loadStaticData: false,
+				isMcpExecution: true,
+				mcpType: 'trigger',
+				mcpSessionId: 'session-node-error',
+				mcpMessageId: 'msg-node-error',
+				mcpToolCall: {
+					toolName: 'Calculator',
+					arguments: { input: 'bad' },
+					sourceNodeName: 'Calculator',
+				},
+			};
+
+			await jobProcessor.processJob(job);
+
+			expect(run.data.resultData.runData.Calculator?.[0]?.executionStatus).toBe('error');
+			expect(run.data.resultData.runData.Calculator?.[0]?.error).toBe(toolError);
 		});
 	});
 
