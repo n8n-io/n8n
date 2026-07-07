@@ -38,6 +38,7 @@ import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.ser
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -106,6 +107,7 @@ describe('McpService', () => {
 			mockInstance(WorkflowsConfig),
 			mockInstance(WorkflowPublishedDataService),
 			mockInstance(SubworkflowPolicyChecker),
+			mockInstance(AiGatewayService),
 		);
 	});
 
@@ -154,6 +156,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
 				mockInstance(SubworkflowPolicyChecker),
+				mockInstance(AiGatewayService),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -355,6 +358,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
 				mockInstance(SubworkflowPolicyChecker),
+				mockInstance(AiGatewayService),
 			);
 
 		const user = Object.assign(new User(), { id: 'user-1' });
@@ -464,6 +468,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
 				mockInstance(SubworkflowPolicyChecker),
+				mockInstance(AiGatewayService),
 			);
 
 			const server = await service.getServer(user, false);
@@ -514,6 +519,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
 				mockInstance(SubworkflowPolicyChecker),
+				mockInstance(AiGatewayService),
 			);
 
 			const server = await service.getServer(user, false);
@@ -588,6 +594,7 @@ describe('McpService', () => {
 					mockInstance(WorkflowsConfig),
 					mockInstance(WorkflowPublishedDataService),
 					mockInstance(SubworkflowPolicyChecker),
+					mockInstance(AiGatewayService),
 				);
 			};
 
