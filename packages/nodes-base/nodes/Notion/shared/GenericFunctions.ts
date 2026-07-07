@@ -18,7 +18,7 @@ import type {
 	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, setSafeObjectProperty } from 'n8n-workflow';
 import { validate as uuidValidate } from 'uuid';
 
 import { blockUrlExtractionRegexp, databasePageUrlValidationRegexp } from './constants';
@@ -515,13 +515,10 @@ export function mapProperties(
 				] as const,
 		)
 		.filter(([, value]) => value)
-		.reduce(
-			(obj, [key, value]) =>
-				Object.assign(obj, {
-					[key]: value,
-				}),
-			{},
-		);
+		.reduce((obj, [key, value]) => {
+			setSafeObjectProperty(obj, key, value);
+			return obj;
+		}, {} as IDataObject);
 }
 
 export function mapSorting(data: SortData[]) {
@@ -677,29 +674,30 @@ export function simplifyObjects(objects: any, download = false, version = 2) {
 		objects = [objects];
 	}
 	const results: IDataObject[] = [];
-	for (const { object, id, properties, parent, title, json, binary, url } of objects) {
-		if (object === 'page' && (parent.type === 'page_id' || parent.type === 'workspace')) {
+	const notV1 = version > 1;
+	for (const { object, id, properties, parent, title, name, json, binary, url } of objects) {
+		if (object === 'page' && (parent?.type === 'page_id' || parent?.type === 'workspace')) {
 			results.push({
 				id,
 				name: properties.title.title[0].plain_text,
-				...(version === 2 ? { url } : {}),
+				...(notV1 ? { url } : {}),
 			});
-		} else if (object === 'page' && parent.type === 'database_id') {
+		} else if (object === 'page') {
 			results.push({
 				id,
-				...(version === 2 ? { name: getPropertyTitle(properties as IDataObject) } : {}),
-				...(version === 2 ? { url } : {}),
-				...(version === 2
+				...(notV1 ? { name: getPropertyTitle(properties as IDataObject) } : {}),
+				...(notV1 ? { url } : {}),
+				...(notV1
 					? { ...prepend('property', simplifyProperties(properties) as IDataObject) }
 					: { ...simplifyProperties(properties) }),
 			} as IDataObject);
-		} else if (download && json.object === 'page' && json.parent.type === 'database_id') {
+		} else if (download && json.object === 'page') {
 			results.push({
 				json: {
 					id: json.id,
-					...(version === 2 ? { name: getPropertyTitle(json.properties as IDataObject) } : {}),
-					...(version === 2 ? { url: json.url } : {}),
-					...(version === 2
+					...(notV1 ? { name: getPropertyTitle(json.properties as IDataObject) } : {}),
+					...(notV1 ? { url: json.url } : {}),
+					...(notV1
 						? { ...prepend('property', simplifyProperties(json.properties) as IDataObject) }
 						: { ...simplifyProperties(json.properties) }),
 				},
@@ -708,10 +706,14 @@ export function simplifyObjects(objects: any, download = false, version = 2) {
 		} else if (object === 'database') {
 			results.push({
 				id,
-				...(version === 2
-					? { name: title[0]?.plain_text || '' }
-					: { title: title[0]?.plain_text || '' }),
-				...(version === 2 ? { url } : {}),
+				...(notV1 ? { name: title[0]?.plain_text || '' } : { title: title[0]?.plain_text || '' }),
+				...(notV1 ? { url } : {}),
+			});
+		} else if (object === 'data_source') {
+			results.push({
+				id,
+				name: name ?? title?.[0]?.plain_text ?? '',
+				url,
 			});
 		}
 	}

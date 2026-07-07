@@ -15,7 +15,9 @@ import {
 	idValidationRegexp,
 } from './shared/constants';
 import { notionApiRequest, simplifyObjects } from './shared/GenericFunctions';
-import { listSearch } from './shared/methods';
+import { listSearch as legacyListSearch } from './shared/methods';
+import { listSearch as dataSourceListSearch } from './v3/methods';
+import { notionApiRequestV3 } from './v3/transport';
 
 export class NotionTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -23,7 +25,8 @@ export class NotionTrigger implements INodeType {
 		name: 'notionTrigger',
 		icon: { light: 'file:notion.svg', dark: 'file:notion.dark.svg' },
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		description: 'Starts the workflow when Notion events occur',
 		subtitle: '={{$parameter["event"]}}',
 		defaults: {
@@ -153,10 +156,56 @@ export class NotionTrigger implements INodeType {
 				],
 				displayOptions: {
 					show: {
+						'@version': [1],
 						event: ['pageAddedToDatabase', 'pagedUpdatedInDatabase'],
 					},
 				},
 				description: 'The Notion Database to operate on',
+			},
+			{
+				displayName: 'Data Source',
+				name: 'dataSourceId',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{
+						displayName: 'Data Source',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Data Source...',
+						typeOptions: {
+							searchListMethod: 'getDataSources',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: 'ab1545b247fb49fa92d6f4b49f4d8116',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: idValidationRegexp,
+									errorMessage: 'Not a valid Notion Data Source ID',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: idExtractionRegexp,
+						},
+					},
+				],
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+						event: ['pageAddedToDatabase', 'pagedUpdatedInDatabase'],
+					},
+				},
+				description: 'The Notion Data Source to operate on',
 			},
 			{
 				displayName: 'Simplify',
@@ -175,14 +224,23 @@ export class NotionTrigger implements INodeType {
 	};
 
 	methods = {
-		listSearch,
+		listSearch: {
+			getDatabases: legacyListSearch.getDatabases,
+			getDataSources: dataSourceListSearch.getDataSources,
+		},
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
 		const webhookData = this.getWorkflowStaticData('node');
-		const databaseId = this.getNodeParameter('databaseId', '', { extractValue: true }) as string;
 		const event = this.getNodeParameter('event') as string;
 		const simple = this.getNodeParameter('simple') as boolean;
+		const nodeVersion = this.getNode().typeVersion;
+		const useDataSourceApi = nodeVersion >= 1.1;
+		const notionParentId = this.getNodeParameter(
+			useDataSourceApi ? 'dataSourceId' : 'databaseId',
+			'',
+			{ extractValue: true },
+		) as string;
 
 		const lastTimeChecked = webhookData.lastTimeChecked
 			? moment(webhookData.lastTimeChecked as string)
@@ -196,11 +254,16 @@ export class NotionTrigger implements INodeType {
 
 		const sortProperty = event === 'pageAddedToDatabase' ? 'created_time' : 'last_edited_time';
 
-		const option: IDataObject = {
-			headers: {
-				'Notion-Version': '2022-02-22',
-			},
-		};
+		const option: IDataObject = useDataSourceApi
+			? {}
+			: {
+					headers: {
+						'Notion-Version': '2022-02-22',
+					},
+				};
+		const queryEndpoint = useDataSourceApi
+			? `/data_sources/${notionParentId}/query`
+			: `/databases/${notionParentId}/query`;
 
 		const body: IDataObject = {
 			page_size: 1,
@@ -225,15 +288,9 @@ export class NotionTrigger implements INodeType {
 		let hasMore = true;
 
 		//get last record
-		let { results: data } = await notionApiRequest.call(
-			this,
-			'POST',
-			`/databases/${databaseId}/query`,
-			body,
-			{},
-			'',
-			option,
-		);
+		let { results: data } = useDataSourceApi
+			? await notionApiRequestV3.call(this, 'POST', queryEndpoint, body)
+			: await notionApiRequest.call(this, 'POST', queryEndpoint, body, {}, '', option);
 
 		if (this.getMode() === 'manual') {
 			if (simple) {
@@ -248,15 +305,9 @@ export class NotionTrigger implements INodeType {
 		if (Array.isArray(data) && data.length && Object.keys(data[0] as IDataObject).length !== 0) {
 			do {
 				body.page_size = 10;
-				const { results, has_more, next_cursor } = await notionApiRequest.call(
-					this,
-					'POST',
-					`/databases/${databaseId}/query`,
-					body,
-					{},
-					'',
-					option,
-				);
+				const { results, has_more, next_cursor } = useDataSourceApi
+					? await notionApiRequestV3.call(this, 'POST', queryEndpoint, body)
+					: await notionApiRequest.call(this, 'POST', queryEndpoint, body, {}, '', option);
 				records.push(...(results as IDataObject[]));
 				hasMore = has_more;
 				if (next_cursor !== null) {
