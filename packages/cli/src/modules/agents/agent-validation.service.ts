@@ -129,6 +129,21 @@ export class AgentValidationService {
 			}
 		}
 
+		for (const vectorStore of config.vectorStores ?? []) {
+			try {
+				const credentialId = vectorStore.credential?.trim();
+				if (!credentialId || !(await credentialExists(credentialId))) {
+					missing.push(`vectorStores.${vectorStore.name}.credential`);
+				}
+				const embeddingCredentialId = vectorStore.embedding.credential?.trim();
+				if (!embeddingCredentialId || !(await credentialExists(embeddingCredentialId))) {
+					missing.push(`vectorStores.${vectorStore.name}.embedding.credential`);
+				}
+			} catch {
+				// Same behavior as other credential checks: runtime reconstruction surfaces the error.
+			}
+		}
+
 		try {
 			const modelsByDifficulty = config.subAgents?.modelsByDifficulty;
 			if (modelsByDifficulty) {

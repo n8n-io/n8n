@@ -254,6 +254,19 @@ describe('AgentConfigService', () => {
 						credential: 'unknown-mcp',
 					},
 				],
+				vectorStores: [
+					{
+						provider: 'qdrant',
+						name: 'product_docs',
+						credential: 'unknown-vector-store',
+						useWhen: 'Search product docs',
+						embedding: {
+							model: 'openai/text-embedding-3-small',
+							credential: 'unknown-embedding',
+						},
+						collectionName: 'docs',
+					},
+				],
 			});
 
 			const saved = agentRepository.save.mock.calls[0][0] as Agent;
@@ -265,6 +278,8 @@ describe('AgentConfigService', () => {
 			);
 			expect(saved.integrations).toEqual([{ type: 'slack', credentialId: '' }]);
 			expect(savedConfig.mcpServers?.[0].credential).toBe('');
+			expect(savedConfig.vectorStores?.[0].credential).toBe('');
+			expect(savedConfig.vectorStores?.[0].embedding.credential).toBe('');
 		});
 
 		it('persists personalisation changes from the config payload', async () => {

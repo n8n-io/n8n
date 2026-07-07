@@ -46,6 +46,7 @@ import type {
 	AgentJsonConfig,
 	AgentJsonMcpServerConfig,
 	AgentJsonToolConfig,
+	AgentJsonVectorStoreConfig,
 	AgentSkill,
 } from '../types';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
@@ -69,6 +70,7 @@ import {
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
 	AGENT_JSON_IMPORT_MODAL_KEY,
+	AGENT_VECTOR_STORES_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
 	PROJECT_AGENTS,
 } from '../constants';
@@ -1015,6 +1017,72 @@ function onOpenAddToolModal() {
 	});
 }
 
+function onConfirmVectorStore(vectorStore: AgentJsonVectorStoreConfig) {
+	const vectorStores = localConfig.value?.vectorStores ?? [];
+	const index = vectorStores.findIndex((existing) => existing.name === vectorStore.name);
+	const nextVectorStores =
+		index === -1
+			? [...vectorStores, vectorStore]
+			: vectorStores.map((existing, i) => (i === index ? vectorStore : existing));
+	onConfigFieldUpdate({ vectorStores: nextVectorStores });
+}
+
+function onOpenAddVectorStoreModal() {
+	const vectorStores = localConfig.value?.vectorStores ?? [];
+	uiStore.openModalWithData({
+		name: AGENT_VECTOR_STORES_MODAL_KEY,
+		data: {
+			projectId: projectId.value,
+			agentId: agentId.value,
+			existingNames: vectorStores.map((vectorStore) => vectorStore.name),
+			onConfirm: onConfirmVectorStore,
+		},
+	});
+}
+
+function onOpenEditVectorStoreModal(vectorStore: AgentJsonVectorStoreConfig) {
+	const vectorStores = localConfig.value?.vectorStores ?? [];
+	uiStore.openModalWithData({
+		name: AGENT_VECTOR_STORES_MODAL_KEY,
+		data: {
+			projectId: projectId.value,
+			agentId: agentId.value,
+			existingNames: vectorStores.map((existing) => existing.name),
+			vectorStore,
+			onConfirm: onConfirmVectorStore,
+			onRemove: (name: string) => {
+				onConfigFieldUpdate({
+					vectorStores: (localConfig.value?.vectorStores ?? []).filter(
+						(existing) => existing.name !== name,
+					),
+				});
+			},
+		},
+	});
+}
+
+async function onRemoveVectorStore(vectorStore: AgentJsonVectorStoreConfig) {
+	const confirmed = await openAgentConfirmationModal({
+		title: locale.baseText('agents.builder.vectorStores.panel.removeModal.title', {
+			interpolate: { name: vectorStore.name },
+		}),
+		description: locale.baseText('agents.builder.vectorStores.panel.removeModal.description', {
+			interpolate: { name: vectorStore.name },
+		}),
+		confirmButtonText: locale.baseText(
+			'agents.builder.vectorStores.panel.removeModal.button.remove',
+		),
+		cancelButtonText: locale.baseText('generic.cancel'),
+	});
+	if (confirmed !== MODAL_CONFIRM) return;
+
+	onConfigFieldUpdate({
+		vectorStores: (localConfig.value?.vectorStores ?? []).filter(
+			(existing) => existing.name !== vectorStore.name,
+		),
+	});
+}
+
 function onOpenToolFromList(target: ToolOpenTarget | number) {
 	const tools = localConfig.value?.tools ?? [];
 
@@ -1465,6 +1533,9 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					@add-skill="onOpenAddSkillModal"
 					@upload-files="onUploadAgentFiles"
 					@delete-file="onDeleteAgentFile"
+					@add-vector-store="onOpenAddVectorStoreModal"
+					@edit-vector-store="onOpenEditVectorStoreModal"
+					@remove-vector-store="onRemoveVectorStore"
 					@remove-tool="onRemoveTool"
 					@remove-skill="onRemoveSkill"
 					@update:connected-triggers="onConnectedTriggersUpdate"

@@ -299,6 +299,62 @@ export const McpServerConfigSchema = z
 	})
 	.strict();
 
+export const AGENT_VECTOR_STORE_PROVIDERS = ['pinecone', 'supabase', 'qdrant', 'postgres'] as const;
+export const VECTOR_STORE_USE_WHEN_MAX_LENGTH = 512;
+export const VECTOR_STORE_NAME_REGEX = /^[a-zA-Z0-9_-]+$/;
+
+const VectorStoreEmbeddingSchema = z
+	.object({
+		model: AgentModelSchema,
+		credential: CredentialIdSchema,
+	})
+	.strict();
+
+const VectorStoreBaseShape = {
+	name: z
+		.string()
+		.min(1)
+		.max(64)
+		.regex(VECTOR_STORE_NAME_REGEX)
+		.describe('Unique connection name, also used as the SDK tool-name suffix: search_<name>'),
+	credential: CredentialIdSchema,
+	useWhen: z.string().trim().min(1).max(VECTOR_STORE_USE_WHEN_MAX_LENGTH),
+	embedding: VectorStoreEmbeddingSchema,
+};
+
+export const AgentVectorStoreConfigSchema = z.discriminatedUnion('provider', [
+	z
+		.object({
+			provider: z.literal('pinecone'),
+			...VectorStoreBaseShape,
+			indexName: z.string().min(1),
+			namespace: z.string().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			provider: z.literal('qdrant'),
+			...VectorStoreBaseShape,
+			collectionName: z.string().min(1),
+		})
+		.strict(),
+	z
+		.object({
+			provider: z.literal('supabase'),
+			...VectorStoreBaseShape,
+			tableName: z.string().min(1),
+			queryName: z.string().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			provider: z.literal('postgres'),
+			...VectorStoreBaseShape,
+			tableName: z.string().min(1),
+		})
+		.strict(),
+]);
+
 const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 	z.object({
 		type: z.literal('custom'),
@@ -379,6 +435,13 @@ export const AgentJsonConfigSchema = z.object({
 			message: 'MCP server names must be unique within an agent',
 		})
 		.optional(),
+	vectorStores: z
+		.array(AgentVectorStoreConfigSchema)
+		.max(20)
+		.refine((stores) => new Set(stores.map((s) => s.name)).size === stores.length, {
+			message: 'Vector store names must be unique within an agent',
+		})
+		.optional(),
 	config: z
 		.object({
 			thinking: ThinkingConfigSchema.optional(),
@@ -421,6 +484,8 @@ export type NodeToolConfig = z.infer<typeof NodeConfigSchema>;
 export type AgentJsonMcpServerConfig = z.infer<typeof McpServerConfigSchema>;
 export type McpAuthenticationSchemaType = z.infer<typeof McpAuthenticationSchemaTypes>;
 export type SubAgentTaskDifficulty = z.infer<typeof SubAgentTaskDifficultySchema>;
+export type AgentVectorStoreProvider = (typeof AGENT_VECTOR_STORE_PROVIDERS)[number];
+export type AgentJsonVectorStoreConfig = z.infer<typeof AgentVectorStoreConfigSchema>;
 
 export interface ConfigValidationError {
 	path: string;

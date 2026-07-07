@@ -233,6 +233,181 @@ describe('AgentJsonConfigSchema — config.promptCaching', () => {
 	});
 });
 
+describe('AgentJsonConfigSchema — vectorStores', () => {
+	const embedding = { model: 'openai/text-embedding-3-small', credential: 'embed-cred' };
+
+	it('accepts a valid pinecone connection', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			vectorStores: [
+				{
+					provider: 'pinecone',
+					name: 'product_docs',
+					credential: 'pinecone-cred',
+					useWhen: 'Search when the user asks about product documentation.',
+					embedding,
+					indexName: 'product-docs',
+					namespace: 'prod',
+				},
+			],
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts a valid qdrant connection', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			vectorStores: [
+				{
+					provider: 'qdrant',
+					name: 'product_docs',
+					credential: 'qdrant-cred',
+					useWhen: 'Search when the user asks about product documentation.',
+					embedding,
+					collectionName: 'product-docs',
+				},
+			],
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts a valid supabase connection', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			vectorStores: [
+				{
+					provider: 'supabase',
+					name: 'product_docs',
+					credential: 'supabase-cred',
+					useWhen: 'Search when the user asks about product documentation.',
+					embedding,
+					tableName: 'documents',
+					queryName: 'match_documents',
+				},
+			],
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts a valid postgres connection', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			vectorStores: [
+				{
+					provider: 'postgres',
+					name: 'product_docs',
+					credential: 'postgres-cred',
+					useWhen: 'Search when the user asks about product documentation.',
+					embedding,
+					tableName: 'documents',
+				},
+			],
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects multiple vector stores with the same name', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			vectorStores: [
+				{
+					provider: 'qdrant',
+					name: 'duplicate',
+					credential: 'qdrant-cred',
+					useWhen: 'Use A',
+					embedding,
+					collectionName: 'a',
+				},
+				{
+					provider: 'postgres',
+					name: 'duplicate',
+					credential: 'postgres-cred',
+					useWhen: 'Use B',
+					embedding,
+					tableName: 'b',
+				},
+			],
+		});
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.errors[0].message).toBe(
+				'Vector store names must be unique within an agent',
+			);
+		}
+	});
+
+	it('rejects a useWhen longer than the max length', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			vectorStores: [
+				{
+					provider: 'qdrant',
+					name: 'product_docs',
+					credential: 'qdrant-cred',
+					useWhen: 'a'.repeat(513),
+					embedding,
+					collectionName: 'product-docs',
+				},
+			],
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects an empty useWhen', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			vectorStores: [
+				{
+					provider: 'qdrant',
+					name: 'product_docs',
+					credential: 'qdrant-cred',
+					useWhen: '',
+					embedding,
+					collectionName: 'product-docs',
+				},
+			],
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects a pinecone connection missing indexName', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			vectorStores: [
+				{
+					provider: 'pinecone',
+					name: 'product_docs',
+					credential: 'pinecone-cred',
+					useWhen: 'Search when the user asks about product documentation.',
+					embedding,
+				},
+			],
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects an unknown provider', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			vectorStores: [
+				{
+					provider: 'weaviate',
+					name: 'product_docs',
+					credential: 'cred',
+					useWhen: 'Use it',
+					embedding,
+				},
+			],
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it('accepts an empty vectorStores array', () => {
+		const result = AgentJsonConfigSchema.safeParse({ ...minimalConfig, vectorStores: [] });
+		expect(result.success).toBe(true);
+	});
+});
+
 describe('AgentJsonConfigSchema — skills', () => {
 	it('rejects multiple skill refs with the same id', () => {
 		const result = AgentJsonConfigSchema.safeParse({

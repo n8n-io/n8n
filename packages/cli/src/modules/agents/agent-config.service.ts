@@ -146,6 +146,7 @@ export class AgentConfigService {
 		const providerToolsProvided = validatedConfig.providerTools !== undefined;
 		const configBlockProvided = validatedConfig.config !== undefined;
 		const mcpServersProvided = validatedConfig.mcpServers !== undefined;
+		const vectorStoresProvided = validatedConfig.vectorStores !== undefined;
 
 		const { schemaConfig: decomposedSchema, integrations: decomposedIntegrations } =
 			decomposeJsonConfig(validatedConfig);
@@ -174,6 +175,7 @@ export class AgentConfigService {
 			...(providerToolsProvided ? { providerTools: decomposedSchema.providerTools } : {}),
 			...(configBlockProvided ? { config: decomposedSchema.config } : {}),
 			...(mcpServersProvided ? { mcpServers: decomposedSchema.mcpServers } : {}),
+			...(vectorStoresProvided ? { vectorStores: decomposedSchema.vectorStores } : {}),
 		};
 
 		entity.schema = nextSchema;
