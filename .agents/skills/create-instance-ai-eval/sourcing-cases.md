@@ -46,6 +46,9 @@ connected.)
    authored case ([SKILL.md](SKILL.md), [`case-shapes.md`](case-shapes.md)). The
    failure mode is the anchor; the conversation is yours to write, in the user's
    voice.
+5. **Push it to a curated suite** (don't commit the JSON) with
+   `eval:langtracer-push` — see
+   [Push to a lang-tracer suite](SKILL.md#push-to-a-lang-tracer-suite).
 
 ## Two practical notes on `get_conversation_analysis`
 

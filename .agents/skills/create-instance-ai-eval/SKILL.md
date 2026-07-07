@@ -19,6 +19,14 @@ auto-discovers `*.json` and validates against
 [README](../../../packages/@n8n/instance-ai/evaluations/README.md) is the
 exhaustive field reference; this skill is the opinionated *how*.
 
+> **Committing new case JSONs into the repo is no longer the recommended
+> approach.** Author the file locally (uncommitted), calibrate it against a real
+> build, then **push it to a curated lang-tracer suite** with
+> `eval:langtracer-push` (see [Push to a lang-tracer suite](#push-to-a-lang-tracer-suite)).
+> The suite is the home for the case; the eval CLI reads it back via
+> `--source langtracer`. You still write the JSON file — it's just the input to
+> the push, not a committed artifact.
+
 ## Where the best cases come from
 
 The strongest cases encode a **real** failure, not an invented premise. Two
@@ -93,6 +101,12 @@ Request node").
    the result — keep it and surface why** (see "A red is signal", below). Never
    delete a scenario, weaken an assertion, or drop to build-only just to make the
    run green.
+6. **Push to the suite — do NOT commit the JSON.** Once calibrated, push the case
+   into its curated lang-tracer suite with `eval:langtracer-push` (see
+   [Push to a lang-tracer suite](#push-to-a-lang-tracer-suite)); the suite is the
+   case's home, not the repo. Leave the `data/workflows/*.json` file uncommitted
+   (or delete it once it's in the suite). Committing new case JSONs into the repo
+   is no longer the approach.
 
 `--iterations N` is available to measure flakiness (pass@k / pass^k) — reach for
 it when you suspect a case is non-deterministic or before promoting it to a
@@ -404,6 +418,34 @@ concluding whether the failure is your case, the build, or the harness.
 cd packages/@n8n/instance-ai
 npx tsx -e "import {loadWorkflowTestCasesWithFiles} from './evaluations/data/workflows/index.ts'; console.log(loadWorkflowTestCasesWithFiles('<slug>')[0].fileSlug)"
 ```
+
+## Push to a lang-tracer suite
+
+Once a case is calibrated, push it (and any others) up into a curated lang-tracer
+suite instead of committing the JSON. `eval:langtracer-push` **upserts** over the
+REST API: it creates cases missing from the suite, updates ones whose content
+drifted, leaves the rest unchanged, and never prunes. It's the inverse of
+`--source langtracer` (which pulls a suite down).
+
+```bash
+cd packages/@n8n/instance-ai
+# preview first — no writes:
+dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building --dry-run --changed
+# then push (drop --dry-run):
+dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building --changed
+```
+
+- **Selectors** (at least one required — no accidental push-all): positional
+  `<slugs...>` (exact file slugs), `--changed` (new/untracked + staged + modified
+  `data/workflows/*.json`, ideal right after authoring an uncommitted case),
+  `--filter`/`--tier` (with `--exclude` as a modifier).
+- **Env:** `LANGTRACER_URL` + `LANGTRACER_API_KEY` (an `lt_` bearer; one key works
+  for MCP + REST) — put them in `.env.eval` and run under `dotenvx`.
+- **Options:** `--set-kind regression|capability_gap` (default `regression`, must
+  match the suite's kind), `--contains-user-data` (default is `synthetic`).
+- **Limitation:** `executionScenarios` are written on **create** only — the update
+  path patches case-level fields but not scenario rows (so scenario-only edits to
+  an existing case aren't re-synced; remove+re-push or edit in the lang-tracer UI).
 
 ## Running
 
