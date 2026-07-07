@@ -32,11 +32,12 @@ describe('GoogleDocs Node - loadOptions', () => {
 	});
 
 	describe('getFolders', () => {
-		it('should fall back to My Drive when driveId is not set yet', async () => {
+		it('should use myDrive when driveId is absent from node parameters', async () => {
 			(googleApiRequestAllItems as Mock).mockResolvedValue([{ name: 'Reports', id: 'folder-1' }]);
 
 			const result = await node.methods.loadOptions.getFolders.call(mockThis);
 
+			expect(mockThis.getNodeParameter).toHaveBeenCalledWith('driveId', 'myDrive');
 			expect(result).toEqual([
 				{ name: '/', value: 'default' },
 				{ name: 'Reports', value: 'folder-1' },
