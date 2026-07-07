@@ -575,7 +575,7 @@ afterEach(() => {
 						'(ReferenceError: document is not defined / EnvironmentTeardownError). This is the ' +
 						'recurring leaked-timer class (lineage DEVP-201 → DEVP-206). Fix it at the source ' +
 						'(cancel the timer on scope dispose / in an afterEach), or, if the test legitimately ' +
-						'needs real timers, opt out with useRealTimersForTest() from \'@/__tests__/setup\'.',
+						"needs real timers, opt out with useRealTimersForTest() from '@/__tests__/setup'.",
 				);
 			}
 		}
