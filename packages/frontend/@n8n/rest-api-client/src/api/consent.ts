@@ -6,10 +6,13 @@ export interface ConsentDetails {
 	clientId: string;
 	redirectUri?: string;
 	resourceName?: string;
-	/** Scopes the user can grant. Empty = full user delegation (no picker shown). */
+	/**
+	 * Scopes the user can grant (already capped by what the client requested).
+	 * Empty = full user delegation (no picker shown).
+	 */
 	scopes: string[];
-	/** Scopes the client asked for, used to preselect the picker. */
-	requestedScopes?: string[];
+	/** Scopes this user granted to this client last time, used to preselect the picker. */
+	previousScopes?: string[];
 }
 
 export interface ConsentApprovalResponse {

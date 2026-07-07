@@ -8,6 +8,7 @@ import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.servi
 import { OAuthConsentService } from '../oauth-consent.service';
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { OAuthSessionService } from '../oauth-session.service';
+import type { UserConsent } from '../database/entities/oauth-user-consent.entity';
 import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
 import {
 	ProtectedResourceRegistry,
@@ -78,7 +79,7 @@ describe('OAuthConsentService', () => {
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
 			oauthClientRepository.findOne.mockResolvedValue(client);
 
-			const result = await service.getConsentDetails(sessionToken);
+			const result = await service.getConsentDetails(sessionToken, 'user-1');
 
 			expect(result).toEqual({
 				ok: true,
@@ -86,7 +87,7 @@ describe('OAuthConsentService', () => {
 				clientId: 'client-123',
 				redirectUri: 'https://example.com/callback',
 				scopes: INSTANCE_SCOPES,
-				requestedScopes: undefined,
+				previousScopes: undefined,
 			});
 			expect(oauthSessionService.verifySession).toHaveBeenCalledWith(sessionToken);
 			expect(oauthClientRepository.findOne).toHaveBeenCalledWith({
@@ -107,7 +108,7 @@ describe('OAuthConsentService', () => {
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
 			oauthClientRepository.findOne.mockResolvedValue(null);
 
-			const result = await service.getConsentDetails(sessionToken);
+			const result = await service.getConsentDetails(sessionToken, 'user-1');
 
 			expect(result).toBeNull();
 		});
@@ -119,7 +120,7 @@ describe('OAuthConsentService', () => {
 				throw new Error('Invalid session');
 			});
 
-			const result = await service.getConsentDetails(sessionToken);
+			const result = await service.getConsentDetails(sessionToken, 'user-1');
 
 			expect(result).toBeNull();
 			expect(logger.error).toHaveBeenCalledWith('Error getting consent details', {
@@ -143,7 +144,7 @@ describe('OAuthConsentService', () => {
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
 			oauthClientRepository.findOne.mockResolvedValue(client);
 
-			const result = await service.getConsentDetails(sessionToken);
+			const result = await service.getConsentDetails(sessionToken, 'user-1');
 
 			expect(result).toEqual({
 				ok: true,
@@ -151,31 +152,56 @@ describe('OAuthConsentService', () => {
 				clientId: 'client-123',
 				redirectUri: 'https://example.com/callback',
 				scopes: INSTANCE_SCOPES,
-				requestedScopes: undefined,
+				previousScopes: undefined,
 			});
 		});
 
-		it('should pass through the requested scopes from the session', async () => {
+		it('should cap the grantable scopes at what the client requested', async () => {
 			const sessionToken = 'valid-session-token';
 			const sessionPayload = {
 				clientId: 'client-123',
 				redirectUri: 'https://example.com/callback',
 				codeChallenge: 'challenge',
 				state: null,
-				requestedScopes: ['workflow:read'],
+				requestedScopes: ['workflow:read', 'execution:read'],
 			};
 			const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client' });
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
 			oauthClientRepository.findOne.mockResolvedValue(client);
 
-			const result = await service.getConsentDetails(sessionToken);
+			const result = await service.getConsentDetails(sessionToken, 'user-1');
 
 			expect(result).toMatchObject({
 				ok: true,
-				scopes: INSTANCE_SCOPES,
-				requestedScopes: ['workflow:read'],
+				scopes: ['workflow:read', 'execution:read'],
 			});
+		});
+
+		it('should preselect the scopes from a previous grant', async () => {
+			const sessionToken = 'valid-session-token';
+			const sessionPayload = {
+				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge',
+				state: null,
+			};
+			const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client' });
+
+			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
+			oauthClientRepository.findOne.mockResolvedValue(client);
+			userConsentRepository.findOneBy.mockResolvedValueOnce({
+				scope: ['workflow:read', 'no-longer-supported:scope'],
+			} as unknown as UserConsent);
+
+			const result = await service.getConsentDetails(sessionToken, 'user-1');
+
+			expect(userConsentRepository.findOneBy).toHaveBeenCalledWith({
+				userId: 'user-1',
+				clientId: 'client-123',
+			});
+			// stale scopes from the previous grant are dropped
+			expect(result).toMatchObject({ ok: true, previousScopes: ['workflow:read'] });
 		});
 
 		it('should include the resource displayName as resourceName for a workflow resource', async () => {
@@ -196,7 +222,7 @@ describe('OAuthConsentService', () => {
 				scopes: [],
 			} as unknown as ProtectedResource);
 
-			const result = await service.getConsentDetails(sessionToken);
+			const result = await service.getConsentDetails(sessionToken, 'user-1');
 
 			expect(result).toEqual({
 				ok: true,
@@ -205,7 +231,7 @@ describe('OAuthConsentService', () => {
 				resourceName: 'My Workflow',
 				redirectUri: 'https://example.com/callback',
 				scopes: [],
-				requestedScopes: undefined,
+				previousScopes: undefined,
 			});
 			expect(protectedResourceRegistry.getByResourceUrl).toHaveBeenCalledWith(
 				'https://n8n.example.com/mcp/wf-123',
@@ -231,7 +257,7 @@ describe('OAuthConsentService', () => {
 				scopes: INSTANCE_SCOPES,
 			} as unknown as ProtectedResource);
 
-			const result = await service.getConsentDetails(sessionToken);
+			const result = await service.getConsentDetails(sessionToken, 'user-1');
 
 			expect(result).toEqual({
 				ok: true,
@@ -240,7 +266,7 @@ describe('OAuthConsentService', () => {
 				resourceName: undefined,
 				redirectUri: 'https://example.com/callback',
 				scopes: INSTANCE_SCOPES,
-				requestedScopes: undefined,
+				previousScopes: undefined,
 			});
 		});
 
@@ -259,7 +285,7 @@ describe('OAuthConsentService', () => {
 			oauthClientRepository.findOne.mockResolvedValue(client);
 			protectedResourceRegistry.getByResourceUrl.mockResolvedValue(undefined);
 
-			const result = await service.getConsentDetails(sessionToken);
+			const result = await service.getConsentDetails(sessionToken, 'user-1');
 
 			expect(result).toEqual({ ok: false, reason: 'resource_unavailable' });
 		});
@@ -368,7 +394,25 @@ describe('OAuthConsentService', () => {
 
 			await expect(
 				service.handleConsentDecision('token', 'user-123', true, ['workflow:read', 'admin:all']),
-			).rejects.toThrow('Unsupported scopes: admin:all');
+			).rejects.toThrow('Scopes cannot be granted: admin:all');
+			expect(userConsentRepository.upsert).not.toHaveBeenCalled();
+		});
+
+		it('should reject scopes beyond what the client requested', async () => {
+			oauthSessionService.verifySession.mockReturnValue({
+				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge-abc',
+				state: null,
+				requestedScopes: ['workflow:read'],
+			});
+
+			await expect(
+				service.handleConsentDecision('token', 'user-123', true, [
+					'workflow:read',
+					'workflow:write',
+				]),
+			).rejects.toThrow('Scopes cannot be granted: workflow:write');
 			expect(userConsentRepository.upsert).not.toHaveBeenCalled();
 		});
 

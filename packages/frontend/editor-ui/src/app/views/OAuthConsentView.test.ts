@@ -192,15 +192,15 @@ describe('OAuthConsentView', () => {
 			expect(queryByText('Get a list of your workflows')).toBeNull();
 		});
 
-		it('should preselect all scopes when the client requested none', async () => {
+		it('should preselect all scopes on a first-time consent', async () => {
 			const { getByTestId } = renderComponent();
 			await waitAllPromises();
 
 			expect(getByTestId('scopes-count')).toHaveTextContent('3 of 3 scopes selected');
 		});
 
-		it('should preselect the scopes the client requested', async () => {
-			const requestedDetails = { ...scopedDetails, requestedScopes: ['workflow:read'] };
+		it('should preselect the scopes from the previous grant', async () => {
+			const requestedDetails = { ...scopedDetails, previousScopes: ['workflow:read'] };
 			consentStore.consentDetails = requestedDetails;
 			consentStore.fetchConsentDetails.mockImplementation(async () => {
 				consentStore.consentDetails = requestedDetails;
