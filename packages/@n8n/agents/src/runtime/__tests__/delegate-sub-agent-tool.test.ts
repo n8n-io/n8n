@@ -79,17 +79,45 @@ describe('createDelegateSubAgentTool', () => {
 		expect(rebuilt.name).toBe('agent');
 	});
 
-	it('omits the system instruction when systemInstruction is null', () => {
-		const tool = createDelegateSubAgentTool({ systemInstruction: null });
+	it.each(['', ' ', 'has space', '1agent', 'agent!', 'a'.repeat(65)])(
+		'rejects invalid delegate tool name %j',
+		(name) => {
+			expect(() => createDelegateSubAgentTool({ name })).toThrow(
+				'Invalid delegate sub-agent tool name',
+			);
+		},
+	);
 
-		expect(tool.systemInstruction).toBeUndefined();
+	it('names a renamed tool in policy validation errors', () => {
+		expect(() => createDelegateSubAgentTool({ name: 'agent', policy: { maxChildren: 0 } })).toThrow(
+			'agent policy.maxChildren must be at least 1',
+		);
 	});
 
-	it('omits the system instruction when systemInstruction is an empty string', () => {
-		const tool = createDelegateSubAgentTool({ systemInstruction: '' });
+	it('names a renamed tool in the missing-runner error', async () => {
+		const tool = createDelegateSubAgentTool({ name: 'agent' });
 
-		expect(tool.systemInstruction).toBeUndefined();
+		await expect(tool.handler?.(input, { runId: 'parent-run-1' })).resolves.toMatchObject({
+			status: 'failed',
+			error:
+				'agent was registered without a runSubAgent callback, and no host runner was provided. Register it on an Agent (for inline delegation) or pass runSubAgent.',
+		});
 	});
+
+	it('identifies delegate tools by metadata regardless of name', () => {
+		expect(isDelegateSubAgentTool(createDelegateSubAgentTool())).toBe(true);
+		expect(isDelegateSubAgentTool(createDelegateSubAgentTool({ name: 'agent' }))).toBe(true);
+		expect(isDelegateSubAgentTool({ name: DELEGATE_SUB_AGENT_TOOL_NAME })).toBe(false);
+	});
+
+	it.each([null, '', '   '])(
+		'falls back to the default system instruction for non-string or blank value %j',
+		(systemInstruction) => {
+			const tool = createDelegateSubAgentTool({ systemInstruction });
+
+			expect(tool.systemInstruction).toContain('WHEN TO USE delegate_subagent:');
+		},
+	);
 
 	it('uses a host-provided system instruction instead of the built-in guidance', () => {
 		const tool = createDelegateSubAgentTool({
@@ -125,24 +153,14 @@ describe('createDelegateSubAgentTool', () => {
 		expect(tool.description).toContain('independent workstreams');
 	});
 
-	it('falls back to the tool name when description is null', () => {
-		const tool = createDelegateSubAgentTool({ description: null });
+	it.each([null, '', '   '])(
+		'falls back to the default description for non-string or blank value %j',
+		(description) => {
+			const tool = createDelegateSubAgentTool({ description });
 
-		expect(tool.description).toBe(DELEGATE_SUB_AGENT_TOOL_NAME);
-		expect(tool.description).not.toContain('independent workstreams');
-	});
-
-	it('falls back to the tool name when description is an empty string', () => {
-		const tool = createDelegateSubAgentTool({ description: '' });
-
-		expect(tool.description).toBe(DELEGATE_SUB_AGENT_TOOL_NAME);
-	});
-
-	it('falls back to a custom tool name when description is omitted', () => {
-		const tool = createDelegateSubAgentTool({ name: 'agent', description: null });
-
-		expect(tool.description).toBe('agent');
-	});
+			expect(tool.description).toContain('independent workstreams');
+		},
+	);
 
 	it('uses a host-provided description instead of the built-in text', () => {
 		const tool = createDelegateSubAgentTool({
