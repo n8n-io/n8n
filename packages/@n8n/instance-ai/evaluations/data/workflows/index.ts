@@ -1,72 +1,11 @@
-import { readFileSync } from 'fs';
-import { basename, dirname, resolve } from 'path';
+import { loadEvalCasesFromDir, type WorkflowTestCaseWithFile } from '../../utils/load-eval-cases';
 
-import { loadConversationSeed } from '../../harness/conversation-seed';
-import { EvalTestCaseSchema } from '../../harness/schema';
-import type { WorkflowTestCase } from '../../types';
-import { getJsonFiles } from '../../utils/get-json-files';
-
-export interface WorkflowTestCaseWithFile {
-	testCase: WorkflowTestCase;
-	/** Filename without extension, e.g. "contact-form-automation" */
-	fileSlug: string;
-}
-
-function parseTestCaseFile(filePath: string): WorkflowTestCase {
-	const content = readFileSync(filePath, 'utf-8');
-
-	let raw: unknown;
-	try {
-		raw = JSON.parse(content);
-	} catch (error) {
-		throw new Error(
-			`Failed to parse test case ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
-		);
-	}
-
-	const parsed = EvalTestCaseSchema.safeParse(raw);
-	if (!parsed.success) {
-		const issues = parsed.error.issues
-			.map((i) => `  - ${i.path.join('.') || '(root)'}: ${i.message}`)
-			.join('\n');
-		throw new Error(`Invalid test case ${filePath}:\n${issues}`);
-	}
-
-	const testCase = parsed.data;
-	if (testCase.seedFile) {
-		// Resolve relative to the case file and validate now, so an authoring
-		// typo fails at load time instead of per-build as an agent failure.
-		const resolved = resolve(dirname(filePath), testCase.seedFile);
-		try {
-			loadConversationSeed(resolved);
-		} catch (error) {
-			throw new Error(
-				`Invalid test case ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
-			);
-		}
-		testCase.seedFile = resolved;
-	}
-	return testCase;
-}
+export type { WorkflowTestCaseWithFile } from '../../utils/load-eval-cases';
 
 /** Load test cases with their file slugs (for LangSmith dataset sync derived IDs). */
 export function loadWorkflowTestCasesWithFiles(
 	filter?: string,
 	exclude?: string,
-	tier?: string,
 ): WorkflowTestCaseWithFile[] {
-	const cases = getJsonFiles(__dirname, filter, exclude).map((f) => ({
-		testCase: parseTestCaseFile(f),
-		fileSlug: basename(f, '.json'),
-	}));
-	if (!tier) return cases;
-
-	const matched = cases.filter(({ testCase }) => testCase.datasets.includes(tier));
-	if (matched.length === 0) {
-		const known = [...new Set(cases.flatMap(({ testCase }) => testCase.datasets))].sort();
-		throw new Error(
-			`No test cases match --tier "${tier}". Known tiers: ${known.join(', ') || '(none)'}.`,
-		);
-	}
-	return matched;
+	return loadEvalCasesFromDir(__dirname, filter, exclude);
 }

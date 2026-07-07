@@ -8,7 +8,7 @@ import { LmChatGoogleVertex } from '../LmChatGoogleVertex.node';
 
 vi.mock('@langchain/google-vertexai');
 vi.mock('@n8n/ai-utilities');
-vi.mock('@n8n/utils', () => ({
+vi.mock('@n8n/utils/format-pem-block', () => ({
 	formatPemBlock: vi.fn().mockImplementation((key: string) => key),
 }));
 

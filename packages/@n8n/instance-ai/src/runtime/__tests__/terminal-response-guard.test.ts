@@ -162,6 +162,14 @@ describe('InstanceAiTerminalResponseGuard', () => {
 		expect(decision.visibilitySource).toBe('root-text');
 	});
 
+	it('emits no placeholder when a run is cancelled with no output', () => {
+		const decision = guard().evaluateTerminal([runStart()], 'cancelled');
+
+		expect(decision.action).toBe('none');
+		expect(decision.reason).toBe('cancelled-silent');
+		expect(decision.event).toBeUndefined();
+	});
+
 	it('logs root error then completed as already visible', () => {
 		const decision = guard().evaluateTerminal([runStart(), rootError()], 'completed');
 

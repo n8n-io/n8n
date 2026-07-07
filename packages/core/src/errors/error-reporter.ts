@@ -18,6 +18,8 @@ import {
 	SentryTracing,
 	buildBeforeSendTransaction,
 	buildTracesSampler,
+	shouldIgnoreIncomingRequest,
+	shouldIgnoreOutgoingRequest,
 	DEFAULT_SLOW_SPAN_THRESHOLD_MS,
 } from '@/observability';
 
@@ -45,6 +47,12 @@ type ErrorReporterInitOptions = {
 
 	/** Threshold in ms below which non-errored `db`/`http.client` spans are dropped. */
 	slowSpanThresholdMs?: number;
+
+	/** Production webhook endpoint path segment (e.g. `webhook`), used to sample webhook traces. */
+	webhookEndpoint?: string;
+
+	/** Sample rate (0.0 to 1.0) for successful production webhook transaction traces. */
+	webhookTracesSampleRate?: number;
 
 	/** Sample rate for Sentry profiling (0.0 to 1.0). 0 means disabled */
 	profilesSampleRate: number;
@@ -154,6 +162,8 @@ export class ErrorReporter {
 		profilesSampleRate,
 		tracesSampleRate,
 		slowSpanThresholdMs = DEFAULT_SLOW_SPAN_THRESHOLD_MS,
+		webhookEndpoint,
+		webhookTracesSampleRate,
 		eligibleIntegrations = {},
 		healthEndpoint = '/healthz',
 	}: ErrorReporterInitOptions) {
@@ -196,6 +206,7 @@ export class ErrorReporter {
 			setUser,
 			requestDataIntegration,
 			rewriteFramesIntegration,
+			httpIntegration,
 		} = sentry;
 
 		// Most of the integrations are listed here:
@@ -247,7 +258,12 @@ export class ErrorReporter {
 			...(isTracingEnabled
 				? {
 						tracesSampler: buildTracesSampler(tracesSampleRate),
-						beforeSendTransaction: buildBeforeSendTransaction(slowSpanThresholdMs),
+						beforeSendTransaction: buildBeforeSendTransaction(
+							slowSpanThresholdMs,
+							webhookEndpoint && webhookTracesSampleRate !== undefined
+								? { endpoint: webhookEndpoint, sampleRate: webhookTracesSampleRate }
+								: undefined,
+						),
 					}
 				: {}),
 			...(isProfilingEnabled ? { profilesSampleRate, profileLifecycle: 'trace' } : {}),
@@ -255,7 +271,17 @@ export class ErrorReporter {
 			ignoreTransactions: [`GET ${healthEndpoint}`, 'GET /metrics', 'SET search_path TO'],
 			ignoreSpans: [`GET ${healthEndpoint}`, 'GET /metrics', 'SET search_path TO'],
 			integrations: (integrations) => [
-				...integrations.filter(({ name }) => enabledIntegrations.has(name)),
+				...integrations.filter(({ name }) => enabledIntegrations.has(name) && name !== 'Http'),
+				// Replace the default Http integration with one that skips noise paths
+				// (static source maps, telemetry/posthog proxies, outbound telemetry).
+				...(enabledIntegrations.has('Http')
+					? [
+							httpIntegration({
+								ignoreIncomingRequests: shouldIgnoreIncomingRequest,
+								ignoreOutgoingRequests: shouldIgnoreOutgoingRequest,
+							}),
+						]
+					: []),
 				rewriteFramesIntegration({
 					root: '/',
 					iteratee: (frame) => {

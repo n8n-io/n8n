@@ -342,6 +342,24 @@ export class ApiHelpers {
 		return body.data.thread;
 	}
 
+	/** Start an Instance AI chat run on a thread; returns the started `runId`. */
+	async startInstanceAiChat(
+		threadId: string,
+		message: string,
+		timeZone = 'UTC',
+	): Promise<{ runId: string }> {
+		const response = await this.request.post(`/rest/instance-ai/chat/${threadId}`, {
+			data: { message, timeZone },
+		});
+		if (!response.ok()) {
+			throw new TestError(
+				`POST /rest/instance-ai/chat/${threadId} failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+		const body = (await response.json()) as { data: { runId: string } };
+		return body.data;
+	}
+
 	async renameInstanceAiThread(threadId: string, title: string): Promise<InstanceAiThreadInfo> {
 		const response = await this.request.patch(`/rest/instance-ai/threads/${threadId}`, {
 			data: { title },

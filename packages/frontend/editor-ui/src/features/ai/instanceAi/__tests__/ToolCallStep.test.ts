@@ -89,7 +89,7 @@ describe('ToolCallStep', () => {
 		expect(getByText('Something went wrong')).toBeInTheDocument();
 	});
 
-	it('should append role to delegate tool label', () => {
+	it('should render legacy delegate tool calls with the default label', () => {
 		const { getByText } = renderComponent({
 			props: {
 				toolCall: makeToolCall({
@@ -99,8 +99,7 @@ describe('ToolCallStep', () => {
 			},
 		});
 
-		const label = getByText(/workflow-builder/);
-		expect(label).toBeInTheDocument();
+		expect(getByText('delegate')).toBeInTheDocument();
 	});
 
 	it('should append query to research web-search tool label', () => {
