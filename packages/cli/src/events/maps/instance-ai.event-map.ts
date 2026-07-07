@@ -27,10 +27,6 @@ export type InstanceAiEventMap = {
 		snapshotTreesReplaced: number;
 		treesSynthesized: number;
 	};
-	/** History rendered from the message-derived fallback ladder instead of a renderable snapshot tree. */
-	'instance-ai-parser-fallback': {
-		count: number;
-	};
 	/** The interrupted-run sweep resolved a crashed run. */
 	'instance-ai-run-swept': {
 		outcome: 'interrupted' | 'crash-resumed';

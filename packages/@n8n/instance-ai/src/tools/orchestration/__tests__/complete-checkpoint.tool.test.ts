@@ -37,8 +37,6 @@ function makeContext(
 		eventBus: {
 			publish: vi.fn(),
 			subscribe: vi.fn(),
-			getEventsAfter: vi.fn(),
-			getNextEventId: vi.fn(),
 			getEventsForRun: vi.fn().mockReturnValue([]),
 			getEventsForRuns: vi.fn().mockReturnValue([]),
 		},

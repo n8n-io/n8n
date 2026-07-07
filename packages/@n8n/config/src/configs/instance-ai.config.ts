@@ -156,33 +156,9 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT')
 	confirmationTimeout: number = 24 * Time.hours.toMilliseconds;
 
-	/** Scan and redact secrets/PII from agent output before it reaches the user. */
-	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_ENABLED')
-	outputRedactionEnabled: boolean = true;
-
-	/** Redact credential/secret patterns from agent output. Applies only when output redaction is enabled. */
-	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_SECRETS')
-	outputRedactionSecrets: boolean = true;
-
-	/** Comma-separated PII categories to redact from agent output. Available: email, phone, credit-card, ssn-us, iban, crypto-wallet, ip, mac, url. Empty = no PII scanning. */
-	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_PII')
-	outputRedactionPii: string = 'credit-card';
-
-	/** Replacement text substituted for each redacted match in agent output. */
-	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_PLACEHOLDER')
-	outputRedactionPlaceholder: string = '[REDACTED]';
-
 	/** Capture orchestrator LLM steps and workflow code snapshots for the dev debug panel. */
 	@Env('N8N_INSTANCE_AI_RUN_DEBUG_ENABLED')
 	runDebugEnabled: boolean = false;
-
-	/**
-	 * EXPERIMENTAL: persist Instance AI events to a durable DB log
-	 * (`instance_ai_events`) and serve SSE replay + history from it. Off =
-	 * today's in-memory-only behavior. See RFC: instance-ai durable event log.
-	 */
-	@Env('N8N_INSTANCE_AI_DURABLE_LOG')
-	durableLog: boolean = false;
 
 	/** Enable extended thinking / reasoning for the orchestrator agent. */
 	@Env('N8N_INSTANCE_AI_THINKING_ENABLED')

@@ -17,7 +17,6 @@ import {
 	InstanceAiEvalCredentialAllowlistRequest,
 	InstanceAiEvalRestoreThreadRequest,
 } from '@n8n/api-types';
-import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
@@ -34,7 +33,7 @@ import {
 	Body,
 	Query,
 } from '@n8n/decorators';
-import type { AgentTreeSnapshot, StoredEvent } from '@n8n/instance-ai';
+import type { StoredEvent } from '@n8n/instance-ai';
 import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
 import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
@@ -69,40 +68,6 @@ const KEEP_ALIVE_INTERVAL_MS = 15_000;
 export class InstanceAiController {
 	private readonly gatewayApiKey: string;
 
-	/** Durable-log prototype flag (N8N_INSTANCE_AI_DURABLE_LOG): replay and
-	 *  cursors come from the DB-backed log instead of the in-memory bus. */
-	private readonly durableLogEnabled: boolean;
-
-	private static getTreeRichnessScore(tree: InstanceAiAgentNode): number {
-		let score = 0;
-		const stack = [tree];
-
-		while (stack.length > 0) {
-			const node = stack.pop()!;
-			score += 100;
-			score += node.toolCalls.length * 10;
-			score += node.timeline.length * 2;
-			score += (node.planItems?.length ?? 0) * 20;
-			score += node.toolCalls.filter((toolCall) => toolCall.confirmation).length * 50;
-			score += node.children.length * 25;
-			stack.push(...node.children);
-		}
-
-		return score;
-	}
-
-	private static selectBootstrapTree(
-		eventTree: InstanceAiAgentNode,
-		persistedTree?: InstanceAiAgentNode,
-	): InstanceAiAgentNode {
-		if (!persistedTree) return eventTree;
-
-		return InstanceAiController.getTreeRichnessScore(persistedTree) >
-			InstanceAiController.getTreeRichnessScore(eventTree)
-			? persistedTree
-			: eventTree;
-	}
-
 	constructor(
 		private readonly instanceAiService: InstanceAiService,
 		private readonly gatewayService: InstanceAiGatewayService,
@@ -125,7 +90,6 @@ export class InstanceAiController {
 		globalConfig: GlobalConfig,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
-		this.durableLogEnabled = globalConfig.instanceAi.durableLog;
 	}
 
 	private requireInstanceAiEnabled(): void {
@@ -293,9 +257,7 @@ export class InstanceAiController {
 
 		// 2. Re-publish any terminal outcomes that never reached the client.
 		if (ownership === 'owned') {
-			await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId, {
-				delivery: 'event',
-			});
+			await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId);
 		}
 
 		// 3. Set SSE headers.
@@ -350,79 +312,45 @@ export class InstanceAiController {
 			}
 		}
 
-		const persistedSnapshots = new Map<string, AgentTreeSnapshot | undefined>();
-		for (const [groupId, group] of liveGroups) {
-			persistedSnapshots.set(
-				groupId,
-				await this.memoryService.getLatestRunSnapshot(threadId, {
-					messageGroupId: groupId,
-					// Use the group's own latest runId — NOT the thread-global
-					// activeRunId, which belongs to the current orchestrator turn and
-					// would be wrong for background groups from older turns.
-					runId: group.runIds.at(-1),
-				}),
-			);
-		}
-
 		// The client may have disconnected during the awaits above.
 		if (closed) return;
 
-		if (this.durableLogEnabled) {
-			// 6. Replay missed events from the DURABLE log — survives restarts and is
-			//    valid on any main (the table is in the shared DB). The read is async,
-			//    so unlike the old synchronous memory-store replay, live events can
-			//    land mid-read: buffer them and flush with seq dedupe (the drain
-			//    persists before it emits, so a fact is never in neither place).
-			const arrivedDuringReplay: StoredEvent[] = [];
-			const stopBuffering = this.eventBus.subscribe(threadId, (stored) => {
-				arrivedDuringReplay.push(stored);
-			});
-			const missed = await this.eventLog.getEventsAfter(threadId, cursor);
-			let lastReplayedSeq = cursor;
-			for (const stored of missed) {
-				deliver(stored);
-				if (stored.id !== undefined) lastReplayedSeq = stored.id;
-			}
-			for (const stored of arrivedDuringReplay) {
-				if (stored.id === undefined || stored.id > lastReplayedSeq) deliver(stored);
-			}
-			stopBuffering();
-			this.durableLogMetrics.recordReplay(
-				missed.length,
-				Math.max(0, lastReplayedSeq - cursor),
-			);
-		} else {
-			// 6. Replay missed events, emit run-sync frames, and flip to live delivery
-			//    in one synchronous block. The event bus store and emitter are
-			//    synchronous, so no event can slip between the replay and the live
-			//    handler taking over. Events that arrived during the awaits above are
-			//    already in the store (the early subscription in step 1 keeps relayed
-			//    events flowing in multi-main) and are included in the replay here.
-			const missed = this.eventBus.getEventsAfter(threadId, cursor);
-			for (const stored of missed) {
-				deliver(stored);
-			}
+		// 6. Replay missed events from the durable log — survives restarts and is
+		//    valid on any main (the table is in the shared DB). The read is async,
+		//    so live events can land mid-read: buffer them and flush with seq
+		//    dedupe (the drain persists before it emits, so a fact is never in
+		//    neither place).
+		const arrivedDuringReplay: StoredEvent[] = [];
+		const stopBuffering = this.eventBus.subscribe(threadId, (stored) => {
+			arrivedDuringReplay.push(stored);
+		});
+		const missed = await this.eventLog.getEventsAfter(threadId, cursor);
+		let lastReplayedSeq = cursor;
+		for (const stored of missed) {
+			deliver(stored);
+			if (stored.id !== undefined) lastReplayedSeq = stored.id;
 		}
+		for (const stored of arrivedDuringReplay) {
+			if (stored.id === undefined || stored.id > lastReplayedSeq) deliver(stored);
+		}
+		stopBuffering();
+		this.durableLogMetrics.recordReplay(
+			missed.length,
+			Math.max(0, lastReplayedSeq - cursor),
+		);
 
 		// 6b. Bootstrap sync: emit one run-sync control frame per live message
 		//     group. Each frame uses a named SSE event type (event: run-sync) with
 		//     NO id: field so the browser's lastEventId is unaffected and the
-		//     replay cursor stays consistent.
+		//     replay cursor stays consistent. The tree is folded from the durable
+		//     log, so a live group renders fully even when the bus cache was
+		//     evicted, the process restarted, or this main never buffered the
+		//     thread (sibling main).
 		for (const [groupId, group] of liveGroups) {
-			// Flag on: build the bootstrap tree from the durable log, so a live
-			// group renders fully even when the bus cache was evicted, the process
-			// restarted, or this main never buffered the thread (sibling main).
-			const runEvents = this.durableLogEnabled
-				? await this.eventLog.getEventsForRuns(threadId, group.runIds)
-				: this.eventBus.getEventsForRuns(threadId, group.runIds);
-			const persistedSnapshot = persistedSnapshots.get(groupId);
-			if (runEvents.length === 0 && !persistedSnapshot) continue;
+			const runEvents = await this.eventLog.getEventsForRuns(threadId, group.runIds);
+			if (runEvents.length === 0) continue;
 
-			const eventTree = buildAgentTreeFromEvents(runEvents);
-			const agentTree = InstanceAiController.selectBootstrapTree(
-				eventTree,
-				persistedSnapshot?.tree,
-			);
+			const agentTree = buildAgentTreeFromEvents(runEvents);
 			res.write(
 				`event: run-sync\ndata: ${JSON.stringify({
 					runId: group.runIds.at(-1),
@@ -722,10 +650,8 @@ export class InstanceAiController {
 
 		// Include the next SSE event ID so the frontend can skip past events
 		// already covered by these historical messages (prevents duplicates).
-		// Flag on: durable authority, valid across restarts and mains.
-		const nextEventId = this.durableLogEnabled
-			? await this.eventLog.getNextEventId(threadId)
-			: this.eventBus.getNextEventId(threadId);
+		// The durable log is the authority, valid across restarts and mains.
+		const nextEventId = await this.eventLog.getNextEventId(threadId);
 		return { ...result, nextEventId };
 	}
 

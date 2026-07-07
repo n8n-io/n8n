@@ -187,6 +187,14 @@ export const runStartPayloadSchema = z.object({
 		.describe(
 			'Stable ID for the assistant message group that owns this run. Used to reconnect live activity back to the correct assistant bubble.',
 		),
+	langsmithRunId: z
+		.string()
+		.optional()
+		.describe('LangSmith root-run ID, so user feedback can annotate the trace after a restart.'),
+	langsmithTraceId: z
+		.string()
+		.optional()
+		.describe('LangSmith trace ID paired with langsmithRunId for feedback annotation.'),
 });
 
 export const runFinishPayloadSchema = z.object({

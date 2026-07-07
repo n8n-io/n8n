@@ -1,4 +1,4 @@
-import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
+import type { InstanceAiEvent } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import {
@@ -18,7 +18,6 @@ import {
 import type { Telemetry } from '@/telemetry';
 
 import type { InProcessEventBus } from './event-bus/in-process-event-bus';
-import type { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import type { SuspendedThreadPersistenceService } from './suspended-thread-persistence.service';
 import type {
 	InstanceAiTracingService,
@@ -33,75 +32,14 @@ function getBackgroundOutcomeResponseId(outcome: TerminalOutcome): string {
 	return `background-outcome:${outcome.id}`;
 }
 
-function createTerminalOutcomeAgentTree(
-	outcome: TerminalOutcome,
-	responseId: string,
-): InstanceAiAgentNode {
-	return {
-		agentId: orchestratorAgentId(outcome.runId),
-		role: 'orchestrator',
-		status:
-			outcome.status === 'cancelled'
-				? 'cancelled'
-				: outcome.status === 'failed'
-					? 'error'
-					: 'completed',
-		textContent: outcome.userFacingMessage,
-		reasoning: '',
-		toolCalls: [],
-		children: [],
-		timeline: [{ type: 'text', content: outcome.userFacingMessage, responseId }],
-	};
-}
-
-function appendTerminalOutcomeToAgentTree(
-	tree: InstanceAiAgentNode,
-	outcome: TerminalOutcome,
-	responseId: string,
-): { tree: InstanceAiAgentNode; appended: boolean } {
-	const text = outcome.userFacingMessage.trim();
-	if (!text) return { tree, appended: false };
-
-	const alreadyInTimeline = tree.timeline.some(
-		(entry) => entry.type === 'text' && entry.responseId === responseId,
-	);
-	if (alreadyInTimeline) {
-		return { tree, appended: false };
-	}
-
-	return {
-		appended: true,
-		tree: {
-			...tree,
-			textContent: tree.textContent ? `${tree.textContent}\n\n${outcome.userFacingMessage}` : text,
-			timeline: [
-				...tree.timeline,
-				{ type: 'text', content: outcome.userFacingMessage, responseId },
-			],
-		},
-	};
-}
-
 // The slice of each collaborator the terminal-outcome coordinator actually
 // uses. Anchored to the concrete types via `Pick` so the signatures stay in
-// sync with the source.
-// Reads may be sync (in-memory bus, flag off) or async (durable log, flag on);
-// the host injects a flag-resolved adapter.
+// sync with the source. Reads are async: they go to the durable log, which is
+// what makes guard decisions and outcome dedupe valid across restarts and mains.
 export type InstanceAiTerminalOutcomeEventBus = Pick<InProcessEventBus, 'publish'> & {
-	getEventsForRun(
-		threadId: string,
-		runId: string,
-	): InstanceAiEvent[] | Promise<InstanceAiEvent[]>;
-	getEventsForRuns(
-		threadId: string,
-		runIds: string[],
-	): InstanceAiEvent[] | Promise<InstanceAiEvent[]>;
+	getEventsForRun(threadId: string, runId: string): Promise<InstanceAiEvent[]>;
+	getEventsForRuns(threadId: string, runIds: string[]): Promise<InstanceAiEvent[]>;
 };
-
-export type InstanceAiTerminalOutcomeSnapshotStorage = Pick<
-	DbSnapshotStorage,
-	'getLatest' | 'save' | 'updateLast'
->;
 
 export type InstanceAiTerminalOutcomeTelemetry = Pick<Telemetry, 'track'>;
 
@@ -122,14 +60,6 @@ export type InstanceAiTerminalOutcomeTracing = Pick<
 
 export interface InstanceAiTerminalOutcomeServiceOptions {
 	eventBus: InstanceAiTerminalOutcomeEventBus;
-	/**
-	 * Durable-log flag: outcome lines publish as `text-block` (a structural
-	 * fact, persisted before it is emitted live) instead of a trailing
-	 * `text-delta`, so a page reload right after a background outcome folds
-	 * the line from the log instead of racing the coalescer's idle flush.
-	 */
-	durableLog: boolean;
-	dbSnapshotStorage: InstanceAiTerminalOutcomeSnapshotStorage;
 	agentMemory: PatchableThreadMemory;
 	telemetry: InstanceAiTerminalOutcomeTelemetry;
 	logger: Logger;
@@ -146,15 +76,6 @@ export interface InstanceAiTerminalOutcomeServiceOptions {
 		status: 'completed' | 'cancelled' | 'errored',
 		reason?: string,
 	) => void;
-	/**
-	 * Persists the orchestrator agent-tree snapshot. Owned by the run loop until
-	 * snapshot persistence is extracted into its own collaborator.
-	 */
-	saveAgentTreeSnapshot: (
-		threadId: string,
-		runId: string,
-		snapshotStorage: DbSnapshotStorage,
-	) => Promise<void>;
 }
 
 /**
@@ -171,8 +92,9 @@ export interface InstanceAiTerminalOutcomeServiceOptions {
  *
  *  2. **Terminal-outcome durability.** Background tasks finish out of band from
  *     the foreground run, so their user-facing summary is persisted to
- *     {@link TerminalOutcomeStorage} and the conversation snapshot, then
- *     replayed on reconnect so a closed SSE stream never drops the result.
+ *     {@link TerminalOutcomeStorage} and published as a durable `text-block`
+ *     fact (deduped by responseId against the log), then replayed on reconnect
+ *     so a closed SSE stream never drops the result.
  */
 export class InstanceAiTerminalOutcomeService {
 	private readonly pendingTerminalOutcomes = new Map<string, TerminalOutcome>();
@@ -180,10 +102,6 @@ export class InstanceAiTerminalOutcomeService {
 	private terminalOutcomeStorage?: TerminalOutcomeStorage;
 
 	private readonly eventBus: InstanceAiTerminalOutcomeEventBus;
-
-	private readonly durableLog: boolean;
-
-	private readonly dbSnapshotStorage: InstanceAiTerminalOutcomeSnapshotStorage;
 
 	private readonly agentMemory: PatchableThreadMemory;
 
@@ -199,12 +117,8 @@ export class InstanceAiTerminalOutcomeService {
 
 	private readonly publishRunFinish: InstanceAiTerminalOutcomeServiceOptions['publishRunFinish'];
 
-	private readonly saveAgentTreeSnapshot: InstanceAiTerminalOutcomeServiceOptions['saveAgentTreeSnapshot'];
-
 	constructor(options: InstanceAiTerminalOutcomeServiceOptions) {
 		this.eventBus = options.eventBus;
-		this.durableLog = options.durableLog;
-		this.dbSnapshotStorage = options.dbSnapshotStorage;
 		this.agentMemory = options.agentMemory;
 		this.telemetry = options.telemetry;
 		this.logger = options.logger;
@@ -212,7 +126,6 @@ export class InstanceAiTerminalOutcomeService {
 		this.suspendedThreads = options.suspendedThreads;
 		this.tracing = options.tracing;
 		this.publishRunFinish = options.publishRunFinish;
-		this.saveAgentTreeSnapshot = options.saveAgentTreeSnapshot;
 	}
 
 	async evaluateTerminalResponse(
@@ -326,7 +239,6 @@ export class InstanceAiTerminalOutcomeService {
 		threadId: string;
 		runId: string;
 		abortController: AbortController;
-		snapshotStorage: DbSnapshotStorage;
 		tracing?: InstanceAiTraceContext;
 	}): Promise<MessageTraceFinalization> {
 		this.runState.cancelThread(args.threadId);
@@ -342,7 +254,6 @@ export class InstanceAiTerminalOutcomeService {
 			'errored',
 			'I need your input to continue, but I could not display the prompt. Please try again.',
 		);
-		await this.saveAgentTreeSnapshot(args.threadId, args.runId, args.snapshotStorage);
 		return {
 			status: 'error',
 			reason: 'invalid_confirmation_payload',
@@ -376,10 +287,7 @@ export class InstanceAiTerminalOutcomeService {
 		};
 	}
 
-	async replayUndeliveredTerminalOutcomes(
-		threadId: string,
-		options: { delivery?: 'snapshot' | 'event' } = {},
-	): Promise<void> {
+	async replayUndeliveredTerminalOutcomes(threadId: string): Promise<void> {
 		const storage = this.createTerminalOutcomeStorage();
 		const noOutcomes: TerminalOutcome[] = [];
 		const persistedOutcomes = await storage.getUndelivered(threadId).catch((error) => {
@@ -397,13 +305,15 @@ export class InstanceAiTerminalOutcomeService {
 			outcomes.set(outcome.id, outcome);
 		}
 		const persistedOutcomeIds = new Set(persistedOutcomes.map((outcome) => outcome.id));
-		const delivery = options.delivery ?? 'snapshot';
 
 		for (const outcome of outcomes.values()) {
 			const responseId = getBackgroundOutcomeResponseId(outcome);
-			let snapshotDelivered = false;
+			let published: boolean;
 			try {
-				snapshotDelivered = await this.persistTerminalOutcomeLineToSnapshot(outcome, responseId);
+				// Publishing the line as a text-block IS delivery: the drain persists
+				// it to the log (history folds it) and emits it live in one step.
+				// The responseId dedupe against the log makes replay idempotent.
+				published = await this.publishTerminalOutcomeLine(outcome, responseId);
 			} catch (error) {
 				this.logger.warn('Failed to replay Instance AI terminal outcome', {
 					threadId,
@@ -411,28 +321,7 @@ export class InstanceAiTerminalOutcomeService {
 					taskId: outcome.taskId,
 					error: getErrorMessage(error),
 				});
-				if (delivery === 'event') {
-					const published = await this.publishTerminalOutcomeLine(outcome, responseId);
-					this.telemetry.track('instance_ai_terminal_response_decision', {
-						thread_id: threadId,
-						run_id: outcome.runId,
-						message_group_id: outcome.messageGroupId,
-						task_id: outcome.taskId,
-						source: 'terminal_outcome_replay',
-						status: outcome.status,
-						action: published ? 'replay_event' : 'already-emitted',
-						visibility_source: 'background-outcome',
-					});
-				}
 				continue;
-			}
-
-			if (!snapshotDelivered) continue;
-
-			let action = 'replay_snapshot';
-			if (delivery === 'event') {
-				const published = await this.publishTerminalOutcomeLine(outcome, responseId);
-				action = published ? 'replay_event' : 'already-emitted';
 			}
 
 			if (persistedOutcomeIds.has(outcome.id)) {
@@ -455,43 +344,10 @@ export class InstanceAiTerminalOutcomeService {
 				task_id: outcome.taskId,
 				source: 'terminal_outcome_replay',
 				status: outcome.status,
-				action,
+				action: published ? 'replay_event' : 'already-emitted',
 				visibility_source: 'background-outcome',
 			});
 		}
-	}
-
-	private async persistTerminalOutcomeLineToSnapshot(
-		outcome: TerminalOutcome,
-		responseId: string,
-	): Promise<boolean> {
-		const snapshot = await this.dbSnapshotStorage.getLatest(outcome.threadId, {
-			messageGroupId: outcome.messageGroupId,
-			runId: outcome.runId,
-		});
-		if (!snapshot) {
-			await this.dbSnapshotStorage.save(
-				outcome.threadId,
-				createTerminalOutcomeAgentTree(outcome, responseId),
-				outcome.runId,
-				{
-					messageGroupId: outcome.messageGroupId,
-					runIds: [outcome.runId],
-				},
-			);
-			return true;
-		}
-
-		const { tree } = appendTerminalOutcomeToAgentTree(snapshot.tree, outcome, responseId);
-		const runIds = new Set(snapshot.runIds ?? [snapshot.runId]);
-		runIds.add(outcome.runId);
-		await this.dbSnapshotStorage.updateLast(outcome.threadId, tree, snapshot.runId, {
-			messageGroupId: snapshot.messageGroupId ?? outcome.messageGroupId,
-			runIds: [...runIds],
-			langsmithRunId: snapshot.langsmithRunId,
-			langsmithTraceId: snapshot.langsmithTraceId,
-		});
-		return true;
 	}
 
 	private async publishTerminalOutcomeLine(
@@ -504,7 +360,7 @@ export class InstanceAiTerminalOutcomeService {
 		if (alreadyPublished) return false;
 
 		this.eventBus.publish(outcome.threadId, {
-			type: this.durableLog ? 'text-block' : 'text-delta',
+			type: 'text-block',
 			runId: outcome.runId,
 			agentId: orchestratorAgentId(outcome.runId),
 			responseId,
@@ -550,26 +406,7 @@ export class InstanceAiTerminalOutcomeService {
 			visibility_source: 'background-outcome',
 		});
 
-		let snapshotDelivered = false;
-		try {
-			snapshotDelivered = await this.persistTerminalOutcomeLineToSnapshot(outcome, responseId);
-		} catch (error) {
-			this.logger.warn('Failed to persist Instance AI terminal outcome line to snapshot', {
-				threadId: task.threadId,
-				runId: task.runId,
-				taskId: task.taskId,
-				error: getErrorMessage(error),
-			});
-			this.telemetry.track('instance_ai_terminal_outcome_persistence_failure', {
-				thread_id: task.threadId,
-				run_id: task.runId,
-				task_id: task.taskId,
-				status: outcome.status,
-				phase: 'snapshot',
-			});
-		}
-
-		if (!persisted || !snapshotDelivered) return;
+		if (!persisted) return;
 
 		try {
 			await this.createTerminalOutcomeStorage().markDelivered(

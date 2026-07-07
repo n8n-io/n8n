@@ -12,7 +12,6 @@ import { UserError } from 'n8n-workflow';
 import type { InstanceAiPendingConfirmation } from './entities/instance-ai-pending-confirmation.entity';
 import type { InProcessEventBus } from './event-bus/in-process-event-bus';
 import type { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
-import type { DbSnapshotStorage } from './storage/db-snapshot-storage';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -66,9 +65,6 @@ export type OrphanConfirmationStore = Pick<InstanceAiPendingConfirmationReposito
 /** The slice of the run-state registry the restorer writes to. */
 export type SuspendedRunStateRegistry = Pick<RunStateRegistry<User>, 'suspendRun'>;
 
-/** The slice of snapshot storage the restorer uses to terminalise a snapshot. */
-export type RunSnapshotCanceller = Pick<DbSnapshotStorage, 'markRunCancelled'>;
-
 /** The slice of the event bus the restorer uses to drop a stale client card. */
 export type RunFinishEventPublisher = Pick<InProcessEventBus, 'publish'>;
 
@@ -76,7 +72,6 @@ export interface SuspendedRunRestorerOptions {
 	logger: Logger;
 	pendingConfirmationRepo: OrphanConfirmationStore;
 	runState: SuspendedRunStateRegistry;
-	dbSnapshotStorage: RunSnapshotCanceller;
 	eventBus: RunFinishEventPublisher;
 	rebuilder: SuspendedRunRebuilder;
 }
@@ -101,8 +96,6 @@ export class SuspendedRunRestorer {
 
 	private readonly runState: SuspendedRunStateRegistry;
 
-	private readonly dbSnapshotStorage: RunSnapshotCanceller;
-
 	private readonly eventBus: RunFinishEventPublisher;
 
 	private readonly rebuilder: SuspendedRunRebuilder;
@@ -111,7 +104,6 @@ export class SuspendedRunRestorer {
 		this.logger = options.logger;
 		this.pendingConfirmationRepo = options.pendingConfirmationRepo;
 		this.runState = options.runState;
-		this.dbSnapshotStorage = options.dbSnapshotStorage;
 		this.eventBus = options.eventBus;
 		this.rebuilder = options.rebuilder;
 	}
@@ -169,26 +161,14 @@ export class SuspendedRunRestorer {
 
 	private finalizeUnresumableOrphan(orphan: ClaimedOrphan): void {
 		try {
-			// Live SSE clients use this to drop their interactive card.
+			// The cancelled run-finish is a durable log fact: live SSE clients drop
+			// their interactive card on it, and the history fold renders the turn as
+			// cancelled. The plan/ask card content stays intact in the log, and its
+			// confirmation buttons dead-end because the pending-confirmation row was
+			// consumed by `claim()` (flagged expired on read).
 			this.publishRunFinish(orphan.threadId, orphan.runId, 'restart_lost_confirmation');
-			// Terminalise the existing snapshot in place instead of rebuilding
-			// the tree from the in-memory event bus. After a restart the bus
-			// only carries the run-finish we just emitted, so a rebuild would
-			// replace the saved plan/ask card with an empty cancelled tree;
-			// `markRunCancelled` keeps the plan content intact while flipping
-			// all in-flight nodes and confirmation buttons off.
-			void this.dbSnapshotStorage
-				.markRunCancelled(orphan.threadId, orphan.runId)
-				.catch((error: unknown) => {
-					this.logger.warn('Failed to mark orphan snapshot as cancelled', {
-						requestId: orphan.requestId,
-						threadId: orphan.threadId,
-						runId: orphan.runId,
-						error: getErrorMessage(error),
-					});
-				});
 		} catch (error: unknown) {
-			this.logger.warn('Failed to finalize orphaned confirmation snapshot', {
+			this.logger.warn('Failed to finalize orphaned confirmation', {
 				requestId: orphan.requestId,
 				error: getErrorMessage(error),
 			});

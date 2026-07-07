@@ -1,4 +1,4 @@
-import type { InstanceAiAgentNode } from '@n8n/api-types';
+import type { InstanceAiEvent } from '@n8n/api-types';
 
 import { InstanceAiMemoryService } from '../instance-ai-memory.service';
 
@@ -25,9 +25,11 @@ const mockAgentMemory = {
 	saveMessages: mockSaveMessages,
 };
 
-// Mock GlobalConfig
-const mockDbSnapshotStorage = { getAll: vi.fn().mockResolvedValue([]) };
 const mockCheckpointRepository = { findActiveByThreadId: vi.fn().mockResolvedValue([]) };
+// The agent tree of every assistant turn is folded from these durable event
+// rows; seed per test to drive `buildLogDerivedTrees`.
+const mockEventLogRepository = { getForThread: vi.fn().mockResolvedValue([]) };
+const mockDurableLogMetrics = { recordFoldRead: vi.fn() };
 
 function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemoryService {
 	const mockConfig = {
@@ -46,14 +48,10 @@ function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemo
 		},
 	};
 	const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
-	// Flag off: the event log repository and metrics are never touched.
-	const mockEventLogRepository = { getForThread: vi.fn().mockResolvedValue([]) };
-	const mockDurableLogMetrics = { recordFoldRead: vi.fn(), notifyParserFallbacks: vi.fn() };
 	return new InstanceAiMemoryService(
 		mockLogger as never,
 		mockConfig as never,
 		mockAgentMemory as never,
-		mockDbSnapshotStorage as never,
 		mockCheckpointRepository as never,
 		mockPendingConfirmationRepository as never,
 		mockEventLogRepository as never,
@@ -65,18 +63,12 @@ const mockPendingConfirmationRepository = {
 	findLiveRequestIds: vi.fn(async () => new Set<string>()),
 };
 
-function makeTree(overrides?: Partial<InstanceAiAgentNode>): InstanceAiAgentNode {
-	return {
-		agentId: 'agent-001',
-		role: 'orchestrator',
-		status: 'completed',
-		textContent: 'Done!',
-		reasoning: '',
-		toolCalls: [],
-		children: [],
-		timeline: [{ type: 'text', content: 'Done!' }],
-		...overrides,
-	};
+/** Event rows shaped like `InstanceAiEventLogRepository.getForThread` output. */
+function eventRow(
+	event: InstanceAiEvent,
+	createdAt: Date,
+): { runId: string; createdAt: Date; event: InstanceAiEvent } {
+	return { runId: event.runId, createdAt, event };
 }
 
 function makeThread(id: string, updatedAt: string) {
@@ -93,12 +85,11 @@ function makeThread(id: string, updatedAt: string) {
 describe('InstanceAiMemoryService.getRichMessages', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockDbSnapshotStorage.getAll.mockResolvedValue([]);
+		mockEventLogRepository.getForThread.mockResolvedValue([]);
 		mockListMessages.mockResolvedValue({ messages: [] });
 	});
 
-	it('should return parsed rich messages with agent trees from snapshots', async () => {
-		const tree = makeTree();
+	it('should pair each assistant row with the agent tree folded from the durable log', async () => {
 		mockListMessages.mockResolvedValue({
 			messages: [
 				{
@@ -115,13 +106,29 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 				},
 			],
 		});
-		mockDbSnapshotStorage.getAll.mockResolvedValue([
-			{
-				tree,
-				runId: 'run_abc',
-				createdAt: new Date('2026-01-01T00:00:01.000Z'),
-				updatedAt: new Date('2026-01-01T00:00:01.000Z'),
-			},
+		mockEventLogRepository.getForThread.mockResolvedValue([
+			eventRow(
+				{ type: 'run-start', runId: 'run_abc', agentId: 'agent-001', payload: { messageId: 'm-1' } },
+				new Date('2026-01-01T00:00:01.000Z'),
+			),
+			eventRow(
+				{
+					type: 'text-block',
+					runId: 'run_abc',
+					agentId: 'agent-001',
+					payload: { text: 'Done!' },
+				},
+				new Date('2026-01-01T00:00:01.000Z'),
+			),
+			eventRow(
+				{
+					type: 'run-finish',
+					runId: 'run_abc',
+					agentId: 'agent-001',
+					payload: { status: 'completed' },
+				},
+				new Date('2026-01-01T00:00:01.000Z'),
+			),
 		]);
 
 		const service = createService();
@@ -131,11 +138,12 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 		expect(result.messages[0].role).toBe('user');
 		expect(result.messages[0].content).toBe('Hello');
 		expect(result.messages[1].role).toBe('assistant');
-		expect(result.messages[1].agentTree).toStrictEqual(tree);
+		expect(result.messages[1].agentTree).toBeDefined();
+		expect(result.messages[1].agentTree?.textContent).toBe('Done!');
 		expect(result.messages[1].runId).toBe('run_abc');
 	});
 
-	it('should return parsed messages with flat tree when no snapshots exist', async () => {
+	it('folds tool calls from the durable log onto the assistant row', async () => {
 		mockListMessages.mockResolvedValue({
 			messages: [
 				{
@@ -147,26 +155,44 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 				{
 					id: 'msg-a',
 					role: 'assistant',
-					content: [
-						{ type: 'text', text: 'Here are your workflows' },
-						{
-							type: 'tool-call',
-							toolCallId: 'tc-1',
-							toolName: 'list-workflows',
-							input: {},
-							state: 'resolved',
-							output: { workflows: [] },
-						},
-					],
+					content: [{ type: 'text', text: 'Here are your workflows' }],
 					createdAt: new Date('2026-01-01T00:00:01.000Z'),
 				},
 			],
 		});
-		mockGetThread.mockResolvedValue({
-			id: 'thread-1',
-			title: 'Test',
-			metadata: {},
-		});
+		mockEventLogRepository.getForThread.mockResolvedValue([
+			eventRow(
+				{ type: 'run-start', runId: 'run_abc', agentId: 'agent-001', payload: { messageId: 'm-1' } },
+				new Date('2026-01-01T00:00:01.000Z'),
+			),
+			eventRow(
+				{
+					type: 'tool-call',
+					runId: 'run_abc',
+					agentId: 'agent-001',
+					payload: { toolCallId: 'tc-1', toolName: 'list-workflows', args: {} },
+				},
+				new Date('2026-01-01T00:00:01.000Z'),
+			),
+			eventRow(
+				{
+					type: 'tool-result',
+					runId: 'run_abc',
+					agentId: 'agent-001',
+					payload: { toolCallId: 'tc-1', result: { workflows: [] } },
+				},
+				new Date('2026-01-01T00:00:01.000Z'),
+			),
+			eventRow(
+				{
+					type: 'run-finish',
+					runId: 'run_abc',
+					agentId: 'agent-001',
+					payload: { status: 'completed' },
+				},
+				new Date('2026-01-01T00:00:01.000Z'),
+			),
+		]);
 
 		const service = createService();
 		const result = await service.getRichMessages('user-1', 'thread-1');
@@ -177,6 +203,53 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 		expect(assistant.agentTree?.toolCalls).toHaveLength(1);
 		expect(assistant.agentTree?.toolCalls[0].toolName).toBe('list-workflows');
 		expect(assistant.agentTree?.toolCalls[0].isLoading).toBe(false);
+	});
+
+	it('leaves an assistant row without a tree when the log holds no matching run', async () => {
+		mockListMessages.mockResolvedValue({
+			messages: [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'Hi',
+					createdAt: new Date('2026-01-01T00:00:00.000Z'),
+				},
+				{
+					id: 'msg-a',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Done' }],
+					createdAt: new Date('2026-01-01T00:00:01.000Z'),
+				},
+			],
+		});
+		mockEventLogRepository.getForThread.mockResolvedValue([]);
+
+		const service = createService();
+		const result = await service.getRichMessages('user-1', 'thread-1');
+
+		expect(result.messages).toHaveLength(2);
+		expect(result.messages[1].role).toBe('assistant');
+		expect(result.messages[1].agentTree).toBeUndefined();
+	});
+
+	it('falls back to no folded trees when the event log read fails', async () => {
+		mockListMessages.mockResolvedValue({
+			messages: [
+				{
+					id: 'msg-a',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Done' }],
+					createdAt: new Date('2026-01-01T00:00:01.000Z'),
+				},
+			],
+		});
+		mockEventLogRepository.getForThread.mockRejectedValueOnce(new Error('db down'));
+
+		const service = createService();
+		const result = await service.getRichMessages('user-1', 'thread-1');
+
+		expect(result.messages).toHaveLength(1);
+		expect(result.messages[0].agentTree).toBeUndefined();
 	});
 
 	it('should handle empty message list', async () => {

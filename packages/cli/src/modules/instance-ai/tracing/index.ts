@@ -4,7 +4,7 @@ export {
 	type InstanceAiTracingEventBus,
 	type InstanceAiTracingRunState,
 	type InstanceAiTracingServiceOptions,
-	type InstanceAiTracingSnapshotStorage,
+	type InstanceAiTracingEventLog,
 	type MessageTraceFinalization,
 	type OrchestratorResumeReason,
 } from './instance-ai-tracing.service';

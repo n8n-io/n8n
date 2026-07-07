@@ -158,11 +158,10 @@ vi.mock('@n8n/instance-ai', async () => {
 	};
 });
 
-import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
+import type { InstanceAiEvent } from '@n8n/api-types';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import {
-	buildAgentTreeFromEvents,
 	createAllTools,
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
@@ -210,7 +209,6 @@ type BackgroundTaskFollowUpServiceInternals = {
 	spawnBackgroundTask: (
 		runId: string,
 		opts: SpawnBackgroundTaskOptions,
-		snapshotStorage: unknown,
 		messageGroupIdOverride?: string,
 	) => SpawnBackgroundTaskResult;
 	backgroundTasks: {
@@ -249,15 +247,6 @@ type BackgroundTaskFollowUpServiceInternals = {
 	terminalOutcome: {
 		recordBackgroundTerminalOutcome: MockedFunction<(task: ManagedBackgroundTask) => Promise<void>>;
 	};
-	saveAgentTreeSnapshot: MockedFunction<
-		(
-			threadId: string,
-			runId: string,
-			snapshotStorage: unknown,
-			isUpdate?: boolean,
-			overrideMessageGroupId?: string,
-		) => Promise<void>
-	>;
 	startInternalFollowUpRun: MockedFunction<
 		(
 			user: User,
@@ -346,15 +335,6 @@ function createBackgroundTaskFollowUpService({
 	service.terminalOutcome = {
 		recordBackgroundTerminalOutcome: vi.fn(async (_task: ManagedBackgroundTask) => {}),
 	};
-	service.saveAgentTreeSnapshot = vi.fn(
-		async (
-			_threadId: string,
-			_runId: string,
-			_snapshotStorage: unknown,
-			_isUpdate?: boolean,
-			_overrideMessageGroupId?: string,
-		) => {},
-	);
 	service.startInternalFollowUpRun = vi.fn(
 		async (
 			_user: User,
@@ -581,12 +561,7 @@ type TerminalGuardOrderServiceInternals = {
 	suspendedThreads: { dropPendingConfirmationsForThread: Mock; persistPendingConfirmation: Mock };
 	logger: { warn: Mock; error: Mock };
 	instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
-	instanceAiConfig: {
-		outputRedactionEnabled: boolean;
-		outputRedactionSecrets: boolean;
-		outputRedactionPii: string;
-		outputRedactionPlaceholder: string;
-	};
+	instanceAiConfig: Record<string, never>;
 	tracing: {
 		finalizeRunTracing: Mock;
 		maybeFinalizeRunTraceRoot: Mock;
@@ -594,7 +569,6 @@ type TerminalGuardOrderServiceInternals = {
 		getMessageGroupId: Mock;
 	};
 	threadPushRef: Map<string, string>;
-	saveAgentTreeSnapshot: Mock;
 	backgroundTasks: { getRunningTasks: Mock };
 	temporaryWorkflowService: { reapForRun: Mock };
 	creditService: { claimRunUsage: Mock };
@@ -643,31 +617,6 @@ type TerminalGuardOrderServiceInternals = {
 	) => Promise<void>;
 };
 
-type SnapshotServiceInternals = {
-	saveAgentTreeSnapshot: (
-		threadId: string,
-		runId: string,
-		snapshotStorage: {
-			getLatest: Mock;
-			save: Mock;
-			updateLast: Mock;
-		},
-		isUpdate?: boolean,
-		overrideMessageGroupId?: string,
-	) => Promise<void>;
-	runState: {
-		getMessageGroupId: Mock;
-		getRunIdsForMessageGroup: Mock;
-	};
-	eventBus: {
-		getEventsForRun: Mock;
-		getEventsForRuns: Mock;
-	};
-	instanceAiConfig: { durableLog: boolean };
-	tracing: { getTraceContext: Mock };
-	logger: { warn: Mock };
-};
-
 function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	const events: InstanceAiEvent[] = [];
 	const service = Object.create(
@@ -684,8 +633,9 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.eventService = { emit: vi.fn() };
 	service.eventBus = {
 		events,
-		getEventsForRun: vi.fn(() => events),
-		getEventsForRuns: vi.fn(() => events),
+		// Reads go to the durable log, so they are async.
+		getEventsForRun: vi.fn(async () => events),
+		getEventsForRuns: vi.fn(async () => events),
 		publish: vi.fn((_threadId: string, event: InstanceAiEvent) => {
 			events.push(event);
 		}),
@@ -698,12 +648,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	};
 	service.logger = { warn: vi.fn(), error: vi.fn() };
 	service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
-	service.instanceAiConfig = {
-		outputRedactionEnabled: true,
-		outputRedactionSecrets: true,
-		outputRedactionPii: 'credit-card',
-		outputRedactionPlaceholder: '[REDACTED]',
-	};
+	service.instanceAiConfig = {};
 	service.tracing = {
 		finalizeRunTracing: vi.fn(async () => {}),
 		maybeFinalizeRunTraceRoot: vi.fn(async () => {}),
@@ -711,7 +656,6 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 		getMessageGroupId: vi.fn((runId: string) => (runId === 'run-1' ? 'group-1' : undefined)),
 	};
 	service.threadPushRef = new Map();
-	service.saveAgentTreeSnapshot = vi.fn(async () => {});
 	service.backgroundTasks = { getRunningTasks: vi.fn(() => []) };
 	service.temporaryWorkflowService = { reapForRun: vi.fn(async () => []) };
 	service.creditService = { claimRunUsage: vi.fn(async () => {}) };
@@ -720,9 +664,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.preserveHitlOnShutdown = new Set();
 
 	service.terminalOutcome = new InstanceAiTerminalOutcomeService({
-		durableLog: false,
 		eventBus: service.eventBus,
-		dbSnapshotStorage: {},
 		agentMemory: {},
 		telemetry: service.telemetry,
 		logger: service.logger,
@@ -741,40 +683,8 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 				payload: { status: status === 'errored' ? 'error' : status },
 			} as InstanceAiEvent);
 		},
-		saveAgentTreeSnapshot: async (threadId: string, runId: string, snapshotStorage: unknown) => {
-			await service.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
-		},
 	} as unknown as InstanceAiTerminalOutcomeServiceOptions);
 	return service;
-}
-
-function createSnapshotService(): SnapshotServiceInternals {
-	const service = Object.create(InstanceAiService.prototype) as unknown as SnapshotServiceInternals;
-	service.runState = {
-		getMessageGroupId: vi.fn(() => undefined),
-		getRunIdsForMessageGroup: vi.fn(() => []),
-	};
-	service.eventBus = {
-		getEventsForRun: vi.fn(() => []),
-		getEventsForRuns: vi.fn(() => []),
-	};
-	service.instanceAiConfig = { durableLog: false };
-	service.tracing = { getTraceContext: vi.fn(() => undefined) };
-	service.logger = { warn: vi.fn() };
-	return service;
-}
-
-function makeAgentTree(): InstanceAiAgentNode {
-	return {
-		agentId: 'agent-001',
-		role: 'orchestrator',
-		status: 'completed',
-		textContent: 'Initial response',
-		reasoning: '',
-		toolCalls: [],
-		children: [],
-		timeline: [{ type: 'text', content: 'Initial response' }],
-	};
 }
 
 describe('InstanceAiService — runtime workspace setup', () => {
@@ -1068,7 +978,6 @@ describe('InstanceAiService — background task auto-follow-up', () => {
 				role: 'workflow-builder',
 				run: async () => 'done',
 			},
-			{},
 			'group-1',
 		);
 		await getSpawnOptions().onSettled?.(task);
@@ -1096,7 +1005,6 @@ describe('InstanceAiService — background task auto-follow-up', () => {
 				workItemId: 'wi-1',
 				run: async () => 'done',
 			},
-			{},
 			'group-1',
 		);
 		await getSpawnOptions().onSettled?.(task);
@@ -1119,20 +1027,12 @@ describe('InstanceAiService — background task auto-follow-up', () => {
 				role: 'workflow-builder',
 				run: async () => 'done',
 			},
-			{},
 			'group-1',
 		);
 		await getSpawnOptions().onSettled?.(task);
 
 		expect(service.startInternalFollowUpRun).not.toHaveBeenCalled();
 		expect(service.terminalOutcome.recordBackgroundTerminalOutcome).toHaveBeenCalledWith(task);
-		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith(
-			'thread-a',
-			'run-1',
-			{},
-			true,
-			'group-1',
-		);
 	});
 
 	it('skips internal follow-up when the task itself timed out', async () => {
@@ -1150,7 +1050,6 @@ describe('InstanceAiService — background task auto-follow-up', () => {
 				role: 'workflow-builder',
 				run: async () => 'done',
 			},
-			{},
 			'group-1',
 		);
 		await getSpawnOptions().onSettled?.(task);
@@ -2177,106 +2076,6 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 	});
 });
 
-describe('InstanceAiService — agent tree snapshots', () => {
-	beforeEach(() => {
-		(buildAgentTreeFromEvents as Mock).mockImplementation(
-			(events: Array<{ type: string; payload?: { text?: string } }>) => ({
-				agentId: 'agent-001',
-				role: 'orchestrator',
-				status: 'completed',
-				textContent: events
-					.map((event) => (event.type === 'text-delta' ? (event.payload?.text ?? '') : ''))
-					.join(''),
-				reasoning: '',
-				toolCalls: [],
-				children: [],
-				timeline: [],
-			}),
-		);
-	});
-
-	it('falls back to persisted run ids when an old background group mapping was pruned', async () => {
-		const service = createSnapshotService();
-		const terminalEvent: InstanceAiEvent = {
-			type: 'text-delta',
-			runId: 'run-background',
-			agentId: 'agent-001',
-			payload: { text: 'background finished' },
-		};
-		const snapshotStorage = {
-			getLatest: vi.fn(async () => ({
-				tree: makeAgentTree(),
-				runId: 'run-original',
-				messageGroupId: 'group-old',
-				runIds: ['run-original', 'run-background'],
-			})),
-			save: vi.fn(async () => {}),
-			updateLast: vi.fn(async () => {}),
-		};
-		service.eventBus.getEventsForRuns.mockReturnValue([terminalEvent]);
-
-		await service.saveAgentTreeSnapshot(
-			'thread-a',
-			'run-background',
-			snapshotStorage,
-			true,
-			'group-old',
-		);
-
-		expect(service.runState.getRunIdsForMessageGroup).toHaveBeenCalledWith('group-old');
-		expect(snapshotStorage.getLatest).toHaveBeenCalledWith('thread-a', {
-			messageGroupId: 'group-old',
-			runId: 'run-background',
-		});
-		expect(service.eventBus.getEventsForRuns).toHaveBeenCalledWith('thread-a', [
-			'run-original',
-			'run-background',
-		]);
-		expect(snapshotStorage.updateLast).toHaveBeenCalledWith(
-			'thread-a',
-			expect.objectContaining({ textContent: 'background finished' }),
-			'run-background',
-			expect.objectContaining({
-				messageGroupId: 'group-old',
-				runIds: ['run-original', 'run-background'],
-			}),
-		);
-		expect(snapshotStorage.save).not.toHaveBeenCalled();
-	});
-
-	it('skips update snapshots when no events are available for a pruned group', async () => {
-		const service = createSnapshotService();
-		const snapshotStorage = {
-			getLatest: vi.fn(async () => ({
-				tree: makeAgentTree(),
-				runId: 'run-original',
-				messageGroupId: 'group-old',
-				runIds: ['run-background'],
-			})),
-			save: vi.fn(async () => {}),
-			updateLast: vi.fn(async () => {}),
-		};
-
-		await service.saveAgentTreeSnapshot(
-			'thread-a',
-			'run-background',
-			snapshotStorage,
-			true,
-			'group-old',
-		);
-
-		expect(snapshotStorage.updateLast).not.toHaveBeenCalled();
-		expect(snapshotStorage.save).not.toHaveBeenCalled();
-		expect(service.logger.warn).toHaveBeenCalledWith(
-			'Skipped updating empty Instance AI agent tree snapshot',
-			expect.objectContaining({
-				threadId: 'thread-a',
-				runId: 'run-background',
-				messageGroupId: 'group-old',
-			}),
-		);
-	});
-});
 
 describe('InstanceAiService — terminal response guard wiring', () => {
 	beforeEach(() => {
@@ -2304,7 +2103,6 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		);
 
 		expect(service.eventBus.events.map((event) => event.type)).toEqual(['error', 'run-finish']);
-		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
 	});
 
 	it('claims credits when a resumed run completes', async () => {
@@ -3484,7 +3282,6 @@ describe('InstanceAiService — crash-resumed stream (durable-log RFC)', () => {
 		);
 		// The confirmation card reaches the client; the run is NOT finalized.
 		expect(service.eventBus.events.map((event) => event.type)).toEqual(['confirmation-request']);
-		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
 		expect(service.runState.cancelActiveRun).not.toHaveBeenCalled();
 	});
 

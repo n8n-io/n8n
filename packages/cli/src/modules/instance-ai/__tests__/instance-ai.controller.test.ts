@@ -15,6 +15,15 @@ vi.mock('@n8n/instance-ai', () => {
 			toolCalls: [],
 			children: [],
 			timeline: [],
+			planItems: [
+				{
+					id: 'task-1',
+					title: 'Build workflow',
+					kind: 'build-workflow',
+					spec: 'Create the workflow',
+					deps: [],
+				},
+			],
 		})),
 	};
 });
@@ -103,7 +112,7 @@ describe('InstanceAiController', () => {
 	const push = mock<Push>();
 	const urlService = mock<UrlService>();
 	const globalConfig = mock<GlobalConfig>({
-		instanceAi: { gatewayApiKey: 'static-key', durableLog: false },
+		instanceAi: { gatewayApiKey: 'static-key' },
 		editorBaseUrl: 'http://localhost:5678',
 		port: 5678,
 	});
@@ -297,9 +306,9 @@ describe('InstanceAiController', () => {
 			expect(scopeOf('events')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
 		});
 
-		it('should bootstrap run-sync from the richer persisted snapshot when live events are incomplete', async () => {
+		it('should bootstrap run-sync by folding the live message group from the durable log', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			eventBus.getEventsAfter.mockReturnValue([]);
+			eventLog.getEventsAfter.mockResolvedValue([]);
 			instanceAiService.getThreadStatus.mockReturnValue({
 				hasActiveRun: true,
 				isSuspended: false,
@@ -307,38 +316,32 @@ describe('InstanceAiController', () => {
 			} as never);
 			instanceAiService.getMessageGroupId.mockReturnValue('mg-1');
 			instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
-			eventBus.getEventsForRuns.mockReturnValue([
+			// The run-sync tree is folded purely from the durable log for the live group.
+			eventLog.getEventsForRuns.mockResolvedValue([
 				{
 					type: 'run-start',
 					runId: 'run-1',
 					agentId: 'agent-root',
 					payload: { messageId: 'msg-1', messageGroupId: 'mg-1' },
 				},
-			] as never);
-			memoryService.getLatestRunSnapshot.mockResolvedValue({
-				runId: 'run-1',
-				messageGroupId: 'mg-1',
-				runIds: ['run-1'],
-				tree: {
+				{
+					type: 'tasks-update',
+					runId: 'run-1',
 					agentId: 'agent-root',
-					role: 'orchestrator',
-					status: 'active',
-					textContent: '',
-					reasoning: '',
-					toolCalls: [],
-					children: [],
-					timeline: [],
-					planItems: [
-						{
-							id: 'task-1',
-							title: 'Build workflow',
-							kind: 'build-workflow',
-							spec: 'Create the workflow',
-							deps: [],
-						},
-					],
+					payload: {
+						tasks: { tasks: [] },
+						planItems: [
+							{
+								id: 'task-1',
+								title: 'Build workflow',
+								kind: 'build-workflow',
+								spec: 'Create the workflow',
+								deps: [],
+							},
+						],
+					},
 				},
-			});
+			] as never);
 
 			const sseRes = mock<Response & { flush?: () => void }>({
 				setHeader: vi.fn(),
@@ -357,9 +360,7 @@ describe('InstanceAiController', () => {
 
 			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
 
-			expect(instanceAiService.replayUndeliveredTerminalOutcomes).toHaveBeenCalledWith(THREAD_ID, {
-				delivery: 'event',
-			});
+			expect(instanceAiService.replayUndeliveredTerminalOutcomes).toHaveBeenCalledWith(THREAD_ID);
 
 			const runSyncFrame = (sseRes.write as Mock).mock.calls
 				.map(([frame]) => String(frame))
@@ -367,64 +368,6 @@ describe('InstanceAiController', () => {
 
 			expect(runSyncFrame).toContain('"agent-root"');
 			expect(runSyncFrame).toContain('"planItems"');
-		});
-
-		it('should replay events that arrive while bootstrap snapshot fetches are in flight', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			instanceAiService.getThreadStatus.mockReturnValue({
-				hasActiveRun: true,
-				isSuspended: false,
-				backgroundTasks: [],
-			} as never);
-			instanceAiService.getMessageGroupId.mockReturnValue('mg-1');
-			instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
-			eventBus.getEventsForRuns.mockReturnValue([]);
-			eventBus.getEventsAfter.mockReturnValue([]);
-
-			let subscribeHandler: ((stored: { id: number; event: unknown }) => void) | undefined;
-			eventBus.subscribe.mockImplementation((_threadId, handler) => {
-				subscribeHandler = handler as typeof subscribeHandler;
-				return vi.fn();
-			});
-
-			// While the persisted snapshot is being fetched, a relayed event arrives:
-			// the early subscription keeps it flowing into the store, and the replay
-			// after the await must pick it up exactly once.
-			const midAwaitEvent = {
-				id: 7,
-				event: { type: 'run-finish', runId: 'run-1', agentId: 'a1', payload: {} },
-			};
-			memoryService.getLatestRunSnapshot.mockImplementation(async () => {
-				subscribeHandler!(midAwaitEvent);
-				eventBus.getEventsAfter.mockReturnValue([midAwaitEvent] as never);
-				return undefined;
-			});
-
-			const sseRes = mock<Response & { flush?: () => void }>({
-				setHeader: vi.fn(),
-				flushHeaders: vi.fn(),
-				write: vi.fn(),
-				end: vi.fn(),
-				flush: vi.fn(),
-			});
-			const sseReq = mock<AuthenticatedRequest>({
-				user: { id: USER_ID },
-				headers: {},
-				once: vi.fn(),
-			});
-
-			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
-
-			// Subscription must be registered before the async bootstrap starts, so
-			// sibling mains keep relaying events for this thread during the awaits.
-			expect(eventBus.subscribe.mock.invocationCallOrder[0]).toBeLessThan(
-				memoryService.getLatestRunSnapshot.mock.invocationCallOrder[0],
-			);
-
-			const eventFrames = (sseRes.write as Mock).mock.calls
-				.map(([frame]) => String(frame))
-				.filter((frame) => frame.includes('run-finish'));
-			expect(eventFrames).toEqual([`id: 7\ndata: ${JSON.stringify(midAwaitEvent.event)}\n\n`]);
 		});
 
 		it('should clean up the subscription when the client disconnects during bootstrap', async () => {
@@ -436,13 +379,11 @@ describe('InstanceAiController', () => {
 			} as never);
 			instanceAiService.getMessageGroupId.mockReturnValue('mg-1');
 			instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
-			eventBus.getEventsForRuns.mockReturnValue([]);
-			eventBus.getEventsAfter.mockReturnValue([
-				{ id: 1, event: { type: 'text-delta', runId: 'run-1', agentId: 'a1', payload: {} } },
-			] as never);
+			eventLog.getEventsForRuns.mockResolvedValue([]);
 
 			const unsubscribe = vi.fn();
 			eventBus.subscribe.mockReturnValue(unsubscribe);
+			eventLog.getEventsAfter.mockResolvedValue([]);
 
 			let closeHandler: (() => void) | undefined;
 			const sseReq = mock<AuthenticatedRequest>({
@@ -460,10 +401,11 @@ describe('InstanceAiController', () => {
 				flush: vi.fn(),
 			});
 
-			// The client disconnects while the persisted snapshot is being fetched.
-			memoryService.getLatestRunSnapshot.mockImplementation(async () => {
+			// The client disconnects during the async bootstrap (undelivered-outcome
+			// replay), before the durable-log replay read runs — the `closed` guard
+			// then short-circuits and tears down the live subscription.
+			instanceAiService.replayUndeliveredTerminalOutcomes.mockImplementation(async () => {
 				closeHandler!();
-				return undefined;
 			});
 
 			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
@@ -484,13 +426,15 @@ describe('InstanceAiController', () => {
 				flush: vi.fn(),
 			});
 
-			// Capture the subscribe handler
+			// Capture the live-delivery subscribe handler (the first subscription,
+			// registered before the async bootstrap; a second buffering subscription
+			// is added during replay).
 			let subscribeHandler: ((stored: { id: number; event: unknown }) => void) | undefined;
 			eventBus.subscribe.mockImplementation((_threadId, handler) => {
-				subscribeHandler = handler as typeof subscribeHandler;
+				subscribeHandler ??= handler as (stored: { id: number; event: unknown }) => void;
 				return vi.fn();
 			});
-			eventBus.getEventsAfter.mockReturnValue([]);
+			eventLog.getEventsAfter.mockResolvedValue([]);
 			instanceAiService.getThreadStatus.mockReturnValue({
 				hasActiveRun: false,
 				isSuspended: false,
@@ -534,10 +478,10 @@ describe('InstanceAiController', () => {
 
 			let subscribeHandler: ((stored: { id: number; event: unknown }) => void) | undefined;
 			eventBus.subscribe.mockImplementation((_threadId, handler) => {
-				subscribeHandler = handler as typeof subscribeHandler;
+				subscribeHandler ??= handler as (stored: { id: number; event: unknown }) => void;
 				return vi.fn();
 			});
-			eventBus.getEventsAfter.mockReturnValue([]);
+			eventLog.getEventsAfter.mockResolvedValue([]);
 			instanceAiService.getThreadStatus.mockReturnValue({
 				hasActiveRun: false,
 				isSuspended: false,
@@ -563,6 +507,73 @@ describe('InstanceAiController', () => {
 			await new Promise((resolve) => setImmediate(resolve));
 
 			expect(sseRes.end).toHaveBeenCalled();
+		});
+
+		it('replays from the durable log and dedups events that land during the async read', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.getThreadStatus.mockReturnValue({
+				hasActiveRun: false,
+				isSuspended: false,
+				backgroundTasks: [],
+			} as never);
+
+			const handlers: Array<(stored: unknown) => void> = [];
+			eventBus.subscribe.mockImplementation((_threadId, handler) => {
+				handlers.push(handler as never);
+				return vi.fn();
+			});
+
+			const factA = {
+				id: 6,
+				event: {
+					type: 'tool-call',
+					runId: 'run-1',
+					agentId: 'a1',
+					payload: { toolCallId: 'tc', toolName: 't', args: {} },
+				},
+			};
+			const factB = {
+				id: 7,
+				event: { type: 'run-finish', runId: 'run-1', agentId: 'a1', payload: { status: 'completed' } },
+			};
+			eventLog.getEventsAfter.mockImplementation(async () => {
+				// While the DB read is in flight, the drain emits fact 7 live (already
+				// part of the replay result: must dedupe) and an id-less delta (must
+				// pass through: the cursor never points at it).
+				const buffering = handlers.at(-1)!;
+				buffering(factB);
+				buffering({
+					event: { type: 'text-delta', runId: 'run-1', agentId: 'a1', payload: { text: 'x' } },
+				});
+				return [factA, factB] as never;
+			});
+
+			const sseRes = mock<Response & { flush?: () => void }>({
+				setHeader: vi.fn(),
+				flushHeaders: vi.fn(),
+				write: vi.fn(),
+				end: vi.fn(),
+				flush: vi.fn(),
+			});
+			const sseReq = mock<AuthenticatedRequest>({
+				user: { id: USER_ID },
+				headers: {},
+				once: vi.fn(),
+			});
+
+			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: 5 } as never);
+
+			expect(eventLog.getEventsAfter).toHaveBeenCalledWith(THREAD_ID, 5);
+			const frames = (sseRes.write as Mock).mock.calls.map(([frame]) => String(frame));
+			// Fact 7 was both replayed and buffered live: delivered exactly once.
+			expect(frames.filter((f) => f.includes('run-finish'))).toHaveLength(1);
+			expect(frames.filter((f) => f.includes('tool-call'))).toHaveLength(1);
+			// The id-less delta passes through with NO id: line.
+			const deltaFrame = frames.find((f) => f.includes('text-delta'));
+			expect(deltaFrame).toBeDefined();
+			expect(deltaFrame!.startsWith('data: ')).toBe(true);
+			// Replay instrumentation recorded events served + cursor age.
+			expect(durableLogMetrics.recordReplay).toHaveBeenCalledWith(2, 2);
 		});
 	});
 
@@ -1127,7 +1138,7 @@ describe('InstanceAiController', () => {
 		it('should return rich messages with nextEventId', async () => {
 			const richResult = mock<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>>();
 			memoryService.getRichMessages.mockResolvedValue(richResult);
-			eventBus.getNextEventId.mockReturnValue(42);
+			eventLog.getNextEventId.mockResolvedValue(42);
 			const query = mock<InstanceAiThreadMessagesQuery>({
 				limit: 50,
 				page: 0,
@@ -1594,100 +1605,5 @@ describe('InstanceAiController', () => {
 			// validateGatewayApiKey receives 'key1' (the first element)
 			expect(gatewayService.getUserIdForApiKey).toHaveBeenCalledWith('key1');
 		});
-	});
-});
-
-describe('InstanceAiController — durable-log SSE replay (flag on)', () => {
-	const instanceAiService = mock<InstanceAiService>();
-	const memoryService = mock<InstanceAiMemoryService>();
-	const settingsService = mock<InstanceAiSettingsService>();
-	const eventBus = mock<InProcessEventBus>();
-	const eventLog = mock<DurableEventLog>();
-	const durableLogMetrics = mock<DurableLogMetrics>();
-	const globalConfig = mock<GlobalConfig>({
-		instanceAi: { gatewayApiKey: 'static-key', durableLog: true },
-		editorBaseUrl: 'http://localhost:5678',
-		port: 5678,
-	});
-
-	const controller = new InstanceAiController(
-		instanceAiService,
-		mock<InstanceAiGatewayService>(),
-		mock<InstanceAiBrowserSessionService>(),
-		memoryService,
-		settingsService,
-		mock<EvalExecutionService>(),
-		new EvalThreadCredentialAllowlistService(),
-		mock<EvalThreadRestoreService>(),
-		eventBus,
-		eventLog,
-		durableLogMetrics,
-		mock<ModuleRegistry>(),
-		mock<Push>(),
-		mock<UrlService>(),
-		mock<UserRepository>(),
-		mock<CredentialsService>(),
-		mock<ProjectService>(),
-		mock<InstanceAiErrorReporterService>(),
-		globalConfig,
-	);
-
-	beforeEach(() => {
-		vi.clearAllMocks();
-		settingsService.isInstanceAiEnabled.mockReturnValue(true);
-	});
-
-	it('replays from the durable log and dedups events that land during the async read', async () => {
-		memoryService.checkThreadOwnership.mockResolvedValue('owned');
-		instanceAiService.getThreadStatus.mockReturnValue({
-			hasActiveRun: false,
-			isSuspended: false,
-			backgroundTasks: [],
-		} as never);
-
-		const handlers: Array<(stored: unknown) => void> = [];
-		eventBus.subscribe.mockImplementation((_threadId, handler) => {
-			handlers.push(handler as never);
-			return vi.fn();
-		});
-
-		const factA = { id: 6, event: { type: 'tool-call', runId: 'run-1', agentId: 'a1', payload: { toolCallId: 'tc', toolName: 't', args: {} } } };
-		const factB = { id: 7, event: { type: 'run-finish', runId: 'run-1', agentId: 'a1', payload: { status: 'completed' } } };
-		eventLog.getEventsAfter.mockImplementation(async () => {
-			// While the DB read is in flight, the drain emits fact 7 live (already
-			// part of the replay result: must dedupe) and an id-less delta (must
-			// pass through: the cursor never points at it).
-			const buffering = handlers.at(-1)!;
-			buffering(factB);
-			buffering({ event: { type: 'text-delta', runId: 'run-1', agentId: 'a1', payload: { text: 'x' } } });
-			return [factA, factB] as never;
-		});
-
-		const sseRes = mock<Response & { flush?: () => void }>({
-			setHeader: vi.fn(),
-			flushHeaders: vi.fn(),
-			write: vi.fn(),
-			end: vi.fn(),
-			flush: vi.fn(),
-		});
-		const sseReq = mock<AuthenticatedRequest>({
-			user: { id: USER_ID },
-			headers: {},
-			once: vi.fn(),
-		});
-
-		await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: 5 } as never);
-
-		expect(eventLog.getEventsAfter).toHaveBeenCalledWith(THREAD_ID, 5);
-		const frames = (sseRes.write as Mock).mock.calls.map(([frame]) => String(frame));
-		// Fact 7 was both replayed and buffered live: delivered exactly once.
-		expect(frames.filter((f) => f.includes('run-finish'))).toHaveLength(1);
-		expect(frames.filter((f) => f.includes('tool-call'))).toHaveLength(1);
-		// The id-less delta passes through with NO id: line.
-		const deltaFrame = frames.find((f) => f.includes('text-delta'));
-		expect(deltaFrame).toBeDefined();
-		expect(deltaFrame!.startsWith('data: ')).toBe(true);
-		// Replay instrumentation recorded events served + cursor age.
-		expect(durableLogMetrics.recordReplay).toHaveBeenCalledWith(2, 2);
 	});
 });

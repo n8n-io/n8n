@@ -1,4 +1,3 @@
-import type { RedactionOptions } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
 
 import type { InstanceAiEventBus } from '../event-bus';
@@ -31,8 +30,6 @@ export interface StreamRunOptions {
 	logger: Logger;
 	onActivity?: () => void;
 	stopSignal?: () => OrchestratorRunStopSignal | undefined;
-	/** Output-redaction policy: omit for the safe default, or `false` to disable. */
-	outputRedaction?: RedactionOptions | false;
 }
 
 export interface StreamRunResult {
@@ -104,7 +101,6 @@ async function consumeStream(
 			logger: options.logger,
 			onActivity: options.onActivity,
 			stopSignal: options.stopSignal,
-			outputRedaction: options.outputRedaction,
 		},
 		control: { mode: 'manual' },
 		initialAgentRunId: options.agentRunId,

@@ -59,7 +59,13 @@ function formatWorkSummaryCounts(workSummary?: WorkSummary): string {
 }
 
 function hasText(event: InstanceAiEvent): boolean {
-	return event.type === 'text-delta' && event.payload.text.trim().length > 0;
+	// The guard reads its events from the durable log, where streamed deltas are
+	// coalesced into text-block facts; a live evaluation may still see the raw
+	// deltas. Either shape counts as visible text.
+	return (
+		(event.type === 'text-delta' || event.type === 'text-block') &&
+		event.payload.text.trim().length > 0
+	);
 }
 
 export class InstanceAiTerminalResponseGuard {

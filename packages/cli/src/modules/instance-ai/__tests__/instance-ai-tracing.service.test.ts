@@ -19,7 +19,7 @@ import {
 	type InstanceAiTracingAiService,
 	type InstanceAiTracingEventBus,
 	type InstanceAiTracingRunState,
-	type InstanceAiTracingSnapshotStorage,
+	type InstanceAiTracingEventLog,
 } from '../tracing';
 
 type FakeTraceRun = {
@@ -52,7 +52,7 @@ function createService(
 		logger?: Partial<Logger>;
 		eventBus?: Partial<InstanceAiTracingEventBus>;
 		runState?: Partial<InstanceAiTracingRunState>;
-		dbSnapshotStorage?: Partial<InstanceAiTracingSnapshotStorage>;
+		eventLog?: Partial<InstanceAiTracingEventLog>;
 		aiService?: Partial<InstanceAiTracingAiService>;
 	} = {},
 ) {
@@ -65,9 +65,9 @@ function createService(
 		attachTracing: vi.fn(),
 		...overrides.runState,
 	};
-	const dbSnapshotStorage: InstanceAiTracingSnapshotStorage = {
+	const eventLog: InstanceAiTracingEventLog = {
 		findLangsmithAnchor: vi.fn(async () => undefined),
-		...overrides.dbSnapshotStorage,
+		...overrides.eventLog,
 	};
 	const aiService: InstanceAiTracingAiService = {
 		isProxyEnabled: vi.fn(() => false),
@@ -79,11 +79,11 @@ function createService(
 		logger,
 		eventBus,
 		runState,
-		dbSnapshotStorage,
+		eventLog,
 		aiService,
 	});
 
-	return { service, logger, eventBus, runState, dbSnapshotStorage, aiService };
+	return { service, logger, eventBus, runState, eventLog, aiService };
 }
 
 describe('InstanceAiTracingService', () => {
@@ -221,7 +221,7 @@ describe('InstanceAiTracingService', () => {
 	describe('submitLangsmithFeedback', () => {
 		it('skips submission when no LangSmith anchor exists', async () => {
 			const findLangsmithAnchor = vi.fn(async () => undefined);
-			const { service } = createService({ dbSnapshotStorage: { findLangsmithAnchor } });
+			const { service } = createService({ eventLog: { findLangsmithAnchor } });
 
 			await service.submitLangsmithFeedback(
 				{ id: 'user-1' } as unknown as User,
@@ -240,7 +240,7 @@ describe('InstanceAiTracingService', () => {
 				langsmithTraceId: 'ls-trace',
 			}));
 			const { service } = createService({
-				dbSnapshotStorage: { findLangsmithAnchor },
+				eventLog: { findLangsmithAnchor },
 				aiService: { isProxyEnabled: vi.fn(() => false) },
 			});
 

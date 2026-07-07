@@ -345,13 +345,8 @@ describe('GlobalConfig', () => {
 			snapshotRetention: 86_400_000,
 			checkpointGcRetention: 604_800_000,
 			confirmationTimeout: 86_400_000,
-			outputRedactionEnabled: true,
-			outputRedactionSecrets: true,
-			outputRedactionPii: 'credit-card',
-			outputRedactionPlaceholder: '[REDACTED]',
 			runDebugEnabled: false,
 			thinkingEnabled: true,
-			durableLog: false,
 		},
 		queue: {
 			health: {

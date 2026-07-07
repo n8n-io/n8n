@@ -95,22 +95,13 @@ vi.mock('@n8n/instance-ai', () => ({
 }));
 
 import type { Mock } from 'vitest';
-import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
+import type { InstanceAiEvent } from '@n8n/api-types';
 import type { ManagedBackgroundTask, TerminalOutcome } from '@n8n/instance-ai';
 
 import {
 	InstanceAiTerminalOutcomeService,
 	type InstanceAiTerminalOutcomeServiceOptions,
 } from '../instance-ai-terminal-outcome.service';
-
-type SnapshotRow = {
-	tree: InstanceAiAgentNode;
-	runId: string;
-	messageGroupId?: string;
-	runIds?: string[];
-	langsmithRunId?: string;
-	langsmithTraceId?: string;
-};
 
 type Deps = {
 	eventBus: {
@@ -119,18 +110,12 @@ type Deps = {
 		getEventsForRuns: Mock;
 		publish: Mock;
 	};
-	dbSnapshotStorage: {
-		getLatest: Mock;
-		save: Mock;
-		updateLast: Mock;
-	};
 	telemetry: { track: Mock };
 	logger: { warn: Mock; debug: Mock; error: Mock };
 	runState: { getRunIdsForMessageGroup: Mock; cancelThread: Mock };
 	suspendedThreads: { dropPendingConfirmationsForThread: Mock };
 	tracing: { finalizeRunTracing: Mock; buildMessageTraceMetadata: Mock };
 	publishRunFinish: Mock;
-	saveAgentTreeSnapshot: Mock;
 };
 
 function makeTerminalOutcome(overrides: Partial<TerminalOutcome> = {}): TerminalOutcome {
@@ -149,20 +134,7 @@ function makeTerminalOutcome(overrides: Partial<TerminalOutcome> = {}): Terminal
 	};
 }
 
-function makeAgentTree(): InstanceAiAgentNode {
-	return {
-		agentId: 'agent-001',
-		role: 'orchestrator',
-		status: 'completed',
-		textContent: 'Initial response',
-		reasoning: '',
-		toolCalls: [],
-		children: [],
-		timeline: [{ type: 'text', content: 'Initial response' }],
-	};
-}
-
-function createService(snapshotTree?: InstanceAiAgentNode): {
+function createService(): {
 	service: InstanceAiTerminalOutcomeService;
 	deps: Deps;
 } {
@@ -170,21 +142,12 @@ function createService(snapshotTree?: InstanceAiAgentNode): {
 	const deps: Deps = {
 		eventBus: {
 			events,
-			getEventsForRun: vi.fn(() => events),
-			getEventsForRuns: vi.fn(() => events),
+			// Reads go to the durable log, so they are async.
+			getEventsForRun: vi.fn(async () => events),
+			getEventsForRuns: vi.fn(async () => events),
 			publish: vi.fn((_threadId: string, event: InstanceAiEvent) => {
 				events.push(event);
 			}),
-		},
-		dbSnapshotStorage: {
-			getLatest: vi.fn(
-				async (): Promise<SnapshotRow | undefined> =>
-					snapshotTree
-						? { tree: snapshotTree, runId: 'run-1', messageGroupId: 'group-1', runIds: ['run-1'] }
-						: undefined,
-			),
-			save: vi.fn(async () => {}),
-			updateLast: vi.fn(async () => {}),
 		},
 		telemetry: { track: vi.fn() },
 		logger: { warn: vi.fn(), debug: vi.fn(), error: vi.fn() },
@@ -207,13 +170,10 @@ function createService(snapshotTree?: InstanceAiAgentNode): {
 				} as InstanceAiEvent);
 			},
 		),
-		saveAgentTreeSnapshot: vi.fn(async () => {}),
 	};
 
 	const options = {
-		durableLog: false,
 		eventBus: deps.eventBus,
-		dbSnapshotStorage: deps.dbSnapshotStorage,
 		agentMemory: {},
 		telemetry: deps.telemetry,
 		logger: deps.logger,
@@ -221,7 +181,6 @@ function createService(snapshotTree?: InstanceAiAgentNode): {
 		suspendedThreads: deps.suspendedThreads,
 		tracing: deps.tracing,
 		publishRunFinish: deps.publishRunFinish,
-		saveAgentTreeSnapshot: deps.saveAgentTreeSnapshot,
 	} as unknown as InstanceAiTerminalOutcomeServiceOptions;
 
 	return { service: new InstanceAiTerminalOutcomeService(options), deps };
@@ -235,89 +194,22 @@ beforeEach(() => {
 });
 
 describe('InstanceAiTerminalOutcomeService — terminal outcome replay', () => {
-	it('replays undelivered background outcomes into the persisted agent tree', async () => {
+	it('publishes the undelivered outcome as a text-block and marks it delivered', async () => {
 		const outcome = makeTerminalOutcome();
-		terminalOutcomeStorageMock.getUndelivered.mockResolvedValue([outcome]);
-		const { service, deps } = createService(makeAgentTree());
-
-		await service.replayUndeliveredTerminalOutcomes('thread-a');
-
-		expect(deps.dbSnapshotStorage.updateLast).toHaveBeenCalledTimes(1);
-		const updatedTree = deps.dbSnapshotStorage.updateLast.mock.calls[0][1] as InstanceAiAgentNode;
-		expect(updatedTree.textContent).toContain(outcome.userFacingMessage);
-		expect(updatedTree.timeline).toContainEqual({
-			type: 'text',
-			content: outcome.userFacingMessage,
-			responseId: `background-outcome:${outcome.id}`,
-		});
-		expect(terminalOutcomeStorageMock.markDelivered).toHaveBeenCalledWith(
-			'thread-a',
-			outcome.id,
-			expect.any(String),
-		);
-		expect(deps.eventBus.publish).not.toHaveBeenCalled();
-	});
-
-	it('publishes recovered background outcomes when replaying for SSE delivery', async () => {
-		const outcome = makeTerminalOutcome();
-		terminalOutcomeStorageMock.getUndelivered.mockResolvedValue([outcome]);
-		const { service, deps } = createService(makeAgentTree());
-
-		await service.replayUndeliveredTerminalOutcomes('thread-a', { delivery: 'event' });
-
-		expect(deps.dbSnapshotStorage.updateLast).toHaveBeenCalledTimes(1);
-		expect(deps.eventBus.publish).toHaveBeenCalledWith('thread-a', {
-			type: 'text-delta',
-			runId: outcome.runId,
-			agentId: 'orchestrator-run-1',
-			responseId: `background-outcome:${outcome.id}`,
-			payload: { text: outcome.userFacingMessage },
-		});
-		expect(terminalOutcomeStorageMock.markDelivered).toHaveBeenCalledWith(
-			'thread-a',
-			outcome.id,
-			expect.any(String),
-		);
-	});
-
-	it('deduplicates replay by response id only', async () => {
-		const outcome = makeTerminalOutcome({ id: 'group-1:task-2:completed' });
-		const tree = makeAgentTree();
-		tree.textContent = `${tree.textContent}\n\n${outcome.userFacingMessage}`;
-		tree.timeline.push({
-			type: 'text',
-			content: outcome.userFacingMessage,
-			responseId: 'background-outcome:different-id',
-		});
-		terminalOutcomeStorageMock.getUndelivered.mockResolvedValue([outcome]);
-		const { service, deps } = createService(tree);
-
-		await service.replayUndeliveredTerminalOutcomes('thread-a');
-
-		const updatedTree = deps.dbSnapshotStorage.updateLast.mock.calls[0][1] as InstanceAiAgentNode;
-		expect(
-			updatedTree.timeline.filter(
-				(entry) => entry.type === 'text' && entry.content === outcome.userFacingMessage,
-			),
-		).toHaveLength(2);
-		expect(updatedTree.timeline).toContainEqual({
-			type: 'text',
-			content: outcome.userFacingMessage,
-			responseId: `background-outcome:${outcome.id}`,
-		});
-	});
-
-	it('creates a snapshot when replay has no prior agent tree', async () => {
-		const outcome = makeTerminalOutcome({ status: 'failed' });
 		terminalOutcomeStorageMock.getUndelivered.mockResolvedValue([outcome]);
 		const { service, deps } = createService();
 
 		await service.replayUndeliveredTerminalOutcomes('thread-a');
 
-		expect(deps.dbSnapshotStorage.save).toHaveBeenCalledTimes(1);
-		const savedTree = deps.dbSnapshotStorage.save.mock.calls[0][1] as InstanceAiAgentNode;
-		expect(savedTree.status).toBe('error');
-		expect(savedTree.textContent).toBe(outcome.userFacingMessage);
+		// Publishing the line as a text-block IS delivery: the drain persists it to
+		// the log and emits it live in one step.
+		expect(deps.eventBus.publish).toHaveBeenCalledWith('thread-a', {
+			type: 'text-block',
+			runId: outcome.runId,
+			agentId: 'orchestrator-run-1',
+			responseId: `background-outcome:${outcome.id}`,
+			payload: { text: outcome.userFacingMessage },
+		});
 		expect(terminalOutcomeStorageMock.markDelivered).toHaveBeenCalledWith(
 			'thread-a',
 			outcome.id,
@@ -325,22 +217,31 @@ describe('InstanceAiTerminalOutcomeService — terminal outcome replay', () => {
 		);
 	});
 
-	it('publishes the deterministic line when snapshot replay fails', async () => {
-		const outcome = makeTerminalOutcome();
+	it('deduplicates replay by response id against the durable log', async () => {
+		const outcome = makeTerminalOutcome({ id: 'group-1:task-2:completed' });
 		terminalOutcomeStorageMock.getUndelivered.mockResolvedValue([outcome]);
-		const { service, deps } = createService(makeAgentTree());
-		deps.dbSnapshotStorage.updateLast.mockRejectedValue(new Error('storage unavailable'));
+		const { service, deps } = createService();
+		// The log already carries a text-block with this outcome's responseId, so
+		// republishing must be suppressed.
+		deps.eventBus.getEventsForRun.mockResolvedValue([
+			{
+				type: 'text-block',
+				runId: outcome.runId,
+				agentId: 'orchestrator-run-1',
+				responseId: `background-outcome:${outcome.id}`,
+				payload: { text: outcome.userFacingMessage },
+			},
+		]);
 
-		await service.replayUndeliveredTerminalOutcomes('thread-a', { delivery: 'event' });
+		await service.replayUndeliveredTerminalOutcomes('thread-a');
 
-		expect(deps.eventBus.publish).toHaveBeenCalledWith('thread-a', {
-			type: 'text-delta',
-			runId: outcome.runId,
-			agentId: 'orchestrator-run-1',
-			responseId: `background-outcome:${outcome.id}`,
-			payload: { text: outcome.userFacingMessage },
-		});
-		expect(terminalOutcomeStorageMock.markDelivered).not.toHaveBeenCalled();
+		expect(deps.eventBus.publish).not.toHaveBeenCalled();
+		// A persisted outcome is still marked delivered even when already emitted.
+		expect(terminalOutcomeStorageMock.markDelivered).toHaveBeenCalledWith(
+			'thread-a',
+			outcome.id,
+			expect.any(String),
+		);
 	});
 
 	it('checks persisted outcomes on repeated replay calls', async () => {
@@ -373,7 +274,7 @@ describe('InstanceAiTerminalOutcomeService — background outcome recording', ()
 	}
 
 	it('persists, publishes, and marks the outcome delivered on success', async () => {
-		const { service, deps } = createService(makeAgentTree());
+		const { service, deps } = createService();
 
 		await service.recordBackgroundTerminalOutcome(makeTask());
 
@@ -381,17 +282,16 @@ describe('InstanceAiTerminalOutcomeService — background outcome recording', ()
 		expect(deps.eventBus.publish).toHaveBeenCalledWith(
 			'thread-a',
 			expect.objectContaining({
-				type: 'text-delta',
+				type: 'text-block',
 				payload: { text: 'The background workflow-builder task finished.' },
 			}),
 		);
-		expect(deps.dbSnapshotStorage.updateLast).toHaveBeenCalledTimes(1);
 		expect(terminalOutcomeStorageMock.markDelivered).toHaveBeenCalledTimes(1);
 	});
 
 	it('keeps the outcome pending and replays it later when persistence fails', async () => {
 		terminalOutcomeStorageMock.upsert.mockRejectedValueOnce(new Error('db down'));
-		const { service, deps } = createService(makeAgentTree());
+		const { service, deps } = createService();
 
 		await service.recordBackgroundTerminalOutcome(makeTask());
 
@@ -404,46 +304,6 @@ describe('InstanceAiTerminalOutcomeService — background outcome recording', ()
 		// The pending outcome is recovered on the next replay.
 		await service.replayUndeliveredTerminalOutcomes('thread-a');
 		expect(terminalOutcomeStorageMock.markDelivered).not.toHaveBeenCalled();
-	});
-});
-
-describe('InstanceAiTerminalOutcomeService — durable-log outcome lines', () => {
-	it('publishes the outcome line as a text-block when the durable log is on', async () => {
-		// A trailing delta would race the coalescer's idle flush on an immediate
-		// page reload; a text-block is persisted before it is emitted live.
-		const { deps } = createService(makeAgentTree());
-		const service = new InstanceAiTerminalOutcomeService({
-			durableLog: true,
-			eventBus: deps.eventBus,
-			dbSnapshotStorage: deps.dbSnapshotStorage,
-			agentMemory: {},
-			telemetry: deps.telemetry,
-			logger: deps.logger,
-			runState: deps.runState,
-			suspendedThreads: deps.suspendedThreads,
-			tracing: deps.tracing,
-			publishRunFinish: deps.publishRunFinish,
-			saveAgentTreeSnapshot: vi.fn(async () => {}),
-		} as never);
-
-		await service.recordBackgroundTerminalOutcome({
-			taskId: 'task-dl',
-			threadId: 'thread-dl',
-			runId: 'run-dl',
-			role: 'workflow-builder',
-			agentId: 'agent-builder',
-			status: 'cancelled',
-			result: undefined,
-			startedAt: 0,
-			lastActivityAt: 0,
-			abortController: new AbortController(),
-			corrections: [],
-		} as never);
-
-		const line = deps.eventBus.events.find(
-			(event) => event.type === 'text-block' || event.type === 'text-delta',
-		);
-		expect(line?.type).toBe('text-block');
 	});
 });
 
@@ -499,7 +359,6 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 			threadId: 'thread-a',
 			runId: 'run-1',
 			abortController,
-			snapshotStorage: {} as never,
 		});
 
 		expect(finalization.status).toBe('error');
@@ -509,7 +368,6 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 			'thread-a',
 		);
 		expect(abortController.signal.aborted).toBe(true);
-		expect(deps.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
 		expect(deps.eventBus.events.at(-1)).toMatchObject({
 			type: 'run-finish',
 			payload: { status: 'error' },

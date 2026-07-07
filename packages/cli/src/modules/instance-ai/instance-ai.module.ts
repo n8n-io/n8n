@@ -26,19 +26,16 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiEventRelay } = await import('./instance-ai-event-relay.service');
 		Container.get(InstanceAiEventRelay);
 
-		// Durable-log flag (resilience phase): startup sweep resolves runs the
-		// previous process left mid-flight — crash-resume from a step checkpoint
-		// where possible, otherwise append run-finish{interrupted} to the log.
-		const { GlobalConfig } = await import('@n8n/config');
-		if (Container.get(GlobalConfig).instanceAi.durableLog) {
-			const { InterruptedRunSweeper } = await import('./event-bus/interrupted-run-sweeper');
-			const { InstanceAiService } = await import('./instance-ai.service');
-			const sweeper = Container.get(InterruptedRunSweeper);
-			sweeper.setResumeHost(Container.get(InstanceAiService));
-			void sweeper.sweep().catch((error: unknown) => {
-				logger.error('Interrupted-run sweep failed on startup', { error });
-			});
-		}
+		// Startup sweep resolves runs the previous process left mid-flight —
+		// crash-resume from a step checkpoint where possible, otherwise append
+		// run-finish{interrupted} to the log.
+		const { InterruptedRunSweeper } = await import('./event-bus/interrupted-run-sweeper');
+		const { InstanceAiService } = await import('./instance-ai.service');
+		const sweeper = Container.get(InterruptedRunSweeper);
+		sweeper.setResumeHost(Container.get(InstanceAiService));
+		void sweeper.sweep().catch((error: unknown) => {
+			logger.error('Interrupted-run sweep failed on startup', { error });
+		});
 
 		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
 			await import('./instance-ai-test.controller');
@@ -73,7 +70,6 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiThread } = await import('./entities/instance-ai-thread.entity');
 		const { InstanceAiMessage } = await import('./entities/instance-ai-message.entity');
 		const { InstanceAiResource } = await import('./entities/instance-ai-resource.entity');
-		const { InstanceAiRunSnapshot } = await import('./entities/instance-ai-run-snapshot.entity');
 		const { InstanceAiIterationLog } = await import('./entities/instance-ai-iteration-log.entity');
 		const { InstanceAiCheckpoint } = await import('./entities/instance-ai-checkpoint.entity');
 		const { InstanceAiPendingConfirmation } = await import(
@@ -98,7 +94,6 @@ export class InstanceAiModule implements ModuleInterface {
 			InstanceAiThread,
 			InstanceAiMessage,
 			InstanceAiResource,
-			InstanceAiRunSnapshot,
 			InstanceAiIterationLog,
 			InstanceAiCheckpoint,
 			InstanceAiPendingConfirmation,

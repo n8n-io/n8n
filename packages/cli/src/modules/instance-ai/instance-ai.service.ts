@@ -9,7 +9,6 @@ import {
 	type InstanceAiWorkflowAttachment,
 	type InstanceAiConfirmRequest,
 	type InstanceAiConfirmResponse,
-	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -38,7 +37,6 @@ import {
 	createDomainAccessTracker,
 	BackgroundTaskManager,
 	MemoryTaskRegistry,
-	buildAgentTreeFromEvents,
 	classifyAttachments,
 	buildAttachmentManifest,
 	getDateTimeSection,
@@ -138,7 +136,6 @@ import {
 	buildInstanceAiObservabilityContext,
 	type InstanceAiObservabilityContext,
 } from './observability';
-import { resolveOutputRedaction } from './output-redaction-config';
 import {
 	PlannedTaskActionRunner,
 	type PlannedBuildFollowUp,
@@ -150,11 +147,11 @@ import {
 	type PlannedWorkflowVerificationGate,
 	type PlannedWorkflowVerificationTracker,
 } from './planned-task-action-runner';
+import { InstanceAiEventLogRepository } from './repositories/instance-ai-event-log.repository';
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import { InstanceAiThreadGrantRepository } from './repositories/instance-ai-thread-grant.repository';
 import { InstanceAiSandboxService, type RuntimeSandboxEntry } from './sandbox';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
-import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
 import {
@@ -524,7 +521,7 @@ export class InstanceAiService {
 		private readonly threadGrantRepo: InstanceAiThreadGrantRepository,
 		private readonly pendingConfirmationRepo: InstanceAiPendingConfirmationRepository,
 		private readonly urlService: UrlService,
-		private readonly dbSnapshotStorage: DbSnapshotStorage,
+		private readonly eventLogRepo: InstanceAiEventLogRepository,
 		private readonly dbIterationLogStorage: DbIterationLogStorage,
 		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
 		private readonly telemetry: Telemetry,
@@ -561,7 +558,6 @@ export class InstanceAiService {
 			logger: this.logger,
 			pendingConfirmationRepo: this.pendingConfirmationRepo,
 			runState: this.runState,
-			dbSnapshotStorage: this.dbSnapshotStorage,
 			eventBus: this.eventBus,
 			rebuilder: {
 				rebuildSuspendedRun: this.rebuildSuspendedRunFromCheckpoint.bind(this),
@@ -589,7 +585,7 @@ export class InstanceAiService {
 			logger: this.logger,
 			eventBus: this.eventBus,
 			runState: this.runState,
-			dbSnapshotStorage: this.dbSnapshotStorage,
+			eventLog: this.eventLogRepo,
 			aiService: this.aiService,
 		});
 		this.sandboxService = new InstanceAiSandboxService({
@@ -602,22 +598,16 @@ export class InstanceAiService {
 			aiService: this.aiService,
 		});
 		this.terminalOutcome = new InstanceAiTerminalOutcomeService({
-			durableLog: globalConfig.instanceAi.durableLog,
-			// Flag-resolved reads: the terminal guard and outcome-replay dedup must
-			// see the run's events after a restart too, which only the durable log
-			// can provide (the bus cache is empty in a fresh process).
+			// The terminal guard and outcome-replay dedup read from the durable
+			// log so they see the run's events after a restart too (the bus cache
+			// is empty in a fresh process).
 			eventBus: {
 				publish: (threadId, event) => this.eventBus.publish(threadId, event),
 				getEventsForRun: async (threadId, runId) =>
-					this.instanceAiConfig.durableLog
-						? await this.eventLog.getEventsForRuns(threadId, [runId])
-						: this.eventBus.getEventsForRun(threadId, runId),
+					await this.eventLog.getEventsForRuns(threadId, [runId]),
 				getEventsForRuns: async (threadId, runIds) =>
-					this.instanceAiConfig.durableLog
-						? await this.eventLog.getEventsForRuns(threadId, runIds)
-						: this.eventBus.getEventsForRuns(threadId, runIds),
+					await this.eventLog.getEventsForRuns(threadId, runIds),
 			},
-			dbSnapshotStorage: this.dbSnapshotStorage,
 			agentMemory: this.agentMemory,
 			telemetry: this.telemetry,
 			logger: this.logger,
@@ -627,8 +617,6 @@ export class InstanceAiService {
 			publishRunFinish: (threadId, runId, status, reason) => {
 				this.publishRunFinish(threadId, runId, status, reason);
 			},
-			saveAgentTreeSnapshot: async (threadId, runId, snapshotStorage) =>
-				await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage),
 		});
 		this.defaultTimeZone = globalConfig.generic.timezone;
 		const restEndpoint = globalConfig.endpoints.rest;
@@ -847,10 +835,9 @@ export class InstanceAiService {
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' } },
 			},
-			// Durable-log flag (resilience phase): checkpoint at every step
-			// boundary so a crash loses only the in-flight step; the
-			// interrupted-run sweep resumes from it on the next startup.
-			...(this.instanceAiConfig.durableLog ? { stepCheckpoints: true } : {}),
+			// Checkpoint at every step boundary so a crash loses only the in-flight
+			// step; the interrupted-run sweep resumes from it on the next startup.
+			stepCheckpoints: true,
 			...(this.isRunDebugEnabled()
 				? createRunDebugStepHooks(this.runDebugBuffer, { runId, threadId })
 				: {}),
@@ -998,15 +985,7 @@ export class InstanceAiService {
 					error: reason === INSTANCE_AI_RUN_TIMEOUT_REASON ? 'Timed out' : 'Cancelled by user',
 				},
 			});
-			void this.terminalOutcome.recordBackgroundTerminalOutcome(task).finally(() => {
-				void this.saveAgentTreeSnapshot(
-					threadId,
-					task.runId,
-					this.dbSnapshotStorage,
-					true,
-					task.messageGroupId,
-				);
-			});
+			void this.terminalOutcome.recordBackgroundTerminalOutcome(task);
 			if (user) {
 				void this.handlePlannedTaskSettlement(user, task, 'cancelled');
 			}
@@ -1062,18 +1041,9 @@ export class InstanceAiService {
 			payload: { role: task.role, result: '', error: 'Cancelled by user' },
 		});
 
-		// Persist the updated agent tree so cancelled status survives page reload.
-		// The onSettled callback in executeTask is skipped for aborted tasks,
-		// so we must save the snapshot explicitly here.
-		void this.terminalOutcome.recordBackgroundTerminalOutcome(task).finally(() => {
-			void this.saveAgentTreeSnapshot(
-				threadId,
-				task.runId,
-				this.dbSnapshotStorage,
-				true,
-				task.messageGroupId,
-			);
-		});
+		// The recorded outcome publishes the cancelled fact to the durable log,
+		// so the cancelled status survives a page reload without a snapshot.
+		void this.terminalOutcome.recordBackgroundTerminalOutcome(task);
 
 		const user = this.runState.getThreadUser(threadId);
 		if (user) {
@@ -1282,13 +1252,6 @@ export class InstanceAiService {
 			},
 			onSettled: async (task) => {
 				await this.terminalOutcome.recordBackgroundTerminalOutcome(task);
-				await this.saveAgentTreeSnapshot(
-					threadId,
-					runId,
-					this.dbSnapshotStorage,
-					true,
-					messageGroupId,
-				);
 			},
 		});
 
@@ -1431,13 +1394,11 @@ export class InstanceAiService {
 				continue;
 			}
 
-			// Truly mid-stream run: publish run-finish first so the terminal
-			// event lands in the event bus before the snapshot reads it;
-			// saveAgentTreeSnapshot rebuilds the tree from the bus, so without
-			// this order the persisted tree would still look mid-stream after
-			// the process is gone.
+			// Truly mid-stream run: publish run-finish so the terminal fact is
+			// durably flushed (flushAll runs before the process exits); the fold
+			// renders the cancelled state on the next read. Anything that dies
+			// before the flush is caught by the interrupted-run sweep on restart.
 			this.publishRunFinish(run.threadId, run.runId, 'cancelled', 'service_shutdown');
-			await this.persistShutdownSnapshot(run.threadId, run.runId, run.messageGroupId);
 			await this.tracing.finalizeRunTracing(run.runId, run.tracing, {
 				status: 'cancelled',
 				reason: 'service_shutdown',
@@ -1655,33 +1616,6 @@ export class InstanceAiService {
 		}
 	}
 
-	/**
-	 * Save the in-flight agent tree as a terminal snapshot so the UI doesn't
-	 * sit on a half-rendered turn after the process restarts. Best-effort: a
-	 * DB write failure here must not block the rest of shutdown.
-	 */
-	private async persistShutdownSnapshot(
-		threadId: string,
-		runId: string,
-		messageGroupId: string | undefined,
-	): Promise<void> {
-		try {
-			await this.saveAgentTreeSnapshot(
-				threadId,
-				runId,
-				this.dbSnapshotStorage,
-				true,
-				messageGroupId,
-			);
-		} catch (error: unknown) {
-			this.logger.warn('Failed to persist shutdown snapshot', {
-				threadId,
-				runId,
-				error: getErrorMessage(error),
-			});
-		}
-	}
-
 	private createAgentMemoryOptions() {
 		return {
 			observationalMemory: {
@@ -1849,11 +1783,8 @@ export class InstanceAiService {
 	 * reconnecting client never misses a result that completed while its stream
 	 * was closed. Delegates to {@link InstanceAiTerminalOutcomeService}.
 	 */
-	async replayUndeliveredTerminalOutcomes(
-		threadId: string,
-		options: { delivery?: 'snapshot' | 'event' } = {},
-	): Promise<void> {
-		await this.terminalOutcome.replayUndeliveredTerminalOutcomes(threadId, options);
+	async replayUndeliveredTerminalOutcomes(threadId: string): Promise<void> {
+		await this.terminalOutcome.replayUndeliveredTerminalOutcomes(threadId);
 	}
 
 	private async syncPlannedTasksToUi(threadId: string, graph: PlannedTaskGraph): Promise<void> {
@@ -2031,7 +1962,6 @@ export class InstanceAiService {
 
 		const taskStorage = new ThreadTaskStorage(memory);
 		const iterationLog = this.dbIterationLogStorage;
-		const snapshotStorage = this.dbSnapshotStorage;
 		const workflowLoopStorage = new WorkflowLoopStorage(memory);
 		const workflowTasks = this.createWorkflowTaskServiceWithUiSync(
 			threadId,
@@ -2128,7 +2058,6 @@ export class InstanceAiService {
 			subAgentMaxSteps: this.instanceAiConfig.subAgentMaxSteps,
 			eventBus: this.eventBus,
 			logger: this.logger,
-			outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 			trackTelemetry: (eventName, properties) => {
 				this.telemetry.track(eventName, properties);
 			},
@@ -2160,19 +2089,11 @@ export class InstanceAiService {
 						messageGroupId,
 						kind: 'inline',
 					});
-
-					// Inline HITL (plan approval / sub-agent asks)
-					// keeps the orchestrator run active, so the normal suspended/completed
-					// snapshot paths do not execute. Queue a snapshot after the current
-					// confirmation-request event is published to preserve refresh recovery.
-					queueMicrotask(() => {
-						void this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
-					});
 				});
 			},
 			cancelBackgroundTask: async (taskId) => this.cancelBackgroundTask(threadId, taskId),
 			spawnBackgroundTask: (opts) =>
-				this.spawnBackgroundTask(runId, opts, snapshotStorage, messageGroupId),
+				this.spawnBackgroundTask(runId, opts, messageGroupId),
 			touchRun: () => this.runState.touchActiveRun(threadId),
 			touchBackgroundTask: (taskId) => this.backgroundTasks.touchTask(threadId, taskId),
 			plannedTaskService,
@@ -2194,7 +2115,6 @@ export class InstanceAiService {
 			memory,
 			taskStorage,
 			iterationLog,
-			snapshotStorage,
 			workflowTasks,
 			plannedTaskService,
 			modelId,
@@ -3008,7 +2928,6 @@ export class InstanceAiService {
 		let tracing: InstanceAiTraceContext | undefined;
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
 		let aiCreatedWorkflowIds: Set<string> | undefined;
-		let activeSnapshotStorage: DbSnapshotStorage | undefined;
 		let messageId = '';
 		let streamReached = false;
 		const turnStartedAt = new Date();
@@ -3070,14 +2989,24 @@ export class InstanceAiService {
 				this.runDebugBuffer.ensure(runId, threadId, buildRunDebugLabel({ message, resumeReason }));
 			}
 
-			// Publish run-start (includes userId for audit trail attribution)
+			// Publish run-start (includes userId for audit trail attribution). The
+			// LangSmith ids ride here so user feedback can annotate the trace after
+			// a restart — the durable log is their only home now.
 			const traceId = tracing?.rootRun.otelTraceId;
+			const langsmithRunId = tracing?.rootRun.id;
+			const langsmithTraceId = tracing?.rootRun.traceId;
 			this.eventBus.publish(threadId, {
 				type: 'run-start',
 				runId,
 				agentId: orchestratorAgentId(runId),
 				userId: user.id,
-				payload: { messageId, messageGroupId, ...(traceId ? { traceId } : {}) },
+				payload: {
+					messageId,
+					messageGroupId,
+					...(traceId ? { traceId } : {}),
+					...(langsmithRunId ? { langsmithRunId } : {}),
+					...(langsmithTraceId ? { langsmithTraceId } : {}),
+				},
 			});
 
 			// Check if already cancelled before starting agent work
@@ -3124,12 +3053,10 @@ export class InstanceAiService {
 				executionPushRef,
 				proxyRunConfig,
 			);
-			activeSnapshotStorage = environment.snapshotStorage;
 			const {
 				context,
 				memory,
 				taskStorage,
-				snapshotStorage,
 				workflowTasks,
 				plannedTaskService,
 				modelId,
@@ -3388,7 +3315,6 @@ export class InstanceAiService {
 							logger: this.logger,
 							onActivity: () => this.runState.touchActiveRun(threadId),
 							stopSignal,
-							outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 						});
 					})
 				: await streamAgentRun(agent as StreamableAgent, streamInput, streamOptions, {
@@ -3400,7 +3326,6 @@ export class InstanceAiService {
 						logger: this.logger,
 						onActivity: () => this.runState.touchActiveRun(threadId),
 						stopSignal,
-						outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 					});
 			if (result.status === 'suspended') {
 				if (result.suspension) {
@@ -3477,7 +3402,6 @@ export class InstanceAiService {
 						threadId,
 						runId,
 						abortController,
-						snapshotStorage,
 						tracing,
 					});
 					return;
@@ -3488,10 +3412,6 @@ export class InstanceAiService {
 					this.eventBus.publish(threadId, result.confirmationEvent);
 				}
 
-				// Persist the agent tree so the confirmation UI survives page refresh.
-				// The tree is rebuilt from in-memory events and includes the
-				// confirmation-request data that the frontend needs.
-				await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
 				const suspensionOutputs = {
 					status: 'suspended',
 					runId,
@@ -3589,7 +3509,7 @@ export class InstanceAiService {
 				aiCreatedWorkflowIds,
 				this.backgroundTasks.getRunningTasks(threadId).length,
 			);
-			await this.finalizeRun(threadId, runId, result.status, snapshotStorage, {
+			await this.finalizeRun(threadId, runId, result.status, {
 				userId: user.id,
 				modelId,
 				archivedWorkflowIds,
@@ -3669,9 +3589,6 @@ export class InstanceAiService {
 					archivedWorkflowIds,
 					user.id,
 				);
-				if (activeSnapshotStorage) {
-					await this.saveAgentTreeSnapshot(threadId, runId, activeSnapshotStorage);
-				}
 				return;
 			}
 
@@ -3723,9 +3640,6 @@ export class InstanceAiService {
 					...(archivedWorkflowIds.length > 0 ? { archivedWorkflowIds } : {}),
 				},
 			});
-			if (activeSnapshotStorage) {
-				await this.saveAgentTreeSnapshot(threadId, runId, activeSnapshotStorage);
-			}
 		} finally {
 			this.runState.clearActiveRun(threadId);
 			// Note: don't delete threadPushRef here. Planned tasks (build agent,
@@ -4282,7 +4196,6 @@ export class InstanceAiService {
 			suspendPayload,
 			signal: abortController.signal,
 			abortController,
-			snapshotStorage: this.dbSnapshotStorage,
 			tracing: resumeTracing ?? tracing,
 			modelId,
 			checkpoint,
@@ -4405,7 +4318,6 @@ export class InstanceAiService {
 				user,
 				signal: abortController.signal,
 				abortController,
-				snapshotStorage: this.dbSnapshotStorage,
 				modelId: environment.modelId,
 				contextNotes: request.contextNotes,
 				messageGroupId: request.messageGroupId,
@@ -4431,7 +4343,6 @@ export class InstanceAiService {
 			user: User;
 			signal: AbortSignal;
 			abortController: AbortController;
-			snapshotStorage: DbSnapshotStorage;
 			modelId?: ModelConfig;
 			contextNotes?: string[];
 			messageGroupId?: string;
@@ -4462,7 +4373,6 @@ export class InstanceAiService {
 					agentRunId: opts.agentRunId,
 					onActivity: () => this.runState.touchActiveRun(opts.threadId),
 					stopSignal,
-					outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 				},
 			);
 
@@ -4511,14 +4421,12 @@ export class InstanceAiService {
 					this.trackConfirmationRequest(opts.threadId, result.confirmationEvent);
 					this.eventBus.publish(opts.threadId, result.confirmationEvent);
 				}
-				// Persist the refreshed tree so the HITL wait survives a page reload.
-				await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
 				return;
 			}
 
 			const status = result.status === 'errored' ? 'errored' : result.status;
 			this.runState.cancelActiveRun(opts.threadId);
-			await this.finalizeRun(opts.threadId, opts.runId, status, opts.snapshotStorage, {
+			await this.finalizeRun(opts.threadId, opts.runId, status, {
 				userId: opts.user.id,
 				...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
 				workSummary: result.workSummary,
@@ -4564,7 +4472,6 @@ export class InstanceAiService {
 			suspendPayload?: Record<string, unknown>;
 			signal: AbortSignal;
 			abortController: AbortController;
-			snapshotStorage: DbSnapshotStorage;
 			tracing?: InstanceAiTraceContext;
 			modelId?: ModelConfig;
 			checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string };
@@ -4619,7 +4526,6 @@ export class InstanceAiService {
 							agentRunId: opts.agentRunId,
 							onActivity: () => this.runState.touchActiveRun(opts.threadId),
 							stopSignal,
-							outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 						});
 					})
 				: await resumeAgentRun(agent, resumeData, resumeOptions, {
@@ -4632,7 +4538,6 @@ export class InstanceAiService {
 						agentRunId: opts.agentRunId,
 						onActivity: () => this.runState.touchActiveRun(opts.threadId),
 						stopSignal,
-						outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 					});
 
 			if (result.status === 'suspended') {
@@ -4709,7 +4614,6 @@ export class InstanceAiService {
 						threadId: opts.threadId,
 						runId: opts.runId,
 						abortController: opts.abortController,
-						snapshotStorage: opts.snapshotStorage,
 						tracing: opts.tracing,
 					});
 					return;
@@ -4720,9 +4624,6 @@ export class InstanceAiService {
 					this.eventBus.publish(opts.threadId, result.confirmationEvent);
 				}
 
-				// Persist the refreshed agent tree so repeated HITL waits
-				// survive page refresh after a resume as well.
-				await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
 				const suspensionOutputs = {
 					status: 'suspended',
 					runId: opts.runId,
@@ -4814,7 +4715,7 @@ export class InstanceAiService {
 				undefined,
 				this.backgroundTasks.getRunningTasks(opts.threadId).length,
 			);
-			await this.finalizeRun(opts.threadId, opts.runId, result.status, opts.snapshotStorage, {
+			await this.finalizeRun(opts.threadId, opts.runId, result.status, {
 				userId: opts.user.id,
 				// Forward modelId so title refinement fires on the resume path too — a run
 				// that suspends for HITL and completes here would otherwise never be titled.
@@ -4890,7 +4791,6 @@ export class InstanceAiService {
 					archivedWorkflowIds,
 					opts.user.id,
 				);
-				await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
 				return;
 			}
 
@@ -4943,7 +4843,6 @@ export class InstanceAiService {
 					...(archivedWorkflowIds.length > 0 ? { archivedWorkflowIds } : {}),
 				},
 			});
-			await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
 		} finally {
 			this.runState.clearActiveRun(opts.threadId);
 			// See note in executeRun's finally — keep threadPushRef alive for
@@ -4986,7 +4885,6 @@ export class InstanceAiService {
 	private spawnBackgroundTask(
 		runId: string,
 		opts: SpawnBackgroundTaskOptions,
-		snapshotStorage: DbSnapshotStorage,
 		messageGroupIdOverride?: string,
 	): SpawnBackgroundTaskResult {
 		const outcome = this.backgroundTasks.spawn({
@@ -5071,13 +4969,6 @@ export class InstanceAiService {
 			},
 			onSettled: async (task) => {
 				await this.terminalOutcome.recordBackgroundTerminalOutcome(task);
-				await this.saveAgentTreeSnapshot(
-					opts.threadId,
-					runId,
-					snapshotStorage,
-					true,
-					task.messageGroupId,
-				);
 
 				// Auto-follow-up: when the last background task finishes and no
 				// orchestrator run is active, resume the orchestrator so it can
@@ -5317,14 +5208,6 @@ export class InstanceAiService {
 			suspended.user.id,
 		);
 
-		// Persist the snapshot so the run-finish event (which clears
-		// in-flight tool calls) is reflected in the stored tree.
-		await this.saveAgentTreeSnapshot(
-			suspended.threadId,
-			suspended.runId,
-			this.dbSnapshotStorage,
-			true,
-		);
 		await this.tracing.maybeFinalizeRunTraceRoot(suspended.runId, {
 			status: 'cancelled',
 			reason,
@@ -5375,7 +5258,6 @@ export class InstanceAiService {
 		threadId: string,
 		runId: string,
 		status: 'completed' | 'cancelled' | 'errored',
-		snapshotStorage: DbSnapshotStorage,
 		options?: {
 			userId?: string;
 			modelId?: ModelConfig;
@@ -5394,7 +5276,6 @@ export class InstanceAiService {
 			options?.userId,
 		);
 		this.emitRunMetrics(threadId, status, options);
-		await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
 		if (status === 'completed' && options?.userId && options?.modelId) {
 			void this.refineTitleIfNeeded(threadId, options.userId, options.modelId);
 		}
@@ -5535,78 +5416,6 @@ export class InstanceAiService {
 			return content.flatMap((part) => (isTextMessagePart(part) ? [part.text] : [])).join('\n');
 		}
 		return '';
-	}
-
-	/**
-	 * Build an agent tree from in-memory events and persist it as a thread metadata snapshot.
-	 * @param isUpdate If true, updates the existing snapshot for this runId (background task completion).
-	 */
-	private async saveAgentTreeSnapshot(
-		threadId: string,
-		runId: string,
-		snapshotStorage: DbSnapshotStorage,
-		isUpdate = false,
-		overrideMessageGroupId?: string,
-	): Promise<void> {
-		try {
-			const messageGroupId = overrideMessageGroupId ?? this.runState.getMessageGroupId(threadId);
-
-			let events: InstanceAiEvent[];
-			let groupRunIds: string[] | undefined;
-			if (messageGroupId) {
-				groupRunIds = this.getRunIdsForMessageGroup(messageGroupId);
-				if (groupRunIds.length === 0) {
-					const snapshot = await snapshotStorage.getLatest(threadId, { messageGroupId, runId });
-					groupRunIds = snapshot?.runIds?.length ? snapshot.runIds : [runId];
-				}
-				events = this.instanceAiConfig.durableLog
-					? await this.eventLog.getEventsForRuns(threadId, groupRunIds)
-					: this.eventBus.getEventsForRuns(threadId, groupRunIds);
-			} else {
-				events = this.instanceAiConfig.durableLog
-					? await this.eventLog.getEventsForRuns(threadId, [runId])
-					: this.eventBus.getEventsForRun(threadId, runId);
-			}
-			// PHASE 2 (fold-on-read), flag on: the tree derives from the DURABLE
-			// log, so long runs can no longer out-evict their own snapshot input
-			// (the empty-agentTree bug class). End state: stop persisting the tree
-			// here entirely — the messages endpoint derives it on read via
-			// buildAgentTreeFromEvents(eventLog.getEventsForRuns(...)), and
-			// instance_ai_run_snapshots demotes to a read cache / gets dropped.
-			// The write below stays during migration so pre-log threads keep
-			// rendering; delete it after the thread TTL sunsets them.
-			if (isUpdate && events.length === 0) {
-				this.logger.warn('Skipped updating empty Instance AI agent tree snapshot', {
-					threadId,
-					runId,
-					messageGroupId,
-				});
-				return;
-			}
-			const agentTree = buildAgentTreeFromEvents(events);
-
-			const tracing = this.tracing.getTraceContext(runId);
-			const saveOptions = {
-				messageGroupId,
-				runIds: groupRunIds,
-				traceId: tracing?.rootRun.otelTraceId,
-				spanId: tracing?.rootRun.otelSpanId,
-				langsmithRunId: tracing?.rootRun.id,
-				langsmithTraceId: tracing?.rootRun.traceId,
-			};
-
-			if (isUpdate) {
-				await snapshotStorage.updateLast(threadId, agentTree, runId, saveOptions);
-			} else {
-				await snapshotStorage.save(threadId, agentTree, runId, saveOptions);
-			}
-		} catch (error) {
-			this.logger.warn('Failed to save agent tree snapshot', {
-				threadId,
-				runId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
 	}
 
 	private parseMcpServers(raw: string): McpServerConfig[] {

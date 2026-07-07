@@ -26,13 +26,11 @@ import { DurableLogMetrics } from './event-bus/durable-log-metrics';
 import {
 	collectConfirmationRequestIds,
 	markExpiredConfirmations,
-	messageParserStats,
 	parseStoredMessages,
 } from './message-parser';
 import { InstanceAiCheckpointRepository } from './repositories/instance-ai-checkpoint.repository';
 import { InstanceAiEventLogRepository } from './repositories/instance-ai-event-log.repository';
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
-import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
 
 function isAgentMessageLike(value: unknown): value is AgentDbMessage {
@@ -90,7 +88,6 @@ export class InstanceAiMemoryService {
 		private readonly logger: Logger,
 		globalConfig: GlobalConfig,
 		private readonly agentMemory: TypeORMAgentMemory,
-		private readonly dbSnapshotStorage: DbSnapshotStorage,
 		private readonly checkpointRepository: InstanceAiCheckpointRepository,
 		private readonly pendingConfirmationRepository: InstanceAiPendingConfirmationRepository,
 		private readonly eventLogRepository: InstanceAiEventLogRepository,
@@ -205,29 +202,9 @@ export class InstanceAiMemoryService {
 			page: options?.page ?? 0,
 		});
 
-		let snapshots = await this.dbSnapshotStorage.getAll(threadId).catch((error) => {
-			this.logger.warn('Failed to load agent tree snapshots', {
-				threadId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-			return [] as AgentTreeSnapshot[];
-		});
-
-		// Exclude snapshots for active runs — they have no matching assistant
-		// message in memory yet and would misalign the positional
-		// snapshot-to-message matching in parseStoredMessages.
-		if (options?.excludeRunIds?.length) {
-			const excluded = new Set(options.excludeRunIds);
-			snapshots = snapshots.filter((s) => !excluded.has(s.runId));
-		}
-
-		// PHASE 2 (durable-log flag): for post-log threads, the agent tree is
-		// derived by folding the durable event log — the persisted snapshot tree
-		// is written but no longer read. Pre-log threads (no log rows) keep the
-		// legacy snapshot path untouched.
-		if (this.instanceAiConfig.durableLog) {
-			snapshots = await this.overlayLogDerivedTrees(threadId, snapshots, options?.excludeRunIds);
-		}
+		// The agent tree of every assistant turn is derived by folding the
+		// durable event log; there is no separate snapshot store to read.
+		const snapshots = await this.buildLogDerivedTrees(threadId, options?.excludeRunIds);
 
 		// Surface the in-flight messages from any suspended checkpoint. The
 		// user's prompt is persisted to memory on receipt, but the intermediate
@@ -239,11 +216,7 @@ export class InstanceAiMemoryService {
 		const checkpointMessages = await this.loadInFlightCheckpointMessages(threadId);
 		const storedMessages = mergeMessagesById(result.messages, checkpointMessages);
 
-		const fallbacksBefore = messageParserStats.fallbackActivations;
 		const messages = parseStoredMessages(storedMessages, snapshots);
-		this.durableLogMetrics.notifyParserFallbacks(
-			messageParserStats.fallbackActivations - fallbacksBefore,
-		);
 		await this.flagExpiredConfirmations(messages);
 
 		const projectId = await this.agentMemory.getThreadProjectId(threadId);
@@ -251,17 +224,15 @@ export class InstanceAiMemoryService {
 	}
 
 	/**
-	 * PHASE 2 (durable-log flag, fold-on-read): supersede each snapshot's stored
-	 * tree with a fold of the durable log over the snapshot's runIds, and
-	 * synthesize snapshot entries for runs that have log rows but no snapshot
-	 * row at all (e.g. the snapshot write failed or the process died first).
-	 * Snapshot rows keep providing the message alignment metadata
-	 * (createdAt/messageGroupId/runIds); only the tree content is derived.
-	 * Threads with no log rows are returned unchanged (legacy path).
+	 * Fold the durable event log into one agent-tree snapshot entry per run
+	 * group. Runs are grouped the way the run loop groups them (by the
+	 * run-start `messageGroupId`, else alone); each entry carries the fold's
+	 * tree plus the alignment metadata (createdAt/messageGroupId/runIds) the
+	 * parser pairs assistant rows against. Active/suspended runs are excluded so
+	 * their not-yet-committed rows don't misalign the positional matching.
 	 */
-	private async overlayLogDerivedTrees(
+	private async buildLogDerivedTrees(
 		threadId: string,
-		snapshots: AgentTreeSnapshot[],
 		excludeRunIds?: string[],
 	): Promise<AgentTreeSnapshot[]> {
 		const start = Date.now();
@@ -273,13 +244,12 @@ export class InstanceAiMemoryService {
 				threadId,
 				error: error instanceof Error ? error.message : String(error),
 			});
-			return snapshots;
+			return [];
 		}
-		if (rows.length === 0) return snapshots;
+		if (rows.length === 0) return [];
 
 		// Per-run bookkeeping in seq order: events, group id (from run-start),
-		// and last-write time (mimics the snapshot row's write-at-run-finish
-		// timestamp, which the parser aligns messages by).
+		// and last-write time (the ordering key the parser aligns messages by).
 		const runs = new Map<
 			string,
 			{ events: InstanceAiEvent[]; messageGroupId?: string; lastAt: Date }
@@ -299,23 +269,10 @@ export class InstanceAiMemoryService {
 			}
 		}
 
-		let replaced = 0;
-		const covered = new Set<string>();
-		const result = snapshots.map((snapshot) => {
-			const runIds = snapshot.runIds?.length ? snapshot.runIds : [snapshot.runId];
-			const events = runIds.flatMap((runId) => runs.get(runId)?.events ?? []);
-			for (const runId of runIds) covered.add(runId);
-			if (events.length === 0) return snapshot; // pre-log run — legacy tree
-			replaced++;
-			return { ...snapshot, tree: buildAgentTreeFromEvents(events) };
-		});
-
-		// Runs recorded in the log but never snapshotted: group them the way the
-		// snapshot writer would have (by run-start messageGroupId, else alone).
 		const excluded = new Set(excludeRunIds ?? []);
 		const groups = new Map<string, { runIds: string[]; events: InstanceAiEvent[]; lastAt: Date }>();
 		for (const [runId, run] of runs) {
-			if (covered.has(runId) || excluded.has(runId)) continue;
+			if (excluded.has(runId)) continue;
 			const key = run.messageGroupId ?? runId;
 			let group = groups.get(key);
 			if (!group) {
@@ -327,15 +284,14 @@ export class InstanceAiMemoryService {
 			if (run.lastAt > group.lastAt) group.lastAt = run.lastAt;
 		}
 
-		let synthesized = 0;
+		const result: AgentTreeSnapshot[] = [];
 		for (const [key, group] of groups) {
-			// Nothing renderable beyond the run lifecycle — skip, matching today's
-			// behavior of not surfacing empty orphan cards.
+			// Nothing renderable beyond the run lifecycle — skip, so an empty
+			// orphan card never surfaces.
 			const hasContent = group.events.some(
 				(e) => e.type !== 'run-start' && e.type !== 'run-finish',
 			);
 			if (!hasContent) continue;
-			synthesized++;
 			const lastRunId = group.runIds[group.runIds.length - 1];
 			result.push({
 				tree: buildAgentTreeFromEvents(group.events),
@@ -348,7 +304,7 @@ export class InstanceAiMemoryService {
 		}
 		result.sort((a, b) => (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0));
 
-		this.durableLogMetrics.recordFoldRead(Date.now() - start, replaced, synthesized);
+		this.durableLogMetrics.recordFoldRead(Date.now() - start, result.length, result.length);
 		return result;
 	}
 
@@ -401,13 +357,6 @@ export class InstanceAiMemoryService {
 			}
 		}
 		return merged;
-	}
-
-	async getLatestRunSnapshot(
-		threadId: string,
-		options?: { messageGroupId?: string; runId?: string },
-	): Promise<AgentTreeSnapshot | undefined> {
-		return await this.dbSnapshotStorage.getLatest(threadId, options);
 	}
 
 	/**

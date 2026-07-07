@@ -1,6 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
 import type { InstanceAiEvent } from '@n8n/api-types';
-import type { GlobalConfig } from '@n8n/config';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -120,7 +119,6 @@ function buildSweeper(setup: Setup) {
 		checkpointRepo,
 		eventBus as never,
 		metrics,
-		{ instanceAi: { durableLog: true } } as GlobalConfig,
 		{ isMultiMain: setup.isMultiMain ?? false } as InstanceSettings,
 	);
 	sweeper.setResumeHost(host);

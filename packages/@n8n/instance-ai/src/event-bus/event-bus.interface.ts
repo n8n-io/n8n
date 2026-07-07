@@ -28,29 +28,15 @@ export interface InstanceAiEventBus {
 	subscribe(threadId: string, handler: (storedEvent: StoredEvent) => void): Unsubscribe;
 
 	/**
-	 * Retrieve all persisted events for a thread with id > afterId.
-	 * Used for replay on reconnect.
-	 * Returns events in id order (ascending).
-	 */
-	getEventsAfter(threadId: string, afterId: number): StoredEvent[];
-
-	/**
-	 * Retrieve all persisted events for a thread that belong to a specific run.
-	 * More efficient than getEventsAfter(threadId, 0) + filter when only one
-	 * run's events are needed (e.g. building agent tree snapshots).
+	 * Retrieve recent events for a thread that belong to a specific run.
+	 * Cache-scoped, same-process, best-effort: replay and cross-restart reads
+	 * go to the durable log, not this interface.
 	 */
 	getEventsForRun(threadId: string, runId: string): InstanceAiEvent[];
 
 	/**
-	 * Retrieve all persisted events for a thread that belong to any of the
-	 * specified runs. Used for rebuilding merged assistant turns that span
-	 * multiple auto-follow-up runs.
+	 * Retrieve recent events for a thread that belong to any of the specified
+	 * runs. Same cache-scoped semantics as getEventsForRun.
 	 */
 	getEventsForRuns(threadId: string, runIds: string[]): InstanceAiEvent[];
-
-	/**
-	 * Get the next event ID that will be assigned for a thread.
-	 * Useful for the SSE endpoint to know whether there are events to replay.
-	 */
-	getNextEventId(threadId: string): number;
 }

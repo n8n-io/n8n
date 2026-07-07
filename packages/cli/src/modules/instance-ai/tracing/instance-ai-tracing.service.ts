@@ -19,11 +19,11 @@ import type { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
+import type { InstanceAiEventLogRepository } from '../repositories/instance-ai-event-log.repository';
 import {
 	buildInstanceAiRunTraceMetadata,
 	type InstanceAiRunTraceMetadataOptions,
 } from '../run-trace-metadata';
-import type { DbSnapshotStorage } from '../storage/db-snapshot-storage';
 import { TraceReplayState } from '../trace-replay-state';
 
 // Stable UUID namespace for deterministic feedback IDs. Submitting the same
@@ -60,7 +60,7 @@ export type InstanceAiTracingEventBus = Pick<InProcessEventBus, 'getEventsForRun
 
 export type InstanceAiTracingRunState = Pick<RunStateRegistry<User>, 'attachTracing'>;
 
-export type InstanceAiTracingSnapshotStorage = Pick<DbSnapshotStorage, 'findLangsmithAnchor'>;
+export type InstanceAiTracingEventLog = Pick<InstanceAiEventLogRepository, 'findLangsmithAnchor'>;
 
 export type InstanceAiTracingAiService = Pick<AiService, 'isProxyEnabled' | 'getClient'>;
 
@@ -68,7 +68,7 @@ export type InstanceAiTracingServiceOptions = {
 	logger: Logger;
 	eventBus: InstanceAiTracingEventBus;
 	runState: InstanceAiTracingRunState;
-	dbSnapshotStorage: InstanceAiTracingSnapshotStorage;
+	eventLog: InstanceAiTracingEventLog;
 	aiService: InstanceAiTracingAiService;
 };
 
@@ -104,7 +104,7 @@ export class InstanceAiTracingService {
 
 	private readonly runState: InstanceAiTracingRunState;
 
-	private readonly dbSnapshotStorage: InstanceAiTracingSnapshotStorage;
+	private readonly eventLog: InstanceAiTracingEventLog;
 
 	private readonly aiService: InstanceAiTracingAiService;
 
@@ -112,7 +112,7 @@ export class InstanceAiTracingService {
 		this.logger = options.logger;
 		this.eventBus = options.eventBus;
 		this.runState = options.runState;
-		this.dbSnapshotStorage = options.dbSnapshotStorage;
+		this.eventLog = options.eventLog;
 		this.aiService = options.aiService;
 	}
 
@@ -450,7 +450,7 @@ export class InstanceAiTracingService {
 		responseId: string,
 		payload: { rating: 'up' | 'down'; comment?: string },
 	): Promise<void> {
-		const anchor = await this.dbSnapshotStorage.findLangsmithAnchor(threadId, responseId);
+		const anchor = await this.eventLog.findLangsmithAnchor(threadId, responseId);
 		if (!anchor) {
 			this.logger.debug('No LangSmith anchor for feedback; skipping annotation', {
 				threadId,

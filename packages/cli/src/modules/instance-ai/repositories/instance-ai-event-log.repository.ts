@@ -99,6 +99,32 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 	}
 
 	/**
+	 * Resolve the LangSmith root-run anchor for a responseId (UI sends
+	 * `messageGroupId ?? runId`). The ids ride on the run-start fact; prefer the
+	 * earliest run-start in the message group so feedback attaches to the
+	 * `message_turn` root run, falling back to the run whose id matches.
+	 */
+	async findLangsmithAnchor(
+		threadId: string,
+		responseId: string,
+	): Promise<{ langsmithRunId: string; langsmithTraceId: string } | undefined> {
+		const rows = await this.createQueryBuilder('e')
+			.where('e.threadId = :threadId', { threadId })
+			.andWhere("e.type = 'run-start'")
+			.orderBy('e.seq', 'ASC')
+			.getMany();
+		const starts = rows.map((r) => jsonParse<InstanceAiEvent>(r.payload));
+		const byGroup = starts.find(
+			(e) => e.type === 'run-start' && e.payload.messageGroupId === responseId,
+		);
+		const anchor = byGroup ?? starts.find((e) => e.runId === responseId);
+		if (anchor?.type !== 'run-start') return undefined;
+		const { langsmithRunId, langsmithTraceId } = anchor.payload;
+		if (!langsmithRunId || !langsmithTraceId) return undefined;
+		return { langsmithRunId, langsmithTraceId };
+	}
+
+	/**
 	 * Interrupted-run sweep source: runs whose log has a `run-start` but no
 	 * `run-finish`. Pure log query — liveness (is a main still driving it?) is
 	 * the caller's concern.

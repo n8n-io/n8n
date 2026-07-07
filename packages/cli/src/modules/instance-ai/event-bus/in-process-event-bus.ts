@@ -1,6 +1,5 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { InstanceAiEventBus, StoredEvent } from '@n8n/instance-ai';
@@ -12,10 +11,10 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { DurableEventLog, type DrainedEvent } from './durable-event-log';
 
-// With the durable log ON, the in-memory store is a live-delivery CACHE over
-// instance_ai_events, not the source of truth: eviction bounds the cache and
-// can no longer lose data (replay reads the DB through DurableEventLog).
-// With the flag OFF it is today's only store, and eviction is data loss.
+// The in-memory store is a live-delivery CACHE over instance_ai_events, not a
+// source of truth: eviction bounds the cache and cannot lose data (replay
+// reads the DB through DurableEventLog). Its only readers are same-process
+// best-effort consumers (tracing metadata, liveness dedupe).
 const MAX_EVENTS_PER_THREAD = 500;
 const MAX_BYTES_PER_THREAD = 2 * 1024 * 1024; // 2 MB
 
@@ -28,74 +27,28 @@ export class InProcessEventBus implements InstanceAiEventBus {
 	/** Approximate serialized size per thread for eviction. */
 	private readonly sizeBytes = new Map<string, number>();
 
-	/** Legacy path (flag off): monotonic counter per thread — never resets even
-	 *  after eviction, but does reset on process restart. */
-	private readonly nextId = new Map<string, number>();
-
-	private readonly durableLogEnabled: boolean;
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
 		private readonly eventLog: DurableEventLog,
-		globalConfig: GlobalConfig,
 	) {
 		this.logger = this.logger.scoped('instance-ai');
-		this.durableLogEnabled = globalConfig.instanceAi.durableLog;
 		// Avoid warnings when many SSE clients connect (each adds a listener per thread)
 		this.emitter.setMaxListeners(0);
 	}
 
 	/**
-	 * Publish an event for a thread.
-	 *
-	 * Flag OFF (default): store it in memory, deliver it to local SSE
-	 * subscribers, and — in multi-main — relay it to sibling mains so the main
-	 * holding the client's SSE connection (which may not be this one) delivers it.
-	 *
-	 * Flag ON: synchronous enqueue into the durable log's per-thread drain,
-	 * which assigns `seq` from the DB, persists durable facts, and hands each
-	 * event back here: durable ones enter the cache; live ones go to local SSE
-	 * subscribers and — in multi-main — to sibling mains via the pubsub relay.
-	 * Ephemeral events (deltas, status) carry NO id, so SSE frames have no
-	 * `id:` line and the browser's replay cursor only ever points at durable facts.
+	 * Publish an event for a thread: synchronous enqueue into the durable log's
+	 * per-thread drain, which assigns `seq` from the DB, persists durable facts,
+	 * and hands each event back here: durable ones enter the cache; live ones go
+	 * to local SSE subscribers and — in multi-main — to sibling mains via the
+	 * pubsub relay. Ephemeral events (deltas, status) carry NO id, so SSE frames
+	 * have no `id:` line and the browser's replay cursor only ever points at
+	 * durable facts.
 	 */
 	publish(threadId: string, event: InstanceAiEvent): void {
-		if (this.durableLogEnabled) {
-			this.eventLog.publish(threadId, event, (drained) => this.onDrained(threadId, drained));
-			return;
-		}
-		// Serialize once: reused for the store's size accounting and the relay guard.
-		const sizeBytes = Buffer.byteLength(JSON.stringify(event), 'utf8');
-		this.storeAndEmit(threadId, event, sizeBytes);
-		this.relayToSiblings(threadId, event, sizeBytes);
-	}
-
-	/**
-	 * Store + deliver locally WITHOUT relaying. Used by the pubsub handler when a
-	 * relayed event arrives from another main — re-relaying would loop. The local
-	 * `nextId` stamps the SSE id, so this main is the id authority for the
-	 * connection it serves.
-	 */
-	publishLocalOnly(threadId: string, event: InstanceAiEvent): void {
-		this.storeAndEmit(threadId, event, Buffer.byteLength(JSON.stringify(event), 'utf8'));
-	}
-
-	private storeAndEmit(threadId: string, event: InstanceAiEvent, eventSizeBytes: number): void {
-		const events = this.getOrCreateStore(threadId);
-		const id = (this.nextId.get(threadId) ?? 0) + 1;
-		this.nextId.set(threadId, id);
-
-		const stored: StoredEvent = { id, event };
-
-		events.push(stored);
-		this.sizeBytes.set(threadId, (this.sizeBytes.get(threadId) ?? 0) + eventSizeBytes);
-
-		// Evict oldest events if count or size exceeds caps
-		this.evictIfNeeded(threadId, events);
-
-		this.emitter.emit(threadId, stored);
+		this.eventLog.publish(threadId, event, (drained) => this.onDrained(threadId, drained));
 	}
 
 	/**
@@ -103,15 +56,11 @@ export class InProcessEventBus implements InstanceAiEventBus {
 	 * if it actually holds a subscription for the thread (avoids every main
 	 * buffering every thread).
 	 *
-	 * Flag OFF: re-emit through the local store, so the local `nextId` stamps
-	 * the SSE id and this main is the id authority for the connection it serves.
-	 *
-	 * Flag ON: emit WITHOUT an id — the durable seq lives in the shared DB, so a
-	 * sibling's client replays correctly from DurableEventLog on reconnect
-	 * regardless of which main it lands on; the per-main id-authority problem
-	 * does not exist with a DB-backed log. Once #33558's relay payload carries
-	 * the produced StoredEvent, the seq can pass through so sibling live frames
-	 * advance cursors too.
+	 * The event is emitted WITHOUT an id — the durable seq lives in the shared
+	 * DB, so a sibling's client replays correctly from DurableEventLog on
+	 * reconnect regardless of which main it lands on. Once #33558's relay
+	 * payload carries the produced StoredEvent, the seq can pass through so
+	 * sibling live frames advance cursors too.
 	 */
 	@OnPubSubEvent('relay-instance-ai-event', { instanceType: 'main' })
 	handleRelayInstanceAiEvent({
@@ -119,11 +68,7 @@ export class InProcessEventBus implements InstanceAiEventBus {
 		event,
 	}: { threadId: string; event: InstanceAiEvent }): void {
 		if (!this.hasSubscribers(threadId)) return;
-		if (this.durableLogEnabled) {
-			this.emitter.emit(threadId, { event } satisfies StoredEvent);
-			return;
-		}
-		this.publishLocalOnly(threadId, event);
+		this.emitter.emit(threadId, { event } satisfies StoredEvent);
 	}
 
 	subscribe(threadId: string, handler: (storedEvent: StoredEvent) => void): () => void {
@@ -137,16 +82,10 @@ export class InProcessEventBus implements InstanceAiEventBus {
 	}
 
 	/**
-	 * Flag OFF: the only replay source. Flag ON: cache-scoped read for
-	 * same-process consumers; cross-restart/cross-main replay must use
-	 * DurableEventLog.getEventsAfter.
+	 * Cache-scoped read for same-process best-effort consumers (tracing
+	 * metadata enrichment, liveness notice dedupe). Cross-restart/cross-main
+	 * reads must use DurableEventLog.
 	 */
-	getEventsAfter(threadId: string, afterId: number): StoredEvent[] {
-		const events = this.store.get(threadId);
-		if (!events) return [];
-		return events.filter((e) => e.id !== undefined && e.id > afterId);
-	}
-
 	getEventsForRun(threadId: string, runId: string): InstanceAiEvent[] {
 		const events = this.store.get(threadId);
 		if (!events) return [];
@@ -160,21 +99,10 @@ export class InProcessEventBus implements InstanceAiEventBus {
 		return events.filter((e) => runIdSet.has(e.event.runId)).map((e) => e.event);
 	}
 
-	/** Flag ON: cache-scoped; the durable authority is DurableEventLog.getNextEventId. */
-	getNextEventId(threadId: string): number {
-		if (this.durableLogEnabled) {
-			const events = this.store.get(threadId);
-			const last = events?.length ? events[events.length - 1].id : undefined;
-			return (last ?? 0) + 1;
-		}
-		return (this.nextId.get(threadId) ?? 0) + 1;
-	}
-
 	/** Clear stored events for a specific thread (e.g. on thread expiration). */
 	clearThread(threadId: string): void {
 		this.store.delete(threadId);
 		this.sizeBytes.delete(threadId);
-		this.nextId.delete(threadId);
 		this.eventLog.clearThread(threadId);
 		this.emitter.removeAllListeners(threadId);
 	}
@@ -183,7 +111,6 @@ export class InProcessEventBus implements InstanceAiEventBus {
 	clear(): void {
 		this.store.clear();
 		this.sizeBytes.clear();
-		this.nextId.clear();
 		this.eventLog.clear();
 		this.emitter.removeAllListeners();
 	}
