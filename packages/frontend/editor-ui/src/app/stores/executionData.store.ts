@@ -2,7 +2,7 @@ import { defineStore, getActivePinia } from 'pinia';
 import { STORES } from '@n8n/stores';
 import { computed, effectScope, inject, readonly, ref, shallowReactive } from 'vue';
 import type { ComputedRef } from 'vue';
-import { createEventHook, throttledWatch } from '@vueuse/core';
+import { createEventHook } from '@vueuse/core';
 import { structuralComputed } from '@n8n/composables/structuralComputed';
 import isEqual from 'lodash/isEqual';
 import { useI18n } from '@n8n/i18n';
@@ -22,11 +22,7 @@ import type { PushPayload } from '@n8n/api-types';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { ExecutionDataStoreKey } from '@/app/constants/injectionKeys';
-import {
-	CANVAS_EXECUTION_DATA_THROTTLE_DURATION,
-	FORM_NODE_TYPE,
-	WAIT_NODE_TYPE,
-} from '@/app/constants';
+import { FORM_NODE_TYPE, WAIT_NODE_TYPE } from '@/app/constants';
 import { getPairedItemsMapping } from '@/app/utils/pairedItemUtils';
 import { sanitizeHtml } from '@/app/utils/htmlUtils';
 import { CHANGE_ACTION } from './workflowDocument/types';
@@ -58,6 +54,81 @@ export interface SetExecutionOptions {
 
 export function createExecutionDataId(executionId: string): ExecutionDataId {
 	return executionId;
+}
+
+/**
+ * Aggregates one node's task list into its `ExecutionOutputMap` (per-connection,
+ * per-output-index item totals and iteration counts, with per-target breakdowns
+ * for non-main connections). Pure — depends only on the task list and the
+ * name→id resolver, which makes per-node incremental updates possible.
+ */
+function aggregateNodeOutputMap(
+	taskList: ITaskData[],
+	resolveNodeIdByName: (name: string) => string | undefined,
+): ExecutionOutputMap {
+	const agg: ExecutionOutputMap = {};
+
+	for (const runIteration of taskList) {
+		const data = runIteration.data ?? {};
+		for (const connectionType of Object.keys(data)) {
+			const connectionTypeData = data[connectionType] ?? {};
+			agg[connectionType] = agg[connectionType] ?? {};
+
+			for (const outputIndex of Object.keys(connectionTypeData)) {
+				const parsedOutputIndex = parseInt(outputIndex, 10);
+				const items = connectionTypeData[parsedOutputIndex] ?? [];
+
+				agg[connectionType][outputIndex] = agg[connectionType][outputIndex] ?? {
+					total: 0,
+					iterations: 0,
+					...(connectionType !== NodeConnectionTypes.Main ? { byTarget: {} } : {}),
+				};
+
+				// Non-main connections (AI tools/memory/embeddings) wrap items
+				// in a `response` array; the apparent itemCount is the length
+				// of that array, not the outer items list. Check only the first
+				// item assuming uniform structure.
+				let itemCount = items.length;
+				if (connectionType !== NodeConnectionTypes.Main && items.length > 0) {
+					const first = items[0];
+					if (
+						first?.json &&
+						typeof first.json === 'object' &&
+						'response' in first.json &&
+						Array.isArray((first.json as { response: unknown[] }).response)
+					) {
+						itemCount = (first.json as { response: unknown[] }).response.length;
+					}
+				}
+
+				if (runIteration.executionStatus !== 'canceled') {
+					agg[connectionType][outputIndex].iterations += 1;
+				}
+				agg[connectionType][outputIndex].total += itemCount;
+
+				if (connectionType !== NodeConnectionTypes.Main) {
+					const callingNodeName = runIteration.source?.[0]?.previousNode;
+					if (callingNodeName) {
+						const targetId = resolveNodeIdByName(callingNodeName);
+						if (targetId) {
+							const entry = agg[connectionType][outputIndex];
+							entry.byTarget = entry.byTarget ?? {};
+							entry.byTarget[targetId] = entry.byTarget[targetId] ?? {
+								total: 0,
+								iterations: 0,
+							};
+							if (runIteration.executionStatus !== 'canceled') {
+								entry.byTarget[targetId].iterations += 1;
+							}
+							entry.byTarget[targetId].total += itemCount;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return agg;
 }
 
 /**
@@ -194,6 +265,15 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			return map;
 		});
 
+		// Inverse index (name → id) for run-data keyed lookups; runData is keyed
+		// by node name while the output map below is keyed by node id.
+		const executionNodeIdByName = computed(() => {
+			const map = new Map<string, string>();
+			const nodes = execution.value?.workflowData?.nodes;
+			if (nodes) for (const n of nodes) map.set(n.name, n.id);
+			return map;
+		});
+
 		function getExecutionNodeById(nodeId: string): INode | undefined {
 			return executionNodeById.value.get(nodeId);
 		}
@@ -317,18 +397,18 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 		void onExecutionDataChange.on(reconcileByIdEntries);
 		reconcileByIdEntries();
 
-		// Throttled per-node-id aggregation of run data into `ExecutionOutputMap`.
-		// Aggregation cost scales with task list length and item counts; rebuilding
-		// on every push during a fast execution would be expensive. The throttle
-		// batches updates; consumers (label rendering, item counters) only invalidate
-		// when their specific id slot changes, gated by `isEqual` per node.
+		// Per-node-id aggregation of run data into `ExecutionOutputMap`, updated
+		// synchronously with every mutation so canvas item counters and edge
+		// states reflect pushes immediately. Per-node mutations re-aggregate only
+		// the affected node; whole-execution replacements do a full rebuild.
+		// Consumers (label rendering, item counters) only invalidate when their
+		// specific id slot changes, gated by `isEqual` per node.
 		const executionRunDataOutputMapByNodeId = shallowReactive(
 			new Map<string, ExecutionOutputMap>(),
 		);
 
 		function rebuildExecutionRunDataOutputMap() {
 			const runData = executionRunData.value;
-			const snapshotNodes = execution.value?.workflowData?.nodes ?? [];
 			if (!runData) {
 				for (const k of Array.from(executionRunDataOutputMapByNodeId.keys())) {
 					executionRunDataOutputMapByNodeId.delete(k);
@@ -336,76 +416,13 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 				return;
 			}
 
-			const nameToId = new Map(snapshotNodes.map((n) => [n.name, n.id]));
+			const resolveNodeIdByName = (name: string) => executionNodeIdByName.value.get(name);
 			const next = new Map<string, ExecutionOutputMap>();
 
 			for (const nodeName of Object.keys(runData)) {
-				const nodeId = nameToId.get(nodeName);
+				const nodeId = resolveNodeIdByName(nodeName);
 				if (!nodeId) continue;
-
-				const agg: ExecutionOutputMap = {};
-				const taskList = runData[nodeName] ?? [];
-
-				for (const runIteration of taskList) {
-					const data = runIteration.data ?? {};
-					for (const connectionType of Object.keys(data)) {
-						const connectionTypeData = data[connectionType] ?? {};
-						agg[connectionType] = agg[connectionType] ?? {};
-
-						for (const outputIndex of Object.keys(connectionTypeData)) {
-							const parsedOutputIndex = parseInt(outputIndex, 10);
-							const items = connectionTypeData[parsedOutputIndex] ?? [];
-
-							agg[connectionType][outputIndex] = agg[connectionType][outputIndex] ?? {
-								total: 0,
-								iterations: 0,
-								...(connectionType !== NodeConnectionTypes.Main ? { byTarget: {} } : {}),
-							};
-
-							// Non-main connections (AI tools/memory/embeddings) wrap items
-							// in a `response` array; the apparent itemCount is the length
-							// of that array, not the outer items list. Check only the first
-							// item assuming uniform structure.
-							let itemCount = items.length;
-							if (connectionType !== NodeConnectionTypes.Main && items.length > 0) {
-								const first = items[0];
-								if (
-									first?.json &&
-									typeof first.json === 'object' &&
-									'response' in first.json &&
-									Array.isArray((first.json as { response: unknown[] }).response)
-								) {
-									itemCount = (first.json as { response: unknown[] }).response.length;
-								}
-							}
-
-							if (runIteration.executionStatus !== 'canceled') {
-								agg[connectionType][outputIndex].iterations += 1;
-							}
-							agg[connectionType][outputIndex].total += itemCount;
-
-							if (connectionType !== NodeConnectionTypes.Main) {
-								const callingNodeName = runIteration.source?.[0]?.previousNode;
-								if (callingNodeName) {
-									const targetId = nameToId.get(callingNodeName);
-									if (targetId) {
-										const entry = agg[connectionType][outputIndex];
-										entry.byTarget = entry.byTarget ?? {};
-										entry.byTarget[targetId] = entry.byTarget[targetId] ?? {
-											total: 0,
-											iterations: 0,
-										};
-										if (runIteration.executionStatus !== 'canceled') {
-											entry.byTarget[targetId].iterations += 1;
-										}
-										entry.byTarget[targetId].total += itemCount;
-									}
-								}
-							}
-						}
-					}
-				}
-				next.set(nodeId, agg);
+				next.set(nodeId, aggregateNodeOutputMap(runData[nodeName] ?? [], resolveNodeIdByName));
 			}
 
 			// Reconcile to the shallowReactive map for per-id reactivity. isEqual
@@ -422,10 +439,27 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			}
 		}
 
-		throttledWatch(executionResultDataLastUpdate, rebuildExecutionRunDataOutputMap, {
-			throttle: CANVAS_EXECUTION_DATA_THROTTLE_DURATION,
-			immediate: true,
-		});
+		function applyUpdateOutputMapEntry(nodeName: string) {
+			// Node not in the workflowData snapshot — same skip as the full rebuild.
+			const nodeId = executionNodeIdByName.value.get(nodeName);
+			if (!nodeId) return;
+
+			const taskList = executionRunData.value?.[nodeName];
+			if (!taskList) {
+				executionRunDataOutputMapByNodeId.delete(nodeId);
+				return;
+			}
+
+			const next = aggregateNodeOutputMap(taskList, (name) =>
+				executionNodeIdByName.value.get(name),
+			);
+			const existing = executionRunDataOutputMapByNodeId.get(nodeId);
+			if (!existing || !isEqual(existing, next)) {
+				executionRunDataOutputMapByNodeId.set(nodeId, next);
+			}
+		}
+
+		rebuildExecutionRunDataOutputMap();
 
 		function fireChange(action: ChangeAction, nodeName?: string) {
 			void onExecutionDataChange.trigger({
@@ -440,8 +474,9 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 		 * in-place mutation first (channel 1 — nested reactivity for deep
 		 * watchers), then call this to cover the remaining three:
 		 * 2. replaces `execution.value` identity so identity-based watchers fire,
-		 * 3. bumps `executionResultDataLastUpdate`, driving the throttled rebuild
-		 *    of `executionRunDataOutputMapByNodeId`,
+		 * 3. bumps `executionResultDataLastUpdate` and synchronously updates
+		 *    `executionRunDataOutputMapByNodeId` (per-node when `nodeName` is
+		 *    given, full rebuild otherwise),
 		 * 4. emits `fireChange`, driving event-based reconciliation of the
 		 *    per-node projection maps.
 		 * Every in-place runData mutation must end by going through this helper —
@@ -451,6 +486,11 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			executionResultDataLastUpdate.value = Date.now();
 			if (execution.value) {
 				execution.value = { ...execution.value };
+			}
+			if (nodeName) {
+				applyUpdateOutputMapEntry(nodeName);
+			} else {
+				rebuildExecutionRunDataOutputMap();
 			}
 			fireChange(action, nodeName);
 		}
@@ -482,6 +522,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			executionResultDataLastUpdate.value = Date.now();
 			executionPairedItemMappings.value = getPairedItemsMapping(value);
 			executionStartedData.value = undefined;
+			rebuildExecutionRunDataOutputMap();
 			fireChange(value === null ? CHANGE_ACTION.DELETE : CHANGE_ACTION.UPDATE);
 		}
 
@@ -490,6 +531,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			execution.value = { ...execution.value, data: runExecutionData };
 			executionResultDataLastUpdate.value = Date.now();
 			executionStartedData.value = undefined;
+			rebuildExecutionRunDataOutputMap();
 			fireChange(CHANGE_ACTION.UPDATE);
 		}
 
@@ -707,6 +749,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			executionResultDataLastUpdate.value = undefined;
 			executionStartedData.value = undefined;
 			executionPairedItemMappings.value = {};
+			rebuildExecutionRunDataOutputMap();
 			fireChange(CHANGE_ACTION.DELETE);
 		}
 

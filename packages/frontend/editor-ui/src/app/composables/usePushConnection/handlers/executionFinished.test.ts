@@ -47,6 +47,12 @@ const opts: PushHandlerOptions = {
 	documentId,
 };
 
+// The handler applies fetched state in a detached continuation; drain it
+// before asserting post-fetch effects.
+async function flushPromises() {
+	await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 const mockShowMessage = vi.fn();
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
@@ -503,6 +509,7 @@ describe('executionFinished', () => {
 			},
 			opts,
 		);
+		await flushPromises();
 
 		// Verify that setActiveExecutionId was called with undefined
 		expect(workflowExecutionStateStore.setActiveExecutionId).toHaveBeenCalledWith(undefined);
@@ -629,8 +636,14 @@ describe('executionFinished', () => {
 			},
 			opts,
 		);
+		await flushPromises();
 
 		expect(fetchSpy).toHaveBeenCalledWith('exec-x');
+		// The slot is still pending (null) when the fetch resolves. Since this
+		// finish already matched the pending slot at dispatch, it must be treated
+		// as ours — not as a newer run — so the failed fetch clears the active
+		// execution instead of leaving the document stuck in the running state.
+		expect(workflowExecutionStateStore.setActiveExecutionId).toHaveBeenCalledWith(undefined);
 	});
 
 	it('keeps fetched execution pin data available after a live execution finishes', async () => {
@@ -689,6 +702,7 @@ describe('executionFinished', () => {
 			},
 			opts,
 		);
+		await flushPromises();
 
 		expect(workflowExecutionStateStore.activeExecutionId).toBeUndefined();
 		expect(workflowExecutionStateStore.displayedExecutionId).toBe(executionId);
@@ -746,6 +760,94 @@ describe('executionFinished', () => {
 
 		expect(fetchSpy).not.toHaveBeenCalled();
 		expect(workflowExecutionStateStore.clearStoppedExecutionId).not.toHaveBeenCalled();
+	});
+
+	it('resolves before the execution fetch completes (does not block the push queue)', async () => {
+		setActivePinia(createTestingPinia());
+
+		const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
+		vi.spyOn(workflowExecutionStateStore, 'activeExecutionId', 'get').mockReturnValue('123');
+
+		let resolveFetch!: (value: null) => void;
+		const fetchSpy = vi.spyOn(useWorkflowsStore(), 'fetchExecutionDataById').mockImplementation(
+			async () =>
+				await new Promise((resolve) => {
+					resolveFetch = resolve;
+				}),
+		);
+
+		await executionFinished(
+			{
+				type: 'executionFinished',
+				data: { executionId: '123', workflowId: '1', status: 'error' },
+			},
+			opts,
+		);
+
+		// The handler already resolved while the fetch is still pending.
+		expect(fetchSpy).toHaveBeenCalled();
+		expect(workflowExecutionStateStore.setActiveExecutionId).not.toHaveBeenCalled();
+
+		resolveFetch(null);
+		await flushPromises();
+
+		expect(workflowExecutionStateStore.setActiveExecutionId).toHaveBeenCalledWith(undefined);
+	});
+
+	it('does not clobber a newer run when the fetch resolves after a re-run started', async () => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+
+		const executionId = 'old-exec';
+		const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
+		useExecutionDataStore(createExecutionDataId(executionId)).setExecution(
+			mock<IExecutionResponse>({
+				id: executionId,
+				workflowId: '1',
+				status: 'running',
+				data: { resultData: { runData: {} } },
+			}),
+		);
+		workflowExecutionStateStore.setActiveExecutionId(executionId);
+
+		let resolveFetch!: (value: IExecutionResponse) => void;
+		vi.spyOn(useWorkflowsStore(), 'fetchExecutionDataById').mockImplementation(
+			async () =>
+				await new Promise((resolve) => {
+					resolveFetch = resolve;
+				}),
+		);
+
+		await executionFinished(
+			{
+				type: 'executionFinished',
+				data: { executionId, workflowId: '1', status: 'success' },
+			},
+			opts,
+		);
+
+		// A newer run takes over the document while the fetch is in flight.
+		workflowExecutionStateStore.setActiveExecutionId('new-exec');
+
+		resolveFetch({
+			id: executionId,
+			workflowId: '1',
+			finished: true,
+			mode: 'manual',
+			status: 'success',
+			startedAt: new Date(),
+			createdAt: new Date(),
+			workflowData: mock<IWorkflowDb>({ id: '1', nodes: [], connections: {} }),
+			data: createRunExecutionData({ resultData: { runData: {} } }),
+		});
+		await flushPromises();
+
+		// The newer run's document-level state is untouched; only the finished
+		// execution's keyed store got backfilled.
+		expect(workflowExecutionStateStore.activeExecutionId).toBe('new-exec');
+		expect(workflowExecutionStateStore.displayedExecutionId).not.toBe(executionId);
+		expect(useExecutionDataStore(createExecutionDataId(executionId)).execution?.status).toBe(
+			'success',
+		);
 	});
 
 	it('does not let a stale stopped-execution marker hijack a newer run', async () => {
