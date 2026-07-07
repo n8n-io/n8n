@@ -36,16 +36,19 @@ export class InstanceAiTestController {
 	 * exercised without an LLM. E2E-gated like every endpoint here.
 	 */
 	@Post('/test/publish-events', { skipAuth: true })
-	async publishTestEvents(
-		@Body
-		payload: {
+	async publishTestEvents(req: Request) {
+		this.assertTraceReplayEnabled();
+		// Manual parse: `@Body` reflection can't materialize plain structural
+		// types (same limitation the confirm endpoint documents).
+		const payload = req.body as {
 			threadId: string;
 			userId: string;
 			events: unknown[];
 			ensureThread?: boolean;
-		},
-	) {
-		this.assertTraceReplayEnabled();
+		};
+		if (typeof payload.threadId !== 'string' || typeof payload.userId !== 'string') {
+			throw new BadRequestError('threadId and userId are required');
+		}
 		if (payload.ensureThread) {
 			const user = await this.userRepo.findOneByOrFail({ id: payload.userId });
 			const personalProject = await this.projectRepo.getPersonalProjectForUserOrFail(user.id);

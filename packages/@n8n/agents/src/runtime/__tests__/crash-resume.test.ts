@@ -66,7 +66,9 @@ function recordResult(section: string, data: unknown): void {
 	if (existsSync(RESULTS_PATH)) {
 		try {
 			all = JSON.parse(readFileSync(RESULTS_PATH, 'utf8')) as Record<string, unknown>;
-		} catch {}
+		} catch {
+			// start fresh when the results file is unreadable
+		}
 	}
 	all[section] = data;
 	writeFileSync(RESULTS_PATH, JSON.stringify(all, null, 1));
@@ -129,7 +131,7 @@ class RecordingCheckpointStore implements CheckpointStore {
 	deletes: string[] = [];
 
 	async save(key: string, state: SerializableAgentState): Promise<void> {
-		this.saves.push({ key, state: JSON.parse(JSON.stringify(state)) as SerializableAgentState });
+		this.saves.push({ key, state: structuredClone(state) });
 		this.map.set(key, state);
 		await Promise.resolve();
 	}

@@ -695,7 +695,7 @@ describe('durable event log harness', () => {
 						const dt = performance.now() - t0;
 						if (i >= 3) samples.push(dt); // 3 warmups
 					}
-					const assistant = lastResult!.messages.filter((m) => m.role === 'assistant');
+					const assistant = (lastResult?.messages ?? []).filter((m) => m.role === 'assistant');
 					const treeToolCalls = assistant.reduce(
 						(n, m) => n + (m.agentTree ? countToolCalls(m.agentTree) : 0),
 						0,

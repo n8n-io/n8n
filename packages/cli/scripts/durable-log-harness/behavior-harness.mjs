@@ -379,18 +379,29 @@ async function scenarioRestartMidRun(ctx, flagOn) {
 	// Give replay a moment; flag off replays nothing, so don't block on it.
 	await new Promise((r) => setTimeout(r, 1500));
 	sse2.close();
-	const replayedFacts = sse2.frames.filter((f) => f.id !== undefined).length;
+	const replayedFrames = sse2.frames.filter((f) => f.id !== undefined);
 	const messages = await request(port, 'GET', `/rest/instance-ai/threads/${threadId}/messages`, {
 		cookie: auth.cookie,
 	});
 	const nextEventId = messages.body?.data?.nextEventId ?? messages.body?.nextEventId;
+	// Flag on: the cursor survives the restart (seq continues from the DB),
+	// replayed frames all sit past the cursor, and the startup sweep appends
+	// run-finish{interrupted} for the half-run, so the replay carries it.
+	// Flag off: the counter resets to 1 and nothing replays (the shipped bug,
+	// demonstrated).
+	const pass = flagOn
+		? nextEventId > cursor &&
+			replayedFrames.every((f) => f.id > cursor) &&
+			replayedFrames.some((f) => f.data?.type === 'run-finish' && f.data?.payload?.status === 'interrupted')
+		: replayedFrames.length === 0 && nextEventId === 1;
 	return {
 		scenario: 'R2 restart mid-run, reconnect with stale cursor',
 		flag: flagOn ? 'on' : 'off',
 		cursorBeforeRestart: cursor,
-		replayedFactsAfterRestart: replayedFacts,
+		replayedFactsAfterRestart: replayedFrames.length,
+		replayedTypes: replayedFrames.map((f) => f.data?.type),
 		nextEventIdAfterRestart: nextEventId,
-		pass: flagOn ? replayedFacts === 0 && nextEventId > cursor : true, // see report notes
+		pass,
 	};
 }
 
