@@ -9,10 +9,22 @@ vi.mock('fs', () => ({
 import { readdirSync, readFileSync } from 'fs';
 import { jsonParse } from 'n8n-workflow';
 
+import { parseCliArgs } from '../cli/args';
+import { loadTestCases } from '../data/source';
 import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
+import type { EvalLogger } from '../harness/logger';
 
 const mockedReaddir = vi.mocked(readdirSync);
 const mockedReadFile = vi.mocked(readFileSync);
+
+const logger: EvalLogger = {
+	info: () => {},
+	verbose: () => {},
+	success: () => {},
+	warn: () => {},
+	error: () => {},
+	isVerbose: false,
+};
 
 const FAKE_FILES = [
 	'contact-form-automation.json',
@@ -143,7 +155,12 @@ describe('loadWorkflowTestCasesWithFiles', () => {
 			expect(cases.every((c) => c.testCase.datasets.includes('full'))).toBe(true);
 		});
 
-		it('filters to test cases whose datasets array contains the tier', () => {
+		it('filters to test cases whose datasets array contains the tier', async () => {
+			mockedReaddir.mockImplementation((dir) =>
+				String(dir).endsWith('/workflows')
+					? (FAKE_FILES as unknown as ReturnType<typeof readdirSync>)
+					: ([] as unknown as ReturnType<typeof readdirSync>),
+			);
 			mockedReadFile.mockImplementation((p) => {
 				const filename = String(p);
 				if (filename.includes('weather-alert')) {
@@ -155,19 +172,26 @@ describe('loadWorkflowTestCasesWithFiles', () => {
 				return STUB_TEST_CASE;
 			});
 
-			const inPr = loadWorkflowTestCasesWithFiles(undefined, undefined, 'pr')
+			const inPr = (await loadTestCases(parseCliArgs(['--tier', 'pr']), logger))
 				.map((c) => c.fileSlug)
 				.sort();
-			const inFull = loadWorkflowTestCasesWithFiles(undefined, undefined, 'full')
+			const inFull = (await loadTestCases(parseCliArgs(['--tier', 'full']), logger))
 				.map((c) => c.fileSlug)
 				.sort();
 
 			expect(inPr).toEqual(['weather-alert']);
-			const allSlugs = loadWorkflowTestCasesWithFiles().map((c) => c.fileSlug).sort();
+			const allSlugs = loadWorkflowTestCasesWithFiles()
+				.map((c) => c.fileSlug)
+				.sort();
 			expect(inFull).toEqual(allSlugs);
 		});
 
-		it('composes with --filter: tier filter applies after substring filter', () => {
+		it('composes with --filter: tier filter applies after substring filter', async () => {
+			mockedReaddir.mockImplementation((dir) =>
+				String(dir).endsWith('/workflows')
+					? (FAKE_FILES as unknown as ReturnType<typeof readdirSync>)
+					: ([] as unknown as ReturnType<typeof readdirSync>),
+			);
 			mockedReadFile.mockImplementation((p) => {
 				const filename = String(p);
 				if (filename.includes('weather-alert')) {
@@ -179,14 +203,21 @@ describe('loadWorkflowTestCasesWithFiles', () => {
 				return STUB_TEST_CASE;
 			});
 
-			const result = loadWorkflowTestCasesWithFiles('weather', undefined, 'pr')
+			const result = (
+				await loadTestCases(parseCliArgs(['--filter', 'weather', '--tier', 'pr']), logger)
+			)
 				.map((c) => c.fileSlug)
 				.sort();
 			expect(result).toEqual(['weather-alert']);
 		});
 
-		it('throws when --tier matches no test cases (catches typos instead of silent green)', () => {
-			expect(() => loadWorkflowTestCasesWithFiles(undefined, undefined, 'prr')).toThrow(
+		it('throws when --tier matches no test cases (catches typos instead of silent green)', async () => {
+			mockedReaddir.mockImplementation((dir) =>
+				String(dir).endsWith('/workflows')
+					? (FAKE_FILES as unknown as ReturnType<typeof readdirSync>)
+					: ([] as unknown as ReturnType<typeof readdirSync>),
+			);
+			await expect(loadTestCases(parseCliArgs(['--tier', 'prr']), logger)).rejects.toThrow(
 				/No test cases match --tier "prr"/,
 			);
 		});
@@ -196,6 +227,40 @@ describe('loadWorkflowTestCasesWithFiles', () => {
 				JSON.stringify({ ...jsonParse(STUB_TEST_CASE), datasets: [] }),
 			);
 			expect(() => loadWorkflowTestCasesWithFiles()).toThrow(/datasets/i);
+		});
+	});
+
+	describe('combined disk source', () => {
+		it('selects agent-directory cases with --tier agents', async () => {
+			mockedReaddir.mockImplementation((dir) => {
+				const dirname = String(dir);
+				if (dirname.endsWith('/agents')) {
+					return ['agent-intent.json'] as unknown as ReturnType<typeof readdirSync>;
+				}
+				if (dirname.endsWith('/workflows')) {
+					return ['workflow-full.json'] as unknown as ReturnType<typeof readdirSync>;
+				}
+				return [] as unknown as ReturnType<typeof readdirSync>;
+			});
+			mockedReadFile.mockImplementation((p) => {
+				const filename = String(p);
+				const parsed = jsonParse(STUB_TEST_CASE);
+				if (filename.includes('agent-intent')) {
+					return JSON.stringify({
+						...parsed,
+						datasets: ['agents'],
+						executionScenarios: undefined,
+						processExpectations: ['The agent classifies intent.'],
+					});
+				}
+				return JSON.stringify({ ...parsed, datasets: ['full'] });
+			});
+
+			const cases = await loadTestCases(parseCliArgs(['--tier', 'agents']), logger);
+
+			expect(cases.map((c) => c.fileSlug)).toEqual(['agent-intent']);
+			expect(cases[0].testCase.datasets).toEqual(['agents']);
+			expect(cases[0].testCase.executionScenarios).toBeUndefined();
 		});
 	});
 });

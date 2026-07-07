@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
 	displayForm,
 	executionFilterToQueryFilter,
+	hasCancellableExecutions,
 	waitingNodeTooltip,
 	getExecutionErrorMessage,
 	getExecutionErrorToastConfiguration,
@@ -18,6 +19,7 @@ import type {
 	ExecutionError,
 	INodeTypeDescription,
 	Workflow,
+	ExecutionSummary,
 } from 'n8n-workflow';
 import { type INodeUi, type IWorkflowDb } from '@/Interface';
 import {
@@ -1054,5 +1056,27 @@ describe('generateFakeDataFromSchema', () => {
 		const result = generateFakeDataFromSchema({ fields: [] });
 		expect(result).toHaveLength(1);
 		expect(result[0].json).toEqual({});
+	});
+});
+
+describe('hasCancellableExecutions', () => {
+	const executionWithStatus = (status: string) => ({ status }) as ExecutionSummary;
+
+	it.each(['new', 'running', 'waiting'])(
+		'returns true when at least one execution is %s',
+		(status) => {
+			expect(hasCancellableExecutions([executionWithStatus(status)])).toBe(true);
+		},
+	);
+
+	it.each(['success', 'error', 'crashed', 'canceled', 'unknown'])(
+		'returns false when executions are only %s',
+		(status) => {
+			expect(hasCancellableExecutions([executionWithStatus(status)])).toBe(false);
+		},
+	);
+
+	it('returns false for an empty executions list', () => {
+		expect(hasCancellableExecutions([])).toBe(false);
 	});
 });

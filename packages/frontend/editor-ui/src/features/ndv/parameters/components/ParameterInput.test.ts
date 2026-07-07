@@ -136,6 +136,16 @@ vi.mock('@/features/ai/assistant/composables/useBuilderTodos', () => {
 	};
 });
 
+const { mockIsActionOptionVisible } = vi.hoisted(() => ({
+	mockIsActionOptionVisible: vi.fn(
+		(_node: unknown, _parameterName: string, _optionValue: string): boolean => true,
+	),
+}));
+
+vi.mock('@/app/composables/useAiGateway', () => ({
+	useAiGateway: vi.fn(() => ({ isActionOptionVisible: mockIsActionOptionVisible })),
+}));
+
 const renderComponent = createComponentRenderer(ParameterInput, {
 	pinia: createTestingPinia(),
 	global: {
@@ -180,6 +190,8 @@ describe('ParameterInput.vue', () => {
 			}),
 		};
 		settingsStore.settings.enterprise = createMockEnterpriseSettings();
+		mockIsActionOptionVisible.mockReset();
+		mockIsActionOptionVisible.mockReturnValue(true);
 	});
 
 	afterEach(() => {
@@ -237,6 +249,113 @@ describe('ParameterInput.vue', () => {
 		await userEvent.click(options[1]);
 
 		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'append' })]);
+	});
+
+	describe('AI gateway action filtering', () => {
+		const operationParameter = {
+			displayName: 'Operation',
+			name: 'operation',
+			type: 'options' as const,
+			noDataExpression: true,
+			options: [
+				{ name: 'Append or Update Row', value: 'appendOrUpdate' },
+				{ name: 'Append Row', value: 'append' },
+			],
+			default: 'appendOrUpdate',
+		};
+
+		test('hides operation options the AI gateway cannot run', async () => {
+			mockIsActionOptionVisible.mockImplementation(
+				(_node, _name, value) => value === 'appendOrUpdate',
+			);
+
+			const { container, baseElement } = renderComponent({
+				props: {
+					path: 'parameters.operation',
+					parameter: operationParameter,
+					modelValue: 'appendOrUpdate',
+				},
+			});
+
+			await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+
+			const options = baseElement.querySelectorAll('.list-option');
+			expect(options.length).toEqual(1);
+			expect(options[0].querySelector('.option-headline')).toHaveTextContent(
+				'Append or Update Row',
+			);
+		});
+
+		test('keeps the current value visible even when unsupported', async () => {
+			mockIsActionOptionVisible.mockReturnValue(false);
+
+			const { container, baseElement } = renderComponent({
+				props: {
+					path: 'parameters.operation',
+					parameter: operationParameter,
+					modelValue: 'append',
+				},
+			});
+
+			await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+
+			const options = baseElement.querySelectorAll('.list-option');
+			expect(options.length).toEqual(1);
+			expect(options[0].querySelector('.option-headline')).toHaveTextContent('Append Row');
+		});
+
+		test('uses the resource locator value as the current value', async () => {
+			mockIsActionOptionVisible.mockReturnValue(false);
+
+			const { container, baseElement } = renderComponent({
+				props: {
+					path: 'parameters.operation',
+					parameter: operationParameter,
+					modelValue: { __rl: true, value: 'append', mode: 'list' },
+				},
+			});
+
+			await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+
+			const options = baseElement.querySelectorAll('.list-option');
+			expect(options.length).toEqual(1);
+			expect(options[0].querySelector('.option-headline')).toHaveTextContent('Append Row');
+		});
+
+		test('passes a null node to the gateway check when there is no active node', async () => {
+			mockNdvState.activeNode = undefined;
+			mockIsActionOptionVisible.mockReturnValue(false);
+
+			const { container } = renderComponent({
+				props: {
+					path: 'parameters.operation',
+					parameter: operationParameter,
+					modelValue: 'append',
+				},
+			});
+
+			await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+
+			expect(mockIsActionOptionVisible).toHaveBeenCalledWith(null, 'operation', 'appendOrUpdate');
+		});
+
+		test('does not filter nested operation parameters', async () => {
+			mockIsActionOptionVisible.mockReturnValue(false);
+
+			const { container, baseElement } = renderComponent({
+				props: {
+					path: 'parameters.filters.operation',
+					parameter: operationParameter,
+					modelValue: 'appendOrUpdate',
+				},
+			});
+
+			await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+
+			const options = baseElement.querySelectorAll('.list-option');
+			expect(options.length).toEqual(2);
+			expect(mockIsActionOptionVisible).not.toHaveBeenCalled();
+		});
 	});
 
 	test('should render an options parameter even if it has invalid fields (like displayName)', async () => {

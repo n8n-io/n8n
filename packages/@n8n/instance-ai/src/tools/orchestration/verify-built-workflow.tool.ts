@@ -17,6 +17,7 @@ import {
 } from './verification/finalize-result';
 import { prepareVerificationRun } from './verification/prepare-run';
 import { resolveVerificationTarget } from './verification/resolve-target';
+import { executionNodeErrorSchema } from '../../workflow-loop/workflow-loop-state';
 
 const DEFAULT_NODE_PREVIEW_CHARS = 600;
 
@@ -98,6 +99,7 @@ const verifyBuiltWorkflowOutputSchema = z.object({
 	simulatedNodes: z.array(z.object({ nodeName: z.string(), reason: z.string() })).optional(),
 	simulationNote: z.string().optional(),
 	lastNodeExecuted: z.string().optional(),
+	nodeErrors: z.array(executionNodeErrorSchema).optional(),
 	nodesNotReached: z.array(z.string()).optional(),
 	coverageNote: z.string().optional(),
 	data: z.record(z.unknown()).optional(),
@@ -182,10 +184,11 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				simulatedNodes:
 					analysis.reachedSimulatedNodes.length > 0 ? analysis.reachedSimulatedNodes : undefined,
 				simulationNote: analysis.simulationNote,
+				nodeErrors: analysis.nodeErrors.length > 0 ? analysis.nodeErrors : undefined,
 				nodesNotReached: analysis.nodesNotReached.length > 0 ? analysis.nodesNotReached : undefined,
 				coverageNote: analysis.coverageNote,
 				...(resolvedInput.includeData ? { data: result.data } : {}),
-				error: result.error,
+				error: analysis.errorMessage,
 				remediation: analysis.remediation,
 				guidance: analysis.remediation?.guidance,
 			};

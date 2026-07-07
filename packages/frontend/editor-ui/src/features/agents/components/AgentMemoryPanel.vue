@@ -233,7 +233,6 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 					:is-loading="isLoading"
 					:project-id="projectId"
 					:warn-missing-credentials="true"
-					horizontal
 					data-testid="agent-memory-recall-model-selector"
 					@change="onMemoryRecallModelChange"
 					@select-credential="onSelectCredential"
