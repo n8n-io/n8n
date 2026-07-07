@@ -110,14 +110,7 @@ export function isVisibleTimelineEntry(
 	toolCallsById: Record<string, InstanceAiToolCallState>,
 	childrenById: Record<string, InstanceAiAgentNode>,
 ): boolean {
-	if (entry.type === 'text') {
-		if (agentNode.status === 'active') {
-			return isActiveTextVisible(agentNode, entry);
-		}
-		return true;
-	}
-
-	if (entry.type === 'reasoning') return true;
+	if (entry.type === 'text' || entry.type === 'reasoning') return true;
 
 	if (entry.type === 'tool-call') {
 		const tc = toolCallsById[entry.toolCallId];

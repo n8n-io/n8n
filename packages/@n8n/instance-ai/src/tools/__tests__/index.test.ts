@@ -200,15 +200,4 @@ describe('domain tool construction', () => {
 		expect(orchestrationTools.has('plan')).toBe(false);
 		expect(orchestrationTools.has('delegate')).toBe(false);
 	});
-
-	it('registers the agent delegate tool', () => {
-		const context = makeContext({
-			workflowTaskService: {},
-			domainContext: {},
-		} as Partial<InstanceAiContext>);
-
-		const orchestrationTools = createOrchestrationTools(context as never);
-
-		expect(orchestrationTools.get('agent')).toMatchObject({ name: 'agent' });
-	});
 });

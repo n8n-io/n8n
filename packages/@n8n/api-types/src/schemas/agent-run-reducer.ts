@@ -152,6 +152,42 @@ function appendTimelineReasoning(
 }
 
 /**
+ * Append reasoning to timeline — merges consecutive reasoning entries within
+ * the same responseId, so each LLM step (and anything interleaved with tool
+ * calls or text) gets its own reasoning segment.
+ */
+function appendTimelineReasoning(
+	timeline: InstanceAiTimelineEntry[],
+	text: string,
+	responseId?: string,
+): void {
+	const last = timeline.at(-1);
+	if (last?.type === 'reasoning' && last.responseId === responseId) {
+		last.content += text;
+	} else {
+		timeline.push({ type: 'reasoning', content: text, ...(responseId ? { responseId } : {}) });
+	}
+}
+
+/**
+ * Trees persisted before reasoning became a timeline entry carry only the
+ * aggregate `reasoning` string. Copy it into the timeline once so resumed
+ * runs can append new reasoning segments without dropping the old block.
+ */
+export function normalizeLegacyReasoningTimeline(node: InstanceAiAgentNode): void {
+	if (!node.reasoning || node.timeline.some((entry) => entry.type === 'reasoning')) return;
+	node.timeline.unshift({ type: 'reasoning', content: node.reasoning });
+}
+
+/** Walk an agent tree and normalize legacy reasoning on every node. */
+export function normalizeAgentTree(tree: InstanceAiAgentNode): void {
+	normalizeLegacyReasoningTimeline(tree);
+	for (const child of tree.children) {
+		normalizeAgentTree(child);
+	}
+}
+
+/**
  * Whether a node carries any content worth preserving across a follow-up
  * `run-start`. Covers every renderable field a turn can populate — not just
  * text/tools/children — so a reasoning-, status-, result-, or error-only tree
@@ -491,6 +527,7 @@ function adoptNode(
 	for (const tc of node.toolCalls) {
 		state.toolCallsById[tc.toolCallId] = tc;
 	}
+	normalizeLegacyReasoningTimeline(node);
 	for (const child of node.children) {
 		adoptNode(state, child, node.agentId);
 	}

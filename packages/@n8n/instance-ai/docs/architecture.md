@@ -115,13 +115,6 @@ Evaluation nodes after the user approves an eval proposal. It receives a
 focused tool subset, publishes events directly to the event bus (ADR-014), and
 cannot spawn further agents.
 
-For bounded, **synchronous** investigation work (not detached background
-execution), the orchestrator has the `agent` delegate tool — the `@n8n/agents`
-SDK `delegate_subagent` tool, registered under this model-facing name. Every
-delegation, including the default `subAgentId: "inline"`, runs through the
-Instance AI sub-agent registry (`subagents/`) and the same synchronous runner
-every delegation uses. See `docs/subagents.md`.
-
 ### 3. Observational Memory
 
 `@n8n/agents` observational memory compresses old messages into dense observations via
@@ -147,7 +140,6 @@ graph TD
     O -->|direct| T4[create-tasks]
     O -->|direct| T5[data-tables]
     O -->|eval-setup-with-agent| S5[Eval Setup Agent]
-    O -->|"agent (subAgentId)"| S8["Sub-agent registry"]
 
     S3 -->|kind: build-workflow| S4[Orchestrator Follow-Up]
     S3 -->|kind: checkpoint| S6[Orchestrator Follow-Up]
@@ -156,20 +148,12 @@ graph TD
     S4 -->|tools| T9[workspace files]
     S4 -->|tools| T10
     S5 -->|tools| T11[workflows + nodes]
-    S8 -->|"workflow-context-scout"| S7["Workflow Context Scout"]
-    S8 -->|"inline"| S9[general-purpose]
-    S8 -->|"instance-explorer"| S10[Instance Explorer]
-    S8 -->|"execution-debugger"| S11[Execution Debugger]
 
     style O fill:#f9f,stroke:#333
     style S3 fill:#ffa,stroke:#333
     style S4 fill:#bbf,stroke:#333
     style S5 fill:#bbf,stroke:#333
     style S6 fill:#bbf,stroke:#333
-    style S7 fill:#bbf,stroke:#333
-    style S9 fill:#bbf,stroke:#333
-    style S10 fill:#bbf,stroke:#333
-    style S11 fill:#bbf,stroke:#333
 ```
 
 **Orchestrator** handles directly:
@@ -192,14 +176,6 @@ graph TD
 - Detached background agent that patches eval nodes into an existing workflow
 - Triggered after `evals(action="propose")` returns `shouldDelegateToEvalSetupAgent: true`
 
-**Sub-agent delegation** (`agent` tool + `subagents/` registry):
-- Synchronous, bounded delegation — the child runs and returns its result in
-  the same turn, unlike planned tasks or eval setup
-- `subAgentId: "inline"` (the default) resolves to `general-purpose`;
-  `workflow-context-scout`, `instance-explorer`, and `execution-debugger` are
-  listed specialists
-- See `docs/subagents.md` for the definition shape and full registry
-
 ## Package Responsibilities
 
 ### `@n8n/instance-ai` (Core)
@@ -208,8 +184,7 @@ The agent package — framework-agnostic business logic.
 
 - **Agent factory** (`agent/`) — creates orchestrator instances with tools, memory, MCP, and tool search
 - **Sub-agent factory** (`agent/`) — creates the eval-setup background agent and shared sub-agent protocol
-- **Orchestration tools** (`tools/orchestration/`) — `create-tasks`, `update-tasks`, `cancel-background-task`, `correct-background-task`, `eval-setup-with-agent`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`, `agent` (delegate)
-- **Sub-agents** (`subagents/`) — TypeScript sub-agent definitions and registry (`docs/subagents.md`); the `agent` delegate tool's host runner
+- **Orchestration tools** (`tools/orchestration/`) — `create-tasks`, `update-tasks`, `cancel-background-task`, `correct-background-task`, `eval-setup-with-agent`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`
 - **Domain tools** (`tools/`) — native tools across workflows, executions, credentials, nodes, data tables, workspace, and web research
 - **Knowledge base** (`knowledge-base/`, `workspace/`) — best-practices guides and curated templates materialized in the builder sandbox for workspace tools to read
 - **Runtime** (`runtime/`) — stream execution engine, resumable streams with HITL suspension, background task manager, run state registry
@@ -465,10 +440,9 @@ allowing the user to approve or deny access to specific hosts.
 - **Domain access gating** — external URL fetches require per-domain user approval
 - **Memory isolation** — messages, observations, plans, and event history are
   thread-scoped. Cross-user isolation is enforced.
-- **Sub-agent containment** — the eval-setup background agent and every `agent`
-  delegate-tool sub-agent cannot spawn further agents, receive only native
-  domain tools (no MCP tools), and have a bounded `maxIterations`. A mandatory
-  protocol prevents cascading delegation.
+- **Sub-agent containment** — the eval-setup background agent cannot spawn further
+  agents, receives only its wired tool subset (no MCP tools), and has a bounded
+  `maxIterations`. A mandatory protocol prevents cascading delegation.
 - **MCP tool isolation** — MCP tools are name-checked against reserved domain tool
   names to prevent malicious shadowing. Schema sanitization prevents schema-based attacks.
 - **Sandbox isolation** — when enabled, code execution runs in isolated Daytona

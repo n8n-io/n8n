@@ -3,6 +3,7 @@ import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import { BedrockEmbeddings } from '@langchain/aws';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
 import { getNodeProxyAgent, logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
+import { getAwsDomain } from 'n8n-nodes-base/aws-credentials';
 import { awsNodeAuthOptions, awsNodeCredentials } from 'n8n-nodes-base/dist/nodes/Aws/utils';
 
 import {
@@ -109,7 +110,8 @@ export class EmbeddingsAwsBedrock implements INodeType {
 		const { region, credentials } = await resolveAwsCredentials(this, itemIndex);
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
-		const bedrockEndpoint = `https://bedrock-runtime.${region}.amazonaws.com`;
+		// getAwsDomain keeps China (amazonaws.com.cn) / GovCloud endpoints correct.
+		const bedrockEndpoint = `https://bedrock-runtime.${region}.${getAwsDomain(region)}`;
 		const proxyAgent = getNodeProxyAgent(bedrockEndpoint);
 
 		const clientConfig: BedrockRuntimeClientConfig = {

@@ -60,39 +60,6 @@ workflow-local table requirements belong in the builder task spec; plan only
 when the table schema is shared, independently durable, or creates real
 dependency coordination.
 
-### `agent`
-
-SDK delegate tool (`@n8n/agents` `delegate_subagent`, registered under this
-model-facing name) — hands a bounded, self-contained investigation to a
-focused sub-agent that runs in an isolated context and returns only a concise
-result. Every delegation, including `subAgentId: "inline"`, routes through the
-Instance AI host runner, which runs the child through the same synchronous
-sub-agent machinery (tracing, `agent-spawned`/`agent-completed` events). The
-SDK's own inline child runner is never invoked. Full definition reference:
-`docs/subagents.md`.
-
-Pre-build discovery also uses this tool: delegate to `workflow-context-scout`
-before loading `workflow-builder` for builds touching external services or
-unfamiliar nodes. Put the services and categories in `goal`, the build goal and
-constraints in `context`, and the expected debrief shape in `expectedOutput`.
-The host appends verbatim type definitions after the scout's answer.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `subAgentId` | string | yes | `"inline"` for the default sub-agent, or one of the listed specialist IDs |
-| `taskName` | string | yes | Short human-readable name for the delegated task |
-| `goal` | string | yes | The concrete goal the sub-agent should accomplish |
-| `context` | string | no | Everything the child needs — it sees nothing else |
-| `expectedOutput` | string | no | Expected shape or contents of the answer |
-| `difficulty` | `"low" \| "medium" \| "high"` | no | Accepted but ignored in v1 — every definition runs on the subagent model |
-
-**Returns**: `{ status, answer, usage?, error? }` — `status` is always
-`"completed"` or `"failed"`; a delegation never suspends back to the parent.
-
-**Specialists**: `workflow-context-scout`, `instance-explorer`, and
-`execution-debugger` are listed in `availableSubAgents`. `general-purpose`
-(the `"inline"` target) is registered but not listed.
-
 ### `update-tasks`
 
 Update a visible task checklist for the user. Used for lightweight progress
@@ -722,7 +689,6 @@ only the domain tools wired into that agent.
 | Tool Category | Orchestrator | Specialized background agents |
 |---------------|:---:|:---:|
 | Orchestration tools (`create-tasks`, etc.) | ✅ | ❌ |
-| Sub-agent delegation (`agent`) | ✅ | ❌ (sub-agents cannot delegate further) |
 | Workflow tools | ✅ | ✅ (eval-setup) |
 | Execution tools | ✅ | ❌ |
 | Credential tools | ✅ | ✅ (eval-setup — setup only) |

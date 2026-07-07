@@ -23,6 +23,7 @@ import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
 import ArtifactCard from './ArtifactCard.vue';
 import PlanReviewPanel, { type PlannedTaskArg, type PlanReviewStatus } from './PlanReviewPanel.vue';
+import ReasoningBlock from './ReasoningBlock.vue';
 import TaskChecklist from './TaskChecklist.vue';
 import TimelineReasoningSegment from './TimelineReasoningSegment.vue';
 import TimelineTextSegment from './TimelineTextSegment.vue';
@@ -276,6 +277,13 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 				:class="$style.timelineItem"
 			/>
 
+			<!-- Reasoning segment — one collapsible block per reasoning stage -->
+			<ReasoningBlock
+				v-else-if="entry.type === 'reasoning'"
+				:entry="entry"
+				:streaming="isStreamingTimelineEntry(props.agentNode, entry)"
+			/>
+
 			<!-- Tool call (skip internal tools like updateWorkingMemory) -->
 			<template
 				v-else-if="
@@ -288,7 +296,7 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 					v-if="toolCallsById[entry.toolCallId].renderHint === 'tasks'"
 					:tasks="props.agentNode.tasks"
 				/>
-				<!-- Hidden tool calls (builder/data-table/eval-setup/delegate handled by child agent via AgentSection) -->
+				<!-- Hidden tool calls (builder/data-table/eval-setup handled by child agent via AgentSection) -->
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'builder'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'data-table'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'eval-setup'" />

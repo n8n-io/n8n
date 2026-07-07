@@ -19,8 +19,11 @@ const props = defineProps<{
 const i18n = useI18n();
 
 const summaryText = computed(() => {
-	const { toolCallCount, textCount, questionCount, childCount } = props.group;
+	const { toolCallCount, textCount, reasoningCount, questionCount, childCount } = props.group;
 	const parts: string[] = [];
+	if (reasoningCount > 0) {
+		parts.push(i18n.baseText('instanceAi.activitySummary.reasoning'));
+	}
 	if (toolCallCount > 0) {
 		parts.push(
 			i18n.baseText('instanceAi.activitySummary.toolCalls', {

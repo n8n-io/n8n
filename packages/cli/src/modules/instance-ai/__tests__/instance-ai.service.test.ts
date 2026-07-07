@@ -165,6 +165,7 @@ import {
 	createAllTools,
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
+	createOrchestratorRunControl,
 	createSandbox,
 	createWorkspace,
 	loadInstanceAiRuntimeSkillSource,
@@ -1625,7 +1626,10 @@ type SuspendedRunResumeServiceInternals = {
 	resumeSuspendedRun: (
 		requestingUserId: string,
 		requestId: string,
-		data: { approved: boolean },
+		data: {
+			approved: boolean;
+			autoSetup?: { credentialType: string };
+		},
 	) => Promise<{ ok: true; runId: string } | null>;
 	revalidateActiveUser: Mock<(...args: [string]) => Promise<User | null>>;
 	cancelRun: Mock;
@@ -1639,6 +1643,8 @@ type SuspendedRunResumeServiceInternals = {
 	processResumedStream: Mock;
 	suspendedThreads: { dropPendingConfirmation: Mock };
 	trackInFlightExecution: Mock;
+	rebuildAgentForAutoSetupResume: Mock;
+	threadPushRef: { get: Mock };
 };
 
 function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
@@ -1664,6 +1670,7 @@ function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
 			modelId: undefined,
 			messageGroupId: 'group-1',
 			checkpoint: undefined,
+			runHandoff: undefined,
 		})),
 		activateSuspendedRun: vi.fn(),
 	};
@@ -1671,6 +1678,8 @@ function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
 	service.dbSnapshotStorage = {};
 	service.tracing = { createOrchestratorResumeTraceContext: vi.fn(async () => undefined) };
 	service.processResumedStream = vi.fn();
+	service.rebuildAgentForAutoSetupResume = vi.fn();
+	service.threadPushRef = { get: vi.fn(() => undefined) };
 	return service;
 }
 
@@ -2171,6 +2180,165 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 				toolName: 'workflows',
 				suspendPayload: { workflowId: 'wf-1', setupRequests: [] },
 			}),
+		);
+	});
+
+	it('rebuilds the agent when autoSetup is set, and resumes with the rebuilt one', async () => {
+		const service = createSuspendedRunResumeService();
+		const freshUser = { id: 'user-1', disabled: false } as User;
+		service.revalidateActiveUser.mockResolvedValue(freshUser);
+		const rebuiltAgent = { id: 'rebuilt-agent' };
+		service.rebuildAgentForAutoSetupResume.mockResolvedValue({
+			agent: rebuiltAgent,
+			modelId: { provider: 'anthropic', model: 'claude' },
+		});
+
+		const result = await service.resumeSuspendedRun('user-1', 'req-1', {
+			approved: true,
+			autoSetup: { credentialType: 'datadogApi' },
+		});
+
+		expect(result).toEqual({ ok: true, runId: 'run-1' });
+		expect(service.rebuildAgentForAutoSetupResume).toHaveBeenCalledWith(
+			freshUser,
+			'thread-a',
+			'run-1',
+			expect.any(AbortController),
+			undefined,
+			undefined,
+			'group-1',
+		);
+		expect(service.processResumedStream).toHaveBeenCalledWith(
+			rebuiltAgent,
+			expect.objectContaining({ autoSetup: { credentialType: 'datadogApi' } }),
+			expect.objectContaining({ modelId: { provider: 'anthropic', model: 'claude' } }),
+		);
+		const [, resumeDataArg] = service.processResumedStream.mock.calls[0] as [unknown, object];
+		expect(resumeDataArg).not.toHaveProperty('requiresAgentRebuild');
+	});
+
+	it('fails the resume and cancels the run when the rebuild fails', async () => {
+		const service = createSuspendedRunResumeService();
+		const freshUser = { id: 'user-1', disabled: false } as User;
+		service.revalidateActiveUser.mockResolvedValue(freshUser);
+		service.rebuildAgentForAutoSetupResume.mockResolvedValue(undefined);
+
+		const result = await service.resumeSuspendedRun('user-1', 'req-1', {
+			approved: true,
+			autoSetup: { credentialType: 'datadogApi' },
+		});
+
+		expect(result).toBeNull();
+		expect(service.cancelRun).toHaveBeenCalledWith('thread-a', 'agent_rebuild_failed');
+		expect(service.processResumedStream).not.toHaveBeenCalled();
+	});
+
+	it('does not rebuild the agent for a plain resume without autoSetup', async () => {
+		const service = createSuspendedRunResumeService();
+		const freshUser = { id: 'user-1', disabled: false } as User;
+		service.revalidateActiveUser.mockResolvedValue(freshUser);
+
+		const result = await service.resumeSuspendedRun('user-1', 'req-1', { approved: true });
+
+		expect(result).toEqual({ ok: true, runId: 'run-1' });
+		expect(service.rebuildAgentForAutoSetupResume).not.toHaveBeenCalled();
+	});
+});
+
+describe('InstanceAiService — rebuildAgentForAutoSetupResume', () => {
+	type RebuildAgentServiceInternals = {
+		rebuildAgentForAutoSetupResume: (
+			user: User,
+			threadId: string,
+			runId: string,
+			abortController: AbortController,
+			tracing: InstanceAiTraceContext | undefined,
+			runHandoff: { handoffReason?: string } | undefined,
+			messageGroupId?: string,
+		) => Promise<{ agent: unknown; modelId?: unknown } | undefined>;
+		buildFreshInstanceAgent: Mock;
+		threadPushRef: { get: Mock };
+		logger: { warn: Mock };
+	};
+
+	function createRebuildAgentService(): RebuildAgentServiceInternals {
+		const service = Object.create(
+			InstanceAiService.prototype,
+		) as unknown as RebuildAgentServiceInternals;
+		service.buildFreshInstanceAgent = vi.fn();
+		service.threadPushRef = { get: vi.fn(() => undefined) };
+		service.logger = { warn: vi.fn() };
+		return service;
+	}
+
+	it('reconnects the rebuilt context to the existing runHandoff state', async () => {
+		const service = createRebuildAgentService();
+		const orchestrationContext = {};
+		const rebuiltAgent = { id: 'rebuilt-agent' };
+		service.buildFreshInstanceAgent.mockResolvedValue({
+			agent: rebuiltAgent,
+			modelId: { provider: 'anthropic', model: 'claude' },
+			orchestrationContext,
+		});
+		const runHandoff = { handoffReason: undefined };
+
+		const result = await service.rebuildAgentForAutoSetupResume(
+			fakeUser,
+			'thread-a',
+			'run-1',
+			new AbortController(),
+			undefined,
+			runHandoff,
+			'group-1',
+		);
+
+		expect(result).toEqual({
+			agent: rebuiltAgent,
+			modelId: { provider: 'anthropic', model: 'claude' },
+		});
+		expect(createOrchestratorRunControl).toHaveBeenCalledWith(orchestrationContext, runHandoff);
+	});
+
+	it('defaults to an empty handoff state when the run never had one', async () => {
+		const service = createRebuildAgentService();
+		const orchestrationContext = {};
+		service.buildFreshInstanceAgent.mockResolvedValue({
+			agent: {},
+			modelId: { provider: 'anthropic', model: 'claude' },
+			orchestrationContext,
+		});
+
+		await service.rebuildAgentForAutoSetupResume(
+			fakeUser,
+			'thread-a',
+			'run-1',
+			new AbortController(),
+			undefined,
+			undefined,
+			'group-1',
+		);
+
+		expect(createOrchestratorRunControl).toHaveBeenCalledWith(orchestrationContext, {});
+	});
+
+	it('returns undefined and logs a warning when the rebuild throws', async () => {
+		const service = createRebuildAgentService();
+		service.buildFreshInstanceAgent.mockRejectedValue(new Error('boom'));
+
+		const result = await service.rebuildAgentForAutoSetupResume(
+			fakeUser,
+			'thread-a',
+			'run-1',
+			new AbortController(),
+			undefined,
+			undefined,
+			'group-1',
+		);
+
+		expect(result).toBeUndefined();
+		expect(service.logger.warn).toHaveBeenCalledWith(
+			'Failed to rebuild agent for credential auto-setup resume',
+			expect.objectContaining({ threadId: 'thread-a', runId: 'run-1' }),
 		);
 	});
 });
@@ -3218,5 +3386,192 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 				setupRequests: [],
 			}),
 		).toBeUndefined();
+	});
+});
+
+type TaskControlInternals = {
+	instanceSettings: { isMultiMain: boolean };
+	publisher: { publishCommand: Mock };
+	backgroundTasks: { getTaskSnapshots: Mock };
+	logger: { error: Mock };
+	sendCorrectionToTask: Mock;
+	cancelBackgroundTask: Mock;
+	cancelRun: Mock;
+	clearThreadState: Mock;
+	routeCorrectionToTask: InstanceAiService['routeCorrectionToTask'];
+	routeCancelBackgroundTask: InstanceAiService['routeCancelBackgroundTask'];
+	routeCancelRun: InstanceAiService['routeCancelRun'];
+	routeClearThreadState: InstanceAiService['routeClearThreadState'];
+	handleRelayTaskControl: InstanceAiService['handleRelayTaskControl'];
+};
+
+function buildTaskControlService(isMultiMain: boolean): TaskControlInternals {
+	const service = Object.create(InstanceAiService.prototype) as unknown as TaskControlInternals;
+	service.instanceSettings = { isMultiMain };
+	service.publisher = { publishCommand: vi.fn().mockResolvedValue(undefined) };
+	service.backgroundTasks = { getTaskSnapshots: vi.fn(() => []) };
+	service.logger = { error: vi.fn() };
+	service.sendCorrectionToTask = vi.fn(() => 'queued');
+	service.cancelBackgroundTask = vi.fn();
+	service.cancelRun = vi.fn();
+	service.clearThreadState = vi.fn(async () => {});
+	return service;
+}
+
+describe('InstanceAiService — cross-main task-control routing', () => {
+	describe('routeCorrectionToTask', () => {
+		it('broadcasts when the task is not local and multi-main', async () => {
+			const service = buildTaskControlService(true);
+			service.sendCorrectionToTask.mockReturnValue('task-not-found');
+
+			await service.routeCorrectionToTask('thread-a', 'task-1', 'try again');
+
+			expect(service.sendCorrectionToTask).toHaveBeenCalledWith('thread-a', 'task-1', 'try again');
+			expect(service.publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'relay-instance-ai-task-control',
+				payload: {
+					threadId: 'thread-a',
+					taskId: 'task-1',
+					action: 'correct',
+					correction: 'try again',
+				},
+			});
+		});
+
+		it('does not broadcast when the correction was applied locally', async () => {
+			const service = buildTaskControlService(true);
+			service.sendCorrectionToTask.mockReturnValue('queued');
+
+			await service.routeCorrectionToTask('thread-a', 'task-1', 'try again');
+
+			expect(service.publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('does not broadcast in single-main even on a local miss', async () => {
+			const service = buildTaskControlService(false);
+			service.sendCorrectionToTask.mockReturnValue('task-not-found');
+
+			await service.routeCorrectionToTask('thread-a', 'task-1', 'try again');
+
+			expect(service.publisher.publishCommand).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('routeCancelBackgroundTask', () => {
+		it('broadcasts when the task is not local and multi-main', async () => {
+			const service = buildTaskControlService(true);
+			service.backgroundTasks.getTaskSnapshots.mockReturnValue([]);
+
+			await service.routeCancelBackgroundTask('thread-a', 'task-1');
+
+			expect(service.cancelBackgroundTask).toHaveBeenCalledWith('thread-a', 'task-1');
+			expect(service.publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'relay-instance-ai-task-control',
+				payload: { threadId: 'thread-a', taskId: 'task-1', action: 'cancel-task' },
+			});
+		});
+
+		it('does not broadcast when the task is local', async () => {
+			const service = buildTaskControlService(true);
+			service.backgroundTasks.getTaskSnapshots.mockReturnValue([{ taskId: 'task-1' }]);
+
+			await service.routeCancelBackgroundTask('thread-a', 'task-1');
+
+			expect(service.cancelBackgroundTask).toHaveBeenCalledWith('thread-a', 'task-1');
+			expect(service.publisher.publishCommand).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('routeCancelRun / routeClearThreadState', () => {
+		it('routeCancelRun cancels locally and always fans out in multi-main', async () => {
+			const service = buildTaskControlService(true);
+
+			await service.routeCancelRun('thread-a');
+
+			expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
+			expect(service.publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'relay-instance-ai-task-control',
+				payload: { threadId: 'thread-a', action: 'cancel-thread' },
+			});
+		});
+
+		it('routeCancelRun does not fan out in single-main', async () => {
+			const service = buildTaskControlService(false);
+
+			await service.routeCancelRun('thread-a');
+
+			expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
+			expect(service.publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('routeClearThreadState clears locally and fans out in multi-main', async () => {
+			const service = buildTaskControlService(true);
+
+			await service.routeClearThreadState('thread-a');
+
+			expect(service.clearThreadState).toHaveBeenCalledWith('thread-a');
+			expect(service.publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'relay-instance-ai-task-control',
+				payload: { threadId: 'thread-a', action: 'clear-thread' },
+			});
+		});
+	});
+
+	describe('handleRelayTaskControl', () => {
+		it('applies a relayed correction via the local method and never re-broadcasts', async () => {
+			const service = buildTaskControlService(true);
+
+			await service.handleRelayTaskControl({
+				threadId: 'thread-a',
+				taskId: 'task-1',
+				action: 'correct',
+				correction: 'fix it',
+			});
+
+			expect(service.sendCorrectionToTask).toHaveBeenCalledWith('thread-a', 'task-1', 'fix it');
+			expect(service.publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('ignores a correction relay missing its correction text', async () => {
+			const service = buildTaskControlService(true);
+
+			await service.handleRelayTaskControl({
+				threadId: 'thread-a',
+				taskId: 'task-1',
+				action: 'correct',
+			});
+
+			expect(service.sendCorrectionToTask).not.toHaveBeenCalled();
+		});
+
+		it('routes cancel-task / cancel-thread / clear-thread to the local methods', async () => {
+			const service = buildTaskControlService(true);
+
+			await service.handleRelayTaskControl({
+				threadId: 'thread-a',
+				taskId: 'task-1',
+				action: 'cancel-task',
+			});
+			await service.handleRelayTaskControl({ threadId: 'thread-a', action: 'cancel-thread' });
+			await service.handleRelayTaskControl({ threadId: 'thread-a', action: 'clear-thread' });
+
+			expect(service.cancelBackgroundTask).toHaveBeenCalledWith('thread-a', 'task-1');
+			expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
+			expect(service.clearThreadState).toHaveBeenCalledWith('thread-a');
+			expect(service.publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('swallows and logs errors from a local action (no unhandled rejection on the sibling main)', async () => {
+			const service = buildTaskControlService(true);
+			service.clearThreadState.mockRejectedValue(new Error('db exploded'));
+
+			await expect(
+				service.handleRelayTaskControl({ threadId: 'thread-a', action: 'clear-thread' }),
+			).resolves.toBeUndefined();
+			expect(service.logger.error).toHaveBeenCalledWith(
+				'Failed to apply relayed Instance AI task-control',
+				expect.objectContaining({ threadId: 'thread-a', action: 'clear-thread' }),
+			);
+		});
 	});
 });

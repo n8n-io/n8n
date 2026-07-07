@@ -73,9 +73,15 @@ export interface WorkflowDetail extends WorkflowSummary {
 export interface WorkflowNode {
 	name: string;
 	type: string;
+	typeVersion?: number;
 	parameters?: Record<string, unknown>;
 	position: number[];
 	webhookId?: string;
+}
+
+export interface ExecutionNodeError {
+	nodeName: string;
+	message?: string;
 }
 
 export interface ExecutionResult {
@@ -88,6 +94,8 @@ export interface ExecutionResult {
 	 * nothing" apart from "never reached".
 	 */
 	executedNodeNames?: string[];
+	/** Node-level errors from run data, including continue-on-fail errors. */
+	nodeErrors?: ExecutionNodeError[];
 	/** Name of the last node the execution processed, when available. */
 	lastNodeExecuted?: string;
 	error?: string;
@@ -264,8 +272,9 @@ export interface InstanceAiWorkflowService {
 		scope?: 'project' | 'instance';
 	}): Promise<WorkflowSummary[]>;
 	get(workflowId: string): Promise<WorkflowDetail>;
-	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode). */
-	getAsWorkflowJSON(workflowId: string): Promise<WorkflowJSON>;
+	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode).
+	 *  Pass a versionId to get a past version's graph instead of the current draft. */
+	getAsWorkflowJSON(workflowId: string, versionId?: string): Promise<WorkflowJSON>;
 	/** Cheap version-only lookup. The adapter projects just `versionId` and
 	 *  `updatedAt` from the workflow row, skipping `nodes`/`connections`/etc.
 	 *  Use to validate per-session caches when the body isn't needed. */
@@ -747,6 +756,12 @@ export type LocalGatewayStatus =
 
 export interface InstanceAiContext {
 	userId: string;
+	/**
+	 * Trace handle for the current agent run, threaded in from the orchestration
+	 * context. Lets domain tools (e.g. build-workflow) emit explicit child runs
+	 * that land on the active trace. Absent outside a traced run.
+	 */
+	tracing?: InstanceAiTraceContext;
 	projectId?: string;
 	workflowService: InstanceAiWorkflowService;
 	executionService: InstanceAiExecutionService;
@@ -1036,6 +1051,12 @@ export interface McpServerConfig {
 	 * in a custom `fetch` implementation).
 	 */
 	cacheKey?: string;
+	metadata?: {
+		/** Registry slug for Instance AI MCP registry servers. */
+		serverSlug?: string;
+		/** User who owns the registry MCP connection. */
+		userId?: string;
+	};
 }
 
 // ── Memory ───────────────────────────────────────────────────────────────────
@@ -1112,6 +1133,9 @@ export interface InstanceAiTraceRunInit {
 
 export interface InstanceAiTraceRunFinishOptions {
 	outputs?: unknown;
+	/** Skip structural sanitization for `outputs` — for pre-bounded machine payloads
+	 *  whose consumer needs lossless structure. Export-time scrubbing still applies. */
+	rawOutputs?: boolean;
 	metadata?: Record<string, unknown>;
 	error?: string;
 }
@@ -1150,6 +1174,9 @@ export interface InstanceAiTraceContext {
 		parentRun: InstanceAiTraceRun,
 		options: InstanceAiTraceRunInit,
 	) => Promise<InstanceAiTraceRun>;
+	/** False once the turn's trace runtime is shut down — runs created through a
+	 *  stale handle (e.g. a tool resumed in a later turn) export nothing. */
+	isLive?: () => boolean;
 	withRunTree: <T>(run: InstanceAiTraceRun, fn: () => Promise<T>) => Promise<T>;
 	withActiveSpan: <T>(run: InstanceAiTraceRun, fn: () => Promise<T>) => Promise<T>;
 	toHeaders: (run: InstanceAiTraceRun) => Record<string, string>;

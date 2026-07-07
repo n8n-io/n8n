@@ -6,6 +6,8 @@ import {
 	findAgent,
 	toAgentTree,
 	stateFromAgentTree,
+	normalizeLegacyReasoningTimeline,
+	normalizeAgentTree,
 } from '../agent-run-reducer';
 import type { AgentRunState } from '../agent-run-reducer';
 import type {
@@ -60,8 +62,8 @@ function makeReasoningDelta(
 		type: 'reasoning-delta',
 		runId,
 		agentId,
-		payload: { text },
 		...(responseId ? { responseId } : {}),
+		payload: { text },
 	};
 }
 
@@ -397,72 +399,28 @@ describe('agent-run-reducer', () => {
 			expect(state.agentsById['root'].textContent).toBe('');
 		});
 
-		it('reasoning-delta appends to agent reasoning', () => {
+		it('reasoning-delta appends to agent reasoning and timeline', () => {
 			const state = stateWithRun('run-1', 'root');
 			reduceEvent(state, makeReasoningDelta('run-1', 'root', 'thinking'));
+			reduceEvent(state, makeReasoningDelta('run-1', 'root', ' hard'));
 
-			expect(state.agentsById['root'].reasoning).toBe('thinking');
+			expect(state.agentsById['root'].reasoning).toBe('thinking hard');
+			// Consecutive reasoning should merge into one timeline entry
 			expect(state.agentsById['root'].timeline).toEqual([
-				{ type: 'reasoning', content: 'thinking' },
+				{ type: 'reasoning', content: 'thinking hard' },
 			]);
 		});
 
-		it('consecutive reasoning-delta events merge into one timeline entry', () => {
+		it('reasoning deltas with different responseIds create separate timeline entries', () => {
 			const state = stateWithRun('run-1', 'root');
-			reduceEvent(state, makeReasoningDelta('run-1', 'root', 'think', 'r-1'));
-			reduceEvent(state, makeReasoningDelta('run-1', 'root', ' more', 'r-1'));
+			reduceEvent(state, makeReasoningDelta('run-1', 'root', 'step one', 'run-1:step:1'));
+			reduceEvent(state, makeReasoningDelta('run-1', 'root', 'step two', 'run-1:step:2'));
 
-			expect(state.agentsById['root'].reasoning).toBe('think more');
+			expect(state.agentsById['root'].reasoning).toBe('step onestep two');
 			expect(state.agentsById['root'].timeline).toEqual([
-				{ type: 'reasoning', content: 'think more', responseId: 'r-1' },
+				{ type: 'reasoning', content: 'step one', responseId: 'run-1:step:1' },
+				{ type: 'reasoning', content: 'step two', responseId: 'run-1:step:2' },
 			]);
-		});
-
-		it('tool call splits reasoning into separate timeline blocks', () => {
-			const state = stateWithRun('run-1', 'root');
-			reduceEvent(state, makeReasoningDelta('run-1', 'root', 'before', 'r-1'));
-			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'search-nodes'));
-			reduceEvent(state, makeReasoningDelta('run-1', 'root', 'after', 'r-2'));
-
-			expect(state.agentsById['root'].timeline).toEqual([
-				{ type: 'reasoning', content: 'before', responseId: 'r-1' },
-				{ type: 'tool-call', toolCallId: 'tc-1' },
-				{ type: 'reasoning', content: 'after', responseId: 'r-2' },
-			]);
-		});
-
-		it('different responseId merges into one block when no tool call separates them', () => {
-			const state = stateWithRun('run-1', 'root');
-			reduceEvent(state, makeReasoningDelta('run-1', 'root', 'step1', 'r-1'));
-			reduceEvent(state, makeReasoningDelta('run-1', 'root', ' step2', 'r-2'));
-
-			expect(state.agentsById['root'].timeline).toEqual([
-				{ type: 'reasoning', content: 'step1 step2', responseId: 'r-1' },
-			]);
-		});
-
-		it('reasoning separated only by text merges into one block', () => {
-			const state = stateWithRun('run-1', 'root');
-			reduceEvent(state, makeReasoningDelta('run-1', 'root', 'think', 'r-1'));
-			reduceEvent(state, makeTextDelta('run-1', 'root', 'narration', 'r-1'));
-			reduceEvent(state, makeReasoningDelta('run-1', 'root', ' more', 'r-1'));
-
-			expect(state.agentsById['root'].timeline).toEqual([
-				{ type: 'reasoning', content: 'think more', responseId: 'r-1' },
-				{ type: 'text', content: 'narration', responseId: 'r-1' },
-			]);
-		});
-
-		it('reasoning timeline entries survive persistence round-trip', () => {
-			const state = stateWithRun('run-1', 'root');
-			reduceEvent(state, makeReasoningDelta('run-1', 'root', 'before', 'r-1'));
-			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'search-nodes'));
-			reduceEvent(state, makeReasoningDelta('run-1', 'root', 'after', 'r-2'));
-
-			const tree = toAgentTree(state);
-			const adopted = stateFromAgentTree(tree);
-			expect(adopted).toBeDefined();
-			expect(adopted!.agentsById['root'].timeline).toEqual(tree.timeline);
 		});
 
 		it('reasoning-delta for sub-agent appends only to sub-agent', () => {
@@ -758,6 +716,23 @@ describe('agent-run-reducer', () => {
 			expect(timeline[0]).toEqual({ type: 'text', content: 'before tool' });
 			expect(timeline[1]).toEqual({ type: 'tool-call', toolCallId: 'tc-1' });
 			expect(timeline[2]).toEqual({ type: 'text', content: 'after tool' });
+		});
+
+		it('preserves reasoning entries interleaved with tool calls in timeline', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeReasoningDelta('run-1', 'root', 'plan the search'));
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'search'));
+			reduceEvent(state, makeToolResult('run-1', 'root', 'tc-1', 'found'));
+			reduceEvent(state, makeReasoningDelta('run-1', 'root', 'evaluate the result'));
+			reduceEvent(state, makeTextDelta('run-1', 'root', 'the answer'));
+
+			const timeline = state.agentsById['root'].timeline;
+			expect(timeline).toHaveLength(4);
+			expect(timeline[0]).toEqual({ type: 'reasoning', content: 'plan the search' });
+			expect(timeline[1]).toEqual({ type: 'tool-call', toolCallId: 'tc-1' });
+			expect(timeline[2]).toEqual({ type: 'reasoning', content: 'evaluate the result' });
+			expect(timeline[3]).toEqual({ type: 'text', content: 'the answer' });
+			expect(state.agentsById['root'].reasoning).toBe('plan the searchevaluate the result');
 		});
 	});
 
@@ -1121,6 +1096,112 @@ describe('agent-run-reducer', () => {
 				false,
 			);
 			expectStateMapsNotPolluted(state!);
+		});
+
+		it('normalizes aggregate reasoning into the timeline when adopting legacy trees', () => {
+			const tree: InstanceAiAgentNode = {
+				agentId: 'root',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: 'Answer',
+				reasoning: 'Old aggregate reasoning',
+				toolCalls: [],
+				children: [],
+				timeline: [{ type: 'text', content: 'Answer' }],
+			};
+
+			stateFromAgentTree(tree);
+
+			expect(tree.timeline).toEqual([
+				{ type: 'reasoning', content: 'Old aggregate reasoning' },
+				{ type: 'text', content: 'Answer' },
+			]);
+		});
+	});
+
+	describe('normalizeLegacyReasoningTimeline', () => {
+		it('copies aggregate reasoning into an empty timeline once', () => {
+			const node: InstanceAiAgentNode = {
+				agentId: 'root',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: 'Legacy reasoning',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			};
+
+			normalizeLegacyReasoningTimeline(node);
+
+			expect(node.timeline).toEqual([{ type: 'reasoning', content: 'Legacy reasoning' }]);
+		});
+
+		it('is a no-op when the timeline already has reasoning entries', () => {
+			const timeline: InstanceAiTimelineEntry[] = [{ type: 'reasoning', content: 'Already here' }];
+			const node: InstanceAiAgentNode = {
+				agentId: 'root',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: 'Legacy reasoning',
+				toolCalls: [],
+				children: [],
+				timeline,
+			};
+
+			normalizeLegacyReasoningTimeline(node);
+
+			expect(node.timeline).toEqual([{ type: 'reasoning', content: 'Already here' }]);
+		});
+
+		it('preserves legacy reasoning when a resumed run appends new timeline reasoning', () => {
+			const tree: InstanceAiAgentNode = {
+				agentId: 'root',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: 'Old aggregate reasoning',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			};
+			const state = stateFromAgentTree(tree)!;
+
+			reduceEvent(state, makeRunStart('run-2', 'root'));
+			reduceEvent(state, makeReasoningDelta('run-2', 'root', 'New reasoning', 'resp-2'));
+
+			expect(tree.timeline).toEqual([
+				{ type: 'reasoning', content: 'Old aggregate reasoning' },
+				{ type: 'reasoning', content: 'New reasoning', responseId: 'resp-2' },
+			]);
+		});
+
+		it('normalizes nested child nodes via normalizeAgentTree', () => {
+			const child: InstanceAiAgentNode = {
+				agentId: 'sub-1',
+				role: 'builder',
+				status: 'completed',
+				textContent: '',
+				reasoning: 'Child reasoning',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			};
+			const tree: InstanceAiAgentNode = {
+				agentId: 'root',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [child],
+				timeline: [],
+			};
+
+			normalizeAgentTree(tree);
+
+			expect(child.timeline).toEqual([{ type: 'reasoning', content: 'Child reasoning' }]);
 		});
 	});
 });

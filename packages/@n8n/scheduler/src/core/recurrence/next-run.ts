@@ -45,7 +45,7 @@ function oneOffNextRun(schedule: OneOffSchedule, after: Date): Date | null {
 /**
  * Compute the next occurrence strictly after `after` (a job's current
  * `nextRunAt` / last scheduled instant), as a UTC instant. This is what the
- * sweep advances `next_run_at` with.
+ * materializer advances `next_run_at` with.
  *
  * The schedule is validated first, so malformed input (non-positive interval,
  * invalid `fireAt`, bad cron expression, unresolved `null` cron timezone) throws

@@ -344,6 +344,10 @@ describe('isVisibleTimelineEntry', () => {
 		).toBe(true);
 	});
 
+	test('reasoning entries are always visible', () => {
+		expect(isVisibleTimelineEntry({ type: 'reasoning', content: 'hmm' }, {}, {})).toBe(true);
+	});
+
 	test('tool-call entries without a matching tool call are hidden', () => {
 		expect(isVisibleTimelineEntry(makeAgentNode(), toolCallEntry, {}, {})).toBe(false);
 	});

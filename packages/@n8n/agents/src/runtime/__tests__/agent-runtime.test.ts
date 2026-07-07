@@ -3344,12 +3344,12 @@ describe('providerOptions — tool adapter', () => {
 
 		expect(ai.tool).toHaveBeenCalledWith(
 			expect.objectContaining({
-				providerOptions: { openai: { strict: true } },
+				providerOptions: { openai: { strict: true }, anthropic: { eagerInputStreaming: false } },
 			}),
 		);
 	});
 
-	it('does not pass providerOptions when not set', () => {
+	it('defaults providerOptions to the Anthropic quirk default when the tool sets none', () => {
 		const ai = aiModule as unknown as { tool: Mock };
 		const adapter = { toAiSdkTools };
 
@@ -3363,9 +3363,8 @@ describe('providerOptions — tool adapter', () => {
 		adapter.toAiSdkTools([builtTool]);
 
 		expect(ai.tool).toHaveBeenCalledWith(
-			expect.not.objectContaining({
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				providerOptions: expect.anything(),
+			expect.objectContaining({
+				providerOptions: { anthropic: { eagerInputStreaming: false } },
 			}),
 		);
 	});
@@ -4929,9 +4928,12 @@ describe('promptCaching', () => {
 
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
 		const tools = callArgs.tools as Record<string, { providerOptions?: unknown }>;
-		expect(tools.tool_a.providerOptions).toBeUndefined();
+		// Every tool also carries the Anthropic `eagerInputStreaming: false` quirk default.
+		expect(tools.tool_a.providerOptions).toEqual({
+			anthropic: { eagerInputStreaming: false },
+		});
 		expect(tools.tool_b.providerOptions).toEqual({
-			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
+			anthropic: { eagerInputStreaming: false, cacheControl: { type: 'ephemeral', ttl: '1h' } },
 		});
 	});
 
@@ -4956,8 +4958,10 @@ describe('promptCaching', () => {
 
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
 		const tools = callArgs.tools as Record<string, { providerOptions?: unknown }>;
+		// No cache breakpoint is added, but every tool still carries the
+		// Anthropic `eagerInputStreaming: false` quirk default.
 		for (const tool of Object.values(tools)) {
-			expect(tool.providerOptions).toBeUndefined();
+			expect(tool.providerOptions).toEqual({ anthropic: { eagerInputStreaming: false } });
 		}
 	});
 
@@ -4985,7 +4989,7 @@ describe('promptCaching', () => {
 		const tools = callArgs.tools as Record<string, { providerOptions?: unknown }>;
 		expect(tools).toHaveProperty('recall_memory');
 		expect(tools.recall_memory.providerOptions).toEqual({
-			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
+			anthropic: { eagerInputStreaming: false, cacheControl: { type: 'ephemeral', ttl: '1h' } },
 		});
 	});
 
@@ -5007,7 +5011,9 @@ describe('promptCaching', () => {
 		const messages = callArgs.messages as Array<Record<string, unknown>>;
 		expect(messages[messages.length - 1].providerOptions).toBeUndefined();
 		const tools = callArgs.tools as Record<string, { providerOptions?: unknown }>;
-		expect(tools.tool_a.providerOptions).toBeUndefined();
+		// The Anthropic `eagerInputStreaming: false` quirk default is applied to every
+		// tool regardless of model; non-Anthropic providers simply ignore the namespace.
+		expect(tools.tool_a.providerOptions).toEqual({ anthropic: { eagerInputStreaming: false } });
 	});
 });
 
@@ -6475,5 +6481,111 @@ describe('AgentRuntime — toModelOutput error resilience', () => {
 		) as (StreamChunk & { type: 'tool-result' }) | undefined;
 		expect(toolResultChunk).toBeDefined();
 		expect(toolResultChunk!.isError).toBe(true);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// empty model responses (e.g. provider safety blocks)
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — empty model responses', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	function makeEmptyStream(finishReason: string, extraChunks: Array<Record<string, unknown>> = []) {
+		return {
+			fullStream: makeChunkStream(extraChunks),
+			finishReason: Promise.resolve(finishReason),
+			usage: Promise.resolve({ inputTokens: 10, outputTokens: 0, totalTokens: 10 }),
+			response: Promise.resolve({ messages: [] }),
+			toolCalls: Promise.resolve([]),
+		};
+	}
+
+	it.each(['other', 'unknown', 'content-filter'])(
+		'stream: yields an error chunk when the model returns no output with finish reason "%s"',
+		async (finishReason) => {
+			streamText.mockReturnValue(makeEmptyStream(finishReason));
+
+			const { runtime } = createRuntime();
+			const { stream: readableStream } = await runtime.stream('hello');
+			const chunks = await collectChunks(readableStream);
+
+			const errorChunk = chunks.find((c) => c.type === 'error') as
+				| (StreamChunk & { type: 'error' })
+				| undefined;
+			expect(errorChunk).toBeDefined();
+			expect(String((errorChunk!.error as Error).message)).toContain('no output');
+			expect(String((errorChunk!.error as Error).message)).toContain(finishReason);
+
+			const finishChunk = chunks.find((c) => c.type === 'finish') as
+				| (StreamChunk & { type: 'finish' })
+				| undefined;
+			expect(finishChunk).toBeDefined();
+			expect(finishChunk!.finishReason).toBe('error');
+		},
+	);
+
+	it('stream: includes the Google prompt block reason captured from raw chunks', async () => {
+		streamText.mockReturnValue(
+			makeEmptyStream('other', [
+				{
+					type: 'raw',
+					rawValue: { promptFeedback: { blockReason: 'PROHIBITED_CONTENT' } },
+				},
+			]),
+		);
+
+		const { runtime } = createRuntime(undefined, 'google/gemini-2.5-flash');
+		const { stream: readableStream } = await runtime.stream('hello');
+		const chunks = await collectChunks(readableStream);
+
+		const errorChunk = chunks.find((c) => c.type === 'error') as
+			| (StreamChunk & { type: 'error' })
+			| undefined;
+		expect(errorChunk).toBeDefined();
+		expect(String((errorChunk!.error as Error).message)).toContain('PROHIBITED_CONTENT');
+	});
+
+	it('stream: requests raw chunks for google models so block reasons are observable', async () => {
+		streamText.mockReturnValue(makeStreamSuccess());
+
+		const { runtime } = createRuntime(undefined, 'google/gemini-2.5-flash');
+		const { stream: readableStream } = await runtime.stream('hello');
+		await collectChunks(readableStream);
+
+		const args = streamText.mock.calls[0][0] as Record<string, unknown>;
+		expect(args.includeRawChunks).toBe(true);
+	});
+
+	it('stream: an empty response finishing with "stop" is not treated as an error', async () => {
+		streamText.mockReturnValue(makeEmptyStream('stop'));
+
+		const { runtime } = createRuntime();
+		const { stream: readableStream } = await runtime.stream('hello');
+		const chunks = await collectChunks(readableStream);
+
+		expect(chunks.find((c) => c.type === 'error')).toBeUndefined();
+		const finishChunk = chunks.find((c) => c.type === 'finish') as
+			| (StreamChunk & { type: 'finish' })
+			| undefined;
+		expect(finishChunk!.finishReason).not.toBe('error');
+	});
+
+	it('generate: returns finishReason "error" with a descriptive error when the model returns no output', async () => {
+		generateText.mockResolvedValue({
+			finishReason: 'other',
+			usage: { inputTokens: 10, outputTokens: 0, totalTokens: 10 },
+			response: { messages: [] },
+			toolCalls: [],
+		});
+
+		const { runtime } = createRuntime();
+		const result = await runtime.generate('hello');
+
+		expect(result.finishReason).toBe('error');
+		expect(String((result.error as Error).message)).toContain('no output');
 	});
 });

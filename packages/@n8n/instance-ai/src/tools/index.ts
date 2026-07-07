@@ -142,7 +142,6 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 	const tools: Array<[string, BuiltTool]> = [
 		[ORCHESTRATION_TOOL_IDS.CREATE_TASKS, loadPlanTool().createPlanTool(context)],
 		[ORCHESTRATION_TOOL_IDS.TASK_CONTROL, loadTaskControlTool().createTaskControlTool(context)],
-		[ORCHESTRATION_TOOL_IDS.AGENT, loadAgentDelegateTool().createAgentDelegateTool(context)],
 		[
 			ORCHESTRATION_TOOL_IDS.COMPLETE_CHECKPOINT,
 			loadCompleteCheckpointTool().createCompleteCheckpointTool(context),

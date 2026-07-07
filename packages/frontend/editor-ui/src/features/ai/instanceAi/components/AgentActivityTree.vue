@@ -1,9 +1,6 @@
 <script lang="ts" setup>
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
-import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
-import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import { computed, toRef } from 'vue';
 import type { ArtifactInfo } from '../agentTimeline.utils';
 import { useThread } from '../instanceAi.store';
@@ -12,8 +9,6 @@ import AgentTimeline from './AgentTimeline.vue';
 import ArtifactCard from './ArtifactCard.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import ResponseGroup from './ResponseGroup.vue';
-import TimelineStepButton from './TimelineStepButton.vue';
-import TimelineStepChevron from './TimelineStepChevron.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -25,14 +20,7 @@ const props = withDefaults(
 	},
 );
 
-const i18n = useI18n();
 const thread = useThread();
-
-const hasLegacyReasoning = computed(
-	() =>
-		props.agentNode.reasoning.length > 0 &&
-		!props.agentNode.timeline.some((entry) => entry.type === 'reasoning'),
-);
 
 const segments = useTimelineGrouping(toRef(props, 'agentNode'));
 
@@ -56,23 +44,6 @@ function resolveArtifactName(artifact: ArtifactInfo): string {
 
 <template>
 	<!-- eslint-disable vue/no-multiple-template-root -->
-
-	<!-- Legacy reasoning (old persisted trees without timeline reasoning entries) -->
-	<CollapsibleRoot v-if="isRoot && hasLegacyReasoning" v-slot="{ open: isOpen }">
-		<CollapsibleTrigger as-child>
-			<TimelineStepButton>
-				<template #icon>
-					<TimelineStepChevron :open="isOpen" />
-				</template>
-				{{ i18n.baseText('instanceAi.message.reasoning') }}
-			</TimelineStepButton>
-		</CollapsibleTrigger>
-		<AnimatedCollapsibleContent :class="$style.reasoningPanel">
-			<div :class="$style.reasoningScroll">
-				<span :class="$style.reasoningContent">{{ props.agentNode.reasoning }}</span>
-			</div>
-		</AnimatedCollapsibleContent>
-	</CollapsibleRoot>
 
 	<!-- Completed with responseId grouping: collapsed response groups + artifacts + trailing text -->
 	<template v-if="showGrouped">
@@ -117,34 +88,5 @@ function resolveArtifactName(artifact: ArtifactInfo): string {
 	+ .artifactCard {
 		margin-top: 0;
 	}
-}
-
-.reasoningPanel {
-	padding-left: var(--spacing--2xs);
-	border-left: var(--border);
-	margin-left: var(--spacing--xs);
-	max-width: 90%;
-	min-width: 0;
-	overflow-x: hidden;
-}
-
-.reasoningScroll {
-	margin-top: var(--spacing--2xs);
-	max-height: 200px;
-	overflow-x: hidden;
-	overflow-y: auto;
-	padding-bottom: var(--spacing--2xs);
-	scrollbar-width: thin;
-	scrollbar-color: light-dark(var(--color--neutral-300), var(--color--neutral-700)) transparent;
-}
-
-.reasoningContent {
-	display: block;
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--xl);
-	color: var(--color--text--tint-1);
-	white-space: pre-wrap;
-	overflow-wrap: anywhere;
-	word-break: break-word;
 }
 </style>
