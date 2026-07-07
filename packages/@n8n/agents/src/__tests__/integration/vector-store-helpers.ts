@@ -10,7 +10,8 @@ import type { Pool } from 'pg';
 import { expect, it } from 'vitest';
 
 import { findLastTextContent } from './helpers';
-import { Agent, VectorStore } from '../../index';
+import { Agent } from '../../index';
+import type { VectorStore } from '../../index';
 import type { BaseVectorStore } from '../../storage/base-vector-store';
 import type { SupabaseVectorStore } from '../../vector-stores/supabase';
 
