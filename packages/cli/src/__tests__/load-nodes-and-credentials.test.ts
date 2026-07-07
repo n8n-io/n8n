@@ -146,7 +146,7 @@ describe('LoadNodesAndCredentials', () => {
 
 		it('should handle root basePath ("/") without slicing the URL incorrectly', () => {
 			const result = instance.resolveIcon('/', 'package1', '/icons/package1/icon.png');
-			expect(result).toBe('/icons/package1/icon.png');
+			expect(result).toBe(`${dir}/icon.png`);
 		});
 
 		describe('N8N_CUSTOM_EXTENSIONS', () => {
