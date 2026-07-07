@@ -16,8 +16,11 @@ function getPlainTextTitle(database: IDataObject) {
 	const title: unknown = database.title;
 	const id = getStringProperty(database, 'id') ?? '';
 	if (!Array.isArray(title)) return id;
-	const firstTitle = title.find(isDataObject);
-	return firstTitle ? (getStringProperty(firstTitle, 'plain_text') ?? id) : id;
+	const plainText = title
+		.filter(isDataObject)
+		.map((titlePart) => getStringProperty(titlePart, 'plain_text') ?? '')
+		.join('');
+	return plainText || id;
 }
 
 function getDataSourceName(dataSource: IDataObject) {

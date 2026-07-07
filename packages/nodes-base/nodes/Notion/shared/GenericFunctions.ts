@@ -483,10 +483,14 @@ function getPropertyKeyValue(
 }
 
 function getNameAndType(key: string) {
-	const [name, type] = key.split('|');
+	const delimiterIndex = key.lastIndexOf('|');
+	if (delimiterIndex === -1) {
+		return { name: key, type: '' };
+	}
+
 	return {
-		name,
-		type,
+		name: key.slice(0, delimiterIndex),
+		type: key.slice(delimiterIndex + 1),
 	};
 }
 
@@ -498,22 +502,12 @@ export function mapProperties(
 ) {
 	return properties
 		.filter(
-			(property): property is Record<string, { key: string; [k: string]: any }> =>
-				typeof property.key === 'string',
+			(property): property is IDataObject & { key: string } => typeof property.key === 'string',
 		)
-		.map(
-			(property) =>
-				[
-					`${property.key.split('|')[0]}`,
-					getPropertyKeyValue.call(
-						this,
-						property,
-						property.key.split('|')[1] as string,
-						timezone,
-						version,
-					),
-				] as const,
-		)
+		.map((property) => {
+			const { name, type } = getNameAndType(property.key);
+			return [name, getPropertyKeyValue.call(this, property, type, timezone, version)] as const;
+		})
 		.filter(([, value]) => value)
 		.reduce((obj, [key, value]) => {
 			setSafeObjectProperty(obj, key, value);
@@ -523,9 +517,10 @@ export function mapProperties(
 
 export function mapSorting(data: SortData[]) {
 	return data.map((sort) => {
+		const { name } = getNameAndType(sort.key);
 		return {
 			direction: sort.direction,
-			[sort.timestamp ? 'timestamp' : 'property']: sort.key.split('|')[0],
+			[sort.timestamp ? 'timestamp' : 'property']: name,
 		};
 	});
 }

@@ -2,6 +2,7 @@ import moment from 'moment-timezone';
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
 import { extractPageId, getBlockTypesOptions } from '../../shared/GenericFunctions';
+import { splitPropertyKey } from '../helpers/utils';
 import {
 	getDataSourceProperties,
 	isDataObject,
@@ -91,7 +92,7 @@ export async function getPropertySelectValues(
 	if (!key) {
 		return [];
 	}
-	const [name, type] = key.split('|');
+	const { name, type } = splitPropertyKey(key);
 	const properties = await getSelectedDataSourceProperties.call(this);
 	const property = properties?.[name];
 	if (
@@ -154,7 +155,7 @@ export async function getDataSourceOptionsFromPage(
 	if (!key) {
 		return [];
 	}
-	const [name, type] = key.split('|');
+	const { name, type } = splitPropertyKey(key);
 	const dataSourceId = await getParentDataSourceIdFromPage.call(this);
 	if (!dataSourceId) return [];
 

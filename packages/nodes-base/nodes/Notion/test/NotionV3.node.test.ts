@@ -11,6 +11,7 @@ import type { Mock } from 'vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import * as GenericFunctions from '../shared/GenericFunctions';
+import { mapDataSourceFilter } from '../v3/actions/databasePage/DataSourceFilters';
 import { NotionV3 } from '../v3/NotionV3.node';
 import * as Transport from '../v3/transport';
 
@@ -81,6 +82,156 @@ describe('NotionV3', () => {
 		vi.clearAllMocks();
 	});
 
+	it.each([
+		[
+			'checkbox',
+			{ key: 'Done|checkbox', condition: 'equals', checkboxValue: true },
+			{ property: 'Done', checkbox: { equals: true } },
+		],
+		[
+			'created_by',
+			{ key: 'Created By|created_by', condition: 'contains', peopleValue: 'user-id' },
+			{ property: 'Created By', people: { contains: 'user-id' } },
+		],
+		[
+			'created_time',
+			{ key: 'Created Time|created_time', condition: 'before', dateValue: 'today' },
+			{ timestamp: 'created_time', created_time: { before: 'today' } },
+		],
+		[
+			'date',
+			{ key: 'Due|date', condition: 'after', dateValue: 'today' },
+			{ property: 'Due', date: { after: 'today' } },
+		],
+		[
+			'email',
+			{ key: 'Email|email', condition: 'contains', richTextValue: 'user@example.com' },
+			{ property: 'Email', rich_text: { contains: 'user@example.com' } },
+		],
+		[
+			'files',
+			{ key: 'Files|files', condition: 'is_not_empty' },
+			{ property: 'Files', files: { is_not_empty: true } },
+		],
+		[
+			'formula checkbox',
+			{
+				key: 'Formula Checkbox|formula',
+				condition: 'equals',
+				returnType: 'checkbox',
+				checkboxValue: true,
+			},
+			{ property: 'Formula Checkbox', formula: { checkbox: { equals: true } } },
+		],
+		[
+			'formula date',
+			{ key: 'Formula Date|formula', condition: 'before', returnType: 'date', dateValue: 'today' },
+			{ property: 'Formula Date', formula: { date: { before: 'today' } } },
+		],
+		[
+			'formula number',
+			{
+				key: 'Formula Number|formula',
+				condition: 'greater_than',
+				returnType: 'number',
+				numberValue: 10,
+			},
+			{ property: 'Formula Number', formula: { ['number']: { greater_than: 10 } } },
+		],
+		[
+			'formula string',
+			{
+				key: 'Formula String|formula',
+				condition: 'contains',
+				returnType: 'string',
+				richTextValue: 'Ready',
+			},
+			{ property: 'Formula String', formula: { ['string']: { contains: 'Ready' } } },
+		],
+		[
+			'last_edited_by',
+			{ key: 'Last Edited By|last_edited_by', condition: 'contains', peopleValue: 'user-id' },
+			{ property: 'Last Edited By', people: { contains: 'user-id' } },
+		],
+		[
+			'last_edited_time',
+			{ key: 'Last Edited Time|last_edited_time', condition: 'on_or_after', dateValue: 'today' },
+			{ timestamp: 'last_edited_time', last_edited_time: { on_or_after: 'today' } },
+		],
+		[
+			'multi_select',
+			{ key: 'Tags|multi_select', condition: 'contains', optionValue: 'Bug' },
+			{ property: 'Tags', multi_select: { contains: 'Bug' } },
+		],
+		[
+			'number',
+			{ key: 'Estimate|number', condition: 'greater_than', numberValue: 42 },
+			{ property: 'Estimate', ['number']: { greater_than: 42 } },
+		],
+		[
+			'people',
+			{ key: 'Assignee|people', condition: 'contains', peopleValue: 'user-id' },
+			{ property: 'Assignee', people: { contains: 'user-id' } },
+		],
+		[
+			'phone_number',
+			{ key: 'Phone|phone_number', condition: 'contains', richTextValue: '+491234567890' },
+			{ property: 'Phone', phone_number: { contains: '+491234567890' } },
+		],
+		[
+			'relation',
+			{ key: 'Related|relation', condition: 'contains', relationValue: 'page-id' },
+			{ property: 'Related', relation: { contains: 'page-id' } },
+		],
+		[
+			'rich_text',
+			{ key: 'Notes|rich_text', condition: 'contains', richTextValue: 'Roadmap' },
+			{ property: 'Notes', rich_text: { contains: 'Roadmap' } },
+		],
+		[
+			'rich_text property name with delimiter',
+			{ key: 'Team | Notes|rich_text', condition: 'contains', richTextValue: 'Roadmap' },
+			{ property: 'Team | Notes', rich_text: { contains: 'Roadmap' } },
+		],
+		[
+			'rollup',
+			{ key: 'Rollup|rollup', rollupJson: '{"any":{"number":{"greater_than":5}}}' },
+			{ property: 'Rollup', rollup: { ['any']: { ['number']: { greater_than: 5 } } } },
+		],
+		[
+			'select',
+			{ key: 'Priority|select', condition: 'equals', optionValue: 'High' },
+			{ property: 'Priority', select: { equals: 'High' } },
+		],
+		[
+			'status',
+			{ key: 'Status|status', condition: 'equals', optionValue: 'In Progress' },
+			{ property: 'Status', status: { equals: 'In Progress' } },
+		],
+		[
+			'title',
+			{ key: 'Name|title', condition: 'contains', richTextValue: 'Roadmap' },
+			{ property: 'Name', rich_text: { contains: 'Roadmap' } },
+		],
+		[
+			'unique_id',
+			{ key: 'Task ID|unique_id', condition: 'greater_than', numberValue: 100 },
+			{ property: 'Task ID', unique_id: { greater_than: 100 } },
+		],
+		[
+			'url',
+			{ key: 'Website|url', condition: 'contains', richTextValue: 'example.com' },
+			{ property: 'Website', rich_text: { contains: 'example.com' } },
+		],
+		[
+			'verification',
+			{ key: 'Verification|verification', condition: 'status', verificationStatus: 'verified' },
+			{ property: 'Verification', verification: { status: 'verified' } },
+		],
+	])('maps %s manual filters with the UI value field', (_type, filter, expected) => {
+		expect(mapDataSourceFilter(filter, 'UTC')).toEqual(expected);
+	});
+
 	it('creates database pages with a data source parent', async () => {
 		mockGetDataSourceProperties.mockResolvedValueOnce({
 			Name: { type: 'title' },
@@ -115,6 +266,29 @@ describe('NotionV3', () => {
 				icon: { type: 'emoji', emoji: '🔥' },
 			}),
 		);
+	});
+
+	it('does not create database pages without a title', async () => {
+		mockResolveDataSourceId.mockReturnValueOnce('data-source-id');
+
+		const nodeParameters: IDataObject = {
+			resource: 'databasePage',
+			operation: 'create',
+			dataSourceId: { __rl: true, mode: 'id', value: 'data-source-id' },
+			title: '   ',
+			simple: false,
+			contentType: 'json',
+			blocksJson: '[{"object":"block","type":"paragraph","paragraph":{"rich_text":[]}}]',
+		};
+		nodeParameters['dataSourceId.value'] = 'data-source-id';
+		nodeParameters['propertiesUi.propertyValues'] = [];
+		const context = createMockExecuteFunction(nodeParameters);
+
+		await expect(node.execute.call(context)).rejects.toThrow(
+			'Title is required to create a database page',
+		);
+		expect(mockGetDataSourceProperties).not.toHaveBeenCalled();
+		expect(mockNotionApiRequest).not.toHaveBeenCalled();
 	});
 
 	it('appends blocks after a specific block', async () => {
@@ -462,7 +636,7 @@ describe('NotionV3', () => {
 	it('maps rich text properties from textContent', async () => {
 		mockGetDataSourceProperties.mockResolvedValueOnce({
 			Name: { type: 'title' },
-			Notes: { type: 'rich_text' },
+			['Strange | Column']: { type: 'rich_text' },
 		});
 		mockResolveDataSourceId.mockReturnValueOnce('data-source-id');
 		mockNotionApiRequest.mockResolvedValueOnce({ object: 'page', id: 'page-id' });
@@ -476,7 +650,7 @@ describe('NotionV3', () => {
 			simple: false,
 			'propertiesUi.propertyValues': [
 				{
-					key: 'Notes|rich_text',
+					key: 'Strange | Column|rich_text',
 					textContent: 'Plain rich text',
 				},
 			],
@@ -491,7 +665,7 @@ describe('NotionV3', () => {
 			'/pages',
 			expect.objectContaining({
 				properties: expect.objectContaining({
-					Notes: {
+					['Strange | Column']: {
 						rich_text: [{ text: { content: 'Plain rich text' } }],
 					},
 				}),

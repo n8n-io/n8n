@@ -2,6 +2,8 @@ import { capitalCase } from 'change-case';
 import moment from 'moment-timezone';
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
 
+import { splitPropertyKey } from '../../helpers/utils';
+
 type FilterCondition = IDataObject & {
 	key?: string;
 	type?: string;
@@ -125,11 +127,6 @@ function typedConditionOptions(types: string[]) {
 	});
 }
 
-function splitPropertyKey(key: string) {
-	const [name, type] = key.split('|');
-	return { name, type };
-}
-
 function splitList(value: unknown) {
 	if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string');
 	if (typeof value !== 'string') return '';
@@ -181,7 +178,7 @@ function conditionValue(
 		case 'people':
 			return filter.peopleValue;
 		case 'phone_number':
-			return filter.phoneNumberValue;
+			return filter.richTextValue;
 		case 'relation':
 			return filter.relationValue;
 		case 'rich_text':
@@ -218,10 +215,19 @@ function mapRollupFilter(filter: FilterCondition) {
 }
 
 export function mapDataSourceFilter(filter: FilterCondition, timezone: string) {
-	if (typeof filter.key !== 'string' || typeof filter.condition !== 'string') return {};
+	if (typeof filter.key !== 'string') return {};
 
 	const { name, type } = splitPropertyKey(filter.key);
 	const filterType = getFilterType(type);
+
+	if (filterType === 'rollup') {
+		return {
+			property: name,
+			rollup: mapRollupFilter(filter),
+		};
+	}
+
+	if (typeof filter.condition !== 'string') return {};
 
 	if (filterType === 'timestamp') {
 		const timestamp = type;
@@ -247,13 +253,6 @@ export function mapDataSourceFilter(filter: FilterCondition, timezone: string) {
 					timezone,
 				),
 			},
-		};
-	}
-
-	if (filterType === 'rollup') {
-		return {
-			property: name,
-			rollup: mapRollupFilter(filter),
 		};
 	}
 
@@ -353,7 +352,7 @@ export function dataSourceSearchFilterDescriptions(): INodeProperties[] {
 							displayName: 'Type',
 							name: 'type',
 							type: 'hidden',
-							default: '={{$parameter["&key"].split("|")[1]}}',
+							default: '={{$parameter["&key"].split("|").pop()}}',
 						},
 						...typedConditionOptions(
 							propertyTypes.filter((type) => type !== 'formula' && type !== 'rollup'),

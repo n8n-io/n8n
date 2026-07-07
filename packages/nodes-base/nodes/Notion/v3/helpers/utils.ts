@@ -36,6 +36,16 @@ export {
 };
 export type { SortData };
 
+export function splitPropertyKey(key: string) {
+	const delimiterIndex = key.lastIndexOf('|');
+	if (delimiterIndex === -1) return { name: key, type: '' };
+
+	return {
+		name: key.slice(0, delimiterIndex),
+		type: key.slice(delimiterIndex + 1),
+	};
+}
+
 function normalizePropertyValue(value: IDataObject) {
 	const normalizedValue: IDataObject = { ...value };
 

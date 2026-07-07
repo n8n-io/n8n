@@ -46,6 +46,50 @@ describe('Notion V3 load options', () => {
 		expect(result).toEqual([]);
 	});
 
+	it('uses only the last key segment as the property type for selected data source options', async () => {
+		mockGetDataSourceProperties.mockResolvedValueOnce({
+			'Stage | Owner': {
+				type: 'select',
+				select: {
+					options: [{ name: 'Ready' }],
+				},
+			},
+		});
+		const context = createLoadOptionsContext({
+			'&key': 'Stage | Owner|select',
+			dataSourceId: 'data-source-id',
+		});
+
+		const result = await getPropertySelectValues.call(context);
+
+		expect(result).toEqual([{ name: 'Ready', value: 'Ready' }]);
+	});
+
+	it('uses only the last key segment as the property type for page data source options', async () => {
+		mockNotionApiRequest.mockResolvedValueOnce({
+			parent: {
+				type: 'data_source_id',
+				data_source_id: 'data-source-id',
+			},
+		});
+		mockGetDataSourceProperties.mockResolvedValueOnce({
+			'Tags | Segment': {
+				type: 'multi_select',
+				multi_select: {
+					options: [{ name: 'Enterprise' }],
+				},
+			},
+		});
+		const context = createLoadOptionsContext({
+			'&key': 'Tags | Segment|multi_select',
+			pageId: 'page-id',
+		});
+
+		const result = await getDataSourceOptionsFromPage.call(context);
+
+		expect(result).toEqual([{ name: 'Enterprise', value: 'Enterprise' }]);
+	});
+
 	it('does not use a page parent database ID as a data source ID', async () => {
 		mockNotionApiRequest.mockResolvedValueOnce({
 			parent: {

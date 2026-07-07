@@ -97,7 +97,7 @@ function getQueryOptions(): INodeProperties {
 								name: 'type',
 								type: 'hidden',
 								displayOptions: { show: { timestamp: [true] } },
-								default: '={{$parameter["&key"].split("|")[1]}}',
+								default: '={{$parameter["&key"].split("|").pop()}}',
 							},
 							{
 								displayName: 'Direction',
@@ -160,7 +160,7 @@ function propertiesUi(
 						displayName: 'Type',
 						name: 'type',
 						type: 'hidden',
-						default: '={{$parameter["&key"].split("|")[1]}}',
+						default: '={{$parameter["&key"].split("|").pop()}}',
 					},
 					{
 						displayName: 'Title',
@@ -499,10 +499,20 @@ export async function create(this: IExecuteFunctions, items: INodeExecutionData[
 				extractValue: true,
 			}) as string;
 			const dataSourceId = resolveDataSourceId.call(this, selectedDataSourceId);
+			const title = this.getNodeParameter('title', i, '') as string;
+			if (!title.trim()) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'Title is required to create a database page',
+					{
+						itemIndex: i,
+					},
+				);
+			}
+
 			const titleKey = await getTitleKey.call(this, dataSourceId);
 			const properties: IDataObject = {};
-			const title = this.getNodeParameter('title', i) as string;
-			if (title && titleKey) {
+			if (titleKey) {
 				setSafeObjectProperty(properties, titleKey, { title: [{ text: { content: title } }] });
 			}
 			const propertyValues = this.getNodeParameter(
