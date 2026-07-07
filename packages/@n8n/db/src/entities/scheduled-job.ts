@@ -1,21 +1,9 @@
+import type { ScheduledJobKind } from '@n8n/constants';
 import { Column, Entity, Index, PrimaryGeneratedColumn } from '@n8n/typeorm';
 
 import { DateTimeColumn, JsonColumn, WithTimestamps } from './abstract-entity';
 
-/**
- * Recurrence kind.
- * It selects which schedule columns apply.
- */
-export const ScheduledJobKind = {
-	Cron: 'cron',
-	Interval: 'interval',
-	OneOff: 'one_off',
-} as const;
-
-export type ScheduledJobKind = (typeof ScheduledJobKind)[keyof typeof ScheduledJobKind];
-
-/** All recurrence kinds as a runtime list. */
-export const ScheduledJobKindList = Object.values(ScheduledJobKind);
+export { ScheduledJobKind, ScheduledJobKindList } from '@n8n/constants';
 
 /**
  * A scheduled job: the rule for when something should run,

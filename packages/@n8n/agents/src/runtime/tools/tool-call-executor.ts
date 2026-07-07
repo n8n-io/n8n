@@ -1,6 +1,9 @@
 import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
 
-import { getInlineDelegateSubAgentToolOptions } from './delegate-sub-agent-tool';
+import {
+	getInlineDelegateSubAgentToolOptions,
+	isDelegateSubAgentTool,
+} from './delegate-sub-agent-tool';
 import { toJsonValue } from '../json-value';
 import { DEFAULT_SUB_AGENT_MAX_CHILDREN } from './sub-agent-task-path';
 import { executeTool, isSuspendedToolResult, type SuspendedToolResult } from './tool-adapter';
@@ -183,22 +186,16 @@ export class ToolCallExecutor {
 		return this.deps.concurrency;
 	}
 
-	/**
-	 * Detects a delegate-subagent tool call by SDK-owned metadata rather than a
-	 * fixed tool name, so a host-renamed delegate tool (e.g. `"agent"`) still
-	 * gets `maxChildren` batching instead of falling back to generic concurrency.
-	 */
 	private isDelegateSubAgentCall(toolName: string, toolMap: Map<string, BuiltTool>): boolean {
 		const tool = toolMap.get(toolName);
-		return tool !== undefined && getInlineDelegateSubAgentToolOptions(tool) !== undefined;
+		return tool !== undefined && isDelegateSubAgentTool(tool);
 	}
 
 	private getToolCallBatchSize(toolName: string, toolMap: Map<string, BuiltTool>): number {
-		if (!this.isDelegateSubAgentCall(toolName, toolMap)) return this.concurrency;
-
 		const tool = toolMap.get(toolName);
 		const delegateOptions = tool ? getInlineDelegateSubAgentToolOptions(tool) : undefined;
-		return delegateOptions?.policy?.maxChildren ?? DEFAULT_SUB_AGENT_MAX_CHILDREN;
+		if (!delegateOptions) return this.concurrency;
+		return delegateOptions.policy?.maxChildren ?? DEFAULT_SUB_AGENT_MAX_CHILDREN;
 	}
 
 	private takeNextToolCallBatch<T extends { toolName: string }>(
@@ -235,8 +232,7 @@ export class ToolCallExecutor {
 	 * Execute tool calls concurrently in batches.
 	 *
 	 * Regular tools use `toolCallConcurrency`. Consecutive delegate-subagent
-	 * calls (detected via SDK-owned metadata, regardless of tool name) use the
-	 * effective `maxChildren` policy from the built delegate tool.
+	 * calls use the effective `maxChildren` policy from the built delegate tool.
 	 * Provider-executed calls are skipped.
 	 *
 	 * Returns successes, suspension info, and a pending map (for persistence).

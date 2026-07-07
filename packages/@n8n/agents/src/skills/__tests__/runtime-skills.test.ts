@@ -318,6 +318,47 @@ Use the workflow SDK.`,
 		}
 	});
 
+	it('excludes filesystem-backed skills from the registry and file loader', async () => {
+		const root = mkdtempSync(join(tmpdir(), 'runtime-skills-'));
+		try {
+			const intentSkillDir = join(root, 'intent-recognition').replace(/\\/g, '/');
+			const workflowSkillDir = join(root, 'workflow-builder').replace(/\\/g, '/');
+			mkdirSync(join(intentSkillDir, 'references'), { recursive: true });
+			mkdirSync(workflowSkillDir, { recursive: true });
+			writeFileSync(
+				join(intentSkillDir, 'SKILL.md'),
+				`---
+name: intent-recognition
+description: Classify intent.
+---
+
+Classify automation intent.`,
+			);
+			writeFileSync(join(intentSkillDir, 'references', 'taxonomy.md'), 'Taxonomy text');
+			writeFileSync(
+				join(workflowSkillDir, 'SKILL.md'),
+				`---
+name: workflow-builder
+description: Build workflows.
+---
+
+Use the workflow SDK.`,
+			);
+
+			const source = loadRuntimeSkillSourceFromDirectory(root, {
+				exclude: ['intent-recognition'],
+			});
+
+			expect(source.registry.skills.map((skill) => skill.id)).toEqual(['workflow-builder']);
+			await expect(source.loadSkill('intent-recognition')).resolves.toBeNull();
+			await expect(
+				source.loadFile?.('intent-recognition', 'references/taxonomy.md'),
+			).resolves.toBeNull();
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
 	it('renders a compact skill catalog without skill bodies', () => {
 		const source = createRuntimeSkillSource([
 			{

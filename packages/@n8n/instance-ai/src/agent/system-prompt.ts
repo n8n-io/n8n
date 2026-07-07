@@ -1,5 +1,7 @@
 import { DateTime } from 'luxon';
 
+import { isAgentFeatureEnabled } from '@/utils/agent-feature-enabled';
+
 import { getComputerUsePrompt } from './computer-use-prompt';
 import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
 import {
@@ -37,6 +39,10 @@ export function getDateTimeSection(timeZone?: string): string {
 The user's current local date and time is: ${isoTime}${tzLabel}.
 When you need to reference "now", use this date and time.`;
 }
+
+const INTENT_HINT = isAgentFeatureEnabled()
+	? 'For requests asking what kind of automation to build, whether something is workflow/hybrid/agent/single AI task, or how to route ambiguous automation intent, load `intent-recognition` before deciding.'
+	: '';
 
 function getInstanceInfoSection(webhookBaseUrl: string, formBaseUrl: string): string {
 	return `
@@ -114,7 +120,9 @@ ${workspaceRoot ? `\n${getSandboxWorkspaceSection(workspaceRoot)}\n` : ''}
 You have access to workflow, execution, and credential tools plus runtime skills (see the skill catalog), and may have access to MCP tools for extended capabilities.
 ${getProjectScopeSection(projectId)}
 
-## Skill routing
+Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance. Never call \`data-tables\` or \`parse-file\` without loading \`data-table-manager\` first, and never call \`build-workflow\` without loading \`workflow-builder\` first. A single turn may need more than one skill when routing requires it (e.g. \`data-table-manager\` then \`workflow-builder\`).
+
+${INTENT_HINT}
 
 Match the request against skill descriptions in the catalog and call \`load_skill\` before acting on a skill's guidance — system-generated messages route the same way as user requests. Load every skill the turn needs (e.g. \`data-table-manager\` then \`workflow-builder\`).
 

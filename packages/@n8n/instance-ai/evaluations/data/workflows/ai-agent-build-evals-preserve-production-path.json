@@ -1,0 +1,46 @@
+{
+	"description": "An AI workflow where the agent reads its input from an upstream lookup node (not directly from the trigger's $json) and the production path has a real side-effect (sending an email). When the user asks for evaluations after the build, wiring the eval nodes must route fixed test inputs into the agent while preserving the live path — the email send must stay on the normal branch, not the eval branch. Build-only (process + outcome); no executionScenarios because the eval branch reads an unmocked Data Table.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build a webhook workflow that receives a customer ID, looks up that customer's recent orders from our orders API at https://api.example-shop.test/customers/{id}/orders, and then has an AI agent use that order history to draft a friendly re-engagement email. Send the finished email to the customer with Gmail."
+		},
+		{
+			"role": "assistant",
+			"text": "Got it — I'll build that now."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[After the agent finishes building the workflow and any normal post-build follow-ups, you want evaluations / test cases added for the AI-drafted email.",
+				"If the agent proactively offers to add test cases or evaluations, accept. If it does NOT offer, ask it plainly to add some test cases / evaluations so you can check the drafted emails stay good when you change the prompt or model. Don't use the words 'node' or 'config' — just ask for test cases / evaluations in plain terms.",
+				"If it recommends a metric (for example 'correctness' or 'helpfulness') and asks you to approve, approve it. If it asks you to choose metrics, pick correctness. Once it has set up the evaluation, let it finish. Keep every message short and natural.]"
+			]
+		}
+	],
+	"messageBudget": 12,
+	"complexity": "medium",
+	"tags": [
+		"behaviour",
+		"build",
+		"evals",
+		"eval-wiring",
+		"ai-agent",
+		"webhook",
+		"http-request",
+		"gmail"
+	],
+	"triggerType": "webhook",
+	"datasets": ["evals", "full"],
+	"processExpectations": [
+		"When the user asked for evaluations / test cases, the agent set them up rather than refusing or dropping the request — it proceeded to configure the evaluation (e.g. proposing or confirming a metric such as correctness).",
+		"The agent created the evaluation's Data Table (with input columns derived from the agent's inputs, plus an expected-output column for the judged metric) and populated it with at least one test/sample row — it did not leave the dataset empty or defer it to 'later'."
+	],
+	"outcomeExpectations": [
+		"The final workflow contains n8n evaluation nodes added on top of the original workflow: an Evaluation Trigger (`n8n-nodes-base.evaluationTrigger`) and at least one Evaluation node (`n8n-nodes-base.evaluation`).",
+		"The evaluation is backed by a real dataset: the Evaluation Trigger references an n8n Data Table by id (its `dataTableId` resource-locator holds a real table id, not left empty or deferred).",
+		"The evaluation nodes are wired to the AI agent that drafts the email, and the agent's output flows into an Evaluation node that gates a dedicated eval branch (set-outputs → set-metrics) separate from the agent's normal downstream path.",
+		"Because the agent draws its input from the upstream orders-lookup rather than directly from a test-input field, the eval setup routed the fixed test inputs into the agent (for example via a small Set/adapter step feeding the agent, or by wiring the Evaluation Trigger into it) so the agent can run against the test dataset.",
+		"The live production path was preserved and its side-effect stayed off the eval branch: on the normal (non-eval) branch the workflow still looks up the customer's orders and sends the drafted email via Gmail, and the Gmail send was not moved onto or duplicated into the evaluation branch."
+	]
+}

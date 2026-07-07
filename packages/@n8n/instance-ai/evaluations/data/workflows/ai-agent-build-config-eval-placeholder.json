@@ -1,0 +1,33 @@
+{
+	"description": "PLACEHOLDER for a not-yet-built capability. n8n's evaluation feature also has a simplified, configuration-based form: an EvaluationConfig (name + startNodeName/endNodeName + canned metrics + a Data Table dataset) attached to the workflow via the evaluation-config API — NOT evaluation nodes on the canvas. Instance AI cannot build config-based evals yet; this case documents the target behaviour for when that tool lands. It is deliberately kept OUT of the `full` tier (datasets omits `full`) so it does not pollute the gating pass rate — expect it red until the capability ships. Run it explicitly with `--tier config-evals`. The differentiator from the node-based cases: NO evaluation nodes are added to the workflow graph. Once Instance AI can create an EvaluationConfig, add a positive assertion that the config was created (start/end nodes, metrics, dataset) — today the harness only sees the workflow JSON + transcript, so the concrete assertion is the ABSENCE of node-based eval wiring.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build a workflow with a form where people submit a customer-support question (their name and their question). An AI agent should read the submitted question and write a helpful, friendly reply shown back on the form's completion screen."
+		},
+		{
+			"role": "assistant",
+			"text": "Got it — I'll build that now."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[This case is about the simplified, configuration-based evaluation feature — not the node-based one. After the agent reports the workflow is built, ask it to set up evaluations for the AI replies using n8n's built-in evaluation configuration, and be explicit that you do NOT want extra evaluation nodes added to the canvas — you want the simplified config-based evaluations attached to the workflow.",
+				"If it recommends a metric (for example 'correctness') and asks you to approve, approve it. If it asks you to choose metrics, pick correctness.",
+				"Let it finish once it has set things up (or explained it can't). Keep every message short and natural. Do not ask it to add nodes.]"
+			]
+		}
+	],
+	"messageBudget": 8,
+	"complexity": "medium",
+	"tags": ["behaviour", "build", "evals", "config-eval", "placeholder", "ai-agent", "form"],
+	"triggerType": "form",
+	"datasets": ["config-evals"],
+	"processExpectations": [
+		"The agent set up a configuration-based evaluation for the workflow — a named eval config referencing the workflow's start/end nodes, one or more canned metrics (e.g. correctness), and a Data Table dataset — via the evaluation configuration feature, rather than by adding evaluation nodes to the workflow. (Placeholder: expected to fail until Instance AI can build config-based evals.)"
+	],
+	"outcomeExpectations": [
+		"No node-based evaluation wiring was added to the workflow graph: there is no `n8n-nodes-base.evaluationTrigger` and no `n8n-nodes-base.evaluation` node. The configuration-based evaluation lives outside the canvas, so the workflow's node graph is the original AI agent workflow, unchanged.",
+		"The original workflow still functions: the AI agent that answers the submitted support question and returns the reply on the form is intact."
+	]
+}

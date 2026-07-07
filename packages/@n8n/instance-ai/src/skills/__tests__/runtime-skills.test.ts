@@ -4,6 +4,8 @@ import { join } from 'node:path';
 
 import { INSTANCE_AI_SKILLS_DIR, loadInstanceAiRuntimeSkillSource } from '../runtime-skills';
 
+const ORIGINAL_ENABLED_MODULES = process.env.N8N_ENABLED_MODULES;
+
 describe('Instance AI runtime skills', () => {
 	it('points the workflow-builder skill at knowledge-base references', () => {
 		const skill = readFileSync(
@@ -65,6 +67,35 @@ describe('Instance AI runtime skills', () => {
 			throw new Error('Expected load_skill to return file content');
 		}
 		expect(loadResult.content).toContain('Fast Routing');
+	});
+
+	it('excludes the bundled intent-recognition skill unless the agents module is enabled', async () => {
+		const source = await loadRuntimeSkillSourceWithEnabledModules('instance-ai');
+
+		expect(source.registry.skills).not.toContainEqual(
+			expect.objectContaining({ id: 'intent-recognition' }),
+		);
+		await expect(source.loadSkill('intent-recognition')).resolves.toBeNull();
+	});
+
+	it('loads the bundled intent-recognition skill when the agents module is enabled', async () => {
+		const source = await loadRuntimeSkillSourceWithEnabledModules('instance-ai, agents');
+
+		expect(source.registry.skills).toContainEqual(
+			expect.objectContaining({ id: 'intent-recognition' }),
+		);
+		expect(
+			source.registry.skills.find((entry) => entry.id === 'intent-recognition')?.description,
+		).toContain('Must be used before deciding the intent of any automation request');
+		const skill = await source.loadSkill('intent-recognition');
+		expect(skill?.name).toBe('intent-recognition');
+		expect(skill?.instructions).toContain('This skill must be used before deciding');
+
+		const loadTool = createSkillLoadTool(source);
+		const loadResult = await loadTool.handler?.({ skillId: 'intent-recognition' }, {});
+		const loadedText = skillLoadText(loadResult);
+		expect(loadedText).toContain('[Skill: "intent-recognition"]');
+		expect(loadedText).toContain('workflow | hybrid | agent | single-ai-task | ambiguous');
 	});
 
 	it('loads the bundled Computer Use credential setup skill', async () => {
@@ -264,3 +295,23 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('do this unprompted');
 	});
 });
+
+function skillLoadText(output: unknown): string {
+	const record = output as { type?: string; value?: Array<{ type: string; text: string }> };
+	if (record?.type !== 'content' || !Array.isArray(record.value)) {
+		throw new Error(`Expected content-form skill load output, got: ${JSON.stringify(output)}`);
+	}
+	return record.value.map((part) => part.text).join('\n');
+}
+
+async function loadRuntimeSkillSourceWithEnabledModules(enabledModules: string | undefined) {
+	vi.resetModules();
+	if (enabledModules === undefined) {
+		delete process.env.N8N_ENABLED_MODULES;
+	} else {
+		process.env.N8N_ENABLED_MODULES = enabledModules;
+	}
+
+	const { loadInstanceAiRuntimeSkillSource } = await import('../runtime-skills');
+	return loadInstanceAiRuntimeSkillSource();
+}
