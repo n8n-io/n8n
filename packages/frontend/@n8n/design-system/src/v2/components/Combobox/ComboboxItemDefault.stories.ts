@@ -4,7 +4,6 @@ import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
 import type { ComboboxItemDefaultProps } from './ComboboxItemDefault.types';
 import ComboboxItemDefault from './ComboboxItemDefault.vue';
-import previewStyles from './ComboboxItemDefault.stories.module.css';
 
 const longLabel = 'Quarterly automation rollout for customer onboarding and billing reconciliation';
 
@@ -116,32 +115,32 @@ export const Sizes: Story = {
 		template: `
 			<div style="display: flex; flex-direction: column; gap: var(--spacing--sm); width: 320px;">
 				<div style="display: flex; flex-direction: column; gap: var(--spacing--4xs);">
-					<span style="font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
-						xlarge · var(--font-size--md)
+					<span style="color: var(--color--text--tint-1);">
+						xlarge
 					</span>
 					<ComboboxItemDefault v-bind="itemArgs" size="xlarge" />
 				</div>
 				<div style="display: flex; flex-direction: column; gap: var(--spacing--4xs);">
-					<span style="font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
-						large (default) · var(--font-size--sm)
+					<span style="color: var(--color--text--tint-1);">
+						large (default)
 					</span>
 					<ComboboxItemDefault v-bind="itemArgs" size="large" />
 				</div>
 				<div style="display: flex; flex-direction: column; gap: var(--spacing--4xs);">
-					<span style="font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
-						medium · var(--font-size--sm)
+					<span style="color: var(--color--text--tint-1);">
+						medium
 					</span>
 					<ComboboxItemDefault v-bind="itemArgs" size="medium" />
 				</div>
 				<div style="display: flex; flex-direction: column; gap: var(--spacing--4xs);">
-					<span style="font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
-						small · var(--font-size--xs)
+					<span style="color: var(--color--text--tint-1);">
+						small
 					</span>
 					<ComboboxItemDefault v-bind="itemArgs" size="small" />
 				</div>
 				<div style="display: flex; flex-direction: column; gap: var(--spacing--4xs);">
-					<span style="font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
-						mini · var(--font-size--2xs)
+					<span style="color: var(--color--text--tint-1);">
+						mini
 					</span>
 					<ComboboxItemDefault v-bind="itemArgs" size="mini" />
 				</div>
@@ -158,7 +157,7 @@ export const Variants: Story = {
 	render: () => ({
 		components: { ComboboxItemDefault, Icon },
 		setup() {
-			return { variants, previewStyles };
+			return { variants };
 		},
 		template: `
 			<div style="display: flex; flex-direction: column; gap: var(--spacing--sm); width: 320px;">
@@ -167,15 +166,13 @@ export const Variants: Story = {
 					:key="variant.name"
 					style="display: flex; flex-direction: column; gap: var(--spacing--4xs);"
 				>
-					<span style="font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
+					<span style="color: var(--color--text--tint-1);">
 						{{ variant.name }}
 					</span>
 					<ComboboxItemDefault
 						v-bind="variant.props"
 						size="large"
-						:class="{
-							[previewStyles.previewRowSelected]: variant.selected,
-						}"
+						:data-highlighted="variant.selected || undefined"
 					>
 						<template v-if="variant.selected" #item-trailing="{ ui }">
 							<Icon icon="check" v-bind="ui" />
@@ -201,11 +198,11 @@ export const ItemSlots: Story = {
 				icon: 'wrench',
 			};
 
-			return { item, previewStyles };
+			return { item };
 		},
 		template: `
 			<div style="width: 320px;">
-				<ComboboxItemDefault v-bind="item" size="large" :class="previewStyles.previewRowSelected">
+				<ComboboxItemDefault v-bind="item" size="large" data-highlighted>
 					<template #item-leading="{ ui }">
 						<span v-bind="ui" style="color: var(--color--primary);">★</span>
 					</template>

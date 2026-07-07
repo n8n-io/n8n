@@ -13,7 +13,7 @@ import {
 	ComboboxTrigger,
 	ComboboxViewport,
 	useForwardPropsEmits,
-} from './Combobox.reka';
+} from './reka-ui';
 import { computed, useCssModule, useTemplateRef } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';

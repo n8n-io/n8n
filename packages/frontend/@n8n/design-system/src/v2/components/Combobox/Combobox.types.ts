@@ -5,7 +5,7 @@ import type {
 	ComboboxItemProps,
 	ComboboxRootEmits,
 	ComboboxRootProps,
-} from './Combobox.reka';
+} from './reka-ui';
 
 export type ComboboxProps<T extends AcceptableValue = AcceptableValue> = ComboboxRootProps<T>;
 
@@ -16,6 +16,8 @@ export type ComboboxListItem = Partial<ComboboxItemProps> & {
 	type?: 'label' | 'separator' | 'item';
 	icon?: IconName;
 	size?: ComboboxSizes;
+	onSelect?: (event: Event) => void;
+	class?: string | Record<string, boolean> | Array<string | Record<string, boolean>>;
 };
 
 export type ComboboxItem = AcceptableValue | ComboboxListItem;

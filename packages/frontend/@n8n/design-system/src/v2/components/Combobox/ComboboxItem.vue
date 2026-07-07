@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ComboboxItem, ComboboxItemIndicator } from './Combobox.reka';
+import { ComboboxItem, ComboboxItemIndicator } from './reka-ui';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
