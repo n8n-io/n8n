@@ -1,7 +1,7 @@
-import { formatPemBlock } from '@n8n/utils';
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import * as amqplib from 'amqplib';
 import type {
-	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IDataObject,
 	IExecuteFunctions,

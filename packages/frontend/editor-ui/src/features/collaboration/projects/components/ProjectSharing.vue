@@ -29,7 +29,6 @@ type Props = {
 	roles?: AllRolesMap['workflow' | 'credential' | 'project'];
 	readonly?: boolean;
 	static?: boolean;
-	hideAddInput?: boolean;
 	placeholder?: string;
 	emptyOptionsText?: string;
 	size?: SelectSize;
@@ -108,9 +107,12 @@ const filteredProjects = computed(() => {
 });
 
 const sortedProjects = computed((): ProjectListItem[] => {
+	const projects = [...filteredProjects.value].sort((projectA, projectB) =>
+		(projectA.name ?? '').localeCompare(projectB.name ?? ''),
+	);
 	return [
 		...(props.canShareGlobally && !props.isSharedGlobally ? [GLOBAL_GROUP] : []),
-		...filteredProjects.value,
+		...projects,
 	];
 });
 
@@ -214,7 +216,7 @@ watch(
 		<N8nTooltip :disabled="!props.disabledTooltip" placement="top">
 			<template #content>{{ props.disabledTooltip }}</template>
 			<N8nSelect
-				v-if="!props.hideAddInput && (!props.static || props.disabledTooltip)"
+				v-if="!props.static || props.disabledTooltip"
 				:model-value="selectedProject"
 				data-test-id="project-sharing-select"
 				filterable

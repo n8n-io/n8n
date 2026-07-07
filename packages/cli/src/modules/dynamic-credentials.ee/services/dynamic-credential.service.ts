@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { AuthenticatedRequest } from '@n8n/db';
 import { CredentialResolverDataNotFoundError, CredentialResolverError } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { NextFunction, Response } from 'express';
@@ -29,7 +30,6 @@ import { CredentialResolutionError } from '../errors/credential-resolution.error
 import { CredentialResolverNotConfiguredError } from '../errors/credential-resolver-not-configured.error';
 import { CredentialResolverNotFoundError } from '../errors/credential-resolver-not-found.error';
 import { MissingExecutionContextError } from '../errors/missing-execution-context.error';
-import { AuthenticatedRequest } from '@n8n/db';
 
 /**
  * Service for resolving credentials dynamically via configured resolvers.
@@ -228,7 +228,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			// TODO(M14): emit `private_credential.resolution_failed_missing_connection`
 			// via EventService once the relay event is defined in RelayEventMap.
 			throw new CredentialResolutionError(
-				`'${credentialsResolveMetadata.name}' private credential is not connected for you. Connect yours to execute this workflow manually.`,
+				`'${credentialsResolveMetadata.name}' end-user credential is not connected for you. Connect yours to execute this workflow manually.`,
 				{ cause: error },
 			);
 		}

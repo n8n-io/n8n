@@ -140,6 +140,11 @@ export type AttemptRecord = z.infer<typeof attemptRecordSchema>;
 
 export const triggerTypeSchema = z.enum(['manual_or_testable', 'trigger_only']);
 
+export const executionNodeErrorSchema = z.object({
+	nodeName: z.string(),
+	message: z.string().optional(),
+});
+
 /**
  * Structured verification evidence the builder captures when it runs
  * `verify-built-workflow`. Downstream checkpoint runs read this and skip
@@ -163,6 +168,7 @@ export const workflowVerificationEvidenceSchema = z.object({
 			producedOutputRows: z.number().optional(),
 			errorNodeName: z.string().optional(),
 			errorMessage: z.string().optional(),
+			nodeErrors: z.array(executionNodeErrorSchema).optional(),
 		})
 		.optional(),
 	verifiedAt: z.string().datetime().optional(),
@@ -291,6 +297,8 @@ export const workflowBuildOutcomeSchema = z.object({
 	/** Deterministic setup handoff verdict for post-verification workflow setup. */
 	setupRequirement: workflowSetupRequirementSchema.optional(),
 	remediation: remediationMetadataSchema.optional(),
+	/** Count of verify-built-workflow runs for this build; capped by MAX_VERIFY_ATTEMPTS. */
+	verifyAttempts: z.number().int().min(0).optional(),
 	/**
 	 * Structured verification record from the most recent `verify-built-workflow`
 	 * tool call. This is tool evidence, not builder prose, so downstream checks may

@@ -48,6 +48,30 @@ describe('GoogleApi Credential', () => {
 		expect(credential.displayName).toBe('Google Service Account API');
 	});
 
+	describe('region property', () => {
+		const regionProperty = credential.properties.find((p) => p.name === 'region');
+		const regionOptions = (regionProperty?.options ?? []) as Array<{ name: string; value: string }>;
+
+		it('offers the global and multi-region locations first', () => {
+			// Newer Gemini models (e.g. Gemini 3.x) are only served from these locations
+			expect(regionOptions.slice(0, 3)).toEqual([
+				{ name: 'Global (multi-region) - global', value: 'global' },
+				{ name: 'EU (multi-region) - eu', value: 'eu' },
+				{ name: 'US (multi-region) - us', value: 'us' },
+			]);
+		});
+
+		it('keeps the regional options alongside the multi-region ones', () => {
+			const values = regionOptions.map((o) => o.value);
+			expect(values).toContain('us-central1');
+			expect(values).toContain('europe-west4');
+		});
+
+		it('defaults to global, the only location serving both Gemini 2.x and 3.x', () => {
+			expect(regionProperty?.default).toBe('global');
+		});
+	});
+
 	describe('authenticate', () => {
 		it('returns the request unchanged when not set up for the HTTP Request node', async () => {
 			const result = await credential.authenticate(

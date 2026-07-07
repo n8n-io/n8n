@@ -85,6 +85,7 @@ jobs:
     outputs:
       janitor: ${{ fromJSON(steps.filter.outputs.results).janitor == true }}
       changed-files: ${{ steps.filter.outputs.changed-files }}
+      added-files: ${{ steps.filter.outputs.added-files }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -117,6 +118,7 @@ jobs:
       - name: Run code-health
         env:
           CODE_HEALTH_CHANGED_FILES: ${{ needs.changes.outputs.changed-files }}
+          CODE_HEALTH_ADDED_FILES: ${{ needs.changes.outputs.added-files }}
         run: pnpm --filter=@n8n/code-health check
 
       - name: Run janitor

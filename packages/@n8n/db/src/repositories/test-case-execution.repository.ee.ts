@@ -38,6 +38,32 @@ export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 		return await this.save(testCaseExecution);
 	}
 
+	/**
+	 * Paginated fetch of a run's test cases. Unlike the unbounded `find()` the
+	 * internal controller uses (which loads every row and would OOM on large CI
+	 * datasets), this bounds the result. Ordered by `runIndex` (the seeded
+	 * per-case sequence) with `id` as a stable tiebreaker.
+	 */
+	async getManyByTestRunId(
+		testRunId: string,
+		{ skip, take }: { skip?: number; take?: number } = {},
+	) {
+		return await this.find({
+			where: { testRun: { id: testRunId } },
+			order: { runIndex: 'ASC', id: 'ASC' },
+			skip,
+			take,
+		});
+	}
+
+	/**
+	 * Count a run's test cases. Used by the public API to compute the
+	 * pagination cursor without loading rows.
+	 */
+	async countByTestRunId(testRunId: string) {
+		return await this.countBy({ testRun: { id: testRunId } });
+	}
+
 	async createBatch(testRunId: string, testCases: string[]) {
 		const mappings = this.create(
 			testCases.map<DeepPartial<TestCaseExecution>>(() => ({

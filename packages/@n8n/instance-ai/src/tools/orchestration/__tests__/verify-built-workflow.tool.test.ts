@@ -8,7 +8,7 @@ import type {
 	OrchestrationContext,
 	WorkflowTaskService,
 } from '../../../types';
-import { createRemediation } from '../../../workflow-loop/remediation';
+import { createRemediation, MAX_VERIFY_ATTEMPTS } from '../../../workflow-loop/remediation';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 import { createVerifyBuiltWorkflowTool } from '../verify-built-workflow.tool';
 
@@ -31,6 +31,7 @@ type VerifyBuiltWorkflowOutput = {
 	simulationNote?: string;
 	lastNodeExecuted?: string;
 	nodesNotReached?: string[];
+	nodeErrors?: Array<{ nodeName: string; message?: string }>;
 	coverageNote?: string;
 	data?: Record<string, unknown>;
 	remediation?: { category: string; shouldEdit: boolean; reason?: string };
@@ -62,7 +63,6 @@ function createContext(overrides: Partial<OrchestrationContext> = {}): Orchestra
 		userId: 'user_1',
 		orchestratorAgentId: 'agent_1',
 		modelId: 'test-model',
-		subAgentMaxSteps: 5,
 		eventBus: {} as OrchestrationContext['eventBus'],
 		logger: {
 			debug: vi.fn(),
@@ -435,6 +435,7 @@ type ExecutionRunResult = {
 	data?: Record<string, unknown>;
 	executedNodeNames?: string[];
 	lastNodeExecuted?: string;
+	nodeErrors?: Array<{ nodeName: string; message?: string }>;
 	error?: string;
 };
 
@@ -612,6 +613,37 @@ describe('verify-built-workflow tool', () => {
 		});
 		expect(update.verification?.evidence?.nodesExecuted).toEqual(['Form Trigger', 'Insert Row']);
 		expect(typeof update.verification?.verifiedAt).toBe('string');
+	});
+
+	it('increments the verify attempt count on the build outcome each run', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(makeBuildOutcome({ verifyAttempts: 2 }), {
+			executionId: 'exec-count',
+			status: 'success',
+			data: { 'Manual Trigger': [{ ok: true }] },
+		});
+
+		await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(updateBuildOutcome.mock.calls[0][1].verifyAttempts).toBe(3);
+	});
+
+	it('blocks verification once the verify attempt budget is exhausted', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(
+			makeBuildOutcome({ verifyAttempts: MAX_VERIFY_ATTEMPTS }),
+			{ executionId: 'exec-exhausted', status: 'success', data: {} },
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(false);
+		expect(result.remediation).toMatchObject({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'verify_budget_exhausted',
+		});
+		expect(result.error).toContain('executions(action="run")');
+		expect(ctx.domainContext.executionService.run).not.toHaveBeenCalled();
+		expect(updateBuildOutcome).not.toHaveBeenCalled();
 	});
 
 	it('returns compact verification evidence by default without full execution data', async () => {
@@ -1143,6 +1175,68 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		expect(result.success).toBe(true);
 		expect(result.simulationNote).toBeUndefined();
 		expect(ctx.logger.warn).not.toHaveBeenCalled();
+	});
+
+	it('downgrades workflow success when an executed AI tool errored', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(makeBuildOutcome({ nodeSimulationPlan: [] }), {
+			executionId: 'exec-ai-tool-error',
+			status: 'success',
+			data: {
+				'API Request': [{ body: { city: 'Lisbon' } }],
+				'Destination Analyst': [{ output: '{"city":"Lisbon"}' }],
+				'Return Brief': [{ output: '{"city":"Lisbon"}' }],
+			},
+			executedNodeNames: [
+				'API Request',
+				'GPT Model',
+				'geocode_city',
+				'Destination Analyst',
+				'Return Brief',
+			],
+			nodeErrors: [
+				{
+					nodeName: 'geocode_city',
+					message:
+						'The node "@n8n/n8n-nodes-langchain.toolHttpRequest" has a "supplyData" method but no "execute" method.',
+				},
+			],
+			lastNodeExecuted: 'Return Brief',
+		});
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(false);
+		expect(result.nodeErrors).toHaveLength(1);
+		expect(result.nodeErrors?.[0]?.nodeName).toBe('geocode_city');
+		expect(result.nodeErrors?.[0]?.message).toContain('supplyData');
+		expect(result.error).toContain('geocode_city');
+		const verification = updateBuildOutcome.mock.calls[0][1].verification;
+		expect(verification?.success).toBe(false);
+		expect(verification?.status).toBe('success');
+		expect(verification?.failureSignature).toContain('geocode_city');
+		expect(verification?.evidence?.nodeErrors).toHaveLength(1);
+		expect(verification?.evidence?.nodeErrors?.[0]?.nodeName).toBe('geocode_city');
+		expect(verification?.evidence?.nodeErrors?.[0]?.message).toContain('supplyData');
+		expect(verification?.evidence?.errorMessage).toContain('geocode_city');
+	});
+
+	it('keeps needs_setup routing when a waiting execution also has node errors', async () => {
+		const { ctx } = makeContext(makeBuildOutcome({ nodeSimulationPlan: [] }), {
+			executionId: 'exec-waiting-node-error',
+			status: 'waiting',
+			data: {},
+			executedNodeNames: ['Lookup', 'Community Pause'],
+			nodeErrors: [{ nodeName: 'Lookup', message: 'lookup failed' }],
+		});
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(false);
+		expect(result.remediation).toMatchObject({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'execution_waiting',
+		});
 	});
 
 	it('reports planned simulations the execution never reached as unverified (empty-read dead-end)', async () => {

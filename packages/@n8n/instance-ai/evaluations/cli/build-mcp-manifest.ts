@@ -4,15 +4,21 @@
 // accepts. Validates the produced manifest against the same Zod schema the
 // loader uses, so shape regressions surface here rather than at eval time.
 
-import { execSync, spawn } from 'child_process';
+import { execSync } from 'child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'fs';
-import { homedir, tmpdir } from 'os';
 import { basename, join, resolve } from 'path';
 import { z } from 'zod';
 
-import { DEFAULT_DATASETS, conversationTurnTextSchema } from '../data/workflows/schema';
+import {
+	buildWorkflowViaMcp,
+	stageMcpConfigFromClaudeJson,
+	uniqueProjectScopes,
+} from './mcp-builder';
+import { createLogger } from '../harness/logger';
 import { prebuiltManifestSchema, type PrebuiltManifest } from '../harness/prebuilt-workflows';
 import { runWithConcurrency } from '../harness/runner';
+import { ConversationTurnSchema, DEFAULT_DATASETS } from '../harness/schema';
+import { loadTestCasesFromLangTracer } from '../langtracer/provider';
 
 // ---------------------------------------------------------------------------
 // CLI argument parsing
@@ -46,6 +52,10 @@ interface CliArgs {
 	 *  builder from a project where they have skills/settings configured,
 	 *  independent of where the script itself runs. */
 	buildCwd?: string;
+	/** Test-case source: `disk` (default, from --workflow-dir) or `langtracer` (a suite over MCP). */
+	source: 'disk' | 'langtracer';
+	/** lang-tracer suite slug when `--source langtracer`. */
+	suite?: string;
 }
 
 const HELP = `
@@ -80,6 +90,8 @@ Flags:
   --mcp-timeout-ms N      MCP_TIMEOUT env passed to claude -p (default: 120000).
   --project-id ID         n8n project to create the workflows in. Defaults
                           to the user's personal project.
+  --source SRC            Test-case source: disk (default) or langtracer.
+  --suite SLUG            lang-tracer suite slug (required with --source langtracer).
   --tier TIER             Only build test cases whose datasets array includes
                           TIER (e.g. "mcp"). Mirrors eval:instance-ai --tier.
                           Applies to discovered and positional slugs alike.
@@ -120,6 +132,7 @@ function parseArgs(argv: string[]): ParseResult {
 		slugs: [],
 		maxAttempts: 3,
 		mcpTimeoutMs: 120_000,
+		source: 'disk',
 	};
 
 	let i = 0;
@@ -188,6 +201,19 @@ function parseArgs(argv: string[]): ParseResult {
 				result.buildCwd = nextArg(argv, i, arg);
 				i += 2;
 				break;
+			case '--source': {
+				const value = nextArg(argv, i, arg);
+				if (value !== 'disk' && value !== 'langtracer') {
+					throw new Error('--source must be "disk" or "langtracer"');
+				}
+				result.source = value;
+				i += 2;
+				break;
+			}
+			case '--suite':
+				result.suite = nextArg(argv, i, arg);
+				i += 2;
+				break;
 			case '-h':
 			case '--help':
 				return { helpRequested: true };
@@ -204,6 +230,9 @@ function parseArgs(argv: string[]): ParseResult {
 	if (result.iterations < 1) throw new Error('--iterations must be >= 1');
 	if (result.concurrency < 1) throw new Error('--concurrency must be >= 1');
 	if (result.maxAttempts < 1) throw new Error('--max-attempts must be >= 1');
+	if (result.source === 'langtracer' && !result.suite) {
+		throw new Error('--source langtracer requires --suite <slug>');
+	}
 
 	mkdirSync(result.outputDir, { recursive: true });
 	if (!result.manifestPath) result.manifestPath = join(result.outputDir, 'manifest.json');
@@ -241,132 +270,12 @@ function parseIntArg(argv: string[], i: number, flag: string): number {
 }
 
 // ---------------------------------------------------------------------------
-// MCP config — extract the named server block from ~/.claude.json
+// Build outcome + test-case prompt source
+//
+// The `claude -p` invocation, MCP config staging, prompt flattening, and
+// workflow-id extraction live in ./mcp-builder (shared with the fused
+// --build-via-mcp eval path). This file owns only the manifest/stats concerns.
 // ---------------------------------------------------------------------------
-
-const claudeConfigSchema = z.object({
-	mcpServers: z.record(z.unknown()).optional(),
-	projects: z
-		.record(z.object({ mcpServers: z.record(z.unknown()).optional() }).passthrough())
-		.optional(),
-});
-
-function uniqueProjectScopes(scopes: Array<string | undefined>): string[] {
-	const uniqueScopes: string[] = [];
-	for (const scope of scopes) {
-		if (!scope || uniqueScopes.includes(scope)) continue;
-		uniqueScopes.push(scope);
-	}
-	return uniqueScopes;
-}
-
-function stageMcpConfig(serverName: string, projectScopes: readonly string[]): string {
-	const claudeConfigPath = join(homedir(), '.claude.json');
-	if (!existsSync(claudeConfigPath)) {
-		throw new Error(`${claudeConfigPath} not found`);
-	}
-	const parsed = claudeConfigSchema.parse(readJson(claudeConfigPath, 'Claude Code config'));
-
-	const projectScopedBlock = projectScopes
-		.map((scope) => parsed.projects?.[scope]?.mcpServers?.[serverName])
-		.find((block) => block !== undefined);
-	const block = projectScopedBlock ?? parsed.mcpServers?.[serverName];
-	if (block === undefined) {
-		const scope = projectScopes.length
-			? `project-scope under ${projectScopes.map((projectScope) => `"${projectScope}"`).join(', ')} or global`
-			: 'global (no project scopes)';
-		throw new Error(`MCP server "${serverName}" not configured in ${claudeConfigPath} (${scope})`);
-	}
-
-	const tmpPath = join(tmpdir(), `n8n-mcp-config-${process.pid}-${Date.now()}.json`);
-	writeFileSync(tmpPath, JSON.stringify({ mcpServers: { [serverName]: block } }), {
-		mode: 0o600,
-	});
-	return tmpPath;
-}
-
-/** Each non-alphanumeric character (excluding hyphen) becomes "_". Mirrors
- *  Claude Code's tool-prefix sanitization: "n8n-mcp (instance)" maps to
- *  "n8n-mcp__instance_", and the full prefix becomes "mcp__n8n-mcp__instance___". */
-function sanitizeServerName(name: string): string {
-	return name.replace(/[^a-zA-Z0-9-]/g, '_');
-}
-
-function buildAllowedTools(serverName: string): readonly string[] {
-	return [`mcp__${sanitizeServerName(serverName)}`];
-}
-
-// ---------------------------------------------------------------------------
-// `claude -p` subprocess invocation
-// ---------------------------------------------------------------------------
-
-const claudeSessionSchema = z
-	.object({
-		result: z.string().optional(),
-		num_turns: z.number().optional(),
-		total_cost_usd: z.number().optional(),
-		duration_ms: z.number().optional(),
-		subtype: z.string().optional(),
-	})
-	.passthrough();
-type ClaudeSession = z.infer<typeof claudeSessionSchema>;
-
-interface BuildAttempt {
-	session: ClaudeSession | undefined;
-	logFile: string;
-}
-
-async function runClaude(
-	userMessage: string,
-	args: CliArgs,
-	mcpConfigPath: string,
-	allowedTools: readonly string[],
-	logFile: string,
-): Promise<BuildAttempt> {
-	return await new Promise((resolve) => {
-		const claudeArgs = [
-			'-p',
-			userMessage,
-			'--model',
-			args.model,
-			'--mcp-config',
-			mcpConfigPath,
-			'--strict-mcp-config',
-			'--allowedTools',
-			...allowedTools,
-			'--output-format',
-			'json',
-		];
-		const child = spawn('claude', claudeArgs, {
-			env: { ...process.env, MCP_TIMEOUT: String(args.mcpTimeoutMs) },
-			stdio: ['ignore', 'pipe', 'pipe'],
-			cwd: args.buildCwd,
-		});
-		let stdout = '';
-		let stderr = '';
-		child.stdout.on('data', (chunk: Buffer) => {
-			stdout += chunk.toString();
-		});
-		child.stderr.on('data', (chunk: Buffer) => {
-			stderr += chunk.toString();
-		});
-		child.on('close', () => {
-			// Persist stdout (or stderr fallback) for forensics regardless of parse success.
-			writeFileSync(logFile, stdout || stderr || '{}');
-			let session: ClaudeSession | undefined;
-			try {
-				const parsed = claudeSessionSchema.safeParse(JSON.parse(stdout));
-				if (parsed.success) session = parsed.data;
-			} catch {
-				// stdout wasn't JSON — caller treats undefined session as failure.
-			}
-			resolve({ session, logFile });
-		});
-		child.on('error', () => {
-			resolve({ session: undefined, logFile });
-		});
-	});
-}
 
 interface BuildOutcome {
 	slug: string;
@@ -377,98 +286,48 @@ interface BuildOutcome {
 	durationMs: number;
 }
 
+/** Canonical conversation-turn type (role enum + normalized text), reused from
+ *  the harness schema instead of a looser inline `{ role: string; text }`. */
+type ConversationTurn = z.infer<typeof ConversationTurnSchema>;
+
 const testCaseSchema = z
 	.object({
-		// Reuse the canonical text normalizer so the array (multi-line) form of a
-		// turn's `text` is accepted and joined here exactly as in the eval harness.
-		conversation: z.array(z.object({ role: z.string(), text: conversationTurnTextSchema })).min(1),
+		// Reuse the canonical turn schema so `role` is the exact 'user' | 'assistant'
+		// enum and the array (multi-line) `text` form is normalized as in the harness.
+		conversation: z.array(ConversationTurnSchema).min(1),
 	})
 	.passthrough();
-
-function buildPromptFromConversation(
-	conversation: z.infer<typeof testCaseSchema>['conversation'],
-): string {
-	const [firstUserTurn, ...remainingUserTurns] = conversation
-		.filter((turn) => turn.role === 'user')
-		.map((turn) => turn.text.trim())
-		.filter((text) => text.length > 0);
-
-	if (!firstUserTurn) return conversation[0].text;
-	if (remainingUserTurns.length === 0) return firstUserTurn;
-
-	return [
-		firstUserTurn,
-		'Additional details from the user:',
-		...remainingUserTurns.map((turn, index) => `${String(index + 1)}. ${turn}`),
-		'',
-		"Use all details above as requirements. Configure all nodes as completely as possible and don't ask me for credentials; I'll set them up later.",
-	].join('\n\n');
-}
-
-function tailWorkflowId(text: string): string | null {
-	const matches = [...text.matchAll(/WORKFLOW_ID=([A-Za-z0-9_-]+)/g)];
-	return matches.length > 0 ? matches[matches.length - 1][1] : null;
-}
 
 async function buildOne(
 	slug: string,
 	iteration: number,
 	args: CliArgs,
 	mcpConfigPath: string,
-	workflowDir: string,
-	allowedTools: readonly string[],
+	conversation: ConversationTurn[],
 ): Promise<BuildOutcome> {
-	const scenarioFile = join(workflowDir, `${slug}.json`);
-	if (!existsSync(scenarioFile)) {
-		console.log(`  [${slug}#${iteration}] skip: scenario file missing`);
-		return { slug, iteration, workflowId: null, cost: 0, turns: 0, durationMs: 0 };
-	}
-	const testCase = testCaseSchema.parse(readJson(scenarioFile, `test case ${slug}`));
-
-	const projectInstruction = args.projectId
-		? `\n\nWhen calling create_workflow_from_code, pass projectId: '${args.projectId}' so the workflow is created in that n8n project.`
-		: '';
-
-	const userMessage = `${buildPromptFromConversation(testCase.conversation)}${projectInstruction}
-
----
-After you have created the workflow with create_workflow_from_code, print a final line of the exact form:
-
-WORKFLOW_ID=<id>
-
-where <id> is the workflowId returned by create_workflow_from_code. Emit it verbatim, no quotes, no markdown.`;
-
-	let workflowId: string | null = null;
-	let lastSession: ClaudeSession | undefined;
-	for (let attempt = 1; attempt <= args.maxAttempts; attempt++) {
-		const ts = new Date().toISOString().replace(/[:.]/g, '-');
-		const logFile = join(args.logDir, `${slug}-iter${iteration}-attempt${attempt}-${ts}.json`);
-		const { session } = await runClaude(userMessage, args, mcpConfigPath, allowedTools, logFile);
-		lastSession = session;
-		const id = session?.result ? tailWorkflowId(session.result) : null;
-		if (id) {
-			workflowId = id;
-			break;
-		}
-		const reason = session?.subtype ?? 'no-stdout';
-		console.log(
-			`  [${slug}#${iteration}] attempt ${attempt}: no WORKFLOW_ID (${reason}, log: ${logFile})`,
-		);
-	}
-
-	if (!workflowId) {
-		console.log(`  [${slug}#${iteration}] FAILED after ${args.maxAttempts} attempts`);
-	} else {
-		console.log(`  [${slug}#${iteration}] ok → ${workflowId}`);
-	}
+	const result = await buildWorkflowViaMcp({
+		conversation,
+		slug,
+		iteration,
+		mcpConfigPath,
+		logDir: args.logDir,
+		settings: {
+			serverName: args.mcpServerName,
+			model: args.model,
+			maxAttempts: args.maxAttempts,
+			mcpTimeoutMs: args.mcpTimeoutMs,
+			buildCwd: args.buildCwd,
+			projectId: args.projectId,
+		},
+	});
 
 	return {
 		slug,
 		iteration,
-		workflowId,
-		cost: lastSession?.total_cost_usd ?? 0,
-		turns: lastSession?.num_turns ?? 0,
-		durationMs: lastSession?.duration_ms ?? 0,
+		workflowId: result.workflowId,
+		cost: result.cost,
+		turns: result.turns,
+		durationMs: result.durationMs,
 	};
 }
 
@@ -587,41 +446,72 @@ async function main(): Promise<void> {
 		throw new Error('claude not on PATH');
 	}
 
-	// `--workflow-dir` lets the script run from outside the n8n repo. When
-	// not provided, we derive both the workflow dir and the repo root from
-	// `git rev-parse` (the script must then be invoked inside the n8n repo).
-	let workflowDir: string;
+	// Repo root scopes the staged MCP config (cwd fallback). Best-effort: the disk
+	// source resolves/validates its own test-case dir below; langtracer pulls cases
+	// over MCP, so it needs no repo at all and can run outside the n8n checkout.
 	let repoRoot: string | undefined;
-	if (args.workflowDir) {
-		workflowDir = args.workflowDir;
-		try {
-			repoRoot = execSync('git rev-parse --show-toplevel', { stdio: ['ignore', 'pipe', 'ignore'] })
-				.toString()
-				.trim();
-		} catch {
-			repoRoot = undefined;
-		}
-	} else {
-		try {
-			repoRoot = execSync('git rev-parse --show-toplevel').toString().trim();
-		} catch {
-			throw new Error(
-				'Could not determine repo root via git. Run from inside the n8n repo, or pass --workflow-dir to point at a test-case directory directly.',
-			);
-		}
-		workflowDir = join(repoRoot, 'packages/@n8n/instance-ai/evaluations/data/workflows');
+	try {
+		repoRoot = execSync('git rev-parse --show-toplevel', { stdio: ['ignore', 'pipe', 'ignore'] })
+			.toString()
+			.trim();
+	} catch {
+		repoRoot = undefined;
 	}
 
 	if (args.buildCwd && !existsSync(args.buildCwd)) {
 		throw new Error(`--build-cwd directory does not exist: ${args.buildCwd}`);
 	}
 
-	if (args.slugs.length === 0) {
-		args.slugs = discoverSlugs(workflowDir);
+	// Resolve slug -> conversation from the chosen source. Disk reads --workflow-dir
+	// (positional slugs or discovered), langtracer pulls a suite over MCP; both feed
+	// the same buildOne prompt.
+	const casesBySlug = new Map<string, ConversationTurn[]>();
+	if (args.source === 'langtracer') {
+		const suite = args.suite;
+		if (!suite) throw new Error('--source langtracer requires --suite <slug>');
+		const cases = await loadTestCasesFromLangTracer({
+			suite,
+			tier: args.tier,
+			logger: createLogger(false),
+		});
+		for (const { fileSlug, testCase } of cases)
+			casesBySlug.set(fileSlug, testCase.conversation ?? []);
+		if (args.slugs.length > 0) {
+			const requested = new Set(args.slugs);
+			for (const slug of [...casesBySlug.keys()]) {
+				if (!requested.has(slug)) casesBySlug.delete(slug);
+			}
+		}
+	} else {
+		const workflowDir =
+			args.workflowDir ??
+			(repoRoot
+				? join(repoRoot, 'packages/@n8n/instance-ai/evaluations/data/workflows')
+				: undefined);
+		if (!workflowDir) {
+			throw new Error(
+				'Disk source needs the n8n repo (run from inside it) or --workflow-dir; or use --source langtracer.',
+			);
+		}
+		let slugs = args.slugs.length > 0 ? args.slugs : discoverSlugs(workflowDir);
+		if (args.tier) slugs = filterSlugsByTier(workflowDir, slugs, args.tier);
+		for (const slug of slugs) {
+			const file = join(workflowDir, `${slug}.json`);
+			if (!existsSync(file)) {
+				console.log(`  [${slug}] skip: scenario file missing`);
+				continue;
+			}
+			casesBySlug.set(slug, testCaseSchema.parse(readJson(file, `test case ${slug}`)).conversation);
+		}
 	}
-	if (args.tier) {
-		args.slugs = filterSlugsByTier(workflowDir, args.slugs, args.tier);
+	// Drop cases with no user turn to build from (e.g. seedThread-only).
+	for (const [slug, conv] of [...casesBySlug]) {
+		if (!conv.some((t) => t.role === 'user' && t.text.trim().length > 0)) {
+			console.log(`  [${slug}] skip: no user turn to build from`);
+			casesBySlug.delete(slug);
+		}
 	}
+	args.slugs = [...casesBySlug.keys()];
 	if (args.slugs.length === 0) {
 		throw new Error(
 			args.tier ? `No scenarios match --tier "${args.tier}"` : 'No scenarios to build',
@@ -633,7 +523,7 @@ async function main(): Promise<void> {
 		repoRoot,
 		repoRoot ? undefined : process.cwd(),
 	]);
-	const mcpConfigPath = stageMcpConfig(args.mcpServerName, projectScopes);
+	const mcpConfigPath = stageMcpConfigFromClaudeJson(args.mcpServerName, projectScopes);
 	process.on('exit', () => {
 		try {
 			unlinkSync(mcpConfigPath);
@@ -642,7 +532,6 @@ async function main(): Promise<void> {
 		}
 	});
 
-	const allowedTools = buildAllowedTools(args.mcpServerName);
 	const tasks: Array<{ slug: string; iteration: number }> = [];
 	for (const slug of args.slugs) {
 		for (let i = 1; i <= args.iterations; i++) {
@@ -664,7 +553,13 @@ async function main(): Promise<void> {
 	const results = await runWithConcurrency(
 		tasks,
 		async (task) =>
-			await buildOne(task.slug, task.iteration, args, mcpConfigPath, workflowDir, allowedTools),
+			await buildOne(
+				task.slug,
+				task.iteration,
+				args,
+				mcpConfigPath,
+				casesBySlug.get(task.slug) ?? [],
+			),
 		args.concurrency,
 	);
 

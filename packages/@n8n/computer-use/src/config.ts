@@ -44,6 +44,8 @@ export const TOOL_GROUP_DEFINITIONS = {
 
 export type ToolGroup = keyof typeof TOOL_GROUP_DEFINITIONS;
 
+export const CLOUD_ORIGIN_PATTERN = 'https://*.app.n8n.cloud';
+
 export const PERMISSION_MODES = ['deny', 'ask', 'allow'] as const;
 export const permissionModeSchema = z.enum(PERMISSION_MODES);
 export type PermissionMode = z.infer<typeof permissionModeSchema>;
@@ -98,7 +100,7 @@ export type LogLevel = z.infer<typeof logLevelSchema>;
 
 const structuralConfigSchema = z.object({
 	logLevel: logLevelSchema,
-	allowedOrigins: z.array(z.string()).default(['https://*.app.n8n.cloud']),
+	allowedOrigins: z.array(z.string()).default([CLOUD_ORIGIN_PATTERN]),
 	filesystem: z.object({ dir: z.string().default('.') }).default({}),
 	computer: z
 		.object({
@@ -427,4 +429,13 @@ function matchesOriginPattern(pattern: string, origin: string): boolean {
 
 export function isOriginAllowed(origin: string, allowedOrigins: string[]): boolean {
 	return allowedOrigins.some((pattern) => matchesOriginPattern(pattern, origin));
+}
+
+/** Instance-side confirmation is only available when connecting to an n8n cloud origin. */
+export function resolvePermissionConfirmation(
+	configured: GatewayConfig['permissionConfirmation'],
+	origin: string,
+): GatewayConfig['permissionConfirmation'] {
+	if (configured === 'client') return 'client';
+	return isOriginAllowed(origin, [CLOUD_ORIGIN_PATTERN]) ? 'instance' : 'client';
 }

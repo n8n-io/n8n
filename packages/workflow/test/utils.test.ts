@@ -1,5 +1,5 @@
 import { ALPHABET } from '../src/constants';
-import { ApplicationError } from '@n8n/errors';
+import { UnexpectedError } from '../src/errors';
 import { ManualExecutionCancelledError } from '../src/errors/execution-cancelled.error';
 import {
 	jsonParse,
@@ -79,7 +79,7 @@ describe('isObjectEmpty', () => {
 
 		const assertCalls = (count: number) => {
 			if (calls.length !== count) {
-				throw new ApplicationError('`Object.keys()` was called an unexpected number of times', {
+				throw new UnexpectedError('`Object.keys()` was called an unexpected number of times', {
 					extra: { times: calls.length },
 				});
 			}

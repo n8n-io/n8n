@@ -21,8 +21,8 @@ import { isActiveBuilderAgent } from '../builderAgents';
 import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
 import ArtifactCard from './ArtifactCard.vue';
-import DelegateCard from './DelegateCard.vue';
 import PlanReviewPanel, { type PlannedTaskArg, type PlanReviewStatus } from './PlanReviewPanel.vue';
+import ReasoningBlock from './ReasoningBlock.vue';
 import TaskChecklist from './TaskChecklist.vue';
 import TimelineTextSegment from './TimelineTextSegment.vue';
 import ToolCallStep from './ToolCallStep.vue';
@@ -262,6 +262,13 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 				:class="$style.timelineItem"
 			/>
 
+			<!-- Reasoning segment — one collapsible block per reasoning stage -->
+			<ReasoningBlock
+				v-else-if="entry.type === 'reasoning'"
+				:entry="entry"
+				:streaming="isStreamingTimelineEntry(props.agentNode, entry)"
+			/>
+
 			<!-- Tool call (skip internal tools like updateWorkingMemory) -->
 			<template
 				v-else-if="
@@ -273,13 +280,6 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 				<TaskChecklist
 					v-if="toolCallsById[entry.toolCallId].renderHint === 'tasks'"
 					:tasks="props.agentNode.tasks"
-				/>
-				<DelegateCard
-					v-else-if="toolCallsById[entry.toolCallId].renderHint === 'delegate'"
-					:args="toolCallsById[entry.toolCallId].args"
-					:result="toolCallsById[entry.toolCallId].result"
-					:is-loading="toolCallsById[entry.toolCallId].isLoading"
-					:tool-call-id="toolCallsById[entry.toolCallId].toolCallId"
 				/>
 				<!-- Hidden tool calls (builder/data-table/eval-setup handled by child agent via AgentSection) -->
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'builder'" />

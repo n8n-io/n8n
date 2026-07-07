@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
-import { N8nIcon, N8nResizeWrapper, type DropdownMenuItemProps } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nResizeWrapper,
+	type DropdownMenuItemProps,
+} from '@n8n/design-system';
+import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
@@ -53,12 +59,16 @@ import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
 import { mcpServerToNode } from '../composables/useMcpServerAdapter';
 import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
+import { formatToolNameForDisplay } from '../utils/toolDisplayName';
+import { normalizeAgentSkillForSave } from '../utils/agentSkill';
+import { addMissingAgentPersonalisation } from '../utils/agentPersonalisation';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
+	AGENT_JSON_IMPORT_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
 	PROJECT_AGENTS,
 } from '../constants';
@@ -70,6 +80,7 @@ import AgentBuilderChatColumn from '../components/AgentBuilderChatColumn.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
+import type { AgentSkillAllowedToolOption } from '../components/AgentSkillViewer.vue';
 
 const AGENT_CHAT_PANEL_MIN_WIDTH = 320;
 const AGENT_CHAT_PANEL_DEFAULT_WIDTH = 460;
@@ -167,10 +178,12 @@ function shouldAutoExpandInitialBuild(): boolean {
 
 const shouldStartWithExpandedBuildChat = shouldAutoExpandInitialBuild();
 const isChatFullWidth = ref(shouldStartWithExpandedBuildChat);
+const isBuildChatHidden = ref(!shouldStartWithExpandedBuildChat);
 const shouldCollapseChatAfterInitialBuild = ref(shouldStartWithExpandedBuildChat);
 const executionsCount = computed(() => sessionsStore.threads.length);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
 	executionsCount,
+	knowledgeBaseEnabled: isKnowledgeBaseEnabled,
 });
 
 const { ensureLoaded: ensureIntegrationsCatalog } = useAgentIntegrationsCatalog();
@@ -298,7 +311,7 @@ async function fetchAgentFiles(
 }
 
 async function onUploadAgentFiles(files: File[]) {
-	if (files.length === 0) return;
+	if (files.length === 0 || !agent.value?.activeVersionId) return;
 	const oversizedFiles = files.filter((file) => file.size > MAX_AGENT_FILE_SIZE_BYTES);
 	if (oversizedFiles.length > 0) {
 		showError(
@@ -467,6 +480,7 @@ function startChat(msg: string) {
 	} else {
 		// Fresh agent — route through the same build chat panel used for ongoing
 		// Build conversations.
+		isBuildChatHidden.value = false;
 		initialPrompt.value = msg;
 		telemetry.track('User started agent build', { agent_id: agentId.value });
 
@@ -481,6 +495,7 @@ function startChat(msg: string) {
 function onPublished(updated: AgentResource) {
 	agent.value = updated;
 	void versionHistoryPanel.value?.refresh();
+	warmAgentKnowledgeSandboxForPage();
 }
 
 function onUnpublished(updated: AgentResource) {
@@ -532,7 +547,7 @@ function bindPreviewSession() {
 }
 
 function warmAgentKnowledgeSandboxForPage() {
-	if (!initialized.value || !isKnowledgeBaseEnabled.value) return;
+	if (!initialized.value || !isKnowledgeBaseEnabled.value || !agent.value?.activeVersionId) return;
 
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
@@ -550,6 +565,7 @@ function warmAgentKnowledgeSandboxForPage() {
 }
 
 function onOpenBuildFromChat() {
+	isBuildChatHidden.value = false;
 	closePreview();
 }
 
@@ -687,6 +703,28 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	});
 }
 
+function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig, recordEdit = true) {
+	if (recordEdit) builderTelemetry.recordConfigEdit(nextConfig);
+	localConfig.value = deepCopy(nextConfig);
+	syncAgentIdentityFromConfig(localConfig.value);
+	configAutosave.scheduleAutosave({
+		projectId: projectId.value,
+		agentId: agentId.value,
+		type: 'config',
+		config: normalizeAgentMemoryConfig(deepCopy(localConfig.value)),
+	});
+}
+
+function persistMissingPersonalisationGradient() {
+	if (!canEditAgent.value) return;
+	if (!localConfig.value) return;
+
+	const nextConfig = addMissingAgentPersonalisation(localConfig.value);
+	if (!nextConfig) return;
+
+	replaceConfigAndScheduleSave(nextConfig, false);
+}
+
 async function onConfigUpdated() {
 	await Promise.all([fetchAgent(), fetchConfig(projectId.value, agentId.value)]);
 	// Refresh the connected-trigger list so chips reflect builder writes
@@ -708,13 +746,80 @@ function onBuildDone() {
 	shouldCollapseChatAfterInitialBuild.value = false;
 }
 
-const headerActions = computed(() =>
-	canDeleteAgent.value
-		? [{ id: 'delete', label: locale.baseText('agents.builder.deleteAgent') }]
-		: [],
-);
+const headerActions = computed(() => {
+	const actions: Array<ActionDropdownItem<string>> = [
+		{
+			id: 'export-json',
+			label: locale.baseText('agents.builder.exportJson' as BaseTextKey),
+			icon: 'download',
+		},
+	];
+
+	if (canEditAgent.value) {
+		actions.push({
+			id: 'import-json',
+			label: locale.baseText('agents.builder.importJson' as BaseTextKey),
+			icon: 'upload',
+		});
+	}
+
+	if (canDeleteAgent.value) {
+		actions.push({
+			id: 'delete',
+			label: locale.baseText('agents.builder.deleteAgent'),
+			icon: 'trash-2',
+			divided: true,
+		});
+	}
+
+	return actions;
+});
+
+async function exportAgentJson() {
+	if (!localConfig.value) return;
+
+	try {
+		await flushAutosave();
+	} catch {
+		return;
+	}
+	if (!localConfig.value) return;
+
+	const blob = new Blob([`${JSON.stringify(localConfig.value, null, 2)}\n`], {
+		type: 'application/json',
+	});
+	const url = URL.createObjectURL(blob);
+	const name = localConfig.value.name.trim().replace(/[\\/:*?"<>|]+/g, '-') || 'agent';
+	const link = Object.assign(document.createElement('a'), {
+		href: url,
+		download: `${name}.json`,
+	});
+	document.body.appendChild(link);
+	link.click();
+	link.remove();
+	URL.revokeObjectURL(url);
+}
+
+function openImportJsonModal() {
+	if (!canEditAgent.value) return;
+
+	uiStore.openModalWithData({
+		name: AGENT_JSON_IMPORT_MODAL_KEY,
+		data: {
+			onConfirm: replaceConfigAndScheduleSave,
+		},
+	});
+}
 
 async function onHeaderAction(action: string) {
+	if (action === 'export-json') {
+		await exportAgentJson();
+		return;
+	}
+	if (action === 'import-json') {
+		openImportJsonModal();
+		return;
+	}
 	if (action === 'delete') {
 		const confirmed = await openAgentConfirmationModal({
 			title: locale.baseText('agents.delete.modal.title', {
@@ -807,6 +912,7 @@ async function initialize() {
 			fetchConfig(projectId.value, agentId.value),
 			fetchAgentFiles(),
 		]);
+		persistMissingPersonalisationGradient();
 		builderTelemetry.captureToolsBaseline();
 		builderTelemetry.captureSkillsBaseline();
 		builderTelemetry.captureTasksBaseline();
@@ -893,8 +999,18 @@ function onOpenAddToolModal() {
 			mcpServers: localConfig.value?.mcpServers ?? [],
 			projectId: projectId.value,
 			agentId: agentId.value,
-			onConfirm: (tools: AgentJsonToolConfig[], mcpServers: AgentJsonMcpServerConfig[] = []) =>
-				onConfigFieldUpdate({ tools, mcpServers }),
+			// The modal confirms with a single object payload (the modal-data plumbing is
+			// untyped, so a signature drift here isn't caught by TS — a positional handler
+			// would write `{ tools, mcpServers }` into `config.tools` and fail backend
+			// validation).
+			onConfirm: (payload: {
+				tools?: AgentJsonToolConfig[];
+				mcpServers?: AgentJsonMcpServerConfig[];
+			}) =>
+				onConfigFieldUpdate({
+					...(payload.tools && { tools: payload.tools }),
+					...(payload.mcpServers && { mcpServers: payload.mcpServers }),
+				}),
 		},
 	});
 }
@@ -1015,15 +1131,17 @@ function onOpenSkillFromList(id: string) {
 			agentId: agentId.value,
 			skill,
 			skillId: id,
+			availableTools: configuredToolOptions(),
 			onRemove: (skillId: string) => onRemoveSkill(skillId),
 			onConfirm: ({ id: skillId, skill: updatedSkill }: { id?: string; skill: AgentSkill }) => {
 				if (!skillId) return;
 				if (agent.value?.id !== agentId.value) return;
+				const sanitizedSkill = filterSkillAllowedTools(updatedSkill);
 				agent.value = {
 					...agent.value,
 					skills: {
 						...(agent.value.skills ?? {}),
-						[skillId]: updatedSkill,
+						[skillId]: sanitizedSkill,
 					},
 				};
 				const nextSkills = [...(localConfig.value?.skills ?? [])];
@@ -1032,9 +1150,46 @@ function onOpenSkillFromList(id: string) {
 					nextSkills[skillRefIndex] = { type: 'skill', id: skillId };
 					onConfigFieldUpdate({ skills: nextSkills });
 				}
+				skillAutosave.scheduleAutosave({
+					type: 'skill',
+					projectId: projectId.value,
+					agentId: agentId.value,
+					skillId,
+					skill: sanitizedSkill,
+				});
 			},
 		},
 	});
+}
+
+function configuredToolOptions(): AgentSkillAllowedToolOption[] {
+	const tools: AgentSkillAllowedToolOption[] = [];
+	for (const tool of localConfig.value?.tools ?? []) {
+		if (tool.type === 'custom') {
+			const name = agent.value?.tools?.[tool.id]?.descriptor.name ?? tool.id;
+			if (name) {
+				tools.push({ name, label: formatToolNameForDisplay(name) || name, icon: 'code' });
+			}
+		} else if (tool.type === 'workflow') {
+			const name = tool.name ?? tool.workflow;
+			tools.push({ name, label: formatToolNameForDisplay(name) || name, icon: 'workflow' });
+		} else {
+			tools.push({
+				name: tool.name,
+				label: formatToolNameForDisplay(tool.name) || tool.name,
+				icon: 'globe',
+			});
+		}
+	}
+	return tools;
+}
+
+function configuredToolNames(): Set<string> {
+	return new Set(configuredToolOptions().map((tool) => tool.name));
+}
+
+function filterSkillAllowedTools(skill: AgentSkill): AgentSkill {
+	return normalizeAgentSkillForSave(skill, configuredToolNames());
 }
 
 function onRemoveTool(index: number) {
@@ -1064,8 +1219,10 @@ function onOpenAddSkillModal() {
 		data: {
 			projectId: projectId.value,
 			agentId: agentId.value,
+			availableTools: configuredToolOptions(),
 			onConfirm: ({ skill }: { id?: string; skill: AgentSkill }) => {
 				void (async () => {
+					const sanitizedSkill = filterSkillAllowedTools(skill);
 					let created: AgentSkill;
 					let versionId: string | null;
 					let skillId: string;
@@ -1074,7 +1231,7 @@ function onOpenAddSkillModal() {
 							rootStore.restApiContext,
 							projectId.value,
 							agentId.value,
-							skill,
+							sanitizedSkill,
 						);
 						skillId = result.id;
 						created = result.skill;
@@ -1220,6 +1377,18 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					@continue-loaded="onContinueLoaded"
 					@open-build="onOpenBuildFromChat"
 				/>
+				<N8nButton
+					v-else-if="isBuildChatHidden"
+					variant="ghost"
+					icon-only
+					size="small"
+					:class="$style.showBuildChatButton"
+					:aria-label="locale.baseText('agents.builder.chat.show.ariaLabel' as BaseTextKey)"
+					data-testid="agent-build-chat-show-button"
+					@click="isBuildChatHidden = false"
+				>
+					<N8nIcon icon="panel-left" :size="14" />
+				</N8nButton>
 				<N8nResizeWrapper
 					v-else
 					:class="{
@@ -1259,7 +1428,10 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 						@update:tools="onQuickActionAddTool"
 						@update:mcp-servers="onQuickActionAddMcpServers"
 						@update:connected-triggers="onConnectedTriggersUpdate"
-						@update:full-width="isChatFullWidth = $event"
+						@hide="
+							isChatFullWidth = false;
+							isBuildChatHidden = true;
+						"
 						@trigger-added="onTriggerAdded"
 						@agent-published="onPublished"
 						@agent-changed="refreshAgentAfterIntegrationChange"
@@ -1267,7 +1439,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 				</N8nResizeWrapper>
 
 				<AgentBuilderEditorColumn
-					v-if="!isPreviewMode && !isChatFullWidth"
+					v-if="!isPreviewMode && (!isChatFullWidth || isBuildChatHidden)"
 					:class="$style.editorColumn"
 					v-model:active-main-tab="activeMainTab"
 					:local-config="localConfig"
@@ -1333,6 +1505,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 }
 
 .builder {
+	position: relative;
 	display: flex;
 	height: 100%;
 	min-height: 0;
@@ -1383,6 +1556,13 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 
 .chatResizerFullWidth {
 	flex: 1 1 auto;
+}
+
+.showBuildChatButton {
+	position: absolute;
+	top: var(--spacing--sm);
+	left: var(--spacing--sm);
+	z-index: 3;
 }
 
 .isResizingChat {

@@ -1,16 +1,20 @@
 import type { UpdateSecuritySettingsDto } from '@n8n/api-types';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
+import type { LicenseState } from '@n8n/backend-common';
 import type { EventService } from '@/events/event.service';
 import type { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import type { SecuritySettingsService } from '@/services/security-settings.service';
+import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 
 import { SecuritySettingsController } from '../security-settings.controller';
 
 describe('SecuritySettingsController', () => {
 	const securitySettingsService = mock<SecuritySettingsService>();
+	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
+	const licenseState = mock<LicenseState>();
 	const eventService = mock<EventService>();
 	const instanceSettingsLoaderConfig = mock<InstanceSettingsLoaderConfig>({
 		securityPolicyManagedByEnv: false,
@@ -19,6 +23,8 @@ describe('SecuritySettingsController', () => {
 
 	const controller = new SecuritySettingsController(
 		securitySettingsService,
+		workflowReviewPolicyService,
+		licenseState,
 		eventService,
 		instanceSettingsLoaderConfig,
 		instanceRedactionEnforcementService,
@@ -29,7 +35,7 @@ describe('SecuritySettingsController', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	const redactionPolicyEvents = () =>

@@ -1,4 +1,4 @@
-import { formatPemBlock } from '@n8n/utils';
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import { writeFile } from 'fs/promises';
 import type {
 	ICredentialTestFunctions,
