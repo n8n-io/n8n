@@ -1,7 +1,5 @@
-import { MAX_INTEGER_32BITS_SIGNED } from '@n8n/constants';
-
-/** `setTimeout` treats delays above the 32-bit signed max as 1ms; clamp to it. */
-const MAX_DELAY_MS = MAX_INTEGER_32BITS_SIGNED;
+import { Alarm, MAX_DELAY_MS } from './alarm';
+import { Timeline } from './timeline';
 
 /** Race sentinel: a pass can resolve to anything, so the timeout resolves to a symbol no pass can produce. */
 const TIMED_OUT = Symbol('pass timed out');
@@ -50,17 +48,20 @@ export interface LoopHooks {
 	onSkippedTick: (context: { inFlight: number; limit: number }) => void;
 }
 
+/** An unref'd, cancellable deadline that resolves to {@link TIMED_OUT} after `ms`. */
+function timeoutAfter(ms: number): { timedOut: Promise<typeof TIMED_OUT>; cancel: () => void } {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const timedOut = new Promise<typeof TIMED_OUT>((resolve) => {
+		timer = setTimeout(() => resolve(TIMED_OUT), Math.min(ms, MAX_DELAY_MS));
+		timer.unref();
+	});
+	return { timedOut, cancel: () => clearTimeout(timer) };
+}
+
 /**
- * Repeats an async pass on a fixed, jittered timeline.
- *
- * Ticks live on a fixed grid: an anchor at a random phase within one interval
- * (so instances started together — a rolling restart — spread over the
- * interval instead of hitting storage in lockstep), then one slot per
- * interval. Each tick fires at its slot plus a fresh jitter offset, so slot
- * `k` always lands at `anchor + k·interval ± jitter` no matter how long
- * passes take: a slow pass never shifts the cadence. When the process stalls
- * past whole slots (event-loop pause, clock jump) the missed slots are
- * skipped, not replayed as a burst.
+ * Repeats an async pass on a fixed, jittered timeline (see {@link Timeline}):
+ * a slow pass never shifts the cadence, and missed slots are skipped rather
+ * than replayed as a burst.
  *
  * A tick that finds no free slot ({@link ConcurrencyMode}) is dropped — never
  * queued — so backpressure sheds new work instead of stacking it. A pass that
@@ -73,19 +74,13 @@ export interface LoopHooks {
  * its timeout.
  */
 export class Loop {
-	private timer?: ReturnType<typeof setTimeout>;
+	private readonly alarm: Alarm;
 
 	private readonly inFlight = new Set<Promise<void>>();
 
 	private started = false;
 
 	private stopped = false;
-
-	/** Next unjittered slot on the tick timeline. */
-	private slotAt = 0;
-
-	/** When the armed timer is meant to fire (slot plus its jitter offset). */
-	private targetAt = 0;
 
 	private readonly limit: number;
 
@@ -97,18 +92,30 @@ export class Loop {
 		private readonly now: () => number = Date.now,
 	) {
 		this.limit = options.concurrency === 'sequential' ? 1 : options.maxConcurrent;
+		this.alarm = new Alarm(now);
 	}
 
 	/**
-	 * Anchor the timeline at a random phase within one interval and arm the first tick.
+	 * Anchor the timeline and arm the first tick.
 	 * No-op when already started.
 	 * A stopped loop stays stopped (one-shot lifecycle).
 	 */
 	start(): void {
 		if (!this.started && !this.stopped) {
 			this.started = true;
-			this.slotAt = this.now() + this.options.intervalMs * this.random();
-			this.armTimer(this.slotAt);
+			const timeline = new Timeline(
+				this.options.intervalMs,
+				this.options.jitterRatio,
+				this.random,
+				this.now(),
+			);
+			const tick = (): void => {
+				// Arm the next tick before running the pass:
+				// the timeline must not depend on how long the pass takes.
+				this.alarm.set(timeline.nextTickAt(this.now()), tick);
+				this.launch();
+			};
+			this.alarm.set(timeline.firstTickAt, tick);
 		}
 	}
 
@@ -118,33 +125,12 @@ export class Loop {
 	 */
 	async stop(): Promise<void> {
 		this.stopped = true;
-		if (this.timer !== undefined) {
-			clearTimeout(this.timer);
-			this.timer = undefined;
-		}
+		this.alarm.cancel();
 		await Promise.all(this.inFlight);
 	}
 
-	private armTimer(targetAt: number): void {
-		if (!this.stopped) {
-			this.targetAt = targetAt;
-			const delayMs = Math.min(Math.max(0, targetAt - this.now()), MAX_DELAY_MS);
-			this.timer = setTimeout(() => {
-				this.timer = undefined;
-				if (this.targetAt > this.now()) {
-					this.armTimer(this.targetAt);
-				} else {
-					this.tick();
-				}
-			}, delayMs);
-			this.timer.unref(); // never keep the process alive just for the next tick
-		}
-	}
-
-	private tick(): void {
-		// Arm the next tick before running the pass:
-		// the timeline must not depend on how long the pass takes.
-		this.armNextTick();
+	/** Run the pass for one tick, unless every slot is taken (then the tick is dropped). */
+	private launch(): void {
 		if (this.inFlight.size >= this.limit) {
 			this.hooks.onSkippedTick({ inFlight: this.inFlight.size, limit: this.limit });
 		} else {
@@ -154,37 +140,21 @@ export class Loop {
 		}
 	}
 
-	/** Advance to the next future slot (skipping slots a stall left behind) and arm it, jittered. */
-	private armNextTick(): void {
-		const { intervalMs, jitterRatio } = this.options;
-		const missedSlots = Math.floor(Math.max(0, this.now() - this.slotAt) / intervalMs);
-		this.slotAt += (missedSlots + 1) * intervalMs;
-		const jitterMs = intervalMs * jitterRatio * (2 * this.random() - 1);
-		this.armTimer(this.slotAt + jitterMs);
-	}
-
 	/** Run one pass raced against its timeout. Reports through hooks; never rejects. */
 	private async runOnce(): Promise<void> {
 		const controller = new AbortController();
-		let timeoutTimer: ReturnType<typeof setTimeout> | undefined;
-		const timedOut = new Promise<typeof TIMED_OUT>((resolve) => {
-			timeoutTimer = setTimeout(
-				() => resolve(TIMED_OUT),
-				Math.min(this.options.timeoutMs, MAX_DELAY_MS),
-			);
-			timeoutTimer.unref();
-		});
+		const timeout = timeoutAfter(this.options.timeoutMs);
 		const pass = this.runPass(controller.signal);
-		pass.catch(() => {}); // Deliberately NOT chained
+		pass.catch(() => {}); // Deliberately NOT chained:
 		try {
-			if ((await Promise.race([pass, timedOut])) === TIMED_OUT) {
+			if ((await Promise.race([pass, timeout.timedOut])) === TIMED_OUT) {
 				controller.abort();
 				this.hooks.onTimeout({ timeoutMs: this.options.timeoutMs });
 			}
 		} catch (error) {
 			this.hooks.onError(error);
 		} finally {
-			clearTimeout(timeoutTimer);
+			timeout.cancel();
 		}
 	}
 
