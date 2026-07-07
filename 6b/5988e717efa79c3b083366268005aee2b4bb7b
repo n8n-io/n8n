@@ -1,0 +1,104 @@
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/__tests__/n8n-oauth2-auth.test.ts
+  s_fe3b8b47e55573::t_a64412bdcba47c 1-20,28-31,34-36
+  s_fe3b8b47e55573::t_2b0bb245d7c53a 21-27,32-33
+packages/cli/src/webhooks/webhook-helpers.ts
+  h_435b1d7d3e52c0 34,527-538,553,556
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/n8n-oauth2-auth.ts
+  h_435b1d7d3e52c0 18,25,58,65-67
+packages/cli/src/modules/oauth-server/__tests__/oauth-consent.controller.api.test.ts
+  h_435b1d7d3e52c0 83
+packages/cli/src/services/__tests__/protected-resource.registry.test.ts
+  h_435b1d7d3e52c0 12,20
+packages/frontend/editor-ui/src/app/stores/consent.store.ts
+  h_435b1d7d3e52c0 14,29-30
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-mcp-trigger-resource.resolver.ts
+  h_435b1d7d3e52c0 5,8,26,99,106-117
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  h_435b1d7d3e52c0 51,1052,1060
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-mcp-test-trigger-resource.resolver.ts
+  h_435b1d7d3e52c0 5,16,25,80,87-98
+packages/cli/src/modules/oauth-server/oauth-consent.service.ts
+  s_41ef4367bc821b::t_497e7be9ec1cb5 138
+  s_41ef4367bc821b::t_b59fda104a19ed 11
+  h_435b1d7d3e52c0 2,18,40,61,63-64,66,94,117,123-137,139-141,144,153,169
+  s_41ef4367bc821b::t_8951a3d3a3cbae 17,62,65
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpTrigger.node.ts
+  s_41ef4367bc821b::t_2b98eea7fde6a8 117,123
+  h_435b1d7d3e52c0 118-122,124
+  s_41ef4367bc821b::t_5347ec10140ae5 116
+packages/cli/src/modules/oauth-server/oauth-token.service.ts
+  h_435b1d7d3e52c0 246-253,339-347
+  s_41ef4367bc821b::t_495bc52547ee5e 171-180
+  s_41ef4367bc821b::t_f6e5aaae3534cb 16-17
+  s_41ef4367bc821b::t_76a5eb4ddf4543 314-328
+  s_41ef4367bc821b::t_42b0d54478b587 215-227
+packages/cli/src/modules/mcp/mcp-protected-resource.ts
+  h_435b1d7d3e52c0 6,66-67,71
+  s_41ef4367bc821b::t_140f43ac64bab8 68-70
+  s_41ef4367bc821b::t_4d12253912f46c 72
+packages/cli/src/services/protected-resource.registry.ts
+  h_435b1d7d3e52c0 2,52-60
+packages/cli/src/services/oauth-token-verifier-proxy.service.ts
+  h_435b1d7d3e52c0 14
+  s_41ef4367bc821b::t_15b08d645e23d1 13
+packages/cli/src/modules/oauth-server/oauth-consent.controller.ts
+  s_41ef4367bc821b::t_b9dd3aebd4fa09 88-95
+  s_41ef4367bc821b::t_54aa021b9953c7 9
+  h_435b1d7d3e52c0 25,34-40,42
+  s_41ef4367bc821b::t_4d915c60dd8357 41,73
+packages/cli/src/modules/oauth-server/__tests__/oauth-consent.service.test.ts
+  s_41ef4367bc821b::t_2010eb12ff37bd 16
+  s_41ef4367bc821b::t_5ab7870fb74670 253,291,318-340,360,413,434
+  h_435b1d7d3e52c0 79,106,118,142,169,204,230,251-252,289-290,358-359,390,392,414,432-433
+  s_fe3b8b47e55573::t_6c88c7f53a168e 197-201
+  s_41ef4367bc821b::t_8cc5776cb754a7 17
+  s_fe3b8b47e55573::t_bc1c9b25c09cf9 166
+  s_fe3b8b47e55573::t_77948a52dcd8af 283-285
+  s_41ef4367bc821b::t_bc3e5169f7d0ce 249-250,287-288,356-357,415,430-431
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_435b1d7d3e52c0 2453
+packages/cli/src/modules/oauth-server/__tests__/workflow-mcp-trigger-authorization.api.test.ts
+  s_fe3b8b47e55573::t_8fea80d15b1191 49,55-60
+  s_41ef4367bc821b::t_acef9cd7c7d78f 219-220
+  s_fe3b8b47e55573::t_b856bbdc373eda 171-181
+  s_fe3b8b47e55573::t_e1f979159e287f 1-48,50-54,61-67,70-170,182-218,221-224
+  s_fe3b8b47e55573::t_fb767f24924b2b 68-69
+packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
+  h_435b1d7d3e52c0 38,524,531
+  s_41ef4367bc821b::t_d9af198310692b 433-447
+packages/cli/src/modules/oauth-server/__tests__/oauth.controller.test.ts
+  h_435b1d7d3e52c0 47
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.vue
+  h_435b1d7d3e52c0 37-38
+packages/workflow/src/interfaces.ts
+  s_41ef4367bc821b::t_49f97aa775e526 151-152,155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "6b5988e717efa79c3b083366268005aee2b4bb7b",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_41ef4367bc821b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "37599d41-e384-44d3-9ab0-63a00e6adfa9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_fe3b8b47e55573": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cd07e154-692e-4025-83de-0f38f6e60846",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
