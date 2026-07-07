@@ -30,7 +30,7 @@ export function countAggregatedUnitTrials(units: AggregatedCaseUnit[]): ScoredCo
 	return units.reduce<ScoredCounts>(
 		(counts, unit) => {
 			counts.passCount += unit.passCount;
-			counts.totalCount += 'evaluatedCount' in unit ? unit.evaluatedCount : unit.runs.length;
+			counts.totalCount += unit.evaluatedCount;
 			return counts;
 		},
 		{ passCount: 0, totalCount: 0 },
