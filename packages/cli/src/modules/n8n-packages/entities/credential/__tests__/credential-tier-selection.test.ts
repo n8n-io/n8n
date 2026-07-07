@@ -14,6 +14,7 @@ const usable = (overrides: Partial<UsableCredential> & { id: string }): UsableCr
 		updatedAt: '2024-01-01T00:00:00.000Z',
 		isGlobal: false,
 		homeProject: null,
+		sharedWithProjects: [],
 		...overrides,
 	}) as UsableCredential;
 
@@ -22,9 +23,38 @@ describe('selectBestCandidate', () => {
 		expect(selectBestCandidate([], targetProjectId)).toBeUndefined();
 	});
 
-	it('returns undefined when no candidate is project-owned or global', () => {
-		const candidates = [usable({ id: 'shared-only' })];
+	it('returns undefined when no candidate is owned by, shared with, or global to the target project', () => {
+		const candidates = [usable({ id: 'unrelated' })];
 		expect(selectBestCandidate(candidates, targetProjectId)).toBeUndefined();
+	});
+
+	it('falls back to a credential shared into the target project when none is owned', () => {
+		const candidate = usable({ id: 'shared-in', sharedWithProjects: [targetProjectRef] });
+		expect(selectBestCandidate([candidate], targetProjectId)).toBe(candidate);
+	});
+
+	it('prefers a credential shared into the target project over a more recently updated global one', () => {
+		const sharedIn = usable({
+			id: 'shared-in',
+			sharedWithProjects: [targetProjectRef],
+			updatedAt: '2024-01-01T00:00:00.000Z',
+		});
+		const global = usable({ id: 'global', isGlobal: true, updatedAt: '2024-06-01T00:00:00.000Z' });
+		expect(selectBestCandidate([global, sharedIn], targetProjectId)).toBe(sharedIn);
+	});
+
+	it('prefers an owned credential over a more recently updated one merely shared into the project', () => {
+		const owned = usable({
+			id: 'owned',
+			homeProject: targetProjectRef,
+			updatedAt: '2024-01-01T00:00:00.000Z',
+		});
+		const sharedIn = usable({
+			id: 'shared-in',
+			sharedWithProjects: [targetProjectRef],
+			updatedAt: '2024-06-01T00:00:00.000Z',
+		});
+		expect(selectBestCandidate([sharedIn, owned], targetProjectId)).toBe(owned);
 	});
 
 	it('picks the newer candidate when it is encountered after the older one', () => {

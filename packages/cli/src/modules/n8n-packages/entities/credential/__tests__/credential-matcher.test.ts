@@ -24,6 +24,7 @@ const usableWith = (overrides: Partial<UsableCredential> & { id: string }): Usab
 		updatedAt: '2024-01-01T00:00:00.000Z',
 		isGlobal: false,
 		homeProject: null,
+		sharedWithProjects: [],
 		...overrides,
 	}) as UsableCredential;
 
@@ -387,6 +388,47 @@ describe('NameAndTypeCredentialMatcher', () => {
 		expect(result.successes).toEqual(new Map([['source-cred', 'global-cred']]));
 	});
 
+	it('falls back to a credential shared into the target project when none is owned', async () => {
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			usableWith({
+				id: 'shared-in-cred',
+				name: 'Production GitHub',
+				sharedWithProjects: [targetProjectRef],
+			}),
+			usableWith({
+				id: 'global-cred',
+				name: 'Production GitHub',
+				isGlobal: true,
+				updatedAt: '2024-06-01T00:00:00.000Z',
+			}),
+		]);
+
+		const result = await matcherFactory.getMatcher('name-and-type').match([requirement], context);
+
+		expect(result.successes).toEqual(new Map([['source-cred', 'shared-in-cred']]));
+	});
+
+	it('prefers an owned candidate over a more recently updated one merely shared into the project', async () => {
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			usableWith({
+				id: 'owned-cred',
+				name: 'Production GitHub',
+				homeProject: targetProjectRef,
+				updatedAt: '2024-01-01T00:00:00.000Z',
+			}),
+			usableWith({
+				id: 'shared-in-cred',
+				name: 'Production GitHub',
+				sharedWithProjects: [targetProjectRef],
+				updatedAt: '2024-06-01T00:00:00.000Z',
+			}),
+		]);
+
+		const result = await matcherFactory.getMatcher('name-and-type').match([requirement], context);
+
+		expect(result.successes).toEqual(new Map([['source-cred', 'owned-cred']]));
+	});
+
 	it('picks the most recently updated candidate within a tier', async () => {
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
 			usableWith({
@@ -552,6 +594,36 @@ describe('TypeOnlyCredentialMatcher', () => {
 		const result = await matcherFactory.getMatcher('type-only').match([requirement], context);
 
 		expect(result.successes).toEqual(new Map([['source-cred', 'global-cred']]));
+	});
+
+	it('falls back to a credential shared into the target project when none is owned', async () => {
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			usableWith({ id: 'shared-in-cred', sharedWithProjects: [targetProjectRef] }),
+			usableWith({ id: 'global-cred', isGlobal: true, updatedAt: '2024-06-01T00:00:00.000Z' }),
+		]);
+
+		const result = await matcherFactory.getMatcher('type-only').match([requirement], context);
+
+		expect(result.successes).toEqual(new Map([['source-cred', 'shared-in-cred']]));
+	});
+
+	it('prefers an owned candidate over a more recently updated one merely shared into the project', async () => {
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			usableWith({
+				id: 'owned-cred',
+				homeProject: targetProjectRef,
+				updatedAt: '2024-01-01T00:00:00.000Z',
+			}),
+			usableWith({
+				id: 'shared-in-cred',
+				sharedWithProjects: [targetProjectRef],
+				updatedAt: '2024-06-01T00:00:00.000Z',
+			}),
+		]);
+
+		const result = await matcherFactory.getMatcher('type-only').match([requirement], context);
+
+		expect(result.successes).toEqual(new Map([['source-cred', 'owned-cred']]));
 	});
 
 	it('picks the most recently updated candidate within a tier', async () => {

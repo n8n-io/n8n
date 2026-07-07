@@ -5,10 +5,11 @@ export function selectBestCandidate(
 	candidates: UsableCredential[],
 	projectId: string,
 ): UsableCredential | undefined {
-	const projectTier = candidates.filter((c) => c.homeProject?.id === projectId);
-	const globalTier = candidates.filter((c) => c.isGlobal);
+	const owned = candidates.filter((c) => c.homeProject?.id === projectId);
+	const sharedIn = candidates.filter((c) => c.sharedWithProjects.some((p) => p.id === projectId));
+	const global = candidates.filter((c) => c.isGlobal);
 
-	const tier = projectTier.length > 0 ? projectTier : globalTier;
+	const tier = owned.length > 0 ? owned : sharedIn.length > 0 ? sharedIn : global;
 
 	return tier.reduce<UsableCredential | undefined>((best, candidate) => {
 		if (!best) return candidate;
