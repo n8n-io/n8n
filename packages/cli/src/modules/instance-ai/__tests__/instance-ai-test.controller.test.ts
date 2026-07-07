@@ -17,8 +17,6 @@ import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
-import type { DurableLogMetrics } from '../event-bus/durable-log-metrics';
-import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
 import { InstanceAiTestController } from '../instance-ai-test.controller';
 import type { InstanceAiService } from '../instance-ai.service';
@@ -31,8 +29,6 @@ describe('InstanceAiTestController', () => {
 	const userRepo = mock<UserRepository>();
 	const memoryService = mock<InstanceAiMemoryService>();
 	const projectRepo = mock<ProjectRepository>();
-	const durableLogMetrics = mock<DurableLogMetrics>();
-	const testEventBus = mock<InProcessEventBus>();
 	const controller = new InstanceAiTestController(
 		instanceAiService,
 		threadRepo,
@@ -40,8 +36,6 @@ describe('InstanceAiTestController', () => {
 		userRepo,
 		memoryService,
 		projectRepo,
-		durableLogMetrics,
-		testEventBus,
 	);
 
 	const originalEnv = process.env;

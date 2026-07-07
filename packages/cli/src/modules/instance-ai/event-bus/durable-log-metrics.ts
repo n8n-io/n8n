@@ -2,8 +2,6 @@ import { Service } from '@n8n/di';
 
 import { EventService } from '@/events/event.service';
 
-import { messageParserStats } from '../message-parser';
-
 /**
  * Durable-log instrumentation (RFC: instance-ai durable event log,
  * "Instrumentation"). Two consumers, one recording point:
@@ -11,9 +9,8 @@ import { messageParserStats } from '../message-parser';
  * - Typed `EventService` events feed the Prometheus collectors
  *   (`PrometheusInstanceAiMetricsService`), following the same convention as
  *   `instance-ai-run-finished`.
- * - The in-process counters below are kept in lockstep and read synchronously
- *   by the evaluation harness and the E2E-only
- *   `/instance-ai/test/durable-log-metrics` endpoint.
+ * - The in-process counters below are kept in lockstep for synchronous reads
+ *   in unit tests and log lines.
  */
 @Service()
 export class DurableLogMetrics {
@@ -115,8 +112,8 @@ export class DurableLogMetrics {
 
 	/**
 	 * The parser is pure module code and keeps its own counter
-	 * (messageParserStats, included in snapshot()); this only forwards new
-	 * activations to the metrics pipeline.
+	 * (messageParserStats); this only forwards new activations to the
+	 * metrics pipeline.
 	 */
 	notifyParserFallbacks(count: number): void {
 		if (count > 0) this.eventService.emit('instance-ai-parser-fallback', { count });
@@ -148,47 +145,4 @@ export class DurableLogMetrics {
 		});
 	}
 
-	snapshot() {
-		return {
-			drain: { ...this.drain },
-			sse: { ...this.sse },
-			history: { ...this.history },
-			sweep: { ...this.sweep },
-			// The parser is pure module code — its counter lives beside it.
-			parser: { ...messageParserStats },
-		};
-	}
-
-	reset(): void {
-		this.drain = {
-			batches: 0,
-			rowsWritten: 0,
-			bytesWritten: 0,
-			appendConflicts: 0,
-			appendFailures: 0,
-			queueLatencyMsTotal: 0,
-			queueLatencyMsMax: 0,
-			queueLatencySamples: 0,
-		};
-		this.sse = {
-			replaysServed: 0,
-			replayEventsServed: 0,
-			cursorAgeEventsTotal: 0,
-			cursorAgeEventsMax: 0,
-		};
-		this.history = {
-			foldReads: 0,
-			foldLatencyMsTotal: 0,
-			snapshotTreesReplaced: 0,
-			treesSynthesized: 0,
-		};
-		this.sweep = {
-			runsExamined: 0,
-			runsMarkedInterrupted: 0,
-			runsCrashResumed: 0,
-			toolInterruptedFacts: 0,
-			correctionsRequeued: 0,
-		};
-		messageParserStats.fallbackActivations = 0;
-	}
 }

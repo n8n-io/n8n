@@ -326,9 +326,9 @@ function buildSnapshotMessage(snapshot: AgentTreeSnapshot): InstanceAiMessage {
 // ---------------------------------------------------------------------------
 
 /**
- * Prototype instrumentation (durable-log RFC): counts assistant messages that
- * rendered from the message-derived fallback ladder instead of a renderable
- * snapshot tree. Read/reset via DurableLogMetrics.
+ * Durable-log instrumentation: counts assistant messages that rendered from
+ * the message-derived fallback ladder instead of a renderable snapshot tree.
+ * Forwarded to the metrics pipeline via DurableLogMetrics.notifyParserFallbacks.
  */
 export const messageParserStats = { fallbackActivations: 0 };
 

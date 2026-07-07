@@ -1,14 +1,10 @@
-import { instanceAiEventSchema } from '@n8n/api-types';
 import { ProjectRepository, UserRepository, WorkflowRepository } from '@n8n/db';
 import { Body, Delete, Get, Param, Post, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
-import { DurableLogMetrics } from './event-bus/durable-log-metrics';
-import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiService } from './instance-ai.service';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
@@ -26,68 +22,7 @@ export class InstanceAiTestController {
 		private readonly userRepo: UserRepository,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly projectRepo: ProjectRepository,
-		private readonly durableLogMetrics: DurableLogMetrics,
-		private readonly eventBus: InProcessEventBus,
 	) {}
-
-	/**
-	 * Durable-log evaluation harness: publish scripted events through the REAL
-	 * event bus, so the real SSE endpoint, drain, DB, and process lifecycle are
-	 * exercised without an LLM. E2E-gated like every endpoint here.
-	 */
-	@Post('/test/publish-events', { skipAuth: true })
-	async publishTestEvents(req: Request) {
-		this.assertTraceReplayEnabled();
-		// Manual parse: `@Body` reflection can't materialize plain structural
-		// types (same limitation the confirm endpoint documents).
-		const payload = req.body as {
-			threadId: string;
-			userId: string;
-			events: unknown[];
-			ensureThread?: boolean;
-		};
-		if (typeof payload.threadId !== 'string' || typeof payload.userId !== 'string') {
-			throw new BadRequestError('threadId and userId are required');
-		}
-		if (payload.ensureThread) {
-			const user = await this.userRepo.findOneByOrFail({ id: payload.userId });
-			const personalProject = await this.projectRepo.getPersonalProjectForUserOrFail(user.id);
-			// ensureThread throws when the thread exists under another owner.
-			await this.memoryService.ensureThread(user.id, payload.threadId, personalProject.id);
-		} else {
-			// Even in E2E mode, never inject events into another user's thread.
-			const ownership = await this.memoryService.checkThreadOwnership(
-				payload.userId,
-				payload.threadId,
-			);
-			if (ownership !== 'owned') {
-				throw new ForbiddenError('Thread does not exist or is not owned by the given user');
-			}
-		}
-		const events = (payload.events ?? []).map((raw) => {
-			const parsed = instanceAiEventSchema.safeParse(raw);
-			if (!parsed.success) throw new BadRequestError(`Invalid event: ${parsed.error.message}`);
-			return parsed.data;
-		});
-		for (const event of events) {
-			this.eventBus.publish(payload.threadId, event);
-		}
-		return { ok: true, published: events.length };
-	}
-
-	/** Durable-log prototype instrumentation snapshot (measurement harness). */
-	@Get('/test/durable-log-metrics', { skipAuth: true })
-	getDurableLogMetrics() {
-		this.assertTraceReplayEnabled();
-		return this.durableLogMetrics.snapshot();
-	}
-
-	@Post('/test/durable-log-metrics/reset', { skipAuth: true })
-	resetDurableLogMetrics() {
-		this.assertTraceReplayEnabled();
-		this.durableLogMetrics.reset();
-		return { ok: true };
-	}
 
 	@Post('/test/tool-trace', { skipAuth: true })
 	loadToolTrace(req: Request) {
