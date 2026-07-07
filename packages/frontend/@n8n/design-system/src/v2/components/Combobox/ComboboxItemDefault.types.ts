@@ -1,4 +1,4 @@
-import { ComboboxListItem } from './Combobox.types';
+import type { ComboboxListItem } from './Combobox.types';
 
 type ComboboxItemDefaultUi = { class: string };
 

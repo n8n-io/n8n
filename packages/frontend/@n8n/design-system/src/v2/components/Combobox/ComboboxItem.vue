@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { useSlots } from 'vue';
-
 import { ComboboxItem, ComboboxItemIndicator } from 'reka-ui';
+import { useSlots } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 

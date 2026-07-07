@@ -1,6 +1,7 @@
+import type { StyleValue } from 'vue';
+
 import type { IconName } from '../../../components/N8nIcon/icons';
 import type { InputSize } from '../../../components/N8nInput/Input.types';
-import type { StyleValue } from 'vue';
 import type {
 	ComboboxContentProps,
 	ComboboxItemProps,
