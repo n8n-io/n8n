@@ -49,6 +49,7 @@
     "@n8n/utils": "workspace:*",
     "cron-parser": "catalog:",
     "luxon": "catalog:",
+    "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*"
   },
   "devDependencies": {

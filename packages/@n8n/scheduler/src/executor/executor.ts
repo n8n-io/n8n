@@ -8,11 +8,13 @@ import type {
 	ScheduledTaskRepository,
 } from '@n8n/db';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { SpanStatus, type Tracing } from 'n8n-core';
 
 import { backoff } from './backoff';
 import type { PrecisionTimer } from './precision-timer';
 import type { TaskHandlerRegistry } from './task-handler';
 import type { ClaimedTask } from '../core/types';
+import { SCHEDULER_ATTRIBUTES, pickSchedulerTaskAttributes } from '../observability/attributes';
 import { entityToClaimedTask } from '../storage/mappers';
 
 type ClaimedEntry = { host: string; task: ClaimedTask };
@@ -57,6 +59,7 @@ export class Executor {
 		private readonly timer: PrecisionTimer,
 		logger: Logger,
 		config: SchedulerConfig,
+		private readonly tracing: Tracing,
 	) {
 		this.logger = logger.scoped('scheduler');
 		this.leaseMs = config.leaseDurationSeconds * Time.seconds.toMilliseconds;
@@ -86,31 +89,46 @@ export class Executor {
 	 * writes (a failed one is recovered by the reaper), not one enclosing transaction.
 	 */
 	async claimAndSchedule(host: string): Promise<ClaimedTask[]> {
-		const taskTypes = this.registry.registeredTypes();
-		if (taskTypes.length === 0) return [];
+		return await this.tracing.startSpan(
+			{
+				name: 'Scheduler claim',
+				op: 'scheduler.claim',
+				attributes: { [SCHEDULER_ATTRIBUTES.host]: host },
+			},
+			async (span) => {
+				const taskTypes = this.registry.registeredTypes();
+				if (taskTypes.length === 0) {
+					span.setAttribute(SCHEDULER_ATTRIBUTES.claimedCount, 0);
+					span.setStatus({ code: SpanStatus.ok });
+					return [];
+				}
 
-		const claim: ClaimDueTasksOptions = {
-			host,
-			taskTypes,
-			lookaheadMs: this.lookaheadMs,
-			leaseMs: this.leaseMs,
-			batchSize: this.batchSize,
-		};
-		const rows = await this.taskRepository.claimDueTasks(claim);
-		const tasks: ClaimedTask[] = [];
-		for (const row of rows) {
-			let task: ClaimedTask;
-			try {
-				task = entityToClaimedTask(row);
-			} catch (error) {
-				await this.releaseUnmappableRow(host, row, error);
-				continue;
-			}
-			tasks.push(task);
-			this.scheduleClaimed(host, task);
-		}
+				const claim: ClaimDueTasksOptions = {
+					host,
+					taskTypes,
+					lookaheadMs: this.lookaheadMs,
+					leaseMs: this.leaseMs,
+					batchSize: this.batchSize,
+				};
+				const rows = await this.taskRepository.claimDueTasks(claim);
+				const tasks: ClaimedTask[] = [];
+				for (const row of rows) {
+					let task: ClaimedTask;
+					try {
+						task = entityToClaimedTask(row);
+					} catch (error) {
+						await this.releaseUnmappableRow(host, row, error);
+						continue;
+					}
+					tasks.push(task);
+					this.scheduleClaimed(host, task);
+				}
 
-		return tasks;
+				span.setAttribute(SCHEDULER_ATTRIBUTES.claimedCount, tasks.length);
+				span.setStatus({ code: SpanStatus.ok });
+				return tasks;
+			},
+		);
 	}
 
 	/** Track a claimed task and schedule its timer to fire at `runAt`. */
@@ -138,44 +156,76 @@ export class Executor {
 	 * a lease expiry is a benign no-op at every step, never an error.
 	 */
 	async fire(host: string, task: ClaimedTask): Promise<void> {
-		const claim: HostedClaimedRef = { host, id: task.id, claimedEpoch: task.leaseEpoch };
+		await this.tracing.startSpan(
+			{
+				name: 'Scheduler fire',
+				op: 'scheduler.fire',
+				attributes: {
+					...pickSchedulerTaskAttributes(task),
+					[SCHEDULER_ATTRIBUTES.host]: host,
+				},
+			},
+			async (span) => {
+				const claim: HostedClaimedRef = { host, id: task.id, claimedEpoch: task.leaseEpoch };
 
-		// Resolve the handler before marking the task started: don't mark a task started
-		// we can't run, and skip the write on the missing-handler path. The claim is
-		// scoped to registered types, so this normally resolves; if the handler went away
-		// (e.g. a rolling restart), release without counting an attempt so it isn't lost.
-		const handler = this.registry.resolve(task.taskType);
-		if (handler === undefined) {
-			this.logger.warn('Scheduler executor found no handler for claimed task; releasing it', {
-				taskId: task.id,
-				taskType: task.taskType,
-			});
-			await this.releaseClaimBestEffort(claim);
-			return;
-		}
+				// Resolve the handler before marking the task started: don't mark a task started
+				// we can't run, and skip the write on the missing-handler path. The claim is
+				// scoped to registered types, so this normally resolves; if the handler went away
+				// (e.g. a rolling restart), release without counting an attempt so it isn't lost.
+				const handler = this.registry.resolve(task.taskType);
+				if (handler === undefined) {
+					this.logger.warn('Scheduler executor found no handler for claimed task; releasing it', {
+						taskId: task.id,
+						taskType: task.taskType,
+					});
+					await this.releaseClaimBestEffort(claim);
+					span.setStatus({ code: SpanStatus.ok });
+					return;
+				}
 
-		// Guard + set `startedAt` in one write. 0 rows => deleted or reclaimed; don't
-		// dispatch an execution for work that is gone or no longer ours.
-		const started = await this.taskRepository.markStarted(claim);
-		if (started === 0) return;
+				// Guard + set `startedAt` in one write. 0 rows => deleted or reclaimed; don't
+				// dispatch an execution for work that is gone or no longer ours.
+				const started = await this.taskRepository.markStarted(claim);
+				if (started === 0) {
+					span.setStatus({ code: SpanStatus.ok });
+					return;
+				}
 
-		// Record success only after the try, so a failure to record it isn't taken for a
-		// handler failure. Such a failure propagates out (caught by the detached `.catch`
-		// in claimAndSchedule) and leaves the row `running` for the reaper.
-		try {
-			await handler.execute(task);
-		} catch (error) {
-			const message = ensureError(error).message;
-			const nextAttempts = task.attempts + 1;
-			if (nextAttempts >= task.maxAttempts) {
-				await this.taskRepository.failTaskTerminal(claim, message);
-			} else {
-				await this.taskRepository.rescheduleTask(claim, backoff(nextAttempts), message);
-			}
-			return;
-		}
+				// Record success only after the try, so a failure to record it isn't taken for a
+				// handler failure. Such a failure propagates out (caught by the detached `.catch`
+				// in claimAndSchedule) and leaves the row `running` for the reaper.
+				try {
+					// Child span over the handler dispatch: the async-boundary handoff seam the
+					// task handler nests under once implemented.
+					await this.tracing.startSpan(
+						{
+							name: 'Scheduler handoff',
+							op: 'scheduler.handoff',
+							attributes: {
+								[SCHEDULER_ATTRIBUTES.taskId]: task.id,
+								[SCHEDULER_ATTRIBUTES.taskType]: task.taskType,
+							},
+						},
+						async () => await handler.execute(task),
+					);
+				} catch (error) {
+					const message = ensureError(error).message;
+					// The handler failure is handled here (reschedule or dead-letter), so it
+					// never propagates to auto-error the fire span; record it explicitly.
+					span.setStatus({ code: SpanStatus.error, message });
+					const nextAttempts = task.attempts + 1;
+					if (nextAttempts >= task.maxAttempts) {
+						await this.taskRepository.failTaskTerminal(claim, message);
+					} else {
+						await this.taskRepository.rescheduleTask(claim, backoff(nextAttempts), message);
+					}
+					return;
+				}
 
-		await this.taskRepository.completeTask(claim);
+				await this.taskRepository.completeTask(claim);
+				span.setStatus({ code: SpanStatus.ok });
+			},
+		);
 	}
 
 	/**

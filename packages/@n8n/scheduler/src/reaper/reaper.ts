@@ -1,6 +1,8 @@
 import type { Logger } from '@n8n/backend-common';
+import { SpanStatus, type Tracing } from 'n8n-core';
 
 import { backoff } from '../executor/backoff';
+import { SCHEDULER_ATTRIBUTES } from '../observability/attributes';
 
 /** Recorded on a task the reaper recovers, so the failure has a cause. */
 const LEASE_EXPIRED_MESSAGE = 'Lease expired before completion';
@@ -46,6 +48,7 @@ export interface ReapDeps {
 	store: ReaperTaskStore;
 	logger: Logger;
 	batchSize: number;
+	tracing: Tracing;
 }
 
 /**
@@ -70,7 +73,21 @@ export interface ReapDeps {
  * with attempts left goes back to `pending` with a backoff and a bumped epoch; one
  * at its last attempt fails terminally. Returns the counts.
  */
-export async function reap({ store, logger, batchSize }: ReapDeps): Promise<ReapResult> {
+export async function reap({ store, logger, batchSize, tracing }: ReapDeps): Promise<ReapResult> {
+	return await tracing.startSpan({ name: 'Scheduler reap', op: 'scheduler.reap' }, async (span) => {
+		const result = await runReap({ store, logger, batchSize });
+		span.setAttribute(SCHEDULER_ATTRIBUTES.reclaimed, result.reclaimed);
+		span.setAttribute(SCHEDULER_ATTRIBUTES.deadLettered, result.deadLettered);
+		span.setStatus({ code: SpanStatus.ok });
+		return result;
+	});
+}
+
+async function runReap({
+	store,
+	logger,
+	batchSize,
+}: Omit<ReapDeps, 'tracing'>): Promise<ReapResult> {
 	const expired = await store.findExpiredLeases(batchSize);
 	if (expired.length === 0) return { reclaimed: 0, deadLettered: 0 };
 

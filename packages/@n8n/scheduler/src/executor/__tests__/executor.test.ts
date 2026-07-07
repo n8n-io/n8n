@@ -1,9 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
 import type { SchedulerConfig } from '@n8n/config';
 import type { ScheduledTask as ScheduledTaskEntity, ScheduledTaskRepository } from '@n8n/db';
+import { SpanStatus, type Span, type Tracing } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { ClaimedTask } from '../../core/types';
+import { SCHEDULER_ATTRIBUTES } from '../../observability/attributes';
 import { backoff } from '../backoff';
 import { Executor } from '../executor';
 import type { PrecisionTimer } from '../precision-timer';
@@ -39,8 +41,12 @@ const setup = () => {
 		executorIntervalSeconds: 5,
 		claimBatchSize: 100,
 	});
-	const executor = new Executor(taskRepository, registry, timer, logger, config);
-	return { taskRepository, registry, timer, logger, executor };
+	const span = mock<Span>();
+	const tracing = mock<Tracing>();
+	// Run each span's callback with a shared mock span so setStatus/setAttribute assert.
+	tracing.startSpan.mockImplementation(async (_opts, spanCb) => await spanCb(span));
+	const executor = new Executor(taskRepository, registry, timer, logger, config, tracing);
+	return { taskRepository, registry, timer, logger, tracing, span, executor };
 };
 
 describe('Executor.claimAndSchedule', () => {
@@ -71,6 +77,20 @@ describe('Executor.claimAndSchedule', () => {
 		});
 		expect(timer.schedule).toHaveBeenCalledWith(task.runAt, expect.any(Function));
 		expect(claimed).toEqual([task]);
+	});
+
+	it('opens a claim span carrying the host and records the claimed count', async () => {
+		const { taskRepository, registry, tracing, span, executor } = setup();
+		const task = claimedTask();
+		registry.registeredTypes.mockReturnValue(['workflow:schedule-trigger']);
+		taskRepository.claimDueTasks.mockResolvedValue([task] as unknown as ScheduledTaskEntity[]);
+
+		await executor.claimAndSchedule(HOST);
+
+		const claimSpan = tracing.startSpan.mock.calls.find((c) => c[0].op === 'scheduler.claim')?.[0];
+		expect(claimSpan?.attributes).toMatchObject({ [SCHEDULER_ATTRIBUTES.host]: HOST });
+		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.claimedCount, 1);
+		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
 	});
 
 	it('maps each claimed row independently: an unmappable row is released and the rest schedule', async () => {
@@ -151,6 +171,49 @@ describe('Executor.fire', () => {
 		});
 		expect(taskRepository.failTaskTerminal).not.toHaveBeenCalled();
 		expect(taskRepository.rescheduleTask).not.toHaveBeenCalled();
+	});
+
+	it('opens a fire span and a nested handoff span over the handler dispatch', async () => {
+		const { taskRepository, registry, tracing, span, executor } = setup();
+		const handler: TaskHandler = { execute: vi.fn().mockResolvedValue(undefined) };
+		taskRepository.markStarted.mockResolvedValue(1);
+		registry.resolve.mockReturnValue(handler);
+		const task = claimedTask();
+
+		await executor.fire(HOST, task);
+
+		const fireSpan = tracing.startSpan.mock.calls.find((c) => c[0].op === 'scheduler.fire')?.[0];
+		expect(fireSpan?.attributes).toMatchObject({
+			[SCHEDULER_ATTRIBUTES.taskId]: task.id,
+			[SCHEDULER_ATTRIBUTES.jobId]: task.jobId,
+			[SCHEDULER_ATTRIBUTES.taskType]: task.taskType,
+			[SCHEDULER_ATTRIBUTES.host]: HOST,
+			[SCHEDULER_ATTRIBUTES.leaseEpoch]: task.leaseEpoch,
+		});
+		const handoffSpan = tracing.startSpan.mock.calls.find(
+			(c) => c[0].op === 'scheduler.handoff',
+		)?.[0];
+		expect(handoffSpan?.attributes).toMatchObject({
+			[SCHEDULER_ATTRIBUTES.taskId]: task.id,
+			[SCHEDULER_ATTRIBUTES.taskType]: task.taskType,
+		});
+		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('marks the fire span errored when the handler fails', async () => {
+		const { taskRepository, registry, span, executor } = setup();
+		const handler: TaskHandler = { execute: vi.fn().mockRejectedValue(new Error('boom')) };
+		taskRepository.markStarted.mockResolvedValue(1);
+		registry.resolve.mockReturnValue(handler);
+		const task = claimedTask({ attempts: 0, maxAttempts: 3 });
+
+		await executor.fire(HOST, task);
+
+		// The handler failure is caught for reschedule, so it never auto-errors the
+		// fire span: it must be recorded explicitly, and never as ok.
+		expect(taskRepository.rescheduleTask).toHaveBeenCalled();
+		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.error, message: 'boom' });
+		expect(span.setStatus).not.toHaveBeenCalledWith({ code: SpanStatus.ok });
 	});
 
 	it('threads the claimed lease epoch through the terminal calls for fencing', async () => {

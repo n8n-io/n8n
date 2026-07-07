@@ -1,25 +1,32 @@
 import type { Logger } from '@n8n/backend-common';
 import type { SchedulerConfig } from '@n8n/config';
 import type { ScheduledTaskRepository } from '@n8n/db';
+import { SpanStatus, type Span, type Tracing } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { ScheduledTaskStatus } from '../../core/enums';
+import * as materializer from '../../core/materializer';
 import { DEFAULT_RETENTION_OPTIONS } from '../../core/retention';
+import { SCHEDULER_ATTRIBUTES } from '../../observability/attributes';
 import type { MaterializerStore } from '../materializer-store';
 import { SchedulerService } from '../scheduler.service';
 
 /** Build the service with non-default retention config, returning its mocks. */
 function makeService(configOverrides: Partial<SchedulerConfig> = {}) {
+	const store = mock<MaterializerStore>();
 	const tasks = mock<ScheduledTaskRepository>();
 	const logger = mock<Logger>();
+	const span = mock<Span>();
+	const tracing = mock<Tracing>();
+	tracing.startSpan.mockImplementation(async (_opts, spanCb) => await spanCb(span));
 	const config = mock<SchedulerConfig>({
 		materializationWindowSeconds: 3600,
 		retentionSeconds: 43_200,
 		failedRetentionSeconds: 86_400,
 		...configOverrides,
 	});
-	const service = new SchedulerService(mock<MaterializerStore>(), tasks, logger, config);
-	return { service, tasks, logger };
+	const service = new SchedulerService(store, tasks, logger, tracing, config);
+	return { service, store, tasks, logger, tracing, span };
 }
 
 describe('SchedulerService.prune', () => {
@@ -78,6 +85,26 @@ describe('SchedulerService.prune', () => {
 
 		expect(logger.debug).not.toHaveBeenCalled();
 		expect(logger.warn).not.toHaveBeenCalled();
+	});
+});
+
+describe('SchedulerService.materialize', () => {
+	it('opens a materialize span and records the summary counts', async () => {
+		const { service, tracing, span } = makeService();
+		const summary = { claimedJobs: 3, occurrences: 5, deferredJobs: 1 };
+		vi.spyOn(materializer, 'materialize').mockResolvedValue(summary);
+
+		const result = await service.materialize();
+
+		expect(result).toEqual(summary);
+		expect(tracing.startSpan).toHaveBeenCalledWith(
+			expect.objectContaining({ op: 'scheduler.materialize' }),
+			expect.any(Function),
+		);
+		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.claimedJobs, 3);
+		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.occurrences, 5);
+		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.deferredJobs, 1);
+		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
 	});
 });
 
