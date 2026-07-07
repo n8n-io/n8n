@@ -268,4 +268,24 @@ describe('DurableEventLog', () => {
 		await publishAll(log, [toolCall('tc-3')]);
 		expect(repo.rows.map((r) => r.seq)).toEqual([1]);
 	});
+	it('idle flush persists trailing deltas that no structural fact ever follows', async () => {
+		// e.g. a terminal-outcome line published after run-finish, or a liveness
+		// timeout notice: without the idle flush these would never reach the log
+		// and disappear on reload.
+		const repo = new FakeRepo();
+		const { log } = buildLog(repo);
+		log.idleFlushMs = 25;
+
+		const emitted = [];
+		log.publish(THREAD, textDelta('The background workflow-builder task was cancelled.'), (d) =>
+			emitted.push(d),
+		);
+		await new Promise((resolve) => setTimeout(resolve, 120));
+
+		const blocks = repo.rows.filter((r) => r.event.type === 'text-block');
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].event.payload).toEqual({
+			text: 'The background workflow-builder task was cancelled.',
+		});
+	});
 });

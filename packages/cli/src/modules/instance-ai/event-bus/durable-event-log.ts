@@ -29,6 +29,14 @@ const EPHEMERAL_TYPES = new Set(['text-delta', 'reasoning-delta', 'status', 'fil
 /** Retries per batch on (threadId, seq) PK collision before giving up. */
 const MAX_APPEND_ATTEMPTS = 5;
 
+/**
+ * Trailing deltas with no structural fact after them (e.g. a terminal-outcome
+ * line published after run-finish, or a liveness timeout notice) would sit in
+ * the coalescer forever; after this quiet period the open buffers are flushed
+ * as blocks so they reach the durable log and replay/history stay complete.
+ */
+const IDLE_FLUSH_MS = 3_000;
+
 /** How a drained event reaches the bus. `id` set = durable; `live` = emit to SSE. */
 export interface DrainedEvent {
 	id?: number;
@@ -68,6 +76,12 @@ export class DurableEventLog {
 
 	private readonly emitters = new Map<string, EmitFn>();
 
+	/** Per-thread idle timers driving the trailing-delta flush. */
+	private readonly idleFlushTimers = new Map<string, NodeJS.Timeout>();
+
+	/** Overridable for tests. */
+	idleFlushMs = IDLE_FLUSH_MS;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly repo: InstanceAiEventLogRepository,
@@ -84,6 +98,21 @@ export class DurableEventLog {
 		if (pending) pending.push(entry);
 		else this.pendingByThread.set(threadId, [entry]);
 		this.ensureDraining(threadId);
+		this.scheduleIdleFlush(threadId);
+	}
+
+	/** (Re)arm the trailing-delta flush: fires only when the thread goes quiet. */
+	private scheduleIdleFlush(threadId: string): void {
+		const existing = this.idleFlushTimers.get(threadId);
+		if (existing) clearTimeout(existing);
+		const timer = setTimeout(() => {
+			this.idleFlushTimers.delete(threadId);
+			void this.flush(threadId).catch((error) => {
+				this.logger.error('Instance AI event log idle flush failed', { threadId, error });
+			});
+		}, this.idleFlushMs);
+		timer.unref();
+		this.idleFlushTimers.set(threadId, timer);
 	}
 
 	async getEventsAfter(threadId: string, afterSeq: number): Promise<StoredEvent[]> {
@@ -112,6 +141,9 @@ export class DurableEventLog {
 		this.lastSeq.delete(threadId);
 		this.buffers.delete(threadId);
 		this.emitters.delete(threadId);
+		const timer = this.idleFlushTimers.get(threadId);
+		if (timer) clearTimeout(timer);
+		this.idleFlushTimers.delete(threadId);
 	}
 
 	/** Drop all per-thread drain state. Used during module shutdown. */
@@ -120,6 +152,8 @@ export class DurableEventLog {
 		this.lastSeq.clear();
 		this.buffers.clear();
 		this.emitters.clear();
+		for (const timer of this.idleFlushTimers.values()) clearTimeout(timer);
+		this.idleFlushTimers.clear();
 	}
 
 	/**
