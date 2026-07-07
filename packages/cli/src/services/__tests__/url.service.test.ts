@@ -31,6 +31,7 @@ describe('UrlService', () => {
 	const createPathResolvingService = (basePath: string = '/') =>
 		mock<PathResolvingService>({
 			getBasePath: () => basePath,
+			getUrlBasePath: () => basePath,
 		});
 
 	describe('basePath', () => {
@@ -44,9 +45,9 @@ describe('UrlService', () => {
 			expect(urlService.basePath).toBe('/custom-path');
 		});
 
-		it('should combine basePath and path', () => {
-			const urlService = new UrlService(createConfig(), createPathResolvingService('/prefix/app'));
-			expect(urlService.basePath).toBe('/prefix/app');
+		it('should use the URL base path from PathResolvingService', () => {
+			const urlService = new UrlService(createConfig(), createPathResolvingService('/legacy-path'));
+			expect(urlService.basePath).toBe('/legacy-path');
 		});
 	});
 
@@ -61,9 +62,9 @@ describe('UrlService', () => {
 			expect(urlService.baseUrl).toBe('http://localhost:5678/custom-path');
 		});
 
-		it('should include combined basePath and path in base URL', () => {
-			const urlService = new UrlService(createConfig(), createPathResolvingService('/prefix/app'));
-			expect(urlService.baseUrl).toBe('http://localhost:5678/prefix/app');
+		it('should include legacy URL base path in base URL', () => {
+			const urlService = new UrlService(createConfig(), createPathResolvingService('/legacy-path'));
+			expect(urlService.baseUrl).toBe('http://localhost:5678/legacy-path');
 		});
 
 		it('should omit port for default HTTP port', () => {

@@ -1,38 +1,37 @@
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 import { lstat } from 'node:fs/promises';
 import * as path from 'node:path';
 
 /**
- * Normalizes a URL path segment by ensuring it starts with `/` (if not empty)
- * and does not end with `/`.
+ * Normalizes a base path by ensuring it starts with `/`, does not end with `/`,
+ * and returns `/` for root.
+ *
+ * @example
+ * normalizeBasePath('') // '/'
+ * normalizeBasePath('/') // '/'
+ * normalizeBasePath('/app') // '/app'
+ * normalizeBasePath('app/') // '/app'
  */
-function normalizePathSegment(segment: string): string {
-	if (!segment || segment === '/') return '';
-	let normalized = segment;
+export function normalizeBasePath(basePath: string): string {
+	if (!basePath || basePath === '/') return '/';
+
+	let normalized = basePath;
 	if (!normalized.startsWith('/')) normalized = '/' + normalized;
 	while (normalized.endsWith('/')) normalized = normalized.slice(0, -1);
-	return normalized;
+
+	return normalized || '/';
 }
 
 /**
- * Combines and normalizes the base path (N8N_BASE_PATH) and path (N8N_PATH) into
- * a single normalized URL path for use across the application.
- *
- * The result:
- * - Starts with `/` if not empty
- * - Does NOT end with `/`
- * - Returns `/` for root path (when both inputs resolve to empty)
- *
- * @example
- * normalizeBasePath('', '/') // '/'
- * normalizeBasePath('', '/app') // '/app'
- * normalizeBasePath('/prefix', '/') // '/prefix'
- * normalizeBasePath('/prefix', '/app') // '/prefix/app'
- * normalizeBasePath('prefix/', 'app/') // '/prefix/app'
+ * N8N_PATH is deprecated and cannot be combined with N8N_BASE_PATH because they
+ * intentionally affect different path surfaces.
  */
-export function normalizeBasePath(basePath: string, urlPath: string): string {
-	const result = normalizePathSegment(basePath) + normalizePathSegment(urlPath);
-	return result || '/';
+export function assertPathAndBasePathAreNotBothSet(pathConfig: string, basePathConfig: string) {
+	if (normalizeBasePath(pathConfig) === '/' || normalizeBasePath(basePathConfig) === '/') return;
+
+	throw new UserError(
+		'N8N_PATH and N8N_BASE_PATH cannot both be configured. Use only N8N_BASE_PATH; N8N_PATH is deprecated.',
+	);
 }
 
 /**

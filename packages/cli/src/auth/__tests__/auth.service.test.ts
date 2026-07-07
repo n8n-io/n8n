@@ -159,7 +159,7 @@ describe('AuthService', () => {
 			expect(userRepository.findOne).not.toHaveBeenCalled();
 			expect(next).not.toHaveBeenCalled();
 			expect(res.status).toHaveBeenCalledWith(401);
-			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, { path: '/' });
 		});
 
 		it('should 401 and clear the cookie if the JWT has been invalidated', async () => {
@@ -175,7 +175,7 @@ describe('AuthService', () => {
 			expect(userRepository.findOne).not.toHaveBeenCalled();
 			expect(next).not.toHaveBeenCalled();
 			expect(res.status).toHaveBeenCalledWith(401);
-			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, { path: '/' });
 		});
 
 		it('should 401 but not clear the cookie if 2FA is enforced and not configured for the user', async () => {
@@ -211,6 +211,7 @@ describe('AuthService', () => {
 			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
 				httpOnly: true,
 				maxAge: 604800000,
+				path: '/',
 				sameSite: 'lax',
 				secure: true,
 			});
@@ -343,7 +344,7 @@ describe('AuthService', () => {
 				await middleware(req, res, next);
 
 				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
-				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, { path: '/' });
 				expect(next).toHaveBeenCalled(); // Should still call next() due to preview mode skip
 				expect(res.status).not.toHaveBeenCalled();
 			});
@@ -387,7 +388,7 @@ describe('AuthService', () => {
 				expect(userRepository.findOne).not.toHaveBeenCalled();
 				expect(req.user).toBeUndefined();
 				expect(next).toHaveBeenCalled();
-				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, { path: '/' });
 			});
 
 			it('should clear the cookie if the token has been invalidated', async () => {
@@ -406,7 +407,7 @@ describe('AuthService', () => {
 				expect(userRepository.findOne).not.toHaveBeenCalled();
 				expect(req.user).toBeUndefined();
 				expect(next).toHaveBeenCalled();
-				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, { path: '/' });
 			});
 
 			it('should not populate the user info if the token is invalid', async () => {
@@ -425,7 +426,7 @@ describe('AuthService', () => {
 				expect(userRepository.findOne).not.toHaveBeenCalled();
 				expect(req.user).toBeUndefined();
 				expect(next).toHaveBeenCalled();
-				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, { path: '/' });
 			});
 
 			it('should not populate the user info if the token is not set', async () => {
@@ -467,7 +468,7 @@ describe('AuthService', () => {
 				expect(userRepository.findOne).toHaveBeenCalled();
 				expect(req.user).toBeUndefined();
 				expect(next).toHaveBeenCalled();
-				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, { path: '/' });
 			});
 
 			it('should skip user when MFA enforced and user has no MFA', async () => {
@@ -532,6 +533,7 @@ describe('AuthService', () => {
 			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validToken, {
 				httpOnly: true,
 				maxAge: 604800000,
+				path: '/',
 				sameSite: 'lax',
 				secure: true,
 			});
@@ -555,6 +557,7 @@ describe('AuthService', () => {
 				expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validToken, {
 					httpOnly: true,
 					maxAge: 604800000,
+					path: '/',
 					sameSite: 'lax',
 					secure: true,
 				});
@@ -567,6 +570,7 @@ describe('AuthService', () => {
 			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validTokenWithMfa, {
 				httpOnly: true,
 				maxAge: 604800000,
+				path: '/',
 				sameSite: 'lax',
 				secure: true,
 			});
@@ -580,6 +584,7 @@ describe('AuthService', () => {
 			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validToken, {
 				httpOnly: true,
 				maxAge: 604800000,
+				path: '/',
 				sameSite: 'none',
 				secure: false,
 			});
@@ -773,6 +778,7 @@ describe('AuthService', () => {
 			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
 				httpOnly: true,
 				maxAge: 604800000,
+				path: '/',
 				sameSite: 'lax',
 				secure: true,
 			});
@@ -818,6 +824,7 @@ describe('AuthService', () => {
 			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
 				httpOnly: true,
 				maxAge: 604800000,
+				path: '/',
 				sameSite: 'none',
 				secure: true,
 			});
