@@ -46,31 +46,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_0166MCaEK9Qvf5ZZyE3JJh8j\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll deploy the \\\"risky-service\\\" app for you. This requires two rounds of confirmation.\"},{\"type\":\"tool_use\",\"id\":\"toolu_012EQBHK8hP2JTSDHwa1i6A7\",\"name\":\"deploy_app\",\"input\":{\"app\":\"risky-service\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":632,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":78,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_0168nyni5kgyas1emDrjFCEb\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll deploy the \\\"risky-service\\\" app for you.\"},{\"type\":\"tool_use\",\"id\":\"toolu_013LHXEuLVKP1FYryRm6MK6e\",\"name\":\"deploy_app\",\"input\":{\"app\":\"risky-service\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":632,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":71,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "10000000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:19:53Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:47:08Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:19:53Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:47:09Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-23T12:19:52Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-03T09:47:08Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "12000000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:19:53Z",
+			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:47:08Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a103718d3d8a4341-VIE",
+			"cf-ray": "a154f7917ae9c2d4-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 23 Jun 2026 12:19:53 GMT",
-			"request-id": "req_011CcLBQvnMyhwxy8Cuzg5ya",
+			"date": "Fri, 03 Jul 2026 09:47:09 GMT",
+			"request-id": "req_011CceurZMhAMsuGGNZf22QD",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=4DkodNSZ_2w.bSBSe4Mlpom_eLlxIDTv5Sypw_UX_Wc-1782217192.5189703-1.0.1.1-wvCSWXOXeLZLqvXCpIPeC8sjbdI5t9M1uw_W794s48I; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-2e251c26ade5b666aafba7a799c3692b-c635b73d68d2cdaa-01",
+			"traceresponse": "00-7ac5352b72aa167504705111dfdd45c5-bef348cd0ba85c91-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -104,11 +103,11 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "I'll deploy the \"risky-service\" app for you. This requires two rounds of confirmation."
+							"text": "I'll deploy the \"risky-service\" app for you."
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_012EQBHK8hP2JTSDHwa1i6A7",
+							"id": "toolu_013LHXEuLVKP1FYryRm6MK6e",
 							"name": "deploy_app",
 							"input": {
 								"app": "risky-service"
@@ -124,7 +123,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_012EQBHK8hP2JTSDHwa1i6A7",
+							"tool_use_id": "toolu_013LHXEuLVKP1FYryRm6MK6e",
 							"content": "{\"deployed\":false,\"app\":\"risky-service\",\"steps\":3}"
 						}
 					]
@@ -153,31 +152,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011JSDbPN73dbc3Gm5794pby\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"This is the first confirmation step. The deployment of \\\"risky-service\\\" is queued and ready to proceed. I need a second confirmation to continue with the actual deployment. \\n\\n**Do you want to proceed with deploying \\\"risky-service\\\"?**\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":737,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":58,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01EGmip4BPRh8B42stP1zoeG\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"This is the first confirmation round. The deployment of \\\"risky-service\\\" requires 3 steps. Do you want to proceed with the deployment?\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":730,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":34,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "10000000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:19:54Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:47:09Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:19:54Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:47:10Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-23T12:19:53Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-03T09:47:09Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "12000000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:19:54Z",
+			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:47:09Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a10371934d724341-VIE",
+			"cf-ray": "a154f7974f7dc2d4-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 23 Jun 2026 12:19:54 GMT",
-			"request-id": "req_011CcLBR16a96sGNzduZrKNj",
+			"date": "Fri, 03 Jul 2026 09:47:10 GMT",
+			"request-id": "req_011CceurdMJhJQA6bsJvitSg",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=hx.ef.z3TxN4eJqqV1kY5_7FSwoH01jl2Yvx0u2iDDg-1782217193.4902618-1.0.1.1-N6A9u1wuoJgWRFCTH3lIGcob0MSizYM6T9GBIu_SqTw; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-bd8e8088c957d7b6c31f2ef887eeb00d-c6d69ec38bf0bb9a-01",
+			"traceresponse": "00-f43328533855812720e0927c86748280-77bd0d8590149707-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},

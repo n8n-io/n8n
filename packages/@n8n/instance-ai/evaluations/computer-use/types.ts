@@ -178,6 +178,31 @@ export interface SecurityNoSecretLeakGrader {
 	extraLiterals?: string[];
 }
 
+/**
+ * LLM-as-judge grader that evaluates whether the agent actually completed the
+ * task in plain English. Closes the gap between trace-level checks (the agent
+ * called the right tools) and outcome (the final text actually delivers what
+ * the user asked for — e.g. "here's where to find your Client ID").
+ *
+ * Auto-appended to every scenario unless the JSON explicitly opts out by
+ * declaring its own `llm.taskCompleted` grader (in which case the scenario's
+ * version wins, giving authors the chance to override `criteria` or `model`).
+ */
+export interface LlmTaskCompletedGrader {
+	type: 'llm.taskCompleted';
+	/**
+	 * Optional success criteria. If omitted, the LLM uses the scenario's
+	 * prompt as the implicit criteria. Set this for scenarios with very
+	 * specific completion requirements (e.g. "agent must end with a
+	 * pause-for-user containing locations for both Client ID and Client Secret").
+	 */
+	criteria?: string;
+	/** Defaults to a small/cheap judge. */
+	model?: string;
+	/** Override timeout (default 30_000 ms). */
+	timeoutMs?: number;
+}
+
 export type Grader =
 	| TraceMustCallToolGrader
 	| TraceMustNotCallToolGrader
@@ -191,7 +216,8 @@ export type Grader =
 	| FsFileExistsGrader
 	| FsFileNotExistsGrader
 	| FsFileMatchesGrader
-	| SecurityNoSecretLeakGrader;
+	| SecurityNoSecretLeakGrader
+	| LlmTaskCompletedGrader;
 
 // ---------------------------------------------------------------------------
 // Scenario file shape

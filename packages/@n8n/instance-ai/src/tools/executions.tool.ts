@@ -94,12 +94,10 @@ const getResolvedNodeParametersAction = z.object({
 		.literal('get-resolved-node-parameters')
 		.describe(
 			"Replay expression resolution for a node's parameters against a past execution. " +
-				'Returns the raw `parameters` (with expressions intact), the `resolved` tree (same ' +
-				'shape, expressions substituted), `failedExpressions` (those that threw), and ' +
-				'`emptyResolutions` (those that resolved to `null`/`undefined`/`""` — the common ' +
-				'silent cause of empty downstream fields). Use this when debugging why a node ' +
-				'received an unexpected value or failed because of a parameter — far more precise ' +
-				'than guessing from raw expression strings or input data.',
+				'Returns raw `parameters`, the `resolved` tree, `failedExpressions`, and ' +
+				'`emptyResolutions` (resolved to `null`/`undefined`/`""` — the common silent ' +
+				'cause of empty downstream fields). Use when debugging why a node received an ' +
+				'unexpected value — more precise than guessing from raw expressions or input data.',
 		),
 	executionId: z.string().describe('Execution ID'),
 	nodeName: z.string().describe("Name of the node (must exist in the execution's workflow)"),
@@ -329,7 +327,8 @@ export function createExecutionsTool(context: InstanceAiContext) {
 		.description(
 			'Manage workflow executions — list, inspect, run, debug, get node output, ' +
 				'get resolved node parameters for a past run, and stop. ' +
-				'Use action="run" for verification when the current turn is responsible for verification; prefer verify-built-workflow for standard post-build verification.',
+				'To verify a workflow you built, use verify-built-workflow, not action="run". ' +
+				'Reserve action="run" for runs the user explicitly asked for: it runs the workflow live with no pin data and prompts the user for approval.',
 		)
 		.input(inputSchema)
 		.suspend(suspendSchema)

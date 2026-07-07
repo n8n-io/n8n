@@ -58,7 +58,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	const executionsById = ref<Record<string, ExecutionSummaryWithScopes>>({});
 	const executionsCount = ref(0);
-	const executionsCountEstimated = ref(false);
+	const hasMoreExecutions = ref(true);
 	const concurrentExecutionsCount = ref(0);
 	const executions = computed(() => {
 		const data = Object.values(executionsById.value);
@@ -182,8 +182,15 @@ export const useExecutionsStore = defineStore('executions', () => {
 				}
 			});
 
+			const isLoadMore = !!lastId;
+			const isFullPage = data.results.length >= itemsPerPage.value;
+			if (isLoadMore) {
+				hasMoreExecutions.value = isFullPage;
+			} else if (!isFullPage) {
+				hasMoreExecutions.value = false;
+			}
+
 			executionsCount.value = data.count;
-			executionsCountEstimated.value = data.estimated;
 			concurrentExecutionsCount.value = data.concurrentExecutionsCount;
 			return data;
 		} finally {
@@ -331,8 +338,8 @@ export const useExecutionsStore = defineStore('executions', () => {
 		executionsById.value = {};
 		currentExecutionsById.value = {};
 		executionsCount.value = 0;
-		executionsCountEstimated.value = false;
 		concurrentExecutionsCount.value = 0;
+		hasMoreExecutions.value = true;
 	}
 
 	function reset() {
@@ -349,7 +356,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		executionsById,
 		executions,
 		executionsCount,
-		executionsCountEstimated,
+		hasMoreExecutions,
 		concurrentExecutionsCount,
 		executionsByWorkflowId,
 		currentExecutions,

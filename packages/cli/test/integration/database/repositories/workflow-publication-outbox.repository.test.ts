@@ -429,4 +429,43 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			expect(pending[0].workflowId).toBe(active.id);
 		});
 	});
+
+	describe('getRecordStatsByStatus', () => {
+		it('returns the count and oldest createdAt grouped by status in one query', async () => {
+			await repository.insert([
+				{ workflowId: 'wf-1', publishedVersionId: 'v', status: 'pending' },
+				{ workflowId: 'wf-2', publishedVersionId: 'v', status: 'pending' },
+				{ workflowId: 'wf-3', publishedVersionId: 'v', status: 'in_progress' },
+				{ workflowId: 'wf-4', publishedVersionId: 'v', status: 'completed' },
+				{ workflowId: 'wf-5', publishedVersionId: 'v', status: 'completed' },
+				{ workflowId: 'wf-6', publishedVersionId: 'v', status: 'failed' },
+				{ workflowId: 'wf-7', publishedVersionId: 'v', status: 'partial_success' },
+			]);
+
+			const all = await repository.find();
+			const oldestPending = Math.min(
+				...all
+					.filter((record) => record.status === 'pending')
+					.map((record) => record.createdAt.getTime()),
+			);
+
+			const stats = await repository.getRecordStatsByStatus();
+
+			const counts = Object.fromEntries([...stats].map(([status, s]) => [status, s.count]));
+			expect(counts).toEqual({
+				pending: 2,
+				in_progress: 1,
+				completed: 2,
+				failed: 1,
+				partial_success: 1,
+			});
+
+			expect(stats.get('pending')?.oldestCreatedAt.getTime()).toBe(oldestPending);
+			expect(stats.get('completed')?.oldestCreatedAt).toBeInstanceOf(Date);
+		});
+
+		it('returns an empty map when there are no records', async () => {
+			expect((await repository.getRecordStatsByStatus()).size).toBe(0);
+		});
+	});
 });

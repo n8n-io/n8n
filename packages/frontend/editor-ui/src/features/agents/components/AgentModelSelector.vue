@@ -2,7 +2,7 @@
 import { computed, ref, useTemplateRef } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { truncateBeforeLast } from '@n8n/utils';
+import { truncateBeforeLast } from '@n8n/utils/string/truncate';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';

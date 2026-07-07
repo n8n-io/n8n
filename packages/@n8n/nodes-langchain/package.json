@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "2.28.0",
+  "version": "2.30.0",
   "description": "",
   "main": "index.js",
   "exports": {
@@ -253,6 +253,8 @@
     "@langchain/google-genai": "2.1.24",
     "@langchain/google-vertexai": "2.1.24",
     "@langchain/groq": "1.0.2",
+    "@langchain/langgraph": "catalog:",
+    "@langchain/langgraph-checkpoint": "catalog:",
     "@langchain/mistralai": "1.0.1",
     "@langchain/mongodb": "1.0.1",
     "@langchain/ollama": "1.2.6",
@@ -280,6 +282,7 @@
     "@n8n/json-schema-to-zod": "workspace:*",
     "@n8n/typeorm": "0.3.20-16",
     "@n8n/typescript-config": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "@oracle/langchain-oracledb": "0.2.0",
     "@pinecone-database/pinecone": "^5.0.2",
     "@qdrant/js-client-rest": "^1.16.2",

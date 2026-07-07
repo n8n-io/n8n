@@ -62,11 +62,12 @@ jobs:
           N8N_VERSION: ${{ inputs.n8n_version }}
           RELEASE_TYPE: ${{ inputs.release_type }}
           PUSH_ENABLED: ${{ inputs.push_enabled }}
+          GITHUB_REF: ${{ github.ref_name }}
         run: |
           node .github/scripts/docker/docker-config.mjs \
             --event "${{ github.event_name }}" \
             --pr "${{ github.event.pull_request.number }}" \
-            --branch "${{ github.ref_name }}" \
+            --branch "$GITHUB_REF" \
             --version "$N8N_VERSION" \
             --release-type "$RELEASE_TYPE" \
             --push-enabled "$PUSH_ENABLED"
@@ -243,9 +244,11 @@ jobs:
 
       - name: Create Docker Hub manifests
         if: needs.determine-build-context.outputs.push_to_docker == 'true'
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         run: |
           VERSION="${{ needs.determine-build-context.outputs.n8n_version }}"
-          DOCKER_BASE="${{ secrets.DOCKER_USERNAME }}"
+          DOCKER_BASE="$DOCKER_USERNAME"
 
           # Create manifests for each image type
           declare -A images=(

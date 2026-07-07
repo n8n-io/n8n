@@ -27,12 +27,12 @@ import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registr
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
-import { WebhookResponse } from './webhook-response';
 
 import { authAllowlistedNodes } from './constants';
 import { matchesExpectedNodeType } from './node-type-matcher';
 import type { ExpectedWebhookNodeType } from './node-type-matcher';
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
+import { WebhookResponse } from './webhook-response';
 import { WebhookService } from './webhook.service';
 import type {
 	IWebhookResponseCallbackData,
