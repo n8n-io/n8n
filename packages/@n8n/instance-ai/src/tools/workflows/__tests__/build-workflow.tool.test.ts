@@ -1,13 +1,29 @@
 import { executeTool } from '../../../__tests__/tool-test-utils';
+import { emitTraceOnlyChildRun } from '../../../tracing/langsmith-tracing';
 import type { InstanceAiContext } from '../../../types';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
-import { buildWorkflowInputSchema, createBuildWorkflowTool } from '../build-workflow.tool';
+import {
+	autoImportMissingSdkSymbols,
+	buildWorkflowInputSchema,
+	createBuildWorkflowTool,
+} from '../build-workflow.tool';
 import type { SetupRequest } from '../setup-workflow.schema';
 import { analyzeWorkflow } from '../setup-workflow.service';
 import { getWorkflowSourceFileBinding, hashWorkflowSource } from '../workflow-file-bindings';
 import { ensureWebhookIds } from '../workflow-json-utils';
 import { compileWorkflowSource } from '../workflow-source-compiler';
 import { partitionWarnings, type ValidationWarning } from '../workflow-validation-warnings';
+
+// Passthrough spy: real behavior (handle-fallback path in unit env), observable calls.
+vi.mock('../../../tracing/langsmith-tracing', async () => {
+	const actual = await vi.importActual<Record<string, unknown>>(
+		'../../../tracing/langsmith-tracing',
+	);
+	return {
+		...actual,
+		emitTraceOnlyChildRun: vi.fn(actual.emitTraceOnlyChildRun as typeof emitTraceOnlyChildRun),
+	};
+});
 
 vi.mock('../workflow-validation-warnings', () => ({
 	partitionWarnings: vi.fn((warnings: unknown[]) => ({ errors: [], informational: warnings })),
@@ -224,6 +240,139 @@ describe('createBuildWorkflowTool', () => {
 			workflowVersionId: 'v-1',
 			sourceHash: hashWorkflowSource(source),
 		});
+	});
+
+	it('emits a compiled-workflow trace child run carrying the compiled JSON when tracing is present', async () => {
+		const source = 'workflow source from workspace';
+		const actorRun = { id: 'actor-run-1' };
+		const startChildRun = vi.fn<
+			(parent: unknown, init: Record<string, unknown>) => Promise<{ id: string }>
+		>(async () => await Promise.resolve({ id: 'compiled-run-1' }));
+		const finishRun = vi.fn<(run: { id: string }, opts: Record<string, unknown>) => Promise<void>>(
+			async () => await Promise.resolve(),
+		);
+		const tracing = {
+			actorRun,
+			startChildRun,
+			finishRun,
+		} as unknown as InstanceAiContext['tracing'];
+		const { context, filePath } = makeContext({ source, overrides: { tracing } });
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			name: 'Daily Weather to Slack',
+		});
+
+		expect(result.success).toBe(true);
+		// Attaches to the active actor run as a trace-only child named 'compiled-workflow'.
+		expect(startChildRun).toHaveBeenCalledTimes(1);
+		const [parentRun, init] = startChildRun.mock.calls[0];
+		expect(parentRun).toBe(actorRun);
+		expect(init).toMatchObject({
+			name: 'compiled-workflow',
+			// Bookkeeping span, not an agent tool call.
+			runType: 'chain',
+			metadata: { workflow_id: 'wf-1', source_hash: hashWorkflowSource(source) },
+		});
+		// The compiled workflow JSON lands in the child run's outputs...
+		expect(finishRun).toHaveBeenCalledTimes(1);
+		const [finishedRun, finishOpts] = finishRun.mock.calls[0];
+		expect(finishedRun).toMatchObject({ id: 'compiled-run-1' });
+		expect(finishOpts).toMatchObject({
+			// Raw: skips structural sanitization; export scrubbing still applies.
+			rawOutputs: true,
+			outputs: {
+				workflowId: 'wf-1',
+				sourceHash: hashWorkflowSource(source),
+				workflow: { nodes: [{ type: 'n8n-nodes-base.webhook' }] },
+			},
+		});
+		// ...and never leaks into the agent-facing tool output.
+		expect(result).not.toHaveProperty('workflow');
+	});
+
+	it('emits only a truncated marker when the compiled JSON exceeds the size gate', async () => {
+		const source = 'workflow source from workspace';
+		const huge = structuredClone(generatedWorkflow);
+		(huge.nodes[0] as { parameters: Record<string, unknown> }).parameters = {
+			blob: 'x'.repeat(1_100_000),
+		};
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: huge,
+			warnings: [],
+			compiler: 'sandbox-tsx',
+		});
+		const startChildRun = vi.fn<
+			(parent: unknown, init: Record<string, unknown>) => Promise<{ id: string }>
+		>(async () => await Promise.resolve({ id: 'compiled-run-1' }));
+		const finishRun = vi.fn<(run: { id: string }, opts: Record<string, unknown>) => Promise<void>>(
+			async () => await Promise.resolve(),
+		);
+		const tracing = {
+			actorRun: { id: 'actor-run-1' },
+			startChildRun,
+			finishRun,
+		} as unknown as InstanceAiContext['tracing'];
+		const { context, filePath } = makeContext({ source, overrides: { tracing } });
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			name: 'Daily Weather to Slack',
+		});
+
+		expect(result.success).toBe(true);
+		expect(finishRun).toHaveBeenCalledTimes(1);
+		const [, finishOpts] = finishRun.mock.calls[0];
+		// Marker only, and small ⇒ not raw; the consumer falls back to source replay.
+		expect(finishOpts).toMatchObject({
+			outputs: { workflowId: 'wf-1', sourceHash: hashWorkflowSource(source), truncated: true },
+		});
+		expect((finishOpts as { outputs: Record<string, unknown> }).outputs).not.toHaveProperty(
+			'workflow',
+		);
+		expect((finishOpts as { rawOutputs?: boolean }).rawOutputs).toBeUndefined();
+	});
+
+	it('reports the emission as skipped when tracing is absent', async () => {
+		const { context, filePath } = makeContext({ source: 'workflow source from workspace' });
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			name: 'Daily Weather to Slack',
+		});
+
+		expect(result.success).toBe(true);
+		// No ambient trace in unit env and no handle ⇒ the emission is a no-op
+		// and says so — it must not claim success into a void.
+		expect(emitTraceOnlyChildRun).toHaveBeenCalledTimes(1);
+		expect(vi.mocked(emitTraceOnlyChildRun).mock.calls[0][0]).toBeUndefined();
+		await expect(vi.mocked(emitTraceOnlyChildRun).mock.results[0].value).resolves.toBe('skipped');
+	});
+
+	it('reports the emission as skipped when the handle is stale (runtime shut down)', async () => {
+		const startChildRun = vi.fn();
+		const tracing = {
+			actorRun: { id: 'actor-run-1' },
+			isLive: () => false,
+			startChildRun,
+			finishRun: vi.fn(),
+		} as unknown as InstanceAiContext['tracing'];
+		const { context, filePath } = makeContext({
+			source: 'workflow source from workspace',
+			overrides: { tracing },
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			name: 'Daily Weather to Slack',
+		});
+
+		expect(result.success).toBe(true);
+		// A dead runtime's runs are spanless and export nothing — no attempt, no
+		// 'handle' claim.
+		expect(startChildRun).not.toHaveBeenCalled();
+		await expect(vi.mocked(emitTraceOnlyChildRun).mock.results[0].value).resolves.toBe('skipped');
 	});
 
 	it('keeps pending workflow setup ready for verification', async () => {
@@ -1008,5 +1157,116 @@ describe('createBuildWorkflowTool', () => {
 			'You already tried this',
 		);
 		expect((repeatSupportingAttempt.errors ?? []).join('\n')).toContain('You already tried this');
+	});
+});
+
+describe('autoImportMissingSdkSymbols', () => {
+	it('adds missing symbols to an existing SDK import', () => {
+		const source =
+			"import {\n  workflow,\n  node,\n} from '@n8n/workflow-sdk';\n\nexport default workflow('id', 'n');";
+		const result = autoImportMissingSdkSymbols(source, [
+			'ReferenceError: expr is not defined',
+			'nodeJson is not defined',
+		]);
+
+		expect(result?.symbols.sort()).toEqual(['expr', 'nodeJson']);
+		expect(result?.source).toContain('expr,');
+		expect(result?.source).toContain('nodeJson,');
+		expect(result?.source).toContain('workflow,');
+	});
+
+	it('prepends an import when none exists', () => {
+		const result = autoImportMissingSdkSymbols('export default workflow();', [
+			'workflow is not defined',
+		]);
+
+		expect(result?.source.startsWith("import { workflow } from '@n8n/workflow-sdk';")).toBe(true);
+	});
+
+	it('ignores unknown symbols and unrelated errors', () => {
+		expect(
+			autoImportMissingSdkSymbols('code', ['myHelper is not defined', 'Unexpected token']),
+		).toBeUndefined();
+	});
+});
+
+describe('auto-import recovery on compile failure', () => {
+	beforeEach(async () => {
+		vi.clearAllMocks();
+		// Real classifier: guards that auto_imported_sdk_symbols stays informational.
+		const actual = await vi.importActual<{ partitionWarnings: typeof partitionWarnings }>(
+			'../workflow-validation-warnings',
+		);
+		vi.mocked(partitionWarnings).mockImplementation(actual.partitionWarnings);
+		vi.mocked(analyzeWorkflow).mockResolvedValue([]);
+	});
+
+	it('injects missing SDK imports, persists the corrected source, and retries once', async () => {
+		const source = "export default workflow('id', 'n').add(t).to(s);";
+		const { context, files, filePath } = makeContext({ source });
+
+		vi.mocked(compileWorkflowSource)
+			.mockResolvedValueOnce(workflowSourceBuildFailure('ReferenceError: expr is not defined'))
+			.mockResolvedValueOnce({
+				success: true,
+				workflow: structuredClone(generatedWorkflow),
+				warnings: [],
+				compiler: 'sandbox-tsx',
+			});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			name: 'Recovered Workflow',
+		});
+
+		expect(result.success).toBe(true);
+		// Corrected source persisted so later edits/repairs see it.
+		const persisted = files.get(filePath);
+		expect(persisted).toContain("import { expr } from '@n8n/workflow-sdk';");
+		expect(result.sourceHash).toBe(hashWorkflowSource(persisted!));
+		// The model is told what was fixed.
+		expect(result.warnings?.join('\n')).toContain(
+			'Auto-added missing @n8n/workflow-sdk import(s): expr',
+		);
+		expect(compileWorkflowSource).toHaveBeenCalledTimes(2);
+	});
+
+	it('returns the retried errors when the recovery retry still fails', async () => {
+		const source = "export default workflow('id', 'n').add(t).to(s);";
+		const { context, files, filePath } = makeContext({ source });
+
+		vi.mocked(compileWorkflowSource)
+			.mockResolvedValueOnce(workflowSourceBuildFailure('ReferenceError: expr is not defined'))
+			.mockResolvedValueOnce(workflowSourceBuildFailure("Cannot find name 'unrelated'"));
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			name: 'Still Broken Workflow',
+		});
+
+		expect(result.success).toBe(false);
+		// Errors describe the persisted (import-injected) file, not the original source.
+		expect(result.errors?.join('\n')).toContain("Cannot find name 'unrelated'");
+		expect(result.errors?.join('\n')).not.toContain('expr is not defined');
+		expect(files.get(filePath)).toContain("import { expr } from '@n8n/workflow-sdk';");
+		expect(compileWorkflowSource).toHaveBeenCalledTimes(2);
+	});
+
+	it('falls through to the original error when recovery does not apply', async () => {
+		const source = "export default workflow('id', 'n');";
+		const { context, filePath } = makeContext({ source });
+
+		vi.mocked(compileWorkflowSource).mockResolvedValue(
+			workflowSourceBuildFailure('Unexpected token'),
+		);
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			name: 'Broken Workflow',
+		});
+
+		expect(result.success).toBe(false);
+		expect(result.errors?.join('\n')).toContain('Unexpected token');
+		expect(compileWorkflowSource).toHaveBeenCalledTimes(1);
 	});
 });
