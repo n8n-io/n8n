@@ -295,7 +295,36 @@ function getDisplayValue(value: unknown): string {
 
 .comboboxInput,
 .comboboxAnchor :where(input[role='combobox']) {
-	@include input-mixin.native-field;
+	flex: 1;
+	align-self: stretch;
+	min-width: 0;
+	width: 100%;
+	min-height: var(--input--height);
+	padding: 0;
+	border: none;
+	background: transparent;
+	outline: none;
+	font-family: inherit;
+	font-size: inherit;
+	color: inherit;
+
+	&::placeholder {
+		color: var(--input--placeholder--color);
+	}
+
+	&:focus,
+	&:focus-visible {
+		outline: none;
+	}
+
+	&:disabled {
+		cursor: not-allowed;
+		color: var(--input--color--disabled);
+
+		&::placeholder {
+			color: var(--input--placeholder--color--disabled);
+		}
+	}
 }
 
 .comboboxTrigger {
