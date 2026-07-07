@@ -1,9 +1,9 @@
 import type { Component } from 'vue';
 
-import ClaudeIcon from './assets/client-icons/claude.svg';
-import CursorIcon from './assets/client-icons/cursor.svg';
-import OpenAiIcon from './assets/client-icons/openai.svg';
-import VsCodeIcon from './assets/client-icons/vscode.svg';
+import ClaudeIcon from './assets/client-icons/claude.svg?component';
+import CursorIcon from './assets/client-icons/cursor.svg?component';
+import OpenAiIcon from './assets/client-icons/openai.svg?component';
+import VsCodeIcon from './assets/client-icons/vscode.svg?component';
 
 export type McpClientType = 'cli' | 'ide' | 'editor' | 'assistant';
 
