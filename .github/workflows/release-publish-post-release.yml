@@ -49,6 +49,18 @@ jobs:
       version: ${{ inputs.new_stable_version }}
       release-channel: stable
 
+  promote-backport-labels:
+    name: Promote backport labels
+    if: |
+      inputs.release_type != 'rc' &&
+      inputs.bump == 'minor'
+    uses: ./.github/workflows/release-promote-backport-labels.yml
+    secrets:
+      N8N_ASSISTANT_APP_ID: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+      N8N_ASSISTANT_PRIVATE_KEY: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+    with:
+      version: ${{ inputs.version }}
+
   promote-previous-minor-github-release-to-latest:
     name: Promote previous minor Github Release to latest
     if: |

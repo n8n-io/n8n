@@ -51,7 +51,7 @@ const mockSystemRole = {
 	displayName: 'Admin',
 	slug: 'global:admin',
 	description: 'System admin role',
-	scopes: ['tag:read', 'tag:list'],
+	scopes: ['tag:read', 'tag:list', 'tag:create', 'tag:update', 'tag:delete'],
 	licensed: true,
 	systemRole: true,
 	roleType: 'global' as const,
@@ -119,22 +119,49 @@ describe('InstanceRoleView', () => {
 			await userEvent.click(getByRole('button', { name: 'Create' }));
 
 			await waitFor(() => {
-				expect(mockShowError).toHaveBeenCalledWith(error, 'Error creating role');
+				expect(mockShowError).toHaveBeenCalledWith(error, "Couldn't create role");
+			});
+		});
+
+		it('shows a validation error and does not call the API when name is empty', async () => {
+			const { getByRole } = renderComponent();
+
+			await userEvent.click(getByRole('button', { name: 'Create' }));
+
+			expect(rolesStore.createRole).not.toHaveBeenCalled();
+			expect(mockShowMessage).toHaveBeenCalledWith({
+				type: 'error',
+				title: "Couldn't create role",
+				message: 'Enter a name of at least 2 characters',
+			});
+		});
+
+		it('shows a validation error and does not call the API when name is shorter than 2 characters', async () => {
+			const { container, getByRole } = renderComponent();
+
+			await fillName(container, 'A');
+			await userEvent.click(getByRole('button', { name: 'Create' }));
+
+			expect(rolesStore.createRole).not.toHaveBeenCalled();
+			expect(mockShowMessage).toHaveBeenCalledWith({
+				type: 'error',
+				title: "Couldn't create role",
+				message: 'Enter a name of at least 2 characters',
 			});
 		});
 
 		it('populates scopes from a system-role preset', async () => {
 			const { getByTestId } = renderComponent();
 
-			// tag View resolves to tag:read + tag:list, which the Admin preset carries in full.
+			// tag Manage resolves to all 5 tag scopes; the Admin preset carries them in full.
 			await waitFor(() =>
-				expect(getByTestId('scope-option-tag-view').getAttribute('aria-checked')).toBe('false'),
+				expect(getByTestId('scope-option-tag-manage').getAttribute('aria-checked')).toBe('false'),
 			);
 
 			await userEvent.click(getByTestId('role-preset-global:admin'));
 
 			await waitFor(() =>
-				expect(getByTestId('scope-option-tag-view').getAttribute('aria-checked')).toBe('true'),
+				expect(getByTestId('scope-option-tag-manage').getAttribute('aria-checked')).toBe('true'),
 			);
 		});
 	});

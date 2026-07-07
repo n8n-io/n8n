@@ -16,10 +16,8 @@ export const userTargetRLC: INodeProperties = {
 	displayName: 'User',
 	name: 'userTarget',
 	type: 'resourceLocator',
-	// Node-level target, not per-item: `noDataExpression` keeps it a fixed value for the whole
-	// run, so the transport resolving it once (item 0) can never silently target the wrong user
-	// from a per-item expression like `={{ $json.user }}`.
-	noDataExpression: true,
+	// Resolved once per run (from the first item) and reused for every item, so it accepts a fixed
+	// value or an expression; for per-item targeting, feed a single item or use Loop Over Items.
 	default: { mode: 'id', value: '' },
 	required: true,
 	modes: [

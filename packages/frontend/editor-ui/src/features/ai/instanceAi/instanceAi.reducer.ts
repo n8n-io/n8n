@@ -329,6 +329,7 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 
 		case 'run-finish': {
 			const { msg, runState } = resolveTarget(state, event.runId);
+			const isActiveRunFinishing = event.runId === state.activeRunId;
 			if (runState) {
 				reduceRunEvent(runState, event);
 				const { status, reason } = event.payload;
@@ -338,15 +339,15 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 				if (root && status === 'error' && reason && !root.error) {
 					root.error = reason;
 				}
-				if (msg) msg.isStreaming = false;
+				if (msg && isActiveRunFinishing) msg.isStreaming = false;
 			} else if (msg) {
-				msg.isStreaming = false;
+				if (isActiveRunFinishing) msg.isStreaming = false;
 				const { status, reason } = event.payload;
 				if (status === 'error' && reason) {
 					msg.content += '\n\n*Error: ' + reason + '*';
 				}
 			}
-			return null;
+			return isActiveRunFinishing ? null : state.activeRunId;
 		}
 
 		default:
