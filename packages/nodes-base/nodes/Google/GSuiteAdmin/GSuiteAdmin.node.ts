@@ -770,7 +770,8 @@ export class GSuiteAdmin implements INodeType {
 							body.primaryEmail = updateFields.primaryEmail as string;
 						}
 
-						if (updateFields.suspendUi) {
+						// Presence check: `false` must still be sent to reactivate the user
+						if (updateFields.suspendUi !== undefined) {
 							body.suspended = updateFields.suspendUi as boolean;
 						}
 
