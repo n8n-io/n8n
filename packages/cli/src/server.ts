@@ -182,8 +182,6 @@ export class Server extends AbstractServer {
 		await this.postHogClient.init();
 		this.postHogClient.setupExpressSessionContext(this.app);
 
-		const publicApiEndpoint = pathResolvingService.resolvePublicApiEndpoint();
-
 		// Register auth strategies in priority order. The registry evaluates them
 		// sequentially — the first strategy that returns a non-null result wins.
 		// API key auth is registered first so existing behavior is preserved.
@@ -197,11 +195,10 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 
 		if (isApiEnabled()) {
-			// `loadPublicApiVersions` expects the path without a leading slash.
-			const publicApiPath = publicApiEndpoint.startsWith('/')
-				? publicApiEndpoint.slice(1)
-				: publicApiEndpoint;
-			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiPath);
+			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(
+				this.globalConfig.publicApi.path,
+				basePath,
+			);
 			this.app.use(...apiRouters);
 			if (frontendService) {
 				(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
@@ -217,8 +214,9 @@ export class Server extends AbstractServer {
 		// Parse cookies for easier access
 		this.app.use(cookieParser());
 
+		const pushEndpoint = pathResolvingService.resolveRestEndpoint('push');
 		const push = Container.get(Push);
-		push.setupPushHandler(pathResolvingService, app);
+		push.setupPushHandler(pushEndpoint, app);
 
 		if (push.isBidirectional) {
 			const { CollaborationService } = await import('@/collaboration/collaboration.service.js');
@@ -535,7 +533,8 @@ export class Server extends AbstractServer {
 
 	protected setupPushServer(): void {
 		const { server, app, pathResolvingService } = this;
-		Container.get(Push).setupPushServer(pathResolvingService, server, app);
+		const pushEndpoint = pathResolvingService.resolveRestEndpoint('push');
+		Container.get(Push).setupPushServer(pushEndpoint, server, app);
 		Container.get(ChatServer).setup(server, app);
 		if (Container.get(ModuleRegistry).isActive('instance-ai')) {
 			Container.get(BrowserUseServer).setup(server, app);

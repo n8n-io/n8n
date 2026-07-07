@@ -41,24 +41,42 @@ describe('PathResolvingService', () => {
 			expect(service.getBasePath()).toBe('/custom-path');
 		});
 
-		it('should return normalized path when N8N_PATH is set', () => {
+		it('should ignore N8N_PATH when it is set without N8N_BASE_PATH', () => {
 			const service = createService({ path: '/app' });
-			expect(service.getBasePath()).toBe('/app');
+			expect(service.getBasePath()).toBe('/');
 		});
 
-		it('should combine basePath and path', () => {
-			const service = createService({ basePath: '/prefix', path: '/app' });
-			expect(service.getBasePath()).toBe('/prefix/app');
+		it('should throw when N8N_BASE_PATH and N8N_PATH are both set', () => {
+			expect(() => createService({ basePath: '/prefix', path: '/app' })).toThrow(
+				'N8N_PATH and N8N_BASE_PATH cannot both be configured',
+			);
 		});
 
 		it('should normalize paths with trailing slashes', () => {
-			const service = createService({ basePath: '/prefix/', path: '/app/' });
-			expect(service.getBasePath()).toBe('/prefix/app');
+			const service = createService({ basePath: '/prefix/' });
+			expect(service.getBasePath()).toBe('/prefix');
 		});
 
 		it('should normalize paths without leading slashes', () => {
-			const service = createService({ basePath: 'prefix', path: 'app' });
-			expect(service.getBasePath()).toBe('/prefix/app');
+			const service = createService({ basePath: 'prefix' });
+			expect(service.getBasePath()).toBe('/prefix');
+		});
+	});
+
+	describe('getUrlBasePath', () => {
+		it('should return "/" for default configuration', () => {
+			const service = createService();
+			expect(service.getUrlBasePath()).toBe('/');
+		});
+
+		it('should return normalized basePath when N8N_BASE_PATH is set', () => {
+			const service = createService({ basePath: '/custom-path' });
+			expect(service.getUrlBasePath()).toBe('/custom-path');
+		});
+
+		it('should return normalized path when only legacy N8N_PATH is set', () => {
+			const service = createService({ path: '/app' });
+			expect(service.getUrlBasePath()).toBe('/app');
 		});
 	});
 
@@ -316,12 +334,13 @@ describe('PathResolvingService', () => {
 			expect(service.resolveWebhookEndpoint('abc123')).toBe('/n8n/webhook/abc123');
 		});
 
-		it('should handle deployment with both basePath and path', () => {
-			const service = createService({ basePath: '/apps', path: '/n8n' });
+		it('should preserve legacy N8N_PATH only for generated URL paths', () => {
+			const service = createService({ path: '/n8n' });
 
-			expect(service.getBasePath()).toBe('/apps/n8n');
-			expect(service.resolveEndpoint('healthz')).toBe('/apps/n8n/healthz');
-			expect(service.resolveRestEndpoint('workflows')).toBe('/apps/n8n/rest/workflows');
+			expect(service.getBasePath()).toBe('/');
+			expect(service.getUrlBasePath()).toBe('/n8n');
+			expect(service.resolveEndpoint('healthz')).toBe('/healthz');
+			expect(service.resolveRestEndpoint('workflows')).toBe('/rest/workflows');
 		});
 
 		it('should handle root deployment', () => {
