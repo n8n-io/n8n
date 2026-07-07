@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { setActivePinia, createPinia, getActivePinia } from 'pinia';
-import { nextTick } from 'vue';
 import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION, WAIT_INDEFINITELY } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
 import {
@@ -9,11 +8,7 @@ import {
 	getExecutionDataStoreId,
 	disposeExecutionDataStore,
 } from '@/app/stores/executionData.store';
-import {
-	CANVAS_EXECUTION_DATA_THROTTLE_DURATION,
-	FORM_NODE_TYPE,
-	WAIT_NODE_TYPE,
-} from '@/app/constants';
+import { FORM_NODE_TYPE, WAIT_NODE_TYPE } from '@/app/constants';
 import {
 	createTestNode,
 	createTestWorkflow,
@@ -1214,24 +1209,6 @@ describe('executionData.store', () => {
 	});
 
 	describe('executionRunDataOutputMapByNodeId', () => {
-		// The rebuild runs behind a throttledWatch whose leading slot is consumed
-		// by the `immediate: true` run at store creation, so a setExecution right
-		// after creation lands on the trailing edge. Fake timers let tests skip
-		// the throttle window deterministically.
-		beforeEach(() => {
-			vi.useFakeTimers();
-		});
-
-		afterEach(() => {
-			vi.useRealTimers();
-		});
-
-		async function flushOutputMapRebuild() {
-			// Let the (pre-flush) watcher run, then fire the trailing throttle slot.
-			await nextTick();
-			vi.advanceTimersByTime(CANVAS_EXECUTION_DATA_THROTTLE_DURATION);
-		}
-
 		function createTask(
 			items: number,
 			overrides: Record<string, unknown> = {},
@@ -1255,7 +1232,7 @@ describe('executionData.store', () => {
 			expect(store.executionRunDataOutputMapByNodeId.size).toBe(0);
 		});
 
-		it('calculates iterations and total for a single node', async () => {
+		it('calculates iterations and total for a single node', () => {
 			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
 			const node = createTestNode({ id: 'node-1', name: 'Node 1' });
 
@@ -1263,14 +1240,13 @@ describe('executionData.store', () => {
 				nodes: [node],
 				runData: { 'Node 1': [createTask(2)] },
 			});
-			await flushOutputMapRebuild();
 
 			expect(store.executionRunDataOutputMapByNodeId.get('node-1')).toEqual({
 				[NodeConnectionTypes.Main]: { 0: { iterations: 1, total: 2 } },
 			});
 		});
 
-		it('aggregates multiple iterations', async () => {
+		it('aggregates multiple iterations', () => {
 			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
 			const node = createTestNode({ id: 'node-1', name: 'Node 1' });
 
@@ -1284,14 +1260,13 @@ describe('executionData.store', () => {
 					],
 				},
 			});
-			await flushOutputMapRebuild();
 
 			expect(store.executionRunDataOutputMapByNodeId.get('node-1')).toEqual({
 				[NodeConnectionTypes.Main]: { 0: { iterations: 3, total: 6 } },
 			});
 		});
 
-		it('does not count canceled iterations but still counts their data', async () => {
+		it('does not count canceled iterations but still counts their data', () => {
 			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
 			const node = createTestNode({ id: 'node-1', name: 'Node 1' });
 
@@ -1305,14 +1280,13 @@ describe('executionData.store', () => {
 					],
 				},
 			});
-			await flushOutputMapRebuild();
 
 			expect(store.executionRunDataOutputMapByNodeId.get('node-1')).toEqual({
 				[NodeConnectionTypes.Main]: { 0: { iterations: 2, total: 6 } },
 			});
 		});
 
-		it('reports zero iterations when all iterations are canceled', async () => {
+		it('reports zero iterations when all iterations are canceled', () => {
 			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
 			const node = createTestNode({ id: 'node-1', name: 'Node 1' });
 
@@ -1325,14 +1299,13 @@ describe('executionData.store', () => {
 					],
 				},
 			});
-			await flushOutputMapRebuild();
 
 			expect(store.executionRunDataOutputMapByNodeId.get('node-1')).toEqual({
 				[NodeConnectionTypes.Main]: { 0: { iterations: 0, total: 3 } },
 			});
 		});
 
-		it('populates byTarget per-target counts for non-main connections', async () => {
+		it('populates byTarget per-target counts for non-main connections', () => {
 			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
 			const modelNode = createTestNode({ id: 'model-1', name: 'OpenAI Chat Model' });
 			const agent1Node = createTestNode({ id: 'agent-1', name: 'AI Agent 1' });
@@ -1368,7 +1341,6 @@ describe('executionData.store', () => {
 					],
 				},
 			});
-			await flushOutputMapRebuild();
 
 			const outputData =
 				store.executionRunDataOutputMapByNodeId.get('model-1')?.[
@@ -1382,7 +1354,7 @@ describe('executionData.store', () => {
 			expect(outputData?.byTarget?.['agent-2']).toEqual({ iterations: 1, total: 1 });
 		});
 
-		it('counts items inside the response field for non-main connections', async () => {
+		it('counts items inside the response field for non-main connections', () => {
 			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
 			const embeddingNode = createTestNode({ id: 'embed-1', name: 'Embeddings OpenAI' });
 			const vectorStoreNode = createTestNode({ id: 'vector-1', name: 'Vector Store' });
@@ -1416,7 +1388,6 @@ describe('executionData.store', () => {
 					],
 				},
 			});
-			await flushOutputMapRebuild();
 
 			const outputData =
 				store.executionRunDataOutputMapByNodeId.get('embed-1')?.[
@@ -1428,6 +1399,164 @@ describe('executionData.store', () => {
 			expect(outputData?.iterations).toBe(1);
 			expect(outputData?.total).toBe(3);
 			expect(outputData?.byTarget?.['vector-1']).toEqual({ iterations: 1, total: 3 });
+		});
+
+		it('updates the changed node slot synchronously on updateNodeExecutionStatus', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const node = createTestNode({ id: 'node-1', name: 'Node 1' });
+
+			setExecutionWithSnapshot(store, { nodes: [node] });
+			expect(store.executionRunDataOutputMapByNodeId.size).toBe(0);
+
+			store.updateNodeExecutionStatus({
+				executionId: 'exec-1',
+				nodeName: 'Node 1',
+				data: { ...createTask(2), executionStatus: 'success' },
+				itemCountByConnectionType: {},
+			} as never);
+
+			expect(store.executionRunDataOutputMapByNodeId.get('node-1')).toEqual({
+				[NodeConnectionTypes.Main]: { 0: { iterations: 1, total: 2 } },
+			});
+		});
+
+		it('updates the slot synchronously when updateNodeExecutionRunData replaces a task', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const node = createTestNode({ id: 'node-1', name: 'Node 1' });
+
+			setExecutionWithSnapshot(store, {
+				nodes: [node],
+				runData: { 'Node 1': [createTask(2)] },
+			});
+
+			store.updateNodeExecutionRunData({
+				executionId: 'exec-1',
+				nodeName: 'Node 1',
+				data: { ...createTask(5), executionStatus: 'success' },
+				itemCountByConnectionType: {},
+			} as never);
+
+			expect(store.executionRunDataOutputMapByNodeId.get('node-1')).toEqual({
+				[NodeConnectionTypes.Main]: { 0: { iterations: 1, total: 5 } },
+			});
+		});
+
+		it('keeps other node slots referentially stable when one node updates', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const nodeA = createTestNode({ id: 'node-a', name: 'Node A' });
+			const nodeB = createTestNode({ id: 'node-b', name: 'Node B' });
+
+			setExecutionWithSnapshot(store, {
+				nodes: [nodeA, nodeB],
+				runData: { 'Node A': [createTask(1)], 'Node B': [createTask(2)] },
+			});
+			const slotABefore = store.executionRunDataOutputMapByNodeId.get('node-a');
+			const slotBBefore = store.executionRunDataOutputMapByNodeId.get('node-b');
+
+			store.updateNodeExecutionStatus({
+				executionId: 'exec-1',
+				nodeName: 'Node A',
+				data: { ...createTask(4, { executionIndex: 1 }), executionStatus: 'success' },
+				itemCountByConnectionType: {},
+			} as never);
+
+			expect(store.executionRunDataOutputMapByNodeId.get('node-a')).not.toBe(slotABefore);
+			expect(store.executionRunDataOutputMapByNodeId.get('node-b')).toBe(slotBBefore);
+		});
+
+		it('removes only the cleared node slot on clearNodeExecutionData', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const nodeA = createTestNode({ id: 'node-a', name: 'Node A' });
+			const nodeB = createTestNode({ id: 'node-b', name: 'Node B' });
+
+			setExecutionWithSnapshot(store, {
+				nodes: [nodeA, nodeB],
+				runData: { 'Node A': [createTask(1)], 'Node B': [createTask(2)] },
+			});
+
+			store.clearNodeExecutionData('Node A');
+
+			expect(store.executionRunDataOutputMapByNodeId.has('node-a')).toBe(false);
+			expect(store.executionRunDataOutputMapByNodeId.has('node-b')).toBe(true);
+		});
+
+		it('keeps the slot under the same node id after renameExecutionDataNode', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const node = createTestNode({ id: 'node-1', name: 'Node 1' });
+
+			setExecutionWithSnapshot(store, {
+				nodes: [node],
+				runData: { 'Node 1': [createTask(3)] },
+			});
+
+			store.renameExecutionDataNode('Node 1', 'Renamed');
+
+			expect(store.executionRunDataOutputMapByNodeId.get('node-1')).toEqual({
+				[NodeConnectionTypes.Main]: { 0: { iterations: 1, total: 3 } },
+			});
+		});
+
+		it('rebuilds synchronously on markAsStopped', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const node = createTestNode({ id: 'node-1', name: 'Node 1' });
+
+			setExecutionWithSnapshot(store, {
+				nodes: [node],
+				runData: {
+					'Node 1': [
+						createTask(2, { executionStatus: 'success' }),
+						createTask(3, { executionStatus: 'running', executionIndex: 1 }),
+					],
+				},
+			});
+			expect(store.executionRunDataOutputMapByNodeId.get('node-1')).toEqual({
+				[NodeConnectionTypes.Main]: { 0: { iterations: 2, total: 5 } },
+			});
+
+			store.markAsStopped();
+
+			expect(store.executionRunDataOutputMapByNodeId.get('node-1')).toEqual({
+				[NodeConnectionTypes.Main]: { 0: { iterations: 1, total: 2 } },
+			});
+		});
+
+		it('clears the map when the execution is reset or set to null', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const node = createTestNode({ id: 'node-1', name: 'Node 1' });
+
+			setExecutionWithSnapshot(store, {
+				nodes: [node],
+				runData: { 'Node 1': [createTask(1)] },
+			});
+			expect(store.executionRunDataOutputMapByNodeId.size).toBe(1);
+
+			store.resetExecutionData();
+			expect(store.executionRunDataOutputMapByNodeId.size).toBe(0);
+
+			setExecutionWithSnapshot(store, {
+				nodes: [node],
+				runData: { 'Node 1': [createTask(1)] },
+			});
+			expect(store.executionRunDataOutputMapByNodeId.size).toBe(1);
+
+			store.setExecution(null);
+			expect(store.executionRunDataOutputMapByNodeId.size).toBe(0);
+		});
+
+		it('creates no slot for a node absent from the workflowData snapshot', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const node = createTestNode({ id: 'node-1', name: 'Node 1' });
+
+			setExecutionWithSnapshot(store, { nodes: [node] });
+
+			store.updateNodeExecutionStatus({
+				executionId: 'exec-1',
+				nodeName: 'Ghost Node',
+				data: { ...createTask(2), executionStatus: 'success' },
+				itemCountByConnectionType: {},
+			} as never);
+
+			expect(store.executionRunDataOutputMapByNodeId.size).toBe(0);
 		});
 	});
 });
