@@ -36,16 +36,21 @@ const makeRes = () => {
 };
 
 // Express 5 delivers wildcard params as an array of segments; the handler also
-// tolerates a plain string. Only `params` is read, so a cast keeps the fixture small.
-const makeReq = (resourcePath: string | string[]): Request =>
-	({ params: { resourcePath } }) as unknown as Request;
+// tolerates a plain string. Only `params` and `get('host')` are read, so a cast
+// keeps the fixture small.
+const makeReq = (resourcePath: string | string[], host?: string): Request =>
+	({
+		params: { resourcePath },
+		get: (name: string) => (name.toLowerCase() === 'host' ? host : undefined),
+	}) as unknown as Request;
 
-const resource = (scopes: string[]): ProtectedResource => ({
+const resource = (scopes: string[], acceptsHostAliases = true): ProtectedResource => ({
 	id: 'instance-mcp',
 	getResourceUrl: () => 'https://n8n.test/mcp-server/http',
 	getAudiences: () => ['https://n8n.test/mcp-server/http'],
 	authorize: async () => true,
 	scopes,
+	acceptsHostAliases,
 });
 
 beforeEach(() => {
@@ -95,6 +100,49 @@ describe('OAuthController', () => {
 				authorization_servers: ['https://n8n.test'],
 				scopes_supported: scopes,
 			});
+		});
+
+		test('advertises the resource at the host the client used', async () => {
+			registry.getByResourcePath.mockResolvedValue(resource([]));
+			const res = makeRes();
+
+			await controller.protectedResourceMetadata(
+				makeReq(['mcp-server', 'http'], 'n8n-mcp.test'),
+				res,
+			);
+
+			expect(res.json).toHaveBeenCalledWith(
+				expect.objectContaining({
+					resource: 'https://n8n-mcp.test/mcp-server/http',
+					// The authorization server stays at the configured base URL
+					authorization_servers: ['https://n8n.test'],
+				}),
+			);
+		});
+
+		test('keeps the canonical resource URL when the request host matches it', async () => {
+			registry.getByResourcePath.mockResolvedValue(resource([]));
+			const res = makeRes();
+
+			await controller.protectedResourceMetadata(makeReq(['mcp-server', 'http'], 'n8n.test'), res);
+
+			expect(res.json).toHaveBeenCalledWith(
+				expect.objectContaining({ resource: 'https://n8n.test/mcp-server/http' }),
+			);
+		});
+
+		test('keeps the canonical resource URL for resources that do not accept host aliases', async () => {
+			registry.getByResourcePath.mockResolvedValue(resource([], false));
+			const res = makeRes();
+
+			await controller.protectedResourceMetadata(
+				makeReq(['mcp-server', 'http'], 'n8n-mcp.test'),
+				res,
+			);
+
+			expect(res.json).toHaveBeenCalledWith(
+				expect.objectContaining({ resource: 'https://n8n.test/mcp-server/http' }),
+			);
 		});
 
 		test('omits scopes_supported when the resource advertises no scopes', async () => {

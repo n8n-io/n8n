@@ -44,6 +44,14 @@ export class McpProtectedResource implements ProtectedResource {
 	 */
 	readonly isDefault = true;
 
+	/**
+	 * Accept any hostname that reaches this instance as an alias of the
+	 * canonical resource URL. Split-hostname deployments serve the MCP endpoint
+	 * at a hostname the config does not know about, and clients build their
+	 * resource indicator from the URL they connect to.
+	 */
+	readonly acceptsHostAliases = true;
+
 	constructor(
 		private readonly urlService: UrlService,
 		private readonly mcpSettingsService: McpSettingsService,

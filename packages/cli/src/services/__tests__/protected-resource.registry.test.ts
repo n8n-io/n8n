@@ -11,6 +11,7 @@ const resourceA: ProtectedResource = {
 	scopes: ['tool:listWorkflows', 'tool:getWorkflowDetails'],
 	authorize: async () => true,
 	isDefault: true,
+	acceptsHostAliases: true,
 };
 
 const resourceB: ProtectedResource = {
@@ -47,15 +48,52 @@ describe('ProtectedResourceRegistry', () => {
 			expect(await registry.getByResourceUrl('https://n8n.example.com/webhook/wf-1/mcp')).toBe(
 				resourceB,
 			);
+		});
+
+		it('should resolve alias-accepting resources served at other hostnames by URL path', async () => {
+			// Split-hostname deployments: the client-facing hostname differs from the
+			// configured base URL but routes to the same backend.
+			expect(await registry.getByResourceUrl('https://n8n-mcp.example.com/mcp-server/http')).toBe(
+				resourceA,
+			);
+			expect(await registry.getByResourceUrl('http://localhost:5678/mcp-server/http/')).toBe(
+				resourceA,
+			);
+		});
+
+		it('should not match other hostnames for resources that do not accept aliases', async () => {
 			expect(
-				await registry.getByResourceUrl('https://evil.example.com/mcp-server/http'),
+				await registry.getByResourceUrl('https://n8n-mcp.example.com/webhook/wf-1/mcp'),
 			).toBeUndefined();
+		});
+
+		it('should not resolve resource URLs with an unknown path', async () => {
+			expect(
+				await registry.getByResourceUrl('https://n8n.example.com/mcp-server/http/../admin'),
+			).toBeUndefined();
+			expect(
+				await registry.getByResourceUrl('https://n8n.example.com/unknown/path'),
+			).toBeUndefined();
+			expect(await registry.getByResourceUrl('not-a-url')).toBeUndefined();
 		});
 
 		it('should resolve resources by URL path', async () => {
 			expect(await registry.getByResourcePath('/mcp-server/http')).toBe(resourceA);
 			expect(await registry.getByResourcePath('/webhook/wf-1/mcp')).toBe(resourceB);
 			expect(await registry.getByResourcePath('/unknown')).toBeUndefined();
+		});
+
+		it('should not consult resolvers when matching alias-host resource URLs by path', async () => {
+			const resolverRegistry = new ProtectedResourceRegistry(mock<Logger>());
+			const resolver = mock<ProtectedResourceResolver>({ id: 'workflow-trigger', scopes: [] });
+			resolver.resolveByUrl.mockResolvedValue(undefined); // resolver only matches its own origin
+			resolver.resolveByPath.mockResolvedValue(resourceB);
+			resolverRegistry.registerResolver(resolver);
+
+			expect(
+				await resolverRegistry.getByResourceUrl('https://alias.example.com/webhook/wf-1/mcp'),
+			).toBeUndefined();
+			expect(resolver.resolveByPath).not.toHaveBeenCalled();
 		});
 
 		it('should resolve the default resource', () => {

@@ -53,4 +53,8 @@ describe('McpProtectedResource', () => {
 	it('should be the default audience for resource-less token requests', () => {
 		expect(resource.isDefault).toBe(true);
 	});
+
+	it('should accept host aliases for split-hostname deployments', () => {
+		expect(resource.acceptsHostAliases).toBe(true);
+	});
 });

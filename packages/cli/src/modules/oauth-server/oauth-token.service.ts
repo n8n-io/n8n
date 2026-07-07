@@ -169,21 +169,32 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 	}
 
 	async verifyAccessToken(token: string, expectedAudience?: string): Promise<AuthInfo> {
-		return await this.verifyTokenWithAudiences(
-			token,
-			await this.getAllowedAudiences(expectedAudience),
-		);
+		const resource = expectedAudience
+			? await this.resourceRegistry.getByResourceUrl(expectedAudience)
+			: undefined;
+		return await this.verifyTokenForResource(token, resource, expectedAudience);
 	}
 
-	private async verifyTokenWithAudiences(
+	private async verifyTokenForResource(
 		token: string,
-		allowedAudiences: string[],
+		resource: ProtectedResource | undefined,
+		expectedAudience?: string,
 	): Promise<AuthInfo> {
 		let decoded: unknown;
 
 		try {
-			decoded = this.verifyJwtWithAllowedAudiences(token, allowedAudiences);
+			// Audience is validated separately: alias audiences resolve through the
+			// resource registry, which `jsonwebtoken`'s string-equality check can't do.
+			decoded = this.jwtService.verify(token);
 		} catch (error) {
+			throw new JWTVerificationError();
+		}
+
+		const audiences = this.getAudienceClaim(decoded);
+		if (
+			audiences.length === 0 ||
+			!(await this.isAudienceAllowed(audiences, resource, expectedAudience))
+		) {
 			throw new JWTVerificationError();
 		}
 
@@ -222,10 +233,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				return { user: null, context: { reason: 'insufficient_scope', auth_type: 'oauth' } };
 			}
 
-			const authInfo = await this.verifyTokenWithAudiences(
-				token,
-				this.audiencesForResource(resource, expectedAudience),
-			);
+			const authInfo = await this.verifyTokenForResource(token, resource, expectedAudience);
 
 			const userId =
 				authInfo.extra && typeof authInfo.extra === 'object'
@@ -303,38 +311,56 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 	}
 
 	/**
-	 * Resolve the `aud` values a token may carry for the given resource.
+	 * Whether a token's `aud` values may be accepted at the given resource's gate.
 	 *
 	 * Audiences come from the matching registered resource ONLY — never union
 	 * audiences across resources, otherwise a token minted for one resource
 	 * would pass another resource's gate (cross-resource token replay).
 	 * Resource-specific legacy audiences (e.g. the instance MCP server's
 	 * pre-RFC-8707 `mcp-server-api`) stay scoped to their own resource this way.
+	 *
+	 * Beyond the resource's declared audiences, an `aud` that resolves through
+	 * the registry to the same resource is also accepted — for alias-accepting
+	 * resources this includes any hostname with the resource's URL path: on
+	 * split-hostname deployments clients request tokens with the hostname they
+	 * connect through, so the minted `aud` may carry an alias of the resource
+	 * rather than its canonical URL.
+	 *
+	 * Because that alias host is client-supplied, the `aud` host is not a
+	 * trustworthy provenance signal — never treat it as one in logs/audit. Token
+	 * trust rests on the instance signing key and the server-side token record,
+	 * not on `aud`.
 	 */
-	private async getAllowedAudiences(expectedAudience?: string): Promise<string[]> {
-		const resource = expectedAudience
-			? await this.resourceRegistry.getByResourceUrl(expectedAudience)
-			: undefined;
-		return this.audiencesForResource(resource, expectedAudience);
-	}
-
-	/**
-	 * Derive the `aud` values accepted for a (possibly pre-resolved) resource.
-	 * Single source of the audience-derivation rule shared by `getAllowedAudiences`
-	 * and the resolve-once path in `verifyOAuthAccessToken`.
-	 */
-	private audiencesForResource(
+	// TODO: drop legacy audiences once all legacy tokens minted before n8n v2.19
+	// have aged out (refresh-token lifespan).
+	private async isAudienceAllowed(
+		audiences: string[],
 		resource: ProtectedResource | undefined,
 		expectedAudience?: string,
-	): string[] {
+	): Promise<boolean> {
 		if (expectedAudience) {
-			return resource ? resource.getAudiences() : [expectedAudience];
+			if (!resource) {
+				return audiences.includes(expectedAudience);
+			}
+
+			const allowed = resource.getAudiences();
+			for (const audience of audiences) {
+				if (allowed.includes(audience)) return true;
+				const audienceResource = await this.resourceRegistry.getByResourceUrl(audience);
+				if (audienceResource?.id === resource.id) return true;
+			}
+			return false;
 		}
 
 		// No expected audience: the caller cannot know which resource the token
 		// targets (MCP SDK generic verification), so accept any registered
 		// resource's audiences. Resource gates must pass `expectedAudience`.
-		return this.resourceRegistry.getAllAudiences();
+		const allAudiences = this.resourceRegistry.getAllAudiences();
+		for (const audience of audiences) {
+			if (allAudiences.includes(audience)) return true;
+			if (await this.resourceRegistry.getByResourceUrl(audience)) return true;
+		}
+		return false;
 	}
 
 	private async getResourceByAudience(
@@ -346,25 +372,15 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		return await this.resourceRegistry.getByResourceUrl(expectedAudience);
 	}
 
-	// TODO: drop legacy audiences and the per-audience fallback once all legacy
-	// tokens minted before n8n v2.19 have aged out (refresh-token lifespan).
-	private verifyJwtWithAllowedAudiences(token: string, audiences: string[]): unknown {
-		try {
-			return this.jwtService.verify(token, {
-				audience: audiences as [string, ...string[]],
-			});
-		} catch (error) {
-			// Some jsonwebtoken builds reject the array form for tokens signed with a single-string aud.
-			for (const audience of audiences) {
-				try {
-					return this.jwtService.verify(token, { audience });
-				} catch {
-					continue;
-				}
-			}
-
-			throw error;
+	/** JWT `aud` may be a single string or an array of strings (RFC 7519 §4.1.3). */
+	private getAudienceClaim(payload: unknown): string[] {
+		if (!payload || typeof payload !== 'object') return [];
+		const audience = (payload as Record<string, unknown>).aud;
+		if (typeof audience === 'string') return [audience];
+		if (Array.isArray(audience)) {
+			return audience.filter((value): value is string => typeof value === 'string');
 		}
+		return [];
 	}
 
 	private getStringClaim(payload: unknown, claim: string): string | null {

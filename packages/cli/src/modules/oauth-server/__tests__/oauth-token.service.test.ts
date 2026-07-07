@@ -37,6 +37,7 @@ registry.register({
 	scopes: [],
 	isDefault: true,
 	authorize: async () => true,
+	acceptsHostAliases: true,
 });
 
 describe('OAuthTokenService', () => {
@@ -490,18 +491,60 @@ describe('OAuthTokenService', () => {
 		});
 	});
 
-	describe('getAllowedAudiences', () => {
-		it('should return canonical URL and legacy audience when expectedAudience is the canonical URL', async () => {
-			const audiences = await (service as any).getAllowedAudiences(
-				'https://n8n.example.com/mcp-server/http',
+	describe('alias audiences (split-hostname deployments)', () => {
+		const ALIAS_AUDIENCE = 'https://n8n-mcp.example.com/mcp-server/http';
+
+		it('should accept a token whose aud is an alias of the expected resource', async () => {
+			const aliasToken = jwtService.sign({
+				sub: 'user-123',
+				aud: ALIAS_AUDIENCE,
+				client_id: 'client-456',
+			});
+			accessTokenRepository.findOne.mockResolvedValue(
+				mock<AccessToken>({ token: aliasToken, clientId: 'client-456', userId: 'user-123' }),
 			);
-			expect(audiences).toEqual(['https://n8n.example.com/mcp-server/http', 'mcp-server-api']);
+
+			await expect(service.verifyAccessToken(aliasToken, TEST_RESOURCE_URL)).resolves.toMatchObject(
+				{ clientId: 'client-456' },
+			);
 		});
 
-		it('should return only canonical URL and legacy audience when expectedAudience is undefined', async () => {
-			const audiences = await (service as any).getAllowedAudiences(undefined);
-			// Should still return the canonical resource URL (from getCanonicalResourceUrl) and legacy
-			expect(audiences).toEqual(['https://n8n.example.com/mcp-server/http', 'mcp-server-api']);
+		it('should accept an alias-audience token without an expected audience', async () => {
+			const aliasToken = jwtService.sign({
+				sub: 'user-123',
+				aud: ALIAS_AUDIENCE,
+				client_id: 'client-456',
+			});
+			accessTokenRepository.findOne.mockResolvedValue(
+				mock<AccessToken>({ token: aliasToken, clientId: 'client-456', userId: 'user-123' }),
+			);
+
+			await expect(service.verifyAccessToken(aliasToken)).resolves.toMatchObject({
+				clientId: 'client-456',
+			});
+		});
+
+		it('should reject a token whose aud path matches no registered resource', async () => {
+			const unknownPathToken = jwtService.sign({
+				sub: 'user-123',
+				aud: 'https://n8n.example.com/unknown/path',
+				client_id: 'client-456',
+			});
+
+			await expect(service.verifyAccessToken(unknownPathToken, TEST_RESOURCE_URL)).rejects.toThrow(
+				'JWT Verification Failed',
+			);
+		});
+
+		it('should reject a token without an aud claim', async () => {
+			const audlessToken = jwtService.sign({
+				sub: 'user-123',
+				client_id: 'client-456',
+			});
+
+			await expect(service.verifyAccessToken(audlessToken, TEST_RESOURCE_URL)).rejects.toThrow(
+				'JWT Verification Failed',
+			);
 		});
 	});
 
@@ -520,6 +563,7 @@ describe('OAuthTokenService', () => {
 				scopes: [],
 				authorize: async () => true,
 				isDefault: true,
+				acceptsHostAliases: true,
 			});
 			multiResourceRegistry.register({
 				id: 'workflow-trigger',
@@ -576,6 +620,30 @@ describe('OAuthTokenService', () => {
 			await expect(
 				multiResourceService.verifyAccessToken(tokenForResourceB, RESOURCE_B_URL),
 			).resolves.toMatchObject({ clientId: 'client-456' });
+		});
+
+		it('should reject an alias audience for a resource that does not accept aliases', async () => {
+			const aliasToken = jwtService.sign({
+				sub: 'user-123',
+				aud: 'https://alias.example.com/webhook/wf-1/mcp',
+				client_id: 'client-456',
+			});
+
+			await expect(
+				multiResourceService.verifyAccessToken(aliasToken, RESOURCE_B_URL),
+			).rejects.toThrow('JWT Verification Failed');
+		});
+
+		it('should reject a token whose aud is an alias of another resource', async () => {
+			const aliasOfResourceA = jwtService.sign({
+				sub: 'user-123',
+				aud: 'https://alias.example.com/mcp-server/http',
+				client_id: 'client-456',
+			});
+
+			await expect(
+				multiResourceService.verifyAccessToken(aliasOfResourceA, RESOURCE_B_URL),
+			).rejects.toThrow('JWT Verification Failed');
 		});
 
 		it('should still accept the legacy audience at the default (instance MCP) resource', async () => {

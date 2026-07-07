@@ -358,9 +358,14 @@ export class OAuthServerService implements OAuthServerProvider {
 		return await this.tokenService.verifyAccessToken(token);
 	}
 
-	// Exact-match against a registered resource, as required by RFC 8707 §2.1.
-	// Prefix/wildcard matching would open the door to malicious-host or
-	// path-traversal indicators like ".../mcp-server/http/../admin".
+	// Matches a registered resource by exact URL, falling back to an exact path
+	// match for resources that opt into host aliases (the instance MCP server),
+	// so hostnames the config does not know about (split-hostname deployments,
+	// proxy scheme/port rewrites) are accepted as aliases of this instance. No
+	// prefix or wildcard matching, so traversal-style indicators like
+	// ".../mcp-server/http/../admin" still fail. Tokens minted for an alias
+	// stay bound to this instance: they are signed with the instance key and
+	// verified against server-side token records.
 	private async resolveAndValidateResourceIndicator(
 		resource: string | undefined,
 	): Promise<string | undefined> {

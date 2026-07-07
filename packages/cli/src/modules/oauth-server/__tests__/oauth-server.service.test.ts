@@ -48,6 +48,7 @@ describe('OAuthServerService', () => {
 			getAudiences: () => [TEST_RESOURCE_URL, 'mcp-server-api'],
 			scopes: SUPPORTED_SCOPES,
 			isDefault: true,
+			acceptsHostAliases: true,
 			getAllowedRedirectUris,
 			authorize: async () => true,
 		});
@@ -467,7 +468,8 @@ describe('OAuthServerService', () => {
 			const params = {
 				redirectUri: 'https://example.com/callback',
 				codeChallenge: 'challenge-123',
-				resource: new URL('https://attacker.example.com/mcp-server/http'),
+				// path matches no registered resource, regardless of host
+				resource: new URL('https://n8n.example.com/unknown/path'),
 			};
 
 			const res = mock<Response>();
@@ -516,6 +518,41 @@ describe('OAuthServerService', () => {
 				codeChallenge: 'challenge-123',
 				state: null,
 				resource: 'https://n8n.example.com/mcp-server/http',
+			});
+			expect(res.redirect).toHaveBeenCalledWith('/oauth/consent');
+		});
+
+		it('should accept a resource served at an alias hostname and store it as sent', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			const params = {
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge-123',
+				// split-hostname deployment: clients reach the same backend at a
+				// hostname the config does not know about
+				resource: new URL('https://n8n-mcp.example.com/mcp-server/http'),
+			};
+
+			const res = mock<Response>();
+
+			await service.authorize(client, params, res);
+
+			expect(oauthSessionService.createSession).toHaveBeenCalledWith(res, {
+				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge-123',
+				state: null,
+				resource: 'https://n8n-mcp.example.com/mcp-server/http',
 			});
 			expect(res.redirect).toHaveBeenCalledWith('/oauth/consent');
 		});
@@ -650,6 +687,49 @@ describe('OAuthServerService', () => {
 				expires_in: 3600,
 				refresh_token: 'refresh-token-456',
 			});
+		});
+
+		it('should mint the token with the alias resource the client authorized with', async () => {
+			const aliasResource = 'https://n8n-mcp.example.com/mcp-server/http';
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			const authRecord = {
+				userId: 'user-456',
+				clientId: 'client-123',
+				resource: aliasResource,
+			} as AuthorizationCode;
+
+			authorizationCodeService.findAuthorizationCode.mockResolvedValue(authRecord);
+			tokenService.generateTokenPair.mockReturnValue({
+				accessToken: 'access-token-123',
+				refreshToken: 'refresh-token-456',
+			});
+			tokenService.saveTokenPair.mockResolvedValue();
+			tokenService.getAccessTokenExpirySeconds.mockReturnValue(3600);
+
+			await service.exchangeAuthorizationCode(
+				client,
+				'auth-code-123',
+				'verifier-123',
+				'https://example.com/callback',
+				new URL(aliasResource),
+			);
+
+			expect(tokenService.generateTokenPair).toHaveBeenCalledWith(
+				'user-456',
+				'client-123',
+				aliasResource,
+			);
 		});
 
 		it('should handle authorization code exchange without redirect URI', async () => {
@@ -814,9 +894,44 @@ describe('OAuthServerService', () => {
 					client,
 					'old-refresh-token',
 					['read'],
-					new URL('https://attacker.example.com/mcp-server/http'),
+					// path matches no registered resource, regardless of host
+					new URL('https://n8n.example.com/unknown/path'),
 				),
 			).rejects.toThrow(InvalidTargetError);
+		});
+
+		it('should accept an alias-hostname resource on refresh token exchange', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['refresh_token'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			tokenService.validateAndRotateRefreshToken.mockResolvedValue({
+				access_token: 'new-access-token',
+				token_type: 'Bearer',
+				expires_in: 3600,
+				refresh_token: 'new-refresh-token',
+			});
+
+			await service.exchangeRefreshToken(
+				client,
+				'old-refresh-token',
+				['read'],
+				new URL('https://n8n-mcp.example.com/mcp-server/http'),
+			);
+
+			expect(tokenService.validateAndRotateRefreshToken).toHaveBeenCalledWith(
+				'old-refresh-token',
+				'client-123',
+				'https://n8n-mcp.example.com/mcp-server/http',
+			);
 		});
 
 		it('should normalize a trailing-slash resource before passing it to token rotation', async () => {

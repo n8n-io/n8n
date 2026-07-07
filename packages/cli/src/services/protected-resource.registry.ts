@@ -58,6 +58,15 @@ export interface ProtectedResource {
 	 * @returns A promise that resolves to a boolean indicating whether the user is authorized
 	 **/
 	authorize(user: User): Promise<boolean>;
+
+	/**
+	 * Whether resource URLs for this resource may also match by URL path alone,
+	 * accepting any hostname that reaches this instance as an alias of the
+	 * canonical URL (split-hostname deployments, where clients reach the
+	 * backend at a hostname the config does not know about). Only the instance
+	 * MCP server opts in today.
+	 */
+	acceptsHostAliases?: boolean;
 }
 
 /**
@@ -121,7 +130,16 @@ export class ProtectedResourceRegistry {
 		return this.resources.get(id);
 	}
 
-	/** Look up a resource by its canonical URL (trailing slashes ignored). */
+	/**
+	 * Look up a resource by a resource URL (trailing slashes ignored).
+	 *
+	 * When no resource matches the full URL, resources that opt into host
+	 * aliases (`acceptsHostAliases`) are matched by URL path alone: deployments
+	 * may serve this instance at hostnames the config does not know about (e.g.
+	 * a dedicated MCP alias in front of the same backend), and clients build
+	 * their RFC 8707 resource indicator from the URL they connect to. The path
+	 * is matched exactly — no prefix or wildcard matching.
+	 */
 	async getByResourceUrl(resourceUrl: string): Promise<ProtectedResource | undefined> {
 		const normalized = trimTrailingSlash(resourceUrl);
 		for (const resource of this.resources.values()) {
@@ -133,6 +151,23 @@ export class ProtectedResourceRegistry {
 				if (resource) return resource;
 			} catch (error) {
 				this.logResolverFailure(resolver, error);
+			}
+		}
+
+		let pathname: string;
+		try {
+			pathname = trimTrailingSlash(new URL(normalized).pathname);
+		} catch {
+			return undefined;
+		}
+		for (const resource of this.resources.values()) {
+			if (!resource.acceptsHostAliases) continue;
+			try {
+				if (trimTrailingSlash(new URL(resource.getResourceUrl()).pathname) === pathname) {
+					return resource;
+				}
+			} catch {
+				continue;
 			}
 		}
 		return undefined;

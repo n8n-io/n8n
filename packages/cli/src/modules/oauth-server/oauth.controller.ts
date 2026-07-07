@@ -214,8 +214,21 @@ export class OAuthController {
 		}
 
 		const baseUrl = this.urlService.getInstanceBaseUrl();
+
+		// Advertise alias-accepting resources at the host the client used:
+		// RFC 9728 clients check that `resource` matches the URL they derived
+		// this document from, and split-hostname deployments serve it at
+		// hostnames the config does not know about. The OAuth server accepts
+		// these aliases as resource indicators via the registry's path-based
+		// matching.
+		const resourceUrl = new URL(resource.getResourceUrl());
+		const requestHost = req.get('host');
+		if (requestHost && resource.acceptsHostAliases) {
+			resourceUrl.host = requestHost;
+		}
+
 		const metadata: Record<string, unknown> = {
-			resource: resource.getResourceUrl(),
+			resource: resourceUrl.toString().replace(/\/$/, ''),
 			bearer_methods_supported: ['header'],
 			authorization_servers: [baseUrl],
 		};
