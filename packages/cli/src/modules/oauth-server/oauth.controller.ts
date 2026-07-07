@@ -15,6 +15,7 @@ import {
 import { Container } from '@n8n/di';
 import type { Response, Request, RequestHandler, Router } from 'express';
 
+import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 
@@ -213,6 +214,54 @@ export class OAuthController {
 			return;
 		}
 
+		res.json(this.buildProtectedResourceMetadata(resource));
+	}
+
+	@Options('/.well-known/oauth-protected-resource', {
+		skipAuth: true,
+		usesTemplates: true,
+		ipRateLimit: wellKnownIpRateLimit,
+	})
+	defaultProtectedResourceMetadataOptions(_req: Request, res: Response) {
+		this.setCorsHeaders(res);
+		res.status(204).end();
+	}
+
+	/**
+	 * RFC 9728 protected-resource metadata for the bare `/.well-known/
+	 * oauth-protected-resource` path (no resource-path suffix).
+	 *
+	 * Per RFC 9728 §3.1, a resource server whose resource identifier has no
+	 * path component publishes its metadata at this exact well-known URI.
+	 * We also serve it as a courtesy for clients that probe the origin-level
+	 * document before (or instead of) the resource-scoped one advertised via
+	 * `WWW-Authenticate: resource_metadata=...` — without this route, such a
+	 * probe previously fell through to the SPA's catch-all handler, which
+	 * answered with `200 text/html` instead of a clean `404`, breaking OAuth
+	 * discovery for clients that don't special-case a non-JSON `200`.
+	 *
+	 * Resolves to this instance's default protected resource (today, always
+	 * the single instance-wide MCP resource); returns 404 when no default is
+	 * registered so the caller can fall back to the resource-scoped URL.
+	 */
+	@Get('/.well-known/oauth-protected-resource', {
+		skipAuth: true,
+		usesTemplates: true,
+		ipRateLimit: wellKnownIpRateLimit,
+	})
+	defaultProtectedResourceMetadata(_req: Request, res: Response) {
+		this.setCorsHeaders(res);
+
+		const resource = this.resourceRegistry.getDefaultResource();
+		if (!resource) {
+			res.status(404).json({ message: 'Unknown protected resource' });
+			return;
+		}
+
+		res.json(this.buildProtectedResourceMetadata(resource));
+	}
+
+	private buildProtectedResourceMetadata(resource: ProtectedResource): Record<string, unknown> {
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 		const metadata: Record<string, unknown> = {
 			resource: resource.getResourceUrl(),
@@ -224,6 +273,6 @@ export class OAuthController {
 			metadata.scopes_supported = resource.scopes;
 		}
 
-		res.json(metadata);
+		return metadata;
 	}
 }
