@@ -33,11 +33,12 @@ pnpm <anything>
   dir).
 - `N8N_DEV_SHIM_ACTIVE` guards against double-counting nested calls (e.g.
   `turbo -> pnpm`) and the tracker's own `<bin> --version` probe.
-- The tracker (`track.mjs`) is **copied to `~/.n8n/bin` on each install** and run
-  from there, so it's always the latest committed version regardless of which
-  checkout (or none) you're in. It self-scopes: it checks the monorepo root from
-  the command's cwd, so pnpm runs outside any n8n checkout send nothing. pnpm
-  prompts via `/dev/tty` because it pipes lifecycle-script stdio.
+- The tracker (`track.mjs`) is **copied to `~/.n8n/bin`** and run from there, so
+  it's independent of which checkout (or none) you're in. Install only overwrites
+  the copy when the checkout's `// n8n-track-version` is newer, so the newest
+  version wins and an older checkout can't downgrade it. It self-scopes: it checks
+  the monorepo root from the command's cwd, so pnpm runs outside any n8n checkout
+  send nothing. pnpm prompts via `/dev/tty` because it pipes lifecycle-script stdio.
 
 | File | Role |
 | --- | --- |

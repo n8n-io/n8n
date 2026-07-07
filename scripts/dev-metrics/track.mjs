@@ -27,6 +27,9 @@
  * The `dir` is the exception, always sent repo-relative. Every error is swallowed
  * so tracking can never disrupt a workflow.
  */
+// n8n-track-version: 1 — bump when changing this file; setup.mjs only overwrites
+// the installed ~/.n8n/bin copy when this is newer, so an older checkout can't
+// downgrade it.
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';

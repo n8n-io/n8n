@@ -67,18 +67,23 @@ function trackerDest() {
 	return join(n8nDir(), 'bin', 'track.mjs');
 }
 
+/** Parse the `// n8n-track-version: N` marker from a track.mjs file, or null. */
+function trackVersion(file) {
+	try {
+		const m = readFileSync(file, 'utf8').match(/n8n-track-version:\s*(\d+)/);
+		return m ? Number(m[1]) : null;
+	} catch {
+		return null;
+	}
+}
+
 function syncTracker() {
 	const dest = trackerDest();
-	const src = readFileSync(TRACK_SRC, 'utf8');
-	let current = '';
-	try {
-		current = readFileSync(dest, 'utf8');
-	} catch {
-		// not installed yet
-	}
-	if (current !== src) {
+	// Only overwrite when this checkout's tracker is newer (missing/unversioned
+	// installed copy counts as older), so an older checkout can't downgrade it.
+	if ((trackVersion(TRACK_SRC) ?? 0) > (trackVersion(dest) ?? -1)) {
 		mkdirSync(dirname(dest), { recursive: true });
-		writeFileSync(dest, src);
+		writeFileSync(dest, readFileSync(TRACK_SRC, 'utf8'));
 	}
 	return dest;
 }
@@ -305,7 +310,10 @@ function status() {
 		`  weekly id:  ${state?.anonId ?? '(none yet — assigned on first tracked command)'}${state?.week ? ` (week ${state.week})` : ''}`,
 	);
 	console.log(`  shim src:   ${SHADOW_SHIM_SRC}`);
-	console.log(`  tracker:    ${existsSync(trackerDest()) ? trackerDest() : '(not installed)'}`);
+	const td = trackerDest();
+	console.log(
+		`  tracker:    ${existsSync(td) ? `${td} (v${trackVersion(td) ?? '?'}, src v${trackVersion(TRACK_SRC) ?? '?'})` : '(not installed)'}`,
+	);
 	for (const bin of SHADOWED_BINARIES) {
 		const front = whichOnPath(bin);
 		const shimmed = front && isOurShim(front);
