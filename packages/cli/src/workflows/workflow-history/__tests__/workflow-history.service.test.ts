@@ -7,14 +7,14 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import type { UpdateResult } from '@n8n/typeorm';
-import { getWorkflow, getWorkflowHistory } from '@test-integration/workflow';
-import { mockClear } from 'jest-mock-extended';
+import { mockClear } from 'vitest-mock-extended';
 
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { EventService } from '@/events/event.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { getWorkflow, getWorkflowHistory } from '@test-integration/workflow';
 
 const workflowHistoryRepository = mockInstance(WorkflowHistoryRepository);
 const workflowPublishHistoryRepository = mockInstance(WorkflowPublishHistoryRepository);
@@ -146,6 +146,40 @@ describe('WorkflowHistoryService', () => {
 				workflowId,
 				autosaved: false,
 			});
+		});
+
+		it('should annotate authors with "(via MCP)" when source is n8n-mcp', async () => {
+			// Arrange
+			const workflow = getWorkflow({ addNodeWithoutCreds: true });
+			const workflowId = '123';
+			workflow.connections = {};
+			workflow.id = workflowId;
+			workflow.versionId = '456';
+
+			// Act
+			await workflowHistoryService.saveVersion(testUser, workflow, workflowId, false, 'n8n-mcp');
+
+			// Assert
+			expect(workflowHistoryRepository.insert).toHaveBeenCalledWith(
+				expect.objectContaining({ authors: 'John Doe (via MCP)' }),
+			);
+		});
+
+		it('should keep the plain author name for non-MCP sources', async () => {
+			// Arrange
+			const workflow = getWorkflow({ addNodeWithoutCreds: true });
+			const workflowId = '123';
+			workflow.connections = {};
+			workflow.id = workflowId;
+			workflow.versionId = '456';
+
+			// Act
+			await workflowHistoryService.saveVersion(testUser, workflow, workflowId, false, 'ui');
+
+			// Assert
+			expect(workflowHistoryRepository.insert).toHaveBeenCalledWith(
+				expect.objectContaining({ authors: 'John Doe' }),
+			);
 		});
 
 		it('should throw an error when nodes or connections are missing', async () => {
@@ -405,12 +439,12 @@ describe('WorkflowHistoryService', () => {
 			];
 
 			const qb = {
-				leftJoinAndSelect: jest.fn().mockReturnThis(),
-				leftJoin: jest.fn().mockReturnThis(),
-				addSelect: jest.fn().mockReturnThis(),
-				where: jest.fn().mockReturnThis(),
-				orderBy: jest.fn().mockReturnThis(),
-				getMany: jest.fn().mockResolvedValueOnce(mockEvents),
+				leftJoinAndSelect: vi.fn().mockReturnThis(),
+				leftJoin: vi.fn().mockReturnThis(),
+				addSelect: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				orderBy: vi.fn().mockReturnThis(),
+				getMany: vi.fn().mockResolvedValueOnce(mockEvents),
 			};
 			workflowPublishHistoryRepository.createQueryBuilder.mockReturnValueOnce(qb as never);
 

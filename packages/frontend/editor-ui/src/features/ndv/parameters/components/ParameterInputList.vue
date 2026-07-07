@@ -476,8 +476,14 @@ function deleteOption(optionName: string): void {
 }
 
 function isHiddenByAiGateway(parameter: INodeProperties): boolean {
-	if (!MODEL_PARAMETER_NAMES.has(parameter.name)) return false;
 	if (!node.value) return false;
+
+	// isNodePropertyHidden internally gates on a gateway-managed credential
+	if (aiGateway.isNodePropertyHidden(node.value, parameter.name)) {
+		return true;
+	}
+
+	if (!MODEL_PARAMETER_NAMES.has(parameter.name)) return false;
 
 	const credentials = node.value.credentials;
 	if (!credentials) return false;
@@ -609,6 +615,18 @@ const isAiGatewayUnsupportedAction = computed(() => {
 	if (!operation) return false;
 
 	return !aiGateway.isActionSupported(node.value.type, resource, operation);
+});
+
+// The unsupported-action notice must render exactly once.
+const aiGatewayUnsupportedNoticeIndex = computed(() => {
+	if (!isAiGatewayUnsupportedAction.value) return -1;
+	const items = parameterItems.value;
+	const selectorIndex = items.findIndex(
+		(item) => item.parameter.name === 'operation' && item.parameter.type === 'options',
+	);
+	return selectorIndex !== -1
+		? selectorIndex
+		: items.findIndex((item) => item.parameter.name === 'operation');
 });
 
 const aiGatewayOperationDisplayName = computed(() => {
@@ -918,7 +936,7 @@ watch(
 				:dependent-parameters-values="item.dependentParametersValues"
 				:is-read-only="isReadOnly"
 				:allow-empty-strings="item.parameter.typeOptions?.resourceMapper?.allowEmptyValues"
-				input-size="medium"
+				input-size="small"
 				label-size="small"
 				@value-changed="valueChanged"
 			/>
@@ -984,7 +1002,7 @@ watch(
 			</div>
 
 			<N8nNotice
-				v-if="item.parameter.name === 'operation' && isAiGatewayUnsupportedAction"
+				v-if="index === aiGatewayUnsupportedNoticeIndex"
 				theme="warning"
 				:class="$style.unsupportedActionNotice"
 				data-test-id="ai-gateway-unsupported-action-notice"

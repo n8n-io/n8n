@@ -2,14 +2,14 @@ import { LicenseState, Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { channelsToPolicy, WorkflowExecuteMode, WorkflowSettings } from 'n8n-workflow';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error';
+import { EventService } from '@/events/event.service';
 import type {
 	ExecutionRedaction,
 	ExecutionRedactionOptions,
 	RedactableExecution,
 } from '@/executions/execution-redaction';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error';
-import { EventService } from '@/events/event.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type {
@@ -271,7 +271,9 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 */
 	private hasDynamicCredentials(execution: RedactableExecution): boolean {
 		return Object.values(execution.data.resultData?.runData ?? {}).some((taskDataList) =>
-			taskDataList.some((taskData) => taskData.usedDynamicCredentials),
+			// runData node arrays can hold null placeholder slots at runtime despite
+			// the ITaskData[] type, so guard the element deref.
+			taskDataList.some((taskData) => taskData?.usedDynamicCredentials),
 		);
 	}
 

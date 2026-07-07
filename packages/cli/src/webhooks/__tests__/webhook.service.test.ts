@@ -1,6 +1,5 @@
 import { WebhookEntity } from '@n8n/db';
 import type { WebhookRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type {
 	INode,
 	INodeProperties,
@@ -10,6 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { Workflow, WebhookPathTakenError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
 import config from '@/config';
 import type { NodeTypes } from '@/node-types';
@@ -33,7 +33,7 @@ describe('WebhookService', () => {
 
 	beforeEach(() => {
 		config.load(config.default);
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		cacheService.set.mockResolvedValue(undefined);
 	});
 
@@ -519,8 +519,8 @@ describe('WebhookService', () => {
 		});
 
 		const defaultWebhookMethods = {
-			checkExists: jest.fn(),
-			create: jest.fn(),
+			checkExists: vi.fn(),
+			create: vi.fn(),
 		};
 
 		const nodeType = mock<INodeType>({
@@ -560,7 +560,7 @@ describe('WebhookService', () => {
 		test('should call runWebhookMethod with delete', async () => {
 			const workflow = mock<Workflow>();
 			const webhookData = mock<IWebhookData>();
-			const runWebhookMethodSpy = jest.spyOn(webhookService as any, 'runWebhookMethod');
+			const runWebhookMethodSpy = vi.spyOn(webhookService as any, 'runWebhookMethod');
 
 			await webhookService.deleteWebhook(workflow, webhookData, 'trigger', 'init');
 
@@ -591,7 +591,7 @@ describe('WebhookService', () => {
 
 		test('should execute webhook and return response data', async () => {
 			const nodeType = mock<INodeType>({
-				webhook: jest.fn().mockResolvedValue(responseData),
+				webhook: vi.fn().mockResolvedValue(responseData),
 			});
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 
@@ -609,9 +609,9 @@ describe('WebhookService', () => {
 		});
 
 		test('should run close functions after webhook completes', async () => {
-			const closeFunction = jest.fn().mockResolvedValue(undefined);
+			const closeFunction = vi.fn().mockResolvedValue(undefined);
 			const nodeType = mock<INodeType>({
-				webhook: jest.fn().mockImplementation(async function (this: any) {
+				webhook: vi.fn().mockImplementation(async function (this: any) {
 					this.closeFunctions.push(closeFunction);
 					return responseData;
 				}),
@@ -624,9 +624,9 @@ describe('WebhookService', () => {
 		});
 
 		test('should run close functions even when webhook throws', async () => {
-			const closeFunction = jest.fn().mockResolvedValue(undefined);
+			const closeFunction = vi.fn().mockResolvedValue(undefined);
 			const nodeType = mock<INodeType>({
-				webhook: jest.fn().mockImplementation(async function (this: any) {
+				webhook: vi.fn().mockImplementation(async function (this: any) {
 					this.closeFunctions.push(closeFunction);
 					throw new Error('webhook failed');
 				}),
@@ -716,6 +716,7 @@ describe('WebhookService', () => {
 			const nodeWithWebhookId = mock<INode>({
 				name: 'Webhook',
 				type: 'n8n-nodes-base.webhook',
+				webhookId: undefined,
 			});
 
 			const nodeType = mock<INodeType>({

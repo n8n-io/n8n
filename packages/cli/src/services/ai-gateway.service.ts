@@ -1,13 +1,13 @@
+import type { AiGatewayConfigDto, AiGatewayUsageResponse } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { Service } from '@n8n/di';
 import { UserRepository } from '@n8n/db';
+import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IHttpRequestMethods } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
-import type { AiGatewayConfigDto, AiGatewayUsageResponse } from '@n8n/api-types';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';

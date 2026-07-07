@@ -1,0 +1,17 @@
+{
+	"name": "BlogCategory",
+	"table": {
+		"name": "blog_category"
+	},
+	"columns": {
+		"id": {
+			"type": "int",
+			"primary": true,
+			"generated": true
+		},
+		"name": {
+			"type": "varchar",
+			"nullable": false
+		}
+	}
+}

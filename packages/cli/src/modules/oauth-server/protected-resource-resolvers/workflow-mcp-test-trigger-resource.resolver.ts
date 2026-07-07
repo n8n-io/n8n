@@ -26,7 +26,7 @@ export class WorkflowMcpTestTriggerResourceResolver implements ProtectedResource
 	readonly scopes = WORKFLOW_MCP_TRIGGER_SCOPES;
 
 	async resolveByUrl(resourceUrl: string) {
-		const pathname = resourceUrlToWebhookPath(resourceUrl, this.urlService.getWebhookBaseUrl());
+		const pathname = resourceUrlToWebhookPath(resourceUrl, this.urlService.getTestWebhookBaseUrl());
 		if (pathname === undefined) {
 			this.logger.debug(`Resource URL is not under the webhook base URL: ${resourceUrl}`);
 			return undefined;
@@ -73,7 +73,7 @@ export class WorkflowMcpTestTriggerResourceResolver implements ProtectedResource
 			!node.disabled &&
 			node.parameters.authentication === 'n8nOAuth2'
 		) {
-			const resourceUrl = `${trimTrailingSlash(this.urlService.getWebhookBaseUrl())}/${this.config.endpoints.mcpTest}/${path}`;
+			const resourceUrl = `${trimTrailingSlash(this.urlService.getTestWebhookBaseUrl())}/${this.config.endpoints.mcpTest}/${path}`;
 			return {
 				id: 'workflow-mcp-test:' + workflowEntity.id,
 				getResourceUrl: () => resourceUrl,

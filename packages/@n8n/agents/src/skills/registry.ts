@@ -1,4 +1,4 @@
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import { createHash } from 'crypto';
 import { existsSync, lstatSync, readdirSync, readFileSync, statSync } from 'fs';
 import { basename, dirname, join, posix, relative } from 'path';
@@ -27,6 +27,10 @@ export class InvalidRuntimeSkillError extends Error {
 	}
 }
 
+export interface LoadRuntimeSkillSourceFromDirectoryOptions {
+	exclude?: string[];
+}
+
 export function createRuntimeSkillSource(skills: RuntimeSkill[]): RuntimeSkillSource {
 	const normalizedSkills = normalizeRuntimeSkills(skills);
 	const skillsById = new Map(normalizedSkills.map((skill) => [skill.id, skill]));
@@ -51,8 +55,14 @@ export function createRuntimeSkillRegistry(skills: RuntimeSkill[]): RuntimeSkill
 	};
 }
 
-export function loadRuntimeSkillSourceFromDirectory(rootDir: string): RuntimeSkillSource {
-	const skills = loadRuntimeSkillsFromDirectory(rootDir);
+export function loadRuntimeSkillSourceFromDirectory(
+	rootDir: string,
+	options: LoadRuntimeSkillSourceFromDirectoryOptions = {},
+): RuntimeSkillSource {
+	const excludedSkillIds = new Set(options.exclude ?? []);
+	const skills = loadRuntimeSkillsFromDirectory(rootDir).filter(
+		(skill) => !excludedSkillIds.has(skill.id),
+	);
 	const source = createRuntimeSkillSource(skills);
 	const skillsById = new Map(skills.map((skill) => [skill.id, skill]));
 

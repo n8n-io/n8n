@@ -1,7 +1,13 @@
-import { Service } from '@n8n/di';
-import { EventEmitter } from 'node:events';
+import { Logger } from '@n8n/backend-common';
 import type { InstanceAiEvent } from '@n8n/api-types';
+import { OnPubSubEvent } from '@n8n/decorators';
+import { Service } from '@n8n/di';
 import type { InstanceAiEventBus, StoredEvent } from '@n8n/instance-ai';
+import { EventEmitter } from 'node:events';
+import { InstanceSettings } from 'n8n-core';
+
+import { MAX_PUBSUB_PAYLOAD_BYTES } from '@/scaling/constants';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 const MAX_EVENTS_PER_THREAD = 500;
 const MAX_BYTES_PER_THREAD = 2 * 1024 * 1024; // 2 MB
@@ -18,21 +24,47 @@ export class InProcessEventBus implements InstanceAiEventBus {
 	/** Monotonic counter per thread — never resets even after eviction. */
 	private readonly nextId = new Map<string, number>();
 
-	constructor() {
+	constructor(
+		private readonly logger: Logger,
+		private readonly instanceSettings: InstanceSettings,
+		private readonly publisher: Publisher,
+	) {
+		this.logger = this.logger.scoped('instance-ai');
 		// Avoid warnings when many SSE clients connect (each adds a listener per thread)
 		this.emitter.setMaxListeners(0);
 	}
 
+	/**
+	 * Publish an event for a thread: store it, deliver it to local SSE
+	 * subscribers, and — in multi-main — relay it to sibling mains so the main
+	 * holding the client's SSE connection (which may not be this one) delivers it.
+	 */
 	publish(threadId: string, event: InstanceAiEvent): void {
+		// Serialize once: reused for the store's size accounting and the relay guard.
+		const sizeBytes = Buffer.byteLength(JSON.stringify(event), 'utf8');
+		this.storeAndEmit(threadId, event, sizeBytes);
+		this.relayToSiblings(threadId, event, sizeBytes);
+	}
+
+	/**
+	 * Store + deliver locally WITHOUT relaying. Used by the pubsub handler when a
+	 * relayed event arrives from another main — re-relaying would loop. The local
+	 * `nextId` stamps the SSE id, so this main is the id authority for the
+	 * connection it serves.
+	 */
+	publishLocalOnly(threadId: string, event: InstanceAiEvent): void {
+		this.storeAndEmit(threadId, event, Buffer.byteLength(JSON.stringify(event), 'utf8'));
+	}
+
+	private storeAndEmit(threadId: string, event: InstanceAiEvent, eventSizeBytes: number): void {
 		const events = this.getOrCreateStore(threadId);
 		const id = (this.nextId.get(threadId) ?? 0) + 1;
 		this.nextId.set(threadId, id);
 
 		const stored: StoredEvent = { id, event };
-		const eventSize = JSON.stringify(event).length;
 
 		events.push(stored);
-		this.sizeBytes.set(threadId, (this.sizeBytes.get(threadId) ?? 0) + eventSize);
+		this.sizeBytes.set(threadId, (this.sizeBytes.get(threadId) ?? 0) + eventSizeBytes);
 
 		// Evict oldest events if count or size exceeds caps
 		this.evictIfNeeded(threadId, events);
@@ -40,9 +72,47 @@ export class InProcessEventBus implements InstanceAiEventBus {
 		this.emitter.emit(threadId, stored);
 	}
 
+	private relayToSiblings(threadId: string, event: InstanceAiEvent, sizeBytes: number): void {
+		if (!this.instanceSettings.isMultiMain) return;
+
+		if (sizeBytes > MAX_PUBSUB_PAYLOAD_BYTES) {
+			this.logger.warn(
+				`Skipping cross-main relay of "${event.type}" event (${sizeBytes} bytes exceeds ${MAX_PUBSUB_PAYLOAD_BYTES})`,
+				{ threadId, runId: event.runId },
+			);
+			return;
+		}
+
+		void this.publisher
+			.publishCommand({ command: 'relay-instance-ai-event', payload: { threadId, event } })
+			.catch((error: unknown) =>
+				this.logger.error('Failed to relay Instance AI event to sibling mains', {
+					threadId,
+					error,
+				}),
+			);
+	}
+
+	/** A relayed event from another main: re-emit to this main's SSE clients only
+	 *  if it actually holds a subscription for the thread (avoids every main
+	 *  buffering every thread). */
+	@OnPubSubEvent('relay-instance-ai-event', { instanceType: 'main' })
+	handleRelayInstanceAiEvent({
+		threadId,
+		event,
+	}: { threadId: string; event: InstanceAiEvent }): void {
+		if (!this.hasSubscribers(threadId)) return;
+		this.publishLocalOnly(threadId, event);
+	}
+
 	subscribe(threadId: string, handler: (storedEvent: StoredEvent) => void): () => void {
 		this.emitter.on(threadId, handler);
 		return () => this.emitter.off(threadId, handler);
+	}
+
+	/** Whether this main currently holds an SSE subscription for the thread. */
+	hasSubscribers(threadId: string): boolean {
+		return this.emitter.listenerCount(threadId) > 0;
 	}
 
 	getEventsAfter(threadId: string, afterId: number): StoredEvent[] {
@@ -90,7 +160,7 @@ export class InProcessEventBus implements InstanceAiEventBus {
 		while (events.length > MAX_EVENTS_PER_THREAD || totalSize > MAX_BYTES_PER_THREAD) {
 			const evicted = events.shift();
 			if (!evicted) break;
-			totalSize -= JSON.stringify(evicted.event).length;
+			totalSize -= Buffer.byteLength(JSON.stringify(evicted.event), 'utf8');
 		}
 
 		this.sizeBytes.set(threadId, Math.max(0, totalSize));
