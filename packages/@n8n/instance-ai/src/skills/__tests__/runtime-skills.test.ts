@@ -89,20 +89,9 @@ describe('Instance AI runtime skills', () => {
 
 		const loadTool = createSkillLoadTool(source);
 		const loadResult = await loadTool.handler?.({ skillId: 'intent-recognition' }, {});
-		expect(loadResult).toMatchObject({
-			success: true,
-			skillId: 'intent-recognition',
-			name: 'intent-recognition',
-		});
-		if (
-			!loadResult ||
-			typeof loadResult !== 'object' ||
-			!('content' in loadResult) ||
-			typeof loadResult.content !== 'string'
-		) {
-			throw new Error('Expected load_skill to return intent-recognition content');
-		}
-		expect(loadResult.content).toContain('workflow | hybrid | agent | single-ai-task | ambiguous');
+		const loadedText = skillLoadText(loadResult);
+		expect(loadedText).toContain('[Skill: "intent-recognition"]');
+		expect(loadedText).toContain('workflow | hybrid | agent | single-ai-task | ambiguous');
 	});
 
 	it('loads the bundled Computer Use credential setup skill', async () => {
@@ -356,6 +345,14 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('do this unprompted');
 	});
 });
+
+function skillLoadText(output: unknown): string {
+	const record = output as { type?: string; value?: Array<{ type: string; text: string }> };
+	if (record?.type !== 'content' || !Array.isArray(record.value)) {
+		throw new Error(`Expected content-form skill load output, got: ${JSON.stringify(output)}`);
+	}
+	return record.value.map((part) => part.text).join('\n');
+}
 
 async function loadRuntimeSkillSourceWithEnabledModules(enabledModules: string | undefined) {
 	vi.resetModules();
