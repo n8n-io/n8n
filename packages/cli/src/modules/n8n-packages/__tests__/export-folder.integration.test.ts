@@ -1,15 +1,16 @@
-import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
+import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
-
+import { saveCredential } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner } from '@test-integration/db/users';
 
 import { N8nPackagesService } from '../n8n-packages.service';
 import { readExport } from './utils/tar-support';
+import { buildWorkflowReferencingCredential } from './utils/test-builders';
 
 type ExportEntries = Awaited<ReturnType<typeof readExport>>['entries'];
 
@@ -33,6 +34,8 @@ beforeEach(async () => {
 		'Folder',
 		'WorkflowEntity',
 		'SharedWorkflow',
+		'CredentialsEntity',
+		'SharedCredentials',
 		'ProjectRelation',
 		'Project',
 	]);
@@ -219,5 +222,206 @@ describe('folder package export', () => {
 				folderIds: [accessibleFolder.id, inaccessibleFolder.id],
 			}),
 		).rejects.toThrow(/1 folder\(s\) not found or not accessible/);
+	});
+});
+
+describe('folder package export — with contained workflows', () => {
+	let service: N8nPackagesService;
+
+	beforeAll(() => {
+		service = Container.get(N8nPackagesService);
+	});
+
+	// AC1
+	it('writes a workflow contained in a requested folder under the folder’s workflows/ dir', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Project A', owner);
+		const folder = await createFolder(project, { name: 'in_progress' });
+		const workflow = await createWorkflow({ name: 'triage', parentFolder: folder }, project);
+
+		const stream = await service.exportPackage({
+			user: owner,
+			workflowIds: [],
+			folderIds: [folder.id],
+		});
+		const { manifest, entries } = await readExport(stream);
+
+		const folderEntry = manifest.folders!.find((f) => f.id === folder.id)!;
+		expect(manifest.workflows).toHaveLength(1);
+		const workflowEntry = manifest.workflows!.find((w) => w.id === workflow.id)!;
+		expect(workflowEntry.target).toMatch(new RegExp(`^${folderEntry.target}/workflows/[^/]+$`));
+
+		expect(entries.find((e) => e.name === `${workflowEntry.target}/workflow.json`)).toBeDefined();
+	});
+
+	// AC1b
+	it('nests a workflow inside a nested folder under <parent>/<child>/workflows/', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Project A', owner);
+		const parent = await createFolder(project, { name: 'in_progress' });
+		const child = await createFolder(project, { name: 'nested', parentFolder: parent });
+		const workflow = await createWorkflow({ name: 'playground', parentFolder: child }, project);
+
+		const stream = await service.exportPackage({
+			user: owner,
+			workflowIds: [],
+			folderIds: [parent.id],
+		});
+		const { manifest, entries } = await readExport(stream);
+
+		const childEntry = manifest.folders!.find((f) => f.id === child.id)!;
+		const workflowEntry = manifest.workflows!.find((w) => w.id === workflow.id)!;
+		expect(workflowEntry.target).toMatch(new RegExp(`^${childEntry.target}/workflows/[^/]+$`));
+		expect(entries.find((e) => e.name === `${workflowEntry.target}/workflow.json`)).toBeDefined();
+	});
+
+	// AC2
+	it('gathers a contained workflow’s credential at the package top level', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Project A', owner);
+		const folder = await createFolder(project, { name: 'in_progress' });
+		const credential = await saveCredential(
+			{ name: 'Linear API', type: 'httpHeaderAuth', data: { name: 'X-Auth', value: 'secret' } },
+			{ project, role: 'credential:owner' },
+		);
+		const workflow = await buildWorkflowReferencingCredential({
+			name: 'triage',
+			project,
+			credential,
+			parentFolder: folder,
+		});
+
+		const stream = await service.exportPackage({
+			user: owner,
+			workflowIds: [],
+			folderIds: [folder.id],
+		});
+		const { manifest, entries } = await readExport(stream);
+
+		// Credential bundles at top-level credentials/, not under the folder.
+		expect(manifest.credentials).toHaveLength(1);
+		expect(manifest.credentials![0].id).toBe(credential.id);
+		expect(manifest.credentials![0].target).toMatch(/^credentials\//);
+		expect(manifest.requirements).toEqual({
+			credentials: [
+				{
+					id: credential.id,
+					name: credential.name,
+					type: 'httpHeaderAuth',
+					usedByWorkflows: [workflow.id],
+				},
+			],
+		});
+		expect(
+			entries.find((e) => e.name === `${manifest.credentials![0].target}/credential.json`),
+		).toBeDefined();
+	});
+
+	// AC3
+	it('aborts the whole export when a contained workflow is not exportable by the caller', async () => {
+		const member = await createMember();
+		const memberProject = await createTeamProject('Member project', member);
+		const folder = await createFolder(memberProject, { name: 'in_progress' });
+
+		const owner = await createOwner();
+		const ownerProject = await createTeamProject('Owner project', owner);
+		// The workflow is shared only with the owner's project but sits in the
+		// member's folder, so the member can folder:read the folder yet cannot
+		// workflow:export the workflow. The per-workflow export gate must abort.
+		await createWorkflow({ name: 'secret', parentFolder: folder }, ownerProject);
+
+		await expect(
+			service.exportPackage({ user: member, workflowIds: [], folderIds: [folder.id] }),
+		).rejects.toThrow(/workflow\(s\) not found or not accessible/);
+	});
+
+	// Edge: a workflow in both folderIds and workflowIds is placed in the folder, once.
+	it('places a workflow listed in both a folder and workflowIds inside the folder only', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Project A', owner);
+		const folder = await createFolder(project, { name: 'in_progress' });
+		const workflow = await createWorkflow({ name: 'triage', parentFolder: folder }, project);
+
+		const stream = await service.exportPackage({
+			user: owner,
+			workflowIds: [workflow.id],
+			folderIds: [folder.id],
+		});
+		const { manifest, entries } = await readExport(stream);
+
+		const folderEntry = manifest.folders!.find((f) => f.id === folder.id)!;
+		expect(manifest.workflows).toHaveLength(1);
+		expect(manifest.workflows![0].id).toBe(workflow.id);
+		expect(manifest.workflows![0].target).toMatch(
+			new RegExp(`^${folderEntry.target}/workflows/[^/]+$`),
+		);
+
+		// Exactly one workflow.json on disk — no double write, no top-level orphan.
+		expect(entries.filter((e) => e.name.endsWith('/workflow.json'))).toHaveLength(1);
+	});
+
+	// Regression: an empty folder still emits only its shell.
+	it('emits no workflows output for an empty folder', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Project A', owner);
+		const folder = await createFolder(project, { name: 'empty' });
+
+		const stream = await service.exportPackage({
+			user: owner,
+			workflowIds: [],
+			folderIds: [folder.id],
+		});
+		const { manifest, entries } = await readExport(stream);
+
+		expect(manifest.workflows).toBeUndefined();
+		expect(entries.some((e) => e.name.includes('/workflows/'))).toBe(false);
+	});
+
+	// A subfolder whose name slugifies to `workflows` must not collide with the
+	// parent folder's `workflows/` container that holds its contained workflows.
+	it('does not let a subfolder named "workflows" swallow the parent’s contained workflows', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Project A', owner);
+		const parent = await createFolder(project, { name: 'in_progress' });
+		const workflow = await createWorkflow({ name: 'triage', parentFolder: parent }, project);
+		const subfolder = await createFolder(project, { name: 'workflows', parentFolder: parent });
+
+		const stream = await service.exportPackage({
+			user: owner,
+			workflowIds: [],
+			folderIds: [parent.id],
+		});
+		const { manifest } = await readExport(stream);
+
+		const subfolderTarget = manifest.folders!.find((f) => f.id === subfolder.id)!.target;
+		const workflowTarget = manifest.workflows!.find((w) => w.id === workflow.id)!.target;
+
+		// The subfolder is suffixed; the workflow stays under the parent's container.
+		expect(subfolderTarget).toMatch(/\/workflows-2$/);
+		expect(workflowTarget.startsWith(`${subfolderTarget}/`)).toBe(false);
+	});
+
+	// Telemetry: counts.workflows includes folder-contained workflows.
+	it('counts folder-contained workflows in the export telemetry', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Project A', owner);
+		const folder = await createFolder(project, { name: 'in_progress' });
+		await createWorkflow({ name: 'triage', parentFolder: folder }, project);
+		await createWorkflow({ name: 'playground', parentFolder: folder }, project);
+
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+		try {
+			await service.exportPackage({ user: owner, workflowIds: [], folderIds: [folder.id] });
+
+			const exportedEvents = emitSpy.mock.calls.filter(([name]) => name === 'n8n-package-exported');
+			expect(exportedEvents).toHaveLength(1);
+
+			const payload = exportedEvents[0][1] as RelayEventMap['n8n-package-exported'];
+			expect(payload.counts.workflows).toBe(2);
+			expect(payload.counts.folders).toBe(1);
+		} finally {
+			emitSpy.mockRestore();
+		}
 	});
 });

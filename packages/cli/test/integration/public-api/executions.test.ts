@@ -493,14 +493,24 @@ describe('GET /executions', () => {
 	});
 
 	describe('with query status', () => {
-		type AllowedQueryStatus = 'canceled' | 'error' | 'running' | 'success' | 'waiting';
+		type AllowedQueryStatus =
+			| 'canceled'
+			| 'crashed'
+			| 'error'
+			| 'new'
+			| 'running'
+			| 'success'
+			| 'unknown'
+			| 'waiting';
 		test.each`
 			queryStatus   | entityStatus
 			${'canceled'} | ${'canceled'}
+			${'crashed'}  | ${'crashed'}
 			${'error'}    | ${'error'}
-			${'error'}    | ${'crashed'}
+			${'new'}      | ${'new'}
 			${'running'}  | ${'running'}
 			${'success'}  | ${'success'}
+			${'unknown'}  | ${'unknown'}
 			${'waiting'}  | ${'waiting'}
 		`(
 			'should retrieve all $queryStatus executions',

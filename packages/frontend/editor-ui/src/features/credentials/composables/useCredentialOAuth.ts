@@ -320,10 +320,14 @@ export function useCredentialOAuth() {
 
 		let credential: ICredentialsResponse;
 		try {
+			const name = await credentialsStore.getNewCredentialName({
+				credentialTypeName,
+				fallbackName: credentialType.displayName,
+			});
 			credential = await credentialsStore.createNewCredential(
 				{
 					id: '',
-					name: credentialType.displayName,
+					name,
 					type: credentialTypeName,
 					data,
 				},

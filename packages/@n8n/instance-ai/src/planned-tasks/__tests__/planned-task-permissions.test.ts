@@ -1,6 +1,6 @@
 import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
 
-import type { InstanceAiContext, PlannedTaskKind } from '../../types';
+import type { InstanceAiContext } from '../../types';
 import { applyPlannedTaskPermissions } from '../planned-task-permissions';
 
 function makeContext(
@@ -54,15 +54,6 @@ describe('applyPlannedTaskPermissions', () => {
 		});
 	});
 
-	describe.each<PlannedTaskKind>(['delegate'])('%s', (kind) => {
-		it('should return the original context unchanged', () => {
-			const context = makeContext();
-			const result = applyPlannedTaskPermissions(context, kind);
-
-			expect(result).toBe(context);
-		});
-	});
-
 	it('should return a new context object for overridden kinds', () => {
 		const context = makeContext();
 		const result = applyPlannedTaskPermissions(context, 'build-workflow');
@@ -94,5 +85,12 @@ describe('applyPlannedTaskPermissions', () => {
 		const result = applyPlannedTaskPermissions(context, 'build-workflow');
 
 		expect(result.projectId).toBe(context.projectId);
+	});
+
+	it('returns the original context for legacy delegate tasks', () => {
+		const context = makeContext();
+		const result = applyPlannedTaskPermissions(context, 'delegate');
+
+		expect(result).toBe(context);
 	});
 });

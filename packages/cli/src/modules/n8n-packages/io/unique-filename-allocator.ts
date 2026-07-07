@@ -8,6 +8,10 @@ export class UniqueFilenameAllocator {
 		private readonly fallback: string,
 	) {}
 
+	reserve(segment: string): void {
+		this.used.add(`${this.baseDir}/${segment}`);
+	}
+
 	allocate(name: string): string {
 		const base = `${this.baseDir}/${generateSlug(name, this.fallback)}`;
 

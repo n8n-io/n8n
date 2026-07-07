@@ -174,19 +174,19 @@ These only run if specific files changed:
 |------------------------------------------------------------------------|-----------------------------|------------|
 | `packages/@n8n/task-runner-python/**`                                  | `ci-python.yml`             | any        |
 | `packages/cli/src/databases/**`, `*.entity.ts`, `*.repository.ts`      | `test-db.yml`               | any        |
-| `packages/frontend/@n8n/storybook/**`, design-system, chat             | `test-visual-storybook.yml` | master     |
+| `packages/frontend/@n8n/storybook/**`, design-system, chat             | `release-storybook.yml` | master     |
 | `docker/images/n8n-base/Dockerfile`                                    | `build-base-image.yml`      | any        |
 | `**/package.json`, `**/turbo.json`                                     | `build-windows.yml`         | master     |
 | `packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python/**` | `test-evals-python.yml`  | any        |
 | `packages/@n8n/benchmark/**`                                           | `build-benchmark-image.yml` | master     |
 | `packages/cli/src/public-api/**/*.{css,yaml,yml}`                      | `util-sync-api-docs.yml`    | master     |
-| `packages/@n8n/instance-ai/src/**`, `packages/@n8n/instance-ai/evaluations/**`, `packages/cli/src/modules/instance-ai/**`, `packages/core/src/execution-engine/eval-mock-helpers.ts` | `ci-instance-ai-evals.yml` | on PR `opened` / `reopened` / `ready_for_review` |
+| `packages/@n8n/instance-ai/src/**`, `packages/@n8n/instance-ai/skills/**`, `packages/@n8n/instance-ai/knowledge-base/**`, `packages/@n8n/instance-ai/evaluations/**`, `packages/cli/src/modules/instance-ai/**`, `packages/core/src/execution-engine/eval-mock-helpers.ts` | `ci-instance-ai-evals.yml` | on PR `opened` / `reopened` / `ready_for_review` |
 
 ### On PR Review
 
 | Event                      | Workflow                    | Condition                                            |
 |----------------------------|-----------------------------|------------------------------------------------------|
-| Review approved            | `test-visual-chromatic.yml` | + design files changed                               |
+| Review approved            | `release-chromatic.yml` | + design files changed                               |
 | Comment with `@claude`     | `util-claude.yml`           | mention in any comment                               |
 | Any review                 | `util-notify-pr-status.yml` | not community-labeled                                |
 
@@ -213,15 +213,18 @@ run on fork PRs: the event trigger gates on `head.repo.fork`, and the `pr`
 re-run path refuses fork PRs in `resolve` (dispatched runs carry secrets).
 
 **MCP workflow evals (`ci-mcp-evals.yml`) are manual only (`workflow_dispatch`),
-never per-PR or scheduled in this first version.** They reuse the Instance AI
-verifier but build each workflow through the instance MCP server by driving the
-`claude` CLI, which adds Anthropic build cost on top of the verifier — too
-expensive to run automatically. The job boots one n8n container, generates an MCP
-cohort (`eval:build-mcp-manifest`), then scores it with
-`eval:instance-ai --prebuilt-workflows`, recording to the isolated
-`mcp-workflow-evals` LangSmith dataset. Dispatch from the Actions tab (set
-`experiment-name=mcp-baseline` to refresh the baseline, or `filter=<slug>` to run
-a single case). See `packages/cli/src/modules/mcp/evaluations/README.md`.
+never per-PR or scheduled.** They reuse the Instance AI verifier but build each
+workflow through the instance MCP server by driving the `claude` CLI, which adds
+Anthropic build cost on top of the verifier — too expensive to run
+automatically. The job boots `lanes` n8n containers on one runner and runs a
+single `eval:instance-ai --build-via-mcp` process: each case is built by driving
+its lane's own MCP server with `claude`, then verified on that same lane
+(work-stealing across lanes, capped per-lane). One process → one experiment in
+the isolated `mcp-workflow-evals` LangSmith dataset, so there is no shard/merge
+step. Dispatch from the Actions tab (set `experiment-name=mcp-baseline` to
+refresh the baseline, `filter=<slug>` to run a single case, or `lanes` to widen
+parallelism). See the `--build-via-mcp` section in
+`packages/@n8n/instance-ai/evaluations/README.md`.
 
 ### On PR Close/Merge
 
@@ -326,7 +329,7 @@ test-workflows-pr-comment.yml
 │  ───────────────────────                                                   │
 │  ci-pull-requests.yml runs full suite                                      │
 │  ├─ NO ci-check-pr-title.yml (skipped for release branches)                │
-│  └─ NO test-visual-chromatic.yml (skipped)                                 │
+│  └─ NO release-chromatic.yml (skipped)                                 │
 │                          │                                                 │
 │                          ▼ [Merge PR]                                      │
 │  STAGE 3: Publish                                                          │
@@ -401,8 +404,8 @@ Push to master/1.x
 | Daily 00:00               | `docker-build-push.yml`           | Nightly Docker images    |
 | Daily 00:00               | `test-db.yml`                     | Database compatibility   |
 | Daily 00:00               | `test-e2e-performance-reusable.yml`| Performance E2E         |
-| Daily 00:00               | `test-visual-storybook.yml`       | Storybook deploy         |
-| Daily 00:00               | `test-visual-chromatic.yml`       | Visual regression        |
+| Daily 00:00               | `release-storybook.yml`       | Storybook deploy         |
+| Daily 00:00               | `release-chromatic.yml`       | Visual regression        |
 | Daily 00:00               | `util-check-docs-urls.yml`        | Doc link validation      |
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
 | Daily 04:00               | `test-e2e-vm-expressions-nightly.yml`| VM expression E2E     |

@@ -8,6 +8,7 @@ import type {
 	AgentTaskConfig,
 	AgentTaskDto,
 	AgentIntegrationSettings,
+	AgentProviderModelsResponse,
 	AgentVersionListItemDto,
 	ChatIntegrationDescriptor,
 	CreateSlackAgentAppResponse,
@@ -343,6 +344,20 @@ export const getModelCatalog = async (
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/catalog/models`,
+	);
+};
+
+export const getProviderModels = async (
+	context: IRestApiContext,
+	projectId: string,
+	provider: string,
+	credentialId?: string,
+): Promise<AgentProviderModelsResponse> => {
+	return await makeRestApiRequest<AgentProviderModelsResponse>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/catalog/models/${provider}`,
+		credentialId ? { credentialId } : undefined,
 	);
 };
 

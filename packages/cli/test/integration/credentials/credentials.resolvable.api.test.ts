@@ -25,7 +25,7 @@ import {
 	saveCredential,
 	shareCredentialWithProjects,
 } from '../shared/db/credentials';
-import { createMember } from '../shared/db/users';
+import { createAdmin, createMember } from '../shared/db/users';
 import { setupTestServer } from '../shared/utils';
 
 mockInstance(Telemetry);
@@ -389,6 +389,77 @@ describe('PATCH /credentials/:id — isResolvable toggle cleanup', () => {
 		const entryRepository = Container.get(DynamicCredentialUserEntryRepository);
 		const count = await entryRepository.countBy({ credentialId: resolvable.id });
 		expect(count).toBe(0);
+	});
+});
+
+describe('PUT /credentials/:id/transfer — resolvable connection reconciliation', () => {
+	const entryRepository = () => Container.get(DynamicCredentialUserEntryRepository);
+
+	test('removes the connection of a member who loses access in the destination project', async () => {
+		const resolvable = await saveResolvableCredential();
+		// memberB is an editor of the source project and connected their account.
+		await seedUserEntry(resolvable.id, memberB.id);
+
+		// Destination project that memberB is NOT part of.
+		const destinationProject = await createTeamProject(undefined, memberA);
+
+		await testServer
+			.authAgentFor(memberA)
+			.put(`/credentials/${resolvable.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(200);
+
+		const remaining = await entryRepository().countBy({
+			credentialId: resolvable.id,
+			userId: memberB.id,
+		});
+		expect(remaining).toBe(0);
+	});
+
+	test('keeps the connection of a member who retains access via the destination project', async () => {
+		const resolvable = await saveResolvableCredential();
+		await seedUserEntry(resolvable.id, memberB.id);
+
+		// memberB is also a member of the destination project, so they keep
+		// credential:connect after the move.
+		const destinationProject = await createTeamProject(undefined, memberA);
+		await linkUserToProject(memberB, destinationProject, 'project:editor');
+
+		await testServer
+			.authAgentFor(memberA)
+			.put(`/credentials/${resolvable.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(200);
+
+		const remaining = await entryRepository().countBy({
+			credentialId: resolvable.id,
+			userId: memberB.id,
+		});
+		expect(remaining).toBe(1);
+	});
+
+	test('keeps the connection of a user who retains access via a global role', async () => {
+		const admin = await createAdmin();
+		// Admin is a source-project member (so they are re-evaluated), but has no
+		// access in the destination project — global scope is what retains them.
+		await linkUserToProject(admin, teamProject, 'project:viewer');
+
+		const resolvable = await saveResolvableCredential();
+		await seedUserEntry(resolvable.id, admin.id);
+
+		const destinationProject = await createTeamProject(undefined, memberA);
+
+		await testServer
+			.authAgentFor(memberA)
+			.put(`/credentials/${resolvable.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(200);
+
+		const remaining = await entryRepository().countBy({
+			credentialId: resolvable.id,
+			userId: admin.id,
+		});
+		expect(remaining).toBe(1);
 	});
 });
 

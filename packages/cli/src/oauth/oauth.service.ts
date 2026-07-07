@@ -681,6 +681,49 @@ export class OauthService {
 		return oauthCredentials;
 	}
 
+	private credentialIsAccessibleToProject(credential: CredentialsEntity, projectId: string) {
+		return credential.isGlobal || (credential.shared ?? []).some((s) => s.projectId === projectId);
+	}
+
+	private resolveOAuth2Resource(
+		oauthCredentials: OAuth2CredentialData,
+		oauthTokenData: ClientOAuth2TokenData,
+	) {
+		// oauthTokenData.resource: persisted resource from the original token exchange.
+		// oauthCredentials.resource: resolved resource from discovery/validation during setup.
+		// oauthCredentials.resourceUrl: raw credential input used before a resolved value exists.
+		return oauthTokenData.resource ?? oauthCredentials.resource ?? oauthCredentials.resourceUrl;
+	}
+
+	private createOAuth2ClientForRefresh(oauthCredentials: OAuth2CredentialData, resource?: string) {
+		const scopes = oauthCredentials.scope
+			?.split(' ')
+			.map((s) => s.trim())
+			.filter(Boolean);
+
+		return new ClientOAuth2({
+			clientId: oauthCredentials.clientId,
+			...resolveClientAuthOptions(oauthCredentials),
+			accessTokenUri: oauthCredentials.accessTokenUrl,
+			scopes: scopes?.length ? scopes : undefined,
+			...(resource ? { resource } : {}),
+			ignoreSSLIssues: oauthCredentials.ignoreSSLIssues,
+			authentication: oauthCredentials.authentication ?? 'header',
+		});
+	}
+
+	private mergeRefreshedOAuthTokenData(
+		oauthTokenData: ClientOAuth2TokenData,
+		refreshedData: ClientOAuth2TokenData,
+		resource?: string,
+	) {
+		return {
+			...oauthTokenData,
+			...refreshedData,
+			...(!refreshedData.resource && resource ? { resource } : {}),
+		};
+	}
+
 	/**
 	 * Refresh the OAuth2 token stored on a credential by id, persist the refreshed token data,
 	 * and return the new auth headers to inject into outbound requests.
@@ -695,27 +738,14 @@ export class OauthService {
 		});
 		if (!credential) return null;
 
-		const isAccessible =
-			credential.isGlobal || (credential.shared ?? []).some((s) => s.projectId === projectId);
-		if (!isAccessible) return null;
+		if (!this.credentialIsAccessibleToProject(credential, projectId)) return null;
 
 		const oauthCredentials = await this.getOAuthCredentials<OAuth2CredentialData>(credential);
 		const oauthTokenData = oauthCredentials.oauthTokenData as ClientOAuth2TokenData | undefined;
 		if (!oauthTokenData) return null;
 
-		const scopes = oauthCredentials.scope
-			?.split(' ')
-			.map((s) => s.trim())
-			.filter(Boolean);
-
-		const oAuthClient = new ClientOAuth2({
-			clientId: oauthCredentials.clientId,
-			...resolveClientAuthOptions(oauthCredentials),
-			accessTokenUri: oauthCredentials.accessTokenUrl,
-			scopes: scopes?.length ? scopes : undefined,
-			ignoreSSLIssues: oauthCredentials.ignoreSSLIssues,
-			authentication: oauthCredentials.authentication ?? 'header',
-		});
+		const resource = this.resolveOAuth2Resource(oauthCredentials, oauthTokenData);
+		const oAuthClient = this.createOAuth2ClientForRefresh(oauthCredentials, resource);
 
 		const token = oAuthClient.createToken(
 			{
@@ -740,8 +770,14 @@ export class OauthService {
 			return null;
 		}
 
+		const refreshedTokenData = this.mergeRefreshedOAuthTokenData(
+			oauthTokenData,
+			refreshed.data,
+			resource,
+		);
+
 		try {
-			await this.encryptAndSaveData(credential, { oauthTokenData: refreshed.data });
+			await this.encryptAndSaveData(credential, { oauthTokenData: refreshedTokenData });
 		} catch (error) {
 			this.logger.warn('Refreshed OAuth2 token but failed to persist new token data', {
 				credentialId,

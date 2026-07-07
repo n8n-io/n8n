@@ -35,7 +35,8 @@ import type { VNode } from 'vue';
 
 const WAIT_NODE_TYPE = 'waitNode';
 
-const windowOpenSpy = vi.spyOn(window, 'open');
+// `restoreMocks` restores spies before each test, so this is (re)established in beforeEach.
+let windowOpenSpy: MockInstance;
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({
@@ -105,16 +106,11 @@ describe('displayForm', () => {
 		ok: true,
 	} as unknown as Response;
 
-	beforeAll(() => {
-		fetchMock = vi.spyOn(global, 'fetch');
-	});
-
-	afterAll(() => {
-		fetchMock.mockRestore();
-	});
-
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// `restoreMocks` restores spies before each test, so re-establish them here.
+		windowOpenSpy = vi.spyOn(window, 'open');
+		fetchMock = vi.spyOn(global, 'fetch');
 	});
 
 	it('should not call openPopUpWindow if node has already run or is pinned', async () => {

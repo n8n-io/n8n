@@ -19,6 +19,7 @@ import {
 	toSetupNodeCredential,
 	type SetupNodeCredential,
 } from './credential-utils';
+import { coerceWrongKindListModeParams } from './detect-wrong-kind-locator';
 import type { SetupRequest } from './setup-workflow.schema';
 import type { InstanceAiContext } from '../../types';
 
@@ -890,8 +891,13 @@ export async function applyNodeChanges(
 		}
 
 		const params = nodeParameters?.[nodeName];
-		if (params && applyParametersToNode(node, nodeName, params, result)) {
-			appliedNodes.add(nodeName);
+		if (params) {
+			// A display name typed into a list-mode resource locator can never
+			// resolve (list values are opaque picker IDs) — store it as name mode.
+			coerceWrongKindListModeParams(context.nodeTypesProvider, node, params);
+			if (applyParametersToNode(node, nodeName, params, result)) {
+				appliedNodes.add(nodeName);
+			}
 		}
 
 		// Drop credential entries that are no longer valid for the node's current
