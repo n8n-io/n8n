@@ -320,8 +320,9 @@ function bootstrap() {
 
 	const answer = promptViaTty(
 		'\nn8n collects anonymous usage metrics from internal developers\n' +
-			'(command name, duration, exit code) to improve our dev tooling.\n' +
-			'No code, paths, file names or personal data are ever sent.\n\n' +
+			'(the command with its arguments, duration, exit code) to improve dev tooling.\n' +
+			'Command lines are recorded verbatim, so keep secrets out of them — pass\n' +
+			'sensitive values via environment variables, which are never captured.\n\n' +
 			'Share anonymous dev metrics? [Y/n] ',
 	);
 	if (answer === null) return; // no terminal — ask again next time

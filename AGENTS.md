@@ -11,6 +11,10 @@ frontend, and extensible node-based workflow engine.
 ## General Guidelines
 
 - Always use pnpm
+- **Secrets on the command line:** if a developer opted into anonymous dev
+  metrics (`scripts/dev-metrics`), pnpm command lines are recorded **verbatim**
+  (the raw argv). Never put secrets in a command — pass sensitive values via
+  environment variables, which are never captured.
 - When adding comments, keep them concise and to the point - explain the "why"
   in a line or two; don't be overly verbose. Comments should be scoped and
   relevant to the surrounding code, not just to the current task
