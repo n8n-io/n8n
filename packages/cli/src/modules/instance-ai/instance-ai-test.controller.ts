@@ -52,7 +52,17 @@ export class InstanceAiTestController {
 		if (payload.ensureThread) {
 			const user = await this.userRepo.findOneByOrFail({ id: payload.userId });
 			const personalProject = await this.projectRepo.getPersonalProjectForUserOrFail(user.id);
+			// ensureThread throws when the thread exists under another owner.
 			await this.memoryService.ensureThread(user.id, payload.threadId, personalProject.id);
+		} else {
+			// Even in E2E mode, never inject events into another user's thread.
+			const ownership = await this.memoryService.checkThreadOwnership(
+				payload.userId,
+				payload.threadId,
+			);
+			if (ownership !== 'owned') {
+				throw new ForbiddenError('Thread does not exist or is not owned by the given user');
+			}
 		}
 		const events = (payload.events ?? []).map((raw) => {
 			const parsed = instanceAiEventSchema.safeParse(raw);
