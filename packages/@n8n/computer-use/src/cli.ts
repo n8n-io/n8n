@@ -3,7 +3,7 @@
 import { select } from '@inquirer/prompts';
 import * as fs from 'node:fs/promises';
 
-import { isOriginAllowed, parseConfig } from './config';
+import { isOriginAllowed, parseConfig, resolvePermissionConfirmation } from './config';
 import { cliConfirmResourceAccess, sanitizeForTerminal } from './confirm-resource-cli';
 import { GatewayAuthError, GatewayClient } from './gateway-client';
 import { GatewaySession } from './gateway-session';
@@ -117,6 +117,8 @@ Global options:
   --log-level <level>            Log level: silent, error, warn, info, debug (default: info)
   --allowed-origins <patterns>   Comma-separated allowed origin patterns
                                  (default: https://*.app.n8n.cloud)
+                                 When connecting to a non-cloud instance, resource
+                                 confirmations are always prompted in this terminal.
   --non-interactive              Skip all prompts (deny per default)
   --auto-confirm                 Auto-confirm all prompts (no readline)
   -h, --help                     Show this help message
@@ -172,6 +174,16 @@ async function main(
 		);
 		process.exit(1);
 	}
+
+	config.permissionConfirmation = resolvePermissionConfirmation(
+		config.permissionConfirmation,
+		origin,
+	);
+	logger.info(
+		config.permissionConfirmation === 'client'
+			? 'Resource confirmations will be prompted in this terminal'
+			: 'Resource confirmations will be prompted in the n8n UI',
+	);
 
 	await SettingsStore.ensureInitialized(config);
 
