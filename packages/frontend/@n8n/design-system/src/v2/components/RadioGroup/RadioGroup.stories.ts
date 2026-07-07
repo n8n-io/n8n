@@ -34,7 +34,8 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-const radioItemId = (group: string, value: string) => `${group}-${value}`;
+const radioItemId = (group: string, value: string) =>
+	`${group}-${Math.random().toString(36).slice(2)}-${value}`;
 
 const scopeOptions = [
 	{ value: 'all', label: 'All', description: 'Grant every available scope' },
