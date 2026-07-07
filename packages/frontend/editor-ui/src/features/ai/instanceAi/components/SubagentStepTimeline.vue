@@ -8,7 +8,7 @@ import { N8nButton, N8nIcon, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed } from 'vue';
-import { getToolIcon, useToolLabel } from '../toolLabels';
+import { useToolLabel } from '../toolLabels';
 import {
 	isStreamingTimelineEntry,
 	isVisibleTimelineEntry,
@@ -66,36 +66,10 @@ const timelineEntries = computed(() =>
 	coalesceConsecutiveReasoning(props.visibleEntries ?? props.agentNode.timeline),
 );
 
-const steps = computed((): TimelineStep[] => {
-	const result: TimelineStep[] = [];
-
-	for (const entry of timelineEntries.value) {
-		if (entry.type === 'text') {
-			const longText = isLongTextContent(entry.content);
-			result.push({
-				type: 'text',
-				icon: 'brain',
-				label: longText ? extractShortLabel(entry.content) : entry.content,
-				isLoading: false,
-				textContent: entry.content,
-				isLongText: longText,
-				shortLabel: longText ? extractShortLabel(entry.content) : undefined,
-			});
-		} else if (entry.type === 'tool-call') {
-			const tc = toolCallsById.value[entry.toolCallId];
-			if (!tc || HIDDEN_TOOLS.has(tc.toolName)) continue;
-			result.push({
-				type: 'tool-call',
-				icon: tc.isLoading ? 'spinner' : getToolIcon(tc.toolName),
-				label: getToolLabel(tc.toolName, tc.args),
-				isLoading: tc.isLoading,
-				toggleLabel: getToggleLabel(tc),
-				hideLabel: getHideLabel(tc),
-				toolCall: tc,
-			});
-		}
-		// Skip 'child' entries (parent AgentTimeline handles child cards) and
-		// 'reasoning' entries (sub-agent reasoning is not surfaced in this view)
+const childrenById = computed(() => {
+	const map: Record<string, InstanceAiAgentNode> = {};
+	for (const child of props.agentNode.children) {
+		map[child.agentId] = child;
 	}
 	return map;
 });

@@ -73,52 +73,6 @@ describe('getSystemPrompt', () => {
 		});
 	});
 
-	describe('tool discovery', () => {
-		it('includes generic Tool Discovery guidance when deferred tool search is enabled', () => {
-			const prompt = getSystemPrompt({ toolSearchEnabled: true });
-
-			expect(prompt).toContain('## Tool Discovery');
-			expect(prompt).toContain('additional tools available beyond the ones listed above');
-			expect(prompt).toContain('search "credential" for the credentials tool');
-			expect(prompt).toContain('search "file" for filesystem tools');
-			expect(prompt).toContain('search "workflow" for workflow management');
-			expect(prompt).not.toContain('connected service or MCP integration');
-			expect(prompt).not.toContain('connected MCP integrations');
-		});
-
-		it('prompts the agent to search connected MCP integrations before declaring them unavailable', () => {
-			const prompt = getSystemPrompt({
-				toolSearchEnabled: true,
-				mcpToolSearchEnabled: true,
-			});
-
-			expect(prompt).toContain('connected MCP integrations');
-			expect(prompt).toContain('connected service or MCP integration');
-			expect(prompt).toContain('call `search_tools` with the service name and task keywords');
-			expect(prompt).toContain('before saying the integration is unavailable');
-			expect(prompt).toContain('asking the user to connect it');
-		});
-
-		it('anchors examples to connected MCP tool searches', () => {
-			const prompt = getSystemPrompt({
-				toolSearchEnabled: true,
-				mcpToolSearchEnabled: true,
-			});
-
-			expect(prompt).toContain(
-				'search "notion page" or "linear issue" for the corresponding MCP tool',
-			);
-			expect(prompt).toContain('search "credential" for the credentials tool');
-		});
-
-		it('omits Tool Discovery guidance when deferred tool search is disabled even if MCP tools exist', () => {
-			const prompt = getSystemPrompt({ mcpToolSearchEnabled: true });
-
-			expect(prompt).not.toContain('## Tool Discovery');
-			expect(prompt).not.toContain('connected service or MCP integration');
-		});
-	});
-
 	describe('license hints', () => {
 		it('includes License Limitations section when hints are provided', () => {
 			const prompt = getSystemPrompt({
@@ -205,6 +159,7 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('**Build or edit one workflow**');
 			expect(prompt).toContain('**Build pipeline**');
 			expect(prompt).toContain('`workflow-builder`');
+			expect(prompt).toContain('workspace file tools');
 			expect(prompt).toContain('`build-workflow`');
 			expect(prompt).toContain('**Multi-workflow or coordinated architecture**');
 			expect(prompt).toContain('**Pre-build discovery** (see Delegation)');
@@ -298,7 +253,7 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toContain('needsBrowserSetup=true');
 			expect(prompt).toContain('credential-setup-with-computer-use');
-			expect(prompt).toMatch(/use Computer Use `browser_\*` tools directly/);
+			expect(prompt).toMatch(/Computer Use `browser_\*` tools directly/);
 		});
 	});
 

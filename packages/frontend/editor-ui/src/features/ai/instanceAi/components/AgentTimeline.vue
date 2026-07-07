@@ -23,7 +23,6 @@ import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
 import ArtifactCard from './ArtifactCard.vue';
 import PlanReviewPanel, { type PlannedTaskArg, type PlanReviewStatus } from './PlanReviewPanel.vue';
-import ReasoningBlock from './ReasoningBlock.vue';
 import TaskChecklist from './TaskChecklist.vue';
 import TimelineReasoningSegment from './TimelineReasoningSegment.vue';
 import TimelineTextSegment from './TimelineTextSegment.vue';
@@ -275,13 +274,6 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 				:compact="props.compact"
 				:streaming="isStreamingTimelineEntry(props.agentNode, entry)"
 				:class="$style.timelineItem"
-			/>
-
-			<!-- Reasoning segment — one collapsible block per reasoning stage -->
-			<ReasoningBlock
-				v-else-if="entry.type === 'reasoning'"
-				:entry="entry"
-				:streaming="isStreamingTimelineEntry(props.agentNode, entry)"
 			/>
 
 			<!-- Tool call (skip internal tools like updateWorkingMemory) -->
