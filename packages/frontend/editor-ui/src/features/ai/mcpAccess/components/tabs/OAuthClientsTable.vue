@@ -2,7 +2,7 @@
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
-import { N8nButton, N8nDataTableServer, N8nLoading, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nDataTableServer, N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
@@ -168,8 +168,13 @@ function onRevoke(item: OAuthClientResponseDto) {
 				</template>
 				<template #[`item.name`]="{ item }">
 					<div :class="$style.client">
-						<span v-if="getClientBrand(item.name).icon" :class="$style['client-icon-chip']">
-							<component :is="getClientBrand(item.name).icon" :class="$style['client-icon']" />
+						<span :class="$style['client-icon-chip']">
+							<component
+								:is="getClientBrand(item.name).icon"
+								v-if="getClientBrand(item.name).icon"
+								:class="$style['client-icon']"
+							/>
+							<N8nIcon v-else icon="mcp" :class="$style['client-icon']" />
 						</span>
 						<div :class="$style['client-name']">
 							<N8nText data-test-id="mcp-client-name" color="text-dark">
@@ -256,6 +261,8 @@ function onRevoke(item: OAuthClientResponseDto) {
 .client-icon {
 	width: var(--spacing--md);
 	height: var(--spacing--md);
+	/* the tile is always white, so the fallback MCP glyph must stay dark in both themes */
+	color: var(--color--neutral-black);
 }
 
 /* the whole row opens the details modal; hint that on the access summary */

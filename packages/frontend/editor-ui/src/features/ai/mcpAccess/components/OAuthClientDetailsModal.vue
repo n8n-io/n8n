@@ -9,6 +9,7 @@ import {
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
+	N8nIcon,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -69,8 +70,9 @@ function onRevoke() {
 			<N8nDialogHeader>
 				<N8nDialogTitle>
 					<span :class="$style.title">
-						<span v-if="brand?.icon" :class="$style['icon-chip']">
-							<component :is="brand.icon" :class="$style.icon" />
+						<span :class="$style['icon-chip']">
+							<component :is="brand.icon" v-if="brand?.icon" :class="$style.icon" />
+							<N8nIcon v-else icon="mcp" :class="$style.icon" />
 						</span>
 						{{ client.name }}
 					</span>
@@ -171,6 +173,8 @@ function onRevoke() {
 .icon {
 	width: var(--spacing--md);
 	height: var(--spacing--md);
+	/* the tile is always white, so the fallback MCP glyph must stay dark in both themes */
+	color: var(--color--neutral-black);
 }
 
 .details {
