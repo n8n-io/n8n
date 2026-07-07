@@ -875,7 +875,22 @@ describe('useNodeHelpers()', () => {
 			createTestNode({ type, ...overrides });
 
 		beforeEach(() => {
-			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue(notionNodeType);
+			// Type-aware so the trigger node resolves to its own display name (used to
+			// interpolate {triggerName} in the incompatible-trigger issue), while the
+			// node under test still resolves to notionNodeType (which carries creds).
+			mockedStore(useNodeTypesStore).getNodeType = vi.fn((type: string) => {
+				if (type === WEBHOOK_TRIGGER) {
+					return { ...notionNodeType, name: WEBHOOK_TRIGGER, displayName: 'Webhook' };
+				}
+				if (type === 'n8n-nodes-base.scheduleTrigger') {
+					return {
+						...notionNodeType,
+						name: 'n8n-nodes-base.scheduleTrigger',
+						displayName: 'Schedule Trigger',
+					};
+				}
+				return notionNodeType;
+			});
 		});
 
 		afterEach(() => {
@@ -1054,7 +1069,7 @@ describe('useNodeHelpers()', () => {
 				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
 
 				expect(result?.credentials?.[NOTION_API]).toEqual([
-					'Private credentials require a trigger that establishes who is running the workflow, such as a Manual, Chat, or Sub-workflow trigger. Change the trigger, or switch this credential to Static.',
+					"End-user credentials aren't supported with the Webhook trigger. Use a Manual, Chat, Webhook, or MCP server trigger, or switch this credential to Fixed.",
 				]);
 			});
 
@@ -1159,7 +1174,7 @@ describe('useNodeHelpers()', () => {
 				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
 
 				expect(result?.credentials?.[NOTION_API]?.[0]).toContain(
-					'Private credentials require a trigger that establishes who is running the workflow',
+					"End-user credentials aren't supported with the Webhook trigger",
 				);
 			});
 
@@ -1234,9 +1249,11 @@ describe('useNodeHelpers()', () => {
 						.mockReturnValue({ name: OAUTH2_API, displayName: 'OAuth2 API' });
 					credentialsStore.getCredentialsByType = vi.fn().mockReturnValue([cred as never]);
 					credentialsStore.getCredentialById = vi.fn().mockReturnValue(cred as never);
-					mockedStore(useNodeTypesStore).getNodeType = vi
-						.fn()
-						.mockReturnValue(httpRequestWithSslAuth);
+					mockedStore(useNodeTypesStore).getNodeType = vi.fn((type: string) =>
+						type === WEBHOOK_TRIGGER
+							? ({ ...httpRequestWithSslAuth, displayName: 'Webhook' } as never)
+							: (httpRequestWithSslAuth as never),
+					);
 				};
 
 				it('warns when a private credential is bound via genericCredentialType under a non-manual trigger', () => {
@@ -1247,7 +1264,7 @@ describe('useNodeHelpers()', () => {
 					const result = getNodeCredentialIssues(buildGenericAuthNode(), httpRequestWithSslAuth);
 
 					expect(result?.credentials?.[OAUTH2_API]).toEqual([
-						'Private credentials require a trigger that establishes who is running the workflow, such as a Manual, Chat, or Sub-workflow trigger. Change the trigger, or switch this credential to Static.',
+						"End-user credentials aren't supported with the Webhook trigger. Use a Manual, Chat, Webhook, or MCP server trigger, or switch this credential to Fixed.",
 					]);
 				});
 
@@ -1279,7 +1296,7 @@ describe('useNodeHelpers()', () => {
 					const result = getNodeCredentialIssues(buildPredefinedAuthNode(), httpRequestWithSslAuth);
 
 					expect(result?.credentials?.[OAUTH2_API]).toEqual([
-						'Private credentials require a trigger that establishes who is running the workflow, such as a Manual, Chat, or Sub-workflow trigger. Change the trigger, or switch this credential to Static.',
+						"End-user credentials aren't supported with the Webhook trigger. Use a Manual, Chat, Webhook, or MCP server trigger, or switch this credential to Fixed.",
 					]);
 				});
 
@@ -1308,7 +1325,7 @@ describe('useNodeHelpers()', () => {
 				// Trigger incompatibility blocks publish regardless of who connected the
 				// credential, so the editor warns even when the user did not connect it.
 				expect(result?.credentials?.[NOTION_API]?.[0]).toContain(
-					'Private credentials require a trigger that establishes who is running the workflow',
+					"End-user credentials aren't supported with the Webhook trigger",
 				);
 			});
 		});

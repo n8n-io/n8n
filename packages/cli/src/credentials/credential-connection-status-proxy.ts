@@ -33,8 +33,21 @@ export class CredentialConnectionStatusProxy implements ICredentialConnectionSta
 		await this.provider.deleteAllUserEntries(credentialId, em);
 	}
 
-	async cleanupOrphanedEntriesForUsers(userIds: string[], em?: EntityManager): Promise<void> {
+	async cleanupOrphanedEntriesForUsers(
+		userIds: string[],
+		em?: EntityManager,
+		credentialId?: string,
+	): Promise<void> {
 		if (!this.provider || userIds.length === 0) return;
-		await this.provider.cleanupOrphanedEntriesForUsers(userIds, em);
+		await this.provider.cleanupOrphanedEntriesForUsers(userIds, em, credentialId);
+	}
+
+	async cleanupOrphanedEntriesForProjects(
+		credentialId: string,
+		projectIds: string[],
+		em?: EntityManager,
+	): Promise<void> {
+		if (!this.provider || projectIds.length === 0) return;
+		await this.provider.cleanupOrphanedEntriesForProjects(credentialId, projectIds, em);
 	}
 }

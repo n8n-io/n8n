@@ -1,34 +1,17 @@
+import { ScheduledTaskStatus } from '@n8n/constants';
 import { Column, Entity, Generated, Index, PrimaryColumn } from '@n8n/typeorm';
 
 import { DateTimeColumn, JsonColumn, WithCreatedAt, dbType } from './abstract-entity';
 import { idStringifier } from '../utils/transformers';
 
-/**
- * Where a task is in its lifecycle, from waiting to run to a final outcome.
- */
-export const ScheduledTaskStatus = {
-	Pending: 'pending',
-	Running: 'running',
-	Succeeded: 'succeeded',
-	Failed: 'failed',
-	Missed: 'missed',
-	Cancelled: 'cancelled',
-} as const;
-
-export type ScheduledTaskStatus = (typeof ScheduledTaskStatus)[keyof typeof ScheduledTaskStatus];
-
-/** All statuses as a runtime list. */
-export const ScheduledTaskStatusList = Object.values(ScheduledTaskStatus);
-
-/** Statuses of finished work: the only rows retention may delete. */
-export const TerminalTaskStatusList = [
-	ScheduledTaskStatus.Succeeded,
-	ScheduledTaskStatus.Failed,
-	ScheduledTaskStatus.Missed,
-	ScheduledTaskStatus.Cancelled,
-] as const;
-
-export type TerminalTaskStatus = (typeof TerminalTaskStatusList)[number];
+// Defined in `@n8n/constants` (shared with `@n8n/scheduler`), re-exported here
+// so the schema side keeps exposing its vocabulary.
+export {
+	ScheduledTaskStatus,
+	ScheduledTaskStatusList,
+	type TerminalTaskStatus,
+	TerminalTaskStatusList,
+} from '@n8n/constants';
 
 /**
  * One concrete run of a {@link ScheduledJob} at a specific time.

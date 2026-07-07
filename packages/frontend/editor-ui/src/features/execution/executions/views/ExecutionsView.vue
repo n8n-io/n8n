@@ -30,13 +30,8 @@ const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const overview = useProjectPages();
 
-const {
-	executionsCount,
-	executionsCountEstimated,
-	concurrentExecutionsCount,
-	filters,
-	allExecutions,
-} = storeToRefs(executionsStore);
+const { executionsCount, concurrentExecutionsCount, filters, allExecutions } =
+	storeToRefs(executionsStore);
 
 onBeforeMount(async () => {
 	await loadWorkflows();
@@ -98,7 +93,6 @@ async function onExecutionStop() {
 		:executions="allExecutions"
 		:filters="filters"
 		:total="executionsCount"
-		:estimated-total="executionsCountEstimated"
 		:concurrent-total="concurrentExecutionsCount"
 		@execution:stop="onExecutionStop"
 		@update:filters="onUpdateFilters"

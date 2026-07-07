@@ -27,6 +27,12 @@ export interface MaterializerOptions {
 	 * How long to defer a job whose schedule cannot be planned before retrying, in seconds.
 	 */
 	planRetrySeconds: number;
+
+	/**
+	 * The IANA zone a cron job's `null` timezone resolves to. Callers should pass
+	 * the instance-default timezone; the default is only a safe fallback.
+	 */
+	defaultTimezone: string;
 }
 
 export const DEFAULT_MATERIALIZER_OPTIONS: MaterializerOptions = {
@@ -34,4 +40,5 @@ export const DEFAULT_MATERIALIZER_OPTIONS: MaterializerOptions = {
 	batchSize: 100,
 	maxPerJob: 1000,
 	planRetrySeconds: Time.hours.toSeconds,
+	defaultTimezone: 'UTC',
 };

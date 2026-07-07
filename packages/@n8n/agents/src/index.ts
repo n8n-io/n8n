@@ -157,6 +157,7 @@ export {
 	validateRuntimeSkill,
 } from './skills';
 export type {
+	LoadRuntimeSkillSourceFromDirectoryOptions,
 	RenderSkillCatalogOptions,
 	RuntimeSkill,
 	RuntimeSkillContent,

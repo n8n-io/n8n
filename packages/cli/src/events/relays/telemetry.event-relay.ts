@@ -626,6 +626,8 @@ export class TelemetryEventRelay extends EventRelay {
 		isDynamic,
 		usesExternalSecrets,
 		jweEnabled,
+		supportsManagedAuth,
+		usesManagedAuth,
 	}: RelayEventMap['credentials-created']) {
 		this.telemetry.track('User created credentials', {
 			user_id: user.id,
@@ -638,6 +640,8 @@ export class TelemetryEventRelay extends EventRelay {
 			is_private: isDynamic ?? false,
 			uses_external_secrets: usesExternalSecrets ?? false,
 			jwe_enabled: jweEnabled ?? false,
+			credential_supports_managed_auth: supportsManagedAuth ?? false,
+			credential_uses_managed_auth: usesManagedAuth ?? false,
 		});
 	}
 
@@ -667,6 +671,8 @@ export class TelemetryEventRelay extends EventRelay {
 		isDynamic,
 		usesExternalSecrets,
 		jweEnabled,
+		supportsManagedAuth,
+		usesManagedAuth,
 	}: RelayEventMap['credentials-updated']) {
 		this.telemetry.track('User updated credentials', {
 			user_id: user.id,
@@ -676,6 +682,8 @@ export class TelemetryEventRelay extends EventRelay {
 			is_private: isDynamic ?? false,
 			uses_external_secrets: usesExternalSecrets ?? false,
 			jwe_enabled: jweEnabled ?? false,
+			credential_supports_managed_auth: supportsManagedAuth ?? false,
+			credential_uses_managed_auth: usesManagedAuth ?? false,
 		});
 	}
 
@@ -778,12 +786,16 @@ export class TelemetryEventRelay extends EventRelay {
 		user,
 		credentialId,
 		credentialType,
+		supportsManagedAuth,
+		usesManagedAuth,
 	}: RelayEventMap['private-credential-user-connected']) {
 		this.telemetry.track('User connected to private credential', {
 			user_id: user.id,
 			user_role: user.role?.slug,
 			credential_type: credentialType,
 			credential_id: credentialId,
+			credential_supports_managed_auth: supportsManagedAuth ?? false,
+			credential_uses_managed_auth: usesManagedAuth ?? false,
 		});
 	}
 

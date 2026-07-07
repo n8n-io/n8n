@@ -136,14 +136,18 @@ function makeKey(overrides: Partial<ApiKey> = {}): ApiKey {
 	};
 }
 
-const assertHintsAreShown = () => {
+const assertHintsAreShown = (expectedPlaygroundHref: string) => {
 	const apiDocsLink = screen.getByTestId('api-docs-link');
 	expect(apiDocsLink).toBeInTheDocument();
 	expect(apiDocsLink).toHaveAttribute('href', 'https://docs.n8n.io/api');
 	expect(apiDocsLink).toHaveAttribute('target', '_blank');
 
 	expect(screen.getByTestId('webhook-docs-link')).toBeInTheDocument();
-	expect(screen.getByTestId('api-playground-link')).toBeInTheDocument();
+
+	const playgroundLink = screen.getByTestId('api-playground-link');
+	expect(playgroundLink).toBeInTheDocument();
+	// The playground href must have exactly one slash between baseUrl and publicApiPath.
+	expect(playgroundLink).toHaveAttribute('href', expectedPlaygroundHref);
 };
 
 describe('SettingsApiView', () => {
@@ -181,7 +185,8 @@ describe('SettingsApiView', () => {
 		const dateInTheFuture = DateTime.now().plus({ days: 1 });
 
 		rootStore.baseUrl = 'http://localhost:5678';
-		settingsStore.publicApiPath = '/api';
+		// Match the backend default (no leading slash) so the join logic is tested as in prod.
+		settingsStore.publicApiPath = 'api';
 		settingsStore.publicApiLatestVersion = 1;
 		settingsStore.isPublicApiEnabled = true;
 		settingsStore.isSwaggerUIEnabled = true;
@@ -210,12 +215,14 @@ describe('SettingsApiView', () => {
 		// "Last used" is "Never" until populated.
 		expect(screen.getAllByText('Never').length).toBeGreaterThan(0);
 
-		assertHintsAreShown();
+		// Swagger UI enabled: link points at the instance's API docs, joined with a single slash.
+		assertHintsAreShown('http://localhost:5678/api/v1/docs');
 	});
 
 	it('renders the table when keys exist, without swagger', () => {
 		rootStore.baseUrl = 'http://localhost:5678';
-		settingsStore.publicApiPath = '/api';
+		// Match the backend default (no leading slash) so the join logic is tested as in prod.
+		settingsStore.publicApiPath = 'api';
 		settingsStore.publicApiLatestVersion = 1;
 		settingsStore.isPublicApiEnabled = true;
 		settingsStore.isSwaggerUIEnabled = false;
@@ -229,7 +236,31 @@ describe('SettingsApiView', () => {
 		renderComponent(SettingsApiView);
 
 		expect(screen.getByText('test-key-1')).toBeInTheDocument();
-		assertHintsAreShown();
+		// Swagger UI disabled: link falls back to the public docs API reference.
+		assertHintsAreShown('https://docs.n8n.io/api/api-reference/');
+	});
+
+	it('joins baseUrl and publicApiPath with a single slash regardless of their slash shape', () => {
+		// baseUrl with a trailing slash + publicApiPath with a leading slash would
+		// otherwise concatenate into a double slash ("…//api/…").
+		rootStore.baseUrl = 'http://localhost:5678/';
+		settingsStore.publicApiPath = '/api';
+		settingsStore.publicApiLatestVersion = 1;
+		settingsStore.isPublicApiEnabled = true;
+		settingsStore.isSwaggerUIEnabled = true;
+		cloudStore.userIsTrialing = false;
+		apiKeysStore.apiKeys = [makeKey({ id: '1', label: 'test-key-1', apiKey: '****Atcr' })];
+		apiKeysStore.allCount = 1;
+		apiKeysStore.mineCount = 1;
+		apiKeysStore.totalMineCount = apiKeysStore.mineCount;
+		apiKeysStore.totalAllCount = apiKeysStore.allCount || 1;
+
+		renderComponent(SettingsApiView);
+
+		expect(screen.getByTestId('api-playground-link')).toHaveAttribute(
+			'href',
+			'http://localhost:5678/api/v1/docs',
+		);
 	});
 
 	it('shows the revoke confirm dialog when the revoke action is clicked', async () => {
