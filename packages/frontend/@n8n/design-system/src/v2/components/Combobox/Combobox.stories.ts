@@ -115,6 +115,13 @@ const slotItems: ComboboxItemType[] = [
 	},
 ];
 
+const itemsWithDisabledOption: ComboboxItemType[] = [
+	{ label: 'Backlog', value: 'backlog' },
+	{ label: 'Todo', value: 'todo' },
+	{ label: 'In Progress', value: 'in_progress' },
+	{ label: 'Done', value: 'done', disabled: true },
+];
+
 const meta = {
 	title: 'Experimental/Combobox',
 	component: Combobox,
@@ -203,6 +210,29 @@ export const Disabled = {
 	},
 } satisfies Story;
 
+export const DisabledItem = {
+	render: (args) => ({
+		components: { Combobox },
+		setup() {
+			const value = ref(args.modelValue);
+			return { args, value };
+		},
+		template: `
+		<div class="combobox-story-container">
+			<Combobox
+				v-bind="args"
+				v-model="value"
+				placeholder="Select status..."
+			/>
+		</div>
+		`,
+	}),
+	args: {
+		items: itemsWithDisabledOption,
+		modelValue: undefined,
+	},
+} satisfies Story;
+
 export const Controlled = {
 	render: () => ({
 		components: { Combobox },
@@ -237,28 +267,26 @@ export const Controlled = {
 			};
 		},
 		template: `
-			<div class="combobox-story-container" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--spacing--md);">
-				<section style="display: flex; flex-direction: column; gap: var(--spacing--2xs);">
-					<h3 style="margin: 0; font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
-						Controlled
-					</h3>
-					<p style="margin: 0; font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
+			<div class="combobox-story-container combobox-story-stack">
+				<section class="combobox-story-section">
+					<h3 class="combobox-story-heading">Controlled</h3>
+					<p class="combobox-story-description">
 						Value and open state are owned by the parent via
 						<code>v-model</code> and <code>v-model:open</code>.
 					</p>
 
-					<dl style="display: flex; flex-direction: column; gap: var(--spacing--4xs); margin: 0; font-size: var(--font-size--2xs);">
-						<div style="display: grid; grid-template-columns: 5rem 1fr; gap: var(--spacing--3xs);">
-							<dt style="margin: 0; color: var(--color--text--tint-1);">Selected</dt>
-							<dd style="margin: 0; word-break: break-word;">{{ controlledValue ?? 'none' }}</dd>
+					<dl class="combobox-story-meta">
+						<div class="combobox-story-meta-row">
+							<dt class="combobox-story-meta-label">Selected</dt>
+							<dd class="combobox-story-meta-value">{{ controlledValue ?? 'none' }}</dd>
 						</div>
-						<div style="display: grid; grid-template-columns: 5rem 1fr; gap: var(--spacing--3xs);">
-							<dt style="margin: 0; color: var(--color--text--tint-1);">Open</dt>
-							<dd style="margin: 0;">{{ controlledOpen ? 'true' : 'false' }}</dd>
+						<div class="combobox-story-meta-row">
+							<dt class="combobox-story-meta-label">Open</dt>
+							<dd class="combobox-story-meta-value">{{ controlledOpen ? 'true' : 'false' }}</dd>
 						</div>
 					</dl>
 
-					<div style="display: flex; flex-wrap: wrap; gap: var(--spacing--3xs);">
+					<div class="combobox-story-actions">
 						<button type="button" @click="selectCredentials">Select credentials</button>
 						<button type="button" @click="clearSelection">Clear selection</button>
 						<button type="button" @click="openCombobox">Open</button>
@@ -272,12 +300,25 @@ export const Controlled = {
 						placeholder="Search..."
 					/>
 				</section>
+			</div>
+		`,
+	}),
+	args: {
+		items: controlledDemoItems,
+	},
+} satisfies Story;
 
-				<section style="display: flex; flex-direction: column; gap: var(--spacing--2xs);">
-					<h3 style="margin: 0; font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
-						Uncontrolled
-					</h3>
-					<p style="margin: 0; font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
+export const Uncontrolled = {
+	render: () => ({
+		components: { Combobox },
+		setup() {
+			return { controlledDemoItems };
+		},
+		template: `
+			<div class="combobox-story-container combobox-story-stack">
+				<section class="combobox-story-section">
+					<h3 class="combobox-story-heading">Uncontrolled</h3>
+					<p class="combobox-story-description">
 						Initial state is set with <code>default-value</code> and
 						<code>default-open</code>. The combobox manages its own state after mount.
 					</p>

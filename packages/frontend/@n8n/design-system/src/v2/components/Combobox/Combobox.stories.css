@@ -4,3 +4,57 @@
 	padding: 40px;
 	max-width: 400px;
 }
+
+.combobox-story-stack {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--md);
+}
+
+.combobox-story-section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
+.combobox-story-heading {
+	margin: 0;
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--bold);
+}
+
+.combobox-story-description {
+	margin: 0;
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+}
+
+.combobox-story-meta {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	margin: 0;
+	font-size: var(--font-size--2xs);
+}
+
+.combobox-story-meta-row {
+	display: grid;
+	grid-template-columns: 5rem 1fr;
+	gap: var(--spacing--3xs);
+}
+
+.combobox-story-meta-label {
+	margin: 0;
+	color: var(--color--text--tint-1);
+}
+
+.combobox-story-meta-value {
+	margin: 0;
+	word-break: break-word;
+}
+
+.combobox-story-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--3xs);
+}

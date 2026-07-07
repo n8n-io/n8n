@@ -295,8 +295,10 @@ function getDisplayValue(value: unknown): string {
 }
 
 .comboboxSeparator {
-	height: 1px;
-	background-color: var(--border-color);
-	margin: var(--spacing--3xs) 0;
+	height: 0;
+	border: 0;
+	margin-block: var(--spacing--3xs);
+	margin-inline: calc(-1 * var(--spacing--4xs));
+	box-shadow: inset 0 -1px 0 0 var(--border-color);
 }
 </style>
