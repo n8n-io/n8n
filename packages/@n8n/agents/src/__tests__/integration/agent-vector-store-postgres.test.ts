@@ -5,47 +5,18 @@
  * provider keys; self-skips in CI replay since Postgres can't be replayed
  * from cassettes.
  */
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import type { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { findLastTextContent } from './helpers';
+import { createPgVectorTable, loadBulkFixture } from './vector-store-helpers';
 import { Agent, VectorStore } from '../../index';
 import { PgVectorStore } from '../../vector-stores/postgres';
 
 const PG_URL = process.env.PG_VECTOR_TEST_URL;
 const hasKeys = Boolean(process.env.ANTHROPIC_API_KEY) && Boolean(process.env.OPENAI_API_KEY);
 
-interface FixtureDocument {
-	id: string;
-	content: string;
-	metadata: { title: string; category: string };
-	vector: number[];
-}
-
-interface BulkFixture {
-	dimensions: number;
-	documents: FixtureDocument[];
-}
-
-// vitest injects __dirname for TypeScript test files in the node environment.
-const fixture: BulkFixture = JSON.parse(
-	readFileSync(path.resolve(__dirname, '../fixtures/bulk-vector-fixture.json'), 'utf-8'),
-);
-
-/** Stands in for the BYO user's own setup; dimensions match `openai/text-embedding-3-small`. */
-async function createVectorTable(pool: Pool, tableName: string): Promise<void> {
-	await pool.query('CREATE EXTENSION IF NOT EXISTS vector;');
-	await pool.query(
-		`CREATE TABLE IF NOT EXISTS "${tableName}" (
-			id TEXT PRIMARY KEY,
-			content TEXT NOT NULL,
-			metadata JSONB NOT NULL DEFAULT '{}',
-			embedding vector(${fixture.dimensions}) NOT NULL
-		);`,
-	);
-}
+const fixture = loadBulkFixture();
 
 describe.skipIf(!PG_URL || !hasKeys)('Agent + PgVectorStore end-to-end', () => {
 	const tableName = `vs_e2e_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
@@ -56,7 +27,7 @@ describe.skipIf(!PG_URL || !hasKeys)('Agent + PgVectorStore end-to-end', () => {
 	beforeAll(async () => {
 		const { Pool: PoolCtor } = await import('pg');
 		adminPool = new PoolCtor({ connectionString: PG_URL });
-		await createVectorTable(adminPool, tableName);
+		await createPgVectorTable(adminPool, tableName, fixture.dimensions);
 
 		store = new PgVectorStore('knowledge-base', { connectionString: PG_URL!, tableName });
 		await store.upsert(

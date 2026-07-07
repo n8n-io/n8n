@@ -5,11 +5,10 @@
  * keys; self-skips in CI replay since Qdrant can't be replayed from cassettes.
  */
 import type { QdrantClient } from '@qdrant/js-client-rest';
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { findLastTextContent } from './helpers';
+import { loadBulkFixture } from './vector-store-helpers';
 import { Agent, VectorStore } from '../../index';
 import { QdrantVectorStore } from '../../vector-stores/qdrant';
 
@@ -17,22 +16,7 @@ const QDRANT_URL = process.env.QDRANT_TEST_URL;
 const QDRANT_API_KEY = process.env.QDRANT_TEST_API_KEY;
 const hasKeys = Boolean(process.env.ANTHROPIC_API_KEY) && Boolean(process.env.OPENAI_API_KEY);
 
-interface FixtureDocument {
-	id: string;
-	content: string;
-	metadata: { title: string; category: string };
-	vector: number[];
-}
-
-interface BulkFixture {
-	dimensions: number;
-	documents: FixtureDocument[];
-}
-
-// vitest injects __dirname for TypeScript test files in the node environment.
-const fixture: BulkFixture = JSON.parse(
-	readFileSync(path.resolve(__dirname, '../fixtures/bulk-vector-fixture.json'), 'utf-8'),
-);
+const fixture = loadBulkFixture();
 
 describe.skipIf(!QDRANT_URL || !hasKeys)('Agent + QdrantVectorStore end-to-end', () => {
 	const collectionName = `vs_e2e_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;

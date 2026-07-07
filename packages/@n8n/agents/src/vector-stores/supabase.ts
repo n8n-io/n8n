@@ -73,6 +73,13 @@ export type SupabaseVectorStoreOptions = {
  * subquery, so metadata filters are applied before `topK` truncates the
  * results rather than after, matching `PgVectorStore` semantics.
  *
+ * On tables with an HNSW index, a selective metadata filter can make the
+ * index scan return fewer than `topK` rows even when more matches exist.
+ * `PgVectorStore` works around this with a per-query
+ * `hnsw.iterative_scan` setting, which PostgREST cannot set — if you use
+ * an HNSW index, set it at the role level instead:
+ * `ALTER ROLE authenticator SET hnsw.iterative_scan = relaxed_order;`
+ *
  * Filtering uses jsonb containment (`cs`) on the `metadata` column, so
  * `eq`/`in` are type-correct (number `5` does not match string `"5"`) and
  * `ne`/`nin` match rows that never had the filtered key.

@@ -7,10 +7,9 @@
  * backend actually returns.
  */
 import type { QdrantClient } from '@qdrant/js-client-rest';
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { loadBulkFixture, localTopIds } from './vector-store-helpers';
 import { QdrantVectorStore } from '../../vector-stores/qdrant';
 
 const QDRANT_URL = process.env.QDRANT_TEST_URL;
@@ -18,50 +17,7 @@ const QDRANT_API_KEY = process.env.QDRANT_TEST_API_KEY;
 
 const HOOK_TIMEOUT_MS = 60_000;
 
-interface FixtureDocument {
-	id: string;
-	content: string;
-	metadata: { title: string; category: string };
-	vector: number[];
-}
-
-interface FixtureQuery {
-	text: string;
-	vector: number[];
-	expectedTopId: string;
-}
-
-interface BulkFixture {
-	dimensions: number;
-	documents: FixtureDocument[];
-	queries: FixtureQuery[];
-}
-
-// vitest injects __dirname for TypeScript test files in the node environment.
-const fixture: BulkFixture = JSON.parse(
-	readFileSync(path.resolve(__dirname, '../fixtures/bulk-vector-fixture.json'), 'utf-8'),
-);
-
-function cosineSimilarity(a: number[], b: number[]): number {
-	let dot = 0;
-	let magA = 0;
-	let magB = 0;
-	for (let i = 0; i < a.length; i++) {
-		dot += a[i] * b[i];
-		magA += a[i] * a[i];
-		magB += b[i] * b[i];
-	}
-	return dot / (Math.sqrt(magA) * Math.sqrt(magB));
-}
-
-/** Locally computed ground truth — independent of any backend's search semantics. */
-function localTopIds(docs: FixtureDocument[], queryVector: number[], topK: number): string[] {
-	return [...docs]
-		.map((doc) => ({ id: doc.id, score: cosineSimilarity(queryVector, doc.vector) }))
-		.sort((a, b) => b.score - a.score)
-		.slice(0, topK)
-		.map((doc) => doc.id);
-}
+const fixture = loadBulkFixture();
 
 describe.skipIf(!QDRANT_URL)('QdrantVectorStore — bulk fixture corpus', () => {
 	const collectionName = `vs_bulk_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;

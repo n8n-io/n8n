@@ -28,7 +28,6 @@ import { createEmbeddingModel } from '../../runtime/model/model-factory';
 loadEnv({ path: path.resolve(__dirname, '../../../.env') });
 
 const DOC_COUNT = 30;
-const PAGE_SIZE = 100;
 const DIMENSIONS = 1536;
 const CATEGORIES = ['history', 'science', 'geography'] as const;
 const HF_DATASET = 'Qdrant/dbpedia-entities-openai3-text-embedding-3-small-1536-100K';
@@ -101,17 +100,12 @@ async function fetchWithRetry(url: string, retries = 5): Promise<Response> {
 }
 
 async function fetchHfRows(): Promise<HfRow[]> {
-	const rows: HfRow[] = [];
-	for (let offset = 0; offset < DOC_COUNT; offset += PAGE_SIZE) {
-		const length = Math.min(PAGE_SIZE, DOC_COUNT - offset);
-		const url =
-			`https://datasets-server.huggingface.co/rows?dataset=${encodeURIComponent(HF_DATASET)}` +
-			`&config=default&split=train&offset=${offset}&length=${length}`;
-		const res = await fetchWithRetry(url);
-		const body = (await res.json()) as { rows: Array<{ row: HfRow }> };
-		rows.push(...body.rows.map((r) => r.row));
-	}
-	return rows;
+	const url =
+		`https://datasets-server.huggingface.co/rows?dataset=${encodeURIComponent(HF_DATASET)}` +
+		`&config=default&split=train&offset=0&length=${DOC_COUNT}`;
+	const res = await fetchWithRetry(url);
+	const body = (await res.json()) as { rows: Array<{ row: HfRow }> };
+	return body.rows.map((r) => r.row);
 }
 
 async function embedQueries(queries: string[]): Promise<number[][]> {

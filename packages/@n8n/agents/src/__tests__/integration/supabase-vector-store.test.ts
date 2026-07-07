@@ -11,6 +11,11 @@ import { MockEmbeddingModelV3 } from 'ai/test';
 import type { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import {
+	createSupabaseVectorTableAndFunction,
+	dropSupabaseVectorTableAndFunction,
+	waitUntilQueryable,
+} from './vector-store-helpers';
 import { VectorStore } from '../../sdk/vector-store';
 import { SupabaseVectorStore } from '../../vector-stores/supabase';
 
@@ -18,61 +23,7 @@ const SUPABASE_URL = process.env.SUPABASE_TEST_URL;
 const SUPABASE_API_KEY = process.env.SUPABASE_TEST_API_KEY;
 const SUPABASE_DB_URL = process.env.SUPABASE_TEST_DB_URL;
 
-const SCHEMA_WAIT_TIMEOUT_MS = 15_000;
 const HOOK_TIMEOUT_MS = 45_000;
-
-/** Stands in for the BYO user's own setup, since SupabaseVectorStore itself never runs DDL. */
-async function createVectorTableAndFunction(
-	pool: Pool,
-	tableName: string,
-	queryName: string,
-	opts: { dimensions: number },
-): Promise<void> {
-	await pool.query('CREATE EXTENSION IF NOT EXISTS vector;');
-	await pool.query(
-		`CREATE TABLE IF NOT EXISTS "${tableName}" (
-			id TEXT PRIMARY KEY,
-			content TEXT NOT NULL,
-			metadata JSONB NOT NULL DEFAULT '{}',
-			embedding vector(${opts.dimensions}) NOT NULL
-		);`,
-	);
-	await pool.query(
-		`CREATE OR REPLACE FUNCTION "${queryName}"(query_embedding vector(${opts.dimensions}))
-		 RETURNS TABLE (id text, content text, metadata jsonb, similarity float)
-		 LANGUAGE sql STABLE AS $$
-			SELECT id, content, metadata, 1 - (embedding <=> query_embedding) AS similarity
-			FROM "${tableName}"
-			ORDER BY embedding <=> query_embedding;
-		 $$;`,
-	);
-	// PostgREST caches the schema; new tables/functions aren't servable until it reloads.
-	await pool.query("NOTIFY pgrst, 'reload schema';");
-}
-
-async function dropVectorTableAndFunction(
-	pool: Pool,
-	tableName: string,
-	queryName: string,
-): Promise<void> {
-	await pool.query(`DROP FUNCTION IF EXISTS "${queryName}"(vector);`);
-	await pool.query(`DROP TABLE IF EXISTS "${tableName}";`);
-}
-
-/** PostgREST's schema cache reloads asynchronously after DDL — poll until the new function is servable. */
-async function waitUntilQueryable(store: SupabaseVectorStore, dimensions: number): Promise<void> {
-	const zeroVector: number[] = new Array(dimensions).fill(0);
-	const deadline = Date.now() + SCHEMA_WAIT_TIMEOUT_MS;
-	for (;;) {
-		try {
-			await store.query(zeroVector, { topK: 1 });
-			return;
-		} catch (error) {
-			if (Date.now() > deadline) throw error;
-			await new Promise((resolve) => setTimeout(resolve, 500));
-		}
-	}
-}
 
 describe.skipIf(!SUPABASE_URL || !SUPABASE_API_KEY || !SUPABASE_DB_URL)(
 	'SupabaseVectorStore',
@@ -86,7 +37,7 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_API_KEY || !SUPABASE_DB_URL)(
 		beforeAll(async () => {
 			const { Pool: PoolCtor } = await import('pg');
 			adminPool = new PoolCtor({ connectionString: SUPABASE_DB_URL });
-			await createVectorTableAndFunction(adminPool, tableName, queryName, { dimensions: 3 });
+			await createSupabaseVectorTableAndFunction(adminPool, tableName, queryName, 3);
 			store = new SupabaseVectorStore('supabase-integration', {
 				url: SUPABASE_URL!,
 				apiKey: SUPABASE_API_KEY!,
@@ -97,7 +48,7 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_API_KEY || !SUPABASE_DB_URL)(
 		}, HOOK_TIMEOUT_MS);
 
 		afterAll(async () => {
-			await dropVectorTableAndFunction(adminPool, tableName, queryName);
+			await dropSupabaseVectorTableAndFunction(adminPool, tableName, queryName);
 			await store.close();
 			await adminPool.end();
 		});
@@ -142,9 +93,12 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_API_KEY || !SUPABASE_DB_URL)(
 			async () => {
 				const roundTripTable = `${tableName}_roundtrip`;
 				const roundTripQueryName = `${queryName}_roundtrip`;
-				await createVectorTableAndFunction(adminPool, roundTripTable, roundTripQueryName, {
-					dimensions: 3,
-				});
+				await createSupabaseVectorTableAndFunction(
+					adminPool,
+					roundTripTable,
+					roundTripQueryName,
+					3,
+				);
 				const roundTripStore = new SupabaseVectorStore('supabase-integration-roundtrip', {
 					url: SUPABASE_URL!,
 					apiKey: SUPABASE_API_KEY!,
@@ -169,7 +123,7 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_API_KEY || !SUPABASE_DB_URL)(
 
 					expect(results[0].content).toBe('refunds take 5 days');
 				} finally {
-					await dropVectorTableAndFunction(adminPool, roundTripTable, roundTripQueryName);
+					await dropSupabaseVectorTableAndFunction(adminPool, roundTripTable, roundTripQueryName);
 					await roundTripStore.close();
 				}
 			},
@@ -190,9 +144,7 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_API_KEY || !SUPABASE_DB_URL)(
 		beforeAll(async () => {
 			const { Pool: PoolCtor } = await import('pg');
 			adminPool = new PoolCtor({ connectionString: SUPABASE_DB_URL });
-			await createVectorTableAndFunction(adminPool, filterTableName, filterQueryName, {
-				dimensions: 3,
-			});
+			await createSupabaseVectorTableAndFunction(adminPool, filterTableName, filterQueryName, 3);
 			filterStore = new SupabaseVectorStore('supabase-filter-integration', {
 				url: SUPABASE_URL!,
 				apiKey: SUPABASE_API_KEY!,
@@ -221,7 +173,7 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_API_KEY || !SUPABASE_DB_URL)(
 		}, HOOK_TIMEOUT_MS);
 
 		afterAll(async () => {
-			await dropVectorTableAndFunction(adminPool, filterTableName, filterQueryName);
+			await dropSupabaseVectorTableAndFunction(adminPool, filterTableName, filterQueryName);
 			await filterStore.close();
 			await adminPool.end();
 		});
@@ -252,6 +204,18 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_API_KEY || !SUPABASE_DB_URL)(
 					conditions: [
 						{ key: 'topic', operator: 'eq', value: 'billing' },
 						{ key: 'count', operator: 'eq', value: 5 },
+					],
+					combineWith: 'and',
+				}),
+			).toEqual(['a']);
+		});
+
+		it('combines in with another condition under AND', async () => {
+			expect(
+				await idsFor({
+					conditions: [
+						{ key: 'topic', operator: 'in', value: ['billing', 'ops'] },
+						{ key: 'active', operator: 'eq', value: true },
 					],
 					combineWith: 'and',
 				}),
