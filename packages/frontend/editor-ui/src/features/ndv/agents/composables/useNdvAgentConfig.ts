@@ -93,7 +93,7 @@ export function useNdvAgentConfig(
 
 	const { canUpdate } = useAgentPermissions(projectId);
 
-	const { config, loading, fetchConfig, updateConfig } = useAgentConfig();
+	const { config, loading, repoint, fetchConfig, updateConfig } = useAgentConfig();
 	const localConfig = ref<AgentJsonConfig | null>(null);
 	const agent = ref<AgentResource | null>(null);
 	const connectedTriggers = ref<string[]>([]);
@@ -286,6 +286,11 @@ export function useNdvAgentConfig(
 				localConfig.value = null;
 				agent.value = null;
 				connectedTriggers.value = [];
+				// Repoint the shared config key BEFORE flushing, so the flushed
+				// save for the previous agent resolves as stale — otherwise its
+				// response would repopulate `localConfig` (via the config watcher)
+				// with the old agent's data, reopening the window just closed.
+				repoint(pId, id);
 			}
 
 			if (previousId) await flush().catch(() => {});

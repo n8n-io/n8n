@@ -266,6 +266,45 @@ describe('useNdvAgentConfig', () => {
 		expect(api.localConfig.value?.instructions).toBe('config-agent-B');
 	});
 
+	it('does not repopulate the working copy when the previous agent’s flushed save lands mid-switch', async () => {
+		let resolveB: (value: ReturnType<typeof makeConfig>) => void = () => {};
+		getAgentConfigMock.mockImplementation(async (_ctx, _pid, aid: string) => {
+			if (aid === 'agent-B') {
+				return await new Promise<ReturnType<typeof makeConfig>>((resolve) => (resolveB = resolve));
+			}
+			return makeConfig({ instructions: `config-${aid}` });
+		});
+		getAgentMock.mockImplementation(async (_ctx, _pid, aid: string) =>
+			makeAgent({ id: aid, name: `agent-${aid}` }),
+		);
+		updateAgentConfigMock.mockResolvedValue({
+			config: makeConfig({ instructions: 'saved-config-agent-A' }),
+			versionId: 'v3',
+		});
+
+		const node = ref<INodeUi | null>(makeAgentNode('agent-A'));
+		const { api } = mountComposable(node);
+		await flushPromises();
+
+		// Leave an edit pending on A, then switch — the watcher flushes it.
+		api.scheduleConfigUpdate({ instructions: 'pending edit on A' });
+		node.value = makeAgentNode('agent-B');
+		await flushPromises();
+
+		// A's flushed save landed, addressed to A — but its response must
+		// resolve as stale and must NOT repopulate the working copy through the
+		// config watcher while B's fetch is still in flight.
+		expect(updateAgentConfigMock.mock.calls[0][2]).toBe('agent-A');
+		expect(updateAgentConfigMock.mock.calls[0][3]).toEqual(
+			expect.objectContaining({ instructions: 'pending edit on A' }),
+		);
+		expect(api.localConfig.value).toBeNull();
+
+		resolveB(makeConfig({ instructions: 'config-agent-B' }));
+		await flushPromises();
+		expect(api.localConfig.value?.instructions).toBe('config-agent-B');
+	});
+
 	it('does not schedule a save when canUpdate is false', async () => {
 		canUpdateRef.value = false;
 		const node = ref<INodeUi | null>(makeAgentNode('agent-1'));
