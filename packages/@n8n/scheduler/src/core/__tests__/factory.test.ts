@@ -1,6 +1,7 @@
 import { ScheduledTaskStatus } from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
 
+import { InvalidLifecycleOptionsError } from '../errors';
 import { createScheduler } from '../factory';
 import type { SchedulerDeps, SchedulerTaskStore } from '../factory';
 import type { MaterializerTransaction, RunInTransaction } from '../materializer';
@@ -315,6 +316,171 @@ describe('createScheduler materialize', () => {
 			message: 'Scheduler materializer skipped occurrences that were already recorded',
 			context: { planned: 1, recorded: 0 },
 		});
+	});
+});
+
+describe('createScheduler lifecycle', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+		// Midpoint random: first ticks at half the interval, no per-tick jitter.
+		vi.spyOn(Math, 'random').mockReturnValue(0.5);
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+		vi.restoreAllMocks();
+	});
+
+	it('start drives each pass on its cadence and a failing pass is reported and retried', async () => {
+		const { scheduler, taskStore, onEvent } = makeScheduler();
+		taskStore.findExpiredLeases.mockRejectedValue(new Error('db down'));
+
+		scheduler.start();
+		// Half the reaper's 30s default interval: its first, failing sweep.
+		await vi.advanceTimersByTimeAsync(15_000);
+		expect(taskStore.findExpiredLeases).toHaveBeenCalledTimes(1);
+		expect(onEvent).toHaveBeenCalledWith({
+			level: 'error',
+			message: 'Scheduler pass failed; retrying on its next tick',
+			context: { pass: 'reaper', error: 'db down' },
+		});
+
+		// One full interval later the loop survived the failure and swept again.
+		await vi.advanceTimersByTimeAsync(30_000);
+		expect(taskStore.findExpiredLeases).toHaveBeenCalledTimes(2);
+
+		await scheduler.stop();
+	});
+
+	it('start runs the materializer sweep through the bound transaction', async () => {
+		const materializerTransaction = vi.fn();
+		const { scheduler } = makeScheduler({ materializerTransaction });
+
+		scheduler.start();
+		// Half the sweep's 10s default interval: its first pass.
+		await vi.advanceTimersByTimeAsync(5000);
+
+		expect(materializerTransaction).toHaveBeenCalledTimes(1);
+
+		await scheduler.stop();
+	});
+
+	it('stop halts every loop', async () => {
+		const materializerTransaction = vi.fn();
+		const { scheduler, taskStore } = makeScheduler({ materializerTransaction });
+		taskStore.findExpiredLeases.mockResolvedValue([]);
+		taskStore.deleteFinishedOlderThan.mockResolvedValue(0);
+
+		scheduler.start();
+		await vi.advanceTimersByTimeAsync(15_000);
+		const sweeps = materializerTransaction.mock.calls.length;
+		expect(sweeps).toBeGreaterThan(0);
+		expect(taskStore.findExpiredLeases).toHaveBeenCalledTimes(1);
+
+		await scheduler.stop();
+		await vi.advanceTimersByTimeAsync(60 * 60_000);
+
+		expect(materializerTransaction).toHaveBeenCalledTimes(sweeps);
+		expect(taskStore.findExpiredLeases).toHaveBeenCalledTimes(1);
+		expect(taskStore.deleteFinishedOlderThan).not.toHaveBeenCalled();
+	});
+
+	it('honours the configured cadences', async () => {
+		const { scheduler, taskStore } = makeScheduler({
+			lifecycle: { reaperIntervalSeconds: 2 },
+		});
+		taskStore.findExpiredLeases.mockResolvedValue([]);
+
+		scheduler.start();
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(taskStore.findExpiredLeases).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(2000);
+		expect(taskStore.findExpiredLeases).toHaveBeenCalledTimes(2);
+
+		await scheduler.stop();
+	});
+
+	it('reports start as an info milestone and starts the loops only once', () => {
+		const { scheduler, onEvent } = makeScheduler();
+
+		scheduler.start();
+		scheduler.start();
+
+		// A second start is a no-op: the milestone fires once.
+		expect(onEvent).toHaveBeenCalledWith({
+			level: 'info',
+			message: 'Scheduler started',
+			context: { hostId: 'main-test' },
+		});
+		expect(onEvent).toHaveBeenCalledTimes(1);
+	});
+
+	it('reports stop as an info milestone', async () => {
+		const { scheduler, onEvent } = makeScheduler();
+
+		scheduler.start();
+		await scheduler.stop();
+
+		expect(onEvent).toHaveBeenCalledWith({
+			level: 'info',
+			message: 'Scheduler stopped',
+			context: { hostId: 'main-test' },
+		});
+	});
+
+	it('stop is safe without start and reports nothing', async () => {
+		const { scheduler, onEvent } = makeScheduler();
+
+		await expect(scheduler.stop()).resolves.toBeUndefined();
+		expect(onEvent).not.toHaveBeenCalled();
+	});
+
+	it('stop releases claims and cancels fire timers even when start was never called', async () => {
+		const { scheduler, taskStore } = makeScheduler();
+		scheduler.registerTaskHandler('test-task', { execute: vi.fn() });
+		// A single-pass driver claims a task due beyond stop: its fire timer is armed.
+		taskStore.claimDueTasks.mockResolvedValue([
+			claimedTask({ runAt: new Date(Date.now() + 60_000) }),
+		]);
+		taskStore.releaseClaim.mockResolvedValue(1);
+
+		await scheduler.execute();
+		await scheduler.stop();
+
+		expect(taskStore.releaseClaim).toHaveBeenCalledWith({
+			host: 'main-test',
+			id: '1',
+			claimedEpoch: 1,
+		});
+	});
+
+	it('a stopped scheduler cannot be started again and reports no false milestone', async () => {
+		const { scheduler, taskStore, onEvent } = makeScheduler();
+		taskStore.findExpiredLeases.mockResolvedValue([]);
+		taskStore.deleteFinishedOlderThan.mockResolvedValue(0);
+
+		scheduler.start();
+		await scheduler.stop();
+		onEvent.mockClear();
+
+		scheduler.start();
+
+		// The loops are one-shot; a restart claim over dead loops would be a lie.
+		expect(onEvent).not.toHaveBeenCalled();
+	});
+});
+
+describe('createScheduler lifecycle config', () => {
+	it('rejects a jitter ratio that would allow a zero or negative delay', () => {
+		expect(() => makeScheduler({ lifecycle: { jitterRatio: 1 } })).toThrow(
+			InvalidLifecycleOptionsError,
+		);
+		expect(() => makeScheduler({ lifecycle: { jitterRatio: -0.1 } })).toThrow(
+			InvalidLifecycleOptionsError,
+		);
+		expect(() => makeScheduler({ lifecycle: { jitterRatio: NaN } })).toThrow(
+			InvalidLifecycleOptionsError,
+		);
 	});
 });
 

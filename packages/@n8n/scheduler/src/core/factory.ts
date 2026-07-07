@@ -1,5 +1,7 @@
+import { Time } from '@n8n/constants';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
+import { InvalidLifecycleOptionsError } from './errors';
 import {
 	DEFAULT_EXECUTOR_OPTIONS,
 	Executor,
@@ -7,19 +9,22 @@ import {
 	TaskHandlerRegistry,
 } from './executor';
 import type { ExecutorOptions, ExecutorTaskStore } from './executor';
+import { DEFAULT_LIFECYCLE_OPTIONS, Loop } from './lifecycle';
+import type { LifecycleOptions } from './lifecycle';
 import { DEFAULT_MATERIALIZER_OPTIONS, materialize } from './materializer';
 import type { MaterializerOptions, RunInTransaction } from './materializer';
 import { DEFAULT_REAPER_OPTIONS, reap } from './reaper';
 import type { ReaperOptions, ReaperTaskStore } from './reaper';
 import { DEFAULT_RETENTION_OPTIONS, prune } from './retention';
 import type { RetentionOptions, RetentionStore } from './retention';
-import type { Scheduler } from './scheduler';
+import type { Scheduler, SchedulerPasses } from './scheduler';
 
-export type SchedulerEventLevel = 'debug' | 'warn' | 'error';
+export type SchedulerEventLevel = 'debug' | 'info' | 'warn' | 'error';
 
 /**
- * An incident or notable outcome from a pass, already handled where it fired.
- * The host only decides how to report it (typically: route to its logger).
+ * A lifecycle milestone, incident or notable outcome the scheduler reports,
+ * already handled where it fired. The host only decides how to report it
+ * (typically: route to its logger).
  */
 export interface SchedulerEvent {
 	level: SchedulerEventLevel;
@@ -50,6 +55,9 @@ export interface SchedulerDeps {
 	reaper?: Partial<ReaperOptions>;
 	retention?: Partial<RetentionOptions>;
 
+	/** Cadences of the loops `start` runs, one per pass. */
+	lifecycle?: Partial<LifecycleOptions>;
+
 	onEvent?: (event: SchedulerEvent) => void;
 }
 
@@ -73,14 +81,22 @@ function withDefaults<T extends object>(defaults: T, overrides: Partial<T> = {})
  * Compose the core algorithms into a {@link Scheduler}: a registry and an
  * {@link Executor} over `taskStore`, plus the materializer, reaper and
  * retention passes bound to their options, with every incident routed to
- * `onEvent` as a described {@link SchedulerEvent}.
+ * `onEvent` as a described {@link SchedulerEvent}. `start` runs each pass on
+ * its own jittered {@link Loop}; `stop` drains them.
  */
-export function createScheduler(deps: SchedulerDeps): Scheduler {
+export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasses {
 	const { hostId, materializerTransaction, taskStore, onEvent } = deps;
 	const materializerOptions = withDefaults(DEFAULT_MATERIALIZER_OPTIONS, deps.materializer);
 	const executorOptions = withDefaults(DEFAULT_EXECUTOR_OPTIONS, deps.executor);
 	const reaperOptions = withDefaults(DEFAULT_REAPER_OPTIONS, deps.reaper);
 	const retentionOptions = withDefaults(DEFAULT_RETENTION_OPTIONS, deps.retention);
+	const lifecycleOptions = withDefaults(DEFAULT_LIFECYCLE_OPTIONS, deps.lifecycle);
+
+	if (!(lifecycleOptions.jitterRatio >= 0 && lifecycleOptions.jitterRatio < 1)) {
+		throw new InvalidLifecycleOptionsError(
+			`jitterRatio must be at least 0 and below 1, got ${lifecycleOptions.jitterRatio}`,
+		);
+	}
 
 	const emit = (level: SchedulerEventLevel, message: string, context: Record<string, unknown>) => {
 		// The sink is the reporting channel itself: if it throws (a broken logger),
@@ -134,62 +150,107 @@ export function createScheduler(deps: SchedulerDeps): Scheduler {
 		);
 	}
 
+	const runMaterialize = async () =>
+		await materialize(materializerTransaction, materializerOptions, {
+			onPlanError: (job, error) => {
+				emit('error', 'Scheduler could not plan a job schedule; deferred for retry', {
+					jobId: job.id,
+					error: described(error),
+				});
+			},
+			onSkippedDuplicates: (context) => {
+				emit('debug', 'Scheduler materializer skipped occurrences that were already recorded', {
+					...context,
+				});
+			},
+		});
+
+	const runExecute = async () => await executor.claimAndSchedule(hostId);
+
+	const runReap = async () =>
+		await reap(taskStore, reaperOptions, {
+			onRowError: (taskId, error) => {
+				emit('error', 'Scheduler could not recover an expired task; skipped until the next sweep', {
+					taskId,
+					error: described(error),
+				});
+			},
+			onDeadLetter: (task) => {
+				emit('warn', 'Scheduler dead-lettered a task; its last attempt lost its lease', {
+					...task,
+				});
+			},
+		});
+
+	const runPrune = async () => {
+		const summary = await prune(taskStore, retentionOptions);
+		if (!summary.drained) {
+			emit('warn', 'Scheduler retention pass hit its batch budget; backlog remains', {
+				...summary,
+			});
+		} else if (summary.deleted > 0) {
+			emit('debug', 'Scheduler retention deleted finished tasks', { ...summary });
+		}
+		return summary;
+	};
+
+	const loopOver = (pass: string, run: () => Promise<unknown>, intervalSeconds: number) =>
+		new Loop(
+			run,
+			intervalSeconds * Time.seconds.toMilliseconds,
+			lifecycleOptions.jitterRatio,
+			(error) => {
+				emit('error', 'Scheduler pass failed; retrying on its next tick', {
+					pass,
+					error: described(error),
+				});
+			},
+		);
+
+	const loops = [
+		loopOver('materializer', runMaterialize, lifecycleOptions.materializerIntervalSeconds),
+		loopOver('executor', runExecute, lifecycleOptions.executorIntervalSeconds),
+		loopOver('reaper', runReap, lifecycleOptions.reaperIntervalSeconds),
+		loopOver('retention', runPrune, lifecycleOptions.retentionIntervalSeconds),
+	];
+
+	let started = false;
+	let stopped = false;
+
 	return {
 		registerTaskHandler(taskType, handler) {
 			registry.register(taskType, handler);
 		},
 
-		async materialize() {
-			return await materialize(materializerTransaction, materializerOptions, {
-				onPlanError: (job, error) => {
-					emit('error', 'Scheduler could not plan a job schedule; deferred for retry', {
-						jobId: job.id,
-						error: described(error),
-					});
-				},
-				onSkippedDuplicates: (context) => {
-					emit('debug', 'Scheduler materializer skipped occurrences that were already recorded', {
-						...context,
-					});
-				},
-			});
-		},
+		materialize: runMaterialize,
 
-		async execute() {
-			return await executor.claimAndSchedule(hostId);
-		},
+		execute: runExecute,
 
-		async reap() {
-			return await reap(taskStore, reaperOptions, {
-				onRowError: (taskId, error) => {
-					emit(
-						'error',
-						'Scheduler could not recover an expired task; skipped until the next sweep',
-						{ taskId, error: described(error) },
-					);
-				},
-				onDeadLetter: (task) => {
-					emit('warn', 'Scheduler dead-lettered a task; its last attempt lost its lease', {
-						...task,
-					});
-				},
-			});
-		},
+		reap: runReap,
 
-		async prune() {
-			const summary = await prune(taskStore, retentionOptions);
-			if (!summary.drained) {
-				emit('warn', 'Scheduler retention pass hit its batch budget; backlog remains', {
-					...summary,
-				});
-			} else if (summary.deleted > 0) {
-				emit('debug', 'Scheduler retention deleted finished tasks', { ...summary });
+		prune: runPrune,
+
+		start() {
+			if (!started && !stopped) {
+				started = true;
+				for (const loop of loops) {
+					loop.start();
+				}
+				emit('info', 'Scheduler started', { hostId });
 			}
-			return summary;
 		},
 
 		async stop() {
-			await executor.stop();
+			if (!stopped) {
+				stopped = true;
+				// Loops first, each waiting out its in-flight pass, so no executor tick
+				// overlaps the executor teardown (the contract `Executor.stop` requires).
+				await Promise.all(loops.map(async (loop) => await loop.stop()));
+				await executor.stop();
+				if (started) {
+					emit('info', 'Scheduler stopped', { hostId });
+				}
+			}
 		},
 	};
 }
