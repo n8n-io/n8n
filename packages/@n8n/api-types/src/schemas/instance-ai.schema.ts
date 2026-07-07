@@ -261,6 +261,12 @@ export const credentialSetupHintSchema = z.object({
 	/** Where the user obtains the secret (e.g. the provider's API-keys page). */
 	docsUrl: z.string().optional(),
 	suggestedName: z.string().optional(),
+	/** Status codes this service returns for an unauthenticated-looking probe
+	 *  even when the credential is valid (e.g. 401 for APIs that only accept
+	 *  POST). These never fail the auth probe; codes outside 401/403 never
+	 *  fail it anyway, so a wrong declaration can only make the probe more
+	 *  lenient — never block a valid credential. */
+	acceptedStatusCodes: z.array(z.number().int()).max(10).optional(),
 });
 export type InstanceAiCredentialSetupHint = z.infer<typeof credentialSetupHintSchema>;
 

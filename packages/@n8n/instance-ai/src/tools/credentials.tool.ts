@@ -52,6 +52,13 @@ export const setupHintField = z
 			.describe(
 				'Display name for the created credential, also used as the setup card title ("Set up {suggestedName}"). Name it after the service, user-facing — e.g. "fal.ai API Key", not the generic type name.',
 			),
+		acceptedStatusCodes: z
+			.array(z.number().int())
+			.max(10)
+			.optional()
+			.describe(
+				"Only for services documented to answer 401/403 to a plain authenticated GET even when the credential is valid (e.g. auth scoped to POST): list those codes so the save-time auth probe doesn't misread them as rejection. Omit for normal services — codes other than 401/403 never fail the probe.",
+			),
 	})
 	.describe(
 		"Recipe for creating this credential so the user only has to paste their secret(s) — the other fields are pre-filled. Provide it for generic auth types (httpHeaderAuth, httpQueryAuth, httpBasicAuth, httpBearerAuth, httpCustomAuth) whenever you know the provider's auth scheme; ground it in the provider's documentation, never guess the format.",

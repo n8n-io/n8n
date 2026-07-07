@@ -57,7 +57,10 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { CredentialsTester } from '@/services/credentials-tester.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { Push } from '@/push';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { UrlService } from '@/services/url.service';
@@ -106,6 +109,9 @@ describe('InstanceAiController', () => {
 
 	const userRepository = mock<UserRepository>();
 	const credentialsService = mock<CredentialsService>();
+	const credentialsFinderService = mock<CredentialsFinderService>();
+	const credentialsTester = mock<CredentialsTester>();
+	const workflowFinderService = mock<WorkflowFinderService>();
 	const projectService = mock<ProjectService>();
 	const instanceAiErrorReporter = mock<InstanceAiErrorReporterService>();
 
@@ -127,6 +133,9 @@ describe('InstanceAiController', () => {
 		urlService,
 		userRepository,
 		credentialsService,
+		credentialsFinderService,
+		credentialsTester,
+		workflowFinderService,
 		projectService,
 		instanceAiErrorReporter,
 		globalConfig,
@@ -138,6 +147,83 @@ describe('InstanceAiController', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		settingsService.isInstanceAiEnabled.mockReturnValue(true);
+	});
+
+	describe('pingCredential', () => {
+		const payload = {
+			credentialId: 'cred-1',
+			workflowId: 'wf-1',
+			nodeName: 'Generate Image',
+		};
+
+		const storedCredential = { id: 'cred-1', name: 'fal.ai API Key', type: 'httpHeaderAuth' };
+
+		function mockWorkflowNode(url: unknown) {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue({
+				nodes: [{ name: 'Generate Image', parameters: { url } }],
+			} as never);
+		}
+
+		beforeEach(() => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential as never);
+			mockWorkflowNode('https://fal.run/fal-ai/flux/schnell');
+			credentialsService.decrypt.mockResolvedValue({ name: 'Authorization', value: 'Key abc' });
+			credentialsTester.probeCredentialAuth.mockResolvedValue({
+				status: 'OK',
+				message: 'Connection successful!',
+			});
+		});
+
+		it('probes the persisted node URL with the decrypted credential', async () => {
+			const result = await controller.pingCredential(req, res, payload as never);
+
+			expect(credentialsService.decrypt).toHaveBeenCalledWith(storedCredential, true);
+			expect(credentialsTester.probeCredentialAuth).toHaveBeenCalledWith(
+				USER_ID,
+				'httpHeaderAuth',
+				expect.objectContaining({ id: 'cred-1', type: 'httpHeaderAuth' }),
+				'https://fal.run/fal-ai/flux/schnell',
+				{ acceptedStatusCodes: undefined },
+			);
+			expect(result).toEqual({ status: 'OK', message: 'Connection successful!' });
+		});
+
+		it('forwards service-specific accepted status codes to the probe', async () => {
+			await controller.pingCredential(req, res, {
+				...payload,
+				acceptedStatusCodes: [401],
+			} as never);
+
+			expect(credentialsTester.probeCredentialAuth).toHaveBeenCalledWith(
+				USER_ID,
+				'httpHeaderAuth',
+				expect.anything(),
+				'https://fal.run/fal-ai/flux/schnell',
+				{ acceptedStatusCodes: [401] },
+			);
+		});
+
+		it('rejects when the credential is not accessible to the user', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(null as never);
+
+			await expect(controller.pingCredential(req, res, payload as never)).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(credentialsTester.probeCredentialAuth).not.toHaveBeenCalled();
+		});
+
+		it('refuses a node URL that is an expression instead of a static value', async () => {
+			mockWorkflowNode('={{ $json.url }}');
+
+			await expect(controller.pingCredential(req, res, payload as never)).rejects.toThrow(
+				BadRequestError,
+			);
+			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+		});
+
+		it('requires the instanceAi:message scope', () => {
+			expect(scopeOf('pingCredential')?.scope).toBe('instanceAi:message');
+		});
 	});
 
 	describe('chat', () => {
