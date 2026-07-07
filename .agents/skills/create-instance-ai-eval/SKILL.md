@@ -265,9 +265,21 @@ red is harness-caused (per "A red is signal", above):
 - **Mock response shape** — for a less-common API the LLM-generated response can
   omit the real envelope (e.g. Gemini's top-level `candidates`), crashing a
   downstream parse/format node.
-- **Very large specs can time out the build** — a maximal verbatim prompt can
-  exceed the build timeout and produce no scored result at all; that timeout is
-  itself a finding, but note it so the zero isn't mistaken for a scored failure.
+- **A build can time out and produce no scored result at all** — the run reports
+  `BUILD FAILED: Run timed out` and zero graded expectations. Don't assume "spec
+  too big": the more common cause is a **single-prompt case where the agent asks
+  a clarifying `ask-user` question** and the build hangs on the unanswered
+  question until the per-iteration timeout (see [`case-shapes.md`](case-shapes.md)
+  — only confirmations auto-approve). Before treating a timeout as spec size,
+  **classify it**: read the agent's final response in the report / trace (did it
+  ask a question? flag an infeasibility? or genuinely churn through a huge
+  build?), and **re-run the case solo (`--concurrency 1`)** — concurrency makes a
+  stalled build hit the cap and masks the real reason, which a solo run surfaces
+  in seconds. Fix per cause: a clarifying-question stall → author multi-turn with
+  a director note that pre-answers it; a genuine infeasibility → it's an
+  infeasibility/honesty behaviour case (`processExpectations`), not a build case;
+  a true oversized spec → the timeout is itself a finding, but note it so the
+  zero isn't mistaken for a scored failure.
 
 ## outcomeExpectations vs processExpectations
 
