@@ -1,11 +1,14 @@
+import { instanceAiEventSchema } from '@n8n/api-types';
 import { ProjectRepository, UserRepository, WorkflowRepository } from '@n8n/db';
 import { Body, Delete, Get, Param, Post, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import { DurableLogMetrics } from './event-bus/durable-log-metrics';
+import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiService } from './instance-ai.service';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
@@ -24,7 +27,40 @@ export class InstanceAiTestController {
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly projectRepo: ProjectRepository,
 		private readonly durableLogMetrics: DurableLogMetrics,
+		private readonly eventBus: InProcessEventBus,
 	) {}
+
+	/**
+	 * Durable-log evaluation harness: publish scripted events through the REAL
+	 * event bus, so the real SSE endpoint, drain, DB, and process lifecycle are
+	 * exercised without an LLM. E2E-gated like every endpoint here.
+	 */
+	@Post('/test/publish-events', { skipAuth: true })
+	async publishTestEvents(
+		@Body
+		payload: {
+			threadId: string;
+			userId: string;
+			events: unknown[];
+			ensureThread?: boolean;
+		},
+	) {
+		this.assertTraceReplayEnabled();
+		if (payload.ensureThread) {
+			const user = await this.userRepo.findOneByOrFail({ id: payload.userId });
+			const personalProject = await this.projectRepo.getPersonalProjectForUserOrFail(user.id);
+			await this.memoryService.ensureThread(user.id, payload.threadId, personalProject.id);
+		}
+		const events = (payload.events ?? []).map((raw) => {
+			const parsed = instanceAiEventSchema.safeParse(raw);
+			if (!parsed.success) throw new BadRequestError(`Invalid event: ${parsed.error.message}`);
+			return parsed.data;
+		});
+		for (const event of events) {
+			this.eventBus.publish(payload.threadId, event);
+		}
+		return { ok: true, published: events.length };
+	}
 
 	/** Durable-log prototype instrumentation snapshot (measurement harness). */
 	@Get('/test/durable-log-metrics', { skipAuth: true })
