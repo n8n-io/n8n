@@ -1,6 +1,6 @@
 {
   "name": "@n8n/scan-community-package",
-  "version": "0.25.0",
+  "version": "0.26.0",
   "description": "Static code analyser for n8n community packages",
   "license": "LicenseRef-n8n-sustainable-use",
   "bin": "scanner/cli.mjs",

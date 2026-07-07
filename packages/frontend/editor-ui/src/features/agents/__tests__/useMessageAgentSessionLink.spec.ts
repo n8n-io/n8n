@@ -6,7 +6,7 @@ import type { ITaskData } from 'n8n-workflow';
 
 import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
-import type { LogEntry } from '@/features/execution/logs/logs.types';
+import type { LogEntry, NodeLogEntry } from '@/features/execution/logs/logs.types';
 
 import { useMessageAgentSessionLink } from '../composables/useMessageAgentSessionLink';
 
@@ -14,6 +14,7 @@ function makeLogEntry(overrides: Partial<LogEntry> = {}): LogEntry {
 	// Only the fields the composable reads matter; the rest is cast through to
 	// keep this fixture small and avoid pulling in a real Workflow factory.
 	const base = {
+		type: 'node',
 		id: 'log-1',
 		runIndex: 0,
 		children: [],
@@ -114,7 +115,7 @@ describe('useMessageAgentSessionLink', () => {
 					typeVersion: 1,
 					parameters: {},
 					position: [0, 0],
-				} as LogEntry['node'],
+				} as NodeLogEntry['node'],
 				runData: sessionRunData,
 			}),
 		};

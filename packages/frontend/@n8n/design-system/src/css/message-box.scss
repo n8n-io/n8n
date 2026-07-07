@@ -143,6 +143,10 @@
 			line-height: var(--line-height--lg);
 		}
 
+		& .el-message-box__message__structured {
+			margin-bottom: var(--spacing--xs);
+		}
+
 		& .el-message-box__message__structured p {
 			margin-bottom: var(--spacing--sm);
 		}
