@@ -7,37 +7,11 @@ import { MockEmbeddingModelV3 } from 'ai/test';
 import type { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { createPgVectorTable } from './vector-store-helpers';
 import { VectorStore } from '../../sdk/vector-store';
 import { PgVectorStore } from '../../vector-stores/postgres';
 
 const PG_URL = process.env.PG_VECTOR_TEST_URL;
-
-/** Stands in for the BYO user's own setup, since PgVectorStore itself never runs DDL. */
-async function createVectorTable(
-	pool: Pool,
-	tableName: string,
-	opts: { dimensions: number; hnswIndex?: boolean; ginIndex?: boolean },
-): Promise<void> {
-	await pool.query('CREATE EXTENSION IF NOT EXISTS vector;');
-	await pool.query(
-		`CREATE TABLE IF NOT EXISTS "${tableName}" (
-			id TEXT PRIMARY KEY,
-			content TEXT NOT NULL,
-			metadata JSONB NOT NULL DEFAULT '{}',
-			embedding vector(${opts.dimensions}) NOT NULL
-		);`,
-	);
-	if (opts.hnswIndex) {
-		await pool.query(
-			`CREATE INDEX IF NOT EXISTS "${tableName}_embedding_idx" ON "${tableName}" USING hnsw (embedding vector_cosine_ops);`,
-		);
-	}
-	if (opts.ginIndex) {
-		await pool.query(
-			`CREATE INDEX IF NOT EXISTS "${tableName}_metadata_idx" ON "${tableName}" USING gin (metadata jsonb_path_ops);`,
-		);
-	}
-}
 
 describe.skipIf(!PG_URL)('PgVectorStore', () => {
 	const tableName = `vs_test_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
@@ -47,7 +21,7 @@ describe.skipIf(!PG_URL)('PgVectorStore', () => {
 	beforeAll(async () => {
 		const { Pool: PoolCtor } = await import('pg');
 		adminPool = new PoolCtor({ connectionString: PG_URL });
-		await createVectorTable(adminPool, tableName, { dimensions: 3 });
+		await createPgVectorTable(adminPool, tableName, { dimensions: 3 });
 		store = new PgVectorStore('pg-integration', { connectionString: PG_URL!, tableName });
 	});
 
@@ -94,7 +68,7 @@ describe.skipIf(!PG_URL)('PgVectorStore', () => {
 
 	it('round-trips through the VectorStore orchestrator with a mock embedding model', async () => {
 		const roundTripTable = `${tableName}_roundtrip`;
-		await createVectorTable(adminPool, roundTripTable, { dimensions: 3 });
+		await createPgVectorTable(adminPool, roundTripTable, { dimensions: 3 });
 		const roundTripStore = new PgVectorStore('pg-integration-roundtrip', {
 			connectionString: PG_URL!,
 			tableName: roundTripTable,
@@ -130,7 +104,7 @@ describe.skipIf(!PG_URL)('PgVectorStore — metadata filtering', () => {
 	beforeAll(async () => {
 		const { Pool: PoolCtor } = await import('pg');
 		adminPool = new PoolCtor({ connectionString: PG_URL });
-		await createVectorTable(adminPool, filterTableName, { dimensions: 3, ginIndex: true });
+		await createPgVectorTable(adminPool, filterTableName, { dimensions: 3, ginIndex: true });
 		filterStore = new PgVectorStore('pg-filter-integration', {
 			connectionString: PG_URL!,
 			tableName: filterTableName,
@@ -256,7 +230,7 @@ describe.skipIf(!PG_URL)('PgVectorStore — filtered HNSW under-return (iterativ
 	beforeAll(async () => {
 		const { Pool: PoolCtor } = await import('pg');
 		adminPool = new PoolCtor({ connectionString: PG_URL });
-		await createVectorTable(adminPool, iterTableName, { dimensions: 3, hnswIndex: true });
+		await createPgVectorTable(adminPool, iterTableName, { dimensions: 3, hnswIndex: true });
 		iterStore = new PgVectorStore('pg-iterative-scan', {
 			connectionString: PG_URL!,
 			tableName: iterTableName,
