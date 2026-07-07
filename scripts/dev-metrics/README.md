@@ -154,7 +154,7 @@ node scripts/dev-metrics/setup.mjs --reset    # restores the real pnpm
 Nothing is sent unless **consent is granted** and the command runs **inside an
 n8n checkout**; `N8N_DEV_TELEMETRY=0` disables sending entirely.
 
-`sh scripts/dev-metrics/selfcheck.sh` runs the whole enable→run→reset flow
+`sh scripts/dev-metrics/test/selfcheck.sh` runs the whole enable→run→reset flow
 against a fake binary in a temp dir (never touches your real pnpm).
 
 ## Querying
