@@ -21,27 +21,6 @@ export function useSettingsItems() {
 	const { check: envFeatureFlagCheck } = useEnvFeatureFlag();
 
 	const settingsItems = computed<IMenuItem[]>(() => {
-		const customInstanceRoles = envFeatureFlagCheck.value('CUSTOM_INSTANCE_ROLES');
-		const rolesItem: IMenuItem = customInstanceRoles
-			? {
-					id: 'settings-roles',
-					icon: 'user-round',
-					label: i18n.baseText('settings.roles'),
-					position: 'top',
-					available: canUserAccessRouteByName(VIEWS.ROLES_SETTINGS),
-					route: { to: { name: VIEWS.ROLES_SETTINGS } },
-					new: true,
-				}
-			: {
-					id: 'settings-roles',
-					icon: 'user-round',
-					label: i18n.baseText('settings.projectRoles'),
-					position: 'top',
-					available: canUserAccessRouteByName(VIEWS.PROJECT_ROLES_SETTINGS),
-					route: { to: { name: VIEWS.PROJECT_ROLES_SETTINGS } },
-					new: true,
-				};
-
 		const menuItems: IMenuItem[] = [
 			{
 				id: 'settings-usage-and-plan',
@@ -91,7 +70,15 @@ export function useSettingsItems() {
 							})
 						: undefined,
 			},
-			rolesItem,
+			{
+				id: 'settings-roles',
+				icon: 'user-round',
+				label: i18n.baseText('settings.roles'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.ROLES_SETTINGS),
+				route: { to: { name: VIEWS.ROLES_SETTINGS } },
+				new: true,
+			},
 			{
 				id: 'settings-api',
 				icon: 'plug',
