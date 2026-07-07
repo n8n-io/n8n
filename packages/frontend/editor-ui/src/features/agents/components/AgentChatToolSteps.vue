@@ -27,8 +27,6 @@ const props = defineProps<{
 
 const i18n = useI18n();
 
-type AiActivityToolCall = InstanceType<typeof N8nAiActivityStep>['$props']['toolCall'];
-
 function toolCallsNeedSubAgentNames(toolCalls: ToolCall[]): boolean {
 	return toolCalls.some((tc) => {
 		if (isDelegateSubAgentTool(tc.tool)) return true;
@@ -48,10 +46,6 @@ interface ToolStepDisplay {
 	details: string;
 	hasRawData: boolean;
 	expandable: boolean;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function getToolDisplayName(toolName: string): string {
@@ -102,18 +96,16 @@ function toolStepView(tc: ToolCall): ToolStepDisplay {
 	};
 }
 
-function toAiActivityToolCall(tc: ToolCall): AiActivityToolCall {
-	return {
-		toolCallId: tc.toolCallId,
-		toolName: tc.tool,
-		args: isRecord(tc.input) ? tc.input : tc.input === undefined ? undefined : { value: tc.input },
-		result: tc.output,
-		error: tc.state === 'error' ? formatToolData(tc.output) : undefined,
-		isLoading:
-			tc.state === TOOL_CALL_STATE.PENDING ||
-			tc.state === TOOL_CALL_STATE.RUNNING ||
-			tc.state === TOOL_CALL_STATE.SUSPENDED,
-	};
+function toolStepError(tc: ToolCall): string | undefined {
+	return tc.state === 'error' ? formatToolData(tc.output) : undefined;
+}
+
+function isToolStepLoading(tc: ToolCall): boolean {
+	return (
+		tc.state === TOOL_CALL_STATE.PENDING ||
+		tc.state === TOOL_CALL_STATE.RUNNING ||
+		tc.state === TOOL_CALL_STATE.SUSPENDED
+	);
 }
 
 function groupLabel(): string {
@@ -140,8 +132,9 @@ function hasLoadingToolCall(): boolean {
 				<N8nAiActivityStep
 					v-for="view in [toolStepView(tc)]"
 					:key="`${tc.toolCallId}-${view.label}`"
-					:tool-call="toAiActivityToolCall(tc)"
 					:label="view.label"
+					:loading="isToolStepLoading(tc)"
+					:error="toolStepError(tc)"
 					:has-content="view.expandable"
 				>
 					<N8nMarkdownEditor
@@ -175,8 +168,9 @@ function hasLoadingToolCall(): boolean {
 			<N8nAiActivityStep
 				v-for="tc in toolCalls"
 				:key="tc.toolCallId"
-				:tool-call="toAiActivityToolCall(tc)"
 				:label="toolStepView(tc).label"
+				:loading="isToolStepLoading(tc)"
+				:error="toolStepError(tc)"
 				:has-content="toolStepView(tc).expandable"
 			>
 				<template v-for="view in [toolStepView(tc)]" :key="view.label">

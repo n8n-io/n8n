@@ -8,7 +8,7 @@ import { WRITE_TODOS_TOOL_NAME } from '../utils/write-todos-tool';
 
 vi.mock('@n8n/design-system', () => ({
 	N8nAiActivityStep: {
-		props: ['label', 'hasContent', 'toolCall'],
+		props: ['label', 'hasContent', 'loading', 'error'],
 		data: () => ({ isOpen: false }),
 		computed: {
 			labelParts(this: { label: string }): string[] {

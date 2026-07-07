@@ -27,7 +27,6 @@ import TaskChecklist from './TaskChecklist.vue';
 import TimelineTextSegment from './TimelineTextSegment.vue';
 import ToolResultJson from './ToolResultJson.vue';
 import ToolResultRenderer from './ToolResultRenderer.vue';
-import DataSection from './DataSection.vue';
 import { N8nAiActivityStep as ToolCallStep } from '@n8n/design-system';
 import { useToolLabel } from '../toolLabels';
 
@@ -320,24 +319,25 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 				/>
 				<ToolCallStep
 					v-else
-					:tool-call="toolCallsById[entry.toolCallId]"
 					:label="
 						getToolLabel(
 							toolCallsById[entry.toolCallId].toolName,
 							toolCallsById[entry.toolCallId].args,
 						)
 					"
+					:loading="toolCallsById[entry.toolCallId].isLoading"
+					:error="toolCallsById[entry.toolCallId].error"
 				>
-					<DataSection v-if="toolCallsById[entry.toolCallId].args">
-						<ToolResultJson :value="toolCallsById[entry.toolCallId].args" />
-					</DataSection>
-					<DataSection v-if="toolCallsById[entry.toolCallId].result !== undefined">
-						<ToolResultRenderer
-							:result="toolCallsById[entry.toolCallId].result"
-							:tool-name="toolCallsById[entry.toolCallId].toolName"
-							:tool-args="toolCallsById[entry.toolCallId].args"
-						/>
-					</DataSection>
+					<ToolResultJson
+						v-if="toolCallsById[entry.toolCallId].args"
+						:value="toolCallsById[entry.toolCallId].args"
+					/>
+					<ToolResultRenderer
+						v-if="toolCallsById[entry.toolCallId].result !== undefined"
+						:result="toolCallsById[entry.toolCallId].result"
+						:tool-name="toolCallsById[entry.toolCallId].toolName"
+						:tool-args="toolCallsById[entry.toolCallId].args"
+					/>
 				</ToolCallStep>
 			</template>
 

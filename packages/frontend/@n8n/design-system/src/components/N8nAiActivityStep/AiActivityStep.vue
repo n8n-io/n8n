@@ -6,6 +6,7 @@ import { computed, inject } from 'vue';
 import { aiActivityStepGroupContext } from './context';
 import N8nAiActivityStepButton from '../N8nAiActivityStepButton';
 import N8nAiActivityStepChevron from '../N8nAiActivityStepChevron';
+import N8nAiActivityStepResultSection from '../N8nAiActivityStepResultSection';
 import N8nAnimatedCollapsibleContent from '../N8nAnimatedCollapsibleContent';
 import N8nCallout from '../N8nCallout';
 import N8nIcon from '../N8nIcon';
@@ -66,9 +67,9 @@ const errorTooltip = computed(() =>
 				</N8nAiActivityStepButton>
 			</CollapsibleTrigger>
 			<N8nAnimatedCollapsibleContent>
-				<div v-if="props.wrapContent" :class="$style.dataSection">
+				<N8nAiActivityStepResultSection v-if="props.wrapContent">
 					<slot />
-				</div>
+				</N8nAiActivityStepResultSection>
 				<slot v-else />
 				<N8nCallout v-if="props.error !== undefined" theme="danger" :class="$style.errorCallout">
 					{{ props.error }}
@@ -150,27 +151,6 @@ const errorTooltip = computed(() =>
 
 .errorTooltip {
 	white-space: pre-wrap;
-}
-
-.dataSection {
-	font-size: var(--font-size--sm);
-	color: var(--color--text--tint-2);
-	background: var(--color--foreground--tint-2);
-	border-radius: var(--radius--xs);
-	margin-top: var(--spacing--2xs);
-	border: var(--border);
-	max-width: 90%;
-	max-height: 200px;
-	overflow-y: auto;
-	scrollbar-width: thin;
-	scrollbar-color: light-dark(var(--color--neutral-300), var(--color--neutral-700)) transparent;
-
-	:global(pre) {
-		color: var(--text-color--subtler);
-		background: transparent;
-		margin: 0;
-		padding: var(--spacing--2xs);
-	}
 }
 
 .errorCallout {
