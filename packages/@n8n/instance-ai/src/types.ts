@@ -79,6 +79,11 @@ export interface WorkflowNode {
 	webhookId?: string;
 }
 
+export interface ExecutionNodeError {
+	nodeName: string;
+	message?: string;
+}
+
 export interface ExecutionResult {
 	executionId: string;
 	status: 'running' | 'success' | 'error' | 'waiting' | 'unknown';
@@ -89,6 +94,8 @@ export interface ExecutionResult {
 	 * nothing" apart from "never reached".
 	 */
 	executedNodeNames?: string[];
+	/** Node-level errors from run data, including continue-on-fail errors. */
+	nodeErrors?: ExecutionNodeError[];
 	/** Name of the last node the execution processed, when available. */
 	lastNodeExecuted?: string;
 	error?: string;
