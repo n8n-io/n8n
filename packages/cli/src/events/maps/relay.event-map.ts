@@ -201,8 +201,6 @@ export type RelayEventMap = {
 		workflowId: string;
 		workflowName: string;
 		executionId: string;
-		projectId: string;
-		projectName: string;
 		source:
 			| 'user-manual'
 			| 'user-retry'

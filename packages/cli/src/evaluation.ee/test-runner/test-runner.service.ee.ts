@@ -59,7 +59,6 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 
 import { EvaluationMetrics, type MetricContribution } from './evaluation-metrics.ee';
 import { WorkflowCompilerService } from './workflow-compiler.service';
-import { OwnershipService } from '@/services/ownership.service';
 
 export interface TestRunMetadata {
 	testRunId: string;
@@ -103,7 +102,6 @@ export class TestRunnerService {
 		private readonly evaluationCollectionRepository: EvaluationCollectionRepository,
 		private readonly evaluationConfigRepository: EvaluationConfigRepository,
 		private readonly workflowCompiler: WorkflowCompilerService,
-		private readonly ownershipService: OwnershipService,
 	) {}
 
 	/**
