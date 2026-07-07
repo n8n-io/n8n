@@ -39,7 +39,7 @@ function escapeHtml(str: string): string {
 		.replace(/'/g, '&#39;');
 }
 
-type StageStatus = 'pass' | 'fail';
+type StageStatus = 'pass' | 'fail' | 'na';
 
 interface StageReview {
 	label: string;
@@ -281,7 +281,7 @@ function renderStageReview(stage: StageReview): string {
 				<span class="review-status-dot ${stage.status}"></span>
 				<span class="review-stage-label">${escapeHtml(stage.label)}</span>
 			</div>
-			<span class="review-status-pill ${stage.status}">${stage.status === 'pass' ? 'green' : 'red'}</span>
+			<span class="review-status-pill ${stage.status}">${stage.status === 'pass' ? 'green' : stage.status === 'na' ? 'no verdict' : 'red'}</span>
 		</div>
 		<div class="review-stage-reason">${escapeHtml(stage.reason)}</div>
 		<div class="review-stage-body">${stage.body}</div>
@@ -451,10 +451,12 @@ function verifierReview(sr: ExecutionScenarioResult): StageReview {
 
 	return {
 		label: '4. Verifier judgment',
-		status: sr.success ? 'pass' : 'fail',
+		status: sr.success ? 'pass' : sr.incomplete ? 'na' : 'fail',
 		reason: sr.success
 			? 'The verifier accepted this scenario.'
-			: `The verifier rejected this scenario${sr.failureCategory ? ` as ${sr.failureCategory}` : ''}.`,
+			: sr.incomplete
+				? 'The verifier returned no verdict after all attempts — this run is excluded from scoring.'
+				: `The verifier rejected this scenario${sr.failureCategory ? ` as ${sr.failureCategory}` : ''}.`,
 		body: bodyParts.join(''),
 	};
 }
@@ -538,7 +540,23 @@ function renderScenario(
 ): string {
 	const icon = sr.success ? '&#10003;' : '&#10007;';
 	const statusClass = sr.success ? 'pass' : 'fail';
-	const execLink = renderExecutionLink(sr, result.n8nBaseUrl, result.workflowId);
+	const execLink = renderExecutionLink(sr, result.n8nBaseUrl, sr.workflowId ?? result.workflowId);
+
+	// Verifier-incomplete: neutral one-liner, excluded from scoring.
+	if (sr.incomplete) {
+		return `<div class="scenario na">
+			<div class="scenario-header" onclick="this.parentElement.classList.toggle('expanded')">
+				<span class="scenario-icon na">⌀</span>
+				<span class="scenario-name">${escapeHtml(sr.scenario.name)}</span>
+				<span class="scenario-summary-inline">verifier returned no verdict — excluded from scoring</span>
+				${execLink}
+			</div>
+			<div class="scenario-detail" id="scenario-${String(index)}">
+				${renderScenarioReview(result, sr)}
+				${renderScenarioDetail(sr)}
+			</div>
+		</div>`;
+	}
 
 	// Passing scenarios: compact one-liner with collapsible detail
 	if (sr.success) {
@@ -667,7 +685,10 @@ function renderScenarioDetail(sr: ExecutionScenarioResult): string {
 			for (const req of nr.interceptedRequests) {
 				html += '<div class="request-pair">';
 				html += '<div class="request-header">Request sent</div>';
-				html += `<div class="request-method">${escapeHtml(req.method)} ${escapeHtml(req.url)}</div>`;
+				// `req.url` is typed string but older captures stored undefined for
+				// URL-less requests (broken node routing); never let that (or an
+				// empty wire-server fallback) crash report generation.
+				html += `<div class="request-method">${escapeHtml(req.method)} ${escapeHtml(req.url || '(no URL)')}</div>`;
 				if (req.requestBody) {
 					html += `<pre class="json-block json-sm"><code>${escapeHtml(JSON.stringify(req.requestBody, null, 2))}</code></pre>`;
 				}
@@ -991,17 +1012,34 @@ function dimensionLabel(d: CheckDimension): string {
 	return d.replace(/_/g, ' ');
 }
 
-function renderDimensionGroup(dimension: CheckDimension, outcomes: CheckOutcome[]): string {
+function checkCountsSummary(outcomes: CheckOutcome[], fractionSuffix = ''): string {
 	const passed = outcomes.filter((o) => o.status === 'pass').length;
 	const failed = outcomes.filter((o) => o.status === 'fail').length;
 	const naCount = outcomes.filter((o) => o.status === 'n_a').length;
+	const errorCount = outcomes.filter((o) => o.status === 'error').length;
 	const scored = passed + failed;
-	const headerCounts = `${String(passed)}/${String(scored)}${naCount > 0 ? ` · ${String(naCount)} N/A` : ''}`;
+	const extras = [
+		...(naCount > 0 ? [`${String(naCount)} N/A`] : []),
+		...(errorCount > 0 ? [`${String(errorCount)} error`] : []),
+	];
+	return `${String(passed)}/${String(scored)}${fractionSuffix}${extras.length > 0 ? ` · ${extras.join(' · ')}` : ''}`;
+}
+
+function checkIcon(status: CheckOutcome['status']): string {
+	if (status === 'pass') return '&#10003;';
+	if (status === 'fail') return '&#10007;';
+	if (status === 'error') return '!';
+	return '⌀';
+}
+
+function renderDimensionGroup(dimension: CheckDimension, outcomes: CheckOutcome[]): string {
+	const failed = outcomes.filter((o) => o.status === 'fail').length;
+	const headerCounts = checkCountsSummary(outcomes);
 	const headerClass = failed > 0 ? 'fail' : 'pass';
 
 	const items = outcomes
 		.map((o) => {
-			const icon = o.status === 'pass' ? '&#10003;' : o.status === 'fail' ? '&#10007;' : '⌀';
+			const icon = checkIcon(o.status);
 			const kindTag = `<span class="check-kind check-kind-${o.kind}">${o.kind}</span>`;
 			const comment = o.comment ? ` — ${escapeHtml(o.comment)}` : '';
 			return `<li class="check ${o.status}"><span class="check-icon ${o.status}">${icon}</span> <code>${escapeHtml(o.name)}</code> ${kindTag}${comment}</li>`;
@@ -1014,11 +1052,8 @@ function renderDimensionGroup(dimension: CheckDimension, outcomes: CheckOutcome[
 function renderWorkflowChecks(outcomes: CheckOutcome[] | undefined): string {
 	if (!outcomes || outcomes.length === 0) return '';
 
-	const totalPassed = outcomes.filter((o) => o.status === 'pass').length;
 	const totalFailed = outcomes.filter((o) => o.status === 'fail').length;
-	const totalNa = outcomes.filter((o) => o.status === 'n_a').length;
-	const totalScored = totalPassed + totalFailed;
-	const summary = `${String(totalPassed)}/${String(totalScored)} passed${totalNa > 0 ? ` · ${String(totalNa)} N/A` : ''}`;
+	const summary = checkCountsSummary(outcomes, ' passed');
 	const summaryClass = totalFailed > 0 ? 'fail' : 'pass';
 	const openAttr = totalFailed > 0 ? 'open' : '';
 
@@ -1161,7 +1196,7 @@ function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
 // ---------------------------------------------------------------------------
 
 function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string {
-	// Pass rate counts scenarios AND build expectations as units (incomplete expectations excluded).
+	// Pass rate counts scenarios AND build expectations as units (incomplete units excluded).
 	const { passCount, totalCount } = getRunScoredCounts(result);
 	const allPass = passCount === totalCount && totalCount > 0;
 	const caseStatus = getCaseRunStatus(result);
@@ -1190,10 +1225,11 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 
 	// Inline indicators for quick triage without expanding — scenarios and expectations as units.
 	const scenarioIndicators = [
-		...result.executionScenarioResults.map(
-			(sr) =>
-				`<span class="scenario-indicator ${sr.success ? 'pass' : 'fail'}" title="${escapeHtml(sr.scenario.name)}">${sr.success ? '✓' : '✗'} scenario: ${escapeHtml(sr.scenario.name)}</span>`,
-		),
+		...result.executionScenarioResults.map((sr) => {
+			const cls = sr.incomplete ? 'na' : sr.success ? 'pass' : 'fail';
+			const icon = sr.incomplete ? '⌀' : sr.success ? '✓' : '✗';
+			return `<span class="scenario-indicator ${cls}" title="${escapeHtml(sr.scenario.name)}">${icon} scenario: ${escapeHtml(sr.scenario.name)}</span>`;
+		}),
 		...(result.buildExpectationResults ?? []).map((e) => {
 			const cls = e.incomplete ? 'na' : e.pass ? 'pass' : 'fail';
 			const icon = e.incomplete ? '⌀' : e.pass ? '✓' : '✗';
@@ -1269,7 +1305,10 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	const passCount = scoredCounts.passCount;
 	const failCount = scoredCounts.totalCount - passCount;
 	const totalChecks = scoredCounts.totalCount;
-	const totalScenarios = results.reduce((count, r) => count + r.executionScenarioResults.length, 0);
+	const allScenarios = results.flatMap((r) => r.executionScenarioResults);
+	// Verifier-incomplete runs (no verdict) are visible but not scored.
+	const totalScenarios = allScenarios.filter((sr) => !sr.incomplete).length;
+	const noVerdictCount = allScenarios.length - totalScenarios;
 	const passRate = totalChecks > 0 ? Math.round((passCount / totalChecks) * 100) : 0;
 
 	return `<!DOCTYPE html>
@@ -1357,6 +1396,7 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.scenario-icon { font-weight: bold; font-size: 14px; min-width: 16px; }
 	.scenario-icon.pass { color: var(--color-pass); }
 	.scenario-icon.fail { color: var(--color-fail); }
+	.scenario-icon.na { color: #8b949e; }
 	.scenario-name { color: var(--text-primary); font-weight: 600; }
 	.scenario-desc { color: var(--text-muted); font-size: 12px; }
 	.scenario-summary-inline { color: var(--text-muted); font-size: 12px; flex: 1; }
@@ -1377,6 +1417,8 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.check-icon.fail { color: var(--color-fail); }
 	.check-icon.n_a { color: var(--text-muted); }
 	.check.n_a code { color: var(--text-muted); }
+	.check-icon.error { color: var(--color-warn); }
+	.check.error code { color: var(--color-warn); }
 	.check-kind { color: var(--text-muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
 	.check-kind-llm { color: var(--color-purple); }
 	.expectation { padding: 5px 0; display: flex; align-items: baseline; gap: 8px; list-style: none; line-height: 1.5; }
@@ -1402,20 +1444,24 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.review-overview-chip { display: inline-flex; align-items: center; min-height: 24px; padding: 0 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-secondary); font-size: 11px; font-weight: 600; }
 	.review-overview-chip.pass { border-color: #238636; color: var(--color-pass); background: var(--color-pass-bg); }
 	.review-overview-chip.fail { border-color: #da3633; color: var(--color-fail); background: var(--color-fail-bg); }
+	.review-overview-chip.na { border-color: #8b949e; color: #8b949e; }
 	.review-grid { display: grid; grid-template-columns: 1fr; }
 	.review-stage { padding: 12px; border-top: 1px solid var(--border-light); border-left: 4px solid var(--border); background: var(--bg-secondary); }
 	.review-stage:first-child { border-top: 0; }
 	.review-stage.pass { border-left-color: var(--color-pass); }
 	.review-stage.fail { border-left-color: var(--color-fail); }
+	.review-stage.na { border-left-color: #8b949e; }
 	.review-stage-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
 	.review-stage-heading { display: flex; align-items: center; gap: 8px; min-width: 0; }
 	.review-stage-label { color: var(--text-primary); font-size: 12px; font-weight: 700; }
 	.review-status-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
 	.review-status-dot.pass { background: var(--color-pass); box-shadow: 0 0 0 3px var(--color-pass-bg); }
 	.review-status-dot.fail { background: var(--color-fail); box-shadow: 0 0 0 3px var(--color-fail-bg); }
+	.review-status-dot.na { background: #8b949e; box-shadow: 0 0 0 3px rgba(139,148,158,0.2); }
 	.review-status-pill { display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0; }
 	.review-status-pill.pass { background: var(--color-pass-bg); color: var(--color-pass); }
 	.review-status-pill.fail { background: var(--color-fail-bg); color: var(--color-fail); }
+	.review-status-pill.na { background: rgba(139,148,158,0.15); color: #8b949e; }
 	.review-stage-reason { color: var(--text-secondary); font-size: 12px; line-height: 1.6; margin-bottom: 4px; }
 	.review-stage-body { margin-top: 6px; }
 	.review-subsection { padding-top: 4px; }
@@ -1553,7 +1599,15 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	<div class="stat-card">
 		<div class="label">Failed</div>
 		<div class="value${failCount > 0 ? ' fail' : ''}">${String(failCount)}</div>
-	</div>
+	</div>${
+		noVerdictCount > 0
+			? `
+	<div class="stat-card">
+		<div class="label">No verdict</div>
+		<div class="value">${String(noVerdictCount)}</div>
+	</div>`
+			: ''
+	}
 	<div class="stat-card">
 		<div class="label">Checked/Built</div>
 		<div class="value${checkedOrBuiltCount === totalTestCases ? ' pass' : ' mixed'}">${String(checkedOrBuiltCount)}/${String(totalTestCases)}</div>

@@ -646,7 +646,8 @@ const tags = computed(
 					data-test-id="workflow-card-private-credential"
 				>
 					<PrivateCredentialIcon
-						:tooltip-text="locale.baseText('workflows.privateCredential.tooltip')"
+						:tooltip-title="locale.baseText('workflows.dynamic.tooltipTitle')"
+						:tooltip-text="locale.baseText('workflows.dynamic.tooltip')"
 					/>
 				</span>
 			</template>

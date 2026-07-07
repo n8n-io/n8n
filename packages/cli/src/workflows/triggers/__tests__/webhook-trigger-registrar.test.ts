@@ -3,7 +3,7 @@ import type { WebhookEntity } from '@n8n/db';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { ErrorReporter, Span, Tracing } from 'n8n-core';
 import type { IWebhookData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { WebhookPathTakenError } from 'n8n-workflow';
+import { WebhookPathTakenError, WorkflowExpression } from 'n8n-workflow';
 
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import type { WebhookService } from '@/webhooks/webhook.service';
@@ -351,6 +351,100 @@ describe('WebhookTriggerRegistrar', () => {
 			);
 
 			expect(result).toEqual(new Set());
+		});
+
+		test('brackets expression resolution with an acquired isolate', async () => {
+			const callOrder: string[] = [];
+			vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockImplementation(async () => {
+				callOrder.push('acquire');
+				return true;
+			});
+			vi.spyOn(WorkflowExpression.prototype, 'releaseIsolate').mockImplementation(async () => {
+				callOrder.push('release');
+			});
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockImplementation(() => {
+				callOrder.push('resolve');
+				return [];
+			});
+			const workflow = createWorkflow([node('webhook-node', 'webhook', { name: 'Webhook' })]);
+
+			await registrar.getNodesWithUnregisteredWebhooks(
+				workflow,
+				additionalData,
+				new Set(['webhook-node']),
+			);
+
+			expect(callOrder).toEqual(['acquire', 'resolve', 'release']);
+		});
+
+		test('holds the isolate across the registered-webhook lookup', async () => {
+			const callOrder: string[] = [];
+			vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockImplementation(async () => {
+				callOrder.push('acquire');
+				return true;
+			});
+			vi.spyOn(WorkflowExpression.prototype, 'releaseIsolate').mockImplementation(async () => {
+				callOrder.push('release');
+			});
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockImplementation(() => {
+				callOrder.push('resolve');
+				return [desiredWebhook({ node: 'Webhook', httpMethod: 'GET', path: 'users' })];
+			});
+			webhookService.getRegisteredWebhooks.mockImplementation(async () => {
+				callOrder.push('db');
+				return [];
+			});
+			const workflow = createWorkflow([node('webhook-node', 'webhook', { name: 'Webhook' })]);
+
+			const result = await registrar.getNodesWithUnregisteredWebhooks(
+				workflow,
+				additionalData,
+				new Set(['webhook-node']),
+			);
+
+			expect(result).toEqual(new Set(['webhook-node']));
+			expect(callOrder).toEqual(['acquire', 'resolve', 'db', 'release']);
+		});
+
+		test('does not release an isolate it did not acquire', async () => {
+			// Simulates a caller that already holds the isolate for this workflow:
+			// acquire is idempotent per caller and reports it did not newly acquire.
+			vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockResolvedValue(false);
+			const releaseIsolate = vi
+				.spyOn(WorkflowExpression.prototype, 'releaseIsolate')
+				.mockResolvedValue(undefined);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([]);
+			const workflow = createWorkflow([node('webhook-node', 'webhook', { name: 'Webhook' })]);
+
+			await registrar.getNodesWithUnregisteredWebhooks(
+				workflow,
+				additionalData,
+				new Set(['webhook-node']),
+			);
+
+			// Releasing here would return the caller's bridge to the pool mid-bracket.
+			expect(releaseIsolate).not.toHaveBeenCalled();
+		});
+
+		test('releases the isolate when resolution throws', async () => {
+			vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockResolvedValue(true);
+			const releaseIsolate = vi
+				.spyOn(WorkflowExpression.prototype, 'releaseIsolate')
+				.mockResolvedValue(undefined);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockImplementation(() => {
+				throw new Error('boom');
+			});
+			const workflow = createWorkflow([node('webhook-node', 'webhook', { name: 'Webhook' })]);
+
+			await expect(
+				registrar.getNodesWithUnregisteredWebhooks(
+					workflow,
+					additionalData,
+					new Set(['webhook-node']),
+				),
+			).rejects.toThrow('boom');
+
+			expect(releaseIsolate).toHaveBeenCalledTimes(1);
 		});
 	});
 });

@@ -11,6 +11,7 @@
 // PD denotes that the node has pinned data
 
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import pick from 'lodash/pick';
 import type {
 	ExecutionBaseError,
@@ -35,7 +36,6 @@ import type {
 } from 'n8n-workflow';
 import {
 	UnexpectedError,
-	createDeferredPromise,
 	createRunExecutionData,
 	NodeApiError,
 	NodeConnectionTypes,

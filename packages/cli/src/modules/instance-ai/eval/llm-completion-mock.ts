@@ -23,7 +23,9 @@ How to decide:
 
 Rules:
 - kind="tool_call": set toolName to one of the available tools and toolArguments to an object matching THAT tool's input schema EXACTLY (same keys, nesting, and types). Use the SMALLEST valid value for every field — a one-line string, a single-element array — never a long document.
-- kind="final": set content to a short final answer string.
+- kind="final": set content to a short final answer string. Two structured-output cases override this:
+  - If a structured-output / "format final response" style tool is available, NEVER finalize with plain content — call that tool with schema-valid arguments instead.
+  - Only when NO such tool exists but the conversation carries structured-output format instructions (a JSON schema the reply must match, often demanding a \`\`\`json code block and/or an "output" wrapper key): content MUST be exactly that JSON — every required field present, exact key names and wrapper, correct types (a numeric field gets a number like 42, never a descriptive string like "about 42" or "below the 42 threshold"). Keep-it-minimal applies to field VALUES only — never drop fields, the wrapper, or the code block.
 - Call exactly ONE tool per step. Never fabricate a whole multi-step result in a single turn.
 - If the scenario, node hint, or data context states a specific value, reproduce it; otherwise keep values minimal.`;
 
@@ -216,7 +218,10 @@ export function createLlmCompletionMockHandler(
 				.build(),
 		);
 
-		const result = await agent.generate(userPrompt);
+		// Hang guard: one stalled model turn must not eat the scenario budget.
+		const result = await agent.generate(userPrompt, {
+			abortSignal: AbortSignal.timeout(120_000),
+		});
 
 		let responseBody: Record<string, unknown>;
 		if (capture.toolName) {

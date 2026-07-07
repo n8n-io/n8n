@@ -16,12 +16,8 @@ import { DataSource, EntityManager, In, type EntityMetadata } from '@n8n/typeorm
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { readdir, readFile } from 'fs/promises';
 import { Cipher } from 'n8n-core';
-import {
-	ensureError,
-	type INode,
-	type INodeCredentialsDetails,
-	type IWorkflowBase,
-} from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 

@@ -37,12 +37,14 @@ describe('InstanceAiMarkdown', () => {
 		thread = {
 			id: 'thread-1',
 			resourceNameIndex: new Map<string, ResourceEntry>(),
+			linkableResourceNameIndex: new Map<string, ResourceEntry>(),
 		} as unknown as ThreadRuntime;
 	});
 
 	function getProcessedContent(content: string, registry?: Map<string, ResourceEntry>): string {
 		if (registry) {
 			thread.resourceNameIndex = registry;
+			thread.linkableResourceNameIndex = registry;
 		}
 		const { getByTestId } = renderComponent({ props: { content } });
 		return getByTestId('markdown-output').textContent ?? '';
@@ -57,6 +59,15 @@ describe('InstanceAiMarkdown', () => {
 		const registry = makeRegistry([{ type: 'workflow', id: 'wf-1', name: 'My Workflow' }]);
 		const result = getProcessedContent('Check out My Workflow please', registry);
 		expect(result).toContain('[My Workflow](n8n-resource://workflow/wf-1)');
+	});
+
+	it('should not replace resource names that are only in the metadata index', () => {
+		thread.resourceNameIndex = makeRegistry([{ type: 'data-table', id: 'dt-1', name: 'table' }]);
+		thread.linkableResourceNameIndex = new Map<string, ResourceEntry>();
+
+		const result = getProcessedContent('Now let me set up the data table for evals');
+
+		expect(result).toBe('Now let me set up the data table for evals');
 	});
 
 	it('should NOT replace names shorter than 3 characters', () => {
@@ -155,14 +166,14 @@ describe('InstanceAiMarkdown', () => {
 		const content = 'Check out My Workflow please';
 
 		it('should render raw content without decoration while streaming', () => {
-			thread.resourceNameIndex = registry();
+			thread.linkableResourceNameIndex = registry();
 			const { getByTestId } = renderComponent({ props: { content, streaming: true } });
 
 			expect(getByTestId('markdown-output').textContent).toBe(content);
 		});
 
 		it('should apply decoration when the block settles (streaming flips false)', async () => {
-			thread.resourceNameIndex = registry();
+			thread.linkableResourceNameIndex = registry();
 			const { getByTestId, rerender } = renderComponent({ props: { content, streaming: true } });
 
 			expect(getByTestId('markdown-output').textContent).not.toContain('n8n-resource://');
@@ -175,7 +186,7 @@ describe('InstanceAiMarkdown', () => {
 		});
 
 		it('should decorate immediately when streaming is not set (history-loaded messages)', () => {
-			thread.resourceNameIndex = registry();
+			thread.linkableResourceNameIndex = registry();
 			const { getByTestId } = renderComponent({ props: { content } });
 
 			expect(getByTestId('markdown-output').textContent).toContain(

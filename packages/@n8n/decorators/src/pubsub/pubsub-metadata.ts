@@ -25,6 +25,8 @@ export type PubSubEventName =
 	| 'restart-event-bus'
 	| 'relay-execution-lifecycle-event'
 	| 'relay-chat-stream-event'
+	| 'relay-instance-ai-event'
+	| 'relay-instance-ai-task-control'
 	| 'relay-chat-human-message'
 	| 'relay-chat-message-edit'
 	| 'reload-sso-provisioning-configuration'

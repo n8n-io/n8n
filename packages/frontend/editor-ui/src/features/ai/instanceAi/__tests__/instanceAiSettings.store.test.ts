@@ -319,7 +319,6 @@ describe('useInstanceAiSettingsStore', () => {
 
 			const adminResponse = {
 				enabled: true,
-				subAgentMaxSteps: 10,
 				permissions: {},
 				mcpServers: '',
 				sandboxEnabled: false,

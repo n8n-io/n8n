@@ -64,6 +64,8 @@ export interface DiscoveryTestCase {
 	expectedToolInvocations: ExpectedToolInvocations;
 	/** Free-form note explaining what regression this scenario protects against. */
 	rationale?: string;
+	/** Override the runner step cap when orchestrator-inline work needs more iterations. */
+	maxSteps?: number;
 }
 
 export interface DiscoveryCheckResult {

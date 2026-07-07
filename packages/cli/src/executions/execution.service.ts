@@ -28,6 +28,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	ExecutionStatusList,
 	ManualExecutionCancelledError,
@@ -37,7 +38,6 @@ import {
 	WorkflowOperationError,
 	createEmptyRunExecutionData,
 	createErrorExecutionData,
-	ensureError,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -58,6 +58,7 @@ import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
+import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
 import { ExecutionPersistence } from './execution-persistence';
 import { ExecutionRedactionServiceProxy } from './execution-redaction-proxy.service';
 import type { ExecutionRequest, StopResult } from './execution.types';
@@ -157,11 +158,21 @@ export class ExecutionService {
 		if (!sharedWorkflowIds.length) return undefined;
 
 		const { id: executionId } = req.params;
-		const execution = await this.executionPersistence.findIfSharedUnflatten(
-			executionId,
-			sharedWorkflowIds,
-			this.globalConfig.executions.maxDisplaySize,
-		);
+		let execution: IExecutionResponse | undefined;
+		try {
+			execution = await this.executionPersistence.findIfSharedUnflatten(
+				executionId,
+				sharedWorkflowIds,
+				this.globalConfig.executions.maxDisplaySize,
+			);
+		} catch (error) {
+			if (error instanceof MissingExecutionDataError) {
+				throw new NotFoundError(
+					'Data for this execution is unavailable. It may have already been deleted based on your data retention settings.',
+				);
+			}
+			throw error;
+		}
 
 		if (!execution) {
 			this.logger.info('Attempt to read execution was blocked due to insufficient permissions', {

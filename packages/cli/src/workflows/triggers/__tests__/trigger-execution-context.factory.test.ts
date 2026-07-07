@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
 import type { WorkflowEntity } from '@n8n/db';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ErrorReporter, StorageConfig } from 'n8n-core';
-import { createDeferredPromise, sleep, UnexpectedError } from 'n8n-workflow';
+import { sleep, UnexpectedError } from 'n8n-workflow';
 import type {
 	ExecutionError,
 	IConnections,

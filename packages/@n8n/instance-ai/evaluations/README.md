@@ -9,6 +9,9 @@ Five harnesses live here:
 - **`eval:subagent`** — legacy command name for the workflow-build compatibility corpus; it drives the live orchestrator/skill build path, scored by binary checks
 - **`eval:discovery`** — orchestrator in-process, scored against required or forbidden tool/dispatch events (no n8n server)
 - **`eval:pairwise`** — live orchestrator workflow builds, scored by an LLM judge panel against do/don't lists. Intended for head-to-head comparison with `ai-workflow-builder.ee` on the same dataset
+- **`eval:computer-use`** — grades the computer-use agent (file / OAuth / doc-reading tasks) against fixtures; see [`computer-use/README.md`](computer-use/README.md)
+
+> **Writing a test case?** This README is the reference and quick-start. The step-by-step *how* — the four case archetypes (build / behaviour / credential / seeded), right-sizing assertions, director-note scripts for multi-turn cases, seeding vs synthetic, and running/lanes/baselines — lives in the [`create-instance-ai-eval` skill](../../../../.agents/skills/create-instance-ai-eval/SKILL.md). To source cases from real failures, see [sourcing from LangTracer + LangSmith](../../../../.agents/skills/create-instance-ai-eval/sourcing-cases.md).
 
 Sections:
 
@@ -138,7 +141,7 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--base-url` | `http://localhost:5678` | n8n instance URL |
 | `--email` | E2E test owner | Override login email (or `N8N_EVAL_EMAIL`) |
 | `--password` | E2E test owner | Override login password (or `N8N_EVAL_PASSWORD`) |
-| `--timeout-ms` | `900000` | Per-test-case timeout |
+| `--timeout-ms` | `900000` | Per-test-case timeout (the MCP CI workflow passes `1500000` — its multi-agent cases with large mocked payloads legitimately run past 15 min) |
 | `--output-dir` | cwd | Where to write `eval-results.json` |
 | `--dataset` | `instance-ai-workflow-evals` | LangSmith dataset name. Synced from the JSON test cases (honoring `--filter`/`--exclude`/`--tier`) before each run — point an isolated cohort (e.g. MCP) at its own dataset to avoid writing to the shared one |
 | `--baseline-prefix` | `instance-ai-baseline-` | Experiment-name prefix the regression comparison uses to find the baseline. Override (e.g. `mcp-baseline-`) so a cohort compares against its own baselines instead of the Instance AI one |
@@ -148,6 +151,13 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--tier` | — | Filter to test cases whose `datasets` array contains this value (e.g. `--tier pr` for the PR-time set). Combines with `--filter`/`--exclude`. |
 | `--source` | `disk` | Where test cases come from. `disk` (default) reads `data/workflows/` and `data/agents/`; `langtracer` pulls a suite from LangTracer's REST API — see [Sourcing from LangTracer](#sourcing-test-cases-from-langtracer) |
 | `--suite` | — | LangTracer suite slug (or numeric id) to pull when `--source langtracer` (required in that mode) |
+| `--build-via-mcp` | `false` | Build each workflow by driving the lane's MCP server with `claude -p`, then verify it on that same lane — see [Building via MCP (`--build-via-mcp`)](#building-via-mcp---build-via-mcp). Works across multiple `--base-url` lanes; requires `LANGSMITH_API_KEY`; mutually exclusive with `--prebuilt-workflows` |
+| `--mcp-server` | `n8n-local` | MCP server name for the staged `claude` config + tool allowlist (`--build-via-mcp`) |
+| `ANTHROPIC_MODEL` (env) | `claude-opus-4-8` | Anthropic model for the `claude` MCP build (`--build-via-mcp`); distinct from the verifier model. Not a flag: it rides `claude`'s native env var, and the CLI pins the default when unset so builds never float with claude-code's bundled default |
+| `--build-cwd` | — | Working directory for the `claude` build subprocess (`--build-via-mcp`); loads that project's Claude config/skills |
+| `--build-max-attempts` | `3` | Retries per workflow when `claude` returns no id (`--build-via-mcp`) |
+| `--build-mcp-timeout-ms` | `120000` | `MCP_TIMEOUT` passed to the `claude` build subprocess — bounds one MCP tool call (`--build-via-mcp`) |
+| `--build-timeout-ms` | `1800000` | Wall-clock cap per build attempt; on expiry the `claude` process is killed so a hung build can't hold its lane. `0` disables. A timed-out build is not retried (`--build-via-mcp`) |
 
 **pass@k / pass^k**: with `--iterations N`, each scenario runs N times. `pass@k` is the fraction of scenarios that passed *at least once*; `pass^k` is the fraction that passed *every* time. `pass@k` shows whether something is *possible*; `pass^k` shows whether it's *reliable*.
 
@@ -289,7 +299,7 @@ Evals auto-run when a PR is **opened / reopened / marked ready** (path-filtered)
 gh workflow run ci-instance-ai-evals.yml -f pr=<number>
 ```
 
-…or use the **Run workflow** button on the **CI: Instance AI Evals** workflow and set `pr=<number>`. A `resolve` job looks up the PR's current head at dispatch time (preferring the merge ref when it reflects the latest push, so it tests the merged state like a PR-open run; otherwise it uses the head), runs the eval against it, and posts results back to the PR. A dispatched run rebuilds the docker image either way — the prebuilt image cache is scoped to `refs/pull/<n>/merge`, which a dispatch can't restore. GitHub's built-in "Re-run jobs" instead replays the original PR-open commit, so use the dispatch above. Each eval PR comment also embeds this `gh workflow run -f pr=<n>` line.
+…or use the **Run workflow** button on the **Instance AI Evals: PR Gate** workflow and set `pr=<number>`. A `resolve` job looks up the PR's current head at dispatch time (preferring the merge ref when it reflects the latest push, so it tests the merged state like a PR-open run; otherwise it uses the head), runs the eval against it, and posts results back to the PR. A dispatched run rebuilds the docker image either way — the prebuilt image cache is scoped to `refs/pull/<n>/merge`, which a dispatch can't restore. GitHub's built-in "Re-run jobs" instead replays the original PR-open commit, so use the dispatch above. Each eval PR comment also embeds this `gh workflow run -f pr=<n>` line.
 
 ### Refreshing the baseline
 
@@ -377,10 +387,75 @@ For runs that need to leave the n8n repo (for example, driving the build from a 
 
 Run `pnpm eval:build-mcp-manifest --help` for the full flag list.
 
+## Building via MCP (`--build-via-mcp`)
+
+`--build-via-mcp` folds the MCP build into the eval run: instead of the two-phase
+`eval:build-mcp-manifest` → `--prebuilt-workflows` flow, one `eval:instance-ai`
+process builds each workflow by driving a lane's own MCP server with `claude -p`,
+then verifies it on that **same** lane. This is the recommended way to run the
+`mcp` tier — one process means one LangSmith experiment (no manifest hop, no
+shard/merge step), and the work-stealing allocator spreads builds across lanes
+(capped per-lane), so N lanes parallelize the whole build+verify pipeline.
+
+How it differs from the manifest flow:
+
+- **No manifest.** Each `(slug, iteration)` is built on demand and verified in
+  place, so every iteration gets a genuinely fresh build (clean `pass@k`/`pass^k`
+  variance) instead of rotating a fixed list of prebuilt IDs.
+- **Multi-lane.** Unlike `--prebuilt-workflows` (single instance), `--build-via-mcp`
+  accepts a comma-separated `--base-url`. Each lane enables MCP, mints its own API
+  key, and stages its own `claude` MCP config — the CLI does this setup for you.
+- **Throwaway cleanup.** Built workflows are deleted after the run unless you pass
+  `--keep-workflows`. Known limitation: cleanup keys off the `WORKFLOW_ID` trailer
+  `claude` prints, so a build that times out or never emits the trailer can leave
+  its workflow behind on the lane even though cleanup is on.
+
+**Prerequisites**: `LANGSMITH_API_KEY` set — MCP builds only run on the
+LangSmith path, whose lane allocator caps builds at 4 per lane globally (the
+keyless direct loop parallelizes iterations, which would multiply concurrent
+`claude` sessions by the iteration count). Plus the `claude` CLI installed and
+authenticated (the build subprocess reads `ANTHROPIC_API_KEY`; set
+`ANTHROPIC_MODEL` to pick the build model, defaulting to `claude-opus-4-8` when
+unset); each lane reachable and seeded with the E2E owner. The MCP module is on
+by default, so no server-side config is needed beyond a running instance.
+
+Local run against a pool of container lanes (reuses `scripts/run-eval-lanes.sh`,
+which starts + seeds the lanes and forwards everything after `--`):
+
+```bash
+# 6 lanes; build via MCP + verify the mcp tier, one experiment.
+# --concurrency 12 = lanes * 2 (the script's own default is lanes * 4).
+./scripts/run-eval-lanes.sh --instance-count 6 --tier mcp --concurrency 12 -- \
+  --build-via-mcp \
+  --dataset mcp-workflow-evals \
+  --baseline-prefix mcp-baseline-
+```
+
+Or point at lanes you started yourself:
+
+```bash
+dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai \
+  --base-url http://localhost:5678,http://localhost:5679 \
+  --build-via-mcp \
+  --tier mcp \
+  --iterations 3 \
+  --concurrency 4 \
+  --dataset mcp-workflow-evals \
+  --baseline-prefix mcp-baseline-
+```
+
+In CI this is what `ci-mcp-evals.yml` runs (see `test-evals-mcp.yml`): a single
+job starts `lanes` containers and runs one `--build-via-mcp` process, defaulting
+`--concurrency` to `lanes * 2`. Use the same ratio locally: `claude` builds,
+mock generation, and the verifier all draw on one Anthropic budget, and running
+lanes flat-out at `lanes * 4` (each lane's per-lane build cap) starves it,
+surfacing as verifier/MCP timeouts. Treat `lanes * 4` as an aggressive upper
+bound for keys with rate-limit headroom, not the starting point.
+
 ## Discovery evals
 
 Discovery evals run the orchestrator in-process and assert first-hop tool or
-sub-agent routing from captured `tool-call`, `tool-result`, `tool-error`, and
+background-agent routing from captured `tool-call`, `tool-result`, `tool-error`, and
 `agent-spawned` events. Use them when a regression is about which path the
 agent chooses, not whether a generated workflow executes.
 
@@ -393,7 +468,7 @@ pnpm eval:discovery --filter data-table-skill-loading --trials 3 --verbose --fai
 Verbose output lists each trial's completed tool calls with argument previews.
 For data-table routing, look for `load_skill(skillId="data-table-manager")`
 and `data-tables(action="list")`, and verify there are no planning,
-workflow-builder, or delegate entries in the spawned-agent section.
+workflow-builder, or spawned-agent entries in the spawned-agent section.
 
 ## Pairwise evals
 
@@ -558,6 +633,8 @@ To record an isolated cohort without touching the shared dataset or baseline —
 
 Test cases live in `evaluations/data/workflows/*.json`. Drop a file in — the CLI and LangSmith sync pick it up, no registration step. Every case is validated against `harness/schema.ts`.
 
+> The essentials are below. For the full authoring guide — picking a case archetype, sizing assertions so a wrong build fails, multi-turn director scripts, seeding vs synthetic, and calibrating against a real build — follow the [`create-instance-ai-eval` skill](../../../../.agents/skills/create-instance-ai-eval/SKILL.md) (with [`case-shapes.md`](../../../../.agents/skills/create-instance-ai-eval/case-shapes.md) and [`running-evals.md`](../../../../.agents/skills/create-instance-ai-eval/running-evals.md)).
+
 ```json
 {
   "description": "Optional note on what this case checks.",
@@ -654,7 +731,7 @@ The case carries only a **thread id**. At run time the harness pulls that thread
 
 No `conversation` field needed — the live turn comes from the trace. `project` is optional (defaults to `instance-ai`). No conversation content lands in the repo — only the opaque thread id.
 
-**What's restored.** The workflows the seed references are recreated pinned to their ids (node credentials are stripped — the eval credential pin owns the credential view, so a pre-attached id would bypass it). Data tables those workflows reference are recreated **schema-only** — columns and a remapped id, **no rows**: an empty table is all a data-table node needs to resolve, and a real conversation's rows are the highest-PII payload, so they're never reconstructed, sent, or inserted (the same row values are also redacted out of the restored message history). The row content stays in the source trace and never reaches the eval instance.
+**What's restored.** The workflows the seed references are recreated pinned to their ids (node credentials are stripped — the eval credential pin owns the credential view, so a pre-attached id would bypass it). Data tables those workflows reference are recreated **schema-only** — columns and a remapped id, **no rows**: an empty table is all a data-table node needs to resolve, and a real conversation's row values are the most sensitive part, so they're never reconstructed, sent, or inserted (the same row values are also redacted out of the restored message history). The row content stays in the source trace and never reaches the eval instance.
 
 **Continuing past the live turn.** Add a `conversation` to keep driving *after* the trace's last message is replayed — the effective conversation becomes `[<trace live turn>, ...conversation]`, so the live turn is sent for real and your authored turns become proxy-driven follow-ups (multi-turn). Use it to push a reproduced conversation further (e.g. "now also add error handling", or pressure-test the next decision):
 
@@ -670,7 +747,7 @@ No `conversation` field needed — the live turn comes from the trace. `project`
 
 **Cross-workspace, zero config (e.g. prod traces, staging eval).** A source thread can live in a different LangSmith **workspace** than the eval writes to. You don't declare which, and there are no extra env vars — the harness enumerates the workspaces your `LANGSMITH_API_KEY` can access and finds the one holding the thread (the workspace is selected per request via the `x-tenant-id` header; a personal access token typically spans staging/prod/feature). Reads use the ambient key; the eval still writes its own traces/datasets to its own workspace, so **nothing is ever written to the source workspace**. The resolved workspace is logged (`[Prod/instance-ai]`).
 
-`seedThread.project` overrides the source project name (default `instance-ai`); the same name is searched in every workspace, so if prod and staging share it you need nothing. ⚠️ Reconstructing a prod conversation pulls its content (incl. any PII) into the staging eval instance, the model, the staging traces and local report artifacts — handle per the source-side redaction decision and team data policy before using real customer threads.
+`seedThread.project` overrides the source project name (default `instance-ai`); the same name is searched in every workspace, so if prod and staging share it you need nothing. Reconstruction recreates the source conversation on the eval instance (and in its model calls, traces, and local report artifacts): the most sensitive content is scrubbed first — see *What's restored* above (no data-table rows, values redacted from the restored history, credentials stripped) — but scrubbing isn't guaranteed exhaustive, so treat a reproduced conversation as if it may carry user data and follow your team's data-handling policy for real threads.
 
 > **Transient.** LangSmith base-tier traces retain ~14 days, so a `seedThread` case is runnable only while its trace lives. Keep these out of CI datasets (tag them `["seeded"]`, not `full`/`pr`) until durable seed snapshots land; the resolver fails loudly when a trace has aged out. Durable snapshotting (e.g. materialising the reconstructed seed into a private LangSmith dataset on first resolve) is a planned follow-up.
 

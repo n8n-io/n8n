@@ -1,0 +1,26 @@
+{
+	"description": "executeOnce: compute an aggregate across all fetched items ($input.all()) and emit a single result — not N duplicate averages.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "On manual trigger, fetch all employee records from GET https://api.example.com/employees and POST the average salary across everyone as a single number to POST https://api.example.com/reports/average-salary."
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "medium",
+	"tags": ["build", "loops", "execute-once", "manual", "http-request"],
+	"triggerType": "manual",
+	"datasets": ["full"],
+	"outcomeExpectations": [
+		"The average salary is computed across the full employee list and sent as one value in a single POST — not once per employee.",
+		"The node that computes or sends the aggregate has executeOnce enabled (or equivalent collapse) so $input.all()-style aggregation does not run N times for N employees."
+	],
+	"executionScenarios": [
+		{
+			"name": "four-employees-one-average",
+			"description": "Four salaries average to 75000; one POST with that number",
+			"dataSetup": "GET https://api.example.com/employees returns { \"employees\": [{ \"name\": \"A\", \"salary\": 60000 }, { \"name\": \"B\", \"salary\": 70000 }, { \"name\": \"C\", \"salary\": 80000 }, { \"name\": \"D\", \"salary\": 90000 }] }. POST https://api.example.com/reports/average-salary returns { \"ok\": true }. The verifier must inspect the outbound POST request body to https://api.example.com/reports/average-salary.",
+			"successCriteria": "The workflow executes without errors. POST https://api.example.com/reports/average-salary is called exactly once (not four times). Judge from the intercepted outbound POST request body in the execution trace: it contains the average salary 75000 in a field such as average, average_salary, salary, or value. A workflow that POSTs four separate averages FAILS."
+		}
+	]
+}

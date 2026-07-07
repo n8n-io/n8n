@@ -70,10 +70,6 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_AI_SANDBOX_EPHEMERAL')
 	sandboxEphemeral: boolean = false;
 
-	/** Daytona volume ID for the agent knowledge base. */
-	@Env('N8N_AGENTS_AI_SANDBOX_DAYTONA_VOLUME_ID')
-	daytonaVolumeId: string = '';
-
 	/** Daytona API URL (e.g. "https://app.daytona.io/api"). */
 	@Env('DAYTONA_API_URL')
 	daytonaApiUrl: string = '';
