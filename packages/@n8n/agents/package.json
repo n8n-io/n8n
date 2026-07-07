@@ -77,7 +77,8 @@
     "test:dev": "vitest --silent=false",
     "test:integration": "vitest run --config vitest.integration.config.mjs",
     "test:integration:replay": "cross-env CI=1 vitest run --config vitest.integration.config.mjs",
-    "test:integration:record": "cross-env VCR_MODE=record vitest run --config vitest.integration.config.mjs"
+    "test:integration:record": "cross-env VCR_MODE=record vitest run --config vitest.integration.config.mjs",
+    "fixtures:generate": "tsx src/__tests__/fixtures/generate-bulk-vector-fixture.ts"
   },
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "catalog:",
@@ -150,6 +151,7 @@
     "cross-env": "catalog:",
     "nock": "catalog:",
     "pg": "catalog:",
+    "tsx": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
