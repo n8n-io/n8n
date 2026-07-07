@@ -19,13 +19,25 @@ export function getPromptInputByType(options: {
 	i: number;
 	promptTypeKey: string;
 	inputKey: string;
+	/**
+	 * When true (Agent v3+ only), fall back to `guardrailsInput` in `auto` mode when
+	 * `chatInput` is empty/falsy. V1/V2 callers must leave this unset so their `auto`
+	 * resolution is unchanged.
+	 */
+	fallbackToGuardrails?: boolean;
 }) {
-	const { ctx, i, promptTypeKey, inputKey } = options;
+	const { ctx, i, promptTypeKey, inputKey, fallbackToGuardrails } = options;
 	const promptType = ctx.getNodeParameter(promptTypeKey, i, 'define') as string;
 
 	let input;
 	if (promptType === 'auto') {
 		input = ctx.evaluateExpression('{{ $json["chatInput"] }}', i) as string;
+		if (fallbackToGuardrails && !input) {
+			const guardrailsInput = ctx.evaluateExpression('{{ $json["guardrailsInput"] }}', i) as string;
+			if (guardrailsInput) {
+				input = guardrailsInput;
+			}
+		}
 	} else if (promptType === 'guardrails') {
 		input = ctx.evaluateExpression('{{ $json["guardrailsInput"] }}', i) as string;
 	} else {

@@ -64,7 +64,7 @@ import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { INodeProperties } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { MockInstance } from 'vitest';
-import { WAIT_NODE_TYPE } from '@/app/constants';
+import { WAIT_NODE_TYPE, AGENT_NODE_TYPE } from '@/app/constants';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 
 const mockConfirm = vi.fn();
@@ -117,6 +117,7 @@ const workflowDocumentStoreMock = {
 	getParentNodes: vi.fn().mockReturnValue([]),
 	getParentNodesByDepth: vi.fn().mockReturnValue([]),
 	getNodeByName: vi.fn().mockReturnValue(undefined),
+	checkIfNodeHasChatOrManualChatParent: vi.fn().mockReturnValue(false),
 	name: '',
 	settings: {},
 	getPinDataSnapshot: vi.fn().mockReturnValue({}),
@@ -146,6 +147,7 @@ describe('ParameterInputList', () => {
 		workflowDocumentStoreMock.getParentNodes.mockReturnValue([]);
 		workflowDocumentStoreMock.getParentNodesByDepth.mockReturnValue([]);
 		workflowDocumentStoreMock.getNodeByName.mockReturnValue(undefined);
+		workflowDocumentStoreMock.checkIfNodeHasChatOrManualChatParent.mockReturnValue(false);
 		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
 			shallowRef(workflowDocumentStoreMock) as unknown as ReturnType<
 				typeof injectWorkflowDocumentStore
@@ -1175,6 +1177,86 @@ describe('ParameterInputList', () => {
 
 			// Options collection should be rendered when Form Trigger is not connected
 			expect(await findByText('Options')).toBeInTheDocument();
+		});
+	});
+
+	/**
+	 * Tests special parameter handling for Agent v3+ nodes.
+	 * Validates that the 'auto' promptType option is filtered out unless a chat trigger
+	 * (Chat Trigger or Manual Chat Trigger) is in the node's main ancestry.
+	 */
+	describe('updateAgentParameters', () => {
+		const agentParameters: INodeProperties[] = [
+			{
+				displayName: 'Source for Prompt (User Message)',
+				name: 'promptType',
+				type: 'options',
+				default: 'auto',
+				options: [
+					{ name: 'Connected Chat Trigger Node', value: 'auto' },
+					{ name: 'Define below', value: 'define' },
+				],
+			},
+		];
+
+		const optionsListStub = {
+			props: ['parameter'],
+			template:
+				'<div data-test-id="param-options"><span v-for="o in parameter.options" :key="o.value" data-test-id="param-option">{{ o.name }}</span></div>',
+		};
+
+		const agentNode = (typeVersion: number) =>
+			({
+				id: 'agent-123',
+				name: 'AI Agent',
+				type: AGENT_NODE_TYPE,
+				typeVersion,
+				position: [100, 200],
+				parameters: {},
+			}) as INodeUi;
+
+		it('should hide the auto option when no chat trigger is connected', async () => {
+			ndvStore.activeNode = agentNode(3.1);
+			workflowDocumentStoreMock.checkIfNodeHasChatOrManualChatParent.mockReturnValue(false);
+
+			const { queryByText, findByText } = renderComponent({
+				props: {
+					parameters: agentParameters,
+					nodeValues: {},
+				},
+				global: {
+					stubs: {
+						ParameterInputFull: optionsListStub,
+						Suspense: { template: '<div data-test-id="suspense-stub"><slot></slot></div>' },
+					},
+				},
+			});
+
+			// 'Define below' survives the filter
+			expect(await findByText('Define below')).toBeInTheDocument();
+			// 'auto' is filtered out when there is no chat trigger ancestor
+			expect(queryByText('Connected Chat Trigger Node')).not.toBeInTheDocument();
+		});
+
+		it('should keep the auto option when a chat trigger is connected', async () => {
+			ndvStore.activeNode = agentNode(3.1);
+			workflowDocumentStoreMock.checkIfNodeHasChatOrManualChatParent.mockReturnValue(true);
+
+			const { findByText } = renderComponent({
+				props: {
+					parameters: agentParameters,
+					nodeValues: {},
+				},
+				global: {
+					stubs: {
+						ParameterInputFull: optionsListStub,
+						Suspense: { template: '<div data-test-id="suspense-stub"><slot></slot></div>' },
+					},
+				},
+			});
+
+			expect(await findByText('Connected Chat Trigger Node')).toBeInTheDocument();
+			expect(await findByText('Define below')).toBeInTheDocument();
 		});
 	});
 

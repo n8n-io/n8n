@@ -5,6 +5,7 @@ import type {
 	FilterValue,
 	INodeParameters,
 	INodeProperties,
+	INodePropertyOptions,
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import {
@@ -20,6 +21,7 @@ import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { useMessage } from '@/app/composables/useMessage';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import {
+	AGENT_NODE_TYPE,
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	KEEP_AUTH_IN_NDV_FOR_NODES,
@@ -206,6 +208,12 @@ throttledWatch(
 			node.value.parameters.resume === 'form'
 		) {
 			filteredParameters = updateWaitParameters(parameters, node.value.name);
+		} else if (
+			node.value &&
+			node.value.type === AGENT_NODE_TYPE &&
+			(node.value.typeVersion ?? 0) >= 3
+		) {
+			filteredParameters = updateAgentParameters(parameters, node.value.name);
 		} else {
 			filteredParameters = parameters;
 		}
@@ -386,6 +394,26 @@ function updateWaitParameters(parameters: INodeProperties[], nodeName: string) {
 	}
 
 	return parameters;
+}
+
+// Agent v3+ 'auto' prompt source reads the message from a connected chat trigger
+// (Chat Trigger or Manual Chat Trigger). Hide the option when neither is in the node's
+// main-connection ancestry so it can't be picked without a trigger to feed it.
+// Filter-only: the stored value is left untouched.
+function updateAgentParameters(parameters: INodeProperties[], nodeName: string) {
+	if (workflowDocumentStore?.value?.checkIfNodeHasChatOrManualChatParent(nodeName)) {
+		return parameters;
+	}
+
+	return parameters.map((parameter) => {
+		if (parameter.name !== 'promptType') return parameter;
+		return {
+			...parameter,
+			options: (parameter.options as INodePropertyOptions[]).filter(
+				(option) => option.value !== 'auto',
+			),
+		};
+	});
 }
 
 function updateFormParameters(parameters: INodeProperties[], nodeName: string) {

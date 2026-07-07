@@ -140,7 +140,8 @@ export const promptTypeOptions: INodeProperties = {
 		{
 			name: 'Define below',
 			value: 'define',
-			description: 'Use an expression to reference data in previous nodes or enter static text',
+			description:
+				'Use an expression to reference data in previous nodes or enter static text. If you are using a guardrails node, you should use `{{ $json.guardrailsInput }}` to reference the guardrails input.',
 		},
 	],
 	default: 'auto',
