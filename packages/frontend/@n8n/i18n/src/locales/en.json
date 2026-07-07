@@ -1773,6 +1773,7 @@
 	"logs.overview.body.started": "Started {time}",
 	"logs.overview.body.run": "Execute step",
 	"logs.overview.body.open": "Open...",
+	"logs.overview.body.openTooltip": "Open node",
 	"logs.overview.body.toggleRow": "Toggle row",
 	"logs.details.header.actions.input": "Input",
 	"logs.details.header.actions.output": "Output",
