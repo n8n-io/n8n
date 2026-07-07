@@ -1,10 +1,9 @@
-import type { Message } from '@n8n/agents';
+import type { Message, StreamChunk } from '@n8n/agents';
 import { z } from 'zod';
 
 import {
 	EPHEMERAL_CACHE,
 	createEvalAgent,
-	extractText,
 	resolveEvalModelConfig,
 } from '../../src/utils/eval-agents';
 import type { VerificationArtifact } from '../harness/runner';
@@ -31,14 +30,20 @@ const checklistResultSchema = z.object({
 // Public API
 // ---------------------------------------------------------------------------
 
-// 3 attempts, longer timeout on the last: "verifier returned empty" scenarios
-// in CI cluster on large artifacts + provider contention, where one more
-// attempt with extra headroom recovers a verdict instead of recording a
-// verification_failure for an already-executed scenario.
-const MAX_VERIFY_ATTEMPTS = 3;
-const VERIFY_ATTEMPT_TIMEOUT_MS = 120_000;
-const VERIFY_FINAL_ATTEMPT_TIMEOUT_MS = 180_000;
+/** Escalating per-attempt caps: stalls fail fast and retry, genuinely slow verifies get room. */
+export const VERIFY_ATTEMPT_TIMEOUTS_MS = [60_000, 120_000, 240_000];
+/** Abort when the stream goes silent for this long AFTER its first chunk (agents path only).
+ *  Pre-first-chunk time is bounded by the attempt cap, not this window. */
+export const VERIFY_INACTIVITY_TIMEOUT_MS = 45_000;
 const VERIFIER_DEBUG = process.env.N8N_EVAL_VERIFIER_DEBUG === '1';
+
+function jitteredPauseMs(attempt: number): number {
+	return 1_000 * attempt + Math.random() * 1_000;
+}
+
+async function sleep(ms: number): Promise<void> {
+	await new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export interface VerifierAttemptDebug {
 	attempt: number;
@@ -304,6 +309,74 @@ function buildVerifierMessages(
 	];
 }
 
+interface StreamedVerifierResult {
+	assistantText: string;
+	structuredOutput: unknown;
+	finishReason: unknown;
+	usage: unknown;
+	streamError: unknown;
+}
+
+/**
+ * Drain the agent stream, resetting the inactivity watchdog on every chunk.
+ * Each read is raced against the abort signal so a transport that stops
+ * emitting (the observed 120s+ hangs) can't pin the attempt to its full cap.
+ */
+async function consumeVerifierStream(
+	stream: ReadableStream<StreamChunk>,
+	abortSignal: AbortSignal,
+	onActivity: () => void,
+): Promise<StreamedVerifierResult> {
+	const result: StreamedVerifierResult = {
+		assistantText: '',
+		structuredOutput: undefined,
+		finishReason: null,
+		usage: null,
+		streamError: undefined,
+	};
+
+	const aborted = new Promise<never>((_, reject) => {
+		const rejectWithReason = (): void => {
+			reject(abortSignal.reason instanceof Error ? abortSignal.reason : new Error('aborted'));
+		};
+		if (abortSignal.aborted) rejectWithReason();
+		else abortSignal.addEventListener('abort', rejectWithReason, { once: true });
+	});
+
+	const reader = stream.getReader();
+	try {
+		while (true) {
+			const { done, value } = await Promise.race([reader.read(), aborted]);
+			if (done) break;
+			onActivity();
+			switch (value.type) {
+				case 'text-delta':
+					result.assistantText += value.delta;
+					break;
+				case 'finish':
+					result.finishReason = value.finishReason;
+					result.usage = value.usage ?? null;
+					result.structuredOutput = value.structuredOutput;
+					break;
+				case 'error':
+					result.streamError = value.error;
+					break;
+				default:
+					break;
+			}
+		}
+	} finally {
+		void reader.cancel().catch(() => {});
+		try {
+			reader.releaseLock();
+		} catch {
+			// already released
+		}
+	}
+
+	return result;
+}
+
 export async function verifyChecklist(
 	checklist: ChecklistItem[],
 	artifact: VerificationArtifact,
@@ -325,14 +398,32 @@ export async function verifyChecklist(
 		path: useNativeOpenAiVerifier ? 'native-openai' : 'agents-wrapper',
 	});
 
-	for (let attempt = 1; attempt <= MAX_VERIFY_ATTEMPTS; attempt++) {
-		const attemptTimeoutMs =
-			attempt === MAX_VERIFY_ATTEMPTS ? VERIFY_FINAL_ATTEMPT_TIMEOUT_MS : VERIFY_ATTEMPT_TIMEOUT_MS;
+	const maxAttempts = VERIFY_ATTEMPT_TIMEOUTS_MS.length;
+	for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+		// Pause before every retry (`continue` paths included), decorrelating
+		// concurrent lanes hitting the provider at the same moment.
+		if (attempt > 1) await sleep(jitteredPauseMs(attempt - 1));
+		const attemptCapMs = VERIFY_ATTEMPT_TIMEOUTS_MS[attempt - 1];
 		const abortController = new AbortController();
-		const timer = setTimeout(
-			() => abortController.abort(new Error(`verifier timed out after ${attemptTimeoutMs}ms`)),
-			attemptTimeoutMs,
+		// The runtime's abort chunk carries a generic message — remember why WE aborted.
+		let abortReason: string | null = null;
+		const abortWith = (reason: string): void => {
+			abortReason = reason;
+			abortController.abort(new Error(reason));
+		};
+		const capTimer = setTimeout(
+			() => abortWith(`verifier timed out after ${attemptCapMs}ms`),
+			attemptCapMs,
 		);
+		let inactivityTimer: NodeJS.Timeout | undefined;
+		const resetInactivity = (): void => {
+			if (inactivityTimer) clearTimeout(inactivityTimer);
+			inactivityTimer = setTimeout(
+				() =>
+					abortWith(`verifier stalled: no stream activity for ${VERIFY_INACTIVITY_TIMEOUT_MS}ms`),
+				VERIFY_INACTIVITY_TIMEOUT_MS,
+			);
+		};
 
 		try {
 			let assistantText = '';
@@ -343,6 +434,7 @@ export async function verifyChecklist(
 			let hasStructuredOutput = false;
 
 			if (useNativeOpenAiVerifier) {
+				// Single non-streaming fetch: the attempt cap is the only watchdog here.
 				const nativeResult = await runNativeOpenAiVerifier(
 					nativeUserMessage,
 					abortController.signal,
@@ -358,30 +450,41 @@ export async function verifyChecklist(
 					cache: true,
 				}).structuredOutput(checklistResultSchema);
 
-				const result = await agent.generate(messages, { abortSignal: abortController.signal });
-				assistantText = extractText(result);
-				const parsedStructuredOutput = checklistResultSchema.safeParse(result.structuredOutput);
+				// The inactivity watchdog arms on the FIRST chunk (inside the consume
+				// loop): time-to-first-token on a cache-cold large artifact can exceed
+				// the window, and the attempt cap already bounds the pre-stream phase.
+				const streamResult = await agent.stream(messages, {
+					abortSignal: abortController.signal,
+					smoothStream: false,
+				});
+				const streamed = await consumeVerifierStream(
+					streamResult.stream,
+					abortController.signal,
+					resetInactivity,
+				);
+				assistantText = streamed.assistantText;
+				const parsedStructuredOutput = checklistResultSchema.safeParse(streamed.structuredOutput);
 				parsed = parsedStructuredOutput.success
 					? parsedStructuredOutput.data
 					: parseStructuredOutputFromText(assistantText);
-				finishReason = 'finishReason' in result ? result.finishReason : null;
-				usage = 'usage' in result ? result.usage : null;
-				hasStructuredOutput = result.structuredOutput !== undefined;
+				finishReason = streamed.finishReason;
+				usage = streamed.usage;
+				hasStructuredOutput = streamed.structuredOutput !== undefined;
 
-				if (result.error) {
+				if (streamed.streamError !== undefined) {
 					modelError =
-						result.error instanceof Error ? result.error.message : JSON.stringify(result.error);
+						abortReason ??
+						(streamed.streamError instanceof Error
+							? streamed.streamError.message
+							: JSON.stringify(streamed.streamError));
 				}
 
 				logVerifierDebug(`attempt ${attempt} raw result`, {
-					resultKeys: Object.keys(result as Record<string, unknown>),
 					finishReason,
-					error: 'error' in result ? result.error : null,
-					model: 'model' in result ? result.model : null,
+					error: streamed.streamError ?? null,
 					usage,
-					messages: 'messages' in result ? result.messages : null,
 					hasStructuredOutput,
-					structuredOutput: result.structuredOutput ?? null,
+					structuredOutput: streamed.structuredOutput ?? null,
 					assistantTextChars: assistantText.length,
 					assistantTextPreview: assistantText.slice(0, 2_000),
 				});
@@ -411,7 +514,7 @@ export async function verifyChecklist(
 					}),
 				);
 				console.warn(
-					`[verifier] attempt ${attempt}/${MAX_VERIFY_ATTEMPTS} returned model error: ${modelError}`,
+					`[verifier] attempt ${attempt}/${maxAttempts} returned model error: ${modelError}`,
 				);
 				continue;
 			}
@@ -443,11 +546,9 @@ export async function verifyChecklist(
 					acceptedResultsCount: results.length,
 				}),
 			);
-			console.warn(
-				`[verifier] attempt ${attempt}/${MAX_VERIFY_ATTEMPTS} produced no parseable results`,
-			);
+			console.warn(`[verifier] attempt ${attempt}/${maxAttempts} produced no parseable results`);
 		} catch (error: unknown) {
-			const msg = error instanceof Error ? error.message : String(error);
+			const msg = abortReason ?? (error instanceof Error ? error.message : String(error));
 			attempts.push(
 				createAttemptDebug({
 					attempt,
@@ -455,12 +556,13 @@ export async function verifyChecklist(
 					error: msg,
 				}),
 			);
-			console.warn(`[verifier] attempt ${attempt}/${MAX_VERIFY_ATTEMPTS} failed: ${msg}`);
+			console.warn(`[verifier] attempt ${attempt}/${maxAttempts} failed: ${msg}`);
 		} finally {
-			clearTimeout(timer);
+			clearTimeout(capTimer);
+			if (inactivityTimer) clearTimeout(inactivityTimer);
 		}
 	}
 
-	console.warn(`[verifier] exhausted ${MAX_VERIFY_ATTEMPTS} attempts, returning empty result`);
+	console.warn(`[verifier] exhausted ${maxAttempts} attempts, returning empty result`);
 	return { results: [], attempts };
 }

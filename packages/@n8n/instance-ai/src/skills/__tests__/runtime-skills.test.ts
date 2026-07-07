@@ -156,9 +156,7 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain(
 			'never ask for\nsetup values before the first successful build',
 		);
-		expect(loaded?.instructions).toContain(
-			'`delegate` to build, patch, fix, verify, or update workflows',
-		);
+		expect(loaded?.instructions).toContain('`planning` or call `create-tasks` first');
 		expect(loaded?.instructions).toContain('.to(isImportant)');
 		expect(loaded?.instructions).toContain('.onTrue(handleImportant)');
 		expect(loaded?.instructions).toContain('Never call `.onFalse()` more than once');
