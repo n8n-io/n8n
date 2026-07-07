@@ -17,10 +17,14 @@ type ConsentDetailsResult =
 			clientId: string;
 			resourceName?: string;
 			redirectUri?: string;
-			/** Scopes the user can grant for the target resource. Empty = full user delegation (no picker). */
+			/**
+			 * Scopes the user can grant. The client's requested scopes act as a
+			 * ceiling: when the client asked for specific scopes, only those are
+			 * grantable. Empty = full user delegation (no picker).
+			 */
 			scopes: string[];
-			/** Scopes the client asked for, to preselect in the picker. */
-			requestedScopes?: string[];
+			/** Scopes this user granted to this client last time, to preselect in the picker. */
+			previousScopes?: string[];
 	  }
 	| { ok: false; reason: 'resource_unavailable' };
 
@@ -44,7 +48,10 @@ export class OAuthConsentService {
 	 * Get consent details from session cookie
 	 * Verifies JWT session token and returns client information
 	 */
-	async getConsentDetails(sessionToken: string): Promise<ConsentDetailsResult | null> {
+	async getConsentDetails(
+		sessionToken: string,
+		userId: string,
+	): Promise<ConsentDetailsResult | null> {
 		try {
 			const sessionPayload = this.oauthSessionService.verifySession(sessionToken);
 
@@ -65,29 +72,64 @@ export class OAuthConsentService {
 					return { ok: false, reason: 'resource_unavailable' };
 				}
 
+				const scopes = this.grantableScopes(resource.scopes, sessionPayload.requestedScopes);
+
 				return {
 					ok: true,
 					clientName: client.name,
 					clientId: client.id,
 					resourceName: resource.displayName,
 					redirectUri: sessionPayload.redirectUri,
-					scopes: resource.scopes,
-					requestedScopes: sessionPayload.requestedScopes,
+					scopes,
+					previousScopes: await this.previousScopes(userId, client.id, scopes),
 				};
 			}
+
+			const scopes = this.grantableScopes(
+				this.protectedResourceRegistry.getDefaultResource()?.scopes ?? [],
+				sessionPayload.requestedScopes,
+			);
 
 			return {
 				ok: true,
 				clientName: client.name,
 				clientId: client.id,
 				redirectUri: sessionPayload.redirectUri,
-				scopes: this.protectedResourceRegistry.getDefaultResource()?.scopes ?? [],
-				requestedScopes: sessionPayload.requestedScopes,
+				scopes,
+				previousScopes: await this.previousScopes(userId, client.id, scopes),
 			};
 		} catch (error) {
 			this.logger.error('Error getting consent details', { error });
 			return null;
 		}
+	}
+
+	/**
+	 * The client's requested scopes are a ceiling: the user may narrow a grant
+	 * but never widen it beyond what the client asked for.
+	 */
+	private grantableScopes(supportedScopes: string[], requestedScopes?: string[]): string[] {
+		if (!requestedScopes || requestedScopes.length === 0) return supportedScopes;
+		return supportedScopes.filter((scope) => requestedScopes.includes(scope));
+	}
+
+	/**
+	 * Scopes this user granted to this client on a previous consent, limited to
+	 * what is grantable now — used to preselect the picker so re-consent
+	 * respects the user's earlier decision.
+	 */
+	private async previousScopes(
+		userId: string,
+		clientId: string,
+		grantableScopes: string[],
+	): Promise<string[] | undefined> {
+		if (grantableScopes.length === 0) return undefined;
+
+		const consent = await this.userConsentRepository.findOneBy({ userId, clientId });
+		if (!consent?.scope) return undefined;
+
+		const previous = consent.scope.filter((scope) => grantableScopes.includes(scope));
+		return previous.length > 0 ? previous : undefined;
 	}
 
 	/**
@@ -167,7 +209,8 @@ export class OAuthConsentService {
 	 * Validates the user's scope selection against the target resource. Resources
 	 * without grantable scopes (e.g. per-workflow MCP triggers) always grant `[]`
 	 * — full delegation scoped to that resource. Otherwise the selection must be
-	 * a non-empty subset of the resource's supported scopes.
+	 * a non-empty subset of the grantable scopes: the resource's supported
+	 * scopes, capped by the client's requested scopes.
 	 */
 	private async resolveGrantedScopes(
 		sessionPayload: OAuthSessionPayload,
@@ -186,9 +229,10 @@ export class OAuthConsentService {
 			throw new UserError('At least one scope must be granted');
 		}
 
-		const unsupported = scopes.filter((scope) => !supportedScopes.includes(scope));
-		if (unsupported.length > 0) {
-			throw new UserError(`Unsupported scopes: ${unsupported.join(', ')}`);
+		const grantable = this.grantableScopes(supportedScopes, sessionPayload.requestedScopes);
+		const ungrantable = scopes.filter((scope) => !grantable.includes(scope));
+		if (ungrantable.length > 0) {
+			throw new UserError(`Scopes cannot be granted: ${ungrantable.join(', ')}`);
 		}
 
 		return scopes;

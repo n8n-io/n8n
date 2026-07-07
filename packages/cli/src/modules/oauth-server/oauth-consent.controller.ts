@@ -22,7 +22,7 @@ export class OAuthConsentController {
 			const sessionToken = this.getAndValidateSessionToken(req, res);
 			if (!sessionToken) return;
 
-			const consentDetails = await this.consentService.getConsentDetails(sessionToken);
+			const consentDetails = await this.consentService.getConsentDetails(sessionToken, req.user.id);
 
 			if (!consentDetails) {
 				this.sendInvalidSessionError(res, true);
@@ -42,7 +42,7 @@ export class OAuthConsentController {
 					redirectUri: consentDetails.redirectUri,
 					resourceName: consentDetails.resourceName,
 					scopes: consentDetails.scopes,
-					requestedScopes: consentDetails.requestedScopes,
+					previousScopes: consentDetails.previousScopes,
 				},
 			});
 		} catch (error) {

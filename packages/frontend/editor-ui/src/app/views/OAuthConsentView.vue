@@ -59,13 +59,13 @@ watch(
 	},
 );
 
-// Preselect what the client asked for; default to everything when it didn't
-// request specific scopes (the common case — most MCP clients omit `scope`).
+// Preselect the user's previous grant for this client so re-consent respects
+// their earlier decision; first-time consents default to everything grantable.
 watch(
 	availableScopes,
 	(scopes) => {
-		const requested = clientDetails.value?.requestedScopes ?? [];
-		selectedScopes.value = requested.length > 0 ? requested : [...scopes];
+		const previous = clientDetails.value?.previousScopes ?? [];
+		selectedScopes.value = previous.length > 0 ? previous : [...scopes];
 	},
 	{ immediate: true },
 );
