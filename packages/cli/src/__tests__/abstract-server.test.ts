@@ -48,6 +48,7 @@ describe('AbstractServer health endpoints', () => {
 
 		const globalConfig = mock<GlobalConfig>({
 			path: '/',
+			basePath: '',
 			protocol: 'http',
 			port: 5678,
 			listen_address: '0.0.0.0',

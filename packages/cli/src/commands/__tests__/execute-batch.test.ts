@@ -78,6 +78,9 @@ test('should start a task runner', async () => {
 	Container.set(
 		GlobalConfig,
 		mock<GlobalConfig>({
+			path: '/',
+			basePath: '',
+			endpoints: { health: 'healthz' },
 			taskRunners: {},
 			nodes: {},
 		}),

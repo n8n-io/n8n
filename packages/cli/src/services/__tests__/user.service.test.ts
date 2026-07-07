@@ -42,7 +42,7 @@ describe('UserService', () => {
 	});
 	const urlService = new UrlService(
 		globalConfig,
-		mock<PathResolvingService>({ getBasePath: () => '/' }),
+		mock<PathResolvingService>({ getBasePath: () => '/', getUrlBasePath: () => '/' }),
 	);
 	const manager = mock<EntityManager>();
 	const userRepository = mockInstance(UserRepository, {
