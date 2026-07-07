@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/execution/executions/views/ExecutionsView.test.ts
+  s_b54352ee38aa75::t_5a32aac67f794a 14-19,21,45-47,52,70,87,98,108-109,115-128
+packages/frontend/editor-ui/src/app/stores/workflowsList.store.test.ts
+  s_b54352ee38aa75::t_8c83531fcb7067 399-412
+packages/frontend/editor-ui/src/features/execution/executions/views/ExecutionsView.vue
+  s_b54352ee38aa75::t_5b784599d85692 16,56-58,65,75-76,82-85,93-94
+  s_b54352ee38aa75::t_53ddf449419d40 51-54,61
+packages/frontend/editor-ui/src/app/stores/workflowsList.store.ts
+  s_b54352ee38aa75::t_fdac239073e11d 94
+  s_b54352ee38aa75::t_cbddbec689f36f 36,87-90
+  s_b54352ee38aa75::t_068aaa214a6e14 25-26,82-86,91-93,230,317
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5aafc8a07da51ed52b32d28cb7a7f62a56c52866",
+  "prompts": {},
+  "sessions": {
+    "s_b54352ee38aa75": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f3c8f-614e-7f61-af72-a2111c078585",
+        "model": "gpt-5.5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}
