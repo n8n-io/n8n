@@ -11,7 +11,6 @@ import type { DistributiveOmit } from '@n8n/utils/types';
 import type { Response } from 'express';
 
 import { isWorkflowReviewsFeatureAvailable } from '@/constants/workflow-reviews';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
@@ -54,9 +53,7 @@ export class SecuritySettingsController {
 			this.securitySettingsService.getSharedPersonalWorkflowsCount(),
 			this.securitySettingsService.getSharedPersonalCredentialsCount(),
 			this.instanceRedactionEnforcementService.get(),
-			this.isWorkflowReviewsAvailable()
-				? this.workflowReviewPolicyService.get()
-				: Promise.resolve(undefined),
+			this.getWorkflowReviewsIfAvailable(),
 		]);
 
 		return {
@@ -160,9 +157,14 @@ export class SecuritySettingsController {
 		return isWorkflowReviewsFeatureAvailable(this.licenseState.isWorkflowReviewsLicensed());
 	}
 
+	private async getWorkflowReviewsIfAvailable() {
+		if (!this.isWorkflowReviewsAvailable()) return undefined;
+		return await this.workflowReviewPolicyService.get();
+	}
+
 	private assertWorkflowReviewsAvailable(): void {
 		if (!this.isWorkflowReviewsAvailable()) {
-			throw new BadRequestError('Workflow reviews settings are not available');
+			throw new ForbiddenError('Workflow reviews settings are not enabled in this instance');
 		}
 	}
 

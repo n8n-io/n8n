@@ -485,7 +485,7 @@ describe('SecuritySettingsController', () => {
 			await ownerAgent
 				.post('/settings/security')
 				.send({ workflowReviews: { enabled: true } })
-				.expect(400);
+				.expect(403);
 
 			expect(workflowReviewPolicyService.set).not.toHaveBeenCalled();
 		});
