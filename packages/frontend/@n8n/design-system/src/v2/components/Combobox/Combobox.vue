@@ -203,17 +203,62 @@ function getDisplayValue(value: unknown): string {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/focus';
 @use '@n8n/design-system/css/mixins/input' as input-mixin;
 @use '@n8n/design-system/css/mixins/popover' as popover;
 
 .comboboxAnchor {
 	@include input-mixin.size-variables('large');
 	@include input-mixin.theme-variables(var(--border-color));
-	@include input-mixin.surface($hover-cursor: text);
+
+	display: inline-flex;
+	align-items: center;
 	justify-content: flex-start;
 	position: relative;
 	gap: var(--spacing--3xs);
 	width: 100%;
+	border-radius: var(--input--radius--top-left, var(--input--radius))
+		var(--input--radius--top-right, var(--input--radius))
+		var(--input--radius--bottom-right, var(--input--radius))
+		var(--input--radius--bottom-left, var(--input--radius));
+	font-size: var(--input--font-size);
+	background-color: var(--input--color--background);
+	box-shadow:
+		var(--input--shadow),
+		inset var(--input--border--shadow);
+	min-height: var(--input--height);
+	padding: 0 var(--input--padding);
+	color: var(--input--color--text);
+
+	@include focus.focus-within-ring;
+
+	&:not([data-disabled]):hover:not(:focus-within) {
+		cursor: text;
+		box-shadow:
+			var(--input--shadow--hover),
+			inset var(--input--border--shadow--hover);
+	}
+
+	&:focus-within {
+		box-shadow:
+			var(--input--shadow--focus),
+			inset var(--input--border--shadow--focus);
+	}
+
+	&[data-disabled] {
+		cursor: not-allowed;
+		opacity: 0.6;
+		box-shadow:
+			var(--input--shadow),
+			inset var(--input--border--shadow);
+
+		&:focus-within {
+			outline: none;
+			box-shadow:
+				var(--input--shadow),
+				inset var(--input--border--shadow);
+		}
+	}
 }
 
 .mini {
@@ -267,7 +312,7 @@ function getDisplayValue(value: unknown): string {
 }
 
 .comboboxContent {
-	@include popover.popover-surface($z-index: 999999);
+	@include popover.popover-surface;
 	@include popover.popover-placement-offsets;
 
 	min-width: var(--reka-combobox-trigger-width);

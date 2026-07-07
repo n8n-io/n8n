@@ -211,6 +211,7 @@ export const Disabled = {
 } satisfies Story;
 
 export const DisabledItem = {
+	name: 'With disabled item',
 	render: (args) => ({
 		components: { Combobox },
 		setup() {

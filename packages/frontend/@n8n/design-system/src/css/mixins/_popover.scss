@@ -1,6 +1,7 @@
 @use 'motion';
+@use '../common/var';
 
-@mixin popover-surface($z-index: null, $slide-distance: var(--spacing--5xs)) {
+@mixin popover-surface($z-index: var.$index-popper, $slide-distance: var(--spacing--5xs)) {
 	--n8n--popover--offset--slide-distance: #{$slide-distance};
 	--n8n--popover--offset--slide-x: 0;
 	--n8n--popover--offset--slide-y: 0;
