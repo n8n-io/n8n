@@ -945,10 +945,11 @@ test.describe(
 				// access confirmation) — approve interstitials until the card renders.
 				await n8n.instanceAi.waitForWorkflowSetupCard();
 
-				// Guided form: prefilled header name as read-only text, one secret input,
-				// and a link to where the key is obtained — no blank Name/Value fields.
-				await expect(setup.getGuidedStaticField('Authorization')).toBeVisible();
+				// Guided form: one secret input (labeled via placeholder — the card
+				// title already names the service) and a link to where the key is
+				// obtained — no blank Name/Value fields, no HTTP jargon.
 				await expect(setup.getGuidedSecretInput()).toHaveCount(1);
+				await expect(setup.getGuidedSecretInput()).toHaveAttribute('placeholder', /.+/);
 				await expect(setup.getGuidedDocsLink()).toBeVisible();
 
 				// The full field set stays reachable, and the guided view is returnable.

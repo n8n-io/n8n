@@ -45,11 +45,6 @@ export class InstanceAiWorkflowSetup {
 		return this.root.getByRole('button', { name: /^(Apply|Continue)$/ });
 	}
 
-	/** Read-only line for a hint-prefilled field, e.g. "Name: Authorization". */
-	getGuidedStaticField(text: string): Locator {
-		return this.root.getByTestId('credential-hint-static-field').filter({ hasText: text });
-	}
-
 	getGuidedSecretInput(): Locator {
 		// N8nInput forwards data-* attrs to the native input element.
 		return this.root.getByTestId('credential-hint-secret-input');

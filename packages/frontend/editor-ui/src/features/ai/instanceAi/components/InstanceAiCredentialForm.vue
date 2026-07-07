@@ -136,18 +136,46 @@ const isGuided = computed(() => !showAllFields.value && guidedSecrets.value.leng
 
 const docsHost = computed(() => getUrlHost(props.setupHint?.docsUrl));
 
-function fieldDisplayName(fieldName: string): string {
-	return (
-		mergedProperties.value.find((property) => property.name === fieldName)?.displayName ?? fieldName
+// Full-view ghost text for templated fields: show the expected format
+// (`Key <fal.ai API key>`) instead of a pre-filled value that would render as
+// unreadable password dots.
+const fullViewProperties = computed(() => {
+	const templated = new Map(
+		hintEntries.value
+			.filter(([, value]) => extractPlaceholderLabels(value).length > 0)
+			.map(([field, value]) => [
+				field,
+				value.replace(
+					PLACEHOLDER_SENTINEL_REGEX,
+					(sentinel) => `<${extractPlaceholderLabels(sentinel)[0] ?? '…'}>`,
+				),
+			]),
 	);
-}
+	if (templated.size === 0) return credentialProperties.value;
+	return credentialProperties.value.map((property) =>
+		templated.has(property.name)
+			? { ...property, placeholder: templated.get(property.name) }
+			: property,
+	);
+});
 
-/** Write the hint's templated fields into credentialData, substituting secrets. */
+/**
+ * Write the hint's templated fields into credentialData, substituting secrets.
+ * Pasted secrets are trimmed, and when the user pasted the template's literal
+ * prefix too (e.g. fal.ai's dashboard copies `Key abc…`), it's stripped so the
+ * composed value doesn't double it.
+ */
 function composeGuidedData() {
 	for (const [field, template] of hintEntries.value) {
 		credentialData.value[field] = template.replace(
 			PLACEHOLDER_SENTINEL_REGEX,
-			(sentinel) => secretValues.value[extractPlaceholderLabels(sentinel)[0]] ?? '',
+			(sentinel, offset: number) => {
+				const label = extractPlaceholderLabels(sentinel)[0];
+				let secret = (secretValues.value[label] ?? '').trim();
+				const prefix = template.slice(0, offset);
+				if (prefix && secret.startsWith(prefix)) secret = secret.slice(prefix.length).trim();
+				return secret;
+			},
 		);
 	}
 }
@@ -158,8 +186,10 @@ function onSecretInput(label: string, value: string) {
 }
 
 function switchToAllFields() {
-	// Carry over what's typed so far so the full form starts from the composed state.
-	composeGuidedData();
+	// Carry composed values over only when complete — a half-composed template
+	// ("Key " + empty secret) reads as unexplainable password dots in the full
+	// view; the ghost placeholder communicates the format instead.
+	if (canSubmit.value) composeGuidedData();
 	showAllFields.value = true;
 }
 
@@ -316,31 +346,33 @@ async function submit() {
 <template>
 	<div v-if="!isLoading" :class="$style.form" data-test-id="instance-ai-credential-form">
 		<template v-if="isGuided">
-			<div v-if="staticHintEntries.length > 0" :class="$style.staticFields">
-				<N8nText
-					v-for="[field, value] in staticHintEntries"
-					:key="field"
-					color="text-light"
-					size="small"
-					data-test-id="credential-hint-static-field"
+			<!-- Single secret: the card title already names the service, so a visible
+			     label would repeat it — the label rides as placeholder + aria-label. -->
+			<template v-for="label in guidedSecrets" :key="label">
+				<N8nInputLabel
+					v-if="guidedSecrets.length > 1"
+					:label="label"
+					:required="true"
+					size="medium"
 				>
-					{{ fieldDisplayName(field) }}: {{ value }}
-				</N8nText>
-			</div>
-			<N8nInputLabel
-				v-for="label in guidedSecrets"
-				:key="label"
-				:label="label"
-				:required="true"
-				size="medium"
-			>
+					<N8nInput
+						type="password"
+						:model-value="secretValues[label] ?? ''"
+						:placeholder="label"
+						data-test-id="credential-hint-secret-input"
+						@update:model-value="onSecretInput(label, String($event))"
+					/>
+				</N8nInputLabel>
 				<N8nInput
+					v-else
 					type="password"
 					:model-value="secretValues[label] ?? ''"
+					:placeholder="label"
+					:aria-label="label"
 					data-test-id="credential-hint-secret-input"
 					@update:model-value="onSecretInput(label, String($event))"
 				/>
-			</N8nInputLabel>
+			</template>
 			<div :class="$style.hintLinks">
 				<N8nLink
 					v-if="setupHint?.docsUrl"
@@ -362,7 +394,7 @@ async function submit() {
 		</template>
 		<CredentialInputs
 			v-else-if="hasFields"
-			:credential-properties="credentialProperties"
+			:credential-properties="fullViewProperties"
 			:credential-data="credentialData"
 			:documentation-url="documentationUrl"
 			:show-focus-panel="false"
@@ -413,12 +445,6 @@ async function submit() {
 	display: flex;
 	justify-content: flex-end;
 	gap: var(--spacing--2xs);
-}
-
-.staticFields {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
 }
 
 .hintLinks {
