@@ -53,12 +53,12 @@ Combobox (N8nCombobox2)
 
 **UI Props**
 
-- `size?: 'mini' | 'small' | 'medium' | 'large' | 'xlarge'` — Trigger and item size | `default: 'large'`
-- `side?: 'top' | 'right' | 'bottom' | 'left'` — Dropdown placement | `default: 'bottom'`
-- `sideOffset?: number` — Offset from the trigger | `default: 4`
-- `align?: 'start' | 'center' | 'end'` — Dropdown alignment | `default: 'start'`
-- `contentClass?: string` — Additional class(es) on the portaled dropdown content
-- `contentStyle?: StyleValue` — Inline styles on the portaled dropdown content
+- `size?`: `'mini' | 'small' | 'medium' | 'large' | 'xlarge'` | `default: 'large'`
+- `side?`: `'top' | 'right' | 'bottom' | 'left'` | `default: 'bottom'`
+- `sideOffset?`: `number` | `default: 4`
+- `align?`: `'start' | 'center' | 'end'` | `default: 'start'`
+- `contentClass?`: `string` — Additional class(es) on the portaled dropdown content
+- `contentStyle?`: `StyleValue` — Inline styles on the portaled dropdown content
 
 The dropdown content defaults to a max height of **500px** with vertical scrolling on the viewport. Override via `contentStyle` or by setting the CSS variable on a custom class:
 
