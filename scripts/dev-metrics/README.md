@@ -59,7 +59,7 @@ Event `dev:cli_command` with `anonymousId` = the weekly anonymous id, and:
 
 | Property | Example | Notes |
 | --- | --- | --- |
-| `actor` | `human`, `claude-code`, `cursor`, `ci` | Who ran it, inferred from env markers (`CLAUDECODE`, `CURSOR_TRACE_ID`, `AIDER_VERSION`, `CI`/`GITHUB_ACTIONS`); defaults to `human`. |
+| `actor` | `human`, `claude-code`, `cursor`, `ci` | Who ran it, inferred from env markers (`CLAUDECODE`, `CURSOR_TRACE_ID`, `CI`/`GITHUB_ACTIONS`); defaults to `human`. |
 | `binary` | `pnpm` | The shadowed CLI. |
 | `binary_version` | `10.32.1` | The CLI's own version, detected at runtime by the tracker via `<bin> --version` (`null` if unknown). |
 | `args` | `run build`, `add left-pad`, `install --frozen-lockfile` | The **raw argv**, verbatim. Parsed/aggregated on the collection side. |

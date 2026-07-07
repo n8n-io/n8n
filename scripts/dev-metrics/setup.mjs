@@ -67,15 +67,16 @@ function trackerDest() {
 	return join(n8nDir(), 'bin', 'track.mjs');
 }
 
-/** Parse the `// n8n-track-version: N` marker from a track.mjs file, or null. */
-function trackVersion(file) {
+/** Read a `<key>: N` version marker from a file, or null. */
+function readVersion(file, key) {
 	try {
-		const m = readFileSync(file, 'utf8').match(/n8n-track-version:\s*(\d+)/);
+		const m = readFileSync(file, 'utf8').match(new RegExp(`${key}:\\s*(\\d+)`));
 		return m ? Number(m[1]) : null;
 	} catch {
 		return null;
 	}
 }
+const trackVersion = (file) => readVersion(file, 'n8n-track-version');
 
 function syncTracker() {
 	const dest = trackerDest();
@@ -169,15 +170,7 @@ function resolveRealBinary(bin) {
 	return '';
 }
 
-/** Parse the `# n8n-shadow-shim-version: N` marker from a shim, or null. */
-function shimVersion(file) {
-	try {
-		const m = readFileSync(file, 'utf8').match(/n8n-shadow-shim-version:\s*(\d+)/);
-		return m ? Number(m[1]) : null;
-	} catch {
-		return null;
-	}
-}
+const shimVersion = (file) => readVersion(file, 'n8n-shadow-shim-version');
 
 /** Render shadow-shim.sh and write it to destPath, unless a newer shim is there. */
 function writeShim(destPath, realExec, bin) {

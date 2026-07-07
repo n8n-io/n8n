@@ -52,45 +52,31 @@ let count = 0;
 
 function logEvent(url, e) {
 	count += 1;
-	const props = e.properties ?? {};
-	const time = new Date().toISOString();
-	const id = e.anonymousId ?? e.distinct_id;
-	console.log(`\n#${count} [${time}] POST ${url}  ${e.event ?? '(no event)'}  id=${id}`);
 	console.log(
-		Object.entries(props)
-			.filter(([k]) => !k.startsWith('$'))
+		`\n#${count} [${new Date().toISOString()}] POST ${url}  ${e.event ?? '(no event)'}  id=${e.anonymousId}`,
+	);
+	console.log(
+		Object.entries(e.properties ?? {})
 			.map(([k, v]) => `    ${k}: ${JSON.stringify(v)}`)
 			.join('\n'),
 	);
 	if (values.out) appendFileSync(values.out, JSON.stringify({ url, ...e }) + '\n');
 }
 
-const server = createServer((req, res) => {
+createServer((req, res) => {
 	let body = '';
 	req.on('data', (c) => (body += c));
 	req.on('end', () => {
 		try {
-			const payload = JSON.parse(body);
-			// RudderStack posts a single track event; also handle a `batch` array.
-			const events = Array.isArray(payload.batch) ? payload.batch : [payload];
-			for (const e of events) logEvent(req.url, e);
+			logEvent(req.url, JSON.parse(body));
 		} catch {
 			console.log(`\n[${new Date().toISOString()}] POST ${req.url}  (non-JSON body)\n  ${body}`);
 		}
 		res.writeHead(200, { 'content-type': 'application/json' });
 		res.end('{"status":1}');
 	});
-});
-
-server.listen(port, () => {
+}).listen(port, () => {
 	console.log(`Capture stub listening on http://localhost:${port}`);
-	console.log('Point the tracker at it (in the shell that runs pnpm):');
 	console.log(`  export N8N_DEV_METRICS_RUDDERSTACK_URL=http://localhost:${port}`);
 	if (values.out) console.log(`Appending raw events to ${values.out}`);
-	console.log('Press Ctrl+C to stop.');
-});
-
-process.on('SIGINT', () => {
-	console.log(`\nReceived ${count} event(s). Bye.`);
-	server.close(() => process.exit(0));
 });

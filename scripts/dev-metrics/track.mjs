@@ -21,15 +21,11 @@
  *   N8N_DEV_TRACK_CODE  exit code
  *   N8N_DEV_TRACK_CWD   directory the command ran in
  *
- * The raw argv is sent verbatim (`args`) and parsed/aggregated on the collection
- * side, keeping this script dead simple. Note this means whatever is on the
- * command line — including any paths in it — is transmitted; scrub downstream.
- * The `dir` is the exception, always sent repo-relative. Every error is swallowed
- * so tracking can never disrupt a workflow.
+ * The raw argv is sent verbatim as `args` (parsed downstream), so anything on the
+ * command line is transmitted — scrub downstream. `dir` is repo-relative. Errors
+ * are swallowed so tracking never disrupts a workflow.
  */
-// n8n-track-version: 1 — bump when changing this file; setup.mjs only overwrites
-// the installed ~/.n8n/bin copy when this is newer, so an older checkout can't
-// downgrade it.
+// n8n-track-version: 1 — bump on change; setup.mjs never downgrades the installed copy.
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -133,7 +129,6 @@ function currentAnonId(state) {
 function detectActor() {
 	if (process.env.CLAUDECODE) return 'claude-code';
 	if (process.env.CURSOR_TRACE_ID) return 'cursor';
-	if (process.env.AIDER_VERSION) return 'aider';
 	if (process.env.GITHUB_ACTIONS || process.env.CI) return 'ci';
 	return 'human';
 }
