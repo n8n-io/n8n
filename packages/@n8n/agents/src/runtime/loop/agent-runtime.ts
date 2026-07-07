@@ -453,6 +453,73 @@ export class AgentRuntime {
 		}
 	}
 
+	/**
+	 * Durable-log RFC (resilience phase): re-drive a run from a `running`-status
+	 * step checkpoint after a process crash. Unlike resume(), there is no
+	 * pending tool call to settle — the checkpoint was written at a step
+	 * boundary — so the loop re-enters directly at the next model call.
+	 * `contextNotes` are appended as user messages before the model call: the
+	 * host uses them to surface interrupted tool calls ("effect unverified —
+	 * verify before retrying") and undrained steering corrections recovered
+	 * from its durable event log. Tool calls are never re-executed mechanically.
+	 */
+	async crashResume(
+		options: { runId: string; contextNotes?: string[] } & ExecutionOptions,
+	): Promise<StreamResult> {
+		this.runId = options.runId;
+		const state = await this.runState.loadForCrashResume(this.runId);
+		if (!state) throw new Error(`No checkpoint found for runId: ${this.runId}`);
+		if (state.status !== 'running') {
+			throw new Error(
+				`Checkpoint for runId ${this.runId} has status '${state.status}' — crashResume only accepts step checkpoints; use resume() for suspended runs`,
+			);
+		}
+
+		const list = AgentMessageList.deserialize(state.messageList);
+		this.context.hydrateDeferredToolsFromList(list);
+
+		let abortScope: AgentAbortScope | undefined;
+		try {
+			const { runId: _rid, contextNotes, ...callerExecOptions } = options;
+			const persisted = state.executionOptions ?? {};
+			const mergedMaxIterations = callerExecOptions.maxIterations ?? persisted.maxIterations;
+			const resumeOptions: RuntimeExecutionOptions = {
+				persistence: state.persistence,
+				...callerExecOptions,
+				...(mergedMaxIterations !== undefined ? { maxIterations: mergedMaxIterations } : {}),
+				...(state.iterationCount !== undefined ? { iterationCount: state.iterationCount } : {}),
+			};
+
+			for (const note of contextNotes ?? []) {
+				list.addInput([{ role: 'user', content: [{ type: 'text', text: note }] }]);
+			}
+
+			abortScope = this.eventBus.createAbortScope(resumeOptions.abortSignal);
+			const activeAbortScope = abortScope;
+
+			await this.ensureModelCost();
+			await this.memory.setListObservationLogMemory(list, state.persistence);
+
+			return {
+				runId: this.runId,
+				stream: this.startStream({
+					list,
+					options: resumeOptions,
+					abortScope: activeAbortScope,
+				}),
+				getState: () => this.getState(),
+			};
+		} catch (error) {
+			const isAbort = abortScope?.isAborted ?? false;
+			abortScope?.dispose();
+			this.updateState({ status: isAbort ? 'cancelled' : 'failed' });
+			if (!isAbort) {
+				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
+			}
+			return { runId: this.runId, stream: makeErrorStream(error), getState: () => this.getState() };
+		}
+	}
+
 	// --- Private ---
 
 	/**
@@ -753,6 +820,18 @@ export class AgentRuntime {
 
 			// Emit TurnEnd after all tool calls in this iteration are processed
 			this.emitTurnEnd(turn.newMessages, extractSettledToolCalls(list.responseDelta()));
+
+			// Step boundary reached with nothing pending: durably checkpoint so a
+			// crash before the next model call loses only the in-flight step.
+			if (options?.stepCheckpoints) {
+				await this.persistStepCheckpoint(
+					list,
+					totalUsage,
+					options,
+					maxIterations,
+					iterationCount + 1,
+				);
+			}
 		}
 
 		if (!reachedStopCondition && iterationCount >= maxIterations) {
@@ -840,24 +919,33 @@ export class AgentRuntime {
 	}
 
 	/**
-	 * SKETCH (durable-log RFC, resilience phase): per-step checkpoint — the
-	 * completion of the "step boundary = durability boundary" rule. Call at the
-	 * end of each loop iteration (after tool results are appended to `list`,
-	 * before the next model call), gated on an opt-in runtime option so the
-	 * write cost is only paid where crash-resume matters. Reuses the
-	 * suspension state shape; pendingToolCalls is empty at a step boundary.
+	 * Durable-log RFC (resilience phase): per-step checkpoint — the completion
+	 * of the "step boundary = durability boundary" rule. Called at the end of
+	 * each loop iteration (after tool results are appended to `list`, before
+	 * the next model call), gated on the `stepCheckpoints` opt-in so the write
+	 * cost is only paid where crash-resume matters. Reuses the suspension state
+	 * shape; pendingToolCalls is empty at a step boundary.
 	 */
 	private async persistStepCheckpoint(
 		list: AgentMessageList,
 		totalUsage: TokenUsage | undefined,
 		options: RuntimeExecutionOptions | undefined,
+		maxIterations?: number,
+		iterationCount?: number,
 	): Promise<void> {
+		const resolvedMaxIterations = maxIterations ?? options?.maxIterations;
+		const resolvedIterationCount = iterationCount ?? options?.iterationCount;
+		const executionOptions: PersistedExecutionOptions | undefined =
+			resolvedMaxIterations !== undefined ? { maxIterations: resolvedMaxIterations } : undefined;
+
 		const state: SerializableAgentState = {
 			persistence: options?.persistence,
 			status: 'running',
 			messageList: list.serialize(),
 			pendingToolCalls: {},
 			usage: totalUsage,
+			executionOptions,
+			...(resolvedIterationCount !== undefined ? { iterationCount: resolvedIterationCount } : {}),
 		};
 		await this.runState.checkpointStep(this.runId, state);
 	}

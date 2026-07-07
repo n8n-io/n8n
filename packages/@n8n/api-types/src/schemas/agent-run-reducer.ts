@@ -35,6 +35,7 @@ function categorizeCancellation(
 	if (reason === 'timeout') return 'timeout';
 	if (reason === 'service_shutdown') return 'shutdown';
 	if (reason === 'user_cancelled') return 'user';
+	if (reason === 'crash_interrupted') return 'interrupted';
 	return undefined;
 }
 
@@ -315,6 +316,19 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
+		case 'tool-interrupted': {
+			// Durable fact for a tool call in flight when the process died:
+			// terminal like tool-error, effect unverified, never blind-retried.
+			if (!isSafeObjectKey(event.payload.toolCallId)) break;
+			const tc = state.toolCallsById[event.payload.toolCallId];
+			if (tc) {
+				tc.error = event.payload.error;
+				tc.isLoading = false;
+				tc.completedAt = new Date().toISOString();
+			}
+			break;
+		}
+
 		case 'agent-spawned': {
 			if (!isSafeObjectKey(event.agentId) || !isSafeObjectKey(event.payload.parentId)) break;
 			// Idempotency guard: a replayed agent-spawned for an existing agent
@@ -422,8 +436,14 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 
 		case 'run-finish': {
 			const { status } = event.payload;
+			// 'interrupted' renders as a cancellation whose reason attributes the
+			// crash — no dedicated FE state needed for the prototype.
 			state.status =
-				status === 'completed' ? 'completed' : status === 'cancelled' ? 'cancelled' : 'error';
+				status === 'completed'
+					? 'completed'
+					: status === 'cancelled' || status === 'interrupted'
+						? 'cancelled'
+						: 'error';
 			const root = state.agentsById[state.rootAgentId];
 			if (root) {
 				root.status = state.status;

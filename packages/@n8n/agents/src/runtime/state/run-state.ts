@@ -49,7 +49,7 @@ export class RunStateManager {
 	}
 
 	/**
-	 * SKETCH (durable-log RFC, resilience phase): per-step checkpoint. Same
+	 * Durable-log RFC (resilience phase): per-step checkpoint. Same
 	 * serialization and store as suspend(), but status stays 'running' — one
 	 * upserted row per run, overwritten at every step boundary, so a crash
 	 * loses only the in-flight step. Deleted by complete() like any checkpoint.
@@ -59,10 +59,10 @@ export class RunStateManager {
 	}
 
 	/**
-	 * SKETCH (durable-log RFC, resilience phase): load a checkpoint after a
-	 * crash, where status is 'running' (mid-step death) rather than
-	 * 'suspended'. Callers pair this with the interrupted-run sweeper: in-flight
-	 * tool calls are resolved as `tool-interrupted` facts, never re-executed.
+	 * Durable-log RFC (resilience phase): load a checkpoint after a crash,
+	 * where status is 'running' (mid-step death) rather than 'suspended'.
+	 * Callers pair this with the interrupted-run sweeper: in-flight tool calls
+	 * are resolved as `tool-interrupted` facts, never re-executed.
 	 */
 	async loadForCrashResume(runId: string): Promise<SerializableAgentState | undefined> {
 		return await this.store.load(runId);

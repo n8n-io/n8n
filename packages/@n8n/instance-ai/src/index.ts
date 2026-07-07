@@ -490,6 +490,9 @@ export type { RunTokenUsage, BuilderUsageItem } from './stream/usage-accumulator
 export const resumeAgentRun: typeof StreamRunnerMod.resumeAgentRun = lazyFunction(
 	() => loadStreamRunner().resumeAgentRun,
 );
+export const crashResumeAgentRun: typeof StreamRunnerMod.crashResumeAgentRun = lazyFunction(
+	() => loadStreamRunner().crashResumeAgentRun,
+);
 export const streamAgentRun: typeof StreamRunnerMod.streamAgentRun = lazyFunction(
 	() => loadStreamRunner().streamAgentRun,
 );
