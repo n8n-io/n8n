@@ -97,8 +97,10 @@ export class QdrantVectorStore extends BaseVectorStore<QdrantVectorStoreOptions>
 		await client.delete(this.collectionName, { wait: true, points: ids.map(toPointId) });
 	}
 
-	async close(): Promise<void> {
+	// eslint-disable-next-line @typescript-eslint/promise-function-async -- no await needed; matches `require-await`
+	close(): Promise<void> {
 		this.client = undefined;
+		return Promise.resolve();
 	}
 
 	private async getClient(): Promise<QdrantClient> {
@@ -170,6 +172,7 @@ function buildCondition(condition: FilterCondition): Schemas['Condition'] {
 					`Filter operator "${operator}" on key "${key}" requires all array elements to be strings or all to be integers: Qdrant match does not support mixed-type or float values.`,
 				);
 			}
+			// eslint-disable-next-line id-denylist -- `any` is Qdrant's match-schema field name
 			const anyCondition: Schemas['Condition'] = { key: payloadKey, match: { any: value } };
 			return operator === 'in' ? anyCondition : { must_not: [anyCondition] };
 		}
