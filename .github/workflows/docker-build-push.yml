@@ -270,7 +270,9 @@ jobs:
           create_manifest "runners (sha)" "${{ needs.build-and-push-docker.outputs.runners_sha_manifest_tag }}"
           create_manifest "runners-distroless (sha)" "${{ needs.build-and-push-docker.outputs.runners_distroless_sha_manifest_tag }}"
 
-          # Create date-tagged manifests (only present when date_tag input is set, e.g. nightly)
+          # Create date-tagged manifests. The *_DATE_MANIFEST_TAG vars are empty unless the
+          # date_tag input was set (e.g. nightly), and create_manifest skips empty tags —
+          # so these calls are no-ops on non-dated builds.
           create_manifest "n8n (date)" "$N8N_DATE_MANIFEST_TAG"
           create_manifest "runners (date)" "$RUNNERS_DATE_MANIFEST_TAG"
           create_manifest "runners-distroless (date)" "$RUNNERS_DISTROLESS_DATE_MANIFEST_TAG"
