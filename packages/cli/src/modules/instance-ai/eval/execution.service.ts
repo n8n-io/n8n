@@ -44,6 +44,7 @@ import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import { createLlmCompletionMockHandler } from './llm-completion-mock';
 import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
@@ -88,6 +89,7 @@ export class EvalExecutionService {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly binaryDataService: BinaryDataService,
+		private readonly workflowStaticDataService: WorkflowStaticDataService,
 	) {}
 
 	async executeWithLlmMock(
@@ -483,7 +485,23 @@ export class EvalExecutionService {
 					});
 				}
 			}
+			await this.blankPersistedStaticData(workflowEntity.id);
 			timings.summary(this.logger);
+		}
+	}
+
+	/**
+	 * 'evaluation'-mode runs persist getWorkflowStaticData() writes back to the
+	 * workflow row — blank it after the run so scenarios leave no state behind.
+	 */
+	private async blankPersistedStaticData(workflowId: string): Promise<void> {
+		try {
+			await this.workflowStaticDataService.saveStaticDataById(workflowId, {});
+		} catch (error) {
+			this.logger.warn('[EvalMock] Failed to blank workflow staticData after run', {
+				workflowId,
+				error: error instanceof Error ? error.message : String(error),
+			});
 		}
 	}
 
