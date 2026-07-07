@@ -508,7 +508,7 @@ export class GatewayClient {
 
 			let resolvedDecision: ResourceDecision;
 
-			if (decision) {
+			if (decision && config.permissionConfirmation === 'instance') {
 				resolvedDecision = decision;
 			} else if (config.permissionConfirmation === 'instance') {
 				throw new Error(

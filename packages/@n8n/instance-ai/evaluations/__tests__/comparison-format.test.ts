@@ -71,6 +71,7 @@ function evaluation(
 			const buildSuccessCount = tc.buildSuccessCount ?? totalRuns;
 			const scenarios = (tc.scenarios ?? []).map((sa) => ({
 				scenario: testCase.executionScenarios.find((sc) => sc.name === sa.name)!,
+				evaluatedCount: sa.passes.length,
 				passCount: sa.passCount,
 				passRate: totalRuns > 0 ? sa.passCount / totalRuns : 0,
 				passAtK: new Array(totalRuns).fill(sa.passCount > 0 ? 1 : 0) as number[],
@@ -149,6 +150,33 @@ describe('formatComparisonMarkdown', () => {
 		expect(md).toMatch(/`a\/happy`/);
 		expect(md).toMatch(/0\/3 \(0%\)/);
 		expect(md).toMatch(/-100pp ↓/);
+	});
+
+	it('renders run-level pass metrics and the LangSmith experiment link when provided', () => {
+		const pr = bucket('pr', [s('a', 'happy', 0, 3)]);
+		const base = bucket('master-abc', [s('a', 'happy', 10, 10)]);
+		const md = formatComparisonMarkdown(evalFixture, ok(compareBuckets(pr, base)), {
+			passMetrics: { passAtK: 0.892, passHatK: 0.757 },
+			experimentUrl:
+				'https://eu.smith.langchain.com/o/org-1/datasets/ds-1/compare?selectedSessions=sess-1',
+		});
+
+		expect(md).toContain(
+			'_pass@3 89.2% · pass^3 75.7% · [LangSmith experiment](https://eu.smith.langchain.com/o/org-1/datasets/ds-1/compare?selectedSessions=sess-1)_',
+		);
+		// Rendered inside the header area, above the regression tables.
+		expect(md.indexOf('_pass@3 89.2%')).toBeLessThan(md.indexOf('#### Regressions'));
+	});
+
+	it('omits the run-meta line entirely when neither metrics nor URL are provided', () => {
+		const pr = bucket('pr', [s('a', 'happy', 0, 3)]);
+		const base = bucket('master-abc', [s('a', 'happy', 10, 10)]);
+		const md = formatComparisonMarkdown(evalFixture, ok(compareBuckets(pr, base)));
+
+		// The per-test-case table legitimately mentions pass@3 — assert only the
+		// meta line (leading underscore) is absent.
+		expect(md).not.toMatch(/_pass@3 /);
+		expect(md).not.toContain('LangSmith experiment');
 	});
 
 	it('uses TIP alert when there are only improvements', () => {
