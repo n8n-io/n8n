@@ -16,11 +16,15 @@ on:
     - cron: '0 8 * * *'
   workflow_dispatch:
 
+# Least privilege by default; each job opts into exactly what it needs.
+permissions: {}
+
 jobs:
   prepare:
     name: Compute date tag
     if: github.repository == 'n8n-io/n8n'
     runs-on: ubuntu-latest
+    permissions: {}
     outputs:
       date_tag: ${{ steps.date.outputs.date }}
     steps:
@@ -31,7 +35,14 @@ jobs:
   build:
     name: Build and push v3-nightly images
     needs: prepare
-    uses: ./.github/workflows/docker-build-push.yml
+    permissions:
+      contents: read # checkout / build the 3.x code
+      packages: write # push images to GHCR
+      id-token: write # SLSA provenance + cosign attestations
+      actions: read # SLSA generator reads the run metadata
+    # docker-build-push.yml reads DockerHub/Sentry/Slack org secrets and fans them out
+    # to its sub-workflows; inherit matches the existing caller (release-publish.yml).
+    uses: ./.github/workflows/docker-build-push.yml # zizmor: ignore[secrets-inherit]
     with:
       ref: '3.x'
       n8n_version: 'v3-nightly'

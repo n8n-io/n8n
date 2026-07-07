@@ -20,6 +20,9 @@ concurrency:
   group: sync-master-to-3x
   cancel-in-progress: false
 
+# Least privilege by default; each job opts into exactly what it needs.
+permissions: {}
+
 jobs:
   sync:
     name: Sync master into 3.x
@@ -37,13 +40,17 @@ jobs:
         with:
           app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
           private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          # Scope the installation token to only what the sync needs.
+          permission-contents: write # push to 3.x / the conflict branch
+          permission-pull-requests: write # open the conflict PR
+          permission-issues: write # create the conflict label
 
       - name: Checkout 3.x
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: 3.x
           fetch-depth: 0
-          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false # we push with an explicit token URL instead
 
       - name: Sync master into 3.x
         id: sync
@@ -53,6 +60,9 @@ jobs:
           CONFLICT_LABEL: 'automation:v3-sync'
         run: |
           set -euo pipefail
+
+          # Authenticated push URL (credentials are not persisted by checkout).
+          PUSH_URL="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
 
           # Halt gate: if a previous conflict PR is still open, do nothing until
           # it is resolved and merged.
@@ -70,7 +80,7 @@ jobs:
           # `git merge` fast-forwards when 3.x has not diverged from master, and
           # does a three-way merge otherwise. A non-zero exit means a conflict.
           if git merge --no-edit origin/master; then
-            git push origin HEAD:3.x
+            git push "$PUSH_URL" HEAD:3.x
             echo "Synced master into 3.x."
           else
             echo "Merge conflict encountered — opening a conflict PR."
@@ -78,7 +88,7 @@ jobs:
             # be resolved in review, mirroring the backport conflict convention.
             git add -A
             git commit --no-edit
-            git push --force origin "HEAD:refs/heads/${SYNC_BRANCH}"
+            git push --force "$PUSH_URL" "HEAD:refs/heads/${SYNC_BRANCH}"
 
             # Ensure the label exists (idempotent), then open the draft conflict PR.
             gh label create "$CONFLICT_LABEL" --color B60205 --description "master→3.x sync conflict" --force
@@ -94,11 +104,14 @@ jobs:
     needs: [sync]
     if: ${{ needs.sync.outputs.conflict_pr != '' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read # checkout the slack scripts
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           sparse-checkout: .github/scripts/slack
           sparse-checkout-cone-mode: false
+          persist-credentials: false
       - name: Notify Slack
         env:
           SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
@@ -113,11 +126,14 @@ jobs:
     needs: [sync]
     if: ${{ always() && needs.sync.result == 'failure' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read # checkout the slack scripts
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           sparse-checkout: .github/scripts/slack
           sparse-checkout-cone-mode: false
+          persist-credentials: false
       - name: Notify Slack
         env:
           SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}

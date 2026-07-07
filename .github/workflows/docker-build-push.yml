@@ -120,13 +120,20 @@ jobs:
 
       - name: Determine Docker tags for all images
         id: determine-tags
+        env:
+          DATE_TAG: ${{ inputs.date_tag }}
         run: |
+          # Build the optional --date flag in shell (not via a template expansion) so
+          # the caller-supplied input never expands directly into the command line.
+          DATE_ARGS=()
+          if [ -n "${DATE_TAG:-}" ]; then DATE_ARGS=(--date "$DATE_TAG"); fi
+
           node .github/scripts/docker/docker-tags.mjs \
             --all \
             --version "${{ needs.determine-build-context.outputs.n8n_version }}" \
             --platform "${{ matrix.docker_platform }}" \
             --sha "${GITHUB_SHA::7}" \
-            ${{ inputs.date_tag != '' && format('--date {0}', inputs.date_tag) || '' }} \
+            "${DATE_ARGS[@]}" \
             ${{ needs.determine-build-context.outputs.push_to_docker == 'true' && '--include-docker' || '' }}
 
           echo "=== Generated Docker Tags ==="
@@ -221,6 +228,10 @@ jobs:
           dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Create GHCR multi-arch manifests
+        env:
+          N8N_DATE_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.n8n_date_manifest_tag }}
+          RUNNERS_DATE_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.runners_date_manifest_tag }}
+          RUNNERS_DISTROLESS_DATE_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_date_manifest_tag }}
         run: |
           RELEASE_TYPE="${{ needs.determine-build-context.outputs.release_type }}"
 
@@ -260,9 +271,9 @@ jobs:
           create_manifest "runners-distroless (sha)" "${{ needs.build-and-push-docker.outputs.runners_distroless_sha_manifest_tag }}"
 
           # Create date-tagged manifests (only present when date_tag input is set, e.g. nightly)
-          create_manifest "n8n (date)" "${{ needs.build-and-push-docker.outputs.n8n_date_manifest_tag }}"
-          create_manifest "runners (date)" "${{ needs.build-and-push-docker.outputs.runners_date_manifest_tag }}"
-          create_manifest "runners-distroless (date)" "${{ needs.build-and-push-docker.outputs.runners_distroless_date_manifest_tag }}"
+          create_manifest "n8n (date)" "$N8N_DATE_MANIFEST_TAG"
+          create_manifest "runners (date)" "$RUNNERS_DATE_MANIFEST_TAG"
+          create_manifest "runners-distroless (date)" "$RUNNERS_DISTROLESS_DATE_MANIFEST_TAG"
 
       - name: Create Docker Hub manifests
         if: needs.determine-build-context.outputs.push_to_docker == 'true'
