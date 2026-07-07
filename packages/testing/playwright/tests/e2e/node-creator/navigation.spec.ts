@@ -30,12 +30,7 @@ test.describe(
 		test('should search for nodes with various queries', async ({ n8n }) => {
 			await n8n.canvas.nodeCreator.open();
 
-			// Assert by identity rather than exact count: the node list renders
-			// items incrementally per animation frame and, during a view
-			// transition, a leaving panel briefly overlaps the entering one, so
-			// `toHaveCount(N)` races the render/transition.
-			// The manual trigger is listed under its node-type name ("Manual
-			// Trigger") in the creator, not its on-canvas label.
+			// Assert by identity rather than exact count
 			await n8n.canvas.nodeCreator.searchFor('manual');
 			await expect(n8n.canvas.nodeCreator.getItem('Manual Trigger')).toBeVisible();
 
