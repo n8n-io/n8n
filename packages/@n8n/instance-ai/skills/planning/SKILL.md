@@ -20,8 +20,8 @@ recommended_tools:
 # Planning
 
 Use this skill to design a dependency-aware task graph in the orchestrator and
-submit it with `create-tasks`. Do not spawn another agent, do not delegate the
-planning step, and do not use incremental plan item tools.
+submit it with `create-tasks`. Do not spawn another agent and do not use
+incremental plan item tools.
 
 ## When NOT to use this skill
 
@@ -78,8 +78,7 @@ with direct `data-tables` and `parse-file` calls.
 
 ## Task Graph Rules
 
-- Use task kinds exactly as supported: `build-workflow`, `delegate`, and
-  `checkpoint`.
+- Use task kinds exactly as supported: `build-workflow` and `checkpoint`.
 - Each task `id` must be stable and referenced by dependency edges.
 - Each `title` should be short and user-facing.
 - Each `spec` must be the complete executor briefing for that task. The task
@@ -115,8 +114,6 @@ with direct `data-tables` and `parse-file` calls.
   set `isSupportingWorkflow: true` on that task. Do not set it for helper
   sub-workflows that are only intermediate artifacts inside a larger main
   workflow task.
-- For `delegate` tasks, include all context the background task needs and list
-  only the tools it should use.
 - For `checkpoint` tasks, write structured semantic verification instructions:
   `Verify trigger mode`, `Verify external systems`, `Verify required effects`,
   `Verify required branches`, `Verify required data`,
@@ -166,8 +163,7 @@ contracts, confirming a report combines upstream data correctly, validating a
 business invariant across deliverables, or checking a condition that cannot be
 covered by normal runtime verification.
 
-Do not add checkpoints for delegate tasks, and do not list `tools` on checkpoint
-tasks.
+Do not add checkpoints for routine verification-only work.
 
 ## Revisions
 

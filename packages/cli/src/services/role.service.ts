@@ -262,6 +262,12 @@ export class RoleService {
 		}
 	}
 
+	/** True if the slug is an existing global-scoped role (built-in or custom). */
+	async isGlobalRole(slug: string): Promise<boolean> {
+		const role = await this.roleRepository.findBySlug(slug);
+		return role?.roleType === 'global';
+	}
+
 	async checkRolesExist(
 		roleSlugs: string[],
 		roleType: 'global' | 'project' | 'workflow' | 'credential',

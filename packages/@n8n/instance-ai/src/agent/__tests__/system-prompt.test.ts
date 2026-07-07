@@ -191,7 +191,6 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain("Match the user's request against skill descriptions");
 			expect(prompt).toContain('**Single workflow build or edit**');
 			expect(prompt).toContain('`workflow-builder`');
-			expect(prompt).toContain('workspace file tools');
 			expect(prompt).toContain('`build-workflow`');
 			expect(prompt).toContain('**Multi-workflow or coordinated architecture**');
 			expect(prompt).toContain('`planning`');
@@ -210,7 +209,7 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain(
 				'never call `data-tables` or `parse-file` without loading `data-table-manager` first',
 			);
-			expect(prompt).toContain('Do not call `create-tasks` or `delegate`');
+			expect(prompt).toContain('Do not call `create-tasks`');
 		});
 
 		it('loads data-table-manager before workflow-builder when tables are involved', () => {
@@ -280,7 +279,7 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toContain('needsBrowserSetup=true');
 			expect(prompt).toContain('credential-setup-with-computer-use');
-			expect(prompt).toMatch(/use Computer Use `browser_\*` tools directly \(not `delegate`\)/);
+			expect(prompt).toMatch(/use Computer Use `browser_\*` tools directly/);
 		});
 	});
 

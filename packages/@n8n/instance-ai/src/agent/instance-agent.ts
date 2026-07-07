@@ -85,7 +85,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		});
 	};
 
-	// Build orchestration tools (plan, delegate) — orchestrator-only.
+	// Build orchestration tools — orchestrator-only.
 	const orchestrationTools = orchestrationContext
 		? createOrchestrationTools(orchestrationContext)
 		: createToolRegistry();

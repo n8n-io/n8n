@@ -71,6 +71,7 @@ function evaluation(
 			const buildSuccessCount = tc.buildSuccessCount ?? totalRuns;
 			const scenarios = (tc.scenarios ?? []).map((sa) => ({
 				scenario: testCase.executionScenarios.find((sc) => sc.name === sa.name)!,
+				evaluatedCount: sa.passes.length,
 				passCount: sa.passCount,
 				passRate: totalRuns > 0 ? sa.passCount / totalRuns : 0,
 				passAtK: new Array(totalRuns).fill(sa.passCount > 0 ? 1 : 0) as number[],
