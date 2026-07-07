@@ -5,16 +5,17 @@
  * keys; self-skips in CI replay since Supabase can't be replayed from cassettes.
  */
 import type { Pool } from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe } from 'vitest';
 
-import { findLastTextContent } from './helpers';
 import {
 	createSupabaseVectorTableAndFunction,
 	dropSupabaseVectorTableAndFunction,
 	loadBulkFixture,
+	registerAgentVectorStoreTests,
+	upsertFixtureDocuments,
 	waitUntilQueryable,
 } from './vector-store-helpers';
-import { Agent, VectorStore } from '../../index';
+import { VectorStore } from '../../index';
 import { SupabaseVectorStore } from '../../vector-stores/supabase';
 
 const SUPABASE_URL = process.env.SUPABASE_TEST_URL;
@@ -53,14 +54,7 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_API_KEY || !SUPABASE_DB_URL || !hasKe
 				queryName,
 			});
 			await waitUntilQueryable(store, fixture.dimensions);
-			await store.upsert(
-				fixture.documents.map((doc) => ({
-					id: doc.id,
-					vector: doc.vector,
-					content: doc.content,
-					metadata: doc.metadata,
-				})),
-			);
+			await upsertFixtureDocuments(store, fixture);
 			knowledge = new VectorStore('knowledge-base')
 				.store(store)
 				.embeddingModel('openai/text-embedding-3-small')
@@ -73,75 +67,6 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_API_KEY || !SUPABASE_DB_URL || !hasKe
 			await adminPool.end();
 		});
 
-		it('answers a question using knowledge retrieved from Supabase', async () => {
-			const agent = new Agent('kb-assistant')
-				.model('anthropic/claude-haiku-4-5')
-				.instructions(
-					'You answer questions from the knowledge base. Always search it before answering. Be concise.',
-				)
-				.vectorStore(knowledge);
-
-			const result = await agent.generate(
-				'What is the tallest federal building in Manhattan, and how many stories does it have?',
-			);
-
-			const searchCalls = (result.toolCalls ?? []).filter(
-				(tc) => tc.tool === 'search_knowledge_base',
-			);
-			expect(searchCalls.length).toBeGreaterThanOrEqual(1);
-
-			const searchOutput = searchCalls[0].output as {
-				results: Array<{ content: string; score: number; metadata: { title?: string } }>;
-			};
-			expect(searchOutput.results.length).toBeGreaterThanOrEqual(1);
-			expect(searchOutput.results[0].metadata.title).toBe('Jacob K. Javits Federal Building');
-
-			const answer = findLastTextContent(result.messages);
-			expect(answer).toMatch(/41/);
-		});
-
-		it('narrows results with a model-controlled metadata filter', async () => {
-			const agent = new Agent('kb-assistant-filtered')
-				.model('anthropic/claude-haiku-4-5')
-				.instructions(
-					'You answer questions from the knowledge base. Always search it before answering. ' +
-						'Always pass a filter on the category key when the user names a specific category.',
-				)
-				.vectorStore(knowledge, {
-					filterableKeys: {
-						category: "Document category, exactly one of: 'history', 'science', 'geography'",
-					},
-				});
-
-			const result = await agent.generate(
-				'Search only the geography category: what places are described?',
-			);
-
-			const searchCalls = (result.toolCalls ?? []).filter(
-				(tc) => tc.tool === 'search_knowledge_base',
-			);
-			expect(searchCalls.length).toBeGreaterThanOrEqual(1);
-
-			const input = searchCalls[0].input as {
-				filter?: Array<{ key: string; operator: string; value: unknown }>;
-			};
-			const categoryCondition = input.filter?.find((c) => c.key === 'category');
-			expect(categoryCondition).toBeDefined();
-			if (categoryCondition?.operator === 'in') {
-				expect(categoryCondition.value).toContain('geography');
-			} else {
-				expect(categoryCondition?.value).toBe('geography');
-			}
-
-			const searchOutput = searchCalls[0].output as {
-				results: Array<{ metadata: { category?: string } }>;
-			};
-			for (const searchResult of searchOutput.results) {
-				expect(searchResult.metadata.category).toBe('geography');
-			}
-
-			const answer = findLastTextContent(result.messages);
-			expect(answer).toBeTruthy();
-		});
+		registerAgentVectorStoreTests(() => knowledge);
 	},
 );

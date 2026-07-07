@@ -1,12 +1,17 @@
 /**
  * Shared helpers for the vector-store integration suites (Postgres, Qdrant,
- * Supabase) — fixture loading, locally computed ground truth, and Postgres/
- * Supabase DDL setup, deduplicated from the per-backend test files.
+ * Supabase) — fixture loading, locally computed ground truth, Postgres/
+ * Supabase DDL setup, and shared test-body registration, deduplicated from
+ * the per-backend test files.
  */
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import type { Pool } from 'pg';
+import { expect, it } from 'vitest';
 
+import { findLastTextContent } from './helpers';
+import { Agent, VectorStore } from '../../index';
+import type { BaseVectorStore } from '../../storage/base-vector-store';
 import type { SupabaseVectorStore } from '../../vector-stores/supabase';
 
 const SCHEMA_WAIT_TIMEOUT_MS = 15_000;
@@ -66,7 +71,7 @@ export function localTopIds(
 export async function createPgVectorTable(
 	pool: Pool,
 	tableName: string,
-	dimensions: number,
+	opts: { dimensions: number; hnswIndex?: boolean; ginIndex?: boolean },
 ): Promise<void> {
 	await pool.query('CREATE EXTENSION IF NOT EXISTS vector;');
 	await pool.query(
@@ -74,9 +79,19 @@ export async function createPgVectorTable(
 			id TEXT PRIMARY KEY,
 			content TEXT NOT NULL,
 			metadata JSONB NOT NULL DEFAULT '{}',
-			embedding vector(${dimensions}) NOT NULL
+			embedding vector(${opts.dimensions}) NOT NULL
 		);`,
 	);
+	if (opts.hnswIndex) {
+		await pool.query(
+			`CREATE INDEX IF NOT EXISTS "${tableName}_embedding_idx" ON "${tableName}" USING hnsw (embedding vector_cosine_ops);`,
+		);
+	}
+	if (opts.ginIndex) {
+		await pool.query(
+			`CREATE INDEX IF NOT EXISTS "${tableName}_metadata_idx" ON "${tableName}" USING gin (metadata jsonb_path_ops);`,
+		);
+	}
 }
 
 /** Stands in for the BYO user's own setup, since SupabaseVectorStore itself never runs DDL. */
@@ -86,7 +101,7 @@ export async function createSupabaseVectorTableAndFunction(
 	queryName: string,
 	dimensions: number,
 ): Promise<void> {
-	await createPgVectorTable(pool, tableName, dimensions);
+	await createPgVectorTable(pool, tableName, { dimensions });
 	await pool.query(
 		`CREATE OR REPLACE FUNCTION "${queryName}"(query_embedding vector(${dimensions}))
 		 RETURNS TABLE (id text, content text, metadata jsonb, similarity float)
@@ -125,4 +140,168 @@ export async function waitUntilQueryable(
 			await new Promise((resolve) => setTimeout(resolve, 500));
 		}
 	}
+}
+
+export async function upsertFixtureDocuments(
+	store: BaseVectorStore,
+	fixture: BulkFixture,
+): Promise<void> {
+	await store.upsert(
+		fixture.documents.map((doc) => ({
+			id: doc.id,
+			vector: doc.vector,
+			content: doc.content,
+			metadata: doc.metadata,
+		})),
+	);
+}
+
+/**
+ * Registers the bulk retrieval-quality `it` blocks shared by all three
+ * backends' `vector-store-bulk-*.test.ts` suites. Must be called inside the
+ * suite's `describe` body, after `getStore` is guaranteed to resolve (i.e.
+ * after `beforeAll` populates the store). Order matters: the delete test
+ * mutates the corpus and must run last.
+ */
+export function registerBulkVectorStoreTests(
+	fixture: BulkFixture,
+	getStore: () => BaseVectorStore,
+): void {
+	it('returns the expected best match for each known-answer query', async () => {
+		const store = getStore();
+		for (const query of fixture.queries) {
+			const results = await store.query(query.vector, { topK: 5 });
+
+			expect(results).toHaveLength(5);
+			expect(results[0].id).toBe(query.expectedTopId);
+			expect(results[0].content.length).toBeGreaterThan(0);
+			expect(typeof results[0].metadata.title).toBe('string');
+			for (let i = 1; i < results.length; i++) {
+				expect(results[i].score).toBeLessThanOrEqual(results[i - 1].score);
+			}
+		}
+	});
+
+	it('filters by category over the large corpus and matches locally computed ground truth', async () => {
+		const store = getStore();
+		const scienceDocs = fixture.documents.filter((doc) => doc.metadata.category === 'science');
+		const expectedIds = localTopIds(scienceDocs, fixture.queries[0].vector, 10);
+
+		const results = await store.query(fixture.queries[0].vector, {
+			topK: 10,
+			filter: { conditions: [{ key: 'category', operator: 'eq', value: 'science' }] },
+		});
+
+		expect(results.map((r) => r.id)).toEqual(expectedIds);
+		for (const result of results) expect(result.metadata.category).toBe('science');
+	});
+
+	it('nin filter excludes categories across the corpus', async () => {
+		const store = getStore();
+		const geographyDocs = fixture.documents.filter((doc) => doc.metadata.category === 'geography');
+		const expectedIds = localTopIds(geographyDocs, fixture.queries[0].vector, 10);
+
+		const results = await store.query(fixture.queries[0].vector, {
+			topK: 10,
+			filter: { conditions: [{ key: 'category', operator: 'nin', value: ['history', 'science'] }] },
+		});
+
+		expect(results.map((r) => r.id)).toEqual(expectedIds);
+		for (const result of results) expect(result.metadata.category).toBe('geography');
+	});
+
+	it('deletes a batch and stops returning the deleted documents', async () => {
+		const store = getStore();
+		const idsToDelete = localTopIds(fixture.documents, fixture.queries[1].vector, 20);
+		expect(idsToDelete).toContain(fixture.queries[1].expectedTopId);
+
+		await store.delete({ ids: idsToDelete });
+
+		const remaining = fixture.documents.filter((doc) => !idsToDelete.includes(doc.id));
+		const expectedTopIds = localTopIds(remaining, fixture.queries[1].vector, 5);
+
+		const results = await store.query(fixture.queries[1].vector, { topK: 5 });
+		const resultIds = results.map((r) => r.id);
+
+		expect(resultIds).toEqual(expectedTopIds);
+		for (const deletedId of idsToDelete) expect(resultIds).not.toContain(deletedId);
+	});
+}
+
+/**
+ * Registers the agent end-to-end `it` blocks shared by all three backends'
+ * `agent-vector-store-*.test.ts` suites. Must be called inside the suite's
+ * `describe` body, after `getKnowledge` is guaranteed to resolve.
+ */
+export function registerAgentVectorStoreTests(getKnowledge: () => VectorStore): void {
+	it('answers a question using knowledge retrieved from the backend', async () => {
+		const agent = new Agent('kb-assistant')
+			.model('anthropic/claude-haiku-4-5')
+			.instructions(
+				'You answer questions from the knowledge base. Always search it before answering. Be concise.',
+			)
+			.vectorStore(getKnowledge());
+
+		const result = await agent.generate(
+			'What is the tallest federal building in Manhattan, and how many stories does it have?',
+		);
+
+		const searchCalls = (result.toolCalls ?? []).filter(
+			(tc) => tc.tool === 'search_knowledge_base',
+		);
+		expect(searchCalls.length).toBeGreaterThanOrEqual(1);
+
+		const searchOutput = searchCalls[0].output as {
+			results: Array<{ content: string; score: number; metadata: { title?: string } }>;
+		};
+		expect(searchOutput.results.length).toBeGreaterThanOrEqual(1);
+		expect(searchOutput.results[0].metadata.title).toBe('Jacob K. Javits Federal Building');
+
+		const answer = findLastTextContent(result.messages);
+		expect(answer).toMatch(/41/);
+	});
+
+	it('narrows results with a model-controlled metadata filter', async () => {
+		const agent = new Agent('kb-assistant-filtered')
+			.model('anthropic/claude-haiku-4-5')
+			.instructions(
+				'You answer questions from the knowledge base. Always search it before answering. ' +
+					'Always pass a filter on the category key when the user names a specific category.',
+			)
+			.vectorStore(getKnowledge(), {
+				filterableKeys: {
+					category: "Document category, exactly one of: 'history', 'science', 'geography'",
+				},
+			});
+
+		const result = await agent.generate(
+			'Search only the geography category: what places are described?',
+		);
+
+		const searchCalls = (result.toolCalls ?? []).filter(
+			(tc) => tc.tool === 'search_knowledge_base',
+		);
+		expect(searchCalls.length).toBeGreaterThanOrEqual(1);
+
+		const input = searchCalls[0].input as {
+			filter?: Array<{ key: string; operator: string; value: unknown }>;
+		};
+		const categoryCondition = input.filter?.find((c) => c.key === 'category');
+		expect(categoryCondition).toBeDefined();
+		if (categoryCondition?.operator === 'in') {
+			expect(categoryCondition.value).toContain('geography');
+		} else {
+			expect(categoryCondition?.value).toBe('geography');
+		}
+
+		const searchOutput = searchCalls[0].output as {
+			results: Array<{ metadata: { category?: string } }>;
+		};
+		for (const searchResult of searchOutput.results) {
+			expect(searchResult.metadata.category).toBe('geography');
+		}
+
+		const answer = findLastTextContent(result.messages);
+		expect(answer).toBeTruthy();
+	});
 }

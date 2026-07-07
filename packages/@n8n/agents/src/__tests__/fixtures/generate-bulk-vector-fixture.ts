@@ -23,6 +23,12 @@ import path from 'node:path';
 import { config as loadEnv } from 'dotenv';
 import { embedMany } from 'ai';
 
+import {
+	cosineSimilarity,
+	type BulkFixture,
+	type FixtureDocument,
+	type FixtureQuery,
+} from '../integration/vector-store-helpers';
 import { createEmbeddingModel } from '../../runtime/model/model-factory';
 
 loadEnv({ path: path.resolve(__dirname, '../../../.env') });
@@ -49,39 +55,8 @@ interface HfRow {
 	[EMBEDDING_FIELD]: number[];
 }
 
-interface FixtureDocument {
-	id: string;
-	content: string;
-	metadata: { title: string; category: (typeof CATEGORIES)[number] };
-	vector: number[];
-}
-
-interface FixtureQuery {
-	text: string;
-	vector: number[];
-	expectedTopId: string;
-}
-
-interface BulkFixture {
-	dimensions: number;
-	documents: FixtureDocument[];
-	queries: FixtureQuery[];
-}
-
 function roundVector(vector: number[]): number[] {
 	return vector.map((value) => Math.round(value * 1e6) / 1e6);
-}
-
-function cosineSimilarity(a: number[], b: number[]): number {
-	let dot = 0;
-	let magA = 0;
-	let magB = 0;
-	for (let i = 0; i < a.length; i++) {
-		dot += a[i] * b[i];
-		magA += a[i] * a[i];
-		magB += b[i] * b[i];
-	}
-	return dot / (Math.sqrt(magA) * Math.sqrt(magB));
 }
 
 async function fetchWithRetry(url: string, retries = 5): Promise<Response> {
