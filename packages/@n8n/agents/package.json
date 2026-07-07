@@ -18,6 +18,9 @@
       ],
       "vector-stores/postgres": [
         "dist/vector-stores/postgres.d.ts"
+      ],
+      "vector-stores/qdrant": [
+        "dist/vector-stores/qdrant.d.ts"
       ]
     }
   },
@@ -42,6 +45,10 @@
     "./vector-stores/postgres": {
       "types": "./dist/vector-stores/postgres.d.ts",
       "default": "./dist/vector-stores/postgres.js"
+    },
+    "./vector-stores/qdrant": {
+      "types": "./dist/vector-stores/qdrant.d.ts",
+      "default": "./dist/vector-stores/qdrant.js"
     }
   },
   "files": [
@@ -96,6 +103,7 @@
     "zod-to-json-schema": "catalog:"
   },
   "peerDependencies": {
+    "@qdrant/js-client-rest": "^1.16.2",
     "pg": "catalog:",
     "zod": "catalog:"
   },
@@ -114,11 +122,15 @@
     },
     "pg": {
       "optional": true
+    },
+    "@qdrant/js-client-rest": {
+      "optional": true
     }
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@qdrant/js-client-rest": "^1.16.2",
     "@types/json-schema": "catalog:",
     "@types/pg": "^8.15.6",
     "@vitest/coverage-v8": "catalog:",

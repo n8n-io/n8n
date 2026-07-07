@@ -24,7 +24,7 @@ interface PgVectorRow {
 
 export type PgVectorStoreOptions = {
 	connectionString: string;
-	tableName?: string;
+	tableName: string;
 };
 
 /**
@@ -38,6 +38,7 @@ export type PgVectorStoreOptions = {
  * ```typescript
  * const store = new PgVectorStore('product-docs', {
  *   connectionString: 'postgresql://user:pass@localhost:5432/db',
+ *   tableName: 'product_docs',
  * });
  * ```
  */
@@ -50,7 +51,7 @@ export class PgVectorStore extends BaseVectorStore<PgVectorStoreOptions> {
 
 	constructor(name: string, options: PgVectorStoreOptions) {
 		super(name, options);
-		this.tableName = options.tableName ?? 'agent_knowledge';
+		this.tableName = options.tableName;
 		if (!IDENTIFIER_PATTERN.test(this.tableName)) {
 			throw new Error(
 				`Invalid PgVectorStore table name "${this.tableName}": must match ${IDENTIFIER_PATTERN}`,
