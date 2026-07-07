@@ -339,23 +339,18 @@ describe('router', () => {
 			await router.push('/workflows');
 		});
 
-		test('resolves /settings/project-roles to project roles when custom instance roles disabled', async () => {
-			settingsStore.settings.envFeatureFlags = {} as typeof settingsStore.settings.envFeatureFlags;
-
-			await router.push('/settings/project-roles');
-
-			expect(router.currentRoute.value.name).toBe(VIEWS.PROJECT_ROLES_SETTINGS);
-		});
-
-		test('redirects /settings/project-roles to the Roles shell (project tab) when enabled', async () => {
-			settingsStore.settings.envFeatureFlags = {
-				N8N_ENV_FEAT_CUSTOM_INSTANCE_ROLES: true,
-			} as typeof settingsStore.settings.envFeatureFlags;
-
+		test('redirects /settings/project-roles to the Roles shell (project tab)', async () => {
 			await router.push('/settings/project-roles');
 
 			expect(router.currentRoute.value.name).toBe(VIEWS.ROLES_SETTINGS);
 			expect(router.currentRoute.value.query.tab).toBe('project');
+		});
+
+		test('redirects /settings/instance-roles to the Roles shell (instance tab)', async () => {
+			await router.push('/settings/instance-roles');
+
+			expect(router.currentRoute.value.name).toBe(VIEWS.ROLES_SETTINGS);
+			expect(router.currentRoute.value.query.tab).toBe('instance');
 		});
 	});
 

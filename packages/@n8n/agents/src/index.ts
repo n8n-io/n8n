@@ -65,6 +65,7 @@ export type {
 	RetrievedEpisodicMemoryEntry,
 	ResumeOptions,
 	McpServerConfig,
+	McpToolCallSettledEvent,
 	McpVerifyResult,
 	ModelConfig,
 	ExecutionOptions,

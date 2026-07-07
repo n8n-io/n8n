@@ -106,6 +106,18 @@ describe('EmbeddingsAwsBedrock', () => {
 		);
 	});
 
+	it('uses the region-specific domain for the China partition endpoint', async () => {
+		mockedResolveAwsCredentials.mockResolvedValue({
+			region: 'cn-north-1',
+			credentials: { accessKeyId: 'a', secretAccessKey: 'b' },
+		});
+		const node = new EmbeddingsAwsBedrock();
+		await node.supplyData.call(mockContext('amazon.titan-embed-text-v1'), 0);
+		expect(mockedGetNodeProxyAgent).toHaveBeenCalledWith(
+			'https://bedrock-runtime.cn-north-1.amazonaws.com.cn',
+		);
+	});
+
 	it('accepts arbitrary model values that are not in the loadOptions response', async () => {
 		mockedResolveAwsCredentials.mockResolvedValue({
 			region: 'us-east-1',

@@ -75,6 +75,7 @@ describe('AgentsService', () => {
 	});
 
 	afterEach(() => {
+		vi.restoreAllMocks();
 		Container.reset();
 	});
 

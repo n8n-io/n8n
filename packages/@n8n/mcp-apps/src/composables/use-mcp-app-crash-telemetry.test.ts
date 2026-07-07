@@ -78,7 +78,7 @@ describe('useMcpAppCrashTelemetry', () => {
 
 		expect(telemetry.track).toHaveBeenCalledWith('workflow-preview app crashed', {
 			app: 'workflow-preview',
-			error_message: 'async boom [REDACTED]',
+			error_message: 'async boom Authorization: [REDACTED]',
 			mcp_client_name: 'Claude Desktop',
 			mcp_client_version: '1.2.3',
 			source: 'app_unhandled_rejection',
