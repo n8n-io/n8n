@@ -15,11 +15,12 @@ import { computed, ref, watch } from 'vue';
 import { useToast } from '@/app/composables/useToast';
 import { useEvalCollectionsStore } from '../../evalCollections.store';
 import { useEvaluationStore } from '../../evaluation.store';
-import type { EvalCollectionVersionEntry, EvalVersionEntry } from '../../evalCollections.types';
+import type { EvalVersionEntry } from '../../evalCollections.types';
 
 import DatasetPicker from './DatasetPicker.vue';
 import VersionsTable from './VersionsTable.vue';
 import { versionRowKey } from './versionRowKey';
+import { buildVersionEntries, isReusableRun } from './buildVersionEntries';
 
 // State machine matches the setup flow. We collapse INITIAL/NAME_PROVIDED into
 // a single user-facing step ("fill the form"); the meaningful transitions are
@@ -98,9 +99,11 @@ const sourceOptions = computed(() => {
 	return opts;
 });
 
-// Apply source filter + sort, then expose to the table. Sort happens after
-// filter so the `VersionAvatar` index in the table matches what the user
-// sees (and consequently what colors a version gets on the list view card).
+// Row order in the table: filter by source, then sort. Version *colors* are
+// NOT tied to this order — they key off `versionColorByKey` (a version's
+// stable position) so changing the sort doesn't recolor rows. Matching those
+// colors to the list-view card needs a shared stable key and is deferred to
+// the compare view work.
 const visibleVersions = computed<EvalVersionEntry[]>(() => {
 	const filtered =
 		sourceFilter.value === 'all'
@@ -116,6 +119,16 @@ const visibleVersions = computed<EvalVersionEntry[]>(() => {
 	return sorted;
 });
 
+// A version's color follows its stable position in the unfiltered list, so the
+// avatar color stays put when the user re-sorts or filters the table.
+const versionColorByKey = computed<Record<string, number>>(() => {
+	const map: Record<string, number> = {};
+	allVersions.value.forEach((v, index) => {
+		map[versionRowKey(v)] = index;
+	});
+	return map;
+});
+
 const selectedVersions = computed<EvalVersionEntry[]>(() =>
 	allVersions.value.filter((v) => selectedVersionKeys.value.has(versionRowKey(v))),
 );
@@ -123,7 +136,7 @@ const selectedVersions = computed<EvalVersionEntry[]>(() =>
 const selectedCount = computed(() => selectedVersionKeys.value.size);
 
 const reuseCount = computed(
-	() => selectedVersions.value.filter((v) => v.lastRun?.testRunId).length,
+	() => selectedVersions.value.filter((v) => isReusableRun(v.lastRun)).length,
 );
 
 const newRunCount = computed(() => selectedCount.value - reuseCount.value);
@@ -227,10 +240,7 @@ watch(
 const onSubmit = async () => {
 	if (!canSubmit.value || !selectedConfigId.value) return;
 	state.value = 'submitting';
-	const entries: EvalCollectionVersionEntry[] = selectedVersions.value.map((v) => ({
-		workflowVersionId: v.workflowVersionId,
-		existingTestRunId: v.lastRun?.testRunId,
-	}));
+	const entries = buildVersionEntries(selectedVersions.value);
 
 	try {
 		const result = await store.createCollection(props.workflowId, {
@@ -344,6 +354,7 @@ const onSubmit = async () => {
 					:selected-version-ids="selectedVersionKeys"
 					:dataset-label="datasetLabel"
 					:workflow-id="workflowId"
+					:color-index-by-key="versionColorByKey"
 					@toggle-version="onToggleVersion"
 				/>
 			</div>

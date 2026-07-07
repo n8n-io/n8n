@@ -14,6 +14,9 @@ const props = defineProps<{
 	selectedVersionIds: Set<string>;
 	datasetLabel: string;
 	workflowId: string;
+	// Stable avatar-color index per row key, so re-sorting/filtering the table
+	// doesn't recolor rows. Falls back to display order when not provided.
+	colorIndexByKey?: Record<string, number>;
 }>();
 
 const emit = defineEmits<{
@@ -43,20 +46,23 @@ const versionHref = (v: EvalVersionEntry) =>
 
 interface Row {
 	key: string;
-	index: number; // assigned only after sort, so avatar color follows display order
+	index: number; // stable color index (see colorIndexByKey), not display order
 	version: EvalVersionEntry;
 	checked: boolean;
 	href: string;
 }
 
 const rows = computed<Row[]>(() =>
-	props.versions.map((version, idx) => ({
-		key: versionRowKey(version),
-		index: idx,
-		version,
-		checked: props.selectedVersionIds.has(versionRowKey(version)),
-		href: versionHref(version),
-	})),
+	props.versions.map((version, idx) => {
+		const key = versionRowKey(version);
+		return {
+			key,
+			index: props.colorIndexByKey?.[key] ?? idx,
+			version,
+			checked: props.selectedVersionIds.has(key),
+			href: versionHref(version),
+		};
+	}),
 );
 
 const formatScore = (value: number | null) => {
