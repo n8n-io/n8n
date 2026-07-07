@@ -329,7 +329,7 @@ function getDisplayValue(value: unknown): string {
 }
 
 .comboboxEmpty {
-	padding: var(--spacing--2xs) var(--spacing--xs);
+	padding: var(--spacing--xs) var(--spacing--sm);
 	font-size: var(--font-size--sm);
 	color: var(--text-color--subtle);
 	text-align: center;
