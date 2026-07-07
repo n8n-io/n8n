@@ -280,34 +280,50 @@ const previewDocumentId = computed(() =>
 	gap: var(--spacing--xs);
 }
 
-// Assistant-branded action: gradient border + gradient label with a purple
-// sparkle, using the same layered-background technique as the design system's
-// Ask Assistant button (surface gradient in padding-box over the highlight
-// gradient in border-box) at the large size of the sibling Try template
-// button. Doubled class selector outranks N8nButton's own background rules.
-.startWithAi.startWithAi {
+// Assistant-branded action: gradient border ring + gradient label with a
+// purple sparkle, mirroring the design system's Ask Assistant button while
+// keeping the large size of the sibling Try template button.
+.startWithAi {
+	position: relative;
 	// Icon inherits currentColor; the label is repainted with the gradient below.
 	--button--color: var(--assistant--color--highlight-2);
-	border: 1px solid transparent;
-	background:
-		var(--assistant--button--color--background--gradient) padding-box,
-		var(--assistant--color--highlight-gradient) border-box;
+	// Faint purple wash on hover/active (background-color can't take a gradient).
+	--button--color--background-hover: color-mix(
+		in srgb,
+		var(--assistant--color--highlight-2) 8%,
+		transparent
+	);
+	--button--color--background-active: color-mix(
+		in srgb,
+		var(--assistant--color--highlight-2) 14%,
+		transparent
+	);
 
-	&:hover {
-		background:
-			var(--assistant--button--color--background--hover) padding-box,
-			var(--assistant--button--color--background--gradient--hover) padding-box,
-			var(--assistant--color--highlight-gradient--reverse) border-box;
+	// Gradient border drawn as a masked ring so it rounds with the button.
+	&::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+		padding: 1px;
+		background: var(--assistant--color--highlight-gradient);
+		mask:
+			linear-gradient(#fff 0 0) content-box,
+			linear-gradient(#fff 0 0);
+		mask-composite: exclude;
+		-webkit-mask:
+			linear-gradient(#fff 0 0) content-box,
+			linear-gradient(#fff 0 0);
+		-webkit-mask-composite: xor;
+		pointer-events: none;
+		transition: background 0.2s ease;
 	}
 
-	&:active {
-		background:
-			var(--assistant--button--color--background--active) padding-box,
-			var(--assistant--button--color--background--gradient--active) padding-box,
-			var(--assistant--color--highlight-gradient--reverse) border-box;
+	&:hover::before {
+		background: var(--assistant--color--highlight-gradient--reverse);
 	}
 
-	span {
+	:global(.button-inner) span {
 		background: var(--assistant--color--highlight-gradient);
 		background-clip: text;
 		-webkit-background-clip: text;
