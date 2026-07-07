@@ -275,10 +275,12 @@ function getDisplayValue(value: unknown): string {
 }
 
 .comboboxViewport {
+	--combobox-viewport--padding: var(--spacing--4xs);
+
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--5xs);
-	padding: var(--spacing--4xs);
+	padding: var(--combobox-viewport--padding);
 }
 
 .comboboxEmpty {
@@ -297,12 +299,13 @@ function getDisplayValue(value: unknown): string {
 .comboboxSeparator {
 	--combobox-separator-outline-inset: 1px;
 
-	box-sizing: border-box;
-	height: 0;
-	width: calc(100% + 2 * var(--spacing--4xs) - 2 * var(--combobox-separator-outline-inset));
+	width: calc(
+		100% + 2 * var(--combobox-viewport--padding) - 2 * var(--combobox-separator-outline-inset)
+	);
 	margin-block: var(--spacing--3xs);
-	margin-inline: calc(-1 * var(--spacing--4xs) + var(--combobox-separator-outline-inset));
-	border: 0;
+	margin-inline: calc(
+		-1 * var(--combobox-viewport--padding) + var(--combobox-separator-outline-inset)
+	);
 	border-top: 1px solid var(--border-color);
 }
 </style>

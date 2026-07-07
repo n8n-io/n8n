@@ -279,16 +279,7 @@ defineExpose({ focus, blur, select });
 
 	@include input-mixin.size-variables;
 
-	--input--color--background: light-dark(var(--color--neutral-white), var(--color--neutral-950));
-	--input--shadow: 0 0 0 0 transparent;
-	--input--shadow--hover: 0 0 0 0 transparent;
-	--input--shadow--focus: 0 0 0 0 transparent;
-	--input--border-color: var(--border-color);
-	--input--border-color--hover: var(--border-color--strong);
-	--input--border-color--focus: var(--focus--border-color);
-	--input--border--shadow: 0 0 0 1px var(--input--border-color);
-	--input--border--shadow--hover: 0 0 0 1px var(--input--border-color--hover);
-	--input--border--shadow--focus: 0 0 0 1px var(--input--border-color--focus);
+	@include input-mixin.theme-variables;
 
 	&.xlarge {
 		@include input-mixin.size-variables('xlarge');
@@ -388,11 +379,11 @@ defineExpose({ focus, blur, select });
 	outline: none;
 	font-family: inherit;
 	font-size: var(--input--font-size, var(--font-size--md));
-	color: var(--color--text--shade-1);
+	color: var(--input--color--text);
 }
 
 .input::placeholder {
-	color: var(--color--text--tint-1);
+	color: var(--input--placeholder--color);
 }
 
 .input:read-only {
@@ -401,7 +392,11 @@ defineExpose({ focus, blur, select });
 
 .input:disabled {
 	cursor: not-allowed;
-	color: var(--color--text--tint-1);
+	color: var(--input--color--disabled);
+
+	&::placeholder {
+		color: var(--input--placeholder--color--disabled);
+	}
 }
 
 .textarea {
@@ -418,7 +413,7 @@ defineExpose({ focus, blur, select });
 }
 
 .textarea::placeholder {
-	color: var(--color--text--tint-1);
+	color: var(--input--placeholder--color);
 }
 
 .textarea:read-only {
@@ -427,7 +422,11 @@ defineExpose({ focus, blur, select });
 
 .textarea:disabled {
 	cursor: not-allowed;
-	color: var(--color--text--tint-1);
+	color: var(--input--color--disabled);
+
+	&::placeholder {
+		color: var(--input--placeholder--color--disabled);
+	}
 }
 
 .prefix,

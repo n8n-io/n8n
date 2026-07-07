@@ -1,6 +1,5 @@
 @use 'motion';
 
-// Shared surface styling for portaled popovers, dropdowns, and combobox content.
 @mixin popover-surface($z-index: null, $slide-distance: var(--spacing--5xs)) {
 	--n8n--popover--offset--slide-distance: #{$slide-distance};
 	--n8n--popover--offset--slide-x: 0;
