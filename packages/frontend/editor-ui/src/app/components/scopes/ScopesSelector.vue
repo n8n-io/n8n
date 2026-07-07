@@ -14,6 +14,7 @@ import {
 	N8nInputLabel,
 	N8nRadioGroup,
 	N8nRadioGroupItem,
+	N8nTooltip,
 } from '@n8n/design-system';
 
 import {
@@ -40,6 +41,13 @@ const props = withDefaults(
 		rootTestId?: string;
 		readActions?: readonly string[];
 		disabled?: boolean;
+		/**
+		 * Tool names each scope unlocks. When provided, group rows show a tool
+		 * count pill whose popover lists the tools enabled by the current
+		 * selection. Expected i18n keys under the prefix: `.tools.count`,
+		 * `.tools.enabledOf`.
+		 */
+		scopeTools?: Record<string, string[]>;
 	}>(),
 	{
 		rootTestId: 'scopes-selector',
@@ -181,6 +189,29 @@ function toggleGroupExpanded(group: ScopeGroup<S>) {
 	expandedGroups.value = expanded;
 }
 
+function groupTools(group: ScopeGroup<S>): string[] {
+	if (!props.scopeTools) return [];
+	const tools = new Set<string>();
+	for (const scope of group.scopes) {
+		for (const tool of props.scopeTools[scope] ?? []) {
+			tools.add(tool);
+		}
+	}
+	return [...tools];
+}
+
+function groupEnabledTools(group: ScopeGroup<S>): Set<string> {
+	const enabled = new Set<string>();
+	if (!props.scopeTools) return enabled;
+	for (const scope of group.scopes) {
+		if (!selectedSet.value.has(scope)) continue;
+		for (const tool of props.scopeTools[scope] ?? []) {
+			enabled.add(tool);
+		}
+	}
+	return enabled;
+}
+
 function isGroupChecked(group: ScopeGroup<S>): boolean {
 	return group.scopes.every((scope) => selectedSet.value.has(scope));
 }
@@ -279,6 +310,46 @@ function toggleScope(scope: S, checked: boolean) {
 								:data-test-id="`scope-group-${group.key}`"
 								@update:model-value="(checked: boolean) => toggleGroup(group, checked)"
 							/>
+							<N8nTooltip v-if="groupTools(group).length > 0" placement="right" :show-after="150">
+								<template #content>
+									<div
+										:class="$style['tools-popover']"
+										:data-test-id="`scope-group-tools-popover-${group.key}`"
+									>
+										<div :class="$style['tools-popover-header']">
+											{{
+												baseText('tools.enabledOf', {
+													enabled: groupEnabledTools(group).size,
+													total: groupTools(group).length,
+												})
+											}}
+										</div>
+										<div
+											v-for="tool in groupTools(group)"
+											:key="tool"
+											:class="[
+												$style['tool-row'],
+												{ [$style['tool-row-disabled']]: !groupEnabledTools(group).has(tool) },
+											]"
+										>
+											<N8nIcon
+												:icon="groupEnabledTools(group).has(tool) ? 'check' : 'circle'"
+												size="xsmall"
+												:class="$style['tool-icon']"
+											/>
+											<span :class="$style['tool-name']">{{ tool }}</span>
+										</div>
+									</div>
+								</template>
+								<span
+									:class="$style['tools-tag']"
+									tabindex="0"
+									:data-test-id="`scope-group-tools-${group.key}`"
+								>
+									<N8nIcon icon="wrench" size="xsmall" />
+									{{ baseText('tools.count', { count: groupTools(group).length }) }}
+								</span>
+							</N8nTooltip>
 						</div>
 						<div v-if="isGroupExpanded(group)" :class="$style.scopeList">
 							<div v-for="scope in visibleScopes" :key="scope" :class="$style.scopeRow">
@@ -342,6 +413,69 @@ function toggleScope(scope: S, checked: boolean) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
+}
+
+.tools-tag {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	margin-left: var(--spacing--2xs);
+	padding: var(--spacing--5xs) var(--spacing--2xs);
+	border-radius: var(--radius--full);
+	border: var(--border);
+	background-color: var(--color--background--light-2);
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--3xs);
+	font-weight: var(--font-weight--medium);
+	cursor: default;
+	transition:
+		color 150ms ease-out,
+		border-color 150ms ease-out;
+
+	&:hover,
+	&:focus-visible {
+		border-color: var(--color--primary);
+		color: var(--color--text--shade-1);
+	}
+}
+
+.tools-popover {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	min-width: 200px;
+	padding: var(--spacing--4xs);
+}
+
+.tools-popover-header {
+	font-size: var(--font-size--3xs);
+	font-weight: var(--font-weight--bold);
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--color--text--tint-1);
+	margin-bottom: var(--spacing--4xs);
+}
+
+.tool-row {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+
+	.tool-icon {
+		color: var(--color--primary);
+	}
+}
+
+.tool-row-disabled {
+	.tool-icon,
+	.tool-name {
+		color: var(--color--text--tint-1);
+	}
+}
+
+.tool-name {
+	font-family: var(--font-family--monospace);
+	font-size: var(--font-size--3xs);
 }
 
 .scopeList {

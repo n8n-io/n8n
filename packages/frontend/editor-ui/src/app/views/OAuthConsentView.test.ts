@@ -233,6 +233,40 @@ describe('OAuthConsentView', () => {
 			]);
 		});
 
+		it('should show a tool count pill per scope group when scope tools are provided', async () => {
+			const detailsWithTools = {
+				...scopedDetails,
+				scopeTools: {
+					'workflow:read': ['search_workflows', 'get_workflow_details'],
+					'workflow:write': ['update_workflow', 'search_workflows'],
+					'execution:read': ['get_execution'],
+				},
+			};
+			consentStore.consentDetails = detailsWithTools;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = detailsWithTools;
+				return detailsWithTools;
+			});
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			await userEvent.click(getByTestId('scopes-tree-toggle'));
+
+			// workflows group tools are deduplicated across its scopes
+			expect(getByTestId('scope-group-tools-workflows')).toHaveTextContent('3 tools');
+			expect(getByTestId('scope-group-tools-executions')).toHaveTextContent('1 tools');
+		});
+
+		it('should not render tool pills when scope tools are absent', async () => {
+			const { getByTestId, queryByTestId } = renderComponent();
+			await waitAllPromises();
+
+			await userEvent.click(getByTestId('scopes-tree-toggle'));
+
+			expect(queryByTestId('scope-group-tools-workflows')).not.toBeInTheDocument();
+		});
+
 		it('should disable Allow when no scopes are selected', async () => {
 			const { getByTestId, getByLabelText } = renderComponent();
 			await waitAllPromises();

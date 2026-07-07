@@ -1,6 +1,7 @@
 import { MCP_INSTANCE_SCOPES } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
+import { TOOLS_BY_SCOPE } from './mcp-scopes';
 import { McpConfig } from './mcp.config';
 import { McpSettingsService } from './mcp.settings.service';
 import type { ProtectedResource } from '@/services/protected-resource.registry';
@@ -48,6 +49,12 @@ export class McpProtectedResource implements ProtectedResource {
 		private readonly mcpSettingsService: McpSettingsService,
 		private readonly mcpConfig: McpConfig,
 	) {}
+
+	getScopeTools(): Record<string, string[]> {
+		return Object.fromEntries(
+			Object.entries(TOOLS_BY_SCOPE).map(([scope, tools]) => [scope, [...tools]]),
+		);
+	}
 
 	getResourceUrl(): string {
 		// A dedicated MCP base URL (split-hostname deployments) takes precedence
