@@ -52,9 +52,9 @@ export class PgVectorStore extends BaseVectorStore<PgVectorStoreOptions> {
 	constructor(name: string, options: PgVectorStoreOptions) {
 		super(name, options);
 		this.tableName = options.tableName;
-		if (!IDENTIFIER_PATTERN.test(this.tableName)) {
+		if (typeof this.tableName !== 'string' || !IDENTIFIER_PATTERN.test(this.tableName)) {
 			throw new Error(
-				`Invalid PgVectorStore table name "${this.tableName}": must match ${IDENTIFIER_PATTERN}`,
+				`Invalid PgVectorStore table name "${String(this.tableName)}": must match ${IDENTIFIER_PATTERN}`,
 			);
 		}
 	}
