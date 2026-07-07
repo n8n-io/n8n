@@ -23,7 +23,7 @@ export class GetPairedItemRule implements IBreakingChangeWorkflowRule {
 			description:
 				'The $getPairedItem expression helper is removed. Expressions using it will fail to evaluate.',
 			category: BreakingChangeCategory.workflow,
-			severity: 'low',
+			severity: 'medium',
 		};
 	}
 
@@ -35,7 +35,7 @@ export class GetPairedItemRule implements IBreakingChangeWorkflowRule {
 			{
 				action: 'Replace $getPairedItem usages',
 				description:
-					'Rewrite the affected expressions using $items() or item linking via $("Node").item instead of $getPairedItem.',
+					'Rewrite the affected expressions using $input.all() or $("Node").all(), $("Node").item, or $("Node").itemMatching() instead of $getPairedItem.',
 			},
 		];
 	}
