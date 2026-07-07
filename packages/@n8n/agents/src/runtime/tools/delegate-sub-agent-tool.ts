@@ -188,6 +188,13 @@ export interface CreateDelegateSubAgentToolOptions {
 	/** System-prompt delegation guidance. Anything other than a non-blank string falls back to the built-in guidance. */
 	systemInstruction?: string | null;
 	/**
+	 * Model-facing tool name. Defaults to {@link DELEGATE_SUB_AGENT_TOOL_NAME}
+	 * (`"delegate_subagent"`). Override when a host wants a different name in
+	 * the model's tool list (e.g. `"agent"`) — the description and system
+	 * instruction text adapt automatically.
+	 */
+	name?: string;
+	/**
 	 * Sub-agents the model may choose between. Listed in the system prompt; the
 	 * model selects one by passing its id as `subAgentId`.
 	 */
@@ -311,6 +318,7 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 		...options,
 		policy: resolveDelegateSubAgentPolicy(options.policy, toolName),
 	};
+	const toolName = resolvedOptions.name ?? DELEGATE_SUB_AGENT_TOOL_NAME;
 	const inlineProviderToolInstruction = resolvedOptions.resolveInlineSubAgentProviderTools
 		? "Provider-defined tools are loaded for the inline child's selected model provider."
 		: 'Inline children do not inherit provider-defined tools.';

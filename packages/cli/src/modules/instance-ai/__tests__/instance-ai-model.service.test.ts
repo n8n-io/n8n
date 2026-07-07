@@ -102,4 +102,52 @@ describe('InstanceAiModelService', () => {
 			);
 		});
 	});
+
+	describe('resolveSubAgentModelConfig', () => {
+		it('should return undefined when no sub-agent model is configured', async () => {
+			settingsService.resolveSubAgentModelName.mockReturnValue(undefined);
+			settingsService.resolveSubAgentModel.mockReturnValue(undefined);
+
+			await expect(service.resolveSubAgentModelConfig(fakeUser)).resolves.toBeUndefined();
+			expect(settingsService.resolveModelConfig).not.toHaveBeenCalled();
+		});
+
+		it('should resolve the configured sub-agent model via the settings chain off-proxy', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			settingsService.resolveSubAgentModelName.mockReturnValue('claude-haiku-4-5');
+			settingsService.resolveSubAgentModel.mockReturnValue('anthropic/claude-haiku-4-5');
+			settingsService.resolveModelConfig.mockResolvedValue('anthropic/claude-haiku-4-5' as never);
+
+			await expect(service.resolveSubAgentModelConfig(fakeUser)).resolves.toBe(
+				'anthropic/claude-haiku-4-5',
+			);
+			expect(settingsService.resolveModelConfig).toHaveBeenCalledWith(
+				fakeUser,
+				'anthropic/claude-haiku-4-5',
+			);
+		});
+
+		it('should resolve the sub-agent model through the proxy with the bare model name', async () => {
+			aiService.isProxyEnabled.mockReturnValue(true);
+			settingsService.resolveSubAgentModelName.mockReturnValue('claude-haiku-4-5');
+			settingsService.resolveSubAgentModel.mockReturnValue('anthropic/claude-haiku-4-5');
+			const resolveProxyModel = vi
+				.spyOn(service, 'resolveProxyModel')
+				.mockResolvedValue('proxy-haiku' as never);
+			const tokenManager = { getAuthHeaders: vi.fn() } as never;
+
+			await expect(
+				service.resolveSubAgentModelConfig(fakeUser, {
+					proxyBaseUrl: 'https://proxy',
+					tokenManager,
+				}),
+			).resolves.toBe('proxy-haiku');
+			expect(resolveProxyModel).toHaveBeenCalledWith(
+				fakeUser,
+				'https://proxy',
+				tokenManager,
+				'claude-haiku-4-5',
+			);
+		});
+	});
 });

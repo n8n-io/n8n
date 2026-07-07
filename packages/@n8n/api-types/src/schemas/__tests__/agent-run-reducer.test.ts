@@ -41,8 +41,15 @@ function makeTextDelta(
 	runId: string,
 	agentId: string,
 	text: string,
+	responseId?: string,
 ): Extract<InstanceAiEvent, { type: 'text-delta' }> {
-	return { type: 'text-delta', runId, agentId, payload: { text } };
+	return {
+		type: 'text-delta',
+		runId,
+		agentId,
+		payload: { text },
+		...(responseId ? { responseId } : {}),
+	};
 }
 
 function makeReasoningDelta(

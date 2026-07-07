@@ -14,6 +14,8 @@ export const workSummarySchema = z.object({
 	toolCalls: z.array(toolCallSummarySchema),
 	totalToolCalls: z.number().int().min(0),
 	totalToolErrors: z.number().int().min(0),
+	/** Last non-empty assistant text segment, split on tool-call boundaries. */
+	lastTextSummary: z.string().optional(),
 });
 
 export type ToolCallSummary = z.infer<typeof toolCallSummarySchema>;
@@ -32,11 +34,23 @@ export type WorkSummary = z.infer<typeof workSummarySchema>;
 export class WorkSummaryAccumulator {
 	private readonly calls = new Map<string, ToolCallSummary>();
 
+	private readonly textSegments: string[] = [];
+
+	private currentTextSegment = '';
+
 	/** Feed an event from the stream. Only tool-call / tool-result / tool-error
 	 *  events are processed; all others are silently ignored. */
 	observe(event: InstanceAiEvent): void {
 		switch (event.type) {
+			case 'text-delta': {
+				const text = event.payload.text;
+				if (typeof text === 'string' && text.length > 0) {
+					this.currentTextSegment += text;
+				}
+				break;
+			}
 			case 'tool-call': {
+				this.flushTextSegment();
 				const { toolCallId, toolName } = event.payload;
 				if (!toolCallId) break;
 				this.calls.set(toolCallId, {
@@ -73,11 +87,22 @@ export class WorkSummaryAccumulator {
 
 	/** Produce a frozen summary. Safe to call multiple times (idempotent). */
 	toSummary(): WorkSummary {
+		this.flushTextSegment();
 		const toolCalls = [...this.calls.values()].map((c) => ({ ...c }));
+		const lastTextSummary = this.textSegments.at(-1);
 		return {
 			toolCalls,
 			totalToolCalls: toolCalls.length,
 			totalToolErrors: toolCalls.filter((c) => !c.succeeded).length,
+			...(lastTextSummary ? { lastTextSummary } : {}),
 		};
+	}
+
+	private flushTextSegment(): void {
+		const trimmed = this.currentTextSegment.trim();
+		if (trimmed) {
+			this.textSegments.push(trimmed);
+		}
+		this.currentTextSegment = '';
 	}
 }

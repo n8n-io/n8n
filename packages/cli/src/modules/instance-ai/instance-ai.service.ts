@@ -221,7 +221,7 @@ function buildHandoffContextBlock(context: InstanceAiHandoffContext | undefined)
 	const prose = [
 		'The user opened this conversation from the credential setup modal and is asking for setup guidance.',
 		...lines,
-		'Use this metadata only as setup context. Never ask the user to paste credential secrets into chat. For credential setup docs, load `n8n-docs-assistant` and use `n8n-docs` with `intent: "credential-setup"`.',
+		'Use this metadata only as setup context. Never ask the user to paste credential secrets into chat. For credential setup docs, load `n8n-docs-assistant`, `load_tool` for `n8n-docs` if needed, then call `n8n-docs` with `intent: "credential-setup"`.',
 	].join('\n');
 
 	return `${CREDENTIAL_CONTEXT_OPEN_TAG}\n${JSON.stringify(context)}\n\n${prose}\n${CREDENTIAL_CONTEXT_CLOSE_TAG}`;
@@ -1944,6 +1944,11 @@ export class InstanceAiService {
 				? await this.modelService.resolveProxyModel(user, proxyBaseUrl, tokenManager)
 				: await this.modelService.resolveAgentModelConfig(user);
 
+		const subAgentModelId = await this.modelService.resolveSubAgentModelConfig(
+			user,
+			proxyBaseUrl && tokenManager ? { proxyBaseUrl, tokenManager } : undefined,
+		);
+
 		const taskStorage = new ThreadTaskStorage(memory);
 		const iterationLog = this.dbIterationLogStorage;
 		const snapshotStorage = this.dbSnapshotStorage;
@@ -2039,6 +2044,7 @@ export class InstanceAiService {
 			projectId: boundProjectId,
 			orchestratorAgentId: orchestratorAgentId(runId),
 			modelId,
+			subAgentModelId,
 			checkpointStore: this.checkpointStore,
 			eventBus: this.eventBus,
 			logger: this.logger,

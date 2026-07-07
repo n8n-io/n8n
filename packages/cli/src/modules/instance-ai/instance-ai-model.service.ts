@@ -70,6 +70,35 @@ export class InstanceAiModelService {
 	}
 
 	/**
+	 * Resolve the model used for delegate sub-agents, going through the same proxy/credential/env
+	 * chain as the orchestrator but with the configured sub-agent model (defaults to a cheaper
+	 * model like Haiku). Returns `undefined` when sub-agents should reuse the orchestrator model.
+	 *
+	 * When the proxy is enabled, `proxyBaseUrl`/`tokenManager` from the run setup are reused so we
+	 * don't mint a second token.
+	 */
+	async resolveSubAgentModelConfig(
+		user: User,
+		proxy?: { proxyBaseUrl: string; tokenManager: ProxyTokenManager },
+	): Promise<ModelConfig | undefined> {
+		const subAgentModelName = this.settingsService.resolveSubAgentModelName();
+		const subAgentModelSlug = this.settingsService.resolveSubAgentModel();
+		if (!subAgentModelName || !subAgentModelSlug) return undefined;
+
+		if (this.aiService.isProxyEnabled() && proxy) {
+			return await this.resolveProxyModel(
+				user,
+				proxy.proxyBaseUrl,
+				proxy.tokenManager,
+				subAgentModelName,
+			);
+		}
+		const httpProxyModel = await this.resolveHttpProxyModel(user, subAgentModelSlug);
+		if (httpProxyModel) return httpProxyModel;
+		return await this.settingsService.resolveModelConfig(user, subAgentModelSlug);
+	}
+
+	/**
 	 * Build model config. When the AI service proxy is enabled, returns a native
 	 * Anthropic LanguageModelV2 instance pointing at the proxy.
 	 *
@@ -86,8 +115,9 @@ export class InstanceAiModelService {
 		user: User,
 		proxyBaseUrl: string,
 		tokenManager: ProxyTokenManager,
+		modelNameOverride?: string,
 	): Promise<ModelConfig> {
-		const modelName = this.settingsService.resolveModelName(user);
+		const modelName = modelNameOverride ?? this.settingsService.resolveModelName(user);
 		const { createAnthropic } = await import('@ai-sdk/anthropic');
 		// Route through the proxy-aware transport so this path honours
 		// HTTP(S)_PROXY and the long AI timeout, same as the HTTP-proxy path.
@@ -117,14 +147,17 @@ export class InstanceAiModelService {
 	 * with a proxy-aware fetch so the AI SDK routes through the proxy.
 	 * Returns undefined if no HTTP_PROXY is set or the model isn't anthropic.
 	 */
-	private async resolveHttpProxyModel(user: User): Promise<ModelConfig | undefined> {
+	private async resolveHttpProxyModel(
+		user: User,
+		modelSlugOverride?: string,
+	): Promise<ModelConfig | undefined> {
 		// Only take over model construction when a proxy is configured; otherwise
 		// the regular model resolution path applies. Node's global `fetch` does
 		// not honour HTTP(S)_PROXY, hence the proxy-aware transport below.
 		const hasHttpProxy = Boolean(process.env.HTTPS_PROXY || process.env.HTTP_PROXY);
 		if (!hasHttpProxy) return undefined;
 
-		const config = await this.settingsService.resolveModelConfig(user);
+		const config = await this.settingsService.resolveModelConfig(user, modelSlugOverride);
 		const modelId = typeof config === 'string' ? config : 'id' in config ? config.id : null;
 		if (!modelId) return undefined;
 

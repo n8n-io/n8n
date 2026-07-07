@@ -1,0 +1,9 @@
+{
+	"id": "multi-service-build-runs-discovery-via-agent",
+	"userMessage": "Build a workflow that reads new rows from a Google Sheet, summarizes each row with OpenAI, and posts the summary to a Slack channel.",
+	"expectedToolInvocations": {
+		"anyOf": ["spawn_sub_agent:workflow-context-scout"]
+	},
+	"rationale": "A build touching multiple unfamiliar external services must run pre-build discovery by delegating to the workflow-context-scout sub-agent via the agent tool before loading workflow-builder.",
+	"maxSteps": 12
+}

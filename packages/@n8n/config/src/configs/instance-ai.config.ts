@@ -8,6 +8,14 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_MODEL')
 	model: string = 'anthropic/claude-opus-4-8';
 
+	/**
+	 * Model used for delegate sub-agents (discovery scouts, etc.) in provider/model format.
+	 * Defaults to a cheaper/faster model than the orchestrator. Set to the same value as
+	 * `N8N_INSTANCE_AI_MODEL` (or empty) to run sub-agents on the orchestrator model.
+	 */
+	@Env('N8N_INSTANCE_AI_SUB_AGENT_MODEL')
+	subAgentModel: string = 'anthropic/claude-haiku-4-5';
+
 	/** Base URL for an OpenAI-compatible endpoint (e.g. "http://localhost:1234/v1" for LM Studio). */
 	@Env('N8N_INSTANCE_AI_MODEL_URL')
 	modelUrl: string = '';

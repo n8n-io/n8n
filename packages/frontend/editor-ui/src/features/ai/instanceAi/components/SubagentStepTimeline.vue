@@ -8,11 +8,17 @@ import { N8nButton, N8nIcon, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed } from 'vue';
-import { getToolIcon, useToolLabel } from '../toolLabels';
+import { useToolLabel } from '../toolLabels';
+import {
+	isStreamingTimelineEntry,
+	isVisibleTimelineEntry,
+	coalesceConsecutiveReasoning,
+} from '../agentTimeline.utils';
 import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import ButtonLike from './ButtonLike.vue';
 import DataSection from './DataSection.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
+import TimelineReasoningSegment from './TimelineReasoningSegment.vue';
 import ToolCallStep from './ToolCallStep.vue';
 
 const props = withDefaults(
@@ -27,34 +33,19 @@ const props = withDefaults(
 );
 
 const i18n = useI18n();
-const { getToolLabel, getToggleLabel, getHideLabel } = useToolLabel();
+const { getToolLabel } = useToolLabel();
 
 const CODE_BLOCK_PATTERN = /```/;
 
 /** Tool calls that are internal and should not be shown in the step timeline. */
 const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
 
-interface TimelineStep {
-	type: 'tool-call' | 'text';
-	icon: IconName;
-	label: string;
-	isLoading: boolean;
-	toggleLabel?: string;
-	hideLabel?: string;
-	toolCall?: InstanceAiToolCallState;
-	textContent?: string;
-	isLongText?: boolean;
-	shortLabel?: string;
-}
-
 function extractShortLabel(content: string): string {
-	// Strip code blocks and return first meaningful line
 	const withoutCode = content.replace(/```[\s\S]*?```/g, '').trim();
 	const firstLine = withoutCode.split('\n').find((line) => line.trim().length > 0) ?? '';
 	if (firstLine) {
 		return firstLine.length > 80 ? firstLine.slice(0, 80) + '…' : firstLine;
 	}
-	// Content is only code blocks (e.g. generated workflow code)
 	return i18n.baseText('instanceAi.stepTimeline.craftingWorkflow');
 }
 
@@ -71,84 +62,77 @@ const toolCallsById = computed(() => {
 	return map;
 });
 
-const timelineEntries = computed(() => props.visibleEntries ?? props.agentNode.timeline);
+const timelineEntries = computed(() =>
+	coalesceConsecutiveReasoning(props.visibleEntries ?? props.agentNode.timeline),
+);
 
-const steps = computed((): TimelineStep[] => {
-	const result: TimelineStep[] = [];
-
-	for (const entry of timelineEntries.value) {
-		if (entry.type === 'text') {
-			const longText = isLongTextContent(entry.content);
-			result.push({
-				type: 'text',
-				icon: 'brain',
-				label: longText ? extractShortLabel(entry.content) : entry.content,
-				isLoading: false,
-				textContent: entry.content,
-				isLongText: longText,
-				shortLabel: longText ? extractShortLabel(entry.content) : undefined,
-			});
-		} else if (entry.type === 'tool-call') {
-			const tc = toolCallsById.value[entry.toolCallId];
-			if (!tc || HIDDEN_TOOLS.has(tc.toolName)) continue;
-			result.push({
-				type: 'tool-call',
-				icon: tc.isLoading ? 'spinner' : getToolIcon(tc.toolName),
-				label: getToolLabel(tc.toolName, tc.args),
-				isLoading: tc.isLoading,
-				toggleLabel: getToggleLabel(tc),
-				hideLabel: getHideLabel(tc),
-				toolCall: tc,
-			});
-		}
-		// Skip 'child' entries (parent AgentTimeline handles child cards) and
-		// 'reasoning' entries (sub-agent reasoning is not surfaced in this view)
+const childrenById = computed(() => {
+	const map: Record<string, InstanceAiAgentNode> = {};
+	for (const child of props.agentNode.children) {
+		map[child.agentId] = child;
 	}
-
-	return result;
+	return map;
 });
+
+function entryIsVisible(entry: InstanceAiTimelineEntry): boolean {
+	return isVisibleTimelineEntry(props.agentNode, entry, toolCallsById.value, childrenById.value);
+}
+
+function getTextIcon(): IconName {
+	return 'brain';
+}
 </script>
 
 <template>
 	<div :class="$style.timeline">
-		<template v-for="(step, idx) in steps" :key="idx">
-			<!-- Tool call: rendered via ToolCallStep (has its own icon column) -->
-			<ToolCallStep
-				v-if="step.type === 'tool-call' && step.toolCall"
-				:tool-call="step.toolCall"
-				:label="step.label"
-				:show-connector="idx < steps.length - 1"
+		<template v-for="(entry, idx) in timelineEntries" :key="idx">
+			<TimelineReasoningSegment
+				v-if="entry.type === 'reasoning'"
+				:entry="entry"
+				:streaming="isStreamingTimelineEntry(props.agentNode, entry, timelineEntries)"
+				:peek="props.peek"
 			/>
 
-			<template v-else-if="step.type === 'text'">
-				<CollapsibleRoot v-if="step.isLongText" v-slot="{ open }">
+			<ToolCallStep
+				v-else-if="
+					entry.type === 'tool-call' &&
+					toolCallsById[entry.toolCallId] &&
+					!HIDDEN_TOOLS.has(toolCallsById[entry.toolCallId].toolName)
+				"
+				:tool-call="toolCallsById[entry.toolCallId]"
+				:label="
+					getToolLabel(
+						toolCallsById[entry.toolCallId].toolName,
+						toolCallsById[entry.toolCallId].args,
+					)
+				"
+				:show-connector="idx < timelineEntries.length - 1"
+			/>
+
+			<template v-else-if="entry.type === 'text' && entryIsVisible(entry)">
+				<CollapsibleRoot v-if="isLongTextContent(entry.content)" v-slot="{ open }">
 					<CollapsibleTrigger as-child>
 						<N8nButton ref="triggerRef" variant="ghost" size="small" :class="$style.toggleTrigger">
 							<template #icon>
-								<template v-if="step.isLoading">
-									<N8nIcon icon="spinner" size="small" color="primary" spin />
-								</template>
-								<N8nIcon v-else :icon="step.icon" size="small" />
+								<N8nIcon :icon="getTextIcon()" size="small" />
 							</template>
 							<template v-if="open">
 								{{ i18n.baseText('instanceAi.statusBar.thinking') }}
 							</template>
-							<template v-else>{{ step.label }}</template>
+							<template v-else>{{ extractShortLabel(entry.content) }}</template>
 						</N8nButton>
 					</CollapsibleTrigger>
 					<AnimatedCollapsibleContent :class="$style.toggleContent">
 						<DataSection>
-							<InstanceAiMarkdown :content="step.textContent!" />
+							<InstanceAiMarkdown :content="entry.content" />
 						</DataSection>
 					</AnimatedCollapsibleContent>
 				</CollapsibleRoot>
 				<ButtonLike v-else>
-					<!-- Peek mode only: column-reverse + overflow-y pins the scroll
-						 to the bottom so the latest streamed tokens stay visible. -->
 					<div v-if="props.peek" :class="$style.streamingMarkdown">
-						<InstanceAiMarkdown :content="step.label" />
+						<InstanceAiMarkdown :content="entry.content" />
 					</div>
-					<InstanceAiMarkdown v-else :content="step.label" />
+					<InstanceAiMarkdown v-else :content="entry.content" />
 				</ButtonLike>
 			</template>
 		</template>

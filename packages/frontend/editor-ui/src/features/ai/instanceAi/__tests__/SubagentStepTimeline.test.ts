@@ -12,6 +12,10 @@ const renderComponent = createThreadComponentRenderer(SubagentStepTimeline, {
 				template: '<div data-test-id="tool-call-step">{{ toolCall.toolName }}</div>',
 				props: ['toolCall', 'label', 'showConnector'],
 			},
+			TimelineReasoningSegment: {
+				template: '<div data-test-id="reasoning-segment">{{ entry.content }}</div>',
+				props: ['entry', 'streaming', 'peek'],
+			},
 		},
 	},
 });
@@ -43,6 +47,20 @@ function makeAgentNode(overrides: Partial<InstanceAiAgentNode> = {}): InstanceAi
 describe('SubagentStepTimeline', () => {
 	beforeEach(() => {
 		createTestingPinia({ stubActions: false });
+	});
+
+	it('should render reasoning timeline entry via TimelineReasoningSegment', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({
+					timeline: [{ type: 'reasoning', content: 'Checking node types' }],
+				}),
+			},
+		});
+
+		const segment = getByTestId('reasoning-segment');
+		expect(segment).toBeInTheDocument();
+		expect(segment.textContent).toContain('Checking node types');
 	});
 
 	it('should render text timeline entry as inline ButtonLike', () => {
@@ -77,6 +95,7 @@ describe('SubagentStepTimeline', () => {
 		const { container } = renderComponent({
 			props: {
 				agentNode: makeAgentNode({
+					status: 'completed',
 					timeline: [
 						{ type: 'text', content: 'Visible text' },
 						{ type: 'child', agentId: 'child-1' },

@@ -24,7 +24,10 @@ import {
 } from './tracing-utils';
 import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { MAX_STEPS } from '../../constants/max-steps';
-import { consumeStreamWithHitl, requireCompletedHitlText } from '../../stream/consume-with-hitl';
+import {
+	consumeStreamWithHitl,
+	requireCompletedSubAgentParentText,
+} from '../../stream/consume-with-hitl';
 import { createToolRegistry, toolRegistryKeys, toolRegistryValues } from '../../tool-registry';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../../tracing/langsmith-tracing';
 import type { InstanceAiToolRegistry, OrchestrationContext } from '../../types';
@@ -196,7 +199,7 @@ export function startEvalSetupAgentTask(
 					persistence,
 				});
 
-				return await requireCompletedHitlText(hitlResult, 'Eval setup sub-agent');
+				return await requireCompletedSubAgentParentText(hitlResult, 'Eval setup sub-agent');
 			});
 		},
 	});

@@ -32,6 +32,18 @@ describe('getSystemPrompt', () => {
 		expect(prompt).not.toContain('## Current Date and Time');
 	});
 
+	describe('delegation routing', () => {
+		it('routes specialists through the agent delegate tool', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('## Delegation');
+			expect(prompt).toContain('`workflow-context-scout`');
+			expect(prompt).toContain('**Post-build knowledge-base reads**');
+			expect(prompt).toContain('subAgentId: "inline"');
+			expect(prompt).toContain('they never build, patch,\nverify, or run workflows');
+		});
+	});
+
 	describe('first visible turn guidance', () => {
 		it('instructs the agent to send a concise sentence before the first tool call', () => {
 			const prompt = getSystemPrompt({});
@@ -58,52 +70,6 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('use `ask-user` only for choices that change the workflow intent');
 			expect(prompt).toContain('Do not use `ask-user` before the first build');
 			expect(prompt).toContain('leave them for post-build workflow setup');
-		});
-	});
-
-	describe('tool discovery', () => {
-		it('includes generic Tool Discovery guidance when deferred tool search is enabled', () => {
-			const prompt = getSystemPrompt({ toolSearchEnabled: true });
-
-			expect(prompt).toContain('## Tool Discovery');
-			expect(prompt).toContain('additional tools available beyond the ones listed above');
-			expect(prompt).toContain('search "credential" for the credentials tool');
-			expect(prompt).toContain('search "file" for filesystem tools');
-			expect(prompt).toContain('search "workflow" for workflow management');
-			expect(prompt).not.toContain('connected service or MCP integration');
-			expect(prompt).not.toContain('connected MCP integrations');
-		});
-
-		it('prompts the agent to search connected MCP integrations before declaring them unavailable', () => {
-			const prompt = getSystemPrompt({
-				toolSearchEnabled: true,
-				mcpToolSearchEnabled: true,
-			});
-
-			expect(prompt).toContain('connected MCP integrations');
-			expect(prompt).toContain('connected service or MCP integration');
-			expect(prompt).toContain('call `search_tools` with the service name and task keywords');
-			expect(prompt).toContain('before saying the integration is unavailable');
-			expect(prompt).toContain('asking the user to connect it');
-		});
-
-		it('anchors examples to connected MCP tool searches', () => {
-			const prompt = getSystemPrompt({
-				toolSearchEnabled: true,
-				mcpToolSearchEnabled: true,
-			});
-
-			expect(prompt).toContain(
-				'search "notion page" or "linear issue" for the corresponding MCP tool',
-			);
-			expect(prompt).toContain('search "credential" for the credentials tool');
-		});
-
-		it('omits Tool Discovery guidance when deferred tool search is disabled even if MCP tools exist', () => {
-			const prompt = getSystemPrompt({ mcpToolSearchEnabled: true });
-
-			expect(prompt).not.toContain('## Tool Discovery');
-			expect(prompt).not.toContain('connected service or MCP integration');
 		});
 	});
 
@@ -182,17 +148,21 @@ describe('getSystemPrompt', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).not.toMatch(/load_skill.*once/i);
-			expect(prompt).toContain('more than one skill');
+			expect(prompt).toContain('Load every skill the turn needs');
 		});
 
 		it('routes workflow builds through the workflow-builder skill', () => {
 			const prompt = getSystemPrompt({});
 
-			expect(prompt).toContain("Match the user's request against skill descriptions");
-			expect(prompt).toContain('**Single workflow build or edit**');
+			expect(prompt).toContain('## Skill routing');
+			expect(prompt).toContain('Match the request against skill descriptions');
+			expect(prompt).toContain('**Build or edit one workflow**');
+			expect(prompt).toContain('**Build pipeline**');
 			expect(prompt).toContain('`workflow-builder`');
+			expect(prompt).toContain('workspace file tools');
 			expect(prompt).toContain('`build-workflow`');
 			expect(prompt).toContain('**Multi-workflow or coordinated architecture**');
+			expect(prompt).toContain('**Pre-build discovery** (see Delegation)');
 			expect(prompt).toContain('`planning`');
 			expect(prompt).toContain('planningContext.source: "planning-skill"');
 			expect(prompt).toContain('multiple durable artifacts');
@@ -206,9 +176,7 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toMatch(/Standalone data-table work/);
 			expect(prompt).toContain('`data-table-manager`');
 			expect(prompt).toContain('what data tables do I have?');
-			expect(prompt).toContain(
-				'Never call `data-tables` or `parse-file` without loading `data-table-manager` first',
-			);
+			expect(prompt).toContain('Hard gates — never call:');
 			expect(prompt).toContain('Do not call `create-tasks`');
 		});
 
@@ -217,7 +185,7 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toContain('workflows that create or write to Data Tables');
 			expect(prompt).toContain(
-				'`data-table-manager` when tables are involved, then `workflow-builder`',
+				'**Build pipeline** = `data-table-manager` (only when Data Tables are involved) → `workflow-builder`',
 			);
 		});
 
@@ -250,9 +218,11 @@ describe('getSystemPrompt', () => {
 		it('points post-build and follow-up work at dedicated skills', () => {
 			const prompt = getSystemPrompt({});
 
+			expect(prompt).toContain('Build rules:');
 			expect(prompt).toContain('`post-build-flow`');
 			expect(prompt).toContain('postBuildFlow.required: true');
 			expect(prompt).toContain('before verification, setup, error-workflow follow-up');
+			expect(prompt).toContain('**Execution debugging** route first');
 			expect(prompt).toContain('`planned-task-runtime`');
 			expect(prompt).toContain('`debugging-executions`');
 		});
@@ -262,8 +232,9 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toContain('**n8n docs/product guidance**');
 			expect(prompt).toContain('credential setup');
-			expect(prompt).toContain('`n8n-docs-assistant`');
-			expect(prompt).toContain('`n8n-docs`');
+			expect(prompt).toContain(
+				'`n8n-docs-assistant`, then `load_tool` for `n8n-docs` if needed, then `n8n-docs`',
+			);
 		});
 
 		it('keeps replan stall prevention in the core follow-up triggers', () => {
@@ -279,7 +250,7 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toContain('needsBrowserSetup=true');
 			expect(prompt).toContain('credential-setup-with-computer-use');
-			expect(prompt).toMatch(/use Computer Use `browser_\*` tools directly/);
+			expect(prompt).toMatch(/Computer Use `browser_\*` tools directly/);
 		});
 	});
 

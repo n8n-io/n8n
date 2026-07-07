@@ -151,6 +151,31 @@ describe('InstanceAiSettingsService', () => {
 		});
 	});
 
+	describe('resolveSubAgentModel', () => {
+		it('should return the configured sub-agent model slug and bare name', () => {
+			globalConfig.instanceAi.model = 'anthropic/claude-opus-4-8';
+			globalConfig.instanceAi.subAgentModel = 'anthropic/claude-haiku-4-5';
+
+			expect(service.resolveSubAgentModel()).toBe('anthropic/claude-haiku-4-5');
+			expect(service.resolveSubAgentModelName()).toBe('claude-haiku-4-5');
+		});
+
+		it('should return undefined when the sub-agent model is empty', () => {
+			globalConfig.instanceAi.model = 'anthropic/claude-opus-4-8';
+			globalConfig.instanceAi.subAgentModel = '';
+
+			expect(service.resolveSubAgentModel()).toBeUndefined();
+			expect(service.resolveSubAgentModelName()).toBeUndefined();
+		});
+
+		it('should return undefined when the sub-agent model matches the orchestrator model', () => {
+			globalConfig.instanceAi.model = 'anthropic/claude-opus-4-8';
+			globalConfig.instanceAi.subAgentModel = 'anthropic/claude-opus-4-8';
+
+			expect(service.resolveSubAgentModel()).toBeUndefined();
+		});
+	});
+
 	describe('mcpAccessEnabled', () => {
 		beforeEach(() => {
 			aiService.isProxyEnabled.mockReturnValue(false);

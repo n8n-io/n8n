@@ -461,13 +461,40 @@ export class InstanceAiSettingsService {
 		return prefs.modelName ?? this.extractModelName(this.config.model);
 	}
 
-	/** Resolve the current model configuration for an agent run. */
-	async resolveModelConfig(user: User): Promise<ModelConfig> {
+	/**
+	 * Model slug (provider/model) for delegate sub-agents, or undefined when sub-agents should
+	 * reuse the orchestrator model (empty config or same value as the orchestrator model).
+	 */
+	resolveSubAgentModel(): string | undefined {
+		const subAgentModel = this.config.subAgentModel?.trim();
+		if (!subAgentModel || subAgentModel === this.config.model.trim()) return undefined;
+		return subAgentModel;
+	}
+
+	/** Bare sub-agent model name (e.g. 'claude-haiku-4-5') for proxy routing, or undefined. */
+	resolveSubAgentModelName(): string | undefined {
+		const subAgentModel = this.resolveSubAgentModel();
+		return subAgentModel ? this.extractModelName(subAgentModel) : undefined;
+	}
+
+	/**
+	 * Resolve the current model configuration for an agent run. Pass `modelSlugOverride`
+	 * (provider/model) to resolve a different model through the same credential/env chain —
+	 * used to run delegate sub-agents on a cheaper model.
+	 */
+	async resolveModelConfig(user: User, modelSlugOverride?: string): Promise<ModelConfig> {
 		const prefs = this.readUserPreferences(user);
 		const credentialId = prefs.credentialId ?? null;
+		const overrideModelName = modelSlugOverride
+			? this.extractModelName(modelSlugOverride)
+			: undefined;
+		const envFallback = () =>
+			modelSlugOverride
+				? this.envVarModelConfigForModel(modelSlugOverride)
+				: this.envVarModelConfig();
 
 		if (!credentialId) {
-			return this.envVarModelConfig();
+			return envFallback();
 		}
 
 		const credential = await this.credentialsFinderService.findCredentialForUser(
@@ -477,12 +504,12 @@ export class InstanceAiSettingsService {
 		);
 
 		if (!credential) {
-			return this.envVarModelConfig();
+			return envFallback();
 		}
 
 		const provider = CREDENTIAL_TO_MODEL_PROVIDER[credential.type];
 		if (!provider) {
-			return this.envVarModelConfig();
+			return envFallback();
 		}
 
 		const data = await this.credentialsService.decrypt(credential, true);
@@ -490,7 +517,8 @@ export class InstanceAiSettingsService {
 		const urlField = URL_FIELD_MAP[credential.type];
 		const rawUrl = urlField ? data[urlField] : undefined;
 		const baseUrl = typeof rawUrl === 'string' ? rawUrl : '';
-		const modelName = prefs.modelName ?? this.extractModelName(this.config.model);
+		const modelName =
+			overrideModelName ?? prefs.modelName ?? this.extractModelName(this.config.model);
 		const id: `${string}/${string}` = `${provider}/${modelName}`;
 
 		if (baseUrl) {
