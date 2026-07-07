@@ -1,7 +1,8 @@
-import { Service } from '@n8n/di';
 import type { InstanceAiEvent } from '@n8n/api-types';
-import { DataSource, MoreThan, Repository } from '@n8n/typeorm';
+import { Service } from '@n8n/di';
 import type { StoredEvent } from '@n8n/instance-ai';
+import { DataSource, MoreThan, Repository } from '@n8n/typeorm';
+import { jsonParse } from 'n8n-workflow';
 
 import { InstanceAiEventLogEntry } from '../entities/instance-ai-event-log-entry.entity';
 
@@ -61,7 +62,7 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 			where: { threadId, seq: MoreThan(afterSeq) },
 			order: { seq: 'ASC' },
 		});
-		return rows.map((r) => ({ id: r.seq, event: JSON.parse(r.payload) as InstanceAiEvent }));
+		return rows.map((r) => ({ id: r.seq, event: jsonParse<InstanceAiEvent>(r.payload) }));
 	}
 
 	async getForRuns(threadId: string, runIds: string[]): Promise<InstanceAiEvent[]> {
@@ -71,7 +72,7 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 			.andWhere('e.runId IN (:...runIds)', { runIds })
 			.orderBy('e.seq', 'ASC')
 			.getMany();
-		return rows.map((r) => JSON.parse(r.payload) as InstanceAiEvent);
+		return rows.map((r) => jsonParse<InstanceAiEvent>(r.payload));
 	}
 
 	/** All events of a thread with their run + timing metadata, seq order. */
@@ -82,7 +83,7 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 		return rows.map((r) => ({
 			runId: r.runId,
 			createdAt: r.createdAt,
-			event: JSON.parse(r.payload) as InstanceAiEvent,
+			event: jsonParse<InstanceAiEvent>(r.payload),
 		}));
 	}
 

@@ -1,5 +1,5 @@
-import { Logger } from '@n8n/backend-common';
 import type { InstanceAiEvent } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { createSubAgentResourceIdPrefix, orchestratorAgentId } from '@n8n/instance-ai';
