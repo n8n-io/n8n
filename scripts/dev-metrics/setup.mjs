@@ -169,23 +169,29 @@ function resolveRealBinary(bin) {
 	return '';
 }
 
-/** Render shadow-shim.sh for `bin` and write it to destPath (idempotent). */
+/** Parse the `# n8n-shadow-shim-version: N` marker from a shim, or null. */
+function shimVersion(file) {
+	try {
+		const m = readFileSync(file, 'utf8').match(/n8n-shadow-shim-version:\s*(\d+)/);
+		return m ? Number(m[1]) : null;
+	} catch {
+		return null;
+	}
+}
+
+/** Render shadow-shim.sh and write it to destPath, unless a newer shim is there. */
 function writeShim(destPath, realExec, bin) {
+	// Only (re)write when this checkout's template is newer than the installed
+	// shim (missing/unversioned counts as older), so no older checkout downgrades
+	// it. A fresh install has no shim at destPath, so it always writes.
+	if ((shimVersion(SHADOW_SHIM_SRC) ?? 0) <= (shimVersion(destPath) ?? -1)) return;
 	const rendered = readFileSync(SHADOW_SHIM_SRC, 'utf8')
 		.replaceAll('__N8N_BIN__', bin)
 		.replaceAll('__N8N_REAL__', realExec)
 		.replaceAll('__N8N_BINDIR__', dirname(destPath))
 		.replaceAll('__N8N_TRACKER__', trackerDest());
-	let current = '';
-	try {
-		current = readFileSync(destPath, 'utf8');
-	} catch {
-		// no existing shim
-	}
-	if (current !== rendered) {
-		writeFileSync(destPath, rendered);
-		chmodSync(destPath, 0o755);
-	}
+	writeFileSync(destPath, rendered);
+	chmodSync(destPath, 0o755);
 }
 
 function installOne(bin) {
@@ -309,7 +315,7 @@ function status() {
 	console.log(
 		`  weekly id:  ${state?.anonId ?? '(none yet — assigned on first tracked command)'}${state?.week ? ` (week ${state.week})` : ''}`,
 	);
-	console.log(`  shim src:   ${SHADOW_SHIM_SRC}`);
+	console.log(`  shim src:   ${SHADOW_SHIM_SRC} (v${shimVersion(SHADOW_SHIM_SRC) ?? '?'})`);
 	const td = trackerDest();
 	console.log(
 		`  tracker:    ${existsSync(td) ? `${td} (v${trackVersion(td) ?? '?'}, src v${trackVersion(TRACK_SRC) ?? '?'})` : '(not installed)'}`,
@@ -318,7 +324,7 @@ function status() {
 		const front = whichOnPath(bin);
 		const shimmed = front && isOurShim(front);
 		console.log(
-			`  ${bin}: ${shimmed ? `shimmed @ ${front}` : 'not shimmed'} (real: ${resolveRealBinary(bin) || '?'})`,
+			`  ${bin}: ${shimmed ? `shimmed @ ${front} (v${shimVersion(front) ?? '?'})` : 'not shimmed'} (real: ${resolveRealBinary(bin) || '?'})`,
 		);
 	}
 	console.log(`  git email:  ${gitEmail() || '(unset)'} (internal: ${isInternalDev()})`);
