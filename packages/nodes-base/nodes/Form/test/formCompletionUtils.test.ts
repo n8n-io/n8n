@@ -536,5 +536,95 @@ describe('formCompletionUtils', () => {
 				},
 			]);
 		});
+
+		it('should return multiple binary files from comma-separated field names', async () => {
+			const expectedBinaryResponse = {
+				inputData: {
+					data: 'Zmlyc3Q=',
+					fileName: 'first.txt',
+					mimeType: 'text/plain',
+				},
+				otherData: {
+					data: 'c2Vjb25k',
+					fileName: 'second.txt',
+					mimeType: 'text/plain',
+				},
+			};
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: Record<string, string> = {
+					inputDataFieldName: 'inputData, otherData',
+				};
+				return params[parameterName];
+			});
+			mockWebhookFunctions.getParentNodes.mockReturnValueOnce(parentNodesWithSingleNodeFile);
+			mockWebhookFunctions.evaluateExpression.mockImplementation((arg) => {
+				if (arg === `{{ $('${nodeNameWithFileToDownload}').first().binary }}`) {
+					return expectedBinaryResponse;
+				}
+
+				return undefined;
+			});
+
+			const result = await binaryResponse(mockWebhookFunctions);
+
+			expect(result).toEqual([
+				{
+					data: atob(expectedBinaryResponse.inputData.data),
+					fileName: expectedBinaryResponse.inputData.fileName,
+					type: expectedBinaryResponse.inputData.mimeType,
+				},
+				{
+					data: atob(expectedBinaryResponse.otherData.data),
+					fileName: expectedBinaryResponse.otherData.fileName,
+					type: expectedBinaryResponse.otherData.mimeType,
+				},
+			]);
+		});
+
+		it('should trim comma-separated field names', async () => {
+			const expectedBinaryResponse = {
+				inputData: {
+					data: 'Zmlyc3Q=',
+					fileName: 'first.txt',
+					mimeType: 'text/plain',
+				},
+				otherData: {
+					data: 'c2Vjb25k',
+					fileName: 'second.txt',
+					mimeType: 'text/plain',
+				},
+			};
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: Record<string, string> = {
+					inputDataFieldName: ' inputData , otherData ',
+				};
+				return params[parameterName];
+			});
+			mockWebhookFunctions.getParentNodes.mockReturnValueOnce(parentNodesWithSingleNodeFile);
+			mockWebhookFunctions.evaluateExpression.mockImplementation((arg) => {
+				if (arg === `{{ $('${nodeNameWithFileToDownload}').first().binary }}`) {
+					return expectedBinaryResponse;
+				}
+
+				return undefined;
+			});
+
+			const result = await binaryResponse(mockWebhookFunctions);
+
+			expect(result).toEqual([
+				{
+					data: atob(expectedBinaryResponse.inputData.data),
+					fileName: expectedBinaryResponse.inputData.fileName,
+					type: expectedBinaryResponse.inputData.mimeType,
+				},
+				{
+					data: atob(expectedBinaryResponse.otherData.data),
+					fileName: expectedBinaryResponse.otherData.fileName,
+					type: expectedBinaryResponse.otherData.mimeType,
+				},
+			]);
+		});
 	});
 });
