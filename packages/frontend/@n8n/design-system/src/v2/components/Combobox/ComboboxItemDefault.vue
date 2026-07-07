@@ -45,7 +45,7 @@ const sizes: Record<InputSize, string> = {
 </template>
 
 <style module lang="scss">
-@use '@n8n/design-system/css/mixins/combobox-item' as combobox-item-mixin;
+@use '@n8n/design-system/css/mixins/input' as input-mixin;
 
 .root {
 	display: flex;
@@ -58,7 +58,8 @@ const sizes: Record<InputSize, string> = {
 	color: var(--text-color);
 	outline: none;
 
-	@include combobox-item-mixin.size-variables;
+	@include input-mixin.size-variables('large');
+	--input--line-height: var(--line-height--md);
 
 	font-size: var(--input--font-size);
 	line-height: var(--input--line-height);
@@ -67,23 +68,28 @@ const sizes: Record<InputSize, string> = {
 	border-radius: var(--input--radius);
 
 	&.mini {
-		@include combobox-item-mixin.size-variables('mini');
+		@include input-mixin.size-variables('mini');
+		--input--line-height: var(--line-height--sm);
 	}
 
 	&.small {
-		@include combobox-item-mixin.size-variables('small');
+		@include input-mixin.size-variables('small');
+		--input--line-height: var(--line-height--sm);
 	}
 
 	&.medium {
-		@include combobox-item-mixin.size-variables('medium');
+		@include input-mixin.size-variables('medium');
+		--input--line-height: var(--line-height--md);
 	}
 
 	&.large {
-		@include combobox-item-mixin.size-variables('large');
+		@include input-mixin.size-variables('large');
+		--input--line-height: var(--line-height--md);
 	}
 
 	&.xlarge {
-		@include combobox-item-mixin.size-variables('xlarge');
+		@include input-mixin.size-variables('xlarge');
+		--input--line-height: var(--line-height--md);
 	}
 
 	&:not([data-disabled]) {
