@@ -7,8 +7,10 @@ import { useCredentialForm } from '@/features/credentials/composables/useCredent
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useInstanceAiHandoff } from '../composables/useInstanceAiHandoff';
+import { pingCredential } from '../instanceAi.api';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { InstanceAiCredentialSetupHint } from '@n8n/api-types';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { N8nButton, N8nInput, N8nInputLabel, N8nLink, N8nText } from '@n8n/design-system';
 import { extractPlaceholderLabels } from '@n8n/utils/placeholder';
 import { useI18n } from '@n8n/i18n';
@@ -36,6 +38,10 @@ const props = withDefaults(
 		/** Agent-supplied recipe: pre-filled field values with placeholder sentinels
 		 *  marking the secrets. Renders the guided ("paste your key") mode. */
 		setupHint?: InstanceAiCredentialSetupHint;
+		/** With nodeName: enables the auth probe for types without a declarative
+		 *  test — the server pings the persisted node's own URL after save. */
+		workflowId?: string;
+		nodeName?: string;
 	}>(),
 	{
 		mode: 'new',
@@ -45,6 +51,8 @@ const props = withDefaults(
 		projectId: undefined,
 		providerUrl: undefined,
 		setupHint: undefined,
+		workflowId: undefined,
+		nodeName: undefined,
 	},
 );
 
@@ -63,6 +71,7 @@ const toast = useToast();
 const credentialsStore = useCredentialsStore();
 const handoff = useInstanceAiHandoff();
 const projectsStore = useProjectsStore();
+const rootStore = useRootStore();
 // OAuth authorization stays with the host (popup lifecycle) — see useCredentialForm.
 const { createAndAuthorize, authorize } = useCredentialOAuth();
 
@@ -332,6 +341,25 @@ async function submit() {
 		if (isCredentialTestable.value) {
 			await testCredential(buildDetails(credential.id));
 			if (!testedSuccessfully.value) return;
+		} else if (props.workflowId && props.nodeName) {
+			// Types without a declarative test (generic auth): probe the persisted
+			// node's own URL server-side. Only an explicit 401/403 blocks — an
+			// unreachable service or a failing probe request never traps the save.
+			try {
+				const probe = await pingCredential(rootStore.restApiContext, {
+					credentialId: credential.id,
+					workflowId: props.workflowId,
+					nodeName: props.nodeName,
+					acceptedStatusCodes: props.setupHint?.acceptedStatusCodes,
+				});
+				if (probe.status === 'Error') {
+					authError.value = probe.message;
+					return;
+				}
+				authError.value = '';
+			} catch {
+				// Probe endpoint unavailable — inconclusive, proceed with the save.
+			}
 		}
 
 		emit('saved', credential.id);

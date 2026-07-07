@@ -206,3 +206,25 @@ export async function getGatewayStatus(context: IRestApiContext): Promise<{
 		toolCategories: Array<{ name: string; enabled: boolean; writeAccess?: boolean }>;
 	}>(context, 'GET', '/instance-ai/gateway/status');
 }
+
+/**
+ * POST /instance-ai/credentials/ping -> { status, message }
+ * Auth-probe a saved generic credential against a workflow node's own URL.
+ * Only ids travel; the server resolves the target from the persisted node.
+ */
+export async function pingCredential(
+	context: IRestApiContext,
+	payload: {
+		credentialId: string;
+		workflowId: string;
+		nodeName: string;
+		acceptedStatusCodes?: number[];
+	},
+): Promise<{ status: 'OK' | 'Error'; message: string }> {
+	return await makeRestApiRequest<{ status: 'OK' | 'Error'; message: string }>(
+		context,
+		'POST',
+		'/instance-ai/credentials/ping',
+		payload,
+	);
+}

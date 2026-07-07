@@ -958,6 +958,25 @@ test.describe(
 				await setup.getBackToSimpleViewLink().click();
 				await expect(setup.getGuidedSecretInput()).toBeVisible();
 
+				// Saving a generic credential in the wizard fires the server-side auth
+				// probe against the node's own URL. Control the verdict from the test:
+				// first a rejection (error + Retry), then acceptance on the retry.
+				let pingVerdict: 'Error' | 'OK' = 'Error';
+				let pingCount = 0;
+				await n8n.page.route('**/rest/instance-ai/credentials/ping', async (route) => {
+					pingCount += 1;
+					await route.fulfill({
+						status: 200,
+						contentType: 'application/json',
+						body: JSON.stringify({
+							data:
+								pingVerdict === 'Error'
+									? { status: 'Error', message: 'The service rejected the credential (HTTP 401).' }
+									: { status: 'OK', message: 'Connection successful!' },
+						}),
+					});
+				});
+
 				const credentialCreateResponsePromise = n8n.page.waitForResponse(
 					(response) =>
 						response.url().endsWith('/rest/credentials') && response.request().method() === 'POST',
@@ -978,7 +997,16 @@ test.describe(
 				expect(createRequest.data?.value).toContain(HINTED_SECRET);
 				expect(createRequest.data?.value).not.toBe(HINTED_SECRET);
 
+				// A rejected probe keeps the form open with the error and a Retry button.
+				await expect(setup.getGuidedTestError()).toBeVisible();
+				await expect(setup.getGuidedSubmitButton()).toHaveText(/retry/i);
+
+				// An accepted probe lets the save complete.
+				pingVerdict = 'OK';
+				await setup.getGuidedSubmitButton().click();
+
 				await expect(setup.getCardCheck()).toBeVisible();
+				expect(pingCount).toBe(2);
 				await setup.getApplyButton().click();
 				await n8n.instanceAi.waitForResponseComplete();
 

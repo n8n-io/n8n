@@ -71,6 +71,8 @@ const inlineForm = ref<{
 	mode: 'new' | 'edit';
 	credentialType: string;
 	credentialId?: string;
+	/** Opened from the selector/choice (create/edit events) — offer a way back. */
+	showBack: boolean;
 } | null>(null);
 
 // ---------------------------------------------------------------------------
@@ -264,7 +266,7 @@ const setupChoiceOptions = computed<Array<ActionDropdownItem<CredentialSetupChoi
 ]);
 
 function openInlineCreate(credentialType: string) {
-	inlineForm.value = { mode: 'new', credentialType };
+	inlineForm.value = { mode: 'new', credentialType, showBack: true };
 }
 
 function openInlineEdit(payload: { credentialType: string; credentialId: string }) {
@@ -272,6 +274,7 @@ function openInlineEdit(payload: { credentialType: string; credentialId: string 
 		mode: 'edit',
 		credentialType: payload.credentialType,
 		credentialId: payload.credentialId,
+		showBack: true,
 	};
 }
 
@@ -285,6 +288,28 @@ function onInlineFormSaved(credentialId: string) {
 watch(currentStepIndex, () => {
 	inlineForm.value = null;
 });
+
+// The default inline form must be held as STATE, not derived from the
+// credential gates: saving a credential mid-submit makes the store report
+// usable credentials, which would otherwise swap this form for the
+// (auto-selecting) selector before the save/auth-probe completes — discarding
+// a probe rejection. The form opens when there's nothing to select (and the
+// browser-use choice isn't shown) and closes only via its own saved/back
+// events or step navigation.
+watch(
+	[
+		currentStepIndex,
+		() => currentRequest.value?.credentialType,
+		hasExistingCredentials,
+		showSetupChoice,
+	],
+	([, credentialType, hasExisting, choiceShown]) => {
+		if (credentialType && !hasExisting && !choiceShown && !inlineForm.value) {
+			inlineForm.value = { mode: 'new', credentialType, showBack: false };
+		}
+	},
+	{ immediate: true },
+);
 
 /** Build a minimal synthetic INodeUi so NodeCredentials can render in standalone mode. */
 function syntheticNodeUi(req: InstanceAiCredentialRequest): INodeUi {
@@ -522,7 +547,7 @@ async function handleSetupAutomatically() {
 									: undefined
 							"
 							:project-id="projectId"
-							show-back
+							:show-back="inlineForm.showBack"
 							@saved="onInlineFormSaved"
 							@back="inlineForm = null"
 						/>
@@ -560,14 +585,6 @@ async function handleSetupAutomatically() {
 								</div>
 							</template>
 						</N8nActionDropdown>
-						<InstanceAiCredentialForm
-							v-else
-							:credential-type="currentRequest.credentialType"
-							:suggested-name="currentRequest.suggestedName"
-							:setup-hint="currentRequest.setupHint"
-							:project-id="projectId"
-							@saved="onInlineFormSaved"
-						/>
 					</div>
 				</div>
 

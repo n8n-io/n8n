@@ -54,6 +54,10 @@ export class InstanceAiWorkflowSetup {
 		return this.root.getByTestId('credential-hint-docs-link');
 	}
 
+	getGuidedTestError(): Locator {
+		return this.root.getByTestId('credential-test-error');
+	}
+
 	getShowAllFieldsLink(): Locator {
 		return this.root.getByTestId('credential-hint-show-all');
 	}

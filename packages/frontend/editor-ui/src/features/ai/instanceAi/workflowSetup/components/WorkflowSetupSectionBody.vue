@@ -96,6 +96,8 @@ const inlineForm = ref<{
 	mode: 'new' | 'edit';
 	credentialType: string;
 	credentialId?: string;
+	/** Opened from the selector (create/edit events) — offer a way back to it. */
+	showBack: boolean;
 } | null>(null);
 
 const targetNodeNames = computed(() =>
@@ -127,6 +129,22 @@ watch(
 		revealedIssues.value = new Set();
 		inlineForm.value = null;
 	},
+);
+
+// The default inline form must be held as STATE, not derived from the selector
+// gate: saving a credential mid-submit makes the store report usable
+// credentials, which would otherwise swap this form for the (auto-selecting)
+// selector before the save/auth-probe completes — discarding a probe rejection.
+// The form opens when there's nothing to select and closes only via its own
+// saved/back events (or the section-change reset above, which runs first).
+watch(
+	[() => props.section.id, credentialType, shouldRenderSelector],
+	([, type, selectorVisible]) => {
+		if (type && !selectorVisible && !inlineForm.value) {
+			inlineForm.value = { mode: 'new', credentialType: type, showBack: false };
+		}
+	},
+	{ immediate: true },
 );
 
 const hiddenIssuesInputs = computed(() =>
@@ -204,7 +222,7 @@ function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
 }
 
 function openInlineCreate(type: string) {
-	inlineForm.value = { mode: 'new', credentialType: type };
+	inlineForm.value = { mode: 'new', credentialType: type, showBack: true };
 }
 
 function openInlineEdit(payload: { credentialType: string; credentialId: string }) {
@@ -212,6 +230,7 @@ function openInlineEdit(payload: { credentialType: string; credentialId: string 
 		mode: 'edit',
 		credentialType: payload.credentialType,
 		credentialId: payload.credentialId,
+		showBack: true,
 	};
 }
 
@@ -244,7 +263,9 @@ function onParameterValueChanged(update: IUpdateInformation) {
 			:setup-hint="inlineForm.credentialType === credentialType ? section.setupHint : undefined"
 			:project-id="ctx.projectId.value"
 			:provider-url="providerUrl"
-			show-back
+			:workflow-id="ctx.workflowId.value"
+			:node-name="section.targetNodeName"
+			:show-back="inlineForm.showBack"
 			@saved="onInlineFormSaved"
 			@back="inlineForm = null"
 		/>
@@ -274,14 +295,6 @@ function onParameterValueChanged(update: IUpdateInformation) {
 				</N8nTooltip>
 			</template>
 		</NodeCredentials>
-		<InstanceAiCredentialForm
-			v-else-if="credentialType"
-			:credential-type="credentialType"
-			:setup-hint="section.setupHint"
-			:project-id="ctx.projectId.value"
-			:provider-url="providerUrl"
-			@saved="onInlineFormSaved"
-		/>
 
 		<div
 			v-if="parameterDefinitions.length > 0"
