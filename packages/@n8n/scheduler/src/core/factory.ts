@@ -18,8 +18,8 @@ import type { Scheduler } from './scheduler';
 export type SchedulerEventLevel = 'debug' | 'warn' | 'error';
 
 /**
- * An incident or notable outcome from a pass, already handled where it fired;
- * the host only decides how to report it (typically: route to its logger).
+ * An incident or notable outcome from a pass, already handled where it fired.
+ * The host only decides how to report it (typically: route to its logger).
  */
 export interface SchedulerEvent {
 	level: SchedulerEventLevel;
@@ -153,11 +153,19 @@ export function createScheduler(deps: SchedulerDeps): Scheduler {
 		},
 
 		async reap() {
-			return await reap(taskStore, reaperOptions, (taskId, error) => {
-				emit('error', 'Scheduler could not recover an expired task; skipped until the next sweep', {
-					taskId,
-					error: described(error),
-				});
+			return await reap(taskStore, reaperOptions, {
+				onRowError: (taskId, error) => {
+					emit(
+						'error',
+						'Scheduler could not recover an expired task; skipped until the next sweep',
+						{ taskId, error: described(error) },
+					);
+				},
+				onDeadLetter: (task) => {
+					emit('warn', 'Scheduler dead-lettered a task; its last attempt lost its lease', {
+						...task,
+					});
+				},
 			});
 		},
 

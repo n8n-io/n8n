@@ -49,8 +49,13 @@ export const DEFAULT_REAPER_OPTIONS: ReaperOptions = {
 	batchSize: 100,
 };
 
-/** Notified when recovering one expired-lease row fails, after the row is skipped. */
-export type OnReapRowError = (taskId: string, error: unknown) => void;
+/** Notifications a sweep emits; all optional, none may affect the sweep's outcome. */
+export interface ReaperHooks {
+	/** Notified when recovering one expired-lease row fails, after the row is skipped. */
+	onRowError?: (taskId: string, error: unknown) => void;
+	/** Notified when a task is failed terminally: the lease of its last attempt expired. */
+	onDeadLetter?: (task: { taskId: string; attempts: number; maxAttempts: number }) => void;
+}
 
 /**
  * Recovers tasks stranded `running` by an instance that crashed or stalled past
@@ -68,7 +73,7 @@ export type OnReapRowError = (taskId: string, error: unknown) => void;
  *
  * Each per-row update is guarded and 0 rows affected is benign, so concurrent
  * reapers on every main are safe. A row that throws is skipped (reported via
- * `onRowError`), not allowed to abort the rest of the pass.
+ * `hooks.onRowError`), not allowed to abort the rest of the pass.
  *
  * One pass reclaims (or dead-letters) up to `batchSize` expired-lease tasks: a task
  * with attempts left goes back to `pending` with a backoff and a bumped epoch; one
@@ -77,7 +82,7 @@ export type OnReapRowError = (taskId: string, error: unknown) => void;
 export async function reap(
 	store: ReaperTaskStore,
 	options: ReaperOptions = DEFAULT_REAPER_OPTIONS,
-	onRowError?: OnReapRowError,
+	hooks: ReaperHooks = {},
 ): Promise<ReapResult> {
 	const expired = await store.findExpiredLeases(options.batchSize);
 	if (expired.length === 0) return { reclaimed: 0, deadLettered: 0 };
@@ -92,10 +97,24 @@ export async function reap(
 			// same as a handler failure would.
 			const nextAttempts = task.attempts + 1;
 			if (nextAttempts >= task.maxAttempts) {
-				deadLettered += await store.deadLetterExpired(
+				const affected = await store.deadLetterExpired(
 					{ id: task.id, claimedEpoch: task.leaseEpoch },
 					LEASE_EXPIRED_MESSAGE,
 				);
+				deadLettered += affected;
+				// Only an update that actually won the row is a dead-letter; a lost
+				// race means another actor decided the row and there is nothing to report.
+				if (affected > 0) {
+					try {
+						hooks.onDeadLetter?.({
+							taskId: task.id,
+							attempts: nextAttempts,
+							maxAttempts: task.maxAttempts,
+						});
+					} catch {
+						// A host-supplied reporter must not break the sweep it observes.
+					}
+				}
 			} else {
 				reclaimed += await store.reclaimExpired(
 					{ id: task.id, claimedEpoch: task.leaseEpoch },
@@ -105,7 +124,7 @@ export async function reap(
 			}
 		} catch (error) {
 			try {
-				onRowError?.(task.id, error);
+				hooks.onRowError?.(task.id, error);
 			} catch {
 				// The remaining rows still need recovering.
 			}

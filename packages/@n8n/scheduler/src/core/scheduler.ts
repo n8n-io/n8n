@@ -9,8 +9,9 @@ import type { ClaimedTask } from './types';
  */
 export interface Scheduler {
 	/**
-	 * Register the handler that runs tasks of `taskType`. The executor claims
-	 * only registered types, so an instance never picks up work it cannot run.
+	 * Register the handler that runs tasks of `taskType`.
+	 * The executor claims only registered types,
+	 * so an instance never picks up work it cannot run.
 	 */
 	registerTaskHandler(taskType: string, handler: TaskHandler): void;
 

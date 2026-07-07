@@ -14,11 +14,12 @@ const expiredTask = (overrides: Partial<ExpiredLeaseRow> = {}): ExpiredLeaseRow 
 const setup = () => {
 	const store = mock<ReaperTaskStore>();
 	const onRowError = vi.fn();
+	const onDeadLetter = vi.fn();
 	// Guarded updates report one row changed unless a test overrides them.
 	store.reclaimExpired.mockResolvedValue(1);
 	store.deadLetterExpired.mockResolvedValue(1);
-	const run = async () => await reap(store, { batchSize: 100 }, onRowError);
-	return { store, onRowError, run };
+	const run = async () => await reap(store, { batchSize: 100 }, { onRowError, onDeadLetter });
+	return { store, onRowError, onDeadLetter, run };
 };
 
 describe('reap', () => {
@@ -66,7 +67,7 @@ describe('reap', () => {
 	});
 
 	it('dead-letters a task on its single default attempt', async () => {
-		const { store, run } = setup();
+		const { store, onDeadLetter, run } = setup();
 		const task = expiredTask({ attempts: 0, maxAttempts: 1 });
 		store.findExpiredLeases.mockResolvedValue([task]);
 
@@ -78,6 +79,8 @@ describe('reap', () => {
 		);
 		expect(store.reclaimExpired).not.toHaveBeenCalled();
 		expect(result).toEqual({ reclaimed: 0, deadLettered: 1 });
+		// The terminal failure is reported with the lost attempt already counted.
+		expect(onDeadLetter).toHaveBeenCalledWith({ taskId: task.id, attempts: 1, maxAttempts: 1 });
 	});
 
 	it('dead-letters when the next attempt reaches maxAttempts', async () => {
@@ -159,5 +162,36 @@ describe('reap', () => {
 		const result = await run();
 
 		expect(result).toEqual({ reclaimed: 0, deadLettered: 0 });
+	});
+
+	it('does not report a dead-letter for a reclaim or a lost dead-letter race', async () => {
+		const { store, onDeadLetter, run } = setup();
+		// 'raced' loses its guarded update: another actor decided the row first.
+		store.deadLetterExpired.mockResolvedValue(0);
+		store.findExpiredLeases.mockResolvedValue([
+			expiredTask({ id: 'retried', attempts: 0, maxAttempts: 3 }),
+			expiredTask({ id: 'raced', attempts: 0, maxAttempts: 1 }),
+		]);
+
+		const result = await run();
+
+		expect(result).toEqual({ reclaimed: 1, deadLettered: 0 });
+		expect(onDeadLetter).not.toHaveBeenCalled();
+	});
+
+	it('keeps sweeping when the dead-letter reporter itself throws', async () => {
+		const { store, onDeadLetter, run } = setup();
+		onDeadLetter.mockImplementation(() => {
+			throw new Error('logger down');
+		});
+		store.findExpiredLeases.mockResolvedValue([
+			expiredTask({ id: 'dead', attempts: 0, maxAttempts: 1 }),
+			expiredTask({ id: 'ok', attempts: 0, maxAttempts: 3 }),
+		]);
+
+		const result = await run();
+
+		// The row was decided before the reporter ran: counted, and the sweep goes on.
+		expect(result).toEqual({ reclaimed: 1, deadLettered: 1 });
 	});
 });

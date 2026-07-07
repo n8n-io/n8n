@@ -6,5 +6,5 @@ export {
 	type ReaperTaskStore,
 	type ExpiredLeaseRef,
 	type ExpiredLeaseRow,
-	type OnReapRowError,
+	type ReaperHooks,
 } from './reap';

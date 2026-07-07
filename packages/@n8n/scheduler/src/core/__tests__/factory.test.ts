@@ -186,4 +186,21 @@ describe('createScheduler reap', () => {
 			context: { taskId: '7', error: 'deadlock' },
 		});
 	});
+
+	it('routes a dead-lettered task to a warn event carrying the task identity', async () => {
+		const { scheduler, taskStore, onEvent } = makeScheduler();
+		taskStore.findExpiredLeases.mockResolvedValue([
+			{ id: '7', attempts: 2, maxAttempts: 3, leaseEpoch: 1 },
+		]);
+		taskStore.deadLetterExpired.mockResolvedValue(1);
+
+		const result = await scheduler.reap();
+
+		expect(result).toEqual({ reclaimed: 0, deadLettered: 1 });
+		expect(onEvent).toHaveBeenCalledWith({
+			level: 'warn',
+			message: 'Scheduler dead-lettered a task; its last attempt lost its lease',
+			context: { taskId: '7', attempts: 3, maxAttempts: 3 },
+		});
+	});
 });
