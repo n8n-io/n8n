@@ -89,10 +89,12 @@ function aggregateMeasuredUnits(testCases: TestCaseAggregation[]) {
 	let expectations = 0;
 
 	for (const tc of testCases) {
-		scenarios += tc.executionScenarios.length;
-		for (const sa of tc.executionScenarios) {
+		// Only evaluated runs count — verifier-incomplete runs carry no verdict.
+		const evaluatedScenarios = tc.executionScenarios.filter((sa) => sa.evaluatedCount > 0);
+		scenarios += evaluatedScenarios.length;
+		for (const sa of evaluatedScenarios) {
 			passed += sa.passCount;
-			total += sa.runs.length;
+			total += sa.evaluatedCount;
 		}
 
 		const buildExpectations = evaluatedBuildExpectations(tc);
@@ -278,6 +280,13 @@ function formatGateAlertMarkdown(gate: GateResult): string {
 			`> 🔴 ${gate.failing.length} of ${pluralUnits(n)} not green ${over}.`,
 		].join('\n');
 	}
+	// Zero measured units (e.g. verifier outage excluded everything): red, not clean.
+	if (!gate.green) {
+		return [
+			'> [!CAUTION]',
+			`> 🔴 Gate has no measured units — ${gate.excluded.length} excluded with no verdict. Nothing was actually gated.`,
+		].join('\n');
+	}
 	// All units pass@k. Only warn when a unit *barely* passed (failed most of its runs);
 	// a single flaky miss stays green but is still listed in Failures below.
 	const barely = barelyPassedUnits(gate).length;
@@ -318,6 +327,9 @@ function formatTerminalGateLine(gate: GateResult): string {
 	const over = `over ${gate.totalRuns} run${gate.totalRuns === 1 ? '' : 's'}`;
 	if (gate.failing.length > 0) {
 		return `▶ GATE: ${gate.failing.length} of ${pluralUnits(n)} NOT green ${over}`;
+	}
+	if (!gate.green) {
+		return `▶ GATE: NO measured units (${gate.excluded.length} excluded, no verdicts) — not green`;
 	}
 	const barely = barelyPassedUnits(gate).length;
 	if (barely > 0) {
@@ -668,7 +680,10 @@ function renderPerTestCaseDetails(
 		lines.push(`| Workflow | Built | pass@${totalRuns} | pass^${totalRuns} |`);
 		lines.push('|---|---|---|---|');
 		for (const tc of testCases) {
-			const units = [...tc.executionScenarios, ...evaluatedBuildExpectations(tc)];
+			const units = [
+				...tc.executionScenarios.filter((sa) => sa.evaluatedCount > 0),
+				...evaluatedBuildExpectations(tc),
+			];
 			const meanPassAtK = units.length
 				? Math.round(
 						(units.reduce((sum, unit) => sum + (unit.passAtK[unit.passAtK.length - 1] ?? 0), 0) /
@@ -692,11 +707,12 @@ function renderPerTestCaseDetails(
 		lines.push('|---|---|---|');
 		for (const tc of testCases) {
 			const built = tc.runs[0]?.workflowBuildSuccess ? '✓' : '✗';
-			const scenariosPassed = tc.executionScenarios.filter((sa) => sa.runs[0]?.success).length;
+			const scoredScenarios = tc.executionScenarios.filter((sa) => !sa.runs[0]?.incomplete);
+			const scenariosPassed = scoredScenarios.filter((sa) => sa.runs[0]?.success).length;
 			const buildExpectations = evaluatedBuildExpectations(tc);
 			const expectationsPassed = buildExpectations.filter((ea) => ea.runs[0]?.pass).length;
 			const passed = scenariosPassed + expectationsPassed;
-			const total = tc.executionScenarios.length + buildExpectations.length;
+			const total = scoredScenarios.length + buildExpectations.length;
 			lines.push(`| ${renderName(tc)} | ${built} | ${passed}/${total} |`);
 		}
 	}
@@ -774,13 +790,22 @@ function renderFailureDetails(
 		const prefix =
 			slugByTestCase?.get(tc.testCase) ?? caseDisplayPrompt(tc.testCase).slice(0, 50).trim();
 		for (const sa of tc.executionScenarios) {
-			const failedRuns = sa.runs.filter((r) => !r.success);
-			if (failedRuns.length > 0) {
+			// Verifier-incomplete runs are shown for visibility but tagged as
+			// excluded — they're outside the passCount/total denominator.
+			const failedRuns = sa.runs.filter((r) => !r.success && !r.incomplete);
+			const excludedRuns = sa.runs.filter((r) => r.incomplete);
+			if (failedRuns.length > 0 || excludedRuns.length > 0) {
 				units.push({
 					slug: `${prefix}/${sa.scenario.name}`,
 					passCount: sa.passCount,
-					total: sa.runs.length,
-					runs: failedRuns.map((r) => ({ category: r.failureCategory, text: r.reasoning })),
+					total: sa.evaluatedCount,
+					runs: [
+						...failedRuns.map((r) => ({ category: r.failureCategory, text: r.reasoning })),
+						...excludedRuns.map((r) => ({
+							category: 'excluded from scoring — verifier returned no verdict',
+							text: r.reasoning,
+						})),
+					],
 				});
 			}
 		}
@@ -854,7 +879,8 @@ function buildFailedRunsIndex(
 		for (const sa of tc.executionScenarios) {
 			const failedRuns: FailedRunDetail[] = [];
 			sa.runs.forEach((r, i) => {
-				if (!r.success) {
+				// Incomplete runs are outside the comparison denominators — skip.
+				if (!r.success && !r.incomplete) {
 					failedRuns.push({
 						category: r.failureCategory,
 						reasoning: r.reasoning,
@@ -1196,7 +1222,7 @@ function formatTerminalPerTestCase(
 			if (r.buildError) lines.push(TERMINAL_INDENT + `  error: ${r.buildError.slice(0, 200)}`);
 			for (const sa of tc.executionScenarios) {
 				const sr = sa.runs[0];
-				const status = sr.success ? 'PASS' : 'FAIL';
+				const status = sr.incomplete ? 'SKIP (no verdict)' : sr.success ? 'PASS' : 'FAIL';
 				const category = sr.failureCategory ? ` [${sr.failureCategory}]` : '';
 				lines.push(TERMINAL_INDENT + `  ${status}  ${sr.scenario.name}${category}`);
 				if (!sr.success) {

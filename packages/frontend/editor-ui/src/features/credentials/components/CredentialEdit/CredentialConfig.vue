@@ -522,6 +522,14 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					</template>
 				</Banner>
 
+				<N8nInfoTip
+					v-if="isResolvable"
+					:bold="false"
+					data-test-id="end-user-credential-connect-subtext"
+				>
+					{{ i18n.baseText('credentialEdit.credentialConfig.endUserCredential.connectSubtext') }}
+				</N8nInfoTip>
+
 				<template v-if="canWrite">
 					<!-- Instance AI credential setup help (mimics the assistant button) -->
 					<div

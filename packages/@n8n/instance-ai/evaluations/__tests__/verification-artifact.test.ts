@@ -427,6 +427,115 @@ describe('buildVerificationArtifact', () => {
 		expect(artifact.scenarioContext).toContain('**Did not run** (no execution data): none');
 	});
 
+	it('head/tail-truncates oversized JSON output blocks and reports chars saved', () => {
+		const wf: WorkflowResponse = {
+			id: 'w1',
+			name: 'big-output',
+			active: false,
+			versionId: 'v1',
+			nodes: [
+				{
+					id: 'a',
+					name: 'HTTP',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: { HTTP: { main: [[]] } },
+		};
+		const bigItems = Array.from({ length: 200 }, (_, i) => ({
+			json: { i, blob: 'x'.repeat(200) },
+		}));
+		const evalResult = makeEvalResult({
+			HTTP: makeNodeResult({
+				outputs: { main: [bigItems] },
+				outputCount: 200,
+				iterationCount: 1,
+			}),
+		});
+
+		const artifact = buildVerificationArtifact(scenario, evalResult, [wf]);
+
+		expect(artifact.scenarioContext).toContain('chars truncated]');
+		// Head and tail survive the cut.
+		expect(artifact.scenarioContext).toContain('"i": 0');
+		expect(artifact.scenarioContext).toContain('"i": 199');
+		expect(artifact.truncationSavedChars ?? 0).toBeGreaterThan(0);
+	});
+
+	it('elides the middle of an oversized intercepted-request list', () => {
+		const wf: WorkflowResponse = {
+			id: 'w1',
+			name: 'paginated',
+			active: false,
+			versionId: 'v1',
+			nodes: [
+				{
+					id: 'a',
+					name: 'HTTP',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: { HTTP: { main: [[]] } },
+		};
+		const evalResult = makeEvalResult({
+			HTTP: makeNodeResult({
+				interceptedRequests: Array.from({ length: 30 }, (_, i) => ({
+					method: 'GET',
+					url: `https://api.example.com/page/${i}`,
+					mockResponse: { page: i },
+				})),
+				iterationCount: 1,
+			}),
+		});
+
+		const artifact = buildVerificationArtifact(scenario, evalResult, [wf]);
+
+		// First and last pages render; the middle is elided with a marker.
+		expect(artifact.scenarioContext).toContain('https://api.example.com/page/0');
+		expect(artifact.scenarioContext).toContain('https://api.example.com/page/29');
+		expect(artifact.scenarioContext).toContain('18 further requests omitted for size');
+		expect(artifact.scenarioContext).not.toContain('https://api.example.com/page/15');
+		expect(artifact.truncationSavedChars ?? 0).toBeGreaterThan(0);
+	});
+
+	it('reports zero truncation savings for small traces', () => {
+		const wf: WorkflowResponse = {
+			id: 'w1',
+			name: 'small',
+			active: false,
+			versionId: 'v1',
+			nodes: [
+				{
+					id: 'a',
+					name: 'HTTP',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: { HTTP: { main: [[]] } },
+		};
+		const evalResult = makeEvalResult({
+			HTTP: makeNodeResult({
+				outputs: { main: [[{ json: { ok: true } }]] },
+				outputCount: 1,
+				iterationCount: 1,
+			}),
+		});
+
+		const artifact = buildVerificationArtifact(scenario, evalResult, [wf]);
+
+		expect(artifact.truncationSavedChars).toBe(0);
+		expect(artifact.scenarioContext).not.toContain('chars truncated]');
+	});
+
 	it('tags loop iterations and first-error iteration in the trace header', () => {
 		const wf: WorkflowResponse = {
 			id: 'w1',

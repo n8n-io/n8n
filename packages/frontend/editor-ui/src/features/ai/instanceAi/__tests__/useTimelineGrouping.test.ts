@@ -57,6 +57,55 @@ describe('useTimelineGrouping', () => {
 		]);
 	});
 
+	test('groups reasoning with its step tool calls and counts it', () => {
+		const segments = useTimelineGrouping(
+			ref(
+				makeAgentNode({
+					toolCalls: [makeToolCall({ toolCallId: 'tc-1', toolName: 'search' })],
+					timeline: [
+						{ type: 'reasoning', content: 'plan the search', responseId: 'r-1' },
+						{ type: 'tool-call', toolCallId: 'tc-1', responseId: 'r-1' },
+						{ type: 'text', content: 'the answer', responseId: 'r-2' },
+					],
+				}),
+			),
+		).value;
+
+		if (!segments) throw new Error('Expected segments');
+		expect(segments).toHaveLength(2);
+		const group = segments[0];
+		if (group.kind !== 'response-group') throw new Error('Expected a response group');
+		expect(group.reasoningCount).toBe(1);
+		expect(group.entries).toEqual([
+			{ type: 'reasoning', content: 'plan the search', responseId: 'r-1' },
+			{ type: 'tool-call', toolCallId: 'tc-1', responseId: 'r-1' },
+		]);
+		expect(segments[1]).toEqual({ kind: 'trailing-text', content: 'the answer' });
+	});
+
+	test('keeps reasoning-only groups', () => {
+		const segments = useTimelineGrouping(
+			ref(
+				makeAgentNode({
+					timeline: [
+						{ type: 'reasoning', content: 'final thoughts', responseId: 'r-1' },
+						{ type: 'text', content: 'the answer', responseId: 'r-1' },
+					],
+				}),
+			),
+		).value;
+
+		if (!segments) throw new Error('Expected segments');
+		expect(segments).toHaveLength(2);
+		const group = segments[0];
+		if (group.kind !== 'response-group') throw new Error('Expected a response group');
+		expect(group.reasoningCount).toBe(1);
+		expect(group.entries).toEqual([
+			{ type: 'reasoning', content: 'final thoughts', responseId: 'r-1' },
+		]);
+		expect(segments[1]).toEqual({ kind: 'trailing-text', content: 'the answer' });
+	});
+
 	test('deduplicates artifacts across root tool calls', () => {
 		const segments = useTimelineGrouping(
 			ref(
