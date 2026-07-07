@@ -12,7 +12,6 @@ import { N8nTabs } from '@n8n/design-system';
 import { useProjectsStore } from '../projects.store';
 import { ProjectTypes } from '../projects.types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useRoutePrefetch } from '@/app/composables/useRoutePrefetch';
 type Props = {
 	showSettings?: boolean;
 	showExecutions?: boolean;
@@ -148,17 +147,6 @@ watch(
 		// Select workflows tab if folders tab is selected
 		selectedTab.value =
 			route.name === VIEWS.PROJECTS_FOLDERS ? VIEWS.PROJECTS_WORKFLOWS : route.name;
-	},
-	{ immediate: true },
-);
-
-// Warm the lazy view chunks behind the tabs so the first click on any of them
-// (executions, agents, variables, ...) is as instant as the later ones.
-const { prefetchOnIdle } = useRoutePrefetch();
-watch(
-	options,
-	(tabs) => {
-		prefetchOnIdle(tabs.flatMap((tab) => (tab.to ? [tab.to] : [])));
 	},
 	{ immediate: true },
 );
