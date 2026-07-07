@@ -1017,7 +1017,11 @@ export type RelayEventMap = {
 
 	'instance-policies-updated': { user: UserLike } & (
 		| {
-				settingName: '2fa_enforcement' | 'workflow_publishing' | 'workflow_sharing';
+				settingName:
+					| '2fa_enforcement'
+					| 'workflow_publishing'
+					| 'workflow_sharing'
+					| 'workflow_reviews';
 				value: boolean;
 		  }
 		| {
