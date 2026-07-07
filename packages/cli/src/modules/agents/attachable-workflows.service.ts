@@ -20,7 +20,9 @@ const SUPPORTED_TRIGGERS: Record<string, string> = {
 	'n8n-nodes-base.formTrigger': 'form',
 };
 
-const ATTACHABLE_WORKFLOWS_LIMIT = 10;
+// The result is embedded in an LLM tool response, so cap it because large tenants
+// can have thousands of readable workflows in a project.
+const MAX_ATTACHABLE_WORKFLOWS = 10;
 
 /**
  * Lists the workflows a user may attach to an agent as `type: "workflow"` tools.
@@ -65,6 +67,6 @@ export class AttachableWorkflowsService {
 					},
 				];
 			})
-			.slice(0, ATTACHABLE_WORKFLOWS_LIMIT);
+			.slice(0, MAX_ATTACHABLE_WORKFLOWS);
 	}
 }

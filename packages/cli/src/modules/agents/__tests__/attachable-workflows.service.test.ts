@@ -114,4 +114,47 @@ describe('AttachableWorkflowsService', () => {
 
 		expect(await service.list(user, 'project-1')).toEqual([]);
 	});
+
+	it('caps the result at 10 most recently updated workflows', async () => {
+		const { service, workflowFinderService, user } = setup();
+		workflowFinderService.findAllWorkflowsForUser.mockResolvedValue(
+			Array.from({ length: 150 }, (_, i) =>
+				wf({
+					id: `wf-${i}`,
+					name: `Workflow ${i}`,
+					nodes: [manualTrigger],
+					updatedAt: new Date(Date.UTC(2026, 0, 1, 0, 0, i)),
+				}),
+			),
+		);
+
+		const result = await service.list(user, 'project-1');
+
+		expect(result).toHaveLength(10);
+		// Sorted by updatedAt desc: the newest (highest index) comes first and
+		// the older workflows fall off the end.
+		expect(result[0].name).toBe('Workflow 149');
+		expect(result[9].name).toBe('Workflow 140');
+	});
+
+	it('applies the cap after trigger filtering, not before', async () => {
+		const { service, workflowFinderService, user } = setup();
+		const workflows = Array.from({ length: 15 }, (_, i) =>
+			wf({
+				id: `wf-${i}`,
+				name: `Workflow ${i}`,
+				nodes: i >= 10 ? [noTrigger] : [manualTrigger],
+				updatedAt: new Date(Date.UTC(2026, 0, 1, 0, 0, i)),
+			}),
+		);
+		workflowFinderService.findAllWorkflowsForUser.mockResolvedValue(workflows);
+
+		const result = await service.list(user, 'project-1');
+
+		// A cap applied before filtering would waste slots on the newest
+		// no-trigger entries and return fewer than 10.
+		expect(result).toHaveLength(10);
+		expect(result.every((w) => w.triggerType === 'manual')).toBe(true);
+		expect(result[0].name).toBe('Workflow 9');
+	});
 });
