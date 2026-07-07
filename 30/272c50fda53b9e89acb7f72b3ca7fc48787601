@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.ts
+  s_7d7b0bde429fbc::t_d70b080310db53 168-193,211
+  s_7d7b0bde429fbc::t_4b517e39b113e5 212-247
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_7d7b0bde429fbc::t_8067c6b606b5f3 2823
+packages/frontend/editor-ui/src/features/roles/instance/components/ScopeGroupSelector.vue
+  s_7d7b0bde429fbc::t_4f45091d90c966 65
+  s_7d7b0bde429fbc::t_c9a1bc56aa0f85 64
+  s_7d7b0bde429fbc::t_ec03666b64d4b2 66-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "30272c50fda53b9e89acb7f72b3ca7fc48787601",
+  "prompts": {},
+  "sessions": {
+    "s_7d7b0bde429fbc": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4a27d91f-5729-4345-a190-8ed486757b87",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
