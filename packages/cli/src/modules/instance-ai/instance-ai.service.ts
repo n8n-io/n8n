@@ -602,6 +602,7 @@ export class InstanceAiService {
 			aiService: this.aiService,
 		});
 		this.terminalOutcome = new InstanceAiTerminalOutcomeService({
+			durableLog: globalConfig.instanceAi.durableLog,
 			// Flag-resolved reads: the terminal guard and outcome-replay dedup must
 			// see the run's events after a restart too, which only the durable log
 			// can provide (the bus cache is empty in a fresh process).

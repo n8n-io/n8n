@@ -211,6 +211,7 @@ function createService(snapshotTree?: InstanceAiAgentNode): {
 	};
 
 	const options = {
+		durableLog: false,
 		eventBus: deps.eventBus,
 		dbSnapshotStorage: deps.dbSnapshotStorage,
 		agentMemory: {},
@@ -403,6 +404,46 @@ describe('InstanceAiTerminalOutcomeService — background outcome recording', ()
 		// The pending outcome is recovered on the next replay.
 		await service.replayUndeliveredTerminalOutcomes('thread-a');
 		expect(terminalOutcomeStorageMock.markDelivered).not.toHaveBeenCalled();
+	});
+});
+
+describe('InstanceAiTerminalOutcomeService — durable-log outcome lines', () => {
+	it('publishes the outcome line as a text-block when the durable log is on', async () => {
+		// A trailing delta would race the coalescer's idle flush on an immediate
+		// page reload; a text-block is persisted before it is emitted live.
+		const { deps } = createService(makeAgentTree());
+		const service = new InstanceAiTerminalOutcomeService({
+			durableLog: true,
+			eventBus: deps.eventBus,
+			dbSnapshotStorage: deps.dbSnapshotStorage,
+			agentMemory: {},
+			telemetry: deps.telemetry,
+			logger: deps.logger,
+			runState: deps.runState,
+			suspendedThreads: deps.suspendedThreads,
+			tracing: deps.tracing,
+			publishRunFinish: deps.publishRunFinish,
+			saveAgentTreeSnapshot: vi.fn(async () => {}),
+		} as never);
+
+		await service.recordBackgroundTerminalOutcome({
+			taskId: 'task-dl',
+			threadId: 'thread-dl',
+			runId: 'run-dl',
+			role: 'workflow-builder',
+			agentId: 'agent-builder',
+			status: 'cancelled',
+			result: undefined,
+			startedAt: 0,
+			lastActivityAt: 0,
+			abortController: new AbortController(),
+			corrections: [],
+		} as never);
+
+		const line = deps.eventBus.events.find(
+			(event) => event.type === 'text-block' || event.type === 'text-delta',
+		);
+		expect(line?.type).toBe('text-block');
 	});
 });
 
