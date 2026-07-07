@@ -2352,7 +2352,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 
 	it('claims credits for the consumed segment when a resumed run suspends again', async () => {
 		const service = createTerminalGuardOrderService();
-		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockReturnValue(undefined);
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
 		const abortController = new AbortController();
 		const usageItem = {
 			type: 'llmTokens' as const,
@@ -2406,7 +2406,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 
 	it('bills each segment once under disjoint keys across suspend -> resume -> continue', async () => {
 		const service = createTerminalGuardOrderService();
-		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockReturnValue(undefined);
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
 		const abortController = new AbortController();
 		const segmentOneUsage = {
 			type: 'llmTokens' as const,
@@ -2492,7 +2492,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 
 	it('bills each segment once under disjoint keys across suspend -> resume -> abort', async () => {
 		const service = createTerminalGuardOrderService();
-		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockReturnValue(undefined);
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
 		const abortController = new AbortController();
 		const segmentOneUsage = {
 			type: 'llmTokens' as const,

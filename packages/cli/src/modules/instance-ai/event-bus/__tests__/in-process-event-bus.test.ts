@@ -81,7 +81,7 @@ describe('InProcessEventBus', () => {
 
 	describe('subscribe', () => {
 		it('should receive events published after subscription', () => {
-			const received: Array<{ id: number; event: InstanceAiEvent }> = [];
+			const received: Array<{ id?: number; event: InstanceAiEvent }> = [];
 			bus.subscribe('thread-1', (stored) => received.push(stored));
 
 			bus.publish('thread-1', makeEvent('a', 'run_1'));
@@ -93,7 +93,7 @@ describe('InProcessEventBus', () => {
 		});
 
 		it('should not receive events from other threads', () => {
-			const received: Array<{ id: number; event: InstanceAiEvent }> = [];
+			const received: Array<{ id?: number; event: InstanceAiEvent }> = [];
 			bus.subscribe('thread-1', (stored) => received.push(stored));
 
 			bus.publish('thread-2', makeEvent('a', 'run_2'));
@@ -102,7 +102,7 @@ describe('InProcessEventBus', () => {
 		});
 
 		it('should stop delivery after unsubscribe', () => {
-			const received: Array<{ id: number; event: InstanceAiEvent }> = [];
+			const received: Array<{ id?: number; event: InstanceAiEvent }> = [];
 			const unsubscribe = bus.subscribe('thread-1', (stored) => received.push(stored));
 
 			bus.publish('thread-1', makeEvent('a', 'run_1'));
@@ -201,7 +201,7 @@ describe('InProcessEventBus', () => {
 
 	describe('clear', () => {
 		it('should remove all stored events and listeners', () => {
-			const received: Array<{ id: number; event: InstanceAiEvent }> = [];
+			const received: Array<{ id?: number; event: InstanceAiEvent }> = [];
 			bus.subscribe('thread-1', (stored) => received.push(stored));
 
 			bus.publish('thread-1', makeEvent('a', 'run_1'));
@@ -242,7 +242,7 @@ describe('InProcessEventBus', () => {
 			instanceSettings.isMultiMain = true;
 			bus = buildBus();
 			const received: number[] = [];
-			bus.subscribe('thread-1', (e) => received.push(e.id));
+			bus.subscribe('thread-1', (e) => received.push(e.id!));
 
 			bus.publish('thread-1', makeEvent('a', 'run_1'));
 
@@ -254,7 +254,7 @@ describe('InProcessEventBus', () => {
 			instanceSettings.isMultiMain = true;
 			bus = buildBus();
 			const received: number[] = [];
-			bus.subscribe('thread-1', (e) => received.push(e.id));
+			bus.subscribe('thread-1', (e) => received.push(e.id!));
 			const huge = makeEvent('a', 'run_1');
 			(huge.payload as { text: string }).text = 'x'.repeat(6 * 1024 * 1024);
 
@@ -280,7 +280,7 @@ describe('InProcessEventBus', () => {
 	describe('handleRelayInstanceAiEvent', () => {
 		it('re-emits a relayed event when this main holds an SSE subscriber', () => {
 			const received: number[] = [];
-			bus.subscribe('thread-1', (e) => received.push(e.id));
+			bus.subscribe('thread-1', (e) => received.push(e.id!));
 
 			bus.handleRelayInstanceAiEvent({ threadId: 'thread-1', event: makeEvent('a', 'run_1') });
 
