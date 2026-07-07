@@ -62,10 +62,14 @@ function handleSelect(action: RowAction) {
 	else if (action === 'settings') emit('openSettings');
 	else if (action === 'remove') emit('remove');
 }
+
+function handleRowClick() {
+	emit('openSettings');
+}
 </script>
 
 <template>
-	<div :class="$style.row">
+	<div :class="$style.row" @click="handleRowClick">
 		<span :class="$style.iconWrap">
 			<img
 				v-if="iconSource.type === 'file'"
@@ -91,13 +95,15 @@ function handleSelect(action: RowAction) {
 			]"
 			:title="statusTooltip"
 		/>
-		<N8nDropdownMenu
-			v-if="menuItems.length > 0"
-			:items="menuItems"
-			placement="bottom-end"
-			:portal-target="dropdownPortalTarget"
-			@select="handleSelect"
-		/>
+		<div @click.stop>
+			<N8nDropdownMenu
+				v-if="menuItems.length > 0"
+				:items="menuItems"
+				placement="bottom-end"
+				:portal-target="dropdownPortalTarget"
+				@select="handleSelect"
+			/>
+		</div>
 	</div>
 </template>
 
@@ -108,6 +114,7 @@ function handleSelect(action: RowAction) {
 	gap: var(--spacing--xs);
 	padding: var(--spacing--2xs) 0;
 	margin-left: var(--spacing--2xs);
+	cursor: pointer;
 }
 
 .iconWrap {

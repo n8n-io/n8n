@@ -189,6 +189,57 @@ describe('CredentialsOverwrites', () => {
 		});
 	});
 
+	describe('supportsManagedAuth', () => {
+		it('should return true when an overwrite is configured for the type', () => {
+			expect(credentialsOverwrites.supportsManagedAuth('test')).toBe(true);
+		});
+
+		it('should return true for a base type that has its own overwrite', () => {
+			credentialTypes.getParentTypes.calledWith('parent').mockReturnValue([]);
+			expect(credentialsOverwrites.supportsManagedAuth('parent')).toBe(true);
+		});
+
+		it('should return false when no overwrite is configured for the type', () => {
+			credentialTypes.getParentTypes.mockReturnValueOnce([]);
+			expect(credentialsOverwrites.supportsManagedAuth('unknownCredential')).toBe(false);
+		});
+	});
+
+	describe('usesManagedAuth', () => {
+		it('should return true when an overwritten field is left empty', () => {
+			expect(
+				credentialsOverwrites.usesManagedAuth('test', { username: '', password: 'pass' }),
+			).toBe(true);
+		});
+
+		it('should return false when the user supplied all overwritten fields', () => {
+			expect(
+				credentialsOverwrites.usesManagedAuth('test', {
+					username: 'own-user',
+					password: 'own-pass',
+				}),
+			).toBe(false);
+		});
+
+		it('should return false when no overwrite is configured for the type', () => {
+			credentialTypes.getParentTypes.mockReturnValueOnce([]);
+			expect(credentialsOverwrites.usesManagedAuth('unknownCredential', { username: 'user' })).toBe(
+				false,
+			);
+		});
+
+		it('should return false for a skip-list type when the user customized an overwritten field', () => {
+			// applyOverwrite skips injection entirely here, so the credential is not managed
+			globalConfig.credentials.overwrite.skipTypes = [
+				'test',
+			] as unknown as CommaSeparatedStringArray<string>;
+
+			expect(
+				credentialsOverwrites.usesManagedAuth('test', { username: 'custom-user', password: '' }),
+			).toBe(false);
+		});
+	});
+
 	describe('getOverwrites', () => {
 		it('should return undefined for unrecognized credential type', () => {
 			credentialTypes.recognizes.mockReturnValue(false);

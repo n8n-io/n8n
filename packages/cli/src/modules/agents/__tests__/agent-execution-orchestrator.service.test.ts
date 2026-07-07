@@ -204,7 +204,6 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith({
 			agentId,
 			projectId,
-			n8nUserId: userId,
 			integrationType: N8N_CHAT_INTEGRATION_TYPE,
 		});
 		expect(integrationMessageContextService.setLatest).toHaveBeenCalledWith(
@@ -499,7 +498,6 @@ describe('AgentExecutionOrchestratorService', () => {
 			'hello',
 			'execution-1',
 			'thread-1',
-			userId,
 			projectId,
 			userId,
 		);
@@ -556,7 +554,6 @@ describe('AgentExecutionOrchestratorService', () => {
 				'hello',
 				'execution-1',
 				'thread-1',
-				userId,
 				projectId,
 				userId,
 				false,
@@ -604,7 +601,6 @@ describe('AgentExecutionOrchestratorService', () => {
 				'hello',
 				'execution-1',
 				'thread-1',
-				userId,
 				projectId,
 				undefined,
 				undefined,
@@ -628,7 +624,6 @@ describe('AgentExecutionOrchestratorService', () => {
 				'hello',
 				'execution-1',
 				'thread-1',
-				userId,
 				projectId,
 				undefined,
 				undefined,
@@ -642,14 +637,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		it('injects no tools without workflowContext', async () => {
 			const { service, toolFn } = setupRuntimeWithToolSpy();
 
-			await service.executeForWorkflow(
-				agentId,
-				'hello',
-				'execution-1',
-				'thread-1',
-				userId,
-				projectId,
-			);
+			await service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId);
 
 			expect(toolFn).not.toHaveBeenCalled();
 		});
@@ -667,7 +655,6 @@ describe('AgentExecutionOrchestratorService', () => {
 					'hello',
 					'execution-1',
 					'thread-1',
-					userId,
 					projectId,
 					undefined,
 					undefined,
@@ -699,7 +686,6 @@ describe('AgentExecutionOrchestratorService', () => {
 			'hello',
 			'execution-1',
 			'thread-1',
-			userId,
 			projectId,
 			userId,
 			false,

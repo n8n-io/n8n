@@ -11,6 +11,11 @@ const MockNodeTypeParser = vi.fn();
 const mockSetSchemaBaseDirs = vi.fn();
 const mockSearchCodeBuilderNodes = vi.fn();
 const mockGetNodeTypes = vi.fn().mockReturnValue('get-result');
+const mockGetNodeTypeDefinition = vi.fn().mockReturnValue({
+	nodeId: 'n8n-nodes-base.set',
+	version: 'v1',
+	content: 'builtin-raw-result',
+});
 const mockGetSuggestedNodes = vi.fn().mockReturnValue('suggest-result');
 const mockGenerateNodeTypeFile = vi.fn().mockReturnValue('synth-result');
 
@@ -18,6 +23,7 @@ vi.mock('@n8n/ai-utilities/node-catalog', () => ({
 	NodeTypeParser: MockNodeTypeParser,
 	searchCodeBuilderNodes: (...args: unknown[]) => mockSearchCodeBuilderNodes(...args),
 	getNodeTypes: (...args: unknown[]) => mockGetNodeTypes(...args),
+	getNodeTypeDefinition: (...args: unknown[]) => mockGetNodeTypeDefinition(...args),
 	getSuggestedNodes: (...args: unknown[]) => mockGetSuggestedNodes(...args),
 }));
 
@@ -43,6 +49,14 @@ describe('NodeCatalogService', () => {
 			results: 'search-result',
 			queriesWithNoResults: [],
 		});
+		mockGetNodeTypes.mockReturnValue('get-result');
+		mockGetNodeTypeDefinition.mockReturnValue({
+			nodeId: 'n8n-nodes-base.set',
+			version: 'v1',
+			content: 'builtin-raw-result',
+		});
+		mockGetSuggestedNodes.mockReturnValue('suggest-result');
+		mockGenerateNodeTypeFile.mockReturnValue('synth-result');
 		postProcessorCallback = undefined;
 
 		loadNodesAndCredentials = mock<LoadNodesAndCredentials>({
@@ -312,11 +326,11 @@ describe('NodeCatalogService', () => {
 						outputs: ['main'],
 					},
 					{
-						// Expression-computed inputs can't be expressed as an SDK type.
-						name: 'n8n-nodes-dynamic.dynamic',
-						group: ['transform'],
+						// A malformed description can't be expressed as an SDK type.
+						name: 'n8n-nodes-malformed.malformed',
+						group: 'transform',
 						properties: [],
-						inputs: '={{ $json.connections }}',
+						inputs: ['main'],
 						outputs: ['main'],
 					},
 				],
@@ -325,13 +339,13 @@ describe('NodeCatalogService', () => {
 
 			const result = await service.getNodeTypes([
 				'n8n-nodes-resend.resend',
-				'n8n-nodes-dynamic.dynamic',
+				'n8n-nodes-malformed.malformed',
 			]);
 
 			// The resolvable node still comes through; the unresolvable one is noted, not thrown.
 			expect(result).toContain('synth-result');
 			expect(result).toContain('# Errors');
-			expect(result).toContain('n8n-nodes-dynamic.dynamic');
+			expect(result).toContain('n8n-nodes-malformed.malformed');
 		});
 
 		test('synthesizes the latest version of a versioned node by default', async () => {
@@ -426,6 +440,216 @@ describe('NodeCatalogService', () => {
 			expect(mockGenerateNodeTypeFile).not.toHaveBeenCalled();
 			expect(result).toContain("Version '5' not found for node 'n8n-nodes-multi.multi'");
 			expect(result).toContain('Available versions: 1, 2');
+		});
+	});
+
+	describe('getNodeTypeDefinition', () => {
+		test('returns raw built-in type definition content', async () => {
+			await service.initialize();
+
+			const result = await service.getNodeTypeDefinition({ nodeId: 'n8n-nodes-base.set' });
+
+			expect(result).toEqual({ content: 'builtin-raw-result', version: 'v1' });
+			expect(mockGetNodeTypeDefinition).toHaveBeenCalledWith(
+				'n8n-nodes-base.set',
+				undefined,
+				expect.any(Array),
+				{ resource: undefined, operation: undefined, mode: undefined },
+			);
+			expect(mockGenerateNodeTypeFile).not.toHaveBeenCalled();
+		});
+
+		test('does not cache error results', async () => {
+			mockGetNodeTypeDefinition
+				.mockReturnValueOnce({
+					nodeId: 'n8n-nodes-base.set',
+					content: '',
+					error: 'temporary lookup error',
+				})
+				.mockReturnValueOnce({
+					nodeId: 'n8n-nodes-base.set',
+					version: 'v1',
+					content: 'builtin-raw-result',
+				});
+			await service.initialize();
+
+			const errorResult = await service.getNodeTypeDefinition({ nodeId: 'n8n-nodes-base.set' });
+			const successResult = await service.getNodeTypeDefinition({ nodeId: 'n8n-nodes-base.set' });
+
+			expect(errorResult).toEqual({ content: '', error: 'temporary lookup error' });
+			expect(successResult).toEqual({ content: 'builtin-raw-result', version: 'v1' });
+			expect(mockGetNodeTypeDefinition).toHaveBeenCalledTimes(2);
+		});
+
+		test('evicts least recently used definition result when cache byte budget is full', async () => {
+			// each entry is ~921.6KB, so 18 (~16.6MB) fit within the 16MiB (~16.8MB)
+			// budget and the 19th insert evicts exactly one LRU entry
+			const largeDefinition = 'x'.repeat(900 * 1024);
+			const nodeIdFor = (index: number) => `n8n-nodes-base.node${index}`;
+			mockGetNodeTypeDefinition.mockImplementation((nodeId: string) => ({
+				nodeId,
+				version: 'v1',
+				content: `${nodeId}-${largeDefinition}`,
+			}));
+			await service.initialize();
+
+			for (let index = 0; index < 18; index++) {
+				await service.getNodeTypeDefinition({ nodeId: nodeIdFor(index) });
+			}
+
+			await service.getNodeTypeDefinition({ nodeId: nodeIdFor(0) });
+			await service.getNodeTypeDefinition({ nodeId: nodeIdFor(18) });
+
+			mockGetNodeTypeDefinition.mockClear();
+
+			await service.getNodeTypeDefinition({ nodeId: nodeIdFor(0) });
+			await service.getNodeTypeDefinition({ nodeId: nodeIdFor(1) });
+
+			expect(mockGetNodeTypeDefinition).toHaveBeenCalledTimes(1);
+			expect(mockGetNodeTypeDefinition).toHaveBeenCalledWith(
+				nodeIdFor(1),
+				undefined,
+				expect.any(Array),
+				{ resource: undefined, operation: undefined, mode: undefined },
+			);
+		});
+
+		test('synthesizes type definitions for a community node', async () => {
+			loadNodesAndCredentials.collectTypes.mockResolvedValue({
+				nodes: [
+					{
+						name: 'n8n-nodes-resend.resend',
+						version: 1,
+						group: ['transform'],
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+						builderHint: { searchHint: 'Use Resend for transactional email.' },
+					},
+				],
+			} as never);
+			await service.initialize();
+
+			const result = await service.getNodeTypeDefinition({ nodeId: 'n8n-nodes-resend.resend' });
+
+			expect(result).toEqual({
+				content: 'synth-result',
+				version: '1',
+				builderHint: 'Use Resend for transactional email.',
+			});
+			expect(mockGenerateNodeTypeFile).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'n8n-nodes-resend.resend' }),
+			);
+			expect(mockGetNodeTypeDefinition).not.toHaveBeenCalled();
+		});
+
+		test('selects the latest version of a community node by default', async () => {
+			loadNodesAndCredentials.collectTypes.mockResolvedValue({
+				nodes: [
+					{
+						name: 'n8n-nodes-multi.multi',
+						version: 1,
+						group: ['transform'],
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+					{
+						name: 'n8n-nodes-multi.multi',
+						version: 2,
+						group: ['transform'],
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+				],
+			} as never);
+			await service.initialize();
+
+			const result = await service.getNodeTypeDefinition({ nodeId: 'n8n-nodes-multi.multi' });
+
+			expect(result.version).toBe('2');
+			expect(mockGenerateNodeTypeFile).toHaveBeenCalledWith(
+				expect.objectContaining({ version: 2 }),
+			);
+		});
+
+		test('selects the requested version of a community node', async () => {
+			loadNodesAndCredentials.collectTypes.mockResolvedValue({
+				nodes: [
+					{
+						name: 'n8n-nodes-multi.multi',
+						version: 1,
+						group: ['transform'],
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+					{
+						name: 'n8n-nodes-multi.multi',
+						version: 2,
+						group: ['transform'],
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+				],
+			} as never);
+			await service.initialize();
+
+			const result = await service.getNodeTypeDefinition({
+				nodeId: 'n8n-nodes-multi.multi',
+				version: '1',
+			});
+
+			expect(result.version).toBe('1');
+			expect(mockGenerateNodeTypeFile).toHaveBeenCalledWith(
+				expect.objectContaining({ version: 1 }),
+			);
+		});
+
+		test('synthesizes type definitions for a node with expression connections', async () => {
+			loadNodesAndCredentials.collectTypes.mockResolvedValue({
+				nodes: [
+					{
+						name: 'n8n-nodes-dynamic.dynamic',
+						version: 1,
+						group: ['transform'],
+						properties: [],
+						inputs: '={{ $parameter.connections }}',
+						outputs: ['main'],
+					},
+				],
+			} as never);
+			await service.initialize();
+
+			const result = await service.getNodeTypeDefinition({ nodeId: 'n8n-nodes-dynamic.dynamic' });
+
+			expect(result.content).toBe('synth-result');
+			expect(result.error).toBeUndefined();
+		});
+
+		test('returns a structured error when a node cannot be synthesized', async () => {
+			loadNodesAndCredentials.collectTypes.mockResolvedValue({
+				nodes: [
+					{
+						name: 'n8n-nodes-malformed.malformed',
+						version: 1,
+						group: 'transform',
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+				],
+			} as never);
+			await service.initialize();
+
+			const result = await service.getNodeTypeDefinition({
+				nodeId: 'n8n-nodes-malformed.malformed',
+			});
+
+			expect(result.content).toBe('');
+			expect(result.error).toContain("could not be generated from the node's description");
 		});
 	});
 

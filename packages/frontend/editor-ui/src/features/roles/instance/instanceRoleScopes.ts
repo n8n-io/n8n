@@ -8,76 +8,10 @@
  */
 
 import { type BaseTextKey } from '@n8n/i18n';
-import { type RESOURCES, type Scope } from '@n8n/permissions';
+import { GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS, type Scope } from '@n8n/permissions';
+export { GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS as INSTANCE_SCOPE_GROUPS } from '@n8n/permissions';
 
-type ResourceScope<R extends keyof typeof RESOURCES> =
-	`${R & string}:${(typeof RESOURCES)[R][number]}`;
-
-type InstanceScopeGroups = {
-	[R in keyof typeof RESOURCES]?: Record<string, ReadonlyArray<ResourceScope<R>>>;
-} & {
-	settings?: Record<string, readonly Scope[]>;
-};
-
-export const INSTANCE_SCOPE_GROUPS = {
-	settings: {
-		// Grants access to every instance Settings page. Each scope below gates a
-		// specific page; granting all of them lets the role see and manage all of them.
-		Manage: [
-			'securitySettings:manage', // Security & Policies
-			'credentialResolver:read', // Resolvers (requires the full CRUD set)
-			'credentialResolver:list',
-			'credentialResolver:create',
-			'credentialResolver:update',
-			'credentialResolver:delete',
-			'sourceControl:manage', // Environments (Source Control)
-			'externalSecretsProvider:list', // External Secrets
-			'externalSecretsProvider:update',
-			'saml:manage', // Single Sign-On
-			'logStreaming:manage', // Log Streaming
-			'ldap:manage', // LDAP
-			'otel:manage', // OpenTelemetry
-		],
-	},
-	user: {
-		Manage: [
-			'user:create',
-			'user:update',
-			'user:delete',
-			'user:changeRole',
-			'user:resetPassword',
-			'user:generateInviteLink',
-			'user:enforceMfa',
-			'user:read',
-			'user:list',
-		],
-	},
-	role: {
-		Manage: ['role:read', 'role:manage'],
-	},
-	apiKey: {
-		'Manage own': ['apiKey:create', 'apiKey:list', 'apiKey:delete', 'apiKey:update'],
-		'Manage all': [
-			'apiKey:create',
-			'apiKey:list',
-			'apiKey:delete',
-			'apiKey:update',
-			'apiKey:manage',
-		],
-	},
-	tag: {
-		View: ['tag:read', 'tag:list'],
-		Manage: ['tag:create', 'tag:update', 'tag:delete'],
-	},
-	project: {
-		Create: ['project:create'],
-	},
-	insights: {
-		View: ['insights:read', 'insights:list'],
-	},
-} as const satisfies InstanceScopeGroups;
-
-export type InstanceResource = keyof typeof INSTANCE_SCOPE_GROUPS;
+export type InstanceResource = keyof typeof GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS;
 
 /** Display order of the resource groups in the editor. */
 export const INSTANCE_RESOURCE_ORDER: InstanceResource[] = [
@@ -111,12 +45,25 @@ export const INSTANCE_OPTION_LABEL_KEYS: Record<string, BaseTextKey> = {
 	Manage: 'instanceRoles.option.manage',
 	'Manage own': 'instanceRoles.option.manageOwn',
 	'Manage all': 'instanceRoles.option.manageAll',
+	'Manage project roles': 'instanceRoles.option.manageProjectRoles',
+};
+
+/**
+ * Per-resource label overrides. "Manage" is shared across resources, but under
+ * Roles it must read "Manage all roles (instance and project)" to distinguish it
+ * from "Manage project roles".
+ */
+export const INSTANCE_OPTION_LABEL_OVERRIDES: Partial<
+	Record<InstanceResource, Record<string, BaseTextKey>>
+> = {
+	role: { Manage: 'instanceRoles.option.manageAllRoles' },
 };
 
 /** Display order of options within a resource group. */
 export const INSTANCE_OPTION_ORDER: string[] = [
 	'View',
 	'Create',
+	'Manage project roles',
 	'Manage',
 	'Manage own',
 	'Manage all',
@@ -147,12 +94,13 @@ const sortByOrder = (order: string[]) => (a: string, b: string) => {
  */
 export const INSTANCE_SCOPE_GROUP_LIST: InstanceScopeGroup[] = INSTANCE_RESOURCE_ORDER.map(
 	(resource) => {
-		const optionMap = INSTANCE_SCOPE_GROUPS[resource] as Record<string, readonly Scope[]>;
+		const optionMap = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS[resource] as Record<string, readonly Scope[]>;
 		const options = Object.keys(optionMap)
 			.sort(sortByOrder(INSTANCE_OPTION_ORDER))
 			.map<InstanceScopeOption>((key) => ({
 				key,
-				labelKey: INSTANCE_OPTION_LABEL_KEYS[key],
+				labelKey:
+					INSTANCE_OPTION_LABEL_OVERRIDES[resource]?.[key] ?? INSTANCE_OPTION_LABEL_KEYS[key],
 				scopes: [...optionMap[key]],
 			}));
 		return { resource, labelKey: INSTANCE_RESOURCE_LABEL_KEYS[resource], options };
@@ -173,6 +121,7 @@ export type OptionState = 'checked' | 'indeterminate' | 'unchecked';
  */
 export const SUPERSEDED_BY: Partial<Record<string, string>> = {
 	'Manage own': 'Manage all',
+	'Manage project roles': 'Manage',
 };
 
 /**
@@ -258,6 +207,31 @@ export function toggleOption(scopes: readonly string[], optionScopes: readonly s
 		else next.add(scope);
 	}
 	return [...next];
+}
+
+/** Resource groups whose scopes enable privilege escalation, with the warning to show. */
+export const ESCALATION_WARNING_SCOPES: Partial<
+	Record<InstanceResource, { scopes: Scope[]; messageKey: BaseTextKey }>
+> = {
+	user: {
+		scopes: [...GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.user.Manage],
+		messageKey: 'instanceRoles.warning.manageMembers',
+	},
+	role: {
+		// Only full instance-role management ("Manage all roles") enables self-escalation;
+		// managing project roles alone cannot edit the holder's own instance role.
+		scopes: ['role:manage'],
+		messageKey: 'instanceRoles.warning.manageRoles',
+	},
+};
+
+/** Warning i18n key for a resource group given the current scopes, or undefined. */
+export function getEscalationWarningKey(
+	resource: InstanceResource,
+	scopes: readonly string[],
+): BaseTextKey | undefined {
+	const cfg = ESCALATION_WARNING_SCOPES[resource];
+	return cfg?.scopes.some((s) => scopes.includes(s)) ? cfg.messageKey : undefined;
 }
 
 /** Total number of permission options shown in the instance role editor. */

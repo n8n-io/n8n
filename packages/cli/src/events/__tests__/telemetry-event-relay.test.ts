@@ -954,6 +954,8 @@ describe('TelemetryEventRelay', () => {
 				projectId: 'project123',
 				projectType: 'personal',
 				isDynamic: false,
+				supportsManagedAuth: true,
+				usesManagedAuth: true,
 			};
 
 			eventService.emit('credentials-created', event);
@@ -968,6 +970,8 @@ describe('TelemetryEventRelay', () => {
 				is_private: false,
 				uses_external_secrets: false,
 				jwe_enabled: false,
+				credential_supports_managed_auth: true,
+				credential_uses_managed_auth: true,
 			});
 		});
 
@@ -1024,6 +1028,8 @@ describe('TelemetryEventRelay', () => {
 				is_private: true,
 				uses_external_secrets: false,
 				jwe_enabled: false,
+				credential_supports_managed_auth: false,
+				credential_uses_managed_auth: false,
 			});
 		});
 
@@ -1151,6 +1157,8 @@ describe('TelemetryEventRelay', () => {
 				user: { id: 'user123' },
 				credentialId: 'cred123',
 				credentialType: 'gmailOAuth2',
+				supportsManagedAuth: true,
+				usesManagedAuth: true,
 			};
 
 			eventService.emit('private-credential-user-connected', event);
@@ -1160,6 +1168,8 @@ describe('TelemetryEventRelay', () => {
 				user_role: undefined,
 				credential_type: 'gmailOAuth2',
 				credential_id: 'cred123',
+				credential_supports_managed_auth: true,
+				credential_uses_managed_auth: true,
 			});
 		});
 	});
@@ -2025,11 +2035,14 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
-		it('should track on `n8n-package-exported` event with entity counts', () => {
+		it('should track on `n8n-package-exported` event with entity counts only, not ids', () => {
 			const event: RelayEventMap['n8n-package-exported'] = {
 				user: { id: 'user123' },
+				workflowIds: ['wf1', 'wf2', 'wf3'],
+				projectIds: ['proj1'],
 				counts: {
 					workflows: 3,
+					folders: 1,
 					credentials: 2,
 				},
 			};
@@ -2039,6 +2052,7 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.track).toHaveBeenCalledWith('User exported n8n package', {
 				user_id: 'user123',
 				workflow_count: 3,
+				folder_count: 1,
 				credential_count: 2,
 			});
 		});
