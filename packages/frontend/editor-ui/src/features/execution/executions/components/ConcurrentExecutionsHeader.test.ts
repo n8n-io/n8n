@@ -19,7 +19,7 @@ const renderComponent = createComponentRenderer(ConcurrentExecutionsHeader, {
 	pinia: createTestingPinia(),
 	props: {
 		executions: [],
-		loading: false,
+		isInitialLoad: false,
 	},
 });
 
@@ -31,7 +31,7 @@ describe('ConcurrentExecutionsHeader', () => {
 					runningExecutionsCount: 0,
 					concurrencyCap: 0,
 					executions: [],
-					loading: false,
+					isInitialLoad: false,
 				},
 			}),
 		).not.toThrow();
@@ -48,7 +48,7 @@ describe('ConcurrentExecutionsHeader', () => {
 					runningExecutionsCount,
 					concurrencyCap,
 					executions: [],
-					loading: false,
+					isInitialLoad: false,
 				},
 			});
 
@@ -56,17 +56,30 @@ describe('ConcurrentExecutionsHeader', () => {
 		},
 	);
 
-	it('hides the concurrency header while executions are loading', () => {
+	it('hides the concurrency header until the initial load completes', () => {
 		const { queryByTestId } = renderComponent({
 			props: {
 				runningExecutionsCount: 0,
 				concurrencyCap: 5,
-				executions: [{ status: 'success' } as ExecutionSummary],
-				loading: true,
+				executions: [],
+				isInitialLoad: true,
 			},
 		});
 
 		expect(queryByTestId('concurrent-executions-header')).not.toBeInTheDocument();
+	});
+
+	it('shows the concurrency header for a settled empty result', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				runningExecutionsCount: 0,
+				concurrencyCap: 5,
+				executions: [],
+				isInitialLoad: false,
+			},
+		});
+
+		expect(getByTestId('concurrent-executions-header')).toBeVisible();
 	});
 
 	it('hides the concurrency header when count is 0 but a manual run is active', () => {
@@ -75,7 +88,7 @@ describe('ConcurrentExecutionsHeader', () => {
 				runningExecutionsCount: 0,
 				concurrencyCap: 5,
 				executions: [{ status: 'running' } as ExecutionSummary],
-				loading: false,
+				isInitialLoad: false,
 			},
 		});
 

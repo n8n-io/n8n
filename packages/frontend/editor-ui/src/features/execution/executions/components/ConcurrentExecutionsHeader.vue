@@ -11,7 +11,7 @@ const props = defineProps<{
 	concurrencyCap: number;
 	isCloudDeployment?: boolean;
 	executions: ExecutionSummary[];
-	loading: boolean;
+	isInitialLoad: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -34,7 +34,7 @@ const tooltipText = computed(() => {
 });
 
 const shouldShowHeader = computed(() => {
-	if (props.loading && props.runningExecutionsCount === 0) {
+	if (props.isInitialLoad) {
 		return false;
 	}
 

@@ -34,6 +34,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	const settingsStore = useSettingsStore();
 
 	const loading = ref(false);
+	const initialLoadComplete = ref(false);
 	const itemsPerPage = ref(10);
 
 	const activeExecution = ref<ExecutionSummary | null>(null);
@@ -188,6 +189,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 			return data;
 		} finally {
 			loading.value = false;
+			initialLoadComplete.value = true;
 		}
 	}
 
@@ -339,12 +341,14 @@ export const useExecutionsStore = defineStore('executions', () => {
 		itemsPerPage.value = 10;
 		filters.value = getDefaultExecutionFilters();
 		autoRefresh.value = true;
+		initialLoadComplete.value = false;
 		resetData();
 		stopAutoRefreshInterval();
 	}
 
 	return {
 		loading,
+		initialLoadComplete,
 		annotateExecution,
 		executionsById,
 		executions,
