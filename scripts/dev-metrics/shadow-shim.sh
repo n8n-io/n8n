@@ -31,13 +31,20 @@ if [ -n "${N8N_DEV_SHIM_ACTIVE:-}" ]; then
 	exec "$__real" "$@"
 fi
 
-# Millisecond clock: GNU date gives ns; otherwise (e.g. macOS) whole seconds.
+# Millisecond clock. GNU date (Linux) has %N; macOS /bin/sh lacks it, so fall
+# back to perl's Time::HiRes (preinstalled on macOS). Whole seconds only if
+# neither exists — ponytail: add gdate/EPOCHREALTIME if such a box ever appears.
 __now_ms() {
 	__t=$(date +%s%N 2>/dev/null)
 	case "$__t" in
-		*[!0-9]* | '') echo $(( $(date +%s) * 1000 )) ;;
-		*) echo $(( __t / 1000000 )) ;;
+		'' | *[!0-9]*) ;; # not GNU date — fall through
+		*) echo $(( __t / 1000000 )); return ;;
 	esac
+	if command -v perl >/dev/null 2>&1; then
+		__t=$(perl -MTime::HiRes -e 'printf "%d", Time::HiRes::time()*1000' 2>/dev/null)
+		[ -n "$__t" ] && { echo "$__t"; return; }
+	fi
+	echo $(( $(date +%s) * 1000 ))
 }
 
 __start=$(__now_ms)
