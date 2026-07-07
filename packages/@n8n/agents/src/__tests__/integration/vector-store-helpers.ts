@@ -198,7 +198,7 @@ export async function upsertFixtureDocuments(
 export function registerBulkVectorStoreTests(
 	fixture: BulkFixture,
 	getStore: () => BaseVectorStore,
-	opts?: { afterDelete?: () => Promise<void> },
+	opts?: { afterDelete?: (remainingCount: number) => Promise<void> },
 ): void {
 	it('returns the expected best match for each known-answer query', async () => {
 		const store = getStore();
@@ -249,7 +249,7 @@ export function registerBulkVectorStoreTests(
 		expect(idsToDelete).toContain(fixture.queries[1].expectedTopId);
 
 		await store.delete({ ids: idsToDelete });
-		await opts?.afterDelete?.();
+		await opts?.afterDelete?.(fixture.documents.length - idsToDelete.length);
 
 		const remaining = fixture.documents.filter((doc) => !idsToDelete.includes(doc.id));
 		const expectedTopIds = localTopIds(remaining, fixture.queries[1].vector, 5);

@@ -48,7 +48,7 @@ describe.skipIf(!PINECONE_API_KEY)('PineconeVectorStore', () => {
 
 	afterAll(async () => {
 		await adminClient.deleteIndex(indexName);
-		await store.close();
+		store.close();
 	});
 
 	it('upserts vectors with metadata and queries by similarity', async () => {
@@ -127,7 +127,7 @@ describe.skipIf(!PINECONE_API_KEY)('PineconeVectorStore', () => {
 				expect(results[0].content).toBe('refunds take 5 days');
 			});
 		} finally {
-			await roundTripStore.close();
+			roundTripStore.close();
 		}
 	});
 });
@@ -174,7 +174,7 @@ describe.skipIf(!PINECONE_API_KEY)('PineconeVectorStore — metadata filtering',
 
 	afterAll(async () => {
 		await adminClient.deleteIndex(indexName);
-		await filterStore.close();
+		filterStore.close();
 	});
 
 	async function idsFor(filter: Parameters<PineconeVectorStore['query']>[1]['filter']) {

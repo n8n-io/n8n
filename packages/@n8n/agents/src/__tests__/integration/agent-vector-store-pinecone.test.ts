@@ -50,7 +50,7 @@ describe.skipIf(!PINECONE_API_KEY || !hasKeys)('Agent + PineconeVectorStore end-
 
 	afterAll(async () => {
 		await adminClient.deleteIndex(indexName);
-		await store.close();
+		store.close();
 	});
 
 	registerAgentVectorStoreTests(() => knowledge);

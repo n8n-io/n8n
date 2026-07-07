@@ -21,7 +21,6 @@ import { PineconeVectorStore } from '../../vector-stores/pinecone';
 const PINECONE_API_KEY = process.env.PINECONE_TEST_API_KEY;
 
 const HOOK_TIMEOUT_MS = 240_000;
-const DELETED_COUNT = 20;
 
 const fixture = loadBulkFixture();
 
@@ -44,14 +43,11 @@ describe.skipIf(!PINECONE_API_KEY)('PineconeVectorStore — bulk fixture corpus'
 
 	afterAll(async () => {
 		await adminClient.deleteIndex(indexName);
-		await store.close();
+		store.close();
 	});
 
 	registerBulkVectorStoreTests(fixture, () => store, {
-		afterDelete: async () =>
-			await waitForPineconeRecordCount(
-				adminClient.index(indexName),
-				fixture.documents.length - DELETED_COUNT,
-			),
+		afterDelete: async (remainingCount) =>
+			await waitForPineconeRecordCount(adminClient.index(indexName), remainingCount),
 	});
 });

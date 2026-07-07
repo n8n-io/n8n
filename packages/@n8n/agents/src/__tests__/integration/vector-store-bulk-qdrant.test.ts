@@ -49,7 +49,7 @@ describe.skipIf(!QDRANT_URL)('QdrantVectorStore — bulk fixture corpus', () => 
 
 	afterAll(async () => {
 		await adminClient.deleteCollection(collectionName);
-		await store.close();
+		store.close();
 	});
 
 	registerBulkVectorStoreTests(fixture, () => store);
