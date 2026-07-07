@@ -37,7 +37,8 @@ export type QdrantVectorStoreOptions = {
  * and a field can only carry one index type at a time. Filter values are
  * also more restrictive than `PgVectorStore`: Qdrant `match` only supports
  * strings, integers, and booleans, so float values for `eq`/`ne` and
- * mixed-type arrays for `in`/`nin` (e.g. `['billing', 5]`) are rejected.
+ * mixed-type arrays for `in`/`nin` (e.g. `['billing', 5]`) are rejected with
+ * a descriptive error before any request is sent.
  *
  * @example
  * ```typescript
@@ -115,9 +116,12 @@ export class QdrantVectorStore extends BaseVectorStore<QdrantVectorStoreOptions>
 /** Qdrant only accepts UUID or unsigned-integer point ids. */
 function toPointId(id: string): string | number {
 	if (UUID_PATTERN.test(id)) return id;
-	if (UNSIGNED_INT_PATTERN.test(id) && Number(id) <= Number.MAX_SAFE_INTEGER) return Number(id);
+	const numeric = Number(id);
+	if (UNSIGNED_INT_PATTERN.test(id) && Number.isSafeInteger(numeric) && String(numeric) === id) {
+		return numeric;
+	}
 	throw new Error(
-		`Invalid Qdrant point id "${id}": Qdrant requires ids to be a UUID or an unsigned integer.`,
+		`Invalid Qdrant point id "${id}": Qdrant requires ids to be a UUID or a canonical unsigned integer.`,
 	);
 }
 
@@ -143,14 +147,27 @@ function buildCondition(condition: FilterCondition): Schemas['Condition'] {
 
 	switch (operator) {
 		case 'eq':
-			return { key: payloadKey, match: { value } };
-		case 'ne':
-			return { must_not: [{ key: payloadKey, match: { value } }] };
+		case 'ne': {
+			if (typeof value === 'number' && !Number.isInteger(value)) {
+				throw new Error(
+					`Filter operator "${operator}" on key "${key}" does not support float values: Qdrant match only supports strings, integers, and booleans.`,
+				);
+			}
+			const match: Schemas['Condition'] = { key: payloadKey, match: { value } };
+			return operator === 'eq' ? match : { must_not: [match] };
+		}
 		case 'in':
 		case 'nin': {
 			if (!Array.isArray(value) || value.length === 0) {
 				throw new Error(
 					`Filter operator "${operator}" on key "${key}" requires a non-empty array value.`,
+				);
+			}
+			const allStrings = value.every((v) => typeof v === 'string');
+			const allIntegers = value.every((v) => typeof v === 'number' && Number.isInteger(v));
+			if (!allStrings && !allIntegers) {
+				throw new Error(
+					`Filter operator "${operator}" on key "${key}" requires all array elements to be strings or all to be integers: Qdrant match does not support mixed-type or float values.`,
 				);
 			}
 			const anyCondition: Schemas['Condition'] = { key: payloadKey, match: { any: value } };

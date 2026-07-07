@@ -94,7 +94,13 @@ describe.skipIf(!QDRANT_URL)('QdrantVectorStore', () => {
 	it('rejects a non-UUID, non-integer id', async () => {
 		await expect(
 			store.upsert([{ id: 'exact', vector: [1, 0, 0], content: 'bad id', metadata: {} }]),
-		).rejects.toThrow(/Qdrant requires ids to be a UUID or an unsigned integer/);
+		).rejects.toThrow(/Qdrant requires ids to be a UUID or a canonical unsigned integer/);
+	});
+
+	it('rejects a non-canonical numeric id', async () => {
+		await expect(
+			store.upsert([{ id: '007', vector: [1, 0, 0], content: 'bad id', metadata: {} }]),
+		).rejects.toThrow(/canonical unsigned integer/);
 	});
 
 	it('round-trips through the VectorStore orchestrator with a mock embedding model', async () => {
@@ -259,5 +265,23 @@ describe.skipIf(!QDRANT_URL)('QdrantVectorStore — metadata filtering', () => {
 				combineWith: 'or',
 			}),
 		).toEqual([ID_A, ID_B].sort());
+	});
+
+	it('rejects a float value for eq', async () => {
+		await expect(
+			filterStore.query([1, 0, 0], {
+				topK: 10,
+				filter: { conditions: [{ key: 'count', operator: 'eq', value: 5.5 }] },
+			}),
+		).rejects.toThrow(/does not support float values/);
+	});
+
+	it('rejects a mixed-type array for in', async () => {
+		await expect(
+			filterStore.query([1, 0, 0], {
+				topK: 10,
+				filter: { conditions: [{ key: 'topic', operator: 'in', value: ['billing', 5] }] },
+			}),
+		).rejects.toThrow(/mixed-type or float values/);
 	});
 });
