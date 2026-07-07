@@ -316,7 +316,19 @@ function getDisplayValue(value: unknown): string {
 
 .trailingIcon {
 	flex-shrink: 0;
-	color: var(--color--text--shade-1);
+	color: var(--input--color--text);
+}
+
+.comboboxAnchor:has(input:placeholder-shown) .trailingIcon {
+	color: var(--input--placeholder--color);
+}
+
+.comboboxAnchor[data-disabled]:has(input:placeholder-shown) .trailingIcon {
+	color: var(--input--placeholder--color--disabled);
+}
+
+.comboboxAnchor[data-disabled]:has(input:not(:placeholder-shown)) .trailingIcon {
+	color: var(--input--color--disabled);
 }
 
 .comboboxContent {

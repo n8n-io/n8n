@@ -1,6 +1,6 @@
 # Component specification
 
-Allows users to search and choose one or more options from a list. It supports filtering, single and multiple selection, and is suited to larger datasets where a plain Select is not enough.
+Allows users to search and choose one or more options from a list. All comboboxes filter as the user types. Supports single and multiple selection, grouped lists (labels and separators), and is suited to larger datasets where a plain Select is not enough.
 
 - **Component Name:** N8nCombobox2
 - **Figma Component:** [ComboBox](https://www.figma.com/design/8zib7Trf2D2CHYXrEGPHkg/n8n-Design-System-V3?node-id=2631-7139&m=dev)
@@ -10,61 +10,118 @@ Allows users to search and choose one or more options from a list. It supports f
 
 ```
 Combobox (N8nCombobox2)
-├── ComboboxAnchor (trigger: input + chevron)
-└── ComboboxContent (portaled dropdown)
-    ├── ComboboxEmpty
-    └── ComboboxItem (reka-ui wrapper)
-        └── ComboboxItemDefault (default row: icon, label, check indicator)
+├── ComboboxAnchor (trigger: leading icon, input, chevron)
+│   └── ComboboxInput + ComboboxTrigger
+└── ComboboxContent (portaled dropdown, max-height 500px by default)
+    ├── header slot
+    ├── ComboboxViewport (scrollable list area)
+    │   ├── ComboboxEmpty
+    │   └── ComboboxGroup
+    │       ├── ComboboxLabel (section headings)
+    │       ├── ComboboxSeparator
+    │       └── N8nCombobox2Item (reka-ui ComboboxItem wrapper)
+    │           └── N8nCombobox2ItemDefault (default row: icon, label, check indicator)
+    └── footer slot
 ```
 
 ## Public API Definition
 
 **Props**
 
-- `id?: string`
+- `id?: string` — Applied to the combobox input
+- `name?: string` — Form field name passed to reka-ui root
 - `placeholder?: string` — Shown in the input when no value is selected | `default: 'Select an option'`
 - `emptyText?: string` — Shown when filtering returns no matches | `default: 'No results found.'`
-- `items?: T` — Array of options to render
-- `valueKey?: VK` — When `items` is an array of objects, field to use as the value | `default: 'value'`
-- `labelKey?: GetItemKeys<T>` — When `items` is an array of objects, field to use as the label | `default: 'label'`
-- `defaultValue?: GetModelValue<T, VK, M>` — Initial value when uncontrolled
-- `modelValue?: GetModelValue<T, VK, M>` — Controlled value. Bind with `v-model`
+- `autoFocus?: boolean` — Focus the input on mount
+- `items?: ComboboxItem[]` — Array of options to render (see [Item shapes](#item-shapes) below)
+- `valueKey?: string` — When `items` is an array of objects, field to use as the value | `default: 'value'`
+- `labelKey?: string` — When `items` is an array of objects, field to use as the label | `default: 'label'`
+- `defaultValue?: AcceptableValue | AcceptableValue[]` — Initial value when uncontrolled
+- `modelValue?: AcceptableValue | AcceptableValue[]` — Controlled value. Bind with `v-model`
 - `multiple?: boolean` — Allow selecting multiple options
 - `open?: boolean` — Controlled open state. Bind with `v-model:open`
 - `defaultOpen?: boolean` — Initial open state when uncontrolled
 - `disabled?: boolean` — Disable interaction
-- `icon?: IconName` — Leading icon in the trigger
+- `required?: boolean` — Mark the field as required (reka-ui root)
+- `icon?: IconName` — Leading icon in the trigger (typically derived from the selected item)
 - `ignoreFilter?: boolean` — Disable built-in filtering
 - `resetSearchTermOnBlur?: boolean` — Reset search text on blur | reka default: `true`
 - `resetSearchTermOnSelect?: boolean` — Reset search text on select | reka default: `true`
 - `openOnFocus?: boolean` — Open dropdown when input is focused | reka default: `false`
 - `openOnClick?: boolean` — Open dropdown when input is clicked | reka default: `false`
+- `highlightOnHover?: boolean` — Highlight items on hover (reka-ui root)
 
 **UI Props**
 
-- `itemSize?`: `'mini' | 'small' | 'medium' | 'large' | 'xlarge'` | `default: 'large'`
-- `side?`: `'top' | 'right' | 'bottom' | 'left'` | `default: 'bottom'`
-- `sideOffset?`: `number` | `default: 4`
-- `align?`: `'start' | 'center' | 'end'` | `default: 'start'`
-- `contentClass?`: `string` — Additional class(es) on the portaled dropdown
+- `size?: 'mini' | 'small' | 'medium' | 'large' | 'xlarge'` — Trigger and item size | `default: 'large'`
+- `side?: 'top' | 'right' | 'bottom' | 'left'` — Dropdown placement | `default: 'bottom'`
+- `sideOffset?: number` — Offset from the trigger | `default: 4`
+- `align?: 'start' | 'center' | 'end'` — Dropdown alignment | `default: 'start'`
+- `contentClass?: string` — Additional class(es) on the portaled dropdown content
+- `contentStyle?: StyleValue` — Inline styles on the portaled dropdown content
+
+The dropdown content defaults to a max height of **500px** with vertical scrolling on the viewport. Override via `contentStyle` or by setting the CSS variable on a custom class:
+
+```css
+.my-combobox-content {
+  --combobox-content--max-height: 300px;
+}
+```
 
 **Events**
 
-- `update:modelValue(value: GetModelValue<T, VK, M>)`
+- `update:modelValue(value: AcceptableValue | AcceptableValue[])`
 - `update:open(value: boolean)`
+- `highlight(payload: { ref: HTMLElement; value: AcceptableValue } | undefined)` — reka-ui root
+
+**Exposed**
+
+- `anchorRef` — Ref to the `ComboboxAnchor` element
+
+**Attributes**
+
+Non-prop attributes (e.g. `aria-label`, `data-test-id`) fall through to `ComboboxAnchor`, not the root.
 
 **Slots**
 
-- `default`: `{ modelValue?: GetModelValue<T, VK, M>; open: boolean }`
-- `item`: `{ item: ComboboxItemProps }`
-- `item-leading`: `{ item: ComboboxItemProps; ui: object }`
-- `item-label`: `{ item: ComboboxItemProps }`
-- `item-trailing`: `{ item: ComboboxItemProps; ui: object }`
-- `label`: `{ item: ComboboxItemProps }`
-- `header`: `()`
-- `footer`: `()`
+- `default`: `{ modelValue?: AcceptableValue | AcceptableValue[]; open: boolean }` — Custom trigger content inside the input
+- `item`: `{ item: ComboboxListItem }` — Replace the default item renderer
+- `item-leading`: `{ item: ComboboxListItem; ui: { class: string } }`
+- `item-label`: `{ item: ComboboxListItem }`
+- `item-trailing`: `{ item: ComboboxListItem; ui: { class: string } }`
+- `label`: `{ item: ComboboxListItem }` — Section heading for `type: 'label'` items
+- `header`: `()` — Content above the scrollable list
+- `footer`: `()` — Content below the scrollable list
 
-### Template usage example
+### Item shapes
+
+`ComboboxItem` is either a primitive value or an object:
+
+```typescript
+type AcceptableValue = string | number | bigint | Record<string, unknown> | null;
+
+type ComboboxListItem = {
+  value?: AcceptableValue;
+  label?: string;
+  type?: 'label' | 'separator' | 'item'; // omit for selectable items
+  icon?: IconName;
+  disabled?: boolean;
+  size?: ComboboxSizes; // per-item size override
+};
+
+type ComboboxItem = AcceptableValue | ComboboxListItem;
+```
+
+- **Primitive items** (e.g. `'Todo'`) — value and label are the same string; `modelValue` is the primitive.
+- **Object items** (e.g. `{ label: 'Option 1', value: 'option1' }`) — `modelValue` stores the value field; the input displays the label.
+- **Labels** — `{ type: 'label', label: 'Fruits' }` — non-interactive section heading.
+- **Separators** — `{ type: 'separator' }` — non-interactive divider between groups.
+
+Object items may also include an `icon` property. When no custom `#item-leading` slot is provided, icons on items are rendered automatically.
+
+### Template usage examples
+
+**String items**
 
 ```vue
 <script setup lang="ts">
@@ -80,9 +137,11 @@ const value = ref('Backlog');
 </template>
 ```
 
+**Object items with icons**
+
 ```vue
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { N8nCombobox2, N8nIcon } from '@n8n/design-system';
 
 const items = ref([
@@ -90,10 +149,11 @@ const items = ref([
   { value: 'dark', label: 'Dark', icon: 'filled-square' },
 ]);
 const value = ref('light');
+const icon = computed(() => items.value.find((item) => item.value === value.value)?.icon);
 </script>
 
 <template>
-  <N8nCombobox2 v-model="value" :items="items">
+  <N8nCombobox2 v-model="value" :items="items" :icon="icon">
     <template #item-leading="{ item }">
       <N8nIcon :icon="item.icon" color="primary" />
     </template>
@@ -101,8 +161,71 @@ const value = ref('light');
 </template>
 ```
 
+**Grouped list with labels and separators**
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue';
+import { N8nCombobox2 } from '@n8n/design-system';
+
+const items = ref([
+  { type: 'label', label: 'Fruits' },
+  { label: 'Apple', value: 'apple' },
+  { label: 'Banana', value: 'banana' },
+  { type: 'separator' },
+  { type: 'label', label: 'Vegetables' },
+  { label: 'Carrot', value: 'carrot' },
+]);
+const value = ref<string | undefined>();
+</script>
+
+<template>
+  <N8nCombobox2 v-model="value" :items="items" placeholder="Select a food..." />
+</template>
+```
+
+**Controlled value and open state**
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue';
+import { N8nCombobox2 } from '@n8n/design-system';
+
+const items = [
+  { label: 'Workflows', value: 'workflows' },
+  { label: 'Credentials', value: 'credentials' },
+];
+const value = ref<string | undefined>('workflows');
+const open = ref(false);
+</script>
+
+<template>
+  <N8nCombobox2
+    v-model="value"
+    v-model:open="open"
+    :items="items"
+    placeholder="Search..."
+  />
+</template>
+```
+
+**Custom dropdown max height**
+
+```vue
+<N8nCombobox2
+  :items="items"
+  content-class="narrow-combobox"
+/>
+
+<!-- or -->
+<N8nCombobox2
+  :items="items"
+  :content-style="{ maxHeight: '300px' }"
+/>
+```
+
 ## Related components
 
 - **N8nSelect2** — Use for short static lists without search (fewer than ~10 items).
-- **N8nCombobox2Item** — Reka-ui combobox item wrapper used inside `Combobox`.
-- **N8nCombobox2ItemDefault** — Default row renderer used inside `ComboboxItem`. Documented separately under `Experimental/Combobox/ComboboxItemDefault` in Storybook.
+- **N8nCombobox2Item** — Reka-ui combobox item wrapper used inside `N8nCombobox2`.
+- **N8nCombobox2ItemDefault** — Default row renderer used inside `N8nCombobox2Item`. Documented separately under `Experimental/Combobox/ComboboxItemDefault` in Storybook.

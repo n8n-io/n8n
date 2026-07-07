@@ -1,5 +1,5 @@
 import userEvent from '@testing-library/user-event';
-import { render, waitFor } from '@testing-library/vue';
+import { render, waitFor, within } from '@testing-library/vue';
 
 import type { ComboboxItem, ComboboxSizes } from './Combobox.types';
 import Combobox from './Combobox.vue';
@@ -16,6 +16,23 @@ const sizeCases: Array<[ComboboxSizes | undefined, string]> = [
 beforeAll(() => {
 	Element.prototype.scrollIntoView = vi.fn();
 });
+
+function getComboboxInput(wrapper: ReturnType<typeof render>) {
+	return wrapper.getByRole('combobox');
+}
+
+async function getPopoverContainer(comboboxInput: Element | null) {
+	const popoverId = comboboxInput?.getAttribute('aria-controls');
+
+	const popover = await waitFor(() => {
+		const el = document.getElementById(popoverId!);
+		if (!el) throw new Error('Popover not found');
+		return el;
+	});
+
+	expect(popover).toBeVisible();
+	return { popover };
+}
 
 describe('v2/components/Combobox', () => {
 	describe('rendering', () => {
@@ -46,8 +63,8 @@ describe('v2/components/Combobox', () => {
 					disabled: true,
 				},
 			});
-			const input = wrapper.getByRole('combobox');
-			expect(input).toBeDisabled();
+			expect(getComboboxInput(wrapper)).toBeDisabled();
+			expect(wrapper.getByTestId('combobox')).toHaveAttribute('data-disabled');
 		});
 
 		it('should render data-test-id on anchor', () => {
@@ -83,10 +100,10 @@ describe('v2/components/Combobox', () => {
 					},
 				});
 
-				await waitFor(() => {
-					const item = wrapper.getByText('Option 1').closest('[role="option"]');
-					expect(item?.className).toContain(expected);
-				});
+				const input = getComboboxInput(wrapper);
+				const { popover } = await getPopoverContainer(input);
+				const item = within(popover).getByText('Option 1').closest('[role="option"]');
+				expect(item?.className).toContain(expected);
 			},
 		);
 	});
@@ -102,29 +119,90 @@ describe('v2/components/Combobox', () => {
 				props: { items, defaultOpen: true },
 			});
 
-			await waitFor(() => {
-				expect(wrapper.getByText('Option 1')).toBeVisible();
-				expect(wrapper.getByText('Option 2')).toBeVisible();
-			});
+			const input = getComboboxInput(wrapper);
+			const { popover } = await getPopoverContainer(input);
+			expect(within(popover).getByText('Option 1')).toBeVisible();
+			expect(within(popover).getByText('Option 2')).toBeVisible();
 		});
 
-		it('should render item icons without a custom item-leading slot', async () => {
+		it('should render items with icons', async () => {
 			const items = [
-				{ value: 'workflows', label: 'Workflows', icon: 'bolt-filled' as const },
-				{ value: 'credentials', label: 'Credentials', icon: 'lock' as const },
+				{ value: '1', label: 'Option 1', icon: 'check' as const },
+				{ value: '2', label: 'Option 2', icon: 'users' as const },
 			];
 
 			const wrapper = render(Combobox, {
 				props: { items, defaultOpen: true },
 			});
 
-			await waitFor(() => {
-				const option = wrapper.getByText('Workflows').closest('[role="option"]');
-				expect(option?.querySelector('svg')).toBeInTheDocument();
-			});
+			const input = getComboboxInput(wrapper);
+			const { popover } = await getPopoverContainer(input);
+			expect(popover.querySelector('[data-icon="users"]')).toBeVisible();
+			expect(popover.querySelector('[data-icon="check"]')).toBeVisible();
 		});
 
-		it('should render empty state text', async () => {
+		it('should render items with disabled state', async () => {
+			const items: ComboboxItem[] = [
+				{ value: '1', label: 'Option 1' },
+				{ value: '2', label: 'Option 2', disabled: true },
+			];
+			const wrapper = render(Combobox, {
+				props: {
+					items,
+					defaultOpen: true,
+				},
+			});
+
+			const input = getComboboxInput(wrapper);
+			const { popover } = await getPopoverContainer(input);
+
+			expect(within(popover).getByRole('option', { name: 'Option 1' })).not.toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
+			expect(within(popover).getByRole('option', { name: 'Option 2' })).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
+		});
+
+		it('should render label items', async () => {
+			const items: ComboboxItem[] = [
+				{ label: 'Group 1', type: 'label' },
+				{ value: '1', label: 'Option 1' },
+			];
+			const wrapper = render(Combobox, {
+				props: {
+					items,
+					defaultOpen: true,
+				},
+			});
+
+			const input = getComboboxInput(wrapper);
+			const { popover } = await getPopoverContainer(input);
+
+			expect(within(popover).getByText('Group 1')).toBeVisible();
+		});
+
+		it('should render separator items', async () => {
+			const items: ComboboxItem[] = [
+				{ value: '1', label: 'Option 1' },
+				{ type: 'separator' },
+				{ value: '2', label: 'Option 2' },
+			];
+			const wrapper = render(Combobox, {
+				props: {
+					items,
+					defaultOpen: true,
+				},
+			});
+
+			const input = getComboboxInput(wrapper);
+			const { popover } = await getPopoverContainer(input);
+			expect(popover.querySelectorAll('[role="separator"]')).toHaveLength(1);
+		});
+
+		it('should render empty state text when filtering returns no matches', async () => {
 			const wrapper = render(Combobox, {
 				props: {
 					items: ['Apple', 'Banana'],
@@ -133,34 +211,32 @@ describe('v2/components/Combobox', () => {
 				},
 			});
 
-			const input = wrapper.getByRole('combobox');
+			const input = getComboboxInput(wrapper);
 			await userEvent.type(input, 'zzzz');
 
 			await waitFor(() => {
 				expect(wrapper.getByText('Nothing here')).toBeVisible();
 			});
 		});
-	});
 
-	describe('selection', () => {
-		it('should emit update:modelValue when an item is selected', async () => {
-			const onUpdate = vi.fn();
+		it('should render default empty state text', async () => {
 			const wrapper = render(Combobox, {
 				props: {
-					items: ['Option 1', 'Option 2'],
+					items: ['Apple', 'Banana'],
 					defaultOpen: true,
-					'onUpdate:modelValue': onUpdate,
 				},
 			});
 
+			const input = getComboboxInput(wrapper);
+			await userEvent.type(input, 'zzzz');
+
 			await waitFor(() => {
-				expect(wrapper.getByText('Option 2')).toBeVisible();
+				expect(wrapper.getByText('No results found.')).toBeVisible();
 			});
-			await userEvent.click(wrapper.getByText('Option 2'));
-
-			expect(onUpdate).toHaveBeenCalledWith('Option 2');
 		});
+	});
 
+	describe('filtering', () => {
 		it('should filter items when typing in the input', async () => {
 			const items: ComboboxItem[] = [
 				{ value: 'apple', label: 'Apple' },
@@ -172,13 +248,72 @@ describe('v2/components/Combobox', () => {
 				props: { items, defaultOpen: true },
 			});
 
-			const input = wrapper.getByRole('combobox');
+			const input = getComboboxInput(wrapper);
 			await userEvent.type(input, 'ap');
 
 			await waitFor(() => {
 				expect(wrapper.getByText('Apple')).toBeVisible();
 				expect(wrapper.getByText('Apricot')).toBeVisible();
 				expect(wrapper.queryByText('Banana')).not.toBeInTheDocument();
+			});
+		});
+
+		it('should not filter items when ignoreFilter is true', async () => {
+			const items: ComboboxItem[] = [
+				{ value: 'apple', label: 'Apple' },
+				{ value: 'banana', label: 'Banana' },
+			];
+
+			const wrapper = render(Combobox, {
+				props: { items, defaultOpen: true, ignoreFilter: true },
+			});
+
+			const input = getComboboxInput(wrapper);
+			await userEvent.type(input, 'ap');
+
+			await waitFor(() => {
+				expect(wrapper.getByText('Apple')).toBeVisible();
+				expect(wrapper.getByText('Banana')).toBeVisible();
+			});
+		});
+	});
+
+	describe('v-model', () => {
+		it('should update modelValue on selection', async () => {
+			const items = [
+				{ value: '1', label: 'Option 1' },
+				{ value: '2', label: 'Option 2' },
+			];
+
+			const wrapper = render(Combobox, {
+				props: {
+					items,
+					defaultOpen: true,
+					modelValue: '2',
+				},
+			});
+
+			const input = getComboboxInput(wrapper);
+			const { popover } = await getPopoverContainer(input);
+
+			const option = within(popover).getByText('Option 1');
+			await userEvent.click(option);
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['1']);
+			});
+		});
+
+		it('should display selected value for string items', async () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: ['Option 1', 'Option 2', 'Option 3'],
+					modelValue: 'Option 2',
+				},
+			});
+
+			await waitFor(() => {
+				expect(getComboboxInput(wrapper)).toHaveValue('Option 2');
 			});
 		});
 
@@ -192,13 +327,287 @@ describe('v2/components/Combobox', () => {
 				props: { items, defaultOpen: true },
 			});
 
-			await waitFor(() => {
-				expect(wrapper.getByText('Option 2')).toBeVisible();
-			});
-			await userEvent.click(wrapper.getByText('Option 2'));
+			const input = getComboboxInput(wrapper);
+			const { popover } = await getPopoverContainer(input);
+			await userEvent.click(within(popover).getByText('Option 2'));
 
 			await waitFor(() => {
-				expect(wrapper.getByRole('combobox')).toHaveValue('Option 2');
+				expect(getComboboxInput(wrapper)).toHaveValue('Option 2');
+			});
+		});
+
+		describe('multiple', () => {
+			it('should update modelValue on selection', async () => {
+				const items = [
+					{ value: '1', label: 'Option 1' },
+					{ value: '2', label: 'Option 2' },
+				];
+
+				const wrapper = render(Combobox, {
+					props: {
+						items,
+						defaultOpen: true,
+						modelValue: ['2'],
+						multiple: true,
+					},
+				});
+
+				const input = getComboboxInput(wrapper);
+				const { popover } = await getPopoverContainer(input);
+
+				const option = within(popover).getByText('Option 1');
+				await userEvent.click(option);
+
+				await waitFor(() => {
+					expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([['2', '1']]);
+				});
+			});
+
+			it('should display selected values', async () => {
+				const wrapper = render(Combobox, {
+					props: {
+						items: ['Option 1', 'Option 2', 'Option 3'],
+						modelValue: ['Option 2', 'Option 1'],
+						multiple: true,
+					},
+				});
+
+				await waitFor(() => {
+					expect(getComboboxInput(wrapper)).toHaveValue('Option 2, Option 1');
+				});
+			});
+		});
+	});
+
+	describe('events', () => {
+		it('should emit update:open when dropdown opens', async () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: ['Option 1', 'Option 2', 'Option 3'],
+					open: false,
+					openOnClick: true,
+				},
+			});
+
+			const input = getComboboxInput(wrapper);
+			await userEvent.click(input);
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:open')).toBeTruthy();
+			});
+		});
+	});
+
+	describe('slots', () => {
+		it('should render default slot with modelValue and open state', () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: ['Option 1', 'Option 2'],
+					modelValue: 'Option 1',
+				},
+				slots: {
+					default:
+						'<template #default="{ modelValue, open }">Selected: {{ modelValue }}</template>',
+				},
+			});
+			expect(wrapper.getByText(/Selected:/)).toBeInTheDocument();
+		});
+
+		it('should render item slot', async () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: [
+						{ value: '1', label: 'Option 1' },
+						{ value: '2', label: 'Option 2' },
+					],
+					defaultOpen: true,
+				},
+				slots: {
+					item: '<span data-test-id="custom-item">any</span>',
+				},
+			});
+
+			const input = getComboboxInput(wrapper);
+			const { popover } = await getPopoverContainer(input);
+
+			await waitFor(() => {
+				expect(within(popover).getAllByTestId('custom-item')).toHaveLength(2);
+			});
+		});
+
+		it('should render item-leading slot', async () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: [
+						{ value: '1', label: 'Option 1' },
+						{ value: '2', label: 'Option 2' },
+					],
+					defaultOpen: true,
+				},
+				slots: {
+					'item-leading': '<span data-test-id="custom-leading">any</span>',
+				},
+			});
+
+			const input = getComboboxInput(wrapper);
+			const { popover } = await getPopoverContainer(input);
+
+			await waitFor(() => {
+				expect(within(popover).getAllByTestId('custom-leading')).toHaveLength(2);
+			});
+		});
+
+		it('should render item-label slot', async () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: [
+						{ value: '1', label: 'Option 1' },
+						{ value: '2', label: 'Option 2' },
+					],
+					defaultOpen: true,
+				},
+				slots: {
+					'item-label': '<span data-test-id="custom-label">any</span>',
+				},
+			});
+
+			const input = getComboboxInput(wrapper);
+			const { popover } = await getPopoverContainer(input);
+
+			await waitFor(() => {
+				expect(within(popover).getAllByTestId('custom-label')).toHaveLength(2);
+			});
+		});
+
+		it('should render item-trailing slot', async () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: [
+						{ value: '1', label: 'Option 1' },
+						{ value: '2', label: 'Option 2' },
+					],
+					defaultOpen: true,
+				},
+				slots: {
+					'item-trailing': '<span data-test-id="custom-trailing">any</span>',
+				},
+			});
+
+			const input = getComboboxInput(wrapper);
+			const { popover } = await getPopoverContainer(input);
+
+			await waitFor(() => {
+				expect(within(popover).getAllByTestId('custom-trailing')).toHaveLength(2);
+			});
+		});
+
+		it('should render label slot', async () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: [
+						{ label: 'Group 1', type: 'label' },
+						{ value: '1', label: 'Option 1' },
+					],
+					defaultOpen: true,
+				},
+				slots: {
+					label: '<span data-test-id="custom-label-heading">any</span>',
+				},
+			});
+
+			const input = getComboboxInput(wrapper);
+			const { popover } = await getPopoverContainer(input);
+
+			await waitFor(() => {
+				expect(within(popover).getByTestId('custom-label-heading')).toBeVisible();
+			});
+		});
+
+		it('should render header slot', async () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: [
+						{ value: '1', label: 'Option 1' },
+						{ value: '2', label: 'Option 2' },
+					],
+					defaultOpen: true,
+				},
+				slots: {
+					header: '<div data-test-id="header-content">Header</div>',
+				},
+			});
+
+			const input = getComboboxInput(wrapper);
+			const { popover } = await getPopoverContainer(input);
+
+			await waitFor(() => {
+				expect(within(popover).getByTestId('header-content')).toBeVisible();
+			});
+		});
+
+		it('should render footer slot', async () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: [
+						{ value: '1', label: 'Option 1' },
+						{ value: '2', label: 'Option 2' },
+					],
+					defaultOpen: true,
+				},
+				slots: {
+					footer: '<button data-test-id="footer-button">Add custom role</button>',
+				},
+			});
+
+			const input = getComboboxInput(wrapper);
+			const { popover } = await getPopoverContainer(input);
+
+			await waitFor(() => {
+				expect(within(popover).getByTestId('footer-button')).toBeVisible();
+			});
+		});
+	});
+
+	describe('custom keys', () => {
+		it('should use custom valueKey and labelKey for display', async () => {
+			const items = [
+				{ id: '1', name: 'Option 1' },
+				{ id: '2', name: 'Option 2' },
+			];
+			const wrapper = render(Combobox, {
+				props: {
+					items,
+					valueKey: 'id',
+					labelKey: 'name',
+					modelValue: '1',
+				},
+			});
+
+			await waitFor(() => {
+				expect(getComboboxInput(wrapper)).toHaveValue('Option 1');
+			});
+		});
+
+		it('should emit custom valueKey on selection', async () => {
+			const items = [
+				{ id: '1', name: 'Option 1' },
+				{ id: '2', name: 'Option 2' },
+			];
+			const wrapper = render(Combobox, {
+				props: {
+					items,
+					valueKey: 'id',
+					labelKey: 'name',
+					defaultOpen: true,
+				},
+			});
+
+			const input = getComboboxInput(wrapper);
+			const { popover } = await getPopoverContainer(input);
+			await userEvent.click(within(popover).getByText('Option 2'));
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['2']);
 			});
 		});
 	});
