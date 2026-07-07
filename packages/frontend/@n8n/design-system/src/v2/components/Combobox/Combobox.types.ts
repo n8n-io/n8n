@@ -1,20 +1,26 @@
-import {
-	ComboboxRootEmits,
-	ComboboxRootProps,
-	ComboboxItemProps,
-	ComboboxContentProps,
-} from 'reka-ui';
 import type { IconName } from '../../../components/N8nIcon/icons';
 import type { InputSize } from '../../../components/N8nInput/Input.types';
+import type {
+	ComboboxContentProps,
+	ComboboxItemProps,
+	ComboboxRootEmits,
+	ComboboxRootProps,
+} from '../../utils/reka-ui';
 
 export type AcceptableValue = string | number | bigint | Record<string, unknown> | null;
 
-export type ComboboxProps = ComboboxRootProps &
-	ComboboxContentProps & {
-		size: ComboboxSizes;
+export type ComboboxProps = Omit<ComboboxRootProps, 'dir'> &
+	Pick<ComboboxContentProps, 'side' | 'sideOffset'> & {
+		size?: ComboboxSizes;
 		icon?: IconName;
 		placeholder?: string;
 		autoFocus?: boolean;
+		emptyText?: string;
+		valueKey?: string;
+		labelKey?: string;
+		items?: ComboboxItem[];
+		contentClass?: string;
+		id?: string;
 	};
 
 export type ComboboxEmits = ComboboxRootEmits;
