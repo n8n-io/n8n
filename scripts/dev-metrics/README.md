@@ -62,7 +62,7 @@ Event `dev:cli_command` with `anonymousId` = the weekly anonymous id, and:
 | `actor` | `human`, `claude-code`, `cursor`, `ci` | Who ran it, inferred from env markers (`CLAUDECODE`, `CURSOR_TRACE_ID`, `CI`/`GITHUB_ACTIONS`); defaults to `human`. |
 | `binary` | `pnpm` | The shadowed CLI. |
 | `binary_version` | `10.32.1` | The CLI's own version, detected at runtime by the tracker via `<bin> --version` (`null` if unknown). |
-| `args` | `run build`, `add left-pad`, `install --frozen-lockfile` | The **raw argv**, verbatim. Parsed/aggregated on the collection side. |
+| `args` | `["run","build"]`, `["add","left-pad"]` | The command's **argv as an array** (boundaries preserved, incl. quoted/empty args). Parsed/aggregated on the collection side. |
 | `dir` | `packages/cli`, `.` | Where it ran, **relative to the repo root** — never an absolute path. |
 | `duration_ms` | `41230` | Wall-clock duration. |
 | `exit_code` | `0` | The command's exit code. |
@@ -137,9 +137,8 @@ node scripts/dev-metrics/capture-server.mjs --port 9999 --out /tmp/events.jsonl
 U=$(mktemp -d); mkdir -p "$U/.n8n"; echo '{"consent":"granted"}' > "$U/.n8n/dev-telemetry.json"
 N8N_USER_FOLDER="$U" \
 N8N_DEV_METRICS_RUDDERSTACK_URL=http://localhost:9999 \
-N8N_DEV_TRACK_BIN=pnpm \
-N8N_DEV_TRACK_ARGS='run build' N8N_DEV_TRACK_MS=1234 N8N_DEV_TRACK_CODE=0 N8N_DEV_TRACK_CWD="$PWD" \
-node scripts/dev-metrics/track.mjs
+N8N_DEV_TRACK_BIN=pnpm N8N_DEV_TRACK_MS=1234 N8N_DEV_TRACK_CODE=0 N8N_DEV_TRACK_CWD="$PWD" \
+node scripts/dev-metrics/track.mjs run build   # argv after the script = the command's args
 ```
 
 To exercise the **full path** (actually type `pnpm`), point the tracker at the

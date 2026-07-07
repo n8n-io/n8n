@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { execSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import { resolve } from 'node:path';
 
 // Skip lefthook install in CI or Docker build
@@ -13,7 +13,8 @@ execSync('pnpm lefthook install', { stdio: 'inherit' });
 // Opt-in anonymous dev-tooling metrics (internal developers only). Best-effort:
 // must never break `pnpm install`.
 try {
-	execSync(`node ${resolve(import.meta.dirname, 'dev-metrics', 'setup.mjs')}`, {
+	// execFileSync (no shell) so a checkout path with spaces still works.
+	execFileSync('node', [resolve(import.meta.dirname, 'dev-metrics', 'setup.mjs')], {
 		stdio: 'inherit',
 	});
 } catch {

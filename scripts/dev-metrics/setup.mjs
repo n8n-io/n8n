@@ -172,29 +172,32 @@ function resolveRealBinary(bin) {
 
 const shimVersion = (file) => readVersion(file, 'n8n-shadow-shim-version');
 
-/** Render shadow-shim.sh and write it to destPath, unless a newer shim is there. */
-function writeShim(destPath, realExec, bin) {
-	// Only (re)write when this checkout's template is newer than the installed
-	// shim (missing/unversioned counts as older), so no older checkout downgrades
-	// it. A fresh install has no shim at destPath, so it always writes.
-	if ((shimVersion(SHADOW_SHIM_SRC) ?? 0) <= (shimVersion(destPath) ?? -1)) return;
+/** Render shadow-shim.sh for `bin` and write it (+chmod) to `file`. */
+function renderShim(file, realExec, bin) {
 	const rendered = readFileSync(SHADOW_SHIM_SRC, 'utf8')
 		.replaceAll('__N8N_BIN__', bin)
 		.replaceAll('__N8N_REAL__', realExec)
-		.replaceAll('__N8N_BINDIR__', dirname(destPath))
+		.replaceAll('__N8N_BINDIR__', dirname(file))
 		.replaceAll('__N8N_TRACKER__', trackerDest());
-	writeFileSync(destPath, rendered);
-	chmodSync(destPath, 0o755);
+	writeFileSync(file, rendered);
+	chmodSync(file, 0o755);
 }
 
 function installOne(bin) {
 	const front = whichOnPath(bin);
 
-	// Already shimmed: just refresh the shim contents.
+	// Already shimmed: re-render only if this checkout's template is newer
+	// (missing/unversioned counts as older) — no older checkout can downgrade it.
 	if (front && isOurShim(front)) {
-		const saved = front + SAVED_SUFFIX;
-		const real = existsSync(saved) ? saved : resolveRealBinary(bin);
-		if (real) writeShim(front, real, bin);
+		if ((shimVersion(SHADOW_SHIM_SRC) ?? 0) > (shimVersion(front) ?? -1)) {
+			const saved = front + SAVED_SUFFIX;
+			const real = existsSync(saved) ? saved : resolveRealBinary(bin);
+			if (real) {
+				const tmp = `${front}.n8n-shim`;
+				renderShim(tmp, real, bin);
+				renameSync(tmp, front); // atomic; the old shim stays valid if this throws
+			}
+		}
 		return { bin, action: 'refreshed', path: front };
 	}
 
@@ -204,31 +207,48 @@ function installOne(bin) {
 	const dir = dirname(real);
 	if (!isWritableDir(dir)) return { bin, action: 'unwritable', path: dir };
 
-	// in-place replacement. nvm-node switch / `corepack enable` can
-	// leave a fresh binary un-shimmed — the next `pnpm install` re-installs.
+	// Fresh in-place install. Build the shim beside the real binary first, then
+	// swap — so a crash never leaves the binary's path empty. If the final swap
+	// fails after the original was moved aside, roll it back so pnpm keeps working.
 	const saved = real + SAVED_SUFFIX;
-	if (!existsSync(saved)) renameSync(real, saved);
-	writeShim(real, saved, bin);
+	const tmp = `${real}.n8n-shim`;
+	try {
+		renderShim(tmp, saved, bin); // real is still runnable here
+		if (!existsSync(saved)) renameSync(real, saved);
+		renameSync(tmp, real);
+	} catch {
+		rmSync(tmp, { force: true });
+		if (!existsSync(real) && existsSync(saved)) renameSync(saved, real);
+		return { bin, action: 'error', path: real };
+	}
 	return { bin, action: 'in-place', path: real };
 }
 
 function installBinaries() {
 	syncTracker();
-	return SHADOWED_BINARIES.map(installOne);
+	const results = SHADOWED_BINARIES.map(installOne);
+	// Remember where shims landed so --disable/--reset can restore them later even
+	// from a different node/corepack version whose bin dir isn't on PATH now.
+	const shims = results.filter((r) => r.action === 'in-place' || r.action === 'refreshed');
+	if (shims.length) {
+		const prev = readState()?.installedShims ?? [];
+		writeState({ installedShims: [...new Set([...prev, ...shims.map((r) => r.path)])] });
+	}
+	return results;
 }
 
 function uninstallBinaries() {
+	// Restore shims we recorded (across node versions) plus any on the current PATH.
+	const recorded = readState()?.installedShims ?? [];
+	const onPath = pathDirs().flatMap((d) => SHADOWED_BINARIES.map((bin) => join(d, bin)));
 	const restored = [];
-	for (const bin of SHADOWED_BINARIES) {
-		for (const d of pathDirs()) {
-			const p = join(d, bin);
-			if (!isOurShim(p)) continue;
-			const saved = p + SAVED_SUFFIX;
-			if (existsSync(saved))
-				renameSync(saved, p); // restore original
-			else rmSync(p, { force: true }); // stray shim with no saved original
-			restored.push(p);
-		}
+	for (const p of new Set([...recorded, ...onPath])) {
+		if (!isOurShim(p)) continue;
+		const saved = p + SAVED_SUFFIX;
+		if (existsSync(saved))
+			renameSync(saved, p); // restore original
+		else rmSync(p, { force: true }); // stray shim with no saved original
+		restored.push(p);
 	}
 	return restored;
 }
@@ -257,6 +277,8 @@ function enable() {
 		if (r.action === 'missing') console.log(`  ${r.bin}: not found on PATH — skipped.`);
 		else if (r.action === 'unwritable')
 			console.log(`  ${r.bin}: ${r.path} not writable — skipped.`);
+		else if (r.action === 'error')
+			console.log(`  ${r.bin}: shim install failed — original left in place.`);
 		else if (r.action === 'refreshed')
 			console.log(`  ${r.bin}: shim already installed (${r.path}).`);
 		else

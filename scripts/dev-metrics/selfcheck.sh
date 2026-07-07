@@ -38,7 +38,7 @@ node "$SELF/setup.mjs" --enable >/dev/null                        # idempotent
 sleep 1
 n=$(grep -c '"event":"dev:cli_command"' "$EV" || true)
 [ "$n" -eq 1 ] || fail "expected 1 event, got $n"
-grep -q '"args":"build --filter x"' "$EV" || fail "raw args not captured"
+grep -qF '"args":["build","--filter","x"]' "$EV" || fail "argv not captured faithfully"
 grep -q '"binary_version":"9.9.9"' "$EV" || fail "version not detected"
 
 node "$SELF/setup.mjs" --reset >/dev/null

@@ -49,13 +49,14 @@ __end=$(__now_ms)
 # self-scopes to n8n checkouts, so we just hand it the cwd and let it decide.
 if [ -f "$__tracker" ] && command -v node >/dev/null 2>&1; then
 	# Background in a subshell so no "[job] PID" notice reaches the terminal.
+	# Pass argv through as the tracker's own arguments ("$@", not "$*") so quoted
+	# and empty args keep their boundaries.
 	(
 		N8N_DEV_TRACK_BIN="$__bin" \
 			N8N_DEV_TRACK_MS="$(( __end - __start ))" \
 			N8N_DEV_TRACK_CODE="$__code" \
-			N8N_DEV_TRACK_ARGS="$*" \
 			N8N_DEV_TRACK_CWD="$PWD" \
-			nohup node "$__tracker" >/dev/null 2>&1 &
+			nohup node "$__tracker" "$@" >/dev/null 2>&1 &
 	)
 fi
 

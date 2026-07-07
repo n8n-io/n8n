@@ -14,16 +14,15 @@
  * Nothing is sent unless the developer granted consent via
  * scripts/dev-metrics/setup.mjs (stored in ~/.n8n/dev-telemetry.json).
  *
- * Input (env, set by the shim):
+ * Input from the shim: the command's argv as this script's own arguments, plus
  *   N8N_DEV_TRACK_BIN   the shadowed binary, e.g. "pnpm"
- *   N8N_DEV_TRACK_ARGS  full argv, space-joined
  *   N8N_DEV_TRACK_MS    wall-clock duration in ms
  *   N8N_DEV_TRACK_CODE  exit code
  *   N8N_DEV_TRACK_CWD   directory the command ran in
  *
- * The raw argv is sent verbatim as `args` (parsed downstream), so anything on the
- * command line is transmitted — scrub downstream. `dir` is repo-relative. Errors
- * are swallowed so tracking never disrupts a workflow.
+ * The argv is sent verbatim as `args` (an array, boundaries preserved), parsed
+ * downstream — so anything on the command line is transmitted; scrub downstream.
+ * `dir` is repo-relative. Errors are swallowed so tracking never disrupts a workflow.
  */
 // n8n-track-version: 1 — bump on change; setup.mjs never downgrades the installed copy.
 import { execFileSync } from 'node:child_process';
@@ -183,8 +182,7 @@ async function main() {
 		actor: detectActor(),
 		binary,
 		binary_version: binaryVersion,
-		// Raw argv, verbatim — parsing/aggregation happens on the collection side.
-		args: process.env.N8N_DEV_TRACK_ARGS ?? '',
+		args: process.argv.slice(2), // faithful argv, parsed on the collection side
 		dir,
 		duration_ms: Number.isFinite(durationMs) ? durationMs : null,
 		exit_code: Number.isFinite(exitCode) ? exitCode : null,
