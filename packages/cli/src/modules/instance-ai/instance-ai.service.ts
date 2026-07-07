@@ -50,6 +50,7 @@ import {
 	PLANNED_TASK_PERMISSION_OVERRIDES,
 	releaseTraceClient,
 	resumeAgentRun,
+	crashResumeAgentRun,
 	RunStateRegistry,
 	RunDebugBuffer,
 	buildRunDebugLabel,
@@ -829,6 +830,10 @@ export class InstanceAiService {
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' } },
 			},
+			// Durable-log flag (resilience phase): checkpoint at every step
+			// boundary so a crash loses only the in-flight step; the
+			// interrupted-run sweep resumes from it on the next startup.
+			...(this.instanceAiConfig.durableLog ? { stepCheckpoints: true } : {}),
 			...(this.isRunDebugEnabled()
 				? createRunDebugStepHooks(this.runDebugBuffer, { runId, threadId })
 				: {}),
@@ -4268,6 +4273,206 @@ export class InstanceAiService {
 			runHandoff,
 		});
 		return { ok: true, runId };
+	}
+
+	/**
+	 * Durable-log RFC (resilience phase): re-drive a crash-interrupted run from
+	 * a `running`-status step checkpoint found by the interrupted-run sweep.
+	 * Rebuilds the execution environment + agent (same machinery as the
+	 * suspended-orphan restorer), registers the run as active under its
+	 * original runId, and consumes the resumed stream to a terminal state.
+	 * Returns false when the run cannot be resumed — the sweeper then
+	 * finalizes it as `run-finish { interrupted }` instead.
+	 */
+	async crashResumeInterruptedRun(request: {
+		threadId: string;
+		runId: string;
+		userId: string;
+		checkpointKey: string;
+		messageGroupId?: string;
+		contextNotes?: string[];
+	}): Promise<boolean> {
+		const user = await this.revalidateActiveUser(request.userId);
+		if (!user) return false;
+
+		try {
+			const state = await this.checkpointStore.load(request.checkpointKey);
+			if (!state || state.status !== 'running') return false;
+		} catch {
+			return false;
+		}
+
+		const abortController = new AbortController();
+		let environment;
+		try {
+			environment = await this.createExecutionEnvironment(
+				user,
+				request.threadId,
+				request.runId,
+				abortController.signal,
+				request.messageGroupId,
+				this.threadPushRef.get(request.threadId),
+			);
+		} catch (error: unknown) {
+			this.logger.warn('Cannot crash-resume run: failed to build execution environment', {
+				threadId: request.threadId,
+				runId: request.runId,
+				error: getErrorMessage(error),
+			});
+			return false;
+		}
+
+		const mcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
+		const runControl = createOrchestratorRunControl(environment.orchestrationContext);
+		let agent;
+		try {
+			agent = await createInstanceAgent({
+				modelId: environment.modelId,
+				context: environment.context,
+				orchestrationContext: environment.orchestrationContext,
+				mcpServers,
+				mcpManager: this.mcpClientManager,
+				memoryConfig: this.createAgentMemoryOptions(),
+				memory: environment.memory,
+				checkpointStore: this.checkpointStore,
+				onMemoryTaskEvent: this.memoryTaskObserverFor(request.threadId),
+				thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
+			});
+			this.subscribeToAgentErrors(agent, request.threadId, request.runId);
+		} catch (error: unknown) {
+			this.logger.warn('Cannot crash-resume run: failed to build agent', {
+				threadId: request.threadId,
+				runId: request.runId,
+				error: getErrorMessage(error),
+			});
+			return false;
+		}
+
+		// Register as an active run under the ORIGINAL runId so cancel /
+		// liveness / shutdown paths see it. startRun would mint a new runId, so
+		// seed via suspendRun + activateSuspendedRun (the orphan restorer's
+		// re-seeding trick) with a synthetic requestId.
+		this.runState.suspendRun(request.threadId, {
+			runId: request.runId,
+			agentRunId: request.checkpointKey,
+			agent,
+			threadId: request.threadId,
+			user,
+			toolCallId: '',
+			requestId: `crash-resume:${request.runId}`,
+			abortController,
+			messageGroupId: request.messageGroupId,
+			createdAt: Date.now(),
+			tracing: undefined,
+			modelId: environment.modelId,
+			runHandoff: runControl.state,
+		});
+		this.runState.activateSuspendedRun(request.threadId);
+
+		this.trackInFlightExecution(
+			this.processCrashResumedStream(agent, {
+				runId: request.runId,
+				agentRunId: request.checkpointKey,
+				threadId: request.threadId,
+				user,
+				signal: abortController.signal,
+				abortController,
+				snapshotStorage: this.dbSnapshotStorage,
+				modelId: environment.modelId,
+				contextNotes: request.contextNotes,
+			}),
+		);
+		return true;
+	}
+
+	/**
+	 * Run body for a crash-resumed orchestrator run. Tracked via
+	 * `trackInFlightExecution` (same shutdown-drain contract as the other run
+	 * bodies). ponytail: a crash-resumed run that re-suspends at HITL is
+	 * finalized as cancelled instead of re-wiring pending-confirmation
+	 * persistence — production work for the full phase 3.
+	 */
+	private async processCrashResumedStream(
+		agent: unknown,
+		opts: {
+			runId: string;
+			agentRunId: string;
+			threadId: string;
+			user: User;
+			signal: AbortSignal;
+			abortController: AbortController;
+			snapshotStorage: DbSnapshotStorage;
+			modelId?: ModelConfig;
+			contextNotes?: string[];
+		},
+	): Promise<void> {
+		try {
+			this.instanceAiErrorReporter.beginRun(opts.runId);
+			const result = await crashResumeAgentRun(
+				agent,
+				{
+					runId: opts.agentRunId,
+					recoverUsageOnAbort: true,
+					stepCheckpoints: true,
+					persistence: { resourceId: opts.user.id, threadId: opts.threadId },
+					providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
+					...(opts.contextNotes?.length ? { contextNotes: opts.contextNotes } : {}),
+				},
+				{
+					threadId: opts.threadId,
+					runId: opts.runId,
+					agentId: orchestratorAgentId(opts.runId),
+					signal: opts.signal,
+					eventBus: this.eventBus,
+					logger: this.logger,
+					agentRunId: opts.agentRunId,
+					onActivity: () => this.runState.touchActiveRun(opts.threadId),
+					outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
+				},
+			);
+
+			if (result.status === 'suspended') {
+				this.logger.warn(
+					'Crash-resumed run suspended at HITL; finalizing as cancelled (prototype limitation)',
+					{ threadId: opts.threadId, runId: opts.runId },
+				);
+				this.runState.cancelActiveRun(opts.threadId);
+				await this.finalizeRun(opts.threadId, opts.runId, 'cancelled', opts.snapshotStorage, {
+					userId: opts.user.id,
+					...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
+					workSummary: result.workSummary,
+					usage: result.usage,
+				});
+				return;
+			}
+
+			const status = result.status === 'errored' ? 'errored' : result.status;
+			this.runState.cancelActiveRun(opts.threadId);
+			await this.finalizeRun(opts.threadId, opts.runId, status, opts.snapshotStorage, {
+				userId: opts.user.id,
+				...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
+				workSummary: result.workSummary,
+				usage: result.usage,
+				...(result.error !== undefined ? { errorReason: getErrorMessage(result.error) } : {}),
+			});
+		} catch (error: unknown) {
+			this.logger.error('Crash-resumed Instance AI run failed', {
+				threadId: opts.threadId,
+				runId: opts.runId,
+				error: getErrorMessage(error),
+			});
+			this.runState.cancelActiveRun(opts.threadId);
+			this.publishRunFinish(
+				opts.threadId,
+				opts.runId,
+				'errored',
+				getErrorMessage(error),
+				undefined,
+				opts.user.id,
+			);
+		} finally {
+			this.instanceAiErrorReporter.endRun(opts.runId);
+		}
 	}
 
 	/**
