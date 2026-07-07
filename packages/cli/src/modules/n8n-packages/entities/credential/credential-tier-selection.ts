@@ -1,7 +1,7 @@
 import type { ResolvedCredentialMatch, UsableCredential } from './credential-matcher';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
-export function selectBestCandidate(
+function selectBestCandidate(
 	candidates: UsableCredential[],
 	projectId: string,
 ): UsableCredential | undefined {

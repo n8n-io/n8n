@@ -1,10 +1,9 @@
-import type { Project, SharedCredentialsRepository, User } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { CredentialTypes } from '@/credential-types';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 
 import type { ImportContext } from '../../../n8n-packages.types';
@@ -24,8 +23,6 @@ const usable = (id: string, type = 'githubApi'): UsableCredential =>
 	({ id, type }) as UsableCredential;
 
 describe('CredentialImporter', () => {
-	const credentialsFinderService = mock<CredentialsFinderService>();
-	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const credentialsService = mock<CredentialsService>();
 	const credentialTypes = mock<CredentialTypes>();
 	const targetProject = mock<Project>({ id: 'project-target' });
@@ -75,12 +72,7 @@ describe('CredentialImporter', () => {
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
 		Container.set(
 			IdBasedCredentialMatcher,
-			new IdBasedCredentialMatcher(
-				credentialsFinderService,
-				sharedCredentialsRepository,
-				credentialTypes,
-				credentialsService,
-			),
+			new IdBasedCredentialMatcher(credentialTypes, credentialsService),
 		);
 		importer = new CredentialImporter(
 			new CredentialMatcherFactory(

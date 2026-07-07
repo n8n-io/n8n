@@ -1,8 +1,6 @@
-import { SharedCredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { CredentialTypes } from '@/credential-types';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 
 import {
@@ -14,18 +12,8 @@ import type { PackageCredentialRequirement } from '../../spec/requirements.schem
 
 @Service()
 export class IdBasedCredentialMatcher extends CredentialMatcher {
-	constructor(
-		credentialsFinderService: CredentialsFinderService,
-		sharedCredentialsRepository: SharedCredentialsRepository,
-		credentialTypes: CredentialTypes,
-		credentialsService: CredentialsService,
-	) {
-		super(
-			credentialsFinderService,
-			sharedCredentialsRepository,
-			credentialTypes,
-			credentialsService,
-		);
+	constructor(credentialTypes: CredentialTypes, credentialsService: CredentialsService) {
+		super(credentialTypes, credentialsService);
 	}
 
 	protected resolve(

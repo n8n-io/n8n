@@ -1,9 +1,8 @@
-import type { Project, SharedCredentialsRepository, SlimProject, User } from '@n8n/db';
+import type { Project, SlimProject, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
@@ -28,8 +27,6 @@ const usableWith = (overrides: Partial<UsableCredential> & { id: string }): Usab
 		...overrides,
 	}) as UsableCredential;
 
-const credentialsFinderService = mock<CredentialsFinderService>();
-const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 const credentialsService = mock<CredentialsService>();
 const credentialTypes = mock<CredentialTypes>();
 const targetProject = mock<Project>({ id: 'project-target' });
@@ -39,30 +36,15 @@ const user = mock<User>({ id: 'user-1' });
 function createMatcherFactory(): CredentialMatcherFactory {
 	Container.set(
 		IdBasedCredentialMatcher,
-		new IdBasedCredentialMatcher(
-			credentialsFinderService,
-			sharedCredentialsRepository,
-			credentialTypes,
-			credentialsService,
-		),
+		new IdBasedCredentialMatcher(credentialTypes, credentialsService),
 	);
 	Container.set(
 		NameAndTypeCredentialMatcher,
-		new NameAndTypeCredentialMatcher(
-			credentialsFinderService,
-			sharedCredentialsRepository,
-			credentialTypes,
-			credentialsService,
-		),
+		new NameAndTypeCredentialMatcher(credentialTypes, credentialsService),
 	);
 	Container.set(
 		TypeOnlyCredentialMatcher,
-		new TypeOnlyCredentialMatcher(
-			credentialsFinderService,
-			sharedCredentialsRepository,
-			credentialTypes,
-			credentialsService,
-		),
+		new TypeOnlyCredentialMatcher(credentialTypes, credentialsService),
 	);
 	return new CredentialMatcherFactory(
 		Container.get(IdBasedCredentialMatcher),
@@ -450,6 +432,27 @@ describe('NameAndTypeCredentialMatcher', () => {
 		expect(result.successes).toEqual(new Map([['source-cred', 'newer-cred']]));
 	});
 
+	it('keeps the more recently updated candidate when an older one is encountered after it', async () => {
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			usableWith({
+				id: 'newer-cred',
+				name: 'Production GitHub',
+				homeProject: targetProjectRef,
+				updatedAt: '2024-06-01T00:00:00.000Z',
+			}),
+			usableWith({
+				id: 'older-cred',
+				name: 'Production GitHub',
+				homeProject: targetProjectRef,
+				updatedAt: '2024-01-01T00:00:00.000Z',
+			}),
+		]);
+
+		const result = await matcherFactory.getMatcher('name-and-type').match([requirement], context);
+
+		expect(result.successes).toEqual(new Map([['source-cred', 'newer-cred']]));
+	});
+
 	it('breaks ties on identical updatedAt by the lexicographically smaller id', async () => {
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
 			usableWith({
@@ -459,6 +462,25 @@ describe('NameAndTypeCredentialMatcher', () => {
 			}),
 			usableWith({
 				id: 'cred-a',
+				name: 'Production GitHub',
+				homeProject: targetProjectRef,
+			}),
+		]);
+
+		const result = await matcherFactory.getMatcher('name-and-type').match([requirement], context);
+
+		expect(result.successes).toEqual(new Map([['source-cred', 'cred-a']]));
+	});
+
+	it('keeps the tie-break winner when the smaller id is encountered first', async () => {
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			usableWith({
+				id: 'cred-a',
+				name: 'Production GitHub',
+				homeProject: targetProjectRef,
+			}),
+			usableWith({
+				id: 'cred-b',
 				name: 'Production GitHub',
 				homeProject: targetProjectRef,
 			}),

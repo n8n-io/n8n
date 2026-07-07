@@ -1,7 +1,6 @@
-import type { SharedCredentialsRepository, User } from '@n8n/db';
+import type { User } from '@n8n/db';
 
 import type { CredentialTypes } from '@/credential-types';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 
 import {
@@ -38,8 +37,6 @@ export interface ResolvedCredentialMatch {
 
 export abstract class CredentialMatcher {
 	constructor(
-		protected readonly credentialsFinderService: CredentialsFinderService,
-		protected readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		protected readonly credentialTypes: CredentialTypes,
 		protected readonly credentialsService: CredentialsService,
 	) {}
