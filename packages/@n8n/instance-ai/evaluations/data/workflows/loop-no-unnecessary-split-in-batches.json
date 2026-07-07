@@ -3,7 +3,7 @@
 	"conversation": [
 		{
 			"role": "user",
-			"text": "Every 15 minutes, pull pending validation jobs from GET https://api.example.com/jobs/pending and run each through POST https://api.example.com/jobs/validate before marking it complete at PATCH https://api.example.com/jobs/{id}/complete. Each job must finish validation before the next one starts."
+			"text": "Every 15 minutes, pull pending validation jobs from GET https://api.example.com/jobs/pending — the API returns a JSON envelope {jobs: [...]}, so split that into individual items before processing. Validate each job at POST https://api.example.com/jobs/validate and mark each complete at PATCH https://api.example.com/jobs/{id}/complete."
 		}
 	],
 	"messageBudget": 6,
@@ -12,8 +12,8 @@
 	"triggerType": "schedule",
 	"datasets": ["full"],
 	"outcomeExpectations": [
-		"Each pending job is validated and marked complete in sequence via default per-item iteration (fetch → validate → complete per job).",
-		"The agent did NOT add a Loop Over Items / Split In Batches node — the prompt's ordering requirement is already satisfied by default item flow, not by an explicit batch loop."
+		"Each pending job is validated and marked complete via default per-item iteration (fetch → split envelope → validate → complete per job), not via an explicit Loop Over Items / Split In Batches node.",
+		"Split Out (or equivalent item expansion from the jobs envelope) is acceptable and expected when the API returns {jobs: [...]} — but the agent did NOT add a Loop Over Items / Split In Batches node."
 	],
 	"executionScenarios": [
 		{

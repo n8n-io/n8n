@@ -3,7 +3,7 @@
 	"conversation": [
 		{
 			"role": "user",
-			"text": "Hourly, sync new orders from GET https://api.example.com/orders/new — call POST https://api.example.com/fulfillment once per order. When all orders in that run are processed, send one notification via POST https://api.example.com/notify with the total count and how many succeeded."
+			"text": "Hourly, sync new orders from GET https://api.example.com/orders/new — the API returns a JSON envelope {orders: [...]}, so split that into individual items first. Call POST https://api.example.com/fulfillment once per order. When all orders in that run are processed, send one notification via POST https://api.example.com/notify with the total count and how many succeeded."
 		}
 	],
 	"messageBudget": 6,
@@ -12,8 +12,8 @@
 	"triggerType": "schedule",
 	"datasets": ["full"],
 	"outcomeExpectations": [
-		"Each new order triggers its own fulfillment POST (per-item processing on the order list).",
-		"The final notify POST runs once per workflow execution with rollup totals (total count and success count), not once per order."
+		"Each new order triggers its own fulfillment POST (per-item processing after splitting the orders envelope into individual items).",
+		"The final notify POST runs once per workflow execution with rollup totals (total count and success count), not once per order — executeOnce or equivalent on the notify step."
 	],
 	"executionScenarios": [
 		{

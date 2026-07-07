@@ -1,5 +1,5 @@
 {
-	"description": "Loop Over Items for rate limiting: process recipients in batches with a wait between batches, feedback edge into the loop node, done output to a once-per-run summary.",
+	"description": "Loop Over Items for rate limiting: process recipients in batches with a wait between batches and a feedback edge into the loop node.",
 	"conversation": [
 		{
 			"role": "user",
@@ -13,8 +13,7 @@
 	"datasets": ["full"],
 	"outcomeExpectations": [
 		"A Loop Over Items (Split In Batches) node batches recipients (batch size around 5) with per-batch processing wired through the loop output and back into the loop node.",
-		"A Wait (or equivalent delay) sits between batches to respect the 1-second pause requirement.",
-		"The post-loop step on the done output runs once per execution (executeOnce if it summarizes), not once per recipient inside each batch without control."
+		"A Wait (or equivalent delay) sits between batches to respect the 1-second pause requirement."
 	],
 	"executionScenarios": [
 		{

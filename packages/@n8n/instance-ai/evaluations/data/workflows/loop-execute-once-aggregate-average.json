@@ -19,8 +19,8 @@
 		{
 			"name": "four-employees-one-average",
 			"description": "Four salaries average to 75000; one POST with that number",
-			"dataSetup": "GET https://api.example.com/employees returns { \"employees\": [{ \"name\": \"A\", \"salary\": 60000 }, { \"name\": \"B\", \"salary\": 70000 }, { \"name\": \"C\", \"salary\": 80000 }, { \"name\": \"D\", \"salary\": 90000 }] }. POST https://api.example.com/reports/average-salary returns { \"ok\": true }.",
-			"successCriteria": "The workflow executes without errors. POST https://api.example.com/reports/average-salary is called once (not four times) and the body contains the average salary 75000 (or equivalent field with that value). A workflow that POSTs four separate averages FAILS."
+			"dataSetup": "GET https://api.example.com/employees returns { \"employees\": [{ \"name\": \"A\", \"salary\": 60000 }, { \"name\": \"B\", \"salary\": 70000 }, { \"name\": \"C\", \"salary\": 80000 }, { \"name\": \"D\", \"salary\": 90000 }] }. POST https://api.example.com/reports/average-salary returns { \"ok\": true }. The verifier must inspect the outbound POST request body to https://api.example.com/reports/average-salary.",
+			"successCriteria": "The workflow executes without errors. POST https://api.example.com/reports/average-salary is called exactly once (not four times). Judge from the intercepted outbound POST request body in the execution trace: it contains the average salary 75000 in a field such as average, average_salary, salary, or value. A workflow that POSTs four separate averages FAILS."
 		}
 	]
 }

@@ -28,7 +28,7 @@
 		{
 			"name": "one-customer-two-orders",
 			"description": "Single customer with two paginated orders and line items",
-			"dataSetup": "The webhook receives { \"customers\": [{ \"id\": \"cust-1\", \"name\": \"Acme\" }] }. GET https://api.example.com/customers/cust-1/orders?page=1 returns { \"orders\": [{ \"id\": \"ord-1\" }, { \"id\": \"ord-2\" }] }. GET ...?page=2 returns { \"orders\": [] }. GET https://api.example.com/orders/ord-1/lines returns { \"lines\": [{ \"sku\": \"A\" }] }. GET https://api.example.com/orders/ord-2/lines returns { \"lines\": [{ \"sku\": \"B\" }] }.",
+			"dataSetup": "The webhook receives { \"customers\": [{ \"id\": \"cust-1\", \"name\": \"Acme\" }] }. This is a PAGINATED orders endpoint per customer — serve strictly by `page` query parameter; never return identical JSON for page=1 and page=2 or n8n stops with 'identical response 5x'. `GET https://api.example.com/customers/cust-1/orders?page=1` returns { \"orders\": [{ \"id\": \"ord-1\" }, { \"id\": \"ord-2\" }] }. `GET https://api.example.com/customers/cust-1/orders?page=2` returns { \"orders\": [] }. `GET https://api.example.com/orders/ord-1/lines` returns { \"lines\": [{ \"sku\": \"A\" }] }. `GET https://api.example.com/orders/ord-2/lines` returns { \"lines\": [{ \"sku\": \"B\" }] }.",
 			"successCriteria": "The workflow executes without errors. Both orders (ord-1 and ord-2) are fetched for cust-1 and line items for both orders are retrieved (SKUs A and B appear in the run output or downstream processing). The workflow completes without loop wiring errors."
 		}
 	]

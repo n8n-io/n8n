@@ -1,5 +1,5 @@
 {
-	"description": "Loop Over Items for chunked bulk API: POST up to 50 IDs per request with executeOnce on the HTTP node within each batch so one request carries the whole batch.",
+	"description": "Chunked bulk API: POST up to 50 IDs per request with one POST per chunk (executeOnce on the HTTP node within each batch when using Loop Over Items). Code-based chunking that emits ≤50 IDs per downstream item is also valid.",
 	"conversation": [
 		{
 			"role": "user",
@@ -12,9 +12,9 @@
 	"triggerType": "schedule",
 	"datasets": ["full"],
 	"outcomeExpectations": [
-		"A Loop Over Items node batches IDs with batch size 50 (or equivalent chunking for the 50-ID limit).",
-		"Each bulk-update HTTP request sends one POST per batch carrying multiple IDs (executeOnce on the HTTP node within the batch), not one POST per individual ID inside a batch.",
-		"The loop output feeds batch processing and flows back into the Loop Over Items node; the done output leads to a post-loop step."
+		"IDs are chunked so no single bulk-update request carries more than 50 IDs (Loop Over Items with batch size 50, or an equivalent chunking step such as Code).",
+		"Each bulk-update HTTP request sends one POST per chunk carrying multiple IDs (executeOnce on the HTTP node when inside a batch), not one POST per individual ID.",
+		"The workflow results in exactly two bulk POSTs for 55 IDs (50 + 5), not 55 separate single-ID POSTs."
 	],
 	"executionScenarios": [
 		{
