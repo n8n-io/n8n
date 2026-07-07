@@ -350,15 +350,35 @@ function status() {
  * directly (not process.stdin) because pnpm pipes lifecycle-script stdio in
  * workspaces. A synchronous read avoids leaving a stream handle open that would
  * keep this process — and therefore the parent `pnpm install` — from exiting.
+ *
+ * The tty is opened non-blocking and polled to a deadline: a terminal that
+ * exists but never sends input (e.g. a pty a wrapper allocated) times out and
+ * leaves the decision unmade, instead of hanging `pnpm install` forever.
  */
+const PROMPT_TIMEOUT_MS = 30_000;
+
+/** Sleep synchronously without spinning the CPU (to poll the non-blocking tty). */
+function sleepMs(ms) {
+	Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
 function promptViaTty(message) {
 	let fd;
 	try {
-		fd = openSync('/dev/tty', 'r+');
+		fd = openSync('/dev/tty', constants.O_RDWR | constants.O_NONBLOCK);
 		writeSync(fd, message);
 		const buf = Buffer.alloc(256);
-		const bytes = readSync(fd, buf, 0, buf.length, null); // blocks until the line is entered
-		return buf.toString('utf8', 0, bytes).trim().toLowerCase();
+		const deadline = Date.now() + PROMPT_TIMEOUT_MS;
+		while (Date.now() < deadline) {
+			try {
+				const bytes = readSync(fd, buf, 0, buf.length, null);
+				return buf.toString('utf8', 0, bytes).trim().toLowerCase();
+			} catch (err) {
+				if (err.code !== 'EAGAIN') throw err; // real error, not "no input yet"
+				sleepMs(50); // nothing typed yet — wait and retry until the deadline
+			}
+		}
+		return null; // no answer within the timeout — ask again next time
 	} catch {
 		return null; // no controlling terminal (CI / non-interactive), or read failed
 	} finally {
