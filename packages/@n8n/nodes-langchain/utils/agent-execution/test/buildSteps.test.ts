@@ -411,6 +411,7 @@ describe('buildSteps', () => {
 
 				const message = result[0].action.messageLog![0];
 				expect(message.content).toEqual([]);
+				expect(result[0].action.log).toBe('Calling Calculator Node');
 				expect(message).toHaveProperty('tool_calls');
 				expect(message.tool_calls).toHaveLength(1);
 				expect(message.tool_calls?.[0]).toMatchObject({

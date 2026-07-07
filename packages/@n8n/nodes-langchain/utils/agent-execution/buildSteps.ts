@@ -386,11 +386,14 @@ export function buildSteps(
 				: []
 			: [buildIndividualAIMessage(toolId, toolName, toolInput, providerMetadata)];
 
+		const logFallback = messageLog[0]?.content?.length
+			? messageLog[0]?.content
+			: `Calling ${nodeName}`;
 		steps.push({
 			action: {
 				tool: toolName,
 				toolInput: toolInputForResult,
-				log: toolInput.log || (messageLog[0]?.content ?? `Calling ${nodeName}`),
+				log: toolInput.log || logFallback,
 				messageLog,
 				toolCallId: toolInput?.id,
 				type: toolInput.type || 'tool_call',
