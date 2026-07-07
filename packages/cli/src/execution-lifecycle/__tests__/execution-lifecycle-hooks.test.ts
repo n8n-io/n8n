@@ -791,6 +791,62 @@ describe('Execution Lifecycle Hooks', () => {
 			});
 		});
 
+		describe('user resolution', () => {
+			it('should resolve the user once across executionStarted and node events', async () => {
+				const mockTaskData: ITaskData = {
+					startTime: 1,
+					executionTime: 1,
+					executionIndex: 0,
+					source: [],
+					data: { main: [[{ json: { key: 'value' } }]] },
+				};
+
+				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+				await lifecycleHooks.runHook('nodeExecuteAfter', [
+					nodeName,
+					mockTaskData,
+					runExecutionData,
+				]);
+				await lifecycleHooks.runHook('nodeExecuteAfter', [
+					nodeName,
+					mockTaskData,
+					runExecutionData,
+				]);
+
+				// The eager warm-up at hook setup is the only lookup; every awaiter reuses it.
+				expect(userRepository.findOne).toHaveBeenCalledTimes(1);
+			});
+
+			it('should retry the user lookup after a failed attempt', async () => {
+				userRepository.findOne.mockClear(); // drop the beforeEach hooks' warm-up call
+				userRepository.findOne
+					.mockRejectedValueOnce(new Error('lookup failed'))
+					.mockResolvedValue(mock<User>());
+				lifecycleHooks = createHooks(); // warm-up consumes the rejection
+
+				const mockTaskData: ITaskData = {
+					startTime: 1,
+					executionTime: 1,
+					executionIndex: 0,
+					source: [],
+					data: { main: [[{ json: { key: 'value' } }]] },
+				};
+
+				await lifecycleHooks.runHook('nodeExecuteAfter', [
+					nodeName,
+					mockTaskData,
+					runExecutionData,
+				]);
+
+				expect(userRepository.findOne).toHaveBeenCalledTimes(2);
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'nodeExecuteAfterData' }),
+					pushRef,
+					true,
+				);
+			});
+		});
+
 		describe('workflowExecuteBefore', () => {
 			it('should send executionStarted push event', async () => {
 				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
@@ -875,6 +931,24 @@ describe('Execution Lifecycle Hooks', () => {
 					}),
 					pushRef,
 				);
+			});
+
+			it('should send executionStarted for fresh runs without awaiting user resolution', async () => {
+				// A pending user lookup must not delay executionStarted when there is
+				// no prior run data to redact.
+				userRepository.findOne.mockImplementation(async () => await new Promise<never>(() => {}));
+				lifecycleHooks = createHooks();
+
+				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({
+						type: 'executionStarted',
+						data: expect.objectContaining({ flattedRunData: '[{}]' }),
+					}),
+					pushRef,
+				);
+				expect(redactionProxy.processExecution).not.toHaveBeenCalled();
 			});
 
 			it('should send executionStarted with empty runData when user cannot be resolved (fail-closed)', async () => {

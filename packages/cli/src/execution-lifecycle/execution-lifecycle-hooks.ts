@@ -268,15 +268,24 @@ function hookFunctionsPush(
 	const redactionProxy = Container.get(ExecutionRedactionServiceProxy);
 	const userRepository = Container.get(UserRepository);
 
-	// Lazy user resolution — resolved once, reused across all node events in this execution
-	let resolvedUser: User | null | undefined; // undefined = not yet resolved
-	async function getUser(): Promise<User | null> {
-		if (resolvedUser !== undefined) return resolvedUser;
-		resolvedUser = userId
-			? await userRepository.findOne({ where: { id: userId }, relations: ['role'] })
-			: null;
-		return resolvedUser;
+	// User resolution — memoized as a promise so concurrent callers share one
+	// lookup, cleared on failure so the next caller retries. Warmed eagerly
+	// below so the query runs concurrently with execution startup instead of
+	// delaying the first push.
+	let userPromise: Promise<User | null> | undefined;
+	function getUser(): Promise<User | null> {
+		userPromise ??= (
+			userId
+				? userRepository.findOne({ where: { id: userId }, relations: ['role'] })
+				: Promise.resolve(null)
+		).catch((error: unknown) => {
+			userPromise = undefined;
+			throw error;
+		});
+		return userPromise;
 	}
+	// Swallow the warm-up rejection — the first real awaiter retries and surfaces it.
+	void getUser().catch(() => {});
 
 	hooks.addHandler('nodeExecuteBefore', function (nodeName, data) {
 		const { executionId } = this;
@@ -377,34 +386,38 @@ function hookFunctionsPush(
 		// Apply copy-on-write redaction to flattedRunData when retrying/resuming.
 		// Fail-closed: if user cannot be resolved or redaction throws, send
 		// empty runData rather than skipping the push or leaking unredacted data.
-		const user = await getUser();
+		// Fresh runs have no run data to redact, so they skip the user lookup
+		// and executionStarted is not delayed by it.
 		let runDataToStringify: IRunData = {};
 		const hasRunData = data?.resultData.runData && Object.keys(data.resultData.runData).length > 0;
 
-		if (hasRunData && user) {
-			try {
-				const dummy = buildRedactableExecution(this, data.resultData.runData, data);
-				const result = await redactionProxy.processExecution(dummy, {
-					user,
-					keepOriginal: true,
-				});
-				runDataToStringify =
-					result !== dummy ? result.data.resultData.runData : data.resultData.runData;
-			} catch (error) {
-				logger.error('Failed to redact execution start data, sending empty runData', {
+		if (hasRunData) {
+			const user = await getUser();
+			if (user) {
+				try {
+					const dummy = buildRedactableExecution(this, data.resultData.runData, data);
+					const result = await redactionProxy.processExecution(dummy, {
+						user,
+						keepOriginal: true,
+					});
+					runDataToStringify =
+						result !== dummy ? result.data.resultData.runData : data.resultData.runData;
+				} catch (error) {
+					logger.error('Failed to redact execution start data, sending empty runData', {
+						executionId,
+						workflowId,
+						error,
+					});
+					// runDataToStringify stays {} — fail closed
+				}
+			} else {
+				logger.warn('Cannot redact execution start data: unable to resolve user', {
 					executionId,
 					workflowId,
-					error,
+					userId,
 				});
 				// runDataToStringify stays {} — fail closed
 			}
-		} else if (hasRunData && !user) {
-			logger.warn('Cannot redact execution start data: unable to resolve user', {
-				executionId,
-				workflowId,
-				userId,
-			});
-			// runDataToStringify stays {} — fail closed
 		}
 
 		// Always send executionStarted so the editor can initialise the execution UI
