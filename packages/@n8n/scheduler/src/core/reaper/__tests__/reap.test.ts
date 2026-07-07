@@ -1,38 +1,25 @@
-import type { Logger } from '@n8n/backend-common';
-import type { ScheduledTask as ScheduledTaskEntity } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { backoff } from '../../executor/backoff';
-import { reap, type ReaperTaskStore } from '../reaper';
+import { reap, type ExpiredLeaseRow, type ReaperTaskStore } from '../reap';
 
-const expiredTask = (overrides: Partial<ScheduledTaskEntity> = {}): ScheduledTaskEntity =>
-	({
-		id: '1',
-		jobId: 10,
-		taskType: 'workflow:schedule-trigger',
-		payload: {},
-		scheduledFor: new Date('2026-07-01T00:00:00.000Z'),
-		runAt: new Date('2026-07-01T00:00:00.000Z'),
-		status: 'running',
-		attempts: 0,
-		maxAttempts: 3,
-		claimedBy: 'dead-main',
-		leaseExpiresAt: new Date('2026-07-01T00:01:00.000Z'),
-		leaseEpoch: 1,
-		startedAt: new Date('2026-07-01T00:00:00.000Z'),
-		finishedAt: null,
-		errorMessage: null,
-		...overrides,
-	}) as ScheduledTaskEntity;
+const expiredTask = (overrides: Partial<ExpiredLeaseRow> = {}): ExpiredLeaseRow => ({
+	id: '1',
+	attempts: 0,
+	maxAttempts: 3,
+	leaseEpoch: 1,
+	...overrides,
+});
 
 const setup = () => {
 	const store = mock<ReaperTaskStore>();
-	const logger = mock<Logger>();
+	const onRowError = vi.fn();
+	const onDeadLetter = vi.fn();
 	// Guarded updates report one row changed unless a test overrides them.
 	store.reclaimExpired.mockResolvedValue(1);
 	store.deadLetterExpired.mockResolvedValue(1);
-	const run = async () => await reap({ store, logger, batchSize: 100 });
-	return { store, logger, run };
+	const run = async () => await reap(store, { batchSize: 100 }, { onRowError, onDeadLetter });
+	return { store, onRowError, onDeadLetter, run };
 };
 
 describe('reap', () => {
@@ -80,7 +67,7 @@ describe('reap', () => {
 	});
 
 	it('dead-letters a task on its single default attempt', async () => {
-		const { store, run } = setup();
+		const { store, onDeadLetter, run } = setup();
 		const task = expiredTask({ attempts: 0, maxAttempts: 1 });
 		store.findExpiredLeases.mockResolvedValue([task]);
 
@@ -92,6 +79,8 @@ describe('reap', () => {
 		);
 		expect(store.reclaimExpired).not.toHaveBeenCalled();
 		expect(result).toEqual({ reclaimed: 0, deadLettered: 1 });
+		// The terminal failure is reported with the lost attempt already counted.
+		expect(onDeadLetter).toHaveBeenCalledWith({ taskId: task.id, attempts: 1, maxAttempts: 1 });
 	});
 
 	it('dead-letters when the next attempt reaches maxAttempts', async () => {
@@ -123,10 +112,11 @@ describe('reap', () => {
 	});
 
 	it('skips a row that throws and still processes the rest of the batch', async () => {
-		const { store, logger, run } = setup();
+		const { store, onRowError, run } = setup();
 		// The oldest row throws; without per-row isolation it would abort the pass and
 		// head-of-line block every younger expired row on every future sweep.
-		store.reclaimExpired.mockRejectedValueOnce(new Error('db down'));
+		const failure = new Error('db down');
+		store.reclaimExpired.mockRejectedValueOnce(failure);
 		store.findExpiredLeases.mockResolvedValue([
 			expiredTask({ id: 'poison', attempts: 0, maxAttempts: 3 }),
 			expiredTask({ id: 'ok', attempts: 0, maxAttempts: 3 }),
@@ -140,10 +130,27 @@ describe('reap', () => {
 			backoff(1),
 			expect.any(String),
 		);
-		expect(logger.error).toHaveBeenCalledWith(
-			expect.any(String),
-			expect.objectContaining({ taskId: 'poison' }),
-		);
+		expect(onRowError).toHaveBeenCalledWith('poison', failure);
+	});
+
+	it('keeps sweeping when the row-error reporter itself throws', async () => {
+		const { store, onRowError, run } = setup();
+		const failure = new Error('db down');
+		store.reclaimExpired.mockRejectedValueOnce(failure);
+		// The reporter is host-supplied; a broken one must not re-break the isolation
+		// it reports on, or the poison row would also abort every younger row.
+		onRowError.mockImplementation(() => {
+			throw new Error('logger down');
+		});
+		store.findExpiredLeases.mockResolvedValue([
+			expiredTask({ id: 'poison', attempts: 0, maxAttempts: 3 }),
+			expiredTask({ id: 'ok', attempts: 0, maxAttempts: 3 }),
+		]);
+
+		const result = await run();
+
+		expect(result).toEqual({ reclaimed: 1, deadLettered: 0 });
+		expect(onRowError).toHaveBeenCalledWith('poison', failure);
 	});
 
 	it('counts only rows actually changed (a lost race is a benign no-op)', async () => {
@@ -155,5 +162,36 @@ describe('reap', () => {
 		const result = await run();
 
 		expect(result).toEqual({ reclaimed: 0, deadLettered: 0 });
+	});
+
+	it('does not report a dead-letter for a reclaim or a lost dead-letter race', async () => {
+		const { store, onDeadLetter, run } = setup();
+		// 'raced' loses its guarded update: another actor decided the row first.
+		store.deadLetterExpired.mockResolvedValue(0);
+		store.findExpiredLeases.mockResolvedValue([
+			expiredTask({ id: 'retried', attempts: 0, maxAttempts: 3 }),
+			expiredTask({ id: 'raced', attempts: 0, maxAttempts: 1 }),
+		]);
+
+		const result = await run();
+
+		expect(result).toEqual({ reclaimed: 1, deadLettered: 0 });
+		expect(onDeadLetter).not.toHaveBeenCalled();
+	});
+
+	it('keeps sweeping when the dead-letter reporter itself throws', async () => {
+		const { store, onDeadLetter, run } = setup();
+		onDeadLetter.mockImplementation(() => {
+			throw new Error('logger down');
+		});
+		store.findExpiredLeases.mockResolvedValue([
+			expiredTask({ id: 'dead', attempts: 0, maxAttempts: 1 }),
+			expiredTask({ id: 'ok', attempts: 0, maxAttempts: 3 }),
+		]);
+
+		const result = await run();
+
+		// The row was decided before the reporter ran: counted, and the sweep goes on.
+		expect(result).toEqual({ reclaimed: 1, deadLettered: 1 });
 	});
 });
