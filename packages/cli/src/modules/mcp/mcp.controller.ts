@@ -5,6 +5,7 @@ import { Container } from '@n8n/di';
 import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 
+import { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
 import { Telemetry } from '@/telemetry';
 
 import { McpServerMiddlewareService } from './mcp-server-middleware.service';
@@ -34,6 +35,7 @@ export class McpController {
 		private readonly mcpSettingsService: McpSettingsService,
 		private readonly telemetry: Telemetry,
 		private readonly logger: Logger,
+		private readonly oauthTokenVerifier: OAuthTokenVerifierProxy,
 	) {}
 
 	// Add CORS headers helper
@@ -120,8 +122,14 @@ export class McpController {
 		const body = req.body;
 		this.logger.debug('MCP Request', { body });
 		const isInitializationRequest = isJSONRPCRequest(body) ? body.method === 'initialize' : false;
-		const isToolCallRequest = isJSONRPCRequest(body) ? body.method === 'toolCall' : false;
+		const isToolCallRequest = isJSONRPCRequest(body) ? body.method === 'tools/call' : false;
 		const clientInfo = getClientInfo(req);
+
+		// A tool call is what counts as "activity" for the connected-clients list
+		const { mcpClientId } = req as AuthenticatedRequest & { mcpClientId?: string };
+		if (isToolCallRequest && mcpClientId) {
+			this.oauthTokenVerifier.recordClientActivity(req.user.id, mcpClientId);
+		}
 
 		const baseTelemetryPayload: Partial<UserConnectedToMCPEventPayload> = {
 			user_id: req.user.id,

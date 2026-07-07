@@ -170,8 +170,43 @@ describe('DELETE /rest/mcp/oauth-clients/:clientId', () => {
 			success: true,
 		});
 
+		// last consent revoked → client registration garbage-collected
 		const deletedClient = await oauthClientRepository.findOneBy({ id: client.id });
 		expect(deletedClient).toBeNull();
+	});
+
+	test("should keep the client and other users' grants when revoking a shared client", async () => {
+		const client = await oauthClientRepository.save({
+			id: 'shared-client-id',
+			name: 'Shared Client',
+			redirectUris: ['https://example.com/callback'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+		});
+
+		await userConsentRepository.save({
+			userId: owner.id,
+			clientId: client.id,
+			grantedAt: Date.now(),
+		});
+		await userConsentRepository.save({
+			userId: member.id,
+			clientId: client.id,
+			grantedAt: Date.now(),
+		});
+
+		const response = await testServer.authAgentFor(owner).delete(`/mcp/oauth-clients/${client.id}`);
+
+		expect(response.statusCode).toBe(200);
+
+		// the owner's consent is gone, the member's grant and the client survive
+		expect(
+			await userConsentRepository.findOneBy({ userId: owner.id, clientId: client.id }),
+		).toBeNull();
+		expect(
+			await userConsentRepository.findOneBy({ userId: member.id, clientId: client.id }),
+		).not.toBeNull();
+		expect(await oauthClientRepository.findOneBy({ id: client.id })).not.toBeNull();
 	});
 
 	test("should return 404 when a user tries to delete another user's OAuth client", async () => {

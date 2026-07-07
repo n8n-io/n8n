@@ -296,9 +296,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				return { user: null, context: { reason: 'user_not_found', auth_type: 'oauth' } };
 			}
 
-			this.touchConsentActivity(userId, authInfo.clientId);
-
-			return { user, authType: 'oauth', scopes: authInfo.scopes };
+			return { user, authType: 'oauth', scopes: authInfo.scopes, clientId: authInfo.clientId };
 		} catch (error) {
 			const errorForSure = ensureError(error);
 			const reason =
@@ -320,10 +318,11 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 
 	/**
 	 * Records activity on the user+client grant for the connected-clients list.
-	 * Fire-and-forget and throttled so the hot request path never waits on, or
-	 * hammers, the consents table.
+	 * Called when the client actually invokes an MCP tool. Fire-and-forget and
+	 * throttled so the hot request path never waits on, or hammers, the
+	 * consents table.
 	 */
-	private touchConsentActivity(userId: string, clientId: string): void {
+	recordClientActivity(userId: string, clientId: string): void {
 		const key = `${userId}:${clientId}`;
 		const now = Date.now();
 		const lastWrite = this.lastActivityWrites.get(key);
@@ -340,6 +339,12 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				});
 			}
 		})();
+	}
+
+	/** Deletes every access and refresh token a user holds for a client. */
+	async revokeAllTokensForGrant(clientId: string, userId: string): Promise<void> {
+		await this.accessTokenRepository.delete({ clientId, userId });
+		await this.refreshTokenRepository.delete({ clientId, userId });
 	}
 
 	async revokeAccessToken(token: string, clientId: string): Promise<boolean> {

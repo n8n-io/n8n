@@ -457,8 +457,10 @@ export class OAuthServerService implements OAuthServerProvider {
 	}
 
 	/**
-	 * Delete an OAuth client and all related data.
-	 * Verifies that the requesting user has a consent relationship with the client.
+	 * Revoke the requesting user's grant for a client: their consent, tokens,
+	 * and authorization codes. Other users' grants for the same client are
+	 * untouched. The client registration itself is garbage-collected once the
+	 * last consent is gone, freeing a slot under the instance client cap.
 	 */
 	async deleteClient(clientId: string, userId: string): Promise<void> {
 		// First check if the client exists
@@ -476,14 +478,20 @@ export class OAuthServerService implements OAuthServerProvider {
 			throw new Error(`OAuth client with ID ${clientId} not found`);
 		}
 
-		this.logger.info('Deleting OAuth client and related data', { clientId });
+		this.logger.info('Revoking OAuth client access for user', { clientId, userId });
 
-		await this.oauthClientRepository.delete({ id: clientId });
+		await this.tokenService.revokeAllTokensForGrant(clientId, userId);
+		await this.authorizationCodeService.deleteForGrant(clientId, userId);
+		await this.userConsentRepository.delete({ clientId, userId });
 
-		this.logger.info('OAuth client deleted successfully', {
-			clientId,
-			clientName: client.name,
-		});
+		const remainingConsents = await this.userConsentRepository.countBy({ clientId });
+		if (remainingConsents === 0) {
+			await this.oauthClientRepository.delete({ id: clientId });
+			this.logger.info('OAuth client deleted after last consent was revoked', {
+				clientId,
+				clientName: client.name,
+			});
+		}
 	}
 }
 

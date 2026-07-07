@@ -101,10 +101,12 @@ export class McpServerMiddlewareService {
 			const mcpReq = req as AuthenticatedRequest & {
 				mcpAuthType?: UserWithContext['authType'];
 				mcpScopes?: string[];
+				mcpClientId?: string;
 			};
 			mcpReq.mcpAuthType = result.authType;
 			// undefined for API keys = not scope-bearing → full tool access
 			mcpReq.mcpScopes = result.scopes;
+			mcpReq.mcpClientId = result.clientId;
 
 			next();
 		};

@@ -450,7 +450,7 @@ describe('OAuthTokenService', () => {
 
 			const result = await service.verifyOAuthAccessToken(accessToken);
 
-			expect(result).toEqual({ user, authType: 'oauth', scopes: [] });
+			expect(result).toEqual({ user, authType: 'oauth', scopes: [], clientId });
 			expect(userRepository.findOne).toHaveBeenCalledWith({
 				where: { id: userId },
 				relations: ['role'],
@@ -485,7 +485,7 @@ describe('OAuthTokenService', () => {
 			expect(userConsentRepository.update).not.toHaveBeenCalled();
 		});
 
-		it('should record client activity on successful verification', async () => {
+		it('should not record activity on verification alone', async () => {
 			const userId = 'user-activity';
 			const clientId = 'client-activity';
 			const { accessToken } = service.generateTokenPair(userId, clientId, undefined, []);
@@ -497,24 +497,23 @@ describe('OAuthTokenService', () => {
 
 			await service.verifyOAuthAccessToken(accessToken);
 
+			expect(userConsentRepository.update).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('recordClientActivity', () => {
+		it('should update the consent lastActiveAt', () => {
+			service.recordClientActivity('user-record', 'client-record');
+
 			expect(userConsentRepository.update).toHaveBeenCalledWith(
-				{ userId, clientId },
+				{ userId: 'user-record', clientId: 'client-record' },
 				{ lastActiveAt: expect.any(Number) },
 			);
 		});
 
-		it('should throttle activity writes for the same user and client', async () => {
-			const userId = 'user-throttled';
-			const clientId = 'client-throttled';
-			const { accessToken } = service.generateTokenPair(userId, clientId, undefined, []);
-
-			accessTokenRepository.findOne.mockResolvedValue(
-				mock<AccessToken>({ token: accessToken, clientId, userId }),
-			);
-			userRepository.findOne.mockResolvedValue(mock<User>({ id: userId }));
-
-			await service.verifyOAuthAccessToken(accessToken);
-			await service.verifyOAuthAccessToken(accessToken);
+		it('should throttle writes for the same user and client', () => {
+			service.recordClientActivity('user-throttled', 'client-throttled');
+			service.recordClientActivity('user-throttled', 'client-throttled');
 
 			expect(userConsentRepository.update).toHaveBeenCalledTimes(1);
 		});
