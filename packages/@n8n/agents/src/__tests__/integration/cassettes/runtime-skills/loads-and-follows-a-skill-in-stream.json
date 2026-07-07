@@ -68,33 +68,33 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b0800000000000013c555c16e133110bdf72ba2396fa4dd92b4956f0848852007382108b2a6eb2131ebb5b7f6382244fbefc849b6c9b649e905b237bf37de99f76ccfd0922c8b414d21e09c6460f47ca190510cd6c0ab8640408f84ac5b835843ed141910501a8c8a860bd4551c8e86e3e1657e392ef2bc800cb44aff0873991737aa7efde5631c7dfeaa79320aabfbe2eded32c5f4334106de990460083a30da94b67496c932886fdf3308ec1ae90983b3206c34660705ba8f644bea818a18b5091d16bbeab56d224b7615d900a2c8afaf3228b15c902c3d216b67653f24ef784fa84e71ddde94819a05d5e4d1c871fd347ecf168bc76c9b818b7c088daf3308e497ba24c99a3c0848d628f42ab96c7f904fcae59c1c08b08e252e511bbc33046d3be87fedc5056d8f7e67abbc33aeac8e5f8023219b8c8a7e6d751ff249f66e1f3b67640cd45d82b48e322fa69f1a5bdc5c457ef3e176f16a32fd3d51c5bb296460b14efb8c432543a58dd9a469228358b7c95f6392ee87044a7b2a79a36e2fa8d176fe48c1001208a7442b328ccf8bde84f4446f917d2ddbf3fb199c7d086ed0b346b3014100bcf410fe533deb19844aefab3a7339c6bc5733108319407be65242aca13dbb2135fad5b0c6b3bbe12bf233689f7324b5d9bf750dd71cd471ea2174b3e6a8b41e0907527ad3e0b0edbc7026b4ff70283ce9e2ed11b9c7fc3be4a06fd61fc8119c58b6070000"
+			"1f8b0800000000000013cd55cb6edb3010bcfb2b8c3dcb8094564dca6b50f4851445d25b1d101b7163d3a248950fd786a17f2f6859b1e447da4b9beac699a5766756bba22569cfc615398733e2cea3f523811ed978037e5d13301890907467601ba88c20050c0a8541d0648eb20c93d7937c72915ee4599a66908014f11d6ec6d3ecc65fb99b578bdbfcfdd5dab80fd75fc2cf2cbb83e4201324608d8a003a279d471dd316467bd21ed8f7fb049c3735b784ce68603a28b5831cfd08a40b1a80823c4ae53a2c74d54b5d07cfbd29493b60597af92681028b39f1c2127a69341f86a41d6f09c539aebb1b33503da78a2c2a9e57c7f17b369b1fb24d0226f83e945f26e0c82e6541dc4bb2c0205a23d08ae8b27e241b95f3191960a08de7b844a9f0411134cd78ff34a311b56ddf59ca1f9429cad3cd3f11b2cd2668d56aeef351f2ee9e3746f1e0a8fb00e239f034fb5abf7bfbed512fe6b3dbebcf2bfb290fe5dd6a050968ace23d655070574aa5b669eae0816d9ae8ad5251f35302212d15bea76c2fab967a76a0630c118473d205298fcf4bdf860ca4b7c8bea2b6830b67f453708dd64b545b101840f36c03fe51159b294483a1ff4dbc744deaa398021b4f5b8b5eb81817aa0aed7a52a1fd3f3a56929d4203cdf9c935f5ef06d7d4bd228e9adeedf893820624f4040cb6707fe4ff7017377f71191f6dcfc34eee7f6bc7e6f539180cc92ff4b205fb31070000"
 		],
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-07-06T08:52:11Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-06T08:45:07Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-07-06T08:52:11Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-06T08:45:07Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-07-06T08:52:11Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-06T08:45:07Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-07-06T08:52:11Z",
+			"anthropic-ratelimit-tokens-reset": "2026-07-06T08:45:07Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a16d5f35098713d0-BCN",
+			"cf-ray": "a16d54d64e86589a-BCN",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Mon, 06 Jul 2026 08:52:12 GMT",
-			"request-id": "req_011CckX6J9diG4VbNEraa3go",
+			"date": "Mon, 06 Jul 2026 08:45:08 GMT",
+			"request-id": "req_011CckWYyhktjiUUzVGjbaRn",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-b89d6b3e0118c6d51f7814b1c974b34c-f347bc182bc59a18-01",
+			"traceresponse": "00-540508076234ed11018ad8b9be047cfd-9a43dd87abb7b745-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
@@ -129,7 +129,7 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_01MQpn186utCKGh3FMzFd1EM",
+							"id": "toolu_01PpE9TfnjhgRCKxrJ5ukSxx",
 							"name": "load_skill",
 							"input": {
 								"skillId": "summary-marker"
@@ -145,8 +145,13 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01MQpn186utCKGh3FMzFd1EM",
-							"content": "{\"ok\":true,\"success\":true,\"skillId\":\"summary-marker\",\"name\":\"Summary marker\",\"description\":\"Use for summarizing notes, updates, or short text while preserving a marker.\",\"path\":null,\"skillDir\":null,\"hash\":\"e3433b77c9e3\",\"category\":\"productivity\",\"content\":\"Every final answer after loading this skill must include the exact marker SKILL_MARKER_ALPHA. For summaries, be concise and keep the marker unchanged.\",\"activation\":\"[Skill: \\\"Summary marker\\\"]\\n[Skill category: \\\"productivity\\\"]\\n[Skill hash: \\\"e3433b77c9e3\\\"]\",\"linkedFiles\":{\"references\":[],\"templates\":[],\"scripts\":[],\"assets\":[],\"examples\":[],\"other\":[]}}"
+							"tool_use_id": "toolu_01PpE9TfnjhgRCKxrJ5ukSxx",
+							"content": [
+								{
+									"type": "text",
+									"text": "[Skill: \"Summary marker\"]\n[Skill category: \"productivity\"]\n[Skill hash: \"e3433b77c9e3\"]\n\nEvery final answer after loading this skill must include the exact marker SKILL_MARKER_ALPHA. For summaries, be concise and keep the marker unchanged."
+								}
+							]
 						}
 					]
 				}
@@ -196,33 +201,33 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b0800000000000013bd544d6fd34010bdf757ace618d92829a488bdf500023548d0562041d16a6a4fed55f6c3ec8edb942aff1dad63d338a4854bbb17cb336ffdde9bf10c5d9363292cc58815a9c818f8a0444629ee806f1b0209a32464c33bc83bb0be2403120a836d49798d7ad9e6aff2797e383d9ccfa6d31964a0cbf48d58a9e9ece8fc576317df5eeb379f6375eec397f6c686af90ed304106c19b14c01875647489b6f08ec931c8ef3f3288ec1b1508a377205d6b4c1f8af4b32557d0285812a3367188b5837aed9a9615fb25b90872f67276944181454daa0884acbd5363c874c807c2f2a1dc703731505393a58046cdeddff8fbecacdecdae33f02d8ff46510295ceb82146b0a202155a6c450a622bb2b0ac9b8aac88304e759e1356a83978660bd16e9ac0f0e68d3efbe96ead2f862b9bfeb7b201d4f49ab8dd9ed7cf2dadf635a2560f790001be6fb73afa1d1aeda21159082f090ce920ce3e33a3bc848e72632d6f707d6ab7ce78df1371df5a3857a3201826b1267adb5186e85c5b0a420e2521b23b48b1cda22fd5031133505123a76f0b881cb0b77e12693feb29c4cc4190742ab5d25b022c75190d52cd87b233a57e93af2d099e7f77a8585369a9149044293b3b6240a6f6deb74d18d8e40578a442d6855d4e82a1297c43744ae73ded9ea30b4620a0e4de72e0a1f443f227163efd9cdbd48ddc8f3bc6fcac987c5427d3c3e3d797baa8e179fde1f4f268f0b4bfbea5f93e89b2d59fb266b58d87b5d8e92b0e56ab452815ca9b80d0efe7bb1ae9f70b3eeacc2f9d17a9fdf7dc5dbce415fa6df90929bd7f5060000"
+			"1f8b0800000000000013c555c16e133110bdf72bac39461b940482c0b71c10452d0835a812a2c89aaea71b13afbdd8b36d4a15898fe00bf912e4dd6c9a4d5bcaa5229728f3c69ef7de782674498ea52829462c4845c6c0071a19a5b801beae0824f440c8badf206fa0f49a2c48c82dd69a860b34cb7af862381d4e4693e978341a430646a73b62a146e3d7d5f3cf85bf08a76f4f5787935978f56d8ed34f90ed55820c82b72980319ac8e852d9dc3b26c720bf7ccd20b2af54208cde8174b5b59b50a4ef35b99c7a414d8cc6c62e5677ec8dab6a56ec97e422c8f1643cc920c77c412a0f846cbc53fd9451870742fd10d69d4d15a85a504901ad9a9677f36fd1f1621f5d67e06bde0d4d3288142e4d4e8a0d0590909cd1187432d95d5048c255411e2438cf0a2fd1583cb704ebb5683feb83036a3bbe71539d5b9f2fefeffb3d294d254dab56ee2e9ed46ece31ad5262f32501d6fdc29571c55e250129080f91d36419ff4eae49e9916b237d52dbb40db50ffe4ac4ba2c314067d0233e3d1915f3c3b8425414042f48c4a5b156181739d4797a4b519eb9333718cc1bb6d772303873730e84653a8605398e824ac382bdb7a2e11e7ffffcc50bba1605390ac824d06978ec253c994211c9e9969948d78b401699b460df926ec652182702a11db229291368adbf4a122f7c10a62c499b24c49fa74968a6ec3f8b0a142bef226d5518c714b06d9ad075d8f647d08af23ac59fa55ece8fde1d1fabf7b393a337276a76fcf170d67b830f0faaaf1e9b535fede8e8ddd56df27bfde881b0a3bfb76b819c565c0707ffbc71d74fb872f776e4cbd1deb6b9fdefbaebdb2e065bdbff006bc3e0fa12070000"
 		],
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-07-06T08:52:13Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-06T08:45:08Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-07-06T08:52:13Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-06T08:45:08Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-07-06T08:52:13Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-06T08:45:08Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-07-06T08:52:13Z",
+			"anthropic-ratelimit-tokens-reset": "2026-07-06T08:45:08Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a16d5f3dcb4513d0-BCN",
+			"cf-ray": "a16d54dedfda589a-BCN",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Mon, 06 Jul 2026 08:52:13 GMT",
-			"request-id": "req_011CckX6PmDmiz6VpEgDVxj3",
+			"date": "Mon, 06 Jul 2026 08:45:10 GMT",
+			"request-id": "req_011CckWZ5cCxTdKpxXsHDHfM",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-5b8273c6ac96500163ab28c6c358efcb-ff4cec2c74a5069e-01",
+			"traceresponse": "00-c629ba9e76d576cd6e5f26e49c3eccda-a115b633407cc82c-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"

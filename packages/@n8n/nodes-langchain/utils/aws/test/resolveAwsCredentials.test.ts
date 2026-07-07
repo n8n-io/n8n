@@ -127,6 +127,48 @@ describe('resolveAwsCredentials — IAM path', () => {
 		await resolveAwsCredentials(context, 3);
 		expect(context.getNodeParameter).toHaveBeenCalledWith('authentication', 3, 'iam');
 	});
+
+	it('throws when region is not a supported AWS region', async () => {
+		const context = makeContext({
+			authentication: 'iam',
+			awsCredential: {
+				region: 'not-a-region',
+				accessKeyId: 'AKIATEST',
+				secretAccessKey: 'SECRET',
+				temporaryCredentials: false,
+			},
+		});
+		await expect(resolveAwsCredentials(context)).rejects.toThrow(UserError);
+		await expect(resolveAwsCredentials(context)).rejects.toThrow('Unsupported AWS region');
+	});
+
+	it('accepts the China partition region', async () => {
+		const context = makeContext({
+			authentication: 'iam',
+			awsCredential: {
+				region: 'cn-north-1',
+				accessKeyId: 'AKIATEST',
+				secretAccessKey: 'SECRET',
+				temporaryCredentials: false,
+			},
+		});
+		const result = await resolveAwsCredentials(context);
+		expect(result.region).toBe('cn-north-1');
+	});
+
+	it('accepts the GovCloud partition region', async () => {
+		const context = makeContext({
+			authentication: 'iam',
+			awsCredential: {
+				region: 'us-gov-west-1',
+				accessKeyId: 'AKIATEST',
+				secretAccessKey: 'SECRET',
+				temporaryCredentials: false,
+			},
+		});
+		const result = await resolveAwsCredentials(context);
+		expect(result.region).toBe('us-gov-west-1');
+	});
 });
 
 describe('resolveAwsCredentials — AssumeRole path', () => {
