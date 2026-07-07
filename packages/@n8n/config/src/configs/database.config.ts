@@ -176,6 +176,10 @@ export class DatabaseConfig {
 	 * connection is considered lost and the DataSource is torn down and
 	 * reinitialized (full pool recovery).
 	 *
+	 * Postgres-only: sqlite never runs pool recovery (a failed ping on a local
+	 * file means a busy pool, not a lost connection), so this has no effect there.
+	 * (Postgres-only environment variables should ideally move to `PostgresConfig`)
+	 *
 	 * Recovery is disruptive (it destroys and recreates the connection pool),
 	 * so this guards against a single transient blip triggering it. With the
 	 * default `DB_PING_INTERVAL_SECONDS=2`, the default of 3 means recovery

@@ -368,6 +368,45 @@ describe('DbConnectionMonitor', () => {
 			expect(recoverSpy).toHaveBeenCalledTimes(1);
 		});
 
+		it('should not trigger recovery for non-Postgres datasources after consecutive failures', async () => {
+			// Sqlite is a local file: a timed-out ping means a saturated pool, not a lost connection.
+			const sqliteDataSource = mockDeep<DataSource>({ options: { type: 'sqlite-pooled' } });
+			// @ts-expect-error readonly property
+			sqliteDataSource.isInitialized = true;
+			sqliteDataSource.query.mockRejectedValue(new Error('Database connection timed out'));
+			const sqliteMonitor = new DbConnectionMonitor(
+				sqliteDataSource,
+				onConnectedChange,
+				databaseConfig,
+				logger,
+				errorReporter,
+				dbConnectionMetrics,
+			);
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			vi.spyOn(sqliteMonitor as any, 'scheduleNextPing').mockImplementation(() => {});
+			const recoverSpy = vi
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				.spyOn(sqliteMonitor as any, 'recoverDataSource')
+				.mockResolvedValue(undefined);
+
+			// @ts-expect-error private property
+			await sqliteMonitor.ping();
+			// @ts-expect-error private property
+			await sqliteMonitor.ping();
+			// @ts-expect-error private property
+			await sqliteMonitor.ping();
+			// @ts-expect-error private property
+			await sqliteMonitor.ping();
+
+			expect(recoverSpy).not.toHaveBeenCalled();
+			// Readiness state still tracks the failure.
+			expect(onConnectedChange).toHaveBeenLastCalledWith(false);
+			// The failure log shows a plain count, not a "/threshold" that implies a teardown.
+			expect(logger.warn).toHaveBeenLastCalledWith(
+				expect.stringContaining('Database ping failed (4):'),
+			);
+		});
+
 		it('should report and recover from an unexpected throw inside recoverDataSource', async () => {
 			// If something throws between `this.recovering = true` and the inner try/catch
 			// inside recoverDataSource (e.g. a broken logger), the outer try/catch/finally
@@ -505,6 +544,26 @@ describe('DbConnectionMonitor', () => {
 
 			expect(dataSource.destroy).not.toHaveBeenCalled();
 			expect(dataSource.initialize).not.toHaveBeenCalled();
+		});
+
+		it('should be a no-op for non-Postgres datasources', async () => {
+			const sqliteDataSource = mockDeep<DataSource>({ options: { type: 'sqlite-pooled' } });
+			// @ts-expect-error readonly property
+			sqliteDataSource.isInitialized = true;
+			const sqliteMonitor = new DbConnectionMonitor(
+				sqliteDataSource,
+				onConnectedChange,
+				databaseConfig,
+				logger,
+				errorReporter,
+				dbConnectionMetrics,
+			);
+
+			// @ts-expect-error private property
+			await sqliteMonitor.recoverDataSource();
+
+			expect(sqliteDataSource.destroy).not.toHaveBeenCalled();
+			expect(sqliteDataSource.initialize).not.toHaveBeenCalled();
 		});
 
 		it('should back off between failed recovery attempts and eventually succeed', async () => {
