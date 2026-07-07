@@ -67,6 +67,7 @@ export class McpTrigger extends Node {
 			},
 		],
 		outputs: [],
+		sensitiveOutputFields: ['headers.authorization', 'headers.cookie'],
 		credentials: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
@@ -226,6 +227,10 @@ export class McpTrigger extends Node {
 						const workflowData = {
 							...(toolCallInfo && { mcpToolCall: toolCallInfo }),
 							...(messageId && { mcpMessageId: messageId }),
+							// Expose the incoming request headers to the workflow, matching the
+							// Webhook node. Lets multi-user MCP clients pass caller identity
+							// (e.g. x-user-id, x-tenant-id) for per-user routing and auth.
+							headers: req.headers,
 						};
 						return {
 							noWebhookResponse: true,
