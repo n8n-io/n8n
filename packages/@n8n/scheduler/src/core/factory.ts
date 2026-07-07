@@ -98,6 +98,23 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 		);
 	}
 
+	// A non-positive or NaN interval collapses to setTimeout's 1ms floor,
+	// turning the pass into a hot loop against task storage.
+	const intervalKeys = [
+		'materializerIntervalSeconds',
+		'executorIntervalSeconds',
+		'reaperIntervalSeconds',
+		'retentionIntervalSeconds',
+	] as const;
+	for (const key of intervalKeys) {
+		const value = lifecycleOptions[key];
+		if (!(Number.isFinite(value) && value > 0)) {
+			throw new InvalidLifecycleOptionsError(
+				`${key} must be a positive number of seconds, got ${value}`,
+			);
+		}
+	}
+
 	const emit = (level: SchedulerEventLevel, message: string, context: Record<string, unknown>) => {
 		// The sink is the reporting channel itself: if it throws (a broken logger),
 		// there is nothing left to report through, and the pass that emitted must

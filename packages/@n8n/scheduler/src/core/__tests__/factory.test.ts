@@ -482,6 +482,21 @@ describe('createScheduler lifecycle config', () => {
 			InvalidLifecycleOptionsError,
 		);
 	});
+
+	it('rejects a pass interval that would collapse the loop into a hot retry', () => {
+		expect(() => makeScheduler({ lifecycle: { materializerIntervalSeconds: 0 } })).toThrow(
+			InvalidLifecycleOptionsError,
+		);
+		expect(() => makeScheduler({ lifecycle: { executorIntervalSeconds: -5 } })).toThrow(
+			InvalidLifecycleOptionsError,
+		);
+		expect(() => makeScheduler({ lifecycle: { reaperIntervalSeconds: NaN } })).toThrow(
+			InvalidLifecycleOptionsError,
+		);
+		expect(() => makeScheduler({ lifecycle: { retentionIntervalSeconds: Infinity } })).toThrow(
+			InvalidLifecycleOptionsError,
+		);
+	});
 });
 
 describe('createScheduler reap', () => {
