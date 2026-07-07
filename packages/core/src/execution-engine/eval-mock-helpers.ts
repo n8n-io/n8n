@@ -165,7 +165,14 @@ export function serializeMockToHttpResponse(
 	return { ...common, body: mock.body, __bodyResolved: true };
 }
 
-/** Normalize legacy IRequestOptions or (uri, options) args into IHttpRequestOptions for the eval mock handler. */
+/**
+ * Normalize legacy IRequestOptions or (uri, options) args into IHttpRequestOptions
+ * for the eval mock handler. The legacy API has three mutually exclusive body
+ * slots: `body`, `formData` (multipart), and `form` (URL-encoded) — fold them
+ * all into `body` so the mock layer sees the payload regardless of transport
+ * encoding (the binary redactor reduces multipart to part metadata before the
+ * LLM).
+ */
 export function normalizeLegacyRequest(
 	uriOrObject: string | IRequestOptions,
 	options?: IRequestOptions,
@@ -175,7 +182,7 @@ export function normalizeLegacyRequest(
 			url: uriOrObject,
 			method: options?.method,
 			headers: options?.headers,
-			body: options?.body as IHttpRequestOptions['body'],
+			body: (options?.body ?? options?.formData ?? options?.form) as IHttpRequestOptions['body'],
 			qs: options?.qs,
 		};
 	}
@@ -183,7 +190,9 @@ export function normalizeLegacyRequest(
 		url: uriOrObject.uri ?? uriOrObject.url ?? '',
 		method: uriOrObject.method,
 		headers: uriOrObject.headers,
-		body: uriOrObject.body as IHttpRequestOptions['body'],
+		body: (uriOrObject.body ??
+			uriOrObject.formData ??
+			uriOrObject.form) as IHttpRequestOptions['body'],
 		qs: uriOrObject.qs,
 	};
 }

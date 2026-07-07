@@ -1,5 +1,6 @@
 import type { WorkflowsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
@@ -9,7 +10,6 @@ import {
 	type IPinData,
 	type IWorkflowExecutionDataProcess,
 	type WorkflowExecuteMode,
-	ensureError,
 	jsonStringify,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	createRunExecutionData,

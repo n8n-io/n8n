@@ -8,7 +8,6 @@ const INDEX_LAZY_REQUIRE_TEST_SPECS = new Set([
 	'./domain-access',
 	'./agent/sub-agent-factory',
 	'./tools/web-research/sanitize-web-content',
-	'./tools/orchestration/delegate.tool',
 	'./tools',
 	'./tools/orchestration/agent-persistence',
 	'./tracing/trace-replay',
@@ -84,29 +83,12 @@ function rewriteLazyRequireForTests(): Plugin {
 	};
 }
 
-export default mergeConfig(
-	createVitestConfig({
-		// Parity with the previous root Jest config, which set `restoreMocks: true`.
-		// Most test files rely on mocks being restored automatically between tests.
-		restoreMocks: true,
-	}),
-	{
-		plugins: [rewriteLazyRequireForTests()],
-		resolve: {
-			alias: [
-				{ find: '@', replacement: path.resolve(__dirname, './src') },
-				// zod has dual ESM/CJS exports (two separate `ZodType` class identities).
-				// Workspace deps CJS-require zod while test files ESM-import it, so
-				// `instanceof` checks (e.g. in sanitize-mcp-schemas) fail across the two
-				// module instances. Pin the top-level `zod` import to the CJS file so all
-				// code paths share one instance. `require.resolve` follows zod's `require`
-				// export condition, so it tracks the installed (catalog) version
-				// automatically. Subpaths like `zod/v4` resolve normally.
-				{
-					find: /^zod$/,
-					replacement: require.resolve('zod'),
-				},
-			],
-		},
+// `zod` is pinned to its CJS build (via `pinCjs`) so `instanceof` checks (e.g. in
+// sanitize-mcp-schemas) hold against zod objects created in externalized CJS workspace
+// deps. See `cjsPinAliases` in @n8n/vitest-config/node for the rationale.
+export default mergeConfig(createVitestConfig({}, { pinCjs: ['zod'] }), {
+	plugins: [rewriteLazyRequireForTests()],
+	resolve: {
+		alias: [{ find: '@', replacement: path.resolve(__dirname, './src') }],
 	},
-);
+});

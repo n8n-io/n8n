@@ -125,6 +125,10 @@ take precedence.
 > **Note:** `--allowed-origins` is CLI-only and cannot be configured via environment variables.
 > This is intentional — it prevents a malicious actor from overriding the allowlist via an env var.
 
+> **Note:** When connecting to a non-cloud instance (any origin not matching
+> `https://*.app.n8n.cloud`), resource confirmations are always prompted in the terminal —
+> instance-side confirmation is only available for n8n cloud instances.
+
 ## Module reference
 
 ### Filesystem (read)

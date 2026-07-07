@@ -7,6 +7,7 @@ import type {
 } from './chat-hub';
 import type { QuickConnectOption } from './quick-connect';
 import type { InsightsDateRange } from './schemas/insights.schema';
+import type { WorkflowReviewsPolicy } from './workflow-reviews-policy';
 
 export interface IVersionNotificationSettings {
 	enabled: boolean;
@@ -67,6 +68,7 @@ export interface IEnterpriseSettings {
 	personalSpacePolicy: boolean;
 	dataRedaction: boolean;
 	otelCustomSpanAttributes: boolean;
+	workflowReviews: boolean;
 }
 
 export interface FrontendSettings {
@@ -167,6 +169,7 @@ export interface FrontendSettings {
 	};
 	workflowTagsDisabled: boolean;
 	workflowsAutosaveDisabled: boolean;
+	useWorkflowPublicationService: boolean;
 	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
 	previewMode: boolean;
@@ -214,6 +217,7 @@ export interface FrontendSettings {
 		enabled: boolean;
 		enforced: boolean;
 	};
+	workflowReviews?: WorkflowReviewsPolicy;
 	folders: {
 		enabled: boolean;
 	};

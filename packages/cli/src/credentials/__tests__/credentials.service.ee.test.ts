@@ -8,6 +8,7 @@ import type {
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import type { CredentialConnectionStatusProxy } from '@/credentials/credential-connection-status-proxy';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
@@ -27,6 +28,7 @@ describe('EnterpriseCredentialsService', () => {
 	const externalSecretsConfig = mock<ExternalSecretsConfig>();
 	const externalSecretsProviderAccessCheckService = mock<SecretsProviderAccessCheckService>();
 	const licenseState = mock<LicenseState>();
+	const connectionStatusProxy = mock<CredentialConnectionStatusProxy>();
 
 	const service = new EnterpriseCredentialsService(
 		sharedCredentialsRepository,
@@ -38,6 +40,7 @@ describe('EnterpriseCredentialsService', () => {
 		externalSecretsConfig,
 		externalSecretsProviderAccessCheckService,
 		licenseState,
+		connectionStatusProxy,
 	);
 
 	beforeEach(() => {
@@ -190,6 +193,39 @@ describe('EnterpriseCredentialsService', () => {
 				expect(
 					externalSecretsProviderAccessCheckService.isProviderAvailableInProject,
 				).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('per-user connection reconciliation', () => {
+			beforeEach(() => {
+				// keep the external-secrets branch out of the way
+				externalSecretsConfig.externalSecretsForProjects = false;
+			});
+
+			it('reconciles connections for every project that shared the credential', async () => {
+				const sharee = mock<SharedCredentials>({
+					credentialsId: credentialId,
+					projectId: 'shared-project-id',
+					role: 'credential:user',
+				});
+				credentialsFinderService.findCredentialForUser.mockResolvedValue(
+					mock<CredentialsEntity>({
+						id: credentialId,
+						name: 'Test Credential',
+						type: 'testApi',
+						data: 'encrypted-data',
+						shared: [ownerSharing, sharee],
+					}),
+				);
+				const trx = mockTransactionManager();
+
+				await service.transferOne(user, credentialId, destinationProjectId);
+
+				expect(connectionStatusProxy.cleanupOrphanedEntriesForProjects).toHaveBeenCalledWith(
+					credentialId,
+					[sourceProjectId, 'shared-project-id'],
+					trx,
+				);
 			});
 		});
 	});

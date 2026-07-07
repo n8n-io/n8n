@@ -650,16 +650,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	private getStatusCondition(status?: ExecutionStatus) {
 		const condition: Pick<FindOptionsWhere<IExecutionFlattedDb>, 'status'> = {};
 
-		if (status === 'success') {
-			condition.status = 'success';
-		} else if (status === 'waiting') {
-			condition.status = 'waiting';
-		} else if (status === 'error') {
-			condition.status = In(['error', 'crashed']);
-		} else if (status === 'canceled') {
-			condition.status = 'canceled';
-		} else if (status === 'running') {
-			condition.status = 'running';
+		if (status) {
+			condition.status = status;
 		}
 
 		return condition;

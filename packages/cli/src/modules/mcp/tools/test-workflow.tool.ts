@@ -1,13 +1,13 @@
 import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { normalizePinData } from '@n8n/workflow-sdk';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	type INode,
 	type IPinData,
 	type INodeExecutionData,
 	type IWorkflowExecutionDataProcess,
 	createRunExecutionData,
-	ensureError,
 	isTriggerNode,
 } from 'n8n-workflow';
 import z from 'zod';

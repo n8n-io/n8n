@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "2.29.0",
+  "version": "2.30.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -159,6 +159,7 @@
     "@n8n/mcp-browser": "workspace:*",
     "@n8n/n8n-nodes-langchain": "workspace:*",
     "@n8n/permissions": "workspace:*",
+    "@n8n/scheduler": "workspace:*",
     "@n8n/syslog-client": "workspace:*",
     "@n8n/task-runner": "workspace:*",
     "@n8n/typeorm": "workspace:*",
@@ -220,6 +221,7 @@
     "ldapts": "catalog:",
     "linkedom": "^0.18.9",
     "lodash": "catalog:",
+    "lru-cache": "catalog:",
     "luxon": "catalog:",
     "moment-timezone": "catalog:",
     "ms": "catalog:",

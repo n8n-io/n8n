@@ -3,6 +3,7 @@ import {
 	REVEAL_BUTTON_PATTERN,
 	REVEAL_PHRASE_PATTERNS,
 	SENSITIVE_ARIA_LABEL_PATTERN,
+	SENSITIVE_FIELD_LABEL_PATTERN,
 	SENSITIVE_TESTID_PATTERN,
 	shannonEntropy,
 } from './dom-matchers';
@@ -98,6 +99,30 @@ describe('SENSITIVE_ARIA_LABEL_PATTERN', () => {
 		'does not match neutral aria-label %p',
 		(label) => {
 			expect(SENSITIVE_ARIA_LABEL_PATTERN.test(label)).toBe(false);
+		},
+	);
+});
+
+describe('SENSITIVE_FIELD_LABEL_PATTERN', () => {
+	it.each([
+		'Client Secret',
+		'Signing Secret',
+		'Token',
+		'Verification Token',
+		'Personal Access Token',
+		'App password',
+		'API Key',
+		'Access key',
+		'Private key',
+		'Account credential',
+	])('matches secret field label %p', (label) => {
+		expect(SENSITIVE_FIELD_LABEL_PATTERN.test(label)).toBe(true);
+	});
+
+	it.each(['Client ID', 'App ID', 'App name', 'Date of App Creation', 'Background color'])(
+		'does not match public field label %p',
+		(label) => {
+			expect(SENSITIVE_FIELD_LABEL_PATTERN.test(label)).toBe(false);
 		},
 	);
 });

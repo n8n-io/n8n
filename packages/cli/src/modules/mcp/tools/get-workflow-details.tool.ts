@@ -117,7 +117,7 @@ export async function getWorkflowDetails(
 		user,
 		['workflow:read'],
 		workflowFinderService,
-		{ includeActiveVersion: true },
+		{ includeActiveVersion: true, includeTags: true },
 	);
 
 	// Compute user scopes for this workflow
