@@ -40,6 +40,7 @@ n=$(grep -c '"event":"dev:cli_command"' "$EV" || true)
 [ "$n" -eq 1 ] || fail "expected 1 event, got $n"
 grep -qF '"args":["build","--filter","x"]' "$EV" || fail "argv not captured faithfully"
 grep -q '"binary_version":"9.9.9"' "$EV" || fail "version not detected"
+grep -q '"cpu_cores"' "$EV" || fail "machine info not captured"
 
 node "$SRC/setup.mjs" --reset >/dev/null
 grep -q "REAL" "$BIN/pnpm" || fail "original not restored"

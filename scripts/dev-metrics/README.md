@@ -67,12 +67,16 @@ Event `dev:cli_command` with `anonymousId` = the weekly anonymous id, and:
 | `duration_ms` | `41230` | Wall-clock duration. |
 | `exit_code` | `0` | The command's exit code. |
 | `os` / `arch` | `darwin` / `arm64` | |
+| `cpu_cores` / `cpu_model` | `10` / `Apple M2 Pro` | Static machine profile — informs tooling defaults (memory caps, turbo concurrency). |
+| `mem_gb` / `mem_free_gb` | `32` / `3.21` | Total RAM class and free RAM at command start (headroom for memory tuning). |
+| `os_version` | `macOS 14.6.1`, `Ubuntu 22.04` | Friendly OS version where cheap; kernel release otherwise. |
 | `node_version`, `repo_version`, `schema_version` | | For segmenting. |
 
 **Sent:** the raw argv (`args`), plus the repo-relative `dir`, binary + version,
-timing, exit code, and OS. **Never sent:** git email, username, absolute paths as
-a field (the `dir` is repo-relative). Since `args` is verbatim, anything typed on
-the command line is transmitted as-is — scrub/aggregate on the collection side.
+timing, exit code, OS, and a static machine profile (CPU/RAM/OS version — none of
+it identifying). **Never sent:** git email, username, absolute paths as a field
+(the `dir` is repo-relative). Since `args` is verbatim, anything typed on the
+command line is transmitted as-is — scrub/aggregate on the collection side.
 
 One lifecycle event is also sent: **`dev:metrics_opt_in`**, fired once when a
 developer opts in (the transition into `granted`), under the same anonymous
@@ -170,3 +174,7 @@ analytics tool), query the `dev:cli_command` events there:
 - **Which packages:** group by `dir`.
 - **How long commands take:** p50/p90 of `duration_ms`, grouped by the derived
   subcommand.
+- **Fleet profile:** distribution of `mem_gb` / `cpu_cores`, Apple-Silicon vs
+  Intel vs Linux split via `cpu_model`/`arch`, OS versions via `os_version` — to
+  tune tooling defaults (e.g. `pnpm agent:setup` memory caps and concurrency)
+  against the machines devs actually run.

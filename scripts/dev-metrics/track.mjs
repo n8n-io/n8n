@@ -5,9 +5,10 @@
  * Invoked fire-and-forget (backgrounded) by the shim (shadow-shim.sh) that
  * replaces each tracked binary, after every shadowed command run inside an n8n
  * checkout. It records the binary, its raw argv, wall-clock duration and exit
- * code to the `n8n-dev` RudderStack workspace under a weekly-rotating anonymous
- * id, so we can see which commands are used, how long they take, and roughly how
- * many developers run them each week.
+ * code, plus a static machine profile (CPU/RAM/OS), to the `n8n-dev` RudderStack
+ * workspace under a weekly-rotating anonymous id, so we can see which commands
+ * are used, how long they take, roughly how many developers run them each week,
+ * and the specs of the machines they build on.
  *
  * Today only `pnpm` is shadowed; add another CLI to SHADOWED_BINARIES in setup.mjs.
  *
@@ -24,11 +25,11 @@
  * downstream — so anything on the command line is transmitted; scrub downstream.
  * `dir` is repo-relative. Errors are swallowed so tracking never disrupts a workflow.
  */
-// n8n-track-version: 1 — bump on change; setup.mjs never downgrades the installed copy.
+// n8n-track-version: 2 — bump on change; setup.mjs never downgrades the installed copy.
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { cpus, freemem, homedir, release, totalmem } from 'node:os';
 import { dirname, join, parse, relative } from 'node:path';
 
 // Telemetry goes to the `n8n-dev` RudderStack workspace via its HTTP tracking
@@ -39,7 +40,7 @@ const RUDDERSTACK_URL =
 const RUDDERSTACK_KEY =
 	process.env.N8N_DEV_METRICS_RUDDERSTACK_KEY ?? '3G8092ezCyr6CR7xqyCETovbMM8';
 const EVENT_NAME = 'dev:cli_command';
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 const POST_TIMEOUT_MS = 2000;
 
 /** Walk up from `start` to the n8n monorepo root (package.json name === n8n-monorepo). */
@@ -132,6 +133,37 @@ function detectActor() {
 	return 'human';
 }
 
+/** Human-friendly OS version where it's cheap; kernel release otherwise. */
+function osVersion() {
+	try {
+		if (process.platform === 'darwin') {
+			// ponytail: one tiny spawn for the marketing version; drop to release() if it ever matters.
+			const v = execFileSync('sw_vers', ['-productVersion'], { encoding: 'utf8', timeout: 1000 });
+			return `macOS ${v.trim()}`;
+		}
+		if (process.platform === 'linux') {
+			const m = readFileSync('/etc/os-release', 'utf8').match(/^PRETTY_NAME="?(.+?)"?$/m);
+			if (m) return m[1];
+		}
+	} catch {
+		// fall through to the kernel release
+	}
+	return release();
+}
+
+/** Static machine profile (hardware + OS), for segmenting usage by the fleet's specs. */
+function machineInfo() {
+	const cores = cpus();
+	const gb = (bytes) => Math.round((bytes / 1024 ** 3) * 100) / 100;
+	return {
+		cpu_cores: cores.length || null,
+		cpu_model: cores[0]?.model?.trim().slice(0, 64) ?? null,
+		mem_gb: Math.round(totalmem() / 1024 ** 3), // total RAM class (8/16/32…)
+		mem_free_gb: gb(freemem()), // headroom at command start — the memory-cap signal
+		os_version: osVersion(),
+	};
+}
+
 async function sendEvent(event, anonymousId, properties) {
 	await fetch(`${RUDDERSTACK_URL}/v1/track`, {
 		method: 'POST',
@@ -165,6 +197,7 @@ async function main() {
 			os: process.platform,
 			arch: process.arch,
 			node_version: process.versions.node,
+			...machineInfo(),
 			repo_version: repo.pkg?.version ?? null,
 			schema_version: SCHEMA_VERSION,
 		});
@@ -189,6 +222,7 @@ async function main() {
 		os: process.platform,
 		arch: process.arch,
 		node_version: process.versions.node,
+		...machineInfo(),
 		repo_version: repo.pkg?.version ?? null,
 		schema_version: SCHEMA_VERSION,
 	});
