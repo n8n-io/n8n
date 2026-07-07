@@ -143,7 +143,10 @@ export const useEvalCollectionsStore = defineStore(STORES.EVAL_COLLECTIONS, () =
 		};
 
 		// Refresh detail so subsequent navigation has run rows + polling armed.
-		await fetchCollectionDetail(workflowId, record.id);
+		// Best-effort: the collection is already created server-side, so a
+		// transient detail/polling failure must not surface as a create failure
+		// (which would push the user to retry and create a duplicate).
+		await fetchCollectionDetail(workflowId, record.id).catch(() => null);
 		return response;
 	};
 

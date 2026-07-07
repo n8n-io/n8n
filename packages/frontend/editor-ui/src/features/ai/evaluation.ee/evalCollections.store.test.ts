@@ -209,6 +209,28 @@ describe('evalCollections.store', () => {
 			expect(result.runsStartedIds).toEqual(['run-x']);
 			expect(store.getCollections('wf-1').map((c) => c.id)).toEqual(['col-2', 'col-1']);
 		});
+
+		it('resolves and keeps the record when the post-create detail refresh fails', async () => {
+			await store.fetchCollections('wf-1');
+			createCollection.mockResolvedValue({
+				...RECORD,
+				id: 'col-2',
+				runsStartedIds: [],
+			} satisfies CreateCollectionResponse);
+			// The collection exists server-side; a failing detail refresh must not
+			// bubble up as a create failure (which would prompt a duplicate retry).
+			getCollection.mockRejectedValueOnce(new Error('detail fetch failed'));
+
+			await expect(
+				store.createCollection('wf-1', {
+					name: 'New',
+					evaluationConfigId: 'cfg-1',
+					versions: [{ workflowVersionId: null }],
+				}),
+			).resolves.toMatchObject({ id: 'col-2' });
+
+			expect(store.getCollections('wf-1').map((c) => c.id)).toContain('col-2');
+		});
 	});
 
 	describe('deleteCollection', () => {

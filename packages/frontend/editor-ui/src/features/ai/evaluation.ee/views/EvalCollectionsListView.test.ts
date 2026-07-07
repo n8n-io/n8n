@@ -156,6 +156,22 @@ describe('EvalCollectionsListView', () => {
 		expect(rows).toHaveLength(1);
 	});
 
+	it('stops both collection and test-run polling on unmount', async () => {
+		const evalCleanup = vi.fn();
+		const runCleanup = vi.fn();
+		store.cleanupPolling = evalCleanup as unknown as typeof store.cleanupPolling;
+		evaluationStore.cleanupPolling = runCleanup as unknown as typeof evaluationStore.cleanupPolling;
+
+		const { unmount } = setup();
+		await waitFor(() => expect(store.fetchCollections).toHaveBeenCalled());
+		unmount();
+
+		// The view arms the evaluation store's per-run poll via fetchTestRuns, so
+		// it must tear that down too — not just the collection poll.
+		expect(evalCleanup).toHaveBeenCalled();
+		expect(runCleanup).toHaveBeenCalled();
+	});
+
 	it('opens the wizard when the New collection button is clicked', async () => {
 		const { findByTestId } = setup();
 

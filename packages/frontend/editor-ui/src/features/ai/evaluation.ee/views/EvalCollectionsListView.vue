@@ -48,7 +48,12 @@ const onOpenWizard = () => {
 };
 
 const onCreated = async () => {
-	await store.fetchCollections(props.workflowId);
+	// Refresh both: the new collection card AND the test runs, so any runs that
+	// were pulled into the collection stop showing under "Ungrouped runs".
+	await Promise.all([
+		store.fetchCollections(props.workflowId),
+		evaluationStore.fetchTestRuns(props.workflowId),
+	]);
 };
 
 const loadForWorkflow = async (workflowId: string) => {
@@ -59,7 +64,7 @@ const loadForWorkflow = async (workflowId: string) => {
 			evaluationStore.fetchTestRuns(workflowId),
 		]);
 		// Pre-fetch first 3 details so mini bar charts render on first paint;
-		// further cards lazy-load via `mouseenter` on the card.
+		// further cards lazy-load when they scroll into view (see CollectionCard).
 		await Promise.all(
 			store
 				.getCollections(workflowId)
@@ -75,21 +80,28 @@ onMounted(async () => {
 	await loadForWorkflow(props.workflowId);
 });
 
+// Tear down every polling loop this view starts. It arms two: the collections
+// store's own poll AND the evaluation store's per-run poll (via fetchTestRuns).
+const stopAllPolling = () => {
+	store.cleanupPolling();
+	evaluationStore.cleanupPolling();
+};
+
 // The evaluation route reuses this component instance across workflows (only
 // the `:workflowId` param changes), so `onBeforeUnmount` doesn't fire on that
-// navigation. Tear down the previous workflow's polling loop and reload, or a
+// navigation. Tear down the previous workflow's polling loops and reload, or a
 // stale timer keeps hitting the backend for a workflow the user has left.
 watch(
 	() => props.workflowId,
 	async (next, prev) => {
 		if (next === prev) return;
-		store.cleanupPolling();
+		stopAllPolling();
 		await loadForWorkflow(next);
 	},
 );
 
 onBeforeUnmount(() => {
-	store.cleanupPolling();
+	stopAllPolling();
 });
 </script>
 

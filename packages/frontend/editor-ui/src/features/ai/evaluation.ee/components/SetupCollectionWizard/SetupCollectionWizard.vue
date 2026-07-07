@@ -75,29 +75,14 @@ const datasetLabel = computed(() => {
 	return configs.value.find((c) => c.id === selectedConfigId.value)?.name ?? '';
 });
 
+// The config's metrics, all of which are recorded for every version in the
+// collection. Shown read-only — there's no backend field to scope a subset
+// yet, so a per-metric toggle would be a no-op affordance.
 const allMetricNames = computed<string[]>(() => {
 	if (!selectedConfigId.value) return [];
 	const cfg = configs.value.find((c) => c.id === selectedConfigId.value);
 	return (cfg?.metrics ?? []).map((m) => m.name);
 });
-
-// User-toggleable subset of the config's metrics. Defaults to all-selected
-// because the create flow always records every metric in the collection
-// today (no backend payload field carries a subset yet). Deselecting acts
-// as a visual filter on the eventual compare view; selection state is kept
-// in the wizard locally so the user can scope down before submit.
-const selectedMetricNames = ref<Set<string>>(new Set());
-
-watch(allMetricNames, (next) => {
-	selectedMetricNames.value = new Set(next);
-});
-
-const toggleMetric = (metricName: string) => {
-	const next = new Set(selectedMetricNames.value);
-	if (next.has(metricName)) next.delete(metricName);
-	else next.add(metricName);
-	selectedMetricNames.value = next;
-};
 
 const sourceOptions = computed(() => {
 	const seen = new Set<string>();
@@ -220,7 +205,6 @@ const reset = () => {
 	name.value = '';
 	selectedConfigId.value = null;
 	selectedVersionKeys.value = new Set();
-	selectedMetricNames.value = new Set();
 	state.value = 'collecting';
 	sourceFilter.value = 'all';
 	sortOrder.value = 'recent';
@@ -374,21 +358,15 @@ const onSubmit = async () => {
 					</N8nText>
 				</div>
 				<div :class="$style.metricsRow">
-					<button
+					<span
 						v-for="metric in allMetricNames"
 						:key="metric"
-						type="button"
-						:class="[
-							$style.metricPill,
-							selectedMetricNames.has(metric) && $style.metricPill_selected,
-						]"
-						:aria-pressed="selectedMetricNames.has(metric)"
+						:class="[$style.metricPill, $style.metricPill_static]"
 						data-test-id="setup-collection-wizard-metric"
-						@click="toggleMetric(metric)"
 					>
-						<N8nIcon :icon="selectedMetricNames.has(metric) ? 'check' : 'plus'" size="xsmall" />
+						<N8nIcon icon="check" size="xsmall" />
 						<span>{{ metric }}</span>
-					</button>
+					</span>
 					<N8nTooltip
 						v-if="allMetricNames.length > 0"
 						placement="top"
@@ -499,18 +477,10 @@ const onSubmit = async () => {
 	font-size: var(--font-size--xs);
 	font-weight: var(--font-weight--medium);
 	line-height: 1.2;
-	cursor: pointer;
-	transition:
-		background-color var(--animation--duration--snappy) var(--animation--easing),
-		border-color var(--animation--duration--snappy) var(--animation--easing),
-		color var(--animation--duration--snappy) var(--animation--easing);
-
-	&:hover {
-		border-color: var(--border-color--strong);
-	}
 }
 
-.metricPill_selected {
+// Read-only chip: every listed metric is recorded for the collection.
+.metricPill_static {
 	background: var(--background--success);
 	border-color: var(--border-color--success);
 	color: var(--text-color--success);

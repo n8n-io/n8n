@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { N8nBadge, N8nButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
+import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 import { useEvalCollectionsStore } from '../../evalCollections.store';
 import type {
 	EvaluationCollectionDetail,
@@ -132,22 +133,33 @@ const groups = computed(() => {
 	}));
 });
 
-// Lazy-load detail when the card scrolls into view via hover. Avoids
-// firing N detail requests on the initial paint when the list has many
-// collections.
+// Lazy-load detail when the card scrolls into view, so cards past the first
+// few (which the list pre-fetches) populate their status/chips/chart without
+// depending on a pointer — works for touch, keyboard, and scroll alike. The
+// `requested` guard avoids duplicate in-flight fetches while detail is loading;
+// it resets on failure so a re-intersect can retry.
+const cardRef = ref<HTMLElement | null>(null);
+const requested = ref(false);
+
 const ensureDetailLoaded = () => {
-	if (!props.detail) {
-		void store.fetchCollectionDetail(props.workflowId, props.collection.id).catch(() => null);
-	}
+	if (props.detail || requested.value) return;
+	requested.value = true;
+	void store.fetchCollectionDetail(props.workflowId, props.collection.id).catch(() => {
+		requested.value = false;
+	});
 };
+
+const { observe } = useIntersectionObserver({
+	root: ref(null),
+	onIntersect: ensureDetailLoaded,
+	once: false,
+});
+
+onMounted(() => observe(cardRef.value));
 </script>
 
 <template>
-	<article
-		:class="$style.card"
-		data-test-id="eval-collections-card"
-		@mouseenter="ensureDetailLoaded"
-	>
+	<article ref="cardRef" :class="$style.card" data-test-id="eval-collections-card">
 		<div :class="$style.cardTopRow">
 			<div :class="$style.cardHeader">
 				<div :class="$style.cardHeading">
