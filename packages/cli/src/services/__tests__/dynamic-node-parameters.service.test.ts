@@ -93,7 +93,7 @@ describe('DynamicNodeParametersService', () => {
 		let releaseSpy: MockInstance;
 
 		beforeEach(() => {
-			acquireSpy = vi.spyOn(Expression.prototype, 'acquireIsolate').mockResolvedValue(undefined);
+			acquireSpy = vi.spyOn(Expression.prototype, 'acquireIsolate').mockResolvedValue(true);
 			releaseSpy = vi.spyOn(Expression.prototype, 'releaseIsolate').mockResolvedValue(undefined);
 		});
 

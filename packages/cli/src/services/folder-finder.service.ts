@@ -56,6 +56,17 @@ export class FolderFinderService {
 		return await this.findFoldersByIdsForUser(allFolderIds, user, scopes);
 	}
 
+	/**
+	 * List all folder ids in a project
+	 */
+	async findFolderIdsInProject(projectId: string): Promise<string[]> {
+		const folders = await this.folderRepository.find({
+			where: { homeProject: { id: projectId } },
+			select: { id: true },
+		});
+		return folders.map((folder) => folder.id);
+	}
+
 	private async buildFolderReadWhere(
 		user: User,
 		scopes: Scope[],

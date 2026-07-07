@@ -22,8 +22,25 @@ function textDelta(text: string): InstanceAiEvent {
 	return { type: 'text-delta', runId: 'run-1', agentId: 'agent-1', payload: { text } };
 }
 
+function reasoningDelta(text: string, responseId?: string): InstanceAiEvent {
+	return {
+		type: 'reasoning-delta',
+		runId: 'run-1',
+		agentId: 'agent-1',
+		...(responseId ? { responseId } : {}),
+		payload: { text },
+	};
+}
+
 function collectText(events: InstanceAiEvent[]): string {
 	return events.map((e) => ('payload' in e && 'text' in e.payload ? e.payload.text : '')).join('');
+}
+
+function collectTextOfType(
+	events: InstanceAiEvent[],
+	type: 'text-delta' | 'reasoning-delta',
+): string {
+	return collectText(events.filter((e) => e.type === type));
 }
 
 describe('OutputRedactor', () => {
@@ -63,6 +80,59 @@ describe('OutputRedactor', () => {
 		const text = 'The workflow completed and produced three items successfully.';
 		const emitted = [...redactor.processEvent(textDelta(text)), ...redactor.flush()];
 		expect(collectText(emitted)).toBe(text);
+	});
+
+	describe('channel switches', () => {
+		const reasoning =
+			'I should check the FAQ sheet first and then decide whether a ticket is needed.';
+		const text = 'Let me start by loading the builder guidance and reviewing the knowledge base.';
+
+		it('releases the reasoning tail before text that follows it', () => {
+			const redactor = createRedactor();
+			const emitted = [
+				...redactor.processEvent(reasoningDelta(reasoning)),
+				...redactor.processEvent(textDelta(text)),
+				...redactor.flush(),
+			];
+
+			// All reasoning must be published before the first text delta —
+			// otherwise the held-back reasoning tail renders as a stray
+			// mid-sentence reasoning block in the UI.
+			const types = emitted.map((e) => e.type);
+			expect(types.lastIndexOf('reasoning-delta')).toBeLessThan(types.indexOf('text-delta'));
+			// No content is lost or reordered within a channel.
+			expect(collectTextOfType(emitted, 'reasoning-delta')).toBe(reasoning);
+			expect(collectTextOfType(emitted, 'text-delta')).toBe(text);
+		});
+
+		it('releases the text tail before reasoning that follows it', () => {
+			const redactor = createRedactor();
+			const emitted = [
+				...redactor.processEvent(textDelta(text)),
+				...redactor.processEvent(reasoningDelta(reasoning)),
+				...redactor.flush(),
+			];
+
+			const types = emitted.map((e) => e.type);
+			expect(types.lastIndexOf('text-delta')).toBeLessThan(types.indexOf('reasoning-delta'));
+			expect(collectTextOfType(emitted, 'text-delta')).toBe(text);
+			expect(collectTextOfType(emitted, 'reasoning-delta')).toBe(reasoning);
+		});
+
+		it('drains the tail under its original responseId', () => {
+			const redactor = createRedactor();
+			const emitted = [
+				...redactor.processEvent(reasoningDelta(reasoning, 'run-1:step:1')),
+				...redactor.processEvent(textDelta(text)),
+				...redactor.flush(),
+			];
+
+			const reasoningEvents = emitted.filter((e) => e.type === 'reasoning-delta');
+			expect(reasoningEvents.length).toBeGreaterThan(1);
+			for (const event of reasoningEvents) {
+				expect(event).toMatchObject({ responseId: 'run-1:step:1' });
+			}
+		});
 	});
 
 	it('preserves responseId on flushed delta text', () => {
@@ -114,6 +184,26 @@ describe('OutputRedactor', () => {
 		const [out] = redactor.processEvent(event);
 		expect(JSON.stringify(out)).toContain('[REDACTED]');
 		expect(JSON.stringify(out)).not.toContain('abcdef1234567890');
+	});
+
+	it('leaves upstream browser redaction markers intact in a tool-result', () => {
+		const redactor = createRedactor();
+		const event: InstanceAiEvent = {
+			type: 'tool-result',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				toolCallId: 'tc-1',
+				result: {
+					snapshot: 'Client Secret [REDACTED:secret:1] Signing Secret [REDACTED:secret:2]',
+				},
+			},
+		};
+		const [out] = redactor.processEvent(event);
+		const serialized = JSON.stringify(out);
+		expect(serialized).not.toContain('[REDACTED:[REDACTED');
+		expect(serialized).toContain('[REDACTED:secret:1]');
+		expect(serialized).toContain('[REDACTED:secret:2]');
 	});
 
 	it('redacts confirmation card display text', () => {

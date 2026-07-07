@@ -119,6 +119,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.workflow_publish_history](public.workflow_publish_history.md) | 6 |  | BASE TABLE |
 | [public.workflow_published_version](public.workflow_published_version.md) | 4 |  | BASE TABLE |
 | [public.workflow_statistics](public.workflow_statistics.md) | 7 |  | BASE TABLE |
+| [public.workflow_statistics_delta](public.workflow_statistics_delta.md) | 6 |  | BASE TABLE |
 | [public.workflows_tags](public.workflows_tags.md) | 2 |  | BASE TABLE |
 
 ## Stored procedures and functions
@@ -1369,6 +1370,14 @@ erDiagram
   timestamp_3__with_time_zone latestEvent
   varchar_128_ name
   bigint rootCount
+  varchar_36_ workflowId
+  varchar_128_ workflowName
+}
+"public.workflow_statistics_delta" {
+  timestamp_3__with_time_zone createdAt
+  bigint id
+  varchar_128_ name
+  smallint rootCountDelta
   varchar_36_ workflowId
   varchar_128_ workflowName
 }

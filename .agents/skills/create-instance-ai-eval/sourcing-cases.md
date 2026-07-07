@@ -46,3 +46,16 @@ connected.)
    authored case ([SKILL.md](SKILL.md), [`case-shapes.md`](case-shapes.md)). The
    failure mode is the anchor; the conversation is yours to write, in the user's
    voice.
+
+## Two practical notes on `get_conversation_analysis`
+
+- **It hands you draft cases.** The response's
+  `aiAnalysis.structured.extractedCases[]` are pre-drafted candidates — each with
+  `expectedBehavior`, `proposedCheck`, and `failurePattern` that map almost 1:1
+  onto `outcomeExpectations` / `processExpectations`. Start from these rather than
+  a blank case (still verify against the raw trace per step 3, and rewrite the
+  prompt in the user's voice). `verdict` and `findings` sit alongside them.
+- **The payload is large** — tens of thousands of characters, enough to exceed a
+  tool's token cap and be spilled to a file. The useful part is
+  `aiAnalysis.structured`; `jq` into that (or into `.extractedCases`) rather than
+  reading the whole blob.
