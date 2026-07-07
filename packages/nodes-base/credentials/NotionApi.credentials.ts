@@ -27,9 +27,6 @@ export class NotionApi implements ICredentialType {
 		request: {
 			baseURL: 'https://api.notion.com/v1',
 			url: '/users/me',
-			headers: {
-				'Notion-Version': '2022-02-22',
-			},
 		},
 	};
 
