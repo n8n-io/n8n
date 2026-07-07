@@ -656,8 +656,20 @@ export function configureAdapterProcessCallback(
 				],
 			});
 			mcpTokenRef.token = tokenResult.token;
+			// The exchange can succeed yet return no token (e.g. the agent's Entra identity
+			// blueprint lacks inheritable permissions for the tooling scope). Surface it, since
+			// otherwise Work IQ tools are silently unavailable with no signal.
+			if (!mcpTokenRef.token) {
+				nodeContext.logger.warn(
+					'Microsoft Agent 365: no agentic tooling token was issued; Work IQ (MCP) tools are unavailable for this turn',
+				);
+			}
 		} catch (error) {
-			console.error('Error getting MCP token');
+			nodeContext.logger.warn(
+				`Microsoft Agent 365: failed to obtain agentic tooling token; Work IQ (MCP) tools are unavailable for this turn: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			);
 		}
 
 		try {
