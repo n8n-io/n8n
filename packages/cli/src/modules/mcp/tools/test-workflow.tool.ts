@@ -128,6 +128,16 @@ export const createTestWorkflowTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
+			// A timeout is a domain outcome the outputSchema declares: return it
+			// structured so clients keep the executionId to inspect the execution.
+			if (isTimeout) {
+				return successResult(outputSchema, {
+					executionId: error.executionId,
+					status: 'error',
+					error: message,
+				});
+			}
+
 			return errorResult(message);
 		}
 	},

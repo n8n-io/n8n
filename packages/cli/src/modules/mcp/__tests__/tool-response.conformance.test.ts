@@ -90,14 +90,12 @@ describe('successResult', () => {
 		note: z.string().optional(),
 	} satisfies z.ZodRawShape;
 
-	it('returns structuredContent equal to the data and JSON text by default', () => {
+	it('returns structuredContent equal to the data and compact JSON text by default', () => {
 		const result = successResult(schema, { a: 'x', b: 1 });
 
 		expect(result.isError).toBeUndefined();
 		expect(result.structuredContent).toEqual({ a: 'x', b: 1 });
-		expect(result.content).toEqual([
-			{ type: 'text', text: JSON.stringify({ a: 'x', b: 1 }, null, 2) },
-		]);
+		expect(result.content).toEqual([{ type: 'text', text: JSON.stringify({ a: 'x', b: 1 }) }]);
 	});
 
 	it('supports a human-readable text override while keeping structured content', () => {
@@ -135,6 +133,15 @@ describe('errorResult', () => {
 		const result = errorResult('something failed', { hint: 'try X' });
 
 		expect(result.content).toEqual([{ type: 'text', text: 'something failed\n\ntry X' }]);
+	});
+
+	it('renders executionId and hint deterministically into the text', () => {
+		const result = errorResult('something failed', { executionId: 'exec-1', hint: 'try X' });
+
+		expect(result.content).toEqual([
+			{ type: 'text', text: 'something failed\nExecution ID: exec-1\n\ntry X' },
+		]);
+		expect(result.structuredContent).toBeUndefined();
 	});
 });
 
