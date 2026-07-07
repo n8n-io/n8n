@@ -1,3 +1,4 @@
+import { normalizeBasePath } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import path from 'node:path';
 
@@ -22,6 +23,11 @@ export function resolveBackendHealthEndpointPath(globalConfig: GlobalConfig): st
  */
 export function resolveFrontendHealthEndpointPath(globalConfig: GlobalConfig): string {
 	const isHealthEndpointCustomized = process.env.N8N_ENDPOINT_HEALTH !== undefined;
+	const basePath = normalizeBasePath(globalConfig.basePath);
+
+	if (basePath !== '/') {
+		return path.posix.join(basePath, globalConfig.endpoints.health);
+	}
 
 	if (!isHealthEndpointCustomized && globalConfig.path !== '/') {
 		return path.posix.join(globalConfig.path, globalConfig.endpoints.health);

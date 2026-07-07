@@ -8,15 +8,14 @@ export class UrlService {
 	/** Returns the base URL n8n is reachable from */
 	readonly baseUrl: string;
 
-	/** The normalized base path combining N8N_BASE_PATH and N8N_PATH */
+	/** The normalized URL base path from N8N_BASE_PATH or legacy N8N_PATH */
 	readonly basePath: string;
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly pathResolvingService: PathResolvingService,
 	) {
-		// Use PathResolvingService for consistent path resolution
-		this.basePath = this.pathResolvingService.getBasePath();
+		this.basePath = this.pathResolvingService.getUrlBasePath();
 		this.baseUrl = this.generateBaseUrl();
 	}
 
@@ -51,7 +50,6 @@ export class UrlService {
 	private generateBaseUrl(): string {
 		const { port, host, protocol } = this.globalConfig;
 
-		// Use the normalized basePath which combines N8N_BASE_PATH and N8N_PATH
 		if ((protocol === 'http' && port === 80) || (protocol === 'https' && port === 443)) {
 			return `${protocol}://${host}${this.basePath}`;
 		}

@@ -1,4 +1,4 @@
-import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState, Logger, ModuleRegistry, normalizeBasePath } from '@n8n/backend-common';
 import { mockInstance, mockLogger, testModules, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { APIRequest, User } from '@n8n/db';
@@ -75,7 +75,12 @@ const userDoesNotHaveApiKey = (user: User) => {
 
 const publicApiAgent = (
 	app: express.Application,
-	{ user, apiKey, version = 1 }: { user?: User; apiKey?: string; version?: number },
+	{
+		user,
+		apiKey,
+		version = 1,
+		basePath = '/',
+	}: { user?: User; apiKey?: string; version?: number; basePath?: string },
 ) => {
 	if (user && apiKey) {
 		throw new Error('Cannot provide both user and API key');
@@ -88,7 +93,12 @@ const publicApiAgent = (
 	const agentApiKey = apiKey ?? user?.apiKeys[0].apiKey;
 
 	const agent = request.agent(app);
-	void agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${version}`));
+	const normalizedBasePath = normalizeBasePath(basePath);
+	const publicApiPath =
+		normalizedBasePath === '/'
+			? PUBLIC_API_REST_PATH_SEGMENT
+			: `${normalizedBasePath}/${PUBLIC_API_REST_PATH_SEGMENT}`;
+	void agent.use(prefix(`${publicApiPath}/v${version}`));
 	if (!user && !apiKey) return agent;
 	void agent.set({ 'X-N8N-API-KEY': agentApiKey });
 	return agent;
@@ -112,6 +122,7 @@ export const setupTestServer = ({
 	enabledFeatures,
 	quotas,
 	modules,
+	basePath = '/',
 	setupTimeout,
 }: SetupProps): TestServer => {
 	const app = express();
@@ -139,9 +150,9 @@ export const setupTestServer = ({
 		authAgentFor: (user: User) => createAgent(app, { auth: true, user }),
 		authlessAgent: createAgent(app),
 		restlessAgent: createAgent(app, { auth: false, noRest: true }),
-		publicApiAgentFor: (user) => publicApiAgent(app, { user }),
-		publicApiAgentWithApiKey: (apiKey) => publicApiAgent(app, { apiKey }),
-		publicApiAgentWithoutApiKey: () => publicApiAgent(app, {}),
+		publicApiAgentFor: (user) => publicApiAgent(app, { user, basePath }),
+		publicApiAgentWithApiKey: (apiKey) => publicApiAgent(app, { apiKey, basePath }),
+		publicApiAgentWithoutApiKey: () => publicApiAgent(app, { basePath }),
 		publicApiAgentWithCookie: (user) => publicApiAgentWithCookie(app, user),
 		license: new LicenseMocker(),
 	};
@@ -152,6 +163,7 @@ export const setupTestServer = ({
 		await testDb.init();
 
 		Container.get(GlobalConfig).userManagement.jwtSecret = 'My JWT secret';
+		Container.get(GlobalConfig).basePath = basePath;
 
 		testServer.license.mock(Container.get(License));
 		testServer.license.mockLicenseState(Container.get(LicenseState));
@@ -184,7 +196,7 @@ export const setupTestServer = ({
 		const enablePublicAPI = endpointGroups?.includes('publicApi');
 		if (enablePublicAPI) {
 			const { loadPublicApiVersions } = await import('@/public-api/index.js');
-			const { apiRouters } = await loadPublicApiVersions(PUBLIC_API_REST_PATH_SEGMENT);
+			const { apiRouters } = await loadPublicApiVersions(PUBLIC_API_REST_PATH_SEGMENT, basePath);
 			app.use(...apiRouters);
 		}
 
