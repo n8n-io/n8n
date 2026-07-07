@@ -13,7 +13,6 @@ import path from 'path';
 
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
-import { isWorkflowReviewsFeatureAvailable } from '@/constants/workflow-reviews';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
@@ -599,8 +598,9 @@ export class FrontendService {
 		// TODO: read from settings
 		this.settings.mfa.enforced = await this.mfaService.isMFAEnforced();
 
-		if (isWorkflowReviewsFeatureAvailable(this.licenseState.isWorkflowReviewsLicensed())) {
-			this.settings.workflowReviews = await this.workflowReviewPolicyService.get();
+		const workflowReviews = await this.workflowReviewPolicyService.get();
+		if (workflowReviews !== undefined) {
+			this.settings.workflowReviews = workflowReviews;
 		} else {
 			delete this.settings.workflowReviews;
 		}

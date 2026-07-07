@@ -1,17 +1,32 @@
-import { workflowReviewsPolicySchema } from '@n8n/api-types';
+import { type WorkflowReviewsPolicy, workflowReviewsPolicySchema } from '@n8n/api-types';
+import { LicenseState } from '@n8n/backend-common';
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
 
-import { WORKFLOW_REVIEW_POLICY_SETTINGS_KEY } from '@/constants/workflow-reviews';
+import {
+	isWorkflowReviewsFeatureAvailable,
+	WORKFLOW_REVIEW_POLICY_SETTINGS_KEY,
+} from '@/constants/workflow-reviews';
 
-const DEFAULT_POLICY = { enabled: false };
+const DEFAULT_POLICY: WorkflowReviewsPolicy = { enabled: false };
 
 @Service()
 export class WorkflowReviewPolicyService {
-	constructor(private readonly settingsRepository: SettingsRepository) {}
+	constructor(
+		private readonly settingsRepository: SettingsRepository,
+		private readonly licenseState: LicenseState,
+	) {}
 
-	async get(): Promise<{ enabled: boolean }> {
+	isAvailable(): boolean {
+		return isWorkflowReviewsFeatureAvailable(this.licenseState.isWorkflowReviewsLicensed());
+	}
+
+	async get(): Promise<WorkflowReviewsPolicy | undefined> {
+		if (!this.isAvailable()) {
+			return undefined;
+		}
+
 		const row = await this.settingsRepository.findByKey(WORKFLOW_REVIEW_POLICY_SETTINGS_KEY);
 		if (!row) {
 			return DEFAULT_POLICY;
@@ -27,7 +42,7 @@ export class WorkflowReviewPolicyService {
 		return parsed.data;
 	}
 
-	async set(enabled: boolean): Promise<{ enabled: boolean }> {
+	async set(enabled: boolean): Promise<WorkflowReviewsPolicy> {
 		const parsed = workflowReviewsPolicySchema.safeParse({ enabled });
 		if (!parsed.success) {
 			throw new UserError('Invalid workflow reviews settings');

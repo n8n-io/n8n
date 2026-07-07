@@ -1,5 +1,4 @@
 import { UpdateSecuritySettingsDto } from '@n8n/api-types';
-import { LicenseState } from '@n8n/backend-common';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { type AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Licensed, Post, RestController } from '@n8n/decorators';
@@ -10,7 +9,6 @@ import {
 import type { DistributiveOmit } from '@n8n/utils/types';
 import type { Response } from 'express';
 
-import { isWorkflowReviewsFeatureAvailable } from '@/constants/workflow-reviews';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
@@ -31,7 +29,6 @@ export class SecuritySettingsController {
 	constructor(
 		private readonly securitySettingsService: SecuritySettingsService,
 		private readonly workflowReviewPolicyService: WorkflowReviewPolicyService,
-		private readonly licenseState: LicenseState,
 		private readonly eventService: EventService,
 		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
 		private readonly instanceRedactionEnforcementService: InstanceRedactionEnforcementService,
@@ -54,9 +51,7 @@ export class SecuritySettingsController {
 			this.securitySettingsService.getSharedPersonalWorkflowsCount(),
 			this.securitySettingsService.getSharedPersonalCredentialsCount(),
 			this.instanceRedactionEnforcementService.get(),
-			this.isWorkflowReviewsAvailable()
-				? this.workflowReviewPolicyService.get()
-				: Promise.resolve(undefined),
+			this.workflowReviewPolicyService.get(),
 		]);
 
 		return {
@@ -140,7 +135,7 @@ export class SecuritySettingsController {
 		}
 
 		if (dto.workflowReviews?.enabled !== undefined) {
-			const before = (await this.workflowReviewPolicyService.get()).enabled;
+			const before = (await this.workflowReviewPolicyService.get())?.enabled ?? false;
 			const after = dto.workflowReviews.enabled;
 			updatedSettings.workflowReviews = { enabled: after };
 			if (before !== after) {
@@ -156,12 +151,8 @@ export class SecuritySettingsController {
 		return updatedSettings;
 	}
 
-	private isWorkflowReviewsAvailable(): boolean {
-		return isWorkflowReviewsFeatureAvailable(this.licenseState.isWorkflowReviewsLicensed());
-	}
-
 	private assertWorkflowReviewsAvailable(): void {
-		if (!this.isWorkflowReviewsAvailable()) {
+		if (!this.workflowReviewPolicyService.isAvailable()) {
 			throw new BadRequestError('Workflow reviews settings are not available');
 		}
 	}

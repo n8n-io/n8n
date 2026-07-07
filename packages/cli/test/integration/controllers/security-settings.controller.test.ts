@@ -438,6 +438,7 @@ describe('SecuritySettingsController', () => {
 		beforeEach(() => {
 			process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 			testServer.license.enable('feat:workflowReviews');
+			workflowReviewPolicyService.isAvailable.mockReturnValue(true);
 			workflowReviewPolicyService.get.mockResolvedValue({ enabled: false });
 			workflowReviewPolicyService.set.mockResolvedValue({ enabled: true });
 		});
@@ -481,6 +482,7 @@ describe('SecuritySettingsController', () => {
 
 		it('POST should reject workflowReviews when license is off', async () => {
 			testServer.license.disable('feat:workflowReviews');
+			workflowReviewPolicyService.isAvailable.mockReturnValue(false);
 
 			await ownerAgent
 				.post('/settings/security')
