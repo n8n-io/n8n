@@ -5239,6 +5239,7 @@
 	"projects.move.resource.modal.message.unAccessibleCredentials.count": "{count} credential | {count} credentials",
 	"projects.move.resource.modal.message.unAccessibleCredentials.note": "{credentials} can't be shared. Move or recreate them in the destination project to keep this workflow running.",
 	"projects.move.resource.modal.message.unAccessibleCredentials.personalSpaceNote": "{credentials} can't be shared because your admin has disabled sharing from personal spaces. Move or recreate them in the project or user you're moving into, to keep this workflow running.",
+	"projects.move.resource.modal.message.resolvableConnections": "Each user connects their own account to this credential. Users who lose access after the move will lose their connection. Users who keep access (such as admins) aren't affected.",
 	"projects.move.resource.modal.message.noProjects": "Currently there are not any projects or users available for you to move this {resourceTypeLabel} to.",
 	"projects.move.resource.modal.button": "Move {resourceTypeLabel}",
 	"projects.move.resource.modal.selectPlaceholder": "Select project or user...",
