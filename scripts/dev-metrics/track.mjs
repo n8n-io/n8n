@@ -22,11 +22,11 @@
  *   N8N_DEV_TRACK_CODE  exit code
  *   N8N_DEV_TRACK_CWD   directory the command ran in
  *
- * Privacy: only allowlisted command tokens are ever transmitted (for pnpm: the
- * repo's package.json scripts plus a small builtin list); anything else is
- * reported as "other". Directories are sent repo-relative (e.g. "packages/cli"),
- * never absolute. No usernames, emails or raw args leave the machine. Every
- * error is swallowed so tracking can never disrupt a workflow.
+ * Privacy: only the leading subcommand/script name is transmitted (the first
+ * non-flag token; `run <script>` → the script), sanitized to a plain name —
+ * path/URL/arg-shaped tokens become "other". Directories are sent repo-relative
+ * (e.g. "packages/cli"), never absolute. No usernames, emails or raw args leave
+ * the machine. Every error is swallowed so tracking can never disrupt a workflow.
  */
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -65,29 +65,9 @@ function findMonorepoRoot(start) {
 }
 
 // --- Per-binary command resolution -----------------------------------------
-// Each resolver turns raw argv tokens into a single allowlisted command name
-// (or "other"). Register a binary here to make its events meaningful; an
-// unregistered binary is still recorded, with command = "other".
-
-/** A small set of pnpm subcommands worth tracking alongside repo scripts. */
-const PNPM_BUILTINS = new Set([
-	'install',
-	'add',
-	'remove',
-	'update',
-	'run',
-	'exec',
-	'dlx',
-	'why',
-	'list',
-	'outdated',
-	'rebuild',
-	'prune',
-	'patch',
-	'dedupe',
-	'import',
-	'audit',
-]);
+// Each resolver turns raw argv tokens into a single command name. Register a
+// binary here to make its events meaningful; an unregistered binary is still
+// recorded, with command = "other".
 
 /** pnpm flags that take a value as the following token (e.g. `--filter foo`). */
 const PNPM_VALUE_FLAGS = new Set([
@@ -102,10 +82,13 @@ const PNPM_VALUE_FLAGS = new Set([
 	'--config',
 ]);
 
-/** pnpm: allowlist = repo scripts + builtins, with run/exec + value-flag handling. */
-function resolvePnpmCommand(tokens, repo) {
-	const scripts = repo.pkg?.scripts ? Object.keys(repo.pkg.scripts) : [];
-	const allow = new Set([...scripts, ...PNPM_BUILTINS]);
+/** Keep plain subcommand/script names; drop anything path/URL/arg-shaped. */
+function safeCommand(token) {
+	return /^[@\w][\w.:/@-]{0,49}$/.test(token) ? token : 'other';
+}
+
+/** pnpm: the first non-flag token (subcommand or script), with run/exec unwrap. */
+function resolvePnpmCommand(tokens) {
 	for (let i = 0; i < tokens.length; i++) {
 		const t = tokens[i];
 		if (t.startsWith('-')) {
@@ -113,24 +96,23 @@ function resolvePnpmCommand(tokens, repo) {
 			if (PNPM_VALUE_FLAGS.has(t) && tokens[i + 1] && !tokens[i + 1].startsWith('-')) i++;
 			continue;
 		}
-		if (!allow.has(t)) return 'other';
-		// For `run <script>` / `exec <bin>`, prefer the concrete script name.
-		if ((t === 'run' || t === 'exec') && tokens[i + 1] && allow.has(tokens[i + 1])) {
-			return tokens[i + 1];
+		// For `run <script>` / `exec <bin>`, report the concrete target.
+		if ((t === 'run' || t === 'exec') && tokens[i + 1] && !tokens[i + 1].startsWith('-')) {
+			return safeCommand(tokens[i + 1]);
 		}
-		return t;
+		return safeCommand(t);
 	}
-	return 'other'; // bare `pnpm` (installs in the cwd) — not a tracked command
+	return 'other'; // bare `pnpm` (installs in the cwd)
 }
 
 const BINARY_RESOLVERS = {
 	pnpm: resolvePnpmCommand,
 };
 
-function resolveCommand(bin, args, repo) {
+function resolveCommand(bin, args) {
 	const tokens = args.split(/\s+/).filter(Boolean);
 	const resolver = BINARY_RESOLVERS[bin];
-	return resolver ? resolver(tokens, repo) : 'other';
+	return resolver ? resolver(tokens) : 'other';
 }
 
 /** Detect the binary's version by running `<bin> --version`; null on failure. */
@@ -245,7 +227,7 @@ async function main() {
 	}
 
 	const binary = process.env.N8N_DEV_TRACK_BIN || 'pnpm';
-	const command = resolveCommand(binary, process.env.N8N_DEV_TRACK_ARGS ?? '', repo);
+	const command = resolveCommand(binary, process.env.N8N_DEV_TRACK_ARGS ?? '');
 	const binaryVersion = detectBinaryVersion(binary);
 	const durationMs = Number.parseInt(process.env.N8N_DEV_TRACK_MS ?? '', 10);
 	const exitCode = Number.parseInt(process.env.N8N_DEV_TRACK_CODE ?? '', 10);

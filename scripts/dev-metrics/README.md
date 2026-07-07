@@ -59,7 +59,7 @@ Event `dev:cli_command` with `anonymousId` = the weekly anonymous id, and:
 | `actor` | `human`, `claude-code`, `cursor`, `ci` | Who ran it, inferred from env markers (`CLAUDECODE`, `CURSOR_TRACE_ID`, `AIDER_VERSION`, `CI`/`GITHUB_ACTIONS`); defaults to `human`. |
 | `binary` | `pnpm` | The shadowed CLI. |
 | `binary_version` | `10.32.1` | The CLI's own version, detected at runtime by the tracker via `<bin> --version` (`null` if unknown). |
-| `command` | `build`, `test`, `install` | Allowlisted per binary (for pnpm: root `package.json` scripts + builtins); anything else → `other`. |
+| `command` | `build`, `add`, `install`, `dlx` | The pnpm subcommand or script — the first non-flag token (`run <script>` → the script). Sanitized to a plain name; path/URL/arg-shaped tokens → `other`. |
 | `dir` | `packages/cli`, `.` | Where it ran, **relative to the repo root** — never an absolute path. |
 | `duration_ms` | `41230` | Wall-clock duration. |
 | `exit_code` | `0` | The command's exit code. |
@@ -67,8 +67,8 @@ Event `dev:cli_command` with `anonymousId` = the weekly anonymous id, and:
 | `node_version`, `repo_version`, `schema_version` | | For segmenting. |
 
 **Never sent:** absolute paths, file names, branch names, git email, username,
-or raw command arguments. Only allowlisted command names and the repo-relative
-`dir` leave the machine.
+or raw command arguments. Only the (sanitized) command/subcommand name and the
+repo-relative `dir` leave the machine.
 
 One lifecycle event is also sent: **`dev:metrics_opt_in`**, fired once when a
 developer opts in (the transition into `granted`), under the same anonymous
