@@ -6,6 +6,7 @@ import N8nIcon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
 import type { ComboboxItem as ComboboxItemType, ComboboxListItem } from './Combobox.types';
 import Combobox from './Combobox.vue';
+import './Combobox.stories.css';
 
 type GenericMeta<C> = Omit<Meta<C>, 'component'> & {
 	component: Record<keyof C, unknown>;
@@ -136,7 +137,7 @@ export const Items = {
 			return { args, value };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div class="combobox-story-container">
 			<Combobox :items="args.items" v-model="value" placeholder="Search status..." />
 		</div>
 		`,
@@ -155,7 +156,7 @@ export const ItemsObjectArray = {
 			return { args, value };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div class="combobox-story-container">
 			<Combobox v-bind="args" v-model="value" />
 		</div>
 		`,
@@ -174,7 +175,7 @@ export const Disabled = {
 			return { args, value };
 		},
 		template: `
-		<div style="display: flex; flex-direction: column; gap: var(--spacing--md); padding: 40px; width: 320px;">
+		<div class="combobox-story-container" style="display: flex; flex-direction: column; gap: var(--spacing--md);">
 			<section style="display: flex; flex-direction: column; gap: var(--spacing--2xs);">
 				<h3 style="margin: 0; font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
 					Disabled (empty)
@@ -236,7 +237,7 @@ export const Controlled = {
 			};
 		},
 		template: `
-			<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--spacing--md); padding: 40px;">
+			<div class="combobox-story-container" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--spacing--md);">
 				<section style="display: flex; flex-direction: column; gap: var(--spacing--2xs);">
 					<h3 style="margin: 0; font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
 						Controlled
@@ -264,14 +265,12 @@ export const Controlled = {
 						<button type="button" @click="closeCombobox">Close</button>
 					</div>
 
-					<div style="width: 100%; max-width: 320px;">
-						<Combobox
-							:items="controlledDemoItems"
-							v-model="controlledValue"
-							v-model:open="controlledOpen"
-							placeholder="Search..."
-						/>
-					</div>
+					<Combobox
+						:items="controlledDemoItems"
+						v-model="controlledValue"
+						v-model:open="controlledOpen"
+						placeholder="Search..."
+					/>
 				</section>
 
 				<section style="display: flex; flex-direction: column; gap: var(--spacing--2xs);">
@@ -283,14 +282,12 @@ export const Controlled = {
 						<code>default-open</code>. The combobox manages its own state after mount.
 					</p>
 
-					<div style="width: 100%; max-width: 320px;">
-						<Combobox
-							:items="controlledDemoItems"
-							default-value="workflows"
-							:default-open="false"
-							placeholder="Search..."
-						/>
-					</div>
+					<Combobox
+						:items="controlledDemoItems"
+						default-value="workflows"
+						:default-open="false"
+						placeholder="Search..."
+					/>
 				</section>
 			</div>
 		`,
@@ -308,7 +305,7 @@ export const FilterableList = {
 			return { args, value };
 		},
 		template: `
-		<div style="padding: 40px; width: 320px;">
+		<div class="combobox-story-container">
 			<Combobox
 				v-bind="args"
 				v-model="value"
@@ -333,7 +330,7 @@ export const WithIcons = {
 			return { args, value, icon };
 		},
 		template: `
-		<div style="display: flex; gap: 16px; align-items: center; padding: 40px;">
+		<div class="combobox-story-container" style="display: flex; gap: 16px; align-items: center;">
 			<Combobox v-bind="args" v-model="value" :icon="icon">
 				<template #item-leading="{ item }">
 					<N8nIcon :icon="item.icon" color="primary" />
@@ -359,7 +356,7 @@ export const WithSlots = {
 			return { args, value, icon };
 		},
 		template: `
-		<div style="padding: 40px; width: 320px;">
+		<div class="combobox-story-container">
 			<Combobox v-bind="args" v-model="value" :icon="icon">
 				<template #header>
 					<div style="padding: var(--spacing--2xs); font-size: var(--font-size--2xs); color: var(--color--text--tint-1); border-bottom: 1px solid var(--border-color);">
@@ -402,7 +399,7 @@ export const Sizes = {
 			return { args, value };
 		},
 		template: `
-		<div style="display: flex; flex-direction: column; gap: var(--spacing--md); padding: var(--spacing--2xl);">
+		<div class="combobox-story-container" style="display: flex; flex-direction: column; gap: var(--spacing--md);">
 			<Combobox v-bind="args" v-model="value" size="xlarge" placeholder="xlarge (40px)" />
 			<Combobox v-bind="args" v-model="value" size="large" placeholder="large (36px, default)" />
 			<Combobox v-bind="args" v-model="value" size="medium" placeholder="medium (32px)" />

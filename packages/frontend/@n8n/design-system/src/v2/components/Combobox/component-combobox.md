@@ -43,7 +43,6 @@ Combobox (N8nCombobox2)
 **UI Props**
 
 - `itemSize?`: `'mini' | 'small' | 'medium' | 'large' | 'xlarge'` | `default: 'large'`
-- `variant?`: `'default' | 'ghost'` | `default: 'default'`
 - `side?`: `'top' | 'right' | 'bottom' | 'left'` | `default: 'bottom'`
 - `sideOffset?`: `number` | `default: 4`
 - `contentClass?`: `string` — Additional class(es) on the portaled dropdown

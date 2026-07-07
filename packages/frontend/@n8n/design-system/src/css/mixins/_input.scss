@@ -1,4 +1,5 @@
 @use 'sass:map';
+@use './focus';
 
 $input-sizes: (
 	'xlarge': (
@@ -40,4 +41,94 @@ $input-sizes: (
 	--input--radius: #{map.get($config, radius)};
 	--input--font-size: #{map.get($config, font-size)};
 	--input--padding: #{map.get($config, padding)};
+}
+
+@mixin theme-variables($border-color: var(--border-color)) {
+	--input--color--background: light-dark(var(--color--neutral-white), var(--color--neutral-950));
+	--input--color--background--disabled: var(--background--disabled);
+	--input--shadow: 0 0 0 0 transparent;
+	--input--shadow--hover: 0 0 0 0 transparent;
+	--input--shadow--focus: 0 0 0 0 transparent;
+	--input--border-color: #{$border-color};
+	--input--border-color--hover: var(--border-color--strong);
+	--input--border-color--focus: var(--focus--border-color);
+	--input--border--shadow: 0 0 0 1px var(--input--border-color);
+	--input--border--shadow--hover: 0 0 0 1px var(--input--border-color--hover);
+	--input--border--shadow--focus: 0 0 0 1px var(--input--border-color--focus);
+}
+
+@mixin surface($disabled: '[data-disabled]', $hover-cursor: null) {
+	display: inline-flex;
+	align-items: center;
+	border-radius: var(--input--radius--top-left, var(--input--radius))
+		var(--input--radius--top-right, var(--input--radius))
+		var(--input--radius--bottom-right, var(--input--radius))
+		var(--input--radius--bottom-left, var(--input--radius));
+	font-size: var(--input--font-size);
+	font-style: normal;
+	font-weight: var(--font-weight--regular);
+	line-height: var(--line-height--md);
+	background-color: var(--input--color--background);
+	box-shadow:
+		var(--input--shadow),
+		inset var(--input--border--shadow);
+	min-height: var(--input--height);
+	padding: 0 var(--input--padding);
+	color: var(--color--text--shade-1);
+
+	@include focus.focus-within-ring;
+
+	&:not(#{$disabled}):hover:not(:focus-within) {
+		@if $hover-cursor {
+			cursor: $hover-cursor;
+		}
+
+		box-shadow:
+			var(--input--shadow--hover),
+			inset var(--input--border--shadow--hover);
+	}
+
+	&:focus-within {
+		box-shadow:
+			var(--input--shadow--focus),
+			inset var(--input--border--shadow--focus);
+	}
+
+	&#{$disabled} {
+		cursor: not-allowed;
+		opacity: 0.6;
+		box-shadow:
+			var(--input--shadow),
+			inset var(--input--border--shadow);
+
+		&:focus-within {
+			outline: none;
+			box-shadow:
+				var(--input--shadow),
+				inset var(--input--border--shadow);
+		}
+	}
+}
+
+@mixin native-field($placeholder-color: var(--color--text--tint-1)) {
+	flex: 1;
+	min-width: 0;
+	padding: 0;
+	border: none;
+	background: transparent;
+	outline: none;
+	font: inherit;
+
+	&::placeholder {
+		color: #{$placeholder-color};
+	}
+
+	&:disabled {
+		cursor: not-allowed;
+		color: var(--color--text--tint-1);
+
+		&::placeholder {
+			color: var(--color--text--tint-1);
+		}
+	}
 }

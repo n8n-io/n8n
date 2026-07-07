@@ -1,0 +1,6 @@
+/* Storybook layout styles for Combobox component stories */
+
+.combobox-story-container {
+	padding: 40px;
+	max-width: 400px;
+}

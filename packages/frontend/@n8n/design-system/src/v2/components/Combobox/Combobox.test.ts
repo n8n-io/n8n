@@ -1,7 +1,7 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
 
-import type { ComboboxItem, ComboboxSizes, ComboboxVariants } from './Combobox.types';
+import type { ComboboxItem, ComboboxSizes } from './Combobox.types';
 import Combobox from './Combobox.vue';
 
 const sizeCases: Array<[ComboboxSizes | undefined, string]> = [
@@ -11,12 +11,6 @@ const sizeCases: Array<[ComboboxSizes | undefined, string]> = [
 	['medium', 'medium'],
 	['large', 'large'],
 	['xlarge', 'xlarge'],
-];
-
-const variantCases: Array<[ComboboxVariants | undefined, string]> = [
-	[undefined, 'default'],
-	['default', 'default'],
-	['ghost', 'ghost'],
 ];
 
 beforeAll(() => {
@@ -95,19 +89,6 @@ describe('v2/components/Combobox', () => {
 				});
 			},
 		);
-	});
-
-	describe('variants', () => {
-		test.each(variantCases)('variant %s should apply %s class', (variant, expected) => {
-			const wrapper = render(Combobox, {
-				props: {
-					items: ['Option 1'],
-					variant,
-				},
-			});
-			const anchor = wrapper.getByTestId('combobox');
-			expect(anchor.className).toContain(expected);
-		});
 	});
 
 	describe('item types', () => {

@@ -1,0 +1,80 @@
+@use 'motion';
+
+// Shared surface styling for portaled popovers, dropdowns, and combobox content.
+@mixin popover-surface($z-index: null, $slide-distance: var(--spacing--5xs)) {
+	--n8n--popover--offset--slide-distance: #{$slide-distance};
+	--n8n--popover--offset--slide-x: 0;
+	--n8n--popover--offset--slide-y: 0;
+	--n8n--popover--offset--origin-x: center;
+	--n8n--popover--offset--origin-y: center;
+	--animation--popover-in--translate-x: var(--n8n--popover--offset--slide-x);
+	--animation--popover-in--translate-y: var(--n8n--popover--offset--slide-y);
+
+	overflow: hidden;
+	border-radius: var(--radius--xs);
+	background-color: var(--background--surface);
+	--shadow-color--outline: var(--border-color);
+	box-shadow:
+		var(--shadow--md),
+		inset var(--shadow--outline);
+	will-change: transform, opacity;
+	transform-origin: var(--n8n--popover--offset--origin-x) var(--n8n--popover--offset--origin-y);
+
+	@if $z-index {
+		z-index: $z-index;
+	}
+
+	&[data-state='open'] {
+		@include motion.popover-in;
+	}
+
+	&[data-state='closed'] {
+		display: none;
+	}
+}
+
+@mixin popover-placement-offsets() {
+	&[data-state='open'][data-side='top'] {
+		--n8n--popover--offset--slide-y: calc(-1 * var(--n8n--popover--offset--slide-distance));
+		--n8n--popover--offset--origin-y: bottom;
+	}
+
+	&[data-state='open'][data-side='right'] {
+		--n8n--popover--offset--slide-x: var(--n8n--popover--offset--slide-distance);
+		--n8n--popover--offset--origin-x: left;
+	}
+
+	&[data-state='open'][data-side='bottom'] {
+		--n8n--popover--offset--slide-y: var(--n8n--popover--offset--slide-distance);
+		--n8n--popover--offset--origin-y: top;
+	}
+
+	&[data-state='open'][data-side='left'] {
+		--n8n--popover--offset--slide-x: calc(-1 * var(--n8n--popover--offset--slide-distance));
+		--n8n--popover--offset--origin-x: right;
+	}
+
+	&[data-state='open'][data-side='top'][data-align='start'],
+	&[data-state='open'][data-side='bottom'][data-align='start'] {
+		--n8n--popover--offset--slide-x: calc(-1 * var(--n8n--popover--offset--slide-distance));
+		--n8n--popover--offset--origin-x: left;
+	}
+
+	&[data-state='open'][data-side='top'][data-align='end'],
+	&[data-state='open'][data-side='bottom'][data-align='end'] {
+		--n8n--popover--offset--slide-x: var(--n8n--popover--offset--slide-distance);
+		--n8n--popover--offset--origin-x: right;
+	}
+
+	&[data-state='open'][data-side='left'][data-align='start'],
+	&[data-state='open'][data-side='right'][data-align='start'] {
+		--n8n--popover--offset--slide-y: calc(-1 * var(--n8n--popover--offset--slide-distance));
+		--n8n--popover--offset--origin-y: top;
+	}
+
+	&[data-state='open'][data-side='left'][data-align='end'],
+	&[data-state='open'][data-side='right'][data-align='end'] {
+		--n8n--popover--offset--slide-y: var(--n8n--popover--offset--slide-distance);
+		--n8n--popover--offset--origin-y: bottom;
+	}
+}
