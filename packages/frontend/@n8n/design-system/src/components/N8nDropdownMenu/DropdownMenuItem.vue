@@ -7,7 +7,7 @@ import {
 	DropdownMenuSubContent,
 	DropdownMenuPortal,
 } from 'reka-ui';
-import { computed, inject, ref, useCssModule, watch } from 'vue';
+import { computed, inject, nextTick, onBeforeUnmount, ref, useCssModule, watch } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nLoading from '@n8n/design-system/components/N8nLoading';
@@ -42,6 +42,17 @@ const $style = useCssModule();
 const portalTarget = inject(DropdownMenuPortalTargetKey, ref(undefined));
 
 const internalSubMenuOpen = ref(false);
+const subContentRef = ref<InstanceType<typeof DropdownMenuSubContent> | null>(null);
+const childrenContainerRef = ref<HTMLElement | null>(null);
+const subContentMaxHeight = ref<string>();
+
+const SUB_MENU_ITEM_GLIMPSE_RATIO = 0.5;
+const SUB_MENU_ITEM_ALIGNMENT_TOLERANCE = 2;
+
+const waitForLayout = async () => {
+	await nextTick();
+	await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+};
 
 const handleChildSearch = (term: string, itemId: T) => {
 	emit('search', term, itemId);
@@ -94,6 +105,47 @@ const handleSubContentFocusOutside = (event: Event) => {
 	}
 };
 
+const updateSubContentMaxHeight = async () => {
+	subContentMaxHeight.value = undefined;
+	await waitForLayout();
+
+	const container = childrenContainerRef.value;
+	if (!container || container.scrollHeight <= container.clientHeight) return;
+
+	const items = [...container.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+	const containerTop = container.getBoundingClientRect().top;
+	const viewportBottom = container.clientHeight;
+	const itemRects = items.map((item) => {
+		const rect = item.getBoundingClientRect();
+		return {
+			top: rect.top - containerTop,
+			bottom: rect.bottom - containerTop,
+			height: rect.height,
+		};
+	});
+	const hasPartialItem = itemRects.some(
+		({ top, bottom }) =>
+			top < viewportBottom - SUB_MENU_ITEM_ALIGNMENT_TOLERANCE &&
+			bottom > viewportBottom + SUB_MENU_ITEM_ALIGNMENT_TOLERANCE,
+	);
+	if (hasPartialItem) return;
+
+	const lastFullItemIndex = itemRects.findLastIndex(
+		({ bottom }) => bottom <= viewportBottom + SUB_MENU_ITEM_ALIGNMENT_TOLERANCE,
+	);
+	const lastFullItem = itemRects[lastFullItemIndex];
+	const nextItem = itemRects[lastFullItemIndex + 1];
+	if (!lastFullItem || !nextItem) return;
+
+	subContentMaxHeight.value = `${Math.floor(
+		lastFullItem.bottom + nextItem.height * SUB_MENU_ITEM_GLIMPSE_RATIO,
+	)}px`;
+};
+
+const handleResize = () => {
+	void updateSubContentMaxHeight();
+};
+
 // Sync internal state with prop when prop changes (controlled mode)
 watch(
 	() => props.subMenuOpen,
@@ -104,6 +156,20 @@ watch(
 	},
 	{ immediate: true },
 );
+
+watch(internalSubMenuOpen, (open) => {
+	if (open) {
+		void updateSubContentMaxHeight();
+		window.addEventListener('resize', handleResize);
+	} else {
+		window.removeEventListener('resize', handleResize);
+		subContentMaxHeight.value = undefined;
+	}
+});
+
+onBeforeUnmount(() => {
+	window.removeEventListener('resize', handleResize);
+});
 </script>
 
 <template>
@@ -157,6 +223,7 @@ watch(
 				<DropdownMenuSubContent
 					ref="subContentRef"
 					:class="$style['sub-content']"
+					:style="subContentMaxHeight ? { maxHeight: subContentMaxHeight } : undefined"
 					:side-offset="1"
 					:prioritize-position="true"
 					sticky="partial"
@@ -182,7 +249,11 @@ watch(
 								/>
 							</div>
 							<template v-else-if="hasChildren">
-								<div :class="$style['children-container']" data-menu-items>
+								<div
+									ref="childrenContainerRef"
+									:class="$style['children-container']"
+									data-menu-items
+								>
 									<template v-for="(child, childIndex) in props.children" :key="child.id">
 										<N8nDropdownMenuItem
 											v-bind="child"
@@ -226,7 +297,7 @@ watch(
 							/>
 						</div>
 						<template v-else-if="hasChildren">
-							<div :class="$style['children-container']" data-menu-items>
+							<div ref="childrenContainerRef" :class="$style['children-container']" data-menu-items>
 								<template v-for="(child, childIndex) in props.children" :key="child.id">
 									<N8nDropdownMenuItem
 										v-bind="child"
@@ -307,6 +378,12 @@ watch(
 	max-height: inherit;
 	overflow-y: auto;
 	scrollbar-width: none;
+	mask-image: linear-gradient(
+		to bottom,
+		black 0,
+		black calc(100% - var(--spacing--sm)),
+		transparent 100%
+	);
 
 	&::-webkit-scrollbar {
 		display: none;

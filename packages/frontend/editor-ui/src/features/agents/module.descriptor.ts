@@ -116,7 +116,7 @@ export const AgentsModule: FrontendModuleDescription = {
 		},
 		{
 			key: AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY,
-			component: async () => await import('../ai/chatHub/components/CredentialSelectorModal.vue'),
+			component: async () => await import('../ai/components/CredentialSelectorModal.vue'),
 			initialState: {
 				open: false,
 				data: {
@@ -129,7 +129,7 @@ export const AgentsModule: FrontendModuleDescription = {
 		},
 		{
 			key: AGENT_MODEL_CREDENTIAL_MODAL_KEY,
-			component: async () => await import('../ai/chatHub/components/CredentialSelectorModal.vue'),
+			component: async () => await import('../ai/components/CredentialSelectorModal.vue'),
 			initialState: {
 				open: false,
 				data: {
