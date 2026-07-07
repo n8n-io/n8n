@@ -16,9 +16,6 @@ on:
     - cron: '0 8 * * *'
   workflow_dispatch:
 
-# Least privilege by default; each job opts into exactly what it needs.
-permissions: {}
-
 jobs:
   prepare:
     name: Compute date tag
@@ -35,14 +32,11 @@ jobs:
   build:
     name: Build and push v3-nightly images
     needs: prepare
-    permissions:
-      contents: read # checkout / build the 3.x code
-      packages: write # push images to GHCR
-      id-token: write # SLSA provenance + cosign attestations
-      actions: read # SLSA generator reads the run metadata
-    # docker-build-push.yml reads DockerHub/Sentry/Slack org secrets and fans them out
-    # to its sub-workflows; inherit matches the existing caller (release-publish.yml).
-    uses: ./.github/workflows/docker-build-push.yml # zizmor: ignore[secrets-inherit]
+    # No permissions/secrets caps here on purpose: this mirrors the proven
+    # release-publish.yml caller so docker-build-push.yml runs with the permissions
+    # (its own per-job blocks + repo defaults) and org secrets it already relies on.
+    # Capping here risks starving its sub-jobs (SLSA/attestation/scan/push).
+    uses: ./.github/workflows/docker-build-push.yml # zizmor: ignore[excessive-permissions,secrets-inherit]
     with:
       ref: '3.x'
       n8n_version: 'v3-nightly'
