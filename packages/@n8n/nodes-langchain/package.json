@@ -285,7 +285,7 @@
     "@n8n/utils": "workspace:*",
     "@oracle/langchain-oracledb": "0.2.0",
     "@pinecone-database/pinecone": "^5.0.2",
-    "@qdrant/js-client-rest": "^1.16.2",
+    "@qdrant/js-client-rest": "catalog:",
     "@smithy/node-http-handler": "4.5.0",
     "@smithy/types": "4.13.1",
     "@supabase/supabase-js": "catalog:",

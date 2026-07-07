@@ -32,6 +32,13 @@ export type QdrantVectorStoreOptions = {
  * ids (other than the UUIDs the `VectorStore` orchestrator generates) are
  * rejected with a descriptive error rather than a raw Qdrant 400.
  *
+ * Metadata filtering requires a payload index on each filtered field
+ * (`metadata.<key>`) — Qdrant Cloud rejects filters on unindexed fields —
+ * and a field can only carry one index type at a time. Filter values are
+ * also more restrictive than `PgVectorStore`: Qdrant `match` only supports
+ * strings, integers, and booleans, so float values for `eq`/`ne` and
+ * mixed-type arrays for `in`/`nin` (e.g. `['billing', 5]`) are rejected.
+ *
  * @example
  * ```typescript
  * const store = new QdrantVectorStore('product-docs', {

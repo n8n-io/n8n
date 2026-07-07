@@ -103,7 +103,7 @@
     "zod-to-json-schema": "catalog:"
   },
   "peerDependencies": {
-    "@qdrant/js-client-rest": "^1.16.2",
+    "@qdrant/js-client-rest": "catalog:",
     "pg": "catalog:",
     "zod": "catalog:"
   },
@@ -130,7 +130,7 @@
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
-    "@qdrant/js-client-rest": "^1.16.2",
+    "@qdrant/js-client-rest": "catalog:",
     "@types/json-schema": "catalog:",
     "@types/pg": "^8.15.6",
     "@vitest/coverage-v8": "catalog:",

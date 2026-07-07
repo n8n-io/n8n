@@ -147,6 +147,9 @@ catalogs:
     '@openrouter/ai-sdk-provider':
       specifier: ^2.8.0
       version: 2.9.0
+    '@qdrant/js-client-rest':
+      specifier: ^1.16.2
+      version: 1.16.2
     '@rudderstack/rudder-sdk-node':
       specifier: 3.0.5
       version: 3.0.5
@@ -976,7 +979,7 @@ importers:
         specifier: workspace:*
         version: link:../vitest-config
       '@qdrant/js-client-rest':
-        specifier: ^1.16.2
+        specifier: 'catalog:'
         version: 1.16.2(typescript@6.0.2)
       '@types/json-schema':
         specifier: 'catalog:'
@@ -2964,7 +2967,7 @@ importers:
         specifier: ^5.0.2
         version: 5.1.2
       '@qdrant/js-client-rest':
-        specifier: ^1.16.2
+        specifier: 'catalog:'
         version: 1.16.2(typescript@6.0.2)
       '@smithy/node-http-handler':
         specifier: 4.5.0
