@@ -20,6 +20,7 @@ import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import { get } from '@n8n/design-system/v2/utils';
 
 import type {
+	AcceptableValue,
 	ComboboxEmits,
 	ComboboxItem,
 	ComboboxListItem,
@@ -39,6 +40,7 @@ const props = withDefaults(defineProps<ComboboxProps>(), {
 	size: 'large',
 	side: 'bottom',
 	sideOffset: 4,
+	align: 'start',
 	valueKey: 'value',
 	labelKey: 'label',
 });
@@ -89,9 +91,9 @@ const groups = computed<ComboboxListItem[]>(() => {
 		return isComboboxListItem(item)
 			? {
 					...item,
-					value: get(item, props.valueKey),
-					label: get(item, props.labelKey),
-					textValue: get(item, props.labelKey),
+					value: get<AcceptableValue>(item, props.valueKey) ?? null,
+					label: get<string>(item, props.labelKey),
+					textValue: get<string>(item, props.labelKey),
 					size: item.size ?? props.size,
 				}
 			: {
@@ -108,11 +110,16 @@ function getDisplayValue(value: unknown): string {
 		return '';
 	}
 
-	if (typeof value !== 'object') {
-		return String(value);
+	if (Array.isArray(value)) {
+		return value.map((item) => getDisplayValue(item)).join(', ');
 	}
 
-	return String(get(value as Record<string, unknown>, props.labelKey) ?? '');
+	if (typeof value === 'object') {
+		return String(get(value as Record<string, unknown>, props.labelKey) ?? '');
+	}
+
+	const matchedItem = groups.value.find((item) => item.value === value);
+	return matchedItem?.label ?? String(value);
 }
 </script>
 
@@ -151,8 +158,9 @@ function getDisplayValue(value: unknown): string {
 		<ComboboxPortal>
 			<ComboboxContent
 				position="popper"
-				align="start"
 				:class="[$style.comboboxContent, props.contentClass]"
+				:style="props.contentStyle"
+				:align="props.align"
 				:side="props.side"
 				:side-offset="props.sideOffset"
 			>
@@ -298,7 +306,7 @@ function getDisplayValue(value: unknown): string {
 	padding: 0;
 	border: none;
 	background: transparent;
-	color: var(--color--text--shade-1);
+
 	cursor: pointer;
 
 	&:disabled {
@@ -315,16 +323,23 @@ function getDisplayValue(value: unknown): string {
 	@include popover.popover-surface;
 	@include popover.popover-placement-offsets;
 
+	--combobox-content--max-height: 500px;
+
+	display: flex;
+	flex-direction: column;
 	min-width: var(--reka-combobox-trigger-width);
-	max-height: var(--reka-combobox-content-available-height);
+	max-height: min(
+		var(--combobox-content--max-height),
+		var(--reka-combobox-content-available-height, 100dvh)
+	);
 }
 
 .comboboxViewport {
 	--combobox-viewport--padding: var(--spacing--4xs);
 
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
 	padding: var(--combobox-viewport--padding);
 }
 
@@ -336,9 +351,9 @@ function getDisplayValue(value: unknown): string {
 }
 
 .comboboxLabel {
-	padding: var(--spacing--3xs) var(--input--padding) var(--spacing--4xs);
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--2xs);
+	padding: var(--spacing--3xs) var(--input--padding) var(--spacing--2xs);
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--xs);
 }
 
 .comboboxSeparator {
@@ -347,7 +362,7 @@ function getDisplayValue(value: unknown): string {
 	width: calc(
 		100% + 2 * var(--combobox-viewport--padding) - 2 * var(--combobox-separator-outline-inset)
 	);
-	margin-block: var(--spacing--3xs);
+	margin-block: var(--combobox-viewport--padding);
 	margin-inline: calc(
 		-1 * var(--combobox-viewport--padding) + var(--combobox-separator-outline-inset)
 	);

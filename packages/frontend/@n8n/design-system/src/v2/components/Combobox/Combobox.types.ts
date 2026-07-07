@@ -1,5 +1,6 @@
 import type { IconName } from '../../../components/N8nIcon/icons';
 import type { InputSize } from '../../../components/N8nInput/Input.types';
+import type { StyleValue } from 'vue';
 import type {
 	ComboboxContentProps,
 	ComboboxItemProps,
@@ -10,7 +11,7 @@ import type {
 export type AcceptableValue = string | number | bigint | Record<string, unknown> | null;
 
 export type ComboboxProps = Omit<ComboboxRootProps, 'dir'> &
-	Pick<ComboboxContentProps, 'side' | 'sideOffset'> & {
+	Pick<ComboboxContentProps, 'side' | 'sideOffset' | 'align'> & {
 		size?: ComboboxSizes;
 		icon?: IconName;
 		placeholder?: string;
@@ -20,6 +21,7 @@ export type ComboboxProps = Omit<ComboboxRootProps, 'dir'> &
 		labelKey?: string;
 		items?: ComboboxItem[];
 		contentClass?: string;
+		contentStyle?: StyleValue;
 		id?: string;
 	};
 

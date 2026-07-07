@@ -181,5 +181,25 @@ describe('v2/components/Combobox', () => {
 				expect(wrapper.queryByText('Banana')).not.toBeInTheDocument();
 			});
 		});
+
+		it('should display the label for object items after selection', async () => {
+			const items: ComboboxItem[] = [
+				{ value: 'option1', label: 'Option 1' },
+				{ value: 'option2', label: 'Option 2' },
+			];
+
+			const wrapper = render(Combobox, {
+				props: { items, defaultOpen: true },
+			});
+
+			await waitFor(() => {
+				expect(wrapper.getByText('Option 2')).toBeVisible();
+			});
+			await userEvent.click(wrapper.getByText('Option 2'));
+
+			await waitFor(() => {
+				expect(wrapper.getByRole('combobox')).toHaveValue('Option 2');
+			});
+		});
 	});
 });

@@ -45,6 +45,7 @@ Combobox (N8nCombobox2)
 - `itemSize?`: `'mini' | 'small' | 'medium' | 'large' | 'xlarge'` | `default: 'large'`
 - `side?`: `'top' | 'right' | 'bottom' | 'left'` | `default: 'bottom'`
 - `sideOffset?`: `number` | `default: 4`
+- `align?`: `'start' | 'center' | 'end'` | `default: 'start'`
 - `contentClass?`: `string` — Additional class(es) on the portaled dropdown
 
 **Events**

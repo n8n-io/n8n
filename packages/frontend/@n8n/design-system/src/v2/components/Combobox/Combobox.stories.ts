@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { computed, ref } from 'vue';
 
@@ -6,7 +5,6 @@ import N8nIcon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
 import type { ComboboxItem as ComboboxItemType, ComboboxListItem } from './Combobox.types';
 import Combobox from './Combobox.vue';
-import './Combobox.stories.css';
 
 type GenericMeta<C> = Omit<Meta<C>, 'component'> & {
 	component: Record<keyof C, unknown>;
@@ -122,6 +120,8 @@ const itemsWithDisabledOption: ComboboxItemType[] = [
 	{ label: 'Done', value: 'done', disabled: true },
 ];
 
+const storyContainerStyle = 'padding: 40px; max-width: 400px';
+
 const meta = {
 	title: 'Experimental/Combobox',
 	component: Combobox,
@@ -144,7 +144,7 @@ export const Items = {
 			return { args, value };
 		},
 		template: `
-		<div class="combobox-story-container">
+		<div style="${storyContainerStyle}">
 			<Combobox :items="args.items" v-model="value" placeholder="Search status..." />
 		</div>
 		`,
@@ -163,13 +163,59 @@ export const ItemsObjectArray = {
 			return { args, value };
 		},
 		template: `
-		<div class="combobox-story-container">
+		<div style="${storyContainerStyle}">
 			<Combobox v-bind="args" v-model="value" />
 		</div>
 		`,
 	}),
 	args: {
 		items: objectItems,
+		modelValue: undefined,
+	},
+} satisfies Story;
+
+export const ItemsTypes = {
+	render: (args) => ({
+		components: { Combobox },
+		setup() {
+			const value = ref(args.modelValue);
+			return { args, value };
+		},
+		template: `
+		<div style="${storyContainerStyle}">
+			<Combobox
+				v-bind="args"
+				v-model="value"
+				placeholder="Select a fruit..."
+			/>
+		</div>
+		`,
+	}),
+	args: {
+		items: fruitItems,
+		modelValue: undefined,
+	},
+} satisfies Story;
+
+export const Sizes = {
+	render: (args) => ({
+		components: { Combobox },
+		setup() {
+			const value = ref(args.modelValue);
+			return { args, value };
+		},
+		template: `
+		<div style="${storyContainerStyle}; display: flex; flex-direction: column; gap: var(--spacing--md);">
+			<Combobox v-bind="args" v-model="value" size="xlarge" placeholder="xlarge (40px)" />
+			<Combobox v-bind="args" v-model="value" size="large" placeholder="large (36px, default)" />
+			<Combobox v-bind="args" v-model="value" size="medium" placeholder="medium (32px)" />
+			<Combobox v-bind="args" v-model="value" size="small" placeholder="small (28px)" />
+			<Combobox v-bind="args" v-model="value" size="mini" placeholder="mini (24px)" />
+		</div>
+		`,
+	}),
+	args: {
+		items: statusItems,
 		modelValue: undefined,
 	},
 } satisfies Story;
@@ -182,54 +228,13 @@ export const Disabled = {
 			return { args, value };
 		},
 		template: `
-		<div class="combobox-story-container" style="display: flex; flex-direction: column; gap: var(--spacing--md);">
-			<section style="display: flex; flex-direction: column; gap: var(--spacing--2xs);">
-				<h3 style="margin: 0; font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
-					Disabled (empty)
-				</h3>
-				<Combobox v-bind="args" v-model="value" disabled placeholder="Search options..." />
-			</section>
-
-			<section style="display: flex; flex-direction: column; gap: var(--spacing--2xs);">
-				<h3 style="margin: 0; font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
-					Disabled (with value)
-				</h3>
-				<Combobox
-					v-bind="args"
-					model-value="option2"
-					disabled
-					placeholder="Search options..."
-				/>
-			</section>
+		<div style="${storyContainerStyle}; display: flex; flex-direction: column; gap: var(--spacing--md);">
+			<Combobox v-bind="args" v-model="value" disabled placeholder="Search options..." />
 		</div>
 		`,
 	}),
 	args: {
 		items: objectItems,
-		modelValue: undefined,
-	},
-} satisfies Story;
-
-export const DisabledItem = {
-	name: 'With disabled item',
-	render: (args) => ({
-		components: { Combobox },
-		setup() {
-			const value = ref(args.modelValue);
-			return { args, value };
-		},
-		template: `
-		<div class="combobox-story-container">
-			<Combobox
-				v-bind="args"
-				v-model="value"
-				placeholder="Select status..."
-			/>
-		</div>
-		`,
-	}),
-	args: {
-		items: itemsWithDisabledOption,
 		modelValue: undefined,
 	},
 } satisfies Story;
@@ -268,26 +273,28 @@ export const Controlled = {
 			};
 		},
 		template: `
-			<div class="combobox-story-container combobox-story-stack">
-				<section class="combobox-story-section">
-					<h3 class="combobox-story-heading">Controlled</h3>
-					<p class="combobox-story-description">
+			<div style="${storyContainerStyle}; display: flex; flex-direction: column; gap: var(--spacing--md);">
+				<section style="display: flex; flex-direction: column; gap: var(--spacing--2xs);">
+					<h3 style="margin: 0; font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
+						Controlled
+					</h3>
+					<p style="margin: 0; font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
 						Value and open state are owned by the parent via
 						<code>v-model</code> and <code>v-model:open</code>.
 					</p>
 
-					<dl class="combobox-story-meta">
-						<div class="combobox-story-meta-row">
-							<dt class="combobox-story-meta-label">Selected</dt>
-							<dd class="combobox-story-meta-value">{{ controlledValue ?? 'none' }}</dd>
+					<dl style="display: flex; flex-direction: column; gap: var(--spacing--4xs); margin: 0; font-size: var(--font-size--2xs);">
+						<div style="display: grid; grid-template-columns: 5rem 1fr; gap: var(--spacing--3xs);">
+							<dt style="margin: 0; color: var(--color--text--tint-1);">Selected</dt>
+							<dd style="margin: 0; word-break: break-word;">{{ controlledValue ?? 'none' }}</dd>
 						</div>
-						<div class="combobox-story-meta-row">
-							<dt class="combobox-story-meta-label">Open</dt>
-							<dd class="combobox-story-meta-value">{{ controlledOpen ? 'true' : 'false' }}</dd>
+						<div style="display: grid; grid-template-columns: 5rem 1fr; gap: var(--spacing--3xs);">
+							<dt style="margin: 0; color: var(--color--text--tint-1);">Open</dt>
+							<dd style="margin: 0; word-break: break-word;">{{ controlledOpen ? 'true' : 'false' }}</dd>
 						</div>
 					</dl>
 
-					<div class="combobox-story-actions">
+					<div style="display: flex; flex-wrap: wrap; gap: var(--spacing--3xs);">
 						<button type="button" @click="selectCredentials">Select credentials</button>
 						<button type="button" @click="clearSelection">Clear selection</button>
 						<button type="button" @click="openCombobox">Open</button>
@@ -316,10 +323,12 @@ export const Uncontrolled = {
 			return { controlledDemoItems };
 		},
 		template: `
-			<div class="combobox-story-container combobox-story-stack">
-				<section class="combobox-story-section">
-					<h3 class="combobox-story-heading">Uncontrolled</h3>
-					<p class="combobox-story-description">
+			<div style="${storyContainerStyle}; display: flex; flex-direction: column; gap: var(--spacing--md);">
+				<section style="display: flex; flex-direction: column; gap: var(--spacing--2xs);">
+					<h3 style="margin: 0; font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
+						Uncontrolled
+					</h3>
+					<p style="margin: 0; font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
 						Initial state is set with <code>default-value</code> and
 						<code>default-open</code>. The combobox manages its own state after mount.
 					</p>
@@ -339,7 +348,7 @@ export const Uncontrolled = {
 	},
 } satisfies Story;
 
-export const FilterableList = {
+export const WithDisabledItem = {
 	render: (args) => ({
 		components: { Combobox },
 		setup() {
@@ -347,18 +356,17 @@ export const FilterableList = {
 			return { args, value };
 		},
 		template: `
-		<div class="combobox-story-container">
+		<div style="${storyContainerStyle}">
 			<Combobox
 				v-bind="args"
 				v-model="value"
-				placeholder="Search fruits..."
-				empty-text="No fruits match your search"
+				placeholder="Select status..."
 			/>
 		</div>
 		`,
 	}),
 	args: {
-		items: fruitItems,
+		items: itemsWithDisabledOption,
 		modelValue: undefined,
 	},
 } satisfies Story;
@@ -372,7 +380,7 @@ export const WithIcons = {
 			return { args, value, icon };
 		},
 		template: `
-		<div class="combobox-story-container" style="display: flex; gap: 16px; align-items: center;">
+		<div style="${storyContainerStyle}; display: flex; gap: 16px; align-items: center;">
 			<Combobox v-bind="args" v-model="value" :icon="icon">
 				<template #item-leading="{ item }">
 					<N8nIcon :icon="item.icon" color="primary" />
@@ -398,7 +406,7 @@ export const WithSlots = {
 			return { args, value, icon };
 		},
 		template: `
-		<div class="combobox-story-container">
+		<div style="${storyContainerStyle}">
 			<Combobox v-bind="args" v-model="value" :icon="icon">
 				<template #header>
 					<div style="padding: var(--spacing--2xs); font-size: var(--font-size--2xs); color: var(--color--text--tint-1); border-bottom: 1px solid var(--border-color);">
@@ -429,29 +437,6 @@ export const WithSlots = {
 	}),
 	args: {
 		items: slotItems,
-		modelValue: undefined,
-	},
-} satisfies Story;
-
-export const Sizes = {
-	render: (args) => ({
-		components: { Combobox },
-		setup() {
-			const value = ref(args.modelValue);
-			return { args, value };
-		},
-		template: `
-		<div class="combobox-story-container" style="display: flex; flex-direction: column; gap: var(--spacing--md);">
-			<Combobox v-bind="args" v-model="value" size="xlarge" placeholder="xlarge (40px)" />
-			<Combobox v-bind="args" v-model="value" size="large" placeholder="large (36px, default)" />
-			<Combobox v-bind="args" v-model="value" size="medium" placeholder="medium (32px)" />
-			<Combobox v-bind="args" v-model="value" size="small" placeholder="small (28px)" />
-			<Combobox v-bind="args" v-model="value" size="mini" placeholder="mini (24px)" />
-		</div>
-		`,
-	}),
-	args: {
-		items: statusItems,
 		modelValue: undefined,
 	},
 } satisfies Story;
