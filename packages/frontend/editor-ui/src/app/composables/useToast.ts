@@ -21,6 +21,12 @@ export function useToast() {
 	const { APP_Z_INDEXES } = useStyles();
 
 	function showMessage(messageData: Partial<NotificationOptions>, track = true) {
+		// Defense-in-depth: element-plus's notify touches `document`, so bail out
+		// safely if the DOM is unavailable (e.g. a torn-down test environment).
+		if (typeof document === 'undefined' || typeof window === 'undefined') {
+			return { close: () => {} } as NotificationHandle;
+		}
+
 		const suppressed = uiStore.areNotificationsSuppressed;
 		const allowErrors = uiStore.allowErrorNotificationsWhenSuppressed;
 		if (suppressed && !(allowErrors && messageData.type === 'error')) {

@@ -1,7 +1,7 @@
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { LocationQuery, NavigationGuardNext, useRouter } from 'vue-router';
-import { watch } from 'vue';
+import { onScopeDispose, watch } from 'vue';
 import { useMessage } from './useMessage';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -617,6 +617,10 @@ export function useWorkflowSaving({
 		}
 		saveStore.setAutoSaveState(AutoSaveState.Idle);
 	};
+
+	// Cancel any pending debounced autosave when the owning scope/component is
+	// torn down, so a deferred save can't run against disposed stores.
+	onScopeDispose(cancelAutoSave);
 
 	// Watch for network coming back online
 	watch(
