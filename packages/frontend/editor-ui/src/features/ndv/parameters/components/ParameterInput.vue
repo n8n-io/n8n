@@ -66,6 +66,7 @@ import {
 
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useEditorContext } from '@/app/composables/useEditorContext';
+import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -178,6 +179,7 @@ const workflowsListStore = useWorkflowsListStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const settingsStore = useSettingsStore();
 const { askAi } = useEditorContext();
+const aiGateway = useAiGateway();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
@@ -315,7 +317,26 @@ const parameterOptions = computed(() => {
 	const options = hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options;
 	const safeOptions = (options ?? []).filter(isValidParameterOption);
 
-	return getParameterDisplayableOptions(safeOptions, ndvStore.value?.activeNode ?? null);
+	const displayableOptions = getParameterDisplayableOptions(
+		safeOptions,
+		ndvStore.value?.activeNode ?? null,
+	);
+
+	// Hide resource/operation options the AI gateway can't run. Keep the current
+	// value so pre-existing (now-unsupported) selections still render alongside
+	// the unsupported-action notice instead of showing a blank dropdown.
+	const paramName = props.parameter.name;
+	if (paramName !== 'resource' && paramName !== 'operation') return displayableOptions;
+	if (shortPath.value !== paramName) return displayableOptions;
+
+	const currentValue = isResourceLocatorValue(props.modelValue)
+		? props.modelValue.value
+		: props.modelValue;
+	return displayableOptions.filter(
+		(option) =>
+			option.value === currentValue ||
+			aiGateway.isActionOptionVisible(node.value ?? null, paramName, String(option.value)),
+	);
 });
 
 const modelValueString = computed<string>(() => {
