@@ -310,7 +310,12 @@ function toggleScope(scope: S, checked: boolean) {
 								:data-test-id="`scope-group-${group.key}`"
 								@update:model-value="(checked: boolean) => toggleGroup(group, checked)"
 							/>
-							<N8nTooltip v-if="groupTools(group).length > 0" placement="right" :show-after="150">
+							<N8nTooltip
+								v-if="groupTools(group).length > 0"
+								placement="right"
+								:show-after="150"
+								:content-class="$style['tools-tooltip']"
+							>
 								<template #content>
 									<div
 										:class="$style['tools-popover']"
@@ -439,11 +444,20 @@ function toggleScope(scope: S, checked: boolean) {
 	}
 }
 
+/* the shared tooltip caps content at 180px and centers it; tool identifiers need more room */
+:global(.n8n-tooltip).tools-tooltip {
+	max-width: 320px;
+	align-items: flex-start;
+}
+
 .tools-popover {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
-	min-width: 200px;
+	width: max-content;
+	max-width: 100%;
+	max-height: 320px;
+	overflow-y: auto;
 	padding: var(--spacing--4xs);
 }
 
