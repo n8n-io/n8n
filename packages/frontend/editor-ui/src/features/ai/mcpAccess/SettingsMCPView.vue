@@ -35,6 +35,8 @@ import type { OAuthClientResponseDto } from '@n8n/api-types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@/app/constants';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
+import { EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY } from '@/experiments/exposeAllWorkflowsToMcp/constants';
+import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
 
 type MCPTabs = 'workflows' | 'oauth' | 'settings';
 
@@ -47,6 +49,7 @@ const telemetry = useTelemetry();
 const mcpStore = useMCPStore();
 const usersStore = useUsersStore();
 const uiStore = useUIStore();
+const exposeAllWorkflowsToMcpStore = useExposeAllWorkflowsToMcpStore();
 
 const mcpStatusLoading = ref(false);
 const selectedTab = ref<MCPTabs>('workflows');
@@ -144,12 +147,38 @@ const onToggleMCPAccess = async (enabled: boolean) => {
 			workflowsLoading.value = false;
 		}
 		mcp.trackUserToggledMcpAccess(enabled);
+		if (enabled && updated) {
+			await offerToExposeAllWorkflows();
+		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.toggle.error'));
 	} finally {
 		mcpStatusLoading.value = false;
 		workflowsLoading.value = false;
 	}
+};
+
+const offerToExposeAllWorkflows = async () => {
+	if (!exposeAllWorkflowsToMcpStore.isEnabled) {
+		return;
+	}
+	try {
+		const eligible = await mcpStore.getMcpEligibleWorkflows({ take: 1 });
+		if (eligible.count === 0) {
+			return;
+		}
+	} catch {
+		return;
+	}
+	uiStore.openModalWithData({
+		name: EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY,
+		data: {
+			onExposed: async () => {
+				workflowsTableState.value = { ...workflowsTableState.value, page: 0 };
+				await fetchAvailableWorkflows();
+			},
+		},
+	});
 };
 
 const onToggleWorkflowMCPAccess = async (workflowId: string, isEnabled: boolean) => {

@@ -205,6 +205,16 @@ describe('McpSettingsService', () => {
 			});
 
 			await expect(service.bulkSetAvailableInMCP(user, dto)).rejects.toThrow(BadRequestError);
+
+			const allWorkflowsDto = new UpdateWorkflowsAvailabilityDto({
+				availableInMCP: true,
+				allWorkflows: true,
+				projectId: 'project-1',
+			});
+
+			await expect(service.bulkSetAvailableInMCP(user, allWorkflowsDto)).rejects.toThrow(
+				BadRequestError,
+			);
 		});
 
 		test('filters unauthorized ids and applies updates inside a transaction', async () => {
@@ -548,6 +558,57 @@ describe('McpSettingsService', () => {
 				'folder-1',
 				'project-1',
 			);
+		});
+
+		test('resolves candidates across all accessible workflows when scoped by allWorkflows', async () => {
+			const stubs = setupRepository([
+				{ id: 'wf-1', settings: {} },
+				{ id: 'wf-2', settings: {} },
+			]);
+			workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue(['wf-1', 'wf-2']);
+
+			const dto = new UpdateWorkflowsAvailabilityDto({
+				availableInMCP: true,
+				allWorkflows: true,
+			});
+
+			const result = await service.bulkSetAvailableInMCP(user, dto);
+
+			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
+			expect(workflowFinderService.hasProjectScopeForUser).not.toHaveBeenCalled();
+			expect(workflowFinderService.findAllWorkflowIdsForUser).toHaveBeenCalledWith(user, [
+				'workflow:update',
+			]);
+			expect(stubs.update).toHaveBeenCalledTimes(2);
+			expect(result.updatedCount).toBe(2);
+		});
+
+		test('omits workflow ids from the response when scoped by allWorkflows', async () => {
+			setupRepository([{ id: 'wf-1', settings: {} }]);
+			workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue(['wf-1']);
+
+			const dto = new UpdateWorkflowsAvailabilityDto({
+				availableInMCP: true,
+				allWorkflows: true,
+			});
+
+			const result = await service.bulkSetAvailableInMCP(user, dto);
+
+			expect(result).toEqual({
+				updatedCount: 1,
+				unchangedCount: 0,
+				skippedCount: 0,
+				failedCount: 0,
+				changedWorkflows: [
+					{
+						workflowId: 'wf-1',
+						settings: { availableInMCP: true },
+						checksum: expect.stringMatching(/^[a-f0-9]{64}$/),
+					},
+				],
+			});
+			expect(result).not.toHaveProperty('updatedIds');
+			expect(result).not.toHaveProperty('unchangedIds');
 		});
 
 		test('does not resolve folder-scoped workflows when folder project cannot be scoped', async () => {

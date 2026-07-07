@@ -108,17 +108,20 @@ export class McpSettingsService {
 		user: User,
 		dto: UpdateWorkflowsAvailabilityDto,
 	): Promise<BulkSetAvailableInMCPResult> {
-		const { availableInMCP, workflowIds, projectId, folderId } = dto;
+		const { availableInMCP, workflowIds, projectId, folderId, allWorkflows } = dto;
 
-		const scopeCount = [workflowIds, projectId, folderId].filter(Boolean).length;
+		const scopeCount = [workflowIds, projectId, folderId, allWorkflows].filter(Boolean).length;
 		if (scopeCount !== 1) {
-			throw new BadRequestError('Provide exactly one of workflowIds, projectId or folderId');
+			throw new BadRequestError(
+				'Provide exactly one of workflowIds, projectId, folderId or allWorkflows',
+			);
 		}
 
 		const candidateIds = await this.resolveCandidateIds(user, {
 			workflowIds,
 			projectId,
 			folderId,
+			allWorkflows,
 		});
 
 		const isWorkflowIdsScope = Boolean(workflowIds);
@@ -278,8 +281,13 @@ export class McpSettingsService {
 			workflowIds?: string[];
 			projectId?: string;
 			folderId?: string;
+			allWorkflows?: boolean;
 		},
 	): Promise<string[]> {
+		if (scope.allWorkflows) {
+			return await this.workflowFinderService.findAllWorkflowIdsForUser(user, ['workflow:update']);
+		}
+
 		if (scope.workflowIds) {
 			const uniqueIds = [...new Set(scope.workflowIds)];
 			const accessibleIds = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
