@@ -4,13 +4,12 @@
  *
  * Invoked fire-and-forget (backgrounded) by the shim (shadow-shim.sh) that
  * replaces each tracked binary, after every shadowed command run inside an n8n
- * checkout. It records the binary, the command name, wall-clock duration and
- * exit code to the `n8n-dev` RudderStack workspace under a weekly-rotating
- * anonymous id, so we can see which commands are used, how long they take, and
- * roughly how many developers run them each week.
+ * checkout. It records the binary, its raw argv, wall-clock duration and exit
+ * code to the `n8n-dev` RudderStack workspace under a weekly-rotating anonymous
+ * id, so we can see which commands are used, how long they take, and roughly how
+ * many developers run them each week.
  *
- * Today only `pnpm` is shadowed, but the wiring is generic: add an entry to
- * BINARY_RESOLVERS here and to SHADOWED_BINARIES in setup.mjs to track another CLI.
+ * Today only `pnpm` is shadowed; add another CLI to SHADOWED_BINARIES in setup.mjs.
  *
  * Nothing is sent unless the developer granted consent via
  * scripts/dev-metrics/setup.mjs (stored in ~/.n8n/dev-telemetry.json).
@@ -22,11 +21,11 @@
  *   N8N_DEV_TRACK_CODE  exit code
  *   N8N_DEV_TRACK_CWD   directory the command ran in
  *
- * Privacy: only the leading subcommand/script name is transmitted (the first
- * non-flag token; `run <script>` → the script), sanitized to a plain name —
- * path/URL/arg-shaped tokens become "other". Directories are sent repo-relative
- * (e.g. "packages/cli"), never absolute. No usernames, emails or raw args leave
- * the machine. Every error is swallowed so tracking can never disrupt a workflow.
+ * The raw argv is sent verbatim (`args`) and parsed/aggregated on the collection
+ * side, keeping this script dead simple. Note this means whatever is on the
+ * command line — including any paths in it — is transmitted; scrub downstream.
+ * The `dir` is the exception, always sent repo-relative. Every error is swallowed
+ * so tracking can never disrupt a workflow.
  */
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -62,57 +61,6 @@ function findMonorepoRoot(start) {
 		dir = dirname(dir);
 	}
 	return null;
-}
-
-// --- Per-binary command resolution -----------------------------------------
-// Each resolver turns raw argv tokens into a single command name. Register a
-// binary here to make its events meaningful; an unregistered binary is still
-// recorded, with command = "other".
-
-/** pnpm flags that take a value as the following token (e.g. `--filter foo`). */
-const PNPM_VALUE_FLAGS = new Set([
-	'--filter',
-	'-F',
-	'--filter-prod',
-	'-C',
-	'--dir',
-	'--reporter',
-	'--workspace-concurrency',
-	'--use-node-version',
-	'--config',
-]);
-
-/** Keep plain subcommand/script names; drop anything path/URL/arg-shaped. */
-function safeCommand(token) {
-	return /^[@\w][\w.:/@-]{0,49}$/.test(token) ? token : 'other';
-}
-
-/** pnpm: the first non-flag token (subcommand or script), with run/exec unwrap. */
-function resolvePnpmCommand(tokens) {
-	for (let i = 0; i < tokens.length; i++) {
-		const t = tokens[i];
-		if (t.startsWith('-')) {
-			// A value flag in separate-token form (`--filter foo`) consumes its value.
-			if (PNPM_VALUE_FLAGS.has(t) && tokens[i + 1] && !tokens[i + 1].startsWith('-')) i++;
-			continue;
-		}
-		// For `run <script>` / `exec <bin>`, report the concrete target.
-		if ((t === 'run' || t === 'exec') && tokens[i + 1] && !tokens[i + 1].startsWith('-')) {
-			return safeCommand(tokens[i + 1]);
-		}
-		return safeCommand(t);
-	}
-	return 'other'; // bare `pnpm` (installs in the cwd)
-}
-
-const BINARY_RESOLVERS = {
-	pnpm: resolvePnpmCommand,
-};
-
-function resolveCommand(bin, args) {
-	const tokens = args.split(/\s+/).filter(Boolean);
-	const resolver = BINARY_RESOLVERS[bin];
-	return resolver ? resolver(tokens) : 'other';
 }
 
 /** Detect the binary's version by running `<bin> --version`; null on failure. */
@@ -227,7 +175,6 @@ async function main() {
 	}
 
 	const binary = process.env.N8N_DEV_TRACK_BIN || 'pnpm';
-	const command = resolveCommand(binary, process.env.N8N_DEV_TRACK_ARGS ?? '');
 	const binaryVersion = detectBinaryVersion(binary);
 	const durationMs = Number.parseInt(process.env.N8N_DEV_TRACK_MS ?? '', 10);
 	const exitCode = Number.parseInt(process.env.N8N_DEV_TRACK_CODE ?? '', 10);
@@ -238,7 +185,8 @@ async function main() {
 		actor: detectActor(),
 		binary,
 		binary_version: binaryVersion,
-		command,
+		// Raw argv, verbatim — parsing/aggregation happens on the collection side.
+		args: process.env.N8N_DEV_TRACK_ARGS ?? '',
 		dir,
 		duration_ms: Number.isFinite(durationMs) ? durationMs : null,
 		exit_code: Number.isFinite(exitCode) ? exitCode : null,

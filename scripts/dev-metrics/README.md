@@ -59,16 +59,17 @@ Event `dev:cli_command` with `anonymousId` = the weekly anonymous id, and:
 | `actor` | `human`, `claude-code`, `cursor`, `ci` | Who ran it, inferred from env markers (`CLAUDECODE`, `CURSOR_TRACE_ID`, `AIDER_VERSION`, `CI`/`GITHUB_ACTIONS`); defaults to `human`. |
 | `binary` | `pnpm` | The shadowed CLI. |
 | `binary_version` | `10.32.1` | The CLI's own version, detected at runtime by the tracker via `<bin> --version` (`null` if unknown). |
-| `command` | `build`, `add`, `install`, `dlx` | The pnpm subcommand or script — the first non-flag token (`run <script>` → the script). Sanitized to a plain name; path/URL/arg-shaped tokens → `other`. |
+| `args` | `run build`, `add left-pad`, `install --frozen-lockfile` | The **raw argv**, verbatim. Parsed/aggregated on the collection side. |
 | `dir` | `packages/cli`, `.` | Where it ran, **relative to the repo root** — never an absolute path. |
 | `duration_ms` | `41230` | Wall-clock duration. |
 | `exit_code` | `0` | The command's exit code. |
 | `os` / `arch` | `darwin` / `arm64` | |
 | `node_version`, `repo_version`, `schema_version` | | For segmenting. |
 
-**Never sent:** absolute paths, file names, branch names, git email, username,
-or raw command arguments. Only the (sanitized) command/subcommand name and the
-repo-relative `dir` leave the machine.
+**Sent:** the raw argv (`args`), plus the repo-relative `dir`, binary + version,
+timing, exit code, and OS. **Never sent:** git email, username, absolute paths as
+a field (the `dir` is repo-relative). Since `args` is verbatim, anything typed on
+the command line is transmitted as-is — scrub/aggregate on the collection side.
 
 One lifecycle event is also sent: **`dev:metrics_opt_in`**, fired once when a
 developer opts in (the transition into `granted`), under the same anonymous
@@ -90,16 +91,11 @@ someone who just declined it.
 
 ## Tracking another binary
 
-To start tracking, say, `turbo`:
-
-1. **setup.mjs** — add it to `SHADOWED_BINARIES`:
-   ```js
-   const SHADOWED_BINARIES = ['pnpm', 'turbo'];
-   ```
-2. **track.mjs** — optionally register a resolver in `BINARY_RESOLVERS` so command
-   names are meaningful and PII-safe (e.g. return the leading bareword
-   subcommand). Without one, the binary is still recorded but `command` is
-   always `other`.
+Add it to `SHADOWED_BINARIES` in **setup.mjs** — that's it:
+```js
+const SHADOWED_BINARIES = ['pnpm', 'turbo'];
+```
+The tracker sends its raw argv like any other binary; no per-binary code needed.
 
 Existing installs pick up the new binary on the next `pnpm install` (the granted
 bootstrap re-runs the install, which is idempotent). The shim itself is versioned
@@ -163,10 +159,11 @@ against a fake binary in a temp dir (never touches your real pnpm).
 Once the `n8n-dev` RudderStack source is wired to a destination (warehouse /
 analytics tool), query the `dev:cli_command` events there:
 
-- **Most-used commands:** count `dev:cli_command`, grouped by `command`
-  (optionally filtered by `binary`).
+- **Most-used commands:** derive a subcommand from `args` (e.g. its first token)
+  and group by it, optionally filtered by `binary`.
 - **How many developers:** unique `anonymousId` per ISO week.
 - **Opt-ins:** unique `anonymousId` on `dev:metrics_opt_in`.
 - **Human vs AI agent:** group any of the above by `actor`.
 - **Which packages:** group by `dir`.
-- **How long commands take:** p50/p90 of `duration_ms`, grouped by `command`.
+- **How long commands take:** p50/p90 of `duration_ms`, grouped by the derived
+  subcommand.

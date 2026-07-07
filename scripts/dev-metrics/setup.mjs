@@ -47,8 +47,8 @@ const SHADOW_SHIM_SRC = join(SCRIPT_DIR, 'shadow-shim.sh');
 const SHIM_MARKER = '# n8n-shadow-shim-version';
 const SAVED_SUFFIX = '.n8n-real';
 
-// Binaries to shadow for usage tracking. Add another CLI here (and, for a
-// meaningful command name, a resolver in track.mjs BINARY_RESOLVERS).
+// Binaries to shadow for usage tracking. Add another CLI here — that's it; the
+// tracker sends its raw argv, no per-binary code needed.
 const SHADOWED_BINARIES = ['pnpm'];
 
 function n8nDir() {
