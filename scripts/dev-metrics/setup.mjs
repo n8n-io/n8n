@@ -176,7 +176,7 @@ function installOne(bin) {
 	const dir = dirname(real);
 	if (!isWritableDir(dir)) return { bin, action: 'unwritable', path: dir };
 
-	// ponytail: in-place replacement. nvm-node switch / `corepack enable` can
+	// in-place replacement. nvm-node switch / `corepack enable` can
 	// leave a fresh binary un-shimmed — the next `pnpm install` re-installs.
 	const saved = real + SAVED_SUFFIX;
 	if (!existsSync(saved)) renameSync(real, saved);
@@ -286,28 +286,21 @@ function status() {
  * keep this process — and therefore the parent `pnpm install` — from exiting.
  */
 function promptViaTty(message) {
-	let fdIn;
-	let fdOut;
+	let fd;
 	try {
-		fdIn = openSync('/dev/tty', 'r');
-		fdOut = openSync('/dev/tty', 'w');
-	} catch {
-		return null; // no controlling terminal (CI / non-interactive)
-	}
-	try {
-		writeSync(fdOut, message);
+		fd = openSync('/dev/tty', 'r+');
+		writeSync(fd, message);
 		const buf = Buffer.alloc(256);
-		const bytes = readSync(fdIn, buf, 0, buf.length, null); // blocks until the line is entered
+		const bytes = readSync(fd, buf, 0, buf.length, null); // blocks until the line is entered
 		return buf.toString('utf8', 0, bytes).trim().toLowerCase();
 	} catch {
-		return null;
+		return null; // no controlling terminal (CI / non-interactive), or read failed
 	} finally {
-		try {
-			closeSync(fdIn);
-		} catch {}
-		try {
-			closeSync(fdOut);
-		} catch {}
+		if (fd !== undefined) {
+			try {
+				closeSync(fd);
+			} catch {}
+		}
 	}
 }
 
