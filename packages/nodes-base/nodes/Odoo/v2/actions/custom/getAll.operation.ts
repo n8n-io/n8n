@@ -6,6 +6,7 @@ import type {
 } from 'n8n-workflow';
 
 import { odooApiRequest } from '../../transport';
+import { buildDomain, type IOdooFilters } from '../../helpers/utils';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
 const properties: INodeProperties[] = [
@@ -24,6 +25,52 @@ const properties: INodeProperties[] = [
 		displayOptions: { show: { returnAll: [false] } },
 		typeOptions: { minValue: 1, maxValue: 1000 },
 		description: 'Max number of results to return',
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'fixedCollection',
+		default: {},
+		placeholder: 'Add Filter',
+		typeOptions: { multipleValues: true },
+		options: [
+			{
+				name: 'filter',
+				displayName: 'Filter',
+				values: [
+					{
+						displayName: 'Field Name',
+						name: 'fieldName',
+						type: 'string',
+						default: '',
+						// Custom resources use a dynamic model, so field names can't be
+						// loaded via loadOptions — accept them as free text.
+						description: 'The technical name of the field to filter on',
+						placeholder: 'e.g. name',
+					},
+					{
+						displayName: 'Operator',
+						name: 'operator',
+						type: 'options',
+						default: 'equal',
+						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+						options: [
+							{ name: 'Equal', value: 'equal' },
+							{ name: 'Not Equal', value: 'notEqual' },
+							{ name: 'Greater Than', value: 'greaterThen' },
+							{ name: 'Less Than', value: 'lesserThen' },
+							{ name: 'Greater or Equal', value: 'greaterOrEqual' },
+							{ name: 'Less or Equal', value: 'lesserOrEqual' },
+							{ name: 'Like', value: 'like' },
+							{ name: 'In', value: 'in' },
+							{ name: 'Not In', value: 'notIn' },
+							{ name: 'Child Of', value: 'childOf' },
+						],
+					},
+					{ displayName: 'Value', name: 'value', type: 'string', default: '' },
+				],
+			},
+		],
 	},
 	{
 		displayName: 'Options',
@@ -63,6 +110,7 @@ export async function execute(
 				extractValue: true,
 			}) as string;
 			const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+			const filters = this.getNodeParameter('filters', i) as unknown as IOdooFilters;
 			const options = this.getNodeParameter('options', i) as IDataObject;
 
 			const fieldsRaw = (options.fieldsList as string) ?? '';
@@ -73,7 +121,9 @@ export async function execute(
 						.filter(Boolean)
 				: [];
 
-			const body: IDataObject = { domain: [], fields, offset: 0 };
+			const domain = buildDomain(filters);
+
+			const body: IDataObject = { domain, fields, offset: 0 };
 			if (!returnAll) body.limit = this.getNodeParameter('limit', i) as number;
 
 			const response = (await odooApiRequest.call(

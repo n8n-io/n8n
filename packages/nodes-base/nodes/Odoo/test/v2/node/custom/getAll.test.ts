@@ -43,6 +43,7 @@ describe('OdooV2 — custom:getAll', () => {
 			customResource: 'res.partner',
 			returnAll: false,
 			limit: 10,
+			filters: {},
 			options: {},
 			...overrides,
 		};
@@ -88,6 +89,38 @@ describe('OdooV2 — custom:getAll', () => {
 		expect(transport.odooApiRequest).toHaveBeenCalledWith('res.partner', 'search_read', {
 			domain: [],
 			fields: ['name', 'email'],
+			limit: 10,
+			offset: 0,
+		});
+	});
+
+	it('builds the domain from the filters parameter', async () => {
+		setupParams({
+			filters: { filter: [{ fieldName: 'name', operator: 'like', value: 'Acme' }] },
+		});
+		(transport.odooApiRequest as Mock).mockResolvedValue(MOCK_RECORDS);
+
+		await node.execute.call(exec);
+
+		expect(transport.odooApiRequest).toHaveBeenCalledWith('res.partner', 'search_read', {
+			domain: [['name', 'like', 'Acme']],
+			fields: [],
+			limit: 10,
+			offset: 0,
+		});
+	});
+
+	it('coerces comma-separated values into a list for the "in" operator', async () => {
+		setupParams({
+			filters: { filter: [{ fieldName: 'id', operator: 'in', value: '1, 2, 3' }] },
+		});
+		(transport.odooApiRequest as Mock).mockResolvedValue(MOCK_RECORDS);
+
+		await node.execute.call(exec);
+
+		expect(transport.odooApiRequest).toHaveBeenCalledWith('res.partner', 'search_read', {
+			domain: [['id', 'in', [1, 2, 3]]],
+			fields: [],
 			limit: 10,
 			offset: 0,
 		});
