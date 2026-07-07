@@ -105,23 +105,11 @@ Observer and Reflector use the same model as the orchestrator agent (see `@n8n/a
 
 ### Output Filtering
 
-Agent output is scanned for secrets/PII and redacted before it reaches the user.
-The scan covers streamed assistant text, reasoning, and tool results/errors, for
-both the orchestrator and delegated sub-agents. A filtering event (categories
-and counts only — never the values) is logged whenever a redaction occurs.
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_OUTPUT_REDACTION_ENABLED` | boolean | `true` | Master switch. When `false`, output passes through untouched. |
-| `N8N_INSTANCE_AI_OUTPUT_REDACTION_SECRETS` | boolean | `true` | Redact credential/secret patterns (API keys, tokens, auth headers, `key=value` pairs). |
-| `N8N_INSTANCE_AI_OUTPUT_REDACTION_PII` | string | `credit-card` | Comma-separated PII categories to redact. Available: `email`, `credit-card` (Luhn-validated), `ssn-us` (US Social Security Number, dashed `123-45-6789` form). Defaults to `credit-card` only; `email`/`ssn-us` are implemented but off by default pending review of false-positive rates. Empty = no PII scanning. Unrecognized values are ignored. Per-country national IDs each use their own `ssn-<cc>` category (e.g. a future `ssn-uk`). |
-| `N8N_INSTANCE_AI_OUTPUT_REDACTION_PLACEHOLDER` | string | `[REDACTED]` | Replacement text substituted for each redacted match. |
-
-Secret detection is conservative by design — it matches well-known token shapes
-and explicit `key=value`/JSON secret fields, not arbitrary opaque strings, to
-avoid mangling normal output. The `PiiDetectionType` API also reserves `phone`
-and `address`, but those have no detection pattern yet — setting them has no
-effect (they were deferred as too false-positive-prone for free-form prose).
+Instance AI stores and streams agent output raw — the durable event log is
+byte-for-byte the model's output, consistent with how workflow execution data
+is stored. Redaction of secrets/PII happens at egress boundaries instead: the
+LangSmith telemetry exporter keeps its own stricter redactor
+(`trace-payloads.ts`). There is no stream-side output-redaction toggle.
 
 ## Enabling / Disabling
 
@@ -168,13 +156,13 @@ The event bus transport is selected automatically:
 - **Single instance**: In-process `EventEmitter` — zero infrastructure
 - **Queue mode**: Redis Pub/Sub — uses n8n's existing Redis connection
 
-Event persistence is controlled by `N8N_INSTANCE_AI_DURABLE_LOG` (default
-`false`). Off, events live only in a bounded in-memory buffer per thread
-(500 events / 2 MB, FIFO-evicted; ids reset on restart, so replay does not
-survive a restart). On, coalesced step-level facts (completed text/reasoning
-blocks, tool calls and results, run lifecycle) are appended to the
-`instance_ai_events` table and replay reads the database; token deltas are
-never persisted. Rows cascade-delete with their thread
+Events are persisted durably: coalesced step-level facts (completed
+text/reasoning blocks, tool calls and results, run lifecycle) are appended to
+the `instance_ai_events` table, and SSE replay reads the database, so a
+client's replay cursor stays valid across a restart or a different main. Token
+deltas are never persisted (a half-streamed block is not resumable); the
+in-memory bus keeps a bounded per-thread cache (500 events / 2 MB) only for
+same-process best-effort reads. Rows cascade-delete with their thread
 (`N8N_INSTANCE_AI_THREAD_TTL_DAYS`).
 
 Runtime behavior:
@@ -218,10 +206,6 @@ N8N_INSTANCE_AI_GATEWAY_API_KEY=my-secret-key
 
 # With custom OpenAI-compatible endpoint (e.g. LM Studio, Ollama)
 N8N_INSTANCE_AI_MODEL_URL=http://localhost:1234/v1
-
-# Output filtering — secrets + email only, with a custom placeholder
-N8N_INSTANCE_AI_OUTPUT_REDACTION_PII=email
-N8N_INSTANCE_AI_OUTPUT_REDACTION_PLACEHOLDER=‹redacted›
 
 # Observational memory tuning
 N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS=30000

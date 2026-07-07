@@ -59,8 +59,9 @@ function isStructuralTelemetryIdKey(key: string): boolean {
 }
 
 /**
- * Telemetry/tracing redaction policy. Deliberately stricter than the
- * user-facing output policy `DEFAULT_OUTPUT_REDACTION_OPTIONS`.
+ * Telemetry/tracing redaction policy for LangSmith egress. Instance AI output
+ * itself is stored and streamed raw (raw-at-rest); this is the one boundary
+ * where secrets and PII are scrubbed before they leave the instance.
  */
 export const DEFAULT_TELEMETRY_REDACTION_OPTIONS: RedactionOptions = {
 	secrets: true,
