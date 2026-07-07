@@ -119,7 +119,7 @@ export class InterruptedRunSweeper {
 	}
 
 	private async sweepRun(threadId: string, runId: string): Promise<void> {
-		this.metrics.sweep.runsExamined++;
+		this.metrics.recordSweepRunExamined();
 
 		// Live in this process (e.g. sweep re-ran after startup) — not a zombie.
 		if (this.resumeHost?.hasActiveRun(threadId)) return;
@@ -157,7 +157,7 @@ export class InterruptedRunSweeper {
 				agentId: call.agentId,
 				payload: { toolCallId: call.toolCallId, error: TOOL_INTERRUPTED_MESSAGE },
 			});
-			this.metrics.sweep.toolInterruptedFacts++;
+			this.metrics.recordSweepToolInterruptedFact();
 		}
 
 		// Exact match on the host run id (persisted with every orchestrator
@@ -168,7 +168,7 @@ export class InterruptedRunSweeper {
 				(row) => row.state?.status === 'running' && row.hostRunId === runId,
 			) ??
 			orchestratorCheckpoints.find(
-				(row) => row.state?.status === 'running' && row.hostRunId == null,
+				(row) => row.state?.status === 'running' && row.hostRunId === null,
 			);
 		if (runningCheckpoint?.state && this.resumeHost) {
 			const userId = findRunUserId(events);
@@ -198,7 +198,11 @@ export class InterruptedRunSweeper {
 					contextNotes,
 				});
 				if (resumed) {
-					this.metrics.sweep.runsCrashResumed++;
+					this.metrics.recordSweepOutcome(
+						'crash-resumed',
+						inFlight.length,
+						contextNotes.length - inFlight.length,
+					);
 					this.logger.info('Crash-resumed interrupted Instance AI run from step checkpoint', {
 						threadId,
 						runId,
@@ -215,7 +219,7 @@ export class InterruptedRunSweeper {
 			agentId: orchestratorAgentId(runId),
 			payload: { status: 'interrupted', reason: 'crash_interrupted' },
 		});
-		this.metrics.sweep.runsMarkedInterrupted++;
+		this.metrics.recordSweepOutcome('interrupted', inFlight.length, 0);
 		this.logger.info('Marked interrupted Instance AI run in the durable log', {
 			threadId,
 			runId,
@@ -246,7 +250,7 @@ export class InterruptedRunSweeper {
 		const checkpointJson = JSON.stringify(checkpointState.messageList ?? '');
 		for (const correction of collectLoggedCorrections(events)) {
 			if (checkpointJson.includes(correction.toolCallId)) continue;
-			this.metrics.sweep.correctionsRequeued++;
+			this.metrics.recordSweepCorrectionRequeued();
 			notes.push(
 				`Before the restart the user sent this steering correction, which was recorded but may not have been applied yet: "${correction.correction}". Make sure it is applied.`,
 			);

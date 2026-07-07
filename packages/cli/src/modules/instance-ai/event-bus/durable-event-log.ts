@@ -224,7 +224,7 @@ export class DurableEventLog {
 				this.metrics.recordDrainBatch(events.length, bytes);
 				return firstSeq;
 			} catch (error) {
-				this.metrics.drain.appendConflicts++;
+				this.metrics.recordAppendConflict(attempt);
 				this.lastSeq.delete(threadId);
 				this.logger.warn('Instance AI event log append conflict, retrying', {
 					threadId,
@@ -233,7 +233,7 @@ export class DurableEventLog {
 				});
 			}
 		}
-		this.metrics.drain.appendFailures++;
+		this.metrics.recordAppendFailure(events.length);
 		this.logger.error('Instance AI event log append failed, dropping batch', {
 			threadId,
 			events: events.length,

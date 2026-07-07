@@ -27,6 +27,7 @@ import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
+import type { EventService } from '@/events/event.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { DurableEventLog } from '@/modules/instance-ai/event-bus/durable-event-log';
@@ -95,7 +96,7 @@ interface Stack {
 
 function buildStack(durableLog: boolean): Stack {
 	const logger = mockLogger();
-	const metrics = new DurableLogMetrics();
+	const metrics = new DurableLogMetrics(mock<EventService>());
 	const repo = Container.get(InstanceAiEventLogRepository);
 	const eventLog = new DurableEventLog(logger, repo, metrics);
 	const globalConfig = { instanceAi: { durableLog } } as GlobalConfig;

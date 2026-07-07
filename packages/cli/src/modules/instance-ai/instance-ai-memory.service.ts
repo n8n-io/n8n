@@ -26,6 +26,7 @@ import { DurableLogMetrics } from './event-bus/durable-log-metrics';
 import {
 	collectConfirmationRequestIds,
 	markExpiredConfirmations,
+	messageParserStats,
 	parseStoredMessages,
 } from './message-parser';
 import { InstanceAiCheckpointRepository } from './repositories/instance-ai-checkpoint.repository';
@@ -238,7 +239,11 @@ export class InstanceAiMemoryService {
 		const checkpointMessages = await this.loadInFlightCheckpointMessages(threadId);
 		const storedMessages = mergeMessagesById(result.messages, checkpointMessages);
 
+		const fallbacksBefore = messageParserStats.fallbackActivations;
 		const messages = parseStoredMessages(storedMessages, snapshots);
+		this.durableLogMetrics.notifyParserFallbacks(
+			messageParserStats.fallbackActivations - fallbacksBefore,
+		);
 		await this.flagExpiredConfirmations(messages);
 
 		const projectId = await this.agentMemory.getThreadProjectId(threadId);

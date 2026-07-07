@@ -1,13 +1,19 @@
 import { Service } from '@n8n/di';
 
+import { EventService } from '@/events/event.service';
+
 import { messageParserStats } from '../message-parser';
 
 /**
- * In-process counters for the durable-log prototype (RFC: instance-ai durable
- * event log, "Instrumentation"). Deliberately not Prometheus: the evaluation
- * harness reads these synchronously via Container.get() and the E2E test
- * controller; production hardening would move them to
- * instance-ai-metrics.service.ts.
+ * Durable-log instrumentation (RFC: instance-ai durable event log,
+ * "Instrumentation"). Two consumers, one recording point:
+ *
+ * - Typed `EventService` events feed the Prometheus collectors
+ *   (`PrometheusInstanceAiMetricsService`), following the same convention as
+ *   `instance-ai-run-finished`.
+ * - The in-process counters below are kept in lockstep and read synchronously
+ *   by the evaluation harness and the E2E-only
+ *   `/instance-ai/test/durable-log-metrics` endpoint.
  */
 @Service()
 export class DurableLogMetrics {
@@ -58,16 +64,30 @@ export class DurableLogMetrics {
 		correctionsRequeued: 0,
 	};
 
+	constructor(private readonly eventService: EventService) {}
+
 	recordDrainBatch(rows: number, bytes: number): void {
 		this.drain.batches++;
 		this.drain.rowsWritten += rows;
 		this.drain.bytesWritten += bytes;
+		this.eventService.emit('instance-ai-durable-log-drained', { rows, bytes });
 	}
 
 	recordQueueLatency(ms: number): void {
 		this.drain.queueLatencyMsTotal += ms;
 		this.drain.queueLatencyMsMax = Math.max(this.drain.queueLatencyMsMax, ms);
 		this.drain.queueLatencySamples++;
+		this.eventService.emit('instance-ai-durable-log-queue-latency', { ms });
+	}
+
+	recordAppendConflict(attempt: number): void {
+		this.drain.appendConflicts++;
+		this.eventService.emit('instance-ai-durable-log-append-conflict', { attempt });
+	}
+
+	recordAppendFailure(events: number): void {
+		this.drain.appendFailures++;
+		this.eventService.emit('instance-ai-durable-log-append-failure', { events });
 	}
 
 	recordReplay(eventsServed: number, cursorAgeEvents: number): void {
@@ -75,6 +95,10 @@ export class DurableLogMetrics {
 		this.sse.replayEventsServed += eventsServed;
 		this.sse.cursorAgeEventsTotal += cursorAgeEvents;
 		this.sse.cursorAgeEventsMax = Math.max(this.sse.cursorAgeEventsMax, cursorAgeEvents);
+		this.eventService.emit('instance-ai-durable-log-replayed', {
+			events: eventsServed,
+			cursorAgeEvents,
+		});
 	}
 
 	recordFoldRead(latencyMs: number, replaced: number, synthesized: number): void {
@@ -82,6 +106,46 @@ export class DurableLogMetrics {
 		this.history.foldLatencyMsTotal += latencyMs;
 		this.history.snapshotTreesReplaced += replaced;
 		this.history.treesSynthesized += synthesized;
+		this.eventService.emit('instance-ai-history-folded', {
+			latencyMs,
+			snapshotTreesReplaced: replaced,
+			treesSynthesized: synthesized,
+		});
+	}
+
+	/**
+	 * The parser is pure module code and keeps its own counter
+	 * (messageParserStats, included in snapshot()); this only forwards new
+	 * activations to the metrics pipeline.
+	 */
+	notifyParserFallbacks(count: number): void {
+		if (count > 0) this.eventService.emit('instance-ai-parser-fallback', { count });
+	}
+
+	recordSweepRunExamined(): void {
+		this.sweep.runsExamined++;
+	}
+
+	recordSweepToolInterruptedFact(): void {
+		this.sweep.toolInterruptedFacts++;
+	}
+
+	recordSweepCorrectionRequeued(): void {
+		this.sweep.correctionsRequeued++;
+	}
+
+	recordSweepOutcome(
+		outcome: 'interrupted' | 'crash-resumed',
+		toolInterruptedFacts: number,
+		correctionsRequeued: number,
+	): void {
+		if (outcome === 'interrupted') this.sweep.runsMarkedInterrupted++;
+		else this.sweep.runsCrashResumed++;
+		this.eventService.emit('instance-ai-run-swept', {
+			outcome,
+			toolInterruptedFacts,
+			correctionsRequeued,
+		});
 	}
 
 	snapshot() {
