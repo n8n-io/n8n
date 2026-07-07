@@ -35,6 +35,7 @@ import { createSearchExecutionsTool } from './tools/search-executions.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createGetWorkflowHistoryTool } from './tools/get-workflow-history.tool';
 import { createGetWorkflowVersionTool } from './tools/get-workflow-version.tool';
+import { createListAiGatewayServicesTool } from './tools/list-ai-gateway-services.tool';
 import { createListCredentialsTool } from './tools/list-credentials.tool';
 import { createListTagsTool } from './tools/list-tags.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
@@ -64,6 +65,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -142,6 +144,7 @@ export class McpService {
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
+		private readonly aiGatewayService: AiGatewayService,
 	) {}
 
 	async resolveMcpAppsVariant(user: User): Promise<McpAppsResolution> {
@@ -361,11 +364,24 @@ export class McpService {
 			user,
 			this.credentialsService,
 			this.telemetry,
+			this.aiGatewayService,
+		);
+
+		const listAiGatewayServicesTool = createListAiGatewayServicesTool(
+			user,
+			this.aiGatewayService,
+			this.telemetry,
 		);
 		server.registerTool(
 			listCredentialsTool.name,
 			listCredentialsTool.config,
 			listCredentialsTool.handler,
+		);
+
+		server.registerTool(
+			listAiGatewayServicesTool.name,
+			listAiGatewayServicesTool.config,
+			listAiGatewayServicesTool.handler,
 		);
 
 		if (!this.globalConfig.tags.disabled) {
@@ -454,6 +470,7 @@ export class McpService {
 			user,
 			this.nodeCatalogService,
 			this.telemetry,
+			this.aiGatewayService,
 		);
 		server.registerTool(searchNodesTool.name, searchNodesTool.config, searchNodesTool.handler);
 
@@ -461,6 +478,7 @@ export class McpService {
 			user,
 			this.nodeCatalogService,
 			this.telemetry,
+			this.aiGatewayService,
 		);
 		server.registerTool(getNodeTypesTool.name, getNodeTypesTool.config, getNodeTypesTool.handler);
 
@@ -498,6 +516,7 @@ export class McpService {
 			this.credentialsService,
 			this.projectRepository,
 			dataTableOps,
+			this.aiGatewayService,
 		);
 
 		if (mcpAppsEnabled) {
@@ -578,6 +597,7 @@ export class McpService {
 			this.globalConfig,
 			this.subworkflowPolicyChecker,
 			this.workflowPublishedDataService,
+			this.aiGatewayService,
 		);
 		server.registerTool(updateTool.name, updateTool.config, updateTool.handler);
 

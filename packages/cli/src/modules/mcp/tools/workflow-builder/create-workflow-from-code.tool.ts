@@ -4,7 +4,11 @@ import z from 'zod';
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
 import { validateWorkflowCredentialReferences } from './credential-validation';
-import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
+import {
+	autoPopulateNodeCredentials,
+	stripNullCredentialStubs,
+	trackAutoassignOutcomes,
+} from './credentials-auto-assign';
 import { validateDataTableReferencesForWorkflow } from './data-table-validation';
 import { sanitizeSkillsUsed } from './skills-used';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -15,6 +19,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { NodeTypes } from '@/node-types';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import { resolveNodeWebhookIds } from '@/workflow-helpers';
@@ -150,6 +155,7 @@ export const createCreateWorkflowFromCodeTool = (
 	credentialsService: CredentialsService,
 	projectRepository: ProjectRepository,
 	dataTableOps: DataTableUserOperations,
+	aiGatewayService: AiGatewayService,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
@@ -265,14 +271,26 @@ export const createCreateWorkflowFromCodeTool = (
 				throw new Error(dataTableCheck.error);
 			}
 
-			const { assignments: credentialAssignments, skippedHttpNodes } =
-				await autoPopulateNodeCredentials(
-					newWorkflow,
-					user,
-					nodeTypes,
-					credentialsService,
-					effectiveProjectId,
-				);
+			const {
+				assignments: credentialAssignments,
+				skippedHttpNodes,
+				outcomes: autoAssignOutcomes,
+			} = await autoPopulateNodeCredentials(
+				newWorkflow,
+				user,
+				nodeTypes,
+				credentialsService,
+				effectiveProjectId,
+				aiGatewayService,
+			);
+			const nodeTypesByName = new Map(newWorkflow.nodes.map((n) => [n.name, n.type]));
+			trackAutoassignOutcomes(
+				telemetry,
+				user.id,
+				'create_workflow_from_code',
+				autoAssignOutcomes,
+				nodeTypesByName,
+			);
 
 			// Explicit credential ids in the generated code bypass auto-assignment,
 			// so verify they're reachable from the target project. This matches the

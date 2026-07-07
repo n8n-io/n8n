@@ -3,6 +3,7 @@ import z from 'zod';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ListQuery } from '@/requests';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -41,6 +42,20 @@ const homeProjectSchema = z
 	.nullable()
 	.describe('The project that owns the credential, if available');
 
+const aiGatewaySchema = z
+	.object({
+		credentialTypes: z
+			.array(z.string())
+			.describe('Credential type names that n8n Connect can provide (e.g. "openAiApi").'),
+		nodes: z
+			.array(z.string())
+			.describe('Node types covered by n8n Connect (e.g. "@n8n/n8n-nodes-langchain.openAi").'),
+	})
+	.optional()
+	.describe(
+		'Present when n8n Connect ("AI Gateway") is available for this instance. Omitted otherwise. When set, workflows built through MCP for these node/credential types can run without the user configuring credentials.',
+	);
+
 const outputSchema = {
 	data: z
 		.array(
@@ -60,6 +75,7 @@ const outputSchema = {
 		)
 		.describe('List of credentials accessible to the current user'),
 	count: z.number().int().min(0).describe('Number of credentials returned'),
+	aiGateway: aiGatewaySchema,
 	error: z.string().optional().describe('Error message when the tool failed'),
 } satisfies z.ZodRawShape;
 
@@ -84,6 +100,7 @@ export type ListCredentialsItem = {
 export type ListCredentialsResult = {
 	data: ListCredentialsItem[];
 	count: number;
+	aiGateway?: { credentialTypes: string[]; nodes: string[] };
 	error?: string;
 };
 
@@ -91,6 +108,7 @@ export const createListCredentialsTool = (
 	user: User,
 	credentialsService: CredentialsService,
 	telemetry: Telemetry,
+	aiGatewayService: AiGatewayService,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: 'list_credentials',
 	config: {
@@ -127,6 +145,14 @@ export const createListCredentialsTool = (
 				projectId,
 				onlySharedWithMe,
 			});
+
+			const availability = await aiGatewayService.isAvailable();
+			if (availability.available) {
+				payload.aiGateway = {
+					credentialTypes: availability.config.credentialTypes,
+					nodes: availability.config.nodes,
+				};
+			}
 
 			telemetryPayload.results = {
 				success: true,

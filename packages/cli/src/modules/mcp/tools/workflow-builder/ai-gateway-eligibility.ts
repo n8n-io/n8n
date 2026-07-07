@@ -1,0 +1,87 @@
+import type { AiGatewayConfigDto } from '@n8n/api-types';
+import type { INode } from 'n8n-workflow';
+
+import { stripToolSuffix } from '../../mcp-ai-gateway.helper';
+
+/** Sentinel key the gateway uses for nodes with a flat `operation` param (no resource). */
+const OPERATION_ONLY = '__operation_only__';
+
+export type AiGatewayEligibilityReason =
+	| 'nodeNotCovered'
+	| 'credentialTypeNotCovered'
+	| 'versionTooLow'
+	| 'unsupportedAction'
+	| 'hiddenPropertySet';
+
+export type AiGatewayEligibility =
+	| { eligible: true }
+	| { eligible: false; reason: AiGatewayEligibilityReason; details?: string };
+
+/**
+ * Decides whether the AI Gateway can serve credentials for `node` of type
+ * `credentialType`, given the current gateway config. Pure function — no I/O.
+ * Callers use this from within auto-assign: on `eligible: true` attach the
+ * gateway sentinel; on `eligible: false` leave the slot empty (pre-change
+ * behavior) and log the `reason` for telemetry.
+ */
+export function checkAiGatewayEligibility(
+	node: Pick<INode, 'type' | 'typeVersion' | 'parameters'>,
+	credentialType: string,
+	config: AiGatewayConfigDto,
+): AiGatewayEligibility {
+	const key = resolveNodeKey(node.type, config.nodes);
+	if (!key) return { eligible: false, reason: 'nodeNotCovered' };
+
+	if (!config.credentialTypes.includes(credentialType)) {
+		return { eligible: false, reason: 'credentialTypeNotCovered' };
+	}
+
+	const minVersion = config.minNodeTypeVersion?.[key];
+	if (minVersion !== undefined && node.typeVersion < minVersion) {
+		return {
+			eligible: false,
+			reason: 'versionTooLow',
+			details: `requires typeVersion >= ${minVersion}`,
+		};
+	}
+
+	const hidden = config.hiddenNodeProperties?.[key];
+	if (hidden?.length) {
+		const params = node.parameters ?? {};
+		const offending = hidden.find((prop) => prop in params);
+		if (offending !== undefined) {
+			return {
+				eligible: false,
+				reason: 'hiddenPropertySet',
+				details: `property "${offending}" is hidden when using AI Gateway`,
+			};
+		}
+	}
+
+	const actions = config.supportedActions?.[key];
+	if (actions) {
+		const params = node.parameters ?? {};
+		const resource = typeof params.resource === 'string' ? params.resource : OPERATION_ONLY;
+		const operation = typeof params.operation === 'string' ? params.operation : undefined;
+		const allowedOps = actions[resource];
+		if (!allowedOps || (operation !== undefined && !allowedOps.includes(operation))) {
+			return {
+				eligible: false,
+				reason: 'unsupportedAction',
+				details:
+					resource === OPERATION_ONLY
+						? `operation "${operation ?? ''}" not supported`
+						: `${resource}.${operation ?? ''} not supported`,
+			};
+		}
+	}
+
+	return { eligible: true };
+}
+
+function resolveNodeKey(nodeType: string, nodes: string[]): string | null {
+	if (nodes.includes(nodeType)) return nodeType;
+	const stripped = stripToolSuffix(nodeType);
+	if (stripped !== nodeType && nodes.includes(stripped)) return stripped;
+	return null;
+}

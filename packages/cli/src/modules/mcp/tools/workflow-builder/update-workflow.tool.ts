@@ -10,7 +10,7 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
 import { MCP_UPDATE_WORKFLOW_TOOL } from './constants';
 import { validateCredentialReferences } from './credential-validation';
-import { autoPopulateNodeCredentials } from './credentials-auto-assign';
+import { autoPopulateNodeCredentials, trackAutoassignOutcomes } from './credentials-auto-assign';
 import { validateDataTableReferencesForUpdate } from './data-table-validation';
 import { sanitizeSkillsUsed } from './skills-used';
 import {
@@ -29,6 +29,7 @@ import type { WorkflowPublishedDataService } from '@/workflows/workflow-publishe
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { NodeTypes } from '@/node-types';
 import type { TagService } from '@/services/tag.service';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import { resolveNodeWebhookIds } from '@/workflow-helpers';
@@ -438,6 +439,7 @@ export const createUpdateWorkflowTool = (
 	globalConfig: GlobalConfig,
 	subworkflowPolicyChecker: SubworkflowPolicyChecker,
 	workflowPublishedDataService: WorkflowPublishedDataService,
+	aiGatewayService: AiGatewayService,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 	config: {
@@ -647,6 +649,7 @@ export const createUpdateWorkflowTool = (
 				nodeName: string;
 				credentialName: string;
 				credentialType: string;
+				source?: 'user' | 'aiGateway';
 			}> = [];
 			let skippedHttpNodes: string[] = [];
 
@@ -660,9 +663,18 @@ export const createUpdateWorkflowTool = (
 					nodeTypes,
 					credentialsService,
 					workflowProjectId,
+					aiGatewayService,
 				);
 				credentialAssignments = autoAssign.assignments;
 				skippedHttpNodes = autoAssign.skippedHttpNodes;
+				const nodeTypesByName = new Map(addedNodes.map((n) => [n.name, n.type]));
+				trackAutoassignOutcomes(
+					telemetry,
+					user.id,
+					'update_workflow',
+					autoAssign.outcomes,
+					nodeTypesByName,
+				);
 			}
 
 			const { ParseValidateHandler } = await import('@n8n/ai-workflow-builder');

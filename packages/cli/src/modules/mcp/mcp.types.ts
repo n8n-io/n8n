@@ -124,6 +124,24 @@ export type UserCalledMCPToolEventPayload = {
 	};
 };
 
+export type McpCredentialsAutoassignEventPayload = {
+	user_id: string;
+	tool_name: 'create_workflow_from_code' | 'update_workflow';
+	node_type: string;
+	credential_type: string;
+	source: 'user' | 'aiGateway' | 'none';
+	had_user_credential: boolean;
+	ai_gateway_available: boolean;
+	reason_not_ai_gateway?:
+		| 'nodeNotCovered'
+		| 'credentialTypeNotCovered'
+		| 'versionTooLow'
+		| 'unsupportedAction'
+		| 'hiddenPropertySet'
+		| 'userPreferred'
+		| 'notAvailable';
+};
+
 export type MCPTriggersMap = {
 	[K in keyof typeof SUPPORTED_PRODUCTION_MCP_TRIGGERS]: INode[];
 };

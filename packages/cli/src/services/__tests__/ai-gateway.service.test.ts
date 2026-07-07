@@ -140,6 +140,43 @@ describe('AiGatewayService', () => {
 		});
 	});
 
+	describe('isAvailable()', () => {
+		it('returns available:false when the AI Gateway is not licensed', async () => {
+			const service = makeService({ isAiGatewayLicensed: false });
+
+			const result = await service.isAvailable();
+
+			expect(result).toEqual({ available: false });
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+
+		it('returns available:false when baseUrl is not configured', async () => {
+			const service = makeService({ baseUrl: null });
+
+			const result = await service.isAvailable();
+
+			expect(result).toEqual({ available: false });
+		});
+
+		it('returns available:false when the gateway request fails (fail open)', async () => {
+			requestMock.mockResolvedValueOnce(fail(503));
+			const service = makeService();
+
+			const result = await service.isAvailable();
+
+			expect(result).toEqual({ available: false });
+		});
+
+		it('returns available:true with config when licensed and gateway responds', async () => {
+			requestMock.mockResolvedValueOnce(ok(MOCK_GATEWAY_CONFIG));
+			const service = makeService();
+
+			const result = await service.isAvailable();
+
+			expect(result).toEqual({ available: true, config: MOCK_GATEWAY_CONFIG });
+		});
+	});
+
 	describe('getSyntheticCredential()', () => {
 		it('throws FeatureNotLicensedError when not licensed and dev mode is off', async () => {
 			const service = makeService({ isAiGatewayLicensed: false });

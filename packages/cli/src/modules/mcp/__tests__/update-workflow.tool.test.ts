@@ -8,12 +8,14 @@ import {
 	type INode,
 } from 'n8n-workflow';
 import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { NodeTypes } from '@/node-types';
 import { TagService } from '@/services/tag.service';
@@ -26,10 +28,12 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
 
 const mockAutoPopulateNodeCredentials = vi.fn();
+const mockTrackAutoassignOutcomes = vi.fn();
 vi.mock('../tools/workflow-builder/credentials-auto-assign', () => ({
 	autoPopulateNodeCredentials: (...args: unknown[]) =>
 		mockAutoPopulateNodeCredentials(...args) as unknown,
 	stripNullCredentialStubs: vi.fn(),
+	trackAutoassignOutcomes: (...args: unknown[]) => mockTrackAutoassignOutcomes(...args) as unknown,
 }));
 
 const mockValidateJSON = vi.fn().mockReturnValue([]);
@@ -145,7 +149,11 @@ describe('update-workflow MCP tool', () => {
 			ensureWorkflowEditable: vi.fn().mockResolvedValue(undefined),
 			broadcastWorkflowUpdate: vi.fn().mockResolvedValue(undefined),
 		});
-		mockAutoPopulateNodeCredentials.mockResolvedValue({ assignments: [], skippedHttpNodes: [] });
+		mockAutoPopulateNodeCredentials.mockResolvedValue({
+			assignments: [],
+			skippedHttpNodes: [],
+			outcomes: [],
+		});
 		mockValidateJSON.mockReturnValue([]);
 
 		dataTableOps = {
@@ -174,6 +182,9 @@ describe('update-workflow MCP tool', () => {
 		});
 	});
 
+	const aiGatewayService = mock<AiGatewayService>();
+	aiGatewayService.isAvailable.mockResolvedValue({ available: false });
+
 	const createTool = () =>
 		createUpdateWorkflowTool(
 			user,
@@ -190,6 +201,7 @@ describe('update-workflow MCP tool', () => {
 			globalConfig,
 			subworkflowPolicyChecker,
 			workflowPublishedDataService,
+			aiGatewayService,
 		);
 
 	const callHandler = async (
@@ -798,6 +810,7 @@ describe('update-workflow MCP tool', () => {
 					globalConfig,
 					subworkflowPolicyChecker,
 					workflowPublishedDataService,
+					aiGatewayService,
 				);
 				findWorkflowMock.mockImplementation(async (id: string) =>
 					id === 'wf-1'
@@ -932,6 +945,7 @@ describe('update-workflow MCP tool', () => {
 			mockAutoPopulateNodeCredentials.mockResolvedValue({
 				assignments: [{ nodeName: 'C', credentialName: 'My Slack', credentialType: 'slackApi' }],
 				skippedHttpNodes: [],
+				outcomes: [],
 			});
 
 			const result = await callHandler({
@@ -954,6 +968,7 @@ describe('update-workflow MCP tool', () => {
 			mockAutoPopulateNodeCredentials.mockResolvedValue({
 				assignments: [],
 				skippedHttpNodes: ['HTTP Request'],
+				outcomes: [],
 			});
 
 			const result = await callHandler({
@@ -1976,6 +1991,7 @@ describe('update-workflow MCP tool', () => {
 					globalConfig,
 					subworkflowPolicyChecker,
 					workflowPublishedDataService,
+					aiGatewayService,
 				);
 
 				await callHandler(
@@ -2012,6 +2028,7 @@ describe('update-workflow MCP tool', () => {
 					globalConfig,
 					subworkflowPolicyChecker,
 					workflowPublishedDataService,
+					aiGatewayService,
 				);
 
 				const result = await callHandler(

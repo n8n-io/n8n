@@ -13,6 +13,7 @@ import {
 export const USER_CONNECTED_TO_MCP_EVENT = 'User connected to MCP server';
 export const USER_CALLED_MCP_TOOL_EVENT = 'User called mcp tool';
 export const MCP_PREVIEW_RENDER_REQUESTED_EVENT = 'MCP App preview render requested';
+export const MCP_CREDENTIALS_AUTOASSIGN_EVENT = 'MCP credentials autoassign';
 
 /**
  * Message constants

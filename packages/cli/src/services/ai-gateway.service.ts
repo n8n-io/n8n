@@ -25,6 +25,10 @@ interface GatewayWalletResponse {
 	balance: number;
 }
 
+export type AiGatewayAvailability =
+	| { available: true; config: AiGatewayConfigDto }
+	| { available: false };
+
 @Service()
 export class AiGatewayService {
 	private readonly tokenCache = new Map<
@@ -284,6 +288,23 @@ export class AiGatewayService {
 			this.gatewayConfig === null ||
 			Date.now() - this.configFetchedAt > AiGatewayService.CONFIG_TTL_MS
 		);
+	}
+
+	/**
+	 * Fail-open availability check: returns `{ available: true, config }` when
+	 * the AI Gateway is both licensed AND its config fetches successfully;
+	 * `{ available: false }` otherwise. Never propagates gateway or config
+	 * errors — callers that want to distinguish "unlicensed" from "gateway
+	 * down" should check `licenseState.isAiGatewayLicensed()` themselves.
+	 */
+	async isAvailable(): Promise<AiGatewayAvailability> {
+		if (!this.licenseState.isAiGatewayLicensed()) return { available: false };
+		try {
+			const config = await this.getGatewayConfig();
+			return { available: true, config };
+		} catch {
+			return { available: false };
+		}
 	}
 
 	async getGatewayConfig(): Promise<AiGatewayConfigDto> {

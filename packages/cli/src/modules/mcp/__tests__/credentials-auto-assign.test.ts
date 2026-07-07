@@ -100,7 +100,12 @@ describe('autoPopulateNodeCredentials', () => {
 		);
 
 		expect(result.assignments).toEqual([
-			{ nodeName: 'Test Node', credentialName: 'My Slack Token', credentialType: 'slackApi' },
+			{
+				nodeName: 'Test Node',
+				credentialName: 'My Slack Token',
+				credentialType: 'slackApi',
+				source: 'user',
+			},
 		]);
 		expect(node.credentials).toEqual({ slackApi: { id: 'cred-1', name: 'My Slack Token' } });
 		expect(result.skippedHttpNodes).toEqual([]);
@@ -323,8 +328,18 @@ describe('autoPopulateNodeCredentials', () => {
 		);
 
 		expect(result.assignments).toEqual([
-			{ nodeName: 'Slack', credentialName: 'My Slack', credentialType: 'slackApi' },
-			{ nodeName: 'Gmail', credentialName: 'My Gmail', credentialType: 'gmailOAuth2' },
+			{
+				nodeName: 'Slack',
+				credentialName: 'My Slack',
+				credentialType: 'slackApi',
+				source: 'user',
+			},
+			{
+				nodeName: 'Gmail',
+				credentialName: 'My Gmail',
+				credentialType: 'gmailOAuth2',
+				source: 'user',
+			},
 		]);
 	});
 
@@ -336,6 +351,227 @@ describe('autoPopulateNodeCredentials', () => {
 
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 			projectId,
+		});
+	});
+
+	describe('AI Gateway fallback', () => {
+		const gatewayConfig = {
+			nodes: ['n8n-nodes-base.slack'],
+			credentialTypes: ['slackApi'],
+			providerConfig: {
+				slackApi: { gatewayPath: '/v1/gateway/slack', urlField: 'url', apiKeyField: 'apiKey' },
+			},
+		} as const;
+
+		function makeAiGatewayService(available: boolean) {
+			const isAvailable = vi
+				.fn()
+				.mockResolvedValue(
+					available ? { available: true, config: gatewayConfig } : { available: false },
+				);
+			return { isAvailable } as unknown as import('@/services/ai-gateway.service').AiGatewayService;
+		}
+
+		test('attaches the AI Gateway sentinel when user has no cred and gateway is eligible', async () => {
+			const node = makeNode();
+			const workflow = makeWorkflow([node]);
+			const desc = makeNodeTypeDescription();
+			const { credentialsService, nodeTypes } = createMocks({
+				usableCredentials: [],
+				nodeTypeDescriptions: new Map([['n8n-nodes-base.slack', desc]]),
+			});
+			vi.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(true);
+
+			const result = await autoPopulateNodeCredentials(
+				workflow,
+				user,
+				nodeTypes,
+				credentialsService,
+				projectId,
+				makeAiGatewayService(true),
+			);
+
+			expect(node.credentials).toEqual({
+				slackApi: { id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+			});
+			expect(result.assignments).toEqual([
+				{
+					nodeName: 'Test Node',
+					credentialName: 'n8n Connect',
+					credentialType: 'slackApi',
+					source: 'aiGateway',
+				},
+			]);
+			expect(result.outcomes).toEqual([
+				{
+					nodeName: 'Test Node',
+					credentialType: 'slackApi',
+					source: 'aiGateway',
+					hadUserCredential: false,
+					aiGatewayAvailable: true,
+				},
+			]);
+		});
+
+		test('prefers user credential when both exist', async () => {
+			const node = makeNode();
+			const workflow = makeWorkflow([node]);
+			const desc = makeNodeTypeDescription();
+			const { credentialsService, nodeTypes } = createMocks({
+				usableCredentials: [{ id: 'cred-1', name: 'My Slack', type: 'slackApi' }],
+				nodeTypeDescriptions: new Map([['n8n-nodes-base.slack', desc]]),
+			});
+			vi.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(true);
+
+			const result = await autoPopulateNodeCredentials(
+				workflow,
+				user,
+				nodeTypes,
+				credentialsService,
+				projectId,
+				makeAiGatewayService(true),
+			);
+
+			expect(node.credentials).toEqual({ slackApi: { id: 'cred-1', name: 'My Slack' } });
+			expect(result.outcomes).toEqual([
+				{
+					nodeName: 'Test Node',
+					credentialType: 'slackApi',
+					source: 'user',
+					hadUserCredential: true,
+					aiGatewayAvailable: true,
+				},
+			]);
+		});
+
+		test('leaves slot empty and records reasonNotAiGateway when gateway unavailable', async () => {
+			const node = makeNode();
+			const workflow = makeWorkflow([node]);
+			const desc = makeNodeTypeDescription();
+			const { credentialsService, nodeTypes } = createMocks({
+				usableCredentials: [],
+				nodeTypeDescriptions: new Map([['n8n-nodes-base.slack', desc]]),
+			});
+			vi.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(true);
+
+			const result = await autoPopulateNodeCredentials(
+				workflow,
+				user,
+				nodeTypes,
+				credentialsService,
+				projectId,
+				makeAiGatewayService(false),
+			);
+
+			expect(node.credentials).toBeUndefined();
+			expect(result.outcomes).toEqual([
+				{
+					nodeName: 'Test Node',
+					credentialType: 'slackApi',
+					source: 'none',
+					hadUserCredential: false,
+					aiGatewayAvailable: false,
+					reasonNotAiGateway: 'notAvailable',
+				},
+			]);
+		});
+
+		test('leaves slot empty when gateway is available but node is not covered', async () => {
+			const node = makeNode({ type: 'n8n-nodes-base.gmail' });
+			const workflow = makeWorkflow([node]);
+			const desc = makeNodeTypeDescription({
+				name: 'n8n-nodes-base.gmail',
+				credentials: [makeCredentialDescription({ name: 'gmailOAuth2' })],
+			});
+			const { credentialsService, nodeTypes } = createMocks({
+				usableCredentials: [],
+				nodeTypeDescriptions: new Map([['n8n-nodes-base.gmail', desc]]),
+			});
+			vi.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(true);
+
+			const result = await autoPopulateNodeCredentials(
+				workflow,
+				user,
+				nodeTypes,
+				credentialsService,
+				projectId,
+				makeAiGatewayService(true),
+			);
+
+			expect(node.credentials).toBeUndefined();
+			expect(result.outcomes).toEqual([
+				{
+					nodeName: 'Test Node',
+					credentialType: 'gmailOAuth2',
+					source: 'none',
+					hadUserCredential: false,
+					aiGatewayAvailable: true,
+					reasonNotAiGateway: 'nodeNotCovered',
+				},
+			]);
+		});
+
+		test('isAvailable() returning unavailable falls through to empty slot', async () => {
+			const node = makeNode();
+			const workflow = makeWorkflow([node]);
+			const desc = makeNodeTypeDescription();
+			const { credentialsService, nodeTypes } = createMocks({
+				usableCredentials: [],
+				nodeTypeDescriptions: new Map([['n8n-nodes-base.slack', desc]]),
+			});
+			vi.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(true);
+
+			const aiGatewayService = {
+				isAvailable: vi.fn().mockResolvedValue({ available: false }),
+			} as unknown as import('@/services/ai-gateway.service').AiGatewayService;
+
+			const result = await autoPopulateNodeCredentials(
+				workflow,
+				user,
+				nodeTypes,
+				credentialsService,
+				projectId,
+				aiGatewayService,
+			);
+
+			expect(node.credentials).toBeUndefined();
+			expect(result.outcomes[0]).toMatchObject({
+				source: 'none',
+				aiGatewayAvailable: false,
+				reasonNotAiGateway: 'notAvailable',
+			});
+		});
+
+		test('legacy call (no aiGatewayService) preserves pre-change behavior', async () => {
+			const node = makeNode();
+			const workflow = makeWorkflow([node]);
+			const desc = makeNodeTypeDescription();
+			const { credentialsService, nodeTypes } = createMocks({
+				usableCredentials: [],
+				nodeTypeDescriptions: new Map([['n8n-nodes-base.slack', desc]]),
+			});
+			vi.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(true);
+
+			const result = await autoPopulateNodeCredentials(
+				workflow,
+				user,
+				nodeTypes,
+				credentialsService,
+				projectId,
+			);
+
+			expect(node.credentials).toBeUndefined();
+			expect(result.assignments).toEqual([]);
+			expect(result.outcomes).toEqual([
+				{
+					nodeName: 'Test Node',
+					credentialType: 'slackApi',
+					source: 'none',
+					hadUserCredential: false,
+					aiGatewayAvailable: false,
+					reasonNotAiGateway: 'notAvailable',
+				},
+			]);
 		});
 	});
 });

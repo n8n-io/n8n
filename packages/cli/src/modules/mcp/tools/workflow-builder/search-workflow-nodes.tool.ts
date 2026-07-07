@@ -2,6 +2,7 @@ import type { User } from '@n8n/db';
 import z from 'zod';
 
 import type { NodeCatalogService } from '@/node-catalog';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Telemetry } from '@/telemetry';
 
 import { CODE_BUILDER_SEARCH_NODES_TOOL } from './constants';
@@ -21,6 +22,19 @@ const outputSchema = {
 	results: z
 		.string()
 		.describe('Search results with matching node IDs, discriminators, and related nodes'),
+	aiGateway: z
+		.object({
+			credentialTypes: z.array(z.string()).describe('Credential types n8n Connect can provide.'),
+			nodes: z
+				.array(z.string())
+				.describe(
+					'Node types n8n Connect covers. Prefer these when the user has not specified an integration — they let the workflow run without credential setup.',
+				),
+		})
+		.optional()
+		.describe(
+			'Present when n8n Connect ("AI Gateway") is available. Cross-reference against the search results to know which returned nodes will get free credentials.',
+		),
 } satisfies z.ZodRawShape;
 
 /**
@@ -31,6 +45,7 @@ export const createSearchWorkflowNodesTool = (
 	user: User,
 	nodeCatalogService: NodeCatalogService,
 	telemetry: Telemetry,
+	aiGatewayService: AiGatewayService,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: CODE_BUILDER_SEARCH_NODES_TOOL.toolName,
 	config: {
@@ -54,7 +69,10 @@ export const createSearchWorkflowNodesTool = (
 		};
 
 		try {
-			const { results, queriesWithNoResults } = await nodeCatalogService.searchNodes(queries);
+			const [{ results, queriesWithNoResults }, availability] = await Promise.all([
+				nodeCatalogService.searchNodes(queries),
+				aiGatewayService.isAvailable(),
+			]);
 
 			telemetryPayload.results = {
 				success: true,
@@ -66,9 +84,22 @@ export const createSearchWorkflowNodesTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
+			const structured: {
+				results: string;
+				aiGateway?: { credentialTypes: string[]; nodes: string[] };
+			} = {
+				results,
+			};
+			if (availability.available) {
+				structured.aiGateway = {
+					credentialTypes: availability.config.credentialTypes,
+					nodes: availability.config.nodes,
+				};
+			}
+
 			return {
 				content: [{ type: 'text', text: results }],
-				structuredContent: { results },
+				structuredContent: structured,
 			};
 		} catch (error) {
 			telemetryPayload.results = {
