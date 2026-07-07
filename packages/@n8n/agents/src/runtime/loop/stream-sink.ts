@@ -6,11 +6,12 @@ import type {
 	RunServices,
 	SuspendEmission,
 } from './run-output-sink';
-import { mergeUsage } from './runtime-helpers';
+import { classifyModelTurnError, mergeUsage } from './runtime-helpers';
 import type { ExecutionOptions, TokenUsage } from '../../types/sdk/agent';
 import type { AgentMessage } from '../../types/sdk/message';
 import { loadAi } from '../model/lazy-ai';
 import { fromAiFinishReason, fromAiMessages } from '../model/messages';
+import { createRawErrorReader, type RawErrorReader } from '../model/raw-error';
 import { createRawUsageReader, type RawUsageReader } from '../model/raw-usage';
 import { convertChunk, toTokenUsage } from '../streaming/stream';
 import type { StreamWriterGuard } from '../streaming/stream-writer-guard';
@@ -32,6 +33,11 @@ export class StreamSink implements RunOutputSink<void> {
 	// Text streamed for the in-flight turn, retained so a stop landing mid-response
 	// can still persist what the user already saw. Cleared once the turn is folded.
 	private partialText = '';
+	// Reads provider failure signals (e.g. a prompt safety block) from raw
+	// chunks, so an output-less rejected request can report why. Per-provider
+	// implementations live behind `RawErrorReader`; undefined when the run's
+	// provider has no reader.
+	private rawErrorReader: RawErrorReader | undefined;
 
 	constructor(
 		private readonly guard: StreamWriterGuard,
@@ -100,6 +106,10 @@ export class StreamSink implements RunOutputSink<void> {
 		this.rawUsageReader = this.options?.recoverUsageOnAbort
 			? createRawUsageReader(this.services.modelId)
 			: undefined;
+		// Some providers report failures (e.g. prompt safety blocks) only on the
+		// raw stream — no error, no content — so raw chunks are required to
+		// explain an otherwise silent empty response.
+		this.rawErrorReader = createRawErrorReader(this.services.modelId);
 		const { streamText } = loadAi();
 		const result = streamText({
 			model: ctx.model,
@@ -108,7 +118,9 @@ export class StreamSink implements RunOutputSink<void> {
 			abortSignal: ctx.abortSignal,
 			// Surface the provider's raw message_start/message_delta events so an
 			// aborted run can recover its usage — the SDK reports none on abort.
-			...(this.rawUsageReader ? { includeRawChunks: true } : {}),
+			...(this.rawUsageReader !== undefined || this.rawErrorReader !== undefined
+				? { includeRawChunks: true }
+				: {}),
 			...(ctx.hasTools ? { tools: ctx.aiTools } : {}),
 			...(ctx.providerOptions ? { providerOptions: ctx.providerOptions } : {}),
 			...(ctx.outputSpec ? { output: ctx.outputSpec } : {}),
@@ -124,6 +136,7 @@ export class StreamSink implements RunOutputSink<void> {
 			// reaches the post-loop awaits) can still be billed via getAbortFinish.
 			if (chunk.type === 'raw') {
 				this.rawUsageReader?.capture(chunk.rawValue);
+				this.rawErrorReader?.capture(chunk.rawValue);
 				continue;
 			}
 			// Filter only the SDK's terminal `finish` chunk — the runtime emits its
@@ -167,15 +180,22 @@ export class StreamSink implements RunOutputSink<void> {
 		const usage = await result.usage;
 		const providerMetadata = await result.providerMetadata;
 		const response = await result.response;
+		const newMessages = fromAiMessages(response.messages);
+		const errorReason = classifyModelTurnError({
+			aiFinishReason,
+			newMessages,
+			providerError: this.rawErrorReader?.getError(),
+		});
 
 		return {
 			aiFinishReason,
 			finishReason: fromAiFinishReason(aiFinishReason),
 			usage: toTokenUsage(usage, providerMetadata),
-			newMessages: fromAiMessages(response.messages),
+			newMessages,
 			toolCalls: await result.toolCalls,
 			structuredOutput:
 				ctx.outputSpec && aiFinishReason !== 'tool-calls' ? await result.output : undefined,
+			...(errorReason && { errorReason }),
 		};
 	}
 

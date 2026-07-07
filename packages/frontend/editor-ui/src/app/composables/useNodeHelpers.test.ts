@@ -1296,7 +1296,7 @@ describe('useNodeHelpers()', () => {
 		});
 
 		describe('precedence', () => {
-			it('emits no issue for a not-connected private credential even under an incompatible trigger', () => {
+			it('warns for a not-connected private credential under an incompatible trigger', () => {
 				const cred = makePrivateCred({ connectedByMe: false });
 				mockedStore(useCredentialsStore).getCredentialById = vi.fn().mockReturnValue(cred);
 				mockedStore(useCredentialsStore).getCredentialsByType = vi.fn().mockReturnValue([cred]);
@@ -1305,9 +1305,11 @@ describe('useNodeHelpers()', () => {
 				const { getNodeCredentialIssues } = useNodeHelpers();
 				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
 
-				// The not-connected state is surfaced as a UI warning; the manual-trigger
-				// requirement only applies once the user has connected their account.
-				expect(result).toBeNull();
+				// Trigger incompatibility blocks publish regardless of who connected the
+				// credential, so the editor warns even when the user did not connect it.
+				expect(result?.credentials?.[NOTION_API]?.[0]).toContain(
+					'Private credentials require a trigger that establishes who is running the workflow',
+				);
 			});
 		});
 	});

@@ -5,6 +5,7 @@ import {
 	INSTANCE_RESOURCE_ORDER,
 	ALL_INSTANCE_SCOPES,
 	getOptionState,
+	getEscalationWarningKey,
 	isOptionImplied,
 	resolveOptionState,
 	toggleOption,
@@ -70,7 +71,7 @@ describe('instanceRoleScopes config', () => {
 		it('exposes the configured option labels per resource', () => {
 			expect(Object.keys(INSTANCE_SCOPE_GROUPS.apiKey)).toEqual(['Manage own', 'Manage all']);
 			expect(Object.keys(INSTANCE_SCOPE_GROUPS.tag)).toEqual(['Manage']);
-			expect(Object.keys(INSTANCE_SCOPE_GROUPS.role)).toEqual(['Manage']);
+			expect(Object.keys(INSTANCE_SCOPE_GROUPS.role)).toEqual(['Manage project roles', 'Manage']);
 			expect(Object.keys(INSTANCE_SCOPE_GROUPS.project)).toEqual(['Create']);
 			expect(Object.keys(INSTANCE_SCOPE_GROUPS.settings)).toEqual(['Manage']);
 		});
@@ -187,6 +188,37 @@ describe('resolveOptionState', () => {
 				'tag:delete',
 			]),
 		).toBe('checked');
+	});
+});
+
+describe('getEscalationWarningKey', () => {
+	it('returns the members warning when a user Manage scope is present', () => {
+		expect(getEscalationWarningKey('user', ['user:changeRole'])).toBe(
+			'instanceRoles.warning.manageMembers',
+		);
+	});
+
+	it('returns the roles warning when role:manage is present', () => {
+		expect(getEscalationWarningKey('role', ['role:read', 'role:manage'])).toBe(
+			'instanceRoles.warning.manageRoles',
+		);
+	});
+
+	it('does not warn for "Manage project roles" alone (role:manageProject without role:manage)', () => {
+		expect(getEscalationWarningKey('role', ['role:read', 'role:manageProject'])).toBeUndefined();
+	});
+
+	it('returns undefined for a non-escalating resource', () => {
+		expect(getEscalationWarningKey('tag', ['tag:read', 'tag:list'])).toBeUndefined();
+	});
+
+	it('returns undefined for an empty scope list', () => {
+		expect(getEscalationWarningKey('user', [])).toBeUndefined();
+		expect(getEscalationWarningKey('role', [])).toBeUndefined();
+	});
+
+	it('returns undefined for role when only the non-escalating role:read scope is present', () => {
+		expect(getEscalationWarningKey('role', ['role:read'])).toBeUndefined();
 	});
 });
 

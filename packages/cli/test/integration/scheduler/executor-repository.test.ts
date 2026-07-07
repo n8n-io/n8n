@@ -307,6 +307,28 @@ describe('ScheduledTaskRepository executor methods', () => {
 			expect(row.leaseExpiresAt).toBeNull();
 		});
 
+		it('fences a stale epoch: the owner at a superseded epoch cannot transition', async () => {
+			// The same owner stalls, is reaped and reclaimed (epoch bumped), then its
+			// stale `Executor.fire` tries to write. `claimedBy` still matches, so only
+			// the epoch guard stops it: every terminal method must miss at the old epoch.
+			const { id, epoch } = await claimOne();
+			const stale = epoch + 1;
+
+			expect(await taskRepository.markStarted({ host: HOST_A, id, claimedEpoch: stale })).toBe(0);
+			expect(await taskRepository.completeTask({ host: HOST_A, id, claimedEpoch: stale })).toBe(0);
+			expect(
+				await taskRepository.failTaskTerminal({ host: HOST_A, id, claimedEpoch: stale }, 'x'),
+			).toBe(0);
+			expect(
+				await taskRepository.rescheduleTask({ host: HOST_A, id, claimedEpoch: stale }, 1_000, 'x'),
+			).toBe(0);
+			expect(await taskRepository.releaseClaim({ host: HOST_A, id, claimedEpoch: stale })).toBe(0);
+
+			const row = await reload(id);
+			expect(row.status).toBe('running');
+			expect(row.startedAt).toBeNull();
+		});
+
 		it('treats a transition on a deleted row as a benign no-op (cascade-delete safety)', async () => {
 			const { id, epoch } = await claimOne();
 			await taskRepository.delete({ id });
@@ -332,7 +354,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 		});
 
 		it('is a no-op for a repeated call by the same owner once the row has left running', async () => {
-			// The guard is {id, status: 'running', claimedBy: host}, not just claimedBy=host:
+			// The guard is {id, status: 'running', claimedBy, leaseEpoch}, not just claimedBy:
 			// once completeTask moves the row to 'succeeded', a second call from the very
 			// same owner (e.g. a stale retry after a reap+reclaim) must no longer match.
 			const { id, epoch } = await claimOne();
@@ -437,6 +459,216 @@ describe('ScheduledTaskRepository executor methods', () => {
 				await taskRepository.completeTask({ host: HOST_A, id, claimedEpoch: reclaimed.leaseEpoch }),
 			).toBe(1);
 			expect((await reload(id)).status).toBe('succeeded');
+		});
+	});
+
+	describe('reaper primitives', () => {
+		// A `running` row with an already-past lease: what the reaper sweep recovers.
+		// The running-lease CHECK only requires a lease to be present, not future.
+		async function createExpiredRunning(
+			overrides: Partial<ScheduledTask> = {},
+		): Promise<ScheduledTask> {
+			return await createTask({
+				status: 'running',
+				claimedBy: HOST_A,
+				leaseExpiresAt: past(),
+				leaseEpoch: 1,
+				startedAt: past(),
+				maxAttempts: 3,
+				...overrides,
+			});
+		}
+
+		describe('findExpiredLeases', () => {
+			it('returns only running rows whose lease has expired', async () => {
+				const expired = await createExpiredRunning();
+				// Running but lease still live: not yet reapable.
+				await createExpiredRunning({ leaseExpiresAt: new Date(Date.now() + 60_000) });
+				// Pending: never reapable (no lease held).
+				await createTask({ status: 'pending' });
+
+				const found = await taskRepository.findExpiredLeases(10);
+
+				expect(found.map((t) => t.id)).toEqual([expired.id]);
+			});
+
+			it('caps the sweep at the given limit, oldest expiry first', async () => {
+				const older = await createExpiredRunning({ leaseExpiresAt: new Date(Date.now() - 90_000) });
+				await createExpiredRunning({ leaseExpiresAt: new Date(Date.now() - 30_000) });
+
+				const found = await taskRepository.findExpiredLeases(1);
+
+				expect(found.map((t) => t.id)).toEqual([older.id]);
+			});
+
+			it('reaps a lease that expired a moment ago (boundary)', async () => {
+				// The WHERE clause is strictly `leaseExpiresAt < now()`. Expiring 1ms in the
+				// past keeps the lease unambiguously below the DB clock, so this pins the
+				// comparison to `<` rather than an off-by-one variant that would exclude it.
+				const task = await createExpiredRunning({ leaseExpiresAt: new Date(Date.now() - 1) });
+
+				const found = await taskRepository.findExpiredLeases(10);
+
+				expect(found.map((t) => t.id)).toContain(task.id);
+			});
+		});
+
+		describe('reclaimExpired', () => {
+			it('returns the task to pending: attempt counted, runAt pushed, epoch bumped, claim cleared', async () => {
+				const task = await createExpiredRunning({ attempts: 0, maxAttempts: 3, leaseEpoch: 2 });
+
+				expect(
+					await taskRepository.reclaimExpired(
+						{ id: task.id, claimedEpoch: 2 },
+						30_000,
+						'lease expired',
+					),
+				).toBe(1);
+
+				const row = await reload(task.id);
+				expect(row.status).toBe('pending');
+				expect(row.attempts).toBe(1);
+				expect(row.leaseEpoch).toBe(3); // bumped, so a stalled owner at epoch 2 is fenced
+				expect(row.claimedBy).toBeNull();
+				expect(row.leaseExpiresAt).toBeNull();
+				expect(row.errorMessage).toBe('lease expired');
+				expect(row.runAt.getTime()).toBeGreaterThan(Date.now());
+			});
+
+			it('is a no-op at a stale epoch (a concurrent reaper already reclaimed it)', async () => {
+				const task = await createExpiredRunning({ leaseEpoch: 5 });
+
+				expect(
+					await taskRepository.reclaimExpired({ id: task.id, claimedEpoch: 4 }, 30_000, 'x'),
+				).toBe(0);
+				expect((await reload(task.id)).status).toBe('running');
+			});
+
+			it('is a no-op once the owner finished the row (status left running)', async () => {
+				// completeTask/failTaskTerminal leave a past leaseExpiresAt on the row, so
+				// only the `status = running` guard stops the reaper resurrecting a row the
+				// owner completed between the sweep's read and this write.
+				const task = await createExpiredRunning({ status: 'succeeded', leaseEpoch: 1 });
+
+				expect(
+					await taskRepository.reclaimExpired({ id: task.id, claimedEpoch: 1 }, 30_000, 'x'),
+				).toBe(0);
+				expect((await reload(task.id)).status).toBe('succeeded');
+			});
+
+			it('is a no-op when the lease is still live (renewed since the sweep read)', async () => {
+				const task = await createExpiredRunning({
+					leaseEpoch: 1,
+					leaseExpiresAt: new Date(Date.now() + 60_000),
+				});
+
+				expect(
+					await taskRepository.reclaimExpired({ id: task.id, claimedEpoch: 1 }, 30_000, 'x'),
+				).toBe(0);
+				expect((await reload(task.id)).status).toBe('running');
+			});
+
+			it('is a no-op on a deleted row', async () => {
+				const task = await createExpiredRunning();
+				await taskRepository.delete({ id: task.id });
+
+				expect(
+					await taskRepository.reclaimExpired({ id: task.id, claimedEpoch: 1 }, 30_000, 'x'),
+				).toBe(0);
+			});
+
+			it('never lets two concurrent reapers reclaim the same expired lease', async () => {
+				// Same guard mechanics as claimDueTasks' concurrent-claimers test, but here
+				// both calls carry identical args (same epoch) against the same row: the
+				// first write's own epoch bump must fence the second out, not merely
+				// coincidental row-locking.
+				const task = await createExpiredRunning({ leaseEpoch: 1, attempts: 0 });
+
+				const [a, b] = await Promise.all([
+					taskRepository.reclaimExpired({ id: task.id, claimedEpoch: 1 }, 30_000, 'lease expired'),
+					taskRepository.reclaimExpired({ id: task.id, claimedEpoch: 1 }, 30_000, 'lease expired'),
+				]);
+
+				expect([a, b].sort()).toEqual([0, 1]); // exactly one call reclaimed the row
+
+				const row = await reload(task.id);
+				expect(row.status).toBe('pending');
+				expect(row.attempts).toBe(1); // counted once, not twice
+				expect(row.leaseEpoch).toBe(2); // bumped once, not twice
+			});
+		});
+
+		describe('deadLetterExpired', () => {
+			it('fails the task terminally, counting the attempt and stamping finishedAt', async () => {
+				const task = await createExpiredRunning({ attempts: 0, maxAttempts: 1, leaseEpoch: 1 });
+
+				expect(
+					await taskRepository.deadLetterExpired({ id: task.id, claimedEpoch: 1 }, 'lease expired'),
+				).toBe(1);
+
+				const row = await reload(task.id);
+				expect(row.status).toBe('failed');
+				expect(row.attempts).toBe(1);
+				expect(row.finishedAt).not.toBeNull();
+				expect(row.errorMessage).toBe('lease expired');
+			});
+
+			it('is a no-op at a stale epoch', async () => {
+				const task = await createExpiredRunning({ leaseEpoch: 5 });
+
+				expect(await taskRepository.deadLetterExpired({ id: task.id, claimedEpoch: 4 }, 'x')).toBe(
+					0,
+				);
+				expect((await reload(task.id)).status).toBe('running');
+			});
+
+			it('is a no-op once the owner finished the row (status left running)', async () => {
+				// Same rationale as reclaimExpired: the `status = running` guard alone stops
+				// the reaper dead-lettering a row the owner completed between the sweep's
+				// read and this write.
+				const task = await createExpiredRunning({ status: 'succeeded', leaseEpoch: 1 });
+
+				expect(await taskRepository.deadLetterExpired({ id: task.id, claimedEpoch: 1 }, 'x')).toBe(
+					0,
+				);
+				expect((await reload(task.id)).status).toBe('succeeded');
+			});
+
+			it('is a no-op when the lease is still live (renewed since the sweep read)', async () => {
+				const task = await createExpiredRunning({
+					leaseEpoch: 1,
+					leaseExpiresAt: new Date(Date.now() + 60_000),
+				});
+
+				expect(await taskRepository.deadLetterExpired({ id: task.id, claimedEpoch: 1 }, 'x')).toBe(
+					0,
+				);
+				expect((await reload(task.id)).status).toBe('running');
+			});
+
+			it('is a no-op on a deleted row', async () => {
+				const task = await createExpiredRunning();
+				await taskRepository.delete({ id: task.id });
+
+				expect(await taskRepository.deadLetterExpired({ id: task.id, claimedEpoch: 1 }, 'x')).toBe(
+					0,
+				);
+			});
+
+			it('never lets two concurrent reapers dead-letter the same expired lease', async () => {
+				const task = await createExpiredRunning({ leaseEpoch: 1, attempts: 0, maxAttempts: 1 });
+
+				const [a, b] = await Promise.all([
+					taskRepository.deadLetterExpired({ id: task.id, claimedEpoch: 1 }, 'lease expired'),
+					taskRepository.deadLetterExpired({ id: task.id, claimedEpoch: 1 }, 'lease expired'),
+				]);
+
+				expect([a, b].sort()).toEqual([0, 1]); // exactly one call dead-lettered the row
+
+				const row = await reload(task.id);
+				expect(row.status).toBe('failed');
+				expect(row.attempts).toBe(1); // counted once, not twice
+			});
 		});
 	});
 });

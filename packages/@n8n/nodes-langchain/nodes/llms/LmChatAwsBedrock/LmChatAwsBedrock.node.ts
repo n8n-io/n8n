@@ -8,6 +8,7 @@ import {
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
+import { assertSupportedAwsRegion, getAwsDomain } from 'n8n-nodes-base/aws-credentials';
 import { awsNodeAuthOptions, awsNodeCredentials } from 'n8n-nodes-base/dist/nodes/Aws/utils';
 
 import {
@@ -241,15 +242,20 @@ export class LmChatAwsBedrock implements INodeType {
 		};
 
 		// If the model is specified as a full ARN, extract the region from it
-		// ARN format: arn:aws:bedrock:<region>:<account-id>:inference-profile/<profile-id>
+		// ARN format: arn:<partition>:bedrock:<region>:<account-id>:inference-profile/<profile-id>
+		// Partition covers commercial (aws), China (aws-cn) and GovCloud (aws-us-gov).
 		let region = credentialRegion;
-		const arnMatch = modelName.match(/^arn:aws:bedrock:([a-z0-9-]+):/);
+		const arnMatch = modelName.match(/^arn:(?:aws|aws-cn|aws-us-gov):bedrock:([a-z0-9-]+):/);
 		if (arnMatch) {
-			region = arnMatch[1];
+			const arnRegion = arnMatch[1];
+			// Validate before the region is interpolated into the bedrock-runtime endpoint URL below.
+			assertSupportedAwsRegion(arnRegion);
+			region = arnRegion;
 		}
 
-		// We set-up client manually to pass httpAgent and httpsAgent
-		const bedrockEndpoint = `https://bedrock-runtime.${region}.amazonaws.com`;
+		// We set-up client manually to pass httpAgent and httpsAgent.
+		// getAwsDomain keeps China (amazonaws.com.cn) / GovCloud endpoints correct.
+		const bedrockEndpoint = `https://bedrock-runtime.${region}.${getAwsDomain(region)}`;
 		const proxyAgent = getNodeProxyAgent(bedrockEndpoint);
 		const clientConfig: BedrockRuntimeClientConfig = {
 			region,
