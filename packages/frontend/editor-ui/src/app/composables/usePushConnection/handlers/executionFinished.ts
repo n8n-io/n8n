@@ -21,7 +21,11 @@ import {
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
-import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import {
+	createExecutionDataId,
+	hasExecutionDataStore,
+	useExecutionDataStore,
+} from '@/app/stores/executionData.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import {
@@ -158,7 +162,43 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 		successToastAlreadyShown = true;
 	}
 
+	// Apply the fetched final state without blocking the sequential push event
+	// queue — awaiting the fetch here would delay every subsequent push event,
+	// including a re-run's or another document's.
+	void applyFetchedExecutionFinishedState(data, options, {
+		successToastAlreadyShown,
+		matchedPendingAtDispatch: activeExecutionId === null,
+	});
+}
+
+/**
+ * Fetches the finished execution and applies its final state. Runs outside the
+ * sequential push queue, so by the time the fetch resolves a newer run may have
+ * started for this document (a new execution id, or `null` while pending). In
+ * that case the backfill stays scoped to this execution's keyed store and the
+ * newer run's document-level state is left untouched. A `null` slot still
+ * counts as ours when this finish already matched the pending (`null`)
+ * execution at dispatch time.
+ */
+export async function applyFetchedExecutionFinishedState(
+	data: ExecutionFinished['data'],
+	options: PushHandlerOptions,
+	{
+		successToastAlreadyShown = false,
+		matchedPendingAtDispatch = false,
+	}: { successToastAlreadyShown?: boolean; matchedPendingAtDispatch?: boolean } = {},
+) {
+	const { documentId, suppressExecutionSuccessToasts, suppressExecutionErrorToasts } = options;
+	const uiStore = useUIStore();
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
+
 	const execution = await fetchExecutionData(data.executionId, documentId);
+
+	const currentActiveExecutionId = workflowExecutionStateStore.activeExecutionId;
+	const supersededByNewRun =
+		currentActiveExecutionId !== undefined &&
+		currentActiveExecutionId !== data.executionId &&
+		!(matchedPendingAtDispatch && currentActiveExecutionId === null);
 
 	/**
 	 * This accounts for the case where the execution is not stored.
@@ -166,7 +206,9 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 	 * Returning early presists existing run data up to this point.
 	 */
 	if (!execution) {
-		workflowExecutionStateStore.setActiveExecutionId(undefined);
+		if (!supersededByNewRun) {
+			workflowExecutionStateStore.setActiveExecutionId(undefined);
+		}
 		uiStore.setProcessingExecutionResults(false);
 		return;
 	}
@@ -175,15 +217,18 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 	uiStore.setProcessingExecutionResults(false);
 
 	if (execution.data?.waitTill !== undefined) {
-		handleExecutionFinishedWithWaitTill(data.workflowId, options);
+		if (!supersededByNewRun) {
+			handleExecutionFinishedWithWaitTill(data.workflowId, options);
+		}
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
+		// Shown even when superseded — the toast reports the finished run truthfully.
 		handleExecutionFinishedWithErrorOrCanceled(
 			execution,
 			runExecutionData,
 			documentId,
 			suppressExecutionErrorToasts,
 		);
-	} else {
+	} else if (!supersededByNewRun) {
 		handleExecutionFinishedWithSuccessOrOther(
 			documentId,
 			execution.status,
@@ -192,9 +237,43 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 		);
 	}
 
+	if (supersededByNewRun) {
+		backfillExecutionDataStore(execution, runExecutionData);
+		return;
+	}
+
 	setRunExecutionData(execution, runExecutionData, documentId);
 
 	continueEvaluationLoop(execution, options);
+}
+
+/**
+ * Writes the fetched final state into the execution's keyed data store only,
+ * without touching document-level state (active/displayed execution, spinner
+ * queue). Used when a newer run superseded the finished one mid-fetch.
+ */
+export function backfillExecutionDataStore(
+	execution: SimplifiedExecution,
+	runExecutionData: IRunExecutionData,
+) {
+	const executionDataId = createExecutionDataId(execution.id);
+	if (!hasExecutionDataStore(executionDataId)) {
+		return;
+	}
+
+	const executionDataStore = useExecutionDataStore(executionDataId);
+	const snapshot = executionDataStore.getExecutionSnapshot();
+	if (snapshot === null) {
+		return;
+	}
+
+	executionDataStore.setExecution({
+		...snapshot,
+		status: execution.status,
+		id: execution.id,
+		stoppedAt: execution.stoppedAt,
+	});
+	executionDataStore.setExecutionRunData(runExecutionData);
 }
 
 /**
