@@ -267,10 +267,6 @@ function getDisplayValue(value: unknown): string {
 }
 
 .comboboxContent {
-	/**
-	 * High z-index to ensure combobox dropdown is above other elements
-	 * TODO: Replace with design system z-index variable when available
-	 */
 	@include popover.popover-surface($z-index: 999999);
 	@include popover.popover-placement-offsets;
 

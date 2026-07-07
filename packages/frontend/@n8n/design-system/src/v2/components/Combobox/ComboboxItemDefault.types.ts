@@ -1,5 +1,4 @@
-import type { IconName } from '../../../components/N8nIcon/icons';
-import type { InputSize } from '../../../components/N8nInput/Input.types';
+import { ComboboxListItem } from './Combobox.types';
 
 type ComboboxItemDefaultUi = { class: string };
 
@@ -16,9 +15,4 @@ export type ComboboxItemDefaultSlots = {
 	'item-indicator'?: (props: { ui: ComboboxItemDefaultUi }) => unknown;
 };
 
-export type ComboboxItemDefaultProps = {
-	label?: string;
-	icon?: IconName;
-	disabled?: boolean;
-	size?: InputSize;
-};
+export type ComboboxItemDefaultProps = Omit<ComboboxListItem, 'value'>;

@@ -23,15 +23,8 @@ const slots = useSlots();
 		:disabled="props.disabled"
 		:value="props.value ?? null"
 		:text-value="props.textValue ?? props.label"
-		@select="props.onSelect?.($event)"
 	>
-		<ComboboxItemDefault
-			:class="props.class"
-			:label="props.label"
-			:icon="props.icon"
-			:disabled="props.disabled"
-			:size="props.size"
-		>
+		<ComboboxItemDefault :label="props.label" :icon="props.icon" :size="props.size">
 			<template v-if="slots['item-leading']" #item-leading="slotProps">
 				<slot name="item-leading" v-bind="slotProps" />
 			</template>
