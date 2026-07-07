@@ -17,7 +17,7 @@ import { z } from 'zod';
 
 import type { CheckpointStore, SerializableAgentState } from '../../types';
 import type { StreamChunk } from '../../types/sdk/agent';
-import type { BuiltTool } from '../../types/sdk/tool';
+import type { BuiltTool, InterruptibleToolContext } from '../../types/sdk/tool';
 import { AgentRuntime } from '../loop/agent-runtime';
 import { AgentEventBus } from '../state/event-bus';
 
@@ -147,6 +147,22 @@ class RecordingCheckpointStore implements CheckpointStore {
 	}
 }
 
+/** Interruptible tool: suspends on first call (HITL), returns on resume. */
+const approveTool: BuiltTool = {
+	name: 'approve',
+	description: 'Requires approval',
+	inputSchema: z.object({ question: z.string().optional() }),
+	suspendSchema: z.object({ question: z.string() }),
+	resumeSchema: z.object({ approved: z.boolean() }),
+	handler: async (_input: unknown, ctx: unknown) => {
+		const { suspend, resumeData } = ctx as InterruptibleToolContext;
+		if (!resumeData) {
+			return await suspend({ question: 'approve?' });
+		}
+		return { approved: true };
+	},
+};
+
 const lookupTool: BuiltTool = {
 	name: 'lookup',
 	description: 'Mock lookup tool',
@@ -155,13 +171,13 @@ const lookupTool: BuiltTool = {
 		await Promise.resolve({ found: (input as { value?: string }).value ?? 'nothing' }),
 };
 
-function createRuntime(store: CheckpointStore) {
+function createRuntime(store: CheckpointStore, tools: BuiltTool[] = [lookupTool]) {
 	const bus = new AgentEventBus();
 	const runtime = new AgentRuntime({
 		name: 'crash-test',
 		model: 'openai/gpt-4o-mini',
 		instructions: 'You are a test assistant.',
-		tools: [lookupTool],
+		tools,
 		eventBus: bus,
 		checkpointStorage: store,
 	});
@@ -240,6 +256,53 @@ describe('step checkpoints + crash resume (durable-log RFC)', () => {
 			resumedUnderSameRunId: resumed.runId === result.runId,
 			resumedContextHasHistoryAndNotes: true,
 		});
+	});
+
+
+	it('a crash-resumed run that suspends at HITL persists a resumable suspended checkpoint', async () => {
+		const store = new RecordingCheckpointStore();
+
+		// Original run: one completed tool step (writes the step checkpoint),
+		// then the crash.
+		const runtime = createRuntime(store, [lookupTool, approveTool]);
+		streamText
+			.mockReturnValueOnce(makeStreamWithToolCall('tc-1', { value: 'first' }))
+			.mockReturnValueOnce(makeStreamSuccess('done'));
+		const result = await runtime.stream('find things', { stepCheckpoints: true });
+		await collectChunks(result.stream);
+		const stepCheckpoint = store.saves.find((s) => s.state.status === 'running');
+		expect(stepCheckpoint).toBeDefined();
+		store.map.set(result.runId, stepCheckpoint!.state); // crash before completion
+
+		// Crash-resume: the next model turn calls the HITL tool, which suspends.
+		const runtime2 = createRuntime(store, [lookupTool, approveTool]);
+		streamText.mockReset();
+		streamText.mockReturnValueOnce({
+			fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'asking...' }]),
+			finishReason: Promise.resolve('tool-calls'),
+			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+			response: Promise.resolve({
+				messages: [
+					{
+						role: 'assistant',
+						content: [
+							{ type: 'tool-call', toolCallId: 'tc-hitl', toolName: 'approve', args: { question: 'ok?' } },
+						],
+					},
+				],
+			}),
+			toolCalls: Promise.resolve([{ toolCallId: 'tc-hitl', toolName: 'approve', input: { question: 'ok?' } }]),
+		});
+
+		const resumed = await runtime2.crashResume({ runId: result.runId, stepCheckpoints: true });
+		const chunks = await collectChunks(resumed.stream);
+		expect(chunks.some((c) => c.type === 'tool-call-suspended')).toBe(true);
+
+		// The suspension checkpoint is persisted under the same runId with the
+		// pending HITL call, so the normal resume() path can pick it up.
+		const suspended = store.map.get(result.runId);
+		expect(suspended?.status).toBe('suspended');
+		expect(Object.keys(suspended?.pendingToolCalls ?? {})).toEqual(['tc-hitl']);
 	});
 
 	it('rejects crashResume on a suspended checkpoint (resume() owns those)', async () => {
