@@ -25,7 +25,7 @@
  * downstream — so anything on the command line is transmitted; scrub downstream.
  * `dir` is repo-relative. Errors are swallowed so tracking never disrupts a workflow.
  */
-// n8n-track-version: 2 — bump on change; setup.mjs never downgrades the installed copy.
+// n8n-track-version: 1 — bump on change; setup.mjs never downgrades the installed copy.
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -40,7 +40,7 @@ const RUDDERSTACK_URL =
 const RUDDERSTACK_KEY =
 	process.env.N8N_DEV_METRICS_RUDDERSTACK_KEY ?? '3G8092ezCyr6CR7xqyCETovbMM8';
 const EVENT_NAME = 'dev:cli_command';
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 1;
 const POST_TIMEOUT_MS = 2000;
 
 /** Walk up from `start` to the n8n monorepo root (package.json name === n8n-monorepo). */
