@@ -46,8 +46,10 @@ Both arms need a backend with the agents module: `N8N_ENABLED_MODULES=agents,ins
 ```bash
 cd packages/@n8n/instance-ai
 
-# Arm A (exam): the 7 paired siblings from the exam tier
-pnpm eval:agents --filter '^(wf-schedule-weather-slack|adv-says-agent-is-wf|adv-says-wf-is-agent|agent-tutor-with-memory|we-daily-error-scan|clarify-important-emails|meta-what-can-you-build)$' --iterations 3
+# Arm A (exam): the 7 paired siblings from the exam tier.
+# --filter is comma-separated SUBSTRING matching on file slugs; the nat-* files
+# also match these substrings but --tier agents drops them after load.
+pnpm eval:agents --filter wf-schedule-weather-slack,adv-says-agent-is-wf,adv-says-wf-is-agent,agent-tutor-with-memory,we-daily-error-scan,clarify-important-emails,meta-what-can-you-build --iterations 3
 
 # Arm B (natural): this tier
 pnpm eval:agents-natural --iterations 3
