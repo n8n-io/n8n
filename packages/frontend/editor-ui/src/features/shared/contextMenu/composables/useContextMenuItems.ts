@@ -43,15 +43,17 @@ export type ContextMenuAction =
 	| 'tidy_up'
 	| 'extract_sub_workflow'
 	| 'group_nodes'
+	| 'rename_group'
+	| 'ungroup_nodes'
 	| 'focus_ai_on_selected';
 
 /**
- * Actions that, once selected, hand off to another floating layer (e.g. a
- * popover) which then takes focus. For these the context menu must not restore
- * focus on close — otherwise the restore lands outside the freshly-opened layer
- * and immediately dismisses it.
+ * Actions that, once selected, hand off to another floating layer or input
+ * (e.g. a popover, the group title editor) which then takes focus. For these
+ * the context menu must not restore focus on close — otherwise the restore
+ * lands outside the freshly-focused element and immediately dismisses it.
  */
-const FOCUS_HANDOFF_ACTIONS = new Set<ContextMenuAction>(['change_color']);
+const FOCUS_HANDOFF_ACTIONS = new Set<ContextMenuAction>(['change_color', 'rename_group']);
 
 export function isFocusHandoffAction(action: ContextMenuAction): boolean {
 	return FOCUS_HANDOFF_ACTIONS.has(action);
@@ -59,7 +61,10 @@ export function isFocusHandoffAction(action: ContextMenuAction): boolean {
 
 type Item = ActionDropdownItem<ContextMenuAction>;
 
-export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): ComputedRef<Item[]> {
+export function useContextMenuItems(
+	targetNodeIds: ComputedRef<string[]>,
+	targetGroupId?: ComputedRef<string | undefined>,
+): ComputedRef<Item[]> {
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -165,6 +170,24 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 	};
 
 	return computed(() => {
+		// A group target replaces the node menu with group-specific actions
+		if (targetGroupId?.value) {
+			const groupActions: Item[] = [
+				{
+					id: 'rename_group',
+					label: i18n.baseText('contextMenu.renameGroup'),
+					disabled: isReadOnly.value,
+				},
+				{
+					id: 'ungroup_nodes',
+					label: i18n.baseText('contextMenu.ungroupNodes'),
+					shortcut: { metaKey: true, shiftKey: true, keys: ['G'] },
+					disabled: isReadOnly.value,
+				},
+			];
+			return groupActions;
+		}
+
 		const nodes = targetNodes.value;
 		const onlyStickies = nodes.every((node) => node.type === STICKY_NODE_TYPE);
 		const canExtract = nodes.some(isExecutable) && !nodes.every(isAiSubNode);

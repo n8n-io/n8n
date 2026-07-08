@@ -207,6 +207,50 @@ describe('useContextMenu', () => {
 		});
 	});
 
+	describe('group target', () => {
+		it('shows only the group actions and resolves member node ids', () => {
+			const group = workflowDocumentStore.createGroup([nodes[0].id, nodes[1].id], 'My group');
+			const { open, actions, targetNodeIds, targetGroupId } = useContextMenu();
+			open(mockEvent, { source: 'group', groupId: group.id, nodeIds: group.nodeIds });
+
+			expect(actions.value.map((action) => action.id)).toEqual(['rename_group', 'ungroup_nodes']);
+			expect(actions.value.every((action) => !action.disabled)).toBe(true);
+			expect(targetNodeIds.value).toEqual([nodes[0].id, nodes[1].id]);
+			expect(targetGroupId.value).toBe(group.id);
+		});
+
+		it('disables the group actions in read-only mode', () => {
+			vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(true);
+			const group = workflowDocumentStore.createGroup([nodes[0].id, nodes[1].id], 'My group');
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'group', groupId: group.id, nodeIds: group.nodeIds });
+
+			expect(actions.value.map((action) => action.id)).toEqual(['rename_group', 'ungroup_nodes']);
+			expect(actions.value.every((action) => action.disabled)).toBe(true);
+		});
+
+		it('closes when re-invoked on the same group, letting the native menu through', () => {
+			const group = workflowDocumentStore.createGroup([nodes[0].id], 'My group');
+			const { open, isOpen } = useContextMenu();
+			open(mockEvent, { source: 'group', groupId: group.id, nodeIds: group.nodeIds });
+			expect(isOpen.value).toBe(true);
+
+			open(mockEvent, { source: 'group', groupId: group.id, nodeIds: group.nodeIds });
+			expect(isOpen.value).toBe(false);
+		});
+
+		it('retargets when invoked on a different group', () => {
+			const groupA = workflowDocumentStore.createGroup([nodes[0].id], 'A');
+			const groupB = workflowDocumentStore.createGroup([nodes[1].id], 'B');
+			const { open, isOpen, targetGroupId } = useContextMenu();
+			open(mockEvent, { source: 'group', groupId: groupA.id, nodeIds: groupA.nodeIds });
+			open(mockEvent, { source: 'group', groupId: groupB.id, nodeIds: groupB.nodeIds });
+
+			expect(isOpen.value).toBe(true);
+			expect(targetGroupId.value).toBe(groupB.id);
+		});
+	});
+
 	it('should support opening and closing (default = right click on canvas)', () => {
 		const { open, close, isOpen, actions, position, target, targetNodeIds } = useContextMenu();
 		expect(isOpen.value).toBe(false);

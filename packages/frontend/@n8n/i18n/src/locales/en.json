@@ -2416,6 +2416,8 @@
 	"contextMenu.tidyUpSelection": "Tidy up selection",
 	"contextMenu.extract": "Convert node to sub-workflow | Convert {count} nodes to sub-workflow",
 	"contextMenu.group": "Group node | Group nodes",
+	"contextMenu.renameGroup": "Rename group",
+	"contextMenu.ungroupNodes": "Ungroup nodes",
 	"contextMenu.replace": "Replace",
 	"contextMenu.duplicate": "Duplicate | Duplicate {count} {subject}",
 	"contextMenu.open": "Open...",

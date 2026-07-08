@@ -34,6 +34,8 @@ import {
 	type CanvasNodeGroupView,
 } from '../composables/useCanvasNodeGroupView';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useContextMenu } from '@/features/shared/contextMenu/composables/useContextMenu';
+import { useUIStore } from '@/app/stores/ui.store';
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
@@ -615,6 +617,72 @@ describe('Canvas', () => {
 			await fireEvent.keyUp(document, { key: 'Backspace' });
 
 			expect(emitted()['delete:nodes']?.[0]).toEqual([['a', 'b']]);
+		});
+	});
+
+	describe('group context menu', () => {
+		beforeEach(() => {
+			vi.spyOn(usePostHog(), 'isFeatureEnabled').mockImplementation(
+				(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
+			);
+		});
+
+		// The context menu state is a module-scoped singleton — reset it so an
+		// open menu can't leak into other tests.
+		afterEach(() => {
+			useContextMenu().close();
+		});
+
+		async function renderWithGroup() {
+			// The menu items are disabled unless the workflow is editable: these
+			// tests run without a router, so isReadOnlyView would resolve to true.
+			workflowDocumentStore.setScopes(['workflow:update']);
+			vi.spyOn(useUIStore(), 'isReadOnlyView', 'get').mockReturnValue(false);
+			const group = workflowDocumentStore.createGroup(['a', 'b'], 'My Group');
+			const groupNode = createCanvasGroupElement({
+				id: group.id,
+				name: group.name,
+				nodeIds: ['a', 'b'],
+			});
+
+			const rendered = renderComponent({ props: { nodes: [groupNode] } });
+			await waitFor(() => expect(rendered.getByTestId('canvas-node-group')).toBeInTheDocument());
+
+			return { group, ...rendered };
+		}
+
+		it('shows the group actions enabled when right-clicking a group title bar', async () => {
+			const { getByTestId } = await renderWithGroup();
+
+			await fireEvent.contextMenu(getByTestId('canvas-node-group'));
+
+			await waitFor(() =>
+				expect(getByTestId('context-menu-item-rename_group')).toBeInTheDocument(),
+			);
+			expect(getByTestId('context-menu-item-rename_group')).not.toHaveAttribute('aria-disabled');
+			expect(getByTestId('context-menu-item-ungroup_nodes')).toBeInTheDocument();
+			expect(getByTestId('context-menu-item-ungroup_nodes')).not.toHaveAttribute('aria-disabled');
+		});
+
+		it('deletes the group when the ungroup action is selected', async () => {
+			const { group, getByTestId } = await renderWithGroup();
+
+			await fireEvent.contextMenu(getByTestId('canvas-node-group'));
+			await waitFor(() =>
+				expect(getByTestId('context-menu-item-ungroup_nodes')).toBeInTheDocument(),
+			);
+
+			await fireEvent.click(getByTestId('context-menu-item-ungroup_nodes'));
+
+			await waitFor(() => expect(workflowDocumentStore.getGroupById(group.id)).toBeUndefined());
+			expect(useTelemetry().track).toHaveBeenCalledWith(
+				'User ungrouped nodes',
+				expect.objectContaining({
+					group_id: group.id,
+					node_ids: ['a', 'b'],
+					source: 'context-menu',
+				}),
+			);
 		});
 	});
 

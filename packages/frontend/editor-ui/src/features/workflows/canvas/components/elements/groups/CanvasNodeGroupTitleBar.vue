@@ -41,6 +41,7 @@ const emit = defineEmits<{
 	'title:focused': [id: string];
 	ungroup: [id: string];
 	toggle: [id: string];
+	'open:contextmenu': [id: string, event: MouseEvent];
 }>();
 
 const i18n = useI18n();
@@ -111,6 +112,10 @@ function onUngroupClick() {
 
 function onToggleClick() {
 	emit('toggle', group.value.id);
+}
+
+function onOpenContextMenu(event: MouseEvent) {
+	emit('open:contextmenu', group.value.id, event);
 }
 
 // Toggle collapse on double clicking
@@ -186,6 +191,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 		:data-group-id="group.id"
 		@pointerdown="onWrapperPointerDown"
 		@dblclick.stop="onWrapperDblClick"
+		@contextmenu="onOpenContextMenu"
 	>
 		<div :class="$style.titleBar">
 			<Handle

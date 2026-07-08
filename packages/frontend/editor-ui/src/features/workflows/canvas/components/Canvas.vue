@@ -1066,7 +1066,10 @@ const groupNodeFallbackDataById = computed(() =>
 
 const contextMenu = useContextMenu();
 
-function onOpenContextMenu(event: MouseEvent, target?: Pick<ContextMenuTarget, 'nodeId'>) {
+function onOpenContextMenu(
+	event: MouseEvent,
+	target?: Pick<Extract<ContextMenuTarget, { source: 'canvas' }>, 'nodeId'>,
+) {
 	contextMenu.open(event, {
 		source: 'canvas',
 		nodeIds: selectedNodeIds.value,
@@ -1091,6 +1094,12 @@ function onOpenNodeContextMenu(
 		onSelectNodes({ ids: [id] });
 		contextMenu.open(event, { source, nodeId: id });
 	}
+}
+
+function onOpenGroupContextMenu(groupId: string, event: MouseEvent) {
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (!group) return;
+	contextMenu.open(event, { source: 'group', groupId, nodeIds: [...group.nodeIds] });
 }
 
 async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
@@ -1135,6 +1144,22 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 			const group = groupNodes(nodeIds);
 			if (group) {
 				handleGroupCreated(group, 'context-menu');
+			}
+			return;
+		}
+		// Group target actions receive the group's member node ids; a node
+		// belongs to at most one group, so the first member resolves it.
+		case 'rename_group': {
+			const group = workflowDocumentStore.value.getGroupForNode(nodeIds[0]);
+			if (group) {
+				autofocusGroupTitleId.value = group.id;
+			}
+			return;
+		}
+		case 'ungroup_nodes': {
+			const group = workflowDocumentStore.value.getGroupForNode(nodeIds[0]);
+			if (group) {
+				onCanvasGroupUngroup(group.id, 'context-menu');
 			}
 			return;
 		}
@@ -1431,6 +1456,7 @@ defineExpose({
 				@update:name="onCanvasGroupNameUpdate"
 				@title:focused="onNodeGroupTitleFocused"
 				@ungroup="onCanvasGroupUngroup"
+				@open:contextmenu="onOpenGroupContextMenu"
 			/>
 		</template>
 
