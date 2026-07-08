@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 
 import { toPackagesError } from './shared';
 import { BaseCommand } from '../../base-command';
+import type { ExportPackageFields } from '../../client';
 
 export default class PackageExport extends BaseCommand {
 	static override description = 'Export workflows, folders, or projects as an n8n package (.n8np)';
@@ -35,6 +36,11 @@ export default class PackageExport extends BaseCommand {
 			multiple: true,
 			aliases: ['project-id'],
 		}),
+		subworkflowBehaviour: Flags.string({
+			description: 'Sub-workflow export mode: included-in-package or references-only',
+			options: ['included-in-package', 'references-only'],
+			aliases: ['subworkflow-behaviour'],
+		}),
 		output: Flags.string({
 			char: 'o',
 			description: 'File to write the package to',
@@ -58,11 +64,15 @@ export default class PackageExport extends BaseCommand {
 
 		await this.execute(async () => {
 			const client = this.getClient(flags);
+			const exportPackageFields: ExportPackageFields =
+				projectIds.length > 0 ? { projectIds } : { workflowIds, folderIds };
+			if (flags.subworkflowBehaviour) {
+				exportPackageFields.subworkflowBehaviour = flags.subworkflowBehaviour;
+			}
+
 			let archive: Buffer;
 			try {
-				archive = await client.exportPackage(
-					projectIds.length > 0 ? { projectIds } : { workflowIds, folderIds },
-				);
+				archive = await client.exportPackage(exportPackageFields);
 			} catch (error) {
 				throw toPackagesError(error);
 			}
