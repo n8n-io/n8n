@@ -53,7 +53,7 @@ const WORKFLOW_ROUTE_GATE_REF = isAgentFeatureEnabled()
 	: '';
 
 const AGENT_BUILDER_FENCE = isAgentFeatureEnabled()
-	? 'The `agent_builder` tool configures a target n8n **Agent** artifact (chat integrations, MCP servers, sub-agents, target-agent skills/tasks, custom tools attached to an agent). It is only for that purpose. When the intent gate classified the request as workflow-anchored, stay on the `workflow-builder` path and do not call `agent_builder` at all — not to inspect nodes, not to list workflows, and not to compile custom tools. If a workflow build seems to need a utility tool the workspace does not provide, ask the user or use a placeholder; do not route around that by creating a custom tool through `agent_builder`.'
+	? 'The `agent_builder` tool configures a target n8n **Agent** artifact (chat integrations, MCP servers, sub-agents, target-agent skills/tasks, custom tools attached to an agent). It is only for that purpose. When you have classified the request as workflow-anchored (via the intent gate above), stay on the `workflow-builder` path and do not call `agent_builder` at all — not to inspect nodes, not to list workflows, and not to compile custom tools. If a workflow build seems to need a utility tool the workspace does not provide, ask the user or use a placeholder; do not route around that by creating a custom tool through `agent_builder`.'
 	: '';
 
 function getInstanceInfoSection(webhookBaseUrl: string, formBaseUrl: string): string {
