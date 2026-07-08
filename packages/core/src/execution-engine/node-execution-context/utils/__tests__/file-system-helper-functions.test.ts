@@ -315,7 +315,7 @@ describe('getFileSystemHelperFunctions', () => {
 			(fsStat as Mock).mockResolvedValueOnce(mockFileStats);
 			await expect(
 				helperFunctions.createReadStream(await helperFunctions.resolvePath('/blocked/path')),
-			).rejects.toThrow('Access to the file is not allowed');
+			).rejects.toThrow('Access to the file is not allowed. Allowed paths: /allowed/path');
 		});
 
 		it('should not reveal if file exists if it is within restricted path', async () => {
@@ -324,7 +324,19 @@ describe('getFileSystemHelperFunctions', () => {
 
 			await expect(
 				helperFunctions.createReadStream(await helperFunctions.resolvePath('/blocked/path')),
-			).rejects.toThrow('Access to the file is not allowed');
+			).rejects.toThrow('Access to the file is not allowed. Allowed paths: /allowed/path');
+		});
+
+		it('should omit allowed paths from blocked access errors when none are configured', async () => {
+			process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] = 'true';
+			const blockedPath = await helperFunctions.resolvePath(
+				join(instanceSettings.n8nFolder, 'config'),
+			);
+			(fsStat as Mock).mockResolvedValueOnce(mockFileStats);
+
+			await expect(helperFunctions.createReadStream(blockedPath)).rejects.toThrow(
+				`Access to the file "${blockedPath}" is not allowed.`,
+			);
 		});
 
 		it('should create a read stream if file access is permitted', async () => {
@@ -386,15 +398,16 @@ describe('getFileSystemHelperFunctions', () => {
 		const mockFileStats = { dev: 123, ino: 456, isFile: () => true };
 
 		it('should throw error for blocked file path', async () => {
-			process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] = 'true';
+			securityConfig.restrictFileAccessTo = '/allowed/path';
+			(fsStat as Mock).mockResolvedValueOnce(mockFileStats);
 
 			await expect(
 				helperFunctions.writeContentToFile(
-					await helperFunctions.resolvePath(instanceSettings.n8nFolder + '/test.txt'),
+					await helperFunctions.resolvePath('/blocked/path'),
 					'content',
 					constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC,
 				),
-			).rejects.toThrow('not writable');
+			).rejects.toThrow('Access to the file is not allowed. Allowed paths: /allowed/path');
 		});
 
 		it('should reject symlinks with ELOOP error', async () => {
@@ -601,8 +614,7 @@ describe('getFileSystemHelperFunctions', () => {
 				),
 			).resolves.toBeUndefined();
 
-			expect(fsMkdir).toHaveBeenCalledWith('/allowed');
-			expect(fsMkdir).toHaveBeenCalledWith('/allowed/dir');
+			expect(fsMkdir).toHaveBeenLastCalledWith(join('/allowed', 'dir'));
 		});
 
 		it('rejects when a parent component is a symlink', async () => {
