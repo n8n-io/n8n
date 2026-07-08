@@ -34,7 +34,8 @@ as `agent_builder({ action: "write_config", ... })`.
 One builder capability is a separate tool, not an `agent_builder` action:
 `configure_channel({ integrationType })` — an interactive tool that opens the
 chat-channel setup UI so the user creates a new credential and connects a
-channel (Slack, Telegram, Linear, …). See the Integrations reference.
+channel. The `integrationType` must come from `list_integration_types`. See the
+Integrations reference.
 
 ## Asking the user, credentials, and the LLM
 

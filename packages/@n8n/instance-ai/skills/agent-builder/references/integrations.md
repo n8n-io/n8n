@@ -41,13 +41,18 @@ The `integrations` array controls how the target agent is triggered.
 
 - These are connected external chat platforms, not built-in Preview chat.
 - Call `agent_builder` (`action: "list_integration_types"`) first.
+- Treat the returned integration `type` values as the only configurable chat
+  channels. Do not infer, invent, or assume support for any other channel from
+  examples, product names, or node availability.
 - Read the returned `capabilities`, `useIntegrationWhen`, and
   `useNodeToolWhen` fields before deciding to add an integration.
 - Only connect a channel when the **user explicitly asks** to connect the agent
-  to Slack, Telegram, Linear, or another chat platform. Do not suggest it
-  unprompted.
+  to one of the returned chat platforms. Do not suggest it unprompted. If the
+  requested platform is not returned, tell the user it is not available as a
+  chat channel and use a node/workflow tool if that matches the request.
 - To connect a channel, call the standalone `configure_channel` tool with the
-  chosen `integrationType` (e.g. `configure_channel({ integrationType: "slack" })`).
+  chosen returned `integrationType` (e.g. if the catalog includes `slack`, call
+  `configure_channel({ integrationType: "slack" })`).
   It opens the channel setup UI in the chat, where the user creates a **new**
   credential and connects — a new agent always needs its **own** credential for
   its own identity, so **never reuse an existing credential** for a channel.
@@ -62,6 +67,8 @@ The `integrations` array controls how the target agent is triggered.
 
 - Connect chat channels only through `configure_channel`; never reuse an
   existing credential and never resolve one with the `credentials` tool.
+- `configure_channel` rejects types that are not returned by
+  `list_integration_types`; call the catalog first instead of guessing.
 - To connect chat channels through `configure_channel`, there is **no need to enable socket mode** and **no need to configure a Webhook URL**,  the connection is handled internally and only the new channel bot's respective token is required. **Do not contradict yourself on this matter**
 - Do not add a Linear integration just because the agent needs Linear issue
   CRUD. Use Linear node tools unless Linear itself is the chat/trigger context.
@@ -72,6 +79,7 @@ The `integrations` array controls how the target agent is triggered.
 
 - Chat channels were connected via `configure_channel` (which creates a new
   credential through the setup UI), not by writing to `integrations` directly.
+- The chosen channel `type` came from `list_integration_types`.
 - The chosen integration matches `useIntegrationWhen`; otherwise use node or
   workflow tools.
 - The final `integrations` array keeps unrelated integrations intact.

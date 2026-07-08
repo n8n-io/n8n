@@ -39,11 +39,13 @@ const props = withDefaults(
 		errorMessage?: string;
 		errorIsConflict?: boolean;
 		forceNewCredential?: boolean;
+		setupMode?: 'simple' | 'advanced';
 	}>(),
 	{
 		connected: false,
 		disabled: false,
 		mode: 'setup',
+		setupMode: 'advanced',
 		isPublished: true,
 		setupSlackApp: undefined,
 		disconnectSlackApp: undefined,
@@ -190,7 +192,7 @@ async function onDisconnectSlackApp() {
 watch(
 	() => [props.projectId, props.agentId, props.connected, props.mode] as const,
 	() => {
-		if (!props.connected && props.mode === 'setup') {
+		if (!props.connected && props.mode === 'setup' && props.setupMode === 'advanced') {
 			void loadSlackAppManifest();
 		}
 	},
@@ -324,7 +326,7 @@ defineExpose({ credentialId, validationError: null });
 		</N8nStepper>
 
 		<N8nCollapsiblePanel
-			v-if="mode === 'setup' && !connected"
+			v-if="mode === 'setup' && setupMode === 'advanced' && !connected"
 			v-model="manualConfigurationOpen"
 			:class="$style.manualPanel"
 			:title="i18n.baseText('agents.channels.slack.manualSetup.title')"

@@ -4,11 +4,19 @@ import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../../types';
 import { createConfigureChannelTool } from '../configure-channel.tool';
 
+const CHAT_INTEGRATIONS = [
+	{ type: 'slack', credentialTypes: ['slackOAuth2Api'] },
+	{ type: 'telegram', credentialTypes: ['telegramApi'] },
+	{ type: 'linear', credentialTypes: ['linearApi'] },
+];
+
 function createContext(overrides: Partial<InstanceAiContext> = {}): InstanceAiContext {
 	return {
 		userId: 'user-1',
 		projectId: 'project-1',
-		agentBuilderService: {} as InstanceAiContext['agentBuilderService'],
+		agentBuilderService: {
+			listChatIntegrations: vi.fn().mockResolvedValue(CHAT_INTEGRATIONS),
+		} as unknown as InstanceAiContext['agentBuilderService'],
 		agentBuilderTarget: { agentId: 'agent-1', projectId: 'project-1' },
 		...overrides,
 	} as unknown as InstanceAiContext;
@@ -66,6 +74,20 @@ describe('configure_channel tool', () => {
 			suspendCtx(),
 		);
 		expect(result).toEqual(expect.objectContaining({ ok: false }));
+	});
+
+	it('rejects unsupported channel types from the integration catalog', async () => {
+		const suspendFn = vi.fn();
+		const result = await executeTool<{ ok: boolean; errors?: Array<{ message: string }> }>(
+			createConfigureChannelTool(createContext()),
+			{ integrationType: 'discord' },
+			suspendCtx(suspendFn),
+		);
+
+		expect(result.ok).toBe(false);
+		expect(result.errors?.[0].message).toContain('Unsupported chat channel "discord"');
+		expect(result.errors?.[0].message).toContain('Available: slack, telegram, linear');
+		expect(suspendFn).not.toHaveBeenCalled();
 	});
 
 	it('reports the outcome on resume even when the rebuilt context has no builder target', async () => {

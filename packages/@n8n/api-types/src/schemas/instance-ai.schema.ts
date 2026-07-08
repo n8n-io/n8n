@@ -485,7 +485,7 @@ export const confirmationRequestPayloadSchema = z.object({
 	channelConfig: channelConfigSchema
 		.optional()
 		.describe(
-			'When present, opens the agent chat-channel setup modal for this integration type and agent',
+			'When present, renders agent chat-channel setup UI for this integration type and agent',
 		),
 });
 export type InstanceAiConfirmationRequestPayload = z.infer<typeof confirmationRequestPayloadSchema>;
