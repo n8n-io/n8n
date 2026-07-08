@@ -1,7 +1,7 @@
 import { getRenderHint } from '@n8n/api-types';
 import type { InstanceAiConfirmation, InstanceAiToolCallState } from '@n8n/api-types';
 import type { MessageContent } from '@n8n/instance-ai';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
 const toolCallContentPartSchema = z.object({

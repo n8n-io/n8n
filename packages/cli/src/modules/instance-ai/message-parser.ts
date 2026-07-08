@@ -1,3 +1,4 @@
+import { normalizeAgentTree } from '@n8n/api-types';
 import type {
 	InstanceAiConfirmation,
 	InstanceAiMessage,
@@ -85,11 +86,13 @@ function extractReasoningFromParts(parts: unknown[]): string {
 }
 
 /**
- * Build a chronological timeline from native parts (preserves tool-call vs text ordering).
- * Falls back to tool-calls-first heuristic when parts aren't available.
+ * Build a chronological timeline from native parts (preserves reasoning vs
+ * tool-call vs text ordering). Falls back to a reasoning-first,
+ * tool-calls-next heuristic when parts aren't available.
  */
 function buildTimeline(
 	textContent: string,
+	reasoning: string,
 	toolCalls: InstanceAiToolCallState[],
 	parts?: StoredContentPart[],
 ): InstanceAiTimelineEntry[] {
@@ -99,6 +102,8 @@ function buildTimeline(
 		for (const part of parts) {
 			if (part.type === 'text' && part.text) {
 				timeline.push({ type: 'text', content: part.text });
+			} else if (part.type === 'reasoning' && part.text) {
+				timeline.push({ type: 'reasoning', content: part.text });
 			} else if (part.type === 'tool-call' && part.toolCallId) {
 				timeline.push({ type: 'tool-call', toolCallId: part.toolCallId });
 			}
@@ -106,8 +111,12 @@ function buildTimeline(
 		return timeline;
 	}
 
-	// No parts — heuristic: tool calls first, then text (most common agent pattern)
+	// No parts — heuristic: reasoning first, then tool calls, then text
+	// (most common agent pattern)
 	const timeline: InstanceAiTimelineEntry[] = [];
+	if (reasoning) {
+		timeline.push({ type: 'reasoning', content: reasoning });
+	}
 	for (const tc of toolCalls) {
 		timeline.push({ type: 'tool-call', toolCallId: tc.toolCallId });
 	}
@@ -119,7 +128,13 @@ function buildTimeline(
 
 /**
  * Build a flat agent tree (orchestrator only) from tool invocations.
- * Used when no snapshot is available for a given run.
+ * Used when no snapshot is available, or when falling back from a degenerate one.
+ * `status` is inherited from the snapshot so a `cancelled` run still reads as cancelled.
+ *
+ * A reconstructed tree is always historical — there is no live stream feeding it — so a
+ * non-terminal status is normalized to `completed` (a mid-run snapshot must not render as
+ * busy forever), and any tool call left loading on a stopped run is settled, mirroring the
+ * live `run-finish` reducer so a cancelled bubble doesn't show a spinner that never resolves.
  */
 function buildFlatAgentTree(
 	runId: string,
@@ -127,17 +142,43 @@ function buildFlatAgentTree(
 	reasoning: string,
 	toolCalls: InstanceAiToolCallState[],
 	parts?: StoredContentPart[],
+	status: InstanceAiAgentNode['status'] = 'completed',
 ): InstanceAiAgentNode {
+	const resolvedStatus = status === 'active' ? 'completed' : status;
+	const settledToolCalls =
+		resolvedStatus === 'cancelled' || resolvedStatus === 'error'
+			? toolCalls.map((tc) => (tc.isLoading ? { ...tc, isLoading: false } : tc))
+			: toolCalls;
 	return {
 		agentId: orchestratorAgentId(runId),
 		role: 'orchestrator',
-		status: 'completed',
+		status: resolvedStatus,
 		textContent,
 		reasoning,
-		toolCalls,
+		toolCalls: settledToolCalls,
 		children: [],
-		timeline: buildTimeline(textContent, toolCalls, parts),
+		timeline: buildTimeline(textContent, reasoning, settledToolCalls, parts),
 	};
+}
+
+/**
+ * Whether a snapshot tree carries anything worth rendering. An empty terminal tree —
+ * e.g. a `cancelled` run whose events were evicted from the in-memory bus before the
+ * snapshot was built — has none of these, so the message-derived flat tree is preferred.
+ */
+function isRenderableTree(tree: InstanceAiAgentNode): boolean {
+	return (
+		tree.children.length > 0 ||
+		tree.toolCalls.length > 0 ||
+		tree.timeline.length > 0 ||
+		tree.textContent.length > 0 ||
+		tree.reasoning.length > 0 ||
+		(tree.planItems?.length ?? 0) > 0 ||
+		!!tree.tasks ||
+		!!tree.statusMessage ||
+		!!tree.result ||
+		!!tree.error
+	);
 }
 
 // ---------------------------------------------------------------------------
@@ -170,7 +211,10 @@ export function parseStoredMessages(
 
 	function pushSnapshotMessage(snapshot: AgentTreeSnapshot): void {
 		const built = buildSnapshotMessage(snapshot);
-		messagesWithSnapshotTree.add(built);
+		// A degenerate (empty) orphan snapshot must not count as authoritative: when the
+		// turn also has message rows, their reconstructed flat tree must win the dedup
+		// collapse instead of this empty tree clobbering it. Mirrors the paired-row guard.
+		if (isRenderableTree(snapshot.tree)) messagesWithSnapshotTree.add(built);
 		messages.push(built);
 	}
 
@@ -223,11 +267,23 @@ export function parseStoredMessages(
 			// Use the native runId from the snapshot (matches SSE events),
 			// falling back to the user-message ID if no snapshot exists.
 			const runId = snapshot?.runId ?? lastUserMessageId ?? msg.id;
-			const agentTree =
-				snapshot?.tree ??
-				(toolCalls.length > 0 || text
-					? buildFlatAgentTree(runId, text, reasoning, toolCalls, parts)
-					: undefined);
+			const messageFlatTree =
+				toolCalls.length > 0 || text || reasoning
+					? buildFlatAgentTree(runId, text, reasoning, toolCalls, parts, snapshot?.tree.status)
+					: undefined;
+			// Carry the cancellation cause onto the fallback tree so a stopped run is
+			// still attributable (user/timeout/shutdown) after the snapshot was lost.
+			if (messageFlatTree && snapshot?.tree.cancellationReason) {
+				messageFlatTree.cancellationReason = snapshot.tree.cancellationReason;
+			}
+			// Prefer the snapshot tree, but when it carries no renderable content (e.g. an
+			// empty `cancelled` tree from a run whose events were lost before the snapshot
+			// was built) fall back to the message-derived flat tree so the turn's work still
+			// renders on reload. A non-renderable snapshot is never authoritative — if there
+			// is no flat tree either, leave the tree undefined rather than re-admitting the
+			// empty one.
+			const snapshotIsRenderable = snapshot !== undefined && isRenderableTree(snapshot.tree);
+			const agentTree = snapshotIsRenderable ? snapshot.tree : messageFlatTree;
 
 			const assistantMessage: InstanceAiMessage = {
 				id: msg.id,
@@ -241,7 +297,10 @@ export function parseStoredMessages(
 				isStreaming: false,
 				agentTree,
 			};
-			if (snapshot) messagesWithSnapshotTree.add(assistantMessage);
+			// Only treat the message as snapshot-backed when the snapshot tree is the one
+			// being rendered — a degenerate snapshot must not suppress the flat-tree
+			// aggregation in the dedup pass below.
+			if (snapshotIsRenderable) messagesWithSnapshotTree.add(assistantMessage);
 			messages.push(assistantMessage);
 			continue;
 		}
@@ -278,6 +337,10 @@ export function parseStoredMessages(
 	// the snapshot's `agentTree` + `runIds` onto the kept message when the
 	// kept one's tree didn't come from a snapshot.
 	dedupeAssistantMessagesByMessageGroup(messages, messagesWithSnapshotTree);
+
+	for (const msg of messages) {
+		if (msg.agentTree) normalizeAgentTree(msg.agentTree);
+	}
 
 	return messages;
 }

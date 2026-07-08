@@ -101,7 +101,8 @@ const steps = computed((): TimelineStep[] => {
 				toolCall: tc,
 			});
 		}
-		// Skip 'child' entries — parent AgentTimeline handles child cards
+		// Skip 'child' entries (parent AgentTimeline handles child cards) and
+		// 'reasoning' entries (sub-agent reasoning is not surfaced in this view)
 	}
 
 	return result;

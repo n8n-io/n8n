@@ -2,7 +2,7 @@
 
 import { domainAccessActionSchema, instanceGatewayResourceDecisionSchema } from '@n8n/api-types';
 import type { DomainAccessAction, InstanceAiConfirmRequest } from '@n8n/api-types';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
 // ---------------------------------------------------------------------------
@@ -50,7 +50,7 @@ export type Decision =
 	| { action: 'answer_questions'; answers: Answer[] }
 	| { action: 'apply_setup_wizard'; nodeParametersJson: string }
 	| { action: 'approve_or_reject'; approved: boolean; userInput?: string }
-	| { action: 'respond_to_domain_access'; response: DomainAccessAction }
+	| { action: 'respond_to_domain_access'; response: DomainAccessAction | 'deny' }
 	| { action: 'pick_resource_decision'; decision: string }
 	| { action: 'send_follow_up_message'; message: string }
 	| { action: 'declare_done' };
@@ -85,6 +85,7 @@ export function parseWireDecision(value: WireDecision): Decision | undefined {
 
 		case 'respond_to_domain_access': {
 			if (!value.response) return undefined;
+			if (value.response === 'deny') return { action: value.action, response: 'deny' };
 			const parsed = domainAccessActionSchema.safeParse(value.response);
 			return parsed.success ? { action: value.action, response: parsed.data } : undefined;
 		}

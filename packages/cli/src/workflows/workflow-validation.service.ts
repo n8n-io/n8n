@@ -3,10 +3,10 @@ import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { FULL_ACCESS_NODE_TYPES } from 'n8n-core';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	validateWorkflowHasTriggerLikeNode,
 	NodeHelpers,
-	ensureError,
 	mapConnectionsByDestination,
 	validateNodeCredentials,
 	isNodeConnected,
@@ -355,7 +355,7 @@ export class WorkflowValidationService {
 			// System resolver: needs the n8n user identity.
 			return hasN8nIdentityTrigger
 				? undefined
-				: `private credentials (${credNames}) are only supported in workflows triggered manually, via chat, or as a sub-workflow.`;
+				: `end-user credentials (${credNames}) are only supported in workflows triggered manually, via chat, or as a sub-workflow.`;
 		}
 
 		// Custom resolver: needs an external identity from the trigger.

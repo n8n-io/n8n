@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { Brackets, DataSource, Repository } from '@n8n/typeorm';
+import { Brackets, DataSource, In, Repository } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -17,6 +17,18 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		private readonly globalConfig: GlobalConfig,
 	) {
 		super(WorkflowPublicationOutbox, dataSource.manager);
+	}
+
+	/**
+	 * The in-flight (pending or in_progress) publication for a workflow, or null.
+	 * In-progress is preferred when both exist.
+	 */
+	async findInFlightByWorkflowId(workflowId: string): Promise<WorkflowPublicationOutbox | null> {
+		const inFlight = await this.findBy({
+			workflowId,
+			status: In([Status.InProgress, Status.Pending]),
+		});
+		return inFlight.find((record) => record.status === Status.InProgress) ?? inFlight[0] ?? null;
 	}
 
 	/**
@@ -363,6 +375,38 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 			const [{ count }]: Array<{ count: number }> = await tx.query('SELECT changes() AS count');
 			return Number(count);
 		});
+	}
+
+	/**
+	 * Per-status record count and oldest `createdAt`, for the metrics gauges, in a
+	 * single grouped query. Statuses with no rows are absent from the map. The
+	 * oldest-record-age gauge only reads the active (`pending`/`in_progress`)
+	 * entries; the count gauge reads them all.
+	 */
+	async getRecordStatsByStatus(): Promise<Map<Status, { count: number; oldestCreatedAt: Date }>> {
+		const rows = await this.createQueryBuilder('o')
+			.select('o.status', 'status')
+			.addSelect('COUNT(*)', 'count')
+			.addSelect('MIN(o.createdAt)', 'oldestCreatedAt')
+			.groupBy('o.status')
+			.getRawMany<{ status: Status; count: string | number; oldestCreatedAt: string | Date }>();
+
+		return new Map(
+			rows.map((row) => [
+				row.status,
+				{ count: Number(row.count), oldestCreatedAt: this.parseTimestamp(row.oldestCreatedAt) },
+			]),
+		);
+	}
+
+	/**
+	 * Postgres hydrates timestamps into `Date`s directly. SQLite returns a raw UTC
+	 * string with no zone designator, which `new Date()` would read as local time;
+	 * tag it as UTC so the instant matches what the driver stored.
+	 */
+	private parseTimestamp(value: string | Date): Date {
+		if (value instanceof Date) return value;
+		return new Date(`${value.replace(' ', 'T')}Z`);
 	}
 
 	/**

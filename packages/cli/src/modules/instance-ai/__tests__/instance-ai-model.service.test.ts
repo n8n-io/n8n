@@ -7,6 +7,21 @@ import { UserError } from 'n8n-workflow';
 
 import type { AiService } from '@/services/ai.service';
 
+const capturedTokenGetters: Array<() => Promise<unknown>> = [];
+vi.mock('@/services/proxy-token-manager', () => ({
+	ProxyTokenManager: class {
+		constructor(
+			private readonly fetchToken: () => Promise<{ tokenType: string; accessToken: string }>,
+		) {
+			capturedTokenGetters.push(fetchToken);
+		}
+		async getAuthHeaders() {
+			const token = await this.fetchToken();
+			return { Authorization: `${token.tokenType} ${token.accessToken}` };
+		}
+	},
+}));
+
 import { InstanceAiModelService } from '../instance-ai-model.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 
@@ -65,8 +80,8 @@ function createClient({
 } = {}) {
 	return {
 		getApiProxyBaseUrl: vi.fn(() => proxyBaseUrl),
-		getBuilderApiProxyToken: vi.fn().mockResolvedValue({ tokenType: 'Bearer', accessToken }),
-		getBuilderInstanceCredits: vi.fn().mockResolvedValue({ creditsQuota: 100, creditsClaimed: 5 }),
+		getInstanceAiApiProxyToken: vi.fn().mockResolvedValue({ tokenType: 'Bearer', accessToken }),
+		getInstanceAiCredits: vi.fn().mockResolvedValue({ creditsQuota: 5700, creditsClaimed: 12 }),
 	};
 }
 
@@ -87,6 +102,7 @@ describe('InstanceAiModelService', () => {
 		customFetch = vi.fn<CustomFetch>(async () => new Response(null, { status: 200 }));
 		transport.asCustomFetch.mockReturnValue(customFetch);
 		outboundHttp.transport.mockReturnValue(transport);
+		capturedTokenGetters.length = 0;
 		service = new InstanceAiModelService(settingsService, aiService, outboundHttp);
 	});
 
@@ -115,16 +131,16 @@ describe('InstanceAiModelService', () => {
 			expect(aiService.getClient).not.toHaveBeenCalled();
 		});
 
-		it('should fetch credits from the proxy client when enabled', async () => {
+		it('should fetch instance-ai credits from the proxy client when enabled', async () => {
 			aiService.isProxyEnabled.mockReturnValue(true);
 			const client = createClient();
 			aiService.getClient.mockResolvedValue(client as never);
 
 			await expect(service.getCredits(fakeUser)).resolves.toEqual({
-				creditsQuota: 100,
-				creditsClaimed: 5,
+				creditsQuota: 5700,
+				creditsClaimed: 12,
 			});
-			expect(client.getBuilderInstanceCredits).toHaveBeenCalledWith({ id: 'user-1' });
+			expect(client.getInstanceAiCredits).toHaveBeenCalledWith({ id: 'user-1' });
 		});
 	});
 
@@ -234,6 +250,23 @@ describe('InstanceAiModelService', () => {
 
 			await expect(service.resolveAgentModelConfig(fakeUser)).rejects.toThrow(
 				/Unsupported Instance AI proxy model provider/,
+			);
+		});
+
+		it('should mint proxy tokens via the instance-ai endpoint when the proxy is active', async () => {
+			aiService.isProxyEnabled.mockReturnValue(true);
+			const client = createClient();
+			aiService.getClient.mockResolvedValue(client as never);
+			vi.spyOn(service, 'resolveProxyModel').mockResolvedValue('model' as never);
+
+			await service.resolveAgentModelConfig(fakeUser);
+
+			expect(capturedTokenGetters).toHaveLength(1);
+			await capturedTokenGetters[0]();
+
+			expect(client.getInstanceAiApiProxyToken).toHaveBeenCalledWith(
+				{ id: fakeUser.id },
+				expect.objectContaining({ userMessageId: expect.any(String) }),
 			);
 		});
 	});

@@ -422,6 +422,30 @@ describe('FrontendService', () => {
 
 			expect(settings.enterprise.otelCustomSpanAttributes).toBe(true);
 		});
+
+		it('should surface useWorkflowPublicationService from workflows config', async () => {
+			globalConfig.workflows = {
+				...globalConfig.workflows,
+				useWorkflowPublicationService: true,
+			} as GlobalConfig['workflows'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.useWorkflowPublicationService).toBe(true);
+		});
+
+		it('should default useWorkflowPublicationService to false when flag is off', async () => {
+			globalConfig.workflows = {
+				...globalConfig.workflows,
+				useWorkflowPublicationService: false,
+			} as GlobalConfig['workflows'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.useWorkflowPublicationService).toBe(false);
+		});
 	});
 
 	describe('getPublicSettings', () => {

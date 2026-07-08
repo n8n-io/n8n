@@ -122,8 +122,8 @@ describe('InstanceAiSettingsService', () => {
 	});
 
 	describe('updateAdminSettings', () => {
-		it('should reject with 422 when proxy is enabled and request contains proxy-managed admin fields', async () => {
-			aiService.isProxyEnabled.mockReturnValue(true);
+		it('should reject with 422 when the request contains env-managed admin fields', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
 
 			await expect(
 				service.updateAdminSettings({
@@ -133,7 +133,7 @@ describe('InstanceAiSettingsService', () => {
 		});
 
 		it('should include offending field names in the error message', async () => {
-			aiService.isProxyEnabled.mockReturnValue(true);
+			aiService.isProxyEnabled.mockReturnValue(false);
 
 			await expect(
 				service.updateAdminSettings({
@@ -143,27 +143,39 @@ describe('InstanceAiSettingsService', () => {
 			).rejects.toThrow(/sandboxEnabled.*daytonaCredentialId|daytonaCredentialId.*sandboxEnabled/);
 		});
 
-		it('should allow non-proxy-managed fields when proxy is enabled', async () => {
-			aiService.isProxyEnabled.mockReturnValue(true);
-			settingsRepository.upsert.mockResolvedValue(undefined as never);
-
-			await expect(service.updateAdminSettings({ subAgentMaxSteps: 50 })).resolves.toBeDefined();
-		});
-
-		it('should allow proxy-managed fields when proxy is disabled', async () => {
+		it('should reject sandbox, search and advanced fields on self-hosted', async () => {
 			aiService.isProxyEnabled.mockReturnValue(false);
-			settingsRepository.upsert.mockResolvedValue(undefined as never);
-
-			await expect(service.updateAdminSettings({ sandboxEnabled: true })).resolves.toBeDefined();
-		});
-
-		it('should require a service URL when enabling n8n sandbox', async () => {
-			aiService.isProxyEnabled.mockReturnValue(false);
-			globalConfig.instanceAi.n8nSandboxServiceUrl = '';
 
 			await expect(service.updateAdminSettings({ sandboxEnabled: true })).rejects.toThrow(
-				/N8N_SANDBOX_SERVICE_URL/,
+				UnprocessableRequestError,
 			);
+			await expect(service.updateAdminSettings({ searchCredentialId: 'cred-1' })).rejects.toThrow(
+				UnprocessableRequestError,
+			);
+			await expect(service.updateAdminSettings({ subAgentMaxSteps: 50 })).rejects.toThrow(
+				UnprocessableRequestError,
+			);
+			await expect(service.updateAdminSettings({ mcpServers: '[]' })).rejects.toThrow(
+				UnprocessableRequestError,
+			);
+		});
+
+		it('should reject env-managed fields even when proxy is enabled', async () => {
+			aiService.isProxyEnabled.mockReturnValue(true);
+
+			await expect(service.updateAdminSettings({ subAgentMaxSteps: 50 })).rejects.toThrow(
+				UnprocessableRequestError,
+			);
+		});
+
+		it('should allow the enable toggle and permissions', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
+
+			await expect(service.updateAdminSettings({ enabled: true })).resolves.toBeDefined();
+			await expect(
+				service.updateAdminSettings({ permissions: { createWorkflow: 'always_allow' } }),
+			).resolves.toBeDefined();
 		});
 
 		it('should allow unrelated admin updates when existing n8n sandbox URL is missing', async () => {
@@ -178,29 +190,6 @@ describe('InstanceAiSettingsService', () => {
 			).resolves.toMatchObject({
 				localGatewayDisabled: true,
 			});
-		});
-
-		it('should allow disabling n8n sandbox when the service URL is missing', async () => {
-			aiService.isProxyEnabled.mockReturnValue(false);
-			settingsRepository.upsert.mockResolvedValue(undefined as never);
-			globalConfig.instanceAi.sandboxEnabled = true;
-			globalConfig.instanceAi.sandboxProvider = 'n8n-sandbox';
-			globalConfig.instanceAi.n8nSandboxServiceUrl = '';
-
-			await expect(service.updateAdminSettings({ sandboxEnabled: false })).resolves.toMatchObject({
-				sandboxEnabled: false,
-			});
-		});
-
-		it('should reject switching an enabled sandbox to n8n-sandbox without a service URL', async () => {
-			aiService.isProxyEnabled.mockReturnValue(false);
-			globalConfig.instanceAi.sandboxEnabled = true;
-			globalConfig.instanceAi.sandboxProvider = 'daytona';
-			globalConfig.instanceAi.n8nSandboxServiceUrl = '';
-
-			await expect(service.updateAdminSettings({ sandboxProvider: 'n8n-sandbox' })).rejects.toThrow(
-				/N8N_SANDBOX_SERVICE_URL/,
-			);
 		});
 
 		it('should expose workflow builder as unavailable when n8n sandbox URL is missing', () => {
@@ -294,11 +283,10 @@ describe('InstanceAiSettingsService', () => {
 		beforeEach(() => {
 			aiService.isProxyEnabled.mockReturnValue(false);
 			settingsRepository.upsert.mockResolvedValue(undefined as never);
-			globalConfig.instanceAi.mcpServers = '';
 		});
 
 		it('emits on every successful update', async () => {
-			await service.updateAdminSettings({ subAgentMaxSteps: 50 });
+			await service.updateAdminSettings({ mcpAccessEnabled: false });
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'instance-ai-settings-updated',
@@ -306,16 +294,8 @@ describe('InstanceAiSettingsService', () => {
 			);
 		});
 
-		it('flags mcpSettingsChanged when mcpServers changes', async () => {
-			await service.updateAdminSettings({ mcpServers: '[{"name":"a","url":"https://a/"}]' });
-
-			expect(eventService.emit).toHaveBeenCalledWith('instance-ai-settings-updated', {
-				mcpSettingsChanged: true,
-			});
-		});
-
 		it('does not flag mcpSettingsChanged for unrelated field changes', async () => {
-			await service.updateAdminSettings({ subAgentMaxSteps: 50 });
+			await service.updateAdminSettings({ permissions: { createWorkflow: 'always_allow' } });
 
 			expect(eventService.emit).toHaveBeenCalledWith('instance-ai-settings-updated', {
 				mcpSettingsChanged: false,
@@ -337,31 +317,24 @@ describe('InstanceAiSettingsService', () => {
 				mcpSettingsChanged: false,
 			});
 		});
-
-		it('does not flag mcpSettingsChanged when mcpServers is set to the same value', async () => {
-			globalConfig.instanceAi.mcpServers = '[{"name":"a","url":"https://a/"}]';
-
-			await service.updateAdminSettings({ mcpServers: '[{"name":"a","url":"https://a/"}]' });
-
-			expect(eventService.emit).toHaveBeenCalledWith('instance-ai-settings-updated', {
-				mcpSettingsChanged: false,
-			});
-		});
 	});
 
 	describe('updateUserPreferences', () => {
 		const user = mock<User>({ id: 'user-1' });
 
-		it('should reject with 422 when proxy is enabled and request contains proxy-managed preference fields', async () => {
-			aiService.isProxyEnabled.mockReturnValue(true);
+		it('should reject env-managed preference fields on self-hosted', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
 
 			await expect(service.updateUserPreferences(user, { credentialId: 'cred-1' })).rejects.toThrow(
+				UnprocessableRequestError,
+			);
+			await expect(service.updateUserPreferences(user, { modelName: 'gpt-4' })).rejects.toThrow(
 				UnprocessableRequestError,
 			);
 		});
 
 		it('should include offending field names in the error message', async () => {
-			aiService.isProxyEnabled.mockReturnValue(true);
+			aiService.isProxyEnabled.mockReturnValue(false);
 
 			await expect(
 				service.updateUserPreferences(user, {
@@ -371,8 +344,8 @@ describe('InstanceAiSettingsService', () => {
 			).rejects.toThrow(/credentialId.*modelName|modelName.*credentialId/);
 		});
 
-		it('should allow non-proxy-managed fields when proxy is enabled', async () => {
-			aiService.isProxyEnabled.mockReturnValue(true);
+		it('should allow localGatewayDisabled', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
 
 			await expect(
 				service.updateUserPreferences(user, { localGatewayDisabled: true }),
@@ -383,17 +356,17 @@ describe('InstanceAiSettingsService', () => {
 			});
 		});
 
-		it('should merge new fields with existing instanceAi settings on update', async () => {
+		it('should merge new preference fields with existing instanceAi settings on update', async () => {
 			aiService.isProxyEnabled.mockReturnValue(false);
 			const existingUser = mock<User>({
 				id: 'user-2',
 				settings: { instanceAi: { credentialId: 'cred-old', modelName: 'gpt-3.5' } },
 			});
 
-			await service.updateUserPreferences(existingUser, { modelName: 'gpt-5.5' });
+			await service.updateUserPreferences(existingUser, { localGatewayDisabled: true });
 
 			expect(userService.updateSettings).toHaveBeenCalledWith('user-2', {
-				instanceAi: { credentialId: 'cred-old', modelName: 'gpt-5.5' },
+				instanceAi: { credentialId: 'cred-old', modelName: 'gpt-3.5', localGatewayDisabled: true },
 			});
 		});
 	});

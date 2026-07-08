@@ -28,6 +28,8 @@ export interface ResponseGroupSegment {
 	toolCallCount: number;
 	/** Number of text entries inside this group (intermediate thinking text). */
 	textCount: number;
+	/** Number of reasoning segments in this group. */
+	reasoningCount: number;
 	/** Number of answered question forms in this group. */
 	questionCount: number;
 	/** Number of child agent entries in this group. */
@@ -46,9 +48,10 @@ export type TimelineSegment = ResponseGroupSegment | TrailingTextSegment;
 /**
  * Groups an agent's timeline for collapsed rendering when the run is complete.
  *
- * Text entries are always rendered inline (visible). Tool calls and child agents
- * are grouped into collapsible `response-group` segments. Text splits groups —
- * even entries from the same API response are separated if text appears between them.
+ * Text entries are always rendered inline (visible). Reasoning segments, tool
+ * calls, and child agents are grouped into collapsible `response-group`
+ * segments. Text splits groups — even entries from the same API response are
+ * separated if text appears between them.
  *
  * Returns null when grouping is unavailable (no `responseId` data, or nothing to collapse).
  */
@@ -80,6 +83,7 @@ export function useTimelineGrouping(
 				entries: [],
 				toolCallCount: 0,
 				textCount: 0,
+				reasoningCount: 0,
 				questionCount: 0,
 				childCount: 0,
 				artifacts: [],
@@ -105,6 +109,15 @@ export function useTimelineGrouping(
 					currentGroup = null;
 					segments.push({ kind: 'trailing-text', content: entry.content });
 				}
+			} else if (entry.type === 'reasoning') {
+				// Reasoning opens (or joins) its step's group — it precedes the
+				// step's tool calls, so they collapse together.
+				if (!currentGroup || currentGroup.responseId !== entry.responseId) {
+					currentGroup = newGroup(entry.responseId);
+					segments.push(currentGroup);
+				}
+				currentGroup.entries.push(entry);
+				currentGroup.reasoningCount++;
 			} else if (entry.type === 'tool-call') {
 				if (!currentGroup || currentGroup.responseId !== entry.responseId) {
 					currentGroup = newGroup(entry.responseId);
@@ -159,7 +172,12 @@ export function useTimelineGrouping(
 		// Drop empty response groups (only hidden tool calls, no visible content).
 		const flattened = segments.filter((seg) => {
 			if (seg.kind !== 'response-group') return true;
-			return seg.toolCallCount > 0 || seg.childCount > 0 || seg.artifacts.length > 0;
+			return (
+				seg.toolCallCount > 0 ||
+				seg.childCount > 0 ||
+				seg.artifacts.length > 0 ||
+				seg.reasoningCount > 0
+			);
 		});
 
 		// If there are no collapsible response groups, skip grouping entirely.

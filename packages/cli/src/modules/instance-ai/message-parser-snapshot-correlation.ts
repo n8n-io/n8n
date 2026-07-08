@@ -1,4 +1,4 @@
-import type { InstanceAiMessage } from '@n8n/api-types';
+import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
 import type { AgentTreeSnapshot } from '@n8n/instance-ai';
 
 interface SnapshotConversationMessage {
@@ -69,25 +69,15 @@ export function buildSnapshotMessage(snapshot: AgentTreeSnapshot): InstanceAiMes
 	};
 }
 
-export function hasRenderableSnapshotTree(snapshot: AgentTreeSnapshot): boolean {
-	const tree = snapshot.tree;
-	return (
-		tree.textContent.trim().length > 0 ||
-		tree.reasoning.trim().length > 0 ||
-		tree.toolCalls.length > 0 ||
-		tree.children.length > 0 ||
-		tree.timeline.length > 0
-	);
-}
-
 export function createSnapshotCorrelator<TMessage extends SnapshotConversationMessage>({
 	snapshots,
 	conversationMessages,
 	pushSnapshotMessage,
 }: SnapshotCorrelatorInput<TMessage>): SnapshotCorrelator<TMessage> {
-	const snapshotList = [...(snapshots ?? [])]
-		.filter(hasRenderableSnapshotTree)
-		.sort(compareSnapshotsByCreatedAt);
+	// Non-renderable snapshots stay in the list: they must still pair with their
+	// assistant rows so status/cancellationReason/messageGroupId carry over; the
+	// caller decides whether the tree itself is authoritative.
+	const snapshotList = [...(snapshots ?? [])].sort(compareSnapshotsByCreatedAt);
 	let nextSnapshotIdx = 0;
 	const consumedSnapshots = new Set<AgentTreeSnapshot>();
 
@@ -178,6 +168,25 @@ function propagateMessageGroupIdWithinRange(
 	}
 }
 
+/**
+ * Merge an earlier flat orchestrator tree into a later one (earlier content first).
+ * Aggregates the assistant rows of a turn whose snapshot is empty so the whole turn's
+ * orchestrator activity renders as one bubble after the dedup collapse, instead of
+ * keeping only the last row.
+ */
+function mergeFlatAgentTrees(
+	earlier: InstanceAiAgentNode,
+	later: InstanceAiAgentNode,
+): InstanceAiAgentNode {
+	return {
+		...later,
+		textContent: [earlier.textContent, later.textContent].filter(Boolean).join('\n\n'),
+		reasoning: [earlier.reasoning, later.reasoning].filter(Boolean).join('\n\n'),
+		toolCalls: [...earlier.toolCalls, ...later.toolCalls],
+		timeline: [...earlier.timeline, ...later.timeline],
+	};
+}
+
 export function dedupeAssistantMessagesByMessageGroup(
 	messages: InstanceAiMessage[],
 	messagesWithSnapshotTree: Set<InstanceAiMessage>,
@@ -194,10 +203,19 @@ export function dedupeAssistantMessagesByMessageGroup(
 		}
 		const kept = messages[keptIdx];
 		const candidate = messages[i];
-		if (!messagesWithSnapshotTree.has(kept) && messagesWithSnapshotTree.has(candidate)) {
-			kept.agentTree = candidate.agentTree;
-			kept.runIds = candidate.runIds;
-			messagesWithSnapshotTree.add(kept);
+		if (!messagesWithSnapshotTree.has(kept)) {
+			if (messagesWithSnapshotTree.has(candidate)) {
+				kept.agentTree = candidate.agentTree;
+				kept.runIds = candidate.runIds;
+				messagesWithSnapshotTree.add(kept);
+			} else if (candidate.agentTree) {
+				// Neither row is snapshot-backed (degenerate-snapshot turn): aggregate the
+				// earlier row's flat-tree activity into the kept bubble so the whole turn's
+				// orchestrator work survives the collapse instead of just the last row.
+				kept.agentTree = kept.agentTree
+					? mergeFlatAgentTrees(candidate.agentTree, kept.agentTree)
+					: candidate.agentTree;
+			}
 		}
 		toRemove.add(i);
 	}

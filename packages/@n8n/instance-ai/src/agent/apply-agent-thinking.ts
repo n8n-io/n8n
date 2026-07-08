@@ -1,6 +1,6 @@
 import type { Agent, ModelConfig } from '@n8n/agents';
 import { PROVIDER_CAPABILITIES } from '@n8n/api-types';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 function normalizeProvider(provider: string): string {
 	return provider.split('.')[0] ?? provider;

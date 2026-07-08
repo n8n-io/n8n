@@ -1,10 +1,6 @@
 import { Time } from '@n8n/constants';
-import {
-	UnexpectedError,
-	TimeoutExecutionCancelledError,
-	ensureError,
-	type IRun,
-} from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { UnexpectedError, TimeoutExecutionCancelledError, type IRun } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { McpService } from '@/modules/mcp/mcp.service';
