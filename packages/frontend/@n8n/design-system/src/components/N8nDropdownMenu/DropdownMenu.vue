@@ -1,27 +1,24 @@
 <script setup lang="ts" generic="T = string, D = never">
-import { useDebounceFn } from '@vueuse/core';
 import {
 	DropdownMenuRoot,
 	DropdownMenuTrigger,
 	DropdownMenuPortal,
 	DropdownMenuContent,
 } from 'reka-ui';
-import { computed, provide, ref, watch, useCssModule, nextTick, toRef, onBeforeUnmount } from 'vue';
+import { computed, nextTick, onBeforeUnmount, provide, ref, useCssModule, watch } from 'vue';
 
 import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
-import N8nLoading from '@n8n/design-system/components/N8nLoading';
 
-import { useMenuKeyboardNavigation } from './composables/useMenuKeyboardNavigation';
 import { isAlign, isSide } from './DropdownMenu.typeguards';
 import {
 	DropdownMenuPortalTargetKey,
+	type DropdownMenuItemProps,
 	type DropdownMenuProps,
 	type DropdownMenuSlots,
-	type DropdownMenuItemProps,
 } from './DropdownMenu.types';
-import N8nDropdownMenuItem from './DropdownMenuItem.vue';
-import N8nDropdownMenuSearch from './DropdownMenuSearch.vue';
+import DropdownMenuItems from './DropdownMenuItems.vue';
+import DropdownMenuSearchableContent from './DropdownMenuSearchableContent.vue';
 
 defineOptions({ inheritAttrs: false });
 
@@ -36,7 +33,7 @@ const props = withDefaults(defineProps<DropdownMenuProps<T, D>>(), {
 	loadingItemCount: 3,
 	searchable: false,
 	searchPlaceholder: 'Search...',
-	searchDebounce: 300,
+	searchDebounce: 0,
 	emptyText: 'No items',
 });
 
@@ -59,37 +56,12 @@ provide(
 // Handle controlled/uncontrolled state
 const internalOpen = ref(props.defaultOpen ?? false);
 
-const searchRef = ref<{ focus: () => void } | null>(null);
 const contentRef = ref<InstanceType<typeof DropdownMenuContent> | null>(null);
-const searchTerm = ref('');
 let hoverCloseTimer: ReturnType<typeof setTimeout> | undefined;
 
-// Track open sub-menu index
+// Track open sub-menu index for non-searchable menus. Searchable menus own this in
+// DropdownMenuSearchableContent because they use virtual keyboard focus.
 const openSubMenuIndex = ref(-1);
-
-const hasSubMenu = (item: (typeof props.items)[number]): boolean => {
-	return (item.children && item.children.length > 0) || !!item.loading || !!item.searchable;
-};
-
-// Keyboard navigation
-const navigation = useMenuKeyboardNavigation({
-	items: toRef(() => props.items),
-	hasSubMenu,
-	onSelect: (_index, item) => {
-		emit('select', item.id);
-		close();
-	},
-	onOpenSubMenu: (index) => {
-		openSubMenuIndex.value = index;
-	},
-	onCloseSubMenu: () => {
-		if (openSubMenuIndex.value >= 0) {
-			openSubMenuIndex.value = -1;
-		}
-	},
-});
-
-const { highlightedIndex } = navigation;
 
 const placementParts = computed(() => {
 	const [sideValue, alignValue] = props.placement.split('-');
@@ -113,36 +85,8 @@ const handleOpenChange = (open: boolean) => {
 	emit('update:modelValue', open);
 
 	if (!open) {
-		navigation.reset();
 		openSubMenuIndex.value = -1;
 	}
-
-	if (props.searchable) {
-		if (open) {
-			void nextTick(() => {
-				searchRef.value?.focus();
-			});
-		} else {
-			searchTerm.value = '';
-			emit('search', '');
-		}
-	}
-};
-
-const debouncedEmitSearch = useDebounceFn((term: string) => {
-	emit('search', term);
-}, props.searchDebounce);
-
-const handleSearchUpdate = async (value: string) => {
-	searchTerm.value = value;
-	await debouncedEmitSearch(value);
-};
-
-const handleContentKeydown = (event: KeyboardEvent) => {
-	// Non-searchable menus use reka-ui's built-in roving focus
-	if (!props.searchable) return;
-
-	navigation.handleKeydown(event);
 };
 
 const handleSubMenuOpenChange = (index: number, open: boolean) => {
@@ -153,23 +97,13 @@ const handleSubMenuOpenChange = (index: number, open: boolean) => {
 
 	if (open) {
 		openSubMenuIndex.value = index;
-		navigation.reset();
 	} else if (openSubMenuIndex.value === index) {
 		openSubMenuIndex.value = -1;
-		// Return focus appropriately when sub-menu closes
 		void nextTick(() => {
-			if (props.searchable && searchRef.value) {
-				// For searchable root menus, use virtual focus mode
-				highlightedIndex.value = index;
-				searchRef.value.focus();
-			} else {
-				// For non-searchable menus, focus the item directly
-				// and let reka-ui handle highlighting via [data-highlighted]
-				const contentEl = contentRef.value?.$el as HTMLElement | undefined;
-				const menuItems = contentEl?.querySelectorAll('[role="menuitem"]');
-				const targetItem = menuItems?.[index] as HTMLElement | undefined;
-				targetItem?.focus();
-			}
+			const contentEl = contentRef.value?.$el as HTMLElement | undefined;
+			const menuItems = contentEl?.querySelectorAll('[role="menuitem"]');
+			const targetItem = menuItems?.[index] as HTMLElement | undefined;
+			targetItem?.focus();
 		});
 	}
 };
@@ -219,7 +153,6 @@ const open = () => {
 const close = () => {
 	internalOpen.value = false;
 	emit('update:modelValue', false);
-	navigation.reset();
 	openSubMenuIndex.value = -1;
 };
 
@@ -229,19 +162,11 @@ watch(
 		if (newValue !== undefined) {
 			internalOpen.value = newValue;
 			if (!newValue) {
-				navigation.reset();
 				openSubMenuIndex.value = -1;
 			}
 		}
 	},
 	{ immediate: true },
-);
-
-watch(
-	() => props.items,
-	() => {
-		navigation.reset();
-	},
 );
 
 onBeforeUnmount(() => {
@@ -324,30 +249,28 @@ defineExpose({ open, close });
 				v-bind="id ? { id } : {}"
 				:data-test-id="contentTestId"
 				ref="contentRef"
-				:class="[$style.content, extraPopperClass]"
+				:class="[$style.content, searchable && $style.searchable, extraPopperClass]"
 				data-menu-content
 				:side="placementParts.side"
 				:align="placementParts.align"
 				:side-offset="5"
 				:style="contentContainerStyle"
 				:prioritize-position="true"
-				@keydown="handleContentKeydown"
 				@mouseenter="cancelHoverClose"
 				@mouseleave="triggerHoverLeave"
 			>
 				<slot v-if="slots.content" name="content" />
 				<template v-else>
-					<N8nDropdownMenuSearch
+					<DropdownMenuSearchableContent
 						v-if="searchable"
-						ref="searchRef"
-						:model-value="searchTerm"
-						:placeholder="searchPlaceholder"
-						@update:model-value="handleSearchUpdate"
-						@key:escape="close"
-						@key:navigate="navigation.navigate"
-						@key:arrow-right="navigation.handleArrowRight"
-						@key:arrow-left="navigation.handleArrowLeft"
-						@key:enter="navigation.handleEnter"
+						:open="internalOpen"
+						:items="items"
+						:search-placeholder="searchPlaceholder"
+						:search-debounce="searchDebounce"
+						@select="handleItemSelect"
+						@search="(term: string, itemId?: T) => emit('search', term, itemId)"
+						@close="close"
+						@submenu:toggle="(itemId: T, open: boolean) => emit('submenu:toggle', itemId, open)"
 					>
 						<template v-if="slots['search-prefix']" #search-prefix>
 							<slot name="search-prefix" />
@@ -355,52 +278,75 @@ defineExpose({ open, close });
 						<template v-if="slots['search-suffix']" #search-suffix>
 							<slot name="search-suffix" />
 						</template>
-					</N8nDropdownMenuSearch>
+						<template #default="searchableContent">
+							<DropdownMenuItems
+								:items="items"
+								:loading="loading"
+								:loading-item-count="loadingItemCount"
+								:empty-text="emptyText"
+								:highlighted-index="searchableContent.highlightedIndex"
+								:open-sub-menu-index="searchableContent.openSubMenuIndex"
+								:get-item-dom-id="searchableContent.getItemDomId"
+								:on-item-hover="searchableContent.onItemHover"
+								:disable-pointer-focus="true"
+								@select="handleItemSelect"
+								@search="handleItemSearch"
+								@submenu:toggle="searchableContent.onSubMenuOpenChange"
+								@item-mouseup="handleItemMouseUp"
+							>
+								<template v-if="slots.loading" #loading>
+									<slot name="loading" />
+								</template>
+								<template v-if="slots.empty" #empty>
+									<slot name="empty" />
+								</template>
+								<template v-if="slots.item" #item="slotProps">
+									<slot name="item" v-bind="slotProps" />
+								</template>
+								<template v-if="slots['item-leading']" #item-leading="slotProps">
+									<slot name="item-leading" v-bind="slotProps" />
+								</template>
+								<template v-if="slots['item-label']" #item-label="slotProps">
+									<slot name="item-label" v-bind="slotProps" />
+								</template>
+								<template v-if="slots['item-trailing']" #item-trailing="slotProps">
+									<slot name="item-trailing" v-bind="slotProps" />
+								</template>
+							</DropdownMenuItems>
+						</template>
+					</DropdownMenuSearchableContent>
 
-					<div :class="$style['items-container']" data-menu-items>
-						<template v-if="loading">
-							<slot name="loading">
-								<N8nLoading
-									v-for="i in loadingItemCount"
-									:key="i"
-									:rows="1"
-									:class="$style['loading-item']"
-									variant="p"
-								/>
-							</slot>
+					<DropdownMenuItems
+						v-else
+						:items="items"
+						:loading="loading"
+						:loading-item-count="loadingItemCount"
+						:empty-text="emptyText"
+						:open-sub-menu-index="openSubMenuIndex"
+						@select="handleItemSelect"
+						@search="handleItemSearch"
+						@submenu:toggle="handleSubMenuOpenChange"
+						@item-mouseup="handleItemMouseUp"
+					>
+						<template v-if="slots.loading" #loading>
+							<slot name="loading" />
 						</template>
-						<template v-else-if="items.length === 0">
-							<slot name="empty">
-								<div :class="$style['empty-state']">{{ emptyText }}</div>
-							</slot>
+						<template v-if="slots.empty" #empty>
+							<slot name="empty" />
 						</template>
-						<template v-else>
-							<template v-for="(item, index) in items" :key="item.id">
-								<slot name="item" :item="item">
-									<N8nDropdownMenuItem
-										v-bind="item"
-										:highlighted="highlightedIndex === index"
-										:sub-menu-open="openSubMenuIndex === index"
-										:divided="item.divided && index > 0"
-										@select="handleItemSelect"
-										@search="handleItemSearch"
-										@update:sub-menu-open="(open: boolean) => handleSubMenuOpenChange(index, open)"
-										@mouseup="handleItemMouseUp(item)"
-									>
-										<template v-if="slots['item-leading']" #item-leading="slotProps">
-											<slot name="item-leading" v-bind="slotProps" />
-										</template>
-										<template v-if="slots['item-label']" #item-label="slotProps">
-											<slot name="item-label" v-bind="slotProps" />
-										</template>
-										<template v-if="slots['item-trailing']" #item-trailing="slotProps">
-											<slot name="item-trailing" v-bind="slotProps" />
-										</template>
-									</N8nDropdownMenuItem>
-								</slot>
-							</template>
+						<template v-if="slots.item" #item="slotProps">
+							<slot name="item" v-bind="slotProps" />
 						</template>
-					</div>
+						<template v-if="slots['item-leading']" #item-leading="slotProps">
+							<slot name="item-leading" v-bind="slotProps" />
+						</template>
+						<template v-if="slots['item-label']" #item-label="slotProps">
+							<slot name="item-label" v-bind="slotProps" />
+						</template>
+						<template v-if="slots['item-trailing']" #item-trailing="slotProps">
+							<slot name="item-trailing" v-bind="slotProps" />
+						</template>
+					</DropdownMenuItems>
 					<slot v-if="slots.footer" name="footer" />
 				</template>
 			</DropdownMenuContent>
@@ -418,25 +364,26 @@ defineExpose({ open, close });
 	--n8n--dropdown--offset--origin-y: center;
 	--animation--popover-in--translate-x: var(--n8n--dropdown--offset--slide-x);
 	--animation--popover-in--translate-y: var(--n8n--dropdown--offset--slide-y);
-	--n8n--dropdown-menu-width: 24rem;
-
+	--n8n--dropdown-menu-width: var(--reka-dropdown-menu-trigger-width);
 	display: flex;
 	flex-direction: column;
 	width: fit-content;
-	min-width: calc(var(--n8n--dropdown-menu-width) / 4);
+	min-width: var(--spacing--4xl);
 	max-width: var(--n8n--dropdown-menu-width);
-	max-height: var(--reka-dropdown-menu-content-available-height);
+	max-height: min(var(--reka-dropdown-menu-content-available-height), calc(var(--height--5xl) * 3));
 	overflow-y: auto;
 	border-radius: var(--radius--xs);
 	background-color: var(--background--surface);
 	--shadow-color--outline: var(--border-color);
-	box-shadow:
-		var(--shadow--md),
-		inset var(--shadow--outline);
+	box-shadow: var(--shadow--md), var(--shadow--outline);
 	will-change: transform, opacity;
 	transform-origin: var(--n8n--dropdown--offset--origin-x) var(--n8n--dropdown--offset--origin-y);
 	z-index: 9999;
 	scrollbar-width: none;
+
+	&.searchable {
+		overflow-y: hidden;
+	}
 
 	&[data-state='open'] {
 		@include motion.popover-in;
@@ -489,24 +436,6 @@ defineExpose({ open, close });
 .content[data-state='open'][data-side='right'][data-align='end'] {
 	--n8n--dropdown--offset--slide-y: 2px;
 	--n8n--dropdown--offset--origin-y: bottom;
-}
-
-.items-container {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	padding: var(--spacing--4xs);
-}
-
-.loading-item div {
-	height: var(--spacing--xl);
-}
-
-.empty-state {
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--sm);
-	text-align: center;
 }
 
 .trigger {

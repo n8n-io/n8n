@@ -194,6 +194,7 @@ describe('GlobalConfig', () => {
 			include: [],
 			exclude: ['n8n-nodes-base.executeCommand', 'n8n-nodes-base.localFileTrigger'],
 			pythonEnabled: true,
+			mergeSqlSandboxMemoryLimitMb: 64,
 		},
 		publicApi: {
 			disabled: false,
@@ -305,7 +306,7 @@ describe('GlobalConfig', () => {
 			cacheMaxSize: 500,
 		},
 		mcpServer: {
-			sessionIdleTtl: 3600000,
+			sessionIdleTtl: 900000,
 			sessionSweepInterval: 300000,
 		},
 		chatHub: {
@@ -442,15 +443,21 @@ describe('GlobalConfig', () => {
 			enabled: false,
 			materializationWindowSeconds: 60,
 			sweepIntervalSeconds: 10,
+			sweepTimeoutSeconds: 60,
 			executorIntervalSeconds: 5,
+			executorTimeoutSeconds: 60,
 			claimBatchSize: 100,
 			reaperIntervalSeconds: 30,
 			reaperBatchSize: 100,
+			reaperTimeoutSeconds: 60,
 			leaseDurationSeconds: 60,
 			retentionSeconds: 86400,
 			failedRetentionSeconds: 604800,
 			retentionIntervalSeconds: 3600,
+			retentionTimeoutSeconds: 300,
+			jitterRatio: 0.1,
 			minIntervalSeconds: 0,
+			maxConcurrentPasses: 10,
 		},
 		evaluation: {
 			collectionsEnabled: false,

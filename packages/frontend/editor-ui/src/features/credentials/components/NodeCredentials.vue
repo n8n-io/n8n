@@ -248,6 +248,17 @@ const isDefaultResolver = computed(() => {
 	return !resolverId || resolverId === SYSTEM_RESOLVER_ID;
 });
 
+// Whether the node's current resource/operation is runnable by the AI gateway.
+// Nodes without an operation selected are treated as supported so gateway
+// auto-selection still works for operation-agnostic nodes.
+const isCurrentActionSupported = computed(() => {
+	const params = props.node.parameters;
+	const operation = params.operation as string | undefined;
+	if (!operation) return true;
+	const resource = params.resource as string | undefined;
+	return aiGateway.isActionSupported(node.value.type, resource, operation);
+});
+
 watch(
 	() => props.node.parameters,
 	(newValue, oldValue) => {
@@ -272,11 +283,17 @@ watch(
 	{ immediate: true, deep: true },
 );
 
+let hasEvaluatedCredentials = false;
+
 // Select most recent credential by default
 watch(
 	credentialTypesNodeDescriptionDisplayed,
 	(types) => {
 		if (props.skipAutoSelect) return;
+		if (types.length === 0) return;
+
+		const isInitialEvaluation = !hasEvaluatedCredentials;
+		hasEvaluatedCredentials = true;
 
 		if (
 			aiGateway.isEnabled.value &&
@@ -289,17 +306,20 @@ watch(
 			}
 		}
 
-		if (types.length === 0 || !isEmpty(selected.value)) return;
+		if (!isEmpty(selected.value)) return;
 
 		const allOptions = types.map((type) => type.options).flat();
 
 		if (allOptions.length === 0) {
-			// No credentials configured — auto-enable AI Gateway for supported types
-			if (aiGateway.isEnabled.value) {
+			// No credentials configured — auto-enable AI Gateway for supported types,
+			// but only on the initial setup so a later action change doesn't redirect
+			// the user onto n8n Connect.
+			if (aiGateway.isEnabled.value && isInitialEvaluation) {
 				for (const { type } of types) {
 					if (
 						aiGateway.isCredentialTypeSupported(type.name) &&
-						aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion)
+						aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion) &&
+						isCurrentActionSupported.value
 					) {
 						onAiGatewaySelector(type.name, true, false);
 					}
@@ -1028,6 +1048,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					:connected-account-name="usersStore.currentUser?.email ?? undefined"
 					:can-modify="canEditPrivateCredential(type.name)"
 					:can-connect="canConnectPrivateCredential(type.name)"
+					:readonly="readonly"
 					data-test-id="node-credential-private-row"
 					@connect="onConnectFromRow(type.name)"
 					@modify="editCredential(type.name)"
