@@ -3,6 +3,7 @@ import { Get, RestController } from '@n8n/decorators';
 import { Response } from 'express';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
+import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { EventService } from '@/events/event.service';
 import { OauthService, type OAuth1CredentialData } from '@/oauth/oauth.service';
 import { OAuthRequest } from '@/requests';
@@ -13,6 +14,7 @@ export class OAuth1CredentialController {
 		private readonly oauthService: OauthService,
 		private readonly logger: Logger,
 		private readonly eventService: EventService,
+		private readonly credentialsOverwrites: CredentialsOverwrites,
 	) {}
 
 	/** Get Authorization url */
@@ -44,7 +46,7 @@ export class OAuth1CredentialController {
 				);
 			}
 
-			const [credential, , oauthCredentials, state, flowState] =
+			const [credential, decryptedDataOriginal, oauthCredentials, state, flowState] =
 				await this.oauthService.resolveCredential<OAuth1CredentialData>(req);
 
 			const oauthTokenData = await this.oauthService.getOAuth1AccessToken(oauthCredentials, {
@@ -88,6 +90,11 @@ export class OAuth1CredentialController {
 						user: { id: state.userId },
 						credentialType: credential.type,
 						credentialId: credential.id,
+						supportsManagedAuth: this.credentialsOverwrites.supportsManagedAuth(credential.type),
+						usesManagedAuth: this.credentialsOverwrites.usesManagedAuth(
+							credential.type,
+							decryptedDataOriginal,
+						),
 					});
 				}
 

@@ -1,8 +1,19 @@
-import { isContainedWithin, safeJoinPath } from '@n8n/backend-common';
+import {
+	containsSymlinkedComponent,
+	isContainedWithin,
+	pathComponents,
+	pathSegmentsBetween,
+	safeJoinPath,
+} from '@n8n/backend-common';
 import { SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { NodeOperationError } from 'n8n-workflow';
-import type { FileSystemHelperFunctions, INode, ResolvedFilePath } from 'n8n-workflow';
+import type {
+	FileSystemHelperFunctions,
+	INode,
+	PinnedDirectory,
+	ResolvedFilePath,
+} from 'n8n-workflow';
 import type { PathLike } from 'node:fs';
 import { constants } from 'node:fs';
 import {
@@ -10,7 +21,10 @@ import {
 	realpath as fsRealpath,
 	stat as fsStat,
 	open as fsOpen,
+	mkdir as fsMkdir,
+	lstat as fsLstat,
 } from 'node:fs/promises';
+import type { FileHandle } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { posix, dirname, basename, join } from 'node:path';
 
@@ -73,6 +87,36 @@ function isFilePatternBlocked(resolvedFilePath: ResolvedFilePath): boolean {
 		});
 }
 
+async function assertNoSymlinkInPath(
+	resolvedFilePath: ResolvedFilePath,
+	node: INode,
+): Promise<void> {
+	if (await containsSymlinkedComponent(dirname(resolvedFilePath))) {
+		throw new NodeOperationError(node, 'Access to the file is not allowed.', { level: 'warning' });
+	}
+}
+
+async function ensureParentDirectoryWithoutFollowingSymlinks(
+	resolvedFilePath: ResolvedFilePath,
+	node: INode,
+): Promise<void> {
+	for (const component of pathComponents(dirname(resolvedFilePath))) {
+		try {
+			await fsMkdir(component);
+		} catch (error) {
+			if (!(error instanceof Error && 'code' in error && error.code === 'EEXIST')) {
+				throw error;
+			}
+		}
+		const stats = await fsLstat(component);
+		if (stats.isSymbolicLink() || !stats.isDirectory()) {
+			throw new NodeOperationError(node, 'Access to the file is not allowed.', {
+				level: 'warning',
+			});
+		}
+	}
+}
+
 function isFilePathBlocked(resolvedFilePath: ResolvedFilePath): boolean {
 	const allowedPaths = getAllowedPaths();
 	const blockFileAccessToN8nFiles = process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] !== 'false';
@@ -93,6 +137,136 @@ function isFilePathBlocked(resolvedFilePath: ResolvedFilePath): boolean {
 	}
 
 	return false;
+}
+
+async function resolveContainingAllowedBase(targetPath: string): Promise<ResolvedFilePath | null> {
+	const containingBase = getAllowedPaths().find((allowedPath) =>
+		isContainedWithin(allowedPath, targetPath),
+	);
+	return containingBase === undefined
+		? null
+		: ((await fsRealpath(containingBase)) as ResolvedFilePath);
+}
+
+async function resolveStagingBaseForTarget(target: ResolvedFilePath): Promise<ResolvedFilePath> {
+	return (
+		(await resolveContainingAllowedBase(target)) ??
+		((await fsRealpath(Container.get(InstanceSettings).n8nFolder)) as ResolvedFilePath)
+	);
+}
+
+// Linux exposes every open descriptor under `/proc/self/fd/<fd>` as a magic symlink to the
+// object it holds. Resolving `<fd>/<name>` through it addresses `<name>` relative to that
+// descriptor.
+const PROC_SELF_FD = '/proc/self/fd';
+
+function hasErrorCode(error: unknown, ...codes: string[]): boolean {
+	if (typeof error !== 'object' || error === null || !('code' in error)) {
+		return false;
+	}
+	const { code } = error;
+	return typeof code === 'string' && codes.includes(code);
+}
+
+async function resolveTrustedAnchorForPath(targetPath: string): Promise<ResolvedFilePath | null> {
+	const containingBase = await resolveContainingAllowedBase(targetPath);
+	if (containingBase !== null) {
+		return containingBase;
+	}
+
+	const n8nFolder = (await fsRealpath(
+		Container.get(InstanceSettings).n8nFolder,
+	)) as ResolvedFilePath;
+	return isContainedWithin(n8nFolder, targetPath) ? n8nFolder : null;
+}
+
+async function pinDirectory(
+	directoryPath: string,
+	node: INode,
+	options: { create: boolean },
+): Promise<PinnedDirectory | null> {
+	// /proc/self/fd exists only on Linux; the caller falls back to the path-based check.
+	if (process.platform !== 'linux') {
+		return null;
+	}
+
+	const anchor = await resolveTrustedAnchorForPath(directoryPath);
+	if (anchor === null) {
+		return null;
+	}
+	const segments = pathSegmentsBetween(anchor, directoryPath);
+	if (segments === null) {
+		return null;
+	}
+
+	const directoryFlags = constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW;
+	let current: FileHandle = await fsOpen(anchor, directoryFlags);
+	try {
+		for (const segment of segments) {
+			const relativePath = `${PROC_SELF_FD}/${current.fd}/${segment}`;
+			if (options.create) {
+				try {
+					await fsMkdir(relativePath);
+				} catch (error) {
+					if (!hasErrorCode(error, 'EEXIST')) throw error;
+				}
+			}
+			let next: FileHandle;
+			try {
+				next = await fsOpen(relativePath, directoryFlags);
+			} catch (error) {
+				if (hasErrorCode(error, 'ELOOP', 'ENOTDIR')) {
+					throw new NodeOperationError(node, 'Access to the file is not allowed.', {
+						level: 'warning',
+					});
+				}
+				throw error;
+			}
+			const previous = current;
+			current = next;
+			await previous.close();
+		}
+	} catch (error) {
+		await current.close();
+		throw error;
+	}
+
+	const pinned = current;
+	return {
+		resolvePath(name: string) {
+			return `${PROC_SELF_FD}/${pinned.fd}/${name}`;
+		},
+		async close() {
+			await pinned.close();
+		},
+	};
+}
+
+async function openWithoutFollowingSymlinkedAncestors(
+	resolvedFilePath: ResolvedFilePath,
+	flags: number,
+	node: INode,
+): Promise<FileHandle> {
+	const pinnedParent = await pinDirectory(dirname(resolvedFilePath), node, { create: false });
+	try {
+		if (!pinnedParent) {
+			await assertNoSymlinkInPath(resolvedFilePath, node);
+		}
+		const openPath = pinnedParent
+			? pinnedParent.resolvePath(basename(resolvedFilePath))
+			: resolvedFilePath;
+		return await fsOpen(openPath, flags);
+	} catch (error) {
+		if (hasErrorCode(error, 'ELOOP')) {
+			throw new NodeOperationError(node, error instanceof Error ? error : '', {
+				message: 'Symlinks are not allowed.',
+				level: 'warning',
+			});
+		}
+		throw error;
+	} finally {
+		await pinnedParent?.close();
+	}
 }
 
 export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions => ({
@@ -121,20 +295,11 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 				: error;
 		}
 
-		// Open a file handle.
-		let fileHandle;
-		try {
-			fileHandle = await fsOpen(resolvedFilePath, constants.O_RDONLY | constants.O_NOFOLLOW);
-		} catch (error) {
-			if ('code' in error && (error as unknown as { code: string }).code === 'ELOOP') {
-				throw new NodeOperationError(node, error instanceof Error ? error : '', {
-					message: 'Symlinks are not allowed.',
-					level: 'warning',
-				});
-			} else {
-				throw error;
-			}
-		}
+		const fileHandle = await openWithoutFollowingSymlinkedAncestors(
+			resolvedFilePath,
+			constants.O_RDONLY | constants.O_NOFOLLOW,
+			node,
+		);
 
 		try {
 			// Verify that the handle we've opened is the same as the path we checked earlier.
@@ -202,19 +367,11 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 			constants.O_NOFOLLOW |
 			(userFlags & ~constants.O_TRUNC); // Strip O_TRUNC if present
 
-		let fileHandle;
-		try {
-			fileHandle = await fsOpen(resolvedFilePath, openFlags);
-		} catch (error) {
-			if ('code' in error && (error as unknown as { code: string }).code === 'ELOOP') {
-				throw new NodeOperationError(node, error instanceof Error ? error : '', {
-					message: 'Symlinks are not allowed.',
-					level: 'warning',
-				});
-			} else {
-				throw error;
-			}
-		}
+		const fileHandle = await openWithoutFollowingSymlinkedAncestors(
+			resolvedFilePath,
+			openFlags,
+			node,
+		);
 
 		try {
 			// Verify that the handle we've opened is the same as the path we checked earlier.
@@ -279,6 +436,16 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 	},
 	resolvePath,
 	isFilePathBlocked,
+	async assertNoSymlinkInPath(resolvedFilePath) {
+		await assertNoSymlinkInPath(resolvedFilePath, node);
+	},
+	async ensureParentDirectoryWithoutFollowingSymlinks(resolvedFilePath) {
+		await ensureParentDirectoryWithoutFollowingSymlinks(resolvedFilePath, node);
+	},
+	resolveStagingBaseForTarget,
+	async pinDirectory(directoryPath, options) {
+		return await pinDirectory(directoryPath, node, options);
+	},
 });
 
 /**

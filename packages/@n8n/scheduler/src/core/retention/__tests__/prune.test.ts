@@ -1,4 +1,5 @@
-import { ScheduledTaskStatus } from '../../enums';
+import { ScheduledTaskStatus } from '@n8n/constants';
+
 import { DEFAULT_RETENTION_OPTIONS, type RetentionOptions } from '../options';
 import { prune } from '../prune';
 import type { RetentionBatch, RetentionStore } from '../store';

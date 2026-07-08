@@ -12,6 +12,7 @@ export * from './agents/index';
 export * from './instance-registry-types';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
+export * from './workflow-reviews-policy';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
@@ -458,6 +459,8 @@ export {
 	findAgent,
 	toAgentTree,
 	stateFromAgentTree,
+	normalizeLegacyReasoningTimeline,
+	normalizeAgentTree,
 } from './schemas/agent-run-reducer';
 
 export type { AgentRunState } from './schemas/agent-run-reducer';

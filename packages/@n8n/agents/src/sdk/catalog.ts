@@ -68,6 +68,7 @@ interface ModelsDevModel {
 	release_date?: string;
 	reasoning?: boolean;
 	tool_call?: boolean;
+	status?: string;
 	cost?: { input?: number; output?: number; cache_read?: number; cache_write?: number };
 	limit?: { context?: number; output?: number };
 }
@@ -138,6 +139,9 @@ export async function fetchProviderCatalog(): Promise<ProviderCatalog> {
 
 		const models: Record<string, ModelInfo> = {};
 		for (const [modelId, model] of Object.entries(provider.models)) {
+			// Deprecated models still 404 at call time when the provider retires
+			// them, so never offer them.
+			if (model.status === 'deprecated') continue;
 			const info: ModelInfo = {
 				id: model.id,
 				name: model.name,
@@ -161,6 +165,8 @@ export async function fetchProviderCatalog(): Promise<ProviderCatalog> {
 			}
 			models[modelId] = info;
 		}
+
+		if (Object.keys(models).length === 0) continue;
 
 		const providerId = toAgentProviderId(key);
 		catalog[providerId] = {

@@ -6,6 +6,7 @@ import type { Response } from 'express';
 import { ApproveConsentRequestDto } from './dto/approve-consent-request.dto';
 import { OAuthConsentService } from './oauth-consent.service';
 import { OAuthSessionService } from './oauth-session.service';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 @RestController('/consent')
 export class OAuthConsentController {
@@ -21,7 +22,7 @@ export class OAuthConsentController {
 			const sessionToken = this.getAndValidateSessionToken(req, res);
 			if (!sessionToken) return;
 
-			const consentDetails = await this.consentService.getConsentDetails(sessionToken);
+			const consentDetails = await this.consentService.getConsentDetails(sessionToken, req.user);
 
 			if (!consentDetails) {
 				this.sendInvalidSessionError(res, true);
@@ -30,7 +31,15 @@ export class OAuthConsentController {
 
 			if (!consentDetails.ok) {
 				this.oauthSessionService.clearSession(res);
-				this.sendErrorResponse(res, 422, 'Authorization target is no longer available');
+				if (consentDetails.reason === 'forbidden') {
+					this.sendErrorResponse(
+						res,
+						403,
+						'You do not have sufficient permissions to authorize this request',
+					);
+				} else {
+					this.sendErrorResponse(res, 422, 'Authorization target is no longer available');
+				}
 				return;
 			}
 
@@ -61,7 +70,7 @@ export class OAuthConsentController {
 
 			const result = await this.consentService.handleConsentDecision(
 				sessionToken,
-				req.user.id,
+				req.user,
 				payload.approved,
 			);
 
@@ -76,6 +85,14 @@ export class OAuthConsentController {
 		} catch (error) {
 			this.logger.error('Failed to process consent', { error });
 			this.oauthSessionService.clearSession(res);
+			if (error instanceof ForbiddenError) {
+				this.sendErrorResponse(
+					res,
+					403,
+					'You do not have sufficient permissions to authorize this request',
+				);
+				return;
+			}
 			const message = error instanceof Error ? error.message : 'Failed to process authorization';
 			this.sendErrorResponse(res, 500, message);
 		}

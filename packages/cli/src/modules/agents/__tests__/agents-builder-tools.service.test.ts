@@ -32,7 +32,7 @@ import {
 	AgentsBuilderToolsService,
 	getAgentConfigHash,
 } from '../builder/agents-builder-tools.service';
-import type { BuilderModelLookupService } from '../builder/builder-model-lookup.service';
+import type { BuilderModelLiveLookupService } from '../builder/builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from '../builder/builder-tool-names';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -69,7 +69,7 @@ function makeService() {
 	const secureRuntime = mock<AgentSecureRuntime>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const agentsToolsService = mock<AgentsToolsService>();
-	const builderModelLookupService = mock<BuilderModelLookupService>();
+	const builderModelLiveLookupService = mock<BuilderModelLiveLookupService>();
 	const credentialTypes = mock<CredentialTypes>();
 	const mcpRegistryService = mock<McpRegistryService>();
 	const agentTaskService = mock<AgentTaskService>();
@@ -97,7 +97,7 @@ function makeService() {
 		secureRuntime,
 		workflowRepository,
 		agentsToolsService,
-		builderModelLookupService,
+		builderModelLiveLookupService,
 		mcpRegistryService,
 		mock(),
 		credentialTypes,

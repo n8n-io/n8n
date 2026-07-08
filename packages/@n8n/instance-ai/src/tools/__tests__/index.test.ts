@@ -40,10 +40,6 @@ vi.mock('../orchestration/complete-checkpoint.tool', () => ({
 	createCompleteCheckpointTool: vi.fn(() => ({ id: 'complete-checkpoint' })),
 }));
 
-vi.mock('../orchestration/delegate.tool', () => ({
-	createDelegateTool: vi.fn(() => ({ id: 'delegate' })),
-}));
-
 vi.mock('../evals/evals.tool', () => ({
 	createEvalsTool: vi.fn(() => ({ id: 'evals' })),
 }));
@@ -202,5 +198,6 @@ describe('domain tool construction', () => {
 
 		expect(orchestrationTools.has('create-tasks')).toBe(true);
 		expect(orchestrationTools.has('plan')).toBe(false);
+		expect(orchestrationTools.has('delegate')).toBe(false);
 	});
 });

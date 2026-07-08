@@ -140,6 +140,11 @@ export type AttemptRecord = z.infer<typeof attemptRecordSchema>;
 
 export const triggerTypeSchema = z.enum(['manual_or_testable', 'trigger_only']);
 
+export const executionNodeErrorSchema = z.object({
+	nodeName: z.string(),
+	message: z.string().optional(),
+});
+
 /**
  * Structured verification evidence the builder captures when it runs
  * `verify-built-workflow`. Downstream checkpoint runs read this and skip
@@ -163,6 +168,7 @@ export const workflowVerificationEvidenceSchema = z.object({
 			producedOutputRows: z.number().optional(),
 			errorNodeName: z.string().optional(),
 			errorMessage: z.string().optional(),
+			nodeErrors: z.array(executionNodeErrorSchema).optional(),
 		})
 		.optional(),
 	verifiedAt: z.string().datetime().optional(),
