@@ -9,8 +9,13 @@ import { NodeHelpers } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { NodeTypes } from '@/node-types';
+import type { Telemetry } from '@/telemetry';
 
-import { autoPopulateNodeCredentials } from '../tools/workflow-builder/credentials-auto-assign';
+import {
+	autoPopulateNodeCredentials,
+	trackAutoassignOutcomes,
+	type SlotOutcome,
+} from '../tools/workflow-builder/credentials-auto-assign';
 
 const user = { id: 'user-1' } as User;
 const projectId = 'project-1';
@@ -573,5 +578,119 @@ describe('autoPopulateNodeCredentials', () => {
 				},
 			]);
 		});
+	});
+});
+
+describe('trackAutoassignOutcomes', () => {
+	const makeTelemetry = () => ({ track: vi.fn() }) as unknown as Telemetry;
+
+	const gatewayOutcome: SlotOutcome = {
+		nodeName: 'Slack',
+		credentialType: 'slackApi',
+		source: 'aiGateway',
+		hadUserCredential: false,
+		aiGatewayAvailable: true,
+	};
+	const userOutcome: SlotOutcome = {
+		nodeName: 'Gmail',
+		credentialType: 'gmailOAuth2',
+		source: 'user',
+		hadUserCredential: true,
+		aiGatewayAvailable: true,
+	};
+	const noneOutcome: SlotOutcome = {
+		nodeName: 'HTTP',
+		credentialType: 'httpBasicAuth',
+		source: 'none',
+		hadUserCredential: false,
+		aiGatewayAvailable: false,
+		reasonNotAiGateway: 'notAvailable',
+	};
+
+	it("emits 'Node credential assigned' with source mcp and kind n8n_connect for a gateway slot", () => {
+		const telemetry = makeTelemetry();
+
+		trackAutoassignOutcomes(
+			telemetry,
+			'user-1',
+			'update_workflow',
+			[gatewayOutcome],
+			undefined,
+			'wf-1',
+		);
+
+		expect(telemetry.track).toHaveBeenCalledWith('Node credential assigned', {
+			credential_type: 'slackApi',
+			node_type: 'Slack',
+			workflow_id: 'wf-1',
+			credential_kind: 'n8n_connect',
+			source: 'mcp',
+		});
+	});
+
+	it('maps a user-credential slot to credential_kind own', () => {
+		const telemetry = makeTelemetry();
+
+		trackAutoassignOutcomes(
+			telemetry,
+			'user-1',
+			'update_workflow',
+			[userOutcome],
+			undefined,
+			'wf-1',
+		);
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			'Node credential assigned',
+			expect.objectContaining({ credential_kind: 'own', source: 'mcp' }),
+		);
+	});
+
+	it("does not emit 'Node credential assigned' for an unfilled slot", () => {
+		const telemetry = makeTelemetry();
+
+		trackAutoassignOutcomes(telemetry, 'user-1', 'create_workflow_from_code', [noneOutcome]);
+
+		expect(telemetry.track).not.toHaveBeenCalledWith('Node credential assigned', expect.anything());
+	});
+
+	it('resolves node_type from the map and defaults workflow_id to empty when omitted', () => {
+		const telemetry = makeTelemetry();
+		const nodesByName = new Map([['Slack', 'n8n-nodes-base.slack']]);
+
+		trackAutoassignOutcomes(
+			telemetry,
+			'user-1',
+			'create_workflow_from_code',
+			[gatewayOutcome],
+			nodesByName,
+		);
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			'Node credential assigned',
+			expect.objectContaining({ node_type: 'n8n-nodes-base.slack', workflow_id: '' }),
+		);
+	});
+
+	it('still emits the MCP-specific detail event for every outcome', () => {
+		const telemetry = makeTelemetry();
+
+		trackAutoassignOutcomes(
+			telemetry,
+			'user-1',
+			'update_workflow',
+			[gatewayOutcome, noneOutcome],
+			undefined,
+			'wf-1',
+		);
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			'MCP credentials autoassign',
+			expect.objectContaining({ source: 'aiGateway' }),
+		);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			'MCP credentials autoassign',
+			expect.objectContaining({ source: 'none', reason_not_ai_gateway: 'notAvailable' }),
+		);
 	});
 });

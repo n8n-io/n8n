@@ -693,6 +693,7 @@ export const createUpdateWorkflowTool = (
 					'update_workflow',
 					autoAssign.outcomes,
 					nodeTypesByName,
+					workflowId,
 				);
 			}
 

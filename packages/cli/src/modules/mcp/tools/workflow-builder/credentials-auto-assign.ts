@@ -218,9 +218,15 @@ export async function autoPopulateNodeCredentials(
 }
 
 /**
- * Emits a `MCP credentials autoassign` telemetry event for each slot outcome.
- * Callers use this after `autoPopulateNodeCredentials` to record how each
- * credential slot resolved (user cred / AI Gateway sentinel / empty + reason).
+ * Emits telemetry for each slot outcome:
+ *
+ * - `MCP credentials autoassign` — MCP-specific detail (tool, reason a slot did not
+ *   use n8n Connect, gateway availability) for every outcome.
+ * - `Node credential assigned` — the cross-surface attribution funnel shared with
+ *   the canvas and Instance AI, for every slot that actually received a credential.
+ *   The actor is `mcp`; `credential_kind` maps the slot's origin (`aiGateway` → n8n
+ *   Connect, `user` → BYOK). `workflowId` is omitted for create — the workflow is
+ *   not persisted yet.
  */
 export function trackAutoassignOutcomes(
 	telemetry: Telemetry,
@@ -228,12 +234,14 @@ export function trackAutoassignOutcomes(
 	toolName: 'create_workflow_from_code' | 'update_workflow',
 	outcomes: SlotOutcome[],
 	nodesByName?: Map<string, string>,
+	workflowId?: string,
 ): void {
 	for (const outcome of outcomes) {
+		const nodeType = nodesByName?.get(outcome.nodeName) ?? outcome.nodeName;
 		const payload: McpCredentialsAutoassignEventPayload = {
 			user_id: userId,
 			tool_name: toolName,
-			node_type: nodesByName?.get(outcome.nodeName) ?? outcome.nodeName,
+			node_type: nodeType,
 			credential_type: outcome.credentialType,
 			source: outcome.source,
 			had_user_credential: outcome.hadUserCredential,
@@ -241,6 +249,16 @@ export function trackAutoassignOutcomes(
 			...(outcome.reasonNotAiGateway ? { reason_not_ai_gateway: outcome.reasonNotAiGateway } : {}),
 		};
 		telemetry.track(MCP_CREDENTIALS_AUTOASSIGN_EVENT, payload);
+
+		if (outcome.source !== 'none') {
+			telemetry.track('Node credential assigned', {
+				credential_type: outcome.credentialType,
+				node_type: nodeType,
+				workflow_id: workflowId ?? '',
+				credential_kind: outcome.source === 'aiGateway' ? 'n8n_connect' : 'own',
+				source: 'mcp',
+			});
+		}
 	}
 }
 
