@@ -47,12 +47,14 @@ export function getRunScoredCounts(result: WorkflowTestCaseResult): ScoredCounts
 	// Incomplete units (no verifier/judge verdict) are visible but not scored.
 	const scoredExpectations = (result.buildExpectationResults ?? []).filter((e) => !e.incomplete);
 	const scoredScenarios = result.executionScenarioResults.filter((sr) => !sr.incomplete);
+	const scoredArtifacts = (result.artifactResults ?? []).filter((v) => !v.incomplete);
 
 	return {
 		passCount:
 			scoredScenarios.filter((sr) => sr.success).length +
-			scoredExpectations.filter((e) => e.pass).length,
-		totalCount: scoredScenarios.length + scoredExpectations.length,
+			scoredExpectations.filter((e) => e.pass).length +
+			scoredArtifacts.filter((v) => v.pass).length,
+		totalCount: scoredScenarios.length + scoredExpectations.length + scoredArtifacts.length,
 	};
 }
 

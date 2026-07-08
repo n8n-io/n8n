@@ -329,6 +329,7 @@ describe('resolveArtifactResults', () => {
 
 		expect(results).toHaveLength(1);
 		expect(results[0].pass).toBe(false);
+		expect(results[0].incomplete).toBe(true);
 		expect(results[0].expectationResults?.every((r) => r.incomplete)).toBe(true);
 	});
 

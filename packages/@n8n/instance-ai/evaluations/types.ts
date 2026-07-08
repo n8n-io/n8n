@@ -285,6 +285,9 @@ export interface ArtifactVerdict {
 	unexpected?: boolean;
 	/** Human-readable explanation for enforcement fails (unexpected / not-produced / fetch error). */
 	reason?: string;
+	/** the judge returned no measured verdict (e.g. exhausted retries); excluded from the
+	 *  pass-rate denominator, like an incomplete build-expectation. */
+	incomplete?: boolean;
 }
 
 export interface WorkflowTestCaseResult {
@@ -438,6 +441,19 @@ export interface BuildExpectationAggregation {
 	passHatK: number[];
 }
 
+/** A non-workflow artifact type aggregated across runs as a measured unit (granular, alongside
+ *  scenarios and build expectations). One unit per artifact TYPE, not per artifact instance. */
+export interface ArtifactUnitAggregation {
+	type: ArtifactType;
+	runs: ArtifactVerdict[];
+	/** Runs where the judge/enforcement returned a verdict (excludes `incomplete`). */
+	evaluatedCount: number;
+	passCount: number;
+	passRate: number;
+	passAtK: number[];
+	passHatK: number[];
+}
+
 export interface TestCaseAggregation {
 	testCase: WorkflowTestCase;
 	runs: WorkflowTestCaseResult[];
@@ -445,6 +461,8 @@ export interface TestCaseAggregation {
 	executionScenarios: ExecutionScenarioAggregation[];
 	/** Build expectations aggregated as measured units (counted in the pass rate). */
 	buildExpectations: BuildExpectationAggregation[];
+	/** Non-workflow artifact types aggregated as measured units (counted in the pass rate). */
+	artifacts: ArtifactUnitAggregation[];
 }
 
 export interface MultiRunEvaluation {

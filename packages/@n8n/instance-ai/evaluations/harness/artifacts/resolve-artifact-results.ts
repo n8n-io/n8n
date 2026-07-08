@@ -52,7 +52,13 @@ export async function resolveArtifactResults(args: {
 				const expectationResults = await runAssertionJudge(rendered, assertions);
 				const measured = expectationResults.filter((r) => !r.incomplete);
 				const pass = measured.length > 0 && measured.every((r) => r.pass);
-				verdicts.push({ type: handler.type, id: ref.id, pass, expectationResults });
+				verdicts.push({
+					type: handler.type,
+					id: ref.id,
+					pass,
+					expectationResults,
+					...(measured.length === 0 ? { incomplete: true } : {}),
+				});
 			} catch (error: unknown) {
 				const message = error instanceof Error ? error.message : String(error);
 				logger.warn(`  Artifact fetch/judge failed for ${handler.type} ${ref.id}: ${message}`);

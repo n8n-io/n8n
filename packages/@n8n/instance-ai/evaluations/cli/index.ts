@@ -1413,11 +1413,12 @@ function terminalRate(arr: number[]): number {
 
 function computeAggregateMetrics(evaluation: MultiRunEvaluation): AggregateMetrics {
 	const { testCases } = evaluation;
-	// Units = scenarios + evaluated build-expectations — mirrors the per-card badge
-	// and the terminal per-case table so the headline rate can't disagree with them.
+	// Units = scenarios + evaluated build-expectations + evaluated artifacts — mirrors the
+	// per-card badge and the terminal per-case table so the headline rate can't disagree with them.
 	const units = testCases.flatMap((tc) => [
 		...tc.executionScenarios.filter((sa) => sa.evaluatedCount > 0),
 		...tc.buildExpectations.filter((ea) => ea.evaluatedCount > 0),
+		...tc.artifacts.filter((a) => a.evaluatedCount > 0),
 	]);
 	const total = units.length;
 	const scenariosTotal = testCases.reduce((n, tc) => n + tc.executionScenarios.length, 0);
@@ -1440,7 +1441,9 @@ function computePassRatePerIter(evaluation: MultiRunEvaluation): string {
 	const { totalRuns, testCases } = evaluation;
 	const hasUnits = testCases.some(
 		(tc) =>
-			tc.executionScenarios.length > 0 || tc.buildExpectations.some((ea) => ea.evaluatedCount > 0),
+			tc.executionScenarios.length > 0 ||
+			tc.buildExpectations.some((ea) => ea.evaluatedCount > 0) ||
+			tc.artifacts.some((a) => a.evaluatedCount > 0),
 	);
 	if (!hasUnits) return '';
 	const rates: string[] = [];
@@ -1457,6 +1460,13 @@ function computePassRatePerIter(evaluation: MultiRunEvaluation): string {
 			// Count each scored verdict in this iteration directly — skips incomplete
 			// (build-failed) verdicts and is robust to duplicate expectation strings.
 			for (const verdict of tc.runs[i]?.buildExpectationResults ?? []) {
+				if (verdict.incomplete) continue;
+				total++;
+				if (verdict.pass) passed++;
+			}
+			// Count each scored artifact verdict in this iteration directly — mirrors the
+			// build-expectations tally above, skipping incomplete (dead-judge) verdicts.
+			for (const verdict of tc.runs[i]?.artifactResults ?? []) {
 				if (verdict.incomplete) continue;
 				total++;
 				if (verdict.pass) passed++;
@@ -1547,6 +1557,14 @@ function writeEvalResults(
 				evaluatedCount: ea.evaluatedCount,
 				passAtK: terminalRate(ea.passAtK),
 				passHatK: terminalRate(ea.passHatK),
+			})),
+			artifactResultsPerRun: tc.runs.map((run) => run.artifactResults ?? null),
+			artifacts: tc.artifacts.map((a) => ({
+				type: a.type,
+				passCount: a.passCount,
+				evaluatedCount: a.evaluatedCount,
+				passAtK: terminalRate(a.passAtK),
+				passHatK: terminalRate(a.passHatK),
 			})),
 			threadIds: tc.runs.map((run) => run.threadId ?? null),
 			scenarios: tc.executionScenarios.map((sa) => ({
