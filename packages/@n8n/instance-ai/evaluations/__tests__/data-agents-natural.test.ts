@@ -23,6 +23,8 @@ describe('agents-natural dataset', () => {
 	it('every case pairs with an exam sibling by slug (nat-<slug>), keeping the arms comparable', () => {
 		const examSlugs = new Set(loadAgentEvalTestCasesWithFiles().map((c) => c.fileSlug));
 		for (const { fileSlug } of cases) {
+			// natp- = natural-only probes (e.g. over-trigger guards) with no exam sibling.
+			if (fileSlug.startsWith('natp-')) continue;
 			const sibling = fileSlug.replace(/^nat-/, '');
 			expect(fileSlug, fileSlug).toMatch(/^nat-/);
 			expect(examSlugs.has(sibling), `${fileSlug} → ${sibling}`).toBe(true);
@@ -34,6 +36,7 @@ describe('agents-natural dataset', () => {
 			loadAgentEvalTestCasesWithFiles().map((c) => [c.fileSlug, c.testCase]),
 		);
 		for (const { testCase, fileSlug } of cases) {
+			if (fileSlug.startsWith('natp-')) continue; // natural-only probe, no sibling
 			const sibling = examBySlug.get(fileSlug.replace(/^nat-/, ''));
 			if (!sibling) continue; // covered by the pairing test above
 			// The exam loader prepends its preamble to turn 0 — the natural utterance

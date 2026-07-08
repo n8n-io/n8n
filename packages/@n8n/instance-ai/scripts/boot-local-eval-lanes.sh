@@ -53,8 +53,24 @@ for PORT in "${PORTS[@]}"; do
 		echo "lane :$PORT failed to become healthy — check /tmp/n8n-lane-$PORT.log" >&2
 		exit 1
 	}
-	curl -s -X POST "http://localhost:$PORT/rest/e2e/reset" -H 'Content-Type: application/json' -d "$SEED" >/dev/null
-	echo "lane :$PORT healthy + seeded"
+	# A fresh instance can 200 on healthz before the e2e controller is ready —
+	# retry the seed and fail loudly (-f) instead of swallowing a bad response.
+	seeded=false
+	for _ in $(seq 1 10); do
+		if curl -sf -X POST "http://localhost:$PORT/rest/e2e/reset" -H 'Content-Type: application/json' -d "$SEED" >/dev/null; then
+			seeded=true
+			break
+		fi
+		sleep 3
+	done
+	if [[ "$seeded" != true ]]; then
+		echo "lane :$PORT seeding failed — check /tmp/n8n-lane-$PORT.log" >&2
+		exit 1
+	fi
+	curl -sf -X POST "http://localhost:$PORT/rest/login" -H 'Content-Type: application/json' \
+		-d '{"emailOrLdapLoginId":"nathan@n8n.io","password":"PlaywrightTest123"}' >/dev/null ||
+		{ echo "lane :$PORT login check failed after seeding" >&2; exit 1; }
+	echo "lane :$PORT healthy + seeded (login verified)"
 done
 
 BASE_URLS=$(printf ",http://localhost:%s" "${PORTS[@]}")

@@ -38,6 +38,17 @@ observable in the transcript and artifacts since the agent-builder port
   declines to elaborate — a single-turn case hangs on the unanswered ask-user
   question until the iteration timeout.
 
+## End state (post-decision) — this tier is scaffolding
+
+The separate `agents-natural` dataset name and directory exist only so the two
+arms can run independently during the A/B (the `data/agents/` loader injects
+the exam preamble into everything in its dir, so natural cases need their own
+dir until that loader goes). If the natural approach is adopted, these cases
+**become the agents suite**: their `datasets` flip to `agents`, the exam cases
+retire (or move to an explicit dev-loop dataset), and `pnpm eval:agents` runs
+this suite — one suite, one command, no parallel tier and no extra
+package.json entry.
+
 ## Parity audit vs the exam siblings (2026-07-08, all 12 pairs)
 
 Every exam expectation maps to a natural-arm proof, an intentional
@@ -63,10 +74,12 @@ coverage-parity doctrine:
   saying 'AI agent'…"). If articulation coverage matters, that is what an
   exam-style dev-loop suite remains for.
 - **Skill-load** → preserved verbatim 11/12. **Deliberate divergence:** the
-  meta case drops it (answering a capabilities question shouldn't require
-  intent classification); the exam asserts it there and flips on it
-  (pass^3 52%). Worth an explicit taxonomy decision: does out-of-scope
-  detection require the skill or not?
+  meta case asserts the *outcome* of an out-of-scope classification (direct
+  answer, zero build-path activity, no builder-skill loads) rather than the
+  loading mechanism — not every message is a build request, and the enacted
+  proof of "out of scope" is that no build machinery fires. Empirically the
+  skill loads 0/3 there; the exam asserts the mechanism and flips on it
+  (pass^3 52%).
 - **Clarify** → deliberate inversion: the exam forbids asking and asserts
   "names missing dimensions"; the natural case asserts the real behavior
   (asks rules-vs-judgment before building) via the director script.
@@ -86,8 +99,8 @@ cd packages/@n8n/instance-ai
 # also match these substrings but --tier agents drops them after load.
 pnpm eval:agents --filter wf-schedule-weather-slack,adv-says-agent-is-wf,adv-says-wf-is-agent,agent-tutor-with-memory,we-daily-error-scan,clarify-important-emails,meta-what-can-you-build --iterations 3
 
-# Arm B (natural): this tier
-pnpm eval:agents-natural --iterations 3
+# Arm B (natural): this tier (no dedicated script — it's A/B scaffolding, not a product tier)
+pnpm eval:instance-ai --tier agents-natural --iterations 3
 ```
 
 **Faster iterations — local-process lanes.** A natural-arm case-run is a real
@@ -96,7 +109,7 @@ build turn (~2–2.5 min), so wall time is dominated by parallelism. After
 
 ```bash
 ./scripts/boot-local-eval-lanes.sh 2            # lanes on :5682/:5684, seeded
-pnpm eval:agents-natural --iterations 3 \
+pnpm eval:instance-ai --tier agents-natural --iterations 3 \
   --base-url http://localhost:5680,http://localhost:5682,http://localhost:5684 \
   --concurrency 9
 ./scripts/boot-local-eval-lanes.sh --teardown   # when done
@@ -201,3 +214,22 @@ expectation flips even with the exam preamble). Takeaways:
 - Tranche 2 calibrated green on its first N=3, including the compound
   multi-artifact probe: the agent builds the weather workflow AND creates the
   support agent as separate automations, 3/3 iterations.
+
+## Over-trigger coverage (natp- probes, N=3 on 3 lanes, 2026-07-08)
+
+Guards the failure mode where the intent gate fires too often (per-message
+re-classification, or on non-build messages). `natp-` cases are natural-only
+probes with no exam sibling (exempt from the pairing contract). Results:
+
+- `natp-non-build-ops-no-gate` ("What data tables do I have?"): 3/3 fully
+  green — no intent-recognition load, no build path.
+- `natp-followup-edit-no-reclassify`: the gate-once expectation ("loads
+  intent-recognition at most once, not re-loaded for the edit") passed 3/3.
+  One iteration flipped the edit expectation on an artifact-visibility race
+  (the proxy asked for the change before the build registered) — director
+  wording now waits for the build confirmation.
+- `nat-meta-what-can-you-build`: intent-recognition loaded 0/3 times
+  empirically; one iteration was an infra flake (run errored, no transcript).
+
+Net: the gate fires once per new automation and stays quiet on edits,
+operational questions, and capability questions.

@@ -1,0 +1,16 @@
+{
+	"description": "Natural-only over-trigger probe (no exam sibling): operational questions are not build requests, so the intent gate must not fire at all. Guards against the gate (or the intent-recognition skill description) leaking into non-build routing. Calibrated at N=3 (2026-07-08): 3/3 fully green.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "What data tables do I have?"
+		}
+	],
+	"complexity": "simple",
+	"tags": ["intent-resolution", "over-trigger-guard", "non-build-ops", "natural-arm"],
+	"datasets": ["agents-natural"],
+	"processExpectations": [
+		"The agent answers the data-table question via the data-table tools (or states there are none), without loading the intent-recognition skill.",
+		"The agent does not start any build path — no workflow-builder or agent-builder skill loads and no build tools — in response to the question."
+	]
+}

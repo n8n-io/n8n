@@ -1,5 +1,5 @@
 {
-	"description": "Natural-arm sibling of data/agents/meta-what-can-you-build.json. Gold mirrors the exam case (out-of-scope): a capabilities question should be answered directly, with no build activity. No skill-load expectation — answering a product question does not require intent classification.",
+	"description": "Natural-arm sibling of data/agents/meta-what-can-you-build.json (out-of-scope): not every message is a build request — users ask questions and investigate before building. The behavioral proof of an out-of-scope classification is that no build path is triggered at all: the agent answers directly, creates nothing, and loads no build skills. Whether intent-recognition itself loads is left unasserted (empirically it does not; the exam arm asserts it and flakes on exactly that).",
 	"conversation": [
 		{
 			"role": "user",
@@ -7,9 +7,10 @@
 		}
 	],
 	"complexity": "simple",
-	"tags": ["intent-resolution", "meta", "natural-arm"],
+	"tags": ["intent-resolution", "meta", "over-trigger-guard", "natural-arm"],
 	"datasets": ["agents-natural"],
 	"processExpectations": [
-		"The agent answers the question directly by describing the kinds of automations it can build, and does not create a workflow or an agent or start any build activity."
+		"The agent answers the question directly by describing the kinds of automations it can build, and does not create a workflow or an agent or start any build activity.",
+		"The agent does not load the workflow-builder or agent-builder skills and does not call any build tools in response to the question."
 	]
 }

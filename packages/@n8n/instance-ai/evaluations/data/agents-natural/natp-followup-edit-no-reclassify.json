@@ -1,0 +1,23 @@
+{
+	"description": "Natural-only over-trigger probe (no exam sibling): the intent gate must fire once for a NEW automation and stay quiet for mid-build increments. Turn 1 is a plain workflow build; turn 2 is a small edit to the same automation. Over-classification (re-loading intent-recognition per message, or treating the edit as a new automation) is the failure mode under guard. Calibrated at N=3 (2026-07-08): the gate-once expectation passed 3/3; one iteration flipped the edit expectation on an artifact-visibility race (proxy asked for the change before the build registered), mitigated by the wait-for-confirmation director wording.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every weekday at 9am, Slack me the Berlin weather forecast."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Wait until the agent has confirmed the workflow was created — it will say so explicitly. Only then ask for exactly one change: make it 8:30 instead of 9am. Approve any reasonable plan or setup card. End the conversation once the change is applied.]"
+			]
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "simple",
+	"tags": ["intent-resolution", "over-trigger-guard", "paradigm-continuity", "natural-arm"],
+	"datasets": ["agents-natural"],
+	"processExpectations": [
+		"The agent calls the load_skill tool with the intent-recognition skill at most once in the whole conversation, before the initial build — and does not load it again for the follow-up schedule change.",
+		"The agent treats the 8:30 request as an edit to the existing workflow rather than classifying or building a new automation."
+	]
+}
