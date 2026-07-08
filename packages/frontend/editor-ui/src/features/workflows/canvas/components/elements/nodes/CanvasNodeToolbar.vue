@@ -168,7 +168,7 @@ function onAddToAi() {
 					size="small"
 					icon="node-play"
 					:disabled="isExecuting || isDisabled"
-					:title="i18n.baseText('node.testStep')"
+					:aria-label="i18n.baseText('node.testStep')"
 					@click.stop="executeNode"
 				/>
 			</N8nTooltip>
@@ -178,7 +178,7 @@ function onAddToAi() {
 					data-test-id="disable-node-button"
 					size="small"
 					icon="node-power"
-					:title="nodeDisabledTitle"
+					:aria-label="nodeDisabledTitle"
 					@click.stop="onToggleNode"
 				/>
 			</N8nTooltip>
@@ -192,7 +192,7 @@ function onAddToAi() {
 					data-test-id="delete-node-button"
 					size="small"
 					icon="node-trash"
-					:title="i18n.baseText('node.delete')"
+					:aria-label="i18n.baseText('node.delete')"
 					@click.stop="onDeleteNode"
 				/>
 			</N8nTooltip>
