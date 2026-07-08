@@ -1333,6 +1333,7 @@ describe('createThreadRuntime - session always-allow', () => {
 			toolName: string;
 			args?: Record<string, unknown>;
 			severity?: 'info' | 'warning' | 'destructive';
+			channelConfig?: { integrationType: string; agentId: string };
 		},
 	): void {
 		runtime.messages.push({
@@ -1361,6 +1362,7 @@ describe('createThreadRuntime - session always-allow', () => {
 							requestId: opts.requestId,
 							severity: opts.severity ?? 'info',
 							message: 'Approve?',
+							...(opts.channelConfig ? { channelConfig: opts.channelConfig } : {}),
 						},
 					},
 				],
@@ -1386,6 +1388,23 @@ describe('createThreadRuntime - session always-allow', () => {
 			kind: 'approval',
 			approved: true,
 		});
+	});
+
+	it('does not auto-approve channel-setup confirmations even when the key matches', async () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('configure_channel', {});
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-channel',
+			requestId: 'req-channel',
+			toolName: 'configure_channel',
+			args: {},
+			channelConfig: { integrationType: 'slack', agentId: 'agent-1' },
+		});
+
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(runtime.resolvedConfirmationIds.has('req-channel')).toBe(false);
+		expect(mockPostConfirmation).not.toHaveBeenCalled();
 	});
 
 	it('does not auto-approve destructive confirmations even when the key matches', async () => {

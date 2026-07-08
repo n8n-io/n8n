@@ -12,55 +12,50 @@ or a normal node/workflow tool for an external product, then configure
 - The user asks to connect the target agent to an external chat platform with
   credentials.
 
-## Integration vs Node Tool Decision
+## Decision
 
-Use an integration when the product is the agent's conversation or trigger
-surface: humans will mention, message, comment to, or resume the agent there,
-or the agent needs to respond in that same platform conversation context.
+Use an integration when the external product is the agent's conversation or
+trigger surface: people will mention, message, comment to, or resume the agent
+there, and the agent should respond in that same conversation context.
 
 Use a node/workflow tool when the product is only something the agent operates
-on: searching records, creating tickets, updating objects, or sending a
-business-process notification while the conversation happens elsewhere.
-
-Examples:
-
-- Slack integration: the agent should be chatted with in Slack, respond in
-  Slack threads, DM users, message channels, add reactions, or render rich UI
-  to Slack users.
-- Linear integration: the agent should be triggered from Linear issues/comments,
-  understand the current Linear subject, or reply in the same Linear
-  conversation.
-- Linear node tools: the agent is triggered from Slack, Preview, a task, or a
-  workflow and only needs to search/create/update Linear tickets.
+on, such as searching records, creating tickets, updating objects, or sending a
+notification while the conversation happens elsewhere.
 
 ## Workflow
 
-The `integrations` array controls how the target agent is triggered.
-
-### Chat Integrations
-
-- These are connected external chat platforms, not built-in Preview chat.
-- Call `agent_builder` (`action: "list_integration_types"`) first.
+- Chat integrations are connected external platforms, not built-in Preview chat.
+- Call `agent_builder` (`action: "list_integration_types"`) before selecting a
+  channel. The returned `type` values are the channel catalog.
 - Read the returned `capabilities`, `useIntegrationWhen`, and
-  `useNodeToolWhen` fields before deciding to add an integration.
-- Pick one returned `credentialTypes` entry and resolve a credential of that
-  type (`credentials({ action: "list" })` + `ask-user`; see SKILL.md "Asking the
-  user, credentials, and the LLM").
-- Persist only `type` and `credentialId`; never invent credential IDs or names.
-- Preserve existing chat integrations unless the user asked to remove them.
+  `useNodeToolWhen` fields before deciding between an integration and a
+  node/workflow tool.
+- Connect a returned channel with the standalone `configure_channel` tool. It
+  opens setup UI in chat, creates the channel credential, persists the
+  connection, and returns `{ connected }`.
+- If `configure_channel` returns `{ connected: false }`, the user skipped setup;
+  continue without re-prompting.
+- If the requested platform is not returned by `list_integration_types`, tell the
+  user it is not available as a chat channel and use a node/workflow tool when
+  that matches the request.
+- Leave channel entries out of `write_config`/`patch_config` changes. The setup
+  UI persists them, so later config writes should preserve existing
+  integrations.
 
 ## Gotchas
 
-- Chat integration credential types must come from `list_integration_types`.
-- Do not add a Linear integration just because the agent needs Linear issue
-  CRUD. Use Linear node tools unless Linear itself is the chat/trigger context.
+- `configure_channel` handles the channel connection details; socket mode and
+  webhook URL setup are not part of this flow.
+- Linear issue CRUD usually belongs in a node/workflow tool unless Linear itself
+  is the chat/trigger context.
 - For recurring or scheduled runs, create a task (`agent_builder` `action:
   "create_task"`), not an integration.
 
 ## Verify
 
-- Connected chat integrations use a credential id resolved via the `credentials`
-  tool (action `list`, chosen with the user via `ask-user`).
+- Chat channels were connected via `configure_channel` (which creates a new
+  credential through the setup UI), not by writing to `integrations` directly.
+- The chosen channel `type` came from `list_integration_types`.
 - The chosen integration matches `useIntegrationWhen`; otherwise use node or
   workflow tools.
 - The final `integrations` array keeps unrelated integrations intact.

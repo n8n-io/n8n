@@ -54,6 +54,8 @@ export const AGENT_BUILDER_TOOL_IDS = {
 	CREATE_TASK: 'create_task',
 	BUILD_CUSTOM_TOOL: 'build_custom_tool',
 	LIST_INTEGRATION_TYPES: 'list_integration_types',
+	/** Interactive HITL tool: opens the chat-channel setup UI (standalone, not a router action). */
+	CONFIGURE_CHANNEL: 'configure_channel',
 	LIST_SUB_AGENTS: 'list_sub_agents',
 	LIST_AGENTS: 'list_agents',
 	LIST_WORKFLOWS: 'list_workflows',
