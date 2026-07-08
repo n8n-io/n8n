@@ -65,8 +65,16 @@ const rootProps = useForwardPropsEmits(
 	emit,
 );
 
-function isComboboxListItem(item: ComboboxItem): item is ComboboxListItem {
-	return typeof item === 'object' && item !== null;
+function isPrimitiveComboboxValue(item: ComboboxItem): item is string | number | bigint | null {
+	return item === null || typeof item !== 'object';
+}
+
+function stringifyAcceptableValue(value: string | number | bigint | null): string {
+	if (typeof value === 'string') {
+		return value;
+	}
+
+	return value === null ? 'null' : value.toString();
 }
 
 const anchorRef = useTemplateRef<InstanceType<typeof ComboboxAnchor>>('anchor');
@@ -88,20 +96,24 @@ const sizeClass = computed(() => sizes[props.size]);
 const groups = computed<ComboboxListItem[]>(() => {
 	if (!props.items?.length) return [];
 	return props.items.map((item) => {
-		return isComboboxListItem(item)
-			? {
-					...item,
-					value: get<AcceptableValue>(item, props.valueKey) ?? null,
-					label: get<string>(item, props.labelKey),
-					textValue: get<string>(item, props.labelKey),
-					size: item.size ?? props.size,
-				}
-			: {
-					value: item,
-					label: String(item),
-					textValue: String(item),
-					size: props.size,
-				};
+		if (isPrimitiveComboboxValue(item)) {
+			const label = stringifyAcceptableValue(item);
+
+			return {
+				value: item,
+				label,
+				textValue: label,
+				size: props.size,
+			};
+		}
+
+		return {
+			...item,
+			value: get<AcceptableValue>(item, props.valueKey) ?? null,
+			label: get<string>(item, props.labelKey),
+			textValue: get<string>(item, props.labelKey),
+			size: item.size ?? props.size,
+		};
 	});
 });
 
@@ -119,7 +131,19 @@ function getDisplayValue(value: unknown): string {
 	}
 
 	const matchedItem = groups.value.find((item) => item.value === value);
-	return matchedItem?.label ?? String(value);
+	if (matchedItem?.label !== undefined) {
+		return matchedItem.label;
+	}
+
+	if (typeof value === 'string') {
+		return value;
+	}
+
+	if (typeof value === 'number' || typeof value === 'bigint') {
+		return value.toString();
+	}
+
+	return '';
 }
 </script>
 
