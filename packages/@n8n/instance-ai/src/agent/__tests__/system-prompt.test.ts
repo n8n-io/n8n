@@ -195,6 +195,7 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('`build-workflow`');
 			expect(prompt).toContain('**Multi-workflow or coordinated architecture**');
 			expect(prompt).toContain('`planning`');
+			expect(prompt).toContain('load `create-tasks` via `load_tool`');
 			expect(prompt).toContain('planningContext.source: "planning-skill"');
 			expect(prompt).toContain('multiple durable artifacts');
 			expect(prompt).toContain('shared data-table schema/migration');
@@ -210,6 +211,10 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain(
 				'Never call `data-tables` or `parse-file` without loading `data-table-manager` first',
 			);
+			expect(prompt).toContain(
+				'never call `create-tasks` without loading it via `load_tool` first',
+			);
+			expect(prompt).toContain('never call `n8n-docs` without loading it via `load_tool` first');
 			expect(prompt).toContain('Do not call `create-tasks`');
 		});
 
@@ -264,6 +269,7 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('**n8n docs/product guidance**');
 			expect(prompt).toContain('credential setup');
 			expect(prompt).toContain('`n8n-docs-assistant`');
+			expect(prompt).toContain('load `n8n-docs` via `load_tool`');
 			expect(prompt).toContain('`n8n-docs`');
 		});
 
