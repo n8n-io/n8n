@@ -157,6 +157,15 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 			return groupedNodes;
 		}
+
+		// Surface n8n Connect-powered nodes in a dedicated section at the top,
+		// extracted before grouping so they don't also land in the AI sections
+		if (showsAiGatewaySection(stack)) {
+			const extracted = extractAiGatewaySection(stack.baselineItems);
+			if (extracted) {
+				return finalizeItems([extracted.section, ...groupIfAiNodes(extracted.rest, stack, true)]);
+			}
+		}
 		return finalizeItems(groupIfAiNodes(stack.baselineItems, stack, true));
 	});
 
@@ -314,18 +323,6 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		stack: ViewStack | undefined,
 		sortAlphabetically: boolean,
 	) {
-		// Surface n8n Connect-powered nodes in a dedicated section at the top
-		let gatewaySection: SectionCreateElement | null = null;
-		if (showsAiGatewaySection(stack)) {
-			const extracted = extractAiGatewaySection(items);
-			if (extracted) {
-				gatewaySection = extracted.section;
-				items = extracted.rest;
-			}
-		}
-		const withGatewaySection = (result: INodeCreateElement[]) =>
-			gatewaySection ? [gatewaySection, ...result] : result;
-
 		const aiNodes = items.filter((node): node is NodeCreateElement => isAINode(node));
 		const canvasHasAINodes = workflowDocumentStore.value.aiNodes.length > 0;
 		const isVectorStoresCategory = stack?.title === AI_CATEGORY_VECTOR_STORES;
@@ -413,17 +410,17 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 					// Order: Recommended Tools section, Other Tools, MCP Servers, Vector Stores, rest
 					.sort((a, b) => toolSubcategoryRank(a) - toolSubcategoryRank(b));
 
-				return withGatewaySection(subcategories);
+				return subcategories;
 			}
 
-			return withGatewaySection([
+			return [
 				...nonAiNodes,
 				...aiRootNodes,
 				...groupItemsInSections(aiSubNodes, sections, sortAlphabetically),
-			]);
+			];
 		}
 
-		return withGatewaySection(items);
+		return items;
 	}
 
 	function filterOutAiNodes(items: INodeCreateElement[]) {

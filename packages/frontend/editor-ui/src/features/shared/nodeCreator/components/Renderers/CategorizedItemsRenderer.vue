@@ -1,14 +1,11 @@
 <script setup lang="ts">
-import { computed, watch, ref, useCssModule, onMounted } from 'vue';
+import { computed, watch, ref, useCssModule } from 'vue';
 import type { INodeCreateElement } from '@/Interface';
 import { useKeyboardNavigation } from '../../composables/useKeyboardNavigation';
 import { useViewStacks } from '../../composables/useViewStacks';
 import ItemsRenderer from './ItemsRenderer.vue';
 import CategoryItem from '../ItemTypes/CategoryItem.vue';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
-import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { formatWalletBalance } from '@/app/utils/aiGatewayUtils';
 
 import CommunityNodeInstallHint from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeInstallHint.vue';
 
@@ -22,12 +19,11 @@ export interface Props {
 	expanded?: boolean;
 	showSeparator?: boolean;
 	hideHeader?: boolean;
-	showCreditsBalance?: boolean;
 }
 
 import { useI18n } from '@n8n/i18n';
 
-import { N8nIcon, N8nTag, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 const props = withDefaults(defineProps<Props>(), {
 	elements: () => [],
@@ -38,18 +34,6 @@ const { registerKeyHook } = useKeyboardNavigation();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const i18n = useI18n();
-
-const aiGatewayStore = useAiGatewayStore();
-const settingsStore = useSettingsStore();
-const creditsBalanceText = computed(() =>
-	props.showCreditsBalance ? formatWalletBalance(aiGatewayStore.balance) : undefined,
-);
-
-onMounted(() => {
-	if (props.showCreditsBalance && settingsStore.isAiGatewayEnabled) {
-		void aiGatewayStore.fetchWallet();
-	}
-});
 
 const activeItemId = computed(() => useKeyboardNavigation()?.activeItemId);
 const actionCount = computed(() => props.elements.filter(({ type }) => type === 'action').length);
@@ -144,13 +128,8 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 					</template>
 				</N8nTooltip>
 			</span>
-			<template v-if="creditsBalanceText" #trailing>
-				<N8nTag
-					:class="$style.creditsBalance"
-					:clickable="false"
-					:text="creditsBalanceText"
-					data-test-id="node-creator-credits-balance"
-				/>
+			<template v-if="$slots.trailing" #trailing>
+				<slot name="trailing" />
 			</template>
 		</CategoryItem>
 
@@ -194,14 +173,6 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 }
 .tooltipPopper {
 	max-width: 260px;
-}
-// Element selector bumps specificity above N8nTag's own size class
-span.creditsBalance {
-	margin-right: var(--spacing--3xs);
-	height: auto;
-	padding: var(--spacing--5xs) var(--spacing--4xs);
-	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--regular);
 }
 .contentSlot {
 	padding: 0 var(--spacing--sm) var(--spacing--3xs);
