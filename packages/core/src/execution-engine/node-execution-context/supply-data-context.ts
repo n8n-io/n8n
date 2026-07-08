@@ -331,6 +331,8 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			// Outputs
 			taskData.executionTime = Date.now() - taskData.startTime;
 
+			this.stampDynamicCredentialUsage(taskData, runExecutionData);
+
 			// Add hints to task data if any were collected
 			if (this.hints.length > 0) {
 				taskData.hints = this.hints;
@@ -362,6 +364,38 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				node: nodeName,
 				runIndex: currentNodeRunIndex,
 			});
+		}
+	}
+
+	/**
+	 * A node run as an AI tool (e.g. a tool connected to the MCP Server Trigger)
+	 * resolves its credentials through the same helper as the main execution loop,
+	 * but its task data is recorded here rather than there. Carry the
+	 * dynamic-credential flags over so the saved execution's
+	 * `usedPrivateCredentials` is set — otherwise the private-credential badge and
+	 * the redaction layer never see a tool-only run. Mirrors the stamping done in
+	 * the main loop (`WorkflowExecute`).
+	 */
+	private stampDynamicCredentialUsage(
+		taskData: ITaskData,
+		runExecutionData: IRunExecutionData,
+	): void {
+		const { additionalData } = this;
+
+		taskData.usedDynamicCredentials = additionalData.currentNodeUsedDynamicCredentials
+			? true
+			: undefined;
+		taskData.attemptedDynamicCredentials = additionalData.currentNodeAttemptedDynamicCredentials
+			? true
+			: undefined;
+
+		if (
+			additionalData.currentNodeUsedDynamicCredentials &&
+			additionalData.dynamicCredentialsResolvedUserId &&
+			runExecutionData.executionData?.runtimeData
+		) {
+			runExecutionData.executionData.runtimeData.executedByUserId =
+				additionalData.dynamicCredentialsResolvedUserId;
 		}
 	}
 

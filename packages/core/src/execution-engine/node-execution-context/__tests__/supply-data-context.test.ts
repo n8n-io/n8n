@@ -626,6 +626,125 @@ describe('SupplyDataContext', () => {
 		});
 	});
 
+	describe('dynamic credential flags on output', () => {
+		function buildContext(testAdditionalData: IWorkflowExecuteAdditionalData) {
+			const testRunExecutionData = createRunExecutionData({
+				resultData: {
+					runData: {
+						[node.name]: [
+							{
+								startTime: Date.now(),
+								executionTime: 0,
+								executionIndex: 0,
+								executionStatus: 'running' as const,
+								source: [],
+							},
+						],
+					},
+				},
+				executionData: {
+					metadata: {},
+					contextData: {},
+					nodeExecutionStack: [],
+					waitingExecution: {},
+					waitingExecutionSource: {},
+					runtimeData: { version: 1, establishedAt: 0, source: 'webhook' },
+				},
+			});
+
+			const testContext = new SupplyDataContext(
+				workflow,
+				node,
+				testAdditionalData,
+				mode,
+				testRunExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				NodeConnectionTypes.AiTool,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			return { testContext, testRunExecutionData };
+		}
+
+		it('stamps usedDynamicCredentials and executedByUserId when a private credential was resolved', async () => {
+			const testAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				credentialsHelper,
+				hooks: { runHook: vi.fn().mockResolvedValue(undefined) },
+				currentNodeExecutionIndex: 0,
+				currentNodeUsedDynamicCredentials: true,
+				currentNodeAttemptedDynamicCredentials: true,
+				dynamicCredentialsResolvedUserId: 'user-123',
+			});
+			const { testContext, testRunExecutionData } = buildContext(testAdditionalData);
+
+			await testContext.addExecutionDataFunctions(
+				'output',
+				[[{ json: { result: 'success' } }]],
+				NodeConnectionTypes.AiTool,
+				node.name,
+				0,
+			);
+
+			const taskData = testRunExecutionData.resultData.runData[node.name][0];
+			expect(taskData.usedDynamicCredentials).toBe(true);
+			expect(taskData.attemptedDynamicCredentials).toBe(true);
+			expect(testRunExecutionData.executionData?.runtimeData?.executedByUserId).toBe('user-123');
+		});
+
+		it('stamps only attemptedDynamicCredentials when resolution was attempted but not used', async () => {
+			const testAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				credentialsHelper,
+				hooks: { runHook: vi.fn().mockResolvedValue(undefined) },
+				currentNodeExecutionIndex: 0,
+				currentNodeUsedDynamicCredentials: false,
+				currentNodeAttemptedDynamicCredentials: true,
+			});
+			const { testContext, testRunExecutionData } = buildContext(testAdditionalData);
+
+			await testContext.addExecutionDataFunctions(
+				'output',
+				[[{ json: { result: 'success' } }]],
+				NodeConnectionTypes.AiTool,
+				node.name,
+				0,
+			);
+
+			const taskData = testRunExecutionData.resultData.runData[node.name][0];
+			expect(taskData.usedDynamicCredentials).toBeUndefined();
+			expect(taskData.attemptedDynamicCredentials).toBe(true);
+			expect(testRunExecutionData.executionData?.runtimeData?.executedByUserId).toBeUndefined();
+		});
+
+		it('leaves the flags undefined when no private credential was involved', async () => {
+			const testAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				credentialsHelper,
+				hooks: { runHook: vi.fn().mockResolvedValue(undefined) },
+				currentNodeExecutionIndex: 0,
+				currentNodeUsedDynamicCredentials: undefined,
+				currentNodeAttemptedDynamicCredentials: undefined,
+				dynamicCredentialsResolvedUserId: undefined,
+			});
+			const { testContext, testRunExecutionData } = buildContext(testAdditionalData);
+
+			await testContext.addExecutionDataFunctions(
+				'output',
+				[[{ json: { result: 'success' } }]],
+				NodeConnectionTypes.AiTool,
+				node.name,
+				0,
+			);
+
+			const taskData = testRunExecutionData.resultData.runData[node.name][0];
+			expect(taskData.usedDynamicCredentials).toBeUndefined();
+			expect(taskData.attemptedDynamicCredentials).toBeUndefined();
+			expect(testRunExecutionData.executionData?.runtimeData?.executedByUserId).toBeUndefined();
+		});
+	});
+
 	describe('isToolExecution', () => {
 		it('should return true when connectionType is AiTool', () => {
 			const testContext = new SupplyDataContext(
