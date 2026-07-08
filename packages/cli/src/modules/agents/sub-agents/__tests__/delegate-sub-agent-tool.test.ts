@@ -19,7 +19,6 @@ import type {
 } from '../sub-agent-foreground-runner';
 
 const projectId = 'project-1';
-const userId = 'user-1';
 
 const source: SubAgentSource = {
 	agentId: 'agent-2',
@@ -73,7 +72,6 @@ describe('createN8nDelegateSubAgentTool', () => {
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
-			userId,
 			credentialProvider,
 			resolveInlineSubAgentProviderTools,
 		});
@@ -94,7 +92,6 @@ describe('createN8nDelegateSubAgentTool', () => {
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
-			userId,
 			credentialProvider,
 			inlineSubAgentModelsByDifficulty,
 		});
@@ -109,7 +106,6 @@ describe('createN8nDelegateSubAgentTool', () => {
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
-			userId,
 			credentialProvider,
 			policy: { maxChildren: 2 },
 		});
@@ -148,7 +144,6 @@ describe('createN8nDelegateSubAgentTool', () => {
 			},
 			expect.objectContaining({
 				projectId,
-				userId,
 				credentialProvider,
 			}),
 		);
@@ -159,7 +154,6 @@ describe('createN8nDelegateSubAgentTool', () => {
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
-			userId,
 			credentialProvider,
 		});
 
@@ -195,7 +189,6 @@ describe('createN8nDelegateSubAgentTool', () => {
 				},
 			],
 			projectId,
-			userId,
 			credentialProvider,
 		});
 
@@ -218,7 +211,6 @@ describe('createN8nDelegateSubAgentTool', () => {
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
-			userId,
 			credentialProvider,
 		});
 
@@ -246,7 +238,6 @@ describe('createN8nDelegateSubAgentTool', () => {
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
-			userId,
 			credentialProvider,
 		});
 		const runSubAgent = getInlineDelegateSubAgentToolOptions(tool)?.runSubAgent;
@@ -283,7 +274,6 @@ describe('createN8nDelegateSubAgentTool', () => {
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
-			userId,
 			credentialProvider,
 		});
 

@@ -178,6 +178,47 @@ export class WorkflowFinderService {
 		return workflows;
 	}
 
+	async findWorkflowIdsByFolder(folderIds: string[]): Promise<Map<string, string[]>> {
+		if (folderIds.length === 0) return new Map();
+
+		const rows = await this.sharedWorkflowRepository.find({
+			where: { workflow: { parentFolder: In(folderIds) } },
+			relations: { workflow: { parentFolder: true } },
+			select: { workflowId: true, workflow: { id: true, parentFolder: { id: true } } },
+		});
+
+		const byFolder = new Map<string, string[]>();
+		const seen = new Set<string>();
+		for (const { workflow } of rows) {
+			const folderId = workflow.parentFolder?.id;
+			// A workflow may appear via several share rows; dedupe so it lands once.
+			if (!folderId || seen.has(workflow.id)) continue;
+			seen.add(workflow.id);
+			const list = byFolder.get(folderId) ?? [];
+			list.push(workflow.id);
+			byFolder.set(folderId, list);
+		}
+
+		return byFolder;
+	}
+
+	/**
+	 * List root workflows of a project only.
+	 */
+	async findRootWorkflowIdsInProject(projectId: string): Promise<string[]> {
+		const rows = await this.sharedWorkflowRepository.find({
+			where: {
+				project: { id: projectId },
+				role: 'workflow:owner',
+				workflow: { parentFolder: IsNull() },
+			},
+			relations: { workflow: { parentFolder: true } },
+			select: { workflowId: true, workflow: { id: true, parentFolder: { id: true } } },
+		});
+
+		return rows.map((row) => row.workflowId);
+	}
+
 	/**
 	 * Finds owned workflows in a project that may match package workflows either
 	 * by `sourceWorkflowId` or, when unset, by local id (re-import of workflows

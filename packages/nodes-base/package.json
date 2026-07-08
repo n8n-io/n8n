@@ -1,11 +1,13 @@
 {
   "name": "n8n-nodes-base",
-  "version": "2.29.0",
+  "version": "2.30.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "typesVersions": {
     "*": {
-      "aws-credentials": ["dist/credentials/common/aws/index.d.ts"]
+      "aws-credentials": [
+        "dist/credentials/common/aws/index.d.ts"
+      ]
     }
   },
   "scripts": {
@@ -952,7 +954,7 @@
     "eventsource": "2.0.2",
     "fast-glob": "catalog:",
     "fastest-levenshtein": "catalog:",
-    "fflate": "0.7.4",
+    "fflate": "catalog:",
     "form-data": "catalog:",
     "generate-schema": "2.6.0",
     "get-system-fonts": "2.0.2",

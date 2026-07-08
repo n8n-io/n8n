@@ -12,6 +12,12 @@ export { default as N8nActionDropdown } from './N8nActionDropdown';
 export { default as N8nActionToggle } from './N8nActionToggle';
 export { default as N8nDropdownMenu } from './N8nDropdownMenu/DropdownMenu.vue';
 export { default as N8nDropdownMenuItem } from './N8nDropdownMenu/DropdownMenuItem.vue';
+export { useDropdownSearch } from './N8nDropdownMenu/composables/useDropdownSearch';
+export { default as N8nAiModelSelectorDropdown } from './N8nAiModelSelectorDropdown';
+export type {
+	AiModelSelectorMenuItem,
+	AiModelSelectorMenuItemData,
+} from './N8nAiModelSelectorDropdown';
 export type {
 	DropdownMenuProps,
 	DropdownMenuItemProps,
@@ -83,8 +89,6 @@ export {
 export { default as N8nPulse } from './N8nPulse';
 export { default as N8nSendStopButton } from './N8nSendStopButton';
 export { default as N8nRadioButtons } from './N8nRadioButtons';
-export { default as N8nRadioGroup } from './N8nRadioGroup';
-export type { RadioGroupOption } from './N8nRadioGroup';
 export { default as N8nRoute } from './N8nRoute';
 export { default as N8nRecycleScroller } from './N8nRecycleScroller';
 export { default as N8nResizeWrapper } from './N8nResizeWrapper';

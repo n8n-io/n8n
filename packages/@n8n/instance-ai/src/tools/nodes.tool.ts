@@ -2,6 +2,7 @@
  * Consolidated nodes tool — list, search, describe, type-definition, suggested, explore-resources.
  */
 import { Tool } from '@n8n/agents';
+import { categoryList, suggestedNodesData } from '@n8n/ai-utilities/node-catalog';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
@@ -9,14 +10,19 @@ import type { InstanceAiContext } from '../types';
 import { NodeSearchEngine } from './nodes/node-search-engine';
 import { AI_CONNECTION_TYPES, type SearchableNodeType } from './nodes/node-search-engine.types';
 import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
-import { categoryList, suggestedNodesData } from './nodes/suggested-nodes-data';
 import { buildCredentialMap } from './workflows/resolve-credentials';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
 const NODE_TYPE_ID_DESCRIPTION = 'Node type ID, e.g. "n8n-nodes-base.httpRequest"';
+const METHOD_NAME_DESCRIPTION =
+	'Exact method name from the node\'s @searchListMethod/@loadOptionsMethod annotation — read it via `action: "type-definition"` first, never guess.';
+const METHOD_TYPE_DESCRIPTION =
+	'"listSearch" for @searchListMethod (supports filter/pagination); "loadOptions" for @loadOptionsMethod. Match the annotation.';
+const CURRENT_NODE_PARAMETERS_DESCRIPTION =
+	'Current node parameters for dependent lookups — e.g. sheetsSearch needs documentId { __rl: true, mode: "id", value: "<spreadsheetId>" }. Check displayOptions in the type definition.';
 const NODE_TYPES_ARRAY_DESCRIPTION =
-	'Node type IDs for node-level lookups (max 5). Entries may be plain strings or objects with action-specific options.';
+	'Node type IDs for node-level lookups (max 5). For split nodes (e.g. Slack, Gmail, Google Sheets), pass the object form WITH resource/operation (or mode) discriminators when you know them — a bare string errors with the resource→operations index for resource/operation nodes, and returns all mode variants for mode-split nodes.';
 
 const listAction = z.object({
 	action: z.literal('list').describe('List available node types'),
@@ -93,20 +99,8 @@ const exploreResourcesAction = z.object({
 		.describe("Query live credential-backed resource lists for a node's RLC parameters"),
 	nodeType: z.string().describe(NODE_TYPE_ID_DESCRIPTION),
 	version: z.number().describe('Node version, e.g. 4.7'),
-	methodName: z
-		.string()
-		.describe(
-			"The exact method name from the node's @searchListMethod or @loadOptionsMethod annotation. " +
-				'Call `action: "type-definition"` first to read the real method name from the type definition — ' +
-				'do not invent or guess method names; they must match the annotation exactly.',
-		),
-	methodType: z
-		.enum(['listSearch', 'loadOptions'])
-		.describe(
-			'"listSearch" for @searchListMethod annotations (supports filter/pagination); ' +
-				'"loadOptions" for @loadOptionsMethod annotations. ' +
-				'Pick the one matching the annotation you found in the type definition.',
-		),
+	methodName: z.string().describe(METHOD_NAME_DESCRIPTION),
+	methodType: z.enum(['listSearch', 'loadOptions']).describe(METHOD_TYPE_DESCRIPTION),
 	credentialType: z.string().describe('Credential type key, e.g. "googleSheetsOAuth2Api"'),
 	credentialId: z.string().describe('Credential ID from list-credentials'),
 	filter: z.string().optional().describe('Search/filter text to narrow results'),
@@ -117,11 +111,7 @@ const exploreResourcesAction = z.object({
 	currentNodeParameters: z
 		.record(z.unknown())
 		.optional()
-		.describe(
-			'Current node parameters for dependent lookups. Some methods need prior selections — ' +
-				'e.g. sheetsSearch needs documentId: { __rl: true, mode: "id", value: "spreadsheetId" } ' +
-				'to list sheets within that spreadsheet. Check displayOptions in the type definition.',
-		),
+		.describe(CURRENT_NODE_PARAMETERS_DESCRIPTION),
 });
 
 const fullInputSchema = sanitizeInputSchema(
@@ -377,20 +367,8 @@ export function createNodesTool(
 				.describe("Query real resources for a node's RLC parameters"),
 			nodeType: z.string().describe('Node type ID, e.g. "n8n-nodes-base.httpRequest"'),
 			version: z.number().describe('Node version, e.g. 4.7'),
-			methodName: z
-				.string()
-				.describe(
-					"The exact method name from the node's @searchListMethod or @loadOptionsMethod annotation. " +
-						'Call `action: "type-definition"` first to read the real method name from the type definition — ' +
-						'do not invent or guess method names; they must match the annotation exactly.',
-				),
-			methodType: z
-				.enum(['listSearch', 'loadOptions'])
-				.describe(
-					'"listSearch" for @searchListMethod annotations (supports filter/pagination); ' +
-						'"loadOptions" for @loadOptionsMethod annotations. ' +
-						'Pick the one matching the annotation you found in the type definition.',
-				),
+			methodName: z.string().describe(METHOD_NAME_DESCRIPTION),
+			methodType: z.enum(['listSearch', 'loadOptions']).describe(METHOD_TYPE_DESCRIPTION),
 			credentialType: z.string().describe('Credential type key, e.g. "googleSheetsOAuth2Api"'),
 			credentialId: z.string().describe('Credential ID from list-credentials'),
 			filter: z.string().optional().describe('Search/filter text to narrow results'),
@@ -401,11 +379,7 @@ export function createNodesTool(
 			currentNodeParameters: z
 				.record(z.unknown())
 				.optional()
-				.describe(
-					'Current node parameters for dependent lookups. Some methods need prior selections — ' +
-						'e.g. sheetsSearch needs documentId: { __rl: true, mode: "id", value: "spreadsheetId" } ' +
-						'to list sheets within that spreadsheet. Check displayOptions in the type definition.',
-				),
+				.describe(CURRENT_NODE_PARAMETERS_DESCRIPTION),
 		});
 
 		const orchestratorInputSchema = sanitizeInputSchema(

@@ -1,6 +1,7 @@
 import type { Agent as RuntimeAgent, StreamChunk } from '@n8n/agents';
 import { N8N_CHAT_INTEGRATION_TYPE, type AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { User } from '@n8n/db';
 import type { JSONSchema7 } from 'json-schema';
 import { OperationalError, UserError } from 'n8n-workflow';
 import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflow';
@@ -23,6 +24,7 @@ import type { ToolRegistry } from '../tool-registry';
 const agentId = 'agent-1';
 const projectId = 'project-1';
 const userId = 'user-1';
+const user = mock<User>({ id: userId });
 
 const schema: AgentJsonConfig = {
 	name: 'Support Agent',
@@ -196,7 +198,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				agentId,
 				projectId,
 				message: 'hello',
-				userId,
+				user,
 				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
 			}),
 		);
@@ -204,8 +206,8 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith({
 			agentId,
 			projectId,
-			n8nUserId: userId,
 			integrationType: N8N_CHAT_INTEGRATION_TYPE,
+			user,
 		});
 		expect(integrationMessageContextService.setLatest).toHaveBeenCalledWith(
 			'thread-1',
@@ -499,7 +501,6 @@ describe('AgentExecutionOrchestratorService', () => {
 			'hello',
 			'execution-1',
 			'thread-1',
-			userId,
 			projectId,
 			userId,
 		);
@@ -556,7 +557,6 @@ describe('AgentExecutionOrchestratorService', () => {
 				'hello',
 				'execution-1',
 				'thread-1',
-				userId,
 				projectId,
 				userId,
 				false,
@@ -604,7 +604,6 @@ describe('AgentExecutionOrchestratorService', () => {
 				'hello',
 				'execution-1',
 				'thread-1',
-				userId,
 				projectId,
 				undefined,
 				undefined,
@@ -628,7 +627,6 @@ describe('AgentExecutionOrchestratorService', () => {
 				'hello',
 				'execution-1',
 				'thread-1',
-				userId,
 				projectId,
 				undefined,
 				undefined,
@@ -642,14 +640,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		it('injects no tools without workflowContext', async () => {
 			const { service, toolFn } = setupRuntimeWithToolSpy();
 
-			await service.executeForWorkflow(
-				agentId,
-				'hello',
-				'execution-1',
-				'thread-1',
-				userId,
-				projectId,
-			);
+			await service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId);
 
 			expect(toolFn).not.toHaveBeenCalled();
 		});
@@ -667,7 +658,6 @@ describe('AgentExecutionOrchestratorService', () => {
 					'hello',
 					'execution-1',
 					'thread-1',
-					userId,
 					projectId,
 					undefined,
 					undefined,
@@ -699,7 +689,6 @@ describe('AgentExecutionOrchestratorService', () => {
 			'hello',
 			'execution-1',
 			'thread-1',
-			userId,
 			projectId,
 			userId,
 			false,

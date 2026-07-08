@@ -20,6 +20,58 @@ function resultWith(
 	};
 }
 
+describe('intercepted request rendering', () => {
+	it('renders "(no URL)" instead of crashing when a request was captured without a URL', () => {
+		const result: WorkflowTestCaseResult = {
+			testCase: TEST_CASE,
+			workflowBuildSuccess: true,
+			executionScenarioResults: [
+				{
+					scenario: TEST_CASE.executionScenarios![0],
+					success: false,
+					score: 0,
+					reasoning: 'node routing produced an empty request',
+					evalResult: {
+						executionId: 'e1',
+						success: false,
+						errors: [],
+						hints: {
+							globalContext: '',
+							triggerContent: {},
+							nodeHints: {},
+							warnings: [],
+							bypassPinData: {},
+						},
+						mockedCredentials: [],
+						nodeResults: {
+							'Transcribe Audio': {
+								outputs: {},
+								outputCount: 0,
+								iterationCount: 1,
+								executionMode: 'mocked',
+								interceptedRequests: [
+									{
+										// Older captures stored undefined for URL-less requests
+										// (broken routing); the report must tolerate it.
+										url: undefined as unknown as string,
+										method: 'GET',
+										nodeType: 'n8n-nodes-base.openAi',
+									},
+								],
+							},
+						},
+					},
+				},
+			],
+		};
+
+		const html = generateWorkflowReport([result]);
+
+		expect(html).toContain('(no URL)');
+		expect(html).not.toContain('GET undefined');
+	});
+});
+
 describe('build expectations in the workflow report', () => {
 	it('renders a section with per-expectation verdicts and reasons', () => {
 		const html = generateWorkflowReport([

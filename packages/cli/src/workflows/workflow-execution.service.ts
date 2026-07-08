@@ -3,6 +3,7 @@ import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type { Project, User, CreateExecutionPayload, WorkflowEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Response } from 'express';
 import {
 	DirectedGraph,
@@ -11,7 +12,6 @@ import {
 	anyReachableRootHasRunData,
 } from 'n8n-core';
 import type {
-	IDeferredPromise,
 	IExecuteData,
 	IExecuteResponsePromiseData,
 	INode,
