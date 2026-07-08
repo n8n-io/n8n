@@ -85,3 +85,42 @@ Early signal — to be confirmed with Arm A + `--iterations 3`:
 - intent-recognition skill loaded in only 1/6 cases asserting it — the agent
   goes straight to `workflow-builder`. The exam arm's ~100% load rate is a
   preamble artifact, not product behavior.
+
+Arm A (exam tier, same 7 siblings, N=1, LangSmith mode) for comparison: every
+explanation expectation passed, skill-load passed 5/7 (the trivial weather case
+and the meta case made zero tool calls) — and **zero `intent:` exact-match
+verdicts were produced**. Root cause: the LangSmith `evaluate()` path judges
+expectations inside `getOrBuild` (`cli/index.ts`), which was never wired to
+`gradeIntentExpectation` — the deterministic grader only runs in the direct
+loop (`harness/runner.ts`). With a LANGSMITH key in env (the CI norm), the
+exam tier's headline metric silently disappears. The natural arm is immune by
+construction: it uses only `processExpectations`/`outcomeExpectations`, which
+every grading path already handles.
+
+## Intent-gate experiment (system-prompt routing change, same branch)
+
+The smoke exposed *why* the skill never loads on real requests: the system
+prompt's routing table sends any build phrasing straight to `workflow-builder`
+("Default path for all single-workflow work"), has **no routing bullet for
+agent builds at all** (`agent_builder` appears only in a negative fence), and
+that fence keys on surface vocabulary ("when the user asked for a workflow").
+The change (module-gated, in `src/agent/system-prompt.ts`): the intent hint
+becomes an explicit **intent gate** for new-automation builds, an
+agent-build routing bullet is added, and the fence keys on the gate's
+classification instead of the word "workflow". Post-change natural-arm run
+(N=1, 2026-07-08):
+
+- **Skill-load 1/6 → 6/6.** Every routing case now loads intent-recognition
+  before choosing a path.
+- **`nat-adv-says-wf-is-agent` fixed** — takes the agent-builder route instead
+  of building a chat-trigger workflow.
+- **`nat-adv-says-agent-is-wf` fixed at the anchor level** (builds a scheduled
+  workflow, does not create an agent) — but the workflow still embeds an AI
+  Agent node ('Write Weather Summary') for what is a bounded summarization
+  step, so the embeds outcome expectation stays red. The vocabulary prior
+  survives *inside* workflow-builder at node-choice level: routing
+  classification alone doesn't reach it. Follow-up: the bounded-transformer vs
+  embedded-agent distinction needs to land in workflow-builder guidance, not
+  only in intent-recognition.
+- All other cases stayed green (17/18 units). The remaining red is kept red —
+  it is the finding.
