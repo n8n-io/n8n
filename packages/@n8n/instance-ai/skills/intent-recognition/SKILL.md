@@ -88,9 +88,11 @@ directly onto the matching anchor value.
    one-off content task with no trigger or reuse — classify **out-of-scope**
    and answer or do it directly.
 2. Split the request into parts only if it contains multiple independent
-   automations with separate lifecycles (numbering, "and separately",
-   unrelated triggers or audiences). Do not split a single automation that
-   merely enumerates many tools or steps. Run steps 3-7 on each part.
+   automations with separate lifecycles (unrelated triggers, audiences, or
+   cadences). Markers like numbering or "and separately" are a giveaway but
+   are not required — a single plain sentence can contain two automations.
+   Do not split a single automation that merely enumerates many tools or
+   steps. Run steps 3-7 on each part.
 3. Test the agent signals. If any one holds, classify **agent-anchored**.
 4. Otherwise, test the workflow conditions. If all of them hold, classify
    **workflow-anchored**.
@@ -134,6 +136,13 @@ directly onto the matching anchor value.
 - Workflow with an embedded agent: a step in an otherwise fixed pipeline is
   open-ended ("figure out why", "investigate", "decide what to do about it")
   while the trigger and surrounding steps stay deterministic.
+- The embedding is often implicit — the request never says "agent". Ask of
+  each step: could a fixed-instruction transform do it (enumerable labels,
+  one bounded rewrite), or does doing it well require gathering and weighing
+  context that differs per item, then producing a judgment? A nightly job
+  that drafts a tailored renewal pitch for each account from its usage
+  history embeds an agent; a nightly job that condenses each ticket into a
+  two-sentence summary does not.
 - Agent with workflow tools: the user asks for actions that should also be
   reusable, callable manually, or run outside the agent; or an action the
   agent invokes is itself a deterministic multi-step procedure.
@@ -205,6 +214,11 @@ instead.
   joined only by topic, not data or trigger: "Airtable-to-Discord posting"
   (**workflow-anchored**, `embeds_other: false`) and "refund-handling agent"
   (**agent-anchored**, `embeds_other: true`).
+- "Transcribe my sales calls and chase the deals that go quiet." -> two
+  parts despite the plain single sentence: transcription is a bounded
+  per-call pipeline (**workflow-anchored**, `embeds_other: false`), while
+  chasing stalled deals is an ongoing judgment-driven automation with its
+  own lifecycle (**agent-anchored**).
 - "Set up a research helper capable of searching the web, querying our
   internal wiki, pulling numbers from Google Analytics, and drafting a slide
   deck that summarizes the findings." -> one part, **agent-anchored**,
