@@ -21,6 +21,7 @@ import { ChatIntegrationService } from './integrations/chat-integration.service'
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentRepository } from './repositories/agent.repository';
+import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 
 export interface PublishAgentOptions {
@@ -36,6 +37,7 @@ export class AgentPublishService {
 		private readonly agentTaskSnapshotRepository: AgentTaskSnapshotRepository,
 		private readonly customToolsService: AgentCustomToolsService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
+		private readonly subAgentCleanupService: SubAgentCleanupService,
 	) {}
 
 	async publishAgent(
@@ -135,6 +137,7 @@ export class AgentPublishService {
 		this.runtimeCacheService.clearRuntimes(agentId);
 
 		await Container.get(ChatIntegrationService).disconnect(agentId);
+		await this.subAgentCleanupService.removeSubAgentFromParents(agentId, projectId);
 
 		const { AgentTaskService } = await import('./agent-task.service');
 		await Container.get(AgentTaskService)

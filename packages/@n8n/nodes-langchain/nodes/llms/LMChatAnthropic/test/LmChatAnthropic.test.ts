@@ -466,7 +466,32 @@ describe('LmChatAnthropic', () => {
 			);
 		});
 
-		it('should create failed attempt handler without gateway handler for direct API', async () => {
+		it('should pass the declared header name to N8nLlmTracing', async () => {
+			const mockContext = setupMockContext();
+			mockContext.getCredentials.mockResolvedValue({
+				apiKey: 'test-api-key',
+				header: true,
+				headerName: 'x-custom-header',
+				headerValue: 'secret-value',
+			});
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(MockedN8nLlmTracing).toHaveBeenCalledWith(
+				mockContext,
+				expect.objectContaining({
+					redactedHeaders: ['x-custom-header'],
+				}),
+			);
+		});
+
+		it('should create failed attempt handler for direct API', async () => {
 			const mockContext = setupMockContext();
 
 			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {

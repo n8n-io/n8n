@@ -162,6 +162,7 @@ describe('SubAgentForegroundRunner', () => {
 			userId,
 			runtimeProfile: 'sub-agent',
 			parentAgentIdForDelegation: undefined,
+			user: undefined,
 		});
 		expect(childAgent.close).toHaveBeenCalledTimes(1);
 		expect(childAgent.stream).toHaveBeenCalledWith(

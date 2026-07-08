@@ -91,6 +91,7 @@ describe('AgentRuntimeCacheService', () => {
 			expect.anything(),
 			userId,
 			undefined,
+			undefined,
 		);
 	});
 
@@ -122,6 +123,7 @@ describe('AgentRuntimeCacheService', () => {
 			expect.anything(),
 			userId,
 			'n8n_chat',
+			undefined,
 		);
 	});
 
@@ -245,6 +247,7 @@ describe('AgentRuntimeCacheService', () => {
 			expect.anything(),
 			'publisher-1',
 			'slack',
+			undefined,
 		);
 	});
 

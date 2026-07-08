@@ -12,6 +12,8 @@ import type { AgentTestChatService } from '../agent-test-chat.service';
 import { AgentsService } from '../agents.service';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
+import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -39,10 +41,13 @@ function makeService() {
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const testChatService = mock<AgentTestChatService>();
 	const agentTaskService = mock<AgentTaskService>();
+	const chatIntegrationService = mock<ChatIntegrationService>();
+	const subAgentCleanupService = mock<SubAgentCleanupService>();
 
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
 	agentTaskService.requestReconcile.mockResolvedValue();
 	testChatService.clearAllTestChatMessages.mockResolvedValue();
+	subAgentCleanupService.removeSubAgentFromParents.mockResolvedValue();
 	Container.set(AgentTaskService, agentTaskService);
 
 	const service = new AgentsService(
@@ -52,6 +57,7 @@ function makeService() {
 		agentKnowledgeService,
 		runtimeCacheService,
 		testChatService,
+		subAgentCleanupService,
 	);
 
 	return {
@@ -61,6 +67,8 @@ function makeService() {
 		runtimeCacheService,
 		testChatService,
 		agentTaskService,
+		chatIntegrationService,
+		subAgentCleanupService,
 	};
 }
 
@@ -103,6 +111,7 @@ describe('AgentsService', () => {
 			runtimeCacheService,
 			testChatService,
 			agentTaskService,
+			subAgentCleanupService,
 		} = makeService();
 		const agent = makeAgent();
 
@@ -120,6 +129,10 @@ describe('AgentsService', () => {
 		);
 		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		expect(subAgentCleanupService.removeSubAgentFromParents).toHaveBeenCalledWith(
+			agentId,
+			projectId,
+		);
 		expect(agentTaskService.requestReconcile).toHaveBeenCalledWith(agentId);
 		expect(testChatService.clearAllTestChatMessages).toHaveBeenCalledWith(agentId);
 	});
