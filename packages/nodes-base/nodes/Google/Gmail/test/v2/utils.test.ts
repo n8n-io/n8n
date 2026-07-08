@@ -156,10 +156,10 @@ describe('email input preparation', () => {
 
 	it('should convert message body to a string before trimming', () => {
 		const executionFunctions = mock<IExecuteFunctions>({
-			getNodeParameter: vi.fn((parameterName) => {
+			getNodeParameter: ((parameterName: string) => {
 				if (parameterName === 'emailType') return 'text';
 				return 123;
-			}),
+			}) as IExecuteFunctions['getNodeParameter'],
 		});
 
 		expect(prepareEmailBody.call(executionFunctions, 0)).toEqual({
@@ -172,7 +172,11 @@ describe('email input preparation', () => {
 		const binaryData = Buffer.from('file contents');
 		const executionFunctions = mock<IExecuteFunctions>({
 			helpers: mock<IExecuteFunctions['helpers']>({
-				assertBinaryData: vi.fn(() => ({ fileName: 'test.txt', mimeType: 'text/plain' })),
+				assertBinaryData: vi.fn(() => ({
+					data: binaryData.toString('base64'),
+					fileName: 'test.txt',
+					mimeType: 'text/plain',
+				})),
 				getBinaryDataBuffer: vi.fn(async () => binaryData),
 			}),
 		});
