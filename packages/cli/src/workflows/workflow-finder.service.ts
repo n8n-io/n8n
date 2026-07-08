@@ -153,7 +153,6 @@ export class WorkflowFinderService {
 		return new Set(sharedWorkflows.map((sw) => sw.workflowId));
 	}
 
-	// Unscoped — ignores access entirely. Never use this to decide what to show or do on behalf of a caller.
 	async findExistingWorkflowIds(workflowIds: string[]): Promise<Set<string>> {
 		if (workflowIds.length === 0) return new Set();
 		const workflows = await this.workflowRepository.find({

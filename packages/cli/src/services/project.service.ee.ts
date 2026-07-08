@@ -713,7 +713,6 @@ export class ProjectService {
 		return projects.map((p) => p.id);
 	}
 
-	// Unscoped — ignores access entirely. Never use this to decide what to show or do on behalf of a caller.
 	async findExistingProjectIds(projectIds: string[]): Promise<Set<string>> {
 		if (projectIds.length === 0) return new Set();
 		const projects = await this.projectRepository.find({
