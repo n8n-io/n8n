@@ -189,16 +189,6 @@ const VALUE_FLAG_HANDLERS: Record<string, (options: CliOptions, value: string) =
 	'--changed-files=': (opts, value) => {
 		opts.changedFiles = value;
 	},
-<<<<<<< HEAD
-=======
-	'--runner=': (opts, value) => {
-		if (value === 'vitest') {
-			opts.runner = value;
-		} else {
-			throw new Error(`Unknown --runner=${value}. Expected 'vitest'.`);
-		}
-	},
->>>>>>> master
 	'--package-dir=': (opts, value) => {
 		opts.packageDir = value;
 	},
@@ -252,10 +242,6 @@ function createDefaultOptions(): CliOptions {
 		shardIndex: undefined,
 		impact: false,
 		changedFiles: undefined,
-<<<<<<< HEAD
-=======
-		runner: undefined,
->>>>>>> master
 		packageDir: undefined,
 		passthroughArgs: [],
 		url: undefined,
