@@ -92,7 +92,11 @@ on:
 jobs:
   run-evals:
     name: 'Run Evals'
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    # 8vcpu for the memory headroom, not the cores: 11 lane containers plus the
+    # eval CLI (which holds every run result until the final reshape) exceed the
+    # 4vcpu host's RAM on full-suite N=10 runs — the host OOM killed the runner
+    # mid-eval with no error in the job log.
+    runs-on: blacksmith-8vcpu-ubuntu-2204
     # Full-suite baseline refreshes (~140 dataset rows × 10 iterations) outgrew
     # 90 minutes as cases were added — runs were getting killed at the cap.
     timeout-minutes: 240
