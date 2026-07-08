@@ -30,6 +30,7 @@ import { OAuthSessionService } from './oauth-session.service';
 import { OAuthTokenService } from './oauth-token.service';
 import { OAuthClientLimitReachedError } from './oauth.errors';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { UserManagementMailer } from '@/user-management/email';
 
 /** Maximum number of redirect URIs per client */
 const MAX_REDIRECT_URIS = 10;
@@ -66,6 +67,7 @@ export class OAuthServerService implements OAuthServerProvider {
 		private readonly authorizationCodeService: OAuthAuthorizationCodeService,
 		private readonly userConsentRepository: UserConsentRepository,
 		private readonly resourceRegistry: ProtectedResourceRegistry,
+		private readonly mailer: UserManagementMailer,
 	) {}
 
 	get clientsStore(): OAuthRegisteredClientsStore {
@@ -495,12 +497,14 @@ export class OAuthServerService implements OAuthServerProvider {
 	}
 
 	/**
-	 * Revoke the requesting user's grant for a client: their consent, tokens,
-	 * and authorization codes. Other users' grants for the same client are
+	 * Revoke a user's grant for a client: their consent, tokens, and
+	 * authorization codes. Other users' grants for the same client are
 	 * untouched. The client registration itself is garbage-collected once the
 	 * last consent is gone, freeing a slot under the instance client cap.
+	 * When a `revoker` other than the grant owner is given (admin revoke),
+	 * the owner is notified by email.
 	 */
-	async deleteClient(clientId: string, userId: string): Promise<void> {
+	async deleteClient(clientId: string, userId: string, revoker?: User): Promise<void> {
 		// First check if the client exists
 		const client = await this.oauthClientRepository.findOne({
 			where: { id: clientId },
@@ -510,8 +514,11 @@ export class OAuthServerService implements OAuthServerProvider {
 			throw new Error(`OAuth client with ID ${clientId} not found`);
 		}
 
-		// Verify the requesting user has a consent relationship with this client
-		const consent = await this.userConsentRepository.findOneBy({ clientId, userId });
+		// Verify the target user has a consent relationship with this client
+		const consent = await this.userConsentRepository.findOne({
+			where: { clientId, userId },
+			relations: ['user'],
+		});
 		if (!consent) {
 			throw new Error(`OAuth client with ID ${clientId} not found`);
 		}
@@ -546,6 +553,18 @@ export class OAuthServerService implements OAuthServerProvider {
 				clientId,
 				clientName: client.name,
 			});
+		}
+
+		if (revoker && revoker.id !== userId) {
+			this.mailer
+				.notifyMcpClientRevoked({ clientName: client.name, owner: consent.user, revoker })
+				.catch((e) => {
+					this.logger.error('Failed to send MCP client revocation email', {
+						clientId,
+						ownerId: userId,
+						error: e instanceof Error ? e.message : String(e),
+					});
+				});
 		}
 	}
 }

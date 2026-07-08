@@ -105,7 +105,7 @@ export class OAuthClientsController {
 		});
 
 		try {
-			await this.oauthServerService.deleteClient(clientId, targetUserId);
+			await this.oauthServerService.deleteClient(clientId, targetUserId, req.user);
 
 			this.logger.info('OAuth client deleted successfully', {
 				clientId,
