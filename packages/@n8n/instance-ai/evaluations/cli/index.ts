@@ -32,6 +32,7 @@ import {
 	isPlainObject,
 	parseTargetOutput,
 	reshapeLangSmithRuns,
+	sentinelOutcomeFromVerdicts,
 	type TargetOutput,
 } from './reshape';
 import { aggregateWorkflowChecks, statusMap } from '../binaryChecks/aggregate';
@@ -759,7 +760,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	}
 
 	// Judge author expectations once per build (off the scenario critical path);
-	// reshapeLangSmithRuns awaits and merges the verdicts by the build-cache key.
+	// reshapeLangSmithRuns awaits and merges the verdicts by the build-cache key,
+	// and target() embeds them in run outputs so baseline fetches can score them.
 	// Full builds judge process + outcome against the real transcript; prebuilt/MCP
 	// builds (no transcript) judge only outcome expectations against the workflow,
 	// with the authored conversation as request context — mirroring the direct loop.
@@ -809,8 +811,19 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			buildDurationMs,
 		} = await getOrBuild(iteration, inputs.testCaseFile);
 
+		// Stashed at build time with a `.catch` attached, so awaiting never rejects.
+		// Awaited only after each branch's own work is done, keeping the judge off
+		// the scenario critical path while persisting verdicts to run outputs.
+		const verdictsPromise = buildExpectationsByKey.get(
+			`${String(iteration)}:${inputs.testCaseFile}`,
+		);
+		const attachExpectations = async (output: TargetOutput): Promise<TargetOutput> => {
+			const verdicts = await verdictsPromise;
+			return verdicts && verdicts.length > 0 ? { ...output, expectationResults: verdicts } : output;
+		};
+
 		if (!build.success || !build.workflowId) {
-			return {
+			return await attachExpectations({
 				buildSuccess: false,
 				passed: false,
 				score: 0,
@@ -825,19 +838,22 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				threadId: build.threadId,
 				workflowChecks: build.workflowChecks,
 				buildTrace: build.buildTrace,
-			};
+			});
 		}
 
-		// Build-only case — the build plus its expectation judging (in getOrBuild) is the whole
-		// test; skip execution. A failed build returns above with its error reasoning; reflect
-		// the real build status here rather than assuming success.
+		// Build-only case — the build plus its expectation judging (in getOrBuild) is the
+		// whole test; skip execution. The sentinel's outcome IS the expectation verdicts,
+		// so LangSmith pass metrics stay truthful for scenario-less cases.
 		if (inputs.scenarioName === BUILD_ONLY_SCENARIO_NAME) {
+			const verdicts = await verdictsPromise;
+			const outcome = sentinelOutcomeFromVerdicts(verdicts);
 			return {
 				buildSuccess: build.success,
 				workflowId: build.workflowId,
-				passed: false,
-				score: 0,
-				reasoning: 'Build-only case — graded by process/outcome expectations',
+				passed: outcome.passed,
+				score: outcome.score,
+				reasoning: outcome.reasoning,
+				...(outcome.incomplete ? { incomplete: true } : {}),
 				execErrors: [],
 				buildDurationMs,
 				execDurationMs: 0,
@@ -846,6 +862,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				workflowChecks: build.workflowChecks,
 				workflowJson: build.workflowJsons[0],
 				buildTrace: build.buildTrace,
+				...(verdicts && verdicts.length > 0 ? { expectationResults: verdicts } : {}),
 			};
 		}
 
@@ -875,7 +892,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				// escape to LangSmith, come back as a Run with null outputs, and be
 				// misclassified as builder regressions by the feedback extractor.
 				logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
-				return {
+				return await attachExpectations({
 					buildSuccess: true,
 					workflowId: build.workflowId,
 					passed: false,
@@ -890,7 +907,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					workflowChecks: build.workflowChecks,
 					workflowJson: build.workflowJsons[0],
 					buildTrace: build.buildTrace,
-				};
+				});
 			}
 		}
 		const execDurationMs = Date.now() - execStart;
@@ -900,7 +917,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		const failureCategory = result.success ? undefined : result.failureCategory;
 		const rootCause = result.success ? undefined : result.rootCause;
 
-		return {
+		return await attachExpectations({
 			buildSuccess: true,
 			workflowId: build.workflowId,
 			scenarioWorkflowId: result.workflowId,
@@ -919,7 +936,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			workflowChecks: build.workflowChecks,
 			workflowJson: build.workflowJsons[0],
 			buildTrace: build.buildTrace,
-		};
+		});
 	};
 
 	const feedbackExtractor = ({ run }: { run: Run }): EvaluationResult[] => {

@@ -23,6 +23,7 @@ import type { Client } from 'langsmith';
 import { z } from 'zod';
 
 import type { ExperimentBucket, ScenarioCounts } from './compare';
+import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
 
 /**
  * Prefix the latest-baseline lookup matches against. The CLI flag
@@ -90,6 +91,9 @@ export async function fetchBaselineBucket(
 	for await (const run of client.listRuns({ projectId: project.id, isRoot: true })) {
 		const inputs = inputsSchema.safeParse(run.inputs ?? {});
 		if (!inputs.success || !inputs.data.testCaseFile || !inputs.data.scenarioName) continue;
+		// Build-only sentinel rows aren't execution scenarios — counting them would
+		// add a pseudo-scenario per build-only case and skew the trial totals.
+		if (inputs.data.scenarioName === BUILD_ONLY_SCENARIO_NAME) continue;
 		// Skip runs that never produced outputs (still running, crashed before
 		// completion, infra error). Without this guard, every field defaults
 		// (passed → false) would coerce them into "failed" trials and inflate

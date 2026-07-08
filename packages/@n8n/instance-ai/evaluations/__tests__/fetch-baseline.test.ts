@@ -2,7 +2,12 @@ import type { Client } from 'langsmith';
 import { vi } from 'vitest';
 import type { Mock } from 'vitest';
 
-import { BASELINE_EXPERIMENT_PREFIX, findLatestBaseline } from '../comparison/fetch-baseline';
+import {
+	BASELINE_EXPERIMENT_PREFIX,
+	fetchBaselineBucket,
+	findLatestBaseline,
+} from '../comparison/fetch-baseline';
+import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
 
 interface FakeProject {
 	name?: string;
@@ -69,5 +74,74 @@ describe('findLatestBaseline', () => {
 			{ name: 'mcp-baseline-no-ts' }, // no start_time → ts 0, still the only match
 		]);
 		expect(await findLatestBaseline(client, 'mcp-baseline-')).toBe('mcp-baseline-no-ts');
+	});
+});
+
+interface FakeRun {
+	inputs?: Record<string, unknown>;
+	outputs?: Record<string, unknown> | null;
+}
+
+/** Mock a LangSmith client whose `listRuns` yields the given root runs. */
+function bucketClient(runs: FakeRun[]): Client {
+	return {
+		readProject: vi.fn(async () => await Promise.resolve({ id: 'proj-1' })),
+		listRuns: vi.fn(() =>
+			(async function* () {
+				await Promise.resolve();
+				for (const r of runs) yield r;
+			})(),
+		),
+	} as unknown as Client;
+}
+
+function scenarioRun(
+	scenarioName: string,
+	passed: boolean,
+	extra?: Record<string, unknown>,
+): FakeRun {
+	return {
+		inputs: { testCaseFile: 'my-case', scenarioName },
+		outputs: { passed, ...extra },
+	};
+}
+
+describe('fetchBaselineBucket', () => {
+	it('accumulates per-scenario pass/fail counts across iterations', async () => {
+		const client = bucketClient([
+			scenarioRun('happy-path', true),
+			scenarioRun('happy-path', false, { failureCategory: 'builder_issue' }),
+			scenarioRun('edge-case', true),
+		]);
+		const bucket = await fetchBaselineBucket(client, 'instance-ai-baseline-x');
+
+		expect(bucket.scenarios.get('my-case/happy-path')).toMatchObject({ passed: 1, total: 2 });
+		expect(bucket.scenarios.get('my-case/edge-case')).toMatchObject({ passed: 1, total: 1 });
+		expect(bucket.trialTotal).toBe(3);
+		expect(bucket.failureCategoryTotals).toEqual({ builder_issue: 1 });
+	});
+
+	it('never counts __build_only__ sentinel rows as scenario trials', async () => {
+		const client = bucketClient([
+			scenarioRun(BUILD_ONLY_SCENARIO_NAME, false),
+			scenarioRun('real-scenario', true),
+		]);
+		const bucket = await fetchBaselineBucket(client, 'instance-ai-baseline-x');
+
+		expect([...bucket.scenarios.keys()]).toEqual(['my-case/real-scenario']);
+		expect(bucket.trialTotal).toBe(1);
+	});
+
+	it('skips runs with missing/empty outputs and verifier-incomplete rows', async () => {
+		const client = bucketClient([
+			{ inputs: { testCaseFile: 'my-case', scenarioName: 'happy-path' }, outputs: null },
+			{ inputs: { testCaseFile: 'my-case', scenarioName: 'happy-path' }, outputs: {} },
+			scenarioRun('happy-path', false, { incomplete: true }),
+			scenarioRun('happy-path', true),
+		]);
+		const bucket = await fetchBaselineBucket(client, 'instance-ai-baseline-x');
+
+		expect(bucket.scenarios.get('my-case/happy-path')).toMatchObject({ passed: 1, total: 1 });
+		expect(bucket.trialTotal).toBe(1);
 	});
 });

@@ -32,6 +32,17 @@ const checkOutcomeSchema = z.object({
 	comment: z.string().optional(),
 });
 
+/** Per-expectation verdicts embedded in run outputs — mirrors `BuildExpectationResult`
+ *  so baseline fetches can score expectations alongside scenarios. */
+export const expectationResultsSchema = z.array(
+	z.object({
+		expectation: z.string(),
+		pass: z.boolean(),
+		reason: z.string().default(''),
+		incomplete: z.boolean().optional(),
+	}),
+);
+
 const targetOutputSchema = z.object({
 	buildSuccess: z.boolean().default(false),
 	passed: z.boolean().default(false),
@@ -43,6 +54,8 @@ const targetOutputSchema = z.object({
 	rootCause: z.string().optional(),
 	/** Verifier returned no verdict — run is excluded from scoring but stays visible. */
 	incomplete: z.boolean().optional(),
+	// `.catch` so one malformed field can't void the whole row in `safeParse`.
+	expectationResults: expectationResultsSchema.optional().catch(undefined),
 	execErrors: z.array(z.string()).default([]),
 	evalResult: z.unknown().optional(),
 	/** Only set on the scenario that initiated the build. */
@@ -118,6 +131,38 @@ export function parseTargetOutput(raw: unknown): TargetOutput | undefined {
 			? parsed.data.workflowJson
 			: undefined,
 		buildTrace: isBuildTrace(parsed.data.buildTrace) ? parsed.data.buildTrace : undefined,
+	};
+}
+
+/**
+ * Derive the `__build_only__` sentinel row's outcome from the case's expectation
+ * verdicts — the judge IS the whole test for a scenario-less case. All evaluated
+ * expectations passing ⇒ passed; no evaluated verdicts (judge dead) ⇒ `incomplete`
+ * so the row stays out of scoring instead of reading as a permanent failure.
+ */
+export function sentinelOutcomeFromVerdicts(verdicts: BuildExpectationResult[] | undefined): {
+	passed: boolean;
+	score: number;
+	reasoning: string;
+	incomplete?: boolean;
+} {
+	const evaluated = (verdicts ?? []).filter((v) => !v.incomplete);
+	if (evaluated.length === 0) {
+		return {
+			passed: false,
+			score: 0,
+			reasoning: 'Build-only case — no expectation verdicts (judge incomplete)',
+			incomplete: true,
+		};
+	}
+	const failed = evaluated.filter((v) => !v.pass);
+	const passed = failed.length === 0;
+	return {
+		passed,
+		score: (evaluated.length - failed.length) / evaluated.length,
+		reasoning: passed
+			? `Build-only case — all ${String(evaluated.length)} expectations passed`
+			: `Build-only case — failed expectations: ${failed.map((v) => v.expectation).join('; ')}`,
 	};
 }
 
