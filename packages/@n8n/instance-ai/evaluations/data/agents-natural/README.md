@@ -68,3 +68,20 @@ Compare per paired case across iterations:
 
 Round 2 (after the smoke run): compound + inline-context buckets, and a small
 offline compare script if manual tables stop scaling.
+
+## Smoke status (2026-07-08, N=1 per case, directional)
+
+All 7 cases ran end-to-end on a dedicated :5680 instance (this branch,
+`N8N_ENABLED_MODULES=agents,instance-ai`): every route signature was observable
+and judge-gradeable (agent-builder tool calls confirmed in the transcript for
+the tutor case), the clarify director script terminated cleanly, no timeouts.
+Early signal — to be confirmed with Arm A + `--iterations 3`:
+
+- Anchor routing matched exam gold 6/7; `nat-adv-says-wf-is-agent` built a
+  chat-trigger + Agent-node workflow instead of taking the agent-builder route.
+- `nat-adv-says-agent-is-wf` embedded an unnecessary AI Agent node in an
+  otherwise fixed weather→email pipeline (embeds mismatch — the false friend
+  bites at the embeds level when unprimed).
+- intent-recognition skill loaded in only 1/6 cases asserting it — the agent
+  goes straight to `workflow-builder`. The exam arm's ~100% load rate is a
+  preamble artifact, not product behavior.
