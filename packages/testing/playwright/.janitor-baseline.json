@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-07-08T14:31:05.095Z",
-	"totalViolations": 87,
+	"generated": "2026-07-08T17:24:05.137Z",
+	"totalViolations": 82,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -88,7 +88,7 @@
 		"pages/NodeDetailsViewPage.ts": [
 			{
 				"rule": "scope-lockdown",
-				"line": 352,
+				"line": 354,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			}
@@ -393,14 +393,6 @@
 				"hash": "39b87c0d6566"
 			}
 		],
-		"tests/e2e/auth/password-reset.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 12,
-				"message": "Raw API call detected: request.post(",
-				"hash": "a4b289961490"
-			}
-		],
 		"tests/e2e/building-blocks/workflow-entry-points.spec.ts": [
 			{
 				"rule": "api-purity",
@@ -467,36 +459,6 @@
 				"line": 110,
 				"message": "Raw API call detected: request.get(",
 				"hash": "314e16747365"
-			}
-		],
-		"tests/e2e/sharing/access-control.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 109,
-				"message": "Raw API call detected: request.get(",
-				"hash": "7fcb046dd97c"
-			}
-		],
-		"tests/e2e/sharing/workflow-sharing.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 124,
-				"message": "Raw API call detected: request.get(",
-				"hash": "5f323328e22b"
-			}
-		],
-		"tests/e2e/settings/environments/source-control.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 109,
-				"message": "Raw API call detected: request.get(",
-				"hash": "6f173bb174c9"
-			},
-			{
-				"rule": "api-purity",
-				"line": 118,
-				"message": "Raw API call detected: request.get(",
-				"hash": "6f173bb174c9"
 			}
 		],
 		"tests/e2e/workflows/editor/execution/execution.spec.ts": [
