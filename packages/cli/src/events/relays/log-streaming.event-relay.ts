@@ -42,6 +42,7 @@ export class LogStreamingEventRelay extends EventRelay {
 	init() {
 		this.setupListeners({
 			'n8n-package-imported': (event) => this.packageImported(event),
+			'n8n-package-exported': (event) => this.packageExported(event),
 			'workflow-created': (event) => this.workflowCreated(event),
 			'workflow-deleted': (event) => this.workflowDeleted(event),
 			'workflow-archived': (event) => this.workflowArchived(event),
@@ -146,6 +147,14 @@ export class LogStreamingEventRelay extends EventRelay {
 	private packageImported({ user, counts, ...rest }: RelayEventMap['n8n-package-imported']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.n8n-package.imported',
+			payload: { ...user, ...rest },
+		});
+	}
+
+	@Redactable()
+	private packageExported({ user, counts, ...rest }: RelayEventMap['n8n-package-exported']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.n8n-package.exported',
 			payload: { ...user, ...rest },
 		});
 	}
@@ -1078,6 +1087,9 @@ export class LogStreamingEventRelay extends EventRelay {
 			case 'data_redaction_enforcement_floor':
 				// Telemetry-only signal. The audit trail for redaction enforcement
 				// is emitted separately via 'redaction-enforcement-updated'.
+				break;
+			case 'workflow_reviews':
+				// Telemetry-only signal.
 				break;
 			default:
 				assertNever(settingName);

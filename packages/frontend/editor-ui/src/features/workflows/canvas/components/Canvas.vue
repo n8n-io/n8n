@@ -24,7 +24,12 @@ import type {
 	CanvasNodeOrGroup,
 	ConnectStartEvent,
 } from '../canvas.types';
-import { CanvasNodeRenderType, createCanvasGroupNodeId, isCanvasGroupNode } from '../canvas.types';
+import {
+	CanvasNodeRenderType,
+	createCanvasGroupNodeId,
+	isCanvasGroupNode,
+	parseCanvasGroupNodeId,
+} from '../canvas.types';
 import { isOutsideSelected } from '@/app/utils/htmlUtils';
 import {
 	getMousePosition,
@@ -103,6 +108,7 @@ const emit = defineEmits<{
 	'update:logs:input-open': [open?: boolean];
 	'update:logs:output-open': [open?: boolean];
 	'update:has-range-selection': [isActive: boolean];
+	'update:selected-group': [id: string | null];
 	'click:node': [id: string, position: XYPosition];
 	'click:node:add': [id: string, handle: string];
 	'run:node': [id: string];
@@ -550,6 +556,13 @@ watch(selectedNodeIds, (newIds) => {
 	}
 });
 
+// Surface a selected collapsed group so surfaces outside the canvas (logs panel) can sync to it
+const selectedCanvasGroupId = computed(() => {
+	const groupNode = selectedNodesAndGroups.value.find((node) => isCanvasGroupNode(node));
+	return (groupNode && parseCanvasGroupNodeId(groupNode.id)) ?? null;
+});
+watch(selectedCanvasGroupId, (id) => emit('update:selected-group', id), { immediate: true });
+
 watch(
 	() => chatPanelStore.isOpen,
 	(isOpen) => {
@@ -747,11 +760,24 @@ function onSelectNode() {
 }
 
 function onSelectNodes({ ids, panIntoView }: CanvasEventBusEvents['nodes:select']) {
+	// A collapsed group hides its members, so selecting one would leave a lingering
+	// selection box. Map members of collapsed groups to the group node instead.
+	const resolvedIds = [
+		...new Set(
+			ids.map((id) => {
+				const groupId = workflowDocumentStore.value.nodeIdToGroupId.get(id);
+				return groupId && injectedNodeGroupView?.isGroupCollapsed(groupId)
+					? createCanvasGroupNodeId(groupId)
+					: id;
+			}),
+		),
+	];
+
 	clearSelectedNodes();
-	addSelectedNodes(ids.map(findNode).filter(isPresent));
+	addSelectedNodes(resolvedIds.map(findNode).filter(isPresent));
 
 	if (panIntoView) {
-		const nodes = ids.map(findNode).filter(isPresent);
+		const nodes = resolvedIds.map(findNode).filter(isPresent);
 
 		if (nodes.length === 0) {
 			return;

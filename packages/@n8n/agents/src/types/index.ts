@@ -47,6 +47,9 @@ export type {
 	AgentResumeData,
 	PendingToolCall,
 	SerializableAgentState,
+	AnthropicPromptCachingConfig,
+	OpenAIPromptCachingConfig,
+	PromptCachingConfig,
 } from './sdk/agent';
 
 export type { SerializedMessageList } from './runtime/message-list';
@@ -161,7 +164,7 @@ export type {
 	AgentMiddleware,
 } from './runtime/event';
 
-export type { McpServerConfig, McpVerifyResult } from './sdk/mcp';
+export type { McpServerConfig, McpToolCallSettledEvent, McpVerifyResult } from './sdk/mcp';
 
 export type { AgentBuilder } from './sdk/agent-builder';
 

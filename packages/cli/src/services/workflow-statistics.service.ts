@@ -1,4 +1,5 @@
 import { Logger, TypedEmitter } from '@n8n/backend-common';
+import { DatabaseConfig } from '@n8n/config';
 import {
 	SettingsRepository,
 	StatisticsNames,
@@ -6,6 +7,7 @@ import {
 	WorkflowStatisticsRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	isCompletedExecutionStatus,
 	type ExecutionStatus,
@@ -93,6 +95,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		private readonly eventService: EventService,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly databaseConfig: DatabaseConfig,
 	) {
 		super({ captureRejections: true });
 		if ('SKIP_STATISTICS_EVENTS' in process.env) return;
@@ -115,29 +118,76 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		const workflowId = workflowData.id;
 		if (!workflowId) return;
 
+		const isRoot = isRootExecutionForRun(runData);
+
+		let upsertResult: Awaited<ReturnType<WorkflowStatisticsRepository['upsertWorkflowStatistics']>>;
+
 		try {
-			const upsertResult = await this.repository.upsertWorkflowStatistics(
+			/**
+			 * For performance reasons, in Postgres we append and fold out of band,
+			 * whereas in SQLite we upsert directly.
+			 */
+			if (this.databaseConfig.type === 'postgresdb') {
+				await this.repository.appendIncrement(
+					statisticsName,
+					workflowId,
+					isRoot,
+					workflowData.name,
+				);
+				return;
+			}
+
+			upsertResult = await this.repository.upsertWorkflowStatistics(
 				statisticsName,
 				workflowId,
-				isRootExecutionForRun(runData),
+				isRoot,
 				workflowData.name,
 			);
-
-			if (upsertResult !== 'insert') return;
-
-			if (statisticsName === StatisticsNames.productionSuccess) {
-				await this.emitFirstProductionWorkflowSucceeded(workflowId, runData);
-			} else if (statisticsName === StatisticsNames.productionError) {
-				await this.emitInstanceFirstProductionWorkflowFailed(workflowData, workflowId, runData);
-			}
 		} catch (error) {
-			this.logger.debug('Unable to fire first workflow telemetry event');
+			this.logger.error('Failed to record workflow statistic', { error: ensureError(error) });
+			return;
+		}
+
+		if (upsertResult !== 'insert') return;
+
+		try {
+			await this.emitFirstOccurrenceEvent(
+				statisticsName,
+				workflowId,
+				workflowData.name ?? null,
+				runData.startedAt.getTime(),
+			);
+		} catch (error) {
+			this.logger.debug('Failed to emit workflow statistics milestone', {
+				error: ensureError(error),
+			});
+		}
+	}
+
+	/** Emit an event on first production success or first production failure. */
+	async emitFirstOccurrenceEvent(
+		statisticsName: StatisticsNames,
+		workflowId: string,
+		workflowName: string | null,
+		firstEventMs: number,
+	): Promise<void> {
+		if (statisticsName === StatisticsNames.productionSuccess) {
+			await this.emitFirstProductionWorkflowSucceeded(workflowId, firstEventMs);
+			return;
+		}
+
+		if (statisticsName === StatisticsNames.productionError) {
+			await this.emitInstanceFirstProductionWorkflowFailed(
+				workflowId,
+				workflowName ?? '',
+				firstEventMs,
+			);
 		}
 	}
 
 	private async emitFirstProductionWorkflowSucceeded(
 		workflowId: string,
-		runData: IRun,
+		userActivatedAtMs: number,
 	): Promise<void> {
 		const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
 		let userId: string | null = null;
@@ -150,7 +200,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 				await this.userService.updateSettings(owner.id, {
 					firstSuccessfulWorkflowId: workflowId,
 					userActivated: true,
-					userActivatedAt: runData.startedAt.getTime(),
+					userActivatedAt: userActivatedAtMs,
 				});
 			}
 		}
@@ -163,9 +213,9 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 	}
 
 	private async emitInstanceFirstProductionWorkflowFailed(
-		workflowData: IWorkflowBase,
 		workflowId: string,
-		runData: IRun,
+		workflowName: string,
+		timestampMs: number,
 	): Promise<void> {
 		const instanceHadProductionFailure = await this.settingsRepository.findByKey(
 			'instance.firstProductionFailure',
@@ -193,7 +243,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 				workflowId,
 				projectId: project.id,
 				userId: owner.id,
-				timestamp: runData.startedAt.getTime(),
+				timestamp: timestampMs,
 			}),
 			loadOnStartup: false,
 		});
@@ -201,7 +251,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		this.eventService.emit('instance-first-production-workflow-failed', {
 			projectId: project.id,
 			workflowId,
-			workflowName: workflowData.name,
+			workflowName,
 			userId: owner.id,
 		});
 	}

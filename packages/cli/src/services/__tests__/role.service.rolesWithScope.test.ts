@@ -171,7 +171,7 @@ describe('RoleService.rolesWithScope', () => {
 		it('should handle empty results from cache service', async () => {
 			roleCacheService.getRolesWithAllScopes.mockResolvedValue([]);
 
-			const result = await roleService.rolesWithScope('global', ['*' as const]);
+			const result = await roleService.rolesWithScope('global', ['user:read' as const]);
 
 			expect(result).toEqual([]);
 		});

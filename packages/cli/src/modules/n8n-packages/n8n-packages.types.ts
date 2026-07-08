@@ -9,7 +9,7 @@ export type { CredentialResolution } from './entities/credential/credential.type
 export { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishing-policy.types';
 export type { WorkflowPublishingOutcome } from './entities/workflow/workflow-publishing-policy.types';
 
-export type CredentialMatchingMode = 'id-only';
+export type CredentialMatchingMode = 'id-only' | 'name-and-type' | 'type-only';
 export type CredentialMissingMode = 'must-preexist' | 'create-stub';
 
 /* eslint-disable @typescript-eslint/naming-convention -- enum-like members for IDE documentation */
@@ -38,6 +38,7 @@ export type WorkflowIdPolicy = (typeof WorkflowIdPolicy)[keyof typeof WorkflowId
 export interface ExportPackageRequest {
 	user: User;
 	workflowIds?: string[];
+	folderIds?: string[];
 	projectIds?: string[];
 }
 
@@ -104,6 +105,7 @@ export type ImportPackageEventCounts = {
 /** Per-entity counts for an export, carried on `n8n-package-exported` for telemetry. */
 export type ExportPackageEventCounts = {
 	workflows: number;
+	folders: number;
 	credentials: number;
 };
 

@@ -1,6 +1,7 @@
 import { Container } from '@n8n/di';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import type { MockInstance } from 'vitest';
 
 import type { DatabaseConfig } from '../src/index';
 import { GlobalConfig, SSRF_DEFAULT_BLOCKED_IP_RANGES } from '../src/index';
@@ -13,7 +14,8 @@ vi.mock('node:fs', () => ({
 	readFileSync: readFileSyncMock,
 }));
 
-const consoleWarnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
+// `restoreMocks` restores spies before each test, so this is re-established in beforeEach.
+let consoleWarnMock: MockInstance;
 
 // Ignore the sanitize function from the GlobalConfig nested types
 type ConfigShape<T> = T extends ReadonlyArray<infer U>
@@ -34,6 +36,7 @@ describe('GlobalConfig', () => {
 	beforeEach(() => {
 		Container.reset();
 		vi.clearAllMocks();
+		consoleWarnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
 	});
 
 	const originalEnv = process.env;
@@ -95,6 +98,7 @@ describe('GlobalConfig', () => {
 				port: 5432,
 				schema: 'public',
 				connectionTimeoutMs: 20_000,
+				destroyTimeoutMs: 10_000,
 				idleTimeoutMs: 30_000,
 				statementTimeoutMs: 5 * 60 * 1000,
 				maxConnectionLifetimeMs: 60 * 60 * 1000,
@@ -122,6 +126,7 @@ describe('GlobalConfig', () => {
 			minRecoveryBackoffMs: 1_000,
 			maxRecoveryBackoffMs: 30_000,
 			connectionAcquisitionTimeoutMs: 30_000,
+			startupConnectMaxRetries: 5,
 		} as DatabaseConfig,
 		credentials: {
 			defaultName: 'My credentials',
@@ -189,6 +194,7 @@ describe('GlobalConfig', () => {
 			include: [],
 			exclude: ['n8n-nodes-base.executeCommand', 'n8n-nodes-base.localFileTrigger'],
 			pythonEnabled: true,
+			mergeSqlSandboxMemoryLimitMb: 64,
 		},
 		publicApi: {
 			disabled: false,
@@ -255,6 +261,8 @@ describe('GlobalConfig', () => {
 				includeWorkflowInfoMetrics: false,
 				workflowInfoMetricInterval: 60,
 				includeDbPoolMetrics: false,
+				includeWorkflowPublicationMetrics: false,
+				workflowPublicationMetricInterval: 60,
 			},
 			additionalNonUIRoutes: '',
 			disableProductionWebhooksOnMainProcess: false,
@@ -298,7 +306,7 @@ describe('GlobalConfig', () => {
 			cacheMaxSize: 500,
 		},
 		mcpServer: {
-			sessionIdleTtl: 3600000,
+			sessionIdleTtl: 900000,
 			sessionSweepInterval: 300000,
 		},
 		chatHub: {
@@ -315,7 +323,6 @@ describe('GlobalConfig', () => {
 			browserUseEnabled: true,
 			observerMessageTokens: 30_000,
 			reflectorObservationTokens: 40_000,
-			subAgentMaxSteps: 100,
 			sandboxEnabled: false,
 			sandboxProvider: 'n8n-sandbox',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
@@ -335,9 +342,10 @@ describe('GlobalConfig', () => {
 			braveSearchApiKey: '',
 			searxngUrl: '',
 			gatewayApiKey: '',
-			threadTtlDays: 90,
+			threadTtlDays: 30,
 			pruneInterval: 3_600_000,
 			snapshotRetention: 86_400_000,
+			checkpointGcRetention: 604_800_000,
 			confirmationTimeout: 86_400_000,
 			outputRedactionEnabled: true,
 			outputRedactionSecrets: true,
@@ -433,13 +441,23 @@ describe('GlobalConfig', () => {
 		},
 		scheduler: {
 			enabled: false,
-			materializationWindow: 60,
-			sweepInterval: 10,
-			executorInterval: 5,
-			reaperInterval: 30,
-			leaseDuration: 60,
-			retention: 604800,
-			minInterval: 0,
+			materializationWindowSeconds: 60,
+			sweepIntervalSeconds: 10,
+			sweepTimeoutSeconds: 60,
+			executorIntervalSeconds: 5,
+			executorTimeoutSeconds: 60,
+			claimBatchSize: 100,
+			reaperIntervalSeconds: 30,
+			reaperBatchSize: 100,
+			reaperTimeoutSeconds: 60,
+			leaseDurationSeconds: 60,
+			retentionSeconds: 86400,
+			failedRetentionSeconds: 604800,
+			retentionIntervalSeconds: 3600,
+			retentionTimeoutSeconds: 300,
+			jitterRatio: 0.1,
+			minIntervalSeconds: 0,
+			maxConcurrentPasses: 10,
 		},
 		evaluation: {
 			collectionsEnabled: false,
@@ -635,7 +653,6 @@ describe('GlobalConfig', () => {
 			sandboxSnapshot: '',
 			sandboxTimeout: 300000,
 			sandboxEphemeral: false,
-			daytonaVolumeId: '',
 			daytonaApiUrl: '',
 			daytonaApiKey: '',
 		},
@@ -709,6 +726,7 @@ describe('GlobalConfig', () => {
 				minRecoveryBackoffMs: 1_000,
 				maxRecoveryBackoffMs: 30_000,
 				connectionAcquisitionTimeoutMs: 30_000,
+				startupConnectMaxRetries: 5,
 			},
 			endpoints: {
 				...defaultConfig.endpoints,

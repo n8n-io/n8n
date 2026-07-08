@@ -15,6 +15,12 @@ import type {
 	Agent as RuntimeAgent,
 } from '@n8n/agents';
 import { wrapToolForApproval } from '@n8n/agents/tool';
+import {
+	getNativeWebSearchProviderTools,
+	getProviderPrefix,
+	hasNativeWebSearchProvider,
+	isNativeWebSearchRequested,
+} from '@n8n/ai-utilities/agent-config';
 import type {
 	AgentSkill,
 	AgentJsonConfig,
@@ -29,12 +35,6 @@ import { z } from 'zod';
 
 import { mapCredentialForProvider } from './credential-field-mapping';
 import { resolveCredentialAwareModelConfig } from './model-config';
-import { getProviderPrefix } from './model-id';
-import {
-	getNativeWebSearchProviderTools,
-	hasNativeWebSearchProvider,
-	isNativeWebSearchRequested,
-} from './native-web-search-provider-tools';
 import { resolveProviderToolName } from './provider-tool-aliases';
 
 const WEB_SEARCH_TOOL_NAME = 'web_search';
@@ -181,6 +181,9 @@ export async function buildFromJson(
 		if (config.config.thinking) {
 			const { provider, ...rest } = config.config.thinking;
 			agent.thinking(provider, rest);
+		}
+		if (config.config.promptCaching) {
+			agent.promptCaching(config.config.promptCaching);
 		}
 		if (config.config.toolCallConcurrency) {
 			agent.toolCallConcurrency(config.config.toolCallConcurrency);

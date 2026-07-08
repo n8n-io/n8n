@@ -12,7 +12,13 @@ import { MCP_UPDATE_WORKFLOW_TOOL } from './constants';
 import { validateCredentialReferences } from './credential-validation';
 import { autoPopulateNodeCredentials } from './credentials-auto-assign';
 import { validateDataTableReferencesForUpdate } from './data-table-validation';
-import { sanitizeSkillsUsed } from './skills-used';
+import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
+import {
+	buildUpdateVersionMetadata,
+	resolveVersionMetadata,
+	versionDescriptionInputSchema,
+	versionNameInputSchema,
+} from './version-metadata';
 import {
 	applyOperations,
 	partialUpdateOperationSchema,
@@ -204,10 +210,7 @@ function collectTouchedNodes(operations: PartialUpdateOperation[]): Map<string, 
 
 const inputSchema: z.ZodRawShape = {
 	workflowId: z.string().describe('The ID of the workflow to update.'),
-	skillsUsed: z
-		.array(z.string())
-		.optional()
-		.describe('n8n skill IDs used for this update; normalized server-side.'),
+	skillsUsed: z.array(z.string()).optional().describe(SKILLS_USED_PARAM_DESCRIPTION),
 	operations: z
 		.array(operationInputSchema)
 		.min(1)
@@ -215,6 +218,12 @@ const inputSchema: z.ZodRawShape = {
 		.describe(
 			`Ordered operations to apply atomically (max ${MAX_OPERATIONS_PER_CALL}). If any op fails, nothing is saved.`,
 		),
+	versionName: versionNameInputSchema.describe(
+		'Short summary of what this update changes, shown in the workflow\'s version history (e.g. "Added Slack notification after HTTP request"). Always provide it.',
+	),
+	versionDescription: versionDescriptionInputSchema.describe(
+		'Longer description of what changed and why, shown in the version history alongside the version name.',
+	),
 };
 
 // The MCP SDK publishes this schema with `additionalProperties: false` and
@@ -457,10 +466,14 @@ export const createUpdateWorkflowTool = (
 		workflowId,
 		skillsUsed,
 		operations,
+		versionName,
+		versionDescription,
 	}: {
 		workflowId: string;
 		skillsUsed?: string[];
 		operations: OperationInput[];
+		versionName?: string;
+		versionDescription?: string;
 	}) => {
 		const sanitizedSkillsUsed = sanitizeSkillsUsed(skillsUsed);
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
@@ -471,6 +484,8 @@ export const createUpdateWorkflowTool = (
 				...(sanitizedSkillsUsed !== undefined ? { skillsUsed: sanitizedSkillsUsed } : {}),
 				opCount: operations.length,
 				opTypes: operations.map((op) => op.type),
+				hasVersionName: !!versionName,
+				hasVersionDescription: !!versionDescription,
 			},
 		};
 
@@ -696,9 +711,21 @@ export const createUpdateWorkflowTool = (
 				}
 			}
 
+			// Fallback is diff-based; it only ends up persisted when the update
+			// actually produces a new history version (node/connection/group changes).
+			const versionMetadata = resolveVersionMetadata(
+				{ versionName, versionDescription },
+				buildUpdateVersionMetadata(
+					{ nodes: existingWorkflow.nodes, connections: existingWorkflow.connections },
+					{ nodes: workflowUpdateData.nodes, connections: workflowUpdateData.connections },
+				),
+			);
+
 			const updatedWorkflow = await workflowService.update(user, workflowUpdateData, workflowId, {
 				aiBuilderAssisted: hasNonTagOperations,
 				source: 'n8n-mcp',
+				versionName: versionMetadata.name,
+				versionDescription: versionMetadata.description,
 				...(tagIds !== undefined ? { tagIds } : {}),
 			});
 

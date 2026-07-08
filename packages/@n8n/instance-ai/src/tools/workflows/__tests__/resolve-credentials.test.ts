@@ -4,6 +4,7 @@ import type { Mock } from 'vitest';
 import type { InstanceAiContext } from '../../../types';
 import {
 	buildCredentialMap,
+	buildCredentialResolutionNote,
 	resolveCredentials,
 	type CredentialEntry,
 	type CredentialMap,
@@ -599,5 +600,127 @@ describe('resolveCredentials', () => {
 			// Gmail credential should be removed
 			expect(json.nodes[1].credentials).toEqual({});
 		});
+	});
+
+	describe('resolved credential reporting', () => {
+		it('auto-binds the sole candidate and reports it in resolvedCredentialsByNode', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'OpenAI Chat Model',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1.2,
+						position: [0, 0],
+						credentials: { openAiApi: null as unknown as { id: string; name: string } },
+					},
+				],
+			});
+			const map = makeCredentialMap([{ id: 'cred-1', name: 'OpenAI account', type: 'openAiApi' }]);
+
+			const result = await resolveCredentials(json, undefined, createMockContext(), map);
+
+			expect(result.mockedNodeNames).toEqual([]);
+			expect(result.resolvedCredentialsByNode).toEqual({
+				'OpenAI Chat Model': [{ type: 'openAiApi', id: 'cred-1', name: 'OpenAI account' }],
+			});
+			expect(json.nodes[0].credentials).toEqual({
+				openAiApi: { id: 'cred-1', name: 'OpenAI account' },
+			});
+		});
+
+		it('reports credentials restored from the existing workflow', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'Slack',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2,
+						position: [0, 0],
+						credentials: { slackApi: undefined as unknown as { id: string; name: string } },
+					},
+				],
+			});
+			const existingWorkflow = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'Slack',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2,
+						position: [0, 0],
+						credentials: { slackApi: { id: 'existing-id', name: 'Existing Slack' } },
+					},
+				],
+			});
+
+			const result = await resolveCredentials(json, 'wf-123', createMockContext(existingWorkflow));
+
+			expect(result.resolvedCredentialsByNode).toEqual({
+				Slack: [{ type: 'slackApi', id: 'existing-id', name: 'Existing Slack' }],
+			});
+		});
+
+		it('does not report mocked credentials as resolved', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'OpenAI Chat Model',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1.2,
+						position: [0, 0],
+						credentials: { openAiApi: null as unknown as { id: string; name: string } },
+					},
+				],
+			});
+			// Two candidates — ambiguous, so the credential is mocked, not bound.
+			const map = makeCredentialMap([
+				{ id: 'cred-1', name: 'OpenAI A', type: 'openAiApi' },
+				{ id: 'cred-2', name: 'OpenAI B', type: 'openAiApi' },
+			]);
+
+			const result = await resolveCredentials(json, undefined, createMockContext(), map);
+
+			expect(result.mockedNodeNames).toEqual(['OpenAI Chat Model']);
+			expect(result.resolvedCredentialsByNode).toEqual({});
+		});
+
+		it('does not report explicit valid credential ids as resolved', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'Slack',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2,
+						position: [0, 0],
+						credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } },
+					},
+				],
+			});
+			const map = makeCredentialMap([{ id: 'cred-1', name: 'My Slack', type: 'slackApi' }]);
+
+			const result = await resolveCredentials(json, undefined, createMockContext(), map);
+
+			expect(result.mockedNodeNames).toEqual([]);
+			expect(result.resolvedCredentialsByNode).toEqual({});
+		});
+	});
+});
+
+describe('buildCredentialResolutionNote', () => {
+	it('returns undefined when nothing was resolved', () => {
+		expect(buildCredentialResolutionNote({})).toBeUndefined();
+	});
+
+	it('names each resolved credential and instructs not to re-ask', () => {
+		const note = buildCredentialResolutionNote({
+			'OpenAI Chat Model': [{ type: 'openAiApi', id: 'cred-1', name: 'OpenAI account' }],
+		});
+
+		expect(note).toContain('"OpenAI account" (openAiApi) on node "OpenAI Chat Model"');
+		expect(note).toContain('do not ask the user to connect or create them');
 	});
 });

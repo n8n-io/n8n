@@ -147,6 +147,22 @@ describe('selectTests — fail-open contract', () => {
 		expect(result.specs).toEqual([...ALL_SPECS].sort());
 	});
 
+	// Credential definitions are declarative metadata absent from the runtime map;
+	// without forcing broad they'd be declared uncovered and skip their specs.
+	it('credential definition change → broad, never declared uncovered', () => {
+		const map: ImpactMap = { 'packages/cli/src/x.ts': { '10': ['tests/e2e/a.spec.ts'] } };
+		const mapPath = path.join(tempDir, 'map-cred.json');
+		fs.writeFileSync(mapPath, JSON.stringify(map));
+		const result = selectTests({
+			changedFiles: ['packages/nodes-base/credentials/MicrosoftOAuth2Api.credentials.ts'],
+			mapFile: mapPath,
+			allSpecsFile: writeAllSpecs(ALL_SPECS.join('\n')),
+		});
+		expect(result.mode).toBe('broad');
+		expect(result.specs).toEqual([...ALL_SPECS].sort());
+		expect(result.uncovered).toBeUndefined();
+	});
+
 	it('package.json change with NO dependency change (version) → uncovered, not broad', () => {
 		const map: ImpactMap = { 'packages/cli/src/x.ts': { '10': ['tests/e2e/a.spec.ts'] } };
 		const mapPath = path.join(tempDir, 'map-ver.json');

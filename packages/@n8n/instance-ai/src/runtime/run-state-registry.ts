@@ -75,6 +75,7 @@ export interface ConfirmationData {
 	/** `'session'` means the user chose "always allow": the resuming tool should
 	 *  persist a thread-level grant so the same action isn't re-asked. */
 	scope?: 'once' | 'session';
+	autoSetup?: { credentialType: string };
 }
 
 export interface PendingConfirmation {
@@ -156,23 +157,41 @@ export class RunStateRegistry<TUser = unknown> {
 			}
 		}
 
-		this.threadMessageGroupId.set(options.threadId, messageGroupId);
-		if (!this.runIdsByMessageGroup.has(messageGroupId)) {
-			this.runIdsByMessageGroup.set(messageGroupId, []);
-		}
-		const groupRunIds = this.runIdsByMessageGroup.get(messageGroupId);
-		if (groupRunIds) groupRunIds.push(runId);
+		this.indexRunInGroup(options.threadId, messageGroupId, runId);
 
 		return { runId, threadId: options.threadId, abortController, messageGroupId };
+	}
+
+	/**
+	 * Seed the message-group indexes for a run: map the thread to its current
+	 * group and record the run under that group. Idempotent.
+	 *
+	 * Called on `startRun` and re-applied on `suspendRun`/`activateSuspendedRun`
+	 * so a run resumed after a restart (where these maps start empty) repopulates
+	 * the group association the SSE bootstrap relies on.
+	 */
+	private indexRunInGroup(threadId: string, messageGroupId: string, runId: string): void {
+		this.threadMessageGroupId.set(threadId, messageGroupId);
+		let groupRunIds = this.runIdsByMessageGroup.get(messageGroupId);
+		if (!groupRunIds) {
+			groupRunIds = [];
+			this.runIdsByMessageGroup.set(messageGroupId, groupRunIds);
+		}
+		if (!groupRunIds.includes(runId)) groupRunIds.push(runId);
 	}
 
 	getThreadStatus(
 		threadId: string,
 		backgroundTasks: BackgroundTaskStatusSnapshot[],
 	): InstanceAiThreadStatusResponse {
+		const activeRun = this.activeRuns.get(threadId);
+		const suspendedRun = this.suspendedRuns.get(threadId);
+		const liveRun = activeRun ?? suspendedRun;
+
 		return {
-			hasActiveRun: this.activeRuns.has(threadId),
-			isSuspended: this.suspendedRuns.has(threadId),
+			hasActiveRun: activeRun !== undefined,
+			isSuspended: suspendedRun !== undefined,
+			...(liveRun ? { runId: liveRun.runId } : {}),
 			backgroundTasks: backgroundTasks
 				.filter((task) => task.threadId === threadId)
 				.map((task) => ({
@@ -268,6 +287,12 @@ export class RunStateRegistry<TUser = unknown> {
 		state.startedAt = state.startedAt ?? activeRun?.startedAt ?? state.createdAt;
 		state.lastActivityAt = state.lastActivityAt ?? state.createdAt;
 		this.suspendedRuns.set(threadId, state);
+
+		// Re-seed group indexes: on a restart-resumed orphan these maps start
+		// empty, so without this the SSE bootstrap loses the group association.
+		if (state.messageGroupId) {
+			this.indexRunInGroup(threadId, state.messageGroupId, state.runId);
+		}
 	}
 
 	findSuspendedByRequestId(requestId: string): SuspendedRunState<TUser> | undefined {
@@ -301,6 +326,11 @@ export class RunStateRegistry<TUser = unknown> {
 			startedAt: suspended.startedAt ?? suspended.createdAt,
 			lastActivityAt: now,
 		});
+
+		// Re-seed group indexes for the reactivated run (empty after a restart).
+		if (suspended.messageGroupId) {
+			this.indexRunInGroup(threadId, suspended.messageGroupId, suspended.runId);
+		}
 		return suspended;
 	}
 
