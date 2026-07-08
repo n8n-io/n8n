@@ -40,6 +40,8 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	const currentUserMCPKey = ref<ApiKey | null>(null);
 	const oauthClients = ref<OAuthClientResponseDto[]>([]);
 	const oauthClientScopeTools = ref<Record<string, string[]> | undefined>(undefined);
+	const oauthClientsOwnership = ref<'mine' | 'all'>('mine');
+	const oauthClientTotals = ref<{ mine: number; all?: number }>({ mine: 0 });
 	const allowedRedirectUris = ref<string[]>([]);
 	const instanceClientStats = ref<InstanceMcpClientStatsResponseDto | null>(null);
 	const connectPopoverOpen = ref(false);
@@ -169,11 +171,32 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	}
 
 	async function getAllOAuthClients(): Promise<OAuthClientResponseDto[]> {
-		const response = await fetchOAuthClients(rootStore.restApiContext);
+		const response = await fetchOAuthClients(rootStore.restApiContext, {
+			ownership: oauthClientsOwnership.value,
+		});
 		oauthClients.value = response.data;
 		oauthClientScopeTools.value = response.scopeTools;
+		oauthClientTotals.value = response.totals;
 		return response.data;
 	}
+
+	async function setOAuthClientsOwnership(ownership: 'mine' | 'all'): Promise<void> {
+		oauthClientsOwnership.value = ownership;
+		await getAllOAuthClients();
+	}
+
+	/** Distinct consent owners in the fetched rows, for the "Connected by" filter. */
+	const oauthClientOwners = computed(() => {
+		const byId = new Map<string, NonNullable<OAuthClientResponseDto['owner']>>();
+		for (const client of oauthClients.value) {
+			if (client.owner) byId.set(client.owner.id, client.owner);
+		}
+		return [...byId.values()].sort((a, b) => {
+			const nameA = [a.firstName, a.lastName].filter(Boolean).join(' ') || a.email;
+			const nameB = [b.firstName, b.lastName].filter(Boolean).join(' ') || b.email;
+			return nameA.localeCompare(nameB);
+		});
+	});
 
 	async function getInstanceClientStats(): Promise<InstanceMcpClientStatsResponseDto | null> {
 		try {
@@ -188,10 +211,13 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		}
 	}
 
-	async function removeOAuthClient(clientId: string): Promise<DeleteOAuthClientResponseDto> {
-		const response = await deleteOAuthClient(rootStore.restApiContext, clientId);
-		// Remove the client from the local store
-		oauthClients.value = oauthClients.value.filter((client) => client.id !== clientId);
+	async function removeOAuthClient(
+		clientId: string,
+		userId?: string,
+	): Promise<DeleteOAuthClientResponseDto> {
+		const response = await deleteOAuthClient(rootStore.restApiContext, clientId, userId);
+		// Refetch instead of splicing locally so the tab totals stay accurate
+		await getAllOAuthClients();
 		return response;
 	}
 
@@ -235,6 +261,10 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		generateNewApiKey,
 		resetCurrentUserMCPKey,
 		oauthClients,
+		oauthClientsOwnership,
+		oauthClientTotals,
+		oauthClientOwners,
+		setOAuthClientsOwnership,
 		instanceClientStats,
 		getAllOAuthClients,
 		oauthClientScopeTools,

@@ -16,6 +16,7 @@ import MCPEmptyState from '@/features/ai/mcpAccess/components/MCPEmptyState.vue'
 import MCpHeaderActions from '@/features/ai/mcpAccess/components/header/MCPHeaderActions.vue';
 import WorkflowsTable from '@/features/ai/mcpAccess/components/tabs/WorkflowsTable.vue';
 import OAuthClientsTable from '@/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue';
+import RevokeOAuthClientConfirmModal from '@/features/ai/mcpAccess/components/RevokeOAuthClientConfirmModal.vue';
 import {
 	N8nHeading,
 	N8nNotice,
@@ -86,7 +87,8 @@ const workflowsTableState = ref<TableOptions>({
 const workflowsTableItemsPerPage = ref(workflowsTableState.value.itemsPerPage);
 
 const oAuthClientsLoading = ref(false);
-const connectedOAuthClients = ref<OAuthClientResponseDto[]>([]);
+const revokeClient = ref<OAuthClientResponseDto | null>(null);
+const revoking = ref(false);
 
 const redirectUrisInput = ref('');
 const redirectUrisError = ref('');
@@ -116,7 +118,7 @@ const onTabSelected = async (tab: MCPTabs) => {
 	selectedTab.value = tab;
 	if (tab === 'workflows' && availableWorkflows.value.length === 0) {
 		await fetchAvailableWorkflows();
-	} else if (tab === 'oauth' && connectedOAuthClients.value.length === 0) {
+	} else if (tab === 'oauth' && mcpStore.oauthClients.length === 0) {
 		await fetchoAuthCLients();
 		telemetry.track('User clicked connected clients tab');
 	} else if (tab === 'settings' && mcpStore.allowedRedirectUris.length === 0) {
@@ -281,8 +283,7 @@ const onWorkflowsTableUpdate = async (options: TableOptions) => {
 const fetchoAuthCLients = async () => {
 	try {
 		oAuthClientsLoading.value = true;
-		const clients = await mcpStore.getAllOAuthClients();
-		connectedOAuthClients.value = clients ?? [];
+		await mcpStore.getAllOAuthClients();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
 	} finally {
@@ -292,10 +293,32 @@ const fetchoAuthCLients = async () => {
 	}
 };
 
-const revokeClientAccess = async (client: OAuthClientResponseDto) => {
+const onOwnershipChange = async (ownership: 'mine' | 'all') => {
 	try {
-		await mcpStore.removeOAuthClient(client.id);
-		connectedOAuthClients.value = connectedOAuthClients.value.filter((c) => c.id !== client.id);
+		oAuthClientsLoading.value = true;
+		await mcpStore.setOAuthClientsOwnership(ownership);
+		if (ownership === 'all') {
+			telemetry.track('User viewed all MCP clients');
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
+	} finally {
+		setTimeout(() => {
+			oAuthClientsLoading.value = false;
+		}, LOADING_INDICATOR_TIMEOUT);
+	}
+};
+
+const onRevokeRequest = (client: OAuthClientResponseDto) => {
+	revokeClient.value = client;
+};
+
+const onRevokeConfirm = async () => {
+	const client = revokeClient.value;
+	if (!client) return;
+	try {
+		revoking.value = true;
+		await mcpStore.removeOAuthClient(client.id, client.owner?.id);
 		toast.showMessage({
 			type: 'success',
 			title: i18n.baseText('settings.mcp.oAuthClients.revoke.success.title'),
@@ -305,6 +328,9 @@ const revokeClientAccess = async (client: OAuthClientResponseDto) => {
 		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.oAuthClients.revoke.error'));
+	} finally {
+		revoking.value = false;
+		revokeClient.value = null;
 	}
 };
 
@@ -501,10 +527,11 @@ onMounted(async () => {
 				<OAuthClientsTable
 					v-else-if="selectedTab === 'oauth'"
 					:data-test-id="'mcp-oauth-clients-table'"
-					:clients="connectedOAuthClients"
+					:clients="mcpStore.oauthClients"
 					:scope-tools="mcpStore.oauthClientScopeTools"
 					:loading="oAuthClientsLoading"
-					@revoke-client="revokeClientAccess"
+					@revoke-client="onRevokeRequest"
+					@update:ownership="onOwnershipChange"
 					@refresh="onTableRefresh"
 				/>
 				<section
@@ -542,6 +569,18 @@ onMounted(async () => {
 				</section>
 			</main>
 		</div>
+
+		<RevokeOAuthClientConfirmModal
+			:client="revokeClient"
+			:open="!!revokeClient"
+			:loading="revoking"
+			:revoking-for-other="
+				!!revokeClient?.owner && revokeClient.owner.id !== usersStore.currentUser?.id
+			"
+			@confirm="onRevokeConfirm"
+			@cancel="revokeClient = null"
+			@update:open="revokeClient = null"
+		/>
 	</div>
 </template>
 

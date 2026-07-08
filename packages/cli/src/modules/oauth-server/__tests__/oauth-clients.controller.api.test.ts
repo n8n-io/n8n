@@ -71,6 +71,106 @@ describe('GET /rest/mcp/oauth-clients', () => {
 			scopes: ['workflow:read', 'execution:read'],
 		});
 	});
+
+	test('should include the all-consents total for managers even on the mine view', async () => {
+		const client = await oauthClientRepository.save({
+			id: 'totals-client',
+			name: 'Totals Client',
+			redirectUris: ['https://example.com/callback'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+		});
+
+		await userConsentRepository.save({
+			userId: owner.id,
+			clientId: client.id,
+			grantedAt: Date.now(),
+			scope: ['workflow:read'],
+		});
+		await userConsentRepository.save({
+			userId: member.id,
+			clientId: client.id,
+			grantedAt: Date.now(),
+			scope: ['workflow:read'],
+		});
+
+		const ownerResponse = await testServer.authAgentFor(owner).get('/mcp/oauth-clients');
+
+		expect(ownerResponse.statusCode).toBe(200);
+		expect(ownerResponse.body.data.totals).toEqual({ mine: 1, all: 2 });
+		expect(ownerResponse.body.data.data[0].owner).toBeUndefined();
+
+		const memberResponse = await testServer.authAgentFor(member).get('/mcp/oauth-clients');
+
+		expect(memberResponse.statusCode).toBe(200);
+		expect(memberResponse.body.data.totals).toEqual({ mine: 1 });
+	});
+});
+
+describe('GET /rest/mcp/oauth-clients?ownership=all', () => {
+	test("should return every user's consents with owner info for a manager", async () => {
+		const sharedClient = await oauthClientRepository.save({
+			id: 'all-shared-client',
+			name: 'Shared Client',
+			redirectUris: ['https://example.com/callback'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+		});
+		const memberClient = await oauthClientRepository.save({
+			id: 'all-member-client',
+			name: 'Member Client',
+			redirectUris: ['https://example.com/callback'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+		});
+
+		await userConsentRepository.save({
+			userId: owner.id,
+			clientId: sharedClient.id,
+			grantedAt: Date.now(),
+		});
+		await userConsentRepository.save({
+			userId: member.id,
+			clientId: sharedClient.id,
+			grantedAt: Date.now(),
+		});
+		await userConsentRepository.save({
+			userId: member.id,
+			clientId: memberClient.id,
+			grantedAt: Date.now(),
+		});
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.get('/mcp/oauth-clients')
+			.query({ ownership: 'all' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.data).toHaveLength(3);
+		expect(response.body.data.totals).toEqual({ mine: 1, all: 3 });
+
+		// a consent row is (client × owner): the shared client appears once per user
+		const sharedRows = response.body.data.data.filter(
+			(row: { id: string }) => row.id === sharedClient.id,
+		);
+		expect(sharedRows).toHaveLength(2);
+		expect(sharedRows.map((row: { owner: { id: string } }) => row.owner.id).sort()).toEqual(
+			[owner.id, member.id].sort(),
+		);
+		expect(sharedRows[0].owner).toMatchObject({
+			id: expect.any(String),
+			email: expect.any(String),
+		});
+	});
+
+	test('should return 403 for a member', async () => {
+		const response = await testServer
+			.authAgentFor(member)
+			.get('/mcp/oauth-clients')
+			.query({ ownership: 'all' });
+
+		expect(response.statusCode).toBe(403);
+	});
 });
 
 describe('GET /rest/mcp/oauth-clients/instance-stats', () => {
@@ -217,6 +317,142 @@ describe('DELETE /rest/mcp/oauth-clients/:clientId', () => {
 		const response = await testServer
 			.authAgentFor(owner)
 			.delete('/mcp/oauth-clients/non-existent-id');
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test("should allow a manager to revoke another user's grant", async () => {
+		const client = await oauthClientRepository.save({
+			id: 'admin-revoke-client',
+			name: 'Admin Revoke Client',
+			redirectUris: ['https://example.com/callback'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+		});
+
+		await userConsentRepository.save({
+			userId: owner.id,
+			clientId: client.id,
+			grantedAt: Date.now(),
+		});
+		await userConsentRepository.save({
+			userId: member.id,
+			clientId: client.id,
+			grantedAt: Date.now(),
+		});
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.delete(`/mcp/oauth-clients/${client.id}`)
+			.query({ userId: member.id });
+
+		expect(response.statusCode).toBe(200);
+
+		// the member's consent is gone, the owner's grant and the client survive
+		expect(
+			await userConsentRepository.findOneBy({ userId: member.id, clientId: client.id }),
+		).toBeNull();
+		expect(
+			await userConsentRepository.findOneBy({ userId: owner.id, clientId: client.id }),
+		).not.toBeNull();
+		expect(await oauthClientRepository.findOneBy({ id: client.id })).not.toBeNull();
+	});
+
+	test('should garbage-collect the client when a manager revokes its last grant', async () => {
+		const client = await oauthClientRepository.save({
+			id: 'admin-gc-client',
+			name: 'Admin GC Client',
+			redirectUris: ['https://example.com/callback'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+		});
+
+		await userConsentRepository.save({
+			userId: member.id,
+			clientId: client.id,
+			grantedAt: Date.now(),
+		});
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.delete(`/mcp/oauth-clients/${client.id}`)
+			.query({ userId: member.id });
+
+		expect(response.statusCode).toBe(200);
+		expect(await oauthClientRepository.findOneBy({ id: client.id })).toBeNull();
+	});
+
+	test("should return 403 when a member passes another user's userId", async () => {
+		const client = await oauthClientRepository.save({
+			id: 'member-forbidden-client',
+			name: 'Member Forbidden Client',
+			redirectUris: ['https://example.com/callback'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+		});
+
+		await userConsentRepository.save({
+			userId: owner.id,
+			clientId: client.id,
+			grantedAt: Date.now(),
+		});
+
+		const response = await testServer
+			.authAgentFor(member)
+			.delete(`/mcp/oauth-clients/${client.id}`)
+			.query({ userId: owner.id });
+
+		expect(response.statusCode).toBe(403);
+		expect(
+			await userConsentRepository.findOneBy({ userId: owner.id, clientId: client.id }),
+		).not.toBeNull();
+	});
+
+	test('should treat a member passing their own userId like the default delete', async () => {
+		const client = await oauthClientRepository.save({
+			id: 'member-self-client',
+			name: 'Member Self Client',
+			redirectUris: ['https://example.com/callback'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+		});
+
+		await userConsentRepository.save({
+			userId: member.id,
+			clientId: client.id,
+			grantedAt: Date.now(),
+		});
+
+		const response = await testServer
+			.authAgentFor(member)
+			.delete(`/mcp/oauth-clients/${client.id}`)
+			.query({ userId: member.id });
+
+		expect(response.statusCode).toBe(200);
+		expect(
+			await userConsentRepository.findOneBy({ userId: member.id, clientId: client.id }),
+		).toBeNull();
+	});
+
+	test('should return 404 when the target user has no grant for the client', async () => {
+		const client = await oauthClientRepository.save({
+			id: 'no-consent-client',
+			name: 'No Consent Client',
+			redirectUris: ['https://example.com/callback'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+		});
+
+		await userConsentRepository.save({
+			userId: owner.id,
+			clientId: client.id,
+			grantedAt: Date.now(),
+		});
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.delete(`/mcp/oauth-clients/${client.id}`)
+			.query({ userId: member.id });
 
 		expect(response.statusCode).toBe(404);
 	});

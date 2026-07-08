@@ -1,6 +1,7 @@
 import type { Component } from 'vue';
 
 import { MCP_INSTANCE_SCOPES } from '@n8n/api-types';
+import type { OAuthClientResponseDto } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
 
 import ClaudeIcon from './assets/client-icons/claude.svg?component';
@@ -74,4 +75,55 @@ export function scopeLabel(
  */
 export function isFullAccessGrant(scopes: string[]): boolean {
 	return scopes.length > 0 && MCP_INSTANCE_SCOPES.every((scope) => scopes.includes(scope));
+}
+
+/** Client type buckets offered by the connected-clients filter (per design). */
+export type McpClientTypeFilter = 'ide' | 'cli' | 'web';
+
+export type McpConnectedPeriod = 'last7' | 'last30' | 'older';
+
+export interface OAuthClientFilters {
+	search: string;
+	type: McpClientTypeFilter | null;
+	ownerId: string | null;
+	connected: McpConnectedPeriod | null;
+}
+
+export const EMPTY_OAUTH_CLIENT_FILTERS: OAuthClientFilters = {
+	search: '',
+	type: null,
+	ownerId: null,
+	connected: null,
+};
+
+/**
+ * The filter exposes the fixed design buckets (IDE / CLI / Web) rather than
+ * the finer-grained derived brand types shown in the table rows.
+ */
+const TYPE_FILTER_BUCKETS: Record<McpClientTypeFilter, McpClientType[]> = {
+	ide: ['ide', 'editor'],
+	cli: ['cli'],
+	web: ['assistant'],
+};
+
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+
+export function filterOAuthClients(
+	clients: OAuthClientResponseDto[],
+	filters: OAuthClientFilters,
+	now: number,
+): OAuthClientResponseDto[] {
+	const needle = filters.search.trim().toLowerCase();
+	return clients.filter((client) => {
+		if (needle && !client.name.toLowerCase().includes(needle)) return false;
+		if (filters.type) {
+			const type = getClientBrand(client.name).type;
+			if (!type || !TYPE_FILTER_BUCKETS[filters.type].includes(type)) return false;
+		}
+		if (filters.ownerId && client.owner?.id !== filters.ownerId) return false;
+		if (filters.connected === 'last7' && client.grantedAt < now - 7 * DAY_IN_MS) return false;
+		if (filters.connected === 'last30' && client.grantedAt < now - 30 * DAY_IN_MS) return false;
+		if (filters.connected === 'older' && client.grantedAt >= now - 30 * DAY_IN_MS) return false;
+		return true;
+	});
 }

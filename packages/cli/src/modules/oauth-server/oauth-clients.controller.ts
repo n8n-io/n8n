@@ -1,14 +1,18 @@
 import {
+	DeleteOAuthClientQueryDto,
 	DeleteOAuthClientResponseDto,
 	InstanceMcpClientStatsResponseDto,
+	ListOAuthClientsQueryDto,
 	ListOAuthClientsResponseDto,
 	OAuthClientResponseDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Delete, Get, GlobalScope, Param, RestController } from '@n8n/decorators';
+import { Delete, Get, GlobalScope, Param, Query, RestController } from '@n8n/decorators';
+import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { OAuthServerService } from './oauth-server.service';
@@ -21,17 +25,24 @@ export class OAuthClientsController {
 	) {}
 
 	/**
-	 * Get all OAuth clients for the current user
+	 * Get connected OAuth clients. Defaults to the current user's consents;
+	 * `ownership=all` returns every user's consents and requires `mcp:manage`.
 	 */
 	@GlobalScope('mcp:oauth')
 	@Get('/')
 	async getAllClients(
 		req: AuthenticatedRequest,
 		_res: Response,
+		@Query query: ListOAuthClientsQueryDto,
 	): Promise<ListOAuthClientsResponseDto> {
-		this.logger.debug('Fetching all OAuth clients for user', { userId: req.user.id });
+		this.logger.debug('Fetching OAuth clients for user', {
+			userId: req.user.id,
+			ownership: query.ownership ?? 'mine',
+		});
 
-		const clients = await this.oauthServerService.getAllClients(req.user.id);
+		const { clients, totals } = await this.oauthServerService.getAllClients(req.user, {
+			ownership: query.ownership,
+		});
 
 		this.logger.debug(`Found ${clients.length} OAuth clients`);
 
@@ -45,12 +56,14 @@ export class OAuthClientsController {
 			updatedAt: client.updatedAt.toISOString(),
 			grantedAt: client.grantedAt,
 			scopes: client.scopes,
+			...(client.owner ? { owner: client.owner } : {}),
 		}));
 
 		return {
 			data: clientDtos,
 			count: clients.length,
 			scopeTools: this.oauthServerService.getInstanceScopeTools(),
+			totals,
 		};
 	}
 
@@ -66,8 +79,10 @@ export class OAuthClientsController {
 	}
 
 	/**
-	 * Delete an OAuth client by ID
-	 * This will cascade delete all related tokens, authorization codes, and user consents
+	 * Revoke a user's grant for an OAuth client (tokens, authorization codes,
+	 * consent). Defaults to the caller's own grant; revoking another user's
+	 * grant requires `mcp:manage`. The client registration is garbage-collected
+	 * once its last consent is gone.
 	 */
 	@GlobalScope('mcp:oauth')
 	@Delete('/:clientId')
@@ -75,19 +90,27 @@ export class OAuthClientsController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('clientId') clientId: string,
+		@Query query: DeleteOAuthClientQueryDto,
 	): Promise<DeleteOAuthClientResponseDto> {
+		const targetUserId = query.userId ?? req.user.id;
+		if (targetUserId !== req.user.id && !hasGlobalScope(req.user, 'mcp:manage')) {
+			throw new ForbiddenError('You are not allowed to revoke connected clients of other users');
+		}
+
 		this.logger.info('Deleting OAuth client', {
 			clientId,
 			userId: req.user.id,
+			targetUserId,
 			userEmail: req.user.email,
 		});
 
 		try {
-			await this.oauthServerService.deleteClient(clientId, req.user.id);
+			await this.oauthServerService.deleteClient(clientId, targetUserId);
 
 			this.logger.info('OAuth client deleted successfully', {
 				clientId,
 				userId: req.user.id,
+				targetUserId,
 			});
 
 			return {

@@ -79,8 +79,14 @@ export async function toggleWorkflowsMcpAccessApi(
 
 export async function fetchOAuthClients(
 	context: IRestApiContext,
+	options?: { ownership?: 'mine' | 'all' },
 ): Promise<ListOAuthClientsResponseDto> {
-	return await makeRestApiRequest(context, 'GET', '/mcp/oauth-clients');
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		'/mcp/oauth-clients',
+		options?.ownership ? { ownership: options.ownership } : undefined,
+	);
 }
 
 export async function fetchInstanceMcpClientStats(
@@ -92,11 +98,13 @@ export async function fetchInstanceMcpClientStats(
 export async function deleteOAuthClient(
 	context: IRestApiContext,
 	clientId: string,
+	userId?: string,
 ): Promise<DeleteOAuthClientResponseDto> {
 	return await makeRestApiRequest(
 		context,
 		'DELETE',
 		`/mcp/oauth-clients/${encodeURIComponent(clientId)}`,
+		userId ? { userId } : undefined,
 	);
 }
 

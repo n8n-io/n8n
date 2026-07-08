@@ -1,4 +1,4 @@
-import { within } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -13,9 +13,28 @@ vi.mock('@/app/components/TimeAgo.vue', () => ({
 	},
 }));
 
-vi.mock('@/features/ai/mcpAccess/mcp.store', () => ({
-	useMCPStore: () => ({
+const { mockMcpStore, mockHasScope } = vi.hoisted(() => ({
+	mockMcpStore: {
 		openConnectPopover: vi.fn(),
+		oauthClientsOwnership: 'mine' as 'mine' | 'all',
+		oauthClientTotals: { mine: 0 } as { mine: number; all?: number },
+		oauthClientOwners: [] as Array<{
+			id: string;
+			firstName: string | null;
+			lastName: string | null;
+			email: string;
+		}>,
+	},
+	mockHasScope: vi.fn().mockReturnValue(false),
+}));
+
+vi.mock('@/features/ai/mcpAccess/mcp.store', () => ({
+	useMCPStore: () => mockMcpStore,
+}));
+
+vi.mock('@/app/stores/rbac.store', () => ({
+	useRBACStore: () => ({
+		hasScope: mockHasScope,
 	}),
 }));
 
@@ -26,6 +45,10 @@ const createComponent = createComponentRenderer(OAuthClientsTable, {
 describe('OAuthClientsTable', () => {
 	afterEach(() => {
 		vi.clearAllMocks();
+		mockHasScope.mockReturnValue(false);
+		mockMcpStore.oauthClientsOwnership = 'mine';
+		mockMcpStore.oauthClientTotals = { mine: 0 };
+		mockMcpStore.oauthClientOwners = [];
 	});
 
 	describe('Loading state', () => {
@@ -123,6 +146,134 @@ describe('OAuthClientsTable', () => {
 			expect(clientNames[0]).toHaveTextContent('First Client');
 			expect(clientNames[1]).toHaveTextContent('Second Client');
 			expect(clientNames[2]).toHaveTextContent('Third Client');
+		});
+	});
+
+	describe('Mine/All tabs', () => {
+		it('should not render tabs for users without mcp:manage', () => {
+			const { queryByTestId } = createComponent({
+				props: {
+					clients: [createOAuthClient()],
+					loading: false,
+				},
+			});
+
+			expect(queryByTestId('mcp-clients-tabs')).not.toBeInTheDocument();
+		});
+
+		it('should render tabs with unfiltered totals for managers', () => {
+			mockHasScope.mockReturnValue(true);
+			mockMcpStore.oauthClientTotals = { mine: 2, all: 5 };
+
+			const { getByTestId } = createComponent({
+				props: {
+					clients: [createOAuthClient()],
+					loading: false,
+				},
+			});
+
+			const tabs = getByTestId('mcp-clients-tabs');
+			expect(tabs).toHaveTextContent('Mine');
+			expect(tabs).toHaveTextContent('2');
+			expect(tabs).toHaveTextContent('All');
+			expect(tabs).toHaveTextContent('5');
+		});
+
+		it('should emit update:ownership when switching tabs', async () => {
+			mockHasScope.mockReturnValue(true);
+			mockMcpStore.oauthClientTotals = { mine: 1, all: 2 };
+
+			const { getByText, emitted } = createComponent({
+				props: {
+					clients: [createOAuthClient()],
+					loading: false,
+				},
+			});
+
+			await userEvent.click(getByText('All'));
+
+			expect(emitted('update:ownership')).toEqual([['all']]);
+		});
+	});
+
+	describe('Search and filters', () => {
+		beforeEach(() => {
+			// disable the search debounce so assertions can run synchronously
+			sessionStorage.setItem('N8N_DEBOUNCE_MULTIPLIER', '0');
+		});
+
+		afterEach(() => {
+			sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
+		});
+
+		it('should narrow the rows by client name', async () => {
+			const clients = [
+				createOAuthClient({ id: 'client-1', name: 'Claude Code' }),
+				createOAuthClient({ id: 'client-2', name: 'Cursor' }),
+			];
+
+			const { getByTestId, getAllByTestId } = createComponent({
+				props: {
+					clients,
+					loading: false,
+				},
+			});
+
+			await userEvent.type(getByTestId('mcp-clients-search'), 'cursor');
+
+			await waitFor(() => {
+				const names = getAllByTestId('mcp-client-name');
+				expect(names).toHaveLength(1);
+				expect(names[0]).toHaveTextContent('Cursor');
+			});
+		});
+
+		it('should show a no-results message when the search matches nothing', async () => {
+			const { getByTestId, queryByTestId } = createComponent({
+				props: {
+					clients: [createOAuthClient({ name: 'Claude Code' })],
+					loading: false,
+				},
+			});
+
+			await userEvent.type(getByTestId('mcp-clients-search'), 'nothing matches this');
+
+			await waitFor(() => {
+				expect(getByTestId('mcp-clients-no-results')).toBeVisible();
+			});
+			// the connect CTA is reserved for a genuinely empty client list
+			expect(queryByTestId('mcp-oauth-create-client-button')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Connected by column', () => {
+		it('should not render the owner column in the mine view', () => {
+			const { queryByTestId } = createComponent({
+				props: {
+					clients: [createOAuthClient()],
+					loading: false,
+				},
+			});
+
+			expect(queryByTestId('mcp-client-owner-cell')).not.toBeInTheDocument();
+		});
+
+		it('should render the owner in the all view', () => {
+			mockHasScope.mockReturnValue(true);
+			mockMcpStore.oauthClientsOwnership = 'all';
+
+			const { getByTestId } = createComponent({
+				props: {
+					clients: [
+						createOAuthClient({
+							owner: { id: 'user-1', firstName: 'Jane', lastName: 'Doe', email: 'jane@n8n.io' },
+						}),
+					],
+					loading: false,
+				},
+			});
+
+			expect(getByTestId('mcp-client-owner-cell')).toHaveTextContent('Jane Doe');
 		});
 	});
 

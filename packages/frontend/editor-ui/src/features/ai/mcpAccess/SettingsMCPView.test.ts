@@ -66,7 +66,8 @@ const createComponent = createComponentRenderer(SettingsMCPView, {
 			},
 			OAuthClientsTable: {
 				inheritAttrs: true,
-				template: '<div>OAuth Clients Table</div>',
+				template:
+					"<div>OAuth Clients Table<button data-test-id=\"stub-revoke-client\" @click=\"$emit('revokeClient', { id: 'client-1', name: 'Claude Code', owner: { id: 'user-2', firstName: 'Jane', lastName: 'Doe', email: 'jane@n8n.io' } })\">Revoke</button></div>",
 			},
 		},
 	},
@@ -333,6 +334,32 @@ describe('SettingsMCPView', () => {
 
 			await waitFor(() => {
 				expect(mcpStore.getAllOAuthClients).toHaveBeenCalled();
+			});
+		});
+
+		it('should confirm before revoking and pass the consent owner to the store', async () => {
+			const { getByTestId, container } = createComponent({ pinia });
+			await nextTick();
+
+			await clickTab(container, 'tab-oauth');
+			await waitFor(() => {
+				expect(getByTestId('mcp-oauth-clients-table')).toBeVisible();
+			});
+
+			await userEvent.click(getByTestId('stub-revoke-client'));
+
+			// nothing is revoked until the dialog is confirmed
+			await waitFor(() => {
+				expect(
+					within(document.body).getByText('Revoke access for "Claude Code"?'),
+				).toBeInTheDocument();
+			});
+			expect(mcpStore.removeOAuthClient).not.toHaveBeenCalled();
+
+			await userEvent.click(within(document.body).getByRole('button', { name: 'Revoke' }));
+
+			await waitFor(() => {
+				expect(mcpStore.removeOAuthClient).toHaveBeenCalledWith('client-1', 'user-2');
 			});
 		});
 

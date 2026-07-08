@@ -239,7 +239,9 @@ export * from './evaluations';
 
 export {
 	OAuthClientResponseDto,
+	ListOAuthClientsQueryDto,
 	ListOAuthClientsResponseDto,
+	DeleteOAuthClientQueryDto,
 	DeleteOAuthClientResponseDto,
 	InstanceMcpClientStatsResponseDto,
 } from './oauth/oauth-client.dto';

@@ -4,7 +4,7 @@ import { setActivePinia, createPinia } from 'pinia';
 import * as mcpApi from './mcp.api';
 import { useMCPStore } from './mcp.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { createWorkflow } from './mcp.test.utils';
+import { createOAuthClient, createWorkflow } from './mcp.test.utils';
 
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
@@ -171,6 +171,72 @@ describe('mcp.store', () => {
 
 			expect(workflowsListStore.workflowsById['wf-1'].settings?.availableInMCP).toBe(false);
 			expect(mockWorkflowDocumentStore.mergeSettings).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('OAuth clients ownership', () => {
+		it('fetches with the current ownership and stores the totals', async () => {
+			const client = createOAuthClient();
+			const fetchSpy = vi.spyOn(mcpApi, 'fetchOAuthClients').mockResolvedValue({
+				data: [client],
+				count: 1,
+				totals: { mine: 1, all: 3 },
+			});
+
+			await store.getAllOAuthClients();
+
+			expect(fetchSpy).toHaveBeenCalledWith({}, { ownership: 'mine' });
+			expect(store.oauthClients).toEqual([client]);
+			expect(store.oauthClientTotals).toEqual({ mine: 1, all: 3 });
+		});
+
+		it('switches ownership and refetches', async () => {
+			const fetchSpy = vi.spyOn(mcpApi, 'fetchOAuthClients').mockResolvedValue({
+				data: [],
+				count: 0,
+				totals: { mine: 0, all: 0 },
+			});
+
+			await store.setOAuthClientsOwnership('all');
+
+			expect(store.oauthClientsOwnership).toBe('all');
+			expect(fetchSpy).toHaveBeenCalledWith({}, { ownership: 'all' });
+		});
+
+		it('dedupes and sorts consent owners across rows', async () => {
+			const jane = { id: 'user-1', firstName: 'Jane', lastName: 'Doe', email: 'jane@n8n.io' };
+			const adam = { id: 'user-2', firstName: 'Adam', lastName: 'Ant', email: 'adam@n8n.io' };
+			vi.spyOn(mcpApi, 'fetchOAuthClients').mockResolvedValue({
+				data: [
+					createOAuthClient({ id: 'a', owner: jane }),
+					createOAuthClient({ id: 'b', owner: adam }),
+					createOAuthClient({ id: 'c', owner: jane }),
+				],
+				count: 3,
+				totals: { mine: 1, all: 3 },
+			});
+
+			await store.getAllOAuthClients();
+
+			expect(store.oauthClientOwners).toEqual([adam, jane]);
+		});
+
+		it('passes the target userId on revoke and refetches the list', async () => {
+			const deleteSpy = vi.spyOn(mcpApi, 'deleteOAuthClient').mockResolvedValue({
+				success: true,
+				message: 'ok',
+			});
+			const fetchSpy = vi.spyOn(mcpApi, 'fetchOAuthClients').mockResolvedValue({
+				data: [],
+				count: 0,
+				totals: { mine: 0, all: 0 },
+			});
+
+			await store.removeOAuthClient('client-1', 'user-2');
+
+			expect(deleteSpy).toHaveBeenCalledWith({}, 'client-1', 'user-2');
+			expect(fetchSpy).toHaveBeenCalled();
+			expect(store.oauthClientTotals).toEqual({ mine: 0, all: 0 });
 		});
 	});
 

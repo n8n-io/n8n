@@ -15,7 +15,9 @@ import type {
 } from '@modelcontextprotocol/sdk/shared/auth.js';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
 
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
@@ -27,6 +29,7 @@ import { OAuthAuthorizationCodeService } from './oauth-authorization-code.servic
 import { OAuthSessionService } from './oauth-session.service';
 import { OAuthTokenService } from './oauth-token.service';
 import { OAuthClientLimitReachedError } from './oauth.errors';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 /** Maximum number of redirect URIs per client */
 const MAX_REDIRECT_URIS = 10;
@@ -38,7 +41,12 @@ export type ConnectedOAuthClient = Omit<
 > & {
 	grantedAt: number;
 	scopes: string[];
+	/** Consent owner; present only when listing across users (ownership=all). */
+	owner?: { id: string; firstName: string | null; lastName: string | null; email: string };
 };
+
+/** Per-ownership consent totals for the connected-clients tab badges. */
+export type ConnectedOAuthClientTotals = { mine: number; all?: number };
 
 /** Maximum length for a single redirect URI */
 const MAX_REDIRECT_URI_LENGTH = 2048;
@@ -430,23 +438,55 @@ export class OAuthServerService implements OAuthServerProvider {
 	}
 
 	/**
-	 * Get all OAuth clients the user has consented to (excluding sensitive
-	 * data), together with the grant details of the consent itself.
+	 * Get OAuth clients users have consented to (excluding sensitive data),
+	 * together with the grant details of each consent. `ownership: 'all'`
+	 * returns every user's consents with owner info and requires `mcp:manage`.
 	 */
-	async getAllClients(userId: string): Promise<ConnectedOAuthClient[]> {
-		// Get all consents for the user with client information
-		const userConsents = await this.userConsentRepository.findByUserWithClient(userId);
+	async getAllClients(
+		user: User,
+		options: { ownership?: 'mine' | 'all' } = {},
+	): Promise<{ clients: ConnectedOAuthClient[]; totals: ConnectedOAuthClientTotals }> {
+		const canSeeAll = hasGlobalScope(user, 'mcp:manage');
+		const listAll = options.ownership === 'all';
 
-		// Extract and sanitize the client information
-		return userConsents.map((consent) => {
+		if (listAll && !canSeeAll) {
+			throw new ForbiddenError('You are not allowed to list connected clients of other users');
+		}
+
+		const consents = listAll
+			? await this.userConsentRepository.findAllWithClientAndUser()
+			: await this.userConsentRepository.findByUserWithClient(user.id);
+
+		const clients = consents.map((consent) => {
 			const { clientSecret, clientSecretExpiresAt, ...sanitizedClient } = consent.client;
 			return {
 				...sanitizedClient,
 				// bigint columns come back as strings on Postgres
 				grantedAt: Number(consent.grantedAt),
 				scopes: consent.scope,
+				...(listAll
+					? {
+							owner: {
+								id: consent.user.id,
+								firstName: consent.user.firstName ?? null,
+								lastName: consent.user.lastName ?? null,
+								email: consent.user.email,
+							},
+						}
+					: {}),
 			};
 		});
+
+		// Reuse the fetched set's size where it already equals the population.
+		const mine = listAll
+			? await this.userConsentRepository.countBy({ userId: user.id })
+			: clients.length;
+		const totals: ConnectedOAuthClientTotals = { mine };
+		if (canSeeAll) {
+			totals.all = listAll ? clients.length : await this.userConsentRepository.count();
+		}
+
+		return { clients, totals };
 	}
 
 	/** Tool names each scope unlocks on this instance, for the clients list UI. */

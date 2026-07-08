@@ -19,4 +19,14 @@ export class UserConsentRepository extends Repository<UserConsent> {
 			order: { grantedAt: 'DESC' },
 		});
 	}
+
+	/**
+	 * Find all consents across users with client and owner information
+	 */
+	async findAllWithClientAndUser(): Promise<UserConsent[]> {
+		return await this.find({
+			relations: ['client', 'user'],
+			order: { grantedAt: 'DESC' },
+		});
+	}
 }
