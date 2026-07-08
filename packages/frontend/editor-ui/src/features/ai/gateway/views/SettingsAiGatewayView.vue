@@ -19,6 +19,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY, VIEWS } from '@/app/constants';
+import { formatWalletBalance } from '@/app/utils/aiGatewayUtils';
 
 const i18n = useI18n();
 const router = useRouter();
@@ -33,13 +34,7 @@ const offset = ref(0);
 const PAGE_SIZE = 50;
 
 const walletBalance = computed(() => aiGatewayStore.balance);
-const walletBadgeText = computed(() =>
-	walletBalance.value !== undefined
-		? i18n.baseText('aiGateway.wallet.balanceRemaining', {
-				interpolate: { balance: `$${Number(walletBalance.value).toFixed(2)}` },
-			})
-		: undefined,
-);
+const walletBadgeText = computed(() => formatWalletBalance(walletBalance.value));
 const entries = computed(() => aiGatewayStore.usageEntries);
 const total = computed(() => aiGatewayStore.usageTotal);
 const hasMore = computed(() => offset.value + PAGE_SIZE < total.value);

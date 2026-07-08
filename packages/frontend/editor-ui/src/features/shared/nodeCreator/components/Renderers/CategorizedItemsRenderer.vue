@@ -8,6 +8,7 @@ import CategoryItem from '../ItemTypes/CategoryItem.vue';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { formatWalletBalance } from '@/app/utils/aiGatewayUtils';
 
 import CommunityNodeInstallHint from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeInstallHint.vue';
 
@@ -40,15 +41,9 @@ const i18n = useI18n();
 
 const aiGatewayStore = useAiGatewayStore();
 const settingsStore = useSettingsStore();
-const creditsBalanceText = computed(() => {
-	const balance = aiGatewayStore.balance;
-	if (!props.showCreditsBalance || balance === undefined) return undefined;
-	return balance <= 0
-		? i18n.baseText('aiGateway.wallet.noCredits')
-		: i18n.baseText('aiGateway.wallet.balanceRemaining', {
-				interpolate: { balance: `$${Number(balance).toFixed(2)}` },
-			});
-});
+const creditsBalanceText = computed(() =>
+	props.showCreditsBalance ? formatWalletBalance(aiGatewayStore.balance) : undefined,
+);
 
 onMounted(() => {
 	if (props.showCreditsBalance && settingsStore.isAiGatewayEnabled) {

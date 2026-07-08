@@ -8,6 +8,7 @@ import { VIEWS } from '../constants';
 import { useUIStore } from '../stores/ui.store';
 import { useSettingsStore } from '../stores/settings.store';
 import { hasPermission } from '../utils/rbac/permissions';
+import { formatWalletBalance } from '../utils/aiGatewayUtils';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
@@ -63,12 +64,7 @@ export function useSettingsItems() {
 				available:
 					settingsStore.isAiGatewayEnabled && canUserAccessRouteByName(VIEWS.AI_GATEWAY_SETTINGS),
 				route: { to: { name: VIEWS.AI_GATEWAY_SETTINGS } },
-				creditsTag:
-					balance.value !== undefined
-						? i18n.baseText('aiGateway.wallet.balanceRemaining', {
-								interpolate: { balance: `$${Number(balance.value).toFixed(2)}` },
-							})
-						: undefined,
+				creditsTag: formatWalletBalance(balance.value),
 			},
 			{
 				id: 'settings-roles',
