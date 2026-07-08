@@ -76,6 +76,9 @@ export type HistoricalHydrationStatus = 'applied' | 'stale' | 'skipped';
 
 const MAX_DEBUG_EVENTS = 1000;
 
+/** Silence window after which an active run with no stream traffic counts as stalled. */
+const GENERATION_STALL_TIMEOUT_MS = 60_000;
+
 /**
  * Cross-runtime hooks the store wires up at creation time.
  *
@@ -122,6 +125,29 @@ function collectPendingConfirmations(
 	for (const child of node.children) {
 		collectPendingConfirmations(child, messageId, resolved, out);
 	}
+}
+
+/**
+ * Whether any tool call in the tree still waits on user input. Broader than
+ * `collectPendingConfirmations`: plan-review and expired confirmations also
+ * pause the run, so the stall watchdog must not count them as thinking time.
+ */
+function hasUnresolvedConfirmation(
+	node: InstanceAiAgentNode,
+	resolved: Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>,
+): boolean {
+	for (const tc of node.toolCalls) {
+		if (
+			tc.confirmation &&
+			tc.isLoading &&
+			tc.confirmationStatus !== 'approved' &&
+			tc.confirmationStatus !== 'denied' &&
+			!resolved.has(tc.confirmation.requestId)
+		) {
+			return true;
+		}
+	}
+	return node.children.some((child) => hasUnresolvedConfirmation(child, resolved));
 }
 
 function findLatestTasksFromMessages(messages: InstanceAiMessage[]): TaskList | null {
@@ -389,6 +415,47 @@ export function createThreadRuntime(
 		{ flush: 'sync' },
 	);
 
+	// --- Telemetry: 'Builder generation stalled' ---
+	// Fires when the active run has produced nothing on the stream for a minute.
+	// A run paused on user input (confirmation, plan review) isn't stalled, so
+	// the watchdog disarms for those. Every received SSE event re-arms it, so it
+	// fires at most once per silent stretch.
+	let generationStallTimer: ReturnType<typeof setTimeout> | null = null;
+
+	// Scoped to the active run's message (not all messages) so a stale
+	// confirmation left on an older message can't suppress stall detection.
+	const isAwaitingUserInput = computed(() => {
+		const runId = activeRunId.value;
+		if (runId === null) return false;
+		const activeMessage = messages.value.find(
+			(m) => m.role === 'assistant' && (m.runId === runId || (m.runIds?.includes(runId) ?? false)),
+		);
+		if (!activeMessage?.agentTree) return false;
+		return hasUnresolvedConfirmation(activeMessage.agentTree, resolvedConfirmationIds);
+	});
+
+	const isGenerationPending = computed(() => isStreaming.value && !isAwaitingUserInput.value);
+
+	function disarmGenerationStallWatchdog(): void {
+		if (generationStallTimer === null) return;
+		clearTimeout(generationStallTimer);
+		generationStallTimer = null;
+	}
+
+	/** (Re)start the silence countdown while generation is pending, stop it otherwise. */
+	function resetGenerationStallWatchdog(): void {
+		disarmGenerationStallWatchdog();
+		if (!isGenerationPending.value) return;
+		generationStallTimer = setTimeout(() => {
+			generationStallTimer = null;
+			telemetry.track('Builder generation stalled', { thread_id: threadId });
+		}, GENERATION_STALL_TIMEOUT_MS);
+	}
+
+	// Covers arm/disarm transitions that happen without stream traffic — e.g.
+	// POST /message sets the run id while SSE stays silent (the primary stall case).
+	watch(isGenerationPending, resetGenerationStallWatchdog);
+
 	/**
 	 * Derive a single contextual follow-up suggestion from the last completed
 	 * assistant message. Shown as the input placeholder + Tab to autocomplete.
@@ -486,6 +553,7 @@ export function createThreadRuntime(
 		if (conf.setupRequests?.length) return false;
 		if (conf.credentialRequests?.length) return false;
 		if (conf.questions?.length) return false;
+		if (conf.channelConfig) return false;
 		return true;
 	}
 
@@ -566,6 +634,8 @@ export function createThreadRuntime(
 				},
 				parsed.data,
 			);
+			// Anything received on the stream means generation isn't stalled.
+			resetGenerationStallWatchdog();
 			if (parsed.data.type === 'tasks-update') {
 				latestTasks.value = parsed.data.payload.tasks;
 			}
@@ -757,6 +827,7 @@ export function createThreadRuntime(
 		runStateByGroupId.clear();
 		groupIdByRunId.clear();
 		lastEventId.value = undefined;
+		disarmGenerationStallWatchdog();
 	}
 
 	function dispose(): void {

@@ -20,7 +20,7 @@ export class VariablesPage extends BasePage {
 	}
 
 	getEmptyResourcesListNewVariableButton() {
-		return this.page.getByRole('button', { name: 'Add first variable' });
+		return this.getResourcesListEmptyState().getByRole('button', { name: 'Create variable' });
 	}
 
 	getSearchBar() {

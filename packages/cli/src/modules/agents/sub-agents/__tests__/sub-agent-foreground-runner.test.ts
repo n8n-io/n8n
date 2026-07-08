@@ -11,6 +11,7 @@ import type {
 	SubAgentSpawnRequest,
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -158,6 +159,7 @@ describe('SubAgentForegroundRunner', () => {
 			skills: runtimeSource.skills,
 			runtimeProfile: 'sub-agent',
 			parentAgentIdForDelegation: undefined,
+			user: undefined,
 		});
 		expect(childAgent.close).toHaveBeenCalledTimes(1);
 		expect(childAgent.stream).toHaveBeenCalledWith(
@@ -184,6 +186,20 @@ describe('SubAgentForegroundRunner', () => {
 					}),
 				},
 			}),
+		);
+	});
+
+	it('filters sub-agent tools by the delegating user access when the parent run has a user', async () => {
+		const user = mock<User>({ id: 'user-1' });
+
+		await runner.runForeground(spawnRequest, {
+			projectId,
+			credentialProvider,
+			user,
+		});
+
+		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
+			expect.objectContaining({ user }),
 		);
 	});
 

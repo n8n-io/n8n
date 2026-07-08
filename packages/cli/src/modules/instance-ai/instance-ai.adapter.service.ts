@@ -73,7 +73,7 @@ import {
 	WorkflowEntity,
 	WorkflowRepository,
 } from '@n8n/db';
-import { Logger } from '@n8n/backend-common';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
@@ -116,6 +116,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
+import { InstanceAiAgentBuilderAdapterService } from '@/modules/agents/instance-ai-agent-builder.adapter';
 import { NodeCatalogService } from '@/node-catalog';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
@@ -269,10 +270,14 @@ export class InstanceAiAdapterService {
 			projectId?: string;
 			/** Eval-only: restrict the credential `list()` view to these IDs. */
 			credentialIdAllowlist?: string[];
+			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
+			 *  assistant can create one via the create_agent tool. */
+			agentId?: string;
 		},
 	): InstanceAiContext {
-		const { searchProxyConfig, pushRef, threadId, projectId, credentialIdAllowlist } =
+		const { searchProxyConfig, pushRef, threadId, projectId, credentialIdAllowlist, agentId } =
 			options ?? {};
+		const agentBuilderAdapter = this.getAgentBuilderAdapter();
 		return {
 			userId: user.id,
 			projectId,
@@ -296,7 +301,29 @@ export class InstanceAiAdapterService {
 			logger: this.logger,
 			nodeTypesProvider: this.nodeTypes,
 			allowSendingParameterValues: this.allowSendingParameterValues,
+			...(agentBuilderAdapter
+				? { agentBuilderService: agentBuilderAdapter.createAdapter(user, projectId) }
+				: {}),
+			...(agentBuilderAdapter && agentId && projectId
+				? { agentBuilderTarget: { agentId, projectId } }
+				: {}),
 		};
+	}
+
+	/**
+	 * Resolve the agent-builder adapter only when the `agents` module is active.
+	 * The adapter class is statically imported (so its `@Service` is always
+	 * registered), so the module-enabled check is what gates
+	 * agent-building. Returns null when the module is off, so the tools are simply
+	 * absent.
+	 */
+	private getAgentBuilderAdapter(): InstanceAiAgentBuilderAdapterService | null {
+		if (!Container.get(ModuleRegistry).isActive('agents')) return null;
+		try {
+			return Container.get(InstanceAiAgentBuilderAdapterService);
+		} catch {
+			return null;
+		}
 	}
 
 	private getTemplatesService(): BuilderTemplatesServiceInstance {

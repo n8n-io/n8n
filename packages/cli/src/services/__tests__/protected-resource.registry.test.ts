@@ -9,6 +9,7 @@ const resourceA: ProtectedResource = {
 	getResourceUrl: () => 'https://n8n.example.com/mcp-server/http',
 	getAudiences: () => ['https://n8n.example.com/mcp-server/http', 'mcp-server-api'],
 	scopes: ['tool:listWorkflows', 'tool:getWorkflowDetails'],
+	authorize: async () => true,
 	isDefault: true,
 };
 
@@ -16,6 +17,7 @@ const resourceB: ProtectedResource = {
 	id: 'workflow-trigger',
 	getResourceUrl: () => 'https://n8n.example.com/webhook/wf-1/mcp',
 	getAudiences: () => ['https://n8n.example.com/webhook/wf-1/mcp'],
+	authorize: async () => true,
 	scopes: ['tool:listWorkflows', 'workflow:execute'],
 };
 

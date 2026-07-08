@@ -1,3 +1,4 @@
+import { nextTick } from 'vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { describe, test, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
@@ -1332,6 +1333,7 @@ describe('createThreadRuntime - session always-allow', () => {
 			toolName: string;
 			args?: Record<string, unknown>;
 			severity?: 'info' | 'warning' | 'destructive';
+			channelConfig?: { integrationType: string; agentId: string };
 		},
 	): void {
 		runtime.messages.push({
@@ -1360,6 +1362,7 @@ describe('createThreadRuntime - session always-allow', () => {
 							requestId: opts.requestId,
 							severity: opts.severity ?? 'info',
 							message: 'Approve?',
+							...(opts.channelConfig ? { channelConfig: opts.channelConfig } : {}),
 						},
 					},
 				],
@@ -1385,6 +1388,23 @@ describe('createThreadRuntime - session always-allow', () => {
 			kind: 'approval',
 			approved: true,
 		});
+	});
+
+	it('does not auto-approve channel-setup confirmations even when the key matches', async () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('configure_channel', {});
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-channel',
+			requestId: 'req-channel',
+			toolName: 'configure_channel',
+			args: {},
+			channelConfig: { integrationType: 'slack', agentId: 'agent-1' },
+		});
+
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(runtime.resolvedConfirmationIds.has('req-channel')).toBe(false);
+		expect(mockPostConfirmation).not.toHaveBeenCalled();
 	});
 
 	it('does not auto-approve destructive confirmations even when the key matches', async () => {
@@ -1664,5 +1684,124 @@ describe('createThreadRuntime - "User viewed new builder workflow" telemetry', (
 			'User viewed new builder workflow',
 			expect.anything(),
 		);
+	});
+});
+
+describe('createThreadRuntime - "Builder generation stalled" telemetry', () => {
+	let registry: RuntimeRegistry;
+
+	const stalledCalls = () =>
+		mockTelemetryTrack.mock.calls.filter(([event]) => event === 'Builder generation stalled');
+
+	beforeEach(async () => {
+		vi.useFakeTimers();
+		setupRuntimePinia();
+		capturedOnMessage = null;
+		registry = createRuntimeRegistry();
+		activeThreadId = 'thread-active';
+		activeRuntime(registry).connectSSE();
+		// Flush the MockEventSource constructor's setTimeout(0).
+		await vi.advanceTimersByTimeAsync(0);
+		expect(capturedOnMessage).not.toBeNull();
+	});
+
+	afterEach(() => {
+		activeRuntime(registry).closeSSE();
+		vi.useRealTimers();
+		vi.clearAllMocks();
+	});
+
+	test('fires once with thread_id after a minute of stream silence during an active run', async () => {
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+
+		await vi.advanceTimersByTimeAsync(59_000);
+		expect(stalledCalls()).toHaveLength(0);
+
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(stalledCalls()).toHaveLength(1);
+		expect(stalledCalls()[0][1]).toEqual({ thread_id: 'thread-active' });
+
+		// Continued silence does not re-fire — one event per silent stretch.
+		await vi.advanceTimersByTimeAsync(180_000);
+		expect(stalledCalls()).toHaveLength(1);
+	});
+
+	test('every received stream event re-arms the countdown', async () => {
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+
+		await vi.advanceTimersByTimeAsync(50_000);
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'text-delta',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { text: 'hello' },
+			}),
+		);
+
+		// 100s since run start, but only 50s since the last event — not stalled.
+		await vi.advanceTimersByTimeAsync(50_000);
+		expect(stalledCalls()).toHaveLength(0);
+
+		await vi.advanceTimersByTimeAsync(10_000);
+		expect(stalledCalls()).toHaveLength(1);
+	});
+
+	test('does not fire when the run finishes within the window', async () => {
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+		await vi.advanceTimersByTimeAsync(30_000);
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'run-finish',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { status: 'completed' },
+			}),
+		);
+
+		await vi.advanceTimersByTimeAsync(180_000);
+		expect(stalledCalls()).toHaveLength(0);
+	});
+
+	test('does not fire while the run waits on a user confirmation', async () => {
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'tool-call',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { toolCallId: 'tc-1', toolName: 'dangerous-tool', args: {} },
+			}),
+		);
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'confirmation-request',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					requestId: 'req-1',
+					toolCallId: 'tc-1',
+					toolName: 'dangerous-tool',
+					args: {},
+					severity: 'warning',
+					message: 'Are you sure?',
+				},
+			}),
+		);
+
+		await vi.advanceTimersByTimeAsync(180_000);
+		expect(stalledCalls()).toHaveLength(0);
+	});
+
+	test('arms when a message send starts a run while the stream stays silent', async () => {
+		mockPostMessage.mockResolvedValueOnce({ runId: 'run-silent' });
+
+		await activeRuntime(registry).sendMessage('build me a workflow');
+		// Let the isGenerationPending watcher observe the new run id.
+		await nextTick();
+
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(stalledCalls()).toHaveLength(1);
+		expect(stalledCalls()[0][1]).toEqual({ thread_id: 'thread-active' });
 	});
 });

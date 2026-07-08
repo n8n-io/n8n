@@ -683,27 +683,27 @@ function renderPerTestCaseDetails(
 		const slug = slugByTestCase?.get(tc.testCase);
 		return slug ? `\`${slug}\`` : `\`${caseDisplayPrompt(tc.testCase).slice(0, 70)}\``;
 	};
-	if (totalRuns > 1) {
-		lines.push(`| Workflow | Status | pass@${totalRuns} | pass^${totalRuns} |`);
-		lines.push('|---|---|---|---|');
-		for (const tc of testCases) {
-			const units = [
-				...tc.executionScenarios.filter((sa) => sa.evaluatedCount > 0),
-				...evaluatedBuildExpectations(tc),
-			];
-			const meanPassAtK = units.length
-				? Math.round(
-						(units.reduce((sum, unit) => sum + (unit.passAtK[unit.passAtK.length - 1] ?? 0), 0) /
-							units.length) *
-							100,
-					)
-				: 0;
-			const meanPassHatK = units.length
-				? Math.round(
-						(units.reduce((sum, unit) => sum + (unit.passHatK[unit.passHatK.length - 1] ?? 0), 0) /
-							units.length) *
-							100,
-					)
+		if (totalRuns > 1) {
+			lines.push(`| Workflow | Status | pass@${totalRuns} | pass^${totalRuns} |`);
+			lines.push('|---|---|---|---|');
+			for (const tc of testCases) {
+				const units = [
+					...tc.executionScenarios.filter((sa) => sa.evaluatedCount > 0),
+					...evaluatedBuildExpectations(tc),
+				];
+				const meanPassAtK = units.length
+					? Math.round(
+							(units.reduce((sum, unit) => sum + (unit.passAtK[unit.passAtK.length - 1] ?? 0), 0) /
+								units.length) *
+								100,
+						)
+					: 0;
+				const meanPassHatK = units.length
+					? Math.round(
+							(units.reduce((sum, unit) => sum + (unit.passHatK[unit.passHatK.length - 1] ?? 0), 0) /
+								units.length) *
+								100,
+						)
 				: 0;
 			lines.push(
 				`| ${renderName(tc)} | ${getCheckedRunCount(tc)}/${totalRuns} | ${meanPassAtK}% | ${meanPassHatK}% |`,

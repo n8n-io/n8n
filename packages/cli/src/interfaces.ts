@@ -188,6 +188,12 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 	is_manual: boolean;
 	crashed?: boolean;
 	used_private_credentials?: boolean;
+	/** Number of nodes that attempted to resolve a private credential (regardless of success). */
+	private_credentials_attempted_count?: number;
+	/** Number of nodes that successfully resolved a private credential. */
+	private_credentials_resolved_count?: number;
+	/** Effective resolver id the execution ran with (workflow override or seeded system resolver). */
+	credential_resolver_id?: string;
 	execution_source?: WorkflowExecutionSource;
 	mock_data_sources?: string;
 }
