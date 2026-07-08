@@ -25,6 +25,17 @@ export class InvalidRetentionOptionsError extends Error {
 }
 
 /**
+ * Raised when a scheduler is composed with unusable lifecycle options
+ * (e.g. a jitter ratio that would allow a zero or negative delay between ticks).
+ */
+export class InvalidLifecycleOptionsError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'InvalidLifecycleOptionsError';
+	}
+}
+
+/**
  * Raised when a second `TaskHandler` is registered for a task type that
  * already has one: a wiring bug at the callsite, caught at registration so
  * the losing handler doesn't silently shadow the other.

@@ -46,6 +46,14 @@ connected.)
    authored case ([SKILL.md](SKILL.md), [`case-shapes.md`](case-shapes.md)). The
    failure mode is the anchor; the conversation is yours to write, in the user's
    voice.
+5. **Push it to a curated suite** (don't commit the JSON) with
+   `eval:langtracer-push` — see
+   [Push to a lang-tracer suite](SKILL.md#push-to-a-lang-tracer-suite). Exception:
+   seeded cases (`seedThread` / `seedFile` / `priorConversation`) can't be pushed —
+   the case-write API rejects every seeding mode, so the push lists them under
+   `skipped:`. And a `seedThread` case shouldn't be committed either — it dies when
+   its trace is pruned or deleted — so it has no durable home; that's exactly why
+   step 4 turns the confirmed failure into a durable synthetic case.
 
 ## Two practical notes on `get_conversation_analysis`
 

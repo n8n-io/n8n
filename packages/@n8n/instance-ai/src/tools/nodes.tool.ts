@@ -66,10 +66,12 @@ const nodeRequestObjectSchema = z.object({
 	mode: z.string().optional().describe('Mode discriminator for split nodes'),
 });
 
-const nodeRequestSchema = z.union([
+export const nodeRequestSchema = z.union([
 	z.string().describe(NODE_TYPE_ID_DESCRIPTION),
 	nodeRequestObjectSchema,
 ]);
+
+export type NodeTypeRequest = z.infer<typeof nodeRequestSchema>;
 
 const typeDefinitionAction = z.object({
 	action: z
@@ -234,29 +236,18 @@ async function handleDescribe(
 	}
 }
 
-async function handleTypeDefinition(
+/**
+ * Resolve TypeScript type definitions for a validated list of node requests.
+ * Shared by the consolidated `nodes` tool's `type-definition` action and the
+ * agent-builder's `get_node_types` tool so both stay on one implementation.
+ */
+export async function resolveNodeTypeDefinitions(
 	context: InstanceAiContext,
-	input: Extract<FullInput, { action: 'type-definition' }>,
+	nodeTypes: NodeTypeRequest[],
 ) {
-	// Native tool validation uses the flattened top-level schema (required for
-	// Anthropic's `type: "object"` constraint), which makes every variant field
-	// optional. Re-assert the variant contract so missing/invalid inputs return
-	// a structured error the model can self-correct from, instead of crashing
-	// downstream on `input.nodeTypes.map`.
-	const parsed = typeDefinitionAction.safeParse(input);
-	if (!parsed.success) {
-		return {
-			definitions: [],
-			error: parsed.error.issues
-				.map((i) => `${i.path.join('.') || '<root>'}: ${i.message}`)
-				.join('; '),
-		};
-	}
-	const { nodeTypes } = parsed.data;
-
 	if (!context.nodeService.getNodeTypeDefinition) {
 		return {
-			definitions: nodeTypes.map((req: z.infer<typeof nodeRequestSchema>) => ({
+			definitions: nodeTypes.map((req) => ({
 				nodeType: typeof req === 'string' ? req : req.nodeType,
 				content: '',
 				error: 'Node type definitions are not available.',
@@ -265,7 +256,7 @@ async function handleTypeDefinition(
 	}
 
 	const definitions = await Promise.all(
-		nodeTypes.map(async (req: z.infer<typeof nodeRequestSchema>) => {
+		nodeTypes.map(async (req) => {
 			const nodeType = typeof req === 'string' ? req : req.nodeType;
 			const options = typeof req === 'string' ? undefined : req;
 
@@ -297,6 +288,28 @@ async function handleTypeDefinition(
 	);
 
 	return { definitions };
+}
+
+async function handleTypeDefinition(
+	context: InstanceAiContext,
+	input: Extract<FullInput, { action: 'type-definition' }>,
+) {
+	// Native tool validation uses the flattened top-level schema (required for
+	// Anthropic's `type: "object"` constraint), which makes every variant field
+	// optional. Re-assert the variant contract so missing/invalid inputs return
+	// a structured error the model can self-correct from, instead of crashing
+	// downstream on `input.nodeTypes.map`.
+	const parsed = typeDefinitionAction.safeParse(input);
+	if (!parsed.success) {
+		return {
+			definitions: [],
+			error: parsed.error.issues
+				.map((i) => `${i.path.join('.') || '<root>'}: ${i.message}`)
+				.join('; '),
+		};
+	}
+
+	return await resolveNodeTypeDefinitions(context, parsed.data.nodeTypes);
 }
 
 // eslint-disable-next-line @typescript-eslint/require-await

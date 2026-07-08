@@ -91,6 +91,68 @@ describe('Executor.claimAndSchedule', () => {
 		expect(claimed).toEqual([task]);
 	});
 
+	it('hands back a claim that resolves after stop instead of arming post-stop timers', async () => {
+		const { store, registry, timer, executor } = setup();
+		const task = claimedTask();
+		registry.registeredTypes.mockReturnValue(['workflow:schedule-trigger']);
+		// The claim hangs (slow storage) across the shutdown.
+		let resolveClaim!: (tasks: ClaimedTask[]) => void;
+		store.claimDueTasks.mockImplementation(
+			async () =>
+				await new Promise<ClaimedTask[]>((resolve) => {
+					resolveClaim = resolve;
+				}),
+		);
+		store.releaseClaim.mockResolvedValue(1);
+
+		const pending = executor.claimAndSchedule(HOST);
+		await executor.stop();
+		resolveClaim([task]);
+
+		expect(await pending).toEqual([]);
+		expect(timer.schedule).not.toHaveBeenCalled();
+		expect(store.releaseClaim).toHaveBeenCalledWith({
+			host: HOST,
+			id: task.id,
+			claimedEpoch: task.leaseEpoch,
+		});
+	});
+
+	it('hands back the claim of an abandoned tick (aborted signal) instead of scheduling it', async () => {
+		const { store, registry, timer, executor } = setup();
+		const task = claimedTask();
+		registry.registeredTypes.mockReturnValue(['workflow:schedule-trigger']);
+		store.claimDueTasks.mockResolvedValue([task]);
+		store.releaseClaim.mockResolvedValue(1);
+		// The driver abandoned this tick at its timeout before the claim resolved.
+		const controller = new AbortController();
+		controller.abort();
+
+		const claimed = await executor.claimAndSchedule(HOST, controller.signal);
+
+		expect(claimed).toEqual([]);
+		expect(timer.schedule).not.toHaveBeenCalled();
+		expect(store.releaseClaim).toHaveBeenCalledWith({
+			host: HOST,
+			id: task.id,
+			claimedEpoch: task.leaseEpoch,
+		});
+	});
+
+	it('a failed hand-back is reported and left to the reaper, like any release failure', async () => {
+		const { store, registry, hooks, executor } = setup();
+		const task = claimedTask();
+		registry.registeredTypes.mockReturnValue(['workflow:schedule-trigger']);
+		store.claimDueTasks.mockResolvedValue([task]);
+		const failure = new Error('db down');
+		store.releaseClaim.mockRejectedValue(failure);
+		const controller = new AbortController();
+		controller.abort();
+
+		await expect(executor.claimAndSchedule(HOST, controller.signal)).resolves.toEqual([]);
+		expect(hooks.onReleaseError).toHaveBeenCalledWith(task.id, failure);
+	});
+
 	it('scheduled callback dispatches the task, and a mid-fire rejection is reported not thrown', async () => {
 		const { store, registry, timer, hooks, executor } = setup();
 		const task = claimedTask();

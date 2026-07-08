@@ -20,8 +20,11 @@ export interface LoadBalancerMeta {
 export type LoadBalancerResult = ServiceResult<LoadBalancerMeta>;
 
 // Production paths the `n8n webhook` proc serves. Test/waiting/form-test paths
-// stay on main, per `packages/cli/src/commands/webhook.ts`.
-const WEBHOOK_PROC_PATHS = ['/webhook/*', '/form/*'] as const;
+// stay on main, per `packages/cli/src/commands/webhook.ts`. `/chat` is the chat
+// widget's WebSocket endpoint: the widget always connects to the origin that
+// served the chat webhook, so it must route to the webhook procs too — same as
+// production setups where WEBHOOK_URL points at the dedicated webhook server.
+const WEBHOOK_PROC_PATHS = ['/webhook/*', '/form/*', '/chat'] as const;
 
 function buildCaddyConfig(
 	mainUpstreams: string[],
