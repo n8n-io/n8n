@@ -268,6 +268,25 @@ export interface BuildExpectationResult {
 	incomplete?: boolean;
 }
 
+/**
+ * Verdict for one captured artifact (workflow excluded — it's graded via the
+ * existing scenario/expectation path). Lives here rather than
+ * `harness/artifacts/types.ts` to avoid a cycle: that file already imports
+ * `ArtifactType`/`BuildExpectationResult` from here.
+ */
+export interface ArtifactVerdict {
+	type: ArtifactType;
+	/** Artifact id (workflow/agent id, or owning-workflow id for config-eval). '(none)' when expected-but-missing. */
+	id: string;
+	pass: boolean;
+	/** Per-assertion judge verdicts, when the artifact was fetched + judged. */
+	expectationResults?: BuildExpectationResult[];
+	/** True when the artifact type was produced but not declared in the case's expectedArtifacts. */
+	unexpected?: boolean;
+	/** Human-readable explanation for enforcement fails (unexpected / not-produced / fetch error). */
+	reason?: string;
+}
+
 export interface WorkflowTestCaseResult {
 	testCase: WorkflowTestCase;
 	/** Source-file slug (matches the PR-comment / comparison label, for consistency). */
@@ -291,6 +310,9 @@ export interface WorkflowTestCaseResult {
 	n8nBaseUrl?: string;
 	/** Per-run LLM step debug captured from the instance-ai debug API after build. */
 	runDebug?: InstanceAiRunDebugResponse[];
+	/** Per-artifact verdicts for non-workflow artifacts (agent, config-eval) captured
+	 *  after the build. Undefined for workflow-only cases (the common case). */
+	artifactResults?: ArtifactVerdict[];
 }
 
 // ---------------------------------------------------------------------------

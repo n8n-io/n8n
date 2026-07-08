@@ -262,6 +262,31 @@ Operational details:
 - The judge retries on failure, has a per-attempt timeout, and falls back to an all-fail verdict — a judge failure can't break a run.
 - Absent both fields, it's a complete no-op.
 
+### Artifact types (workflow / agent / config-eval)
+
+A test case's build can produce more than a workflow — a builder can also create a standalone **agent** or attach a **config-eval** (an evaluation config on a workflow, graded against its referenced dataset). Two fields on the test case control this:
+
+- **`expectedArtifacts: ArtifactType[]`** — which artifact types the case expects the build to produce. Defaults to `['workflow']`, so every existing case is unaffected.
+- **`artifactExpectations: Partial<Record<'agent' | 'config-eval', string[]>>`** — free-text NL assertions per non-workflow artifact type, authored the same way as `outcomeExpectations`, and judged by the same shared assertion judge (`build-expectations/assertion-judge.ts`) against the captured artifact.
+
+Enforcement is symmetric:
+
+- A discovered artifact whose type is **not** listed in `expectedArtifacts` fails the case (`unexpected: true`).
+- A type listed in `expectedArtifacts` that the build never produces also fails the case (id `'(none)'`).
+
+Workflow keeps its existing grading path (mock-execution scenarios + `outcomeExpectations`/`processExpectations`/workflow checks) unchanged. Agent and config-eval are graded **statically** — no execution scenarios, just the assertion judge against the fetched artifact (agent: sanitized JSON config + skills; config-eval: the eval configs + a sample of the referenced data-table dataset).
+
+```json
+"expectedArtifacts": ["agent"],
+"artifactExpectations": {
+  "agent": ["The agent's instructions mention escalating to a human for refund requests."]
+}
+```
+
+**Provisional:** the assistant does not yet emit dedicated agent-build / config-eval-setup signals. Discovery currently keys off `targetResource.type` on agent-tree nodes plus a best-guess tool-name set (`build-agent`, `setup-eval`) — expect these to be revisited once the assistant emits proper signals.
+
+Per-artifact verdicts are attached to the test case result (`WorkflowTestCaseResult.artifactResults`) but are not yet surfaced in scoring, the CLI headline metrics, or the HTML report.
+
 ## Environment variables
 
 | Variable | Required | Description |

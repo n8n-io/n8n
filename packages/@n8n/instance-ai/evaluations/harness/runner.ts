@@ -12,6 +12,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
+import { resolveArtifactResults } from './artifacts/resolve-artifact-results';
 import { captureThreadRunDebug } from './capture-run-debug';
 import {
 	SSE_SETTLE_DELAY_MS,
@@ -356,6 +357,23 @@ export async function runWorkflowTestCase(
 	logger.info(
 		`  Scenarios done: ${String(result.executionScenarioResults.length)} scenarios [${String(Math.round(scenarioMs / 1000))}s]${config.laneTag ?? ''}`,
 	);
+
+	// Capture + judge non-workflow artifacts (agent, config-eval). Workflow-only cases
+	// discover nothing here and get an empty list, so their behavior is unchanged. Re-fetches
+	// thread messages (buildWorkflow already read them internally, but doesn't expose them) —
+	// a cheap GET relative to the build; artifacts are then discovered from the agent-tree.
+	if (build.threadId) {
+		const threadMessages = await client
+			.getThreadMessages(build.threadId)
+			.catch(() => ({ messages: [] }));
+		const artifactResults = await resolveArtifactResults({
+			messages: threadMessages.messages,
+			testCase,
+			client,
+			logger,
+		});
+		if (artifactResults.length > 0) result.artifactResults = artifactResults;
+	}
 
 	if (!config.keepWorkflows) {
 		await cleanupBuild(client, build, logger);
