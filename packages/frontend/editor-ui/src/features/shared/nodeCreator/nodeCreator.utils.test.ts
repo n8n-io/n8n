@@ -890,6 +890,24 @@ describe('NodeCreator - utils', () => {
 		it('should not match an empty query', () => {
 			expect(matchesAliasForConnectBoost('', ['scrape'])).toBe(false);
 		});
+
+		// Cases drawn from the RLY-160 keyword table. The 3-char threshold exists
+		// specifically so short aliases like `ocr` and `pdf` stay boostable while
+		// 1-2 char partials remain noise-free.
+		it.each<[string, string[], boolean]>([
+			['serp', ['serp'], true],
+			['fetch', ['fetch'], true],
+			['browse', ['browser', 'browse'], true],
+			['ocr', ['ocr'], true],
+			['pdf', ['pdf', 'parse'], true],
+			['scrap', ['scrape'], true],
+			['inv', ['invoice'], true],
+			['invoice', ['pdf', 'extract', 'ocr', 'invoice', 'scan', 'parse'], true],
+			['oc', ['ocr'], false],
+			['pd', ['pdf'], false],
+		])('matches "%s" against %j -> %s', (query, aliases, expected) => {
+			expect(matchesAliasForConnectBoost(query, aliases)).toBe(expected);
+		});
 	});
 
 	describe('searchNodes - n8n Connect boost', () => {
@@ -966,6 +984,20 @@ describe('NodeCreator - utils', () => {
 
 			const result = searchNodes('shee', [firecrawl, sheets]);
 			expect(result[0].key).toEqual('googleSheets');
+		});
+
+		// RLY-160: the boost must apply to both core and community nodes as long as
+		// they are listed as AI Gateway-supported.
+		it('should boost both core and community Connect nodes above a non-Connect node', () => {
+			const core = makeNode('n8n-nodes-base.brave', 'Brave', ['serp']);
+			const community = makeNode('@mendable/n8n-nodes-firecrawl.firecrawl', 'Firecrawl', ['serp']);
+			const plain = makeNode('plainNode', 'Plain Node', ['serp']);
+			mockStores({ supportedNodes: [core.key, community.key] });
+
+			const keys = searchNodes('serp', [plain, core, community]).map((item) => item.key);
+
+			expect(keys[2]).toBe('plainNode');
+			expect(keys.slice(0, 2)).toEqual(expect.arrayContaining([core.key, community.key]));
 		});
 	});
 
