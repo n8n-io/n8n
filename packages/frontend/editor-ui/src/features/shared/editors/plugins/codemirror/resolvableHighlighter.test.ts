@@ -55,19 +55,14 @@ describe('resolvableHighlighter', () => {
 				expect(snapshotDecorations(state.field(coloringStateField, false)!)).toEqual([]);
 			});
 
-			it('treats annotations other than ignoreUpdateAnnotation as real edits', async () => {
+			it('treats ignoreUpdateAnnotation.of(false) as a real edit', () => {
 				let state = createState('hello world');
 				state = state.update({
 					effects: coloringStateEffects.addColorEffect.of({ from: 0, to: 5, state: 'valid' }),
 				}).state;
 				expect(snapshotDecorations(state.field(coloringStateField, false)!)).toHaveLength(1);
 
-				// Pass a different annotation — must still reset (the guard only matches
-				// `ignoreUpdateAnnotation === true`)
-				const otherAnnotation = (
-					(await import('@codemirror/state')) as typeof import('@codemirror/state')
-				).Annotation.define<boolean>();
-				void otherAnnotation; // type-only smoke check; the assertion below uses `ignoreUpdateAnnotation.of(false)`
+				// The guard only matches `ignoreUpdateAnnotation === true`, so `false` must still reset.
 				state = state.update({
 					changes: { from: 0, insert: 'X' },
 					annotations: [ignoreUpdateAnnotation.of(false)],
@@ -284,7 +279,7 @@ describe('resolvableHighlighter', () => {
 				]);
 			});
 
-			it('does not mutate the decoration set when both add and remove effects are dispatched in the same transaction', () => {
+			it('clears the range when add and remove effects target it in the same transaction', () => {
 				let state = createState('hello world');
 				state = state.update({
 					effects: [
