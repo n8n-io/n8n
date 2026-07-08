@@ -4,6 +4,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { ExecutionEntity, ExecutionRepository } from '@n8n/db';
 import type { ClaimedTask } from '@n8n/scheduler';
+import type { ErrorReporter } from 'n8n-core';
 import type { INode, IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -18,6 +19,7 @@ import { SCHEDULE_TRIGGER_TASK_TYPE } from '../schedule-trigger-task';
 import { ScheduleTriggerTaskHandler } from '../schedule-trigger-task-handler';
 
 describe('ScheduleTriggerTaskHandler', () => {
+	const errorReporter = mock<ErrorReporter>();
 	const executionRepository = mock<ExecutionRepository>();
 	const eventService = mock<EventService>();
 	const triggerExecutionContextFactory = mock<TriggerExecutionContextFactory>();
@@ -30,6 +32,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 
 	const handler = new ScheduleTriggerTaskHandler(
 		rootLogger,
+		errorReporter,
 		globalConfig,
 		executionRepository,
 		eventService,
@@ -147,9 +150,8 @@ describe('ScheduleTriggerTaskHandler', () => {
 
 	describe('redelivery', () => {
 		test('completes quietly when the execution already exists for the key', async () => {
-			workflowExecutionService.runWorkflow.mockRejectedValue(
-				new DuplicateExecutionError('7:2026-07-06T07:30:00.000Z'),
-			);
+			const duplicateError = new DuplicateExecutionError('7:2026-07-06T07:30:00.000Z');
+			workflowExecutionService.runWorkflow.mockRejectedValue(duplicateError);
 			executionRepository.findOne.mockResolvedValue(
 				mock<ExecutionEntity>({ id: 'exec-0', status: 'running' }),
 			);
@@ -164,6 +166,11 @@ describe('ScheduleTriggerTaskHandler', () => {
 				expect.stringContaining('redelivered'),
 				expect.objectContaining({ executionId: 'exec-0', executionStatus: 'running' }),
 			);
+			expect(errorReporter.warn).toHaveBeenCalledWith(duplicateError, {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				extra: expect.objectContaining({ executionId: 'exec-0', executionStatus: 'running' }),
+				shouldBeLogged: false,
+			});
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});

@@ -3,6 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ClaimedTask, TaskHandler } from '@n8n/scheduler';
+import { ErrorReporter } from 'n8n-core';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -32,6 +33,7 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 
 	constructor(
 		private logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly globalConfig: GlobalConfig,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly eventService: EventService,
@@ -86,7 +88,7 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 			if (!(error instanceof DuplicateExecutionError)) {
 				throw error;
 			}
-			await this.recordExistingHandoff(task, deduplicationKey);
+			await this.recordExistingHandoff(task, error);
 		}
 	}
 
@@ -121,19 +123,28 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 	 * logged status makes the rare stuck row (inserted as `new`, never started
 	 * because the instance died mid-handoff) observable.
 	 */
-	private async recordExistingHandoff(task: ClaimedTask, deduplicationKey: string): Promise<void> {
+	private async recordExistingHandoff(
+		task: ClaimedTask,
+		error: DuplicateExecutionError,
+	): Promise<void> {
+		const { deduplicationKey } = error;
 		const existing = await this.executionRepository.findOne({
 			where: { deduplicationKey },
 			select: ['id', 'status'],
 		});
 
-		this.logger.warn('Occurrence redelivered after a previously recorded execution; skipping', {
+		const context = {
 			taskId: task.id,
 			jobId: task.jobId,
 			attempts: task.attempts,
 			deduplicationKey,
 			executionId: existing?.id,
 			executionStatus: existing?.status,
-		});
+		};
+		this.logger.warn(
+			'Occurrence redelivered after a previously recorded execution; skipping',
+			context,
+		);
+		this.errorReporter.warn(error, { extra: context, shouldBeLogged: false });
 	}
 }
