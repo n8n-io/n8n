@@ -11,7 +11,7 @@
 	--animation--popover-in--translate-y: var(--n8n--popover--offset--slide-y);
 
 	overflow: hidden;
-	border-radius: var(--radius--xs);
+	border-radius: var(--popover-content--radius, var(--radius--xs));
 	background-color: var(--background--surface);
 	--shadow-color--outline: var(--border-color);
 	box-shadow:

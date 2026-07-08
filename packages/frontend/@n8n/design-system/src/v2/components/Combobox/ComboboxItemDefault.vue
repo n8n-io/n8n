@@ -65,7 +65,12 @@ const sizes: Record<InputSize, string> = {
 	line-height: var(--input--line-height);
 	min-height: var(--input--height);
 	padding: 0 var(--input--padding);
-	border-radius: var(--input--radius);
+	border-radius: calc(
+		var(--combobox-content--radius, var(--radius--xs)) - var(
+				--combobox-viewport--padding,
+				var(--spacing--4xs)
+			)
+	);
 
 	&.mini {
 		@include input-mixin.size-variables('mini');

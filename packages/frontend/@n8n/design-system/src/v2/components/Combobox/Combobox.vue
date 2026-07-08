@@ -385,6 +385,9 @@ function getDisplayValue(value: unknown): string {
 }
 
 .comboboxContent {
+	--combobox-content--radius: var(--radius--xs);
+	--popover-content--radius: var(--combobox-content--radius);
+
 	@include popover.popover-surface;
 	@include popover.popover-placement-offsets;
 
