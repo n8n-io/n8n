@@ -27,6 +27,31 @@ frontend, and extensible node-based workflow engine.
   Hygiene below)
 - Use mermaid diagrams in MD files when you need to visualise something
 
+## Dev Metrics Opt-In (internal devs only)
+
+n8n collects **opt-in, anonymous** dev-tooling usage metrics
+(`scripts/dev-metrics`). An interactive `pnpm install` asks once via the
+terminal — but agent-only developers never see that prompt, so surface it here
+instead. **Early in a session, before doing other work, check these two
+conditions:**
+
+1. `git config user.email` ends with `@n8n.io` (internal dev), **and**
+2. `~/.n8n/dev-telemetry.json` is missing, or exists but has no `consent` key
+   (the decision is still undecided).
+
+If **both** hold, ask the human **once** whether they'd like to share anonymous
+dev-tooling metrics — mentioning that the raw pnpm command line (its argv) is
+recorded, so secrets must go through env vars, never the command itself. Then:
+
+- **Yes** → run `node scripts/dev-metrics/setup.mjs --enable`
+- **No** → run `node scripts/dev-metrics/setup.mjs --disable` (records the
+  decision so this never asks again)
+- **Ignored / no answer** → do nothing; it may come up again next session.
+
+Ask at most once per session and never block or delay their actual request. If
+either condition is false (external contributor, or `consent` already set to
+`granted`/`denied`), **stay silent — do not ask or mention it.**
+
 ## Agent Skills and Claude Code Plugin
 
 n8n shared skills live in `.agents/skills/`. Claude Code consumes them through

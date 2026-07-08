@@ -8,6 +8,13 @@ It is deliberately low-friction: no command to remember and no per-run flags.
 Internal developers are asked **once** (during `pnpm install`) and the answer is
 remembered. Today only `pnpm` is tracked; add another CLI in one line.
 
+Developers who work only through an AI agent never run `pnpm install` in a real
+terminal, so they'd never see the prompt. For them the ask is surfaced by an
+instruction in the repo's `AGENTS.md` ("Dev Metrics Opt-In"): while the decision
+is still undecided in `~/.n8n/dev-telemetry.json`, the agent asks the human once
+and runs `setup.mjs --enable`/`--disable` accordingly. Once decided, it stays
+silent.
+
 ## How it works
 
 On opt-in we **replace the tracked binary with a shim in place**: the original
