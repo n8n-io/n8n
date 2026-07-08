@@ -6,6 +6,7 @@ import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Telemetry } from '@/telemetry';
 
 import { CODE_BUILDER_GET_NODE_TYPES_TOOL } from './constants';
+import { toAiGatewayCoverage } from '../../mcp-ai-gateway.helper';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type {
 	AiGatewayCoverage,
@@ -93,12 +94,8 @@ export const createGetWorkflowNodeTypesTool = (
 				definitions: string;
 				aiGateway?: AiGatewayCoverage;
 			} = { definitions: result };
-			if (availability.available) {
-				structured.aiGateway = {
-					credentialTypes: availability.config.credentialTypes,
-					nodes: availability.config.nodes,
-				};
-			}
+			const coverage = toAiGatewayCoverage(availability);
+			if (coverage) structured.aiGateway = coverage;
 
 			return {
 				content: [{ type: 'text', text: result }],

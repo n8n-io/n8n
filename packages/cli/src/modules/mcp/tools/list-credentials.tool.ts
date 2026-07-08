@@ -6,6 +6,7 @@ import type { ListQuery } from '@/requests';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Telemetry } from '@/telemetry';
 
+import { toAiGatewayCoverage } from '../mcp-ai-gateway.helper';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type {
 	AiGatewayCoverage,
@@ -150,13 +151,8 @@ export const createListCredentialsTool = (
 				onlySharedWithMe,
 			});
 
-			const availability = await aiGatewayService.isAvailable();
-			if (availability.available) {
-				payload.aiGateway = {
-					credentialTypes: availability.config.credentialTypes,
-					nodes: availability.config.nodes,
-				};
-			}
+			const coverage = toAiGatewayCoverage(await aiGatewayService.isAvailable());
+			if (coverage) payload.aiGateway = coverage;
 
 			telemetryPayload.results = {
 				success: true,

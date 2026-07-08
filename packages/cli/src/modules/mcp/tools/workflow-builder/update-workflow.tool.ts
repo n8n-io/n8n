@@ -236,6 +236,7 @@ const outputSchema = {
 				nodeName: z.string(),
 				credentialName: z.string(),
 				credentialType: z.string(),
+				source: z.enum(['user', 'aiGateway']).optional(),
 			}),
 		)
 		.optional()

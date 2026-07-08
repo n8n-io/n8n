@@ -814,7 +814,18 @@ describe('create-workflow-from-code MCP tool', () => {
 			// so any field returned by the handler but missing from the schema breaks strict clients.
 			mockAutoPopulateNodeCredentials.mockResolvedValue({
 				assignments: [
-					{ nodeName: 'Webhook', credentialName: 'My Cred', credentialType: 'webhookAuth' },
+					{
+						nodeName: 'Webhook',
+						credentialName: 'My Cred',
+						credentialType: 'webhookAuth',
+						source: 'user',
+					},
+					{
+						nodeName: 'OpenAI',
+						credentialName: 'n8n Connect',
+						credentialType: 'openAiApi',
+						source: 'aiGateway',
+					},
 				],
 				skippedHttpNodes: [],
 				outcomes: [],

@@ -943,11 +943,25 @@ describe('update-workflow MCP tool', () => {
 
 		test('reports auto-assigned credentials in the response', async () => {
 			mockAutoPopulateNodeCredentials.mockResolvedValue({
-				assignments: [{ nodeName: 'C', credentialName: 'My Slack', credentialType: 'slackApi' }],
+				assignments: [
+					{
+						nodeName: 'C',
+						credentialName: 'My Slack',
+						credentialType: 'slackApi',
+						source: 'user',
+					},
+					{
+						nodeName: 'D',
+						credentialName: 'n8n Connect',
+						credentialType: 'openAiApi',
+						source: 'aiGateway',
+					},
+				],
 				skippedHttpNodes: [],
 				outcomes: [],
 			});
 
+			const tool = createTool();
 			const result = await callHandler({
 				workflowId: 'wf-1',
 				operations: [
@@ -960,8 +974,26 @@ describe('update-workflow MCP tool', () => {
 
 			const response = parseResult(result);
 			expect(response.autoAssignedCredentials).toEqual([
-				{ nodeName: 'C', credentialName: 'My Slack', credentialType: 'slackApi' },
+				{ nodeName: 'C', credentialName: 'My Slack', credentialType: 'slackApi', source: 'user' },
+				{
+					nodeName: 'D',
+					credentialName: 'n8n Connect',
+					credentialType: 'openAiApi',
+					source: 'aiGateway',
+				},
 			]);
+
+			// The `source` field must be declared in the item schema; validate items
+			// strictly so a returned key missing from the schema fails the test
+			// (MCP publishes the schema with additionalProperties: false).
+			const itemsField = (
+				tool.config.outputSchema as {
+					autoAssignedCredentials: z.ZodOptional<z.ZodArray<z.ZodObject<z.ZodRawShape>>>;
+				}
+			).autoAssignedCredentials.unwrap();
+			expect(() =>
+				z.array(itemsField.element.strict()).parse(response.autoAssignedCredentials),
+			).not.toThrow();
 		});
 
 		test('reports skipped HTTP nodes in the note', async () => {

@@ -93,6 +93,12 @@ const outputSchema = {
 				nodeName: z.string().describe('The name of the node that had credentials auto-assigned'),
 				credentialName: z.string().describe('The name of the credential that was auto-assigned'),
 				credentialType: z.string().describe('The credential type that was auto-assigned'),
+				source: z
+					.enum(['user', 'aiGateway'])
+					.optional()
+					.describe(
+						'Where the credential came from: "user" for an existing user credential, "aiGateway" for a managed n8n Connect credential.',
+					),
 			}),
 		)
 		.optional()
