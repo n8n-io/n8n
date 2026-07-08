@@ -10,8 +10,8 @@ Allows users to search and choose one or more options from a list. All comboboxe
 
 ```
 Combobox (N8nCombobox2)
-├── ComboboxAnchor (trigger: leading icon, input, chevron)
-│   └── ComboboxInput + ComboboxTrigger
+├── ComboboxAnchor (trigger: leading icon, input, clear button, chevron)
+│   └── ComboboxInput + clear button (when clearable) + ComboboxTrigger
 └── ComboboxContent (portaled dropdown, max-height 500px by default)
     ├── header slot
     ├── ComboboxViewport (scrollable list area)
@@ -50,6 +50,7 @@ Combobox (N8nCombobox2)
 - `openOnFocus?: boolean` — Open dropdown when input is focused | reka default: `false`
 - `openOnClick?: boolean` — Open dropdown when input is clicked | reka default: `false`
 - `highlightOnHover?: boolean` — Highlight items on hover (reka-ui root)
+- `clearable?: boolean` — When `true`, shows a clear button (×) when a value is selected. Hidden when disabled or empty. Default: `false`
 
 **UI Props**
 
@@ -70,7 +71,7 @@ The dropdown content defaults to a max height of **500px** with vertical scrolli
 
 **Events**
 
-- `update:modelValue(value: AcceptableValue | AcceptableValue[])`
+- `update:modelValue(value: AcceptableValue | AcceptableValue[])` — For single selection, clearing emits `undefined`. For multiple selection, clearing emits `[]`.
 - `update:open(value: boolean)`
 - `highlight(payload: { ref: HTMLElement; value: AcceptableValue } | undefined)` — reka-ui root
 
@@ -98,7 +99,7 @@ Non-prop attributes (e.g. `aria-label`, `data-test-id`) fall through to `Combobo
 `ComboboxItem` is either a primitive value or an object:
 
 ```typescript
-type AcceptableValue = string | number | bigint | Record<string, unknown> | null;
+type AcceptableValue = string | number | bigint | Record<string, unknown> | null | undefined;
 
 type ComboboxListItem = {
   value?: AcceptableValue;
@@ -109,7 +110,7 @@ type ComboboxListItem = {
   size?: ComboboxSizes; // per-item size override
 };
 
-type ComboboxItem = AcceptableValue | ComboboxListItem;
+type ComboboxItem = Exclude<AcceptableValue, undefined> | ComboboxListItem;
 ```
 
 - **Primitive items** (e.g. `'Todo'`) — value and label are the same string; `modelValue` is the primitive.
@@ -208,6 +209,29 @@ const open = ref(false);
   />
 </template>
 ```
+
+**Clearable selection**
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue';
+import { N8nCombobox2 } from '@n8n/design-system';
+
+const items = ['Option 1', 'Option 2', 'Option 3'];
+const value = ref<string | undefined>('Option 1');
+</script>
+
+<template>
+  <N8nCombobox2
+    v-model="value"
+    :items="items"
+    clearable
+    placeholder="Search..."
+  />
+</template>
+```
+
+When the clear button is clicked, single selection emits `undefined`, multiple selection emits `[]`, and the input is refocused.
 
 **Custom dropdown max height**
 

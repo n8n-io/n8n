@@ -243,6 +243,30 @@ export const Disabled = {
 	},
 } satisfies Story;
 
+export const Clearable = {
+	render: (args) => ({
+		components: { Combobox },
+		setup() {
+			const value = ref(args.modelValue);
+			return { args, value };
+		},
+		template: `
+		<div style="${storyContainerStyle}">
+			<Combobox
+				v-bind="args"
+				v-model="value"
+				clearable
+				placeholder="Search status..."
+			/>
+		</div>
+		`,
+	}),
+	args: {
+		items: statusItems,
+		modelValue: 'In Progress',
+	},
+} satisfies Story;
+
 export const Controlled = {
 	render: () => ({
 		components: { Combobox },
@@ -328,22 +352,12 @@ export const Uncontrolled = {
 		},
 		template: `
 			<div style="${storyContainerStyle}; display: flex; flex-direction: column; gap: var(--spacing--md);">
-				<section style="display: flex; flex-direction: column; gap: var(--spacing--2xs);">
-					<h3 style="margin: 0; font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
-						Uncontrolled
-					</h3>
-					<p style="margin: 0; font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
-						Initial state is set with <code>default-value</code> and
-						<code>default-open</code>. The combobox manages its own state after mount.
-					</p>
-
-					<Combobox
-						:items="controlledDemoItems"
-						default-value="workflows"
-						:default-open="false"
-						placeholder="Search..."
-					/>
-				</section>
+				<Combobox
+					:items="controlledDemoItems"
+					default-value="workflows"
+					:default-open="false"
+					placeholder="Search..."
+				/>
 			</div>
 		`,
 	}),

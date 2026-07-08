@@ -188,6 +188,7 @@ export default {
 	'collapsiblePanel.expand': 'Expand',
 	'collapsiblePanel.dragToReorder': 'Drag to reorder',
 	'collapsiblePanel.delete': 'Delete',
+	'combobox.clearSelection': 'Clear selection',
 	'markdownEditor.bold': 'Bold',
 	'markdownEditor.italic': 'Italic',
 	'markdownEditor.strikethrough': 'Strikethrough',

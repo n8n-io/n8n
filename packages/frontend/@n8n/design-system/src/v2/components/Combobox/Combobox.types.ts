@@ -9,9 +9,9 @@ import type {
 	ComboboxRootProps,
 } from '../../utils/reka-ui';
 
-export type AcceptableValue = string | number | bigint | Record<string, unknown> | null;
+export type AcceptableValue = string | number | bigint | Record<string, unknown> | null | undefined;
 
-export type ComboboxProps = Omit<ComboboxRootProps, 'dir'> &
+export type ComboboxProps = Omit<ComboboxRootProps<AcceptableValue>, 'dir'> &
 	Pick<ComboboxContentProps, 'side' | 'sideOffset' | 'align'> & {
 		size?: ComboboxSizes;
 		icon?: IconName;
@@ -24,9 +24,10 @@ export type ComboboxProps = Omit<ComboboxRootProps, 'dir'> &
 		contentClass?: string;
 		contentStyle?: StyleValue;
 		id?: string;
+		clearable?: boolean;
 	};
 
-export type ComboboxEmits = ComboboxRootEmits;
+export type ComboboxEmits = ComboboxRootEmits<AcceptableValue | AcceptableValue[]>;
 
 export type ComboboxListItem = ComboboxItemProps & {
 	label?: string;
@@ -35,7 +36,7 @@ export type ComboboxListItem = ComboboxItemProps & {
 	size?: ComboboxSizes;
 };
 
-export type ComboboxItem = AcceptableValue | ComboboxListItem;
+export type ComboboxItem = Exclude<AcceptableValue, undefined> | ComboboxListItem;
 
 export type ComboboxSizes = InputSize;
 

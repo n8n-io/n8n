@@ -4,6 +4,17 @@ import { render, waitFor, within } from '@testing-library/vue';
 import type { ComboboxItem, ComboboxSizes } from './Combobox.types';
 import Combobox from './Combobox.vue';
 
+vi.mock('@n8n/design-system/composables/useI18n', () => ({
+	useI18n: () => ({
+		t: (key: string) => {
+			const translations: Record<string, string> = {
+				'combobox.clearSelection': 'Clear selection',
+			};
+			return translations[key] ?? key;
+		},
+	}),
+}));
+
 const sizeCases: Array<[ComboboxSizes | undefined, string]> = [
 	[undefined, 'large'],
 	['mini', 'mini'],
@@ -265,6 +276,77 @@ describe('v2/components/Combobox', () => {
 			await waitFor(() => {
 				expect(wrapper.getByText('Apple')).toBeVisible();
 				expect(wrapper.getByText('Banana')).toBeVisible();
+			});
+		});
+	});
+
+	describe('clearable', () => {
+		it('should show clear button when clearable and a value is selected', () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: ['Option 1', 'Option 2'],
+					modelValue: 'Option 1',
+					clearable: true,
+				},
+			});
+
+			expect(wrapper.getByRole('button', { name: 'Clear selection' })).toBeVisible();
+		});
+
+		it('should not show clear button when no value is selected', () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: ['Option 1', 'Option 2'],
+					clearable: true,
+				},
+			});
+
+			expect(wrapper.queryByRole('button', { name: 'Clear selection' })).not.toBeInTheDocument();
+		});
+
+		it('should not show clear button when disabled', () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: ['Option 1', 'Option 2'],
+					modelValue: 'Option 1',
+					clearable: true,
+					disabled: true,
+				},
+			});
+
+			expect(wrapper.queryByRole('button', { name: 'Clear selection' })).not.toBeInTheDocument();
+		});
+
+		it('should emit undefined when clear button is clicked', async () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: ['Option 1', 'Option 2'],
+					modelValue: 'Option 1',
+					clearable: true,
+				},
+			});
+
+			await userEvent.click(wrapper.getByRole('button', { name: 'Clear selection' }));
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([undefined]);
+			});
+		});
+
+		it('should emit an empty array when clearing a multiple selection', async () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: ['Option 1', 'Option 2'],
+					modelValue: ['Option 1', 'Option 2'],
+					multiple: true,
+					clearable: true,
+				},
+			});
+
+			await userEvent.click(wrapper.getByRole('button', { name: 'Clear selection' }));
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([[]]);
 			});
 		});
 	});

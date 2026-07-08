@@ -14,9 +14,10 @@ import {
 	ComboboxViewport,
 	useForwardPropsEmits,
 } from 'reka-ui';
-import { computed, useCssModule, useTemplateRef } from 'vue';
+import { computed, nextTick, useCssModule, useTemplateRef } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
+import { useI18n } from '@n8n/design-system/composables/useI18n';
 import { get } from '@n8n/design-system/v2/utils';
 
 import type {
@@ -43,9 +44,11 @@ const props = withDefaults(defineProps<ComboboxProps>(), {
 	align: 'start',
 	valueKey: 'value',
 	labelKey: 'label',
+	clearable: false,
 });
 const emit = defineEmits<ComboboxEmits>();
 const slots = defineSlots<ComboboxSlots>();
+const { t } = useI18n();
 
 const rootProps = useForwardPropsEmits(
 	reactivePick(
@@ -78,6 +81,7 @@ function stringifyAcceptableValue(value: string | number | bigint | null): strin
 }
 
 const anchorRef = useTemplateRef<InstanceType<typeof ComboboxAnchor>>('anchor');
+const inputRef = useTemplateRef<InstanceType<typeof ComboboxInput>>('input');
 
 defineExpose({
 	anchorRef,
@@ -145,6 +149,32 @@ function getDisplayValue(value: unknown): string {
 
 	return '';
 }
+
+const hasValue = computed(() => {
+	const { modelValue, multiple } = props;
+
+	if (multiple) {
+		return Array.isArray(modelValue) && modelValue.length > 0;
+	}
+
+	return modelValue !== undefined && modelValue !== null && modelValue !== '';
+});
+
+const showClearButton = computed(() => props.clearable && !props.disabled && hasValue.value);
+
+function focusInput() {
+	void nextTick(() => {
+		const element = inputRef.value?.$el;
+		if (element instanceof HTMLInputElement) {
+			element.focus();
+		}
+	});
+}
+
+function onClear() {
+	emit('update:modelValue', props.multiple ? [] : undefined);
+	focusInput();
+}
 </script>
 
 <template>
@@ -166,6 +196,7 @@ function getDisplayValue(value: unknown): string {
 			<Icon v-if="props.icon" :icon="props.icon" :class="$style.leadingIcon" />
 			<ComboboxInput
 				:id="props.id"
+				ref="input"
 				:class="$style.comboboxInput"
 				:placeholder="props.placeholder"
 				:auto-focus="props.autoFocus"
@@ -174,6 +205,16 @@ function getDisplayValue(value: unknown): string {
 			>
 				<slot :model-value="props.modelValue" :open="open" />
 			</ComboboxInput>
+			<button
+				v-if="showClearButton"
+				type="button"
+				:class="$style.clearButton"
+				tabindex="-1"
+				:aria-label="t('combobox.clearSelection')"
+				@click.stop="onClear"
+			>
+				<Icon icon="x" size="small" />
+			</button>
 			<ComboboxTrigger :class="$style.comboboxTrigger" tabindex="-1">
 				<Icon icon="chevron-down" :class="$style.trailingIcon" />
 			</ComboboxTrigger>
@@ -264,7 +305,7 @@ function getDisplayValue(value: unknown): string {
 
 	@include focus.focus-within-ring;
 
-	&:not([data-disabled]):hover:not(:focus-within) {
+	&:not([data-disabled]):hover:not(:focus-within):not(:has(.clearButton:hover)) {
 		cursor: text;
 		box-shadow:
 			var(--input--shadow--hover),
@@ -364,6 +405,22 @@ function getDisplayValue(value: unknown): string {
 
 	&:disabled {
 		cursor: not-allowed;
+	}
+}
+
+.clearButton {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	padding: 0;
+	border: none;
+	background: transparent;
+	color: var(--color--text--tint-1);
+	cursor: pointer;
+
+	&:hover {
+		color: var(--color--text--shade-1);
 	}
 }
 
