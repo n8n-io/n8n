@@ -226,7 +226,7 @@ const i18n = useI18n();
 .editorColumn {
 	display: flex;
 	flex-direction: column;
-	background-color: var(--background--surface);
+	background-color: light-dark(var(--background--surface), var(--background));
 	min-height: 0;
 	min-width: var(--agent-builder-editor-min-width, 35rem);
 }
@@ -240,10 +240,6 @@ const i18n = useI18n();
 	min-height: 0;
 	display: flex;
 	flex-direction: column;
-	background-color: light-dark(
-		var(--color--background--light-1),
-		var(--color--background--light-2)
-	);
 	overflow: auto;
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
@@ -274,17 +270,13 @@ const i18n = useI18n();
 	--card--padding: var(--spacing--sm);
 
 	align-items: stretch;
-	background-color: transparent;
+	background-color: var(--background--surface);
 }
 
 .identityHeaderRow {
 	flex-shrink: 0;
 	display: flex;
 	width: 100%;
-	background-color: light-dark(
-		var(--color--background--light-1),
-		var(--color--background--light-2)
-	);
 }
 
 .identityHeader {
@@ -300,10 +292,6 @@ const i18n = useI18n();
 	display: flex;
 	align-items: center;
 	width: 100%;
-	background-color: light-dark(
-		var(--color--background--light-1),
-		var(--color--background--light-2)
-	);
 }
 
 .tabsRule {
@@ -316,7 +304,7 @@ const i18n = useI18n();
 
 .mainTabs {
 	width: 100%;
-	border-bottom: calc(var(--border-width, 1px) * 2) var(--border-style, solid) var(--border-color);
+	border-bottom: var(--border);
 
 	:global([data-test-id='tab-agent'] > *) {
 		padding-left: 0;
