@@ -71,4 +71,16 @@ export default defineConfig(
 			'@typescript-eslint/no-unsafe-call': 'off',
 		},
 	},
+	{
+		files: ['evaluations/langtracer/to-exported.ts'],
+		rules: {
+			// `WorkflowTestCaseInput` (z.infer of a .refine()-chained schema) resolves
+			// as `error`-typed under CI's type-aware lint, so field access on the case
+			// trips no-unsafe-*. `tsc --noEmit` typechecks the file cleanly.
+			'@typescript-eslint/no-unsafe-assignment': 'off',
+			'@typescript-eslint/no-unsafe-member-access': 'off',
+			'@typescript-eslint/no-unsafe-argument': 'off',
+			'@typescript-eslint/no-unsafe-call': 'off',
+		},
+	},
 );
