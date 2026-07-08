@@ -446,6 +446,11 @@ dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building 
 - **Limitation:** `executionScenarios` are written on **create** only — the update
   path patches case-level fields but not scenario rows (so scenario-only edits to
   an existing case aren't re-synced; remove+re-push or edit in the lang-tracer UI).
+- **Seeded cases can't be pushed:** the case-write API rejects every seeding mode
+  (`seedThread` / `seedFile` / `priorConversation`), so the push lists them under
+  `skipped:` and they never reach the suite. And a `seedThread` case shouldn't be
+  committed either — it dies when its trace is pruned or deleted — so derive a
+  durable synthetic case as the artifact instead.
 
 ## Running
 

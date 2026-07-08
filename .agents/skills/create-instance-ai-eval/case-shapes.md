@@ -214,12 +214,29 @@ which user turn goes live.
   trace's last message replays (first authored turn = expected assistant reply as
   proxy reference; subsequent `user` turns become follow-ups). Omit it to replay
   just the live turn and stop.
-- **Transient — keep out of CI.** LangSmith base-tier traces retain ~14 days, so
-  a `seedThread` case only runs while its trace lives. Tag it `seeded`, not
-  `full`/`pr`; the resolver fails loudly when a trace has aged out.
+- **Transient — don't commit it, keep out of CI.** LangSmith base-tier traces
+  retain ~14 days and threads can be deleted or pruned, so a committed `seedThread`
+  case goes dead the moment its trace disappears. Treat it as a **local, throwaway
+  reproduction**: don't commit it — run it to confirm the failure, then encode a
+  durable synthetic case as the artifact. If you do keep one for a local run, tag
+  it `seeded`, not `full`/`pr`; the resolver fails loudly when a trace has aged out.
 - **Multi-workflow limitation.** Verification targets the primary created
   workflow (`workflowsCreated[0]`); if the live turn creates several, assert on
   the first or lean on `processExpectations`.
+- **Only agent-built workflows are restored.** Reconstruction recreates workflows
+  the agent *built* in-thread (a build event before the boundary) — not a workflow
+  that pre-existed the conversation. So a debugging/diagnosis thread ("why does my
+  HTTP node fail?"), where the agent only inspects or patches an existing workflow,
+  seeds with **no workflow to inspect**. Reproduce the target workflow yourself
+  (a synthetic case whose `executionScenarios` precondition builds the stand-in),
+  or grade the live turn with `processExpectations` only.
+- **Can't be pushed to a lang-tracer suite either.** The case-write API rejects
+  every seeding mode (`seedThread` / `seedFile` / `priorConversation`), so
+  `eval:langtracer-push` silently lists them under `skipped:`. Combined with the
+  don't-commit rule above, a `seedThread` case has **no durable home by design** —
+  the durable artifact is always the synthetic case you derive from it. (`seedFile`
+  and `priorConversation` carry no thread dependency, so those stay committable —
+  just not pushable.)
 
 ### `priorConversation` — prose prelude
 
