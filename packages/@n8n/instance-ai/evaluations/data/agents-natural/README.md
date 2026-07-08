@@ -55,6 +55,23 @@ pnpm eval:agents --filter wf-schedule-weather-slack,adv-says-agent-is-wf,adv-say
 pnpm eval:agents-natural --iterations 3
 ```
 
+**Faster iterations — local-process lanes.** A natural-arm case-run is a real
+build turn (~2–2.5 min), so wall time is dominated by parallelism. After
+`pnpm build`, boot extra lanes from the same dist (no docker) and fan out:
+
+```bash
+./scripts/boot-local-eval-lanes.sh 2            # lanes on :5682/:5684, seeded
+pnpm eval:agents-natural --iterations 3 \
+  --base-url http://localhost:5680,http://localhost:5682,http://localhost:5684 \
+  --concurrency 9
+./scripts/boot-local-eval-lanes.sh --teardown   # when done
+```
+
+Keep `LANGSMITH_API_KEY` set — the work-stealing lane allocator only runs on
+the LangSmith path (the direct loop pins each case to a single lane). Watch
+for Anthropic 429s beyond ~3 lanes on one key. For docker lanes from a built
+`n8nio/n8n:local` image, use `scripts/run-eval-lanes.sh` instead.
+
 Compare per paired case across iterations:
 
 1. **Decision agreement** — exam `intent:` exact-match verdict vs the natural
