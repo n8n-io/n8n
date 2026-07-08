@@ -152,7 +152,6 @@ const InstanceAiAgentPreviewStub = defineComponent({
 		agentId: { type: String, required: true },
 		projectId: { type: String, required: true },
 		refreshKey: { type: Number, required: true },
-		artifactPanelToggleLabel: { type: String, required: false },
 	},
 	setup(props) {
 		return () =>

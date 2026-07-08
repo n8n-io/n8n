@@ -88,14 +88,12 @@ const props = withDefaults(
 		artifactProjectId?: string;
 		artifactAgentId?: string;
 		artifactRefreshKey?: number;
-		artifactPanelToggleLabel?: string;
 	}>(),
 	{
 		artifactMode: false,
 		artifactProjectId: undefined,
 		artifactAgentId: undefined,
 		artifactRefreshKey: 0,
-		artifactPanelToggleLabel: undefined,
 	},
 );
 
@@ -1403,7 +1401,6 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 			:before-revert-to-published="settleAutosave"
 			:is-version-history-open="isVersionHistoryOpen"
 			:artifact-mode="isArtifactMode"
-			:artifact-panel-toggle-label="props.artifactPanelToggleLabel"
 			@header-action="onHeaderAction"
 			@open-preview="onOpenPreview"
 			@published="onPublished"
@@ -1411,7 +1408,6 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
 			@toggle-version-history="onToggleVersionHistory"
-			@toggle-artifacts-panel="emit('toggle-artifacts-panel')"
 		/>
 		<div
 			ref="builderContainer"

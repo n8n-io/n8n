@@ -155,16 +155,13 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.find('[data-testid="agent-header-actions"]').exists()).toBe(true);
 	});
 
-	it('hides breadcrumbs and switcher in artifact mode', async () => {
+	it('hides breadcrumbs, switcher, and artifact panel toggle in artifact mode', () => {
 		const wrapper = mountHeader({ artifactMode: true });
 
 		expect(wrapper.find('[data-testid="stub-breadcrumbs"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-header-switcher"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-header-artifact-panel-toggle"]').exists()).toBe(true);
-
-		await wrapper.find('[data-testid="agent-header-artifact-panel-toggle"]').trigger('click');
-
-		expect(wrapper.emitted('toggle-artifacts-panel')).toEqual([[]]);
+		expect(wrapper.find('[data-testid="agent-header-artifact-panel-toggle"]').exists()).toBe(false);
+		expect(wrapper.emitted('toggle-artifacts-panel')).toBeUndefined();
 	});
 
 	it('uses the horizontal dots action menu icon', () => {

@@ -37,7 +37,6 @@ const props = defineProps<{
 	beforeRevertToPublished?: () => Promise<void> | void;
 	isVersionHistoryOpen?: boolean;
 	artifactMode?: boolean;
-	artifactPanelToggleLabel?: string;
 }>();
 
 const emit = defineEmits<{
@@ -48,7 +47,6 @@ const emit = defineEmits<{
 	reverted: [agent: AgentResource];
 	'switch-agent': [agentId: string];
 	'toggle-version-history': [];
-	'toggle-artifacts-panel': [];
 }>();
 
 const i18n = useI18n();
@@ -87,11 +85,6 @@ const previewHref = computed(() =>
 );
 const previewDisabledTooltip = computed(() =>
 	i18n.baseText('agents.builder.preview.disabledTooltip' as BaseTextKey),
-);
-const artifactPanelToggleLabel = computed(
-	() =>
-		props.artifactPanelToggleLabel ??
-		i18n.baseText('agents.builder.header.artifactPanelToggle' as BaseTextKey),
 );
 const switcherOptions = computed<Array<DropdownMenuItemProps<string>>>(() => {
 	const list = agentsList.value ?? [];
@@ -152,18 +145,8 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 <template>
 	<header :class="$style.header" data-testid="agent-builder-header">
 		<div :class="$style.left">
-			<N8nButton
-				v-if="props.artifactMode"
-				variant="ghost"
-				size="medium"
-				icon="panel-left"
-				icon-only
-				:aria-label="artifactPanelToggleLabel"
-				data-testid="agent-header-artifact-panel-toggle"
-				@click="emit('toggle-artifacts-panel')"
-			/>
 			<N8nBreadcrumbs
-				v-else
+				v-if="!props.artifactMode"
 				:items="breadcrumbItems"
 				theme="medium"
 				@item-selected="onBreadcrumbSelect"
