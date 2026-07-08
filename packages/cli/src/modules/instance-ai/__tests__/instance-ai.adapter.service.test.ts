@@ -1356,7 +1356,7 @@ describe('createNodeAdapter', () => {
 		let releaseSpy: MockInstance;
 
 		beforeEach(() => {
-			acquireSpy = vi.spyOn(Expression.prototype, 'acquireIsolate').mockResolvedValue(true);
+			acquireSpy = vi.spyOn(Expression.prototype, 'acquireIsolate').mockResolvedValue(undefined);
 			releaseSpy = vi.spyOn(Expression.prototype, 'releaseIsolate').mockResolvedValue(undefined);
 		});
 
