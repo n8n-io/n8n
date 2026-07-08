@@ -61,7 +61,7 @@ describe('planPush', () => {
 		expect(plan.toCreate).toEqual([]);
 	});
 
-	it('treats a scenario-only difference as unchanged so re-runs converge', () => {
+	it('treats a scenario-only difference as an update (PATCH reconciles scenarios by name)', () => {
 		const plan = planPush(
 			[
 				item('c', {
@@ -77,6 +77,18 @@ describe('planPush', () => {
 					],
 				}),
 			},
+			{ c: 5 },
+		);
+		expect(plan.toUpdate).toHaveLength(1);
+		expect(plan.toUpdate[0].id).toBe(5);
+		expect(plan.unchanged).toEqual([]);
+	});
+
+	it('treats identical scenarios as unchanged so re-pushes converge', () => {
+		const scenarios = [{ name: 'a', description: 'd', dataSetup: 's', successCriteria: 'ok' }];
+		const plan = planPush(
+			[item('c', { executionScenarios: scenarios })],
+			{ 'c.json': body({ executionScenarios: scenarios }) },
 			{ c: 5 },
 		);
 		expect(plan.unchanged.map((c) => c.fileSlug)).toEqual(['c']);

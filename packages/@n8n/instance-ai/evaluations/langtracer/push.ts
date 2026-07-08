@@ -14,9 +14,8 @@ export interface PushPlan {
 	skipped: Array<{ fileSlug: string; reason: string }>;
 }
 
-/** Disk fields compared to decide create-vs-update. Deliberately EXCLUDES three
+/** Disk fields compared to decide create-vs-update. Deliberately EXCLUDES two
  *  fields that would make a re-push never converge (always "update"):
- *  - `executionScenarios`: sidecar rows `PATCH /cases/:id` can't update — written on create only.
  *  - `tags` and `datasets`: the lang-tracer suite export does not round-trip these
  *    (tags come back empty, default `datasets` comes back null/omitted), so a diff
  *    on them always fires. They're still SENT on create so new cases carry them;
@@ -30,6 +29,9 @@ const COMPARED_KEYS = [
 	'outcomeExpectations',
 	'messageBudget',
 	'credentials',
+	// Round-trips faithfully: PATCH /cases/:id reconciles scenario rows by name
+	// (lang-tracer #48) and the export emits them back in disk shape.
+	'executionScenarios',
 ] as const;
 
 /** `existingBodies`: `<name>.json` → exported (disk-shape) body from `GET /suites/:id/export`.

@@ -154,11 +154,11 @@ function gitChangedSlugs(): string[] {
 	return slugs;
 }
 
-/** Drop the create-only fields `PATCH /cases/:id` rejects, leaving the patchable set. */
+/** Drop the create-only fields, leaving the patchable set (`scenarios` included —
+ *  `PATCH /cases/:id` reconciles them by name since lang-tracer #48). */
 function toUpdatePatch({
 	suiteId,
 	synthetic,
-	scenarios,
 	...patch
 }: LangTracerCreateCaseBody): LangTracerUpdateCaseBody {
 	return patch;

@@ -451,9 +451,11 @@ dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building 
   for MCP + REST) — put them in `.env.eval` and run under `dotenvx`.
 - **Options:** `--set-kind regression|capability_gap` (default `regression`, must
   match the suite's kind), `--contains-user-data` (default is `synthetic`).
-- **Limitation:** `executionScenarios` are written on **create** only — the update
-  path patches case-level fields but not scenario rows (so scenario-only edits to
-  an existing case aren't re-synced; remove+re-push or edit in the lang-tracer UI).
+- **Scenarios sync on update too:** `PATCH /cases/:id` reconciles
+  `executionScenarios` by name (update in place, insert new, delete missing —
+  lang-tracer #48), so scenario edits re-push like any other field. A lang-tracer
+  deployment predating that change silently ignores the key; if a pushed scenario
+  edit doesn't land, update the scenario in the lang-tracer UI.
 - **Seeded cases can't be pushed:** the case-write API rejects every seeding mode
   (`seedThread` / `seedFile` / `priorConversation`), so the push lists them under
   `skipped:` and they never reach the suite. A `seedThread` case shouldn't be
