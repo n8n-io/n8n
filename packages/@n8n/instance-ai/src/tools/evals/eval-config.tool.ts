@@ -54,7 +54,7 @@ const metricInputSchema = z.object({
 });
 
 const configFields = {
-	name: z.string().min(1).max(128).describe('Evaluation name'),
+	name: z.string().min(1).describe('Evaluation name'),
 	startNodeName: z
 		.string()
 		.min(1)

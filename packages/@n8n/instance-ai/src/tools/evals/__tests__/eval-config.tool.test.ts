@@ -20,10 +20,12 @@ function createMockEvalConfigService() {
 	};
 }
 
+// Pass `null` to build a context WITHOUT an eval-config service. A default
+// param only kicks in for `undefined`, so `null` is the explicit "absent" sentinel.
 function createMockContext(
-	evaluationConfigService:
-		| ReturnType<typeof createMockEvalConfigService>
-		| undefined = createMockEvalConfigService(),
+	evaluationConfigService: ReturnType<
+		typeof createMockEvalConfigService
+	> | null = createMockEvalConfigService(),
 ): InstanceAiContext {
 	return {
 		userId: 'user-1',
@@ -32,7 +34,7 @@ function createMockContext(
 		nodeService: {} as InstanceAiContext['nodeService'],
 		credentialService: {} as InstanceAiContext['credentialService'],
 		dataTableService: {} as InstanceAiContext['dataTableService'],
-		evaluationConfigService,
+		evaluationConfigService: evaluationConfigService ?? undefined,
 	} as unknown as InstanceAiContext;
 }
 
@@ -232,7 +234,7 @@ describe('eval-config tool', () => {
 
 	describe('when config-based evals are unavailable', () => {
 		it('should report unavailable instead of calling a service', async () => {
-			const tool = createEvalConfigTool(createMockContext(undefined));
+			const tool = createEvalConfigTool(createMockContext(null));
 
 			const result = await executeTool(
 				tool,
