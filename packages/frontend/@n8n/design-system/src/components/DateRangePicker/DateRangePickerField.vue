@@ -28,7 +28,7 @@ function hasTime(segments: Segments) {
 					<DateRangePickerInput
 						v-if="item.part === 'literal'"
 						:part="item.part"
-						class="DateFieldLiteral"
+						:class="$style.DateFieldLiteral"
 						type="start"
 					>
 						{{ item.value }}
@@ -70,7 +70,7 @@ function hasTime(segments: Segments) {
 				<DateRangePickerInput
 					v-if="item.part === 'literal'"
 					:part="item.part"
-					class="DateFieldLiteral"
+					:class="$style.DateFieldLiteral"
 					type="start"
 				>
 					{{ item.value }}
@@ -84,7 +84,7 @@ function hasTime(segments: Segments) {
 					{{ item.value }}
 				</DateRangePickerInput>
 			</template>
-			-
+			<span :class="$style.RangeSeparator" aria-hidden="true">–</span>
 			<template v-for="item in segments.end" :key="item.part">
 				<DateRangePickerInput
 					v-if="item.part === 'literal'"
@@ -103,6 +103,15 @@ function hasTime(segments: Segments) {
 </template>
 
 <style lang="css" module>
+.DateFieldLiteral {
+	color: var(--color--text--tint-1);
+}
+
+.RangeSeparator {
+	color: var(--color--text--tint-1);
+	padding: 0 var(--spacing--4xs);
+}
+
 .DateFieldSegment:focus {
 	outline: 2px solid rgba(67, 142, 255, 1);
 	border-radius: 0.25rem;
