@@ -1,0 +1,53 @@
+{
+	"description": "Lang-tracer thread 06c6dfee: the agent built a Boop competitor-research workflow with gpt-4o on n8n's free OpenAI credits; the first real run failed with 'Model not allowed with n8n AI credits' and the user had to report it back. Free credits only permit gpt-5-mini, gpt-4.1-mini, gpt-4.1-nano, and gpt-4o-mini (see freeAi.credits UI copy). Build-only: the signal is the configured OpenAI model on the free-credits credential in the workflow JSON, not execution through Google Sheets (resource-locator fields are left for setup and crash the harness with __evalMockResource).",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I want to create a program that researches competitors for a competitive analysis for the company I work at. Use n8n's free OpenAI credits for the AI parts."
+		},
+		{
+			"role": "assistant",
+			"text": "I'll ask a few questions about your company, how competitors should be chosen, what to research, and where to store results — then build an AI + web-search workflow on n8n's free OpenAI credits."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Answer clarifying questions when asked. Company: Boop — a travel itinerary AI company. Competitors: the AI should discover/suggest competitors automatically from that context. Research areas: pricing, product features, social media, customer reviews, and growth hacks. Output: append each researched competitor as a row in a Google Sheet.",
+				"When asked how to gather competitor info (live web search vs AI-only), choose live web search + AI analysis — current data matters for competitive research, and n8n free credits should still cover the AI parts.",
+				"For every HITL step during the build — keep the run moving without stalling. Allow all permissions. Use any of the existing credentials or skip.]"
+			]
+		},
+		{
+			"role": "assistant",
+			"text": "Plan: manual run → AI discovers travel-itinerary competitors for Boop → loop to research each (pricing, features, social, reviews, growth hacks) with web search → append rows to Google Sheets, all on n8n free OpenAI credits. Ready to build?"
+		},
+		{
+			"role": "user",
+			"text": "Yes, build it."
+		}
+	],
+	"messageBudget": 10,
+	"complexity": "complex",
+	"tags": [
+		"build",
+		"ai-agent",
+		"openai",
+		"free-credits",
+		"competitor-research",
+		"google-sheets",
+		"regression"
+	],
+	"triggerType": "manual",
+	"datasets": ["full"],
+	"processExpectations": [
+		"The agent honoured the user's request to use n8n's free OpenAI credits for the AI model nodes — it did not silently wire a personal OpenAI API key or a premium model choice that free credits reject at runtime.",
+		"The agent did not present the workflow as ready to run on free credits while configuring a disallowed OpenAI model such as gpt-4o or gpt-4.1 on the free-credits credential."
+	],
+	"outcomeExpectations": [
+		"The workflow can be triggered on demand (Manual Trigger or equivalent) to run a competitor analysis.",
+		"AI Agent node(s) discover or research competitors using web search tooling (for example SerpAPI or an equivalent search tool wired as an agent tool).",
+		"Multiple competitors are handled sequentially or in a loop/batch rather than only a single hard-coded competitor.",
+		"Researched competitor data is written to Google Sheets (append or appendOrUpdate on a sheet).",
+		"Every OpenAI chat language-model subnode that uses n8n's free OpenAI API credits credential is configured with a free-tier-compatible model — one of gpt-5-mini, gpt-4.1-mini, gpt-4.1-nano, or gpt-4o-mini — and NOT gpt-4o, gpt-4.1, gpt-5, gpt-4-turbo, or another model outside the free-credits allowlist."
+	]
+}

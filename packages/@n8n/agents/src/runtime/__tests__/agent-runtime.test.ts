@@ -1868,10 +1868,11 @@ describe('AgentRuntime — deferred tool loading', () => {
 			name: 'load_skill',
 			description: 'Load skill',
 			inputSchema: z.object({ skillId: z.string().optional() }),
-			handler: async () => ({
-				type: 'content',
-				value: [{ type: 'text', text: '[Skill: "workflow-builder"]\n\nBuild workflows.' }],
-			}),
+			handler: async () =>
+				await Promise.resolve({
+					type: 'content',
+					value: [{ type: 'text', text: '[Skill: "workflow-builder"]\n\nBuild workflows.' }],
+				}),
 		};
 
 		const runtime = new AgentRuntime({

@@ -14,15 +14,12 @@ import { buildCredentialMap } from './workflows/resolve-credentials';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
-const NODE_TYPE_ID_DESCRIPTION = 'Node type ID, e.g. "n8n-nodes-base.httpRequest"';
-const METHOD_NAME_DESCRIPTION =
-	'Exact method name from the node\'s @searchListMethod/@loadOptionsMethod annotation — read it via `action: "type-definition"` first, never guess.';
-const METHOD_TYPE_DESCRIPTION =
-	'"listSearch" for @searchListMethod (supports filter/pagination); "loadOptions" for @loadOptionsMethod. Match the annotation.';
-const CURRENT_NODE_PARAMETERS_DESCRIPTION =
-	'Current node parameters for dependent lookups — e.g. sheetsSearch needs documentId { __rl: true, mode: "id", value: "<spreadsheetId>" }. Check displayOptions in the type definition.';
+const NODE_TYPE_ID_DESCRIPTION = 'Node type ID';
+const METHOD_NAME_DESCRIPTION = 'Method name from type-definition annotation';
+const METHOD_TYPE_DESCRIPTION = '"listSearch" or "loadOptions"';
+const CURRENT_NODE_PARAMETERS_DESCRIPTION = 'Current node parameters for dependent lookups';
 const NODE_TYPES_ARRAY_DESCRIPTION =
-	'Node type IDs for node-level lookups (max 5). For split nodes (e.g. Slack, Gmail, Google Sheets), pass the object form WITH resource/operation (or mode) discriminators when you know them — a bare string errors with the resource→operations index for resource/operation nodes, and returns all mode variants for mode-split nodes.';
+	'Node type IDs (max 5); pass resource/operation or mode discriminators when known';
 
 const listAction = z.object({
 	action: z.literal('list').describe('List available node types'),
@@ -33,11 +30,7 @@ const listAction = z.object({
 });
 
 const searchAction = z.object({
-	action: z
-		.literal('search')
-		.describe(
-			'Search node types by name or AI connection type. Use for service-specific discovery — short service names like "Gmail" or "Slack", not full task phrases.',
-		),
+	action: z.literal('search').describe('Search node types by name or connection type'),
 	query: z
 		.string()
 		.optional()
@@ -74,20 +67,12 @@ export const nodeRequestSchema = z.union([
 export type NodeTypeRequest = z.infer<typeof nodeRequestSchema>;
 
 const typeDefinitionAction = z.object({
-	action: z
-		.literal('type-definition')
-		.describe(
-			'Get TypeScript type definitions for nodes — exact parameter names, enum values, credential types, display conditions, and `@builderHint` annotations.',
-		),
+	action: z.literal('type-definition').describe('Get node parameter type definitions'),
 	nodeTypes: z.array(nodeRequestSchema).min(1).max(5).describe(NODE_TYPES_ARRAY_DESCRIPTION),
 });
 
 const suggestedAction = z.object({
-	action: z
-		.literal('suggested')
-		.describe(
-			'Get curated node recommendations by category. Call first when the workflow fits a known category.',
-		),
+	action: z.literal('suggested').describe('Get curated node recommendations by category'),
 	categories: z
 		.array(z.string())
 		.min(1)
@@ -96,9 +81,7 @@ const suggestedAction = z.object({
 });
 
 const exploreResourcesAction = z.object({
-	action: z
-		.literal('explore-resources')
-		.describe("Query live credential-backed resource lists for a node's RLC parameters"),
+	action: z.literal('explore-resources').describe('Query credential-backed resource lists'),
 	nodeType: z.string().describe(NODE_TYPE_ID_DESCRIPTION),
 	version: z.number().describe('Node version, e.g. 4.7'),
 	methodName: z.string().describe(METHOD_NAME_DESCRIPTION),
@@ -375,20 +358,15 @@ export function createNodesTool(
 
 	if (surface === 'orchestrator') {
 		const orchestratorExploreAction = z.object({
-			action: z
-				.literal('explore-resources')
-				.describe("Query real resources for a node's RLC parameters"),
-			nodeType: z.string().describe('Node type ID, e.g. "n8n-nodes-base.httpRequest"'),
-			version: z.number().describe('Node version, e.g. 4.7'),
+			action: z.literal('explore-resources').describe('Query credential-backed resource lists'),
+			nodeType: z.string().describe(NODE_TYPE_ID_DESCRIPTION),
+			version: z.number().describe('Node version'),
 			methodName: z.string().describe(METHOD_NAME_DESCRIPTION),
 			methodType: z.enum(['listSearch', 'loadOptions']).describe(METHOD_TYPE_DESCRIPTION),
-			credentialType: z.string().describe('Credential type key, e.g. "googleSheetsOAuth2Api"'),
-			credentialId: z.string().describe('Credential ID from list-credentials'),
-			filter: z.string().optional().describe('Search/filter text to narrow results'),
-			paginationToken: z
-				.string()
-				.optional()
-				.describe('Pagination token from a previous call to get more results'),
+			credentialType: z.string().describe('Credential type key'),
+			credentialId: z.string().describe('Credential ID'),
+			filter: z.string().optional().describe('Search filter'),
+			paginationToken: z.string().optional().describe('Pagination token'),
 			currentNodeParameters: z
 				.record(z.unknown())
 				.optional()
@@ -402,12 +380,7 @@ export function createNodesTool(
 		type OrchestratorInput = z.infer<typeof orchestratorInputSchema>;
 
 		return new Tool('nodes')
-			.description(
-				"Read node type definitions or query real resources for a node's RLC parameters " +
-					'(e.g. list Google Sheets, OpenAI models, Slack channels). Use `type-definition` ' +
-					'first to read `@searchListMethod` / `@loadOptionsMethod` annotations, then ' +
-					'`explore-resources` with the real method name and a credential.',
-			)
+			.description('Read node type definitions or query credential-backed resource lists')
 			.input(orchestratorInputSchema)
 			.handler(async (input: OrchestratorInput) => {
 				switch (input.action) {

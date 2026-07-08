@@ -11,10 +11,7 @@ recommended_tools:
   - build-workflow
   - workflows
   - nodes
-  - data-tables
-  - credentials
   - verify-built-workflow
-  - executions
 ---
 
 # Workflow Builder
@@ -58,6 +55,12 @@ or use a placeholder; do not route around that by creating a custom tool through
 - When a tool accepts an optional name parameter (`workflowName`, `folderName`,
   `credentialName`, etc.), always pass it — the name is shown in confirmation
   dialogs.
+- Load phase-specific tools via `load_tools` when needed — they are not
+  auto-activated with this skill:
+  - `credentials` — list/search existing credentials or open standalone
+    credential setup (not workflow setup).
+  - `executions` — run, debug, or inspect workflow executions.
+  - `data-tables` — only after loading `data-table-manager` (gated).
 - Use `research` directly for most web questions. Load `planning` and
   `create-tasks` only for broad detached synthesis across many sources.
 
@@ -119,6 +122,9 @@ workflow/credential setup surfaces.
 - **Workflow setup** uses `workflows(action="setup")` when a `workflowId` is
   available — it opens the inline setup card in the AI Assistant panel and
   handles credentials, parameters, and triggers in one step.
+- Load `credentials` via `load_tools` before `credentials(action="list")` or
+  `credentials(action="search-types")` when you need to inspect existing
+  credentials during the build.
 - Use `credentials(action="setup")` only when the user explicitly asks to create
   a credential outside of any workflow context.
 - Never call both setup tools for the same workflow.
@@ -279,8 +285,10 @@ save. The job is done when one of these is true:
 Prefer `verify-built-workflow` for workflows saved by `build-workflow`; it can
 be called again with `workflowId` if the original `workItemId` is no longer in
 context. For alternate deterministic scenarios, pass `fixtureOverrides` for
-nodes already classified as simulated. Use raw `executions(action="run")` only
-for ad hoc non-build verification or when the user explicitly wants a live run.
+nodes already classified as simulated. Load `executions` via `load_tools` before
+`executions(action="run")` or `executions(action="debug")` — use raw
+`executions(action="run")` only for ad hoc non-build verification or when the
+user explicitly wants a live run.
 If live connectivity also matters for a branch-controlled workflow, verify the
 fixture-backed branch coverage first and run a separate live smoke check, or
 state exactly which branch remains unverified.

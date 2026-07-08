@@ -151,7 +151,7 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('pages returned by `n8n-docs`');
 	});
 
-	it('loads the bundled agent-builder skill with workflow guard in description', async () => {
+	it('loads the bundled agent-builder skill with workflow guard in description', () => {
 		const source = loadInstanceAiRuntimeSkillSource();
 		const skill = source.registry.skills.find((entry) => entry.name === 'agent-builder');
 
@@ -173,10 +173,7 @@ describe('Instance AI runtime skills', () => {
 			'build-workflow',
 			'workflows',
 			'nodes',
-			'data-tables',
-			'credentials',
 			'verify-built-workflow',
-			'executions',
 		]);
 		expect(skill?.description).toContain('Default for single-workflow build/edit');
 		expect(skill?.description).toContain('use workflows/executions directly');
@@ -186,7 +183,7 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('load `debugging-executions` and inspect');
 		expect(loaded?.instructions).toContain('## Do not use agent_builder');
 		expect(loaded?.instructions).toContain('do not call\n`agent_builder` at all');
-		expect(loaded?.instructions).toContain('## Tool conventions');
+		expect(loaded?.instructions).toContain('Load phase-specific tools via `load_tools`');
 		expect(loaded?.instructions).toContain('## Capability honesty');
 		expect(loaded?.instructions).toContain('build-workflow');
 		expect(loaded?.instructions).toContain('filePath');
@@ -217,6 +214,7 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('nodes(action="type-definition")');
 		expect(loaded?.instructions).toContain('Do not create a plan just for verification');
 		expect(loaded?.instructions).toContain('inspect it first via `debugging-executions`');
+		expect(loaded?.instructions).toContain('Load `executions` via `load_tools`');
 		expect(loaded?.instructions).toContain('## Setup Routing');
 		expect(loaded?.instructions).toContain('Never call both setup tools for the same workflow');
 		expect(loaded?.instructions).toContain('Webhook trigger setup is node-defined');

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { DeferredToolManager, LOAD_TOOLS_TOOL_NAME } from '../deferred-tool-manager';
 import type { BuiltTool } from '../../../types/sdk/tool';
+import { DeferredToolManager, LOAD_TOOLS_TOOL_NAME } from '../deferred-tool-manager';
 
 function makeTool(name: string): BuiltTool {
 	return {

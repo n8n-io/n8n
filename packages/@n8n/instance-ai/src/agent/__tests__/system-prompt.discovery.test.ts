@@ -8,8 +8,8 @@
  * not churn them but intent-shifting edits fail loudly.
  */
 
-import type { LocalGatewayStatus } from '../../types';
 import { loadInstanceAiRuntimeSkillSource } from '../../skills/runtime-skills';
+import type { LocalGatewayStatus } from '../../types';
 import { getSystemPrompt } from '../system-prompt';
 
 const browserCapableOptions: {

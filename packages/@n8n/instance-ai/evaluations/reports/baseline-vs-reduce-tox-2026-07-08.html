@@ -1,0 +1,82 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Instance AI Eval — Baseline vs feat-reduce-tox-1</title>
+<style>:root{--bg:#0f1117;--surface:#1a1d27;--border:#343a4f;--text:#e6e9f0;--muted:#9aa3b8;--baseline:#6ea8fe;--branch:#63e6be;--good:#63e6be;--bad:#ff8787;--neutral:#adb5bd}
+body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--text)}
+.wrap{max-width:1100px;margin:0 auto;padding:32px 24px 64px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin:24px 0}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px}
+.card h2{font-size:.8rem;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.big{font-size:1.5rem;font-weight:700} .sub{color:var(--muted);font-size:.85rem;margin-top:6px}
+.good{color:var(--good)}.bad{color:var(--bad)}.neutral{color:var(--neutral)}
+table{width:100%;border-collapse:collapse;background:var(--surface);font-size:.88rem}
+th,td{padding:10px 12px;border-bottom:1px solid var(--border);text-align:left}
+th{background:#242836;color:var(--muted);font-size:.75rem;text-transform:uppercase}
+.chart,.insights{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;margin-top:24px}
+.chart-row{display:grid;grid-template-columns:180px 1fr;gap:12px;margin-bottom:12px;align-items:center}
+.bar-wrap{display:grid;grid-template-columns:64px 1fr 72px;gap:8px;align-items:center;margin-bottom:4px}
+.bar{height:14px;border-radius:4px}.bar.baseline{background:var(--baseline)}.bar.branch{background:var(--branch)}
+.fail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.eval-failures{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px}
+a{color:var(--baseline)}</style></head><body><div class="wrap">
+<h1>Instance AI Eval Report</h1>
+<p style="color:var(--muted)">Baseline (master) vs Branch <code>feat-reduce-tox-1-7cb310a2</code> — matched 7-eval set</p>
+<p><a href="https://eu.smith.langchain.com/o/27a59feb-374e-458b-be53-df2f86940838/datasets/12148a6c-f625-4df6-b004-6aa36c6c1213/compare?selectedSessions=058fef2b-ace0-4716-b4a3-302db7d075bd">Baseline compare ↗</a> · <a href="https://eu.smith.langchain.com/o/27a59feb-374e-458b-be53-df2f86940838/datasets/12148a6c-f625-4df6-b004-6aa36c6c1213/compare?selectedSessions=2d0ce89b-7ce1-4962-b141-8e6c07f49195">Branch compare ↗</a></p>
+<div class="cards">
+<div class="card"><h2>Baseline pass</h2><div class="big">65/70</div><div class="sub">92.9% · $51.88 total</div></div>
+<div class="card"><h2>Branch pass</h2><div class="big">67/70</div><div class="sub">95.7% · $52.92 total</div></div>
+<div class="card"><h2>Avg cost/run</h2><div class="big bad">$0.7561</div><div class="sub">vs $0.7412 · +2.0%</div></div>
+<div class="card"><h2>Pass Δ</h2><div class="big good">+2.9 pp</div></div></div>
+<div class="insights"><ul><li>Branch is <strong>2% more expensive</strong> (0.7561/run vs 0.7412/run).</li><li>Pass rate: 65/70 (92.9%) baseline vs 67/70 (95.7%) branch (+2.9 pp).</li><li><strong>notification-router</strong>: pass rate improved by 20 pp.</li><li><strong>revises-plan-after-rejection</strong>: pass rate improved by 10 pp.</li><li><strong>weather-alert</strong>: pass rate regressed by 10 pp.</li></ul></div>
+<h2>Per-eval comparison</h2>
+<table><thead><tr><th>Eval</th><th>Baseline</th><th>Branch</th><th>Pass Δ</th><th>B $/run</th><th>BR $/run</th><th>Cost Δ</th><th>Threads</th></tr></thead><tbody><tr><td class="eval-name">airtable-split-to-slack</td>
+      <td>10/10 (100%)</td><td>10/10 (100%)</td>
+      <td class="neutral">+0.0 pp</td>
+      <td>$0.7468</td><td>$0.7417</td><td class="good">-0.7%</td>
+      <td><a href="https://eu.smith.langchain.com/o/27a59feb-374e-458b-be53-df2f86940838/projects/p/fe707d62-649e-4bdc-a3c1-1d27ff68f2bf?thread=ef678ee5-5ef0-4359-9f91-87931ff7aecf">B</a> <a href="https://eu.smith.langchain.com/o/27a59feb-374e-458b-be53-df2f86940838/projects/p/fe707d62-649e-4bdc-a3c1-1d27ff68f2bf?thread=e712b051-8e57-45fe-bcbc-03c2fc545027">NB</a></td></tr><tr><td class="eval-name">notification-router</td>
+      <td>7/10 (70%)</td><td>9/10 (90%)</td>
+      <td class="good">+20.0 pp</td>
+      <td>$0.7380</td><td>$0.7218</td><td class="good">-2.2%</td>
+      <td><a href="https://eu.smith.langchain.com/o/27a59feb-374e-458b-be53-df2f86940838/projects/p/fe707d62-649e-4bdc-a3c1-1d27ff68f2bf?thread=572f1a07-59f1-4819-aa69-fad3d216fca4">B</a> <a href="https://eu.smith.langchain.com/o/27a59feb-374e-458b-be53-df2f86940838/projects/p/fe707d62-649e-4bdc-a3c1-1d27ff68f2bf?thread=c7d1220b-11a7-499a-9d11-0d3e7b2a0e32">NB</a></td></tr><tr><td class="eval-name">rest-api-data-pipeline</td>
+      <td>10/10 (100%)</td><td>10/10 (100%)</td>
+      <td class="neutral">+0.0 pp</td>
+      <td>$1.0673</td><td>$1.0858</td><td class="bad">+1.7%</td>
+      <td><a href="https://eu.smith.langchain.com/o/27a59feb-374e-458b-be53-df2f86940838/projects/p/fe707d62-649e-4bdc-a3c1-1d27ff68f2bf?thread=da21e48d-6646-459a-9aa7-47adedae51e9">B</a> <a href="https://eu.smith.langchain.com/o/27a59feb-374e-458b-be53-df2f86940838/projects/p/fe707d62-649e-4bdc-a3c1-1d27ff68f2bf?thread=54818c17-5c4f-42b7-8f24-acd5e9507cbe">NB</a></td></tr><tr><td class="eval-name">revises-plan-after-rejection</td>
+      <td>8/10 (80%)</td><td>9/10 (90%)</td>
+      <td class="good">+10.0 pp</td>
+      <td>$0.9115</td><td>$1.2746</td><td class="bad">+39.8%</td>
+      <td><a href="https://eu.smith.langchain.com/o/27a59feb-374e-458b-be53-df2f86940838/projects/p/fe707d62-649e-4bdc-a3c1-1d27ff68f2bf?thread=4c4d4c41-7acb-49f3-873b-b87718f466b7">B</a> <a href="https://eu.smith.langchain.com/o/27a59feb-374e-458b-be53-df2f86940838/projects/p/fe707d62-649e-4bdc-a3c1-1d27ff68f2bf?thread=3ef8cae8-d24f-4ffb-8eba-7272d7182c48">NB</a></td></tr><tr><td class="eval-name">telegram-chatbot-memory-session</td>
+      <td>10/10 (100%)</td><td>10/10 (100%)</td>
+      <td class="neutral">+0.0 pp</td>
+      <td>$0.3318</td><td>$0.3213</td><td class="good">-3.1%</td>
+      <td><a href="https://eu.smith.langchain.com/o/27a59feb-374e-458b-be53-df2f86940838/projects/p/fe707d62-649e-4bdc-a3c1-1d27ff68f2bf?thread=2bbd937d-41bf-47c9-820e-8e2a16310a44">B</a> <a href="https://eu.smith.langchain.com/o/27a59feb-374e-458b-be53-df2f86940838/projects/p/fe707d62-649e-4bdc-a3c1-1d27ff68f2bf?thread=fedb6a86-c6c5-46d2-a0e1-48944469a187">NB</a></td></tr><tr><td class="eval-name">weather-alert</td>
+      <td>10/10 (100%)</td><td>9/10 (90%)</td>
+      <td class="bad">-10.0 pp</td>
+      <td>$0.6569</td><td>$0.5912</td><td class="good">-10.0%</td>
+      <td><a href="https://eu.smith.langchain.com/o/27a59feb-374e-458b-be53-df2f86940838/projects/p/fe707d62-649e-4bdc-a3c1-1d27ff68f2bf?thread=4155f312-281c-4027-a999-6278d917cdd9">B</a> <a href="https://eu.smith.langchain.com/o/27a59feb-374e-458b-be53-df2f86940838/projects/p/fe707d62-649e-4bdc-a3c1-1d27ff68f2bf?thread=e8b0ad1a-776b-4d88-adb9-4f0bad36c35a">NB</a></td></tr><tr><td class="eval-name">workflow-data-table</td>
+      <td>10/10 (100%)</td><td>10/10 (100%)</td>
+      <td class="neutral">+0.0 pp</td>
+      <td>$0.7360</td><td>$0.5560</td><td class="good">-24.5%</td>
+      <td><a href="https://eu.smith.langchain.com/o/27a59feb-374e-458b-be53-df2f86940838/projects/p/fe707d62-649e-4bdc-a3c1-1d27ff68f2bf?thread=a76c216b-35e2-4311-80de-f6e04f4c7628">B</a> <a href="https://eu.smith.langchain.com/o/27a59feb-374e-458b-be53-df2f86940838/projects/p/fe707d62-649e-4bdc-a3c1-1d27ff68f2bf?thread=0f4ff318-7a0a-49a4-8c29-2371dcfc4def">NB</a></td></tr></tbody></table>
+<h2>Cost per eval</h2><div class="chart"><div class="chart-row"><div class="chart-label">airtable-split-to-slack</div><div class="chart-bars">
+      <div class="bar-wrap"><span class="bar-label">Baseline</span><div class="bar baseline" style="width:59%"></div><span class="bar-val">$0.7468</span></div>
+      <div class="bar-wrap"><span class="bar-label">Branch</span><div class="bar branch" style="width:58%"></div><span class="bar-val">$0.7417</span></div>
+    </div></div><div class="chart-row"><div class="chart-label">notification-router</div><div class="chart-bars">
+      <div class="bar-wrap"><span class="bar-label">Baseline</span><div class="bar baseline" style="width:58%"></div><span class="bar-val">$0.7380</span></div>
+      <div class="bar-wrap"><span class="bar-label">Branch</span><div class="bar branch" style="width:57%"></div><span class="bar-val">$0.7218</span></div>
+    </div></div><div class="chart-row"><div class="chart-label">rest-api-data-pipeline</div><div class="chart-bars">
+      <div class="bar-wrap"><span class="bar-label">Baseline</span><div class="bar baseline" style="width:84%"></div><span class="bar-val">$1.0673</span></div>
+      <div class="bar-wrap"><span class="bar-label">Branch</span><div class="bar branch" style="width:85%"></div><span class="bar-val">$1.0858</span></div>
+    </div></div><div class="chart-row"><div class="chart-label">revises-plan-after-rejection</div><div class="chart-bars">
+      <div class="bar-wrap"><span class="bar-label">Baseline</span><div class="bar baseline" style="width:72%"></div><span class="bar-val">$0.9115</span></div>
+      <div class="bar-wrap"><span class="bar-label">Branch</span><div class="bar branch" style="width:100%"></div><span class="bar-val">$1.2746</span></div>
+    </div></div><div class="chart-row"><div class="chart-label">telegram-chatbot-memory-session</div><div class="chart-bars">
+      <div class="bar-wrap"><span class="bar-label">Baseline</span><div class="bar baseline" style="width:26%"></div><span class="bar-val">$0.3318</span></div>
+      <div class="bar-wrap"><span class="bar-label">Branch</span><div class="bar branch" style="width:25%"></div><span class="bar-val">$0.3213</span></div>
+    </div></div><div class="chart-row"><div class="chart-label">weather-alert</div><div class="chart-bars">
+      <div class="bar-wrap"><span class="bar-label">Baseline</span><div class="bar baseline" style="width:52%"></div><span class="bar-val">$0.6569</span></div>
+      <div class="bar-wrap"><span class="bar-label">Branch</span><div class="bar branch" style="width:46%"></div><span class="bar-val">$0.5912</span></div>
+    </div></div><div class="chart-row"><div class="chart-label">workflow-data-table</div><div class="chart-bars">
+      <div class="bar-wrap"><span class="bar-label">Baseline</span><div class="bar baseline" style="width:58%"></div><span class="bar-val">$0.7360</span></div>
+      <div class="bar-wrap"><span class="bar-label">Branch</span><div class="bar branch" style="width:44%"></div><span class="bar-val">$0.5560</span></div>
+    </div></div></div>
+<h2>Failures</h2><section class="eval-failures"><h3>notification-router</h3><div class="fail-grid"><div class="fail-col"><h4>Baseline (3)</h4><ul><li><code>builder_issue</code> — <a href="https://eu.smith.langchain.com/o/27a59feb-374e-458b-be53-df2f86940838/projects/p/fe707d62-649e-4bdc-a3c1-1d27ff68f2bf?thread=572f1a07-59f1-4819-aa69-fad3d216fca4">572f1a07…</a></li><li><code>builder_issue</code> — <a href="https://eu.smith.langchain.com/o/27a59feb-374e-458b-be53-df2f86940838/projects/p/fe707d62-649e-4bdc-a3c1-1d27ff68f2bf?thread=3c7e165d-074a-4c29-8a5f-82beae29d7f7">3c7e165d…</a></li><li><code>builder_issue</code> — <a href="https://eu.smith.langchain.com/o/27a59feb-374e-458b-be53-df2f86940838/projects/p/fe707d62-649e-4bdc-a3c1-1d27ff68f2bf?thread=6d956823-9359-4ee8-ade2-d8e9b10a7db0">6d956823…</a></li></ul></div><div class="fail-col"><h4>New branch (1)</h4><ul><li><code>builder_issue</code> — <a href="https://eu.smith.langchain.com/o/27a59feb-374e-458b-be53-df2f86940838/projects/p/fe707d62-649e-4bdc-a3c1-1d27ff68f2bf?thread=056a1927-e355-4abf-ad98-faccc2bcd4eb">056a1927…</a></li></ul></div></div></section><section class="eval-failures"><h3>revises-plan-after-rejection</h3><div class="fail-grid"><div class="fail-col"><h4>Baseline (2)</h4><ul><li><code>build_failure</code> — <a href="https://eu.smith.langchain.com/o/27a59feb-374e-458b-be53-df2f86940838/projects/p/fe707d62-649e-4bdc-a3c1-1d27ff68f2bf?thread=6ac6d2a1-2d11-4d2a-b412-dee7123fc690">6ac6d2a1…</a></li><li><code>framework_issue</code> — <a href="https://eu.smith.langchain.com/o/27a59feb-374e-458b-be53-df2f86940838/projects/p/fe707d62-649e-4bdc-a3c1-1d27ff68f2bf?thread=074dc5c2-8d45-4338-80db-7b5f9e045dd7">074dc5c2…</a></li></ul></div><div class="fail-col"><h4>New branch (1)</h4><ul><li><code>build_failure</code> — <a href="https://eu.smith.langchain.com/o/27a59feb-374e-458b-be53-df2f86940838/projects/p/fe707d62-649e-4bdc-a3c1-1d27ff68f2bf?thread=bfa51e9d-acf8-430d-bb5b-c47f3ce58884">bfa51e9d…</a></li></ul></div></div></section><section class="eval-failures"><h3>weather-alert</h3><div class="fail-grid"><div class="fail-col"><h4>Baseline (0)</h4><ul><li class="none">None</li></ul></div><div class="fail-col"><h4>New branch (1)</h4><ul><li><code>mock_issue</code> — <a href="https://eu.smith.langchain.com/o/27a59feb-374e-458b-be53-df2f86940838/projects/p/fe707d62-649e-4bdc-a3c1-1d27ff68f2bf?thread=4f70816e-ec75-482e-bef1-5aa461683b9d">4f70816e…</a></li></ul></div></div></section>
+<p style="color:var(--muted);margin-top:32px;font-size:.8rem">Generated 2026-07-08 · Session 2d0ce89b-7ce1-4962-b141-8e6c07f49195</p>
+</div></body></html>

@@ -1,5 +1,6 @@
 export const DOMAIN_TOOL_IDS = {
 	WORKFLOWS: 'workflows',
+	WORKFLOW_VERSIONS: 'workflow-versions',
 	EVALS: 'evals',
 	EXECUTIONS: 'executions',
 	CREDENTIALS: 'credentials',

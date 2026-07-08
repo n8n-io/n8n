@@ -3,8 +3,6 @@ import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
 
 import type { DeferredToolManager } from './deferred-tool-manager';
 import { LOAD_TOOLS_TOOL_NAME } from './deferred-tool-manager';
-import type { AgentRuntimeConfig } from '../loop/agent-runtime';
-
 import {
 	getInlineDelegateSubAgentToolOptions,
 	isDelegateSubAgentTool,
@@ -27,6 +25,7 @@ import type { AgentMessage, ContentToolCall, Message } from '../../types/sdk/mes
 import type { JSONObject, JSONValue } from '../../types/utils/json';
 import { parseWithSchema } from '../../utils/parse';
 import { isZodSchema } from '../../utils/zod';
+import type { AgentRuntimeConfig } from '../loop/agent-runtime';
 import { incrementToolCallCount } from '../loop/execution-counter';
 import type { AgentMessageList } from '../model/message-list';
 import { normalizeToolInputForModel } from '../model/messages';
@@ -925,7 +924,8 @@ export class ToolCallExecutor {
 			return output;
 		}
 
-		const value = output.value.map((block) => {
+		const blocks: unknown[] = output.value;
+		const value = blocks.map((block) => {
 			if (!isRecord(block) || block.type !== 'text' || typeof block.text !== 'string') {
 				return block;
 			}

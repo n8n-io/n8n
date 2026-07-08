@@ -46,13 +46,7 @@ const runAction = z.object({
 	inputData: z
 		.record(z.unknown())
 		.optional()
-		.describe(
-			'Input data passed to the workflow trigger. Works for ANY trigger type — ' +
-				'the system injects inputData as the trigger node output, bypassing the need for a real event. ' +
-				'For webhook triggers, inputData is the request body (do NOT wrap in { body: ... }). ' +
-				'For event-based triggers (e.g. Linear, GitHub, Slack), pass inputData matching ' +
-				'the shape the trigger would emit (e.g. { action: "create", data: { ... } }).',
-		),
+		.describe('Trigger input data (shape depends on trigger type)'),
 	timeout: z
 		.number()
 		.int()
@@ -63,13 +57,7 @@ const runAction = z.object({
 });
 
 const debugAction = z.object({
-	action: z
-		.literal('debug')
-		.describe(
-			'Analyze a failed execution with structured diagnostics. When a node failed, ' +
-				"`failedNode.resolvedParameters` includes that node's raw parameters, the same " +
-				'tree with expressions substituted, and lists of expressions that threw or resolved to empty values',
-		),
+	action: z.literal('debug').describe('Analyze a failed execution'),
 	executionId: z.string().describe('Execution ID'),
 });
 
@@ -78,7 +66,7 @@ const getNodeOutputAction = z.object({
 		.literal('get-node-output')
 		.describe('Retrieve raw output of a specific node from an execution'),
 	executionId: z.string().describe('Execution ID'),
-	nodeName: z.string().describe("Name of the node (must exist in the execution's workflow)"),
+	nodeName: z.string().describe('Node name'),
 	startIndex: z.number().int().min(0).optional().describe('Item index to start from (default 0)'),
 	maxItems: z
 		.number()
@@ -92,15 +80,9 @@ const getNodeOutputAction = z.object({
 const getResolvedNodeParametersAction = z.object({
 	action: z
 		.literal('get-resolved-node-parameters')
-		.describe(
-			"Replay expression resolution for a node's parameters against a past execution. " +
-				'Returns raw `parameters`, the `resolved` tree, `failedExpressions`, and ' +
-				'`emptyResolutions` (resolved to `null`/`undefined`/`""` — the common silent ' +
-				'cause of empty downstream fields). Use when debugging why a node received an ' +
-				'unexpected value — more precise than guessing from raw expressions or input data.',
-		),
+		.describe('Replay expression resolution for a node'),
 	executionId: z.string().describe('Execution ID'),
-	nodeName: z.string().describe("Name of the node (must exist in the execution's workflow)"),
+	nodeName: z.string().describe('Node name'),
 	itemIndex: z
 		.number()
 		.int()
