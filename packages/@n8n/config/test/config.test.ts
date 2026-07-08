@@ -194,6 +194,7 @@ describe('GlobalConfig', () => {
 			include: [],
 			exclude: ['n8n-nodes-base.executeCommand', 'n8n-nodes-base.localFileTrigger'],
 			pythonEnabled: true,
+			mergeSqlSandboxMemoryLimitMb: 64,
 		},
 		publicApi: {
 			disabled: false,
@@ -305,7 +306,7 @@ describe('GlobalConfig', () => {
 			cacheMaxSize: 500,
 		},
 		mcpServer: {
-			sessionIdleTtl: 3600000,
+			sessionIdleTtl: 900000,
 			sessionSweepInterval: 300000,
 		},
 		chatHub: {
