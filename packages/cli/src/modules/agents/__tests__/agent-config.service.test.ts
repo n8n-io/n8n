@@ -88,6 +88,10 @@ describe('AgentConfigService', () => {
 		vi.clearAllMocks();
 	});
 
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
 	describe('validateConfig', () => {
 		it('rejects unsafe node tool schemas before deeper validation', async () => {
 			const { service } = makeService();
@@ -132,6 +136,34 @@ describe('AgentConfigService', () => {
 	});
 
 	describe('updateConfig', () => {
+		it('persists an explicit web-search disable and clears native provider tools', async () => {
+			// Regression: previously the disable was stripped on write and resurrected
+			// on read, so the config hash never changed and the builder looped.
+			const { service, agentRepository } = makeService();
+			const agent = makeAgent({
+				schema: {
+					...baseConfig,
+					config: { webSearch: { enabled: true } },
+					providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+				} as unknown as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.updateConfig(agentId, projectId, {
+				...baseConfig,
+				config: { webSearch: { enabled: false } },
+				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+			} as unknown as AgentJsonConfig);
+
+			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.schema?.config?.webSearch).toEqual({ enabled: false });
+			expect(saved.schema?.providerTools).toEqual({});
+			// The returned (composed) config reflects the persisted state so the tool
+			// layer's freshness hash actually changes.
+			expect(result.config?.config?.webSearch).toEqual({ enabled: false });
+			expect(result.config?.providerTools).toEqual({});
+		});
+
 		it('preserves omitted stored fields but clears explicitly empty integrations', async () => {
 			const { service, agentRepository, credentialsService, runtimeCacheService } = makeService();
 			const agent = makeAgent({
@@ -261,6 +293,89 @@ describe('AgentConfigService', () => {
 			);
 			expect(saved.integrations).toEqual([{ type: 'slack', credentialId: '' }]);
 			expect(savedConfig.mcpServers?.[0].credential).toBe('');
+		});
+
+		it('persists personalisation changes from the config payload', async () => {
+			const { service, agentRepository } = makeService();
+			const agent = makeAgent({
+				schema: {
+					...baseConfig,
+					personalisation: {
+						icon: 'bot',
+						gradient: {
+							from: '#111111',
+							to: '#222222',
+							angle: 135,
+							fromStop: 0,
+							toStop: 100,
+						},
+					},
+				},
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.updateConfig(agentId, projectId, {
+				...baseConfig,
+				personalisation: {
+					icon: 'mail',
+					gradient: {
+						from: '#333333',
+						to: '#444444',
+						angle: 42,
+						fromStop: 12,
+						toStop: 88,
+					},
+				},
+			});
+
+			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			expect(saved.schema?.personalisation).toEqual({
+				icon: 'mail',
+				gradient: {
+					from: '#333333',
+					to: '#444444',
+					angle: 42,
+					fromStop: 12,
+					toStop: 88,
+				},
+			});
+		});
+
+		it('preserves an existing personalisation gradient when only the icon changes', async () => {
+			const { service, agentRepository } = makeService();
+			const agent = makeAgent({
+				schema: {
+					...baseConfig,
+					personalisation: {
+						icon: 'bot',
+						gradient: {
+							from: '#111111',
+							to: '#222222',
+							angle: 42,
+							fromStop: 12,
+							toStop: 88,
+						},
+					},
+				},
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.updateConfig(agentId, projectId, {
+				...baseConfig,
+				personalisation: { icon: 'mail' },
+			});
+
+			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			expect(saved.schema?.personalisation).toEqual({
+				icon: 'mail',
+				gradient: {
+					from: '#111111',
+					to: '#222222',
+					angle: 42,
+					fromStop: 12,
+					toStop: 88,
+				},
+			});
 		});
 
 		it('stores only existing published subagents and rejects invalid subagent refs', async () => {

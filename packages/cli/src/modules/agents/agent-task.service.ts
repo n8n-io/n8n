@@ -1,6 +1,7 @@
 import type { AgentTaskDto, CreateAgentTaskDto, UpdateAgentTaskDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import type { User } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { IsNull, Not } from '@n8n/typeorm';
@@ -518,17 +519,17 @@ export class AgentTaskService {
 	 * agent run can be long, so it is kicked off in the background and surfaces
 	 * as a session; only the lookup is awaited so a missing task still 404s.
 	 */
-	async runNow(agentId: string, taskId: string, userId: string): Promise<void> {
+	async runNow(agentId: string, taskId: string, user: User): Promise<void> {
 		const task = await this.getOrThrow(agentId, taskId);
 		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 
-		void this.executeNow(task, agent.projectId, userId);
+		void this.executeNow(task, agent.projectId, user);
 	}
 
-	private async executeNow(task: AgentTask, projectId: string, userId: string): Promise<void> {
+	private async executeNow(task: AgentTask, projectId: string, user: User): Promise<void> {
 		const { message, threadId } = this.buildTaskRunMessage(task.id, task.objective);
 
 		this.logger.info('[AgentTaskService] Manual task run started', {
@@ -543,7 +544,7 @@ export class AgentTaskService {
 			this.agentExecutionOrchestratorService.executeForTaskNow({
 				agentId: task.agentId,
 				projectId,
-				userId,
+				user,
 				message,
 				memory: { threadId, resourceId: taskRunMemoryResourceId(task.id) },
 				taskId: task.id,

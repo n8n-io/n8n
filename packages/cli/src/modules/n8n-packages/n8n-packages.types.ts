@@ -9,7 +9,7 @@ export type { CredentialResolution } from './entities/credential/credential.type
 export { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishing-policy.types';
 export type { WorkflowPublishingOutcome } from './entities/workflow/workflow-publishing-policy.types';
 
-export type CredentialMatchingMode = 'id-only';
+export type CredentialMatchingMode = 'id-only' | 'name-and-type' | 'type-only';
 export type CredentialMissingMode = 'must-preexist' | 'create-stub';
 
 export type PackageFailureReason = 'access-denied' | 'entity-not-found' | 'blocked' | 'validation';

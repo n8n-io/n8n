@@ -1,4 +1,9 @@
+import type { Logger } from '@n8n/backend-common';
 import type { InstanceAiEvent } from '@n8n/api-types';
+import { mock } from 'vitest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
+
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { InProcessEventBus } from '../in-process-event-bus';
 
@@ -13,9 +18,20 @@ function makeEvent(type: string, runId: string): InstanceAiEvent {
 
 describe('InProcessEventBus', () => {
 	let bus: InProcessEventBus;
+	let publisher: ReturnType<typeof mock<Publisher>>;
+	let instanceSettings: { isMultiMain: boolean };
+
+	function buildBus() {
+		const logger = mock<Logger>();
+		logger.scoped.mockReturnValue(logger);
+		publisher = mock<Publisher>();
+		publisher.publishCommand.mockResolvedValue(undefined);
+		return new InProcessEventBus(logger, instanceSettings as InstanceSettings, publisher);
+	}
 
 	beforeEach(() => {
-		bus = new InProcessEventBus();
+		instanceSettings = { isMultiMain: false };
+		bus = buildBus();
 	});
 
 	afterEach(() => {
@@ -189,6 +205,94 @@ describe('InProcessEventBus', () => {
 			// Listener removed — new publish should not reach old handler
 			bus.publish('thread-1', makeEvent('b', 'run_1'));
 			expect(received).toHaveLength(1);
+		});
+	});
+
+	describe('cross-main relay', () => {
+		it('does not relay when single-main', () => {
+			bus.publish('thread-1', makeEvent('a', 'run_1'));
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('relays each event via pubsub when multi-main', () => {
+			instanceSettings.isMultiMain = true;
+			bus = buildBus();
+
+			const event = makeEvent('a', 'run_1');
+			bus.publish('thread-1', event);
+
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'relay-instance-ai-event',
+				payload: { threadId: 'thread-1', event },
+			});
+		});
+
+		it('still delivers locally even when relaying', () => {
+			instanceSettings.isMultiMain = true;
+			bus = buildBus();
+			const received: number[] = [];
+			bus.subscribe('thread-1', (e) => received.push(e.id));
+
+			bus.publish('thread-1', makeEvent('a', 'run_1'));
+
+			expect(received).toEqual([1]);
+			expect(publisher.publishCommand).toHaveBeenCalledTimes(1);
+		});
+
+		it('skips relay for oversized events but still delivers locally', () => {
+			instanceSettings.isMultiMain = true;
+			bus = buildBus();
+			const received: number[] = [];
+			bus.subscribe('thread-1', (e) => received.push(e.id));
+			const huge = makeEvent('a', 'run_1');
+			(huge.payload as { text: string }).text = 'x'.repeat(6 * 1024 * 1024);
+
+			bus.publish('thread-1', huge);
+
+			// Relay skipped (would bloat pubsub), but the local SSE client still got it
+			// synchronously via the emit (even though the 2 MB store cap then evicts it).
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+			expect(received).toEqual([1]);
+		});
+
+		it('publishLocalOnly never relays', () => {
+			instanceSettings.isMultiMain = true;
+			bus = buildBus();
+
+			bus.publishLocalOnly('thread-1', makeEvent('a', 'run_1'));
+
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+			expect(bus.getEventsAfter('thread-1', 0)).toHaveLength(1);
+		});
+	});
+
+	describe('handleRelayInstanceAiEvent', () => {
+		it('re-emits a relayed event when this main holds an SSE subscriber', () => {
+			const received: number[] = [];
+			bus.subscribe('thread-1', (e) => received.push(e.id));
+
+			bus.handleRelayInstanceAiEvent({ threadId: 'thread-1', event: makeEvent('a', 'run_1') });
+
+			expect(received).toEqual([1]);
+			// Re-emit must not re-relay (loop guard): publishLocalOnly path.
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('ignores a relayed event when this main has no subscriber for the thread', () => {
+			bus.handleRelayInstanceAiEvent({ threadId: 'thread-1', event: makeEvent('a', 'run_1') });
+
+			// Nothing stored, since the thread has no local consumer here.
+			expect(bus.getEventsAfter('thread-1', 0)).toHaveLength(0);
+		});
+	});
+
+	describe('hasSubscribers', () => {
+		it('reflects active subscriptions', () => {
+			expect(bus.hasSubscribers('thread-1')).toBe(false);
+			const unsubscribe = bus.subscribe('thread-1', () => {});
+			expect(bus.hasSubscribers('thread-1')).toBe(true);
+			unsubscribe();
+			expect(bus.hasSubscribers('thread-1')).toBe(false);
 		});
 	});
 });

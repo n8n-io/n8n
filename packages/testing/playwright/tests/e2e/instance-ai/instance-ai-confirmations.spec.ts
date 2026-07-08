@@ -76,10 +76,10 @@ type ApprovalExecutionAssertionContext = {
 	api: { workflows: WorkflowApiForAssertions };
 };
 
-async function hasSuccessfulExecutionForNode(
+async function findWorkflowIdsForNode(
 	workflowsApi: WorkflowApiForAssertions,
 	nodeName: string,
-): Promise<boolean> {
+): Promise<string[]> {
 	const workflows = await workflowsApi.getWorkflows();
 	const workflowIds: string[] = [];
 
@@ -98,12 +98,31 @@ async function hasSuccessfulExecutionForNode(
 		}
 	}
 
-	for (const workflowId of workflowIds) {
+	return workflowIds;
+}
+
+async function hasSuccessfulExecutionForNode(
+	workflowsApi: WorkflowApiForAssertions,
+	nodeName: string,
+): Promise<boolean> {
+	for (const workflowId of await findWorkflowIdsForNode(workflowsApi, nodeName)) {
 		const executions = await workflowsApi.getExecutions(workflowId, 10);
 		if (executions.some((execution) => execution.status === 'success')) return true;
 	}
 
 	return false;
+}
+
+async function countExecutionsForNode(
+	workflowsApi: WorkflowApiForAssertions,
+	nodeName: string,
+): Promise<number> {
+	let count = 0;
+	for (const workflowId of await findWorkflowIdsForNode(workflowsApi, nodeName)) {
+		count += (await workflowsApi.getExecutions(workflowId, 10)).length;
+	}
+
+	return count;
 }
 
 async function approveBuildPlanIfRequested({
@@ -269,12 +288,14 @@ test.describe(
 
 				await approveBuildPlanIfRequested({ n8n, nodeName: 'deny test' });
 				await expect(n8n.instanceAi.getConfirmDenyButton()).toBeVisible({ timeout: 120_000 });
+				// Build verification may already have run the workflow; denying must not add a run.
+				const executionsBeforeDeny = await countExecutionsForNode(n8n.api.workflows, 'deny test');
 				await n8n.instanceAi.getConfirmDenyButton().click();
 				await n8n.instanceAi.waitForResponseComplete();
 
-				await expect
-					.poll(async () => await hasSuccessfulExecutionForNode(n8n.api.workflows, 'deny test'))
-					.toBe(false);
+				expect(await countExecutionsForNode(n8n.api.workflows, 'deny test')).toBe(
+					executionsBeforeDeny,
+				);
 				await expect(n8n.instanceAi.getConfirmApproveButton()).not.toBeVisible();
 				await expect(n8n.instanceAi.getConfirmDenyButton()).not.toBeVisible();
 			},

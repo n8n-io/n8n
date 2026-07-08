@@ -1,14 +1,14 @@
+import type { ScheduledJobKind } from '@n8n/constants';
 import type { CronExpression } from 'n8n-workflow';
 
 /**
  * The recurrence source: a `ScheduledJob` defines recurring work through a cron /
- * interval / one-off `Schedule`, which the materialiser turns into tasks. Time
+ * interval / one-off rule, which the materialiser turns into tasks. Time
  * and DST math over these types lives in `recurrence/`; coordination (the core)
  * never looks at them.
  *
- * Field names mirror the `scheduled_job` columns so the storage adapter maps
- * trivially. Instants are `Date` (absolute UTC). `CronExpression` is imported
- * from `n8n-workflow` (its canonical home) and not re-exported here.
+ * `CronExpression` is imported from `n8n-workflow` (its canonical home) and not
+ * re-exported here.
  */
 
 /**
@@ -41,17 +41,20 @@ export interface OneOffSchedule {
 
 export type Schedule = CronSchedule | IntervalSchedule | OneOffSchedule;
 
-/**
- * A schedule definition (`scheduled_job`). Recurrence lives in `schedule`;
- * `nextRunAt` is the next instant the sweep materialises from.
- */
 export interface ScheduledJob {
-	id: string;
-	schedule: Schedule;
-	enabled: boolean;
-	nextRunAt: Date | null;
-	lastFiredAt: Date | null;
+	id: number;
 	taskType: string;
-	payload: unknown;
+	payload: Record<string, unknown>;
+	kind: ScheduledJobKind;
+	/** Set only when {@link kind} is `cron`. */
+	cronExpression: string | null;
+	/** IANA zone a cron expression is evaluated in; `null` means the instance default. */
+	timezone: string | null;
+	/** Set only when {@link kind} is `interval`. */
+	intervalSeconds: number | null;
+	/** Set only when {@link kind} is `one_off`. */
+	fireAt: Date | null;
+	nextRunAt: Date | null; // the next instant the materializer materializes from.
+	lastFiredAt: Date | null;
 	maxAttempts: number;
 }

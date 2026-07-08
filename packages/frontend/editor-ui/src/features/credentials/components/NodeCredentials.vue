@@ -38,17 +38,18 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import { assert } from '@n8n/utils/assert';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useNodeCredentialOptions } from '../composables/useNodeCredentialOptions';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
+import CredentialPrivateConnectionRow from './CredentialPrivateConnectionRow.vue';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import AiGatewaySelector from '@/app/components/AiGatewaySelector.vue';
 
 import {
-	N8nBadge,
 	N8nButton,
 	N8nIcon,
 	N8nInput,
@@ -117,6 +118,7 @@ const ndvStore = injectNDVStoreIfProvided();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const workflowsStore = useWorkflowsStore();
+const usersStore = useUsersStore();
 const workflowDocumentStore = props.standalone ? undefined : injectWorkflowDocumentStore();
 const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
 
@@ -127,7 +129,8 @@ const {
 	connect,
 	cancelConnect,
 } = useQuickConnect();
-const { canOAuthCredentialQuickConnect, hasManualCredentialInputFields } = useCredentialOAuth();
+const { canOAuthCredentialQuickConnect, hasManualCredentialInputFields, authorize } =
+	useCredentialOAuth();
 
 const aiGateway = useAiGateway();
 const hideAskAssistant = computed(() => props.hideAskAssistant || isToolContext);
@@ -201,9 +204,38 @@ function isPrivateConnected(credentialType: string): boolean {
 	return getSelectedPrivateCredential(credentialType)?.connectedByMe === true;
 }
 
-function canConnectPrivateCredential(credentialType: string): boolean {
+function canEditPrivateCredential(credentialType: string): boolean {
 	const credential = getSelectedPrivateCredential(credentialType);
 	return getResourcePermissions(credential?.scopes).credential.update === true;
+}
+
+function canConnectPrivateCredential(credentialType: string): boolean {
+	const credential = getSelectedPrivateCredential(credentialType);
+	return getResourcePermissions(credential?.scopes).credential.connect === true;
+}
+
+async function onConnectFromRow(credentialType: string): Promise<void> {
+	const credential = getSelectedPrivateCredential(credentialType);
+	if (!credential) return;
+	const success = await authorize(credential);
+	if (success) {
+		credentialsStore.setConnectedByMe(credential.id, true);
+	}
+}
+
+async function onDisconnectFromRow(credentialType: string): Promise<void> {
+	const credential = getSelectedPrivateCredential(credentialType);
+	if (!credential) return;
+
+	try {
+		await credentialsStore.disconnectMyConnection({ id: credential.id });
+		toast.showMessage({
+			title: i18n.baseText('credentials.private.disconnected.success'),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('credentials.private.disconnected.error'));
+	}
 }
 
 // The connect / connected callout is only relevant when the workflow uses the
@@ -214,6 +246,17 @@ function canConnectPrivateCredential(credentialType: string): boolean {
 const isDefaultResolver = computed(() => {
 	const resolverId = workflowDocumentStore?.value.settings?.credentialResolverId;
 	return !resolverId || resolverId === SYSTEM_RESOLVER_ID;
+});
+
+// Whether the node's current resource/operation is runnable by the AI gateway.
+// Nodes without an operation selected are treated as supported so gateway
+// auto-selection still works for operation-agnostic nodes.
+const isCurrentActionSupported = computed(() => {
+	const params = props.node.parameters;
+	const operation = params.operation as string | undefined;
+	if (!operation) return true;
+	const resource = params.resource as string | undefined;
+	return aiGateway.isActionSupported(node.value.type, resource, operation);
 });
 
 watch(
@@ -240,11 +283,17 @@ watch(
 	{ immediate: true, deep: true },
 );
 
+let hasEvaluatedCredentials = false;
+
 // Select most recent credential by default
 watch(
 	credentialTypesNodeDescriptionDisplayed,
 	(types) => {
 		if (props.skipAutoSelect) return;
+		if (types.length === 0) return;
+
+		const isInitialEvaluation = !hasEvaluatedCredentials;
+		hasEvaluatedCredentials = true;
 
 		if (
 			aiGateway.isEnabled.value &&
@@ -257,17 +306,20 @@ watch(
 			}
 		}
 
-		if (types.length === 0 || !isEmpty(selected.value)) return;
+		if (!isEmpty(selected.value)) return;
 
 		const allOptions = types.map((type) => type.options).flat();
 
 		if (allOptions.length === 0) {
-			// No credentials configured — auto-enable AI Gateway for supported types
-			if (aiGateway.isEnabled.value) {
+			// No credentials configured — auto-enable AI Gateway for supported types,
+			// but only on the initial setup so a later action change doesn't redirect
+			// the user onto n8n Connect.
+			if (aiGateway.isEnabled.value && isInitialEvaluation) {
 				for (const { type } of types) {
 					if (
 						aiGateway.isCredentialTypeSupported(type.name) &&
-						aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion)
+						aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion) &&
+						isCurrentActionSupported.value
 					) {
 						onAiGatewaySelector(type.name, true, false);
 					}
@@ -788,13 +840,35 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					:credential-type="type.name"
 					@toggle="onAiGatewaySelector(type.name, $event)"
 				/>
-				<div v-if="readonly && !isAiGatewayManagedCredentials(type.name)">
+				<div
+					v-if="readonly && !isAiGatewayManagedCredentials(type.name)"
+					:class="[
+						$style.selectContainer,
+						{
+							[$style.inputWithPrivateRow]:
+								getSelectedPrivateCredential(type.name) && isDefaultResolver,
+						},
+					]"
+				>
 					<N8nInput
 						:model-value="getSelectedName(type.name)"
 						disabled
 						size="small"
 						data-test-id="node-credentials-select"
 					/>
+					<div
+						v-if="isCredentialResolvable(type.name)"
+						:class="[$style.dynamicIndicator, $style.dynamicIndicatorReadonly]"
+					>
+						<N8nTooltip placement="top">
+							<template #content>{{ i18n.baseText('credentials.private.tooltip') }}</template>
+							<N8nIcon
+								icon="user-round-key"
+								size="small"
+								data-test-id="node-credential-private-icon"
+							/>
+						</N8nTooltip>
+					</div>
 				</div>
 				<div
 					v-else-if="
@@ -853,7 +927,19 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				</div>
 				<div
 					v-else-if="!isAiGatewayManagedCredentials(type.name)"
-					:class="getIssues(type.name).length && !hideIssues ? $style.hasIssues : $style.input"
+					:class="[
+						getIssues(type.name).length && !hideIssues ? $style.hasIssues : $style.input,
+						{
+							[$style.inputWithPrivateRowEditable]:
+								getSelectedPrivateCredential(type.name) &&
+								isDefaultResolver &&
+								canEditPrivateCredential(type.name),
+							[$style.inputWithPrivateRow]:
+								getSelectedPrivateCredential(type.name) &&
+								isDefaultResolver &&
+								!canEditPrivateCredential(type.name),
+						},
+					]"
 					data-test-id="node-credentials-select"
 				>
 					<div :class="$style.selectContainer">
@@ -889,16 +975,11 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 											<template #content>{{
 												i18n.baseText('credentials.private.tooltip')
 											}}</template>
-											<N8nBadge
-												theme="tertiary"
-												class="pl-3xs pr-3xs"
+											<N8nIcon
+												icon="user-round-key"
+												size="small"
 												data-test-id="credential-option-private-badge"
-											>
-												<span :class="$style.dynamicBadgeText">
-													<N8nIcon icon="key-round" size="small" />
-													{{ i18n.baseText('credentials.private.badge') }}
-												</span>
-											</N8nBadge>
+											/>
 										</N8nTooltip>
 									</div>
 									<N8nText size="small">{{ item.typeDisplayName }}</N8nText>
@@ -921,16 +1002,11 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						<div v-if="isCredentialResolvable(type.name)" :class="$style.dynamicIndicator">
 							<N8nTooltip placement="top">
 								<template #content>{{ i18n.baseText('credentials.private.tooltip') }}</template>
-								<N8nBadge
-									theme="tertiary"
-									class="pl-3xs pr-3xs"
+								<N8nIcon
+									icon="user-round-key"
+									size="small"
 									data-test-id="node-credential-private-icon"
-								>
-									<span :class="$style.dynamicBadgeText">
-										<N8nIcon icon="key-round" size="small" />
-										{{ i18n.baseText('credentials.private.badge') }}
-									</span>
-								</N8nBadge>
+								/>
 							</N8nTooltip>
 						</div>
 					</div>
@@ -948,7 +1024,11 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					</div>
 
 					<div
-						v-if="selected[type.name] && isCredentialExisting(type)"
+						v-if="
+							selected[type.name] &&
+							isCredentialExisting(type) &&
+							(!getSelectedPrivateCredential(type.name) || canEditPrivateCredential(type.name))
+						"
 						:class="$style.edit"
 						data-test-id="credential-edit-button"
 					>
@@ -960,61 +1040,20 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						/>
 					</div>
 				</div>
-				<div
+				<CredentialPrivateConnectionRow
 					v-if="getSelectedPrivateCredential(type.name) && isDefaultResolver"
-					:class="$style.noticesContainer"
-				>
-					<div
-						v-if="isPrivateConnected(type.name)"
-						:class="$style.privateConnectedNotice"
-						data-test-id="node-credential-private-callout"
-					>
-						<span :class="$style.privateNoticeIconBadge">
-							<N8nIcon icon="user" size="medium" />
-						</span>
-						<div>
-							<N8nText size="small">{{
-								i18n.baseText('credentials.private.callout.title')
-							}}</N8nText>
-							<div :class="$style.privateStatusRow">
-								<N8nIcon icon="circle-check" color="success" size="small" />
-								<N8nText size="small" color="success">{{
-									i18n.baseText('credentials.private.callout.connected')
-								}}</N8nText>
-							</div>
-						</div>
-					</div>
-					<div
-						v-else
-						:class="$style.privateConnectPrompt"
-						data-test-id="node-credential-private-callout"
-					>
-						<span :class="$style.privateNoticeIconBadge">
-							<N8nIcon icon="user" size="medium" />
-						</span>
-						<div :class="$style.privateConnectText">
-							<N8nText bold>{{
-								i18n.baseText('credentials.private.callout.connectTitle')
-							}}</N8nText>
-							<N8nText size="small">{{
-								getServiceName(type.name)
-									? i18n.baseText('credentials.private.callout.connectDescription', {
-											interpolate: { service: getServiceName(type.name) },
-										})
-									: i18n.baseText('credentials.private.callout.connectDescriptionGeneric')
-							}}</N8nText>
-						</div>
-						<N8nButton
-							v-if="canConnectPrivateCredential(type.name)"
-							:class="$style.privateConnectButton"
-							variant="outline"
-							size="small"
-							:label="i18n.baseText('credentials.private.callout.connect')"
-							data-test-id="node-credential-private-connect"
-							@click="editCredential(type.name)"
-						/>
-					</div>
-				</div>
+					:credential-type-name="type.name"
+					:credential-name="getServiceName(type.name)"
+					:is-connected="isPrivateConnected(type.name)"
+					:connected-account-name="usersStore.currentUser?.email ?? undefined"
+					:can-modify="canEditPrivateCredential(type.name)"
+					:can-connect="canConnectPrivateCredential(type.name)"
+					:readonly="readonly"
+					data-test-id="node-credential-private-row"
+					@connect="onConnectFromRow(type.name)"
+					@modify="editCredential(type.name)"
+					@disconnect="onDisconnectFromRow(type.name)"
+				/>
 			</N8nInputLabel>
 		</div>
 	</div>
@@ -1075,6 +1114,45 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	flex: 1;
 }
 
+/* Merge the select visually with the private connection row below it.
+   The container owns the border (same token as the row) so the merged block
+   reads as one element; the inner input's own border is disabled. Covers both
+   the new N8nInput (--input--radius--*) and the element-plus based select
+   (--input-triple--radius--*) corner variables. */
+.inputWithPrivateRow {
+	--input--radius--bottom-left: 0;
+	--input--radius--bottom-right: 0;
+	--input-triple--radius--bottom-right: 0;
+	--input--border-color: transparent;
+	border: var(--border-width, 1px) solid var(--border-color);
+	border-radius: var(--radius) var(--radius) 0 0;
+
+	/* N8nInput redefines --input--border-color on its own root, so the
+	   ancestor-level override above doesn't reach it */
+	:global(.n8n-input) {
+		--input--border-color: transparent;
+	}
+}
+
+/* Editable variant: select + edit pen wrapped in a shared bordered container
+   whose bottom edge connects to the private connection row */
+.inputWithPrivateRowEditable {
+	--input--border-color: transparent;
+	--input-triple--radius--top-right: 0;
+	--input-triple--radius--bottom-right: 0;
+	border: var(--border-width, 1px) solid var(--border-color);
+	border-radius: var(--radius) var(--radius) 0 0;
+	padding-right: var(--spacing--2xs);
+
+	.selectContainer {
+		border-right: var(--border-width, 1px) solid var(--border-color);
+	}
+
+	.edit {
+		margin-left: var(--spacing--2xs);
+	}
+}
+
 .hasIssues {
 	composes: input;
 	--input--border-color: var(--color--danger);
@@ -1109,80 +1187,8 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	z-index: 1;
 }
 
-.dynamicBadgeText {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	font-size: var(--font-size--2xs);
-	line-height: 1;
-	vertical-align: middle;
-}
-
-.noticesContainer {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
-	margin-top: var(--spacing--2xs);
-	margin-bottom: var(--spacing--xs);
-}
-
-.privateStatusRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	margin-top: var(--spacing--3xs);
-}
-
-.privateConnectedNotice {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--xs) var(--spacing--sm);
-	border: var(--border);
-	border-radius: var(--radius);
-	color: var(--color--text);
-
-	.privateNoticeIconBadge {
-		background-color: var(--color--foreground--tint-1);
-		color: var(--color--text--tint-1);
-	}
-}
-
-.privateConnectPrompt {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--xs) var(--spacing--sm);
-	border: var(--border-width) var(--border-style) var(--callout--border-color--warning);
-	border-radius: var(--radius);
-	background-color: var(--callout--color--background--warning);
-	color: var(--color--text);
-
-	.privateNoticeIconBadge {
-		background-color: var(--color--warning--tint-1);
-		color: var(--color--warning);
-	}
-}
-
-.privateNoticeIconBadge {
-	display: flex;
-	flex-shrink: 0;
-	align-items: center;
-	justify-content: center;
-	width: 28px;
-	height: 28px;
-	border-radius: 50%;
-}
-
-.privateConnectText {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-}
-
-.privateConnectButton {
-	flex-shrink: 0;
-	margin-left: auto;
+.dynamicIndicatorReadonly {
+	right: var(--spacing--xs);
 }
 
 .newCredential {

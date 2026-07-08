@@ -244,6 +244,8 @@ export class ProjectService {
 						error: error instanceof Error ? error.message : error,
 					});
 				}
+
+				await agentKnowledgeService.destroySandbox(project.id, agent.id);
 			}
 		}
 

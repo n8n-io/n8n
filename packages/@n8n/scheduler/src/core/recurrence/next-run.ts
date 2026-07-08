@@ -1,10 +1,9 @@
+import { Time } from '@n8n/constants';
 import { CronExpressionParser } from 'cron-parser';
 
 import { InvalidScheduleError } from '../errors';
 import type { CronSchedule, IntervalSchedule, OneOffSchedule, Schedule } from '../types';
 import { validateSchedule } from './validate';
-
-const MS_PER_SECOND = 1000;
 
 /**
  * Cron: next fire strictly after `after`, in the schedule's IANA timezone.
@@ -34,7 +33,7 @@ function cronNextRun(schedule: CronSchedule, after: Date, timezone: string): Dat
  * shifts a fire. Always strictly after `after` (intervalSeconds is positive).
  */
 function intervalNextRun(schedule: IntervalSchedule, after: Date): Date {
-	return new Date(after.getTime() + schedule.intervalSeconds * MS_PER_SECOND);
+	return new Date(after.getTime() + schedule.intervalSeconds * Time.seconds.toMilliseconds);
 }
 
 /** One-off: `fireAt` when it is strictly after `after`, otherwise `null` (exhausted). */
@@ -45,7 +44,7 @@ function oneOffNextRun(schedule: OneOffSchedule, after: Date): Date | null {
 /**
  * Compute the next occurrence strictly after `after` (a job's current
  * `nextRunAt` / last scheduled instant), as a UTC instant. This is what the
- * sweep advances `next_run_at` with.
+ * materializer advances `next_run_at` with.
  *
  * The schedule is validated first, so malformed input (non-positive interval,
  * invalid `fireAt`, bad cron expression, unresolved `null` cron timezone) throws

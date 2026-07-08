@@ -1,9 +1,16 @@
-import { GlobalConfig } from '@n8n/config';
+import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { DataSource, type EntityManager, In, Repository } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
+import { UnexpectedError } from 'n8n-workflow';
 
-import { ScheduledTask, ScheduledTaskStatus } from '../entities/scheduled-task';
+import {
+	ScheduledTask,
+	ScheduledTaskStatus,
+	type TerminalTaskStatus,
+	TerminalTaskStatusList,
+} from '../entities/scheduled-task';
+import { dbNowLiteral, dbNowPlusMsLiteral } from '../utils/dialect-time';
 
 /** Inputs to a claim (see {@link ScheduledTaskRepository.claimDueTasks}). */
 export interface ClaimDueTasksOptions {
@@ -20,45 +27,104 @@ export interface ClaimDueTasksOptions {
 }
 
 /**
- * Identifies the exact claim a guarded transition may act on: the row `id`, the
- * owner `host`, and the `leaseEpoch` the caller claimed with (the fencing token).
+ * Identifies the row and the `leaseEpoch` the caller claimed with (the fencing
+ * token) that a guarded update may act on.
  */
-export interface ClaimRef {
-	host: string;
+export interface ClaimedRef {
 	id: string;
 	claimedEpoch: number;
 }
 
+/**
+ * A {@link ClaimedRef} that also names the owning `host`, for transitions made by
+ * the claim's actual owner. The reaper acts without a host (it isn't the owner),
+ * so it uses the base {@link ClaimedRef} instead.
+ */
+export interface HostedClaimedRef extends ClaimedRef {
+	host: string;
+}
+
+/**
+ * Inputs to one retention delete batch
+ * (see {@link ScheduledTaskRepository.deleteFinishedOlderThan}).
+ */
+export interface DeleteFinishedTasksOptions {
+	/** Terminal statuses this batch may delete. Live statuses are rejected. */
+	statuses: TerminalTaskStatus[];
+	/** Minimum age: only rows whose `finishedAt` is at least this far before DB-now go. */
+	olderThanMs: number;
+	/** Cap on how many rows this one statement deletes. Must be an integer; non-positive is a no-op. */
+	limit: number;
+}
+
+/**
+ * The columns set when the materializer records an occurrence.
+ */
+export interface NewOccurrence {
+	jobId: number;
+	taskType: string;
+	payload: Record<string, unknown>;
+	scheduledFor: Date;
+	runAt: Date;
+	maxAttempts: number;
+}
+
 @Service()
 export class ScheduledTaskRepository extends Repository<ScheduledTask> {
-	constructor(
-		dataSource: DataSource,
-		private readonly globalConfig: GlobalConfig,
-	) {
-		super(ScheduledTask, dataSource.manager);
-	}
+	private readonly isPostgres: boolean;
+	private readonly tableName: string;
+	// Quoted here so the reaper update below doesn't have to quote this
+	// camelCase column itself for Postgres (SQLite accepts the same
+	// double-quoted identifier).
+	private readonly leaseExpiresAtColumn: string;
 
-	async findAll(): Promise<ScheduledTask[]> {
-		return await this.find();
+	constructor(dataSource: DataSource, config: DatabaseConfig) {
+		super(ScheduledTask, dataSource.manager);
+		this.isPostgres = config.type === 'postgresdb';
+		this.tableName = this.manager.connection.driver.escape(`${config.tablePrefix}scheduled_task`);
+		this.leaseExpiresAtColumn = this.manager.connection.driver.escape('leaseExpiresAt');
 	}
 
 	/**
-	 * Insert a task occurrence through the caller's transaction. Idempotent on the
-	 * occurrence identity `(jobId, scheduledFor)`: `orIgnore()` becomes
-	 * `ON CONFLICT DO NOTHING` (Postgres) / `INSERT OR IGNORE` (SQLite), so a repeated
-	 * insert for the same occurrence is a no-op against the unique index.
+	 * Insert occurrences, skipping any that collide with an existing row on the
+	 * unique `(jobId, scheduledFor)` identity (`ON CONFLICT DO NOTHING`).
+	 * This is what makes recording the same occurrence twice a no-op instead of a duplicate run.
+	 *
+	 * Must run inside a transaction!
+	 *
+	 * @returns how many rows were actually inserted (skipped duplicates excluded)
 	 */
-	async insertOccurrence(
-		trx: EntityManager,
-		occurrence: QueryDeepPartialEntity<ScheduledTask>,
-	): Promise<void> {
-		await trx
-			.createQueryBuilder()
-			.insert()
-			.into(ScheduledTask)
-			.values(occurrence)
-			.orIgnore()
-			.execute();
+	async insertIgnoringDuplicates(
+		manager: EntityManager,
+		occurrences: NewOccurrence[],
+		// Chunked so a large batch stays under the driver's bind-parameter ceiling
+		// (Postgres 65535, SQLite 32766); the default leaves headroom for the widest row.
+		chunkSize = 1000,
+	): Promise<number> {
+		const { queryRunner } = manager;
+		if (queryRunner === undefined) {
+			throw new UnexpectedError('insertIgnoringDuplicates must run within a transaction');
+		}
+
+		const chunks = Array.from({ length: Math.ceil(occurrences.length / chunkSize) }, (_, i) =>
+			occurrences.slice(i * chunkSize, (i + 1) * chunkSize),
+		);
+
+		let recorded = 0;
+		for (const chunk of chunks) {
+			const [sql, parameters] = manager
+				.createQueryBuilder()
+				.insert()
+				.into(ScheduledTask)
+				// `payload` is a free-form JSON column, which TypeORM's QueryDeepPartialEntity
+				// can't express, so the well-typed rows are cast at this boundary.
+				.values(chunk as Array<QueryDeepPartialEntity<ScheduledTask>>)
+				.orIgnore()
+				.getQueryAndParameters();
+			const result = await queryRunner.query(sql, parameters, true);
+			recorded += result.affected ?? 0;
+		}
+		return recorded;
 	}
 
 	/**
@@ -77,23 +143,19 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 */
 	async claimDueTasks(opts: ClaimDueTasksOptions): Promise<ScheduledTask[]> {
 		if (opts.taskTypes.length === 0) return [];
-		return this.isPostgres()
-			? await this.claimWithPostgres(opts)
-			: await this.claimWithSqlite(opts);
+		return this.isPostgres ? await this.claimWithPostgres(opts) : await this.claimWithSqlite(opts);
 	}
 
 	private async claimWithPostgres(opts: ClaimDueTasksOptions): Promise<ScheduledTask[]> {
-		const table = this.tableName();
-
 		// TypeORM's Postgres driver returns `[rows, affectedCount]` from a raw UPDATE
 		// ... RETURNING, so destructure the rows out of the tuple.
 		const [rows]: [ScheduledTask[], number] = await this.query(
-			`UPDATE ${table}
+			`UPDATE ${this.tableName}
 			   SET "status" = '${ScheduledTaskStatus.Running}', "claimedBy" = $1,
 			       "leaseExpiresAt" = now() + ($2 || ' milliseconds')::interval,
 			       "leaseEpoch" = "leaseEpoch" + 1
 			 WHERE "id" IN (
-			   SELECT t."id" FROM ${table} t
+			   SELECT t."id" FROM ${this.tableName} t
 			    WHERE t."status" = '${ScheduledTaskStatus.Pending}'
 			      AND t."taskType" = ANY($3)
 			      AND t."runAt" <= now() + ($4 || ' milliseconds')::interval
@@ -159,17 +221,17 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * pre-dispatch existence check: 0 rows means the row was deleted or reclaimed, so
 	 * don't dispatch. Returns rows affected (0 = benign, 1 = proceed).
 	 */
-	async markStarted(claim: ClaimRef): Promise<number> {
+	async markStarted(claim: HostedClaimedRef): Promise<number> {
 		return await this.runGuardedUpdate(claim, {
-			startedAt: () => this.makeDbNowLiteral(),
+			startedAt: () => dbNowLiteral(this.isPostgres),
 		});
 	}
 
 	/** Success: `running` -> `succeeded`. Guarded by the `claim`; 0 rows affected is a benign no-op. */
-	async completeTask(claim: ClaimRef): Promise<number> {
+	async completeTask(claim: HostedClaimedRef): Promise<number> {
 		return await this.runGuardedUpdate(claim, {
 			status: ScheduledTaskStatus.Succeeded,
-			finishedAt: () => this.makeDbNowLiteral(),
+			finishedAt: () => dbNowLiteral(this.isPostgres),
 		});
 	}
 
@@ -177,10 +239,10 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * Terminal failure: `running` -> `failed`, recording the error and counting the
 	 * attempt. Guarded by the `claim`; 0 rows affected is a benign no-op.
 	 */
-	async failTaskTerminal(claim: ClaimRef, errorMessage: string): Promise<number> {
+	async failTaskTerminal(claim: HostedClaimedRef, errorMessage: string): Promise<number> {
 		return await this.runGuardedUpdate(claim, {
 			status: ScheduledTaskStatus.Failed,
-			finishedAt: () => this.makeDbNowLiteral(),
+			finishedAt: () => dbNowLiteral(this.isPostgres),
 			attempts: () => 'attempts + 1',
 			errorMessage,
 		});
@@ -192,10 +254,14 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * so the row is re-claimable (and satisfies the running-lease CHECK). Guarded by
 	 * the `claim`; 0 rows affected is a benign no-op.
 	 */
-	async rescheduleTask(claim: ClaimRef, backoffMs: number, errorMessage: string): Promise<number> {
+	async rescheduleTask(
+		claim: HostedClaimedRef,
+		backoffMs: number,
+		errorMessage: string,
+	): Promise<number> {
 		return await this.runGuardedUpdate(claim, {
 			status: ScheduledTaskStatus.Pending,
-			runAt: () => this.makeDbNowPlusMsLiteral(backoffMs),
+			runAt: () => dbNowPlusMsLiteral(this.isPostgres, backoffMs),
 			attempts: () => 'attempts + 1',
 			errorMessage,
 			claimedBy: null,
@@ -213,7 +279,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * or a later tick picks it up rather than the occurrence being lost. Guarded by
 	 * the `claim`; 0 rows affected is a benign no-op.
 	 */
-	async releaseClaim(claim: ClaimRef): Promise<number> {
+	async releaseClaim(claim: HostedClaimedRef): Promise<number> {
 		return await this.runGuardedUpdate(claim, {
 			status: ScheduledTaskStatus.Pending,
 			claimedBy: null,
@@ -223,17 +289,74 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	}
 
 	/**
+	 * Find `running` tasks whose lease has expired (candidates for the reaper).
+	 * Ordered oldest-expiry first and capped at `limit` so a large backlog is drained
+	 * across passes. Due-ness uses the DB clock. Backed by the partial index on
+	 * `leaseExpiresAt WHERE status = 'running'`.
+	 */
+	async findExpiredLeases(limit: number): Promise<ScheduledTask[]> {
+		// No row locking here (unlike claimDueTasks): the guarded update that follows
+		// makes a race safe, at the cost of reapers occasionally re-selecting a row
+		// another reaper already claimed.
+		return await this.createQueryBuilder('t')
+			.where('t.status = :running', { running: ScheduledTaskStatus.Running })
+			.andWhere(`t.leaseExpiresAt < ${dbNowLiteral(this.isPostgres)}`)
+			.orderBy('t.leaseExpiresAt', 'ASC')
+			.limit(limit)
+			.getMany();
+	}
+
+	/**
+	 * Reaper reclaim: an expired-lease `running` task back to `pending`, counting the
+	 * attempt, pushing `runAt` out by the backoff, and bumping the lease epoch.
+	 * Clears the claim and lease. Guarded on the epoch read during the sweep and a
+	 * re-asserted expiry, so a row the owner finished, another reaper reclaimed, or a
+	 * renewed lease moved out is a benign 0-row no-op. Returns rows affected. (The
+	 * epoch bump here is an extra safeguard, not what fences the stalled owner; the
+	 * status change and the next claim's own bump do that. See `Reaper` in
+	 * `@n8n/scheduler`.)
+	 */
+	async reclaimExpired(ref: ClaimedRef, backoffMs: number, errorMessage: string): Promise<number> {
+		return await this.runReaperUpdate(ref, {
+			status: ScheduledTaskStatus.Pending,
+			runAt: () => dbNowPlusMsLiteral(this.isPostgres, backoffMs),
+			attempts: () => 'attempts + 1',
+			leaseEpoch: () => 'leaseEpoch + 1',
+			claimedBy: null,
+			leaseExpiresAt: null,
+			errorMessage,
+			// The next attempt sets its own start; clear this one's so a pending row
+			// doesn't carry a stale `startedAt`.
+			startedAt: null,
+		});
+	}
+
+	/**
+	 * Reaper dead-letter: an expired-lease `running` task at its last attempt to
+	 * terminal `failed`. Same guard as {@link reclaimExpired}; terminal, so no epoch
+	 * bump (the `status` change alone fences a stale owner). Returns rows affected.
+	 */
+	async deadLetterExpired(ref: ClaimedRef, errorMessage: string): Promise<number> {
+		return await this.runReaperUpdate(ref, {
+			status: ScheduledTaskStatus.Failed,
+			finishedAt: () => dbNowLiteral(this.isPostgres),
+			attempts: () => 'attempts + 1',
+			errorMessage,
+		});
+	}
+
+	/**
 	 * Apply a guarded update: only touch the row this `claim` still owns (`running`,
 	 * same `host` and `leaseEpoch`). Returns rows affected; 0 is benign (the row was
 	 * deleted or reclaimed). The `leaseEpoch` match fences a stalled owner whose lease
-	 * was reclaimed, once a reaper exists to bump the epoch on reclaim.
+	 * was reclaimed by the reaper, which bumps the epoch on reclaim.
 	 */
 	private async runGuardedUpdate(
-		claim: ClaimRef,
+		claim: HostedClaimedRef,
 		values: QueryDeepPartialEntity<ScheduledTask>,
 	): Promise<number> {
 		// Object criteria (not a raw where string) so TypeORM quotes the camelCase
-		// `claimedBy` column correctly on Postgres.
+		// `claimedBy`/`leaseEpoch` columns correctly on Postgres.
 		const result = await this.update(
 			{
 				id: claim.id,
@@ -246,25 +369,93 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		return result.affected ?? 0;
 	}
 
-	private isPostgres(): boolean {
-		return this.globalConfig.database.type === 'postgresdb';
+	/**
+	 * Apply a reaper update: only touch a row still `running`, at the epoch read
+	 * during the sweep, and still lease-expired. Unlike {@link runGuardedUpdate} it
+	 * does not guard on `claimedBy` (the reaper is not the owner) and re-asserts the
+	 * expiry so a lease renewed between the sweep's read and this write is left alone.
+	 * Returns rows affected; 0 is benign (another reaper won it, or the owner finished).
+	 */
+	private async runReaperUpdate(
+		ref: ClaimedRef,
+		values: QueryDeepPartialEntity<ScheduledTask>,
+	): Promise<number> {
+		const { id, claimedEpoch } = ref;
+		// No alias on an UPDATE builder, so quote the camelCase column ourselves for
+		// Postgres (SQLite accepts the same double-quoted identifier).
+		const result = await this.createQueryBuilder()
+			.update(ScheduledTask)
+			.set(values)
+			.where({ id, status: ScheduledTaskStatus.Running, leaseEpoch: claimedEpoch })
+			.andWhere(`${this.leaseExpiresAtColumn} < ${dbNowLiteral(this.isPostgres)}`)
+			.execute();
+		return result.affected ?? 0;
 	}
 
-	/** DB-clock `now`, per dialect (never an instance clock). */
-	private makeDbNowLiteral(): string {
-		return this.isPostgres() ? 'now()' : "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')";
+	/**
+	 * Delete up to `limit` finished tasks in `statuses` whose
+	 * `finishedAt` is at least `olderThanMs` before DB-now, oldest first.
+	 * Age is judged against the database clock.
+	 *
+	 * A terminal row missing `finishedAt` (which transitions always set) is skipped.
+	 *
+	 * Concurrent pruners don't fight over rows:
+	 * - Postgres skips locked rows (`FOR UPDATE SKIP LOCKED`), handing simultaneous batches disjoint rows
+	 * - SQLite runs writers one at a time.
+	 *
+	 * @returns how many rows were deleted
+	 * @throws UnexpectedError when `statuses` contains a non-terminal value or `limit` is not an integer
+	 */
+	async deleteFinishedOlderThan(options: DeleteFinishedTasksOptions): Promise<number> {
+		const invalid = options.statuses.filter((status) => !TerminalTaskStatusList.includes(status));
+		if (invalid.length > 0) {
+			throw new UnexpectedError(
+				`deleteFinishedOlderThan only deletes terminal tasks, got: ${invalid.join(', ')}`,
+			);
+		}
+		// A non-integer bound to LIMIT errors on SQLite (datatype mismatch), and NaN
+		// binds as NULL, which on Postgres means LIMIT ALL; reject it before the SQL.
+		if (!Number.isSafeInteger(options.limit)) {
+			throw new UnexpectedError(
+				`deleteFinishedOlderThan needs an integer limit, got: ${options.limit}`,
+			);
+		}
+		if (options.statuses.length === 0 || options.limit <= 0) {
+			return 0;
+		}
+		return this.isPostgres
+			? await this.deleteFinishedWithPostgres(options)
+			: await this.deleteFinishedWithSqlite(options);
 	}
 
-	/** DB-clock `now` plus a millisecond offset, per dialect. `ms` is caller-computed (safe to inline). */
-	private makeDbNowPlusMsLiteral(ms: number): string {
-		const rounded = Math.round(ms);
-		return this.isPostgres()
-			? `now() + (${rounded} || ' milliseconds')::interval`
-			: `STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', '+${rounded / 1000} seconds')`;
+	private async deleteFinishedWithPostgres(options: DeleteFinishedTasksOptions): Promise<number> {
+		const [, affected] = await this.manager.query<[unknown[], number]>(
+			`DELETE FROM ${this.tableName}
+			 WHERE "id" IN (
+			   SELECT t."id" FROM ${this.tableName} t
+			    WHERE t."status" = ANY($1)
+			      AND t."finishedAt" <= ${dbNowPlusMsLiteral(true, -options.olderThanMs)}
+			    ORDER BY t."finishedAt"
+			    LIMIT $2
+			    FOR UPDATE SKIP LOCKED)`,
+			[options.statuses, options.limit],
+		);
+		return affected;
 	}
 
-	private tableName(): string {
-		const { tablePrefix } = this.globalConfig.database;
-		return this.manager.connection.driver.escape(`${tablePrefix}scheduled_task`);
+	private async deleteFinishedWithSqlite(options: DeleteFinishedTasksOptions): Promise<number> {
+		const result = await this.createQueryBuilder()
+			.delete()
+			.where(
+				`id IN (
+					SELECT "id" FROM ${this.tableName}
+					 WHERE "status" IN (:...statuses)
+					   AND "finishedAt" <= ${dbNowPlusMsLiteral(false, -options.olderThanMs)}
+					 ORDER BY "finishedAt"
+					 LIMIT :limit)`,
+				{ statuses: options.statuses, limit: options.limit },
+			)
+			.execute();
+		return result.affected ?? 0;
 	}
 }

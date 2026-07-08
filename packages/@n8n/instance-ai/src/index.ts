@@ -24,7 +24,6 @@ import type * as StorageMod from './storage';
 import type * as MapChunkMod from './stream/map-chunk';
 import type * as ToolsMod from './tools';
 import type * as AgentPersistenceMod from './tools/orchestration/agent-persistence';
-import type * as DelegateToolMod from './tools/orchestration/delegate.tool';
 import type * as SanitizeWebContentMod from './tools/web-research/sanitize-web-content';
 import type * as LangsmithTracingMod from './tracing/langsmith-tracing';
 import type * as TraceReplayMod from './tracing/trace-replay';
@@ -96,9 +95,6 @@ const loadSystemPrompt = lazyModule(
 );
 const loadSanitizeWebContent = lazyModule(
 	() => require('./tools/web-research/sanitize-web-content') as typeof SanitizeWebContentMod,
-);
-const loadDelegateTool = lazyModule(
-	() => require('./tools/orchestration/delegate.tool') as typeof DelegateToolMod,
 );
 const loadTools = lazyModule(() => require('./tools') as typeof ToolsMod);
 const loadAgentPersistence = lazyModule(
@@ -178,6 +174,11 @@ const loadValidateAttachments = lazyModule(
 );
 
 export { MAX_STEPS } from './constants/max-steps';
+export {
+	LEGACY_PLANNED_TASK_KINDS,
+	PLANNED_TASK_KINDS,
+	STORED_PLANNED_TASK_KINDS,
+} from './types';
 export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver';
 export type { CredentialHostMeta } from './tools/workflows/credential-url-resolver';
 export type {
@@ -272,8 +273,6 @@ export const createSubAgentResourceIdPrefix: typeof AgentPersistenceMod.createSu
 	lazyFunction(() => loadAgentPersistence().createSubAgentResourceIdPrefix);
 export declare const SUB_AGENT_RESOURCE_PREFIX: typeof AgentPersistenceMod.SUB_AGENT_RESOURCE_PREFIX;
 
-export const startDetachedDelegateTask: typeof DelegateToolMod.startDetachedDelegateTask =
-	lazyFunction(() => loadDelegateTool().startDetachedDelegateTask);
 export declare const iterationEntrySchema: typeof StorageMod.iterationEntrySchema;
 export const formatPreviousAttempts: typeof StorageMod.formatPreviousAttempts = lazyFunction(
 	() => loadStorage().formatPreviousAttempts,
@@ -571,6 +570,7 @@ export type {
 	TaskStorage,
 	PlannedTask,
 	PlannedTaskKind,
+	StoredPlannedTaskKind,
 	PlannedTaskStatus,
 	PlannedTaskRecord,
 	PlannedTaskGraph,
@@ -618,6 +618,18 @@ export type {
 	ProjectSummary,
 	FolderSummary,
 	ServiceProxyConfig,
+	InstanceAiAgentBuilderService,
+	AgentConfigSnapshot,
+	AgentBuilderSkill,
+	ChatIntegrationInfo,
+	ProjectAgentSummary,
+	AgentModelOption,
+	ModelLookupConfig,
+	McpServerSearchResult,
+	McpServerVerifyParams,
+	McpServerVerifyResult,
+	AttachableWorkflow,
+	ResolveResourceLocatorParams,
 } from './types';
 export type {
 	OrchestratorRunHandoffReason,
@@ -626,7 +638,6 @@ export type {
 } from './runtime/orchestrator-run-control';
 export { createOrchestratorRunControl } from './runtime/orchestrator-run-control';
 export { createOrchestratorRunControlForState } from './runtime/orchestrator-run-control';
-export type { DetachedDelegateTaskResult } from './tools/orchestration/delegate.tool';
 export const classifyAttachments: typeof StructuredFileParserMod.classifyAttachments = lazyFunction(
 	() => loadStructuredFileParser().classifyAttachments,
 );
