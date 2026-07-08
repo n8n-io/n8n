@@ -909,6 +909,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			reasoning: result.reasoning,
 			failureCategory,
 			rootCause,
+			...(result.incomplete ? { incomplete: true } : {}),
 			execErrors: result.evalResult?.errors ?? [],
 			evalResult: result.evalResult,
 			buildDurationMs,
@@ -927,12 +928,18 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		// 'none' for passed scenarios so the column shows a full categorical
 		// breakdown instead of blank cells.
 		const failureCategory = output.passed ? 'none' : (output.failureCategory ?? 'unknown');
+		// Verifier-incomplete runs get no scenario_pass score so LangSmith
+		// experiment averages match the local evaluated-only pass rate.
 		const feedback: EvaluationResult[] = [
-			{
-				key: 'scenario_pass',
-				score: output.score,
-				comment: output.reasoning || undefined,
-			},
+			...(output.incomplete
+				? []
+				: [
+						{
+							key: 'scenario_pass',
+							score: output.score,
+							comment: output.reasoning || undefined,
+						},
+					]),
 			{
 				key: 'failure_category',
 				value: failureCategory,
@@ -1409,7 +1416,7 @@ function computeAggregateMetrics(evaluation: MultiRunEvaluation): AggregateMetri
 	// Units = scenarios + evaluated build-expectations — mirrors the per-card badge
 	// and the terminal per-case table so the headline rate can't disagree with them.
 	const units = testCases.flatMap((tc) => [
-		...tc.executionScenarios,
+		...tc.executionScenarios.filter((sa) => sa.evaluatedCount > 0),
 		...tc.buildExpectations.filter((ea) => ea.evaluatedCount > 0),
 	]);
 	const total = units.length;
@@ -1442,8 +1449,10 @@ function computePassRatePerIter(evaluation: MultiRunEvaluation): string {
 		let total = 0;
 		for (const tc of testCases) {
 			for (const sa of tc.executionScenarios) {
+				const runResult = sa.runs[i];
+				if (runResult?.incomplete) continue;
 				total++;
-				if (sa.runs[i]?.success) passed++;
+				if (runResult?.success) passed++;
 			}
 			// Count each scored verdict in this iteration directly — skips incomplete
 			// (build-failed) verdicts and is robust to duplicate expectation strings.
@@ -1453,7 +1462,7 @@ function computePassRatePerIter(evaluation: MultiRunEvaluation): string {
 				if (verdict.pass) passed++;
 			}
 		}
-		rates.push(`${String(total > 0 ? Math.round((passed / total) * 100) : 0)}%`);
+		rates.push(total > 0 ? `${String(Math.round((passed / total) * 100))}%` : 'n/a');
 	}
 	return rates.join(' / ');
 }
@@ -1543,12 +1552,14 @@ function writeEvalResults(
 			scenarios: tc.executionScenarios.map((sa) => ({
 				name: sa.scenario.name,
 				passCount: sa.passCount,
+				evaluatedCount: sa.evaluatedCount,
 				totalRuns,
 				passAtK: terminalRate(sa.passAtK),
 				passHatK: terminalRate(sa.passHatK),
 				runs: sa.runs.map((sr, runIndex) => ({
 					workflowId: sr.workflowId ?? tc.runs[runIndex]?.workflowId ?? null,
 					passed: sr.success,
+					...(sr.incomplete ? { incomplete: true } : {}),
 					score: sr.score,
 					reasoning: sr.reasoning,
 					failureCategory: sr.failureCategory,
@@ -1682,11 +1693,12 @@ function bucketFromEvaluation(
 				`bucketFromEvaluation: no fileSlug for test case "${caseDisplayPrompt(tc.testCase, tc.runs[0]?.transcript).slice(0, 60)}"`,
 			);
 		}
-		const total = tc.runs.length;
 		for (const sa of tc.executionScenarios) {
 			const key = `${fileSlug}/${sa.scenario.name}`;
 			const failureCategories: Record<string, number> = {};
 			for (const sr of sa.runs) {
+				// Verifier-incomplete runs carry no verdict — not a trial.
+				if (sr.incomplete) continue;
 				trialTotal++;
 				if (!sr.success && sr.failureCategory) {
 					failureCategories[sr.failureCategory] = (failureCategories[sr.failureCategory] ?? 0) + 1;
@@ -1698,7 +1710,7 @@ function bucketFromEvaluation(
 				testCaseFile: fileSlug,
 				scenarioName: sa.scenario.name,
 				passed: sa.passCount,
-				total,
+				total: sa.evaluatedCount,
 				failureCategories,
 			});
 		}

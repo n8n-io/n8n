@@ -44,6 +44,7 @@ const outputsSchema = z
 	.object({
 		passed: z.boolean().default(false),
 		failureCategory: z.string().optional(),
+		incomplete: z.boolean().optional(),
 	})
 	.passthrough();
 
@@ -104,6 +105,8 @@ export async function fetchBaselineBucket(
 		}
 		const outputs = outputsSchema.safeParse(rawOutputs);
 		if (!outputs.success) continue;
+		// Verifier-incomplete rows carry no verdict — skip so they don't count as failed trials.
+		if (outputs.data.incomplete) continue;
 
 		const key = `${inputs.data.testCaseFile}/${inputs.data.scenarioName}`;
 		const existing: ScenarioCounts = scenarios.get(key) ?? {

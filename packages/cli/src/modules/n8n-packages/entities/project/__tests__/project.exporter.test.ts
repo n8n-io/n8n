@@ -2,11 +2,15 @@ import type { Project, User } from '@n8n/db';
 import type { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
+import type { FolderFinderService } from '@/services/folder-finder.service';
+import type { ProjectService } from '@/services/project.service.ee';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
 import type { PackageWriter } from '../../../io/package-writer';
+import type { FolderExporter } from '../../folder/folder.exporter';
+import type { WorkflowExporter } from '../../workflow/workflow.exporter';
 import { ProjectExporter } from '../project.exporter';
 import { ProjectSerializer } from '../project.serializer';
-
-import type { ProjectService } from '@/services/project.service.ee';
 
 const user = mock<User>({ id: 'user-1' });
 
@@ -55,8 +59,31 @@ function makeExporter({
 		});
 	});
 
-	const exporter = new ProjectExporter(projectService, new ProjectSerializer());
-	return { exporter, projectService };
+	const folderFinder = mock<FolderFinderService>();
+	folderFinder.findFolderIdsInProject.mockResolvedValue([]);
+
+	const workflowFinder = mock<WorkflowFinderService>();
+	workflowFinder.findRootWorkflowIdsInProject.mockResolvedValue([]);
+
+	const folderExporter = mock<FolderExporter>();
+	const workflowExporter = mock<WorkflowExporter>();
+
+	const exporter = new ProjectExporter(
+		projectService,
+		new ProjectSerializer(),
+		folderFinder,
+		workflowFinder,
+		folderExporter,
+		workflowExporter,
+	);
+	return {
+		exporter,
+		projectService,
+		folderFinder,
+		workflowFinder,
+		folderExporter,
+		workflowExporter,
+	};
 }
 
 describe('ProjectExporter', () => {

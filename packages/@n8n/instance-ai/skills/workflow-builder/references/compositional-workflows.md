@@ -1,8 +1,7 @@
 # Compositional Workflows
 
 For complex workflows, you may decompose work into supporting sub-workflows and
-a main workflow. This is part of an approved build task, not a reason to call
-`delegate` or create a new plan.
+a main workflow. This is part of an approved build task, not a reason to create a new plan.
 
 Use this pattern when a workflow is large, has reusable chunks, or benefits from
 independent testing. Simple workflows should stay in one workflow.

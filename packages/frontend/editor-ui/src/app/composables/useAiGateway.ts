@@ -34,6 +34,12 @@ export function useAiGateway() {
 	const isNodeTypeVersionSupported = (nodeName: string, typeVersion: number): boolean =>
 		aiGatewayStore.isNodeTypeVersionSupported(nodeName, typeVersion);
 
+	const isActionOptionVisible = (
+		node: INode | null,
+		parameterName: string,
+		optionValue: string,
+	): boolean => aiGatewayStore.isActionOptionVisible(node, parameterName, optionValue);
+
 	const isNodePropertyHidden = (node: INode | null, propertyName: string): boolean =>
 		aiGatewayStore.isNodePropertyHidden(node, propertyName);
 
@@ -55,6 +61,7 @@ export function useAiGateway() {
 		fetchWallet,
 		isCredentialTypeSupported,
 		isActionSupported,
+		isActionOptionVisible,
 		isNodeTypeVersionSupported,
 		isNodePropertyHidden,
 		saveAfterToggle,

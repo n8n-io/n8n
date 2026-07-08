@@ -40,6 +40,15 @@ Mode is chosen automatically from `conversation`:
 
 - **Single-prompt (auto-approve):** one `user` turn, no `assistant` turns — the
   prompt is sent and every confirmation is auto-approved. Plain build cases.
+  **Caveat: only *confirmations* are auto-approved — a genuine clarifying
+  `ask-user` *question* is never answered**, so the build hangs until the
+  per-iteration timeout and reports as `BUILD FAILED: Run timed out` with no
+  scored result (nothing to grade). If a prompt is vague enough that the agent
+  is likely to ask a setup/topology question before building (an unspecified
+  data source, delivery channel, or one-vs-two-workflow split), author it
+  **multi-turn** with a `[bracketed]` director note in turn 1 that pre-answers
+  those questions so the agent proceeds to build. A single-prompt build case
+  only works when the prompt leaves nothing the agent must ask about.
 - **Multi-turn:** anything else. A **user-proxy LLM** plays the user — answers
   questions, audits the agent's plan against your script, and sends follow-ups
   (capped by `messageBudget`).
