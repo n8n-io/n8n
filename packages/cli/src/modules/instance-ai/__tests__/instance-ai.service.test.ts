@@ -781,7 +781,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			) => Promise<{
 				orchestrationContext: {
 					workspace?: unknown;
-					runtimeSkills?: { registry: { skills: Array<{ id: string }> } };
+					runtimeSkills?: {
+						registry: { skillsHash: string; skills: Array<{ id: string }> };
+						loadSkill: (skillId: string) => Promise<unknown>;
+					};
 				};
 			}>;
 			settingsService: {
@@ -978,6 +981,14 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(unavailableEnvironment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
 			{ id: 'data-table-manager' },
 		]);
+		// Hidden means unloadable too, and the filtered catalog gets its own hash
+		// so workspace manifests keyed on it can't match the unfiltered set.
+		await expect(
+			unavailableEnvironment.orchestrationContext.runtimeSkills?.loadSkill('agent-builder'),
+		).resolves.toBeNull();
+		expect(unavailableEnvironment.orchestrationContext.runtimeSkills?.registry.skillsHash).not.toBe(
+			'runtime-skills-hash',
+		);
 		expect(createLazyRuntimeWorkspace).not.toHaveBeenCalled();
 		expect(createLazyWorkspaceRuntimeSkillSource).not.toHaveBeenCalled();
 		expect(createSandbox).not.toHaveBeenCalled();
@@ -1005,6 +1016,9 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(agentsInactiveEnvironment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
 			{ id: 'data-table-manager' },
 		]);
+		await expect(
+			agentsInactiveEnvironment.orchestrationContext.runtimeSkills?.loadSkill('agent-builder'),
+		).resolves.toBeNull();
 	});
 });
 

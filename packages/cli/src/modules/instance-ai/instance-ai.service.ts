@@ -1,4 +1,4 @@
-import { AgentEvent } from '@n8n/agents';
+import { AgentEvent, filterRuntimeSkillSource } from '@n8n/agents';
 import type { Message, Workspace, ScopedMemoryTaskEvent, AgentEventData } from '@n8n/agents';
 import {
 	applyBranchReadOnlyOverrides,
@@ -1969,13 +1969,7 @@ export class InstanceAiService {
 		// either is unavailable.
 		const allRuntimeSkills = loadInstanceAiRuntimeSkillSource();
 		const agentsModuleActive = this.moduleRegistry.isActive('agents');
-		const withoutAgentBuilderSkill = {
-			...allRuntimeSkills,
-			registry: {
-				...allRuntimeSkills.registry,
-				skills: allRuntimeSkills.registry.skills.filter((skill) => skill.id !== 'agent-builder'),
-			},
-		};
+		const withoutAgentBuilderSkill = filterRuntimeSkillSource(allRuntimeSkills, ['agent-builder']);
 		// Default assumes no workspace; the sandbox block below restores the
 		// agent-builder skill once the workspace is known to be available.
 		let availableRuntimeSkills = withoutAgentBuilderSkill;
