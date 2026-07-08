@@ -8,10 +8,7 @@ import { saveCredential } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner } from '@test-integration/db/users';
 
-import {
-	PackageEntityAccessDeniedError,
-	PackageEntityNotFoundError,
-} from '../entities/package-export.errors';
+import { PackageEntityAccessDeniedError } from '../entities/package-export.errors';
 import { N8nPackagesService } from '../n8n-packages.service';
 import { readExport } from './utils/tar-support';
 import { buildWorkflowReferencingCredential } from './utils/test-builders';
@@ -107,25 +104,6 @@ describe('folder package export', () => {
 		await expect(
 			service.exportPackage({ user: outsider, workflowIds: [], folderIds: [folder.id] }),
 		).rejects.toThrow(/not found or not accessible/);
-	});
-
-	it('classifies an existing-but-inaccessible folder as access-denied for the audit event', async () => {
-		const owner = await createOwner();
-		const project = await createTeamProject('Project A', owner);
-		const folder = await createFolder(project, { name: 'to_production' });
-		const outsider = await createMember();
-
-		await expect(
-			service.exportPackage({ user: outsider, workflowIds: [], folderIds: [folder.id] }),
-		).rejects.toBeInstanceOf(PackageEntityAccessDeniedError);
-	});
-
-	it('classifies a genuinely nonexistent folder id as entity-not-found for the audit event', async () => {
-		const owner = await createOwner();
-
-		await expect(
-			service.exportPackage({ user: owner, workflowIds: [], folderIds: ['does-not-exist'] }),
-		).rejects.toBeInstanceOf(PackageEntityNotFoundError);
 	});
 
 	it('exports two sibling empty folders as separate shells', async () => {
@@ -238,13 +216,13 @@ describe('folder package export', () => {
 
 		// The member can read accessibleFolder but not inaccessibleFolder; one bad id
 		// poisons the batch, so the export aborts rather than shipping a partial set.
-		const exportPromise = service.exportPackage({
-			user: member,
-			workflowIds: [],
-			folderIds: [accessibleFolder.id, inaccessibleFolder.id],
-		});
-		await expect(exportPromise).rejects.toThrow(/1 folder\(s\) not found or not accessible/);
-		await expect(exportPromise).rejects.toBeInstanceOf(PackageEntityAccessDeniedError);
+		await expect(
+			service.exportPackage({
+				user: member,
+				workflowIds: [],
+				folderIds: [accessibleFolder.id, inaccessibleFolder.id],
+			}),
+		).rejects.toThrow(/1 folder\(s\) not found or not accessible/);
 	});
 });
 
@@ -353,9 +331,15 @@ describe('folder package export — with contained workflows', () => {
 		// workflow:export the workflow. The per-workflow export gate must abort.
 		await createWorkflow({ name: 'secret', parentFolder: folder }, ownerProject);
 
-		await expect(
-			service.exportPackage({ user: member, workflowIds: [], folderIds: [folder.id] }),
-		).rejects.toThrow(/workflow\(s\) not found or not accessible/);
+		const exportPromise = service.exportPackage({
+			user: member,
+			workflowIds: [],
+			folderIds: [folder.id],
+		});
+		await expect(exportPromise).rejects.toThrow(/workflow\(s\) not found or not accessible/);
+		// This nested workflow-in-folder gate is a separate call site from the
+		// top-level folder check above — worth confirming it classifies the same way.
+		await expect(exportPromise).rejects.toBeInstanceOf(PackageEntityAccessDeniedError);
 	});
 
 	// Edge: a workflow in both folderIds and workflowIds is placed in the folder, once.

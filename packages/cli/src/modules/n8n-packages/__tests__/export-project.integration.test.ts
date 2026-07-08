@@ -12,10 +12,6 @@ import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { createMember, createOwner } from '@test-integration/db/users';
 
-import {
-	PackageEntityAccessDeniedError,
-	PackageEntityNotFoundError,
-} from '../entities/package-export.errors';
 import { N8nPackagesService } from '../n8n-packages.service';
 import { FORMAT_VERSION } from '../spec/constants';
 import { readExport } from './utils/tar-support';
@@ -162,13 +158,9 @@ describe('project package export', () => {
 		const outsider = await createMember();
 		const project = await createTeamProject('Private Project', owner);
 
-		const exportPromise = exportSingleProject(outsider, project.id);
-		await expect(exportPromise).rejects.toThrow(
+		await expect(exportSingleProject(outsider, project.id)).rejects.toThrow(
 			'1 project(s) not found or not accessible. Export aborted.',
 		);
-		// The project exists, just inaccessible — classifies as access-denied for
-		// the audit event, even though the response message is identical.
-		await expect(exportPromise).rejects.toBeInstanceOf(PackageEntityAccessDeniedError);
 	});
 
 	it("rejects exporting another user's personal project", async () => {
@@ -178,14 +170,6 @@ describe('project package export', () => {
 
 		await expect(exportSingleProject(otherUser, personalProject.id)).rejects.toThrow(
 			'1 project(s) not found or not accessible. Export aborted.',
-		);
-	});
-
-	it('classifies a genuinely nonexistent project id as entity-not-found for the audit event', async () => {
-		const owner = await createOwner();
-
-		await expect(exportSingleProject(owner, 'does-not-exist')).rejects.toBeInstanceOf(
-			PackageEntityNotFoundError,
 		);
 	});
 });

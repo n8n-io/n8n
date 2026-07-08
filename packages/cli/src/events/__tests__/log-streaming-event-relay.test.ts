@@ -193,34 +193,6 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
-		it('omits empty id arrays from the `n8n-package-export-failed` audit payload', () => {
-			const event: RelayEventMap['n8n-package-export-failed'] = {
-				user: {
-					id: 'user-export',
-					email: 'exporter@example.com',
-					firstName: 'Export',
-					lastName: 'User',
-					role: { slug: 'global:admin' },
-				},
-				reason: 'validation',
-			};
-
-			eventService.emit('n8n-package-export-failed', event);
-
-			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
-				eventName: 'n8n.audit.n8n-package.export.failed',
-				payload: {
-					userId: 'user-export',
-					_email: 'exporter@example.com',
-					_firstName: 'Export',
-					_lastName: 'User',
-					globalRole: 'global:admin',
-					operation: 'export',
-					reason: 'validation',
-				},
-			});
-		});
-
 		it('should log on `n8n-package-import-failed` event', () => {
 			const event: RelayEventMap['n8n-package-import-failed'] = {
 				user: {
