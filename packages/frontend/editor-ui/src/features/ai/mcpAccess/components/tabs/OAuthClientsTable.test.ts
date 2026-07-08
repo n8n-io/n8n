@@ -170,22 +170,21 @@ describe('OAuthClientsTable', () => {
 			const modal = document.querySelector('[data-test-id="mcp-client-details-modal"]');
 			expect(modal).not.toBeNull();
 
-			// granted scopes are grouped, with per-group deduplicated tool counts
-			const workflowsGroup = within(modal as HTMLElement).getByTestId(
-				'mcp-client-details-group-workflows',
+			// granted scope tokens are grouped per resource, with read/write tags
+			const workflowGroup = within(modal as HTMLElement).getByTestId(
+				'mcp-client-details-group-workflow',
 			);
-			expect(workflowsGroup).toHaveTextContent('Workflows');
-			expect(workflowsGroup).toHaveTextContent('3 tools');
-			expect(workflowsGroup).toHaveTextContent('List workflows');
-			expect(workflowsGroup).toHaveTextContent('Create and update workflows');
-			expect(workflowsGroup).toHaveTextContent('search_workflows');
-			expect(workflowsGroup).toHaveTextContent('update_workflow');
+			expect(workflowGroup).toHaveTextContent('Workflow');
+			expect(workflowGroup).toHaveTextContent('workflow:read');
+			expect(workflowGroup).toHaveTextContent('workflow:write');
+			expect(workflowGroup).toHaveTextContent('Read');
+			expect(workflowGroup).toHaveTextContent('Write');
 
-			const executionsGroup = within(modal as HTMLElement).getByTestId(
-				'mcp-client-details-group-executions',
+			const executionGroup = within(modal as HTMLElement).getByTestId(
+				'mcp-client-details-group-execution',
 			);
-			expect(executionsGroup).toHaveTextContent('1 tool');
-			expect(executionsGroup).toHaveTextContent('get_execution');
+			expect(executionGroup).toHaveTextContent('Execution');
+			expect(executionGroup).toHaveTextContent('execution:read');
 		});
 
 		it('should emit revokeClient from the details modal revoke button', async () => {

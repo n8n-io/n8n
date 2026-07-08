@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+import { capitalCase } from 'change-case';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
 import {
 	N8nBadge,
@@ -12,6 +13,7 @@ import {
 	N8nDialogTitle,
 	N8nIcon,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { useI18n } from '@n8n/i18n';
@@ -20,8 +22,8 @@ import type { BaseTextKey } from '@n8n/i18n';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { classifyScope } from '@/app/components/scopes/scopes.utils';
 import type { ScopeAccess } from '@/app/components/scopes/scopes.utils';
-import { getClientBrand, isFullAccessGrant, scopeLabel } from '../clients.utils';
-import { MCP_SCOPE_GROUPS, MCP_SCOPE_GROUP_ICONS } from '../mcp.constants';
+import { getClientBrand, isFullAccessGrant } from '../clients.utils';
+import { MCP_SCOPE_RESOURCE_ICONS } from '../mcp.constants';
 
 const props = defineProps<{
 	client: OAuthClientResponseDto | null;
@@ -53,49 +55,49 @@ const subtitle = computed(() => {
 // to the full launch set) shows as a single "Full access" line.
 const isFullAccess = computed(() => isFullAccessGrant(props.client?.scopes ?? []));
 
-interface AccessGroupScope {
+interface AccessScope {
 	scope: string;
-	label: string;
 	access: ScopeAccess;
 	tools: string[];
 }
 
 interface AccessGroup {
-	key: string;
+	resource: string;
 	label: string;
 	icon: IconName;
-	toolCount: number;
-	scopes: AccessGroupScope[];
+	scopes: AccessScope[];
 }
 
-/**
- * The user's granted scopes arranged into the same display groups as the
- * consent screen picker, with the tool identifiers each scope unlocks.
- */
+function resourceLabel(resource: string): string {
+	const key = `settings.mcp.oAuthClients.resource.${resource}` as BaseTextKey;
+	const label = i18n.baseText(key);
+	// baseText returns the key itself for unknown resources; show them verbatim
+	return label === key ? capitalCase(resource) : label;
+}
+
+/** The granted scope tokens grouped by their resource prefix, in grant order. */
 const accessGroups = computed<AccessGroup[]>(() => {
 	const granted = props.client?.scopes;
 	if (!granted) return [];
 
-	return MCP_SCOPE_GROUPS.map((group) => {
-		const scopes = granted
-			.filter((scope) => group.resources.includes(scope.split(':')[0]))
-			.map((scope) => ({
-				scope,
-				label: scopeLabel(i18n, scope),
-				access: classifyScope(scope),
-				tools: props.scopeTools?.[scope] ?? [],
-			}));
+	const byResource = new Map<string, string[]>();
+	for (const scope of granted) {
+		const resource = scope.split(':')[0];
+		const scopes = byResource.get(resource) ?? [];
+		scopes.push(scope);
+		byResource.set(resource, scopes);
+	}
 
-		const toolCount = new Set(scopes.flatMap((entry) => entry.tools)).size;
-
-		return {
-			key: group.key,
-			label: i18n.baseText(`settings.mcp.oAuthClients.group.${group.key}` as BaseTextKey),
-			icon: MCP_SCOPE_GROUP_ICONS[group.key] ?? 'mcp',
-			toolCount,
-			scopes,
-		};
-	}).filter((group) => group.scopes.length > 0);
+	return [...byResource.entries()].map(([resource, scopes]) => ({
+		resource,
+		label: resourceLabel(resource),
+		icon: MCP_SCOPE_RESOURCE_ICONS[resource] ?? 'mcp',
+		scopes: scopes.map((scope) => ({
+			scope,
+			access: classifyScope(scope),
+			tools: props.scopeTools?.[scope] ?? [],
+		})),
+	}));
 });
 
 function onRevoke() {
@@ -139,36 +141,51 @@ function onRevoke() {
 					<template v-else>
 						<div
 							v-for="group in accessGroups"
-							:key="group.key"
+							:key="group.resource"
 							:class="$style['access-group']"
-							:data-test-id="`mcp-client-details-group-${group.key}`"
+							:data-test-id="`mcp-client-details-group-${group.resource}`"
 						>
-							<div :class="$style['access-group-header']">
+							<div :class="$style['access-group-label']">
 								<N8nIcon :icon="group.icon" size="small" :class="$style['access-group-icon']" />
-								<N8nText color="text-dark" size="small" :bold="true">{{ group.label }}</N8nText>
-								<N8nText v-if="group.toolCount > 0" color="text-light" size="xsmall">
-									{{
-										i18n.baseText('settings.mcp.oAuthClients.details.toolCount', {
-											adjustToNumber: group.toolCount,
-											interpolate: { count: group.toolCount },
-										})
-									}}
-								</N8nText>
+								<N8nText color="text-dark" size="small">{{ group.label }}</N8nText>
 							</div>
-							<div v-for="entry in group.scopes" :key="entry.scope" :class="$style['scope-row']">
-								<div :class="$style['scope-info']">
-									<N8nText color="text-dark" size="small">{{ entry.label }}</N8nText>
-									<span v-for="tool in entry.tools" :key="tool" :class="$style['tool-name']">
-										{{ tool }}
-									</span>
+							<div :class="$style['scope-list']">
+								<div v-for="entry in group.scopes" :key="entry.scope" :class="$style['scope-row']">
+									<N8nTooltip
+										:disabled="entry.tools.length === 0"
+										placement="top"
+										:show-after="150"
+										:content-class="$style['tools-tooltip']"
+									>
+										<template #content>
+											<div :class="$style['tools-popover']">
+												<div :class="$style['tools-popover-header']">
+													{{
+														i18n.baseText('settings.mcp.oAuthClients.details.enablesTools', {
+															adjustToNumber: entry.tools.length,
+															interpolate: { count: entry.tools.length },
+														})
+													}}
+												</div>
+												<div v-for="tool in entry.tools" :key="tool" :class="$style['tool-row']">
+													<N8nIcon icon="wrench" size="xsmall" :class="$style['tool-icon']" />
+													<span :class="$style['tool-name']">{{ tool }}</span>
+												</div>
+											</div>
+										</template>
+										<span :class="$style['scope-token']" tabindex="0">{{ entry.scope }}</span>
+									</N8nTooltip>
+									<N8nBadge
+										:theme="entry.access === 'read' ? 'default' : 'danger'"
+										:class="$style['access-badge']"
+									>
+										{{
+											i18n.baseText(
+												`settings.mcp.oAuthClients.details.badge.${entry.access}` as BaseTextKey,
+											)
+										}}
+									</N8nBadge>
 								</div>
-								<N8nBadge :theme="entry.access === 'read' ? 'default' : 'danger'">
-									{{
-										i18n.baseText(
-											`settings.mcp.oAuthClients.details.badge.${entry.access}` as BaseTextKey,
-										)
-									}}
-								</N8nBadge>
 							</div>
 						</div>
 					</template>
@@ -242,37 +259,87 @@ function onRevoke() {
 
 .access-group {
 	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
+	align-items: flex-start;
+	gap: var(--spacing--sm);
 }
 
-.access-group-header {
+.access-group-label {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
+	min-width: 110px;
+	padding-top: var(--spacing--5xs);
 }
 
 .access-group-icon {
 	color: var(--color--text--tint-1);
 }
 
-.scope-row {
-	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
-	gap: var(--spacing--2xs);
-	padding-left: var(--spacing--lg);
-}
-
-.scope-info {
+.scope-list {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--5xs);
+	gap: var(--spacing--2xs);
+}
+
+.scope-row {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.scope-token {
+	display: inline-flex;
+	padding: var(--spacing--5xs) var(--spacing--2xs);
+	border: var(--border);
+	border-radius: var(--radius);
+	background-color: var(--color--background--light-2);
+	color: var(--color--text--shade-1);
+	font-family: var(--font-family--monospace);
+	font-size: var(--font-size--2xs);
+	cursor: default;
+}
+
+.access-badge {
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+/* the shared tooltip caps content at 180px and centers it; tool identifiers need more room */
+:global(.n8n-tooltip).tools-tooltip {
+	max-width: 320px;
+	align-items: flex-start;
+}
+
+.tools-popover {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+	width: max-content;
+	max-width: 100%;
+	padding: var(--spacing--4xs);
+}
+
+.tools-popover-header {
+	font-size: var(--font-size--3xs);
+	font-weight: var(--font-weight--bold);
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--color--text--tint-1);
+	margin-bottom: var(--spacing--4xs);
+}
+
+.tool-row {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
+.tool-icon {
+	color: var(--color--primary);
 }
 
 .tool-name {
 	font-family: var(--font-family--monospace);
 	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-1);
 }
 </style>

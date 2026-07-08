@@ -15,13 +15,14 @@ export const MCP_SCOPE_GROUPS: ScopeGroupDefinition[] = [
 	{ key: 'projectsAndFolders', resources: ['project'] },
 ];
 
-/** Icons for the scope groups above, shown in the client details modal. */
-export const MCP_SCOPE_GROUP_ICONS: Record<string, IconName> = {
-	workflows: 'workflow',
-	executions: 'history',
-	credentials: 'key-round',
-	dataTables: 'table',
-	projectsAndFolders: 'folder',
+/** Icons per scope resource prefix, shown in the client details modal. */
+export const MCP_SCOPE_RESOURCE_ICONS: Record<string, IconName> = {
+	workflow: 'workflow',
+	execution: 'history',
+	credential: 'key-round',
+	dataTable: 'table',
+	project: 'folder',
+	tag: 'tags',
 };
 export const ELIGIBLE_WORKFLOWS_DOCS_SECTION = 'workflow-eligibility';
 
