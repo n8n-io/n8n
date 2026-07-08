@@ -2,6 +2,7 @@ import { LicenseState } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsRepository,
+	In,
 	ProjectRelationRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
@@ -166,7 +167,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'n8n-package-imported': (event) => this.packageImported(event),
 			'n8n-package-exported': (event) => this.packageExported(event),
 			'workflow-saved': async (event) => await this.workflowSaved(event),
-			'workflow-activated': (event) => this.workflowActivated(event),
+			'workflow-activated': async (event) => await this.workflowActivated(event),
 			'workflow-deactivated': (event) => this.workflowDeactivated(event),
 			'server-started': async () => await this.serverStarted(),
 			'server-cli-import': (event) => this.serverCliImportCommand(event),
@@ -626,6 +627,8 @@ export class TelemetryEventRelay extends EventRelay {
 		isDynamic,
 		usesExternalSecrets,
 		jweEnabled,
+		supportsManagedAuth,
+		usesManagedAuth,
 	}: RelayEventMap['credentials-created']) {
 		this.telemetry.track('User created credentials', {
 			user_id: user.id,
@@ -638,6 +641,8 @@ export class TelemetryEventRelay extends EventRelay {
 			is_private: isDynamic ?? false,
 			uses_external_secrets: usesExternalSecrets ?? false,
 			jwe_enabled: jweEnabled ?? false,
+			credential_supports_managed_auth: supportsManagedAuth ?? false,
+			credential_uses_managed_auth: usesManagedAuth ?? false,
 		});
 	}
 
@@ -667,6 +672,8 @@ export class TelemetryEventRelay extends EventRelay {
 		isDynamic,
 		usesExternalSecrets,
 		jweEnabled,
+		supportsManagedAuth,
+		usesManagedAuth,
 	}: RelayEventMap['credentials-updated']) {
 		this.telemetry.track('User updated credentials', {
 			user_id: user.id,
@@ -676,6 +683,8 @@ export class TelemetryEventRelay extends EventRelay {
 			is_private: isDynamic ?? false,
 			uses_external_secrets: usesExternalSecrets ?? false,
 			jwe_enabled: jweEnabled ?? false,
+			credential_supports_managed_auth: supportsManagedAuth ?? false,
+			credential_uses_managed_auth: usesManagedAuth ?? false,
 		});
 	}
 
@@ -778,12 +787,16 @@ export class TelemetryEventRelay extends EventRelay {
 		user,
 		credentialId,
 		credentialType,
+		supportsManagedAuth,
+		usesManagedAuth,
 	}: RelayEventMap['private-credential-user-connected']) {
 		this.telemetry.track('User connected to private credential', {
 			user_id: user.id,
 			user_role: user.role?.slug,
 			credential_type: credentialType,
 			credential_id: credentialId,
+			credential_supports_managed_auth: supportsManagedAuth ?? false,
+			credential_uses_managed_auth: usesManagedAuth ?? false,
 		});
 	}
 
@@ -927,17 +940,65 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
-	private workflowActivated({
+	/**
+	 * Looks up which private (resolvable) credentials a workflow references by
+	 * inspecting node credential ids. Used to report private-credential adoption
+	 * on save/activate. Returns zeroed counts when the workflow references none.
+	 */
+	private async getPrivateCredentialUsage(workflow: IWorkflowBase | IWorkflowDb): Promise<{
+		privateCredentialsCount: number;
+		privateCredentialTypes: string[];
+	}> {
+		const empty = {
+			privateCredentialsCount: 0,
+			privateCredentialTypes: [] as string[],
+		};
+
+		// Report zeros when the feature isn't licensed: resolvable rows may persist in the
+		// DB (e.g. after a license downgrade) but are inactive, so skip the lookup.
+		if (!this.licenseState.isDynamicCredentialsLicensed()) {
+			return empty;
+		}
+
+		const credentialIds = new Set<string>();
+		for (const node of workflow.nodes) {
+			for (const credential of Object.values(node.credentials ?? {})) {
+				if (credential?.id) credentialIds.add(credential.id);
+			}
+		}
+
+		if (credentialIds.size === 0) {
+			return empty;
+		}
+
+		const privateCredentials = await this.credentialsRepository.find({
+			where: { id: In([...credentialIds]), isResolvable: true },
+			select: ['id', 'type'],
+		});
+
+		return {
+			privateCredentialsCount: privateCredentials.length,
+			privateCredentialTypes: [...new Set(privateCredentials.map((credential) => credential.type))],
+		};
+	}
+
+	private async workflowActivated({
 		user,
 		workflowId,
+		workflow,
 		publicApi,
 		source = 'ui',
 	}: RelayEventMap['workflow-activated']) {
+		const { privateCredentialsCount, privateCredentialTypes } =
+			await this.getPrivateCredentialUsage(workflow);
+
 		this.telemetry.track('User activated workflow', {
 			user_id: user.id,
 			workflow_id: workflowId,
 			public_api: publicApi,
 			source,
+			private_credentials_count: privateCredentialsCount,
+			private_credential_types: privateCredentialTypes,
 		});
 	}
 
@@ -1070,6 +1131,9 @@ export class TelemetryEventRelay extends EventRelay {
 			workflow,
 		);
 
+		const { privateCredentialsCount, privateCredentialTypes } =
+			await this.getPrivateCredentialUsage(workflow);
+
 		this.telemetry.track('User saved workflow', {
 			user_id: user.id,
 			workflow_id: workflow.id,
@@ -1087,6 +1151,8 @@ export class TelemetryEventRelay extends EventRelay {
 			credential_resolver_id: credentialResolverId,
 			identity_extractor_changed: identityExtractorChanged,
 			redaction_policy: redactionPolicy,
+			private_credentials_count: privateCredentialsCount,
+			private_credential_types: privateCredentialTypes,
 			otel_workflow_custom_tags_count: countWorkflowCustomTelemetryTags(workflow),
 			otel_nodes_with_custom_tags_count: countNodesWithCustomTelemetryTags(workflow.nodes),
 			otel_node_custom_tags_count: countNodeCustomTelemetryTags(workflow.nodes),
@@ -1108,19 +1174,37 @@ export class TelemetryEventRelay extends EventRelay {
 
 		const executionTelemetryProperties = getExecutionTelemetryProperties(source, telemetryMetadata);
 
+		// Aggregate per-node private-credential usage. `attemptedDynamicCredentials` is a
+		// superset of `usedDynamicCredentials`: it also counts nodes where resolution failed
+		// (e.g. the running user had not connected the credential), giving a resolution funnel.
+		let privateCredentialsAttemptedCount = 0;
+		let privateCredentialsResolvedCount = 0;
+		for (const taskDataList of Object.values(runData?.data?.resultData?.runData ?? {})) {
+			if (taskDataList.some((taskData) => taskData.attemptedDynamicCredentials)) {
+				privateCredentialsAttemptedCount++;
+			}
+			if (taskDataList.some((taskData) => taskData.usedDynamicCredentials)) {
+				privateCredentialsResolvedCount++;
+			}
+		}
+
 		const telemetryProperties: IExecutionTrackProperties = {
 			workflow_id: workflow.id,
 			is_manual: false,
 			version_cli: N8N_VERSION,
 			success: false,
 			...executionTelemetryProperties,
-			// True when the execution attempted to run with a private credential, whether
-			// resolution succeeded or failed (e.g. the running user had not connected it).
-			// `attemptedDynamicCredentials` is a superset of `usedDynamicCredentials`.
-			used_private_credentials: Object.values(runData?.data?.resultData?.runData ?? {}).some(
-				(taskDataList) => taskDataList.some((taskData) => taskData.attemptedDynamicCredentials),
-			),
+			used_private_credentials: privateCredentialsAttemptedCount > 0,
+			private_credentials_attempted_count: privateCredentialsAttemptedCount,
+			private_credentials_resolved_count: privateCredentialsResolvedCount,
 		};
+
+		if (privateCredentialsAttemptedCount > 0) {
+			const resolverId = this.dynamicCredentialsProxy.getEffectiveResolverId(workflow.settings);
+			if (resolverId) {
+				telemetryProperties.credential_resolver_id = resolverId;
+			}
+		}
 
 		if (userId) {
 			telemetryProperties.user_id = userId;
@@ -1217,6 +1301,11 @@ export class TelemetryEventRelay extends EventRelay {
 					eval_rows_left: null,
 					meta: JSON.stringify(workflow.meta),
 					used_private_credentials: telemetryProperties.used_private_credentials,
+					private_credentials_attempted_count:
+						telemetryProperties.private_credentials_attempted_count,
+					private_credentials_resolved_count:
+						telemetryProperties.private_credentials_resolved_count,
+					credential_resolver_id: telemetryProperties.credential_resolver_id,
 					...executionTelemetryProperties,
 					...TelemetryHelpers.resolveAIMetrics(workflow.nodes, this.nodeTypes),
 					...TelemetryHelpers.resolveVectorStoreMetrics(workflow.nodes, this.nodeTypes, runData),

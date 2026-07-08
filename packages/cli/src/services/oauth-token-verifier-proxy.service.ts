@@ -10,7 +10,8 @@ export type AuthFailureReason =
 	| 'user_not_found'
 	| 'user_id_not_in_auth_info'
 	| 'unknown_error'
-	| 'verifier_not_registered';
+	| 'verifier_not_registered'
+	| 'insufficient_scope';
 
 export type Mcpauth_type = 'oauth' | 'api_key' | 'unknown';
 

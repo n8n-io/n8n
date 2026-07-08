@@ -1,7 +1,7 @@
 import type { ScopeGroupDefinition } from '@/app/components/scopes/scopes.utils';
 
 export const MCP_ENDPOINT = 'mcp-server/http';
-export const MCP_DOCS_PAGE_URL = 'https://docs.n8n.io/advanced-ai/mcp/mcp_tools_reference';
+export const MCP_DOCS_PAGE_URL = 'https://docs.n8n.io/connect/connect-to-n8n-mcp-server';
 
 // Display groups for the MCP OAuth consent scope picker, keyed by the
 // `resource:` prefix of the scopes in MCP_INSTANCE_SCOPES (@n8n/api-types).

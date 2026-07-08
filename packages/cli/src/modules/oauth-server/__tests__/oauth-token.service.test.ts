@@ -38,6 +38,7 @@ registry.register({
 	getAudiences: () => [TEST_RESOURCE_URL, LEGACY_AUDIENCE],
 	scopes: [],
 	isDefault: true,
+	authorize: async () => true,
 });
 
 describe('OAuthTokenService', () => {
@@ -517,6 +518,21 @@ describe('OAuthTokenService', () => {
 
 			expect(userConsentRepository.update).toHaveBeenCalledTimes(1);
 		});
+
+		it('should deny when a resource-scoped audience cannot be resolved', async () => {
+			// Fail closed: the token carries an audience but no resource resolves for
+			// it (deleted, or a transient resolver failure the registry swallows), so
+			// the authorize gate cannot run and the token must be rejected.
+			const { accessToken } = service.generateTokenPair('user-123', 'client-456', undefined, []);
+
+			const result = await service.verifyOAuthAccessToken(
+				accessToken,
+				'https://unregistered.example.com/mcp',
+			);
+
+			expect(result.user).toBeNull();
+			expect(result.context?.reason).toBe('insufficient_scope');
+		});
 	});
 
 	describe('revokeAccessToken', () => {
@@ -593,12 +609,14 @@ describe('OAuthTokenService', () => {
 				getResourceUrl: () => RESOURCE_A_URL,
 				getAudiences: () => [RESOURCE_A_URL, LEGACY_AUDIENCE],
 				scopes: [],
+				authorize: async () => true,
 				isDefault: true,
 			});
 			multiResourceRegistry.register({
 				id: 'workflow-trigger',
 				getResourceUrl: () => RESOURCE_B_URL,
 				getAudiences: () => [RESOURCE_B_URL],
+				authorize: async () => true,
 				scopes: [],
 			});
 
@@ -681,6 +699,7 @@ describe('OAuthTokenService', () => {
 				getAudiences: () => [TEST_RESOURCE_URL, LEGACY_AUDIENCE],
 				scopes: RESOURCE_SCOPES,
 				isDefault: true,
+				authorize: async () => true,
 			});
 
 			scopedService = new OAuthTokenService(

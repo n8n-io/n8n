@@ -83,6 +83,15 @@ class PostgresConfig {
 	@Env('DB_POSTGRESDB_CONNECTION_TIMEOUT')
 	connectionTimeoutMs: number = 20_000;
 
+	/**
+	 * Timeout for tearing down the Postgres pool during connection recovery.
+	 * `pool.end()` waits for every connection to drain, so one frozen against an
+	 * unreachable backend would block recovery forever; past this window the pool's
+	 * sockets are force-closed so recovery can reconnect. `0` waits indefinitely.
+	 */
+	@Env('DB_POSTGRESDB_DESTROY_TIMEOUT_MS', z.coerce.number().int().gte(0))
+	destroyTimeoutMs: number = 10 * Time.seconds.toMilliseconds;
+
 	/** Time in milliseconds after which an idle connection in the pool is closed. */
 	@Env('DB_POSTGRESDB_IDLE_CONNECTION_TIMEOUT')
 	idleTimeoutMs: number = 30_000;
@@ -175,6 +184,10 @@ export class DatabaseConfig {
 	 * How many consecutive health-check ping failures must occur before the
 	 * connection is considered lost and the DataSource is torn down and
 	 * reinitialized (full pool recovery).
+	 *
+	 * Postgres-only: sqlite never runs pool recovery (a failed ping on a local
+	 * file means a busy pool, not a lost connection), so this has no effect there.
+	 * (Postgres-only environment variables should ideally move to `PostgresConfig`)
 	 *
 	 * Recovery is disruptive (it destroys and recreates the connection pool),
 	 * so this guards against a single transient blip triggering it. With the

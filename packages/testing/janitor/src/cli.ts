@@ -8,7 +8,7 @@
  *   janitor impact                         # Show impact of changes
  *   janitor tcr                            # TCR workflow
  *   janitor affected-packages              # List workspace packages affected by changed files
- *   janitor scope                          # Compute per-package jest/vitest scope list
+ *   janitor scope                          # Compute per-package vitest scope list
  *   janitor --help                         # Show help
  *
  * The `affected-packages` and `scope` subcommands are workspace-wide utilities
@@ -630,7 +630,7 @@ function runAffectedPackages(options: CliOptions): void {
 
 function runTestScopedCmd(options: CliOptions): void {
 	if (!options.runner) {
-		console.error('Error: --runner=jest|vitest is required');
+		console.error('Error: --runner=vitest is required');
 		process.exit(1);
 	}
 	const packageDir = options.packageDir ?? process.cwd();
@@ -641,14 +641,13 @@ function runTestScopedCmd(options: CliOptions): void {
 		rootDir: findWorkspaceRoot(process.cwd()),
 		changedFiles,
 		passthroughArgs: options.passthroughArgs,
-		jestVariant: options.jestVariant,
 	});
 	process.exit(exitCode);
 }
 
 function runScope(options: CliOptions): void {
 	if (!options.runner) {
-		console.error('Error: --runner=jest|vitest is required');
+		console.error('Error: --runner=vitest is required');
 		process.exit(1);
 	}
 
@@ -657,7 +656,6 @@ function runScope(options: CliOptions): void {
 		packageDir: options.packageDir ?? process.cwd(),
 		changedFiles: readChangedFiles(options),
 		rootDir: findWorkspaceRoot(process.cwd()),
-		jestVariant: options.jestVariant,
 	});
 	console.log(formatScope(result));
 }

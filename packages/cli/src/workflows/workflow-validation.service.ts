@@ -355,7 +355,7 @@ export class WorkflowValidationService {
 			// System resolver: needs the n8n user identity.
 			return hasN8nIdentityTrigger
 				? undefined
-				: `private credentials (${credNames}) are only supported in workflows triggered manually, via chat, or as a sub-workflow.`;
+				: `end-user credentials (${credNames}) are only supported in workflows triggered manually, via chat, or as a sub-workflow.`;
 		}
 
 		// Custom resolver: needs an external identity from the trigger.

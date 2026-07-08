@@ -987,7 +987,8 @@ export type EnterpriseEditionFeatureKey =
 	| 'Provisioning'
 	| 'PersonalSpacePolicy'
 	| 'CustomRoles'
-	| 'DataRedaction';
+	| 'DataRedaction'
+	| 'WorkflowReviews';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
 

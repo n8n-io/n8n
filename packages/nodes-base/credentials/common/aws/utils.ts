@@ -250,6 +250,10 @@ export function awsGetSignInOptionsAndUpdateRequest(
 			} catch (err) {
 				console.error(err);
 			}
+		} else {
+			// UI Query Parameters are stored at the top level of requestOptions.qs, not under
+			// a nested `query` key, so merge the whole object to sign and send them.
+			query = requestWithUri.qs as IDataObject;
 		}
 		const parsed = parseAwsUrl(endpoint);
 		service = parsed.service;

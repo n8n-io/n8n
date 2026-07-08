@@ -49,6 +49,7 @@ describe('OAuthServerService', () => {
 			scopes: SUPPORTED_SCOPES,
 			isDefault: true,
 			getAllowedRedirectUris,
+			authorize: async () => true,
 		});
 
 		service = new OAuthServerService(
@@ -1089,6 +1090,7 @@ describe('OAuthServerService', () => {
 				getAudiences: () => [TEST_RESOURCE_URL, 'mcp-server-api'],
 				scopes: SUPPORTED_SCOPES,
 				isDefault: true,
+				authorize: async () => true,
 			});
 			const secondResourceUrl = 'https://n8n.example.com/webhook/wf-1/mcp';
 			multiRegistry.register({
@@ -1096,6 +1098,7 @@ describe('OAuthServerService', () => {
 				getResourceUrl: () => secondResourceUrl,
 				getAudiences: () => [secondResourceUrl],
 				scopes: [],
+				authorize: async () => true,
 			});
 
 			const multiResourceService = new OAuthServerService(

@@ -36,6 +36,8 @@ const resourceName = computed(() => consentStore.consentDetails?.resourceName);
 const errorMessage = computed(() => {
 	if (consentStore.errorCode === 'resource_unavailable') {
 		return i18n.baseText('oauth.consentView.error.resourceUnavailable');
+	} else if (consentStore.errorCode === 'forbidden') {
+		return i18n.baseText('oauth.consentView.error.insufficientScope');
 	}
 	return consentStore.error;
 });
