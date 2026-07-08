@@ -3,7 +3,6 @@ import { watch, computed } from 'vue';
 import { N8nActionPill } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useAiGateway } from '@/app/composables/useAiGateway';
-import { formatWalletBalance } from '@/app/utils/aiGatewayUtils';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -108,7 +107,13 @@ function onBadgeClick(event: MouseEvent): void {
 					:clickable="!readonly"
 					:type="isBalanceDepleted ? 'danger' : 'default'"
 					size="small"
-					:text="formatWalletBalance(balance)"
+					:text="
+						isBalanceDepleted
+							? i18n.baseText('aiGateway.wallet.noCredits')
+							: i18n.baseText('aiGateway.wallet.balanceRemaining', {
+									interpolate: { balance: `$${Number(balance).toFixed(2)}` },
+								})
+					"
 					:hover-text="!readonly ? i18n.baseText('aiGateway.toggle.topUp') : undefined"
 					@click="onBadgeClick"
 				/>
