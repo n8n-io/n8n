@@ -123,12 +123,13 @@ export function buildMcpToolName(serverName: string, toolName: string): string {
 }
 
 export function isZodObjectSchema(schema: z.ZodTypeAny): schema is z.ZodObject<z.ZodRawShape> {
-	const def: unknown = schema?._def;
-	if (typeof def !== 'object' || def === null) return false;
-	// zod v3 marks objects with `_def.typeName`, v4 with `_def.type`
-	return (
-		('typeName' in def && def.typeName === 'ZodObject') || ('type' in def && def.type === 'object')
-	);
+	// zod v4 exposes internals under `_zod.def` (type: 'object'); zod v3 under `_def` (typeName: 'ZodObject').
+	const internals = schema as {
+		_zod?: { def?: { type?: unknown } };
+		_def?: { typeName?: unknown };
+	};
+	if (internals._zod?.def) return internals._zod.def.type === 'object';
+	return internals._def?.typeName === 'ZodObject';
 }
 
 export function mcpToolToDynamicTool(

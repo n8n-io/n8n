@@ -80,7 +80,7 @@ describe('isZodObjectSchema', () => {
 	});
 
 	it('should recognize a zod v4 object schema via its type marker', () => {
-		const zodV4Object = { _def: { type: 'object' } } as unknown as z.ZodTypeAny;
+		const zodV4Object = { _zod: { def: { type: 'object' } } } as unknown as z.ZodTypeAny;
 		expect(isZodObjectSchema(zodV4Object)).toBe(true);
 	});
 });
