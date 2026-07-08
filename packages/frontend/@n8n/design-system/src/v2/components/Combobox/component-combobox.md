@@ -51,6 +51,8 @@ Combobox (N8nCombobox2)
 - `openOnClick?: boolean` — Open dropdown when input is clicked | reka default: `false`
 - `highlightOnHover?: boolean` — Highlight items on hover (reka-ui root)
 - `clearable?: boolean` — When `true`, shows a clear button (×) when a value is selected. Hidden when disabled or empty. Default: `false`
+- `teleported?: boolean` — Whether to teleport the dropdown to body. Default: `true`
+- `portalTarget?: string | HTMLElement` — Portal target element (e.g. pop-out window's `document.body`). When set, portals content to the specified element.
 
 **UI Props**
 

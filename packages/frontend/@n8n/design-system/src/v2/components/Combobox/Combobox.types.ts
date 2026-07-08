@@ -22,6 +22,8 @@ export type ComboboxProps = Omit<ComboboxRootProps<AcceptableValue>, 'dir'> &
 		contentClass?: string;
 		id?: string;
 		clearable?: boolean;
+		teleported?: boolean;
+		portalTarget?: string | HTMLElement;
 	};
 
 export type ComboboxEmits = ComboboxRootEmits<AcceptableValue | AcceptableValue[]>;

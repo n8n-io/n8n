@@ -45,6 +45,7 @@ const props = withDefaults(defineProps<ComboboxProps>(), {
 	valueKey: 'value',
 	labelKey: 'label',
 	clearable: false,
+	teleported: true,
 });
 const emit = defineEmits<ComboboxEmits>();
 const slots = defineSlots<ComboboxSlots>();
@@ -220,7 +221,10 @@ function onClear() {
 			</ComboboxTrigger>
 		</ComboboxAnchor>
 
-		<ComboboxPortal>
+		<ComboboxPortal
+			:disabled="!props.teleported && !props.portalTarget"
+			v-bind="props.portalTarget ? { to: props.portalTarget } : {}"
+		>
 			<ComboboxContent
 				position="popper"
 				:class="[$style.comboboxContent, props.contentClass]"
