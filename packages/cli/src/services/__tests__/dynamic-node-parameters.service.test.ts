@@ -6,12 +6,21 @@ import {
 	type INodeType,
 	type IWorkflowExecuteAdditionalData,
 	type ResourceMapperFields,
+	Expression,
 } from 'n8n-workflow';
+
+import { RoutingNode } from 'n8n-core';
 
 import { DynamicNodeParametersService } from '../dynamic-node-parameters.service';
 import { WorkflowLoaderService } from '../workflow-loader.service';
 
+jest.mock('n8n-core', () => {
+	const actual = jest.requireActual('n8n-core');
+	return { ...actual, RoutingNode: jest.fn() };
+});
+
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NodeTypes } from '@/node-types';
 import * as checkAccess from '@/permissions.ee/check-access';
@@ -81,6 +90,73 @@ describe('DynamicNodeParametersService', () => {
 					{ id: '3', displayName: 'Field 3', defaultMatch: false, required: true, display: true },
 				],
 			});
+		});
+	});
+
+	describe('getOptionsViaLoadOptionsByPath', () => {
+		it('should throw BadRequestError when no loadOptions routing exists at the parameter path', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: {
+						name: 'TestNode',
+						properties: [],
+						requestDefaults: { baseURL: 'https://api.example.com' },
+					},
+				}),
+			);
+
+			await expect(
+				service.getOptionsViaLoadOptionsByPath(
+					'parameters.unknown',
+					mock<IWorkflowExecuteAdditionalData>(),
+					{ name: 'TestNode', version: 1 },
+					mock<INodeParameters>(),
+				),
+			).rejects.toThrow(BadRequestError);
+		});
+
+		it('should resolve routing from the node definition and run it', async () => {
+			const runNode = jest.fn().mockResolvedValue([[{ json: { name: 'opt', value: 'v' } }]]);
+			(RoutingNode as unknown as jest.Mock).mockImplementation(() => ({ runNode }));
+			jest.spyOn(Expression.prototype, 'acquireIsolate').mockResolvedValue(undefined);
+			jest.spyOn(Expression.prototype, 'releaseIsolate').mockResolvedValue(undefined);
+
+			const nodeRouting = { request: { url: '/v1/models', method: 'GET' as const } };
+			// Plain object (not a deep mock) so Workflow's parameter resolution doesn't
+			// trip over auto-generated mock fields on the property.
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: {
+					name: 'TestNode',
+					displayName: 'TestNode',
+					group: [],
+					version: 1,
+					defaults: {},
+					inputs: [],
+					outputs: [],
+					properties: [
+						{
+							displayName: 'Model',
+							name: 'model',
+							type: 'options',
+							default: '',
+							options: [],
+							typeOptions: { loadOptions: { routing: nodeRouting } },
+						},
+					],
+					requestDefaults: { baseURL: 'https://api.example.com' },
+				},
+			} as unknown as INodeType);
+
+			const result = await service.getOptionsViaLoadOptionsByPath(
+				'parameters.model',
+				mock<IWorkflowExecuteAdditionalData>(),
+				{ name: 'TestNode', version: 1 },
+				{} as INodeParameters,
+			);
+
+			expect(RoutingNode).toHaveBeenCalled();
+			expect(runNode).toHaveBeenCalled();
+			expect(result).toEqual([{ name: 'opt', value: 'v' }]);
 		});
 	});
 

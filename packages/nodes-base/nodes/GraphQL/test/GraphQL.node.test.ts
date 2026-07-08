@@ -1,7 +1,97 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { mock } from 'jest-mock-extended';
 import nock from 'nock';
+import type { ICredentialDataDecryptedObject, IExecuteFunctions, INode } from 'n8n-workflow';
+
+import { GraphQL } from '../GraphQL.node';
 
 describe('GraphQL Node', () => {
+	const getExecuteFunctions = (credentials?: ICredentialDataDecryptedObject) => {
+		const executeFunctions = mock<IExecuteFunctions>({
+			getInputData: jest.fn().mockReturnValue([{ json: {} }]),
+			getNode: jest.fn().mockReturnValue(mock<INode>({ name: 'GraphQL' })),
+			continueOnFail: jest.fn().mockReturnValue(false),
+			helpers: mock<IExecuteFunctions['helpers']>({
+				request: jest.fn(),
+				returnJsonArray: jest.fn(),
+				constructExecutionMetaData: jest.fn(),
+			}),
+		});
+
+		executeFunctions.getCredentials.mockImplementation(async (credentialType) => {
+			if (credentialType === 'httpBasicAuth' && credentials) {
+				return credentials;
+			}
+
+			throw new Error('No credentials');
+		});
+
+		executeFunctions.getNodeParameter.mockImplementation((parameterName) => {
+			switch (parameterName) {
+				case 'requestMethod':
+					return 'POST';
+				case 'endpoint':
+					return 'https://api.n8n.io/graphql';
+				case 'requestFormat':
+				case 'responseFormat':
+					return 'json';
+				case 'headerParametersUi':
+				case 'variables':
+					return {};
+				case 'allowUnauthorizedCerts':
+					return false;
+				case 'query':
+					return 'query { foo }';
+				case 'operationName':
+					return '';
+				default:
+					return undefined;
+			}
+		});
+
+		jest.mocked(executeFunctions.helpers.request).mockResolvedValue({ data: { foo: 'bar' } });
+		jest
+			.mocked(executeFunctions.helpers.returnJsonArray)
+			.mockReturnValue([{ json: { data: { foo: 'bar' } } }]);
+		jest
+			.mocked(executeFunctions.helpers.constructExecutionMetaData)
+			.mockReturnValue([{ json: { data: { foo: 'bar' } }, pairedItem: { item: 0 } }]);
+
+		return executeFunctions;
+	};
+
+	describe('allowed domains', () => {
+		it('should pass allowed domains from credentials to the request options', async () => {
+			const executeFunctions = getExecuteFunctions({
+				user: 'test',
+				password: 'secret',
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'api.n8n.io',
+			});
+
+			await new GraphQL().execute.call(executeFunctions);
+
+			expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					allowedDomains: 'api.n8n.io',
+				}),
+			);
+		});
+
+		it('should reject credentials that cannot be used in GraphQL requests', async () => {
+			const executeFunctions = getExecuteFunctions({
+				user: 'test',
+				password: 'secret',
+				allowedHttpRequestDomains: 'none',
+			});
+
+			await expect(new GraphQL().execute.call(executeFunctions)).rejects.toThrow(
+				'This credential is configured to prevent use within an HTTP Request or GraphQL node',
+			);
+			expect(executeFunctions.helpers.request).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('valid request', () => {
 		const baseUrl = 'https://api.n8n.io/';
 		nock(baseUrl)

@@ -467,8 +467,53 @@ describe('ResourceLocator', () => {
 		expect(windowOpenSpy).toHaveBeenCalledWith(
 			'/projects/test-project-123/datatables/new',
 			'_blank',
+			'noopener,noreferrer',
 		);
 
 		expect(nodeTypesStore.getNodeParameterActionResult).not.toHaveBeenCalled();
+	});
+
+	it('opens a list-mode cachedResultUrl with noopener,noreferrer', async () => {
+		const windowOpenSpy = vi.spyOn(window, 'open');
+		const { getByTestId } = renderComponent({
+			props: {
+				modelValue: {
+					__rl: true,
+					mode: 'list',
+					value: 'x',
+					cachedResultName: 'x',
+					cachedResultUrl: 'https://example.com/resource',
+				},
+			},
+		});
+
+		const link = await waitFor(() => getByTestId('rlc-open-resource-link'));
+		await userEvent.click(link);
+
+		expect(windowOpenSpy).toHaveBeenCalledWith(
+			'https://example.com/resource',
+			'_blank',
+			'noopener,noreferrer',
+		);
+	});
+
+	it('does not open a list-mode cachedResultUrl with a disallowed scheme', async () => {
+		const windowOpenSpy = vi.spyOn(window, 'open');
+		const { getByTestId } = renderComponent({
+			props: {
+				modelValue: {
+					__rl: true,
+					mode: 'list',
+					value: 'x',
+					cachedResultName: 'x',
+					cachedResultUrl: 'javascript:opener.document.body.dataset.xss="1";void 0',
+				},
+			},
+		});
+
+		const link = await waitFor(() => getByTestId('rlc-open-resource-link'));
+		await userEvent.click(link);
+
+		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 });

@@ -369,6 +369,7 @@ const unsafeObjectProperties = new Set([
 	'__defineGetter__',
 	'__defineSetter__',
 	'caller',
+	'callee',
 	'arguments',
 	'getBuiltinModule',
 	'dlopen',

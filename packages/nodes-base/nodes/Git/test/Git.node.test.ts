@@ -1,12 +1,16 @@
-import * as fsPromises from 'fs/promises';
-import { mock } from 'jest-mock-extended';
-import type { IExecuteFunctions } from 'n8n-workflow';
-import type { SimpleGit } from 'simple-git';
-import { Container } from '@n8n/di';
 import { SecurityConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
+import { mock } from 'jest-mock-extended';
+import type { IExecuteFunctions, ResolvedFilePath } from 'n8n-workflow';
+import { mkdir, rename, rm } from 'node:fs/promises';
+import { dirname } from 'node:path';
+import simpleGit, { type SimpleGit } from 'simple-git';
 
 import { Git } from '../Git.node';
 import { ALLOWED_CONFIG_KEYS } from '../descriptions';
+
+// Matches the unguessable staging directory the clone operation creates under the base.
+const CLONE_STAGING_RE = /^\/git\/\.n8n-clone-[0-9a-f]{24}$/;
 
 // Mock simple-git
 const mockGit = {
@@ -30,16 +34,22 @@ const mockGit = {
 
 jest.mock('simple-git', () => ({
 	__esModule: true,
-	default: () => mockGit,
+	default: jest.fn(() => mockGit),
 }));
 
-// Mock filesystem operations
-jest.mock('fs/promises', () => ({
-	access: jest.fn(),
+const mockSimpleGit = jest.mocked(simpleGit);
+
+// Mock filesystem operations used by the clone staging flow
+jest.mock('node:fs/promises', () => ({
+	...jest.requireActual('node:fs/promises'),
 	mkdir: jest.fn(),
+	rename: jest.fn(),
+	rm: jest.fn(),
 }));
 
-const mockFsPromises = jest.mocked(fsPromises);
+const mockMkdir = jest.mocked(mkdir);
+const mockRename = jest.mocked(rename);
+const mockRm = jest.mocked(rm);
 
 describe('Git Node', () => {
 	let gitNode: Git;
@@ -55,10 +65,19 @@ describe('Git Node', () => {
 				returnJsonArray: jest.fn((data: any[]) => data.map((item: any) => ({ json: item }))),
 				resolvePath: jest.fn(async (path: string) => path as any),
 				isFilePathBlocked: jest.fn(() => false),
+				assertNoSymlinkInPath: jest.fn(async () => {}),
+				ensureParentDirectoryWithoutFollowingSymlinks: jest.fn(async () => {}),
+				resolveStagingBaseForTarget: jest.fn(
+					async (target: string) => dirname(target) as ResolvedFilePath,
+				),
+				pinDirectory: jest.fn(async () => null),
 			},
 		});
 		jest.clearAllMocks();
 		mockGit.listConfig.mockResolvedValue({ values: {} } as any);
+		mockMkdir.mockResolvedValue(undefined);
+		mockRename.mockResolvedValue(undefined);
+		mockRm.mockResolvedValue(undefined);
 	});
 
 	describe('Environment validation', () => {
@@ -745,40 +764,133 @@ describe('Git Node', () => {
 			expect(mockGit.addConfig).toHaveBeenCalledWith('user.name', 'test user', false);
 		});
 
-		it('should handle clone operation and create directory when it does not exist', async () => {
+		it('should handle clone operation and create the parent directory', async () => {
+			const missingParentError = Object.assign(new Error('Directory does not exist'), {
+				code: 'ENOENT',
+			});
+
 			mockExecuteFunctions.getNodeParameter
 				.mockReturnValueOnce('clone')
-				.mockReturnValueOnce('/new-repo')
+				.mockReturnValueOnce('/git/new-repo')
 				.mockReturnValueOnce({})
 				.mockReturnValueOnce('https://github.com/test/repo.git');
 
-			// Simulate directory not existing - access() throws
-			mockFsPromises.access.mockRejectedValueOnce(new Error('Directory does not exist'));
-			mockFsPromises.mkdir.mockResolvedValueOnce(undefined);
-
+			mockExecuteFunctions.helpers.resolvePath = jest
+				.fn()
+				.mockRejectedValueOnce(missingParentError)
+				.mockResolvedValueOnce('/git' as ResolvedFilePath);
 			const result = await gitNode.execute.call(mockExecuteFunctions);
 
-			expect(mockFsPromises.access).toHaveBeenCalledWith('/new-repo');
-			expect(mockFsPromises.mkdir).toHaveBeenCalledWith('/new-repo');
-			expect(mockGit.clone).toHaveBeenCalledWith('https://github.com/test/repo.git', '.', ['--']);
+			expect(mockExecuteFunctions.helpers.resolvePath).toHaveBeenCalledWith('/git/new-repo');
+			expect(mockExecuteFunctions.helpers.resolvePath).toHaveBeenCalledWith('/git');
+			expect(mockSimpleGit).toHaveBeenCalledWith(expect.objectContaining({ baseDir: '/git' }));
+
+			// The clone goes into an unguessable staging directory, not the target.
+			const stagingPath = mockGit.clone.mock.calls[0][1] as unknown as string;
+			expect(stagingPath).toMatch(CLONE_STAGING_RE);
+			expect(mockMkdir).toHaveBeenCalledWith(stagingPath);
+			expect(mockGit.clone).toHaveBeenCalledWith('https://github.com/test/repo.git', stagingPath, [
+				'--',
+			]);
+
+			// The target is verified and then the staged clone is moved into place.
+			expect(
+				mockExecuteFunctions.helpers.ensureParentDirectoryWithoutFollowingSymlinks,
+			).toHaveBeenCalledWith('/git/new-repo');
+			expect(mockExecuteFunctions.helpers.assertNoSymlinkInPath).toHaveBeenCalledWith(
+				'/git/new-repo',
+			);
+			expect(mockRename).toHaveBeenCalledWith(stagingPath, '/git/new-repo');
 			expect(result[0]).toEqual([{ json: { success: true }, pairedItem: { item: 0 } }]);
 		});
 
-		it('should handle clone operation when directory already exists', async () => {
+		it('should not create the parent directory when clone path is blocked', async () => {
 			mockExecuteFunctions.getNodeParameter
 				.mockReturnValueOnce('clone')
-				.mockReturnValueOnce('/existing-repo')
+				.mockReturnValueOnce('/blocked/repo')
+				.mockReturnValueOnce({});
+			mockExecuteFunctions.helpers.isFilePathBlocked = jest.fn(() => true);
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Access to the repository path is not allowed',
+			);
+
+			expect(
+				mockExecuteFunctions.helpers.ensureParentDirectoryWithoutFollowingSymlinks,
+			).not.toHaveBeenCalled();
+			expect(mockSimpleGit).not.toHaveBeenCalled();
+			expect(mockGit.clone).not.toHaveBeenCalled();
+		});
+
+		it('should move the staged clone to the resolved repository path', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('clone')
+				.mockReturnValueOnce('/git/existing-repo')
 				.mockReturnValueOnce({})
 				.mockReturnValueOnce('https://github.com/test/repo.git');
 
-			// Simulate directory already exists - access() succeeds
-			mockFsPromises.access.mockResolvedValueOnce(undefined);
+			await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(
+				mockExecuteFunctions.helpers.ensureParentDirectoryWithoutFollowingSymlinks,
+			).toHaveBeenCalledWith('/git/existing-repo');
+			expect(mockSimpleGit).toHaveBeenCalledWith(expect.objectContaining({ baseDir: '/git' }));
+			const stagingPath = mockGit.clone.mock.calls[0][1] as unknown as string;
+			expect(stagingPath).toMatch(CLONE_STAGING_RE);
+			expect(mockGit.clone).toHaveBeenCalledWith('https://github.com/test/repo.git', stagingPath, [
+				'--',
+			]);
+			expect(mockRename).toHaveBeenCalledWith(stagingPath, '/git/existing-repo');
+		});
+
+		it('should move the staged clone relative to the pinned parent directory when available', async () => {
+			const pinnedClose = jest.fn(async () => {});
+			mockExecuteFunctions.helpers.pinDirectory = jest.fn(async () => ({
+				resolvePath: (name: string) => `/proc/self/fd/7/${name}`,
+				close: pinnedClose,
+			}));
+
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('clone')
+				.mockReturnValueOnce('/git/new-repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('https://github.com/test/repo.git');
 
 			await gitNode.execute.call(mockExecuteFunctions);
 
-			expect(mockFsPromises.access).toHaveBeenCalledWith('/existing-repo');
-			expect(mockFsPromises.mkdir).not.toHaveBeenCalled();
-			expect(mockGit.clone).toHaveBeenCalledWith('https://github.com/test/repo.git', '.', ['--']);
+			expect(mockExecuteFunctions.helpers.pinDirectory).toHaveBeenCalledWith('/git', {
+				create: true,
+			});
+			// The path-string verification is skipped on the pinned branch.
+			expect(
+				mockExecuteFunctions.helpers.ensureParentDirectoryWithoutFollowingSymlinks,
+			).not.toHaveBeenCalled();
+			expect(mockExecuteFunctions.helpers.assertNoSymlinkInPath).not.toHaveBeenCalled();
+
+			const stagingPath = mockGit.clone.mock.calls[0][1] as unknown as string;
+			expect(mockRename).toHaveBeenCalledWith(stagingPath, '/proc/self/fd/7/new-repo');
+			expect(pinnedClose).toHaveBeenCalled();
+		});
+
+		it('should surface a cross-filesystem error when the pinned rename fails with EXDEV', async () => {
+			const pinnedClose = jest.fn(async () => {});
+			mockExecuteFunctions.helpers.pinDirectory = jest.fn(async () => ({
+				resolvePath: (name: string) => `/proc/self/fd/7/${name}`,
+				close: pinnedClose,
+			}));
+			const exdevError = Object.assign(new Error('EXDEV'), { code: 'EXDEV' });
+			mockRename.mockRejectedValueOnce(exdevError);
+
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('clone')
+				.mockReturnValueOnce('/git/new-repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('https://github.com/test/repo.git');
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Cannot clone to a path on a different filesystem than the n8n data directory',
+			);
+			expect(pinnedClose).toHaveBeenCalled();
 		});
 
 		it('should not clone from a blocked local source repository path', async () => {
@@ -795,7 +907,10 @@ describe('Git Node', () => {
 				'Access to the source repository path is not allowed',
 			);
 
-			expect(mockFsPromises.mkdir).not.toHaveBeenCalled();
+			expect(
+				mockExecuteFunctions.helpers.ensureParentDirectoryWithoutFollowingSymlinks,
+			).not.toHaveBeenCalled();
+			expect(mockSimpleGit).not.toHaveBeenCalled();
 			expect(mockGit.clone).not.toHaveBeenCalled();
 		});
 
@@ -809,7 +924,10 @@ describe('Git Node', () => {
 			await gitNode.execute.call(mockExecuteFunctions);
 
 			expect(mockExecuteFunctions.helpers.resolvePath).toHaveBeenCalledWith('/tmp/source-repo');
-			expect(mockGit.clone).toHaveBeenCalledWith('file:/tmp/source-repo', '.', ['--']);
+			const stagingPath = mockGit.clone.mock.calls[0][1] as unknown as string;
+			expect(stagingPath).toMatch(CLONE_STAGING_RE);
+			expect(mockGit.clone).toHaveBeenCalledWith('file:/tmp/source-repo', stagingPath, ['--']);
+			expect(mockRename).toHaveBeenCalledWith(stagingPath, '/git/new-repo');
 		});
 
 		it('should allow scp-style source repository references without a user', async () => {
@@ -823,7 +941,11 @@ describe('Git Node', () => {
 
 			expect(mockExecuteFunctions.helpers.resolvePath).toHaveBeenCalledTimes(1);
 			expect(mockExecuteFunctions.helpers.resolvePath).toHaveBeenCalledWith('/git/new-repo');
-			expect(mockGit.clone).toHaveBeenCalledWith('github.com:org/repo.git', '.', ['--']);
+			expect(mockGit.clone).toHaveBeenCalledWith(
+				'github.com:org/repo.git',
+				expect.stringMatching(CLONE_STAGING_RE),
+				['--'],
+			);
 		});
 
 		it('should reject clone source repositories starting with a hyphen', async () => {
@@ -837,8 +959,129 @@ describe('Git Node', () => {
 				'Source repository cannot start with a hyphen',
 			);
 
-			expect(mockFsPromises.mkdir).not.toHaveBeenCalled();
+			expect(
+				mockExecuteFunctions.helpers.ensureParentDirectoryWithoutFollowingSymlinks,
+			).not.toHaveBeenCalled();
+			expect(mockSimpleGit).not.toHaveBeenCalled();
 			expect(mockGit.clone).not.toHaveBeenCalled();
+		});
+		it.each(['ext::sh -c "id"', 'fd::17/foo'])(
+			'should reject source repositories using a disallowed transport scheme (%s)',
+			async (sourceRepository) => {
+				mockExecuteFunctions.getNodeParameter
+					.mockReturnValueOnce('clone')
+					.mockReturnValueOnce('/git/new-repo')
+					.mockReturnValueOnce({})
+					.mockReturnValueOnce(sourceRepository);
+
+				await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+					'Source repository protocol is not allowed',
+				);
+
+				expect(mockGit.clone).not.toHaveBeenCalled();
+			},
+		);
+
+		it.each(['ssh://git@github.com/org/repo.git', 'git://github.com/org/repo.git'])(
+			'should allow source repositories using an allowed transport scheme (%s)',
+			async (sourceRepository) => {
+				mockExecuteFunctions.getNodeParameter
+					.mockReturnValueOnce('clone')
+					.mockReturnValueOnce('/git/new-repo')
+					.mockReturnValueOnce({})
+					.mockReturnValueOnce(sourceRepository);
+
+				await gitNode.execute.call(mockExecuteFunctions);
+
+				expect(mockGit.clone).toHaveBeenCalledWith(
+					sourceRepository,
+					expect.stringMatching(CLONE_STAGING_RE),
+					['--'],
+				);
+			},
+		);
+
+		it('should pass through source repositories that are not parseable URLs', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('clone')
+				.mockReturnValueOnce('/git/new-repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('http://[bad');
+
+			await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockGit.clone).toHaveBeenCalledWith(
+				'http://[bad',
+				expect.stringMatching(CLONE_STAGING_RE),
+				['--'],
+			);
+		});
+
+		it('should restrict git transport protocols via the environment', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('clone')
+				.mockReturnValueOnce('/git/new-repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('https://github.com/test/repo.git');
+
+			await gitNode.execute.call(mockExecuteFunctions);
+
+			const envArg = mockGit.env.mock.calls[0][0] as Record<string, string>;
+			expect(envArg.GIT_ALLOW_PROTOCOL).toBe('file:git:http:https:ssh');
+		});
+
+		it('should not place the repository when a target path component is a symlink', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('clone')
+				.mockReturnValueOnce('/git/new-repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('https://github.com/test/repo.git');
+			mockExecuteFunctions.helpers.assertNoSymlinkInPath = jest
+				.fn()
+				.mockRejectedValue(new Error('Access to the file is not allowed.'));
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Access to the file is not allowed.',
+			);
+
+			// The staged clone is never moved into the target, and the staging dir is removed.
+			const stagingPath = mockGit.clone.mock.calls[0][1] as unknown as string;
+			expect(stagingPath).toMatch(CLONE_STAGING_RE);
+			expect(mockRename).not.toHaveBeenCalled();
+			expect(mockRm).toHaveBeenCalledWith(stagingPath, { recursive: true, force: true });
+		});
+
+		it('should remove the staging directory when the clone fails', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('clone')
+				.mockReturnValueOnce('/git/new-repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('https://github.com/test/repo.git');
+			mockGit.clone.mockRejectedValueOnce(new Error('clone failed'));
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow('clone failed');
+
+			const stagingPath = mockGit.clone.mock.calls[0][1] as unknown as string;
+			expect(mockRename).not.toHaveBeenCalled();
+			expect(mockRm).toHaveBeenCalledWith(stagingPath, { recursive: true, force: true });
+		});
+
+		it('should surface a clear error when the staged clone cannot be moved across filesystems', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('clone')
+				.mockReturnValueOnce('/git/new-repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('https://github.com/test/repo.git');
+			mockRename.mockRejectedValueOnce(
+				Object.assign(new Error('cross-device link'), { code: 'EXDEV' }),
+			);
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Cannot clone to a path on a different filesystem than the n8n data directory',
+			);
+
+			const stagingPath = mockGit.clone.mock.calls[0][1] as unknown as string;
+			expect(mockRm).toHaveBeenCalledWith(stagingPath, { recursive: true, force: true });
 		});
 
 		it('should handle fetch operation', async () => {
