@@ -1707,8 +1707,8 @@ importers:
   packages/@n8n/computer-use:
     dependencies:
       '@anthropic-ai/sandbox-runtime':
-        specifier: ^0.0.42
-        version: 0.0.42
+        specifier: ^0.0.61
+        version: 0.0.61
       '@inquirer/prompts':
         specifier: ^8.3.2
         version: 8.3.2(@types/node@20.19.41)
@@ -6614,8 +6614,8 @@ packages:
   '@antfu/utils@0.7.10':
     resolution: {integrity: sha512-+562v9k4aI80m1+VuMHehNJWLOFjBnXn3tdOitzD0il5b7smkSBal4+a3oKiQTbrwMmN/TBUMDvbdoWDehgOww==}
 
-  '@anthropic-ai/sandbox-runtime@0.0.42':
-    resolution: {integrity: sha512-kJpuhU4hHMumeygIkKvNhscEsTtQK1sat1kZwhb6HLYBznwjMGOdnuBI/RM9HeFwxArn71/ciD2WJbxttXBMHw==}
+  '@anthropic-ai/sandbox-runtime@0.0.61':
+    resolution: {integrity: sha512-5atex1pnNZW/Ba83376+m83FFIbWrqzoCKCxeC4Kx7YF9El/50WBW3zAbDxYONP2k1SvK9XL07s5EZC6JhQ2jA==}
     engines: {node: '>=18.0.0'}
     hasBin: true
 
@@ -17964,6 +17964,10 @@ packages:
     resolution: {integrity: sha512-dRB78srN/l6gqWulah9SrxeYnxeddIG30+GOqK/9OlLVyLg3HPnr6SqOWTWOXKRwC2eGYCkZ59NNuSgvSrpgOA==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
+  node-forge@1.4.0:
+    resolution: {integrity: sha512-LarFH0+6VfriEhqMMcLX2F7SwSXeWwnEAJEsYm5QKWchiVYVvJyV9v7UDvUv+w5HO23ZpQTXDv/GxdDdMyOuoQ==}
+    engines: {node: '>= 6.13.0'}
+
   node-gyp-build-optional-packages@5.0.7:
     resolution: {integrity: sha512-YlCCc6Wffkx0kHkmam79GKvDQ6x+QZkMjFGrIMxgFNILFvGSbCp2fCBC55pGTT9gVaz8Na5CLmxt/urtzRv36w==}
     hasBin: true
@@ -22001,12 +22005,11 @@ snapshots:
 
   '@antfu/utils@0.7.10': {}
 
-  '@anthropic-ai/sandbox-runtime@0.0.42':
+  '@anthropic-ai/sandbox-runtime@0.0.61':
     dependencies:
       '@pondwader/socks5-server': 1.0.10
-      '@types/lodash-es': 4.17.12
       commander: 12.1.0
-      lodash-es: 4.18.1
+      node-forge: 1.4.0
       shell-quote: 1.8.4
       zod: 3.25.67
 
@@ -36235,6 +36238,8 @@ snapshots:
       data-uri-to-buffer: 4.0.1
       fetch-blob: 3.2.0
       formdata-polyfill: 4.0.10
+
+  node-forge@1.4.0: {}
 
   node-gyp-build-optional-packages@5.0.7:
     optional: true
