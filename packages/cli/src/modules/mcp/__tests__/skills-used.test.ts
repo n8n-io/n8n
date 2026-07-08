@@ -83,6 +83,22 @@ describe('sanitizeSkillsUsed', () => {
 		).toEqual(['workflow-builder', 'node-selection']);
 	});
 
+	test('keeps plugin-prefixed skill identifiers', () => {
+		expect(
+			sanitizeSkillsUsed([
+				'n8n-skills:workflow-builder',
+				'n8n-skills:node-selection',
+				'workflow-builder',
+			]),
+		).toEqual(['n8n-skills:workflow-builder', 'n8n-skills:node-selection', 'workflow-builder']);
+	});
+
+	test('normalizes and deduplicates plugin-prefixed identifiers', () => {
+		expect(
+			sanitizeSkillsUsed(['N8N-Skills:Workflow-Builder', '  n8n-skills:workflow-builder  ']),
+		).toEqual(['n8n-skills:workflow-builder']);
+	});
+
 	test('caps the result at 50 entries without rejecting the input', () => {
 		const input = Array.from({ length: 60 }, (_, i) => `skill-${i}`);
 		const result = sanitizeSkillsUsed(input);
