@@ -26,6 +26,19 @@ function makeSnapshotTree(text = 'Snapshot text'): InstanceAiAgentNode {
 	};
 }
 
+function makeEmptySnapshotTree(): InstanceAiAgentNode {
+	return {
+		agentId: 'agent-001',
+		role: 'orchestrator',
+		status: 'completed',
+		textContent: '',
+		reasoning: '',
+		toolCalls: [],
+		children: [],
+		timeline: [],
+	};
+}
+
 describe('parseStoredMessages', () => {
 	describe('user messages', () => {
 		it('should parse user message with string content', () => {
@@ -1022,6 +1035,74 @@ describe('parseStoredMessages', () => {
 			});
 		});
 
+		it('should sort snapshots before correlating and leave undated snapshots as trailing orphans', () => {
+			const firstTree = makeSnapshotTree('First assistant response');
+			const secondTree = makeSnapshotTree('Second assistant response');
+			const undatedTree = makeSnapshotTree('Undated assistant response');
+			const messages: StoredAgentMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'Do two things',
+					createdAt: makeDate(0),
+				},
+				{
+					id: 'msg-a1',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'First assistant response' }],
+					createdAt: makeDate(10),
+				},
+				{
+					id: 'msg-a2',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Second assistant response' }],
+					createdAt: makeDate(20),
+				},
+			];
+
+			const result = parseStoredMessages(messages, [
+				{
+					tree: undatedTree,
+					runId: 'run_undated',
+					messageGroupId: 'mg_undated',
+					updatedAt: makeDate(30),
+				},
+				{
+					tree: secondTree,
+					runId: 'run_second',
+					messageGroupId: 'mg_second',
+					createdAt: makeDate(20),
+					updatedAt: makeDate(20),
+				},
+				{
+					tree: firstTree,
+					runId: 'run_first',
+					messageGroupId: 'mg_first',
+					createdAt: makeDate(10),
+					updatedAt: makeDate(10),
+				},
+			]);
+
+			expect(result).toHaveLength(4);
+			expect(result[1]).toMatchObject({
+				id: 'msg-a1',
+				runId: 'run_first',
+				messageGroupId: 'mg_first',
+				agentTree: firstTree,
+			});
+			expect(result[2]).toMatchObject({
+				id: 'msg-a2',
+				runId: 'run_second',
+				messageGroupId: 'mg_second',
+				agentTree: secondTree,
+			});
+			expect(result[3]).toMatchObject({
+				runId: 'run_undated',
+				messageGroupId: 'mg_undated',
+				agentTree: undatedTree,
+			});
+		});
+
 		it('should keep the snapshot tree when dedupe collapses in-flight checkpoint messages', () => {
 			// Simulates the in-flight HITL case: the SDK hasn't committed
 			// the turn to memory yet, so `loadInFlightCheckpointMessages`
@@ -1101,6 +1182,64 @@ describe('parseStoredMessages', () => {
 			// Tree from the snapshot is transferred onto the kept message.
 			expect(assistant.agentTree).toBe(snapshotTree);
 			expect(assistant.agentTree?.toolCalls[0].confirmation?.requestId).toBe('req-live');
+		});
+
+		it('should keep the newest transferred snapshot tree when dedupe sees multiple candidates', () => {
+			const olderTree = makeSnapshotTree('Older snapshot tree');
+			const newerTree = makeSnapshotTree('Newer snapshot tree');
+			const messages: StoredAgentMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'Build it',
+					createdAt: makeDate(0),
+				},
+				{
+					id: 'msg-a-old',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Older checkpoint text' }],
+					createdAt: makeDate(10),
+				},
+				{
+					id: 'msg-a-new',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Newer checkpoint text' }],
+					createdAt: makeDate(20),
+				},
+				{
+					id: 'msg-a-latest',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Latest live text' }],
+					createdAt: makeDate(30),
+				},
+			];
+
+			const result = parseStoredMessages(messages, [
+				{
+					tree: olderTree,
+					runId: 'run_old',
+					messageGroupId: 'mg_inflight',
+					runIds: ['run_old'],
+					createdAt: makeDate(10),
+					updatedAt: makeDate(10),
+				},
+				{
+					tree: newerTree,
+					runId: 'run_new',
+					messageGroupId: 'mg_inflight',
+					runIds: ['run_old', 'run_new'],
+					createdAt: makeDate(20),
+					updatedAt: makeDate(20),
+				},
+			]);
+
+			expect(result).toHaveLength(2);
+			expect(result[1]).toMatchObject({
+				id: 'msg-a-latest',
+				messageGroupId: 'mg_inflight',
+				agentTree: newerTree,
+				runIds: ['run_old', 'run_new'],
+			});
 		});
 
 		it('should apply renderHint correctly for known tool names', () => {
@@ -1410,6 +1549,72 @@ describe('parseStoredMessages', () => {
 			expect(result).toHaveLength(3);
 			expect(result[1].messageGroupId).toBeUndefined();
 			expect(result[2].messageGroupId).toBeUndefined();
+		});
+
+		it('keeps the whole turn activity when collapsing around an empty snapshot', () => {
+			const messages: StoredAgentMessage[] = [
+				{ id: 'msg-u', role: 'user', content: 'Build it', createdAt: makeDate(0) },
+				{
+					id: 'msg-load-skill',
+					role: 'assistant',
+					content: [
+						{ type: 'text', text: 'I will build it.' },
+						{
+							type: 'tool-call',
+							toolCallId: 'call_1',
+							toolName: 'load_skill',
+							input: { skillId: 'workflow-builder' },
+							state: 'resolved',
+							output: { success: true },
+						},
+					],
+					createdAt: makeDate(1),
+				},
+				{
+					id: 'msg-build',
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'call_2',
+							toolName: 'build-workflow',
+							input: { filePath: 'src/workflows/main.workflow.ts' },
+							state: 'resolved',
+							output: { success: true },
+						},
+					],
+					createdAt: makeDate(2),
+				},
+				{
+					id: 'msg-final',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Done.' }],
+					createdAt: makeDate(4),
+				},
+			];
+
+			const result = parseStoredMessages(messages, [
+				{
+					tree: makeEmptySnapshotTree(),
+					runId: 'run_empty',
+					messageGroupId: 'mg_empty',
+					runIds: ['run_empty'],
+					createdAt: makeDate(3),
+					updatedAt: makeDate(3),
+				},
+			]);
+
+			// The empty snapshot's group id still collapses the turn, but the
+			// degenerate-snapshot merge must aggregate every row's activity into
+			// the surviving bubble instead of keeping only the last row.
+			const assistants = result.filter((message) => message.role === 'assistant');
+			expect(assistants).toHaveLength(1);
+			expect(assistants[0].agentTree?.toolCalls.map((tc) => tc.toolName)).toEqual([
+				'load_skill',
+				'build-workflow',
+			]);
+			expect(assistants[0].agentTree?.textContent).toContain('I will build it.');
+			expect(assistants[0].agentTree?.textContent).toContain('Done.');
 		});
 
 		it('does not propagate group ids across separate turns', () => {

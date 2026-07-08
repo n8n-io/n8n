@@ -1,4 +1,3 @@
-import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import { isRecord } from '@n8n/utils/is-record';
 import type {
 	FilePart,
@@ -12,7 +11,12 @@ import type {
 	FinishReason as AiFinishReason,
 } from 'ai';
 
-import { getProviderQuirks, PROVIDER_QUIRKS } from './provider-quirks';
+import {
+	getReasoningReplayProviderOptions,
+	hasReplayableReasoningProviderOptions,
+	sanitizeProviderMetadataForReplay,
+	sanitizeProviderOptionsForReplay,
+} from './provider-metadata-policy';
 import type { FinishReason } from '../../types';
 import type {
 	AgentMessage,
@@ -107,54 +111,10 @@ function getRecord(value: unknown): Record<string, unknown> | undefined {
 	return isRecord(value) ? value : undefined;
 }
 
-function hasEntries(value: Record<string, unknown>): boolean {
-	return Object.keys(value).length > 0;
-}
-
-function hasReplayableReasoningProviderOptions(
-	providerOptions: ProviderOptions | undefined,
-): boolean {
-	if (!providerOptions) return false;
-
-	return Object.entries(providerOptions).some(([provider, options]) => {
-		const replayKeys = getProviderQuirks(provider).reasoningReplayKeys;
-		if (replayKeys) return replayKeys.some((key) => typeof options[key] === 'string');
-		return hasEntries(options);
-	});
-}
-
 type ContentToolResultOutput = Extract<ToolResultPart['output'], { type: 'content' }>;
 
 function isContentToolResultOutput(value: JSONValue): value is ContentToolResultOutput {
 	return isRecord(value) && value.type === 'content' && Array.isArray(value.value);
-}
-
-/**
- * Providers replay reasoning from `providerOptions`, but the AI SDK exposes the
- * replay data in `providerMetadata` (see `PROVIDER_QUIRKS[provider].reasoningReplayKeys`).
- * Copy it across so the next request can replay the reasoning block. Existing
- * `providerOptions` values win.
- */
-function toReasoningProviderOptions(block: ContentReasoning): ProviderOptions | undefined {
-	const additions: Record<string, JSONObject> = {};
-
-	for (const [provider, quirks] of Object.entries(PROVIDER_QUIRKS)) {
-		const replayKeys = quirks.reasoningReplayKeys;
-		if (!replayKeys) continue;
-
-		const metadata = getRecord(block.providerMetadata?.[provider]);
-		const replayed: JSONObject = {};
-		for (const key of replayKeys) {
-			if (typeof metadata?.[key] === 'string') replayed[key] = metadata[key];
-		}
-		if (hasEntries(replayed)) {
-			additions[provider] = { ...replayed, ...block.providerOptions?.[provider] };
-		}
-	}
-
-	if (!hasEntries(additions)) return block.providerOptions;
-
-	return { ...block.providerOptions, ...additions };
 }
 
 /** Convert a single n8n MessageContent block to an AI SDK content part. */
@@ -185,16 +145,18 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 		// `google.thoughtSignature` to function-call parts, and the next request
 		// is rejected if that signature is dropped from conversation history.
 		const providerOptions = isReasoning(block)
-			? toReasoningProviderOptions(block)
+			? getReasoningReplayProviderOptions(block)
 			: block.providerOptions;
-		if (isReasoning(block) && !hasReplayableReasoningProviderOptions(providerOptions)) {
+		const sanitizedProviderMetadata = sanitizeProviderMetadataForReplay(block.providerMetadata);
+		const sanitizedProviderOptions = sanitizeProviderOptionsForReplay(providerOptions);
+		if (isReasoning(block) && !hasReplayableReasoningProviderOptions(sanitizedProviderOptions)) {
 			return undefined;
 		}
 
 		return {
 			...base,
-			...(block.providerMetadata && { providerMetadata: block.providerMetadata }),
-			...(providerOptions && { providerOptions }),
+			...(sanitizedProviderMetadata && { providerMetadata: sanitizedProviderMetadata }),
+			...(sanitizedProviderOptions && { providerOptions: sanitizedProviderOptions }),
 		} as AiContentPart;
 	}
 	return base;
@@ -238,6 +200,8 @@ function fromAiContent(part: AiContentPart): MessageContent | undefined {
 		'providerMetadata' in part ? part.providerMetadata : undefined,
 	);
 	const providerOptions = 'providerOptions' in part ? part.providerOptions : undefined;
+	const sanitizedProviderMetadata = sanitizeProviderMetadataForReplay(providerMetadata);
+	const sanitizedProviderOptions = sanitizeProviderOptionsForReplay(providerOptions);
 
 	let base: MessageContent | undefined;
 	switch (part.type) {
@@ -285,8 +249,8 @@ function fromAiContent(part: AiContentPart): MessageContent | undefined {
 	if (base) {
 		// Keep provider metadata on persisted content parts so provider-specific
 		// replay data, such as Gemini thought signatures, survives memory/checkpoints.
-		if (providerMetadata) base.providerMetadata = providerMetadata;
-		if (providerOptions) base.providerOptions = providerOptions;
+		if (sanitizedProviderMetadata) base.providerMetadata = sanitizedProviderMetadata;
+		if (sanitizedProviderOptions) base.providerOptions = sanitizedProviderOptions;
 	}
 	return base;
 }
@@ -309,7 +273,8 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 				.map((b) => b.text)
 				.join('');
 			const base: ModelMessage = { role: 'system', content: text };
-			return [msg.providerOptions ? { ...base, providerOptions: msg.providerOptions } : base];
+			const providerOptions = sanitizeProviderOptionsForReplay(msg.providerOptions);
+			return [providerOptions ? { ...base, providerOptions } : base];
 		}
 
 		case 'user': {
@@ -317,7 +282,8 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 				.map(toAiContent)
 				.filter((p): p is TextPart | FilePart => p?.type === 'text' || p?.type === 'file');
 			const base: ModelMessage = { role: 'user', content: parts };
-			return [msg.providerOptions ? { ...base, providerOptions: msg.providerOptions } : base];
+			const providerOptions = sanitizeProviderOptionsForReplay(msg.providerOptions);
+			return [providerOptions ? { ...base, providerOptions } : base];
 		}
 
 		case 'assistant': {
@@ -345,10 +311,12 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 					// Replayed settled tool calls still need their original provider
 					// metadata. Gemini validates thought signatures on historical
 					// function-call parts, even after the tool result is available.
+					const providerMetadata = sanitizeProviderMetadataForReplay(block.providerMetadata);
+					const providerOptions = sanitizeProviderOptionsForReplay(block.providerOptions);
 					assistantParts.push({
 						...toolCallPart,
-						...(block.providerMetadata && { providerMetadata: block.providerMetadata }),
-						...(block.providerOptions && { providerOptions: block.providerOptions }),
+						...(providerMetadata && { providerMetadata }),
+						...(providerOptions && { providerOptions }),
 					} as ToolCallPart);
 					// Emit corresponding tool-result message immediately after
 					const resultPart = toolCallToResultPart(block);
@@ -368,8 +336,9 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 						TextPart | ReasoningPart | ToolCallPart | ToolResultPart | FilePart
 					>,
 				};
-				const assistantMsg: ModelMessage = msg.providerOptions
-					? { ...assistantBase, providerOptions: msg.providerOptions }
+				const providerOptions = sanitizeProviderOptionsForReplay(msg.providerOptions);
+				const assistantMsg: ModelMessage = providerOptions
+					? { ...assistantBase, providerOptions }
 					: assistantBase;
 				transformedMessages.push(assistantMsg);
 			}
@@ -454,7 +423,8 @@ export function fromAiMessages(messages: ModelMessage[]): AgentMessage[] {
 
 		const agentMsg: AgentMessage = { role: msg.role, content };
 		if ('providerOptions' in msg && msg.providerOptions) {
-			agentMsg.providerOptions = msg.providerOptions;
+			const providerOptions = sanitizeProviderOptionsForReplay(msg.providerOptions);
+			if (providerOptions) agentMsg.providerOptions = providerOptions;
 		}
 		result.push(agentMsg);
 

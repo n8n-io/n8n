@@ -79,6 +79,7 @@ describe('eval agent model config', () => {
 
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
 			reasoningEffort: 'high',
+			reasoningSummary: 'auto',
 		});
 	});
 });

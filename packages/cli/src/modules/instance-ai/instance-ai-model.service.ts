@@ -1,5 +1,5 @@
 import { UNLIMITED_CREDITS, buildProxyHeaders } from '@n8n/api-types';
-import { OutboundHttp } from '@n8n/backend-network';
+import { OutboundHttp, type CustomFetch } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ModelConfig } from '@n8n/instance-ai';
@@ -11,6 +11,7 @@ import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { INSTANCE_AI_PROXY_PROVIDERS } from './instance-ai-proxy-providers';
 
 /**
  * Resolves the language model the Instance AI agent runs against and reports
@@ -19,7 +20,7 @@ import { InstanceAiSettingsService } from './instance-ai-settings.service';
  * Model resolution follows a layered chain so chat and eval paths share the
  * same working model:
  *   1. AI service proxy (when enabled) — wraps with proxy auth, returns a
- *      native Anthropic transport pointed at the proxy.
+ *      provider-native transport pointed at the proxy.
  *   2. HTTP_PROXY (when set, e.g. e2e tests) — wraps the model with a
  *      proxy-aware fetch.
  *   3. Env vars / user credential — raw settings resolution.
@@ -62,7 +63,7 @@ export class InstanceAiModelService {
 					{ userMessageId: nanoid() },
 				);
 			});
-			return await this.resolveProxyModel(user, proxyBaseUrl, tokenManager);
+			return await this.resolveProxyModel(proxyBaseUrl, tokenManager);
 		}
 		const httpProxyModel = await this.resolveHttpProxyModel(user);
 		if (httpProxyModel) return httpProxyModel;
@@ -71,45 +72,39 @@ export class InstanceAiModelService {
 
 	/**
 	 * Build model config. When the AI service proxy is enabled, returns a native
-	 * Anthropic LanguageModelV2 instance pointing at the proxy.
-	 *
-	 * We use `@ai-sdk/anthropic` directly instead of returning a `{ url }` config
-	 * object because this proxy route needs the native Anthropic transport.
-	 * The proxy may forward to Vertex AI, which only supports the native Anthropic
-	 * Messages API (`/v1/messages`), not the OpenAI-compatible endpoint.
+	 * LanguageModelV2 instance pointing at the provider-specific proxy route.
 	 *
 	 * Auth headers are injected via a custom `fetch` wrapper so that each
 	 * request gets a fresh-or-cached token from the ProxyTokenManager,
 	 * avoiding 401s on long-running agent turns.
 	 */
 	async resolveProxyModel(
-		user: User,
 		proxyBaseUrl: string,
 		tokenManager: ProxyTokenManager,
 	): Promise<ModelConfig> {
-		const modelName = this.settingsService.resolveModelName(user);
-		const { createAnthropic } = await import('@ai-sdk/anthropic');
+		const { provider, modelName } = this.settingsService.resolveProxyModelParts();
+		const baseUrl = proxyBaseUrl.replace(/\/+$/, '');
 		// Route through the proxy-aware transport so this path honours
 		// HTTP(S)_PROXY and the long AI timeout, same as the HTTP-proxy path.
+		const fetch = this.createAuthenticatedProxyFetch(tokenManager);
+		return await INSTANCE_AI_PROXY_PROVIDERS[provider].createModel({ modelName, baseUrl, fetch });
+	}
+
+	private createAuthenticatedProxyFetch(tokenManager: ProxyTokenManager): CustomFetch {
 		const modelFetch = createAiProxyFetch(this.outboundHttp);
-		const provider = createAnthropic({
-			baseURL: proxyBaseUrl + '/anthropic/v1',
-			apiKey: 'proxy-managed',
-			fetch: async (input, init) => {
-				const headers = new Headers(init?.headers);
-				const auth = await tokenManager.getAuthHeaders();
-				for (const [k, v] of Object.entries(auth)) {
-					headers.set(k, v);
-				}
-				for (const [k, v] of Object.entries(
-					buildProxyHeaders({ feature: 'instance-ai', n8nVersion: N8N_VERSION }),
-				)) {
-					headers.set(k, v);
-				}
-				return await modelFetch(input, { ...init, headers });
-			},
-		});
-		return provider(modelName);
+		const proxyHeaders = buildProxyHeaders({ feature: 'instance-ai', n8nVersion: N8N_VERSION });
+
+		return async (input, init) => {
+			const headers = new Headers(init?.headers);
+			const auth = await tokenManager.getAuthHeaders();
+			for (const [key, value] of Object.entries(auth)) {
+				headers.set(key, value);
+			}
+			for (const [key, value] of Object.entries(proxyHeaders)) {
+				headers.set(key, value);
+			}
+			return await modelFetch(input, { ...init, headers });
+		};
 	}
 
 	/**

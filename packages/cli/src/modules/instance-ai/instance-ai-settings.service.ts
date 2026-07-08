@@ -16,7 +16,7 @@ import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ModelConfig } from '@n8n/instance-ai';
 import type { IUserSettings } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, UserError } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -29,6 +29,11 @@ import {
 	N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE,
 	normalizeSandboxProvider,
 } from './sandbox-provider';
+import {
+	isInstanceAiProxyProvider,
+	SUPPORTED_INSTANCE_AI_PROXY_PROVIDERS,
+	type InstanceAiProxyProvider,
+} from './instance-ai-proxy-providers';
 
 const ADMIN_SETTINGS_KEY = 'instanceAi.settings';
 
@@ -56,6 +61,12 @@ const CREDENTIAL_TO_MODEL_PROVIDER: Record<string, string> = {
 };
 
 const SUPPORTED_CREDENTIAL_TYPES = Object.keys(CREDENTIAL_TO_MODEL_PROVIDER);
+
+type ProxyModelParts = {
+	provider: InstanceAiProxyProvider;
+	modelName: string;
+	modelId: string;
+};
 
 /** Fields that contain the base URL per credential type. */
 const URL_FIELD_MAP: Record<string, string> = {
@@ -455,10 +466,38 @@ export class InstanceAiSettingsService {
 		return this.enabled;
 	}
 
-	/** Resolve just the model name (e.g. 'claude-sonnet-4-20250514') for proxy routing. */
+	/** Resolve just the model name for direct model/user preference routing. */
 	resolveModelName(user: User): string {
 		const prefs = this.readUserPreferences(user);
 		return prefs.modelName ?? this.extractModelName(this.config.model);
+	}
+
+	/** Resolve provider-aware model parts for AI Assistant proxy routing. */
+	resolveProxyModelParts(): ProxyModelParts {
+		const supportedProviders = SUPPORTED_INSTANCE_AI_PROXY_PROVIDERS.join(', ');
+		const model = this.config.model.trim();
+		const slash = model.indexOf('/');
+		if (slash <= 0 || slash === model.length - 1) {
+			throw new UserError(
+				`Invalid Instance AI proxy model "${this.config.model}". Expected one of: ${SUPPORTED_INSTANCE_AI_PROXY_PROVIDERS.map((provider) => `${provider}/<model>`).join(', ')}.`,
+			);
+		}
+
+		const provider = model.slice(0, slash);
+		const modelName = model.slice(slash + 1).trim();
+		if (!modelName) {
+			throw new UserError(
+				`Invalid Instance AI proxy model "${this.config.model}". Model name must not be empty.`,
+			);
+		}
+
+		if (isInstanceAiProxyProvider(provider)) {
+			return { provider, modelName, modelId: `${provider}/${modelName}` };
+		}
+
+		throw new UserError(
+			`Unsupported Instance AI proxy model provider "${provider}". Supported providers: ${supportedProviders}.`,
+		);
 	}
 
 	/** Resolve the current model configuration for an agent run. */

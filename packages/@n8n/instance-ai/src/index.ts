@@ -21,6 +21,7 @@ import type * as TerminalResponseGuardMod from './runtime/terminal-response-guar
 import type * as MaterializeRuntimeSkillsMod from './skills/materialize-runtime-skills';
 import type * as RuntimeSkillsMod from './skills/runtime-skills';
 import type * as StorageMod from './storage';
+import type * as ConfirmationRequestMod from './stream/confirmation-request';
 import type * as MapChunkMod from './stream/map-chunk';
 import type * as ToolsMod from './tools';
 import type * as AgentPersistenceMod from './tools/orchestration/agent-persistence';
@@ -109,6 +110,9 @@ const loadStreamHelpers = lazyModule(
 );
 const loadStorage = lazyModule(() => require('./storage') as typeof StorageMod);
 const loadMapChunk = lazyModule(() => require('./stream/map-chunk') as typeof MapChunkMod);
+const loadConfirmationRequest = lazyModule(
+	() => require('./stream/confirmation-request') as typeof ConfirmationRequestMod,
+);
 const loadRuntimeSkills = lazyModule(
 	() => require('./skills/runtime-skills') as typeof RuntimeSkillsMod,
 );
@@ -324,6 +328,12 @@ export const McpClientManager: typeof McpClientManagerMod.McpClientManager = laz
 export const mapAgentChunkToEvent: typeof MapChunkMod.mapAgentChunkToEvent = lazyFunction(
 	() => loadMapChunk().mapAgentChunkToEvent,
 );
+export type {
+	ParsedSuspendedConfirmation,
+	SuspendedToolCallConfirmationInput,
+} from './stream/confirmation-request';
+export const parseSuspendedToolCallConfirmation: typeof ConfirmationRequestMod.parseSuspendedToolCallConfirmation =
+	lazyFunction(() => loadConfirmationRequest().parseSuspendedToolCallConfirmation);
 export const parseSuspension: typeof StreamHelpersMod.parseSuspension = lazyFunction(
 	() => loadStreamHelpers().parseSuspension,
 );

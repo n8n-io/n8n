@@ -4637,6 +4637,27 @@ describe('provider options merging', () => {
 			},
 		);
 	});
+
+	it('should pass OpenAI reasoning summary when configured', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-5.5',
+			instructions: 'You are a test assistant.',
+			thinking: { reasoningEffort: 'high', reasoningSummary: 'auto' },
+		});
+
+		await runtime.generate('hello', {
+			persistence: { resourceId: 'user1', threadId: 'thread1' },
+		});
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		expect((callArgs.providerOptions as Record<string, Record<string, unknown>>).openai).toEqual({
+			reasoningEffort: 'high',
+			reasoningSummary: 'auto',
+		});
+	});
 });
 
 // ---------------------------------------------------------------------------

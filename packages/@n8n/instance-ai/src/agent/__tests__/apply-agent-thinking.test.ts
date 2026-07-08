@@ -48,6 +48,40 @@ describe('applyAgentThinking', () => {
 		applyAgentThinking(agent, 'openai/gpt-5.5');
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
 			reasoningEffort: 'high',
+			reasoningSummary: 'auto',
+		});
+	});
+
+	it('enables OpenAI reasoning for AI SDK Responses model objects', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, {
+			provider: 'openai.responses',
+			modelId: 'gpt-5.5',
+		} as Parameters<typeof applyAgentThinking>[1]);
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
+			reasoningEffort: 'high',
+			reasoningSummary: 'auto',
+		});
+	});
+
+	it('enables OpenAI reasoning for AI SDK Responses model objects with nested config', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, {
+			modelId: 'gpt-5.5',
+			config: { provider: 'openai.responses' },
+		} as unknown as Parameters<typeof applyAgentThinking>[1]);
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
+			reasoningEffort: 'high',
+			reasoningSummary: 'auto',
+		});
+	});
+
+	it('enables OpenAI reasoning for dotted provider model IDs', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'openai.responses/gpt-5.5');
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
+			reasoningEffort: 'high',
+			reasoningSummary: 'auto',
 		});
 	});
 

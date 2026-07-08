@@ -45,6 +45,8 @@ export type AnthropicThinkingConfig =
 export interface OpenAIThinkingConfig {
 	/** Reasoning effort level. Defaults to 'medium'. */
 	reasoningEffort?: 'low' | 'medium' | 'high';
+	/** Controls whether OpenAI Responses returns a visible reasoning summary. */
+	reasoningSummary?: 'auto' | 'concise' | 'detailed';
 }
 
 export interface GoogleThinkingConfig {

@@ -9,8 +9,6 @@ import type {
 } from '../../types';
 
 export interface ProviderQuirks {
-	/** providerMetadata keys on reasoning parts that must be copied to providerOptions and survive replay. */
-	reasoningReplayKeys?: string[];
 	/** Defaults merged under this provider's namespace into every tool's providerOptions (explicit tool values win). */
 	toolProviderOptionDefaults?: JSONObject;
 	/** Provider defaults to strict JSON Schema validation for structured output; relax for raw user schemas. */
@@ -23,14 +21,13 @@ export interface ProviderQuirks {
  * Declarative registry of provider-specific behavior the AI SDK doesn't
  * normalize away. Each entry documents why the quirk exists and its upstream
  * status, so it reads as a removable shim rather than a mystery branch.
+ *
+ * Reasoning replay/sanitization policy (which providerMetadata keys survive
+ * replay, which stateful identifiers are stripped) lives in
+ * `provider-metadata-policy.ts`.
  */
 export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 	anthropic: {
-		// QUIRK(anthropic): Anthropic replays thinking blocks via a `signature`
-		// (or `redactedData` when the block was redacted), but the AI SDK only
-		// exposes them in providerMetadata, not providerOptions. Shim until the
-		// provider copies them itself on replay.
-		reasoningReplayKeys: ['signature', 'redactedData'],
 		// QUIRK(anthropic): defaults every function tool to eager_input_streaming,
 		// which forwards the model's raw argument tokens without server-side JSON
 		// validation — malformed inputs (e.g. unquoted string values) then reach
@@ -55,11 +52,6 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		},
 	},
 	openai: {
-		// QUIRK(openai): the Responses API pairs each function_call item with a
-		// reasoning item; dropping the reasoning part from history makes the next
-		// request fail with "function_call was provided without its required
-		// 'reasoning' item" — regression fixed 2026-07-02.
-		reasoningReplayKeys: ['itemId', 'reasoningEncryptedContent'],
 		// QUIRK(openai): defaults to strict JSON Schema validation, which rejects
 		// hand-written schemas that don't list every property in `required` or use
 		// keywords it doesn't allow. See relaxStrictJsonSchemaIfNeeded's docstring
@@ -67,7 +59,12 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		relaxStrictJsonSchemaForRawOutput: true,
 		thinkingToProviderOptions: (thinking) => {
 			const cfg = thinking as OpenAIThinkingConfig;
-			return { openai: { reasoningEffort: cfg.reasoningEffort ?? 'medium' } };
+			return {
+				openai: {
+					reasoningEffort: cfg.reasoningEffort ?? 'medium',
+					...(cfg.reasoningSummary ? { reasoningSummary: cfg.reasoningSummary } : {}),
+				},
+			};
 		},
 	},
 	groq: {
@@ -79,7 +76,7 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 	google: {
 		// Gemini's `thoughtSignature` on tool-call parts is preserved generically
 		// by toAiContent's providerMetadata passthrough (messages.ts) — no
-		// reasoningReplayKeys entry needed here.
+		// replay handling needed in provider-metadata-policy.ts.
 		thinkingToProviderOptions: (thinking) => {
 			const cfg = thinking as GoogleThinkingConfig;
 			return {

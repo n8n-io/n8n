@@ -39,7 +39,7 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 	if (!provider || !PROVIDER_CAPABILITIES[provider]?.thinking) return;
 
 	if (provider === 'openai') {
-		agent.thinking('openai', { reasoningEffort: 'high' });
+		agent.thinking('openai', { reasoningEffort: 'high', reasoningSummary: 'auto' });
 		return;
 	}
 

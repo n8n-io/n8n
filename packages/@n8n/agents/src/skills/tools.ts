@@ -204,7 +204,7 @@ export function createSkillLoadTool(source: RuntimeSkillSource): BuiltTool {
 	const loadFile = source.loadFile;
 	return new Tool(SKILL_LOAD_TOOL_NAME)
 		.description(
-			'Load a skill by skillId or name. Omit filePath to load the main skill instructions; use filePath only for a linked file path returned in linkedFiles.',
+			'Load a skill by skillId or name. Omit filePath to load the main skill instructions; do not pass "/", ".", or "./"; use filePath only for a linked file path returned in linkedFiles.',
 		)
 		.input(skillLoadInputWithFilesSchema)
 		.output(skillLoadResultSchema)
@@ -392,7 +392,9 @@ function isMainSkillFilePath(filePath?: string): boolean {
 		normalized === '' ||
 		normalized === '/' ||
 		normalized === '.' ||
-		normalized === RUNTIME_SKILL_FILE_NAME
+		normalized === './' ||
+		normalized === RUNTIME_SKILL_FILE_NAME ||
+		normalized === `./${RUNTIME_SKILL_FILE_NAME}`
 	);
 }
 

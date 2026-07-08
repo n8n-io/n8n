@@ -14,6 +14,18 @@ All Instance AI configuration is done via environment variables.
 | `N8N_INSTANCE_AI_MCP_SERVERS` | string | `''` | Comma-separated MCP server configs. Format: `name=url,name=url` |
 | `N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED` | boolean | `false` | Disable the local gateway (filesystem, shell, browser) for all users |
 
+### AI Assistant Proxy
+
+When `N8N_AI_ASSISTANT_BASE_URL` is set and the AI Assistant license is active,
+Instance AI routes model requests through the AI Assistant proxy. Proxy mode
+supports:
+
+- `N8N_INSTANCE_AI_MODEL=anthropic/<model>` via `<proxy>/anthropic/v1`
+- `N8N_INSTANCE_AI_MODEL=openai/<model>` via `<proxy>/openai/v1`
+
+In proxy mode, `N8N_INSTANCE_AI_MODEL_URL` is ignored. Custom OpenAI-compatible
+endpoints remain a direct/non-proxied setup.
+
 ### Tracing
 
 | Variable | Type | Default | Description |
@@ -179,6 +191,10 @@ Runtime behavior:
 ```bash
 # Minimal — just set the model
 N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-8
+
+# With AI Assistant proxy and OpenAI
+N8N_AI_ASSISTANT_BASE_URL=https://ai-assistant.example.com
+N8N_INSTANCE_AI_MODEL=openai/gpt-5.5
 
 # With MCP servers
 N8N_INSTANCE_AI_MCP_SERVERS="my-tools=https://mcp.example.com/sse"

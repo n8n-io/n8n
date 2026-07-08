@@ -620,6 +620,7 @@ Use the workflow SDK.`,
 		).toContain('Extract decisions.');
 
 		const loadTool = createSkillLoadTool(fileBackedSource);
+		expect(loadTool.description).toContain('do not pass "/", ".", or "./"');
 		expect(loadTool.description).toContain('use filePath only for a linked file path');
 		expect(isZodSchema(loadTool.inputSchema)).toBe(true);
 		if (!isZodSchema(loadTool.inputSchema)) throw new Error('Expected Zod input schema');
@@ -629,6 +630,12 @@ Use the workflow SDK.`,
 				filePath: 'references/guide.md',
 			}).data,
 		).toEqual({ skillId: 'summarize_notes', filePath: 'references/guide.md' });
+
+		expect(
+			skillLoadText(await loadTool.handler?.({ skillId: 'summarize_notes', filePath: '/' }, {})),
+		).toContain('Extract decisions.');
+		expect(loadFile).not.toHaveBeenCalledWith('summarize_notes', '/');
+
 		expect(
 			loadTool.inputSchema.safeParse({ skillId: 'summarize_notes', filePath: '' }).data,
 		).toEqual({

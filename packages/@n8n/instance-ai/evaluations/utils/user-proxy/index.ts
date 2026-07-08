@@ -214,6 +214,7 @@ export class UserProxyLlm {
 		}
 
 		if (decision.action === 'send_follow_up_message') {
+			if (!decision.message) return { kind: 'done' };
 			const message = decision.message.trim();
 			if (!message) return { kind: 'done' };
 			this.messagesSent++;

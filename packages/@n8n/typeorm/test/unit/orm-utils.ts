@@ -48,12 +48,12 @@ describe(`orm-utils`, () => {
 					`CREATE TABLE "foo_table" (
                         "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                         "col" varchar CHECK("col" IN (
-                                    'a,b', 
-                                    ',c,', 
-                                    'd''d', 
-                                    '''e''', 
-                                    'f'',''f', 
-                                    ''')', 
+                                    'a,b',
+                                    ',c,',
+                                    'd''d',
+                                    '''e''',
+                                    'f'',''f',
+                                    ''')',
                                     ')'''
                                 )
                             ) NOT NULL,

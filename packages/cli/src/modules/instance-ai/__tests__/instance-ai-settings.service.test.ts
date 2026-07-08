@@ -3,6 +3,7 @@ import type { InstanceAiConfig } from '@n8n/config';
 import type { SettingsRepository, User, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
+import { UserError } from 'n8n-workflow';
 
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import type { EventService } from '@/events/event.service';
@@ -12,6 +13,7 @@ import type { CredentialsFinderService } from '@/credentials/credentials-finder.
 import type { CredentialsService } from '@/credentials/credentials.service';
 
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
+import { SUPPORTED_INSTANCE_AI_PROXY_PROVIDERS } from '../instance-ai-proxy-providers';
 
 describe('InstanceAiSettingsService', () => {
 	const globalConfig = mock<{
@@ -19,7 +21,7 @@ describe('InstanceAiSettingsService', () => {
 		deployment: { type: string };
 	}>({
 		instanceAi: {
-			model: 'openai/gpt-4',
+			model: 'openai/gpt-5.5',
 			modelUrl: '',
 			modelApiKey: '',
 			observerMessageTokens: 30_000,
@@ -48,6 +50,9 @@ describe('InstanceAiSettingsService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		Object.assign(globalConfig.instanceAi, {
+			model: 'openai/gpt-5.5',
+			modelUrl: '',
+			modelApiKey: '',
 			sandboxEnabled: false,
 			sandboxProvider: 'n8n-sandbox',
 			n8nSandboxServiceUrl: 'http://sandbox-api:8080',
@@ -66,6 +71,53 @@ describe('InstanceAiSettingsService', () => {
 			credentialsFinderService,
 			eventService,
 		);
+	});
+
+	describe('resolveProxyModelParts', () => {
+		it.each(SUPPORTED_INSTANCE_AI_PROXY_PROVIDERS)(
+			'should parse %s proxy model IDs',
+			(provider) => {
+				const modelName = provider === 'anthropic' ? 'claude-sonnet-4-6' : 'gpt-5.5';
+				globalConfig.instanceAi.model = `${provider}/${modelName}`;
+
+				expect(service.resolveProxyModelParts()).toEqual({
+					provider,
+					modelName,
+					modelId: `${provider}/${modelName}`,
+				});
+			},
+		);
+
+		it('should reject model IDs without a provider prefix', () => {
+			globalConfig.instanceAi.model = 'gpt-5.5';
+
+			expect(() => service.resolveProxyModelParts()).toThrow(UserError);
+			expect(() => service.resolveProxyModelParts()).toThrow(/Expected one of:/);
+		});
+
+		it('should reject empty model names', () => {
+			globalConfig.instanceAi.model = 'openai/';
+
+			expect(() => service.resolveProxyModelParts()).toThrow(UserError);
+		});
+
+		it('should reject unsupported proxy model providers', () => {
+			globalConfig.instanceAi.model = 'google/gemini-2.5-pro';
+
+			expect(() => service.resolveProxyModelParts()).toThrow(UserError);
+			expect(() => service.resolveProxyModelParts()).toThrow(
+				/Supported providers: anthropic, openai/,
+			);
+		});
+
+		it('should reject inherited object property names as proxy model providers', () => {
+			globalConfig.instanceAi.model = 'toString/gpt-5.5';
+
+			expect(() => service.resolveProxyModelParts()).toThrow(UserError);
+			expect(() => service.resolveProxyModelParts()).toThrow(
+				/Unsupported Instance AI proxy model provider "toString"/,
+			);
+		});
 	});
 
 	describe('updateAdminSettings', () => {
@@ -283,7 +335,7 @@ describe('InstanceAiSettingsService', () => {
 			await expect(
 				service.updateUserPreferences(user, {
 					credentialId: 'cred-1',
-					modelName: 'gpt-4',
+					modelName: 'gpt-5.5',
 				}),
 			).rejects.toThrow(/credentialId.*modelName|modelName.*credentialId/);
 		});
@@ -378,7 +430,7 @@ describe('InstanceAiSettingsService', () => {
 			});
 
 			it('should reject modelName on cloud', async () => {
-				await expect(service.updateUserPreferences(user, { modelName: 'gpt-4' })).rejects.toThrow(
+				await expect(service.updateUserPreferences(user, { modelName: 'gpt-5.5' })).rejects.toThrow(
 					UnprocessableRequestError,
 				);
 			});

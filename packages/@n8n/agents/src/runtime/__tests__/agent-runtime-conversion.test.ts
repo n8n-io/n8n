@@ -149,8 +149,11 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		).content[0];
 
 		expect(reasoningPart.type).toBe('reasoning');
+		// `itemId` is a stateful Responses API identifier — it is stripped so
+		// replay works against stateless proxies; encrypted content is the
+		// durable replay mechanism.
 		expect(reasoningPart.providerOptions).toEqual({
-			openai: { itemId: 'rs_123', reasoningEncryptedContent: 'encrypted' },
+			openai: { reasoningEncryptedContent: 'encrypted' },
 		});
 	});
 

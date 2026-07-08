@@ -1,55 +1,105 @@
-// Decision schema (structured-output target) + encoders to InstanceAiConfirmRequest.
+// Decision wire schema (structured-output target) + encoders to InstanceAiConfirmRequest.
 
 import { domainAccessActionSchema, instanceGatewayResourceDecisionSchema } from '@n8n/api-types';
-import type { InstanceAiConfirmRequest } from '@n8n/api-types';
+import type { DomainAccessAction, InstanceAiConfirmRequest } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
 // ---------------------------------------------------------------------------
-// Decision schema — the structured-output shape the model fills
+// Wire schema — the strict structured-output shape the model fills
 // ---------------------------------------------------------------------------
 
-const answerSchema = z.object({
+const wireAnswerSchema = z.object({
 	questionId: z.string(),
 	selectedOptions: z.array(z.string()),
-	customText: z.string().optional(),
-	skipped: z.boolean().optional(),
+	customText: z.string().nullable(),
+	skipped: z.boolean().nullable(),
 });
 
-export const decisionSchema = z.discriminatedUnion('action', [
-	z.object({
-		action: z.literal('answer_questions'),
-		answers: z.array(answerSchema),
-	}),
-	z.object({
-		action: z.literal('apply_setup_wizard'),
-		// JSON-encoded object mapping setup node name -> parameter map. Emitted as a string
-		// because Anthropic structured output rejects nested z.record schemas.
-		nodeParametersJson: z.string(),
-	}),
-	z.object({
-		action: z.literal('approve_or_reject'),
-		approved: z.boolean(),
-		userInput: z.string().optional(),
-	}),
-	z.object({
-		action: z.literal('respond_to_domain_access'),
-		response: z.enum(['allow_once', 'allow_all', 'deny']),
-	}),
-	z.object({
-		action: z.literal('pick_resource_decision'),
-		decision: z.string(),
-	}),
-	z.object({
-		action: z.literal('send_follow_up_message'),
-		message: z.string(),
-	}),
-	z.object({
-		action: z.literal('declare_done'),
-	}),
-]);
+export const wireDecisionSchema = z.object({
+	action: z.enum([
+		'answer_questions',
+		'apply_setup_wizard',
+		'approve_or_reject',
+		'respond_to_domain_access',
+		'pick_resource_decision',
+		'send_follow_up_message',
+		'declare_done',
+	]),
+	answers: z.array(wireAnswerSchema).nullable(),
+	// JSON-encoded object mapping setup node name -> parameter map. Emitted as a string
+	// because Anthropic structured output rejects nested z.record schemas.
+	nodeParametersJson: z.string().nullable(),
+	approved: z.boolean().nullable(),
+	userInput: z.string().nullable(),
+	response: z.enum(['allow_once', 'allow_all', 'deny']).nullable(),
+	decision: z.string().nullable(),
+	message: z.string().nullable(),
+});
 
-export type Decision = z.infer<typeof decisionSchema>;
+export type WireDecision = z.infer<typeof wireDecisionSchema>;
+
+export interface Answer {
+	questionId: string;
+	selectedOptions: string[];
+	customText?: string;
+	skipped?: boolean;
+}
+
+export type Decision =
+	| { action: 'answer_questions'; answers: Answer[] }
+	| { action: 'apply_setup_wizard'; nodeParametersJson: string }
+	| { action: 'approve_or_reject'; approved: boolean; userInput?: string }
+	| { action: 'respond_to_domain_access'; response: DomainAccessAction | 'deny' }
+	| { action: 'pick_resource_decision'; decision: string }
+	| { action: 'send_follow_up_message'; message: string }
+	| { action: 'declare_done' };
+
+export function parseWireDecision(value: WireDecision): Decision | undefined {
+	switch (value.action) {
+		case 'answer_questions':
+			if (!value.answers) return undefined;
+			return {
+				action: value.action,
+				answers: value.answers.map(({ questionId, selectedOptions, customText, skipped }) => ({
+					questionId,
+					selectedOptions,
+					...(customText ? { customText } : {}),
+					...(skipped !== null ? { skipped } : {}),
+				})),
+			};
+
+		case 'apply_setup_wizard':
+			return value.nodeParametersJson
+				? { action: value.action, nodeParametersJson: value.nodeParametersJson }
+				: undefined;
+
+		case 'approve_or_reject':
+			return value.approved !== null
+				? {
+						action: value.action,
+						approved: value.approved,
+						...(value.userInput ? { userInput: value.userInput } : {}),
+					}
+				: undefined;
+
+		case 'respond_to_domain_access': {
+			if (!value.response) return undefined;
+			if (value.response === 'deny') return { action: value.action, response: 'deny' };
+			const parsed = domainAccessActionSchema.safeParse(value.response);
+			return parsed.success ? { action: value.action, response: parsed.data } : undefined;
+		}
+
+		case 'pick_resource_decision':
+			return value.decision ? { action: value.action, decision: value.decision } : undefined;
+
+		case 'send_follow_up_message':
+			return value.message !== null ? { action: value.action, message: value.message } : undefined;
+
+		case 'declare_done':
+			return { action: value.action };
+	}
+}
 
 export interface SetupWizardParseContext {
 	nodes: Array<{
@@ -64,6 +114,8 @@ export interface SetupWizardParseContext {
 // ---------------------------------------------------------------------------
 
 export const TOOL_DESCRIPTIONS = `Available actions:
+
+Set fields that do not apply to the selected action to null.
 
 - answer_questions(answers[]): The agent fired an ask-user confirmation (inputType=questions). Answer every question with a plausible value — stated → implied → invented. Invent rather than skip. Set skipped=true only when the question has no plausible answer of any shape, OR when a [stage direction] in the script tells the user to decline or withhold that value — in that case you MUST set skipped=true with an empty selectedOptions and pick NO option (not even one that looks standard or obvious); picking a value defeats the test.
 
@@ -95,7 +147,15 @@ export function encodeConfirmationDecision(
 ): InstanceAiConfirmRequest | null {
 	switch (decision.action) {
 		case 'answer_questions':
-			return { kind: 'questions', answers: decision.answers };
+			return {
+				kind: 'questions',
+				answers: decision.answers.map(({ questionId, selectedOptions, customText, skipped }) => ({
+					questionId,
+					selectedOptions,
+					...(customText ? { customText } : {}),
+					...(skipped !== undefined ? { skipped } : {}),
+				})),
+			};
 
 		case 'apply_setup_wizard':
 			return {

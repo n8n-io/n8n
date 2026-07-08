@@ -1,4 +1,5 @@
-import type {
+import {
+	type InstanceAiConfirmation,
 	InstanceAiEnsureThreadResponse,
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadInfo,
@@ -11,6 +12,7 @@ import type { InstanceAiConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import {
 	createSubAgentResourceIdPrefix,
+	parseSuspendedToolCallConfirmation,
 	patchThread,
 	type AgentDbMessage,
 	type AgentTreeSnapshot,
@@ -75,6 +77,33 @@ function mergeMessagesById(stored: AgentDbMessage[], extras: AgentDbMessage[]): 
 	for (const message of stored) byId.set(message.id, message);
 	for (const message of extras) if (!byId.has(message.id)) byId.set(message.id, message);
 	return [...byId.values()].sort((a, b) => messageCreatedAtMs(a) - messageCreatedAtMs(b));
+}
+
+type InFlightCheckpointMessages = {
+	messages: AgentDbMessage[];
+	confirmationsByToolCallId: Map<string, InstanceAiConfirmation>;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function collectCheckpointConfirmations(state: unknown): Map<string, InstanceAiConfirmation> {
+	const confirmations = new Map<string, InstanceAiConfirmation>();
+	if (!isRecord(state) || !isRecord(state.pendingToolCalls)) return confirmations;
+
+	for (const [toolCallId, pendingToolCall] of Object.entries(state.pendingToolCalls)) {
+		if (!isRecord(pendingToolCall) || pendingToolCall.suspended !== true) continue;
+		const parsed = parseSuspendedToolCallConfirmation({
+			toolCallId,
+			toolName: pendingToolCall.toolName,
+			input: pendingToolCall.input,
+			suspendPayload: pendingToolCall.suspendPayload,
+		});
+		if (parsed) confirmations.set(toolCallId, parsed.confirmation);
+	}
+
+	return confirmations;
 }
 
 @Service()
@@ -221,10 +250,12 @@ export class InstanceAiMemoryService {
 		// only inside the checkpoint blob. Without merging them in, a thread
 		// waiting on a confirmation renders without those in-flight artifacts
 		// after a page reload.
-		const checkpointMessages = await this.loadInFlightCheckpointMessages(threadId);
-		const storedMessages = mergeMessagesById(result.messages, checkpointMessages);
+		const checkpointState = await this.loadInFlightCheckpointMessages(threadId);
+		const storedMessages = mergeMessagesById(result.messages, checkpointState.messages);
 
-		const messages = parseStoredMessages(storedMessages, snapshots);
+		const messages = parseStoredMessages(storedMessages, snapshots, {
+			confirmationsByToolCallId: checkpointState.confirmationsByToolCallId,
+		});
 		await this.flagExpiredConfirmations(messages);
 
 		const projectId = await this.agentMemory.getThreadProjectId(threadId);
@@ -251,7 +282,9 @@ export class InstanceAiMemoryService {
 		}
 	}
 
-	private async loadInFlightCheckpointMessages(threadId: string): Promise<AgentDbMessage[]> {
+	private async loadInFlightCheckpointMessages(
+		threadId: string,
+	): Promise<InFlightCheckpointMessages> {
 		let checkpoints;
 		try {
 			checkpoints = await this.checkpointRepository.findActiveByThreadId(threadId);
@@ -260,12 +293,16 @@ export class InstanceAiMemoryService {
 				threadId,
 				error: error instanceof Error ? error.message : String(error),
 			});
-			return [];
+			return { messages: [], confirmationsByToolCallId: new Map() };
 		}
 
 		const merged: AgentDbMessage[] = [];
 		const seen = new Set<string>();
+		const confirmationsByToolCallId = new Map<string, InstanceAiConfirmation>();
 		for (const checkpoint of checkpoints) {
+			for (const [toolCallId, confirmation] of collectCheckpointConfirmations(checkpoint.state)) {
+				confirmationsByToolCallId.set(toolCallId, confirmation);
+			}
 			const stateMessages = checkpoint.state?.messageList?.messages ?? [];
 			for (const candidate of stateMessages) {
 				if (!isAgentMessageLike(candidate) || seen.has(candidate.id)) continue;
@@ -279,7 +316,7 @@ export class InstanceAiMemoryService {
 				});
 			}
 		}
-		return merged;
+		return { messages: merged, confirmationsByToolCallId };
 	}
 
 	async getLatestRunSnapshot(
