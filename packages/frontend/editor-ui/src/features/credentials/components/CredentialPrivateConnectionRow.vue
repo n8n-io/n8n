@@ -20,11 +20,13 @@ interface Props {
 	canModify: boolean;
 	canConnect?: boolean;
 	connectedAccountName?: string;
+	readonly?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	canConnect: true,
 	connectedAccountName: undefined,
+	readonly: false,
 });
 
 const emit = defineEmits<{
@@ -109,7 +111,7 @@ function onDisconnectConfirm() {
 		</div>
 
 		<div :class="$style.right">
-			<N8nTooltip v-if="!isConnected" :disabled="canConnect" placement="top">
+			<N8nTooltip v-if="!isConnected" :disabled="canConnect || readonly" placement="top">
 				<template #content>{{
 					i18n.baseText('credentials.private.row.connect.noPermission')
 				}}</template>
@@ -117,7 +119,7 @@ function onDisconnectConfirm() {
 					size="mini"
 					variant="outline"
 					:label="i18n.baseText('credentials.private.row.connect')"
-					:disabled="!canConnect"
+					:disabled="readonly || !canConnect"
 					data-test-id="node-credential-private-connect"
 					@click="emit('connect')"
 				/>
@@ -126,12 +128,13 @@ function onDisconnectConfirm() {
 				v-else
 				:items="connectedActions"
 				placement="bottom-end"
+				:disabled="readonly"
 				:extra-popper-class="$style.connectedDropdown"
 				data-test-id="node-credential-private-connected-actions"
 				@select="onActionSelect"
 			>
 				<template #activator>
-					<N8nButton size="mini" variant="outline">
+					<N8nButton size="mini" variant="outline" :disabled="readonly">
 						<span :class="$style.connectedBadge" />
 						<span>{{ i18n.baseText('credentials.private.row.connected') }}</span>
 						<N8nIcon icon="chevron-down" size="small" />
