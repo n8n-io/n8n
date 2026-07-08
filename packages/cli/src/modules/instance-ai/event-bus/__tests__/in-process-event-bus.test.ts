@@ -5,7 +5,6 @@ import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { RedisClientService } from '@/services/redis-client.service';
 
 import { InProcessEventBus } from '../in-process-event-bus';
 
@@ -70,7 +69,6 @@ describe('InProcessEventBus', () => {
 			seqByKey.delete(key);
 			return 1;
 		},
-		disconnect() {},
 	};
 
 	function buildBus() {
@@ -78,14 +76,12 @@ describe('InProcessEventBus', () => {
 		logger.scoped.mockReturnValue(logger);
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue(undefined);
-		const redisClientService = mock<RedisClientService>();
-		redisClientService.createClient.mockReturnValue(redisClient as never);
+		publisher.getClient.mockReturnValue(redisClient as never);
 		const globalConfig = mock<GlobalConfig>({ redis: { prefix: 'n8n' } });
 		return new InProcessEventBus(
 			logger,
 			instanceSettings as InstanceSettings,
 			publisher,
-			redisClientService,
 			globalConfig,
 		);
 	}

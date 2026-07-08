@@ -1,16 +1,14 @@
 import { Logger } from '@n8n/backend-common';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
-import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
+import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { InstanceAiEventBus, StoredEvent } from '@n8n/instance-ai';
-import type { Cluster, Redis } from 'ioredis';
 import { EventEmitter } from 'node:events';
 import { InstanceSettings } from 'n8n-core';
 
 import { MAX_PUBSUB_PAYLOAD_BYTES } from '@/scaling/constants';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { RedisClientService } from '@/services/redis-client.service';
 
 const MAX_EVENTS_PER_THREAD = 500;
 const MAX_BYTES_PER_THREAD = 2 * 1024 * 1024; // 2 MB
@@ -56,15 +54,12 @@ export class InProcessEventBus implements InstanceAiEventBus {
 
 	private readonly drainingThreads = new Set<string>();
 
-	private redisClient: Redis | Cluster | null = null;
-
 	private readonly seqKeyPrefix: string;
 
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
-		private readonly redisClientService: RedisClientService,
 		globalConfig: GlobalConfig,
 	) {
 		this.logger = this.logger.scoped('instance-ai');
@@ -105,7 +100,7 @@ export class InProcessEventBus implements InstanceAiEventBus {
 	 * Assign sequence ids to queued events and dispatch them, preserving
 	 * publish order. Only one drain runs per thread; events queued while a
 	 * Redis round trip is in flight are picked up by the next loop iteration
-	 * and sequenced as one batch (single INCRBY).
+	 * and sequenced as one batch (single sequence round trip).
 	 */
 	private async drainQueue(threadId: string): Promise<void> {
 		if (this.drainingThreads.has(threadId)) return;
@@ -141,9 +136,20 @@ export class InProcessEventBus implements InstanceAiEventBus {
 
 	/**
 	 * Reserve a contiguous block of `count` ids from the shared per-thread
-	 * sequence (atomic INCRBY). On Redis failure, continue monotonically from
-	 * the local high-water mark — ids stay usable for this main's connections,
-	 * at the cost of possible overlap with siblings until Redis recovers.
+	 * sequence (atomic INCRBY). On Redis failure, continue monotonically from the
+	 * local high-water mark — ids stay usable for this main's connections, at the
+	 * cost of possible overlap with siblings until Redis recovers.
+	 *
+	 * Accepted degradation: after a Redis outage the shared counter can briefly
+	 * sit below this main's local high-water mark (the fallback advanced local ids
+	 * that never reached Redis), so INCRBY on recovery may re-issue an id already
+	 * in this main's store — `insertById` then drops it as a duplicate, i.e. a few
+	 * events can be lost from the live stream during recovery. Not worth an atomic
+	 * conditional-max (Lua/WATCH) here: it only bites during a Redis incident, and
+	 * the persisted run snapshot reconciles the tree via `run-sync` on reconnect.
+	 * (A single-main→multi-main flip mid-thread would collide the same way, but a
+	 * thread only starts producing events once the license has settled isMultiMain
+	 * at boot, so that path isn't reached in practice.)
 	 */
 	private async assignSequenceBlock(threadId: string, count: number): Promise<number> {
 		try {
@@ -172,11 +178,15 @@ export class InProcessEventBus implements InstanceAiEventBus {
 		}
 	}
 
-	private getRedisClient(): Redis | Cluster {
-		// Lazy: isMultiMain can flip on after boot (license load), so the client
-		// is created on first multi-main use rather than in the constructor.
-		this.redisClient ??= this.redisClientService.createClient({ type: 'cache(n8n)' });
-		return this.redisClient;
+	/**
+	 * The shared sequence lives on the pubsub publisher's Redis client. Only ever
+	 * reached in multi-main, which implies queue mode — where the publisher's
+	 * client is initialized. Reusing it avoids a second persistent connection per
+	 * main. Publishing never puts a client in subscriber mode, so running
+	 * sequence commands on it is safe.
+	 */
+	private getRedisClient() {
+		return this.publisher.getClient();
 	}
 
 	private seqKey(threadId: string): string {
@@ -349,12 +359,6 @@ export class InProcessEventBus implements InstanceAiEventBus {
 		this.pendingByThread.clear();
 		this.inFlightByThread.clear();
 		this.emitter.removeAllListeners();
-	}
-
-	@OnShutdown()
-	shutdown(): void {
-		this.redisClient?.disconnect();
-		this.redisClient = null;
 	}
 
 	private evictIfNeeded(threadId: string, events: StoredEvent[]): void {

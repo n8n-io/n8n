@@ -433,6 +433,30 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		expect(registry.getRuntime(threadId)?.lastEventId).toBe(43);
 	});
 
+	test('a backend sequence reset (id 1 re-issued) drops stale dedup state and renders the fresh run', () => {
+		const threadId = activeThreadId;
+		const event = (text: string) => ({
+			type: 'text-delta' as const,
+			runId: 'run-1',
+			agentId: 'agent-root',
+			payload: { text },
+		});
+
+		// First run before the backend restarts.
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root'), '1'));
+		capturedOnMessage!(makeSSEEvent(event('a'), '2'));
+		expect(registry.getRuntime(threadId)?.lastEventId).toBe(2);
+
+		// Backend restarts and re-issues ids from 1. Without reset detection these
+		// would be dropped as already-seen; instead the fresh sequence renders and
+		// the cursor snaps back down.
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-2', 'agent-root'), '1'));
+		capturedOnMessage!(makeSSEEvent(event('b'), '2'));
+
+		expect(registry.getRuntime(threadId)?.debugEvents).toHaveLength(4);
+		expect(registry.getRuntime(threadId)?.lastEventId).toBe(2);
+	});
+
 	test('deleting the last active thread clears stale routing state before the replacement thread starts', async () => {
 		const deletedThreadId = activeThreadId;
 		const previousEventSource = capturedInstance;

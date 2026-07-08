@@ -550,6 +550,17 @@ export function createThreadRuntime(
 		// rather than the latest, and duplicates are dropped by id.
 		const eventId = sseEvent.lastEventId ? Number(sseEvent.lastEventId) : undefined;
 		if (eventId !== undefined && Number.isFinite(eventId)) {
+			// A backend sequence reset (single-main restart, or seq-key TTL expiry)
+			// re-issues ids from 1. Seeing id 1 again while it's still in the dedup
+			// set means the sequence restarted, so drop the stale cursor + dedup
+			// state and render the fresh sequence instead of dropping it as
+			// duplicates. Precise, not a heuristic: id 1 is issued once per sequence
+			// lifetime, and a legit replay from cursor 0 can't reach here because
+			// the cursor and seenEventIds only ever reset together (in resetState).
+			if (eventId === 1 && seenEventIds.has(1)) {
+				seenEventIds.clear();
+				lastEventId.value = undefined;
+			}
 			if (seenEventIds.has(eventId)) return;
 			seenEventIds.add(eventId);
 			if (seenEventIds.size > MAX_SEEN_EVENT_IDS) {
