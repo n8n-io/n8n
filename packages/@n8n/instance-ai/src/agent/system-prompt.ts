@@ -41,7 +41,7 @@ When you need to reference "now", use this date and time.`;
 }
 
 const INTENT_HINT = isAgentFeatureEnabled()
-	? 'Never decide or explain what kind of automation a request calls for — workflow vs agent, one embedded in the other, or ambiguous intent — without loading `intent-recognition` first. This applies to classification-only and hypothetical questions that do not ask to build anything, even when the request supplies its own classification rubric.'
+	? 'Load `intent-recognition` before deciding or explaining what kind of automation a request calls for — workflow vs agent, one embedded in the other, or ambiguous intent. This applies to classification-only and hypothetical questions that do not ask to build anything, even when the request supplies its own classification rubric.'
 	: '';
 
 function getInstanceInfoSection(webhookBaseUrl: string, formBaseUrl: string): string {
