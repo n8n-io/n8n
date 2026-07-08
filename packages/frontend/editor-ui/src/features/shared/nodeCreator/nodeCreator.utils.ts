@@ -28,6 +28,7 @@ import {
 	HUMAN_IN_THE_LOOP_CATEGORY,
 	MICROSOFT_TEAMS_NODE_TYPE,
 	RECOMMENDED_NODES,
+	REGULAR_NODE_CREATOR_VIEW,
 } from '@/app/constants';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -45,7 +46,7 @@ import type { NodeIconSource } from '@/app/utils/nodeIcon';
 import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { INodeOutputConfiguration, NodeConnectionType } from 'n8n-workflow';
-import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { CommunityNodeDetails, ViewStack } from './composables/useViewStacks';
 
 const COMMUNITY_NODE_TYPE_PREVIEW_TOKEN = '-preview';
@@ -289,6 +290,22 @@ export const removePreviewToken = (key: string) =>
 	key.replace(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, '');
 
 export const isNodePreviewKey = (key = '') => key.includes(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN);
+
+/**
+ * Whether the given view stack should render the "n8n Connect" section at the
+ * top. Never shown while searching — search results stay a flat ranked list.
+ */
+export function showsAiGatewaySection(stack: ViewStack | undefined): boolean {
+	if (!stack || stack.search) return false;
+	return (
+		// Language Models list
+		stack.connectionType === NodeConnectionTypes.AiLanguageModel ||
+		// Nodes panel > "Action in an app"
+		(stack.rootView === REGULAR_NODE_CREATOR_VIEW && stack.subcategory === DEFAULT_SUBCATEGORY) ||
+		// Tools panel > "Action in an app"
+		stack.subcategory === AI_CATEGORY_OTHER_TOOLS
+	);
+}
 
 export function isAiGatewaySupportedNode(element: INodeCreateElement): boolean {
 	if (element.type !== 'node') return false;

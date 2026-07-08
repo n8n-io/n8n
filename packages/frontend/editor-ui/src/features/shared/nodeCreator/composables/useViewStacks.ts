@@ -40,6 +40,7 @@ import {
 	nodeTypesToCreateElements,
 	mapToolSubcategoryIcon,
 	searchNodes,
+	showsAiGatewaySection,
 	sortNodeCreateElements,
 	subcategorizeItems,
 	transformNodeType,
@@ -313,10 +314,9 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		stack: ViewStack | undefined,
 		sortAlphabetically: boolean,
 	) {
-		// Surface n8n Connect-powered language models in a dedicated section at the
-		// top. Hidden while searching — search results stay a flat ranked list.
+		// Surface n8n Connect-powered nodes in a dedicated section at the top
 		let gatewaySection: SectionCreateElement | null = null;
-		if (stack?.connectionType === NodeConnectionTypes.AiLanguageModel && !stack.search) {
+		if (showsAiGatewaySection(stack)) {
 			const extracted = extractAiGatewaySection(items);
 			if (extracted) {
 				gatewaySection = extracted.section;

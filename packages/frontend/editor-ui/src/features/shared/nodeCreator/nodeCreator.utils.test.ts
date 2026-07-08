@@ -20,6 +20,7 @@ import {
 	getSendAndWaitNodes,
 	nodeTypesToCreateElements,
 	mapToolSubcategoryIcon,
+	showsAiGatewaySection,
 } from './nodeCreator.utils';
 import {
 	mockActionCreateElement,
@@ -32,7 +33,7 @@ import { createTestingPinia } from '@pinia/testing';
 
 import { mock } from 'vitest-mock-extended';
 import type { ViewStack } from './composables/useViewStacks';
-import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import {
 	DISCORD_NODE_TYPE,
 	MICROSOFT_TEAMS_NODE_TYPE,
@@ -42,8 +43,11 @@ import {
 	AI_CATEGORY_MCP_NODES,
 	AI_CATEGORY_ROOT_NODES,
 	AI_SUBCATEGORY,
+	DEFAULT_SUBCATEGORY,
 	HITL_SUBCATEGORY,
 	HUMAN_IN_THE_LOOP_CATEGORY,
+	REGULAR_NODE_CREATOR_VIEW,
+	TRIGGER_NODE_CREATOR_VIEW,
 } from '@/app/constants';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -851,6 +855,35 @@ describe('NodeCreator - utils', () => {
 
 			const [result] = finalizeItems([makeGatewayNode('unknownTool')]) as NodeCreateElement[];
 			expect(result.properties.tag).toBeUndefined();
+		});
+	});
+
+	describe('showsAiGatewaySection', () => {
+		it.each<[string, ViewStack, boolean]>([
+			['Language Models list', { connectionType: NodeConnectionTypes.AiLanguageModel }, true],
+			[
+				'nodes panel "Action in an app"',
+				{ rootView: REGULAR_NODE_CREATOR_VIEW, subcategory: DEFAULT_SUBCATEGORY },
+				true,
+			],
+			['tools panel "Action in an app"', { subcategory: AI_CATEGORY_OTHER_TOOLS }, true],
+			[
+				'trigger panel "On app event"',
+				{ rootView: TRIGGER_NODE_CREATOR_VIEW, subcategory: DEFAULT_SUBCATEGORY },
+				false,
+			],
+			[
+				'any view while searching',
+				{ connectionType: NodeConnectionTypes.AiLanguageModel, search: 'gpt' },
+				false,
+			],
+			['unrelated subcategory', { subcategory: AI_CATEGORY_VECTOR_STORES }, false],
+		])('%s -> %s', (_, stack, expected) => {
+			expect(showsAiGatewaySection(stack)).toBe(expected);
+		});
+
+		it('should return false without a stack', () => {
+			expect(showsAiGatewaySection(undefined)).toBe(false);
 		});
 	});
 
