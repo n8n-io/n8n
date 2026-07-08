@@ -25,6 +25,7 @@ n8n-cli package export -p abc -p def -o projects.n8np
 | `-f, --folder-id` | Folder ID to include with its nested folders. Repeat the flag to export several. |
 | `-p, --project-id` | Project ID to include. Repeat the flag to export several. |
 | `--subworkflow-behaviour` | Sub-workflow export mode: `included-in-package` (default) or `references-only`. |
+| `--external-subworkflow-behaviour` | How to handle project/folder sub-workflows outside the export boundary: `block` (default), `include-top-level`, or `references-only`. `include-top-level` does not preserve original project/folder placement on import. |
 | `-o, --output` | File to write the package to. Defaults to `export.n8np`. |
 
 Provide at least one `--workflow-id`, `--folder-id`, or `--project-id`. Requires

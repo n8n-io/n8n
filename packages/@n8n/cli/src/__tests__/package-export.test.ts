@@ -17,6 +17,7 @@ interface ExportInternals {
 			folderId?: string[];
 			projectId?: string[];
 			subworkflowBehaviour?: 'included-in-package' | 'references-only';
+			externalSubworkflowBehaviour?: 'block' | 'include-top-level' | 'references-only';
 			output: string;
 		};
 	}>;
@@ -31,6 +32,7 @@ function stubCommand(
 		folderId?: string[];
 		projectId?: string[];
 		subworkflowBehaviour?: 'included-in-package' | 'references-only';
+		externalSubworkflowBehaviour?: 'block' | 'include-top-level' | 'references-only';
 		output: string;
 	},
 	exportPackage = vi.fn().mockResolvedValue(Buffer.from([1, 2, 3])),
@@ -124,6 +126,22 @@ describe('package export command', () => {
 			workflowIds: ['wf-1'],
 			folderIds: [],
 			subworkflowBehaviour: 'references-only',
+		});
+	});
+
+	it('forwards external subworkflow behaviour', async () => {
+		const { command, exportPackage } = stubCommand({
+			folderId: ['fld-1'],
+			externalSubworkflowBehaviour: 'include-top-level',
+			output: '/tmp/export.n8np',
+		});
+
+		await command.run();
+
+		expect(exportPackage).toHaveBeenCalledWith({
+			workflowIds: [],
+			folderIds: ['fld-1'],
+			externalSubworkflowBehaviour: 'include-top-level',
 		});
 	});
 
