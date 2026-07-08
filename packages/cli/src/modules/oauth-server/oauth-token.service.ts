@@ -34,6 +34,24 @@ import type {
 const PRE_SCOPING_SENTINEL = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
 
 /**
+ * The instance MCP scope set at the moment scoping shipped. Grants made
+ * before scoping are grandfathered to at most this frozen set — never the
+ * live scope list — so scopes added in later releases require a fresh
+ * consent instead of silently widening old full-delegation grants.
+ */
+const PRE_SCOPING_GRANT_SCOPES = [
+	'workflow:read',
+	'workflow:write',
+	'workflow:execute',
+	'execution:read',
+	'credential:read',
+	'dataTable:read',
+	'dataTable:write',
+	'project:read',
+	'tag:read',
+];
+
+/**
  * Manages the OAuth 2.1 token lifecycle for the shared OAuth server.
  * Generates, validates, rotates, and revokes access and refresh tokens.
  *
@@ -214,16 +232,21 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 
 		if (!isPreScopingSentinel) return storedScopes;
 
-		return await this.getResourceScopes(resource);
+		return await this.grandfatheredScopes(resource);
 	}
 
-	/** Full scope set of the given resource, falling back to the default resource. */
-	private async getResourceScopes(resource: string | undefined): Promise<string[]> {
+	/**
+	 * Scopes a pre-scoping grant keeps: the frozen launch scope set, capped by
+	 * what the resource supports. Scope-less resources (per-workflow MCP
+	 * triggers) keep their empty full delegation.
+	 */
+	private async grandfatheredScopes(resource: string | undefined): Promise<string[]> {
 		const target = resource
 			? await this.resourceRegistry.getByResourceUrl(resource)
 			: this.resourceRegistry.getDefaultResource();
 
-		return target?.scopes ?? this.resourceRegistry.getDefaultResource()?.scopes ?? [];
+		const supported = target?.scopes ?? this.resourceRegistry.getDefaultResource()?.scopes ?? [];
+		return supported.filter((scope) => PRE_SCOPING_GRANT_SCOPES.includes(scope));
 	}
 
 	async verifyAccessToken(token: string, expectedAudience?: string): Promise<AuthInfo> {
@@ -279,7 +302,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		const scopeClaim = this.getStringClaim(decoded, 'scope');
 
 		if (scopeClaim === null) {
-			return await this.getResourceScopes(this.getStringClaim(decoded, 'aud') ?? undefined);
+			return await this.grandfatheredScopes(this.getStringClaim(decoded, 'aud') ?? undefined);
 		}
 
 		return scopeClaim === '' ? [] : scopeClaim.split(' ');
