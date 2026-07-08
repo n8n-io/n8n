@@ -1,4 +1,47 @@
-import { mapAgentChunkToEvent } from '../map-chunk';
+import { isQuotaExhaustedError, mapAgentChunkToEvent } from '../map-chunk';
+
+type ApiCallError = Error & { statusCode?: number; responseBody?: string; url?: string };
+
+function apiError(message: string, statusCode?: number, responseBody?: string): ApiCallError {
+	const error = new Error(message) as ApiCallError;
+	if (statusCode !== undefined) error.statusCode = statusCode;
+	if (responseBody !== undefined) error.responseBody = responseBody;
+	return error;
+}
+
+describe('isQuotaExhaustedError', () => {
+	it('matches the proxy quota message on a plain string', () => {
+		expect(isQuotaExhaustedError('Have reached end of quota')).toBe(true);
+	});
+
+	it('matches quota keywords in an Error message regardless of status', () => {
+		expect(isQuotaExhaustedError(apiError('Have reached end of quota'))).toBe(true);
+		expect(isQuotaExhaustedError(apiError('You are out of credits'))).toBe(true);
+	});
+
+	it('matches a quota message carried in the JSON responseBody', () => {
+		const error = apiError(
+			'Forbidden',
+			403,
+			JSON.stringify({ error: { message: 'Quota exceeded for this account' } }),
+		);
+		expect(isQuotaExhaustedError(error)).toBe(true);
+	});
+
+	it('matches a 403 combined with a quota/credit token', () => {
+		expect(isQuotaExhaustedError(apiError('request blocked: quota', 403))).toBe(true);
+	});
+
+	it('does not match a bare 403 without quota/credit signal', () => {
+		expect(isQuotaExhaustedError(apiError('Forbidden', 403))).toBe(false);
+	});
+
+	it('does not match unrelated errors', () => {
+		expect(isQuotaExhaustedError(apiError('Rate limited', 429))).toBe(false);
+		expect(isQuotaExhaustedError('Something went wrong')).toBe(false);
+		expect(isQuotaExhaustedError(undefined)).toBe(false);
+	});
+});
 
 describe('mapAgentChunkToEvent', () => {
 	const runId = 'run-1';
@@ -416,6 +459,26 @@ describe('mapAgentChunkToEvent', () => {
 				statusCode: 429,
 				provider: 'OpenAI',
 				technicalDetails: JSON.stringify({ error: { message: 'Rate limited' } }),
+			},
+		});
+	});
+
+	it('tags quota-exhausted error chunks with a quota_exhausted code', () => {
+		const error = apiError(
+			'Forbidden',
+			403,
+			JSON.stringify({ error: { message: 'Have reached end of quota' } }),
+		);
+
+		expect(map({ type: 'error', error })).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: {
+				content: 'Have reached end of quota',
+				statusCode: 403,
+				code: 'quota_exhausted',
+				technicalDetails: JSON.stringify({ error: { message: 'Have reached end of quota' } }),
 			},
 		});
 	});

@@ -12,4 +12,10 @@ describe('getUserFacingErrorMessage', () => {
 			'Something went wrong before I could finish that response. Please try again.',
 		);
 	});
+
+	it('maps a quota-exhausted error to a clear out-of-credits message', () => {
+		const message = getUserFacingErrorMessage(new Error('Have reached end of quota'));
+		expect(message.toLowerCase()).toContain('credits');
+		expect(message).not.toContain('Something went wrong');
+	});
 });

@@ -114,10 +114,76 @@ interface ErrorInfo {
 	statusCode?: number;
 	provider?: string;
 	technicalDetails?: string;
+	code?: 'quota_exhausted';
+}
+
+/**
+ * Human-readable signals the hosted AI proxy uses when a tenant's credit/quota
+ * pool is exhausted. Kept as an exported const so detection stays cheap to adjust
+ * if the proxy wording changes, and so tests can assert against the same list.
+ */
+export const QUOTA_EXHAUSTED_MESSAGE_SIGNALS = [
+	'end of quota',
+	'out of credits',
+	'quota exceeded',
+	'credit limit',
+] as const;
+
+/**
+ * Whether an error means the user has run out of AI credits/quota. Quota is
+ * enforced by the proxy returning a 403 (no dedicated code), so we match on the
+ * proxy's quota wording, plus a 403 combined with a quota/credit token. A bare
+ * 403 must NOT match — it is also auth/permission-denied.
+ */
+export function isQuotaExhaustedError(error: unknown): boolean {
+	const { message, statusCode } = readError(error);
+	const haystack = message.toLowerCase();
+
+	if (QUOTA_EXHAUSTED_MESSAGE_SIGNALS.some((signal) => haystack.includes(signal))) {
+		return true;
+	}
+
+	return statusCode === 403 && (haystack.includes('quota') || haystack.includes('credit'));
+}
+
+/**
+ * Normalize an unknown error into the message + statusCode we key detection on.
+ * Folds the ai-sdk `responseBody` JSON `error.message` into the message so a
+ * proxy quota body is matched even when the top-level message is a bare status.
+ */
+function readError(error: unknown): { message: string; statusCode?: number } {
+	if (typeof error === 'string') return { message: error };
+	if (!(error instanceof Error)) return { message: '' };
+
+	let message = error.message;
+	let statusCode: number | undefined;
+
+	if ('statusCode' in error && typeof error.statusCode === 'number') {
+		statusCode = error.statusCode;
+	}
+
+	if ('responseBody' in error && typeof error.responseBody === 'string') {
+		const bodyMessage = parseResponseBodyMessage(error.responseBody);
+		if (bodyMessage) message = bodyMessage;
+	}
+
+	return { message, statusCode };
+}
+
+/** Pull `error.message` out of an ai-sdk JSON `responseBody`, if present. */
+function parseResponseBodyMessage(responseBody: string): string | undefined {
+	try {
+		const body = JSON.parse(responseBody) as { error?: { message?: string; type?: string } };
+		return body?.error?.message;
+	} catch {
+		return undefined;
+	}
 }
 
 function extractErrorInfo(error: unknown): ErrorInfo {
-	if (typeof error === 'string') return { content: error };
+	if (typeof error === 'string') {
+		return { content: error, ...(isQuotaExhaustedError(error) ? { code: 'quota_exhausted' } : {}) };
+	}
 
 	if (error instanceof Error) {
 		const info: ErrorInfo = { content: error.message };
@@ -129,16 +195,8 @@ function extractErrorInfo(error: unknown): ErrorInfo {
 
 		if ('responseBody' in error && typeof error.responseBody === 'string') {
 			info.technicalDetails = error.responseBody;
-			try {
-				const body = JSON.parse(error.responseBody) as {
-					error?: { message?: string; type?: string };
-				};
-				if (body?.error?.message) {
-					info.content = body.error.message;
-				}
-			} catch {
-				// not JSON — keep raw responseBody as technicalDetails
-			}
+			const bodyMessage = parseResponseBodyMessage(error.responseBody);
+			if (bodyMessage) info.content = bodyMessage;
 		}
 
 		// Extract provider from error name or URL if available
@@ -147,6 +205,8 @@ function extractErrorInfo(error: unknown): ErrorInfo {
 			if (urlStr.includes('anthropic')) info.provider = 'Anthropic';
 			else if (urlStr.includes('openai')) info.provider = 'OpenAI';
 		}
+
+		if (isQuotaExhaustedError(error)) info.code = 'quota_exhausted';
 
 		return info;
 	}
@@ -381,6 +441,7 @@ function mapErrorChunk(
 		payload: {
 			content: errorInfo.content,
 			...(errorInfo.statusCode !== undefined ? { statusCode: errorInfo.statusCode } : {}),
+			...(errorInfo.code ? { code: errorInfo.code } : {}),
 			...(errorInfo.provider ? { provider: errorInfo.provider } : {}),
 			...(errorInfo.technicalDetails ? { technicalDetails: errorInfo.technicalDetails } : {}),
 		},

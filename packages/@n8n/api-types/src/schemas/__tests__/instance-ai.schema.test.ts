@@ -3,6 +3,7 @@ import {
 	applyBranchReadOnlyOverrides,
 	buildFetchUrlGrantKey,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	errorPayloadSchema,
 	FETCH_URL_ALLOW_ALL_GRANT_KEY,
 	InstanceAiAdminSettingsUpdateRequest,
 	instanceAiEventSchema,
@@ -48,6 +49,21 @@ describe('instanceAiEventSchema', () => {
 		};
 
 		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+});
+
+describe('errorPayloadSchema', () => {
+	it('accepts a payload without a code', () => {
+		expect(errorPayloadSchema.parse({ content: 'boom' })).toEqual({ content: 'boom' });
+	});
+
+	it('accepts the quota_exhausted code', () => {
+		const payload = { content: 'out of credits', code: 'quota_exhausted' as const };
+		expect(errorPayloadSchema.parse(payload)).toEqual(payload);
+	});
+
+	it('rejects an unknown code', () => {
+		expect(errorPayloadSchema.safeParse({ content: 'boom', code: 'nope' }).success).toBe(false);
 	});
 });
 

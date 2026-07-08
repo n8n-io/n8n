@@ -530,9 +530,14 @@ export const statusPayloadSchema = z.object({
 	message: z.string().describe('Transient status message. Empty string clears the indicator.'),
 });
 
+/** Machine-readable error classes the UI can render a tailored state for. */
+export const INSTANCE_AI_ERROR_CODES = ['quota_exhausted'] as const;
+
 export const errorPayloadSchema = z.object({
 	content: z.string(),
 	statusCode: z.number().optional(),
+	/** Set when the failure maps to a known class (e.g. out of credits) so the UI can tailor it. */
+	code: z.enum(INSTANCE_AI_ERROR_CODES).optional(),
 	provider: z.string().optional(),
 	technicalDetails: z.string().optional(),
 });
@@ -937,6 +942,8 @@ export interface InstanceAiAgentNode {
 	error?: string;
 	errorDetails?: {
 		statusCode?: number;
+		/** Mirrors {@link errorPayloadSchema} `code` — lets the UI render a tailored error state. */
+		code?: (typeof INSTANCE_AI_ERROR_CODES)[number];
 		provider?: string;
 		technicalDetails?: string;
 	};
