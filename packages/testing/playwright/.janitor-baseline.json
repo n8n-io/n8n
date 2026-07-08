@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-07-08T19:25:22.774Z",
-	"totalViolations": 78,
+	"generated": "2026-07-08T21:24:33.975Z",
+	"totalViolations": 74,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -201,32 +201,6 @@
 				"line": 65,
 				"message": "Chained locator call in test: newPage.locator('img')",
 				"hash": "140cf31c63ab"
-			}
-		],
-		"tests/e2e/chat-hub/chat-hub-personal-agent.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 90,
-				"message": "Direct page locator call: n8n.page.getByRole('dialog').getByText('Delete', { exact:...",
-				"hash": "e5c7b87a1265"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 90,
-				"message": "Direct page locator call: n8n.page.getByRole('dialog').getByText('Delete', { exact:...",
-				"hash": "e5c7b87a1265"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 90,
-				"message": "Chained locator call in test: n8n.page.getByRole('dialog').getByText('Delete', { exact:...",
-				"hash": "667398fd66e7"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 90,
-				"message": "Direct page locator call: n8n.page.getByRole('dialog')",
-				"hash": "31695787251c"
 			}
 		],
 		"tests/e2e/projects/projects.spec.ts": [
