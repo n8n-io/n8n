@@ -258,7 +258,6 @@ describe('step checkpoints + crash resume (durable-log RFC)', () => {
 		});
 	});
 
-
 	it('a crash-resumed run that suspends at HITL persists a resumable suspended checkpoint', async () => {
 		const store = new RecordingCheckpointStore();
 
@@ -286,12 +285,19 @@ describe('step checkpoints + crash resume (durable-log RFC)', () => {
 					{
 						role: 'assistant',
 						content: [
-							{ type: 'tool-call', toolCallId: 'tc-hitl', toolName: 'approve', args: { question: 'ok?' } },
+							{
+								type: 'tool-call',
+								toolCallId: 'tc-hitl',
+								toolName: 'approve',
+								args: { question: 'ok?' },
+							},
 						],
 					},
 				],
 			}),
-			toolCalls: Promise.resolve([{ toolCallId: 'tc-hitl', toolName: 'approve', input: { question: 'ok?' } }]),
+			toolCalls: Promise.resolve([
+				{ toolCallId: 'tc-hitl', toolName: 'approve', input: { question: 'ok?' } },
+			]),
 		});
 
 		const resumed = await runtime2.crashResume({ runId: result.runId, stepCheckpoints: true });
