@@ -38,7 +38,7 @@ describe('workspace tool contract (@n8n/agents drift guard)', () => {
 		const liveTools = createWorkspaceTools({
 			filesystem: {},
 			sandbox: {
-				executeCommand: async () => ({
+				executeCommand: vi.fn().mockResolvedValue({
 					success: true,
 					exitCode: 0,
 					stdout: '',
