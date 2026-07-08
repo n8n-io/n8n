@@ -66,6 +66,7 @@
     "@n8n/workflow-sdk": "workspace:*",
     "@opentelemetry/api": "^1.9.0",
     "@thednp/dommatrix": "^2.0.12",
+    "fast-json-patch": "catalog:",
     "ai": "catalog:",
     "csv-parse": "catalog:",
     "fast-glob": "catalog:",

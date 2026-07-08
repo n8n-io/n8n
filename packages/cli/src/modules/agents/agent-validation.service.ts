@@ -1,4 +1,5 @@
 import { type CredentialProvider } from '@n8n/agents';
+import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import {
 	AgentModelSchema,
 	MANAGED_CREDENTIAL_TOKEN,
@@ -8,7 +9,6 @@ import {
 import { Service } from '@n8n/di';
 
 import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults';
-import { getProviderPrefix } from './json-config/model-id';
 import { AgentRepository } from './repositories/agent.repository';
 import { AiService } from '@/services/ai.service';
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';

@@ -1,5 +1,12 @@
-import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
+/**
+ * Pure `$fromAI(...)` reference scanning over node parameters. Shared by the CLI
+ * agent builder and the instance-ai config tools so both enforce the same rule:
+ * stable dynamic selectors must be resolved with `get_resource_locator_options`,
+ * not left as `$fromAI`.
+ */
 import type { INodeParameters } from 'n8n-workflow';
+
+import { extractFromAIParameters } from '../utils/fromai-helpers';
 
 export type FromAiParameterReference = {
 	parameterPath: string;
