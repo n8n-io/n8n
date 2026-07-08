@@ -136,6 +136,30 @@ describe('applyPaginationRequestData', () => {
 		});
 	});
 
+	test('should not re-apply qs keys already embedded in the next-page URL', () => {
+		// Reproduces CAT-3584: OData "@odata.nextLink" pagination.
+		// The first request sets qs.$select. The next page is a full URL that already
+		// embeds $select (and $skip). Merging the original qs back on top makes the HTTP
+		// client re-apply $select as an axios param on a URL that already carries it,
+		// producing a duplicated $select that Microsoft Graph rejects with HTTP 400
+		// "Query option '$select' was specified more than once".
+		const originalRequestOptions: IRequestOptions = {
+			uri: 'https://graph.microsoft.com/v1.0/users',
+			method: 'GET',
+			qs: { $select: 'id,displayName' },
+		};
+
+		const paginationRequestData: PaginationOptions['request'] = {
+			url: 'https://graph.microsoft.com/v1.0/users?$select=id,displayName&$skip=100',
+		};
+
+		const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
+
+		// The next-page URL already contains $select; the stale qs must not carry it over,
+		// otherwise it gets duplicated by the HTTP client.
+		expect((result.qs)?.$select).toBeUndefined();
+	});
+
 	test('should handle edge cases with empty pagination data', () => {
 		const originalRequestOptions: IRequestOptions = {
 			uri: 'https://original.com/api',
