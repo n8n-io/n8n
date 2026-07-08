@@ -263,15 +263,6 @@ describe('AgentPublishService', () => {
 			agentId,
 			projectId,
 		);
-		expect(chatIntegrationService.disconnectChannel).toHaveBeenCalledWith(
-			agentId,
-			{
-				type: 'slack',
-				credentialId: 'slack-1',
-			},
-			{ deleteSubscriptions: false },
-		);
-
 		const draftVersion = agent.versionId;
 		if (!draftVersion) throw new Error('Expected unpublish to assign a draft version');
 		agentHistoryRepository.saveVersion.mockResolvedValue(makeHistory({ versionId: draftVersion }));

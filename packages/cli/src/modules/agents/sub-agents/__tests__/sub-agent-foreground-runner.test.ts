@@ -199,7 +199,7 @@ describe('SubAgentForegroundRunner', () => {
 		await runner.runForeground(spawnRequest, {
 			projectId,
 			credentialProvider,
-			user,
+			userId: user.id,
 		});
 
 		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
