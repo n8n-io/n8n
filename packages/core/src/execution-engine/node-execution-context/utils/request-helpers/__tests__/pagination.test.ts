@@ -157,7 +157,7 @@ describe('applyPaginationRequestData', () => {
 
 		// The next-page URL already contains $select; the stale qs must not carry it over,
 		// otherwise it gets duplicated by the HTTP client.
-		expect((result.qs)?.$select).toBeUndefined();
+		expect(result.qs?.$select).toBeUndefined();
 	});
 
 	test('should handle edge cases with empty pagination data', () => {
