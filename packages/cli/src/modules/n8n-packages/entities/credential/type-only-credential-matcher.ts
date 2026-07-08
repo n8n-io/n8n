@@ -5,13 +5,15 @@ import { CredentialsService } from '@/credentials/credentials.service';
 
 import {
 	CredentialMatcher,
+	type CredentialMatcherContext,
 	type ResolvedCredentialMatch,
 	type UsableCredential,
 } from './credential-matcher';
+import { resolveByCandidateFilter } from './credential-tier-selection';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
 @Service()
-export class IdBasedCredentialMatcher extends CredentialMatcher {
+export class TypeOnlyCredentialMatcher extends CredentialMatcher {
 	constructor(credentialTypes: CredentialTypes, credentialsService: CredentialsService) {
 		super(credentialTypes, credentialsService);
 	}
@@ -19,17 +21,13 @@ export class IdBasedCredentialMatcher extends CredentialMatcher {
 	protected resolve(
 		unbound: PackageCredentialRequirement[],
 		usableCredentials: UsableCredential[],
+		context: CredentialMatcherContext,
 	): Map<string, ResolvedCredentialMatch> {
-		const usableTypesById = new Map(
-			usableCredentials.map((credential) => [credential.id, credential.type]),
-		);
-
-		return new Map(
-			unbound.flatMap((reference) => {
-				const targetType = usableTypesById.get(reference.id);
-				if (targetType === undefined) return [];
-				return [[reference.id, { targetId: reference.id, targetType }] as const];
-			}),
+		return resolveByCandidateFilter(
+			unbound,
+			usableCredentials,
+			context.projectId,
+			(candidate, reference) => candidate.type === reference.type,
 		);
 	}
 }
