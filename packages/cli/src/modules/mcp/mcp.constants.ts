@@ -23,6 +23,11 @@ export const INTERNAL_SERVER_ERROR_MESSAGE = 'Internal server error';
 export const MCP_ACCESS_DISABLED_ERROR_MESSAGE = 'MCP access is disabled';
 
 /**
+ * Tool name constants
+ */
+export const LIST_N8N_CONNECT_SERVICES_TOOL_NAME = 'list_n8n_connect_services';
+
+/**
  * Triggers supported in production mode for MCP execution
  */
 export const SUPPORTED_PRODUCTION_MCP_TRIGGERS = {

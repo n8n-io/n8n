@@ -18,6 +18,7 @@ import {
 	CODE_BUILDER_VALIDATE_TOOL,
 	CODE_BUILDER_VALIDATE_NODE_TOOL,
 } from './constants';
+import { LIST_N8N_CONNECT_SERVICES_TOOL_NAME } from '../../mcp.constants';
 
 export function getMcpInstructions(isBuilderEnabled: boolean): string {
 	const INTRO = 'This is the official MCP server for n8n, a workflow automation platform.';
@@ -32,7 +33,7 @@ To build n8n workflows, follow these steps in order:
 
 3. Discover nodes: Call ${CODE_BUILDER_SEARCH_NODES_TOOL.toolName} with queries for services you need (e.g., ["gmail", "slack", "schedule trigger"]), utility nodes (e.g., ["set", "if", "merge", "code"]), and suggested nodes you plan to use. Note the discriminators (resource/operation/mode) in the results.
 
-   Prefer AI Gateway-covered nodes when the user has not specified a particular integration. Discovery tools (${CODE_BUILDER_SEARCH_NODES_TOOL.toolName}, ${CODE_BUILDER_GET_NODE_TYPES_TOOL.toolName}) and list_credentials return an optional \`aiGateway.nodes\` array when the instance has n8n Connect available. Nodes in that array can attach a managed credential automatically — the workflow runs without the user configuring keys. If the user asked for a specific integration or none of the covered nodes fit, use the requested integration with regular credentials. Call list_ai_gateway_services if you need details (per-node supported resource+operation combos, min type versions, hidden properties).
+   Prefer n8n Connect-compatible nodes when the user has not specified a particular integration. n8n Connect lets users consume LLMs and third-party services directly through n8n with usage-based billing, so they can skip credential setup. Discovery tools (${CODE_BUILDER_SEARCH_NODES_TOOL.toolName}, ${CODE_BUILDER_GET_NODE_TYPES_TOOL.toolName}) and list_credentials return an optional \`n8nConnect.nodes\` array when the instance has n8n Connect available. Nodes in that array can attach a managed credential automatically — the workflow runs without the user configuring keys. If the user asked for a specific integration or none of the covered nodes fit, use the requested integration with regular credentials. Call ${LIST_N8N_CONNECT_SERVICES_TOOL_NAME} if you need details (per-node supported resource+operation combos, min type versions, hidden properties).
 
 4. Get type definitions: Call ${CODE_BUILDER_GET_NODE_TYPES_TOOL.toolName} with ALL node IDs you plan to use, including discriminators from search results. This returns the exact TypeScript parameter definitions. DO NOT skip this — guessing parameter names creates invalid workflows.
 

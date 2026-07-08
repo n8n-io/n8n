@@ -129,7 +129,7 @@ export type UserCalledMCPToolEventPayload = {
  * gateway is available: the credential and node types it can provide managed
  * credentials for.
  */
-export type AiGatewayCoverage = {
+export type N8nConnectCoverage = {
 	credentialTypes: string[];
 	nodes: string[];
 };

@@ -35,7 +35,7 @@ import { createSearchExecutionsTool } from './tools/search-executions.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createGetWorkflowHistoryTool } from './tools/get-workflow-history.tool';
 import { createGetWorkflowVersionTool } from './tools/get-workflow-version.tool';
-import { createListAiGatewayServicesTool } from './tools/list-ai-gateway-services.tool';
+import { createListN8nConnectServicesTool } from './tools/list-n8n-connect-services.tool';
 import { createListCredentialsTool } from './tools/list-credentials.tool';
 import { createListTagsTool } from './tools/list-tags.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
@@ -367,7 +367,7 @@ export class McpService {
 			this.aiGatewayService,
 		);
 
-		const listAiGatewayServicesTool = createListAiGatewayServicesTool(
+		const listN8nConnectServicesTool = createListN8nConnectServicesTool(
 			user,
 			this.aiGatewayService,
 			this.telemetry,
@@ -379,9 +379,9 @@ export class McpService {
 		);
 
 		server.registerTool(
-			listAiGatewayServicesTool.name,
-			listAiGatewayServicesTool.config,
-			listAiGatewayServicesTool.handler,
+			listN8nConnectServicesTool.name,
+			listN8nConnectServicesTool.config,
+			listN8nConnectServicesTool.handler,
 		);
 
 		if (!this.globalConfig.tags.disabled) {

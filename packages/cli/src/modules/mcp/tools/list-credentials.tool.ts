@@ -6,10 +6,10 @@ import type { ListQuery } from '@/requests';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Telemetry } from '@/telemetry';
 
-import { toAiGatewayCoverage } from '../mcp-ai-gateway.helper';
-import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
+import { toN8nConnectCoverage } from '../mcp-ai-gateway.helper';
+import { LIST_N8N_CONNECT_SERVICES_TOOL_NAME, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type {
-	AiGatewayCoverage,
+	N8nConnectCoverage,
 	ToolDefinition,
 	UserCalledMCPToolEventPayload,
 } from '../mcp.types';
@@ -47,7 +47,7 @@ const homeProjectSchema = z
 	.nullable()
 	.describe('The project that owns the credential, if available');
 
-const aiGatewaySchema = z
+const n8nConnectSchema = z
 	.object({
 		credentialTypes: z
 			.array(z.string())
@@ -58,7 +58,7 @@ const aiGatewaySchema = z
 	})
 	.optional()
 	.describe(
-		'Present when n8n Connect ("AI Gateway") is available for this instance. Omitted otherwise. Candidate coverage only — actual eligibility for a managed credential also depends on the node action, minimum type version, and hidden properties; call list_ai_gateway_services for the authoritative contract.',
+		`Present when n8n Connect is available for this instance. Omitted otherwise. Candidate coverage only — actual eligibility for a managed credential also depends on the node action, minimum type version, and hidden properties; call ${LIST_N8N_CONNECT_SERVICES_TOOL_NAME} for the authoritative contract.`,
 	);
 
 const outputSchema = {
@@ -80,7 +80,7 @@ const outputSchema = {
 		)
 		.describe('List of credentials accessible to the current user'),
 	count: z.number().int().min(0).describe('Number of credentials returned'),
-	aiGateway: aiGatewaySchema,
+	n8nConnect: n8nConnectSchema,
 	error: z.string().optional().describe('Error message when the tool failed'),
 } satisfies z.ZodRawShape;
 
@@ -105,7 +105,7 @@ export type ListCredentialsItem = {
 export type ListCredentialsResult = {
 	data: ListCredentialsItem[];
 	count: number;
-	aiGateway?: AiGatewayCoverage;
+	n8nConnect?: N8nConnectCoverage;
 	error?: string;
 };
 
@@ -151,8 +151,8 @@ export const createListCredentialsTool = (
 				onlySharedWithMe,
 			});
 
-			const coverage = toAiGatewayCoverage(await aiGatewayService.isAvailable());
-			if (coverage) payload.aiGateway = coverage;
+			const coverage = toN8nConnectCoverage(await aiGatewayService.isAvailable());
+			if (coverage) payload.n8nConnect = coverage;
 
 			telemetryPayload.results = {
 				success: true,

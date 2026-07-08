@@ -4,7 +4,7 @@ import z from 'zod';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Telemetry } from '@/telemetry';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
+import { LIST_N8N_CONNECT_SERVICES_TOOL_NAME, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 
 const inputSchema = {} satisfies z.ZodRawShape;
@@ -48,12 +48,12 @@ const outputSchema = {
  * (unlicensed, misconfigured, or gateway down) — callers should key on
  * `available: false` and fall back to user credentials.
  */
-export const createListAiGatewayServicesTool = (
+export const createListN8nConnectServicesTool = (
 	user: User,
 	aiGatewayService: AiGatewayService,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema> => ({
-	name: 'list_ai_gateway_services',
+	name: LIST_N8N_CONNECT_SERVICES_TOOL_NAME,
 	config: {
 		description:
 			'List n8n Connect coverage: node and credential types the platform can provide managed credentials for, plus supported resource+operation combinations, minimum type versions, and hidden node properties. Use this to decide which nodes let the user skip credential setup.',
@@ -70,7 +70,7 @@ export const createListAiGatewayServicesTool = (
 	handler: async () => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
-			tool_name: 'list_ai_gateway_services',
+			tool_name: LIST_N8N_CONNECT_SERVICES_TOOL_NAME,
 		};
 
 		const availability = await aiGatewayService.isAvailable();

@@ -118,8 +118,8 @@ describe('search-workflow-nodes MCP tool', () => {
 		);
 	});
 
-	describe('aiGateway block', () => {
-		test('includes aiGateway block when gateway is available', async () => {
+	describe('n8nConnect block', () => {
+		test('includes n8nConnect block when gateway is available', async () => {
 			aiGatewayService.isAvailable.mockResolvedValue({
 				available: true,
 				config: {
@@ -134,14 +134,14 @@ describe('search-workflow-nodes MCP tool', () => {
 
 			expect(result.structuredContent).toEqual({
 				results: 'search-result',
-				aiGateway: {
+				n8nConnect: {
 					credentialTypes: ['openAiApi'],
 					nodes: ['@n8n/n8n-nodes-langchain.openAi'],
 				},
 			});
 		});
 
-		test('omits aiGateway block when unavailable', async () => {
+		test('omits n8nConnect block when unavailable', async () => {
 			const tool = createTool();
 			const result = await tool.handler({ queries: ['openai'] }, {} as never);
 			expect(result.structuredContent).toEqual({ results: 'search-result' });

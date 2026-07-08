@@ -6,10 +6,13 @@ import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Telemetry } from '@/telemetry';
 
 import { CODE_BUILDER_GET_NODE_TYPES_TOOL } from './constants';
-import { toAiGatewayCoverage } from '../../mcp-ai-gateway.helper';
-import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
+import { toN8nConnectCoverage } from '../../mcp-ai-gateway.helper';
+import {
+	LIST_N8N_CONNECT_SERVICES_TOOL_NAME,
+	USER_CALLED_MCP_TOOL_EVENT,
+} from '../../mcp.constants';
 import type {
-	AiGatewayCoverage,
+	N8nConnectCoverage,
 	ToolDefinition,
 	UserCalledMCPToolEventPayload,
 } from '../../mcp.types';
@@ -33,7 +36,7 @@ const inputSchema = {
 
 const outputSchema = {
 	definitions: z.string().describe('TypeScript type definitions for the requested nodes'),
-	aiGateway: z
+	n8nConnect: z
 		.object({
 			credentialTypes: z.array(z.string()).describe('Credential types n8n Connect can provide.'),
 			nodes: z
@@ -44,7 +47,7 @@ const outputSchema = {
 		})
 		.optional()
 		.describe(
-			'Present when n8n Connect ("AI Gateway") is available. Candidate coverage — cross-reference against the returned node types, but call list_ai_gateway_services for exact eligibility (supported actions, min versions, hidden properties).',
+			`Present when n8n Connect is available. Candidate coverage — cross-reference against the returned node types, but call ${LIST_N8N_CONNECT_SERVICES_TOOL_NAME} for exact eligibility (supported actions, min versions, hidden properties).`,
 		),
 } satisfies z.ZodRawShape;
 
@@ -92,10 +95,10 @@ export const createGetWorkflowNodeTypesTool = (
 
 			const structured: {
 				definitions: string;
-				aiGateway?: AiGatewayCoverage;
+				n8nConnect?: N8nConnectCoverage;
 			} = { definitions: result };
-			const coverage = toAiGatewayCoverage(availability);
-			if (coverage) structured.aiGateway = coverage;
+			const coverage = toN8nConnectCoverage(availability);
+			if (coverage) structured.n8nConnect = coverage;
 
 			return {
 				content: [{ type: 'text', text: result }],

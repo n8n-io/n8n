@@ -6,7 +6,7 @@ import { mock } from 'vitest-mock-extended';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import { Telemetry } from '@/telemetry';
 
-import { createListAiGatewayServicesTool } from '../tools/list-ai-gateway-services.tool';
+import { createListN8nConnectServicesTool } from '../tools/list-n8n-connect-services.tool';
 
 const user = Object.assign(new User(), { id: 'user-1' });
 
@@ -39,11 +39,11 @@ function makeMocks(opts: { available?: boolean; config?: AiGatewayConfigDto } = 
 	return { aiGatewayService, telemetry };
 }
 
-describe('list_ai_gateway_services MCP tool', () => {
-	test('registers under the name list_ai_gateway_services', () => {
+describe('list_n8n_connect_services MCP tool', () => {
+	test('registers under the name list_n8n_connect_services', () => {
 		const { aiGatewayService, telemetry } = makeMocks();
-		const tool = createListAiGatewayServicesTool(user, aiGatewayService, telemetry);
-		expect(tool.name).toBe('list_ai_gateway_services');
+		const tool = createListN8nConnectServicesTool(user, aiGatewayService, telemetry);
+		expect(tool.name).toBe('list_n8n_connect_services');
 		expect(tool.config.annotations).toMatchObject({
 			readOnlyHint: true,
 			destructiveHint: false,
@@ -54,7 +54,7 @@ describe('list_ai_gateway_services MCP tool', () => {
 
 	test('returns full coverage payload when available', async () => {
 		const { aiGatewayService, telemetry } = makeMocks({ available: true });
-		const tool = createListAiGatewayServicesTool(user, aiGatewayService, telemetry);
+		const tool = createListN8nConnectServicesTool(user, aiGatewayService, telemetry);
 		const result = await tool.handler({}, {} as never);
 		expect(result.structuredContent).toEqual({
 			available: true,
@@ -70,20 +70,20 @@ describe('list_ai_gateway_services MCP tool', () => {
 
 	test('returns { available: false } when unavailable', async () => {
 		const { aiGatewayService, telemetry } = makeMocks({ available: false });
-		const tool = createListAiGatewayServicesTool(user, aiGatewayService, telemetry);
+		const tool = createListN8nConnectServicesTool(user, aiGatewayService, telemetry);
 		const result = await tool.handler({}, {} as never);
 		expect(result.structuredContent).toEqual({ available: false });
 	});
 
 	test('emits USER_CALLED_MCP_TOOL_EVENT with tool_name and success', async () => {
 		const { aiGatewayService, telemetry } = makeMocks();
-		const tool = createListAiGatewayServicesTool(user, aiGatewayService, telemetry);
+		const tool = createListN8nConnectServicesTool(user, aiGatewayService, telemetry);
 		await tool.handler({}, {} as never);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			'User called mcp tool',
 			expect.objectContaining({
 				user_id: 'user-1',
-				tool_name: 'list_ai_gateway_services',
+				tool_name: 'list_n8n_connect_services',
 				results: { success: true, data: { available: true } },
 			}),
 		);

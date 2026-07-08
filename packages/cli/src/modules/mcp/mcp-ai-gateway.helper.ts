@@ -1,6 +1,6 @@
 import type { AiGatewayAvailability } from '@/services/ai-gateway.service';
 
-import type { AiGatewayCoverage } from './mcp.types';
+import type { N8nConnectCoverage } from './mcp.types';
 
 /**
  * Tool-variant node types carry a "Tool"/"HitlTool" suffix (e.g. `openAiTool`),
@@ -16,9 +16,9 @@ export function stripToolSuffix(nodeType: string): string {
  * snapshot surfaced in tool output, or `undefined` when the gateway is unavailable.
  * Single source of truth for the coverage shape across the MCP discovery tools.
  */
-export function toAiGatewayCoverage(
+export function toN8nConnectCoverage(
 	availability: AiGatewayAvailability,
-): AiGatewayCoverage | undefined {
+): N8nConnectCoverage | undefined {
 	if (!availability.available) return undefined;
 	return {
 		credentialTypes: availability.config.credentialTypes,

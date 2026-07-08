@@ -50,7 +50,7 @@ describe('get-workflow-node-types MCP tool', () => {
 		expect(result.structuredContent).toEqual({ definitions: 'typescript definitions' });
 	});
 
-	test('adds aiGateway block when gateway is available', async () => {
+	test('adds n8nConnect block when gateway is available', async () => {
 		aiGatewayService.isAvailable.mockResolvedValue({
 			available: true,
 			config: {
@@ -68,14 +68,14 @@ describe('get-workflow-node-types MCP tool', () => {
 
 		expect(result.structuredContent).toEqual({
 			definitions: 'typescript definitions',
-			aiGateway: {
+			n8nConnect: {
 				credentialTypes: ['openAiApi'],
 				nodes: ['@n8n/n8n-nodes-langchain.openAi'],
 			},
 		});
 	});
 
-	test('omits aiGateway block when unavailable', async () => {
+	test('omits n8nConnect block when unavailable', async () => {
 		const tool = createTool();
 		const result = await tool.handler(
 			{ nodeIds: [{ nodeId: 'n8n-nodes-base.slack' }] },
