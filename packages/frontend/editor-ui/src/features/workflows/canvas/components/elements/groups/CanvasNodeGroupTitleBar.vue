@@ -115,6 +115,12 @@ function onToggleClick() {
 }
 
 function onOpenContextMenu(event: MouseEvent) {
+	// While the title is being edited, the native text menu (copy/paste,
+	// spellcheck) must win over the group menu. Other interactive children
+	// (chevron, ungroup button, title preview) still get the group menu.
+	const target = event.target as HTMLElement | null;
+	if (target?.closest('input, textarea, [contenteditable]')) return;
+
 	emit('open:contextmenu', group.value.id, event);
 }
 
