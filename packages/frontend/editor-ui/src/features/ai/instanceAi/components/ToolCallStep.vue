@@ -24,10 +24,6 @@ const { getToolLabel } = useToolLabel();
 
 function getDisplayLabel(tc: InstanceAiToolCallState): string {
 	const label = getToolLabel(tc.toolName, tc.args as Record<string, unknown>) || tc.toolName;
-	if (tc.toolName === 'delegate') {
-		const role = typeof tc.args?.role === 'string' ? tc.args.role : '';
-		return role ? `${label} (${role})` : label;
-	}
 	if (
 		tc.toolName === 'research' &&
 		tc.args?.action === 'web-search' &&

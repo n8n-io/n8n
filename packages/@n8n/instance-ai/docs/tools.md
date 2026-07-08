@@ -2,7 +2,7 @@
 
 All tools the Instance AI agent has access to. Tools are organized into
 orchestration tools (used by the orchestrator for loop control) and domain tools
-(used by the orchestrator directly or delegated to sub-agents). Each tool defines
+(used by the orchestrator directly). Each tool defines
 its input/output schema via Zod.
 
 ## Orchestration Tools
@@ -33,10 +33,9 @@ The plan is shown to the user for approval before execution starts.
 {
   id: string;          // Stable identifier used by dependency edges
   title: string;       // Short user-facing task title
-  kind: 'delegate' | 'build-workflow' | 'checkpoint';
+  kind: 'build-workflow' | 'checkpoint';
   spec: string;        // Detailed executor briefing for this task
   deps: string[];      // Task IDs that must succeed before this task can start
-  tools?: string[];    // Required tool subset for delegate tasks
   workflowId?: string; // Existing workflow ID for the builder to hydrate before saving
   isSupportingWorkflow?: boolean; // Build task completes after saving a supporting sub-workflow
 }
@@ -53,7 +52,6 @@ The plan is shown to the user for approval before execution starts.
 
 **Task kinds** map to executors:
 - `build-workflow` → orchestrator follow-up run using the workflow-builder skill
-- `delegate` → custom sub-agent with orchestrator-specified tool subset
 - `checkpoint` → exceptional orchestrator-executed semantic or cross-workflow check
 
 Standalone data-table work is handled directly by the orchestrator with the
@@ -61,31 +59,6 @@ Standalone data-table work is handled directly by the orchestrator with the
 workflow-local table requirements belong in the builder task spec; plan only
 when the table schema is shared, independently durable, or creates real
 dependency coordination.
-
-### `delegate`
-
-Spawn a dynamically composed sub-agent to handle a focused subtask. The
-orchestrator specifies the role, instructions, and tool subset — there is no
-fixed taxonomy of sub-agent types.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `role` | string | yes | Free-form role description (e.g., "workflow builder") |
-| `instructions` | string | yes | Task-specific system prompt for the sub-agent |
-| `tools` | string[] | yes | Subset of registered native domain tool names |
-| `briefing` | string | yes | The specific task to accomplish |
-| `artifacts` | object | no | Relevant IDs, data, or context (workflow IDs, etc.) |
-| `conversationContext` | string | no | Summary of what was discussed so far — prevents repeating what user already knows |
-
-**Returns**: `{ result: string }` — the sub-agent's synthesized answer.
-
-**Behavior**:
-- Validates `tools` against registered native domain tool names
-- Forbids orchestration tools (`create-tasks`, `delegate`) and MCP tools
-- Creates a fresh agent with specified tools and low `maxSteps` (default 10)
-- Sub-agent publishes events directly to the event bus
-- Sub-agent has no memory — receives context only via the briefing
-- Past failed attempts from `iterationLog` are appended to the briefing (if available)
 
 ### `update-tasks`
 
@@ -709,24 +682,25 @@ sandbox) to consult these before planning or building non-trivial workflows.
 
 ## Tool Distribution
 
-Not all tools are available to all agents. The orchestrator has access to
-everything; sub-agents receive only what they need.
+The orchestrator has access to the full native and orchestration surface.
+Specialized background agents (for example `eval-setup-with-agent`) receive
+only the domain tools wired into that agent.
 
-| Tool Category | Orchestrator | Sub-Agents (delegate) | Background Agents |
-|---------------|:---:|:---:|:---:|
-| Orchestration tools (`create-tasks`, `delegate`, etc.) | ✅ | ❌ | ❌ |
-| Workflow tools | ✅ | ✅ (via delegate) | ✅ (builder) |
-| Execution tools | ✅ (direct use) | ✅ (via delegate) | ❌ |
-| Credential tools | ✅ | ✅ (via delegate) | ✅ (builder — setup only) |
-| Node discovery tools | ✅ | ✅ (via delegate) | ✅ (builder) |
-| Data table tools | ✅ (direct, via `data-table-manager` skill) | ✅ (via delegate) | ❌ |
-| Workspace tools | ✅ | ✅ (via delegate) | ❌ |
-| Filesystem tools | ✅ (conditional) | ✅ (via delegate) | ❌ |
-| Web research tools | ✅ | ✅ (via delegate) | ❌ |
-| Knowledge base (best practices & templates via workspace) | ✅ | ✅ (via delegate) | ✅ (builder) |
-| Sandbox-backed internals (`build-workflow` TypeScript compilation, `materialize-node-type`) | ✅ | ✅ (via delegate) | ✅ (builder) |
-| MCP tools | ✅ | ❌ | ❌ |
-| Computer Use browser tools | ✅ (direct, via credential skill when setting up credentials) | ❌ | ❌ |
+| Tool Category | Orchestrator | Specialized background agents |
+|---------------|:---:|:---:|
+| Orchestration tools (`create-tasks`, etc.) | ✅ | ❌ |
+| Workflow tools | ✅ | ✅ (eval-setup) |
+| Execution tools | ✅ | ❌ |
+| Credential tools | ✅ | ✅ (eval-setup — setup only) |
+| Node discovery tools | ✅ | ✅ (eval-setup) |
+| Data table tools | ✅ (direct, via `data-table-manager` skill) | ✅ (eval-setup) |
+| Workspace tools | ✅ | ❌ |
+| Filesystem tools | ✅ (conditional) | ❌ |
+| Web research tools | ✅ | ❌ |
+| Knowledge base (best practices & templates via workspace) | ✅ | ✅ (eval-setup) |
+| Sandbox-backed internals (`build-workflow` TypeScript compilation, `materialize-node-type`) | ✅ | ❌ |
+| MCP tools | ✅ | ❌ |
+| Computer Use browser tools | ✅ (direct, via credential skill when setting up credentials) | ❌ |
 
 ---
 
@@ -738,7 +712,6 @@ everything; sub-agents receive only what they need.
 4. Register the tool in `src/tools/index.ts` (in `createAllTools` or `createOrchestrationTools`)
 5. If the tool requires a new service method, add it to the interface in `src/types.ts`
    and implement it in the backend adapter
-6. New native domain tools are automatically available for delegation — the
-   orchestrator can include them in sub-agent tool subsets via `delegate`
+6. New native domain tools registered in `createAllTools` are available to the orchestrator immediately
 7. For HITL tools, define `suspendSchema` and `resumeSchema` — `@n8n/agents` handles
    the suspension/resume lifecycle automatically

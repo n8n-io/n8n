@@ -1,4 +1,3 @@
-import type { Mock } from 'vitest';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService, type HttpRequestClient } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
@@ -8,11 +7,12 @@ import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb, User } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import type { Request, Response } from 'express';
-import { mock } from 'vitest-mock-extended';
 import type { Cipher } from 'n8n-core';
 import { Credentials } from 'n8n-core';
 import type { IHttpRequestOptions, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { AuthService } from '@/auth/auth.service';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -40,7 +40,10 @@ import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 vi.mock('@/workflow-execute-additional-data');
-vi.mock('@n8n/client-oauth2');
+vi.mock('@n8n/client-oauth2', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/client-oauth2')>();
+	return { ...actual, ClientOAuth2: vi.fn() };
+});
 vi.mock('pkce-challenge');
 
 /**
@@ -197,6 +200,33 @@ describe('OauthService', () => {
 		it('should return correct URL for OAuth2', () => {
 			const url = service.getBaseUrl(OauthVersion.V2);
 			expect(url).toBe('http://localhost:5678/rest/oauth2-credential');
+		});
+	});
+
+	describe('extractCallbackErrorReason', () => {
+		it('should return the stringified body when the error has one', () => {
+			const error = Object.assign(new Error('request failed'), {
+				body: { error: 'invalid_grant' },
+			});
+
+			expect(service.extractCallbackErrorReason(error)).toBe('{"error":"invalid_grant"}');
+		});
+
+		it('should surface the wrapped cause chain when there is no body', () => {
+			const inner = new Error('Unauthorized');
+			const root = new Error('resolver rejected the identity', { cause: inner });
+			const wrapper = new Error('Failed to store dynamic credentials data for "Google Drive"', {
+				cause: root,
+			});
+
+			// The wrapper message is rendered as the heading; the reason surfaces the cause chain.
+			expect(service.extractCallbackErrorReason(wrapper)).toBe(
+				'resolver rejected the identity: Unauthorized',
+			);
+		});
+
+		it('should return undefined when there is neither a body nor a cause', () => {
+			expect(service.extractCallbackErrorReason(new Error('boom'))).toBeUndefined();
 		});
 	});
 
@@ -1684,6 +1714,32 @@ describe('OauthService', () => {
 			const credential = mock<CredentialsEntity>({
 				id: '1',
 				type: 'googleCloudStorageOAuth2Api',
+				isManaged: false,
+			});
+			const mockDecryptedData = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockOAuthCredentials = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			vi.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
+			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+
+			await service.getOAuthCredentials(credential);
+
+			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
+				mockAdditionalData,
+				{ clientId: 'client-id', scope: 'custom-scope' },
+				credential.type,
+				'internal',
+				undefined,
+				undefined,
+			);
+		});
+
+		it('should not delete scope for zendeskOAuth2Api credentials', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: '1',
+				type: 'zendeskOAuth2Api',
 				isManaged: false,
 			});
 			const mockDecryptedData = { clientId: 'client-id', scope: 'custom-scope' };
@@ -5039,6 +5095,50 @@ describe('OauthService', () => {
 			expect(mockToken.refresh).toHaveBeenCalledTimes(1);
 		});
 
+		it('builds the client with a certificate when certificate authentication is selected', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			let capturedOptions: unknown;
+			const refreshed = {
+				data: { access_token: 'new-token', token_type: 'bearer' },
+				accessToken: 'new-token',
+			};
+			const mockToken = { refresh: vi.fn().mockResolvedValue(refreshed), client: {} };
+			vi.mocked(ClientOAuth2).mockImplementation(function (options) {
+				capturedOptions = options;
+				return { createToken: vi.fn().mockReturnValue(mockToken) } as never;
+			});
+
+			credentialsRepository.findOne.mockResolvedValue(makeCredential({ isGlobal: true }) as never);
+			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				clientId: 'id',
+				clientCredentialType: 'certificate',
+				privateKey: 'private-key-pem',
+				certificate: 'certificate-pem',
+				clientSecret: 'stale-secret',
+				accessTokenUrl: 'https://example.com/token',
+				grantType: 'authorizationCode',
+				authentication: 'header',
+				oauthTokenData: {
+					access_token: 'stale',
+					refresh_token: 'refresh-tok',
+					token_type: 'bearer',
+				},
+			} as unknown as OAuth2CredentialData);
+			vi.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			const result = await service.refreshOAuth2CredentialById(credentialId, projectId);
+
+			expect(result).toEqual({ Authorization: 'Bearer new-token' });
+			expect(capturedOptions).toEqual(
+				expect.objectContaining({
+					clientCredentialType: 'certificate',
+					clientCertificate: { privateKey: 'private-key-pem', certificate: 'certificate-pem' },
+				}),
+			);
+			// The stale secret must not be carried into the client options in certificate mode.
+			expect(capturedOptions).not.toHaveProperty('clientSecret', 'stale-secret');
+		});
+
 		it('persists the refreshed token data after a successful refresh', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const refreshedData = { access_token: 'new-token', token_type: 'bearer' };
@@ -5063,7 +5163,10 @@ describe('OauthService', () => {
 			await service.refreshOAuth2CredentialById(credentialId, projectId);
 
 			expect(service.encryptAndSaveData).toHaveBeenCalledWith(credential, {
-				oauthTokenData: refreshedData,
+				oauthTokenData: {
+					refresh_token: 'refresh-tok',
+					...refreshedData,
+				},
 			});
 		});
 
@@ -5092,6 +5195,42 @@ describe('OauthService', () => {
 			expect(result).toEqual({ Authorization: 'Bearer cc-token' });
 			expect(getToken).toHaveBeenCalledTimes(1);
 			expect(mockToken.refresh).not.toHaveBeenCalled();
+		});
+
+		it('passes resource to token refresh and preserves it when the provider does not echo it', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const resource = 'https://mcp.example.com/mcp';
+			const refreshed = { data: { access_token: 'cc-token' }, accessToken: 'cc-token' };
+			const getToken = vi.fn().mockResolvedValue(refreshed);
+			const mockToken = { refresh: vi.fn(), client: { credentials: { getToken } } };
+			const credential = makeCredential({ isGlobal: true });
+			let capturedOptions: unknown;
+			vi.mocked(ClientOAuth2).mockImplementation(function (options) {
+				capturedOptions = options;
+				return { createToken: vi.fn().mockReturnValue(mockToken) } as never;
+			});
+
+			credentialsRepository.findOne.mockResolvedValue(credential as never);
+			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				clientId: 'id',
+				clientSecret: 'secret',
+				accessTokenUrl: 'https://example.com/token',
+				grantType: 'clientCredentials',
+				authentication: 'header',
+				oauthTokenData: { access_token: 'stale', resource },
+			} as unknown as OAuth2CredentialData);
+			vi.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			const result = await service.refreshOAuth2CredentialById(credentialId, projectId);
+
+			expect(result).toEqual({ Authorization: 'Bearer cc-token' });
+			expect(capturedOptions).toEqual(expect.objectContaining({ resource }));
+			expect(service.encryptAndSaveData).toHaveBeenCalledWith(credential, {
+				oauthTokenData: {
+					access_token: 'cc-token',
+					resource,
+				},
+			});
 		});
 
 		it('returns null and logs a warning when the refresh call throws', async () => {

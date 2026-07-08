@@ -1,6 +1,6 @@
 {
   "name": "@n8n/db",
-  "version": "1.29.0",
+  "version": "1.30.0",
   "scripts": {
     "clean": "rimraf dist .turbo .tmp-schema-docs",
     "dev": "pnpm watch",
@@ -61,6 +61,7 @@
     "express": "catalog:",
     "testcontainers": "catalog:",
     "typescript": "catalog:",
+    "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },

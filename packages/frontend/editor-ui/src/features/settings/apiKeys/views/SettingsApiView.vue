@@ -130,7 +130,14 @@ const { baseUrl } = useRootStore();
 
 const { isPublicApiEnabled } = settingsStore;
 
-const apiDocsURL = ref('');
+const apiDocsURL = computed(() => {
+	if (!isSwaggerUIEnabled) return `https://${DOCS_DOMAIN}/api/api-reference/`;
+
+	// Join with exactly one slash: baseUrl may or may not end in "/", and
+	// publicApiPath may or may not start with "/" (its default is "api").
+	const apiBase = `${baseUrl.replace(/\/+$/, '')}/${publicApiPath.replace(/^\/+/, '')}`;
+	return `${apiBase}/v${publicApiLatestVersion}/docs`;
+});
 
 const scopesModalApiKey = ref<ApiKey | null>(null);
 const revokeApiKey = ref<ApiKey | null>(null);
@@ -191,10 +198,6 @@ const onCreateApiKey = () => {
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.api'));
-
-	apiDocsURL.value = isSwaggerUIEnabled
-		? `${baseUrl}${publicApiPath}/v${publicApiLatestVersion}/docs`
-		: `https://${DOCS_DOMAIN}/api/api-reference/`;
 
 	if (!isPublicApiEnabled) return;
 

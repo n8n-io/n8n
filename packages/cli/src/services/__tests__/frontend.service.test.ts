@@ -17,6 +17,7 @@ import type { PushConfig } from '@/push/push.config';
 import type { AiUsageService } from '@/services/ai-usage.service';
 import { FrontendService, type PublicFrontendSettings } from '@/services/frontend.service';
 import type { UrlService } from '@/services/url.service';
+import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { UserManagementMailer } from '@/user-management/email';
 import type { OwnershipService } from '../ownership.service';
 
@@ -187,6 +188,8 @@ describe('FrontendService', () => {
 		getPublishedCount: vi.fn().mockResolvedValue(7),
 	});
 
+	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
+
 	const createMockService = () => {
 		Container.set(
 			CommunityPackagesConfig,
@@ -215,6 +218,7 @@ describe('FrontendService', () => {
 				ownershipService,
 				aiUsageService,
 				workflowRepository,
+				workflowReviewPolicyService,
 			),
 			license,
 		};
@@ -421,6 +425,30 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.enterprise.otelCustomSpanAttributes).toBe(true);
+		});
+
+		it('should surface useWorkflowPublicationService from workflows config', async () => {
+			globalConfig.workflows = {
+				...globalConfig.workflows,
+				useWorkflowPublicationService: true,
+			} as GlobalConfig['workflows'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.useWorkflowPublicationService).toBe(true);
+		});
+
+		it('should default useWorkflowPublicationService to false when flag is off', async () => {
+			globalConfig.workflows = {
+				...globalConfig.workflows,
+				useWorkflowPublicationService: false,
+			} as GlobalConfig['workflows'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.useWorkflowPublicationService).toBe(false);
 		});
 	});
 
