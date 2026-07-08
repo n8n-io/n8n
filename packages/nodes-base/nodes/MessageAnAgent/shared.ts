@@ -29,9 +29,24 @@ export const sharedVersionDescription: Pick<
 	outputs: [NodeConnectionTypes.Main],
 };
 
+/** The prompt input, identical across versions; rendered after the version-specific `agentId` picker. */
+export const messageProperty: INodeProperties = {
+	displayName: 'Message',
+	name: 'message',
+	type: 'string',
+	default: '',
+	required: true,
+	description: 'The message to send to the agent',
+	placeholder:
+		'Process the refund for order {{ $json.order_id }} — confirm with the customer that it was approved.',
+	typeOptions: {
+		rows: 4,
+	},
+};
+
 /**
- * Every property after the version-specific `agentId` picker and prompt input
- * (v1: `message`; v2: `promptType`/`text`) is identical across versions.
+ * Every property after the version-specific `agentId` picker and the shared
+ * `message` input is identical across versions.
  */
 export const commonProperties: INodeProperties[] = [
 	{
@@ -124,16 +139,6 @@ export const commonProperties: INodeProperties[] = [
 			},
 		],
 	},
-	{
-		// Which agent-config settings the user surfaced in the NDV's Advanced
-		// section. Pure UI state persisted with the workflow (like any other
-		// parameter); the setting values themselves live in the agent config,
-		// and execution never reads this.
-		displayName: 'Agent Options',
-		name: 'agentOptions',
-		type: 'hidden',
-		default: [],
-	},
 ];
 
 /**
@@ -223,20 +228,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				value: string;
 			};
 			const agentId = agentIdRlc.value;
-			// The prompt input is version-specific: v1 has a single `message`
-			// param; v2 mirrors the legacy AI Agent node's prompt source
-			// (`auto` reads `chatInput` from a connected Chat Trigger,
-			// `define` uses the `text` param).
-			let prompt = '';
-			if (this.getNode().typeVersion >= 2) {
-				const promptType = this.getNodeParameter('promptType', i, 'auto') as string;
-				prompt =
-					promptType === 'auto'
-						? asPromptString(this.evaluateExpression('{{ $json["chatInput"] }}', i))
-						: asPromptString(this.getNodeParameter('text', i, ''));
-			} else {
-				prompt = asPromptString(this.getNodeParameter('message', i, ''));
-			}
+			const prompt = asPromptString(this.getNodeParameter('message', i, ''));
 
 			const advanced = this.getNodeParameter('advanced', i, {}) as {
 				sessionId?: string;

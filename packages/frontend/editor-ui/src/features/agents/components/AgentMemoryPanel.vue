@@ -26,25 +26,10 @@ import { parseModelString, modelToString, sanitizeModelId } from '../utils/model
 import shared from '../styles/agent-panel.module.scss';
 
 const props = withDefaults(
-	defineProps<{
-		config: AgentJsonConfig | null;
-		disabled?: boolean;
-		embedded?: boolean;
-		/**
-		 * Narrow-host layout (the NDV's Advanced section): the episodic-memory
-		 * toggle leads and the recall-model row stacks vertically beneath it.
-		 */
-		stacked?: boolean;
-		/**
-		 * Project scope override for hosts outside the agent routes (the NDV),
-		 * where the route-based fallback would resolve the wrong project.
-		 */
-		projectId?: string;
-	}>(),
+	defineProps<{ config: AgentJsonConfig | null; disabled?: boolean; embedded?: boolean }>(),
 	{
 		disabled: false,
 		embedded: false,
-		stacked: false,
 	},
 );
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
@@ -54,7 +39,7 @@ const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const { ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
-const projectId = useAgentProjectId(() => props.projectId);
+const projectId = useAgentProjectId();
 const { credentialsByProvider, selectCredential } = useAgentModelCredentials(
 	usersStore.currentUserId ?? 'anonymous',
 	projectId,
@@ -230,10 +215,8 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 </script>
 
 <template>
-	<div
-		:class="[$style.container, props.disabled && $style.disabled, props.stacked && $style.stacked]"
-	>
-		<div v-if="episodicMemoryEnabled" :class="[$style.row, $style.recallModelRow]">
+	<div :class="[$style.container, props.disabled && $style.disabled]">
+		<div v-if="episodicMemoryEnabled" :class="$style.row">
 			<div :class="$style.titleGroup">
 				<N8nText step="sm" bold :class="shared.dataEntryLabel">
 					{{ i18n.baseText('agents.builder.memory.recallModel.label') }}
@@ -331,26 +314,6 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
-}
-
-/* Stacked (narrow-host) layout: the toggle leads, the recall-model row moves
-   below it and stacks label-over-control so neither side gets squeezed. */
-.container.stacked {
-	gap: var(--spacing--sm);
-
-	.recallModelRow {
-		order: 1;
-		flex-direction: column;
-		align-items: stretch;
-		gap: var(--spacing--2xs);
-
-		.modelSelector {
-			justify-content: stretch;
-			margin-left: 0;
-			min-width: 0;
-			width: 100%;
-		}
-	}
 }
 
 .actions {

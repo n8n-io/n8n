@@ -31,17 +31,16 @@ describe('MessageAnAgent Node', () => {
 	};
 
 	/**
-	 * Mock `getNodeParameter` with sensible defaults for the prompt source
-	 * (promptType=define + a non-empty `text`). Tests pass `overrides` keyed by
-	 * param name; an override value of `undefined`/`''` is honored (not replaced).
+	 * Mock `getNodeParameter` with sensible defaults (a non-empty `message`).
+	 * Tests pass `overrides` keyed by param name; an override value of
+	 * `undefined`/`''` is honored (not replaced).
 	 */
 	function mockParams(overrides: Record<string, unknown> = {}) {
 		executeFunctions.getNodeParameter.mockImplementation(
 			(param: string, _itemIndex?: number, fallback?: unknown) => {
 				if (param in overrides) return overrides[param] as NodeParameterValueType;
 				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
-				if (param === 'promptType') return 'define';
-				if (param === 'text') return 'Hello agent';
+				if (param === 'message') return 'Hello agent';
 				if (param === 'advanced.invokeMode') return 'perItem';
 				if (param === 'advanced') return fallback ?? {};
 				return undefined;
@@ -142,9 +141,9 @@ describe('MessageAnAgent Node', () => {
 	});
 
 	describe('prompt resolution', () => {
-		it('uses the text param when promptType is "define"', async () => {
+		it('uses the message param', async () => {
 			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
-			mockParams({ promptType: 'define', text: 'Process the refund' });
+			mockParams({ message: 'Process the refund' });
 			executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
 
 			await node.execute.call(executeFunctions);
@@ -157,38 +156,7 @@ describe('MessageAnAgent Node', () => {
 			);
 		});
 
-		it('reads chatInput from a connected chat trigger when promptType is "auto"', async () => {
-			executeFunctions.getInputData.mockReturnValue([{ json: { chatInput: 'hi from chat' } }]);
-			mockParams({ promptType: 'auto' });
-			executeFunctions.evaluateExpression.mockReturnValue('hi from chat');
-			executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
-
-			await node.execute.call(executeFunctions);
-
-			expect(executeFunctions.evaluateExpression).toHaveBeenCalledWith(
-				'{{ $json["chatInput"] }}',
-				0,
-			);
-			expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
-				expect.objectContaining({ agentId: 'agent-1' }),
-				'hi from chat',
-				'exec-123',
-				0,
-			);
-		});
-
-		it('does not fall back to the text param when "auto" yields no chatInput', async () => {
-			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
-			mockParams({ promptType: 'auto', text: 'tool-provided prompt' });
-			executeFunctions.evaluateExpression.mockReturnValue('');
-			executeFunctions.continueOnFail.mockReturnValue(false);
-			executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
-
-			await expect(node.execute.call(executeFunctions)).rejects.toThrow('Prompt cannot be empty');
-			expect(executeFunctions.executeAgent).not.toHaveBeenCalled();
-		});
-
-		it('reads the message param on a v1 node (prompt input is version-specific)', async () => {
+		it('reads the message param on a v1 node', async () => {
 			executeFunctions.getNode.mockReturnValue({
 				id: 'test-node-id',
 				name: 'Message an Agent',
@@ -214,7 +182,7 @@ describe('MessageAnAgent Node', () => {
 
 		it('throws NodeOperationError when the resolved prompt is empty', async () => {
 			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
-			mockParams({ promptType: 'define', text: '   ' });
+			mockParams({ message: '   ' });
 			executeFunctions.continueOnFail.mockReturnValue(false);
 
 			await expect(node.execute.call(executeFunctions)).rejects.toThrow(NodeOperationError);
@@ -227,8 +195,7 @@ describe('MessageAnAgent Node', () => {
 		executeFunctions.getNodeParameter.mockImplementation(
 			(param: string, itemIndex?: number, fallback?: unknown) => {
 				if (param === 'agentId') return { mode: 'id', value: `agent-${(itemIndex ?? 0) + 1}` };
-				if (param === 'promptType') return 'define';
-				if (param === 'text') return `Message ${(itemIndex ?? 0) + 1}`;
+				if (param === 'message') return `Message ${(itemIndex ?? 0) + 1}`;
 				if (param === 'advanced') return fallback ?? {};
 				if (param === 'advanced.invokeMode') return 'perItem';
 				return fallback as NodeParameterValueType;
@@ -282,7 +249,7 @@ describe('MessageAnAgent Node', () => {
 
 	it('should return error item instead of throwing when continueOnFail is true', async () => {
 		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
-		mockParams({ text: 'Hello' });
+		mockParams({ message: 'Hello' });
 		executeFunctions.continueOnFail.mockReturnValue(true);
 		executeFunctions.executeAgent.mockRejectedValue(new Error('Agent unavailable'));
 
@@ -306,7 +273,7 @@ describe('MessageAnAgent Node', () => {
 		};
 
 		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
-		mockParams({ agentId: { mode: 'list', value: 'agent-1' }, text: 'Structured query' });
+		mockParams({ agentId: { mode: 'list', value: 'agent-1' }, message: 'Structured query' });
 		executeFunctions.executeAgent.mockResolvedValue(structuredResult);
 
 		const result = await node.execute.call(executeFunctions);
@@ -428,8 +395,7 @@ describe('MessageAnAgent Node', () => {
 		executeFunctions.getNodeParameter.mockImplementation(
 			(param: string, _itemIndex?: number, fallback?: unknown) => {
 				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
-				if (param === 'promptType') return 'define';
-				if (param === 'text') return 'Summarize all items';
+				if (param === 'message') return 'Summarize all items';
 				if (param === 'advanced') return fallback ?? {};
 				if (param === 'advanced.invokeMode') return 'allItems';
 				if (param === 'allowOtherNodesData') return false;
@@ -462,8 +428,7 @@ describe('MessageAnAgent Node', () => {
 		executeFunctions.getNodeParameter.mockImplementation(
 			(param: string, _itemIndex?: number, fallback?: unknown) => {
 				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
-				if (param === 'promptType') return 'define';
-				if (param === 'text') return 'Summarize all items';
+				if (param === 'message') return 'Summarize all items';
 				if (param === 'advanced') return fallback ?? {};
 				return fallback as NodeParameterValueType;
 			},
@@ -487,8 +452,7 @@ describe('MessageAnAgent Node', () => {
 		executeFunctions.getNodeParameter.mockImplementation(
 			(param: string, _itemIndex?: number, fallback?: unknown) => {
 				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
-				if (param === 'promptType') return 'define';
-				if (param === 'text') return 'Hello';
+				if (param === 'message') return 'Hello';
 				if (param === 'advanced') return { allowOtherNodesData: true };
 				if (param === 'advanced.invokeMode') return 'perItem';
 				return fallback as NodeParameterValueType;
@@ -516,8 +480,7 @@ describe('MessageAnAgent Node', () => {
 		executeFunctions.getNodeParameter.mockImplementation(
 			(param: string, _itemIndex?: number, fallback?: unknown) => {
 				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
-				if (param === 'promptType') return 'define';
-				if (param === 'text') return 'Summarize all items';
+				if (param === 'message') return 'Summarize all items';
 				if (param === 'advanced') return fallback ?? {};
 				if (param === 'advanced.invokeMode') return 'allItems';
 				return fallback as NodeParameterValueType;
@@ -557,15 +520,13 @@ describe('MessageAnAgent versioning', () => {
 		expect(agentId?.type).toBe('agentSelector');
 	});
 
-	it('keeps the message field on v1 and the promptType source selector on v2', () => {
+	it('keeps the same message field on both versions', () => {
 		const v1Names = new MessageAnAgentV1(baseDescription).description.properties.map((p) => p.name);
 		expect(v1Names).toContain('message');
-		expect(v1Names).not.toContain('promptType');
-		expect(v1Names).not.toContain('text');
 
 		const v2Names = new MessageAnAgentV2(baseDescription).description.properties.map((p) => p.name);
-		expect(v2Names).toContain('promptType');
-		expect(v2Names).toContain('text');
-		expect(v2Names).not.toContain('message');
+		expect(v2Names).toContain('message');
+		expect(v2Names).not.toContain('promptType');
+		expect(v2Names).not.toContain('text');
 	});
 });

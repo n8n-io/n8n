@@ -81,8 +81,7 @@ async function onLinkClick() {
 				@click.prevent="onLinkClick"
 			>
 				{{ i18n.baseText('agentNode.ndv.banner.link') }}</button
-			><template v-else>{{ i18n.baseText('agentNode.ndv.banner.link') }}</template
-			>{{ i18n.baseText('agentNode.ndv.banner.suffix') }}
+			><template v-else>{{ i18n.baseText('agentNode.ndv.banner.link') }}</template>
 		</p>
 	</div>
 </template>

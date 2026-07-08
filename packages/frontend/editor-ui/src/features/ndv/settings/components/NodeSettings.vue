@@ -24,7 +24,6 @@ import NodeWebhooks from './NodeWebhooks.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import AgentNdvReferencedControls from '@/features/ndv/agents/components/AgentNdvReferencedControls.vue';
 import AgentNdvBuilderBanner from '@/features/ndv/agents/components/AgentNdvBuilderBanner.vue';
-import AgentNdvAdvancedSection from '@/features/ndv/agents/components/AgentNdvAdvancedSection.vue';
 import { NdvAgentConfigKey } from '@/features/ndv/agents/composables/useNdvAgentConfig';
 import { isAgentNodeV2 } from '@/features/agents/utils/agentNode';
 import get from 'lodash/get';
@@ -528,15 +527,6 @@ const ndvAgentConfig = inject(NdvAgentConfigKey, null);
 // v2-gated to match the canvas card: v1 nodes keep the raw NDV layout.
 const isAgentNode = computed(() => isAgentNodeV2(node.value));
 const showAgentNdvControls = computed(() => isAgentNode.value && ndvAgentConfig !== null);
-// The agent node's `advanced` collection is pulled out of the main parameter
-// list and rendered by `AgentNdvAdvancedSection` (a unified "Add option"
-// section combining it with agent-config settings) *below* the Agent section.
-const agentMainParams = computed(() =>
-	parametersByTab.value.params.filter((parameter) => parameter.name !== 'advanced'),
-);
-const agentAdvancedCollection = computed(
-	() => parametersByTab.value.params.find((parameter) => parameter.name === 'advanced') ?? null,
-);
 
 const iconSource = useNodeIconSource(nodeType, node);
 
@@ -805,7 +795,7 @@ function handleSelectAction(params: INodeParameters) {
 
 				<ParameterInputList
 					v-if="nodeValuesInitialized"
-					:parameters="showAgentNdvControls ? agentMainParams : parametersByTab.params"
+					:parameters="parametersByTab.params"
 					:hide-delete="true"
 					:node-values="nodeValues"
 					:is-read-only="isReadOnly"
@@ -835,14 +825,6 @@ function handleSelectAction(params: INodeParameters) {
 					/>
 				</ParameterInputList>
 				<AgentNdvReferencedControls v-if="showAgentNdvControls" :is-read-only="isReadOnly" />
-				<AgentNdvAdvancedSection
-					v-if="showAgentNdvControls && agentAdvancedCollection && nodeValuesInitialized"
-					:parameter="agentAdvancedCollection"
-					:node-values="nodeValues"
-					:is-read-only="isReadOnly"
-					@value-changed="valueChanged"
-					@parameter-blur="onParameterBlur"
-				/>
 				<div v-if="showNoParametersNotice" class="no-parameters">
 					<N8nText>
 						{{ i18n.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}

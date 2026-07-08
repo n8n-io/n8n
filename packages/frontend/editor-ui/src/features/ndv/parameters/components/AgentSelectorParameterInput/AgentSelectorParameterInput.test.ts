@@ -8,61 +8,30 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
-const { listAgentsPage, listAgentsPageGlobal, createAgent, getAgent } = vi.hoisted(() => ({
+const { listAgentsPage, listAgentsPageGlobal, getAgent } = vi.hoisted(() => ({
 	listAgentsPage: vi.fn(),
 	listAgentsPageGlobal: vi.fn(),
-	createAgent: vi.fn(),
 	getAgent: vi.fn(),
 }));
 
-const { upsertProjectAgentsListCache } = vi.hoisted(() => ({
-	upsertProjectAgentsListCache: vi.fn(),
-}));
-
-const { openBuilder } = vi.hoisted(() => ({ openBuilder: vi.fn() }));
-const { showError } = vi.hoisted(() => ({ showError: vi.fn() }));
-const { saveCurrentWorkflow } = vi.hoisted(() => ({ saveCurrentWorkflow: vi.fn() }));
 const { routerPush } = vi.hoisted(() => ({
 	routerPush: vi.fn(),
 }));
-
-const { canCreateHolder } = vi.hoisted(() => ({ canCreateHolder: { value: false } }));
 
 const flushPromises = async () => await new Promise(setImmediate);
 
 vi.mock('@/features/agents/composables/useAgentApi', () => ({
 	listAgentsPage,
 	listAgentsPageGlobal,
-	createAgent,
 	getAgent,
-}));
-
-vi.mock('@/features/agents/composables/useProjectAgentsList', () => ({
-	upsertProjectAgentsListCache,
-}));
-
-// Inline create deliberately stays in the workflow (no builder navigation, no
-// forced workflow save). This mock is a regression tripwire: the create test
-// asserts openBuilder/saveCurrentWorkflow are NOT called, guarding against
-// the old round-trip being reintroduced.
-vi.mock('@/features/agents/composables/useAgentNavigation', () => ({
-	useAgentNavigation: () => ({ openBuilder, openAgent: vi.fn(), rememberOrigin: vi.fn() }),
 }));
 
 vi.mock('@/app/composables/useDocumentVisibility', () => ({
 	useDocumentVisibility: () => ({ onDocumentVisible: vi.fn() }),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
-	useToast: () => ({ showError }),
-}));
-
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
-}));
-
-vi.mock('@/app/composables/useWorkflowSaving', () => ({
-	useWorkflowSaving: () => ({ saveCurrentWorkflow }),
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -76,10 +45,6 @@ vi.mock('vue-router', () => ({
 	}),
 	useRoute: () => ({ params: {} }),
 	RouterLink: vi.fn(),
-}));
-
-vi.mock('@/features/agents/composables/useAgentPermissions', () => ({
-	useAgentPermissions: () => ({ canCreate: canCreateHolder }),
 }));
 
 const renderComponent = createComponentRenderer(AgentSelectorParameterInput);
@@ -110,15 +75,9 @@ describe('AgentSelectorParameterInput', () => {
 		projectsStore.isTeamProjectFeatureEnabled = false;
 		projectsStore.currentProjectId = 'proj-1';
 
-		// Default to having create permission so the create-action flow tests
-		// see the action; the permission-gating test overrides this to false.
-		canCreateHolder.value = true;
-
 		listAgentsPage.mockResolvedValue({ count: 0, data: [] });
 		listAgentsPageGlobal.mockResolvedValue({ count: 0, data: [] });
-		createAgent.mockResolvedValue({ id: 'agent-9', name: 'New Agent', projectId: 'proj-1' });
 		getAgent.mockResolvedValue({ id: 'agent-1', name: 'Fresh Name', projectId: 'proj-1' });
-		saveCurrentWorkflow.mockResolvedValue(true);
 	});
 
 	afterEach(() => {
@@ -212,18 +171,9 @@ describe('AgentSelectorParameterInput', () => {
 		]);
 	});
 
-	it('shows the create-agent action', async () => {
-		const { getByTestId } = renderComponent({ props: makeProps() });
-		await flushPromises();
-
-		await userEvent.click(getByTestId('rlc-input'));
-		await flushPromises();
-
-		expect(getByTestId('rlc-item-add-resource')).toBeInTheDocument();
-	});
-
-	it('hides the create-agent action without create permission', async () => {
-		canCreateHolder.value = false;
+	// Inline agent creation from the picker is hidden until polished — the
+	// dropdown must not offer a create action.
+	it('does not render a create-agent action', async () => {
 		const { getByTestId, queryByTestId } = renderComponent({ props: makeProps() });
 		await flushPromises();
 
@@ -231,30 +181,6 @@ describe('AgentSelectorParameterInput', () => {
 		await flushPromises();
 
 		expect(queryByTestId('rlc-item-add-resource')).toBeNull();
-	});
-
-	it('eagerly creates a draft agent, references it on the node, and stays in the flow', async () => {
-		const { getByTestId, emitted } = renderComponent({ props: makeProps() });
-		await flushPromises();
-
-		await userEvent.click(getByTestId('rlc-input'));
-		await flushPromises();
-		await userEvent.click(getByTestId('rlc-item-add-resource'));
-		await flushPromises();
-
-		expect(createAgent).toHaveBeenCalledWith(expect.anything(), 'proj-1', 'New Agent');
-		expect(upsertProjectAgentsListCache).toHaveBeenCalledWith(
-			'proj-1',
-			expect.objectContaining({ id: 'agent-9' }),
-		);
-		expect(emitted()['update:modelValue']?.[0]).toEqual([
-			{ __rl: true, value: 'agent-9', mode: 'list', cachedResultName: 'New Agent' },
-		]);
-		// Hosts (the canvas card) react to this — e.g. by opening the NDV.
-		expect(emitted().agentCreated).toHaveLength(1);
-		// The user is NOT taken to the Agent Builder; editing continues in place.
-		expect(openBuilder).not.toHaveBeenCalled();
-		expect(saveCurrentWorkflow).not.toHaveBeenCalled();
 	});
 
 	it('heals a stale cached name by re-fetching the agent on mount', async () => {
@@ -284,37 +210,6 @@ describe('AgentSelectorParameterInput', () => {
 		await flushPromises();
 
 		expect(emitted()['update:modelValue']).toBeUndefined();
-	});
-
-	it('surfaces an error and references nothing when creation fails', async () => {
-		createAgent.mockRejectedValueOnce(new Error('boom'));
-
-		const { getByTestId, emitted } = renderComponent({ props: makeProps() });
-		await flushPromises();
-
-		await userEvent.click(getByTestId('rlc-input'));
-		await flushPromises();
-		await userEvent.click(getByTestId('rlc-item-add-resource'));
-		await flushPromises();
-
-		expect(showError).toHaveBeenCalled();
-		expect(emitted().agentCreated).toBeUndefined();
-	});
-
-	it('surfaces an error and creates nothing when no project is in context', async () => {
-		projectsStore.currentProjectId = undefined;
-		projectsStore.personalProject = undefined as any;
-
-		const { getByTestId } = renderComponent({ props: makeProps() });
-		await flushPromises();
-
-		await userEvent.click(getByTestId('rlc-input'));
-		await flushPromises();
-		await userEvent.click(getByTestId('rlc-item-add-resource'));
-		await flushPromises();
-
-		expect(showError).toHaveBeenCalled();
-		expect(createAgent).not.toHaveBeenCalled();
 	});
 
 	it('shows an error with retry that re-fetches the catalog', async () => {

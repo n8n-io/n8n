@@ -128,12 +128,6 @@ function onPickAgent(value: INodeParameterResourceLocator) {
 	emit('update', { agentId: value });
 }
 
-// A fresh draft was inline-created and referenced — open the NDV so the user
-// keeps configuring it in place.
-function onAgentCreated() {
-	emit('activate', id.value);
-}
-
 function onActivate(event: MouseEvent) {
 	if (isConfigured.value) {
 		emit('activate', id.value, event);
@@ -229,7 +223,6 @@ watch(
 							input-size="medium"
 							hide-mode-selector
 							@update:model-value="onPickAgent"
-							@agent-created="onAgentCreated"
 						/>
 					</div>
 				</div>

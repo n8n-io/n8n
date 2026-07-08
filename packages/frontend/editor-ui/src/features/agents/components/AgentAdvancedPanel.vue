@@ -55,37 +55,16 @@ const SEARCH_CONTEXT_SIZE_OPTIONS = ['low', 'medium', 'high'] as const;
 type SearchContextSize = (typeof SEARCH_CONTEXT_SIZE_OPTIONS)[number];
 type WebSearchSelectValue = 'off' | WebSearchMethod;
 
-export type AgentAdvancedPanelField =
-	| 'webSearch'
-	| 'thinking'
-	| 'toolCallConcurrency'
-	| 'maxIterations';
-
 const props = withDefaults(
-	defineProps<{
-		config: AgentJsonConfig | null;
-		disabled?: boolean;
-		collapsible?: boolean;
-		/**
-		 * Render only the listed fields, without the panel header — for hosts that
-		 * surface individual knobs (the NDV's Advanced section). Unset renders the
-		 * full builder panel.
-		 */
-		fields?: AgentAdvancedPanelField[];
-	}>(),
+	defineProps<{ config: AgentJsonConfig | null; disabled?: boolean; collapsible?: boolean }>(),
 	{
 		disabled: false,
 		collapsible: false,
-		fields: undefined,
 	},
 );
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
 const isExpanded = ref(!props.collapsible);
-
-function showField(field: AgentAdvancedPanelField) {
-	return !props.fields || props.fields.includes(field);
-}
 
 const provider = computed(() => parseProvider(props.config?.model));
 const capabilities = computed(() => PROVIDER_CAPABILITIES[provider.value] ?? DEFAULT_CAPABILITIES);
@@ -419,7 +398,6 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 		data-testid="agent-behavior-panel"
 	>
 		<button
-			v-if="!props.fields"
 			type="button"
 			:class="[$style.header, { [$style.collapsibleHeader]: props.collapsible }]"
 			:aria-expanded="isExpanded"
@@ -439,7 +417,7 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 			/>
 		</button>
 		<div v-show="isExpanded" :class="$style.content" data-testid="agent-advanced-content">
-			<div v-if="showField('webSearch')" :class="$style.settingGroup">
+			<div :class="$style.settingGroup">
 				<div :class="$style.row">
 					<div :class="$style.rowLabel">
 						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
@@ -593,7 +571,7 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 				</div>
 			</div>
 
-			<div v-if="showField('thinking')" :class="$style.settingGroup">
+			<div :class="$style.settingGroup">
 				<div :class="$style.row">
 					<div :class="$style.rowLabel">
 						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
@@ -666,10 +644,7 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 				</div>
 			</div>
 
-			<div
-				v-if="!props.fields && capabilities.promptCaching === 'ttl'"
-				:class="$style.settingGroup"
-			>
+			<div v-if="capabilities.promptCaching === 'ttl'" :class="$style.settingGroup">
 				<div :class="$style.row">
 					<div :class="$style.rowLabel">
 						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
@@ -697,7 +672,7 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 				</div>
 			</div>
 
-			<div v-if="showField('toolCallConcurrency')" :class="$style.row">
+			<div :class="$style.row">
 				<div :class="$style.rowLabel">
 					<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 						i18n.baseText('agents.builder.advanced.concurrency.label')
@@ -718,7 +693,7 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 				/>
 			</div>
 
-			<div v-if="showField('maxIterations')" :class="$style.row">
+			<div :class="$style.row">
 				<div :class="$style.rowLabel">
 					<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 						i18n.baseText('agents.builder.advanced.maxIterations.label')

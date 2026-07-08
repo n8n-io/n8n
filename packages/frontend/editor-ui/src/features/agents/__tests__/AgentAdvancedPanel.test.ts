@@ -471,39 +471,4 @@ describe('AgentAdvancedPanel', () => {
 		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
 		expect(last.config?.toolCallConcurrency).toBe(5);
 	});
-
-	describe('fields allowlist', () => {
-		it('renders only the allow-listed field', () => {
-			const wrapper = mount(AgentAdvancedPanel, {
-				props: { config: makeConfig(), fields: ['maxIterations'] },
-				global: { stubs: globalStubs },
-			});
-
-			expect(wrapper.find('[data-testid="agent-max-iterations-input"]').exists()).toBe(true);
-			expect(wrapper.find('[data-testid="agent-web-search-method"]').exists()).toBe(false);
-			expect(wrapper.find('[data-testid="agent-thinking-toggle"]').exists()).toBe(false);
-			expect(wrapper.find('[data-testid="agent-concurrency-input"]').exists()).toBe(false);
-		});
-
-		it('omits the panel header when fields are set (host provides the section chrome)', () => {
-			const wrapper = mount(AgentAdvancedPanel, {
-				props: { config: makeConfig(), fields: ['webSearch'] },
-				global: { stubs: globalStubs },
-			});
-			expect(wrapper.find('[data-testid="agent-advanced-trigger"]').exists()).toBe(false);
-		});
-
-		it('keeps the full panel and title without fields', () => {
-			const wrapper = mount(AgentAdvancedPanel, {
-				props: { config: makeConfig() },
-				global: { stubs: globalStubs },
-			});
-
-			expect(wrapper.find('[data-testid="agent-advanced-trigger"]').exists()).toBe(true);
-			expect(wrapper.find('[data-testid="agent-web-search-method"]').exists()).toBe(true);
-			expect(wrapper.find('[data-testid="agent-thinking-toggle"]').exists()).toBe(true);
-			expect(wrapper.find('[data-testid="agent-concurrency-input"]').exists()).toBe(true);
-			expect(wrapper.find('[data-testid="agent-max-iterations-input"]').exists()).toBe(true);
-		});
-	});
 });

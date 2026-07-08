@@ -20,8 +20,6 @@ import { useResourceLocatorModes } from '../../composables/useResourceLocatorMod
 import { useAgentResourcesLocator } from '../../composables/useAgentResourcesLocator';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useAgentScopeProjectId } from '@/features/agents/composables/useAgentScopeProjectId';
-import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
-import { useAgentCreate } from '@/features/agents/composables/useAgentCreate';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants';
@@ -39,7 +37,6 @@ export interface Props {
 	forceShowExpression?: boolean;
 	parameterIssues?: string[];
 	parameter: INodeProperties;
-	newResourceLabel?: string;
 	/**
 	 * Hide the list/ID mode selector and render the list picker on its own. Used
 	 * on the canvas card, where the agent is always picked from the list.
@@ -54,7 +51,6 @@ const props = withDefaults(defineProps<Props>(), {
 	isReadOnly: false,
 	forceShowExpression: false,
 	expressionDisplayValue: '',
-	newResourceLabel: '',
 	parameterIssues: () => [],
 	hideModeSelector: false,
 });
@@ -65,8 +61,6 @@ const emit = defineEmits<{
 	modalOpenerClick: [];
 	focus: [];
 	blur: [];
-	/** A draft agent was inline-created and referenced via `update:modelValue`. */
-	agentCreated: [];
 }>();
 
 const i18n = useI18n();
@@ -85,8 +79,8 @@ const width = ref(0);
 const projectId = useAgentScopeProjectId();
 
 // Resolve a project by id from the stores the picker already has loaded, so the
-// "+ Create agent" label and the per-agent subtitle stay consistent with the
-// `projectId` the catalog is scoped to.
+// per-agent subtitle stays consistent with the `projectId` the catalog is
+// scoped to.
 function findProject(id: string) {
 	if (!id) return null;
 	if (projectStore.currentProject?.id === id) return projectStore.currentProject;
@@ -124,40 +118,6 @@ const { isListMode, getUpdatedModePayload, selectedMode, supportedModes, getMode
 const { hideDropdown, isDropdownVisible, showDropdown } = useResourceLocatorDropdown(
 	isListMode,
 	inputRef,
-);
-
-// Show "Create agent" only when the user can create one in the scoped project
-// (project/global agent:create scope).
-const { canCreate } = useAgentPermissions(projectId);
-
-const currentProjectName = computed(() => {
-	if (!projectStore.isTeamProjectFeatureEnabled) return '';
-
-	const project = findProject(projectId.value);
-	if (!project || project.type === 'personal') {
-		return `'${i18n.baseText('projects.menu.personal')}'`;
-	}
-
-	return `'${project.name}'`;
-});
-
-const getCreateResourceLabel = computed(() => {
-	if (props.newResourceLabel) {
-		return props.newResourceLabel;
-	}
-
-	if (!currentProjectName.value) {
-		return i18n.baseText('agentSelector.createNewAgent.noProject');
-	}
-
-	return i18n.baseText('agentSelector.createNewAgent', {
-		interpolate: { projectName: currentProjectName.value },
-	});
-});
-
-// Surfaced whenever the user has create permission (NDV + canvas card alike).
-const newResourceOptions = computed(() =>
-	canCreate.value ? { label: getCreateResourceLabel.value } : {},
 );
 
 const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
@@ -248,32 +208,6 @@ function onKeyDown(e: KeyboardEvent) {
 	}
 }
 
-const inlineCreate = useAgentCreate({
-	projectId,
-	telemetrySource: 'node_picker',
-	setReference: (agent) => {
-		emit('update:modelValue', {
-			__rl: true,
-			value: agent.id,
-			mode: selectedMode.value,
-			cachedResultName: agent.name,
-		});
-	},
-	onCreated: () => {
-		// Keep the picker's own list consistent if it is reopened.
-		void setAgentsResources();
-		// Hosts outside the NDV (the canvas card) open the NDV on this, so the
-		// user keeps configuring the fresh draft inline instead of being taken
-		// to the Agent Builder.
-		emit('agentCreated');
-	},
-});
-
-async function onAddResourceClicked() {
-	hideDropdown();
-	await inlineCreate.createAndSelect();
-}
-
 // Heal a stale `cachedResultName` (e.g. the agent was renamed in the builder) by
 // re-fetching its current name and re-emitting the reference. Mirrors the
 // sub-workflow picker's refreshCachedWorkflow.
@@ -352,7 +286,6 @@ defineExpose({ showDropdown });
 			:filter="searchFilter"
 			:has-more="hasMoreAgentsToLoad"
 			:error-view="!!loadError"
-			:allow-new-resources="newResourceOptions"
 			:width="width"
 			:event-bus="eventBus"
 			:model-value="modelValue"
@@ -360,7 +293,6 @@ defineExpose({ showDropdown });
 			@update:model-value="onListItemSelected"
 			@filter="onSearchFilter"
 			@load-more="loadMore"
-			@add-resource-click="onAddResourceClicked"
 		>
 			<template #error>
 				<div :class="$style.errorContainer" data-test-id="rlc-error-container">

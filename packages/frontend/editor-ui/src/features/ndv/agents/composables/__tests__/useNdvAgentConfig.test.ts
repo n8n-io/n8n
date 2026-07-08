@@ -26,13 +26,6 @@ vi.mock('@/features/agents/composables/useAgentApi', () => ({
 	updateAgentConfig: (...args: unknown[]) => updateAgentConfigMock(...args),
 }));
 
-// Permissions are gated externally; expose a mutable ref so a test can flip
-// `canUpdate` and assert the autosave gate.
-const canUpdateRef = ref(true);
-vi.mock('@/features/agents/composables/useAgentPermissions', () => ({
-	useAgentPermissions: () => ({ canUpdate: canUpdateRef }),
-}));
-
 // `useAgentCapabilitiesActions` pulls in UI/nodeTypes stores + i18n we don't
 // exercise here; stub it so the composable's own read/autosave loop is the SUT.
 vi.mock('@/features/agents/composables/useAgentCapabilitiesActions', () => ({
@@ -139,7 +132,6 @@ describe('useNdvAgentConfig', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
 		setActivePinia(createTestingPinia());
-		canUpdateRef.value = true;
 		getAgentMock.mockReset().mockResolvedValue(makeAgent());
 		getAgentConfigMock.mockReset().mockResolvedValue(makeConfig());
 		updateAgentConfigMock.mockReset().mockResolvedValue({ config: makeConfig(), versionId: 'v2' });
@@ -266,77 +258,23 @@ describe('useNdvAgentConfig', () => {
 		expect(api.localConfig.value?.instructions).toBe('config-agent-B');
 	});
 
-	it('does not repopulate the working copy when the previous agent’s flushed save lands mid-switch', async () => {
-		let resolveB: (value: ReturnType<typeof makeConfig>) => void = () => {};
-		getAgentConfigMock.mockImplementation(async (_ctx, _pid, aid: string) => {
-			if (aid === 'agent-B') {
-				return await new Promise<ReturnType<typeof makeConfig>>((resolve) => (resolveB = resolve));
-			}
-			return makeConfig({ instructions: `config-${aid}` });
-		});
-		getAgentMock.mockImplementation(async (_ctx, _pid, aid: string) =>
-			makeAgent({ id: aid, name: `agent-${aid}` }),
-		);
-		updateAgentConfigMock.mockResolvedValue({
-			config: makeConfig({ instructions: 'saved-config-agent-A' }),
-			versionId: 'v3',
-		});
-
-		const node = ref<INodeUi | null>(makeAgentNode('agent-A'));
-		const { api } = mountComposable(node);
-		await flushPromises();
-
-		// Leave an edit pending on A, then switch — the watcher flushes it.
-		api.scheduleConfigUpdate({ instructions: 'pending edit on A' });
-		node.value = makeAgentNode('agent-B');
-		await flushPromises();
-
-		// A's flushed save landed, addressed to A — but its response must
-		// resolve as stale and must NOT repopulate the working copy through the
-		// config watcher while B's fetch is still in flight.
-		expect(updateAgentConfigMock.mock.calls[0][2]).toBe('agent-A');
-		expect(updateAgentConfigMock.mock.calls[0][3]).toEqual(
-			expect.objectContaining({ instructions: 'pending edit on A' }),
-		);
-		expect(api.localConfig.value).toBeNull();
-
-		resolveB(makeConfig({ instructions: 'config-agent-B' }));
-		await flushPromises();
-		expect(api.localConfig.value?.instructions).toBe('config-agent-B');
-	});
-
-	it('does not schedule a save when canUpdate is false', async () => {
-		canUpdateRef.value = false;
+	// NDV agent editing is hidden until polished: `canUpdate` is hard-off, so no
+	// edit path may ever reach the write API — even for users with agent:update.
+	it('reports canUpdate=false and never schedules a save', async () => {
 		const node = ref<INodeUi | null>(makeAgentNode('agent-1'));
 		const { api } = mountComposable(node);
 		await flushPromises();
+
+		expect(api.canUpdate.value).toBe(false);
 
 		api.scheduleConfigUpdate({ instructions: 'edited while read-only' });
 		await vi.advanceTimersByTimeAsync(1000);
+		await api.flush();
 		await flushPromises();
 
 		expect(updateAgentConfigMock).not.toHaveBeenCalled();
-	});
-
-	it('debounces + saves the merged config when canUpdate is true', async () => {
-		const node = ref<INodeUi | null>(makeAgentNode('agent-1'));
-		const { api } = mountComposable(node);
-		await flushPromises();
-
-		api.scheduleConfigUpdate({ instructions: 'edited' });
-		// Nothing before the debounce window elapses.
-		expect(updateAgentConfigMock).not.toHaveBeenCalled();
-
-		await vi.advanceTimersByTimeAsync(500);
-		await flushPromises();
-
-		expect(updateAgentConfigMock).toHaveBeenCalledTimes(1);
-		expect(updateAgentConfigMock).toHaveBeenCalledWith(
-			expect.anything(),
-			PROJECT_ID,
-			'agent-1',
-			expect.objectContaining({ instructions: 'edited' }),
-		);
+		// The working copy is untouched too — the guard rejects the edit outright.
+		expect(api.localConfig.value?.instructions).toBe('Help the user.');
 	});
 
 	// NOTE (case #6, stale save): The composable's `agentId` watcher awaits
@@ -378,38 +316,6 @@ describe('useNdvAgentConfig', () => {
 		expect(config.value).toEqual(expect.objectContaining({ instructions: 'config-B' }));
 	});
 
-	it('a save that lands after an agent switch does not pollute the newly-loaded agent', async () => {
-		let resolveSave: (v: { config: AgentJsonConfig; versionId: string | null }) => void = () => {};
-		updateAgentConfigMock.mockImplementation(
-			async () =>
-				await new Promise<{ config: AgentJsonConfig; versionId: string | null }>((resolve) => {
-					resolveSave = resolve;
-				}),
-		);
-
-		const node = ref<INodeUi | null>(makeAgentNode('agent-A'));
-		const { api } = mountComposable(node);
-		await flushPromises();
-
-		// Schedule + fire a save for agent-A that stays in flight.
-		api.scheduleConfigUpdate({ instructions: 'A edit' });
-		await vi.advanceTimersByTimeAsync(500);
-		await flushPromises();
-
-		// Switch to agent-B. The watcher flushes A first (awaits the in-flight
-		// save), so let it resolve; only then does B load.
-		getAgentConfigMock.mockResolvedValue(makeConfig({ instructions: 'config-B' }));
-		getAgentMock.mockResolvedValue(makeAgent({ id: 'agent-B', name: 'agent-B' }));
-		node.value = makeAgentNode('agent-B');
-		await flushPromises();
-		resolveSave({ config: makeConfig({ instructions: 'A late write' }), versionId: 'late-v' });
-		await flushPromises();
-
-		// B's state wins — the late agent-A save never leaked onto it.
-		expect(api.agent.value?.id).toBe('agent-B');
-		expect(api.localConfig.value?.instructions).toBe('config-B');
-	});
-
 	it('marks the config unavailable and stops autosaving after a 404 on load', async () => {
 		getAgentConfigMock.mockRejectedValue({ httpStatusCode: 404 });
 		getAgentMock.mockRejectedValue({ httpStatusCode: 404 });
@@ -425,25 +331,6 @@ describe('useNdvAgentConfig', () => {
 		await vi.advanceTimersByTimeAsync(1000);
 		await flushPromises();
 
-		expect(updateAgentConfigMock).not.toHaveBeenCalled();
-	});
-
-	it('marks the config unavailable after a 403 on save', async () => {
-		const node = ref<INodeUi | null>(makeAgentNode('agent-1'));
-		const { api } = mountComposable(node);
-		await flushPromises();
-
-		updateAgentConfigMock.mockRejectedValue({ response: { status: 403 } });
-		api.scheduleConfigUpdate({ instructions: 'edit' });
-		await vi.advanceTimersByTimeAsync(500);
-		await flushPromises();
-
-		expect(api.isUnavailable.value).toBe(true);
-		// Autosave now short-circuits.
-		updateAgentConfigMock.mockClear();
-		api.scheduleConfigUpdate({ instructions: 'edit again' });
-		await vi.advanceTimersByTimeAsync(500);
-		await flushPromises();
 		expect(updateAgentConfigMock).not.toHaveBeenCalled();
 	});
 
@@ -473,29 +360,6 @@ describe('useNdvAgentConfig', () => {
 		expect(getAgentConfigMock).not.toHaveBeenCalled();
 	});
 
-	it('emits agentUpdated after a config save, and ignores its own emission', async () => {
-		const node = ref<INodeUi | null>(makeAgentNode('agent-1'));
-		const { api } = mountComposable(node);
-		await flushPromises();
-
-		const received: Array<{ agentId?: string; source?: string } | undefined> = [];
-		const listener = (event?: { agentId?: string; source?: string }) => received.push(event);
-		agentsEventBus.on('agentUpdated', listener);
-		getAgentConfigMock.mockClear();
-
-		api.scheduleConfigUpdate({ instructions: 'edit' });
-		await vi.advanceTimersByTimeAsync(500);
-		await flushPromises();
-
-		agentsEventBus.off('agentUpdated', listener);
-
-		// Canvas cards (and other surfaces) are notified about the write...
-		expect(received).toEqual([{ agentId: 'agent-1', source: expect.stringContaining('ndv') }]);
-		// ...but the emitter must not reload itself: that would overwrite
-		// `localConfig` with the just-saved snapshot, dropping in-flight edits.
-		expect(getAgentConfigMock).not.toHaveBeenCalled();
-	});
-
 	it('stops reacting to agentUpdated once the host component unmounts', async () => {
 		const node = ref<INodeUi | null>(makeAgentNode('agent-1'));
 		const { wrapper } = mountComposable(node);
@@ -507,23 +371,5 @@ describe('useNdvAgentConfig', () => {
 		await flushPromises();
 
 		expect(getAgentConfigMock).not.toHaveBeenCalled();
-	});
-
-	it('flush() persists a pending edit without advancing the debounce timer', async () => {
-		const node = ref<INodeUi | null>(makeAgentNode('agent-1'));
-		const { api } = mountComposable(node);
-		await flushPromises();
-
-		api.scheduleConfigUpdate({ instructions: 'pending edit' });
-		// Do NOT advance timers — flush should fire the save straight away.
-		await api.flush();
-
-		expect(updateAgentConfigMock).toHaveBeenCalledTimes(1);
-		expect(updateAgentConfigMock).toHaveBeenCalledWith(
-			expect.anything(),
-			PROJECT_ID,
-			'agent-1',
-			expect.objectContaining({ instructions: 'pending edit' }),
-		);
 	});
 });

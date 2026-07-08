@@ -20,7 +20,6 @@ import { useAgentScopeProjectId } from '@/features/agents/composables/useAgentSc
 import { getAgent, updateAgentSkill } from '@/features/agents/composables/useAgentApi';
 import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
 import { useAgentConfigAutosave } from '@/features/agents/composables/useAgentConfigAutosave';
-import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import { useAgentNavigation } from '@/features/agents/composables/useAgentNavigation';
 import {
 	useAgentCapabilitiesActions,
@@ -91,7 +90,10 @@ export function useNdvAgentConfig(
 		return '';
 	});
 
-	const { canUpdate } = useAgentPermissions(projectId);
+	// Agent editing inside the NDV is hidden until polished: render the
+	// referenced agent read-only regardless of the user's agent:update scope.
+	// Restore `useAgentPermissions(projectId).canUpdate` to re-enable.
+	const canUpdate = computed(() => false);
 
 	const { config, loading, repoint, fetchConfig, updateConfig } = useAgentConfig();
 	const localConfig = ref<AgentJsonConfig | null>(null);

@@ -158,7 +158,6 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 				CommunityNodeUpdateInfo: true,
 				AgentNdvBuilderBanner: true,
 				AgentNdvReferencedControls: true,
-				AgentNdvAdvancedSection: true,
 			},
 		},
 	})({
@@ -221,7 +220,7 @@ describe('NodeSettings', () => {
 			[NdvAgentConfigKey as symbol]: {} as UseNdvAgentConfigReturn,
 		};
 
-		it('renders the banner, Agent section and Advanced section on the Parameters tab', async () => {
+		it('renders the banner and Agent section on the Parameters tab', async () => {
 			const { container } = renderNodeSettings({
 				node: agentNode,
 				nodeType: agentNodeType,
@@ -231,7 +230,6 @@ describe('NodeSettings', () => {
 			await waitFor(() => {
 				expect(container.querySelector('agent-ndv-builder-banner-stub')).not.toBeNull();
 				expect(container.querySelector('agent-ndv-referenced-controls-stub')).not.toBeNull();
-				expect(container.querySelector('agent-ndv-advanced-section-stub')).not.toBeNull();
 			});
 		});
 
@@ -244,7 +242,6 @@ describe('NodeSettings', () => {
 			await findByTestId('tab-params');
 			expect(container.querySelector('agent-ndv-builder-banner-stub')).toBeNull();
 			expect(container.querySelector('agent-ndv-referenced-controls-stub')).toBeNull();
-			expect(container.querySelector('agent-ndv-advanced-section-stub')).toBeNull();
 		});
 
 		it('renders no agent surfaces for a non-agent node', async () => {
@@ -253,7 +250,6 @@ describe('NodeSettings', () => {
 			await findByTestId('tab-params');
 			expect(container.querySelector('agent-ndv-builder-banner-stub')).toBeNull();
 			expect(container.querySelector('agent-ndv-referenced-controls-stub')).toBeNull();
-			expect(container.querySelector('agent-ndv-advanced-section-stub')).toBeNull();
 		});
 	});
 });
