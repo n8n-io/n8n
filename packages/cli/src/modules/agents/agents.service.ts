@@ -1,3 +1,4 @@
+import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import {
 	type AgentCapabilitySummary,
 	type AgentCapabilityTool,
@@ -16,7 +17,6 @@ import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentTestChatService } from './agent-test-chat.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
-import { splitModelId } from './json-config/model-id';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
