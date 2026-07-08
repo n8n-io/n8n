@@ -323,7 +323,6 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 							:project-id="projectId"
 							:warn-missing-credentials="true"
 							:disabled="disabled"
-							horizontal
 							:data-testid="`agent-sub-agents-difficulty-${difficulty}-model`"
 							@change="(selection) => onDifficultyModelChange(difficulty, selection)"
 							@select-credential="

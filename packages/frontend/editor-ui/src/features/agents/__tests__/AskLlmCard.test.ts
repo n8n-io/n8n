@@ -70,7 +70,6 @@ vi.mock('../components/AgentModelSelector.vue', () => ({
 			'modelsByProvider',
 			'isLoading',
 			'warnMissingCredentials',
-			'horizontal',
 		],
 		emits: ['change', 'select-credential'],
 		setup(_props: unknown, { emit }: { emit: (event: string, payload: unknown) => void }) {

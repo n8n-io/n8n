@@ -184,7 +184,6 @@ function onInstructionsInput(value: string) {
 				:is-loading="isLoading"
 				:project-id="projectId"
 				:warn-missing-credentials="true"
-				horizontal
 				data-testid="agent-model-selector"
 				@change="onModelChange"
 				@select-credential="onSelectCredential"

@@ -619,6 +619,18 @@ export type {
 	ProjectSummary,
 	FolderSummary,
 	ServiceProxyConfig,
+	InstanceAiAgentBuilderService,
+	AgentConfigSnapshot,
+	AgentBuilderSkill,
+	ChatIntegrationInfo,
+	ProjectAgentSummary,
+	AgentModelOption,
+	ModelLookupConfig,
+	McpServerSearchResult,
+	McpServerVerifyParams,
+	McpServerVerifyResult,
+	AttachableWorkflow,
+	ResolveResourceLocatorParams,
 } from './types';
 export type {
 	OrchestratorRunHandoffReason,

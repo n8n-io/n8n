@@ -10,6 +10,8 @@ import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
 import { assignCredentialToNode, resolveCredentialForApply } from './credential-utils';
+import { reconcileSimulationPlan } from './reconcile-simulation-plan';
+import { buildCredentialMap } from './resolve-credentials';
 import { refreshWorkflowSourceFileBindingFromSave } from './workflow-file-bindings';
 import type { OrchestrationContext } from '../../types';
 
@@ -95,13 +97,27 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 				};
 			}
 
-			// Clear verification context from the build outcome
-			await context.workflowTaskService.updateBuildOutcome(input.workItemId, {
-				mockedCredentialsByNode: undefined,
-				verificationPinData: undefined,
-				mockedNodeNames: undefined,
-				mockedCredentialTypes: undefined,
-			});
+			// Refresh the simulation plan so the next verification executes the
+			// now-credentialed nodes instead of replaying the build-time mock.
+			// Best-effort: verify-built-workflow reconciles again on its own.
+			try {
+				const availableCredentials = await buildCredentialMap(
+					context.domainContext.credentialService,
+				);
+				const patch = await reconcileSimulationPlan({
+					buildOutcome,
+					workflow: json,
+					availableCredentials,
+				});
+				if (patch) {
+					await context.workflowTaskService.updateBuildOutcome(input.workItemId, {
+						...patch,
+						verificationPinData: undefined,
+					});
+				}
+			} catch {
+				// intentional: plan refresh is advisory
+			}
 
 			return { success: true, appliedNodes };
 		})

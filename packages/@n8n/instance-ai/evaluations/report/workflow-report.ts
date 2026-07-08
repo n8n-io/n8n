@@ -1599,17 +1599,17 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	<div class="stat-card">
 		<div class="label">Failed</div>
 		<div class="value${failCount > 0 ? ' fail' : ''}">${String(failCount)}</div>
-	</div>${
-		noVerdictCount > 0
-			? `
-	<div class="stat-card">
-		<div class="label">No verdict</div>
-		<div class="value">${String(noVerdictCount)}</div>
-	</div>`
-			: ''
-	}
-	<div class="stat-card">
-		<div class="label">Checked/Built</div>
+		</div>${
+			noVerdictCount > 0
+				? `
+		<div class="stat-card">
+			<div class="label">No verdict</div>
+			<div class="value">${String(noVerdictCount)}</div>
+		</div>`
+				: ''
+		}
+		<div class="stat-card">
+			<div class="label">Checked/Built</div>
 		<div class="value${checkedOrBuiltCount === totalTestCases ? ' pass' : ' mixed'}">${String(checkedOrBuiltCount)}/${String(totalTestCases)}</div>
 	</div>
 </div>

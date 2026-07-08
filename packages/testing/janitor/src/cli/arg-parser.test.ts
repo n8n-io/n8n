@@ -198,21 +198,15 @@ describe('arg-parser', () => {
 			expect(result.testCommand).toBe('pnpm test');
 		});
 
-		it('parses --jest-variant=unit', () => {
-			setArgs(['--jest-variant=unit']);
+		it('parses --runner=vitest', () => {
+			setArgs(['--runner=vitest']);
 			const result = parseArgs();
-			expect(result.jestVariant).toBe('unit');
+			expect(result.runner).toBe('vitest');
 		});
 
-		it('parses --jest-variant=integration', () => {
-			setArgs(['--jest-variant=integration']);
-			const result = parseArgs();
-			expect(result.jestVariant).toBe('integration');
-		});
-
-		it('throws on unknown --jest-variant value', () => {
-			setArgs(['--jest-variant=e2e']);
-			expect(() => parseArgs()).toThrow(/Unknown --jest-variant=e2e/);
+		it('throws on unknown --runner value', () => {
+			setArgs(['--runner=jest']);
+			expect(() => parseArgs()).toThrow(/Unknown --runner=jest/);
 		});
 	});
 

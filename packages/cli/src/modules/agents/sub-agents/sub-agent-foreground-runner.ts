@@ -10,6 +10,7 @@ import {
 } from '@n8n/agents';
 import type { ResolvedSubAgentSource, SubAgentSpawnRequest } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -29,6 +30,12 @@ export interface SubAgentForegroundRunContext {
 	executionCounter?: AgentExecutionCounter;
 	/** Parent run's abort signal — cancelling the parent cancels this child. */
 	abortSignal?: AbortSignal;
+	/**
+	 * Interactive n8n user of the delegating parent run; used to filter the
+	 * sub-agent's node/workflow tools by their access. Absent when the parent
+	 * is a published/integration run.
+	 */
+	user?: User;
 }
 
 export interface SubAgentForegroundResult {
@@ -91,6 +98,7 @@ export class SubAgentForegroundRunner {
 			skills: runtimeSource.skills,
 			runtimeProfile: 'sub-agent',
 			parentAgentIdForDelegation: context.parentAgentId,
+			user: context.user,
 		});
 
 		// Abort the child when the parent run is cancelled.
