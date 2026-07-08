@@ -568,6 +568,74 @@ describe('createScheduler pass timeout and overlap', () => {
 		await stopping;
 	});
 
+	it('stop aborts an in-flight pass at its next checkpoint, without reporting a failure', async () => {
+		// The materializer's claim hangs across the shutdown.
+		let resolveClaim!: (claimed: { now: Date; jobs: ScheduledJob[] }) => void;
+		const tx = mock<MaterializerTransaction>();
+		tx.claimDueJobs.mockImplementation(
+			async () =>
+				await new Promise((resolve) => {
+					resolveClaim = resolve;
+				}),
+		);
+		const materializerTransaction: RunInTransaction = async (work) => await work(tx);
+		const { scheduler, onEvent } = makeScheduler({ materializerTransaction });
+
+		scheduler.start();
+		await vi.advanceTimersByTimeAsync(5000);
+		expect(tx.claimDueJobs).toHaveBeenCalledTimes(1);
+
+		// stop aborts the pass; when its claim resolves, the abort checkpoint
+		// throws inside the transaction (rolling it back) and stop completes.
+		const stopping = scheduler.stop();
+		resolveClaim({ now: new Date('2026-01-01T00:00:00.000Z'), jobs: [] });
+		await stopping;
+
+		expect(tx.recordOccurrences).not.toHaveBeenCalled();
+		expect(onEvent).not.toHaveBeenCalledWith(expect.objectContaining({ level: 'error' }));
+	});
+
+	it('hands back an executor claim that resolves after its pass was abandoned', async () => {
+		const { scheduler, taskStore, onEvent } = makeScheduler({
+			lifecycle: { executorIntervalSeconds: 10, executorTimeoutSeconds: 2 },
+		});
+		scheduler.registerTaskHandler('test-task', { execute: vi.fn() });
+		// The claim hangs (slow storage) past the pass timeout.
+		let resolveClaim!: (tasks: ClaimedTask[]) => void;
+		taskStore.claimDueTasks.mockImplementation(
+			async () =>
+				await new Promise<ClaimedTask[]>((resolve) => {
+					resolveClaim = resolve;
+				}),
+		);
+		taskStore.releaseClaim.mockResolvedValue(1);
+
+		scheduler.start();
+		await vi.advanceTimersByTimeAsync(5000);
+		expect(taskStore.claimDueTasks).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(2000);
+		expect(onEvent).toHaveBeenCalledWith({
+			level: 'error',
+			message: 'Scheduler pass timed out and was abandoned; retrying on its next tick',
+			context: { pass: 'executor', timeoutMs: 2000 },
+		});
+
+		// The abandoned tick's claim finally resolves, with a task due a minute out.
+		// Scheduling it would arm a fire timer no teardown tracks; it must be
+		// handed back instead.
+		resolveClaim([claimedTask({ runAt: new Date(Date.now() + 60_000) })]);
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(taskStore.releaseClaim).toHaveBeenCalledWith({
+			host: 'main-test',
+			id: '1',
+			claimedEpoch: 1,
+		});
+		expect(taskStore.markStarted).not.toHaveBeenCalled();
+
+		await scheduler.stop();
+	});
+
 	it('gives each pass type its own timeout', async () => {
 		// Both passes hang on storage; only their timeouts differ.
 		const materializerTransaction: RunInTransaction = vi.fn(

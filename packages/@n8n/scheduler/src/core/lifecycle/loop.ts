@@ -69,14 +69,19 @@ function timeoutAfter(ms: number): { timedOut: Promise<typeof TIMED_OUT>; cancel
  * aborted, and its eventual outcome discarded. Storage claims and leases make
  * an abandoned pass no worse than one on an instance that crashed mid-pass.
  *
- * {@link stop} cancels the pending tick and waits for in-flight passes to
- * settle or time out, so teardown never waits on a hung pass for longer than
- * its timeout.
+ * {@link stop} cancels the pending tick, aborts the signal of every in-flight
+ * pass so each can wind down at its next cancellation point, and waits for
+ * them to settle or time out — teardown never waits on a hung pass for longer
+ * than its timeout, and a signal-aware pass settles as soon as it observes
+ * the abort.
  */
 export class Loop {
 	private readonly alarm: Alarm;
 
 	private readonly inFlight = new Set<Promise<void>>();
+
+	/** The abort controllers of in-flight passes, so {@link stop} can cancel them. */
+	private readonly inFlightControllers = new Set<AbortController>();
 
 	/**
 	 * The one timeline this loop follows, anchored once at {@link start};
@@ -117,12 +122,15 @@ export class Loop {
 	}
 
 	/**
-	 * Cancel the pending tick and wait for in-flight passes to settle or time out.
-	 * No tick fires after this resolves.
+	 * Cancel the pending tick, abort in-flight passes, and wait for them to
+	 * settle or time out. No tick fires after this resolves.
 	 */
 	async stop(): Promise<void> {
 		this.stopped = true;
 		this.alarm.cancel();
+		for (const controller of this.inFlightControllers) {
+			controller.abort();
+		}
 		await Promise.all(this.inFlight);
 	}
 
@@ -149,6 +157,7 @@ export class Loop {
 	/** Run one pass raced against its timeout. Reports through hooks; never rejects. */
 	private async runOnce(): Promise<void> {
 		const controller = new AbortController();
+		this.inFlightControllers.add(controller);
 		const timeout = timeoutAfter(this.options.timeoutMs);
 		const pass = this.runPass(controller.signal);
 		pass.catch(() => {}); // Deliberately NOT chained:
@@ -158,8 +167,11 @@ export class Loop {
 				this.hooks.onTimeout({ timeoutMs: this.options.timeoutMs });
 			}
 		} catch (error) {
-			this.hooks.onError(error);
+			if (!controller.signal.aborted) {
+				this.hooks.onError(error);
+			}
 		} finally {
+			this.inFlightControllers.delete(controller);
 			timeout.cancel();
 		}
 	}

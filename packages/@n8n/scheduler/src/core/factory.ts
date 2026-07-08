@@ -188,45 +188,60 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 		);
 	}
 
-	const runMaterialize = async () =>
-		await materialize(materializerTransaction, materializerOptions, {
-			onPlanError: (job, error) => {
-				emit('error', 'Scheduler could not plan a job schedule; deferred for retry', {
-					jobId: job.id,
-					error: described(error),
-				});
+	const runMaterialize = async (signal?: AbortSignal) =>
+		await materialize(
+			materializerTransaction,
+			materializerOptions,
+			{
+				onPlanError: (job, error) => {
+					emit('error', 'Scheduler could not plan a job schedule; deferred for retry', {
+						jobId: job.id,
+						error: described(error),
+					});
+				},
+				onSkippedDuplicates: (context) => {
+					emit('debug', 'Scheduler materializer skipped occurrences that were already recorded', {
+						...context,
+					});
+				},
 			},
-			onSkippedDuplicates: (context) => {
-				emit('debug', 'Scheduler materializer skipped occurrences that were already recorded', {
-					...context,
-				});
-			},
-		});
+			signal,
+		);
 
-	const runExecute = async () => await executor.claimAndSchedule(hostId);
+	const runExecute = async (signal?: AbortSignal) =>
+		await executor.claimAndSchedule(hostId, signal);
 
-	const runReap = async () =>
-		await reap(taskStore, reaperOptions, {
-			onRowError: (taskId, error) => {
-				emit('error', 'Scheduler could not recover an expired task; skipped until the next sweep', {
-					taskId,
-					error: described(error),
-				});
+	const runReap = async (signal?: AbortSignal) =>
+		await reap(
+			taskStore,
+			reaperOptions,
+			{
+				onRowError: (taskId, error) => {
+					emit(
+						'error',
+						'Scheduler could not recover an expired task; skipped until the next sweep',
+						{
+							taskId,
+							error: described(error),
+						},
+					);
+				},
+				onDeadLetter: (task) => {
+					emit('warn', 'Scheduler dead-lettered a task; its last attempt lost its lease', {
+						...task,
+					});
+				},
 			},
-			onDeadLetter: (task) => {
-				emit('warn', 'Scheduler dead-lettered a task; its last attempt lost its lease', {
-					...task,
-				});
-			},
-		});
+			signal,
+		);
 
-	const runPrune = async () => {
-		const summary = await prune(taskStore, retentionOptions);
-		if (!summary.drained) {
+	const runPrune = async (signal?: AbortSignal) => {
+		const summary = await prune(taskStore, retentionOptions, signal);
+		if (!summary.drained && signal?.aborted !== true) {
 			emit('warn', 'Scheduler retention pass hit its batch budget; backlog remains', {
 				...summary,
 			});
-		} else if (summary.deleted > 0) {
+		} else if (summary.drained && summary.deleted > 0) {
 			emit('debug', 'Scheduler retention deleted finished tasks', { ...summary });
 		}
 		return summary;
@@ -234,7 +249,7 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 
 	const loopOver = (
 		pass: string,
-		run: () => Promise<unknown>,
+		run: (signal: AbortSignal) => Promise<unknown>,
 		intervalSeconds: number,
 		timeoutSeconds: number,
 	) =>

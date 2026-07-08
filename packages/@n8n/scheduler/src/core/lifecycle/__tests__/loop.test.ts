@@ -361,6 +361,26 @@ describe('Loop', () => {
 		expect(pass).toHaveBeenCalledTimes(1);
 	});
 
+	it('stop aborts in-flight passes; a cancellation rejection is not reported as a failure', async () => {
+		// A signal-aware pass: it winds down the moment it observes the abort.
+		const pass = vi.fn(
+			async (signal: AbortSignal) =>
+				await new Promise((_, reject) => {
+					signal.addEventListener('abort', () => reject(new Error('cancelled')));
+				}),
+		);
+		const { loop, onError, onTimeout } = makeLoop(pass);
+
+		loop.start();
+		await vi.advanceTimersByTimeAsync(5000);
+		expect(pass).toHaveBeenCalledTimes(1);
+
+		// Resolves without advancing time: the pass settles on the abort itself.
+		await loop.stop();
+		expect(onError).not.toHaveBeenCalled();
+		expect(onTimeout).not.toHaveBeenCalled();
+	});
+
 	it('stop resolves once a hung pass times out instead of waiting forever', async () => {
 		const pass = vi.fn(async () => await new Promise<void>(() => {}));
 		const { loop, onTimeout } = makeLoop(pass, [], { timeoutMs: 3000 });
