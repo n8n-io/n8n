@@ -35,6 +35,7 @@ function categorizeCancellation(
 	if (reason === 'timeout') return 'timeout';
 	if (reason === 'service_shutdown') return 'shutdown';
 	if (reason === 'user_cancelled') return 'user';
+	if (reason === 'crash_interrupted') return 'interrupted';
 	return undefined;
 }
 
@@ -240,6 +241,52 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
+		case 'text-block': {
+			// Coalesced segment from the durable log (replay path). When the last
+			// timeline entry is this segment's streamed deltas (mid-block reconnect:
+			// the client saw part of the text live), REPLACE it instead of appending
+			// so no text renders twice. The log flushes a block immediately before
+			// the segment's next structural fact, so on replay the partial deltas
+			// are always the last text entry when this event arrives.
+			const agent = ensureAgent(state, event.agentId);
+			if (agent) {
+				const last = agent.timeline.at(-1);
+				const isOpenSegment = last?.type === 'text' && last.responseId === event.responseId;
+				if (isOpenSegment && agent.textContent.endsWith(last.content)) {
+					agent.textContent =
+						agent.textContent.slice(0, agent.textContent.length - last.content.length) +
+						event.payload.text;
+					last.content = event.payload.text;
+				} else {
+					agent.textContent += event.payload.text;
+					appendTimelineText(agent.timeline, event.payload.text, event.responseId);
+				}
+			}
+			break;
+		}
+
+		case 'reasoning-block': {
+			// Coalesced reasoning segment from the durable log (replay path). Same
+			// replace semantics as text-block: the segment's open streamed deltas
+			// are its timeline entry, so REPLACE that entry and strip the partial
+			// text from the aggregate — no text renders twice.
+			const agent = ensureAgent(state, event.agentId);
+			if (agent) {
+				const last = agent.timeline.at(-1);
+				const isOpenSegment = last?.type === 'reasoning' && last.responseId === event.responseId;
+				if (isOpenSegment && agent.reasoning.endsWith(last.content)) {
+					agent.reasoning =
+						agent.reasoning.slice(0, agent.reasoning.length - last.content.length) +
+						event.payload.text;
+					last.content = event.payload.text;
+				} else {
+					agent.reasoning += event.payload.text;
+					appendTimelineReasoning(agent.timeline, event.payload.text, event.responseId);
+				}
+			}
+			break;
+		}
+
 		case 'tool-call': {
 			if (!isSafeObjectKey(event.payload.toolCallId)) break;
 			const agent = ensureAgent(state, event.agentId);
@@ -275,6 +322,19 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 		}
 
 		case 'tool-error': {
+			if (!isSafeObjectKey(event.payload.toolCallId)) break;
+			const tc = state.toolCallsById[event.payload.toolCallId];
+			if (tc) {
+				tc.error = event.payload.error;
+				tc.isLoading = false;
+				tc.completedAt = new Date().toISOString();
+			}
+			break;
+		}
+
+		case 'tool-interrupted': {
+			// Durable fact for a tool call in flight when the process died:
+			// terminal like tool-error, effect unverified, never blind-retried.
 			if (!isSafeObjectKey(event.payload.toolCallId)) break;
 			const tc = state.toolCallsById[event.payload.toolCallId];
 			if (tc) {
@@ -392,8 +452,14 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 
 		case 'run-finish': {
 			const { status } = event.payload;
+			// 'interrupted' renders as a cancellation whose reason attributes the
+			// crash — no dedicated FE state needed.
 			state.status =
-				status === 'completed' ? 'completed' : status === 'cancelled' ? 'cancelled' : 'error';
+				status === 'completed'
+					? 'completed'
+					: status === 'cancelled' || status === 'interrupted'
+						? 'cancelled'
+						: 'error';
 			const root = state.agentsById[state.rootAgentId];
 			if (root) {
 				root.status = state.status;

@@ -538,9 +538,15 @@ export function createThreadRuntime(
 	// --- SSE lifecycle ---
 
 	function onSSEMessage(sseEvent: MessageEvent): void {
-		// Track last event ID for this thread (for reconnection)
-		if (sseEvent.lastEventId) {
-			lastEventId.value = Number(sseEvent.lastEventId);
+		// Track the replay cursor for reconnection. It must only advance on
+		// id-bearing frames: `lastEventId` is the CONNECTION's buffer, so id-less
+		// frames (deltas/status under the durable log, run-sync control frames)
+		// echo the previous id-bearing value, and it is '' before a connection's
+		// first id-bearing frame — assigning the parsed buffer therefore tracks
+		// exactly the durable facts, never ephemeral frames.
+		const frameId = sseEvent.lastEventId ? Number(sseEvent.lastEventId) : NaN;
+		if (Number.isFinite(frameId)) {
+			lastEventId.value = frameId;
 		}
 		try {
 			const parsed = instanceAiEventSchema.safeParse(JSON.parse(String(sseEvent.data)));
