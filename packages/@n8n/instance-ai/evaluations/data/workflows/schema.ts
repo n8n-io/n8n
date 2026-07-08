@@ -141,4 +141,8 @@ export const WorkflowTestCaseSchema = workflowTestCaseObjectSchema
 		},
 	);
 
-export type WorkflowTestCaseInput = z.infer<typeof WorkflowTestCaseSchema>;
+// Inferred from the pre-`.refine()` object schema, not `WorkflowTestCaseSchema`.
+// `.refine()` doesn't alter the inferred type, so this is identical — but resolving
+// the refined `ZodEffects` chain trips "type instantiation excessively deep" under
+// CI's type-aware lint (surfaces as `error`-typed field access in consumers).
+export type WorkflowTestCaseInput = z.infer<typeof workflowTestCaseObjectSchema>;
