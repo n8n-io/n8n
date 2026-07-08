@@ -10,6 +10,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useUIStore } from '@/app/stores/ui.store';
 import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
 import AiModelSelectorDropdown from '@/features/ai/modelSelector/AiModelSelectorDropdown.vue';
+import { filterAiModelSelectorMenu } from '@/features/ai/modelSelector/search';
 import type {
 	AiModelSelectorMenuItem,
 	AiModelSelectorMenuItemData,
@@ -27,7 +28,6 @@ import {
 
 const MAX_MODEL_NAME_CHARS = 45;
 const MAX_SELECTED_NAME_CHARS = 30;
-const MAX_SEARCH_RESULTS_PER_PROVIDER = 10;
 const FREE_OPENAI_CREDITS_PROVIDER = 'openai';
 const FREE_OPENAI_CREDITS_MODEL = 'gpt-5-mini';
 
@@ -310,59 +310,11 @@ const menu = computed(() => {
 	});
 });
 
-function isSearchableItem(item: MenuItem): boolean {
-	return (item.id.includes('::model::') || item.id.includes('::freeCredits::')) && !item.disabled;
-}
-
-function collectMatchingItems(
-	item: MenuItem,
-	query: string,
-	parts: string[],
-	parentMatched = false,
-): MenuItem[] {
-	const children = item.children ?? [];
-	const currentParts = [...parts, item.label];
-	const labelMatched = item.label.toLowerCase().includes(query);
-	const isMatched = parentMatched || labelMatched;
-
-	if (children.length === 0) {
-		const searchText = `${item.data?.fullName ?? item.label}`.toLowerCase();
-		if (!isSearchableItem(item) || (!isMatched && !searchText.includes(query))) return [];
-		return [
-			{
-				...item,
-				divided: false,
-				data: item.data
-					? { ...item.data, parts: currentParts, descriptionTooltipTeleported: true }
-					: undefined,
-			},
-		];
-	}
-
-	return children.flatMap((child) => collectMatchingItems(child, query, currentParts, isMatched));
-}
-
-const filteredMenu = computed(() => {
-	const query = searchQuery.value.trim().toLowerCase();
-	if (!query) return menu.value;
-
-	return menu.value.flatMap<MenuItem>((providerItem) => {
-		const results = collectMatchingItems(providerItem, query, []);
-		if (results.length <= MAX_SEARCH_RESULTS_PER_PROVIDER) return results;
-
-		return [
-			...results.slice(0, MAX_SEARCH_RESULTS_PER_PROVIDER),
-			{
-				...providerItem,
-				label: i18n.baseText('agents.modelSelector.moreModels', {
-					interpolate: { provider: providerItem.label },
-				}),
-				children: results.slice(MAX_SEARCH_RESULTS_PER_PROVIDER),
-				divided: false,
-			},
-		];
-	});
-});
+const filteredMenu = computed(() =>
+	filterAiModelSelectorMenu(menu.value, searchQuery.value, (provider) =>
+		i18n.baseText('agents.modelSelector.moreModels', { interpolate: { provider } }),
+	),
+);
 
 function openNewCredential(credentialType: string) {
 	if (!disabled && canCreateCredentials.value) {

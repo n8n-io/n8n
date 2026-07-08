@@ -1377,30 +1377,15 @@ describe('buildFromJson()', () => {
 			expect(agent.snapshot.tools.some((t) => t.name === 'search_product_docs')).toBe(true);
 		});
 
-		it('skips a vector store entry with no credential', async () => {
+		it.each([
+			['no credential', { ...vectorStoreConfig, credential: '' }],
+			[
+				'no embedding credential',
+				{ ...vectorStoreConfig, embedding: { ...vectorStoreConfig.embedding, credential: '' } },
+			],
+		])('skips a vector store entry with %s', async (_label, entry) => {
 			await buildFromJson(
-				makeConfig({ vectorStores: [{ ...vectorStoreConfig, credential: '' }] }),
-				{},
-				{
-					toolExecutor: makeMockToolExecutor(),
-					credentialProvider: makeMockCredentialProvider(),
-					memoryFactory: makeMockMemoryFactory(),
-				},
-			);
-
-			expect(buildVectorStore).not.toHaveBeenCalled();
-		});
-
-		it('skips a vector store entry with no embedding credential', async () => {
-			await buildFromJson(
-				makeConfig({
-					vectorStores: [
-						{
-							...vectorStoreConfig,
-							embedding: { ...vectorStoreConfig.embedding, credential: '' },
-						},
-					],
-				}),
+				makeConfig({ vectorStores: [entry] }),
 				{},
 				{
 					toolExecutor: makeMockToolExecutor(),

@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { truncateBeforeLast } from '@n8n/utils/string/truncate';
 
 import AiModelSelectorDropdown from '@/features/ai/modelSelector/AiModelSelectorDropdown.vue';
+import { filterAiModelSelectorMenu } from '@/features/ai/modelSelector/search';
 import type {
 	AiModelSelectorMenuItem,
 	AiModelSelectorMenuItemData,
@@ -18,6 +20,7 @@ import {
 } from '../vector-stores';
 import type { AgentCredentialOption } from './AgentCredentialSelect.vue';
 
+const MAX_MODEL_NAME_CHARS = 45;
 const MAX_SELECTED_NAME_CHARS = 30;
 
 type MenuItemData = AiModelSelectorMenuItemData & {
@@ -47,6 +50,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const searchQuery = ref('');
 
 /** Only the model's own name, without the "provider/" prefix. */
 function modelShortName(model: string): string {
@@ -71,7 +75,7 @@ const selectedCredential = computed(() => {
 
 const selectedLabel = computed(() => modelShortName(selectedModel));
 const selectedCredentialName = computed(() => selectedCredential.value?.name);
-const credentialsMissing = computed(() => !selectedCredentialId);
+const credentialsMissing = computed(() => !selectedCredential.value);
 
 function modelItemId(provider: AgentEmbeddingProvider, model: string): string {
 	return `${provider}::model::${encodeURIComponent(model)}`;
@@ -88,13 +92,7 @@ function providerToMenuItem(provider: AgentEmbeddingProvider): MenuItem {
 	const credentialType = credentialTypeFor(provider);
 	const credentialOptions = credentialsByType[credentialType] ?? [];
 	const isSelectedProvider = provider === selectedProvider.value;
-
-	const credentialItems: MenuItem[] = credentialOptions.map((credential) => ({
-		id: credentialItemId(provider, credential.id),
-		label: credential.name,
-		checked: isSelectedProvider && credential.id === selectedCredentialId,
-		data: { credentialType },
-	}));
+	const hasProviderCredential = isSelectedProvider && selectedCredential.value !== null;
 
 	const configureItems: MenuItem[] = canCreateCredentials
 		? [
@@ -106,33 +104,49 @@ function providerToMenuItem(provider: AgentEmbeddingProvider): MenuItem {
 			]
 		: [];
 
-	const modelItems: MenuItem[] = getEmbeddingModelsForProvider(provider).map((option, index) => ({
-		id: modelItemId(provider, option.model),
-		label: modelShortName(option.model),
-		checked: option.model === selectedModel,
-		divided: index === 0,
-		data: {
-			credentialType,
-			description: i18n.baseText('agents.builder.vectorStores.modal.embeddingModel.dimensions', {
-				interpolate: { dimensions: String(option.dimensions) },
-			}),
-			descriptionTooltipTeleported: false,
-		},
+	const credentialItems: MenuItem[] = credentialOptions.map((credential) => ({
+		id: credentialItemId(provider, credential.id),
+		label: credential.name,
+		checked: isSelectedProvider && credential.id === selectedCredentialId,
+		data: { credentialType },
 	}));
+
+	const modelItems: MenuItem[] = hasProviderCredential
+		? getEmbeddingModelsForProvider(provider).map((option, index) => ({
+				id: modelItemId(provider, option.model),
+				label: truncateBeforeLast(modelShortName(option.model), MAX_MODEL_NAME_CHARS),
+				divided: index === 0,
+				data: {
+					credentialType,
+					fullName: option.model,
+					description: i18n.baseText(
+						'agents.builder.vectorStores.modal.embeddingModel.dimensions',
+						{ interpolate: { dimensions: String(option.dimensions) } },
+					),
+					descriptionTooltipTeleported: false,
+				},
+			}))
+		: [];
 
 	return {
 		id: provider,
 		label: definition.displayName,
 		data: { credentialType },
-		children: [...credentialItems, ...configureItems, ...modelItems],
+		children: [...configureItems, ...credentialItems, ...modelItems],
 	};
 }
 
 const menu = computed<MenuItem[]>(() =>
 	AGENT_EMBEDDING_PROVIDERS.map((provider, index) => ({
 		...providerToMenuItem(provider),
-		divided: index > 0,
+		...(index === 0 ? { divided: true } : {}),
 	})),
+);
+
+const filteredMenu = computed(() =>
+	filterAiModelSelectorMenu(menu.value, searchQuery.value, (provider) =>
+		i18n.baseText('agents.modelSelector.moreModels', { interpolate: { provider } }),
+	),
 );
 
 function onSelect(id: string) {
@@ -161,11 +175,16 @@ function onSelect(id: string) {
 		emit('update:selectedModel', value);
 	}
 }
+
+function handleSearch(query: string) {
+	if (disabled) return;
+	searchQuery.value = query;
+}
 </script>
 
 <template>
 	<AiModelSelectorDropdown
-		:items="menu"
+		:items="filteredMenu"
 		:selected-label="selectedLabel"
 		:selected-credential-name="selectedCredentialName"
 		:credentials-missing="credentialsMissing"
@@ -175,6 +194,7 @@ function onSelect(id: string) {
 		data-test-id="agent-embedding-model-selector"
 		credential-data-test-id="agent-embedding-model-selector-credential"
 		:max-selected-name-chars="MAX_SELECTED_NAME_CHARS"
+		@search="handleSearch"
 		@select="onSelect"
 	>
 		<template #trigger-leading="{ ui }">
