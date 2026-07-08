@@ -100,6 +100,7 @@ const actions = computed(() => ndv?.actions);
 					:disabled="!canUpdate"
 					embedded
 					instructions-max-height="240px"
+					:show-instructions-toolbar="true"
 					@update:config="ndv?.scheduleConfigUpdate"
 				/>
 			</div>
