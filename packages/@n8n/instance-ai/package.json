@@ -14,6 +14,7 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "eval:instance-ai": "tsx evaluations/cli/index.ts",
+    "eval:agents": "tsx evaluations/cli/index.ts --tier agents",
     "eval:build-mcp-manifest": "tsx evaluations/cli/build-mcp-manifest.ts",
     "eval:langtracer-push": "tsx evaluations/cli/langtracer-push.ts",
     "eval:pairwise": "tsx evaluations/cli/pairwise.ts",

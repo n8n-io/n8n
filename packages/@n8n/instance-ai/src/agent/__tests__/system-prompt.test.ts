@@ -207,7 +207,7 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('`data-table-manager`');
 			expect(prompt).toContain('what data tables do I have?');
 			expect(prompt).toContain(
-				'never call `data-tables` or `parse-file` without loading `data-table-manager` first',
+				'Never call `data-tables` or `parse-file` without loading `data-table-manager` first',
 			);
 			expect(prompt).toContain('Do not call `create-tasks`');
 		});

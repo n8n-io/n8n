@@ -2,7 +2,7 @@
 // lang-tracer REST `POST /api/v1/cases` (create_test_case) expects. Split from the
 // network call so the disk→API key-renaming contract is unit-testable without a server.
 
-import type { WorkflowTestCaseInput } from '../data/workflows/schema';
+import type { EvalTestCaseInput } from '../harness/schema';
 
 /** One scenario in the create-case payload (`executionScenarios` renamed to `scenarios`). */
 export interface LangTracerScenario {
@@ -41,7 +41,7 @@ export interface ToLangTracerOptions {
 
 /** Seeding modes the case-write API can't represent (no fields for them), so a case
  *  using any of them can't be pushed. Returns a human-readable reason, else null. */
-export function unsupportedPushReason(testCase: WorkflowTestCaseInput): string | null {
+export function unsupportedPushReason(testCase: EvalTestCaseInput): string | null {
 	if (testCase.seedThread) return 'uses seedThread (not supported by the case-write API)';
 	if (testCase.seedFile) return 'uses seedFile (not supported by the case-write API)';
 	if (testCase.priorConversation) {
@@ -53,7 +53,7 @@ export function unsupportedPushReason(testCase: WorkflowTestCaseInput): string |
 /** Map a schema-parsed disk case to a create-case body. `conversation.text` is already
  *  collapsed to a string by the loader schema, so no further normalization is needed. */
 export function diskCaseToLangTracerCreate(
-	testCase: WorkflowTestCaseInput,
+	testCase: EvalTestCaseInput,
 	fileSlug: string,
 	opts: ToLangTracerOptions,
 ): LangTracerCreateCaseBody {

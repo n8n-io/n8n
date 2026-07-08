@@ -1,15 +1,15 @@
-import type { WorkflowTestCaseInput } from '../data/workflows/schema';
+import type { EvalTestCaseInput } from '../harness/schema';
 import { diskCaseToLangTracerCreate, unsupportedPushReason } from '../langtracer/to-exported';
 
 /** A minimal schema-parsed disk case (conversation text already collapsed to a string). */
-function diskCase(overrides: Partial<WorkflowTestCaseInput> = {}): WorkflowTestCaseInput {
+function diskCase(overrides: Partial<EvalTestCaseInput> = {}): EvalTestCaseInput {
 	return {
 		conversation: [{ role: 'user', text: 'build a thing' }],
 		complexity: 'simple',
 		tags: ['build'],
 		datasets: ['full'],
 		...overrides,
-	} as WorkflowTestCaseInput;
+	} as EvalTestCaseInput;
 }
 
 describe('diskCaseToLangTracerCreate', () => {

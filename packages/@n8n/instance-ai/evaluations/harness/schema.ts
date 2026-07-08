@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { SUPPORTED_CREDENTIAL_TYPES } from '../../credentials/seeder';
+import { SUPPORTED_CREDENTIAL_TYPES } from '../credentials/seeder';
 
 /** Default `datasets` grouping for a case that omits the field — the single
  *  source of truth shared by the loader schema and the mcp-manifest tier reader. */
@@ -28,7 +28,7 @@ const ExecutionScenarioSchema = z.object({
 	requires: z.string().optional(),
 });
 
-const workflowTestCaseObjectSchema = z
+const evalTestCaseObjectSchema = z
 	.object({
 		/** Optional human-readable note on what this case is testing (esp. for behaviour cases). */
 		description: z.string().optional(),
@@ -118,10 +118,10 @@ const workflowTestCaseObjectSchema = z
  *  the schema is `.strict()`, so any extra key LangTracer attaches (id, name,
  *  suiteId, timestamps, …) fails the whole suite load. Whitelisting the allowed
  *  set is robust where blacklisting the few keys we happen to know today is not. */
-export const WORKFLOW_TEST_CASE_KEYS = Object.keys(workflowTestCaseObjectSchema.shape);
+export const WORKFLOW_TEST_CASE_KEYS = Object.keys(evalTestCaseObjectSchema.shape);
 
 // At most one seeding mode, and a source for the live turn.
-export const WorkflowTestCaseSchema = workflowTestCaseObjectSchema
+export const EvalTestCaseSchema = evalTestCaseObjectSchema
 	.refine((c) => [c.seedFile, c.priorConversation, c.seedThread].filter(Boolean).length <= 1, {
 		message:
 			'seedFile, priorConversation and seedThread are mutually exclusive — pick one seeding mode',
@@ -141,8 +141,8 @@ export const WorkflowTestCaseSchema = workflowTestCaseObjectSchema
 		},
 	);
 
-// Inferred from the pre-`.refine()` object schema, not `WorkflowTestCaseSchema`.
+// Inferred from the pre-`.refine()` object schema, not `EvalTestCaseSchema`.
 // `.refine()` doesn't alter the inferred type, so this is identical — but resolving
 // the refined `ZodEffects` chain trips "type instantiation excessively deep" under
 // CI's type-aware lint (surfaces as `error`-typed field access in consumers).
-export type WorkflowTestCaseInput = z.infer<typeof workflowTestCaseObjectSchema>;
+export type EvalTestCaseInput = z.infer<typeof evalTestCaseObjectSchema>;
