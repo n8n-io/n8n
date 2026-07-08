@@ -1,0 +1,26 @@
+{
+	"description": "Regression guard for the 'Preserve Source Data' guardrail (PR #33530): send/notify nodes replace the current item JSON with their API response. The user asks for a Slack alert first, then a confirmation email that greets the customer and quotes their message — so an email step naively reading its input after the Slack node sees Slack's response (ok/channel/ts), not the customer's data. A correct build references the original webhook data (node reference to the trigger or a normalized source item, or a parallel branch).",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "When our contact form webhook receives a submission with the customer's name, email address, and message: first post an alert to Slack #support so the team sees it, then send the customer a confirmation email through our Gmail that greets them by name and quotes their original message back to them."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["build", "webhook", "slack", "gmail", "source-data", "regression"],
+	"triggerType": "webhook",
+	"datasets": ["full"],
+	"outcomeExpectations": [
+		"An alert about the submission is posted to Slack #support.",
+		"A confirmation email is sent via a Gmail node to the submitter's email address, greeting them by name and quoting their original message.",
+		"The email's recipient, greeting name, and quoted message are drawn from the original webhook submission data (via a node reference to the trigger or a preserved/normalized source item, or a branch fed directly from the trigger) — not from the Slack node's output, which is Slack's API response rather than the customer's data."
+	],
+	"executionScenarios": [
+		{
+			"name": "confirmation-carries-source-fields",
+			"description": "One submission arrives; the Slack alert and the confirmation email both carry the customer's data.",
+			"dataSetup": "The webhook receives one submission: { \"name\": \"Maya Chen\", \"email\": \"maya.chen@example.com\", \"message\": \"My invoice PDF comes out empty.\" }. The Slack postMessage call returns { \"ok\": true, \"ts\": \"1700000000.0001\" }. The Gmail send call succeeds.",
+			"successCriteria": "The run completes; one Slack alert is posted to #support; one confirmation email is sent to maya.chen@example.com whose content includes the name 'Maya' and quotes the invoice message. An email addressed to or built from Slack response fields (undefined recipient, channel, ts) is a failure."
+		}
+	]
+}

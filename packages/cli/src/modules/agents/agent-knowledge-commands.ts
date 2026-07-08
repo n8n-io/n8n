@@ -16,9 +16,14 @@ import {
 	type SearchKnowledgeMatch,
 	type SearchKnowledgeRequest,
 } from './agent-knowledge-retrieval';
-import { KNOWLEDGE_FILES_DIR } from './agent-knowledge-storage';
+import {
+	assertKnowledgePathSegment,
+	KNOWLEDGE_MIRROR_FILES_DIR,
+	KNOWLEDGE_MIRROR_MANIFEST,
+} from './agent-knowledge-storage';
 
 const COMMAND_TIMEOUT_SECONDS = 20;
+export const MIRROR_SYNC_TIMEOUT_SECONDS = 120;
 const SEARCH_OUTPUT_TRUNCATED_MARKER = '__N8N_SEARCH_OUTPUT_TRUNCATED__';
 const READ_OUTPUT_TRUNCATED_MARKER = '__N8N_READ_OUTPUT_TRUNCATED__';
 const SEARCH_JSON_EVENT_OVERHEAD_CHARS = 1_500;
@@ -74,7 +79,9 @@ export function buildSearchKnowledgeCommand(
 ): string {
 	const outputMode = request.output_mode ?? 'content';
 	const resultLimit = (request.head_limit ?? DEFAULT_SEARCH_TEXT_LIMIT) + 1;
-	const targets = scopedFiles.map((file) => quoteShellArg(`./${file}`));
+	// No scoped files means an unscoped `path` — search every mirrored file.
+	const targets =
+		scopedFiles.length > 0 ? scopedFiles.map((file) => quoteShellArg(`./${file}`)) : ['.'];
 	const baseCommand = [
 		'timeout',
 		String(COMMAND_TIMEOUT_SECONDS),
@@ -82,6 +89,10 @@ export function buildSearchKnowledgeCommand(
 		...(request['-i'] === false ? [] : ['--ignore-case']),
 		'--color=never',
 		'--hidden',
+		// Extracted PDF text can contain stray NUL bytes, which make rg treat
+		// the file as binary and silently skip it. Everything in the knowledge
+		// dir is text by construction, so force text mode.
+		'--text',
 	];
 
 	if (outputMode === 'files_with_matches') {
@@ -101,8 +112,6 @@ export function buildSearchKnowledgeCommand(
 			...baseCommand,
 			'--count-matches',
 			'--with-filename',
-			'--field-match-separator',
-			quoteShellArg('\t'),
 			'-e',
 			quoteShellArg(request.pattern),
 			'--',
@@ -292,7 +301,10 @@ export function parseRipgrepCountOutput(
 			break;
 		}
 
-		const separatorIndex = line.lastIndexOf('\t');
+		// `--count-matches` output is always `path:count` — rg does not apply
+		// `--field-match-separator` to count lines. The last colon is the
+		// separator even when the file name itself contains colons.
+		const separatorIndex = line.lastIndexOf(':');
 		if (separatorIndex === -1) {
 			incomplete = true;
 			continue;
@@ -466,8 +478,8 @@ function decodeRipgrepJsonData(value: RipgrepEncodedText): string | undefined {
 }
 
 function normalizeRipgrepPath(filePath: string): string {
-	if (filePath.startsWith(`${KNOWLEDGE_FILES_DIR}/`)) {
-		return filePath.slice(KNOWLEDGE_FILES_DIR.length + 1);
+	if (filePath.startsWith(`${KNOWLEDGE_MIRROR_FILES_DIR}/`)) {
+		return filePath.slice(KNOWLEDGE_MIRROR_FILES_DIR.length + 1);
 	}
 	if (filePath.startsWith('./')) {
 		return filePath.slice(2);
@@ -543,9 +555,50 @@ function buildAwkPipeline(command: string, script: string): string {
 
 export function buildScopedKnowledgeShellCommand(command: string): string {
 	const scopedCommand = [
-		`[ -d ${quoteShellArg(KNOWLEDGE_FILES_DIR)} ] || exit ${KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE}`,
-		`cd ${quoteShellArg(KNOWLEDGE_FILES_DIR)} || exit ${KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE}`,
+		`[ -d ${quoteShellArg(KNOWLEDGE_MIRROR_FILES_DIR)} ] || exit ${KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE}`,
+		`cd ${quoteShellArg(KNOWLEDGE_MIRROR_FILES_DIR)} || exit ${KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE}`,
 		`{ ${command}; }`,
 	].join('; ');
 	return `bash -o pipefail -c ${quoteShellArg(scopedCommand)}`;
+}
+
+export function buildReadMirrorManifestCommand(): string {
+	return `cat ${KNOWLEDGE_MIRROR_MANIFEST} 2>/dev/null || true`;
+}
+
+/**
+ * Finalizes a mirror sync: moves `toCopy` names from their already-uploaded
+ * `.tmp-` staging path into place, removes `toDelete` names, and rewrites the
+ * manifest to `manifestNames`. The `.tmp-` + `mv` staging means a search
+ * running concurrently never sees a partially-written file.
+ */
+export function buildMirrorFinalizeCommand(
+	toCopy: string[],
+	toDelete: string[],
+	manifestNames: string[],
+): string {
+	for (const name of [...toCopy, ...toDelete, ...manifestNames]) {
+		assertKnowledgePathSegment(name, 'knowledge mirror file name');
+	}
+
+	const commands = [`mkdir -p ${KNOWLEDGE_MIRROR_FILES_DIR}`];
+
+	for (const name of toCopy) {
+		const tmpPath = quoteShellArg(`${KNOWLEDGE_MIRROR_FILES_DIR}/.tmp-${name}`);
+		const finalPath = quoteShellArg(`${KNOWLEDGE_MIRROR_FILES_DIR}/${name}`);
+		commands.push(`mv ${tmpPath} ${finalPath}`);
+	}
+
+	if (toDelete.length > 0) {
+		const targets = toDelete.map((name) => quoteShellArg(`${KNOWLEDGE_MIRROR_FILES_DIR}/${name}`));
+		commands.push(`rm -f ${targets.join(' ')}`);
+	}
+
+	const manifestBody = manifestNames.length > 0 ? `${manifestNames.join('\n')}\n` : '';
+	commands.push(
+		`printf '%s' ${quoteShellArg(manifestBody)} > ${KNOWLEDGE_MIRROR_MANIFEST}.tmp`,
+		`mv ${KNOWLEDGE_MIRROR_MANIFEST}.tmp ${KNOWLEDGE_MIRROR_MANIFEST}`,
+	);
+
+	return `timeout ${MIRROR_SYNC_TIMEOUT_SECONDS} bash -o pipefail -c ${quoteShellArg(commands.join(' && '))}`;
 }

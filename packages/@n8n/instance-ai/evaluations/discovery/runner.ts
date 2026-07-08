@@ -14,7 +14,7 @@
 // the loop so an erroring tool can't drive API spend.
 // ---------------------------------------------------------------------------
 
-import { Memory } from '@n8n/agents';
+import { Memory, type RuntimeSkillSource } from '@n8n/agents';
 import type { InstanceAiEvent, TaskList } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
@@ -39,6 +39,7 @@ import type {
 	OrchestrationContext,
 	TaskStorage,
 } from '../../src/types';
+import { isAgentFeatureEnabled } from '../../src/utils/agent-feature-enabled';
 import { asResumable } from '../../src/utils/stream-helpers';
 import { createInMemoryEventBus, wrapEventBusWithObserver } from '../harness/in-memory-event-bus';
 import { createStubServices, defaultNodesJsonPath } from '../harness/stub-services';
@@ -76,7 +77,7 @@ export async function runDiscoveryScenario(
 	options: DiscoveryRunOptions,
 ): Promise<DiscoveryRunResult> {
 	const started = Date.now();
-	const maxSteps = options.maxSteps ?? 5;
+	const maxSteps = options.scenario?.maxSteps ?? options.maxSteps ?? 5;
 	const timeoutMs = options.timeoutMs ?? 60_000;
 	const nodesJsonPath = options.nodesJsonPath ?? defaultNodesJsonPath();
 
@@ -111,9 +112,9 @@ export async function runDiscoveryScenario(
 		});
 
 		// `OrchestrationContext` is required for the orchestrator to receive tools like
-		// `delegate`, `create-tasks`, and runtime skills. We provide stubs for the heavy fields:
-		// discovery scenarios measure first-step tool-call decisions, not background
-		// execution.
+		// `create-tasks`, `eval-setup-with-agent`, and runtime skills. We provide stubs
+		// for the heavy fields: discovery scenarios measure first-step tool-call
+		// decisions, not background execution.
 		const orchestrationContext = createStubOrchestrationContext({
 			context,
 			modelId: options.modelId,
@@ -239,6 +240,24 @@ function silentLogger(): Logger {
 	return { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
 }
 
+/**
+ * Mirror the CLI's agents-module gating (instance-ai.service.ts): production
+ * filters the `agent-builder` skill from the runtime catalog when the agents
+ * module is inactive. The package-level filter in `runtime-skills.ts` only
+ * covers `intent-recognition`, so without this the eval catalog would always
+ * include `agent-builder` and misrepresent the module-off production shape.
+ */
+function applyAgentsModuleGating(source: RuntimeSkillSource): RuntimeSkillSource {
+	if (isAgentFeatureEnabled()) return source;
+	return {
+		...source,
+		registry: {
+			...source.registry,
+			skills: source.registry.skills.filter((skill) => skill.id !== 'agent-builder'),
+		},
+	};
+}
+
 interface StubOrchestrationContextOptions {
 	context: InstanceAiContext;
 	modelId: ModelConfig;
@@ -251,11 +270,11 @@ interface StubOrchestrationContextOptions {
 function createStubOrchestrationContext(
 	opts: StubOrchestrationContextOptions,
 ): OrchestrationContext {
-	// Domain tools are passed to spawned sub-agents (delegate).
-	// Discovery scenarios measure the orchestrator's first-step dispatch decision; sub-agent
-	// execution is out of scope. We still populate domainTools faithfully so any sub-agent
-	// that does spawn has a coherent toolset (avoids hitting "no tools" errors that would
-	// confuse the diagnostic comment).
+	// Domain tools are passed to background agents such as eval-setup.
+	// Discovery scenarios measure the orchestrator's first-step dispatch decision;
+	// background execution is out of scope. We still populate domainTools faithfully
+	// so any background agent that does spawn has a coherent toolset (avoids hitting
+	// "no tools" errors that would confuse the diagnostic comment).
 	const domainTools: InstanceAiToolRegistry = createAllTools(opts.context);
 
 	const taskStorage: TaskStorage = {
@@ -271,22 +290,21 @@ function createStubOrchestrationContext(
 		userId: opts.context.userId,
 		orchestratorAgentId: 'n8n-instance-agent',
 		modelId: opts.modelId,
-		subAgentMaxSteps: 10,
 		eventBus: opts.eventBus,
 		logger: silentLogger(),
 		domainTools,
-		runtimeSkills: loadInstanceAiRuntimeSkillSource(),
+		runtimeSkills: applyAgentsModuleGating(loadInstanceAiRuntimeSkillSource()),
 		abortSignal: opts.abortSignal,
 		taskStorage,
 		// Discovery evals assert first-dispatch intent only. Production starts a
 		// detached background task here; the harness accepts the spawn so the tool
-		// can publish its `agent-spawned` event without executing the sub-agent.
+		// can publish its `agent-spawned` event without executing the background agent.
 		spawnBackgroundTask: ({ taskId, agentId }) => ({ status: 'started', taskId, agentId }),
 		// Surface the localMcpServer so Computer Use browser tools are available to the
 		// orchestrator.
 		...(opts.context.localMcpServer ? { localMcpServer: opts.context.localMcpServer } : {}),
-		// Used for the orchestrator's untrusted-content doctrine and other domain references
-		// inside sub-agent tools. Provide the same context the orchestrator sees.
+		// Used for the orchestrator's untrusted-content doctrine and other domain references.
+		// Provide the same context the orchestrator sees.
 		domainContext: opts.context,
 	};
 }

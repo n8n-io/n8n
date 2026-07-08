@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
@@ -48,6 +49,15 @@ export interface ProtectedResource {
 	 * registered-URIs match per RFC 6749 §3.1.2.4.
 	 */
 	getAllowedRedirectUris?(): Promise<string[]>;
+
+	/**
+	 * Determine whether the given user is authorized to access this resource.
+	 * Called during the consent flow to gate access to the resource.
+	 *
+	 * @param user The user to authorize
+	 * @returns A promise that resolves to a boolean indicating whether the user is authorized
+	 **/
+	authorize(user: User): Promise<boolean>;
 }
 
 /**

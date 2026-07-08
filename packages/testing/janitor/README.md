@@ -211,11 +211,11 @@ ci-filter (in install-and-build)
         │
         └─→ CHANGED_FILES forwarded to test jobs
               │
-              └─→ janitor test-scoped --runner=jest|vitest  (per-package)
+              └─→ janitor test-scoped --runner=vitest  (per-package)
                     │
                     ├─→ SKIP        → exit 0 (no in-package changes)
                     ├─→ RUN_FULL    → spawn runner with no scope flags
-                    └─→ scoped      → jest --findRelatedTests / vitest related
+                    └─→ scoped      → vitest related
 ```
 
 **Usage:**
@@ -242,9 +242,9 @@ joined paths would otherwise overflow the kernel's argv/env size limit and the
 test job's shell couldn't even start. Such a change set affects nearly every
 package anyway, so the full-suite fallback is both safe and correct.
 
-**Per-package bailout (force full suite):** `jest.config.*`, `vitest.config.*`,
+**Per-package bailout (force full suite):** `vitest.config.*`,
 `vite.config.*` (vitest reads vite config), `package.json`, `tsconfig.*`,
-plus setup files at `<pkg>/jest.setup.*`, `<pkg>/vitest.setup.*`, and
+plus setup files at `<pkg>/vitest.setup.*` and
 `<pkg>/src/__tests__/setup.*`. The scope analyzer detects these and emits
 `RUN_FULL`; `test-scoped` then spawns the runner without scope flags.
 

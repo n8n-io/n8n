@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
@@ -7,12 +8,14 @@ import { UserConsentRepository } from './database/repositories/oauth-user-consen
 import { OAuthAuthorizationCodeService } from './oauth-authorization-code.service';
 import { OAuthSessionService, type OAuthSessionPayload } from './oauth-session.service';
 import { OAuthHelpers } from './oauth.helpers';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 
 type ConsentDetailsResult =
 	| { ok: true; clientName: string; clientId: string; resourceName?: string; redirectUri?: string }
-	| { ok: false; reason: 'resource_unavailable' };
+	| { ok: false; reason: 'resource_unavailable' }
+	| { ok: false; reason: 'forbidden' };
 
 /**
  * Manages the consent flow for the shared OAuth server.
@@ -34,7 +37,7 @@ export class OAuthConsentService {
 	 * Get consent details from session cookie
 	 * Verifies JWT session token and returns client information
 	 */
-	async getConsentDetails(sessionToken: string): Promise<ConsentDetailsResult | null> {
+	async getConsentDetails(sessionToken: string, user: User): Promise<ConsentDetailsResult | null> {
 		try {
 			const sessionPayload = this.oauthSessionService.verifySession(sessionToken);
 
@@ -54,6 +57,12 @@ export class OAuthConsentService {
 				if (!resource) {
 					return { ok: false, reason: 'resource_unavailable' };
 				}
+
+				if (!(await resource.authorize(user)))
+					return {
+						ok: false,
+						reason: 'forbidden',
+					};
 
 				return {
 					ok: true,
@@ -82,7 +91,7 @@ export class OAuthConsentService {
 	 */
 	async handleConsentDecision(
 		sessionToken: string,
-		userId: string,
+		user: User,
 		approved: boolean,
 	): Promise<{ redirectUrl: string }> {
 		let sessionPayload: OAuthSessionPayload;
@@ -105,15 +114,34 @@ export class OAuthConsentService {
 
 			this.logger.info('Consent denied', {
 				clientId: sessionPayload.clientId,
-				userId,
+				userId: user.id,
 			});
 
 			return { redirectUrl };
 		}
 
+		if (sessionPayload.resource) {
+			const resource = await this.protectedResourceRegistry.getByResourceUrl(
+				sessionPayload.resource,
+			);
+
+			if (!resource) {
+				throw new UserError('Resource is not available for the requested authorization');
+			}
+
+			if (!(await resource.authorize(user))) {
+				this.logger.warn('User is not authorized for the requested resource', {
+					clientId: sessionPayload.clientId,
+					userId: user.id,
+					resourceUrl: sessionPayload.resource,
+				});
+				throw new ForbiddenError('User is not authorized for the requested resource');
+			}
+		}
+
 		await this.userConsentRepository.upsert(
 			{
-				userId,
+				userId: user.id,
 				clientId: sessionPayload.clientId,
 				grantedAt: Date.now(),
 			},
@@ -122,7 +150,7 @@ export class OAuthConsentService {
 
 		const code = await this.authorizationCodeService.createAuthorizationCode(
 			sessionPayload.clientId,
-			userId,
+			user.id,
 			sessionPayload.redirectUri,
 			sessionPayload.codeChallenge,
 			sessionPayload.state,
@@ -138,7 +166,7 @@ export class OAuthConsentService {
 
 		this.logger.info('Consent approved', {
 			clientId: sessionPayload.clientId,
-			userId,
+			userId: user.id,
 		});
 
 		return { redirectUrl: successRedirectUrl };

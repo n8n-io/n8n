@@ -1,15 +1,15 @@
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { createResultError, createResultOk } from '@n8n/utils/result';
 import type * as _importType0 from 'n8n-workflow';
 import type {
 	ITriggerFunctions,
 	IRun,
 	INode,
 	Logger,
-	IDeferredPromise,
 	ICredentialDataDecryptedObject,
 	NodeEgressFilter,
 } from 'n8n-workflow';
-import { createResultError, createResultOk } from '@n8n/utils/result';
 import { NodeOperationError, sleep } from 'n8n-workflow';
 import http from 'node:http';
 import https from 'node:https';

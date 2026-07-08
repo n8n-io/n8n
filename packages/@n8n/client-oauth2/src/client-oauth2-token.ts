@@ -1,4 +1,5 @@
-import { buildClientAssertion, CLIENT_ASSERTION_TYPE } from './client-assertion';
+import { buildClientAssertion, CLIENT_ASSERTION_TYPE } from '@n8n/utils/client-assertion';
+
 import type { ClientOAuth2, ClientOAuth2Options, ClientOAuth2RequestObject } from './client-oauth2';
 import { DEFAULT_HEADERS } from './constants';
 import { auth, expects, getRequestOptions } from './utils';

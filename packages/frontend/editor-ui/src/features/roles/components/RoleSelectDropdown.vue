@@ -32,7 +32,7 @@ const props = withDefaults(
 		customRoles: Role[];
 		currentRole: string;
 		hasCustomRolesLicense: boolean;
-		isAdminOrOwner: boolean;
+		canManageRoles: boolean;
 		addCustomRoleRouteName: string;
 		loading?: boolean;
 		testId?: string;
@@ -160,7 +160,7 @@ const onAddCustomRoleClick = () => {
 	closeDropdown();
 	if (!props.hasCustomRolesLicense) {
 		upgradeModalVisible.value = true;
-	} else if (!props.isAdminOrOwner) {
+	} else if (!props.canManageRoles) {
 		contactAdminModalVisible.value = true;
 	} else {
 		void router.push({ name: props.addCustomRoleRouteName });
