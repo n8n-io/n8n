@@ -36,6 +36,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@/app/constants';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import { useExposeAllWorkflowsToMcpOffer } from '@/experiments/exposeAllWorkflowsToMcp/composables/useExposeAllWorkflowsToMcpOffer';
+import AutoExposeNewWorkflowsToggle from '@/experiments/exposeAllWorkflowsToMcp/components/AutoExposeNewWorkflowsToggle.vue';
 
 type MCPTabs = 'workflows' | 'oauth' | 'settings';
 
@@ -496,6 +497,7 @@ onMounted(async () => {
 			<header :class="$style['tabs-header']">
 				<N8nTabs :model-value="selectedTab" :options="tabs" @update:model-value="onTabSelected" />
 				<div :class="$style.actions">
+					<AutoExposeNewWorkflowsToggle v-if="selectedTab === 'workflows'" />
 					<N8nButton
 						variant="solid"
 						v-if="showConnectWorkflowsButton"

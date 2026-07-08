@@ -1,5 +1,5 @@
 import type { RedactionFloor } from '@n8n/api-types';
-import { LicenseState, Logger } from '@n8n/backend-common';
+import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { EntityManager, User, Project, Folder } from '@n8n/db';
 import {
@@ -9,7 +9,7 @@ import {
 	TagRepository,
 	WorkflowEntity,
 } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -59,6 +59,7 @@ export class WorkflowCreationService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly workflowValidationService: WorkflowValidationService,
 		private readonly instanceRedactionEnforcementService: InstanceRedactionEnforcementService,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
 	async createWorkflow(
@@ -169,6 +170,16 @@ export class WorkflowCreationService {
 			throw new WorkflowValidationError(
 				restrictionValidation.error ?? 'Credential binding is not allowed.',
 			);
+		}
+
+		// Instance-level MCP setting: new workflows can be exposed to MCP clients
+		// automatically. Applied pre-persist so the returned workflow (and the
+		// editor state built from it) already carries the flag.
+		if (this.moduleRegistry.isActive('mcp')) {
+			const { McpSettingsService } = await import('@/modules/mcp/mcp.settings.service');
+			if (await Container.get(McpSettingsService).shouldAutoExposeNewWorkflows()) {
+				newWorkflow.settings = { ...(newWorkflow.settings ?? {}), availableInMCP: true };
+			}
 		}
 
 		// Run external hook after all validation has passed, right before persisting

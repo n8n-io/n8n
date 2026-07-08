@@ -69,4 +69,16 @@ describe('exposeAllWorkflowsToMcp store', () => {
 			[featureFlagProperty]: EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT.variant,
 		});
 	});
+
+	it('trackAutoExposeToggled tracks the event with the toggle state', () => {
+		mockGetVariant.mockReturnValue(EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT.variant);
+
+		store.trackAutoExposeToggled(true);
+
+		expect(mockTrack).toHaveBeenCalledWith('MCP auto-expose new workflows toggled', {
+			variant: EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT.variant,
+			[featureFlagProperty]: EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT.variant,
+			enabled: true,
+		});
+	});
 });

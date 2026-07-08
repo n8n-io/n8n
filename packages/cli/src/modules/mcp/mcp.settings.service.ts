@@ -20,6 +20,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { UpdateWorkflowsAvailabilityDto } from './dto/update-workflows-availability.dto';
 
 const KEY = 'mcp.access.enabled';
+const AUTO_EXPOSE_NEW_WORKFLOWS_KEY = 'mcp.autoExposeNewWorkflows.enabled';
 const REDIRECT_URIS_KEY = 'mcp.oauth.allowedRedirectUris';
 
 const BULK_CHUNK_SIZE = 500;
@@ -77,6 +78,40 @@ export class McpSettingsService {
 		);
 
 		await this.cacheService.set(KEY, enabled.toString());
+	}
+
+	async getAutoExposeNewWorkflows(): Promise<boolean> {
+		const cached = await this.cacheService.get<string>(AUTO_EXPOSE_NEW_WORKFLOWS_KEY);
+
+		if (cached !== undefined) {
+			return cached === 'true';
+		}
+
+		const row = await this.settingsRepository.findByKey(AUTO_EXPOSE_NEW_WORKFLOWS_KEY);
+
+		const enabled = row?.value === 'true';
+
+		await this.cacheService.set(AUTO_EXPOSE_NEW_WORKFLOWS_KEY, enabled.toString());
+
+		return enabled;
+	}
+
+	async setAutoExposeNewWorkflows(enabled: boolean): Promise<void> {
+		await this.settingsRepository.upsert(
+			{ key: AUTO_EXPOSE_NEW_WORKFLOWS_KEY, value: enabled.toString(), loadOnStartup: true },
+			['key'],
+		);
+
+		await this.cacheService.set(AUTO_EXPOSE_NEW_WORKFLOWS_KEY, enabled.toString());
+	}
+
+	/** Whether newly created workflows should be made available in MCP automatically */
+	async shouldAutoExposeNewWorkflows(): Promise<boolean> {
+		const [mcpAccessEnabled, autoExpose] = await Promise.all([
+			this.getEnabled(),
+			this.getAutoExposeNewWorkflows(),
+		]);
+		return mcpAccessEnabled && autoExpose;
 	}
 
 	async getAllowedRedirectUris(): Promise<string[]> {

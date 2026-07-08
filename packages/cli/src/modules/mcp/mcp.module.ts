@@ -26,13 +26,16 @@ export class McpModule implements ModuleInterface {
 	/**
 	 * Settings exposed to the frontend under `/rest/module-settings`.
 	 *
-	 * The response shape will be `{ mcp: { mcpAccessEnabled: boolean, mcpManagedByEnv: boolean } }`.
+	 * The response shape will be
+	 * `{ mcp: { mcpAccessEnabled: boolean, mcpManagedByEnv: boolean, mcpAutoExposeNewWorkflows: boolean } }`.
 	 */
 	async settings() {
 		const { McpSettingsService } = await import('./mcp.settings.service');
-		const mcpAccessEnabled = await Container.get(McpSettingsService).getEnabled();
+		const mcpSettingsService = Container.get(McpSettingsService);
+		const mcpAccessEnabled = await mcpSettingsService.getEnabled();
+		const mcpAutoExposeNewWorkflows = await mcpSettingsService.getAutoExposeNewWorkflows();
 		const { mcpManagedByEnv } = Container.get(InstanceSettingsLoaderConfig);
-		return { mcpAccessEnabled, mcpManagedByEnv };
+		return { mcpAccessEnabled, mcpManagedByEnv, mcpAutoExposeNewWorkflows };
 	}
 
 	@OnShutdown()

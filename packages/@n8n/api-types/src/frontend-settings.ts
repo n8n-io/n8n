@@ -288,6 +288,8 @@ export type FrontendModuleSettings = {
 		mcpAccessEnabled: boolean;
 		/** Whether MCP settings are managed via environment variables. */
 		mcpManagedByEnv: boolean;
+		/** Whether newly created workflows are automatically made available in MCP. */
+		mcpAutoExposeNewWorkflows?: boolean;
 	};
 
 	/**

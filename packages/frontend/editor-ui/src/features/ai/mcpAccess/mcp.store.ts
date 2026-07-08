@@ -18,6 +18,7 @@ import {
 	fetchMcpEligibleWorkflows,
 	getAllowedRedirectUris,
 	updateAllowedRedirectUris,
+	type McpSettingsResponse,
 	type ToggleWorkflowsMcpAccessResponse,
 	type ToggleWorkflowsMcpAccessTarget,
 } from '@/features/ai/mcpAccess/mcp.api';
@@ -45,6 +46,9 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 
 	const mcpAccessEnabled = computed(() => !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled);
 	const mcpManagedByEnv = computed(() => !!settingsStore.moduleSettings.mcp?.mcpManagedByEnv);
+	const mcpAutoExposeNewWorkflows = computed(
+		() => !!settingsStore.moduleSettings.mcp?.mcpAutoExposeNewWorkflows,
+	);
 
 	async function fetchWorkflowsAvailableForMCP(
 		page = 1,
@@ -62,17 +66,30 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		return { data: data.filter(isWorkflowListItem), count };
 	}
 
-	async function setMcpAccessEnabled(enabled: boolean): Promise<boolean> {
-		const { mcpAccessEnabled: updated } = await updateMcpSettings(
-			rootStore.restApiContext,
-			enabled,
-		);
+	/** Mirror the authoritative settings returned by the API into the module settings */
+	function applyMcpSettings(settings: McpSettingsResponse) {
 		settingsStore.moduleSettings.mcp = {
 			mcpManagedByEnv: false,
 			...(settingsStore.moduleSettings.mcp ?? {}),
-			mcpAccessEnabled: updated,
+			mcpAccessEnabled: settings.mcpAccessEnabled,
+			mcpAutoExposeNewWorkflows: settings.autoExposeNewWorkflows,
 		};
-		return updated;
+	}
+
+	async function setMcpAccessEnabled(enabled: boolean): Promise<boolean> {
+		const updated = await updateMcpSettings(rootStore.restApiContext, {
+			mcpAccessEnabled: enabled,
+		});
+		applyMcpSettings(updated);
+		return updated.mcpAccessEnabled;
+	}
+
+	async function setAutoExposeNewWorkflows(enabled: boolean): Promise<boolean> {
+		const updated = await updateMcpSettings(rootStore.restApiContext, {
+			autoExposeNewWorkflows: enabled,
+		});
+		applyMcpSettings(updated);
+		return updated.autoExposeNewWorkflows;
 	}
 
 	function applyAvailableInMCPToLocalStores(workflowId: string, availableInMCP: boolean) {
@@ -216,8 +233,10 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	return {
 		mcpAccessEnabled,
 		mcpManagedByEnv,
+		mcpAutoExposeNewWorkflows,
 		fetchWorkflowsAvailableForMCP,
 		setMcpAccessEnabled,
+		setAutoExposeNewWorkflows,
 		toggleWorkflowMcpAccess,
 		toggleWorkflowsMcpAccess,
 		currentUserMCPKey,

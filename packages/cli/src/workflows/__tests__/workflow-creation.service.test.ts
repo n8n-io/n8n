@@ -1,6 +1,7 @@
-import type { LicenseState } from '@n8n/backend-common';
+import type { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import type { ProjectRepository, User } from '@n8n/db';
 import { WorkflowEntity } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
@@ -8,6 +9,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import type { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import type { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -34,10 +36,13 @@ describe('WorkflowCreationService', () => {
 	let workflowValidationServiceMock: MockProxy<WorkflowValidationService>;
 	let instanceRedactionEnforcementServiceMock: MockProxy<InstanceRedactionEnforcementService>;
 	let workflowHistoryServiceMock: MockProxy<WorkflowHistoryService>;
+	let moduleRegistryMock: MockProxy<ModuleRegistry>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 
+		moduleRegistryMock = mock<ModuleRegistry>();
+		moduleRegistryMock.isActive.mockReturnValue(false);
 		credentialsServiceMock = mock<CredentialsService>();
 		enterpriseWorkflowServiceMock = mock<EnterpriseWorkflowService>();
 		licenseStateMock = mock<LicenseState>();
@@ -72,6 +77,7 @@ describe('WorkflowCreationService', () => {
 			mock<NodeTypes>(),
 			workflowValidationServiceMock,
 			instanceRedactionEnforcementServiceMock,
+			moduleRegistryMock,
 		);
 	});
 
@@ -156,6 +162,67 @@ describe('WorkflowCreationService', () => {
 					description: 'Posts to #ops when the webhook fires',
 				},
 			);
+		});
+
+		describe('MCP auto-expose', () => {
+			let mcpSettingsServiceMock: MockProxy<McpSettingsService>;
+
+			beforeEach(() => {
+				mcpSettingsServiceMock = mock<McpSettingsService>();
+				Container.set(McpSettingsService, mcpSettingsServiceMock);
+			});
+
+			const runCreateUntilPersist = async (newWorkflow: WorkflowEntity) => {
+				licenseStateMock.isSharingLicensed.mockReturnValue(false);
+				projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+				setupTransactionMocks();
+
+				await expect(
+					workflowCreationService.createWorkflow(mock<User>(), newWorkflow, {
+						projectId: 'project-1',
+					}),
+				).rejects.toThrow('Stopping for test');
+			};
+
+			const createTestWorkflow = () => {
+				const newWorkflow = new WorkflowEntity();
+				newWorkflow.name = 'Test';
+				newWorkflow.nodes = [];
+				newWorkflow.connections = {};
+				return newWorkflow;
+			};
+
+			it('marks the new workflow as available in MCP when auto-expose is enabled', async () => {
+				moduleRegistryMock.isActive.mockReturnValue(true);
+				mcpSettingsServiceMock.shouldAutoExposeNewWorkflows.mockResolvedValue(true);
+
+				const newWorkflow = createTestWorkflow();
+				newWorkflow.settings = { executionOrder: 'v1' };
+
+				await runCreateUntilPersist(newWorkflow);
+
+				expect(newWorkflow.settings).toEqual({ executionOrder: 'v1', availableInMCP: true });
+			});
+
+			it('leaves workflow settings untouched when auto-expose is disabled', async () => {
+				moduleRegistryMock.isActive.mockReturnValue(true);
+				mcpSettingsServiceMock.shouldAutoExposeNewWorkflows.mockResolvedValue(false);
+
+				const newWorkflow = createTestWorkflow();
+
+				await runCreateUntilPersist(newWorkflow);
+
+				expect(newWorkflow.settings?.availableInMCP).toBeUndefined();
+			});
+
+			it('does not consult MCP settings when the mcp module is inactive', async () => {
+				const newWorkflow = createTestWorkflow();
+
+				await runCreateUntilPersist(newWorkflow);
+
+				expect(mcpSettingsServiceMock.shouldAutoExposeNewWorkflows).not.toHaveBeenCalled();
+				expect(newWorkflow.settings?.availableInMCP).toBeUndefined();
+			});
 		});
 
 		describe('credential retrieval', () => {

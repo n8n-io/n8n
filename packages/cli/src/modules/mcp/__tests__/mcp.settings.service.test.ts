@@ -97,6 +97,97 @@ describe('McpSettingsService', () => {
 		});
 	});
 
+	describe('getAutoExposeNewWorkflows', () => {
+		test('returns false by default when no setting exists', async () => {
+			findByKey.mockResolvedValue(null);
+
+			await expect(service.getAutoExposeNewWorkflows()).resolves.toBe(false);
+			expect(findByKey).toHaveBeenCalledWith('mcp.autoExposeNewWorkflows.enabled');
+		});
+
+		test('returns true when setting value is "true"', async () => {
+			findByKey.mockResolvedValue(
+				mock<Settings>({
+					key: 'mcp.autoExposeNewWorkflows.enabled',
+					value: 'true',
+					loadOnStartup: true,
+				}),
+			);
+
+			await expect(service.getAutoExposeNewWorkflows()).resolves.toBe(true);
+		});
+
+		test('returns false when setting value is "false"', async () => {
+			findByKey.mockResolvedValue(
+				mock<Settings>({
+					key: 'mcp.autoExposeNewWorkflows.enabled',
+					value: 'false',
+					loadOnStartup: true,
+				}),
+			);
+
+			await expect(service.getAutoExposeNewWorkflows()).resolves.toBe(false);
+		});
+	});
+
+	describe('setAutoExposeNewWorkflows', () => {
+		test('upserts setting with "true"', async () => {
+			await service.setAutoExposeNewWorkflows(true);
+
+			expect(upsert).toHaveBeenCalledWith(
+				{ key: 'mcp.autoExposeNewWorkflows.enabled', value: 'true', loadOnStartup: true },
+				['key'],
+			);
+		});
+
+		test('upserts setting with "false"', async () => {
+			await service.setAutoExposeNewWorkflows(false);
+
+			expect(upsert).toHaveBeenCalledWith(
+				{ key: 'mcp.autoExposeNewWorkflows.enabled', value: 'false', loadOnStartup: true },
+				['key'],
+			);
+		});
+	});
+
+	describe('shouldAutoExposeNewWorkflows', () => {
+		const setStoredSettings = (values: Record<string, string>) => {
+			cacheService.get.mockResolvedValue(undefined);
+			findByKey.mockImplementation(async (key: string) =>
+				values[key] !== undefined
+					? mock<Settings>({ key, value: values[key], loadOnStartup: true })
+					: null,
+			);
+		};
+
+		test('returns true when MCP access and auto-expose are both enabled', async () => {
+			setStoredSettings({
+				'mcp.access.enabled': 'true',
+				'mcp.autoExposeNewWorkflows.enabled': 'true',
+			});
+
+			await expect(service.shouldAutoExposeNewWorkflows()).resolves.toBe(true);
+		});
+
+		test('returns false when MCP access is disabled', async () => {
+			setStoredSettings({
+				'mcp.access.enabled': 'false',
+				'mcp.autoExposeNewWorkflows.enabled': 'true',
+			});
+
+			await expect(service.shouldAutoExposeNewWorkflows()).resolves.toBe(false);
+		});
+
+		test('returns false when auto-expose is disabled', async () => {
+			setStoredSettings({
+				'mcp.access.enabled': 'true',
+				'mcp.autoExposeNewWorkflows.enabled': 'false',
+			});
+
+			await expect(service.shouldAutoExposeNewWorkflows()).resolves.toBe(false);
+		});
+	});
+
 	describe('getAllowedRedirectUris', () => {
 		test('returns empty array by default when no setting exists', async () => {
 			findByKey.mockResolvedValue(null);

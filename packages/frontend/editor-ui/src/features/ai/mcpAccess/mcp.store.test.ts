@@ -3,6 +3,7 @@ import { setActivePinia, createPinia } from 'pinia';
 
 import * as mcpApi from './mcp.api';
 import { useMCPStore } from './mcp.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { createWorkflow } from './mcp.test.utils';
 
@@ -61,6 +62,26 @@ describe('mcp.store', () => {
 				false,
 				false,
 			);
+		});
+	});
+
+	describe('setAutoExposeNewWorkflows', () => {
+		it('sends the flag to the API and mirrors it into module settings', async () => {
+			const settingsStore = useSettingsStore();
+			settingsStore.moduleSettings.mcp = { mcpAccessEnabled: true, mcpManagedByEnv: false };
+			const updateSpy = vi.spyOn(mcpApi, 'updateMcpSettings').mockResolvedValue({
+				mcpAccessEnabled: true,
+				autoExposeNewWorkflows: true,
+			});
+
+			await expect(store.setAutoExposeNewWorkflows(true)).resolves.toBe(true);
+
+			expect(updateSpy).toHaveBeenCalledWith(expect.anything(), {
+				autoExposeNewWorkflows: true,
+			});
+			expect(store.mcpAutoExposeNewWorkflows).toBe(true);
+			// The access flag must survive the module settings update
+			expect(store.mcpAccessEnabled).toBe(true);
 		});
 	});
 

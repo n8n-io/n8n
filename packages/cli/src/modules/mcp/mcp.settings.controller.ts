@@ -36,8 +36,12 @@ export class McpSettingsController {
 		if (this.instanceSettingsLoaderConfig.mcpManagedByEnv) {
 			throw new ForbiddenError('MCP settings are managed via environment variables');
 		}
-		const enabled = dto.mcpAccessEnabled;
-		await this.mcpSettingsService.setEnabled(enabled);
+		if (dto.mcpAccessEnabled !== undefined) {
+			await this.mcpSettingsService.setEnabled(dto.mcpAccessEnabled);
+		}
+		if (dto.autoExposeNewWorkflows !== undefined) {
+			await this.mcpSettingsService.setAutoExposeNewWorkflows(dto.autoExposeNewWorkflows);
+		}
 		try {
 			await this.moduleRegistry.refreshModuleSettings('mcp');
 		} catch (error) {
@@ -45,7 +49,11 @@ export class McpSettingsController {
 				cause: error instanceof Error ? error.message : String(error),
 			});
 		}
-		return { mcpAccessEnabled: enabled };
+		return {
+			mcpAccessEnabled: dto.mcpAccessEnabled ?? (await this.mcpSettingsService.getEnabled()),
+			autoExposeNewWorkflows:
+				dto.autoExposeNewWorkflows ?? (await this.mcpSettingsService.getAutoExposeNewWorkflows()),
+		};
 	}
 
 	@GlobalScope('mcpApiKey:create')

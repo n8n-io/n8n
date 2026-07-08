@@ -188,12 +188,15 @@ describe('MCP API Key Security', () => {
 
 describe('PATCH /mcp/settings', () => {
 	const settingsKey = 'mcp.access.enabled';
+	const autoExposeKey = 'mcp.autoExposeNewWorkflows.enabled';
 
 	afterEach(async () => {
 		await Container.get(SettingsRepository).delete({ key: settingsKey });
 		// Clear the in-memory cache so subsequent reads hit the DB.
 		await Container.get(McpSettingsService).setEnabled(false);
+		await Container.get(McpSettingsService).setAutoExposeNewWorkflows(false);
 		await Container.get(SettingsRepository).delete({ key: settingsKey });
+		await Container.get(SettingsRepository).delete({ key: autoExposeKey });
 	});
 
 	test('owner can enable MCP access', async () => {
@@ -203,7 +206,7 @@ describe('PATCH /mcp/settings', () => {
 			.send({ mcpAccessEnabled: true });
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data).toEqual({ mcpAccessEnabled: true });
+		expect(response.body.data).toEqual({ mcpAccessEnabled: true, autoExposeNewWorkflows: false });
 
 		const stored = await Container.get(SettingsRepository).findByKey(settingsKey);
 		expect(stored?.value).toBe('true');
@@ -218,10 +221,44 @@ describe('PATCH /mcp/settings', () => {
 			.send({ mcpAccessEnabled: false });
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data).toEqual({ mcpAccessEnabled: false });
+		expect(response.body.data).toEqual({ mcpAccessEnabled: false, autoExposeNewWorkflows: false });
 
 		const stored = await Container.get(SettingsRepository).findByKey(settingsKey);
 		expect(stored?.value).toBe('false');
+	});
+
+	test('owner can enable auto-expose for new workflows', async () => {
+		const response = await testServer
+			.authAgentFor(owner)
+			.patch('/mcp/settings')
+			.send({ autoExposeNewWorkflows: true });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toEqual({ mcpAccessEnabled: false, autoExposeNewWorkflows: true });
+
+		const stored = await Container.get(SettingsRepository).findByKey(autoExposeKey);
+		expect(stored?.value).toBe('true');
+		// An auto-expose-only update must not touch the MCP access setting
+		const accessStored = await Container.get(SettingsRepository).findByKey(settingsKey);
+		expect(accessStored).toBeNull();
+	});
+
+	test('member cannot update auto-expose setting', async () => {
+		const response = await testServer
+			.authAgentFor(member)
+			.patch('/mcp/settings')
+			.send({ autoExposeNewWorkflows: true });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('rejects non-boolean autoExposeNewWorkflows with 400', async () => {
+		const response = await testServer
+			.authAgentFor(owner)
+			.patch('/mcp/settings')
+			.send({ autoExposeNewWorkflows: 'yes' });
+
+		expect(response.statusCode).toBe(400);
 	});
 
 	test('member without mcp:manage scope is forbidden', async () => {

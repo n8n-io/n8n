@@ -37,12 +37,20 @@ export const useExposeAllWorkflowsToMcpStore = defineStore(
 			telemetry.track('MCP expose all workflows modal dismissed', getTelemetryPayload());
 		}
 
+		function trackAutoExposeToggled(enabled: boolean) {
+			telemetry.track('MCP auto-expose new workflows toggled', {
+				...getTelemetryPayload(),
+				enabled,
+			});
+		}
+
 		return {
 			currentVariant,
 			isEnabled,
 			trackConfirmed,
 			trackDeclined,
 			trackDismissed,
+			trackAutoExposeToggled,
 		};
 	},
 );
