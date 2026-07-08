@@ -25,7 +25,7 @@ async function getPopoverContainer() {
 	// Combobox leaves aria-controls empty on the input; locate the portaled listbox directly.
 	const popover = await waitFor(() => {
 		const el = document.querySelector('[role="listbox"][data-state="open"]');
-		if (!el) throw new Error('Popover not found');
+		if (!(el instanceof HTMLElement)) throw new Error('Popover not found');
 		return el;
 	});
 
@@ -91,7 +91,7 @@ describe('v2/components/Combobox', () => {
 		test.each(sizeCases)(
 			'size %s should apply %s class on dropdown items',
 			async (size, expected) => {
-				const wrapper = render(Combobox, {
+				render(Combobox, {
 					props: {
 						items: ['Option 1', 'Option 2'],
 						size,
@@ -113,7 +113,7 @@ describe('v2/components/Combobox', () => {
 				{ value: '2', label: 'Option 2' },
 			];
 
-			const wrapper = render(Combobox, {
+			render(Combobox, {
 				props: { items, defaultOpen: true },
 			});
 
@@ -128,7 +128,7 @@ describe('v2/components/Combobox', () => {
 				{ value: '2', label: 'Option 2', icon: 'users' as const },
 			];
 
-			const wrapper = render(Combobox, {
+			render(Combobox, {
 				props: { items, defaultOpen: true },
 			});
 
@@ -142,7 +142,7 @@ describe('v2/components/Combobox', () => {
 				{ value: '1', label: 'Option 1' },
 				{ value: '2', label: 'Option 2', disabled: true },
 			];
-			const wrapper = render(Combobox, {
+			render(Combobox, {
 				props: {
 					items,
 					defaultOpen: true,
@@ -164,7 +164,7 @@ describe('v2/components/Combobox', () => {
 				{ label: 'Group 1', type: 'label' },
 				{ value: '1', label: 'Option 1' },
 			];
-			const wrapper = render(Combobox, {
+			render(Combobox, {
 				props: {
 					items,
 					defaultOpen: true,
@@ -182,7 +182,7 @@ describe('v2/components/Combobox', () => {
 				{ type: 'separator' },
 				{ value: '2', label: 'Option 2' },
 			];
-			const wrapper = render(Combobox, {
+			render(Combobox, {
 				props: {
 					items,
 					defaultOpen: true,
@@ -388,7 +388,7 @@ describe('v2/components/Combobox', () => {
 
 	describe('slots', () => {
 		it('should render item slot', async () => {
-			const wrapper = render(Combobox, {
+			render(Combobox, {
 				props: {
 					items: [
 						{ value: '1', label: 'Option 1' },
@@ -409,7 +409,7 @@ describe('v2/components/Combobox', () => {
 		});
 
 		it('should render item-leading slot', async () => {
-			const wrapper = render(Combobox, {
+			render(Combobox, {
 				props: {
 					items: [
 						{ value: '1', label: 'Option 1' },
@@ -430,7 +430,7 @@ describe('v2/components/Combobox', () => {
 		});
 
 		it('should render item-label slot', async () => {
-			const wrapper = render(Combobox, {
+			render(Combobox, {
 				props: {
 					items: [
 						{ value: '1', label: 'Option 1' },
@@ -451,7 +451,7 @@ describe('v2/components/Combobox', () => {
 		});
 
 		it('should render item-trailing slot', async () => {
-			const wrapper = render(Combobox, {
+			render(Combobox, {
 				props: {
 					items: [
 						{ value: '1', label: 'Option 1' },
@@ -472,7 +472,7 @@ describe('v2/components/Combobox', () => {
 		});
 
 		it('should render label slot', async () => {
-			const wrapper = render(Combobox, {
+			render(Combobox, {
 				props: {
 					items: [
 						{ label: 'Group 1', type: 'label' },
@@ -493,7 +493,7 @@ describe('v2/components/Combobox', () => {
 		});
 
 		it('should render header slot', async () => {
-			const wrapper = render(Combobox, {
+			render(Combobox, {
 				props: {
 					items: [
 						{ value: '1', label: 'Option 1' },
@@ -514,7 +514,7 @@ describe('v2/components/Combobox', () => {
 		});
 
 		it('should render footer slot', async () => {
-			const wrapper = render(Combobox, {
+			render(Combobox, {
 				props: {
 					items: [
 						{ value: '1', label: 'Option 1' },
