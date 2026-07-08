@@ -633,7 +633,9 @@ describe('Canvas', () => {
 			useContextMenu().close();
 		});
 
-		async function renderWithGroup() {
+		async function renderWithGroup(
+			props: { readOnly?: boolean; suppressInteraction?: boolean } = {},
+		) {
 			// The menu items are disabled unless the workflow is editable: these
 			// tests run without a router, so isReadOnlyView would resolve to true.
 			workflowDocumentStore.setScopes(['workflow:update']);
@@ -645,7 +647,7 @@ describe('Canvas', () => {
 				nodeIds: ['a', 'b'],
 			});
 
-			const rendered = renderComponent({ props: { nodes: [groupNode] } });
+			const rendered = renderComponent({ props: { nodes: [groupNode], ...props } });
 			await waitFor(() => expect(rendered.getByTestId('canvas-node-group')).toBeInTheDocument());
 
 			return { group, ...rendered };
@@ -663,6 +665,18 @@ describe('Canvas', () => {
 			expect(getByTestId('context-menu-item-ungroup_nodes')).toBeInTheDocument();
 			expect(getByTestId('context-menu-item-ungroup_nodes')).not.toHaveAttribute('aria-disabled');
 		});
+
+		it.each([{ readOnly: true }, { suppressInteraction: true }])(
+			'does not open the group context menu when the canvas has %o',
+			async (props) => {
+				const { getByTestId, queryByTestId } = await renderWithGroup(props);
+
+				await fireEvent.contextMenu(getByTestId('canvas-node-group'));
+
+				expect(useContextMenu().isOpen.value).toBe(false);
+				expect(queryByTestId('context-menu')).not.toBeInTheDocument();
+			},
+		);
 
 		it('deletes the group when the ungroup action is selected', async () => {
 			const { group, getByTestId } = await renderWithGroup();

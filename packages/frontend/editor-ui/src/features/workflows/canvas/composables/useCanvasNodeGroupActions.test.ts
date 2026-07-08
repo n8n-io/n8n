@@ -222,6 +222,38 @@ describe('useCanvasNodeGroupActions', () => {
 			expect(command.after).toEqual({ id: group.id, name: 'New', nodeIds: ['a', 'b'] });
 		});
 
+		it('does not rename in read-only mode', () => {
+			const group = workflowDocumentStore.createGroup(['a', 'b'], 'Old');
+			const historyStore = useHistoryStore();
+			const { renameGroup } = useCanvasNodeGroupActions(
+				computed(() => []),
+				{
+					readOnly: () => true,
+				},
+			);
+
+			renameGroup(group.id, 'New');
+
+			expect(workflowDocumentStore.getGroupById(group.id)?.name).toBe('Old');
+			expect(historyStore.undoStack).toHaveLength(0);
+		});
+
+		it('does not ungroup in read-only mode', () => {
+			const group = workflowDocumentStore.createGroup(['a', 'b'], 'X');
+			const historyStore = useHistoryStore();
+			const { ungroup } = useCanvasNodeGroupActions(
+				computed(() => []),
+				{
+					readOnly: () => true,
+				},
+			);
+
+			ungroup(group.id);
+
+			expect(workflowDocumentStore.getGroupById(group.id)).toBeDefined();
+			expect(historyStore.undoStack).toHaveLength(0);
+		});
+
 		it('records nothing when rename does not change the name', () => {
 			const group = workflowDocumentStore.createGroup(['a', 'b'], 'Same');
 			const historyStore = useHistoryStore();

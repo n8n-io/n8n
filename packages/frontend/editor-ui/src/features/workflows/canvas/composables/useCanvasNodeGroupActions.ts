@@ -91,6 +91,7 @@ export function useCanvasNodeGroupActions(
 	}
 
 	function renameGroup(id: string, name: string) {
+		if (isReadOnly.value) return;
 		const before = workflowDocumentStore.value.getGroupById(id);
 		if (!before) return;
 		const beforeSnapshot = snapshotGroup(before);
@@ -103,6 +104,7 @@ export function useCanvasNodeGroupActions(
 	}
 
 	function ungroup(id: string) {
+		if (isReadOnly.value) return;
 		const group = workflowDocumentStore.value.getGroupById(id);
 		if (!group) return;
 		const snapshot = snapshotGroup(group);

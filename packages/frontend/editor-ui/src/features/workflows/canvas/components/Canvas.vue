@@ -1097,6 +1097,11 @@ function onOpenNodeContextMenu(
 }
 
 function onOpenGroupContextMenu(groupId: string, event: MouseEvent) {
+	// Both group actions mutate the workflow, so fall through to the native
+	// menu when this canvas instance is read-only or suppressed. The item
+	// disabled state only reflects instance-wide read-only checks, not these
+	// per-canvas props.
+	if (props.readOnly || props.suppressInteraction) return;
 	const group = workflowDocumentStore.value.getGroupById(groupId);
 	if (!group) return;
 	contextMenu.open(event, { source: 'group', groupId, nodeIds: [...group.nodeIds] });
