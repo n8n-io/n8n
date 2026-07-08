@@ -1,11 +1,11 @@
 ---
 name: planning
 description: >-
-  ONLY for coordinated multi-artifact work: multiple workflows with dependencies,
-  shared data-table schema/migration across tasks, or the user explicitly asked
-  to review a plan first. Do NOT use for new one-off workflows, single-workflow
-  edits, verification-only requests, or standalone data-table ops — use
-  workflow-builder or data-table-manager instead.
+  Coordinated multi-artifact work only: multiple workflows with dependencies, shared table
+  schema/migration, multiple durable artifacts, broad research, ambiguous business process, or
+  user asks to review a plan. Chain: data-table-manager first when shared tables involved, then
+  create-tasks with planningContext.source: "planning-skill". Not for single workflows,
+  verification-only, or standalone table ops.
 recommended_tools:
   - create-tasks
   - workflows
@@ -22,6 +22,13 @@ recommended_tools:
 Use this skill to design a dependency-aware task graph in the orchestrator and
 submit it with `create-tasks`. Do not spawn another agent and do not use
 incremental plan item tools.
+
+## Capability honesty
+
+When a requested capability has no reliable path in n8n, surface that in the plan
+before scheduling work around it. Label approximations plainly and name the
+requested-vs-delivered gap. Get buy-in via `ask-user` before planning a downgraded
+alternative.
 
 ## When NOT to use this skill
 

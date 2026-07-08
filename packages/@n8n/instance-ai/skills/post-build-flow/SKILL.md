@@ -1,10 +1,9 @@
 ---
 name: post-build-flow
 description: >-
-  Handles workflow verification and setup after build-workflow succeeds, or when
-  the message contains workflow-verification-follow-up or workflow-setup-required.
-  Load after direct builds, when verificationReadiness requires action, or on
-  orchestrator verify/setup follow-up turns.
+  System follow-up turns: workflow-verification-follow-up, workflow-setup-required,
+  post-build-flow after direct builds. Load when build-workflow returns postBuildFlow.required
+  or verification/setup follow-up tags appear.
 recommended_tools:
   - ask-user
   - verify-built-workflow
@@ -233,6 +232,40 @@ If the user agrees, use the explicit live execution path (`executions(action="ru
 for a direct live run) and report the result separately from the earlier mocked
 verification. If the user declines or defers, state what remains untested and do
 not claim live end-to-end verification.
+
+## Trigger URL sharing
+
+When the workflow you built uses a Webhook, Form, or Chat trigger, share the
+full production URL in your completion summary. Use the **Webhook base URL** and
+**Form base URL** from Instance Info in the system prompt. Each trigger type has
+a distinct URL pattern:
+
+- **Webhook Trigger**: `{Webhook base URL}/{path}` (where `{path}` is the node's
+  webhook path parameter).
+- **Form Trigger**: `{Form base URL}/{path}` (or `{Form base URL}/{webhookId}`
+  if no custom path is set). The Form Trigger lives under `/form/`, NOT
+  `/webhook/` — they are separate URL prefixes. Do NOT use the Webhook base URL
+  for Form Triggers.
+- **Chat Trigger**: how the end user reaches this workflow depends on the node's
+  `public` parameter — pick the right guidance for the current value, do not
+  default to sharing a URL.
+  - **`public: false` (the default)**: there is NO end-user HTTP URL. Tell the
+    user to open the workflow in the editor and click the **Open chat** button on
+    the workflow canvas — that opens the built-in test chat where they can talk
+    to the workflow. Do NOT share a webhook URL, and do NOT suggest flipping
+    `public: true` just to enable testing — the in-editor chat is the intended
+    testing path for private chat workflows.
+  - **`public: true`**: the public chat URL is `{Webhook base URL}/{webhookId}/chat`
+    — share it after the workflow is published. `{webhookId}` is the node's
+    unique webhook ID; read it from the workflow JSON, never guess. End users can
+    open this URL in a browser.
+  The `/chat` suffix is unique to Chat Trigger — do NOT append it to Form
+  Trigger or Webhook URLs. (Your own testing via `executions(action="run")` and
+  `verify-built-workflow` works regardless of `public` or publish state.)
+
+**These URLs are for sharing with the user only.** Do NOT hardcode them into
+workflow code or build specs unless the workflow actually needs to send or store
+its own public endpoint.
 
 ## Claiming success
 

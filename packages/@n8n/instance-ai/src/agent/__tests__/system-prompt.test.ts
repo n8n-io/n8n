@@ -177,118 +177,31 @@ describe('getSystemPrompt', () => {
 		});
 	});
 
-	describe('routing index', () => {
-		it('allows multiple skill loads per turn instead of a single best-match load', () => {
+	describe('minimal orchestrator shell', () => {
+		it('routes via the skill catalog instead of an inline routing index', () => {
 			const prompt = getSystemPrompt({});
 
-			expect(prompt).not.toMatch(/load_skill.*once/i);
-			expect(prompt).toContain('more than one skill');
+			expect(prompt).toContain('Route by matching skill descriptions in the catalog above');
+			expect(prompt).toContain('`load_skill` before acting');
+			expect(prompt).not.toContain('**Single workflow build or edit**');
+			expect(prompt).not.toContain('**Multi-workflow or coordinated architecture**');
+			expect(prompt).not.toContain('Standalone data-table work');
+			expect(prompt).not.toContain('## Capability Honesty');
+			expect(prompt).not.toContain('## Setup Accuracy');
+			expect(prompt).not.toContain('## Tool conventions');
+			expect(prompt).not.toContain('do not call `agent_builder` at all');
+			expect(prompt).not.toContain('Never call `data-tables` or `parse-file`');
 		});
 
-		it('routes workflow builds through the workflow-builder skill', () => {
+		it('keeps system follow-up tag routing in the system prompt', () => {
 			const prompt = getSystemPrompt({});
 
-			expect(prompt).toContain("Match the user's request against skill descriptions");
-			expect(prompt).toContain('**Single workflow build or edit**');
-			expect(prompt).toContain('`workflow-builder`');
-			expect(prompt).toContain('`build-workflow`');
-			expect(prompt).toContain('**Multi-workflow or coordinated architecture**');
-			expect(prompt).toContain('`planning`');
-			expect(prompt).toContain('planningContext.source: "planning-skill"');
-			expect(prompt).toContain('multiple durable artifacts');
-			expect(prompt).toContain('shared data-table schema/migration');
-			expect(prompt).not.toContain('build-workflow-with-agent');
-		});
-
-		it('forbids the agent_builder tool during workflow building', () => {
-			const prompt = getSystemPrompt({});
-
-			expect(prompt).toContain('do not call `agent_builder` at all');
-			expect(prompt).toContain(
-				'do not route around that by creating a custom tool through `agent_builder`',
-			);
-		});
-
-		it('routes standalone data-table work through the data-table-manager skill', () => {
-			const prompt = getSystemPrompt({});
-
-			expect(prompt).toMatch(/Standalone data-table work/);
-			expect(prompt).toContain('`data-table-manager`');
-			expect(prompt).toContain('what data tables do I have?');
-			expect(prompt).toContain(
-				'Never call `data-tables` or `parse-file` without loading `data-table-manager` first',
-			);
-			expect(prompt).toContain('Do not call `create-tasks`');
-		});
-
-		it('loads data-table-manager before workflow-builder when tables are involved', () => {
-			const prompt = getSystemPrompt({});
-
-			expect(prompt).toContain('workflows that create or write to Data Tables');
-			expect(prompt).toContain(
-				'`data-table-manager` when tables are involved, then `workflow-builder`',
-			);
-		});
-
-		it('loads data-table-manager before planning when shared tables are involved', () => {
-			const prompt = getSystemPrompt({});
-
-			expect(prompt).toContain(
-				'`data-table-manager` first when shared tables are involved → `planning`',
-			);
-		});
-
-		it('does not plan just for verification', () => {
-			const prompt = getSystemPrompt({});
-
-			expect(prompt).toContain('Do not create a plan just for verification');
-		});
-
-		it('describes error workflows as per-workflow and publish-before-assign', () => {
-			const prompt = getSystemPrompt({});
-
-			expect(prompt).toContain('n8n has no global/instance-wide error workflow setting');
-			expect(prompt).toContain('settings.errorWorkflow');
-			expect(prompt).toContain('only after that referenced error workflow is published');
-			expect(prompt).toContain(
-				'mention the missing global/instance-wide setting to the user only when they explicitly ask',
-			);
-			expect(prompt).not.toContain('global error workflow for this instance');
-		});
-
-		it('points post-build and follow-up work at dedicated skills', () => {
-			const prompt = getSystemPrompt({});
-
+			expect(prompt).toContain('## System follow-ups');
 			expect(prompt).toContain('`post-build-flow`');
-			expect(prompt).toContain('postBuildFlow.required: true');
-			expect(prompt).toContain('before verification, setup, error-workflow follow-up');
 			expect(prompt).toContain('`planned-task-runtime`');
-			expect(prompt).toContain('`debugging-executions`');
-		});
-
-		it('routes n8n docs and credential setup help through the docs skill', () => {
-			const prompt = getSystemPrompt({});
-
-			expect(prompt).toContain('**n8n docs/product guidance**');
-			expect(prompt).toContain('credential setup');
-			expect(prompt).toContain('`n8n-docs-assistant`');
-			expect(prompt).toContain('`n8n-docs`');
-		});
-
-		it('keeps replan stall prevention in the core follow-up triggers', () => {
-			const prompt = getSystemPrompt({});
-
 			expect(prompt).toContain('<planned-task-follow-up type="replan">');
 			expect(prompt).toContain('you MUST take action in this turn');
 			expect(prompt).toContain('the thread will silently stall');
-		});
-
-		it('routes browser credential setup through the Computer Use skill', () => {
-			const prompt = getSystemPrompt({});
-
-			expect(prompt).toContain('needsBrowserSetup=true');
-			expect(prompt).toContain('credential-setup-with-computer-use');
-			expect(prompt).toMatch(/use Computer Use `browser_\*` tools directly/);
 		});
 	});
 
@@ -329,38 +242,24 @@ describe('getSystemPrompt', () => {
 		});
 	});
 
-	describe('trigger URL patterns', () => {
+	describe('instance info', () => {
 		const webhookBaseUrl = 'http://localhost:5678/webhook';
 		const formBaseUrl = 'http://localhost:5678/form';
 
-		it('serves Form Trigger URLs under the /form base, not /webhook', () => {
+		it('includes webhook and form base URLs when provided', () => {
 			const prompt = getSystemPrompt({ webhookBaseUrl, formBaseUrl });
 
-			expect(prompt).toContain('**Form Trigger**: http://localhost:5678/form/{path}');
-			expect(prompt).toContain('http://localhost:5678/form/{webhookId}');
-			expect(prompt).not.toContain('**Form Trigger**: http://localhost:5678/webhook/');
+			expect(prompt).toContain('## Instance Info');
+			expect(prompt).toContain(`Webhook base URL: ${webhookBaseUrl}`);
+			expect(prompt).toContain(`Form base URL: ${formBaseUrl}`);
 		});
 
-		it('keeps Webhook Trigger and Chat Trigger on the webhook base URL', () => {
+		it('omits trigger URL pattern guidance from the system prompt', () => {
 			const prompt = getSystemPrompt({ webhookBaseUrl, formBaseUrl });
 
-			expect(prompt).toContain('**Webhook Trigger**: http://localhost:5678/webhook/{path}');
-			expect(prompt).toContain('http://localhost:5678/webhook/{webhookId}/chat');
-		});
-
-		it('directs the agent to the Open chat button when Chat Trigger is private', () => {
-			const prompt = getSystemPrompt({ webhookBaseUrl, formBaseUrl });
-
-			expect(prompt).toContain('**Open chat** button on the workflow canvas');
-			expect(prompt).toMatch(/public: false[^]*Do NOT share a webhook URL/);
-			expect(prompt).toMatch(/do NOT suggest flipping `public: true` just to enable testing/);
-		});
-
-		it('explicitly warns that /form and /webhook are distinct prefixes', () => {
-			const prompt = getSystemPrompt({ webhookBaseUrl, formBaseUrl });
-
-			expect(prompt).toMatch(/Form Trigger lives under \/form\/, NOT \/webhook\//);
-			expect(prompt).toContain('Do NOT use the Webhook base URL for Form Triggers');
+			expect(prompt).not.toContain('**Webhook Trigger**:');
+			expect(prompt).not.toContain('**Form Trigger**:');
+			expect(prompt).not.toContain('**Open chat** button on the workflow canvas');
 		});
 
 		it('omits the Instance Info section when base URLs are not provided', () => {

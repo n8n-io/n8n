@@ -378,7 +378,9 @@ Use the workflow SDK.`,
 		expect(prompt).toContain('id: "summarize_notes"');
 		expect(prompt).toContain('category: "productivity"');
 		expect(prompt).toContain('recommendedTools: ["data-tables"]');
-		expect(prompt).toContain('load_skill once with `{ "skillId": "<id>" }`');
+		expect(prompt).toContain('load_skill with `{ "skillId": "<id>" }`');
+		expect(prompt).toContain('Tool gates (always)');
+		expect(prompt).toContain('data-table-manager then workflow-builder');
 		expect(prompt).not.toContain('Extract private decisions.');
 	});
 

@@ -9,6 +9,7 @@
  */
 
 import type { LocalGatewayStatus } from '../../types';
+import { loadInstanceAiRuntimeSkillSource } from '../../skills/runtime-skills';
 import { getSystemPrompt } from '../system-prompt';
 
 const browserCapableOptions: {
@@ -21,18 +22,21 @@ const browserCapableOptions: {
 
 describe('getSystemPrompt — browser/computer-use discoverability', () => {
 	describe('orchestrator → Computer Use credential setup skill', () => {
-		it('routes needsBrowserSetup=true credential responses to the Computer Use skill', () => {
-			const prompt = getSystemPrompt({});
+		it('routes needsBrowserSetup=true credential responses via the skill catalog', () => {
+			const source = loadInstanceAiRuntimeSkillSource();
+			const skill = source.registry.skills.find(
+				(entry) => entry.name === 'credential-setup-with-computer-use',
+			);
 
-			expect(prompt).toContain('needsBrowserSetup=true');
-			expect(prompt).toContain('credential-setup-with-computer-use');
-			expect(prompt).toMatch(/use Computer Use `browser_\*` tools directly/);
+			expect(skill?.id).toBe('credential-setup-with-computer-use');
+			expect(skill?.description).toContain('needsBrowserSetup=true');
+			expect(skill?.description).toContain('browser_*');
 		});
 
-		it('routes browser credential setup through Computer Use tools', () => {
-			const prompt = getSystemPrompt({});
+		it('includes browser tooling guidance when computer use is available', () => {
+			const prompt = getSystemPrompt(browserCapableOptions);
 
-			expect(prompt).toMatch(/use Computer Use `browser_\*` tools directly/);
+			expect(prompt).toContain('browser_* tools');
 		});
 	});
 

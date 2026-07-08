@@ -1,12 +1,11 @@
 ---
 name: workflow-builder
 description: >-
-  Default path for all single-workflow work: new one-off workflows, existing-
-  workflow edits, verification repairs, and workflow-local data tables. Write
-  or edit a workspace source file, then call build-workflow with filePath. Do
-  not load planning or create-tasks first. Load planning only when multiple
-  coordinated workflows or shared cross-task data tables require a
-  dependency-aware task graph.
+  Default for single-workflow build/edit (new workflows, node/expression/credential/schedule/Code
+  changes, workflow-local data tables). Not for rename/publish/delete/duplicate/move/describe —
+  use workflows/executions directly. Chain: load data-table-manager first when tables are
+  involved; load debugging-executions first when fixing a user-reported erroring node, then this
+  skill. Never substitute agent_builder. Do not load planning or create-tasks.
 recommended_tools:
   - read_file
   - write_file
@@ -43,6 +42,41 @@ multi-artifact work per the orchestrator routing rules. Use this skill for
 direct single-workflow builds/edits and during approved
 `<planned-task-follow-up type="build-workflow">` turns.
 
+## Do not use agent_builder
+
+When the user asked for a workflow, stay on this skill path — do not call
+`agent_builder` at all (not to inspect nodes, list workflows, or compile custom
+tools). If the build needs a utility the workspace does not provide, ask the user
+or use a placeholder; do not route around that by creating a custom tool through
+`agent_builder`.
+
+## Tool conventions
+
+- When a tool accepts an optional name parameter (`workflowName`, `folderName`,
+  `credentialName`, etc.), always pass it — the name is shown in confirmation
+  dialogs.
+- Use `research` directly for most web questions. Load `planning` and
+  `create-tasks` only for broad detached synthesis across many sources.
+
+## Capability honesty
+
+When a requested capability has no reliable path in n8n — no node/API, a source
+that blocks automated access, an action that cannot be done programmatically, or
+unverified third-party coverage — surface that before building around it. Label
+approximations plainly, get buy-in via `ask-user` before building a downgraded
+alternative, and name the requested-vs-delivered gap in your summary. When every
+requested capability is achievable, build directly.
+
+## Cold start
+
+When the needed node types are already obvious from the request, batch
+`nodes(action="type-definition")` — object form with resource/operation or mode
+discriminators — together with the `load_skill` call in your first action turn
+(each extra sequential turn resends the whole context). When unsure which nodes
+to use, load this skill first and follow the Mandatory Process research steps.
+
+Do not create a plan just for verification.
+
 ## Repair Strategy
 
 When called with failure details for an existing workflow, start from the
@@ -59,6 +93,11 @@ For repairs, prefer editing the workspace file directly with file tools
 `filePath` alone — cheaper than resending full source. `sourceCode` must always
 be the complete source when used; never send string patches or fragments.
 
+When the edit is to fix a node the user reports as erroring or showing a red
+expression error, inspect it first via `debugging-executions` — run the workflow,
+read the failing node's real error and resolved parameters — before editing
+anything in this skill. Never guess at the cause or change the node on a hunch.
+
 ## Escalation
 
 Before the first successful `build-workflow` call, use `ask-user` only when a
@@ -71,6 +110,17 @@ approach more than twice. Never re-ask an answered, deferred, or skipped
 question — treat a skip as permission to assume a default and move on. Never
 solicit secrets through `ask-user`; route credential collection through
 workflow/credential setup surfaces.
+
+## Setup Routing
+
+- **Workflow setup** uses `workflows(action="setup")` when a `workflowId` is
+  available — it opens the inline setup card in the AI Assistant panel and
+  handles credentials, parameters, and triggers in one step.
+- Use `credentials(action="setup")` only when the user explicitly asks to create
+  a credential outside of any workflow context.
+- Never call both setup tools for the same workflow.
+- Never describe workflow setup as something the user starts from the canvas or
+  editor.
 
 ## Placeholders
 
@@ -487,6 +537,15 @@ asked for that exact name.
 
 - Fetch `nodes(action="type-definition")` before configuring nodes. Generated
   definitions and `@builderHint` annotations are the source of truth.
+- **Webhook trigger setup is node-defined — inspect the node, and don't trust
+  generic docs for it.** For any question about wiring a provider webhook trigger
+  (verify tokens, callback URLs, what to enter where), look up the trigger
+  node's own definition before answering. Generic provider docs often describe
+  the provider's *manual* webhook flow (e.g. "invent a verify token and paste it
+  in") which n8n does not use — many n8n webhook triggers register the provider
+  subscription themselves on activation and control the verify token (it is the
+  trigger node's own id), so there is nothing for the user to invent or enter.
+  If docs and the node definition disagree, the node definition wins.
 - Use live `nodes(action="explore-resources")` for resource locator, list, and
   model fields when credentials are available.
 - If a configuration is unclear after reading the definition, ask for
