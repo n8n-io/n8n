@@ -39,12 +39,11 @@ import { aggregateWorkflowChecks, statusMap } from '../binaryChecks/aggregate';
 import { selectAuthorExpectations } from '../build-expectations/select';
 import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
 import { N8nClient } from '../clients/n8n-client';
+import { bucketFromEvaluation } from '../comparison/bucket-from-evaluation';
 import {
 	compareBuckets,
 	type ComparisonOutcome,
 	type ComparisonResult,
-	type ExperimentBucket,
-	type ScenarioCounts,
 } from '../comparison/compare';
 import { fetchBaselineBucket, findLatestBaseline } from '../comparison/fetch-baseline';
 import {
@@ -1620,7 +1619,7 @@ function serializeComparison(result: ComparisonResult): {
 	pr: { experimentName: string };
 	baseline: { experimentName: string };
 	aggregate: ComparisonResult['aggregate'];
-	scenarios: ComparisonResult['scenarios'];
+	evaluationUnits: ComparisonResult['evaluationUnits'];
 	prOnly: ComparisonResult['prOnly'];
 	baselineOnly: ComparisonResult['baselineOnly'];
 	failureCategories: ComparisonResult['failureCategories'];
@@ -1629,7 +1628,7 @@ function serializeComparison(result: ComparisonResult): {
 		pr: result.pr,
 		baseline: result.baseline,
 		aggregate: result.aggregate,
-		scenarios: result.scenarios,
+		evaluationUnits: result.evaluationUnits,
 		prOnly: result.prOnly,
 		baselineOnly: result.baselineOnly,
 		failureCategories: result.failureCategories,
@@ -1682,57 +1681,6 @@ async function tryRunComparison(config: {
 		logger.warn(`Comparison vs baseline failed: ${msg}`);
 		return { kind: 'fetch_failed', error: msg };
 	}
-}
-
-/**
- * Project the in-memory MultiRunEvaluation onto the bucket shape used by
- * fetchBaselineBucket, keyed by `${fileSlug}/${scenarioName}`.
- *
- * Looks up `fileSlug` by test case reference rather than array index — the
- * comparison key depends on getting the right slug, and zipping by index
- * silently miscompares if anything ever reorders the aggregate.
- */
-function bucketFromEvaluation(
-	evaluation: MultiRunEvaluation,
-	testCasesWithFiles: WorkflowTestCaseWithFile[],
-	experimentName: string,
-): ExperimentBucket {
-	const slugByTestCase = new Map(
-		testCasesWithFiles.map(({ testCase, fileSlug }) => [testCase, fileSlug]),
-	);
-	const scenarios = new Map<string, ScenarioCounts>();
-	const failureCategoryTotals: Record<string, number> = {};
-	let trialTotal = 0;
-	for (const tc of evaluation.testCases) {
-		const fileSlug = slugByTestCase.get(tc.testCase);
-		if (!fileSlug) {
-			throw new Error(
-				`bucketFromEvaluation: no fileSlug for test case "${caseDisplayPrompt(tc.testCase, tc.runs[0]?.transcript).slice(0, 60)}"`,
-			);
-		}
-		for (const sa of tc.executionScenarios) {
-			const key = `${fileSlug}/${sa.scenario.name}`;
-			const failureCategories: Record<string, number> = {};
-			for (const sr of sa.runs) {
-				// Verifier-incomplete runs carry no verdict — not a trial.
-				if (sr.incomplete) continue;
-				trialTotal++;
-				if (!sr.success && sr.failureCategory) {
-					failureCategories[sr.failureCategory] = (failureCategories[sr.failureCategory] ?? 0) + 1;
-					failureCategoryTotals[sr.failureCategory] =
-						(failureCategoryTotals[sr.failureCategory] ?? 0) + 1;
-				}
-			}
-			scenarios.set(key, {
-				testCaseFile: fileSlug,
-				scenarioName: sa.scenario.name,
-				passed: sa.passCount,
-				total: sa.evaluatedCount,
-				failureCategories,
-			});
-		}
-	}
-	return { experimentName, scenarios, failureCategoryTotals, trialTotal };
 }
 
 main().catch((error) => {
