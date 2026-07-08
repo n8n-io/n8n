@@ -13,6 +13,7 @@ import {
 	printBanner,
 	printConnected,
 	printInvalidToken,
+	printModuleDiagnostics,
 	printModuleStatus,
 	printToolList,
 } from './logger';
@@ -133,6 +134,11 @@ Permissions (deny | ask | allow):
 
 Computer use:
   --computer-shell-timeout <ms>      Shell command timeout (default: 30000)
+  --dangerously-disable-shell-sandbox
+                                     Run shell commands WITHOUT the OS sandbox.
+                                     Insecure — only use in a trusted, isolated
+                                     environment. Without a sandbox the shell
+                                     tool is disabled by default.
 
 Browser:
   --no-browser                       Disable browser tools
@@ -200,13 +206,6 @@ async function main(
 		process.exit(1);
 	}
 
-	// printModuleStatus expects a GatewayConfig shape — derive one from the session.
-	printModuleStatus({
-		...parsed.config,
-		permissions: session.getAllPermissions(),
-		filesystem: { dir: session.dir },
-	});
-
 	const client = new GatewayClient({
 		url,
 		apiKey,
@@ -238,6 +237,15 @@ async function main(
 	}
 
 	printConnected(url);
+	printModuleStatus(
+		{
+			...parsed.config,
+			permissions: session.getAllPermissions(),
+			filesystem: { dir: session.dir },
+		},
+		client.toolCategories,
+	);
+	printModuleDiagnostics(client.disabledModules);
 	printToolList(client.tools);
 }
 

@@ -54,6 +54,7 @@ import {
 	type FromAIOverride,
 } from '../../utils/fromAIOverride.utils';
 import { completeExpressionSyntax } from '@/app/utils/expressions';
+import { openSafeUrl } from '@/app/utils/htmlUtils';
 import { DEBOUNCE_TIME, ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -615,7 +616,7 @@ function onKeyDown(e: KeyboardEvent) {
 }
 
 function openResource(url: string) {
-	window.open(url, '_blank');
+	openSafeUrl(url);
 	trackEvent('User clicked resource locator link');
 }
 
@@ -1206,7 +1207,11 @@ function removeOverride() {
 						:class="$style['parameter-issues']"
 					/>
 					<div v-else-if="urlValue" :class="$style.openResourceLink">
-						<N8nLink theme="text" @click.stop="openResource(urlValue)">
+						<N8nLink
+							theme="text"
+							data-test-id="rlc-open-resource-link"
+							@click.stop="openResource(urlValue)"
+						>
 							<N8nIcon icon="external-link" :title="getLinkAlt(valueToDisplay)" />
 						</N8nLink>
 					</div>
