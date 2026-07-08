@@ -265,7 +265,7 @@ describe('DynamicNodeParametersService', () => {
 			(RoutingNode as unknown as Mock).mockImplementation(function () {
 				return { runNode };
 			});
-			vi.spyOn(Expression.prototype, 'acquireIsolate').mockResolvedValue(undefined);
+			vi.spyOn(Expression.prototype, 'acquireIsolate').mockResolvedValue(true);
 			vi.spyOn(Expression.prototype, 'releaseIsolate').mockResolvedValue(undefined);
 
 			const nodeRouting = { request: { url: '/v1/models', method: 'GET' as const } };
