@@ -3,10 +3,13 @@ import type { Mock } from 'vitest';
 
 import { ALL_CHECKS } from '../binaryChecks/checks';
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
+import { agentHandler } from '../harness/artifacts/agent-handler';
+import { configEvalHandler } from '../harness/artifacts/config-eval-handler';
 import { getHandler, ARTIFACT_HANDLERS } from '../harness/artifacts/registry';
 import { workflowHandler } from '../harness/artifacts/workflow-handler';
 import { buildWorkflowContextBlock } from '../harness/workflow-context';
 import { extractWorkflowIdsFromMessages } from '../outcome/workflow-discovery';
+import type { ArtifactType } from '../types';
 
 function agentNode(overrides: Partial<InstanceAiAgentNode> = {}): InstanceAiAgentNode {
 	return {
@@ -117,7 +120,12 @@ describe('artifact registry', () => {
 		expect(ARTIFACT_HANDLERS).toContain(workflowHandler);
 	});
 
+	it('resolves the agent and config-eval handlers by type', () => {
+		expect(getHandler('agent')).toBe(agentHandler);
+		expect(getHandler('config-eval')).toBe(configEvalHandler);
+	});
+
 	it('throws for an unregistered artifact type', () => {
-		expect(() => getHandler('agent')).toThrow();
+		expect(() => getHandler('bogus' as ArtifactType)).toThrow();
 	});
 });

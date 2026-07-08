@@ -2,12 +2,18 @@
 // Registry of all artifact handlers, keyed by ArtifactType.
 // ---------------------------------------------------------------------------
 
+import { agentHandler } from './agent-handler';
+import { configEvalHandler } from './config-eval-handler';
 import type { ArtifactHandler } from './types';
 import { workflowHandler } from './workflow-handler';
 import type { ArtifactType } from '../../types';
 
-/** All registered artifact handlers. Agent + config-eval handlers are added in later steps. */
-export const ARTIFACT_HANDLERS: ArtifactHandler[] = [workflowHandler];
+/** All registered artifact handlers. */
+export const ARTIFACT_HANDLERS: ArtifactHandler[] = [
+	workflowHandler,
+	agentHandler,
+	configEvalHandler,
+];
 
 /** Look up a handler by artifact type. Throws for an unregistered type. */
 export function getHandler(type: ArtifactType): ArtifactHandler {

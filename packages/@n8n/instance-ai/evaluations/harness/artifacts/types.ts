@@ -6,15 +6,22 @@
 // fetch the full artifact, and how to render it for the judge prompt. The
 // registry (./registry.ts) resolves a handler by ArtifactType.
 //
+// Per-type composite artifact shapes (AgentArtifact, ConfigEvalArtifact) also
+// live here rather than in their handler files, so the handler and renderer
+// modules can both import the shape without a handler <-> renderer cycle.
+//
 // `FetchedArtifact` and `ArtifactVerdict` are intentionally NOT defined here —
-// they have no consumer until the static (agent / config-eval) handlers and
-// runner integration land in later steps.
+// they have no consumer until runner integration lands in a later step.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiMessage } from '@n8n/api-types';
+import type { AgentSkill, EvaluationConfigDto, InstanceAiMessage } from '@n8n/api-types';
 
 import type { BinaryCheck } from '../../binaryChecks/types';
-import type { N8nClient } from '../../clients/n8n-client';
+import type {
+	DataTableColumnsResponse,
+	DataTableRowsResponse,
+	N8nClient,
+} from '../../clients/n8n-client';
 import type { ArtifactType } from '../../types';
 
 /** A discovered-but-not-yet-fetched artifact reference. */
@@ -52,4 +59,20 @@ export interface ArtifactHandler<TArtifact = unknown> {
 	renderArtifact(artifact: TArtifact): string;
 	/** Type-scoped deterministic checks. Optional forward hook — unset for types that ship none. */
 	binaryChecks?: BinaryCheck[];
+}
+
+/** Agent artifact: sanitized JSON config (secrets stripped → typed `unknown`) + full skills map. */
+export interface AgentArtifact {
+	config: unknown;
+	skills: Record<string, AgentSkill>;
+}
+
+/**
+ * Config-eval artifact: the workflow's eval configs + the referenced dataset's
+ * data table (columns + sample rows). The owning workflow itself is
+ * reference/intent only — never part of the graded content.
+ */
+export interface ConfigEvalArtifact {
+	configs: EvaluationConfigDto[];
+	dataTable?: { columns: DataTableColumnsResponse; rows: DataTableRowsResponse };
 }
