@@ -17,6 +17,7 @@ import type {
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 	NodeConnectionType,
+	NodeExecutionHint,
 	NodeOutput,
 	SupplyData,
 	Workflow,
@@ -428,6 +429,8 @@ export async function getInputConnectionData(
 	}
 
 	const nodes: SupplyData[] = [];
+	const subNodeErrors: NodeOperationError[] = [];
+
 	for (const connectedNode of connectedNodes) {
 		// Check if this is an HITL (Human-in-the-Loop) tool node
 		// HITL tools need special handling to create the middleware tool
@@ -544,15 +547,43 @@ export async function getInputConnectionData(
 					currentNodeRunIndex,
 				);
 
-				// Display on the calling node which node has the error
-				throw new NodeOperationError(connectedNode, `Error in sub-node ${connectedNode.name}`, {
-					itemIndex,
-					functionality: 'configuration-node',
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-					description: error.message,
+				const subNodeError = new NodeOperationError(
+					connectedNode,
+					`Error in sub-node ${connectedNode.name}`,
+					{
+						itemIndex,
+						functionality: 'configuration-node',
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+						description: error.message,
+					},
+				);
+
+				if (maxConnections === 1) {
+					throw subNodeError;
+				}
+
+				this.logger.warn(subNodeError.message, {
+					node: connectedNode.name,
+					description: subNodeError.description,
 				});
+				subNodeErrors.push(subNodeError);
+				continue;
 			}
 		}
+	}
+
+	if (nodes.length === 0 && subNodeErrors.length > 0) {
+		throw subNodeErrors[0];
+	}
+
+	const hintableContext = this as { addExecutionHints?: (...hints: NodeExecutionHint[]) => void };
+	if (subNodeErrors.length > 0 && typeof hintableContext.addExecutionHints === 'function') {
+		hintableContext.addExecutionHints(
+			...subNodeErrors.map((subNodeError) => ({
+				message: `${subNodeError.message}: ${subNodeError.description ?? ''}`.trim(),
+				location: 'outputPane' as const,
+			})),
+		);
 	}
 
 	return maxConnections === 1 ? (nodes || [])[0]?.response : nodes.map((node) => node.response);

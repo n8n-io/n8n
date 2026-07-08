@@ -541,20 +541,68 @@ describe('getInputConnectionData', () => {
 			expect(supplyData).toHaveBeenCalled();
 		});
 
-		it('should return the tool when there are no issues', async () => {
+		it('should isolate a failing tool and still return healthy tools (graceful degradation)', async () => {
 			agentNodeType.description.inputs = [
 				{
 					type: NodeConnectionTypes.AiTool,
 					required: true,
 				},
 			];
+
+			nodeTypes.getByNameAndVersion
+				.calledWith(secondToolNode.type, expect.anything())
+				.mockReturnValue(secondToolNodeType);
+
+			workflow.getParentNodes
+				.calledWith(agentNode.name, NodeConnectionTypes.AiTool)
+				.mockReturnValue([toolNode.name, secondToolNode.name]);
 			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
 				[{ node: toolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+				[{ node: secondToolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
 			]);
 
+			// First tool fails to construct
+			supplyData.mockRejectedValueOnce(new Error('failed to resolve dependency'));
+
 			const result = await executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
-			expect(result).toEqual([mockTool]);
+
+			// The healthy second tool is still returned, even though the first one failed
+			expect(result).toEqual([secondMockTool]);
 			expect(supplyData).toHaveBeenCalled();
+			expect(secondToolNodeType.supplyData).toHaveBeenCalled();
+
+			// The failure was recorded as a non-fatal hint instead of rejecting the whole call
+			expect(executeContext.hints).toHaveLength(1);
+			expect(executeContext.hints[0].message).toContain(`Error in sub-node ${toolNode.name}`);
+		});
+
+		it('should throw when every connected tool fails to construct', async () => {
+			agentNodeType.description.inputs = [
+				{
+					type: NodeConnectionTypes.AiTool,
+					required: true,
+				},
+			];
+
+			nodeTypes.getByNameAndVersion
+				.calledWith(secondToolNode.type, expect.anything())
+				.mockReturnValue(secondToolNodeType);
+
+			workflow.getParentNodes
+				.calledWith(agentNode.name, NodeConnectionTypes.AiTool)
+				.mockReturnValue([toolNode.name, secondToolNode.name]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: toolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+				[{ node: secondToolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+			]);
+
+			supplyData.mockRejectedValueOnce(new Error('failed #1'));
+			(secondToolNodeType.supplyData as Mock).mockRejectedValueOnce(new Error('failed #2'));
+
+			// Nothing healthy is left, so the original error still propagates
+			await expect(
+				executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0),
+			).rejects.toThrow(`Error in sub-node ${toolNode.name}`);
 		});
 	});
 });
