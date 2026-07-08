@@ -17,7 +17,6 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { AGENT_MODEL_PROVIDER_DEFINITIONS, getProviderCredentialTypes } from '../model-providers';
 import { testAgentVectorStore } from '../composables/useAgentApi';
-import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import {
 	AGENT_EMBEDDING_PROVIDERS,
 	AGENT_VECTOR_STORE_PROVIDER_DEFINITIONS,
@@ -59,7 +58,6 @@ const { showMessage, showError } = useToast();
 const rootStore = useRootStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
-const agentTelemetry = useAgentTelemetry();
 
 const providerOrder: AgentVectorStoreProvider[] = ['pinecone', 'supabase', 'qdrant', 'postgres'];
 
@@ -368,11 +366,6 @@ async function onTestAndConnect() {
 			props.data.projectId,
 			vectorStore,
 		);
-		agentTelemetry.trackTestedVectorStore({
-			agentId: props.data.agentId,
-			provider: vectorStore.provider,
-			success: result.success,
-		});
 		if (!result.success) {
 			showMessage({
 				title: i18n.baseText('agents.builder.vectorStores.modal.test.failedTitle'),
@@ -394,11 +387,6 @@ async function onTestAndConnect() {
 		props.data.onConfirm(vectorStore);
 		closeModal();
 	} catch (error) {
-		agentTelemetry.trackTestedVectorStore({
-			agentId: props.data.agentId,
-			provider: selectedProvider.value ?? 'unknown',
-			success: false,
-		});
 		showError(error, i18n.baseText('agents.builder.vectorStores.modal.test.failedTitle'));
 	} finally {
 		testing.value = false;

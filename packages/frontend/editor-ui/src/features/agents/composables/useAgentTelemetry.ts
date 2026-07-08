@@ -193,15 +193,6 @@ export function useAgentTelemetry() {
 		});
 	}
 
-	function trackTestedVectorStore(params: { agentId: string; provider: string; success: boolean }) {
-		safeTrack('User tested agent vector store connection', {
-			agent_id: params.agentId,
-			provider: params.provider,
-			success: params.success,
-			...common(),
-		});
-	}
-
 	function trackImportedSkill(params: {
 		agentId: string;
 		source: 'skill_file' | 'folder';
@@ -234,6 +225,5 @@ export function useAgentTelemetry() {
 		trackOpenedSkillFromList,
 		trackOpenedAddSkillModal,
 		trackImportedSkill,
-		trackTestedVectorStore,
 	};
 }

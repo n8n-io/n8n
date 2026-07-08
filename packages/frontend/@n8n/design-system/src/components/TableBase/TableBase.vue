@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, useSlots } from 'vue';
+import { computed, useSlots, type VNode } from 'vue';
 
 /** Must match the row styles below: td height (48px) + 1px border-bottom. */
 const ROW_HEIGHT_PX = 49;
@@ -19,7 +19,9 @@ interface TableBaseProps {
 const props = defineProps<TableBaseProps>();
 const slots = useSlots();
 
-const hasHeader = computed(() => (slots.default?.() ?? []).some((vnode) => vnode.type === 'thead'));
+const hasHeader = computed(() =>
+	(slots.default?.({}) ?? []).some((vnode: VNode) => vnode.type === 'thead'),
+);
 
 const scrollStyle = computed(() => {
 	if (!props.maxDisplayedRows) return undefined;

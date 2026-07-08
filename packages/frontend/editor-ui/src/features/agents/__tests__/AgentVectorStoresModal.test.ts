@@ -11,7 +11,6 @@ const fetchAllCredentialsForWorkflowMock = vi.fn();
 const testAgentVectorStoreMock = vi.fn();
 const showMessageMock = vi.fn();
 const showErrorMock = vi.fn();
-const trackTestedVectorStoreMock = vi.fn();
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -57,10 +56,6 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 
 vi.mock('../composables/useAgentApi', () => ({
 	testAgentVectorStore: (...args: unknown[]) => testAgentVectorStoreMock(...args),
-}));
-
-vi.mock('../composables/useAgentTelemetry', () => ({
-	useAgentTelemetry: () => ({ trackTestedVectorStore: trackTestedVectorStoreMock }),
 }));
 
 vi.mock('@/app/components/Modal.vue', () => ({
@@ -233,11 +228,6 @@ describe('AgentVectorStoresModal', () => {
 		await flushPromises();
 
 		expect(testAgentVectorStoreMock).toHaveBeenCalledWith({}, 'p1', expectedVectorStore);
-		expect(trackTestedVectorStoreMock).toHaveBeenCalledWith({
-			agentId: 'a1',
-			provider: 'qdrant',
-			success: true,
-		});
 		expect(onConfirm).toHaveBeenCalledWith(expectedVectorStore);
 		expect(closeModalMock).toHaveBeenCalledWith('agentVectorStoresModal');
 		expect(showMessageMock).toHaveBeenCalledWith(
@@ -301,11 +291,6 @@ describe('AgentVectorStoresModal', () => {
 		await wrapper.find('[data-testid="agent-vector-stores-modal-confirm"]').trigger('click');
 		await flushPromises();
 
-		expect(trackTestedVectorStoreMock).toHaveBeenCalledWith({
-			agentId: 'a1',
-			provider: 'qdrant',
-			success: false,
-		});
 		expect(showMessageMock).toHaveBeenCalledWith(
 			expect.objectContaining({
 				type: 'error',
@@ -334,11 +319,6 @@ describe('AgentVectorStoresModal', () => {
 		await wrapper.find('[data-testid="agent-vector-stores-modal-confirm"]').trigger('click');
 		await flushPromises();
 
-		expect(trackTestedVectorStoreMock).toHaveBeenCalledWith({
-			agentId: 'a1',
-			provider: 'qdrant',
-			success: false,
-		});
 		expect(showErrorMock).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
 		expect(onConfirm).not.toHaveBeenCalled();
 		expect(closeModalMock).not.toHaveBeenCalled();

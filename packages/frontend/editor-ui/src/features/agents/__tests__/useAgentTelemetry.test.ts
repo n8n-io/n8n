@@ -208,18 +208,4 @@ describe('useAgentTelemetry', () => {
 			session_id: 'session-xyz',
 		});
 	});
-
-	it('trackTestedVectorStore fires with agent_id, provider, and success', () => {
-		useAgentTelemetry().trackTestedVectorStore({
-			agentId: 'ag-1',
-			provider: 'qdrant',
-			success: false,
-		});
-		expect(trackMock).toHaveBeenCalledWith('User tested agent vector store connection', {
-			agent_id: 'ag-1',
-			provider: 'qdrant',
-			success: false,
-			session_id: 'session-xyz',
-		});
-	});
 });
