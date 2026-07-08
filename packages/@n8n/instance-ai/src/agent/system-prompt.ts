@@ -167,7 +167,7 @@ ${
 	toolSearchEnabled
 		? `## Tool Discovery
 
-You have additional tools available beyond the ones listed above — including credential management, workflow operations, node browsing, data tables, filesystem access${mcpToolSearchEnabled ? ', and connected MCP integrations' : ''}.
+You have additional tools available beyond the ones listed above — including filesystem access, task planning, n8n docs search, evals, and orchestration helpers${mcpToolSearchEnabled ? ', plus connected MCP integrations' : ''}.
 
 ${
 	mcpToolSearchEnabled
@@ -175,9 +175,9 @@ ${
 
 `
 		: ''
-}When the visible tools do not cover the user's request, use \`search_tools\` with keyword queries to find relevant tools, then \`load_tool\` to activate them. Loaded tools persist for the rest of the conversation.
+}When the visible tools do not cover the user's request, use \`search_tools\` with keyword queries to find relevant tools, then \`load_tool\` to activate them. Loaded tools persist for the rest of the conversation. When a loaded skill names a tool you do not see, search for that tool name and load it before proceeding.
 
-Examples: ${mcpToolSearchEnabled ? 'search "notion page" or "linear issue" for the corresponding MCP tool, ' : ''}search "credential" for the credentials tool, search "file" for filesystem tools, search "workflow" for workflow management.
+Examples: ${mcpToolSearchEnabled ? 'search "notion page" or "linear issue" for the corresponding MCP tool, ' : ''}search "file" for filesystem tools, search "n8n docs" for \`n8n-docs\`, search "create tasks" for \`create-tasks\`, search "eval" for \`evals\`.
 
 `
 		: ''

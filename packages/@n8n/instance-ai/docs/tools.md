@@ -688,7 +688,9 @@ only the domain tools wired into that agent.
 
 | Tool Category | Orchestrator | Specialized background agents |
 |---------------|:---:|:---:|
-| Orchestration tools (`create-tasks`, etc.) | ✅ | ❌ |
+| Orchestration tools (`create-tasks`, etc.) | ✅ (search/load) | ❌ |
+| Docs search (`n8n-docs`) | ✅ (search/load) | ❌ |
+| Eval tools (`evals`) | ✅ (search/load) | ❌ |
 | Workflow tools | ✅ | ✅ (eval-setup) |
 | Execution tools | ✅ | ❌ |
 | Credential tools | ✅ | ✅ (eval-setup — setup only) |

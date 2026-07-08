@@ -67,9 +67,10 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toContain('## Tool Discovery');
 			expect(prompt).toContain('additional tools available beyond the ones listed above');
-			expect(prompt).toContain('search "credential" for the credentials tool');
 			expect(prompt).toContain('search "file" for filesystem tools');
-			expect(prompt).toContain('search "workflow" for workflow management');
+			expect(prompt).toContain('search "n8n docs" for `n8n-docs`');
+			expect(prompt).toContain('search "create tasks" for `create-tasks`');
+			expect(prompt).toContain('search "eval" for `evals`');
 			expect(prompt).not.toContain('connected service or MCP integration');
 			expect(prompt).not.toContain('connected MCP integrations');
 		});
@@ -96,7 +97,7 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain(
 				'search "notion page" or "linear issue" for the corresponding MCP tool',
 			);
-			expect(prompt).toContain('search "credential" for the credentials tool');
+			expect(prompt).toContain('search "n8n docs" for `n8n-docs`');
 		});
 
 		it('omits Tool Discovery guidance when deferred tool search is disabled even if MCP tools exist', () => {
