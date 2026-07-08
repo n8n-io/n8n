@@ -8,7 +8,12 @@ import { mock } from 'vitest-mock-extended';
 
 import { DurableScheduler } from '../durable-scheduler';
 
-vi.mock('@n8n/scheduler', () => ({ createScheduler: vi.fn() }));
+// Keep the real exports (e.g. executorLookaheadSeconds) so the wiring is tested
+// against the actual formula; only the scheduler factory is stubbed.
+vi.mock('@n8n/scheduler', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/scheduler')>()),
+	createScheduler: vi.fn(),
+}));
 
 describe('DurableScheduler', () => {
 	function makeScheduler({ enabled = true, instanceType = 'main', dbType = 'sqlite' } = {}) {
@@ -31,13 +36,14 @@ describe('DurableScheduler', () => {
 	}
 
 	describe('composition', () => {
-		it('widens the executor lookahead by the jitter stretch', () => {
+		it('widens the executor lookahead by the full symmetric jitter span', () => {
 			makeScheduler();
 
-			// Consecutive executor ticks can be up to interval·(1+jitter) apart, so
-			// the claim horizon must cover the stretched gap or tasks fire late.
+			// Consecutive executor ticks can be up to interval·(1+2·jitter) apart (one early,
+			// the next late), so the claim horizon must cover the whole span or a task due in
+			// the tail fires late. Defaults 5s · (1 + 2·0.1) = 6.
 			const deps = vi.mocked(createScheduler).mock.calls.at(-1)?.[0];
-			expect(deps?.executor?.lookaheadSeconds).toBeCloseTo(5.5);
+			expect(deps?.executor?.lookaheadSeconds).toBeCloseTo(6.0);
 		});
 
 		it('runs passes concurrently on Postgres, which claims with row locks', () => {

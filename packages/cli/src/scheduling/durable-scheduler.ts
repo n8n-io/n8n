@@ -4,7 +4,7 @@ import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { RunInTransaction, Scheduler, TaskHandler } from '@n8n/scheduler';
-import { createScheduler } from '@n8n/scheduler';
+import { createScheduler, executorLookaheadSeconds } from '@n8n/scheduler';
 import { InstanceSettings } from 'n8n-core';
 
 /**
@@ -38,10 +38,12 @@ export class DurableScheduler implements Scheduler {
 					},
 					executor: {
 						leaseSeconds: config.leaseDurationSeconds,
-						// Claim one executor tick ahead — including the jitter stretch, since
-						// consecutive ticks can be up to interval·(1+jitter) apart — so a task
-						// due before the next tick still fires on time.
-						lookaheadSeconds: config.executorIntervalSeconds * (1 + config.jitterRatio),
+						// Claim one executor tick ahead so a task due before the next tick still
+						// fires on time; the horizon must cover the widest gap between two ticks.
+						lookaheadSeconds: executorLookaheadSeconds(
+							config.executorIntervalSeconds,
+							config.jitterRatio,
+						),
 						batchSize: config.claimBatchSize,
 					},
 					reaper: { batchSize: config.reaperBatchSize },
