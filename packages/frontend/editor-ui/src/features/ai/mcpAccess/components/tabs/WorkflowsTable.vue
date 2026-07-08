@@ -284,6 +284,7 @@ const onConnectClick = () => {
 				</template>
 			</N8nDataTableServer>
 			<SelectedItemsInfo
+				:class="$style['selection-bar']"
 				:selected-count="selectedWorkflowIds.length"
 				@clear-selection="clearSelection"
 			>
@@ -307,9 +308,17 @@ const onConnectClick = () => {
 	align-items: center;
 }
 
-// Anchors the floating selection bar to the table area
-.table-container {
-	position: relative;
+// The selection bar's default absolute positioning assumes a tall anchor
+// container and overlaps the header when the table is short. Sticky keeps
+// it below the table, floating at the viewport bottom only while a long
+// table extends past it.
+.table-container .selection-bar {
+	position: sticky;
+	bottom: var(--spacing--3xl);
+	left: auto;
+	transform: none;
+	width: fit-content;
+	margin: 0 auto;
 }
 
 .workflow-table {
