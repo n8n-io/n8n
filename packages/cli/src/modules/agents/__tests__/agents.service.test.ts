@@ -13,6 +13,7 @@ import { AgentsService } from '../agents.service';
 import type { Agent } from '../entities/agent.entity';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -41,11 +42,13 @@ function makeService() {
 	const testChatService = mock<AgentTestChatService>();
 	const agentTaskService = mock<AgentTaskService>();
 	const chatIntegrationService = mock<ChatIntegrationService>();
+	const subAgentCleanupService = mock<SubAgentCleanupService>();
 
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
 	agentTaskService.requestReconcile.mockResolvedValue();
 	chatIntegrationService.disconnectChannel.mockResolvedValue();
 	testChatService.clearAllTestChatMessages.mockResolvedValue();
+	subAgentCleanupService.removeSubAgentFromParents.mockResolvedValue();
 	Container.set(AgentTaskService, agentTaskService);
 	Container.set(ChatIntegrationService, chatIntegrationService);
 
@@ -56,6 +59,7 @@ function makeService() {
 		agentKnowledgeService,
 		runtimeCacheService,
 		testChatService,
+		subAgentCleanupService,
 	);
 
 	return {
@@ -66,6 +70,7 @@ function makeService() {
 		testChatService,
 		agentTaskService,
 		chatIntegrationService,
+		subAgentCleanupService,
 	};
 }
 
@@ -110,6 +115,7 @@ describe('AgentsService', () => {
 			testChatService,
 			agentTaskService,
 			chatIntegrationService,
+			subAgentCleanupService,
 		} = makeService();
 		const agent = makeAgent({
 			integrations: [
@@ -136,6 +142,10 @@ describe('AgentsService', () => {
 			credentialId: 'telegram-1',
 		});
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		expect(subAgentCleanupService.removeSubAgentFromParents).toHaveBeenCalledWith(
+			agentId,
+			projectId,
+		);
 		expect(agentTaskService.requestReconcile).toHaveBeenCalledWith(agentId);
 		expect(testChatService.clearAllTestChatMessages).toHaveBeenCalledWith(agentId);
 		expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(projectId, agentId);

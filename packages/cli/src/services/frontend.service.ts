@@ -13,6 +13,7 @@ import path from 'path';
 
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
+import { isWorkflowReviewsFeatureAvailable } from '@/constants/workflow-reviews';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
@@ -34,6 +35,7 @@ import {
 
 import { AiUsageService } from './ai-usage.service';
 import { UrlService } from './url.service';
+import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
 
 const DYNAMIC_BANNER_FILTERS_CACHE_TTL = 30 * Time.seconds.toMilliseconds;
 
@@ -138,6 +140,7 @@ export class FrontendService {
 		private readonly ownershipService: OwnershipService,
 		private readonly aiUsageService: AiUsageService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly workflowReviewPolicyService: WorkflowReviewPolicyService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -363,6 +366,7 @@ export class FrontendService {
 				personalSpacePolicy: false,
 				dataRedaction: false,
 				otelCustomSpanAttributes: false,
+				workflowReviews: false,
 			},
 			mfa: {
 				enabled: false,
@@ -528,6 +532,7 @@ export class FrontendService {
 			personalSpacePolicy: this.licenseState.isPersonalSpacePolicyLicensed(),
 			dataRedaction: this.licenseState.isDataRedactionLicensed(),
 			otelCustomSpanAttributes: this.licenseState.isOtelCustomSpanAttributesLicensed(),
+			workflowReviews: this.licenseState.isWorkflowReviewsLicensed(),
 		});
 
 		if (this.license.isLdapEnabled()) {
@@ -593,6 +598,12 @@ export class FrontendService {
 
 		// TODO: read from settings
 		this.settings.mfa.enforced = await this.mfaService.isMFAEnforced();
+
+		if (isWorkflowReviewsFeatureAvailable(this.licenseState.isWorkflowReviewsLicensed())) {
+			this.settings.workflowReviews = await this.workflowReviewPolicyService.get();
+		} else {
+			delete this.settings.workflowReviews;
+		}
 
 		this.settings.executionMode = this.globalConfig.executions.mode;
 

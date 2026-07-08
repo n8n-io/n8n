@@ -46,7 +46,7 @@ n8n-cli package import --file=export.n8np --conflict-policy=fail --credential-mi
 | `--project` | Target project ID. Defaults to your personal project. |
 | `--folder` | Target folder ID within the project. Defaults to the project root. |
 | `--workflow-id-policy` | Whether imported workflows keep their source ID (`source`) or receive a new one (`new`). |
-| `--credential-matching-mode` | How credential references are matched on the target instance (`id-only`). |
+| `--credential-matching-mode` | How credential references are matched on the target instance: `id-only` (default, match by id), `name-and-type` (match by exact name and type), or `type-only` (match by type). For `name-and-type` and `type-only`, candidates are ranked by scope — owned by the target project, then shared into it, then global — and ties within a scope use the most recently updated credential. |
 | `--credential-missing-mode` | What to do when a referenced credential cannot be resolved. `create-stub` (instance default) creates empty placeholder credentials in the target project; `must-preexist` requires every referenced credential to already exist. |
 
 Requires the API key to hold the `workflow:import` scope. When the import is

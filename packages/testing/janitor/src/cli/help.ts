@@ -236,45 +236,36 @@ runtime via the DI container by every consuming package's integration tests).
 
 export function showScopeHelp(): void {
 	console.log(`
-Scope - Per-package jest/vitest scope from changed files
+Scope - Per-package vitest scope from changed files
 
 Usage:
-  janitor scope --runner=<jest|vitest> [--jest-variant=<unit|integration>] [--package-dir=<dir>] [--changed-files=<list>]
+  janitor scope --runner=vitest [--package-dir=<dir>] [--changed-files=<list>]
 
   --package-dir:   defaults to cwd (matches how pnpm/turbo invoke test scripts).
   --changed-files: newline- OR comma-separated repo-root-relative paths.
                    Defaults to $CHANGED_FILES env var.
-  --jest-variant:  'integration' widens the bailout set to catch runtime-
-                   coupled changes invisible to jest --findRelatedTests
-                   (entities, repositories, migrations, shared fixtures).
-                   Defaults to 'unit'.
 
 Output (single line on stdout):
   SKIP        No in-package files changed
   RUN_FULL    Config file changed, OR no CHANGED_FILES signal (local dev)
-  <files>     Pass to jest --findRelatedTests / vitest related
+  <files>     Pass to vitest related
 `);
 }
 
 export function showTestScopedHelp(): void {
 	console.log(`
-Test-Scoped - Compute scope and spawn jest/vitest with the right flags
+Test-Scoped - Compute scope and spawn vitest with the right flags
 
 Usage:
-  janitor test-scoped --runner=<jest|vitest> [--jest-variant=<unit|integration>] [--package-dir=<dir>] [--changed-files=<list>] [extra runner args]
+  janitor test-scoped --runner=vitest [--package-dir=<dir>] [--changed-files=<list>] [extra runner args]
 
   --package-dir:   defaults to cwd (matches how pnpm/turbo invoke test scripts).
   --changed-files: newline- OR comma-separated repo-root-relative paths.
                    Defaults to $CHANGED_FILES env var.
-  --jest-variant:  'integration' widens the bailout set to catch runtime-
-                   coupled changes invisible to jest --findRelatedTests
-                   (entities, repositories, migrations, shared fixtures).
-                   Defaults to 'unit'.
 
 Local dev (no $CHANGED_FILES set): runs the full suite.
-CI: scopes via jest --findRelatedTests / vitest related --run, or skips
-if the package wasn't touched. Unrecognised flags are forwarded to the
-runner.
+CI: scopes via vitest related --run, or skips if the package wasn't touched.
+Unrecognised flags are forwarded to the runner.
 `);
 }
 

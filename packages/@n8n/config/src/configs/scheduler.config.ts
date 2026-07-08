@@ -11,6 +11,12 @@ import { positiveIntSchema } from '../schemas';
 const nonNegativeIntSchema = z.number({ coerce: true }).int().nonnegative();
 
 /**
+ * A jitter ratio: a fraction in [0, 1). 0 disables jitter; 1 or above would
+ * allow a zero or negative delay between ticks, so they are rejected.
+ */
+const jitterRatioSchema = z.number({ coerce: true }).nonnegative().lt(1);
+
+/**
  * Configuration for the durable scheduler: the engine that runs time-based
  * workflows (such as Schedule Trigger nodes) from a database-backed queue.
  *
@@ -56,6 +62,16 @@ export class SchedulerConfig {
 	sweepIntervalSeconds: number = 10;
 
 	/**
+	 * How long, in seconds, a single scan for upcoming runs may take before it is
+	 * abandoned and retried on its next interval. Guards against a scan stuck on
+	 * a slow or unresponsive database holding its slot forever.
+	 * Defaults to 60 seconds.
+	 * Must be greater than 0.
+	 */
+	@Env('N8N_SCHEDULER_SWEEP_TIMEOUT', positiveIntSchema)
+	sweepTimeoutSeconds: number = Time.minutes.toSeconds;
+
+	/**
 	 * How often, in seconds, the scheduler checks for recorded runs whose time has
 	 * arrived and starts them. Defaults to 5 seconds.
 	 *
@@ -65,6 +81,16 @@ export class SchedulerConfig {
 	 */
 	@Env('N8N_SCHEDULER_EXECUTOR_INTERVAL', positiveIntSchema)
 	executorIntervalSeconds: number = 5;
+
+	/**
+	 * How long, in seconds, a single check for due runs may take before it is
+	 * abandoned and retried on its next interval.
+	 * Guards against a check stuck on a slow or unresponsive database holding its slot forever.
+	 * Defaults to 60 seconds.
+	 * Must be greater than 0.
+	 */
+	@Env('N8N_SCHEDULER_EXECUTOR_TIMEOUT', positiveIntSchema)
+	executorTimeoutSeconds: number = Time.minutes.toSeconds;
 
 	/**
 	 * The most runs a single claim takes from the queue in one pass. Defaults to 100.
@@ -90,6 +116,16 @@ export class SchedulerConfig {
 	 */
 	@Env('N8N_SCHEDULER_REAPER_BATCH_SIZE', positiveIntSchema)
 	reaperBatchSize: number = 100;
+
+	/**
+	 * How long, in seconds, a single recovery sweep may take
+	 * before it is abandoned and retried on its next interval.
+	 * Guards against a sweep stuck on a slow or unresponsive database holding its slot forever.
+	 * Defaults to 60 seconds.
+	 * Must be greater than 0.
+	 */
+	@Env('N8N_SCHEDULER_REAPER_TIMEOUT', positiveIntSchema)
+	reaperTimeoutSeconds: number = Time.minutes.toSeconds;
 
 	/**
 	 * How long, in seconds, a single instance holds an exclusive claim on a run it
@@ -142,6 +178,44 @@ export class SchedulerConfig {
 	 */
 	@Env('N8N_SCHEDULER_RETENTION_INTERVAL', positiveIntSchema)
 	retentionIntervalSeconds: number = Time.hours.toSeconds;
+
+	/**
+	 * How long, in seconds, a single cleanup of old finished tasks may take
+	 * before it is abandoned and retried on its next interval.
+	 * Defaults to 300 seconds.
+	 * Must be greater than 0.
+	 */
+	@Env('N8N_SCHEDULER_RETENTION_TIMEOUT', positiveIntSchema)
+	retentionTimeoutSeconds: number = 5 * Time.minutes.toSeconds;
+
+	/**
+	 * The most background checks of the same kind (for example several scans for
+	 * upcoming runs) allowed to run at the same time on one instance, when the
+	 * database supports overlapping checks (Postgres).
+	 * When a check is due while this many are still running, it is skipped.
+	 * On SQLite checks never overlap and this setting has no effect.
+	 * Defaults to 10.
+	 * Must be greater than 0.
+	 */
+	@Env('N8N_SCHEDULER_MAX_CONCURRENT_PASSES', positiveIntSchema)
+	maxConcurrentPasses: number = 10;
+
+	/**
+	 * Adds a small random variation to the timing of the scheduler's periodic
+	 * background checks (the intervals configured above), as a fraction of each
+	 * interval. For example, with 0.1 a check configured to run every 10 seconds
+	 * actually runs every 9 to 11 seconds. Defaults to 0.1.
+	 *
+	 * Without this variation, several n8n instances started at the same time
+	 * (for example during a rolling deploy) would all query the database at the
+	 * same moments; the randomness spreads those queries out.
+	 *
+	 * Must be at least 0 and below 1. Set it to 0 to make the checks run at
+	 * exact intervals, or raise it to spread database load across instances
+	 * more evenly.
+	 */
+	@Env('N8N_SCHEDULER_JITTER_RATIO', jitterRatioSchema)
+	jitterRatio: number = 0.1;
 
 	/**
 	 * The smallest gap, in seconds, allowed between consecutive runs of the same

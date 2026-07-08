@@ -1,6 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, useTemplateRef } from 'vue';
-import { N8nIcon } from '@n8n/design-system';
+import { computed, useTemplateRef } from 'vue';
+import {
+	N8nAiModelSelectorDropdown,
+	N8nIcon,
+	useDropdownSearch,
+	type AiModelSelectorMenuItem,
+	type AiModelSelectorMenuItemData,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { truncateBeforeLast } from '@n8n/utils/string/truncate';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -9,11 +15,6 @@ import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
-import AiModelSelectorDropdown from '@/features/ai/modelSelector/AiModelSelectorDropdown.vue';
-import type {
-	AiModelSelectorMenuItem,
-	AiModelSelectorMenuItemData,
-} from '@/features/ai/modelSelector/types';
 import {
 	AGENT_MODEL_PROVIDER_DEFINITIONS,
 	AGENT_MODEL_PROVIDERS,
@@ -24,9 +25,9 @@ import {
 	type AgentModelSelection,
 	type AgentModelsByProvider,
 } from '../model-providers';
+import { AGENT_MODEL_CREDENTIAL_MODAL_KEY } from '../constants';
 
 const MAX_MODEL_NAME_CHARS = 45;
-const MAX_SELECTED_NAME_CHARS = 30;
 const MAX_SEARCH_RESULTS_PER_PROVIDER = 10;
 const FREE_OPENAI_CREDITS_PROVIDER = 'openai';
 const FREE_OPENAI_CREDITS_MODEL = 'gpt-5-mini';
@@ -45,7 +46,6 @@ const {
 	modelsByProvider,
 	isLoading,
 	projectId,
-	horizontal = false,
 	warnMissingCredentials = false,
 	disabled = false,
 } = defineProps<{
@@ -53,8 +53,7 @@ const {
 	credentials: AgentCredentialsByProvider | null;
 	modelsByProvider: AgentModelsByProvider;
 	isLoading: boolean;
-	projectId?: string;
-	horizontal?: boolean;
+	projectId: string;
 	warnMissingCredentials?: boolean;
 	disabled?: boolean;
 }>();
@@ -69,8 +68,6 @@ const dropdownRef = useTemplateRef('dropdownRef');
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
-const searchQuery = ref('');
-
 const selectedCredentialId = computed(() =>
 	selectedModel ? credentials?.[selectedModel.provider] : undefined,
 );
@@ -145,10 +142,6 @@ function modelItemId(provider: AgentModelProvider, model: string): string {
 	return `${provider}::model::${encodeURIComponent(model)}`;
 }
 
-function credentialItemId(provider: AgentModelProvider, credentialId: string): string {
-	return `${provider}::credential::${encodeURIComponent(credentialId)}`;
-}
-
 function configureCredentialItemId(provider: AgentModelProvider, credentialType: string): string {
 	return `${provider}::configure::${encodeURIComponent(credentialType)}`;
 }
@@ -176,14 +169,6 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 	const hasProviderCredential =
 		selectedProviderCredentialId !== null &&
 		credentialOptions.some((credential) => credential.id === selectedProviderCredentialId);
-
-	const credentialItems = credentialOptions.map<MenuItem>((credential) => ({
-		id: credentialItemId(provider, credential.id),
-		label: credential.name,
-		icon: { type: 'icon', value: 'key-round' },
-		checked: credential.id === selectedProviderCredentialId,
-		data: { provider, credentialType: credential.type },
-	}));
 
 	const configureCredentialItems: MenuItem[] = canCreateCredentials.value
 		? credentialTypes.length === 1
@@ -238,6 +223,7 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 				label: truncateBeforeLast(model.name, MAX_MODEL_NAME_CHARS),
 				disabled: false,
 				divided: index === 0,
+				checked: selectedModel?.provider === provider && selectedModel.model === model.model,
 				data: {
 					provider,
 					description: model.description ?? undefined,
@@ -283,7 +269,6 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 		children: [
 			...freeOpenAiCreditsItems,
 			...configureCredentialItems,
-			...credentialItems,
 			...modelItems,
 			...statusItems,
 		],
@@ -314,40 +299,34 @@ function isSearchableItem(item: MenuItem): boolean {
 	return (item.id.includes('::model::') || item.id.includes('::freeCredits::')) && !item.disabled;
 }
 
-function collectMatchingItems(
-	item: MenuItem,
-	query: string,
-	parts: string[],
-	parentMatched = false,
-): MenuItem[] {
-	const children = item.children ?? [];
-	const currentParts = [...parts, item.label];
-	const labelMatched = item.label.toLowerCase().includes(query);
-	const isMatched = parentMatched || labelMatched;
-
-	if (children.length === 0) {
-		const searchText = `${item.data?.fullName ?? item.label}`.toLowerCase();
-		if (!isSearchableItem(item) || (!isMatched && !searchText.includes(query))) return [];
-		return [
-			{
-				...item,
-				divided: false,
-				data: item.data
-					? { ...item.data, parts: currentParts, descriptionTooltipTeleported: true }
-					: undefined,
-			},
-		];
-	}
-
-	return children.flatMap((child) => collectMatchingItems(child, query, currentParts, isMatched));
-}
+const {
+	search: searchQuery,
+	filteredItems: matchingModelItems,
+	handleSearch,
+} = useDropdownSearch(menu, {
+	flatList: true,
+	isSearchable: isSearchableItem,
+	searchFields: (item) => [item.label, item.data?.fullName],
+	mapResult: (item, path) => ({
+		...item,
+		divided: false,
+		data: item.data
+			? {
+					...item.data,
+					parts: path.map((pathItem) => pathItem.label),
+					descriptionTooltipTeleported: true,
+				}
+			: undefined,
+	}),
+});
 
 const filteredMenu = computed(() => {
-	const query = searchQuery.value.trim().toLowerCase();
-	if (!query) return menu.value;
+	if (!searchQuery.value.trim()) return menu.value;
 
 	return menu.value.flatMap<MenuItem>((providerItem) => {
-		const results = collectMatchingItems(providerItem, query, []);
+		const results = matchingModelItems.value.filter(
+			(item) => item.data?.provider === providerItem.id,
+		);
 		if (results.length <= MAX_SEARCH_RESULTS_PER_PROVIDER) return results;
 
 		return [
@@ -379,6 +358,27 @@ function openNewCredential(credentialType: string) {
 	}
 }
 
+function openCredentialsSelectorOrCreate(provider: AgentModelProvider, credentialType: string) {
+	if (disabled) return;
+
+	const existingCredentials = credentialsStore.getCredentialsByType(credentialType);
+
+	if (existingCredentials.length === 0 && canCreateCredentials.value) {
+		openNewCredential(credentialType);
+		return;
+	}
+
+	uiStore.openModalWithData({
+		name: AGENT_MODEL_CREDENTIAL_MODAL_KEY,
+		data: {
+			credentialType,
+			displayName: getCredentialTypeDisplayName(credentialType),
+			initialValue: credentials?.[provider] ?? null,
+			onSelect: (credentialId: string | null) => emit('selectCredential', provider, credentialId),
+		},
+	});
+}
+
 async function onSelect(id: string) {
 	if (disabled) return;
 
@@ -386,13 +386,8 @@ async function onSelect(id: string) {
 	if (!isAgentModelProvider(providerId) || !rawValue) return;
 
 	const value = decodeURIComponent(rawValue);
-	if (action === 'credential') {
-		emit('selectCredential', providerId, value);
-		return;
-	}
-
 	if (action === 'configure') {
-		openNewCredential(value);
+		openCredentialsSelectorOrCreate(providerId, value);
 		return;
 	}
 
@@ -416,11 +411,6 @@ async function onSelect(id: string) {
 	}
 }
 
-function handleSearch(query: string) {
-	if (disabled) return;
-	searchQuery.value = query;
-}
-
 defineExpose({
 	open: () => {
 		if (!disabled) dropdownRef.value?.open();
@@ -429,19 +419,16 @@ defineExpose({
 </script>
 
 <template>
-	<AiModelSelectorDropdown
+	<N8nAiModelSelectorDropdown
 		ref="dropdownRef"
 		:items="filteredMenu"
 		:selected-label="selectedLabel"
 		:selected-credential-name="selectedCredentialName"
 		:credentials-missing="isCredentialsMissing"
-		:credentials-missing-label="i18n.baseText('agents.modelSelector.credentialsMissing')"
 		:no-match-label="i18n.baseText('agents.modelSelector.noMatch')"
-		:horizontal="horizontal"
 		:disabled="disabled"
 		data-test-id="agent-model-selector"
 		credential-data-test-id="agent-model-selector-credential"
-		:max-selected-name-chars="MAX_SELECTED_NAME_CHARS"
 		@search="handleSearch"
 		@select="onSelect"
 	>
@@ -471,5 +458,5 @@ defineExpose({
 				:class="ui.class"
 			/>
 		</template>
-	</AiModelSelectorDropdown>
+	</N8nAiModelSelectorDropdown>
 </template>
