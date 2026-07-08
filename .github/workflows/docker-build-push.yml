@@ -62,11 +62,18 @@ jobs:
       push_enabled: ${{ steps.context.outputs.push_enabled }}
       push_to_docker: ${{ steps.context.outputs.push_to_docker }}
       build_matrix: ${{ steps.context.outputs.build_matrix }}
+      short_sha: ${{ steps.sha.outputs.short_sha }}
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ inputs.ref }}
+
+      - name: Resolve built commit SHA
+        id: sha
+        # From the checked-out working tree (honours `ref`), not GITHUB_SHA — which
+        # is the triggering ref (e.g. master) and would mislabel a ref-override build.
+        run: echo "short_sha=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Determine build context
         id: context
@@ -132,7 +139,7 @@ jobs:
             --all \
             --version "${{ needs.determine-build-context.outputs.n8n_version }}" \
             --platform "${{ matrix.docker_platform }}" \
-            --sha "${GITHUB_SHA::7}" \
+            --sha "${{ needs.determine-build-context.outputs.short_sha }}" \
             "${DATE_ARGS[@]}" \
             ${{ needs.determine-build-context.outputs.push_to_docker == 'true' && '--include-docker' || '' }}
 
@@ -293,7 +300,7 @@ jobs:
             ["runners-distroless"]="${VERSION}-distroless"
           )
 
-          SHORT_SHA="${GITHUB_SHA::7}"
+          SHORT_SHA="${{ needs.determine-build-context.outputs.short_sha }}"
 
           for image in "${!images[@]}"; do
             TAG_SUFFIX="${images[$image]}"
