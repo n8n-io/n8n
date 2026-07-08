@@ -86,6 +86,26 @@ describe('ItemsRenderer', () => {
 		expect(getByTestId('node-creator-credits-balance').textContent).toContain('$5.00 remaining');
 	});
 
+	it('should render "No credits" when the balance is depleted', async () => {
+		const pinia = createTestingPinia();
+		const aiGatewayStore = useAiGatewayStore(pinia);
+		aiGatewayStore.balance = 0;
+
+		const { getByTestId } = renderComponent({
+			pinia,
+			props: {
+				elements: [mockSectionCreateElement({ showCreditsBalance: true })],
+			},
+			global: {
+				stubs: ['N8nLoading'],
+			},
+		});
+
+		await nextTick();
+
+		expect(getByTestId('node-creator-credits-balance').textContent).toContain('No credits');
+	});
+
 	it('should fire selected events on click', async () => {
 		const items = [
 			mockSubcategoryCreateElement(),

@@ -39,7 +39,7 @@ import * as changeCase from 'change-case';
 import sortBy from 'lodash/sortBy';
 import type { NodeViewItemSection } from './views/viewsData';
 
-import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
+import { stripToolSuffix, useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
@@ -312,9 +312,9 @@ export function isAiGatewaySupportedNode(element: INodeCreateElement): boolean {
 	if (!useSettingsStore().isAiGatewayEnabled) return false;
 
 	const aiGatewayStore = useAiGatewayStore();
-	// Tool-variant node types carry a "Tool" suffix (e.g. "llamaParsePlatformTool"),
-	// but the gateway config lists the base name ("llamaParsePlatform").
-	const baseName = element.properties.name.replace(/Tool$/, '');
+	// Tool-variant node types carry a "Tool"/"HitlTool" suffix
+	// (e.g. "llamaParsePlatformTool"), but the gateway config lists the base name.
+	const baseName = stripToolSuffix(element.properties.name);
 	const supportedName = [element.properties.name, baseName].find((n) =>
 		aiGatewayStore.isNodeSupported(n),
 	);

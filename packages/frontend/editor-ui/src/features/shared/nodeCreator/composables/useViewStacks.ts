@@ -413,7 +413,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 					// Order: Recommended Tools section, Other Tools, MCP Servers, Vector Stores, rest
 					.sort((a, b) => toolSubcategoryRank(a) - toolSubcategoryRank(b));
 
-				return subcategories;
+				return withGatewaySection(subcategories);
 			}
 
 			return withGatewaySection([

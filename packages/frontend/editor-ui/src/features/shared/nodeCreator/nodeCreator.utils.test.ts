@@ -57,7 +57,9 @@ vi.mock('@/app/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({ settings: {}, isAskAiEnabled: true })),
 }));
 
-vi.mock('@/app/stores/aiGateway.store', () => ({
+vi.mock('@/app/stores/aiGateway.store', async (importOriginal) => ({
+	stripToolSuffix: (await importOriginal<typeof import('@/app/stores/aiGateway.store')>())
+		.stripToolSuffix,
 	useAiGatewayStore: vi.fn(() => ({
 		isNodeSupported: vi.fn(() => false),
 		isNodeTypeVersionSupported: vi.fn(() => true),
