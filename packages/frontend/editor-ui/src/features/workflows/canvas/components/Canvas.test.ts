@@ -698,6 +698,30 @@ describe('Canvas', () => {
 				}),
 			);
 		});
+
+		it('targets the right-clicked group even if membership changed while the menu was open', async () => {
+			const { group, getByTestId } = await renderWithGroup();
+
+			await fireEvent.contextMenu(getByTestId('canvas-node-group'));
+			await waitFor(() =>
+				expect(getByTestId('context-menu-item-ungroup_nodes')).toBeInTheDocument(),
+			);
+
+			// Simulate a concurrent change (e.g. a collaborator): the right-clicked
+			// group is dissolved and its first member joins a different group.
+			workflowDocumentStore.deleteGroup(group.id);
+			const otherGroup = workflowDocumentStore.createGroup(['a'], 'Other Group');
+
+			await fireEvent.click(getByTestId('context-menu-item-ungroup_nodes'));
+
+			// The action must no-op — resolving via the snapshotted member id
+			// would wrongly ungroup the unrelated group that now contains it.
+			expect(workflowDocumentStore.getGroupById(otherGroup.id)).toBeDefined();
+			expect(useTelemetry().track).not.toHaveBeenCalledWith(
+				'User ungrouped nodes',
+				expect.anything(),
+			);
+		});
 	});
 
 	describe('node group telemetry', () => {

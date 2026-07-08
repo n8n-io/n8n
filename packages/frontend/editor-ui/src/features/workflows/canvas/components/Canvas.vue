@@ -1107,7 +1107,7 @@ function onOpenGroupContextMenu(groupId: string, event: MouseEvent) {
 	contextMenu.open(event, { source: 'group', groupId, nodeIds: [...group.nodeIds] });
 }
 
-async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
+async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[], groupId?: string) {
 	switch (action) {
 		case 'add_node':
 			return emit('create:node', 'context_menu');
@@ -1152,19 +1152,18 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 			}
 			return;
 		}
-		// Group target actions receive the group's member node ids; a node
-		// belongs to at most one group, so the first member resolves it.
+		// Group actions target the group carried by the menu target — resolving
+		// through member node ids could hit a different group if membership
+		// changed (e.g. by a collaborator) while the menu was open.
 		case 'rename_group': {
-			const group = workflowDocumentStore.value.getGroupForNode(nodeIds[0]);
-			if (group) {
-				autofocusGroupTitleId.value = group.id;
+			if (groupId && workflowDocumentStore.value.getGroupById(groupId)) {
+				autofocusGroupTitleId.value = groupId;
 			}
 			return;
 		}
 		case 'ungroup_nodes': {
-			const group = workflowDocumentStore.value.getGroupForNode(nodeIds[0]);
-			if (group) {
-				onCanvasGroupUngroup(group.id, 'context-menu');
+			if (groupId) {
+				onCanvasGroupUngroup(groupId, 'context-menu');
 			}
 			return;
 		}

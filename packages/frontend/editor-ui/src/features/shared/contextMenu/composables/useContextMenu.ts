@@ -9,7 +9,11 @@ export type ContextMenuTarget =
 	| { source: 'node-right-click'; nodeId: string }
 	| { source: 'node-button'; nodeId: string }
 	| { source: 'group'; groupId: string; nodeIds: string[] };
-export type ContextMenuActionCallback = (action: ContextMenuAction, nodeIds: string[]) => void;
+export type ContextMenuActionCallback = (
+	action: ContextMenuAction,
+	nodeIds: string[],
+	groupId?: string,
+) => void;
 
 const position = ref<XYPosition>([0, 0]);
 const target = ref<ContextMenuTarget>();
