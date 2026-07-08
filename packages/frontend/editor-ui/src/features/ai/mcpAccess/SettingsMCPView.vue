@@ -147,8 +147,13 @@ const onToggleMCPAccess = async (enabled: boolean) => {
 		}
 		mcp.trackUserToggledMcpAccess(enabled);
 		if (enabled && updated) {
-			// Best-effort offer; must not keep the toggle in its loading state
-			void offerToExposeAllWorkflows(refreshWorkflowsFromFirstPage);
+			// Best-effort offer; must not keep the toggle in its loading state.
+			// The popover only opens when the offer modal doesn't, so they never stack.
+			void offerToExposeAllWorkflows(refreshWorkflowsFromFirstPage).then((offered) => {
+				if (!offered) {
+					mcpStore.openConnectPopover();
+				}
+			});
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.toggle.error'));
@@ -158,12 +163,23 @@ const onToggleMCPAccess = async (enabled: boolean) => {
 	}
 };
 
+const showMcpAccessRemovedToast = (count: number) => {
+	toast.showMessage({
+		type: 'success',
+		title: i18n.baseText('settings.mcp.workflows.removeAccess.success.title', {
+			adjustToNumber: count,
+			interpolate: { count: String(count) },
+		}),
+	});
+};
+
 const onToggleWorkflowMCPAccess = async (workflowId: string, isEnabled: boolean) => {
 	try {
 		await mcpStore.toggleWorkflowMcpAccess(workflowId, isEnabled);
 		if (isEnabled) {
 			await refreshWorkflowsFromFirstPage();
 		} else {
+			showMcpAccessRemovedToast(1);
 			await fetchAvailableWorkflows();
 		}
 	} catch (error) {
@@ -185,13 +201,7 @@ const onBulkEnableWorkflowsMCPAccess = async (workflowIds: string[]) => {
 const onBulkRemoveWorkflowsMCPAccess = async (workflowIds: string[]) => {
 	try {
 		const response = await mcpStore.toggleWorkflowsMcpAccess({ workflowIds }, false);
-		toast.showMessage({
-			type: 'success',
-			title: i18n.baseText('settings.mcp.workflows.bulkRemove.success.title', {
-				adjustToNumber: response.updatedCount,
-				interpolate: { count: String(response.updatedCount) },
-			}),
-		});
+		showMcpAccessRemovedToast(response.updatedCount);
 		await fetchAvailableWorkflows();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowSettings.toggleMCP.error.title'));

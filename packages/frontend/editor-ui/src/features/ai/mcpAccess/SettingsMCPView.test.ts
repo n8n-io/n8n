@@ -234,6 +234,8 @@ describe('SettingsMCPView', () => {
 					}),
 				);
 			});
+			// The connect popover must not stack on top of the expose-all modal
+			expect(mcpStore.openConnectPopover).not.toHaveBeenCalled();
 		});
 
 		it('should not offer to expose all workflows when not enrolled in the experiment', async () => {
@@ -246,6 +248,9 @@ describe('SettingsMCPView', () => {
 
 			expect(mcpStore.getMcpEligibleWorkflows).not.toHaveBeenCalled();
 			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+			await waitFor(() => {
+				expect(mcpStore.openConnectPopover).toHaveBeenCalled();
+			});
 		});
 
 		it('should not offer to expose all workflows when there are no eligible workflows', async () => {
@@ -261,6 +266,9 @@ describe('SettingsMCPView', () => {
 				expect(mcpStore.getMcpEligibleWorkflows).toHaveBeenCalled();
 			});
 			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+			await waitFor(() => {
+				expect(mcpStore.openConnectPopover).toHaveBeenCalled();
+			});
 		});
 
 		it('should not offer to expose all workflows when disabling MCP', async () => {
@@ -280,6 +288,7 @@ describe('SettingsMCPView', () => {
 
 			expect(mcpStore.getMcpEligibleWorkflows).not.toHaveBeenCalled();
 			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+			expect(mcpStore.openConnectPopover).not.toHaveBeenCalled();
 		});
 	});
 
