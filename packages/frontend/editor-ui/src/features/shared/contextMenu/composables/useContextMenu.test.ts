@@ -178,6 +178,17 @@ describe('useContextMenu', () => {
 			expect(item?.disabled).toBe(false);
 		});
 
+		it('ignores unresolvable ids in the target when computing enablement', () => {
+			enableGroupingFlag();
+			const { open, actions } = useContextMenu();
+			open(mockEvent, {
+				source: 'canvas',
+				nodeIds: [nodes[0].id, nodes[1].id, 'deleted-node-id'],
+			});
+
+			expect(actions.value.find((action) => action.id === 'group_nodes')?.disabled).toBe(false);
+		});
+
 		it('shows "Group nodes" disabled for an ineligible selection (disconnected nodes)', () => {
 			enableGroupingFlag();
 			const { open, actions } = useContextMenu();

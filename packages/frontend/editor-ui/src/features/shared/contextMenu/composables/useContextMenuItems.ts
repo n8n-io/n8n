@@ -72,7 +72,7 @@ export function useContextMenuItems(
 	const collaborationStore = useCollaborationStore();
 	const focusedNodesStore = useFocusedNodesStore();
 	const posthogStore = usePostHog();
-	const { isSelectionGroupable, expandSelectionWithSubNodes } = useSelectionValidation();
+	const { resolveGroupableNodeIds } = useSelectionValidation();
 	const i18n = useI18n();
 
 	// Per-editor host overrides (already ANDed with the instance-wide store
@@ -113,13 +113,9 @@ export function useContextMenuItems(
 		posthogStore.isFeatureEnabled(CANVAS_NODES_GROUPING_EXPERIMENT.name),
 	);
 
-	// Mirrors the Cmd+G eligibility: expand the selection with attached AI
-	// sub-nodes, then validate it as a groupable subgraph.
-	const canGroupTargetNodes = computed(() => {
-		if (targetNodes.value.length === 0) return false;
-		const expandedIds = expandSelectionWithSubNodes(targetNodes.value.map((node) => node.id));
-		return isSelectionGroupable(expandedIds).valid;
-	});
+	// Mirrors the Cmd+G eligibility — the same resolver also produces the
+	// member ids at execution time, so enablement can't diverge from it.
+	const canGroupTargetNodes = computed(() => resolveGroupableNodeIds(targetNodeIds.value) !== null);
 
 	const canAddNodeOfType = (nodeType: INodeTypeDescription) => {
 		const sameTypeNodes = (workflowDocumentStore?.value?.allNodes ?? []).filter(

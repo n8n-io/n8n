@@ -18,13 +18,11 @@ import {
 	createCanvasGraphGroupNode,
 } from '@/features/workflows/canvas/__tests__/utils';
 
-const isSelectionGroupableMock = vi.fn();
-const expandSelectionWithSubNodesMock = vi.fn((nodeIds: string[]) => nodeIds);
+const resolveGroupableNodeIdsMock = vi.fn();
 
 vi.mock('@/app/composables/useSelectionValidation', () => ({
 	useSelectionValidation: () => ({
-		isSelectionGroupable: isSelectionGroupableMock,
-		expandSelectionWithSubNodes: expandSelectionWithSubNodesMock,
+		resolveGroupableNodeIds: resolveGroupableNodeIdsMock,
 	}),
 }));
 
@@ -42,11 +40,10 @@ describe('useCanvasNodeGroupActions', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-test'));
-		isSelectionGroupableMock.mockClear().mockReturnValue({
-			valid: true,
-			subGraphData: { start: 'A', end: 'B' },
-		});
-		expandSelectionWithSubNodesMock.mockClear().mockImplementation((ids: string[]) => ids);
+		// Mirrors the real resolver's contract: member ids when groupable, null otherwise
+		resolveGroupableNodeIdsMock
+			.mockClear()
+			.mockImplementation((ids: string[]) => (ids.length > 0 ? [...ids] : null));
 	});
 
 	describe('canGroup', () => {
@@ -63,30 +60,18 @@ describe('useCanvasNodeGroupActions', () => {
 		it('is false when the selection is empty', () => {
 			const { canGroup } = useCanvasNodeGroupActions(computed(() => []));
 			expect(canGroup.value).toBe(false);
-			expect(isSelectionGroupableMock).not.toHaveBeenCalled();
 		});
 
-		it('is true when validation succeeds and no node is grouped', () => {
+		it('is true when the resolver accepts the selection', () => {
 			const { canGroup } = useCanvasNodeGroupActions(
 				computed(() => [createCanvasGraphNode({ id: 'a' }), createCanvasGraphNode({ id: 'b' })]),
 			);
 			expect(canGroup.value).toBe(true);
+			expect(resolveGroupableNodeIdsMock).toHaveBeenCalledWith(['a', 'b']);
 		});
 
-		it('is false when validation rejects the selection because a node is already grouped', () => {
-			isSelectionGroupableMock.mockReturnValue({
-				valid: false,
-				reason: 'node-already-grouped',
-				nodeIds: ['a'],
-			});
-			const { canGroup } = useCanvasNodeGroupActions(
-				computed(() => [createCanvasGraphNode({ id: 'a' }), createCanvasGraphNode({ id: 'b' })]),
-			);
-			expect(canGroup.value).toBe(false);
-		});
-
-		it('is false when validation rejects the selection', () => {
-			isSelectionGroupableMock.mockReturnValue({ valid: false, reason: 'invalid-subgraph' });
+		it('is false when the resolver rejects the selection', () => {
+			resolveGroupableNodeIdsMock.mockReturnValue(null);
 			const { canGroup } = useCanvasNodeGroupActions(
 				computed(() => [createCanvasGraphNode({ id: 'a' }), createCanvasGraphNode({ id: 'b' })]),
 			);
@@ -96,23 +81,32 @@ describe('useCanvasNodeGroupActions', () => {
 
 	describe('groupNodes', () => {
 		it('creates a group from the given ids expanded with sub-nodes, independently of the selection', () => {
-			expandSelectionWithSubNodesMock.mockImplementation((ids: string[]) => [...ids, 'memory']);
+			resolveGroupableNodeIdsMock.mockImplementation((ids: string[]) => [...ids, 'memory']);
 			const { groupNodes } = useCanvasNodeGroupActions(
 				computed(() => [createCanvasGraphNode({ id: 'unrelated-selection' })]),
 			);
 
 			const group = groupNodes(['a', 'agent']);
 
-			expect(expandSelectionWithSubNodesMock).toHaveBeenCalledWith(['a', 'agent']);
+			expect(resolveGroupableNodeIdsMock).toHaveBeenCalledWith(['a', 'agent']);
 			expect(group?.nodeIds).toEqual(['a', 'agent', 'memory']);
 			expect(workflowDocumentStore.allGroups).toHaveLength(1);
 		});
 
-		it('returns null for an empty id list without validating', () => {
+		it('creates the group from exactly the ids the resolver returns', () => {
+			// e.g. a stale id in the input is validated away and must not be persisted
+			resolveGroupableNodeIdsMock.mockReturnValue(['a']);
+			const { groupNodes } = useCanvasNodeGroupActions(computed(() => []));
+
+			const group = groupNodes(['a', 'stale-id']);
+
+			expect(group?.nodeIds).toEqual(['a']);
+		});
+
+		it('returns null for an empty id list', () => {
 			const { groupNodes } = useCanvasNodeGroupActions(computed(() => []));
 
 			expect(groupNodes([])).toBeNull();
-			expect(isSelectionGroupableMock).not.toHaveBeenCalled();
 			expect(workflowDocumentStore.allGroups).toHaveLength(0);
 		});
 
@@ -125,11 +119,12 @@ describe('useCanvasNodeGroupActions', () => {
 			);
 
 			expect(groupNodes(['a', 'b'])).toBeNull();
+			expect(resolveGroupableNodeIdsMock).not.toHaveBeenCalled();
 			expect(workflowDocumentStore.allGroups).toHaveLength(0);
 		});
 
-		it('returns null when validation rejects the nodes', () => {
-			isSelectionGroupableMock.mockReturnValue({ valid: false, reason: 'invalid-subgraph' });
+		it('returns null when the resolver rejects the nodes', () => {
+			resolveGroupableNodeIdsMock.mockReturnValue(null);
 			const { groupNodes } = useCanvasNodeGroupActions(computed(() => []));
 
 			expect(groupNodes(['a', 'b'])).toBeNull();
@@ -158,7 +153,7 @@ describe('useCanvasNodeGroupActions', () => {
 		});
 
 		it('creates a group from the expanded selection', () => {
-			expandSelectionWithSubNodesMock.mockImplementation((ids: string[]) => [...ids, 'memory']);
+			resolveGroupableNodeIdsMock.mockImplementation((ids: string[]) => [...ids, 'memory']);
 			const { groupSelection } = useCanvasNodeGroupActions(
 				computed(() => [
 					createCanvasGraphNode({ id: 'a' }),
@@ -170,8 +165,8 @@ describe('useCanvasNodeGroupActions', () => {
 			expect(workflowDocumentStore.allGroups).toHaveLength(1);
 		});
 
-		it('returns null when canGroup is false', () => {
-			isSelectionGroupableMock.mockReturnValue({ valid: false, reason: 'invalid-subgraph' });
+		it('returns null when the resolver rejects the selection', () => {
+			resolveGroupableNodeIdsMock.mockReturnValue(null);
 			const { groupSelection } = useCanvasNodeGroupActions(
 				computed(() => [createCanvasGraphNode({ id: 'a' })]),
 			);
@@ -195,7 +190,7 @@ describe('useCanvasNodeGroupActions', () => {
 		});
 
 		it('records nothing when grouping is not allowed', () => {
-			isSelectionGroupableMock.mockReturnValue({ valid: false, reason: 'invalid-subgraph' });
+			resolveGroupableNodeIdsMock.mockReturnValue(null);
 			const historyStore = useHistoryStore();
 			const { groupSelection } = useCanvasNodeGroupActions(
 				computed(() => [createCanvasGraphNode({ id: 'a' })]),

@@ -28,7 +28,7 @@ export function useCanvasNodeGroupActions(
 	const i18n = useI18n();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const historyStore = useHistoryStore();
-	const { isSelectionGroupable, expandSelectionWithSubNodes } = useSelectionValidation();
+	const { resolveGroupableNodeIds } = useSelectionValidation();
 
 	const isReadOnly = computed(() => toValue(options?.readOnly) ?? false);
 
@@ -38,13 +38,9 @@ export function useCanvasNodeGroupActions(
 			.map((n) => n.id),
 	);
 
-	const expandedSelectionIds = computed(() =>
-		expandSelectionWithSubNodes(selectedNodeIdsWithoutGroups.value),
-	);
-
 	const canGroup = computed(() => {
-		if (isReadOnly.value || expandedSelectionIds.value.length === 0) return false;
-		return isSelectionGroupable(expandedSelectionIds.value).valid;
+		if (isReadOnly.value) return false;
+		return resolveGroupableNodeIds(selectedNodeIdsWithoutGroups.value) !== null;
 	});
 
 	const selectedGroupIds = computed(() => {
@@ -72,16 +68,17 @@ export function useCanvasNodeGroupActions(
 	 * Groups the given nodes (plus their attached AI sub-nodes) if they form a
 	 * valid groupable subgraph. Unlike `groupSelection`, this works on explicit
 	 * ids, so callers like the context menu can group nodes that aren't part of
-	 * the current canvas selection.
+	 * the current canvas selection. The group is created from exactly the ids
+	 * that passed validation.
 	 */
 	function groupNodes(nodeIds: string[]): IWorkflowGroup | null {
-		if (isReadOnly.value || nodeIds.length === 0) return null;
-		const expandedIds = expandSelectionWithSubNodes(nodeIds);
-		if (!isSelectionGroupable(expandedIds).valid) return null;
+		if (isReadOnly.value) return null;
+		const memberIds = resolveGroupableNodeIds(nodeIds);
+		if (!memberIds) return null;
 		const name = workflowDocumentStore.value.getNextDefaultName(
 			i18n.baseText('canvas.nodeGroup.defaultTitle'),
 		);
-		const group = workflowDocumentStore.value.createGroup(expandedIds, name);
+		const group = workflowDocumentStore.value.createGroup(memberIds, name);
 		historyStore.pushCommandToUndo(new AddNodeGroupCommand(group, Date.now()));
 		return group;
 	}
@@ -115,7 +112,6 @@ export function useCanvasNodeGroupActions(
 	return {
 		canGroup,
 		canUngroup,
-		expandedSelectionIds,
 		selectedGroupIds,
 		groupNodes,
 		groupSelection,
