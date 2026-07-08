@@ -85,4 +85,22 @@ describe('ExportPackageRequestDto', () => {
 			expect(ExportPackageRequestDto.safeParse(request).success).toBe(false);
 		});
 	});
+
+	describe('subworkflowBehaviour', () => {
+		it.each(['included-in-package', 'references-only'])('accepts %s', (subworkflowBehaviour) => {
+			const result = ExportPackageRequestDto.safeParse({
+				workflowIds: ['wf-1'],
+				subworkflowBehaviour,
+			});
+
+			expect(result.success).toBe(true);
+		});
+
+		it.each([
+			{ name: 'invalid value', request: { workflowIds: ['wf-1'], subworkflowBehaviour: 'inline' } },
+			{ name: 'non-string value', request: { workflowIds: ['wf-1'], subworkflowBehaviour: 123 } },
+		])('rejects $name', ({ request }) => {
+			expect(ExportPackageRequestDto.safeParse(request).success).toBe(false);
+		});
+	});
 });

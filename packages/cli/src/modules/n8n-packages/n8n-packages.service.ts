@@ -12,10 +12,11 @@ import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
-import type {
-	ExportPackageRequest,
-	ImportPackageRequest,
-	ImportResult,
+import {
+	SubworkflowBehaviour,
+	type ExportPackageRequest,
+	type ImportPackageRequest,
+	type ImportResult,
 } from './n8n-packages.types';
 import { FORMAT_VERSION } from './spec/constants';
 import { type ManifestEntry, packageManifestSchema } from './spec/manifest.schema';
@@ -37,6 +38,10 @@ export class N8nPackagesService {
 		const workflowIds = request.workflowIds ?? [];
 		const folderIds = request.folderIds ?? [];
 		const projectIds = request.projectIds ?? [];
+		const subworkflowBehaviour =
+			request.subworkflowBehaviour ?? SubworkflowBehaviour.IncludedInPackage;
+
+		console.log('subworkflowBehaviour', subworkflowBehaviour);
 
 		const folderExportResult =
 			folderIds.length > 0
