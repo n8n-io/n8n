@@ -1,8 +1,8 @@
 import { ScheduledTaskStatus } from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
 
-import { InvalidLifecycleOptionsError } from '../errors';
 import type { SchedulerMetrics } from '../../observability/metrics';
+import { InvalidLifecycleOptionsError } from '../errors';
 import { createScheduler } from '../factory';
 import type { SchedulerDeps, SchedulerTaskStore } from '../factory';
 import type { MaterializerTransaction, RunInTransaction } from '../materializer';
