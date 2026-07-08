@@ -194,4 +194,36 @@ describe('reap', () => {
 		// The row was decided before the reporter ran: counted, and the sweep goes on.
 		expect(result).toEqual({ reclaimed: 1, deadLettered: 1 });
 	});
+
+	it('cancelled mid-sweep, it keeps what it recovered and leaves the rest to the next sweep', async () => {
+		const { store } = setup();
+		const controller = new AbortController();
+		store.findExpiredLeases.mockResolvedValue([
+			expiredTask({ id: 'recovered' }),
+			expiredTask({ id: 'left-for-next-sweep' }),
+		]);
+		// The cancellation lands while the first row's write is in flight.
+		store.reclaimExpired.mockImplementation(async () => {
+			controller.abort();
+			return await Promise.resolve(1);
+		});
+
+		const result = await reap(store, { batchSize: 100 }, {}, controller.signal);
+
+		expect(result).toEqual({ reclaimed: 1, deadLettered: 0 });
+		expect(store.reclaimExpired).toHaveBeenCalledTimes(1);
+	});
+
+	it('cancelled before the sweep starts, it touches no row', async () => {
+		const { store } = setup();
+		const controller = new AbortController();
+		controller.abort();
+		store.findExpiredLeases.mockResolvedValue([expiredTask()]);
+
+		const result = await reap(store, { batchSize: 100 }, {}, controller.signal);
+
+		expect(result).toEqual({ reclaimed: 0, deadLettered: 0 });
+		expect(store.reclaimExpired).not.toHaveBeenCalled();
+		expect(store.deadLetterExpired).not.toHaveBeenCalled();
+	});
 });

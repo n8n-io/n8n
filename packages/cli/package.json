@@ -202,7 +202,7 @@
     "fast-glob": "catalog:",
     "fast-json-patch": "catalog:",
     "fastest-levenshtein": "catalog:",
-    "fflate": "0.7.4",
+    "fflate": "catalog:",
     "flat": "5.0.2",
     "flatted": "catalog:",
     "formidable": "3.5.4",
