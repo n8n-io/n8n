@@ -10,7 +10,7 @@ import {
 } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { DbConnection } from '@n8n/db';
+import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	BinaryDataConfig,
@@ -166,6 +166,10 @@ export abstract class BaseCommand<F = never> {
 				async (error: Error) =>
 					await this.exitWithCrash('There was an error running database migrations', error),
 			);
+
+		// Apply the persisted instance identity so every command (e.g. license:info,
+		// license:clear) sees the same instanceId as the running server.
+		await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository));
 
 		if (process.env.EXECUTIONS_PROCESS === 'own') process.exit(-1);
 
