@@ -4,8 +4,14 @@ import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiContext, OrchestrationContext } from '../../../types';
 import { createApplyWorkflowCredentialsTool } from '../apply-workflow-credentials.tool';
 
-function makeContext(): OrchestrationContext {
-	const workflowJson = {
+interface MakeContextOptions {
+	buildOutcome?: Record<string, unknown>;
+	workflowJson?: Record<string, unknown>;
+	availableCredentials?: Array<{ id: string; name: string; type: string }>;
+}
+
+function makeContext(options: MakeContextOptions = {}): OrchestrationContext {
+	const workflowJson = options.workflowJson ?? {
 		nodes: [
 			{
 				id: 'node-1',
@@ -27,6 +33,7 @@ function makeContext(): OrchestrationContext {
 		} as never,
 		credentialService: {
 			get: vi.fn().mockResolvedValue({ id: 'cred-1', name: 'My Key' }),
+			list: vi.fn().mockResolvedValue(options.availableCredentials ?? []),
 		} as never,
 		executionService: {} as never,
 		nodeService: {} as never,
@@ -36,9 +43,11 @@ function makeContext(): OrchestrationContext {
 
 	return {
 		workflowTaskService: {
-			getBuildOutcome: vi.fn().mockResolvedValue({
-				mockedCredentialsByNode: { Gemini: ['googlePalmApi'] },
-			}),
+			getBuildOutcome: vi.fn().mockResolvedValue(
+				options.buildOutcome ?? {
+					mockedCredentialsByNode: { Gemini: ['googlePalmApi'] },
+				},
+			),
 			updateBuildOutcome: vi.fn().mockResolvedValue(undefined),
 		},
 		domainContext,
@@ -68,6 +77,62 @@ describe('createApplyWorkflowCredentialsTool', () => {
 						},
 					}),
 				],
+			}),
+		);
+	});
+
+	it('refreshes the stale simulation plan instead of stranding the mocked verdict', async () => {
+		const context = makeContext({
+			buildOutcome: {
+				mockedNodeNames: ['Notion'],
+				mockedCredentialTypes: ['notionApi'],
+				mockedCredentialsByNode: { Notion: ['notionApi'] },
+				nodeSimulationPlan: [
+					{
+						nodeName: 'Notion',
+						verdict: 'simulate',
+						reason: 'Credentials are not configured for this node',
+						confidence: 'high',
+						source: 'deterministic',
+					},
+				],
+				simulationFixtures: { Notion: [{ page: 'mock' }] },
+			},
+			workflowJson: {
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Notion',
+						type: 'n8n-nodes-base.notion',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+						parameters: { operation: 'get' },
+					},
+				],
+				connections: {
+					Trigger: { main: [[{ node: 'Notion', type: 'main', index: 0 }]] },
+				},
+			},
+			availableCredentials: [{ id: 'cred-1', name: 'My Key', type: 'notionApi' }],
+		});
+		const tool = createApplyWorkflowCredentialsTool(context);
+
+		const result = await executeTool(tool, {
+			workItemId: 'wi_test',
+			workflowId: 'wf-1',
+			credentials: { notionApi: 'cred-1' },
+		});
+
+		expect(result).toEqual({ success: true, appliedNodes: ['Notion'] });
+		expect(context.workflowTaskService!.updateBuildOutcome).toHaveBeenCalledWith(
+			'wi_test',
+			expect.objectContaining({
+				mockedNodeNames: undefined,
+				mockedCredentialTypes: undefined,
+				mockedCredentialsByNode: undefined,
+				verificationPinData: undefined,
+				nodeSimulationPlan: [expect.objectContaining({ nodeName: 'Notion', verdict: 'execute' })],
+				simulationFixtures: undefined,
 			}),
 		);
 	});
