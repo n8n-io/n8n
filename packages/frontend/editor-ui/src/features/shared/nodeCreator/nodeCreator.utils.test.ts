@@ -998,6 +998,47 @@ describe('NodeCreator - utils', () => {
 			expect(keys[2]).toBe('plainNode');
 			expect(keys.slice(0, 2)).toEqual(expect.arrayContaining([core.key, community.key]));
 		});
+
+		it('should not boost a supported node that has no alias metadata', () => {
+			mockStores({ supportedNodes: ['connectNoAlias'] });
+			// codex present but without an `alias` array exercises the `?? []` fallback:
+			// with no aliases there is nothing to match, so no boost is applied.
+			const connectNoAlias = mockNodeCreateElement(
+				{ key: 'connectNoAlias' },
+				{
+					name: 'connectNoAlias',
+					displayName: 'Scrape Tool',
+					codex: { categories: [], subcategories: {} },
+				},
+			);
+			const plain = mockNodeCreateElement(
+				{ key: 'plainNode' },
+				{
+					name: 'plainNode',
+					displayName: 'Scrape Tool',
+					codex: { categories: [], subcategories: {} },
+				},
+			);
+
+			const keys = searchNodes('scrape', [plain, connectNoAlias]).map((item) => item.key);
+			expect(keys).toEqual(['plainNode', 'connectNoAlias']);
+		});
+
+		it('should not boost non-node items even when their name is gateway-supported', () => {
+			mockStores({ supportedNodes: ['connectAction'] });
+			const plain = makeNode('plainNode', 'Serp Tool', ['serp']);
+			// An action element that matches by alias and is "supported": the type guard
+			// must skip it, so it is never boosted above the (unboosted) node.
+			const action = mockActionCreateElement(undefined, {
+				name: 'connectAction',
+				displayName: 'Serp Action',
+				codex: { label: 'Serp', categories: [], alias: ['serp'] },
+			} as unknown as Partial<ActionTypeDescription>);
+			action.key = 'connectAction';
+
+			const keys = searchNodes('serp', [plain, action]).map((item) => item.key);
+			expect(keys[0]).toBe('plainNode');
+		});
 	});
 
 	describe('mapToolSubcategoryIcon', () => {
