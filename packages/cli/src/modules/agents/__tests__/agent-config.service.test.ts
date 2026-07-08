@@ -114,6 +114,30 @@ describe('AgentConfigService', () => {
 			});
 		});
 
+		it('rejects a vector store whose derived tool name collides with a configured tool', async () => {
+			const { service } = makeService();
+
+			const result = await service.validateConfig({
+				...baseConfig,
+				tools: [{ type: 'custom', id: 'search_product_docs' }],
+				vectorStores: [
+					{
+						provider: 'qdrant',
+						name: 'product_docs',
+						credential: 'qdrant-cred',
+						useWhen: 'Search product docs',
+						embedding: { model: 'openai/text-embedding-3-small', credential: 'embed-cred' },
+						collectionName: 'product-docs',
+					},
+				],
+			});
+
+			expect(result).toEqual({
+				valid: false,
+				error: 'Vector store tool name collides with an existing tool: search_product_docs',
+			});
+		});
+
 		it('accepts draft credentials that are not checked until update sanitization', async () => {
 			const { service } = makeService();
 

@@ -1,6 +1,7 @@
 import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import {
 	AgentJsonConfigSchema,
+	findVectorStoreToolNameCollisions,
 	sanitizeAgentJsonConfig,
 	type AgentJsonConfig,
 	type AgentJsonToolConfig,
@@ -66,6 +67,14 @@ export class AgentConfigService {
 		}
 
 		const config = parsed.data;
+
+		const toolNameCollisions = findVectorStoreToolNameCollisions(config);
+		if (toolNameCollisions.length > 0) {
+			return {
+				valid: false,
+				error: `Vector store tool name collides with an existing tool: ${toolNameCollisions.join(', ')}`,
+			};
+		}
 
 		try {
 			this.validateNodeToolExpressions(config);

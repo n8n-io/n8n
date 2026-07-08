@@ -1,4 +1,7 @@
-import { AgentJsonConfigSchema } from '../agent-json-config.schema';
+import {
+	AgentJsonConfigSchema,
+	findVectorStoreToolNameCollisions,
+} from '../agent-json-config.schema';
 
 const minimalConfig = {
 	name: 'test-agent',
@@ -435,6 +438,57 @@ describe('AgentJsonConfigSchema — vectorStores', () => {
 	it('accepts an empty vectorStores array', () => {
 		const result = AgentJsonConfigSchema.safeParse({ ...minimalConfig, vectorStores: [] });
 		expect(result.success).toBe(true);
+	});
+
+	describe('findVectorStoreToolNameCollisions', () => {
+		const vectorStore = {
+			provider: 'qdrant' as const,
+			name: 'product_docs',
+			credential: 'qdrant-cred',
+			useWhen: 'Search product docs',
+			embedding,
+			collectionName: 'product-docs',
+		};
+
+		it('flags a collision with a custom tool id', () => {
+			const collisions = findVectorStoreToolNameCollisions({
+				tools: [{ type: 'custom', id: 'search_product_docs' }],
+				vectorStores: [vectorStore],
+			});
+			expect(collisions).toEqual(['search_product_docs']);
+		});
+
+		it('flags a collision with an explicit workflow tool name', () => {
+			const collisions = findVectorStoreToolNameCollisions({
+				tools: [{ type: 'workflow', workflow: 'wf-1', name: 'search_product_docs' }],
+				vectorStores: [vectorStore],
+			});
+			expect(collisions).toEqual(['search_product_docs']);
+		});
+
+		it('accounts for hyphen-to-underscore sanitization', () => {
+			const collisions = findVectorStoreToolNameCollisions({
+				tools: [{ type: 'custom', id: 'search_docs_a' }],
+				vectorStores: [{ ...vectorStore, name: 'docs-a' }],
+			});
+			expect(collisions).toEqual(['search_docs_a']);
+		});
+
+		it('returns no collisions when tool names differ', () => {
+			const collisions = findVectorStoreToolNameCollisions({
+				tools: [{ type: 'custom', id: 'unrelated_tool' }],
+				vectorStores: [vectorStore],
+			});
+			expect(collisions).toEqual([]);
+		});
+
+		it('returns no collisions when there are no vector stores', () => {
+			expect(
+				findVectorStoreToolNameCollisions({
+					tools: [{ type: 'custom', id: 'search_product_docs' }],
+				}),
+			).toEqual([]);
+		});
 	});
 });
 

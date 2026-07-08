@@ -19,7 +19,7 @@ export type EmbeddingProviderOptions = {
 	apiKey?: string;
 	baseURL?: string;
 	fetch?: FetchFn;
-};
+} & Partial<ProviderCredentials<'aws-bedrock'>>;
 type CreateEmbeddingProviderFn = (opts?: EmbeddingProviderOptions) => {
 	embeddingModel(model: string): EmbeddingModel;
 };

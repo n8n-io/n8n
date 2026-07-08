@@ -1,21 +1,33 @@
-import type { CredentialProvider } from '@n8n/agents';
+import type { CredentialProvider, EmbeddingProviderOptions } from '@n8n/agents';
 
 import { mapCredentialForProvider } from './credential-field-mapping';
 import { getProviderPrefix } from './model-id';
 
-export interface ManagedEmbeddingProviderOptions {
-	apiKey?: string;
-	baseURL?: string;
-	fetch?: typeof globalThis.fetch;
-}
+/** Re-exported so callers don't need to depend on `@n8n/agents` directly for this type. */
+export type ManagedEmbeddingProviderOptions = EmbeddingProviderOptions;
 export type ManagedEmbeddingProviderOptionsResolver =
 	() => Promise<ManagedEmbeddingProviderOptions | null>;
 
+/** Keys `createEmbeddingModel` (via `EmbeddingProviderOptions`) accepts, across all supported providers. */
+const EMBEDDING_PROVIDER_OPTION_KEYS = [
+	'apiKey',
+	'baseURL',
+	'region',
+	'accessKeyId',
+	'secretAccessKey',
+	'sessionToken',
+] as const satisfies ReadonlyArray<keyof EmbeddingProviderOptions>;
+
 /**
- * Resolves an n8n credential into embedding provider options (apiKey/baseURL)
- * for the given embedding model's provider prefix. Shared by episodic memory
- * and vector store connections — both attach an embedding model to a
- * user-selected credential rather than the managed AI proxy.
+ * Resolves an n8n credential into embedding provider options for the given
+ * embedding model's provider prefix. Shared by episodic memory and vector
+ * store connections — both attach an embedding model to a user-selected
+ * credential rather than the managed AI proxy.
+ *
+ * Preserves every mapped field `EmbeddingProviderOptions` supports (not just
+ * apiKey/baseURL) so credential-based providers like AWS Bedrock, which
+ * authenticate via region/accessKeyId/secretAccessKey instead of an API key,
+ * still get their credentials through.
  */
 export async function resolveEmbeddingProviderOptionsFromCredential(
 	credential: string,
@@ -24,8 +36,10 @@ export async function resolveEmbeddingProviderOptionsFromCredential(
 ): Promise<ManagedEmbeddingProviderOptions> {
 	const raw = await credentialProvider.resolve(credential);
 	const mapped = mapCredentialForProvider(getProviderPrefix(embeddingModel), raw);
-	return {
-		...(typeof mapped.apiKey === 'string' && { apiKey: mapped.apiKey }),
-		...(typeof mapped.baseURL === 'string' && { baseURL: mapped.baseURL }),
-	};
+	const options: ManagedEmbeddingProviderOptions = {};
+	for (const key of EMBEDDING_PROVIDER_OPTION_KEYS) {
+		const value = mapped[key];
+		if (typeof value === 'string') options[key] = value;
+	}
+	return options;
 }

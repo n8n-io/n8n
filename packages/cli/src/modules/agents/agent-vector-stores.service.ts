@@ -133,13 +133,30 @@ export class AgentVectorStoresService {
 			user,
 		);
 
-		// Hoisted so the outer `finally` can close the backend even if the
-		// timeout below wins the race and abandons the in-flight work.
+		// Hoisted so cleanup can reach a backend that finishes building *after*
+		// the timeout below has already won the race — `settled` distinguishes
+		// that late-arriving case from a backend built in time (closed by the
+		// outer `finally` once the race is decided either way).
 		let backend: BuiltVectorStoreBackend | undefined;
+		let settled = false;
+		const closeBackend = () => {
+			// Fire-and-forget: a hung `pool.end()` on a timed-out connection must
+			// not block the response.
+			if (backend) void Promise.resolve(backend.close?.()).catch(() => {});
+		};
+
 		try {
 			return await withTimeout(async () => {
 				const rawCredential = await credentialProvider.resolve(vectorStore.credential);
 				backend = await buildVectorStoreBackend(vectorStore, credentialProvider, rawCredential);
+				if (settled) {
+					// The race already produced a response before this backend
+					// finished building — it's orphaned, so close it immediately
+					// instead of leaking it for the rest of this abandoned run.
+					closeBackend();
+					throw new Error('Connection test timed out');
+				}
+
 				const embeddingOptions = await resolveEmbeddingProviderOptionsFromCredential(
 					vectorStore.embedding.credential,
 					vectorStore.embedding.model,
@@ -164,9 +181,8 @@ export class AgentVectorStoresService {
 		} catch (error) {
 			return { success: false, message: errorMessage(error) };
 		} finally {
-			// Fire-and-forget: a hung `pool.end()` on a timed-out connection must
-			// not block the response.
-			if (backend) void Promise.resolve(backend.close?.()).catch(() => {});
+			settled = true;
+			closeBackend();
 		}
 	}
 

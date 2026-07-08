@@ -1,23 +1,31 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, useSlots } from 'vue';
 
 /** Must match the row styles below: td height (48px) + 1px border-bottom. */
 const ROW_HEIGHT_PX = 49;
+/** Must match the header styles below: th height (36px) + 1px border-bottom. */
+const HEADER_HEIGHT_PX = 37;
 
 interface TableBaseProps {
 	/**
 	 * Maximum number of body rows visible before the table scrolls vertically.
 	 * Unset (default): the table grows with its content, exactly as before.
-	 * Counts body rows only — a sticky `thead` adds its own height on top.
+	 * Counts body rows only — a sticky `thead`, if present, adds its own
+	 * height on top so it doesn't eat into the body rows' visible space.
 	 */
 	maxDisplayedRows?: number;
 }
 
 const props = defineProps<TableBaseProps>();
+const slots = useSlots();
 
-const scrollStyle = computed(() =>
-	props.maxDisplayedRows ? { maxHeight: `${props.maxDisplayedRows * ROW_HEIGHT_PX}px` } : undefined,
-);
+const hasHeader = computed(() => (slots.default?.() ?? []).some((vnode) => vnode.type === 'thead'));
+
+const scrollStyle = computed(() => {
+	if (!props.maxDisplayedRows) return undefined;
+	const headerHeight = hasHeader.value ? HEADER_HEIGHT_PX : 0;
+	return { maxHeight: `${props.maxDisplayedRows * ROW_HEIGHT_PX + headerHeight}px` };
+});
 </script>
 
 <template>

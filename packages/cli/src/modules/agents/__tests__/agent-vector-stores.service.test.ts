@@ -1,6 +1,7 @@
 import type { BuiltVectorStoreBackend } from '@n8n/agents';
 import type { AgentJsonVectorStoreConfig } from '@n8n/api-types';
 import type { CredentialsEntity, User } from '@n8n/db';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -39,7 +40,7 @@ const postgresConfig: AgentJsonVectorStoreConfig = {
 
 function makeService(
 	credentialId: string,
-	rawCredential: Record<string, unknown> = { apiKey: 'store-key' },
+	rawCredential: ICredentialDataDecryptedObject = { apiKey: 'store-key' },
 ) {
 	const credentialsService = mock<CredentialsService>();
 	credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
@@ -50,10 +51,18 @@ function makeService(
 	return { service: new AgentVectorStoresService(credentialsService), credentialsService };
 }
 
-function makeBackend(): BuiltVectorStoreBackend {
-	const backend = mock<BuiltVectorStoreBackend>();
-	backend.close.mockResolvedValue(undefined);
-	return backend;
+// Built manually instead of `mock<BuiltVectorStoreBackend>()`: `close` being an
+// optional method makes vitest-mock-extended's deep proxy fall back to the
+// plain (un-mocked) function types for every method, so `.mockResolvedValue`
+// etc. wouldn't type-check. `satisfies` keeps the vi.fn() types while still
+// checking the shape matches the interface.
+function makeBackend() {
+	return {
+		upsert: vi.fn(),
+		query: vi.fn(),
+		delete: vi.fn(),
+		close: vi.fn().mockResolvedValue(undefined),
+	} satisfies BuiltVectorStoreBackend;
 }
 
 describe('AgentVectorStoresService.testConnection', () => {
@@ -92,6 +101,36 @@ describe('AgentVectorStoresService.testConnection', () => {
 			const result = await resultPromise;
 
 			expect(result).toEqual({ success: false, message: 'Connection test timed out' });
+			expect(backend.close).toHaveBeenCalledTimes(1);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('closes a backend that finishes building only after the timeout already responded', async () => {
+		vi.useFakeTimers();
+		try {
+			const backend = makeBackend();
+			let resolveBackend!: (value: BuiltVectorStoreBackend) => void;
+			vi.mocked(buildVectorStoreBackend).mockImplementation(
+				async () =>
+					await new Promise<BuiltVectorStoreBackend>((resolve) => {
+						resolveBackend = resolve;
+					}),
+			);
+			const { service } = makeService(postgresConfig.credential);
+
+			const resultPromise = service.testConnection(projectId, user, postgresConfig);
+			await vi.advanceTimersByTimeAsync(15_000);
+			const result = await resultPromise;
+
+			expect(result).toEqual({ success: false, message: 'Connection test timed out' });
+			expect(backend.close).not.toHaveBeenCalled();
+
+			// Backend creation finishes late, after the timeout already responded.
+			resolveBackend(backend);
+			await vi.advanceTimersByTimeAsync(0);
+
 			expect(backend.close).toHaveBeenCalledTimes(1);
 		} finally {
 			vi.useRealTimers();

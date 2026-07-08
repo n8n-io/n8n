@@ -3,8 +3,8 @@ import type { AgentJsonVectorStoreConfig } from '@n8n/api-types';
 import {
 	N8nActionBox,
 	N8nActionDropdown,
-	N8nButton,
 	N8nIcon,
+	N8nIconButton,
 	N8nTableBase,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -88,11 +88,10 @@ function onAction(actionId: VectorStoreAction, vectorStore: AgentJsonVectorStore
 				:content="i18n.baseText('agents.builder.vectorStores.panel.connectButton')"
 				placement="top"
 			>
-				<N8nButton
+				<N8nIconButton
 					variant="ghost"
 					size="small"
 					icon="plus"
-					icon-only
 					:disabled="props.disabled"
 					:aria-label="i18n.baseText('agents.builder.vectorStores.panel.connectButton')"
 					data-testid="agent-vector-stores-connect"

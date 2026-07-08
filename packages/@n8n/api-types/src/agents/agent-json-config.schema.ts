@@ -508,6 +508,37 @@ export function tryParseConfigJson(
 	}
 }
 
+/**
+ * Vector stores register a `search_<sanitized-name>` tool at runtime (see
+ * `@n8n/agents`' `VectorStore.asTool()`). The `vectorStores` array refine
+ * above only catches vector-store-vs-vector-store name collisions; this also
+ * catches a vector store colliding with a configured tool, which would
+ * otherwise only surface as a runtime "tool name collision" error once the
+ * agent is built. Returns the colliding `search_<name>` tool names, if any.
+ */
+export function findVectorStoreToolNameCollisions(
+	config: Pick<AgentJsonConfig, 'tools' | 'vectorStores'>,
+): string[] {
+	if (!config.vectorStores?.length) return [];
+
+	const toolNames = new Set(
+		(config.tools ?? []).map((tool) => {
+			switch (tool.type) {
+				case 'custom':
+					return tool.id;
+				case 'workflow':
+					return tool.name ?? tool.workflow;
+				case 'node':
+					return tool.name;
+			}
+		}),
+	);
+
+	return config.vectorStores
+		.map((store) => `search_${store.name.replace(/-/g, '_')}`)
+		.filter((toolName) => toolNames.has(toolName));
+}
+
 export function formatZodErrors(error: ZodError): ConfigValidationError[] {
 	return error.issues.map((issue) => ({
 		path: issue.path.join('.') || '(root)',
