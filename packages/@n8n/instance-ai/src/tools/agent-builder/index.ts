@@ -4,13 +4,17 @@
  * deferred tool and loaded on demand by the agent-builder skill. Only created
  * when the host provides `agentBuilderService`.
  *
- * All builder actions are exposed through a single `agent_builder` router (action
- * discriminator). There are no interactive picker tools: instance AI has no
- * picker cards, so user choices go through the native `ask-user` tool, and
- * credentials are read via the native `credentials` tool (action `list`).
+ * Most builder actions are exposed through a single `agent_builder` router
+ * (action discriminator). There are no interactive picker tools: instance AI
+ * has no picker cards, so user choices go through the native `ask-user` tool,
+ * and credentials are read via the native `credentials` tool (action `list`).
+ * The one exception is `configure_channel`: chat-channel setup needs an
+ * interactive HITL card, and the router can't suspend, so it is registered as
+ * its own deferred tool.
  */
 import type { BuiltTool } from '@n8n/agents';
 
+import { createConfigureChannelTool } from './configure-channel.tool';
 import { createAgentBuilderRouterTool } from './router';
 import { createToolRegistry } from '../../tool-registry';
 import type { InstanceAiContext, InstanceAiToolRegistry } from '../../types';
@@ -36,6 +40,7 @@ export function createAgentBuilderTools(context: InstanceAiContext): InstanceAiT
 
 	const tools: Array<[string, BuiltTool]> = [
 		[AGENT_BUILDER_TOOL_IDS.AGENT_BUILDER, createAgentBuilderRouterTool(context)],
+		[AGENT_BUILDER_TOOL_IDS.CONFIGURE_CHANNEL, createConfigureChannelTool(context)],
 	];
 
 	return createToolRegistry(tools);
