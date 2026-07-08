@@ -101,9 +101,9 @@ export function createCreateTaskTool(context: InstanceAiContext) {
 				'starts once the agent is (re)published. Returns { ok: true, task } or { ok: false, errors }.',
 		)
 		.systemInstruction(
-			'Never create a task with a vague or placeholder objective. A task can only use tools the ' +
-				'agent already has: if a step needs a tool/integration/web search the agent is missing, add ' +
-				'it to the config file and build_agent it BEFORE calling create_task.',
+			'Create a task only when the objective is concrete and self-contained. A task can only ' +
+				'use tools the agent already has: if a step needs a missing tool, integration, or web ' +
+				'search, add it to the config file and build_agent it before calling create_task.',
 		)
 		.input(
 			z.object({
