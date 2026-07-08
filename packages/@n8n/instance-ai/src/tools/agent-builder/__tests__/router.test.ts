@@ -97,8 +97,8 @@ describe('agent_builder router', () => {
 		const routerTool = createAgentBuilderRouterTool(createContext(createService()));
 		expect(routerTool.systemInstruction).toContain('create_skill:');
 		expect(routerTool.systemInstruction).toContain('create_task:');
-		expect(routerTool.systemInstruction).toContain('placeholder skill');
-		expect(routerTool.systemInstruction).toContain('placeholder objective');
+		expect(routerTool.systemInstruction).toContain('concrete routing contract');
+		expect(routerTool.systemInstruction).toContain('concrete and self-contained');
 	});
 
 	it('does not expose interactive tools as router actions', async () => {

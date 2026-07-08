@@ -7,7 +7,7 @@
  * suspends with a `channelConfig` confirmation-request payload; the UI renders
  * the channel setup card inline in chat, where the user creates a NEW credential
  * and connects (or skips). The setup card persists the connection itself via the
- * agents REST endpoints, so this tool never writes the `integrations` config —
+ * agents REST endpoints, so this tool does not write the `integrations` config —
  * it only orchestrates the UI and reports the outcome to the model.
  */
 import { Tool } from '@n8n/agents';
@@ -42,13 +42,10 @@ export function createConfigureChannelTool(context: InstanceAiContext) {
 		.description(
 			'Connect one available chat channel to the target agent. First call ' +
 				'agent_builder({ action: "list_integration_types" }) and pass a returned `type` as ' +
-				'`integrationType`; do not infer channel names. Opens the channel setup UI in the chat ' +
-				'so the user creates a NEW credential and connects — a new agent always needs its own ' +
-				'credential for its own identity, so never reuse an existing one. The user may skip. ' +
-				'This tool persists the connection through the setup UI itself: do NOT call ' +
-				'list_credentials for a channel and do NOT write channel entries into the `integrations` ' +
-				'config. Returns { connected: boolean } — if connected is false the user skipped; proceed ' +
-				'without the channel and do not re-prompt.',
+				'`integrationType`; do not infer channel names. Shows setup UI in chat where the user ' +
+				'creates a new channel credential or skips. The setup UI persists the connection, so use ' +
+				'this for channel credentials instead of the credentials tool or config writes. Returns ' +
+				'{ connected: boolean }; if false, continue without the channel and do not re-prompt.',
 		)
 		.input(configureChannelInputSchema)
 		.suspend(

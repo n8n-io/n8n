@@ -34,7 +34,7 @@ as `agent_builder({ action: "write_config", ... })`.
 One builder capability is a separate tool, not an `agent_builder` action:
 `configure_channel({ integrationType })` — an interactive tool that opens the
 chat-channel setup UI so the user creates a new credential and connects a
-channel. The `integrationType` must come from `list_integration_types`. See the
+channel. The `integrationType` comes from `list_integration_types`. See the
 Integrations reference.
 
 ## Asking the user, credentials, and the LLM
@@ -47,11 +47,10 @@ There are no builder-specific picker cards. When you need input from the user:
   (pass `name` for a targeted lookup by credential name). If exactly one matches,
   use its `id`. If several match, ask the user to choose with `ask-user` (present
   the names) and use the chosen credential's `id`. Build the credentials map as
-  `{ "<credentialType>": { "id": "<id>", "name": "<name>" } }`. If none exists,
-  tell the user to create it in n8n first — never invent an id.
-  **Chat channels are the exception**: never resolve a channel credential with
-  the `credentials` tool — use `configure_channel` (see the Integrations
-  reference), which always has the user create a new credential for the channel.
+  `{ "<credentialType>": { "id": "<id>", "name": "<name>" } }`. Use only returned
+  credential ids; if none exists, tell the user to create it in n8n first.
+  **Chat channels are the exception**: use `configure_channel` (see the
+  Integrations reference), which creates a new channel credential through setup.
 - **The agent's main LLM** — call
   `agent_builder({ action: "resolve_llm", provider?, model? })`. If it returns
   `ok: true`, use the returned `provider`/`model`/`credentialId`. If it returns
