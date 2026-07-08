@@ -8,7 +8,6 @@ export * from './constants';
 export * from './common';
 export * from './cron';
 export * from './data-table.types';
-export * from './deferred-promise';
 export * from './execution-context';
 export * from './execution-context-establishment-hooks';
 export * from './redaction-channels';
@@ -97,6 +96,7 @@ export * from './node-parameters/node-parameter-value-type-guard';
 export * from './node-parameters/path-utils';
 export * from './evaluation-helpers';
 export * from './workflow-diff';
+export * from './connections-diff';
 export * from './workflow-environments-helper';
 export { evaluateJmespathQuery, JmespathQueryError } from './jmespath-query';
 

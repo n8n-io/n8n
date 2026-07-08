@@ -2,6 +2,7 @@
 import CredentialCard from '../components/CredentialCard.vue';
 import EmptySharedSectionActionBox from '@/features/core/folders/components/EmptySharedSectionActionBox.vue';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
+import ResourcesListEmptyState from '@/app/components/layouts/ResourcesListEmptyState.vue';
 import type { BaseFilters, Resource } from '@/Interface';
 import type { ICredentialsResponse, ICredentialTypeMap } from '../credentials.types';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
@@ -18,7 +19,6 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { listenForModalChanges, useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import { isCredentialsResource } from '@/app/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
@@ -33,7 +33,7 @@ import { useEnvironmentsStore } from '@/features/settings/environments.ee/enviro
 import { useDependencies } from '@/app/composables/useDependencies';
 import { useInstanceAiCredentialHelp } from '@/features/ai/instanceAi/composables/useInstanceAiCredentialHelp';
 
-import { N8nActionBox, N8nCheckbox, N8nInputLabel, N8nOption, N8nSelect } from '@n8n/design-system';
+import { N8nCheckbox, N8nInputLabel, N8nOption, N8nSelect } from '@n8n/design-system';
 const props = defineProps<{
 	credentialId?: string;
 }>();
@@ -48,7 +48,6 @@ const projectsStore = useProjectsStore();
 // Credentials-list credential help (shared with the new-credential dialog): opens
 // Instance AI in a new tab asking about the credential alone.
 const instanceAiCredentialHelp = useInstanceAiCredentialHelp();
-const usersStore = useUsersStore();
 const insightsStore = useInsightsStore();
 const { fetchDependencyCounts } = useDependencies();
 
@@ -409,35 +408,15 @@ onMounted(() => {
 				:personal-project="personalProject"
 				resource-type="credentials"
 			/>
-			<N8nActionBox
+			<ResourcesListEmptyState
 				v-else
-				data-test-id="empty-resources-list"
-				:icon="{ type: 'icon', value: 'lock' }"
-				:heading="
-					i18n.baseText(
-						usersStore.currentUser?.firstName
-							? 'credentials.empty.heading'
-							: 'credentials.empty.heading.userNotSetup',
-						{
-							interpolate: { name: usersStore.currentUser?.firstName ?? '' },
-						},
-					)
-				"
-				:description="i18n.baseText('credentials.empty.description')"
-				:button-text="i18n.baseText('credentials.empty.button')"
-				button-type="secondary"
+				resource-key="credentials"
 				:button-disabled="readOnlyEnv || !projectPermissions.credential.create"
-				:button-icon="readOnlyEnv || !projectPermissions.credential.create ? 'lock' : undefined"
+				:disabled-tooltip-text="
+					readOnlyEnv ? i18n.baseText('readOnlyEnv.cantAdd.credential') : undefined
+				"
 				@click:button="addCredential"
-			>
-				<template #disabledButtonTooltip>
-					{{
-						readOnlyEnv
-							? i18n.baseText('readOnlyEnv.cantAdd.credential')
-							: i18n.baseText('credentials.empty.button.disabled.tooltip')
-					}}
-				</template>
-			</N8nActionBox>
+			/>
 		</template>
 	</ResourcesListLayout>
 </template>

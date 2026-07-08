@@ -164,7 +164,7 @@ export type {
 	AgentMiddleware,
 } from './runtime/event';
 
-export type { McpServerConfig, McpVerifyResult } from './sdk/mcp';
+export type { McpServerConfig, McpToolCallSettledEvent, McpVerifyResult } from './sdk/mcp';
 
 export type { AgentBuilder } from './sdk/agent-builder';
 

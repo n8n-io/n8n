@@ -1,3 +1,4 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	ICredentialDataDecryptedObject,
 	INode,
@@ -7,7 +8,7 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { UnexpectedError, createDeferredPromise } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { NodeExecutionContext } from './node-execution-context';
 import { getBinaryHelperFunctions } from './utils/binary-helper-functions';

@@ -35,7 +35,28 @@ const managedOAuth: ICredentialType = {
 	],
 };
 
-const typesByName: Record<string, ICredentialType> = { httpBasicAuth, acmeOAuth2Api: managedOAuth };
+// A private-credential type with both shared (static) and per-user (resolvable) fields.
+const privateOAuth: ICredentialType = {
+	name: 'privateOAuth2Api',
+	displayName: 'Private OAuth2 API',
+	properties: [
+		{ displayName: 'Client ID', name: 'clientId', type: 'string', default: '' },
+		{ displayName: 'Client Secret', name: 'clientSecret', type: 'string', default: '' },
+		{
+			displayName: 'Access Token',
+			name: 'accessToken',
+			type: 'string',
+			default: '',
+			resolvableField: true,
+		},
+	],
+};
+
+const typesByName: Record<string, ICredentialType> = {
+	httpBasicAuth,
+	acmeOAuth2Api: managedOAuth,
+	privateOAuth2Api: privateOAuth,
+};
 
 describe('useCredentialForm', () => {
 	let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
@@ -103,6 +124,40 @@ describe('useCredentialForm', () => {
 			await form.initialize();
 
 			expect(form.useCustomOAuth.value).toBe(true);
+		});
+	});
+
+	describe('getChangedSharedFields', () => {
+		async function loadPrivateCred() {
+			credentialsStore.getCredentialData.mockResolvedValue({
+				id: 'cred-3',
+				name: 'Private Cred',
+				type: 'privateOAuth2Api',
+				data: { clientId: 'id', clientSecret: 'secret', accessToken: 'token' },
+			} as unknown as ICredentialsDecryptedResponse);
+			const form = useCredentialForm({ mode: 'edit', activeId: 'cred-3' });
+			await form.initialize();
+			return form;
+		}
+
+		it('detects a changed shared (static) field', async () => {
+			const form = await loadPrivateCred();
+
+			expect(form.getChangedSharedFields({ clientId: 'new-id', clientSecret: 'secret' })).toEqual([
+				'clientId',
+			]);
+		});
+
+		it('ignores changes to resolvable (per-user) fields', async () => {
+			const form = await loadPrivateCred();
+
+			expect(form.getChangedSharedFields({ clientId: 'id', accessToken: 'new-token' })).toEqual([]);
+		});
+
+		it('returns empty when shared fields are unchanged', async () => {
+			const form = await loadPrivateCred();
+
+			expect(form.getChangedSharedFields({ clientId: 'id', clientSecret: 'secret' })).toEqual([]);
 		});
 	});
 });

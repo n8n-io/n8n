@@ -1,0 +1,26 @@
+{
+	"description": "Anti-pattern guard: sequential per-item processing does not require Loop Over Items. Default per-item iteration already runs items one after another through the chain.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every 15 minutes, pull pending validation jobs from GET https://api.example.com/jobs/pending — the API returns a JSON envelope {jobs: [...]}, so split that into individual items before processing. Validate each job at POST https://api.example.com/jobs/validate and mark each complete at PATCH https://api.example.com/jobs/{id}/complete."
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "medium",
+	"tags": ["build", "loops", "implicit-iteration", "anti-pattern", "schedule", "http-request"],
+	"triggerType": "schedule",
+	"datasets": ["full"],
+	"outcomeExpectations": [
+		"Each pending job is validated and marked complete via default per-item iteration (fetch → split envelope → validate → complete per job), not via an explicit Loop Over Items / Split In Batches node.",
+		"Split Out (or equivalent item expansion from the jobs envelope) is acceptable and expected when the API returns {jobs: [...]} — but the agent did NOT add a Loop Over Items / Split In Batches node."
+	],
+	"executionScenarios": [
+		{
+			"name": "two-jobs-processed-in-order",
+			"description": "Two pending jobs each go through validate then complete",
+			"dataSetup": "GET https://api.example.com/jobs/pending returns { \"jobs\": [{ \"id\": \"job-1\" }, { \"id\": \"job-2\" }] }. POST https://api.example.com/jobs/validate returns { \"ok\": true } for each job. PATCH https://api.example.com/jobs/job-1/complete and PATCH https://api.example.com/jobs/job-2/complete each return { \"status\": \"complete\" }.",
+			"successCriteria": "The workflow executes without errors. Both jobs are validated (POST /jobs/validate called twice) and both are marked complete (PATCH for job-1 and job-2). No errors from miswired loop done/loop outputs."
+		}
+	]
+}
