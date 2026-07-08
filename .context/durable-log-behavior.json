@@ -1,0 +1,151 @@
+{
+ "behavior.latency.off": {
+  "scenario": "L first-event latency (incl. HTTP publish)",
+  "flag": "off",
+  "n": 12,
+  "p50": 5.178,
+  "p95": 11.011,
+  "max": 11.011
+ },
+ "behavior.reloadMidRun.off": {
+  "scenario": "R1 reload mid-run",
+  "flag": "off",
+  "cursor": 9,
+  "replayedEvents": 9,
+  "missedFactsReplayed": true,
+  "pass": true
+ },
+ "behavior.midBlockReconnect.off": {
+  "scenario": "R3 reconnect mid-block",
+  "flag": "off",
+  "cursor": 7,
+  "livePartial": [
+   {
+    "type": "text-delta",
+    "text": "AAA",
+    "responseId": "msg_open"
+   },
+   {
+    "type": "text-delta",
+    "text": "BBB",
+    "responseId": "msg_open"
+   }
+  ],
+  "replayed": [
+   {
+    "type": "text-delta",
+    "text": "CCC",
+    "responseId": "msg_open"
+   }
+  ]
+ },
+ "behavior.restartMidRun.off": {
+  "scenario": "R2 restart mid-run, reconnect with stale cursor",
+  "flag": "off",
+  "cursorBeforeRestart": 9,
+  "replayedFactsAfterRestart": 0,
+  "replayedTypes": [],
+  "nextEventIdAfterRestart": 1,
+  "pass": true
+ },
+ "behavior.latency.on": {
+  "scenario": "L first-event latency (incl. HTTP publish)",
+  "flag": "on",
+  "n": 12,
+  "p50": 5.653,
+  "p95": 10.63,
+  "max": 10.63
+ },
+ "behavior.reloadMidRun.on": {
+  "scenario": "R1 reload mid-run",
+  "flag": "on",
+  "cursor": 5,
+  "replayedEvents": 5,
+  "missedFactsReplayed": true,
+  "pass": true
+ },
+ "behavior.midBlockReconnect.on": {
+  "scenario": "R3 reconnect mid-block",
+  "flag": "on",
+  "cursor": 4,
+  "livePartial": [
+   {
+    "type": "text-delta",
+    "text": "AAA",
+    "responseId": "msg_open"
+   },
+   {
+    "type": "text-delta",
+    "text": "BBB",
+    "responseId": "msg_open"
+   }
+  ],
+  "replayed": [
+   {
+    "type": "text-block",
+    "text": "AAABBBCCC",
+    "responseId": "msg_open"
+   }
+  ]
+ },
+ "behavior.restartMidRun.on": {
+  "scenario": "R2 restart mid-run, reconnect with stale cursor",
+  "flag": "on",
+  "cursorBeforeRestart": 5,
+  "replayedFactsAfterRestart": 1,
+  "replayedTypes": [
+   "run-finish"
+  ],
+  "nextEventIdAfterRestart": 7,
+  "pass": true
+ },
+ "behavior.killNineSweep.on": {
+  "scenario": "R4 kill -9 mid-run, startup sweep",
+  "flag": "on",
+  "toolInterruptedFact": true,
+  "runFinishStatus": "interrupted",
+  "sweepCounters": {
+   "runsExamined": 1,
+   "runsMarkedInterrupted": 1,
+   "runsCrashResumed": 0,
+   "toolInterruptedFacts": 1,
+   "correctionsRequeued": 0
+  },
+  "pass": true
+ },
+ "behavior.realCrashResume.on": {
+  "scenario": "R5 real crash-resume (mock LLM)",
+  "flag": "on",
+  "runId": "run_T3q14t5ZP_mJBbe8SB7or",
+  "runFinishStatus": "completed",
+  "resumeMarkerSeen": true,
+  "realToolCallsInLog": 1,
+  "sweepCounters": {
+   "runsExamined": 1,
+   "runsMarkedInterrupted": 0,
+   "runsCrashResumed": 1,
+   "toolInterruptedFacts": 0,
+   "correctionsRequeued": 0
+  },
+  "assistantMessages": 1,
+  "pass": true
+ },
+ "behavior.realCrashResumeAnthropic.on": {
+  "scenario": "R6 real crash-resume (REAL Anthropic model, thinking enabled)",
+  "model": "anthropic/claude-sonnet-4-6",
+  "runId": "run_MInogE0x639kKeZ0cPfhg",
+  "sweepCounters": {
+   "runsExamined": 1,
+   "runsMarkedInterrupted": 0,
+   "runsCrashResumed": 1,
+   "toolInterruptedFacts": 0,
+   "correctionsRequeued": 0
+  },
+  "runFinishStatus": "completed",
+  "resumeMarkerSeen": true,
+  "realToolCallsInLog": 3,
+  "assistantMessages": 1,
+  "providerSignatureErrorsInLogs": 0,
+  "pass": true
+ }
+}

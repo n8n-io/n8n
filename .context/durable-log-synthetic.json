@@ -1,0 +1,368 @@
+{
+ "latency": {
+  "smallRun.burst.off": {
+   "delta": {
+    "n": 84,
+    "p50": 0.001,
+    "p95": 0.001,
+    "max": 0.002,
+    "mean": 0.001
+   },
+   "structural": {
+    "n": 32,
+    "p50": 0.001,
+    "p95": 0.005,
+    "max": 0.01,
+    "mean": 0.002
+   }
+  },
+  "smallRun.burst.on": {
+   "delta": {
+    "n": 84,
+    "p50": 2.22,
+    "p95": 2.462,
+    "max": 2.464,
+    "mean": 2.257
+   },
+   "structural": {
+    "n": 32,
+    "p50": 2.222,
+    "p95": 2.463,
+    "max": 2.465,
+    "mean": 2.075
+   }
+  },
+  "smallRun.paced.off": {
+   "delta": {
+    "n": 84,
+    "p50": 0.001,
+    "p95": 0.021,
+    "max": 0.539,
+    "mean": 0.01
+   },
+   "structural": {
+    "n": 32,
+    "p50": 0.002,
+    "p95": 0.028,
+    "max": 0.038,
+    "mean": 0.007
+   }
+  },
+  "smallRun.paced.on": {
+   "delta": {
+    "n": 84,
+    "p50": 1.103,
+    "p95": 1.856,
+    "max": 1.858,
+    "mean": 1.074
+   },
+   "structural": {
+    "n": 32,
+    "p50": 1.112,
+    "p95": 1.864,
+    "max": 3.806,
+    "mean": 1.289
+   }
+  },
+  "longRun.burst.off": {
+   "delta": {
+    "n": 7200,
+    "p50": 0.001,
+    "p95": 0.002,
+    "max": 0.155,
+    "mean": 0.001
+   },
+   "structural": {
+    "n": 488,
+    "p50": 0.001,
+    "p95": 0.002,
+    "max": 0.052,
+    "mean": 0.001
+   }
+  },
+  "longRun.burst.on": {
+   "delta": {
+    "n": 7200,
+    "p50": 18.185,
+    "p95": 21.244,
+    "max": 21.459,
+    "mean": 17.67
+   },
+   "structural": {
+    "n": 488,
+    "p50": 18.19,
+    "p95": 21.279,
+    "max": 21.467,
+    "mean": 17.558
+   }
+  },
+  "multiAgent.burst.off": {
+   "delta": {
+    "n": 240,
+    "p50": 0.001,
+    "p95": 0.001,
+    "max": 0.004,
+    "mean": 0.001
+   },
+   "structural": {
+    "n": 72,
+    "p50": 0.001,
+    "p95": 0.004,
+    "max": 0.03,
+    "mean": 0.001
+   }
+  },
+  "multiAgent.burst.on": {
+   "delta": {
+    "n": 240,
+    "p50": 2.522,
+    "p95": 2.988,
+    "max": 2.992,
+    "mean": 2.64
+   },
+   "structural": {
+    "n": 72,
+    "p50": 2.531,
+    "p95": 3,
+    "max": 3.003,
+    "mean": 2.55
+   }
+  },
+  "multiAgent.paced.off": {
+   "delta": {
+    "n": 240,
+    "p50": 0.001,
+    "p95": 0.001,
+    "max": 0.023,
+    "mean": 0.001
+   },
+   "structural": {
+    "n": 72,
+    "p50": 0.002,
+    "p95": 0.013,
+    "max": 0.039,
+    "mean": 0.004
+   }
+  },
+  "multiAgent.paced.on": {
+   "delta": {
+    "n": 240,
+    "p50": 1.301,
+    "p95": 2.401,
+    "max": 2.404,
+    "mean": 1.512
+   },
+   "structural": {
+    "n": 72,
+    "p50": 1.046,
+    "p95": 2.408,
+    "max": 2.867,
+    "mean": 1.25
+   }
+  }
+ },
+ "writeVolume": {
+  "smallRun.off": {
+   "published": 29,
+   "rowsWritten": 0,
+   "bytesWritten": 0,
+   "dbRows": 0,
+   "batches": 0,
+   "queueLatency": {
+    "p50": 0,
+    "max": 0
+   }
+  },
+  "smallRun.on": {
+   "published": 29,
+   "rowsWritten": 14,
+   "bytesWritten": 3887,
+   "dbRows": 14,
+   "batches": 2,
+   "queueLatency": {
+    "p50": 1.966,
+    "max": 2
+   }
+  },
+  "longRun.off": {
+   "published": 1922,
+   "rowsWritten": 0,
+   "bytesWritten": 0,
+   "dbRows": 0,
+   "batches": 0,
+   "queueLatency": {
+    "p50": 0,
+    "max": 0
+   }
+  },
+  "longRun.on": {
+   "published": 1922,
+   "rowsWritten": 242,
+   "bytesWritten": 120201,
+   "dbRows": 242,
+   "batches": 2,
+   "queueLatency": {
+    "p50": 13.994,
+    "max": 14
+   }
+  },
+  "multiAgent.off": {
+   "published": 78,
+   "rowsWritten": 0,
+   "bytesWritten": 0,
+   "dbRows": 0,
+   "batches": 0,
+   "queueLatency": {
+    "p50": 0,
+    "max": 0
+   }
+  },
+  "multiAgent.on": {
+   "published": 78,
+   "rowsWritten": 30,
+   "bytesWritten": 8972,
+   "dbRows": 30,
+   "batches": 2,
+   "queueLatency": {
+    "p50": 1.974,
+    "max": 2
+   }
+  }
+ },
+ "restartReplay": {
+  "flagOn": {
+   "replayedEvents": 14,
+   "continuationExact": true
+  },
+  "flagOff": {
+   "replayedEventsAfterRestart": 0,
+   "nextEventIdAfterRestart": 1
+  }
+ },
+ "eviction": {
+  "published": 1922,
+  "flagOff": {
+   "eventsRetained": 500,
+   "eventsLost": 1422,
+   "toolCallsInTree": 16,
+   "expectedToolCalls": 60
+  },
+  "flagOn": {
+   "factsPersisted": 242,
+   "toolCallsInTree": 60,
+   "expectedToolCalls": 60
+  }
+ },
+ "midBlockReconnect": {
+  "cursor": 5,
+  "partialDeltasSeenLive": 3,
+  "duplicateFreeAfterReplay": true
+ },
+ "appendConflict": {
+  "conflictsRetried": 1,
+  "failures": 0,
+  "rowsPersisted": 3
+ },
+ "historyLoad": {
+  "facts10.off": {
+   "n": 20,
+   "p50": 0.986,
+   "p95": 1.32,
+   "max": 2.005,
+   "mean": 1.043,
+   "assistantMessages": 1,
+   "toolCallsRendered": 3,
+   "expectedToolCalls": 3
+  },
+  "facts10.on": {
+   "n": 20,
+   "p50": 1.469,
+   "p95": 2.758,
+   "max": 4.538,
+   "mean": 1.791,
+   "assistantMessages": 1,
+   "toolCallsRendered": 3,
+   "expectedToolCalls": 3
+  },
+  "facts100.off": {
+   "n": 20,
+   "p50": 1.144,
+   "p95": 1.614,
+   "max": 1.726,
+   "mean": 1.176,
+   "assistantMessages": 9,
+   "toolCallsRendered": 40,
+   "expectedToolCalls": 40
+  },
+  "facts100.on": {
+   "n": 20,
+   "p50": 2.503,
+   "p95": 3.266,
+   "max": 3.433,
+   "mean": 2.687,
+   "assistantMessages": 9,
+   "toolCallsRendered": 40,
+   "expectedToolCalls": 40
+  },
+  "facts500.off": {
+   "n": 20,
+   "p50": 1.618,
+   "p95": 2.348,
+   "max": 2.64,
+   "mean": 1.605,
+   "assistantMessages": 19,
+   "toolCallsRendered": 230,
+   "expectedToolCalls": 230
+  },
+  "facts500.on": {
+   "n": 20,
+   "p50": 5.901,
+   "p95": 6.942,
+   "max": 7.816,
+   "mean": 5.972,
+   "assistantMessages": 19,
+   "toolCallsRendered": 230,
+   "expectedToolCalls": 230
+  },
+  "degenerate10.off": {
+   "n": 20,
+   "p50": 0.727,
+   "p95": 2.1,
+   "max": 2.589,
+   "mean": 0.962,
+   "assistantMessages": 1,
+   "toolCallsRendered": 0,
+   "expectedToolCalls": 3
+  },
+  "degenerate10.on": {
+   "n": 20,
+   "p50": 1.145,
+   "p95": 1.874,
+   "max": 2.255,
+   "mean": 1.244,
+   "assistantMessages": 1,
+   "toolCallsRendered": 3,
+   "expectedToolCalls": 3
+  }
+ },
+ "sweepInterrupted": {
+  "toolInterruptedFacts": 1,
+  "runsMarkedInterrupted": 1,
+  "foldStatus": "cancelled",
+  "idempotent": true
+ },
+ "sweepCrashResume": {
+  "crashResumed": 1,
+  "correctionsRequeued": 1,
+  "contextNotes": 2
+ },
+ "sweepSkipsSuspended": {
+  "skipped": true
+ },
+ "sdkCrashResume": {
+  "stepCheckpointsWritten": 2,
+  "checkpointDeletedOnCompletion": true,
+  "resumedUnderSameRunId": true,
+  "resumedContextHasHistoryAndNotes": true
+ }
+}
