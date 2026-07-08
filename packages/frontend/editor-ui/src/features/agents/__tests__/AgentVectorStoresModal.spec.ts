@@ -196,6 +196,9 @@ async function fillQdrantConnection(wrapper: ReturnType<typeof mount>) {
 		.find('[data-test-id="agent-vector-stores-modal-credential"]')
 		.setValue('qdrant-cred-1');
 	await wrapper
+		.find('[data-testid="agent-vector-stores-modal-embedding-model"]')
+		.setValue('openai/text-embedding-3-small');
+	await wrapper
 		.find('[data-testid="agent-vector-stores-modal-embedding-credential"]')
 		.setValue('openai-cred-1');
 	await wrapper

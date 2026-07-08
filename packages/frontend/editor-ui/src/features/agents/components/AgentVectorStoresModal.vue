@@ -89,7 +89,7 @@ const tableName = ref(
 const queryName = ref(
 	existing && existing.provider === 'supabase' ? (existing.queryName ?? '') : '',
 );
-const embeddingModel = ref(existing?.embedding.model ?? AGENT_EMBEDDING_MODEL_OPTIONS[0].model);
+const embeddingModel = ref(existing?.embedding.model ?? '');
 const embeddingCredential = ref(existing?.embedding.credential ?? '');
 const useWhen = ref(existing?.useWhen ?? '');
 
@@ -547,6 +547,7 @@ onMounted(() => {
 						:selected-credential-id="embeddingCredential || null"
 						:credentials-by-type="credentialsByType"
 						:can-create-credentials="credentialPermissions.create"
+						horizontal
 						@update:selected-model="onEmbeddingModelUpdate"
 						@update:selected-credential-id="embeddingCredential = $event"
 						@create-credential="onCreateEmbeddingCredential"

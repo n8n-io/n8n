@@ -30,7 +30,7 @@ const {
 	disabled = false,
 	dataTestId,
 	credentialDataTestId,
-	maxSelectedNameChars,
+	maxSelectedNameChars = 30,
 } = defineProps<{
 	items: Array<AiModelSelectorMenuItem<TData>>;
 	selectedLabel: string;
@@ -43,7 +43,7 @@ const {
 	disabled?: boolean;
 	dataTestId: string;
 	credentialDataTestId: string;
-	maxSelectedNameChars: number;
+	maxSelectedNameChars?: number;
 }>();
 
 const emit = defineEmits<{

@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import { computed, ref, useTemplateRef } from 'vue';
-import { N8nIcon } from '@n8n/design-system';
+import { computed, useTemplateRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { truncateBeforeLast } from '@n8n/utils/string/truncate';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
 import AiModelSelectorDropdown from '@/features/ai/modelSelector/AiModelSelectorDropdown.vue';
-import { filterAiModelSelectorMenu } from '@/features/ai/modelSelector/search';
+import ModelSelectorTriggerIcon from '@/features/ai/modelSelector/ModelSelectorTriggerIcon.vue';
+import ModelSelectorItemLeadingIcon from '@/features/ai/modelSelector/ModelSelectorItemLeadingIcon.vue';
+import { MAX_MODEL_NAME_CHARS, useAiModelSelectorMenu } from '@/features/ai/modelSelector/search';
+import { buildMenuItemId, parseMenuItemId } from '@/features/ai/modelSelector/menuItemId';
 import type {
 	AiModelSelectorMenuItem,
 	AiModelSelectorMenuItemData,
@@ -18,6 +19,7 @@ import type {
 import {
 	AGENT_MODEL_PROVIDER_DEFINITIONS,
 	AGENT_MODEL_PROVIDERS,
+	getProviderCredentialTypes,
 	isAgentModelProvider,
 	type AgentCredentialsByProvider,
 	type AgentModelOption,
@@ -26,15 +28,11 @@ import {
 	type AgentModelsByProvider,
 } from '../model-providers';
 
-const MAX_MODEL_NAME_CHARS = 45;
-const MAX_SELECTED_NAME_CHARS = 30;
 const FREE_OPENAI_CREDITS_PROVIDER = 'openai';
 const FREE_OPENAI_CREDITS_MODEL = 'gpt-5-mini';
 
 type MenuItemData = AiModelSelectorMenuItemData & {
 	provider?: AgentModelProvider;
-	credentialType?: string;
-	leadingIcon?: 'settings' | 'sparkles';
 };
 
 type MenuItem = AiModelSelectorMenuItem<MenuItemData>;
@@ -69,7 +67,6 @@ const dropdownRef = useTemplateRef('dropdownRef');
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
-const searchQuery = ref('');
 
 const selectedCredentialId = computed(() =>
 	selectedModel ? credentials?.[selectedModel.provider] : undefined,
@@ -98,6 +95,12 @@ const selectedLabel = computed(
 	() => selectedModel?.name ?? i18n.baseText('agents.modelSelector.defaultLabel'),
 );
 
+const triggerCredentialTypeName = computed(() =>
+	selectedModel
+		? AGENT_MODEL_PROVIDER_DEFINITIONS[selectedModel.provider].credentialTypes[0]
+		: null,
+);
+
 const projectForPermissions = computed(() => {
 	if (projectId) {
 		if (projectsStore.currentProject?.id === projectId) return projectsStore.currentProject;
@@ -115,10 +118,6 @@ const createCredentialProjectId = computed(
 const canCreateCredentials = computed(() => {
 	return !!getResourcePermissions(projectForPermissions.value?.scopes).credential.create;
 });
-
-function getProviderCredentialTypes(provider: AgentModelProvider): readonly [string, ...string[]] {
-	return AGENT_MODEL_PROVIDER_DEFINITIONS[provider].credentialTypes;
-}
 
 function getCredentialTypeDisplayName(credentialType: string): string {
 	return credentialsStore.getCredentialTypeByName(credentialType)?.displayName ?? credentialType;
@@ -139,22 +138,6 @@ function getCredentialsForProvider(provider: AgentModelProvider) {
 	}
 
 	return [...credentialsById.values()].toSorted((a, b) => a.name.localeCompare(b.name));
-}
-
-function modelItemId(provider: AgentModelProvider, model: string): string {
-	return `${provider}::model::${encodeURIComponent(model)}`;
-}
-
-function credentialItemId(provider: AgentModelProvider, credentialId: string): string {
-	return `${provider}::credential::${encodeURIComponent(credentialId)}`;
-}
-
-function configureCredentialItemId(provider: AgentModelProvider, credentialType: string): string {
-	return `${provider}::configure::${encodeURIComponent(credentialType)}`;
-}
-
-function freeOpenAiCreditsItemId(): string {
-	return `${FREE_OPENAI_CREDITS_PROVIDER}::freeCredits::${encodeURIComponent(FREE_OPENAI_CREDITS_MODEL)}`;
 }
 
 const canUseFreeOpenAiCredits = computed(
@@ -178,9 +161,8 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 		credentialOptions.some((credential) => credential.id === selectedProviderCredentialId);
 
 	const credentialItems = credentialOptions.map<MenuItem>((credential) => ({
-		id: credentialItemId(provider, credential.id),
+		id: buildMenuItemId(provider, 'credential', credential.id),
 		label: credential.name,
-		icon: { type: 'icon', value: 'key-round' },
 		checked: credential.id === selectedProviderCredentialId,
 		data: { provider, credentialType: credential.type },
 	}));
@@ -189,7 +171,7 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 		? credentialTypes.length === 1
 			? [
 					{
-						id: configureCredentialItemId(provider, credentialTypes[0]),
+						id: buildMenuItemId(provider, 'configure', credentialTypes[0]),
 						icon: { type: 'icon', value: 'settings' },
 						label: i18n.baseText('agents.modelSelector.configureCredentials'),
 						disabled: false,
@@ -204,7 +186,7 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 						disabled: false,
 						data: { provider, leadingIcon: 'settings' },
 						children: credentialTypes.map<MenuItem>((credentialType) => ({
-							id: configureCredentialItemId(provider, credentialType),
+							id: buildMenuItemId(provider, 'configure', credentialType),
 							label: getCredentialTypeDisplayName(credentialType),
 							disabled: false,
 							data: { provider, credentialType },
@@ -217,7 +199,11 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 		provider === FREE_OPENAI_CREDITS_PROVIDER && canUseFreeOpenAiCredits.value
 			? [
 					{
-						id: freeOpenAiCreditsItemId(),
+						id: buildMenuItemId(
+							FREE_OPENAI_CREDITS_PROVIDER,
+							'freeCredits',
+							FREE_OPENAI_CREDITS_MODEL,
+						),
 						icon: { type: 'icon', value: 'sparkles' },
 						label: i18n.baseText('agents.modelSelector.freeCredits.label'),
 						disabled: claimingCredits.value,
@@ -234,7 +220,7 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 
 	const modelItems = hasProviderCredential
 		? models.map<MenuItem>((model, index) => ({
-				id: modelItemId(provider, model.model),
+				id: buildMenuItemId(provider, 'model', model.model),
 				label: truncateBeforeLast(model.name, MAX_MODEL_NAME_CHARS),
 				disabled: false,
 				divided: index === 0,
@@ -310,11 +296,7 @@ const menu = computed(() => {
 	});
 });
 
-const filteredMenu = computed(() =>
-	filterAiModelSelectorMenu(menu.value, searchQuery.value, (provider) =>
-		i18n.baseText('agents.modelSelector.moreModels', { interpolate: { provider } }),
-	),
-);
+const { filteredMenu, handleSearch } = useAiModelSelectorMenu(menu, () => disabled);
 
 function openNewCredential(credentialType: string) {
 	if (!disabled && canCreateCredentials.value) {
@@ -334,10 +316,10 @@ function openNewCredential(credentialType: string) {
 async function onSelect(id: string) {
 	if (disabled) return;
 
-	const [providerId, action, rawValue] = id.split('::');
-	if (!isAgentModelProvider(providerId) || !rawValue) return;
+	const parsed = parseMenuItemId(id);
+	if (!parsed || !isAgentModelProvider(parsed.provider)) return;
+	const { provider: providerId, action, value } = parsed;
 
-	const value = decodeURIComponent(rawValue);
 	if (action === 'credential') {
 		emit('selectCredential', providerId, value);
 		return;
@@ -368,11 +350,6 @@ async function onSelect(id: string) {
 	}
 }
 
-function handleSearch(query: string) {
-	if (disabled) return;
-	searchQuery.value = query;
-}
-
 defineExpose({
 	open: () => {
 		if (!disabled) dropdownRef.value?.open();
@@ -393,35 +370,18 @@ defineExpose({
 		:disabled="disabled"
 		data-test-id="agent-model-selector"
 		credential-data-test-id="agent-model-selector-credential"
-		:max-selected-name-chars="MAX_SELECTED_NAME_CHARS"
 		@search="handleSearch"
 		@select="onSelect"
 	>
 		<template #trigger-leading="{ ui }">
-			<CredentialIcon
-				v-if="selectedModel"
-				:credential-type-name="
-					AGENT_MODEL_PROVIDER_DEFINITIONS[selectedModel.provider].credentialTypes[0]
-				"
-				:size="18"
+			<ModelSelectorTriggerIcon
+				:credential-type-name="triggerCredentialTypeName"
 				:class="ui.class"
 			/>
-			<N8nIcon v-else icon="bot" size="medium" :class="ui.class" />
 		</template>
 
 		<template #item-leading="{ item, ui }">
-			<N8nIcon
-				v-if="item.data?.leadingIcon"
-				:icon="item.data.leadingIcon"
-				size="large"
-				:class="ui.class"
-			/>
-			<CredentialIcon
-				v-else-if="item.data?.credentialType"
-				:credential-type-name="item.data.credentialType"
-				:size="16"
-				:class="ui.class"
-			/>
+			<ModelSelectorItemLeadingIcon :item="item" :class="ui.class" />
 		</template>
 	</AiModelSelectorDropdown>
 </template>
