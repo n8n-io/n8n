@@ -108,7 +108,7 @@ test.describe(
 
 				await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(1);
 				await expect(
-					n8n.workflows.cards.getWorkflow('My workflow').getByText('Personal'),
+					n8n.workflows.cards.getWorkflowCardText('My workflow', 'Personal'),
 				).toBeHidden();
 
 				await n8n.sideBar.clickSignout();
@@ -230,7 +230,7 @@ test.describe(
 
 				await n8n.projectComposer.createProject(NEW_PROJECT_NAME);
 
-				await expect(n8n.projectSettings.getIconPickerButton().locator('svg')).toHaveAttribute(
+				await expect(n8n.projectSettings.getIconPickerIcon()).toHaveAttribute(
 					'data-icon',
 					DEFAULT_ICON,
 				);
@@ -267,7 +267,7 @@ test.describe(
 				await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 
 				// Close dropdown/menu
-				await n8n.page.locator('body').click();
+				await n8n.sideBar.dismissMenu();
 
 				await expect(n8n.canvas.getCanvasNodes()).toHaveCount(0);
 

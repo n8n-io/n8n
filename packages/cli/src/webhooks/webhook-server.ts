@@ -1,6 +1,7 @@
 import { Container, Service } from '@n8n/di';
 
 import { AbstractServer } from '@/abstract-server';
+import { ChatServer } from '@/chat/chat-server';
 
 @Service()
 export class WebhookServer extends AbstractServer {
@@ -10,5 +11,10 @@ export class WebhookServer extends AbstractServer {
 			const { PrometheusMetricsService } = await import('@/metrics/prometheus');
 			Container.get(PrometheusMetricsService).init(this.app);
 		}
+	}
+
+	/** The chat widget opens its WebSocket against the same origin that served the chat webhook */
+	protected setupPushServer() {
+		Container.get(ChatServer).setup(this.server, this.app);
 	}
 }

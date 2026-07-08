@@ -1,9 +1,6 @@
 <script lang="ts" setup>
+import { N8nAiActivityStep } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
-import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
-import TimelineStepButton from './TimelineStepButton.vue';
-import TimelineStepChevron from './TimelineStepChevron.vue';
 
 /**
  * Collapsible "Reasoning" block. Takes an entry-like object (not a plain
@@ -24,21 +21,16 @@ const i18n = useI18n();
 </script>
 
 <template>
-	<CollapsibleRoot v-slot="{ open: isOpen }">
-		<CollapsibleTrigger as-child>
-			<TimelineStepButton :loading="props.streaming">
-				<template #icon>
-					<TimelineStepChevron :open="isOpen" />
-				</template>
-				{{ i18n.baseText('instanceAi.message.reasoning') }}
-			</TimelineStepButton>
-		</CollapsibleTrigger>
-		<AnimatedCollapsibleContent :class="$style.reasoningPanel">
+	<N8nAiActivityStep
+		:label="i18n.baseText('instanceAi.message.reasoning')"
+		:loading="props.streaming"
+	>
+		<div :class="$style.reasoningPanel">
 			<div :class="$style.reasoningScroll">
 				<span :class="$style.reasoningContent">{{ props.entry.content }}</span>
 			</div>
-		</AnimatedCollapsibleContent>
-	</CollapsibleRoot>
+		</div>
+	</N8nAiActivityStep>
 </template>
 
 <style lang="scss" module>

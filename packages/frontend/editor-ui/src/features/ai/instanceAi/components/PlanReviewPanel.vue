@@ -1,4 +1,10 @@
 <script lang="ts" setup>
+import {
+	N8nButton,
+	N8nIcon,
+	N8nText,
+	N8nAnimatedCollapsibleContent as AnimatedCollapsibleContent,
+} from '@n8n/design-system';
 /**
  * PlanReviewPanel.vue
  *
@@ -6,11 +12,9 @@
  * expandable specs, dependency info, and approve/ask-for-edits/deny controls.
  * "Ask for edits" hands off feedback collection to the main chat input.
  */
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
-import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
 export interface PlannedTaskArg {

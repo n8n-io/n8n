@@ -257,6 +257,11 @@ decision after testing.
   workflow already had it. Otherwise use `newCredential('Suggested Credential
   Name')` — build tools mock unresolved credentials for verification and setup
   collects real ones later.
+- When `build-workflow` returns `resolvedCredentialsByNode`, the build already
+  attached existing credentials to those nodes. Treat them as connected: do not
+  ask the user to connect or create those credentials, do not route them to
+  credential setup, and mention at most that the existing credential is being
+  used.
 - Never use raw credential objects like `{ id: '...', name: '...' }` in SDK
   code; replace them with `newCredential()` when editing roundtripped code.
 - If a required credential type is not listed, call

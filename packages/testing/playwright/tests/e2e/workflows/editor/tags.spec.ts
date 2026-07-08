@@ -61,12 +61,12 @@ test.describe(
 			await n8n.canvas.tagsManagerModal.addTag();
 			await n8n.canvas.tagsManagerModal.getTagInputInModal().fill(tag1);
 			await n8n.canvas.pressEnterToCreateTag();
-			await n8n.canvas.tagsManagerModal.getTable().getByText(tag1).waitFor();
+			await n8n.canvas.tagsManagerModal.getTagByName(tag1).waitFor();
 
 			await n8n.canvas.tagsManagerModal.addTag();
 			await n8n.canvas.tagsManagerModal.getTagInputInModal().fill(tag2);
 			await n8n.canvas.pressEnterToCreateTag();
-			await n8n.canvas.tagsManagerModal.getTable().getByText(tag2).waitFor();
+			await n8n.canvas.tagsManagerModal.getTagByName(tag2).waitFor();
 
 			await n8n.canvas.tagsManagerModal.clickDoneButton();
 
