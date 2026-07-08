@@ -1,7 +1,7 @@
 import type { EmbeddingModel } from 'ai';
 import { z } from 'zod';
 
-import { Tool } from './tool';
+import { sanitizeToolName, Tool } from './tool';
 import {
 	assertValidFilter,
 	buildFilterInputSchema,
@@ -56,6 +56,7 @@ export class VectorStore {
 
 	/** Set the default number of results returned by `.search()`. Default: 4. */
 	topK(k: number): this {
+		assertValidTopK(k);
 		this.topKValue = k;
 		return this;
 	}
@@ -71,6 +72,9 @@ export class VectorStore {
 		query: string,
 		opts?: { topK?: number; filter?: VectorFilterInput },
 	): Promise<VectorQueryResult[]> {
+		if (opts?.topK !== undefined) {
+			assertValidTopK(opts.topK);
+		}
 		const { backend, embeddingModel } = this.ensureBuilt();
 		const { embed } = await import('ai');
 		const { embedding } = await embed({ model: embeddingModel, value: query });
@@ -84,6 +88,12 @@ export class VectorStore {
 	/** Embed and upsert documents into the store. Returns the ids used (generated when not provided). */
 	async addDocuments(docs: VectorDocument[]): Promise<string[]> {
 		if (docs.length === 0) return [];
+
+		docs.forEach((doc, index) => {
+			if (typeof doc.content !== 'string' || doc.content.trim() === '') {
+				throw new Error(`Document at index ${index} has empty content — nothing to embed.`);
+			}
+		});
 
 		const { backend, embeddingModel } = this.ensureBuilt();
 		const ids = docs.map((doc) => doc.id ?? crypto.randomUUID());
@@ -126,7 +136,7 @@ export class VectorStore {
 			);
 		}
 
-		const toolName = opts?.name ?? `search_${sanitizeToolName(this.name)}`;
+		const toolName = opts?.name ?? sanitizeToolName(`search_${this.name}`);
 
 		if (!opts?.filterableKeys) {
 			return new Tool(toolName)
@@ -175,6 +185,8 @@ export class VectorStore {
 	}
 }
 
-function sanitizeToolName(name: string): string {
-	return name.replace(/[^a-zA-Z0-9_]/g, '_');
+function assertValidTopK(k: number): void {
+	if (!Number.isInteger(k) || k < 1) {
+		throw new Error(`topK must be an integer >= 1, got ${k}`);
+	}
 }

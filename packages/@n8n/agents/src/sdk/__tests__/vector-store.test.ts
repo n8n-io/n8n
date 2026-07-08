@@ -3,6 +3,7 @@ import { MockEmbeddingModelV3 } from 'ai/test';
 import type { BuiltVectorStoreBackend, VectorFilter, VectorQueryResult } from '../../types';
 import { isZodSchema } from '../../utils/zod';
 import { Agent } from '../agent';
+import { sanitizeToolName } from '../tool';
 import { VectorStore } from '../vector-store';
 import { assertValidFilter, normalizeFilterInput } from '../vector-store-filter';
 
@@ -129,6 +130,25 @@ describe('VectorStore — search()', () => {
 
 		expect(backend.query).toHaveBeenCalledWith([1, 0, 0], { topK: 4 });
 	});
+
+	it('rejects a non-integer or non-positive topK on the builder', () => {
+		const vectorStore = new VectorStore('kb');
+
+		expect(() => vectorStore.topK(0)).toThrow(/topK must be an integer >= 1/);
+		expect(() => vectorStore.topK(-5)).toThrow(/topK must be an integer >= 1/);
+		expect(() => vectorStore.topK(2.5)).toThrow(/topK must be an integer >= 1/);
+		expect(() => vectorStore.topK(NaN)).toThrow(/topK must be an integer >= 1/);
+	});
+
+	it('rejects an invalid per-call topK without touching the backend', async () => {
+		const backend = makeBackend();
+		const vectorStore = new VectorStore('kb').store(backend).embeddingModel(makeEmbeddingModel());
+
+		await expect(vectorStore.search('hello', { topK: 0 })).rejects.toThrow(
+			/topK must be an integer >= 1/,
+		);
+		expect(backend.query).not.toHaveBeenCalled();
+	});
 });
 
 describe('VectorStore — addDocuments()', () => {
@@ -175,6 +195,25 @@ describe('VectorStore — addDocuments()', () => {
 			{ id: ids[1], vector: [1, 0, 0], content: 'world', metadata: {} },
 		]);
 	});
+
+	it('rejects an empty-content document, naming its index', async () => {
+		const backend = makeBackend();
+		const vectorStore = new VectorStore('kb').store(backend).embeddingModel(makeEmbeddingModel());
+
+		await expect(vectorStore.addDocuments([{ content: '' }])).rejects.toThrow(
+			/Document at index 0 has empty content/,
+		);
+	});
+
+	it('rejects a whitespace-only content document without touching the backend', async () => {
+		const backend = makeBackend();
+		const vectorStore = new VectorStore('kb').store(backend).embeddingModel(makeEmbeddingModel());
+
+		await expect(vectorStore.addDocuments([{ content: 'ok' }, { content: '   ' }])).rejects.toThrow(
+			/Document at index 1 has empty content/,
+		);
+		expect(backend.upsert).not.toHaveBeenCalled();
+	});
 });
 
 describe('VectorStore — deleteDocuments()', () => {
@@ -202,7 +241,7 @@ describe('VectorStore — asTool()', () => {
 		const vectorStore = new VectorStore('product-docs').description('Search the docs');
 		const tool = vectorStore.asTool().build();
 
-		expect(tool.name).toBe('search_product_docs');
+		expect(tool.name).toBe('search_product-docs');
 	});
 
 	it('throws when no description is set anywhere', () => {
@@ -223,7 +262,7 @@ describe('VectorStore — asTool()', () => {
 		const agent = new Agent('assistant').vectorStore(vectorStore);
 
 		expect(agent.snapshot.tools).toEqual([
-			{ name: 'search_product_docs', description: 'Search the docs' },
+			{ name: 'search_product-docs', description: 'Search the docs' },
 		]);
 	});
 
@@ -368,5 +407,29 @@ describe('VectorStore — asTool()', () => {
 
 			expect(backend.query).toHaveBeenCalledWith([1, 0, 0], { topK: 4 });
 		});
+	});
+});
+
+describe('sanitizeToolName', () => {
+	it('preserves hyphens', () => {
+		expect(sanitizeToolName('product-docs')).toBe('product-docs');
+	});
+
+	it('collapses runs of invalid characters into a single underscore', () => {
+		expect(sanitizeToolName('My Docs!!')).toBe('My_Docs_');
+	});
+
+	it('truncates to 64 chars with no trailing underscore or hyphen', () => {
+		const sanitized = sanitizeToolName('x'.repeat(80));
+
+		expect(sanitized.length).toBeLessThanOrEqual(64);
+		expect(sanitized).not.toMatch(/[_-]$/);
+	});
+
+	it('caps the composed default tool name in asTool() at 64 chars', () => {
+		const tool = new VectorStore('x'.repeat(80)).description('d').asTool().build();
+
+		expect(tool.name.length).toBeLessThanOrEqual(64);
+		expect(tool.name.startsWith('search_')).toBe(true);
 	});
 });
