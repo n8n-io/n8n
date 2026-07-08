@@ -93,9 +93,12 @@ const sizes: Record<InputSize, string> = {
 	}
 
 	&:not([data-disabled]) {
-		&:hover,
 		&[data-highlighted] {
 			background-color: var(--background--hover);
+			cursor: pointer;
+		}
+
+		&:hover {
 			cursor: pointer;
 		}
 	}
