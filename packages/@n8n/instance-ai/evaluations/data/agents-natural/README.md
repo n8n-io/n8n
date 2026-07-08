@@ -38,6 +38,41 @@ observable in the transcript and artifacts since the agent-builder port
   declines to elaborate — a single-turn case hangs on the unanswered ask-user
   question until the iteration timeout.
 
+## Parity audit vs the exam siblings (2026-07-08, all 12 pairs)
+
+Every exam expectation maps to a natural-arm proof, an intentional
+transformation, or a documented drop — audited per the repo's
+coverage-parity doctrine:
+
+- **Gold anchor** → route processExpectation (12/12, compound per part).
+- **Gold `embeds_other`** → outcome expectation on the workflow JSON for all
+  wf-anchored golds (6/6, incl. the embeds-true error-scan case); n/a for
+  clarify/meta; covered inside the tolerance wording for `automation-is-agent`
+  and moot where the exam accepts both values. **One real gap:**
+  `agent-tutor-with-memory`'s strict `{agent, embeds: false}` — the natural
+  case asserts the agent-builder route but not "no workflow tools attached".
+  Assertable from the transcript's config writes; needs calibration before
+  adding (tranche 3).
+- **"Does not classify as X merely because <word>"** → transformed into
+  behavioral negatives ("does not create an agent via the agent-builder
+  path" / "without an AI Agent node deciding the flow") — equivalent or
+  stronger: restraint is proven by the artifact, not stated.
+- **"The agent explains that…"** → intentionally dropped: in a real build the
+  agent acts rather than lectures; requiring explanations would fail correct
+  behavior. The contrast survives in the route wording ("Despite the request
+  saying 'AI agent'…"). If articulation coverage matters, that is what an
+  exam-style dev-loop suite remains for.
+- **Skill-load** → preserved verbatim 11/12. **Deliberate divergence:** the
+  meta case drops it (answering a capabilities question shouldn't require
+  intent classification); the exam asserts it there and flips on it
+  (pass^3 52%). Worth an explicit taxonomy decision: does out-of-scope
+  detection require the skill or not?
+- **Clarify** → deliberate inversion: the exam forbids asking and asserts
+  "names missing dimensions"; the natural case asserts the real behavior
+  (asks rules-vs-judgment before building) via the director script.
+- **executionScenarios** → none in either arm (intent cases are build-only);
+  nothing was dropped.
+
 ## Running the A/B
 
 Both arms need a backend with the agents module: `N8N_ENABLED_MODULES=agents,instance-ai`
