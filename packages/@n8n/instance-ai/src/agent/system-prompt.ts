@@ -113,7 +113,7 @@ ${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBas
 ${workspaceRoot ? `\n${getSandboxWorkspaceSection(workspaceRoot)}\n` : ''}
 ${getProjectScopeSection(projectId)}
 
-Route by matching skill descriptions in the catalog above, then \`load_skill\` before acting on matched guidance. You may have access to MCP tools for extended capabilities.
+You may have access to MCP tools for extended capabilities.
 
 ## System follow-ups
 
@@ -137,9 +137,7 @@ ${
 
 `
 		: ''
-}When the visible tools do not cover the user's request, use \`search_tools\` with keyword queries to find relevant tools, then \`load_tools\` to activate them. Loaded tools persist for the rest of the conversation.
-
-After \`load_skill\`, call \`load_tools\` with that skill's recommendedTools before any other deferred tool from that skill.
+}When the visible tools do not cover the user's request, use \`search_tools\` with keyword queries to find relevant tools, then \`load_tools\` to activate them. Loaded tools persist for the rest of the conversation. Skills activate their own recommended tools automatically on \`load_skill\` — use \`search_tools\`/\`load_tools\` only for capabilities beyond a loaded skill's set.
 
 Examples: ${mcpToolSearchEnabled ? 'search "notion page" or "linear issue" for the corresponding MCP tool, ' : ''}search "credential" for the credentials tool, search "file" for filesystem tools, search "workflow" for workflow management.
 

@@ -2,10 +2,9 @@
 name: planning
 description: >-
   Coordinated multi-artifact work only: multiple workflows with dependencies, shared table
-  schema/migration, multiple durable artifacts, broad research, ambiguous business process, or
-  user asks to review a plan. Chain: data-table-manager first when shared tables involved, then
-  create-tasks with planningContext.source: "planning-skill". Not for single workflows,
-  verification-only, or standalone table ops.
+  schema/migration, multiple durable artifacts, broad research, an ambiguous business process,
+  or the user asks to review a plan. Not for single workflows, verification-only, or
+  standalone table ops.
 recommended_tools:
   - create-tasks
   - workflows

@@ -71,7 +71,7 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('search "file" for filesystem tools');
 			expect(prompt).toContain('search "workflow" for workflow management');
 			expect(prompt).toContain('load_tools');
-			expect(prompt).toContain("call `load_tools` with that skill's recommendedTools");
+			expect(prompt).toContain('recommended tools automatically on `load_skill`');
 			expect(prompt).not.toContain('connected service or MCP integration');
 			expect(prompt).not.toContain('connected MCP integrations');
 		});
@@ -183,8 +183,9 @@ describe('getSystemPrompt', () => {
 		it('routes via the skill catalog instead of an inline routing index', () => {
 			const prompt = getSystemPrompt({});
 
-			expect(prompt).toContain('Route by matching skill descriptions in the catalog above');
-			expect(prompt).toContain('`load_skill` before acting');
+			// Routing guidance lives in the skill catalog protocol block, which the
+			// SDK appends after these instructions at agent build time.
+			expect(prompt).not.toContain('Route by matching skill descriptions');
 			expect(prompt).not.toContain('**Single workflow build or edit**');
 			expect(prompt).not.toContain('**Multi-workflow or coordinated architecture**');
 			expect(prompt).not.toContain('Standalone data-table work');

@@ -88,6 +88,12 @@ interface DeferredToolOptions {
 	search?: {
 		topK?: number;
 	};
+	/**
+	 * Tool gates: deferred tool name → skills (by id or name) that unlock it.
+	 * Gated tools stay hidden from search_tools and rejected by load_tools
+	 * until one of the owning skills is loaded via load_skill.
+	 */
+	gates?: Record<string, readonly string[]>;
 }
 
 type ActiveRuntime = {
@@ -152,6 +158,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private deferredTools: BuiltTool[] = [];
 
 	private deferredToolSearchTopK: number | undefined;
+
+	private deferredToolGates: Record<string, readonly string[]> | undefined;
 
 	private providerTools: BuiltProviderTool[] = [];
 
@@ -269,6 +277,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}
 		if (options?.search?.topK !== undefined) {
 			this.deferredToolSearchTopK = options.search.topK;
+		}
+		if (options?.gates) {
+			this.deferredToolGates = { ...this.deferredToolGates, ...options.gates };
 		}
 		return this;
 	}
@@ -1019,6 +1030,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			tools: allTools.length > 0 ? allTools : undefined,
 			deferredTools: finalDeferredTools.length > 0 ? finalDeferredTools : undefined,
 			toolSearch,
+			...(this.deferredToolGates && finalDeferredTools.length > 0
+				? { toolGates: this.deferredToolGates }
+				: {}),
 			...(skillToolActivation ? { skillToolActivation } : {}),
 			instructionProviderOptions: this.instructionProviderOpts,
 			providerTools: this.providerTools.length > 0 ? this.providerTools : undefined,

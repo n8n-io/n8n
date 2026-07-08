@@ -1,9 +1,8 @@
 ---
 name: planned-task-runtime
 description: >-
-  System follow-up turns: planned-task-follow-up (incl. type="replan" — must act, no ack-only),
-  background-task-completed, running-tasks; after create-tasks (silence rules).
-  task-control(update-checklist) for lightweight checklists only.
+  System follow-up turns: planned-task-follow-up (including type="replan"),
+  background-task-completed, running-tasks. Also load immediately after calling create-tasks.
 recommended_tools:
   - create-tasks
   - complete-checkpoint

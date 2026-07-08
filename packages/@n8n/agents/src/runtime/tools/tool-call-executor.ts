@@ -880,7 +880,7 @@ export class ToolCallExecutor {
 		outcome: Extract<ToolCallOutcome, { outcome: 'success' }>,
 	): Extract<ToolCallOutcome, { outcome: 'success' }> {
 		const { deferredToolManager, skillToolActivation } = this.deps;
-		if (!deferredToolManager?.hasTools || !skillToolActivation || !isRecord(input)) {
+		if (!deferredToolManager?.hasTools || !isRecord(input)) {
 			return outcome;
 		}
 
@@ -888,11 +888,17 @@ export class ToolCallExecutor {
 			return outcome;
 		}
 
-		const recommended = skillToolActivation.resolveRecommendedTools({
+		const skillLoadInput = {
 			skillId: typeof input.skillId === 'string' ? input.skillId : undefined,
 			name: typeof input.name === 'string' ? input.name : undefined,
 			filePath: typeof input.filePath === 'string' ? input.filePath : undefined,
-		});
+		};
+		// Unlock gated tools owned by this skill even when it recommends none.
+		deferredToolManager.markSkillLoaded(skillLoadInput);
+
+		if (!skillToolActivation) return outcome;
+
+		const recommended = skillToolActivation.resolveRecommendedTools(skillLoadInput);
 		if (!recommended?.length) return outcome;
 
 		const activated = deferredToolManager.activateRecommendedTools(recommended);
@@ -914,7 +920,7 @@ export class ToolCallExecutor {
 	}
 
 	private appendAutoLoadedToolsToModelOutput(output: unknown, activatedTools: string[]): unknown {
-		const suffix = `\n[Tools activated for this skill: ${JSON.stringify(activatedTools)}. Call load_tools with the same toolNames if you have not already.]`;
+		const suffix = `\n[Tools activated for this skill: ${JSON.stringify(activatedTools)}. They are available on your next turn — no load_tools call needed.]`;
 		if (!isRecord(output) || output.type !== 'content' || !Array.isArray(output.value)) {
 			return output;
 		}

@@ -377,12 +377,10 @@ Use the workflow SDK.`,
 		expect(prompt).toContain('name: "Summarize notes"');
 		expect(prompt).toContain('id: "summarize_notes"');
 		expect(prompt).toContain('category: "productivity"');
-		expect(prompt).toContain('recommendedTools: ["data-tables"]');
+		expect(prompt).not.toContain('recommendedTools');
 		expect(prompt).toContain('load_skill with `{ "skillId": "<id>" }`');
-		expect(prompt).toContain('Immediately after each successful load_skill');
-		expect(prompt).toContain("call load_tools with that skill's recommendedTools");
-		expect(prompt).toContain('Tool gates (always)');
-		expect(prompt).toContain('data-table-manager then workflow-builder');
+		expect(prompt).toContain('recommended tools are activated automatically');
+		expect(prompt).toContain('Some tools are gated behind their owning skill');
 		expect(prompt).not.toContain('Extract private decisions.');
 	});
 

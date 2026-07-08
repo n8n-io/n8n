@@ -3,9 +3,7 @@ name: workflow-builder
 description: >-
   Default for single-workflow build/edit (new workflows, node/expression/credential/schedule/Code
   changes, workflow-local data tables). Not for rename/publish/delete/duplicate/move/describe —
-  use workflows/executions directly. Chain: load data-table-manager first when tables are
-  involved; load debugging-executions first when fixing a user-reported erroring node, then this
-  skill. Never substitute agent_builder. Do not load planning or create-tasks.
+  use workflows/executions directly.
 recommended_tools:
   - read_file
   - write_file
@@ -29,6 +27,11 @@ This skill runs inside the orchestrator — no separate builder agent, handoff,
 or tool allowlist; use the orchestrator and workspace file tools already
 available this turn (plus any relevant tool-search/MCP tool). Workflow building
 runs in the orchestrator with this skill and `build-workflow`.
+
+Chaining: when the workflow creates, inspects, or writes Data Tables, load
+`data-table-manager` before designing the table-facing parts. When fixing a
+user-reported erroring node, load `debugging-executions` and inspect the
+failing execution before editing here.
 
 For new single-workflow requests, build directly with
 `build-workflow({ filePath, sourceCode })` — the complete TypeScript SDK

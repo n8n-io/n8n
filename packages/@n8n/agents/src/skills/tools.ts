@@ -313,8 +313,7 @@ async function loadSkill(
 		activationEnvelope(skillEntry),
 		...(skillEntry.recommendedTools?.length
 			? [
-					`[Recommended tools: ${JSON.stringify(skillEntry.recommendedTools)}]`,
-					`[Required next step: call load_tools with { "toolNames": ${JSON.stringify(skillEntry.recommendedTools)} } before any other deferred tool from this skill.]`,
+					`[Recommended tools (activated automatically, available on your next turn): ${JSON.stringify(skillEntry.recommendedTools)}]`,
 				]
 			: []),
 		...(linkedFilePaths.length > 0

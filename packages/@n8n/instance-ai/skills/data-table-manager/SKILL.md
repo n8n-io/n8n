@@ -2,9 +2,8 @@
 name: data-table-manager
 description: >-
   Standalone data-table ops (list/show/schema/query/create/import/mutate rows or columns —
-  e.g. "what data tables do I have?") and pre-work for workflows/plans that create or write
-  Data Tables. Do not call create-tasks. Load before workflow-builder or planning when tables
-  are involved.
+  e.g. "what data tables do I have?") and pre-work for workflows or plans that create or
+  write Data Tables. Load before workflow-builder or planning when tables are involved.
 recommended_tools:
   - data-tables
   - parse-file
@@ -15,8 +14,8 @@ platforms:
 # Data Table Manager
 
 Use this skill to build and maintain n8n Data Tables in the current turn with
-`data-tables` and, for attachments, `parse-file`. Do not spawn another agent or
-create a background plan for data-table-only work.
+`data-tables` and, for attachments, `parse-file`. Do not spawn another agent,
+call `create-tasks`, or create a background plan for data-table-only work.
 
 Also load this skill before planning or building a workflow whose trigger,
 processing steps, or outputs create, inspect, or write Data Table records, then

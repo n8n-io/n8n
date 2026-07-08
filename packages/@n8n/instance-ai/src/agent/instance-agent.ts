@@ -13,7 +13,11 @@ import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../
 import { createAllTools, createOrchestratorDomainTools, createOrchestrationTools } from '../tools';
 import { createAgentBuilderTools } from '../tools/agent-builder';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
-import { ALWAYS_LOADED_TOOL_NAMES, CHECKPOINT_FOLLOW_UP_TOOL_NAMES } from '../tools/tool-ids';
+import {
+	ALWAYS_LOADED_TOOL_NAMES,
+	CHECKPOINT_FOLLOW_UP_TOOL_NAMES,
+	SKILL_GATED_TOOLS,
+} from '../tools/tool-ids';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
 import type {
 	CreateInstanceAgentOptions,
@@ -183,11 +187,16 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	if (options.thinkingEnabled !== false) {
 		applyAgentThinking(agent, modelId);
 	}
-	if (hasDeferrableTools) {
-		agent.deferredTool(toolRegistryValues(deferredTools), { search: { topK: 5 } });
-	}
 	const runtimeSkills = orchestrationContext?.runtimeSkills;
-	if (hasRuntimeSkills(runtimeSkills)) {
+	const skillsAttached = hasRuntimeSkills(runtimeSkills);
+	if (hasDeferrableTools) {
+		agent.deferredTool(toolRegistryValues(deferredTools), {
+			search: { topK: 5 },
+			// Without skills there is nothing to unlock the gates, so skip them.
+			...(skillsAttached ? { gates: SKILL_GATED_TOOLS } : {}),
+		});
+	}
+	if (skillsAttached) {
 		agent.skills(runtimeSkills);
 	}
 	if (telemetry) {

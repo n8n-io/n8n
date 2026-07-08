@@ -75,4 +75,18 @@ export const ORCHESTRATION_TOOL_NAMES = new Set<string>(Object.values(ORCHESTRAT
 
 export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([DOMAIN_TOOL_IDS.ASK_USER]);
 
+/**
+ * Deferred tools gated behind their owning skill: hidden from search_tools and
+ * rejected by load_tools until the skill is loaded via load_skill. Keeps the
+ * "load the skill before using its tools" rule structural instead of
+ * prompt-only. Only applied when runtime skills are attached to the agent.
+ */
+export const SKILL_GATED_TOOLS: Record<string, readonly string[]> = {
+	// planned-task-runtime and post-build-flow drive builds without loading
+	// workflow-builder, so they unlock the gate too.
+	[DOMAIN_TOOL_IDS.BUILD_WORKFLOW]: ['workflow-builder', 'planned-task-runtime', 'post-build-flow'],
+	[DOMAIN_TOOL_IDS.DATA_TABLES]: ['data-table-manager'],
+	[DOMAIN_TOOL_IDS.PARSE_FILE]: ['data-table-manager'],
+};
+
 export const CHECKPOINT_FOLLOW_UP_TOOL_NAMES = new Set<string>();

@@ -36,9 +36,11 @@ const loadToolsInputSchema = z.object({
 
 const loadToolResultSchema = z.object({
 	toolName: z.string(),
-	status: z.enum(['loaded', 'already_loaded', 'not_found']),
+	status: z.enum(['loaded', 'already_loaded', 'not_found', 'gated']),
 	tool: toolSummarySchema.optional(),
 	candidates: z.array(toolSummarySchema).optional(),
+	/** Skills (ids) that unlock this tool when the status is `gated`. */
+	gatedBySkills: z.array(z.string()).optional(),
 });
 
 const loadToolsOutputSchema = z.object({
@@ -87,6 +89,12 @@ function scoreTool(tool: BuiltTool, query: string): number {
 
 export interface DeferredToolManagerOptions {
 	topK?: number;
+	/**
+	 * Tool gates: tool name → skills (by id or name) that unlock it. Gated
+	 * tools are hidden from search_tools and rejected by load_tools until one
+	 * of the owning skills has been loaded via load_skill.
+	 */
+	toolGates?: Record<string, readonly string[]>;
 }
 
 export interface HydrateLoadedToolsOptions {
@@ -105,6 +113,10 @@ export class DeferredToolManager {
 	private readonly toolsByName = new Map<string, BuiltTool>();
 
 	private readonly loadedToolNames = new Set<string>();
+
+	private readonly toolGates: Map<string, readonly string[]>;
+
+	private readonly loadedSkillKeys = new Set<string>();
 
 	private readonly topK: number;
 
@@ -128,6 +140,7 @@ export class DeferredToolManager {
 		}
 
 		this.topK = options.topK ?? DEFAULT_TOP_K;
+		this.toolGates = new Map(Object.entries(options.toolGates ?? {}));
 		this.searchTool = this.createSearchTool();
 		this.loadTools = this.createLoadTools();
 	}
@@ -164,6 +177,7 @@ export class DeferredToolManager {
 		options?: HydrateLoadedToolsOptions,
 	): void {
 		this.loadedToolNames.clear();
+		this.loadedSkillKeys.clear();
 
 		for (const message of messages) {
 			if (!('content' in message) || !Array.isArray(message.content)) continue;
@@ -178,11 +192,12 @@ export class DeferredToolManager {
 				}
 
 				const resolvedSkillLoad = this.asResolvedSkillLoadCall(block);
-				if (resolvedSkillLoad && options?.skillToolActivation) {
+				if (resolvedSkillLoad) {
 					if (this.isMainSkillLoad(resolvedSkillLoad.input, resolvedSkillLoad.output)) {
-						const recommended = options.skillToolActivation.resolveRecommendedTools(
-							this.getSkillLoadInput(resolvedSkillLoad.input),
-						);
+						const skillLoadInput = this.getSkillLoadInput(resolvedSkillLoad.input);
+						this.markSkillLoaded(skillLoadInput);
+						const recommended =
+							options?.skillToolActivation?.resolveRecommendedTools(skillLoadInput);
 						if (recommended?.length) {
 							this.markRecommendedToolsLoaded(recommended);
 						}
@@ -227,15 +242,48 @@ export class DeferredToolManager {
 		const loadedCount = results.filter(
 			(result) => result.status === 'loaded' || result.status === 'already_loaded',
 		).length;
+		const gated = results.filter((result) => result.status === 'gated');
+
+		const messageParts: string[] = [];
+		if (loadedCount > 0) {
+			messageParts.push(
+				`${loadedCount} tool(s) loaded and will be available on the next model turn.`,
+			);
+		}
+		if (gated.length > 0) {
+			messageParts.push(
+				`Gated tool(s) not loaded: ${gated
+					.map(
+						(result) =>
+							`${result.toolName} (load skill ${(result.gatedBySkills ?? []).join(' or ')} first)`,
+					)
+					.join(
+						'; ',
+					)}. Call load_skill for the owning skill, which activates its tools automatically.`,
+			);
+		}
+		if (messageParts.length === 0) {
+			messageParts.push('No tools were loaded. Use search_tools to find exact tool names.');
+		}
 
 		return {
 			results,
 			loadedCount,
-			message:
-				loadedCount > 0
-					? `${loadedCount} tool(s) loaded and will be available on the next model turn.`
-					: 'No tools were loaded. Use search_tools to find exact tool names.',
+			message: messageParts.join(' '),
 		};
+	}
+
+	/** Record a successful load_skill so gated tools owned by that skill unlock. */
+	markSkillLoaded(input: { skillId?: string; name?: string }): void {
+		if (input.skillId) this.loadedSkillKeys.add(input.skillId);
+		if (input.name) this.loadedSkillKeys.add(input.name);
+	}
+
+	/** Skills that still gate this tool, or undefined when the tool is unlocked. */
+	private lockedGateFor(toolName: string): readonly string[] | undefined {
+		const gate = this.toolGates.get(toolName);
+		if (!gate || gate.length === 0) return undefined;
+		return gate.some((skillKey) => this.loadedSkillKeys.has(skillKey)) ? undefined : gate;
 	}
 
 	/** Returns names that were newly loaded or already loaded. */
@@ -276,6 +324,7 @@ export class DeferredToolManager {
 
 	private search(query: string): SearchToolsOutput {
 		const scored = Array.from(this.toolsByName.values())
+			.filter((tool) => this.lockedGateFor(tool.name) === undefined)
 			.map((tool) => ({
 				tool,
 				score: scoreTool(tool, query),
@@ -300,6 +349,15 @@ export class DeferredToolManager {
 				toolName,
 				status: 'not_found',
 				candidates: this.search(toolName).results,
+			};
+		}
+
+		const lockedGate = this.lockedGateFor(toolName);
+		if (lockedGate) {
+			return {
+				toolName,
+				status: 'gated',
+				gatedBySkills: [...lockedGate],
 			};
 		}
 

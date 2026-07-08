@@ -1,9 +1,8 @@
 ---
 name: n8n-docs-assistant
 description: >-
-  n8n product, setup, credential, node, hosting, API, and usage questions from current docs.
-  Not for workflow building. Do not fabricate provider setup mechanics you cannot confirm
-  from the node, credential, or docs.
+  n8n product, setup, credential, node, hosting, API, and usage questions answered from
+  current docs. Not for workflow building.
 recommended_tools:
   - n8n-docs
   - credentials

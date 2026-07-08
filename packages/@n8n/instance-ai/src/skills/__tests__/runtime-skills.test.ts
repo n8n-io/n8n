@@ -37,8 +37,10 @@ describe('Instance AI runtime skills', () => {
 			recommendedTools: ['data-tables', 'parse-file'],
 		});
 		expect(dataTableManager?.description).toContain('what data tables do I have?');
-		expect(dataTableManager?.description).toContain('Do not call create-tasks');
 		expect(dataTableManager?.description).toContain('Load before workflow-builder');
+
+		const loadedSkill = await source.loadSkill('data-table-manager');
+		expect(loadedSkill?.instructions).toContain('call `create-tasks`');
 		expect(dataTableManager?.linkedFiles.references).toEqual([
 			expect.objectContaining({ path: 'references/data-table-playbook.md' }),
 		]);
@@ -137,7 +139,6 @@ describe('Instance AI runtime skills', () => {
 			recommendedTools: ['n8n-docs', 'credentials', 'nodes'],
 		});
 		expect(skill?.description).toContain('Not for workflow building');
-		expect(skill?.description).toContain('Do not fabricate provider setup mechanics');
 
 		const loaded = await source.loadSkill('n8n-docs-assistant');
 		expect(loaded?.instructions).toContain('Do not fabricate provider setup mechanics');
@@ -178,11 +179,11 @@ describe('Instance AI runtime skills', () => {
 			'executions',
 		]);
 		expect(skill?.description).toContain('Default for single-workflow build/edit');
-		expect(skill?.description).toContain('debugging-executions first');
-		expect(skill?.description).toContain('Never substitute agent_builder');
-		expect(skill?.description).toContain('Do not load planning or create-tasks');
+		expect(skill?.description).toContain('use workflows/executions directly');
 
 		const loaded = await source.loadSkill('workflow-builder');
+		expect(loaded?.instructions).toContain('load\n`data-table-manager` before designing');
+		expect(loaded?.instructions).toContain('load `debugging-executions` and inspect');
 		expect(loaded?.instructions).toContain('## Do not use agent_builder');
 		expect(loaded?.instructions).toContain('do not call\n`agent_builder` at all');
 		expect(loaded?.instructions).toContain('## Tool conventions');
@@ -240,7 +241,7 @@ describe('Instance AI runtime skills', () => {
 			'research',
 			'ask-user',
 		]);
-		expect(skill?.description).toContain('planningContext.source: "planning-skill"');
+		expect(skill?.description).toContain('Coordinated multi-artifact work only');
 		expect(skill?.description).toContain('Not for single workflows');
 
 		const loaded = await source.loadSkill('planning');
@@ -342,7 +343,7 @@ describe('Instance AI runtime skills', () => {
 		const skill = source.registry.skills.find((entry) => entry.name === 'planned-task-runtime');
 
 		expect(skill?.description).toContain('type="replan"');
-		expect(skill?.description).toContain('task-control(update-checklist)');
+		expect(skill?.description).toContain('after calling create-tasks');
 
 		const loaded = await source.loadSkill('planned-task-runtime');
 		expect(loaded?.instructions).toContain('## Task control');
@@ -368,9 +369,9 @@ describe('Instance AI runtime skills', () => {
 
 		expect(skill?.recommendedTools).toEqual(['executions', 'workflows']);
 		expect(skill?.description).toContain('Load before workflow-builder');
-		expect(skill?.description).toContain('never edit on a hunch');
 
 		const loaded = await source.loadSkill('debugging-executions');
+		expect(loaded?.instructions).toContain('never\nedit on a hunch');
 		expect(loaded?.instructions).toContain('executions(action="debug")');
 		expect(loaded?.instructions).toContain(
 			'executions(action="get-resolved-node-parameters", executionId, nodeName)',

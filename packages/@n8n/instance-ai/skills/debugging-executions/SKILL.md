@@ -2,8 +2,7 @@
 name: debugging-executions
 description: >-
   Failed runs, wrong/empty node output, or a node showing a red/failed expression error.
-  Inspect via executions before editing — never edit on a hunch. Load before workflow-builder
-  when the user reports a broken node and an edit may be needed.
+  Load before workflow-builder when the user reports a broken node and an edit may be needed.
 recommended_tools:
   - executions
   - workflows
@@ -12,7 +11,9 @@ recommended_tools:
 # Debugging Executions
 
 Use this skill when debugging workflow execution failures or successful runs
-with wrong or empty values.
+with wrong or empty values. Inspect via `executions` before editing — never
+edit on a hunch. When an edit turns out to be needed, load `workflow-builder`
+after the inspection.
 
 ## When the user reports it still fails
 

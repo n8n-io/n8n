@@ -17,9 +17,6 @@ export function renderSkillCatalogPrompt(
 				`  description: ${promptString(skill.description)}`,
 				`  id: ${promptString(skill.id)}`,
 				...(skill.category ? [`  category: ${promptString(skill.category)}`] : []),
-				...(skill.recommendedTools?.length
-					? [`  recommendedTools: ${promptStringArray(skill.recommendedTools)}`]
-					: []),
 			].join('\n'),
 		)
 		.join('\n');
@@ -34,14 +31,14 @@ ${catalog}
 
 When deciding whether to load a skill:
 - Match the user's request against the skill name, description, and category in the catalog above.
-- Call load_skill with \`{ "skillId": "<id>" }\` for each matched skill, then follow the returned instructions. A single turn may load multiple skills when descriptions require chaining (e.g. data-table-manager then workflow-builder).
-- Immediately after each successful load_skill for a skill you will act on, call load_tools with that skill's recommendedTools before any other deferred tool from that skill.
+- Call load_skill with \`{ "skillId": "<id>" }\` for each matched skill, then follow the returned instructions. A single turn may load multiple skills when a loaded skill's instructions require chaining.
+- When load_skill succeeds, that skill's recommended tools are activated automatically and become available on your next turn — do not call load_tools for them. Use search_tools and load_tools only for capabilities outside a loaded skill's recommended set.
 - If a loaded skill references a supporting file, call load_skill with \`{ "skillId": "<id>", "filePath": "<relative path>" }\`.
 - If the relevant skill was already loaded for this request, do not call load_skill again.
 - If no skill clearly matches, do not call load_skill.
 - Do not load a skill just because it is listed here.
 
-Tool gates (always): never call data-tables or parse-file without loading data-table-manager first; never call build-workflow without loading workflow-builder first. After load_skill, call load_tools with that skill's recommendedTools before calling gated tools.`;
+Some tools are gated behind their owning skill and cannot be searched or loaded until that skill has been loaded. If a tool call is rejected with a gating error, load the named skill first and follow its instructions.`;
 }
 
 export function appendSkillCatalogToInstructions(
@@ -51,14 +48,12 @@ export function appendSkillCatalogToInstructions(
 	const catalog = renderSkillCatalogPrompt(registry);
 	if (!catalog) return instructions;
 
+	// Catalog goes after the instructions so identity/mission anchors the top
+	// of the prompt.
 	const baseInstructions = instructions.trimEnd();
-	return baseInstructions ? `${catalog}\n\n${baseInstructions}` : catalog;
+	return baseInstructions ? `${baseInstructions}\n\n${catalog}` : catalog;
 }
 
 function promptString(value: string): string {
-	return JSON.stringify(value);
-}
-
-function promptStringArray(value: string[]): string {
 	return JSON.stringify(value);
 }

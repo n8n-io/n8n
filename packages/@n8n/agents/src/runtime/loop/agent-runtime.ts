@@ -86,6 +86,12 @@ export interface AgentRuntimeConfig {
 	toolSearch?: {
 		topK?: number;
 	};
+	/**
+	 * Tool gates: deferred tool name → skills (by id or name) that unlock it.
+	 * Gated tools stay hidden from search_tools and rejected by load_tools
+	 * until one of the owning skills is loaded via load_skill.
+	 */
+	toolGates?: Record<string, readonly string[]>;
 	skillToolActivation?: {
 		resolveRecommendedTools: (input: {
 			skillId?: string;
@@ -185,7 +191,10 @@ export class AgentRuntime {
 		this.telemetry = new RuntimeTelemetry(config);
 		this.runId = config.runId ?? generateRunId();
 		if (config.deferredTools && config.deferredTools.length > 0) {
-			this.deferredToolManager = new DeferredToolManager(config.deferredTools, config.toolSearch);
+			this.deferredToolManager = new DeferredToolManager(config.deferredTools, {
+				...config.toolSearch,
+				...(config.toolGates ? { toolGates: config.toolGates } : {}),
+			});
 		}
 		this.context = new RuntimeContextBuilder(config, this.deferredToolManager);
 		this.runState = config.runState ?? new RunStateManager(config.checkpointStorage);
