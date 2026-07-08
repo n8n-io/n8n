@@ -763,6 +763,16 @@ const headerActions = computed(() => {
 		});
 	}
 
+	if (isBuilt.value === true && agent.value) {
+		actions.push({
+			id: 'toggleFavorite',
+			label: agent.value?.isFavorite
+				? locale.baseText('agents.builder.unfavorite')
+				: locale.baseText('agents.builder.favorite'),
+			icon: agent.value?.isFavorite ? 'star' : 'star-outline',
+		});
+	}
+
 	if (canDeleteAgent.value) {
 		actions.push({
 			id: 'delete',

@@ -1019,6 +1019,12 @@ export type RelayEventMap = {
 
 	// #endregion
 
+	// region Agents
+	'agent-deleted': {
+		agentId: string;
+		projectId: string;
+	};
+
 	// #region Instance Policies
 
 	'instance-policies-updated': { user: UserLike } & (
