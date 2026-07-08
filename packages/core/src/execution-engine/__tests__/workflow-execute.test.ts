@@ -26,6 +26,7 @@ import type {
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
+	ITaskMetadata,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
 	WorkflowTestData,
@@ -2007,6 +2008,7 @@ describe('WorkflowExecute', () => {
 
 		async function runResumedSubError(
 			nodeOverrides: Partial<INode> = {},
+			metadataExtras: ITaskMetadata = {},
 		): Promise<{ result: IRun; runNodeCalls: number }> {
 			const subNode: INode = {
 				...createNodeData({ name: SUB_NODE, type: 'sub' }),
@@ -2044,6 +2046,7 @@ describe('WorkflowExecute', () => {
 							metadata: {
 								resumeError: { name: 'NodeOperationError', message: SUB_ERROR },
 								subExecution: SUB_EXECUTION,
+								...metadataExtras,
 							},
 						} as unknown as IExecuteData,
 					],
@@ -2114,6 +2117,18 @@ describe('WorkflowExecute', () => {
 				expect(errorItem?.metadata).toEqual({ subExecution: SUB_EXECUTION });
 			},
 		);
+
+		it('should restore a dynamic-credential stash also when the resume carries a sub-workflow error', async () => {
+			const { result } = await runResumedSubError(
+				{ onError: 'continueRegularOutput' },
+				{ dynamicCredentialsUsage: { attemptedDynamicCredentials: true } },
+			);
+
+			expect(result.status).toBe('success');
+			const run = lastRun(result);
+			expect(run.attemptedDynamicCredentials).toBe(true);
+			expect(run.usedDynamicCredentials).toBeUndefined();
+		});
 	});
 
 	describe('prepareWaitingToExecution', () => {

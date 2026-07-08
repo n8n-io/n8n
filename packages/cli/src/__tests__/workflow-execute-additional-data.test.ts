@@ -368,6 +368,98 @@ describe('WorkflowExecuteAdditionalData', () => {
 				expect(response.usedDynamicCredentials).toBeUndefined();
 				expect(response.dynamicCredentialsResolvedUserId).toBeUndefined();
 			});
+
+			describe('failed sub-workflow', () => {
+				const getMockFailedRunWithCredentialFlags = (
+					task: Partial<ITaskData>,
+					executedByUserId?: string,
+				) =>
+					mock<IRun>({
+						data: {
+							resultData: {
+								runData: {
+									[LAST_NODE_EXECUTED]: [{ startTime: 100, ...task }],
+								},
+								lastNodeExecuted: LAST_NODE_EXECUTED,
+								error: { message: 'child failed', name: 'NodeOperationError' },
+							},
+							executionData: { runtimeData: { executedByUserId } },
+						},
+						finished: false,
+						mode: 'manual',
+						startedAt: new Date(),
+						status: 'error',
+						waitTill: undefined,
+					});
+
+				it('attaches the attempted flag to the thrown error', async () => {
+					processRunExecutionData.mockReturnValue(
+						getCancelablePromise(
+							getMockFailedRunWithCredentialFlags({ attemptedDynamicCredentials: true }),
+						),
+					);
+
+					await expect(
+						executeWorkflow(
+							mock<IExecuteWorkflowInfo>(),
+							mock<IWorkflowExecuteAdditionalData>(),
+							mock<ExecuteWorkflowOptions>({
+								loadedWorkflowData: undefined,
+								doNotWaitToFinish: false,
+							}),
+						),
+					).rejects.toMatchObject({
+						message: 'child failed',
+						dynamicCredentialsUsage: { attemptedDynamicCredentials: true },
+					});
+				});
+
+				it('attaches usage and the resolved user when a credential resolved before the failure', async () => {
+					processRunExecutionData.mockReturnValue(
+						getCancelablePromise(
+							getMockFailedRunWithCredentialFlags(
+								{ usedDynamicCredentials: true, attemptedDynamicCredentials: true },
+								'resolved-user',
+							),
+						),
+					);
+
+					await expect(
+						executeWorkflow(
+							mock<IExecuteWorkflowInfo>(),
+							mock<IWorkflowExecuteAdditionalData>(),
+							mock<ExecuteWorkflowOptions>({
+								loadedWorkflowData: undefined,
+								doNotWaitToFinish: false,
+							}),
+						),
+					).rejects.toMatchObject({
+						message: 'child failed',
+						dynamicCredentialsUsage: {
+							usedDynamicCredentials: true,
+							attemptedDynamicCredentials: true,
+							dynamicCredentialsResolvedUserId: 'resolved-user',
+						},
+					});
+				});
+
+				it('attaches nothing when the failed sub-workflow used no private credentials', async () => {
+					processRunExecutionData.mockReturnValue(
+						getCancelablePromise(getMockFailedRunWithCredentialFlags({})),
+					);
+
+					const promise = executeWorkflow(
+						mock<IExecuteWorkflowInfo>(),
+						mock<IWorkflowExecuteAdditionalData>(),
+						mock<ExecuteWorkflowOptions>({
+							loadedWorkflowData: undefined,
+							doNotWaitToFinish: false,
+						}),
+					);
+					await expect(promise).rejects.toThrow('child failed');
+					await expect(promise).rejects.not.toHaveProperty('dynamicCredentialsUsage');
+				});
+			});
 		});
 
 		/**
