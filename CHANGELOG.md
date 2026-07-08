@@ -1,3 +1,16 @@
+## [2.30.1](https://github.com/n8n-io/n8n/compare/n8n@2.30.0...n8n@2.30.1) (2026-07-08)
+
+
+### Bug Fixes
+
+* **core:** Guard against null run-data slots in execution redaction ([#33725](https://github.com/n8n-io/n8n/issues/33725)) ([cbf72ef](https://github.com/n8n-io/n8n/commit/cbf72ef4dcfeeebc28179840213497e8ee518902))
+
+
+### Features
+
+* **core:** Support custom global roles in token exchange provisioning ([#33740](https://github.com/n8n-io/n8n/issues/33740)) ([1a7010f](https://github.com/n8n-io/n8n/commit/1a7010ffa027932a72d78f0a876ecf1cfa1c8488))
+
+
 # [2.30.0](https://github.com/n8n-io/n8n/compare/n8n@2.29.0...n8n@2.30.0) (2026-07-07)
 
 
