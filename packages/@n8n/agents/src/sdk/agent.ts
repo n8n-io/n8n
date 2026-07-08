@@ -721,6 +721,26 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}
 	}
 
+	/**
+	 * Durable-log RFC (resilience phase): re-drive a run from a `running`-status
+	 * step checkpoint after a process crash. There is no pending tool call to
+	 * settle — the loop re-enters at the next model call. See
+	 * AgentRuntime.crashResume for `contextNotes` semantics.
+	 */
+	async crashResume(
+		options: { runId: string; contextNotes?: string[] } & ExecutionOptions,
+	): Promise<StreamResult> {
+		const config = await this.ensureBuilt();
+		const active = this.createRuntime(config, options.runId);
+		try {
+			const result = await active.runtime.crashResume(options);
+			return { ...result, stream: this.trackStreamRuntime(result.stream, active) };
+		} catch (error) {
+			await this.cleanupRuntime(active);
+			throw error;
+		}
+	}
+
 	approve(method: 'generate', options: ResumeOptions & ExecutionOptions): Promise<GenerateResult>;
 	approve(method: 'stream', options: ResumeOptions & ExecutionOptions): Promise<StreamResult>;
 	async approve(
