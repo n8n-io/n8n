@@ -275,6 +275,71 @@ describe('loadWorkflowTestCasesWithFiles · file-aware errors', () => {
 	});
 });
 
+describe('WorkflowTestCaseSchema · expectedArtifacts / artifactExpectations', () => {
+	it('defaults expectedArtifacts to ["workflow"] when omitted', () => {
+		const parsed = WorkflowTestCaseSchema.parse(validFixture());
+		expect(parsed.expectedArtifacts).toEqual(['workflow']);
+	});
+
+	it('still accepts a workflow case graded only by outcomeExpectations (regression)', () => {
+		const { executionScenarios: _omit, ...rest } = validFixture();
+		const parsed = WorkflowTestCaseSchema.parse({
+			...rest,
+			outcomeExpectations: ['the final workflow posts to Slack'],
+		});
+		expect(parsed.expectedArtifacts).toEqual(['workflow']);
+		expect(parsed.outcomeExpectations).toEqual(['the final workflow posts to Slack']);
+	});
+
+	it('accepts expectedArtifacts: ["agent"] with a matching artifactExpectations.agent', () => {
+		const parsed = WorkflowTestCaseSchema.parse({
+			...validFixture(),
+			expectedArtifacts: ['agent'],
+			artifactExpectations: { agent: ['the agent has a Slack tool'] },
+		});
+		expect(parsed.expectedArtifacts).toEqual(['agent']);
+		expect(parsed.artifactExpectations).toEqual({ agent: ['the agent has a Slack tool'] });
+	});
+
+	it('rejects expectedArtifacts: ["agent"] with no artifactExpectations.agent', () => {
+		expect(() =>
+			WorkflowTestCaseSchema.parse({
+				...validFixture(),
+				expectedArtifacts: ['agent'],
+			}),
+		).toThrow(/includes agent.*artifactExpectations\.agent/);
+	});
+
+	it('rejects expectedArtifacts: ["config-eval"] with no artifactExpectations["config-eval"]', () => {
+		expect(() =>
+			WorkflowTestCaseSchema.parse({
+				...validFixture(),
+				expectedArtifacts: ['config-eval'],
+			}),
+		).toThrow(/includes config-eval/);
+	});
+
+	it('accepts expectedArtifacts: ["config-eval"] with a matching artifactExpectations entry', () => {
+		const parsed = WorkflowTestCaseSchema.parse({
+			...validFixture(),
+			expectedArtifacts: ['config-eval'],
+			artifactExpectations: { 'config-eval': ['the eval config scores against exact match'] },
+		});
+		expect(parsed.artifactExpectations).toEqual({
+			'config-eval': ['the eval config scores against exact match'],
+		});
+	});
+
+	it('rejects an unknown artifact type in expectedArtifacts', () => {
+		expect(() =>
+			WorkflowTestCaseSchema.parse({
+				...validFixture(),
+				expectedArtifacts: ['not-a-real-type'],
+			}),
+		).toThrow();
+	});
+});
+
 describe('conversationTurnTextSchema', () => {
 	it('passes a plain string through unchanged', () => {
 		expect(conversationTurnTextSchema.parse('one line')).toBe('one line');

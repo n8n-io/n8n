@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
-import { SUPPORTED_CREDENTIAL_TYPES } from '../credentials/seeder';
+import { SUPPORTED_CREDENTIAL_TYPES } from '../../credentials/seeder';
+import { ARTIFACT_TYPES } from '../../types';
 
 /** Default `datasets` grouping for a case that omits the field — the single
  *  source of truth shared by the loader schema and the mcp-manifest tier reader. */
@@ -46,6 +47,19 @@ const evalTestCaseObjectSchema = z
 		/** Optional NL assertions about the resulting WORKFLOW (outcome). LLM-judged from the workflow,
 		 *  so they also run in prebuilt/MCP runs. Counted as units in the pass rate. */
 		outcomeExpectations: z.array(z.string().min(1)).optional(),
+		/** Artifact types this case expects the build to produce. A discovered artifact whose
+		 *  type isn't in this set fails the case. Defaults to `['workflow']` so every existing
+		 *  case file keeps validating unedited. */
+		expectedArtifacts: z.array(z.enum(ARTIFACT_TYPES)).min(1).default(['workflow']),
+		/** Free-text NL assertions per non-workflow artifact type, LLM-judged against the
+		 *  captured artifact. Workflow keeps using processExpectations/outcomeExpectations. */
+		artifactExpectations: z
+			.object({
+				agent: z.array(z.string().min(1)).min(1).optional(),
+				'config-eval': z.array(z.string().min(1)).min(1).optional(),
+			})
+			.strict()
+			.optional(),
 		/**
 		 * Removed in favour of the process/outcome split. Declared as a forbidden key (rather
 		 * than dropped from the shape) so a legacy fixture fails loudly with a migration hint,
@@ -130,16 +144,46 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 		message:
 			'a case needs a conversation, or a seedThread (which supplies the live turn from the trace)',
 	})
-	.refine(
-		(c) =>
-			(c.executionScenarios?.length ?? 0) > 0 ||
-			(c.processExpectations?.length ?? 0) > 0 ||
-			(c.outcomeExpectations?.length ?? 0) > 0,
-		{
-			message:
-				'a case needs at least one executionScenario, or a process/outcome expectation to grade',
-		},
-	);
+	.superRefine((c, ctx) => {
+		// `expectedArtifacts` defaults to ['workflow'] during parse, so this only sees
+		// undefined if a refine ever runs ahead of the field's own default (defensive).
+		const expectedArtifacts = c.expectedArtifacts ?? ['workflow'];
+
+		// Note: these messages avoid double quotes — ZodError.message is a JSON.stringify of
+		// the issue list, which would otherwise backslash-escape them and break substring/regex
+		// matching against the raw error message in callers and tests.
+		if (
+			expectedArtifacts.includes('workflow') &&
+			(c.executionScenarios?.length ?? 0) === 0 &&
+			(c.processExpectations?.length ?? 0) === 0 &&
+			(c.outcomeExpectations?.length ?? 0) === 0
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message:
+					'expectedArtifacts includes workflow — a case needs at least one executionScenario, or a process/outcome expectation to grade it',
+			});
+		}
+
+		if (expectedArtifacts.includes('agent') && (c.artifactExpectations?.agent?.length ?? 0) === 0) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message:
+					'expectedArtifacts includes agent — a case needs artifactExpectations.agent to grade it',
+			});
+		}
+
+		if (
+			expectedArtifacts.includes('config-eval') &&
+			(c.artifactExpectations?.['config-eval']?.length ?? 0) === 0
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message:
+					"expectedArtifacts includes config-eval — a case needs artifactExpectations['config-eval'] to grade it",
+			});
+		}
+	});
 
 // Inferred from the pre-`.refine()` object schema, not `EvalTestCaseSchema`.
 // `.refine()` doesn't alter the inferred type, so this is identical — but resolving

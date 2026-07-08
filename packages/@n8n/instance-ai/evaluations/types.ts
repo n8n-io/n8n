@@ -160,6 +160,10 @@ export interface BuildTrace {
 // Workflow evaluation test cases
 // ---------------------------------------------------------------------------
 
+/** Artifact kinds an eval case can expect a build to produce. */
+export const ARTIFACT_TYPES = ['workflow', 'agent', 'config-eval'] as const;
+export type ArtifactType = (typeof ARTIFACT_TYPES)[number];
+
 export interface ExecutionScenario {
 	name: string;
 	description: string;
@@ -205,6 +209,12 @@ export interface WorkflowTestCase {
 	/** Optional NL assertions about the resulting WORKFLOW (outcome). LLM-judged from the workflow,
 	 *  so they also run in prebuilt/MCP runs. Counted toward the pass rate alongside scenarios. */
 	outcomeExpectations?: string[];
+	/** Artifact types this case expects the build to produce; defaults to `['workflow']`.
+	 *  A discovered artifact whose type is not listed here fails the case. */
+	expectedArtifacts?: ArtifactType[];
+	/** Free-text NL assertions per non-workflow artifact type, LLM-judged against the
+	 *  captured artifact (workflow keeps using processExpectations/outcomeExpectations). */
+	artifactExpectations?: Partial<Record<Exclude<ArtifactType, 'workflow'>, string[]>>;
 	/**
 	 * Credentials visible to this case's build. Created for real before the build
 	 * and pinned as the thread's entire credential view — cases without this
