@@ -3,6 +3,7 @@ import type { BuiltEval } from './eval';
 import type { BuiltGuardrail } from './guardrail';
 import type { CheckpointStore } from './memory';
 import type { BuiltProviderTool, BuiltTool } from './tool';
+import type { ScopedMemoryTaskEvent } from '../../runtime/memory/scoped-memory-task-runner';
 import type { RuntimeSkill, RuntimeSkillSource } from '../../skills';
 
 /**
@@ -23,8 +24,8 @@ export interface AgentBuilder {
 	providerTool(t: BuiltProviderTool): this;
 	thinking(provider: string, config?: Record<string, unknown>): this;
 	toolCallConcurrency(n: number): this;
-	requireToolApproval(): this;
 	memory(m: unknown): this;
+	memoryTaskObserver(observer: (event: ScopedMemoryTaskEvent) => void): this;
 	checkpoint(storage: 'memory' | CheckpointStore): this;
 	inputGuardrail(g: BuiltGuardrail): this;
 	outputGuardrail(g: BuiltGuardrail): this;

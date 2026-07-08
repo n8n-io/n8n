@@ -1,10 +1,18 @@
 import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { CredentialsEntity, Project, Variables } from '@n8n/db';
+import type { CredentialsEntity, IExecutionResponse, Project, Variables } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
-import type { IRun, ITaskData, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
+import type {
+	ExecutionError,
+	IRun,
+	ITaskData,
+	IWorkflowBase,
+	IWorkflowSettings,
+	RelatedExecution,
+} from 'n8n-workflow';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { OwnershipService } from '@/services/ownership.service';
 import {
 	getLastExecutedNodeData,
@@ -14,24 +22,30 @@ import {
 	removeDefaultValues,
 	replaceInvalidCredentials,
 	shouldRestartParentExecution,
+	updateParentExecutionWithChildResults,
 	validatePinDataSize,
 	validateWorkflowNodeGroups,
+	validateWorkflowStructure,
+	WorkflowStructureBadRequestError,
 } from '@/workflow-helpers';
-import { mock } from 'jest-mock-extended';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { mock } from 'vitest-mock-extended';
 
 describe('workflow-helpers', () => {
 	beforeAll(() => {
 		mockInstance(VariablesService, {
 			async getAllCached() {
+				// Project VAR2 is listed before its global twin so resolution must
+				// be order-independent: the project value still has to win.
 				return [
 					{ id: '1', key: 'VAR1', value: 'value1' },
-					{ id: '2', key: 'VAR2', value: 'value2' },
 					{
 						id: '3',
 						key: 'VAR2',
 						value: 'value1Project',
 						project: { id: '1', name: 'project1' } as Project,
 					},
+					{ id: '2', key: 'VAR2', value: 'value2' },
 					{
 						id: '4',
 						key: 'VAR4',
@@ -74,6 +88,11 @@ describe('workflow-helpers', () => {
 		it('should prioritize passed of projectId over workflowId', async () => {
 			const variables = await getVariables('1', '2');
 			expect(variables).toEqual({ VAR1: 'value1', VAR2: 'value2', VAR5: 'value5' });
+		});
+
+		it('should let a project variable override a same-key global regardless of order', async () => {
+			const variables = await getVariables(undefined, '1');
+			expect(variables.VAR2).toBe('value1Project');
 		});
 	});
 });
@@ -187,7 +206,7 @@ describe('preserveInputOverride', () => {
 describe('replaceInvalidCredentials', () => {
 	const credentialsRepository = mockInstance(CredentialsRepository);
 
-	afterEach(() => jest.clearAllMocks());
+	afterEach(() => vi.clearAllMocks());
 
 	function makeWorkflow(credentials: Record<string, { id: string | null; name: string }>) {
 		return {
@@ -269,6 +288,21 @@ describe('replaceInvalidCredentials', () => {
 			id: 'cred-new',
 			name: 'My Cred',
 		});
+	});
+
+	it('should skip credential types that resolve to object internal keys', async () => {
+		// JSON.parse keeps `__proto__` as an own enumerable key, unlike an object literal.
+		const credentials = JSON.parse(
+			'{"__proto__":{"id":"injected","name":"injected"},"constructor":{"id":"injected","name":"injected"}}',
+		) as Record<string, { id: string; name: string }>;
+		const workflow = makeWorkflow(credentials);
+
+		await replaceInvalidCredentials(workflow, 'project-1');
+
+		expect(credentialsRepository.findOneBy).not.toHaveBeenCalled();
+		expect(credentialsRepository.findByNameAndTypeInProject).not.toHaveBeenCalled();
+		expect(({} as Record<string, unknown>).id).toBeUndefined();
+		expect(({} as Record<string, unknown>).injected).toBeUndefined();
 	});
 });
 
@@ -384,71 +418,202 @@ describe('removeDefaultValues', () => {
 	});
 });
 
+describe('validateWorkflowStructure', () => {
+	it('returns silently when the workflow is structurally valid', () => {
+		expect(() =>
+			validateWorkflowStructure({
+				nodes: [
+					{
+						id: 'n1',
+						name: 'Manual',
+						type: 'n8n-nodes-base.manualTrigger',
+						position: [0, 0],
+						parameters: {},
+					} as never,
+				],
+				connections: {},
+			}),
+		).not.toThrow();
+	});
+
+	it('throws WorkflowStructureBadRequestError carrying the Zod issues', () => {
+		let caught: unknown;
+		try {
+			validateWorkflowStructure({
+				nodes: [
+					{
+						id: 'n1',
+						name: 'Bad',
+						type: 'n8n-nodes-base.manualTrigger',
+						position: [0, 0],
+						parameters: null,
+					} as never,
+				],
+				connections: {},
+			});
+		} catch (error) {
+			caught = error;
+		}
+
+		expect(caught).toBeInstanceOf(WorkflowStructureBadRequestError);
+		// Subclass of BadRequestError so existing HTTP handlers still see a 400.
+		expect(caught).toBeInstanceOf(BadRequestError);
+		const structured = caught as WorkflowStructureBadRequestError;
+		expect(structured.message).toContain('Workflow structure is invalid.');
+		expect(structured.message).toContain('nodes[0].parameters');
+		expect(structured.issues.length).toBeGreaterThan(0);
+		expect(structured.issues[0]).toMatchObject({
+			path: ['nodes', 0, 'parameters'],
+			code: 'invalid_type',
+		});
+	});
+});
+
 describe('validateWorkflowNodeGroups', () => {
 	const makeNode = (id: string) =>
 		({ id, name: `Node ${id}`, type: 'test', position: [0, 0], parameters: {} }) as never;
 
 	it('should pass when nodeGroups is undefined', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: undefined }),
+			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: undefined }, null),
 		).not.toThrow();
 	});
 
 	it('should pass when nodeGroups is empty', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: [] }),
+			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: [] }, null),
 		).not.toThrow();
 	});
 
 	it('should pass when all nodeIds reference existing nodes', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({
-				nodes: [makeNode('n1'), makeNode('n2')],
-				nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['n1', 'n2'] }],
-			}),
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1'), makeNode('n2')],
+					nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['n1', 'n2'] }],
+				},
+				null,
+			),
 		).not.toThrow();
 	});
 
 	it('should throw when a nodeId does not reference an existing node', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({
-				nodes: [makeNode('n1')],
-				nodeGroups: [{ id: 'g1', name: 'My Group', nodeIds: ['n1', 'n999'] }],
-			}),
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1')],
+					nodeGroups: [{ id: 'g1', name: 'My Group', nodeIds: ['n1', 'n999'] }],
+				},
+				null,
+			),
 		).toThrow('Group "My Group" references node ID "n999" that does not exist in the workflow.');
 	});
 
 	it('should throw for the first invalid nodeId found', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({
-				nodes: [],
-				nodeGroups: [{ id: 'g1', name: 'Empty Group', nodeIds: ['bad1', 'bad2'] }],
-			}),
+			validateWorkflowNodeGroups(
+				{
+					nodes: [],
+					nodeGroups: [{ id: 'g1', name: 'Empty Group', nodeIds: ['bad1', 'bad2'] }],
+				},
+				null,
+			),
 		).toThrow('Group "Empty Group" references node ID "bad1"');
 	});
 
 	it('should throw when a node belongs to multiple groups', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({
-				nodes: [makeNode('n1'), makeNode('n2')],
-				nodeGroups: [
-					{ id: 'g1', name: 'Group A', nodeIds: ['n1'] },
-					{ id: 'g2', name: 'Group B', nodeIds: ['n1', 'n2'] },
-				],
-			}),
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1'), makeNode('n2')],
+					nodeGroups: [
+						{ id: 'g1', name: 'Group A', nodeIds: ['n1'] },
+						{ id: 'g2', name: 'Group B', nodeIds: ['n1', 'n2'] },
+					],
+				},
+				null,
+			),
 		).toThrow('Node "n1" belongs to multiple groups: "Group A" and "Group B".');
 	});
 
 	it('should throw when group names are not unique', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({
-				nodes: [makeNode('n1')],
-				nodeGroups: [
-					{ id: 'g1', name: 'Duplicate', nodeIds: ['n1'] },
-					{ id: 'g2', name: 'Duplicate', nodeIds: [] },
-				],
-			}),
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1')],
+					nodeGroups: [
+						{ id: 'g1', name: 'Duplicate', nodeIds: ['n1'] },
+						{ id: 'g2', name: 'Duplicate', nodeIds: [] },
+					],
+				},
+				null,
+			),
 		).toThrow('Duplicate node group name "Duplicate".');
+	});
+
+	it('should throw when group ids are not unique', () => {
+		expect(() =>
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1'), makeNode('n2')],
+					nodeGroups: [
+						{ id: 'dup', name: 'Group A', nodeIds: ['n1'] },
+						{ id: 'dup', name: 'Group B', nodeIds: ['n2'] },
+					],
+				},
+				null,
+			),
+		).toThrow('Duplicate node group ID "dup".');
+	});
+
+	describe('full validation', () => {
+		const triggerType = { group: ['trigger'] } as never;
+		const regularType = { group: ['transform'] } as never;
+		// Two nodes connected n1 → n2 form a groupable chain.
+		const connectedNodes = [makeNode('n1'), makeNode('n2')];
+		const connections = {
+			'Node n1': { main: [[{ node: 'Node n2', type: 'main', index: 0 }]] },
+		} as never;
+
+		it('passes for a valid connected group', () => {
+			expect(() =>
+				validateWorkflowNodeGroups(
+					{
+						nodes: connectedNodes,
+						connections,
+						nodeGroups: [{ id: 'g1', name: 'Chain', nodeIds: ['n1', 'n2'] }],
+					},
+					() => regularType,
+				),
+			).not.toThrow();
+		});
+
+		it('rejects a group that contains a trigger node', () => {
+			expect(() =>
+				validateWorkflowNodeGroups(
+					{
+						nodes: [makeNode('n1')],
+						connections: {},
+						nodeGroups: [{ id: 'g1', name: 'Has trigger', nodeIds: ['n1'] }],
+					},
+					() => triggerType,
+				),
+			).toThrow('Node group "Has trigger" (g1) cannot contain trigger nodes');
+		});
+
+		it('does not run full checks when getNodeType is null (basic-only)', () => {
+			// Same trigger-in-group that fails under full validation passes under basic-only.
+			expect(() =>
+				validateWorkflowNodeGroups(
+					{
+						nodes: [makeNode('n1')],
+						connections: {},
+						nodeGroups: [{ id: 'g1', name: 'Has trigger', nodeIds: ['n1'] }],
+					},
+					null,
+				),
+			).not.toThrow();
+		});
 	});
 });
 
@@ -611,4 +776,117 @@ describe('getLastExecutedNodeRuns', () => {
 		getLastExecutedNodeRuns(buildRun('Last executed node', { 'Last executed node': runs }));
 		expect(runs).toEqual(snapshot);
 	});
+});
+
+describe('updateParentExecutionWithChildResults', () => {
+	const PARENT_ID = 'parent-execution-id';
+
+	const waitingParent = (): IExecutionResponse =>
+		({
+			status: 'waiting',
+			data: {
+				executionData: {
+					nodeExecutionStack: [
+						{
+							node: { name: 'Execute Sub-workflow' },
+							data: { main: [[{ json: { in: 1 } }]] },
+							source: null,
+						},
+					],
+				},
+			},
+		}) as unknown as IExecutionResponse;
+
+	const childRun = (
+		status: string,
+		lastNode: string,
+		nodeRun: Partial<ITaskData>,
+		error?: ExecutionError,
+	): IRun =>
+		({
+			mode: 'integrated',
+			status,
+			data: {
+				resultData: { lastNodeExecuted: lastNode, error, runData: { [lastNode]: [nodeRun] } },
+			},
+		}) as unknown as IRun;
+
+	type StackEntry = {
+		data?: unknown;
+		metadata?: { resumeError?: ExecutionError; subExecution?: RelatedExecution };
+	};
+
+	// Runs the workflow helper against a waiting parent and returns the updated stack entry.
+	async function resumeWith(child: IRun, childExecution?: RelatedExecution) {
+		const executionPersistence = mockInstance(ExecutionPersistence);
+		executionPersistence.findSingleExecution.mockResolvedValue(waitingParent());
+
+		await updateParentExecutionWithChildResults(PARENT_ID, child, childExecution);
+
+		expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
+		const [, payload] = executionPersistence.updateExistingExecution.mock.calls[0];
+		return (payload as IExecutionResponse).data.executionData!
+			.nodeExecutionStack[0] as unknown as StackEntry;
+	}
+
+	it('carries the child error and execution reference onto the parent node so resume can fail it', async () => {
+		const error = { name: 'NodeOperationError', message: 'ERROR' } as unknown as ExecutionError;
+		const entry = await resumeWith(childRun('error', 'Stop and Error', { error }, error), {
+			executionId: 'child-execution-id',
+			workflowId: 'child-workflow-id',
+		});
+
+		expect(entry.metadata?.resumeError).toMatchObject({ message: 'ERROR' });
+		expect(entry.metadata?.subExecution).toEqual({
+			executionId: 'child-execution-id',
+			workflowId: 'child-workflow-id',
+		});
+	});
+
+	it('copies the last node output for a successful child and sets no resume error', async () => {
+		const entry = await resumeWith(
+			childRun('success', 'Done', { data: { main: [[{ json: { out: 2 } }]] } }),
+		);
+
+		expect(entry.data).toEqual({ main: [[{ json: { out: 2 } }]] });
+		expect(entry.metadata?.resumeError).toBeUndefined();
+	});
+
+	// In "run once for each item" mode multiple children update the same waiting
+	// parent. Contract: if any child errored before the parent resumed, the parent
+	// node fails — a later successful sibling must not mask the error.
+	it.each(['error-then-success', 'success-then-error'] as const)(
+		'preserves the child error on the parent when children complete in order %s',
+		async (order) => {
+			// In-memory persistence: deep-clone on read so the second call can only see
+			// the first call's write through the persisted blob, not via object aliasing
+			// (the helper mutates the stack entry it read in place).
+			let stored = waitingParent();
+			const executionPersistence = mockInstance(ExecutionPersistence);
+			executionPersistence.findSingleExecution.mockImplementation(async () =>
+				structuredClone(stored),
+			);
+			executionPersistence.updateExistingExecution.mockImplementation(async (_id, patch) => {
+				stored = { ...stored, ...patch } as IExecutionResponse;
+				return true;
+			});
+
+			const error = { name: 'NodeOperationError', message: 'ERROR' } as unknown as ExecutionError;
+			const errorChild = childRun('error', 'Stop and Error', { error }, error);
+			const successChild = childRun('success', 'Done', {
+				data: { main: [[{ json: { out: 2 } }]] },
+			});
+			const children =
+				order === 'error-then-success' ? [errorChild, successChild] : [successChild, errorChild];
+
+			for (const child of children) {
+				await updateParentExecutionWithChildResults(PARENT_ID, child);
+			}
+
+			const entry = stored.data.executionData!.nodeExecutionStack[0] as unknown as StackEntry;
+			expect(entry.metadata?.resumeError).toMatchObject({ message: 'ERROR' });
+			expect(entry.data).toEqual({ main: [[{ json: { out: 2 } }]] });
+			expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(2);
+		},
+	);
 });

@@ -48,19 +48,19 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 import { isUniqueConstraintError } from '@/response-helper';
 
 import { AgentMemoryEntryCursorEntity } from '../entities/agent-memory-entry-cursor.entity';
-import { AgentMemoryEntryEntity } from '../entities/agent-memory-entry.entity';
 import { AgentMemoryEntryLockEntity } from '../entities/agent-memory-entry-lock.entity';
 import { AgentMemoryEntrySourceEntity } from '../entities/agent-memory-entry-source.entity';
+import { AgentMemoryEntryEntity } from '../entities/agent-memory-entry.entity';
 import type { AgentMessageEntity } from '../entities/agent-message.entity';
 import { AgentObservationCursorEntity } from '../entities/agent-observation-cursor.entity';
 import { AgentObservationLockEntity } from '../entities/agent-observation-lock.entity';
 import { AgentObservationEntity } from '../entities/agent-observation.entity';
 import { AgentThreadEntity } from '../entities/agent-thread.entity';
-import { AgentMessageRepository } from '../repositories/agent-message.repository';
 import { AgentMemoryEntryCursorRepository } from '../repositories/agent-memory-entry-cursor.repository';
 import { AgentMemoryEntryLockRepository } from '../repositories/agent-memory-entry-lock.repository';
 import { AgentMemoryEntrySourceRepository } from '../repositories/agent-memory-entry-source.repository';
 import { AgentMemoryEntryRepository } from '../repositories/agent-memory-entry.repository';
+import { AgentMessageRepository } from '../repositories/agent-message.repository';
 import { AgentObservationCursorRepository } from '../repositories/agent-observation-cursor.repository';
 import { AgentObservationLockRepository } from '../repositories/agent-observation-lock.repository';
 import { AgentObservationRepository } from '../repositories/agent-observation.repository';
@@ -159,7 +159,9 @@ export class N8nMemoryImpl
 			// Per-user scoping is enforced at the message level via resourceId.
 			if (thread.title !== undefined) existing.title = thread.title;
 			if (thread.metadata !== undefined) {
-				existing.metadata = thread.metadata ? JSON.stringify(thread.metadata) : null;
+				// Thread metadata carries runtime-owned keys such as integration
+				// message context, so caller updates merge into the existing blob.
+				existing.metadata = this.mergeThreadMetadata(existing.metadata, thread.metadata);
 			}
 			const saved = await this.threadRepository.save(existing);
 			return this.toThread(saved);
@@ -370,7 +372,7 @@ export class N8nMemoryImpl
 		const baseWhere: FindOptionsWhere<AgentMessageEntity> = {
 			threadId: observationScopeId,
 		};
-		const where: FindOptionsWhere<AgentMessageEntity>[] = opts?.since
+		const where: Array<FindOptionsWhere<AgentMessageEntity>> = opts?.since
 			? [
 					{ ...baseWhere, createdAt: MoreThan(opts.since.sinceCreatedAt) },
 					{
@@ -1019,20 +1021,33 @@ export class N8nMemoryImpl
 		};
 	}
 
-	private toThread(entity: AgentThreadEntity): Thread {
-		let metadata: Record<string, unknown> | undefined;
-		if (entity.metadata) {
-			try {
-				metadata = JSON.parse(entity.metadata) as Record<string, unknown>;
-			} catch {
-				metadata = undefined;
-			}
+	private mergeThreadMetadata(
+		existingMetadata: string | null | undefined,
+		nextMetadata: Record<string, unknown>,
+	): string {
+		return JSON.stringify({
+			...this.parseThreadMetadata(existingMetadata),
+			...nextMetadata,
+		});
+	}
+
+	private parseThreadMetadata(
+		value: string | null | undefined,
+	): Record<string, unknown> | undefined {
+		if (!value) return undefined;
+		try {
+			return JSON.parse(value) as Record<string, unknown>;
+		} catch {
+			return undefined;
 		}
+	}
+
+	private toThread(entity: AgentThreadEntity): Thread {
 		return {
 			id: entity.id,
 			resourceId: entity.resourceId,
 			title: entity.title ?? undefined,
-			metadata,
+			metadata: this.parseThreadMetadata(entity.metadata),
 			createdAt: entity.createdAt,
 			updatedAt: entity.updatedAt,
 		};

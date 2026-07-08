@@ -1,20 +1,30 @@
-import jwt from 'jsonwebtoken';
-import moment from 'moment-timezone';
+import FormData from 'form-data';
 import { DateTime } from 'luxon';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodePropertyOptions,
 	JsonObject,
 	IHttpRequestMethods,
+	IHttpRequestOptions,
+	IN8nHttpFullResponse,
 	IRequestOptions,
 	IPollFunctions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { resolveAuthUrl } from '../../credentials/SalesforceJwtApi.credentials';
+type SalesforceApiError = {
+	errorCode?: string;
+	fields?: string[];
+	message?: string;
+};
+
+type SalesforceApiErrorResponse = {
+	error?: SalesforceApiError[];
+};
+
+const SALESFORCE_API_VERSION = 'v59.0';
 
 function getOptions(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -32,7 +42,7 @@ function getOptions(
 		method,
 		body,
 		qs,
-		uri: `${instanceUrl}/services/data/v59.0${endpoint}`,
+		uri: `${instanceUrl}/services/data/${SALESFORCE_API_VERSION}${endpoint}`,
 		json: true,
 	};
 
@@ -43,43 +53,32 @@ function getOptions(
 	return options;
 }
 
-async function getAccessToken(
-	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
-	credentials: ICredentialDataDecryptedObject,
-): Promise<IDataObject> {
-	const now = moment().unix();
-	const authUrl = resolveAuthUrl(credentials);
+/**
+ * Merges extra request options onto the base options. Unlike a plain
+ * `Object.assign`, headers are merged rather than replaced, so a caller can add
+ * a header (e.g. `Sforce-Query-Options`) without dropping the `Content-Type`
+ * header the request builder already set.
+ */
+function assignOptions(options: IRequestOptions | IHttpRequestOptions, option: IDataObject): void {
+	const { headers: extraHeaders, ...rest } = option;
+	if (extraHeaders) {
+		options.headers = { ...options.headers, ...(extraHeaders as IDataObject) };
+	}
+	Object.assign(options, rest);
+}
 
-	const signature = jwt.sign(
-		{
-			iss: credentials.clientId as string,
-			sub: credentials.username as string,
-			aud: authUrl,
-			exp: now + 3 * 60,
-		},
-		credentials.privateKey as string,
-		{
-			algorithm: 'RS256',
-			header: {
-				alg: 'RS256',
-			},
-		},
-	);
-
-	const options: IRequestOptions = {
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
-		},
-		method: 'POST',
-		form: {
-			grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-			assertion: signature,
-		},
-		uri: `${authUrl}/services/oauth2/token`,
-		json: true,
-	};
-
-	return await this.helpers.request(options);
+/** Builds a `FormData` instance from the legacy `formData` option shape. */
+function toFormData(fields: IDataObject): FormData {
+	const form = new FormData();
+	for (const [key, field] of Object.entries(fields)) {
+		if (typeof field === 'object' && field !== null && 'value' in field) {
+			const { value, options } = field as { value: unknown; options?: FormData.AppendOptions };
+			form.append(key, value, options);
+		} else {
+			form.append(key, field);
+		}
+	}
+	return form;
 }
 
 export async function salesforceApiRequest(
@@ -96,24 +95,60 @@ export async function salesforceApiRequest(
 	try {
 		if (authenticationMethod === 'jwt') {
 			// https://help.salesforce.com/articleView?id=remoteaccess_oauth_jwt_flow.htm&type=5
+			// The access token and instance URL are cached on the credential and reused
+			// across requests; the credential's authenticate hook attaches the Bearer
+			// header and resolves the relative URL against the cached instance URL.
 			const credentialsType = 'salesforceJwtApi';
-			const credentials = await this.getCredentials(credentialsType);
-			const response = await getAccessToken.call(this, credentials);
-			const { instance_url, access_token } = response;
-			const options = getOptions.call(
-				this,
+			const { formData, ...restOption } = option;
+			const options: IHttpRequestOptions = {
+				headers: {
+					'Content-Type': 'application/json',
+				},
 				method,
-				uri || endpoint,
 				body,
 				qs,
-				instance_url as string,
-			);
+				url: `/services/data/${SALESFORCE_API_VERSION}${uri || endpoint}`,
+				json: true,
+				// Return the full response and let non-401 error statuses through, so the
+				// Salesforce error body is available here instead of being discarded when the
+				// authenticated helper wraps the Axios error. 401 still throws so the
+				// credential's token refresh runs.
+				returnFullResponse: true,
+				ignoreHttpStatusErrors: { ignore: true, except: [401] },
+			};
+
+			if (formData) {
+				// The authenticated helper only understands a FormData body, not the legacy option.
+				options.body = toFormData(formData as IDataObject);
+			} else if (!Object.keys(options.body as IDataObject).length) {
+				delete options.body;
+			}
+
+			assignOptions(options, restOption);
+
+			if (formData) {
+				// Drop the JSON Content-Type after merging caller options so form-data can
+				// set the multipart boundary itself.
+				delete options.headers!['Content-Type'];
+			}
+
 			this.logger.debug(
-				`Authentication for "Salesforce" node is using "jwt". Invoking URI ${options.uri}`,
+				`Authentication for "Salesforce" node is using "jwt". Invoking URI ${options.url}`,
 			);
-			options.headers!.Authorization = `Bearer ${access_token}`;
-			Object.assign(options, option);
-			return await this.helpers.request(options);
+			const response = (await this.helpers.httpRequestWithAuthentication.call(
+				this,
+				credentialsType,
+				options,
+			)) as IN8nHttpFullResponse;
+
+			if (response.statusCode >= 300) {
+				throw Object.assign(
+					new Error(`${response.statusCode} - ${JSON.stringify(response.body)}`),
+					{ statusCode: response.statusCode, error: response.body },
+				);
+			}
+
+			return response.body;
 		} else {
 			// https://help.salesforce.com/articleView?id=remoteaccess_oauth_web_server_flow.htm&type=5
 			const credentialsType = 'salesforceOAuth2Api';
@@ -131,12 +166,37 @@ export async function salesforceApiRequest(
 			this.logger.debug(
 				`Authentication for "Salesforce" node is using "OAuth2". Invoking URI ${options.uri}`,
 			);
-			Object.assign(options, option);
+			assignOptions(options, option);
 
 			return await this.helpers.requestOAuth2.call(this, credentialsType, options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		const salesforceError = error as SalesforceApiErrorResponse & {
+			cause?: { response?: { data?: unknown } };
+		};
+
+		// Salesforce REST errors arrive as an array on `error.error` — set by the OAuth2
+		// legacy helper and by the JWT error reshaping above. `error.cause.response.data`
+		// is a fallback for an Axios error still wrapped by the authenticated helper.
+		const responseData = salesforceError.cause?.response?.data;
+		const sfErrors: SalesforceApiError[] = Array.isArray(salesforceError.error)
+			? salesforceError.error
+			: Array.isArray(responseData)
+				? (responseData as SalesforceApiError[])
+				: [];
+
+		const allFields = sfErrors.flatMap((e) => e.fields ?? []).join(', ') || null;
+
+		const primaryError = sfErrors[0];
+
+		const nodeError = new NodeApiError(this.getNode(), error as JsonObject);
+		nodeError.context = {
+			...nodeError.context,
+			errorCode: primaryError?.errorCode ?? null,
+			fields: allFields,
+		};
+
+		throw nodeError;
 	}
 }
 
@@ -161,6 +221,23 @@ export async function salesforceApiRequestAllItems(
 	} while (responseData.nextRecordsUrl !== undefined && responseData.nextRecordsUrl !== null);
 
 	return returnData;
+}
+
+/**
+ * Owner fields accept two shapes for backward compatibility: a legacy `options`
+ * field stored its value as a raw string, while the current `resourceLocator`
+ * field stores `{ __rl, mode, value }`. This normalises both to the string id,
+ * or `undefined` when empty/missing.
+ */
+export function getResourceLocatorValue(value: unknown): string | undefined {
+	if (value === undefined || value === null || value === '') return undefined;
+	if (typeof value === 'string') return value;
+	if (typeof value === 'object' && '__rl' in value) {
+		const inner = (value as { value?: unknown }).value;
+		if (inner === undefined || inner === null || inner === '') return undefined;
+		return String(inner);
+	}
+	return undefined;
 }
 
 /**
@@ -305,7 +382,13 @@ const SALESFORCE_DATE_LITERALS = new Set([
 	'NEXT_FISCAL_YEAR',
 ]);
 
-export function getValue(value: any): string | number | boolean {
+// Salesforce node typeVersion at which numeric-looking strings stopped being
+// auto-coerced to unquoted SOQL numbers. String-typed Salesforce fields (e.g.
+// external IDs) need quoted literals regardless of content. Older typeVersions
+// keep the legacy coercion for backwards compatibility.
+const NUMERIC_STRING_QUOTING_VERSION = 1.1;
+
+export function getValue(value: any, nodeVersion = 1): string | number | boolean {
 	if (value === null || value === undefined) {
 		return 'null';
 	}
@@ -379,22 +462,28 @@ export function getValue(value: any): string | number | boolean {
 			}
 		}
 
-		// Detect numeric strings and return them unquoted (leading zeros are preserved as strings)
-		if (/^-?(0|[1-9]\d*)(\.\d+)?$/.test(value)) {
+		// Legacy behavior (typeVersion < 1.1): auto-coerce numeric strings to unquoted
+		// SOQL numbers. Kept for existing workflows that rely on it for numeric SF fields
+		// (e.g. `AnnualRevenue > '0'`). Fixed in typeVersion 1.1.
+		if (nodeVersion < NUMERIC_STRING_QUOTING_VERSION && /^-?(0|[1-9]\d*)(\.\d+)?$/.test(value)) {
 			const numericValue = Number(value);
 			if (Number.isFinite(numericValue)) {
 				return numericValue;
 			}
 		}
 
-		// All other strings are escaped and quoted
+		// All other strings are escaped and quoted. From typeVersion 1.1 onwards this
+		// includes numeric-looking strings — the value input has no field-type info,
+		// and string-typed Salesforce fields (e.g. external IDs) require quoted literals
+		// regardless of content. Users wanting a numeric comparison must pass a number
+		// via an expression.
 		return `'${escapeSoqlString(value)}'`;
 	}
 
 	throw new Error(`Unsupported value type: ${typeof value}`);
 }
 
-export function getConditions(options: IDataObject): string | undefined {
+export function getConditions(options: IDataObject, nodeVersion = 1): string | undefined {
 	const conditions = (options.conditionsUi as IDataObject)?.conditionValues as IDataObject[];
 
 	if (!Array.isArray(conditions) || conditions.length === 0) {
@@ -404,7 +493,7 @@ export function getConditions(options: IDataObject): string | undefined {
 	const conditionStrings = conditions.map((condition: IDataObject) => {
 		const field = validateSoqlFieldName(condition.field as string);
 		const operator = validateSoqlOperator(condition.operation as string);
-		const value = getValue(condition.value);
+		const value = getValue(condition.value, nodeVersion);
 
 		return `${field} ${operator} ${value}`;
 	});
@@ -427,7 +516,13 @@ export function getDefaultFields(sobject: string) {
 	)[sobject];
 }
 
-export function getQuery(options: IDataObject, sobject: string, returnAll: boolean, limit = 0) {
+export function getQuery(
+	options: IDataObject,
+	sobject: string,
+	returnAll: boolean,
+	limit = 0,
+	nodeVersion = 1,
+) {
 	const validSobject = validateSoqlObjectName(sobject);
 
 	const fields: string[] = [];
@@ -451,7 +546,7 @@ export function getQuery(options: IDataObject, sobject: string, returnAll: boole
 			((getDefaultFields(validSobject) as string) || 'id,LastModifiedDate').split(','),
 		);
 	}
-	const conditions = getConditions(options);
+	const conditions = getConditions(options, nodeVersion);
 
 	let query = `SELECT ${fields.join(',')} FROM ${validSobject} ${conditions ? conditions : ''}`;
 
@@ -481,6 +576,7 @@ export function getPollStartDate(lastTimeChecked: string | undefined): string {
 export function filterAndManageProcessedItems(
 	responseData: IDataObject[],
 	processedIds: string[],
+	changeType: 'Created' | 'Updated' = 'Updated',
 ): { newItems: IDataObject[]; updatedProcessedIds: string[] } {
 	const processedIdsSet = new Set(processedIds);
 
@@ -491,7 +587,9 @@ export function filterAndManageProcessedItems(
 		if (typeof item.Id !== 'string') continue;
 
 		const itemKey =
-			typeof item.LastModifiedDate === 'string' ? `${item.Id}_${item.LastModifiedDate}` : item.Id;
+			changeType === 'Updated' && typeof item.LastModifiedDate === 'string'
+				? `${item.Id}_${item.LastModifiedDate}`
+				: item.Id;
 
 		if (!processedIdsSet.has(itemKey)) {
 			newItems.push(item);

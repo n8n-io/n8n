@@ -1,33 +1,76 @@
-import { Tool } from '@n8n/agents/tool';
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
+import { Tool } from '@n8n/agents/tool';
+import {
+	findNodeParameterProperty,
+	getDynamicNodeParameterLookup,
+	normalizeParameterPath,
+} from '@n8n/ai-utilities/node-catalog';
 import {
 	agentSkillSchema,
+	agentTaskSchema,
 	formatZodErrors,
+	PROVIDER_CAPABILITIES,
+	resolvePromptCaching,
 	RunnableAgentJsonConfigSchema,
+	sanitizeAgentJsonConfig,
 	tryParseConfigJson,
+	type AgentSkill,
 	type AgentJsonConfig,
 	type ConfigValidationError,
 } from '@n8n/api-types';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Operation } from 'fast-json-patch';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
+import { CredentialTypes } from '@/credential-types';
+import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import { NodeTypes } from '@/node-types';
+import { OauthService } from '@/oauth/oauth.service';
+import { AiService } from '@/services/ai.service';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
+
+import { AgentConfigService } from '../agent-config.service';
+import { AgentCustomToolsService } from '../agent-custom-tools.service';
+import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import { AgentSkillsService } from '../agent-skills.service';
+import { AgentTaskService } from '../agent-task.service';
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
-import { composeJsonConfig } from '../json-config/agent-config-composition';
-import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import { BuilderModelLookupService } from './builder-model-lookup.service';
+import { BuilderModelLiveLookupService } from './builder-model-live-lookup.service';
+import { BUILDER_TOOLS } from './builder-tool-names';
+import {
+	collectFromAiParameterReferences,
+	hasMatchingFromAiParameterReference,
+	type FromAiParameterReference,
+} from './from-ai-node-parameters';
+import { buildGetResourceLocatorOptionsTool } from './get-resource-locator-options.tool';
 import {
 	buildAskCredentialTool,
+	buildAskEmbeddingCredentialTool,
 	buildAskLlmTool,
 	buildAskQuestionTool,
 	buildResolveLlmTool,
 } from './interactive';
 import type { ModelLookup } from './interactive/resolve-llm.tool';
-import { BUILDER_TOOLS } from './builder-tool-names';
+import { buildSearchMcpServersTool } from './search-mcp-servers.tool';
+import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-template';
+import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
+import { buildVerifyMcpServerTool } from './verify-mcp-server.tool';
+import { composeJsonConfig } from '../json-config/agent-config-composition';
+import { getProviderPrefix } from '../json-config/model-id';
+import {
+	getNativeWebSearchProviderTools,
+	hasNativeWebSearchProvider,
+} from '../json-config/native-web-search-provider-tools';
+import { AgentRepository } from '../repositories/agent.repository';
+import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 
 const EMPTY_INSTRUCTIONS_ERROR: ConfigValidationError = {
 	path: '/instructions',
@@ -40,6 +83,24 @@ const STALE_CONFIG_ERROR: ConfigValidationError = {
 	message:
 		'Agent config changed since you last read it. Call read_config and retry with the returned configHash.',
 };
+
+const createSkillInputSchema = z
+	.object({
+		name: agentSkillSchema.shape.name.describe('Human-readable skill name'),
+		description: agentSkillSchema.shape.description.describe(SKILL_DESCRIPTION_RULE),
+		instructions: agentSkillSchema.shape.instructions.describe(SKILL_BODY_GUIDANCE),
+		allowedTools: agentSkillSchema.shape.allowedTools
+			.optional()
+			.describe('Exact target-agent tool names this skill is allowed to use.'),
+		references: agentSkillSchema.shape.references
+			.optional()
+			.describe(
+				'Markdown-only supporting files under references/... paths. References are not automatically loaded; instructions must say exactly when to load each reference by path.',
+			),
+	})
+	.strict();
+
+type CreateSkillInput = z.infer<typeof createSkillInputSchema>;
 
 export interface AgentConfigSnapshot {
 	config: AgentJsonConfig | null;
@@ -57,8 +118,73 @@ function rejectIfEmptyInstructions(
 	return null;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
+function rejectIfUnsupportedNativeWebSearch(
+	config: AgentJsonConfig,
+): { errors: ConfigValidationError[] } | null {
+	const webSearch = config.config?.webSearch;
+	const requestsNativeWebSearch =
+		webSearch?.enabled === true &&
+		(webSearch.provider === undefined ||
+			webSearch.provider === 'auto' ||
+			webSearch.provider === 'native');
+	if (!requestsNativeWebSearch || hasNativeWebSearchProvider(config.model)) return null;
+	return {
+		errors: [
+			{
+				path: '/config/webSearch/provider',
+				message:
+					'Native web search is only supported for Anthropic and OpenAI models. Use Brave or SearXNG fallback web search for this model.',
+			},
+		],
+	};
+}
+
+type AgentConfigTool = NonNullable<AgentJsonConfig['tools']>[number];
+type AgentConfigNodeTool = Extract<AgentConfigTool, { type: 'node' }>;
+
+function isNodeTool(tool: AgentConfigTool | undefined): tool is AgentConfigNodeTool {
+	return tool?.type === 'node';
+}
+
+function hasSameNodeType(left: AgentConfigNodeTool, right: AgentConfigNodeTool): boolean {
+	return (
+		left.node.nodeType === right.node.nodeType &&
+		left.node.nodeTypeVersion === right.node.nodeTypeVersion
+	);
+}
+
+function hasSameNodeToolIdentity(left: AgentConfigNodeTool, right: AgentConfigNodeTool): boolean {
+	return left.name === right.name && hasSameNodeType(left, right);
+}
+
+function findPreviousNodeTool(
+	previousConfig: AgentJsonConfig | null,
+	currentTool: AgentConfigNodeTool,
+	currentToolIndex: number,
+): AgentConfigNodeTool | null {
+	const previousTools = previousConfig?.tools ?? [];
+	const sameIndexTool = previousTools[currentToolIndex];
+	if (isNodeTool(sameIndexTool) && hasSameNodeToolIdentity(sameIndexTool, currentTool)) {
+		return sameIndexTool;
+	}
+
+	const matchingTools = previousTools.filter(
+		(tool): tool is AgentConfigNodeTool =>
+			isNodeTool(tool) && hasSameNodeToolIdentity(tool, currentTool),
+	);
+
+	return matchingTools.length === 1 ? matchingTools[0] : null;
+}
+
+function getPreviousFromAiReferences(
+	previousConfig: AgentJsonConfig | null,
+	currentTool: AgentConfigNodeTool,
+	currentToolIndex: number,
+): FromAiParameterReference[] {
+	const previousTool = findPreviousNodeTool(previousConfig, currentTool, currentToolIndex);
+	if (!previousTool) return [];
+
+	return collectFromAiParameterReferences(previousTool.node.nodeParameters);
 }
 
 function canonicalizeJson(value: unknown): unknown {
@@ -95,6 +221,80 @@ function snapshotFromConfig(
 	};
 }
 
+/**
+ * The builder expresses web-search intent through `config.webSearch`; this
+ * write-path normalizer persists provider-specific native tool details so
+ * builder-saved configs are deterministic. Runtime reconstruction uses the
+ * same policy defensively for configs saved through other entry points.
+ */
+function applyNativeWebSearchBuilderDefaults(config: AgentJsonConfig): AgentJsonConfig {
+	const providerTools = getNativeWebSearchProviderTools(config, {
+		includeDefaultArgs: true,
+		defaultEnabled: true,
+	});
+	const webSearch = config.config?.webSearch;
+	const fallbackWebSearch =
+		webSearch?.enabled === true &&
+		(webSearch.provider === 'brave' || webSearch.provider === 'searxng');
+	const hasNativeWebSearch =
+		!fallbackWebSearch && webSearch?.enabled !== false && hasNativeWebSearchProvider(config.model);
+
+	if (!hasNativeWebSearch) {
+		const { webSearch, ...restConfig } = config.config ?? {};
+		const { config: _config, providerTools: _providerTools, ...restAgentConfig } = config;
+		const normalizedConfig = {
+			...restConfig,
+			...(fallbackWebSearch ? { webSearch } : {}),
+		};
+		return {
+			...restAgentConfig,
+			...(Object.keys(normalizedConfig).length > 0 ? { config: normalizedConfig } : {}),
+			...(Object.keys(providerTools).length > 0 ? { providerTools } : {}),
+		};
+	}
+
+	return {
+		...config,
+		config: {
+			...(config.config ?? {}),
+			webSearch: { enabled: true },
+		},
+		providerTools,
+	};
+}
+
+/**
+ * Prompt caching is mandatory for OpenAI/Anthropic: this write-path
+ * normalizer guarantees `config.promptCaching` is force-enabled for those
+ * providers (the user cannot disable it, even if the LLM wrote
+ * `{ enabled: false }`), preserves an explicit Anthropic TTL, and strips the
+ * field entirely for every other provider — regardless of what the builder
+ * LLM wrote.
+ */
+function applyPromptCachingBuilderDefaults(config: AgentJsonConfig): AgentJsonConfig {
+	const providerPrefix = getProviderPrefix(config.model);
+	const capability = PROVIDER_CAPABILITIES[providerPrefix]?.promptCaching ?? false;
+	const resolved = resolvePromptCaching(config.config?.promptCaching, capability);
+
+	if (!resolved) {
+		if (!config.config || !('promptCaching' in config.config)) return config;
+		const { promptCaching: _promptCaching, ...restConfig } = config.config;
+		const { config: _config, ...restAgentConfig } = config;
+		return {
+			...restAgentConfig,
+			...(Object.keys(restConfig).length > 0 ? { config: restConfig } : {}),
+		};
+	}
+
+	return {
+		...config,
+		config: {
+			...(config.config ?? {}),
+			promptCaching: resolved,
+		},
+	};
+}
+
 export interface BuilderTools {
 	json: BuiltTool[];
 	shared: BuiltTool[];
@@ -104,11 +304,97 @@ export interface BuilderTools {
 export class AgentsBuilderToolsService {
 	constructor(
 		private readonly agentsService: AgentsService,
+		private readonly agentConfigService: AgentConfigService,
+		private readonly agentCustomToolsService: AgentCustomToolsService,
+		private readonly agentIntegrationPersistenceService: AgentIntegrationPersistenceService,
+		private readonly agentSkillsService: AgentSkillsService,
 		private readonly secureRuntime: AgentSecureRuntime,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly agentsToolsService: AgentsToolsService,
-		private readonly builderModelLookupService: BuilderModelLookupService,
+		private readonly builderModelLiveLookupService: BuilderModelLiveLookupService,
+		private readonly mcpRegistryService: McpRegistryService,
+		private readonly oauthService: OauthService,
+		private readonly credentialTypes: CredentialTypes,
+		private readonly agentTaskService: AgentTaskService,
+		private readonly agentRepository: AgentRepository,
+		private readonly aiService: AiService,
+		private readonly outboundHttp: OutboundHttp,
+		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
+		private readonly nodeTypes: NodeTypes,
+		private readonly ssrfConfig: SsrfProtectionConfig,
+		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {}
+
+	private getDynamicSelectorPath(
+		nodeTypeDescription: ReturnType<NodeTypes['getByNameAndVersion']>,
+		parameterPath: string,
+	): string | null {
+		const normalizedPath = normalizeParameterPath(parameterPath);
+		const pathParts = normalizedPath.split('.');
+
+		for (let length = pathParts.length; length > 0; length--) {
+			const candidatePath = pathParts.slice(0, length).join('.');
+			const property = findNodeParameterProperty(
+				nodeTypeDescription.description.properties,
+				candidatePath,
+			);
+			if (!property) continue;
+
+			const lookup = getDynamicNodeParameterLookup(property);
+			if (lookup) return candidatePath;
+		}
+
+		return null;
+	}
+
+	private rejectIfDynamicSelectorUsesFromAi(
+		config: AgentJsonConfig,
+		previousConfig: AgentJsonConfig | null,
+	): { errors: ConfigValidationError[] } | null {
+		const errors: ConfigValidationError[] = [];
+
+		for (const [toolIndex, tool] of (config.tools ?? []).entries()) {
+			if (tool.type !== 'node') continue;
+
+			const fromAiReferences = collectFromAiParameterReferences(tool.node.nodeParameters);
+			if (fromAiReferences.length === 0) continue;
+
+			let nodeTypeDescription: ReturnType<NodeTypes['getByNameAndVersion']>;
+			try {
+				nodeTypeDescription = this.nodeTypes.getByNameAndVersion(
+					tool.node.nodeType,
+					tool.node.nodeTypeVersion,
+				);
+			} catch {
+				continue;
+			}
+
+			const previousFromAiReferences = getPreviousFromAiReferences(previousConfig, tool, toolIndex);
+			const reportedDynamicPaths = new Set<string>();
+			for (const fromAiReference of fromAiReferences) {
+				const { parameterPath, jsonPointer } = fromAiReference;
+				const dynamicPath = this.getDynamicSelectorPath(nodeTypeDescription, parameterPath);
+				if (!dynamicPath || reportedDynamicPaths.has(dynamicPath)) continue;
+				if (hasMatchingFromAiParameterReference(previousFromAiReferences, fromAiReference)) {
+					continue;
+				}
+
+				reportedDynamicPaths.add(dynamicPath);
+				errors.push({
+					path: `/tools/${toolIndex}/node/nodeParameters/${jsonPointer}`,
+					message:
+						`Node tool "${tool.name}" parameter "${dynamicPath}" is a dynamic selector. ` +
+						'Do not use $fromAI for this value. Load skill agent-builder-resource-locators, ' +
+						'use ask_credential if credentials are missing, then call get_resource_locator_options ' +
+						'and write the returned parameterValue into nodeParameters.',
+				});
+			}
+		}
+
+		if (errors.length === 0) return null;
+
+		return { errors };
+	}
 
 	getTools(
 		agentId: string,
@@ -118,7 +404,7 @@ export class AgentsBuilderToolsService {
 	): BuilderTools {
 		return {
 			json: this.getJsonTools(agentId, projectId, credentialProvider, user),
-			shared: this.getSharedTools(agentId, projectId, credentialProvider),
+			shared: this.getSharedTools(agentId, projectId, credentialProvider, user),
 		};
 	}
 
@@ -185,7 +471,9 @@ export class AgentsBuilderToolsService {
 					if (baseConfigHash !== snapshot.configHash) {
 						return { ok: false, stage: 'stale', errors: [STALE_CONFIG_ERROR], ...snapshot };
 					}
-					const zodResult = RunnableAgentJsonConfigSchema.safeParse(parsed.data);
+					const zodResult = RunnableAgentJsonConfigSchema.safeParse(
+						sanitizeAgentJsonConfig(parsed.data),
+					);
 					if (!zodResult.success) {
 						return { ok: false, errors: formatZodErrors(zodResult.error) };
 					}
@@ -193,11 +481,25 @@ export class AgentsBuilderToolsService {
 					if (emptyInstructions) {
 						return { ok: false, errors: emptyInstructions.errors };
 					}
+					const unsupportedNativeWebSearch = rejectIfUnsupportedNativeWebSearch(zodResult.data);
+					if (unsupportedNativeWebSearch) {
+						return { ok: false, errors: unsupportedNativeWebSearch.errors };
+					}
+					const dynamicSelectorFromAi = this.rejectIfDynamicSelectorUsesFromAi(
+						zodResult.data,
+						snapshot.config,
+					);
+					if (dynamicSelectorFromAi) {
+						return { ok: false, errors: dynamicSelectorFromAi.errors };
+					}
+					const normalizedConfig = applyPromptCachingBuilderDefaults(
+						applyNativeWebSearchBuilderDefaults(zodResult.data),
+					);
 					try {
-						const result = await this.agentsService.updateConfig(
+						const result = await this.agentConfigService.updateConfig(
 							agentId,
 							projectId,
-							zodResult.data,
+							normalizedConfig,
 						);
 						return {
 							ok: true,
@@ -286,7 +588,9 @@ export class AgentsBuilderToolsService {
 					const patched = jsonpatch.applyPatch(jsonpatch.deepClone(snapshot.config), ops)
 						.newDocument as unknown as AgentJsonConfig;
 
-					const zodResult = RunnableAgentJsonConfigSchema.safeParse(patched);
+					const zodResult = RunnableAgentJsonConfigSchema.safeParse(
+						sanitizeAgentJsonConfig(patched),
+					);
 					if (!zodResult.success) {
 						return { ok: false, stage: 'schema', errors: formatZodErrors(zodResult.error) };
 					}
@@ -294,12 +598,26 @@ export class AgentsBuilderToolsService {
 					if (emptyInstructions) {
 						return { ok: false, stage: 'schema', errors: emptyInstructions.errors };
 					}
+					const unsupportedNativeWebSearch = rejectIfUnsupportedNativeWebSearch(zodResult.data);
+					if (unsupportedNativeWebSearch) {
+						return { ok: false, stage: 'schema', errors: unsupportedNativeWebSearch.errors };
+					}
+					const dynamicSelectorFromAi = this.rejectIfDynamicSelectorUsesFromAi(
+						zodResult.data,
+						snapshot.config,
+					);
+					if (dynamicSelectorFromAi) {
+						return { ok: false, stage: 'schema', errors: dynamicSelectorFromAi.errors };
+					}
+					const normalizedConfig = applyPromptCachingBuilderDefaults(
+						applyNativeWebSearchBuilderDefaults(zodResult.data),
+					);
 
 					try {
-						const result = await this.agentsService.updateConfig(
+						const result = await this.agentConfigService.updateConfig(
 							agentId,
 							projectId,
-							zodResult.data,
+							normalizedConfig,
 						);
 						return {
 							ok: true,
@@ -318,52 +636,100 @@ export class AgentsBuilderToolsService {
 
 		const listIntegrationTypesTool = new Tool(BUILDER_TOOLS.LIST_INTEGRATION_TYPES)
 			.description(
-				"List trigger / integration types that can be added to the agent's `integrations` array. " +
-					'Returns the schedule trigger plus every connected chat platform with the list of ' +
-					'credential types it supports (`credentialTypes: string[]`). ' +
+				"List integration types that can be added to the agent's `integrations` array. " +
+					'Returns every available chat platform with the list of ' +
+					'credential types it supports (`credentialTypes: string[]`) and builder guidance ' +
+					'(`capabilities`, `useIntegrationWhen`, `useNodeToolWhen`). ' +
+					'Use that guidance to decide whether the user needs a chat integration or a node tool. ' +
 					'Call this BEFORE asking the user for a credential. Then pick ONE entry from the ' +
 					'returned `credentialTypes` and pass it to `ask_credential` as the singular ' +
 					'`credentialType` arg.',
 			)
 			.input(z.object({}))
+			.handler(async () => this.agentIntegrationPersistenceService.listChatIntegrations())
+			.build();
+
+		const listSubAgentsTool = new Tool(BUILDER_TOOLS.LIST_SUB_AGENTS)
+			.description(
+				'List published agents in the same project that can be added to the target agent as subagents. ' +
+					'Excludes the target agent itself and unpublished agents. Use before asking the user which ' +
+					'subagents to add. Returned `agentId` values are the only valid values to write into `subAgents.agents[].agentId`; ' +
+					'write parent-owned routing guidance into `subAgents.agents[].useWhen`; ask a follow-up first when it is unclear when that parent should use the subagent.',
+			)
+			.input(z.object({}))
 			.handler(async () => {
-				const chat = this.agentsService.listChatIntegrations();
-				return [
-					{ type: 'schedule', label: 'Schedule', icon: 'clock', credentialTypes: [] },
-					...chat,
-				];
+				const agents = await this.agentsService.findByProjectId(projectId);
+				return {
+					agents: agents
+						.filter((agent) => agent.id !== agentId && agent.activeVersionId !== null)
+						.map((agent) => ({
+							agentId: agent.id,
+							name: agent.name,
+						})),
+				};
 			})
 			.build();
 
 		const modelLookup: ModelLookup = {
-			list: async (credentialId, credentialType, lookup) =>
-				await this.builderModelLookupService.list(user, credentialId, credentialType, lookup),
+			list: async (credentialId, credentialType, provider) =>
+				await this.builderModelLiveLookupService.list(
+					user,
+					projectId,
+					credentialId,
+					credentialType,
+					provider,
+				),
 		};
 
-		return [
+		const tools: BuiltTool[] = [
 			readConfigTool,
 			writeConfigTool,
 			patchConfigTool,
 			listIntegrationTypesTool,
+			listSubAgentsTool,
 			buildResolveLlmTool({ credentialProvider, modelLookup }),
-			buildAskCredentialTool({ credentialProvider }),
+			buildAskCredentialTool({
+				credentialProvider,
+				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
+			}),
+			buildAskEmbeddingCredentialTool({
+				credentialProvider,
+				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
+				isAssistantProxyEnabled: () => this.aiService.isProxyEnabled(),
+			}),
 			buildAskLlmTool(),
 			buildAskQuestionTool(),
+			buildVerifyMcpServerTool({
+				credentialProvider,
+				oauthService: this.oauthService,
+				projectId,
+				proxyFetch: createAiMcpFetch(
+					this.outboundHttp,
+					this.ssrfConfig,
+					this.ssrfProtectionService,
+				),
+			}),
+			buildSearchMcpServersTool({ mcpRegistryService: this.mcpRegistryService }),
 		];
+
+		return tools;
 	}
 
 	private getSharedTools(
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		user: User,
 	): BuiltTool[] {
 		const buildCustomToolTool = new Tool(BUILDER_TOOLS.BUILD_CUSTOM_TOOL)
 			.description(
 				'Compile and store a custom tool. Pass the complete TypeScript source ' +
 					'using `export default new Tool(...)` builder chain. The code is validated in a ' +
-					'sandbox and saved against the agent, but this does NOT register the tool in the ' +
-					'agent config — follow up with patch_config (or write_config) to add a ' +
-					'`{ type: "custom", id }` entry to `tools` so the agent actually uses it. ' +
+					'sandbox and saved against the agent. The returned `id` equals the tool name ' +
+					'declared in the code (e.g. `new Tool("my_tool")` → id `"my_tool"`). ' +
+					'This does NOT register the tool in the agent config — follow up with ' +
+					'patch_config (or write_config) to add `{ type: "custom", id: "<tool name>" }` ' +
+					'to `tools`.' +
 					'Returns { ok: true, id, descriptor } or { ok: false, errors }.',
 			)
 			.input(
@@ -376,7 +742,7 @@ export class AgentsBuilderToolsService {
 			.handler(async ({ code }: { code: string }) => {
 				try {
 					const descriptor = await this.secureRuntime.describeToolSecurely(code);
-					const built = await this.agentsService.buildCustomTool(
+					const built = await this.agentCustomToolsService.buildCustomTool(
 						agentId,
 						projectId,
 						code,
@@ -394,40 +760,107 @@ export class AgentsBuilderToolsService {
 
 		const createSkillTool = new Tool(BUILDER_TOOLS.CREATE_SKILL)
 			.description(
-				'Create and store an agent skill. Pass the skill name, a short description, and the full skill body. ' +
-					'The description should help the runtime decide when to load it. ' +
-					'The body is stored as the skill instructions, but this does NOT attach the skill to the agent config. ' +
-					'Follow up with read_config and patch_config (or write_config) to add a `{ type: "skill", id }` entry to `skills`. ' +
+				'Create and store an agent skill (a reusable, load-on-demand capability). Pass the skill name, a ' +
+					'routing description, and the full skill instructions. The description is what the runtime sees when ' +
+					'deciding when to load it, and the instructions MUST follow the required structured format (Overview, ' +
+					'Inputs, Steps, Rules, Example, Gotchas) filled with concrete content — see the instructions parameter ' +
+					'for the template. You MUST NOT call this with a vague description or thin/placeholder instructions: ' +
+					'if you lack the domain detail to write a genuinely useful skill, ask the user clarifying ' +
+					'questions first. Use allowedTools only with exact target-agent tool names, ' +
+					'and references only for markdown supporting files under the references/ directory. References are not automatically loaded; when you provide references, instructions must say exactly when to load each one by path. Scripts and non-markdown linked files are not supported. ' +
+					'This does NOT attach the skill to the agent config; follow up with read_config ' +
+					'and patch_config (or write_config) to add a `{ type: "skill", id }` entry to `skills`. ' +
 					'Returns { ok: true, id, skill } or { ok: false, errors }.',
+			)
+			.systemInstruction(
+				'Never create a vague or placeholder skill. The description is the routing contract (what the ' +
+					'skill does + when to load it); the instructions must follow the required structured Markdown template ' +
+					'(Overview, Inputs, Steps, Rules, Example, Gotchas) with each applicable section filled in with ' +
+					'concrete, specific content. If you do not have enough domain detail to write a genuinely ' +
+					'useful skill, ask the user clarifying questions until you do before calling create_skill. ' +
+					'Do not create references unless the instructions include explicit conditions for loading each referenced file. ' +
+					'Do not invent tool names or reference paths.',
+			)
+			.input(createSkillInputSchema)
+			.handler(async (input: CreateSkillInput) => {
+				// Input is already validated against `.input()` (agentSkillSchema
+				// shapes) by the tool runtime before the handler runs.
+				const skill: AgentSkill = input;
+
+				try {
+					const created = await this.agentSkillsService.createSkill(agentId, projectId, skill);
+					return { ok: true, id: created.id, skill: created.skill };
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+			})
+			.build();
+
+		const createTaskTool = new Tool(BUILDER_TOOLS.CREATE_TASK)
+			.description(
+				'Create a recurring scheduled task for the target agent (name + objective + cron schedule). ' +
+					'The objective is the exact message the agent receives on each run, so it must be precise and ' +
+					'self-contained, and it MUST follow the required structured format (Objective, Context, Steps, ' +
+					'Output, Constraints, Success criteria) with every section filled in — see the objective ' +
+					'parameter for the template. You MUST NOT call this tool with a vague, broad, or placeholder ' +
+					'objective, an objective missing any section, or an unclear schedule. First make sure you can ' +
+					'fill every section of the template and know how often/when it should run; if anything is ' +
+					'ambiguous, ask the user clarifying questions (ask_question with discrete options for choices, ' +
+					'or empty options for open-ended) and only call create_task once the objective is complete and the cadence ' +
+					'is known. This adds a `{ type: "task", id, enabled }` ref to the agent config (config.tasks) ' +
+					'and the task starts running once the agent is (re)published. Returns { ok: true, task } or ' +
+					'{ ok: false, errors }.',
+			)
+			.systemInstruction(
+				'Never create a task with a vague or placeholder objective. The objective must follow the ' +
+					'required structured Markdown template (Objective, Context, Steps, Output, Constraints, ' +
+					'Success criteria) with every section filled in with concrete content. If the user has not ' +
+					'given you enough detail to complete every section and set a clear schedule, ask clarifying ' +
+					'questions first. A task can only use tools the agent already has: if any step in the ' +
+					'objective requires a tool, integration, or web search the agent is missing, you MUST add ' +
+					'it to the agent config (patch_config/write_config) BEFORE calling create_task — otherwise ' +
+					'the task will fail at runtime.',
 			)
 			.input(
 				z.object({
-					name: agentSkillSchema.shape.name.describe('Human-readable skill name'),
-					description: agentSkillSchema.shape.description.describe(
-						'Short description of when to load the skill.',
+					name: agentTaskSchema.shape.name.describe('Short, human-readable task name.'),
+					objective: agentTaskSchema.shape.objective.describe(TASK_OBJECTIVE_GUIDANCE),
+					cronExpression: agentTaskSchema.shape.cronExpression.describe(
+						'A 5-field cron expression for when the task runs, e.g. "0 9 * * 1-5" = weekdays at 09:00.',
 					),
-					body: agentSkillSchema.shape.instructions.describe('Full skill instructions/body'),
 				}),
 			)
 			.handler(
 				async ({
 					name,
-					description,
-					body,
+					objective,
+					cronExpression,
 				}: {
 					name: string;
-					description: string;
-					body: string;
+					objective: string;
+					cronExpression: string;
 				}) => {
-					const skill = { name, description, instructions: body };
-					const validation = agentSkillSchema.safeParse(skill);
-					if (!validation.success) {
-						return { ok: false, errors: formatZodErrors(validation.error) };
+					// Input is already validated against `.input()` (agentTaskSchema
+					// shapes) by the tool runtime before the handler runs.
+					const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+					if (!agent) {
+						return { ok: false, errors: [{ message: 'Agent not found' }] };
 					}
 
 					try {
-						const created = await this.agentsService.createSkill(agentId, projectId, skill);
-						return { ok: true, id: created.id, skill: created.skill };
+						// Adds a `{ type:'task', id, enabled }` ref to the agent config and
+						// creates the body. Enabled by default; it starts running once the
+						// agent is (re)published.
+						const task = await this.agentTaskService.create(agentId, {
+							name,
+							objective,
+							cronExpression,
+							enabled: true,
+						});
+						return { ok: true, task };
 					} catch (e) {
 						return {
 							ok: false,
@@ -488,7 +921,14 @@ export class AgentsBuilderToolsService {
 		return [
 			buildCustomToolTool,
 			createSkillTool,
+			createTaskTool,
 			listWorkflowsTool,
+			buildGetResourceLocatorOptionsTool({
+				dynamicNodeParametersService: this.dynamicNodeParametersService,
+				nodeTypes: this.nodeTypes,
+				user,
+				projectId,
+			}),
 			...this.agentsToolsService.getSharedTools(
 				credentialProvider,
 				'Read-only inspection of available credentials. Use ask_credential to let the user ' +

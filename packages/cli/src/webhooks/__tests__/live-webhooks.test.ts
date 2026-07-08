@@ -1,7 +1,7 @@
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { WorkflowsConfig } from '@n8n/config';
 import type { WebhookEntity, WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
 import type { Response } from 'express';
-import { mock } from 'jest-mock-extended';
 import type {
 	IConnections,
 	IHttpRequestMethods,
@@ -12,6 +12,8 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import type { NodeTypes } from '@/node-types';
@@ -20,10 +22,11 @@ import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import type { WebhookService } from '@/webhooks/webhook.service';
 import type { WebhookRequest } from '@/webhooks/webhook.types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
-jest.mock('@/webhooks/webhook-helpers');
-jest.mock('@/workflow-execute-additional-data');
+vi.mock('@/webhooks/webhook-helpers');
+vi.mock('@/workflow-execute-additional-data');
 
 const WORKFLOW_ID = 'workflow-1';
 const NODE_NAME = 'Webhook';
@@ -34,21 +37,25 @@ describe('LiveWebhooks', () => {
 	const webhookService = mock<WebhookService>();
 	const nodeTypes = mock<NodeTypes>();
 	const workflowStaticDataService = mock<WorkflowStaticDataService>();
+	const workflowsConfig = mock<WorkflowsConfig>({ useWorkflowPublicationService: false });
+	const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
 
 	let liveWebhooks: LiveWebhooks;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		liveWebhooks = new LiveWebhooks(
 			mockLogger(),
 			nodeTypes,
 			webhookService,
 			workflowRepository,
 			workflowStaticDataService,
+			workflowsConfig,
+			workflowPublishedDataService,
 		);
 
 		// Mock WorkflowExecuteAdditionalData.getBase to avoid DI issues
-		(WorkflowExecuteAdditionalData.getBase as jest.Mock).mockResolvedValue(
+		(WorkflowExecuteAdditionalData.getBase as Mock).mockResolvedValue(
 			mock<IWorkflowExecuteAdditionalData>(),
 		);
 	});
@@ -85,7 +92,7 @@ describe('LiveWebhooks', () => {
 
 		const webhookNodeType = mock<INodeType>({
 			description: { name: NODE_NAME, properties: [] },
-			webhook: jest.fn(),
+			webhook: vi.fn(),
 		});
 
 		const webhookData = mock<IWebhookData>({
@@ -102,7 +109,7 @@ describe('LiveWebhooks', () => {
 		nodeTypes.getByNameAndVersion.mockReturnValue(webhookNodeType);
 		webhookService.getNodeWebhooks.mockReturnValue([webhookData]);
 
-		(WebhookHelpers.executeWebhook as jest.Mock).mockImplementation(
+		(WebhookHelpers.executeWebhook as Mock).mockImplementation(
 			(workflow: Workflow, wd: IWebhookData, workflowData: IWorkflowBase, ...args: unknown[]) => {
 				onExecuteWebhook?.({ workflow, webhookData: wd, workflowData });
 				const webhookCallback = args[args.length - 1] as (
@@ -152,6 +159,7 @@ describe('LiveWebhooks', () => {
 				activeVersionId: activeVersion.versionId,
 				nodes: draftNodes,
 				connections: {},
+				staticData: {},
 				activeVersion,
 				shared: [{ role: 'workflow:owner', project: { id: 'project-1', projectRelations: [] } }],
 			});
@@ -229,6 +237,7 @@ describe('LiveWebhooks', () => {
 				activeVersionId: 'v1',
 				nodes: draftNodes,
 				connections: draftConnections,
+				staticData: {},
 				activeVersion,
 				shared: [{ role: 'workflow:owner', project: { id: 'project-1', projectRelations: [] } }],
 			});
@@ -253,6 +262,61 @@ describe('LiveWebhooks', () => {
 			// Verify it does NOT have draft nodes
 			expect(capturedWorkflowData!.nodes[0].id).not.toBe('webhook-node-draft');
 			expect(capturedWorkflowData!.nodes[1].id).not.toBe('set-node-draft');
+		});
+	});
+
+	describe('executeWebhook (with publication service)', () => {
+		beforeEach(() => {
+			Object.assign(workflowsConfig, { useWorkflowPublicationService: true });
+		});
+
+		afterEach(() => {
+			Object.assign(workflowsConfig, { useWorkflowPublicationService: false });
+		});
+
+		it('should use published version nodes when executing webhook', async () => {
+			const activeNodes: INode[] = [
+				{
+					id: 'webhook-node-active',
+					name: NODE_NAME,
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 1,
+					position: [100, 200],
+					parameters: { path: WEBHOOK_PATH, httpMethod: 'GET' },
+				},
+			];
+
+			const workflowEntity = mock<WorkflowEntity>({
+				id: WORKFLOW_ID,
+				name: 'Test Workflow',
+				active: true,
+				activeVersionId: 'v1',
+				isArchived: false,
+				staticData: {},
+				shared: [{ role: 'workflow:owner', project: { id: 'project-1', projectRelations: [] } }],
+			});
+
+			const publishedVersion = mock<WorkflowHistory>({
+				versionId: 'v1',
+				workflowId: WORKFLOW_ID,
+				nodes: activeNodes,
+				connections: {},
+			});
+			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue({
+				workflow: workflowEntity,
+				publishedVersion,
+			});
+
+			let capturedNodes: INode[] = [];
+			const request = setupExecuteWebhookMocks(workflowEntity, {
+				onExecuteWebhook: ({ workflow }) => {
+					capturedNodes = Object.values(workflow.nodes);
+				},
+			});
+
+			await liveWebhooks.executeWebhook(request, mock<Response>());
+
+			expect(capturedNodes[0].id).toBe('webhook-node-active');
 		});
 	});
 
@@ -287,7 +351,7 @@ describe('LiveWebhooks', () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(
 				mock<INodeType>({
 					description: { name: NODE_NAME, properties: [] },
-					webhook: jest.fn(),
+					webhook: vi.fn(),
 				}),
 			);
 		};
@@ -367,6 +431,7 @@ describe('LiveWebhooks', () => {
 				activeVersionId: 'v1',
 				nodes: [node],
 				connections: {},
+				staticData: {},
 				activeVersion,
 				shared: [{ role: 'workflow:owner', project: { id: 'project-1', projectRelations: [] } }],
 			});
@@ -385,7 +450,7 @@ describe('LiveWebhooks', () => {
 					properties: [],
 					webhooks: [{ nodeType: declaredNodeType, name: 'default' } as never],
 				},
-				webhook: jest.fn(),
+				webhook: vi.fn(),
 			});
 
 			const webhookData = mock<IWebhookData>({
@@ -402,7 +467,7 @@ describe('LiveWebhooks', () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(webhookNodeType);
 			webhookService.getNodeWebhooks.mockReturnValue([webhookData]);
 
-			(WebhookHelpers.executeWebhook as jest.Mock).mockImplementation((...args: unknown[]) => {
+			(WebhookHelpers.executeWebhook as Mock).mockImplementation((...args: unknown[]) => {
 				const webhookCallback = args[args.length - 1] as (
 					error: Error | null,
 					data: object,

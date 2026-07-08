@@ -1,11 +1,13 @@
+/* eslint-disable @typescript-eslint/unbound-method */
+
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import fs, { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { mock } from 'vitest-mock-extended';
 
 import { EXECUTION_DATA_BUNDLE_FILENAME } from '../constants';
 import { CorruptedExecutionDataError } from '../corrupted-execution-data.error';
@@ -15,25 +17,27 @@ import { createExecutionRef } from '../types';
 import type { ExecutionDataPayload } from '../types';
 import { executionId, payload, ref, workflowId } from './mocks';
 
-jest.unmock('node:fs/promises');
+vi.unmock('node:fs/promises');
 
 let fsStore: FsStore;
 let storagePath: string;
+let errorReporter: ErrorReporter;
 
 beforeAll(async () => {
 	storagePath = await mkdtemp(join(tmpdir(), 'n8n-fs-store-test-'));
 	mockInstance(StorageConfig, { storagePath });
-	mockInstance(ErrorReporter);
+	errorReporter = mockInstance(ErrorReporter);
 	fsStore = Container.get(FsStore);
 });
 
 beforeEach(async () => {
+	vi.mocked(errorReporter.error).mockClear();
 	const workflowsDir = join(storagePath, 'workflows');
 	await rm(workflowsDir, { recursive: true, force: true }).catch(() => {});
 });
 
 afterEach(() => {
-	jest.restoreAllMocks();
+	vi.restoreAllMocks();
 });
 
 afterAll(async () => {
@@ -77,6 +81,23 @@ describe('write', () => {
 		expect(stored).toMatchObject({ ...payload, version: 1 });
 	});
 
+	it('should return the byte size of the written bundle file', async () => {
+		const bytes = await fsStore.write(ref, payload);
+
+		const filePath = join(
+			storagePath,
+			'workflows',
+			workflowId,
+			'executions',
+			executionId,
+			'execution_data',
+			EXECUTION_DATA_BUNDLE_FILENAME,
+		);
+		const onDisk = await fs.readFile(filePath, 'utf-8');
+
+		expect(bytes).toBe(Buffer.byteLength(onDisk, 'utf-8'));
+	});
+
 	it('should overwrite on duplicate `executionId`', async () => {
 		await fsStore.write(ref, payload);
 
@@ -92,7 +113,7 @@ describe('write', () => {
 	});
 
 	it('should throw `ExecutionDataWriteError` on write failure and clean up temp file', async () => {
-		jest.spyOn(fs, 'rename').mockRejectedValueOnce(new Error('EACCES: permission denied'));
+		vi.spyOn(fs, 'rename').mockRejectedValueOnce(new Error('EACCES: permission denied'));
 
 		await expect(fsStore.write(ref, payload)).rejects.toThrow(ExecutionDataWriteError);
 
@@ -144,6 +165,66 @@ describe('read', () => {
 		await fs.writeFile(bundlePath, 'invalid json{{{', 'utf-8');
 
 		await expect(fsStore.read(ref)).rejects.toThrow(CorruptedExecutionDataError);
+	});
+});
+
+describe('readMany', () => {
+	it('should return a map of bundles keyed by executionId, omitting missing ones', async () => {
+		const present = createExecutionRef(workflowId, 'exec-1');
+		const missing = createExecutionRef(workflowId, 'exec-2');
+		await fsStore.write(present, payload);
+
+		const bundles = await fsStore.readMany([present, missing]);
+
+		expect(bundles.size).toBe(1);
+		expect(bundles.get('exec-1')).toMatchObject({ ...payload, version: 1 });
+		expect(bundles.has('exec-2')).toBe(false);
+	});
+
+	it('should report and drop a corrupted bundle instead of rejecting the whole read', async () => {
+		const good = createExecutionRef(workflowId, 'good');
+		const bad = createExecutionRef(workflowId, 'bad');
+		await fsStore.write(good, payload);
+
+		const badPath = join(
+			storagePath,
+			'workflows',
+			workflowId,
+			'executions',
+			'bad',
+			'execution_data',
+			EXECUTION_DATA_BUNDLE_FILENAME,
+		);
+		await fs.mkdir(
+			join(storagePath, 'workflows', workflowId, 'executions', 'bad', 'execution_data'),
+			{
+				recursive: true,
+			},
+		);
+		await fs.writeFile(badPath, 'invalid json{{{', 'utf-8');
+
+		const bundles = await fsStore.readMany([good, bad]);
+
+		expect(bundles.has('good')).toBe(true);
+		expect(bundles.has('bad')).toBe(false);
+		expect(errorReporter.error).toHaveBeenCalledWith(expect.any(CorruptedExecutionDataError));
+	});
+
+	it('should rethrow a systemic read error instead of swallowing it', async () => {
+		const target = createExecutionRef(workflowId, 'exec-1');
+		await fsStore.write(target, payload);
+
+		const eacces = Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' });
+		vi.spyOn(fs, 'readFile').mockRejectedValueOnce(eacces);
+
+		await expect(fsStore.readMany([target])).rejects.toBe(eacces);
+		expect(errorReporter.error).not.toHaveBeenCalled();
+	});
+
+	it('should return an empty map for an empty array', async () => {
+		const bundles = await fsStore.readMany([]);
+
+		expect(bundles.size).toBe(0);
 	});
 });
 

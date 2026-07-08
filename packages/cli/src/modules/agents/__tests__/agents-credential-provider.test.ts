@@ -1,6 +1,6 @@
 import type { CredentialListItem } from '@n8n/agents';
 import type { CredentialsEntity, User } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 
@@ -31,10 +31,15 @@ describe('AgentsCredentialProvider', () => {
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
 			{
 				...listItem({ id: 'allowed' }),
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-01T00:00:00.000Z',
 				scopes: [],
 				isManaged: false,
 				isGlobal: false,
 				isResolvable: true,
+				currentUserHasAccess: true,
+				homeProject: null,
+				sharedWithProjects: [],
 			},
 		]);
 

@@ -6,6 +6,7 @@ import {
 	N8nAlertDialog,
 	N8nBadge,
 	N8nHeading,
+	N8nLink,
 	N8nSelect2,
 	N8nText,
 	N8nTooltip,
@@ -19,7 +20,10 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import type { RedactionFloor } from '@n8n/api-types';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
 import { useToast } from '@/app/composables/useToast';
-import { EnterpriseEditionFeature } from '@/app/constants';
+import {
+	EnterpriseEditionFeature,
+	EXECUTION_DATA_REDACTION_ENFORCEMENT_DOCS_URL,
+} from '@/app/constants';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -146,15 +150,20 @@ function onSelectFloor(value: SelectValue | undefined) {
 }
 
 function goToUpgrade() {
-	void pageRedirectionHelper.goToUpgrade('settings-users', 'upgrade-users');
+	void pageRedirectionHelper.goToUpgrade('data-redaction', 'upgrade-data-redaction');
 }
 </script>
 
 <template>
 	<div>
-		<N8nHeading tag="h2" size="large" class="mb-l">
-			{{ i18n.baseText('settings.security.dataRedaction.title') }}
-		</N8nHeading>
+		<div class="mb-s" :class="$style.headerTitle">
+			<N8nHeading tag="h2" size="large">
+				{{ i18n.baseText('settings.security.dataRedaction.title') }}
+			</N8nHeading>
+			<N8nText color="text-base" size="small">{{
+				i18n.baseText('settings.security.dataRedaction.description')
+			}}</N8nText>
+		</div>
 
 		<div :class="$style.settingsSection">
 			<div :class="$style.settingsContainer">
@@ -167,6 +176,14 @@ function goToUpgrade() {
 					</N8nText>
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('settings.security.dataRedaction.enforce.message') }}
+						<N8nLink
+							:to="EXECUTION_DATA_REDACTION_ENFORCEMENT_DOCS_URL"
+							size="small"
+							new-window
+							data-test-id="redaction-enforcement-docs-link"
+						>
+							{{ i18n.baseText('generic.learnMore') }}
+						</N8nLink>
 					</N8nText>
 				</div>
 				<div :class="$style.settingsContainerAction">
@@ -202,27 +219,54 @@ function goToUpgrade() {
 				</div>
 			</div>
 			<div
-				v-if="enforced && isLicensed"
+				v-if="!isLicensed || enforced"
 				:class="$style.settingsContainer"
 				data-test-id="redaction-enforcement-scope-row"
 			>
 				<div :class="$style.settingsContainerInfo">
-					<N8nText :bold="true">{{
-						i18n.baseText('settings.security.dataRedaction.scope.title')
-					}}</N8nText>
+					<N8nText :bold="true"
+						>{{ i18n.baseText('settings.security.dataRedaction.scope.title') }}
+						<N8nBadge v-if="!isLicensed" class="ml-4xs">{{
+							i18n.baseText('generic.upgrade')
+						}}</N8nBadge>
+					</N8nText>
 					<N8nText size="small" color="text-light">{{
 						i18n.baseText('settings.security.dataRedaction.scope.description')
 					}}</N8nText>
 				</div>
 				<div :class="$style.settingsContainerAction">
-					<N8nSelect2
-						:model-value="dropdownFloor"
-						:items="floorOptions"
-						size="medium"
-						:disabled="props.managedByEnv || isSaving"
-						data-test-id="redaction-enforcement-scope-select"
-						@update:model-value="onSelectFloor"
-					/>
+					<EnterpriseEdition :features="[EnterpriseEditionFeature.DataRedaction]">
+						<N8nSelect2
+							:model-value="dropdownFloor"
+							:items="floorOptions"
+							size="medium"
+							:disabled="props.managedByEnv || isSaving"
+							data-test-id="redaction-enforcement-scope-select"
+							@update:model-value="onSelectFloor"
+						/>
+						<template #fallback>
+							<N8nTooltip>
+								<N8nSelect2
+									:model-value="dropdownFloor"
+									:items="floorOptions"
+									size="medium"
+									:disabled="true"
+									data-test-id="redaction-enforcement-scope-select"
+								/>
+								<template #content>
+									<I18nT :keypath="TOOLTIP_KEY" tag="span" scope="global">
+										<template #action>
+											<a @click="goToUpgrade">
+												{{
+													i18n.baseText('settings.security.dataRedaction.unlicensed_tooltip.link')
+												}}
+											</a>
+										</template>
+									</I18nT>
+								</template>
+							</N8nTooltip>
+						</template>
+					</EnterpriseEdition>
 				</div>
 			</div>
 			<div :class="$style.settingsCountRow" data-test-id="redaction-enforcement-summary">
@@ -264,10 +308,17 @@ function goToUpgrade() {
 </template>
 
 <style module>
+.headerTitle {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
 .settingsSection {
-	border-radius: var(--radius);
+	border-radius: var(--radius--lg);
 	border: var(--border-width) var(--border-style) var(--color--foreground);
-	margin-bottom: var(--spacing--lg);
+	margin-bottom: var(--spacing--xl);
+	background-color: light-dark(var(--color--neutral-white), transparent);
 }
 
 .settingsContainer {

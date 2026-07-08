@@ -91,7 +91,7 @@ test.describe(
 				{ makeUnique: true },
 			);
 
-			await n8n.page.goto(`/workflow/${workflowId}`);
+			await n8n.start.fromExistingWorkflow(workflowId);
 			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 				'Workflow executed successfully',
 			);

@@ -68,6 +68,15 @@ vi.mock('@/app/utils/nodeIcon', () => {
 	};
 });
 
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	const { useWorkflowsStore } = await import('@/app/stores/workflows.store');
+	return {
+		useWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+		useRouteWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+	};
+});
+
 const mockedPrepareCommunityNodeDetailsViewStack = vi.mocked(prepareCommunityNodeDetailsViewStack);
 const mockedGetNodeIconSource = vi.mocked(getNodeIconSource);
 
@@ -90,7 +99,7 @@ describe('useNodeCreatorStore', () => {
 		mockUseWorkflowDocumentStore = mockedStore(() =>
 			useWorkflowDocumentStore(createWorkflowDocumentId('test-wf-id')),
 		);
-		mockUseNDVStore = mockedStore(useNDVStore);
+		mockUseNDVStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-wf-id'));
 		mockUseViewStacks = mockedStore(useViewStacks);
 
 		mockUseWorkflowsStore.getNodeByName = vi.fn((name?: string) => {
@@ -420,6 +429,54 @@ describe('useNodeCreatorStore', () => {
 			resource: 'contact',
 			operation: 'create',
 			nodes_panel_session_id: getSessionId(now),
+		});
+	});
+
+	describe('openNodeCreatorForActions', () => {
+		const evalNodeType = 'n8n-nodes-base.evaluation';
+		const evalNodeDisplayName = 'Evaluation';
+
+		it('does nothing when node is not found in allNodeCreatorNodes', () => {
+			nodeCreatorStore.mergedNodes = [];
+
+			nodeCreatorStore.openNodeCreatorForActions('wf-id', evalNodeType);
+
+			expect(nodeCreatorStore.isCreateNodeActive).toBe(false);
+		});
+
+		it('stores pending view stack and opens creator when node is found', () => {
+			nodeCreatorStore.mergedNodes = [
+				{ name: evalNodeType, displayName: evalNodeDisplayName } as SimplifiedNodeType,
+			];
+			nodeCreatorStore.actions = {
+				[evalNodeType]: [{ actionKey: 'setOutputs', displayName: 'Set Outputs' }],
+			} as unknown as ActionsRecord<SimplifiedNodeType[]>;
+
+			nodeCreatorStore.openNodeCreatorForActions('wf-id', evalNodeType);
+
+			expect(nodeCreatorStore.isCreateNodeActive).toBe(true);
+			expect(nodeCreatorStore.selectedView).toBe(REGULAR_NODE_CREATOR_VIEW);
+			const pending = nodeCreatorStore.consumePendingInitialViewStack();
+			expect(pending).toMatchObject({
+				mode: 'actions',
+				rootView: 'Regular',
+				subcategory: '*',
+				title: evalNodeDisplayName,
+			});
+		});
+
+		it('consumePendingInitialViewStack returns stack and clears it', () => {
+			nodeCreatorStore.mergedNodes = [
+				{ name: evalNodeType, displayName: evalNodeDisplayName } as SimplifiedNodeType,
+			];
+			nodeCreatorStore.actions = {};
+
+			nodeCreatorStore.openNodeCreatorForActions('wf-id', evalNodeType);
+
+			const first = nodeCreatorStore.consumePendingInitialViewStack();
+			expect(first).not.toBeNull();
+			const second = nodeCreatorStore.consumePendingInitialViewStack();
+			expect(second).toBeNull();
 		});
 	});
 

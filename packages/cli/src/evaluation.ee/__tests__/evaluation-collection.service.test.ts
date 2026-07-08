@@ -12,7 +12,8 @@ import type {
 	WorkflowPublishedVersion,
 	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -99,14 +100,14 @@ function makePayload(
 
 describe('EvaluationCollectionService', () => {
 	let service: EvaluationCollectionService;
-	let collectionRepo: jest.Mocked<EvaluationCollectionRepository>;
-	let testRunRepo: jest.Mocked<TestRunRepository>;
-	let evalConfigRepo: jest.Mocked<EvaluationConfigRepository>;
-	let workflowHistoryRepo: jest.Mocked<WorkflowHistoryRepository>;
-	let publishedVersionRepo: jest.Mocked<WorkflowPublishedVersionRepository>;
-	let workflowHistoryService: jest.Mocked<WorkflowHistoryService>;
-	let testRunnerService: jest.Mocked<TestRunnerService>;
-	let telemetry: jest.Mocked<Telemetry>;
+	let collectionRepo: Mocked<EvaluationCollectionRepository>;
+	let testRunRepo: Mocked<TestRunRepository>;
+	let evalConfigRepo: Mocked<EvaluationConfigRepository>;
+	let workflowHistoryRepo: Mocked<WorkflowHistoryRepository>;
+	let publishedVersionRepo: Mocked<WorkflowPublishedVersionRepository>;
+	let workflowHistoryService: Mocked<WorkflowHistoryService>;
+	let testRunnerService: Mocked<TestRunnerService>;
+	let telemetry: Mocked<Telemetry>;
 
 	beforeEach(() => {
 		collectionRepo = mock<EvaluationCollectionRepository>();

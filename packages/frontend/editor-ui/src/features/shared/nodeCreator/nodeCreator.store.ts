@@ -22,6 +22,7 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useRouteWorkflowId } from '@/app/composables/useWorkflowId';
 import type { TelemetryNdvType } from '@/app/types/telemetry';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import { isVueFlowConnection } from '@/app/utils/typeGuards';
@@ -38,7 +39,7 @@ import type { IDataObject, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes, isCommunityPackageName } from 'n8n-workflow';
 import { computed, nextTick, ref } from 'vue';
 import { useGetNodeCreatorFilter } from './composables/useGetNodeCreatorFilter';
-import { useViewStacks } from './composables/useViewStacks';
+import { useViewStacks, type ViewStack } from './composables/useViewStacks';
 import { prepareCommunityNodeDetailsViewStack, transformNodeType } from './nodeCreator.utils';
 import {
 	createWorkflowDocumentId,
@@ -46,7 +47,8 @@ import {
 } from '@/app/stores/workflowDocument.store';
 
 export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
-	const ndvStore = useNDVStore();
+	const routeWorkflowId = useRouteWorkflowId();
+	const ndvStore = computed(() => useNDVStore(createWorkflowDocumentId(routeWorkflowId.value)));
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const telemetry = useTelemetry();
@@ -62,6 +64,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const isCreateNodeActive = ref<boolean>(false);
 
 	const openingContext = ref<null | 'replacement'>(null);
+	const pendingInitialViewStack = ref<ViewStack | null>(null);
 
 	const nodePanelSessionId = ref<string>('');
 
@@ -102,13 +105,13 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		connectionIndex?: number;
 		workflowId: string;
 	}) {
-		const nodeName = node ?? ndvStore.activeNodeName;
+		const nodeName = node ?? ndvStore.value.activeNodeName;
 		const nodeData = nodeName
 			? (useWorkflowDocumentStore(createWorkflowDocumentId(workflowId)).getNodeByName(nodeName) ??
 				null)
 			: null;
 
-		ndvStore.unsetActiveNodeName();
+		ndvStore.value.unsetActiveNodeName();
 
 		setTimeout(() => {
 			if (creatorView) {
@@ -235,7 +238,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		if (!nodeData) {
 			return;
 		}
-		ndvStore.unsetActiveNodeName();
+		ndvStore.value.unsetActiveNodeName();
 		const nodeType =
 			nodeTypesStore.getNodeType(nodeData?.type) ??
 			nodeTypesStore.communityNodeType(nodeData?.type)?.nodeDescription;
@@ -264,7 +267,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	}
 
 	function openNodeCreatorForTriggerNodes(workflowId: string, source: NodeCreatorOpenSource) {
-		ndvStore.unsetActiveNodeName();
+		ndvStore.value.unsetActiveNodeName();
 		setSelectedView(TRIGGER_NODE_CREATOR_VIEW);
 		setNodeCreatorState({
 			workflowId,
@@ -275,7 +278,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	}
 
 	function openNodeCreatorForRegularNodes(workflowId: string, source: NodeCreatorOpenSource) {
-		ndvStore.unsetActiveNodeName();
+		ndvStore.value.unsetActiveNodeName();
 		setSelectedView(REGULAR_NODE_CREATOR_VIEW);
 		setNodeCreatorState({
 			workflowId,
@@ -302,31 +305,31 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 			transformNodeType(a, actionNode.properties.displayName, 'action'),
 		);
 
-		ndvStore.unsetActiveNodeName();
+		ndvStore.value.unsetActiveNodeName();
 		setSelectedView(REGULAR_NODE_CREATOR_VIEW);
+		pendingInitialViewStack.value = {
+			subcategory: '*',
+			title: actionNode.properties.displayName,
+			nodeIcon: {
+				type: 'icon',
+				name: 'check-check',
+			},
+			rootView: 'Regular',
+			mode: 'actions',
+			items: transformedActions,
+		};
 		setNodeCreatorState({
 			workflowId,
 			source: eventSource,
 			createNodeActive: true,
 			nodeCreatorView: REGULAR_NODE_CREATOR_VIEW,
 		});
+	}
 
-		setTimeout(() => {
-			useViewStacks().pushViewStack(
-				{
-					subcategory: '*',
-					title: actionNode.properties.displayName,
-					nodeIcon: {
-						type: 'icon',
-						name: 'check-check',
-					},
-					rootView: 'Regular',
-					mode: 'actions',
-					items: transformedActions,
-				},
-				{ resetStacks: true },
-			);
-		});
+	function consumePendingInitialViewStack(): ViewStack | null {
+		const stack = pendingInitialViewStack.value;
+		pendingInitialViewStack.value = null;
+		return stack;
 	}
 
 	function resetNodesPanelSession() {
@@ -487,6 +490,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		openNodeCreatorForTriggerNodes,
 		openNodeCreatorForRegularNodes,
 		openNodeCreatorForActions,
+		consumePendingInitialViewStack,
 		onCreatorOpened,
 		onNodeFilterChanged,
 		onCategoryExpanded,

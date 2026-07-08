@@ -142,6 +142,15 @@
 		"PUT /workflows/{id}/tags": {
 			"status": "gap"
 		},
+		"GET /workflows/{id}/test-runs": {
+			"status": "gap"
+		},
+		"GET /workflows/{id}/test-runs/{runId}": {
+			"status": "gap"
+		},
+		"GET /workflows/{id}/test-runs/{runId}/test-cases": {
+			"status": "gap"
+		},
 		"GET /users": {
 			"status": "gap"
 		},
@@ -200,6 +209,9 @@
 			"status": "gap"
 		},
 		"DELETE /data-tables/{dataTableId}/rows/delete": {
+			"status": "gap"
+		},
+		"DELETE /data-tables/{dataTableId}/rows/clear": {
 			"status": "gap"
 		},
 		"GET /data-tables/{dataTableId}/columns": {
@@ -263,6 +275,9 @@
 			"status": "gap"
 		},
 		"POST /n8n-packages/export": {
+			"status": "gap"
+		},
+		"POST /n8n-packages/import": {
 			"status": "gap"
 		}
 	}

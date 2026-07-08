@@ -8,7 +8,19 @@ import { InstanceSettings } from 'n8n-core';
 @BackendModule({ name: 'agents' })
 export class AgentsModule implements ModuleInterface {
 	async init() {
+		await import('./agents-catalog.controller');
+		await import('./agent-threads.controller');
 		await import('./agents.controller');
+		await import('./agents-config.controller');
+		await import('./agents-skills.controller');
+		await import('./agent-knowledge.controller');
+		await import('./agent-publish.controller');
+		await import('./agent-chat.controller');
+		await import('./agent-builder.controller');
+		await import('./agent-integrations.controller');
+		await import('./agent-tasks.controller');
+		await import('./agent-sandbox.controller');
+		await import('./agents-list.controller');
 		await import('./builder/agents-builder-settings.controller');
 
 		const { AgentsService } = await import('./agents.service');
@@ -21,6 +33,9 @@ export class AgentsModule implements ModuleInterface {
 
 		const { AgentExecutionService } = await import('./agent-execution.service');
 		Container.get(AgentExecutionService);
+
+		const { AgentRuntimeCacheService } = await import('./agent-runtime-cache.service');
+		Container.get(AgentRuntimeCacheService);
 
 		const { AgentHistoryRepository } = await import('./repositories/agent-history.repository');
 		Container.get(AgentHistoryRepository);
@@ -36,14 +51,15 @@ export class AgentsModule implements ModuleInterface {
 		const { SlackIntegration } = await import('./integrations/platforms/slack-integration');
 		const { TelegramIntegration } = await import('./integrations/platforms/telegram-integration');
 		const { LinearIntegration } = await import('./integrations/platforms/linear-integration');
+		const { N8nChatIntegration } = await import('./integrations/platforms/n8n-chat-integration');
 		const registry = Container.get(ChatIntegrationRegistry);
 		registry.register(Container.get(SlackIntegration));
 		registry.register(Container.get(TelegramIntegration));
 		registry.register(Container.get(LinearIntegration));
+		registry.register(Container.get(N8nChatIntegration));
 
-		// Register Chat and Schedule services. Importing the services here also
-		// registers any @OnLeaderTakeover/@OnLeaderStepdown decorators with
-		// MultiMainMetadata before start.ts:295 wires up the listeners.
+		// Reconnect Chat and Task services on startup so this main resumes its
+		// integrations and tasks for the role it currently holds.
 		//
 		// Chat integrations run on every main: webhook-driven platforms (Slack,
 		// Linear, Telegram in webhook mode) need to be connected on every main
@@ -51,12 +67,12 @@ export class AgentsModule implements ModuleInterface {
 		// (Telegram in polling mode) are filtered to leader-only inside the
 		// service via `AgentChatIntegration.requiresLeader()`.
 		//
-		// Schedules remain leader-only by design — a cron firing on multiple
+		// Tasks remain leader-only by design — a cron firing on multiple
 		// mains would run the agent twice for the same tick.
-		const { AgentScheduleService } = await import('./integrations/agent-schedule.service');
 		const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
-		const scheduleService = Container.get(AgentScheduleService);
+		const { AgentTaskService } = await import('./agent-task.service');
 		const chatService = Container.get(ChatIntegrationService);
+		const taskService = Container.get(AgentTaskService);
 		const logger = Container.get(Logger);
 		const instanceSettings = Container.get(InstanceSettings);
 		void chatService.reconnectAll().catch((error) => {
@@ -65,27 +81,30 @@ export class AgentsModule implements ModuleInterface {
 			});
 		});
 		if (instanceSettings.isLeader) {
-			void scheduleService.reconnectAll().catch((error) => {
-				logger.error('[Agents] Failed to reconnect schedules on startup', {
+			void taskService.reconnectAll().catch((error) => {
+				logger.error('[Agents] Failed to reconnect tasks on startup', {
 					error: error instanceof Error ? error.message : String(error),
 				});
 			});
 		} else {
-			logger.debug('[Agents] Skipping schedule reconnect on startup — not leader');
+			logger.debug('[Agents] Skipping task reconnect on startup — not leader');
 		}
 	}
 
-	// eslint-disable-next-line @typescript-eslint/require-await -- module contract requires async
 	async settings() {
 		const config = Container.get(AgentsConfig);
+		const { isAgentKnowledgeBaseEnabled } = await import('./agent-knowledge-gate');
 		return {
 			enabled: true,
 			modules: [...config.modules],
+			knowledgeBaseEnabled: isAgentKnowledgeBaseEnabled(config),
 		};
 	}
 
 	async entities() {
 		const { Agent } = await import('./entities/agent.entity');
+		const { AgentFile } = await import('./entities/agent-file.entity');
+		const { AgentChatSubscription } = await import('./entities/agent-chat-subscription.entity');
 		const { AgentCheckpoint } = await import('./entities/agent-checkpoint.entity');
 		const { AgentResourceEntity } = await import('./entities/agent-resource.entity');
 		const { AgentThreadEntity } = await import('./entities/agent-thread.entity');
@@ -93,6 +112,9 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentExecutionThread } = await import('./entities/agent-execution-thread.entity');
 		const { AgentExecution } = await import('./entities/agent-execution.entity');
 		const { AgentHistory } = await import('./entities/agent-history.entity');
+		const { AgentTask } = await import('./entities/agent-task.entity');
+		const { AgentTaskRunLock } = await import('./entities/agent-task-run-lock.entity');
+		const { AgentTaskSnapshot } = await import('./entities/agent-task-snapshot.entity');
 		const { AgentObservationEntity } = await import('./entities/agent-observation.entity');
 		const { AgentObservationCursorEntity } = await import(
 			'./entities/agent-observation-cursor.entity'
@@ -111,6 +133,8 @@ export class AgentsModule implements ModuleInterface {
 
 		return [
 			Agent,
+			AgentFile,
+			AgentChatSubscription,
 			AgentCheckpoint,
 			AgentResourceEntity,
 			AgentThreadEntity,
@@ -118,6 +142,9 @@ export class AgentsModule implements ModuleInterface {
 			AgentExecutionThread,
 			AgentExecution,
 			AgentHistory,
+			AgentTask,
+			AgentTaskRunLock,
+			AgentTaskSnapshot,
 			AgentObservationEntity,
 			AgentObservationCursorEntity,
 			AgentObservationLockEntity,

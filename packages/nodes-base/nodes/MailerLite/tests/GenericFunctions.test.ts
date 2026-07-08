@@ -11,18 +11,19 @@ import {
 	mailerliteApiRequest,
 	mailerliteApiRequestAllItems,
 } from '../GenericFunctions';
+import type { Mock } from 'vitest';
 
 describe('MailerLite -> mailerliteApiRequest', () => {
 	let mockExecuteFunctions: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions;
 
 	const setupMockFunctions = (typeVersion: number) => {
 		mockExecuteFunctions = {
-			getNode: jest.fn().mockReturnValue({ typeVersion }),
+			getNode: vi.fn().mockReturnValue({ typeVersion }),
 			helpers: {
-				httpRequestWithAuthentication: jest.fn(),
+				httpRequestWithAuthentication: vi.fn(),
 			},
 		} as unknown as IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions;
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	};
 
 	beforeEach(() => {
@@ -37,7 +38,7 @@ describe('MailerLite -> mailerliteApiRequest', () => {
 
 		const responseData = { success: true };
 
-		(mockExecuteFunctions.helpers.httpRequestWithAuthentication as jest.Mock).mockResolvedValue(
+		(mockExecuteFunctions.helpers.httpRequestWithAuthentication as Mock).mockResolvedValue(
 			responseData,
 		);
 
@@ -65,7 +66,7 @@ describe('MailerLite -> mailerliteApiRequest', () => {
 
 		const responseData = { success: true };
 
-		(mockExecuteFunctions.helpers.httpRequestWithAuthentication as jest.Mock).mockResolvedValue(
+		(mockExecuteFunctions.helpers.httpRequestWithAuthentication as Mock).mockResolvedValue(
 			responseData,
 		);
 
@@ -91,7 +92,7 @@ describe('MailerLite -> mailerliteApiRequest', () => {
 
 		const responseData = { success: true };
 
-		(mockExecuteFunctions.helpers.httpRequestWithAuthentication as jest.Mock).mockResolvedValue(
+		(mockExecuteFunctions.helpers.httpRequestWithAuthentication as Mock).mockResolvedValue(
 			responseData,
 		);
 
@@ -117,7 +118,7 @@ describe('MailerLite -> mailerliteApiRequest', () => {
 
 		const errorResponse = { message: 'Error' };
 
-		(mockExecuteFunctions.helpers.httpRequestWithAuthentication as jest.Mock).mockRejectedValue(
+		(mockExecuteFunctions.helpers.httpRequestWithAuthentication as Mock).mockRejectedValue(
 			errorResponse,
 		);
 
@@ -132,12 +133,12 @@ describe('MailerLite -> mailerliteApiRequestAllItems', () => {
 
 	const setupMockFunctions = (typeVersion: number) => {
 		mockExecuteFunctions = {
-			getNode: jest.fn().mockReturnValue({ typeVersion }),
+			getNode: vi.fn().mockReturnValue({ typeVersion }),
 			helpers: {
-				httpRequestWithAuthentication: jest.fn(),
+				httpRequestWithAuthentication: vi.fn(),
 			},
 		} as unknown as IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions;
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	};
 
 	beforeEach(() => {
@@ -153,7 +154,7 @@ describe('MailerLite -> mailerliteApiRequestAllItems', () => {
 		const responseDataPage1 = [{ id: 1 }, { id: 2 }];
 		const responseDataPage2 = [{ id: 3 }, { id: 4 }];
 
-		(mockExecuteFunctions.helpers.httpRequestWithAuthentication as jest.Mock)
+		(mockExecuteFunctions.helpers.httpRequestWithAuthentication as Mock)
 			.mockResolvedValueOnce(responseDataPage1)
 			.mockResolvedValueOnce(responseDataPage2)
 			.mockResolvedValueOnce([]);
@@ -188,7 +189,7 @@ describe('MailerLite -> mailerliteApiRequestAllItems', () => {
 			links: { next: null },
 		};
 
-		(mockExecuteFunctions.helpers.httpRequestWithAuthentication as jest.Mock)
+		(mockExecuteFunctions.helpers.httpRequestWithAuthentication as Mock)
 			.mockResolvedValueOnce(responseDataPage1)
 			.mockResolvedValueOnce(responseDataPage2);
 
@@ -218,14 +219,14 @@ describe('MailerLite -> getCustomFields', () => {
 
 	const setupMockFunctions = (typeVersion: number) => {
 		mockExecuteFunctions = {
-			getNode: jest.fn().mockReturnValue({ typeVersion }),
+			getNode: vi.fn().mockReturnValue({ typeVersion }),
 			helpers: {
-				httpRequestWithAuthentication: jest
+				httpRequestWithAuthentication: vi
 					.fn()
 					.mockResolvedValue(typeVersion === 1 ? v1FieldResponse : v2FieldResponse),
 			},
 		} as unknown as ILoadOptionsFunctions;
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	};
 
 	beforeEach(() => {

@@ -5,13 +5,15 @@ import { ExecutionRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
-import { BINARY_ENCODING, sleep, jsonStringify, ensureError, UnexpectedError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { BINARY_ENCODING, sleep, jsonStringify, UnexpectedError } from 'n8n-workflow';
 import type { IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
 import assert, { strict } from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
 import { HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { EventService } from '@/events/event.service';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { assertNever } from '@/utils';
 
 import { JOB_TYPE_NAME, QUEUE_NAME } from './constants';
@@ -42,6 +44,7 @@ export class ScalingService {
 		private readonly jobProcessor: JobProcessor,
 		private readonly globalConfig: GlobalConfig,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly eventService: EventService,
 	) {
@@ -447,7 +450,7 @@ export class ScalingService {
 		try {
 			if (mcpType === 'service') {
 				// For MCP Service, fetch execution data from DB
-				const executionData = await this.executionRepository.findSingleExecution(executionId, {
+				const executionData = await this.executionPersistence.findSingleExecution(executionId, {
 					includeData: true,
 					unflattenData: true,
 				});

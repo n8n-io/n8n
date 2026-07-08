@@ -1,5 +1,5 @@
-import type { AgentSseEvent } from '@n8n/api-types';
 import type { StreamChunk } from '@n8n/agents';
+import type { AgentSseEvent } from '@n8n/api-types';
 
 import { pumpChunks } from '../agent-sse-stream';
 
@@ -23,9 +23,9 @@ async function collectEvents(chunks: StreamChunk[]): Promise<AgentSseEvent[]> {
 // stringifyError — tested through pumpChunks / emitChunkEvents
 // ---------------------------------------------------------------------------
 
-jest.mock('n8n-workflow', () => ({
+vi.mock('n8n-workflow', () => ({
 	LoggerProxy: {
-		warn: jest.fn(),
+		warn: vi.fn(),
 	},
 }));
 
@@ -63,5 +63,64 @@ describe('agent-sse-stream — stringifyError (via pumpChunks error chunk)', () 
 		const events = await collectEvents([{ type: 'error', error: null }]);
 		// null passes the typeof === 'object' branch → JSON.stringify(null) = 'null'
 		expect(events).toEqual([{ type: 'error', message: 'null' }]);
+	});
+});
+
+describe('agent-sse-stream — stream completion', () => {
+	it('completes after the runtime stream closes even when a finish chunk is present', async () => {
+		const events = await collectEvents([
+			{ type: 'text-delta', id: 't-1', delta: 'hello' },
+			{ type: 'text-end', id: 't-1' },
+			{ type: 'finish', finishReason: 'stop' },
+		]);
+
+		expect(events).toEqual([
+			{ type: 'text-delta', id: 't-1', delta: 'hello' },
+			{ type: 'text-end', id: 't-1' },
+		]);
+	});
+});
+
+describe('agent-sse-stream — tool execution lifecycle chunks', () => {
+	it('forwards tool-execution-start with its server startTime', async () => {
+		const events = await collectEvents([
+			{
+				type: 'tool-execution-start',
+				toolCallId: 'tc-1',
+				toolName: 'delegate_subagent',
+				startTime: 1_000,
+			},
+		]);
+
+		expect(events).toEqual([
+			{
+				type: 'tool-execution-start',
+				toolCallId: 'tc-1',
+				toolName: 'delegate_subagent',
+				startTime: 1_000,
+			},
+		]);
+	});
+
+	it('forwards tool-execution-end with its server endTime', async () => {
+		const events = await collectEvents([
+			{
+				type: 'tool-execution-end',
+				toolCallId: 'tc-1',
+				toolName: 'delegate_subagent',
+				isError: false,
+				endTime: 1_014,
+			},
+		]);
+
+		expect(events).toEqual([
+			{
+				type: 'tool-execution-end',
+				toolCallId: 'tc-1',
+				toolName: 'delegate_subagent',
+				isError: false,
+				endTime: 1_014,
+			},
+		]);
 	});
 });

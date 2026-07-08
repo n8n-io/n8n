@@ -1,11 +1,12 @@
 {
   "name": "@n8n/engine",
-  "version": "0.3.0",
+  "version": "0.10.0",
   "description": "n8n workflow execution engine (v2)",
   "scripts": {
     "clean": "rimraf dist .turbo compiled",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "build:docker": "pnpm build && rimraf compiled && DOCKER_BUILD=true NODE_ENV=production pnpm --filter . --prod --legacy deploy --no-optional compiled && docker build -f ../../../docker/images/engine/Dockerfile -t n8n-engine:local .",
     "start": "node dist/serve.js",
     "format": "biome format --write src",
@@ -25,7 +26,7 @@
   "dependencies": {
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
-    "express": "5.1.0",
+    "express": "catalog:",
     "reflect-metadata": "catalog:"
   },
   "devDependencies": {
@@ -35,5 +36,6 @@
     "@types/supertest": "^6.0.3",
     "supertest": "^7.1.1",
     "vitest": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

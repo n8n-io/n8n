@@ -7,6 +7,8 @@ import { ConvertToSubworkflowModal } from './components/ConvertToSubworkflowModa
 import { CredentialModal } from './components/CredentialModal';
 import { FocusPanel } from './components/FocusPanel';
 import { LogsPanel } from './components/LogsPanel';
+import { ManualChatModal } from './components/ManualChatModal';
+import { MessageBox } from './components/messageBoxLocators';
 import { NodeCreator } from './components/NodeCreator';
 import { SaveChangesModal } from './components/SaveChangesModal';
 import { StickyComponent } from './components/StickyComponent';
@@ -19,8 +21,9 @@ export class CanvasPage extends BasePage {
 
 	readonly sticky = new StickyComponent(this.page);
 	readonly logsPanel = new LogsPanel(this.page.getByTestId('logs-panel'));
+	readonly manualChat = new ManualChatModal(this.page.getByTestId('canvas-chat'));
 	readonly focusPanel = new FocusPanel(this.page.getByTestId('focus-panel'));
-	readonly credentialModal = new CredentialModal(this.page.getByTestId('editCredential-modal'));
+	readonly credentialModal = CredentialModal.fromPage(this.page);
 	readonly nodeCreator = new NodeCreator(this.page);
 	readonly saveChangesModal = new SaveChangesModal(this.page.locator('.el-overlay'));
 	readonly tagsManagerModal = new TagsManagerModal(
@@ -194,6 +197,16 @@ export class CanvasPage extends BasePage {
 		await this.nodeByName(nodeName).dblclick();
 	}
 
+	/**
+	 * Reads the test form URL (`/form-test/<id>`) shown in the open Form Trigger
+	 * NDV. Open the node first (e.g. via {@link openNode}).
+	 */
+	async getTestFormUrl(): Promise<string> {
+		const locator = this.page.getByText(/form-test\/[a-f0-9-]+/);
+		await expect(locator).toHaveText(/form-test\/[a-f0-9-]+/);
+		return (await locator.textContent()) ?? '';
+	}
+
 	getRenamePrompt(): Locator {
 		return this.page.locator('.rename-prompt');
 	}
@@ -305,7 +318,6 @@ export class CanvasPage extends BasePage {
 	async openShareModal(): Promise<void> {
 		await this.clickByTestId('workflow-menu');
 		await this.clickByTestId('workflow-menu-item-share');
-		await this.page.getByTestId('workflowShare-modal').waitFor({ state: 'visible' });
 	}
 
 	async clickZoomToFitButton(): Promise<void> {
@@ -377,6 +389,10 @@ export class CanvasPage extends BasePage {
 	// Tag dropdown getters
 	getVisibleDropdown(): Locator {
 		return this.page.locator('.el-select-dropdown:visible');
+	}
+
+	getTagDropdownItems(): Locator {
+		return this.getVisibleDropdown().locator('li');
 	}
 
 	getTagItemsInDropdown(): Locator {
@@ -467,6 +483,22 @@ export class CanvasPage extends BasePage {
 		await this.getProductionChecklistIgnoreAllButton().click();
 	}
 
+	async ignoreProductionChecklistAction(index = 0): Promise<void> {
+		await this.getProductionChecklistActionItem().nth(index).getByTitle('Ignore').click();
+	}
+
+	getProductionChecklistActionCompletedIcon(index = 0): Locator {
+		return this.getProductionChecklistActionItem()
+			.nth(index)
+			.locator('svg[data-icon="circle-check"]');
+	}
+
+	async confirmIgnoreAllForAllWorkflows(): Promise<void> {
+		const messageBox = new MessageBox(this.page);
+		await expect(messageBox.root).toBeVisible();
+		await messageBox.buttonByText(/ignore for all workflows/i).click();
+	}
+
 	async duplicateNode(nodeName: string): Promise<void> {
 		await this.nodeByName(nodeName).click({ button: 'right' });
 		await this.clickContextMenuAction('duplicate');
@@ -549,11 +581,28 @@ export class CanvasPage extends BasePage {
 
 	// Actions
 
-	async waitForBlankCanvasReady(): Promise<void> {
+	/**
+	 * Wait for the workflow canvas to finish loading and become interactive.
+	 *
+	 * While the editor loads, `LoadingView` renders a full-screen overlay
+	 * (`node-view-loader`) on top of the canvas. The canvas controls (e.g.
+	 * zoom-to-fit) are already in the DOM and report as stable, but the overlay
+	 * intercepts pointer events, so clicking before it clears hangs until the
+	 * action times out. Always wait for the canvas to be ready before
+	 * interacting with it after a navigation.
+	 */
+	async waitForCanvasReady(): Promise<void> {
 		await expect(this.canvasPane()).toBeVisible();
 		await expect(this.getNodeViewLoader()).toBeHidden();
 		await expect(this.getLoadingMask()).toBeHidden();
-		await expect(this.getChoicePrompt()).toBeVisible();
+	}
+
+	async waitForBlankCanvasReady(): Promise<void> {
+		await this.waitForCanvasReady();
+		// A blank canvas shows the AI choice prompt when AI Builder is enabled,
+		// otherwise the default add-first-step button. Accept either so this works
+		// in both environments.
+		await expect(this.getChoicePrompt().or(this.getCanvasPlusButton())).toBeVisible();
 	}
 
 	async addInitialNodeToCanvas(nodeName: string): Promise<void> {
@@ -601,6 +650,12 @@ export class CanvasPage extends BasePage {
 	connectionToolbarBetweenNodes(sourceNodeName: string, targetNodeName: string): Locator {
 		return this.page.locator(
 			`[data-test-id="edge-label"][data-source-node-name="${sourceNodeName}"][data-target-node-name="${targetNodeName}"] [data-test-id="canvas-edge-toolbar"]`,
+		);
+	}
+
+	getAddConnectionButtonBetweenNodes(sourceNodeName: string, targetNodeName: string): Locator {
+		return this.connectionToolbarBetweenNodes(sourceNodeName, targetNodeName).getByTestId(
+			'add-connection-button',
 		);
 	}
 
@@ -720,21 +775,19 @@ export class CanvasPage extends BasePage {
 	}
 
 	getManualChatModal(): Locator {
-		return this.page.getByTestId('canvas-chat');
+		return this.manualChat.get();
 	}
 
 	getManualChatInput(): Locator {
-		return this.getManualChatModal().locator('.chat-inputs textarea');
+		return this.manualChat.getInput();
 	}
 
 	getManualChatMessages(): Locator {
-		return this.getManualChatModal().locator('.chat-messages-list .chat-message');
+		return this.manualChat.getMessages();
 	}
 
 	getManualChatLatestBotMessage(): Locator {
-		return this.getManualChatModal()
-			.locator('.chat-messages-list .chat-message.chat-message-from-bot')
-			.last();
+		return this.manualChat.getLatestBotMessage();
 	}
 
 	getWaitingNodes(): Locator {
@@ -786,7 +839,7 @@ export class CanvasPage extends BasePage {
 	}
 
 	getChatPanel(): Locator {
-		return this.page.getByTestId('canvas-chat');
+		return this.manualChat.get();
 	}
 
 	// Input plus endpoints (to add supplemental nodes to parent inputs)
@@ -913,6 +966,17 @@ export class CanvasPage extends BasePage {
 
 	getAllNodeSuccessIndicators(): Locator {
 		return this.page.getByTestId('canvas-node-status-success');
+	}
+
+	/**
+	 * Nodes that show either a success OR a pinned indicator after execution.
+	 * The two test IDs are mutually exclusive in `CanvasNodeStatusIcons` (pinned
+	 * wins), so the combined count equals "nodes traversed during execution".
+	 */
+	getAllNodeExecutedIndicators(): Locator {
+		return this.page.locator(
+			'[data-test-id="canvas-node-status-success"], [data-test-id="canvas-node-status-pinned"]',
+		);
 	}
 
 	getCanvasHandlePlusWrapperByName(nodeName: string): Locator {
@@ -1050,6 +1114,45 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('workflow-name-input');
 	}
 
+	getTidyUpButton(): Locator {
+		return this.page.getByTestId('tidy-up-button');
+	}
+
+	async clickTidyUpButton(): Promise<void> {
+		await this.getTidyUpButton().click();
+	}
+
+	async duplicateSelectedNodes(): Promise<void> {
+		await this.page.keyboard.press('ControlOrMeta+d');
+	}
+
+	async nudgeSelectedNodes(
+		direction: 'left' | 'right' | 'up' | 'down',
+		repeats = 1,
+	): Promise<void> {
+		const keyMap = {
+			left: 'ArrowLeft',
+			right: 'ArrowRight',
+			up: 'ArrowUp',
+			down: 'ArrowDown',
+		};
+		for (let press = 0; press < repeats; press++) {
+			await this.page.keyboard.press(keyMap[direction]);
+		}
+	}
+
+	async panBy(deltaX: number, deltaY: number): Promise<void> {
+		const pane = this.canvasPane();
+		const box = await pane.boundingBox();
+		if (!box) throw new Error('Canvas pane not visible');
+		const startX = box.x + box.width / 2;
+		const startY = box.y + box.height / 2;
+		await this.page.mouse.move(startX, startY);
+		await this.page.mouse.down({ button: 'middle' });
+		await this.page.mouse.move(startX + deltaX, startY + deltaY, { steps: 20 });
+		await this.page.mouse.up({ button: 'middle' });
+	}
+
 	// Workflow History methods
 	getWorkflowHistoryButton(): Locator {
 		return this.page.getByTestId('workflow-history-button');
@@ -1104,6 +1207,24 @@ export class CanvasPage extends BasePage {
 		return box;
 	}
 
+	async dragNodeGroupFromTitleBar(
+		title: string,
+		deltaX: number,
+		deltaY: number,
+		grabFraction = 0.9,
+	): Promise<void> {
+		const box = await this.getNodeGroupTitle(title).boundingBox();
+		if (!box) throw new Error(`Node group title "${title}" not found or not visible`);
+
+		const startX = box.x + box.width * grabFraction;
+		const startY = box.y + box.height / 2;
+
+		await this.page.mouse.move(startX, startY);
+		await this.page.mouse.down();
+		await this.page.mouse.move(startX + deltaX, startY + deltaY, { steps: 10 });
+		await this.page.mouse.up();
+	}
+
 	async editNodeGroupTitle(oldTitle: string, newTitle: string, commit: 'enter' | 'blur' = 'enter') {
 		const group = await this.lockNodeGroupByTitle(oldTitle);
 		await group.getByTestId('inline-edit-preview').click();
@@ -1130,6 +1251,18 @@ export class CanvasPage extends BasePage {
 		const groupId = await this.getNodeGroupByTitle(title).getAttribute('data-group-id');
 		if (!groupId) throw new Error(`Node group with title "${title}" not found`);
 		return this.page.locator(`[data-test-id="canvas-node-group"][data-group-id="${groupId}"]`);
+	}
+
+	groupToggleButton(title: string): Locator {
+		return this.getNodeGroupByTitle(title).getByTestId('canvas-node-group-toggle');
+	}
+
+	getNodeGroupFrame(title: string): Locator {
+		return this.getNodeGroupByTitle(title).getByTestId('canvas-node-group-frame');
+	}
+
+	async toggleNodeGroup(title: string) {
+		await this.groupToggleButton(title).click();
 	}
 
 	async selectNodes(nodeNames: string[]): Promise<void> {

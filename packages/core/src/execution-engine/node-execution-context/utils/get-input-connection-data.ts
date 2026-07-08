@@ -23,7 +23,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
+	UnexpectedError,
 	ExecutionBaseError,
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -185,8 +185,20 @@ function mapResult(result?: NodeOutput) {
 	if (result === undefined) {
 		response = undefined;
 	} else if (isEngineRequest(result)) {
-		response =
-			'Error: The Tool attempted to return an engine request, which is not supported in Agents';
+		// Tools running inside `makeHandleToolInvocation` cannot relay an
+		// `EngineRequest` to the workflow engine — the request/response loop
+		// only runs at top level. Sub-agent (`AgentToolV3`) resolves its own
+		// requests inline, so reaching this branch means another tool
+		// returned an EngineRequest from inside a parent agent's tool
+		// callback. Throw a clear UserError so the failure is loud and the
+		// builder gets an actionable message.
+		throw new UserError(
+			'A connected tool returned an engine request to its parent agent, which is only supported for top-level node execution.',
+			{
+				description:
+					'If you are seeing this from a nested AgentToolV3 sub-agent, update n8n — recent versions resolve sub-agent engine requests inline.',
+			},
+		);
 	} else if (containsBinaryData(result) && !containsDataThatIsUsefulToTheAgent(result)) {
 		response = 'Error: The Tool attempted to return binary data, which is not supported in Agents';
 	} else {
@@ -471,10 +483,16 @@ export async function getInputConnectionData(
 						connectedNodeType,
 						runExecutionData,
 					),
+					// Pass a context so n8n expressions in the user-provided
+					// `toolDescription` are evaluated against the upstream input
+					// data (matches the behaviour of nodes that supply their own
+					// tool, such as `toolWorkflow`).
+					context: contextFactory(parentRunIndex, parentInputData),
+					itemIndex,
 				});
 				nodes.push(supplyData);
 			} else {
-				throw new ApplicationError('Node does not have a `supplyData` method defined', {
+				throw new UnexpectedError('Node does not have a `supplyData` method defined', {
 					extra: { nodeName: connectedNode.name },
 				});
 			}

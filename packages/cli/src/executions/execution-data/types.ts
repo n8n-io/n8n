@@ -1,5 +1,8 @@
-import type { EntityManager } from '@n8n/db';
+import type { ExecutionDataStorageLocation } from '@n8n/db';
 import type { IWorkflowBase } from 'n8n-workflow';
+
+/** Storage locations served by {@link ExecutionDataStore} implementations. `db` is handled natively by `DbStore`. */
+export type BlobStorageLocation = Exclude<ExecutionDataStorageLocation, 'db'>;
 
 export type ExecutionRef = {
 	workflowId: string;
@@ -12,7 +15,7 @@ export function createExecutionRef(workflowId: string, executionId: string): Exe
 
 export type WorkflowSnapshot = Pick<
 	IWorkflowBase,
-	'id' | 'name' | 'nodes' | 'connections' | 'settings'
+	'id' | 'name' | 'nodes' | 'connections' | 'settings' | 'nodeGroups'
 >;
 
 export type ExecutionDataPayload = {
@@ -25,14 +28,22 @@ export type ExecutionDataBundle = ExecutionDataPayload & {
 	version: 1;
 };
 
+/** The workflow-snapshot part of a payload, without the run data. */
+export type BundleWorkflowSnapshot = Pick<
+	ExecutionDataPayload,
+	'workflowData' | 'workflowVersionId'
+>;
+
 /**
- * Persistence operations for execution data bundles. Methods which accept an
- * optional `tx` (`EntityManager`) do so for transactional participation:
- * `DbStore` uses it; `FsStore` ignores it (the filesystem is not transactional).
+ * Persistence operations for execution data bundles kept in
+ * blob storage (filesystem, S3, Azure Blob Storage).
  */
 export interface ExecutionDataStore {
 	init?(): Promise<void>;
-	write(ref: ExecutionRef, payload: ExecutionDataPayload, tx?: EntityManager): Promise<void>;
-	read(ref: ExecutionRef, tx?: EntityManager): Promise<ExecutionDataBundle | null>;
+	/** Persist a bundle and return the number of bytes it occupies in this store. */
+	write(ref: ExecutionRef, payload: ExecutionDataPayload): Promise<number>;
+	read(ref: ExecutionRef): Promise<ExecutionDataBundle | null>;
+	/** Read multiple bundles by ref. Returns a map keyed by `executionId`; missing entries are omitted. */
+	readMany(refs: ExecutionRef[]): Promise<Map<string, ExecutionDataBundle>>;
 	delete(ref: ExecutionRef | ExecutionRef[]): Promise<void>;
 }

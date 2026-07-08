@@ -8,9 +8,9 @@
 			"src/*": ["./src/*"],
 			"src": ["./src"]
 		},
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		"emitDecoratorMetadata": true,
-		"experimentalDecorators": true
+		"experimentalDecorators": true,
+		"types": ["node", "vitest/globals", "vite/client"]
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts", "integration-tests/**/*.ts"]
 }

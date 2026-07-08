@@ -218,10 +218,11 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 									data: { articleId },
 								});
 							},
-							onClose: () => {
-								dismissWhatsNewCallout();
-							},
 						});
+
+						// Mark the callout as dismissed as soon as it is shown, so it does not
+						// keep reappearing on subsequent loads for users who simply ignore it.
+						dismissWhatsNewCallout();
 					}
 				}
 			}

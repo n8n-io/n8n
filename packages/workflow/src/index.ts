@@ -8,9 +8,9 @@ export * from './constants';
 export * from './common';
 export * from './cron';
 export * from './data-table.types';
-export * from './deferred-promise';
 export * from './execution-context';
 export * from './execution-context-establishment-hooks';
+export * from './redaction-channels';
 export * from './global-state';
 export * from './interfaces';
 export * from './sub-workflow-output';
@@ -24,7 +24,9 @@ export * from './from-ai-parse-utils';
 export * from './node-helpers';
 export * from './node-validation';
 export * from './node-grouping-validation';
+export * from './mcp-helpers';
 export * from './tool-helpers';
+export * from './trigger-identity';
 export * from './node-reference-parser-utils';
 export * from './metadata-utils';
 export * from './highlighted-data';
@@ -37,7 +39,6 @@ export * from './workflow-structure-validation';
 export * from './versioned-node-type';
 export * from './type-validation';
 export * from './credential-domain-restrictions';
-export * from './result';
 export * from './schemas';
 export * from './run-execution-data/run-execution-data';
 export { WorkflowExpression } from './workflow-expression';
@@ -95,7 +96,9 @@ export * from './node-parameters/node-parameter-value-type-guard';
 export * from './node-parameters/path-utils';
 export * from './evaluation-helpers';
 export * from './workflow-diff';
+export * from './connections-diff';
 export * from './workflow-environments-helper';
+export { evaluateJmespathQuery, JmespathQueryError } from './jmespath-query';
 
 export type {
 	DocMetadata,

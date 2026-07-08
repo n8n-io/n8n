@@ -34,6 +34,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 
 const MOCK_EXECUTION_URL = 'execution.url/123';
 
@@ -52,7 +53,7 @@ vi.mock('vue-router', () => {
 				href: '',
 			})),
 		}),
-		useRoute: () => reactive({ meta: {} }),
+		useRoute: () => reactive({ meta: {}, params: {} }),
 		RouterLink: vi.fn(),
 	};
 });
@@ -1426,11 +1427,12 @@ describe('RunData', () => {
 			metadata,
 		};
 
+		const testWorkflowId = workflowId ?? 'test-workflow';
 		const pinia = createTestingPinia({
 			stubActions: false,
 			initialState: {
 				[STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE,
-				[getNDVStoreId(createWorkflowDocumentId('default'))]: {
+				[getNDVStoreId(createWorkflowDocumentId(testWorkflowId))]: {
 					activeNodeName: 'Test Node',
 				},
 				[STORES.WORKFLOWS]: {
@@ -1446,10 +1448,10 @@ describe('RunData', () => {
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		workflowsStore = mockedStore(useWorkflowsStore);
 		schemaPreviewStore = mockedStore(useSchemaPreviewStore);
-		ndvStore = mockedStore(useNDVStore);
+		workflowsStore.setWorkflowId(testWorkflowId);
+		ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(testWorkflowId));
 
 		nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
-		const testWorkflowId = workflowId ?? 'test-workflow';
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(testWorkflowId));
 		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(workflowNodes[0]);
 
@@ -1457,9 +1459,9 @@ describe('RunData', () => {
 		ndvStore.setOutputPanelEditModeEnabled = vi.fn();
 		ndvStore.setOutputPanelEditModeValue = vi.fn();
 
-		workflowsStore.setWorkflowId(testWorkflowId);
-
-		workflowsStore.setWorkflowExecutionData(
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).setWorkflowExecutionData(
 			createTestWorkflowExecutionResponse({
 				mode: 'trigger',
 				status: executionStatus ?? 'success',
@@ -1475,7 +1477,9 @@ describe('RunData', () => {
 		);
 
 		if (lastSuccessfulExecution) {
-			workflowsStore.setLastSuccessfulExecution(lastSuccessfulExecution as IExecutionResponse);
+			useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			).setLastSuccessfulExecution(lastSuccessfulExecution as IExecutionResponse);
 		}
 
 		if (pinnedData) {

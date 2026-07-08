@@ -7,20 +7,28 @@ const table = {
 
 export class AddToolsColumnToChatHubTables1761830340990 implements ReversibleMigration {
 	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {
-		await addColumns(table.sessions, [
-			column('tools')
-				.json.notNull.default("'[]'")
-				.comment('Tools available to the agent as JSON node definitions'),
-		]);
-		await addColumns(table.agents, [
-			column('tools')
-				.json.notNull.default("'[]'")
-				.comment('Tools available to the agent as JSON node definitions'),
-		]);
+		await addColumns(
+			table.sessions,
+			[
+				column('tools')
+					.json.notNull.default("'[]'")
+					.comment('Tools available to the agent as JSON node definitions'),
+			],
+			{ recreatesOnSqlite: true },
+		);
+		await addColumns(
+			table.agents,
+			[
+				column('tools')
+					.json.notNull.default("'[]'")
+					.comment('Tools available to the agent as JSON node definitions'),
+			],
+			{ recreatesOnSqlite: true },
+		);
 	}
 
 	async down({ schemaBuilder: { dropColumns } }: MigrationContext) {
-		await dropColumns(table.sessions, ['tools']);
-		await dropColumns(table.agents, ['tools']);
+		await dropColumns(table.sessions, ['tools'], { recreatesOnSqlite: true });
+		await dropColumns(table.agents, ['tools'], { recreatesOnSqlite: true });
 	}
 }

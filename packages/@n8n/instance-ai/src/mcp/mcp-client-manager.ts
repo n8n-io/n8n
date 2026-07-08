@@ -2,8 +2,9 @@ import {
 	McpClient,
 	type BuiltTool,
 	type McpServerConfig as NativeMcpServerConfig,
+	type McpToolCallSettledEvent as NativeMcpToolCallSettledEvent,
 } from '@n8n/agents';
-import type { Result } from 'n8n-workflow';
+import type { Result } from '@n8n/utils/result';
 import { UserError } from 'n8n-workflow';
 
 import {
@@ -20,6 +21,16 @@ import type { InstanceAiToolRegistry, McpServerConfig } from '../types';
 
 type McpToolRegistry = InstanceAiToolRegistry;
 
+export interface McpToolCallSettledEvent {
+	server: McpServerConfig;
+	toolName: string;
+	success: boolean;
+}
+
+export interface McpClientManagerOptions {
+	onToolCallSettled?: (event: McpToolCallSettledEvent) => void;
+}
+
 /**
  * SSRF policy gate for outbound MCP URLs. The cli's `SsrfProtectionService`
  * satisfies this structurally; we keep the local shape narrow to avoid pulling
@@ -29,14 +40,34 @@ export interface SsrfUrlValidator {
 	validateUrl(url: string | URL): Promise<Result<void, Error>>;
 }
 
-function buildNativeMcpConfigs(configs: McpServerConfig[]): NativeMcpServerConfig[] {
+function buildNativeMcpConfigs(
+	configs: McpServerConfig[],
+	requireApproval: boolean,
+	onToolCallSettled?: McpClientManagerOptions['onToolCallSettled'],
+): NativeMcpServerConfig[] {
 	const servers: NativeMcpServerConfig[] = [];
 	for (const server of configs) {
+		const baseConfig = {
+			name: server.name,
+			toolFilter: server.toolFilter,
+			requireApproval,
+			...(onToolCallSettled
+				? {
+						onToolCallSettled: ({ toolName, success }: NativeMcpToolCallSettledEvent) =>
+							onToolCallSettled({ server, toolName, success }),
+					}
+				: {}),
+		};
 		if (server.url) {
-			servers.push({ name: server.name, url: server.url });
+			servers.push({
+				...baseConfig,
+				url: server.url,
+				transport: server.transport,
+				fetch: server.fetch,
+			});
 		} else if (server.command) {
 			servers.push({
-				name: server.name,
+				...baseConfig,
 				command: server.command,
 				args: server.args,
 				env: server.env,
@@ -50,9 +81,9 @@ function toolsToRegistry(tools: BuiltTool[]): McpToolRegistry {
 	return createToolRegistryFromTools(tools);
 }
 
-function warnSkippedMcpSchema(logger: Logger | undefined, source: string) {
+function warnSkippedMcpSchema(logger: Logger, source: string) {
 	return (error: McpSchemaSanitizationError) => {
-		logger?.warn('Skipped MCP tool with unsupported schema', {
+		logger.warn('Skipped MCP tool with unsupported schema', {
 			toolName: error.details.toolName,
 			source,
 			path: error.details.path,
@@ -65,9 +96,9 @@ function warnSkippedMcpSchema(logger: Logger | undefined, source: string) {
 	};
 }
 
-function warnSkippedMcpTool(logger: Logger | undefined) {
+function warnSkippedMcpTool(logger: Logger) {
 	return (error: McpToolNameValidationError) => {
-		logger?.warn('Skipped MCP tool with unsafe name', {
+		logger.warn('Skipped MCP tool with unsafe name', {
 			toolName: error.toolName,
 			source: error.source,
 			reason: error.message,
@@ -77,13 +108,13 @@ function warnSkippedMcpTool(logger: Logger | undefined) {
 
 function getSafeMcpServers(
 	configs: McpServerConfig[],
-	logger: Logger | undefined,
+	logger: Logger,
 	source: string,
 ): McpServerConfig[] {
 	return configs.filter((config) => {
 		if (isSafeMcpIdentifierName(config.name)) return true;
 
-		logger?.warn('Skipped MCP server with unsafe name', {
+		logger.warn('Skipped MCP server with unsafe name', {
 			serverName: config.name,
 			source,
 		});
@@ -94,60 +125,46 @@ function getSafeMcpServers(
 /**
  * Owns the lifecycle of MCP client connections used by Instance AI.
  *
- * Two buckets:
- * - regular: external MCP servers configured by the admin. Their tools are
- *   merged into the orchestrator's toolset.
- * - browser: browser MCP. Excluded from the orchestrator and only handed to
- *   browser-oriented sub-agents to keep screenshots/snapshots out of the
- *   orchestrator context.
- *
- * Tool listings are cached by config hash; clients are tracked in one map so
- * `disconnect()` cleans up everything regardless of which bucket created them.
+ * External MCP servers configured by the admin are merged into the
+ * orchestrator's toolset. Tool listings are cached by config hash; clients are
+ * tracked in one map so `disconnect()` can clean them up.
  */
 export class McpClientManager {
 	private regularToolsByKey = new Map<string, McpToolRegistry>();
-	private browserToolsByKey = new Map<string, McpToolRegistry>();
 
 	private inFlightRegularByKey = new Map<string, Promise<McpToolRegistry>>();
-	private inFlightBrowserByKey = new Map<string, Promise<McpToolRegistry>>();
 
 	private clientsByKey = new Map<string, McpClient>();
 
-	constructor(private readonly ssrfValidator?: SsrfUrlValidator) {}
+	constructor(
+		private readonly ssrfValidator?: SsrfUrlValidator,
+		private readonly options: McpClientManagerOptions = {},
+	) {}
 
-	async getRegularTools(configs: McpServerConfig[], logger?: Logger): Promise<McpToolRegistry> {
+	async getRegularTools(
+		configs: McpServerConfig[],
+		logger: Logger,
+		requireApproval = true,
+	): Promise<McpToolRegistry> {
 		const safeConfigs = getSafeMcpServers(configs, logger, 'external MCP');
 		if (safeConfigs.length === 0) return createToolRegistry();
 
-		const key = JSON.stringify(safeConfigs);
+		// Approval mode is part of the cache key: the same servers wrapped with vs
+		// without an approval gate are distinct tool sets.
+		const key = JSON.stringify({ configs: safeConfigs, requireApproval });
 		return await this.getOrLoad(
 			this.regularToolsByKey,
 			this.inFlightRegularByKey,
 			key,
 			async () => {
 				await this.validateConfigs(safeConfigs);
-				return await this.connectAndListTools(safeConfigs, key, logger, 'external MCP');
-			},
-		);
-	}
-
-	async getBrowserTools(
-		config: McpServerConfig | undefined,
-		logger?: Logger,
-	): Promise<McpToolRegistry> {
-		if (!config) return createToolRegistry();
-
-		const [safeConfig] = getSafeMcpServers([config], logger, 'browser MCP');
-		if (!safeConfig) return createToolRegistry();
-
-		const key = JSON.stringify(safeConfig);
-		return await this.getOrLoad(
-			this.browserToolsByKey,
-			this.inFlightBrowserByKey,
-			key,
-			async () => {
-				await this.validateConfigs([safeConfig]);
-				return await this.connectAndListTools([safeConfig], key, logger, 'browser MCP');
+				return await this.connectAndListTools(
+					safeConfigs,
+					key,
+					requireApproval,
+					logger,
+					'external MCP',
+				);
 			},
 		);
 	}
@@ -156,9 +173,7 @@ export class McpClientManager {
 		const clients = [...this.clientsByKey.values()];
 		this.clientsByKey.clear();
 		this.regularToolsByKey.clear();
-		this.browserToolsByKey.clear();
 		this.inFlightRegularByKey.clear();
-		this.inFlightBrowserByKey.clear();
 		await Promise.all(clients.map(async (client) => await client.close()));
 	}
 
@@ -219,10 +234,13 @@ export class McpClientManager {
 	private async connectAndListTools(
 		configs: McpServerConfig[],
 		clientKey: string,
-		logger: Logger | undefined,
+		requireApproval: boolean,
+		logger: Logger,
 		source: string,
 	): Promise<McpToolRegistry> {
-		const client = new McpClient(buildNativeMcpConfigs(configs));
+		const client = new McpClient(
+			buildNativeMcpConfigs(configs, requireApproval, this.options.onToolCallSettled),
+		);
 		this.clientsByKey.set(clientKey, client);
 
 		const registry = toolsToRegistry(await client.listTools());

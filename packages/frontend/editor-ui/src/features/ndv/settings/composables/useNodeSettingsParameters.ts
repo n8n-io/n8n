@@ -1,6 +1,6 @@
 import get from 'lodash/get';
 import set from 'lodash/set';
-import { type Ref } from 'vue';
+import { computed, type Ref } from 'vue';
 import {
 	type INode,
 	type INodeParameters,
@@ -55,6 +55,7 @@ const stripPublicDisplayCondition = (parameter: INodeProperties): INodePropertie
 
 export function useNodeSettingsParameters() {
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 	const nodeTypesStore = useNodeTypesStore();
 	const settingsStore = useSettingsStore();
 	const telemetry = useTelemetry();
@@ -168,7 +169,6 @@ export function useNodeSettingsParameters() {
 	function handleFocus(node: INodeUi | undefined, path: string, parameter: INodeProperties) {
 		if (!node) return;
 
-		const ndvStore = useNDVStore();
 		const focusPanelStore = useFocusPanelStore();
 
 		focusPanelStore.openWithFocusedNodeParameter({
@@ -177,9 +177,9 @@ export function useNodeSettingsParameters() {
 			parameter,
 		});
 
-		if (ndvStore.activeNode) {
-			ndvStore.unsetActiveNodeName();
-			ndvStore.resetNDVPushRef();
+		if (ndvStore.value.activeNode) {
+			ndvStore.value.unsetActiveNodeName();
+			ndvStore.value.resetNDVPushRef();
 		}
 	}
 

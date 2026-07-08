@@ -1,16 +1,18 @@
-jest.mock('@/modules/community-packages/npm-utils', () => ({
-	...jest.requireActual('@/modules/community-packages/npm-utils'),
-	executeNpmCommand: jest.fn(),
-	verifyIntegrity: jest.fn(),
+vi.mock('@/modules/community-packages/npm-utils', async () => ({
+	...(await vi.importActual<typeof import('@/modules/community-packages/npm-utils')>(
+		'@/modules/community-packages/npm-utils',
+	)),
+	executeNpmCommand: vi.fn(),
+	verifyIntegrity: vi.fn(),
 }));
 
-import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { CommunityNodeType } from '@n8n/api-types';
+import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { ApiKeyScope } from '@n8n/permissions';
 import { OWNER_API_KEY_SCOPES } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
 import path from 'node:path';
+import { mock } from 'vitest-mock-extended';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityNodeTypesService } from '@/modules/community-packages/community-node-types.service';
@@ -34,7 +36,7 @@ const communityPackagesService = mockInstance(CommunityPackagesService, {
 	hasMissingPackages: false,
 });
 const communityNodeTypesService = mockInstance(CommunityNodeTypesService);
-const mockedExecuteNpmCommand = jest.mocked(executeNpmCommand);
+const mockedExecuteNpmCommand = vi.mocked(executeNpmCommand);
 mockInstance(LoadNodesAndCredentials);
 
 const mockedVettedPackage = mock<CommunityNodeType>({
@@ -61,7 +63,7 @@ describe('Community packages (Public API)', () => {
 	});
 
 	beforeEach(async () => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		communityNodeTypesService.findVetted.mockResolvedValue(mockedVettedPackage);
 		await testDb.truncate(['User']);
 		const ownerUser = await createOwner();

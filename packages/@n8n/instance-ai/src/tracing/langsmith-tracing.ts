@@ -7,6 +7,7 @@ import {
 	type InterruptibleToolContext,
 	type ToolContext,
 } from '@n8n/agents';
+import { isRecord } from '@n8n/utils/is-record';
 import {
 	ROOT_CONTEXT,
 	SpanStatusCode,
@@ -16,7 +17,9 @@ import {
 import type { Context as OtelContext, Span as OtelApiSpan } from '@opentelemetry/api';
 import { Client } from 'langsmith';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import { dirname, join, parse } from 'node:path';
 
 import { createToolRegistry } from '../tool-registry';
 import type {
@@ -40,6 +43,7 @@ import {
 	GEN_AI_COMPLETION,
 	GEN_AI_PROMPT,
 	mergeTraceInputs,
+	rawTracePayload,
 	redactLangSmithTelemetrySpan,
 	sanitizeTracePayload,
 	sanitizeTraceValue,
@@ -49,7 +53,6 @@ import {
 } from './trace-payloads';
 import type { IdRemapper, TraceIndex, TraceWriter } from './trace-replay';
 import { PURE_REPLAY_TOOLS } from './trace-replay';
-import { isRecord } from '../utils/stream-helpers';
 
 export {
 	buildAgentTraceInputs,
@@ -335,11 +338,24 @@ async function finishProductSpan(
 	}
 
 	if (options?.outputs !== undefined) {
-		const completion = stringifyTracePayload(options.outputs);
+		let completion: string | undefined;
+		let runOutputs: Record<string, unknown> | undefined;
+		if (options.rawOutputs) {
+			// Lossless pre-bounded payload; the export scrubber still redacts inside it.
+			const raw = rawTracePayload(options.outputs);
+			try {
+				completion = JSON.stringify(raw);
+				runOutputs = raw;
+			} catch {
+				// Unserializable (cycles) — fall through to the sanitized path.
+			}
+		}
+		completion ??= stringifyTracePayload(options.outputs);
+		runOutputs ??= sanitizeTracePayload(options.outputs);
 		if (completion !== undefined) {
 			attributes[GEN_AI_COMPLETION] = completion;
 		}
-		run.outputs = sanitizeTracePayload(options.outputs);
+		run.outputs = runOutputs;
 	}
 
 	run.endTime = Date.now();
@@ -650,6 +666,11 @@ function readBooleanEnvFlag(value: string | undefined): boolean | undefined {
 	return undefined;
 }
 
+// LANGSMITH_PROJECT lets deployments (e.g. eval CI) route product traces off the default project.
+function resolveDefaultProjectName(): string {
+	return process.env.LANGSMITH_PROJECT ?? process.env.LANGCHAIN_PROJECT ?? DEFAULT_PROJECT_NAME;
+}
+
 function isLangSmithTracingEnabled(proxyAvailable = false): boolean {
 	if (readBooleanEnvFlag(process.env.N8N_DIAGNOSTICS_ENABLED) === false) {
 		return false;
@@ -931,6 +952,7 @@ async function startAndFinishProductChildSpan(
 		metadata?: Record<string, unknown>;
 		inputs?: unknown;
 		outputs?: unknown;
+		rawOutputs?: boolean;
 		error?: string;
 		forceFlush?: boolean;
 	},
@@ -954,12 +976,62 @@ async function startAndFinishProductChildSpan(
 	}
 	await finishProductSpanBestEffort(currentTrace.runtime, childRun, {
 		...(options.outputs !== undefined ? { outputs: options.outputs } : {}),
+		...(options.rawOutputs ? { rawOutputs: true } : {}),
 		...(options.error ? { error: options.error } : {}),
 		metadata: {
 			final_status: options.error ? 'error' : 'completed',
 		},
 		forceFlush: options.forceFlush,
 	});
+}
+
+/**
+ * Emit a trace-only child run, preferring the current turn's ambient trace: a
+ * tool suspended in one turn and resumed in a later one holds a stale handle
+ * whose shut-down runtime silently exports nothing. Returns the path taken.
+ */
+export async function emitTraceOnlyChildRun(
+	fallbackTracing: InstanceAiTraceContext | undefined,
+	init: InstanceAiTraceRunInit,
+	finish: { outputs: unknown; rawOutputs?: boolean },
+): Promise<'ambient' | 'handle' | 'skipped'> {
+	// Raw payloads are flagged in metadata so the export scrubber lifts its
+	// structural depth cap for them — keyed on producer-set metadata, not on a
+	// span name any tool could claim.
+	const metadata = finish.rawOutputs
+		? { ...init.metadata, raw_trace_payload: true }
+		: init.metadata;
+	const currentTrace = getCurrentProductTrace();
+	if (currentTrace) {
+		await startAndFinishProductChildSpan(currentTrace, {
+			name: init.name,
+			canonicalName: init.canonicalName,
+			runType: init.runType,
+			tags: init.tags,
+			metadata,
+			inputs: init.inputs,
+			outputs: finish.outputs,
+			rawOutputs: finish.rawOutputs,
+		});
+		return 'ambient';
+	}
+	// A dead handle's runs are spanless and export nothing — don't claim 'handle'.
+	if (fallbackTracing && (fallbackTracing.isLive?.() ?? true)) {
+		try {
+			const run = await fallbackTracing.startChildRun(fallbackTracing.actorRun, {
+				...init,
+				metadata,
+			});
+			await fallbackTracing.finishRun(run, {
+				outputs: finish.outputs,
+				...(finish.rawOutputs ? { rawOutputs: true } : {}),
+			});
+			return 'handle';
+		} catch {
+			// Best-effort: tracing must never break the caller.
+		}
+	}
+	return 'skipped';
 }
 
 async function traceProductSuspendableToolExecute(
@@ -1124,6 +1196,7 @@ function createTraceContext(
 		messageRun: rootRun,
 		orchestratorRun: actorRun,
 		startChildRun,
+		isLive: () => !otelRuntime.shutdown,
 		withRunTree,
 		withActiveSpan,
 		toHeaders: () => ({}),
@@ -1276,11 +1349,20 @@ function recordWrapTool(
 			const resumeData = isInterruptibleToolContext(context) ? context.resumeData : undefined;
 			const inputRecord = (input ?? {}) as Record<string, unknown>;
 			let capturedSuspendPayload: Record<string, unknown> | undefined;
+			let recordedSuspend = false;
 			const wrappedContext: NativeToolContext = isInterruptibleToolContext(context)
 				? {
 						...context,
 						suspend: async (suspendPayload: unknown) => {
 							capturedSuspendPayload = isRecord(suspendPayload) ? suspendPayload : {};
+							traceWriter.recordToolSuspend(
+								agentRole,
+								tool.name,
+								inputRecord,
+								{},
+								capturedSuspendPayload,
+							);
+							recordedSuspend = true;
 							return await context.suspend(suspendPayload);
 						},
 					}
@@ -1298,13 +1380,15 @@ function recordWrapTool(
 					resumeData as Record<string, unknown>,
 				);
 			} else if (capturedSuspendPayload) {
-				traceWriter.recordToolSuspend(
-					agentRole,
-					tool.name,
-					inputRecord,
-					{},
-					capturedSuspendPayload,
-				);
+				if (!recordedSuspend) {
+					traceWriter.recordToolSuspend(
+						agentRole,
+						tool.name,
+						inputRecord,
+						{},
+						capturedSuspendPayload,
+					);
+				}
 			} else {
 				traceWriter.recordToolCall(agentRole, tool.name, inputRecord, outputRecord);
 			}
@@ -1384,31 +1468,61 @@ interface TraceRuntimeVersions {
 	workflow_sdk_version?: string;
 }
 
-let traceRuntimeVersions: TraceRuntimeVersions | undefined;
+let traceRuntimeVersions: Promise<TraceRuntimeVersions> | undefined;
 
-function readPackageVersion(packageName: string): string | undefined {
-	try {
-		const packageJson = hostRequire(`${packageName}/package.json`) as { version?: unknown };
-		return typeof packageJson.version === 'string' ? packageJson.version : undefined;
-	} catch {
-		return undefined;
-	}
+function extractPackageVersion(packageJson: unknown): string | undefined {
+	if (!packageJson || typeof packageJson !== 'object') return undefined;
+
+	if (!('version' in packageJson)) return undefined;
+
+	const { version } = packageJson;
+	return typeof version === 'string' ? version : undefined;
 }
 
-function getTraceRuntimeVersions(): TraceRuntimeVersions {
-	if (!traceRuntimeVersions) {
-		const agentsVersion = readPackageVersion('@n8n/agents');
-		const workflowSdkVersion = readPackageVersion('@n8n/workflow-sdk');
-		traceRuntimeVersions = {
+async function readPackageVersion(packageName: string): Promise<string | undefined> {
+	try {
+		return extractPackageVersion(hostRequire(`${packageName}/package.json`));
+	} catch {
+		// Some workspace packages do not export package.json. Fall back to
+		// resolving the package entry point and walking upward to its package root.
+	}
+
+	try {
+		let current = dirname(hostRequire.resolve(packageName));
+		const { root } = parse(current);
+		while (current !== root) {
+			const packageJsonPath = join(current, 'package.json');
+			try {
+				return extractPackageVersion(JSON.parse(await readFile(packageJsonPath, 'utf8')));
+			} catch {
+				current = dirname(current);
+			}
+		}
+	} catch {
+		// Best effort only; traces still work without package version metadata.
+	}
+
+	return undefined;
+}
+
+async function getTraceRuntimeVersions(): Promise<TraceRuntimeVersions> {
+	traceRuntimeVersions ??= (async () => {
+		const [agentsVersion, workflowSdkVersion] = await Promise.all([
+			readPackageVersion('@n8n/agents'),
+			readPackageVersion('@n8n/workflow-sdk'),
+		]);
+		return {
 			...(agentsVersion ? { agents_version: agentsVersion } : {}),
 			...(workflowSdkVersion ? { workflow_sdk_version: workflowSdkVersion } : {}),
 		};
-	}
+	})();
 
-	return traceRuntimeVersions;
+	return await traceRuntimeVersions;
 }
 
-function buildBaseMetadata(options: CreateInstanceAiTraceContextOptions): Record<string, unknown> {
+async function buildBaseMetadata(
+	options: CreateInstanceAiTraceContextOptions,
+): Promise<Record<string, unknown>> {
 	return {
 		thread_id: options.threadId,
 		'langsmith.metadata.thread_id': options.threadId,
@@ -1419,7 +1533,7 @@ function buildBaseMetadata(options: CreateInstanceAiTraceContextOptions): Record
 		activation_id: options.runId,
 		user_id: options.userId,
 		'instance_ai.trace_version': OTEL_TRACE_VERSION,
-		...getTraceRuntimeVersions(),
+		...(await getTraceRuntimeVersions()),
 		...(options.n8nVersion !== undefined ? { n8n_version: options.n8nVersion } : {}),
 		...(options.workflowSdkVersion !== undefined
 			? { workflow_sdk_version: options.workflowSdkVersion }
@@ -1594,8 +1708,8 @@ export async function createInstanceAiTraceContext(
 		return undefined;
 	}
 
-	const projectName = options.projectName ?? DEFAULT_PROJECT_NAME;
-	const baseMetadata = buildBaseMetadata(options);
+	const projectName = options.projectName ?? resolveDefaultProjectName();
+	const baseMetadata = await buildBaseMetadata(options);
 
 	const createTraceRuns = async () => {
 		const otelRuntime = await createProductOtelRuntime(projectName, options.proxyConfig);
@@ -1655,8 +1769,9 @@ export async function continueInstanceAiTraceContext(
 		return existingContext;
 	}
 
-	const baseMetadata = buildBaseMetadata(options);
-	const projectName = existingContext?.projectName ?? options.projectName ?? DEFAULT_PROJECT_NAME;
+	const baseMetadata = await buildBaseMetadata(options);
+	const projectName =
+		existingContext?.projectName ?? options.projectName ?? resolveDefaultProjectName();
 	const continuedMetadata =
 		existingContext && existingContext.rootRun.traceId !== 'stub'
 			? {
@@ -1730,8 +1845,8 @@ export async function createDetachedSubAgentTraceContext(
 		return undefined;
 	}
 
-	const projectName = options.projectName ?? DEFAULT_PROJECT_NAME;
-	const baseMetadata = buildBaseMetadata(options);
+	const projectName = options.projectName ?? resolveDefaultProjectName();
+	const baseMetadata = await buildBaseMetadata(options);
 
 	const createDetachedRuns = async () => {
 		const otelRuntime = await createProductOtelRuntime(projectName, options.proxyConfig);
@@ -1789,8 +1904,8 @@ export async function createInternalOperationTraceContext(
 		return undefined;
 	}
 
-	const projectName = options.projectName ?? DEFAULT_PROJECT_NAME;
-	const baseMetadata = buildBaseMetadata({
+	const projectName = options.projectName ?? resolveDefaultProjectName();
+	const baseMetadata = await buildBaseMetadata({
 		...options,
 		messageId: options.messageId ?? `internal:${options.operationName}:${options.runId}`,
 		metadata: mergeMetadata(options.metadata, {

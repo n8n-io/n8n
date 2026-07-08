@@ -1,6 +1,7 @@
 import get from 'lodash/get';
 import {
-	ApplicationError,
+	UnexpectedError,
+	UserError,
 	LoggerProxy,
 	NodeHelpers,
 	NodeOperationError,
@@ -22,48 +23,16 @@ function findPropertyFromParameterName(
 	node: INode,
 	nodeParameters: INodeParameters,
 ): INodePropertyOptions | INodeProperties | INodePropertyCollection {
-	let property: INodePropertyOptions | INodeProperties | INodePropertyCollection | undefined;
-	const paramParts = parameterName.split('.');
-	let currentParamPath = '';
-
-	const findProp = (
-		name: string,
-		options: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>,
-	): INodePropertyOptions | INodeProperties | INodePropertyCollection | undefined => {
-		return options.find(
-			(i) =>
-				i.name === name &&
-				NodeHelpers.displayParameterPath(
-					nodeParameters,
-					i,
-					currentParamPath,
-					node,
-					nodeType.description,
-				),
-		);
-	};
-
-	for (const p of paramParts) {
-		const param = p.split('[')[0];
-		if (!property) {
-			property = findProp(param, nodeType.description.properties);
-		} else if ('options' in property && property.options) {
-			property = findProp(param, property.options);
-			currentParamPath += `.${param}`;
-		} else if ('values' in property) {
-			property = findProp(param, property.values);
-			currentParamPath += `.${param}`;
-		} else {
-			throw new ApplicationError('Could not find property', { extra: { parameterName } });
-		}
-		if (!property) {
-			throw new ApplicationError('Could not find property', { extra: { parameterName } });
-		}
-	}
+	const property = NodeHelpers.findDisplayedProperty(
+		parameterName,
+		nodeType.description.properties,
+		nodeParameters,
+		node,
+		nodeType.description,
+	);
 	if (!property) {
-		throw new ApplicationError('Could not find property', { extra: { parameterName } });
+		throw new UserError('Could not find property', { extra: { parameterName } });
 	}
-
 	return property;
 }
 
@@ -114,14 +83,13 @@ function extractValueRLC(
 		LoggerProxy.error(
 			`Only strings can be passed to extractValue. Parameter "${parameterName}" passed "${typeName}"`,
 		);
-		throw new ApplicationError(
-			"ERROR: This parameter's value is invalid. Please enter a valid mode.",
-			{ extra: { parameter: property.displayName, modeProp: modeProp.displayName } },
-		);
+		throw new UserError("ERROR: This parameter's value is invalid. Please enter a valid mode.", {
+			extra: { parameter: property.displayName, modeProp: modeProp.displayName },
+		});
 	}
 
 	if (modeProp.extractValue.type !== 'regex') {
-		throw new ApplicationError('Property with unknown `extractValue`', {
+		throw new UnexpectedError('Property with unknown `extractValue`', {
 			extra: { parameter: parameterName, extractValueType: modeProp.extractValue.type },
 		});
 	}
@@ -141,7 +109,7 @@ function extractValueFilter(
 	}
 
 	if (property.extractValue?.type) {
-		throw new ApplicationError(
+		throw new UserError(
 			`Property "${parameterName}" has an invalid extractValue type. Filter parameters only support extractValue: true`,
 			{ extra: { parameter: parameterName } },
 		);
@@ -169,13 +137,13 @@ function extractValueOther(
 		LoggerProxy.error(
 			`Only strings can be passed to extractValue. Parameter "${parameterName}" passed "${typeName}"`,
 		);
-		throw new ApplicationError("This parameter's value is invalid", {
+		throw new UserError("This parameter's value is invalid", {
 			extra: { parameter: property.displayName },
 		});
 	}
 
 	if (property.extractValue.type !== 'regex') {
-		throw new ApplicationError('Property with unknown `extractValue`', {
+		throw new UnexpectedError('Property with unknown `extractValue`', {
 			extra: { parameter: parameterName, extractValueType: property.extractValue.type },
 		});
 	}

@@ -4,12 +4,12 @@ import { createTeamProject, randomName, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import {
 	CREDENTIAL_BLANKING_VALUE,
 	type ICredentialDataDecryptedObject,
 	randomString,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsTester } from '@/services/credentials-tester.service';
@@ -19,7 +19,13 @@ import {
 	createCredentials,
 	getCredentialSharings,
 } from '../shared/db/credentials';
-import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
+import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
+import {
+	addApiKey,
+	createMemberWithApiKey,
+	createOwnerWithApiKey,
+	createUser,
+} from '../shared/db/users';
 import type { SaveCredentialFunction, SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -453,7 +459,30 @@ describe('POST /credentials/:id/test', () => {
 	});
 });
 
+// Custom GLOBAL role carrying the given scopes, plus an API key whose scopes are
+// derived from those role scopes. Proves the public-API bypass is scope-driven.
+const makeGlobalRoleUserAgent = async (scopeSlugs: string[]) => {
+	const role = await createCustomRoleWithScopeSlugs(scopeSlugs, { roleType: 'global' });
+	const user = await createUser({ role });
+	user.apiKeys = [await addApiKey(user)];
+	return testServer.publicApiAgentFor(user);
+};
+
 describe('DELETE /credentials/:id', () => {
+	test('should delete non-owned cred for custom role with credential:read', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: member });
+		const agent = await makeGlobalRoleUserAgent(['credential:read', 'credential:delete']);
+
+		const response = await agent.delete(`/credentials/${savedCredential.id}`);
+
+		expect(response.statusCode).toBe(200);
+
+		const deletedCredential = await Container.get(CredentialsRepository).findOneBy({
+			id: savedCredential.id,
+		});
+		expect(deletedCredential).toBeNull();
+	});
+
 	test('should delete owned cred for owner', async () => {
 		const savedCredential = await saveCredential(dbCredential(), { user: owner });
 
@@ -884,9 +913,7 @@ describe('PATCH /credentials/:id', () => {
 
 		// Mock the license state to return false for sharing
 		const licenseState = Container.get(LicenseState);
-		const isSharingLicensedSpy = jest
-			.spyOn(licenseState, 'isSharingLicensed')
-			.mockReturnValue(false);
+		const isSharingLicensedSpy = vi.spyOn(licenseState, 'isSharingLicensed').mockReturnValue(false);
 
 		const updatePayload = {
 			isGlobal: true,
@@ -914,9 +941,7 @@ describe('PATCH /credentials/:id', () => {
 
 		// Mock the license state to return true for sharing
 		const licenseState = Container.get(LicenseState);
-		const isSharingLicensedSpy = jest
-			.spyOn(licenseState, 'isSharingLicensed')
-			.mockReturnValue(true);
+		const isSharingLicensedSpy = vi.spyOn(licenseState, 'isSharingLicensed').mockReturnValue(true);
 
 		const updatePayload = {
 			isGlobal: true,
@@ -947,9 +972,7 @@ describe('PATCH /credentials/:id', () => {
 
 		// Mock the license state to return true for sharing
 		const licenseState = Container.get(LicenseState);
-		const isSharingLicensedSpy = jest
-			.spyOn(licenseState, 'isSharingLicensed')
-			.mockReturnValue(true);
+		const isSharingLicensedSpy = vi.spyOn(licenseState, 'isSharingLicensed').mockReturnValue(true);
 
 		const updatePayload = {
 			isGlobal: true,
@@ -981,9 +1004,7 @@ describe('PATCH /credentials/:id', () => {
 
 		// Mock the license state to return false for sharing
 		const licenseState = Container.get(LicenseState);
-		const isSharingLicensedSpy = jest
-			.spyOn(licenseState, 'isSharingLicensed')
-			.mockReturnValue(false);
+		const isSharingLicensedSpy = vi.spyOn(licenseState, 'isSharingLicensed').mockReturnValue(false);
 
 		const updatePayload = {
 			isGlobal: false,
@@ -1012,9 +1033,7 @@ describe('PATCH /credentials/:id', () => {
 
 		// Credential defaults to isGlobal=false, so sending isGlobal=false should succeed
 		const licenseState = Container.get(LicenseState);
-		const isSharingLicensedSpy = jest
-			.spyOn(licenseState, 'isSharingLicensed')
-			.mockReturnValue(false);
+		const isSharingLicensedSpy = vi.spyOn(licenseState, 'isSharingLicensed').mockReturnValue(false);
 
 		const updatePayload = {
 			name: 'Updated name',

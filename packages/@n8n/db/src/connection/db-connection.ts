@@ -1,14 +1,18 @@
-import { inTest, Logger } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { DatabaseConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
 import { Memoized } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { ErrorReporter } from 'n8n-core';
-import { DbConnectionTimeoutError, ensureError, OperationalError } from 'n8n-workflow';
+import { DbConnectionTimeoutError } from 'n8n-workflow';
 import { setTimeout as setTimeoutP } from 'timers/promises';
 
+import { computeBackoff } from './backoff';
+import { DbConnectionMetrics } from './db-connection-metrics';
+import { DbConnectionMonitor } from './db-connection-monitor';
 import { DbConnectionOptions } from './db-connection-options';
+import { readPoolStats, type DbPoolStats } from './db-pool-stats';
 import { wrapMigration } from '../migrations/migration-helpers';
 import type { Migration } from '../migrations/migration-types';
 
@@ -21,8 +25,7 @@ type ConnectionState = {
 export class DbConnection {
 	private dataSource: DataSource;
 
-	private pingTimer: NodeJS.Timeout | undefined;
-	timeout: number;
+	private monitor: DbConnectionMonitor | undefined;
 
 	readonly connectionState: ConnectionState = {
 		connected: false,
@@ -34,12 +37,10 @@ export class DbConnection {
 		private readonly connectionOptions: DbConnectionOptions,
 		private readonly databaseConfig: DatabaseConfig,
 		private readonly logger: Logger,
+		private readonly dbConnectionMetrics: DbConnectionMetrics,
 	) {
 		this.dataSource = new DataSource(this.options);
 		Container.set(DataSource, this.dataSource);
-		this.timeout = process.env.N8N_DB_PING_TIMEOUT
-			? Number.parseInt(process.env.N8N_DB_PING_TIMEOUT)
-			: 5000;
 	}
 
 	@Memoized
@@ -47,27 +48,34 @@ export class DbConnection {
 		return this.connectionOptions.getOptions();
 	}
 
+	getPoolStats(): DbPoolStats | undefined {
+		return readPoolStats(this.dataSource);
+	}
+
 	async init(): Promise<void> {
-		const { connectionState, options } = this;
+		const { connectionState } = this;
 		if (connectionState.connected) return;
-		try {
-			await this.dataSource.initialize();
-		} catch (e) {
-			let error = ensureError(e);
-			if (
-				options.type === 'postgres' &&
-				error.message === 'Connection terminated due to connection timeout'
-			) {
-				error = new DbConnectionTimeoutError({
-					cause: error,
-					configuredTimeoutInMs: options.connectTimeoutMS!,
-				});
-			}
-			throw error;
+
+		// TODO(CAT-3314): Remove N8N_DB_PING_TIMEOUT fallback in v3.
+		if (process.env.N8N_DB_PING_TIMEOUT) {
+			this.logger.warn(
+				'N8N_DB_PING_TIMEOUT is deprecated, use DB_PING_TIMEOUT_MS instead. The legacy variable will be removed in a future release.',
+			);
 		}
 
+		await this.connectWithRetry();
+
 		connectionState.connected = true;
-		if (!inTest) this.scheduleNextPing();
+		this.monitor = new DbConnectionMonitor(
+			this.dataSource,
+			(connected) => (this.connectionState.connected = connected),
+			this.databaseConfig,
+			this.logger,
+			this.errorReporter,
+			this.dbConnectionMetrics,
+			connectionState.connected,
+		);
+		this.monitor.start();
 	}
 
 	async migrate() {
@@ -78,10 +86,8 @@ export class DbConnection {
 	}
 
 	async close() {
-		if (this.pingTimer) {
-			clearTimeout(this.pingTimer);
-			this.pingTimer = undefined;
-		}
+		await this.monitor?.stop();
+		this.monitor = undefined;
 
 		if (this.dataSource.isInitialized) {
 			await this.dataSource.destroy();
@@ -89,42 +95,38 @@ export class DbConnection {
 		}
 	}
 
-	/** Ping DB connection every `pingIntervalSeconds` seconds to check if it is still alive. */
-	private scheduleNextPing() {
-		this.pingTimer = setTimeout(
-			async () => await this.ping(),
-			this.databaseConfig.pingIntervalSeconds * Time.seconds.toMilliseconds,
-		);
-	}
+	/**
+	 * Opens the initial connection, retrying transient failures with exponential
+	 * backoff before giving up. Throws once `startupConnectMaxRetries` is exhausted.
+	 */
+	private async connectWithRetry(): Promise<void> {
+		const { options } = this;
+		const { minRecoveryBackoffMs, maxRecoveryBackoffMs, startupConnectMaxRetries } =
+			this.databaseConfig;
+		const maxAttempts = startupConnectMaxRetries + 1;
+		for (let attempt = 1; ; attempt++) {
+			try {
+				await this.dataSource.initialize();
+				return;
+			} catch (e) {
+				let error = ensureError(e);
+				if (
+					options.type === 'postgres' &&
+					error.message === 'Connection terminated due to connection timeout'
+				) {
+					error = new DbConnectionTimeoutError({
+						cause: error,
+						configuredTimeoutInMs: options.connectTimeoutMS!,
+					});
+				}
+				if (attempt >= maxAttempts) throw error;
 
-	private async ping() {
-		if (!this.dataSource.isInitialized) return;
-		const abortController = new AbortController();
-
-		try {
-			await Promise.race([
-				this.dataSource.query('SELECT 1'),
-				setTimeoutP(this.timeout, undefined, { signal: abortController.signal }).then(() => {
-					throw new OperationalError('Database connection timed out');
-				}),
-			]);
-
-			if (!this.connectionState.connected) {
-				this.logger.info('Database connection recovered');
+				const backoff = computeBackoff(attempt, minRecoveryBackoffMs, maxRecoveryBackoffMs);
+				this.logger.warn(
+					`Initial database connection attempt ${attempt} failed: ${error.message}. Retrying in ${backoff}ms`,
+				);
+				await setTimeoutP(backoff);
 			}
-
-			this.connectionState.connected = true;
-			return;
-		} catch (error) {
-			this.connectionState.connected = false;
-			if (error instanceof OperationalError) {
-				this.logger.warn(error.message);
-			} else {
-				this.errorReporter.error(error);
-			}
-		} finally {
-			abortController.abort();
-			this.scheduleNextPing();
 		}
 	}
 }

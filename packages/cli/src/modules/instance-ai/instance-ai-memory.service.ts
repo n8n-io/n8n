@@ -18,10 +18,64 @@ import {
 
 import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { parseStoredMessages } from './message-parser';
+import {
+	collectConfirmationRequestIds,
+	markExpiredConfirmations,
+	parseStoredMessages,
+} from './message-parser';
+import { InstanceAiCheckpointRepository } from './repositories/instance-ai-checkpoint.repository';
+import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
+
+function isAgentMessageLike(value: unknown): value is AgentDbMessage {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		typeof (value as { id?: unknown }).id === 'string' &&
+		'role' in value
+	);
+}
+
+function isRestorableMessage(
+	value: Record<string, unknown> & { createdAt: Date },
+): value is AgentDbMessage & Record<string, unknown> {
+	if (typeof value.id !== 'string' || value.id.length === 0) return false;
+	if (value.type === 'custom') return typeof value.data === 'object' && value.data !== null;
+	return typeof value.role === 'string' && Array.isArray(value.content);
+}
+
+/** Coerce a wire-format seed message (ISO `createdAt`) into a persistable
+ *  AgentDbMessage, or undefined if it fails the structural contract. */
+function toRestorableMessage(value: Record<string, unknown>): AgentDbMessage | undefined {
+	const rawCreatedAt = value.createdAt;
+	const createdAt =
+		rawCreatedAt instanceof Date
+			? rawCreatedAt
+			: typeof rawCreatedAt === 'string'
+				? new Date(rawCreatedAt)
+				: undefined;
+	if (!createdAt || Number.isNaN(createdAt.getTime())) return undefined;
+	const candidate = { ...value, createdAt };
+	return isRestorableMessage(candidate) ? candidate : undefined;
+}
+
+function messageCreatedAtMs(message: AgentDbMessage): number {
+	const at = message.createdAt;
+	if (at instanceof Date) return at.getTime();
+	const parsed = new Date(at).getTime();
+	return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function mergeMessagesById(stored: AgentDbMessage[], extras: AgentDbMessage[]): AgentDbMessage[] {
+	if (extras.length === 0) return stored;
+	const byId = new Map<string, AgentDbMessage>();
+	for (const message of stored) byId.set(message.id, message);
+	for (const message of extras) if (!byId.has(message.id)) byId.set(message.id, message);
+	return [...byId.values()].sort((a, b) => messageCreatedAtMs(a) - messageCreatedAtMs(b));
+}
 
 @Service()
 export class InstanceAiMemoryService {
@@ -32,6 +86,8 @@ export class InstanceAiMemoryService {
 		globalConfig: GlobalConfig,
 		private readonly agentMemory: TypeORMAgentMemory,
 		private readonly dbSnapshotStorage: DbSnapshotStorage,
+		private readonly checkpointRepository: InstanceAiCheckpointRepository,
+		private readonly pendingConfirmationRepository: InstanceAiPendingConfirmationRepository,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
 	}
@@ -55,7 +111,11 @@ export class InstanceAiMemoryService {
 		};
 	}
 
-	async ensureThread(userId: string, threadId: string): Promise<InstanceAiEnsureThreadResponse> {
+	async ensureThread(
+		userId: string,
+		threadId: string,
+		projectId: string,
+	): Promise<InstanceAiEnsureThreadResponse> {
 		const existing = await this.agentMemory.getThread(threadId);
 		if (existing) {
 			if (existing.resourceId !== userId) {
@@ -68,16 +128,47 @@ export class InstanceAiMemoryService {
 			};
 		}
 
-		const created = await this.agentMemory.saveThread({
-			id: threadId,
-			resourceId: userId,
-			title: '',
-		});
+		const created = await this.agentMemory.saveThreadWithProject(
+			{
+				id: threadId,
+				resourceId: userId,
+				title: '',
+			},
+			projectId,
+		);
 
 		return {
 			thread: this.toThreadInfo(created),
 			created: true,
 		};
+	}
+
+	/** Eval-only: seed a thread with a native message log (id/role/content/createdAt
+	 *  preserved verbatim) so the runtime continues as if it really happened. The
+	 *  thread must exist; referenced artifacts are recreated by the caller. */
+	async restoreThreadMessages(
+		userId: string,
+		threadId: string,
+		messages: Array<Record<string, unknown>>,
+	): Promise<{ restored: number }> {
+		const restorable: AgentDbMessage[] = [];
+		for (const [index, raw] of messages.entries()) {
+			const message = toRestorableMessage(raw);
+			if (!message) {
+				throw new BadRequestError(
+					`Seed message at index ${index} is not a valid agent message (id, createdAt, and role+content or type:custom+data are required)`,
+				);
+			}
+			restorable.push(message);
+		}
+
+		await this.agentMemory.saveMessages({ threadId, resourceId: userId, messages: restorable });
+		return { restored: restorable.length };
+	}
+
+	/** Project a thread is bound to (undefined for legacy unbound threads). */
+	async getThreadProjectId(threadId: string): Promise<string | undefined> {
+		return (await this.agentMemory.getThreadProjectId(threadId)) ?? undefined;
 	}
 
 	async getThreadMessages(
@@ -123,9 +214,72 @@ export class InstanceAiMemoryService {
 			snapshots = snapshots.filter((s) => !excluded.has(s.runId));
 		}
 
-		const messages = parseStoredMessages(result.messages, snapshots);
+		// Surface the in-flight messages from any suspended checkpoint. The
+		// user's prompt is persisted to memory on receipt, but the intermediate
+		// assistant responses and pending tool-call from a turn suspended at HITL
+		// are only committed after the turn completes, so until then they live
+		// only inside the checkpoint blob. Without merging them in, a thread
+		// waiting on a confirmation renders without those in-flight artifacts
+		// after a page reload.
+		const checkpointMessages = await this.loadInFlightCheckpointMessages(threadId);
+		const storedMessages = mergeMessagesById(result.messages, checkpointMessages);
 
-		return { threadId, messages };
+		const messages = parseStoredMessages(storedMessages, snapshots);
+		await this.flagExpiredConfirmations(messages);
+
+		const projectId = await this.agentMemory.getThreadProjectId(threadId);
+		return { threadId, projectId: projectId ?? undefined, messages };
+	}
+
+	/** Cross-check every confirmation card against `instance_ai_pending_confirmations`
+	 *  and flip `confirmation.expired = true` on the ones with no live row. */
+	private async flagExpiredConfirmations(
+		messages: Awaited<ReturnType<typeof parseStoredMessages>>,
+	): Promise<void> {
+		const requestIds = collectConfirmationRequestIds(messages);
+		if (requestIds.length === 0) return;
+		try {
+			const live = await this.pendingConfirmationRepository.findLiveRequestIds(
+				requestIds,
+				new Date(),
+			);
+			markExpiredConfirmations(messages, live);
+		} catch (error) {
+			this.logger.warn('Failed to flag expired confirmation cards', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	private async loadInFlightCheckpointMessages(threadId: string): Promise<AgentDbMessage[]> {
+		let checkpoints;
+		try {
+			checkpoints = await this.checkpointRepository.findActiveByThreadId(threadId);
+		} catch (error) {
+			this.logger.warn('Failed to load in-flight checkpoint messages', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return [];
+		}
+
+		const merged: AgentDbMessage[] = [];
+		const seen = new Set<string>();
+		for (const checkpoint of checkpoints) {
+			const stateMessages = checkpoint.state?.messageList?.messages ?? [];
+			for (const candidate of stateMessages) {
+				if (!isAgentMessageLike(candidate) || seen.has(candidate.id)) continue;
+				seen.add(candidate.id);
+				merged.push({
+					...candidate,
+					createdAt:
+						candidate.createdAt instanceof Date
+							? candidate.createdAt
+							: new Date(candidate.createdAt),
+				});
+			}
+		}
+		return merged;
 	}
 
 	async getLatestRunSnapshot(
@@ -165,6 +319,16 @@ export class InstanceAiMemoryService {
 		await this.agentMemory.deleteThread(threadId);
 	}
 
+	/**
+	 * Remove every thread owned by a user, the sub-agent threads spawned under
+	 * them, and their working-memory resources. Invoked on user deletion to
+	 * avoid orphaning Instance AI data. Returns the number of owner threads
+	 * deleted.
+	 */
+	async deleteThreadsForUser(userId: string): Promise<number> {
+		return await this.agentMemory.deleteThreadsByResourceId(userId);
+	}
+
 	async renameThread(threadId: string, title: string): Promise<InstanceAiThreadInfo> {
 		return await this.updateThread(threadId, { title });
 	}
@@ -202,8 +366,9 @@ export class InstanceAiMemoryService {
 	}
 
 	/**
-	 * Delete conversation threads older than the configured TTL.
-	 * Safe to call on startup — no-op if threadTtlDays is 0 (disabled).
+	 * Delete conversation threads older than the configured TTL. Invoked on a
+	 * recurring schedule by the leader instance's prune job. Idempotent and
+	 * safe to call repeatedly — no-op if threadTtlDays is 0 (disabled).
 	 */
 	async cleanupExpiredThreads(
 		onThreadDeleted?: (threadId: string) => Promise<void>,

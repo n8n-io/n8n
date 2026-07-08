@@ -1,9 +1,11 @@
-import { ExportEntitiesCommand } from '../entities';
 import { mockInstance } from '@n8n/backend-test-utils';
+
 import { ExportService } from '@/services/export.service';
 
-jest.mock('fs-extra');
-jest.mock('@/services/export.service');
+import { ExportEntitiesCommand } from '../entities';
+
+vi.mock('fs-extra');
+vi.mock('@/services/export.service');
 
 describe('ExportEntitiesCommand', () => {
 	const mockExportService = mockInstance(ExportService);
@@ -17,8 +19,8 @@ describe('ExportEntitiesCommand', () => {
 			};
 			// @ts-expect-error Protected property
 			command.logger = {
-				info: jest.fn(),
-				error: jest.fn(),
+				info: vi.fn(),
+				error: vi.fn(),
 			};
 			await command.run();
 
@@ -45,8 +47,8 @@ describe('ExportEntitiesCommand', () => {
 			};
 			// @ts-expect-error Protected property
 			command.logger = {
-				info: jest.fn(),
-				error: jest.fn(),
+				info: vi.fn(),
+				error: vi.fn(),
 			};
 			await command.run();
 
@@ -67,8 +69,8 @@ describe('ExportEntitiesCommand', () => {
 			};
 			// @ts-expect-error Protected property
 			command.logger = {
-				info: jest.fn(),
-				error: jest.fn(),
+				info: vi.fn(),
+				error: vi.fn(),
 			};
 			await command.run();
 
@@ -95,8 +97,8 @@ describe('ExportEntitiesCommand', () => {
 			};
 			// @ts-expect-error Protected property
 			command.logger = {
-				info: jest.fn(),
-				error: jest.fn(),
+				info: vi.fn(),
+				error: vi.fn(),
 			};
 			await command.run();
 
@@ -114,7 +116,7 @@ describe('ExportEntitiesCommand', () => {
 			const command = new ExportEntitiesCommand();
 			// @ts-expect-error Protected property
 			command.logger = {
-				error: jest.fn(),
+				error: vi.fn(),
 			};
 			command.catch(new Error('test'));
 

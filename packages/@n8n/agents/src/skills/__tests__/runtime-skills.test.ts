@@ -13,7 +13,18 @@ import {
 	parseRuntimeSkillMarkdown,
 	renderSkillCatalogPrompt,
 } from '..';
+import type { AgentRuntimeConfig } from '../../runtime/loop/agent-runtime';
 import { Agent } from '../../sdk/agent';
+import { isZodSchema } from '../../utils/zod';
+
+/** Extract the text body from the content-block form of a load_skill success result. */
+function skillLoadText(output: unknown): string {
+	const record = output as { type?: string; value?: Array<{ type: string; text: string }> };
+	if (record?.type !== 'content' || !Array.isArray(record.value)) {
+		throw new Error(`Expected content-form skill load output, got: ${JSON.stringify(output)}`);
+	}
+	return record.value.map((part) => part.text).join('\n');
+}
 
 describe('runtime skills', () => {
 	it('parses SKILL.md frontmatter into a runtime skill', () => {
@@ -155,11 +166,9 @@ description: Has no instructions.
 	});
 
 	it('uses locale-independent ordering for registry hashes', () => {
-		const localeCompareSpy = jest
-			.spyOn(String.prototype, 'localeCompare')
-			.mockImplementation(() => {
-				throw new Error('localeCompare must not be used for registry ordering');
-			});
+		const localeCompareSpy = vi.spyOn(String.prototype, 'localeCompare').mockImplementation(() => {
+			throw new Error('localeCompare must not be used for registry ordering');
+		});
 
 		try {
 			expect(() =>
@@ -193,6 +202,53 @@ description: Has no instructions.
 		} finally {
 			localeCompareSpy.mockRestore();
 		}
+	});
+
+	it('hashes skill content independently of load locations', () => {
+		const linkedFiles = {
+			references: [{ path: 'references/guide.md', bytes: 5, sha256: 'abc123' }],
+			templates: [],
+			scripts: [],
+			assets: [],
+			examples: [],
+			other: [],
+		};
+		const baseSkill = {
+			id: 'same-skill',
+			name: 'same-skill',
+			description: 'Same skill',
+			instructions: 'Use the same instructions.',
+			sourceName: 'same-skill',
+			path: '/ci/workspace/skills/same-skill/SKILL.md',
+			sourcePath: '/ci/workspace/skills/same-skill/SKILL.md',
+			directory: '/ci/workspace/skills/same-skill',
+			sourceDirectory: 'ci-category/same-skill',
+			category: 'ci-category',
+			linkedFiles,
+		};
+		const movedSkill = {
+			...baseSkill,
+			sourceName: 'renamed-folder',
+			path: '/usr/local/lib/node_modules/n8n/skills/renamed-folder/SKILL.md',
+			sourcePath: '/usr/local/lib/node_modules/n8n/skills/renamed-folder/SKILL.md',
+			directory: '/usr/local/lib/node_modules/n8n/skills/renamed-folder',
+			sourceDirectory: 'prod-category/renamed-folder',
+			category: 'prod-category',
+		};
+
+		const baseRegistry = createRuntimeSkillRegistry([baseSkill]);
+		const movedRegistry = createRuntimeSkillRegistry([movedSkill]);
+		const changedRegistry = createRuntimeSkillRegistry([
+			{ ...movedSkill, instructions: 'Use different instructions.' },
+		]);
+
+		expect(baseRegistry.skills[0].path).not.toBe(movedRegistry.skills[0].path);
+		expect(baseRegistry.skills[0].sourceDirectory).not.toBe(
+			movedRegistry.skills[0].sourceDirectory,
+		);
+		expect(baseRegistry.skills[0].hash).toBe(movedRegistry.skills[0].hash);
+		expect(baseRegistry.skillsHash).toBe(movedRegistry.skillsHash);
+		expect(baseRegistry.skillsHash).not.toBe(changedRegistry.skillsHash);
 	});
 
 	it('rejects duplicate skill ids and names', () => {
@@ -262,12 +318,55 @@ Use the workflow SDK.`,
 		}
 	});
 
+	it('excludes filesystem-backed skills from the registry and file loader', async () => {
+		const root = mkdtempSync(join(tmpdir(), 'runtime-skills-'));
+		try {
+			const intentSkillDir = join(root, 'intent-recognition').replace(/\\/g, '/');
+			const workflowSkillDir = join(root, 'workflow-builder').replace(/\\/g, '/');
+			mkdirSync(join(intentSkillDir, 'references'), { recursive: true });
+			mkdirSync(workflowSkillDir, { recursive: true });
+			writeFileSync(
+				join(intentSkillDir, 'SKILL.md'),
+				`---
+name: intent-recognition
+description: Classify intent.
+---
+
+Classify automation intent.`,
+			);
+			writeFileSync(join(intentSkillDir, 'references', 'taxonomy.md'), 'Taxonomy text');
+			writeFileSync(
+				join(workflowSkillDir, 'SKILL.md'),
+				`---
+name: workflow-builder
+description: Build workflows.
+---
+
+Use the workflow SDK.`,
+			);
+
+			const source = loadRuntimeSkillSourceFromDirectory(root, {
+				exclude: ['intent-recognition'],
+			});
+
+			expect(source.registry.skills.map((skill) => skill.id)).toEqual(['workflow-builder']);
+			await expect(source.loadSkill('intent-recognition')).resolves.toBeNull();
+			await expect(
+				source.loadFile?.('intent-recognition', 'references/taxonomy.md'),
+			).resolves.toBeNull();
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
 	it('renders a compact skill catalog without skill bodies', () => {
 		const source = createRuntimeSkillSource([
 			{
 				id: 'summarize_notes',
 				name: 'Summarize notes',
 				description: 'Use for meeting notes.',
+				category: 'productivity',
+				recommendedTools: ['data-tables'],
 				instructions: 'Extract private decisions.',
 			},
 		]);
@@ -277,6 +376,8 @@ Use the workflow SDK.`,
 		expect(prompt).toContain('Skill loading protocol:');
 		expect(prompt).toContain('name: "Summarize notes"');
 		expect(prompt).toContain('id: "summarize_notes"');
+		expect(prompt).toContain('category: "productivity"');
+		expect(prompt).toContain('recommendedTools: ["data-tables"]');
 		expect(prompt).toContain('load_skill once with `{ "skillId": "<id>" }`');
 		expect(prompt).not.toContain('Extract private decisions.');
 	});
@@ -309,30 +410,112 @@ Use the workflow SDK.`,
 		const listTool = createListSkillsTool(source);
 		const loadTool = createSkillLoadTool(source);
 
-		await expect(listTool.handler?.({}, {})).resolves.toMatchObject({
+		const listOutput = await listTool.handler?.({}, {});
+		expect(listOutput).toMatchObject({
 			success: true,
 			count: 1,
 			skills: [expect.objectContaining({ name: 'Summarize notes' })],
 		});
-		await expect(loadTool.handler?.({ skillId: 'summarize_notes' }, {})).resolves.toMatchObject({
-			ok: true,
-			success: true,
-			skillId: 'summarize_notes',
-			name: 'Summarize notes',
-			content: 'Extract decisions.',
-			instructions: 'Extract decisions.',
-		});
-		await expect(loadTool.handler?.({ name: 'Summarize notes' }, {})).resolves.toMatchObject({
-			ok: true,
-			success: true,
-			skillId: 'summarize_notes',
-			name: 'Summarize notes',
-			content: 'Extract decisions.',
-		});
+		const listedSkill = (listOutput as { skills: Array<Record<string, unknown>> }).skills[0];
+		expect(listedSkill).not.toHaveProperty('content');
+		expect(listedSkill).not.toHaveProperty('instructions');
+		expect(loadTool.description).toContain('do not pass filePath');
+		expect(isZodSchema(loadTool.inputSchema)).toBe(true);
+		if (!isZodSchema(loadTool.inputSchema)) throw new Error('Expected Zod input schema');
+		expect(
+			loadTool.inputSchema.safeParse({ skillId: 'summarize_notes', filePath: '/' }).data,
+		).toEqual({ skillId: 'summarize_notes' });
+		const loadedById = skillLoadText(await loadTool.handler?.({ skillId: 'summarize_notes' }, {}));
+		expect(loadedById).toContain('[Skill: "Summarize notes"]');
+		expect(loadedById).toContain('Extract decisions.');
+		const loadedByMainFile = skillLoadText(
+			await loadTool.handler?.({ skillId: 'summarize_notes', filePath: 'SKILL.md' }, {}),
+		);
+		expect(loadedByMainFile).toContain('Extract decisions.');
+		const loadedByName = skillLoadText(await loadTool.handler?.({ name: 'Summarize notes' }, {}));
+		expect(loadedByName).toContain('Extract decisions.');
 		await expect(loadTool.handler?.({ name: 'Missing skill' }, {})).resolves.toMatchObject({
 			ok: false,
 			success: false,
 		});
+	});
+
+	it('prepares the runtime skill source before list_skills or load_skill reads the registry', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'summarize_notes',
+				name: 'Summarize notes',
+				description: 'Use for meeting notes.',
+				instructions: 'Full private skill body: Extract decisions.',
+			},
+		]);
+		const prepare = vi.fn(async () => {
+			await Promise.resolve();
+			source.registry = {
+				...source.registry,
+				skills: source.registry.skills.map((skill) => ({
+					...skill,
+					path: '/workspace/skills/summarize_notes/SKILL.md',
+					directory: '/workspace/skills/summarize_notes',
+				})),
+			};
+		});
+		source.prepare = prepare;
+		const listTool = createListSkillsTool(source);
+		const loadTool = createSkillLoadTool(source);
+
+		await expect(listTool.handler?.({}, {})).resolves.toMatchObject({
+			success: true,
+			skills: [
+				expect.objectContaining({
+					directory: '/workspace/skills/summarize_notes',
+					path: '/workspace/skills/summarize_notes/SKILL.md',
+				}),
+			],
+		});
+		expect(prepare).toHaveBeenCalledTimes(1);
+
+		const loaded = skillLoadText(await loadTool.handler?.({ skillId: 'summarize_notes' }, {}));
+		expect(loaded).toContain('/workspace/skills/summarize_notes');
+		expect(prepare).toHaveBeenCalledTimes(2);
+	});
+
+	it('prepares the runtime skill source before injecting the agent skill catalog', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'summarize_notes',
+				name: 'Summarize notes',
+				description: 'Use for meeting notes.',
+				instructions: 'Extract decisions.',
+			},
+		]);
+		const prepare = vi.fn(async () => {
+			await Promise.resolve();
+			source.registry = {
+				...source.registry,
+				skills: source.registry.skills.map((skill) => ({
+					...skill,
+					description: 'Use for materialized meeting notes.',
+				})),
+			};
+		});
+		source.prepare = prepare;
+
+		const agent = new Agent('assistant')
+			.model('anthropic/claude-sonnet-4-5')
+			.instructions('Base instructions.')
+			.skills(source);
+		const runtimeConfig = await (
+			agent as unknown as { build(): Promise<AgentRuntimeConfig> }
+		).build();
+		const { instructions } = runtimeConfig;
+
+		expect(prepare).toHaveBeenCalledTimes(1);
+		expect(instructions).toContain('name: "Summarize notes"');
+		expect(instructions).toContain('id: "summarize_notes"');
+		expect(instructions).toContain('description: "Use for materialized meeting notes."');
+		expect(instructions).not.toContain('description: "Use for meeting notes."');
+		expect(instructions).not.toContain('Full private skill body');
 	});
 
 	it('redacts likely secrets from load_skill content before returning it', async () => {
@@ -353,16 +536,14 @@ Use the workflow SDK.`,
 		]);
 		const loadTool = createSkillLoadTool(source);
 
-		const output = (await loadTool.handler?.({ skillId: 'credentials-guide' }, {})) as {
-			content?: string;
-		};
+		const text = skillLoadText(await loadTool.handler?.({ skillId: 'credentials-guide' }, {}));
 
-		expect(output.content).toContain('token=[REDACTED]');
-		expect(output.content).toContain('Authorization: Bearer [REDACTED]');
-		expect(output.content).toContain('api_key=[REDACTED]');
-		expect(output.content).not.toContain(secretValue);
-		expect(output.content).not.toContain('bearer-secret-value');
-		expect(output.content).not.toContain(longToken.slice(0, 32));
+		expect(text).toContain('token=[REDACTED]');
+		expect(text).toContain('Authorization: Bearer [REDACTED]');
+		expect(text).toContain('api_key=[REDACTED]');
+		expect(text).not.toContain(secretValue);
+		expect(text).not.toContain('bearer-secret-value');
+		expect(text).not.toContain(longToken.slice(0, 32));
 	});
 
 	it('uses load_skill for registered linked files when the source supports file loading', async () => {
@@ -390,7 +571,7 @@ Use the workflow SDK.`,
 				},
 			},
 		]);
-		const loadFile = jest.fn(
+		const loadFile = vi.fn(
 			async (_skillId: string, filePath: string) =>
 				await Promise.resolve({
 					skillId: 'summarize_notes',
@@ -411,28 +592,62 @@ Use the workflow SDK.`,
 			'list_skills',
 			'load_skill',
 		]);
+		const fileBackedList = await createListSkillsTool(fileBackedSource).handler?.({}, {});
+		const fileBackedSkill = (fileBackedList as { skills: Array<Record<string, unknown>> })
+			.skills[0];
+		expect(fileBackedSkill).toMatchObject({
+			name: 'Summarize notes',
+		});
+		expect(fileBackedSkill?.linkedFiles).toBeUndefined();
 
 		const unsupportedLoadTool = createSkillLoadTool(registeredFileSource);
-		await expect(
-			unsupportedLoadTool.handler?.(
-				{ skillId: 'summarize_notes', filePath: 'references/guide.md' },
-				{},
+		expect(unsupportedLoadTool.description).toContain('do not pass filePath');
+		expect(isZodSchema(unsupportedLoadTool.inputSchema)).toBe(true);
+		if (!isZodSchema(unsupportedLoadTool.inputSchema)) throw new Error('Expected Zod input schema');
+		expect(
+			unsupportedLoadTool.inputSchema.safeParse({
+				skillId: 'summarize_notes',
+				filePath: 'references/guide.md',
+			}).data,
+		).toEqual({ skillId: 'summarize_notes' });
+		expect(
+			skillLoadText(
+				await unsupportedLoadTool.handler?.(
+					{ skillId: 'summarize_notes', filePath: 'references/guide.md' },
+					{},
+				),
 			),
-		).resolves.toMatchObject({
-			ok: false,
-			success: false,
-			error: 'This skill source does not support loading linked files.',
-		});
+		).toContain('Extract decisions.');
 
 		const loadTool = createSkillLoadTool(fileBackedSource);
+		expect(loadTool.description).toContain('use filePath only for a linked file path');
+		expect(isZodSchema(loadTool.inputSchema)).toBe(true);
+		if (!isZodSchema(loadTool.inputSchema)) throw new Error('Expected Zod input schema');
+		expect(
+			loadTool.inputSchema.safeParse({
+				skillId: 'summarize_notes',
+				filePath: 'references/guide.md',
+			}).data,
+		).toEqual({ skillId: 'summarize_notes', filePath: 'references/guide.md' });
+		expect(
+			loadTool.inputSchema.safeParse({ skillId: 'summarize_notes', filePath: '' }).data,
+		).toEqual({
+			skillId: 'summarize_notes',
+			filePath: '',
+		});
 		await expect(
 			loadTool.handler?.({ skillId: 'summarize_notes', filePath: 'references/missing.md' }, {}),
 		).resolves.toMatchObject({
 			ok: false,
 			success: false,
-			error: 'File is not registered for skill Summarize notes: references/missing.md',
+			error:
+				'File is not registered for skill Summarize notes: references/missing.md. To load the main skill instructions, retry without filePath.',
 		});
 		expect(loadFile).not.toHaveBeenCalledWith('summarize_notes', 'references/missing.md');
+
+		expect(
+			skillLoadText(await loadTool.handler?.({ skillId: 'summarize_notes', filePath: '' }, {})),
+		).toContain('Extract decisions.');
 
 		await expect(
 			loadTool.handler?.({ skillId: 'summarize_notes', filePath: 'references/guide.md' }, {}),
@@ -497,12 +712,9 @@ Use the workflow SDK.`,
 		const loadSkillTool = agent.declaredTools.find((tool) => tool.name === 'load_skill');
 		if (!loadSkillTool?.handler) throw new Error('Expected load_skill tool');
 
-		await expect(loadSkillTool.handler({ skillId: 'workflow_auditor' }, {})).resolves.toMatchObject(
-			{
-				skillId: 'workflow_auditor',
-				content: 'Audit the workflow.',
-			},
-		);
+		expect(
+			skillLoadText(await loadSkillTool.handler({ skillId: 'workflow_auditor' }, {})),
+		).toContain('Audit the workflow.');
 	});
 
 	it('rejects tools that reuse runtime skill tool names after skills are attached', () => {
