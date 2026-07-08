@@ -63,7 +63,8 @@ async function buildPostgresBackend(
 
 	const encodedUser = encodeURIComponent(user);
 	const encodedPassword = encodeURIComponent(password);
-	let connectionString = `postgresql://${encodedUser}:${encodedPassword}@${host}:${port}/${database}`;
+	const encodedDatabase = encodeURIComponent(database);
+	let connectionString = `postgresql://${encodedUser}:${encodedPassword}@${host}:${port}/${encodedDatabase}`;
 	if (allowUnauthorizedCerts) {
 		connectionString += '?sslmode=no-verify';
 	} else if (ssl === 'require') {

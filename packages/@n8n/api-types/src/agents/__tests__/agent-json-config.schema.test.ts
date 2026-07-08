@@ -336,6 +336,36 @@ describe('AgentJsonConfigSchema — vectorStores', () => {
 		}
 	});
 
+	it('rejects vector store names that collide after sanitization (- vs _)', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			vectorStores: [
+				{
+					provider: 'qdrant',
+					name: 'docs-a',
+					credential: 'qdrant-cred',
+					useWhen: 'Use A',
+					embedding,
+					collectionName: 'a',
+				},
+				{
+					provider: 'postgres',
+					name: 'docs_a',
+					credential: 'postgres-cred',
+					useWhen: 'Use B',
+					embedding,
+					tableName: 'b',
+				},
+			],
+		});
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.errors[0].message).toBe(
+				'Vector store names must be unique within an agent',
+			);
+		}
+	});
+
 	it('rejects a useWhen longer than the max length', () => {
 		const result = AgentJsonConfigSchema.safeParse({
 			...minimalConfig,

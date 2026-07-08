@@ -9,7 +9,7 @@ import { AgentVectorStoresService } from './agent-vector-stores.service';
 export class AgentVectorStoresController {
 	constructor(private readonly agentVectorStoresService: AgentVectorStoresService) {}
 
-	@Post('/:agentId/vector-stores/test')
+	@Post('/vector-stores/test')
 	@ProjectScope('agent:update')
 	async testConnection(
 		req: AuthenticatedRequest<{ projectId: string }>,

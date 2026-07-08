@@ -1,6 +1,7 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only Vue mounting */
 import { mount, flushPromises } from '@vue/test-utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { computed, defineComponent } from 'vue';
 
 import AgentVectorStoresModal from '../components/AgentVectorStoresModal.vue';
 
@@ -101,14 +102,17 @@ vi.mock('../components/AgentCredentialSelect.vue', () => ({
 }));
 
 vi.mock('../components/EmbeddingModelSelector.vue', () => ({
-	default: {
+	default: defineComponent({
 		name: 'EmbeddingModelSelector',
 		props: ['selectedModel', 'selectedCredentialId', 'credentialsByType', 'canCreateCredentials'],
 		emits: ['update:selectedModel', 'update:selectedCredentialId', 'create-credential'],
-		computed: {
-			allCredentials(): Array<{ id: string; name: string }> {
-				return Object.values(this.credentialsByType ?? {}).flat();
-			},
+		setup(props) {
+			const allCredentials = computed<Array<{ id: string; name: string }>>(() =>
+				Object.values(
+					(props.credentialsByType ?? {}) as Record<string, Array<{ id: string; name: string }>>,
+				).flat(),
+			);
+			return { allCredentials };
 		},
 		template:
 			'<div>' +
@@ -121,7 +125,7 @@ vi.mock('../components/EmbeddingModelSelector.vue', () => ({
 			'<option value="" /><option v-for="c in allCredentials" :key="c.id" :value="c.id">{{ c.name }}</option>' +
 			'</select>' +
 			'</div>',
-	},
+	}),
 }));
 
 const qdrantCredential = { id: 'qdrant-cred-1', name: 'My Qdrant', type: 'qdrantApi' };
@@ -228,7 +232,7 @@ describe('AgentVectorStoresModal', () => {
 		await confirmButton.trigger('click');
 		await flushPromises();
 
-		expect(testAgentVectorStoreMock).toHaveBeenCalledWith({}, 'p1', 'a1', expectedVectorStore);
+		expect(testAgentVectorStoreMock).toHaveBeenCalledWith({}, 'p1', expectedVectorStore);
 		expect(trackTestedVectorStoreMock).toHaveBeenCalledWith({
 			agentId: 'a1',
 			provider: 'qdrant',
@@ -238,6 +242,40 @@ describe('AgentVectorStoresModal', () => {
 		expect(closeModalMock).toHaveBeenCalledWith('agentVectorStoresModal');
 		expect(showMessageMock).toHaveBeenCalledWith(
 			expect.objectContaining({ type: 'success', title: expect.stringContaining('product_docs') }),
+		);
+		expect(showErrorMock).not.toHaveBeenCalled();
+	});
+
+	it('shows a warning toast alongside a successful connection test, and still confirms', async () => {
+		testAgentVectorStoreMock.mockResolvedValue({
+			success: true,
+			warning:
+				'Namespace "staging" has no data yet in index "product-docs". It will appear once data is indexed — double-check the name if you expected existing data.',
+		});
+		const onConfirm = vi.fn();
+
+		const wrapper = mount(AgentVectorStoresModal, {
+			props: {
+				modalName: 'agentVectorStoresModal',
+				data: { projectId: 'p1', agentId: 'a1', existingNames: [], onConfirm },
+			},
+		});
+		await flushPromises();
+
+		await selectQdrantProvider(wrapper);
+		await fillQdrantConnection(wrapper);
+
+		await wrapper.find('[data-testid="agent-vector-stores-modal-confirm"]').trigger('click');
+		await flushPromises();
+
+		expect(onConfirm).toHaveBeenCalledWith(expectedVectorStore);
+		expect(closeModalMock).toHaveBeenCalledWith('agentVectorStoresModal');
+		expect(showMessageMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'warning',
+				message:
+					'Namespace "staging" has no data yet in index "product-docs". It will appear once data is indexed — double-check the name if you expected existing data.',
+			}),
 		);
 		expect(showErrorMock).not.toHaveBeenCalled();
 	});

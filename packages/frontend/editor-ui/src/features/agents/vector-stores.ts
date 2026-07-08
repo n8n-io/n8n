@@ -15,18 +15,17 @@ export const AGENT_VECTOR_STORE_PROVIDER_DEFINITIONS = {
 export interface AgentEmbeddingModelOption {
 	model: string;
 	dimensions: number;
-	credentialTypes: readonly [string, ...string[]];
 }
 
 export const AGENT_EMBEDDING_MODEL_OPTIONS: readonly AgentEmbeddingModelOption[] = [
-	{ model: 'openai/text-embedding-3-small', dimensions: 1536, credentialTypes: ['openAiApi'] },
-	{ model: 'openai/text-embedding-3-large', dimensions: 3072, credentialTypes: ['openAiApi'] },
-	{ model: 'openai/text-embedding-ada-002', dimensions: 1536, credentialTypes: ['openAiApi'] },
-	{ model: 'google/gemini-embedding-001', dimensions: 3072, credentialTypes: ['googlePalmApi'] },
-	{ model: 'google/text-embedding-004', dimensions: 768, credentialTypes: ['googlePalmApi'] },
-	{ model: 'mistral/mistral-embed', dimensions: 1024, credentialTypes: ['mistralCloudApi'] },
-	{ model: 'cohere/embed-english-v3.0', dimensions: 1024, credentialTypes: ['cohereApi'] },
-	{ model: 'cohere/embed-multilingual-v3.0', dimensions: 1024, credentialTypes: ['cohereApi'] },
+	{ model: 'openai/text-embedding-3-small', dimensions: 1536 },
+	{ model: 'openai/text-embedding-3-large', dimensions: 3072 },
+	{ model: 'openai/text-embedding-ada-002', dimensions: 1536 },
+	{ model: 'google/gemini-embedding-001', dimensions: 3072 },
+	{ model: 'google/text-embedding-004', dimensions: 768 },
+	{ model: 'mistral/mistral-embed', dimensions: 1024 },
+	{ model: 'cohere/embed-english-v3.0', dimensions: 1024 },
+	{ model: 'cohere/embed-multilingual-v3.0', dimensions: 1024 },
 ] as const;
 
 /** Providers with an embedding model in {@link AGENT_EMBEDDING_MODEL_OPTIONS}, in display order. */
@@ -38,11 +37,13 @@ export const AGENT_EMBEDDING_PROVIDERS: readonly AgentEmbeddingProvider[] = [
 	'cohere',
 ];
 
+export function isAgentEmbeddingProvider(value: string): value is AgentEmbeddingProvider {
+	return AGENT_EMBEDDING_PROVIDERS.some((provider) => provider === value);
+}
+
 export function getEmbeddingModelProvider(model: string): AgentEmbeddingProvider | null {
 	const prefix = model.split('/')[0];
-	return (AGENT_EMBEDDING_PROVIDERS as readonly string[]).includes(prefix)
-		? (prefix as AgentEmbeddingProvider)
-		: null;
+	return isAgentEmbeddingProvider(prefix) ? prefix : null;
 }
 
 export function getEmbeddingModelsForProvider(

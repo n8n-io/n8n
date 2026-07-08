@@ -14,6 +14,7 @@ import {
 	AGENT_EMBEDDING_PROVIDERS,
 	getEmbeddingModelProvider,
 	getEmbeddingModelsForProvider,
+	isAgentEmbeddingProvider,
 	type AgentEmbeddingProvider,
 } from '../vector-stores';
 import type { AgentCredentialOption } from './AgentCredentialSelect.vue';
@@ -149,8 +150,8 @@ function onSelect(id: string) {
 		return;
 	}
 
-	if (!(AGENT_EMBEDDING_PROVIDERS as readonly string[]).includes(parsed.provider)) return;
-	const provider = parsed.provider as AgentEmbeddingProvider;
+	if (!isAgentEmbeddingProvider(parsed.provider)) return;
+	const provider = parsed.provider;
 
 	if (action === 'credential') {
 		emit('update:selectedCredentialId', value);

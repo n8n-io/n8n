@@ -83,7 +83,7 @@ describe('AgentVectorStoresService.testConnection', () => {
 		vi.useFakeTimers();
 		try {
 			const backend = makeBackend();
-			backend.query.mockImplementation(() => new Promise<never>(() => {}));
+			backend.query.mockImplementation(async () => await new Promise<never>(() => {}));
 			vi.mocked(buildVectorStoreBackend).mockResolvedValue(backend);
 			const { service } = makeService(postgresConfig.credential);
 
@@ -110,7 +110,7 @@ describe('AgentVectorStoresService.testConnection', () => {
 		expect(backend.close).toHaveBeenCalledTimes(1);
 	});
 
-	it('reports a namespace mismatch for a Pinecone index missing the configured namespace', async () => {
+	it('warns when the configured Pinecone namespace has no data yet, still running the probe query', async () => {
 		vi.doMock('@pinecone-database/pinecone', () => ({
 			Pinecone: class {
 				async describeIndex() {
@@ -139,8 +139,47 @@ describe('AgentVectorStoresService.testConnection', () => {
 		const result = await service.testConnection(projectId, user, pineconeConfig);
 
 		expect(result).toEqual({
+			success: true,
+			warning:
+				'Namespace "staging" has no data yet in index "product-docs". It will appear once data is indexed — double-check the name if you expected existing data.',
+		});
+		expect(backend.query).toHaveBeenCalledWith([0, 0], { topK: 1 });
+		expect(backend.close).toHaveBeenCalledTimes(1);
+
+		vi.doUnmock('@pinecone-database/pinecone');
+	});
+
+	it('reports a hard failure for a Pinecone dimension mismatch and skips the probe query', async () => {
+		vi.doMock('@pinecone-database/pinecone', () => ({
+			Pinecone: class {
+				async describeIndex() {
+					return { dimension: 4 };
+				}
+				index() {
+					return { describeIndexStats: async () => ({ namespaces: { prod: {} } }) };
+				}
+			},
+		}));
+
+		const backend = makeBackend();
+		backend.query.mockResolvedValue([]);
+		vi.mocked(buildVectorStoreBackend).mockResolvedValue(backend);
+		const { service } = makeService('pinecone-cred', { apiKey: 'pc-key' });
+		const pineconeConfig: AgentJsonVectorStoreConfig = {
+			provider: 'pinecone',
+			name: 'docs',
+			credential: 'pinecone-cred',
+			useWhen: 'Search docs',
+			embedding: { model: 'openai/text-embedding-3-small', credential: 'embed-cred' },
+			indexName: 'product-docs',
+		};
+
+		const result = await service.testConnection(projectId, user, pineconeConfig);
+
+		expect(result).toEqual({
 			success: false,
-			message: 'Namespace "staging" was not found in index "product-docs".',
+			message:
+				'Index "product-docs" expects 4 dimensions but model "openai/text-embedding-3-small" produces 2.',
 		});
 		expect(backend.query).not.toHaveBeenCalled();
 		expect(backend.close).toHaveBeenCalledTimes(1);

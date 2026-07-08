@@ -15,11 +15,10 @@ import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { AGENT_MODEL_PROVIDER_DEFINITIONS } from '../model-providers';
+import { AGENT_MODEL_PROVIDER_DEFINITIONS, getProviderCredentialTypes } from '../model-providers';
 import { testAgentVectorStore } from '../composables/useAgentApi';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import {
-	AGENT_EMBEDDING_MODEL_OPTIONS,
 	AGENT_EMBEDDING_PROVIDERS,
 	AGENT_VECTOR_STORE_PROVIDER_DEFINITIONS,
 	getEmbeddingModelProvider,
@@ -123,6 +122,7 @@ function selectProvider(provider: AgentVectorStoreProvider) {
 function goBack() {
 	if (isEditing.value) return;
 	selectedProvider.value = null;
+	nameTouched.value = false;
 }
 
 const locatorValue = computed(() => {
@@ -149,9 +149,9 @@ watch(locatorValue, (value) => {
 		.slice(0, 64);
 });
 
-function onNameInput(value: string) {
+function onNameInput(value: Validatable) {
 	nameTouched.value = true;
-	name.value = value;
+	name.value = typeof value === 'string' ? value : '';
 }
 
 const nameValidators: Record<string, IValidator> = {
@@ -161,7 +161,10 @@ const nameValidators: Record<string, IValidator> = {
 			const otherNames = props.data.existingNames.filter(
 				(otherName) => otherName !== existing?.name,
 			);
-			if (trimmed && otherNames.includes(trimmed)) {
+			// '-' is sanitized to '_' in the derived search_<name> tool name, so
+			// compare sanitized forms to catch collisions like 'docs-a' vs 'docs_a'.
+			const sanitize = (value: string) => value.replace(/-/g, '_');
+			if (trimmed && otherNames.some((otherName) => sanitize(otherName) === sanitize(trimmed))) {
 				return {
 					message: i18n.baseText('agents.builder.vectorStores.modal.name.validation.duplicate'),
 				};
@@ -230,8 +233,8 @@ async function loadCredentials() {
 		for (const definition of Object.values(AGENT_VECTOR_STORE_PROVIDER_DEFINITIONS)) {
 			types.add(definition.credentialType);
 		}
-		for (const option of AGENT_EMBEDDING_MODEL_OPTIONS) {
-			for (const type of option.credentialTypes) types.add(type);
+		for (const provider of AGENT_EMBEDDING_PROVIDERS) {
+			for (const type of getProviderCredentialTypes(provider)) types.add(type);
 		}
 		for (const type of types) {
 			credentialsByType.value[type] = allCredentials
@@ -363,7 +366,6 @@ async function onTestAndConnect() {
 		const result = await testAgentVectorStore(
 			rootStore.restApiContext,
 			props.data.projectId,
-			props.data.agentId,
 			vectorStore,
 		);
 		agentTelemetry.trackTestedVectorStore({
@@ -381,12 +383,14 @@ async function onTestAndConnect() {
 			});
 			return;
 		}
-		showMessage({
-			title: i18n.baseText('agents.builder.vectorStores.modal.test.successTitle', {
-				interpolate: { name: vectorStore.name },
-			}),
-			type: 'success',
+		const successTitle = i18n.baseText('agents.builder.vectorStores.modal.test.successTitle', {
+			interpolate: { name: vectorStore.name },
 		});
+		if (result.warning) {
+			showMessage({ title: successTitle, message: result.warning, type: 'warning', duration: 0 });
+		} else {
+			showMessage({ title: successTitle, type: 'success' });
+		}
 		props.data.onConfirm(vectorStore);
 		closeModal();
 	} catch (error) {
@@ -614,7 +618,7 @@ onMounted(() => {
 					>
 						{{
 							i18n.baseText(
-								isEditing ? 'generic.save' : 'agents.builder.vectorStores.modal.test.button',
+								isEditing ? 'generic.save' : 'agents.builder.vectorStores.modal.connect',
 							)
 						}}
 					</N8nButton>

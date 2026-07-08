@@ -546,13 +546,12 @@ export const deleteCustomTool = async (
 export const testAgentVectorStore = async (
 	context: IRestApiContext,
 	projectId: string,
-	agentId: string,
 	vectorStore: AgentJsonVectorStoreConfig,
 ): Promise<VectorStoreTestResult> => {
 	return await makeRestApiRequest<VectorStoreTestResult>(
 		context,
 		'POST',
-		`/projects/${projectId}/agents/v2/${agentId}/vector-stores/test`,
+		`/projects/${projectId}/agents/v2/vector-stores/test`,
 		{ vectorStore },
 	);
 };

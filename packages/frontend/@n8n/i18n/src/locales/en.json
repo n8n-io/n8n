@@ -6859,7 +6859,6 @@
 	"agents.builder.vectorStores.modal.embeddingModel.label": "Embedding model",
 	"agents.builder.vectorStores.modal.embeddingModel.hint": "Must match the model used to index the data in this store. A different model produces meaningless results, even at the same dimension.",
 	"agents.builder.vectorStores.modal.embeddingModel.dimensions": "{dimensions} dimensions",
-	"agents.builder.vectorStores.modal.test.button": "Connect",
 	"agents.builder.vectorStores.modal.test.successTitle": "Connected {name}",
 	"agents.builder.vectorStores.modal.test.failedTitle": "Couldn't connect vector store",
 	"agents.builder.vectorStores.modal.test.genericError": "Connection failed. Check your credential and connection details, then try again.",

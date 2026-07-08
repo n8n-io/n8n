@@ -43,7 +43,6 @@ import { resolveProviderToolName } from './provider-tool-aliases';
 import { buildVectorStore } from './vector-store-factory';
 
 export type { ManagedEmbeddingProviderOptions, ManagedEmbeddingProviderOptionsResolver };
-export { resolveEmbeddingProviderOptionsFromCredential };
 
 const WEB_SEARCH_TOOL_NAME = 'web_search';
 const WEB_SEARCH_INPUT_SCHEMA = z.object({

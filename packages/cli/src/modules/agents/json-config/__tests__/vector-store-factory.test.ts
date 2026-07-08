@@ -252,6 +252,22 @@ describe('buildVectorStoreBackend', () => {
 			);
 		});
 
+		it('URL-encodes special characters in the database name', async () => {
+			const credentialProvider = mock<CredentialProvider>();
+			credentialProvider.resolve.mockResolvedValue({
+				host: 'db.example.com',
+				port: 5432,
+				database: 'agent/db',
+				user: 'agent_user',
+				password: 'secret',
+				ssl: 'disable',
+			});
+
+			const backend = await buildVectorStoreBackend(makePostgresConfig(), credentialProvider);
+
+			expect(getConstructorOptions(backend).connectionString).toContain('/agent%2Fdb');
+		});
+
 		it('appends sslmode=require when ssl is set to require', async () => {
 			const credentialProvider = mock<CredentialProvider>();
 			credentialProvider.resolve.mockResolvedValue({

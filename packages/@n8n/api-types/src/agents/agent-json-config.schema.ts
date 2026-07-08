@@ -438,9 +438,12 @@ export const AgentJsonConfigSchema = z.object({
 	vectorStores: z
 		.array(AgentVectorStoreConfigSchema)
 		.max(20)
-		.refine((stores) => new Set(stores.map((s) => s.name)).size === stores.length, {
-			message: 'Vector store names must be unique within an agent',
-		})
+		// The SDK's asTool() sanitizes '-' to '_' when deriving the search_<name>
+		// tool name, so uniqueness must be checked on the sanitized form.
+		.refine(
+			(stores) => new Set(stores.map((s) => s.name.replace(/-/g, '_'))).size === stores.length,
+			{ message: 'Vector store names must be unique within an agent' },
+		)
 		.optional(),
 	config: z
 		.object({

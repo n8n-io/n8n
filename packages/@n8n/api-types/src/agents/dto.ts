@@ -238,4 +238,5 @@ export class TestAgentVectorStoreDto extends Z.class({
 export interface VectorStoreTestResult {
 	success: boolean;
 	message?: string;
+	warning?: string;
 }
