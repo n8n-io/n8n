@@ -82,6 +82,27 @@ import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
 import type { AgentSkillAllowedToolOption } from '../components/AgentSkillViewer.vue';
 
+const props = withDefaults(
+	defineProps<{
+		artifactMode?: boolean;
+		artifactProjectId?: string;
+		artifactAgentId?: string;
+		artifactRefreshKey?: number;
+		artifactPanelToggleLabel?: string;
+	}>(),
+	{
+		artifactMode: false,
+		artifactProjectId: undefined,
+		artifactAgentId: undefined,
+		artifactRefreshKey: 0,
+		artifactPanelToggleLabel: undefined,
+	},
+);
+
+const emit = defineEmits<{
+	'toggle-artifacts-panel': [];
+}>();
+
 const AGENT_CHAT_PANEL_MIN_WIDTH = 320;
 const AGENT_CHAT_PANEL_DEFAULT_WIDTH = 460;
 const AGENT_CHAT_PANEL_MAX_WIDTH = 720;
@@ -107,11 +128,22 @@ const { showError, showMessage } = useToast();
 const { isBuilderConfigured, fetchStatus: fetchBuilderStatus } = useAgentBuilderStatus();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
-const isPreviewMode = computed(() => route.name === AGENT_PREVIEW_VIEW);
+// Artifact mode reuses this route shell inside Instance AI. It still relies on
+// singleton agent session/credential stores, so only one builder shell should
+// be mounted at a time.
+const isArtifactMode = computed(() => props.artifactMode);
+const isPreviewMode = computed(() => !isArtifactMode.value && route.name === AGENT_PREVIEW_VIEW);
 const projectId = computed(
-	() => (route.params.projectId as string) ?? projectsStore.personalProject?.id ?? '',
+	() =>
+		(isArtifactMode.value ? props.artifactProjectId : undefined) ??
+		(route.params.projectId as string) ??
+		projectsStore.personalProject?.id ??
+		'',
 );
-const agentId = computed(() => route.params.agentId as string);
+const agentId = computed(
+	() =>
+		(isArtifactMode.value ? props.artifactAgentId : undefined) ?? (route.params.agentId as string),
+);
 
 const { canUpdate: canEditAgent, canDelete: canDeleteAgent } = useAgentPermissions(projectId);
 
@@ -173,17 +205,19 @@ const tasksReloadKey = ref(0);
 const builderContainer = useTemplateRef<HTMLElement>('builderContainer');
 const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('versionHistoryPanel');
 function shouldAutoExpandInitialBuild(): boolean {
+	if (isArtifactMode.value) return false;
 	return Boolean(route.query.prompt) && route.query.expandBuildChat === 'true';
 }
 
 const shouldStartWithExpandedBuildChat = shouldAutoExpandInitialBuild();
 const isChatFullWidth = ref(shouldStartWithExpandedBuildChat);
-const isBuildChatHidden = ref(!shouldStartWithExpandedBuildChat);
+const isBuildChatHidden = ref(isArtifactMode.value || !shouldStartWithExpandedBuildChat);
 const shouldCollapseChatAfterInitialBuild = ref(shouldStartWithExpandedBuildChat);
 const executionsCount = computed(() => sessionsStore.threads.length);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
 	executionsCount,
 	knowledgeBaseEnabled: isKnowledgeBaseEnabled,
+	routeBacked: computed(() => !isArtifactMode.value),
 });
 
 const { ensureLoaded: ensureIntegrationsCatalog } = useAgentIntegrationsCatalog();
@@ -452,6 +486,17 @@ async function onOpenPreview() {
 	try {
 		await flushAutosave();
 	} catch {
+		return;
+	}
+	if (isArtifactMode.value) {
+		window.open(
+			router.resolve({
+				name: AGENT_PREVIEW_VIEW,
+				params: { projectId: projectId.value, agentId: agentId.value },
+			}).href,
+			'_blank',
+		);
+		telemetry.track('User opened agent preview', { agent_id: agentId.value });
 		return;
 	}
 	await openPreview();
@@ -739,6 +784,15 @@ async function onConfigUpdated() {
 	builderTelemetry.trackTasksChanged();
 }
 
+watch(
+	() => props.artifactRefreshKey,
+	async (refreshKey, previousRefreshKey) => {
+		if (!isArtifactMode.value || refreshKey === previousRefreshKey || !initialized.value) return;
+		await settleAutosave();
+		await onConfigUpdated();
+	},
+);
+
 function onBuildDone() {
 	isBuildChatStreaming.value = false;
 	if (!shouldCollapseChatAfterInitialBuild.value) return;
@@ -852,6 +906,11 @@ async function onHeaderAction(action: string) {
 		localConfig.value = null;
 		agentsEventBus.emit('agentUpdated');
 
+		if (isArtifactMode.value) {
+			emit('toggle-artifacts-panel');
+			return;
+		}
+
 		// Target path. Built as a plain string rather than via a named route so
 		// there's no risk of a named-route resolution race during the agent
 		// component's teardown (a cause of the navigation silently failing).
@@ -942,7 +1001,7 @@ async function initialize() {
 
 		// If the user arrived via NewAgentView with a seed prompt, jump straight
 		// into the build chat.
-		const prompt = route.query.prompt as string | undefined;
+		const prompt = isArtifactMode.value ? undefined : (route.query.prompt as string | undefined);
 		if (prompt) {
 			if (shouldAutoExpandInitialBuild()) {
 				isChatFullWidth.value = true;
@@ -1343,6 +1402,8 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 			:save-status="saveStatus"
 			:before-revert-to-published="settleAutosave"
 			:is-version-history-open="isVersionHistoryOpen"
+			:artifact-mode="isArtifactMode"
+			:artifact-panel-toggle-label="props.artifactPanelToggleLabel"
 			@header-action="onHeaderAction"
 			@open-preview="onOpenPreview"
 			@published="onPublished"
@@ -1350,6 +1411,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
 			@toggle-version-history="onToggleVersionHistory"
+			@toggle-artifacts-panel="emit('toggle-artifacts-panel')"
 		/>
 		<div
 			ref="builderContainer"
@@ -1378,7 +1440,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					@open-build="onOpenBuildFromChat"
 				/>
 				<N8nButton
-					v-else-if="isBuildChatHidden"
+					v-else-if="!isArtifactMode && isBuildChatHidden"
 					variant="ghost"
 					icon-only
 					size="small"
@@ -1390,7 +1452,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					<N8nIcon icon="panel-left" :size="14" />
 				</N8nButton>
 				<N8nResizeWrapper
-					v-else
+					v-else-if="!isArtifactMode"
 					:class="{
 						[$style.chatResizer]: true,
 						[$style.chatResizerFullWidth]: isChatFullWidth,
@@ -1439,7 +1501,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 				</N8nResizeWrapper>
 
 				<AgentBuilderEditorColumn
-					v-if="!isPreviewMode && (!isChatFullWidth || isBuildChatHidden)"
+					v-if="!isPreviewMode && (isArtifactMode || !isChatFullWidth || isBuildChatHidden)"
 					:class="$style.editorColumn"
 					v-model:active-main-tab="activeMainTab"
 					:local-config="localConfig"
@@ -1458,6 +1520,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:tasks-reload-key="tasksReloadKey"
 					:main-tab-options="mainTabOptions"
 					:executions-description="executionsDescription"
+					:artifact-mode="isArtifactMode"
 					@update:config="onConfigFieldUpdate"
 					@open-tool="onOpenToolFromList"
 					@open-skill="onOpenSkillFromList"

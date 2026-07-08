@@ -36,6 +36,8 @@ const props = defineProps<{
 	saveStatus?: 'idle' | 'saving' | 'saved';
 	beforeRevertToPublished?: () => Promise<void> | void;
 	isVersionHistoryOpen?: boolean;
+	artifactMode?: boolean;
+	artifactPanelToggleLabel?: string;
 }>();
 
 const emit = defineEmits<{
@@ -46,6 +48,7 @@ const emit = defineEmits<{
 	reverted: [agent: AgentResource];
 	'switch-agent': [agentId: string];
 	'toggle-version-history': [];
+	'toggle-artifacts-panel': [];
 }>();
 
 const i18n = useI18n();
@@ -53,6 +56,7 @@ const router = useRouter();
 
 const { list: agentsList, ensureLoaded } = useProjectAgentsList(computed(() => props.projectId));
 onMounted(() => {
+	if (props.artifactMode) return;
 	void ensureLoaded();
 });
 
@@ -83,6 +87,11 @@ const previewHref = computed(() =>
 );
 const previewDisabledTooltip = computed(() =>
 	i18n.baseText('agents.builder.preview.disabledTooltip' as BaseTextKey),
+);
+const artifactPanelToggleLabel = computed(
+	() =>
+		props.artifactPanelToggleLabel ??
+		i18n.baseText('agents.builder.header.artifactPanelToggle' as BaseTextKey),
 );
 const switcherOptions = computed<Array<DropdownMenuItemProps<string>>>(() => {
 	const list = agentsList.value ?? [];
@@ -143,7 +152,22 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 <template>
 	<header :class="$style.header" data-testid="agent-builder-header">
 		<div :class="$style.left">
-			<N8nBreadcrumbs :items="breadcrumbItems" theme="medium" @item-selected="onBreadcrumbSelect">
+			<N8nButton
+				v-if="props.artifactMode"
+				variant="ghost"
+				size="medium"
+				icon="panel-left"
+				icon-only
+				:aria-label="artifactPanelToggleLabel"
+				data-testid="agent-header-artifact-panel-toggle"
+				@click="emit('toggle-artifacts-panel')"
+			/>
+			<N8nBreadcrumbs
+				v-else
+				:items="breadcrumbItems"
+				theme="medium"
+				@item-selected="onBreadcrumbSelect"
+			>
 				<template #append>
 					<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
 					<N8nDropdownMenu

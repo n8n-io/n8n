@@ -56,6 +56,7 @@ import InstanceAiWorkflowPreview, {
 } from './components/InstanceAiWorkflowPreview.vue';
 import { buildFixWithAiPrompt } from './fixWithAi';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
+import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import { TabsRoot } from 'reka-ui';
 
 const props = defineProps<{
@@ -152,6 +153,7 @@ const preview = useCanvasPreview({
 
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
+provide('openAgentPreview', preview.openAgentPreview);
 
 // Focus the composer when plan-edit mode is entered. The thread runtime
 // owns the activePlanEdit state; this watcher just reacts to the transition.
@@ -909,6 +911,15 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 								:data-table-id="preview.activeDataTableId.value"
 								:project-id="preview.activeDataTableProjectId.value"
 								:refresh-key="preview.dataTableRefreshKey.value"
+							/>
+							<InstanceAiAgentPreview
+								v-if="preview.activeAgentId.value && preview.activeAgentProjectId.value"
+								:class="$style.previewSlot"
+								:agent-id="preview.activeAgentId.value"
+								:project-id="preview.activeAgentProjectId.value"
+								:refresh-key="preview.agentRefreshKey.value"
+								:artifact-panel-toggle-label="artifactsPreviewToggleLabel"
+								@toggle-artifacts-panel="toggleArtifactsPreview"
 							/>
 						</div>
 					</TabsRoot>

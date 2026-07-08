@@ -41,6 +41,14 @@ export interface DataTableResult {
 	toolCallId: string;
 }
 
+export interface AgentArtifactResult {
+	agentId: string;
+	projectId?: string;
+	/** Unique per operation — changes even when the same agent is modified again. */
+	toolCallId: string;
+	kind: 'created' | 'mutated';
+}
+
 /**
  * Walks an agent tree depth-first (most recent last) and returns the workflowId
  * and toolCallId from the latest successful build-workflow / submit-workflow tool result.
@@ -331,6 +339,76 @@ export function getLatestDataTableResult(node: InstanceAiAgentNode): DataTableRe
 			}
 		}
 	}
+	return undefined;
+}
+
+const AGENT_BUILDER_MUTATING_ACTIONS = new Set([
+	'build_agent',
+	'create_skill',
+	'create_task',
+	'build_custom_tool',
+]);
+
+function getAgentTarget(
+	node: InstanceAiAgentNode,
+): { agentId: string; projectId?: string } | undefined {
+	if (node.targetResource?.type !== 'agent' || typeof node.targetResource.id !== 'string') {
+		return undefined;
+	}
+	return {
+		agentId: node.targetResource.id,
+		...(typeof node.targetResource.projectId === 'string'
+			? { projectId: node.targetResource.projectId }
+			: {}),
+	};
+}
+
+export function getLatestAgentArtifactResult(
+	node: InstanceAiAgentNode,
+): AgentArtifactResult | undefined {
+	for (let i = node.children.length - 1; i >= 0; i--) {
+		const childResult = getLatestAgentArtifactResult(node.children[i]);
+		if (childResult) return childResult;
+	}
+
+	const target = getAgentTarget(node);
+
+	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
+		const tc = node.toolCalls[i];
+		if (tc.isLoading || !tc.result || typeof tc.result !== 'object') continue;
+		const result = tc.result as Record<string, unknown>;
+		const args = tc.args as Record<string, unknown> | undefined;
+
+		if (
+			tc.toolName === 'agent_builder' &&
+			args?.action === 'create_agent' &&
+			result.ok === true &&
+			typeof result.agentId === 'string'
+		) {
+			return {
+				agentId: result.agentId,
+				...(typeof result.projectId === 'string' ? { projectId: result.projectId } : {}),
+				toolCallId: tc.toolCallId,
+				kind: 'created',
+			};
+		}
+
+		if (
+			target &&
+			((tc.toolName === 'agent_builder' &&
+				typeof args?.action === 'string' &&
+				AGENT_BUILDER_MUTATING_ACTIONS.has(args.action) &&
+				result.ok === true) ||
+				(tc.toolName === 'configure_channel' && 'connected' in result))
+		) {
+			return {
+				...target,
+				toolCallId: tc.toolCallId,
+				kind: 'mutated',
+			};
+		}
+	}
+
 	return undefined;
 }
 
