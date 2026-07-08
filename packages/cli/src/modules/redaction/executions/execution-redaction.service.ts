@@ -271,7 +271,9 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 */
 	private hasDynamicCredentials(execution: RedactableExecution): boolean {
 		return Object.values(execution.data.resultData?.runData ?? {}).some((taskDataList) =>
-			taskDataList.some((taskData) => taskData.usedDynamicCredentials),
+			// runData node arrays can hold null placeholder slots at runtime despite
+			// the ITaskData[] type, so guard the element deref.
+			taskDataList.some((taskData) => taskData?.usedDynamicCredentials),
 		);
 	}
 

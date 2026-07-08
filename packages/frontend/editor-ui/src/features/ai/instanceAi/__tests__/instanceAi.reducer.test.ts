@@ -667,8 +667,8 @@ describe('instanceAi.reducer', () => {
 			expect(getRenderHint('task-control')).toBe('tasks');
 		});
 
-		test('returns delegate for "delegate"', () => {
-			expect(getRenderHint('delegate')).toBe('delegate');
+		test('returns default for removed delegate tool', () => {
+			expect(getRenderHint('delegate')).toBe('default');
 		});
 
 		test('returns builder for workflow builder tool', () => {

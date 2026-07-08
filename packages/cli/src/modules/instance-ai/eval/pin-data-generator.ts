@@ -13,6 +13,7 @@
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import type { WorkflowJSON, NodeJSON } from '@n8n/workflow-sdk';
 import { existsSync, readFileSync, readdirSync } from 'fs';
+import { OperationalError } from 'n8n-workflow';
 import { join } from 'path';
 
 import { buildDateAnchors } from './date-anchors';
@@ -598,7 +599,8 @@ function parsePinDataResponse(responseText: string, expectedNodes: string[]): Pi
 
 	for (const nodeName of expectedNodes) {
 		const nodeData = parsed[nodeName];
-		if (!Array.isArray(nodeData) || nodeData.length === 0) continue;
+		// Keep empty arrays — a valid "no stored data" pin; dropping one falls back to real execution.
+		if (!Array.isArray(nodeData)) continue;
 
 		pinData[nodeName] = nodeData.map((item: unknown) => {
 			// The execution engine expects { json: IDataObject } format.
@@ -686,7 +688,8 @@ export function repairStructuredAgentOutput(
  * The caller decides which nodes need pin data (via nodeNames).
  * This function only generates it.
  *
- * @returns PinData map (node name → data items). Returns {} on failure.
+ * @returns PinData covering every requested node (empty array = valid "no stored data" pin).
+ * @throws when generation fails or a node is missing — a silently unpinned node runs for real.
  */
 export async function generatePinData(options: GeneratePinDataOptions): Promise<PinData> {
 	const { workflow, nodeNames, instructions } = options;
@@ -707,28 +710,32 @@ export async function generatePinData(options: GeneratePinDataOptions): Promise<
 	const userPrompt = buildUserPrompt(workflow, contexts, instructions);
 	const expectedNodeNames = contexts.map((c) => c.nodeName);
 
-	try {
-		const agent = createEvalAgent('eval-pin-data-generator', {
-			instructions: SYSTEM_PROMPT,
-			cache: true,
-		});
+	const agent = createEvalAgent('eval-pin-data-generator', {
+		instructions: SYSTEM_PROMPT,
+		cache: true,
+	});
 
-		const result = await agent.generate(userPrompt, {
-			providerOptions: { anthropic: { maxTokens: 16_384 } },
-			abortSignal: AbortSignal.timeout(PIN_DATA_LLM_TIMEOUT_MS),
-		});
+	const result = await agent.generate(userPrompt, {
+		providerOptions: { anthropic: { maxTokens: 16_384 } },
+		abortSignal: AbortSignal.timeout(PIN_DATA_LLM_TIMEOUT_MS),
+	});
 
-		const responseText = extractText(result);
-		const pinData = parsePinDataResponse(responseText, expectedNodeNames);
-		// The `{ output: ... }` envelope repair only holds for Agent roots —
-		// chainLlm unwraps parser output flat, so wrapping it would break
-		// downstream references.
-		const agentParserTargets = [...outputParserTargets.keys()].filter(
-			(name) =>
-				name in pinData && targetNodes.some((n) => n.name === name && n.type === AGENT_NODE_TYPE),
+	const responseText = extractText(result);
+	const pinData = parsePinDataResponse(responseText, expectedNodeNames);
+
+	const missing = expectedNodeNames.filter((name) => !(name in pinData));
+	if (missing.length > 0) {
+		throw new OperationalError(
+			`Pin data generation returned no data for node(s): ${missing.join(', ')}`,
 		);
-		return repairStructuredAgentOutput(pinData, agentParserTargets);
-	} catch {
-		return {};
 	}
+
+	// The `{ output: ... }` envelope repair only holds for Agent roots —
+	// chainLlm unwraps parser output flat, so wrapping it would break
+	// downstream references.
+	const agentParserTargets = [...outputParserTargets.keys()].filter(
+		(name) =>
+			name in pinData && targetNodes.some((n) => n.name === name && n.type === AGENT_NODE_TYPE),
+	);
+	return repairStructuredAgentOutput(pinData, agentParserTargets);
 }

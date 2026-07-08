@@ -1,0 +1,21 @@
+{
+	"description": "Intent-only request: classify which parts should become workflows and which parts should become agents.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": [
+				"Say whether this should be handled as a deterministic workflow, a hybrid workflow with a bounded AI judgment step, a full agent, or a single AI task. Briefly explain why in terms of control flow, runtime decision-making, tool-use loops, unstructured data, and whether the next action depends on prior results.",
+				"1. Every weekday at 9am, send me a Slack message with the weather forecast for Berlin.",
+				"2. Create a support assistant that chats with customers, answers product questions, and decides when to escalate to a human."
+			]
+		}
+	],
+	"complexity": "simple",
+	"tags": ["intent-resolution", "workflow", "agent"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent classifies the weekday Berlin weather Slack message as a deterministic workflow.",
+		"The agent classifies the customer support assistant as an agent.",
+		"The agent answers with intent classification and brief reasoning only."
+	]
+}

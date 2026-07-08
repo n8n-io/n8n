@@ -136,6 +136,16 @@ vi.mock('@/features/ai/assistant/composables/useBuilderTodos', () => {
 	};
 });
 
+const { mockIsActionOptionVisible } = vi.hoisted(() => ({
+	mockIsActionOptionVisible: vi.fn(
+		(_node: unknown, _parameterName: string, _optionValue: string): boolean => true,
+	),
+}));
+
+vi.mock('@/app/composables/useAiGateway', () => ({
+	useAiGateway: vi.fn(() => ({ isActionOptionVisible: mockIsActionOptionVisible })),
+}));
+
 const renderComponent = createComponentRenderer(ParameterInput, {
 	pinia: createTestingPinia(),
 	global: {
@@ -180,6 +190,8 @@ describe('ParameterInput.vue', () => {
 			}),
 		};
 		settingsStore.settings.enterprise = createMockEnterpriseSettings();
+		mockIsActionOptionVisible.mockReset();
+		mockIsActionOptionVisible.mockReturnValue(true);
 	});
 
 	afterEach(() => {
@@ -237,6 +249,113 @@ describe('ParameterInput.vue', () => {
 		await userEvent.click(options[1]);
 
 		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'append' })]);
+	});
+
+	describe('AI gateway action filtering', () => {
+		const operationParameter = {
+			displayName: 'Operation',
+			name: 'operation',
+			type: 'options' as const,
+			noDataExpression: true,
+			options: [
+				{ name: 'Append or Update Row', value: 'appendOrUpdate' },
+				{ name: 'Append Row', value: 'append' },
+			],
+			default: 'appendOrUpdate',
+		};
+
+		test('hides operation options the AI gateway cannot run', async () => {
+			mockIsActionOptionVisible.mockImplementation(
+				(_node, _name, value) => value === 'appendOrUpdate',
+			);
+
+			const { container, baseElement } = renderComponent({
+				props: {
+					path: 'parameters.operation',
+					parameter: operationParameter,
+					modelValue: 'appendOrUpdate',
+				},
+			});
+
+			await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+
+			const options = baseElement.querySelectorAll('.list-option');
+			expect(options.length).toEqual(1);
+			expect(options[0].querySelector('.option-headline')).toHaveTextContent(
+				'Append or Update Row',
+			);
+		});
+
+		test('keeps the current value visible even when unsupported', async () => {
+			mockIsActionOptionVisible.mockReturnValue(false);
+
+			const { container, baseElement } = renderComponent({
+				props: {
+					path: 'parameters.operation',
+					parameter: operationParameter,
+					modelValue: 'append',
+				},
+			});
+
+			await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+
+			const options = baseElement.querySelectorAll('.list-option');
+			expect(options.length).toEqual(1);
+			expect(options[0].querySelector('.option-headline')).toHaveTextContent('Append Row');
+		});
+
+		test('uses the resource locator value as the current value', async () => {
+			mockIsActionOptionVisible.mockReturnValue(false);
+
+			const { container, baseElement } = renderComponent({
+				props: {
+					path: 'parameters.operation',
+					parameter: operationParameter,
+					modelValue: { __rl: true, value: 'append', mode: 'list' },
+				},
+			});
+
+			await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+
+			const options = baseElement.querySelectorAll('.list-option');
+			expect(options.length).toEqual(1);
+			expect(options[0].querySelector('.option-headline')).toHaveTextContent('Append Row');
+		});
+
+		test('passes a null node to the gateway check when there is no active node', async () => {
+			mockNdvState.activeNode = undefined;
+			mockIsActionOptionVisible.mockReturnValue(false);
+
+			const { container } = renderComponent({
+				props: {
+					path: 'parameters.operation',
+					parameter: operationParameter,
+					modelValue: 'append',
+				},
+			});
+
+			await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+
+			expect(mockIsActionOptionVisible).toHaveBeenCalledWith(null, 'operation', 'appendOrUpdate');
+		});
+
+		test('does not filter nested operation parameters', async () => {
+			mockIsActionOptionVisible.mockReturnValue(false);
+
+			const { container, baseElement } = renderComponent({
+				props: {
+					path: 'parameters.filters.operation',
+					parameter: operationParameter,
+					modelValue: 'appendOrUpdate',
+				},
+			});
+
+			await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+
+			const options = baseElement.querySelectorAll('.list-option');
+			expect(options.length).toEqual(2);
+			expect(mockIsActionOptionVisible).not.toHaveBeenCalled();
+		});
 	});
 
 	test('should render an options parameter even if it has invalid fields (like displayName)', async () => {
@@ -1253,6 +1372,99 @@ describe('ParameterInput.vue', () => {
 			await waitFor(() => {
 				expect(textarea.value).toBe('a\n\n\nb');
 			});
+		});
+	});
+
+	describe('sqlEditor sizing (ADO-5553)', () => {
+		// Converts a CSS length ('40vh' | '53.3em' | '120px') to pixels using the
+		// current jsdom viewport, so a min-height in `em` can be compared against a
+		// max-height in `vh`.
+		function toPx(value: string): number {
+			const match = value.trim().match(/([\d.]+)\s*(vh|rem|em|px)/);
+			if (!match) throw new Error(`Unable to parse CSS length: "${value}"`);
+			const amount = Number.parseFloat(match[1]);
+			switch (match[2]) {
+				case 'vh':
+					return (amount / 100) * window.innerHeight;
+				case 'em':
+				case 'rem':
+					return amount * 16;
+				default:
+					return amount;
+			}
+		}
+
+		function getScrollerHeights() {
+			const css = Array.from(document.querySelectorAll('style'))
+				.map((style) => style.textContent ?? '')
+				.join('\n');
+			const rule = [...css.matchAll(/([^{}]*)\{([^}]*)\}/g)].find(
+				(match) =>
+					match[1].includes('cm-scroller') &&
+					/max-height/.test(match[2]) &&
+					/min-height/.test(match[2]),
+			);
+			if (!rule) throw new Error('Could not find the .cm-scroller sizing rule');
+			const body = rule[2];
+			const maxHeight = body.match(/max-height:\s*([^;]+);/)?.[1] ?? '';
+			const minHeight = body.match(/min-height:\s*([^;]+);/)?.[1] ?? '';
+			return { minHeight, maxHeight };
+		}
+
+		// Happy path: a short query fits comfortably, proving the harness reads the
+		// scroller sizing correctly and the assertion passes when sizing is sane.
+		it('keeps the editor min-height within its max-height for a short query', async () => {
+			const { container } = renderComponent({
+				props: {
+					path: 'sqlQuery',
+					parameter: createTestNodeProperties({
+						displayName: 'SQL Query',
+						name: 'sqlQuery',
+						type: 'string',
+						noDataExpression: true,
+						typeOptions: { editor: 'sqlEditor' },
+					}),
+					modelValue: 'SELECT * FROM dataset.table LIMIT 100',
+					expressionEvaluated: undefined,
+				},
+			});
+
+			await waitFor(() => expect(container.querySelector('.cm-scroller')).toBeInTheDocument());
+
+			const { minHeight, maxHeight } = getScrollerHeights();
+			expect(toPx(minHeight)).toBeLessThanOrEqual(toPx(maxHeight));
+		});
+
+		// The BigQuery "SQL Query" field is a `sqlEditor` string parameter with no
+		// `rows` typeOption, so the editor height auto-follows the number of lines
+		// in the query. A long query must still fit within the NDV: the editor's
+		// min-height must never exceed its max-height, otherwise its bottom is
+		// pushed past the NDV boundary and becomes unreachable even by scrolling.
+		it('keeps the editor min-height within its max-height for a long query', async () => {
+			const longQuery = Array.from(
+				{ length: 40 },
+				(_, i) => `SELECT col_${i} FROM dataset.table_${i}`,
+			).join('\n');
+
+			const { container } = renderComponent({
+				props: {
+					path: 'sqlQuery',
+					parameter: createTestNodeProperties({
+						displayName: 'SQL Query',
+						name: 'sqlQuery',
+						type: 'string',
+						noDataExpression: true,
+						typeOptions: { editor: 'sqlEditor' },
+					}),
+					modelValue: longQuery,
+					expressionEvaluated: undefined,
+				},
+			});
+
+			await waitFor(() => expect(container.querySelector('.cm-scroller')).toBeInTheDocument());
+
+			const { minHeight, maxHeight } = getScrollerHeights();
+			expect(toPx(minHeight)).toBeLessThanOrEqual(toPx(maxHeight));
 		});
 	});
 

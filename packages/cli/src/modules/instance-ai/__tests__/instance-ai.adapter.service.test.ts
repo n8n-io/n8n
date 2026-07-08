@@ -18,7 +18,7 @@ vi.mock('@n8n/instance-ai', () => ({
 	},
 }));
 
-import type { Mock, Mocked } from 'vitest';
+import type { Mock, Mocked, MockInstance } from 'vitest';
 
 vi.mock('@n8n/ai-utilities', () => ({
 	braveSearch: vi.fn(),
@@ -27,6 +27,7 @@ vi.mock('@n8n/ai-utilities', () => ({
 
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
+import { Expression } from 'n8n-workflow';
 import type {
 	ExecutionError,
 	IConnections,
@@ -77,7 +78,7 @@ function makeExecution(
 		runData?: Record<string, ITaskData[]>;
 		pinData?: IPinData;
 		error?: Partial<ExecutionError>;
-		workflowNodes?: Array<{ name: string; type: string }>;
+		workflowNodes?: Array<{ name: string; type: string; onError?: string }>;
 	} = {},
 ) {
 	const runData = overrides.runData ?? {};
@@ -104,6 +105,7 @@ function makeTaskData(
 	outputItems: Array<Record<string, unknown>>,
 	opts?: {
 		error?: Error | Partial<ExecutionError>;
+		executionStatus?: ITaskData['executionStatus'];
 		startTime?: number;
 		executionTime?: number;
 	},
@@ -117,6 +119,7 @@ function makeTaskData(
 			main: [outputItems.map((json) => ({ json }))],
 		},
 		...(opts?.error ? { error: opts.error } : {}),
+		...(opts?.executionStatus ? { executionStatus: opts.executionStatus } : {}),
 	} as unknown as ITaskData;
 }
 
@@ -289,6 +292,87 @@ describe('extractExecutionResult', () => {
 		const result = await extractExecutionResult('exec-1', true);
 
 		expect(result.data).toBeUndefined();
+	});
+
+	it('includes node-level errors even when the execution completed successfully', async () => {
+		createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				runData: {
+					geocode_city: [
+						makeTaskData([], {
+							executionStatus: 'error',
+							error: {
+								name: 'UnexpectedError',
+								message: 'The node has a supplyData method but no execute method.',
+							},
+						}),
+					],
+				},
+			}),
+		);
+
+		const result = await extractExecutionResult('exec-1', false);
+
+		expect(result.status).toBe('success');
+		expect(result.error).toBeUndefined();
+		expect(result.nodeErrors).toEqual([
+			{
+				nodeName: 'geocode_city',
+				message: 'The node has a supplyData method but no execute method.',
+			},
+		]);
+	});
+
+	it('omits errors on nodes configured to continue on error', async () => {
+		createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				workflowNodes: [
+					{
+						name: 'Fallback Lookup',
+						type: 'n8n-nodes-base.httpRequest',
+						onError: 'continueErrorOutput',
+					},
+				],
+				runData: {
+					'Fallback Lookup': [
+						makeTaskData([], {
+							executionStatus: 'error',
+							error: { name: 'NodeApiError', message: 'Not found' },
+						}),
+					],
+				},
+			}),
+		);
+
+		const result = await extractExecutionResult('exec-1', false);
+
+		expect(result.nodeErrors).toBeUndefined();
+	});
+
+	it('reports a single entry for a node that errored on multiple runs', async () => {
+		createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				runData: {
+					geocode_city: [
+						makeTaskData([], {
+							executionStatus: 'error',
+							error: { name: 'UnexpectedError', message: 'boom 1' },
+						}),
+						makeTaskData([], {
+							executionStatus: 'error',
+							error: { name: 'UnexpectedError', message: 'boom 2' },
+						}),
+					],
+				},
+			}),
+		);
+
+		const result = await extractExecutionResult('exec-1', false);
+
+		expect(result.nodeErrors).toEqual([{ nodeName: 'geocode_city', message: 'boom 1' }]);
 	});
 });
 
@@ -1344,6 +1428,52 @@ describe('createNodeAdapter', () => {
 				}
 			).nodesCache,
 		).toBeNull();
+	});
+
+	describe('getResolvedNodeInputs expression isolate lifecycle', () => {
+		// Dynamic `inputs` are resolved via workflow.expression, which under
+		// N8N_EXPRESSION_ENGINE=vm needs a V8 isolate acquired for the transient
+		// workflow first. Without it the VM bridge throws "No bridge acquired" and
+		// getNodeInputs silently returns []. These spies pin the acquire/release.
+		let acquireSpy: MockInstance;
+		let releaseSpy: MockInstance;
+
+		beforeEach(() => {
+			acquireSpy = vi.spyOn(Expression.prototype, 'acquireIsolate').mockResolvedValue(true);
+			releaseSpy = vi.spyOn(Expression.prototype, 'releaseIsolate').mockResolvedValue(undefined);
+		});
+
+		it('acquires and releases the isolate around dynamic input resolution', async () => {
+			const { service, nodeService } = createNodeAdapterServiceForTests([]);
+			(service as unknown as { nodeTypes: Pick<NodeTypes, 'getByNameAndVersion'> }).nodeTypes = {
+				getByNameAndVersion: vi
+					.fn()
+					.mockReturnValue({ description: { inputs: ['main'], properties: [] } }),
+			} as unknown as NodeTypes;
+
+			const workflowJson = {
+				nodes: [
+					{
+						id: 'agent',
+						name: 'Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			} as unknown as WorkflowJSON;
+
+			const inputs = await nodeService.getResolvedNodeInputs!(workflowJson, 'Agent');
+
+			expect(inputs).toEqual(['main']);
+			expect(acquireSpy).toHaveBeenCalledTimes(1);
+			expect(releaseSpy).toHaveBeenCalledTimes(1);
+			expect(acquireSpy.mock.invocationCallOrder[0]).toBeLessThan(
+				releaseSpy.mock.invocationCallOrder[0],
+			);
+		});
 	});
 });
 

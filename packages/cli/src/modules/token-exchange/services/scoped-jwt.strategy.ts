@@ -1,7 +1,7 @@
 import type { AuthenticatedRequest, TokenGrant, User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ALL_API_KEY_SCOPES } from '@n8n/permissions';
+import { getApiKeyScopesForRole } from '@n8n/permissions';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 
 import type { AuthStrategy, AuthStrategyOptions } from '@/services/auth-strategy.types';
@@ -65,7 +65,7 @@ export class ScopedJwtStrategy implements AuthStrategy {
 		// 6. Scopes come from the acting user's role (role.scopes is eager: true)
 		return {
 			scopes: actingUser.role.scopes.map((s) => s.slug),
-			apiKeyScopes: Array.from(ALL_API_KEY_SCOPES),
+			apiKeyScopes: getApiKeyScopesForRole(actingUser),
 			subject,
 			...(actor && { actor }),
 		};

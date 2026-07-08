@@ -98,6 +98,7 @@ describe('GlobalConfig', () => {
 				port: 5432,
 				schema: 'public',
 				connectionTimeoutMs: 20_000,
+				destroyTimeoutMs: 10_000,
 				idleTimeoutMs: 30_000,
 				statementTimeoutMs: 5 * 60 * 1000,
 				maxConnectionLifetimeMs: 60 * 60 * 1000,
@@ -193,6 +194,7 @@ describe('GlobalConfig', () => {
 			include: [],
 			exclude: ['n8n-nodes-base.executeCommand', 'n8n-nodes-base.localFileTrigger'],
 			pythonEnabled: true,
+			mergeSqlSandboxMemoryLimitMb: 64,
 		},
 		publicApi: {
 			disabled: false,
@@ -304,7 +306,7 @@ describe('GlobalConfig', () => {
 			cacheMaxSize: 500,
 		},
 		mcpServer: {
-			sessionIdleTtl: 3600000,
+			sessionIdleTtl: 900000,
 			sessionSweepInterval: 300000,
 		},
 		chatHub: {
@@ -321,7 +323,6 @@ describe('GlobalConfig', () => {
 			browserUseEnabled: true,
 			observerMessageTokens: 30_000,
 			reflectorObservationTokens: 40_000,
-			subAgentMaxSteps: 100,
 			sandboxEnabled: false,
 			sandboxProvider: 'n8n-sandbox',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
