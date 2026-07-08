@@ -564,6 +564,10 @@ export interface SectionCreateElement extends CreateElementBase {
 	 * Whether to render the section without its category header
 	 */
 	hideHeader?: boolean;
+	/**
+	 * Whether to show the AI gateway wallet balance in the section header
+	 */
+	showCreditsBalance?: boolean;
 }
 
 export interface ViewCreateElement extends CreateElementBase {

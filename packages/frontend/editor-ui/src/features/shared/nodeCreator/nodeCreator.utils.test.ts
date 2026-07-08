@@ -5,6 +5,7 @@ import type {
 	SimplifiedNodeType,
 } from '@/Interface';
 import {
+	extractAiGatewaySection,
 	finalizeItems,
 	formatTriggerActionName,
 	filterAndSearchNodes,
@@ -850,6 +851,55 @@ describe('NodeCreator - utils', () => {
 
 			const [result] = finalizeItems([makeGatewayNode('unknownTool')]) as NodeCreateElement[];
 			expect(result.properties.tag).toBeUndefined();
+		});
+	});
+
+	describe('extractAiGatewaySection', () => {
+		const makeNode = (name: string) => mockNodeCreateElement({ key: name }, { name });
+
+		beforeEach(() => {
+			vi.mocked(useSettingsStore).mockReturnValue({
+				isAiGatewayEnabled: true,
+			} as unknown as ReturnType<typeof useSettingsStore>);
+			vi.mocked(useAiGatewayStore).mockReturnValue({
+				isNodeSupported: vi.fn((name: string) => name.startsWith('supported')),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+			} as unknown as ReturnType<typeof useAiGatewayStore>);
+			vi.mocked(useNodeTypesStore).mockReturnValue({
+				getNodeVersions: vi.fn(() => [1]),
+			} as unknown as ReturnType<typeof useNodeTypesStore>);
+		});
+
+		it('should split gateway-supported nodes into an n8n Connect section', () => {
+			const supported = makeNode('supportedNode');
+			const other = makeNode('otherNode');
+
+			const result = extractAiGatewaySection([supported, other]);
+
+			expect(result).not.toBeNull();
+			expect(result?.section.key).toBe('n8nConnect');
+			expect(result?.section.showCreditsBalance).toBe(true);
+			expect(result?.section.showSeparator).toBe(true);
+			expect(result?.section.children.map((child) => child.key)).toEqual(['supportedNode']);
+			expect(result?.rest).toEqual([other]);
+		});
+
+		it('should tag section children with the Free credits pill', () => {
+			const result = extractAiGatewaySection([makeNode('supportedNode')]);
+			const [child] = result?.section.children as NodeCreateElement[];
+			expect(child.properties.tag).toEqual({ text: expect.any(String), pill: true });
+		});
+
+		it('should return null when no node is gateway-supported', () => {
+			expect(extractAiGatewaySection([makeNode('otherNode')])).toBeNull();
+		});
+
+		it('should return null when the gateway is disabled', () => {
+			vi.mocked(useSettingsStore).mockReturnValue({
+				isAiGatewayEnabled: false,
+			} as unknown as ReturnType<typeof useSettingsStore>);
+
+			expect(extractAiGatewaySection([makeNode('supportedNode')])).toBeNull();
 		});
 	});
 

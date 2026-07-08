@@ -290,6 +290,52 @@ export const removePreviewToken = (key: string) =>
 
 export const isNodePreviewKey = (key = '') => key.includes(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN);
 
+export function isAiGatewaySupportedNode(element: INodeCreateElement): boolean {
+	if (element.type !== 'node') return false;
+	if (!useSettingsStore().isAiGatewayEnabled) return false;
+
+	const aiGatewayStore = useAiGatewayStore();
+	// Tool-variant node types carry a "Tool" suffix (e.g. "llamaParsePlatformTool"),
+	// but the gateway config lists the base name ("llamaParsePlatform").
+	const baseName = element.properties.name.replace(/Tool$/, '');
+	const supportedName = [element.properties.name, baseName].find((n) =>
+		aiGatewayStore.isNodeSupported(n),
+	);
+	if (!supportedName) return false;
+
+	const versions = useNodeTypesStore().getNodeVersions(supportedName);
+	const latestVersion = versions.length > 0 ? Math.max(...versions) : 1;
+	return aiGatewayStore.isNodeTypeVersionSupported(supportedName, latestVersion);
+}
+
+/**
+ * Splits AI gateway-supported nodes out of `items` into a dedicated "n8n Connect"
+ * section (rendered at the top with the wallet balance in its header).
+ * Returns null when there is nothing to extract.
+ */
+export function extractAiGatewaySection(
+	items: INodeCreateElement[],
+): { section: SectionCreateElement; rest: INodeCreateElement[] } | null {
+	const supported: INodeCreateElement[] = [];
+	const rest: INodeCreateElement[] = [];
+	for (const item of items) {
+		(isAiGatewaySupportedNode(item) ? supported : rest).push(item);
+	}
+	if (supported.length === 0) return null;
+
+	return {
+		section: {
+			type: 'section',
+			key: 'n8nConnect',
+			title: i18n.baseText('nodeCreator.sectionNames.n8nConnect'),
+			children: finalizeItems(sortNodeCreateElements(supported)),
+			showSeparator: true,
+			showCreditsBalance: true,
+		},
+		rest,
+	};
+}
+
 function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 	if (element.type !== 'node') return element;
 
@@ -313,24 +359,11 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 			type: 'info',
 			text: i18n.baseText('generic.betaProper'),
 		};
-	} else if (useSettingsStore().isAiGatewayEnabled) {
-		const aiGatewayStore = useAiGatewayStore();
-		// Tool-variant node types carry a "Tool" suffix (e.g. "llamaParsePlatformTool"),
-		// but the gateway config lists the base name ("llamaParsePlatform").
-		const baseName = element.properties.name.replace(/Tool$/, '');
-		const supportedName = [element.properties.name, baseName].find((n) =>
-			aiGatewayStore.isNodeSupported(n),
-		);
-		if (supportedName) {
-			const versions = useNodeTypesStore().getNodeVersions(supportedName);
-			const latestVersion = versions.length > 0 ? Math.max(...versions) : 1;
-			if (aiGatewayStore.isNodeTypeVersionSupported(supportedName, latestVersion)) {
-				element.properties.tag = {
-					text: i18n.baseText('generic.freeCredits'),
-					pill: true,
-				};
-			}
-		}
+	} else if (isAiGatewaySupportedNode(element)) {
+		element.properties.tag = {
+			text: i18n.baseText('generic.freeCredits'),
+			pill: true,
+		};
 	}
 
 	return element;

@@ -32,6 +32,7 @@ import difference from 'lodash/difference';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 
 import {
+	extractAiGatewaySection,
 	finalizeItems,
 	flattenCreateElements,
 	groupItemsInSections,
@@ -312,6 +313,19 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		stack: ViewStack | undefined,
 		sortAlphabetically: boolean,
 	) {
+		// Surface n8n Connect-powered language models in a dedicated section at the
+		// top. Hidden while searching — search results stay a flat ranked list.
+		let gatewaySection: SectionCreateElement | null = null;
+		if (stack?.connectionType === NodeConnectionTypes.AiLanguageModel && !stack.search) {
+			const extracted = extractAiGatewaySection(items);
+			if (extracted) {
+				gatewaySection = extracted.section;
+				items = extracted.rest;
+			}
+		}
+		const withGatewaySection = (result: INodeCreateElement[]) =>
+			gatewaySection ? [gatewaySection, ...result] : result;
+
 		const aiNodes = items.filter((node): node is NodeCreateElement => isAINode(node));
 		const canvasHasAINodes = workflowDocumentStore.value.aiNodes.length > 0;
 		const isVectorStoresCategory = stack?.title === AI_CATEGORY_VECTOR_STORES;
@@ -402,14 +416,14 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 				return subcategories;
 			}
 
-			return [
+			return withGatewaySection([
 				...nonAiNodes,
 				...aiRootNodes,
 				...groupItemsInSections(aiSubNodes, sections, sortAlphabetically),
-			];
+			]);
 		}
 
-		return items;
+		return withGatewaySection(items);
 	}
 
 	function filterOutAiNodes(items: INodeCreateElement[]) {

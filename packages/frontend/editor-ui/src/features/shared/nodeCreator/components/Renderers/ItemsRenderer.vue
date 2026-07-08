@@ -158,6 +158,7 @@ watch(
 					:category="item.title"
 					:showSeparator="item.showSeparator"
 					:hideHeader="item.hideHeader"
+					:show-credits-balance="item.showCreditsBalance"
 					@selected="(child: INodeCreateElement) => wrappedEmit('selected', child)"
 				>
 				</CategorizedItemsRenderer>
