@@ -62,25 +62,29 @@ export function createConfigureChannelTool(context: InstanceAiContext) {
 		)
 		.resume(configureChannelResumeSchema)
 		.handler(async ({ integrationType }, ctx) => {
-			const { agentBuilderService, agentBuilderTarget } = context;
-			if (!agentBuilderService || !agentBuilderTarget) return NOT_CONFIGURED;
-
 			const resumeData = ctx.resumeData;
+
+			// Resumed — the user connected (approved) or skipped (dismissed). Handled
+			// before any builder-state guard: a run rebuilt from a checkpoint after a
+			// process restart has no agentBuilderTarget (it lives only in the original
+			// run's memory), and the modal already persisted (or skipped) the
+			// connection, so the resume leg only reports the outcome.
+			if (resumeData !== undefined && resumeData !== null) {
+				return { connected: Boolean(resumeData.approved) };
+			}
 
 			// First call — suspend to open the channel-setup modal. The channelConfig
 			// payload alone drives the UI (presence-based, like setupRequests).
-			if (resumeData === undefined || resumeData === null) {
-				return await ctx.suspend({
-					requestId: nanoid(),
-					message: `Set up the ${integrationType} channel`,
-					severity: 'info' as const,
-					channelConfig: { integrationType, agentId: agentBuilderTarget.agentId },
-					projectId: agentBuilderTarget.projectId,
-				});
-			}
+			const { agentBuilderTarget } = context;
+			if (!agentBuilderTarget) return NOT_CONFIGURED;
 
-			// Resumed — the user connected (approved) or skipped (dismissed).
-			return { connected: Boolean(resumeData.approved) };
+			return await ctx.suspend({
+				requestId: nanoid(),
+				message: `Set up the ${integrationType} channel`,
+				severity: 'info' as const,
+				channelConfig: { integrationType, agentId: agentBuilderTarget.agentId },
+				projectId: agentBuilderTarget.projectId,
+			});
 		})
 		.build();
 }

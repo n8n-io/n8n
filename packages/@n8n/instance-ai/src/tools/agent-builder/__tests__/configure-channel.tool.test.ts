@@ -67,4 +67,15 @@ describe('configure_channel tool', () => {
 		);
 		expect(result).toEqual(expect.objectContaining({ ok: false }));
 	});
+
+	it('reports the outcome on resume even when the rebuilt context has no builder target', async () => {
+		// After a process restart the run is rebuilt from a checkpoint with a fresh
+		// context that has no agentBuilderTarget — the resume leg must not require it.
+		const result = await executeTool<{ connected: boolean }>(
+			createConfigureChannelTool(createContext({ agentBuilderTarget: undefined })),
+			{ integrationType: 'slack' },
+			resumeCtx({ approved: true }),
+		);
+		expect(result).toEqual({ connected: true });
+	});
 });

@@ -26,23 +26,28 @@ const SETUP_VIEWS: Record<string, ChannelView> = {
 };
 const view = computed<ChannelView>(() => SETUP_VIEWS[props.integrationType] ?? 'list');
 
+const MAX_CONFIRM_ATTEMPTS = 2;
+
 // Resume the suspended configure_channel tool: approved = connected, else skipped.
 // Guarded so the connect-triggered close doesn't also fire a skip.
-// On failure we reopen the modal so the user can retry — confirmAction already
-// surfaces a toast, and without this the HITL step is stuck (channel may already
-// be persisted, but the tool never resumes).
+// On failure we retry once, then resolve locally WITHOUT reopening the modal:
+// the channel may already be persisted (connect writes before the resume), so a
+// reopened force-new modal invites a duplicate credential, and a confirmation
+// the server has lost (e.g. after a restart) fails every attempt — reopening
+// would trap the user in a close/reopen loop. confirmAction surfaces a toast
+// per failure, so the user is informed when the resume didn't reach the run.
 function finish(approved: boolean, resolution: 'approved' | 'deferred') {
 	if (submitted.value || thread.resolvedConfirmationIds.has(props.requestId)) return;
 	submitted.value = true;
 	open.value = false;
-	void thread.confirmAction(props.requestId, { kind: 'approval', approved }).then((ok) => {
-		if (ok) {
-			thread.resolveConfirmation(props.requestId, resolution);
-		} else {
-			submitted.value = false;
-			open.value = true;
-		}
-	});
+	void submitConfirmation(approved, resolution);
+}
+
+async function submitConfirmation(approved: boolean, resolution: 'approved' | 'deferred') {
+	for (let attempt = 0; attempt < MAX_CONFIRM_ATTEMPTS; attempt++) {
+		if (await thread.confirmAction(props.requestId, { kind: 'approval', approved })) break;
+	}
+	thread.resolveConfirmation(props.requestId, resolution);
 }
 
 function onOpenChange(value: boolean) {

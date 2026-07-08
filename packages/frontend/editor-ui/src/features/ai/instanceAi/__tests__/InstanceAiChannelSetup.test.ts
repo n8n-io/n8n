@@ -79,15 +79,30 @@ describe('InstanceAiChannelSetup', () => {
 		expect(confirmSpy).toHaveBeenCalledWith('req-1', { kind: 'approval', approved: true });
 	});
 
-	it('reopens the modal when confirmAction fails', async () => {
-		vi.spyOn(thread, 'confirmAction').mockResolvedValue(false);
+	it('retries a failed confirmAction once before resolving', async () => {
+		const confirmSpy = vi
+			.spyOn(thread, 'confirmAction')
+			.mockResolvedValueOnce(false)
+			.mockResolvedValueOnce(true);
 		const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
 		const { getByTestId } = renderComponent({ props: defaultProps });
 
 		await userEvent.click(getByTestId('do-connect'));
 
-		expect(resolveSpy).not.toHaveBeenCalled();
-		expect(getByTestId('channel-modal').getAttribute('data-open')).toBe('true');
+		await vi.waitFor(() => expect(resolveSpy).toHaveBeenCalledWith('req-1', 'approved'));
+		expect(confirmSpy).toHaveBeenCalledTimes(2);
+	});
+
+	it('resolves locally without reopening the modal when every confirmAction attempt fails', async () => {
+		const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(false);
+		const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
+		const { getByTestId } = renderComponent({ props: defaultProps });
+
+		await userEvent.click(getByTestId('do-connect'));
+
+		await vi.waitFor(() => expect(resolveSpy).toHaveBeenCalledWith('req-1', 'approved'));
+		expect(confirmSpy).toHaveBeenCalledTimes(2);
+		expect(getByTestId('channel-modal').getAttribute('data-open')).toBe('false');
 	});
 
 	it('ignores submit when request is already resolved', async () => {

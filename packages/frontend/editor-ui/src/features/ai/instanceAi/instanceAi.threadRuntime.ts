@@ -553,6 +553,7 @@ export function createThreadRuntime(
 		if (conf.setupRequests?.length) return false;
 		if (conf.credentialRequests?.length) return false;
 		if (conf.questions?.length) return false;
+		if (conf.channelConfig) return false;
 		return true;
 	}
 
