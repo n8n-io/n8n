@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
-import { N8nIcon, N8nResizeWrapper, type DropdownMenuItemProps } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nResizeWrapper,
+	type DropdownMenuItemProps,
+} from '@n8n/design-system';
+import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
@@ -17,6 +23,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { LOCAL_STORAGE_AGENT_BUILDER_CHAT_PANEL_WIDTH, MODAL_CONFIRM } from '@/app/constants';
 import { useResizablePanel } from '@/app/composables/useResizablePanel';
@@ -43,9 +50,11 @@ import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
 import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
+import { addMissingAgentPersonalisation } from '../utils/agentPersonalisation';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
+	AGENT_JSON_IMPORT_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
 	PROJECT_AGENTS,
 } from '../constants';
@@ -71,6 +80,7 @@ const telemetry = useTelemetry();
 const sessionsStore = useAgentSessionsStore();
 const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
+const uiStore = useUIStore();
 
 // Gates the entire knowledge base feature (files panel + fetching) behind the
 // Daytona sandbox env vars on the backend (N8N_AGENTS_AI_SANDBOX_ENABLED + PROVIDER=daytona).
@@ -151,10 +161,12 @@ function shouldAutoExpandInitialBuild(): boolean {
 
 const shouldStartWithExpandedBuildChat = shouldAutoExpandInitialBuild();
 const isChatFullWidth = ref(shouldStartWithExpandedBuildChat);
+const isBuildChatHidden = ref(!shouldStartWithExpandedBuildChat);
 const shouldCollapseChatAfterInitialBuild = ref(shouldStartWithExpandedBuildChat);
 const executionsCount = computed(() => sessionsStore.threads.length);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
 	executionsCount,
+	knowledgeBaseEnabled: isKnowledgeBaseEnabled,
 });
 
 const { ensureLoaded: ensureIntegrationsCatalog } = useAgentIntegrationsCatalog();
@@ -282,7 +294,7 @@ async function fetchAgentFiles(
 }
 
 async function onUploadAgentFiles(files: File[]) {
-	if (files.length === 0) return;
+	if (files.length === 0 || !agent.value?.activeVersionId) return;
 	const oversizedFiles = files.filter((file) => file.size > MAX_AGENT_FILE_SIZE_BYTES);
 	if (oversizedFiles.length > 0) {
 		showError(
@@ -451,6 +463,7 @@ function startChat(msg: string) {
 	} else {
 		// Fresh agent — route through the same build chat panel used for ongoing
 		// Build conversations.
+		isBuildChatHidden.value = false;
 		initialPrompt.value = msg;
 		telemetry.track('User started agent build', { agent_id: agentId.value });
 
@@ -465,6 +478,7 @@ function startChat(msg: string) {
 function onPublished(updated: AgentResource) {
 	agent.value = updated;
 	void versionHistoryPanel.value?.refresh();
+	warmAgentKnowledgeSandboxForPage();
 }
 
 function onUnpublished(updated: AgentResource) {
@@ -516,7 +530,7 @@ function bindPreviewSession() {
 }
 
 function warmAgentKnowledgeSandboxForPage() {
-	if (!initialized.value || !isKnowledgeBaseEnabled.value) return;
+	if (!initialized.value || !isKnowledgeBaseEnabled.value || !agent.value?.activeVersionId) return;
 
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
@@ -534,6 +548,7 @@ function warmAgentKnowledgeSandboxForPage() {
 }
 
 function onOpenBuildFromChat() {
+	isBuildChatHidden.value = false;
 	closePreview();
 }
 
@@ -704,6 +719,28 @@ const caps = useAgentCapabilitiesActions({
 // access is not unwrapped by the template compiler).
 const appliedSkills = caps.appliedSkills;
 
+function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig, recordEdit = true) {
+	if (recordEdit) builderTelemetry.recordConfigEdit(nextConfig);
+	localConfig.value = deepCopy(nextConfig);
+	syncAgentIdentityFromConfig(localConfig.value);
+	configAutosave.scheduleAutosave({
+		projectId: projectId.value,
+		agentId: agentId.value,
+		type: 'config',
+		config: normalizeAgentMemoryConfig(deepCopy(localConfig.value)),
+	});
+}
+
+function persistMissingPersonalisationGradient() {
+	if (!canEditAgent.value) return;
+	if (!localConfig.value) return;
+
+	const nextConfig = addMissingAgentPersonalisation(localConfig.value);
+	if (!nextConfig) return;
+
+	replaceConfigAndScheduleSave(nextConfig, false);
+}
+
 async function onConfigUpdated() {
 	// Modal flows (e.g. skill creation) write through their own API calls, not
 	// `saveConfig` — notify other surfaces (canvas agent cards) here too.
@@ -728,13 +765,80 @@ function onBuildDone() {
 	shouldCollapseChatAfterInitialBuild.value = false;
 }
 
-const headerActions = computed(() =>
-	canDeleteAgent.value
-		? [{ id: 'delete', label: locale.baseText('agents.builder.deleteAgent') }]
-		: [],
-);
+const headerActions = computed(() => {
+	const actions: Array<ActionDropdownItem<string>> = [
+		{
+			id: 'export-json',
+			label: locale.baseText('agents.builder.exportJson' as BaseTextKey),
+			icon: 'download',
+		},
+	];
+
+	if (canEditAgent.value) {
+		actions.push({
+			id: 'import-json',
+			label: locale.baseText('agents.builder.importJson' as BaseTextKey),
+			icon: 'upload',
+		});
+	}
+
+	if (canDeleteAgent.value) {
+		actions.push({
+			id: 'delete',
+			label: locale.baseText('agents.builder.deleteAgent'),
+			icon: 'trash-2',
+			divided: true,
+		});
+	}
+
+	return actions;
+});
+
+async function exportAgentJson() {
+	if (!localConfig.value) return;
+
+	try {
+		await flushAutosave();
+	} catch {
+		return;
+	}
+	if (!localConfig.value) return;
+
+	const blob = new Blob([`${JSON.stringify(localConfig.value, null, 2)}\n`], {
+		type: 'application/json',
+	});
+	const url = URL.createObjectURL(blob);
+	const name = localConfig.value.name.trim().replace(/[\\/:*?"<>|]+/g, '-') || 'agent';
+	const link = Object.assign(document.createElement('a'), {
+		href: url,
+		download: `${name}.json`,
+	});
+	document.body.appendChild(link);
+	link.click();
+	link.remove();
+	URL.revokeObjectURL(url);
+}
+
+function openImportJsonModal() {
+	if (!canEditAgent.value) return;
+
+	uiStore.openModalWithData({
+		name: AGENT_JSON_IMPORT_MODAL_KEY,
+		data: {
+			onConfirm: replaceConfigAndScheduleSave,
+		},
+	});
+}
 
 async function onHeaderAction(action: string) {
+	if (action === 'export-json') {
+		await exportAgentJson();
+		return;
+	}
+	if (action === 'import-json') {
+		openImportJsonModal();
+		return;
+	}
 	if (action === 'delete') {
 		const confirmed = await openAgentConfirmationModal({
 			title: locale.baseText('agents.delete.modal.title', {
@@ -830,6 +934,7 @@ async function initialize() {
 			fetchConfig(projectId.value, agentId.value),
 			fetchAgentFiles(),
 		]);
+		persistMissingPersonalisationGradient();
 		builderTelemetry.captureToolsBaseline();
 		builderTelemetry.captureSkillsBaseline();
 		builderTelemetry.captureTasksBaseline();
@@ -1005,6 +1110,18 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					@continue-loaded="onContinueLoaded"
 					@open-build="onOpenBuildFromChat"
 				/>
+				<N8nButton
+					v-else-if="isBuildChatHidden"
+					variant="ghost"
+					icon-only
+					size="small"
+					:class="$style.showBuildChatButton"
+					:aria-label="locale.baseText('agents.builder.chat.show.ariaLabel' as BaseTextKey)"
+					data-testid="agent-build-chat-show-button"
+					@click="isBuildChatHidden = false"
+				>
+					<N8nIcon icon="panel-left" :size="14" />
+				</N8nButton>
 				<N8nResizeWrapper
 					v-else
 					:class="{
@@ -1044,7 +1161,10 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 						@update:tools="caps.onQuickActionAddTool"
 						@update:mcp-servers="caps.onQuickActionAddMcpServers"
 						@update:connected-triggers="caps.onConnectedTriggersUpdate"
-						@update:full-width="isChatFullWidth = $event"
+						@hide="
+							isChatFullWidth = false;
+							isBuildChatHidden = true;
+						"
 						@trigger-added="caps.onTriggerAdded"
 						@agent-published="onPublished"
 						@agent-changed="refreshAgentAfterIntegrationChange"
@@ -1052,7 +1172,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 				</N8nResizeWrapper>
 
 				<AgentBuilderEditorColumn
-					v-if="!isPreviewMode && !isChatFullWidth"
+					v-if="!isPreviewMode && (!isChatFullWidth || isBuildChatHidden)"
 					:class="$style.editorColumn"
 					v-model:active-main-tab="activeMainTab"
 					:local-config="localConfig"
@@ -1118,6 +1238,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 }
 
 .builder {
+	position: relative;
 	display: flex;
 	height: 100%;
 	min-height: 0;
@@ -1168,6 +1289,13 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 
 .chatResizerFullWidth {
 	flex: 1 1 auto;
+}
+
+.showBuildChatButton {
+	position: absolute;
+	top: var(--spacing--sm);
+	left: var(--spacing--sm);
+	z-index: 3;
 }
 
 .isResizingChat {

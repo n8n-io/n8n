@@ -27,7 +27,6 @@ import type {
 	IDataTableProjectAggregateService,
 	IDataTableProjectService,
 } from './data-table.types';
-import type { IDeferredPromise } from './deferred-promise';
 import type { ExecutionCancelledError } from './errors';
 import type { ExpressionError } from './errors/expression.error';
 import type { NodeApiError } from './errors/node-api.error';
@@ -39,7 +38,8 @@ import type {
 	WorkflowExecuteModeValues as WorkflowExecuteMode,
 } from './execution-context';
 import type { ExecutionStatus } from './execution-status';
-import type { Result } from './result';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import type { Result } from '@n8n/utils/result';
 import type { Workflow } from './workflow';
 import type { EnvProviderState } from './workflow-data-proxy-env-provider';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
@@ -148,9 +148,11 @@ export interface IUser {
 	lastName: string;
 }
 
+export type OAuth2FailureReason = 'invalid_token' | 'verifier_unavailable' | 'insufficient_scope';
+
 export type N8nOAuth2ValidationResult =
 	| { valid: true; user: IUser }
-	| { valid: false; reason: 'invalid_token' | 'verifier_unavailable' };
+	| { valid: false; reason: OAuth2FailureReason };
 
 export type ProjectSharingData = {
 	id: string;
@@ -778,12 +780,50 @@ export type ResolvedFilePath = string & {
 	[__brand]: 'ResolvedFilePath';
 };
 
+/**
+ * A directory pinned by an open file descriptor. Resolving names through it
+ * addresses entries relative to the held descriptor rather than re-walking the
+ * path. Always {@link PinnedDirectory.close} it when done.
+ */
+export interface PinnedDirectory {
+	/** A path that resolves `name` relative to the pinned directory descriptor. */
+	resolvePath(name: string): string;
+	close(): Promise<void>;
+}
+
 export interface FileSystemHelperFunctions {
 	resolvePath(path: PathLike): Promise<ResolvedFilePath>;
 	/**
 	 * Use {@link resolvePath} to resolve the path first.
 	 */
 	isFilePathBlocked(filePath: ResolvedFilePath): boolean;
+	/**
+	 * Throws if any directory component of the path is a symlink. Use {@link resolvePath} first.
+	 */
+	assertNoSymlinkInPath(filePath: ResolvedFilePath): Promise<void>;
+	/**
+	 * Creates the parent directory of the path and any missing ancestors without following symlinks.
+	 * Use {@link resolvePath} first.
+	 */
+	ensureParentDirectoryWithoutFollowingSymlinks(filePath: ResolvedFilePath): Promise<void>;
+	/**
+	 * Resolves a directory that is safe to use as a staging location for the given
+	 * target: the realpath'd allowed base that contains the target, with a fallback
+	 * for when no path restriction is configured. Use {@link resolvePath} first.
+	 */
+	resolveStagingBaseForTarget(filePath: ResolvedFilePath): Promise<ResolvedFilePath>;
+	/**
+	 * Pins the directory at `directoryPath` by descending from a trusted base one
+	 * component at a time without following symlinks, returning a handle whose
+	 * descriptor the final operation can address entries relative to. Returns
+	 * `null` when descriptor-relative resolution is unavailable (non-Linux) or the
+	 * directory is not within a trusted base, in which case the caller should fall
+	 * back to {@link assertNoSymlinkInPath}.
+	 */
+	pinDirectory(
+		directoryPath: string,
+		options: { create: boolean },
+	): Promise<PinnedDirectory | null>;
 	/**
 	 * Use {@link resolvePath} to resolve the path first.
 	 */
@@ -1760,6 +1800,11 @@ export interface ResourceMapperTypeOptionsBase {
 	};
 	showTypeConversionOptions?: boolean;
 	allowEmptyValues?: boolean;
+	// When true, a cached schema that is detected to be structurally incomplete
+	// (e.g. authored by an AI builder rather than loaded from the source) is
+	// reconciled against the source on node open. A complete-but-drifted schema
+	// still shows the stale-data warning, leaving the refresh up to the user.
+	refreshIncompleteSchemaOnOpen?: boolean;
 }
 
 // Enforce at least one of resourceMapperMethod or localResourceMapperMethod
@@ -2254,12 +2299,6 @@ type EngineAction<T = unknown> = ExecuteNodeAction<T>;
  * containing the results of all requested actions.
  *
  * @template T - The type of metadata associated with this request
- *
- * @todo This should use `unknown`, but jest-mock-extended will turn this into
- * `Partial<unknown>` which `unknown` cannot be assigned to, which leads to a
- * lot of type errors in our tests.
- * The correct fix is to make a PR to jest-mock-extended and make it handle
- * `unknown` special, turning it into `unknown` instead of `Partial<unknown>`.
  */
 export type EngineRequest<T = object> = {
 	/** Array of actions that the requesting node wants the engine to fulfill */
@@ -3661,6 +3700,7 @@ export interface INodeGraphItem {
 	package_version?: string; // only for community nodes
 	used_guardrails?: string[]; // only for @n8n/n8n-nodes-langchain.guardrails
 	mcp_client_auth_method?: string; // for @n8n/n8n-nodes-langchain.mcpClientTool and @n8n/n8n-nodes-langchain.mcpClient
+	mcp_server_domain_base?: string; // registrable domain of MCP server URL, for mcpClientTool / mcpClient
 	ai_model?: string; // AI model for model nodes and standalone AI nodes
 	ai_input_tokens?: number; // AI input (prompt) tokens for model nodes
 	ai_output_tokens?: number; // AI output (completion) tokens for model nodes

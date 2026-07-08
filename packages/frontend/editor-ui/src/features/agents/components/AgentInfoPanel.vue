@@ -27,6 +27,7 @@ import { PROVIDER_CAPABILITIES } from '../provider-capabilities';
 import type { AgentJsonConfig } from '../types';
 import { parseModelString, modelToString, sanitizeModelId } from '../utils/model-string';
 import { normalizeWebSearchForModelChange } from '../utils/nativeWebSearch';
+import { normalizePromptCachingForModelChange } from '../utils/promptCaching';
 import AgentModelSelector from './AgentModelSelector.vue';
 import AgentPanelHeader from './AgentPanelHeader.vue';
 
@@ -38,11 +39,17 @@ const props = withDefaults(
 		projectId?: string;
 		/** Cap for the instructions editor — compact hosts (NDV) pass a smaller value. */
 		instructionsMaxHeight?: string;
+		showModel?: boolean;
+		showInstructions?: boolean;
+		showInstructionsToolbar?: boolean;
 	}>(),
 	{
 		disabled: false,
 		embedded: false,
-		instructionsMaxHeight: '640px',
+		instructionsMaxHeight: 'none',
+		showModel: true,
+		showInstructions: true,
+		showInstructionsToolbar: false,
 	},
 );
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
@@ -95,6 +102,19 @@ const selectedAgent = computed<AgentModelOption | null>(() => {
 	};
 });
 
+const panelTestId = computed(() => {
+	if (props.showModel && !props.showInstructions) return 'agent-model-panel';
+	if (!props.showModel && props.showInstructions) return 'agent-instructions-panel';
+	return 'agent-info-panel';
+});
+
+const instructionsToolbarMode = computed(() =>
+	props.showInstructionsToolbar ? 'always' : 'never',
+);
+const instructionsEditorVariant = computed(() =>
+	props.showInstructionsToolbar ? 'contained' : 'ghost',
+);
+
 function onModelChange(selection: AgentModelSelection) {
 	const credentialId = credentialsByProvider.value?.[selection.provider];
 	if (!credentialId) {
@@ -102,11 +122,19 @@ function onModelChange(selection: AgentModelSelection) {
 		return;
 	}
 	const model = `${selection.provider}/${sanitizeModelId(selection.provider, selection.model)}`;
-	const nextProviderTool = PROVIDER_CAPABILITIES[selection.provider]?.webSearch ?? false;
+	const capabilities = PROVIDER_CAPABILITIES[selection.provider];
+	const webSearchChanges = normalizeWebSearchForModelChange(
+		props.config,
+		capabilities?.webSearch ?? false,
+	);
 	emit('update:config', {
 		model,
 		credential: credentialId,
-		...normalizeWebSearchForModelChange(props.config, nextProviderTool),
+		...webSearchChanges,
+		...normalizePromptCachingForModelChange(
+			webSearchChanges.config ?? props.config?.config,
+			capabilities?.promptCaching ?? false,
+		),
 	});
 }
 
@@ -139,16 +167,16 @@ function onInstructionsInput(value: string) {
 </script>
 
 <template>
-	<div :class="$style.panel" data-testid="agent-info-panel">
+	<div :class="$style.panel" :data-testid="panelTestId">
 		<AgentPanelHeader
 			v-if="!props.embedded"
 			:title="i18n.baseText('agents.builder.agent.title')"
 			:description="i18n.baseText('agents.builder.agent.description')"
 		/>
 
-		<div :class="[$style.field, props.disabled && shared.disabledOverlay]">
+		<div v-if="props.showModel" :class="[$style.field, props.disabled && shared.disabledOverlay]">
 			<label :class="$style.label"
-				><N8nText size="small" :bold="true">{{
+				><N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 					i18n.baseText('agents.builder.agent.model.label')
 				}}</N8nText></label
 			>
@@ -159,31 +187,28 @@ function onInstructionsInput(value: string) {
 				:is-loading="isLoading"
 				:project-id="projectId"
 				:warn-missing-credentials="true"
-				horizontal
 				data-testid="agent-model-selector"
 				@change="onModelChange"
 				@select-credential="onSelectCredential"
 			/>
 		</div>
 
-		<div :class="[$style.field, $style.instructionsField]">
+		<div v-if="props.showInstructions" :class="[$style.field, $style.instructionsField]">
 			<label :class="$style.label">
-				<N8nText size="small" :bold="true">{{
+				<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 					i18n.baseText('agents.builder.agent.instructions.label')
 				}}</N8nText>
 			</label>
 			<N8nMarkdownEditor
-				:class="$style.instructionsEditor"
+				:class="$style.instructionsDocument"
 				:model-value="instructions"
 				:readonly="props.disabled"
+				:variant="instructionsEditorVariant"
+				:show-toolbar="instructionsToolbarMode"
 				:max-height="props.instructionsMaxHeight"
+				data-testid="agent-instructions-document"
 				@update:model-value="onInstructionsInput"
 			/>
-			<N8nText size="xsmall" color="text-light">{{
-				i18n.baseText('agents.builder.agent.instructions.characterCount', {
-					interpolate: { count: String(instructions.length) },
-				})
-			}}</N8nText>
 		</div>
 	</div>
 </template>
@@ -192,28 +217,22 @@ function onInstructionsInput(value: string) {
 .panel {
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
-	height: 100%;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	width: 100%;
 }
 
-.instructionsField {
-	flex: 1;
-	min-height: 0;
-}
-
-.instructionsEditor {
-	flex: 1;
-	min-height: 0;
-	display: flex;
+.instructionsDocument {
+	display: block;
 	width: 100%;
 }
 
-.instructionsEditor :global(.n8n-markdown),
-.instructionsEditor :global(textarea) {
-	min-height: 160px;
+.instructionsDocument :global(.n8n-markdown) {
+	max-height: none;
+	min-height: calc(var(--spacing--4xl) + var(--spacing--xl));
+	overflow-y: visible;
+	padding: 0;
 }
 
 .field {

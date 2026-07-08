@@ -84,7 +84,7 @@ export class AgentIntegrationsController {
 			undefined,
 			{ syncIntegrations: false },
 		);
-		await this.chatIntegrationService.connect(agentId, integration, req.user.id, agent.projectId);
+		await this.chatIntegrationService.connect(agentId, integration, agent.projectId);
 		await this.chatIntegrationService.broadcastIntegrationChange(agentId, integration, 'connect');
 
 		return {
@@ -182,12 +182,23 @@ export class AgentIntegrationsController {
 		const { type, credentialId } = payload;
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		await this.chatIntegrationService.disconnect(agentId, { type, credentialId });
+		const persistedIntegration = agent.integrations?.find(
+			(integration) => integration.type === type && integration.credentialId === credentialId,
+		);
+		const parsedIntegration = AgentIntegrationSchema.safeParse({ type, credentialId });
+		const integration =
+			persistedIntegration ?? (parsedIntegration.success ? parsedIntegration.data : undefined);
+		if (integration) {
+			await this.chatIntegrationService.disconnectChannel(agentId, integration);
+		} else {
+			await this.chatIntegrationService.disconnect(agentId, { type, credentialId });
+		}
 
 		await this.agentIntegrationPersistenceService.removeCredentialIntegration(
 			agent,
 			type,
 			credentialId,
+			{ broadcast: false },
 		);
 
 		return { status: 'disconnected' };

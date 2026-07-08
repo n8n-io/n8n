@@ -15,9 +15,11 @@ import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentTestChatService } from './agent-test-chat.service';
 import { Agent } from './entities/agent.entity';
+import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { splitModelId } from './json-config/model-id';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
+import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
 
 @Service()
 export class AgentsService {
@@ -29,6 +31,7 @@ export class AgentsService {
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly testChatService: AgentTestChatService,
 		private readonly agentTaskRepository: AgentTaskRepository,
+		private readonly subAgentCleanupService: SubAgentCleanupService,
 	) {}
 
 	async create(projectId: string, name: string): Promise<Agent> {
@@ -179,7 +182,7 @@ export class AgentsService {
 		return agents.filter((agent) => agent.activeVersionId !== null);
 	}
 
-	async delete(agentId: string, projectId: string, userId: string): Promise<boolean> {
+	async delete(agentId: string, projectId: string): Promise<boolean> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 
 		if (!agent) {
@@ -187,16 +190,26 @@ export class AgentsService {
 		}
 
 		try {
-			await this.agentKnowledgeService.deleteAllFilesForAgent(projectId, agentId, userId);
+			await this.agentKnowledgeService.deleteAllFilesForAgent(projectId, agentId);
 		} catch (error) {
 			this.logger.warn('Failed to delete knowledge files on agent delete', {
 				agentId,
 				error: error instanceof Error ? error.message : error,
 			});
 		}
+
+		await this.agentKnowledgeService.destroySandbox(projectId, agentId);
+
+		const chatIntegrationService = Container.get(ChatIntegrationService);
+		for (const integration of agent.integrations ?? []) {
+			await chatIntegrationService.disconnectChannel(agentId, integration);
+		}
+
 		await this.agentRepository.remove(agent);
 
 		this.runtimeCacheService.clearRuntimes(agentId);
+
+		await this.subAgentCleanupService.removeSubAgentFromParents(agentId, projectId);
 
 		try {
 			const { AgentTaskService } = await import('./agent-task.service');

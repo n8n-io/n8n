@@ -1,6 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { StructuredToolkit } from 'n8n-core';
 import {
 	NodeConnectionTypes,
@@ -245,7 +245,7 @@ describe('runtime', () => {
 					},
 				],
 			});
-			const callTool = jest
+			const callTool = vi
 				.spyOn(Client.prototype, 'callTool')
 				.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
 			vi.spyOn(Client.prototype, 'close').mockResolvedValue();
@@ -280,7 +280,7 @@ describe('runtime', () => {
 					},
 				],
 			});
-			const callTool = jest
+			const callTool = vi
 				.spyOn(Client.prototype, 'callTool')
 				.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
 			vi.spyOn(Client.prototype, 'close').mockResolvedValue();

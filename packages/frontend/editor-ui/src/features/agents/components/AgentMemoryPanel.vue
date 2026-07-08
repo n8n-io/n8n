@@ -23,6 +23,7 @@ import {
 } from '../model-providers';
 import type { AgentJsonConfig } from '../types';
 import { parseModelString, modelToString, sanitizeModelId } from '../utils/model-string';
+import shared from '../styles/agent-panel.module.scss';
 
 const props = withDefaults(
 	defineProps<{
@@ -234,10 +235,10 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 	>
 		<div v-if="episodicMemoryEnabled" :class="[$style.row, $style.recallModelRow]">
 			<div :class="$style.titleGroup">
-				<N8nText :bold="true">
+				<N8nText step="sm" bold :class="shared.dataEntryLabel">
 					{{ i18n.baseText('agents.builder.memory.recallModel.label') }}
 				</N8nText>
-				<N8nText size="small" color="text-light">
+				<N8nText size="small" :class="shared.dataEntrySubLabel">
 					{{ i18n.baseText('agents.builder.memory.recallModel.hint') }}
 				</N8nText>
 			</div>
@@ -249,7 +250,6 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 					:is-loading="isLoading"
 					:project-id="projectId"
 					:warn-missing-credentials="true"
-					horizontal
 					data-testid="agent-memory-recall-model-selector"
 					@change="onMemoryRecallModelChange"
 					@select-credential="onSelectCredential"
@@ -259,10 +259,10 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 
 		<div :class="$style.row">
 			<div :class="$style.titleGroup">
-				<N8nText :bold="true">
+				<N8nText step="sm" bold :class="shared.dataEntryLabel">
 					{{ i18n.baseText('agents.builder.memory.episodicMemory.label') }}
 				</N8nText>
-				<N8nText size="small" color="text-light">
+				<N8nText size="small" :class="shared.dataEntrySubLabel">
 					{{ i18n.baseText('agents.builder.memory.episodicMemory.hint') }}
 				</N8nText>
 			</div>
@@ -307,8 +307,15 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 
 .titleGroup {
 	display: flex;
+	flex: 1 1 auto;
 	flex-direction: column;
 	gap: var(--spacing--3xs);
+	min-width: 0;
+}
+
+.titleGroup > :global(.n8n-text) {
+	max-width: 100%;
+	overflow-wrap: anywhere;
 }
 
 .header {
@@ -320,6 +327,7 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 
 .row {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
@@ -357,9 +365,10 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 
 .modelSelector {
 	display: flex;
+	flex: 0 1 280px;
 	justify-content: flex-end;
 	margin-left: auto;
-	min-width: 280px;
+	min-width: min(280px, 100%);
 }
 
 .container.disabled {

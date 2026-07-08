@@ -3157,7 +3157,10 @@ export class Salesforce implements INodeType {
 					}
 				}
 
-				if (!Array.isArray(responseData) && responseData === undefined) {
+				if (
+					!Array.isArray(responseData) &&
+					(responseData === undefined || responseData === '' || responseData === null)
+				) {
 					// Make sure that always valid JSON gets returned which also matches the
 					// Salesforce default response
 					responseData = {

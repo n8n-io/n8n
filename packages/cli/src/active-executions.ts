@@ -3,8 +3,8 @@ import { ExecutionsConfig } from '@n8n/config';
 import type { CreateExecutionPayload, IExecutionDb } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
-	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IRun,
 	ExecutionStatus,
@@ -13,7 +13,6 @@ import type {
 	WebhookResponseMode,
 } from 'n8n-workflow';
 import {
-	createDeferredPromise,
 	ExecutionCancelledError,
 	sleep,
 	SystemShutdownExecutionCancelledError,

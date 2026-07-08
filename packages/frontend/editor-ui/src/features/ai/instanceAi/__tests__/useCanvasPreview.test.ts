@@ -417,7 +417,7 @@ describe('useCanvasPreview', () => {
 	});
 
 	describe('auto-refresh on workflow update (workflows action=update / restore-version)', () => {
-		test('does not refresh when the updated workflow is not the active tab', async () => {
+		test('opens and refreshes the updated workflow when another tab is active', async () => {
 			const ctx = setup();
 			registerWorkflow(ctx.thread, 'wf-1');
 			registerWorkflow(ctx.thread, 'wf-2');
@@ -440,6 +440,62 @@ describe('useCanvasPreview', () => {
 			];
 			await nextTick();
 
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.activeWorkflowId.value).toBe('wf-1');
+			expect(ctx.workflowRefreshKey.value).toBe(initialKey + 1);
+		});
+
+		test('opens and refreshes after a successful update when no preview is active', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			const initialKey = ctx.workflowRefreshKey.value;
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-update',
+								toolName: 'workflows',
+								args: { action: 'update', workflowId: 'wf-1' },
+								result: { success: true },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.activeWorkflowId.value).toBe('wf-1');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+			expect(ctx.workflowRefreshKey.value).toBe(initialKey + 1);
+		});
+
+		test('does not open or refresh updates while hydrating historical messages', async () => {
+			const ctx = setup();
+			ctx.thread.isHydratingThread = true;
+			registerWorkflow(ctx.thread, 'wf-1');
+			const initialKey = ctx.workflowRefreshKey.value;
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-update',
+								toolName: 'workflows',
+								args: { action: 'update', workflowId: 'wf-1' },
+								result: { success: true },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.isPreviewVisible.value).toBe(false);
 			expect(ctx.workflowRefreshKey.value).toBe(initialKey);
 		});
 

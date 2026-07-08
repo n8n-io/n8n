@@ -156,9 +156,14 @@ function goToUpgrade() {
 
 <template>
 	<div>
-		<N8nHeading tag="h2" size="large" class="mb-l">
-			{{ i18n.baseText('settings.security.dataRedaction.title') }}
-		</N8nHeading>
+		<div class="mb-s" :class="$style.headerTitle">
+			<N8nHeading tag="h2" size="large">
+				{{ i18n.baseText('settings.security.dataRedaction.title') }}
+			</N8nHeading>
+			<N8nText color="text-base" size="small">{{
+				i18n.baseText('settings.security.dataRedaction.description')
+			}}</N8nText>
+		</div>
 
 		<div :class="$style.settingsSection">
 			<div :class="$style.settingsContainer">
@@ -303,10 +308,17 @@ function goToUpgrade() {
 </template>
 
 <style module>
+.headerTitle {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
 .settingsSection {
-	border-radius: var(--radius);
+	border-radius: var(--radius--lg);
 	border: var(--border-width) var(--border-style) var(--color--foreground);
-	margin-bottom: var(--spacing--lg);
+	margin-bottom: var(--spacing--xl);
+	background-color: light-dark(var(--color--neutral-white), transparent);
 }
 
 .settingsContainer {

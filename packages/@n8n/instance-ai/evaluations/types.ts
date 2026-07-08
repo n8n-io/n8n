@@ -235,12 +235,18 @@ export interface ExecutionScenarioResult {
 	scenario: ExecutionScenario;
 	success: boolean;
 	evalResult?: InstanceAiEvalExecutionResult;
+	/** Workflow actually executed for this scenario, after multi-workflow routing. */
+	workflowId?: string;
 	score: number;
 	reasoning: string;
 	/** Root cause category when the scenario fails */
 	failureCategory?: string;
 	/** Detailed root cause explanation */
 	rootCause?: string;
+	/** Verifier returned no verdict after all attempts (infra failure, not a
+	 *  workflow failure). Rendered visibly but kept out of the pass-rate count,
+	 *  mirroring `BuildExpectationResult.incomplete`. */
+	incomplete?: boolean;
 }
 
 /** Verdict for one author-written build expectation. Informational only. */
@@ -378,6 +384,8 @@ export interface SetupCardRequest {
 export interface ExecutionScenarioAggregation {
 	scenario: ExecutionScenario;
 	runs: ExecutionScenarioResult[];
+	/** Runs where the verifier returned a verdict (excludes `incomplete`). */
+	evaluatedCount: number;
 	passCount: number;
 	passRate: number;
 	/** probability at least 1 of k attempts passes */

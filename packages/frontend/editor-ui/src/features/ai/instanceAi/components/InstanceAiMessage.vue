@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { InstanceAiMessage } from '@n8n/api-types';
 import type { RatingFeedback } from '@n8n/design-system';
-import { N8nCallout, N8nIconButton, N8nMessageRating, N8nText } from '@n8n/design-system';
+import { N8nCallout, N8nIcon, N8nIconButton, N8nMessageRating, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
@@ -35,6 +35,21 @@ const errorDetails = computed(() => {
 });
 
 const hasProviderError = computed(() => !!errorDetails.value?.provider);
+
+/** A run the user (or a timeout/shutdown) stopped before it completed. */
+const runCancelled = computed(() => props.message.agentTree?.status === 'cancelled');
+
+/** Attribute the stop to its cause; falls back to the generic label when unknown. */
+const cancelledLabel = computed(() => {
+	switch (props.message.agentTree?.cancellationReason) {
+		case 'user':
+			return i18n.baseText('instanceAi.agentTree.stoppedByUser');
+		case 'timeout':
+			return i18n.baseText('instanceAi.agentTree.timedOut');
+		default:
+			return i18n.baseText('instanceAi.agentTree.cancelled');
+	}
+});
 
 const errorTitle = computed(() => {
 	if (hasProviderError.value) {
@@ -147,6 +162,16 @@ function formatJson(value: unknown): string {
 				:class="$style.blinkingCursor"
 			/>
 
+			<!-- Run stopped indicator (survives reload via the persisted cancelled status) -->
+			<div
+				v-if="runCancelled"
+				:class="$style.cancelledIndicator"
+				data-test-id="instance-ai-run-cancelled"
+			>
+				<N8nIcon icon="circle-x" size="small" />
+				<span>{{ cancelledLabel }}</span>
+			</div>
+
 			<!-- Response feedback -->
 			<N8nMessageRating
 				v-if="isRateable"
@@ -233,6 +258,14 @@ function formatJson(value: unknown): string {
 	color: var(--color--text--tint-1);
 	padding: var(--spacing--4xs) 0;
 	animation: status-fade-in 0.2s ease;
+}
+
+.cancelledIndicator {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
 }
 
 .statusDot {

@@ -3,7 +3,8 @@ import type { ContainerClient } from '@azure/storage-blob';
 import { BlobServiceClient, StorageSharedKeyCredential } from '@azure/storage-blob';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { ensureError, UnexpectedError, UserError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 import { PassThrough, Readable, pipeline } from 'node:stream';
 
 import { AzureBlobConfig } from './azure-blob.config';
