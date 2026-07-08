@@ -1,14 +1,8 @@
 import { LicenseState } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { User, WorkflowEntity } from '@n8n/db';
-import {
-	WorkflowRepository,
-	DbConnection,
-	AuthRolesService,
-	BinaryDataRepository,
-	Project,
-} from '@n8n/db';
+import type { User, WorkflowEntity, Project } from '@n8n/db';
+import { WorkflowRepository, DbConnection, AuthRolesService, BinaryDataRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { IRun } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
