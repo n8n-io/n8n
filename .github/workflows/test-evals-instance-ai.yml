@@ -93,7 +93,9 @@ jobs:
   run-evals:
     name: 'Run Evals'
     runs-on: blacksmith-4vcpu-ubuntu-2204
-    timeout-minutes: 90
+    # Full-suite baseline refreshes (~140 dataset rows × 10 iterations) outgrew
+    # 90 minutes as cases were added — runs were getting killed at the cap.
+    timeout-minutes: 240
     env:
       # Each port hosts an independent n8n container. The eval CLI's
       # work-stealing allocator dispatches builds across them, capped per-lane.
