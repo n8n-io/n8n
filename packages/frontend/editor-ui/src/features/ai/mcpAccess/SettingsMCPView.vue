@@ -35,8 +35,7 @@ import type { OAuthClientResponseDto } from '@n8n/api-types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@/app/constants';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
-import { EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY } from '@/experiments/exposeAllWorkflowsToMcp/constants';
-import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
+import { useExposeAllWorkflowsToMcpOffer } from '@/experiments/exposeAllWorkflowsToMcp/composables/useExposeAllWorkflowsToMcpOffer';
 
 type MCPTabs = 'workflows' | 'oauth' | 'settings';
 
@@ -49,7 +48,7 @@ const telemetry = useTelemetry();
 const mcpStore = useMCPStore();
 const usersStore = useUsersStore();
 const uiStore = useUIStore();
-const exposeAllWorkflowsToMcpStore = useExposeAllWorkflowsToMcpStore();
+const { offerToExposeAllWorkflows } = useExposeAllWorkflowsToMcpOffer();
 
 const mcpStatusLoading = ref(false);
 const selectedTab = ref<MCPTabs>('workflows');
@@ -148,7 +147,8 @@ const onToggleMCPAccess = async (enabled: boolean) => {
 		}
 		mcp.trackUserToggledMcpAccess(enabled);
 		if (enabled && updated) {
-			await offerToExposeAllWorkflows();
+			// Best-effort offer; must not keep the toggle in its loading state
+			void offerToExposeAllWorkflows(refreshWorkflowsFromFirstPage);
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.toggle.error'));
@@ -158,35 +158,11 @@ const onToggleMCPAccess = async (enabled: boolean) => {
 	}
 };
 
-const offerToExposeAllWorkflows = async () => {
-	if (!exposeAllWorkflowsToMcpStore.isEnabled) {
-		return;
-	}
-	try {
-		const eligible = await mcpStore.getMcpEligibleWorkflows({ take: 1 });
-		if (eligible.count === 0) {
-			return;
-		}
-	} catch {
-		return;
-	}
-	uiStore.openModalWithData({
-		name: EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY,
-		data: {
-			onExposed: async () => {
-				workflowsTableState.value = { ...workflowsTableState.value, page: 0 };
-				await fetchAvailableWorkflows();
-			},
-		},
-	});
-};
-
 const onToggleWorkflowMCPAccess = async (workflowId: string, isEnabled: boolean) => {
 	try {
 		await mcpStore.toggleWorkflowMcpAccess(workflowId, isEnabled);
 		if (isEnabled) {
-			workflowsTableState.value = { ...workflowsTableState.value, page: 0 };
-			await fetchAvailableWorkflows();
+			await refreshWorkflowsFromFirstPage();
 		} else {
 			await fetchAvailableWorkflows();
 		}
@@ -199,8 +175,7 @@ const onToggleWorkflowMCPAccess = async (workflowId: string, isEnabled: boolean)
 const onBulkEnableWorkflowsMCPAccess = async (workflowIds: string[]) => {
 	try {
 		await mcpStore.toggleWorkflowsMcpAccess({ workflowIds }, true);
-		workflowsTableState.value = { ...workflowsTableState.value, page: 0 };
-		await fetchAvailableWorkflows();
+		await refreshWorkflowsFromFirstPage();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowSettings.toggleMCP.error.title'));
 		throw error;
@@ -282,6 +257,11 @@ const fetchAvailableWorkflows = async () => {
 	}
 };
 
+const refreshWorkflowsFromFirstPage = async () => {
+	workflowsTableState.value = { ...workflowsTableState.value, page: 0 };
+	await fetchAvailableWorkflows();
+};
+
 const onRefreshWorkflows = async () => {
 	await fetchAvailableWorkflows();
 };
@@ -327,9 +307,7 @@ const openConnectWorkflowsModal = () => {
 	uiStore.openModalWithData({
 		name: MCP_CONNECT_WORKFLOWS_MODAL_KEY,
 		data: {
-			onEnableMcpAccess: async (workflowIds: string[]) => {
-				await onBulkEnableWorkflowsMCPAccess(workflowIds);
-			},
+			onEnableMcpAccess: onBulkEnableWorkflowsMCPAccess,
 		},
 	});
 	telemetry.track('User clicked connect workflows from mcp settings');

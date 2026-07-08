@@ -87,8 +87,7 @@ const clearSelection = () => {
 };
 
 const onBulkRemoveMcpAccess = () => {
-	if (selectedWorkflowIds.value.length === 0) return;
-	emit('bulkRemoveMcpAccess', [...selectedWorkflowIds.value]);
+	emit('bulkRemoveMcpAccess', selectedWorkflowIds.value);
 };
 
 const tableHeaders = ref<Array<TableHeader<WorkflowListItem>>>([

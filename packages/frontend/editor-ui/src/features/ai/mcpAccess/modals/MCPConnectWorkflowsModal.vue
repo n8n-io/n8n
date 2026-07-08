@@ -66,7 +66,7 @@ function onSelectReady() {
 }
 
 function onConfirm() {
-	if (!isSaving.value && canSave.value) {
+	if (!isSaving.value) {
 		void save(() => modalBus.emit('close'));
 	}
 }
