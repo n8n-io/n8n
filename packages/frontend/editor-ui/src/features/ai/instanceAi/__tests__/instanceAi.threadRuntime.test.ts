@@ -1404,30 +1404,6 @@ describe('createThreadRuntime - session always-allow', () => {
 		expect(mockPostConfirmation).not.toHaveBeenCalled();
 	});
 
-	it('distinguishes submit-workflow create vs update grants by workflowId presence', async () => {
-		const runtime = registry.getOrCreateRuntime(activeThreadId);
-		runtime.addAlwaysAllowKey('submit-workflow', {});
-
-		pushPendingApproval(runtime, {
-			messageId: 'msg-create',
-			requestId: 'req-create',
-			toolName: 'submit-workflow',
-			args: {},
-		});
-		await vi.waitFor(() => {
-			expect(runtime.resolvedConfirmationIds.get('req-create')).toBe('approved');
-		});
-
-		pushPendingApproval(runtime, {
-			messageId: 'msg-update',
-			requestId: 'req-update',
-			toolName: 'submit-workflow',
-			args: { workflowId: 'wf-1' },
-		});
-		await new Promise((resolve) => setTimeout(resolve, 10));
-		expect(runtime.resolvedConfirmationIds.has('req-update')).toBe(false);
-	});
-
 	it('scopes executions run grants per workflow', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
 		runtime.addAlwaysAllowKey('executions', { action: 'run', workflowId: 'wf-1' });

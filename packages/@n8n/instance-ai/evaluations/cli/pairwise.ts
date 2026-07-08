@@ -404,10 +404,10 @@ interface Summary {
 		buildFailures: Record<string, number>;
 		primaryPassRate: number;
 		avgDiagnostic: number;
-		/** Total `submit-workflow` tool invocations across all records. */
+		/** Total `build-workflow` tool invocations across all records. */
 		submitCallsTotal: number;
-		/** Mean `submit-workflow` invocations per build. 1.0 = every build called
-		 *  submit exactly once; >1.0 = builds had to fix and re-submit. */
+		/** Mean `build-workflow` invocations per build. 1.0 = every build called
+		 *  build-workflow exactly once; >1.0 = builds had to fix and rebuild. */
 		avgSubmitCalls: number;
 		/** (errored tool calls) / (total tool calls) micro-averaged across all
 		 *  runs. Captures how rough the build path was even on builds that
@@ -478,7 +478,7 @@ async function writeOutputs(
 	].join(',');
 	const csvRows = records.map((r) => {
 		const find = (m: string) => r.feedback.find((f) => f.metric === m)?.score ?? '';
-		const submits = r.toolCalls.filter((tc) => tc.toolName === 'submit-workflow').length;
+		const submits = r.toolCalls.filter((tc) => tc.toolName === 'build-workflow').length;
 		const errors = r.toolCalls.filter(isErroredToolCall).length;
 		return [
 			r.exampleId,
@@ -529,14 +529,14 @@ async function writeOutputs(
 
 		// `toolCalls` is the ordered timeline captured by the trace collector.
 		// We count any tool call that errored OR returned a failed result —
-		// hard native agent tool failures are rare, but `submit-workflow` rejections
+		// hard native agent tool failures are rare, but `build-workflow` rejections
 		// and `execute_command` returning a non-zero `tsc` exit are common and
 		// dominate the "rough path" signal we care about. Suspensions are
 		// benign (auto-approved or surfaced via `errorClass` separately).
 		for (const tc of record.toolCalls) {
 			toolCallsTotal++;
 			if (isErroredToolCall(tc)) toolCallErrors++;
-			if (tc.toolName === 'submit-workflow') submitCallsTotal++;
+			if (tc.toolName === 'build-workflow') submitCallsTotal++;
 		}
 
 		const primary = record.feedback.find((f) => f.metric === 'pairwise_primary')?.score;
@@ -753,7 +753,7 @@ function safeFilename(s: string): string {
  *
  * Catches three flavours:
  * 1. **Hard native agent failure** (`trace.error` set) — tool threw / rejected.
- * 2. **Tool returned a failed result object** — e.g. `submit-workflow`
+ * 2. **Tool returned a failed result object** — e.g. `build-workflow`
  *    returning `{ success: false, errors: [...] }`. Looks at top-level
  *    `success === false` or non-empty `errors` array, plus a string
  *    `error` field.

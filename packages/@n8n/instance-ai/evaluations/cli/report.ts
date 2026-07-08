@@ -195,7 +195,7 @@ function isErroredToolCall(trace: ToolCallTrace): boolean {
 
 function countSubmitCalls(traces: ToolCallTrace[] | undefined): number {
 	if (!traces) return 0;
-	return traces.filter((t) => t.toolName === 'submit-workflow').length;
+	return traces.filter((t) => t.toolName === 'build-workflow').length;
 }
 
 function countToolCallErrors(traces: ToolCallTrace[] | undefined): number {

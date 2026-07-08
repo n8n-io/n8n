@@ -102,7 +102,6 @@ function entryFromListItem(
 const ARTIFACT_TOOLS = new Set([
 	'build-workflow',
 	'build-workflow-with-agent',
-	'submit-workflow',
 	'apply-workflow-credentials',
 	'workflows',
 	'credentials',
@@ -127,7 +126,7 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		}
 	}
 
-	// build-workflow / build-workflow-with-agent / submit-workflow:
+	// build-workflow / build-workflow-with-agent:
 	// { workflowId, workflowName? } — produced. Patch calls may omit the name,
 	// so fall back to the existing entry before regressing to 'Untitled'.
 	if (typeof result.workflowId === 'string') {

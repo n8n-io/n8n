@@ -87,7 +87,7 @@ describe('extractOutcomeFromEvents', () => {
 				type: 'tool-call',
 				data: {
 					type: 'tool-call',
-					payload: { toolCallId: 'tc-1', toolName: 'submit-workflow', args: {} },
+					payload: { toolCallId: 'tc-1', toolName: 'build-workflow', args: {} },
 				},
 			},
 			{

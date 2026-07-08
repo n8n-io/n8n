@@ -389,7 +389,7 @@ function summarizeToolCalls(result: WorkflowTestCaseResult): string[] {
 	const toolCalls = result.buildTrace?.toolCalls ?? [];
 	const count = (toolName: string): number =>
 		toolCalls.filter((call) => call.toolName === toolName).length;
-	const submitCalls = toolCalls.filter((call) => call.toolName === 'submit-workflow');
+	const submitCalls = toolCalls.filter((call) => call.toolName === 'build-workflow');
 	const verifyCalls = toolCalls.filter((call) => call.toolName === 'verify-built-workflow');
 
 	const summaries = [
@@ -1135,10 +1135,7 @@ function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
 			(call) => call.toolName === 'nodes',
 		);
 		const workflowWriteCalls = result.buildTrace.toolCalls.filter((call) =>
-			['build-workflow', 'submit-workflow', 'build-workflow-with-agent'].includes(call.toolName),
-		);
-		const validationCalls = result.buildTrace.toolCalls.filter(
-			(call) => call.toolName === 'submit-workflow',
+			['build-workflow', 'build-workflow-with-agent'].includes(call.toolName),
 		);
 		const credentialCalls = result.buildTrace.toolCalls.filter(
 			(call) => call.toolName === 'credentials',
@@ -1154,11 +1151,6 @@ function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
 			nodeResearchCalls: nodeResearchCalls.map((call) => call.args),
 			workflowWriteCalls: workflowWriteCalls.map((call) => ({
 				toolName: call.toolName,
-				args: call.args,
-				result: call.result,
-				error: call.error,
-			})),
-			validationCalls: validationCalls.map((call) => ({
 				args: call.args,
 				result: call.result,
 				error: call.error,

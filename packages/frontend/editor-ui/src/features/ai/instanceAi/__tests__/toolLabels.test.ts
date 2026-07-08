@@ -70,7 +70,7 @@ describe('getToolIcon', () => {
 		expect(getToolIcon('executions')).toBe('workflow');
 		expect(getToolIcon('nodes')).toBe('workflow');
 		expect(getToolIcon('templates')).toBe('workflow');
-		expect(getToolIcon('submit-workflow')).toBe('workflow');
+		expect(getToolIcon('build-workflow')).toBe('workflow');
 		expect(getToolIcon('materialize-node-type')).toBe('workflow');
 	});
 

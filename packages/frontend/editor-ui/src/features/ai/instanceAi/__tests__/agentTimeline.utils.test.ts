@@ -110,18 +110,6 @@ describe('extractArtifacts', () => {
 		]);
 	});
 
-	test('returns workflow artifact from submit-workflow tool call', () => {
-		const node = makeAgentNode({
-			toolCalls: [
-				makeToolCall({
-					toolName: 'submit-workflow',
-					result: { workflowId: 'wf-3', workflowName: 'Submitted WF' },
-				}),
-			],
-		});
-		expect(extractArtifacts(node)[0].resourceId).toBe('wf-3');
-	});
-
 	test('falls back to args.name when result.workflowName is missing', () => {
 		const node = makeAgentNode({
 			toolCalls: [

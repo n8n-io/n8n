@@ -12,7 +12,7 @@ import type { AgentOutcome, EventOutcome, ExecutionSummary, WorkflowSummary } fr
 // Tool names whose results contain workflow IDs
 // ---------------------------------------------------------------------------
 
-const WORKFLOW_TOOLS = new Set(['build-workflow', 'submit-workflow', 'patch-workflow']);
+const WORKFLOW_TOOLS = new Set(['build-workflow', 'patch-workflow']);
 
 // ---------------------------------------------------------------------------
 // snapshotWorkflowIds -- call before the run to know what existed prior
@@ -144,7 +144,7 @@ export async function buildAgentOutcome(
 // extractWorkflowIdsFromMessages
 //
 // Extracts workflow IDs from agent tree targetResource fields AND from
-// tool call results (build-workflow, submit-workflow, etc.).
+// tool call results (build-workflow, patch-workflow, etc.).
 // Thread-scoped -- avoids cross-run workflow attribution.
 // ---------------------------------------------------------------------------
 
