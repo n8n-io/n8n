@@ -956,8 +956,8 @@ export class TelemetryEventRelay extends EventRelay {
 			privateCredentialTypes: [] as string[],
 		};
 
-		// No credential can be resolvable when the feature isn't licensed, so skip the DB
-		// lookup entirely on instances that don't use private credentials.
+		// Report zeros when the feature isn't licensed: resolvable rows may persist in the
+		// DB (e.g. after a license downgrade) but are inactive, so skip the lookup.
 		if (!this.licenseState.isDynamicCredentialsLicensed()) {
 			return empty;
 		}

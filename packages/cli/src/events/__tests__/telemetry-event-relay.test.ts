@@ -1711,7 +1711,7 @@ describe('TelemetryEventRelay', () => {
 		});
 
 		it('should count attempted vs resolved private credentials and the effective resolver', async () => {
-			dynamicCredentialsProxy.getEffectiveResolverId.mockReturnValue('system-n8n');
+			dynamicCredentialsProxy.getEffectiveResolverId.mockReturnValueOnce('system-n8n');
 
 			const event: RelayEventMap['workflow-post-execute'] = {
 				workflow: mock<IWorkflowDb>({
@@ -1964,8 +1964,8 @@ describe('TelemetryEventRelay', () => {
 		});
 
 		it('should report private credential usage on `workflow-saved` event', async () => {
-			licenseState.isDynamicCredentialsLicensed.mockReturnValue(true);
-			credentialsRepository.find.mockResolvedValue([
+			licenseState.isDynamicCredentialsLicensed.mockReturnValueOnce(true);
+			credentialsRepository.find.mockResolvedValueOnce([
 				mock<CredentialsEntity>({ id: 'cred-1', type: 'slackApi' }),
 				mock<CredentialsEntity>({ id: 'cred-2', type: 'notionApi' }),
 			]);
@@ -2025,8 +2025,8 @@ describe('TelemetryEventRelay', () => {
 		});
 
 		it('should report private credential usage on `workflow-activated` event', async () => {
-			licenseState.isDynamicCredentialsLicensed.mockReturnValue(true);
-			credentialsRepository.find.mockResolvedValue([
+			licenseState.isDynamicCredentialsLicensed.mockReturnValueOnce(true);
+			credentialsRepository.find.mockResolvedValueOnce([
 				mock<CredentialsEntity>({ id: 'cred-1', type: 'slackApi' }),
 			]);
 
