@@ -954,7 +954,7 @@
     "eventsource": "2.0.2",
     "fast-glob": "catalog:",
     "fastest-levenshtein": "catalog:",
-    "fflate": "0.7.4",
+    "fflate": "catalog:",
     "form-data": "catalog:",
     "generate-schema": "2.6.0",
     "get-system-fonts": "2.0.2",
