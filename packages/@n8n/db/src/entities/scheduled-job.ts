@@ -60,7 +60,7 @@ export class ScheduledJob extends WithTimestamps {
 	/**
 	 * What kind of work this job runs.
 	 * The scheduler is generic, so this is how it knows what to do when the job
-	 * fires, e.g. `'scheduleTrigger'` for a workflow's schedule trigger.
+	 * fires, e.g. `'workflow:schedule-trigger'` for a workflow's schedule trigger.
 	 * Paired with {@link payload}, which carries the handler's input.
 	 */
 	@Column({ type: 'varchar', length: 128 })

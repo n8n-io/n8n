@@ -1,12 +1,13 @@
 /**
  * Creation + listing agent-builder tools: create_skill, create_task,
- * build_custom_tool, list_integration_types, list_sub_agents, list_workflows.
- * Thin wrappers over `agentBuilderService`.
+ * build_custom_tool, list_integration_types, list_sub_agents, list_agents,
+ * list_workflows. Thin wrappers over `agentBuilderService`.
  */
 import { Tool } from '@n8n/agents';
 import { agentSkillSchema, agentTaskSchema } from '@n8n/api-types';
 import { z } from 'zod';
 
+import { resolveAgentBuilderTarget } from './agent-target-binding';
 import type { InstanceAiAgentBuilderService, InstanceAiContext } from '../../types';
 import { AGENT_BUILDER_TOOL_IDS } from '../tool-ids';
 
@@ -16,13 +17,26 @@ interface CreationDeps {
 	projectId: string;
 }
 
-function resolveCreationDeps(context: InstanceAiContext): CreationDeps | null {
-	if (!context.agentBuilderService || !context.agentBuilderTarget) return null;
+async function resolveCreationDeps(context: InstanceAiContext): Promise<CreationDeps | null> {
+	if (!context.agentBuilderService) return null;
+	const target = await resolveAgentBuilderTarget(context);
+	if (!target) return null;
 	return {
 		service: context.agentBuilderService,
-		agentId: context.agentBuilderTarget.agentId,
-		projectId: context.agentBuilderTarget.projectId,
+		agentId: target.agentId,
+		projectId: target.projectId,
 	};
+}
+
+/**
+ * Resolve the project id for project-scoped listing tools (list_workflows,
+ * list_agents). Prefers the persisted agent-builder binding so later turns stay
+ * scoped to the agent's project; falls back to the run's `projectId` so the
+ * tools still work before any agent is created.
+ */
+async function resolveProjectId(context: InstanceAiContext): Promise<string | undefined> {
+	const target = await resolveAgentBuilderTarget(context);
+	return target?.projectId ?? context.projectId;
 }
 
 const NOT_CONFIGURED = {
@@ -43,9 +57,9 @@ export function createCreateSkillTool(context: InstanceAiContext) {
 	return new Tool(AGENT_BUILDER_TOOL_IDS.CREATE_SKILL)
 		.description(
 			'Create and store a reusable, load-on-demand target-agent skill (name + routing ' +
-				'description + structured body). Does NOT attach the skill to the config — follow up with ' +
-				'patch_config (or write_config) to add a `{ type: "skill", id }` entry to `skills`. ' +
-				'Returns { ok: true, id, skill } or { ok: false, errors }.',
+				'description + structured body). Does NOT attach the skill to the config — follow up by ' +
+				'adding a `{ type: "skill", id }` entry to `skills` in the config file and calling ' +
+				'build_agent. Returns { ok: true, id, skill } or { ok: false, errors }.',
 		)
 		.systemInstruction(
 			'Create a reusable skill when the description is a concrete routing contract and the body ' +
@@ -62,7 +76,7 @@ export function createCreateSkillTool(context: InstanceAiContext) {
 			}),
 		)
 		.handler(async ({ name, description, body }) => {
-			const deps = resolveCreationDeps(context);
+			const deps = await resolveCreationDeps(context);
 			if (!deps) return NOT_CONFIGURED;
 			try {
 				const created = await deps.service.createSkill(deps.agentId, deps.projectId, {
@@ -87,9 +101,9 @@ export function createCreateTaskTool(context: InstanceAiContext) {
 				'starts once the agent is (re)published. Returns { ok: true, task } or { ok: false, errors }.',
 		)
 		.systemInstruction(
-			'Create a scheduled task when the objective is concrete and self-contained. A task can use ' +
-				'tools the agent already has; if a step needs a missing tool, integration, or web search, ' +
-				'add it via patch_config/write_config before calling create_task.',
+			'Never create a task with a vague or placeholder objective. A task can only use tools the ' +
+				'agent already has: if a step needs a tool/integration/web search the agent is missing, add ' +
+				'it to the config file and build_agent it BEFORE calling create_task.',
 		)
 		.input(
 			z.object({
@@ -101,7 +115,7 @@ export function createCreateTaskTool(context: InstanceAiContext) {
 			}),
 		)
 		.handler(async ({ name, objective, cronExpression }) => {
-			const deps = resolveCreationDeps(context);
+			const deps = await resolveCreationDeps(context);
 			if (!deps) return NOT_CONFIGURED;
 			try {
 				const task = await deps.service.createTask(deps.agentId, deps.projectId, {
@@ -124,8 +138,8 @@ export function createBuildCustomToolTool(context: InstanceAiContext) {
 			'Compile and store a custom tool. Pass the complete TypeScript source using ' +
 				'`export default new Tool(...)`. The code is validated in a sandbox and saved against the ' +
 				'agent. The returned `id` equals the tool name declared in the code. This does NOT register ' +
-				'the tool in the config — follow up with patch_config to add `{ type: "custom", id }` to ' +
-				'`tools`. Returns { ok: true, id, descriptor } or { ok: false, errors }.',
+				'the tool in the config — follow up by adding `{ type: "custom", id }` to `tools` in the ' +
+				'config file and calling build_agent. Returns { ok: true, id, descriptor } or { ok: false, errors }.',
 		)
 		.input(
 			z.object({
@@ -133,7 +147,7 @@ export function createBuildCustomToolTool(context: InstanceAiContext) {
 			}),
 		)
 		.handler(async ({ code }) => {
-			const deps = resolveCreationDeps(context);
+			const deps = await resolveCreationDeps(context);
 			if (!deps) return NOT_CONFIGURED;
 			try {
 				const descriptor = await deps.service.describeCustomTool(code);
@@ -162,7 +176,7 @@ export function createListIntegrationTypesTool(context: InstanceAiContext) {
 		)
 		.input(z.object({}))
 		.handler(async () => {
-			const deps = resolveCreationDeps(context);
+			const deps = await resolveCreationDeps(context);
 			if (!deps) return { integrations: [] };
 			return { integrations: await deps.service.listChatIntegrations() };
 		})
@@ -178,9 +192,26 @@ export function createListSubAgentsTool(context: InstanceAiContext) {
 		)
 		.input(z.object({}))
 		.handler(async () => {
-			const deps = resolveCreationDeps(context);
+			const deps = await resolveCreationDeps(context);
 			if (!deps) return { agents: [] };
 			return { agents: await deps.service.listProjectAgents(deps.projectId, deps.agentId) };
+		})
+		.build();
+}
+
+export function createListAgentsTool(context: InstanceAiContext) {
+	return new Tool(AGENT_BUILDER_TOOL_IDS.LIST_AGENTS)
+		.description(
+			'List every agent in the target agent project (no published-only filter, does not ' +
+				'exclude the target agent). Use to discover which agents exist in the project — e.g. to ' +
+				'pick one to edit, or to see what is available before deciding to add a sub-agent. For the ' +
+				'narrower sub-agent candidate list, use list_sub_agents instead. Returns { agents: [{ agentId, name }] }.',
+		)
+		.input(z.object({}))
+		.handler(async () => {
+			if (!context.agentBuilderService) return { agents: [] };
+			const projectId = await resolveProjectId(context);
+			return { agents: await context.agentBuilderService.listAllProjectAgents(projectId) };
 		})
 		.build();
 }
@@ -204,7 +235,7 @@ export function createListWorkflowsTool(context: InstanceAiContext) {
 		)
 		.handler(async ({ searchTerm }: { searchTerm?: string }) => {
 			if (!context.agentBuilderService) return { workflows: [] };
-			const projectId = context.agentBuilderTarget?.projectId ?? context.projectId;
+			const projectId = await resolveProjectId(context);
 			return {
 				workflows: await context.agentBuilderService.listAttachableWorkflows(projectId, searchTerm),
 			};

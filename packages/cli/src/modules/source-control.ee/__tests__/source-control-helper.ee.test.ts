@@ -22,6 +22,7 @@ import {
 	getTrackingInformationFromPullResult,
 	hasOwnerChanged,
 	isWorkflowModified,
+	mapInBatches,
 	mergeRemoteCrendetialDataIntoLocalCredentialData,
 	sanitizeCredentialData,
 	sourceControlFoldersExistCheck,
@@ -242,6 +243,56 @@ describe('Source Control Helper', () => {
 			expect(getRepoType('git@github.com:n8ntest/n8n_testrepo.git')).toBe('github');
 			expect(getRepoType('git@gitlab.com:n8ntest/n8n_testrepo.git')).toBe('gitlab');
 			expect(getRepoType('git@mygitea.io:n8ntest/n8n_testrepo.git')).toBe('other');
+		});
+	});
+
+	describe('mapInBatches', () => {
+		it('should preserve input order and length', async () => {
+			const items = Array.from({ length: 45 }, (_, i) => i);
+
+			// Resolve items out of order within each batch to prove order is preserved
+			const result = await mapInBatches(items, 20, async (item) => {
+				await new Promise((resolve) => setTimeout(resolve, item % 3));
+				return item * 2;
+			});
+
+			expect(result).toEqual(items.map((item) => item * 2));
+		});
+
+		it('should never run more than batchSize items concurrently', async () => {
+			let inFlight = 0;
+			let maxInFlight = 0;
+
+			await mapInBatches(
+				Array.from({ length: 45 }, (_, i) => i),
+				20,
+				async (item) => {
+					inFlight++;
+					maxInFlight = Math.max(maxInFlight, inFlight);
+					await new Promise((resolve) => setImmediate(resolve));
+					inFlight--;
+					return item;
+				},
+			);
+
+			expect(maxInFlight).toBeLessThanOrEqual(20);
+			expect(maxInFlight).toBeGreaterThan(1);
+		});
+
+		it('should reject when an item fails', async () => {
+			await expect(
+				mapInBatches([1, 2, 3], 2, async (item) => {
+					await Promise.resolve();
+					if (item === 2) throw new Error('boom');
+					return item;
+				}),
+			).rejects.toThrow('boom');
+		});
+
+		it('should return an empty array for empty input', async () => {
+			const fn = vi.fn();
+			await expect(mapInBatches([], 20, fn)).resolves.toEqual([]);
+			expect(fn).not.toHaveBeenCalled();
 		});
 	});
 
