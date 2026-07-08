@@ -231,7 +231,6 @@ export class InstanceAiAdapterService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableRepository: DataTableRepository,
-		private readonly evaluationConfigService: EvaluationConfigService,
 		private readonly nodeResourceExplorerService: NodeResourceExplorerService,
 		private readonly folderService: FolderService,
 		private readonly projectService: ProjectService,
@@ -250,6 +249,9 @@ export class InstanceAiAdapterService {
 		private readonly outboundHttp: OutboundHttp,
 		private readonly aiGatewayService: AiGatewayService,
 		private readonly nodeCatalogService?: NodeCatalogService,
+		// Optional: absent only in package/test contexts constructed without DI.
+		// DI (by type, not position) always provides it in a running instance.
+		private readonly evaluationConfigService?: EvaluationConfigService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -279,7 +281,14 @@ export class InstanceAiAdapterService {
 			credentialService: this.createCredentialAdapter(user, projectId, credentialIdAllowlist),
 			nodeService: this.createNodeAdapter(user),
 			dataTableService: this.createDataTableAdapter(user, projectId),
-			evaluationConfigService: this.createEvaluationConfigAdapter(user),
+			...(this.evaluationConfigService
+				? {
+						evaluationConfigService: this.createEvaluationConfigAdapter(
+							this.evaluationConfigService,
+							user,
+						),
+					}
+				: {}),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
 			templatesService: this.getTemplatesService(),
@@ -1559,8 +1568,11 @@ export class InstanceAiAdapterService {
 		};
 	}
 
-	private createEvaluationConfigAdapter(user: User): InstanceAiEvaluationConfigService {
-		const { evaluationConfigService, workflowFinderService } = this;
+	private createEvaluationConfigAdapter(
+		evaluationConfigService: EvaluationConfigService,
+		user: User,
+	): InstanceAiEvaluationConfigService {
+		const { workflowFinderService } = this;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('evaluations');
 
 		const findWorkflow = async (
@@ -1574,68 +1586,16 @@ export class InstanceAiAdapterService {
 			return workflow;
 		};
 
-		const toSummary = (config: EvaluationConfig): EvaluationConfigSummary => {
-			const dataTableId =
-				config.datasetSource === 'data_table' && 'dataTableId' in config.datasetRef
-					? config.datasetRef.dataTableId
-					: undefined;
-			return {
-				id: config.id,
-				workflowId: config.workflowId,
-				name: config.name,
-				status: config.status,
-				invalidReason: config.invalidReason,
-				startNodeName: config.startNodeName,
-				endNodeName: config.endNodeName,
-				metrics: config.metrics.map((metric) => ({
-					id: metric.id,
-					name: metric.name,
-					type: metric.type,
-				})),
-				datasetSource: config.datasetSource,
-				...(dataTableId !== undefined ? { dataTableId } : {}),
-			};
-		};
-
-		// Map the tool's focused LLM-judge input onto the full evaluation-config
-		// DTO, then validate against the api-types schema before persisting.
-		const buildDto = (input: UpsertEvaluationConfigInput) =>
-			upsertEvaluationConfigSchema.parse({
-				name: input.name,
-				startNodeName: input.startNodeName,
-				endNodeName: input.endNodeName,
-				datasetSource: 'data_table',
-				datasetRef: { dataTableId: input.dataTableId },
-				metrics: input.metrics.map((metric) => ({
-					id: nanoid(),
-					name: metric.name,
-					type: 'llm_judge',
-					config: {
-						preset: metric.preset,
-						...(metric.prompt ? { prompt: metric.prompt } : {}),
-						provider: metric.provider,
-						credentialId: metric.credentialId,
-						model: metric.model,
-						outputType: metric.outputType,
-						inputs: {
-							actualAnswer: metric.actualAnswer,
-							...(metric.userQuery ? { userQuery: metric.userQuery } : {}),
-							...(metric.expectedAnswer ? { expectedAnswer: metric.expectedAnswer } : {}),
-						},
-					},
-				})),
-			});
-
 		return {
 			async list(workflowId) {
 				await findWorkflow(workflowId, 'workflow:read');
 				const configs = await evaluationConfigService.list(workflowId);
-				return configs.map(toSummary);
+				return configs.map(evaluationConfigToSummary);
 			},
 			async get(workflowId, configId) {
 				await findWorkflow(workflowId, 'workflow:read');
 				const config = await evaluationConfigService.get(workflowId, configId);
-				return config ? toSummary(config) : null;
+				return config ? evaluationConfigToSummary(config) : null;
 			},
 			async create(workflowId, input) {
 				assertNotReadOnly();
@@ -1644,9 +1604,9 @@ export class InstanceAiAdapterService {
 					workflowId,
 					workflow,
 					user,
-					buildDto(input),
+					buildEvaluationConfigDto(input),
 				);
-				return toSummary(config);
+				return evaluationConfigToSummary(config);
 			},
 			async update(workflowId, configId, input) {
 				assertNotReadOnly();
@@ -1656,9 +1616,9 @@ export class InstanceAiAdapterService {
 					configId,
 					workflow,
 					user,
-					buildDto(input),
+					buildEvaluationConfigDto(input),
 				);
-				return toSummary(config);
+				return evaluationConfigToSummary(config);
 			},
 			async delete(workflowId, configId) {
 				assertNotReadOnly();
@@ -2725,6 +2685,62 @@ export type ResolveDataTableResult =
 	| { kind: 'hit'; table: DataTableRecord }
 	| { kind: 'miss' }
 	| { kind: 'ambiguous'; candidates: DataTableRecord[] };
+
+/**
+ * Map the tool's focused LLM-judge input onto the full evaluation-config DTO,
+ * validating it against the api-types schema before it reaches the service.
+ */
+export function buildEvaluationConfigDto(input: UpsertEvaluationConfigInput) {
+	return upsertEvaluationConfigSchema.parse({
+		name: input.name,
+		startNodeName: input.startNodeName,
+		endNodeName: input.endNodeName,
+		datasetSource: 'data_table',
+		datasetRef: { dataTableId: input.dataTableId },
+		metrics: input.metrics.map((metric) => ({
+			id: nanoid(),
+			name: metric.name,
+			type: 'llm_judge',
+			config: {
+				preset: metric.preset,
+				...(metric.prompt ? { prompt: metric.prompt } : {}),
+				provider: metric.provider,
+				credentialId: metric.credentialId,
+				model: metric.model,
+				outputType: metric.outputType,
+				inputs: {
+					actualAnswer: metric.actualAnswer,
+					...(metric.userQuery ? { userQuery: metric.userQuery } : {}),
+					...(metric.expectedAnswer ? { expectedAnswer: metric.expectedAnswer } : {}),
+				},
+			},
+		})),
+	});
+}
+
+/** Map a persisted evaluation-config entity to the agent-facing summary. */
+export function evaluationConfigToSummary(config: EvaluationConfig): EvaluationConfigSummary {
+	const dataTableId =
+		config.datasetSource === 'data_table' && 'dataTableId' in config.datasetRef
+			? config.datasetRef.dataTableId
+			: undefined;
+	return {
+		id: config.id,
+		workflowId: config.workflowId,
+		name: config.name,
+		status: config.status,
+		invalidReason: config.invalidReason,
+		startNodeName: config.startNodeName,
+		endNodeName: config.endNodeName,
+		metrics: config.metrics.map((metric) => ({
+			id: metric.id,
+			name: metric.name,
+			type: metric.type,
+		})),
+		datasetSource: config.datasetSource,
+		...(dataTableId !== undefined ? { dataTableId } : {}),
+	};
+}
 
 /**
  * Look up a data table by the orchestrator-supplied identifier. Tries `id`
