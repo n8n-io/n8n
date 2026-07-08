@@ -8,7 +8,7 @@ export const IMPORT_PACKAGE_REQUEST_FORM_FIELDS = [
 	'folderId',
 	'credentialMatchingMode',
 	'credentialMissingMode',
-	'credentialBindings',
+	'bindings',
 	'workflowConflictPolicy',
 	'workflowPublishingPolicy',
 	'workflowIdPolicy',
@@ -32,30 +32,31 @@ function isStringRecord(value: unknown): value is Record<string, string> {
 	);
 }
 
-const credentialBindingsSchema = z
+/** A `bindings` object keyed by entity type; each value maps source ids to target ids. */
+function isBindingsObject(value: unknown): value is { credentials?: Record<string, string> } {
+	if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+	return Object.values(value).every((entry) => isStringRecord(entry));
+}
+
+const BINDINGS_ERROR_MESSAGE =
+	'bindings must be a JSON object keyed by entity type, e.g. {"credentials":{"<sourceId>":"<targetId>"}}';
+
+const bindingsSchema = z
 	.string()
 	.optional()
-	.transform((value, ctx) => {
+	.transform((value, ctx): { credentials?: Record<string, string> } => {
 		if (value === undefined || value.trim().length === 0) return {};
 
 		let parsed: unknown;
 		try {
 			parsed = JSON.parse(value);
 		} catch {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				message:
-					'credentialBindings must be a JSON object mapping source credential ids to target credential ids',
-			});
+			ctx.addIssue({ code: z.ZodIssueCode.custom, message: BINDINGS_ERROR_MESSAGE });
 			return z.NEVER;
 		}
 
-		if (!isStringRecord(parsed)) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				message:
-					'credentialBindings must be a JSON object mapping source credential ids to target credential ids',
-			});
+		if (!isBindingsObject(parsed)) {
+			ctx.addIssue({ code: z.ZodIssueCode.custom, message: BINDINGS_ERROR_MESSAGE });
 			return z.NEVER;
 		}
 
@@ -70,7 +71,7 @@ export class ImportPackageRequestDto extends Z.class({
 		.optional()
 		.default('id-only'),
 	credentialMissingMode: z.enum(['must-preexist', 'create-stub']).optional().default('create-stub'),
-	credentialBindings: credentialBindingsSchema,
+	bindings: bindingsSchema,
 	workflowConflictPolicy: z.enum(['new-version', 'fail', 'skip']),
 	workflowPublishingPolicy: z
 		.enum(['preserve-published-state', 'match-source', 'publish-all', 'unpublish-all'])
