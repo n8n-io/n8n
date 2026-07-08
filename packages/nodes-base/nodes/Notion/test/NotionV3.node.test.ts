@@ -149,6 +149,15 @@ describe('NotionV3', () => {
 			{ property: 'Formula String', formula: { ['string']: { contains: 'Ready' } } },
 		],
 		[
+			'formula string empty condition',
+			{
+				key: 'Formula String|formula',
+				condition: 'is_empty',
+				returnType: 'string',
+			},
+			{ property: 'Formula String', formula: { ['string']: { is_empty: true } } },
+		],
+		[
 			'last_edited_by',
 			{ key: 'Last Edited By|last_edited_by', condition: 'contains', peopleValue: 'user-id' },
 			{ property: 'Last Edited By', people: { contains: 'user-id' } },
