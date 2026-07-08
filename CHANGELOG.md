@@ -1,3 +1,12 @@
+## [2.29.8](https://github.com/n8n-io/n8n/compare/n8n@2.29.7...n8n@2.29.8) (2026-07-08)
+
+
+### Bug Fixes
+
+* **core:** Guard against null run-data slots in execution redaction ([#33726](https://github.com/n8n-io/n8n/issues/33726)) ([c894461](https://github.com/n8n-io/n8n/commit/c89446119cea24f53f5ad33d9f83027bf5544cb3))
+* **core:** Run database connection recovery only for Postgres ([#33753](https://github.com/n8n-io/n8n/issues/33753)) ([766261d](https://github.com/n8n-io/n8n/commit/766261d21677ed88ed7a1066db53d4c1c9e9bcfe))
+
+
 ## [2.29.7](https://github.com/n8n-io/n8n/compare/n8n@2.29.6...n8n@2.29.7) (2026-07-07)
 
 
