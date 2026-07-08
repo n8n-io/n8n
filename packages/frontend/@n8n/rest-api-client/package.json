@@ -1,7 +1,7 @@
 {
   "name": "@n8n/rest-api-client",
   "type": "module",
-  "version": "1.26.26",
+  "version": "1.26.27",
   "files": [
     "dist"
   ],
