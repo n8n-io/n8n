@@ -1,0 +1,201 @@
+packages/cli/src/modules/instance-pull.ee/instance-pull.controller.ts
+  s_783654b09a289f::t_e80bcb4cf9bcdb 3,15
+  s_783654b09a289f::t_6c69ada5a18365 1-2,4-14,16-31,42
+  s_0e1fde49ed0ced::t_b25c1771bd5bf7 32-41
+packages/cli/src/modules/n8n-packages/engine/import-pipeline.ts
+  s_783654b09a289f::t_468c37d9c73ec7 156-188
+  s_783654b09a289f::t_40e0dcd2980892 26
+  s_783654b09a289f::t_2e1ce633b1b449 57-59,61-71
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_783654b09a289f::t_662f0faa4f205d 64
+packages/frontend/editor-ui/src/app/stores/settings.store.ts
+  s_783654b09a289f::t_cf508999722ab8 497
+  s_783654b09a289f::t_0acd40a074f2d4 173-176
+packages/cli/src/modules/instance-pull.ee/instance-pull.module.ts
+  s_783654b09a289f::t_fbe08a0c6da40e 8,25
+  s_783654b09a289f::t_f5000e4220d78f 1-7,9-24,26-32
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  s_783654b09a289f::t_53d43f4646ba41 225
+  s_783654b09a289f::t_1bd6d1594f80c7 15
+  s_783654b09a289f::t_17be70a41e5884 192-196
+packages/frontend/editor-ui/src/app/constants/actions.ts
+  s_783654b09a289f::t_bb6f4429c89b56 17
+packages/frontend/editor-ui/src/features/instance-pull.ee/instance-pull.store.ts
+  s_783654b09a289f::t_bf6e5311b99e05 1-53
+tasks/plan.md
+  s_783654b09a289f::t_7fc72a2c5f3e9b 3-6,8-11,13,18,20-25,27-29,31-33,35-36,38,40-41,45-50,54-55,57-62,64,69-74,76-80,83-86,90,92-94,96,99-119,125,127-130,133-148,152,155-156,159-170,174,176-180,183,185-190,192,196,198,201-205,207-208,210,214,217-224,228-236,239-243,245-255,270,272
+  s_783654b09a289f::t_3640586030a893 1-2,7,12,16-17,19,26,34,37,39,42,51-53,56,63,65,68,75,81-82,87,89,91,95,97,121,123,131-132,150,154,157-158,175,184,194,197,206,212,216,271,273
+  s_783654b09a289f::t_b9ee865c82d0b2 199-200
+  s_783654b09a289f::t_02e7845cf6f0b4 256,268-269
+  s_783654b09a289f::t_5369e44eca53c5 14-15,30,43-44,66-67,88,98,120,122,124,126,149,151,153,171-173,191,193,195,209,211,213,215,225-227,237-238
+  s_783654b09a289f::t_ce7e0d4db89b07 244
+  s_0e1fde49ed0ced::t_ec766636c601fa 257-267
+  s_783654b09a289f::t_dc397ba5179a90 181-182
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_783654b09a289f::t_37e80381365f4f 481-489
+  s_783654b09a289f::t_c49b53281fca86 1044-1048
+  s_783654b09a289f::t_46f949bd566062 133-136
+  s_783654b09a289f::t_e19309580f21e8 1662-1673
+  s_783654b09a289f::t_d3cf25d2ab65b1 539-545,549-554
+packages/cli/src/modules/instance-pull.ee/instance-pull.config.ts
+  s_783654b09a289f::t_a81ff86671e54d 1-38
+packages/frontend/editor-ui/src/features/credentials/credentials.store.ts
+  s_783654b09a289f::t_de5a6b1a861cdb 356-358,360
+packages/frontend/editor-ui/src/app/composables/useSettingsItems.ts
+  s_783654b09a289f::t_8a9bf439685e9f 128,130-138
+  s_783654b09a289f::t_e9026a021285a4 129
+packages/frontend/editor-ui/src/features/instance-pull.ee/views/InstancePullView.vue
+  s_783654b09a289f::t_5741108ddee3a4 168
+  s_783654b09a289f::t_94d446d59a3264 183
+  s_783654b09a289f::t_7f7cdee6d9672d 1-167,169-182,184-252
+packages/@n8n/api-types/src/dto/credentials/create-credential.dto.ts
+  s_783654b09a289f::t_659da890bf45ef 6-7
+packages/cli/src/credentials/credentials.service.ts
+  s_783654b09a289f::t_16a3085ca3c998 1444-1447,1449
+packages/cli/src/services/frontend.service.ts
+  s_783654b09a289f::t_c5439809fee95f 141
+  s_783654b09a289f::t_cb886ea72e89be 419-422
+  s_783654b09a289f::t_551ee8d8544f96 24
+tasks/demo/start.sh
+  s_0e1fde49ed0ced::t_c1c8ab81090a37 42,46
+  s_783654b09a289f::t_b1d11cb6479c83 1-29,40-41,43-45,47-50,52-53
+  s_783654b09a289f::t_ad7502f97481c1 30-39
+  s_0e1fde49ed0ced::t_4cec16fa862d5d 51
+packages/cli/src/modules/n8n-packages/io/fs/filesystem-package-writer.ts
+  s_783654b09a289f::t_43e1ca4131068a 1-75
+packages/frontend/editor-ui/src/features/instance-pull.ee/instance-pull.api.ts
+  s_783654b09a289f::t_1af3bdd095e4df 1-2,4-7,16-21
+  s_0e1fde49ed0ced::t_4e30fc163af40f 3,8-15
+packages/cli/src/modules/instance-pull.ee/instance-pull.poll.ts
+  s_783654b09a289f::t_a0d2e46b78eadd 1-3,5-22,24-30,34-43,50-53,56-59,96-98
+  s_783654b09a289f::t_4b366eb35af6fe 23
+  s_783654b09a289f::t_342635a8b8b81b 31-33
+  s_783654b09a289f::t_b9ab4342513a8c 44-49,54-55,60-67,72-95
+  s_0e1fde49ed0ced::t_34b3814c4997ec 68-69,71
+  s_0e1fde49ed0ced::t_2412a83ad1d18a 70
+  s_783654b09a289f::t_88f520937b5f81 4
+packages/frontend/editor-ui/src/features/instance-pull.ee/views/InstancePullDiffView.vue
+  s_0e1fde49ed0ced::t_d90793d5a08a3e 1-56
+tasks/todo.md
+  s_783654b09a289f::t_22d1deeadcc815 1,13,26,42-43,50,56
+  s_783654b09a289f::t_f8a611337577c4 58-59
+  s_783654b09a289f::t_0166c2df5a2d50 3-4,6-9,11-12,16-25,27-41,44-46,51-55,57
+  s_783654b09a289f::t_fab4186dcc11a2 2,5,10,14-15,47-49
+packages/frontend/editor-ui/src/features/instance-pull.ee/types.ts
+  s_783654b09a289f::t_2428306abee0e6 1-7
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_783654b09a289f::t_bea1cd94798106 260-269
+tasks/diff-image-phase.md
+  s_0e1fde49ed0ced::t_72e2a8d9116b8d 18-19,21-26,28-30
+  s_0e1fde49ed0ced::t_4a9585652e5847 34-42
+  s_0e1fde49ed0ced::t_fac48442f4c4e1 1-17,20,27,31-33,43-54,58-86,92,96-101
+  s_0e1fde49ed0ced::t_00ab2ca9edc6c9 87-91,93-95
+  s_0e1fde49ed0ced::t_43d244cce1a614 55-57
+  s_0e1fde49ed0ced::t_38b18f9748bf8b 102-103
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_783654b09a289f::t_86dea0927358dc 1816-1820
+  s_783654b09a289f::t_810bd38ae65e9c 1821-1839
+  s_783654b09a289f::t_cee10fd1db1c88 1076
+packages/cli/src/modules/instance-pull.ee/instance-pull.service.ts
+  s_0e1fde49ed0ced::t_7523f3b9d5e7e3 169-216
+  s_783654b09a289f::t_b4c26cbdb1c671 44-46
+  s_0e1fde49ed0ced::t_ba88220f1197de 1,5
+  s_783654b09a289f::t_d272591e0aee05 51
+  s_783654b09a289f::t_c1aae88e3eb2f6 164-166
+  s_0e1fde49ed0ced::t_14716c69326217 308,310-311
+  s_783654b09a289f::t_03c1372bdc42b1 3,7
+  s_0e1fde49ed0ced::t_614e873d1c4138 309
+  s_783654b09a289f::t_2d9e32d3aa13dd 8-21,23-25,28-36,42-43,47,52-56,60-64,66-67,83,86-113,118-119,124-125,129-132,138-147,151-163,167-168,217-307,312-314,316-337
+  s_783654b09a289f::t_7fb1dd573048f6 315
+  s_783654b09a289f::t_001d0eb6b1897c 72-80,85
+  s_783654b09a289f::t_a304b74c83b9fc 65
+  s_783654b09a289f::t_03d781b43f260a 133-137
+  s_783654b09a289f::t_ba598a913bffdc 2,4,6,22,26-27,37-41,48-50,57-59,68-71,81-82,84,114-117,120-123,126-128,148-150,338-339
+packages/cli/src/modules/instance-pull.ee/github/blocking-issues-to-markdown.ts
+  s_0e1fde49ed0ced::t_feaae326237b8f 17,23,28,40,45-48,50-52
+  s_0e1fde49ed0ced::t_e14e9b8f53dd34 22,42-44,49
+  s_783654b09a289f::t_358f43bf66f0b0 3
+  s_783654b09a289f::t_5d177eb3a41faf 1-2,4-16,18-21,24-27,35-39,41,53-122
+packages/cli/src/services/ownership.service.ts
+  s_0e1fde49ed0ced::t_e69780fb960b5e 214
+packages/cli/src/modules/n8n-packages/io/__tests__/filesystem-package.test.ts
+  s_783654b09a289f::t_c5c20e065428c0 6-123
+  s_783654b09a289f::t_569a3411aba5da 1-5
+packages/cli/src/modules/n8n-packages/io/fs/filesystem-package-reader.ts
+  s_783654b09a289f::t_62ed64c96ebc8f 1-91
+packages/cli/src/modules/instance-pull.ee/git/git-ops.ts
+  s_783654b09a289f::t_5136474639a2bb 1-85,89-91,93-94,100-137
+  s_0e1fde49ed0ced::t_4784b15b9fb7d9 86-88
+  s_0e1fde49ed0ced::t_0cb5f403ce6609 92,95-99
+packages/@n8n/config/src/configs/logging.config.ts
+  s_783654b09a289f::t_2a01fd63783a1a 51
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  s_783654b09a289f::t_bba522841a0424 86
+  s_783654b09a289f::t_14a0b8290c9a84 51
+packages/frontend/editor-ui/src/app/components/MainHeader/ActionsDropdownMenu.vue
+  s_783654b09a289f::t_e4a53274f2035f 75-82
+  s_783654b09a289f::t_2dd3f4f81424c5 372-399
+  s_783654b09a289f::t_92686ddf1d89d5 33,36
+  s_783654b09a289f::t_f241dad6a1accc 210-217
+packages/frontend/editor-ui/src/app/constants/navigation.ts
+  s_0e1fde49ed0ced::t_c9cc622ad04e0c 78
+  s_783654b09a289f::t_0e36ec07d0b3c3 77
+packages/cli/src/modules/instance-pull.ee/github/github-client.ts
+  s_783654b09a289f::t_4a851954e9426a 25,30
+  s_783654b09a289f::t_a8d4eddc866687 145
+  s_783654b09a289f::t_d6a70e204b01e8 83-84,94
+  s_783654b09a289f::t_636d8d0e4a4dde 1-24,26-29,31-39,41-82,85-93,95-144,146-157,159-185,187,189,191,193-208
+  s_783654b09a289f::t_69e6c9a093b05c 40
+  s_783654b09a289f::t_3c218cea575483 158
+  s_783654b09a289f::t_0540aa73317e25 186,188,190,192
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-pipeline-validate.test.ts
+  s_783654b09a289f::t_6cf09b2b28215d 39
+  s_783654b09a289f::t_855fdfd7b76a30 2-7,9-10,12-22,25-38,40-72,74-78,80-134
+  s_783654b09a289f::t_0cd473a15d8ef4 8,11,23-24
+  s_783654b09a289f::t_0a56f36d12e91d 73,79
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_783654b09a289f::t_ccb10c36b8e8b7 29-38
+  s_783654b09a289f::t_6898e5cc75527e 10
+packages/@n8n/api-types/src/instance-pull.ts
+  s_783654b09a289f::t_1771427e69cbe0 3-20
+  s_0e1fde49ed0ced::t_6246813f395ecb 1-2
+  s_0e1fde49ed0ced::t_9ddef80f00f783 21-39
+tasks/demo/instance-pull.env
+  ai_agent 10-13
+  s_783654b09a289f::t_fca251fbbca385 1-9,14-16
+packages/@n8n/api-types/src/index.ts
+  s_783654b09a289f::t_a1b5f563d80b33 7
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_783654b09a289f::t_f0fae1db84e82b 2443-2499
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_783654b09a289f::t_0f44733acba7df 36
+packages/frontend/editor-ui/src/app/router.ts
+  s_0e1fde49ed0ced::t_4355955dd436b6 496-510
+  s_0e1fde49ed0ced::t_94dca86826bf39 62-63
+  s_783654b09a289f::t_900b13e51bed49 961-982
+  s_783654b09a289f::t_519c84df37c4c1 60-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "08ec2ad7f20ffe06fbc523ce5ee1083a2ff9ac88",
+  "prompts": {},
+  "sessions": {
+    "s_0e1fde49ed0ced": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34eb2bba-3679-4ecc-8507-51f53e8831f2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    },
+    "s_783654b09a289f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "daa2de73-6a53-4d50-897e-abd2fbdf6bbf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  s_74402fcac1c7e4::t_b5ab753076ca95 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "524a6ee2ac68052968e3ef15bddacebc603a6374",
+  "prompts": {},
+  "sessions": {
+    "s_74402fcac1c7e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9e853d50-a6b5-4c82-b935-d5a8f8ad1608",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,87 @@
+packages/cli/src/metrics/__tests__/prometheus-metrics.service.test.ts
+  s_7f46b323ae9603::t_809db328f85a0a 114
+  s_7f46b323ae9603::t_88d77921d4d48d 27
+  s_7f46b323ae9603::t_7a7e787eaf28b2 81
+  s_7f46b323ae9603::t_06ec1e76b62bb6 146-154
+  s_7f46b323ae9603::t_798469e0894ad6 55
+packages/@n8n/config/src/configs/endpoints.config.ts
+  s_7f46b323ae9603::t_39582593d9574c 114-117
+packages/cli/src/events/maps/workflow-publication-metrics.event-map.ts
+  s_7f46b323ae9603::t_dacebbc09ed3b5 1-53
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_7f46b323ae9603::t_c975d7532ea999 476,484,491
+  s_7f46b323ae9603::t_a19154264e6e7a 432-445,447-454,457-475,477-483,485-490,492-493
+  s_7f46b323ae9603::t_06a1808f5e032e 446,455-456
+packages/cli/src/events/event.service.ts
+  s_7f46b323ae9603::t_3c2b8816344583 9,15-16
+packages/cli/src/workflows/publication/__tests__/workflow-publication-outbox-consumer.test.ts
+  s_7f46b323ae9603::t_9d82845b328e0c 44
+  ai_agent 322
+  s_7f46b323ae9603::t_a72c019506888b 23
+  s_7f46b323ae9603::t_1cdf5c4c32da9e 7
+  s_7f46b323ae9603::t_fed7dde9906714 285-321,323-336
+packages/@n8n/config/test/config.test.ts
+  s_7f46b323ae9603::t_58436d755fbcc5 257
+packages/cli/src/workflows/publication/__tests__/workflow-publication-outbox-cleanup.service.test.ts
+  s_7f46b323ae9603::t_af7a9799c3d127 22,36
+  s_7f46b323ae9603::t_db33ead78474a3 7-8
+  s_7f46b323ae9603::t_fd99d50a432f85 162-187
+packages/cli/src/metrics/prometheus/__tests__/workflow-publication-metrics.service.test.ts
+  s_7f46b323ae9603::t_2eebc28f9da816 195-197
+  s_7f46b323ae9603::t_b7f0ba547f20fe 1-134,136-174,181-194,198-210
+  ai_agent 135
+  s_7f46b323ae9603::t_a7054591bc0362 175-180
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_7f46b323ae9603::t_9f94f8341c9896 370
+  s_7f46b323ae9603::t_b888e4111149d9 363,365,372,378,380-383,388-389
+  s_7f46b323ae9603::t_34caa26905350f 362,364,366-369,371,373-377,379,390,402-403
+  ai_agent 384-387
+  s_7f46b323ae9603::t_7ed0dec1fbf96b 391-401
+packages/cli/src/metrics/prometheus/prometheus.service.ts
+  s_7f46b323ae9603::t_c326f7fc185b03 25
+  s_7f46b323ae9603::t_58abffd34948ca 78
+  s_7f46b323ae9603::t_5e6babb81d2385 55
+packages/cli/src/workflows/publication/workflow-publication-outbox-cleanup.service.ts
+  s_7f46b323ae9603::t_2bd72f37951f62 34
+  s_7f46b323ae9603::t_412a977bca85a2 9-11
+  s_7f46b323ae9603::t_ae1d4015765d02 82,87,109,114-118
+packages/cli/src/workflows/publication/workflow-publication-outbox-consumer.ts
+  s_7f46b323ae9603::t_10bade63ed13cf 259-290
+  s_7f46b323ae9603::t_af18e3d744f3ac 218,231,235,239-244
+  s_7f46b323ae9603::t_1acc5455f01e2e 9-13
+  s_7f46b323ae9603::t_c30b47abd422f3 48
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  ai_agent 208-212
+  s_7f46b323ae9603::t_08dc428ba9d2be 404-436
+  s_7f46b323ae9603::t_84e08e6b117786 30-34
+  s_7f46b323ae9603::t_ba3b6d434ca0a9 205-207,213-224
+  s_7f46b323ae9603::t_f434ba02fc35cd 300-316
+  s_7f46b323ae9603::t_e8a0fe125c89a1 359-372
+  s_7f46b323ae9603::t_31c95a995aed1c 85
+packages/cli/src/workflows/triggers/__tests__/workflow-trigger-activator.test.ts
+  s_7f46b323ae9603::t_2a4ff913a22cb9 40
+  s_7f46b323ae9603::t_780fb3c1af0bac 54
+  s_7f46b323ae9603::t_112b0ebb2ca3ff 868-971
+  s_7f46b323ae9603::t_93e166c9b8a492 16
+  s_7f46b323ae9603::t_a0368f25d171f6 71
+packages/cli/src/metrics/prometheus/workflow-publication-metrics.service.ts
+  s_7f46b323ae9603::t_ba22f1a6dbf080 72
+  s_7f46b323ae9603::t_b29991c7e311cf 1-59,61-71,73-161
+  s_7f46b323ae9603::t_c530f1cfe9b618 60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fa25c0e0118764e0cef1049bd2bad1a8daa6d2fb",
+  "prompts": {},
+  "sessions": {
+    "s_7f46b323ae9603": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0aefafd-9c05-46c0-a779-19feac254952",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

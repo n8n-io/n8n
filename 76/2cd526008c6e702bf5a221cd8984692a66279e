@@ -1,0 +1,37 @@
+packages/nodes-base/credentials/common/aws/system-credentials-utils.ts
+  s_3d207dda725269::t_99b5df27a2453d 93-94
+  s_3d207dda725269::t_0349ef735336d5 232-233
+  s_3d207dda725269::t_d13040bab501ef 176-177
+  s_3d207dda725269::t_990e27cdf3baa2 65-66
+  s_3d207dda725269::t_209d46fead69cd 301
+  s_3d207dda725269::t_57e72441e7da86 300
+  s_3d207dda725269::t_ee55849690cc8c 6-8
+packages/nodes-base/credentials/common/aws/system-credentials-sdk.test.ts
+  s_3d207dda725269::t_91a2fad5829f87 138-139,147
+  s_3d207dda725269::t_647c678f12efe1 270,275,277
+  s_3d207dda725269::t_728adf884af679 1-137,140-146,148-269,271-274,276,278-279
+packages/nodes-base/credentials/common/aws/system-credentials-sdk.ts
+  s_3d207dda725269::t_9c839c6791ac07 87,90
+  s_3d207dda725269::t_09145b9ff292d5 70-73
+  s_3d207dda725269::t_456adecb913d79 1-21,27-55,57-69,74-86,88-89,91-108
+  s_3d207dda725269::t_eb3b6f584cc707 56
+  s_3d207dda725269::t_49d1d8615d11f0 22-26
+packages/nodes-base/credentials/common/aws/system-credentials-utils.test.ts
+  s_3d207dda725269::t_2f17c3b90ba5e0 8-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "762cd526008c6e702bf5a221cd8984692a66279e",
+  "prompts": {},
+  "sessions": {
+    "s_3d207dda725269": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aaa5a934-174d-46b7-ae75-dd401cfe62e4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

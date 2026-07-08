@@ -1,0 +1,24 @@
+single-instance-promotion-prototype/TECHNICAL_CHALLENGES.md
+  s_db73d38c32d95c::t_a09d66e95bdbe1 1-115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "64543f1e5cb06701d8eaf44ab102fcc73139212a",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_db73d38c32d95c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38974c95-ea8f-4e93-9b55-c93c5d9a4497",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}
