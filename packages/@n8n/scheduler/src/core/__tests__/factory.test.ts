@@ -789,7 +789,9 @@ describe('createScheduler tracing', () => {
 		};
 		const tx = mock<MaterializerTransaction>();
 		tx.claimDueJobs.mockResolvedValue({ now: new Date('2026-01-01T00:00:00.000Z'), jobs: [due] });
-		tx.recordOccurrences.mockResolvedValue(1);
+		// Distinct counts (claimed 1, occurrences 2, deferred 0) so that recording a
+		// count under the wrong attribute key cannot slip past these assertions.
+		tx.recordOccurrences.mockResolvedValue(2);
 		const materializerTransaction: RunInTransaction = async (work) => await work(tx);
 		const { span, tracer } = makeTracer();
 		const { scheduler } = makeScheduler({
@@ -800,22 +802,14 @@ describe('createScheduler tracing', () => {
 
 		const summary = await scheduler.materialize();
 
+		expect(summary).toEqual({ claimedJobs: 1, occurrences: 2, deferredJobs: 0 });
 		expect(tracer.startSpan).toHaveBeenCalledWith(
 			expect.objectContaining({ op: 'scheduler.materialize' }),
 			expect.any(Function),
 		);
-		expect(span.setAttribute).toHaveBeenCalledWith(
-			SCHEDULER_ATTRIBUTES.claimedJobs,
-			summary.claimedJobs,
-		);
-		expect(span.setAttribute).toHaveBeenCalledWith(
-			SCHEDULER_ATTRIBUTES.occurrences,
-			summary.occurrences,
-		);
-		expect(span.setAttribute).toHaveBeenCalledWith(
-			SCHEDULER_ATTRIBUTES.deferredJobs,
-			summary.deferredJobs,
-		);
+		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.claimedJobs, 1);
+		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.occurrences, 2);
+		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.deferredJobs, 0);
 		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
 	});
 
@@ -841,25 +835,26 @@ describe('createScheduler tracing', () => {
 	it('opens a reap span carrying the reclaimed and dead-lettered counts, with ok status', async () => {
 		const { span, tracer } = makeTracer();
 		const { scheduler, taskStore } = makeScheduler({ tracer });
+		// Distinct counts (reclaimed 2, dead-lettered 1) so recording a count under
+		// the wrong attribute key cannot slip past these assertions: two leases with
+		// attempts left are reclaimed, one out of attempts is dead-lettered.
 		taskStore.findExpiredLeases.mockResolvedValue([
-			{ id: '7', attempts: 2, maxAttempts: 3, leaseEpoch: 1 },
+			{ id: '7', attempts: 0, maxAttempts: 3, leaseEpoch: 1 },
+			{ id: '8', attempts: 0, maxAttempts: 3, leaseEpoch: 1 },
+			{ id: '9', attempts: 2, maxAttempts: 3, leaseEpoch: 1 },
 		]);
+		taskStore.reclaimExpired.mockResolvedValue(1);
 		taskStore.deadLetterExpired.mockResolvedValue(1);
 
 		const result = await scheduler.reap();
 
+		expect(result).toEqual({ reclaimed: 2, deadLettered: 1 });
 		expect(tracer.startSpan).toHaveBeenCalledWith(
 			expect.objectContaining({ op: 'scheduler.reap' }),
 			expect.any(Function),
 		);
-		expect(span.setAttribute).toHaveBeenCalledWith(
-			SCHEDULER_ATTRIBUTES.reclaimed,
-			result.reclaimed,
-		);
-		expect(span.setAttribute).toHaveBeenCalledWith(
-			SCHEDULER_ATTRIBUTES.deadLettered,
-			result.deadLettered,
-		);
+		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.reclaimed, 2);
+		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.deadLettered, 1);
 		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
 	});
 
@@ -912,5 +907,8 @@ describe('createScheduler tracing', () => {
 		await scheduler.execute(controller.signal);
 
 		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+		expect(span.setStatus).not.toHaveBeenCalledWith(
+			expect.objectContaining({ code: SpanStatus.error }),
+		);
 	});
 });

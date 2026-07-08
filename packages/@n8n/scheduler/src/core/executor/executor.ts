@@ -222,7 +222,10 @@ export class Executor {
 								[SCHEDULER_ATTRIBUTES.taskType]: task.taskType,
 							},
 						},
-						async () => await handler.execute(task),
+						async (handoffSpan) => {
+							await handler.execute(task);
+							handoffSpan.setStatus({ code: SpanStatus.ok });
+						},
 					);
 				} catch (error) {
 					const message = ensureError(error).message;

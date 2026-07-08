@@ -391,6 +391,37 @@ describe('Executor.fire', () => {
 			'boom',
 		);
 	});
+
+	it('settles the fire span ok and opens no handoff span when no handler resolves', async () => {
+		const { registry, span, tracer, executor } = setup();
+		registry.resolve.mockReturnValue(undefined);
+		const task = claimedTask({ taskType: 'gone' });
+
+		await executor.fire(HOST, task);
+
+		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+		expect(span.setStatus).not.toHaveBeenCalledWith(
+			expect.objectContaining({ code: SpanStatus.error }),
+		);
+		expect(tracer.startSpan.mock.calls.some(([o]) => o.op === 'scheduler.handoff')).toBe(false);
+	});
+
+	it('settles the fire span ok and opens no handoff span when the claim is gone at markStarted', async () => {
+		const { store, registry, span, tracer, executor } = setup();
+		const handler: TaskHandler = { execute: vi.fn() };
+		registry.resolve.mockReturnValue(handler);
+		store.markStarted.mockResolvedValue(0);
+		const task = claimedTask();
+
+		await executor.fire(HOST, task);
+
+		expect(handler.execute).not.toHaveBeenCalled();
+		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+		expect(span.setStatus).not.toHaveBeenCalledWith(
+			expect.objectContaining({ code: SpanStatus.error }),
+		);
+		expect(tracer.startSpan.mock.calls.some(([o]) => o.op === 'scheduler.handoff')).toBe(false);
+	});
 });
 
 describe('Executor.stop', () => {
