@@ -38,7 +38,7 @@
     "dist/**/*"
   ],
   "dependencies": {
-    "@anthropic-ai/sandbox-runtime": "^0.0.42",
+    "@anthropic-ai/sandbox-runtime": "^0.0.61",
     "@inquirer/prompts": "^8.3.2",
     "@jitsi/robotjs": "^0.6.21",
     "@modelcontextprotocol/sdk": "catalog:",

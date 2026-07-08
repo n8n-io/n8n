@@ -56,7 +56,7 @@ export interface GatewayConfig {
 	logLevel: 'silent' | 'error' | 'warn' | 'info' | 'debug';
 	allowedOrigins: string[];
 	filesystem: { dir: string };
-	computer: { shell: { timeout: number } };
+	computer: { shell: { timeout: number; dangerouslyDisableSandbox: boolean } };
 	browser: {
 		defaultBrowser: string;
 	};
@@ -102,7 +102,12 @@ const structuralConfigSchema = z.object({
 	filesystem: z.object({ dir: z.string().default('.') }).default({}),
 	computer: z
 		.object({
-			shell: z.object({ timeout: z.number().int().positive().default(30_000) }).default({}),
+			shell: z
+				.object({
+					timeout: z.number().int().positive().default(30_000),
+					dangerouslyDisableSandbox: z.boolean().default(false),
+				})
+				.default({}),
 		})
 		.default({}),
 	browser: z
@@ -163,8 +168,12 @@ function buildEnvConfig(): PartialStructural {
 	const fsDir = envString('FILESYSTEM_DIR');
 	if (fsDir) config.filesystem = { dir: fsDir };
 
+	const shell: Record<string, unknown> = {};
 	const shellTimeout = envNumber('COMPUTER_SHELL_TIMEOUT');
-	if (shellTimeout !== undefined) config.computer = { shell: { timeout: shellTimeout } };
+	if (shellTimeout !== undefined) shell.timeout = shellTimeout;
+	const disableSandbox = envBoolean('DANGEROUSLY_DISABLE_SHELL_SANDBOX');
+	if (disableSandbox !== undefined) shell.dangerouslyDisableSandbox = disableSandbox;
+	if (Object.keys(shell).length > 0) config.computer = { shell };
 
 	const defaultBrowser = envString('BROWSER_DEFAULT');
 	if (defaultBrowser) config.browser = { defaultBrowser };
@@ -193,8 +202,11 @@ function buildCliConfig(args: yargsParser.Arguments): PartialStructural {
 	const dir = args.dir as string;
 	if (dir) config.filesystem = { dir };
 
-	const timeout = args['computer-shell-timeout'] as number;
-	if (timeout !== undefined) config.computer = { shell: { timeout } };
+	const shell: Record<string, unknown> = {};
+	const timeout = args['computer-shell-timeout'] as number | undefined;
+	if (timeout !== undefined) shell.timeout = timeout;
+	if (args['dangerously-disable-shell-sandbox'] === true) shell.dangerouslyDisableSandbox = true;
+	if (Object.keys(shell).length > 0) config.computer = { shell };
 
 	if (args['browser-default'])
 		config.browser = { defaultBrowser: args['browser-default'] as string };
@@ -301,7 +313,7 @@ export function parseConfig(argv = process.argv.slice(2)): ParsedArgs {
 			'permission-confirmation',
 			...permissionFlags,
 		],
-		boolean: ['auto-confirm', 'non-interactive', 'help'],
+		boolean: ['auto-confirm', 'non-interactive', 'help', 'dangerously-disable-shell-sandbox'],
 		number: ['computer-shell-timeout'],
 		alias: { h: 'help', d: 'dir' },
 	});

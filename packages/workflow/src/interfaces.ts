@@ -148,9 +148,11 @@ export interface IUser {
 	lastName: string;
 }
 
+export type OAuth2FailureReason = 'invalid_token' | 'verifier_unavailable' | 'insufficient_scope';
+
 export type N8nOAuth2ValidationResult =
 	| { valid: true; user: IUser }
-	| { valid: false; reason: 'invalid_token' | 'verifier_unavailable' };
+	| { valid: false; reason: OAuth2FailureReason };
 
 export type ProjectSharingData = {
 	id: string;
@@ -778,12 +780,50 @@ export type ResolvedFilePath = string & {
 	[__brand]: 'ResolvedFilePath';
 };
 
+/**
+ * A directory pinned by an open file descriptor. Resolving names through it
+ * addresses entries relative to the held descriptor rather than re-walking the
+ * path. Always {@link PinnedDirectory.close} it when done.
+ */
+export interface PinnedDirectory {
+	/** A path that resolves `name` relative to the pinned directory descriptor. */
+	resolvePath(name: string): string;
+	close(): Promise<void>;
+}
+
 export interface FileSystemHelperFunctions {
 	resolvePath(path: PathLike): Promise<ResolvedFilePath>;
 	/**
 	 * Use {@link resolvePath} to resolve the path first.
 	 */
 	isFilePathBlocked(filePath: ResolvedFilePath): boolean;
+	/**
+	 * Throws if any directory component of the path is a symlink. Use {@link resolvePath} first.
+	 */
+	assertNoSymlinkInPath(filePath: ResolvedFilePath): Promise<void>;
+	/**
+	 * Creates the parent directory of the path and any missing ancestors without following symlinks.
+	 * Use {@link resolvePath} first.
+	 */
+	ensureParentDirectoryWithoutFollowingSymlinks(filePath: ResolvedFilePath): Promise<void>;
+	/**
+	 * Resolves a directory that is safe to use as a staging location for the given
+	 * target: the realpath'd allowed base that contains the target, with a fallback
+	 * for when no path restriction is configured. Use {@link resolvePath} first.
+	 */
+	resolveStagingBaseForTarget(filePath: ResolvedFilePath): Promise<ResolvedFilePath>;
+	/**
+	 * Pins the directory at `directoryPath` by descending from a trusted base one
+	 * component at a time without following symlinks, returning a handle whose
+	 * descriptor the final operation can address entries relative to. Returns
+	 * `null` when descriptor-relative resolution is unavailable (non-Linux) or the
+	 * directory is not within a trusted base, in which case the caller should fall
+	 * back to {@link assertNoSymlinkInPath}.
+	 */
+	pinDirectory(
+		directoryPath: string,
+		options: { create: boolean },
+	): Promise<PinnedDirectory | null>;
 	/**
 	 * Use {@link resolvePath} to resolve the path first.
 	 */
