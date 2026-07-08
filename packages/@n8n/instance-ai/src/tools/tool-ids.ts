@@ -45,8 +45,7 @@ export const AGENT_BUILDER_TOOL_IDS = {
 	AGENT_BUILDER: 'agent_builder',
 	CREATE_AGENT: 'create_agent',
 	READ_CONFIG: 'read_config',
-	WRITE_CONFIG: 'write_config',
-	PATCH_CONFIG: 'patch_config',
+	BUILD_AGENT: 'build_agent',
 	GET_RESOURCE_LOCATOR_OPTIONS: 'get_resource_locator_options',
 	SEARCH_NODES: 'search_nodes',
 	GET_NODE_TYPES: 'get_node_types',
@@ -58,6 +57,7 @@ export const AGENT_BUILDER_TOOL_IDS = {
 	/** Interactive HITL tool: opens the chat-channel setup UI (standalone, not a router action). */
 	CONFIGURE_CHANNEL: 'configure_channel',
 	LIST_SUB_AGENTS: 'list_sub_agents',
+	LIST_AGENTS: 'list_agents',
 	LIST_WORKFLOWS: 'list_workflows',
 	SEARCH_MCP_SERVERS: 'search_mcp_servers',
 	VERIFY_MCP_SERVER: 'verify_mcp_server',

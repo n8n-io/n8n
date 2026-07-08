@@ -34,7 +34,8 @@ export function createVerifyMcpServerTool(context: InstanceAiContext) {
 		.description(
 			'Test connectivity to an MCP server and list its available tools before adding it to the ' +
 				'config. Call after resolving a credential (when authentication is not "none") and before ' +
-				'patch_config. Returns { ok: true, tools: [{ name, description }] } or { ok: false, error }.',
+				'adding the server entry to the config file and calling build_agent. ' +
+				'Returns { ok: true, tools: [{ name, description }] } or { ok: false, error }.',
 		)
 		.input(
 			z.object({
