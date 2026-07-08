@@ -335,7 +335,7 @@ describe('getFileSystemHelperFunctions', () => {
 			(fsStat as Mock).mockResolvedValueOnce(mockFileStats);
 
 			await expect(helperFunctions.createReadStream(blockedPath)).rejects.toThrow(
-				`Access to the file "${blockedPath}" is not allowed.`,
+				'Access to the file is not allowed.',
 			);
 		});
 
@@ -398,6 +398,18 @@ describe('getFileSystemHelperFunctions', () => {
 		const mockFileStats = { dev: 123, ino: 456, isFile: () => true };
 
 		it('should throw error for blocked file path', async () => {
+			process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] = 'true';
+
+			await expect(
+				helperFunctions.writeContentToFile(
+					await helperFunctions.resolvePath(instanceSettings.n8nFolder + '/test.txt'),
+					'content',
+					constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC,
+				),
+			).rejects.toThrow('Access to the file is not allowed.');
+		});
+
+		it('should include allowed paths when writing outside configured allowed paths', async () => {
 			securityConfig.restrictFileAccessTo = '/allowed/path';
 			(fsStat as Mock).mockResolvedValueOnce(mockFileStats);
 
