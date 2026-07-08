@@ -201,16 +201,20 @@ export const Sizes = {
 	render: (args) => ({
 		components: { Combobox },
 		setup() {
-			const value = ref(args.modelValue);
-			return { args, value };
+			const xlargeValue = ref(args.modelValue);
+			const largeValue = ref(args.modelValue);
+			const mediumValue = ref(args.modelValue);
+			const smallValue = ref(args.modelValue);
+			const miniValue = ref(args.modelValue);
+			return { args, xlargeValue, largeValue, mediumValue, smallValue, miniValue };
 		},
 		template: `
 		<div style="${storyContainerStyle}; display: flex; flex-direction: column; gap: var(--spacing--md);">
-			<Combobox v-bind="args" v-model="value" size="xlarge" placeholder="xlarge (40px)" />
-			<Combobox v-bind="args" v-model="value" size="large" placeholder="large (36px, default)" />
-			<Combobox v-bind="args" v-model="value" size="medium" placeholder="medium (32px)" />
-			<Combobox v-bind="args" v-model="value" size="small" placeholder="small (28px)" />
-			<Combobox v-bind="args" v-model="value" size="mini" placeholder="mini (24px)" />
+			<Combobox v-bind="args" v-model="xlargeValue" size="xlarge" placeholder="xlarge (40px)" />
+			<Combobox v-bind="args" v-model="largeValue" size="large" placeholder="large (36px, default)" />
+			<Combobox v-bind="args" v-model="mediumValue" size="medium" placeholder="medium (32px)" />
+			<Combobox v-bind="args" v-model="smallValue" size="small" placeholder="small (28px)" />
+			<Combobox v-bind="args" v-model="miniValue" size="mini" placeholder="mini (24px)" />
 		</div>
 		`,
 	}),
