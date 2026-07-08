@@ -129,6 +129,7 @@ jobs:
         id: determine-tags
         env:
           DATE_TAG: ${{ inputs.date_tag }}
+          SHORT_SHA: ${{ needs.determine-build-context.outputs.short_sha }}
         run: |
           # Build the optional --date flag in shell (not via a template expansion) so
           # the caller-supplied input never expands directly into the command line.
@@ -139,7 +140,7 @@ jobs:
             --all \
             --version "${{ needs.determine-build-context.outputs.n8n_version }}" \
             --platform "${{ matrix.docker_platform }}" \
-            --sha "${{ needs.determine-build-context.outputs.short_sha }}" \
+            --sha "$SHORT_SHA" \
             "${DATE_ARGS[@]}" \
             ${{ needs.determine-build-context.outputs.push_to_docker == 'true' && '--include-docker' || '' }}
 
@@ -289,6 +290,7 @@ jobs:
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DATE_TAG: ${{ inputs.date_tag }}
+          SHORT_SHA: ${{ needs.determine-build-context.outputs.short_sha }}
         run: |
           VERSION="${{ needs.determine-build-context.outputs.n8n_version }}"
           DOCKER_BASE="$DOCKER_USERNAME"
@@ -299,8 +301,6 @@ jobs:
             ["runners"]="${VERSION}"
             ["runners-distroless"]="${VERSION}-distroless"
           )
-
-          SHORT_SHA="${{ needs.determine-build-context.outputs.short_sha }}"
 
           for image in "${!images[@]}"; do
             TAG_SUFFIX="${images[$image]}"
