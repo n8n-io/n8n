@@ -25,7 +25,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-import { In } from '@n8n/typeorm';
+import { In, type DataSourceOptions } from '@n8n/typeorm';
 import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import glob from 'fast-glob';
 import isEqual from 'lodash/isEqual';
@@ -41,6 +41,8 @@ import type { IWorkflowToImport } from '@/interfaces';
 import { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
 import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
+import { DataTableSizeValidator } from '@/modules/data-table/data-table-size-validator.service';
+import { DataTable } from '@/modules/data-table/data-table.entity';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { isValidColumnName, isValidDataTableId } from '@/modules/data-table/utils/sql-utils';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
@@ -62,7 +64,11 @@ import {
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
 import { SourceControlContextFactory } from './source-control-context.factory';
+import { SourceControlGitService } from './source-control-git.service.ee';
 import {
+	canReconcileDataTableNameCollision,
+	dataTableColumnKey,
+	extractResourceIdsFromFilePaths,
 	getCredentialExportPath,
 	getDataTableExportPath,
 	getProjectExportPath,
@@ -135,6 +141,8 @@ export class SourceControlImportService {
 		private readonly dataTableColumnRepository: DataTableColumnRepository,
 		private readonly dataTableDDLService: DataTableDDLService,
 		private readonly redactionEnforcementService: RedactionEnforcementService,
+		private readonly dataTableSizeValidator: DataTableSizeValidator,
+		private readonly gitService: SourceControlGitService,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -1261,7 +1269,10 @@ export class SourceControlImportService {
 		const pullingUserPersonalProject =
 			await this.projectRepository.getPersonalProjectForUserOrFail(userId);
 
-		const result: { imported: string[] } = { imported: [] };
+		const result: { imported: string[]; conflicts: Array<{ id: string; name: string }> } = {
+			imported: [],
+			conflicts: [],
+		};
 
 		// Phase 1: Parse all data table files and resolve target projects upfront
 		// so we can validate name collisions before any imports happen.
@@ -1338,22 +1349,47 @@ export class SourceControlImportService {
 			parsedTables.push({ dataTable, candidate, targetProjectId: targetProject.id });
 		}
 
-		// Phase 2: Validate all name collisions before importing anything.
-		// This prevents partial imports when a collision is detected mid-way.
-		for (const { dataTable, targetProjectId } of parsedTables) {
-			const existingByName = await this.dataTableRepository.findOne({
+		// Phase 2: Resolve name collisions (same (project, name), different id —
+		// typically a delete+recreate upstream). The local table adopts the
+		// incoming id when it was previously synced or the merge is lossless;
+		// otherwise local-only column data is at stake, so the single table is
+		// skipped as a conflict and the rest of the pull proceeds.
+		let previouslySyncedIds: Set<string> | undefined;
+		const importableTables: typeof parsedTables = [];
+		for (const entry of parsedTables) {
+			const { dataTable, targetProjectId } = entry;
+			const localTable = await this.dataTableRepository.findOne({
 				where: { name: dataTable.name, projectId: targetProjectId },
-				select: ['id'],
+				relations: ['columns'],
 			});
-			if (existingByName && existingByName.id !== dataTable.id) {
-				throw new UserError(
-					`A data table with the name <strong>${dataTable.name}</strong> already exists locally.<br />Please either rename the local data table, or the remote one with the id <strong>${dataTable.id}</strong> in the source control files.`,
-				);
+			if (localTable && localTable.id !== dataTable.id) {
+				previouslySyncedIds ??= await this.getPreviouslySyncedDataTableIds();
+				if (!canReconcileDataTableNameCollision(localTable, dataTable, previouslySyncedIds)) {
+					// The status result can list the same table as both created and
+					// modified, so guard against recording the conflict twice
+					if (!result.conflicts.some((c) => c.id === dataTable.id)) {
+						this.logger.warn(
+							`Data table "${dataTable.name}" already exists locally with columns that the incoming table lacks. Skipping import; rename or delete the local data table to accept the incoming one.`,
+						);
+						result.conflicts.push({ id: dataTable.id, name: dataTable.name });
+					}
+					continue;
+				}
+				try {
+					await this.adoptDataTableIdentity(localTable, dataTable, dbType);
+				} catch (error) {
+					this.logger.error(`Failed to reconcile data table ${dataTable.name}`, {
+						error: ensureError(error),
+					});
+					result.conflicts.push({ id: dataTable.id, name: dataTable.name });
+					continue;
+				}
 			}
+			importableTables.push(entry);
 		}
 
 		// Phase 3: Import all data tables (no name collisions at this point)
-		for (const { dataTable, candidate, targetProjectId } of parsedTables) {
+		for (const { dataTable, candidate, targetProjectId } of importableTables) {
 			try {
 				this.logger.debug(`Importing data table from file ${candidate.file}`);
 
@@ -1474,6 +1510,56 @@ export class SourceControlImportService {
 		}
 
 		return result;
+	}
+
+	/** Data table ids that have ever appeared in the git repository's history. */
+	private async getPreviouslySyncedDataTableIds(): Promise<Set<string>> {
+		return extractResourceIdsFromFilePaths(
+			await this.gitService.getHistoricallyTrackedFiles(SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER),
+		);
+	}
+
+	/**
+	 * Re-keys a local data table (metadata and physical rows table) to the
+	 * incoming id, preserving its rows, so the regular import path can then
+	 * align the schema. Local columns adopt the incoming column id where
+	 * `(name, type)` matches, so an identical recreate imports as a no-op.
+	 *
+	 * Idempotent: on MySQL DDL commits implicitly, so a failure between rename
+	 * and metadata swap leaves the physical table already renamed; a retry
+	 * detects that and only completes the metadata swap.
+	 */
+	private async adoptDataTableIdentity(
+		localTable: DataTable,
+		incoming: ExportableDataTable,
+		dbType: DataSourceOptions['type'],
+	) {
+		this.logger.info(
+			`Reconciling data table "${localTable.name}": adopting id ${incoming.id} (was ${localTable.id})`,
+		);
+		await this.dataTableRepository.manager.transaction(async (trx) => {
+			const alreadyRenamed = await this.dataTableDDLService.tableExists(incoming.id, trx);
+			if (!alreadyRenamed) {
+				await this.dataTableDDLService.renameTable(localTable.id, incoming.id, dbType, trx);
+			}
+			// Spread the loaded entities so future scalar fields carry over
+			// automatically; only the id (and the column FK) are re-keyed.
+			const { columns: localColumns, ...localTableProps } = localTable;
+			// The delete cascades to the old data_table_column rows
+			await trx.delete(DataTable, { id: localTable.id });
+			await trx.insert(DataTable, { ...localTableProps, id: incoming.id });
+			const incomingIdByColumnKey = new Map(
+				incoming.columns.map((c) => [dataTableColumnKey(c), c.id]),
+			);
+			for (const column of localColumns) {
+				await trx.insert(DataTableColumn, {
+					...column,
+					id: incomingIdByColumnKey.get(dataTableColumnKey(column)) ?? column.id,
+					dataTableId: incoming.id,
+				});
+			}
+		});
+		this.dataTableSizeValidator.reset();
 	}
 
 	/**

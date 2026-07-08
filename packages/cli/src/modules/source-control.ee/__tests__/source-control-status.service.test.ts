@@ -2709,7 +2709,7 @@ describe('getStatus', () => {
 				expect(dataTableFiles[0].status).toBe('created');
 			});
 
-			it('should detect name collision during pull even when local table was never synced', async () => {
+			it('should flag a genuine collision (never synced, lossy merge) as conflict during pull', async () => {
 				// ARRANGE
 				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
 
@@ -2717,7 +2717,7 @@ describe('getStatus', () => {
 					id: 'dt-remote',
 					name: 'Shared Name',
 					ownedBy: { type: 'team' as const, teamId: 'projA', teamName: 'ProjectA' },
-					columns: [],
+					columns: [{ id: 'rc1', name: 'other', type: 'string', index: 0 }],
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-01T00:00:00.000Z',
 				};
@@ -2727,7 +2727,8 @@ describe('getStatus', () => {
 					name: 'Shared Name',
 					ownedBy: { type: 'team' as const, projectId: 'projA', projectName: 'ProjectA' },
 					filename: 'test.json',
-					columns: [],
+					// Local-only column that the incoming table lacks — lossy merge
+					columns: [{ id: 'lc1', name: 'localOnly', type: 'string', index: 0 }],
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-01T00:00:00.000Z',
 				};
@@ -2753,6 +2754,103 @@ describe('getStatus', () => {
 				);
 				expect(collisionFile).toBeDefined();
 				expect(collisionFile?.name).toBe('Shared Name');
+			});
+
+			it('should mark a recreated table (previously synced, lossy merge) as reconcilable during pull', async () => {
+				// ARRANGE
+				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
+
+				const remoteDataTable = {
+					id: 'dt-recreated',
+					name: 'Shared Name',
+					ownedBy: { type: 'team' as const, teamId: 'projA', teamName: 'ProjectA' },
+					columns: [{ id: 'rc1', name: 'other', type: 'string', index: 0 }],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				const localDataTable = {
+					id: 'dt-local',
+					name: 'Shared Name',
+					ownedBy: { type: 'team' as const, projectId: 'projA', projectName: 'ProjectA' },
+					filename: 'test.json',
+					columns: [{ id: 'lc1', name: 'localOnly', type: 'string', index: 0 }],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
+					remoteDataTable,
+				]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+				// Local table id appears in git history — delete+recreate upstream
+				gitService.getHistoricallyTrackedFiles.mockResolvedValue(
+					new Set(['datatables/dt-local.json']),
+				);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'pull',
+					verbose: false,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (!Array.isArray(result)) expect.fail('Expected result to be an array.');
+				const collisionFile = result.find(
+					(f) => f.type === 'datatable' && f.id === 'dt-recreated' && f.status === 'modified',
+				);
+				expect(collisionFile).toBeDefined();
+				expect(collisionFile?.status).toBe('modified');
+				expect(collisionFile?.conflict).toBe(false);
+			});
+
+			it('should mark a pre-sync twin (never synced, lossless merge) as reconcilable during pull', async () => {
+				// ARRANGE
+				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
+
+				const sharedColumns = [{ id: 'rc1', name: 'shared', type: 'string', index: 0 }];
+				const remoteDataTable = {
+					id: 'dt-remote',
+					name: 'Shared Name',
+					ownedBy: { type: 'team' as const, teamId: 'projA', teamName: 'ProjectA' },
+					columns: sharedColumns,
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				const localDataTable = {
+					id: 'dt-local',
+					name: 'Shared Name',
+					ownedBy: { type: 'team' as const, projectId: 'projA', projectName: 'ProjectA' },
+					filename: 'test.json',
+					// Same (name, type) columns under a different id — lossless merge
+					columns: [{ id: 'lc1', name: 'shared', type: 'string', index: 0 }],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
+					remoteDataTable,
+				]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+				gitService.getHistoricallyTrackedFiles.mockResolvedValue(new Set());
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'pull',
+					verbose: false,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (!Array.isArray(result)) expect.fail('Expected result to be an array.');
+				const collisionFile = result.find(
+					(f) => f.type === 'datatable' && f.id === 'dt-remote' && f.status === 'modified',
+				);
+				expect(collisionFile).toBeDefined();
+				expect(collisionFile?.status).toBe('modified');
+				expect(collisionFile?.conflict).toBe(false);
 			});
 		});
 	});

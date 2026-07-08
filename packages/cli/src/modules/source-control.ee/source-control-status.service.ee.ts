@@ -24,6 +24,8 @@ import {
 	getVariablesPath,
 	isWorkflowModified,
 	isDataTableModified,
+	canReconcileDataTableNameCollision,
+	extractResourceIdsFromFilePaths,
 	areSameCredentials,
 } from './source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
@@ -701,16 +703,9 @@ export class SourceControlStatusService {
 		// Query git history to find data table IDs that were previously synced.
 		// This lets us distinguish "deleted from remote" (should delete locally on pull)
 		// from "never pushed" (should preserve locally on pull), and vice versa for push.
-		const historicallyTrackedFiles = await this.gitService.getHistoricallyTrackedFiles(
-			SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER,
+		const previouslySyncedIds = extractResourceIdsFromFilePaths(
+			await this.gitService.getHistoricallyTrackedFiles(SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER),
 		);
-		const previouslySyncedIds = new Set<string>();
-		for (const filePath of historicallyTrackedFiles) {
-			const match = filePath.match(/([^/]+)\.json$/);
-			if (match) {
-				previouslySyncedIds.add(match[1]);
-			}
-		}
 
 		const dtMissingInLocal: ExportableDataTable[] = [];
 		const dtMissingInRemote: StatusExportableDataTable[] = [];
@@ -758,6 +753,12 @@ export class SourceControlStatusService {
 						? nameCandidate
 						: undefined;
 				if (nameCollision) {
+					// A pull reconciles the collision by adopting the incoming id; an
+					// unreconcilable one puts local-only column data at stake and is
+					// surfaced as a genuine conflict.
+					const canReconcile =
+						options.direction === 'pull' &&
+						canReconcileDataTableNameCollision(local, nameCollision, previouslySyncedIds);
 					const modified = options.preferLocalVersion ? local : nameCollision;
 					if (collectVerbose) {
 						dtModifiedInEither.push(modified);
@@ -768,7 +769,7 @@ export class SourceControlStatusService {
 						type: 'datatable',
 						status: 'modified',
 						location: options.direction === 'push' ? 'local' : 'remote',
-						conflict: true,
+						conflict: !canReconcile,
 						file: getDataTableExportPath(modified.id, this.dataTableExportFolder),
 						updatedAt: new Date().toISOString(),
 						owner: this.convertToStatusResourceOwner(modified.ownedBy),

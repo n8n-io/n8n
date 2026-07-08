@@ -32,12 +32,14 @@ import { mock } from 'vitest-mock-extended';
 import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import type { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
 import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
+import type { DataTableSizeValidator } from '@/modules/data-table/data-table-size-validator.service';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import type { SourceControlContextFactory } from '../source-control-context.factory';
+import type { SourceControlGitService } from '../source-control-git.service.ee';
 import { SourceControlImportService } from '../source-control-import.service.ee';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
 import type { ExportableFolder } from '../types/exportable-folders';
@@ -68,6 +70,8 @@ describe('SourceControlImportService', () => {
 	const dataTableColumnRepository = mock<DataTableColumnRepository>();
 	const dataTableDDLService = mock<DataTableDDLService>();
 	const redactionEnforcementService = mock<RedactionEnforcementService>();
+	const dataTableSizeValidator = mock<DataTableSizeValidator>();
+	const gitService = mock<SourceControlGitService>();
 
 	const globalAdminContext = new SourceControlContext(
 		Object.assign(new User(), { role: GLOBAL_ADMIN_ROLE }),
@@ -106,6 +110,8 @@ describe('SourceControlImportService', () => {
 		dataTableColumnRepository,
 		dataTableDDLService,
 		redactionEnforcementService,
+		dataTableSizeValidator,
+		gitService,
 	);
 
 	const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
@@ -3225,6 +3231,8 @@ describe('SourceControlImportService', () => {
 				updatedAt: '2024-01-01T00:00:00.000Z',
 			};
 
+			let mockTransaction: { save: Mock; delete: Mock; insert: Mock };
+
 			beforeEach(() => {
 				projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
 					mockPersonalProject as any,
@@ -3233,10 +3241,13 @@ describe('SourceControlImportService', () => {
 					mockPersonalProject,
 					{ id: 'project1', type: 'team' },
 				] as any);
+				gitService.getHistoricallyTrackedFiles.mockResolvedValue(new Set());
+				dataTableDDLService.tableExists.mockResolvedValue(false);
 
-				const mockTransaction = {
+				mockTransaction = {
 					save: vi.fn(async (_entity: any, data: any) => data),
 					delete: vi.fn(async () => {}),
+					insert: vi.fn(async () => {}),
 				};
 
 				Object.defineProperty(dataTableRepository, 'manager', {
@@ -3475,9 +3486,8 @@ describe('SourceControlImportService', () => {
 				expect(dataTableRepository.upsert).not.toHaveBeenCalled();
 			});
 
-			it('should throw UserError when a data table with the same name but different ID exists locally', async () => {
-				// Arrange
-				const mockDataTable = {
+			describe('name collisions (same name, different id)', () => {
+				const incomingDataTable = {
 					id: 'dt1',
 					name: 'Test Table',
 					ownedBy: {
@@ -3490,20 +3500,173 @@ describe('SourceControlImportService', () => {
 					updatedAt: '2024-01-02T00:00:00.000Z',
 				};
 
-				fsReadFile.mockResolvedValue(JSON.stringify(mockDataTable) as any);
-				projectRepository.findOne.mockResolvedValue({ id: 'project1', type: 'team' } as any);
+				const localColumns = [
+					{ id: 'lc1', name: 'Column1', type: 'string', index: 0 },
+					{ id: 'lc2', name: 'LocalOnly', type: 'number', index: 1 },
+				];
 
-				// Return a different ID for the same name — simulates name collision
-				dataTableRepository.findOne.mockResolvedValueOnce({ id: 'dt-other' } as any);
+				const localTable = {
+					id: 'dt-old',
+					name: 'Test Table',
+					projectId: 'project1',
+					columns: localColumns,
+					createdAt: new Date('2023-01-01T00:00:00.000Z'),
+					updatedAt: new Date('2023-01-02T00:00:00.000Z'),
+				};
 
-				// Act & Assert
-				await expect(
-					service.importDataTablesFromWorkFolder([mockCandidate], mockUser.id),
-				).rejects.toThrow(
-					'A data table with the name <strong>Test Table</strong> already exists locally.',
-				);
+				beforeEach(() => {
+					fsReadFile.mockResolvedValue(JSON.stringify(incomingDataTable) as any);
+					projectRepository.findOne.mockResolvedValue({ id: 'project1', type: 'team' } as any);
+					// Phase 2 looks the table up by (name, project); Phase 3 by the adopted id
+					dataTableRepository.findOne.mockImplementation(async (opts: any) =>
+						opts?.where?.id ? ({ id: 'dt1', columns: localColumns } as any) : (localTable as any),
+					);
+					dataTableColumnRepository.find.mockResolvedValue([] as any);
+					dataTableColumnRepository.save.mockImplementation(async (col: any) => col);
+				});
 
-				expect(dataTableRepository.upsert).not.toHaveBeenCalled();
+				it('should adopt the incoming id when the local table was previously synced (recreated table)', async () => {
+					// Arrange — lossy merge, but the table's old id appears in git history
+					gitService.getHistoricallyTrackedFiles.mockResolvedValue(
+						new Set(['datatables/dt-old.json']),
+					);
+
+					// Act
+					const result = await service.importDataTablesFromWorkFolder([mockCandidate], mockUser.id);
+
+					// Assert
+					expect(dataTableDDLService.renameTable).toHaveBeenCalledWith(
+						'dt-old',
+						'dt1',
+						'sqlite',
+						mockTransaction,
+					);
+					expect(mockTransaction.delete).toHaveBeenCalledWith(expect.anything(), {
+						id: 'dt-old',
+					});
+					expect(mockTransaction.insert).toHaveBeenCalledWith(
+						expect.anything(),
+						expect.objectContaining({ id: 'dt1', name: 'Test Table', projectId: 'project1' }),
+					);
+					// Matching (name, type) column adopts the incoming column id
+					expect(mockTransaction.insert).toHaveBeenCalledWith(
+						expect.anything(),
+						expect.objectContaining({ id: 'col1', name: 'Column1', dataTableId: 'dt1' }),
+					);
+					// Non-matching local column keeps its id (dropped later by schema alignment)
+					expect(mockTransaction.insert).toHaveBeenCalledWith(
+						expect.anything(),
+						expect.objectContaining({ id: 'lc2', name: 'LocalOnly', dataTableId: 'dt1' }),
+					);
+					expect(dataTableSizeValidator.reset).toHaveBeenCalled();
+					// The regular import path still runs
+					expect(dataTableRepository.upsert).toHaveBeenCalledWith(
+						expect.objectContaining({ id: 'dt1' }),
+						['id'],
+					);
+					expect(result?.conflicts).toEqual([]);
+				});
+
+				it('should adopt the incoming id for a never-synced table when the merge is lossless (pre-sync twin)', async () => {
+					// Arrange — never synced, but every local column has an incoming match
+					const losslessLocal = {
+						...localTable,
+						columns: [{ id: 'lc1', name: 'Column1', type: 'string', index: 0 }],
+					};
+					dataTableRepository.findOne.mockImplementation(async (opts: any) =>
+						opts?.where?.id ? ({ id: 'dt1', columns: [] } as any) : (losslessLocal as any),
+					);
+
+					// Act
+					const result = await service.importDataTablesFromWorkFolder([mockCandidate], mockUser.id);
+
+					// Assert
+					expect(dataTableDDLService.renameTable).toHaveBeenCalledWith(
+						'dt-old',
+						'dt1',
+						'sqlite',
+						mockTransaction,
+					);
+					expect(result?.conflicts).toEqual([]);
+				});
+
+				it('should skip a never-synced lossy collision as a per-table conflict and import the rest', async () => {
+					// Arrange — a second, collision-free table in the same pull
+					const otherDataTable = {
+						...incomingDataTable,
+						id: 'dt2',
+						name: 'Other Table',
+						columns: [{ id: 'col9', name: 'Column9', type: 'string', index: 0 }],
+					};
+					const otherCandidate = {
+						...mockCandidate,
+						id: 'dt2',
+						name: 'Other Table',
+						file: '/mock/n8n/git/datatables/dt2.json',
+					};
+					fsReadFile.mockImplementation(async (file: any) =>
+						String(file).includes('dt2')
+							? (JSON.stringify(otherDataTable) as any)
+							: (JSON.stringify(incomingDataTable) as any),
+					);
+					dataTableRepository.findOne.mockImplementation(async (opts: any) => {
+						if (opts?.where?.id) return null;
+						return opts?.where?.name === 'Test Table' ? (localTable as any) : null;
+					});
+
+					// Act
+					const result = await service.importDataTablesFromWorkFolder(
+						[mockCandidate, otherCandidate],
+						mockUser.id,
+					);
+
+					// Assert — colliding table skipped, no throw, other table imported
+					expect(result?.conflicts).toEqual([{ id: 'dt1', name: 'Test Table' }]);
+					expect(dataTableDDLService.renameTable).not.toHaveBeenCalled();
+					expect(dataTableRepository.upsert).toHaveBeenCalledTimes(1);
+					expect(dataTableRepository.upsert).toHaveBeenCalledWith(
+						expect.objectContaining({ id: 'dt2' }),
+						['id'],
+					);
+				});
+
+				it('should warn instead of blocking the whole import on an unreconcilable collision', async () => {
+					// Arrange — never synced, lossy merge (localTable has a LocalOnly column)
+					dataTableRepository.findOne.mockImplementation(async (opts: any) =>
+						opts?.where?.id ? null : (localTable as any),
+					);
+
+					// Act & Assert — resolves instead of rejecting; conflict is only warned about
+					await expect(
+						service.importDataTablesFromWorkFolder([mockCandidate], mockUser.id),
+					).resolves.toMatchObject({
+						imported: [],
+						conflicts: [{ id: 'dt1', name: 'Test Table' }],
+					});
+					expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('Test Table'));
+					expect(dataTableRepository.upsert).not.toHaveBeenCalled();
+				});
+
+				it('should complete a half-finished adoption without renaming again (idempotency)', async () => {
+					// Arrange — physical table already renamed, metadata still holds the old id
+					gitService.getHistoricallyTrackedFiles.mockResolvedValue(
+						new Set(['datatables/dt-old.json']),
+					);
+					dataTableDDLService.tableExists.mockResolvedValue(true);
+
+					// Act
+					await service.importDataTablesFromWorkFolder([mockCandidate], mockUser.id);
+
+					// Assert — metadata swap still runs, rename is skipped
+					expect(dataTableDDLService.renameTable).not.toHaveBeenCalled();
+					expect(mockTransaction.delete).toHaveBeenCalledWith(expect.anything(), {
+						id: 'dt-old',
+					});
+					expect(mockTransaction.insert).toHaveBeenCalledWith(
+						expect.anything(),
+						expect.objectContaining({ id: 'dt1' }),
+					);
+				});
 			});
 
 			it('should skip columns with invalid names', async () => {
@@ -3571,49 +3734,6 @@ describe('SourceControlImportService', () => {
 				await service.importDataTablesFromWorkFolder([mockCandidate], mockUser.id);
 
 				// Assert
-				expect(dataTableRepository.upsert).not.toHaveBeenCalled();
-			});
-
-			it('should not partially import when a name collision exists among multiple tables', async () => {
-				// Arrange — two tables: dt1 is valid, dt2 has a name collision
-				const validTable = {
-					id: 'dt1',
-					name: 'Valid Table',
-					ownedBy: { type: 'team', teamId: 'project1', teamName: 'Team Project 1' },
-					columns: [{ id: 'col1', name: 'Column1', type: 'string', index: 0 }],
-					createdAt: '2024-01-01T00:00:00.000Z',
-					updatedAt: '2024-01-02T00:00:00.000Z',
-				};
-				const collidingTable = {
-					id: 'dt2',
-					name: 'Colliding Table',
-					ownedBy: { type: 'team', teamId: 'project1', teamName: 'Team Project 1' },
-					columns: [{ id: 'col2', name: 'Column2', type: 'string', index: 0 }],
-					createdAt: '2024-01-01T00:00:00.000Z',
-					updatedAt: '2024-01-02T00:00:00.000Z',
-				};
-
-				fsReadFile
-					.mockResolvedValueOnce(JSON.stringify(validTable) as any)
-					.mockResolvedValueOnce(JSON.stringify(collidingTable) as any);
-				projectRepository.findOne.mockResolvedValue({ id: 'project1', type: 'team' } as any);
-
-				// First call (for "Valid Table") → no collision
-				dataTableRepository.findOne.mockResolvedValueOnce(null as any);
-				// Second call (for "Colliding Table") → collision with a different ID
-				dataTableRepository.findOne.mockResolvedValueOnce({ id: 'dt-other' } as any);
-
-				const candidate1 = { ...mockCandidate, id: 'dt1', name: 'Valid Table' };
-				const candidate2 = { ...mockCandidate, id: 'dt2', name: 'Colliding Table' };
-
-				// Act & Assert — the whole operation should fail
-				await expect(
-					service.importDataTablesFromWorkFolder([candidate1, candidate2], mockUser.id),
-				).rejects.toThrow(
-					'A data table with the name <strong>Colliding Table</strong> already exists locally.',
-				);
-
-				// No table should have been imported (no partial import)
 				expect(dataTableRepository.upsert).not.toHaveBeenCalled();
 			});
 		});
