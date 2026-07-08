@@ -193,7 +193,7 @@ function parseFilterConditionValues(
 	};
 }
 
-function parseRegexPattern(pattern: string, ignoreCase?: boolean): RegExp {
+function parseRegexPattern(pattern: string, ignoreCase = false): RegExp {
 	const regexMatch = (pattern || '').match(new RegExp('^/(.*?)/([gimusy]*)$'));
 	let regex: RegExp;
 
@@ -230,6 +230,7 @@ export function executeFilterCondition(
 	metadata: Partial<FilterConditionMetadata> = {},
 ): boolean {
 	const ignoreCase = !filterOptions.caseSensitive;
+	const version = filterOptions.version ?? 1;
 	const { operator } = condition;
 	const parsedValues = parseFilterConditionValues(condition, filterOptions, metadata);
 
@@ -248,18 +249,21 @@ export function executeFilterCondition(
 
 	switch (operator.type) {
 		case 'string': {
+			const isRegexOp =
+				condition.operator.operation === 'regex' || condition.operator.operation === 'notRegex';
+			// v4+ applies the ignoreCase flag to the compiled RegExp instead of lowercasing operands,
+			// so uppercase-only patterns (e.g. `[A-Z]`) can still match against lowercase input.
+			const useRegexIgnoreCase = ignoreCase && version >= 4 && isRegexOp;
+
 			if (ignoreCase) {
-				if (
-					typeof leftValue === 'string' &&
-					!(condition.operator.operation === 'regex' || condition.operator.operation === 'notRegex')
-				) {
+				if (typeof leftValue === 'string' && !useRegexIgnoreCase) {
 					leftValue = leftValue.toLocaleLowerCase();
 				}
 
-				if (
-					typeof rightValue === 'string' &&
-					!(condition.operator.operation === 'regex' || condition.operator.operation === 'notRegex')
-				) {
+				// Regex operands (any version) must never be lowercased — that would mangle
+				// character-class patterns like `[A-Z]`. v1–v3 kept this guard on the right side;
+				// v4 additionally skips lowercasing the left and applies the `i` flag instead.
+				if (typeof rightValue === 'string' && !isRegexOp) {
 					rightValue = rightValue.toLocaleLowerCase();
 				}
 			}
@@ -289,9 +293,9 @@ export function executeFilterCondition(
 				case 'notEndsWith':
 					return !left.endsWith(right);
 				case 'regex':
-					return parseRegexPattern(right, ignoreCase).test(left);
+					return parseRegexPattern(right, useRegexIgnoreCase).test(left);
 				case 'notRegex':
-					return !parseRegexPattern(right, ignoreCase).test(left);
+					return !parseRegexPattern(right, useRegexIgnoreCase).test(left);
 			}
 
 			break;

@@ -3876,7 +3876,7 @@ export type FilterOptionsValue = {
 	caseSensitive: boolean;
 	leftValue: string;
 	typeValidation: 'strict' | 'loose';
-	version: 1 | 2 | 3;
+	version: 1 | 2 | 3 | 4;
 };
 
 export type FilterValue = {
