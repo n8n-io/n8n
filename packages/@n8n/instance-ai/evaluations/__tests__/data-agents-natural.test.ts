@@ -20,11 +20,28 @@ describe('agents-natural dataset', () => {
 		}
 	});
 
+	// Spec buckets whose natural-arm conversation shape structurally cannot mirror
+	// an exam case, with the reason. Every entry must exist (guarded below) so the
+	// list can't go stale.
+	const NO_EXAM_SIBLING: ReadonlyMap<string, string> = new Map([
+		[
+			'nat-ctx-live-wf-schedule-edit',
+			'context continuity needs a real prior build in turn 1; the exam fakes it with priorConversation text',
+		],
+		[
+			'nat-ops-data-table-question',
+			'ops routing (skill: "not classified at all") has no exam-corpus counterpart',
+		],
+	]);
+
 	it('every case pairs with an exam sibling by slug (nat-<slug>), keeping the arms comparable', () => {
 		const examSlugs = new Set(loadAgentEvalTestCasesWithFiles().map((c) => c.fileSlug));
+		const slugs = new Set(cases.map((c) => c.fileSlug));
+		for (const exempt of NO_EXAM_SIBLING.keys()) {
+			expect(slugs.has(exempt), `stale exemption: ${exempt}`).toBe(true);
+		}
 		for (const { fileSlug } of cases) {
-			// natp- = natural-only probes (e.g. over-trigger guards) with no exam sibling.
-			if (fileSlug.startsWith('natp-')) continue;
+			if (NO_EXAM_SIBLING.has(fileSlug)) continue;
 			const sibling = fileSlug.replace(/^nat-/, '');
 			expect(fileSlug, fileSlug).toMatch(/^nat-/);
 			expect(examSlugs.has(sibling), `${fileSlug} → ${sibling}`).toBe(true);
@@ -36,7 +53,7 @@ describe('agents-natural dataset', () => {
 			loadAgentEvalTestCasesWithFiles().map((c) => [c.fileSlug, c.testCase]),
 		);
 		for (const { testCase, fileSlug } of cases) {
-			if (fileSlug.startsWith('natp-')) continue; // natural-only probe, no sibling
+			if (NO_EXAM_SIBLING.has(fileSlug)) continue;
 			const sibling = examBySlug.get(fileSlug.replace(/^nat-/, ''));
 			if (!sibling) continue; // covered by the pairing test above
 			// The exam loader prepends its preamble to turn 0 — the natural utterance

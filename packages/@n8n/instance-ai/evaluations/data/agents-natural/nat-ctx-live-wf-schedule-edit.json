@@ -1,5 +1,5 @@
 {
-	"description": "Natural-only over-trigger probe (no exam sibling): the intent gate must fire once for a NEW automation and stay quiet for mid-build increments. Turn 1 is a plain workflow build; turn 2 is a small edit to the same automation. Over-classification (re-loading intent-recognition per message, or treating the edit as a new automation) is the failure mode under guard. Calibrated at N=3 (2026-07-08): the gate-once expectation passed 3/3; one iteration flipped the edit expectation on an artifact-visibility race (proxy asked for the change before the build registered), mitigated by the wait-for-confirmation director wording.",
+	"description": "Context-continuity bucket, enacted: a mid-build increment stays on the current primitive without re-classifying. The exam's ctx-inline cases fake prior context with synthetic priorConversation text; here the prior workflow is actually built in turn 1, so there is no byte-identical exam sibling (documented exemption in the contract test). Doubles as the over-trigger guard: the intent gate must fire once for the new automation and stay quiet for the edit. Calibrated at N=3 (2026-07-08): gate-once passed 3/3; one iteration flipped the edit expectation on an artifact-visibility race (proxy asked before the build registered), mitigated by the wait-for-confirmation director wording.",
 	"conversation": [
 		{
 			"role": "user",
@@ -14,7 +14,7 @@
 	],
 	"messageBudget": 6,
 	"complexity": "simple",
-	"tags": ["intent-resolution", "over-trigger-guard", "paradigm-continuity", "natural-arm"],
+	"tags": ["intent-resolution", "paradigm-continuity", "inline", "natural-arm"],
 	"datasets": ["agents-natural"],
 	"processExpectations": [
 		"The agent calls the load_skill tool with the intent-recognition skill at most once in the whole conversation, before the initial build — and does not load it again for the follow-up schedule change.",

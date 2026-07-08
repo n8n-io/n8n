@@ -215,15 +215,19 @@ expectation flips even with the exam preamble). Takeaways:
   multi-artifact probe: the agent builds the weather workflow AND creates the
   support agent as separate automations, 3/3 iterations.
 
-## Over-trigger coverage (natp- probes, N=3 on 3 lanes, 2026-07-08)
+## Context-continuity and ops buckets (N=3 on 3 lanes, 2026-07-08)
 
-Guards the failure mode where the intent gate fires too often (per-message
-re-classification, or on non-build messages). `natp-` cases are natural-only
-probes with no exam sibling (exempt from the pairing contract). Results:
+Two spec buckets the mirrored corpus couldn't cover byte-identically (their
+conversation shape necessarily differs from the exam's — reasons documented in
+the contract test's exemption list). Both double as guards against the intent
+gate over-firing (per-message re-classification, or firing on non-build
+messages):
 
-- `natp-non-build-ops-no-gate` ("What data tables do I have?"): 3/3 fully
-  green — no intent-recognition load, no build path.
-- `natp-followup-edit-no-reclassify`: the gate-once expectation ("loads
+- `nat-ops-data-table-question` (skill rule: operating on existing resources
+  is not classified at all): 3/3 fully green — no intent-recognition load, no
+  build path.
+- `nat-ctx-live-wf-schedule-edit` (continuity with a REAL prior build, not
+  synthetic priorConversation text): the gate-once expectation ("loads
   intent-recognition at most once, not re-loaded for the edit") passed 3/3.
   One iteration flipped the edit expectation on an artifact-visibility race
   (the proxy asked for the change before the build registered) — director
@@ -232,4 +236,5 @@ probes with no exam sibling (exempt from the pairing contract). Results:
   empirically; one iteration was an infra flake (run errored, no transcript).
 
 Net: the gate fires once per new automation and stays quiet on edits,
-operational questions, and capability questions.
+operational questions, and capability questions. The remaining ctx-inline
+exam cases (agent-side continuity) need a real prior agent — tranche 3.
