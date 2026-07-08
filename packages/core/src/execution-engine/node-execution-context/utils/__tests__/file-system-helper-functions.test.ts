@@ -626,7 +626,8 @@ describe('getFileSystemHelperFunctions', () => {
 				),
 			).resolves.toBeUndefined();
 
-			expect(fsMkdir).toHaveBeenLastCalledWith(join('/allowed', 'dir'));
+			expect(fsMkdir).toHaveBeenCalledWith('/allowed');
+			expect(fsMkdir).toHaveBeenCalledWith('/allowed/dir');
 		});
 
 		it('rejects when a parent component is a symlink', async () => {
