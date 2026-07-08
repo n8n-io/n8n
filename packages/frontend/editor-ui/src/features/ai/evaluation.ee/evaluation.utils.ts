@@ -89,6 +89,44 @@ export function isScoreShapedMetric(value: unknown): value is number {
 	return typeof value === 'number' && value >= 0 && value <= 1;
 }
 
+// Reduce per-run aggregate metrics to the score-shaped ([0, 1]) metrics that
+// both the collection-card preview and the compare hero chart render. Returns
+// one entry per metric (first-seen order) with a value per run aligned by
+// index — `null` where a run lacks the metric, so a skipped metric never
+// shifts later versions out of their color/letter slot. A metric is included
+// only if it's score-shaped across every run that reported it, since the bar
+// charts clamp to max=1 and an absolute count (tokens, latency) would render a
+// meaningless maxed-out bar.
+export function buildScoreShapedMetricGroups(
+	runs: Array<{ metrics: Record<string, number> | null }>,
+): Array<{ key: string; values: Array<number | null> }> {
+	const orderedKeys: string[] = [];
+	const seen = new Set<string>();
+	for (const run of runs) {
+		for (const key of Object.keys(run.metrics ?? {})) {
+			if (!seen.has(key)) {
+				seen.add(key);
+				orderedKeys.push(key);
+			}
+		}
+	}
+
+	const scoreShapedKeys = orderedKeys.filter((key) =>
+		runs.every((run) => {
+			const value = run.metrics?.[key];
+			return value === undefined || isScoreShapedMetric(value);
+		}),
+	);
+
+	return scoreShapedKeys.map((key) => ({
+		key,
+		values: runs.map((run) => {
+			const value = run.metrics?.[key];
+			return typeof value === 'number' ? value : null;
+		}),
+	}));
+}
+
 export function computeDelta(
 	current: number | undefined,
 	previous: number | undefined,
