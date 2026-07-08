@@ -125,7 +125,7 @@ export type UserCalledMCPToolEventPayload = {
 };
 
 /**
- * n8n Connect ("AI Gateway") coverage snapshot surfaced in tool output when the
+ * n8n Connect coverage snapshot surfaced in tool output when the
  * gateway is available: the credential and node types it can provide managed
  * credentials for.
  */

@@ -13,7 +13,7 @@ const outputSchema = {
 	available: z
 		.boolean()
 		.describe(
-			'True when n8n Connect ("AI Gateway") is available for this instance. When false, the remaining fields are omitted.',
+			'True when n8n Connect is available for this instance. When false, the remaining fields are omitted.',
 		),
 	credentialTypes: z
 		.array(z.string())
@@ -40,7 +40,7 @@ const outputSchema = {
 } satisfies z.ZodRawShape;
 
 /**
- * Returns the current n8n Connect ("AI Gateway") coverage snapshot for the
+ * Returns the current n8n Connect coverage snapshot for the
  * instance: which node types and credential types Connect can serve, plus
  * per-node action allowlists, min versions, and hidden properties.
  *
