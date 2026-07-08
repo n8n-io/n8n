@@ -9,7 +9,7 @@ import {
 	TaskHandlerRegistry,
 } from './executor';
 import type { ExecutorOptions, ExecutorTaskStore } from './executor';
-import { DEFAULT_LIFECYCLE_OPTIONS, Loop } from './lifecycle';
+import { DEFAULT_LIFECYCLE_OPTIONS, Loop, PASS_TIMED_OUT } from './lifecycle';
 import type { LifecycleOptions } from './lifecycle';
 import { DEFAULT_MATERIALIZER_OPTIONS, materialize } from './materializer';
 import type { MaterializerOptions, RunInTransaction } from './materializer';
@@ -19,7 +19,7 @@ import { DEFAULT_RETENTION_OPTIONS, prune } from './retention';
 import type { RetentionOptions, RetentionStore } from './retention';
 import type { Scheduler, SchedulerPasses } from './scheduler';
 import { SCHEDULER_ATTRIBUTES } from '../observability/attributes';
-import { SpanStatus, noopTracer, type Tracer } from '../observability/tracer';
+import { SpanStatus, noopTracer, type Span, type Tracer } from '../observability/tracer';
 
 export type SchedulerEventLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -154,6 +154,18 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 	};
 	const described = (error: unknown) => ensureError(error).message;
 
+	// A pass abandoned by its loop's timeout aborts with PASS_TIMED_OUT and then
+	// returns early at its next cancellation point, so its span would otherwise
+	// close `ok` while the loop logs a timeout. Reconcile the two: a timed-out
+	// pass records error; a clean drain (graceful stop) or completion records ok.
+	const settlePassSpan = (span: Span, signal?: AbortSignal) => {
+		if (signal?.aborted === true && signal.reason === PASS_TIMED_OUT) {
+			span.setStatus({ code: SpanStatus.error, message: 'Scheduler pass timed out' });
+		} else {
+			span.setStatus({ code: SpanStatus.ok });
+		}
+	};
+
 	const registry = new TaskHandlerRegistry();
 	const executor = new Executor(
 		taskStore,
@@ -228,7 +240,7 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 				span.setAttribute(SCHEDULER_ATTRIBUTES.claimedJobs, summary.claimedJobs);
 				span.setAttribute(SCHEDULER_ATTRIBUTES.occurrences, summary.occurrences);
 				span.setAttribute(SCHEDULER_ATTRIBUTES.deferredJobs, summary.deferredJobs);
-				span.setStatus({ code: SpanStatus.ok });
+				settlePassSpan(span, signal);
 				return summary;
 			},
 		);
@@ -243,7 +255,7 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 			async (span) => {
 				const tasks = await executor.claimAndSchedule(hostId, signal);
 				span.setAttribute(SCHEDULER_ATTRIBUTES.claimedCount, tasks.length);
-				span.setStatus({ code: SpanStatus.ok });
+				settlePassSpan(span, signal);
 				return tasks;
 			},
 		);
@@ -276,7 +288,7 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 				);
 				span.setAttribute(SCHEDULER_ATTRIBUTES.reclaimed, result.reclaimed);
 				span.setAttribute(SCHEDULER_ATTRIBUTES.deadLettered, result.deadLettered);
-				span.setStatus({ code: SpanStatus.ok });
+				settlePassSpan(span, signal);
 				return result;
 			},
 		);
@@ -295,7 +307,7 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 				}
 				span.setAttribute(SCHEDULER_ATTRIBUTES.retentionDeleted, summary.deleted);
 				span.setAttribute(SCHEDULER_ATTRIBUTES.retentionDrained, summary.drained);
-				span.setStatus({ code: SpanStatus.ok });
+				settlePassSpan(span, signal);
 				return summary;
 			},
 		);

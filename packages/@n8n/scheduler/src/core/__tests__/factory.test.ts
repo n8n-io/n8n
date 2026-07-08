@@ -6,6 +6,7 @@ import { SpanStatus, type Span, type Tracer } from '../../observability/tracer';
 import { InvalidLifecycleOptionsError } from '../errors';
 import { createScheduler } from '../factory';
 import type { SchedulerDeps, SchedulerTaskStore } from '../factory';
+import { PASS_TIMED_OUT } from '../lifecycle';
 import type { MaterializerTransaction, RunInTransaction } from '../materializer';
 import { DEFAULT_RETENTION_OPTIONS } from '../retention';
 import type { ClaimedTask, ScheduledJob } from '../types';
@@ -881,6 +882,35 @@ describe('createScheduler tracing', () => {
 			SCHEDULER_ATTRIBUTES.retentionDrained,
 			summary.drained,
 		);
+		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('records error on a pass abandoned by its loop timeout', async () => {
+		const { span, tracer } = makeTracer();
+		const { scheduler, taskStore } = makeScheduler({ tracer });
+		taskStore.claimDueTasks.mockResolvedValue([]);
+		const controller = new AbortController();
+		controller.abort(PASS_TIMED_OUT);
+
+		await scheduler.execute(controller.signal);
+
+		expect(span.setStatus).toHaveBeenCalledWith({
+			code: SpanStatus.error,
+			message: 'Scheduler pass timed out',
+		});
+		expect(span.setStatus).not.toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('records ok on a pass drained by a graceful stop, not a timeout', async () => {
+		const { span, tracer } = makeTracer();
+		const { scheduler, taskStore } = makeScheduler({ tracer });
+		taskStore.claimDueTasks.mockResolvedValue([]);
+		// A graceful stop aborts with the default reason, not PASS_TIMED_OUT.
+		const controller = new AbortController();
+		controller.abort();
+
+		await scheduler.execute(controller.signal);
+
 		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
 	});
 });
