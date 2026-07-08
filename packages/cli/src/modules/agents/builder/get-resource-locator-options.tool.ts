@@ -54,12 +54,194 @@ const getResourceLocatorOptionsInputSchema = z.object({
 		.describe('Optional pagination token from a previous lookup'),
 });
 
-export function buildGetResourceLocatorOptionsTool(deps: {
+export interface ResolveResourceLocatorOptionsDeps {
 	dynamicNodeParametersService: DynamicNodeParametersService;
 	nodeTypes: NodeTypes;
 	user: User;
 	projectId: string;
-}): BuiltTool {
+}
+
+export type ResolveResourceLocatorOptionsInput = z.infer<
+	typeof getResourceLocatorOptionsInputSchema
+>;
+
+/**
+ * Resolve a node parameter's live options (resourceLocator / loadOptionsMethod /
+ * loadOptions routing). This is the plain handler body — it takes no tool
+ * context — so both the builder Tool wrapper and the instance-ai adapter can call
+ * it directly without faking a `ToolContext`.
+ */
+export async function resolveResourceLocatorOptions(
+	{
+		nodeType,
+		nodeTypeVersion,
+		parameterPath,
+		nodeParameters,
+		credentials,
+		filter,
+		paginationToken,
+	}: ResolveResourceLocatorOptionsInput,
+	deps: ResolveResourceLocatorOptionsDeps,
+) {
+	let nodeTypeDescription;
+	try {
+		nodeTypeDescription = deps.nodeTypes.getByNameAndVersion(nodeType, nodeTypeVersion);
+	} catch (error) {
+		return {
+			ok: false,
+			code: 'node_type_not_found',
+			message: error instanceof Error ? error.message : `Node type "${nodeType}" not found`,
+		};
+	}
+
+	const property = findNodeParameterProperty(
+		nodeTypeDescription.description.properties,
+		parameterPath,
+	);
+	if (!property) {
+		return {
+			ok: false,
+			code: 'parameter_not_found',
+			message: `Parameter "${parameterPath}" was not found on ${nodeType}.`,
+			dynamicParameters: collectDynamicNodeParameterPaths(
+				nodeTypeDescription.description.properties,
+			),
+		};
+	}
+
+	const lookup = getDynamicNodeParameterLookup(property);
+	if (!lookup) {
+		return {
+			ok: false,
+			code: 'not_dynamic_selector',
+			message: `Parameter "${parameterPath}" does not expose a resource locator or load-options lookup.`,
+			dynamicParameters: collectDynamicNodeParameterPaths(
+				nodeTypeDescription.description.properties,
+			),
+		};
+	}
+
+	const credentialSlots = getRequiredNodeCredentialSlots(nodeTypeDescription.description);
+	if (
+		credentialSlots.length > 0 &&
+		!lookup.skipCredentialsCheck &&
+		!hasNodeCredentials(credentials)
+	) {
+		return {
+			ok: false,
+			code: 'missing_credentials',
+			message:
+				'This parameter needs node credentials before live options can be fetched. Call ask_credential for one of the returned credential slots, then retry with the returned credentials map.',
+			credentialSlots,
+		};
+	}
+
+	const currentNodeParameters = (nodeParameters ?? {}) as INodeParameters;
+	const resourceIds = { projectId: deps.projectId, credentials };
+	await deps.dynamicNodeParametersService.refineResourceIds(deps.user, resourceIds);
+
+	// Auto-detect the authentication parameter value from the credential type.
+	// Many nodes (e.g. Google Sheets) use an `authentication` parameter to switch
+	// between serviceAccount/oAuth2, and `getNodeParameter('authentication', 0)`
+	// falls back to the wrong default when it's not set.
+	if (!currentNodeParameters.authentication && resourceIds.credentials) {
+		for (const credentialType of Object.keys(resourceIds.credentials)) {
+			const authValue = detectAuthenticationParameterValue(
+				nodeTypeDescription.description,
+				credentialType,
+			);
+			if (authValue !== undefined) {
+				currentNodeParameters.authentication = authValue;
+				break;
+			}
+		}
+	}
+
+	const builderHint = property.builderHint?.propertyHint;
+
+	const additionalData = await getBase({
+		userId: deps.user.id,
+		projectId: resourceIds.projectId,
+		currentNodeParameters,
+	});
+	additionalData.dataTableProjectId = resourceIds.projectId;
+
+	const nodeTypeAndVersion = { name: nodeType, version: nodeTypeVersion };
+	const dynamicPath = toDynamicParameterPath(parameterPath);
+
+	try {
+		if (lookup.kind === 'resourceLocator') {
+			const result = await deps.dynamicNodeParametersService.getResourceLocatorResults(
+				lookup.methodName,
+				dynamicPath,
+				additionalData,
+				nodeTypeAndVersion,
+				currentNodeParameters,
+				resourceIds.credentials,
+				filter,
+				paginationToken,
+			);
+
+			return {
+				ok: true,
+				kind: lookup.kind,
+				parameterPath: normalizeParameterPath(parameterPath),
+				methodName: lookup.methodName,
+				mode: lookup.mode,
+				results: (result.results ?? []).map((option) => ({
+					name: option.name,
+					value: option.value,
+					...(option.url ? { url: option.url } : {}),
+					parameterValue: toResourceLocatorParameterValue(option, lookup.mode),
+				})),
+				paginationToken: result.paginationToken,
+				...(builderHint ? { builderHint } : {}),
+			};
+		}
+
+		const options =
+			lookup.kind === 'loadOptionsMethod'
+				? await deps.dynamicNodeParametersService.getOptionsViaMethodName(
+						lookup.methodName,
+						dynamicPath,
+						additionalData,
+						nodeTypeAndVersion,
+						currentNodeParameters,
+						resourceIds.credentials,
+					)
+				: await deps.dynamicNodeParametersService.getOptionsViaLoadOptions(
+						lookup.loadOptions,
+						additionalData,
+						nodeTypeAndVersion,
+						currentNodeParameters,
+						resourceIds.credentials,
+					);
+
+		return {
+			ok: true,
+			kind: lookup.kind,
+			parameterPath: normalizeParameterPath(parameterPath),
+			...(lookup.kind === 'loadOptionsMethod' ? { methodName: lookup.methodName } : {}),
+			results: options.map((option) => ({
+				name: option.name,
+				value: option.value,
+				...(option.description ? { description: option.description } : {}),
+				parameterValue: toLoadedOptionParameterValue(option),
+			})),
+			...(builderHint ? { builderHint } : {}),
+		};
+	} catch (error) {
+		return {
+			ok: false,
+			code: 'lookup_failed',
+			message: error instanceof Error ? error.message : 'Failed to fetch parameter options',
+		};
+	}
+}
+
+export function buildGetResourceLocatorOptionsTool(
+	deps: ResolveResourceLocatorOptionsDeps,
+): BuiltTool {
 	return new Tool(BUILDER_TOOLS.GET_RESOURCE_LOCATOR_OPTIONS)
 		.description(
 			'Fetch live options for a node parameter that is configured through a resourceLocator, loadOptionsMethod, or loadOptions routing. ' +
@@ -68,171 +250,6 @@ export function buildGetResourceLocatorOptionsTool(deps: {
 				'The response includes parameterValue for each result; write that exact value into nodeParameters instead of using $fromAI for stable resource IDs.',
 		)
 		.input(getResourceLocatorOptionsInputSchema)
-		.handler(
-			async ({
-				nodeType,
-				nodeTypeVersion,
-				parameterPath,
-				nodeParameters,
-				credentials,
-				filter,
-				paginationToken,
-			}) => {
-				let nodeTypeDescription;
-				try {
-					nodeTypeDescription = deps.nodeTypes.getByNameAndVersion(nodeType, nodeTypeVersion);
-				} catch (error) {
-					return {
-						ok: false,
-						code: 'node_type_not_found',
-						message: error instanceof Error ? error.message : `Node type "${nodeType}" not found`,
-					};
-				}
-
-				const property = findNodeParameterProperty(
-					nodeTypeDescription.description.properties,
-					parameterPath,
-				);
-				if (!property) {
-					return {
-						ok: false,
-						code: 'parameter_not_found',
-						message: `Parameter "${parameterPath}" was not found on ${nodeType}.`,
-						dynamicParameters: collectDynamicNodeParameterPaths(
-							nodeTypeDescription.description.properties,
-						),
-					};
-				}
-
-				const lookup = getDynamicNodeParameterLookup(property);
-				if (!lookup) {
-					return {
-						ok: false,
-						code: 'not_dynamic_selector',
-						message: `Parameter "${parameterPath}" does not expose a resource locator or load-options lookup.`,
-						dynamicParameters: collectDynamicNodeParameterPaths(
-							nodeTypeDescription.description.properties,
-						),
-					};
-				}
-
-				const credentialSlots = getRequiredNodeCredentialSlots(nodeTypeDescription.description);
-				if (
-					credentialSlots.length > 0 &&
-					!lookup.skipCredentialsCheck &&
-					!hasNodeCredentials(credentials)
-				) {
-					return {
-						ok: false,
-						code: 'missing_credentials',
-						message:
-							'This parameter needs node credentials before live options can be fetched. Call ask_credential for one of the returned credential slots, then retry with the returned credentials map.',
-						credentialSlots,
-					};
-				}
-
-				const currentNodeParameters = (nodeParameters ?? {}) as INodeParameters;
-				const resourceIds = { projectId: deps.projectId, credentials };
-				await deps.dynamicNodeParametersService.refineResourceIds(deps.user, resourceIds);
-
-				// Auto-detect the authentication parameter value from the credential type.
-				// Many nodes (e.g. Google Sheets) use an `authentication` parameter to switch
-				// between serviceAccount/oAuth2, and `getNodeParameter('authentication', 0)`
-				// falls back to the wrong default when it's not set.
-				if (!currentNodeParameters.authentication && resourceIds.credentials) {
-					for (const credentialType of Object.keys(resourceIds.credentials)) {
-						const authValue = detectAuthenticationParameterValue(
-							nodeTypeDescription.description,
-							credentialType,
-						);
-						if (authValue !== undefined) {
-							currentNodeParameters.authentication = authValue;
-							break;
-						}
-					}
-				}
-
-				const builderHint = property.builderHint?.propertyHint;
-
-				const additionalData = await getBase({
-					userId: deps.user.id,
-					projectId: resourceIds.projectId,
-					currentNodeParameters,
-				});
-				additionalData.dataTableProjectId = resourceIds.projectId;
-
-				const nodeTypeAndVersion = { name: nodeType, version: nodeTypeVersion };
-				const dynamicPath = toDynamicParameterPath(parameterPath);
-
-				try {
-					if (lookup.kind === 'resourceLocator') {
-						const result = await deps.dynamicNodeParametersService.getResourceLocatorResults(
-							lookup.methodName,
-							dynamicPath,
-							additionalData,
-							nodeTypeAndVersion,
-							currentNodeParameters,
-							resourceIds.credentials,
-							filter,
-							paginationToken,
-						);
-
-						return {
-							ok: true,
-							kind: lookup.kind,
-							parameterPath: normalizeParameterPath(parameterPath),
-							methodName: lookup.methodName,
-							mode: lookup.mode,
-							results: (result.results ?? []).map((option) => ({
-								name: option.name,
-								value: option.value,
-								...(option.url ? { url: option.url } : {}),
-								parameterValue: toResourceLocatorParameterValue(option, lookup.mode),
-							})),
-							paginationToken: result.paginationToken,
-							...(builderHint ? { builderHint } : {}),
-						};
-					}
-
-					const options =
-						lookup.kind === 'loadOptionsMethod'
-							? await deps.dynamicNodeParametersService.getOptionsViaMethodName(
-									lookup.methodName,
-									dynamicPath,
-									additionalData,
-									nodeTypeAndVersion,
-									currentNodeParameters,
-									resourceIds.credentials,
-								)
-							: await deps.dynamicNodeParametersService.getOptionsViaLoadOptions(
-									lookup.loadOptions,
-									additionalData,
-									nodeTypeAndVersion,
-									currentNodeParameters,
-									resourceIds.credentials,
-								);
-
-					return {
-						ok: true,
-						kind: lookup.kind,
-						parameterPath: normalizeParameterPath(parameterPath),
-						...(lookup.kind === 'loadOptionsMethod' ? { methodName: lookup.methodName } : {}),
-						results: options.map((option) => ({
-							name: option.name,
-							value: option.value,
-							...(option.description ? { description: option.description } : {}),
-							parameterValue: toLoadedOptionParameterValue(option),
-						})),
-						...(builderHint ? { builderHint } : {}),
-					};
-				} catch (error) {
-					return {
-						ok: false,
-						code: 'lookup_failed',
-						message: error instanceof Error ? error.message : 'Failed to fetch parameter options',
-					};
-				}
-			},
-		)
+		.handler(async (input) => await resolveResourceLocatorOptions(input, deps))
 		.build();
 }
