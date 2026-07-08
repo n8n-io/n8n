@@ -1,0 +1,29 @@
+{
+	"description": "Compound request: classify an independent scheduled notification and a chat-based support assistant separately.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "1) Every weekday at 9am, Slack me the Berlin weather. 2) Create a support assistant that chats with customers and decides when to escalate."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["intent-resolution", "compound", "independent-lifecycles"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"parts": [
+			{ "label": "weather notification", "accepts": [{ "anchor": "wf", "embedsOther": false }] },
+			{
+				"label": "support assistant",
+				"accepts": [
+					{ "anchor": "agent", "embedsOther": false },
+					{ "anchor": "agent", "embedsOther": true }
+				]
+			}
+		]
+	},
+	"processExpectations": [
+		"The agent explains that the weather notification is a scheduled trigger with a fixed action, while the support assistant's chat-based escalation decisions require agent-anchored reasoning.",
+		"The agent treats the two parts as independent automations with separate lifecycles rather than merging them into a single classification.",
+		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+	]
+}

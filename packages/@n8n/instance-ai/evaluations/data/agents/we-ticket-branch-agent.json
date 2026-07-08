@@ -1,0 +1,19 @@
+{
+	"description": "Intent-only request: classify FAQ-branch ticket handling as workflow-anchored with an agent embedded on the open-ended branch.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "When a support ticket arrives, if it matches an FAQ reply from the KB; otherwise hand it to an agent to investigate and propose a resolution."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["intent-resolution", "event-triggered", "branch-embed-agent"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"accepts": [{ "anchor": "wf", "embedsOther": true }]
+	},
+	"processExpectations": [
+		"The agent explains that the event trigger and deterministic FAQ-match branch form the workflow shell, while the open-ended investigation-and-resolution branch for non-matching tickets is handled by an embedded agent.",
+		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+	]
+}

@@ -1,0 +1,19 @@
+{
+	"description": "Intent-only request: classify a cross-session Python tutor as agent-anchored due to persistent memory.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "A tutor that helps me learn Python over multiple sessions, remembering what we covered."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["intent-resolution", "chat", "stateful", "memory"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"accepts": [{ "anchor": "agent", "embedsOther": false }]
+	},
+	"processExpectations": [
+		"The agent explains that cross-session memory of what has been covered combined with ongoing chat interaction is a hallmark of an agent-anchored design.",
+		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+	]
+}

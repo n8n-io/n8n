@@ -262,6 +262,10 @@ Operational details:
 - The judge retries on failure, has a per-attempt timeout, and falls back to an all-fail verdict — a judge failure can't break a run.
 - Absent both fields, it's a complete no-op.
 
+**`intentExpectation`** declares the accepted `{anchor, embedsOther}` classification(s) for an intent-resolution case (`data/agents/`), instead of an NL `processExpectations` entry. It's graded **deterministically** by exact match against the agent's fenced ```` ```intent ```` JSON block (see the `INTENT_CLASSIFICATION_PREAMBLE` in `data/agents/index.ts`), not by the LLM judge — `build-expectations/intent.ts` parses the block and emits `BuildExpectationResult[]` directly. `accepts` with more than one tuple expresses legitimate ambiguity tolerance (either is a pass); `parts` (one `{label, accepts}` per part, matched by order) handles compound requests. Results are reported as build-expectation units alongside `processExpectations`/`outcomeExpectations`.
+
+After an agents-tier run, `pnpm eval:intent-slices [eval-results.json]` reads the resulting `eval-results.json` offline and prints per-tag and per-difficulty accuracy for these intent-classification verdicts, against monitoring bars (overall ≥75%, `false-friend` tag ≥80%, `easy` difficulty ≥90%). Informational only — it never fails the run, it just flags slices worth investigating.
+
 ## Environment variables
 
 | Variable | Required | Description |

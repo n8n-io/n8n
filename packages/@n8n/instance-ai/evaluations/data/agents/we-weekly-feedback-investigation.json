@@ -1,0 +1,19 @@
+{
+	"description": "Intent-only request: classify scheduled feedback root-cause investigation as workflow-anchored with an embedded agent.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every Sunday, take last week's customer feedback tickets: for each, have an agent cross-reference our docs and past tickets to identify the root cause, then aggregate findings into a report and email leadership."
+		}
+	],
+	"complexity": "complex",
+	"tags": ["intent-resolution", "scheduled", "batch", "embed-agent", "reporting"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"accepts": [{ "anchor": "wf", "embedsOther": true }]
+	},
+	"processExpectations": [
+		"The agent explains that the scheduled trigger and deterministic aggregation/email steps are workflow-shaped, while the root-cause cross-referencing across docs and past tickets is agentic tool-use handled by an embedded agent.",
+		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+	]
+}

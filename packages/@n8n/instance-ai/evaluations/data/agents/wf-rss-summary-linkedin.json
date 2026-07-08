@@ -1,0 +1,19 @@
+{
+	"description": "Intent-only request: classify an RSS-to-LinkedIn summarization pipeline as workflow-anchored with a bounded LLM transform.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "When a new article hits our RSS feed, summarize it in two sentences and post to LinkedIn."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["intent-resolution", "event-triggered", "single-llm-transform"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"accepts": [{ "anchor": "wf", "embedsOther": false }]
+	},
+	"processExpectations": [
+		"The agent explains that the LLM is used as a stateless summarization step within a linear pipeline, without any iterative reasoning or runtime decision-making.",
+		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+	]
+}

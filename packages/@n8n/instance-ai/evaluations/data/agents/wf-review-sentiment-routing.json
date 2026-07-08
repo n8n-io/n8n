@@ -1,0 +1,19 @@
+{
+	"description": "Intent-only request: classify sentiment-based review routing as workflow-anchored with a bounded LLM step.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Analyze review sentiment; send negative ones to support, auto-thank the positive ones."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["intent-resolution", "event-triggered", "bounded-llm"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"accepts": [{ "anchor": "wf", "embedsOther": false }]
+	},
+	"processExpectations": [
+		"The agent explains that sentiment analysis is a bounded classification step feeding a fixed two-way branch, not an open-ended decision loop.",
+		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+	]
+}

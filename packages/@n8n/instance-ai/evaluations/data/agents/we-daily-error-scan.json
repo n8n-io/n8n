@@ -1,0 +1,19 @@
+{
+	"description": "Intent-only request: classify a scheduled log-anomaly scan as workflow-anchored with an agent embedded for the reasoning-heavy analysis.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every morning at 8am, have an agent scan our overnight error logs, identify unusual patterns, and post a summary to the #eng-oncall Slack channel."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["intent-resolution", "scheduled", "embed-agent", "notification"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"accepts": [{ "anchor": "wf", "embedsOther": true }]
+	},
+	"processExpectations": [
+		"The agent explains that the scheduled trigger and Slack notification form a workflow shell, while the open-ended anomaly identification in the logs is reasoning-dominated work suited to an embedded agent step.",
+		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+	]
+}

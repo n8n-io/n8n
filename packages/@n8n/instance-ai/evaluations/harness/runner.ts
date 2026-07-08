@@ -42,6 +42,7 @@ import { isMockableTriggerNodeType } from '../../src/tools/workflows/workflow-js
 import { SONNET_MODEL } from '../../src/utils/eval-agents';
 import { runBinaryChecks } from '../binaryChecks/index';
 import type { BinaryCheckContext, CheckOutcome } from '../binaryChecks/types';
+import { gradeIntentExpectation } from '../build-expectations/intent';
 import { selectAuthorExpectations } from '../build-expectations/select';
 import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
 import { type VerifierAttemptDebug, verifyChecklist } from '../checklist/verifier';
@@ -284,11 +285,14 @@ export async function runWorkflowTestCase(
 					return allFailVerdicts(expectationsToJudge, 'judge error');
 				})
 			: Promise.resolve<BuildExpectationResult[]>([]);
+	const intentResults: BuildExpectationResult[] = testCase.intentExpectation
+		? gradeIntentExpectation(testCase.intentExpectation, build.buildTrace?.finalText)
+		: [];
 
 	if (!build.success || !build.workflowId) {
 		result.buildError = build.error;
 		const expectationResults = await expectationsPromise;
-		const buildExpectationResults = expectationResults;
+		const buildExpectationResults = [...intentResults, ...expectationResults];
 		if (buildExpectationResults.length > 0)
 			result.buildExpectationResults = buildExpectationResults;
 		return result;
@@ -349,7 +353,7 @@ export async function runWorkflowTestCase(
 		expectationsPromise,
 	]);
 	result.executionScenarioResults = scenarioResults;
-	const buildExpectationResults = expectationResults;
+	const buildExpectationResults = [...intentResults, ...expectationResults];
 	if (buildExpectationResults.length > 0) result.buildExpectationResults = buildExpectationResults;
 
 	const scenarioMs = Date.now() - scenarioStart;

@@ -91,7 +91,9 @@ describe('Instance AI runtime skills', () => {
 		const loadResult = await loadTool.handler?.({ skillId: 'intent-recognition' }, {});
 		const loadedText = skillLoadText(loadResult);
 		expect(loadedText).toContain('[Skill: "intent-recognition"]');
-		expect(loadedText).toContain('workflow | hybrid | agent | single-ai-task | ambiguous');
+		expect(loadedText).toContain(
+			'workflow-anchored | agent-anchored | needs-clarification | out-of-scope',
+		);
 	});
 
 	it('loads the bundled Computer Use credential setup skill', async () => {

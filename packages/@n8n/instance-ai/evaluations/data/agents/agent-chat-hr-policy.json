@@ -1,0 +1,22 @@
+{
+	"description": "Intent-only request: classify a conversational HR-policy assistant as agent-anchored, tolerant of embedded-tool implementation.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I want to chat with an assistant that can look up my company's HR policies and answer questions."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["intent-resolution", "chat", "tool-use"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"accepts": [
+			{ "anchor": "agent", "embedsOther": false },
+			{ "anchor": "agent", "embedsOther": true }
+		]
+	},
+	"processExpectations": [
+		"The agent explains that the multi-turn conversational Q&A pattern with tool use for policy lookup is agent-shaped, regardless of whether the lookup itself is implemented natively or as a workflow tool.",
+		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+	]
+}
