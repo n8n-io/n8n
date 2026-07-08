@@ -1,6 +1,6 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, type EntityManager, In, Repository } from '@n8n/typeorm';
+import { DataSource, type EntityManager, In, LessThanOrEqual, Repository } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -68,6 +68,24 @@ export interface NewOccurrence {
 	runAt: Date;
 	maxAttempts: number;
 }
+
+/**
+ * Point-in-time queue health, read at Prometheus scrape time
+ * (see {@link ScheduledTaskRepository.getMetricSnapshot}).
+ *
+ * Declared as a `type` (not `interface`) so it satisfies structural `JsonObject`
+ * constraints (e.g. cli's `CachedMetricQuery`) without a duplicate local alias.
+ */
+export type MetricSnapshot = {
+	/** Rows awaiting a worker, whether or not they are due yet. */
+	pending: number;
+	/** Pending rows already due (`runAt <= now`): the actionable queue depth. */
+	due: number;
+	/** Rows a worker currently holds. */
+	running: number;
+	/** How far the oldest due pending row has waited, in ms; `null` when none is due. */
+	oldestPendingAgeMs: number | null;
+};
 
 @Service()
 export class ScheduledTaskRepository extends Repository<ScheduledTask> {
@@ -304,6 +322,43 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			.orderBy('t.leaseExpiresAt', 'ASC')
 			.limit(limit)
 			.getMany();
+	}
+
+	/**
+	 * Read queue health at Prometheus scrape time: the counts behind the queue-depth
+	 * gauges (`pending`, `due`, `running`) and the scheduling-lag gauge
+	 * (`oldestPendingAgeMs`). `now` is the caller's scrape instant, so the gauges reflect
+	 * a single consistent moment; `due`-ness is judged against it rather than the DB clock.
+	 *
+	 * Portability over query count: the counts are three `getCount()` calls and the oldest
+	 * due row is one `findOne`, all via find options, so no dialect-specific conditional
+	 * aggregation is needed and both SQLite and Postgres take the same path. The caller
+	 * caches the whole snapshot between scrapes, so the extra round-trips don't matter.
+	 * The oldest-row lookup is skipped when nothing is due.
+	 */
+	async getMetricSnapshot(now: Date): Promise<MetricSnapshot> {
+		const [pending, due, running] = await Promise.all([
+			this.countBy({ status: ScheduledTaskStatus.Pending }),
+			this.countBy({ status: ScheduledTaskStatus.Pending, runAt: LessThanOrEqual(now) }),
+			this.countBy({ status: ScheduledTaskStatus.Running }),
+		]);
+
+		let oldestPendingAgeMs: number | null = null;
+		if (due > 0) {
+			// TypeORM maps the datetime column to a `Date` on both drivers, so reading the
+			// oldest due row's `runAt` back avoids parsing a raw MIN() that each driver types
+			// differently (Postgres Date vs SQLite string).
+			const oldest = await this.findOne({
+				select: { runAt: true },
+				where: { status: ScheduledTaskStatus.Pending, runAt: LessThanOrEqual(now) },
+				order: { runAt: 'ASC' },
+			});
+			if (oldest !== null) {
+				oldestPendingAgeMs = now.getTime() - oldest.runAt.getTime();
+			}
+		}
+
+		return { pending, due, running, oldestPendingAgeMs };
 	}
 
 	/**

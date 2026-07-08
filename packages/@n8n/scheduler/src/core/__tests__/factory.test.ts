@@ -2,6 +2,7 @@ import { ScheduledTaskStatus } from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
 
 import { InvalidLifecycleOptionsError } from '../errors';
+import type { SchedulerMetrics } from '../../observability/metrics';
 import { createScheduler } from '../factory';
 import type { SchedulerDeps, SchedulerTaskStore } from '../factory';
 import type { MaterializerTransaction, RunInTransaction } from '../materializer';
@@ -758,5 +759,68 @@ describe('createScheduler reap', () => {
 			message: 'Scheduler dead-lettered a task; its last attempt lost its lease',
 			context: { taskId: '7', attempts: 3, maxAttempts: 3 },
 		});
+	});
+});
+
+describe('createScheduler metrics', () => {
+	it('records the materialization outcome from the pass summary', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const corrupt: ScheduledJob = {
+			id: 7,
+			taskType: 'test-task',
+			payload: {},
+			kind: 'cron',
+			cronExpression: null,
+			timezone: null,
+			intervalSeconds: null,
+			fireAt: null,
+			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
+			lastFiredAt: null,
+			maxAttempts: 3,
+		};
+		const tx = mock<MaterializerTransaction>();
+		tx.claimDueJobs.mockResolvedValue({
+			now: new Date('2026-01-01T00:00:00.000Z'),
+			jobs: [corrupt],
+		});
+		tx.recordOccurrences.mockResolvedValue(0);
+		const materializerTransaction: RunInTransaction = async (work) => await work(tx);
+		const { scheduler } = makeScheduler({ materializerTransaction, metrics });
+
+		await scheduler.materialize();
+
+		// One corrupt job deferred, no occurrences recorded.
+		expect(metrics.recordMaterialized).toHaveBeenCalledWith(0, 1);
+	});
+
+	it('records the reaper outcome from the sweep result', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		taskStore.findExpiredLeases.mockResolvedValue([
+			{ id: '7', attempts: 2, maxAttempts: 3, leaseEpoch: 1 },
+		]);
+		taskStore.deadLetterExpired.mockResolvedValue(1);
+
+		await scheduler.reap();
+
+		expect(metrics.recordReaped).toHaveBeenCalledWith(0, 1);
+	});
+
+	it('records the retention outcome from the pass summary', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		taskStore.deleteFinishedOlderThan.mockResolvedValueOnce(5).mockResolvedValue(0);
+
+		await scheduler.prune();
+
+		expect(metrics.recordPruned).toHaveBeenCalledWith(5);
+	});
+
+	it('defaults to a safe no-op when no metrics port is supplied', async () => {
+		const { scheduler, taskStore } = makeScheduler();
+		taskStore.deleteFinishedOlderThan.mockResolvedValue(0);
+
+		// No metrics dep: the defaulted no-op must not throw.
+		await expect(scheduler.prune()).resolves.toEqual({ deleted: 0, drained: true });
 	});
 });

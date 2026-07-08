@@ -18,6 +18,7 @@ import type { ReaperOptions, ReaperTaskStore } from './reaper';
 import { DEFAULT_RETENTION_OPTIONS, prune } from './retention';
 import type { RetentionOptions, RetentionStore } from './retention';
 import type { Scheduler, SchedulerPasses } from './scheduler';
+import { noopMetrics, type SchedulerMetrics } from '../observability/metrics';
 
 export type SchedulerEventLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -59,6 +60,9 @@ export interface SchedulerDeps {
 	lifecycle?: Partial<LifecycleOptions>;
 
 	onEvent?: (event: SchedulerEvent) => void;
+
+	/** Host metrics; defaults to a no-op. */
+	metrics?: SchedulerMetrics;
 }
 
 /**
@@ -86,6 +90,7 @@ function withDefaults<T extends object>(defaults: T, overrides: Partial<T> = {})
  */
 export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasses {
 	const { hostId, materializerTransaction, taskStore, onEvent } = deps;
+	const metrics = deps.metrics ?? noopMetrics;
 	const materializerOptions = withDefaults(DEFAULT_MATERIALIZER_OPTIONS, deps.materializer);
 	const executorOptions = withDefaults(DEFAULT_EXECUTOR_OPTIONS, deps.executor);
 	const reaperOptions = withDefaults(DEFAULT_REAPER_OPTIONS, deps.reaper);
@@ -149,33 +154,40 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 	const described = (error: unknown) => ensureError(error).message;
 
 	const registry = new TaskHandlerRegistry();
-	const executor = new Executor(taskStore, registry, new PrecisionTimer(), executorOptions, {
-		onLeaseShorterThanLookahead: (context) => {
-			emit(
-				'warn',
-				'Scheduler executor lookahead reaches or exceeds the lease; claimed tasks may lose their lease before firing',
-				{ ...context },
-			);
+	const executor = new Executor(
+		taskStore,
+		registry,
+		new PrecisionTimer(),
+		executorOptions,
+		{
+			onLeaseShorterThanLookahead: (context) => {
+				emit(
+					'warn',
+					'Scheduler executor lookahead reaches or exceeds the lease; claimed tasks may lose their lease before firing',
+					{ ...context },
+				);
+			},
+			onMissingHandler: (task) => {
+				emit('warn', 'Scheduler claimed a task with no registered handler; claim released', {
+					taskId: task.id,
+					taskType: task.taskType,
+				});
+			},
+			onFireError: (task, error) => {
+				emit('error', 'Scheduler could not record a task outcome; left for the reaper', {
+					taskId: task.id,
+					error: described(error),
+				});
+			},
+			onReleaseError: (taskId, error) => {
+				emit('error', 'Scheduler failed to release a claimed task; left for the reaper', {
+					taskId,
+					error: described(error),
+				});
+			},
 		},
-		onMissingHandler: (task) => {
-			emit('warn', 'Scheduler claimed a task with no registered handler; claim released', {
-				taskId: task.id,
-				taskType: task.taskType,
-			});
-		},
-		onFireError: (task, error) => {
-			emit('error', 'Scheduler could not record a task outcome; left for the reaper', {
-				taskId: task.id,
-				error: described(error),
-			});
-		},
-		onReleaseError: (taskId, error) => {
-			emit('error', 'Scheduler failed to release a claimed task; left for the reaper', {
-				taskId,
-				error: described(error),
-			});
-		},
-	});
+		metrics,
+	);
 
 	if (retentionOptions.failedRetentionSeconds < retentionOptions.retentionSeconds) {
 		emit(
@@ -188,8 +200,8 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 		);
 	}
 
-	const runMaterialize = async (signal?: AbortSignal) =>
-		await materialize(
+	const runMaterialize = async (signal?: AbortSignal) => {
+		const summary = await materialize(
 			materializerTransaction,
 			materializerOptions,
 			{
@@ -207,12 +219,15 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 			},
 			signal,
 		);
+		metrics.recordMaterialized(summary.occurrences, summary.deferredJobs);
+		return summary;
+	};
 
 	const runExecute = async (signal?: AbortSignal) =>
 		await executor.claimAndSchedule(hostId, signal);
 
-	const runReap = async (signal?: AbortSignal) =>
-		await reap(
+	const runReap = async (signal?: AbortSignal) => {
+		const result = await reap(
 			taskStore,
 			reaperOptions,
 			{
@@ -234,6 +249,9 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 			},
 			signal,
 		);
+		metrics.recordReaped(result.reclaimed, result.deadLettered);
+		return result;
+	};
 
 	const runPrune = async (signal?: AbortSignal) => {
 		const summary = await prune(taskStore, retentionOptions, signal);
@@ -244,6 +262,7 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 		} else if (summary.drained && summary.deleted > 0) {
 			emit('debug', 'Scheduler retention deleted finished tasks', { ...summary });
 		}
+		metrics.recordPruned(summary.deleted);
 		return summary;
 	};
 

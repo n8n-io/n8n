@@ -6,6 +6,7 @@ import { DEFAULT_EXECUTOR_OPTIONS, type ExecutorOptions } from './options';
 import type { PrecisionTimer } from './precision-timer';
 import type { ClaimedTaskRef, ClaimDueTasksBatch, ExecutorTaskStore } from './store';
 import type { TaskHandlerRegistry } from './task-handler';
+import { noopMetrics, type SchedulerMetrics } from '../../observability/metrics';
 import type { ClaimedTask } from '../types';
 
 type ClaimedEntry = { host: string; task: ClaimedTask };
@@ -81,6 +82,7 @@ export class Executor {
 		private readonly timer: PrecisionTimer,
 		private readonly options: ExecutorOptions = DEFAULT_EXECUTOR_OPTIONS,
 		private readonly hooks: ExecutorHooks = {},
+		private readonly metrics: SchedulerMetrics = noopMetrics,
 	) {
 		this.leaseMs = options.leaseSeconds * Time.seconds.toMilliseconds;
 		// Claim one driver tick ahead so a task due before the next tick fires precisely
@@ -195,6 +197,17 @@ export class Executor {
 		const started = await this.store.markStarted(claim);
 		if (started === 0) return;
 
+		// Now that the task is confirmed ours and started, it is genuinely being dispatched.
+		// Lag is measured against `runAt` (the effective fire time, pushed forward by retry
+		// backoff), not the fixed original slot, so a retry's backoff wait isn't logged as lag.
+		// The timer's clock (the one scheduling used) is used, not a fresh wall clock, so a
+		// skewed instance doesn't bias the lag it also scheduled against; clamp non-negative
+		// since a timer can fire marginally early.
+		this.metrics.recordDispatch(task.taskType);
+		const lagMs = this.timer.now() - task.runAt.getTime();
+		const lagSeconds = Math.max(0, lagMs) / Time.seconds.toMilliseconds;
+		this.metrics.observeDispatchLagSeconds(task.taskType, lagSeconds);
+
 		// Record success only after the try, so a failure to record it isn't taken for a
 		// handler failure. Such a failure propagates out (caught by the detached `.catch`
 		// in claimAndSchedule) and leaves the row `running` for the reaper.
@@ -204,14 +217,23 @@ export class Executor {
 			const message = ensureError(error).message;
 			const nextAttempts = task.attempts + 1;
 			if (nextAttempts >= task.maxAttempts) {
-				await this.store.failTaskTerminal(claim, message);
+				// Guard the metric on rows affected: the write resolves 0 (not rejects) when the
+				// row was reclaimed by the reaper on lease overrun, so don't count that as ours.
+				const n = await this.store.failTaskTerminal(claim, message);
+				if (n > 0) {
+					this.metrics.recordFireOutcome(task.taskType, 'failure');
+					// Attempts exhausted, handler kept throwing: a permanent failure is a dead-letter.
+					this.metrics.recordDeadLettered();
+				}
 			} else {
-				await this.store.rescheduleTask(claim, backoff(nextAttempts), message);
+				const n = await this.store.rescheduleTask(claim, backoff(nextAttempts), message);
+				if (n > 0) this.metrics.recordRetry(task.taskType);
 			}
 			return;
 		}
 
-		await this.store.completeTask(claim);
+		const n = await this.store.completeTask(claim);
+		if (n > 0) this.metrics.recordFireOutcome(task.taskType, 'success');
 	}
 
 	/** Release a claim, reporting but swallowing failures: the reaper still recovers the row. */
