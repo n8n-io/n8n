@@ -55,17 +55,12 @@ export function applyPaginationRequestData(
 
 	const merged = merge({}, requestData, preparedPaginationData);
 
-	// When the next-page URL already embeds query params (e.g. an OData
-	// "@odata.nextLink" carrying $select/$skip), don't carry the original qs keys
-	// over as well - the HTTP client would re-apply them as params on top of the
-	// URL and produce duplicates that some APIs reject (Microsoft Graph HTTP 400).
-	if (merged.qs && typeof paginationRequestData.url === 'string') {
-		const parsedUrl = tryParseUrl(paginationRequestData.url);
-		if (parsedUrl) {
-			for (const key of parsedUrl.searchParams.keys()) {
-				delete merged.qs[key];
-			}
-		}
+	// A full next-page URL (e.g. OData @odata.nextLink) may contain query params.
+	// Drop any duplicate keys from qs, so the HTTP client doesn't re-append them.
+	const parsedUrl =
+		typeof paginationRequestData.url === 'string' ? tryParseUrl(paginationRequestData.url) : null;
+	if (merged.qs && parsedUrl) {
+		for (const key of parsedUrl.searchParams.keys()) delete merged.qs[key];
 	}
 
 	return merged;

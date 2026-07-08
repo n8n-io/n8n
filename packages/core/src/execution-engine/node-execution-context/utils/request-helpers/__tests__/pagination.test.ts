@@ -137,12 +137,8 @@ describe('applyPaginationRequestData', () => {
 	});
 
 	test('should not re-apply qs keys already embedded in the next-page URL', () => {
-		// Reproduces CAT-3584: OData "@odata.nextLink" pagination.
-		// The first request sets qs.$select. The next page is a full URL that already
-		// embeds $select (and $skip). Merging the original qs back on top makes the HTTP
-		// client re-apply $select as an axios param on a URL that already carries it,
-		// producing a duplicated $select that Microsoft Graph rejects with HTTP 400
-		// "Query option '$select' was specified more than once".
+		// When the next-page URL already carries a query param, keeping it in qs would
+		// make the HTTP client duplicate it, which some APIs reject.
 		const originalRequestOptions: IRequestOptions = {
 			uri: 'https://graph.microsoft.com/v1.0/users',
 			method: 'GET',
