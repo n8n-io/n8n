@@ -2,6 +2,7 @@
 // same WorkflowTestCaseWithFile[] so the rest of the pipeline is source-agnostic.
 
 import { loadAgentEvalTestCasesWithFiles } from './agents';
+import { loadNaturalAgentEvalTestCasesWithFiles } from './agents-natural';
 import { loadWorkflowTestCasesWithFiles, type WorkflowTestCaseWithFile } from './workflows';
 import type { CliArgs } from '../cli/args';
 import type { EvalLogger } from '../harness/logger';
@@ -25,6 +26,7 @@ export async function loadTestCases(
 	const cases = [
 		...loadWorkflowTestCasesWithFiles(args.filter, args.exclude),
 		...loadAgentEvalTestCasesWithFiles(args.filter, args.exclude),
+		...loadNaturalAgentEvalTestCasesWithFiles(args.filter, args.exclude),
 	];
 	const { tier } = args;
 	if (!tier) return cases;

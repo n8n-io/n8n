@@ -1,0 +1,16 @@
+{
+	"description": "Natural-arm sibling of data/agents/adv-says-wf-is-agent.json (false friend: says 'workflow', behavior is chat-based Q&A). Gold mirrors the exam case (agent-anchored, either embeds value). NOTE: a chat-trigger workflow with an AI Agent node is n8n's long-established pattern for this request — if the natural build consistently goes that way while the exam grades it agent-anchored, that divergence is a finding about the taxonomy vs the product, not noise.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Set up a simple workflow that chats with our customers and answers their product questions."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["intent-resolution", "false-friend", "surface-vocab", "natural-arm"],
+	"datasets": ["agents-natural"],
+	"processExpectations": [
+		"The agent creates this via the agent-builder path (loading the agent-builder skill and using the agent_builder / create_agent tools) rather than building a fixed workflow pipeline, because chat-based product Q&A is agent-shaped despite the word 'workflow'.",
+		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to build."
+	]
+}

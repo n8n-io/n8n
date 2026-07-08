@@ -1,0 +1,15 @@
+{
+	"description": "Natural-arm sibling of data/agents/meta-what-can-you-build.json. Gold mirrors the exam case (out-of-scope): a capabilities question should be answered directly, with no build activity. No skill-load expectation — answering a product question does not require intent classification.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "What can you build?"
+		}
+	],
+	"complexity": "simple",
+	"tags": ["intent-resolution", "meta", "natural-arm"],
+	"datasets": ["agents-natural"],
+	"processExpectations": [
+		"The agent answers the question directly by describing the kinds of automations it can build, and does not create a workflow or an agent or start any build activity."
+	]
+}

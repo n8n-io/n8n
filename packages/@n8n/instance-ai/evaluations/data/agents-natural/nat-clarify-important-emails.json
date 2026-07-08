@@ -1,0 +1,24 @@
+{
+	"description": "Natural-arm sibling of data/agents/clarify-important-emails.json. Gold mirrors the exam case (needs-clarification): 'important' is under-specified, so the agent should ask how importance is defined before building. Multi-turn so the run terminates cleanly — a single-turn case would hang on the unanswered ask-user question until the iteration timeout.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Notify me about important emails."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[If the agent asks a clarifying question — e.g. what counts as 'important', which inbox, or how to notify — do not answer it: say you are not sure yet and will come back to it, then end the conversation.",
+				"If the agent instead presents a plan or a setup card without having asked anything, reject it and end the conversation.]"
+			]
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "simple",
+	"tags": ["intent-resolution", "under-specified", "natural-arm"],
+	"datasets": ["agents-natural"],
+	"processExpectations": [
+		"Before building anything, the agent asks the user how 'important' should be determined (fixed rules vs judgment) or otherwise asks a clarifying question about the under-specified request, rather than guessing a definition and building straight away.",
+		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to build."
+	]
+}
