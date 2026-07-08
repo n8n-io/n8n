@@ -5,6 +5,7 @@ Tests whether workflows built by Instance AI actually work by executing them wit
 Five harnesses live here:
 
 - **`eval:instance-ai`** — end-to-end build + mocked execution + LLM verification (drives a running n8n instance)
+- **`eval:agents`** — user-intent / agent-building rubric loaded from the `agents` dataset tier in `data/agents/`
 - **`eval:subagent`** — legacy command name for the workflow-build compatibility corpus; it drives the live orchestrator/skill build path, scored by binary checks
 - **`eval:discovery`** — orchestrator in-process, scored against required or forbidden tool/dispatch events (no n8n server)
 - **`eval:pairwise`** — live orchestrator workflow builds, scored by an LLM judge panel against do/don't lists. Intended for head-to-head comparison with `ai-workflow-builder.ee` on the same dataset
@@ -140,7 +141,7 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--base-url` | `http://localhost:5678` | n8n instance URL |
 | `--email` | E2E test owner | Override login email (or `N8N_EVAL_EMAIL`) |
 | `--password` | E2E test owner | Override login password (or `N8N_EVAL_PASSWORD`) |
-| `--timeout-ms` | `900000` | Per-test-case timeout |
+| `--timeout-ms` | `900000` | Per-test-case timeout (the MCP CI workflow passes `1500000` — its multi-agent cases with large mocked payloads legitimately run past 15 min) |
 | `--output-dir` | cwd | Where to write `eval-results.json` |
 | `--dataset` | `instance-ai-workflow-evals` | LangSmith dataset name. Synced from the JSON test cases (honoring `--filter`/`--exclude`/`--tier`) before each run — point an isolated cohort (e.g. MCP) at its own dataset to avoid writing to the shared one |
 | `--baseline-prefix` | `instance-ai-baseline-` | Experiment-name prefix the regression comparison uses to find the baseline. Override (e.g. `mcp-baseline-`) so a cohort compares against its own baselines instead of the Instance AI one |
@@ -148,7 +149,7 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--experiment-name` | auto | LangSmith experiment prefix (defaults to `{branch}-{sha}` in CI or `local-{branch}-{sha}-dirty?` locally) |
 | `--iterations` | `1` | Run each test case N times with fresh builds |
 | `--tier` | — | Filter to test cases whose `datasets` array contains this value (e.g. `--tier pr` for the PR-time set). Combines with `--filter`/`--exclude`. |
-| `--source` | `disk` | Where test cases come from. `disk` (default) reads `data/workflows/`; `langtracer` pulls a suite from LangTracer's REST API — see [Sourcing from LangTracer](#sourcing-test-cases-from-langtracer) |
+| `--source` | `disk` | Where test cases come from. `disk` (default) reads `data/workflows/` and `data/agents/`; `langtracer` pulls a suite from LangTracer's REST API — see [Sourcing from LangTracer](#sourcing-test-cases-from-langtracer) |
 | `--suite` | — | LangTracer suite slug (or numeric id) to pull when `--source langtracer` (required in that mode) |
 | `--build-via-mcp` | `false` | Build each workflow by driving the lane's MCP server with `claude -p`, then verify it on that same lane — see [Building via MCP (`--build-via-mcp`)](#building-via-mcp---build-via-mcp). Works across multiple `--base-url` lanes; requires `LANGSMITH_API_KEY`; mutually exclusive with `--prebuilt-workflows` |
 | `--mcp-server` | `n8n-local` | MCP server name for the staged `claude` config + tool allowlist (`--build-via-mcp`) |
@@ -162,20 +163,21 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 
 ### Test-case datasets (logical groupings)
 
-Each test case declares a `datasets` array in its JSON (default `["full"]` if omitted). The value identifies one or more logical groupings the case belongs to. Two named groupings exist today:
+Each test case declares a `datasets` array in its JSON (default `["full"]` if omitted). The value identifies one or more logical groupings the case belongs to. Named groupings include:
 
 | Value | What it means |
 |------|----------------|
 | `full` | Default — every case runs in this grouping. Use for nightly / full-suite runs. |
 | `pr` | Curated thin set for PR-time runs. ~6 cases, chosen for capability diversity and high baseline reliability. |
+| `agents` | User-intent / agent-building rubric cases loaded from `data/agents/`. |
 
-A case can belong to multiple groupings — e.g. PR-tier cases declare `"datasets": ["pr", "full"]` so they run in both contexts. On sync, each value is propagated to the LangSmith example as a split alongside the file slug, so `--tier <name>` translates to a server-side splits filter.
+A case can belong to multiple groupings — e.g. PR-tier cases declare `"datasets": ["pr", "full"]` so they run in both contexts. Agent intent cases declare `"datasets": ["agents"]` and can be run with `pnpm eval:agents` or `pnpm eval:instance-ai --tier agents`. On sync, each value is propagated to the LangSmith example as a split alongside the file slug, so `--tier <name>` translates to a server-side splits filter.
 
 **Adding a case to `pr`**: edit the case's JSON, add `"pr"` to its `datasets` array, re-sync. No promotion process is enforced today — use judgment about reliability + capability coverage when curating.
 
 ### Sourcing test cases from LangTracer
 
-By default the runner reads the JSON cases in `data/workflows/` (disk). Pass `--source langtracer --suite <slug>` to instead pull a suite from [LangTracer](https://github.com/n8n-io/lang-tracer) over its REST API (`GET /api/v1/suites/:id/export`), validated through the same `WorkflowTestCaseSchema`. Disk stays the default, so existing local runs and CI (which never pass `--source`) are unaffected.
+By default the runner reads the JSON cases in `data/workflows/` (disk). Pass `--source langtracer --suite <slug>` to instead pull a suite from [LangTracer](https://github.com/n8n-io/lang-tracer) over its REST API (`GET /api/v1/suites/:id/export`), validated through the same `EvalTestCaseSchema`. Disk stays the default, so existing local runs and CI (which never pass `--source`) are unaffected.
 
 Set these in `.env.local`:
 
@@ -453,7 +455,7 @@ bound for keys with rate-limit headroom, not the starting point.
 ## Discovery evals
 
 Discovery evals run the orchestrator in-process and assert first-hop tool or
-sub-agent routing from captured `tool-call`, `tool-result`, `tool-error`, and
+background-agent routing from captured `tool-call`, `tool-result`, `tool-error`, and
 `agent-spawned` events. Use them when a regression is about which path the
 agent chooses, not whether a generated workflow executes.
 
@@ -466,7 +468,7 @@ pnpm eval:discovery --filter data-table-skill-loading --trials 3 --verbose --fai
 Verbose output lists each trial's completed tool calls with argument previews.
 For data-table routing, look for `load_skill(skillId="data-table-manager")`
 and `data-tables(action="list")`, and verify there are no planning,
-workflow-builder, or delegate entries in the spawned-agent section.
+workflow-builder, or spawned-agent entries in the spawned-agent section.
 
 ## Pairwise evals
 
@@ -629,7 +631,7 @@ To record an isolated cohort without touching the shared dataset or baseline —
 
 ## Adding test cases
 
-Test cases live in `evaluations/data/workflows/*.json`. Drop a file in — the CLI and LangSmith sync pick it up, no registration step. Every case is validated against `data/workflows/schema.ts`.
+Test cases live in `evaluations/data/workflows/*.json`. Drop a file in — the CLI and LangSmith sync pick it up, no registration step. Every case is validated against `harness/schema.ts`.
 
 > The essentials are below. For the full authoring guide — picking a case archetype, sizing assertions so a wrong build fails, multi-turn director scripts, seeding vs synthetic, and calibrating against a real build — follow the [`create-instance-ai-eval` skill](../../../../.agents/skills/create-instance-ai-eval/SKILL.md) (with [`case-shapes.md`](../../../../.agents/skills/create-instance-ai-eval/case-shapes.md) and [`running-evals.md`](../../../../.agents/skills/create-instance-ai-eval/running-evals.md)).
 
@@ -816,6 +818,7 @@ evaluations/
 ├── clients/              # n8n REST + SSE clients
 ├── checklist/            # LLM verification with retry
 ├── credentials/          # Test credential seeding
+├── data/agents/          # user-intent / agent-building eval case JSON files
 ├── data/workflows/       # e2e test case JSON files
 ├── data/subagent/        # workflow-build compatibility fixture JSON files
 ├── data/pairwise/        # Local pairwise fixture (small smoke set)

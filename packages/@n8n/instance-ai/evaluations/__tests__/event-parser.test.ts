@@ -160,6 +160,128 @@ describe('extractOutcomeFromEvents', () => {
 		expect(result.dataTableIds).toContain('dt-001');
 	});
 
+	const dataTablesToolEvents = (
+		args: Record<string, unknown>,
+		result: unknown,
+	): CapturedEvent[] => [
+		{
+			timestamp: 1000,
+			type: 'tool-call',
+			data: {
+				type: 'tool-call',
+				payload: { toolCallId: 'tc-1', toolName: 'data-tables', args },
+			},
+		},
+		{
+			timestamp: 1100,
+			type: 'tool-result',
+			data: {
+				type: 'tool-result',
+				payload: { toolCallId: 'tc-1', toolName: 'data-tables', result },
+			},
+		},
+	];
+
+	it('extracts the nested table id from consolidated data-tables create results', () => {
+		const events = dataTablesToolEvents(
+			{ action: 'create', name: 'posted_leads' },
+			{ table: { id: 'dt-777', name: 'posted_leads' } },
+		);
+
+		const result = extractOutcomeFromEvents(events);
+		expect(result.dataTableIds).toEqual(['dt-777']);
+	});
+
+	it('extracts the table id from stringified data-tables create results', () => {
+		const events = dataTablesToolEvents(
+			{ action: 'create', name: 'posted_leads' },
+			JSON.stringify({ table: { id: 'dt-999' } }),
+		);
+
+		const result = extractOutcomeFromEvents(events);
+		expect(result.dataTableIds).toEqual(['dt-999']);
+	});
+
+	it('does not track data-tables schema results even though they carry a top-level id', () => {
+		const events = dataTablesToolEvents(
+			{ action: 'schema', tableName: 'posted_leads' },
+			{ id: 'dt-888', name: 'posted_leads', columns: [] },
+		);
+
+		const result = extractOutcomeFromEvents(events);
+		expect(result.dataTableIds).toEqual([]);
+	});
+
+	it('does not track denied data-tables create results', () => {
+		const events = dataTablesToolEvents(
+			{ action: 'create', name: 'posted_leads' },
+			{ denied: true, reason: 'User denied the action' },
+		);
+
+		const result = extractOutcomeFromEvents(events);
+		expect(result.dataTableIds).toEqual([]);
+	});
+
+	it('extracts execution IDs from consolidated executions run results', () => {
+		const events: CapturedEvent[] = [
+			{
+				timestamp: 1000,
+				type: 'tool-call',
+				data: {
+					type: 'tool-call',
+					payload: { toolCallId: 'tc-1', toolName: 'executions', args: { action: 'run' } },
+				},
+			},
+			{
+				timestamp: 1100,
+				type: 'tool-result',
+				data: {
+					type: 'tool-result',
+					payload: {
+						toolCallId: 'tc-1',
+						toolName: 'executions',
+						result: { executionId: 'exec-321', status: 'success' },
+					},
+				},
+			},
+		];
+
+		const result = extractOutcomeFromEvents(events);
+		expect(result.executionIds).toContain('exec-321');
+	});
+
+	it('does not track executions get results', () => {
+		const events: CapturedEvent[] = [
+			{
+				timestamp: 1000,
+				type: 'tool-call',
+				data: {
+					type: 'tool-call',
+					payload: {
+						toolCallId: 'tc-1',
+						toolName: 'executions',
+						args: { action: 'get', executionId: 'exec-555' },
+					},
+				},
+			},
+			{
+				timestamp: 1100,
+				type: 'tool-result',
+				data: {
+					type: 'tool-result',
+					payload: {
+						toolCallId: 'tc-1',
+						toolName: 'executions',
+						result: { executionId: 'exec-555', status: 'running' },
+					},
+				},
+			},
+		];
+
+		const result = extractOutcomeFromEvents(events);
+		expect(result.executionIds).toEqual([]);
+	});
+
 	it('captures tool errors', () => {
 		const events: CapturedEvent[] = [
 			{

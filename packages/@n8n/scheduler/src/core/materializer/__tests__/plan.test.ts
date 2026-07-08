@@ -1,27 +1,30 @@
-import type { Schedule, ScheduledJob } from '../../types';
+import type { ScheduledJob } from '../../types';
 import { planOccurrences } from '../plan';
 
 const NOW = new Date('2026-01-01T00:00:00.000Z');
 const secondsAfter = (base: Date, seconds: number) => new Date(base.getTime() + seconds * 1000);
 
-const makeJob = (schedule: Schedule, nextRunAt: Date | null): ScheduledJob => ({
-	id: '1',
+/** An every-10s interval job due at NOW, overridable per test. */
+const makeJob = (overrides: Partial<ScheduledJob> = {}): ScheduledJob => ({
+	id: 1,
 	taskType: 'test',
 	payload: {},
-	schedule,
-	enabled: true,
-	nextRunAt,
+	kind: 'interval',
+	cronExpression: null,
+	timezone: null,
+	intervalSeconds: 10,
+	fireAt: null,
+	nextRunAt: NOW,
 	lastFiredAt: null,
 	maxAttempts: 1,
+	...overrides,
 });
 
-const every: Schedule = { kind: 'interval', intervalSeconds: 10 };
+const options = { windowSeconds: 0, maxPerJob: 100, defaultTimezone: 'UTC' };
 
 describe('planOccurrences', () => {
 	it('records the due occurrence and advances the clock past it', () => {
-		const job = makeJob(every, NOW);
-
-		const plan = planOccurrences(job, NOW, { windowSeconds: 0, maxPerJob: 100 });
+		const plan = planOccurrences(makeJob(), NOW, options);
 
 		expect(plan.occurrences).toEqual([NOW]);
 		expect(plan.nextRunAt).toEqual(secondsAfter(NOW, 10));
@@ -29,9 +32,7 @@ describe('planOccurrences', () => {
 	});
 
 	it('records every occurrence within the window, ahead of time', () => {
-		const job = makeJob(every, NOW);
-
-		const plan = planOccurrences(job, NOW, { windowSeconds: 60, maxPerJob: 100 });
+		const plan = planOccurrences(makeJob(), NOW, { ...options, windowSeconds: 60 });
 
 		// The due fire plus every 10s up to and including now + 60s.
 		expect(plan.occurrences).toHaveLength(7);
@@ -40,9 +41,11 @@ describe('planOccurrences', () => {
 	});
 
 	it('caps at maxPerJob and resumes from the first uncounted occurrence', () => {
-		const job = makeJob(every, NOW);
-
-		const plan = planOccurrences(job, NOW, { windowSeconds: 3600, maxPerJob: 3 });
+		const plan = planOccurrences(makeJob(), NOW, {
+			...options,
+			windowSeconds: 3600,
+			maxPerJob: 3,
+		});
 
 		expect(plan.occurrences).toEqual([NOW, secondsAfter(NOW, 10), secondsAfter(NOW, 20)]);
 		// The 4th occurrence is still within the window, so the next pass continues from it.
@@ -50,28 +53,46 @@ describe('planOccurrences', () => {
 	});
 
 	it('exhausts a one-off: records it once, then no next run', () => {
-		const job = makeJob({ kind: 'one_off', fireAt: NOW }, NOW);
+		const job = makeJob({ kind: 'one_off', intervalSeconds: null, fireAt: NOW });
 
-		const plan = planOccurrences(job, NOW, { windowSeconds: 60, maxPerJob: 100 });
+		const plan = planOccurrences(job, NOW, { ...options, windowSeconds: 60 });
 
 		expect(plan.occurrences).toEqual([NOW]);
 		expect(plan.nextRunAt).toBeNull();
 	});
 
 	it('follows a cron schedule and its timezone', () => {
-		const schedule: Schedule = { kind: 'cron', cronExpression: '0 0 0 * * *', timezone: 'UTC' };
-		const job = makeJob(schedule, NOW);
+		const job = makeJob({
+			kind: 'cron',
+			cronExpression: '0 0 0 * * *',
+			timezone: 'UTC',
+			intervalSeconds: null,
+		});
 
-		const plan = planOccurrences(job, NOW, { windowSeconds: 0, maxPerJob: 100 });
+		const plan = planOccurrences(job, NOW, options);
 
 		expect(plan.occurrences).toEqual([NOW]);
 		expect(plan.nextRunAt).toEqual(new Date('2026-01-02T00:00:00.000Z'));
 	});
 
-	it('does nothing when the next run is past the window', () => {
-		const job = { ...makeJob(every, secondsAfter(NOW, 120)), lastFiredAt: NOW };
+	it('evaluates a cron job with a null timezone in the default timezone', () => {
+		const job = makeJob({
+			kind: 'cron',
+			cronExpression: '0 0 9 * * *', // 9am local
+			timezone: null,
+			intervalSeconds: null,
+		});
 
-		const plan = planOccurrences(job, NOW, { windowSeconds: 60, maxPerJob: 100 });
+		const plan = planOccurrences(job, NOW, { ...options, defaultTimezone: 'Europe/Berlin' });
+
+		// 9am Berlin (UTC+1 in January) is 8am UTC.
+		expect(plan.nextRunAt).toEqual(new Date('2026-01-01T08:00:00.000Z'));
+	});
+
+	it('does nothing when the next run is past the window', () => {
+		const job = makeJob({ nextRunAt: secondsAfter(NOW, 120), lastFiredAt: NOW });
+
+		const plan = planOccurrences(job, NOW, { ...options, windowSeconds: 60 });
 
 		expect(plan.occurrences).toEqual([]);
 		expect(plan.nextRunAt).toEqual(secondsAfter(NOW, 120));
@@ -79,9 +100,10 @@ describe('planOccurrences', () => {
 	});
 
 	it('does nothing when the job has no next run', () => {
-		const job = makeJob(every, null);
-
-		const plan = planOccurrences(job, NOW, { windowSeconds: 60, maxPerJob: 100 });
+		const plan = planOccurrences(makeJob({ nextRunAt: null }), NOW, {
+			...options,
+			windowSeconds: 60,
+		});
 
 		expect(plan.occurrences).toEqual([]);
 		expect(plan.nextRunAt).toBeNull();

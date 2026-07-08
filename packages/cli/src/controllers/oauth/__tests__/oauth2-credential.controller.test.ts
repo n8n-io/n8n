@@ -8,6 +8,7 @@ import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
@@ -26,6 +27,7 @@ describe('OAuth2CredentialController', () => {
 	const externalHooks = mockInstance(ExternalHooks);
 	const oauthJweServiceProxy = mockInstance(OAuthJweServiceProxy);
 	const eventService = mockInstance(EventService);
+	const credentialsOverwrites = mockInstance(CredentialsOverwrites);
 
 	mockInstance(Logger);
 
@@ -373,6 +375,8 @@ describe('OAuth2CredentialController', () => {
 			oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
 			externalHooks.run.mockResolvedValue(undefined);
 			oauthService.saveDynamicCredential.mockResolvedValueOnce(undefined);
+			credentialsOverwrites.supportsManagedAuth.mockReturnValue(true);
+			credentialsOverwrites.usesManagedAuth.mockReturnValue(false);
 
 			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
 				query: {
@@ -398,6 +402,8 @@ describe('OAuth2CredentialController', () => {
 				user: { id: '123' },
 				credentialType: 'genericOAuth2',
 				credentialId: '1',
+				supportsManagedAuth: true,
+				usesManagedAuth: false,
 			});
 			expect(oauthService.encryptAndSaveData).not.toHaveBeenCalled();
 			expect(res.render).toHaveBeenCalledWith('oauth-callback');
@@ -1132,6 +1138,8 @@ describe('OAuth2CredentialController', () => {
 					access_token: 'decrypted',
 					refresh_token: 'r',
 				});
+				credentialsOverwrites.supportsManagedAuth.mockReturnValue(true);
+				credentialsOverwrites.usesManagedAuth.mockReturnValue(true);
 
 				const req = mock<OAuthRequest.OAuth2Credential.Callback>({
 					query: { code: 'auth_code', state: validState },
@@ -1156,6 +1164,8 @@ describe('OAuth2CredentialController', () => {
 					user: { id: '123' },
 					credentialType: 'genericOAuth2',
 					credentialId: '1',
+					supportsManagedAuth: true,
+					usesManagedAuth: true,
 				});
 				expect(oauthService.encryptAndSaveData).not.toHaveBeenCalled();
 			});

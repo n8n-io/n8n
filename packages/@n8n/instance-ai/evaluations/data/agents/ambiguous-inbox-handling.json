@@ -1,0 +1,21 @@
+{
+	"description": "Intent-only request: ask a clarifying question for underspecified inbox handling instead of guessing workflow or agent.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": [
+				"Say whether this should be handled as a deterministic workflow, a hybrid workflow with a bounded AI judgment step, a full agent, or a single AI task. Briefly explain why in terms of control flow, runtime decision-making, tool-use loops, unstructured data, and whether the next action depends on prior results.",
+				"Help me handle my inbox."
+			]
+		}
+	],
+	"complexity": "simple",
+	"tags": ["intent-resolution", "ambiguous", "clarification"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent treats the inbox handling request as underspecified.",
+		"The agent asks a clarifying question instead of forcing a workflow, hybrid, or agent classification.",
+		"The agent explains that rule-based filing could be a workflow while autonomous triage could be an agent.",
+		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+	]
+}

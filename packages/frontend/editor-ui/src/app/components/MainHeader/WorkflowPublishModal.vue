@@ -22,7 +22,6 @@ import { useToast } from '@/app/composables/useToast';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import type { INodeUi } from '@/Interface';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import WorkflowActivationErrorMessage from '@/app/components/WorkflowActivationErrorMessage.vue';
@@ -35,7 +34,6 @@ const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const credentialsStore = useCredentialsStore();
-const settingsStore = useSettingsStore();
 const { showMessage } = useToast();
 const workflowActivate = useWorkflowActivate();
 const publishing = ref(false);
@@ -170,19 +168,6 @@ const shouldShowFreeAiCreditsWarning = computed((): boolean => {
 	);
 });
 
-const aiGatewayWarningNodes = computed((): INodeUi[] => {
-	if (!settingsStore.isAiGatewayEnabled) return [];
-	return (workflowDocumentStore.value?.allNodes ?? []).filter(
-		(node) =>
-			!node.disabled &&
-			Object.values(node.credentials ?? {}).some((cred) => cred.__aiGatewayManaged === true),
-	);
-});
-
-const aiGatewayWarningNodeNames = computed(() =>
-	aiGatewayWarningNodes.value.map((n) => n.name).join(', '),
-);
-
 async function displayActivationError() {
 	let errorMessage: string | VNode;
 	try {
@@ -279,24 +264,6 @@ async function handlePublish() {
 		</template>
 		<template #content>
 			<div :class="$style.content">
-				<N8nCallout
-					v-if="aiGatewayWarningNodes.length > 0"
-					theme="warning"
-					:iconless="true"
-					data-test-id="workflow-publish-ai-gateway-warning"
-				>
-					{{
-						i18n.baseText('workflows.publishModal.aiGatewayWarning.header', {
-							adjustToNumber: aiGatewayWarningNodes.length,
-						})
-					}}
-					<strong>{{ aiGatewayWarningNodeNames }}</strong>
-					{{
-						i18n.baseText('workflows.publishModal.aiGatewayWarning.body', {
-							adjustToNumber: aiGatewayWarningNodes.length,
-						})
-					}}
-				</N8nCallout>
 				<N8nCallout
 					v-if="activeCalloutId === 'noTrigger'"
 					theme="danger"

@@ -39,7 +39,8 @@ export { ScheduledJobRepository } from './scheduled-job.repository';
 export { ScheduledTaskRepository } from './scheduled-task.repository';
 export type {
 	ClaimDueTasksOptions,
-	ClaimRef,
+	ClaimedRef,
+	HostedClaimedRef,
 	DeleteFinishedTasksOptions,
 } from './scheduled-task.repository';
 export { ProcessedDataRepository } from './processed-data.repository';

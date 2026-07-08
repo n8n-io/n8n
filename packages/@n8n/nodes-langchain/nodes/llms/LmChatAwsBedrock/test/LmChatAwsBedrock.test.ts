@@ -165,6 +165,65 @@ describe('LmChatAwsBedrock', () => {
 			);
 		});
 
+		it('throws when the ARN-extracted region is not supported', async () => {
+			const ctx = setupMockContext();
+			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model')
+					return 'arn:aws:bedrock:not-a-region:123456789012:inference-profile/eu.amazon.nova-pro-v1:0';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			const call = node.supplyData.call(ctx, 0);
+			await expect(call).rejects.toThrow(UserError);
+			await expect(call).rejects.toThrow('Unsupported AWS region');
+			// Must reject before any client is constructed.
+			expect(mockedGetNodeProxyAgent).not.toHaveBeenCalled();
+			expect(MockedBedrockRuntimeClient).not.toHaveBeenCalled();
+			expect(MockedChatBedrockConverse).not.toHaveBeenCalled();
+		});
+
+		it('extracts the region from a China (aws-cn) partition ARN and targets the .com.cn endpoint', async () => {
+			const ctx = setupMockContext();
+			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model')
+					return 'arn:aws-cn:bedrock:cn-north-1:123456789012:inference-profile/cn.amazon.nova-pro-v1:0';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(mockedGetNodeProxyAgent).toHaveBeenCalledWith(
+				'https://bedrock-runtime.cn-north-1.amazonaws.com.cn',
+			);
+			expect(MockedBedrockRuntimeClient).toHaveBeenCalledWith(
+				expect.objectContaining({ region: 'cn-north-1' }),
+			);
+			expect(MockedChatBedrockConverse).toHaveBeenCalledWith(
+				expect.objectContaining({ region: 'cn-north-1' }),
+			);
+		});
+
+		it('extracts the region from a GovCloud (aws-us-gov) partition ARN', async () => {
+			const ctx = setupMockContext();
+			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model')
+					return 'arn:aws-us-gov:bedrock:us-gov-west-1:123456789012:inference-profile/us-gov.amazon.nova-pro-v1:0';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(mockedGetNodeProxyAgent).toHaveBeenCalledWith(
+				'https://bedrock-runtime.us-gov-west-1.amazonaws.com',
+			);
+			expect(MockedBedrockRuntimeClient).toHaveBeenCalledWith(
+				expect.objectContaining({ region: 'us-gov-west-1' }),
+			);
+		});
+
 		it('should pass model name and options to ChatBedrockConverse', async () => {
 			const ctx = setupMockContext();
 			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {

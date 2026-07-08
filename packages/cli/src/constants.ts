@@ -118,6 +118,7 @@ export const GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE = [
 	'googleCloudStorageOAuth2Api',
 	'googleCalendarOAuth2Api',
 	'googleSheetsOAuth2Api',
+	'zendeskOAuth2Api',
 ];
 
 export const ARTIFICIAL_TASK_DATA = {
