@@ -57,6 +57,7 @@ import {
 	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
 	SOURCE_CONTROL_GIT_FOLDER,
 	SOURCE_CONTROL_PROJECT_EXPORT_FOLDER,
+	SOURCE_CONTROL_READ_FILE_BATCH_SIZE,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
@@ -68,6 +69,7 @@ import {
 	getProjectExportPath,
 	getWorkflowExportPath,
 	isValidDataTableColumnType,
+	mapInBatches,
 	mergeRemoteCrendetialDataIntoLocalCredentialData,
 	sanitizeCredentialData,
 } from './source-control-helper.ee';
@@ -154,24 +156,26 @@ export class SourceControlImportService {
 			absolute: true,
 		});
 
-		const remoteWorkflowsRead = await Promise.all(
-			remoteWorkflowFiles.map(async (file) => await this.parseWorkflowFromFile(file)),
-		);
+		// Parse in bounded batches and project each workflow to its slim status shape
+		// right away, so at most one batch of full workflow graphs is in memory at a time
+		const remoteWorkflowFilesParsed = await mapInBatches(
+			remoteWorkflowFiles,
+			SOURCE_CONTROL_READ_FILE_BATCH_SIZE,
+			async (file): Promise<SourceControlWorkflowVersionId | undefined> => {
+				const remote = await this.parseWorkflowFromFile(file);
 
-		const remoteWorkflowFilesParsed = remoteWorkflowsRead
-			.filter((remote) => {
 				if (!remote?.id) {
-					return false;
+					return undefined;
 				}
-				return (
-					context.hasAccessToAllProjects() ||
-					(remote.owner && context.findAuthorizedProjectByOwner(remote.owner))
-				);
-			})
-			.map((remote) => {
+
 				const project = remote.owner
 					? context.findAuthorizedProjectByOwner(remote.owner)
 					: undefined;
+
+				if (!context.hasAccessToAllProjects() && !project) {
+					return undefined;
+				}
+
 				return {
 					id: remote.id,
 					versionId: remote.versionId ?? '',
@@ -179,12 +183,15 @@ export class SourceControlImportService {
 					parentFolderId: remote.parentFolderId,
 					remoteId: remote.id,
 					filename: getWorkflowExportPath(remote.id, this.workflowExportFolder),
-					owner: toStatusOwner(project ?? undefined),
+					owner: toStatusOwner(project),
 					isRemoteArchived: remote.isArchived,
 				};
-			});
+			},
+		);
 
-		return remoteWorkflowFilesParsed;
+		return remoteWorkflowFilesParsed.filter(
+			(workflow): workflow is SourceControlWorkflowVersionId => workflow !== undefined,
+		);
 	}
 
 	async getAllLocalVersionIdsFromDb(): Promise<SourceControlWorkflowVersionId[]> {
