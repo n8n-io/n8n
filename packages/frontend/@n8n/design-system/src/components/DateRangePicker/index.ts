@@ -1,7 +1,13 @@
 import type { DateRangePickerRootEmits, DateRangePickerRootProps, PopoverRootEmits } from 'reka-ui';
 
 export { default as N8nDateRangePicker } from './DateRangePicker.vue';
-export { formatDateRangeValue, formatDateValue } from './datePicker.utils';
+export {
+	formatDateRangeValue,
+	formatDateValue,
+	formatWeekdayTwoLetters,
+	isDateValueInBounds,
+	parseDateValue,
+} from './datePicker.utils';
 export type { DatePickerFormatOptions } from './datePicker.utils';
 
 export type N8nDateRangePickerProps = DateRangePickerRootProps & {

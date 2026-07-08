@@ -1,132 +1,231 @@
 <script setup lang="ts">
-import { DateRangePickerField, DateRangePickerInput } from 'reka-ui';
+import type { DateValue } from '@internationalized/date';
+import { injectDateRangePickerRootContext } from 'reka-ui';
+import { computed, inject, ref, watch } from 'vue';
 
-import N8nText from '../N8nText';
+import N8nInput from '../N8nInput';
+import { N8N_DATE_RANGE_PICKER_ACTIVE_FIELD } from './dateRangePicker.context';
+import { formatDateValue, isDateValueInBounds, parseDateValue } from './datePicker.utils';
 
-type Segment = {
-	part: string;
-	value: string;
-};
-type Segments = {
-	start: Segment[];
-	end: Segment[];
-};
+const rootContext = injectDateRangePickerRootContext();
+const activeField = inject(N8N_DATE_RANGE_PICKER_ACTIVE_FIELD);
 
-function hasTime(segments: Segments) {
-	return [...segments.start, ...segments.end].some((segment) =>
-		['hour', 'minute', 'second', 'dayPeriod'].includes(segment.part),
-	);
+if (!activeField) {
+	throw new Error('DateRangePickerField must be used within N8nDateRangePicker');
+}
+
+watch(
+	() => rootContext.modelValue.value,
+	(range) => {
+		if (!range?.start && !range?.end) {
+			activeField.value = 'start';
+			return;
+		}
+
+		if (range.start && !range.end) {
+			activeField.value = 'end';
+		}
+	},
+	{ deep: true, immediate: true },
+);
+
+const includeTime = computed(() => {
+	const granularity = rootContext.granularity.value;
+	if (granularity && granularity !== 'day') return true;
+
+	const { start, end } = rootContext.modelValue.value;
+	return (start !== undefined && 'hour' in start) || (end !== undefined && 'hour' in end);
+});
+
+const formatOptions = computed(() => ({
+	locale: rootContext.locale.value,
+	includeTime: includeTime.value,
+}));
+
+const startText = ref('');
+const endText = ref('');
+const editingStart = ref(false);
+const editingEnd = ref(false);
+
+function syncStartText() {
+	startText.value = formatDateValue(rootContext.modelValue.value.start, formatOptions.value);
+}
+
+function syncEndText() {
+	endText.value = formatDateValue(rootContext.modelValue.value.end, formatOptions.value);
+}
+
+watch(
+	() => rootContext.modelValue.value.start,
+	() => {
+		if (!editingStart.value) syncStartText();
+	},
+	{ immediate: true },
+);
+
+watch(
+	() => rootContext.modelValue.value.end,
+	() => {
+		if (!editingEnd.value) syncEndText();
+	},
+	{ immediate: true },
+);
+
+watch(formatOptions, () => {
+	if (!editingStart.value) syncStartText();
+	if (!editingEnd.value) syncEndText();
+});
+
+function isUnavailable(date: DateValue) {
+	return rootContext.isDateUnavailable?.(date) ?? false;
+}
+
+function isValidDate(date: DateValue | undefined) {
+	if (!date) return false;
+	if (isUnavailable(date)) return false;
+	return isDateValueInBounds(date, {
+		minValue: rootContext.minValue.value,
+		maxValue: rootContext.maxValue.value,
+	});
+}
+
+function isBeforeOrSame(start: DateValue, end: DateValue) {
+	return start.compare(end) <= 0;
+}
+
+function isValidRange(start: DateValue | undefined, end: DateValue | undefined) {
+	if (!start || !end) return true;
+	if (!isBeforeOrSame(start, end)) return false;
+
+	if (rootContext.isDateUnavailable) {
+		let cursor = start;
+		while (isBeforeOrSame(cursor, end)) {
+			if (isUnavailable(cursor)) return false;
+			cursor = cursor.add({ days: 1 });
+		}
+	}
+
+	return true;
+}
+
+const isInvalid = computed(() => {
+	const { start, end } = rootContext.modelValue.value;
+	if (start && !isValidDate(start)) return true;
+	if (end && !isValidDate(end)) return true;
+	return !isValidRange(start, end);
+});
+
+function updateRange(start: DateValue | undefined, end: DateValue | undefined) {
+	rootContext.onDateChange({ start, end });
+}
+
+function commitField(type: 'start' | 'end') {
+	const currentStart = rootContext.modelValue.value.start;
+	const currentEnd = rootContext.modelValue.value.end;
+	const text = type === 'start' ? startText.value : endText.value;
+	const parsed = parseDateValue(text, formatOptions.value);
+
+	if (!parsed) {
+		if (type === 'start') syncStartText();
+		else syncEndText();
+		return;
+	}
+
+	if (!isValidDate(parsed)) {
+		if (type === 'start') syncStartText();
+		else syncEndText();
+		return;
+	}
+
+	if (type === 'start') {
+		const nextEnd = currentEnd && currentEnd.compare(parsed) < 0 ? undefined : currentEnd?.copy();
+		if (!isValidRange(parsed, nextEnd)) {
+			syncStartText();
+			return;
+		}
+		updateRange(parsed.copy(), nextEnd?.copy());
+		return;
+	}
+
+	const nextStart =
+		currentStart && parsed.compare(currentStart) < 0 ? undefined : currentStart?.copy();
+	if (!isValidRange(nextStart, parsed)) {
+		syncEndText();
+		return;
+	}
+	updateRange(nextStart?.copy(), parsed.copy());
+}
+
+function onStartFocus() {
+	editingStart.value = true;
+	activeField.value = 'start';
+}
+
+function onStartBlur() {
+	editingStart.value = false;
+	commitField('start');
+}
+
+function onEndFocus() {
+	editingEnd.value = true;
+	activeField.value = 'end';
+}
+
+function onEndBlur() {
+	editingEnd.value = false;
+	commitField('end');
 }
 </script>
 
 <template>
-	<DateRangePickerField v-slot="{ segments }" as-child>
-		<div v-if="hasTime(segments)">
-			<N8nText bold color="text-light" tag="div" class="mb-3xs">Start</N8nText>
-			<div :class="$style.Inline" class="mb-xs">
-				<template v-for="item in segments.start" :key="item.part">
-					<DateRangePickerInput
-						v-if="item.part === 'literal'"
-						:part="item.part"
-						:class="$style.DateFieldLiteral"
-						type="start"
-					>
-						{{ item.value }}
-					</DateRangePickerInput>
-					<DateRangePickerInput
-						v-else
-						:part="item.part"
-						:class="$style.DateFieldSegment"
-						type="start"
-					>
-						{{ item.value }}
-					</DateRangePickerInput>
-				</template>
-			</div>
-			<N8nText bold color="text-light" tag="div" class="mb-3xs">End</N8nText>
-			<div :class="$style.Inline">
-				<template v-for="item in segments.end" :key="item.part">
-					<DateRangePickerInput
-						v-if="item.part === 'literal'"
-						:part="item.part"
-						:class="$style.DateFieldLiteral"
-						type="end"
-					>
-						{{ item.value }}
-					</DateRangePickerInput>
-					<DateRangePickerInput
-						v-else
-						:part="item.part"
-						:class="$style.DateFieldSegment"
-						type="end"
-					>
-						{{ item.value }}
-					</DateRangePickerInput>
-				</template>
-			</div>
-		</div>
-		<div v-else :class="$style.Inline">
-			<template v-for="item in segments.start" :key="item.part">
-				<DateRangePickerInput
-					v-if="item.part === 'literal'"
-					:part="item.part"
-					:class="$style.DateFieldLiteral"
-					type="start"
-				>
-					{{ item.value }}
-				</DateRangePickerInput>
-				<DateRangePickerInput
-					v-else
-					:part="item.part"
-					:class="$style.DateFieldSegment"
-					type="start"
-				>
-					{{ item.value }}
-				</DateRangePickerInput>
-			</template>
-			<span :class="$style.RangeSeparator" aria-hidden="true">–</span>
-			<template v-for="item in segments.end" :key="item.part">
-				<DateRangePickerInput
-					v-if="item.part === 'literal'"
-					:part="item.part"
-					:class="$style.DateFieldLiteral"
-					type="end"
-				>
-					{{ item.value }}
-				</DateRangePickerInput>
-				<DateRangePickerInput v-else :part="item.part" :class="$style.DateFieldSegment" type="end">
-					{{ item.value }}
-				</DateRangePickerInput>
-			</template>
-		</div>
-	</DateRangePickerField>
+	<div :class="$style.DateFields" :data-invalid="isInvalid ? '' : undefined">
+		<N8nInput
+			v-model="startText"
+			size="small"
+			:class="[$style.DateFieldInput, activeField === 'start' && $style.DateFieldInputActive]"
+			aria-label="Start date"
+			@focus="onStartFocus"
+			@blur="onStartBlur"
+		/>
+		<N8nInput
+			v-model="endText"
+			size="small"
+			:class="[$style.DateFieldInput, activeField === 'end' && $style.DateFieldInputActive]"
+			aria-label="End date"
+			@focus="onEndFocus"
+			@blur="onEndBlur"
+		/>
+	</div>
 </template>
 
 <style lang="css" module>
-.DateFieldLiteral {
-	color: var(--color--text--tint-1);
+.DateFields {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--spacing--2xs);
+	width: 100%;
 }
 
-.RangeSeparator {
-	color: var(--color--text--tint-1);
-	padding: 0 var(--spacing--4xs);
+.DateFieldInput {
+	width: 100%;
+	min-width: 0;
 }
 
-.DateFieldSegment:focus {
-	outline: 2px solid rgba(67, 142, 255, 1);
-	border-radius: 0.25rem;
+.DateFieldInput :global(input) {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
-.Inline {
-	display: flex;
-	padding: 6px 12px;
-	align-items: center;
-	border-radius: 0.25rem;
-	border-width: 1px;
-	text-align: center;
-	user-select: none;
-	border: var(--border);
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--xl);
+.DateFieldInput :global(.n8n-input__wrapper:focus-within) {
+	outline: none;
+}
+
+.DateFieldInputActive :global(.n8n-input__wrapper),
+.DateFieldInputActive :global(.n8n-input__wrapper:focus-within),
+.DateFieldInputActive :global(.n8n-input__wrapper:hover:not(:focus-within)) {
+	outline: none;
+	box-shadow: inset 0 0 0 2px var(--color--blue-400);
 }
 </style>

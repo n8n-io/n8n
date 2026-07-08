@@ -17,10 +17,20 @@ import {
 	DateRangePickerTrigger,
 	useForwardPropsEmits,
 } from 'reka-ui';
+import { nextTick, provide, ref } from 'vue';
 
 import N8nButton from '../N8nButton';
 import IconButton from '../N8nIconButton';
+import N8nDateRangePickerCalendarWrapper from './DateRangePickerCalendarWrapper.vue';
+import N8nDateRangePickerClearButton from './DateRangePickerClearButton.vue';
 import N8nDateRangePickerField from './DateRangePickerField.vue';
+import {
+	N8N_DATE_RANGE_PICKER_ACTIVE_FIELD,
+	N8N_DATE_RANGE_PICKER_SKIP_NEXT_CELL_CLICK,
+} from './dateRangePicker.context';
+import N8nDateRangePickerOpenHandler from './DateRangePickerOpenHandler.vue';
+import N8nDateRangePickerTodayButton from './DateRangePickerTodayButton.vue';
+import { formatMonthYearHeading, formatWeekdayTwoLetters } from './datePicker.utils';
 import type { N8nDateRangePickerProps, N8nDateRangePickerRootEmits } from './index';
 
 const props = withDefaults(defineProps<N8nDateRangePickerProps>(), {
@@ -41,10 +51,29 @@ defineSlots<{
 const closePopover = () => emit('update:open', false);
 
 const forwarded = useForwardPropsEmits(props, emit);
+const activeCalendarField = ref<'start' | 'end'>('end');
+const skipNextCellClick = ref(false);
+provide(N8N_DATE_RANGE_PICKER_ACTIVE_FIELD, activeCalendarField);
+provide(N8N_DATE_RANGE_PICKER_SKIP_NEXT_CELL_CLICK, skipNextCellClick);
+
+function blurFocusedCalendarCell() {
+	const active = document.activeElement;
+	if (active instanceof HTMLElement && active.closest('[data-reka-calendar-cell-trigger]')) {
+		active.blur();
+	}
+}
+
+function markPageNavigation() {
+	skipNextCellClick.value = true;
+	nextTick(() => {
+		blurFocusedCalendarCell();
+	});
+}
 </script>
 
 <template>
 	<DateRangePickerRoot v-bind="forwarded">
+		<N8nDateRangePickerOpenHandler />
 		<DateRangePickerTrigger as-child>
 			<slot name="trigger">
 				<IconButton variant="subtle" icon="calendar" aria-label="Open calendar" />
@@ -53,23 +82,35 @@ const forwarded = useForwardPropsEmits(props, emit);
 
 		<DateRangePickerContent align="start" :side-offset="5" :class="$style.PopoverContent">
 			<DateRangePickerCalendar v-slot="{ weekDays, grid }" :class="$style.Calendar">
-				<template v-if="!!$slots.presets">
-					<div :class="$style.Presets">
-						<slot name="presets" />
+				<div :class="$style.PopoverInner" :data-active-field="activeCalendarField">
+					<div v-if="!hideInputs" :class="$style.DateFieldWrapper">
+						<N8nDateRangePickerField :class="$style.DateField"></N8nDateRangePickerField>
+						<div :class="$style.DateFieldError">Outside of allowed range</div>
 					</div>
-				</template>
-				<div>
-					<div :class="$style.CalendarWrapper">
-						<DateRangePickerHeader :class="$style.CalendarHeader">
-							<DateRangePickerPrev as-child>
-								<IconButton icon="chevron-left" variant="subtle" />
-							</DateRangePickerPrev>
-							<DateRangePickerHeading :class="$style.CalendarHeading" />
-							<DateRangePickerNext as-child>
-								<IconButton icon="chevron-right" variant="subtle" />
-							</DateRangePickerNext>
-						</DateRangePickerHeader>
 
+					<DateRangePickerHeader :class="$style.CalendarHeader">
+						<DateRangePickerHeading :class="$style.CalendarHeading" v-slot="{ headingValue }">
+							{{
+								formatMonthYearHeading(
+									grid.map((month) => month.value),
+									props.locale,
+								) || headingValue
+							}}
+						</DateRangePickerHeading>
+						<div :class="$style.CalendarHeaderActions">
+							<N8nDateRangePickerTodayButton />
+							<div :class="$style.CalendarPageNavigation" @click.capture="markPageNavigation">
+								<DateRangePickerPrev as-child>
+									<IconButton icon="chevron-left" variant="ghost" size="small" icon-size="large" />
+								</DateRangePickerPrev>
+								<DateRangePickerNext as-child>
+									<IconButton icon="chevron-right" variant="ghost" size="small" icon-size="large" />
+								</DateRangePickerNext>
+							</div>
+						</div>
+					</DateRangePickerHeader>
+
+					<N8nDateRangePickerCalendarWrapper>
 						<DateRangePickerGrid
 							v-for="month in grid"
 							:key="month.value.toString()"
@@ -82,7 +123,7 @@ const forwarded = useForwardPropsEmits(props, emit);
 										:key="day"
 										:class="$style.CalendarHeadCell"
 									>
-										{{ day }}
+										{{ formatWeekdayTwoLetters(day) }}
 									</DateRangePickerHeadCell>
 								</DateRangePickerGridRow>
 							</DateRangePickerGridHead>
@@ -107,20 +148,18 @@ const forwarded = useForwardPropsEmits(props, emit);
 								</DateRangePickerGridRow>
 							</DateRangePickerGridBody>
 						</DateRangePickerGrid>
-					</div>
+					</N8nDateRangePickerCalendarWrapper>
 
-					<div v-if="!hideInputs" :class="$style.DateFieldWrapper">
-						<N8nDateRangePickerField :class="$style.DateField"></N8nDateRangePickerField>
-						<div :class="$style.DateFieldError">Outside of allowed range</div>
-
+					<div v-if="!hideInputs" :class="$style.FooterWrapper">
 						<slot name="footer" :close="closePopover">
 							<N8nButton
 								variant="subtle"
+								size="small"
 								label="Apply"
-								class="mt-2xs"
-								:class="$style.ApplyButton"
+								:class="$style.FooterButton"
 								@click="closePopover"
 							/>
+							<N8nDateRangePickerClearButton :class="$style.FooterButton" />
 						</slot>
 					</div>
 				</div>
@@ -131,8 +170,15 @@ const forwarded = useForwardPropsEmits(props, emit);
 
 <style lang="css" module>
 .DateFieldWrapper {
-	border-top: 1px solid var(--color--foreground);
-	padding: 12px;
+	border-bottom: 1px solid var(--color--foreground);
+	width: 100%;
+	padding-bottom: var(--spacing--2xs);
+	margin-bottom: var(--spacing--2xs);
+}
+
+.DateField {
+	width: 100%;
+	min-width: 0;
 }
 
 .DateField[data-invalid] + .DateFieldError {
@@ -147,13 +193,18 @@ const forwarded = useForwardPropsEmits(props, emit);
 	display: none;
 }
 
-.ApplyButton {
+.FooterWrapper {
+	border-top: 1px solid var(--color--foreground);
 	width: 100%;
+	padding-top: var(--spacing--2xs);
+	margin-top: var(--spacing--2xs);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 }
 
-.DateFieldSegment:focus {
-	outline: 2px solid rgba(67, 142, 255, 1);
-	border-radius: 0.25rem;
+.FooterButton {
+	width: 100%;
 }
 
 .Calendar {
@@ -164,14 +215,22 @@ const forwarded = useForwardPropsEmits(props, emit);
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
-.CalendarWrapper {
-	padding: 12px;
+.CalendarHeading {
+	font-weight: var(--font-weight--medium);
+	font-size: var(--font-size--sm);
+}
+
+.CalendarHeaderActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	flex-shrink: 0;
 }
 
 .CalendarGrid {
-	margin-top: 0.25rem;
 	width: 100%;
 	user-select: none;
 	border-collapse: collapse;
@@ -180,11 +239,16 @@ const forwarded = useForwardPropsEmits(props, emit);
 .CalendarGridRow {
 	display: grid;
 	margin-bottom: 0.25rem;
-	grid-template-columns: repeat(7, minmax(0, 1fr));
-	width: 100%;
+	grid-template-columns: repeat(7, var(--date-range-picker--cell-size));
+	width: fit-content;
 }
 
 .CalendarHeadCell {
+	display: flex;
+	width: var(--date-range-picker--cell-size);
+	height: var(--date-range-picker--cell-size);
+	align-items: center;
+	justify-content: center;
 	font-size: 0.75rem;
 	line-height: 1rem;
 	color: var(--color--text--tint-1);
@@ -193,41 +257,41 @@ const forwarded = useForwardPropsEmits(props, emit);
 
 .CalendarCell {
 	position: relative;
-	font-size: 0.875rem;
-	line-height: 1.25rem;
+	width: var(--date-range-picker--cell-size);
+	height: var(--date-range-picker--cell-size);
 	text-align: center;
 }
 
 .CalendarCellTrigger {
 	display: flex;
+	box-sizing: border-box;
+	width: 100%;
+	height: 100%;
 	position: relative;
-	padding: 0.5rem;
+	z-index: 1;
+	padding: 0;
 	justify-content: center;
 	align-items: center;
-	border-width: 1px;
-	border-color: transparent;
-	outline-style: none;
-	font-size: 0.875rem;
-	line-height: 1.25rem;
+	border: none;
+	outline: none;
 	font-weight: 400;
 	white-space: nowrap;
 	background-color: transparent;
 	cursor: pointer;
-	font-size: var(--font-size--sm);
+	font-size: 14px;
 	font-style: normal;
-	font-weight: 400;
 	line-height: normal;
 	color: var(--color--text);
-	border-radius: 4px;
+	border-radius: var(--radius--3xs);
 }
 
 .CalendarCellTrigger[data-outside-view] {
-	opacity: 0.5;
+	color: var(--color--text--tint-1);
 }
 
 .CalendarCellTrigger:hover:not([data-disabled]):not([data-selection-start='true']):not(
 		[data-selection-end='true']
-	) {
+	):not([data-selected='true']):not([data-today]) {
 	background-color: var(--color--foreground--tint-1);
 }
 
@@ -236,64 +300,101 @@ const forwarded = useForwardPropsEmits(props, emit);
 	color: var(--color--text--tint-1);
 }
 
-.CalendarCellTrigger:focus {
-	outline: 2px solid rgba(67, 142, 255, 1);
-	z-index: 1;
-}
-
 .CalendarCellTrigger[data-unavailable] {
 	color: rgba(0, 0, 0, 0.3);
 	text-decoration: line-through;
 }
 
-.CalendarCellTrigger[data-highlighted],
-.CalendarCellTrigger[data-selected] {
+.CalendarCell:has([data-selected='true'])::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: 0;
 	background: var(--color--foreground--tint-1);
 	border-radius: 0;
 }
 
-.CalendarCellTrigger[data-selection-start='true'],
-.CalendarCellTrigger[data-highlighted-start='true'] {
-	border-top-left-radius: 4px;
-	border-bottom-left-radius: 4px;
+/* Round the first selected cell in each row segment. */
+.CalendarCell:has([data-selected='true']):not(
+		.CalendarCell:has([data-selected='true']) + .CalendarCell:has([data-selected='true'])
+	)::before {
+	border-top-left-radius: var(--radius--3xs);
+	border-bottom-left-radius: var(--radius--3xs);
 }
 
-.CalendarCellTrigger[data-selection-end='true'],
-.CalendarCellTrigger[data-highlighted-end='true'] {
-	border-top-right-radius: 4px;
-	border-bottom-right-radius: 4px;
+/* Round the last selected cell in each row segment. */
+.CalendarCell:has([data-selected='true']):not(
+		:has(+ .CalendarCell [data-selected='true'])
+	)::before {
+	border-top-right-radius: var(--radius--3xs);
+	border-bottom-right-radius: var(--radius--3xs);
 }
 
 .CalendarCellTrigger[data-selection-start='true'],
 .CalendarCellTrigger[data-selection-end='true'] {
-	background: var(--color--primary);
-	color: #fff;
+	background-color: var(--color--blue-100);
+	color: var(--color--text);
+	box-shadow: inset 0 0 0 2px var(--color--blue-400);
+	border-radius: var(--radius--3xs);
 }
 
-.CalendarCellTrigger[data-today]::before {
-	content: '';
-	position: absolute;
-	top: 5px;
-	left: 5px;
-	width: 0.25rem;
-	height: 0.25rem;
-	border-radius: 9999px;
+.PopoverInner[data-active-field='start'] .CalendarCellTrigger[data-selection-start='true'] {
+	background-color: var(--color--blue-200);
+	box-shadow: inset 0 0 0 2px var(--color--blue-600);
+}
+
+.PopoverInner[data-active-field='end'] .CalendarCellTrigger[data-selection-end='true'] {
+	background-color: var(--color--blue-200);
+	box-shadow: inset 0 0 0 2px var(--color--blue-600);
+}
+
+.CalendarCellTrigger[data-today]:not([data-selection-start='true']):not(
+		[data-selection-end='true']
+	):not([data-selected='true']) {
 	background-color: var(--color--primary);
+	color: #fff;
+	border-radius: 9999px;
+	box-shadow: none;
+}
+
+/* reka-ui marks the month placeholder with data-focused — not a selection. */
+.CalendarCellTrigger[data-focused]:not(:focus-visible):not([data-selection-start='true']):not(
+		[data-selection-end='true']
+	):not([data-selected='true']):not([data-today]) {
+	background-color: transparent;
+	box-shadow: none;
+}
+
+/* Keyboard-only focus — avoid styling the placeholder day after month navigation. */
+.CalendarCellTrigger:focus-visible:not([data-selection-start='true']):not(
+		[data-selection-end='true']
+	):not([data-selected='true']):not([data-today]) {
+	background-color: var(--color--foreground--tint-1);
+	box-shadow: none;
+}
+
+.CalendarPageNavigation {
+	display: contents;
 }
 
 .PopoverContent {
-	border-radius: 4px;
+	--date-range-picker--cell-size: var(--spacing--xl);
+	border-radius: 6px;
+	padding: 10px;
 	border: var(--border);
 	background: var(--color--foreground--tint-2);
 	box-shadow: 0 6px 16px 0 rgba(68, 28, 23, 0.06);
 	animation-duration: 400ms;
 	animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 	will-change: transform, opacity;
+	width: fit-content;
 	z-index: 9999;
 }
-.PopoverContent:focus {
-	box-shadow: var(--shadow);
+
+.PopoverInner {
+	width: calc(7 * var(--date-range-picker--cell-size));
 }
+
 .PopoverContent[data-state='open'][data-side='top'] {
 	animation-name: slideDownAndFade;
 }
