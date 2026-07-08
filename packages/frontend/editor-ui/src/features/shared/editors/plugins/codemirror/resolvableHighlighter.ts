@@ -1,10 +1,12 @@
 import type { DecorationSet } from '@codemirror/view';
 import { EditorView, Decoration } from '@codemirror/view';
-import { StateField, StateEffect } from '@codemirror/state';
+import { StateField, StateEffect, RangeSet } from '@codemirror/state';
+import type { Range } from '@codemirror/state';
 import { tags } from '@lezer/highlight';
 import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
 import { captureException } from '@sentry/vue';
 
+import { ignoreUpdateAnnotation } from '@/app/utils/forceParse';
 import type {
 	ColoringStateEffect,
 	Plaintext,
@@ -40,7 +42,10 @@ const resolvableStateToDecoration: Record<ResolvableState, Decoration> = {
 	pending: Decoration.mark({ class: cssClasses.pendingResolvable }),
 };
 
-const coloringStateEffects = {
+// Exported for testing — keeps the field re-usable across editor instances
+// while letting unit tests dispatch transactions and inspect the resulting
+// decoration set without going through a real EditorView.
+export const coloringStateEffects = {
 	addColorEffect: StateEffect.define<ColoringStateEffect.Value>({
 		map: ({ from, to, kind, state }, change) => ({
 			from: change.mapPos(from),
@@ -57,17 +62,36 @@ const coloringStateEffects = {
 	}),
 };
 
-const coloringStateField = StateField.define<DecorationSet>({
+// Exported for testing — keeps the field re-usable across editor instances
+// while letting unit tests dispatch transactions and inspect the resulting
+// decoration set without going through a real EditorView.
+export const coloringStateField = StateField.define<DecorationSet>({
 	provide: (stateField) => EditorView.decorations.from(stateField),
 	create() {
 		return Decoration.none;
 	},
 	update(colorings, transaction) {
 		try {
+			const isSynthetic = transaction.annotation(ignoreUpdateAnnotation) === true;
 			if (!transaction.changes.empty) {
-				colorings = Decoration.none;
+				if (isSynthetic) {
+					colorings = colorings.map(transaction.changes);
+					// Clean up zero-length decorations left behind by the synthetic insert/delete
+					if (colorings.size > 0) {
+						const surviving: Range<Decoration>[] = [];
+						const cursor = colorings.iter();
+						while (cursor.value !== null) {
+							if (cursor.from !== cursor.to) {
+								surviving.push(cursor.value.range(cursor.from, cursor.to));
+							}
+							cursor.next();
+						}
+						colorings = RangeSet.of(surviving);
+					}
+				} else {
+					colorings = Decoration.none;
+				}
 			}
-			colorings = colorings.map(transaction.changes);
 
 			for (const txEffect of transaction.effects) {
 				if (txEffect.is(coloringStateEffects.removeColorEffect)) {
