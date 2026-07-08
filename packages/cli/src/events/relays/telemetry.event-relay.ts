@@ -946,12 +946,10 @@ export class TelemetryEventRelay extends EventRelay {
 	 * on save/activate. Returns zeroed counts when the workflow references none.
 	 */
 	private async getPrivateCredentialUsage(workflow: IWorkflowBase | IWorkflowDb): Promise<{
-		usesPrivateCredentials: boolean;
 		privateCredentialsCount: number;
 		privateCredentialTypes: string[];
 	}> {
 		const empty = {
-			usesPrivateCredentials: false,
 			privateCredentialsCount: 0,
 			privateCredentialTypes: [] as string[],
 		};
@@ -979,7 +977,6 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 
 		return {
-			usesPrivateCredentials: privateCredentials.length > 0,
 			privateCredentialsCount: privateCredentials.length,
 			privateCredentialTypes: [...new Set(privateCredentials.map((credential) => credential.type))],
 		};
@@ -992,7 +989,7 @@ export class TelemetryEventRelay extends EventRelay {
 		publicApi,
 		source = 'ui',
 	}: RelayEventMap['workflow-activated']) {
-		const { usesPrivateCredentials, privateCredentialsCount, privateCredentialTypes } =
+		const { privateCredentialsCount, privateCredentialTypes } =
 			await this.getPrivateCredentialUsage(workflow);
 
 		this.telemetry.track('User activated workflow', {
@@ -1000,7 +997,6 @@ export class TelemetryEventRelay extends EventRelay {
 			workflow_id: workflowId,
 			public_api: publicApi,
 			source,
-			uses_private_credentials: usesPrivateCredentials,
 			private_credentials_count: privateCredentialsCount,
 			private_credential_types: privateCredentialTypes,
 		});
@@ -1135,7 +1131,7 @@ export class TelemetryEventRelay extends EventRelay {
 			workflow,
 		);
 
-		const { usesPrivateCredentials, privateCredentialsCount, privateCredentialTypes } =
+		const { privateCredentialsCount, privateCredentialTypes } =
 			await this.getPrivateCredentialUsage(workflow);
 
 		this.telemetry.track('User saved workflow', {
@@ -1155,7 +1151,6 @@ export class TelemetryEventRelay extends EventRelay {
 			credential_resolver_id: credentialResolverId,
 			identity_extractor_changed: identityExtractorChanged,
 			redaction_policy: redactionPolicy,
-			uses_private_credentials: usesPrivateCredentials,
 			private_credentials_count: privateCredentialsCount,
 			private_credential_types: privateCredentialTypes,
 			otel_workflow_custom_tags_count: countWorkflowCustomTelemetryTags(workflow),

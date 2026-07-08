@@ -1478,7 +1478,6 @@ describe('TelemetryEventRelay', () => {
 				workflow_id: 'workflow123',
 				public_api: true,
 				source: 'api',
-				uses_private_credentials: false,
 				private_credentials_count: 0,
 				private_credential_types: [],
 			});
@@ -1512,7 +1511,6 @@ describe('TelemetryEventRelay', () => {
 				workflow_id: 'workflow123',
 				public_api: false,
 				source: 'ui',
-				uses_private_credentials: false,
 				private_credentials_count: 0,
 				private_credential_types: [],
 			});
@@ -1786,7 +1784,6 @@ describe('TelemetryEventRelay', () => {
 				ai_builder_assisted: false,
 				identity_extractor_changed: false,
 				redaction_policy: undefined,
-				uses_private_credentials: false,
 				private_credentials_count: 0,
 				private_credential_types: [],
 				otel_workflow_custom_tags_count: 0,
@@ -1914,7 +1911,6 @@ describe('TelemetryEventRelay', () => {
 				credential_resolver_id: 'resolver-123',
 				identity_extractor_changed: false,
 				redaction_policy: undefined,
-				uses_private_credentials: false,
 				private_credentials_count: 0,
 				private_credential_types: [],
 				otel_workflow_custom_tags_count: 0,
@@ -2017,7 +2013,6 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.track).toHaveBeenCalledWith(
 				'User saved workflow',
 				expect.objectContaining({
-					uses_private_credentials: true,
 					private_credentials_count: 2,
 					private_credential_types: ['slackApi', 'notionApi'],
 				}),
@@ -2065,9 +2060,75 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.track).toHaveBeenCalledWith(
 				'User activated workflow',
 				expect.objectContaining({
-					uses_private_credentials: true,
 					private_credentials_count: 1,
 					private_credential_types: ['slackApi'],
+				}),
+			);
+		});
+
+		it('should count each private credential but de-duplicate types when several share a type', async () => {
+			licenseState.isDynamicCredentialsLicensed.mockReturnValueOnce(true);
+			credentialsRepository.find.mockResolvedValueOnce([
+				mock<CredentialsEntity>({ id: 'cred-1', type: 'slackApi' }),
+				mock<CredentialsEntity>({ id: 'cred-2', type: 'slackApi' }),
+				mock<CredentialsEntity>({ id: 'cred-3', type: 'notionApi' }),
+			]);
+
+			const event: RelayEventMap['workflow-saved'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					connections: {},
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Slack 1',
+							type: 'n8n-nodes-base.slack',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							credentials: { slackApi: { id: 'cred-1', name: 'Slack account 1' } },
+						},
+						{
+							id: 'node-2',
+							name: 'Slack 2',
+							type: 'n8n-nodes-base.slack',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							credentials: { slackApi: { id: 'cred-2', name: 'Slack account 2' } },
+						},
+						{
+							id: 'node-3',
+							name: 'Notion',
+							type: 'n8n-nodes-base.notion',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							credentials: { notionApi: { id: 'cred-3', name: 'Notion account' } },
+						},
+					],
+				}),
+				publicApi: false,
+			};
+
+			eventService.emit('workflow-saved', event);
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User saved workflow',
+				expect.objectContaining({
+					// Three credentials, but only two distinct types.
+					private_credentials_count: 3,
+					private_credential_types: ['slackApi', 'notionApi'],
 				}),
 			);
 		});
