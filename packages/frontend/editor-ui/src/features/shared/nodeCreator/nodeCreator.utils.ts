@@ -307,7 +307,7 @@ export function showsAiGatewaySection(stack: ViewStack | undefined): boolean {
 	);
 }
 
-export function isAiGatewaySupportedNode(element: INodeCreateElement): boolean {
+function isAiGatewaySupportedNode(element: INodeCreateElement): boolean {
 	if (element.type !== 'node') return false;
 	if (!useSettingsStore().isAiGatewayEnabled) return false;
 
