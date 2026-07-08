@@ -19,6 +19,7 @@ import {
 	isAiGatewayManagedCredential,
 	resolveCredentialForApply,
 	toSetupNodeCredential,
+	type ResolvedCredential,
 	type SetupNodeCredential,
 } from './credential-utils';
 import { coerceWrongKindListModeParams } from './detect-wrong-kind-locator';
@@ -351,10 +352,6 @@ async function resolveCredentialState(
 		if (gatewaySupported) {
 			isAutoApplied = true;
 			autoAppliedGateway = true;
-			context.trackTelemetry?.('instance_ai_gateway_credential_applied', {
-				credentialType,
-				source: 'auto',
-			});
 		}
 	}
 
@@ -882,6 +879,48 @@ export async function applyNodeParameters(
 	return result;
 }
 
+/**
+ * Attribution funnel: record who configured a credential and whether it is n8n
+ * Connect vs BYOK, so analytics can compare agent-driven vs manual assignment
+ * (the manual canvas emits the same event with `source: 'user'`).
+ *
+ * `instance-ai-auto` mirrors the auto-apply rules in `buildSetupRequests`: Instance
+ * AI defaults a credential unprompted only when the node had none and the user did
+ * not have to choose — n8n Connect when the user has no stored credential of the
+ * type (rule 3), or their sole stored credential (rule 2). Anything else — a
+ * credential picked among several, or n8n Connect chosen despite having stored keys
+ * — is a user-confirmed choice.
+ */
+async function trackCredentialAssignment(
+	context: InstanceAiContext,
+	opts: {
+		credType: string;
+		nodeType: string;
+		workflowId: string;
+		credential: ResolvedCredential;
+		hadPriorCredential: boolean;
+	},
+): Promise<void> {
+	if (!context.trackTelemetry) return;
+	const isGateway = isAiGatewayManagedCredential(opts.credential);
+	let source: 'instance-ai-auto' | 'instance-ai-confirmed' = 'instance-ai-confirmed';
+	if (!opts.hadPriorCredential) {
+		const stored = await context.credentialService
+			.list({ type: opts.credType, ...(opts.workflowId ? { workflowId: opts.workflowId } : {}) })
+			.catch(() => []);
+		// Gateway auto-applies when no stored key exists; a BYOK key auto-applies
+		// when it is the user's only one for the type.
+		if (isGateway ? stored.length === 0 : stored.length === 1) source = 'instance-ai-auto';
+	}
+	context.trackTelemetry('Node credential assigned', {
+		credential_type: opts.credType,
+		node_type: opts.nodeType,
+		workflow_id: opts.workflowId,
+		credential_kind: isGateway ? 'n8n_connect' : 'own',
+		source,
+	});
+}
+
 /** Resolve and apply each credential in credsMap onto the node; returns whether all succeeded. */
 async function applyCredentialsToNode(
 	context: InstanceAiContext,
@@ -889,12 +928,21 @@ async function applyCredentialsToNode(
 	nodeName: string,
 	credsMap: Record<string, string>,
 	result: ApplyResult,
+	workflowId: string,
 ): Promise<boolean> {
 	let nodeSucceeded = true;
 	for (const [credType, credId] of Object.entries(credsMap)) {
+		const hadPriorCredential = node.credentials?.[credType] !== undefined;
 		const resolved = await resolveCredentialForApply(credType, credId, context);
 		if (resolved.resolved) {
 			assignCredentialToNode(node, credType, resolved.credential);
+			await trackCredentialAssignment(context, {
+				credType,
+				nodeType: node.type,
+				workflowId,
+				credential: resolved.credential,
+				hadPriorCredential,
+			});
 		} else {
 			nodeSucceeded = false;
 			result.failed.push({
@@ -948,7 +996,10 @@ export async function applyNodeChanges(
 		const nodeName = node.name;
 
 		const credsMap = nodeCredentials?.[nodeName];
-		if (credsMap && (await applyCredentialsToNode(context, node, nodeName, credsMap, result))) {
+		if (
+			credsMap &&
+			(await applyCredentialsToNode(context, node, nodeName, credsMap, result, workflowId))
+		) {
 			appliedNodes.add(nodeName);
 		}
 
