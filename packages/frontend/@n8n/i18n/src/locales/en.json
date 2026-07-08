@@ -3169,7 +3169,7 @@
 	"settings.mcp.header.toggle.disabled": "Disabled",
 	"settings.mcp.actionBox.heading": "Connect AI assistants to build and run workflows",
 	"settings.mcp.actionBox.button.label": "Enable MCP access",
-	"settings.mcp.emptyState.docs.part1": "Read our docs to",
+	"settings.mcp.emptyState.description": "Let MCP clients like Claude Code and Cursor build, run, and iterate on workflows in your instance.",
 	"settings.mcp.tabs.workflows": "Workflows",
 	"settings.mcp.tabs.oauth": "Connected clients",
 	"settings.mcp.tabs.oauthSettings": "OAuth settings",

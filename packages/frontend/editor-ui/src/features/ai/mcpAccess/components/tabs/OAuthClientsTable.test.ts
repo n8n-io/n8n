@@ -228,10 +228,9 @@ describe('OAuthClientsTable', () => {
 			await userEvent.type(getByTestId('mcp-clients-search'), 'cursor');
 
 			await waitFor(() => {
-				const emissions = emitted('update:filters');
+				const emissions = emitted('update:filters') as Array<[{ search: string }]>;
 				expect(emissions).toBeTruthy();
-				const last = emissions[emissions.length - 1][0] as { search: string };
-				expect(last.search).toBe('cursor');
+				expect(emissions[emissions.length - 1][0].search).toBe('cursor');
 			});
 		});
 
