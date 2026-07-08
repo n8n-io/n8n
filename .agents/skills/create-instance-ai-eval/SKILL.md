@@ -26,6 +26,12 @@ exhaustive field reference; this skill is the opinionated *how*.
 > The suite is the home for the case; the eval CLI reads it back via
 > `--source langtracer`. You still write the JSON file — it's just the input to
 > the push, not a committed artifact.
+>
+> **Exception — seeded cases.** The case-write API can't hold any seeding mode, so
+> seeded cases are never pushed. A `seedThread` case is a local throwaway (don't
+> commit it either — it dies when its trace is pruned); a `seedFile` or
+> `priorConversation` case isn't transient and has no suite home, so it's the one
+> sanctioned exception — it lives as committed JSON. See [`case-shapes.md`](case-shapes.md).
 
 ## Where the best cases come from
 
@@ -106,7 +112,9 @@ Request node").
    [Push to a lang-tracer suite](#push-to-a-lang-tracer-suite)); the suite is the
    case's home, not the repo. Leave the `data/workflows/*.json` file uncommitted
    (or delete it once it's in the suite). Committing new case JSONs into the repo
-   is no longer the approach.
+   is no longer the approach. (Exception: seeded cases can't be pushed — a
+   `seedFile`/`priorConversation` case stays committed JSON, a `seedThread` case is
+   a local throwaway; see [`case-shapes.md`](case-shapes.md).)
 
 `--iterations N` is available to measure flakiness (pass@k / pass^k) — reach for
 it when you suspect a case is non-deterministic or before promoting it to a
@@ -448,9 +456,11 @@ dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building 
   an existing case aren't re-synced; remove+re-push or edit in the lang-tracer UI).
 - **Seeded cases can't be pushed:** the case-write API rejects every seeding mode
   (`seedThread` / `seedFile` / `priorConversation`), so the push lists them under
-  `skipped:` and they never reach the suite. And a `seedThread` case shouldn't be
+  `skipped:` and they never reach the suite. A `seedThread` case shouldn't be
   committed either — it dies when its trace is pruned or deleted — so derive a
-  durable synthetic case as the artifact instead.
+  durable synthetic case as the artifact instead. A `seedFile`/`priorConversation`
+  case isn't transient and has no suite home, so it's the one exception to
+  "don't commit the JSON" — it lives as a committed artifact.
 
 ## Running
 

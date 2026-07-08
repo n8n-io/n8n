@@ -235,8 +235,9 @@ which user turn goes live.
   `eval:langtracer-push` silently lists them under `skipped:`. Combined with the
   don't-commit rule above, a `seedThread` case has **no durable home by design** —
   the durable artifact is always the synthetic case you derive from it. (`seedFile`
-  and `priorConversation` carry no thread dependency, so those stay committable —
-  just not pushable.)
+  and `priorConversation` carry no thread dependency and can't be pushed either, so
+  — unlike a normal case — they're the one exception to the skill's "push, don't
+  commit the JSON" rule: they live as committed artifacts.)
 
 ### `priorConversation` — prose prelude
 
