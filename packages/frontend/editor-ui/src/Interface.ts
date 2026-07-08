@@ -565,9 +565,10 @@ export interface SectionCreateElement extends CreateElementBase {
 	 */
 	hideHeader?: boolean;
 	/**
-	 * Whether to show the AI gateway wallet balance in the section header
+	 * Extra element rendered at the trailing edge of the section header.
+	 * Identifies what to render; the renderer maps it to a component.
 	 */
-	showCreditsBalance?: boolean;
+	trailing?: 'creditsBalance';
 }
 
 export interface ViewCreateElement extends CreateElementBase {

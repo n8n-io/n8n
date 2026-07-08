@@ -66,7 +66,7 @@ describe('ItemsRenderer', () => {
 		expect(subCategories.length).toBe(2);
 	});
 
-	it('should render the wallet balance on sections with showCreditsBalance', async () => {
+	it('should render the wallet balance on sections with the creditsBalance trailing element', async () => {
 		const pinia = createTestingPinia();
 		const aiGatewayStore = useAiGatewayStore(pinia);
 		aiGatewayStore.balance = 5;
@@ -74,7 +74,7 @@ describe('ItemsRenderer', () => {
 		const { getByTestId } = renderComponent({
 			pinia,
 			props: {
-				elements: [mockSectionCreateElement({ showCreditsBalance: true })],
+				elements: [mockSectionCreateElement({ trailing: 'creditsBalance' })],
 			},
 			global: {
 				stubs: ['N8nLoading'],
@@ -94,7 +94,7 @@ describe('ItemsRenderer', () => {
 		const { getByTestId } = renderComponent({
 			pinia,
 			props: {
-				elements: [mockSectionCreateElement({ showCreditsBalance: true })],
+				elements: [mockSectionCreateElement({ trailing: 'creditsBalance' })],
 			},
 			global: {
 				stubs: ['N8nLoading'],

@@ -161,7 +161,7 @@ watch(
 					:hideHeader="item.hideHeader"
 					@selected="(child: INodeCreateElement) => wrappedEmit('selected', child)"
 				>
-					<template v-if="item.showCreditsBalance" #trailing>
+					<template v-if="item.trailing === 'creditsBalance'" #trailing>
 						<SectionHeaderCreditsTag />
 					</template>
 				</CategorizedItemsRenderer>
