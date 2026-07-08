@@ -86,6 +86,20 @@ describe('buildVectorStoreBackend', () => {
 		expect(credentialProvider.resolve).not.toHaveBeenCalled();
 	});
 
+	it('uses a pre-resolved credential without calling credentialProvider.resolve', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+
+		const backend = await buildVectorStoreBackend(makePineconeConfig(), credentialProvider, {
+			apiKey: 'pc-key',
+		});
+
+		expect(credentialProvider.resolve).not.toHaveBeenCalled();
+		expect(getConstructorOptions(backend)).toEqual({
+			apiKey: 'pc-key',
+			indexName: 'product-docs',
+		});
+	});
+
 	describe('pinecone', () => {
 		it('maps apiKey, indexName, and namespace from the credential and config', async () => {
 			const credentialProvider = mock<CredentialProvider>();
@@ -216,6 +230,7 @@ describe('buildVectorStoreBackend', () => {
 			expect(getConstructorOptions(backend)).toEqual({
 				connectionString: 'postgresql://agent_user:secret@db.example.com:5544/agentdb',
 				tableName: 'documents',
+				connectionTimeoutMillis: 10_000,
 			});
 		});
 

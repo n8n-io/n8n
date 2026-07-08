@@ -10,6 +10,7 @@ const fetchAllCredentialsForWorkflowMock = vi.fn();
 const testAgentVectorStoreMock = vi.fn();
 const showMessageMock = vi.fn();
 const showErrorMock = vi.fn();
+const trackTestedVectorStoreMock = vi.fn();
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -55,6 +56,10 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 
 vi.mock('../composables/useAgentApi', () => ({
 	testAgentVectorStore: (...args: unknown[]) => testAgentVectorStoreMock(...args),
+}));
+
+vi.mock('../composables/useAgentTelemetry', () => ({
+	useAgentTelemetry: () => ({ trackTestedVectorStore: trackTestedVectorStoreMock }),
 }));
 
 vi.mock('@/app/components/Modal.vue', () => ({
@@ -119,69 +124,6 @@ vi.mock('../components/EmbeddingModelSelector.vue', () => ({
 	},
 }));
 
-vi.mock('@n8n/design-system', () => ({
-	N8nButton: {
-		props: ['variant', 'size', 'disabled', 'loading'],
-		emits: ['click'],
-		template:
-			'<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
-	},
-	N8nFormInput: {
-		inheritAttrs: false,
-		props: {
-			modelValue: { type: String, default: '' },
-			label: { type: String, default: '' },
-			placeholder: { type: String, default: '' },
-			required: { type: Boolean, default: false },
-			maxlength: { type: Number, default: undefined },
-			validationRules: { type: Array, default: () => [] },
-			validators: { type: Object, default: () => ({}) },
-		},
-		emits: ['update:modelValue', 'validate'],
-		data() {
-			return { hasBlurred: false };
-		},
-		computed: {
-			errorMessage(): string {
-				const value = typeof this.modelValue === 'string' ? this.modelValue.trim() : '';
-				if (this.required && !value) return 'required';
-				for (const rule of this.validationRules ?? []) {
-					if (rule.name === 'MAX_LENGTH' && value.length > rule.config.maximum) return 'maxLength';
-					if (rule.name === 'MATCH_REGEX' && !rule.config.regex.test(value)) {
-						return rule.config.message;
-					}
-					if (rule.name === 'NAME_UNIQUE' && this.validators?.NAME_UNIQUE) {
-						const result = this.validators.NAME_UNIQUE.validate(value);
-						if (result) return result.message;
-					}
-				}
-				return '';
-			},
-		},
-		watch: {
-			errorMessage: {
-				immediate: true,
-				handler(message: string) {
-					this.$emit('validate', !message);
-				},
-			},
-		},
-		template:
-			'<div>' +
-			'<label v-if="label">{{ label }}</label>' +
-			'<input v-bind="$attrs" :value="modelValue" :placeholder="placeholder" :maxlength="maxlength" ' +
-			'@input="$emit(\'update:modelValue\', $event.target.value)" @blur="hasBlurred = true" />' +
-			'<span v-if="hasBlurred && errorMessage">{{ errorMessage }}</span>' +
-			'</div>',
-	},
-	N8nHeading: { template: '<h2><slot /></h2>', props: ['tag', 'size'] },
-	N8nInputLabel: {
-		props: ['label', 'tooltipText', 'required'],
-		template: '<div><label>{{ label }}</label><slot /></div>',
-	},
-	N8nText: { template: '<span><slot /></span>', props: ['size', 'color', 'bold'] },
-}));
-
 const qdrantCredential = { id: 'qdrant-cred-1', name: 'My Qdrant', type: 'qdrantApi' };
 const openAiCredential = { id: 'openai-cred-1', name: 'My OpenAI', type: 'openAiApi' };
 
@@ -190,8 +132,12 @@ async function selectQdrantProvider(wrapper: ReturnType<typeof mount>) {
 }
 
 async function fillQdrantConnection(wrapper: ReturnType<typeof mount>) {
-	await wrapper.find('[data-testid="agent-vector-stores-modal-name"]').setValue('product_docs');
-	await wrapper.find('[data-testid="agent-vector-stores-modal-collection-name"]').setValue('docs');
+	await wrapper
+		.find('[data-testid="agent-vector-stores-modal-name"] input')
+		.setValue('product_docs');
+	await wrapper
+		.find('[data-testid="agent-vector-stores-modal-collection-name"] input')
+		.setValue('docs');
 	await wrapper
 		.find('[data-test-id="agent-vector-stores-modal-credential"]')
 		.setValue('qdrant-cred-1');
@@ -202,7 +148,7 @@ async function fillQdrantConnection(wrapper: ReturnType<typeof mount>) {
 		.find('[data-testid="agent-vector-stores-modal-embedding-credential"]')
 		.setValue('openai-cred-1');
 	await wrapper
-		.find('[data-testid="agent-vector-stores-modal-use-when"]')
+		.find('[data-testid="agent-vector-stores-modal-use-when"] input')
 		.setValue('Search product docs.');
 }
 
@@ -249,15 +195,15 @@ describe('AgentVectorStoresModal', () => {
 		await flushPromises();
 		await selectQdrantProvider(wrapper);
 
-		const useWhenInput = wrapper.find('[data-testid="agent-vector-stores-modal-use-when"]');
-		expect(useWhenInput.text()).toBe('');
-		expect(wrapper.text()).not.toContain('required');
+		const useWhenBlock = wrapper.find('[data-testid="agent-vector-stores-modal-use-when"]');
+		const useWhenInput = useWhenBlock.find('input');
+		expect(useWhenBlock.text()).not.toMatch(/required/i);
 
 		await useWhenInput.setValue('Search docs.');
 		await useWhenInput.setValue('');
 		await useWhenInput.trigger('blur');
 
-		expect(wrapper.text()).toContain('required');
+		expect(useWhenBlock.text()).toMatch(/required/i);
 	});
 
 	it('disables Connect until required fields are filled, then tests and confirms', async () => {
@@ -283,6 +229,11 @@ describe('AgentVectorStoresModal', () => {
 		await flushPromises();
 
 		expect(testAgentVectorStoreMock).toHaveBeenCalledWith({}, 'p1', 'a1', expectedVectorStore);
+		expect(trackTestedVectorStoreMock).toHaveBeenCalledWith({
+			agentId: 'a1',
+			provider: 'qdrant',
+			success: true,
+		});
 		expect(onConfirm).toHaveBeenCalledWith(expectedVectorStore);
 		expect(closeModalMock).toHaveBeenCalledWith('agentVectorStoresModal');
 		expect(showMessageMock).toHaveBeenCalledWith(
@@ -312,6 +263,11 @@ describe('AgentVectorStoresModal', () => {
 		await wrapper.find('[data-testid="agent-vector-stores-modal-confirm"]').trigger('click');
 		await flushPromises();
 
+		expect(trackTestedVectorStoreMock).toHaveBeenCalledWith({
+			agentId: 'a1',
+			provider: 'qdrant',
+			success: false,
+		});
 		expect(showMessageMock).toHaveBeenCalledWith(
 			expect.objectContaining({
 				type: 'error',
@@ -340,8 +296,40 @@ describe('AgentVectorStoresModal', () => {
 		await wrapper.find('[data-testid="agent-vector-stores-modal-confirm"]').trigger('click');
 		await flushPromises();
 
+		expect(trackTestedVectorStoreMock).toHaveBeenCalledWith({
+			agentId: 'a1',
+			provider: 'qdrant',
+			success: false,
+		});
 		expect(showErrorMock).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
 		expect(onConfirm).not.toHaveBeenCalled();
 		expect(closeModalMock).not.toHaveBeenCalled();
+	});
+
+	it('renders an edit-mode config with an unrecognized embedding provider without throwing', async () => {
+		const vectorStore = {
+			provider: 'qdrant' as const,
+			name: 'product_docs',
+			credential: 'qdrant-cred-1',
+			useWhen: 'Search product docs.',
+			embedding: { model: 'voyage/voyage-2', credential: 'embed-cred' },
+			collectionName: 'docs',
+		};
+
+		const wrapper = mount(AgentVectorStoresModal, {
+			props: {
+				modalName: 'agentVectorStoresModal',
+				data: {
+					projectId: 'p1',
+					agentId: 'a1',
+					existingNames: [],
+					vectorStore,
+					onConfirm: vi.fn(),
+				},
+			},
+		});
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="agent-vector-stores-modal-name"]').exists()).toBe(true);
 	});
 });

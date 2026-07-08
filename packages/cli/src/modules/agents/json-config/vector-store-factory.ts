@@ -71,7 +71,11 @@ async function buildPostgresBackend(
 	}
 
 	const { PgVectorStore } = await import('@n8n/agents/vector-stores/postgres');
-	return new PgVectorStore(config.name, { connectionString, tableName: config.tableName });
+	return new PgVectorStore(config.name, {
+		connectionString,
+		tableName: config.tableName,
+		connectionTimeoutMillis: 10_000,
+	});
 }
 
 async function buildBackend(
@@ -114,15 +118,20 @@ async function buildBackend(
 	}
 }
 
-/** Resolves a vector store connection's n8n credential and builds the matching SDK backend. */
+/**
+ * Resolves a vector store connection's n8n credential and builds the matching
+ * SDK backend. Pass `resolvedCredential` when the caller already decrypted
+ * the credential to avoid resolving it twice.
+ */
 export async function buildVectorStoreBackend(
 	config: AgentJsonVectorStoreConfig,
 	credentialProvider: CredentialProvider,
+	resolvedCredential?: ResolvedCredential,
 ): Promise<BuiltVectorStoreBackend> {
 	if (!config.credential) {
 		throw new UserError(`Vector store "${config.name}" has no credential configured`);
 	}
-	const credential = await credentialProvider.resolve(config.credential);
+	const credential = resolvedCredential ?? (await credentialProvider.resolve(config.credential));
 	return await buildBackend(config, credential);
 }
 

@@ -1,4 +1,4 @@
-import { createEmbeddingModel } from '@n8n/agents';
+import { createEmbeddingModel, type BuiltVectorStoreBackend } from '@n8n/agents';
 import type { AgentJsonVectorStoreConfig, VectorStoreTestResult } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -31,7 +31,7 @@ async function withTimeout<T>(work: () => Promise<T>, timeoutMs: number): Promis
 }
 
 /** Best-effort: only used to sharpen the error message, never fails the test on its own. */
-async function checkPineconeDimension(
+async function checkPineconeIndex(
 	config: Extract<AgentJsonVectorStoreConfig, { provider: 'pinecone' }>,
 	apiKey: unknown,
 	actualDimensions: number,
@@ -44,6 +44,12 @@ async function checkPineconeDimension(
 		const expected = index.dimension;
 		if (typeof expected === 'number' && expected !== actualDimensions) {
 			return `Index "${config.indexName}" expects ${expected} dimensions but model "${config.embedding.model}" produces ${actualDimensions}.`;
+		}
+		if (config.namespace) {
+			const stats = await pc.index(config.indexName).describeIndexStats();
+			if (!(config.namespace in (stats.namespaces ?? {}))) {
+				return `Namespace "${config.namespace}" was not found in index "${config.indexName}".`;
+			}
 		}
 	} catch {
 		// Introspection is best-effort; the real probe query below reports the actual failure.
@@ -116,40 +122,40 @@ export class AgentVectorStoresService {
 			user,
 		);
 
+		// Hoisted so the outer `finally` can close the backend even if the
+		// timeout below wins the race and abandons the in-flight work.
+		let backend: BuiltVectorStoreBackend | undefined;
 		try {
 			return await withTimeout(async () => {
-				const backend = await buildVectorStoreBackend(vectorStore, credentialProvider);
-				try {
-					const rawCredential = await credentialProvider.resolve(vectorStore.credential);
-					const embeddingOptions = await resolveEmbeddingProviderOptionsFromCredential(
-						vectorStore.embedding.credential,
-						vectorStore.embedding.model,
-						credentialProvider,
-					);
-					const embeddingModel = createEmbeddingModel(
-						vectorStore.embedding.model,
-						embeddingOptions,
-					);
-					const { embed } = await import('ai');
-					const { embedding } = await embed({ model: embeddingModel, value: TEST_QUERY });
+				const rawCredential = await credentialProvider.resolve(vectorStore.credential);
+				backend = await buildVectorStoreBackend(vectorStore, credentialProvider, rawCredential);
+				const embeddingOptions = await resolveEmbeddingProviderOptionsFromCredential(
+					vectorStore.embedding.credential,
+					vectorStore.embedding.model,
+					credentialProvider,
+				);
+				const embeddingModel = createEmbeddingModel(vectorStore.embedding.model, embeddingOptions);
+				const { embed } = await import('ai');
+				const { embedding } = await embed({ model: embeddingModel, value: TEST_QUERY });
 
-					const dimensionMismatch = await this.checkDimensionMismatch(
-						vectorStore,
-						rawCredential,
-						embedding.length,
-					);
-					if (dimensionMismatch) {
-						return { success: false, message: dimensionMismatch };
-					}
-
-					await backend.query(embedding, { topK: 1 });
-					return { success: true };
-				} finally {
-					await backend.close?.();
+				const dimensionMismatch = await this.checkDimensionMismatch(
+					vectorStore,
+					rawCredential,
+					embedding.length,
+				);
+				if (dimensionMismatch) {
+					return { success: false, message: dimensionMismatch };
 				}
+
+				await backend.query(embedding, { topK: 1 });
+				return { success: true };
 			}, TEST_TIMEOUT_MS);
 		} catch (error) {
 			return { success: false, message: errorMessage(error) };
+		} finally {
+			// Fire-and-forget: a hung `pool.end()` on a timed-out connection must
+			// not block the response.
+			if (backend) void Promise.resolve(backend.close?.()).catch(() => {});
 		}
 	}
 
@@ -160,7 +166,7 @@ export class AgentVectorStoresService {
 	): Promise<string | null> {
 		switch (vectorStore.provider) {
 			case 'pinecone':
-				return await checkPineconeDimension(vectorStore, rawCredential.apiKey, actualDimensions);
+				return await checkPineconeIndex(vectorStore, rawCredential.apiKey, actualDimensions);
 			case 'qdrant':
 				return await checkQdrantDimension(
 					vectorStore,

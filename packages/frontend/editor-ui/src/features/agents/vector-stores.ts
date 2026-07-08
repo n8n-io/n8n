@@ -38,8 +38,11 @@ export const AGENT_EMBEDDING_PROVIDERS: readonly AgentEmbeddingProvider[] = [
 	'cohere',
 ];
 
-export function getEmbeddingModelProvider(model: string): AgentEmbeddingProvider {
-	return model.split('/')[0] as AgentEmbeddingProvider;
+export function getEmbeddingModelProvider(model: string): AgentEmbeddingProvider | null {
+	const prefix = model.split('/')[0];
+	return (AGENT_EMBEDDING_PROVIDERS as readonly string[]).includes(prefix)
+		? (prefix as AgentEmbeddingProvider)
+		: null;
 }
 
 export function getEmbeddingModelsForProvider(

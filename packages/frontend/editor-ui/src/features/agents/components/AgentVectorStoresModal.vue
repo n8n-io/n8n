@@ -17,6 +17,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { AGENT_MODEL_PROVIDER_DEFINITIONS } from '../model-providers';
 import { testAgentVectorStore } from '../composables/useAgentApi';
+import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import {
 	AGENT_EMBEDDING_MODEL_OPTIONS,
 	AGENT_EMBEDDING_PROVIDERS,
@@ -59,6 +60,7 @@ const { showMessage, showError } = useToast();
 const rootStore = useRootStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
+const agentTelemetry = useAgentTelemetry();
 
 const providerOrder: AgentVectorStoreProvider[] = ['pinecone', 'supabase', 'qdrant', 'postgres'];
 
@@ -207,7 +209,9 @@ function embeddingCredentialTypeFor(provider: AgentEmbeddingProvider): string {
 
 function onEmbeddingModelUpdate(model: string) {
 	embeddingModel.value = model;
-	const requiredType = embeddingCredentialTypeFor(getEmbeddingModelProvider(model));
+	const provider = getEmbeddingModelProvider(model);
+	if (!provider) return;
+	const requiredType = embeddingCredentialTypeFor(provider);
 	const currentCredentialValid = (credentialsByType.value[requiredType] ?? []).some(
 		(option) => option.id === embeddingCredential.value,
 	);
@@ -362,6 +366,11 @@ async function onTestAndConnect() {
 			props.data.agentId,
 			vectorStore,
 		);
+		agentTelemetry.trackTestedVectorStore({
+			agentId: props.data.agentId,
+			provider: vectorStore.provider,
+			success: result.success,
+		});
 		if (!result.success) {
 			showMessage({
 				title: i18n.baseText('agents.builder.vectorStores.modal.test.failedTitle'),
@@ -381,6 +390,11 @@ async function onTestAndConnect() {
 		props.data.onConfirm(vectorStore);
 		closeModal();
 	} catch (error) {
+		agentTelemetry.trackTestedVectorStore({
+			agentId: props.data.agentId,
+			provider: selectedProvider.value ?? 'unknown',
+			success: false,
+		});
 		showError(error, i18n.baseText('agents.builder.vectorStores.modal.test.failedTitle'));
 	} finally {
 		testing.value = false;

@@ -1030,9 +1030,10 @@ function onOpenAddToolModal() {
 	});
 }
 
-function onConfirmVectorStore(vectorStore: AgentJsonVectorStoreConfig) {
+function onConfirmVectorStore(vectorStore: AgentJsonVectorStoreConfig, originalName?: string) {
 	const vectorStores = localConfig.value?.vectorStores ?? [];
-	const index = vectorStores.findIndex((existing) => existing.name === vectorStore.name);
+	const matchName = originalName ?? vectorStore.name;
+	const index = vectorStores.findIndex((existing) => existing.name === matchName);
 	const nextVectorStores =
 		index === -1
 			? [...vectorStores, vectorStore]
@@ -1062,7 +1063,8 @@ function onOpenEditVectorStoreModal(vectorStore: AgentJsonVectorStoreConfig) {
 			agentId: agentId.value,
 			existingNames: vectorStores.map((existing) => existing.name),
 			vectorStore,
-			onConfirm: onConfirmVectorStore,
+			onConfirm: (updated: AgentJsonVectorStoreConfig) =>
+				onConfirmVectorStore(updated, vectorStore.name),
 			onRemove: (name: string) => {
 				onConfigFieldUpdate({
 					vectorStores: (localConfig.value?.vectorStores ?? []).filter(

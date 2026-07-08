@@ -142,8 +142,15 @@ function onSelect(id: string) {
 
 	const parsed = parseMenuItemId(id);
 	if (!parsed) return;
-	const provider = parsed.provider as AgentEmbeddingProvider;
 	const { action, value } = parsed;
+
+	if (action === 'configure') {
+		emit('create-credential', value);
+		return;
+	}
+
+	if (!(AGENT_EMBEDDING_PROVIDERS as readonly string[]).includes(parsed.provider)) return;
+	const provider = parsed.provider as AgentEmbeddingProvider;
 
 	if (action === 'credential') {
 		emit('update:selectedCredentialId', value);
@@ -151,11 +158,6 @@ function onSelect(id: string) {
 			const [firstModel] = getEmbeddingModelsForProvider(provider);
 			if (firstModel) emit('update:selectedModel', firstModel.model);
 		}
-		return;
-	}
-
-	if (action === 'configure') {
-		emit('create-credential', value);
 		return;
 	}
 
