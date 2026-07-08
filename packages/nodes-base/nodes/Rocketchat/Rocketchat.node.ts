@@ -7,7 +7,11 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { rocketchatApiRequest, validateJSON } from './GenericFunctions';
+import {
+	rocketchatApiRequest,
+	rocketchatApiRequestAllItems,
+	validateJSON,
+} from './GenericFunctions';
 
 interface IField {
 	short?: boolean;
@@ -41,6 +45,15 @@ interface IPostMessageBody {
 	emoji?: string;
 	avatar?: string;
 	attachments?: IAttachment[];
+}
+
+interface ISubscriptionsResponse {
+	update?: IDataObject[];
+	remove?: IDataObject[];
+}
+
+interface IDirectMessagesResponse {
+	messages?: IDataObject[];
 }
 
 export class Rocketchat implements INodeType {
@@ -80,8 +93,8 @@ export class Rocketchat implements INodeType {
 						value: 'subscriptions',
 					},
 					{
-						name: 'Incoming Messages',
-						value: 'im',
+						name: 'Direct Message',
+						value: 'dm',
 					},
 				],
 				default: 'chat',
@@ -118,7 +131,7 @@ export class Rocketchat implements INodeType {
 				},
 				options: [
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'get',
 						description: 'Retrieve a list of subscriptions',
 						action: 'Get Subscriptions',
@@ -139,7 +152,7 @@ export class Rocketchat implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: ['im'],
+						resource: ['dm'],
 					},
 				},
 				options: [
@@ -159,12 +172,42 @@ export class Rocketchat implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: ['subscriptions', 'im'],
+						resource: ['subscriptions', 'dm'],
 						operation: ['read', 'messages'],
 					},
 				},
 				default: '',
-				description: 'The channel name with the prefix in front of it',
+				description: 'The room identifier',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: ['dm'],
+						operation: ['messages'],
+					},
+				},
+				default: false,
+				description: 'Whether to return all results or only up to a given limit',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['dm'],
+						operation: ['messages'],
+						returnAll: [false],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+				},
+				default: 50,
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Channel',
@@ -440,7 +483,7 @@ export class Rocketchat implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const length = items.length;
-		let responseData;
+		let responseData: IDataObject | IDataObject[] = {};
 		const returnData: INodeExecutionData[] = [];
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
@@ -548,30 +591,51 @@ export class Rocketchat implements INodeType {
 					}
 				} else if (resource === 'subscriptions') {
 					if (operation === 'get') {
-						responseData = await rocketchatApiRequest.call(
+						const subscriptionsResponse = (await rocketchatApiRequest.call(
 							this,
 							'/subscriptions',
 							'GET',
 							'get',
 							{},
-						);
+						)) as ISubscriptionsResponse;
+						responseData = [
+							...(subscriptionsResponse.update ?? []).map((update) => ({ update })),
+							...(subscriptionsResponse.remove ?? []).map((remove) => ({ remove })),
+						];
 					} else if (operation === 'read') {
 						const roomId = this.getNodeParameter('roomId', i) as string;
 						responseData = await rocketchatApiRequest.call(this, '/subscriptions', 'POST', 'read', {
 							rid: roomId,
 						});
 					}
-				} else if (resource === 'im') {
+				} else if (resource === 'dm') {
 					if (operation === 'messages') {
 						const roomId = this.getNodeParameter('roomId', i) as string;
-						responseData = await rocketchatApiRequest.call(
-							this,
-							'/im',
-							'GET',
-							'messages',
-							{},
-							{ roomId },
-						);
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const qs: IDataObject = { roomId };
+
+						if (returnAll) {
+							responseData = await rocketchatApiRequestAllItems.call(
+								this,
+								'messages',
+								'/dm',
+								'GET',
+								'messages',
+								{},
+								qs,
+							);
+						} else {
+							qs.count = this.getNodeParameter('limit', i);
+							const messagesResponse = (await rocketchatApiRequest.call(
+								this,
+								'/dm',
+								'GET',
+								'messages',
+								{},
+								qs,
+							)) as IDirectMessagesResponse;
+							responseData = messagesResponse.messages ?? [];
+						}
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
