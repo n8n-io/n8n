@@ -299,14 +299,16 @@ export class SourceControlImportService {
 			absolute: true,
 		});
 
-		const remoteCredentialFilesRead = await Promise.all(
-			remoteCredentialFiles.map(async (file) => {
+		const remoteCredentialFilesRead = await mapInBatches(
+			remoteCredentialFiles,
+			SOURCE_CONTROL_READ_FILE_BATCH_SIZE,
+			async (file) => {
 				this.logger.debug(`Parsing credential file ${file}`);
 				const remote = jsonParse<ExportableCredential>(
 					await fsReadFile(file, { encoding: 'utf8' }),
 				);
 				return remote;
-			}),
+			},
 		);
 
 		const remoteCredentialFilesParsed = remoteCredentialFilesRead
@@ -371,8 +373,11 @@ export class SourceControlImportService {
 				this.sourceControlScopedService.getCredentialsInAdminProjectsFromContextFilter(context),
 		});
 
-		return (await Promise.all(
-			localCredentials.map(async (local) => {
+		// Batched to bound the transient decryption allocations (plaintext + parsed object)
+		return (await mapInBatches(
+			localCredentials,
+			SOURCE_CONTROL_READ_FILE_BATCH_SIZE,
+			async (local) => {
 				const ownerProject = local.shared?.find((s) => s.role === 'credential:owner')?.project;
 
 				let data: Record<string, unknown> = {};
@@ -398,7 +403,7 @@ export class SourceControlImportService {
 					isResolvable: local.isResolvable,
 					resolvableAllowFallback: local.resolvableAllowFallback,
 				};
-			}),
+			},
 		)) as StatusExportableCredential[];
 	}
 
@@ -435,8 +440,10 @@ export class SourceControlImportService {
 			return [];
 		}
 
-		const remoteTables = await Promise.all(
-			dataTableFiles.map(async (file): Promise<ExportableDataTable | undefined> => {
+		const remoteTables = await mapInBatches(
+			dataTableFiles,
+			SOURCE_CONTROL_READ_FILE_BATCH_SIZE,
+			async (file): Promise<ExportableDataTable | undefined> => {
 				this.logger.debug(`Parsing data table file ${file}`);
 				const fileContent = await fsReadFile(file, { encoding: 'utf8' });
 				try {
@@ -445,7 +452,7 @@ export class SourceControlImportService {
 					this.logger.warn(`Failed to parse data table from file ${file}: invalid JSON format`);
 					return undefined;
 				}
-			}),
+			},
 		);
 
 		return remoteTables.filter((table): table is ExportableDataTable => {
@@ -630,8 +637,10 @@ export class SourceControlImportService {
 			absolute: true,
 		});
 
-		const remoteProjects = await Promise.all(
-			remoteProjectFiles.map(async (file) => {
+		const remoteProjects = await mapInBatches(
+			remoteProjectFiles,
+			SOURCE_CONTROL_READ_FILE_BATCH_SIZE,
+			async (file) => {
 				this.logger.debug(`Parsing project file ${file}`);
 				const fileContent = await fsReadFile(file, { encoding: 'utf8' });
 				const parsedProject = jsonParse<ExportableProject>(fileContent);
@@ -640,7 +649,7 @@ export class SourceControlImportService {
 					...parsedProject,
 					filename: getProjectExportPath(parsedProject.id, this.projectExportFolder),
 				};
-			}),
+			},
 		);
 
 		if (context.hasAccessToAllProjects()) {

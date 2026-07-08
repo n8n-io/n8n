@@ -1375,6 +1375,31 @@ describe('SourceControlImportService', () => {
 			expect(result).toHaveLength(0);
 		});
 
+		it('should read files in bounded batches and preserve order', async () => {
+			const fileCount = 45;
+			const files = Array.from({ length: fileCount }, (_, i) => `/mock/credential${i}.json`);
+			globMock.mockResolvedValue(files);
+
+			// All reads of a batch start synchronously before any completes (the mock
+			// yields a microtask), so an unbounded implementation would reach 45 in flight
+			let inFlight = 0;
+			let maxInFlight = 0;
+			fsReadFile.mockImplementation(async (file) => {
+				inFlight++;
+				maxInFlight = Math.max(maxInFlight, inFlight);
+				await Promise.resolve();
+				inFlight--;
+				const index = /credential(\d+)\.json$/.exec(file as string)?.[1];
+				return JSON.stringify({ id: `cred${index}`, name: `Credential ${index}`, type: 'oauth2' });
+			});
+
+			const result = await service.getRemoteCredentialsFromFiles(globalAdminContext);
+
+			expect(maxInFlight).toBe(20);
+			expect(result).toHaveLength(fileCount);
+			expect(result.map((credential) => credential.id)).toEqual(files.map((_, i) => `cred${i}`));
+		});
+
 		it('should parse global credentials with isGlobal flag set to true', async () => {
 			globMock.mockResolvedValue(['/mock/global-credential.json']);
 
