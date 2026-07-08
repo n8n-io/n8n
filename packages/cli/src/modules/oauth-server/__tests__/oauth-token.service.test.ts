@@ -754,6 +754,7 @@ describe('OAuthTokenService', () => {
 				userRepository,
 				accessTokenRepository,
 				refreshTokenRepository,
+				userConsentRepository,
 				futureRegistry,
 			);
 
