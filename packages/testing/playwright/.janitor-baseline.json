@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-28T00:16:46.937Z",
-	"totalViolations": 100,
+	"generated": "2026-07-08T19:25:22.774Z",
+	"totalViolations": 78,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -56,25 +56,31 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 65,
+				"line": 41,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 140,
+				"line": 74,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 259,
+				"line": 161,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 259,
+				"line": 351,
+				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "713916b2be0f"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 351,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
 			}
@@ -82,7 +88,7 @@
 		"pages/NodeDetailsViewPage.ts": [
 			{
 				"rule": "scope-lockdown",
-				"line": 352,
+				"line": 354,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			}
@@ -90,55 +96,61 @@
 		"pages/SidebarPage.ts": [
 			{
 				"rule": "scope-lockdown",
-				"line": 23,
+				"line": 24,
 				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "b15fa9cfe2ac"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 43,
+				"line": 28,
 				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "b15fa9cfe2ac"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 47,
+				"line": 48,
 				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "b15fa9cfe2ac"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 98,
+				"line": 52,
 				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "b15fa9cfe2ac"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 102,
+				"line": 103,
 				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "b15fa9cfe2ac"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 115,
+				"line": 107,
 				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "b15fa9cfe2ac"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 123,
+				"line": 120,
 				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "b15fa9cfe2ac"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 131,
+				"line": 128,
 				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "b15fa9cfe2ac"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 139,
+				"line": 136,
+				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "b15fa9cfe2ac"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 144,
 				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "b15fa9cfe2ac"
 			}
@@ -169,20 +181,6 @@
 				"line": 15,
 				"message": "WorkflowSharingModal: Unscoped locator - use this.container instead of this.page",
 				"hash": "32955f46012b"
-			}
-		],
-		"tests/e2e/app-config/security-notifications.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 189,
-				"message": "Chained locator call in test: versionCard.locator('.el-tag--danger').getByText('Securit...",
-				"hash": "03b5f19d5b5a"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 189,
-				"message": "Chained locator call in test: versionCard.locator('.el-tag--danger')",
-				"hash": "49fec707c0ba"
 			}
 		],
 		"tests/e2e/chat-hub/chat-hub-attachment.spec.ts": [
@@ -231,27 +229,7 @@
 				"hash": "31695787251c"
 			}
 		],
-		"tests/e2e/nodes/form-trigger-node.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 65,
-				"message": "Direct page locator call: n8n.page.getByRole('button', { name: 'Add Field Option' }...",
-				"hash": "b42b05790d64"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 65,
-				"message": "Direct page locator call: n8n.page.getByRole('button', { name: 'Add Field Option' })",
-				"hash": "a58ac8ee8b5c"
-			}
-		],
 		"tests/e2e/projects/projects.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 111,
-				"message": "Chained locator call in test: n8n.workflows.cards.getWorkflow('My workflow').getByText(...",
-				"hash": "69f6ad53e671"
-			},
 			{
 				"rule": "selector-purity",
 				"line": 188,
@@ -275,76 +253,6 @@
 				"line": 193,
 				"message": "Chained locator call in test: subn8n.page.getByRole('heading', { name: 'Notion account' })",
 				"hash": "f2522e66d3fb"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 233,
-				"message": "Chained locator call in test: n8n.projectSettings.getIconPickerButton().locator('svg')",
-				"hash": "c3b46b88129a"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 270,
-				"message": "Direct page locator call: n8n.page.locator('body').click()",
-				"hash": "9a5bc33e5ad4"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 270,
-				"message": "Direct page locator call: n8n.page.locator('body')",
-				"hash": "779bc814648c"
-			}
-		],
-		"tests/e2e/workflows/editor/tags.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 64,
-				"message": "Chained locator call in test: n8n.canvas.tagsManagerModal.getTable().getByText(tag1)",
-				"hash": "162205d16d7b"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 69,
-				"message": "Chained locator call in test: n8n.canvas.tagsManagerModal.getTable().getByText(tag2)",
-				"hash": "4158ea621594"
-			}
-		],
-		"tests/e2e/workflows/editor/canvas/canvas-nodes.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 29,
-				"message": "Direct page locator call: n8n.page.getByText('Add Routing Rule').click()",
-				"hash": "a8acc6035021"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 29,
-				"message": "Direct page locator call: n8n.page.getByText('Add Routing Rule')",
-				"hash": "7ae7242bb6f3"
-			}
-		],
-		"tests/e2e/workflows/editor/expressions/mapping.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 118,
-				"message": "Chained locator call in test: schemaItem.locator('span')",
-				"hash": "85fbb93e65c9"
-			}
-		],
-		"tests/e2e/workflows/editor/ndv/ndv-data-display.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 64,
-				"message": "Chained locator call in test: objectValueItem.locator('.toggle')",
-				"hash": "39445370e293"
-			}
-		],
-		"tests/e2e/workflows/editor/ndv/paired-item.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 96,
-				"message": "Direct page locator call: n8n.page.locator('[data-test-id=\"hovering-item\"]')",
-				"hash": "e8fc423eeeb7"
 			}
 		],
 		"composables/BuilderWizardComposer.ts": [
@@ -485,22 +393,6 @@
 				"hash": "39b87c0d6566"
 			}
 		],
-		"tests/e2e/auth/password-reset.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 12,
-				"message": "Raw API call detected: request.post(",
-				"hash": "a4b289961490"
-			}
-		],
-		"tests/e2e/building-blocks/workflow-entry-points.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 42,
-				"message": "Raw API call detected: request.post(",
-				"hash": "3ff16be38292"
-			}
-		],
 		"tests/e2e/capabilities/proxy-server.spec.ts": [
 			{
 				"rule": "api-purity",
@@ -551,60 +443,6 @@
 				"line": 35,
 				"message": "Raw API call detected: fetch(",
 				"hash": "974d7953dd83"
-			}
-		],
-		"tests/e2e/nodes/send-and-wait.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 110,
-				"message": "Raw API call detected: request.get(",
-				"hash": "314e16747365"
-			}
-		],
-		"tests/e2e/sharing/access-control.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 109,
-				"message": "Raw API call detected: request.get(",
-				"hash": "7fcb046dd97c"
-			}
-		],
-		"tests/e2e/sharing/workflow-sharing.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 124,
-				"message": "Raw API call detected: request.get(",
-				"hash": "5f323328e22b"
-			}
-		],
-		"tests/e2e/settings/environments/source-control.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 109,
-				"message": "Raw API call detected: request.get(",
-				"hash": "6f173bb174c9"
-			},
-			{
-				"rule": "api-purity",
-				"line": 118,
-				"message": "Raw API call detected: request.get(",
-				"hash": "6f173bb174c9"
-			}
-		],
-		"tests/e2e/workflows/editor/execution/execution.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 154,
-				"message": "Raw API call detected: request.get(",
-				"hash": "2548f52cf79f"
-			}
-		],
-		"tests/e2e/workflows/editor/execution/logs.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 282,
-				"message": "Raw API call detected: request.get(",
-				"hash": "3783a2d87c82"
 			}
 		],
 		"pages/WorkflowsPage.ts": [

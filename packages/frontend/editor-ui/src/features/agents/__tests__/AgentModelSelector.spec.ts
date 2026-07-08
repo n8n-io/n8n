@@ -8,6 +8,7 @@ type Credential = { id: string; name: string; type: string };
 type TestMenuItem = {
 	id: string;
 	label: string;
+	checked?: boolean;
 	children?: TestMenuItem[];
 	data?: { badgeLabel?: string; description?: string; descriptionTooltipTeleported?: boolean };
 };
@@ -26,6 +27,7 @@ const freeAiCreditsState = vi.hoisted(() => ({
 }));
 const canCreateCredentials = vi.hoisted(() => ({ value: true }));
 const openNewCredential = vi.hoisted(() => vi.fn());
+const openModalWithData = vi.hoisted(() => vi.fn());
 const baseText = vi.hoisted(() =>
 	vi.fn((key: string, options?: { interpolate?: Record<string, string | number> }) => {
 		const template =
@@ -60,9 +62,32 @@ vi.mock('@n8n/permissions', () => ({
 	getResourcePermissions: () => ({ credential: { create: canCreateCredentials.value } }),
 }));
 
-vi.mock('@n8n/design-system', () => ({
-	N8nIcon: { template: '<span />', props: ['icon', 'size'] },
-}));
+vi.mock('@n8n/design-system', async () => {
+	const { computed, ref } = await import('vue');
+
+	return {
+		N8nAiModelSelectorDropdown: {
+			name: 'AiModelSelectorDropdown',
+			props: [
+				'items',
+				'selectedLabel',
+				'selectedCredentialName',
+				'credentialsMissing',
+				'noMatchLabel',
+				'disabled',
+				'dataTestId',
+				'credentialDataTestId',
+			],
+			template: '<div data-testid="ai-model-selector-dropdown" />',
+		},
+		N8nIcon: { template: '<span />', props: ['icon', 'size'] },
+		useDropdownSearch: () => ({
+			search: ref(''),
+			filteredItems: computed(() => []),
+			handleSearch: vi.fn(),
+		}),
+	};
+});
 
 vi.mock('@/features/credentials/components/CredentialIcon.vue', () => ({
 	default: { template: '<span />', props: ['credentialTypeName', 'size'] },
@@ -92,28 +117,7 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 }));
 
 vi.mock('@/app/stores/ui.store', () => ({
-	useUIStore: () => ({ openNewCredential }),
-}));
-
-vi.mock('@/features/ai/modelSelector/AiModelSelectorDropdown.vue', () => ({
-	default: {
-		name: 'AiModelSelectorDropdown',
-		props: [
-			'items',
-			'selectedLabel',
-			'selectedCredentialName',
-			'credentialsMissing',
-			'credentialsMissingLabel',
-			'noMatchLabel',
-			'horizontal',
-			'disabled',
-			'dataTestId',
-			'credentialDataTestId',
-			'maxSelectedNameChars',
-		],
-		emits: ['select'],
-		template: '<div data-testid="ai-model-selector-dropdown" />',
-	},
+	useUIStore: () => ({ openNewCredential, openModalWithData }),
 }));
 
 const modelsByProvider: AgentModelsByProvider = {
@@ -202,9 +206,29 @@ describe('AgentModelSelector', () => {
 		expect(dropdown.props('credentialsMissing')).toBe(false);
 		expect(dropdown.props('selectedCredentialName')).toBe('Anthropic credential');
 		expect(JSON.stringify(anthropicItem?.children ?? [])).toContain('Claude Sonnet 4.5');
+		expect(getMenuItemByLabel(anthropicItem?.children ?? [], 'Claude Sonnet 4.5')?.checked).toBe(
+			true,
+		);
 	});
 
-	it('hides the assistant when opening credential creation from the configure action', async () => {
+	it('opens the credential selector from the configure action when credentials exist', async () => {
+		const wrapper = await mountSelector({ anthropic: null });
+		const dropdown = wrapper.findComponent({ name: 'AiModelSelectorDropdown' });
+
+		dropdown.vm.$emit('select', 'anthropic::configure::anthropicApi');
+
+		expect(openModalWithData).toHaveBeenCalledWith({
+			name: 'agentModelCredentialModal',
+			data: expect.objectContaining({
+				credentialType: 'anthropicApi',
+				displayName: 'anthropicApi',
+				initialValue: null,
+			}),
+		});
+	});
+
+	it('hides the assistant when creating credentials from configure without existing credentials', async () => {
+		credentialsByType.value = {};
 		const wrapper = await mountSelector({ anthropic: null });
 		const dropdown = wrapper.findComponent({ name: 'AiModelSelectorDropdown' });
 
