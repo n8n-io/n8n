@@ -310,14 +310,31 @@ function handleRowSelectionChange(updaterOrValue: Updater<RowSelectionState>) {
 }
 
 const selection = defineModel<string[] | T[]>('selection');
-const rowSelection = ref(
-	(selection.value ?? []).reduce<RowSelectionState>((acc, item, index) => {
+
+function toRowSelectionState(items: string[] | T[]): RowSelectionState {
+	return items.reduce<RowSelectionState>((acc, item, index) => {
 		const key = typeof item === 'string' ? item : getRowId(item, index);
 		acc[key] = true;
 
 		return acc;
-	}, {}),
-);
+	}, {});
+}
+
+const rowSelection = ref(toRowSelectionState(selection.value ?? []));
+
+// Sync external writes to the selection model (e.g. a parent clearing it)
+// into the internal row selection state
+watch(selection, (value) => {
+	const next = toRowSelectionState(value ?? []);
+	const currentKeys = Object.keys(rowSelection.value);
+	const nextKeys = Object.keys(next);
+
+	if (nextKeys.length === currentKeys.length && currentKeys.every((key) => next[key])) {
+		return;
+	}
+
+	rowSelection.value = next;
+});
 
 const emitUpdateOptions = useThrottleFn(
 	(payload: TableOptions) => emit('update:options', payload),

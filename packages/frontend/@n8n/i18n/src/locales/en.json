@@ -3170,6 +3170,7 @@
 	"settings.mcp.connectWorkflows.input.placeholder": "Search workflows to connect",
 	"settings.mcp.connectWorkflows.confirm.label": "Enable",
 	"settings.mcp.connectWorkflows.error": "Error fetching available workflows",
+	"settings.mcp.workflows.bulkRemove.success.title": "MCP access removed for {count} workflow | MCP access removed for {count} workflows",
 	"settings.mcp.connectWorkflows.emptyState": "No available workflows",
 	"settings.mcp.connectPopover.tab.oauth": "OAuth",
 	"settings.mcp.connectPopover.tab.accessToken": "Access token",
