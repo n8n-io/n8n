@@ -80,9 +80,11 @@ async function onLinkClick() {
 				data-test-id="agent-ndv-banner-open-builder"
 				@click.prevent="onLinkClick"
 			>
-				{{ i18n.baseText('agentNode.ndv.banner.link') }}</button
-			><span v-else>{{ i18n.baseText('agentNode.ndv.banner.link') }}</span
-			>{{ i18n.baseText('agentNode.ndv.banner.suffix') }}
+				{{ i18n.baseText('agentNode.ndv.banner.link') }}
+			</button>
+			<span v-else>
+				{{ i18n.baseText('agentNode.ndv.banner.link') }}
+			</span>
 		</p>
 	</div>
 </template>

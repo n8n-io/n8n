@@ -67,7 +67,6 @@ describe('AgentNdvBuilderBanner', () => {
 		expect(wrapper.find('[data-test-id="agent-ndv-builder-banner"]').exists()).toBe(true);
 		expect(wrapper.text()).toContain('agentNode.ndv.banner.prefix');
 		expect(wrapper.text()).toContain('agentNode.ndv.banner.link');
-		expect(wrapper.text()).toContain('agentNode.ndv.banner.suffix');
 	});
 
 	it('opens the referenced agent in the builder via the orchestrator', async () => {
