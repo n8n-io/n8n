@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => {
 		ensureLoaded: vi.fn(),
 		fetchStatus: vi.fn(),
 		connect: vi.fn(),
+		createSlackAgentApp: vi.fn(),
 	};
 });
 
@@ -86,34 +87,56 @@ vi.mock('@/features/agents/composables/useAgentIntegrationStatus', async () => {
 	};
 });
 
+vi.mock('@/features/agents/composables/useAgentApi', () => ({
+	createSlackAgentApp: mocks.createSlackAgentApp,
+	getAgent: vi.fn(),
+}));
+
 vi.mock('@/features/agents/components/AgentChannelModal.vue', () => ({
 	default: {
 		template: '<div data-test-id="agent-channel-modal" />',
 	},
 }));
 
-vi.mock('@/features/agents/components/AgentChannelSlackSetup.vue', () => ({
-	default: {
-		props: [
-			'modelValue',
-			'mode',
-			'connected',
-			'isPublished',
-			'setupSlackApp',
-			'projectId',
-			'agentId',
-			'integration',
-			'credentials',
-			'credentialPermissions',
-			'credentialsLoading',
-			'loading',
-			'errorMessage',
-			'errorIsConflict',
-			'forceNewCredential',
-			'setupMode',
-		],
-		emits: ['update:modelValue', 'connect', 'create', 'edit'],
-		template: `
+vi.mock('@/features/agents/components/AgentChannelSlackSetup.vue', async () => {
+	const { ref } = await import('vue');
+
+	return {
+		default: {
+			props: [
+				'modelValue',
+				'mode',
+				'connected',
+				'isPublished',
+				'setupSlackApp',
+				'projectId',
+				'agentId',
+				'integration',
+				'credentials',
+				'credentialPermissions',
+				'credentialsLoading',
+				'loading',
+				'errorMessage',
+				'errorIsConflict',
+				'forceNewCredential',
+				'setupMode',
+			],
+			emits: ['update:modelValue', 'connect', 'create', 'edit'],
+			setup(props: { setupSlackApp?: (appConfigurationToken: string) => Promise<boolean> }) {
+				const setupStatus = ref('idle');
+				const runSlackAppSetup = async () => {
+					setupStatus.value = 'loading';
+					try {
+						await props.setupSlackApp?.('app-token');
+						setupStatus.value = 'connected';
+					} catch {
+						setupStatus.value = 'error';
+					}
+				};
+
+				return { setupStatus, runSlackAppSetup };
+			},
+			template: `
 			<div data-test-id="mock-slack-setup" :data-setup-mode="setupMode">
 				<button
 					data-test-id="mock-slack-connect"
@@ -127,10 +150,18 @@ vi.mock('@/features/agents/components/AgentChannelSlackSetup.vue', () => ({
 				>
 					Connect Slack Twice
 				</button>
+				<button
+					data-test-id="mock-slack-app-setup"
+					@click="runSlackAppSetup"
+				>
+					Install Slack app
+				</button>
+				<span data-test-id="mock-slack-app-setup-status">{{ setupStatus }}</span>
 			</div>
 		`,
-	},
-}));
+		},
+	};
+});
 
 const renderComponent = createThreadComponentRenderer(InstanceAiChannelSetup);
 
@@ -149,6 +180,9 @@ describe('InstanceAiChannelSetup', () => {
 		mocks.ensureLoaded.mockResolvedValue([mocks.slackIntegration]);
 		mocks.fetchStatus.mockResolvedValue(undefined);
 		mocks.connect.mockResolvedValue({ status: 'connected' });
+		mocks.createSlackAgentApp.mockResolvedValue({
+			installUrl: 'https://slack.com/oauth/install',
+		});
 
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
@@ -239,6 +273,20 @@ describe('InstanceAiChannelSetup', () => {
 				approved: true,
 			}),
 		);
+	});
+
+	it('fails Slack app setup immediately when the authorization popup is blocked', async () => {
+		vi.spyOn(window, 'open').mockReturnValueOnce(null);
+		const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+
+		const { getByTestId } = renderComponent({ props: defaultProps });
+
+		await userEvent.click(getByTestId('mock-slack-app-setup'));
+
+		await waitFor(() =>
+			expect(getByTestId('mock-slack-app-setup-status')).toHaveTextContent('error'),
+		);
+		expect(confirmSpy).not.toHaveBeenCalled();
 	});
 
 	it('retries a failed confirmAction once before resolving', async () => {

@@ -149,7 +149,7 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 		}
 	}
 
-	function openSlackAppAuthorizationPopup(installUrl: string): Window | null {
+	function openSlackAppAuthorizationPopup(installUrl: string): Window {
 		const parsedUrl = new URL(installUrl);
 		if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
 			throw new Error('Invalid Slack installation URL');
@@ -157,17 +157,20 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 
 		const params =
 			'scrollbars=no,resizable=yes,status=no,titlebar=no,location=no,toolbar=no,menubar=no,width=500,height=700';
-		return window.open(parsedUrl.toString(), 'Slack App Authorization', params);
+		const popup = window.open(parsedUrl.toString(), 'Slack App Authorization', params);
+		if (!popup) {
+			throw new Error('Slack authorization popup was blocked');
+		}
+		return popup;
 	}
 
-	async function waitForSlackAppSetupCompletion(popup: Window | null): Promise<boolean> {
+	async function waitForSlackAppSetupCompletion(popup: Window): Promise<boolean> {
 		return await new Promise((resolve) => {
 			const oauthChannel = new BroadcastChannel('oauth-callback');
 			let pollInFlight = false;
 			let settled = false;
 
 			const closePopup = () => {
-				if (!popup) return;
 				try {
 					popup.close();
 				} catch {}
