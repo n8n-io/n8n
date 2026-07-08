@@ -11,25 +11,6 @@ import { FEATURED_DEFAULTS } from './featuredDefaults';
 
 const PAGE_SIZE = 4;
 
-const NATIVE_NODES = new Set([
-	'n8n-nodes-base.code',
-	'n8n-nodes-base.httpRequest',
-	'n8n-nodes-base.html',
-	'n8n-nodes-base.crypto',
-	'n8n-nodes-base.editImage',
-	'n8n-nodes-base.ftp',
-	'n8n-nodes-base.evaluation',
-	'n8n-nodes-base.emailSend',
-	'n8n-nodes-base.sms77',
-	'n8n-nodes-base.apiTemplateIo',
-]);
-
-function hasVisibleNodes(nodes: Array<{ name: string }>): boolean {
-	return nodes.some(
-		(n) => !NATIVE_NODES.has(n.name) && !n.name.startsWith('@n8n/n8n-nodes-langchain.'),
-	);
-}
-
 export const useInstanceAiTemplateExamplesStore = defineStore('instanceAiTemplateExamples', () => {
 	const rootStore = useRootStore();
 
@@ -42,6 +23,7 @@ export const useInstanceAiTemplateExamplesStore = defineStore('instanceAiTemplat
 	const totalWorkflows = ref(0);
 	const isLoading = ref(false);
 	const hasLoadFailed = ref(false);
+	const hasLoadedOnce = ref(false);
 	const hoveredPrompt = ref<string | null>(null);
 
 	const totalPages = computed(() => Math.ceil(totalWorkflows.value / PAGE_SIZE));
@@ -56,7 +38,10 @@ export const useInstanceAiTemplateExamplesStore = defineStore('instanceAiTemplat
 		return subcategoriesMap.value[selectedCategory.name] ?? [];
 	});
 
-	async function fetchWorkflows() {
+	let latestRequestId = 0;
+
+	async function fetchWorkflows(): Promise<boolean> {
+		const requestId = ++latestRequestId;
 		isLoading.value = true;
 		try {
 			const selectedCategory = categories.value.find(
@@ -72,6 +57,8 @@ export const useInstanceAiTemplateExamplesStore = defineStore('instanceAiTemplat
 					limit: 1,
 				});
 
+				if (requestId !== latestRequestId) return true;
+
 				if (categories.value.length === 0) {
 					categories.value = response.categories.map((name, index) => ({
 						id: index + 1,
@@ -81,7 +68,8 @@ export const useInstanceAiTemplateExamplesStore = defineStore('instanceAiTemplat
 				subcategoriesMap.value = response.subcategories;
 				workflows.value = FEATURED_DEFAULTS;
 				totalWorkflows.value = response.totalWorkflows + FEATURED_DEFAULTS.length;
-				return;
+				hasLoadedOnce.value = true;
+				return true;
 			}
 
 			const apiPage = isDefaultView ? currentPage.value - 1 : currentPage.value;
@@ -100,6 +88,8 @@ export const useInstanceAiTemplateExamplesStore = defineStore('instanceAiTemplat
 
 			const response = await getInstanceAiExamples(rootStore.restApiContext, query);
 
+			if (requestId !== latestRequestId) return true;
+
 			if (categories.value.length === 0) {
 				categories.value = response.categories.map((name, index) => ({
 					id: index + 1,
@@ -108,28 +98,25 @@ export const useInstanceAiTemplateExamplesStore = defineStore('instanceAiTemplat
 			}
 			subcategoriesMap.value = response.subcategories;
 
-			const sortedWorkflows = [...response.workflows].sort((a, b) => {
-				const aScore = a.relevanceScore ?? 3;
-				const bScore = b.relevanceScore ?? 3;
-				if (bScore !== aScore) return bScore - aScore;
-
-				const aHasNodes = hasVisibleNodes(a.nodes);
-				const bHasNodes = hasVisibleNodes(b.nodes);
-				if (aHasNodes && !bHasNodes) return -1;
-				if (!aHasNodes && bHasNodes) return 1;
-				return 0;
-			});
-
-			workflows.value = sortedWorkflows;
+			workflows.value = response.workflows;
 			totalWorkflows.value = isDefaultView
 				? response.totalWorkflows + FEATURED_DEFAULTS.length
 				: response.totalWorkflows;
+			hasLoadedOnce.value = true;
+			return true;
 		} catch {
-			workflows.value = [];
-			totalWorkflows.value = 0;
-			hasLoadFailed.value = true;
+			if (requestId !== latestRequestId) return true;
+
+			if (!hasLoadedOnce.value) {
+				workflows.value = [];
+				totalWorkflows.value = 0;
+				hasLoadFailed.value = true;
+			}
+			return false;
 		} finally {
-			isLoading.value = false;
+			if (requestId === latestRequestId) {
+				isLoading.value = false;
+			}
 		}
 	}
 
@@ -139,28 +126,48 @@ export const useInstanceAiTemplateExamplesStore = defineStore('instanceAiTemplat
 	}
 
 	async function selectCategory(categoryId: string) {
+		const previousCategoryId = selectedCategoryId.value;
+		const previousSubcategory = selectedSubcategory.value;
+		const previousPage = currentPage.value;
 		selectedCategoryId.value = categoryId;
 		selectedSubcategory.value = '';
 		currentPage.value = 1;
-		await fetchWorkflows();
+		const succeeded = await fetchWorkflows();
+		if (!succeeded) {
+			selectedCategoryId.value = previousCategoryId;
+			selectedSubcategory.value = previousSubcategory;
+			currentPage.value = previousPage;
+		}
 	}
 
 	async function selectSubcategory(subcategory: string) {
+		const previousSubcategory = selectedSubcategory.value;
+		const previousPage = currentPage.value;
 		selectedSubcategory.value = subcategory;
 		currentPage.value = 1;
-		await fetchWorkflows();
+		const succeeded = await fetchWorkflows();
+		if (!succeeded) {
+			selectedSubcategory.value = previousSubcategory;
+			currentPage.value = previousPage;
+		}
 	}
 
 	async function nextPage() {
 		if (!hasNextPage.value) return;
 		currentPage.value++;
-		await fetchWorkflows();
+		const succeeded = await fetchWorkflows();
+		if (!succeeded) {
+			currentPage.value--;
+		}
 	}
 
 	async function prevPage() {
 		if (!hasPrevPage.value) return;
 		currentPage.value--;
-		await fetchWorkflows();
+		const succeeded = await fetchWorkflows();
+		if (!succeeded) {
+			currentPage.value++;
+		}
 	}
 
 	async function initialize() {

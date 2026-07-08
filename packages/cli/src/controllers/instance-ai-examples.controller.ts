@@ -63,7 +63,10 @@ function hasVisibleNodes(nodes: ExampleNode[]): boolean {
 export class InstanceAiExamplesController {
 	private cachedData: ExamplesData | null = null;
 
-	@Get('/')
+	// Public endpoint: no @GlobalScope/@ProjectScope. The payload is template metadata
+	// that carries no user or instance-specific data, so it is served without
+	// auth rather than adding a dedicated RBAC scope for this temporary experiment.
+	@Get('/', { skipAuth: true })
 	getExamples(_req: unknown, _res: unknown, @Query query: InstanceAiExamplesQueryDto) {
 		const data = this.loadData();
 		const { category, subcategory, page, limit } = query;
@@ -76,14 +79,6 @@ export class InstanceAiExamplesController {
 		if (subcategory) {
 			workflows = workflows.filter((w) => w.subcategory === subcategory);
 		}
-
-		workflows.sort((a, b) => {
-			const scoreDiff = (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
-			if (scoreDiff !== 0) return scoreDiff;
-			const aVisible = hasVisibleNodes(a.nodes) ? 1 : 0;
-			const bVisible = hasVisibleNodes(b.nodes) ? 1 : 0;
-			return bVisible - aVisible;
-		});
 
 		const totalWorkflows = workflows.length;
 		const offset = (page - 1) * limit;
@@ -113,6 +108,14 @@ export class InstanceAiExamplesController {
 				iconData: rawData.nodeIcons[n.name],
 			})),
 		}));
+
+		workflows.sort((a, b) => {
+			const scoreDiff = (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
+			if (scoreDiff !== 0) return scoreDiff;
+			const aVisible = hasVisibleNodes(a.nodes) ? 1 : 0;
+			const bVisible = hasVisibleNodes(b.nodes) ? 1 : 0;
+			return bVisible - aVisible;
+		});
 
 		this.cachedData = {
 			categories: rawData.categories,

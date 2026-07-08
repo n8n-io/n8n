@@ -6,11 +6,13 @@ import { usePostHog } from '@/app/stores/posthog.store';
 export function useInstanceAiTemplateExamplesExperiment() {
 	const posthogStore = usePostHog();
 
-	const isFeatureEnabled = computed(
-		() =>
-			posthogStore.getVariant(INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT.name) ===
-			INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT.variant,
+	const currentVariant = computed(() =>
+		posthogStore.getVariant(INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT.name),
 	);
 
-	return { isFeatureEnabled };
+	const isFeatureEnabled = computed(
+		() => currentVariant.value === INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT.variant,
+	);
+
+	return { currentVariant, isFeatureEnabled };
 }

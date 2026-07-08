@@ -111,6 +111,9 @@ onMounted(() => {
 			<button
 				v-if="totalPages > 1 && hasPrevPage && !navAtBottom"
 				:class="$style.navButton"
+				:aria-label="
+					i18n.baseText('experiments.instanceAiTemplateExamples.nav.previous' as BaseTextKey)
+				"
 				@click="store.prevPage()"
 			>
 				<N8nIcon icon="chevron-left" size="medium" />
@@ -156,6 +159,9 @@ onMounted(() => {
 			<button
 				v-if="totalPages > 1 && hasNextPage && !navAtBottom"
 				:class="$style.navButton"
+				:aria-label="
+					i18n.baseText('experiments.instanceAiTemplateExamples.nav.next' as BaseTextKey)
+				"
 				@click="store.nextPage()"
 			>
 				<N8nIcon icon="chevron-right" size="medium" />
@@ -166,10 +172,24 @@ onMounted(() => {
 			v-if="totalPages > 1 && navAtBottom && (hasPrevPage || hasNextPage)"
 			:class="$style.bottomNav"
 		>
-			<button v-if="hasPrevPage" :class="$style.bottomNavButton" @click="store.prevPage()">
+			<button
+				v-if="hasPrevPage"
+				:class="$style.bottomNavButton"
+				:aria-label="
+					i18n.baseText('experiments.instanceAiTemplateExamples.nav.previous' as BaseTextKey)
+				"
+				@click="store.prevPage()"
+			>
 				<N8nIcon icon="chevron-left" size="medium" />
 			</button>
-			<button v-if="hasNextPage" :class="$style.bottomNavButton" @click="store.nextPage()">
+			<button
+				v-if="hasNextPage"
+				:class="$style.bottomNavButton"
+				:aria-label="
+					i18n.baseText('experiments.instanceAiTemplateExamples.nav.next' as BaseTextKey)
+				"
+				@click="store.nextPage()"
+			>
 				<N8nIcon icon="chevron-right" size="medium" />
 			</button>
 		</div>

@@ -12,7 +12,11 @@ import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { getExperimentTelemetryPayload } from '@/experiments/utils';
-import { INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT } from '@/app/constants/experiments';
+import {
+	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT,
+	INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT,
+} from '@/app/constants/experiments';
+import { INSTANCE_AI_TEMPLATE_EXAMPLES_EXPOSURE_EVENT } from '@/experiments/instanceAiTemplateExamples/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useInstanceAiStore } from './instanceAi.store';
@@ -109,20 +113,30 @@ const { isFeatureEnabled: isPromptSuggestionsV2ExperimentEnabled } =
 	useInstanceAiPromptSuggestionsV2Experiment();
 const { isFeatureEnabled: isWorkflowPreviewSuggestionsExperimentEnabled } =
 	useInstanceAiWorkflowPreviewSuggestionsExperiment();
-const { isFeatureEnabled: isTemplateExamplesExperimentEnabled } =
-	useInstanceAiTemplateExamplesExperiment();
+const {
+	isFeatureEnabled: isTemplateExamplesExperimentEnabled,
+	currentVariant: templateExamplesVariant,
+} = useInstanceAiTemplateExamplesExperiment();
 const templateExamplesStore = useInstanceAiTemplateExamplesStore();
 const showTemplateExamples = computed(
 	() => isTemplateExamplesExperimentEnabled.value && !templateExamplesStore.hasLoadFailed,
 );
+let hasTrackedTemplateExamplesExposure = false;
 watch(
 	showTemplateExamples,
 	(visible) => {
-		if (visible) {
-			telemetry.track('AI Assistant template examples shown');
+		const variant = templateExamplesVariant.value;
+		if (!visible || hasTrackedTemplateExamplesExposure || typeof variant !== 'string') {
+			return;
 		}
+
+		telemetry.track(
+			INSTANCE_AI_TEMPLATE_EXAMPLES_EXPOSURE_EVENT,
+			getExperimentTelemetryPayload(INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT, variant),
+		);
+		hasTrackedTemplateExamplesExposure = true;
 	},
-	{ once: true },
+	{ immediate: true },
 );
 const { isVariantEnabled: isSplitVariantEnabled } = useInstanceAiSplitEmptyStateExperiment();
 // Experiment cleanup: remove with instanceAiSplitEmptyState.
@@ -366,7 +380,7 @@ function handleTemplateHoverEnd() {
 }
 
 const inputPulsing = ref(false);
-const promptFromTemplate = ref(false);
+const selectedTemplatePrompt = ref<string | null>(null);
 
 function handleTemplateSelectPrompt(prompt: string) {
 	templatePreviewPrompt.value = null;
@@ -374,7 +388,7 @@ function handleTemplateSelectPrompt(prompt: string) {
 		chatInputRef.value.setText(prompt);
 		chatInputRef.value.focus();
 	}
-	promptFromTemplate.value = true;
+	selectedTemplatePrompt.value = prompt;
 	inputPulsing.value = true;
 	setTimeout(() => {
 		inputPulsing.value = false;
@@ -428,11 +442,12 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 		return;
 	}
 
-	const finalMessage =
-		promptFromTemplate.value && isTemplateExamplesExperimentEnabled.value
-			? message + TEMPLATE_PROMPT_SUFFIX
-			: message;
-	promptFromTemplate.value = false;
+	// Experiment cleanup: remove with InstanceAiTemplateExamplesExperiment
+	const isFromTemplate =
+		isTemplateExamplesExperimentEnabled.value &&
+		selectedTemplatePrompt.value !== null &&
+		message.startsWith(selectedTemplatePrompt.value);
+	const finalMessage = isFromTemplate ? message + TEMPLATE_PROMPT_SUFFIX : message;
 
 	const threadId = uuidv4();
 	isStartingThread.value = true;

@@ -40,9 +40,21 @@ function handleSelect() {
 <template>
 	<div
 		:class="$style.card"
+		role="button"
+		tabindex="0"
+		:aria-label="
+			i18n.baseText('experiments.instanceAiTemplateExamples.card.ariaLabel' as BaseTextKey, {
+				interpolate: { name: workflow.name },
+			})
+		"
+		data-test-id="template-example-card"
 		@mouseenter="emit('hover', getPrompt())"
 		@mouseleave="emit('hoverEnd')"
+		@focus="emit('hover', getPrompt())"
+		@blur="emit('hoverEnd')"
 		@click="handleSelect"
+		@keydown.enter="handleSelect"
+		@keydown.space.prevent="handleSelect"
 	>
 		<N8nText :class="$style.title" :bold="true" size="medium" tag="h3">
 			{{ workflow.name }}
@@ -81,6 +93,11 @@ function handleSelect() {
 		border-color: var(--color--foreground);
 		transform: translateY(-1px);
 		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+	}
+
+	&:focus-visible {
+		outline: 2px solid var(--color--primary);
+		outline-offset: 2px;
 	}
 }
 

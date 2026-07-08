@@ -11,3 +11,4 @@ export const MIN_HEIGHT_FOR_COMPACT_PX = 250;
 export const NAV_BUTTON_OFFSET_PX = 48;
 export const GRID_HEIGHT_FULL_PX = 212;
 export const GRID_HEIGHT_COMPACT_PX = 100;
+export const INSTANCE_AI_TEMPLATE_EXAMPLES_EXPOSURE_EVENT = 'AI Assistant template examples shown';

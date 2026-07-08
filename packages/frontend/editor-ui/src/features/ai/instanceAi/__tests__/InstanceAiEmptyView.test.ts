@@ -236,6 +236,7 @@ vi.mock('@/experiments/instanceAiTemplateExamples', async () => {
 	return {
 		useInstanceAiTemplateExamplesExperiment: () => ({
 			isFeatureEnabled: computed(() => templateExamplesEnabled.value),
+			currentVariant: computed(() => (templateExamplesEnabled.value ? 'variant' : 'control')),
 		}),
 		useInstanceAiTemplateExamplesStore: () => templateExamplesStoreMock,
 		TEMPLATE_PROMPT_SUFFIX:

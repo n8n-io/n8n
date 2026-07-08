@@ -91,11 +91,14 @@ function copyInstanceAiExamplesData() {
 	);
 
 	if (!existsSync(source)) {
-		console.warn('Instance AI examples data file not found, skipping copy:', source);
-		return;
+		throw new Error(`Instance AI examples data file not found: ${source}`);
 	}
 
-	shell.cp(source, path.resolve(ROOT_DIR, 'dist', 'instance-ai-examples.data.json'));
+	const destination = path.resolve(ROOT_DIR, 'dist', 'instance-ai-examples.data.json');
+	shell.cp(source, destination);
+	if (!existsSync(destination)) {
+		throw new Error(`Failed to copy Instance AI examples data file to: ${destination}`);
+	}
 }
 
 function generateTimezoneData() {
