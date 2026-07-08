@@ -306,6 +306,8 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('knowledge-base/reference/index.json');
 			expect(prompt).not.toContain('knowledge-base/templates/index.txt');
 			expect(prompt).toContain('workspace_execute_command');
+			expect(prompt).not.toContain('workspace_list_files');
+			expect(prompt).toContain('mkdir -p');
 			expect(prompt).toContain('Consult the knowledge base before planning or building');
 			expect(prompt).not.toContain('knowledge-base/best-practices/*.md');
 		});

@@ -5,7 +5,10 @@ import {
 	type WorkspaceSandbox,
 } from '@n8n/agents';
 
-import { createLazyRuntimeWorkspace } from '../lazy-runtime-workspace';
+import {
+	INSTANCE_AI_WORKSPACE_TOOL_ALLOWLIST,
+	createLazyRuntimeWorkspace,
+} from '../lazy-runtime-workspace';
 
 function createMockWorkspace() {
 	const executeCommand = vi.fn<
@@ -88,8 +91,11 @@ describe('createLazyRuntimeWorkspace', () => {
 		lazyWorkspace.getInstructions();
 
 		expect(ensureWorkspace).not.toHaveBeenCalled();
-		expect(tools.some((tool) => tool.name === 'workspace_read_file')).toBe(true);
-		expect(tools.some((tool) => tool.name === 'workspace_execute_command')).toBe(true);
+		expect(tools.map((tool) => tool.name).sort()).toEqual(
+			[...INSTANCE_AI_WORKSPACE_TOOL_ALLOWLIST].sort(),
+		);
+		expect(tools.some((tool) => tool.name === 'workspace_list_files')).toBe(false);
+		expect(tools.some((tool) => tool.name === 'workspace_append_file')).toBe(false);
 
 		const readFile = tools.find((tool) => tool.name === 'workspace_read_file');
 		await readFile?.handler?.({ path: '/workspace/report.md' }, {});
