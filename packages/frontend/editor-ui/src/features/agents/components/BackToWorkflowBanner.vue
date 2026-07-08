@@ -37,6 +37,21 @@ defineEmits<{
 	cursor: pointer;
 }
 
+/* Dark mode: darker purple surface with light text */
+:global(body[data-theme='dark']) .banner {
+	border-bottom-color: var(--color--purple-700);
+	background-color: var(--color--purple-800);
+	color: var(--color--neutral-white);
+}
+
+@media (prefers-color-scheme: dark) {
+	:global(body:not([data-theme])) .banner {
+		border-bottom-color: var(--color--purple-700);
+		background-color: var(--color--purple-800);
+		color: var(--color--neutral-white);
+	}
+}
+
 .label {
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--medium);

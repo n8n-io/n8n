@@ -6,10 +6,9 @@ import type { AgentCapabilitySummary } from '@n8n/api-types';
 import CanvasNodeAgent from './CanvasNodeAgent.vue';
 import { createCanvasNodeProvide } from '@/features/workflows/canvas/__tests__/utils';
 import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
-import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
 
-const { summaryHolder, errorHolder, modelCatalogHolder, pushSpy, ensureLoadedSpy } = vi.hoisted(
-	() => ({
+const { summaryHolder, errorHolder, modelCatalogHolder, pushSpy, ensureLoadedSpy, openBuilderSpy } =
+	vi.hoisted(() => ({
 		summaryHolder: { value: null as AgentCapabilitySummary | null },
 		errorHolder: { value: null as unknown },
 		modelCatalogHolder: {
@@ -17,16 +16,22 @@ const { summaryHolder, errorHolder, modelCatalogHolder, pushSpy, ensureLoadedSpy
 		},
 		pushSpy: vi.fn(),
 		ensureLoadedSpy: vi.fn(),
+		openBuilderSpy: vi.fn(),
+	}));
+
+// The route push itself is covered by useAgentNavigation.test.ts; here we pin
+// what the card hands the navigation seam.
+vi.mock('@/features/agents/composables/useAgentNavigation', () => ({
+	useAgentNavigation: () => ({
+		openBuilder: openBuilderSpy,
+		openAgent: vi.fn(),
+		rememberOrigin: vi.fn(),
 	}),
-);
+}));
 
 vi.mock('@/features/agents/composables/useAgentCapabilitySummary', () => ({
 	useAgentCapabilitySummary: () => ({ summary: summaryHolder, error: errorHolder }),
 	clearAgentCapabilitySummaryCache: vi.fn(),
-}));
-
-vi.mock('@/features/agents/composables/useAgentIntegrationsCatalog', () => ({
-	useAgentIntegrationsCatalog: () => ({ catalog: { value: null }, ensureLoaded: ensureLoadedSpy }),
 }));
 
 vi.mock('@/features/agents/composables/useModelCatalog', () => ({
@@ -56,10 +61,16 @@ const renderComponent = createComponentRenderer(CanvasNodeAgent, {
 			CredentialIcon: true,
 			CanvasNodeStatusIcons: true,
 			AgentSelectorParameterInput: {
-				template: '<button data-test-id="agent-picker-stub" @click="onPick" />',
+				template:
+					'<div><button data-test-id="agent-picker-stub" @click="onPick" /><button data-test-id="agent-picker-create-stub" @click="onCreate" /></div>',
 				methods: {
 					onPick() {
 						this.$emit('update:modelValue', { __rl: true, mode: 'list', value: 'agent-9' });
+					},
+					onCreate() {
+						// Mirrors the inline-create flow: reference first, then the signal.
+						this.$emit('update:modelValue', { __rl: true, mode: 'list', value: 'agent-new' });
+						this.$emit('agentCreated');
 					},
 				},
 			},
@@ -89,6 +100,7 @@ beforeEach(() => {
 	errorHolder.value = null;
 	modelCatalogHolder.value = {};
 	pushSpy.mockReset();
+	openBuilderSpy.mockReset();
 	ensureLoadedSpy.mockReset().mockResolvedValue([]);
 });
 
@@ -107,7 +119,19 @@ describe('CanvasNodeAgent', () => {
 		]);
 	});
 
-	it('renders the agent name, friendly model name and capability chips (configured state)', () => {
+	it('opens the NDV (activate) after an agent is inline-created from the card', async () => {
+		const { getByTestId, emitted } = renderWithAgent('');
+
+		await fireEvent.click(getByTestId('agent-picker-create-stub'));
+
+		expect(emitted('update')[0]).toEqual([
+			{ agentId: { __rl: true, mode: 'list', value: 'agent-new' } },
+		]);
+		// The user keeps configuring the fresh draft in the NDV — no builder trip.
+		expect(emitted('activate')).toEqual([['node']]);
+	});
+
+	it('renders the agent name, friendly model name and tool/skill chips, omitting channels + tasks', () => {
 		summaryHolder.value = {
 			id: 'agent-1',
 			name: 'Configured Agent',
@@ -115,21 +139,27 @@ describe('CanvasNodeAgent', () => {
 			channels: [{ type: 'slack' }],
 			tools: [{ type: 'node', name: 'get_available_dates' }],
 			skills: [{ id: 's1', name: 'PR Reviewer' }],
-			tasks: [],
+			tasks: [{ id: 't1', name: 'Weekly Summary', enabled: true }],
 		};
 		// Resolves the friendly catalog name in place of the raw model id.
 		modelCatalogHolder.value = {
 			anthropic: { models: { 'claude-opus-4-8': { name: 'Claude Opus 4.8' } } },
 		};
 
-		const { getByText, getAllByTestId, queryByTestId } = renderWithAgent('agent-1', 'Rob');
+		const { getByText, getAllByTestId, queryByTestId, queryByText } = renderWithAgent(
+			'agent-1',
+			'Rob',
+		);
 
 		// Summary name wins over the resource-locator cached name.
 		expect(getByText('Configured Agent')).toBeInTheDocument();
 		expect(getByText('Claude Opus 4.8')).toBeInTheDocument();
 		// Raw node tool id is humanized like the edit page.
 		expect(getByText('Get available dates')).toBeInTheDocument();
-		expect(getAllByTestId('canvas-node-agent-chip')).toHaveLength(3);
+		expect(getByText('PR Reviewer')).toBeInTheDocument();
+		// Channels + tasks belong to standalone agents and aren't shown on the card.
+		expect(getAllByTestId('canvas-node-agent-chip')).toHaveLength(2);
+		expect(queryByText('Weekly Summary')).toBeNull();
 		expect(queryByTestId('agent-picker-stub')).toBeNull();
 	});
 
@@ -165,7 +195,7 @@ describe('CanvasNodeAgent', () => {
 		expect(queryByTestId('agent-picker-stub')).toBeNull();
 	});
 
-	it('navigates to the agent detail view when the open affordance is clicked', async () => {
+	it('opens the agent builder without an origin node when the open affordance is clicked', async () => {
 		summaryHolder.value = {
 			id: 'agent-1',
 			name: 'Configured Agent',
@@ -180,10 +210,9 @@ describe('CanvasNodeAgent', () => {
 
 		await fireEvent.click(getByTestId('canvas-node-agent-open'));
 
-		expect(pushSpy).toHaveBeenCalledWith({
-			name: AGENT_BUILDER_VIEW,
-			params: { projectId: 'proj-1', agentId: 'agent-1' },
-		});
+		// Exact args — no origin node id: a set node id would make "Back to
+		// workflow" reopen this node's NDV instead of landing on the canvas.
+		expect(openBuilderSpy).toHaveBeenCalledWith('proj-1', 'agent-1');
 	});
 
 	it('emits activate (opens NDV) on double-click', async () => {

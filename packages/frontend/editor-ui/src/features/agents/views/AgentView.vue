@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
-import { computed, onBeforeUnmount, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { computed, onMounted } from 'vue';
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
 import BackToWorkflowBanner from '@/features/agents/components/BackToWorkflowBanner.vue';
@@ -27,12 +27,10 @@ onMounted(async () => {
 	documentTitle.set(locale.baseText('agents.heading'));
 });
 
-// Clear the round-trip context when leaving the agent feature entirely. This
-// parent route wraps the builder/preview/sessions, so switching agents or
-// sub-pages keeps it mounted; it only unmounts on a real exit. Without this an
-// abandoned round-trip (e.g. browser back) would resurface the banner the next
-// time the same agent is opened.
-onBeforeUnmount(() => returnContext.clear());
+// Clear the round-trip context when leaving the agent feature.
+onBeforeRouteLeave(() => {
+	returnContext.clear();
+});
 
 async function onBackToWorkflow() {
 	const ctx = returnContext.context;

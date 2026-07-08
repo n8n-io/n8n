@@ -36,10 +36,13 @@ const props = withDefaults(
 		disabled?: boolean;
 		embedded?: boolean;
 		projectId?: string;
+		/** Cap for the instructions editor — compact hosts (NDV) pass a smaller value. */
+		instructionsMaxHeight?: string;
 	}>(),
 	{
 		disabled: false,
 		embedded: false,
+		instructionsMaxHeight: '640px',
 	},
 );
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
@@ -173,7 +176,7 @@ function onInstructionsInput(value: string) {
 				:class="$style.instructionsEditor"
 				:model-value="instructions"
 				:readonly="props.disabled"
-				max-height="640px"
+				:max-height="props.instructionsMaxHeight"
 				@update:model-value="onInstructionsInput"
 			/>
 			<N8nText size="xsmall" color="text-light">{{

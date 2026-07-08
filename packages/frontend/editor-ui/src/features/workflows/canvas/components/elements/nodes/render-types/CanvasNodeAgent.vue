@@ -1,18 +1,14 @@
 <script setup lang="ts">
 import { computed, useCssModule, watch } from 'vue';
-import { useRouter } from 'vue-router';
 import type { INodeParameterResourceLocator, INodeProperties } from 'n8n-workflow';
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '../../../../composables/useCanvasNode';
 import type { CanvasNodeAgentRender } from '../../../../canvas.types';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
-import { useAgentIntegrationsCatalog } from '@/features/agents/composables/useAgentIntegrationsCatalog';
+import { useAgentScopeProjectId } from '@/features/agents/composables/useAgentScopeProjectId';
 import { useModelCatalog } from '@/features/agents/composables/useModelCatalog';
-import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
 import {
 	AGENT_MODEL_PROVIDER_DEFINITIONS,
 	isAgentModelProvider,
@@ -22,21 +18,18 @@ import AgentSelectorParameterInput from '@/features/ndv/parameters/components/Ag
 import CanvasNodeStatusIcons from './parts/CanvasNodeStatusIcons.vue';
 import CanvasNodeAgentChips from './parts/CanvasNodeAgentChips.vue';
 import { buildAgentCardChips } from './parts/canvasNodeAgentChips.utils';
+import { useAgentNavigation } from '@/features/agents/composables/useAgentNavigation';
 
 const emit = defineEmits<{
 	update: [parameters: Record<string, unknown>];
-	activate: [id: string, event: MouseEvent];
+	activate: [id: string, event?: MouseEvent];
 	'open:contextmenu': [event: MouseEvent];
 }>();
 
 const $style = useCssModule();
 const i18n = useI18n();
-const router = useRouter();
-const projectsStore = useProjectsStore();
 const nodeTypesStore = useNodeTypesStore();
-const workflowDocumentStore = injectWorkflowDocumentStore();
-const { catalog: integrationsCatalog, ensureLoaded: ensureIntegrationsLoaded } =
-	useAgentIntegrationsCatalog();
+const nav = useAgentNavigation();
 const { catalog: modelCatalog, ensureLoaded: ensureModelsLoaded } = useModelCatalog();
 
 const {
@@ -75,13 +68,9 @@ const agentId = computed(() => {
 
 const isConfigured = computed(() => agentId.value !== '');
 
-const projectId = computed(
-	() =>
-		projectsStore.currentProjectId ??
-		workflowDocumentStore.value?.homeProject?.id ??
-		projectsStore.personalProject?.id ??
-		'',
-);
+// Shared scope resolution (picker / canvas card / NDV must all read/write
+// the same agent record).
+const projectId = useAgentScopeProjectId();
 
 const { summary, error } = useAgentCapabilitySummary(projectId, agentId);
 
@@ -123,9 +112,7 @@ function resolveNodeTypeLabel(nodeType: string, version?: number): string | unde
 }
 
 const chips = computed(() =>
-	summary.value
-		? buildAgentCardChips(summary.value, integrationsCatalog.value, resolveNodeTypeLabel)
-		: [],
+	summary.value ? buildAgentCardChips(summary.value, resolveNodeTypeLabel) : [],
 );
 
 // The picker is NDV-parameter-input shaped; it only reads `parameter.name`, so a
@@ -141,6 +128,12 @@ function onPickAgent(value: INodeParameterResourceLocator) {
 	emit('update', { agentId: value });
 }
 
+// A fresh draft was inline-created and referenced — open the NDV so the user
+// keeps configuring it in place.
+function onAgentCreated() {
+	emit('activate', id.value);
+}
+
 function onActivate(event: MouseEvent) {
 	if (isConfigured.value) {
 		emit('activate', id.value, event);
@@ -154,21 +147,20 @@ function onOpenContextMenu(event: MouseEvent) {
 function openAgent() {
 	if (!isConfigured.value || !projectId.value) return;
 
-	void router.push({
-		name: AGENT_BUILDER_VIEW,
-		params: { projectId: projectId.value, agentId: agentId.value },
-	});
+	// No origin node id: this trip starts from the canvas, so "Back to
+	// workflow" must land on the canvas — a set node id would reopen the
+	// node's NDV on return (that's the NDV banner's round-trip, not ours).
+	void nav.openBuilder(projectId.value, agentId.value);
 }
 
-// Resolve chip labels/icons (channel names/icons + friendly model name) once the
-// project scope is known. projectId is often empty at mount and resolves async,
-// so watch it (immediate) rather than firing once in onMounted, which would skip
-// the load on a cold canvas and leave chips on raw-type/raw-id fallbacks.
+// Resolve the friendly model name once the project scope is known. projectId is
+// often empty at mount and resolves async, so watch it (immediate) rather than
+// firing once in onMounted, which would skip the load on a cold canvas and leave
+// the model name on its raw-id fallback.
 watch(
 	projectId,
 	(id) => {
 		if (!id) return;
-		void ensureIntegrationsLoaded(id).catch(() => {});
 		void ensureModelsLoaded(id).catch(() => {});
 	},
 	{ immediate: true },
@@ -237,6 +229,7 @@ watch(
 							input-size="medium"
 							hide-mode-selector
 							@update:model-value="onPickAgent"
+							@agent-created="onAgentCreated"
 						/>
 					</div>
 				</div>
@@ -345,7 +338,7 @@ watch(
 	border: none;
 	border-radius: var(--radius);
 	background: transparent;
-	color: var(--icon-color--subtle, var(--text-color--subtle));
+	color: var(--canvas--label--color);
 	cursor: pointer;
 
 	&:hover {
@@ -356,8 +349,7 @@ watch(
 
 // Stacking context that sits above the header (which stays in normal flow, so
 // its arrow button keeps its clicks + hover), and tucks the body up into the
-// header by one radius. The body's run glow resolves into this layer, so it
-// paints over the header's bottom edge.
+// header by one radius.
 .bodyWrap {
 	position: relative;
 	z-index: 1;
@@ -365,9 +357,6 @@ watch(
 }
 
 .body {
-	// Anchor the running/waiting glow `::after` (positioned relative to the body,
-	// but stacked into .bodyWrap's negative layer — behind the body, above header).
-	position: relative;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
@@ -409,34 +398,49 @@ watch(
 }
 
 /**
- * Execution state — mirrors CanvasNodeDefault, but scoped to the body so the
- * run/state highlight wraps the body only (the selected ring still rings the
- * whole node). Success/error tint the body border; running/waiting add the
- * animated glow around the body.
+ * Execution state — mirrors CanvasNodeDefault: the status sits on the node
+ * outline rather than wrapping it. The card outline is drawn by two elements
+ * (header + body) whose overlap seam would show if their borders were tinted,
+ * so success/error paint one 2px ring exactly over the outer border instead;
+ * running/waiting keep the default-node animated glow around the card.
  */
 .selected {
 	box-shadow: 0 0 0 4px var(--canvas--color--selected);
 }
 
-.success .body {
-	border-color: var(--color--success);
+.success::after,
+.error::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: 2;
+	border: 2px solid;
+	border-radius: var(--agent-card--radius);
+	pointer-events: none;
 }
 
-.error .body {
-	border-color: var(--color--danger);
+.success::after {
+	border-color: var(--color-canvas-node-success-border-color, var(--color--success));
+}
+
+.error::after {
+	border-color: var(--canvas-node--border-color--error, var(--color--danger));
 }
 
 /* stylelint-disable */
-.running .body::after,
-.waiting .body::after {
+.running::after,
+.waiting::after {
 	@include styles.status-animated-after;
-	border-radius: var(--agent-card--radius);
+	// success/error can apply at the same time (e.g. a succeeded node waiting
+	// for its next run) — drop their 2px ring border while the glow shows.
+	border: none;
+	border-radius: calc(var(--agent-card--radius) + 3px);
 }
 
-.running .body::after {
+.running::after {
 	@include styles.status-running-animation;
 }
-.waiting .body::after {
+.waiting::after {
 	@include styles.status-waiting-animation;
 }
 

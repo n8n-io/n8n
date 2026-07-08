@@ -1,9 +1,5 @@
-import type {
-	AgentCapabilitySummary,
-	AgentCapabilityTool,
-	ChatIntegrationDescriptor,
-} from '@n8n/api-types';
-import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon';
+import type { AgentCapabilitySummary, AgentCapabilityTool } from '@n8n/api-types';
+import type { IconName } from '@n8n/design-system/components/N8nIcon';
 import { formatToolNameForDisplay } from '@/features/agents/utils/toolDisplayName';
 import { MIN_GROUPED_TOOLS_PER_TYPE } from '@/features/agents/components/AgentCapabilitiesSection.utils';
 
@@ -16,7 +12,7 @@ export interface AgentCardChip {
 	/**
 	 * Node type + version for node-tool chips, so the chip can render the node's
 	 * own icon (via `NodeIcon`) instead of the generic fallback. Absent for
-	 * channels / skills / tasks / workflow / custom tools.
+	 * skills, workflow and custom tools.
 	 */
 	nodeType?: string;
 	nodeTypeVersion?: number;
@@ -37,18 +33,12 @@ const TOOL_ICONS = {
 	node: 'wrench',
 } as const satisfies Record<AgentCapabilityTool['type'], IconName>;
 
-function isIconName(icon: unknown): icon is IconName {
-	return typeof icon === 'string' && icon in updatedIconSet;
-}
-
 function individualToolChip(tool: AgentCapabilityTool, index: number): AgentCardChip {
 	return {
 		key: `tool:${tool.type}:${tool.name}:${index}`,
 		icon: TOOL_ICONS[tool.type],
 		// Mirror the agent edit page, which humanizes every tool name.
 		label: formatToolNameForDisplay(tool.name),
-		// Node tools carry their node type so the chip renders the node's icon;
-		// undefined for workflow/custom tools.
 		nodeType: tool.nodeType,
 		nodeTypeVersion: tool.nodeTypeVersion,
 	};
@@ -113,41 +103,20 @@ function buildToolChips(
 
 /**
  * Flattens an agent's capability summary into the ordered chip list shown on the
- * canvas card: channels, then tools, skills and tasks. Channel labels/icons resolve from the
- * integrations catalog when loaded, falling back to the raw type + a generic icon.
- * Node tools resolve their friendly node-type names (and group) via
- * {@link resolveNodeTypeLabel}.
+ * canvas card: tools first, then skills. Channels and tasks are intentionally
+ * omitted. Node tools resolve their friendly
+ * node-type names (and group) via {@link resolveNodeTypeLabel}.
  */
 export function buildAgentCardChips(
 	summary: AgentCapabilitySummary,
-	integrations: ChatIntegrationDescriptor[] | null,
 	resolveNodeTypeLabel?: ResolveNodeTypeLabel,
 ): AgentCardChip[] {
 	const chips: AgentCardChip[] = [];
-
-	const channelCounts = new Map<string, number>();
-	for (const channel of summary.channels) {
-		channelCounts.set(channel.type, (channelCounts.get(channel.type) ?? 0) + 1);
-	}
-	for (const [type, count] of channelCounts) {
-		const integration = integrations?.find((entry) => entry.type === type);
-		const label = integration?.label ?? type;
-		const icon = integration && isIconName(integration.icon) ? integration.icon : 'zap';
-		chips.push({
-			key: `channel:${type}`,
-			icon,
-			label: count > 1 ? `${count} ${label}` : label,
-		});
-	}
 
 	chips.push(...buildToolChips(summary.tools, resolveNodeTypeLabel));
 
 	for (const skill of summary.skills) {
 		chips.push({ key: `skill:${skill.id}`, icon: 'sparkles', label: skill.name });
-	}
-
-	for (const task of summary.tasks) {
-		chips.push({ key: `task:${task.id}`, icon: 'clock', label: task.name });
 	}
 
 	return chips;

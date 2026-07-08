@@ -52,6 +52,19 @@ export class MessageAnAgentV1 implements INodeType {
 						},
 					],
 				},
+				{
+					displayName: 'Message',
+					name: 'message',
+					type: 'string',
+					default: '',
+					required: true,
+					description: 'The message to send to the agent',
+					placeholder:
+						'Process the refund for order {{ $json.order_id }} — confirm with the customer that it was approved.',
+					typeOptions: {
+						rows: 4,
+					},
+				},
 				...commonProperties,
 			],
 		};

@@ -5,12 +5,19 @@ import AgentView from '../views/AgentView.vue';
 import { VIEWS } from '@/app/constants';
 import type { AgentReturnContext } from '../agentReturnContext.store';
 
-const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+const { push, routeLeaveGuards } = vi.hoisted(() => ({
+	push: vi.fn(),
+	routeLeaveGuards: [] as Array<() => unknown>,
+}));
 const route = reactive<{ params: { agentId?: string } }>({ params: { agentId: 'agent-1' } });
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ push }),
 	useRoute: () => route,
 	RouterLink: vi.fn(),
+	// Capture the guard so a test can simulate a real route-level exit.
+	onBeforeRouteLeave: (guard: () => unknown) => {
+		routeLeaveGuards.push(guard);
+	},
 }));
 
 vi.mock('@/app/composables/useDocumentTitle', () => ({
@@ -34,6 +41,7 @@ const renderComponent = createComponentRenderer(AgentView, {
 describe('AgentView', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		routeLeaveGuards.length = 0;
 		returnContextStore.context = null;
 		route.params = { agentId: 'agent-1' };
 	});
@@ -81,12 +89,25 @@ describe('AgentView', () => {
 		});
 	});
 
-	it('clears the round-trip context when the agent feature unmounts', () => {
+	it('clears the round-trip context on a real route-level exit', () => {
+		returnContextStore.context = { workflowId: 'wf-1', nodeId: 'abc', agentId: 'agent-1' };
+		renderComponent();
+
+		// Leaving the agent route fires the onBeforeRouteLeave guard.
+		routeLeaveGuards.forEach((guard) => guard());
+
+		expect(returnContextStore.clear).toHaveBeenCalled();
+	});
+
+	it('does not clear the context on a bare unmount (survives the Suspense remount on first navigation)', () => {
 		returnContextStore.context = { workflowId: 'wf-1', nodeId: 'abc', agentId: 'agent-1' };
 		const { unmount } = renderComponent();
 
+		// A transient unmount — e.g. <Suspense> swapping in an async child-route
+		// chunk on the first (uncached) navigation — must NOT wipe the just-set
+		// round-trip context, or the "Back to workflow" banner blinks and vanishes.
 		unmount();
 
-		expect(returnContextStore.clear).toHaveBeenCalled();
+		expect(returnContextStore.clear).not.toHaveBeenCalled();
 	});
 });

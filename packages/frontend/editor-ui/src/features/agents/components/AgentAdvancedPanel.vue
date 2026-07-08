@@ -47,16 +47,37 @@ const SEARCH_CONTEXT_SIZE_OPTIONS = ['low', 'medium', 'high'] as const;
 type SearchContextSize = (typeof SEARCH_CONTEXT_SIZE_OPTIONS)[number];
 type WebSearchSelectValue = 'off' | WebSearchMethod;
 
+export type AgentAdvancedPanelField =
+	| 'webSearch'
+	| 'thinking'
+	| 'toolCallConcurrency'
+	| 'maxIterations';
+
 const props = withDefaults(
-	defineProps<{ config: AgentJsonConfig | null; disabled?: boolean; collapsible?: boolean }>(),
+	defineProps<{
+		config: AgentJsonConfig | null;
+		disabled?: boolean;
+		collapsible?: boolean;
+		/**
+		 * Render only the listed fields, without the panel header — for hosts that
+		 * surface individual knobs (the NDV's Advanced section). Unset renders the
+		 * full builder panel.
+		 */
+		fields?: AgentAdvancedPanelField[];
+	}>(),
 	{
 		disabled: false,
 		collapsible: false,
+		fields: undefined,
 	},
 );
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
 const isExpanded = ref(!props.collapsible);
+
+function showField(field: AgentAdvancedPanelField) {
+	return !props.fields || props.fields.includes(field);
+}
 
 const provider = computed(() => parseProvider(props.config?.model));
 const capabilities = computed(() => PROVIDER_CAPABILITIES[provider.value] ?? DEFAULT_CAPABILITIES);
@@ -368,7 +389,7 @@ const thinkingDisabledReason = computed(() =>
 <template>
 	<N8nCollapsiblePanel
 		v-model="isExpanded"
-		:class="$style.panel"
+		:class="[$style.panel, props.fields ? $style.headerless : '']"
 		:disabled="!props.collapsible"
 		data-testid="agent-behavior-panel"
 	>
@@ -376,7 +397,7 @@ const thinkingDisabledReason = computed(() =>
 			<N8nText tag="h3" :bold="true">{{ i18n.baseText('agents.builder.advanced.title') }}</N8nText>
 		</template>
 		<div :class="$style.content">
-			<div :class="$style.settingGroup">
+			<div v-if="showField('webSearch')" :class="$style.settingGroup">
 				<div :class="$style.row">
 					<div :class="$style.rowLabel">
 						<N8nText size="small" :bold="true">{{
@@ -530,7 +551,7 @@ const thinkingDisabledReason = computed(() =>
 				</div>
 			</div>
 
-			<div :class="$style.settingGroup">
+			<div v-if="showField('thinking')" :class="$style.settingGroup">
 				<div :class="$style.row">
 					<div :class="$style.rowLabel">
 						<N8nText size="small" :bold="true">{{
@@ -603,7 +624,7 @@ const thinkingDisabledReason = computed(() =>
 				</div>
 			</div>
 
-			<div :class="$style.row">
+			<div v-if="showField('toolCallConcurrency')" :class="$style.row">
 				<div :class="$style.rowLabel">
 					<N8nText size="small" :bold="true">{{
 						i18n.baseText('agents.builder.advanced.concurrency.label')
@@ -624,7 +645,7 @@ const thinkingDisabledReason = computed(() =>
 				/>
 			</div>
 
-			<div :class="$style.row">
+			<div v-if="showField('maxIterations')" :class="$style.row">
 				<div :class="$style.rowLabel">
 					<N8nText size="small" :bold="true">{{
 						i18n.baseText('agents.builder.advanced.maxIterations.label')
@@ -671,6 +692,16 @@ const thinkingDisabledReason = computed(() =>
 
 .panel.panel > [data-state] > :first-child {
 	padding: var(--spacing--sm) 0 0;
+}
+
+/* Field-allowlist mode: hosts provide their own section chrome, so hide the
+   panel header entirely (the CollapsiblePanel renders it unconditionally). */
+.headerless.headerless > :first-child {
+	display: none;
+}
+
+.headerless.headerless > [data-state] > :first-child {
+	padding: 0;
 }
 
 .content {

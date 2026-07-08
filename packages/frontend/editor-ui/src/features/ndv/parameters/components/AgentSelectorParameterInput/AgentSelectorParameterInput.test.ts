@@ -41,8 +41,10 @@ vi.mock('@/features/agents/composables/useProjectAgentsList', () => ({
 	upsertProjectAgentsListCache,
 }));
 
-// Navigation is unit-tested separately (useAgentNavigation.test.ts); here we
-// only assert the picker delegates to it.
+// Inline create deliberately stays in the workflow (no builder navigation, no
+// forced workflow save). This mock is a regression tripwire: the create test
+// asserts openBuilder/saveCurrentWorkflow are NOT called, guarding against
+// the old round-trip being reintroduced.
 vi.mock('@/features/agents/composables/useAgentNavigation', () => ({
 	useAgentNavigation: () => ({ openBuilder, openAgent: vi.fn(), rememberOrigin: vi.fn() }),
 }));
@@ -231,7 +233,7 @@ describe('AgentSelectorParameterInput', () => {
 		expect(queryByTestId('rlc-item-add-resource')).toBeNull();
 	});
 
-	it('eagerly creates a draft agent, references it on the node, and opens the builder', async () => {
+	it('eagerly creates a draft agent, references it on the node, and stays in the flow', async () => {
 		const { getByTestId, emitted } = renderComponent({ props: makeProps() });
 		await flushPromises();
 
@@ -248,9 +250,11 @@ describe('AgentSelectorParameterInput', () => {
 		expect(emitted()['update:modelValue']?.[0]).toEqual([
 			{ __rl: true, value: 'agent-9', mode: 'list', cachedResultName: 'New Agent' },
 		]);
-		// The workflow is persisted (so the reference survives) before navigating.
-		expect(saveCurrentWorkflow).toHaveBeenCalledWith({}, false);
-		expect(openBuilder).toHaveBeenCalledWith('proj-1', 'agent-9', undefined);
+		// Hosts (the canvas card) react to this — e.g. by opening the NDV.
+		expect(emitted().agentCreated).toHaveLength(1);
+		// The user is NOT taken to the Agent Builder; editing continues in place.
+		expect(openBuilder).not.toHaveBeenCalled();
+		expect(saveCurrentWorkflow).not.toHaveBeenCalled();
 	});
 
 	it('heals a stale cached name by re-fetching the agent on mount', async () => {
@@ -282,22 +286,10 @@ describe('AgentSelectorParameterInput', () => {
 		expect(emitted()['update:modelValue']).toBeUndefined();
 	});
 
-	it('passes the origin node id through to the builder navigation', async () => {
-		const { getByTestId } = renderComponent({ props: makeProps({ originNodeId: 'node-1' }) });
-		await flushPromises();
-
-		await userEvent.click(getByTestId('rlc-input'));
-		await flushPromises();
-		await userEvent.click(getByTestId('rlc-item-add-resource'));
-		await flushPromises();
-
-		expect(openBuilder).toHaveBeenCalledWith('proj-1', 'agent-9', 'node-1');
-	});
-
-	it('surfaces an error and does not navigate when creation fails', async () => {
+	it('surfaces an error and references nothing when creation fails', async () => {
 		createAgent.mockRejectedValueOnce(new Error('boom'));
 
-		const { getByTestId } = renderComponent({ props: makeProps() });
+		const { getByTestId, emitted } = renderComponent({ props: makeProps() });
 		await flushPromises();
 
 		await userEvent.click(getByTestId('rlc-input'));
@@ -306,23 +298,7 @@ describe('AgentSelectorParameterInput', () => {
 		await flushPromises();
 
 		expect(showError).toHaveBeenCalled();
-		expect(openBuilder).not.toHaveBeenCalled();
-	});
-
-	it('does not navigate to the builder when persisting the workflow fails', async () => {
-		saveCurrentWorkflow.mockResolvedValueOnce(false);
-
-		const { getByTestId } = renderComponent({ props: makeProps() });
-		await flushPromises();
-
-		await userEvent.click(getByTestId('rlc-input'));
-		await flushPromises();
-		await userEvent.click(getByTestId('rlc-item-add-resource'));
-		await flushPromises();
-
-		expect(createAgent).toHaveBeenCalled();
-		expect(saveCurrentWorkflow).toHaveBeenCalled();
-		expect(openBuilder).not.toHaveBeenCalled();
+		expect(emitted().agentCreated).toBeUndefined();
 	});
 
 	it('surfaces an error and creates nothing when no project is in context', async () => {
@@ -339,7 +315,6 @@ describe('AgentSelectorParameterInput', () => {
 
 		expect(showError).toHaveBeenCalled();
 		expect(createAgent).not.toHaveBeenCalled();
-		expect(openBuilder).not.toHaveBeenCalled();
 	});
 
 	it('shows an error with retry that re-fetches the catalog', async () => {

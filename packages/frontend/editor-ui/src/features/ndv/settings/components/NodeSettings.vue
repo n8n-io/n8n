@@ -12,7 +12,7 @@ import type {
 	NodeParameterValue,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers, deepCopy, isCommunityPackageName } from 'n8n-workflow';
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import { BASE_NODE_SURVEY_URL, VIEWS } from '@/app/constants';
 
@@ -22,6 +22,11 @@ import NodeSettingsHeader from './NodeSettingsHeader.vue';
 import NodeSettingsTabs from './NodeSettingsTabs.vue';
 import NodeWebhooks from './NodeWebhooks.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
+import AgentNdvReferencedControls from '@/features/ndv/agents/components/AgentNdvReferencedControls.vue';
+import AgentNdvBuilderBanner from '@/features/ndv/agents/components/AgentNdvBuilderBanner.vue';
+import AgentNdvAdvancedSection from '@/features/ndv/agents/components/AgentNdvAdvancedSection.vue';
+import { NdvAgentConfigKey } from '@/features/ndv/agents/composables/useNdvAgentConfig';
+import { isAgentNodeV2 } from '@/features/agents/utils/agentNode';
 import get from 'lodash/get';
 
 import ExperimentalEmbeddedNdvHeader from '@/features/workflows/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue';
@@ -514,6 +519,25 @@ const nodeSettings = computed(() =>
 	),
 );
 
+// The AI Agent node renders extra Parameters-tab surfaces (builder banner,
+// referenced-agent section, unified Advanced section) — all driven by the NDV
+// container's provided orchestrator. Guarded on the orchestrator being
+// provided so NodeSettings still works if ever mounted outside the NDV
+// container.
+const ndvAgentConfig = inject(NdvAgentConfigKey, null);
+// v2-gated to match the canvas card: v1 nodes keep the raw NDV layout.
+const isAgentNode = computed(() => isAgentNodeV2(node.value));
+const showAgentNdvControls = computed(() => isAgentNode.value && ndvAgentConfig !== null);
+// The agent node's `advanced` collection is pulled out of the main parameter
+// list and rendered by `AgentNdvAdvancedSection` (a unified "Add option"
+// section combining it with agent-config settings) *below* the Agent section.
+const agentMainParams = computed(() =>
+	parametersByTab.value.params.filter((parameter) => parameter.name !== 'advanced'),
+);
+const agentAdvancedCollection = computed(
+	() => parametersByTab.value.params.find((parameter) => parameter.name === 'advanced') ?? null,
+);
+
 const iconSource = useNodeIconSource(nodeType, node);
 
 const onParameterBlur = (parameterName: string) => {
@@ -770,11 +794,18 @@ function handleSelectAction(params: INodeParameters) {
 				@blur="onParameterBlur"
 			/>
 			<div v-show="openPanel === 'params'">
+				<AgentNdvBuilderBanner
+					v-if="showAgentNdvControls"
+					:is-read-only="isReadOnly"
+					:origin-node-id="node?.id"
+					@set-agent-reference="(value) => valueChanged({ name: 'parameters.agentId', value })"
+				/>
+
 				<NodeWebhooks :node="node" :node-type-description="nodeType" />
 
 				<ParameterInputList
 					v-if="nodeValuesInitialized"
-					:parameters="parametersByTab.params"
+					:parameters="showAgentNdvControls ? agentMainParams : parametersByTab.params"
 					:hide-delete="true"
 					:node-values="nodeValues"
 					:is-read-only="isReadOnly"
@@ -803,6 +834,15 @@ function handleSelectAction(params: INodeParameters) {
 						@blur="onParameterBlur"
 					/>
 				</ParameterInputList>
+				<AgentNdvReferencedControls v-if="showAgentNdvControls" :is-read-only="isReadOnly" />
+				<AgentNdvAdvancedSection
+					v-if="showAgentNdvControls && agentAdvancedCollection && nodeValuesInitialized"
+					:parameter="agentAdvancedCollection"
+					:node-values="nodeValues"
+					:is-read-only="isReadOnly"
+					@value-changed="valueChanged"
+					@parameter-blur="onParameterBlur"
+				/>
 				<div v-if="showNoParametersNotice" class="no-parameters">
 					<N8nText>
 						{{ i18n.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}

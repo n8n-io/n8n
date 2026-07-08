@@ -29,41 +29,11 @@ export const sharedVersionDescription: Pick<
 	outputs: [NodeConnectionTypes.Main],
 };
 
-/** Every property after `agentId` is identical across versions. */
+/**
+ * Every property after the version-specific `agentId` picker and prompt input
+ * (v1: `message`; v2: `promptType`/`text`) is identical across versions.
+ */
 export const commonProperties: INodeProperties[] = [
-	{
-		displayName: 'Message',
-		name: 'message',
-		type: 'string',
-		default: '',
-		required: true,
-		description: 'The message to send to the agent',
-		placeholder:
-			'Process the refund for order {{ $json.order_id }} — confirm with the customer that it was approved.',
-		typeOptions: {
-			rows: 4,
-		},
-	},
-	{
-		displayName: 'Invoke Agent',
-		name: 'invokeMode',
-		type: 'options',
-		noDataExpression: true,
-		default: 'allItems',
-		description: 'Whether to call the agent once per input item or a single time for all items',
-		options: [
-			{
-				name: 'Once for All Items',
-				value: 'allItems',
-				description: 'Call the agent a single time; it can read all input items',
-			},
-			{
-				name: 'Once Per Item',
-				value: 'perItem',
-				description: 'Call the agent separately for each input item',
-			},
-		],
-	},
 	{
 		displayName: 'Require Specific Output Format',
 		name: 'useStructuredOutput',
@@ -117,6 +87,26 @@ export const commonProperties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
+				displayName: 'Invoke Agent',
+				name: 'invokeMode',
+				type: 'options',
+				noDataExpression: true,
+				default: 'allItems',
+				description: 'Whether to call the agent once per input item or a single time for all items',
+				options: [
+					{
+						name: 'Once for All Items',
+						value: 'allItems',
+						description: 'Call the agent a single time; it can read all input items',
+					},
+					{
+						name: 'Once Per Item',
+						value: 'perItem',
+						description: 'Call the agent separately for each input item',
+					},
+				],
+			},
+			{
 				displayName: 'Session ID',
 				name: 'sessionId',
 				type: 'string',
@@ -133,6 +123,16 @@ export const commonProperties: INodeProperties[] = [
 					"Whether to give the agent a tool to read other workflow nodes' execution data, beyond its own input",
 			},
 		],
+	},
+	{
+		// Which agent-config settings the user surfaced in the NDV's Advanced
+		// section. Pure UI state persisted with the workflow (like any other
+		// parameter); the setting values themselves live in the agent config,
+		// and execution never reads this.
+		displayName: 'Agent Options',
+		name: 'agentOptions',
+		type: 'hidden',
+		default: [],
 	},
 ];
 
@@ -194,6 +194,15 @@ export function getStructuredOutputSchema(
 }
 
 /**
+ * Expressions can resolve to any JSON value (object, number, …); only string
+ * values are usable prompts. Non-strings resolve to the "Prompt cannot be
+ * empty" error instead of crashing `.trim()`.
+ */
+function asPromptString(value: unknown): string {
+	return typeof value === 'string' ? value : '';
+}
+
+/**
  * Shared execution for every version. The stored `agentId` is a resource-locator
  * value regardless of version (resourceLocator in v1, agentSelector in v2), so
  * reading `.value` works for both.
@@ -202,7 +211,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const items = this.getInputData();
 	const returnData: INodeExecutionData[] = [];
 	const executionId = this.getExecutionId() ?? crypto.randomUUID();
-	const invokeMode = this.getNodeParameter('invokeMode', 0, 'allItems') as string;
+	// `invokeMode` lives in the `advanced` collection; unset means the default.
+	const invokeMode = this.getNodeParameter('advanced.invokeMode', 0, 'allItems') as string;
 	const runOnceForAll = invokeMode === 'allItems';
 	const loopCount = runOnceForAll ? Math.min(1, items.length) : items.length;
 
@@ -213,7 +223,21 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				value: string;
 			};
 			const agentId = agentIdRlc.value;
-			const message = this.getNodeParameter('message', i) as string;
+			// The prompt input is version-specific: v1 has a single `message`
+			// param; v2 mirrors the legacy AI Agent node's prompt source
+			// (`auto` reads `chatInput` from a connected Chat Trigger,
+			// `define` uses the `text` param).
+			let prompt = '';
+			if (this.getNode().typeVersion >= 2) {
+				const promptType = this.getNodeParameter('promptType', i, 'auto') as string;
+				prompt =
+					promptType === 'auto'
+						? asPromptString(this.evaluateExpression('{{ $json["chatInput"] }}', i))
+						: asPromptString(this.getNodeParameter('text', i, ''));
+			} else {
+				prompt = asPromptString(this.getNodeParameter('message', i, ''));
+			}
+
 			const advanced = this.getNodeParameter('advanced', i, {}) as {
 				sessionId?: string;
 				allowOtherNodesData?: boolean;
@@ -221,8 +245,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const sessionIdOverride = advanced.sessionId?.trim();
 			const allowOtherNodesData = advanced.allowOtherNodesData ?? false;
 
-			if (!message.trim()) {
-				throw new NodeOperationError(this.getNode(), 'Message cannot be empty', {
+			if (!prompt.trim()) {
+				throw new NodeOperationError(this.getNode(), 'Prompt cannot be empty', {
 					itemIndex: i,
 				});
 			}
@@ -237,7 +261,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					inputDataScope: runOnceForAll ? 'all' : 'item',
 					exposeWorkflowData: allowOtherNodesData,
 				},
-				message,
+				prompt,
 				executionId,
 				i,
 			);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { AgentCapabilitySummary, ChatIntegrationDescriptor } from '@n8n/api-types';
+import type { AgentCapabilitySummary } from '@n8n/api-types';
 import { buildAgentCardChips } from './canvasNodeAgentChips.utils';
 
 function makeSummary(overrides: Partial<AgentCapabilitySummary> = {}): AgentCapabilitySummary {
@@ -16,7 +16,7 @@ function makeSummary(overrides: Partial<AgentCapabilitySummary> = {}): AgentCapa
 }
 
 describe('buildAgentCardChips', () => {
-	it('orders chips as channels, tools, skills, tasks', () => {
+	it('orders chips as tools then skills, omitting channels and tasks', () => {
 		const summary = makeSummary({
 			channels: [{ type: 'slack' }],
 			tools: [{ type: 'node', name: 'get_prs' }],
@@ -24,8 +24,12 @@ describe('buildAgentCardChips', () => {
 			tasks: [{ id: 't1', name: 'Weekly Summary', enabled: true }],
 		});
 
-		const labels = buildAgentCardChips(summary, null).map((c) => c.label);
-		expect(labels).toEqual(['slack', 'Get prs', 'PR Reviewer', 'Weekly Summary']);
+		// Channels + tasks are standalone-agent concepts and don't apply when the
+		// agent is invoked by the embedding workflow — only tools + skills show.
+		const chips = buildAgentCardChips(summary);
+		expect(chips.map((c) => c.label)).toEqual(['Get prs', 'PR Reviewer']);
+		expect(chips.some((c) => c.key.startsWith('channel:'))).toBe(false);
+		expect(chips.some((c) => c.key.startsWith('task:'))).toBe(false);
 	});
 
 	it('humanizes raw tool names like the edit page', () => {
@@ -33,7 +37,7 @@ describe('buildAgentCardChips', () => {
 			tools: [{ type: 'node', name: 'send_telegram_message' }],
 		});
 
-		expect(buildAgentCardChips(summary, null)[0].label).toBe('Send telegram message');
+		expect(buildAgentCardChips(summary)[0].label).toBe('Send telegram message');
 	});
 
 	it('collapses 2+ tools of the same resolved node type into one "N {NodeType}" chip', () => {
@@ -45,7 +49,7 @@ describe('buildAgentCardChips', () => {
 		});
 		const resolve = (nodeType: string) => (nodeType === 'telegramTool' ? 'Telegram' : undefined);
 
-		const chips = buildAgentCardChips(summary, null, resolve);
+		const chips = buildAgentCardChips(summary, resolve);
 		expect(chips).toHaveLength(1);
 		expect(chips[0].label).toBe('2 Telegram');
 	});
@@ -55,7 +59,7 @@ describe('buildAgentCardChips', () => {
 			tools: [{ type: 'node', name: 'send_message', nodeType: 'telegramTool', nodeTypeVersion: 1 }],
 		});
 
-		const chips = buildAgentCardChips(summary, null, () => 'Telegram');
+		const chips = buildAgentCardChips(summary, () => 'Telegram');
 		expect(chips).toHaveLength(1);
 		expect(chips[0].label).toBe('Send message');
 	});
@@ -69,37 +73,7 @@ describe('buildAgentCardChips', () => {
 		});
 
 		// No resolver → node type can't resolve → individual humanized chips.
-		expect(buildAgentCardChips(summary, null).map((c) => c.label)).toEqual([
-			'Send message',
-			'Get chat',
-		]);
-	});
-
-	it('groups channels by type with a count prefix when repeated', () => {
-		const summary = makeSummary({ channels: [{ type: 'slack' }, { type: 'slack' }] });
-
-		const chips = buildAgentCardChips(summary, null);
-		expect(chips).toHaveLength(1);
-		expect(chips[0].label).toBe('2 slack');
-	});
-
-	it('resolves channel label and icon from the integrations catalog when loaded', () => {
-		const integrations = [
-			{ type: 'slack', label: 'Slack', icon: 'slack' },
-		] as unknown as ChatIntegrationDescriptor[];
-		const summary = makeSummary({ channels: [{ type: 'slack' }, { type: 'slack' }] });
-
-		const chips = buildAgentCardChips(summary, integrations);
-		expect(chips[0].label).toBe('2 Slack');
-		expect(chips[0].icon).toBe('slack');
-	});
-
-	it('falls back to a generic icon for an unknown channel integration', () => {
-		const summary = makeSummary({ channels: [{ type: 'mystery' }] });
-
-		const chips = buildAgentCardChips(summary, []);
-		expect(chips[0].icon).toBe('zap');
-		expect(chips[0].label).toBe('mystery');
+		expect(buildAgentCardChips(summary).map((c) => c.label)).toEqual(['Send message', 'Get chat']);
 	});
 
 	it('maps tool types to icons', () => {
@@ -111,19 +85,17 @@ describe('buildAgentCardChips', () => {
 			],
 		});
 
-		const chips = buildAgentCardChips(summary, null);
+		const chips = buildAgentCardChips(summary);
 		expect(chips.map((c) => c.icon)).toEqual(['workflow', 'code', 'wrench']);
 	});
 
-	it('uses sparkles for skills and clock for tasks', () => {
+	it('uses sparkles for skills', () => {
 		const summary = makeSummary({
 			skills: [{ id: 's1', name: 'Skill' }],
-			tasks: [{ id: 't1', name: 'Task', enabled: false }],
 		});
 
-		const chips = buildAgentCardChips(summary, null);
+		const chips = buildAgentCardChips(summary);
 		expect(chips.find((c) => c.key.startsWith('skill:'))?.icon).toBe('sparkles');
-		expect(chips.find((c) => c.key.startsWith('task:'))?.icon).toBe('clock');
 	});
 
 	it('carries the node type on node-tool chips so the card can render the node icon', () => {
@@ -139,7 +111,7 @@ describe('buildAgentCardChips', () => {
 			],
 		});
 
-		const chips = buildAgentCardChips(summary, null);
+		const chips = buildAgentCardChips(summary);
 		const nodeChip = chips.find((c) => c.label === 'Send message');
 		expect(nodeChip).toMatchObject({ nodeType: 'n8n-nodes-base.telegramTool', nodeTypeVersion: 2 });
 		// Workflow tools don't carry a node type.
@@ -164,7 +136,7 @@ describe('buildAgentCardChips', () => {
 			],
 		});
 
-		const chips = buildAgentCardChips(summary, null, () => 'Telegram');
+		const chips = buildAgentCardChips(summary, () => 'Telegram');
 		expect(chips).toHaveLength(1);
 		expect(chips[0]).toMatchObject({
 			label: '2 Telegram',
