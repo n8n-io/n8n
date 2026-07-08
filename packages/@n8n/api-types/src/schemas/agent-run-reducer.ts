@@ -248,10 +248,18 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			// so no text renders twice. The log flushes a block immediately before
 			// the segment's next structural fact, so on replay the partial deltas
 			// are always the last text entry when this event arrives.
+			// responseId is optional (synthetic blocks and some provider streams
+			// carry none), so id equality alone cannot prove the entry is this
+			// block's open segment: the block must also textually extend it —
+			// deltas stream in order, so a genuine partial is always a prefix.
+			// Otherwise (e.g. two adjacent id-less blocks) append, never overwrite.
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				const last = agent.timeline.at(-1);
-				const isOpenSegment = last?.type === 'text' && last.responseId === event.responseId;
+				const isOpenSegment =
+					last?.type === 'text' &&
+					last.responseId === event.responseId &&
+					event.payload.text.startsWith(last.content);
 				if (isOpenSegment && agent.textContent.endsWith(last.content)) {
 					agent.textContent =
 						agent.textContent.slice(0, agent.textContent.length - last.content.length) +
@@ -267,13 +275,17 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 
 		case 'reasoning-block': {
 			// Coalesced reasoning segment from the durable log (replay path). Same
-			// replace semantics as text-block: the segment's open streamed deltas
-			// are its timeline entry, so REPLACE that entry and strip the partial
-			// text from the aggregate — no text renders twice.
+			// replace semantics as text-block (including the prefix requirement,
+			// since ids are optional): the segment's open streamed deltas are its
+			// timeline entry, so REPLACE that entry and strip the partial text
+			// from the aggregate — no text renders twice.
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				const last = agent.timeline.at(-1);
-				const isOpenSegment = last?.type === 'reasoning' && last.responseId === event.responseId;
+				const isOpenSegment =
+					last?.type === 'reasoning' &&
+					last.responseId === event.responseId &&
+					event.payload.text.startsWith(last.content);
 				if (isOpenSegment && agent.reasoning.endsWith(last.content)) {
 					agent.reasoning =
 						agent.reasoning.slice(0, agent.reasoning.length - last.content.length) +

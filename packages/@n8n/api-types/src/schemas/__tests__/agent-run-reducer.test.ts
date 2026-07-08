@@ -1320,6 +1320,70 @@ describe('agent-run-reducer', () => {
 			expect(agent.timeline.filter((e) => e.type === 'text')).toHaveLength(2);
 		});
 
+		it('adjacent id-less blocks append — undefined ids never match as one segment', () => {
+			// Synthetic blocks (crash-resume markers, correction lines) carry no
+			// responseId; the second must not overwrite the first.
+			let state = createInitialState(AGENT);
+			state = reduceEvent(state, makeRunStart(RUN, AGENT));
+			state = reduceEvent(state, makeTextBlock('first line. '));
+			state = reduceEvent(state, makeTextBlock('second line.'));
+
+			const agent = findAgent(state, AGENT)!;
+			expect(agent.textContent).toBe('first line. second line.');
+			// Same-key adjacency merges into one display entry — but never drops text.
+			expect(agent.timeline.filter((e) => e.type === 'text')).toEqual([
+				{ type: 'text', content: 'first line. second line.' },
+			]);
+		});
+
+		it('an id-less mid-block reconnect still replaces its own partial deltas', () => {
+			// Id-less deltas coalesce into an id-less block; the block extends the
+			// partial text (deltas stream in order), so it must replace, not append.
+			let state = createInitialState(AGENT);
+			state = reduceEvent(state, makeRunStart(RUN, AGENT));
+			state = reduceEvent(state, makeTextDelta(RUN, AGENT, 'AAA'));
+			state = reduceEvent(state, makeTextDelta(RUN, AGENT, 'BBB'));
+			state = reduceEvent(state, makeTextBlock('AAABBBCCC'));
+
+			const agent = findAgent(state, AGENT)!;
+			expect(agent.textContent).toBe('AAABBBCCC');
+			expect(agent.timeline.filter((e) => e.type === 'text')).toEqual([
+				{ type: 'text', content: 'AAABBBCCC' },
+			]);
+		});
+
+		it('a block reusing a responseId with unrelated text appends', () => {
+			// Same id but not a textual extension of the open entry: this is a new
+			// message, not the completion of the partial one.
+			let state = createInitialState(AGENT);
+			state = reduceEvent(state, makeRunStart(RUN, AGENT));
+			state = reduceEvent(state, makeTextBlock('Task one finished. ', 'bg-outcome:run-dl'));
+			state = reduceEvent(state, makeTextBlock('Task two failed.', 'bg-outcome:run-dl'));
+
+			const agent = findAgent(state, AGENT)!;
+			expect(agent.textContent).toBe('Task one finished. Task two failed.');
+			expect(agent.timeline.filter((e) => e.type === 'text')).toEqual([
+				{
+					type: 'text',
+					content: 'Task one finished. Task two failed.',
+					responseId: 'bg-outcome:run-dl',
+				},
+			]);
+		});
+
+		it('adjacent id-less reasoning-blocks append — undefined ids never match as one segment', () => {
+			let state = createInitialState(AGENT);
+			state = reduceEvent(state, makeRunStart(RUN, AGENT));
+			state = reduceEvent(state, makeReasoningBlock('first thoughts. '));
+			state = reduceEvent(state, makeReasoningBlock('second thoughts.'));
+
+			const agent = findAgent(state, AGENT)!;
+			expect(agent.reasoning).toBe('first thoughts. second thoughts.');
+			expect(agent.timeline.filter((e) => e.type === 'reasoning')).toEqual([
+				{ type: 'reasoning', content: 'first thoughts. second thoughts.' },
+			]);
+		});
+
 		it('tool-interrupted resolves the call terminally and run-finish{interrupted} folds to cancelled', () => {
 			let state = createInitialState(AGENT);
 			state = reduceEvent(state, makeRunStart(RUN, AGENT));
