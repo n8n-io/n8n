@@ -21,6 +21,7 @@ import { type Scope } from '@n8n/permissions';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeCatalogService } from '@/node-catalog/node-catalog.service';
 import { NodeTypes } from '@/node-types';
@@ -146,6 +147,10 @@ export class InstanceAiAgentBuilderAdapterService {
 
 			createTask: async (agentId, projectId, task) => {
 				await assertProjectScope('agent:update', projectId);
+				// AgentTaskService.create looks the agent up by id only, so confirm the
+				// agent belongs to the scoped project before mutating it.
+				const agent = await this.agentsService.findById(agentId, projectId);
+				if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 				const created = await this.agentTaskService.create(agentId, {
 					name: task.name,
 					objective: task.objective,
@@ -191,6 +196,13 @@ export class InstanceAiAgentBuilderAdapterService {
 				return agents
 					.filter((agent) => agent.id !== excludeAgentId && agent.activeVersionId !== null)
 					.map((agent) => ({ agentId: agent.id, name: agent.name }));
+			},
+
+			listAllProjectAgents: async (projectId): Promise<ProjectAgentSummary[]> => {
+				const resolvedProjectId = await resolveProjectId(projectId);
+				await assertProjectScope('agent:read', resolvedProjectId);
+				const agents = await this.agentsService.findByProjectId(resolvedProjectId);
+				return agents.map((agent) => ({ agentId: agent.id, name: agent.name }));
 			},
 
 			listModels: async (

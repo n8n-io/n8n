@@ -46,10 +46,11 @@ subagent.
    a follow-up before patching `subAgents.agents`. Do not invent vague routing
    guidance.
 6. Call `agent_builder` (`action: "read_config"`).
-7. Patch selected saved agents into `subAgents.agents`
-   (`agent_builder` `action: "patch_config"`). Avoid duplicates.
+7. Add the selected saved agents to `subAgents.agents` in the config file and
+   persist with `agent_builder` (`action: "build_agent"`; see the config
+   editing flow in SKILL.md). Avoid duplicates.
 
-Example patch flow:
+Example flow:
 
 1. `agent_builder({ action: "list_sub_agents" })`.
 2. If it returns one or more agents and the user has not named exact ones, use
@@ -57,9 +58,9 @@ Example patch flow:
 3. If the user's request does not make the routing rule clear, ask when each
    selected saved subagent should be used.
 4. `agent_builder({ action: "read_config" })`.
-5. `agent_builder({ action: "patch_config", ... })` adding selected
+5. In the config file, add the selected
    `{ "agentId": "<returned-agent-id>", "useWhen": "Use for ..." }` refs to
-   `/subAgents/agents`.
+   `subAgents.agents`, then `agent_builder({ action: "build_agent", ... })`.
 
 ## Rules
 
