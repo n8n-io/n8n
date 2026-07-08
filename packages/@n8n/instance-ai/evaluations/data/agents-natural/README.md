@@ -141,3 +141,28 @@ classification instead of the word "workflow". Post-change natural-arm run
   only in intent-recognition.
 - All other cases stayed green (17/18 units). The remaining red is kept red —
   it is the finding.
+
+## N=3 stability (2026-07-08 evening, post-gate, 12 cases × 3 iterations)
+
+Natural arm: **12/12 pass@3 = 100%; 11/12 pass^3 = 100%**. Exam arm (7
+siblings): 7/7 pass@3 = 100%; 6/7 pass^3 = 100% (meta at 52% — its skill-load
+expectation flips even with the exam preamble). Takeaways:
+
+- **The gate holds at N=3**: intent-recognition loaded in every iteration of
+  every asserting case (pre-gate: 1/6).
+- **The says-'agent' embeds bias is recurrent and precisely isolated**: 2/3
+  iterations embed an Agent node ('Write Weather Summary' / 'Write Morning
+  Briefing') for the bounded summary step — while says-'assistant' (RSS
+  summarize), many-tools, and support-lookup-draft all stay bounded 3/3. The
+  literal word "agent" drives the node choice; general summarize/draft steps
+  don't trigger it. Fix belongs in workflow-builder guidance (a bounded
+  transform stays a plain LLM step even when the user said "agent").
+- **Stated vs enacted, quantified**: the exam arm passes this same case's
+  explanation expectations 3/3 ("does not classify as agent-anchored merely
+  because the prompt uses the word 'agent'") while the built artifact embeds
+  the Agent node 2/3.
+- Exam arm again produced **zero `intent:` exact-match verdicts** at N=3
+  (LangSmith-path grader gap reconfirmed).
+- Tranche 2 calibrated green on its first N=3, including the compound
+  multi-artifact probe: the agent builds the weather workflow AND creates the
+  support agent as separate automations, 3/3 iterations.

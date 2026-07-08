@@ -1,0 +1,27 @@
+{
+	"description": "Natural-arm sibling of data/agents/compound-weather-and-support-assistant.json (parts: weather {wf, false}; assistant {agent, false|true}). Multi-artifact probe: the agent must treat the request as two independent automations and route each correctly — one workflow build, one agent-builder creation. Tranche 2 — calibrated at N=3 (2026-07-08).",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "1) Every weekday at 9am, Slack me the Berlin weather. 2) Create a support assistant that chats with customers and decides when to escalate."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[If the agent asks whether to do both or which to do first, say: yes, both, in whatever order.",
+				"If it asks any other clarifying question, give a minimal plausible answer (e.g. escalations go to support@acme.test).",
+				"Approve any reasonable plan or setup card. End the conversation once both automations have been created or the agent has clearly finished.]"
+			]
+		}
+	],
+	"messageBudget": 8,
+	"complexity": "simple",
+	"tags": ["intent-resolution", "compound", "independent-lifecycles", "natural-arm"],
+	"datasets": ["agents-natural"],
+	"processExpectations": [
+		"The agent treats the request as two independent automations with separate lifecycles rather than merging them into a single artifact.",
+		"The weather notification is built as a scheduled workflow via the workflow-building tools.",
+		"The support assistant is created via the agent-builder path (agent_builder / create_agent tools), not as a second workflow.",
+		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to build."
+	]
+}

@@ -1,0 +1,19 @@
+{
+	"description": "Natural-arm sibling of data/agents/adv-says-assistant-is-wf.json ({wf, false}): 'assistant' wording over a fixed daily RSS-summarize-post pipeline. Outcome also probes whether the bounded summarization step becomes an AI Agent node (the vocabulary prior at node-choice level). Tranche 2 — calibrated at N=3 (2026-07-08).",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Make an assistant that summarizes our RSS feed daily and posts to Slack."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["intent-resolution", "false-friend", "surface-vocab", "natural-arm"],
+	"datasets": ["agents-natural"],
+	"processExpectations": [
+		"Despite the request saying 'assistant', the agent builds a fixed scheduled workflow (daily RSS summarization posted to Slack) using the workflow-building tools, and does not create an agent via the agent-builder path.",
+		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to build."
+	],
+	"outcomeExpectations": [
+		"The workflow runs on a daily schedule, condenses the RSS items with a bounded LLM transform rather than an AI Agent node with tools, and posts the summary to Slack."
+	]
+}

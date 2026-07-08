@@ -1,0 +1,16 @@
+{
+	"description": "Natural-arm sibling of data/agents/adv-says-automation-is-agent.json (tolerance case: exam accepts {agent, true} or {wf, true}). The open-ended incident investigation must land on an agent primitive one way or the other; a fixed pipeline with no open-ended step is wrong. Tranche 2 — calibrated at N=3 (2026-07-08).",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Automate a bot that investigates production incidents end-to-end."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["intent-resolution", "false-friend", "surface-vocab", "tolerance", "natural-arm"],
+	"datasets": ["agents-natural"],
+	"processExpectations": [
+		"The agent handles the open-ended incident investigation with an agent primitive in one of two accepted shapes: it creates an agent via the agent-builder path, or it builds a workflow whose investigation step is an embedded AI Agent; a fixed pipeline with no open-ended reasoning step is wrong.",
+		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to build."
+	]
+}
