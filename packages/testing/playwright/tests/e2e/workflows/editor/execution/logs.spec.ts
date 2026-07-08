@@ -260,9 +260,9 @@ test.describe(
 		});
 
 		test('should show logs for a workflow with a node that waits for webhook', async ({
-		n8n,
-		api,
-	}) => {
+			n8n,
+			api,
+		}) => {
 			await n8n.start.fromImportedWorkflow('Workflow_wait_for_webhook.json');
 			await n8n.canvas.deselectAll();
 			await n8n.canvas.logsPanel.open();
