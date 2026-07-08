@@ -861,4 +861,26 @@ describe('createScheduler tracing', () => {
 		);
 		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
 	});
+
+	it('opens a retention span carrying the deleted count and drained flag, with ok status', async () => {
+		const { span, tracer } = makeTracer();
+		const { scheduler, taskStore } = makeScheduler({ tracer });
+		taskStore.deleteFinishedOlderThan.mockResolvedValueOnce(5).mockResolvedValue(0);
+
+		const summary = await scheduler.prune();
+
+		expect(tracer.startSpan).toHaveBeenCalledWith(
+			expect.objectContaining({ op: 'scheduler.retention' }),
+			expect.any(Function),
+		);
+		expect(span.setAttribute).toHaveBeenCalledWith(
+			SCHEDULER_ATTRIBUTES.retentionDeleted,
+			summary.deleted,
+		);
+		expect(span.setAttribute).toHaveBeenCalledWith(
+			SCHEDULER_ATTRIBUTES.retentionDrained,
+			summary.drained,
+		);
+		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
 });

@@ -281,17 +281,24 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 			},
 		);
 
-	const runPrune = async (signal?: AbortSignal) => {
-		const summary = await prune(taskStore, retentionOptions, signal);
-		if (!summary.drained && signal?.aborted !== true) {
-			emit('warn', 'Scheduler retention pass hit its batch budget; backlog remains', {
-				...summary,
-			});
-		} else if (summary.drained && summary.deleted > 0) {
-			emit('debug', 'Scheduler retention deleted finished tasks', { ...summary });
-		}
-		return summary;
-	};
+	const runPrune = async (signal?: AbortSignal) =>
+		await tracer.startSpan(
+			{ name: 'Scheduler retention', op: 'scheduler.retention' },
+			async (span) => {
+				const summary = await prune(taskStore, retentionOptions, signal);
+				if (!summary.drained && signal?.aborted !== true) {
+					emit('warn', 'Scheduler retention pass hit its batch budget; backlog remains', {
+						...summary,
+					});
+				} else if (summary.drained && summary.deleted > 0) {
+					emit('debug', 'Scheduler retention deleted finished tasks', { ...summary });
+				}
+				span.setAttribute(SCHEDULER_ATTRIBUTES.retentionDeleted, summary.deleted);
+				span.setAttribute(SCHEDULER_ATTRIBUTES.retentionDrained, summary.drained);
+				span.setStatus({ code: SpanStatus.ok });
+				return summary;
+			},
+		);
 
 	const loopOver = (
 		pass: string,

@@ -18,6 +18,8 @@ export const SCHEDULER_ATTRIBUTES = {
 	claimedJobs: 'n8n.scheduler.claimed_jobs',
 	occurrences: 'n8n.scheduler.occurrences',
 	deferredJobs: 'n8n.scheduler.deferred_jobs',
+	retentionDeleted: 'n8n.scheduler.retention_deleted',
+	retentionDrained: 'n8n.scheduler.retention_drained',
 } as const;
 
 /**
