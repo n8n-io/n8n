@@ -929,6 +929,34 @@ describe('ResourceLocator', () => {
 			});
 		});
 
+		it('should ignore a stale search filter and validate against the full list', async () => {
+			// A non-empty filter hides the selected value; the full (unfiltered) list contains it.
+			nodeTypesStore.getResourceLocatorResults.mockImplementation(async (params) => {
+				if (params.filter) {
+					return {
+						results: [{ name: 'Other', value: 'other-model', url: 'https://new.com/other' }],
+						paginationToken: undefined,
+					};
+				}
+				return {
+					results: [{ name: 'GPT-4', value: 'selected-model', url: 'https://new.com/gpt-4' }],
+					paginationToken: undefined,
+				};
+			});
+
+			const { emitted, rerender, getByTestId } = renderWithValue(SELECTED_MODEL);
+
+			// Leave a stale search filter that excludes the selected value.
+			await fireEvent.focus(getByTestId('rlc-input'));
+			await userEvent.type(getByTestId('rlc-search'), 'zzz');
+
+			await switchCredentials(rerender);
+			await flushPromises();
+
+			const updates = (emitted('update:modelValue') ?? []) as Array<[typeof SELECTED_MODEL]>;
+			expect(updates.every(([value]) => value.value === 'selected-model')).toBe(true);
+		});
+
 		it('should not reset value in manual (id) mode', async () => {
 			const { emitted, rerender } = renderWithValue({
 				...TEST_MODEL_VALUE,

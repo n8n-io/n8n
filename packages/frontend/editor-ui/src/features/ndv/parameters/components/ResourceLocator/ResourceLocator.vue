@@ -558,7 +558,9 @@ watch(
 			return;
 		}
 
-		// Clear the cache directly rather than refreshList() to avoid its "user refreshed" telemetry.
+		// Validate against the full current list: reset any stale search filter and clear the cache
+		// directly (skipping refreshList()'s "user refreshed" telemetry).
+		searchFilter.value = '';
 		cachedResponses.value = {};
 		await loadResources();
 
