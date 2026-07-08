@@ -72,6 +72,9 @@ export class Executor {
 	 */
 	private readonly claimedTaskById = new Map<string, ClaimedEntry>();
 
+	/** Set by {@link stop}: claims resolving after it must be handed back, never scheduled. */
+	private stopping = false;
+
 	constructor(
 		private readonly store: ExecutorTaskStore,
 		private readonly registry: TaskHandlerRegistry,
@@ -97,8 +100,13 @@ export class Executor {
 	 * its `runAt`. Returns the claimed tasks (for tests/observability). Only the claim
 	 * is atomic; the per-row scheduling and any release are deliberately separate
 	 * writes (a failed one is recovered by the reaper), not one enclosing transaction.
+	 *
+	 * `signal` is the driver's abandonment marker: a tick that outlives its timeout is
+	 * aborted and its claim may still resolve later — possibly after {@link stop} already
+	 * released everything. Scheduling then would arm timers nobody cancels, so an aborted
+	 * (or post-stop) claim is handed back instead and the tick reports nothing claimed.
 	 */
-	async claimAndSchedule(host: string): Promise<ClaimedTask[]> {
+	async claimAndSchedule(host: string, signal?: AbortSignal): Promise<ClaimedTask[]> {
 		const taskTypes = this.registry.registeredTypes();
 		if (taskTypes.length === 0) return [];
 
@@ -110,11 +118,42 @@ export class Executor {
 			batchSize: this.options.batchSize,
 		};
 		const tasks = await this.store.claimDueTasks(batch);
+
+		// The pass's one cancellation point, right after its one await. The claim
+		// is a single already-committed statement, so cancelling cannot roll it
+		// back (contrast the materializer): it compensates, handing every row back.
+		// `stopping` covers a claim resolving mid-shutdown even when no signal was
+		// wired (e.g. a manual `SchedulerPasses.execute()`).
+		if (this.stopping || signal?.aborted === true) {
+			await this.handBackClaims(host, tasks);
+			return [];
+		}
+
 		for (const task of tasks) {
 			this.scheduleClaimed(host, task);
 		}
 
 		return tasks;
+	}
+
+	/**
+	 * Compensate a claim that must not be scheduled (cancelled tick, or executor
+	 * stopping): release each row back to `pending`, so the next tick — here or
+	 * on another instance — picks it up. Scheduling instead would arm fire
+	 * timers no teardown tracks. Best-effort like any release; a failed row is
+	 * reported and left leased until the reaper recovers it.
+	 */
+	private async handBackClaims(host: string, tasks: ClaimedTask[]): Promise<void> {
+		await Promise.all(
+			tasks.map(
+				async (task) =>
+					await this.releaseClaimBestEffort({
+						host,
+						id: task.id,
+						claimedEpoch: task.leaseEpoch,
+					}),
+			),
+		);
 	}
 
 	/** Track a claimed task and schedule its timer to fire at `runAt`. */
@@ -188,12 +227,12 @@ export class Executor {
 	 * Cancel scheduled-but-unfired timers and release their claims (shutdown); without
 	 * the release they stay `running`+leased until the reaper reclaims them.
 	 *
-	 * Driver contract: stop calling {@link claimAndSchedule} before this. There is no
-	 * in-flight guard, so a concurrent tick could schedule timers after `cancelAll`
-	 * whose entries `claimed.clear()` drops, leaving them to fire post-stop. A tick and
-	 * stop must not overlap.
+	 * Driver contract: stop calling {@link claimAndSchedule} before this. A tick whose
+	 * claim is still in flight (e.g. abandoned at its timeout) is safe: once `stopping`
+	 * is set, its late resolution hands the claims back instead of scheduling.
 	 */
 	async stop(): Promise<void> {
+		this.stopping = true;
 		this.timer.cancelAll();
 
 		const entries = [...this.claimedTaskById.values()];

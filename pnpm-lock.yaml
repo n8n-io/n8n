@@ -357,6 +357,9 @@ catalogs:
     fastest-levenshtein:
       specifier: 1.0.16
       version: 1.0.16
+    fflate:
+      specifier: 0.8.3
+      version: 0.8.3
     file-type:
       specifier: 21.3.2
       version: 21.3.2
@@ -1710,8 +1713,8 @@ importers:
   packages/@n8n/computer-use:
     dependencies:
       '@anthropic-ai/sandbox-runtime':
-        specifier: ^0.0.42
-        version: 0.0.42
+        specifier: ^0.0.61
+        version: 0.0.61
       '@inquirer/prompts':
         specifier: ^8.3.2
         version: 8.3.2(@types/node@20.19.41)
@@ -2470,10 +2473,6 @@ importers:
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.9)
 
   packages/@n8n/json-schema-to-zod:
-    dependencies:
-      zod:
-        specifier: 3.25.67
-        version: 3.25.67
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -2493,6 +2492,9 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.9)
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
 
   packages/@n8n/local-gateway:
     dependencies:
@@ -3901,8 +3903,8 @@ importers:
         specifier: 'catalog:'
         version: 1.0.16
       fflate:
-        specifier: 0.7.4
-        version: 0.7.4
+        specifier: 'catalog:'
+        version: 0.8.3
       flat:
         specifier: 5.0.2
         version: 5.0.2
@@ -5761,8 +5763,8 @@ importers:
         specifier: 'catalog:'
         version: 1.0.16
       fflate:
-        specifier: 0.7.4
-        version: 0.7.4
+        specifier: 'catalog:'
+        version: 0.8.3
       form-data:
         specifier: 4.0.6
         version: 4.0.6
@@ -6620,8 +6622,8 @@ packages:
   '@antfu/utils@0.7.10':
     resolution: {integrity: sha512-+562v9k4aI80m1+VuMHehNJWLOFjBnXn3tdOitzD0il5b7smkSBal4+a3oKiQTbrwMmN/TBUMDvbdoWDehgOww==}
 
-  '@anthropic-ai/sandbox-runtime@0.0.42':
-    resolution: {integrity: sha512-kJpuhU4hHMumeygIkKvNhscEsTtQK1sat1kZwhb6HLYBznwjMGOdnuBI/RM9HeFwxArn71/ciD2WJbxttXBMHw==}
+  '@anthropic-ai/sandbox-runtime@0.0.61':
+    resolution: {integrity: sha512-5atex1pnNZW/Ba83376+m83FFIbWrqzoCKCxeC4Kx7YF9El/50WBW3zAbDxYONP2k1SvK9XL07s5EZC6JhQ2jA==}
     engines: {node: '>=18.0.0'}
     hasBin: true
 
@@ -15269,8 +15271,8 @@ packages:
     resolution: {integrity: sha512-7yAQpD2UMJzLi1Dqv7qFYnPbaPx7ZfFK6PiIxQ4PfkGPyNyl2Ugx+a/umUonmKqjhM4DnfbMvdX6otXq83soQQ==}
     engines: {node: ^12.20 || >= 14.13}
 
-  fflate@0.7.4:
-    resolution: {integrity: sha512-5u2V/CDW15QM1XbbgS+0DfPxVB+jUKhWEKuuFuHncbk3tEEqzmoXL+2KyOFuKGqOnmdIy0/davWF1CkuwtibCw==}
+  fflate@0.8.3:
+    resolution: {integrity: sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==}
 
   figures@3.2.0:
     resolution: {integrity: sha512-yaduQFRKLXYOGgEn6AZau90j3ggSOyiqXU0F9JZfeXYhNa+Jk4X+s45A2zg5jns87GAFa34BBm2kXw4XpNcbdg==}
@@ -17969,6 +17971,10 @@ packages:
   node-fetch@3.3.2:
     resolution: {integrity: sha512-dRB78srN/l6gqWulah9SrxeYnxeddIG30+GOqK/9OlLVyLg3HPnr6SqOWTWOXKRwC2eGYCkZ59NNuSgvSrpgOA==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
+
+  node-forge@1.4.0:
+    resolution: {integrity: sha512-LarFH0+6VfriEhqMMcLX2F7SwSXeWwnEAJEsYm5QKWchiVYVvJyV9v7UDvUv+w5HO23ZpQTXDv/GxdDdMyOuoQ==}
+    engines: {node: '>= 6.13.0'}
 
   node-gyp-build-optional-packages@5.0.7:
     resolution: {integrity: sha512-YlCCc6Wffkx0kHkmam79GKvDQ6x+QZkMjFGrIMxgFNILFvGSbCp2fCBC55pGTT9gVaz8Na5CLmxt/urtzRv36w==}
@@ -21640,7 +21646,7 @@ packages:
     engines: {node: '>=18'}
 
   xlsx@https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz:
-    resolution: {tarball: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz}
+    resolution: {integrity: sha512-+nKZ39+nvK7Qq6i0PvWWRA4j/EkfWOtkP/YhMtupm+lJIiHxUrgTr1CcKv1nBk1rHtkRRQ3O2+Ih/q/sA+FXZA==, tarball: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz}
     version: 0.20.2
     engines: {node: '>=0.8'}
     hasBin: true
@@ -22007,12 +22013,11 @@ snapshots:
 
   '@antfu/utils@0.7.10': {}
 
-  '@anthropic-ai/sandbox-runtime@0.0.42':
+  '@anthropic-ai/sandbox-runtime@0.0.61':
     dependencies:
       '@pondwader/socks5-server': 1.0.10
-      '@types/lodash-es': 4.17.12
       commander: 12.1.0
-      lodash-es: 4.18.1
+      node-forge: 1.4.0
       shell-quote: 1.8.4
       zod: 3.25.67
 
@@ -33046,7 +33051,7 @@ snapshots:
       node-domexception: 1.0.0
       web-streams-polyfill: 3.2.1
 
-  fflate@0.7.4: {}
+  fflate@0.8.3: {}
 
   figures@3.2.0:
     dependencies:
@@ -36241,6 +36246,8 @@ snapshots:
       data-uri-to-buffer: 4.0.1
       fetch-blob: 3.2.0
       formdata-polyfill: 4.0.10
+
+  node-forge@1.4.0: {}
 
   node-gyp-build-optional-packages@5.0.7:
     optional: true
