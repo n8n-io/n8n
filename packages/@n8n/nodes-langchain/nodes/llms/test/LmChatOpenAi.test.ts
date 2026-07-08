@@ -125,6 +125,40 @@ describe('LmChatOpenAi', () => {
 			});
 		});
 
+		it('should pass an empty redactedHeaders list to N8nLlmTracing when no custom header is set', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.2 });
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			expect(MockedN8nLlmTracing).toHaveBeenCalledWith(mockContext, { redactedHeaders: [] });
+		});
+
+		it('should pass the declared header name to N8nLlmTracing', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.2 });
+			mockContext.getCredentials = jest.fn().mockResolvedValue({
+				apiKey: 'test-api-key',
+				header: true,
+				headerName: 'x-custom-header',
+				headerValue: 'secret-value',
+			});
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			expect(MockedN8nLlmTracing).toHaveBeenCalledWith(mockContext, {
+				redactedHeaders: ['x-custom-header'],
+			});
+		});
+
 		it('should create ChatOpenAI instance with basic configuration (version < 1.2)', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.1 });
 
@@ -339,7 +373,7 @@ describe('LmChatOpenAi', () => {
 
 			await lmChatOpenAi.supplyData.call(mockContext, 0);
 
-			expect(MockedN8nLlmTracing).toHaveBeenCalledWith(mockContext);
+			expect(MockedN8nLlmTracing).toHaveBeenCalledWith(mockContext, { redactedHeaders: [] });
 		});
 
 		it('should create failed attempt handler', async () => {

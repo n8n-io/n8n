@@ -64,7 +64,7 @@ describe('DynamicNodeParametersController', () => {
 			ownerAgent = testServer.authAgentFor(owner);
 
 			const expectedResult = [{ name: 'Test Option', value: 'test' }];
-			jest.spyOn(service, 'getOptionsViaLoadOptions').mockResolvedValue(expectedResult);
+			jest.spyOn(service, 'getOptionsViaLoadOptionsByPath').mockResolvedValue(expectedResult);
 
 			const response = await ownerAgent
 				.post('/dynamic-node-parameters/options')

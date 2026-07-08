@@ -752,6 +752,7 @@ export class LmChatOpenAi implements INodeType {
 				dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1'),
 			};
 		}
+		let customHeaderName: string | undefined;
 		if (
 			credentials.header &&
 			typeof credentials.headerName === 'string' &&
@@ -761,6 +762,7 @@ export class LmChatOpenAi implements INodeType {
 			configuration.defaultHeaders = {
 				[credentials.headerName]: credentials.headerValue,
 			};
+			customHeaderName = credentials.headerName;
 		}
 
 		// Extra options to send to OpenAI, that are not directly supported by LangChain
@@ -791,7 +793,9 @@ export class LmChatOpenAi implements INodeType {
 			timeout: options.timeout ?? 60000,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
-			callbacks: [new N8nLlmTracing(this)],
+			callbacks: [
+				new N8nLlmTracing(this, { redactedHeaders: customHeaderName ? [customHeaderName] : [] }),
+			],
 			modelKwargs,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 		};

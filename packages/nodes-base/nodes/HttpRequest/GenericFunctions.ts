@@ -315,7 +315,7 @@ export const getAllowedDomains = (
 	if (credentialData.allowedHttpRequestDomains === 'none') {
 		throw new NodeOperationError(
 			node,
-			'This credential is configured to prevent use within an HTTP Request node',
+			'This credential is configured to prevent use within an HTTP Request or GraphQL node',
 		);
 	}
 

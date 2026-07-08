@@ -15,6 +15,8 @@ import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow
 import { logAiEvent } from '@utils/helpers';
 import { estimateTokensFromStringList } from '@utils/tokenizer/token-estimator';
 
+import { redactHeaderValues } from './redact-headers';
+
 type TokensUsageParser = (result: LLMResult) => {
 	completionTokens: number;
 	promptTokens: number;
@@ -64,6 +66,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			};
 		},
 		errorDescriptionMapper: (error: NodeError) => error.description,
+		redactedHeaders: [] as string[],
 	};
 
 	constructor(
@@ -71,6 +74,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		options?: {
 			tokensUsageParser?: TokensUsageParser;
 			errorDescriptionMapper?: (error: NodeError) => string;
+			redactedHeaders?: string[];
 		},
 	) {
 		super();
@@ -162,7 +166,10 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 				? this.#parentRunIndex + this.executionFunctions.getNextRunIndex()
 				: undefined;
 
-		const options = llm.type === 'constructor' ? llm.kwargs : llm;
+		const options = redactHeaderValues(
+			llm.type === 'constructor' ? llm.kwargs : llm,
+			this.options.redactedHeaders,
+		);
 		const { index } = this.executionFunctions.addInputData(
 			this.connectionType,
 			[

@@ -1,9 +1,11 @@
-import { access, mkdir } from 'fs/promises';
+import { DeploymentConfig, SecurityConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	ResolvedFilePath,
 } from 'n8n-workflow';
 import {
 	NodeConnectionTypes,
@@ -11,7 +13,9 @@ import {
 	assertParamIsBoolean,
 	assertParamIsString,
 } from 'n8n-workflow';
-import { isAbsolute, resolve } from 'path';
+import { randomBytes } from 'node:crypto';
+import { mkdir, rename, rm } from 'node:fs/promises';
+import { basename, dirname, isAbsolute, join, resolve } from 'path';
 import type { LogOptions, SimpleGit, SimpleGitOptions } from 'simple-git';
 import simpleGit from 'simple-git';
 import { URL, fileURLToPath } from 'url';
@@ -27,9 +31,9 @@ import {
 	switchBranchFields,
 	tagFields,
 } from './descriptions';
-import { Container } from '@n8n/di';
-import { DeploymentConfig, SecurityConfig } from '@n8n/config';
 import { mapGitConfigList, validateGitReference } from './GenericFunctions';
+
+const REMOTE_HELPER_TRANSPORT = /^[a-zA-Z][a-zA-Z0-9+.-]*::/;
 
 export class Git implements INodeType {
 	description: INodeTypeDescription = {
@@ -332,15 +336,29 @@ export class Git implements INodeType {
 				return;
 			}
 
+			if (REMOTE_HELPER_TRANSPORT.test(trimmedRepository)) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`${repositoryType === 'source' ? 'Source' : 'Target'} repository protocol is not allowed`,
+				);
+			}
+
 			if (hasUrlScheme(trimmedRepository)) {
-				const repositoryUrl = new URL(trimmedRepository);
-				if (repositoryUrl.protocol === 'file:') {
+				let repositoryUrl: URL | undefined;
+				try {
+					repositoryUrl = new URL(trimmedRepository);
+				} catch {
+					repositoryUrl = undefined;
+				}
+
+				if (repositoryUrl?.protocol === 'file:') {
 					await assertLocalRepositoryPathAllowed(
 						fileURLToPath(repositoryUrl),
 						repositoryType,
 						baseDir,
 					);
 				}
+
 				return;
 			}
 
@@ -379,12 +397,38 @@ export class Git implements INodeType {
 				pushTarget: remoteOriginPushUrls[0] ?? remoteOriginUrls[0],
 			};
 		};
+
+		const isFileNotFoundError = (error: unknown) =>
+			error instanceof Error && 'code' in error && error.code === 'ENOENT';
+
+		const resolvePathAllowingMissingParents = async (path: string): Promise<ResolvedFilePath> => {
+			try {
+				return await this.helpers.resolvePath(path);
+			} catch (error) {
+				if (!isFileNotFoundError(error)) {
+					throw error;
+				}
+
+				const parentPath = dirname(path);
+				if (parentPath === path) {
+					throw error;
+				}
+
+				const resolvedParentPath = await resolvePathAllowingMissingParents(parentPath);
+				return join(resolvedParentPath, basename(path)) as ResolvedFilePath;
+			}
+		};
+
 		const operation = this.getNodeParameter('operation', 0);
 		const returnItems: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				const repositoryPath = this.getNodeParameter('repositoryPath', itemIndex, '') as string;
-				const resolvedRepositoryPath = await this.helpers.resolvePath(repositoryPath);
+				const resolvedRepositoryPath =
+					operation === 'clone'
+						? await resolvePathAllowingMissingParents(repositoryPath)
+						: await this.helpers.resolvePath(repositoryPath);
+
 				const isFilePathBlocked = this.helpers.isFilePathBlocked(resolvedRepositoryPath);
 				if (isFilePathBlocked) {
 					throw new NodeOperationError(
@@ -416,13 +460,18 @@ export class Git implements INodeType {
 					);
 				}
 
+				let cloneStagingBase = '';
+				let cloneStagingPath = '';
 				if (operation === 'clone') {
-					// Create repository folder if it does not exist
-					try {
-						await access(resolvedRepositoryPath);
-					} catch (error) {
-						await mkdir(resolvedRepositoryPath);
-					}
+					// Clone into an unguessable staging directory under a fixed base, then
+					// move the result into place, so the git subprocess only ever resolves
+					// paths under a directory n8n controls.
+					cloneStagingBase = await this.helpers.resolveStagingBaseForTarget(resolvedRepositoryPath);
+					cloneStagingPath = join(
+						cloneStagingBase,
+						`.n8n-clone-${randomBytes(12).toString('hex')}`,
+					);
+					await mkdir(cloneStagingPath);
 				}
 
 				const gitConfig: string[] = [];
@@ -440,7 +489,7 @@ export class Git implements INodeType {
 				}
 
 				const gitOptions: Partial<SimpleGitOptions> = {
-					baseDir: resolvedRepositoryPath,
+					baseDir: operation === 'clone' ? cloneStagingBase : resolvedRepositoryPath,
 					config: gitConfig,
 				};
 
@@ -449,6 +498,7 @@ export class Git implements INodeType {
 				// example the username. As nobody will be able to answer it would
 				// n8n keep on waiting forever.
 				cleanEnv['GIT_TERMINAL_PROMPT'] = '0';
+				cleanEnv['GIT_ALLOW_PROTOCOL'] = 'file:git:http:https:ssh';
 				const git: SimpleGit = simpleGit(gitOptions).env(cleanEnv);
 
 				if (operation === 'add') {
@@ -508,7 +558,37 @@ export class Git implements INodeType {
 					//         clone
 					// ----------------------------------
 
-					await git.clone(sourceRepository, '.', ['--']);
+					try {
+						await git.clone(sourceRepository, cloneStagingPath, ['--']);
+
+						const pinnedParent = await this.helpers.pinDirectory(dirname(resolvedRepositoryPath), {
+							create: true,
+						});
+						try {
+							const renameTarget = pinnedParent
+								? pinnedParent.resolvePath(basename(resolvedRepositoryPath))
+								: resolvedRepositoryPath;
+							if (!pinnedParent) {
+								await this.helpers.ensureParentDirectoryWithoutFollowingSymlinks(
+									resolvedRepositoryPath,
+								);
+								await this.helpers.assertNoSymlinkInPath(resolvedRepositoryPath);
+							}
+							await rename(cloneStagingPath, renameTarget);
+						} catch (error) {
+							if (error instanceof Error && 'code' in error && error.code === 'EXDEV') {
+								throw new NodeOperationError(
+									this.getNode(),
+									'Cannot clone to a path on a different filesystem than the n8n data directory',
+								);
+							}
+							throw error;
+						} finally {
+							await pinnedParent?.close();
+						}
+					} finally {
+						await rm(cloneStagingPath, { recursive: true, force: true }).catch(() => {});
+					}
 
 					returnItems.push({
 						json: {
