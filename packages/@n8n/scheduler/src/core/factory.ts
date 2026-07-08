@@ -313,7 +313,7 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 	];
 
 	let started = false;
-	let stopped = false;
+	let stopping: Promise<void> | undefined;
 
 	return {
 		registerTaskHandler(taskType, handler) {
@@ -329,7 +329,7 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 		prune: runPrune,
 
 		start() {
-			if (!started && !stopped) {
+			if (!started && stopping === undefined) {
 				started = true;
 				for (const loop of loops) {
 					loop.start();
@@ -339,8 +339,9 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 		},
 
 		async stop() {
-			if (!stopped) {
-				stopped = true;
+			// Cache the teardown so overlapping `stop()` calls await the one run
+			// instead of the second returning before the first has finished.
+			stopping ??= (async () => {
 				// Loops first, each draining its in-flight passes (bounded by their
 				// timeouts), so no executor tick overlaps the executor teardown.
 				await Promise.all(loops.map(async (loop) => await loop.stop()));
@@ -348,7 +349,8 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 				if (started) {
 					emit('info', 'Scheduler stopped', { hostId });
 				}
-			}
+			})();
+			await stopping;
 		},
 	};
 }

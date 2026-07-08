@@ -63,11 +63,13 @@ function timeoutAfter(ms: number): { timedOut: Promise<typeof TIMED_OUT>; cancel
  * a slow pass never shifts the cadence, and missed slots are skipped rather
  * than replayed as a burst.
  *
- * A tick that finds no free slot ({@link ConcurrencyMode}) is dropped — never
- * queued — so backpressure sheds new work instead of stacking it. A pass that
+ * A tick that finds no free slot ({@link ConcurrencyMode}) is dropped, never
+ * queued, so backpressure sheds new work instead of stacking it. A pass that
  * outlives `timeoutMs` is abandoned: its slot is freed, its `AbortSignal`
- * aborted, and its eventual outcome discarded. Storage claims and leases make
- * an abandoned pass no worse than one on an instance that crashed mid-pass.
+ * aborted, and its eventual outcome discarded. Claims and leases keep an
+ * abandoned pass safe; it rolls back at its next cancellation point, but until
+ * then it still holds what it acquired, so on a single-writer store (SQLite) a
+ * fresh pass can briefly contend for the writer lock it has yet to release.
  *
  * {@link stop} cancels the pending tick, aborts the signal of every in-flight
  * pass so each can wind down at its next cancellation point, and waits for
