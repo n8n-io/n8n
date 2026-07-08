@@ -13,6 +13,8 @@ import type {
 	OAuthTokens,
 	OAuthTokenRevocationRequest,
 } from '@modelcontextprotocol/sdk/shared/auth.js';
+import type { McpClientConnectedPeriod, McpClientTypeFilter } from '@n8n/api-types';
+import { getMcpClientType, MCP_CLIENT_TYPE_FILTER_BUCKETS } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -35,6 +37,13 @@ import { UserManagementMailer } from '@/user-management/email';
 /** Maximum number of redirect URIs per client */
 const MAX_REDIRECT_URIS = 10;
 
+export type ConnectedOAuthClientOwner = {
+	id: string;
+	firstName: string | null;
+	lastName: string | null;
+	email: string;
+};
+
 /** A client the user has consented to, enriched with the grant details of the consent. */
 export type ConnectedOAuthClient = Omit<
 	OAuthClient,
@@ -43,11 +52,55 @@ export type ConnectedOAuthClient = Omit<
 	grantedAt: number;
 	scopes: string[];
 	/** Consent owner; present only when listing across users (ownership=all). */
-	owner?: { id: string; firstName: string | null; lastName: string | null; email: string };
+	owner?: ConnectedOAuthClientOwner;
 };
 
 /** Per-ownership consent totals for the connected-clients tab badges. */
 export type ConnectedOAuthClientTotals = { mine: number; all?: number };
+
+export type ListConnectedClientsOptions = {
+	ownership?: 'mine' | 'all';
+	skip?: number;
+	take?: number;
+	name?: string;
+	ownerId?: string;
+	type?: McpClientTypeFilter;
+	connected?: McpClientConnectedPeriod;
+};
+
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+
+function filterConnectedClients(
+	rows: ConnectedOAuthClient[],
+	filters: Pick<ListConnectedClientsOptions, 'name' | 'ownerId' | 'type' | 'connected'>,
+	now: number,
+): ConnectedOAuthClient[] {
+	const needle = filters.name?.trim().toLowerCase();
+	return rows.filter((row) => {
+		if (needle && !row.name.toLowerCase().includes(needle)) return false;
+		if (filters.type) {
+			const type = getMcpClientType(row.name);
+			if (!type || !MCP_CLIENT_TYPE_FILTER_BUCKETS[filters.type].includes(type)) return false;
+		}
+		if (filters.ownerId && row.owner?.id !== filters.ownerId) return false;
+		if (filters.connected === 'last7' && row.grantedAt < now - 7 * DAY_IN_MS) return false;
+		if (filters.connected === 'last30' && row.grantedAt < now - 30 * DAY_IN_MS) return false;
+		if (filters.connected === 'older' && row.grantedAt >= now - 30 * DAY_IN_MS) return false;
+		return true;
+	});
+}
+
+function distinctOwners(rows: ConnectedOAuthClient[]): ConnectedOAuthClientOwner[] {
+	const byId = new Map<string, ConnectedOAuthClientOwner>();
+	for (const row of rows) {
+		if (row.owner) byId.set(row.owner.id, row.owner);
+	}
+	return [...byId.values()].sort((a, b) => {
+		const nameA = [a.firstName, a.lastName].filter(Boolean).join(' ') || a.email;
+		const nameB = [b.firstName, b.lastName].filter(Boolean).join(' ') || b.email;
+		return nameA.localeCompare(nameB);
+	});
+}
 
 /** Maximum length for a single redirect URI */
 const MAX_REDIRECT_URI_LENGTH = 2048;
@@ -443,11 +496,21 @@ export class OAuthServerService implements OAuthServerProvider {
 	 * Get OAuth clients users have consented to (excluding sensitive data),
 	 * together with the grant details of each consent. `ownership: 'all'`
 	 * returns every user's consents with owner info and requires `mcp:manage`.
+	 *
+	 * Filters and pagination are applied in memory after loading the ownership's
+	 * consents: the set is small (bounded by the instance client cap) and the
+	 * type filter reuses the shared name-pattern matchers, which SQL can't
+	 * express. `count` is the filtered total, `clients` the requested page.
 	 */
 	async getAllClients(
 		user: User,
-		options: { ownership?: 'mine' | 'all' } = {},
-	): Promise<{ clients: ConnectedOAuthClient[]; totals: ConnectedOAuthClientTotals }> {
+		options: ListConnectedClientsOptions = {},
+	): Promise<{
+		clients: ConnectedOAuthClient[];
+		count: number;
+		totals: ConnectedOAuthClientTotals;
+		owners?: ConnectedOAuthClientOwner[];
+	}> {
 		const canSeeAll = hasGlobalScope(user, 'mcp:manage');
 		const listAll = options.ownership === 'all';
 
@@ -459,7 +522,7 @@ export class OAuthServerService implements OAuthServerProvider {
 			? await this.userConsentRepository.findAllWithClientAndUser()
 			: await this.userConsentRepository.findByUserWithClient(user.id);
 
-		const clients = consents.map((consent) => {
+		const rows = consents.map((consent) => {
 			const { clientSecret, clientSecretExpiresAt, ...sanitizedClient } = consent.client;
 			return {
 				...sanitizedClient,
@@ -479,16 +542,24 @@ export class OAuthServerService implements OAuthServerProvider {
 			};
 		});
 
+		// Owners feed the "Connected by" filter, so they reflect the unfiltered set.
+		const owners = listAll ? distinctOwners(rows) : undefined;
+
+		const filtered = filterConnectedClients(rows, options, Date.now());
+		const skip = options.skip ?? 0;
+		const take = options.take;
+		const page = take === undefined ? filtered.slice(skip) : filtered.slice(skip, skip + take);
+
 		// Reuse the fetched set's size where it already equals the population.
 		const mine = listAll
 			? await this.userConsentRepository.countBy({ userId: user.id })
-			: clients.length;
+			: rows.length;
 		const totals: ConnectedOAuthClientTotals = { mine };
 		if (canSeeAll) {
-			totals.all = listAll ? clients.length : await this.userConsentRepository.count();
+			totals.all = listAll ? rows.length : await this.userConsentRepository.count();
 		}
 
-		return { clients, totals };
+		return { clients: page, count: filtered.length, totals, owners };
 	}
 
 	/** Tool names each scope unlocks on this instance, for the clients list UI. */

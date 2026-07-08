@@ -508,7 +508,16 @@ export {
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
 	MCP_INSTANCE_SCOPES,
+	MCP_CLIENT_BRAND_MATCHERS,
+	MCP_CLIENT_TYPE_FILTERS,
+	MCP_CLIENT_TYPE_FILTER_BUCKETS,
+	MCP_CLIENT_CONNECTED_PERIODS,
+	getMcpClientType,
 	type McpScope,
+	type McpClientType,
+	type McpClientBrandName,
+	type McpClientTypeFilter,
+	type McpClientConnectedPeriod,
 } from './schemas/mcp.schema';
 
 export {

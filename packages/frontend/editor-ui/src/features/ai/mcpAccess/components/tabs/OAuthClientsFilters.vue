@@ -14,11 +14,10 @@ import {
 	N8nUserSelect,
 } from '@n8n/design-system';
 
-import type {
-	McpClientTypeFilter,
-	McpConnectedPeriod,
-	OAuthClientFilters,
-} from '../../clients.utils';
+import type { McpClientConnectedPeriod, McpClientTypeFilter } from '@n8n/api-types';
+import { MCP_CLIENT_CONNECTED_PERIODS, MCP_CLIENT_TYPE_FILTERS } from '@n8n/api-types';
+
+import type { OAuthClientFilters } from '../../clients.utils';
 
 const props = defineProps<{
 	modelValue: OAuthClientFilters;
@@ -34,10 +33,10 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-const CLIENT_TYPE_OPTIONS: McpClientTypeFilter[] = ['ide', 'cli', 'web'];
-const CONNECTED_OPTIONS: McpConnectedPeriod[] = ['last7', 'last30', 'older'];
+const CLIENT_TYPE_OPTIONS: readonly McpClientTypeFilter[] = MCP_CLIENT_TYPE_FILTERS;
+const CONNECTED_OPTIONS: readonly McpClientConnectedPeriod[] = MCP_CLIENT_CONNECTED_PERIODS;
 
-const connectedOptionLabels: Record<McpConnectedPeriod, string> = {
+const connectedOptionLabels: Record<McpClientConnectedPeriod, string> = {
 	last7: i18n.baseText('settings.mcp.oAuthClients.filters.connected.last7Days'),
 	last30: i18n.baseText('settings.mcp.oAuthClients.filters.connected.last30Days'),
 	older: i18n.baseText('settings.mcp.oAuthClients.filters.connected.older'),

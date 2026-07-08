@@ -40,11 +40,20 @@ export class OAuthClientsController {
 			ownership: query.ownership ?? 'mine',
 		});
 
-		const { clients, totals } = await this.oauthServerService.getAllClients(req.user, {
-			ownership: query.ownership,
-		});
+		const { clients, count, totals, owners } = await this.oauthServerService.getAllClients(
+			req.user,
+			{
+				ownership: query.ownership,
+				skip: query.skip,
+				take: query.take,
+				name: query.name,
+				ownerId: query.ownerId,
+				type: query.type,
+				connected: query.connected,
+			},
+		);
 
-		this.logger.debug(`Found ${clients.length} OAuth clients`);
+		this.logger.debug(`Found ${count} OAuth clients`);
 
 		const clientDtos: OAuthClientResponseDto[] = clients.map((client) => ({
 			id: client.id,
@@ -61,9 +70,10 @@ export class OAuthClientsController {
 
 		return {
 			data: clientDtos,
-			count: clients.length,
+			count,
 			scopeTools: this.oauthServerService.getInstanceScopeTools(),
 			totals,
+			...(owners ? { owners } : {}),
 		};
 	}
 

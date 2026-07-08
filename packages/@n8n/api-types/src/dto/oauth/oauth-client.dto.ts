@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
+import { MCP_CLIENT_CONNECTED_PERIODS, MCP_CLIENT_TYPE_FILTERS } from '../../schemas/mcp.schema';
 import { Z } from '../../zod-class';
+import { paginationSchema } from '../pagination/pagination.dto';
 
 const oauthClientOwnerShape = z.object({
 	id: z.string(),
@@ -34,8 +36,17 @@ export class OAuthClientResponseDto extends Z.class(oauthClientShape) {}
  * DTO for the OAuth clients list query
  */
 export class ListOAuthClientsQueryDto extends Z.class({
+	...paginationSchema,
 	/** 'all' requires mcp:manage; defaults to 'mine'. */
 	ownership: z.enum(['mine', 'all']).optional(),
+	/** Case-insensitive substring match against the client's name. */
+	name: z.string().trim().min(1).max(100).optional(),
+	/** Narrow the `all` view to consents of this user. Ignored without mcp:manage. */
+	ownerId: z.string().max(36).optional(),
+	/** Client type bucket, resolved from the client name via the shared brand matchers. */
+	type: z.enum(MCP_CLIENT_TYPE_FILTERS).optional(),
+	/** Date bucket applied to the consent's grantedAt. */
+	connected: z.enum(MCP_CLIENT_CONNECTED_PERIODS).optional(),
 }) {}
 
 /**
@@ -43,11 +54,14 @@ export class ListOAuthClientsQueryDto extends Z.class({
  */
 export class ListOAuthClientsResponseDto extends Z.class({
 	data: z.array(z.object(oauthClientShape)),
+	/** Total rows matching the filters (across all pages) for the current ownership. */
 	count: z.number(),
 	/** Tool names each grantable scope unlocks on this instance, for the client details view. */
 	scopeTools: z.record(z.array(z.string())).optional(),
 	/** Unfiltered per-ownership totals for the tab badges. `all` only for mcp:manage callers. */
 	totals: z.object({ mine: z.number(), all: z.number().optional() }),
+	/** Distinct consent owners for the "Connected by" filter; only for mcp:manage callers. */
+	owners: z.array(oauthClientOwnerShape).optional(),
 }) {}
 
 /**

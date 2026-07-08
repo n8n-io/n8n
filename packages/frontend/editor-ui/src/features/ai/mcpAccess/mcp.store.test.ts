@@ -175,7 +175,7 @@ describe('mcp.store', () => {
 	});
 
 	describe('OAuth clients ownership', () => {
-		it('fetches with the current ownership and stores the totals', async () => {
+		it('fetches the current page with ownership, pagination and filters', async () => {
 			const client = createOAuthClient();
 			const fetchSpy = vi.spyOn(mcpApi, 'fetchOAuthClients').mockResolvedValue({
 				data: [client],
@@ -185,35 +185,107 @@ describe('mcp.store', () => {
 
 			await store.getAllOAuthClients();
 
-			expect(fetchSpy).toHaveBeenCalledWith({}, { ownership: 'mine' });
+			expect(fetchSpy).toHaveBeenCalledWith({}, { ownership: 'mine', skip: 0, take: 10 });
 			expect(store.oauthClients).toEqual([client]);
 			expect(store.oauthClientTotals).toEqual({ mine: 1, all: 3 });
+			expect(store.oauthClientsCount).toBe(1);
 		});
 
-		it('switches ownership and refetches', async () => {
+		it('switches ownership, resetting page and filters, and refetches', async () => {
 			const fetchSpy = vi.spyOn(mcpApi, 'fetchOAuthClients').mockResolvedValue({
 				data: [],
 				count: 0,
 				totals: { mine: 0, all: 0 },
 			});
 
+			store.oauthClientsFilters = {
+				search: 'claude',
+				type: 'cli',
+				ownerId: 'user-1',
+				connected: 'last7',
+			};
+
 			await store.setOAuthClientsOwnership('all');
 
 			expect(store.oauthClientsOwnership).toBe('all');
-			expect(fetchSpy).toHaveBeenCalledWith({}, { ownership: 'all' });
+			expect(store.oauthClientsFilters).toEqual({
+				search: '',
+				type: null,
+				ownerId: null,
+				connected: null,
+			});
+			expect(fetchSpy).toHaveBeenCalledWith({}, { ownership: 'all', skip: 0, take: 10 });
 		});
 
-		it('dedupes and sorts consent owners across rows', async () => {
+		it('sends the active filters as query params and resets the page', async () => {
+			const fetchSpy = vi.spyOn(mcpApi, 'fetchOAuthClients').mockResolvedValue({
+				data: [],
+				count: 0,
+				totals: { mine: 0 },
+			});
+
+			store.oauthClientsPage = 2;
+			await store.setOAuthClientsFilters({
+				search: '  claude ',
+				type: 'cli',
+				ownerId: 'user-1',
+				connected: 'last30',
+			});
+
+			expect(store.oauthClientsPage).toBe(0);
+			expect(fetchSpy).toHaveBeenCalledWith(
+				{},
+				{
+					ownership: 'mine',
+					skip: 0,
+					take: 10,
+					name: 'claude',
+					ownerId: 'user-1',
+					type: 'cli',
+					connected: 'last30',
+				},
+			);
+		});
+
+		it('paginates server-side and restarts from the first page on a page-size change', async () => {
+			const fetchSpy = vi.spyOn(mcpApi, 'fetchOAuthClients').mockResolvedValue({
+				data: [createOAuthClient()],
+				count: 40,
+				totals: { mine: 40 },
+			});
+
+			await store.setOAuthClientsPagination(2, 10);
+			expect(fetchSpy).toHaveBeenLastCalledWith({}, { ownership: 'mine', skip: 20, take: 10 });
+
+			await store.setOAuthClientsPagination(2, 25);
+			expect(store.oauthClientsPage).toBe(0);
+			expect(fetchSpy).toHaveBeenLastCalledWith({}, { ownership: 'mine', skip: 0, take: 25 });
+		});
+
+		it('clamps to the last page when the requested one shrank away', async () => {
+			const fetchSpy = vi
+				.spyOn(mcpApi, 'fetchOAuthClients')
+				.mockResolvedValueOnce({ data: [], count: 11, totals: { mine: 11 } })
+				.mockResolvedValueOnce({
+					data: [createOAuthClient()],
+					count: 11,
+					totals: { mine: 11 },
+				});
+
+			await store.setOAuthClientsPagination(5, 10);
+
+			expect(store.oauthClientsPage).toBe(1);
+			expect(fetchSpy).toHaveBeenLastCalledWith({}, { ownership: 'mine', skip: 10, take: 10 });
+		});
+
+		it('stores the distinct owners returned by the server', async () => {
 			const jane = { id: 'user-1', firstName: 'Jane', lastName: 'Doe', email: 'jane@n8n.io' };
 			const adam = { id: 'user-2', firstName: 'Adam', lastName: 'Ant', email: 'adam@n8n.io' };
 			vi.spyOn(mcpApi, 'fetchOAuthClients').mockResolvedValue({
-				data: [
-					createOAuthClient({ id: 'a', owner: jane }),
-					createOAuthClient({ id: 'b', owner: adam }),
-					createOAuthClient({ id: 'c', owner: jane }),
-				],
-				count: 3,
+				data: [createOAuthClient({ id: 'a', owner: jane })],
+				count: 1,
 				totals: { mine: 1, all: 3 },
+				owners: [adam, jane],
 			});
 
 			await store.getAllOAuthClients();

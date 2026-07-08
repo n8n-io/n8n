@@ -30,6 +30,7 @@ import {
 } from '@n8n/design-system';
 import type { TabOptions } from '@n8n/design-system';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
+import type { OAuthClientFilters } from '@/features/ai/mcpAccess/clients.utils';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@/app/constants';
@@ -309,6 +310,22 @@ const onOwnershipChange = async (ownership: 'mine' | 'all') => {
 	}
 };
 
+const onClientsFiltersChange = async (filters: OAuthClientFilters) => {
+	try {
+		await mcpStore.setOAuthClientsFilters(filters);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
+	}
+};
+
+const onClientsOptionsChange = async (options: { page: number; itemsPerPage: number }) => {
+	try {
+		await mcpStore.setOAuthClientsPagination(options.page, options.itemsPerPage);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
+	}
+};
+
 const onRevokeRequest = (client: OAuthClientResponseDto) => {
 	revokeClient.value = client;
 };
@@ -532,6 +549,8 @@ onMounted(async () => {
 					:loading="oAuthClientsLoading"
 					@revoke-client="onRevokeRequest"
 					@update:ownership="onOwnershipChange"
+					@update:filters="onClientsFiltersChange"
+					@update:options="onClientsOptionsChange"
 					@refresh="onTableRefresh"
 				/>
 				<section

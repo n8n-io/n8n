@@ -3,6 +3,8 @@ import type {
 	InstanceMcpClientStatsResponseDto,
 	ListOAuthClientsResponseDto,
 	DeleteOAuthClientResponseDto,
+	McpClientConnectedPeriod,
+	McpClientTypeFilter,
 } from '@n8n/api-types';
 import type { WorkflowListItem } from '@/Interface';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -77,15 +79,28 @@ export async function toggleWorkflowsMcpAccessApi(
 	});
 }
 
+export type FetchOAuthClientsOptions = {
+	ownership?: 'mine' | 'all';
+	skip?: number;
+	take?: number;
+	name?: string;
+	ownerId?: string;
+	type?: McpClientTypeFilter;
+	connected?: McpClientConnectedPeriod;
+};
+
 export async function fetchOAuthClients(
 	context: IRestApiContext,
-	options?: { ownership?: 'mine' | 'all' },
+	options: FetchOAuthClientsOptions = {},
 ): Promise<ListOAuthClientsResponseDto> {
+	const params = Object.fromEntries(
+		Object.entries(options).filter(([, value]) => value !== undefined),
+	);
 	return await makeRestApiRequest(
 		context,
 		'GET',
 		'/mcp/oauth-clients',
-		options?.ownership ? { ownership: options.ownership } : undefined,
+		Object.keys(params).length > 0 ? params : undefined,
 	);
 }
 

@@ -12,7 +12,7 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import type { IUser, TabOptions } from '@n8n/design-system';
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useRBACStore } from '@/app/stores/rbac.store';
@@ -22,7 +22,6 @@ import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServ
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import {
 	EMPTY_OAUTH_CLIENT_FILTERS,
-	filterOAuthClients,
 	getClientBrand,
 	isFullAccessGrant,
 	scopeLabel,
@@ -45,8 +44,23 @@ type Props = {
 
 const props = defineProps<Props>();
 
-const page = ref(0);
-const itemsPerPage = ref(10);
+const emit = defineEmits<{
+	revokeClient: [client: OAuthClientResponseDto];
+	'update:ownership': [ownership: 'mine' | 'all'];
+	'update:filters': [filters: OAuthClientFilters];
+	'update:options': [options: { page: number; itemsPerPage: number }];
+}>();
+
+// The store is the source of truth for pagination; setters route through the
+// parent so it can wrap the refetch in its loading state.
+const page = computed({
+	get: () => mcpStore.oauthClientsPage,
+	set: (value: number) => emit('update:options', { page: value, itemsPerPage: itemsPerPage.value }),
+});
+const itemsPerPage = computed({
+	get: () => mcpStore.oauthClientsPageSize,
+	set: (value: number) => emit('update:options', { page: page.value, itemsPerPage: value }),
+});
 
 const detailsClient = ref<OAuthClientResponseDto | null>(null);
 const detailsOpen = ref(false);
@@ -69,11 +83,26 @@ const tabOptions = computed<Array<TabOptions<'mine' | 'all'>>>(() => [
 	},
 ]);
 
+// Local UI state of the search + popover; every change is emitted so the
+// parent can push it to the store and refetch server-side.
 const filters = ref<OAuthClientFilters>({ ...EMPTY_OAUTH_CLIENT_FILTERS });
 const searchQuery = ref('');
 
+const hasActiveFilters = computed(
+	() =>
+		filters.value.search.trim() !== '' ||
+		filters.value.type !== null ||
+		filters.value.ownerId !== null ||
+		filters.value.connected !== null,
+);
+
+function onFiltersChange(newFilters: OAuthClientFilters) {
+	filters.value = newFilters;
+	emit('update:filters', newFilters);
+}
+
 const applySearch = useDebounceFn((value: string) => {
-	filters.value = { ...filters.value, search: value };
+	onFiltersChange({ ...filters.value, search: value });
 }, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
 function onSearchInput(value: string) {
@@ -91,35 +120,10 @@ const ownerOptions = computed<IUser[]>(() =>
 	})),
 );
 
-const filteredClients = computed(() =>
-	filterOAuthClients(props.clients, filters.value, Date.now()),
-);
-
-const visibleClients = computed(() => {
-	const start = page.value * itemsPerPage.value;
-	return filteredClients.value.slice(start, start + itemsPerPage.value);
-});
-
-watch(
-	() => filteredClients.value.length,
-	(length) => {
-		const maxPage = Math.max(0, Math.ceil(length / itemsPerPage.value) - 1);
-		if (page.value > maxPage) {
-			page.value = maxPage;
-		}
-	},
-);
-
-const emit = defineEmits<{
-	revokeClient: [client: OAuthClientResponseDto];
-	'update:ownership': [ownership: 'mine' | 'all'];
-}>();
-
 function onOwnershipChange(newOwnership: 'mine' | 'all') {
 	if (newOwnership === ownership.value) return;
 	filters.value = { ...EMPTY_OAUTH_CLIENT_FILTERS };
 	searchQuery.value = '';
-	page.value = 0;
 	emit('update:ownership', newOwnership);
 }
 
@@ -244,10 +248,11 @@ function onRevoke(item: OAuthClientResponseDto) {
 						</template>
 					</N8nInput>
 					<OAuthClientsFilters
-						v-model="filters"
+						:model-value="filters"
 						:owners="ownerOptions"
 						:show-owner-filter="ownership === 'all'"
 						:current-user-id="usersStore.currentUser?.id"
+						@update:model-value="onFiltersChange"
 					/>
 				</div>
 			</div>
@@ -256,13 +261,13 @@ function onRevoke(item: OAuthClientResponseDto) {
 				v-model:items-per-page="itemsPerPage"
 				data-test-id="oauth-clients-data-table"
 				:headers="tableHeaders"
-				:items="visibleClients"
-				:items-length="filteredClients.length"
+				:items="props.clients"
+				:items-length="mcpStore.oauthClientsCount"
 				:item-value="rowId"
 				@click:row="(_, { item }) => openDetails(item)"
 			>
-				<template v-if="props.clients.length === 0 || filteredClients.length === 0" #cover>
-					<div v-if="props.clients.length === 0" :class="$style['empty-state']">
+				<template v-if="mcpStore.oauthClientsCount === 0" #cover>
+					<div v-if="!hasActiveFilters" :class="$style['empty-state']">
 						<N8nText data-test-id="mcp-workflow-table-empty-state" size="large" color="text-base">
 							{{ i18n.baseText('settings.mcp.oauth.table.empty.title') }}
 						</N8nText>

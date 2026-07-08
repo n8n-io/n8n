@@ -18,6 +18,9 @@ const { mockMcpStore, mockHasScope } = vi.hoisted(() => ({
 		openConnectPopover: vi.fn(),
 		oauthClientsOwnership: 'mine' as 'mine' | 'all',
 		oauthClientTotals: { mine: 0 } as { mine: number; all?: number },
+		oauthClientsPage: 0,
+		oauthClientsPageSize: 10,
+		oauthClientsCount: 0,
 		oauthClientOwners: [] as Array<{
 			id: string;
 			firstName: string | null;
@@ -48,6 +51,9 @@ describe('OAuthClientsTable', () => {
 		mockHasScope.mockReturnValue(false);
 		mockMcpStore.oauthClientsOwnership = 'mine';
 		mockMcpStore.oauthClientTotals = { mine: 0 };
+		mockMcpStore.oauthClientsPage = 0;
+		mockMcpStore.oauthClientsPageSize = 10;
+		mockMcpStore.oauthClientsCount = 0;
 		mockMcpStore.oauthClientOwners = [];
 	});
 
@@ -206,15 +212,15 @@ describe('OAuthClientsTable', () => {
 			sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
 		});
 
-		it('should narrow the rows by client name', async () => {
-			const clients = [
-				createOAuthClient({ id: 'client-1', name: 'Claude Code' }),
-				createOAuthClient({ id: 'client-2', name: 'Cursor' }),
-			];
+		it('should emit the debounced search term so the parent can filter server-side', async () => {
+			mockMcpStore.oauthClientsCount = 2;
 
-			const { getByTestId, getAllByTestId } = createComponent({
+			const { getByTestId, emitted } = createComponent({
 				props: {
-					clients,
+					clients: [
+						createOAuthClient({ id: 'client-1', name: 'Claude Code' }),
+						createOAuthClient({ id: 'client-2', name: 'Cursor' }),
+					],
 					loading: false,
 				},
 			});
@@ -222,16 +228,20 @@ describe('OAuthClientsTable', () => {
 			await userEvent.type(getByTestId('mcp-clients-search'), 'cursor');
 
 			await waitFor(() => {
-				const names = getAllByTestId('mcp-client-name');
-				expect(names).toHaveLength(1);
-				expect(names[0]).toHaveTextContent('Cursor');
+				const emissions = emitted('update:filters');
+				expect(emissions).toBeTruthy();
+				const last = emissions[emissions.length - 1][0] as { search: string };
+				expect(last.search).toBe('cursor');
 			});
 		});
 
-		it('should show a no-results message when the search matches nothing', async () => {
+		it('should show a no-results message when the filtered set is empty', async () => {
+			// the server matched nothing for the active search
+			mockMcpStore.oauthClientsCount = 0;
+
 			const { getByTestId, queryByTestId } = createComponent({
 				props: {
-					clients: [createOAuthClient({ name: 'Claude Code' })],
+					clients: [],
 					loading: false,
 				},
 			});
