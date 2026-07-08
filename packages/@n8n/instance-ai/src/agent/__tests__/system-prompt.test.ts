@@ -200,6 +200,15 @@ describe('getSystemPrompt', () => {
 			expect(prompt).not.toContain('build-workflow-with-agent');
 		});
 
+		it('forbids the agent_builder tool during workflow building', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('do not call `agent_builder` at all');
+			expect(prompt).toContain(
+				'do not route around that by creating a custom tool through `agent_builder`',
+			);
+		});
+
 		it('routes standalone data-table work through the data-table-manager skill', () => {
 			const prompt = getSystemPrompt({});
 

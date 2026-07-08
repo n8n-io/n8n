@@ -151,6 +151,53 @@ describe('materialize', () => {
 		expect(badEntry.plan.lastFiredAt).toBeNull();
 	});
 
+	it('cancelled before any work, it opens no transaction at all', async () => {
+		const tx = mock<MaterializerTransaction>();
+		let transactionsOpened = 0;
+		const runInTransaction: RunInTransaction = async (work) => {
+			transactionsOpened += 1;
+			return await work(tx);
+		};
+		const controller = new AbortController();
+		controller.abort();
+
+		await expect(materialize(runInTransaction, options, {}, controller.signal)).rejects.toThrow();
+		expect(transactionsOpened).toBe(0);
+	});
+
+	it('cancelled during the claim, it throws inside the transaction so the claim rolls back', async () => {
+		const tx = mock<MaterializerTransaction>();
+		const controller = new AbortController();
+		// The cancellation lands while the claim query is in flight.
+		tx.claimDueJobs.mockImplementation(async () => {
+			controller.abort();
+			return await Promise.resolve({ now: NOW, jobs: [makeJob(1)] });
+		});
+		// A real runner rolls back when the work throws; asserting the throw
+		// asserts the rollback.
+		await expect(materialize(runnerWith(tx), options, {}, controller.signal)).rejects.toThrow();
+		expect(tx.recordOccurrences).not.toHaveBeenCalled();
+		expect(tx.advanceJobs).not.toHaveBeenCalled();
+	});
+
+	it('cancelled during the insert, it throws before advancing the jobs', async () => {
+		const tx = mock<MaterializerTransaction>();
+		const controller = new AbortController();
+		tx.claimDueJobs.mockResolvedValue({ now: NOW, jobs: [makeJob(1)] });
+		tx.recordOccurrences.mockImplementation(async () => {
+			controller.abort();
+			return await Promise.resolve(1);
+		});
+		const onSkippedDuplicates = vi.fn();
+
+		await expect(
+			materialize(runnerWith(tx), options, { onSkippedDuplicates }, controller.signal),
+		).rejects.toThrow();
+		expect(tx.advanceJobs).not.toHaveBeenCalled();
+		// No reporting about rows the rollback is about to undo.
+		expect(onSkippedDuplicates).not.toHaveBeenCalled();
+	});
+
 	it('still defers and completes the pass when the plan-error reporter itself throws', async () => {
 		const good = makeJob(1);
 		const bad: ScheduledJob = {

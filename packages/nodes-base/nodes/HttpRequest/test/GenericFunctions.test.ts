@@ -80,7 +80,7 @@ describe('getAllowedDomains', () => {
 
 	it('should throw when allowedHttpRequestDomains is "none"', () => {
 		expect(() => getAllowedDomains(node, { allowedHttpRequestDomains: 'none' })).toThrow(
-			'This credential is configured to prevent use within an HTTP Request node',
+			'This credential is configured to prevent use within an HTTP Request or GraphQL node',
 		);
 	});
 

@@ -27,6 +27,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { AgentsConfig, SsrfProtectionConfig } from '@n8n/config';
+import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -34,14 +35,19 @@ import { nanoid } from 'nanoid';
 
 import { ActiveExecutions } from '@/active-executions';
 import { N8N_VERSION } from '@/constants';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { EphemeralNodeExecutor } from '@/node-execution';
 import { OauthService } from '@/oauth/oauth.service';
-import { UrlService } from '@/services/url.service';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
+import { UrlService } from '@/services/url.service';
 import { createAiMcpFetch, createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 import { WorkflowRunner } from '@/workflow-runner';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
+import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import {
@@ -64,8 +70,6 @@ import { resolveCredentialAwareModelConfig } from './json-config/model-config';
 import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
-import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
-import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service';
 import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool';
 import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
@@ -93,10 +97,16 @@ export interface ReconstructAgentRuntimeParams {
 	integrationType?: string;
 	/** Top-level chat/integration runtimes only. */
 	credentialIntegrations?: AgentIntegrationConfig[];
+	/**
+	 * The interactive n8n user of the delegating parent run, when there is one.
+	 * When present, node/workflow tool refs are filtered by this user's access
+	 * (same rules as reconstructFromAgentEntity). Absent for published/
+	 * integration parents, which keep the project-scoped trust boundary.
+	 */
+	user?: User;
 }
 
 async function getChatIntegrationToolServices() {
-	// eslint-disable-next-line import-x/no-cycle
 	const { IntegrationMessageContextService } = await import(
 		'./integrations/integration-message-context.service'
 	);
@@ -104,7 +114,6 @@ async function getChatIntegrationToolServices() {
 	const { ChatIntegrationActionExecutor } = await import(
 		'./integrations/integration-action-executor'
 	);
-	// eslint-disable-next-line import-x/no-cycle
 	const { ChatIntegrationContextQueryExecutor } = await import(
 		'./integrations/integration-context-query-executor'
 	);
@@ -141,16 +150,31 @@ export class AgentRuntimeReconstructionService {
 		private readonly agentKnowledgeSandboxService: AgentKnowledgeSandboxService,
 		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
+		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
 	async reconstructFromAgentEntity(
 		agentEntity: Agent,
 		credentialProvider: CredentialProvider,
 		integrationType?: string,
+		user?: User,
 	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
-		const config = agentEntity.schema;
+		let config = agentEntity.schema;
 		if (!config) {
 			throw new UserError('Agent has no JSON config.');
+		}
+
+		// Published/integration runs have no interactive n8n user and keep
+		// today's project-scoped trust boundary. When a user is present (in-app
+		// chat, resume, task-now), drop node/workflow tools the user can't
+		// execute or lacks credential/workflow access to before the runtime is
+		// built, so denied tools never reach the LLM or the executor.
+		if (user && config.tools?.length) {
+			config = {
+				...config,
+				tools: await this.filterToolsForUser(config.tools, agentEntity.projectId, user),
+			};
 		}
 
 		const toolsByName: Record<string, string> = {};
@@ -178,19 +202,101 @@ export class AgentRuntimeReconstructionService {
 			integrationType,
 			credentialIntegrations: agentEntity.integrations ?? [],
 			subAgentDelegation,
+			user,
 		});
 	}
 
+	/**
+	 * Drop node/workflow tool refs the calling user can't run: `workflow:execute`
+	 * gates both kinds, and node tools additionally need `credential:read` on
+	 * every credential baked into the ref. Filtering the config copy (rather
+	 * than the resolved tools) means a denied ref never reaches
+	 * `makeToolResolver`/`resolveToolRef`, so no inert marker tool is exposed to
+	 * the LLM. Custom tools are untouched — they run n8n-authored code, not a
+	 * caller-chosen node/workflow with baked credentials.
+	 */
+	private async filterToolsForUser(
+		tools: AgentJsonToolConfig[],
+		projectId: string,
+		user: User,
+	): Promise<AgentJsonToolConfig[]> {
+		const canExecute = await userHasScopes(user, ['workflow:execute'], false, { projectId });
+
+		const filtered: AgentJsonToolConfig[] = [];
+		for (const ref of tools) {
+			if (ref.type === 'custom') {
+				filtered.push(ref);
+				continue;
+			}
+
+			if (!canExecute) continue;
+
+			if (ref.type === 'node') {
+				const credentialIds = Object.values(ref.node.credentials ?? {})
+					.map((credential) => credential.id)
+					.filter((id): id is string => Boolean(id));
+
+				const accessibleCredentials = await Promise.all(
+					credentialIds.map(
+						async (id) =>
+							await this.credentialsFinderService.findCredentialForUser(id, user, [
+								'credential:read',
+							]),
+					),
+				);
+				if (accessibleCredentials.some((credential) => credential === null)) continue;
+
+				filtered.push(ref);
+				continue;
+			}
+
+			// ref.type === 'workflow'
+			const workflow = await this.workflowRepository.findOne({
+				where: { name: ref.workflow, shared: { projectId } },
+				relations: ['shared'],
+			});
+			if (!workflow) continue;
+
+			const accessibleWorkflow = await this.workflowFinderService.findWorkflowForUser(
+				workflow.id,
+				user,
+				['workflow:execute'],
+			);
+			if (!accessibleWorkflow) continue;
+
+			filtered.push(ref);
+		}
+
+		return filtered;
+	}
+
+	/**
+	 * Build a sub-agent's runtime for a `delegate_subagent` call.
+	 *
+	 * When `params.user` is present (the delegating parent had an interactive
+	 * n8n user), node/workflow tool refs are filtered by that user's access —
+	 * same rules as `reconstructFromAgentEntity`. Absent for published/
+	 * integration parents, which keep the project-scoped trust boundary. The
+	 * sub-agent also inherits the parent's `credentialProvider` (user-scoped
+	 * when the parent had a user), so raw credential access stays gated there
+	 * regardless.
+	 */
 	async reconstructFromResolvedSource(
 		params: ReconstructAgentRuntimeParams,
 	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
-		const subAgentDelegation = await this.createSubAgentDelegationConfig(
-			params.config,
-			params.projectId,
-		);
+		let config = params.config;
+		if (params.user && config.tools?.length) {
+			config = {
+				...config,
+				tools: await this.filterToolsForUser(config.tools, params.projectId, params.user),
+			};
+		}
+
+		const subAgentDelegation = await this.createSubAgentDelegationConfig(config, params.projectId);
 
 		return await this.reconstructRuntime({
 			...params,
+			config,
 			credentialIntegrations: [],
 			subAgentDelegation,
 		});
@@ -209,6 +315,7 @@ export class AgentRuntimeReconstructionService {
 		integrationType?: string;
 		credentialIntegrations: AgentIntegrationConfig[];
 		subAgentDelegation: SubAgentDelegationConfig;
+		user?: User;
 	}): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
 		const {
 			config,
@@ -223,6 +330,7 @@ export class AgentRuntimeReconstructionService {
 			integrationType,
 			credentialIntegrations,
 			subAgentDelegation,
+			user,
 		} = options;
 
 		const toolExecutor = this.secureRuntime.createToolExecutor(toolCodeByName);
@@ -273,6 +381,7 @@ export class AgentRuntimeReconstructionService {
 			parentAgentIdForDelegation: parentAgentIdForDelegation ?? memoryOwnerAgentId,
 			integrationType,
 			credentialIntegrations,
+			user,
 		});
 
 		return { agent: reconstructed, toolRegistry: buildToolRegistry(resolvedTools) };
@@ -293,7 +402,12 @@ export class AgentRuntimeReconstructionService {
 		})) {
 			if (!agent?.activeVersionId) continue;
 
-			sourcesById[agentId] = { agentId, versionId: agent.activeVersionId };
+			// No versionId pin here: the delegate closure lives inside the
+			// cached parent runtime, so pinning would freeze the child at
+			// whatever was published when the parent was last built. Leaving
+			// it out means SubAgentSourceResolver re-resolves the child's
+			// current activeVersion on every delegation.
+			sourcesById[agentId] = { agentId };
 			availableSubAgents.push({
 				id: agentId,
 				name: agent.name,
@@ -381,6 +495,7 @@ export class AgentRuntimeReconstructionService {
 		parentAgentIdForDelegation: string;
 		integrationType?: string;
 		credentialIntegrations: AgentIntegrationConfig[];
+		user?: User;
 	}): Promise<void> {
 		const {
 			agent,
@@ -393,6 +508,7 @@ export class AgentRuntimeReconstructionService {
 			parentAgentIdForDelegation,
 			integrationType,
 			credentialIntegrations,
+			user,
 		} = params;
 
 		agent.tool(createGetEnvironmentTool());
@@ -479,6 +595,7 @@ export class AgentRuntimeReconstructionService {
 				projectId,
 				credentialProvider,
 				delegation: subAgentDelegation,
+				user,
 			});
 			this.attachWriteTodosTool(agent, agentId);
 		}
@@ -495,8 +612,10 @@ export class AgentRuntimeReconstructionService {
 		projectId: string;
 		credentialProvider: CredentialProvider;
 		delegation: SubAgentDelegationConfig;
+		user?: User;
 	}): Promise<void> {
-		const { agent, config, parentAgentId, projectId, credentialProvider, delegation } = params;
+		const { agent, config, parentAgentId, projectId, credentialProvider, delegation, user } =
+			params;
 		const inlineSubAgentModelsByDifficulty = await this.resolveInlineSubAgentModelsByDifficulty(
 			config,
 			credentialProvider,
@@ -508,6 +627,7 @@ export class AgentRuntimeReconstructionService {
 				projectId,
 				parentAgentId,
 				credentialProvider,
+				user,
 				policy: this.buildSubAgentPolicy(config),
 				...(inlineSubAgentModelsByDifficulty !== undefined
 					? { inlineSubAgentModelsByDifficulty }
