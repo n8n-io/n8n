@@ -228,10 +228,13 @@ function onInstructionsInput(value: string) {
 	width: 100%;
 }
 
+/* Follow the editor's max-height: unbounded hosts (the builder, which passes
+   `instructions-max-height="none"`) grow naturally, while capped hosts (the
+   NDV's 240px) scroll within the cap instead of clipping. */
 .instructionsDocument :global(.n8n-markdown) {
-	max-height: none;
+	max-height: var(--markdown-editor-max-height);
 	min-height: calc(var(--spacing--4xl) + var(--spacing--xl));
-	overflow-y: visible;
+	overflow-y: auto;
 	padding: 0;
 }
 
