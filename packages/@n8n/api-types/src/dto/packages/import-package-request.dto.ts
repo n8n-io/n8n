@@ -65,7 +65,10 @@ const credentialBindingsSchema = z
 export class ImportPackageRequestDto extends Z.class({
 	projectId: optionalFormId,
 	folderId: optionalFormId,
-	credentialMatchingMode: z.enum(['id-only']).optional().default('id-only'),
+	credentialMatchingMode: z
+		.enum(['id-only', 'name-and-type', 'type-only'])
+		.optional()
+		.default('id-only'),
 	credentialMissingMode: z.enum(['must-preexist', 'create-stub']).optional().default('create-stub'),
 	credentialBindings: credentialBindingsSchema,
 	workflowConflictPolicy: z.enum(['new-version', 'fail', 'skip']),

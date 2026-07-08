@@ -65,6 +65,28 @@ const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
  */
 const DISPLAY_ONLY_PROPERTY_TYPES = new Set(['notice', 'curlImport', 'credentials', 'callout']);
 
+function buildNodeConfigType(
+	paramsTypeName: string,
+	options: {
+		credentialsTypeName?: string;
+		subnodeConfigTypeName?: string;
+		subnodesRequired?: boolean;
+	} = {},
+): string {
+	const parts = [`NodeConfig<${paramsTypeName}>`];
+
+	if (options.credentialsTypeName) {
+		parts.push(`{ credentials?: ${options.credentialsTypeName} }`);
+	}
+
+	if (options.subnodeConfigTypeName) {
+		const optionalMark = options.subnodesRequired ? '' : '?';
+		parts.push(`{ subnodes${optionalMark}: ${options.subnodeConfigTypeName} }`);
+	}
+
+	return parts.join(' & ');
+}
+
 /**
  * Runtime shape for `type: 'icon'` properties (see N8nIconPicker).
  * Values are stored as `{ type: 'icon' | 'emoji'; value: string }`.
@@ -335,8 +357,15 @@ export interface NodeTypeDescription {
 	defaultVersion?: number;
 	properties: NodeProperty[];
 	credentials?: Array<{ name: string; required?: boolean }>;
-	inputs: string[] | Array<{ type: string; displayName?: string }>;
-	outputs: string[] | Array<{ type: string; displayName?: string }>;
+	/**
+	 * Connections may be a runtime expression string (`={{ ... }}`) for nodes
+	 * whose shape depends on parameters (e.g. AI Agent, Merge). Generation
+	 * handles those lexically: `ai_*` connection types are extracted from the
+	 * expression source, and dynamic `main` connections don't influence
+	 * heuristics like trigger detection.
+	 */
+	inputs: string | string[] | Array<{ type: string; displayName?: string }>;
+	outputs: string | string[] | Array<{ type: string; displayName?: string }>;
 	subtitle?: string;
 	usableAsTool?: boolean;
 	hidden?: boolean;
@@ -2550,9 +2579,6 @@ export function generateSharedFile(
 	lines.push(`export interface ${baseTypeName} {`);
 	lines.push(`${INDENT}type: '${node.name}';`);
 	lines.push(`${INDENT}version: ${version};`);
-	if (credTypeName) {
-		lines.push(`${INDENT}credentials?: ${credTypeName};`);
-	}
 	if (isTrigger) {
 		lines.push(`${INDENT}isTrigger: true;`);
 	}
@@ -2728,19 +2754,18 @@ export function generateDiscriminatorFile(
 	lines.push(`export type ${nodeTypeName} = {`);
 	lines.push(`${INDENT}type: '${node.name}';`);
 	lines.push(`${INDENT}version: ${version};`);
-	if (node.credentials && node.credentials.length > 0) {
-		lines.push(`${INDENT}credentials?: Credentials;`);
-	}
 	if (isTrigger) {
 		lines.push(`${INDENT}isTrigger: true;`);
 	}
 	// Include subnodes in config if AI inputs exist
 	// subnodes field is required if any AI input type is required
 	const hasRequiredSubnodes = aiInputTypes.some((input) => input.required);
-	const subnodeOptionalMark = hasRequiredSubnodes ? '' : '?';
-	const configType = subnodeConfigTypeName
-		? `NodeConfig<${configName}> & { subnodes${subnodeOptionalMark}: ${subnodeConfigTypeName} }`
-		: `NodeConfig<${configName}>`;
+	const configType = buildNodeConfigType(configName, {
+		credentialsTypeName:
+			node.credentials && node.credentials.length > 0 ? 'Credentials' : undefined,
+		subnodeConfigTypeName: subnodeConfigTypeName ?? undefined,
+		subnodesRequired: hasRequiredSubnodes,
+	});
 	lines.push(`${INDENT}config: ${configType};`);
 	if (schema) {
 		lines.push(`${INDENT}output?: Items<${outputTypeName}>;`);
@@ -3183,9 +3208,6 @@ export function generateSingleVersionTypeFile(
 	lines.push(`interface ${baseTypeName} {`);
 	lines.push(`${INDENT}type: '${node.name}';`);
 	lines.push(`${INDENT}version: ${specificVersion};`);
-	if (credTypeName) {
-		lines.push(`${INDENT}credentials?: ${credTypeName};`);
-	}
 	if (isTrigger) {
 		lines.push(`${INDENT}isTrigger: true;`);
 	}
@@ -3211,15 +3233,13 @@ export function generateSingleVersionTypeFile(
 		lines.push(`export type ${finalTypeName} = ${baseTypeName} & {`);
 		// Include narrowed subnode config in the NodeConfig if available
 		// subnodes field is required if any AI input type is required
-		if (subnodeConfigTypeName) {
-			const hasRequiredSubnodes = aiInputTypes.some((input) => input.required);
-			const subnodeOptionalMark = hasRequiredSubnodes ? '' : '?';
-			lines.push(
-				`${INDENT}config: NodeConfig<${configInfo.typeName}> & { subnodes${subnodeOptionalMark}: ${subnodeConfigTypeName} };`,
-			);
-		} else {
-			lines.push(`${INDENT}config: NodeConfig<${configInfo.typeName}>;`);
-		}
+		const hasRequiredSubnodes = aiInputTypes.some((input) => input.required);
+		const configType = buildNodeConfigType(configInfo.typeName, {
+			credentialsTypeName: credTypeName,
+			subnodeConfigTypeName: subnodeConfigTypeName ?? undefined,
+			subnodesRequired: hasRequiredSubnodes,
+		});
+		lines.push(`${INDENT}config: ${configType};`);
 		if (outputTypeName) {
 			lines.push(`${INDENT}output?: Items<${outputTypeName}>;`);
 		}
@@ -3243,7 +3263,9 @@ export function generateSingleVersionTypeFile(
 	} else {
 		// No config types - shouldn't happen, but handle gracefully
 		lines.push(`export type ${nodeTypeName} = ${baseTypeName} & {`);
-		lines.push(`${INDENT}config: NodeConfig<Record<string, unknown>>;`);
+		lines.push(
+			`${INDENT}config: ${buildNodeConfigType('Record<string, unknown>', { credentialsTypeName: credTypeName })};`,
+		);
 		lines.push('};');
 	}
 
@@ -3443,13 +3465,16 @@ export function generateNodeTypeFile(nodes: NodeTypeDescription | NodeTypeDescri
 		const credType =
 			n.credentials && n.credentials.length > 0
 				? `${nodeName}${entryVersionSuffix}Credentials`
-				: 'Record<string, never>';
+				: undefined;
 
 		lines.push(`export type ${nodeTypeName} = {`);
 		lines.push(`${INDENT}type: '${n.name}';`);
 		lines.push(`${INDENT}version: ${versionUnion};`);
-		lines.push(`${INDENT}config: NodeConfig<${nodeName}${entryVersionSuffix}Params>;`);
-		lines.push(`${INDENT}credentials?: ${credType};`);
+		lines.push(
+			`${INDENT}config: ${buildNodeConfigType(`${nodeName}${entryVersionSuffix}Params`, {
+				credentialsTypeName: credType,
+			})};`,
+		);
 
 		if (isTrigger) {
 			lines.push(`${INDENT}isTrigger: true;`);

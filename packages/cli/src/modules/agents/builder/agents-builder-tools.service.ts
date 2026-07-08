@@ -2,6 +2,7 @@ import type { BuiltTool, CredentialProvider } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
 	applyNativeWebSearchDefaultOn,
+	getProviderPrefix,
 	rejectIfDynamicSelectorUsesFromAi,
 	rejectIfEmptyInstructions,
 	rejectIfUnsupportedNativeWebSearch,
@@ -11,6 +12,8 @@ import {
 	agentSkillSchema,
 	agentTaskSchema,
 	formatZodErrors,
+	PROVIDER_CAPABILITIES,
+	resolvePromptCaching,
 	RunnableAgentJsonConfigSchema,
 	sanitizeAgentJsonConfig,
 	tryParseConfigJson,
@@ -22,7 +25,7 @@ import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Operation } from 'fast-json-patch';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
@@ -43,7 +46,7 @@ import { AgentTaskService } from '../agent-task.service';
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
 import { AttachableWorkflowsService } from '../attachable-workflows.service';
-import { BuilderModelLookupService } from './builder-model-lookup.service';
+import { BuilderModelLiveLookupService } from './builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from './builder-tool-names';
 import { buildGetResourceLocatorOptionsTool } from './get-resource-locator-options.tool';
 import {
@@ -135,6 +138,37 @@ function snapshotFromConfig(
 	};
 }
 
+/**
+ * Prompt caching is mandatory for OpenAI/Anthropic: this write-path
+ * normalizer guarantees `config.promptCaching` is force-enabled for those
+ * providers (the user cannot disable it, even if the LLM wrote
+ * `{ enabled: false }`), preserves an explicit Anthropic TTL, and strips the
+ * field entirely for every other provider — regardless of what the builder
+ * LLM wrote.
+ */
+function applyPromptCachingBuilderDefaults(config: AgentJsonConfig): AgentJsonConfig {
+	const providerPrefix = getProviderPrefix(config.model);
+	const capability = PROVIDER_CAPABILITIES[providerPrefix]?.promptCaching ?? false;
+	const resolved = resolvePromptCaching(config.config?.promptCaching, capability);
+
+	if (!resolved) {
+		if (!config.config || !('promptCaching' in config.config)) return config;
+		const { promptCaching: _promptCaching, ...restConfig } = config.config;
+		const { config: _config, ...restAgentConfig } = config;
+		return {
+			...restAgentConfig,
+			...(Object.keys(restConfig).length > 0 ? { config: restConfig } : {}),
+		};
+	}
+
+	return {
+		...config,
+		config: {
+			...(config.config ?? {}),
+			promptCaching: resolved,
+		},
+	};
+}
 export interface BuilderTools {
 	json: BuiltTool[];
 	shared: BuiltTool[];
@@ -151,7 +185,7 @@ export class AgentsBuilderToolsService {
 		private readonly secureRuntime: AgentSecureRuntime,
 		private readonly attachableWorkflowsService: AttachableWorkflowsService,
 		private readonly agentsToolsService: AgentsToolsService,
-		private readonly builderModelLookupService: BuilderModelLookupService,
+		private readonly builderModelLiveLookupService: BuilderModelLiveLookupService,
 		private readonly mcpRegistryService: McpRegistryService,
 		private readonly oauthService: OauthService,
 		private readonly credentialTypes: CredentialTypes,
@@ -269,7 +303,9 @@ export class AgentsBuilderToolsService {
 					// Seed the builder's "native model gets web search by default" ergonomic
 					// as an explicit flag; updateConfig owns the actual provider-tool
 					// reconciliation so the write and read paths can't disagree.
-					const configWithDefaults = applyNativeWebSearchDefaultOn(zodResult.data);
+					const configWithDefaults = applyPromptCachingBuilderDefaults(
+						applyNativeWebSearchDefaultOn(zodResult.data),
+					);
 					try {
 						const result = await this.agentConfigService.updateConfig(
 							agentId,
@@ -389,7 +425,9 @@ export class AgentsBuilderToolsService {
 					if (dynamicSelectorFromAi) {
 						return { ok: false, stage: 'schema', errors: dynamicSelectorFromAi };
 					}
-					const configWithDefaults = applyNativeWebSearchDefaultOn(zodResult.data);
+					const configWithDefaults = applyPromptCachingBuilderDefaults(
+						applyNativeWebSearchDefaultOn(zodResult.data),
+					);
 
 					try {
 						const result = await this.agentConfigService.updateConfig(
@@ -449,8 +487,14 @@ export class AgentsBuilderToolsService {
 			.build();
 
 		const modelLookup: ModelLookup = {
-			list: async (credentialId, credentialType, lookup) =>
-				await this.builderModelLookupService.list(user, credentialId, credentialType, lookup),
+			list: async (credentialId, credentialType, provider) =>
+				await this.builderModelLiveLookupService.list(
+					user,
+					projectId,
+					credentialId,
+					credentialType,
+					provider,
+				),
 		};
 
 		const tools: BuiltTool[] = [
@@ -648,11 +692,21 @@ export class AgentsBuilderToolsService {
 				'List the n8n workflows that can be attached as tools via `type: "workflow"` in the agent config. ' +
 					'ALWAYS call this at the start — workflows are the preferred way to give agents real capabilities ' +
 					'(sending emails, creating calendar events, querying databases, calling APIs, etc.). ' +
-					'Only returns workflows with supported trigger types.',
+					'Only returns workflows with supported trigger types. Pass `searchTerm` to narrow by workflow name; ' +
+					'omitting it returns the 10 most recently updated attachable workflows.',
 			)
-			.input(z.object({}))
-			.handler(async () => {
-				return { workflows: await this.attachableWorkflowsService.list(user, projectId) };
+			.input(
+				z.object({
+					searchTerm: z
+						.string()
+						.optional()
+						.describe('Optional workflow-name search term. Omit to return the first 10 results.'),
+				}),
+			)
+			.handler(async ({ searchTerm }: { searchTerm?: string }) => {
+				return {
+					workflows: await this.attachableWorkflowsService.list(user, projectId, searchTerm),
+				};
 			})
 			.build();
 

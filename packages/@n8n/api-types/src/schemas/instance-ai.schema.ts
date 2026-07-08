@@ -14,6 +14,12 @@ import { TimeZoneSchema } from './timezone.schema';
  */
 export const UNLIMITED_CREDITS = -1;
 
+/**
+ * Transient setup-state tag for an AI Gateway managed credential selection.
+ * Handlers convert this tag to the Ai Gateway managed credential shape.
+ */
+export const AI_GATEWAY_MANAGED_TAG = '__AI_GATEWAY_MANAGED__';
+
 // ---------------------------------------------------------------------------
 // Session grant keys ("always allow")
 // ---------------------------------------------------------------------------
@@ -28,6 +34,52 @@ export const UNLIMITED_CREDITS = -1;
  */
 export function buildRunWorkflowSessionGrantKey(workflowId: string): string {
 	return `executions:run:${workflowId}`;
+}
+
+// --- Domain-access grants ("always allow" for web access) ---
+// These keys mirror the research tool's action names (`fetch-url`, `web-search`) the same
+// way `executions:run:<id>` mirrors the executions `run` action, so a persisted grant row
+// names the exact tool action the user approved.
+
+/** Grant key for persistently allowing fetches from a specific host. */
+export function buildFetchUrlGrantKey(host: string): string {
+	return `fetch-url:${host}`;
+}
+
+/** Grant key for allowing fetches from any host (blanket allow). */
+export const FETCH_URL_ALLOW_ALL_GRANT_KEY = 'fetch-url:*';
+
+/** Grant key for persistently allowing web search. */
+export const WEB_SEARCH_GRANT_KEY = 'web-search';
+
+/** Domain-access state reconstructed from a set of persisted grant keys. */
+export interface DomainAccessGrants {
+	approvedDomains: Set<string>;
+	allDomainsApproved: boolean;
+	webSearchApproved: boolean;
+}
+
+/**
+ * Parse persisted grant keys back into domain-access state. Single source of truth for the
+ * key format ↔ tracker state mapping; ignores unrelated grant keys (e.g. `executions:run:*`).
+ */
+export function parseDomainAccessGrants(keys: ReadonlySet<string>): DomainAccessGrants {
+	const approvedDomains = new Set<string>();
+	let allDomainsApproved = false;
+	let webSearchApproved = false;
+
+	const fetchUrlPrefix = 'fetch-url:';
+	for (const key of keys) {
+		if (key === FETCH_URL_ALLOW_ALL_GRANT_KEY) {
+			allDomainsApproved = true;
+		} else if (key === WEB_SEARCH_GRANT_KEY) {
+			webSearchApproved = true;
+		} else if (key.startsWith(fetchUrlPrefix)) {
+			approvedDomains.add(key.slice(fetchUrlPrefix.length));
+		}
+	}
+
+	return { approvedDomains, allDomainsApproved, webSearchApproved };
 }
 
 // ---------------------------------------------------------------------------
@@ -83,13 +135,7 @@ export type InstanceAiConfirmationSeverity = z.infer<typeof instanceAiConfirmati
 export const instanceAiAgentStatusSchema = z.enum(['active', 'completed', 'cancelled', 'error']);
 export type InstanceAiAgentStatus = z.infer<typeof instanceAiAgentStatusSchema>;
 
-export const instanceAiAgentKindSchema = z.enum([
-	'builder',
-	'data-table',
-	'delegate',
-	'planner',
-	'eval-setup',
-]);
+export const instanceAiAgentKindSchema = z.enum(['builder', 'data-table', 'planner', 'eval-setup']);
 export type InstanceAiAgentKind = z.infer<typeof instanceAiAgentKindSchema>;
 
 // ---------------------------------------------------------------------------
@@ -218,7 +264,15 @@ export const workflowSetupNodeSchema = z.object({
 		type: z.string(),
 		typeVersion: z.number(),
 		parameters: z.record(z.unknown()),
-		credentials: z.record(z.object({ id: z.string(), name: z.string() })).optional(),
+		// `id` is null only when `__aiGatewayManaged` is true
+		credentials: z
+			.record(
+				z.union([
+					z.object({ id: z.string(), name: z.string() }),
+					z.object({ id: z.null(), name: z.string(), __aiGatewayManaged: z.literal(true) }),
+				]),
+			)
+			.optional(),
 		position: z.tuple([z.number(), z.number()]),
 		id: z.string(),
 	}),
@@ -840,7 +894,6 @@ export interface InstanceAiToolCallState {
 	isLoading: boolean;
 	renderHint?:
 		| 'tasks'
-		| 'delegate'
 		| 'builder'
 		| 'researcher'
 		| 'data-table'
@@ -856,6 +909,7 @@ export interface InstanceAiToolCallState {
 
 export type InstanceAiTimelineEntry =
 	| { type: 'text'; content: string; responseId?: string }
+	| { type: 'reasoning'; content: string; responseId?: string }
 	| { type: 'tool-call'; toolCallId: string; responseId?: string }
 	| { type: 'child'; agentId: string; responseId?: string };
 
@@ -865,7 +919,7 @@ export interface InstanceAiAgentNode {
 	tools?: string[];
 	/** Background task ID — present only for background agents. */
 	taskId?: string;
-	/** Agent kind for card dispatch (builder, data-table, delegate, planner, eval-setup). */
+	/** Agent kind for card dispatch (builder, data-table, planner, eval-setup). */
 	kind?: InstanceAiAgentKind;
 	/** Short display title, e.g. "Building workflow". */
 	title?: string;
@@ -879,10 +933,14 @@ export interface InstanceAiAgentNode {
 	statusMessage?: string;
 	status: InstanceAiAgentStatus;
 	textContent: string;
+	/**
+	 * Full concatenated reasoning across the run. Kept as an aggregate for
+	 * previews and old snapshots — per-stage reasoning lives in `timeline`.
+	 */
 	reasoning: string;
 	toolCalls: InstanceAiToolCallState[];
 	children: InstanceAiAgentNode[];
-	/** Chronological ordering of text segments, tool calls, and sub-agents. */
+	/** Chronological ordering of text/reasoning segments, tool calls, and sub-agents. */
 	timeline: InstanceAiTimelineEntry[];
 	/** Latest task list — updated by tasks-update events. */
 	tasks?: TaskList;
@@ -895,7 +953,12 @@ export interface InstanceAiAgentNode {
 		provider?: string;
 		technicalDetails?: string;
 	};
+	/** Why a `cancelled` run stopped — lets the UI attribute it (user vs timeout vs shutdown). */
+	cancellationReason?: InstanceAiCancellationReason;
 }
+
+/** Semantic cause of a cancelled run, mapped from the backend's run-finish reason. */
+export type InstanceAiCancellationReason = 'user' | 'timeout' | 'shutdown';
 
 export interface InstanceAiMessage {
 	id: string;
@@ -1042,6 +1105,7 @@ export interface InstanceAiMemoryTaskSnapshot {
 export interface InstanceAiThreadStatusResponse {
 	hasActiveRun: boolean;
 	isSuspended: boolean;
+	runId?: string;
 	backgroundTasks: Array<{
 		taskId: string;
 		role: string;
@@ -1055,6 +1119,11 @@ export interface InstanceAiThreadStatusResponse {
 	}>;
 	/** In-flight observational-memory jobs (observer/reflector). Used by eval harnesses. */
 	memoryTasks?: InstanceAiMemoryTaskSnapshot[];
+}
+
+export interface InstanceAiConfirmResponse {
+	ok: true;
+	runId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -1166,7 +1235,6 @@ export function isInstanceAiSandboxProvider(value: unknown): value is InstanceAi
 
 export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
-	subAgentMaxSteps: number;
 	permissions: InstanceAiPermissions;
 	mcpServers: string;
 	mcpAccessEnabled: boolean;
@@ -1183,7 +1251,6 @@ export interface InstanceAiAdminSettingsResponse {
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	enabled: z.boolean().optional(),
-	subAgentMaxSteps: z.number().int().positive().optional(),
 	permissions: instanceAiPermissionsSchema.partial().optional(),
 	mcpServers: z.string().optional(),
 	mcpAccessEnabled: z.boolean().optional(),
@@ -1241,13 +1308,23 @@ export interface InstanceAiMcpConnectionResponse {
 	credentialId: string;
 	credentialName: string;
 	credentialType: string;
+	toolFilter: InstanceAiMcpConnectionToolFilterResponse | null;
 	createdAt: string;
 	updatedAt: string;
 }
 
+export interface InstanceAiMcpConnectionToolFilterResponse {
+	mode: 'allow' | 'exclude';
+	tools: string[];
+}
+
+export interface InstanceAiMcpConnectionToolResponse {
+	name: string;
+	description?: string;
+}
+
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
 	if (toolName === 'task-control') return 'tasks';
-	if (toolName === 'delegate') return 'delegate';
 	if (toolName === 'build-workflow' || toolName === 'build-workflow-with-agent') return 'builder';
 	if (toolName === 'research-with-agent') return 'researcher';
 	if (toolName === 'create-tasks') return 'planner';

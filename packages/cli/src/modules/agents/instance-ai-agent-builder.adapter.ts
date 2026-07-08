@@ -38,12 +38,21 @@ import { AgentTaskService } from './agent-task.service';
 import { AgentsService } from './agents.service';
 import { isAgentToolNodeType } from './agents-tools.service';
 import { AttachableWorkflowsService } from './attachable-workflows.service';
-import { BuilderModelLookupService } from './builder/builder-model-lookup.service';
+import { BuilderModelLiveLookupService } from './builder/builder-model-live-lookup.service';
 import { resolveResourceLocatorOptions as resolveResourceLocatorOptionsHandler } from './builder/get-resource-locator-options.tool';
+import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults';
 import { composeJsonConfig } from './json-config/agent-config-composition';
 import { buildMcpClientForServer } from './json-config/mcp-client-factory';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
+
+function getModelLookupProvider(credentialType: string): string {
+	const defaults = LLM_PROVIDER_DEFAULTS[credentialType];
+	if (!defaults) {
+		throw new Error(`Credential type ${credentialType} does not support model lookup`);
+	}
+	return defaults.provider;
+}
 
 /**
  * Host implementation of the instance-ai agent-builder port. Delegates to the
@@ -61,7 +70,7 @@ export class InstanceAiAgentBuilderAdapterService {
 		private readonly agentCustomToolsService: AgentCustomToolsService,
 		private readonly secureRuntime: AgentSecureRuntime,
 		private readonly agentIntegrationPersistenceService: AgentIntegrationPersistenceService,
-		private readonly builderModelLookupService: BuilderModelLookupService,
+		private readonly builderModelLiveLookupService: BuilderModelLiveLookupService,
 		private readonly mcpRegistryService: McpRegistryService,
 		private readonly oauthService: OauthService,
 		private readonly credentialsService: CredentialsService,
@@ -187,9 +196,15 @@ export class InstanceAiAgentBuilderAdapterService {
 			listModels: async (
 				credentialId,
 				credentialType,
-				lookup: ModelLookupConfig,
+				_lookup: ModelLookupConfig,
 			): Promise<AgentModelOption[]> =>
-				await this.builderModelLookupService.list(user, credentialId, credentialType, lookup),
+				await this.builderModelLiveLookupService.list(
+					user,
+					await resolveProjectId(),
+					credentialId,
+					credentialType,
+					getModelLookupProvider(credentialType),
+				),
 
 			searchMcpServers: async (queries): Promise<McpServerSearchResult[]> =>
 				await this.mcpRegistryService.search(queries),
@@ -249,9 +264,9 @@ export class InstanceAiAgentBuilderAdapterService {
 				});
 			},
 
-			listAttachableWorkflows: async (projectId): Promise<AttachableWorkflow[]> => {
+			listAttachableWorkflows: async (projectId, searchTerm): Promise<AttachableWorkflow[]> => {
 				const resolvedProjectId = await resolveProjectId(projectId);
-				return await this.attachableWorkflowsService.list(user, resolvedProjectId);
+				return await this.attachableWorkflowsService.list(user, resolvedProjectId, searchTerm);
 			},
 		};
 	}

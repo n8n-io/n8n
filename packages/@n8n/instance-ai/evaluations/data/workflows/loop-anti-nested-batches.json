@@ -1,0 +1,35 @@
+{
+	"description": "Anti-pattern guard: nested Loop Over Items breaks at runtime — outer per-customer iteration plus inner paginated order fetch should use sub-workflow or HTTP pagination, not nested splitInBatches.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "When the webhook fires with a customers array, for each customer fetch their orders from GET https://api.example.com/customers/{id}/orders (paginated, up to 5 pages each), then for each order fetch its line items from GET https://api.example.com/orders/{orderId}/lines. Process customers one at a time."
+		}
+	],
+	"messageBudget": 10,
+	"complexity": "complex",
+	"tags": [
+		"build",
+		"loops",
+		"anti-pattern",
+		"pagination",
+		"sub-workflow",
+		"webhook",
+		"http-request"
+	],
+	"triggerType": "webhook",
+	"datasets": ["full"],
+	"outcomeExpectations": [
+		"Customers are processed one at a time (sequential outer iteration via default item flow or a single outer loop).",
+		"Order pagination uses HTTP Request built-in pagination (or a sub-workflow), not a nested Loop Over Items inside another Loop Over Items in the same workflow.",
+		"Line items are fetched per order without nesting two Split In Batches nodes in one workflow."
+	],
+	"executionScenarios": [
+		{
+			"name": "one-customer-two-orders",
+			"description": "Single customer with two paginated orders and line items",
+			"dataSetup": "The webhook receives { \"customers\": [{ \"id\": \"cust-1\", \"name\": \"Acme\" }] }. This is a PAGINATED orders endpoint per customer — serve strictly by `page` query parameter; never return identical JSON for page=1 and page=2 or n8n stops with 'identical response 5x'. `GET https://api.example.com/customers/cust-1/orders?page=1` returns { \"orders\": [{ \"id\": \"ord-1\" }, { \"id\": \"ord-2\" }] }. `GET https://api.example.com/customers/cust-1/orders?page=2` returns { \"orders\": [] }. `GET https://api.example.com/orders/ord-1/lines` returns { \"lines\": [{ \"sku\": \"A\" }] }. `GET https://api.example.com/orders/ord-2/lines` returns { \"lines\": [{ \"sku\": \"B\" }] }.",
+			"successCriteria": "The workflow executes without errors. Both orders (ord-1 and ord-2) are fetched for cust-1 and line items for both orders are retrieved (SKUs A and B appear in the run output or downstream processing). The workflow completes without loop wiring errors."
+		}
+	]
+}

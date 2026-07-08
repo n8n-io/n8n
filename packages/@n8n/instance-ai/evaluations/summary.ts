@@ -30,7 +30,7 @@ export function countAggregatedUnitTrials(units: AggregatedCaseUnit[]): ScoredCo
 	return units.reduce<ScoredCounts>(
 		(counts, unit) => {
 			counts.passCount += unit.passCount;
-			counts.totalCount += 'evaluatedCount' in unit ? unit.evaluatedCount : unit.runs.length;
+			counts.totalCount += unit.evaluatedCount;
 			return counts;
 		},
 		{ passCount: 0, totalCount: 0 },
@@ -44,13 +44,15 @@ export function getCheckedRunCount(tc: TestCaseAggregation): number {
 }
 
 export function getRunScoredCounts(result: WorkflowTestCaseResult): ScoredCounts {
+	// Incomplete units (no verifier/judge verdict) are visible but not scored.
 	const scoredExpectations = (result.buildExpectationResults ?? []).filter((e) => !e.incomplete);
+	const scoredScenarios = result.executionScenarioResults.filter((sr) => !sr.incomplete);
 
 	return {
 		passCount:
-			result.executionScenarioResults.filter((sr) => sr.success).length +
+			scoredScenarios.filter((sr) => sr.success).length +
 			scoredExpectations.filter((e) => e.pass).length,
-		totalCount: result.executionScenarioResults.length + scoredExpectations.length,
+		totalCount: scoredScenarios.length + scoredExpectations.length,
 	};
 }
 

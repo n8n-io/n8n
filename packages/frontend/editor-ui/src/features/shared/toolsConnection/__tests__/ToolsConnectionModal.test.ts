@@ -169,7 +169,7 @@ describe('ToolsConnectionModal', () => {
 		expect(queryByTestId('tools-connection-settings')).toBeTruthy();
 		expect(queryByTestId('tools-connection-settings-inclusion')).toBeTruthy();
 		expect(queryByTestId('tools-connection-settings-save')).toBeTruthy();
-		expect(queryByTestId('tools-connection-settings-disconnect')).toBeTruthy();
+		expect(queryByTestId('tools-connection-settings-remove')).toBeTruthy();
 	});
 
 	it('renders an empty settings body when no #settings-body slot is supplied', () => {

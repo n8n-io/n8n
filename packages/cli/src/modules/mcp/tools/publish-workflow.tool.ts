@@ -1,5 +1,6 @@
 import type { User } from '@n8n/db';
-import { jsonStringify, ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { jsonStringify } from 'n8n-workflow';
 import z from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';

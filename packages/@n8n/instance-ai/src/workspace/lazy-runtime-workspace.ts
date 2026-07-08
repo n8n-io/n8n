@@ -23,6 +23,16 @@ export interface LazyRuntimeWorkspaceOptions {
 	ensureWorkspace: RuntimeWorkspaceResolver;
 	id?: string;
 	name?: string;
+	/**
+	 * Stable sandbox / filesystem instructions surfaced to the agent's system
+	 * prompt. When set, each is returned verbatim regardless of lazy-resolution
+	 * state so the cached prompt prefix stays byte-stable across agent
+	 * rebuilds/resumes (see {@link LazyRuntimeSandbox.getInstructions} and
+	 * {@link LazyRuntimeFilesystem.getInstructions}). Omit only when prompt
+	 * caching is irrelevant.
+	 */
+	sandboxInstructions?: string;
+	filesystemInstructions?: string;
 }
 
 type WorkspaceResolvedListener = (workspace: Workspace) => void;
@@ -32,14 +42,16 @@ export function createLazyRuntimeWorkspace({
 	ensureWorkspace,
 	id = 'instance-ai-runtime-workspace',
 	name = 'Instance AI runtime workspace',
+	sandboxInstructions,
+	filesystemInstructions,
 }: LazyRuntimeWorkspaceOptions): Workspace {
 	const resolver = new LazyRuntimeWorkspaceResolver(ensureWorkspace);
 
 	return new Workspace({
 		id,
 		name,
-		filesystem: new LazyRuntimeFilesystem(resolver),
-		sandbox: new LazyRuntimeSandbox(resolver),
+		filesystem: new LazyRuntimeFilesystem(resolver, filesystemInstructions),
+		sandbox: new LazyRuntimeSandbox(resolver, sandboxInstructions),
 	});
 }
 
@@ -147,7 +159,10 @@ class LazyRuntimeFilesystem extends BaseFilesystem {
 	readonly provider = 'lazy';
 	status: ProviderStatus = 'pending';
 
-	constructor(private readonly resolver: LazyRuntimeWorkspaceResolver) {
+	constructor(
+		private readonly resolver: LazyRuntimeWorkspaceResolver,
+		private readonly staticInstructions?: string,
+	) {
 		super();
 		this.resolver.onResolved((workspace) => {
 			this.status = workspace.filesystem?.status ?? this.status;
@@ -176,6 +191,12 @@ class LazyRuntimeFilesystem extends BaseFilesystem {
 	}
 
 	getInstructions(): string {
+		// Prefer the caller-provided stable text so the agent's cached prompt
+		// prefix stays byte-stable across rebuilds/resumes. Branching on the
+		// resolved (scoped) filesystem would otherwise flip the prompt text once
+		// the workspace resolves and bust prompt caching (see LazyRuntimeSandbox).
+		if (this.staticInstructions) return this.staticInstructions;
+
 		const instructions = this.resolver.current?.filesystem?.getInstructions?.();
 		if (instructions) return instructions;
 
@@ -246,7 +267,10 @@ class LazyRuntimeSandbox extends BaseSandbox {
 	readonly provider = 'lazy';
 	status: ProviderStatus = 'pending';
 
-	constructor(private readonly resolver: LazyRuntimeWorkspaceResolver) {
+	constructor(
+		private readonly resolver: LazyRuntimeWorkspaceResolver,
+		private readonly staticInstructions?: string,
+	) {
 		super();
 		this.resolver.onResolved((workspace) => {
 			this.status = workspace.sandbox?.status ?? this.status;
@@ -299,6 +323,13 @@ class LazyRuntimeSandbox extends BaseSandbox {
 	}
 
 	override getInstructions(): string {
+		// Prefer the caller-provided stable text: it is returned regardless of
+		// resolution state so the agent's cached prompt prefix stays byte-stable
+		// across rebuilds/resumes. Branching on the live sandbox (which is only
+		// resolved once a workspace tool runs in this rebuilt instance) would
+		// otherwise flip the prompt text between resumes and bust prompt caching.
+		if (this.staticInstructions) return this.staticInstructions;
+
 		const instructions = this.resolver.current?.sandbox?.getInstructions?.();
 		if (instructions) return instructions;
 

@@ -65,12 +65,16 @@ export type {
 	RetrievedEpisodicMemoryEntry,
 	ResumeOptions,
 	McpServerConfig,
+	McpToolCallSettledEvent,
 	McpVerifyResult,
 	ModelConfig,
 	ExecutionOptions,
 	SmoothStreamOptions,
 	AgentExecutionCounter,
 	PersistedExecutionOptions,
+	AnthropicPromptCachingConfig,
+	OpenAIPromptCachingConfig,
+	PromptCachingConfig,
 	BuiltTelemetry,
 	AttributeValue,
 	ObservationCursor,
@@ -204,8 +208,6 @@ export {
 	isLlmMessage,
 } from './sdk/message';
 export { fetchProviderCatalog } from './sdk/catalog';
-export { providerCapabilities } from './sdk/provider-capabilities';
-export type { ProviderCapability } from './sdk/provider-capabilities';
 export type {
 	ProviderCatalog,
 	ProviderInfo,
@@ -236,6 +238,7 @@ export {
 	failedDelegatedChildSuspendOutput,
 	generateResultToDelegateSubAgentOutput,
 	getInlineDelegateSubAgentToolOptions,
+	isDelegateSubAgentTool,
 	renderDelegateSubAgentPrompt,
 } from './runtime/tools/delegate-sub-agent-tool';
 export type {
@@ -250,6 +253,7 @@ export type {
 	SubAgentTaskDifficulty,
 } from './runtime/tools/delegate-sub-agent-tool';
 export { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from './runtime/tools/write-todos-tool';
+export type { CreateWriteTodosToolOptions } from './runtime/tools/write-todos-tool';
 export { createEmbeddingModel } from './runtime/model/model-factory';
 export { generateTitleFromMessage } from './runtime/memory/title-generation';
 export {

@@ -33,7 +33,7 @@ import {
 	AgentsBuilderToolsService,
 	getAgentConfigHash,
 } from '../builder/agents-builder-tools.service';
-import type { BuilderModelLookupService } from '../builder/builder-model-lookup.service';
+import type { BuilderModelLiveLookupService } from '../builder/builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from '../builder/builder-tool-names';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -70,7 +70,7 @@ function makeService() {
 	const secureRuntime = mock<AgentSecureRuntime>();
 	const attachableWorkflowsService = mock<AttachableWorkflowsService>();
 	const agentsToolsService = mock<AgentsToolsService>();
-	const builderModelLookupService = mock<BuilderModelLookupService>();
+	const builderModelLiveLookupService = mock<BuilderModelLiveLookupService>();
 	const credentialTypes = mock<CredentialTypes>();
 	const mcpRegistryService = mock<McpRegistryService>();
 	const agentTaskService = mock<AgentTaskService>();
@@ -98,7 +98,7 @@ function makeService() {
 		secureRuntime,
 		attachableWorkflowsService,
 		agentsToolsService,
-		builderModelLookupService,
+		builderModelLiveLookupService,
 		mcpRegistryService,
 		mock(),
 		credentialTypes,
@@ -116,6 +116,7 @@ function makeService() {
 		service,
 		agentsService: purposeServices,
 		secureRuntime,
+		attachableWorkflowsService,
 		agentTaskService,
 		agentRepository,
 		nodeTypes,
@@ -345,7 +346,7 @@ describe('AgentsBuilderToolsService', () => {
 			// seeds the default-on flag, so that's all it forwards.
 			const normalizedConfig = {
 				...updatedConfig,
-				config: { webSearch: { enabled: true } },
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
 			agentsService.updateConfig.mockResolvedValue({
@@ -450,7 +451,7 @@ describe('AgentsBuilderToolsService', () => {
 			// seeds the default-on flag, so that's all it forwards.
 			const normalizedConfig = {
 				...updatedConfig,
-				config: { webSearch: { enabled: true } },
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
 			agentsService.updateConfig.mockResolvedValue({
@@ -613,7 +614,7 @@ describe('AgentsBuilderToolsService', () => {
 			// seeds the default-on flag, so that's all it forwards.
 			const normalizedConfig = {
 				...updatedConfig,
-				config: { webSearch: { enabled: true } },
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
 			agentsService.updateConfig.mockResolvedValue({
@@ -662,7 +663,7 @@ describe('AgentsBuilderToolsService', () => {
 			// seeds the default-on flag, so that's all it forwards.
 			const normalizedConfig = {
 				...updatedConfig,
-				config: { webSearch: { enabled: true } },
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
 			agentsService.updateConfig.mockResolvedValue({
@@ -705,7 +706,7 @@ describe('AgentsBuilderToolsService', () => {
 			// seeds the default-on flag, so that's all it forwards.
 			const normalizedConfig = {
 				...updatedConfig,
-				config: { webSearch: { enabled: true } },
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
 			agentsService.updateConfig.mockResolvedValue({
@@ -748,7 +749,7 @@ describe('AgentsBuilderToolsService', () => {
 			// seeds the default-on flag, so that's all it forwards.
 			const normalizedConfig = {
 				...updatedConfig,
-				config: { webSearch: { enabled: true } },
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
 			agentsService.updateConfig.mockResolvedValue({
@@ -896,6 +897,191 @@ describe('AgentsBuilderToolsService', () => {
 				configHash: getAgentConfigHash(currentConfig),
 				updatedAt: '2026-01-01T00:00:00.000Z',
 				versionId: 'v1',
+			});
+		});
+
+		describe('prompt caching defaults', () => {
+			it('write_config defaults prompt caching to enabled for a supported provider when omitted', async () => {
+				const { service, agentsService } = makeService();
+				const currentConfig = { ...baseConfig, integrations: [] };
+				// Explicitly disable web search so its own write-path normalizer
+				// doesn't add unrelated config/providerTools keys to the expectation.
+				const updatedConfig: AgentJsonConfig = {
+					...currentConfig,
+					config: { webSearch: { enabled: false } },
+				};
+				const normalizedConfig = {
+					...currentConfig,
+					config: { webSearch: { enabled: false }, promptCaching: { enabled: true } },
+				};
+				agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+				agentsService.updateConfig.mockResolvedValue({
+					config: normalizedConfig,
+					updatedAt: '2026-01-02T00:00:00.000Z',
+					versionId: 'v2',
+				});
+
+				await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+					{
+						baseConfigHash: getAgentConfigHash(currentConfig),
+						json: JSON.stringify(updatedConfig),
+					},
+					ctx,
+				);
+
+				expect(agentsService.updateConfig).toHaveBeenCalledWith(
+					agentId,
+					projectId,
+					normalizedConfig,
+				);
+			});
+
+			it('write_config strips prompt caching when switching to an unsupported provider', async () => {
+				const { service, agentsService } = makeService();
+				const baseAgent = {
+					...baseConfig,
+					integrations: [],
+					config: { promptCaching: { enabled: true } },
+				};
+				const currentConfig = { ...baseAgent };
+				const updatedConfig: AgentJsonConfig = {
+					...currentConfig,
+					model: 'google/gemini-2.5-flash',
+					credential: 'Google Key',
+				};
+				const { config: _droppedConfig, ...normalizedConfig } = updatedConfig;
+				agentsService.findById.mockResolvedValue(makeAgent(baseAgent));
+				agentsService.updateConfig.mockResolvedValue({
+					config: normalizedConfig,
+					updatedAt: '2026-01-02T00:00:00.000Z',
+					versionId: 'v2',
+				});
+
+				await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+					{
+						baseConfigHash: getAgentConfigHash(currentConfig),
+						json: JSON.stringify(updatedConfig),
+					},
+					ctx,
+				);
+
+				expect(agentsService.updateConfig).toHaveBeenCalledWith(
+					agentId,
+					projectId,
+					normalizedConfig,
+				);
+			});
+
+			it('write_config force-enables prompt caching even when the config says enabled: false', async () => {
+				const { service, agentsService } = makeService();
+				const baseAgent = {
+					...baseConfig,
+					model: 'openai/gpt-5',
+					credential: 'OpenAI Key',
+					integrations: [],
+					config: { promptCaching: { enabled: false } },
+				};
+				const currentConfig = { ...baseAgent };
+				const updatedConfig: AgentJsonConfig = {
+					...currentConfig,
+					model: 'anthropic/claude-sonnet-4-5',
+					credential: 'Anthropic Key',
+					config: { webSearch: { enabled: false }, promptCaching: { enabled: false } },
+				};
+				const normalizedConfig = {
+					...currentConfig,
+					model: 'anthropic/claude-sonnet-4-5',
+					credential: 'Anthropic Key',
+					config: { webSearch: { enabled: false }, promptCaching: { enabled: true } },
+				};
+				agentsService.findById.mockResolvedValue(makeAgent(baseAgent));
+				agentsService.updateConfig.mockResolvedValue({
+					config: normalizedConfig,
+					updatedAt: '2026-01-02T00:00:00.000Z',
+					versionId: 'v2',
+				});
+
+				await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+					{
+						baseConfigHash: getAgentConfigHash(currentConfig),
+						json: JSON.stringify(updatedConfig),
+					},
+					ctx,
+				);
+
+				expect(agentsService.updateConfig).toHaveBeenCalledWith(
+					agentId,
+					projectId,
+					normalizedConfig,
+				);
+			});
+
+			it('write_config preserves an explicit Anthropic ttl', async () => {
+				const { service, agentsService } = makeService();
+				const baseAgent = {
+					...baseConfig,
+					integrations: [],
+					config: { promptCaching: { enabled: true, anthropic: { ttl: '5m' as const } } },
+				};
+				const currentConfig = { ...baseAgent };
+				const updatedConfig: AgentJsonConfig = {
+					...currentConfig,
+					instructions: 'Updated instructions.',
+					config: {
+						webSearch: { enabled: false },
+						promptCaching: { enabled: true, anthropic: { ttl: '5m' } },
+					},
+				};
+				const normalizedConfig = {
+					...currentConfig,
+					instructions: 'Updated instructions.',
+					config: {
+						webSearch: { enabled: false },
+						promptCaching: { enabled: true, anthropic: { ttl: '5m' as const } },
+					},
+				};
+				agentsService.findById.mockResolvedValue(makeAgent(baseAgent));
+				agentsService.updateConfig.mockResolvedValue({
+					config: normalizedConfig,
+					updatedAt: '2026-01-02T00:00:00.000Z',
+					versionId: 'v2',
+				});
+
+				await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+					{
+						baseConfigHash: getAgentConfigHash(currentConfig),
+						json: JSON.stringify(updatedConfig),
+					},
+					ctx,
+				);
+
+				expect(agentsService.updateConfig).toHaveBeenCalledWith(
+					agentId,
+					projectId,
+					normalizedConfig,
+				);
+			});
+		});
+	});
+
+	describe('list_workflows tool', () => {
+		function getListWorkflowsTool(service: AgentsBuilderToolsService) {
+			return service
+				.getTools(agentId, projectId, credentialProvider, user)
+				.shared.find((tool) => tool.name === 'list_workflows')!;
+		}
+
+		it('passes the search term to the attachable workflows service', async () => {
+			const { service, attachableWorkflowsService } = makeService();
+			attachableWorkflowsService.list.mockResolvedValue([
+				{ name: 'Billing follow-up', active: true, triggerType: 'manual' },
+			]);
+
+			const result = await getListWorkflowsTool(service).handler!({ searchTerm: 'billing' }, ctx);
+
+			expect(attachableWorkflowsService.list).toHaveBeenCalledWith(user, projectId, 'billing');
+			expect(result).toEqual({
+				workflows: [{ name: 'Billing follow-up', active: true, triggerType: 'manual' }],
 			});
 		});
 	});

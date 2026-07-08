@@ -1,0 +1,27 @@
+{
+	"description": "Execute Workflow sub-workflow with mode each — build a Process Order sub-workflow and a parent that calls it once per order without wrapping in Loop Over Items.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build two workflows: (1) a sub-workflow called Process Order starting with an Execute Workflow Trigger that receives a single order and passes it through, and (2) a parent webhook workflow that, when it receives an orders array, calls Process Order once per order — each order handled independently."
+		}
+	],
+	"messageBudget": 10,
+	"complexity": "medium",
+	"tags": ["build", "loops", "sub-workflow", "webhook"],
+	"triggerType": "webhook",
+	"datasets": ["full"],
+	"outcomeExpectations": [
+		"A Process Order sub-workflow exists with an Execute Workflow Trigger and is referenced by the parent workflow's Execute Workflow node.",
+		"Each order in the webhook payload triggers its own sub-workflow execution (Execute Workflow in per-item / 'each' mode, or equivalent).",
+		"The agent did NOT wrap Execute Workflow in Loop Over Items — Execute Workflow with per-item mode handles the iteration."
+	],
+	"executionScenarios": [
+		{
+			"name": "three-orders-three-runs",
+			"description": "Three orders each invoke the Process Order sub-workflow",
+			"dataSetup": "The webhook receives { \"orders\": [{ \"id\": \"ORD-10\", \"total\": 50 }, { \"id\": \"ORD-11\", \"total\": 75 }, { \"id\": \"ORD-12\", \"total\": 120 }] }. The Process Order sub-workflow completes successfully for each order when invoked.",
+			"successCriteria": "The workflow executes without errors. The Process Order sub-workflow runs three times — once per order — processing ORD-10, ORD-11, and ORD-12 independently. A workflow that passes all three orders in one sub-workflow batch without per-order invocation FAILS."
+		}
+	]
+}

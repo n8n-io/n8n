@@ -150,7 +150,7 @@ function replaceUnprotectedMarkdownText(
 }
 
 function decorateResourceNames(content: string): string {
-	const registry = thread.resourceNameIndex;
+	const registry = thread.linkableResourceNameIndex;
 	if (registry.size === 0) return content;
 
 	// Build entries sorted longest-name-first to avoid partial-match conflicts

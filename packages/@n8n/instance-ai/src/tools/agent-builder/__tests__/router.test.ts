@@ -74,10 +74,10 @@ describe('agent_builder router', () => {
 		});
 		const result = await executeTool<{ workflows: unknown[] }>(
 			createAgentBuilderRouterTool(createContext(service)),
-			{ action: 'list_workflows' },
+			{ action: 'list_workflows', searchTerm: 'billing' },
 			{},
 		);
-		expect(service.listAttachableWorkflows).toHaveBeenCalledWith('project-1');
+		expect(service.listAttachableWorkflows).toHaveBeenCalledWith('project-1', 'billing');
 		expect(result.workflows).toHaveLength(1);
 	});
 
