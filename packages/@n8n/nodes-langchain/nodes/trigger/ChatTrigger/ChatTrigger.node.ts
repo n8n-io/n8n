@@ -861,11 +861,19 @@ export class ChatTrigger extends Node {
 		const bodyData = ctx.getBodyData() ?? {};
 
 		try {
-			await validateAuth(ctx);
+			// The editor's canvas chat can't supply webhook credentials, and test webhooks
+			// are only ever registered through an authenticated editor session, so auth is
+			// only enforced for production executions.
+			if (mode !== 'test') {
+				await validateAuth(ctx);
+			}
 		} catch (error) {
 			if (error) {
+				// Realm is scoped per webhook so browsers don't reuse cached credentials across chats sharing an origin
+				const webhookId = ctx.getNode().webhookId;
+				const realm = webhookId ? `Webhook ${webhookId}` : 'Webhook';
 				res.writeHead((error as IDataObject).responseCode as number, {
-					'www-authenticate': 'Basic realm="Webhook"',
+					'www-authenticate': `Basic realm="${realm}"`,
 				});
 				res.end((error as IDataObject).message as string);
 				return { noWebhookResponse: true };

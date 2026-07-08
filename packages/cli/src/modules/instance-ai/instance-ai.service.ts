@@ -1,4 +1,4 @@
-import { AgentEvent } from '@n8n/agents';
+import { AgentEvent, filterRuntimeSkillSource } from '@n8n/agents';
 import type { Message, Workspace, ScopedMemoryTaskEvent, AgentEventData } from '@n8n/agents';
 import {
 	applyBranchReadOnlyOverrides,
@@ -12,7 +12,7 @@ import {
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
 import { GlobalConfig, SsrfProtectionConfig, type InstanceAiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
@@ -46,7 +46,6 @@ import {
 	enrichMessageWithBackgroundTasks,
 	PlannedTaskCoordinator,
 	PlannedTaskStorage,
-	applyPlannedTaskPermissions,
 	PLANNED_TASK_PERMISSION_OVERRIDES,
 	releaseTraceClient,
 	resumeAgentRun,
@@ -54,7 +53,6 @@ import {
 	RunDebugBuffer,
 	buildRunDebugLabel,
 	createRunDebugStepHooks,
-	startDetachedDelegateTask,
 	streamAgentRun,
 	truncateToTitle,
 	generateTitleForRun,
@@ -310,64 +308,6 @@ const MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD = 5;
 
 const TITLE_REFINE_HISTORY_LIMIT = 50;
 
-function stringifyForContextValue(value: unknown): string {
-	if (typeof value === 'string') return value;
-	try {
-		return JSON.stringify(value);
-	} catch {
-		return String(value);
-	}
-}
-
-const PLANNED_TASK_CONTEXT_VALUE_LIMIT = 1_500;
-
-function truncateContextValue(value: string): string {
-	if (value.length <= PLANNED_TASK_CONTEXT_VALUE_LIMIT) return value;
-	return `${value.slice(0, PLANNED_TASK_CONTEXT_VALUE_LIMIT)}...`;
-}
-
-function buildPlannedTaskConversationContext(
-	task: PlannedTaskRecord,
-	graph: PlannedTaskGraph | undefined,
-): string | undefined {
-	if (!graph) return undefined;
-
-	const parts: string[] = [
-		`Approved plan task: ${task.title}`,
-		`Task id: ${task.id}`,
-		`Task kind: ${task.kind}`,
-		`Plan run id: ${graph.planRunId}`,
-	];
-
-	if (task.workflowId) {
-		parts.push(`Target workflow id: ${task.workflowId}`);
-	}
-
-	const dependencies = graph.tasks.filter((candidate) => task.deps.includes(candidate.id));
-	if (dependencies.length > 0) {
-		parts.push('Completed dependency context:');
-		for (const dependency of dependencies) {
-			const dependencyParts = [
-				`- ${dependency.id} (${dependency.kind}, ${dependency.status}): ${dependency.title}`,
-			];
-			if (dependency.result) {
-				dependencyParts.push(`result=${truncateContextValue(dependency.result)}`);
-			}
-			if (dependency.error) {
-				dependencyParts.push(`error=${truncateContextValue(dependency.error)}`);
-			}
-			if (dependency.outcome) {
-				dependencyParts.push(
-					`outcome=${truncateContextValue(stringifyForContextValue(dependency.outcome))}`,
-				);
-			}
-			parts.push(dependencyParts.join(' '));
-		}
-	}
-
-	return parts.join('\n');
-}
-
 /** Collapse the frontend's typed confirmation union into the flat payload
  *  consumed by native tool resume schemas and sub-agent HITL. Only the fields
  *  relevant to the submitted kind are populated — everything else stays undefined.
@@ -541,6 +481,7 @@ export class InstanceAiService {
 		private readonly creditService: InstanceAiCreditService,
 		private readonly publisher: Publisher,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -2021,8 +1962,18 @@ export class InstanceAiService {
 			setSchemaBaseDirs(nodeDefDirs);
 		}
 
-		const baseRuntimeSkills = loadInstanceAiRuntimeSkillSource();
-		let runtimeSkills = baseRuntimeSkills;
+		// The agent-builder tools are only registered when the agents module is
+		// active (InstanceAiAdapterService.getAgentBuilderAdapter), and the
+		// build_agent flow persists configs from workspace files, so the skill
+		// needs both the agents module and the sandbox workspace. Hide it when
+		// either is unavailable.
+		const allRuntimeSkills = loadInstanceAiRuntimeSkillSource();
+		const agentsModuleActive = this.moduleRegistry.isActive('agents');
+		const withoutAgentBuilderSkill = filterRuntimeSkillSource(allRuntimeSkills, ['agent-builder']);
+		// Default assumes no workspace; the sandbox block below restores the
+		// agent-builder skill once the workspace is known to be available.
+		let availableRuntimeSkills = withoutAgentBuilderSkill;
+		let runtimeSkills = availableRuntimeSkills;
 		let runtimeWorkspace: Workspace | undefined;
 		let workspaceRoot: string | undefined;
 
@@ -2075,8 +2026,9 @@ export class InstanceAiService {
 					ensureWorkspace: async () =>
 						await scopeWorkspaceForAgent((await getSandboxEntry())?.workspace),
 				});
+				availableRuntimeSkills = agentsModuleActive ? allRuntimeSkills : withoutAgentBuilderSkill;
 				runtimeSkills = createLazyWorkspaceRuntimeSkillSource({
-					source: baseRuntimeSkills,
+					source: availableRuntimeSkills,
 					workspace: runtimeSkillWorkspace,
 					logger: this.logger,
 				});
@@ -2100,7 +2052,6 @@ export class InstanceAiService {
 			orchestratorAgentId: orchestratorAgentId(runId),
 			modelId,
 			checkpointStore: this.checkpointStore,
-			subAgentMaxSteps: this.instanceAiConfig.subAgentMaxSteps,
 			eventBus: this.eventBus,
 			logger: this.logger,
 			outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
@@ -2113,7 +2064,7 @@ export class InstanceAiService {
 			timeZone: this.defaultTimeZone,
 			localMcpServer: context.localMcpServer,
 			runtimeSkills,
-			runtimeSkillCatalog: baseRuntimeSkills,
+			runtimeSkillCatalog: availableRuntimeSkills,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,
 			webhookBaseUrl: this.webhookBaseUrl,
 			formBaseUrl: this.formBaseUrl,
@@ -2180,62 +2131,25 @@ export class InstanceAiService {
 	private async dispatchPlannedTask(
 		task: PlannedTaskRecord,
 		context: OrchestrationContext,
-		graph?: PlannedTaskGraph,
+		_graph?: PlannedTaskGraph,
 	): Promise<void> {
-		// Plan approval authorizes the task-family's non-destructive tools,
-		// so the sub-agent can execute without a redundant second confirmation.
-		const taskContext = this.createPlannedTaskContext(task.kind, context);
-		const conversationContext = buildPlannedTaskConversationContext(task, graph);
-
-		let started: { taskId: string; agentId: string; result: string } | null = null;
-
-		if (task.kind === 'delegate') {
-			started = await startDetachedDelegateTask(taskContext, {
-				title: task.title,
-				spec: task.spec,
-				tools: task.tools ?? [],
-				plannedTaskId: task.id,
-				conversationContext,
-			});
-		}
-
-		if (!started?.taskId) {
-			await context.plannedTaskService?.markFailed(context.threadId, task.id, {
-				error: started?.result || `Failed to start planned task "${task.title}"`,
+		if (task.kind === 'build-workflow' || task.kind === 'checkpoint') {
+			this.logger.warn('dispatchPlannedTask called for a runtime planned-task kind', {
+				threadId: context.threadId,
+				taskId: task.id,
+				kind: task.kind,
 			});
 			return;
 		}
 
-		await context.plannedTaskService?.markRunning(context.threadId, task.id, {
-			agentId: started.agentId,
-			backgroundTaskId: started.taskId,
+		await context.plannedTaskService?.markFailed(context.threadId, task.id, {
+			error: `Planned task kind "${task.kind}" is no longer supported`,
 		});
 
 		const nextGraph = await context.plannedTaskService?.getGraph(context.threadId);
 		if (nextGraph) {
 			await this.syncPlannedTasksToUi(context.threadId, nextGraph);
 		}
-	}
-
-	/**
-	 * Creates a task-scoped OrchestrationContext with plan-approved permission
-	 * overrides. Rebuilds domain tools so each sub-agent gets its own closure
-	 * with the correct permissions, preventing cross-task leakage.
-	 */
-	private createPlannedTaskContext(
-		kind: PlannedTaskRecord['kind'],
-		context: OrchestrationContext,
-	): OrchestrationContext {
-		if (!context.domainContext) return context;
-
-		const taskDomainContext = applyPlannedTaskPermissions(context.domainContext, kind);
-		if (taskDomainContext === context.domainContext) return context;
-
-		return {
-			...context,
-			domainContext: taskDomainContext,
-			domainTools: createAllTools(taskDomainContext),
-		};
 	}
 
 	private collectWorkflowIds(value: unknown, workflowIds: Set<string>): void {
@@ -3814,7 +3728,7 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * When a direct background task (builder/research/data-table/delegate)
+	 * When a direct background task (builder/research/data-table)
 	 * settles and was spawned inside a checkpoint follow-up, try to re-enter
 	 * that checkpoint so the orchestrator can call `complete-checkpoint`.
 	 *
@@ -3866,7 +3780,7 @@ export class InstanceAiService {
 			const task = graph?.tasks.find((t) => t.id === checkpointTaskId);
 			if (task && task.status === 'running') {
 				// If the orchestrator spawned a detached sub-agent inside this
-				// checkpoint's turn (builder, research, data-table, delegate) and
+				// checkpoint's turn (builder, research, data-table) and
 				// that child is still running, leave the checkpoint running. The
 				// child's settlement path re-emits `orchestrate-checkpoint` so the
 				// orchestrator re-enters the same checkpoint context and can then
@@ -4932,7 +4846,7 @@ export class InstanceAiService {
 				// Auto-follow-up: when the last background task finishes and no
 				// orchestrator run is active, resume the orchestrator so it can
 				// synthesize results for the user. Planned tasks handle this via
-				// schedulePlannedTasks(); this covers direct detached delegate calls.
+				// schedulePlannedTasks(); this covers direct detached background calls.
 				if (task.plannedTaskId) return;
 
 				await this.taskProjector.syncFromBackgroundTask(task);

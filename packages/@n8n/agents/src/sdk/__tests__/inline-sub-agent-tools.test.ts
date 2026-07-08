@@ -132,6 +132,12 @@ describe('inline sub-agent tool filtering', () => {
 			blockedTools: ['host_tool'],
 			expected: ['lookup'],
 		},
+		{
+			name: 'blocks a renamed delegate tool by metadata, not by tool name',
+			tools: [createDelegateSubAgentTool({ name: 'agent' }), makeTool('lookup')],
+			blockedTools: undefined,
+			expected: ['lookup'],
+		},
 	])('$name', ({ tools, blockedTools, expected }) => {
 		expect(filterInlineSubAgentTools(tools, blockedTools).map((tool) => tool.name)).toEqual(
 			expected,

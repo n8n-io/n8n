@@ -22,7 +22,6 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 		userId: 'test-user',
 		orchestratorAgentId: 'test-agent',
 		modelId: 'test-model' as OrchestrationContext['modelId'],
-		subAgentMaxSteps: 5,
 		eventBus: {
 			publish: vi.fn(),
 			subscribe: vi.fn(),

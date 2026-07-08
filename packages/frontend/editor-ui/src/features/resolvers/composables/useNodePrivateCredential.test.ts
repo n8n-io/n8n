@@ -7,6 +7,7 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { createTestingPinia } from '@pinia/testing';
+import { i18n } from '@n8n/i18n';
 import type { INodeUi } from '@/Interface';
 import { computed, defineComponent } from 'vue';
 import { useNodePrivateCredential } from './useNodePrivateCredential';
@@ -89,7 +90,7 @@ describe('useNodePrivateCredential', () => {
 
 		expect(getByTestId('has-private-credential')).toHaveTextContent('true');
 		expect(getByTestId('tooltip-text')).toHaveTextContent(
-			'This node uses private credentials that are resolved at runtime.',
+			i18n.baseText('node.settings.dynamicCredentials'),
 		);
 	});
 

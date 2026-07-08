@@ -26,10 +26,12 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { AiService } from '@/services/ai.service';
 import type { UrlService } from '@/services/url.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
@@ -119,6 +121,8 @@ function makeReconstructionService(
 		mock<AgentKnowledgeSandboxService>(),
 		mock<SsrfProtectionConfig>({ enabled: true }),
 		mock<SsrfProtectionService>(),
+		mock<CredentialsFinderService>(),
+		mock<WorkflowFinderService>(),
 	);
 }
 
@@ -341,6 +345,50 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 				useWhen: 'Use for invoice investigations and payment status checks.',
 			},
 		]);
+	});
+
+	it('references a published sub-agent by id only, with no versionId pin', async () => {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIdAndProjectId.mockResolvedValue({
+			id: 'agent-billing',
+			name: 'Billing Agent',
+			activeVersionId: 'version-billing',
+		} as Agent);
+		const service = makeReconstructionService([], { agentRepository });
+		const config: AgentJsonConfig = {
+			name: 'Test',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'Be helpful',
+			subAgents: { agents: [{ agentId: 'agent-billing' }] },
+		};
+
+		const { sourcesById } = await service.createSubAgentDelegationConfig(config, 'project-1');
+
+		expect(sourcesById).toEqual({ 'agent-billing': { agentId: 'agent-billing' } });
+	});
+
+	it('omits an unpublished sub-agent from sourcesById and availableSubAgents', async () => {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIdAndProjectId.mockResolvedValue({
+			id: 'agent-billing',
+			name: 'Billing Agent',
+			activeVersionId: null,
+		} as Agent);
+		const service = makeReconstructionService([], { agentRepository });
+		const config: AgentJsonConfig = {
+			name: 'Test',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'Be helpful',
+			subAgents: { agents: [{ agentId: 'agent-billing' }] },
+		};
+
+		const { sourcesById, availableSubAgents } = await service.createSubAgentDelegationConfig(
+			config,
+			'project-1',
+		);
+
+		expect(sourcesById).toEqual({});
+		expect(availableSubAgents).toEqual([]);
 	});
 
 	it('resolves subAgents.modelsByDifficulty into delegate tool metadata', async () => {
