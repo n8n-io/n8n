@@ -57,6 +57,7 @@ import {
 	TimeoutExecutionCancelledError,
 	ManualExecutionCancelledError,
 	createRunExecutionData,
+	deepCopy,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
@@ -1709,6 +1710,7 @@ export class WorkflowExecute {
 									if (sourceOverwrite) {
 										return {
 											...item,
+											json: deepCopy(item.json),
 											pairedItem: {
 												item: itemIndex,
 												input: inputIndex || undefined,
@@ -1719,6 +1721,7 @@ export class WorkflowExecute {
 
 									return {
 										...item,
+										json: deepCopy(item.json),
 										pairedItem: {
 											item: itemIndex,
 											input: inputIndex || undefined,
