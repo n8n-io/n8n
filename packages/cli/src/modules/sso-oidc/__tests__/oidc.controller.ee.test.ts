@@ -11,14 +11,23 @@ import type { EventService } from '@/events/event.service';
 import type { AuthlessRequest } from '@/requests';
 import type { UrlService } from '@/services/url.service';
 
+import { isOidcCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
+
+import { OIDC_ID_TOKEN_COOKIE_NAME } from '../constants';
 import { OidcController } from '../oidc.controller.ee';
 import type { OidcService } from '../oidc.service.ee';
 
-const authService = mock<AuthService>();
+vi.mock('@/sso.ee/sso-helpers', () => ({
+	isOidcCurrentAuthenticationMethod: vi.fn().mockReturnValue(true),
+}));
+
+const authService = mock<AuthService>({ jwtExpiration: 604800 });
 const eventService = mock<EventService>();
 const oidcService = mock<OidcService>();
 const urlService = mock<UrlService>();
-const globalConfig = mock<GlobalConfig>();
+const globalConfig = mock<GlobalConfig>({
+	auth: { cookie: { samesite: 'lax', secure: true } },
+});
 const logger = mock<Logger>();
 const instanceSettingsLoaderConfig = mock<InstanceSettingsLoaderConfig>({
 	ssoManagedByEnv: false,
@@ -73,7 +82,7 @@ describe('OidcController', () => {
 			);
 
 			// Mock successful OIDC login
-			oidcService.loginUser.mockResolvedValueOnce(user);
+			oidcService.loginUser.mockResolvedValueOnce({ user });
 
 			await controller.callbackHandler(req, res);
 
@@ -111,7 +120,7 @@ describe('OidcController', () => {
 				'http://localhost:5678/sso/oidc/callback?code=different_code&state=different_state&session_state=session123',
 			);
 
-			oidcService.loginUser.mockResolvedValueOnce(user);
+			oidcService.loginUser.mockResolvedValueOnce({ user });
 
 			await controller.callbackHandler(req, res);
 
@@ -137,7 +146,7 @@ describe('OidcController', () => {
 
 			const expectedCallbackUrl = new URL('http://localhost:5678/sso/oidc/callback');
 
-			oidcService.loginUser.mockResolvedValueOnce(user);
+			oidcService.loginUser.mockResolvedValueOnce({ user });
 
 			await controller.callbackHandler(req, res);
 
@@ -168,6 +177,62 @@ describe('OidcController', () => {
 			// Verify that issueCookie was not called when login fails
 			expect(authService.issueCookie).not.toHaveBeenCalled();
 			expect(res.redirect).not.toHaveBeenCalled();
+		});
+
+		test('Should store the encrypted ID token in a cookie for RP-initiated logout', async () => {
+			const req = mock<AuthlessRequest>({
+				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
+				browserId: 'browser-id-123',
+				cookies: {
+					[OIDC_STATE_COOKIE_NAME]: 'state_value',
+					[OIDC_NONCE_COOKIE_NAME]: 'nonce_value',
+				},
+			});
+			const res = mock<Response>();
+
+			oidcService.loginUser.mockResolvedValueOnce({ user, idToken: 'raw-id-token' });
+			oidcService.encryptIdToken.mockReturnValueOnce('encrypted-id-token');
+
+			await controller.callbackHandler(req, res);
+
+			expect(oidcService.encryptIdToken).toHaveBeenCalledWith('raw-id-token');
+			expect(res.cookie).toHaveBeenCalledWith(
+				OIDC_ID_TOKEN_COOKIE_NAME,
+				'encrypted-id-token',
+				expect.objectContaining({
+					maxAge: 604800 * Time.seconds.toMilliseconds,
+					httpOnly: true,
+					sameSite: 'lax',
+					secure: true,
+				}),
+			);
+		});
+
+		test('Should not store an oversized ID token in a cookie', async () => {
+			const req = mock<AuthlessRequest>({
+				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
+				browserId: 'browser-id-123',
+				cookies: {
+					[OIDC_STATE_COOKIE_NAME]: 'state_value',
+					[OIDC_NONCE_COOKIE_NAME]: 'nonce_value',
+				},
+			});
+			const res = mock<Response>();
+
+			oidcService.loginUser.mockResolvedValueOnce({ user, idToken: 'raw-id-token' });
+			oidcService.encryptIdToken.mockReturnValueOnce('x'.repeat(5000));
+
+			await controller.callbackHandler(req, res);
+
+			expect(res.cookie).not.toHaveBeenCalledWith(
+				OIDC_ID_TOKEN_COOKIE_NAME,
+				expect.any(String),
+				expect.any(Object),
+			);
+			expect(logger.warn).toHaveBeenCalled();
+			// Login itself must still succeed
+			expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, req.browserId);
+			expect(res.redirect).toHaveBeenCalledWith('/');
 		});
 
 		test('Should render success page in test mode without creating session', async () => {
@@ -339,6 +404,107 @@ describe('OidcController', () => {
 			);
 
 			expect(res.redirect).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('logout', () => {
+		const makeLogoutReq = (cookies: Record<string, string>) =>
+			mock<AuthenticatedRequest>({ cookies });
+
+		beforeEach(() => {
+			vi.mocked(isOidcCurrentAuthenticationMethod).mockReturnValue(true);
+		});
+
+		test('Should always invalidate the n8n session and clear the auth and ID token cookies', async () => {
+			const req = makeLogoutReq({ [OIDC_ID_TOKEN_COOKIE_NAME]: 'encrypted-id-token' });
+			const res = mock<Response>();
+			oidcService.decryptIdToken.mockReturnValueOnce('raw-id-token');
+			oidcService.generateEndSessionUrl.mockResolvedValueOnce(
+				new URL('https://idp.example.com/logout?id_token_hint=raw-id-token'),
+			);
+
+			await controller.logout(req, res);
+
+			expect(authService.invalidateToken).toHaveBeenCalledWith(req);
+			expect(authService.clearCookie).toHaveBeenCalledWith(res);
+			expect(res.clearCookie).toHaveBeenCalledWith(OIDC_ID_TOKEN_COOKIE_NAME);
+		});
+
+		test('Should return the RP-initiated logout URL for an OIDC-established session', async () => {
+			const req = makeLogoutReq({ [OIDC_ID_TOKEN_COOKIE_NAME]: 'encrypted-id-token' });
+			const res = mock<Response>();
+			oidcService.decryptIdToken.mockReturnValueOnce('raw-id-token');
+			oidcService.generateEndSessionUrl.mockResolvedValueOnce(
+				new URL('https://idp.example.com/logout?id_token_hint=raw-id-token'),
+			);
+
+			const result = await controller.logout(req, res);
+
+			expect(oidcService.decryptIdToken).toHaveBeenCalledWith('encrypted-id-token');
+			expect(oidcService.generateEndSessionUrl).toHaveBeenCalledWith('raw-id-token');
+			expect(result).toEqual({
+				redirectUrl: 'https://idp.example.com/logout?id_token_hint=raw-id-token',
+			});
+		});
+
+		test('Should return a null redirect URL when the session was not established through OIDC', async () => {
+			const req = makeLogoutReq({});
+			const res = mock<Response>();
+
+			const result = await controller.logout(req, res);
+
+			expect(result).toEqual({ redirectUrl: null });
+			expect(oidcService.generateEndSessionUrl).not.toHaveBeenCalled();
+			// The n8n session is still terminated
+			expect(authService.invalidateToken).toHaveBeenCalledWith(req);
+			expect(authService.clearCookie).toHaveBeenCalledWith(res);
+		});
+
+		test('Should return a null redirect URL when OIDC is no longer the authentication method', async () => {
+			vi.mocked(isOidcCurrentAuthenticationMethod).mockReturnValue(false);
+			const req = makeLogoutReq({ [OIDC_ID_TOKEN_COOKIE_NAME]: 'encrypted-id-token' });
+			const res = mock<Response>();
+
+			const result = await controller.logout(req, res);
+
+			expect(result).toEqual({ redirectUrl: null });
+			expect(oidcService.generateEndSessionUrl).not.toHaveBeenCalled();
+		});
+
+		test('Should return a null redirect URL when the ID token cannot be decrypted', async () => {
+			const req = makeLogoutReq({ [OIDC_ID_TOKEN_COOKIE_NAME]: 'tampered' });
+			const res = mock<Response>();
+			oidcService.decryptIdToken.mockReturnValueOnce(undefined);
+
+			const result = await controller.logout(req, res);
+
+			expect(result).toEqual({ redirectUrl: null });
+			expect(oidcService.generateEndSessionUrl).not.toHaveBeenCalled();
+		});
+
+		test('Should return a null redirect URL when the provider has no end_session_endpoint', async () => {
+			const req = makeLogoutReq({ [OIDC_ID_TOKEN_COOKIE_NAME]: 'encrypted-id-token' });
+			const res = mock<Response>();
+			oidcService.decryptIdToken.mockReturnValueOnce('raw-id-token');
+			oidcService.generateEndSessionUrl.mockResolvedValueOnce(undefined);
+
+			const result = await controller.logout(req, res);
+
+			expect(result).toEqual({ redirectUrl: null });
+		});
+
+		test('Should not fail the sign-out when building the logout URL throws', async () => {
+			const req = makeLogoutReq({ [OIDC_ID_TOKEN_COOKIE_NAME]: 'encrypted-id-token' });
+			const res = mock<Response>();
+			oidcService.decryptIdToken.mockReturnValueOnce('raw-id-token');
+			oidcService.generateEndSessionUrl.mockRejectedValueOnce(new Error('discovery unavailable'));
+
+			const result = await controller.logout(req, res);
+
+			expect(result).toEqual({ redirectUrl: null });
+			expect(authService.invalidateToken).toHaveBeenCalledWith(req);
+			expect(authService.clearCookie).toHaveBeenCalledWith(res);
+			expect(logger.warn).toHaveBeenCalled();
 		});
 	});
 });

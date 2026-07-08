@@ -2,13 +2,14 @@ import type { CurrentUserResponse } from '@n8n/rest-api-client/api/users';
 import { useUsersStore } from './users.store';
 import { createPinia, setActivePinia } from 'pinia';
 
-const { loginCurrentUser, inviteUsers, login, logout } = vi.hoisted(() => {
+const { loginCurrentUser, inviteUsers, login, logout, oidcLogout } = vi.hoisted(() => {
 	return {
 		loginCurrentUser: vi.fn(),
 		identify: vi.fn(),
 		inviteUsers: vi.fn(),
 		login: vi.fn(),
 		logout: vi.fn(),
+		oidcLogout: vi.fn(),
 	};
 });
 
@@ -16,6 +17,10 @@ vi.mock('@n8n/rest-api-client/api/users', () => ({
 	loginCurrentUser,
 	login,
 	logout,
+}));
+
+vi.mock('@n8n/rest-api-client/api/sso', () => ({
+	oidcLogout,
 }));
 
 vi.mock('./invitation.api', () => ({
@@ -201,6 +206,70 @@ describe('users.store', () => {
 			expect(errorAsyncHook).toHaveBeenCalled();
 			expect(successAsyncHook).toHaveBeenCalled();
 			expect(successHook).toHaveBeenCalled();
+		});
+	});
+
+	describe('logout', () => {
+		it('should call the standard logout API by default and return no redirect URL', async () => {
+			const usersStore = useUsersStore();
+
+			const result = await usersStore.logout();
+
+			expect(logout).toHaveBeenCalledTimes(1);
+			expect(oidcLogout).not.toHaveBeenCalled();
+			expect(result).toEqual({ redirectUrl: null });
+		});
+
+		it('should call the OIDC logout API and return its redirect URL when signing out via OIDC', async () => {
+			const usersStore = useUsersStore();
+			const redirectUrl = 'https://idp.example.com/logout?id_token_hint=abc';
+			oidcLogout.mockResolvedValueOnce({ redirectUrl });
+
+			const result = await usersStore.logout({ viaOidc: true });
+
+			expect(oidcLogout).toHaveBeenCalledTimes(1);
+			expect(logout).not.toHaveBeenCalled();
+			expect(result).toEqual({ redirectUrl });
+		});
+
+		it('should return a null redirect URL when the session was not established through OIDC', async () => {
+			const usersStore = useUsersStore();
+			oidcLogout.mockResolvedValueOnce({ redirectUrl: null });
+
+			const result = await usersStore.logout({ viaOidc: true });
+
+			expect(result).toEqual({ redirectUrl: null });
+		});
+
+		it('should fall back to the standard logout API when the OIDC logout API fails', async () => {
+			const usersStore = useUsersStore();
+			oidcLogout.mockRejectedValueOnce(new Error('license expired'));
+
+			const result = await usersStore.logout({ viaOidc: true });
+
+			expect(oidcLogout).toHaveBeenCalledTimes(1);
+			expect(logout).toHaveBeenCalledTimes(1);
+			expect(result).toEqual({ redirectUrl: null });
+		});
+
+		it('should clear the current user and still run logout hooks when signing out via OIDC', async () => {
+			const usersStore = useUsersStore();
+			usersStore.usersById['1'] = {
+				...mockUser,
+				isDefaultUser: false,
+				isPendingUser: false,
+				mfaEnabled: false,
+			};
+			usersStore.currentUserId = '1';
+			oidcLogout.mockResolvedValueOnce({ redirectUrl: null });
+
+			const hook = vi.fn();
+			usersStore.registerLogoutHook(hook);
+
+			await usersStore.logout({ viaOidc: true });
+
+			expect(usersStore.currentUser).toBeNull();
+			expect(hook).toHaveBeenCalled();
 		});
 	});
 
