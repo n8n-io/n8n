@@ -208,6 +208,39 @@ describe('useAgentResourcesLocator', () => {
 		expect(agentsResources.value.map((a) => a.value)).toEqual(['a1', 'a2']);
 	});
 
+	it('retries the same page after a failed loadMore instead of skipping it', async () => {
+		listAgentsPage.mockResolvedValueOnce({
+			count: 100,
+			data: [{ id: 'a1', name: 'Agent 1', projectId: 'proj-1' }],
+		});
+
+		const { setAgentsResources, loadMore } = useAgentResourcesLocator(ref('proj-1'), noProjectName);
+		await setAgentsResources();
+
+		listAgentsPage.mockRejectedValueOnce(new Error('boom'));
+		await loadMore();
+
+		listAgentsPage.mockResolvedValueOnce({
+			count: 100,
+			data: [{ id: 'a2', name: 'Agent 2', projectId: 'proj-1' }],
+		});
+		await loadMore();
+
+		// The failed page (skip=40) is re-requested, not skipped past to skip=80.
+		expect(listAgentsPage).toHaveBeenNthCalledWith(
+			2,
+			expect.anything(),
+			'proj-1',
+			expect.objectContaining({ skip: 40 }),
+		);
+		expect(listAgentsPage).toHaveBeenNthCalledWith(
+			3,
+			expect.anything(),
+			'proj-1',
+			expect.objectContaining({ skip: 40 }),
+		);
+	});
+
 	it('caches the display name across pages and falls back to the id on a miss', async () => {
 		listAgentsPage.mockResolvedValue({
 			count: 1,

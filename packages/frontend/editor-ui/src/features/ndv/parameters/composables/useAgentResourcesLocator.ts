@@ -109,6 +109,9 @@ export function useAgentResourcesLocator(
 		} catch (error) {
 			// Ignore failures from a request a newer reset already superseded.
 			if (generation !== loadGeneration) return;
+			// Give back the claimed page so the next load-more retries it instead
+			// of skipping past a page that never loaded.
+			if (!reset) currentPage.value--;
 			loadError.value = error;
 		} finally {
 			// Only the current generation's reset owns the loading flag.

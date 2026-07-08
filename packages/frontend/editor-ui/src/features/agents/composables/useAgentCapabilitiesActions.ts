@@ -126,10 +126,11 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						return tool.id === target.id;
 					});
 
-		if (toolIndex >= 0) {
-			const tool = tools[toolIndex];
-			if (!tool) return;
-
+		// A numeric target past the tools array addresses an MCP server (hosts
+		// emit offset indices for the combined list) — fall through to the MCP
+		// section below instead of treating it as a missing tool.
+		const tool = toolIndex >= 0 ? tools[toolIndex] : undefined;
+		if (tool) {
 			const customTool =
 				tool.type === 'custom' && tool.id ? agent.value?.tools?.[tool.id] : undefined;
 
@@ -229,18 +230,23 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 
 		telemetry?.trackOpenedSkillFromList?.(id);
 
+		// Self-address the modal to the agent it was opened for (like the add
+		// modals above): confirming after an agent switch must not write the
+		// skill onto the newly active agent.
+		const targetAgentId = agentId.value;
+
 		uiStore.openModalWithData({
 			name: AGENT_SKILL_MODAL_KEY,
 			data: {
 				projectId: projectId.value,
-				agentId: agentId.value,
+				agentId: targetAgentId,
 				skill,
 				skillId: id,
 				availableTools: configuredToolOptions(),
 				onRemove: (skillId: string) => onRemoveSkill(skillId),
 				onConfirm: ({ id: skillId, skill: updatedSkill }: { id?: string; skill: AgentSkill }) => {
 					if (!skillId) return;
-					if (agent.value?.id !== agentId.value) return;
+					if (agentId.value !== targetAgentId || agent.value?.id !== targetAgentId) return;
 					const sanitizedSkill = filterSkillAllowedTools(updatedSkill);
 					agent.value = {
 						...agent.value,
