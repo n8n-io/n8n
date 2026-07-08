@@ -142,10 +142,7 @@ describe('N8nClient — TRUST-229 artifact fetch methods', () => {
 					},
 				],
 			};
-			// The REST layer wraps every controller return in { data: <value> }, and the
-			// controller's own return value here is already { count, data } — hence the
-			// outer stub body nests `rowsPayload` (itself containing a `data` key) one
-			// level under the envelope's `data` key.
+			// Double-nested: the REST envelope's `data` wraps getDataTableRows' own { count, data } return.
 			const fetchMock = stubFetch({ data: rowsPayload });
 			const client = new N8nClient(BASE_URL);
 

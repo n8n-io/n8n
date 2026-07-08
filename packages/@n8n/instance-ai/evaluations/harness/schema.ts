@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { SUPPORTED_CREDENTIAL_TYPES } from '../../credentials/seeder';
 import { ARTIFACT_TYPES } from '../../types';
+import type { ArtifactType } from '../../types';
 
 /** Default `datasets` grouping for a case that omits the field — the single
  *  source of truth shared by the loader schema and the mcp-manifest tier reader. */
@@ -145,9 +146,7 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 			'a case needs a conversation, or a seedThread (which supplies the live turn from the trace)',
 	})
 	.superRefine((c, ctx) => {
-		// `expectedArtifacts` defaults to ['workflow'] during parse, so this only sees
-		// undefined if a refine ever runs ahead of the field's own default (defensive).
-		const expectedArtifacts = c.expectedArtifacts ?? ['workflow'];
+		const expectedArtifacts = c.expectedArtifacts;
 
 		// Note: these messages avoid double quotes — ZodError.message is a JSON.stringify of
 		// the issue list, which would otherwise backslash-escape them and break substring/regex
@@ -165,23 +164,20 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 			});
 		}
 
-		if (expectedArtifacts.includes('agent') && (c.artifactExpectations?.agent?.length ?? 0) === 0) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				message:
-					'expectedArtifacts includes agent — a case needs artifactExpectations.agent to grade it',
-			});
-		}
-
-		if (
-			expectedArtifacts.includes('config-eval') &&
-			(c.artifactExpectations?.['config-eval']?.length ?? 0) === 0
-		) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				message:
-					"expectedArtifacts includes config-eval — a case needs artifactExpectations['config-eval'] to grade it",
-			});
+		// Each non-workflow artifact type needs its own artifactExpectations entry to be
+		// gradable. The accessor form matches how it'd be written in real code — dot notation
+		// for `agent` (a valid identifier), bracket notation for `config-eval` (a hyphen isn't).
+		const artifactAccessor: Record<Exclude<ArtifactType, 'workflow'>, string> = {
+			agent: 'artifactExpectations.agent',
+			'config-eval': "artifactExpectations['config-eval']",
+		};
+		for (const type of ['agent', 'config-eval'] as const) {
+			if (expectedArtifacts.includes(type) && (c.artifactExpectations?.[type]?.length ?? 0) === 0) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: `expectedArtifacts includes ${type} — a case needs ${artifactAccessor[type]} to grade it`,
+				});
+			}
 		}
 	});
 

@@ -12,7 +12,7 @@ import type { InstanceAiMessage } from '@n8n/api-types';
 import { ARTIFACT_HANDLERS } from './registry';
 import { runAssertionJudge } from '../../build-expectations/assertion-judge';
 import type { N8nClient } from '../../clients/n8n-client';
-import type { ArtifactVerdict, WorkflowTestCase } from '../../types';
+import type { ArtifactType, ArtifactVerdict, WorkflowTestCase } from '../../types';
 import type { EvalLogger } from '../logger';
 
 export async function resolveArtifactResults(args: {
@@ -22,10 +22,12 @@ export async function resolveArtifactResults(args: {
 	logger: EvalLogger;
 }): Promise<ArtifactVerdict[]> {
 	const { messages, testCase, client, logger } = args;
-	const expected = new Set(testCase.expectedArtifacts ?? ['workflow']);
+	const expected = new Set<ArtifactType>(testCase.expectedArtifacts ?? ['workflow']);
 	const verdicts: ArtifactVerdict[] = [];
 
 	for (const handler of ARTIFACT_HANDLERS) {
+		// Workflow is execution-graded (scored via the scenario/expectation path), not here.
+		// The literal check (vs runsExecutionScenarios) also narrows the type for the index below.
 		if (handler.type === 'workflow') continue;
 
 		const refs = handler.discover({ messages });
@@ -62,10 +64,15 @@ export async function resolveArtifactResults(args: {
 			} catch (error: unknown) {
 				const message = error instanceof Error ? error.message : String(error);
 				logger.warn(`  Artifact fetch/judge failed for ${handler.type} ${ref.id}: ${message}`);
+				// Discovery already found the ref (the artifact exists), so a fetch/judge
+				// failure is an infra issue, not a bad artifact — mark incomplete so it's
+				// excluded from the pass-rate denominator (same convention as the
+				// dead-judge branch above).
 				verdicts.push({
 					type: handler.type,
 					id: ref.id,
 					pass: false,
+					incomplete: true,
 					reason: `fetch/judge error: ${message}`,
 				});
 			}

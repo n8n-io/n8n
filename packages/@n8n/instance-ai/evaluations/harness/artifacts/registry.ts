@@ -1,7 +1,3 @@
-// ---------------------------------------------------------------------------
-// Registry of all artifact handlers, keyed by ArtifactType.
-// ---------------------------------------------------------------------------
-
 import { agentHandler } from './agent-handler';
 import { configEvalHandler } from './config-eval-handler';
 import type { ArtifactHandler } from './types';

@@ -190,9 +190,7 @@ export const runFinishPayloadSchema = z.object({
 });
 
 export const agentSpawnedTargetResourceSchema = z.object({
-	// 'agent' and 'config-eval' are produce-side discovery signals for the
-	// TRUST-229 eval-artifact pipeline (agent-config/skills and config-eval
-	// composite artifacts). Provisional: the assistant does not emit them yet.
+	// 'agent'/'config-eval': provisional eval-artifact discovery signals; the assistant doesn't emit them yet.
 	type: z.enum(['workflow', 'data-table', 'credential', 'other', 'agent', 'config-eval']),
 	id: z.string().optional(),
 	name: z.string().optional(),

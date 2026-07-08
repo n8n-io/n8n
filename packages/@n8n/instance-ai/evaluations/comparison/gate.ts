@@ -7,12 +7,11 @@
 // MultiRunEvaluation — no I/O, no LangSmith — so it's unit-testable and runs
 // in both LangSmith and direct modes.
 //
-// A "unit" is an execution scenario or an evaluated build expectation (the
-// same units the pass rate is computed over). Always-failing scenarios are
-// deleted from the curated tier rather than flagged; units with no verdict
-// (evaluatedCount 0 — judge never returned for expectations, verifier
-// exhausted for scenarios) are excluded automatically since there's nothing
-// to judge.
+// A "unit" is an execution scenario, an evaluated build expectation, or an
+// evaluated artifact (the same units the pass rate is computed over).
+// Always-failing scenarios are deleted from the curated tier rather than
+// flagged; build expectations and artifacts with no verdict (evaluatedCount 0)
+// are excluded automatically since there's nothing to judge.
 // ---------------------------------------------------------------------------
 
 import type { MultiRunEvaluation, WorkflowTestCase } from '../types';
@@ -38,7 +37,7 @@ export const DEFAULT_GATE_CRITERION: GateCriterion = { kind: 'passAtK' };
 
 export interface GateUnit {
 	slug: string;
-	kind: 'scenario' | 'buildExpectation';
+	kind: 'scenario' | 'buildExpectation' | 'artifact';
 	passCount: number;
 	/** Denominator: iterations for scenarios, evaluated (non-incomplete) runs for build expectations. */
 	total: number;
@@ -135,6 +134,20 @@ export function evaluateGate(
 				green: unitGreen(ea.passCount, total, criterion),
 			};
 			// No verdict in any run → nothing to gate on; surface for visibility.
+			if (total === 0) excluded.push(unit);
+			else gated.push(unit);
+		}
+
+		for (const a of tc.artifacts) {
+			const total = a.evaluatedCount;
+			const unit: GateUnit = {
+				slug: `${prefix} :: artifact:${a.type}`,
+				kind: 'artifact',
+				passCount: a.passCount,
+				total,
+				passRate: total > 0 ? a.passCount / total : 0,
+				green: unitGreen(a.passCount, total, criterion),
+			};
 			if (total === 0) excluded.push(unit);
 			else gated.push(unit);
 		}

@@ -333,7 +333,7 @@ describe('resolveArtifactResults', () => {
 		expect(results[0].expectationResults?.every((r) => r.incomplete)).toBe(true);
 	});
 
-	it('records a fetch/judge error as a failing verdict without throwing', async () => {
+	it('records a fetch/judge error as an incomplete, failing verdict without throwing', async () => {
 		const messages: InstanceAiMessage[] = [
 			assistantMessage(agentNode({ targetResource: { type: 'agent', id: 'agent-x' } })),
 		];
@@ -355,6 +355,7 @@ describe('resolveArtifactResults', () => {
 				type: 'agent',
 				id: 'agent-x',
 				pass: false,
+				incomplete: true,
 				reason: 'fetch/judge error: network down',
 			},
 		]);

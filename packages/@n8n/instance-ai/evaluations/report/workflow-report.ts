@@ -1067,76 +1067,69 @@ function renderWorkflowChecks(outcomes: CheckOutcome[] | undefined): string {
 }
 
 // ---------------------------------------------------------------------------
-// Build expectations
+// Build expectations / artifact results
+//
+// Both sections aggregate a list of pass/fail/incomplete verdicts into the
+// same `<details>` checklist shell; they differ only in title and per-item
+// markup, which `renderItem` supplies.
 // ---------------------------------------------------------------------------
 
-function renderBuildExpectations(results: BuildExpectationResult[] | undefined): string {
-	if (!results || results.length === 0) return '';
+function renderChecklistSection<T extends { pass: boolean; incomplete?: boolean }>(
+	title: string,
+	entries: T[] | undefined,
+	renderItem: (entry: T) => string,
+): string {
+	if (!entries || entries.length === 0) return '';
 	// `incomplete` (no verdict) stays out of the pass/fail count — rendered neutrally.
-	const passCount = results.filter((r) => r.pass && !r.incomplete).length;
-	const failCount = results.filter((r) => !r.pass && !r.incomplete).length;
-	const incompleteCount = results.filter((r) => r.incomplete).length;
+	const passCount = entries.filter((e) => e.pass && !e.incomplete).length;
+	const failCount = entries.filter((e) => !e.pass && !e.incomplete).length;
+	const incompleteCount = entries.filter((e) => e.incomplete).length;
 	const scored = passCount + failCount;
 	const statusClass = failCount > 0 ? 'fail' : 'pass';
 	const openAttr = failCount > 0 ? 'open' : '';
 	const summary = `${String(passCount)}/${String(scored)}${incompleteCount > 0 ? ` · ${String(incompleteCount)} no verdict` : ''}`;
-	const items = results
-		.map((r) => {
-			const cls = r.incomplete ? 'n_a' : r.pass ? 'pass' : 'fail';
-			const icon = r.incomplete ? '⌀' : r.pass ? '&#10003;' : '&#10007;';
-			const judgment = r.reason
-				? `<div class="expectation-judgment">${escapeHtml(r.reason)}</div>`
-				: '';
-			return `<li class="expectation ${cls}"><span class="check-icon ${cls}">${icon}</span><div class="expectation-body"><div class="expectation-text">${escapeHtml(r.expectation)}</div>${judgment}</div></li>`;
-		})
-		.join('');
-	return `<details class="section" ${openAttr}><summary>Build expectations <span class="${statusClass}">${summary}</span></summary><ul class="check-list">${items}</ul></details>`;
+	const items = entries.map(renderItem).join('');
+	return `<details class="section" ${openAttr}><summary>${title} <span class="${statusClass}">${summary}</span></summary><ul class="check-list">${items}</ul></details>`;
 }
 
-// ---------------------------------------------------------------------------
-// Artifact results
-// ---------------------------------------------------------------------------
+function renderBuildExpectations(results: BuildExpectationResult[] | undefined): string {
+	return renderChecklistSection('Build expectations', results, (r) => {
+		const cls = r.incomplete ? 'n_a' : r.pass ? 'pass' : 'fail';
+		const icon = r.incomplete ? '⌀' : r.pass ? '&#10003;' : '&#10007;';
+		const judgment = r.reason
+			? `<div class="expectation-judgment">${escapeHtml(r.reason)}</div>`
+			: '';
+		return `<li class="expectation ${cls}"><span class="check-icon ${cls}">${icon}</span><div class="expectation-body"><div class="expectation-text">${escapeHtml(r.expectation)}</div>${judgment}</div></li>`;
+	});
+}
 
 function renderArtifactResults(results: ArtifactVerdict[] | undefined): string {
-	if (!results || results.length === 0) return '';
-	// `incomplete` (dead judge) stays out of the pass/fail count — rendered neutrally,
-	// mirroring build-expectation rendering.
-	const passCount = results.filter((v) => v.pass && !v.incomplete).length;
-	const failCount = results.filter((v) => !v.pass && !v.incomplete).length;
-	const incompleteCount = results.filter((v) => v.incomplete).length;
-	const scored = passCount + failCount;
-	const statusClass = failCount > 0 ? 'fail' : 'pass';
-	const openAttr = failCount > 0 ? 'open' : '';
-	const summary = `${String(passCount)}/${String(scored)}${incompleteCount > 0 ? ` · ${String(incompleteCount)} no verdict` : ''}`;
-	const items = results
-		.map((v) => {
-			const cls = v.incomplete ? 'n_a' : v.pass ? 'pass' : 'fail';
-			const icon = v.incomplete ? '⌀' : v.pass ? '&#10003;' : '&#10007;';
-			const label =
-				v.id === '(none)'
-					? `${v.type} (not produced)`
-					: v.unexpected
-						? `${v.type}: ${v.id} (unexpected)`
-						: `${v.type}: ${v.id}`;
-			const assertionsHtml = (v.expectationResults ?? [])
-				.map((r) => {
-					const rCls = r.incomplete ? 'n_a' : r.pass ? 'pass' : 'fail';
-					const rIcon = r.incomplete ? '⌀' : r.pass ? '&#10003;' : '&#10007;';
-					const judgment = r.reason
-						? `<div class="expectation-judgment">${escapeHtml(r.reason)}</div>`
-						: '';
-					return `<li class="expectation ${rCls}"><span class="check-icon ${rCls}">${rIcon}</span><div class="expectation-body"><div class="expectation-text">${escapeHtml(r.expectation)}</div>${judgment}</div></li>`;
-				})
-				.join('');
-			const body = assertionsHtml
-				? `<ul class="check-list">${assertionsHtml}</ul>`
-				: v.reason
-					? `<div class="expectation-judgment">${escapeHtml(v.reason)}</div>`
+	return renderChecklistSection('Artifacts', results, (v) => {
+		const cls = v.incomplete ? 'n_a' : v.pass ? 'pass' : 'fail';
+		const icon = v.incomplete ? '⌀' : v.pass ? '&#10003;' : '&#10007;';
+		const label =
+			v.id === '(none)'
+				? `${v.type} (not produced)`
+				: v.unexpected
+					? `${v.type}: ${v.id} (unexpected)`
+					: `${v.type}: ${v.id}`;
+		const assertionsHtml = (v.expectationResults ?? [])
+			.map((r) => {
+				const rCls = r.incomplete ? 'n_a' : r.pass ? 'pass' : 'fail';
+				const rIcon = r.incomplete ? '⌀' : r.pass ? '&#10003;' : '&#10007;';
+				const judgment = r.reason
+					? `<div class="expectation-judgment">${escapeHtml(r.reason)}</div>`
 					: '';
-			return `<li class="expectation ${cls}"><span class="check-icon ${cls}">${icon}</span><div class="expectation-body"><div class="expectation-text">${escapeHtml(label)}</div>${body}</div></li>`;
-		})
-		.join('');
-	return `<details class="section" ${openAttr}><summary>Artifacts <span class="${statusClass}">${summary}</span></summary><ul class="check-list">${items}</ul></details>`;
+				return `<li class="expectation ${rCls}"><span class="check-icon ${rCls}">${rIcon}</span><div class="expectation-body"><div class="expectation-text">${escapeHtml(r.expectation)}</div>${judgment}</div></li>`;
+			})
+			.join('');
+		const body = assertionsHtml
+			? `<ul class="check-list">${assertionsHtml}</ul>`
+			: v.reason
+				? `<div class="expectation-judgment">${escapeHtml(v.reason)}</div>`
+				: '';
+		return `<li class="expectation ${cls}"><span class="check-icon ${cls}">${icon}</span><div class="expectation-body"><div class="expectation-text">${escapeHtml(label)}</div>${body}</div></li>`;
+	});
 }
 
 // ---------------------------------------------------------------------------

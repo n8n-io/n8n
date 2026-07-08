@@ -20,10 +20,10 @@ export const configEvalHandler: ArtifactHandler<ConfigEvalArtifact> = {
 			targetType: 'config-eval',
 			toolNames: CONFIG_EVAL_TOOLS,
 			resultKeys: ['workflowId', 'id'],
-		}).map((workflowId) => ({ type: 'config-eval', id: workflowId, owningWorkflowId: workflowId }));
+		}).map((workflowId) => ({ type: 'config-eval', id: workflowId })); // ref.id is the owning workflow id (config-evals are fetched per-workflow)
 	},
 	async fetch(ref, client) {
-		const workflowId = ref.owningWorkflowId ?? ref.id;
+		const workflowId = ref.id;
 		const configs = await client.getWorkflowEvaluationConfigs(workflowId);
 		const dtConfig = configs.find((c) => c.datasetSource === 'data_table');
 		let dataTable: ConfigEvalArtifact['dataTable'];

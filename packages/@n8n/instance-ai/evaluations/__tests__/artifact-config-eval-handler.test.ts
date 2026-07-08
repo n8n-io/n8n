@@ -113,7 +113,6 @@ describe('configEvalHandler', () => {
 		);
 		for (const ref of refs) {
 			expect(ref.type).toBe('config-eval');
-			expect(ref.owningWorkflowId).toBe(ref.id);
 		}
 	});
 
@@ -156,10 +155,7 @@ describe('configEvalHandler', () => {
 			getDataTableRows,
 		} as unknown as N8nClient;
 
-		const result = await configEvalHandler.fetch(
-			{ type: 'config-eval', id: workflowId, owningWorkflowId: workflowId },
-			client,
-		);
+		const result = await configEvalHandler.fetch({ type: 'config-eval', id: workflowId }, client);
 
 		expect(getWorkflowEvaluationConfigs).toHaveBeenCalledWith(workflowId);
 		expect(getDataTableColumns).toHaveBeenCalledWith(projectId, dataTableId);
@@ -183,10 +179,7 @@ describe('configEvalHandler', () => {
 			getDataTableRows,
 		} as unknown as N8nClient;
 
-		const result = await configEvalHandler.fetch(
-			{ type: 'config-eval', id: workflowId, owningWorkflowId: workflowId },
-			client,
-		);
+		const result = await configEvalHandler.fetch({ type: 'config-eval', id: workflowId }, client);
 
 		expect(result.configs).toBe(configs);
 		expect(result.dataTable).toBeUndefined();

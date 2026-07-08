@@ -10,8 +10,7 @@
 // live here rather than in their handler files, so the handler and renderer
 // modules can both import the shape without a handler <-> renderer cycle.
 //
-// `FetchedArtifact` and `ArtifactVerdict` are intentionally NOT defined here —
-// they have no consumer until runner integration lands in a later step.
+// Composite artifact shapes live here; ArtifactVerdict lives in ../../types to avoid a cycle.
 // ---------------------------------------------------------------------------
 
 import type { AgentSkill, EvaluationConfigDto, InstanceAiMessage } from '@n8n/api-types';
@@ -28,8 +27,6 @@ import type { ArtifactType } from '../../types';
 export interface ArtifactRef {
 	type: ArtifactType;
 	id: string;
-	/** config-eval only: the workflow the eval config is attached to (reference/intent — never judged). */
-	owningWorkflowId?: string;
 }
 
 /**

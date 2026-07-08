@@ -65,6 +65,7 @@ import type {
 	ConversationTurn,
 	ExecutionScenarioResult,
 	ExecutionScenario,
+	ArtifactVerdict,
 	TestCaseCredential,
 	TranscriptTurn,
 	WorkflowTestCase,
@@ -345,35 +346,51 @@ export async function runWorkflowTestCase(
 		},
 		MAX_CONCURRENT_SCENARIOS,
 	);
-	const [scenarioResults, expectationResults] = await Promise.all([
+
+	// Capture + judge non-workflow artifacts (agent, config-eval), run concurrently with
+	// scenarios/expectations since it only needs the thread. Workflow-only cases discover
+	// nothing here and resolve to []. Re-fetches thread messages (buildWorkflow already read
+	// them internally, but doesn't expose them); artifacts are then discovered from the
+	// agent-tree.
+	const artifactResultsPromise: Promise<ArtifactVerdict[]> = build.threadId
+		? client
+				.getThreadMessages(build.threadId)
+				.catch((error: unknown) => {
+					logger.warn(
+						`  Fetching thread messages for artifact discovery failed: ${error instanceof Error ? error.message : String(error)}`,
+					);
+					return { messages: [] };
+				})
+				.then(
+					async (threadMessages) =>
+						await resolveArtifactResults({
+							messages: threadMessages.messages,
+							testCase,
+							client,
+							logger,
+						}),
+				)
+				.catch((error: unknown) => {
+					logger.warn(
+						`  Artifact resolution failed: ${error instanceof Error ? error.message : String(error)}`,
+					);
+					return [];
+				})
+		: Promise.resolve<ArtifactVerdict[]>([]);
+
+	const [scenarioResults, expectationResults, artifactResults] = await Promise.all([
 		scenariosPromise,
 		expectationsPromise,
+		artifactResultsPromise,
 	]);
 	result.executionScenarioResults = scenarioResults;
-	const buildExpectationResults = expectationResults;
-	if (buildExpectationResults.length > 0) result.buildExpectationResults = buildExpectationResults;
+	if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
+	if (artifactResults.length > 0) result.artifactResults = artifactResults;
 
 	const scenarioMs = Date.now() - scenarioStart;
 	logger.info(
 		`  Scenarios done: ${String(result.executionScenarioResults.length)} scenarios [${String(Math.round(scenarioMs / 1000))}s]${config.laneTag ?? ''}`,
 	);
-
-	// Capture + judge non-workflow artifacts (agent, config-eval). Workflow-only cases
-	// discover nothing here and get an empty list, so their behavior is unchanged. Re-fetches
-	// thread messages (buildWorkflow already read them internally, but doesn't expose them) —
-	// a cheap GET relative to the build; artifacts are then discovered from the agent-tree.
-	if (build.threadId) {
-		const threadMessages = await client
-			.getThreadMessages(build.threadId)
-			.catch(() => ({ messages: [] }));
-		const artifactResults = await resolveArtifactResults({
-			messages: threadMessages.messages,
-			testCase,
-			client,
-			logger,
-		});
-		if (artifactResults.length > 0) result.artifactResults = artifactResults;
-	}
 
 	if (!config.keepWorkflows) {
 		await cleanupBuild(client, build, logger);

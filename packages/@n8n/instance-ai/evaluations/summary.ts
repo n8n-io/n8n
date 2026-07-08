@@ -1,4 +1,5 @@
 import type {
+	ArtifactUnitAggregation,
 	BuildExpectationAggregation,
 	ExecutionScenarioAggregation,
 	TestCaseAggregation,
@@ -13,7 +14,10 @@ export interface ScoredCounts {
 	totalCount: number;
 }
 
-export type AggregatedCaseUnit = ExecutionScenarioAggregation | BuildExpectationAggregation;
+export type AggregatedCaseUnit =
+	| ExecutionScenarioAggregation
+	| BuildExpectationAggregation
+	| ArtifactUnitAggregation;
 
 export function requiresWorkflowOutput(testCase: WorkflowTestCase): boolean {
 	return (
@@ -23,7 +27,11 @@ export function requiresWorkflowOutput(testCase: WorkflowTestCase): boolean {
 }
 
 export function getAggregatedCaseUnits(tc: TestCaseAggregation): AggregatedCaseUnit[] {
-	return [...tc.executionScenarios, ...tc.buildExpectations.filter((ea) => ea.evaluatedCount > 0)];
+	return [
+		...tc.executionScenarios,
+		...tc.buildExpectations.filter((ea) => ea.evaluatedCount > 0),
+		...tc.artifacts.filter((a) => a.evaluatedCount > 0),
+	];
 }
 
 export function countAggregatedUnitTrials(units: AggregatedCaseUnit[]): ScoredCounts {

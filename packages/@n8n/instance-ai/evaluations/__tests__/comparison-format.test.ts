@@ -11,6 +11,8 @@ import type {
 	WorkflowTestCase,
 	ExecutionScenarioResult,
 	BuildExpectationResult,
+	ArtifactType,
+	ArtifactVerdict,
 } from '../types';
 
 function ok(result: ComparisonResult): ComparisonOutcome {
@@ -49,6 +51,10 @@ function evaluation(
 			}>;
 			expectations?: Array<{
 				text: string;
+				passes: Array<boolean | 'incomplete'>;
+			}>;
+			artifacts?: Array<{
+				type: ArtifactType;
 				passes: Array<boolean | 'incomplete'>;
 			}>;
 		}>;
@@ -110,6 +116,27 @@ function evaluation(
 					) as number[],
 				};
 			});
+			const artifacts = (tc.artifacts ?? []).map((a) => {
+				const runs: ArtifactVerdict[] = a.passes.map(
+					(pass): ArtifactVerdict =>
+						pass === 'incomplete'
+							? { type: a.type, id: 'art-1', pass: false, incomplete: true }
+							: { type: a.type, id: 'art-1', pass, ...(pass ? {} : { reason: 'reason' }) },
+				);
+				const evaluated = runs.filter((run) => !run.incomplete);
+				const passCount = evaluated.filter((run) => run.pass).length;
+				return {
+					type: a.type,
+					runs,
+					evaluatedCount: evaluated.length,
+					passCount,
+					passRate: evaluated.length > 0 ? passCount / evaluated.length : 0,
+					passAtK: new Array(evaluated.length).fill(passCount > 0 ? 1 : 0) as number[],
+					passHatK: new Array(evaluated.length).fill(
+						passCount === evaluated.length ? 1 : 0,
+					) as number[],
+				};
+			});
 			return {
 				testCase,
 				workflowBuildSuccess: buildSuccessCount > 0,
@@ -127,6 +154,7 @@ function evaluation(
 				})),
 				buildSuccessCount,
 				buildExpectations,
+				artifacts,
 			};
 		}),
 	};
@@ -248,6 +276,41 @@ describe('formatComparisonMarkdown', () => {
 		);
 		expect(terminal).toContain(
 			'Aggregate: 100.0% pass (2/2 trials, 0 scenarios + 2 expectations, N=1)',
+		);
+	});
+
+	it('counts artifacts alongside build expectations in no-baseline build-only summaries', () => {
+		const buildOnly = evaluation({
+			totalRuns: 1,
+			testCases: [
+				{
+					userText: 'Build an agent',
+					expectations: [{ text: 'The workflow was built', passes: [true] }],
+					artifacts: [{ type: 'agent', passes: [true] }],
+				},
+			],
+		});
+		const slugs = slugMap(buildOnly, ['build-only']);
+
+		const md = formatComparisonMarkdown(
+			buildOnly,
+			{ kind: 'no_baseline' },
+			{ slugByTestCase: slugs },
+		);
+		expect(md).toContain(
+			'**Aggregate**: 100.0% pass (2/2 trials, 0 scenarios + 1 expectation + 1 artifact, N=1)',
+		);
+		expect(md).toMatch(/\| `build-only` \| CHECKED \| 2\/2 \|/);
+
+		const terminal = formatComparisonTerminal(
+			buildOnly,
+			{ kind: 'no_baseline' },
+			{
+				slugByTestCase: slugs,
+			},
+		);
+		expect(terminal).toContain(
+			'Aggregate: 100.0% pass (2/2 trials, 0 scenarios + 1 expectation + 1 artifact, N=1)',
 		);
 	});
 

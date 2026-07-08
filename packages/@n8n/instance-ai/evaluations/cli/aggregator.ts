@@ -59,6 +59,35 @@ function computePassMetrics(
 	return { passAtKValues, passHatKValues };
 }
 
+/**
+ * Aggregates one measured unit (a build expectation, or an artifact type) across runs.
+ * `incomplete` verdicts are excluded from the count (denominator = evaluated runs).
+ */
+function aggregateUnit<T extends { pass: boolean; incomplete?: boolean }>(
+	perRun: Array<T | undefined>,
+): {
+	runs: T[];
+	evaluatedCount: number;
+	passCount: number;
+	passRate: number;
+	passAtK: number[];
+	passHatK: number[];
+} {
+	const runs = perRun.filter((v): v is T => v !== undefined);
+	const evaluated = runs.filter((v) => !v.incomplete);
+	const passCount = evaluated.filter((v) => v.pass).length;
+	const n = evaluated.length;
+	const { passAtKValues, passHatKValues } = computePassMetrics(n, passCount);
+	return {
+		runs,
+		evaluatedCount: n,
+		passCount,
+		passRate: n > 0 ? passCount / n : 0,
+		passAtK: passAtKValues,
+		passHatK: passHatKValues,
+	};
+}
+
 export function aggregateResults(
 	allRunResults: WorkflowTestCaseResult[][],
 	totalRuns: number,
@@ -104,26 +133,15 @@ export function aggregateResults(
 		}
 
 		// Aggregate each build expectation as a measured unit alongside scenarios.
-		// `incomplete` verdicts are excluded from the count (denominator = evaluated runs).
 		const buildExpectations: BuildExpectationAggregation[] = collectExpectations(testCase).map(
-			(expectation) => {
-				const expRuns = runs
-					.map((r) => (r.buildExpectationResults ?? []).find((e) => e.expectation === expectation))
-					.filter((e): e is BuildExpectationResult => e !== undefined);
-				const evaluated = expRuns.filter((e) => !e.incomplete);
-				const passCount = evaluated.filter((e) => e.pass).length;
-				const n = evaluated.length;
-				const { passAtKValues, passHatKValues } = computePassMetrics(n, passCount);
-				return {
-					expectation,
-					runs: expRuns,
-					evaluatedCount: n,
-					passCount,
-					passRate: n > 0 ? passCount / n : 0,
-					passAtK: passAtKValues,
-					passHatK: passHatKValues,
-				};
-			},
+			(expectation) => ({
+				expectation,
+				...aggregateUnit<BuildExpectationResult>(
+					runs.map((r) =>
+						(r.buildExpectationResults ?? []).find((e) => e.expectation === expectation),
+					),
+				),
+			}),
 		);
 
 		// Aggregate each non-workflow artifact TYPE as a measured unit alongside scenarios and
@@ -135,29 +153,14 @@ export function aggregateResults(
 		const unexpectedTypes = runs.flatMap((r) =>
 			(r.artifactResults ?? []).filter((v) => v.unexpected).map((v) => v.type),
 		);
-		const artifactTypes: ArtifactType[] = [];
-		for (const type of [...expectedTypes, ...unexpectedTypes]) {
-			if (!artifactTypes.includes(type)) artifactTypes.push(type);
-		}
+		const artifactTypes: ArtifactType[] = [...new Set([...expectedTypes, ...unexpectedTypes])];
 
-		const artifacts: ArtifactUnitAggregation[] = artifactTypes.map((type) => {
-			const typeRuns = runs
-				.map((r) => (r.artifactResults ?? []).find((v) => v.type === type))
-				.filter((v): v is ArtifactVerdict => v !== undefined);
-			const evaluated = typeRuns.filter((v) => !v.incomplete);
-			const passCount = evaluated.filter((v) => v.pass).length;
-			const n = evaluated.length;
-			const { passAtKValues, passHatKValues } = computePassMetrics(n, passCount);
-			return {
-				type,
-				runs: typeRuns,
-				evaluatedCount: n,
-				passCount,
-				passRate: n > 0 ? passCount / n : 0,
-				passAtK: passAtKValues,
-				passHatK: passHatKValues,
-			};
-		});
+		const artifacts: ArtifactUnitAggregation[] = artifactTypes.map((type) => ({
+			type,
+			...aggregateUnit<ArtifactVerdict>(
+				runs.map((r) => (r.artifactResults ?? []).find((v) => v.type === type)),
+			),
+		}));
 
 		testCases.push({
 			testCase,
