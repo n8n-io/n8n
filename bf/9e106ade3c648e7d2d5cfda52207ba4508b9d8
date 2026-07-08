@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvBuilderBanner.vue
+  s_04fffcad4fa449::t_68c4efa213de72 84-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bf9e106ade3c648e7d2d5cfda52207ba4508b9d8",
+  "prompts": {},
+  "sessions": {
+    "s_04fffcad4fa449": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "25d4fc9b-6cc9-41b7-974b-09cf8a5f5a93",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
