@@ -9,7 +9,7 @@ import { ImportPipeline } from './engine/import-pipeline';
 import { CredentialExporter } from './entities/credential/credential.exporter';
 import { FolderExporter } from './entities/folder/folder.exporter';
 import { ProjectExporter } from './entities/project/project.exporter';
-import { mergeRequirements } from './entities/requirements.types';
+import { mergeRequirements, toPackageSubWorkflowRequirements } from './entities/requirements.types';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
 import {
@@ -35,13 +35,8 @@ export class N8nPackagesService {
 
 	async exportPackage(request: ExportPackageRequest): Promise<Readable> {
 		const writer = new TarPackageWriter();
-		const workflowIds = request.workflowIds ?? [];
-		const folderIds = request.folderIds ?? [];
-		const projectIds = request.projectIds ?? [];
-		const subworkflowBehaviour =
-			request.subworkflowBehaviour ?? SubworkflowBehaviour.IncludedInPackage;
-
-		console.log('subworkflowBehaviour', subworkflowBehaviour);
+		const exportRequest = this.normalizeExportRequest(request);
+		const { workflowIds, folderIds, projectIds } = exportRequest;
 
 		const folderExportResult =
 			folderIds.length > 0
@@ -100,6 +95,17 @@ export class N8nPackagesService {
 			...(projectExportResult?.workflowEntries ?? []),
 		];
 
+		const subWorkflowRequirements = toPackageSubWorkflowRequirements(
+			requirements.subWorkflows ?? [],
+		);
+
+		const manifestRequirements = {
+			...(credentialExportResult.requirements.length > 0
+				? { credentials: credentialExportResult.requirements }
+				: {}),
+			...(subWorkflowRequirements.length > 0 ? { subWorkflows: subWorkflowRequirements } : {}),
+		};
+
 		const manifest = packageManifestSchema.parse({
 			packageFormatVersion: FORMAT_VERSION,
 			exportedAt: new Date().toISOString(),
@@ -108,8 +114,8 @@ export class N8nPackagesService {
 			...(credentialExportResult.entries.length > 0
 				? { credentials: credentialExportResult.entries }
 				: {}),
-			...(credentialExportResult.requirements.length > 0
-				? { requirements: { credentials: credentialExportResult.requirements } }
+			...(Object.keys(manifestRequirements).length > 0
+				? { requirements: manifestRequirements }
 				: {}),
 			...(allWorkflowsInPackage.length > 0 ? { workflows: allWorkflowsInPackage } : {}),
 			...(allFolders.length > 0 ? { folders: allFolders } : {}),
@@ -148,5 +154,14 @@ export class N8nPackagesService {
 	filterWorkflowsAlreadyInFolders(workflowsInFolders: ManifestEntry[] = [], workflowIds: string[]) {
 		const folderWorkflowIds = new Set(workflowsInFolders.map((entry) => entry.id) ?? []);
 		return workflowIds.filter((id) => !folderWorkflowIds.has(id));
+	}
+
+	private normalizeExportRequest(request: ExportPackageRequest) {
+		return {
+			workflowIds: request.workflowIds ?? [],
+			folderIds: request.folderIds ?? [],
+			projectIds: request.projectIds ?? [],
+			subworkflowBehaviour: request.subworkflowBehaviour ?? SubworkflowBehaviour.IncludedInPackage,
+		};
 	}
 }
