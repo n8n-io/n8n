@@ -148,7 +148,7 @@ export class LogStreamingEventRelay extends EventRelay {
 	@Redactable()
 	private packageImported({ user, counts, ...rest }: RelayEventMap['n8n-package-imported']) {
 		void this.eventBus.sendAuditEvent({
-			eventName: 'n8n.audit.n8n-package.imported',
+			eventName: 'n8n.audit.n8n-package.import.success',
 			payload: { ...user, ...rest },
 		});
 	}
@@ -156,7 +156,7 @@ export class LogStreamingEventRelay extends EventRelay {
 	@Redactable()
 	private packageExported({ user, counts, ...rest }: RelayEventMap['n8n-package-exported']) {
 		void this.eventBus.sendAuditEvent({
-			eventName: 'n8n.audit.n8n-package.exported',
+			eventName: 'n8n.audit.n8n-package.export.success',
 			payload: { ...user, ...rest },
 		});
 	}

@@ -337,8 +337,6 @@ describe('folder package export — with contained workflows', () => {
 			folderIds: [folder.id],
 		});
 		await expect(exportPromise).rejects.toThrow(/workflow\(s\) not found or not accessible/);
-		// This nested workflow-in-folder gate is a separate call site from the
-		// top-level folder check above — worth confirming it classifies the same way.
 		await expect(exportPromise).rejects.toBeInstanceOf(PackageEntityAccessDeniedError);
 	});
 

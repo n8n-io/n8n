@@ -98,7 +98,7 @@ describe('LogStreamingEventRelay', () => {
 			eventService.emit('n8n-package-imported', event);
 
 			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
-				eventName: 'n8n.audit.n8n-package.imported',
+				eventName: 'n8n.audit.n8n-package.import.success',
 				payload: {
 					userId: 'user-import',
 					_email: 'importer@example.com',
@@ -149,7 +149,7 @@ describe('LogStreamingEventRelay', () => {
 			eventService.emit('n8n-package-exported', event);
 
 			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
-				eventName: 'n8n.audit.n8n-package.exported',
+				eventName: 'n8n.audit.n8n-package.export.success',
 				payload: {
 					userId: 'user-export',
 					_email: 'exporter@example.com',
