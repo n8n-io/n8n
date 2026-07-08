@@ -773,6 +773,14 @@ export class NodeDetailsViewPage extends BasePage {
 		await collection.click();
 	}
 
+	getNodeParameterButton(buttonName: string) {
+		return this.getNodeParameters().getByRole('button', { name: buttonName });
+	}
+
+	async clickNodeParameterButton(buttonName: string) {
+		await this.getNodeParameterButton(buttonName).click();
+	}
+
 	getFixedCollectionPropertyPicker(index?: number) {
 		const pickers = this.getNodeParameters().getByTestId('fixed-collection-add-property');
 		return index !== undefined ? pickers.nth(index) : pickers.first();

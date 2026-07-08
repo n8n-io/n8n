@@ -8,7 +8,11 @@ import { join } from 'node:path';
 import { z } from 'zod';
 
 import { planVerificationSimulation } from './plan-verification-simulation';
-import { buildCredentialMap, resolveCredentials } from './resolve-credentials';
+import {
+	buildCredentialMap,
+	buildCredentialResolutionNote,
+	resolveCredentials,
+} from './resolve-credentials';
 import { analyzeWorkflow, stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import {
 	combineWarnings,
@@ -285,6 +289,10 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				mockedNodeNames: z.array(z.string()).optional(),
 				mockedCredentialTypes: z.array(z.string()).optional(),
 				mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
+				resolvedCredentialsByNode: z
+					.record(z.array(z.object({ type: z.string(), id: z.string(), name: z.string() })))
+					.optional(),
+				credentialResolutionNote: z.string().optional(),
 				referencedWorkflowIds: z.array(z.string()).optional(),
 				hasUnresolvedPlaceholders: z.boolean().optional(),
 				denied: z.boolean().optional(),
@@ -713,6 +721,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				await preserveExistingNodeGroupIds(json, targetWorkflowId, context);
 
 				const hasMockedCredentialNodes = mockResult.mockedNodeNames.length > 0;
+				const hasResolvedCredentials = Object.keys(mockResult.resolvedCredentialsByNode).length > 0;
 				const referencedWorkflowIds = getReferencedWorkflowIds(json);
 				const triggerNodes = (json.nodes ?? [])
 					.filter((n) => isTriggerNodeType(n.type))
@@ -793,6 +802,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						mockedCredentialsByNode: hasMockedCredentialNodes
 							? mockResult.mockedCredentialsByNode
 							: undefined,
+						resolvedCredentialsByNode: hasResolvedCredentials
+							? mockResult.resolvedCredentialsByNode
+							: undefined,
 						workflowNeedsSetup,
 						nodeSimulationPlan,
 						simulationFixtures,
@@ -840,6 +852,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							: undefined,
 						mockedCredentialsByNode: hasMockedCredentialNodes
 							? mockResult.mockedCredentialsByNode
+							: undefined,
+						resolvedCredentialsByNode: hasResolvedCredentials
+							? mockResult.resolvedCredentialsByNode
+							: undefined,
+						credentialResolutionNote: hasResolvedCredentials
+							? buildCredentialResolutionNote(mockResult.resolvedCredentialsByNode)
 							: undefined,
 						referencedWorkflowIds:
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
