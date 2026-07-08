@@ -83,6 +83,20 @@ need + constraint ("I need field X and the built-in node doesn't expose it, so
 pull it straight from the API") — not as an implementation spec ("use an HTTP
 Request node").
 
+**Trim to the smallest multi-turn conversation that reproduces the issue.**
+Real sourced threads are long (dozens of turns of setup, debugging, and
+tangents) — do **not** transcribe them. Distill to the fewest turns that still
+drive the build or behaviour under test. Every retained turn must earn its place:
+a turn stays only if it is *load-bearing* — a value the agent must ask for
+(withheld until asked, via a director note), a correction/push-back the case
+exists to test, or a plan approval that gates the build. If removing a turn
+doesn't change what's tested, remove it. **Collapse to a single turn** whenever
+the whole request can be stated at once without a load-bearing exchange; keep it
+multi-turn *only* for those exchanges, and keep each director script in one turn
+(don't fabricate assistant "done" turns to sequence steps — see
+[`case-shapes.md`](case-shapes.md)). A minimal conversation isolates the
+capability; a transcribed one buries it in noise and tests instruction-following.
+
 **Size the build, not just the assertions.** Real sourced prompts are often
 kitchen-sink ("production-ready, runs forever, 3 feed posts *and* 8 stories a
 day", "generate 50 articles daily") and reliably blow the ~900s build budget (see
