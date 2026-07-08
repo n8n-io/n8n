@@ -457,4 +457,28 @@ describe('n8n-packages handler', () => {
 			subworkflowBehaviour: 'references-only',
 		});
 	});
+
+	it('passes externalSubworkflowBehaviour through to the service', async () => {
+		const stream = new PassThrough();
+		mockService.exportPackage.mockResolvedValue(stream);
+		const res = makeResponse();
+
+		const resultPromise = run(
+			makeRequest({ workflowIds: ['wf-1'], externalSubworkflowBehaviour: 'include-top-level' }, [
+				'workflow:export',
+			]),
+			res,
+		);
+		stream.end(Buffer.from('package-bytes'));
+		const caught = await resultPromise;
+
+		expect(caught).toBeUndefined();
+		expect(mockService.exportPackage).toHaveBeenCalledWith({
+			user: { id: 'user-1' },
+			workflowIds: ['wf-1'],
+			folderIds: [],
+			projectIds: [],
+			externalSubworkflowBehaviour: 'include-top-level',
+		});
+	});
 });

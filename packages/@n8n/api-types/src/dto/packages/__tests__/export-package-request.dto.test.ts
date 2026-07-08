@@ -103,4 +103,31 @@ describe('ExportPackageRequestDto', () => {
 			expect(ExportPackageRequestDto.safeParse(request).success).toBe(false);
 		});
 	});
+
+	describe('externalSubworkflowBehaviour', () => {
+		it.each(['block', 'include-top-level', 'references-only'])(
+			'accepts %s',
+			(externalSubworkflowBehaviour) => {
+				const result = ExportPackageRequestDto.safeParse({
+					workflowIds: ['wf-1'],
+					externalSubworkflowBehaviour,
+				});
+
+				expect(result.success).toBe(true);
+			},
+		);
+
+		it.each([
+			{
+				name: 'invalid value',
+				request: { workflowIds: ['wf-1'], externalSubworkflowBehaviour: 'inline' },
+			},
+			{
+				name: 'non-string value',
+				request: { workflowIds: ['wf-1'], externalSubworkflowBehaviour: 123 },
+			},
+		])('rejects $name', ({ request }) => {
+			expect(ExportPackageRequestDto.safeParse(request).success).toBe(false);
+		});
+	});
 });
