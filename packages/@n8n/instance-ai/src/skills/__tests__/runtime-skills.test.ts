@@ -173,10 +173,21 @@ describe('Instance AI runtime skills', () => {
 			'build-workflow',
 			'workflows',
 			'nodes',
+			'credentials',
 			'verify-built-workflow',
 		]);
 		expect(skill?.description).toContain('Default for single-workflow build/edit');
 		expect(skill?.description).toContain('use workflows/executions directly');
+		expect(skill?.linkedFiles.references).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ path: 'references/repair-strategy.md' }),
+				expect.objectContaining({ path: 'references/setup-and-escalation.md' }),
+				expect.objectContaining({ path: 'references/verification-playbook.md' }),
+				expect.objectContaining({ path: 'references/node-configuration.md' }),
+				expect.objectContaining({ path: 'references/compositional-workflows.md' }),
+				expect.objectContaining({ path: 'references/error-workflows.md' }),
+			]),
+		);
 
 		const loaded = await source.loadSkill('workflow-builder');
 		expect(loaded?.instructions).toContain('load\n`data-table-manager` before designing');
@@ -184,7 +195,7 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('## Do not use agent_builder');
 		expect(loaded?.instructions).toContain('do not call\n`agent_builder` at all');
 		expect(loaded?.instructions).toContain('Load phase-specific tools via `load_tools`');
-		expect(loaded?.instructions).toContain('## Capability honesty');
+		expect(loaded?.instructions).toContain('## Build loop');
 		expect(loaded?.instructions).toContain('build-workflow');
 		expect(loaded?.instructions).toContain('filePath');
 		expect(loaded?.instructions).toContain('workspace file tools');
@@ -193,15 +204,17 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('nodes(action="suggested")');
 		expect(loaded?.instructions).toContain('nodes(action="search")');
 		expect(loaded?.instructions).toContain("newCredential('Credential Name', 'credential-id')");
-		expect(loaded?.instructions).toContain('Verification');
+		expect(loaded?.instructions).toContain('## Verification');
 		expect(loaded?.instructions).toContain('Build/save success is not workflow-quality evidence');
 		expect(loaded?.instructions).toContain('postBuildFlow.required: true');
-		expect(loaded?.instructions).toContain('follow the inlined\n    `postBuildFlow.instructions`');
-		expect(loaded?.instructions).toContain('Do not call\n    `verify-built-workflow` directly');
+		expect(loaded?.instructions).toContain('follow the inlined\n   `postBuildFlow.instructions`');
+		expect(loaded?.instructions).toContain('Do not call `verify-built-workflow` directly');
 		expect(loaded?.instructions).toContain('workflows(action="get-as-code", workflowId)');
-		expect(loaded?.instructions).toContain('n8n has no global error workflow setting');
 		expect(loaded?.instructions).toContain('references/error-workflows.md');
-		expect(loaded?.instructions).toContain('settings.errorWorkflow');
+		expect(loaded?.instructions).toContain('references/verification-playbook.md');
+		expect(loaded?.instructions).toContain('references/setup-and-escalation.md');
+		expect(loaded?.instructions).toContain('references/repair-strategy.md');
+		expect(loaded?.instructions).toContain('references/node-configuration.md');
 		expect(loaded?.instructions).toContain(
 			'knowledge-base/reference/workflow-builder-guardrails.md',
 		);
@@ -213,15 +226,54 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('`planning` or call `create-tasks` first');
 		expect(loaded?.instructions).toContain('nodes(action="type-definition")');
 		expect(loaded?.instructions).toContain('Do not create a plan just for verification');
-		expect(loaded?.instructions).toContain('inspect it first via `debugging-executions`');
-		expect(loaded?.instructions).toContain('Load `executions` via `load_tools`');
-		expect(loaded?.instructions).toContain('## Setup Routing');
-		expect(loaded?.instructions).toContain('Never call both setup tools for the same workflow');
-		expect(loaded?.instructions).toContain('Webhook trigger setup is node-defined');
 		expect(loaded?.instructions).toContain('.to(isImportant)');
 		expect(loaded?.instructions).toContain('.onTrue(handleImportant)');
-		expect(loaded?.instructions).toContain('Never call `.onFalse()` more than once');
+		expect(loaded?.instructions).toContain('Never call `.onFalse()` or');
 		expect(loaded?.instructions).toContain('branch nodes are omitted from the saved graph');
+
+		const loadTool = createSkillLoadTool(source);
+		const setupReference = await loadTool.handler?.(
+			{ skillId: 'workflow-builder', filePath: 'references/setup-and-escalation.md' },
+			{},
+		);
+		if (
+			!setupReference ||
+			typeof setupReference !== 'object' ||
+			!('content' in setupReference) ||
+			typeof setupReference.content !== 'string'
+		) {
+			throw new Error('Expected setup-and-escalation reference content');
+		}
+		expect(setupReference.content).toContain('## Capability honesty');
+		expect(setupReference.content).toContain('Never call both setup tools for the same workflow');
+
+		const nodeReference = await loadTool.handler?.(
+			{ skillId: 'workflow-builder', filePath: 'references/node-configuration.md' },
+			{},
+		);
+		if (
+			!nodeReference ||
+			typeof nodeReference !== 'object' ||
+			!('content' in nodeReference) ||
+			typeof nodeReference.content !== 'string'
+		) {
+			throw new Error('Expected node-configuration reference content');
+		}
+		expect(nodeReference.content).toContain('Webhook trigger setup is node-defined');
+
+		const verificationReference = await loadTool.handler?.(
+			{ skillId: 'workflow-builder', filePath: 'references/verification-playbook.md' },
+			{},
+		);
+		if (
+			!verificationReference ||
+			typeof verificationReference !== 'object' ||
+			!('content' in verificationReference) ||
+			typeof verificationReference.content !== 'string'
+		) {
+			throw new Error('Expected verification-playbook reference content');
+		}
+		expect(verificationReference.content).toContain('Load `executions` via `load_tools`');
 	});
 
 	it('loads the bundled planning skill', async () => {

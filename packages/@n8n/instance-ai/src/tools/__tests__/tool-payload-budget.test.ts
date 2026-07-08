@@ -78,6 +78,7 @@ const WORKFLOW_BUILDER_RECOMMENDED_TOOL_IDS = [
 	'build-workflow',
 	'workflows',
 	'nodes',
+	'credentials',
 	'verify-built-workflow',
 ] as const;
 
@@ -88,11 +89,11 @@ const TOOL_PAYLOAD_CHAR_BUDGETS: Record<string, number> = {
 	'verify-built-workflow': 2_500,
 	'workflow-versions': 1_600,
 	executions: 2_800,
-	credentials: 2_200,
+	credentials: 2_300,
 	'data-tables': 3_200,
 };
 
-const WORKFLOW_BUILDER_RECOMMENDED_SET_BUDGET = 10_500;
+const WORKFLOW_BUILDER_RECOMMENDED_SET_BUDGET = 12_800;
 
 describe('tool payload budgets', () => {
 	const context = createInstanceAiContext();
