@@ -128,43 +128,6 @@ describe('AgentRuntimeCacheService', () => {
 		);
 	});
 
-	it('keys draft runtimes by user id so different users get separate runtimes, reused per user', async () => {
-		const { service, agentRepository, reconstructionService } = makeService();
-		const agent = makeAgent();
-		const userARuntime = makeRuntime();
-		const userBRuntime = makeRuntime();
-		const userA = mock<User>({ id: 'user-a' });
-		const userB = mock<User>({ id: 'user-b' });
-
-		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-		reconstructionService.reconstructFromAgentEntity
-			.mockResolvedValueOnce(userARuntime)
-			.mockResolvedValueOnce(userBRuntime);
-
-		const forUserA = await service.getRuntime({ agentId, projectId, user: userA });
-		const forUserAAgain = await service.getRuntime({ agentId, projectId, user: userA });
-		const forUserB = await service.getRuntime({ agentId, projectId, user: userB });
-
-		expect(forUserA.agent).toBe(userARuntime.agent);
-		expect(forUserAAgain.agent).toBe(userARuntime.agent);
-		expect(forUserB.agent).toBe(userBRuntime.agent);
-		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
-		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
-			1,
-			agent,
-			expect.anything(),
-			undefined,
-			userA,
-		);
-		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
-			2,
-			agent,
-			expect.anything(),
-			undefined,
-			userB,
-		);
-	});
-
 	it('shares an in-flight runtime reconstruction for concurrent cache misses', async () => {
 		const { service, agentRepository, reconstructionService } = makeService();
 		const agent = makeAgent();

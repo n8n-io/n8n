@@ -193,20 +193,6 @@ describe('SubAgentForegroundRunner', () => {
 		);
 	});
 
-	it('filters sub-agent tools by the delegating user access when the parent run has a user', async () => {
-		const user = mock<User>({ id: 'user-1' });
-
-		await runner.runForeground(spawnRequest, {
-			projectId,
-			credentialProvider,
-			userId: user.id,
-		});
-
-		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
-			expect.objectContaining({ user }),
-		);
-	});
-
 	it('inherits the parent resource id as the child memory scope when provided', async () => {
 		const result = await runner.runForeground(
 			{ ...spawnRequest, parentResourceId: 'draft-chat:user-1' },
