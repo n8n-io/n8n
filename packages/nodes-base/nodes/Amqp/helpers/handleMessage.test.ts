@@ -1,9 +1,10 @@
-import { mockDeep } from 'vitest-mock-extended';
-import type { ITriggerFunctions, IDeferredPromise, IRun } from 'n8n-workflow';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import type { ITriggerFunctions, IRun } from 'n8n-workflow';
 import type { EventContext } from 'rhea';
+import type { Mock, Mocked } from 'vitest';
+import { mockDeep } from 'vitest-mock-extended';
 
 import { handleMessage } from './handleMessage';
-import type { Mock, Mocked } from 'vitest';
 
 interface MockReceiver {
 	has_credit: Mock<() => boolean>;

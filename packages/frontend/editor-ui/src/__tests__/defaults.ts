@@ -56,6 +56,7 @@ export const defaultSettings: FrontendSettings = {
 		personalSpacePolicy: false,
 		dataRedaction: false,
 		otelCustomSpanAttributes: false,
+		workflowReviews: false,
 	},
 	executionMode: 'regular',
 	isMultiMain: false,
@@ -106,6 +107,7 @@ export const defaultSettings: FrontendSettings = {
 	timezone: '',
 	urlBaseEditor: '',
 	urlBaseWebhook: '',
+	urlBaseWebhookTest: '',
 	authCookie: {
 		secure: false,
 	},
@@ -192,4 +194,5 @@ export const defaultSettings: FrontendSettings = {
 			publishedWorkflowCount: 0,
 		},
 	},
+	useWorkflowPublicationService: false,
 };

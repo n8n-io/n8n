@@ -1,6 +1,6 @@
 {
   "name": "@n8n/scheduler",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -22,7 +22,15 @@
   "files": [
     "dist/**/*"
   ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
   "dependencies": {
+    "@n8n/constants": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "cron-parser": "catalog:",
     "luxon": "catalog:",
     "n8n-workflow": "workspace:*"

@@ -1,6 +1,6 @@
+import { CLIENT_ASSERTION_TYPE } from '@n8n/utils/client-assertion';
 import nock from 'nock';
 
-import { CLIENT_ASSERTION_TYPE } from '@/client-assertion';
 import { ClientOAuth2, type ClientOAuth2Options } from '@/client-oauth2';
 import { ClientOAuth2Token } from '@/client-oauth2-token';
 import type { Headers } from '@/types';

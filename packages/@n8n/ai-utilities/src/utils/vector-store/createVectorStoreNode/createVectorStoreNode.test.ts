@@ -4,8 +4,10 @@ import type { DynamicTool } from '@langchain/classic/tools';
 import type { DocumentInterface } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
+import { NodeApiError, NodeOperationError, UserError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
+	INode,
 	ISupplyDataFunctions,
 	NodeParameterValueType,
 	INodeExecutionData,
@@ -406,6 +408,188 @@ describe('createVectorStoreNode', () => {
 				await expect(nodeType.execute.call(executeContext)).rejects.toThrow(
 					'Only the "load", "update", "insert", and "retrieve-as-tool" operation modes are supported with execute',
 				);
+			});
+		});
+	});
+
+	describe('error normalization', () => {
+		const node = mock<INode>({ name: 'Test Vector Store' });
+
+		const executeContext = mock<IExecuteFunctions>({
+			getNodeParameter: vi.fn(),
+			getInputConnectionData: vi.fn().mockReturnValue(embeddings),
+			getInputData: vi.fn(),
+			getNode: vi.fn().mockReturnValue(node),
+		});
+
+		const loadParameters: Record<string, NodeParameterValueType> = {
+			...DEFAULT_PARAMETERS,
+			mode: 'load',
+			prompt: MOCK_SEARCH_VALUE,
+			includeDocumentMetadata: true,
+		};
+
+		it('wraps provider SDK errors thrown during execute in NodeApiError', async () => {
+			// ARRANGE
+			executeContext.getNodeParameter.mockImplementation(
+				(parameterName: string): NodeParameterValueType | object => loadParameters[parameterName],
+			);
+			executeContext.getInputData.mockReturnValue([{ json: {} }]);
+
+			const sdkError = new Error(
+				'Vector dimension 1536 does not match the dimension of the index 1024',
+			);
+			sdkError.name = 'PineconeBadRequestError';
+			vectorStore.similaritySearchVectorWithScore.mockRejectedValueOnce(sdkError);
+
+			// ACT
+			const VectorStoreNodeType = createVectorStoreNode(vectorStoreNodeArgs);
+			const nodeType = new VectorStoreNodeType();
+			const thrown: unknown = await nodeType.execute
+				.call(executeContext)
+				.catch((error: unknown) => error);
+
+			// ASSERT
+			expect(thrown).toBeInstanceOf(NodeApiError);
+			expect(thrown).toMatchObject({
+				level: 'warning',
+				message: 'Vector dimension 1536 does not match the dimension of the index 1024',
+			});
+		});
+
+		it('keeps programmer errors at error level so they stay report-visible', async () => {
+			// ARRANGE
+			executeContext.getNodeParameter.mockImplementation(
+				(parameterName: string): NodeParameterValueType | object => loadParameters[parameterName],
+			);
+			executeContext.getInputData.mockReturnValue([{ json: {} }]);
+
+			vectorStore.similaritySearchVectorWithScore.mockRejectedValueOnce(
+				new TypeError("Cannot read properties of undefined (reading 'matches')"),
+			);
+
+			// ACT
+			const VectorStoreNodeType = createVectorStoreNode(vectorStoreNodeArgs);
+			const nodeType = new VectorStoreNodeType();
+			const thrown: unknown = await nodeType.execute
+				.call(executeContext)
+				.catch((error: unknown) => error);
+
+			// ASSERT
+			expect(thrown).toBeInstanceOf(NodeApiError);
+			expect(thrown).toMatchObject({
+				level: 'error',
+				message: "Cannot read properties of undefined (reading 'matches')",
+			});
+		});
+
+		it('keeps the provider message as description when a status code swaps the message', async () => {
+			// ARRANGE
+			executeContext.getNodeParameter.mockImplementation(
+				(parameterName: string): NodeParameterValueType | object => loadParameters[parameterName],
+			);
+			executeContext.getInputData.mockReturnValue([{ json: {} }]);
+
+			const sdkError = Object.assign(
+				new Error('Index dimension 1024 does not match query dimension 1536'),
+				{ status: 400 },
+			);
+			vectorStore.similaritySearchVectorWithScore.mockRejectedValueOnce(sdkError);
+
+			// ACT
+			const VectorStoreNodeType = createVectorStoreNode(vectorStoreNodeArgs);
+			const nodeType = new VectorStoreNodeType();
+			const thrown: unknown = await nodeType.execute
+				.call(executeContext)
+				.catch((error: unknown) => error);
+
+			// ASSERT
+			expect(thrown).toBeInstanceOf(NodeApiError);
+			expect(thrown).toMatchObject({
+				httpCode: '400',
+				message: 'Bad request - please check your parameters',
+				description: 'Index dimension 1024 does not match query dimension 1536',
+			});
+		});
+
+		it('rethrows UserError and other BaseError subclasses unchanged', async () => {
+			// ARRANGE
+			executeContext.getNodeParameter.mockImplementation(
+				(parameterName: string): NodeParameterValueType | object => loadParameters[parameterName],
+			);
+			executeContext.getInputData.mockReturnValue([{ json: {} }]);
+
+			const userError = new UserError('Index does not exist');
+			vectorStoreNodeArgs.getVectorStoreClient.mockImplementationOnce(() => {
+				throw userError;
+			});
+
+			// ACT
+			const VectorStoreNodeType = createVectorStoreNode(vectorStoreNodeArgs);
+			const nodeType = new VectorStoreNodeType();
+			const thrown: unknown = await nodeType.execute
+				.call(executeContext)
+				.catch((error: unknown) => error);
+
+			// ASSERT
+			expect(thrown).toBe(userError);
+		});
+
+		it('rethrows n8n errors from execute unchanged', async () => {
+			// ARRANGE
+			executeContext.getNodeParameter.mockImplementation(
+				(parameterName: string): NodeParameterValueType | object => loadParameters[parameterName],
+			);
+			executeContext.getInputData.mockReturnValue([{ json: {} }]);
+
+			const n8nError = new NodeOperationError(node, 'Index not found');
+			vectorStoreNodeArgs.getVectorStoreClient.mockImplementationOnce(() => {
+				throw n8nError;
+			});
+
+			// ACT
+			const VectorStoreNodeType = createVectorStoreNode(vectorStoreNodeArgs);
+			const nodeType = new VectorStoreNodeType();
+			const thrown: unknown = await nodeType.execute
+				.call(executeContext)
+				.catch((error: unknown) => error);
+
+			// ASSERT
+			expect(thrown).toBe(n8nError);
+		});
+
+		it('wraps provider SDK errors thrown during supplyData in NodeApiError', async () => {
+			// ARRANGE
+			const supplyContext = mock<ISupplyDataFunctions>({
+				getNodeParameter: vi.fn(),
+				getInputConnectionData: vi.fn().mockReturnValue(embeddings),
+				getNode: vi.fn().mockReturnValue(node),
+			});
+			const parameters: Record<string, NodeParameterValueType> = {
+				...DEFAULT_PARAMETERS,
+				mode: 'retrieve',
+			};
+			supplyContext.getNodeParameter.mockImplementation(
+				(parameterName: string): NodeParameterValueType | object => parameters[parameterName],
+			);
+
+			const sdkError = new Error('401 Unauthorized');
+			sdkError.name = 'PineconeAuthorizationError';
+			vectorStoreNodeArgs.getVectorStoreClient.mockRejectedValueOnce(sdkError);
+
+			// ACT
+			const VectorStoreNodeType = createVectorStoreNode(vectorStoreNodeArgs);
+			const nodeType = new VectorStoreNodeType();
+			const thrown: unknown = await nodeType.supplyData
+				.call(supplyContext, 1)
+				.catch((error: unknown) => error);
+
+			// ASSERT
+			expect(thrown).toBeInstanceOf(NodeApiError);
+			expect(thrown).toMatchObject({
+				level: 'warning',
+				message: '401 Unauthorized',
+				context: { itemIndex: 1 },
 			});
 		});
 	});

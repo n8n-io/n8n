@@ -35,14 +35,12 @@ export function getSandboxWorkspaceSection(workspaceRoot?: string): string {
 ${pathHint}
 A thread-scoped sandbox workspace is available via \`workspace_read_file\`, \`workspace_list_files\`, and \`workspace_execute_command\` (use \`grep\` or \`rg\` to search). The workspace is created on first use and includes baked-in reference material:
 
-- \`<workspace_root>/knowledge-base/index.json\` — catalog of workflow technique guides and orchestration reference docs
-- \`<workspace_root>/knowledge-base/best-practices/index.json\` — workflow technique guides (read the linked \`.md\` files)
-- \`<workspace_root>/knowledge-base/templates/\` — curated SDK workflow examples (\`index.json\` lists titles; \`grep\` or \`rg\` this folder to find matches, then read only the relevant \`.ts\` files — do not load the full templates index)
-- \`<workspace_root>/knowledge-base/reference/index.json\` — orchestration reference docs (e.g. trigger \`inputData\` shapes for verification)
+- \`<workspace_root>/knowledge-base/index.json\` — catalog of workflow technique guides (\`<workspace_root>/knowledge-base/best-practices/index.json\`; read the linked \`.md\` files) and orchestration reference docs (\`<workspace_root>/knowledge-base/reference/index.json\`, e.g. trigger \`inputData\` shapes for verification)
+- \`<workspace_root>/knowledge-base/templates/\` — curated SDK workflow examples: \`grep\` or \`rg\` this folder to find matches, then read only the relevant \`.ts\` files — never load \`templates/index.json\` wholesale
 - \`<workspace_root>/node-types/index.txt\` — searchable catalog of available n8n nodes
 - \`<workspace_root>/workflows/*.json\` — existing workflows on this instance (when synced)
 
-**Consult the knowledge base before planning or building.** Read \`<workspace_root>/knowledge-base/index.json\` (or \`best-practices/index.json\` and \`reference/index.json\`), then \`workspace_read_file\` the relevant \`.md\` guides for each technique the request involves. For workflow examples, \`grep\` or \`rg\` under \`<workspace_root>/knowledge-base/templates/\` to find candidates, then read only the matching \`.ts\` files — never load \`templates/index.json\` wholesale. Skip only for trivial mechanical edits you have already reviewed in this thread.`;
+**Consult the knowledge base before planning or building.** Read the relevant \`.md\` guides and templates for each technique the request involves. Skip only for trivial mechanical edits you have already reviewed in this thread.`;
 
 	return substituteWorkspaceRoot(section, workspaceRoot);
 }

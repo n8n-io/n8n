@@ -85,6 +85,7 @@ vi.mock('@/app/composables/useAiGateway', () => ({
 		isEnabled: { value: false },
 		isCredentialTypeSupported: vi.fn(() => false),
 		isActionSupported: vi.fn(() => true),
+		isActionOptionVisible: vi.fn(() => true),
 		isNodePropertyHidden: vi.fn(() => false),
 		balance: { value: undefined },
 		budget: { value: undefined },
@@ -1749,6 +1750,7 @@ describe('ParameterInputList', () => {
 				isCredentialTypeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => false),
+				isActionOptionVisible: vi.fn(() => true),
 				isNodePropertyHidden: vi.fn(() => false),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
@@ -1784,6 +1786,7 @@ describe('ParameterInputList', () => {
 				isCredentialTypeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
+				isActionOptionVisible: vi.fn(() => true),
 				isNodePropertyHidden: vi.fn(() => false),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
@@ -1840,6 +1843,7 @@ describe('ParameterInputList', () => {
 				isCredentialTypeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
+				isActionOptionVisible: vi.fn(() => true),
 				isNodePropertyHidden: vi.fn(
 					(_node: INode | null, param: string) => param === 'modelSource',
 				),
@@ -1884,6 +1888,7 @@ describe('ParameterInputList', () => {
 				isCredentialTypeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
+				isActionOptionVisible: vi.fn(() => true),
 				// Mirror the real store: only hidden when a gateway-managed credential is present
 				isNodePropertyHidden: vi.fn(
 					(node: INode | null, param: string) =>
@@ -1956,6 +1961,7 @@ describe('ParameterInputList', () => {
 				isCredentialTypeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => false),
+				isActionOptionVisible: vi.fn(() => true),
 				isNodePropertyHidden: vi.fn(() => false),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
@@ -1990,6 +1996,7 @@ describe('ParameterInputList', () => {
 				isCredentialTypeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
+				isActionOptionVisible: vi.fn(() => true),
 				isNodePropertyHidden: vi.fn(() => false),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
@@ -2018,6 +2025,94 @@ describe('ParameterInputList', () => {
 			expect(
 				container.querySelector('[data-test-id="ai-gateway-unsupported-action-notice"]'),
 			).not.toBeInTheDocument();
+		});
+
+		it('should show the unsupported action notice only once when multiple properties are named "operation"', async () => {
+			// Some community nodes expose more than one visible property named `operation`
+			// (e.g. the selector plus a routing notice), which previously rendered the notice twice.
+			vi.mocked(useAiGateway).mockReturnValue({
+				isEnabled: { value: true } as never,
+				isCredentialTypeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+				isActionSupported: vi.fn(() => false),
+				isActionOptionVisible: vi.fn(() => true),
+				isNodePropertyHidden: vi.fn(() => false),
+				balance: { value: undefined } as never,
+				budget: { value: undefined } as never,
+				fetchError: { value: null } as never,
+				fetchConfig: vi.fn(),
+				fetchWallet: vi.fn(),
+				saveAfterToggle: vi.fn(),
+			});
+
+			ndvStore.activeNode = {
+				...TEST_NODE_NO_ISSUES,
+				credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+			};
+
+			const operationRoutingNotice: INodeProperties = {
+				displayName: 'GET /teamCreditUsage',
+				name: 'operation',
+				type: 'notice',
+				default: '',
+			};
+
+			const { queryAllByTestId } = renderComponent({
+				props: {
+					parameters: [resourceParameter, operationParameter, operationRoutingNotice],
+					nodeValues: {
+						parameters: { resource: 'audio', operation: 'transcribe' },
+					},
+					path: 'parameters',
+				},
+			});
+			await flushPromises();
+
+			expect(queryAllByTestId('ai-gateway-unsupported-action-notice')).toHaveLength(1);
+		});
+
+		it('should anchor the notice to the first "operation" property when there is no options selector', async () => {
+			// Fallback path: a node whose only `operation` property is not an options selector
+			// (e.g. a routing notice). The notice must still render exactly once, on that property.
+			vi.mocked(useAiGateway).mockReturnValue({
+				isEnabled: { value: true } as never,
+				isCredentialTypeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+				isActionSupported: vi.fn(() => false),
+				isActionOptionVisible: vi.fn(() => true),
+				isNodePropertyHidden: vi.fn(() => false),
+				balance: { value: undefined } as never,
+				budget: { value: undefined } as never,
+				fetchError: { value: null } as never,
+				fetchConfig: vi.fn(),
+				fetchWallet: vi.fn(),
+				saveAfterToggle: vi.fn(),
+			});
+
+			ndvStore.activeNode = {
+				...TEST_NODE_NO_ISSUES,
+				credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+			};
+
+			const operationRoutingNotice: INodeProperties = {
+				displayName: 'GET /teamCreditUsage',
+				name: 'operation',
+				type: 'notice',
+				default: '',
+			};
+
+			const { queryAllByTestId } = renderComponent({
+				props: {
+					parameters: [resourceParameter, operationRoutingNotice],
+					nodeValues: {
+						parameters: { resource: 'audio', operation: 'transcribe' },
+					},
+					path: 'parameters',
+				},
+			});
+			await flushPromises();
+
+			expect(queryAllByTestId('ai-gateway-unsupported-action-notice')).toHaveLength(1);
 		});
 
 		it('should not show unsupported action notice when credential is not gateway-managed', async () => {

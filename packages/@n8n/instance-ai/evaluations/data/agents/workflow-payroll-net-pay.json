@@ -1,0 +1,20 @@
+{
+	"description": "Intent-only request: classify payroll arithmetic as a deterministic workflow requiring reproducible output.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": [
+				"Say whether this should be handled as a deterministic workflow, a hybrid workflow with a bounded AI judgment step, a full agent, or a single AI task. Briefly explain why in terms of control flow, runtime decision-making, tool-use loops, unstructured data, and whether the next action depends on prior results.",
+				"Process payroll: for each employee row, compute net pay from hours and rate, and write it back to the sheet."
+			]
+		}
+	],
+	"complexity": "simple",
+	"tags": ["intent-resolution", "workflow", "deterministic-calculation"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent classifies the payroll calculation request as a deterministic workflow.",
+		"The agent explains that fixed arithmetic should be reproducible and auditable.",
+		"The agent does not suggest AI judgment or an agent loop for deterministic payroll calculation."
+	]
+}

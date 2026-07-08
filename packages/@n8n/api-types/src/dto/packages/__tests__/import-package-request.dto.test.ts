@@ -76,10 +76,24 @@ describe('ImportPackageRequestDto', () => {
 		}
 	});
 
+	it.each(['id-only', 'name-and-type', 'type-only'] as const)(
+		'accepts %s as a credentialMatchingMode value',
+		(credentialMatchingMode) => {
+			const result = ImportPackageRequestDto.safeParse({
+				credentialMatchingMode,
+				workflowConflictPolicy: 'fail',
+			});
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.credentialMatchingMode).toBe(credentialMatchingMode);
+			}
+		},
+	);
+
 	it('rejects unsupported credentialMatchingMode values', () => {
 		expect(
 			ImportPackageRequestDto.safeParse({
-				credentialMatchingMode: 'name-and-type',
+				credentialMatchingMode: 'fuzzy-match',
 				workflowConflictPolicy: 'fail',
 			}).success,
 		).toBe(false);

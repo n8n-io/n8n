@@ -26,13 +26,8 @@ import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import { FileLocation, BinaryDataService } from 'n8n-core';
 import type { INode, INodes, IWorkflowSettings, JsonValue, IConnections } from 'n8n-workflow';
-import {
-	PROJECT_ROOT,
-	Workflow,
-	assert,
-	calculateWorkflowChecksum,
-	ensureError,
-} from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { PROJECT_ROOT, Workflow, assert, calculateWorkflowChecksum } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -339,6 +334,8 @@ export class WorkflowService {
 			expectedChecksum?: string;
 			autosaved?: boolean;
 			source?: WorkflowActionSource;
+			versionName?: string;
+			versionDescription?: string;
 		} = {},
 	): Promise<WorkflowEntity> {
 		const {
@@ -351,6 +348,8 @@ export class WorkflowService {
 			aiBuilderAssisted = false,
 			autosaved = false,
 			source = 'ui',
+			versionName,
+			versionDescription,
 		} = options;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:update',
@@ -549,6 +548,10 @@ export class WorkflowService {
 				workflowId,
 				autosaved,
 				source,
+				undefined,
+				versionName || versionDescription
+					? { name: versionName, description: versionDescription }
+					: undefined,
 			);
 		}
 

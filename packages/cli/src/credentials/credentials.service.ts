@@ -52,6 +52,7 @@ import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-se
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { getChangedSharedFields } from '@/modules/dynamic-credentials.ee/services/shared-fields';
 import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -1137,6 +1138,25 @@ export class CredentialsService {
 		try {
 			return this.credentialTypes.getByName(credentialType).properties;
 		} catch {
+			return [];
+		}
+	}
+
+	/**
+	 * Shared (static, non-resolvable) fields whose value changed vs. the stored
+	 * credential. `newData` must be un-redacted (see `prepareUpdateData`).
+	 */
+	async getChangedSharedFields(
+		credential: CredentialsEntity,
+		newData: ICredentialDataDecryptedObject,
+	): Promise<string[]> {
+		try {
+			const credentialType = this.credentialTypes.getByName(credential.type);
+			const oldData = await this.decrypt(credential, true);
+			return getChangedSharedFields(credentialType, oldData, newData);
+		} catch {
+			// Unknown credential type or decrypt failure: fall back to leaving
+			// connections untouched rather than blocking the update.
 			return [];
 		}
 	}

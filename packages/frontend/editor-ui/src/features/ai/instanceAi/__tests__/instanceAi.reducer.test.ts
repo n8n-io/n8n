@@ -250,6 +250,20 @@ describe('instanceAi.reducer', () => {
 
 			expect(state.messages[0].agentTree!.status).toBe('error');
 		});
+
+		test('run-finish for an older run in the group does not clear activeRunId', () => {
+			const state = stateWithRun('run-active', 'agent-root');
+			state.groupIdByRunId.set('run-old', 'run-active');
+			state.messages[0].runIds = ['run-old', 'run-active'];
+
+			const newActiveRunId = handleEvent(
+				state,
+				makeRunFinishEvent('run-old', 'agent-root', 'completed'),
+			);
+
+			expect(newActiveRunId).toBe('run-active');
+			expect(state.messages[0].isStreaming).toBe(true);
+		});
 	});
 
 	// -----------------------------------------------------------------------
@@ -653,8 +667,8 @@ describe('instanceAi.reducer', () => {
 			expect(getRenderHint('task-control')).toBe('tasks');
 		});
 
-		test('returns delegate for "delegate"', () => {
-			expect(getRenderHint('delegate')).toBe('delegate');
+		test('returns default for removed delegate tool', () => {
+			expect(getRenderHint('delegate')).toBe('default');
 		});
 
 		test('returns builder for workflow builder tool', () => {
