@@ -318,11 +318,16 @@ export async function executeWorkflow(
 
 	const executionId = await activeExecutions.add(runData);
 
+	const { OwnershipService } = await import('@/services/ownership.service');
+	const project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowData.id);
+
 	Container.get(EventService).emit('workflow-executed', {
 		user: additionalData.userId ? { id: additionalData.userId } : undefined,
 		workflowId: workflowData.id,
 		workflowName: workflowData.name,
 		executionId,
+		projectId: project.id,
+		projectName: project.name,
 		source: 'integrated',
 	});
 

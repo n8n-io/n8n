@@ -79,6 +79,7 @@ export class Execute extends BaseCommand<z.infer<typeof flagsSchema>> {
 		const startingNode = findCliWorkflowStart(workflowData.nodes);
 
 		const user = await Container.get(OwnershipService).getInstanceOwner();
+		const project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowData.id);
 		const runData: IWorkflowExecutionDataProcess = {
 			executionMode: 'cli',
 			startNodes: [{ name: startingNode.name, sourceData: null }],
@@ -102,6 +103,8 @@ export class Execute extends BaseCommand<z.infer<typeof flagsSchema>> {
 			workflowId: workflowData.id,
 			workflowName: workflowData.name,
 			executionId,
+			projectId: project.id,
+			projectName: project.name,
 			source: 'cli',
 		});
 

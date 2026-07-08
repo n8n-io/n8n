@@ -4,6 +4,7 @@ import { TestCaseExecutionErrorCode } from '@n8n/db';
 import type {
 	EvaluationCollectionRepository,
 	EvaluationConfigRepository,
+	Project,
 	TestRun,
 	TestCaseExecutionRepository,
 	TestRunRepository,
@@ -28,6 +29,7 @@ import { TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import type { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { OwnershipService } from '@/services/ownership.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -72,6 +74,7 @@ describe('TestRunnerService', () => {
 	const evaluationCollectionRepository = mock<EvaluationCollectionRepository>();
 	const evaluationConfigRepository = mock<EvaluationConfigRepository>();
 	const workflowCompiler = mock<WorkflowCompilerService>();
+	const ownershipService = mock<OwnershipService>();
 	let testRunnerService: TestRunnerService;
 
 	mockInstance(LoadNodesAndCredentials, {
@@ -98,9 +101,13 @@ describe('TestRunnerService', () => {
 			evaluationCollectionRepository,
 			evaluationConfigRepository,
 			workflowCompiler,
+			ownershipService,
 		);
 
 		testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
+		ownershipService.getWorkflowProjectCached.mockResolvedValue(
+			mock<Project>({ id: 'project-1', name: 'Test Project' }),
+		);
 	});
 
 	afterEach(() => {
@@ -546,6 +553,7 @@ describe('TestRunnerService', () => {
 				evaluationCollectionRepository,
 				evaluationConfigRepository,
 				workflowCompiler,
+				ownershipService,
 			);
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
 
@@ -870,6 +878,7 @@ describe('TestRunnerService', () => {
 					evaluationCollectionRepository,
 					evaluationConfigRepository,
 					workflowCompiler,
+					ownershipService,
 				);
 			});
 
@@ -2374,6 +2383,7 @@ describe('TestRunnerService', () => {
 				evaluationCollectionRepository,
 				evaluationConfigRepository,
 				workflowCompiler,
+				ownershipService,
 			);
 			setupHappyPathMocks(2);
 			const originalEnv = process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
@@ -2453,6 +2463,7 @@ describe('TestRunnerService', () => {
 				evaluationCollectionRepository,
 				evaluationConfigRepository,
 				workflowCompiler,
+				ownershipService,
 			);
 
 			const { inFlightTracker } = setupHappyPathMocks(6);
@@ -2552,6 +2563,7 @@ describe('TestRunnerService', () => {
 				evaluationCollectionRepository,
 				evaluationConfigRepository,
 				workflowCompiler,
+				ownershipService,
 			);
 
 			setupHappyPathMocks(4);
@@ -2791,6 +2803,7 @@ describe('TestRunnerService', () => {
 				evaluationCollectionRepository,
 				evaluationConfigRepository,
 				workflowCompiler,
+				ownershipService,
 			);
 
 			testRunRepository.find.mockResolvedValue([{ id: 'tr-running' } as never]);
