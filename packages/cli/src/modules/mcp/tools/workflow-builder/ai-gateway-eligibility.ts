@@ -23,11 +23,18 @@ export type AiGatewayEligibility =
  * Callers use this from within auto-assign: on `eligible: true` attach the
  * gateway sentinel; on `eligible: false` leave the slot empty (pre-change
  * behavior) and log the `reason` for telemetry.
+ *
+ * `resolvedParameters` (parameters with node-type defaults applied) is used ONLY
+ * for the `resource`/`operation` action check, so a node relying on its default
+ * action stays eligible. The `hiddenNodeProperties` check deliberately uses the
+ * raw `node.parameters` — a hidden property that only carries its default value
+ * was not set by the user and must not disqualify the node.
  */
 export function checkAiGatewayEligibility(
 	node: Pick<INode, 'type' | 'typeVersion' | 'parameters'>,
 	credentialType: string,
 	config: AiGatewayConfigDto,
+	resolvedParameters?: Record<string, unknown>,
 ): AiGatewayEligibility {
 	const key = resolveNodeKey(node.type, config.nodes);
 	if (!key) return { eligible: false, reason: 'nodeNotCovered' };
@@ -60,7 +67,9 @@ export function checkAiGatewayEligibility(
 
 	const actions = config.supportedActions?.[key];
 	if (actions) {
-		const params = node.parameters ?? {};
+		// Read resource/operation from defaults-resolved params so a node relying
+		// on its default action is judged against the values it will actually run.
+		const params = resolvedParameters ?? node.parameters ?? {};
 		const resource = typeof params.resource === 'string' ? params.resource : OPERATION_ONLY;
 		const operation = typeof params.operation === 'string' ? params.operation : undefined;
 		const allowedOps = actions[resource];

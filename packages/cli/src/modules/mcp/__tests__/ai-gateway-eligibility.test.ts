@@ -129,6 +129,18 @@ describe('checkAiGatewayEligibility', () => {
 			);
 			expect(result).toEqual({ eligible: true });
 		});
+
+		it('does not disqualify when a hidden property is only present via resolvedParameters (default)', () => {
+			const result = checkAiGatewayEligibility(
+				makeNode({ parameters: {} }),
+				'openAiApi',
+				makeConfig({
+					hiddenNodeProperties: { '@n8n/n8n-nodes-langchain.openAi': ['baseURL'] },
+				}),
+				{ baseURL: 'https://api.openai.com/v1' },
+			);
+			expect(result).toEqual({ eligible: true });
+		});
 	});
 
 	describe('supportedActions (with resource/operation)', () => {
@@ -175,6 +187,26 @@ describe('checkAiGatewayEligibility', () => {
 			expect(result).toMatchObject({ eligible: false, reason: 'unsupportedAction' });
 		});
 
+		it('reads resource/operation from resolvedParameters (defaults) when the node omits them', () => {
+			const result = checkAiGatewayEligibility(
+				makeNode({ parameters: {} }),
+				'openAiApi',
+				makeConfig({ supportedActions }),
+				{ resource: 'text', operation: 'message' },
+			);
+			expect(result).toEqual({ eligible: true });
+		});
+
+		it('returns unsupportedAction when the defaulted action is not in the allowlist', () => {
+			const result = checkAiGatewayEligibility(
+				makeNode({ parameters: {} }),
+				'openAiApi',
+				makeConfig({ supportedActions }),
+				{ resource: 'text', operation: 'classify' },
+			);
+			expect(result).toMatchObject({ eligible: false, reason: 'unsupportedAction' });
+		});
+
 		it('passes when no supportedActions entry exists for this node (missing = no filter)', () => {
 			const result = checkAiGatewayEligibility(
 				makeNode({ parameters: { resource: 'text', operation: 'message' } }),
@@ -201,6 +233,20 @@ describe('checkAiGatewayEligibility', () => {
 					credentialTypes: ['braveSearchApi'],
 					supportedActions,
 				}),
+			);
+			expect(result).toEqual({ eligible: true });
+		});
+
+		it('reads operation from resolvedParameters (defaults) for operation-only nodes', () => {
+			const result = checkAiGatewayEligibility(
+				makeNode({ type: 'n8n-nodes-brave.braveSearch', parameters: {} }),
+				'braveSearchApi',
+				makeConfig({
+					nodes: ['n8n-nodes-brave.braveSearch'],
+					credentialTypes: ['braveSearchApi'],
+					supportedActions,
+				}),
+				{ operation: 'webSearch' },
 			);
 			expect(result).toEqual({ eligible: true });
 		});

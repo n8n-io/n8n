@@ -164,7 +164,12 @@ export async function autoPopulateNodeCredentials(
 			}
 
 			if (aiGatewayConfig) {
-				const eligibility = checkAiGatewayEligibility(node, credDesc.name, aiGatewayConfig);
+				const eligibility = checkAiGatewayEligibility(
+					node,
+					credDesc.name,
+					aiGatewayConfig,
+					nodeParametersWithDefaults,
+				);
 				if (eligibility.eligible) {
 					node.credentials = node.credentials ?? {};
 					node.credentials[credDesc.name] = {
