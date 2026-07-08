@@ -23,7 +23,7 @@ function resumeCtx(resumeData: { approved: boolean }) {
 }
 
 describe('configure_channel tool', () => {
-	it('suspends with a channel-config payload on first call', async () => {
+	it('suspends with a channelConfig payload on first call', async () => {
 		const suspendFn = vi.fn();
 		await executeTool(
 			createConfigureChannelTool(createContext()),
@@ -34,7 +34,6 @@ describe('configure_channel tool', () => {
 		expect(suspendFn).toHaveBeenCalledTimes(1);
 		expect(suspendFn.mock.calls[0][0]).toEqual(
 			expect.objectContaining({
-				inputType: 'channel-config',
 				severity: 'info',
 				channelConfig: { integrationType: 'slack', agentId: 'agent-1' },
 				projectId: 'project-1',

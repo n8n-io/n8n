@@ -391,7 +391,7 @@ describe('mapAgentChunkToEvent', () => {
 		});
 	});
 
-	it('maps channel-config confirmations with channelConfig payload', () => {
+	it('maps confirmations with a channelConfig payload', () => {
 		expect(
 			map({
 				type: 'tool-call-suspended',
@@ -399,7 +399,6 @@ describe('mapAgentChunkToEvent', () => {
 				toolName: 'configure_channel',
 				suspendPayload: {
 					requestId: 'request-1',
-					inputType: 'channel-config',
 					severity: 'info',
 					message: 'Set up the slack channel',
 					projectId: 'project-1',
@@ -418,7 +417,6 @@ describe('mapAgentChunkToEvent', () => {
 				severity: 'info',
 				message: 'Set up the slack channel',
 				projectId: 'project-1',
-				inputType: 'channel-config',
 				channelConfig: { integrationType: 'slack', agentId: 'agent-9' },
 			},
 		});

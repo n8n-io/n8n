@@ -4,7 +4,7 @@
  *
  * Standalone (not an `agent_builder` router action): the router declares no
  * suspend/resume, so any interactive tool must be registered on its own. It
- * suspends with an `inputType: 'channel-config'` confirmation-request; the UI
+ * suspends with a `channelConfig` confirmation-request payload; the UI
  * opens the existing channel-setup modal, where the user creates a NEW
  * credential and connects (or skips). The modal persists the connection itself
  * via the agents REST endpoints, so this tool never writes the `integrations`
@@ -56,7 +56,6 @@ export function createConfigureChannelTool(context: InstanceAiContext) {
 				requestId: z.string(),
 				message: z.string(),
 				severity: z.literal('info'),
-				inputType: z.literal('channel-config'),
 				channelConfig: channelConfigSchema,
 				projectId: z.string(),
 			}),
@@ -68,13 +67,13 @@ export function createConfigureChannelTool(context: InstanceAiContext) {
 
 			const resumeData = ctx.resumeData;
 
-			// First call — suspend to open the channel-setup modal.
+			// First call — suspend to open the channel-setup modal. The channelConfig
+			// payload alone drives the UI (presence-based, like setupRequests).
 			if (resumeData === undefined || resumeData === null) {
 				return await ctx.suspend({
 					requestId: nanoid(),
 					message: `Set up the ${integrationType} channel`,
 					severity: 'info' as const,
-					inputType: 'channel-config' as const,
 					channelConfig: { integrationType, agentId: agentBuilderTarget.agentId },
 					projectId: agentBuilderTarget.projectId,
 				});

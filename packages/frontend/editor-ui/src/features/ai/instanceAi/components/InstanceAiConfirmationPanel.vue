@@ -45,6 +45,7 @@ function getConfirmationType(conf: InstanceAiConfirmation): string {
 	if (conf.inputType) return conf.inputType;
 	if (conf.setupRequests?.length) return 'setup';
 	if (conf.credentialRequests?.length) return 'credential-setup';
+	if (conf.channelConfig) return 'channel-config';
 	return 'approval';
 }
 
@@ -542,12 +543,9 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 					:options="chunk.item.toolCall.confirmation.resourceDecision.options"
 				/>
 
-				<!-- Chat-channel setup (agent-builder configure_channel) -->
+				<!-- Chat-channel setup (agent-builder configure_channel) — presence-based -->
 				<InstanceAiChannelSetup
-					v-else-if="
-						chunk.item.toolCall.confirmation.inputType === 'channel-config' &&
-						chunk.item.toolCall.confirmation.channelConfig
-					"
+					v-else-if="chunk.item.toolCall.confirmation.channelConfig"
 					:key="'channel-' + chunk.item.toolCall.confirmation.requestId"
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:integration-type="chunk.item.toolCall.confirmation.channelConfig.integrationType"
