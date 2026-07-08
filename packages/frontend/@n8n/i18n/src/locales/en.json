@@ -2486,6 +2486,7 @@
 	"oauth.consentView.error.fetchDetails": "Error fetching client details",
 	"oauth.consentView.error.heading": "Authorization unavailable",
 	"oauth.consentView.error.resourceUnavailable": "This authorization can no longer be completed because the target is no longer available.",
+	"oauth.consentView.error.insufficientScope": "You do not have sufficient permissions to authorize this request.",
 	"oauth.consentView.success.title": "Success",
 	"oauth.consentView.success.description": "You will soon be redirected back to the client.",
 	"parameterInput.expressionResult": "e.g. {result}",
