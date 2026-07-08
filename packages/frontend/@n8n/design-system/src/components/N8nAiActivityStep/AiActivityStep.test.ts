@@ -63,7 +63,7 @@ describe('N8nAiActivityStep', () => {
 			global,
 		});
 
-		expect(getByText('Custom details').parentElement?.className).toContain('dataSection');
+		expect(getByText('Custom details').parentElement?.className).toContain('resultSection');
 	});
 
 	it('should hide collapsible affordances and content when hasContent is false', () => {
