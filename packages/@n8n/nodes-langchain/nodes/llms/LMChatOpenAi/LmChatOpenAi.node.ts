@@ -3,7 +3,6 @@ import isPlainObject from 'lodash/isPlainObject';
 import pick from 'lodash/pick';
 import {
 	assertCredentialAllowsUrl,
-	ensureError,
 	jsonParse,
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -816,7 +815,7 @@ export class LmChatOpenAi implements INodeType {
 				throw new NodeOperationError(
 					this.getNode(),
 					'The value in the "Extra Body" field is not valid JSON',
-					{ itemIndex, description: ensureError(error).message },
+					{ itemIndex, description: error instanceof Error ? error.message : String(error) },
 				);
 			}
 			if (!isPlainObject(extraBody)) {
