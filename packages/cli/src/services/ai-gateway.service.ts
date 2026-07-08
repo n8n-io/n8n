@@ -1,4 +1,4 @@
-import type { AiGatewayConfigDto, AiGatewayUsageResponse } from '@n8n/api-types';
+import { AiGatewayConfigDto, type AiGatewayUsageResponse } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
@@ -310,24 +310,21 @@ export class AiGatewayService {
 
 		const baseUrl = this.requireBaseUrl();
 
-		const data = await this.gatewayRequest<AiGatewayConfigDto>(
+		const data = await this.gatewayRequest<unknown>(
 			{
 				method: 'GET',
 				url: `${baseUrl}/v1/gateway/config`,
 			},
 			'Failed to fetch AI Gateway config',
 		);
-		if (
-			!Array.isArray(data.nodes) ||
-			!Array.isArray(data.credentialTypes) ||
-			typeof data.providerConfig !== 'object'
-		) {
+		const parsed = AiGatewayConfigDto.safeParse(data);
+		if (!parsed.success) {
 			throw new UserError('AI Gateway returned an invalid config response.');
 		}
 
-		this.gatewayConfig = data;
+		this.gatewayConfig = parsed.data;
 		this.configFetchedAt = Date.now();
-		return data;
+		return parsed.data;
 	}
 
 	/**

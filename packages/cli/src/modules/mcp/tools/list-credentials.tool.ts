@@ -58,7 +58,7 @@ const aiGatewaySchema = z
 	})
 	.optional()
 	.describe(
-		'Present when n8n Connect ("AI Gateway") is available for this instance. Omitted otherwise. When set, workflows built through MCP for these node/credential types can run without the user configuring credentials.',
+		'Present when n8n Connect ("AI Gateway") is available for this instance. Omitted otherwise. Candidate coverage only — actual eligibility for a managed credential also depends on the node action, minimum type version, and hidden properties; call list_ai_gateway_services for the authoritative contract.',
 	);
 
 const outputSchema = {

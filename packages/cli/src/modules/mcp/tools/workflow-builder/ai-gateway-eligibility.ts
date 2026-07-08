@@ -64,7 +64,10 @@ export function checkAiGatewayEligibility(
 		const resource = typeof params.resource === 'string' ? params.resource : OPERATION_ONLY;
 		const operation = typeof params.operation === 'string' ? params.operation : undefined;
 		const allowedOps = actions[resource];
-		if (!allowedOps || (operation !== undefined && !allowedOps.includes(operation))) {
+		// When the gateway defines an action allowlist for this node, require an
+		// explicit operation that is on the list. A missing operation is not
+		// eligible — we don't grant a managed credential for an unspecified action.
+		if (!allowedOps || operation === undefined || !allowedOps.includes(operation)) {
 			return {
 				eligible: false,
 				reason: 'unsupportedAction',

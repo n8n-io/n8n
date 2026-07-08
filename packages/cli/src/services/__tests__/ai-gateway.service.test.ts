@@ -138,6 +138,14 @@ describe('AiGatewayService', () => {
 			const service = makeService();
 			await expect(service.getGatewayConfig()).rejects.toThrow(UserError);
 		});
+
+		it('throws UserError when providerConfig is null', async () => {
+			requestMock.mockResolvedValueOnce(
+				ok({ nodes: [], credentialTypes: [], providerConfig: null }),
+			);
+			const service = makeService();
+			await expect(service.getGatewayConfig()).rejects.toThrow(UserError);
+		});
 	});
 
 	describe('isAvailable()', () => {

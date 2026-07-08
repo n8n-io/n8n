@@ -39,12 +39,12 @@ const outputSchema = {
 			nodes: z
 				.array(z.string())
 				.describe(
-					'Node types n8n Connect covers. Prefer these when the user has not specified an integration — they let the workflow run without credential setup.',
+					'Node types n8n Connect may cover. Prefer these when the user has not specified an integration. Candidate coverage only — exact eligibility also depends on the node action, minimum type version, and hidden properties.',
 				),
 		})
 		.optional()
 		.describe(
-			'Present when n8n Connect ("AI Gateway") is available. Cross-reference against the returned node types to know which will get free credentials via Connect.',
+			'Present when n8n Connect ("AI Gateway") is available. Candidate coverage — cross-reference against the returned node types, but call list_ai_gateway_services for exact eligibility (supported actions, min versions, hidden properties).',
 		),
 } satisfies z.ZodRawShape;
 

@@ -166,6 +166,15 @@ describe('checkAiGatewayEligibility', () => {
 			expect(result).toMatchObject({ eligible: false, reason: 'unsupportedAction' });
 		});
 
+		it('returns unsupportedAction when operation is missing but the resource has an allowlist', () => {
+			const result = checkAiGatewayEligibility(
+				makeNode({ parameters: { resource: 'text' } }),
+				'openAiApi',
+				makeConfig({ supportedActions }),
+			);
+			expect(result).toMatchObject({ eligible: false, reason: 'unsupportedAction' });
+		});
+
 		it('passes when no supportedActions entry exists for this node (missing = no filter)', () => {
 			const result = checkAiGatewayEligibility(
 				makeNode({ parameters: { resource: 'text', operation: 'message' } }),
