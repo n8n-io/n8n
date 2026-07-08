@@ -11,9 +11,10 @@ post:
     Export workflows and/or folders, or projects, as a gzipped tar archive
     (.n8np). Provide `workflowIds`/`folderIds`, or `projectIds`, but not both
     groups. Each exported folder includes its nested folders. Empty projects
-    export project metadata only. The response is streamed as `application/gzip`
-    with a `Content-Disposition` attachment header. Requires the n8n Packages
-    feature to be licensed.
+    export project metadata only. `subworkflowBehaviour` selects the
+    sub-workflow export mode; omit it to use `included-in-package`. The response
+    is streamed as `application/gzip` with a `Content-Disposition` attachment
+    header. Requires the n8n Packages feature to be licensed.
 
     API key scopes: `workflow:export` is required when exporting workflows or folders, and `project:export` is required when exporting projects.
   requestBody:

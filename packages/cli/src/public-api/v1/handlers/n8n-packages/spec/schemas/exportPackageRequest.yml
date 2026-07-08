@@ -33,3 +33,12 @@ properties:
       minLength: 1
     example:
       - Ox8O54VQrmBrb4qL
+  subworkflowBehaviour:
+    type: string
+    enum:
+      - included-in-package
+      - references-only
+    default: included-in-package
+    description: >-
+      Sub-workflow export mode. Supported values are `included-in-package`
+      (default) and `references-only`.
