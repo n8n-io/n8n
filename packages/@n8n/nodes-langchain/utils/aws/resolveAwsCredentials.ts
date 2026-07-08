@@ -26,6 +26,10 @@ export async function resolveAwsCredentials(
 
 	if (authentication !== 'assumeRole') {
 		const creds = (await context.getCredentials('aws')) as AwsIamCredentialsType;
+
+		// Validate before the region is interpolated into service endpoint URLs downstream.
+		assertSupportedAwsRegion(creds.region);
+
 		const identity: AwsCredentialIdentity = {
 			accessKeyId: creds.accessKeyId,
 			secretAccessKey: creds.secretAccessKey,

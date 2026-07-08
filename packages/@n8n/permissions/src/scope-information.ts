@@ -114,4 +114,8 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Execute Workflow in Chat',
 		description: 'Allows executing workflows in chat.',
 	},
+	'role:manageProject': {
+		displayName: 'Manage project roles',
+		description: 'Allows creating, editing, and deleting project role definitions.',
+	},
 };

@@ -66,30 +66,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01Mmcqw7fh6TgR4R5hxrXvKx\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01PHAJ2JuZj72JwiKsFQgvFi\",\"name\":\"list_skills\",\"input\":{\"category\":\"productivity\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1122,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":54,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_0142aemLLuLyVQ39ckFywRBJ\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01D2MKnfVLxPPDD5JYY27Tid\",\"name\":\"list_skills\",\"input\":{\"category\":\"productivity\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1122,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":54,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "10000000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-07-06T08:52:05Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-06T08:45:01Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-07-06T08:52:05Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-06T08:45:01Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-07-06T08:52:04Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-06T08:45:00Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "12000000",
-			"anthropic-ratelimit-tokens-reset": "2026-07-06T08:52:05Z",
+			"anthropic-ratelimit-tokens-reset": "2026-07-06T08:45:01Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a16d5f099c7113d0-BCN",
+			"cf-ray": "a16d54af2cbd589a-BCN",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Mon, 06 Jul 2026 08:52:06 GMT",
-			"request-id": "req_011CckX5n9bSrZVLvx7GWYn5",
+			"date": "Mon, 06 Jul 2026 08:45:01 GMT",
+			"request-id": "req_011CckWYWwvgPwrj7vijgQMB",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-f84a3042010b0ebcfc157af41f70feab-e8018ddd10a650cf-01",
+			"traceresponse": "00-f42b0ab1540eb3175cb0ad5c91959591-e5afe5d8ee3ad1a3-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -123,7 +123,7 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_01PHAJ2JuZj72JwiKsFQgvFi",
+							"id": "toolu_01D2MKnfVLxPPDD5JYY27Tid",
 							"name": "list_skills",
 							"input": {
 								"category": "productivity"
@@ -139,7 +139,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01PHAJ2JuZj72JwiKsFQgvFi",
+							"tool_use_id": "toolu_01D2MKnfVLxPPDD5JYY27Tid",
 							"content": "{\"success\":true,\"registryHash\":\"3166364998d4\",\"count\":1,\"categories\":[\"engineering\",\"productivity\"],\"skills\":[{\"name\":\"Summary marker\",\"description\":\"Use for summarizing notes, updates, or short text while preserving a marker.\",\"category\":\"productivity\",\"hash\":\"e3433b77c9e3\"}]}"
 						}
 					]
@@ -188,30 +188,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01BMQb31ZJhNqtMqbinxfdEc\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Now loading the summary-marker skill:\"},{\"type\":\"tool_use\",\"id\":\"toolu_01NWgZAjXgsNGe5sqE4247f9\",\"name\":\"load_skill\",\"input\":{\"skillId\":\"summary-marker\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1262,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":65,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_013pziYQ44BWxkJ8LiSSxwJi\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Now I'll load the summary-marker skill:\"},{\"type\":\"tool_use\",\"id\":\"toolu_016MD3tXf1MvvKM51ZJQYZXf\",\"name\":\"load_skill\",\"input\":{\"skillId\":\"summary-marker\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1262,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":67,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-07-06T08:52:06Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-06T08:45:02Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-07-06T08:52:07Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-06T08:45:02Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-07-06T08:52:06Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-06T08:45:01Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-07-06T08:52:06Z",
+			"anthropic-ratelimit-tokens-reset": "2026-07-06T08:45:02Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a16d5f129eb413d0-BCN",
+			"cf-ray": "a16d54b4a8cf589a-BCN",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Mon, 06 Jul 2026 08:52:07 GMT",
-			"request-id": "req_011CckX5tBEv27ysFCmXuo5C",
+			"date": "Mon, 06 Jul 2026 08:45:02 GMT",
+			"request-id": "req_011CckWYajt9i8nBpztakAyd",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-983373a858a44aa272293bf6e7c3c805-86a059d8d558b134-01",
+			"traceresponse": "00-2781214fb4c2f1343b23e81c4ed3685a-20a08706e30ba8b5-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -245,7 +245,7 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_01PHAJ2JuZj72JwiKsFQgvFi",
+							"id": "toolu_01D2MKnfVLxPPDD5JYY27Tid",
 							"name": "list_skills",
 							"input": {
 								"category": "productivity"
@@ -261,7 +261,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01PHAJ2JuZj72JwiKsFQgvFi",
+							"tool_use_id": "toolu_01D2MKnfVLxPPDD5JYY27Tid",
 							"content": "{\"success\":true,\"registryHash\":\"3166364998d4\",\"count\":1,\"categories\":[\"engineering\",\"productivity\"],\"skills\":[{\"name\":\"Summary marker\",\"description\":\"Use for summarizing notes, updates, or short text while preserving a marker.\",\"category\":\"productivity\",\"hash\":\"e3433b77c9e3\"}]}"
 						}
 					]
@@ -271,11 +271,11 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Now loading the summary-marker skill:"
+							"text": "Now I'll load the summary-marker skill:"
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01NWgZAjXgsNGe5sqE4247f9",
+							"id": "toolu_016MD3tXf1MvvKM51ZJQYZXf",
 							"name": "load_skill",
 							"input": {
 								"skillId": "summary-marker"
@@ -291,8 +291,13 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01NWgZAjXgsNGe5sqE4247f9",
-							"content": "{\"ok\":true,\"success\":true,\"skillId\":\"summary-marker\",\"name\":\"Summary marker\",\"description\":\"Use for summarizing notes, updates, or short text while preserving a marker.\",\"path\":null,\"skillDir\":null,\"hash\":\"e3433b77c9e3\",\"category\":\"productivity\",\"content\":\"Every final answer after loading this skill must include the exact marker SKILL_MARKER_ALPHA. For summaries, be concise and keep the marker unchanged.\",\"activation\":\"[Skill: \\\"Summary marker\\\"]\\n[Skill category: \\\"productivity\\\"]\\n[Skill hash: \\\"e3433b77c9e3\\\"]\",\"linkedFiles\":{\"references\":[],\"templates\":[],\"scripts\":[],\"assets\":[],\"examples\":[],\"other\":[]}}"
+							"tool_use_id": "toolu_016MD3tXf1MvvKM51ZJQYZXf",
+							"content": [
+								{
+									"type": "text",
+									"text": "[Skill: \"Summary marker\"]\n[Skill category: \"productivity\"]\n[Skill hash: \"e3433b77c9e3\"]\n\nEvery final answer after loading this skill must include the exact marker SKILL_MARKER_ALPHA. For summaries, be concise and keep the marker unchanged."
+								}
+							]
 						}
 					]
 				}
@@ -340,30 +345,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01UgBVpmLev7cAeyb91seAJx\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Based on the loaded Summary marker skill, here is my response with the required marker:\\n\\n**Summary:** Budget owners have approved the rollout.\\n\\nSKILL_MARKER_ALPHA\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1510,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":41,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01PHzXYspakRmW8kYChwZeSs\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Perfect! Now I'll summarize the text while preserving the marker:\\n\\n**Summary:** Budget owners have approved the rollout.\\n\\nSKILL_MARKER_ALPHA\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1408,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":39,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-07-06T08:52:08Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-06T08:45:03Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-07-06T08:52:08Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-06T08:45:03Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-07-06T08:52:07Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-06T08:45:02Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-07-06T08:52:08Z",
+			"anthropic-ratelimit-tokens-reset": "2026-07-06T08:45:03Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a16d5f1879af13d0-BCN",
+			"cf-ray": "a16d54bbaec3589a-BCN",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Mon, 06 Jul 2026 08:52:08 GMT",
-			"request-id": "req_011CckX5xD5VmtWaaSM8yqAN",
+			"date": "Mon, 06 Jul 2026 08:45:03 GMT",
+			"request-id": "req_011CckWYfbqK72K7fCL63FDD",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-f97a66581d5158de84da7c6830195056-efade998f6293ea5-01",
+			"traceresponse": "00-82b5a290ffa9ebeceed9267c093d08a1-e3e36a807f48af7c-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},

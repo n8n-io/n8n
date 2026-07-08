@@ -73,9 +73,15 @@ export interface WorkflowDetail extends WorkflowSummary {
 export interface WorkflowNode {
 	name: string;
 	type: string;
+	typeVersion?: number;
 	parameters?: Record<string, unknown>;
 	position: number[];
 	webhookId?: string;
+}
+
+export interface ExecutionNodeError {
+	nodeName: string;
+	message?: string;
 }
 
 export interface ExecutionResult {
@@ -88,6 +94,8 @@ export interface ExecutionResult {
 	 * nothing" apart from "never reached".
 	 */
 	executedNodeNames?: string[];
+	/** Node-level errors from run data, including continue-on-fail errors. */
+	nodeErrors?: ExecutionNodeError[];
 	/** Name of the last node the execution processed, when available. */
 	lastNodeExecuted?: string;
 	error?: string;
@@ -264,8 +272,9 @@ export interface InstanceAiWorkflowService {
 		scope?: 'project' | 'instance';
 	}): Promise<WorkflowSummary[]>;
 	get(workflowId: string): Promise<WorkflowDetail>;
-	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode). */
-	getAsWorkflowJSON(workflowId: string): Promise<WorkflowJSON>;
+	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode).
+	 *  Pass a versionId to get a past version's graph instead of the current draft. */
+	getAsWorkflowJSON(workflowId: string, versionId?: string): Promise<WorkflowJSON>;
 	/** Cheap version-only lookup. The adapter projects just `versionId` and
 	 *  `updatedAt` from the workflow row, skipping `nodes`/`connections`/etc.
 	 *  Use to validate per-session caches when the body isn't needed. */
@@ -747,6 +756,12 @@ export type LocalGatewayStatus =
 
 export interface InstanceAiContext {
 	userId: string;
+	/**
+	 * Trace handle for the current agent run, threaded in from the orchestration
+	 * context. Lets domain tools (e.g. build-workflow) emit explicit child runs
+	 * that land on the active trace. Absent outside a traced run.
+	 */
+	tracing?: InstanceAiTraceContext;
 	projectId?: string;
 	workflowService: InstanceAiWorkflowService;
 	executionService: InstanceAiExecutionService;
@@ -859,9 +874,15 @@ export interface TaskStorage {
 
 // ── Planned task graphs ─────────────────────────────────────────────────────
 
-export const PLANNED_TASK_KINDS = ['delegate', 'build-workflow', 'checkpoint'] as const;
-export const STORED_PLANNED_TASK_KINDS = PLANNED_TASK_KINDS;
-export type PlannedTaskKind = (typeof STORED_PLANNED_TASK_KINDS)[number];
+export const PLANNED_TASK_KINDS = ['build-workflow', 'checkpoint'] as const;
+/** Legacy kinds still accepted when loading persisted graphs; failed at dispatch time. */
+export const LEGACY_PLANNED_TASK_KINDS = ['delegate'] as const;
+export const STORED_PLANNED_TASK_KINDS = [
+	...PLANNED_TASK_KINDS,
+	...LEGACY_PLANNED_TASK_KINDS,
+] as const;
+export type PlannedTaskKind = (typeof PLANNED_TASK_KINDS)[number];
+export type StoredPlannedTaskKind = (typeof STORED_PLANNED_TASK_KINDS)[number];
 
 export interface PlannedTask {
 	id: string;
@@ -869,7 +890,6 @@ export interface PlannedTask {
 	kind: PlannedTaskKind;
 	spec: string;
 	deps: string[];
-	tools?: string[];
 	/** Existing workflow ID for build-workflow tasks that modify an existing workflow. */
 	workflowId?: string;
 	/**
@@ -882,7 +902,8 @@ export interface PlannedTask {
 
 export type PlannedTaskStatus = 'planned' | 'running' | 'succeeded' | 'failed' | 'cancelled';
 
-export interface PlannedTaskRecord extends PlannedTask {
+export interface PlannedTaskRecord extends Omit<PlannedTask, 'kind'> {
+	kind: StoredPlannedTaskKind;
 	status: PlannedTaskStatus;
 	agentId?: string;
 	backgroundTaskId?: string;
@@ -1010,7 +1031,7 @@ export type CheckpointSettleResult =
 	| {
 			ok: false;
 			reason: 'not-found' | 'wrong-kind' | 'wrong-status';
-			actual?: { kind?: PlannedTaskKind; status?: PlannedTaskStatus };
+			actual?: { kind?: StoredPlannedTaskKind; status?: PlannedTaskStatus };
 	  };
 
 // ── MCP ──────────────────────────────────────────────────────────────────────
@@ -1030,6 +1051,12 @@ export interface McpServerConfig {
 	 * in a custom `fetch` implementation).
 	 */
 	cacheKey?: string;
+	metadata?: {
+		/** Registry slug for Instance AI MCP registry servers. */
+		serverSlug?: string;
+		/** User who owns the registry MCP connection. */
+		userId?: string;
+	};
 }
 
 // ── Memory ───────────────────────────────────────────────────────────────────
@@ -1106,6 +1133,9 @@ export interface InstanceAiTraceRunInit {
 
 export interface InstanceAiTraceRunFinishOptions {
 	outputs?: unknown;
+	/** Skip structural sanitization for `outputs` — for pre-bounded machine payloads
+	 *  whose consumer needs lossless structure. Export-time scrubbing still applies. */
+	rawOutputs?: boolean;
 	metadata?: Record<string, unknown>;
 	error?: string;
 }
@@ -1144,6 +1174,9 @@ export interface InstanceAiTraceContext {
 		parentRun: InstanceAiTraceRun,
 		options: InstanceAiTraceRunInit,
 	) => Promise<InstanceAiTraceRun>;
+	/** False once the turn's trace runtime is shut down — runs created through a
+	 *  stale handle (e.g. a tool resumed in a later turn) export nothing. */
+	isLive?: () => boolean;
 	withRunTree: <T>(run: InstanceAiTraceRun, fn: () => Promise<T>) => Promise<T>;
 	withActiveSpan: <T>(run: InstanceAiTraceRun, fn: () => Promise<T>) => Promise<T>;
 	toHeaders: (run: InstanceAiTraceRun) => Record<string, string>;
@@ -1205,7 +1238,7 @@ export interface SpawnBackgroundTaskOptions {
 	/**
 	 * Link this background task to a running checkpoint in the planned-task
 	 * graph. Set when the orchestrator spawns a detached sub-agent (builder,
-	 * research, data-table, delegate) from inside a
+	 * research, data-table) from inside a
 	 * `<planned-task-follow-up type="checkpoint">` turn. The post-run safety
 	 * net defers failing the checkpoint while a child with this id is still
 	 * running, and settlement re-emits the checkpoint follow-up when the last
@@ -1246,7 +1279,7 @@ export interface WorkflowTaskService {
 	updateBuildOutcome(workItemId: string, update: Partial<WorkflowBuildOutcome>): Promise<void>;
 }
 
-// ── Orchestration context (plan + delegate tools) ───────────────────────────
+// ── Orchestration context (plan tools) ──────────────────────────────────────
 
 export interface OrchestrationContext {
 	threadId: string;
@@ -1257,7 +1290,6 @@ export interface OrchestrationContext {
 	orchestratorAgentId: string;
 	modelId: ModelConfig;
 	checkpointStore?: CheckpointStore;
-	subAgentMaxSteps: number;
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
 	/** Output-redaction policy for sub-agent streams: omit for the safe default, or `false` to disable. */

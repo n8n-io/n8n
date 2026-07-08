@@ -73,17 +73,26 @@ export class N8nPackagesService {
 		const requirements = mergeRequirements(
 			workflowExportResult?.requirements,
 			folderExportResult?.requirements,
+			projectExportResult?.requirements,
 		);
 
 		const credentialExportResult = await this.credentialExporter.export({
 			user: request.user,
 			requirements: requirements.credentials,
 			writer,
+			// Routes project-owned credentials into their project namespace; others stay top-level.
+			projectTargetsById: projectExportResult?.projectTargetsById,
 		});
+
+		const allFolders = [
+			...(folderExportResult?.entries ?? []),
+			...(projectExportResult?.folderEntries ?? []),
+		];
 
 		const allWorkflowsInPackage = [
 			...(workflowExportResult?.entries ?? []),
 			...(folderExportResult?.workflowEntries ?? []),
+			...(projectExportResult?.workflowEntries ?? []),
 		];
 
 		const manifest = packageManifestSchema.parse({
@@ -98,7 +107,7 @@ export class N8nPackagesService {
 				? { requirements: { credentials: credentialExportResult.requirements } }
 				: {}),
 			...(allWorkflowsInPackage.length > 0 ? { workflows: allWorkflowsInPackage } : {}),
-			...(folderExportResult?.entries ? { folders: folderExportResult.entries } : {}),
+			...(allFolders.length > 0 ? { folders: allFolders } : {}),
 			...(projectExportResult?.entries ? { projects: projectExportResult.entries } : {}),
 		});
 
@@ -119,7 +128,7 @@ export class N8nPackagesService {
 				: {}),
 			counts: {
 				workflows: allWorkflowsInPackage.length,
-				folders: folderExportResult?.entries.length ?? 0,
+				folders: allFolders.length,
 				credentials: credentialExportResult.entries.length,
 			},
 		});

@@ -3,7 +3,7 @@ import { Time } from '@n8n/constants';
 import type { ScheduledJob } from '../types';
 import { DEFAULT_MATERIALIZER_OPTIONS, type MaterializerOptions } from './options';
 import { planOccurrences } from './plan';
-import type { DueJobs, PlannedJob, RunInTransaction } from './transaction';
+import type { DueJobs, NewOccurrence, PlannedJob, RunInTransaction } from './transaction';
 
 export type { MaterializerOptions } from './options';
 
@@ -18,6 +18,20 @@ export interface MaterializerSummary {
 
 /** Notified when a claimed job's schedule cannot be planned, before it is deferred. */
 export type OnJobPlanError = (job: ScheduledJob, error: unknown) => void;
+
+/**
+ * Observability callbacks for a materialization pass's non-fatal incidents,
+ * already handled when they fire; the callsite only decides how to report them.
+ */
+export interface MaterializerHooks {
+	onPlanError?: OnJobPlanError;
+
+	/**
+	 * Some planned occurrences already existed and were skipped: the idempotent
+	 * step at work (e.g. a concurrent pass recorded them first), not a fault.
+	 */
+	onSkippedDuplicates?: (context: { planned: number; recorded: number }) => void;
+}
 
 /**
  * One materialization pass of the scheduler:
@@ -54,7 +68,7 @@ export type OnJobPlanError = (job: ScheduledJob, error: unknown) => void;
 export async function materialize(
 	runInTransaction: RunInTransaction,
 	options: MaterializerOptions = DEFAULT_MATERIALIZER_OPTIONS,
-	onPlanError?: OnJobPlanError,
+	hooks: MaterializerHooks = {},
 ): Promise<MaterializerSummary> {
 	return await runInTransaction<MaterializerSummary>(async (tx) => {
 		const claimed = await tx.claimDueJobs(options.batchSize);
@@ -64,9 +78,17 @@ export async function materialize(
 		const { occurrencesPlanned, numberOfJobsDeferred } = planOrDeferJobs(
 			claimed,
 			options,
-			onPlanError,
+			hooks.onPlanError,
 		);
-		const occurrences = await tx.recordOccurrences(occurrencesPlanned);
+		const rows = toNewOccurrences(occurrencesPlanned);
+		const occurrences = await tx.recordOccurrences(rows);
+		if (occurrences < rows.length) {
+			try {
+				hooks.onSkippedDuplicates?.({ planned: rows.length, recorded: occurrences });
+			} catch {
+				// A broken reporter must not roll back the pass.
+			}
+		}
 		await tx.advanceJobs(occurrencesPlanned);
 
 		return {
@@ -75,6 +97,19 @@ export async function materialize(
 			deferredJobs: numberOfJobsDeferred,
 		};
 	});
+}
+
+function toNewOccurrences(planned: PlannedJob[]): NewOccurrence[] {
+	return planned.flatMap(({ job, plan }) =>
+		plan.occurrences.map((when) => ({
+			jobId: job.id,
+			taskType: job.taskType,
+			payload: job.payload,
+			scheduledFor: when,
+			runAt: when,
+			maxAttempts: job.maxAttempts,
+		})),
+	);
 }
 
 function planOrDeferJobs(
@@ -107,10 +142,15 @@ function planOrDeferJob(
 			deferred: false,
 		};
 	} catch (error) {
-		onPlanError?.(job, error);
+		try {
+			onPlanError?.(job, error);
+		} catch {
+			// The pass still owns the other jobs.
+		}
 		// Defer: record nothing and retry after a backoff. Keeping nextRunAt set (never
 		// null) reserves null for its one meaning: the schedule is exhausted.
 		// The row passed validation at write time but can't be planned at claim time, e.g.:
+		// - the row is missing a column its kind guarantees (corrupt or hand-edited);
 		// - the job's timezone isn't in this runtime's tzdata (written on a newer/other version);
 		// - the instance-default timezone a null cron timezone resolves to is misconfigured;
 		// - a rolled-back instance claims a schedule written in a shape this version can't evaluate.

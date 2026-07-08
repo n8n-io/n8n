@@ -288,6 +288,39 @@ describe('Canvas', () => {
 		await waitFor(() => expect(getSelectedNodes.value.map(({ id }) => id)).not.toContain('node-1'));
 	});
 
+	it('should select the group node when a collapsed group member is selected', async () => {
+		vi.spyOn(usePostHog(), 'isFeatureEnabled').mockImplementation(
+			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
+		);
+		workflowDocumentStore.setNodeGroups([{ id: 'g1', name: 'Group 1', nodeIds: ['node-1'] }]);
+
+		const nodeGroupView = {
+			isGroupCollapsed: () => true,
+			toggleCollapsed: () => {},
+			getVisualOffsetForNode: () => ({ x: 0, y: 0 }),
+			getVisualOffsetForComponent: () => ({ x: 0, y: 0 }),
+			syncLayoutComponents: () => {},
+			settleManualNodePositions: (events: unknown) => events,
+			commitMovedPushSourceEffects: () => [],
+		} as unknown as CanvasNodeGroupView;
+
+		const node = createCanvasNodeElement({ id: 'node-1' });
+		const groupNode = createCanvasGroupNode({ selectable: true });
+		const eventBus = createEventBus<CanvasEventBusEvents>();
+
+		const { container } = renderComponent({
+			props: { nodes: [node, groupNode], eventBus },
+			global: { provide: { [NodeGroupViewKey as symbol]: nodeGroupView } },
+		});
+
+		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(2));
+
+		const { getSelectedNodes } = useVueFlow(canvasId);
+		eventBus.emit('nodes:select', { ids: ['node-1'] });
+
+		await waitFor(() => expect(getSelectedNodes.value.map(({ id }) => id)).toEqual(['group:g1']));
+	});
+
 	it('should expand a selected collapsed group to its members when copying', async () => {
 		vi.spyOn(usePostHog(), 'isFeatureEnabled').mockImplementation(
 			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,

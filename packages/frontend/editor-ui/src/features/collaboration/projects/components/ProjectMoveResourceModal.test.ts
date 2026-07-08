@@ -14,6 +14,12 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { ComponentProps } from 'vue-component-type-helpers';
 import { ResourceType } from '../projects.utils';
 import type { ProjectSharingData } from 'n8n-workflow';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
+
+const isPrivateCredentialsEnabled = { value: false };
+vi.mock('@/features/resolvers/composables/usePrivateCredentials', () => ({
+	usePrivateCredentials: () => ({ isEnabled: isPrivateCredentialsEnabled }),
+}));
 
 const renderComponent = createComponentRenderer(ProjectMoveResourceModal, {
 	pinia: createTestingPinia(),
@@ -35,6 +41,7 @@ let credentialsStore: MockedStore<typeof useCredentialsStore>;
 describe('ProjectMoveResourceModal', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		isPrivateCredentialsEnabled.value = false;
 		telemetry = useTelemetry();
 		projectsStore = mockedStore(useProjectsStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
@@ -252,6 +259,56 @@ describe('ProjectMoveResourceModal', () => {
 			undefined,
 			['1', '2'],
 		);
+	});
+
+	describe('resolvable credential warning', () => {
+		const makeCredential = (isResolvable: boolean): ICredentialsResponse =>
+			({
+				id: '1',
+				name: 'My private credential',
+				type: 'oAuth2Api',
+				createdAt: '2021-01-01T00:00:00Z',
+				updatedAt: '2021-01-01T00:00:00Z',
+				isManaged: false,
+				isResolvable,
+				homeProject: { id: '2', name: 'My Project' } as ProjectSharingData,
+			}) as ICredentialsResponse;
+
+		const props = (isResolvable: boolean): ComponentProps<typeof ProjectMoveResourceModal> => ({
+			modalName: PROJECT_MOVE_RESOURCE_MODAL,
+			data: {
+				resourceType: ResourceType.Credential,
+				resourceTypeLabel: 'credential',
+				resource: makeCredential(isResolvable),
+			},
+		});
+
+		beforeEach(() => {
+			isPrivateCredentialsEnabled.value = true;
+			projectsStore.searchProjects.mockResolvedValue({ count: 1, data: [createProjectListItem()] });
+		});
+
+		it('warns when moving a resolvable credential', async () => {
+			const { findByTestId } = renderComponent({ props: props(true) });
+
+			expect(await findByTestId('project-move-resource-modal-resolvable-warning')).toBeVisible();
+		});
+
+		it('does not warn when moving a non-resolvable credential', async () => {
+			const { queryByTestId } = renderComponent({ props: props(false) });
+			await vi.waitFor(() => expect(projectsStore.searchProjects).toHaveBeenCalled());
+
+			expect(queryByTestId('project-move-resource-modal-resolvable-warning')).toBeNull();
+		});
+
+		it('does not warn when private credentials are disabled', async () => {
+			isPrivateCredentialsEnabled.value = false;
+
+			const { queryByTestId } = renderComponent({ props: props(true) });
+			await vi.waitFor(() => expect(projectsStore.searchProjects).toHaveBeenCalled());
+
+			expect(queryByTestId('project-move-resource-modal-resolvable-warning')).toBeNull();
+		});
 	});
 
 	it('should prevent duplicate submissions when button clicked multiple times', async () => {

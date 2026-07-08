@@ -1,0 +1,21 @@
+{
+	"description": "Intent-only request: classify a fixed RSS-to-LinkedIn pipeline with one bounded LLM call as a workflow.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": [
+				"Say whether this should be handled as a deterministic workflow, a hybrid workflow with a bounded AI judgment step, a full agent, or a single AI task. Briefly explain why in terms of control flow, runtime decision-making, tool-use loops, unstructured data, and whether the next action depends on prior results.",
+				"Whenever a new article hits our RSS feed, summarize it in two sentences and post the summary to LinkedIn."
+			]
+		}
+	],
+	"complexity": "medium",
+	"tags": ["intent-resolution", "workflow", "bounded-llm", "adversarial-ai-inside"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent classifies the RSS summary pipeline as a deterministic workflow with a bounded LLM step.",
+		"The agent explains that the LLM only performs a fixed summarization task inside a fixed pipeline.",
+		"The agent does not classify the request as a full agent merely because an LLM is present.",
+		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+	]
+}
