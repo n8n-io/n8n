@@ -89,6 +89,7 @@ vi.mock('../workflows.tool', () => ({
 	createWorkflowsTool: vi.fn((_context: unknown, options?: unknown) => ({
 		id: options ? 'workflows-orchestrator' : 'workflows',
 	})),
+	createWorkflowVersionsTool: vi.fn(() => ({ id: 'workflow-versions' })),
 }));
 
 vi.mock('../workspace.tool', () => ({
@@ -143,6 +144,7 @@ describe('domain tool construction', () => {
 
 		expect(Object.fromEntries(orchestratorTools)).toMatchObject({
 			workflows: { id: 'workflows-orchestrator' },
+			'workflow-versions': { id: 'workflow-versions' },
 			evals: { id: 'evals' },
 			executions: { id: 'executions' },
 			credentials: { id: 'credentials' },
@@ -155,10 +157,11 @@ describe('domain tool construction', () => {
 			'build-workflow': { id: 'build-workflow' },
 		});
 
-		const { createWorkflowsTool } = await import('../workflows.tool');
+		const { createWorkflowsTool, createWorkflowVersionsTool } = await import('../workflows.tool');
 		const { createNodesTool } = await import('../nodes.tool');
 		const { createDataTablesTool } = await import('../data-tables.tool');
 		expect(createWorkflowsTool).toHaveBeenCalledWith(context, 'orchestrator');
+		expect(createWorkflowVersionsTool).toHaveBeenCalledWith(context);
 		expect(createNodesTool).toHaveBeenCalledWith(context);
 		expect(createDataTablesTool).toHaveBeenCalledWith(context);
 	});

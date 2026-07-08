@@ -1,10 +1,8 @@
 ---
 name: planned-task-runtime
 description: >-
-  Handles system follow-up turns: planned-task-follow-up (synthesize, replan,
-  build-workflow, checkpoint), background-task-completed, running-tasks context,
-  and create-tasks silence rules. Load whenever any of these tags appear or
-  after calling create-tasks.
+  System follow-up turns: planned-task-follow-up (including type="replan"),
+  background-task-completed, running-tasks. Also load immediately after calling create-tasks.
 recommended_tools:
   - create-tasks
   - complete-checkpoint
@@ -20,6 +18,11 @@ recommended_tools:
 Load this skill when the current message contains `<planned-task-follow-up>`,
 `<background-task-completed>`, `<running-tasks>`, or immediately after calling
 `create-tasks`.
+
+## Task control
+
+Use `task-control(action="update-checklist")` only for lightweight visible
+checklists that do not need scheduler-driven execution.
 
 ## Silence after spawning tasks
 

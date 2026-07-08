@@ -86,6 +86,19 @@ export interface AgentRuntimeConfig {
 	toolSearch?: {
 		topK?: number;
 	};
+	/**
+	 * Tool gates: deferred tool name → skills (by id or name) that unlock it.
+	 * Gated tools stay hidden from search_tools and rejected by load_tools
+	 * until one of the owning skills is loaded via load_skill.
+	 */
+	toolGates?: Record<string, readonly string[]>;
+	skillToolActivation?: {
+		resolveRecommendedTools: (input: {
+			skillId?: string;
+			name?: string;
+			filePath?: string;
+		}) => string[] | undefined;
+	};
 	providerTools?: BuiltProviderTool[];
 	memory?: BuiltMemory;
 	observationLog?: ObservationLogMemoryConfig;
@@ -178,7 +191,10 @@ export class AgentRuntime {
 		this.telemetry = new RuntimeTelemetry(config);
 		this.runId = config.runId ?? generateRunId();
 		if (config.deferredTools && config.deferredTools.length > 0) {
-			this.deferredToolManager = new DeferredToolManager(config.deferredTools, config.toolSearch);
+			this.deferredToolManager = new DeferredToolManager(config.deferredTools, {
+				...config.toolSearch,
+				...(config.toolGates ? { toolGates: config.toolGates } : {}),
+			});
 		}
 		this.context = new RuntimeContextBuilder(config, this.deferredToolManager);
 		this.runState = config.runState ?? new RunStateManager(config.checkpointStorage);
@@ -189,6 +205,8 @@ export class AgentRuntime {
 			eventBus: this.eventBus,
 			concurrency: config.toolCallConcurrency ?? 1,
 			onCancelled: () => this.updateState({ status: 'cancelled' }),
+			deferredToolManager: this.deferredToolManager,
+			skillToolActivation: config.skillToolActivation,
 		});
 		this.modelCost = config.modelCost;
 		this.currentState = {
@@ -330,7 +348,12 @@ export class AgentRuntime {
 		if (!toolCall) throw new Error(`No tool call found for toolCallId: ${options.toolCallId}`);
 
 		const list = AgentMessageList.deserialize(state.messageList);
-		this.context.hydrateDeferredToolsFromList(list);
+		this.context.hydrateDeferredToolsFromList(list, {
+			ensureLoadedToolNames: [
+				toolCall.toolName,
+				...Object.values(state.pendingToolCalls).map((pending) => pending.toolName),
+			],
+		});
 
 		const toolForValidation = this.context
 			.getCurrentTools(state.persistence)

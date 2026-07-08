@@ -1,13 +1,9 @@
 ---
 name: intent-recognition
 description: >-
-  Classifies automation requests by control-flow ownership: deterministic
-  workflow, bounded LLM judgment inside a workflow, full agent, single AI task,
-  or ambiguous request. Must be used before deciding the intent of any
-  automation request, including intent-only classification, route selection,
-  workflow-vs-agent decisions, hybrid-vs-agent distinctions, and ambiguous
-  automation requests, before choosing workflow-builder, planning, or an
-  agent-oriented design.
+  Classify automation intent (workflow, hybrid, agent, single AI task, ambiguous) before
+  choosing workflow-builder, planning, or agent-oriented design. Load first when the user asks
+  what kind of automation to build or intent is unclear.
 ---
 
 # Intent recognition

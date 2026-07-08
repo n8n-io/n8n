@@ -129,7 +129,7 @@ export class RuntimeContextBuilder {
 	/**
 	 * Name of the tool eligible for an Anthropic tool-definitions cache
 	 * breakpoint, or `undefined` if the tool set isn't fully static. Deferred
-	 * (controller/loaded) tools can appear mid-conversation via `load_tool`, so
+	 * (controller/loaded) tools can appear mid-conversation via `load_tools`, so
 	 * they disqualify caching — marking a tool block that later changes would
 	 * invalidate the cache.
 	 */
@@ -157,9 +157,15 @@ export class RuntimeContextBuilder {
 		return recallTool ? [...tools, recallTool] : tools;
 	}
 
-	hydrateDeferredToolsFromList(list: AgentMessageList): void {
+	hydrateDeferredToolsFromList(
+		list: AgentMessageList,
+		options?: { ensureLoadedToolNames?: readonly string[] },
+	): void {
 		if (!this.deferredToolManager?.hasTools) return;
-		this.deferredToolManager.hydrateLoadedToolsFromMessages(list.serialize().messages);
+		this.deferredToolManager.hydrateLoadedToolsFromMessages(list.serialize().messages, {
+			ensureLoadedToolNames: options?.ensureLoadedToolNames,
+			skillToolActivation: this.config.skillToolActivation,
+		});
 	}
 
 	/**
@@ -222,7 +228,7 @@ export class RuntimeContextBuilder {
 	 *   (base tools, deferred-tool controllers, the recall tool) plus the
 	 *   user's instructions. Sent as the cached system message.
 	 * - `volatileInstructions`: fragments from deferred tools loaded mid-
-	 *   conversation via `load_tool`. Kept out of the cached message —
+	 *   conversation via `load_tools`. Kept out of the cached message —
 	 *   growing it the moment a tool loads would invalidate the whole
 	 *   prefix (OpenAI's automatic cache, and the Anthropic breakpoint) for
 	 *   the rest of the conversation. Sent as the uncached system message

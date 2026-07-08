@@ -28,7 +28,7 @@ describe('deferred tools integration', () => {
 		const agent = new Agent('deferred-generate-test')
 			.model(getModel('anthropic'))
 			.instructions(
-				'You are testing deferred tool discovery. For arithmetic requests, first call search_tools, then call load_tool with the exact returned tool name, then call the loaded tool. Do not answer from mental math.',
+				'You are testing deferred tool discovery. For arithmetic requests, first call search_tools, then call load_tools with the exact returned tool name in toolNames, then call the loaded tool. Do not answer from mental math.',
 			)
 			.deferredTool(multiplyTool, { search: { topK: 2 } });
 
@@ -38,7 +38,7 @@ describe('deferred tools integration', () => {
 
 		const toolNames = result.toolCalls?.map((toolCall) => toolCall.tool) ?? [];
 		expect(toolNames).toEqual(
-			expect.arrayContaining(['search_tools', 'load_tool', 'multiply_numbers']),
+			expect.arrayContaining(['search_tools', 'load_tools', 'multiply_numbers']),
 		);
 
 		const multiplyCall = result.toolCalls?.find((toolCall) => toolCall.tool === 'multiply_numbers');
@@ -55,7 +55,7 @@ describe('deferred tools integration', () => {
 		const agent = new Agent('deferred-stream-test')
 			.model(getModel('anthropic'))
 			.instructions(
-				'You are testing deferred tool discovery. For character counting requests, first call search_tools, then call load_tool with the exact returned tool name, then call the loaded tool. Do not count manually.',
+				'You are testing deferred tool discovery. For character counting requests, first call search_tools, then call load_tools with the exact returned tool name in toolNames, then call the loaded tool. Do not count manually.',
 			)
 			.deferredTool(countCharactersTool);
 
@@ -68,7 +68,7 @@ describe('deferred tools integration', () => {
 		const toolNames = toolResults.map((toolResult) => toolResult.toolName);
 
 		expect(toolNames).toEqual(
-			expect.arrayContaining(['search_tools', 'load_tool', 'count_characters']),
+			expect.arrayContaining(['search_tools', 'load_tools', 'count_characters']),
 		);
 
 		const countResult = toolResults.find(
@@ -100,7 +100,7 @@ describe('deferred tools integration', () => {
 		const agent = new Agent('deferred-suspend-test')
 			.model(getModel('anthropic'))
 			.instructions(
-				'You are testing deferred tool discovery with approval. When asked to delete a temporary file, first call search_tools, then call load_tool with the exact returned tool name, then call delete_temp_file. Do not skip the tool.',
+				'You are testing deferred tool discovery with approval. When asked to delete a temporary file, first call search_tools, then call load_tools with the exact returned tool name in toolNames, then call delete_temp_file. Do not skip the tool.',
 			)
 			.deferredTool(deleteTool)
 			.checkpoint('memory');

@@ -224,6 +224,8 @@ describe('createBuildWorkflowTool', () => {
 		expect(result.postBuildFlow?.instructions).not.toContain('## Setup follow-up');
 		expect(result.postBuildFlow?.instructions).not.toContain('## Credentials before build');
 		expect(result.postBuildFlow?.instructions).toContain('## After build-workflow succeeds');
+		expect(result.postBuildFlow?.instructions).toContain('## Trigger URL sharing');
+		expect(result.postBuildFlow?.instructions).toContain('Form Trigger lives under `/form/`, NOT');
 		expect(result.postBuildFlow?.guidance).toContain(
 			'then mocked/no-mock live-test when latest verification used mocks or simulations',
 		);

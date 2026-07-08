@@ -33,11 +33,14 @@ describe('Instance AI runtime skills', () => {
 
 		expect(dataTableManager).toMatchObject({
 			name: 'data-table-manager',
-			description:
-				'Designs and manages n8n Data Tables directly with the data-tables and parse-file tools. Use when the user asks to list, show, create, inspect, import, seed, query, update, clean up, rename columns in, or delete data tables and rows, especially from CSV/XLSX/JSON attachments, and before building or planning workflows that create or write to Data Tables.',
 			platforms: ['daytona'],
 			recommendedTools: ['data-tables', 'parse-file'],
 		});
+		expect(dataTableManager?.description).toContain('what data tables do I have?');
+		expect(dataTableManager?.description).toContain('Load before workflow-builder');
+
+		const loadedSkill = await source.loadSkill('data-table-manager');
+		expect(loadedSkill?.instructions).toContain('call `create-tasks`');
 		expect(dataTableManager?.linkedFiles.references).toEqual([
 			expect.objectContaining({ path: 'references/data-table-playbook.md' }),
 		]);
@@ -82,7 +85,7 @@ describe('Instance AI runtime skills', () => {
 		);
 		expect(
 			source.registry.skills.find((entry) => entry.id === 'intent-recognition')?.description,
-		).toContain('Must be used before deciding the intent of any automation request');
+		).toContain('Load first when the user asks what kind of automation to build');
 		const skill = await source.loadSkill('intent-recognition');
 		expect(skill?.name).toBe('intent-recognition');
 		expect(skill?.instructions).toContain('This skill must be used before deciding');
@@ -101,6 +104,8 @@ describe('Instance AI runtime skills', () => {
 		);
 
 		expect(skill?.name).toBe('credential-setup-with-computer-use');
+		expect(skill?.description).toContain('needsBrowserSetup=true');
+		expect(skill?.description).toContain('browser_*');
 		for (const tool of [
 			'research',
 			'ask-user',
@@ -133,12 +138,10 @@ describe('Instance AI runtime skills', () => {
 			name: 'n8n-docs-assistant',
 			recommendedTools: ['n8n-docs', 'credentials', 'nodes'],
 		});
-		expect(skill?.description).toContain(
-			'credential setup questions opened from the credential modal',
-		);
-		expect(skill?.linkedFiles.references).toEqual([]);
+		expect(skill?.description).toContain('Not for workflow building');
 
 		const loaded = await source.loadSkill('n8n-docs-assistant');
+		expect(loaded?.instructions).toContain('Do not fabricate provider setup mechanics');
 		expect(loaded?.instructions).toContain('n8n-docs(action="lookup")');
 		expect(loaded?.instructions).toContain('intent: "credential-setup"');
 		expect(loaded?.instructions).toContain('oauthRedirectUrl');
@@ -146,6 +149,15 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('Source: [Page title](page URL)');
 		expect(loaded?.instructions).toContain('Sources:');
 		expect(loaded?.instructions).toContain('pages returned by `n8n-docs`');
+	});
+
+	it('loads the bundled agent-builder skill with workflow guard in description', () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const skill = source.registry.skills.find((entry) => entry.name === 'agent-builder');
+
+		expect(skill?.description).toContain('workflow-builder');
+		expect(skill?.description).toContain('do not call agent_builder');
+		expect(skill?.recommendedTools).toEqual(['agent_builder', 'credentials']);
 	});
 
 	it('loads the bundled workflow-builder skill', async () => {
@@ -161,15 +173,29 @@ describe('Instance AI runtime skills', () => {
 			'build-workflow',
 			'workflows',
 			'nodes',
-			'data-tables',
 			'credentials',
 			'verify-built-workflow',
-			'executions',
 		]);
-		expect(skill?.description).toContain('Default path for all single-workflow work');
-		expect(skill?.description).toContain('Do not load planning or create-tasks first');
+		expect(skill?.description).toContain('Default for single-workflow build/edit');
+		expect(skill?.description).toContain('use workflows/executions directly');
+		expect(skill?.linkedFiles.references).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ path: 'references/repair-strategy.md' }),
+				expect.objectContaining({ path: 'references/setup-and-escalation.md' }),
+				expect.objectContaining({ path: 'references/verification-playbook.md' }),
+				expect.objectContaining({ path: 'references/node-configuration.md' }),
+				expect.objectContaining({ path: 'references/compositional-workflows.md' }),
+				expect.objectContaining({ path: 'references/error-workflows.md' }),
+			]),
+		);
 
 		const loaded = await source.loadSkill('workflow-builder');
+		expect(loaded?.instructions).toContain('load\n`data-table-manager` before designing');
+		expect(loaded?.instructions).toContain('load `debugging-executions` and inspect');
+		expect(loaded?.instructions).toContain('## Do not use agent_builder');
+		expect(loaded?.instructions).toContain('do not call\n`agent_builder` at all');
+		expect(loaded?.instructions).toContain('Load phase-specific tools via `load_tools`');
+		expect(loaded?.instructions).toContain('## Build loop');
 		expect(loaded?.instructions).toContain('build-workflow');
 		expect(loaded?.instructions).toContain('filePath');
 		expect(loaded?.instructions).toContain('workspace file tools');
@@ -178,15 +204,17 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('nodes(action="suggested")');
 		expect(loaded?.instructions).toContain('nodes(action="search")');
 		expect(loaded?.instructions).toContain("newCredential('Credential Name', 'credential-id')");
-		expect(loaded?.instructions).toContain('Verification');
+		expect(loaded?.instructions).toContain('## Verification');
 		expect(loaded?.instructions).toContain('Build/save success is not workflow-quality evidence');
 		expect(loaded?.instructions).toContain('postBuildFlow.required: true');
-		expect(loaded?.instructions).toContain('follow the inlined\n    `postBuildFlow.instructions`');
-		expect(loaded?.instructions).toContain('Do not call\n    `verify-built-workflow` directly');
+		expect(loaded?.instructions).toContain('follow the inlined\n   `postBuildFlow.instructions`');
+		expect(loaded?.instructions).toContain('Do not call `verify-built-workflow` directly');
 		expect(loaded?.instructions).toContain('workflows(action="get-as-code", workflowId)');
-		expect(loaded?.instructions).toContain('n8n has no global error workflow setting');
 		expect(loaded?.instructions).toContain('references/error-workflows.md');
-		expect(loaded?.instructions).toContain('settings.errorWorkflow');
+		expect(loaded?.instructions).toContain('references/verification-playbook.md');
+		expect(loaded?.instructions).toContain('references/setup-and-escalation.md');
+		expect(loaded?.instructions).toContain('references/repair-strategy.md');
+		expect(loaded?.instructions).toContain('references/node-configuration.md');
 		expect(loaded?.instructions).toContain(
 			'knowledge-base/reference/workflow-builder-guardrails.md',
 		);
@@ -196,10 +224,56 @@ describe('Instance AI runtime skills', () => {
 			'never ask for\nsetup values before the first successful build',
 		);
 		expect(loaded?.instructions).toContain('`planning` or call `create-tasks` first');
+		expect(loaded?.instructions).toContain('nodes(action="type-definition")');
+		expect(loaded?.instructions).toContain('Do not create a plan just for verification');
 		expect(loaded?.instructions).toContain('.to(isImportant)');
 		expect(loaded?.instructions).toContain('.onTrue(handleImportant)');
-		expect(loaded?.instructions).toContain('Never call `.onFalse()` more than once');
+		expect(loaded?.instructions).toContain('Never call `.onFalse()` or');
 		expect(loaded?.instructions).toContain('branch nodes are omitted from the saved graph');
+
+		const loadTool = createSkillLoadTool(source);
+		const setupReference = await loadTool.handler?.(
+			{ skillId: 'workflow-builder', filePath: 'references/setup-and-escalation.md' },
+			{},
+		);
+		if (
+			!setupReference ||
+			typeof setupReference !== 'object' ||
+			!('content' in setupReference) ||
+			typeof setupReference.content !== 'string'
+		) {
+			throw new Error('Expected setup-and-escalation reference content');
+		}
+		expect(setupReference.content).toContain('## Capability honesty');
+		expect(setupReference.content).toContain('Never call both setup tools for the same workflow');
+
+		const nodeReference = await loadTool.handler?.(
+			{ skillId: 'workflow-builder', filePath: 'references/node-configuration.md' },
+			{},
+		);
+		if (
+			!nodeReference ||
+			typeof nodeReference !== 'object' ||
+			!('content' in nodeReference) ||
+			typeof nodeReference.content !== 'string'
+		) {
+			throw new Error('Expected node-configuration reference content');
+		}
+		expect(nodeReference.content).toContain('Webhook trigger setup is node-defined');
+
+		const verificationReference = await loadTool.handler?.(
+			{ skillId: 'workflow-builder', filePath: 'references/verification-playbook.md' },
+			{},
+		);
+		if (
+			!verificationReference ||
+			typeof verificationReference !== 'object' ||
+			!('content' in verificationReference) ||
+			typeof verificationReference.content !== 'string'
+		) {
+			throw new Error('Expected verification-playbook reference content');
+		}
+		expect(verificationReference.content).toContain('Load `executions` via `load_tools`');
 	});
 
 	it('loads the bundled planning skill', async () => {
@@ -217,9 +291,11 @@ describe('Instance AI runtime skills', () => {
 			'research',
 			'ask-user',
 		]);
-		expect(skill?.description).toContain('Do NOT use for new one-off workflows');
+		expect(skill?.description).toContain('Coordinated multi-artifact work only');
+		expect(skill?.description).toContain('Not for single workflows');
 
 		const loaded = await source.loadSkill('planning');
+		expect(loaded?.instructions).toContain('## Capability honesty');
 		expect(loaded?.instructions).toContain('## When NOT to use this skill');
 		expect(loaded?.instructions).toContain('Do not call `create-tasks` just to get approval');
 		expect(loaded?.instructions).toContain('planningContext.source: "planning-skill"');
@@ -291,6 +367,10 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain(
 			'Only call `workflows(action="publish")` when the user explicitly asks',
 		);
+		expect(loaded?.instructions).toContain('## Trigger URL sharing');
+		expect(loaded?.instructions).toContain('Webhook base URL');
+		expect(loaded?.instructions).toContain('Form Trigger lives under `/form/`, NOT');
+		expect(loaded?.instructions).toMatch(/Open chat[\s\S]*workflow canvas/);
 
 		const loadTool = createSkillLoadTool(source);
 		const reference = await loadTool.handler?.(
@@ -312,9 +392,12 @@ describe('Instance AI runtime skills', () => {
 		const source = loadInstanceAiRuntimeSkillSource();
 		const skill = source.registry.skills.find((entry) => entry.name === 'planned-task-runtime');
 
-		expect(skill?.description).toContain('planned-task-follow-up');
+		expect(skill?.description).toContain('type="replan"');
+		expect(skill?.description).toContain('after calling create-tasks');
 
 		const loaded = await source.loadSkill('planned-task-runtime');
+		expect(loaded?.instructions).toContain('## Task control');
+		expect(loaded?.instructions).toContain('task-control(action="update-checklist")');
 		expect(loaded?.instructions).toContain('<planned-task-follow-up type="synthesize">');
 		expect(loaded?.instructions).toContain('You MUST take action in this same turn');
 		expect(loaded?.instructions).toContain('awaiting_replan');
@@ -335,8 +418,10 @@ describe('Instance AI runtime skills', () => {
 		const skill = source.registry.skills.find((entry) => entry.name === 'debugging-executions');
 
 		expect(skill?.recommendedTools).toEqual(['executions', 'workflows']);
+		expect(skill?.description).toContain('Load before workflow-builder');
 
 		const loaded = await source.loadSkill('debugging-executions');
+		expect(loaded?.instructions).toContain('never\nedit on a hunch');
 		expect(loaded?.instructions).toContain('executions(action="debug")');
 		expect(loaded?.instructions).toContain(
 			'executions(action="get-resolved-node-parameters", executionId, nodeName)',

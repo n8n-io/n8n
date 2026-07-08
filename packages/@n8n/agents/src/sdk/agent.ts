@@ -16,7 +16,7 @@ import { mergeProviderOptions } from '../runtime/model/prompt-cache';
 import { AgentEventBus } from '../runtime/state/event-bus';
 import { RunStateManager } from '../runtime/state/run-state';
 import {
-	LOAD_TOOL_TOOL_NAME,
+	LOAD_TOOLS_TOOL_NAME,
 	SEARCH_TOOLS_TOOL_NAME,
 } from '../runtime/tools/deferred-tool-manager';
 import {
@@ -88,6 +88,12 @@ interface DeferredToolOptions {
 	search?: {
 		topK?: number;
 	};
+	/**
+	 * Tool gates: deferred tool name → skills (by id or name) that unlock it.
+	 * Gated tools stay hidden from search_tools and rejected by load_tools
+	 * until one of the owning skills is loaded via load_skill.
+	 */
+	gates?: Record<string, readonly string[]>;
 }
 
 type ActiveRuntime = {
@@ -152,6 +158,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private deferredTools: BuiltTool[] = [];
 
 	private deferredToolSearchTopK: number | undefined;
+
+	private deferredToolGates: Record<string, readonly string[]> | undefined;
 
 	private providerTools: BuiltProviderTool[] = [];
 
@@ -259,7 +267,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return this;
 	}
 
-	/** Add tools that are searchable through `search_tools` and activated on demand with `load_tool`. */
+	/** Add tools that are searchable through `search_tools` and activated on demand with `load_tools`. */
 	deferredTool(t: ToolParameter | ToolParameter[], options?: DeferredToolOptions): this {
 		const tools = Array.isArray(t) ? t : [t];
 		for (const tool of tools) {
@@ -269,6 +277,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}
 		if (options?.search?.topK !== undefined) {
 			this.deferredToolSearchTopK = options.search.topK;
+		}
+		if (options?.gates) {
+			this.deferredToolGates = { ...this.deferredToolGates, ...options.gates };
 		}
 		return this;
 	}
@@ -852,10 +863,16 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		const finalTools = [...this.tools];
 		const configuredDeferredTools = [...this.deferredTools];
+		const deferWorkspaceTools =
+			configuredDeferredTools.length > 0 || this.deferredToolSearchTopK !== undefined;
 
 		if (this.workspaceInstance) {
 			const wsTools = this.workspaceInstance.getTools();
-			finalTools.push(...wsTools);
+			if (deferWorkspaceTools) {
+				configuredDeferredTools.push(...wsTools);
+			} else {
+				finalTools.push(...wsTools);
+			}
 		}
 
 		const finalStaticTools = finalTools;
@@ -890,7 +907,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		const staticNames = new Set(finalStaticTools.map((t) => t.name));
 		const reservedDeferredToolNames = new Set([
 			SEARCH_TOOLS_TOOL_NAME,
-			LOAD_TOOL_TOOL_NAME,
+			LOAD_TOOLS_TOOL_NAME,
 			...RUNTIME_SKILL_TOOL_NAMES,
 		]);
 		const deferredNames = new Set<string>();
@@ -981,6 +998,30 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		const runState = new RunStateManager(this.checkpointStore);
 
+		const skillToolActivation = this.skillSource
+			? {
+					resolveRecommendedTools: (input: {
+						skillId?: string;
+						name?: string;
+						filePath?: string;
+					}) => {
+						if (
+							typeof input.filePath === 'string' &&
+							input.filePath.trim() !== '' &&
+							input.filePath !== 'SKILL.md'
+						) {
+							return undefined;
+						}
+						const skill = this.skillSource!.registry.skills.find(
+							(entry) =>
+								(input.skillId !== undefined && entry.id === input.skillId) ||
+								(input.name !== undefined && entry.name === input.name),
+						);
+						return skill?.recommendedTools;
+					},
+				}
+			: undefined;
+
 		return {
 			name: this.name,
 			model: modelConfig,
@@ -989,6 +1030,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			tools: allTools.length > 0 ? allTools : undefined,
 			deferredTools: finalDeferredTools.length > 0 ? finalDeferredTools : undefined,
 			toolSearch,
+			...(this.deferredToolGates && finalDeferredTools.length > 0
+				? { toolGates: this.deferredToolGates }
+				: {}),
+			...(skillToolActivation ? { skillToolActivation } : {}),
 			instructionProviderOptions: this.instructionProviderOpts,
 			providerTools: this.providerTools.length > 0 ? this.providerTools : undefined,
 			memory: memoryConfig?.memory,

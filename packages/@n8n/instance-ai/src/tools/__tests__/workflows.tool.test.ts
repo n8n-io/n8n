@@ -217,6 +217,27 @@ describe('workflows tool', () => {
 					workflow: { name: 'WF', nodes: [], connections: {} },
 				}).success,
 			).toBe(false);
+			expect(schema.safeParse({ action: 'list-versions', workflowId: 'w1' }).success).toBe(false);
+			expect(schema.safeParse({ action: 'unarchive', workflowId: 'w1' }).success).toBe(false);
+		});
+
+		it('should expose version actions on workflow-versions tool', () => {
+			const context = createMockContext();
+			context.workflowService.listVersions = vi.fn();
+			context.workflowService.getVersion = vi.fn();
+			context.workflowService.restoreVersion = vi.fn();
+			context.workflowService.updateVersion = vi.fn();
+			const tool = createWorkflowsTool(context, {
+				toolName: 'workflow-versions',
+				allowedActions: ['unarchive', 'list-versions', 'restore-version', 'update-version'],
+			});
+			const schema = getInputSchema(tool);
+
+			expect(schema.safeParse({ action: 'list-versions', workflowId: 'w1' }).success).toBe(true);
+			expect(
+				schema.safeParse({ action: 'restore-version', workflowId: 'w1', versionId: 'v1' }).success,
+			).toBe(true);
+			expect(schema.safeParse({ action: 'list', workflowId: 'w1' }).success).toBe(false);
 		});
 	});
 

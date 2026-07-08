@@ -1,5 +1,8 @@
+import { isRecord } from '@n8n/utils/is-record';
 import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
 
+import type { DeferredToolManager } from './deferred-tool-manager';
+import { LOAD_TOOLS_TOOL_NAME } from './deferred-tool-manager';
 import {
 	getInlineDelegateSubAgentToolOptions,
 	isDelegateSubAgentTool,
@@ -9,6 +12,7 @@ import { DEFAULT_SUB_AGENT_MAX_CHILDREN } from './sub-agent-task-path';
 import { executeTool, isSuspendedToolResult, type SuspendedToolResult } from './tool-adapter';
 import { isCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
+import { SKILL_LOAD_TOOL_NAME } from '../../skills/types';
 import type {
 	AgentExecutionCounter,
 	BuiltTelemetry,
@@ -21,6 +25,7 @@ import type { AgentMessage, ContentToolCall, Message } from '../../types/sdk/mes
 import type { JSONObject, JSONValue } from '../../types/utils/json';
 import { parseWithSchema } from '../../utils/parse';
 import { isZodSchema } from '../../utils/zod';
+import type { AgentRuntimeConfig } from '../loop/agent-runtime';
 import { incrementToolCallCount } from '../loop/execution-counter';
 import type { AgentMessageList } from '../model/message-list';
 import { normalizeToolInputForModel } from '../model/messages';
@@ -162,6 +167,8 @@ export interface ToolCallExecutorDeps {
 	concurrency: number;
 	/** Invoked when a run is aborted mid-batch so the runtime can set cancelled state. */
 	onCancelled: () => void;
+	deferredToolManager?: DeferredToolManager;
+	skillToolActivation?: AgentRuntimeConfig['skillToolActivation'];
 }
 
 /**
@@ -296,13 +303,79 @@ export class ToolCallExecutor {
 		const suspensions: ToolCallSuspension[] = [];
 		const pending: Record<string, PendingToolCall> = {};
 
-		for (let batchStart = 0; batchStart < executableCalls.length; ) {
+		const deferredSetupToolNames = new Set([SKILL_LOAD_TOOL_NAME, LOAD_TOOLS_TOOL_NAME]);
+		const setupCalls =
+			this.deps.deferredToolManager?.hasTools === true
+				? executableCalls
+						.filter((tc) => deferredSetupToolNames.has(tc.toolName))
+						.sort((left, right) => {
+							if (left.toolName === SKILL_LOAD_TOOL_NAME) return -1;
+							if (right.toolName === SKILL_LOAD_TOOL_NAME) return 1;
+							if (left.toolName === LOAD_TOOLS_TOOL_NAME) return -1;
+							if (right.toolName === LOAD_TOOLS_TOOL_NAME) return 1;
+							return 0;
+						})
+				: [];
+		const setupCallIds = new Set(setupCalls.map((tc) => tc.toolCallId));
+		const remainingCalls = executableCalls.filter((tc) => !setupCallIds.has(tc.toolCallId));
+
+		const processContext = {
+			toolMap,
+			list,
+			runId,
+			persistence: ctx.persistence,
+			resolvedTelemetry,
+			executionCounter,
+			abortSignal,
+		};
+
+		for (const tc of setupCalls) {
 			if (ctx.isAborted()) {
 				this.deps.onCancelled();
 				throw new Error('Agent run was aborted');
 			}
 
-			const batch = this.takeNextToolCallBatch(executableCalls, batchStart, toolMap);
+			const processResult = await this.processToolCall({
+				toolCallId: tc.toolCallId,
+				toolName: tc.toolName,
+				input: tc.input,
+				...processContext,
+				countToolCall: true,
+			});
+			unexecutedIds.delete(tc.toolCallId);
+			this.syncDeferredToolsIntoToolMap(toolMap);
+
+			const suspension = this.recordProcessOutcome({
+				tc,
+				processResult,
+				results,
+				suspensions,
+				errors,
+				pending,
+				list,
+				runId,
+			});
+			if (suspension) {
+				for (const id of unexecutedIds) {
+					const pendingCall = executableCallsById.get(id)!;
+					pending[pendingCall.toolCallId] = {
+						suspended: false,
+						toolCallId: pendingCall.toolCallId,
+						toolName: pendingCall.toolName,
+						input: pendingCall.input,
+					};
+				}
+				return { results, suspensions, errors, pending };
+			}
+		}
+
+		for (let batchStart = 0; batchStart < remainingCalls.length; ) {
+			if (ctx.isAborted()) {
+				this.deps.onCancelled();
+				throw new Error('Agent run was aborted');
+			}
+
+			const batch = this.takeNextToolCallBatch(remainingCalls, batchStart, toolMap);
 			batchStart += batch.length;
 
 			const settledResults = await Promise.allSettled(
@@ -333,52 +406,30 @@ export class ToolCallExecutor {
 			for (let i = 0; i < settledResults.length; i++) {
 				const result = settledResults[i];
 				const tc = batch[i];
-				const toolInput = tc.input;
-
 				if (result.status === 'rejected') {
 					list.setToolCallError(tc.toolCallId, result.reason);
 					errors.push({
 						toolCallId: tc.toolCallId,
 						toolName: tc.toolName,
-						input: toolInput,
+						input: tc.input,
 						error: result.reason,
 					});
-				} else if (result.value.outcome === 'suspended') {
-					hasSuspension = true;
-					suspensions.push({
-						toolCallId: tc.toolCallId,
-						toolName: tc.toolName,
-						input: toolInput,
-						payload: result.value.payload,
-						resumeSchema: result.value.resumeSchema,
-					});
-					pending[tc.toolCallId] = {
-						suspended: true,
-						toolCallId: tc.toolCallId,
-						toolName: tc.toolName,
-						input: toolInput,
-						suspendPayload: result.value.payload,
-						resumeSchema: result.value.resumeSchema,
+					continue;
+				}
+
+				if (
+					this.recordProcessOutcome({
+						tc,
+						processResult: result.value,
+						results,
+						suspensions,
+						errors,
+						pending,
+						list,
 						runId,
-					};
-				} else if (result.value.outcome === 'success') {
-					results.push({
-						toolCallId: tc.toolCallId,
-						toolName: tc.toolName,
-						input: toolInput,
-						toolEntry: result.value.toolEntry,
-						modelOutput: result.value.modelOutput,
-						customMessage: result.value.customMessage,
-					});
-				} else if (result.value.outcome === 'error') {
-					errors.push({
-						toolCallId: tc.toolCallId,
-						toolName: tc.toolName,
-						input: toolInput,
-						error: result.value.error,
-					});
-				} else if (result.value.outcome === 'noop') {
-					// noop
+					})
+				) {
+					hasSuspension = true;
 				}
 			}
 
@@ -628,7 +679,12 @@ export class ToolCallExecutor {
 			return await this.buildSuspendedOutcome(params, builtTool, toolResult);
 		}
 
-		return this.buildSuccessOutcome(params, builtTool, input, toolResult);
+		const outcome = this.buildSuccessOutcome(params, builtTool, input, toolResult);
+		if (outcome.outcome === 'success' && toolName === SKILL_LOAD_TOOL_NAME) {
+			return this.applySkillRecommendedToolActivation(params, input, outcome);
+		}
+
+		return outcome;
 	}
 
 	/** Emit a failed ToolExecutionEnd, record the error on the list, return an error outcome. */
@@ -815,5 +871,132 @@ export class ToolCallExecutor {
 			modelOutput: modelResult,
 			customMessage,
 		};
+	}
+
+	private applySkillRecommendedToolActivation(
+		params: ProcessToolCallParams,
+		input: JSONValue,
+		outcome: Extract<ToolCallOutcome, { outcome: 'success' }>,
+	): Extract<ToolCallOutcome, { outcome: 'success' }> {
+		const { deferredToolManager, skillToolActivation } = this.deps;
+		if (!deferredToolManager?.hasTools || !isRecord(input)) {
+			return outcome;
+		}
+
+		if (!this.isMainSkillLoadSuccess(outcome.toolEntry.output)) {
+			return outcome;
+		}
+
+		const skillLoadInput = {
+			skillId: typeof input.skillId === 'string' ? input.skillId : undefined,
+			name: typeof input.name === 'string' ? input.name : undefined,
+			filePath: typeof input.filePath === 'string' ? input.filePath : undefined,
+		};
+		// Unlock gated tools owned by this skill even when it recommends none.
+		deferredToolManager.markSkillLoaded(skillLoadInput);
+
+		if (!skillToolActivation) return outcome;
+
+		const recommended = skillToolActivation.resolveRecommendedTools(skillLoadInput);
+		if (!recommended?.length) return outcome;
+
+		const activated = deferredToolManager.activateRecommendedTools(recommended);
+		if (activated.length === 0) return outcome;
+
+		const modelOutput = this.appendAutoLoadedToolsToModelOutput(outcome.modelOutput, activated);
+		params.list.setToolCallResult(params.toolCallId, toJsonValue(modelOutput));
+
+		return {
+			...outcome,
+			modelOutput,
+		};
+	}
+
+	private isMainSkillLoadSuccess(output: unknown): boolean {
+		if (isRecord(output) && output.type === 'content') return true;
+		if (isRecord(output) && output.success === true && output.filePath === undefined) return true;
+		return false;
+	}
+
+	private appendAutoLoadedToolsToModelOutput(output: unknown, activatedTools: string[]): unknown {
+		const suffix = `\n[Tools activated for this skill: ${JSON.stringify(activatedTools)}. They are available on your next turn — no load_tools call needed.]`;
+		if (!isRecord(output) || output.type !== 'content' || !Array.isArray(output.value)) {
+			return output;
+		}
+
+		const blocks: unknown[] = output.value;
+		const value = blocks.map((block) => {
+			if (!isRecord(block) || block.type !== 'text' || typeof block.text !== 'string') {
+				return block;
+			}
+			return { ...block, text: `${block.text}${suffix}` };
+		});
+
+		return { ...output, value };
+	}
+
+	private syncDeferredToolsIntoToolMap(toolMap: Map<string, BuiltTool>): void {
+		const { deferredToolManager } = this.deps;
+		if (!deferredToolManager?.hasTools) return;
+		for (const tool of deferredToolManager.getLoadedTools()) {
+			toolMap.set(tool.name, tool);
+		}
+	}
+
+	private recordProcessOutcome(params: {
+		tc: RuntimeToolCall;
+		processResult: ToolCallOutcome;
+		results: ToolCallSuccess[];
+		suspensions: ToolCallSuspension[];
+		errors: ToolCallError[];
+		pending: Record<string, PendingToolCall>;
+		list: AgentMessageList;
+		runId: string;
+	}): boolean {
+		const { tc, processResult, results, suspensions, errors, pending, runId } = params;
+		const toolInput = tc.input;
+
+		if (processResult.outcome === 'suspended') {
+			suspensions.push({
+				toolCallId: tc.toolCallId,
+				toolName: tc.toolName,
+				input: toolInput,
+				payload: processResult.payload,
+				resumeSchema: processResult.resumeSchema,
+			});
+			pending[tc.toolCallId] = {
+				suspended: true,
+				toolCallId: tc.toolCallId,
+				toolName: tc.toolName,
+				input: toolInput,
+				suspendPayload: processResult.payload,
+				resumeSchema: processResult.resumeSchema,
+				runId,
+			};
+			return true;
+		}
+
+		if (processResult.outcome === 'success') {
+			results.push({
+				toolCallId: tc.toolCallId,
+				toolName: tc.toolName,
+				input: toolInput,
+				toolEntry: processResult.toolEntry,
+				modelOutput: processResult.modelOutput,
+				customMessage: processResult.customMessage,
+			});
+			return false;
+		}
+
+		if (processResult.outcome === 'error') {
+			errors.push({
+				toolCallId: tc.toolCallId,
+				toolName: tc.toolName,
+				input: toolInput,
+				error: processResult.error,
+			});
+		}
+
+		return false;
 	}
 }

@@ -1,11 +1,12 @@
 ---
 name: agent-builder
 description: >-
-  Use when creating, configuring, or editing a target n8n agent's build
-  configuration — chat integrations/triggers, MCP servers, node-tool resource
-  locators, sub-agent delegation, reusable target-agent skills, or recurring
-  scheduled tasks. Not for building n8n workflows or for built-in Build/Preview
-  chat.
+  Target n8n Agent artifact config (chat integrations, MCP servers, sub-agents, skills/tasks,
+  custom tools). Not for n8n workflows — when the user asked for a workflow, stay on
+  workflow-builder and do not call agent_builder.
+recommended_tools:
+  - agent_builder
+  - credentials
 ---
 
 # Agent Builder
@@ -15,6 +16,9 @@ below has a dedicated reference file with the full operating procedure. Match
 the user's request to the area, then load that reference with
 `load_skill({ skillId: "agent-builder", filePath: "references/<file>.md" })`
 before acting — do not act on an area from memory.
+
+When the user asked for a workflow, do not call `agent_builder` — stay on the
+`workflow-builder` path.
 
 ## Tools
 

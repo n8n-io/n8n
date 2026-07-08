@@ -29,149 +29,104 @@ import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
 // ── Action schemas ──────────────────────────────────────────────────────────
 
 const listAction = z.object({
-	action: z
-		.literal('list')
-		.describe('List workflows accessible to the current user. Use for workflow inspection.'),
-	query: z.string().optional().describe('Filter workflows by name'),
-	limit: z.number().int().positive().max(100).optional().describe('Max results to return'),
+	action: z.literal('list').describe('List workflows'),
+	query: z.string().optional().describe('Filter by name'),
+	limit: z.number().int().positive().max(100).optional().describe('Max results'),
 	status: z
 		.enum(['active', 'archived', 'all'])
 		.optional()
-		.describe(
-			'Which workflows to list. Defaults to active; use archived to find workflows that can be restored.',
-		),
+		.describe('Filter by status (default active)'),
 	scope: z
 		.enum(['project', 'instance'])
 		.optional()
-		.describe(
-			"Which project(s) to search. Defaults to this conversation's project. Use 'instance' only when you have a clear reason to look across all projects you can access.",
-		),
+		.describe('Project scope (default current project)'),
 });
 
 const getAction = z.object({
-	action: z
-		.literal('get')
-		.describe(
-			'Inspect a workflow: metadata plus its structure as SDK code. Large workflows omit node parameters unless full is set; small ones include them. Pass versionId to inspect a past version instead of the current draft.',
-		),
-	workflowId: z.string().describe('ID of the workflow'),
+	action: z.literal('get').describe('Inspect workflow metadata and structure'),
+	workflowId: z.string().describe('Workflow ID'),
 	versionId: z.string().optional().describe('Version ID'),
-	full: z
-		.boolean()
-		.optional()
-		.describe('Return complete node data including parameters (large). Default false.'),
+	full: z.boolean().optional().describe('Include full node parameters (default false)'),
 });
 
 const getJsonAction = z.object({
-	action: z
-		.literal('get-json')
-		.describe(
-			'Get full WorkflowJSON for workspace-file workflow edits. Write it to a .workflow.json file, edit the file, then save with build-workflow. Pass versionId for a past version instead of the current draft.',
-		),
-	workflowId: z.string().describe('ID of the workflow'),
+	action: z.literal('get-json').describe('Get full WorkflowJSON'),
+	workflowId: z.string().describe('Workflow ID'),
 	versionId: z.string().optional().describe('Version ID'),
 });
 
 const getAsCodeAction = z.object({
-	action: z
-		.literal('get-as-code')
-		.describe(
-			'Convert an existing workflow to TypeScript SDK code. Call before precise patches when you need the current code. Pass versionId for a past version instead of the current draft.',
-		),
-	workflowId: z.string().describe('ID of the workflow'),
+	action: z.literal('get-as-code').describe('Convert workflow to TypeScript SDK code'),
+	workflowId: z.string().describe('Workflow ID'),
 	versionId: z.string().optional().describe('Version ID'),
 });
 
 const deleteAction = z.object({
-	action: z
-		.literal('delete')
-		.describe('Archive a workflow by ID. This is reversible with the unarchive action.'),
-	workflowId: z.string().describe('ID of the workflow'),
+	action: z.literal('delete').describe('Archive a workflow (reversible)'),
+	workflowId: z.string().describe('Workflow ID'),
 });
 
 const unarchiveAction = z.object({
-	action: z
-		.literal('unarchive')
-		.describe('Restore an archived workflow by ID without publishing it'),
-	workflowId: z.string().describe('ID of the workflow'),
+	action: z.literal('unarchive').describe('Restore an archived workflow'),
+	workflowId: z.string().describe('Workflow ID'),
 });
 
 const setupAction = z.object({
-	action: z
-		.literal('setup')
-		.describe(
-			'Open the inline AI Assistant workflow setup card for credential and parameter configuration. Use for setup routing after a build.',
-		),
-	workflowId: z.string().describe('ID of the workflow'),
-	projectId: z.string().optional().describe('Project ID to scope credential creation to'),
+	action: z.literal('setup').describe('Open inline workflow setup card'),
+	workflowId: z.string().describe('Workflow ID'),
+	projectId: z.string().optional().describe('Project ID for credential creation'),
 });
 
 const validateAction = z.object({
-	action: z
-		.literal('validate')
-		.describe(
-			'Return the per-node configuration issues a human would see as red warning indicators on the canvas: missing credentials, parameter validation errors, etc. Static check (does not execute the workflow). Use this to confirm a workflow is configured correctly before suggesting the user run or publish it.',
-		),
-	workflowId: z.string().describe('ID of the workflow'),
+	action: z.literal('validate').describe('Return per-node configuration issues'),
+	workflowId: z.string().describe('Workflow ID'),
 	ignoreIssues: z
 		.array(z.enum(['parameters', 'credentials', 'input', 'execution', 'typeUnknown']))
 		.optional()
-		.describe('Issue categories to suppress from the result'),
+		.describe('Issue categories to suppress'),
 });
 
 const updateAction = z.object({
-	action: z
-		.literal('update')
-		.describe(
-			'Internal/raw update escape hatch. Save a complete modified WorkflowJSON back to the workflow. Replaces the full workflow definition.',
-		),
-	workflowId: z.string().describe('ID of the workflow'),
-	workflow: z
-		.record(z.unknown())
-		.describe(
-			'Full WorkflowJSON object (same shape as returned by `get-json`). This completely replaces the current workflow definition — ensure name, nodes, and connections are all included.',
-		),
+	action: z.literal('update').describe('Replace workflow with full WorkflowJSON'),
+	workflowId: z.string().describe('Workflow ID'),
+	workflow: z.record(z.unknown()).describe('Complete WorkflowJSON (name, nodes, connections)'),
 });
 
 const publishBaseAction = z.object({
-	action: z
-		.literal('publish')
-		.describe('Publish a workflow version to production (omit versionId for latest draft)'),
-	workflowId: z.string().describe('ID of the workflow'),
+	action: z.literal('publish').describe('Publish workflow to production'),
+	workflowId: z.string().describe('Workflow ID'),
 	versionId: z.string().optional().describe('Version ID'),
 });
 
 const publishExtendedAction = publishBaseAction.extend({
-	name: z.string().optional().describe('Name for the version'),
-	description: z.string().optional().describe('Description for the version'),
+	name: z.string().optional().describe('Version name'),
+	description: z.string().optional().describe('Version description'),
 });
 
 const unpublishAction = z.object({
-	action: z.literal('unpublish').describe('Unpublish a workflow — stop it from running'),
-	workflowId: z.string().describe('ID of the workflow'),
+	action: z.literal('unpublish').describe('Unpublish workflow'),
+	workflowId: z.string().describe('Workflow ID'),
 });
 
 const listVersionsAction = z.object({
-	action: z.literal('list-versions').describe('List version history for a workflow'),
-	workflowId: z.string().describe('ID of the workflow'),
-	limit: z.number().int().positive().max(100).optional().describe('Max results to return'),
-	skip: z.number().int().min(0).optional().describe('Number of results to skip (default 0)'),
+	action: z.literal('list-versions').describe('List workflow version history'),
+	workflowId: z.string().describe('Workflow ID'),
+	limit: z.number().int().positive().max(100).optional().describe('Max results'),
+	skip: z.number().int().min(0).optional().describe('Results to skip'),
 });
 
 const restoreVersionAction = z.object({
-	action: z.literal('restore-version').describe('Restore a workflow to a previous version'),
-	workflowId: z.string().describe('ID of the workflow'),
+	action: z.literal('restore-version').describe('Restore workflow to a previous version'),
+	workflowId: z.string().describe('Workflow ID'),
 	versionId: z.string().describe('Version ID'),
 });
 
 const updateVersionAction = z.object({
-	action: z
-		.literal('update-version')
-		.describe('Update the name or description of a workflow version (null to clear a field)'),
-	workflowId: z.string().describe('ID of the workflow'),
+	action: z.literal('update-version').describe('Update version name or description'),
+	workflowId: z.string().describe('Workflow ID'),
 	versionId: z.string().describe('Version ID'),
-	name: z.string().nullable().optional().describe('Name for the version'),
-	description: z.string().nullable().optional().describe('Description for the version'),
+	name: z.string().nullable().optional().describe('Version name'),
+	description: z.string().nullable().optional().describe('Version description'),
 });
 
 // ── Suspend / resume schemas ────────────────────────────────────────────────
@@ -240,9 +195,29 @@ export interface WorkflowsToolOptions {
 	descriptionPrefix?: string;
 	descriptionSuffix?: string;
 	surface?: 'full' | 'orchestrator';
+	toolName?: string;
 }
 
 type WorkflowsToolOptionsInput = WorkflowsToolOptions | 'full' | 'orchestrator';
+
+const WORKFLOW_VERSION_ACTIONS = [
+	'unarchive',
+	'list-versions',
+	'restore-version',
+	'update-version',
+] as const satisfies readonly WorkflowAction[];
+
+const ORCHESTRATOR_WORKFLOW_ACTIONS = [
+	'list',
+	'get',
+	'get-json',
+	'get-as-code',
+	'delete',
+	'setup',
+	'validate',
+	'publish',
+	'unpublish',
+] as const satisfies readonly WorkflowAction[];
 
 const WORKFLOW_ACTION_ORDER = [
 	'list',
@@ -315,7 +290,11 @@ function getWorkflowActions(
 	supportedSchemas: Partial<Record<WorkflowAction, WorkflowActionSchema>>,
 	options: WorkflowsToolOptions,
 ): WorkflowAction[] {
-	const allowedActions = new Set(options.allowedActions ?? WORKFLOW_ACTION_ORDER);
+	const defaultActions =
+		options.surface === 'orchestrator' && !options.allowedActions
+			? ORCHESTRATOR_WORKFLOW_ACTIONS
+			: WORKFLOW_ACTION_ORDER;
+	const allowedActions = new Set(options.allowedActions ?? defaultActions);
 	return WORKFLOW_ACTION_ORDER.filter(
 		(action) => supportedSchemas[action] !== undefined && allowedActions.has(action),
 	);
@@ -1157,6 +1136,14 @@ function getToolDescription(context: InstanceAiContext, options: WorkflowsToolOp
 	return suffix ? `${description} ${suffix}` : description;
 }
 
+export function createWorkflowVersionsTool(context: InstanceAiContext) {
+	return createWorkflowsTool(context, {
+		toolName: 'workflow-versions',
+		allowedActions: WORKFLOW_VERSION_ACTIONS,
+		descriptionPrefix: 'Manage workflow versions',
+	});
+}
+
 // ── Tool factory ────────────────────────────────────────────────────────────
 
 export function createWorkflowsTool(
@@ -1172,7 +1159,7 @@ export function createWorkflowsTool(
 
 	const inputSchema = buildInputSchema(context, options);
 
-	return new Tool('workflows')
+	return new Tool(options.toolName ?? 'workflows')
 		.description(getToolDescription(context, options))
 		.input(inputSchema)
 		.suspend(suspendSchema)

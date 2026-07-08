@@ -17,9 +17,6 @@ export function renderSkillCatalogPrompt(
 				`  description: ${promptString(skill.description)}`,
 				`  id: ${promptString(skill.id)}`,
 				...(skill.category ? [`  category: ${promptString(skill.category)}`] : []),
-				...(skill.recommendedTools?.length
-					? [`  recommendedTools: ${promptStringArray(skill.recommendedTools)}`]
-					: []),
 			].join('\n'),
 		)
 		.join('\n');
@@ -27,19 +24,21 @@ export function renderSkillCatalogPrompt(
 	if (options.includeProtocol === false) return catalog;
 
 	return `Skill loading protocol:
-Skills are optional instruction packs, not execution tools. Use them to get extra guidance only when they are relevant to the user's current request.
+Skills are instruction packs, not execution tools. Match the user's request against skill names and descriptions below, then call load_skill before acting on a matched skill's guidance.
 
 Available skills:
 ${catalog}
 
 When deciding whether to load a skill:
-- Match the user's request against the skill name and description.
-- Call list_skills when you need to inspect available categories or installed skill metadata.
-- If one skill clearly matches, call load_skill once with \`{ "skillId": "<id>" }\`, then follow the returned instructions.
+- Match the user's request against the skill name, description, and category in the catalog above.
+- Call load_skill with \`{ "skillId": "<id>" }\` for each matched skill, then follow the returned instructions. A single turn may load multiple skills when a loaded skill's instructions require chaining.
+- When load_skill succeeds, that skill's recommended tools are activated automatically and become available on your next turn — do not call load_tools for them. Use search_tools and load_tools only for capabilities outside a loaded skill's recommended set.
 - If a loaded skill references a supporting file, call load_skill with \`{ "skillId": "<id>", "filePath": "<relative path>" }\`.
 - If the relevant skill was already loaded for this request, do not call load_skill again.
 - If no skill clearly matches, do not call load_skill.
-- Do not load a skill just because it is listed here.`;
+- Do not load a skill just because it is listed here.
+
+Some tools are gated behind their owning skill and cannot be searched or loaded until that skill has been loaded. If a tool call is rejected with a gating error, load the named skill first and follow its instructions.`;
 }
 
 export function appendSkillCatalogToInstructions(
@@ -49,14 +48,12 @@ export function appendSkillCatalogToInstructions(
 	const catalog = renderSkillCatalogPrompt(registry);
 	if (!catalog) return instructions;
 
+	// Catalog goes after the instructions so identity/mission anchors the top
+	// of the prompt.
 	const baseInstructions = instructions.trimEnd();
-	return baseInstructions ? `${catalog}\n\n${baseInstructions}` : catalog;
+	return baseInstructions ? `${baseInstructions}\n\n${catalog}` : catalog;
 }
 
 function promptString(value: string): string {
-	return JSON.stringify(value);
-}
-
-function promptStringArray(value: string[]): string {
 	return JSON.stringify(value);
 }

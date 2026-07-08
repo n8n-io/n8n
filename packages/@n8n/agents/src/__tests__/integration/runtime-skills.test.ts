@@ -49,8 +49,7 @@ function createSkillAgent(skills: RuntimeSkill[], extraTools: Tool[] = []): Agen
 		.instructions(
 			[
 				'You are testing runtime skill loading.',
-				'When the user says a skill applies, first call list_skills if they ask to discover skills or filter by category.',
-				'Then call load_skill with the exact matching skillId before answering.',
+				'When the user says a skill applies, use the skill catalog to pick the matching skillId, then call load_skill before answering.',
 				'After loading a skill, strictly follow its returned instructions.',
 				'Do not answer from memory when a relevant skill applies.',
 			].join(' '),
@@ -77,18 +76,16 @@ describe('runtime skills integration', () => {
 		expect(findLastTextContent(result.messages)).toContain(SUMMARY_MARKER);
 	});
 
-	it('discovers skills with list_skills before loading a category match', async () => {
+	it('loads a productivity skill from the catalog without listing tools', async () => {
 		const agent = createSkillAgent([summarySkill('productivity'), engineeringSkill()]);
 
 		const result = await agent.generate(
-			'Call list_skills with category exactly "productivity", then load the summary-marker skill, then summarize: budget owners approved the rollout.',
+			'The productivity-category summary-marker skill applies. Load it, then summarize: budget owners approved the rollout.',
 		);
 
 		const toolNames = result.toolCalls?.map((toolCall) => toolCall.tool) ?? [];
-		expect(toolNames).toEqual(expect.arrayContaining(['list_skills', 'load_skill']));
-
-		const listSkillsCall = result.toolCalls?.find((toolCall) => toolCall.tool === 'list_skills');
-		expect(listSkillsCall?.input).toEqual(expect.objectContaining({ category: 'productivity' }));
+		expect(toolNames).toContain('load_skill');
+		expect(toolNames).not.toContain('list_skills');
 		expect(findLastTextContent(result.messages)).toContain(SUMMARY_MARKER);
 	});
 

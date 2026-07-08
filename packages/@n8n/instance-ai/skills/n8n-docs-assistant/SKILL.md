@@ -1,10 +1,8 @@
 ---
 name: n8n-docs-assistant
 description: >-
-  Answers n8n product, setup, credential, node, hosting, API, and usage
-  questions from current n8n docs. Use when the user asks how to configure,
-  set up, troubleshoot, or understand n8n behavior, especially credential setup
-  questions opened from the credential modal.
+  n8n product, setup, credential, node, hosting, API, and usage questions answered from
+  current docs. Not for workflow building.
 recommended_tools:
   - n8n-docs
   - credentials
@@ -15,6 +13,10 @@ recommended_tools:
 
 Use this skill when the user asks how to configure, set up, troubleshoot, or
 understand n8n behavior and the answer should come from current n8n docs.
+
+Do not fabricate provider setup mechanics (credential field names, secret values,
+verification steps) you cannot confirm from the node, the credential, or docs — if
+you cannot verify it, say so instead of guessing.
 
 ## Default Procedure
 

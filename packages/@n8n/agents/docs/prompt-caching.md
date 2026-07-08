@@ -56,7 +56,7 @@ enabled.
 
 Tools can attach a `systemInstruction` fragment (`Tool.systemInstruction(...)`)
 that gets merged into the system prompt. Deferred tools loaded mid-conversation
-via `load_tool` are a special case: if a newly loaded tool has a
+via `load_tools` are a special case: if a newly loaded tool has a
 `systemInstruction`, merging it into the same cached instructions string the
 moment it loads would change that string's bytes — a full-prefix cache miss
 for OpenAI, and an invalidated breakpoint for Anthropic, for the rest of the
@@ -66,9 +66,9 @@ conversation.
 splitting fragments by stability:
 
 - **Stable** (base tools, the deferred-tool controllers `search_tools` /
-  `load_tool`, the episodic-recall tool) stay in the cached instructions
+  `load_tools`, the episodic-recall tool) stay in the cached instructions
   message — this set never changes for the life of a run.
-- **Volatile** (tools loaded via `load_tool` during the conversation) are
+- **Volatile** (tools loaded via `load_tools` during the conversation) are
   routed into the same uncached second system message that observation-log
   memory uses (see `buildSystemMessages`), not dropped — the model still
   sees the instruction the moment the tool loads, just outside the cached
@@ -124,7 +124,7 @@ back to memory, checkpoints, or `AgentMessageList`):
   cached independently of the conversation prefix, so it survives even if the
   history breakpoint above gets invalidated (e.g. by a burst of unrelated
   system-message churn). Deferred / MCP-loaded tool sets are skipped — the
-  tool list can change mid-conversation via `load_tool`, and caching a block
+  tool list can change mid-conversation via `load_tools`, and caching a block
   that gets invalidated would just pay the write premium for no read. The
   episodic-recall tool does **not** disqualify this breakpoint: its definition
   is static and calling it only appends tool output to the conversation, never

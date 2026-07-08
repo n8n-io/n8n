@@ -35,33 +35,17 @@ const credentialIdField = z.string().describe('Credential ID');
 // ── Action schemas ─────────────────────────────────────────────────────────
 
 const listAction = z.object({
-	action: z
-		.literal('list')
-		.describe(
-			`List credentials accessible to the current user. Results are paginated (default ${DEFAULT_LIMIT}, max 200) and include \`total\` + \`hasMore\`; when looking up a user-named credential, pass \`name\` (substring) or \`type\` for targeted lookup instead of scanning the default page.`,
-		),
-	type: z.string().optional().describe('Filter by credential type (e.g. "notionApi")'),
-	name: z
-		.string()
-		.optional()
-		.describe(
-			'Filter by credential name (case-insensitive substring). Use for targeted lookup when the user named a specific credential — prefer this over paging through results.',
-		),
+	action: z.literal('list').describe('List accessible credentials'),
+	type: z.string().optional().describe('Filter by credential type'),
+	name: z.string().optional().describe('Filter by name substring'),
 	limit: z
 		.number()
 		.int()
 		.min(1)
 		.max(200)
 		.optional()
-		.describe(
-			`Max credentials to return (default ${DEFAULT_LIMIT}, max 200). Use with offset to paginate.`,
-		),
-	offset: z
-		.number()
-		.int()
-		.min(0)
-		.optional()
-		.describe('Number of credentials to skip (default 0). Use with limit to paginate.'),
+		.describe(`Max results (default ${DEFAULT_LIMIT})`),
+	offset: z.number().int().min(0).optional().describe('Results to skip'),
 });
 
 const getAction = z.object({

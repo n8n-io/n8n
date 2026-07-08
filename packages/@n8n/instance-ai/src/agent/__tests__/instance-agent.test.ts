@@ -67,6 +67,7 @@ vi.mock('../../tools', () => ({
 				['nodes', mockBuiltTool(`nodes-${context.runLabel ?? 'unknown'}`)],
 				['executions', mockBuiltTool(`executions-${context.runLabel ?? 'unknown'}`)],
 				['build-workflow', mockBuiltTool(`build-workflow-${context.runLabel ?? 'unknown'}`)],
+				['ask-user', mockBuiltTool(`ask-user-${context.runLabel ?? 'unknown'}`)],
 			]),
 	),
 	createOrchestrationTools: vi.fn(
@@ -179,19 +180,21 @@ describe('createInstanceAgent', () => {
 
 		expect(Agent).toHaveBeenCalledTimes(2);
 		const attachedTools = getAttachedTools();
-		const secondRunAttachedTools = getAttachedTools(1);
-		expect(attachedTools['create-tasks-run-1']).toMatchObject({ name: 'create-tasks-run-1' });
-		expect(attachedTools['plan-run-1']).toBeUndefined();
-		expect(attachedTools['research-run-1']).toMatchObject({ name: 'research-run-1' });
-		expect(attachedTools['build-workflow-run-1']).toMatchObject({
+		const deferredTools = getDeferredTools();
+		const secondRunDeferredTools = getDeferredTools(1);
+		expect(attachedTools['ask-user-run-1']).toMatchObject({ name: 'ask-user-run-1' });
+		expect(attachedTools['create-tasks-run-1']).toBeUndefined();
+		expect(deferredTools['create-tasks-run-1']).toMatchObject({ name: 'create-tasks-run-1' });
+		expect(deferredTools['research-run-1']).toMatchObject({ name: 'research-run-1' });
+		expect(deferredTools['build-workflow-run-1']).toMatchObject({
 			name: 'build-workflow-run-1',
 		});
-		expect(attachedTools['workflows-run-1']).toMatchObject({ name: 'workflows-run-1' });
-		expect(attachedTools['verify-built-workflow-run-1']).toMatchObject({
+		expect(deferredTools['workflows-run-1']).toMatchObject({ name: 'workflows-run-1' });
+		expect(deferredTools['verify-built-workflow-run-1']).toMatchObject({
 			name: 'verify-built-workflow-run-1',
 		});
-		expect(attachedTools['nodes-run-1']).toMatchObject({ name: 'nodes-run-1' });
-		expect(secondRunAttachedTools['nodes-run-2']).toMatchObject({ name: 'nodes-run-2' });
+		expect(deferredTools['nodes-run-1']).toMatchObject({ name: 'nodes-run-1' });
+		expect(secondRunDeferredTools['nodes-run-2']).toMatchObject({ name: 'nodes-run-2' });
 	});
 
 	it('requires MCP tool approval unless the executeMcpTool permission is always_allow', async () => {
@@ -251,13 +254,13 @@ describe('createInstanceAgent', () => {
 		const attachedTools = getAttachedTools();
 		const deferredTools = getDeferredTools();
 
-		expect(attachedTools['complete-checkpoint-checkpoint-run']).toMatchObject({
+		expect(attachedTools['complete-checkpoint-checkpoint-run']).toBeUndefined();
+		expect(deferredTools['complete-checkpoint-checkpoint-run']).toMatchObject({
 			name: 'complete-checkpoint-checkpoint-run',
 		});
-		expect(deferredTools['complete-checkpoint-checkpoint-run']).toBeUndefined();
 	});
 
-	it('keeps workflow-builder skill tool names always loaded', async () => {
+	it('defers workflow-builder skill tool names until load_skill activates them', async () => {
 		await createInstanceAgent({
 			modelId: 'test-model',
 			context: {
@@ -278,8 +281,8 @@ describe('createInstanceAgent', () => {
 
 		for (const toolName of ['build-workflow', 'nodes', 'executions']) {
 			const scopedName = `${toolName}-builder-skill-run`;
-			expect(attachedTools[scopedName]).toMatchObject({ name: scopedName });
-			expect(deferredTools[scopedName]).toBeUndefined();
+			expect(attachedTools[scopedName]).toBeUndefined();
+			expect(deferredTools[scopedName]).toMatchObject({ name: scopedName });
 		}
 	});
 
@@ -555,7 +558,7 @@ describe('createInstanceAgent', () => {
 		expect(mcpContextTools.get('github_workflows')).toMatchObject({ marker: 'github-workflows' });
 	});
 
-	it('keeps evals always loaded so user-requested eval setup can route directly', async () => {
+	it('defers evals so they load via skill recommendations or load_tools', async () => {
 		const memoryConfig = {} as never;
 
 		await createInstanceAgent({
@@ -576,10 +579,10 @@ describe('createInstanceAgent', () => {
 		const attachedTools = getAttachedTools();
 		const deferredTools = getDeferredTools();
 
-		expect(attachedTools['evals-evals-test']).toMatchObject({
+		expect(attachedTools['evals-evals-test']).toBeUndefined();
+		expect(deferredTools['evals-evals-test']).toMatchObject({
 			name: 'evals-evals-test',
 		});
-		expect(deferredTools['evals-evals-test']).toBeUndefined();
 	});
 
 	it('configures observational memory on the Memory builder when provided', async () => {
