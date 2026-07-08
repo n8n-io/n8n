@@ -1,0 +1,28 @@
+{
+	"description": "Intent-only request: classify reasoning-driven sales prospecting, tolerant of either anchor.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "A prospecting agent that finds leads matching our ICP, enriches them, decides who to reach out to first, and drafts personalized outreach."
+		}
+	],
+	"complexity": "complex",
+	"tags": ["intent-resolution", "reasoning-dominated", "tolerance"],
+	"datasets": ["agents-exam"],
+	"intentExpectation": {
+		"accepts": [
+			{
+				"anchor": "agent",
+				"embedsOther": true
+			},
+			{
+				"anchor": "wf",
+				"embedsOther": true
+			}
+		]
+	},
+	"processExpectations": [
+		"The agent explains that the reasoning and prioritization involved in deciding who to reach out to first can legitimately be built either as an agent using workflow tools, or as a scheduled workflow with an embedded agent step.",
+		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+	]
+}

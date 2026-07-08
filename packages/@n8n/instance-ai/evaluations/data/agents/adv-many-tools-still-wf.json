@@ -1,5 +1,5 @@
 {
-	"description": "Adversarial: a seven-tool signup pipeline has zero branches or reasoning, so it stays workflow-anchored despite tool count.",
+	"description": "Counterpart of the exam-style case agents-exam/adv-many-tools-still-wf.json ({wf, false}): seven integrations, zero branches — tool count alone must not produce an agent. Also probes the node-choice bias: an AI Agent node orchestrating the seven fixed steps would be the tool-count variant of the vocabulary prior. Tranche 2 — calibrated at N=3 (2026-07-08).",
 	"conversation": [
 		{
 			"role": "user",
@@ -9,12 +9,11 @@
 	"complexity": "medium",
 	"tags": ["intent-resolution", "false-friend", "tool-count"],
 	"datasets": ["agents"],
-	"intentExpectation": {
-		"accepts": [{ "anchor": "wf", "embedsOther": false }]
-	},
 	"processExpectations": [
-		"The agent explains that despite using seven different tools, the request has zero branches and zero runtime reasoning, and that the number of tools used does not by itself imply agentic behavior.",
-		"The agent does not classify the request as agent-anchored merely because it involves many different tools.",
-		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+		"The agent builds the signup pipeline as a workflow using the workflow-building tools, and does not create an agent via the agent-builder path despite the request involving seven different services.",
+		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to build."
+	],
+	"outcomeExpectations": [
+		"The workflow is an event-triggered pipeline of fixed steps across the requested integrations, without an AI Agent node deciding the flow at runtime."
 	]
 }

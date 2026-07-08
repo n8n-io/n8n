@@ -1,5 +1,5 @@
 {
-	"description": "Intent-only request: classify a cross-session Python tutor as agent-anchored due to persistent memory.",
+	"description": "Counterpart of the exam-style case agents-exam/agent-tutor-with-memory.json. Gold mirrors the exam case ({agent, false}): cross-session memory plus chat interaction should route to the agent-builder path, not a workflow build.",
 	"conversation": [
 		{
 			"role": "user",
@@ -9,11 +9,8 @@
 	"complexity": "simple",
 	"tags": ["intent-resolution", "chat", "stateful", "memory"],
 	"datasets": ["agents"],
-	"intentExpectation": {
-		"accepts": [{ "anchor": "agent", "embedsOther": false }]
-	},
 	"processExpectations": [
-		"The agent explains that cross-session memory of what has been covered combined with ongoing chat interaction is a hallmark of an agent-anchored design.",
-		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+		"The agent creates this via the agent-builder path (loading the agent-builder skill and using the agent_builder / create_agent tools) rather than building a workflow, because the tutor needs ongoing chat interaction and cross-session memory.",
+		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to build."
 	]
 }

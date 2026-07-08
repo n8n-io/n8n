@@ -1,0 +1,29 @@
+{
+	"description": "Adversarial: the prompt says 'workflow' but describes chat-based Q&A; the agent must classify by behavior, not vocabulary.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Set up a simple workflow that chats with our customers and answers their product questions."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["intent-resolution", "false-friend", "surface-vocab"],
+	"datasets": ["agents-exam"],
+	"intentExpectation": {
+		"accepts": [
+			{
+				"anchor": "agent",
+				"embedsOther": false
+			},
+			{
+				"anchor": "agent",
+				"embedsOther": true
+			}
+		]
+	},
+	"processExpectations": [
+		"The agent explains that despite the request using the word 'workflow', the multi-turn chat and open-ended product question answering is agent-shaped.",
+		"The agent does not classify the request as workflow-anchored merely because the prompt uses the word 'workflow'.",
+		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+	]
+}

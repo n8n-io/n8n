@@ -1,0 +1,24 @@
+{
+	"description": "Intent-only request: recognize a workflow-vs-agent definitional question as out-of-scope rather than a build intent.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "What's the difference between a workflow and an agent?"
+		}
+	],
+	"complexity": "simple",
+	"tags": ["intent-resolution", "meta"],
+	"datasets": ["agents-exam"],
+	"intentExpectation": {
+		"accepts": [
+			{
+				"anchor": "out-of-scope",
+				"embedsOther": "n/a"
+			}
+		]
+	},
+	"processExpectations": [
+		"The agent explains that the request is asking for a conceptual definition/comparison rather than describing a specific automation to build.",
+		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+	]
+}

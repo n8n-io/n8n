@@ -1,0 +1,39 @@
+{
+	"description": "Context-sensitive: inside an existing agent build, adding a Slack action should stay agent-anchored.",
+	"priorConversation": [
+		{
+			"role": "user",
+			"text": "We're building an agent together: a research agent that investigates incoming customer escalations, digs through our docs and past tickets, and drafts a response."
+		},
+		{
+			"role": "assistant",
+			"text": "Noted — the agent investigates escalations using docs and past tickets, then drafts a response."
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Also send a Slack when done."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["intent-resolution", "inline", "paradigm-continuity"],
+	"datasets": ["agents-exam"],
+	"intentExpectation": {
+		"accepts": [
+			{
+				"anchor": "agent",
+				"embedsOther": false
+			},
+			{
+				"anchor": "agent",
+				"embedsOther": true
+			}
+		]
+	},
+	"processExpectations": [
+		"The agent explains that sending a Slack notification when done is naturally added as a new tool available to the existing agent, not as a separately spawned workflow.",
+		"The agent treats the request as extending the current agent with a new tool rather than proposing a new standalone workflow.",
+		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+	]
+}

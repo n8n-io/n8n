@@ -1,0 +1,25 @@
+{
+	"description": "Adversarial: the prompt says 'agent' but describes a fixed workflow; the agent must classify by behavior, not vocabulary.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build an AI agent that emails me the Berlin weather every morning."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["intent-resolution", "false-friend", "surface-vocab"],
+	"datasets": ["agents-exam"],
+	"intentExpectation": {
+		"accepts": [
+			{
+				"anchor": "wf",
+				"embedsOther": false
+			}
+		]
+	},
+	"processExpectations": [
+		"The agent explains that despite the request using the word 'agent', the actual behavior is a fixed daily trigger with a fixed email action and no runtime decision-making.",
+		"The agent does not classify the request as agent-anchored merely because the prompt uses the word 'agent'.",
+		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+	]
+}

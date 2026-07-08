@@ -1,0 +1,39 @@
+{
+	"description": "Context-sensitive: inside an existing workflow build, a request for open-ended investigation surfaces a paradigm mismatch.",
+	"priorConversation": [
+		{
+			"role": "user",
+			"text": "We're building a workflow together: it catches failed executions of our other workflows and posts the error message to Slack."
+		},
+		{
+			"role": "assistant",
+			"text": "Noted — the workflow catches failed executions and posts the error to Slack."
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I want this to investigate errors and figure out what's wrong."
+		}
+	],
+	"complexity": "complex",
+	"tags": ["intent-resolution", "inline", "paradigm-mismatch"],
+	"datasets": ["agents-exam"],
+	"intentExpectation": {
+		"accepts": [
+			{
+				"anchor": "wf",
+				"embedsOther": true
+			},
+			{
+				"anchor": "clarify",
+				"embedsOther": "n/a"
+			}
+		]
+	},
+	"processExpectations": [
+		"The agent explains that investigating errors and figuring out what's wrong is agentic reasoning that doesn't fit cleanly into the current workflow context, making an embedded agent step the cleanest fit, though confirming the paradigm switch may also be reasonable.",
+		"The agent treats the request as a potential paradigm shift from the current workflow context, rather than silently continuing as if it were a bounded workflow step.",
+		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+	]
+}

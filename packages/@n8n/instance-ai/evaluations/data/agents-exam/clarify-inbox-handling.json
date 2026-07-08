@@ -1,0 +1,25 @@
+{
+	"description": "Intent-only request: recognize generic inbox handling as under-specified on scope, autonomy, and interaction mode.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Help me handle my inbox."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["intent-resolution", "under-specified"],
+	"datasets": ["agents-exam"],
+	"intentExpectation": {
+		"accepts": [
+			{
+				"anchor": "clarify",
+				"embedsOther": "n/a"
+			}
+		]
+	},
+	"processExpectations": [
+		"The agent explains that whether this is rule-based filing, judgment-based triage, or autonomous reply-sending determines the anchor, and the request does not specify which.",
+		"The agent identifies missing information about the scope of inbox handling, the level of autonomy expected, and the interaction mode (e.g. filing vs. replying), without asking the user a question.",
+		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+	]
+}

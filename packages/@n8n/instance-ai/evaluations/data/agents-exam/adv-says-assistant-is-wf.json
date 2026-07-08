@@ -1,0 +1,25 @@
+{
+	"description": "Adversarial: the prompt says 'assistant' but describes a fixed scheduled pipeline; the agent must classify by behavior, not vocabulary.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Make an assistant that summarizes our RSS feed daily and posts to Slack."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["intent-resolution", "false-friend", "surface-vocab"],
+	"datasets": ["agents-exam"],
+	"intentExpectation": {
+		"accepts": [
+			{
+				"anchor": "wf",
+				"embedsOther": false
+			}
+		]
+	},
+	"processExpectations": [
+		"The agent explains that despite the request using the word 'assistant', the scheduled RSS summarization and Slack posting is a fixed, bounded pipeline with no runtime reasoning.",
+		"The agent does not classify the request as agent-anchored merely because the prompt uses the word 'assistant'.",
+		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+	]
+}

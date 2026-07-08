@@ -1,5 +1,5 @@
 {
-	"description": "Adversarial: the prompt says 'assistant' but describes a fixed scheduled pipeline; the agent must classify by behavior, not vocabulary.",
+	"description": "Counterpart of the exam-style case agents-exam/adv-says-assistant-is-wf.json ({wf, false}): 'assistant' wording over a fixed daily RSS-summarize-post pipeline. Outcome also probes whether the bounded summarization step becomes an AI Agent node (the vocabulary prior at node-choice level). Tranche 2 — calibrated at N=3 (2026-07-08).",
 	"conversation": [
 		{
 			"role": "user",
@@ -9,12 +9,11 @@
 	"complexity": "simple",
 	"tags": ["intent-resolution", "false-friend", "surface-vocab"],
 	"datasets": ["agents"],
-	"intentExpectation": {
-		"accepts": [{ "anchor": "wf", "embedsOther": false }]
-	},
 	"processExpectations": [
-		"The agent explains that despite the request using the word 'assistant', the scheduled RSS summarization and Slack posting is a fixed, bounded pipeline with no runtime reasoning.",
-		"The agent does not classify the request as agent-anchored merely because the prompt uses the word 'assistant'.",
-		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+		"Despite the request saying 'assistant', the agent builds a fixed scheduled workflow (daily RSS summarization posted to Slack) using the workflow-building tools, and does not create an agent via the agent-builder path.",
+		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to build."
+	],
+	"outcomeExpectations": [
+		"The workflow runs on a daily schedule, condenses the RSS items with a bounded LLM transform rather than an AI Agent node with tools, and posts the summary to Slack."
 	]
 }

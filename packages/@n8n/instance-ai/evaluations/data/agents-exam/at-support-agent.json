@@ -1,0 +1,24 @@
+{
+	"description": "Intent-only request: classify a support agent with explicitly reusable actions as agent-anchored with workflow tools.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Customer support agent that can look up orders from Postgres, issue refunds via our billing service, and escalate to a Zendesk ticket. The lookup, refund, and escalation should be reusable workflows we can also trigger manually elsewhere."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["intent-resolution", "chat", "wf-tools", "reusable-actions"],
+	"datasets": ["agents-exam"],
+	"intentExpectation": {
+		"accepts": [
+			{
+				"anchor": "agent",
+				"embedsOther": true
+			}
+		]
+	},
+	"processExpectations": [
+		"The agent explains that the support agent owns the top-level control flow, while the lookup, refund, and escalation actions are explicitly first-class reusable workflows invoked as tools of the agent.",
+		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+	]
+}

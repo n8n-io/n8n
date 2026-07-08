@@ -1,0 +1,24 @@
+{
+	"description": "Intent-only request: classify lead scoring and routing as workflow-anchored with bounded LLM judgment.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "When a new lead arrives, score how promising it is from message + company, notify sales if high, send nurture email if low."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["intent-resolution", "event-triggered", "bounded-llm"],
+	"datasets": ["agents-exam"],
+	"intentExpectation": {
+		"accepts": [
+			{
+				"anchor": "wf",
+				"embedsOther": false
+			}
+		]
+	},
+	"processExpectations": [
+		"The agent explains that the lead scoring is a bounded judgment step feeding enumerable, fixed branches, rather than open-ended runtime decision-making.",
+		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+	]
+}

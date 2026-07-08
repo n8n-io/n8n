@@ -1,0 +1,24 @@
+{
+	"description": "Intent-only request: classify deterministic payroll calculation as workflow-anchored with no AI involvement.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "For each employee row, compute net pay from hours and rate, and write it back to the sheet."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["intent-resolution", "batch", "deterministic"],
+	"datasets": ["agents-exam"],
+	"intentExpectation": {
+		"accepts": [
+			{
+				"anchor": "wf",
+				"embedsOther": false
+			}
+		]
+	},
+	"processExpectations": [
+		"The agent explains that net pay calculation is a deterministic computation requiring reproducibility and auditability, not a task that benefits from LLM judgment.",
+		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+	]
+}

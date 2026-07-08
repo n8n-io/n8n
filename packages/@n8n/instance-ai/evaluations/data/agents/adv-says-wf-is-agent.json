@@ -1,5 +1,5 @@
 {
-	"description": "Adversarial: the prompt says 'workflow' but describes chat-based Q&A; the agent must classify by behavior, not vocabulary.",
+	"description": "Counterpart of the exam-style case agents-exam/adv-says-wf-is-agent.json (false friend: says 'workflow', behavior is chat-based Q&A). Gold mirrors the exam case (agent-anchored, either embeds value). NOTE: a chat-trigger workflow with an AI Agent node is n8n's long-established pattern for this request — if real builds consistently go that way while the exam grades it agent-anchored, that divergence is a finding about the taxonomy vs the product, not noise.",
 	"conversation": [
 		{
 			"role": "user",
@@ -9,15 +9,8 @@
 	"complexity": "medium",
 	"tags": ["intent-resolution", "false-friend", "surface-vocab"],
 	"datasets": ["agents"],
-	"intentExpectation": {
-		"accepts": [
-			{ "anchor": "agent", "embedsOther": false },
-			{ "anchor": "agent", "embedsOther": true }
-		]
-	},
 	"processExpectations": [
-		"The agent explains that despite the request using the word 'workflow', the multi-turn chat and open-ended product question answering is agent-shaped.",
-		"The agent does not classify the request as workflow-anchored merely because the prompt uses the word 'workflow'.",
-		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+		"The agent creates this via the agent-builder path (loading the agent-builder skill and using the agent_builder / create_agent tools) rather than building a fixed workflow pipeline, because chat-based product Q&A is agent-shaped despite the word 'workflow'.",
+		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to build."
 	]
 }

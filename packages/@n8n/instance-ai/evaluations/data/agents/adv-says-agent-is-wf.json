@@ -1,5 +1,5 @@
 {
-	"description": "Adversarial: the prompt says 'agent' but describes a fixed workflow; the agent must classify by behavior, not vocabulary.",
+	"description": "Counterpart of the exam-style case agents-exam/adv-says-agent-is-wf.json (false friend: says 'agent', behavior is a fixed daily pipeline). Gold mirrors the exam case ({wf, false}): the request should be BUILT as a scheduled workflow despite the word 'agent'. A red here alongside a green exam-corpus run is signal to inspect, not automatically a case bug.",
 	"conversation": [
 		{
 			"role": "user",
@@ -9,12 +9,11 @@
 	"complexity": "medium",
 	"tags": ["intent-resolution", "false-friend", "surface-vocab"],
 	"datasets": ["agents"],
-	"intentExpectation": {
-		"accepts": [{ "anchor": "wf", "embedsOther": false }]
-	},
 	"processExpectations": [
-		"The agent explains that despite the request using the word 'agent', the actual behavior is a fixed daily trigger with a fixed email action and no runtime decision-making.",
-		"The agent does not classify the request as agent-anchored merely because the prompt uses the word 'agent'.",
-		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+		"Despite the request saying 'AI agent', the agent builds a fixed scheduled workflow using the workflow-building tools, and does not create an agent via the agent-builder path.",
+		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to build."
+	],
+	"outcomeExpectations": [
+		"The workflow is a schedule-triggered pipeline that fetches the Berlin weather every morning and sends it by email, without embedding an AI Agent node."
 	]
 }

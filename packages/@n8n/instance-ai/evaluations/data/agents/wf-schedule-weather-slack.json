@@ -1,5 +1,5 @@
 {
-	"description": "Intent-only request: classify a scheduled weather notification as workflow-anchored with no embedded agent.",
+	"description": "Counterpart of the exam-style case agents-exam/wf-schedule-weather-slack.json: the same request sent as a real build prompt, no classification preamble. Gold mirrors the exam case ({anchor: wf, embedsOther: false}) expressed as observable routing behavior.",
 	"conversation": [
 		{
 			"role": "user",
@@ -9,11 +9,11 @@
 	"complexity": "simple",
 	"tags": ["intent-resolution", "scheduled", "notification"],
 	"datasets": ["agents"],
-	"intentExpectation": {
-		"accepts": [{ "anchor": "wf", "embedsOther": false }]
-	},
 	"processExpectations": [
-		"The agent explains that the request has a fixed schedule trigger and a fixed notification action, with no runtime reasoning or decision-making involved.",
-		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+		"The agent builds this as a workflow using the workflow-building tools, and does not create an agent or route the request to the agent builder.",
+		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to build."
+	],
+	"outcomeExpectations": [
+		"The workflow starts from a schedule trigger on a weekday-morning cadence, fetches the Berlin weather, and posts it to Slack, without embedding an AI Agent node."
 	]
 }

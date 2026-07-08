@@ -11,7 +11,7 @@
 import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 
-import { loadAgentEvalTestCasesWithFiles } from '../data/agents';
+import { loadExamAgentEvalTestCasesWithFiles } from '../data/agents-exam';
 
 export interface IntentUnit {
 	fileSlug: string;
@@ -178,7 +178,7 @@ function main(): void {
 		process.exit(1);
 	}
 
-	const cases = loadAgentEvalTestCasesWithFiles();
+	const cases = loadExamAgentEvalTestCasesWithFiles();
 	const knownSlugs = new Set(cases.map((c) => c.fileSlug));
 	const meta = new Map<string, CaseMeta>(
 		cases.map((c) => [c.fileSlug, { tags: c.testCase.tags, complexity: c.testCase.complexity }]),
