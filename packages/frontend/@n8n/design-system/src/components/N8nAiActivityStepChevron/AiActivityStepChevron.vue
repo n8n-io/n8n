@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { N8nIcon } from '@n8n/design-system';
+import N8nIcon from '../N8nIcon';
 
 defineProps<{
 	open: boolean;
