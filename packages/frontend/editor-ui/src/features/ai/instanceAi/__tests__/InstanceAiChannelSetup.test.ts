@@ -210,6 +210,37 @@ describe('InstanceAiChannelSetup', () => {
 		});
 	});
 
+	it('keeps skip disabled while channel connection is in flight', async () => {
+		const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+		let resolveConnect: (value: { status: string }) => void = () => {};
+		mocks.connect.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveConnect = resolve;
+			}),
+		);
+
+		const { getByTestId } = renderComponent({ props: defaultProps });
+
+		await userEvent.click(getByTestId('mock-slack-connect'));
+
+		await waitFor(() => expect(mocks.connect).toHaveBeenCalledTimes(1));
+		expect(getByTestId('instance-ai-channel-setup-skip')).toBeDisabled();
+
+		await userEvent.click(getByTestId('instance-ai-channel-setup-skip'));
+		expect(confirmSpy).not.toHaveBeenCalledWith('req-channel', {
+			kind: 'approval',
+			approved: false,
+		});
+
+		resolveConnect({ status: 'connected' });
+		await waitFor(() =>
+			expect(confirmSpy).toHaveBeenCalledWith('req-channel', {
+				kind: 'approval',
+				approved: true,
+			}),
+		);
+	});
+
 	it('retries a failed confirmAction once before resolving', async () => {
 		const confirmSpy = vi
 			.spyOn(thread, 'confirmAction')

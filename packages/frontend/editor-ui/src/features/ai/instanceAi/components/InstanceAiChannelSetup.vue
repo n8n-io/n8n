@@ -2,19 +2,14 @@
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { useI18n } from '@n8n/i18n';
-import type { AgentIntegrationSettings, ChatIntegrationDescriptor } from '@n8n/api-types';
-import { getResourcePermissions } from '@n8n/permissions';
+import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, watch } from 'vue';
 
-import { useUIStore } from '@/app/stores/ui.store';
-import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { createSlackAgentApp, getAgent } from '@/features/agents/composables/useAgentApi';
+import { getAgent } from '@/features/agents/composables/useAgentApi';
+import { useAgentChannelSetup } from '@/features/agents/composables/useAgentChannelSetup';
 import { useAgentIntegrationStatus } from '@/features/agents/composables/useAgentIntegrationStatus';
 import { useAgentIntegrationsCatalog } from '@/features/agents/composables/useAgentIntegrationsCatalog';
-import type { AgentCredentialOption } from '@/features/agents/components/AgentCredentialSelect.vue';
 import AgentChannelLinearSetup from '@/features/agents/components/AgentChannelLinearSetup.vue';
 import AgentChannelSlackSetup from '@/features/agents/components/AgentChannelSlackSetup.vue';
 import AgentChannelTelegramSetup from '@/features/agents/components/AgentChannelTelegramSetup.vue';
@@ -32,9 +27,6 @@ const props = defineProps<{
 const thread = useThread();
 const i18n = useI18n();
 const rootStore = useRootStore();
-const uiStore = useUIStore();
-const credentialsStore = useCredentialsStore();
-const projectsStore = useProjectsStore();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
 const {
 	fetchStatus,
@@ -47,28 +39,34 @@ const {
 	connect,
 } = useAgentIntegrationStatus(props.projectId, props.agentId);
 
-const SLACK_APP_SETUP_POLL_INTERVAL_MS = 2000;
-const SLACK_APP_SETUP_TIMEOUT_MS = 2 * 60 * 1000;
 const MAX_CONFIRM_ATTEMPTS = 2;
-
-type ChannelSetupComponent = {
-	credentialId: string;
-	currentSettings?: AgentIntegrationSettings;
-	validationError: string | null;
-};
 
 const submitted = ref(false);
 const connectionInFlight = ref(false);
-const selectedCredentials = ref<Record<string, string>>({});
-const credentialsByType = ref<Record<string, AgentCredentialOption[]>>({});
-const credentialsLoading = ref(false);
-const credentialIdsBeforeNew = ref<Record<string, Set<string>>>({});
-const pendingNewCredentialType = ref<string | null>(null);
-const channelSetupRef = ref<ChannelSetupComponent>();
 const agent = ref<AgentResource | null>(null);
 
 const currentIntegration = computed<ChatIntegrationDescriptor | null>(() => {
 	return catalog.value?.find((integration) => integration.type === props.integrationType) ?? null;
+});
+
+const {
+	channelSetupRef,
+	selectedCredentials,
+	credentialsLoading,
+	credentialPermissions,
+	getChannelCredentialId,
+	getCredentials,
+	loadChannelState: loadSharedChannelState,
+	createCredential,
+	editCredential,
+	setupSlackApp: runSlackAppSetup,
+} = useAgentChannelSetup({
+	projectId: () => props.projectId,
+	agentId: () => props.agentId,
+	currentIntegration,
+	connectedCredentials,
+	fetchStatus,
+	isIntegrationConnected,
 });
 
 const integrationLabel = computed(() => currentIntegration.value?.label ?? props.integrationType);
@@ -84,26 +82,9 @@ const connectedDescription = computed(() => {
 	return key ? i18n.baseText(key) : '';
 });
 
-const projectForPermissions = computed(() => {
-	if (projectsStore.currentProject?.id === props.projectId) return projectsStore.currentProject;
-	if (projectsStore.personalProject?.id === props.projectId) return projectsStore.personalProject;
-	return projectsStore.myProjects.find((project) => project.id === props.projectId) ?? null;
-});
+const currentChannelCredentialId = computed(() => getChannelCredentialId(props.integrationType));
 
-const credentialPermissions = computed(() => {
-	const permissions = getResourcePermissions(projectForPermissions.value?.scopes).credential;
-	return { ...permissions, create: !!permissions.create };
-});
-
-const currentChannelCredentialId = computed(() => {
-	return (
-		selectedCredentials.value[props.integrationType] ||
-		connectedCredentials.value[props.integrationType] ||
-		''
-	);
-});
-
-const currentCredentials = computed(() => credentialsByType.value[props.integrationType] ?? []);
+const currentCredentials = computed(() => getCredentials(props.integrationType));
 
 const isConnected = computed(() => isIntegrationConnected(props.integrationType));
 
@@ -135,6 +116,11 @@ function finish(approved: boolean, resolution: 'approved' | 'deferred') {
 	void submitConfirmation(approved, resolution);
 }
 
+function skipSetup() {
+	if (connectionInFlight.value) return;
+	finish(false, 'deferred');
+}
+
 async function submitConfirmation(approved: boolean, resolution: 'approved' | 'deferred') {
 	for (let attempt = 0; attempt < MAX_CONFIRM_ATTEMPTS; attempt++) {
 		if (await thread.confirmAction(props.requestId, { kind: 'approval', approved })) break;
@@ -158,143 +144,11 @@ async function saveChannelConfig() {
 	}
 }
 
-async function fetchCredentials(integrations: ChatIntegrationDescriptor[] = catalog.value ?? []) {
-	credentialsLoading.value = true;
-	try {
-		credentialsStore.setCredentials([]);
-		const allCredentials = await credentialsStore.fetchAllCredentialsForWorkflow({
-			projectId: props.projectId,
-		});
-
-		for (const integration of integrations) {
-			credentialsByType.value[integration.type] = allCredentials
-				.filter((credential) => integration.credentialTypes.includes(credential.type))
-				.map((credential) => ({
-					id: credential.id,
-					name: credential.name,
-					typeDisplayName: credentialsStore.getCredentialTypeByName(credential.type)?.displayName,
-					homeProject: credential.homeProject,
-				}));
-		}
-	} catch {
-		for (const integration of integrations) {
-			credentialsByType.value[integration.type] = [];
-		}
-	} finally {
-		credentialsLoading.value = false;
-	}
-}
-
-function createCredential() {
-	const integration = currentIntegration.value;
-	const [primaryCredentialType] = integration?.credentialTypes ?? [];
-	if (!integration || !primaryCredentialType) return;
-
-	const existing = credentialsByType.value[integration.type] ?? [];
-	credentialIdsBeforeNew.value[integration.type] = new Set(
-		existing.map((credential) => credential.id),
-	);
-	pendingNewCredentialType.value = integration.type;
-	uiStore.openNewCredential(
-		primaryCredentialType,
-		false,
-		false,
-		props.projectId,
-		undefined,
-		undefined,
-		undefined,
-		{
-			hideAskAssistant: true,
-			appendToBody: true,
-		},
-	);
-}
-
-function editCredential() {
-	const credentialId = currentChannelCredentialId.value;
-	if (credentialId) {
-		uiStore.openExistingCredential(credentialId, { hideAskAssistant: true, appendToBody: true });
-	}
-}
-
-function openSlackAppAuthorizationPopup(installUrl: string): Window | null {
-	const parsedUrl = new URL(installUrl);
-	if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
-		throw new Error('Invalid Slack installation URL');
-	}
-
-	const params =
-		'scrollbars=no,resizable=yes,status=no,titlebar=no,location=no,toolbar=no,menubar=no,width=500,height=700';
-	return window.open(parsedUrl.toString(), 'Slack App Authorization', params);
-}
-
-async function waitForSlackAppSetupCompletion(popup: Window | null): Promise<boolean> {
-	return await new Promise((resolve) => {
-		const oauthChannel = new BroadcastChannel('oauth-callback');
-		let pollInFlight = false;
-		let settled = false;
-
-		const closePopup = () => {
-			if (!popup) return;
-			try {
-				popup.close();
-			} catch {}
-		};
-
-		const settle = (success: boolean) => {
-			if (settled) return;
-			settled = true;
-			window.clearInterval(pollInterval);
-			window.clearTimeout(timeout);
-			oauthChannel.close();
-			if (success) closePopup();
-			resolve(success);
-		};
-
-		const pollStatus = async () => {
-			if (pollInFlight || settled) return;
-			pollInFlight = true;
-			try {
-				await fetchStatus(['slack']);
-				if (isIntegrationConnected('slack')) settle(true);
-			} finally {
-				pollInFlight = false;
-			}
-		};
-
-		const pollInterval = window.setInterval(
-			() => void pollStatus(),
-			SLACK_APP_SETUP_POLL_INTERVAL_MS,
-		);
-		const timeout = window.setTimeout(() => settle(false), SLACK_APP_SETUP_TIMEOUT_MS);
-
-		oauthChannel.addEventListener('message', (event: MessageEvent) => {
-			settle(event.data === 'success');
-		});
-
-		void pollStatus();
-	});
-}
-
 async function setupSlackApp(appConfigurationToken: string): Promise<boolean> {
 	if (isResolvedOrSubmitted() || connectionInFlight.value) return false;
 	connectionInFlight.value = true;
 	try {
-		const { installUrl } = await createSlackAgentApp(
-			rootStore.restApiContext,
-			props.projectId,
-			props.agentId,
-			appConfigurationToken,
-		);
-		const popup = openSlackAppAuthorizationPopup(installUrl);
-		const connected = await waitForSlackAppSetupCompletion(popup);
-		if (!connected) {
-			throw new Error('Slack app installation was not completed');
-		}
-
-		await fetchStatus(['slack']);
-		finish(true, 'approved');
-		return true;
+		return await runSlackAppSetup(appConfigurationToken, () => finish(true, 'approved'));
 	} finally {
 		connectionInFlight.value = false;
 	}
@@ -302,16 +156,7 @@ async function setupSlackApp(appConfigurationToken: string): Promise<boolean> {
 
 async function loadChannelState() {
 	const integrations = await ensureLoaded(props.projectId).catch(() => catalog.value ?? []);
-	await Promise.all([
-		fetchStatus(integrations.map((integration) => integration.type)),
-		fetchCredentials(integrations),
-	]);
-
-	for (const [channelType, credentialId] of Object.entries(connectedCredentials.value)) {
-		if (!selectedCredentials.value[channelType]) {
-			selectedCredentials.value[channelType] = credentialId;
-		}
-	}
+	await loadSharedChannelState(integrations);
 
 	if (props.integrationType !== 'slack') {
 		try {
@@ -321,26 +166,6 @@ async function loadChannelState() {
 		}
 	}
 }
-
-const credentialModalOpen = computed(
-	() => uiStore.isModalActiveById?.[CREDENTIAL_EDIT_MODAL_KEY] ?? false,
-);
-
-watch(credentialModalOpen, async (isOpen, wasOpen) => {
-	if (!wasOpen || isOpen) return;
-	const type = pendingNewCredentialType.value;
-	pendingNewCredentialType.value = null;
-	await fetchCredentials();
-	if (!type) return;
-
-	const before = credentialIdsBeforeNew.value[type];
-	const after = credentialsByType.value[type] ?? [];
-	const newCredential = before ? after.find((credential) => !before.has(credential.id)) : undefined;
-	if (newCredential) {
-		selectedCredentials.value[type] = newCredential.id;
-	}
-	delete credentialIdsBeforeNew.value[type];
-});
 
 watch(
 	() => [props.projectId, props.agentId, props.integrationType] as const,
@@ -450,8 +275,9 @@ watch(
 			<N8nButton
 				variant="ghost"
 				size="medium"
+				:disabled="connectionInFlight"
 				data-test-id="instance-ai-channel-setup-skip"
-				@click="finish(false, 'deferred')"
+				@click="skipSetup"
 			>
 				{{ i18n.baseText('instanceAi.workflowSetup.later') }}
 			</N8nButton>
