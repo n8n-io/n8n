@@ -9,6 +9,7 @@ import {
 	createDelegateSubAgentTool,
 	generateResultToDelegateSubAgentOutput,
 	getInlineDelegateSubAgentToolOptions,
+	isDelegateSubAgentTool,
 	renderDelegateSubAgentPrompt,
 	type DelegateSubAgentRunner,
 } from '../tools/delegate-sub-agent-tool';
@@ -41,6 +42,149 @@ describe('createDelegateSubAgentTool', () => {
 		expect(tool.description).toContain('independent workstreams');
 		expect(tool.inputSchema).toBeDefined();
 		expect(tool.outputSchema).toBeDefined();
+	});
+
+	it('defaults to the delegate_subagent name when none is provided', () => {
+		const tool = createDelegateSubAgentTool();
+
+		expect(tool.name).toBe(DELEGATE_SUB_AGENT_TOOL_NAME);
+		expect(tool.systemInstruction).toContain('delegate_subagent runs a focused child agent');
+		expect(tool.systemInstruction).toContain('WHEN TO USE delegate_subagent:');
+		expect(tool.systemInstruction).toContain('WHEN NOT TO USE delegate_subagent:');
+	});
+
+	it('renames the tool and interpolates the name into the system instruction', () => {
+		const tool = createDelegateSubAgentTool({ name: 'agent' });
+
+		expect(tool.name).toBe('agent');
+		expect(tool.systemInstruction).toContain('agent runs a focused child agent');
+		expect(tool.systemInstruction).toContain('WHEN TO USE agent:');
+		expect(tool.systemInstruction).toContain('WHEN NOT TO USE agent:');
+		expect(tool.systemInstruction).not.toContain('delegate_subagent');
+	});
+
+	it('preserves a custom name across the SDK inline-completion rebuild', () => {
+		const tool = createDelegateSubAgentTool({
+			name: 'agent',
+			runSubAgent: async () =>
+				await Promise.resolve({ status: 'completed', taskPath: '/root/x_0', answer: 'done' }),
+		});
+
+		const rebuilt = createDelegateSubAgentTool({
+			...getInlineDelegateSubAgentToolOptions(tool),
+			runSubAgent: async () =>
+				await Promise.resolve({ status: 'completed', taskPath: '/root/x_0', answer: 'done' }),
+		});
+
+		expect(rebuilt.name).toBe('agent');
+	});
+
+	it.each(['', ' ', 'has space', '1agent', 'agent!', 'a'.repeat(65)])(
+		'rejects invalid delegate tool name %j',
+		(name) => {
+			expect(() => createDelegateSubAgentTool({ name })).toThrow(
+				'Invalid delegate sub-agent tool name',
+			);
+		},
+	);
+
+	it('names a renamed tool in policy validation errors', () => {
+		expect(() => createDelegateSubAgentTool({ name: 'agent', policy: { maxChildren: 0 } })).toThrow(
+			'agent policy.maxChildren must be at least 1',
+		);
+	});
+
+	it('names a renamed tool in the missing-runner error', async () => {
+		const tool = createDelegateSubAgentTool({ name: 'agent' });
+
+		await expect(tool.handler?.(input, { runId: 'parent-run-1' })).resolves.toMatchObject({
+			status: 'failed',
+			error:
+				'agent was registered without a runSubAgent callback, and no host runner was provided. Register it on an Agent (for inline delegation) or pass runSubAgent.',
+		});
+	});
+
+	it('identifies delegate tools by metadata regardless of name', () => {
+		expect(isDelegateSubAgentTool(createDelegateSubAgentTool())).toBe(true);
+		expect(isDelegateSubAgentTool(createDelegateSubAgentTool({ name: 'agent' }))).toBe(true);
+		expect(isDelegateSubAgentTool({ name: DELEGATE_SUB_AGENT_TOOL_NAME })).toBe(false);
+	});
+
+	it.each([null, '', '   '])(
+		'falls back to the default system instruction for non-string or blank value %j',
+		(systemInstruction) => {
+			const tool = createDelegateSubAgentTool({ systemInstruction });
+
+			expect(tool.systemInstruction).toContain('WHEN TO USE delegate_subagent:');
+		},
+	);
+
+	it('uses a host-provided system instruction instead of the built-in guidance', () => {
+		const tool = createDelegateSubAgentTool({
+			name: 'agent',
+			systemInstruction: 'Host-authored delegation guidance.',
+		});
+
+		expect(tool.systemInstruction).toBe('Host-authored delegation guidance.');
+		expect(tool.systemInstruction).not.toContain('WHEN TO USE agent:');
+	});
+
+	it('preserves a custom system instruction across the SDK inline-completion rebuild', () => {
+		const tool = createDelegateSubAgentTool({
+			name: 'agent',
+			systemInstruction: 'Host-authored delegation guidance.',
+			runSubAgent: async () =>
+				await Promise.resolve({ status: 'completed', taskPath: '/root/x_0', answer: 'done' }),
+		});
+
+		const rebuilt = createDelegateSubAgentTool({
+			...getInlineDelegateSubAgentToolOptions(tool),
+			runSubAgent: async () =>
+				await Promise.resolve({ status: 'completed', taskPath: '/root/x_0', answer: 'done' }),
+		});
+
+		expect(rebuilt.systemInstruction).toBe('Host-authored delegation guidance.');
+	});
+
+	it('uses the default description when none is provided', () => {
+		const tool = createDelegateSubAgentTool();
+
+		expect(tool.description).toContain('focused child agent');
+		expect(tool.description).toContain('independent workstreams');
+	});
+
+	it.each([null, '', '   '])(
+		'falls back to the default description for non-string or blank value %j',
+		(description) => {
+			const tool = createDelegateSubAgentTool({ description });
+
+			expect(tool.description).toContain('independent workstreams');
+		},
+	);
+
+	it('uses a host-provided description instead of the built-in text', () => {
+		const tool = createDelegateSubAgentTool({
+			description: 'Delegate read-only research to a sub-agent.',
+		});
+
+		expect(tool.description).toBe('Delegate read-only research to a sub-agent.');
+		expect(tool.description).not.toContain('independent workstreams');
+	});
+
+	it('preserves a custom description across the SDK inline-completion rebuild', () => {
+		const tool = createDelegateSubAgentTool({
+			description: 'Delegate read-only research to a sub-agent.',
+			runSubAgent: async () =>
+				await Promise.resolve({ status: 'completed', taskPath: '/root/x_0', answer: 'done' }),
+		});
+
+		const rebuilt = createDelegateSubAgentTool({
+			...getInlineDelegateSubAgentToolOptions(tool),
+			runSubAgent: async () =>
+				await Promise.resolve({ status: 'completed', taskPath: '/root/x_0', answer: 'done' }),
+		});
+
+		expect(rebuilt.description).toBe('Delegate read-only research to a sub-agent.');
 	});
 
 	it('accepts optional difficulty on the delegate input schema', () => {
