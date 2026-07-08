@@ -1233,7 +1233,10 @@ describe('JobProcessor', () => {
 							runData: expect.objectContaining({ Calculator: expect.any(Array) }),
 						}),
 					}),
+					usedPrivateCredentials: false,
 				}),
+				// A cancel racing the tool call must keep its status.
+				{ requireNotCanceled: true },
 			);
 		});
 
@@ -1317,6 +1320,7 @@ describe('JobProcessor', () => {
 						}),
 					}),
 				}),
+				{ requireNotCanceled: true },
 			);
 		});
 
@@ -1415,6 +1419,7 @@ describe('JobProcessor', () => {
 						}),
 					}),
 				}),
+				{ requireNotCanceled: true },
 			);
 		});
 

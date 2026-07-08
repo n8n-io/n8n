@@ -384,19 +384,25 @@ export class JobProcessor {
 			// Persist the tool call's run data, since the save hook fired before it ran.
 			try {
 				const toolRunData = run.data.resultData?.runData;
-				await this.executionPersistence.updateExistingExecution(executionId, {
-					...prepareExecutionDataForDbUpdate({
-						runData: run,
-						workflowData: execution.workflowData,
-						workflowStatusFinal: run.status,
-						retryOf: execution.retryOf ?? undefined,
-					}),
-					// The save hook computed this marker before the tool ran, so recompute it now
-					// that the tool task may carry dynamic-credential flags.
-					usedPrivateCredentials:
-						runDataUsedDynamicCredentials(toolRunData) ||
-						runDataAttemptedDynamicCredentials(toolRunData),
-				});
+				await this.executionPersistence.updateExistingExecution(
+					executionId,
+					{
+						...prepareExecutionDataForDbUpdate({
+							runData: run,
+							workflowData: execution.workflowData,
+							workflowStatusFinal: run.status,
+							retryOf: execution.retryOf ?? undefined,
+						}),
+						// The save hook computed this marker before the tool ran, so recompute it now
+						// that the tool task may carry dynamic-credential flags.
+						usedPrivateCredentials:
+							runDataUsedDynamicCredentials(toolRunData) ||
+							runDataAttemptedDynamicCredentials(toolRunData),
+					},
+					// A cancel racing the tool call must keep its status; skip the tool-run persist
+					// entirely rather than write over `canceled` (matches the completion hook).
+					{ requireNotCanceled: true },
+				);
 			} catch (error) {
 				this.logger.error('Failed to persist tool call run data for MCP Trigger', {
 					executionId,
