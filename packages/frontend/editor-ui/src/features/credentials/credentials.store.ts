@@ -407,11 +407,15 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 
 	const disconnectMyConnection = async ({ id }: { id: string }) => {
 		await credentialsApi.disconnectMyConnection(rootStore.restApiContext, id);
+		setConnectedByMe(id, false);
+	};
+
+	const setConnectedByMe = (id: string, connectedByMe: boolean) => {
 		const existing = state.value.credentials[id];
 		if (existing) {
 			state.value.credentials = {
 				...state.value.credentials,
-				[id]: { ...existing, connectedByMe: false },
+				[id]: { ...existing, connectedByMe },
 			};
 		}
 	};
@@ -522,6 +526,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		setCredentials,
 		deleteCredential,
 		disconnectMyConnection,
+		setConnectedByMe,
 		upsertCredential,
 		fetchCredentialTypes,
 		fetchAllCredentials,

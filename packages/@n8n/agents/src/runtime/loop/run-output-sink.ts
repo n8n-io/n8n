@@ -17,6 +17,21 @@ import type { ToolCallBatchResult, ToolCallSuspension } from '../tools/tool-call
 
 type RunCallOptions = (RunOptions & ExecutionOptions) | undefined;
 
+/**
+ * Recognized ways a model turn can fail while the provider still returns
+ * "successfully" (no thrown SDK error). Extend this as new failure modes are
+ * recognized so consumers switch on `type` instead of probing separate fields.
+ * - `prompt_blocked`: the provider rejected the prompt (e.g. a safety block).
+ * - `no_output`: the model returned nothing with a non-stop finish reason.
+ */
+export type ModelTurnErrorType = 'prompt_blocked' | 'no_output';
+
+/** A recognized model-turn failure: a `type` to branch on and a user-facing `message`. */
+export interface ModelTurnError {
+	type: ModelTurnErrorType;
+	message: string;
+}
+
 /** Normalized result of a single LLM turn, independent of generate vs stream. */
 export interface ModelTurnResult {
 	/** Raw AI SDK finish reason (used to detect the `tool-calls` continuation). */
@@ -33,6 +48,13 @@ export interface ModelTurnResult {
 	}>;
 	/** Resolved structured output, only when an output spec is set and the turn finished. */
 	structuredOutput: unknown;
+	/**
+	 * Set when the turn failed in a recognized way despite the provider returning
+	 * without a thrown error (e.g. a prompt safety block, or empty output). The
+	 * loop surfaces this instead of ending the run silently. Check this single
+	 * field rather than probing per-failure-mode properties.
+	 */
+	errorReason?: ModelTurnError;
 }
 
 /** Per-iteration inputs for the LLM call, assembled by the shared loop. */

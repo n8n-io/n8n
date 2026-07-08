@@ -70,7 +70,7 @@ export const RESOURCES = {
 	execution: ['delete', 'read', 'retry', 'list', 'get', 'reveal'] as const,
 	testRun: ['read', 'list'] as const,
 	workflowTags: ['update', 'list'] as const,
-	role: ['manage', 'read'] as const,
+	role: ['manage', 'read', 'manageProject'] as const,
 	mcp: ['manage', 'oauth'] as const,
 	mcpApiKey: ['create', 'rotate'] as const,
 	chatHub: ['manage', 'message'] as const,

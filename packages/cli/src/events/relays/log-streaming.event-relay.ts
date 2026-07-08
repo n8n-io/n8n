@@ -1088,6 +1088,9 @@ export class LogStreamingEventRelay extends EventRelay {
 				// Telemetry-only signal. The audit trail for redaction enforcement
 				// is emitted separately via 'redaction-enforcement-updated'.
 				break;
+			case 'workflow_reviews':
+				// Telemetry-only signal.
+				break;
 			default:
 				assertNever(settingName);
 		}

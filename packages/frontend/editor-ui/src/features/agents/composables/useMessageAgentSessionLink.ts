@@ -3,7 +3,7 @@ import { useRouter } from 'vue-router';
 
 import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
-import type { LogEntry } from '@/features/execution/logs/logs.types';
+import { type LogEntry, isNodeLog } from '@/features/execution/logs/logs.types';
 
 /**
  * Session identifiers the MessageAnAgent node emits in its output JSON. Kept
@@ -30,7 +30,7 @@ function isMessageAgentSession(value: unknown): value is MessageAgentSession {
 }
 
 function extractSession(logEntry: LogEntry | undefined): MessageAgentSession | null {
-	if (!logEntry) return null;
+	if (!logEntry || !isNodeLog(logEntry)) return null;
 	if (logEntry.node.type !== MESSAGE_AN_AGENT_NODE_TYPE) return null;
 
 	const main = logEntry.runData?.data?.main;

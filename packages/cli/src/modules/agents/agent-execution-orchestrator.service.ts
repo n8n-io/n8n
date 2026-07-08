@@ -9,6 +9,7 @@ import type {
 import type { AgentPersistedMessageDto } from '@n8n/api-types';
 import { AGENT_WORKFLOW_TRIGGER_TYPE, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
 import {
@@ -49,8 +50,13 @@ export interface ExecuteForChatConfig {
 	agentId: string;
 	projectId: string;
 	message: string;
-	/** n8n user ID — used for RBAC / credential resolution. */
-	userId: string;
+	/**
+	 * The calling n8n user — used to gate node/workflow tools by their access,
+	 * and for RBAC / credential resolution and telemetry attribution. Always
+	 * present: the in-app test chat only runs behind an authenticated session
+	 * (`AgentChatController.chat` always has `req.user`).
+	 */
+	user: User;
 	/** Memory scope — resourceId is the chat platform user (e.g. Slack / Telegram user ID). */
 	memory: AgentMemoryScope;
 }
@@ -62,6 +68,13 @@ export interface ExecuteForChatPublishedConfig {
 	/** Memory scope — resourceId is the chat platform user (e.g. Slack / Telegram user ID). */
 	memory: AgentMemoryScope;
 	integrationType?: string;
+	// No `user` field here: a published chat integration (Slack, Telegram, …)
+	// run is triggered by an inbound platform event, not an interactive n8n
+	// session — there is no n8n `User` to attach. This path keeps the
+	// project-scoped trust boundary that existed before per-user tool
+	// gating; the admin who published the agent is the one who approved its
+	// tools, and Layer A's node denylist (`EphemeralNodeExecutor`) still
+	// applies regardless.
 }
 
 export interface ResumeForChatConfig {
@@ -70,8 +83,12 @@ export interface ResumeForChatConfig {
 	runId: string;
 	toolCallId: string;
 	resumeData: unknown;
-	/** n8n user ID for in-app preview chat resumes. */
-	userId?: string;
+	/**
+	 * The calling n8n user for in-app preview chat resumes — used to gate
+	 * node/workflow tools by their access. Absent for published/integration
+	 * resumes, which keep today's project-scoped behavior.
+	 */
+	user?: User;
 	/** Defaults to true for external integrations; preview chat passes false. */
 	usePublishedVersion?: boolean;
 	/**
@@ -93,13 +110,23 @@ export interface ExecuteForTaskPublishedConfig {
 	taskId: string;
 	/** Published agent_history version that supplied the scheduled task snapshot. */
 	taskVersionId: string;
+	// No `user` field here: this run is fired by `ScheduledTaskManager` on a
+	// cron tick — there is no human in the loop at all, let alone an n8n
+	// session, so there's nothing to gate tools against. Same project-scoped
+	// trust boundary as `ExecuteForChatPublishedConfig`.
 }
 
 export interface ExecuteForTaskNowConfig {
 	agentId: string;
 	projectId: string;
-	/** n8n user ID — used for RBAC / credential resolution and recorded on the session. */
-	userId: string;
+	/**
+	 * The calling n8n user — used to gate node/workflow tools by their
+	 * access, and for RBAC / credential resolution and recorded on the
+	 * session. Always present: manual "Run now" is triggered by an authenticated
+	 * `AgentTasksController.runTaskNow` request, threaded down via
+	 * `AgentTaskService.runNow(agentId, taskId, user)`.
+	 */
+	user: User;
 	message: string;
 	/** Memory scope — resourceId isolates per-run memory. */
 	memory: AgentMemoryScope;
@@ -222,7 +249,7 @@ export class AgentExecutionOrchestratorService {
 			toolCallId,
 			resumeData,
 			integrationType,
-			userId,
+			user,
 			usePublishedVersion = true,
 		} = config;
 
@@ -247,6 +274,14 @@ export class AgentExecutionOrchestratorService {
 			projectId,
 			usePublishedVersion,
 			integrationType,
+			// `usePublishedVersion` defaults to true and is what platform
+			// integrations (Slack/Telegram HITL resume) use — those have no
+			// interactive n8n user, so `user` is force-undefined to keep the
+			// existing project-scoped runtime. Only the in-app draft/test-chat
+			// resume passes `usePublishedVersion: false` (see
+			// `AgentChatController.chatResume`), and only then does the caller's
+			// `user` actually reach the cache/reconstruction layer.
+			user: usePublishedVersion ? undefined : user,
 		});
 
 		const { agent: agentInstance, toolRegistry } = runtime;
@@ -257,7 +292,7 @@ export class AgentExecutionOrchestratorService {
 			const resultStream = await agentInstance.resume('stream', resumeData, {
 				runId,
 				toolCallId,
-				executionCounter: this.createAgentExecutionCounter({ agentId, userId }),
+				executionCounter: this.createAgentExecutionCounter({ agentId, userId: user?.id }),
 			});
 
 			for await (const value of streamAgentChunks(resultStream.stream)) {
@@ -301,19 +336,22 @@ export class AgentExecutionOrchestratorService {
 	 * Execute an agent for the in-app test chat and yield stream chunks.
 	 */
 	async *executeForChat(config: ExecuteForChatConfig): AsyncGenerator<StreamChunk> {
-		const { agentId, projectId, message, userId, memory } = config;
+		const { agentId, projectId, message, user, memory } = config;
 
+		// `user` is always set (see ExecuteForChatConfig) — this builds/reuses a
+		// runtime scoped to this specific user's tool access.
 		const runtime = await this.runtimeCacheService.getRuntime({
 			agentId,
 			projectId,
 			integrationType: N8N_CHAT_INTEGRATION_TYPE,
+			user,
 		});
 
 		await this.integrationMessageContextService.setLatest(memory.threadId, memory.resourceId, {
 			integrationConnectionId: N8N_CHAT_INTEGRATION_TYPE,
 			platform: N8N_CHAT_INTEGRATION_TYPE,
-			target: { type: 'dm', userId, threadId: memory.threadId },
-			interactingUserId: userId,
+			target: { type: 'dm', userId: user.id, threadId: memory.threadId },
+			interactingUserId: user.id,
 			updatedAt: new Date().toISOString(),
 		});
 
@@ -321,7 +359,7 @@ export class AgentExecutionOrchestratorService {
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
 			agentId,
-			userId,
+			userId: user.id,
 			message,
 			memory,
 			projectId: runtime.projectId,
@@ -342,6 +380,10 @@ export class AgentExecutionOrchestratorService {
 	): AsyncGenerator<StreamChunk> {
 		const { agentId, projectId, message, memory, integrationType } = config;
 
+		// No `user` (see ExecuteForChatPublishedConfig): this is the shared,
+		// project-scoped runtime — every caller of this published agent through
+		// this integration reuses the same cache entry regardless of who
+		// triggered the platform event.
 		const runtime = await this.runtimeCacheService.getRuntime({
 			agentId,
 			projectId,
@@ -373,6 +415,8 @@ export class AgentExecutionOrchestratorService {
 	): AsyncGenerator<StreamChunk> {
 		const { agentId, projectId, message, memory, taskId, taskVersionId } = config;
 
+		// No `user` (see ExecuteForTaskPublishedConfig): cron-fired, no human to
+		// attach — same shared, project-scoped runtime for every tick.
 		const runtime = await this.runtimeCacheService.getRuntime({
 			agentId,
 			projectId,
@@ -402,18 +446,22 @@ export class AgentExecutionOrchestratorService {
 	 * requesting user.
 	 */
 	async *executeForTaskNow(config: ExecuteForTaskNowConfig): AsyncGenerator<StreamChunk> {
-		const { agentId, projectId, userId, message, memory, taskId } = config;
+		const { agentId, projectId, user, message, memory, taskId } = config;
 
+		// `user` is always set (see ExecuteForTaskNowConfig) — manual "Run now"
+		// runs get a runtime scoped to the requesting user's tool access, same
+		// as the in-app test chat.
 		const runtime = await this.runtimeCacheService.getRuntime({
 			agentId,
 			projectId,
+			user,
 		});
 
 		yield* this.streamChatResponse({
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
 			agentId,
-			userId,
+			userId: user.id,
 			message,
 			memory,
 			projectId: runtime.projectId,
@@ -518,6 +566,13 @@ export class AgentExecutionOrchestratorService {
 		}
 
 		try {
+			// No `user`: this path runs an agent invoked from inside a workflow
+			// execution (AI Agent node, or a "Message an Agent" tool call from
+			// another workflow) — there is no interactive n8n user, only a bare
+			// telemetry id (see `executeForWorkflow`'s `telemetryUserId`), and for
+			// webhook/trigger-fired executions even that can be absent. This
+			// runtime also isn't cached (see the docstring above), so there's no
+			// cache-key concern here either — just no per-user tool filtering.
 			const { agent: reconstructed } =
 				await this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
 					agentEntity,

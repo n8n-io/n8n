@@ -97,7 +97,7 @@ function extractSkillScriptPath(command: string): string | undefined {
 
 export function getToolIcon(toolName: string): IconName {
 	if (toolName === 'complete-checkpoint') return 'circle-check';
-	if (toolName === 'delegate' || toolName.endsWith('-with-agent')) return 'share';
+	if (toolName.endsWith('-with-agent')) return 'share';
 	if (toolName === 'list_skills' || toolName === 'load_skill' || toolName === 'n8n-docs')
 		return 'book-open';
 	if (toolName === 'data-tables') return 'table';
@@ -178,17 +178,11 @@ export function useToolLabel() {
 
 	function getToggleLabel(toolCall: InstanceAiToolCallState): string | undefined {
 		if (NO_TOGGLE_TOOLS.has(toolCall.toolName)) return undefined;
-		if (toolCall.toolName === 'delegate') {
-			return i18n.baseText('instanceAi.stepTimeline.showBrief');
-		}
 		return i18n.baseText('instanceAi.stepTimeline.showData');
 	}
 
 	function getHideLabel(toolCall: InstanceAiToolCallState): string | undefined {
 		if (NO_TOGGLE_TOOLS.has(toolCall.toolName)) return undefined;
-		if (toolCall.toolName === 'delegate') {
-			return i18n.baseText('instanceAi.stepTimeline.hideBrief');
-		}
 		return i18n.baseText('instanceAi.stepTimeline.hideData');
 	}
 
