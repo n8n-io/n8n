@@ -42,8 +42,8 @@ import {
 	Workflow,
 	createRunExecutionData,
 	mergeRunsPerBranch,
-	runDataAttemptedDynamicCredentials,
-	runDataUsedDynamicCredentials,
+	attachDynamicCredentialsUsage,
+	summarizeDynamicCredentialsUsage,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -447,39 +447,6 @@ export function buildSubWorkflowOutput(
 	return WorkflowHelpers.getLastExecutedNodeData(data)?.data?.main ?? [null];
 }
 
-/**
- * Summarizes a sub-workflow's dynamic-credential usage so the calling node can report it back.
- * Credentials resolve under the sub-workflow's own context, so the parent would otherwise never
- * flag that its embedded output used a private credential. The engine applies this to the parent
- * (see `BaseExecuteContext.executeWorkflow`); recurses via the child's task flags.
- */
-function summarizeSubworkflowDynamicCredentials(
-	childRun: IRun,
-): Pick<
-	ExecuteWorkflowData,
-	'usedDynamicCredentials' | 'attemptedDynamicCredentials' | 'dynamicCredentialsResolvedUserId'
-> {
-	const runData = childRun.data.resultData?.runData;
-	const summary: Pick<
-		ExecuteWorkflowData,
-		'usedDynamicCredentials' | 'attemptedDynamicCredentials' | 'dynamicCredentialsResolvedUserId'
-	> = {};
-
-	if (runDataUsedDynamicCredentials(runData)) {
-		summary.usedDynamicCredentials = true;
-		const resolvedUserId = childRun.data.executionData?.runtimeData?.executedByUserId;
-		if (resolvedUserId) {
-			summary.dynamicCredentialsResolvedUserId = resolvedUserId;
-		}
-	}
-
-	if (runDataAttemptedDynamicCredentials(runData)) {
-		summary.attemptedDynamicCredentials = true;
-	}
-
-	return summary;
-}
-
 async function startExecution(
 	additionalData: IWorkflowExecuteAdditionalData,
 	options: ExecuteWorkflowOptions,
@@ -611,15 +578,21 @@ async function startExecution(
 			executionId,
 			fullExecutionData,
 		);
-		throw objectToError(
-			{
-				...executionError,
-				executionId,
-				workflowId: workflowData.id,
-				stack: executionError?.stack,
-				message: executionError?.message,
-			},
-			workflow,
+		// The engine mutates `runData.executionData` in place, so a mid-run crash may leave
+		// credential flags on already-executed tasks — ride them on the error like the
+		// regular failure path below.
+		throw attachDynamicCredentialsUsage(
+			objectToError(
+				{
+					...executionError,
+					executionId,
+					workflowId: workflowData.id,
+					stack: executionError?.stack,
+					message: executionError?.message,
+				},
+				workflow,
+			),
+			summarizeDynamicCredentialsUsage(runData.executionData),
 		);
 	}
 
@@ -634,7 +607,7 @@ async function startExecution(
 			data: buildSubWorkflowOutput(data, workflowData.nodes, options.returnLastRunOnly ?? false),
 			waitTill: data.waitTill,
 			// Report private-credential usage to the caller (detached runs return earlier, skipping this).
-			...summarizeSubworkflowDynamicCredentials(data),
+			...summarizeDynamicCredentialsUsage(data.data),
 		};
 	}
 	activeExecutions.finalizeExecution(executionId, data);
@@ -642,14 +615,20 @@ async function startExecution(
 	// Workflow did fail
 	const { error } = data.data.resultData;
 
-	throw objectToError(
-		{
-			...error,
-			executionId,
-			workflowId: workflowData.id,
-			stack: error?.stack,
-		},
-		workflow,
+	// A failed child may still have attempted or resolved private credentials before failing;
+	// ride the usage on the error so a continue-on-fail caller still flags its task
+	// (see `BaseExecuteContext.executeWorkflow`).
+	throw attachDynamicCredentialsUsage(
+		objectToError(
+			{
+				...error,
+				executionId,
+				workflowId: workflowData.id,
+				stack: error?.stack,
+			},
+			workflow,
+		),
+		summarizeDynamicCredentialsUsage(data.data),
 	);
 }
 

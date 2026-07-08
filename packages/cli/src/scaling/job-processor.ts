@@ -33,6 +33,8 @@ import {
 	Workflow,
 	UnexpectedError,
 	createRunExecutionData,
+	runDataAttemptedDynamicCredentials,
+	runDataUsedDynamicCredentials,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
@@ -381,15 +383,20 @@ export class JobProcessor {
 
 			// Persist the tool call's run data, since the save hook fired before it ran.
 			try {
-				await this.executionPersistence.updateExistingExecution(
-					executionId,
-					prepareExecutionDataForDbUpdate({
+				const toolRunData = run.data.resultData?.runData;
+				await this.executionPersistence.updateExistingExecution(executionId, {
+					...prepareExecutionDataForDbUpdate({
 						runData: run,
 						workflowData: execution.workflowData,
 						workflowStatusFinal: run.status,
 						retryOf: execution.retryOf ?? undefined,
 					}),
-				);
+					// The save hook computed this marker before the tool ran, so recompute it now
+					// that the tool task may carry dynamic-credential flags.
+					usedPrivateCredentials:
+						runDataUsedDynamicCredentials(toolRunData) ||
+						runDataAttemptedDynamicCredentials(toolRunData),
+				});
 			} catch (error) {
 				this.logger.error('Failed to persist tool call run data for MCP Trigger', {
 					executionId,
