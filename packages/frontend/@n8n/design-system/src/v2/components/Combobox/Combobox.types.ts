@@ -1,5 +1,3 @@
-import type { StyleValue } from 'vue';
-
 import type { IconName } from '../../../components/N8nIcon/icons';
 import type { InputSize } from '../../../components/N8nInput/Input.types';
 import type {
@@ -22,7 +20,6 @@ export type ComboboxProps = Omit<ComboboxRootProps<AcceptableValue>, 'dir'> &
 		labelKey?: string;
 		items?: ComboboxItem[];
 		contentClass?: string;
-		contentStyle?: StyleValue;
 		id?: string;
 		clearable?: boolean;
 	};

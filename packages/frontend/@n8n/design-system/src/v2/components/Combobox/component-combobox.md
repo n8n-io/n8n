@@ -59,9 +59,8 @@ Combobox (N8nCombobox2)
 - `sideOffset?`: `number` | `default: 4`
 - `align?`: `'start' | 'center' | 'end'` | `default: 'start'`
 - `contentClass?`: `string` — Additional class(es) on the portaled dropdown content
-- `contentStyle?`: `StyleValue` — Inline styles on the portaled dropdown content
 
-The dropdown content defaults to a max height of **500px** with vertical scrolling on the viewport. Override via `contentStyle` or by setting the CSS variable on a custom class:
+The dropdown content defaults to a max height of **500px** with vertical scrolling on the viewport. Override by setting the CSS variable on a custom class:
 
 ```css
 .my-combobox-content {
@@ -240,12 +239,12 @@ When the clear button is clicked, single selection emits `undefined`, multiple s
   :items="items"
   content-class="narrow-combobox"
 />
+```
 
-<!-- or -->
-<N8nCombobox2
-  :items="items"
-  :content-style="{ maxHeight: '300px' }"
-/>
+```css
+.narrow-combobox {
+  --combobox-content--max-height: 300px;
+}
 ```
 
 ## Related components

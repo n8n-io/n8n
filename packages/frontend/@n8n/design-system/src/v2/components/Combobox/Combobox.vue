@@ -224,7 +224,6 @@ function onClear() {
 			<ComboboxContent
 				position="popper"
 				:class="[$style.comboboxContent, props.contentClass]"
-				:style="props.contentStyle"
 				:align="props.align"
 				:side="props.side"
 				:side-offset="props.sideOffset"
