@@ -52,8 +52,14 @@ export type ContextMenuAction =
  * (e.g. a popover, the group title editor) which then takes focus. For these
  * the context menu must not restore focus on close — otherwise the restore
  * lands outside the freshly-focused element and immediately dismisses it.
+ * `group_nodes` qualifies because it autofocuses the created group's title
+ * editor, just like `rename_group`.
  */
-const FOCUS_HANDOFF_ACTIONS = new Set<ContextMenuAction>(['change_color', 'rename_group']);
+const FOCUS_HANDOFF_ACTIONS = new Set<ContextMenuAction>([
+	'change_color',
+	'rename_group',
+	'group_nodes',
+]);
 
 export function isFocusHandoffAction(action: ContextMenuAction): boolean {
 	return FOCUS_HANDOFF_ACTIONS.has(action);
