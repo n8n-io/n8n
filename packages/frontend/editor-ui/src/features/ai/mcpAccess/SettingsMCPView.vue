@@ -163,13 +163,18 @@ const onToggleMCPAccess = async (enabled: boolean) => {
 	}
 };
 
-const showMcpAccessRemovedToast = (count: number) => {
+const showMcpAccessUpdatedToast = (count: number, enabled: boolean) => {
 	toast.showMessage({
 		type: 'success',
-		title: i18n.baseText('settings.mcp.workflows.removeAccess.success.title', {
-			adjustToNumber: count,
-			interpolate: { count: String(count) },
-		}),
+		title: i18n.baseText(
+			enabled
+				? 'settings.mcp.workflows.enableAccess.success.title'
+				: 'settings.mcp.workflows.removeAccess.success.title',
+			{
+				adjustToNumber: count,
+				interpolate: { count: String(count) },
+			},
+		),
 	});
 };
 
@@ -179,7 +184,7 @@ const onToggleWorkflowMCPAccess = async (workflowId: string, isEnabled: boolean)
 		if (isEnabled) {
 			await refreshWorkflowsFromFirstPage();
 		} else {
-			showMcpAccessRemovedToast(1);
+			showMcpAccessUpdatedToast(1, false);
 			await fetchAvailableWorkflows();
 		}
 	} catch (error) {
@@ -190,7 +195,8 @@ const onToggleWorkflowMCPAccess = async (workflowId: string, isEnabled: boolean)
 
 const onBulkEnableWorkflowsMCPAccess = async (workflowIds: string[]) => {
 	try {
-		await mcpStore.toggleWorkflowsMcpAccess({ workflowIds }, true);
+		const response = await mcpStore.toggleWorkflowsMcpAccess({ workflowIds }, true);
+		showMcpAccessUpdatedToast(response.updatedCount, true);
 		await refreshWorkflowsFromFirstPage();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowSettings.toggleMCP.error.title'));
@@ -201,7 +207,7 @@ const onBulkEnableWorkflowsMCPAccess = async (workflowIds: string[]) => {
 const onBulkRemoveWorkflowsMCPAccess = async (workflowIds: string[]) => {
 	try {
 		const response = await mcpStore.toggleWorkflowsMcpAccess({ workflowIds }, false);
-		showMcpAccessRemovedToast(response.updatedCount);
+		showMcpAccessUpdatedToast(response.updatedCount, false);
 		await fetchAvailableWorkflows();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowSettings.toggleMCP.error.title'));
