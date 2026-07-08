@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import type { AgentJsonVectorStoreConfig } from '@n8n/api-types';
-import { N8nActionBox, N8nActionDropdown, N8nButton, N8nTableBase } from '@n8n/design-system';
+import {
+	N8nActionBox,
+	N8nActionDropdown,
+	N8nButton,
+	N8nIcon,
+	N8nTableBase,
+	N8nTooltip,
+} from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
@@ -26,10 +33,6 @@ const emit = defineEmits<{
 type VectorStoreAction = 'edit' | 'remove';
 
 const i18n = useI18n();
-
-function providerLabel(vectorStore: AgentJsonVectorStoreConfig): string {
-	return AGENT_VECTOR_STORE_PROVIDER_DEFINITIONS[vectorStore.provider].displayName;
-}
 
 function locatorLabel(vectorStore: AgentJsonVectorStoreConfig): string {
 	switch (vectorStore.provider) {
@@ -72,19 +75,30 @@ function onAction(actionId: VectorStoreAction, vectorStore: AgentJsonVectorStore
 <template>
 	<div :class="$style.panel" data-testid="agent-vector-stores-panel">
 		<div :class="$style.toolbar">
-			<span :class="$style.title">
+			<span :class="$style.title" data-testid="agent-vector-stores-title">
 				{{ i18n.baseText('agents.builder.vectorStores.panel.title') }}
+				<N8nTooltip
+					:content="i18n.baseText('agents.builder.vectorStores.panel.titleTooltip')"
+					placement="top"
+				>
+					<N8nIcon icon="circle-help" size="small" :class="$style.titleIcon" />
+				</N8nTooltip>
 			</span>
-			<N8nButton
-				variant="ghost"
-				size="small"
-				icon="plus"
-				:disabled="props.disabled"
-				data-testid="agent-vector-stores-connect"
-				@click="emit('connect')"
+			<N8nTooltip
+				:content="i18n.baseText('agents.builder.vectorStores.panel.connectButton')"
+				placement="top"
 			>
-				{{ i18n.baseText('agents.builder.vectorStores.panel.connectButton') }}
-			</N8nButton>
+				<N8nButton
+					variant="ghost"
+					size="small"
+					icon="plus"
+					icon-only
+					:disabled="props.disabled"
+					:aria-label="i18n.baseText('agents.builder.vectorStores.panel.connectButton')"
+					data-testid="agent-vector-stores-connect"
+					@click="emit('connect')"
+				/>
+			</N8nTooltip>
 		</div>
 
 		<div v-if="props.vectorStores.length > 0" :class="$style.tableContainer">
@@ -114,18 +128,12 @@ function onAction(actionId: VectorStoreAction, vectorStore: AgentJsonVectorStore
 								</span>
 							</span>
 						</td>
-						<td :class="$style.providerCell" data-testid="agent-vector-store-provider">
-							{{ providerLabel(vectorStore) }}
-						</td>
 						<td
 							:class="$style.locatorCell"
 							:title="locatorLabel(vectorStore)"
 							data-testid="agent-vector-store-locator"
 						>
 							{{ locatorLabel(vectorStore) }}
-						</td>
-						<td :class="$style.embeddingCell" data-testid="agent-vector-store-embedding-model">
-							{{ vectorStore.embedding.model }}
 						</td>
 						<td
 							:class="$style.useWhenCell"
@@ -178,10 +186,17 @@ function onAction(actionId: VectorStoreAction, vectorStore: AgentJsonVectorStore
 }
 
 .title {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
 	color: var(--text-color--subtler);
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--medium);
 	line-height: var(--line-height--sm);
+}
+
+.titleIcon {
+	color: var(--text-color--subtler);
 }
 
 .tableContainer {
@@ -193,6 +208,7 @@ function onAction(actionId: VectorStoreAction, vectorStore: AgentJsonVectorStore
 
 .titleCell {
 	width: 24%;
+	max-width: 0;
 }
 
 .rowTitle {
@@ -219,24 +235,12 @@ function onAction(actionId: VectorStoreAction, vectorStore: AgentJsonVectorStore
 	white-space: nowrap;
 }
 
-.providerCell,
-.embeddingCell {
-	width: 1%;
-	white-space: nowrap;
-}
-
 .locatorCell,
 .useWhenCell {
 	max-width: 220px;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-}
-
-.providerCell,
-.locatorCell,
-.embeddingCell,
-.useWhenCell {
 	color: var(--text-color--subtler);
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--medium);

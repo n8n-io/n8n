@@ -1,32 +1,32 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import type { AgentJsonVectorStoreConfig, AgentVectorStoreProvider } from '@n8n/api-types';
 import { VECTOR_STORE_NAME_REGEX, VECTOR_STORE_USE_WHEN_MAX_LENGTH } from '@n8n/api-types';
-import {
-	N8nButton,
-	N8nCallout,
-	N8nHeading,
-	N8nInput,
-	N8nOption,
-	N8nSelect,
-	N8nText,
-} from '@n8n/design-system';
+import { N8nButton, N8nFormInput, N8nHeading, N8nInputLabel, N8nText } from '@n8n/design-system';
+import type { IValidator, Rule, RuleGroup, Validatable } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import Modal from '@/app/components/Modal.vue';
+import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { AGENT_MODEL_PROVIDER_DEFINITIONS } from '../model-providers';
 import { testAgentVectorStore } from '../composables/useAgentApi';
 import {
 	AGENT_EMBEDDING_MODEL_OPTIONS,
+	AGENT_EMBEDDING_PROVIDERS,
 	AGENT_VECTOR_STORE_PROVIDER_DEFINITIONS,
+	getEmbeddingModelProvider,
+	getEmbeddingModelsForProvider,
+	type AgentEmbeddingProvider,
 } from '../vector-stores';
 import AgentCredentialSelect, { type AgentCredentialOption } from './AgentCredentialSelect.vue';
+import EmbeddingModelSelector from './EmbeddingModelSelector.vue';
 
 type AddVectorStoreModalData = {
 	projectId: string;
@@ -55,6 +55,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const uiStore = useUIStore();
+const { showMessage, showError } = useToast();
 const rootStore = useRootStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
@@ -93,12 +94,21 @@ const embeddingCredential = ref(existing?.embedding.credential ?? '');
 const useWhen = ref(existing?.useWhen ?? '');
 
 const testing = ref(false);
-const testErrorMessage = ref('');
 
 const credentialsByType = ref<Record<string, AgentCredentialOption[]>>({});
 const credentialsLoading = ref(false);
 const credentialIdsBeforeNew = ref<Record<string, Set<string>>>({});
 const pendingCredentialField = ref<'credential' | 'embeddingCredential' | null>(null);
+const pendingCredentialType = ref<string | null>(null);
+
+// Tracks whether each N8nFormInput currently reports a valid value. N8nFormInput
+// already handles "don't show the error until the field is touched" internally
+// (validateOnBlur) — this only drives the Connect/Save button's disabled state.
+const formValidation = reactive({
+	name: false,
+	locator: false,
+	useWhen: false,
+});
 
 function closeModal() {
 	uiStore.closeModal(props.modalName);
@@ -111,7 +121,6 @@ function selectProvider(provider: AgentVectorStoreProvider) {
 function goBack() {
 	if (isEditing.value) return;
 	selectedProvider.value = null;
-	testErrorMessage.value = '';
 }
 
 const locatorValue = computed(() => {
@@ -143,72 +152,48 @@ function onNameInput(value: string) {
 	name.value = value;
 }
 
-const nameError = computed(() => {
-	const trimmed = name.value.trim();
-	if (!trimmed) return '';
-	if (!VECTOR_STORE_NAME_REGEX.test(trimmed)) {
-		return i18n.baseText('agents.builder.vectorStores.modal.name.validation.pattern');
-	}
-	const otherNames = props.data.existingNames.filter((otherName) => otherName !== existing?.name);
-	if (otherNames.includes(trimmed)) {
-		return i18n.baseText('agents.builder.vectorStores.modal.name.validation.duplicate');
-	}
-	return '';
-});
+const nameValidators: Record<string, IValidator> = {
+	NAME_UNIQUE: {
+		validate: (value: Validatable) => {
+			const trimmed = typeof value === 'string' ? value.trim() : '';
+			const otherNames = props.data.existingNames.filter(
+				(otherName) => otherName !== existing?.name,
+			);
+			if (trimmed && otherNames.includes(trimmed)) {
+				return {
+					message: i18n.baseText('agents.builder.vectorStores.modal.name.validation.duplicate'),
+				};
+			}
+			return false;
+		},
+	},
+};
 
-const useWhenTrimmed = computed(() => useWhen.value.trim());
-const useWhenError = computed(() => {
-	if (!useWhenTrimmed.value) {
-		return i18n.baseText('agents.builder.vectorStores.useWhen.validation.required');
-	}
-	if (useWhenTrimmed.value.length > VECTOR_STORE_USE_WHEN_MAX_LENGTH) {
-		return i18n.baseText('agents.builder.vectorStores.useWhen.validation.maxLength', {
-			interpolate: { max: String(VECTOR_STORE_USE_WHEN_MAX_LENGTH) },
-		});
-	}
-	return '';
-});
+const nameValidationRules: Array<Rule | RuleGroup> = [
+	{
+		name: 'MATCH_REGEX',
+		config: {
+			regex: VECTOR_STORE_NAME_REGEX,
+			message: i18n.baseText('agents.builder.vectorStores.modal.name.validation.pattern'),
+		},
+	},
+	{ name: 'NAME_UNIQUE' },
+];
 
-const locatorFilled = computed(() => locatorValue.value.trim().length > 0);
+const useWhenValidationRules: Array<Rule | RuleGroup> = [
+	{ name: 'MAX_LENGTH', config: { maximum: VECTOR_STORE_USE_WHEN_MAX_LENGTH } },
+];
 
 const canTest = computed(
 	() =>
 		Boolean(selectedProvider.value) &&
-		name.value.trim().length > 0 &&
-		!nameError.value &&
+		formValidation.name &&
 		Boolean(credential.value) &&
-		locatorFilled.value &&
+		formValidation.locator &&
 		Boolean(embeddingModel.value) &&
 		Boolean(embeddingCredential.value) &&
-		!useWhenError.value,
+		formValidation.useWhen,
 );
-
-const embeddingModelOptions = computed(() =>
-	AGENT_EMBEDDING_MODEL_OPTIONS.map((option) => ({
-		...option,
-		label: i18n.baseText('agents.builder.vectorStores.modal.embeddingModel.optionLabel', {
-			interpolate: { model: option.model, dimensions: String(option.dimensions) },
-		}),
-	})),
-);
-
-const selectedEmbeddingOption = computed(() =>
-	AGENT_EMBEDDING_MODEL_OPTIONS.find((option) => option.model === embeddingModel.value),
-);
-
-const embeddingCredentialOptions = computed(() => {
-	const credentialTypes = selectedEmbeddingOption.value?.credentialTypes ?? [];
-	const seen = new Set<string>();
-	const options: AgentCredentialOption[] = [];
-	for (const type of credentialTypes) {
-		for (const option of credentialsByType.value[type] ?? []) {
-			if (seen.has(option.id)) continue;
-			seen.add(option.id);
-			options.push(option);
-		}
-	}
-	return options;
-});
 
 const storeCredentialOptions = computed(() =>
 	providerDefinition.value
@@ -216,12 +201,17 @@ const storeCredentialOptions = computed(() =>
 		: [],
 );
 
-function onEmbeddingModelChange(model: string) {
+function embeddingCredentialTypeFor(provider: AgentEmbeddingProvider): string {
+	return AGENT_MODEL_PROVIDER_DEFINITIONS[provider].credentialTypes[0];
+}
+
+function onEmbeddingModelUpdate(model: string) {
 	embeddingModel.value = model;
-	const stillValid = embeddingCredentialOptions.value.some(
+	const requiredType = embeddingCredentialTypeFor(getEmbeddingModelProvider(model));
+	const currentCredentialValid = (credentialsByType.value[requiredType] ?? []).some(
 		(option) => option.id === embeddingCredential.value,
 	);
-	if (!stillValid) {
+	if (!currentCredentialValid) {
 		embeddingCredential.value = '';
 	}
 }
@@ -271,6 +261,7 @@ function createCredential(type: string, field: 'credential' | 'embeddingCredenti
 	const currentOptions = credentialsByType.value[type] ?? [];
 	credentialIdsBeforeNew.value[type] = new Set(currentOptions.map((option) => option.id));
 	pendingCredentialField.value = field;
+	pendingCredentialType.value = type;
 	uiStore.openNewCredential(
 		type,
 		false,
@@ -291,10 +282,8 @@ function onCreateStoreCredential() {
 	createCredential(providerDefinition.value.credentialType, 'credential');
 }
 
-function onCreateEmbeddingCredential() {
-	const [primaryCredentialType] = selectedEmbeddingOption.value?.credentialTypes ?? [];
-	if (!primaryCredentialType) return;
-	createCredential(primaryCredentialType, 'embeddingCredential');
+function onCreateEmbeddingCredential(credentialType: string) {
+	createCredential(credentialType, 'embeddingCredential');
 }
 
 const credentialModalOpen = computed(
@@ -304,14 +293,10 @@ const credentialModalOpen = computed(
 watch(credentialModalOpen, async (isOpen, wasOpen) => {
 	if (!wasOpen || isOpen) return;
 	const field = pendingCredentialField.value;
+	const type = pendingCredentialType.value;
 	pendingCredentialField.value = null;
-	if (!field) return;
-
-	const type =
-		field === 'credential'
-			? providerDefinition.value?.credentialType
-			: selectedEmbeddingOption.value?.credentialTypes[0];
-	if (!type) return;
+	pendingCredentialType.value = null;
+	if (!field || !type) return;
 
 	const before = credentialIdsBeforeNew.value[type];
 	await loadCredentials();
@@ -322,6 +307,15 @@ watch(credentialModalOpen, async (isOpen, wasOpen) => {
 			credential.value = newCredential.id;
 		} else {
 			embeddingCredential.value = newCredential.id;
+			// Keep the model/credential pairing valid: switch to a model from the
+			// same provider as the credential the user just configured.
+			const provider = AGENT_EMBEDDING_PROVIDERS.find(
+				(candidate) => embeddingCredentialTypeFor(candidate) === type,
+			);
+			const [firstModelForProvider] = provider ? getEmbeddingModelsForProvider(provider) : [];
+			if (firstModelForProvider) {
+				embeddingModel.value = firstModelForProvider.model;
+			}
 		}
 	}
 	delete credentialIdsBeforeNew.value[type];
@@ -331,7 +325,7 @@ function buildVectorStoreConfig(): AgentJsonVectorStoreConfig {
 	const base = {
 		name: name.value.trim(),
 		credential: credential.value,
-		useWhen: useWhenTrimmed.value,
+		useWhen: useWhen.value.trim(),
 		embedding: { model: embeddingModel.value, credential: embeddingCredential.value },
 	};
 	switch (selectedProvider.value) {
@@ -360,7 +354,6 @@ function buildVectorStoreConfig(): AgentJsonVectorStoreConfig {
 async function onTestAndConnect() {
 	if (!canTest.value || testing.value) return;
 	testing.value = true;
-	testErrorMessage.value = '';
 	try {
 		const vectorStore = buildVectorStoreConfig();
 		const result = await testAgentVectorStore(
@@ -370,17 +363,25 @@ async function onTestAndConnect() {
 			vectorStore,
 		);
 		if (!result.success) {
-			testErrorMessage.value =
-				result.message ?? i18n.baseText('agents.builder.vectorStores.modal.test.genericError');
+			showMessage({
+				title: i18n.baseText('agents.builder.vectorStores.modal.test.failedTitle'),
+				message:
+					result.message ?? i18n.baseText('agents.builder.vectorStores.modal.test.genericError'),
+				type: 'error',
+				duration: 0,
+			});
 			return;
 		}
+		showMessage({
+			title: i18n.baseText('agents.builder.vectorStores.modal.test.successTitle', {
+				interpolate: { name: vectorStore.name },
+			}),
+			type: 'success',
+		});
 		props.data.onConfirm(vectorStore);
 		closeModal();
 	} catch (error) {
-		testErrorMessage.value =
-			error instanceof Error
-				? error.message
-				: i18n.baseText('agents.builder.vectorStores.modal.test.genericError');
+		showError(error, i18n.baseText('agents.builder.vectorStores.modal.test.failedTitle'));
 	} finally {
 		testing.value = false;
 	}
@@ -455,24 +456,24 @@ onMounted(() => {
 			</div>
 
 			<div v-else :class="[$style.content, $style.configureContent]">
-				<div :class="$style.field">
-					<N8nText size="small" :bold="true">
-						{{ i18n.baseText('agents.builder.vectorStores.modal.name.label') }}
-					</N8nText>
-					<N8nInput
-						:model-value="name"
-						size="small"
-						:placeholder="i18n.baseText('agents.builder.vectorStores.modal.name.placeholder')"
-						data-testid="agent-vector-stores-modal-name"
-						@update:model-value="onNameInput"
-					/>
-					<N8nText v-if="nameError" size="small" color="danger">{{ nameError }}</N8nText>
-				</div>
+				<N8nFormInput
+					:model-value="name"
+					name="vectorStoreName"
+					:label="i18n.baseText('agents.builder.vectorStores.modal.name.label')"
+					:placeholder="i18n.baseText('agents.builder.vectorStores.modal.name.placeholder')"
+					required
+					:maxlength="64"
+					:validation-rules="nameValidationRules"
+					:validators="nameValidators"
+					data-testid="agent-vector-stores-modal-name"
+					@update:model-value="onNameInput"
+					@validate="(valid: boolean) => (formValidation.name = valid)"
+				/>
 
-				<div :class="$style.field">
-					<N8nText size="small" :bold="true">
-						{{ i18n.baseText('agents.builder.vectorStores.modal.credential.label') }}
-					</N8nText>
+				<N8nInputLabel
+					:label="i18n.baseText('agents.builder.vectorStores.modal.credential.label')"
+					required
+				>
 					<AgentCredentialSelect
 						v-model="credential"
 						:credentials="storeCredentialOptions"
@@ -482,153 +483,88 @@ onMounted(() => {
 						data-test-id="agent-vector-stores-modal-credential"
 						@create="onCreateStoreCredential"
 					/>
-				</div>
+				</N8nInputLabel>
 
 				<template v-if="selectedProvider === 'pinecone'">
-					<div :class="$style.field">
-						<N8nText size="small" :bold="true">
-							{{ i18n.baseText('agents.builder.vectorStores.modal.indexName.label') }}
-						</N8nText>
-						<N8nInput
-							v-model="indexName"
-							size="small"
-							:placeholder="
-								i18n.baseText('agents.builder.vectorStores.modal.indexName.placeholder')
-							"
-							data-testid="agent-vector-stores-modal-index-name"
-						/>
-					</div>
-					<div :class="$style.field">
-						<N8nText size="small" :bold="true">
-							{{ i18n.baseText('agents.builder.vectorStores.modal.namespace.label') }}
-						</N8nText>
-						<N8nInput
-							v-model="namespace"
-							size="small"
-							:placeholder="
-								i18n.baseText('agents.builder.vectorStores.modal.namespace.placeholder')
-							"
-							data-testid="agent-vector-stores-modal-namespace"
-						/>
-					</div>
+					<N8nFormInput
+						v-model="indexName"
+						name="indexName"
+						:label="i18n.baseText('agents.builder.vectorStores.modal.indexName.label')"
+						:placeholder="i18n.baseText('agents.builder.vectorStores.modal.indexName.placeholder')"
+						required
+						data-testid="agent-vector-stores-modal-index-name"
+						@validate="(valid: boolean) => (formValidation.locator = valid)"
+					/>
+					<N8nFormInput
+						v-model="namespace"
+						name="namespace"
+						:label="i18n.baseText('agents.builder.vectorStores.modal.namespace.label')"
+						:placeholder="i18n.baseText('agents.builder.vectorStores.modal.namespace.placeholder')"
+						data-testid="agent-vector-stores-modal-namespace"
+					/>
 				</template>
 
-				<div v-else-if="selectedProvider === 'qdrant'" :class="$style.field">
-					<N8nText size="small" :bold="true">
-						{{ i18n.baseText('agents.builder.vectorStores.modal.collectionName.label') }}
-					</N8nText>
-					<N8nInput
-						v-model="collectionName"
-						size="small"
-						:placeholder="
-							i18n.baseText('agents.builder.vectorStores.modal.collectionName.placeholder')
-						"
-						data-testid="agent-vector-stores-modal-collection-name"
-					/>
-				</div>
+				<N8nFormInput
+					v-else-if="selectedProvider === 'qdrant'"
+					v-model="collectionName"
+					name="collectionName"
+					:label="i18n.baseText('agents.builder.vectorStores.modal.collectionName.label')"
+					:placeholder="
+						i18n.baseText('agents.builder.vectorStores.modal.collectionName.placeholder')
+					"
+					required
+					data-testid="agent-vector-stores-modal-collection-name"
+					@validate="(valid: boolean) => (formValidation.locator = valid)"
+				/>
 
 				<template v-else-if="selectedProvider === 'supabase' || selectedProvider === 'postgres'">
-					<div :class="$style.field">
-						<N8nText size="small" :bold="true">
-							{{ i18n.baseText('agents.builder.vectorStores.modal.tableName.label') }}
-						</N8nText>
-						<N8nInput
-							v-model="tableName"
-							size="small"
-							:placeholder="
-								i18n.baseText('agents.builder.vectorStores.modal.tableName.placeholder')
-							"
-							data-testid="agent-vector-stores-modal-table-name"
-						/>
-					</div>
-					<div v-if="selectedProvider === 'supabase'" :class="$style.field">
-						<N8nText size="small" :bold="true">
-							{{ i18n.baseText('agents.builder.vectorStores.modal.queryName.label') }}
-						</N8nText>
-						<N8nInput
-							v-model="queryName"
-							size="small"
-							:placeholder="
-								i18n.baseText('agents.builder.vectorStores.modal.queryName.placeholder')
-							"
-							data-testid="agent-vector-stores-modal-query-name"
-						/>
-					</div>
+					<N8nFormInput
+						v-model="tableName"
+						name="tableName"
+						:label="i18n.baseText('agents.builder.vectorStores.modal.tableName.label')"
+						:placeholder="i18n.baseText('agents.builder.vectorStores.modal.tableName.placeholder')"
+						required
+						data-testid="agent-vector-stores-modal-table-name"
+						@validate="(valid: boolean) => (formValidation.locator = valid)"
+					/>
+					<N8nFormInput
+						v-if="selectedProvider === 'supabase'"
+						v-model="queryName"
+						name="queryName"
+						:label="i18n.baseText('agents.builder.vectorStores.modal.queryName.label')"
+						:placeholder="i18n.baseText('agents.builder.vectorStores.modal.queryName.placeholder')"
+						data-testid="agent-vector-stores-modal-query-name"
+					/>
 				</template>
 
-				<div :class="$style.field">
-					<N8nText size="small" :bold="true">
-						{{ i18n.baseText('agents.builder.vectorStores.modal.embeddingModel.label') }}
-					</N8nText>
-					<N8nText size="small" color="text-light">
-						{{ i18n.baseText('agents.builder.vectorStores.modal.embeddingModel.hint') }}
-					</N8nText>
-					<N8nSelect
-						:model-value="embeddingModel"
-						size="small"
-						data-testid="agent-vector-stores-modal-embedding-model"
-						@update:model-value="onEmbeddingModelChange"
-					>
-						<N8nOption
-							v-for="option in embeddingModelOptions"
-							:key="option.model"
-							:value="option.model"
-							:label="option.label"
-						/>
-					</N8nSelect>
-				</div>
-
-				<div :class="$style.field">
-					<N8nText size="small" :bold="true">
-						{{ i18n.baseText('agents.builder.vectorStores.modal.embeddingCredential.label') }}
-					</N8nText>
-					<AgentCredentialSelect
-						v-model="embeddingCredential"
-						:credentials="embeddingCredentialOptions"
-						:placeholder="
-							i18n.baseText('agents.builder.vectorStores.modal.embeddingCredential.placeholder')
-						"
-						:credential-permissions="credentialPermissions"
-						:loading="credentialsLoading"
-						data-test-id="agent-vector-stores-modal-embedding-credential"
-						@create="onCreateEmbeddingCredential"
-					/>
-				</div>
-
-				<div :class="$style.field">
-					<N8nText size="small" :bold="true">
-						{{ i18n.baseText('agents.builder.vectorStores.useWhen.label') }}
-					</N8nText>
-					<N8nText size="small" color="text-light">
-						{{ i18n.baseText('agents.builder.vectorStores.useWhen.hint') }}
-					</N8nText>
-					<N8nInput
-						:model-value="useWhen"
-						size="small"
-						:placeholder="i18n.baseText('agents.builder.vectorStores.useWhen.placeholder')"
-						data-testid="agent-vector-stores-modal-use-when"
-						@update:model-value="useWhen = $event"
-					/>
-					<N8nText v-if="useWhenError" size="small" color="danger">{{ useWhenError }}</N8nText>
-					<N8nText size="xsmall" color="text-light">
-						{{
-							i18n.baseText('agents.builder.vectorStores.useWhen.characterCount', {
-								interpolate: {
-									count: String(useWhen.length),
-									max: String(VECTOR_STORE_USE_WHEN_MAX_LENGTH),
-								},
-							})
-						}}
-					</N8nText>
-				</div>
-
-				<N8nCallout
-					v-if="testErrorMessage"
-					theme="danger"
-					data-testid="agent-vector-stores-modal-error"
+				<N8nInputLabel
+					:label="i18n.baseText('agents.builder.vectorStores.modal.embeddingModel.label')"
+					:tooltip-text="i18n.baseText('agents.builder.vectorStores.modal.embeddingModel.hint')"
+					required
 				>
-					{{ testErrorMessage }}
-				</N8nCallout>
+					<EmbeddingModelSelector
+						:selected-model="embeddingModel"
+						:selected-credential-id="embeddingCredential || null"
+						:credentials-by-type="credentialsByType"
+						:can-create-credentials="credentialPermissions.create"
+						@update:selected-model="onEmbeddingModelUpdate"
+						@update:selected-credential-id="embeddingCredential = $event"
+						@create-credential="onCreateEmbeddingCredential"
+					/>
+				</N8nInputLabel>
+
+				<N8nFormInput
+					v-model="useWhen"
+					name="useWhen"
+					:label="i18n.baseText('agents.builder.vectorStores.useWhen.label')"
+					:tooltip-text="i18n.baseText('agents.builder.vectorStores.useWhen.hint')"
+					:placeholder="i18n.baseText('agents.builder.vectorStores.useWhen.placeholder')"
+					required
+					:maxlength="VECTOR_STORE_USE_WHEN_MAX_LENGTH"
+					:validation-rules="useWhenValidationRules"
+					data-testid="agent-vector-stores-modal-use-when"
+					@validate="(valid: boolean) => (formValidation.useWhen = valid)"
+				/>
 			</div>
 		</template>
 
@@ -742,12 +678,6 @@ onMounted(() => {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	flex-shrink: 0;
-}
-
-.field {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
 }
 
 .footer {

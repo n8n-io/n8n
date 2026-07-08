@@ -1,8 +1,28 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { computed } from 'vue';
+
+/** Must match the row styles below: td height (48px) + 1px border-bottom. */
+const ROW_HEIGHT_PX = 49;
+
+interface TableBaseProps {
+	/**
+	 * Maximum number of body rows visible before the table scrolls vertically.
+	 * Unset (default): the table grows with its content, exactly as before.
+	 * Counts body rows only — a sticky `thead` adds its own height on top.
+	 */
+	maxDisplayedRows?: number;
+}
+
+const props = defineProps<TableBaseProps>();
+
+const scrollStyle = computed(() =>
+	props.maxDisplayedRows ? { maxHeight: `${props.maxDisplayedRows * ROW_HEIGHT_PX}px` } : undefined,
+);
+</script>
 
 <template>
 	<div :class="$style.n8nTable">
-		<div :class="$style.n8nTableScroll">
+		<div :class="$style.n8nTableScroll" :style="scrollStyle" data-test-id="table-base-scroll">
 			<table>
 				<slot />
 			</table>

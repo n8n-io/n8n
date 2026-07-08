@@ -14,7 +14,8 @@ import { PineconeVectorStore } from '../vector-stores/pinecone';
 function createStub(queryResult: { matches: unknown[] }) {
 	const query = vi.fn().mockResolvedValue(queryResult);
 	const upsert = vi.fn().mockResolvedValue(undefined);
-	return { query, upsert };
+	const deleteMany = vi.fn().mockResolvedValue(undefined);
+	return { query, upsert, deleteMany };
 }
 
 function createStore(): { store: PineconeVectorStore; stub: ReturnType<typeof createStub> } {
@@ -246,9 +247,9 @@ describe('PineconeVectorStore filter translation', () => {
 		]);
 	});
 
-	it('splits large upserts into sequential batches of 200', async () => {
+	it('splits large upserts into sequential batches of at most 1000 records', async () => {
 		const { store, stub } = createStore();
-		const records = Array.from({ length: 401 }, (_, i) => ({
+		const records = Array.from({ length: 1001 }, (_, i) => ({
 			id: String(i),
 			vector: [0],
 			content: 'c',
@@ -257,14 +258,42 @@ describe('PineconeVectorStore filter translation', () => {
 
 		await store.upsert(records);
 
-		expect(stub.upsert).toHaveBeenCalledTimes(3);
+		expect(stub.upsert).toHaveBeenCalledTimes(2);
 		const calls = stub.upsert.mock.calls as Array<[Array<{ id: string }>]>;
-		expect(calls[0][0]).toHaveLength(200);
-		expect(calls[1][0]).toHaveLength(200);
-		expect(calls[2][0]).toHaveLength(1);
+		expect(calls[0][0]).toHaveLength(1000);
+		expect(calls[1][0]).toHaveLength(1);
 		expect(calls[0][0][0].id).toBe('0');
-		expect(calls[1][0][0].id).toBe('200');
-		expect(calls[2][0][0].id).toBe('400');
+		expect(calls[1][0][0].id).toBe('1000');
+	});
+
+	it('splits upserts into batches that stay under the request byte-size limit', async () => {
+		const { store, stub } = createStore();
+		// ~400KB of content per record — 5 records exceeds the 1.8MB batch limit before hitting the 1000-record cap.
+		const bigContent = 'x'.repeat(400_000);
+		const records = Array.from({ length: 5 }, (_, i) => ({
+			id: String(i),
+			vector: [0],
+			content: bigContent,
+			metadata: {},
+		}));
+
+		await store.upsert(records);
+
+		expect(stub.upsert).toHaveBeenCalledTimes(2);
+		const calls = stub.upsert.mock.calls as Array<[Array<{ id: string }>]>;
+		expect(calls[0][0]).toHaveLength(4);
+		expect(calls[1][0]).toHaveLength(1);
+	});
+
+	it('splits large deletes into sequential batches of at most 1000 ids', async () => {
+		const { store, stub } = createStore();
+		const ids = Array.from({ length: 1001 }, (_, i) => String(i));
+
+		await store.delete({ ids });
+
+		expect(stub.deleteMany).toHaveBeenCalledTimes(2);
+		expect(stub.deleteMany).toHaveBeenNthCalledWith(1, ids.slice(0, 1000));
+		expect(stub.deleteMany).toHaveBeenNthCalledWith(2, ids.slice(1000));
 	});
 
 	it('rejects invalid metadata without sending any batch', async () => {

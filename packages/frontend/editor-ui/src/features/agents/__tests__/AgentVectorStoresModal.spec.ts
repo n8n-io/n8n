@@ -8,6 +8,8 @@ const closeModalMock = vi.fn();
 const openNewCredentialMock = vi.fn();
 const fetchAllCredentialsForWorkflowMock = vi.fn();
 const testAgentVectorStoreMock = vi.fn();
+const showMessageMock = vi.fn();
+const showErrorMock = vi.fn();
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -22,6 +24,10 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 
 vi.mock('@n8n/permissions', () => ({
 	getResourcePermissions: () => ({ credential: { create: true } }),
+}));
+
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({ showMessage: showMessageMock, showError: showErrorMock }),
 }));
 
 vi.mock('@/app/stores/ui.store', () => ({
@@ -89,6 +95,30 @@ vi.mock('../components/AgentCredentialSelect.vue', () => ({
 	},
 }));
 
+vi.mock('../components/EmbeddingModelSelector.vue', () => ({
+	default: {
+		name: 'EmbeddingModelSelector',
+		props: ['selectedModel', 'selectedCredentialId', 'credentialsByType', 'canCreateCredentials'],
+		emits: ['update:selectedModel', 'update:selectedCredentialId', 'create-credential'],
+		computed: {
+			allCredentials(): Array<{ id: string; name: string }> {
+				return Object.values(this.credentialsByType ?? {}).flat();
+			},
+		},
+		template:
+			'<div>' +
+			'<select data-testid="agent-vector-stores-modal-embedding-model" :value="selectedModel" ' +
+			'@change="$emit(\'update:selectedModel\', $event.target.value)">' +
+			'<option value="openai/text-embedding-3-small">openai/text-embedding-3-small</option>' +
+			'</select>' +
+			'<select data-testid="agent-vector-stores-modal-embedding-credential" :value="selectedCredentialId" ' +
+			'@change="$emit(\'update:selectedCredentialId\', $event.target.value)">' +
+			'<option value="" /><option v-for="c in allCredentials" :key="c.id" :value="c.id">{{ c.name }}</option>' +
+			'</select>' +
+			'</div>',
+	},
+}));
+
 vi.mock('@n8n/design-system', () => ({
 	N8nButton: {
 		props: ['variant', 'size', 'disabled', 'loading'],
@@ -96,33 +126,58 @@ vi.mock('@n8n/design-system', () => ({
 		template:
 			'<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
 	},
-	N8nCallout: {
-		props: ['theme'],
-		template: '<div v-bind="$attrs"><slot /></div>',
+	N8nFormInput: {
+		inheritAttrs: false,
+		props: {
+			modelValue: { type: String, default: '' },
+			label: { type: String, default: '' },
+			placeholder: { type: String, default: '' },
+			required: { type: Boolean, default: false },
+			maxlength: { type: Number, default: undefined },
+			validationRules: { type: Array, default: () => [] },
+			validators: { type: Object, default: () => ({}) },
+		},
+		emits: ['update:modelValue', 'validate'],
+		data() {
+			return { hasBlurred: false };
+		},
+		computed: {
+			errorMessage(): string {
+				const value = typeof this.modelValue === 'string' ? this.modelValue.trim() : '';
+				if (this.required && !value) return 'required';
+				for (const rule of this.validationRules ?? []) {
+					if (rule.name === 'MAX_LENGTH' && value.length > rule.config.maximum) return 'maxLength';
+					if (rule.name === 'MATCH_REGEX' && !rule.config.regex.test(value)) {
+						return rule.config.message;
+					}
+					if (rule.name === 'NAME_UNIQUE' && this.validators?.NAME_UNIQUE) {
+						const result = this.validators.NAME_UNIQUE.validate(value);
+						if (result) return result.message;
+					}
+				}
+				return '';
+			},
+		},
+		watch: {
+			errorMessage: {
+				immediate: true,
+				handler(message: string) {
+					this.$emit('validate', !message);
+				},
+			},
+		},
+		template:
+			'<div>' +
+			'<label v-if="label">{{ label }}</label>' +
+			'<input v-bind="$attrs" :value="modelValue" :placeholder="placeholder" :maxlength="maxlength" ' +
+			'@input="$emit(\'update:modelValue\', $event.target.value)" @blur="hasBlurred = true" />' +
+			'<span v-if="hasBlurred && errorMessage">{{ errorMessage }}</span>' +
+			'</div>',
 	},
 	N8nHeading: { template: '<h2><slot /></h2>', props: ['tag', 'size'] },
-	N8nIcon: { template: '<span />', props: ['icon', 'size'] },
-	N8nInput: {
-		props: ['modelValue', 'placeholder', 'size'],
-		emits: ['update:modelValue'],
-		template:
-			'<input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
-	},
-	N8nMarkdownEditor: {
-		props: ['modelValue', 'placeholder', 'maxHeight'],
-		emits: ['update:modelValue'],
-		template:
-			'<textarea v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
-	},
-	N8nOption: {
-		props: ['value', 'label'],
-		template: '<option :value="value">{{ label }}</option>',
-	},
-	N8nSelect: {
-		props: ['modelValue'],
-		emits: ['update:modelValue'],
-		template:
-			'<select v-bind="$attrs" :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><slot /></select>',
+	N8nInputLabel: {
+		props: ['label', 'tooltipText', 'required'],
+		template: '<div><label>{{ label }}</label><slot /></div>',
 	},
 	N8nText: { template: '<span><slot /></span>', props: ['size', 'color', 'bold'] },
 }));
@@ -141,7 +196,7 @@ async function fillQdrantConnection(wrapper: ReturnType<typeof mount>) {
 		.find('[data-test-id="agent-vector-stores-modal-credential"]')
 		.setValue('qdrant-cred-1');
 	await wrapper
-		.find('[data-test-id="agent-vector-stores-modal-embedding-credential"]')
+		.find('[data-testid="agent-vector-stores-modal-embedding-credential"]')
 		.setValue('openai-cred-1');
 	await wrapper
 		.find('[data-testid="agent-vector-stores-modal-use-when"]')
@@ -181,6 +236,27 @@ describe('AgentVectorStoresModal', () => {
 		expect(wrapper.findAll('[data-testid="agent-vector-stores-modal-connect"]')).toHaveLength(4);
 	});
 
+	it('does not show the useWhen validation error until the field is touched', async () => {
+		const wrapper = mount(AgentVectorStoresModal, {
+			props: {
+				modalName: 'agentVectorStoresModal',
+				data: { projectId: 'p1', agentId: 'a1', existingNames: [], onConfirm: vi.fn() },
+			},
+		});
+		await flushPromises();
+		await selectQdrantProvider(wrapper);
+
+		const useWhenInput = wrapper.find('[data-testid="agent-vector-stores-modal-use-when"]');
+		expect(useWhenInput.text()).toBe('');
+		expect(wrapper.text()).not.toContain('required');
+
+		await useWhenInput.setValue('Search docs.');
+		await useWhenInput.setValue('');
+		await useWhenInput.trigger('blur');
+
+		expect(wrapper.text()).toContain('required');
+	});
+
 	it('disables Connect until required fields are filled, then tests and confirms', async () => {
 		testAgentVectorStoreMock.mockResolvedValue({ success: true });
 		const onConfirm = vi.fn();
@@ -206,9 +282,13 @@ describe('AgentVectorStoresModal', () => {
 		expect(testAgentVectorStoreMock).toHaveBeenCalledWith({}, 'p1', 'a1', expectedVectorStore);
 		expect(onConfirm).toHaveBeenCalledWith(expectedVectorStore);
 		expect(closeModalMock).toHaveBeenCalledWith('agentVectorStoresModal');
+		expect(showMessageMock).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'success', title: expect.stringContaining('product_docs') }),
+		);
+		expect(showErrorMock).not.toHaveBeenCalled();
 	});
 
-	it('shows the failure message from a failed connection test and does not confirm', async () => {
+	it('shows a toast with the failure message from a failed connection test and does not confirm', async () => {
 		testAgentVectorStoreMock.mockResolvedValue({
 			success: false,
 			message:
@@ -229,9 +309,35 @@ describe('AgentVectorStoresModal', () => {
 		await wrapper.find('[data-testid="agent-vector-stores-modal-confirm"]').trigger('click');
 		await flushPromises();
 
-		expect(wrapper.find('[data-testid="agent-vector-stores-modal-error"]').text()).toBe(
-			'Collection "docs" expects 1536 dimensions but model "openai/text-embedding-3-small" produces 3072.',
+		expect(showMessageMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'error',
+				message:
+					'Collection "docs" expects 1536 dimensions but model "openai/text-embedding-3-small" produces 3072.',
+			}),
 		);
+		expect(onConfirm).not.toHaveBeenCalled();
+		expect(closeModalMock).not.toHaveBeenCalled();
+	});
+
+	it('shows an error toast when the test request throws', async () => {
+		testAgentVectorStoreMock.mockRejectedValue(new Error('Network error'));
+		const onConfirm = vi.fn();
+
+		const wrapper = mount(AgentVectorStoresModal, {
+			props: {
+				modalName: 'agentVectorStoresModal',
+				data: { projectId: 'p1', agentId: 'a1', existingNames: [], onConfirm },
+			},
+		});
+		await flushPromises();
+		await selectQdrantProvider(wrapper);
+		await fillQdrantConnection(wrapper);
+
+		await wrapper.find('[data-testid="agent-vector-stores-modal-confirm"]').trigger('click');
+		await flushPromises();
+
+		expect(showErrorMock).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
 		expect(onConfirm).not.toHaveBeenCalled();
 		expect(closeModalMock).not.toHaveBeenCalled();
 	});
