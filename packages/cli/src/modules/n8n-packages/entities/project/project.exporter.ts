@@ -7,7 +7,7 @@ import { ProjectSerializer } from './project.serializer';
 import type { PackageWriter } from '../../io/package-writer';
 import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
-import { assertAllRequestedEntitiesFound } from '../package-export.errors';
+import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
 
 export interface ProjectExportRequest {
 	user: User;
@@ -33,7 +33,7 @@ export class ProjectExporter {
 			['project:export'],
 		);
 
-		await assertAllRequestedEntitiesFound(
+		await assertEveryRequestedEntityAccessible(
 			'project',
 			request.projectIds,
 			projects,

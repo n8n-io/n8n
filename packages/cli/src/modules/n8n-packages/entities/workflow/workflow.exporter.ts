@@ -9,7 +9,7 @@ import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import { CredentialRequirementsExtractor } from '../credential/credential-requirements.extractor';
 import type { WorkflowCredentialRequirement } from '../credential/credential.types';
-import { assertAllRequestedEntitiesFound } from '../package-export.errors';
+import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
 import type { WorkflowExportRequirements } from '../requirements.types';
 
 export interface WorkflowExportRequest {
@@ -42,7 +42,7 @@ export class WorkflowExporter {
 			{ includeParentFolder: true },
 		);
 
-		await assertAllRequestedEntitiesFound(
+		await assertEveryRequestedEntityAccessible(
 			'workflow',
 			request.workflowIds,
 			workflows,

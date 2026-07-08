@@ -8,7 +8,7 @@ import { FolderSerializer } from './folder.serializer';
 import type { PackageWriter } from '../../io/package-writer';
 import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
-import { assertAllRequestedEntitiesFound } from '../package-export.errors';
+import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
 import { mergeRequirements } from '../requirements.types';
 import type { WorkflowExportRequirements } from '../requirements.types';
 import { WorkflowExporter } from '../workflow/workflow.exporter';
@@ -50,7 +50,7 @@ export class FolderExporter {
 			['folder:read'],
 		);
 
-		await assertAllRequestedEntitiesFound(
+		await assertEveryRequestedEntityAccessible(
 			'folder',
 			request.folderIds,
 			folders,
