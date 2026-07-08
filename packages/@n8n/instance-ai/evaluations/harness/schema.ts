@@ -156,10 +156,11 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 		(c) =>
 			(c.executionScenarios?.length ?? 0) > 0 ||
 			(c.processExpectations?.length ?? 0) > 0 ||
-			(c.outcomeExpectations?.length ?? 0) > 0,
+			(c.outcomeExpectations?.length ?? 0) > 0 ||
+			c.intentExpectation !== undefined,
 		{
 			message:
-				'a case needs at least one executionScenario, or a process/outcome expectation to grade',
+				'a case needs at least one executionScenario, an intent expectation, or a process/outcome expectation to grade',
 		},
 	);
 
