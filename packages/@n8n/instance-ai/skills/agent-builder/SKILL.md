@@ -4,6 +4,9 @@ description: >-
   Target n8n Agent artifact config (chat integrations, MCP servers, sub-agents, skills/tasks,
   custom tools). Not for n8n workflows — when the user asked for a workflow, stay on
   workflow-builder and do not call agent_builder.
+recommended_tools:
+  - agent_builder
+  - credentials
 ---
 
 # Agent Builder

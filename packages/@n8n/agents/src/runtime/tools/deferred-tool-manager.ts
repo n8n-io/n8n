@@ -1,10 +1,14 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
+import { resolveRecommendedToolNames } from './resolve-recommended-tool-names';
+import { SKILL_LOAD_TOOL_NAME } from '../../skills/types';
 import type { AgentDbMessage, ContentToolCall } from '../../types/sdk/message';
 import type { BuiltTool } from '../../types/sdk/tool';
 
 export const SEARCH_TOOLS_TOOL_NAME = 'search_tools';
+export const LOAD_TOOLS_TOOL_NAME = 'load_tools';
+/** @deprecated Legacy single-tool loader — hydration only. */
 export const LOAD_TOOL_TOOL_NAME = 'load_tool';
 
 const DEFAULT_TOP_K = 5;
@@ -23,21 +27,30 @@ const searchToolsOutputSchema = z.object({
 	results: z.array(toolSummarySchema),
 });
 
-const loadToolInputSchema = z.object({
-	toolName: z.string().min(1).describe('Exact tool name returned by search_tools'),
+const loadToolsInputSchema = z.object({
+	toolNames: z
+		.array(z.string().min(1))
+		.min(1)
+		.describe('Exact tool names to load — from search_tools or a skill recommendedTools list'),
 });
 
-const loadToolOutputSchema = z.object({
-	status: z.enum(['loaded', 'already_loaded', 'not_found']),
+const loadToolResultSchema = z.object({
 	toolName: z.string(),
+	status: z.enum(['loaded', 'already_loaded', 'not_found']),
 	tool: toolSummarySchema.optional(),
 	candidates: z.array(toolSummarySchema).optional(),
+});
+
+const loadToolsOutputSchema = z.object({
+	results: z.array(loadToolResultSchema),
+	loadedCount: z.number(),
 	message: z.string(),
 });
 
 type SearchToolsOutput = z.infer<typeof searchToolsOutputSchema>;
 type ToolSummary = z.infer<typeof toolSummarySchema>;
-type LoadToolOutput = z.infer<typeof loadToolOutputSchema>;
+type LoadToolResult = z.infer<typeof loadToolResultSchema>;
+type LoadToolsOutput = z.infer<typeof loadToolsOutputSchema>;
 
 function tokenize(value: string): Set<string> {
 	return new Set(
@@ -76,6 +89,18 @@ export interface DeferredToolManagerOptions {
 	topK?: number;
 }
 
+export interface HydrateLoadedToolsOptions {
+	/** Tool names that must be available after hydration (e.g. a suspended resume target). */
+	ensureLoadedToolNames?: readonly string[];
+	skillToolActivation?: {
+		resolveRecommendedTools: (input: {
+			skillId?: string;
+			name?: string;
+			filePath?: string;
+		}) => string[] | undefined;
+	};
+}
+
 export class DeferredToolManager {
 	private readonly toolsByName = new Map<string, BuiltTool>();
 
@@ -85,11 +110,15 @@ export class DeferredToolManager {
 
 	private readonly searchTool: BuiltTool;
 
-	private readonly loadTool: BuiltTool;
+	private readonly loadTools: BuiltTool;
 
 	constructor(tools: BuiltTool[], options: DeferredToolManagerOptions = {}) {
 		for (const tool of tools) {
-			if (tool.name === SEARCH_TOOLS_TOOL_NAME || tool.name === LOAD_TOOL_TOOL_NAME) {
+			if (
+				tool.name === SEARCH_TOOLS_TOOL_NAME ||
+				tool.name === LOAD_TOOLS_TOOL_NAME ||
+				tool.name === LOAD_TOOL_TOOL_NAME
+			) {
 				throw new Error(`Deferred tool name "${tool.name}" is reserved`);
 			}
 			if (this.toolsByName.has(tool.name)) {
@@ -100,7 +129,7 @@ export class DeferredToolManager {
 
 		this.topK = options.topK ?? DEFAULT_TOP_K;
 		this.searchTool = this.createSearchTool();
-		this.loadTool = this.createLoadTool();
+		this.loadTools = this.createLoadTools();
 	}
 
 	get hasTools(): boolean {
@@ -115,9 +144,13 @@ export class DeferredToolManager {
 		return this.loadedToolNames.size;
 	}
 
+	getAvailableToolNames(): ReadonlySet<string> {
+		return new Set(this.toolsByName.keys());
+	}
+
 	getControllerTools(): BuiltTool[] {
 		if (!this.hasTools) return [];
-		return [this.searchTool, this.loadTool];
+		return [this.searchTool, this.loadTools];
 	}
 
 	getLoadedTools(): BuiltTool[] {
@@ -126,19 +159,91 @@ export class DeferredToolManager {
 			.filter((tool): tool is BuiltTool => tool !== undefined);
 	}
 
-	hydrateLoadedToolsFromMessages(messages: AgentDbMessage[]): void {
+	hydrateLoadedToolsFromMessages(
+		messages: AgentDbMessage[],
+		options?: HydrateLoadedToolsOptions,
+	): void {
 		this.loadedToolNames.clear();
 
 		for (const message of messages) {
 			if (!('content' in message) || !Array.isArray(message.content)) continue;
 			for (const block of message.content) {
-				if (!this.isSuccessfulLoadToolCall(block)) continue;
-				const toolName = this.getLoadedToolNameFromOutput(block.output);
-				if (toolName && this.toolsByName.has(toolName)) {
-					this.loadedToolNames.add(toolName);
+				if (!isRecord(block) || block.type !== 'tool-call') continue;
+
+				if (this.isSuccessfulLoadToolsCall(block)) {
+					for (const toolName of this.getLoadedToolNamesFromOutput(block.output)) {
+						this.markLoadedIfDeferred(toolName);
+					}
+					continue;
+				}
+
+				const resolvedSkillLoad = this.asResolvedSkillLoadCall(block);
+				if (resolvedSkillLoad && options?.skillToolActivation) {
+					if (this.isMainSkillLoad(resolvedSkillLoad.input, resolvedSkillLoad.output)) {
+						const recommended = options.skillToolActivation.resolveRecommendedTools(
+							this.getSkillLoadInput(resolvedSkillLoad.input),
+						);
+						if (recommended?.length) {
+							this.markRecommendedToolsLoaded(recommended);
+						}
+					}
+					continue;
+				}
+
+				if (typeof block.toolName === 'string') {
+					this.markLoadedIfDeferred(block.toolName);
 				}
 			}
 		}
+
+		for (const toolName of options?.ensureLoadedToolNames ?? []) {
+			this.markLoadedIfDeferred(toolName);
+		}
+	}
+
+	/** Load deferred tools by name. Resolves skill aliases when needed. */
+	loadMany(toolNames: readonly string[]): LoadToolsOutput {
+		const results: LoadToolResult[] = [];
+		const seen = new Set<string>();
+
+		for (const requestedName of toolNames) {
+			const resolvedName = resolveRecommendedToolNames(
+				[requestedName],
+				this.getAvailableToolNames(),
+			)[0];
+			if (!resolvedName) {
+				results.push({
+					toolName: requestedName,
+					status: 'not_found',
+					candidates: this.search(requestedName).results,
+				});
+				continue;
+			}
+			if (seen.has(resolvedName)) continue;
+			seen.add(resolvedName);
+			results.push(this.loadOne(resolvedName));
+		}
+
+		const loadedCount = results.filter(
+			(result) => result.status === 'loaded' || result.status === 'already_loaded',
+		).length;
+
+		return {
+			results,
+			loadedCount,
+			message:
+				loadedCount > 0
+					? `${loadedCount} tool(s) loaded and will be available on the next model turn.`
+					: 'No tools were loaded. Use search_tools to find exact tool names.',
+		};
+	}
+
+	/** Returns names that were newly loaded or already loaded. */
+	activateRecommendedTools(recommended: readonly string[]): string[] {
+		const output = this.loadMany(recommended);
+		return output.results
+			.filter((result) => result.status === 'loaded' || result.status === 'already_loaded')
+			.map((result) => result.toolName);
 	}
 
 	private createSearchTool(): BuiltTool {
@@ -155,16 +260,16 @@ export class DeferredToolManager {
 		};
 	}
 
-	private createLoadTool(): BuiltTool {
+	private createLoadTools(): BuiltTool {
 		return {
-			name: LOAD_TOOL_TOOL_NAME,
+			name: LOAD_TOOLS_TOOL_NAME,
 			description:
-				'Load a deferred tool by exact name. The tool becomes available on the next model turn and remains available for this conversation.',
-			inputSchema: loadToolInputSchema,
-			outputSchema: loadToolOutputSchema,
+				'Load one or more deferred tools by exact name. Loaded tools become available on the next model turn and remain available for this conversation.',
+			inputSchema: loadToolsInputSchema,
+			outputSchema: loadToolsOutputSchema,
 			handler: async (input) => {
-				const { toolName } = loadToolInputSchema.parse(input);
-				return await Promise.resolve(this.load(toolName));
+				const { toolNames } = loadToolsInputSchema.parse(input);
+				return await Promise.resolve(this.loadMany(toolNames));
 			},
 		};
 	}
@@ -188,33 +293,66 @@ export class DeferredToolManager {
 		};
 	}
 
-	private load(toolName: string): LoadToolOutput {
+	private loadOne(toolName: string): LoadToolResult {
 		const tool = this.toolsByName.get(toolName);
 		if (!tool) {
 			return {
-				status: 'not_found',
 				toolName,
+				status: 'not_found',
 				candidates: this.search(toolName).results,
-				message: `Tool "${toolName}" was not found. Use search_tools to find the exact tool name.`,
 			};
 		}
 
 		if (this.loadedToolNames.has(toolName)) {
 			return {
-				status: 'already_loaded',
 				toolName,
+				status: 'already_loaded',
 				tool: this.summarizeTool(tool),
-				message: `Tool "${toolName}" is already loaded.`,
 			};
 		}
 
 		this.loadedToolNames.add(toolName);
 		return {
-			status: 'loaded',
 			toolName,
+			status: 'loaded',
 			tool: this.summarizeTool(tool),
-			message: `Tool "${toolName}" is loaded and will be available on the next model turn.`,
 		};
+	}
+
+	private markLoadedIfDeferred(toolName: string): void {
+		if (this.toolsByName.has(toolName)) {
+			this.loadedToolNames.add(toolName);
+		}
+	}
+
+	private markRecommendedToolsLoaded(recommended: readonly string[]): void {
+		for (const toolName of resolveRecommendedToolNames(recommended, this.getAvailableToolNames())) {
+			this.loadedToolNames.add(toolName);
+		}
+	}
+
+	private getSkillLoadInput(input: unknown): {
+		skillId?: string;
+		name?: string;
+		filePath?: string;
+	} {
+		if (!isRecord(input)) return {};
+		return {
+			skillId: typeof input.skillId === 'string' ? input.skillId : undefined,
+			name: typeof input.name === 'string' ? input.name : undefined,
+			filePath: typeof input.filePath === 'string' ? input.filePath : undefined,
+		};
+	}
+
+	private isMainSkillLoad(input: unknown, output: unknown): boolean {
+		if (!isRecord(input)) return false;
+		const filePath = input.filePath;
+		if (typeof filePath === 'string' && filePath.trim() !== '' && filePath !== 'SKILL.md') {
+			return false;
+		}
+		if (isRecord(output) && output.type === 'content') return true;
+		if (isRecord(output) && output.success === true && output.filePath === undefined) return true;
+		return false;
 	}
 
 	private summarizeTool(tool: BuiltTool): ToolSummary {
@@ -225,20 +363,52 @@ export class DeferredToolManager {
 		};
 	}
 
-	private isSuccessfulLoadToolCall(
+	private isSuccessfulLoadToolsCall(
 		block: unknown,
 	): block is Extract<ContentToolCall, { state: 'resolved' }> {
 		return (
 			isRecord(block) &&
 			block.type === 'tool-call' &&
-			block.toolName === LOAD_TOOL_TOOL_NAME &&
+			(block.toolName === LOAD_TOOLS_TOOL_NAME || block.toolName === LOAD_TOOL_TOOL_NAME) &&
 			block.state === 'resolved'
 		);
 	}
 
-	private getLoadedToolNameFromOutput(output: unknown): string | undefined {
-		if (!isRecord(output)) return undefined;
-		if (output.status !== 'loaded' && output.status !== 'already_loaded') return undefined;
-		return typeof output.toolName === 'string' ? output.toolName : undefined;
+	private asResolvedSkillLoadCall(
+		block: unknown,
+	):
+		| (Extract<ContentToolCall, { state: 'resolved' }> & { toolName: typeof SKILL_LOAD_TOOL_NAME })
+		| undefined {
+		if (
+			!isRecord(block) ||
+			block.type !== 'tool-call' ||
+			block.toolName !== SKILL_LOAD_TOOL_NAME ||
+			block.state !== 'resolved'
+		) {
+			return undefined;
+		}
+		return block as unknown as Extract<ContentToolCall, { state: 'resolved' }> & {
+			toolName: typeof SKILL_LOAD_TOOL_NAME;
+		};
+	}
+
+	private getLoadedToolNamesFromOutput(output: unknown): string[] {
+		if (!isRecord(output)) return [];
+
+		if (Array.isArray(output.results)) {
+			const names: string[] = [];
+			for (const entry of output.results) {
+				if (!isRecord(entry)) continue;
+				if (entry.status !== 'loaded' && entry.status !== 'already_loaded') continue;
+				if (typeof entry.toolName === 'string') names.push(entry.toolName);
+			}
+			return names;
+		}
+
+		if (output.status === 'loaded' || output.status === 'already_loaded') {
+			return typeof output.toolName === 'string' ? [output.toolName] : [];
+		}
+
+		return [];
 	}
 }

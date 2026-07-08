@@ -33,15 +33,15 @@ Available skills:
 ${catalog}
 
 When deciding whether to load a skill:
-- Match the user's request against the skill name and description.
-- Call list_skills when you need to inspect available categories or installed skill metadata.
+- Match the user's request against the skill name, description, and category in the catalog above.
 - Call load_skill with \`{ "skillId": "<id>" }\` for each matched skill, then follow the returned instructions. A single turn may load multiple skills when descriptions require chaining (e.g. data-table-manager then workflow-builder).
+- Immediately after each successful load_skill for a skill you will act on, call load_tools with that skill's recommendedTools before any other deferred tool from that skill.
 - If a loaded skill references a supporting file, call load_skill with \`{ "skillId": "<id>", "filePath": "<relative path>" }\`.
 - If the relevant skill was already loaded for this request, do not call load_skill again.
 - If no skill clearly matches, do not call load_skill.
 - Do not load a skill just because it is listed here.
 
-Tool gates (always): never call data-tables or parse-file without loading data-table-manager first; never call build-workflow without loading workflow-builder first.`;
+Tool gates (always): never call data-tables or parse-file without loading data-table-manager first; never call build-workflow without loading workflow-builder first. After load_skill, call load_tools with that skill's recommendedTools before calling gated tools.`;
 }
 
 export function appendSkillCatalogToInstructions(

@@ -156,6 +156,7 @@ describe('Instance AI runtime skills', () => {
 
 		expect(skill?.description).toContain('workflow-builder');
 		expect(skill?.description).toContain('do not call agent_builder');
+		expect(skill?.recommendedTools).toEqual(['agent_builder', 'credentials']);
 	});
 
 	it('loads the bundled workflow-builder skill', async () => {

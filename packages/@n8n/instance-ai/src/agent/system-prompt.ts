@@ -137,7 +137,9 @@ ${
 
 `
 		: ''
-}When the visible tools do not cover the user's request, use \`search_tools\` with keyword queries to find relevant tools, then \`load_tool\` to activate them. Loaded tools persist for the rest of the conversation.
+}When the visible tools do not cover the user's request, use \`search_tools\` with keyword queries to find relevant tools, then \`load_tools\` to activate them. Loaded tools persist for the rest of the conversation.
+
+After \`load_skill\`, call \`load_tools\` with that skill's recommendedTools before any other deferred tool from that skill.
 
 Examples: ${mcpToolSearchEnabled ? 'search "notion page" or "linear issue" for the corresponding MCP tool, ' : ''}search "credential" for the credentials tool, search "file" for filesystem tools, search "workflow" for workflow management.
 

@@ -25,7 +25,7 @@ const LINKED_FILE_GROUPS: Array<keyof RuntimeSkillLinkedFiles> = [
 	'other',
 ];
 
-export const RUNTIME_SKILL_TOOL_NAMES = new Set([LIST_SKILLS_TOOL_NAME, SKILL_LOAD_TOOL_NAME]);
+export const RUNTIME_SKILL_TOOL_NAMES = new Set([SKILL_LOAD_TOOL_NAME]);
 
 const skillsListInputSchema = z.object({
 	category: z.string().optional().describe('Optional exact category filter.'),
@@ -105,8 +105,8 @@ const skillsListOutputSchema = z.object({
 });
 
 const skillLoadBaseInputSchema = z.object({
-	skillId: z.string().min(1).optional().describe('Skill id from list_skills.'),
-	name: z.string().min(1).optional().describe('Skill name from list_skills.'),
+	skillId: z.string().min(1).optional().describe('Skill id from the skill catalog.'),
+	name: z.string().min(1).optional().describe('Skill name from the skill catalog.'),
 });
 
 const skillLoadInputSchema = skillLoadBaseInputSchema.refine(
@@ -162,7 +162,7 @@ type SkillLoadOutput = z.infer<typeof skillLoadOutputSchema>;
 type SkillLoadContentOutput = z.infer<typeof skillLoadContentOutputSchema>;
 
 export function createRuntimeSkillTools(source: RuntimeSkillSource): BuiltTool[] {
-	return [createListSkillsTool(source), createSkillLoadTool(source)];
+	return [createSkillLoadTool(source)];
 }
 
 export function createListSkillsTool(source: RuntimeSkillSource): BuiltTool {
@@ -311,6 +311,12 @@ async function loadSkill(
 	);
 	const header = [
 		activationEnvelope(skillEntry),
+		...(skillEntry.recommendedTools?.length
+			? [
+					`[Recommended tools: ${JSON.stringify(skillEntry.recommendedTools)}]`,
+					`[Required next step: call load_tools with { "toolNames": ${JSON.stringify(skillEntry.recommendedTools)} } before any other deferred tool from this skill.]`,
+				]
+			: []),
 		...(linkedFilePaths.length > 0
 			? [
 					`[Linked files — load via load_skill with filePath: ${linkedFilePaths.map(envelopeValue).join(', ')}]`,

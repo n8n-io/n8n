@@ -385,10 +385,10 @@ a terminal state to prevent infinite loops.
 
 To keep the orchestrator's context lean, tools are stratified into two tiers:
 
-- **Core tools** (always-loaded): `create-tasks`, `ask-user`, `web-search`,
-  `fetch-url` — these are directly available to the LLM
-- **Deferred tools** (behind ToolSearchProcessor): all other domain tools —
-  discovered on-demand via `search_tools` and activated via `load_tool`
+- **Core tools** (always-loaded): `ask-user`, `load_skill` — routing and HITL
+- **Deferred tools** (behind ToolSearchProcessor): all domain, orchestration, workspace, MCP,
+  and integration tools — discovered via `search_tools`, batch-activated via `load_tools`, or
+  auto-activated when a skill's `recommended_tools` are loaded via `load_skill`
 
 This follows Anthropic's guidance on tool search for agents with large tool sets.
 The processor is configurable via `disableDeferredTools` flag.

@@ -86,6 +86,13 @@ export interface AgentRuntimeConfig {
 	toolSearch?: {
 		topK?: number;
 	};
+	skillToolActivation?: {
+		resolveRecommendedTools: (input: {
+			skillId?: string;
+			name?: string;
+			filePath?: string;
+		}) => string[] | undefined;
+	};
 	providerTools?: BuiltProviderTool[];
 	memory?: BuiltMemory;
 	observationLog?: ObservationLogMemoryConfig;
@@ -189,6 +196,8 @@ export class AgentRuntime {
 			eventBus: this.eventBus,
 			concurrency: config.toolCallConcurrency ?? 1,
 			onCancelled: () => this.updateState({ status: 'cancelled' }),
+			deferredToolManager: this.deferredToolManager,
+			skillToolActivation: config.skillToolActivation,
 		});
 		this.modelCost = config.modelCost;
 		this.currentState = {
@@ -330,7 +339,12 @@ export class AgentRuntime {
 		if (!toolCall) throw new Error(`No tool call found for toolCallId: ${options.toolCallId}`);
 
 		const list = AgentMessageList.deserialize(state.messageList);
-		this.context.hydrateDeferredToolsFromList(list);
+		this.context.hydrateDeferredToolsFromList(list, {
+			ensureLoadedToolNames: [
+				toolCall.toolName,
+				...Object.values(state.pendingToolCalls).map((pending) => pending.toolName),
+			],
+		});
 
 		const toolForValidation = this.context
 			.getCurrentTools(state.persistence)

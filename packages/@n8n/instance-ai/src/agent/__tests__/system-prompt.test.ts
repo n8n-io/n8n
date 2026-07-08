@@ -70,6 +70,8 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('search "credential" for the credentials tool');
 			expect(prompt).toContain('search "file" for filesystem tools');
 			expect(prompt).toContain('search "workflow" for workflow management');
+			expect(prompt).toContain('load_tools');
+			expect(prompt).toContain("call `load_tools` with that skill's recommendedTools");
 			expect(prompt).not.toContain('connected service or MCP integration');
 			expect(prompt).not.toContain('connected MCP integrations');
 		});

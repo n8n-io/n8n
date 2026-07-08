@@ -1682,8 +1682,8 @@ describe('AgentRuntime — deferred tool loading', () => {
 				makeGenerateWithToolCalls([
 					{
 						toolCallId: 'tc-load',
-						toolName: 'load_tool',
-						args: { toolName: 'deferred_capability' },
+						toolName: 'load_tools',
+						args: { toolNames: ['deferred_capability'] },
 					},
 				]),
 			)
@@ -1709,16 +1709,21 @@ describe('AgentRuntime — deferred tool loading', () => {
 			],
 		});
 
-		const loadCall = result.toolCalls?.find((toolCall) => toolCall.tool === 'load_tool');
+		const loadCall = result.toolCalls?.find((toolCall) => toolCall.tool === 'load_tools');
 		expect(loadCall?.output).toEqual({
-			status: 'loaded',
-			toolName: 'deferred_capability',
-			tool: {
-				name: 'deferred_capability',
-				description: 'Mock tool deferred_capability',
-				loaded: true,
-			},
-			message: 'Tool "deferred_capability" is loaded and will be available on the next model turn.',
+			results: [
+				{
+					toolName: 'deferred_capability',
+					status: 'loaded',
+					tool: {
+						name: 'deferred_capability',
+						description: 'Mock tool deferred_capability',
+						loaded: true,
+					},
+				},
+			],
+			loadedCount: 1,
+			message: '1 tool(s) loaded and will be available on the next model turn.',
 		});
 
 		const generateTextCalls = generateText.mock.calls as Array<
@@ -1726,16 +1731,18 @@ describe('AgentRuntime — deferred tool loading', () => {
 		>;
 		const firstCall = generateTextCalls[0][0];
 		const firstTools = Object.keys(firstCall.tools);
-		expect(firstTools).toEqual(expect.arrayContaining(['core_tool', 'search_tools', 'load_tool']));
+		expect(firstTools).toEqual(expect.arrayContaining(['core_tool', 'search_tools', 'load_tools']));
 		expect(firstTools).not.toContain('deferred_capability');
 
 		const secondTools = Object.keys(generateTextCalls[1][0].tools);
-		expect(secondTools).toEqual(expect.arrayContaining(['core_tool', 'search_tools', 'load_tool']));
+		expect(secondTools).toEqual(
+			expect.arrayContaining(['core_tool', 'search_tools', 'load_tools']),
+		);
 		expect(secondTools).not.toContain('deferred_capability');
 
 		const thirdTools = Object.keys(generateTextCalls[2][0].tools);
 		expect(thirdTools).toEqual(
-			expect.arrayContaining(['core_tool', 'search_tools', 'load_tool', 'deferred_capability']),
+			expect.arrayContaining(['core_tool', 'search_tools', 'load_tools', 'deferred_capability']),
 		);
 	});
 
@@ -1758,8 +1765,8 @@ describe('AgentRuntime — deferred tool loading', () => {
 				makeGenerateWithToolCalls([
 					{
 						toolCallId: 'tc-load',
-						toolName: 'load_tool',
-						args: { toolName: 'deferred_capability' },
+						toolName: 'load_tools',
+						args: { toolNames: ['deferred_capability'] },
 					},
 				]),
 			)
@@ -1777,7 +1784,7 @@ describe('AgentRuntime — deferred tool loading', () => {
 		>;
 		const freshRunTools = Object.keys(generateTextCalls[0][0].tools);
 		expect(freshRunTools).toEqual(
-			expect.arrayContaining(['core_tool', 'search_tools', 'load_tool']),
+			expect.arrayContaining(['core_tool', 'search_tools', 'load_tools']),
 		);
 		expect(freshRunTools).not.toContain('deferred_capability');
 	});
@@ -1808,8 +1815,8 @@ describe('AgentRuntime — deferred tool loading', () => {
 				makeGenerateWithToolCalls([
 					{
 						toolCallId: 'tc-load',
-						toolName: 'load_tool',
-						args: { toolName: 'deferred_approval' },
+						toolName: 'load_tools',
+						args: { toolNames: ['deferred_approval'] },
 					},
 				]),
 			)
@@ -1848,6 +1855,57 @@ describe('AgentRuntime — deferred tool loading', () => {
 					output: { approved: true, value: 'needs approval' },
 				}),
 			]),
+		);
+	});
+
+	it('auto-loads recommended tools after a successful main load_skill call', async () => {
+		const deferredWorkflows = makeMockTool(
+			'workflows',
+			async () => await Promise.resolve({ ok: true }),
+		);
+		const deferredNodes = makeMockTool('nodes', async () => await Promise.resolve({ ok: true }));
+		const loadSkill: BuiltTool = {
+			name: 'load_skill',
+			description: 'Load skill',
+			inputSchema: z.object({ skillId: z.string().optional() }),
+			handler: async () => ({
+				type: 'content',
+				value: [{ type: 'text', text: '[Skill: "workflow-builder"]\n\nBuild workflows.' }],
+			}),
+		};
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools: [loadSkill],
+			deferredTools: [deferredWorkflows, deferredNodes],
+			skillToolActivation: {
+				resolveRecommendedTools: ({ skillId }) =>
+					skillId === 'workflow-builder' ? ['workflows', 'nodes'] : undefined,
+			},
+		});
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{
+						toolCallId: 'tc-skill',
+						toolName: 'load_skill',
+						args: { skillId: 'workflow-builder' },
+					},
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('ready'));
+
+		await runtime.generate('build a workflow');
+
+		const generateTextCalls = generateText.mock.calls as Array<
+			[{ tools: Record<string, unknown> }]
+		>;
+		const secondTools = Object.keys(generateTextCalls[1][0].tools);
+		expect(secondTools).toEqual(
+			expect.arrayContaining(['load_skill', 'search_tools', 'load_tools', 'workflows', 'nodes']),
 		);
 	});
 });
@@ -4773,8 +4831,8 @@ describe('tool systemInstruction merging', () => {
 				makeGenerateWithToolCalls([
 					{
 						toolCallId: 'tc-load',
-						toolName: 'load_tool',
-						args: { toolName: 'deferred_capability' },
+						toolName: 'load_tools',
+						args: { toolNames: ['deferred_capability'] },
 					},
 				]),
 			)
