@@ -13,9 +13,13 @@ import {
 } from '@n8n/ai-utilities';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
 import type { DocumentType } from '@smithy/types';
-import { assertSupportedAwsRegion, getAwsDomain } from 'n8n-nodes-base/aws-credentials';
+import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
+import {
+	assertSupportedAwsRegion,
+	getAwsDomain,
+	validateBedrockEndpointOverride,
+} from 'n8n-nodes-base/aws-credentials';
 import { awsNodeAuthOptions, awsNodeCredentials } from 'n8n-nodes-base/dist/nodes/Aws/utils';
-
 import {
 	jsonParse,
 	NodeConnectionTypes,
@@ -25,8 +29,6 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-
-import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
 
 export class LmChatAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
@@ -319,7 +321,11 @@ export class LmChatAwsBedrock implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const { region: credentialRegion, credentials } = await resolveAwsCredentials(this, itemIndex);
+		const {
+			region: credentialRegion,
+			credentials,
+			bedrockRuntimeEndpoint,
+		} = await resolveAwsCredentials(this, itemIndex);
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			temperature?: number;
@@ -350,12 +356,19 @@ export class LmChatAwsBedrock implements INodeType {
 		}
 
 		// We set-up client manually to pass httpAgent and httpsAgent.
-		// getAwsDomain keeps China (amazonaws.com.cn) / GovCloud endpoints correct.
-		const bedrockEndpoint = `https://bedrock-runtime.${region}.${getAwsDomain(region)}`;
+		// A credential override (e.g. PrivateLink) wins; otherwise getAwsDomain keeps
+		// China (amazonaws.com.cn) / GovCloud endpoints correct. The proxy agent and the
+		// SDK client are both resolved from this single URL.
+		const bedrockEndpoint = bedrockRuntimeEndpoint
+			? validateBedrockEndpointOverride(bedrockRuntimeEndpoint, region)
+			: `https://bedrock-runtime.${region}.${getAwsDomain(region)}`;
 		const proxyAgent = getNodeProxyAgent(bedrockEndpoint);
 		const clientConfig: BedrockRuntimeClientConfig = {
 			region,
 			credentials,
+			// Only set an explicit endpoint for overrides; without one the SDK derives
+			// the default endpoint, keeping requests byte-identical to previous behaviour.
+			...(bedrockRuntimeEndpoint ? { endpoint: bedrockEndpoint } : {}),
 		};
 
 		if (proxyAgent) {
