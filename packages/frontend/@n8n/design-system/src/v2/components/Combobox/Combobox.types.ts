@@ -9,7 +9,7 @@ import type {
 
 export type AcceptableValue = string | number | bigint | Record<string, unknown> | null | undefined;
 
-export type ComboboxProps = Omit<ComboboxRootProps<AcceptableValue>, 'dir'> &
+export type ComboboxProps = Omit<ComboboxRootProps<AcceptableValue>, 'dir' | 'openOnFocus'> &
 	Pick<ComboboxContentProps, 'side' | 'sideOffset' | 'align'> & {
 		size?: ComboboxSizes;
 		icon?: IconName;
