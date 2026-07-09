@@ -18,7 +18,6 @@ import { DataTableRepository } from '@/modules/data-table/data-table.repository'
 import { UserFavoriteRepository } from './database/repositories/user-favorite.repository';
 
 import { AgentRepository } from '../agents/repositories/agent.repository';
-import { Agent } from '../agents/entities/agent.entity';
 
 type ResourceMeta = { name: string; projectId: string };
 

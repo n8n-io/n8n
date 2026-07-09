@@ -14,7 +14,7 @@ import type { Agent } from '../entities/agent.entity';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
-import { EventService } from '@/events/event.service';
+import type { EventService } from '@/events/event.service';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
