@@ -169,10 +169,12 @@ const workflowHandlers: WorkflowHandlers = {
 				tags,
 				name,
 				projectId,
+				externalId,
 			} = req.query;
 
 			const where: FindOptionsWhere<WorkflowEntity> = {
 				...(name !== undefined && { name: Like('%' + name.trim() + '%') }),
+				...(externalId !== undefined && { externalId }),
 			};
 
 			// Filter by active status based on activeVersionId
@@ -255,6 +257,7 @@ const workflowHandlers: WorkflowHandlers = {
 				'meta',
 				'versionId',
 				'triggerCount',
+				'externalId',
 				'shared',
 			];
 

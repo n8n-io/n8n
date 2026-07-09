@@ -133,6 +133,7 @@ export declare namespace WorkflowRequest {
 			active: boolean;
 			name?: string;
 			projectId?: string;
+			externalId?: string;
 			excludePinnedData?: boolean;
 		}
 	>;

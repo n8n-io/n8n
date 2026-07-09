@@ -66,6 +66,15 @@ get:
       schema:
         type: string
         example: VmwOO9HeTEj20kxM
+    - name: externalId
+      in: query
+      required: false
+      description: Filter workflows by their External ID.
+      explode: false
+      allowReserved: true
+      schema:
+        type: string
+        example: ext-workflow-1
     - name: excludePinnedData
       in: query
       required: false
