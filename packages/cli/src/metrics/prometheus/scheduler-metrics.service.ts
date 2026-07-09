@@ -1,6 +1,6 @@
 import { PrometheusMetricsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { ScheduledTaskRepository, type MetricSnapshot } from '@n8n/db';
+import { ScheduledTaskRepository, type ScheduledTaskMetricSnapshot } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { SchedulerMetrics } from '@n8n/scheduler';
 import { InstanceSettings } from 'n8n-core';
@@ -125,11 +125,11 @@ export class PrometheusSchedulerMetricsService
 		// collapses the gauges' collects to a single query.
 		const ttlMs = this.config.schedulerMetricsInterval * Time.seconds.toMilliseconds;
 
-		const query = new CachedMetricQuery<MetricSnapshot>({
+		const query = new CachedMetricQuery<ScheduledTaskMetricSnapshot>({
 			cacheService: this.cacheService,
 			cacheKey: SNAPSHOT_CACHE_KEY,
 			ttlMs,
-			query: async () => await repository.getMetricSnapshot(new Date()),
+			query: async () => await repository.getMetricSnapshot(),
 		});
 
 		new promClient.Gauge({
@@ -178,46 +178,54 @@ export class PrometheusSchedulerMetricsService
 	// hold this instance as its metrics dependency unconditionally.
 
 	recordDispatch(taskType: string) {
-		if (!this.initialized) return;
-		this.tasksDispatched.inc({ task_type: taskType }, 1);
+		if (this.initialized) {
+			this.tasksDispatched.inc({ task_type: taskType }, 1);
+		}
 	}
 
 	recordFireOutcome(taskType: string, result: 'success' | 'failure') {
-		if (!this.initialized) return;
-		this.tasksCompleted.inc({ task_type: taskType, result }, 1);
+		if (this.initialized) {
+			this.tasksCompleted.inc({ task_type: taskType, result }, 1);
+		}
 	}
 
 	recordRetry(taskType: string) {
-		if (!this.initialized) return;
-		this.taskRetries.inc({ task_type: taskType }, 1);
+		if (this.initialized) {
+			this.taskRetries.inc({ task_type: taskType }, 1);
+		}
 	}
 
 	observeDispatchLagSeconds(taskType: string, seconds: number) {
-		if (!this.initialized) return;
-		this.dispatchLagSeconds.observe({ task_type: taskType }, seconds);
+		if (this.initialized) {
+			this.dispatchLagSeconds.observe({ task_type: taskType }, seconds);
+		}
 	}
 
 	recordMaterialized(occurrences: number, deferredJobs: number) {
-		if (!this.initialized) return;
-		this.occurrencesMaterialized.inc(occurrences);
-		this.jobsDeferred.inc(deferredJobs);
+		if (this.initialized) {
+			this.occurrencesMaterialized.inc(occurrences);
+			this.jobsDeferred.inc(deferredJobs);
+		}
 	}
 
 	recordReaped(reclaimed: number, deadLettered: number) {
-		if (!this.initialized) return;
-		this.tasksReclaimed.inc(reclaimed);
-		this.tasksDeadLettered.inc(deadLettered);
+		if (this.initialized) {
+			this.tasksReclaimed.inc(reclaimed);
+			this.tasksDeadLettered.inc(deadLettered);
+		}
 	}
 
 	// Executor terminal-failure path. Feeds the same counter as `recordReaped`'s
 	// deadLettered arg, so the total counts all permanent failures from either path.
 	recordDeadLettered() {
-		if (!this.initialized) return;
-		this.tasksDeadLettered.inc(1);
+		if (this.initialized) {
+			this.tasksDeadLettered.inc(1);
+		}
 	}
 
 	recordPruned(deleted: number) {
-		if (!this.initialized) return;
-		this.tasksPruned.inc(deleted);
+		if (this.initialized) {
+			this.tasksPruned.inc(deleted);
+		}
 	}
 }

@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
-import type { MetricSnapshot, ScheduledTaskRepository } from '@n8n/db';
+import type { ScheduledTaskMetricSnapshot, ScheduledTaskRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 import type { Mock } from 'vitest';
@@ -31,7 +31,7 @@ describe('PrometheusSchedulerMetricsService', () => {
 	let counterCtor: Mock;
 	const counterIncByName = new Map<string, Mock>();
 
-	const snapshot: MetricSnapshot = {
+	const snapshot: ScheduledTaskMetricSnapshot = {
 		pending: 4,
 		due: 2,
 		running: 1,

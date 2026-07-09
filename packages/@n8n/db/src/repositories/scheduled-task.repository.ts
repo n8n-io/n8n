@@ -1,6 +1,6 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, type EntityManager, In, LessThanOrEqual, Repository } from '@n8n/typeorm';
+import { DataSource, type EntityManager, In, Repository } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -10,7 +10,7 @@ import {
 	type TerminalTaskStatus,
 	TerminalTaskStatusList,
 } from '../entities/scheduled-task';
-import { dbNowLiteral, dbNowPlusMsLiteral } from '../utils/dialect-time';
+import { dbNowLiteral, dbNowPlusMsLiteral, parseDbTime } from '../utils/dialect-time';
 
 /** Inputs to a claim (see {@link ScheduledTaskRepository.claimDueTasks}). */
 export interface ClaimDueTasksOptions {
@@ -76,14 +76,14 @@ export interface NewOccurrence {
  * Declared as a `type` (not `interface`) so it satisfies structural `JsonObject`
  * constraints (e.g. cli's `CachedMetricQuery`) without a duplicate local alias.
  */
-export type MetricSnapshot = {
+export type ScheduledTaskMetricSnapshot = {
 	/** Rows awaiting dispatch, whether or not they are due yet. */
 	pending: number;
-	/** Pending rows already due (`runAt <= now`): the actionable queue depth. */
+	/** Pending rows already due (`runAt <= DB-now`): the actionable queue depth. */
 	due: number;
 	/** Rows currently claimed and in flight (leased to an instance). */
 	running: number;
-	/** How far the oldest due pending row has waited, in ms; `null` when none is due. */
+	/** How far the oldest due pending row has waited (against DB-now), in ms; `null` when none is due. */
 	oldestPendingAgeMs: number | null;
 };
 
@@ -325,46 +325,53 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	}
 
 	/**
-	 * Read queue health at Prometheus scrape time: the counts behind the queue-depth
+	 * Read queue health for the Prometheus scrape: the counts behind the queue-depth
 	 * gauges (`pending`, `due`, `running`) and the scheduling-lag gauge
-	 * (`oldestPendingAgeMs`). `now` is the caller's scrape instant, so the gauges reflect
-	 * a single consistent moment; `due`-ness is judged against it rather than the DB clock.
+	 * (`oldestPendingAgeMs`). Everything reads the DB clock, so `due`-ness and the
+	 * oldest-age reference are consistent regardless of any instance clock skew.
 	 *
-	 * Portability over query count: the counts are three `getCount()` calls and the oldest
-	 * due row is one `findOne`, all via find options, so no dialect-specific conditional
-	 * aggregation is needed and both SQLite and Postgres take the same path. The caller
-	 * caches the whole snapshot between scrapes, so the extra round-trips don't matter.
-	 * The oldest-row lookup is skipped when nothing is due.
+	 * One conditional-aggregation pass (`COUNT(*) FILTER`) over the live working set,
+	 * rather than several round-trips: `status IN ('pending','running')` keeps the scan
+	 * off the terminal rows that grow the table (and that retention prunes), so cost
+	 * scales with the backlog, not total history. The caller runs this behind a short
+	 * scrape cache.
 	 */
-	async getMetricSnapshot(now: Date): Promise<MetricSnapshot> {
-		// Each query filters on `status` and is served by the partial indexes on
-		// `scheduled_task` (`runAt WHERE status='pending'`, `leaseExpiresAt WHERE
-		// status='running'`), so they scan only the live pending/running working
-		// set, never the terminal rows that make the table grow (and that retention
-		// prunes). Cost scales with the backlog, not with total history; the caller
-		// runs this behind a short scrape cache.
-		const [pending, due, running] = await Promise.all([
-			this.countBy({ status: ScheduledTaskStatus.Pending }),
-			this.countBy({ status: ScheduledTaskStatus.Pending, runAt: LessThanOrEqual(now) }),
-			this.countBy({ status: ScheduledTaskStatus.Running }),
-		]);
+	async getMetricSnapshot(): Promise<ScheduledTaskMetricSnapshot> {
+		const now = dbNowLiteral(this.isPostgres);
+		// Double-quoted identifiers and `FILTER` are accepted by both dialects; the only
+		// per-dialect bit is the DB-now literal. `oldestDueRunAt` is NULL when nothing is
+		// due, and `dbNow` is selected so the age is measured against the same instant the
+		// `due` filter used.
+		const [row]: [
+			{
+				pending: number | string;
+				due: number | string;
+				running: number | string;
+				oldestDueRunAt: Date | string | null;
+				dbNow: Date | string;
+			},
+		] = await this.query(
+			`SELECT
+			   COUNT(*) FILTER (WHERE "status" = '${ScheduledTaskStatus.Pending}') AS "pending",
+			   COUNT(*) FILTER (WHERE "status" = '${ScheduledTaskStatus.Pending}' AND "runAt" <= ${now}) AS "due",
+			   COUNT(*) FILTER (WHERE "status" = '${ScheduledTaskStatus.Running}') AS "running",
+			   MIN("runAt") FILTER (WHERE "status" = '${ScheduledTaskStatus.Pending}' AND "runAt" <= ${now}) AS "oldestDueRunAt",
+			   ${now} AS "dbNow"
+			 FROM ${this.tableName}
+			 WHERE "status" IN ('${ScheduledTaskStatus.Pending}', '${ScheduledTaskStatus.Running}')`,
+		);
 
-		let oldestPendingAgeMs: number | null = null;
-		if (due > 0) {
-			// TypeORM maps the datetime column to a `Date` on both drivers, so reading the
-			// oldest due row's `runAt` back avoids parsing a raw MIN() that each driver types
-			// differently (Postgres Date vs SQLite string).
-			const oldest = await this.findOne({
-				select: { runAt: true },
-				where: { status: ScheduledTaskStatus.Pending, runAt: LessThanOrEqual(now) },
-				order: { runAt: 'ASC' },
-			});
-			if (oldest !== null) {
-				oldestPendingAgeMs = now.getTime() - oldest.runAt.getTime();
-			}
-		}
+		const oldestPendingAgeMs =
+			row.oldestDueRunAt !== null
+				? parseDbTime(row.dbNow).getTime() - parseDbTime(row.oldestDueRunAt).getTime()
+				: null;
 
-		return { pending, due, running, oldestPendingAgeMs };
+		return {
+			pending: Number(row.pending),
+			due: Number(row.due),
+			running: Number(row.running),
+			oldestPendingAgeMs,
+		};
 	}
 
 	/**

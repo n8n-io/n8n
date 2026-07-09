@@ -657,13 +657,17 @@ describe('scheduled repositories', () => {
 			await createTask(job.id, { status: 'succeeded', finishedAt: secondsFromNow(-60) });
 			await createTask(job.id, { status: 'failed', finishedAt: secondsFromNow(-60) });
 
-			const snapshot = await taskRepository.getMetricSnapshot(now);
+			const snapshot = await taskRepository.getMetricSnapshot();
 
 			expect(snapshot.pending).toBe(3); // both due rows plus the future one
 			expect(snapshot.due).toBe(2); // only the two past-runAt rows are actionable
 			expect(snapshot.running).toBe(1);
-			// Lag tracks the oldest DUE pending row, not the future one.
-			expect(snapshot.oldestPendingAgeMs).toBe(now.getTime() - dueOld.runAt.getTime());
+			// Lag tracks the oldest DUE pending row, not the future one. Measured against
+			// DB-now, so it's at least the row's age at seed time, plus the small elapsed
+			// time until the query ran.
+			const seededAgeMs = now.getTime() - dueOld.runAt.getTime();
+			expect(snapshot.oldestPendingAgeMs).toBeGreaterThanOrEqual(seededAgeMs);
+			expect(snapshot.oldestPendingAgeMs).toBeLessThan(seededAgeMs + 60_000);
 		});
 
 		it('returns a null oldest age when no pending row is due', async () => {
@@ -677,7 +681,7 @@ describe('scheduled repositories', () => {
 				leaseExpiresAt: new Date(now.getTime() + 60_000),
 			});
 
-			const snapshot = await taskRepository.getMetricSnapshot(now);
+			const snapshot = await taskRepository.getMetricSnapshot();
 
 			expect(snapshot.pending).toBe(1);
 			expect(snapshot.due).toBe(0);
@@ -686,7 +690,7 @@ describe('scheduled repositories', () => {
 		});
 
 		it('reports all-zero counts and a null age on an empty queue', async () => {
-			const snapshot = await taskRepository.getMetricSnapshot(new Date());
+			const snapshot = await taskRepository.getMetricSnapshot();
 
 			expect(snapshot).toEqual({ pending: 0, due: 0, running: 0, oldestPendingAgeMs: null });
 		});

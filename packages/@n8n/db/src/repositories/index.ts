@@ -42,7 +42,7 @@ export type {
 	ClaimedRef,
 	HostedClaimedRef,
 	DeleteFinishedTasksOptions,
-	MetricSnapshot,
+	ScheduledTaskMetricSnapshot,
 } from './scheduled-task.repository';
 export { ProcessedDataRepository } from './processed-data.repository';
 export { SettingsRepository } from './settings.repository';
