@@ -191,7 +191,7 @@ describe('OidcController', () => {
 			const res = mock<Response>();
 
 			oidcService.loginUser.mockResolvedValueOnce({ user, idToken: 'raw-id-token' });
-			oidcService.encryptIdToken.mockReturnValueOnce('encrypted-id-token');
+			oidcService.encryptIdToken.mockResolvedValueOnce('encrypted-id-token');
 
 			await controller.callbackHandler(req, res);
 
@@ -220,7 +220,7 @@ describe('OidcController', () => {
 			const res = mock<Response>();
 
 			oidcService.loginUser.mockResolvedValueOnce({ user, idToken: 'raw-id-token' });
-			oidcService.encryptIdToken.mockReturnValueOnce('x'.repeat(5000));
+			oidcService.encryptIdToken.mockResolvedValueOnce('x'.repeat(5000));
 
 			await controller.callbackHandler(req, res);
 
@@ -418,7 +418,7 @@ describe('OidcController', () => {
 		test('Should always invalidate the n8n session and clear the auth and ID token cookies', async () => {
 			const req = makeLogoutReq({ [OIDC_ID_TOKEN_COOKIE_NAME]: 'encrypted-id-token' });
 			const res = mock<Response>();
-			oidcService.decryptIdToken.mockReturnValueOnce('raw-id-token');
+			oidcService.decryptIdToken.mockResolvedValueOnce('raw-id-token');
 			oidcService.generateEndSessionUrl.mockResolvedValueOnce(
 				new URL('https://idp.example.com/logout?id_token_hint=raw-id-token'),
 			);
@@ -433,7 +433,7 @@ describe('OidcController', () => {
 		test('Should return the RP-initiated logout URL for an OIDC-established session', async () => {
 			const req = makeLogoutReq({ [OIDC_ID_TOKEN_COOKIE_NAME]: 'encrypted-id-token' });
 			const res = mock<Response>();
-			oidcService.decryptIdToken.mockReturnValueOnce('raw-id-token');
+			oidcService.decryptIdToken.mockResolvedValueOnce('raw-id-token');
 			oidcService.generateEndSessionUrl.mockResolvedValueOnce(
 				new URL('https://idp.example.com/logout?id_token_hint=raw-id-token'),
 			);
@@ -474,7 +474,7 @@ describe('OidcController', () => {
 		test('Should return a null redirect URL when the ID token cannot be decrypted', async () => {
 			const req = makeLogoutReq({ [OIDC_ID_TOKEN_COOKIE_NAME]: 'tampered' });
 			const res = mock<Response>();
-			oidcService.decryptIdToken.mockReturnValueOnce(undefined);
+			oidcService.decryptIdToken.mockResolvedValueOnce(undefined);
 
 			const result = await controller.logout(req, res);
 
@@ -485,7 +485,7 @@ describe('OidcController', () => {
 		test('Should return a null redirect URL when the provider has no end_session_endpoint', async () => {
 			const req = makeLogoutReq({ [OIDC_ID_TOKEN_COOKIE_NAME]: 'encrypted-id-token' });
 			const res = mock<Response>();
-			oidcService.decryptIdToken.mockReturnValueOnce('raw-id-token');
+			oidcService.decryptIdToken.mockResolvedValueOnce('raw-id-token');
 			oidcService.generateEndSessionUrl.mockResolvedValueOnce(undefined);
 
 			const result = await controller.logout(req, res);
@@ -496,7 +496,7 @@ describe('OidcController', () => {
 		test('Should not fail the sign-out when building the logout URL throws', async () => {
 			const req = makeLogoutReq({ [OIDC_ID_TOKEN_COOKIE_NAME]: 'encrypted-id-token' });
 			const res = mock<Response>();
-			oidcService.decryptIdToken.mockReturnValueOnce('raw-id-token');
+			oidcService.decryptIdToken.mockResolvedValueOnce('raw-id-token');
 			oidcService.generateEndSessionUrl.mockRejectedValueOnce(new Error('discovery unavailable'));
 
 			const result = await controller.logout(req, res);
