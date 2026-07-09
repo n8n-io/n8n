@@ -10,7 +10,6 @@ import { computed } from 'vue';
 import {
 	extractArtifacts,
 	isStreamingTimelineEntry,
-	isVisibleTimelineEntry,
 	HIDDEN_TOOLS,
 	type ArtifactInfo,
 } from '../agentTimeline.utils';
@@ -22,19 +21,14 @@ import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
 import ArtifactCard from './ArtifactCard.vue';
 import PlanReviewPanel, { type PlannedTaskArg, type PlanReviewStatus } from './PlanReviewPanel.vue';
-import ReasoningBlock from './ReasoningBlock.vue';
 import TaskChecklist from './TaskChecklist.vue';
 import TimelineTextSegment from './TimelineTextSegment.vue';
-import ToolResultJson from './ToolResultJson.vue';
-import ToolResultRenderer from './ToolResultRenderer.vue';
-import { N8nAiActivityStep as ToolCallStep } from '@n8n/design-system';
-import { useToolLabel } from '../toolLabels';
+import TraceChipStrip from './TraceChipStrip.vue';
 
 const i18n = useI18n();
 const thread = useThread();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
-const { getToolLabel } = useToolLabel();
 
 /** Resolve artifact name from the enriched registry (falls back to extracted name). */
 function resolveArtifactName(artifact: ArtifactInfo): string {
@@ -83,7 +77,7 @@ function formatArtifactMetadata(artifact: ArtifactInfo): string {
 		parts.push(i18n.baseText('instanceAi.artifactCard.updatedJustNow'));
 	}
 
-	return parts.join(' \u2502 ');
+	return parts.join(' │ ');
 }
 
 const props = withDefaults(
@@ -108,6 +102,93 @@ const toolCallsById = computed(() => {
 		map[tc.toolCallId] = tc;
 	}
 	return map;
+});
+
+/** Index children by agentId for O(1) lookup and proper reactivity tracking. */
+const childrenById = computed(() => {
+	const map: Record<string, InstanceAiAgentNode> = {};
+	for (const child of props.agentNode.children) {
+		map[child.agentId] = child;
+	}
+	return map;
+});
+
+/** Tool render hints that produce no timeline output of their own. */
+const INVISIBLE_RENDER_HINTS = new Set(['builder', 'data-table', 'eval-setup', 'planner']);
+
+type TextEntry = Extract<InstanceAiTimelineEntry, { type: 'text' }>;
+
+/**
+ * The timeline reduced to renderable blocks. Consecutive "trace" entries
+ * (reasoning + generic tool calls) merge into horizontal chip strips;
+ * invisible entries (hidden tools, builder/planner hints, pending questions)
+ * are dropped without splitting a strip. Everything else renders standalone
+ * and splits the strip.
+ */
+type RenderBlock =
+	| { type: 'strip'; key: string; entries: InstanceAiTimelineEntry[] }
+	| { type: 'text'; key: string; entry: TextEntry }
+	| { type: 'tasks'; key: string; toolCall: InstanceAiToolCallState }
+	| { type: 'plan-review'; key: string; toolCall: InstanceAiToolCallState }
+	| { type: 'questions'; key: string; toolCall: InstanceAiToolCallState }
+	| { type: 'child'; key: string; child: InstanceAiAgentNode };
+
+const renderBlocks = computed<RenderBlock[]>(() => {
+	const blocks: RenderBlock[] = [];
+	let strip: Extract<RenderBlock, { type: 'strip' }> | null = null;
+
+	function pushStandalone(block: RenderBlock) {
+		strip = null;
+		blocks.push(block);
+	}
+
+	timelineEntries.value.forEach((entry, idx) => {
+		if (entry.type === 'text') {
+			pushStandalone({ type: 'text', key: `text-${idx}`, entry });
+			return;
+		}
+
+		if (entry.type === 'child') {
+			const child = childrenById.value[entry.agentId];
+			// Running builder sub-agents are extracted and rendered at the bottom
+			// of the conversation by InstanceAiView; once a builder finishes it
+			// reappears here in its chronological slot.
+			if (child && !isActiveBuilderAgent(child)) {
+				pushStandalone({ type: 'child', key: `child-${idx}`, child });
+			}
+			return;
+		}
+
+		if (entry.type === 'tool-call') {
+			const tc = toolCallsById.value[entry.toolCallId];
+			if (!tc || HIDDEN_TOOLS.has(tc.toolName)) return;
+			if (tc.renderHint === 'tasks') {
+				pushStandalone({ type: 'tasks', key: `tasks-${idx}`, toolCall: tc });
+				return;
+			}
+			if (tc.confirmation?.inputType === 'plan-review') {
+				pushStandalone({ type: 'plan-review', key: `plan-${idx}`, toolCall: tc });
+				return;
+			}
+			if (tc.renderHint && INVISIBLE_RENDER_HINTS.has(tc.renderHint)) return;
+			if (tc.confirmation?.inputType === 'questions') {
+				// Pending question forms are suppressed until answered.
+				if (!tc.isLoading) {
+					pushStandalone({ type: 'questions', key: `questions-${idx}`, toolCall: tc });
+				}
+				return;
+			}
+		}
+
+		// Reasoning entries and generic tool calls join the current chip strip.
+		if (!strip) {
+			strip = { type: 'strip', key: `strip-${idx}`, entries: [] };
+			blocks.push(strip);
+		}
+		strip.entries.push(entry);
+	});
+
+	return blocks;
 });
 
 function getPlanTasks(tc: InstanceAiToolCallState): PlannedTaskArg[] {
@@ -152,26 +233,6 @@ function isPlanCardReadOnly(tc: InstanceAiToolCallState): boolean {
 	if (requestId && thread.resolvedConfirmationIds.has(requestId)) return true;
 	return false;
 }
-
-/** Index children by agentId for O(1) lookup and proper reactivity tracking. */
-const childrenById = computed(() => {
-	const map: Record<string, InstanceAiAgentNode> = {};
-	for (const child of props.agentNode.children) {
-		map[child.agentId] = child;
-	}
-	return map;
-});
-
-/**
- * Whether any entry renders visible output. Segments made up entirely of
- * hidden tool calls (e.g. builder calls represented by artifact cards) skip
- * the wrapper div — an empty flex item would still add gap spacing.
- */
-const hasVisibleEntries = computed(() =>
-	timelineEntries.value.some((entry) =>
-		isVisibleTimelineEntry(entry, toolCallsById.value, childrenById.value),
-	),
-);
 
 function handlePlanApprove(tc: InstanceAiToolCallState) {
 	const requestId = tc.confirmation?.requestId;
@@ -255,109 +316,50 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 </script>
 
 <template>
-	<div v-if="hasVisibleEntries" :class="$style.timeline">
-		<template v-for="(entry, idx) in timelineEntries" :key="idx">
+	<div v-if="renderBlocks.length > 0" :class="$style.timeline">
+		<template v-for="block in renderBlocks" :key="block.key">
+			<!-- Trace chip strip: consecutive reasoning + generic tool calls -->
+			<TraceChipStrip
+				v-if="block.type === 'strip'"
+				:agent-node="props.agentNode"
+				:entries="block.entries"
+			/>
+
 			<!-- Text segment (leaf keeps the per-token content read out of this render) -->
 			<TimelineTextSegment
-				v-if="entry.type === 'text'"
-				:entry="entry"
+				v-else-if="block.type === 'text'"
+				:entry="block.entry"
 				:compact="props.compact"
-				:streaming="isStreamingTimelineEntry(props.agentNode, entry)"
+				:streaming="isStreamingTimelineEntry(props.agentNode, block.entry)"
 				:class="$style.timelineItem"
 			/>
 
-			<!-- Reasoning segment — one collapsible block per reasoning stage -->
-			<ReasoningBlock
-				v-else-if="entry.type === 'reasoning'"
-				:entry="entry"
-				:streaming="isStreamingTimelineEntry(props.agentNode, entry)"
+			<TaskChecklist v-else-if="block.type === 'tasks'" :tasks="props.agentNode.tasks" />
+
+			<PlanReviewPanel
+				v-else-if="block.type === 'plan-review'"
+				:key="block.toolCall.confirmation?.requestId"
+				:planned-tasks="getPlanTasks(block.toolCall)"
+				:status="getPlanReviewStatus(block.toolCall)"
+				:updating="isPlanReviewUpdating(block.toolCall)"
+				:read-only="isPlanCardReadOnly(block.toolCall)"
+				:expired="block.toolCall.confirmation?.expired"
+				@approve="handlePlanApprove(block.toolCall)"
+				@ask-for-edits="handlePlanAskForEdits(block.toolCall)"
+				@deny="handlePlanDeny(block.toolCall)"
 			/>
 
-			<!-- Tool call (skip internal tools like updateWorkingMemory) -->
-			<template
-				v-else-if="
-					entry.type === 'tool-call' &&
-					toolCallsById[entry.toolCallId] &&
-					!HIDDEN_TOOLS.has(toolCallsById[entry.toolCallId].toolName)
-				"
-			>
-				<TaskChecklist
-					v-if="toolCallsById[entry.toolCallId].renderHint === 'tasks'"
-					:tasks="props.agentNode.tasks"
-				/>
-				<!-- Hidden tool calls (builder/data-table/eval-setup handled by child agent via AgentSection) -->
-				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'builder'" />
-				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'data-table'" />
-				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'eval-setup'" />
-				<PlanReviewPanel
-					v-else-if="toolCallsById[entry.toolCallId].confirmation?.inputType === 'plan-review'"
-					:key="toolCallsById[entry.toolCallId].confirmation?.requestId"
-					:planned-tasks="getPlanTasks(toolCallsById[entry.toolCallId])"
-					:status="getPlanReviewStatus(toolCallsById[entry.toolCallId])"
-					:updating="isPlanReviewUpdating(toolCallsById[entry.toolCallId])"
-					:read-only="isPlanCardReadOnly(toolCallsById[entry.toolCallId])"
-					:expired="toolCallsById[entry.toolCallId].confirmation?.expired"
-					@approve="handlePlanApprove(toolCallsById[entry.toolCallId])"
-					@ask-for-edits="handlePlanAskForEdits(toolCallsById[entry.toolCallId])"
-					@deny="handlePlanDeny(toolCallsById[entry.toolCallId])"
-				/>
-				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'planner'" />
-				<!-- Answered questions (read-only after resolution) -->
-				<AnsweredQuestions
-					v-else-if="
-						toolCallsById[entry.toolCallId].confirmation?.inputType === 'questions' &&
-						!toolCallsById[entry.toolCallId].isLoading
-					"
-					:tool-call="toolCallsById[entry.toolCallId]"
-				/>
-				<!-- Suppress default tool call while questions are pending -->
-				<template
-					v-else-if="
-						toolCallsById[entry.toolCallId].confirmation?.inputType === 'questions' &&
-						toolCallsById[entry.toolCallId].isLoading
-					"
-				/>
-				<ToolCallStep
-					v-else
-					:label="
-						getToolLabel(
-							toolCallsById[entry.toolCallId].toolName,
-							toolCallsById[entry.toolCallId].args,
-						)
-					"
-					:loading="toolCallsById[entry.toolCallId].isLoading"
-					:error="toolCallsById[entry.toolCallId].error"
-				>
-					<ToolResultJson
-						v-if="toolCallsById[entry.toolCallId].args"
-						:value="toolCallsById[entry.toolCallId].args"
-					/>
-					<ToolResultRenderer
-						v-if="toolCallsById[entry.toolCallId].result !== undefined"
-						:result="toolCallsById[entry.toolCallId].result"
-						:tool-name="toolCallsById[entry.toolCallId].toolName"
-						:tool-args="toolCallsById[entry.toolCallId].args"
-					/>
-				</ToolCallStep>
-			</template>
+			<!-- Answered questions (read-only after resolution) -->
+			<AnsweredQuestions v-else-if="block.type === 'questions'" :tool-call="block.toolCall" />
 
-			<!-- Child agent — flat section. Running builder sub-agents are
-				 extracted and rendered at the bottom of the conversation by
-				 InstanceAiView; once a builder finishes it reappears here in its
-				 chronological slot. -->
-			<template
-				v-else-if="
-					entry.type === 'child' &&
-					childrenById[entry.agentId] &&
-					!isActiveBuilderAgent(childrenById[entry.agentId])
-				"
-			>
-				<AgentSection :agent-node="childrenById[entry.agentId]" />
+			<!-- Child agent — flat section -->
+			<template v-else-if="block.type === 'child'">
+				<AgentSection :agent-node="block.child" />
 
 				<!-- Artifact cards for completed subagents (skip when inside grouped view) -->
 				<template v-if="!props.visibleEntries">
 					<ArtifactCard
-						v-for="artifact in extractArtifacts(childrenById[entry.agentId])"
+						v-for="artifact in extractArtifacts(block.child)"
 						:key="artifact.resourceId"
 						:type="artifact.type"
 						:name="resolveArtifactName(artifact)"

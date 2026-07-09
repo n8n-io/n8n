@@ -3,7 +3,6 @@ import type {
 	InstanceAiTimelineEntry,
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
-import type { IconName } from '@n8n/design-system';
 import { computed, type ComputedRef, type Ref } from 'vue';
 import { extractArtifacts, HIDDEN_TOOLS, type ArtifactInfo } from './agentTimeline.utils';
 
@@ -186,22 +185,4 @@ export function useTimelineGrouping(
 
 		return flattened;
 	});
-}
-
-/** Collect distinct tool icons from tool calls within a group's entries. */
-export function getGroupToolIcons(
-	group: ResponseGroupSegment,
-	toolCalls: InstanceAiToolCallState[],
-	getIcon: (toolName: string) => IconName,
-): IconName[] {
-	const icons = new Set<IconName>();
-	for (const entry of group.entries) {
-		if (entry.type === 'tool-call') {
-			const tc = toolCalls.find((t) => t.toolCallId === entry.toolCallId);
-			if (tc && !HIDDEN_TOOLS.has(tc.toolName)) {
-				icons.add(getIcon(tc.toolName));
-			}
-		}
-	}
-	return [...icons];
 }

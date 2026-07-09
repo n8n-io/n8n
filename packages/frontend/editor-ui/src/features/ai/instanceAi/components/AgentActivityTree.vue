@@ -8,7 +8,6 @@ import { useTimelineGrouping } from '../useTimelineGrouping';
 import AgentTimeline from './AgentTimeline.vue';
 import ArtifactCard from './ArtifactCard.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
-import ResponseGroup from './ResponseGroup.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -24,17 +23,8 @@ const thread = useThread();
 
 const segments = useTimelineGrouping(toRef(props, 'agentNode'));
 
-/** Whether to show grouped/collapsed view (root + grouping available). */
+/** Whether to show grouped view (root + grouping available). */
 const showGrouped = computed(() => props.isRoot && segments.value !== null);
-
-/** Index of the last response-group segment (for isLast prop). */
-const lastGroupIdx = computed(() => {
-	if (!segments.value) return -1;
-	for (let i = segments.value.length - 1; i >= 0; i--) {
-		if (segments.value[i].kind === 'response-group') return i;
-	}
-	return -1;
-});
 
 function resolveArtifactName(artifact: ArtifactInfo): string {
 	const entry = thread.producedArtifacts.get(artifact.resourceId);
@@ -45,14 +35,13 @@ function resolveArtifactName(artifact: ArtifactInfo): string {
 <template>
 	<!-- eslint-disable vue/no-multiple-template-root -->
 
-	<!-- Completed with responseId grouping: collapsed response groups + artifacts + trailing text -->
+	<!-- Completed with responseId grouping: flat trace strips + artifacts + trailing text -->
 	<template v-if="showGrouped">
 		<template v-for="(segment, idx) in segments" :key="idx">
-			<ResponseGroup
+			<AgentTimeline
 				v-if="segment.kind === 'response-group'"
-				:group="segment"
 				:agent-node="props.agentNode"
-				:is-last="idx === lastGroupIdx"
+				:visible-entries="segment.entries"
 			/>
 
 			<!-- Artifacts from child agents in this group, rendered in-place after the group -->
