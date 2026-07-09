@@ -741,13 +741,12 @@ export class SourceControlStatusService {
 				const nameCollision = nameCollisionByLocalId.get(local.id);
 				if (nameCollision) {
 					const isPull = options.direction === 'pull';
-					// On pull the entry carries the incoming id and file — that is what
-					// the import consumes — and is flagged like any other schema change.
-					const modified = isPull
-						? nameCollision
-						: options.preferLocalVersion
-							? local
-							: nameCollision;
+					// On pull the entry carries the incoming table regardless of
+					// preferLocalVersion: its file is what the import consumes, and the
+					// dry-run (which always has preferLocalVersion=true) must preview the
+					// same entry the pull acts on. On push the collision surfaces on the
+					// local table.
+					const modified = isPull ? nameCollision : local;
 					if (collectVerbose) {
 						dtModifiedInEither.push(modified);
 					}
