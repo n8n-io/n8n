@@ -154,40 +154,43 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 	const described = (error: unknown) => ensureError(error).message;
 
 	const registry = new TaskHandlerRegistry();
-	const executor = new Executor(
-		taskStore,
-		registry,
-		new PrecisionTimer(),
-		executorOptions,
-		{
-			onLeaseShorterThanLookahead: (context) => {
-				emit(
-					'warn',
-					'Scheduler executor lookahead reaches or exceeds the lease; claimed tasks may lose their lease before firing',
-					{ ...context },
-				);
-			},
-			onMissingHandler: (task) => {
-				emit('warn', 'Scheduler claimed a task with no registered handler; claim released', {
-					taskId: task.id,
-					taskType: task.taskType,
-				});
-			},
-			onFireError: (task, error) => {
-				emit('error', 'Scheduler could not record a task outcome; left for the reaper', {
-					taskId: task.id,
-					error: described(error),
-				});
-			},
-			onReleaseError: (taskId, error) => {
-				emit('error', 'Scheduler failed to release a claimed task; left for the reaper', {
-					taskId,
-					error: described(error),
-				});
-			},
+	const executor = new Executor(taskStore, registry, new PrecisionTimer(), executorOptions, {
+		onLeaseShorterThanLookahead: (context) => {
+			emit(
+				'warn',
+				'Scheduler executor lookahead reaches or exceeds the lease; claimed tasks may lose their lease before firing',
+				{ ...context },
+			);
 		},
-		metrics,
-	);
+		onMissingHandler: (task) => {
+			emit('warn', 'Scheduler claimed a task with no registered handler; claim released', {
+				taskId: task.id,
+				taskType: task.taskType,
+			});
+		},
+		onFireError: (task, error) => {
+			emit('error', 'Scheduler could not record a task outcome; left for the reaper', {
+				taskId: task.id,
+				error: described(error),
+			});
+		},
+		onReleaseError: (taskId, error) => {
+			emit('error', 'Scheduler failed to release a claimed task; left for the reaper', {
+				taskId,
+				error: described(error),
+			});
+		},
+		onDispatch: (taskType, lagSeconds) => {
+			metrics.recordDispatch(taskType);
+			metrics.observeDispatchLagSeconds(taskType, lagSeconds);
+		},
+		onFire: (taskType, result) => {
+			metrics.recordFireOutcome(taskType, result);
+			// An executor terminal failure (attempts exhausted) is a permanent failure = a dead-letter.
+			if (result === 'failure') metrics.recordDeadLettered();
+		},
+		onRetry: (taskType) => metrics.recordRetry(taskType),
+	});
 
 	if (retentionOptions.failedRetentionSeconds < retentionOptions.retentionSeconds) {
 		emit(

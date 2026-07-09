@@ -1,6 +1,5 @@
 import { mock } from 'vitest-mock-extended';
 
-import type { SchedulerMetrics } from '../../../observability/metrics';
 import type { ClaimedTask } from '../../types';
 import { backoff } from '../backoff';
 import { Executor, type ExecutorHooks } from '../executor';
@@ -29,12 +28,14 @@ const setup = (options?: Partial<ExecutorOptions>) => {
 	const store = mock<ExecutorTaskStore>();
 	const registry = mock<TaskHandlerRegistry>();
 	const timer = mock<PrecisionTimer>();
-	const metrics = mock<SchedulerMetrics>();
 	const hooks = {
 		onLeaseShorterThanLookahead: vi.fn(),
 		onMissingHandler: vi.fn(),
 		onFireError: vi.fn(),
 		onReleaseError: vi.fn(),
+		onDispatch: vi.fn(),
+		onFire: vi.fn(),
+		onRetry: vi.fn(),
 	} satisfies ExecutorHooks;
 	const executor = new Executor(
 		store,
@@ -42,9 +43,8 @@ const setup = (options?: Partial<ExecutorOptions>) => {
 		timer,
 		{ leaseSeconds: 60, lookaheadSeconds: 5, batchSize: 100, ...options },
 		hooks,
-		metrics,
 	);
-	return { store, registry, timer, metrics, hooks, executor };
+	return { store, registry, timer, hooks, executor };
 };
 
 describe('Executor construction', () => {
@@ -346,9 +346,9 @@ describe('Executor.fire', () => {
 	});
 });
 
-describe('Executor.fire metrics', () => {
-	it('records a dispatch and the lag against the timer clock when a task fires', async () => {
-		const { store, registry, timer, metrics, executor } = setup();
+describe('Executor.fire metrics hooks', () => {
+	it('calls onDispatch with the lag against the timer clock when a task fires', async () => {
+		const { store, registry, timer, hooks, executor } = setup();
 		store.markStarted.mockResolvedValue(1);
 		store.completeTask.mockResolvedValue(1);
 		registry.resolve.mockReturnValue({ execute: vi.fn().mockResolvedValue(undefined) });
@@ -358,14 +358,12 @@ describe('Executor.fire metrics', () => {
 
 		await executor.fire(HOST, task);
 
-		expect(metrics.recordDispatch).toHaveBeenCalledWith(task.taskType);
-		expect(metrics.recordDispatch).toHaveBeenCalledTimes(1);
-		expect(metrics.observeDispatchLagSeconds).toHaveBeenCalledWith(task.taskType, 3);
-		expect(metrics.observeDispatchLagSeconds).toHaveBeenCalledTimes(1);
+		expect(hooks.onDispatch).toHaveBeenCalledWith(task.taskType, 3);
+		expect(hooks.onDispatch).toHaveBeenCalledTimes(1);
 	});
 
 	it('measures dispatch lag from runAt, not the fixed scheduledFor slot', async () => {
-		const { store, registry, timer, metrics, executor } = setup();
+		const { store, registry, timer, hooks, executor } = setup();
 		store.markStarted.mockResolvedValue(1);
 		store.completeTask.mockResolvedValue(1);
 		registry.resolve.mockReturnValue({ execute: vi.fn().mockResolvedValue(undefined) });
@@ -379,11 +377,11 @@ describe('Executor.fire metrics', () => {
 
 		await executor.fire(HOST, task);
 
-		expect(metrics.observeDispatchLagSeconds).toHaveBeenCalledWith(task.taskType, 2);
+		expect(hooks.onDispatch).toHaveBeenCalledWith(task.taskType, 2);
 	});
 
 	it('clamps dispatch lag to zero when the timer fires before runAt', async () => {
-		const { store, registry, timer, metrics, executor } = setup();
+		const { store, registry, timer, hooks, executor } = setup();
 		store.markStarted.mockResolvedValue(1);
 		store.completeTask.mockResolvedValue(1);
 		registry.resolve.mockReturnValue({ execute: vi.fn().mockResolvedValue(undefined) });
@@ -393,22 +391,22 @@ describe('Executor.fire metrics', () => {
 
 		await executor.fire(HOST, task);
 
-		expect(metrics.observeDispatchLagSeconds).toHaveBeenCalledWith(task.taskType, 0);
+		expect(hooks.onDispatch).toHaveBeenCalledWith(task.taskType, 0);
 	});
 
-	it('records nothing when the row is gone or reclaimed', async () => {
-		const { store, registry, metrics, executor } = setup();
+	it('calls no hooks when the row is gone or reclaimed', async () => {
+		const { store, registry, hooks, executor } = setup();
 		registry.resolve.mockReturnValue({ execute: vi.fn() });
 		store.markStarted.mockResolvedValue(0);
 
 		await executor.fire(HOST, claimedTask());
 
-		expect(metrics.recordDispatch).not.toHaveBeenCalled();
-		expect(metrics.observeDispatchLagSeconds).not.toHaveBeenCalled();
+		expect(hooks.onDispatch).not.toHaveBeenCalled();
+		expect(hooks.onFire).not.toHaveBeenCalled();
 	});
 
-	it('records a success outcome when the handler completes', async () => {
-		const { store, registry, metrics, executor } = setup();
+	it('calls onFire with success when the handler completes', async () => {
+		const { store, registry, hooks, executor } = setup();
 		store.markStarted.mockResolvedValue(1);
 		store.completeTask.mockResolvedValue(1);
 		registry.resolve.mockReturnValue({ execute: vi.fn().mockResolvedValue(undefined) });
@@ -416,13 +414,13 @@ describe('Executor.fire metrics', () => {
 
 		await executor.fire(HOST, task);
 
-		expect(metrics.recordFireOutcome).toHaveBeenCalledWith(task.taskType, 'success');
-		expect(metrics.recordFireOutcome).toHaveBeenCalledTimes(1);
-		expect(metrics.recordRetry).not.toHaveBeenCalled();
+		expect(hooks.onFire).toHaveBeenCalledWith(task.taskType, 'success');
+		expect(hooks.onFire).toHaveBeenCalledTimes(1);
+		expect(hooks.onRetry).not.toHaveBeenCalled();
 	});
 
-	it('records a retry when the handler fails and attempts remain', async () => {
-		const { store, registry, metrics, executor } = setup();
+	it('calls onRetry when the handler fails and attempts remain', async () => {
+		const { store, registry, hooks, executor } = setup();
 		store.markStarted.mockResolvedValue(1);
 		store.rescheduleTask.mockResolvedValue(1);
 		registry.resolve.mockReturnValue({ execute: vi.fn().mockRejectedValue(new Error('boom')) });
@@ -430,13 +428,13 @@ describe('Executor.fire metrics', () => {
 
 		await executor.fire(HOST, task);
 
-		expect(metrics.recordRetry).toHaveBeenCalledWith(task.taskType);
-		expect(metrics.recordRetry).toHaveBeenCalledTimes(1);
-		expect(metrics.recordFireOutcome).not.toHaveBeenCalled();
+		expect(hooks.onRetry).toHaveBeenCalledWith(task.taskType);
+		expect(hooks.onRetry).toHaveBeenCalledTimes(1);
+		expect(hooks.onFire).not.toHaveBeenCalled();
 	});
 
-	it('records a failure outcome and a dead-letter when the handler fails terminally', async () => {
-		const { store, registry, metrics, executor } = setup();
+	it('calls onFire with failure when the handler fails terminally', async () => {
+		const { store, registry, hooks, executor } = setup();
 		store.markStarted.mockResolvedValue(1);
 		store.failTaskTerminal.mockResolvedValue(1);
 		registry.resolve.mockReturnValue({ execute: vi.fn().mockRejectedValue(new Error('boom')) });
@@ -444,15 +442,13 @@ describe('Executor.fire metrics', () => {
 
 		await executor.fire(HOST, task);
 
-		expect(metrics.recordFireOutcome).toHaveBeenCalledWith(task.taskType, 'failure');
-		expect(metrics.recordFireOutcome).toHaveBeenCalledTimes(1);
-		// A terminal failure is a permanent failure, so it is also a dead-letter.
-		expect(metrics.recordDeadLettered).toHaveBeenCalledTimes(1);
-		expect(metrics.recordRetry).not.toHaveBeenCalled();
+		expect(hooks.onFire).toHaveBeenCalledWith(task.taskType, 'failure');
+		expect(hooks.onFire).toHaveBeenCalledTimes(1);
+		expect(hooks.onRetry).not.toHaveBeenCalled();
 	});
 
-	it('records no outcome when a terminal write affects no row (reclaimed on lease overrun)', async () => {
-		const { store, registry, metrics, executor } = setup();
+	it('calls no outcome hook when a terminal write affects no row (reclaimed on lease overrun)', async () => {
+		const { store, registry, hooks, executor } = setup();
 		store.markStarted.mockResolvedValue(1);
 		registry.resolve.mockReturnValue({ execute: vi.fn().mockResolvedValue(undefined) });
 		// Every terminal write resolves 0: the row was reclaimed, so nothing is ours to count.
@@ -462,26 +458,25 @@ describe('Executor.fire metrics', () => {
 
 		// Success path with a 0-row complete.
 		await executor.fire(HOST, claimedTask());
-		expect(metrics.recordFireOutcome).not.toHaveBeenCalled();
+		expect(hooks.onFire).not.toHaveBeenCalled();
 
 		// Retry path with a 0-row reschedule.
 		registry.resolve.mockReturnValue({ execute: vi.fn().mockRejectedValue(new Error('boom')) });
 		await executor.fire(HOST, claimedTask({ attempts: 0, maxAttempts: 3 }));
-		expect(metrics.recordRetry).not.toHaveBeenCalled();
+		expect(hooks.onRetry).not.toHaveBeenCalled();
 
 		// Terminal-failure path with a 0-row failTaskTerminal.
 		await executor.fire(HOST, claimedTask({ attempts: 0, maxAttempts: 1 }));
-		expect(metrics.recordFireOutcome).not.toHaveBeenCalled();
-		expect(metrics.recordDeadLettered).not.toHaveBeenCalled();
+		expect(hooks.onFire).not.toHaveBeenCalled();
 	});
 
-	it('defaults to a safe no-op when no metrics port is supplied', async () => {
+	it('defaults to a safe no-op when no hooks are supplied', async () => {
 		const store = mock<ExecutorTaskStore>();
 		const registry = mock<TaskHandlerRegistry>();
 		const timer = mock<PrecisionTimer>();
 		store.markStarted.mockResolvedValue(1);
 		registry.resolve.mockReturnValue({ execute: vi.fn().mockResolvedValue(undefined) });
-		// No hooks, no metrics: the defaulted no-op must not throw.
+		// No hooks: the optional calls must not throw.
 		const executor = new Executor(store, registry, timer, {
 			leaseSeconds: 60,
 			lookaheadSeconds: 5,

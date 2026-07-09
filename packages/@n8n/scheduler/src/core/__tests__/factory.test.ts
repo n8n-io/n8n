@@ -823,4 +823,64 @@ describe('createScheduler metrics', () => {
 		// No metrics dep: the defaulted no-op must not throw.
 		await expect(scheduler.prune()).resolves.toEqual({ deleted: 0, drained: true });
 	});
+
+	it('maps a successful fire onto dispatch and success metrics', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		scheduler.registerTaskHandler('test-task', { execute: vi.fn().mockResolvedValue(undefined) });
+		// A task due in the past fires on the next timer tick.
+		taskStore.claimDueTasks.mockResolvedValue([claimedTask()]);
+		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.completeTask.mockResolvedValue(1);
+
+		await scheduler.execute();
+
+		// The fire is detached from the claim: wait for the timer to deliver it.
+		await vi.waitFor(() => {
+			expect(metrics.recordFireOutcome).toHaveBeenCalledWith('test-task', 'success');
+		});
+		expect(metrics.recordDispatch).toHaveBeenCalledWith('test-task');
+		expect(metrics.observeDispatchLagSeconds).toHaveBeenCalledWith('test-task', expect.any(Number));
+		expect(metrics.recordDeadLettered).not.toHaveBeenCalled();
+	});
+
+	it('maps a terminal failure onto a failure outcome and a dead-letter', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		scheduler.registerTaskHandler('test-task', {
+			execute: vi.fn().mockRejectedValue(new Error('boom')),
+		});
+		// Single attempt: the first failure exhausts it.
+		taskStore.claimDueTasks.mockResolvedValue([claimedTask({ attempts: 0, maxAttempts: 1 })]);
+		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.failTaskTerminal.mockResolvedValue(1);
+
+		await scheduler.execute();
+
+		await vi.waitFor(() => {
+			expect(metrics.recordFireOutcome).toHaveBeenCalledWith('test-task', 'failure');
+		});
+		expect(metrics.recordDeadLettered).toHaveBeenCalledTimes(1);
+		expect(metrics.recordRetry).not.toHaveBeenCalled();
+	});
+
+	it('maps a failure with attempts remaining onto a retry', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		scheduler.registerTaskHandler('test-task', {
+			execute: vi.fn().mockRejectedValue(new Error('boom')),
+		});
+		// Attempts remain, so the failure reschedules rather than fails terminally.
+		taskStore.claimDueTasks.mockResolvedValue([claimedTask({ attempts: 0, maxAttempts: 3 })]);
+		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.rescheduleTask.mockResolvedValue(1);
+
+		await scheduler.execute();
+
+		await vi.waitFor(() => {
+			expect(metrics.recordRetry).toHaveBeenCalledWith('test-task');
+		});
+		expect(metrics.recordFireOutcome).not.toHaveBeenCalled();
+		expect(metrics.recordDeadLettered).not.toHaveBeenCalled();
+	});
 });
