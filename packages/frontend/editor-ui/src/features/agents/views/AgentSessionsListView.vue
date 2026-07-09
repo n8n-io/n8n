@@ -18,8 +18,11 @@ import { ElSkeletonItem } from 'element-plus';
 const props = withDefaults(
 	defineProps<{
 		embedded?: boolean;
+		projectId?: string;
+		agentId?: string;
+		openSessionInNewTab?: boolean;
 	}>(),
-	{ embedded: false },
+	{ embedded: false, projectId: undefined, agentId: undefined, openSessionInNewTab: false },
 );
 
 const i18n = useI18n();
@@ -30,8 +33,8 @@ const toast = useToast();
 const message = useMessage();
 const sessionsStore = useAgentSessionsStore();
 
-const projectId = computed(() => route.params.projectId as string);
-const agentId = computed(() => route.params.agentId as string);
+const projectId = computed(() => props.projectId ?? (route.params.projectId as string));
+const agentId = computed(() => props.agentId ?? (route.params.agentId as string));
 
 function onVisibilityChange() {
 	// Refresh as soon as the user returns to the tab — auto-refresh is
@@ -99,10 +102,15 @@ function rowActions(thread: AgentExecutionThread): Array<ActionDropdownItem<stri
 }
 
 function onRowClick(threadId: string) {
-	void router.push({
+	const target = {
 		name: AGENT_SESSION_DETAIL_VIEW,
 		params: { projectId: projectId.value, agentId: agentId.value, threadId },
-	});
+	};
+	if (props.openSessionInNewTab) {
+		window.open(router.resolve(target).href, '_blank');
+		return;
+	}
+	void router.push(target);
 }
 
 async function onAction(actionId: string, thread: AgentExecutionThread) {

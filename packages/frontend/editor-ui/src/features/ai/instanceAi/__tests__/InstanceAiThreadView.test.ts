@@ -158,6 +158,24 @@ const InstanceAiWorkflowPreviewStub = defineComponent({
 	},
 });
 
+const InstanceAiAgentPreviewStub = defineComponent({
+	name: 'InstanceAiAgentPreviewStub',
+	props: {
+		agentId: { type: String, required: true },
+		projectId: { type: String, required: true },
+		refreshKey: { type: Number, required: true },
+	},
+	setup(props) {
+		return () =>
+			h('div', {
+				'data-test-id': 'instance-ai-agent-preview-stub',
+				'data-agent-id': props.agentId,
+				'data-project-id': props.projectId,
+				'data-refresh-key': String(props.refreshKey),
+			});
+	},
+});
+
 const InstanceAiConfirmationPanelStub = defineComponent({
 	name: 'InstanceAiConfirmationPanelStub',
 	props: {
@@ -176,6 +194,7 @@ const renderView = createComponentRenderer(InstanceAiThreadView, {
 		stubs: {
 			InstanceAiInput: InstanceAiInputStub,
 			InstanceAiWorkflowPreview: InstanceAiWorkflowPreviewStub,
+			InstanceAiAgentPreview: InstanceAiAgentPreviewStub,
 			InstanceAiConfirmationPanel: InstanceAiConfirmationPanelStub,
 			AgentSection: { template: '<div data-test-id="agent-section-stub" />' },
 			InstanceAiDataTablePreview: { template: '<div data-test-id="data-table-preview-stub" />' },
@@ -542,6 +561,104 @@ describe('InstanceAiThreadView', () => {
 		await user.click(getByTestId('instance-ai-artifacts-panel-toggle'));
 
 		expect(getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
+	});
+
+	it('renders the agent artifact preview when an agent is created', async () => {
+		thread.producedArtifacts = new Map([
+			['agent-1', { type: 'agent', id: 'agent-1', projectId: 'proj-1', name: 'SEO Auditor' }],
+		]) as typeof thread.producedArtifacts;
+
+		const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		thread.messages.push({
+			id: 'msg-agent',
+			role: 'assistant',
+			content: '',
+			reasoning: '',
+			isStreaming: false,
+			createdAt: '2026-04-01T00:00:00.000Z',
+			agentTree: {
+				agentId: 'agent-builder',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				timeline: [],
+				children: [],
+				toolCalls: [
+					{
+						toolCallId: 'tc-create-agent',
+						toolName: 'agent_builder',
+						args: { action: 'create_agent' },
+						isLoading: false,
+						result: {
+							ok: true,
+							agentId: 'agent-1',
+							projectId: 'proj-1',
+							name: 'SEO Auditor',
+						},
+					},
+				],
+			},
+		} as never);
+
+		const preview = await findByTestId('instance-ai-agent-preview-stub');
+
+		expect(preview).toHaveAttribute('data-agent-id', 'agent-1');
+		expect(preview).toHaveAttribute('data-project-id', 'proj-1');
+		expect(preview).toHaveAttribute('data-refresh-key', '1');
+	});
+
+	it('closes the agent artifact preview from the wrapper toggle', async () => {
+		thread.producedArtifacts = new Map([
+			['agent-1', { type: 'agent', id: 'agent-1', projectId: 'proj-1', name: 'SEO Auditor' }],
+		]) as typeof thread.producedArtifacts;
+
+		const user = userEvent.setup();
+		const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		thread.messages.push({
+			id: 'msg-agent',
+			role: 'assistant',
+			content: '',
+			reasoning: '',
+			isStreaming: false,
+			createdAt: '2026-04-01T00:00:00.000Z',
+			agentTree: {
+				agentId: 'agent-builder',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				timeline: [],
+				children: [],
+				toolCalls: [
+					{
+						toolCallId: 'tc-create-agent',
+						toolName: 'agent_builder',
+						args: { action: 'create_agent' },
+						isLoading: false,
+						result: {
+							ok: true,
+							agentId: 'agent-1',
+							projectId: 'proj-1',
+							name: 'SEO Auditor',
+						},
+					},
+				],
+			},
+		} as never);
+
+		await findByTestId('instance-ai-agent-preview-stub');
+		const previewPanel = await findByTestId('instance-ai-preview-panel');
+		expect(previewPanel).toBeVisible();
+
+		await user.click(await findByTestId('instance-ai-artifacts-preview-toggle'));
+
+		await vi.waitFor(() => {
+			expect(previewPanel).not.toBeVisible();
+		});
+		expect(queryByTestId('instance-ai-agent-preview-stub')).not.toBeInTheDocument();
 	});
 
 	describe('Fix with AI card', () => {
