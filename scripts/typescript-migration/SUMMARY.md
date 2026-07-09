@@ -1,12 +1,13 @@
 # TypeScript 6 → 7 migration benchmarks
 
-Generated 2026-07-09T12:16:30.986Z from `scripts/typescript-migration/results/`.
+Generated 2026-07-09T13:04:44.541Z from `scripts/typescript-migration/results/`.
 
 | Package | typecheck Δ | build Δ |
 | --- | --- | --- |
 | `@n8n/agents` | -71.1% | -67.0% |
 | `@n8n/ai-node-sdk` | -53.1% | -54.3% |
 | `@n8n/ai-utilities` | -66.9% | -63.2% |
+| `@n8n/ai-workflow-builder` | -69.3% | -33.1% |
 | `@n8n/codemirror-lang` | -36.3% | -31.4% |
 | `@n8n/codemirror-lang-html` | — | -17.0% |
 | `@n8n/codemirror-lang-sql` | -42.7% | -39.2% |
@@ -45,6 +46,18 @@ typecheck:
 build:
   before               4.55s
   after                1.67s  -2878ms (-63.2%)
+```
+
+```
+=== @n8n/ai-workflow-builder — median times (Δ vs "before") ===
+
+typecheck:
+  before               3.87s
+  after                1.19s  -2683ms (-69.3%)
+
+build:
+  before               3.25s
+  after                2.17s  -1078ms (-33.1%)
 ```
 
 ```

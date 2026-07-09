@@ -2,6 +2,7 @@
 export { AI_NODE_SDK_VERSION } from './ai-node-sdk-version';
 
 // Utils
+export { lazyImport } from './utils/lazy-import';
 export { logWrapper } from './utils/log-wrapper';
 export { logAiEvent } from './utils/log-ai-event';
 export { parseSSEStream } from './utils/sse';
