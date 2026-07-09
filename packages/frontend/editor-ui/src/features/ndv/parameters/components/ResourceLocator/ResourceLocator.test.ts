@@ -789,8 +789,8 @@ describe('ResourceLocator', () => {
 		});
 	});
 
-	describe('credential change resets value', () => {
-		it('should reset value when node credentials change', async () => {
+	describe('credential change preserves value', () => {
+		it('should preserve value but clear cached metadata when node credentials change', async () => {
 			const modelValue: typeof TEST_MODEL_VALUE = {
 				...TEST_MODEL_VALUE,
 				value: 'selected-model',
@@ -831,7 +831,6 @@ describe('ResourceLocator', () => {
 						...modelValue,
 						cachedResultName: '',
 						cachedResultUrl: '',
-						value: '',
 					},
 				],
 			]);
