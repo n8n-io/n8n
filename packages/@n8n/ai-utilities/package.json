@@ -69,6 +69,11 @@
       "import": "./dist/esm/utils/http-proxy-agent.js",
       "require": "./dist/cjs/utils/http-proxy-agent.js"
     },
+    "./lazy-import": {
+      "types": "./dist/esm/utils/lazy-import.d.ts",
+      "import": "./dist/esm/utils/lazy-import.js",
+      "require": "./dist/cjs/utils/lazy-import.js"
+    },
     "./web-search": {
       "types": "./dist/esm/web-search/index.d.ts",
       "import": "./dist/esm/web-search/index.js",
@@ -112,6 +117,7 @@
     "@types/proxy-from-env": "catalog:",
     "fast-glob": "catalog:",
     "tsx": "catalog:",
+    "typescript": "catalog:typescript",
     "axios": "catalog:",
     "nock": "catalog:"
   },

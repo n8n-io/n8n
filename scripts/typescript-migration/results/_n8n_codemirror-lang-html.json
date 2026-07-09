@@ -1,0 +1,41 @@
+{
+  "package": "@n8n/codemirror-lang-html",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "4.9.5",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-09T08:06:02.640Z",
+      "tasks": {
+        "build": {
+          "runsMs": [
+            1317,
+            951,
+            1091
+          ],
+          "min": 951,
+          "median": 1091,
+          "mean": 1120
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-09T08:17:58.724Z",
+      "tasks": {
+        "build": {
+          "runsMs": [
+            1176,
+            905,
+            905
+          ],
+          "min": 905,
+          "median": 905,
+          "mean": 995
+        }
+      }
+    }
+  }
+}

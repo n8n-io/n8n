@@ -98,6 +98,7 @@
     "cli-table3": "^0.6.3",
     "madge": "^8.0.0",
     "tsx": "catalog:",
+    "typescript": "catalog:typescript",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
