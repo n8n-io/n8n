@@ -52,6 +52,7 @@
     "storybook-addon-vue-mdx": "3.0.0",
     "stylelint": "catalog:",
     "tailwindcss": "^3.4.3",
+    "typescript": "catalog:",
     "unplugin-icons": "catalog:frontend",
     "vite": "catalog:",
     "vite-svg-loader": "catalog:frontend",

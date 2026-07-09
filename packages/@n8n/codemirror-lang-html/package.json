@@ -46,6 +46,7 @@
     "@codemirror/buildhelper": "^0.1.5",
     "@lezer/generator": "catalog:",
     "@n8n/typescript-config": "workspace:*",
+    "typescript": "catalog:typescript",
     "@rollup/plugin-node-resolve": "^9.0.0",
     "@n8n/vitest-config": "workspace:*",
     "ist": "1.1.7",
