@@ -241,9 +241,10 @@ export function parseAwsUrl(url: URL): { region: string | null; service: string 
  *   service that URL parsing can't reliably infer, without regressing
  *   callers that rely on the URL as the source of truth (the common case:
  *   no qs.service is set).
- * - `region` is only taken from the URL when it's a recognized AWS region;
- *   an unrecognized label (e.g. a malformed vpce host) is logged and the
- *   credential-resolved region is kept instead of signing with garbage.
+ * - `region` is only taken from the URL when it's a recognized AWS region. An
+ *   unrecognized label (a malformed/mistyped host, or an odd endpoint shape the
+ *   parser mis-split) throws a UserError, so the request fails fast with a clear
+ *   message instead of signing with a bad region.
  */
 function resolveServiceAndRegion(
 	url: URL,
@@ -254,13 +255,12 @@ function resolveServiceAndRegion(
 	const resolvedService = service || parsed.service;
 	let resolvedRegion = region;
 	if (parsed.region) {
-		if (isSupportedAwsRegion(parsed.region)) {
-			resolvedRegion = parsed.region;
-		} else {
-			console.warn(
-				`AWS credentials: ignoring unrecognized region "${parsed.region}" parsed from ${url.hostname}; signing with "${region}" instead.`,
+		if (!isSupportedAwsRegion(parsed.region)) {
+			throw new UserError(
+				`Unsupported AWS region "${parsed.region}" parsed from endpoint host ${url.hostname}`,
 			);
 		}
+		resolvedRegion = parsed.region;
 	}
 	return { service: resolvedService, region: resolvedRegion };
 }

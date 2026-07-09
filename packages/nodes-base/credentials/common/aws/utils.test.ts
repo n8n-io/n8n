@@ -831,26 +831,21 @@ describe('awsGetSignInOptionsAndUpdateRequest', () => {
 			expect(signOpts.region).toBe('us-west-2');
 		});
 
-		it('falls back to the credential-resolved region when the vpce host has an unsupported region label', () => {
-			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
-				{
-					baseURL: 'https://vpce-0abc123.sqs.not-a-region.vpce.amazonaws.com',
-					url: '/',
-					headers: {},
-				} as any,
-				baseCredentials,
-				'',
-				'GET',
-				'',
-				'us-east-1',
-			);
-
-			expect(signOpts.region).toBe('us-east-1');
-			expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('not-a-region'));
-
-			warnSpy.mockRestore();
+		it('throws when the vpce host has an unsupported region label', () => {
+			expect(() =>
+				awsGetSignInOptionsAndUpdateRequest(
+					{
+						baseURL: 'https://vpce-0abc123.sqs.not-a-region.vpce.amazonaws.com',
+						url: '/',
+						headers: {},
+					} as any,
+					baseCredentials,
+					'',
+					'GET',
+					'',
+					'us-east-1',
+				),
+			).toThrow('not-a-region');
 		});
 
 		it('does not overwrite an explicitly supplied service with the URL-derived one', () => {

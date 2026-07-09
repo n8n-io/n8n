@@ -140,8 +140,7 @@ describe('AwsAssumeRole Credential', () => {
 		);
 	});
 
-	it('should fall back to the credential region when the vpce host has an unsupported region label', async () => {
-		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+	it('should throw when the vpce host has an unsupported region label', async () => {
 		const requestOptions: IHttpRequestOptions = {
 			qs: {},
 			body: {},
@@ -151,16 +150,6 @@ describe('AwsAssumeRole Credential', () => {
 			method: 'POST',
 		};
 
-		await aws.authenticate(credentials, requestOptions);
-
-		expect(MockSignatureV4).toHaveBeenLastCalledWith(
-			expect.objectContaining({
-				region: 'us-east-1',
-				service: 'sqs',
-			}),
-		);
-		expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('not-a-region'));
-
-		warnSpy.mockRestore();
+		await expect(aws.authenticate(credentials, requestOptions)).rejects.toThrow('not-a-region');
 	});
 });
