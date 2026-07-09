@@ -208,7 +208,6 @@ function onClear() {
 				v-if="showClearButton"
 				type="button"
 				:class="$style.clearButton"
-				tabindex="-1"
 				:aria-label="t('combobox.clearSelection')"
 				@click.stop="onClear"
 			>
@@ -424,13 +423,22 @@ function onClear() {
 	align-items: center;
 	justify-content: center;
 	flex-shrink: 0;
+	width: var(--spacing--sm);
+	height: var(--spacing--sm);
 	padding: 0;
 	border: none;
+	border-radius: var(--radius--full);
 	background: transparent;
 	color: var(--color--text--tint-1);
 	cursor: pointer;
 
 	&:hover {
+		color: var(--color--text--shade-1);
+	}
+
+	&:focus {
+		outline: none;
+		background-color: var(--background--hover);
 		color: var(--color--text--shade-1);
 	}
 }
