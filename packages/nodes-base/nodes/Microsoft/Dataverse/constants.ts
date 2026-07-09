@@ -18,4 +18,4 @@ export const DATAVERSE_API_PATH = '/api/data/v9.2';
  * scenarios. The version is read from package.json so it always matches the
  * published release without a second place to bump.
  */
-export const USER_AGENT = `n8n-nodes-base.microsoftDataverse/1.0.0`;
+export const USER_AGENT = 'n8n-nodes-base.microsoftDataverse/1.0.0';
