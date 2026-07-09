@@ -351,13 +351,24 @@ async function runBuilderConsumeLoop(params: {
 				return { ok: false, error: message };
 			}
 
+			// The stream never carries a real runId for builder turns (see
+			// resumable-stream-executor.ts), so resume routing must go through the
+			// same server-side checkpoint lookup the resume leg uses, not
+			// `result.agentRunId` (always `''`).
+			const open = await delegate.findOpenSuspension(target.agentId, session);
+			if (!open) {
+				const message = "The builder's question could not be recovered; the build turn was lost.";
+				publishAgentBuilderFailure(context, builderAgentId, new Error(message));
+				return { ok: false, error: message };
+			}
+
 			// Temporary until the llm-picker FE kind ships: bounce back into the
 			// builder so it asks conversationally instead of dead-ending.
 			turn = await delegate.resumeBuild(
 				target.agentId,
 				{
-					runId: result.agentRunId,
-					toolCallId: result.suspension.toolCallId,
+					runId: open.runId,
+					toolCallId: open.toolCallId,
 					resumeData: builderCancellationResume(
 						'This chat cannot show the model picker; ask for provider, model, and credential in plain text.',
 					),
