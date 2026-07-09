@@ -764,6 +764,7 @@ describe('Canvas', () => {
 
 		async function renderWithGroup(
 			props: { readOnly?: boolean; suppressInteraction?: boolean } = {},
+			{ initialCollapsed = true }: { initialCollapsed?: boolean } = {},
 		) {
 			// The menu items are disabled unless the workflow is editable: these
 			// tests run without a router, so isReadOnlyView would resolve to true.
@@ -788,7 +789,9 @@ describe('Canvas', () => {
 
 			const rendered = renderComponent({
 				props: { nodes: [groupNode, looseNode], ...props },
-				global: { provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(true) } },
+				global: {
+					provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(initialCollapsed) },
+				},
 			});
 			await waitFor(() => expect(rendered.getByTestId('canvas-node-group')).toBeInTheDocument());
 
@@ -862,6 +865,44 @@ describe('Canvas', () => {
 
 			expect(useContextMenu().isOpen.value).toBe(false);
 			expect(queryByTestId('context-menu')).not.toBeInTheDocument();
+		});
+
+		it('expands all groups from the pane context menu', async () => {
+			const { group, container, getByTestId } = await renderWithGroup(
+				{},
+				{ initialCollapsed: true },
+			);
+
+			await fireEvent.contextMenu(container.querySelector('.vue-flow__pane')!);
+			await waitFor(() =>
+				expect(getByTestId('context-menu-item-expand_all_groups')).toBeInTheDocument(),
+			);
+
+			await fireEvent.click(getByTestId('context-menu-item-expand_all_groups'));
+
+			expect(useTelemetry().track).toHaveBeenCalledWith(
+				'User expanded group',
+				expect.objectContaining({ group_id: group.id, source: 'context-menu' }),
+			);
+		});
+
+		it('collapses all groups from the pane context menu', async () => {
+			const { group, container, getByTestId } = await renderWithGroup(
+				{},
+				{ initialCollapsed: false },
+			);
+
+			await fireEvent.contextMenu(container.querySelector('.vue-flow__pane')!);
+			await waitFor(() =>
+				expect(getByTestId('context-menu-item-collapse_all_groups')).toBeInTheDocument(),
+			);
+
+			await fireEvent.click(getByTestId('context-menu-item-collapse_all_groups'));
+
+			expect(useTelemetry().track).toHaveBeenCalledWith(
+				'User collapsed group',
+				expect.objectContaining({ group_id: group.id, source: 'context-menu' }),
+			);
 		});
 
 		it('deletes the group when the ungroup action is selected', async () => {

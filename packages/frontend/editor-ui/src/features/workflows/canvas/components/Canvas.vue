@@ -661,7 +661,10 @@ function onSelectionDrag(event: NodeDragEvent) {
 	groupDrag.onSelectionDrag(event);
 }
 
-function onCanvasGroupToggle(groupId: string) {
+function onCanvasGroupToggle(
+	groupId: string,
+	source: CanvasNodeGroupEventSource = 'group-toolbar',
+) {
 	injectedNodeGroupView?.toggleCollapsed(groupId);
 
 	if (!injectedNodeGroupView) return;
@@ -670,9 +673,9 @@ function onCanvasGroupToggle(groupId: string) {
 	const group = workflowDocumentStore.value.getGroupById(groupId);
 	if (group) {
 		if (isCollapsed) {
-			groupTelemetry.trackCollapsed(group, 'group-toolbar');
+			groupTelemetry.trackCollapsed(group, source);
 		} else {
-			groupTelemetry.trackExpanded(group, 'group-toolbar');
+			groupTelemetry.trackExpanded(group, source);
 		}
 	}
 
@@ -722,6 +725,19 @@ function onCanvasGroupUngroup(
 
 	if (group) {
 		groupTelemetry.trackUngrouped(group, source);
+	}
+}
+
+// Expand or collapse every group, through the same path as the single toggle
+// so selection sync, push layout and telemetry stay consistent.
+function onSetAllGroupsExpanded(expanded: boolean, source: CanvasNodeGroupEventSource) {
+	if (!injectedNodeGroupView) return;
+	for (const group of workflowDocumentStore.value.allGroups) {
+		// Collapsed groups need a toggle to expand; expanded ones to collapse.
+		const needsToggle = injectedNodeGroupView.isGroupCollapsed(group.id) === expanded;
+		if (needsToggle) {
+			onCanvasGroupToggle(group.id, source);
+		}
 	}
 }
 
@@ -1198,6 +1214,10 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 			}
 			return;
 		}
+		case 'expand_all_groups':
+			return onSetAllGroupsExpanded(true, 'context-menu');
+		case 'collapse_all_groups':
+			return onSetAllGroupsExpanded(false, 'context-menu');
 		case 'open_sub_workflow': {
 			return emit('open:sub-workflow', nodeIds[0]);
 		}

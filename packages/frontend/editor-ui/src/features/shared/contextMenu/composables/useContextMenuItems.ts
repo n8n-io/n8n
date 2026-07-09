@@ -43,6 +43,8 @@ export type ContextMenuAction =
 	| 'group_nodes'
 	| 'rename_group'
 	| 'ungroup_nodes'
+	| 'expand_all_groups'
+	| 'collapse_all_groups'
 	| 'focus_ai_on_selected';
 
 /**
@@ -276,6 +278,24 @@ export function useContextMenuItems(
 			},
 		];
 
+		// Toggling group collapse is a view preference, not a workflow mutation,
+		// so these stay enabled in read-only mode.
+		const groupViewActions: Item[] = isNodeGroupingEnabled.value
+			? [
+					{
+						id: 'expand_all_groups',
+						divided: true,
+						label: i18n.baseText('contextMenu.expandAllGroups'),
+						disabled: (workflowDocumentStore?.value?.allGroups ?? []).length === 0,
+					},
+					{
+						id: 'collapse_all_groups',
+						label: i18n.baseText('contextMenu.collapseAllGroups'),
+						disabled: (workflowDocumentStore?.value?.allGroups ?? []).length === 0,
+					},
+				]
+			: [];
+
 		if (nodes.length === 0) {
 			return [
 				{
@@ -291,6 +311,7 @@ export function useContextMenuItems(
 					disabled: isReadOnly.value,
 				},
 				...layoutActions,
+				...groupViewActions,
 				...selectionActions,
 			];
 		} else {

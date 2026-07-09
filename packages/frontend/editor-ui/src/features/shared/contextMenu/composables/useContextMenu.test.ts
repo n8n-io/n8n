@@ -297,6 +297,58 @@ describe('useContextMenu', () => {
 		});
 	});
 
+	describe('expand/collapse all groups (empty selection menu)', () => {
+		const enableGroupingFlag = () =>
+			vi
+				.spyOn(usePostHog(), 'isFeatureEnabled')
+				.mockImplementation((flag) => flag === CANVAS_NODES_GROUPING_EXPERIMENT.name);
+
+		it('hides the actions when the grouping feature flag is off', () => {
+			workflowDocumentStore.createGroup([nodes[0].id], 'My group');
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [] });
+
+			const ids = actions.value.map((action) => action.id);
+			expect(ids).not.toContain('expand_all_groups');
+			expect(ids).not.toContain('collapse_all_groups');
+		});
+
+		it('shows the actions disabled when the workflow has no groups', () => {
+			enableGroupingFlag();
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [] });
+
+			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
+			expect(byId.expand_all_groups?.disabled).toBe(true);
+			expect(byId.collapse_all_groups?.disabled).toBe(true);
+		});
+
+		it('shows the actions enabled when groups exist, also in read-only mode', () => {
+			enableGroupingFlag();
+			// Collapse state is a view preference, not workflow data — read-only
+			// must not disable these.
+			vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(true);
+			workflowDocumentStore.createGroup([nodes[0].id], 'My group');
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [] });
+
+			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
+			expect(byId.expand_all_groups?.disabled).toBe(false);
+			expect(byId.collapse_all_groups?.disabled).toBe(false);
+		});
+
+		it('does not add the actions to node selection menus', () => {
+			enableGroupingFlag();
+			workflowDocumentStore.createGroup([nodes[0].id], 'My group');
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [nodes[1].id, nodes[2].id] });
+
+			const ids = actions.value.map((action) => action.id);
+			expect(ids).not.toContain('expand_all_groups');
+			expect(ids).not.toContain('collapse_all_groups');
+		});
+	});
+
 	it('should support opening and closing (default = right click on canvas)', () => {
 		const { open, close, isOpen, actions, position, target, targetNodeIds } = useContextMenu();
 		expect(isOpen.value).toBe(false);

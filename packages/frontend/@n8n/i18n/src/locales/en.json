@@ -2420,6 +2420,8 @@
 	"contextMenu.group": "Group node | Group nodes",
 	"contextMenu.renameGroup": "Rename group",
 	"contextMenu.ungroupNodes": "Ungroup nodes",
+	"contextMenu.expandAllGroups": "Expand all groups",
+	"contextMenu.collapseAllGroups": "Collapse all groups",
 	"contextMenu.replace": "Replace",
 	"contextMenu.duplicate": "Duplicate | Duplicate {subject}",
 	"contextMenu.open": "Open...",
