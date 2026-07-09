@@ -1,4 +1,4 @@
-import type { EvaluationConfigDto, InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
+import type { InstanceAiMessage } from '@n8n/api-types';
 import type { Mock, MockedFunction } from 'vitest';
 import { vi } from 'vitest';
 
@@ -8,6 +8,7 @@ vi.mock('../../src/utils/eval-agents', () => ({
 	SONNET_MODEL: 'test-sonnet-model',
 }));
 
+import { agentNode, assistantMessage, baseTestCase, dataTableConfig } from './fixtures';
 import { createEvalAgent } from '../../src/utils/eval-agents';
 import type {
 	DataTableColumnsResponse,
@@ -16,7 +17,6 @@ import type {
 } from '../clients/n8n-client';
 import { resolveArtifactResults } from '../harness/artifacts/resolve-artifact-results';
 import type { EvalLogger } from '../harness/logger';
-import type { WorkflowTestCase } from '../types';
 
 const mockCreateEvalAgent = createEvalAgent as MockedFunction<typeof createEvalAgent>;
 
@@ -42,53 +42,6 @@ const silentLogger: EvalLogger = {
 	error: () => {},
 	isVerbose: false,
 };
-
-function agentNode(overrides: Partial<InstanceAiAgentNode> = {}): InstanceAiAgentNode {
-	return {
-		agentId: 'agent-1',
-		role: 'builder',
-		status: 'completed',
-		textContent: '',
-		reasoning: '',
-		toolCalls: [],
-		children: [],
-		timeline: [],
-		...overrides,
-	};
-}
-
-function assistantMessage(agentTree: InstanceAiAgentNode): InstanceAiMessage {
-	return {
-		id: 'msg-1',
-		role: 'assistant',
-		createdAt: new Date().toISOString(),
-		content: '',
-		reasoning: '',
-		isStreaming: false,
-		agentTree,
-	};
-}
-
-function baseTestCase(overrides: Partial<WorkflowTestCase> = {}): WorkflowTestCase {
-	return { complexity: 'simple', tags: [], datasets: ['full'], ...overrides };
-}
-
-function dataTableConfig(workflowId: string, dataTableId: string): EvaluationConfigDto {
-	return {
-		id: 'config-1',
-		workflowId,
-		name: 'My eval',
-		status: 'valid',
-		invalidReason: null,
-		startNodeName: 'Start',
-		endNodeName: 'End',
-		metrics: [
-			{ id: 'metric-1', name: 'Correctness', type: 'llm_judge', config: { preset: 'correctness' } },
-		],
-		datasetSource: 'data_table',
-		datasetRef: { dataTableId },
-	};
-}
 
 describe('resolveArtifactResults', () => {
 	beforeEach(() => {

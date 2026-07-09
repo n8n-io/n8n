@@ -1,39 +1,9 @@
-import type {
-	AgentJsonConfig,
-	AgentSkill,
-	InstanceAiAgentNode,
-	InstanceAiMessage,
-} from '@n8n/api-types';
+import type { AgentJsonConfig, AgentSkill, InstanceAiMessage } from '@n8n/api-types';
 import type { Mock } from 'vitest';
 
+import { agentNode, assistantMessage } from './fixtures';
 import type { N8nClient } from '../clients/n8n-client';
 import { agentHandler } from '../harness/artifacts/agent-handler';
-
-function agentNode(overrides: Partial<InstanceAiAgentNode> = {}): InstanceAiAgentNode {
-	return {
-		agentId: 'agent-1',
-		role: 'builder',
-		status: 'completed',
-		textContent: '',
-		reasoning: '',
-		toolCalls: [],
-		children: [],
-		timeline: [],
-		...overrides,
-	};
-}
-
-function assistantMessage(agentTree: InstanceAiAgentNode): InstanceAiMessage {
-	return {
-		id: 'msg-1',
-		role: 'assistant',
-		createdAt: new Date().toISOString(),
-		content: '',
-		reasoning: '',
-		isStreaming: false,
-		agentTree,
-	};
-}
 
 describe('agentHandler', () => {
 	it('declares its type and static execution mode', () => {

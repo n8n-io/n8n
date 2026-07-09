@@ -6,6 +6,7 @@ import type {
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
+import { baseTestCase } from './fixtures';
 
 const scenario: ExecutionScenario = {
 	name: 'happy-path',
@@ -105,10 +106,6 @@ describe('aggregateResults — verifier-incomplete scenario runs', () => {
 
 const SCENARIO_A = { name: 'a', description: 'd', dataSetup: '', successCriteria: 'ok' };
 const SCENARIO_B = { name: 'b', description: 'd', dataSetup: '', successCriteria: 'ok' };
-
-function baseTestCase(overrides: Partial<WorkflowTestCase> = {}): WorkflowTestCase {
-	return { complexity: 'simple', tags: [], datasets: ['full'], ...overrides };
-}
 
 function scenarioResult(success: boolean): ExecutionScenarioResult {
 	return { scenario: SCENARIO_A, success, score: success ? 1 : 0, reasoning: '' };

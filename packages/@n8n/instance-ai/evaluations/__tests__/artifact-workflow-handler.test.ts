@@ -1,8 +1,8 @@
-import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
+import type { InstanceAiMessage } from '@n8n/api-types';
 import type { Mock } from 'vitest';
 
 import { ALL_CHECKS } from '../binaryChecks/checks';
-import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
+import type { N8nClient } from '../clients/n8n-client';
 import { agentHandler } from '../harness/artifacts/agent-handler';
 import { configEvalHandler } from '../harness/artifacts/config-eval-handler';
 import { getHandler, ARTIFACT_HANDLERS } from '../harness/artifacts/registry';
@@ -10,43 +10,7 @@ import { workflowHandler } from '../harness/artifacts/workflow-handler';
 import { buildWorkflowContextBlock } from '../harness/workflow-context';
 import { extractWorkflowIdsFromMessages } from '../outcome/workflow-discovery';
 import type { ArtifactType } from '../types';
-
-function agentNode(overrides: Partial<InstanceAiAgentNode> = {}): InstanceAiAgentNode {
-	return {
-		agentId: 'agent-1',
-		role: 'builder',
-		status: 'completed',
-		textContent: '',
-		reasoning: '',
-		toolCalls: [],
-		children: [],
-		timeline: [],
-		...overrides,
-	};
-}
-
-function assistantMessage(agentTree: InstanceAiAgentNode): InstanceAiMessage {
-	return {
-		id: 'msg-1',
-		role: 'assistant',
-		createdAt: new Date().toISOString(),
-		content: '',
-		reasoning: '',
-		isStreaming: false,
-		agentTree,
-	};
-}
-
-function workflow(id: string): WorkflowResponse {
-	return {
-		id,
-		name: `Workflow ${id}`,
-		active: false,
-		versionId: `version-${id}`,
-		nodes: [],
-		connections: {},
-	};
-}
+import { agentNode, assistantMessage, workflow } from './fixtures';
 
 describe('workflowHandler', () => {
 	it('declares its type, execution mode, and the canonical check suite', () => {
