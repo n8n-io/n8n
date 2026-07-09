@@ -28,6 +28,13 @@ judge). Every routing case asserts both the proposed approach and that
 ops/meta/continuity cases guard the opposite direction (the intent gate must
 not fire on non-build messages or re-fire on amendments).
 
+**One deliberate exception:** `ctx-iterative-build-gate-once` runs a real
+build with several follow-up changes (director-scripted, one message at a
+time) to prove the gate fires exactly once and the approach stays stable
+across an iterative build — plan amendments alone can't exercise that. It
+carries an outcome expectation so the "loaded only once" verdict can't pass
+vacuously when no changes actually landed.
+
 ## Authoring
 
 - Keep conversations in the user's voice. Build-request cases carry the
