@@ -929,6 +929,58 @@ export interface InstanceAiAgentBuilderService {
 	): Promise<AttachableWorkflow[]>;
 }
 
+// ── Builder delegate (sub-agent) ───────────────────────────────────────────────
+
+/** Reference to a workflow the current instance-AI session built or touched. */
+export interface SessionWorkflowRef {
+	id: string;
+	name: string;
+	description?: string;
+}
+
+/** Instance-AI-scoped builder session. */
+export interface BuilderDelegateSession {
+	/** Builder persistence thread id, e.g. `ia-builder:<instanceThreadId>:<agentId>`. */
+	threadId: string;
+}
+
+/** A builder turn stream: consumable by normalizeStreamSource, plus final text. */
+export interface BuilderTurnStream {
+	fullStream: AsyncIterable<unknown>;
+	text: Promise<string>;
+}
+
+/** Open builder suspension recovered from the builder checkpoint store. */
+export interface BuilderOpenSuspension {
+	runId: string;
+	toolCallId: string;
+	toolName: string;
+	suspendPayload: Record<string, unknown>;
+}
+
+/**
+ * Narrow delegate wrapping the agents-module builder for sub-agent use.
+ * Provided by the host (cli) only when the agents module is active.
+ */
+export interface InstanceAiBuilderDelegate {
+	createAgent(name: string): Promise<{ agentId: string; projectId: string }>;
+	streamBuild(
+		agentId: string,
+		message: string,
+		session: BuilderDelegateSession,
+	): Promise<BuilderTurnStream>;
+	resumeBuild(
+		agentId: string,
+		resume: { runId: string; toolCallId: string; resumeData: Record<string, unknown> },
+		session: BuilderDelegateSession,
+	): Promise<BuilderTurnStream>;
+	/** Most recent open suspension for this session's thread, or null. */
+	findOpenSuspension(
+		agentId: string,
+		session: BuilderDelegateSession,
+	): Promise<BuilderOpenSuspension | null>;
+}
+
 // ── Local gateway status ─────────────────────────────────────────────────────
 
 export type LocalGatewayStatus =
@@ -964,6 +1016,8 @@ export interface InstanceAiContext {
 	agentBuilderService?: InstanceAiAgentBuilderService;
 	/** The target n8n Agent being built/edited. Required for agent-builder tools. */
 	agentBuilderTarget?: { agentId: string; projectId: string };
+	/** Narrow builder delegate for the build-agent sub-agent tool (agents module active only). */
+	builderDelegate?: InstanceAiBuilderDelegate;
 	webResearchService?: InstanceAiWebResearchService;
 	/** Curated workflow-template provider — materializes `knowledge-base/templates/` in the sandbox. */
 	templatesService?: BuilderTemplatesService;
