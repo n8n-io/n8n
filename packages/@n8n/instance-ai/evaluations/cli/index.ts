@@ -1249,6 +1249,9 @@ async function writePerRunPassMetrics(config: {
 		if (!exampleId) continue;
 		const output = parseTargetOutput(run.outputs);
 		if (!output) continue;
+		// Incomplete rows (judge/verifier dead) carry no verdict — keep them out of
+		// the pass_at_k/pass_hat_k denominator, mirroring feedbackExtractor.
+		if (output.incomplete) continue;
 		const entry = byExample.get(exampleId) ?? { runIds: [], passed: 0, total: 0 };
 		entry.runIds.push(run.id);
 		entry.total++;
