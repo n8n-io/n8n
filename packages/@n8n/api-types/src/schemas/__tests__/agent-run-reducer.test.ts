@@ -678,6 +678,19 @@ describe('agent-run-reducer', () => {
 
 			expect(state.agentsById['root'].textContent).toContain('root fallback');
 		});
+
+		it('does not append raw error text for a structured (coded) error', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, {
+				type: 'error',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { content: 'Have reached end of quota', code: 'quota_exhausted' },
+			});
+
+			expect(state.agentsById['root'].textContent).toBe('');
+			expect(state.agentsById['root'].timeline).toHaveLength(0);
+		});
 	});
 
 	describe('deep nesting', () => {

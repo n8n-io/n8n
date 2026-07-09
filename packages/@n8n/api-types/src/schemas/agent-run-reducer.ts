@@ -381,6 +381,9 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 		}
 
 		case 'error': {
+			// Structured (coded) errors are rendered by a dedicated UI state from the
+			// error payload — don't also inline the raw text into the transcript.
+			if (event.payload.code) break;
 			const errorText = '\n\n*Error: ' + event.payload.content + '*';
 			const agent = ensureAgent(state, event.agentId) ?? state.agentsById[state.rootAgentId];
 			if (agent) {
