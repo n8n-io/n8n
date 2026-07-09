@@ -498,7 +498,7 @@ export function isDataTableModified(
  * Identity of a data table column across instances for identity adoption:
  * columns matching by `(name, type)` adopt the incoming column id.
  */
-export function dataTableColumnKey(
+export function getDataTableColumnKey(
 	column: Pick<ExportableDataTableColumn, 'name' | 'type'>,
 ): string {
 	return `${column.name}:${column.type}`;

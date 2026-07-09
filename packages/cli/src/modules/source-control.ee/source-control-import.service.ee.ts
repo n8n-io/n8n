@@ -65,8 +65,8 @@ import {
 } from './constants';
 import { SourceControlContextFactory } from './source-control-context.factory';
 import {
-	dataTableColumnKey,
 	getCredentialExportPath,
+	getDataTableColumnKey,
 	getDataTableExportPath,
 	getProjectExportPath,
 	getWorkflowExportPath,
@@ -1271,7 +1271,7 @@ export class SourceControlImportService {
 		};
 
 		// Phase 1: Parse all data table files and resolve target projects upfront
-		// so we can validate name collisions before any imports happen.
+		// so name collisions can be resolved before any imports happen.
 		const parsedTables: Array<{
 			dataTable: ExportableDataTable;
 			candidate: SourceControlledFile;
@@ -1525,12 +1525,12 @@ export class SourceControlImportService {
 			await trx.delete(DataTable, { id: localTable.id });
 			await trx.insert(DataTable, { ...localTableProps, id: incoming.id });
 			const incomingIdByColumnKey = new Map(
-				incoming.columns.map((c) => [dataTableColumnKey(c), c.id]),
+				incoming.columns.map((c) => [getDataTableColumnKey(c), c.id]),
 			);
 			for (const column of localColumns) {
 				await trx.insert(DataTableColumn, {
 					...column,
-					id: incomingIdByColumnKey.get(dataTableColumnKey(column)) ?? column.id,
+					id: incomingIdByColumnKey.get(getDataTableColumnKey(column)) ?? column.id,
 					dataTableId: incoming.id,
 				});
 			}

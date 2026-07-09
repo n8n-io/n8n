@@ -763,11 +763,8 @@ export class SourceControlStatusService {
 				const nameCollision = nameCollisionByLocalId.get(local.id);
 				if (nameCollision) {
 					const isPull = options.direction === 'pull';
-					// A same-named table in the same project is the same logical table:
-					// a pull adopts the incoming id and aligns the schema through the
-					// regular import path. The entry carries the incoming id and file —
-					// that is what the import consumes — and is flagged like any other
-					// schema modification.
+					// On pull the entry carries the incoming id and file — that is what
+					// the import consumes — and is flagged like any other schema change.
 					const modified = isPull
 						? nameCollision
 						: options.preferLocalVersion
