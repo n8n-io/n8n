@@ -619,6 +619,17 @@ const tags = computed(
 				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
 					{{ locale.baseText('workflows.item.readonly') }}
 				</N8nBadge>
+				<span
+					v-if="hasDynamicCredentials"
+					class="ml-3xs"
+					data-test-id="workflow-card-private-credential"
+				>
+					<PrivateCredentialIcon
+						:tooltip-title="locale.baseText('workflows.dynamic.tooltipTitle')"
+						:tooltip-text="locale.baseText('workflows.dynamic.tooltip')"
+						size="small"
+					/>
+				</span>
 			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
@@ -639,18 +650,6 @@ const tags = computed(
 					<N8nIcon icon="mcp" size="medium" />
 				</N8nTooltip>
 			</span>
-			<template v-if="hasDynamicCredentials">
-				<span>|</span>
-				<span
-					:class="$style.privateCredentialIndicator"
-					data-test-id="workflow-card-private-credential"
-				>
-					<PrivateCredentialIcon
-						:tooltip-title="locale.baseText('workflows.dynamic.tooltipTitle')"
-						:tooltip-text="locale.baseText('workflows.dynamic.tooltip')"
-					/>
-				</span>
-			</template>
 			<span
 				v-if="props.areTagsEnabled && data.tags && data.tags.length > 0"
 				v-show="data"
@@ -787,11 +786,6 @@ const tags = computed(
 }
 
 .legacyMcpIndicator {
-	display: inline-flex;
-	align-items: center;
-}
-
-.privateCredentialIndicator {
 	display: inline-flex;
 	align-items: center;
 }

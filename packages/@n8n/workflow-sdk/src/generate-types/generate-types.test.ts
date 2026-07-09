@@ -475,6 +475,21 @@ describe('generate-types', () => {
 			);
 		});
 
+		it('should map agentSelector type to the resource-locator shape (not unknown), like workflowSelector', () => {
+			const prop = {
+				name: 'agentId',
+				displayName: 'Agent',
+				type: 'agentSelector',
+				default: { mode: 'list', value: '' },
+			} as unknown as NodeProperty;
+			const result = generateTypes.mapPropertyType(prop);
+			expect(result).not.toBe('unknown');
+			expect(result).toContain('__rl: true');
+			expect(result).toContain("mode: 'list' | 'id'");
+			expect(result).toContain('cachedResultName?: string');
+			expect(result).toContain('Expression<string>');
+		});
+
 		it('should map filter type', () => {
 			const prop: NodeProperty = {
 				name: 'filters',
