@@ -491,9 +491,8 @@ async function main(): Promise<void> {
 			'\n' + formatComparisonTerminal(evaluation, outcome, { commitSha, slugByTestCase, gate }),
 		);
 
-		// A noisy baseline capture must fail loudly: findLatestBaseline picks the
-		// newest experiment by prefix, so a silently-poisoned capture (e.g. a dead
-		// lane converting whole cases into 0-score rows) would become the
+		// findLatestBaseline trusts the newest experiment by prefix — a noisy
+		// baseline capture must fail loudly instead of silently becoming the
 		// comparison target for every subsequent run.
 		if (args.experimentName?.startsWith('instance-ai-baseline')) {
 			const { frameworkTrials, totalTrials, fullyNoisyCases } = assessFrameworkNoise(
@@ -692,10 +691,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		}
 	}
 
-	// Distinguish agent build failures from transport ones. Error-message
-	// matching alone misses the nastiest case — a build that sat out its
-	// timeout against a dead lane reports "Run timed out", not "fetch failed" —
-	// so any failed build also health-probes its lane.
+	// A build that sat out its timeout against a dead lane reports "Run timed
+	// out", not "fetch failed" — so any failed build also health-probes its lane.
 	async function isTransportFailure(build: BuildResult, lane: LaneState): Promise<boolean> {
 		if (build.success) return false;
 		if (build.error !== undefined && isTransientNetworkError(build.error)) return true;
@@ -703,10 +700,9 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	}
 
 	// Work-stealing: each build acquires a lane that isn't already running its
-	// fileSlug, runs there (capped per-lane), then releases. Scenarios re-use the
-	// lane that built their workflow. Health options keep a dead lane's instant
-	// failures from turning it into the permanently-least-loaded "black hole":
-	// it gets quarantined and re-admitted only once /healthz responds again.
+	// fileSlug, runs there (capped per-lane), then releases. Scenarios re-use
+	// the lane that built their workflow. Health options quarantine a dead lane
+	// instead of letting its instant failures attract the whole queue.
 	const allocator = new LaneAllocator(laneStates, MAX_CONCURRENT_BUILDS, {
 		probe: laneHealthy,
 		onQuarantine: (lane) =>
@@ -818,9 +814,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			// the build cache dedupes scenarios within one file.
 			const entry = testCaseByFileSlug.get(fileSlug);
 			if (!entry) throw new Error(`No conversation found for fileSlug=${fileSlug}`);
-			// A transient build failure (dropped socket, lane process dying) is a
-			// transport problem, not an agent verdict — retry on a different lane
-			// instead of recording a 0-score row for every scenario of the case.
+			// Transport failures are not agent verdicts — retry on a different lane
+			// instead of recording 0-score rows for every scenario of the case.
 			let lane = await allocator.acquire(fileSlug);
 			let build: BuildResult;
 			let buildDurationMs: number;
@@ -857,16 +852,14 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			logger.info(
 				`[lane ${String(lane.laneNum)}] built ${fileSlug} (iteration ${String(iteration)}) thread=${build.threadId ?? 'none'} success=${String(build.success)}`,
 			);
-			// Captured SSE events are only consumed by the pairwise flow; dropping
-			// them keeps the largest chunk of each BuildResult out of the run-long cache.
+			// Only the pairwise flow reads captured events — drop the largest chunk
+			// of each BuildResult from the run-long cache.
 			build.events = undefined;
 			return { build, lane, buildDurationMs };
 		})();
 		buildCache.set(key, promise);
-		// A transport-failed build must not poison every remaining scenario of
-		// the case — evict it so a later scenario triggers a fresh build. Agent
-		// build failures stay cached: they are the verdict, and rebuilding would
-		// multiply cost without changing it.
+		// Evict transport-failed builds so a later scenario rebuilds. Agent build
+		// failures stay cached — they are the verdict; rebuilding just multiplies cost.
 		void promise.then(
 			({ build }) => {
 				if (build.transportFailure) buildCache.delete(key);
@@ -944,9 +937,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				passed: false,
 				score: 0,
 				reasoning: `Build failed: ${build.error ?? 'unknown'}`,
-				// Seeding failures and transport-level failures (retries exhausted
-				// against a dead/restarting lane) are harness problems, not agent
-				// build failures — keep them out of the agent's build_failure bucket.
+				// Seeding and transport failures are harness problems, not agent build
+				// failures — keep them out of the agent's build_failure bucket.
 				failureCategory:
 					build.seedingFailed || build.transportFailure ? 'framework_issue' : 'build_failure',
 				execErrors: build.error ? [build.error] : [],

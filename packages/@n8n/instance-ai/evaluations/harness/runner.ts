@@ -453,9 +453,8 @@ export interface BuildResult {
 	 *  gone, reconstruction drift, restore failed) — a harness/framework problem,
 	 *  not an agent build failure. Routed to `framework_issue`. */
 	seedingFailed?: boolean;
-	/** True when the failure was transport-level (network error, or the lane's
-	 *  backend was unreachable right after the failure — e.g. a build that sat
-	 *  out its timeout against a dead lane). Routed to `framework_issue`. */
+	/** Transport-level failure (network error, or the lane unreachable right
+	 *  after failing — e.g. timed out against a dead lane). Routed to `framework_issue`. */
 	transportFailure?: boolean;
 }
 
@@ -873,8 +872,8 @@ export async function cleanupBuild(
 		}
 	}
 
-	// Also clears backend-side thread state (run-state registries, memory) that
-	// otherwise accumulates for the container's lifetime — one entry per build.
+	// Clears backend thread state (run-state registries, memory) that otherwise
+	// grows one entry per build for the container's lifetime.
 	if (build.threadId) {
 		try {
 			await client.deleteThread(build.threadId);

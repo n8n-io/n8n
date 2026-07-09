@@ -2,13 +2,10 @@
 // runs the same key twice concurrently — pairing those rules eliminates the
 // same-key concentration that breaks the agent under load.
 //
-// Lanes additionally report build transport outcomes. A dead lane fails builds
-// in milliseconds, so under the least-loaded policy it is permanently the
-// emptiest lane and would swallow the entire remaining queue ("black hole").
-// Consecutive transient failures therefore quarantine a lane, and a health
-// probe re-admits it once its backend responds again (pairing with the
-// containers' restart policy). If every lane stays quarantined past a grace
-// period, pending and future acquires abort instead of hanging the run.
+// A dead lane fails builds in milliseconds, making it permanently the
+// least-loaded lane — it would swallow the whole remaining queue. Consecutive
+// transport failures therefore quarantine a lane; a health probe re-admits it
+// once its backend responds; all-lanes-quarantined aborts after a grace period.
 
 export interface AllocatableLane {
 	activeBuilds: number;
@@ -78,11 +75,8 @@ export class LaneAllocator<L extends AllocatableLane> {
 		this.wakeNext(lane);
 	}
 
-	/**
-	 * Record whether a build's transport to the lane worked. A completed build —
-	 * even one the agent failed — is 'ok'; only network-level failures count
-	 * toward quarantine.
-	 */
+	/** A completed build — even one the agent failed — is 'ok'; only
+	 *  network-level failures count toward quarantine. */
 	reportBuildOutcome(lane: L, outcome: 'ok' | 'transient-failure'): void {
 		if (outcome === 'ok') {
 			this.consecutiveFailures.delete(lane);
@@ -98,11 +92,8 @@ export class LaneAllocator<L extends AllocatableLane> {
 		return this.quarantined.has(lane);
 	}
 
-	/**
-	 * Whether the lane entered quarantine at or after `sinceMs`. Lets callers
-	 * attribute a slow failure (e.g. a build timing out) to a lane death that
-	 * happened mid-flight, even if the lane has since restarted and probes healthy.
-	 */
+	/** Attributes a slow failure (e.g. a build timeout) to a lane death that
+	 *  happened mid-flight, even if the lane has since restarted. */
 	wasQuarantinedSince(lane: L, sinceMs: number): boolean {
 		const at = this.lastQuarantinedAt.get(lane);
 		return at !== undefined && at >= sinceMs;
