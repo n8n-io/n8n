@@ -1172,6 +1172,39 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(fetchConfigMock).toHaveBeenLastCalledWith('p2', 'a2');
 	});
 
+	it('surfaces errors from pending artifact refresh replay', async () => {
+		let resolveAgent!: (agent: ReturnType<typeof makeAgentResponse>) => void;
+		getAgentMock.mockReturnValueOnce(new Promise((resolve) => (resolveAgent = resolve)));
+		fetchConfigMock.mockImplementationOnce(async () => {
+			mockConfig.value = withDefaultLlm(intendedConfig);
+		});
+		const replayError = new Error('refresh failed');
+		fetchConfigMock.mockRejectedValueOnce(replayError);
+
+		const wrapper = await renderView({
+			waitForAsyncSetup: false,
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactRefreshKey: 0,
+			},
+		});
+		await vi.waitFor(() => {
+			expect(getAgentMock).toHaveBeenCalledTimes(1);
+			expect(fetchConfigMock).toHaveBeenCalledTimes(1);
+		});
+
+		await wrapper.setProps({ artifactRefreshKey: 1 });
+		await nextTick();
+
+		resolveAgent(makeAgentResponse());
+		await flushPromises();
+		await flushPromises();
+
+		expect(showErrorMock).toHaveBeenCalledWith(replayError, 'agents.builder.loadError');
+	});
+
 	it('adds JSON import and export actions to the header menu', async () => {
 		const wrapper = await renderView();
 		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });

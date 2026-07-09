@@ -822,6 +822,10 @@ async function refreshArtifactShell() {
 	await onConfigUpdated();
 }
 
+function handleArtifactRefreshError(error: unknown) {
+	showError(error, locale.baseText('agents.builder.loadError'));
+}
+
 async function replayPendingArtifactRefresh() {
 	if (!isArtifactMode.value || pendingArtifactRefreshKey.value === undefined) return;
 	pendingArtifactRefreshKey.value = undefined;
@@ -837,7 +841,11 @@ watch(
 			return;
 		}
 		pendingArtifactRefreshKey.value = undefined;
-		await refreshArtifactShell();
+		try {
+			await refreshArtifactShell();
+		} catch (error: unknown) {
+			handleArtifactRefreshError(error);
+		}
 	},
 );
 
@@ -1062,7 +1070,7 @@ async function initialize() {
 		showError(error, locale.baseText('agents.builder.loadError'));
 	} finally {
 		initialized.value = true;
-		void replayPendingArtifactRefresh();
+		void replayPendingArtifactRefresh().catch(handleArtifactRefreshError);
 		warmAgentKnowledgeSandboxForPage();
 	}
 }
