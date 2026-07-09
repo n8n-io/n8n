@@ -748,7 +748,8 @@ function openExistingSubAgentModal(subAgent: {
 }
 
 .rowLabel {
-	flex: 0 0 var(--width--label--sm);
+	--n8n--row-label-width: 7%;
+	flex: 0 0 var(--n8n--row-label-width);
 	line-height: var(--line-height--sm);
 	margin-top: var(--spacing--3xs);
 }
