@@ -1,5 +1,5 @@
 {
-	"description": "Intent-only request: recognize a meta/capabilities question as out-of-scope rather than a build intent.",
+	"description": "Gold: out-of-scope — not every message is a build request; users ask questions and investigate before building. The behavioral proof of an out-of-scope classification is that no build path is triggered at all: the agent answers directly, creates nothing, and loads no build skills. Whether intent-recognition itself loads is left unasserted.",
 	"conversation": [
 		{
 			"role": "user",
@@ -7,13 +7,10 @@
 		}
 	],
 	"complexity": "simple",
-	"tags": ["intent-resolution", "meta"],
+	"tags": ["intent-resolution", "meta", "over-trigger-guard"],
 	"datasets": ["agents"],
-	"intentExpectation": {
-		"accepts": [{ "anchor": "out-of-scope", "embedsOther": "n/a" }]
-	},
 	"processExpectations": [
-		"The agent explains that the request is asking about the system's capabilities rather than describing a specific automation to build.",
-		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+		"The agent answers the question directly by describing the kinds of automations it can build, and does not create a workflow or an n8n Agent (via the agent-builder path) or start any build activity.",
+		"The agent does not load the workflow-builder or agent-builder skills and does not call any build tools in response to the question."
 	]
 }

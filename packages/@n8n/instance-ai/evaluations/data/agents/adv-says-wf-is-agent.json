@@ -1,23 +1,25 @@
 {
-	"description": "Adversarial: the prompt says 'workflow' but describes chat-based Q&A; the agent must classify by behavior, not vocabulary.",
+	"description": "False friend: says 'workflow', behavior is chat-based Q&A. Gold: agent-anchored, either embeds value. NOTE: a chat-trigger workflow with an AI Agent node is n8n's long-established pattern for this request — if real builds consistently go that way while the taxonomy classifies it agent-anchored, that divergence is a finding about the taxonomy vs the product, not noise.",
 	"conversation": [
 		{
 			"role": "user",
-			"text": "Set up a simple workflow that chats with our customers and answers their product questions."
+			"text": "Set up a simple workflow that chats with our customers and answers their product questions. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
 		}
 	],
 	"complexity": "medium",
 	"tags": ["intent-resolution", "false-friend", "surface-vocab"],
 	"datasets": ["agents"],
-	"intentExpectation": {
-		"accepts": [
-			{ "anchor": "agent", "embedsOther": false },
-			{ "anchor": "agent", "embedsOther": true }
-		]
-	},
 	"processExpectations": [
-		"The agent explains that despite the request using the word 'workflow', the multi-turn chat and open-ended product question answering is agent-shaped.",
-		"The agent does not classify the request as workflow-anchored merely because the prompt uses the word 'workflow'.",
-		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
-	]
+		"Despite the request saying 'workflow', the agent proposes creating an n8n Agent — a conversational assistant handling open-ended customer product questions — rather than a fixed workflow pipeline.",
+		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to propose."
+	],
+	"messageBudget": 4
 }

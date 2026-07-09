@@ -1,20 +1,26 @@
 {
-	"description": "Intent-only request: classify fixed lookups plus a single draft-reply step as workflow-anchored with human-in-the-loop review.",
+	"description": "Gold: {anchor: wf, embedsOther: false} — fixed lookups plus one bounded draft step with human review. Second probe of the node-choice bias — 'personalized reply' tempts an AI Agent node where a single bounded LLM step suffices.",
 	"conversation": [
 		{
 			"role": "user",
-			"text": "When a support email comes in, look up the customer's account and last 3 orders, then draft a personalized reply for the agent to review."
+			"text": "When a support email comes in, look up the customer's account and last 3 orders, then draft a personalized reply for the agent to review. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
 		}
 	],
 	"complexity": "complex",
 	"tags": ["intent-resolution", "event-triggered", "fixed-tools", "human-in-loop"],
 	"datasets": ["agents"],
-	"intentExpectation": {
-		"accepts": [{ "anchor": "wf", "embedsOther": false }]
-	},
 	"processExpectations": [
-		"The agent explains that the lookups are fixed, predetermined tool calls and the reply drafting is a single bounded LLM step, with no runtime tool selection, and that a human reviewer closes the loop.",
-		"The agent does not classify the request as agent-anchored despite the personalization step, since there is no runtime decision-making about which tools to use next.",
-		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
-	]
+		"The agent proposes a workflow: fixed account and recent-orders lookups plus a single bounded reply-drafting step with human review — and does not propose creating an n8n Agent.",
+		"In the proposed design the drafting is one bounded LLM step, not an AI Agent node choosing tools at runtime.",
+		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to propose."
+	],
+	"messageBudget": 4
 }

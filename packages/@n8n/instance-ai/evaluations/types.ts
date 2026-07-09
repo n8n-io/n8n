@@ -174,16 +174,6 @@ export interface ConversationTurn {
 	text: string;
 }
 
-export interface IntentTuple {
-	anchor: 'wf' | 'agent' | 'clarify' | 'out-of-scope';
-	embedsOther: boolean | 'n/a';
-}
-
-export interface IntentExpectation {
-	accepts?: IntentTuple[];
-	parts?: Array<{ label: string; accepts: IntentTuple[] }>;
-}
-
 export interface TestCaseCredential {
 	/** n8n credential type name, e.g. `slackApi`. Must have a template in credentials/seeder.ts. */
 	type: string;
@@ -215,9 +205,6 @@ export interface WorkflowTestCase {
 	/** Optional NL assertions about the resulting WORKFLOW (outcome). LLM-judged from the workflow,
 	 *  so they also run in prebuilt/MCP runs. Counted toward the pass rate alongside scenarios. */
 	outcomeExpectations?: string[];
-	/** Structured intent-classification expectation, graded deterministically by exact match
-	 *  against the agent's fenced ```intent block (see data/agents/index.ts preamble). */
-	intentExpectation?: IntentExpectation;
 	/**
 	 * Credentials visible to this case's build. Created for real before the build
 	 * and pinned as the thread's entire credential view — cases without this

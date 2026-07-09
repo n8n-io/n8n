@@ -54,17 +54,8 @@ describe('EvalTestCaseSchema', () => {
 
 	it('rejects 0 execution scenarios AND 0 expectations (a case must assert something)', () => {
 		expect(() => EvalTestCaseSchema.parse({ ...validFixture(), executionScenarios: [] })).toThrow(
-			/at least one executionScenario, an intent expectation, or a process\/outcome expectation/,
+			/at least one executionScenario, or a process\/outcome expectation/,
 		);
-	});
-
-	it('accepts an intentExpectation with no execution scenarios or process/outcome expectations', () => {
-		const { executionScenarios: _omit, ...rest } = validFixture();
-		const parsed = EvalTestCaseSchema.parse({
-			...rest,
-			intentExpectation: { accepts: [{ anchor: 'wf', embedsOther: false }] },
-		});
-		expect(parsed.intentExpectation).toEqual({ accepts: [{ anchor: 'wf', embedsOther: false }] });
 	});
 
 	it('accepts an empty executionScenarios array when an outcome expectation is present', () => {

@@ -5,7 +5,7 @@ Tests whether workflows built by Instance AI actually work by executing them wit
 Five harnesses live here:
 
 - **`eval:instance-ai`** — end-to-end build + mocked execution + LLM verification (drives a running n8n instance)
-- **`eval:agents`** — user-intent / agent-building rubric loaded from the `agents` dataset tier in `data/agents/`
+- **`eval:agents`** — intent-resolution cases (plain build requests graded on enacted routing behavior) from `data/agents/`
 - **`eval:subagent`** — legacy command name for the workflow-build compatibility corpus; it drives the live orchestrator/skill build path, scored by binary checks
 - **`eval:discovery`** — orchestrator in-process, scored against required or forbidden tool/dispatch events (no n8n server)
 - **`eval:pairwise`** — live orchestrator workflow builds, scored by an LLM judge panel against do/don't lists. Intended for head-to-head comparison with `ai-workflow-builder.ee` on the same dataset
@@ -169,7 +169,7 @@ Each test case declares a `datasets` array in its JSON (default `["full"]` if om
 |------|----------------|
 | `full` | Default — every case runs in this grouping. Use for nightly / full-suite runs. |
 | `pr` | Curated thin set for PR-time runs. ~6 cases, chosen for capability diversity and high baseline reliability. |
-| `agents` | User-intent / agent-building rubric cases loaded from `data/agents/`. |
+| `agents` | Intent-resolution cases graded on enacted routing behavior, loaded from `data/agents/`. |
 
 A case can belong to multiple groupings — e.g. PR-tier cases declare `"datasets": ["pr", "full"]` so they run in both contexts. Agent intent cases declare `"datasets": ["agents"]` and can be run with `pnpm eval:agents` or `pnpm eval:instance-ai --tier agents`. On sync, each value is propagated to the LangSmith example as a split alongside the file slug, so `--tier <name>` translates to a server-side splits filter.
 
@@ -261,10 +261,6 @@ Operational details:
 - Runs on both eval paths (direct loop + LangSmith). `processExpectations` need a transcript (judged even when the build fails, skipped only when no transcript was captured); `outcomeExpectations` are judged from the workflow, including in prebuilt/MCP runs.
 - The judge retries on failure, has a per-attempt timeout, and falls back to an all-fail verdict — a judge failure can't break a run.
 - Absent both fields, it's a complete no-op.
-
-**`intentExpectation`** declares the accepted `{anchor, embedsOther}` classification(s) for an intent-resolution case (`data/agents/`), instead of an NL `processExpectations` entry. It's graded **deterministically** by exact match against the agent's fenced ```` ```intent ```` JSON block (see the `INTENT_CLASSIFICATION_PREAMBLE` in `data/agents/index.ts`), not by the LLM judge — `build-expectations/intent.ts` parses the block and emits `BuildExpectationResult[]` directly. `accepts` with more than one tuple expresses legitimate ambiguity tolerance (either is a pass); `parts` (one `{label, accepts}` per part, matched by order) handles compound requests. Results are reported as build-expectation units alongside `processExpectations`/`outcomeExpectations`.
-
-After an agents-tier run, `pnpm eval:intent-slices [eval-results.json]` reads the resulting `eval-results.json` offline and prints per-tag and per-difficulty accuracy for these intent-classification verdicts, against monitoring bars (overall ≥75%, `false-friend` tag ≥80%, `easy` difficulty ≥90%). Informational only — it never fails the run, it just flags slices worth investigating.
 
 ## Environment variables
 

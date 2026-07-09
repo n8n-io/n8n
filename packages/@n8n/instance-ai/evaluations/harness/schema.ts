@@ -20,12 +20,6 @@ export const ConversationTurnSchema = z.object({
 	text: conversationTurnTextSchema,
 });
 
-const intentTupleSchema = z.object({
-	anchor: z.enum(['wf', 'agent', 'clarify', 'out-of-scope']),
-	/** 'n/a' = not applicable (clarify/out-of-scope) or "either value accepted". */
-	embedsOther: z.union([z.boolean(), z.literal('n/a')]),
-});
-
 const ExecutionScenarioSchema = z.object({
 	name: z.string().min(1),
 	description: z.string(),
@@ -52,22 +46,6 @@ const evalTestCaseObjectSchema = z
 		/** Optional NL assertions about the resulting WORKFLOW (outcome). LLM-judged from the workflow,
 		 *  so they also run in prebuilt/MCP runs. Counted as units in the pass rate. */
 		outcomeExpectations: z.array(z.string().min(1)).optional(),
-		/** Structured intent-classification expectation, graded deterministically by exact match
-		 *  against the agent's fenced ```intent block (see data/agents/index.ts preamble). */
-		intentExpectation: z
-			.object({
-				/** Accepted {anchor, embedsOther} tuples — >1 entry = legitimate ambiguity tolerance. */
-				accepts: z.array(intentTupleSchema).min(1).optional(),
-				/** Compound intents: one accepts-list per part, matched by order against the block's parts. */
-				parts: z
-					.array(z.object({ label: z.string().min(1), accepts: z.array(intentTupleSchema).min(1) }))
-					.min(2)
-					.optional(),
-			})
-			.refine((e) => (e.accepts !== undefined) !== (e.parts !== undefined), {
-				message: 'intentExpectation needs exactly one of accepts or parts',
-			})
-			.optional(),
 		/**
 		 * Removed in favour of the process/outcome split. Declared as a forbidden key (rather
 		 * than dropped from the shape) so a legacy fixture fails loudly with a migration hint,
@@ -156,11 +134,10 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 		(c) =>
 			(c.executionScenarios?.length ?? 0) > 0 ||
 			(c.processExpectations?.length ?? 0) > 0 ||
-			(c.outcomeExpectations?.length ?? 0) > 0 ||
-			c.intentExpectation !== undefined,
+			(c.outcomeExpectations?.length ?? 0) > 0,
 		{
 			message:
-				'a case needs at least one executionScenario, an intent expectation, or a process/outcome expectation to grade',
+				'a case needs at least one executionScenario, or a process/outcome expectation to grade',
 		},
 	);
 

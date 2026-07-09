@@ -1,19 +1,26 @@
 {
-	"description": "Intent-only request: classify a scheduled weather notification as workflow-anchored with no embedded agent.",
+	"description": "Gold: {anchor: wf, embedsOther: false} expressed as observable routing behavior — a real build prompt, no classification preamble.",
 	"conversation": [
 		{
 			"role": "user",
-			"text": "Every weekday at 9am, Slack me the Berlin weather forecast."
+			"text": "Every weekday at 9am, Slack me the Berlin weather forecast. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
 		}
 	],
 	"complexity": "simple",
 	"tags": ["intent-resolution", "scheduled", "notification"],
 	"datasets": ["agents"],
-	"intentExpectation": {
-		"accepts": [{ "anchor": "wf", "embedsOther": false }]
-	},
 	"processExpectations": [
-		"The agent explains that the request has a fixed schedule trigger and a fixed notification action, with no runtime reasoning or decision-making involved.",
-		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
-	]
+		"The agent proposes building this as a single workflow — a fixed weekday-morning schedule trigger that fetches the Berlin weather and posts it to Slack — and does not propose creating an n8n Agent.",
+		"The proposed design has no embedded open-ended agent step; fetching and posting the weather needs fixed steps only.",
+		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to propose."
+	],
+	"messageBudget": 4
 }
