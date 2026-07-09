@@ -1,10 +1,10 @@
 <script setup lang="ts">
 /**
  * Agent Builder promo banner at the top of the AI Agent node's NDV Parameters
- * tab. The "Agent Builder" link is the NDV's builder entry point: with an
- * agent referenced it deep-links to it; with none it creates a draft,
- * references it, and opens the builder for it. Both paths set the "Back to
- * workflow" return context.
+ * tab, shown only while no agent is referenced: its link creates a draft,
+ * references it, and opens the builder for it (setting the "Back to workflow"
+ * return context). Once an agent is referenced the banner disappears — the
+ * Agent section header's "Edit in Agent Builder" link takes over navigation.
  */
 import { computed, inject } from 'vue';
 import type { INodeParameterResourceLocator } from 'n8n-workflow';
@@ -69,7 +69,7 @@ async function onLinkClick() {
 </script>
 
 <template>
-	<div :class="$style.banner" data-test-id="agent-ndv-builder-banner">
+	<div v-if="!agentId" :class="$style.banner" data-test-id="agent-ndv-builder-banner">
 		<N8nIcon icon="sparkles" size="medium" :class="$style.icon" />
 		<p :class="$style.text">
 			{{ i18n.baseText('agentNode.ndv.banner.prefix') }}

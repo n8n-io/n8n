@@ -616,6 +616,17 @@ describe('AgentCapabilitiesSection', () => {
 		expect(wrapper.emitted('tasks-changed')).toEqual([[]]);
 	});
 
+	it('hides the add-tool and add-skill buttons when disabled (read-only host)', async () => {
+		const wrapper = mountSection([]);
+		expect(wrapper.find('[data-testid="agent-capabilities-add-tool"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-capabilities-add-skill"]').exists()).toBe(true);
+
+		await wrapper.setProps({ disabled: true });
+
+		expect(wrapper.find('[data-testid="agent-capabilities-add-tool"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-capabilities-add-skill"]').exists()).toBe(false);
+	});
+
 	describe('sections allowlist', () => {
 		it('renders every section by default', () => {
 			const wrapper = mountSection([]);

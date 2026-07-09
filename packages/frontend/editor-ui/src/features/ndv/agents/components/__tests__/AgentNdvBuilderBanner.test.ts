@@ -69,14 +69,9 @@ describe('AgentNdvBuilderBanner', () => {
 		expect(wrapper.text()).toContain('agentNode.ndv.banner.link');
 	});
 
-	it('opens the referenced agent in the builder via the orchestrator', async () => {
-		const stub = createNdvStub({ agentId: 'agent-1' });
-		const wrapper = mountBanner(stub);
-
-		await wrapper.find('[data-test-id="agent-ndv-banner-open-builder"]').trigger('click');
-
-		expect(stub.openBuilder).toHaveBeenCalled();
-		expect(createAndOpenBuilder).not.toHaveBeenCalled();
+	it('hides the banner once an agent is referenced (the Agent section header link takes over)', () => {
+		const wrapper = mountBanner(createNdvStub({ agentId: 'agent-1' }));
+		expect(wrapper.find('[data-test-id="agent-ndv-builder-banner"]').exists()).toBe(false);
 	});
 
 	it('creates a draft and opens the builder when no agent is referenced', async () => {
@@ -121,22 +116,9 @@ describe('AgentNdvBuilderBanner', () => {
 		expect(wrapper.find('[data-test-id="agent-ndv-banner-open-builder"]').exists()).toBe(false);
 	});
 
-	it('keeps the link for an already-referenced agent in read-only mode', () => {
-		const wrapper = mountBanner(createNdvStub({ agentId: 'agent-1' }), { isReadOnly: true });
-		expect(wrapper.find('[data-test-id="agent-ndv-banner-open-builder"]').exists()).toBe(true);
-	});
-
 	it('disables the link while a create is in flight', () => {
 		isCreatingHolder.value = true;
 		const wrapper = mountBanner(createNdvStub());
-		expect(wrapper.find('[data-test-id="agent-ndv-banner-open-builder"]').exists()).toBe(false);
-	});
-
-	it('keeps the link disabled mid-create even once the reference has landed', () => {
-		// setReference lands before createAndOpenBuilder finishes saving and
-		// navigating — a re-enabled link would open a second navigation path.
-		isCreatingHolder.value = true;
-		const wrapper = mountBanner(createNdvStub({ agentId: 'agent-1' }));
 		expect(wrapper.find('[data-test-id="agent-ndv-banner-open-builder"]').exists()).toBe(false);
 	});
 });

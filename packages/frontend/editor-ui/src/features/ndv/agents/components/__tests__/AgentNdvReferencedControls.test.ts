@@ -203,6 +203,22 @@ describe('AgentNdvReferencedControls', () => {
 		expect(wrapper.find('[data-testid="capabilities-stub"]').exists()).toBe(false);
 	});
 
+	it('opens the Agent Builder from the header link', async () => {
+		const stub = createNdvStub();
+		const wrapper = mountControls(stub);
+
+		await wrapper.find('[data-test-id="agent-ndv-edit-in-builder"]').trigger('click');
+
+		expect(stub.openBuilder).toHaveBeenCalled();
+	});
+
+	it('hides the builder link in the terminal unavailable state', () => {
+		const stub = createNdvStub({ isUnavailable: true });
+		const wrapper = mountControls(stub);
+
+		expect(wrapper.find('[data-test-id="agent-ndv-edit-in-builder"]').exists()).toBe(false);
+	});
+
 	it('surfaces the save status on the section header row, mirroring the builder header', () => {
 		const stub = createNdvStub({ saveStatus: 'saving' });
 		const wrapper = mountControls(stub);

@@ -13,7 +13,7 @@
  * the other NDV agent surfaces.
  */
 import { computed, inject } from 'vue';
-import { N8nLoading, N8nSectionHeader, N8nText } from '@n8n/design-system';
+import { N8nLink, N8nLoading, N8nSectionHeader, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import AgentInfoPanel from '@/features/agents/components/AgentInfoPanel.vue';
@@ -55,6 +55,10 @@ const saveStatusText = computed(() => {
 });
 
 const actions = computed(() => ndv?.actions);
+
+async function onEditInBuilder() {
+	await ndv?.openBuilder();
+}
 </script>
 
 <template>
@@ -75,6 +79,14 @@ const actions = computed(() => ndv?.actions);
 				>
 					{{ saveStatusText }}
 				</N8nText>
+				<N8nLink
+					v-if="!isUnavailable"
+					size="small"
+					data-test-id="agent-ndv-edit-in-builder"
+					@click="onEditInBuilder"
+				>
+					{{ i18n.baseText('agentNode.ndv.referenced.editInBuilder') }}
+				</N8nLink>
 			</template>
 		</N8nSectionHeader>
 
@@ -98,9 +110,9 @@ const actions = computed(() => ndv?.actions);
 					:config="localConfig"
 					:project-id="projectId"
 					:disabled="!canUpdate"
-					embedded
+					:show-instructions-toolbar="false"
 					instructions-max-height="240px"
-					:show-instructions-toolbar="true"
+					embedded
 					@update:config="ndv?.scheduleConfigUpdate"
 				/>
 			</div>

@@ -556,6 +556,7 @@ function handleChannelDisconnected(channelType: string) {
 					</template>
 
 					<N8nTooltip
+						v-if="!props.disabled"
 						:disabled="!hasTools"
 						:content="i18n.baseText('agents.builder.tools.add')"
 						placement="top"
@@ -564,7 +565,6 @@ function handleChannelDisconnected(channelType: string) {
 							variant="ghost"
 							size="medium"
 							:icon-only="hasTools"
-							:disabled="props.disabled"
 							data-testid="agent-capabilities-add-tool"
 							@click="emit('add-tool')"
 						>
@@ -595,6 +595,7 @@ function handleChannelDisconnected(channelType: string) {
 					</AgentChipButton>
 
 					<N8nTooltip
+						v-if="!props.disabled"
 						:disabled="!hasSkills"
 						:content="i18n.baseText('agents.builder.skills.add')"
 						placement="top"
@@ -603,7 +604,6 @@ function handleChannelDisconnected(channelType: string) {
 							variant="ghost"
 							size="medium"
 							:icon-only="hasSkills"
-							:disabled="props.disabled"
 							data-testid="agent-capabilities-add-skill"
 							@click="emit('add-skill')"
 						>
