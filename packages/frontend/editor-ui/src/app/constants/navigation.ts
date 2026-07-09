@@ -34,6 +34,7 @@ export const enum VIEWS {
 	EVALUATION = 'Evaluation',
 	EVALUATION_EDIT = 'EvaluationEdit',
 	EVALUATION_RUNS_DETAIL = 'EvaluationRunsDetail',
+	EVALUATION_COLLECTION_COMPARE = 'EvaluationCollectionCompare',
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	OPENTELEMETRY_SETTINGS = 'SettingsOpenTelemetryView',
