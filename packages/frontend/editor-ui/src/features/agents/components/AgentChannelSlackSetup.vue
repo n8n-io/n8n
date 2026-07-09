@@ -430,6 +430,7 @@ defineExpose({ credentialId, validationError: null });
 	align-items: flex-start;
 	gap: var(--spacing--2xs);
 	padding-top: var(--spacing--xs);
+	min-width: 0;
 }
 
 .setupDescriptionContainer {
@@ -468,6 +469,8 @@ defineExpose({ credentialId, validationError: null });
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
+	width: 100%;
+	min-width: 0;
 }
 
 .manualPanel {
