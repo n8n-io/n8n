@@ -93,7 +93,7 @@ export class PrometheusSchedulerMetricsService
 
 		this.tasksDeadLettered = new promClient.Counter({
 			name: `${prefix}scheduler_tasks_dead_lettered_total`,
-			help: 'Total number of scheduler tasks dead-lettered by the reaper.',
+			help: 'Total number of scheduler tasks dead-lettered after exhausting their attempts, from either path: a terminal handler failure or the reaper recovering an expired lease.',
 		});
 
 		this.tasksPruned = new promClient.Counter({
@@ -134,7 +134,7 @@ export class PrometheusSchedulerMetricsService
 
 		new promClient.Gauge({
 			name: `${prefix}scheduler_tasks_pending`,
-			help: 'Number of pending scheduler tasks awaiting a worker. Cluster-wide snapshot, identical on every main; aggregate with max/avg, not sum.',
+			help: 'Number of pending scheduler tasks awaiting dispatch. Cluster-wide snapshot, identical on every main; aggregate with max/avg, not sum.',
 			async collect() {
 				const snapshot = await query.get();
 				this.set(snapshot.pending);
@@ -152,7 +152,7 @@ export class PrometheusSchedulerMetricsService
 
 		new promClient.Gauge({
 			name: `${prefix}scheduler_tasks_running`,
-			help: 'Number of scheduler tasks currently held by a worker. Cluster-wide snapshot, identical on every main; aggregate with max/avg, not sum.',
+			help: 'Number of scheduler tasks currently claimed and in flight. Cluster-wide snapshot, identical on every main; aggregate with max/avg, not sum.',
 			async collect() {
 				const snapshot = await query.get();
 				this.set(snapshot.running);

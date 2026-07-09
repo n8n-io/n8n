@@ -77,11 +77,11 @@ export interface NewOccurrence {
  * constraints (e.g. cli's `CachedMetricQuery`) without a duplicate local alias.
  */
 export type MetricSnapshot = {
-	/** Rows awaiting a worker, whether or not they are due yet. */
+	/** Rows awaiting dispatch, whether or not they are due yet. */
 	pending: number;
 	/** Pending rows already due (`runAt <= now`): the actionable queue depth. */
 	due: number;
-	/** Rows a worker currently holds. */
+	/** Rows currently claimed and in flight (leased to an instance). */
 	running: number;
 	/** How far the oldest due pending row has waited, in ms; `null` when none is due. */
 	oldestPendingAgeMs: number | null;
@@ -337,6 +337,12 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * The oldest-row lookup is skipped when nothing is due.
 	 */
 	async getMetricSnapshot(now: Date): Promise<MetricSnapshot> {
+		// Each query filters on `status` and is served by the partial indexes on
+		// `scheduled_task` (`runAt WHERE status='pending'`, `leaseExpiresAt WHERE
+		// status='running'`), so they scan only the live pending/running working
+		// set, never the terminal rows that make the table grow (and that retention
+		// prunes). Cost scales with the backlog, not with total history; the caller
+		// runs this behind a short scrape cache.
 		const [pending, due, running] = await Promise.all([
 			this.countBy({ status: ScheduledTaskStatus.Pending }),
 			this.countBy({ status: ScheduledTaskStatus.Pending, runAt: LessThanOrEqual(now) }),
