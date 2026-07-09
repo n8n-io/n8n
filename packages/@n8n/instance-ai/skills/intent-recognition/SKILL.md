@@ -22,8 +22,8 @@ an LLM tool-use loop.
 
 If the user asked to build, use the classification to choose the next path:
 workflow-builder for workflow or hybrid workflows, a plain AI node for single
-AI tasks, an agent design for true tool-use loops, or `ask-user` for ambiguous
-requests.
+AI tasks, the `build-agent` tool for true tool-use loops (when agent building
+is available), or `ask-user` for ambiguous requests.
 
 ## Inputs
 

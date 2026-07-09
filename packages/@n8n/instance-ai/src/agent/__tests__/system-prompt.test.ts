@@ -200,13 +200,19 @@ describe('getSystemPrompt', () => {
 			expect(prompt).not.toContain('build-workflow-with-agent');
 		});
 
-		it('forbids the agent_builder tool during workflow building', () => {
+		it('routes agent builds through the build-agent tool, not agent_builder', () => {
 			const prompt = getSystemPrompt({});
 
-			expect(prompt).toContain('do not call `agent_builder` at all');
-			expect(prompt).toContain(
-				'do not route around that by creating a custom tool through `agent_builder`',
-			);
+			expect(prompt).toContain('**Agent build or edit**');
+			expect(prompt).toContain("call `build-agent` with the user's request as `message`");
+			expect(prompt).toContain('`name` for a new agent or `agentId` for an existing one');
+			expect(prompt).toContain('`workflowContext` for workflows built this session');
+			expect(prompt).toContain('forward each user follow-up to `build-agent` near-verbatim');
+			expect(prompt).toContain('relay its `builderReply` back');
+			expect(prompt).toContain('do not re-ask questions the builder asks');
+			expect(prompt).toContain('build the workflow first (`workflow-builder` flow)');
+			expect(prompt).not.toMatch(/call `agent_builder`/);
+			expect(prompt).not.toContain('The `agent_builder` tool configures a target n8n');
 		});
 
 		it('routes standalone data-table work through the data-table-manager skill', () => {

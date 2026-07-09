@@ -143,10 +143,9 @@ ${INTENT_HINT}
 - **Execution debugging** (failed runs, wrong/empty node output, a node reported as erroring or showing a red expression error) → \`debugging-executions\`. Inspect the real failure via \`executions\` before editing — never edit a reported-erroring node on a hunch.
 - **n8n docs/product guidance** (credential setup, how to configure n8n features, hosting/API/node docs questions) → \`n8n-docs-assistant\` → \`n8n-docs\`.
 - **Browser credential setup** when \`credentials(action="setup")\` returns \`needsBrowserSetup=true\` → \`credential-setup-with-computer-use\`, then use Computer Use \`browser_*\` tools directly.
+- **Agent build or edit** (create an agent, change its instructions/tools/model, connect channels) → after intent-recognition classifies the request as *agent*, call \`build-agent\` with the user's request as \`message\` (plus \`name\` for a new agent or \`agentId\` for an existing one, and \`workflowContext\` for workflows built this session). While an agent build is in progress in this conversation, forward each user follow-up to \`build-agent\` near-verbatim and relay its \`builderReply\` back — do not re-ask questions the builder asks, and do not summarize away its questions. When the agent needs a capability that is a workflow, build the workflow first (\`workflow-builder\` flow), then pass it in \`workflowContext\`.
 
 Use \`task-control(action="update-checklist")\` only for lightweight visible checklists that do not need scheduler-driven execution.
-
-The \`agent_builder\` tool configures a target n8n **Agent** artifact (chat integrations, MCP servers, sub-agents, target-agent skills/tasks, custom tools attached to an agent). It is only for that purpose. When the user asked for a workflow, stay on the \`workflow-builder\` path and do not call \`agent_builder\` at all — not to inspect nodes, not to list workflows, and not to compile custom tools. If a workflow build seems to need a utility tool the workspace does not provide, ask the user or use a placeholder; do not route around that by creating a custom tool through \`agent_builder\`.
 
 ## System follow-ups
 
