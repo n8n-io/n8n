@@ -79,7 +79,11 @@ import type {
 	ExportableCredential,
 	StatusExportableCredential,
 } from './types/exportable-credential';
-import type { ExportableDataTable, StatusExportableDataTable } from './types/exportable-data-table';
+import type {
+	DataTableResourceOwner,
+	ExportableDataTable,
+	StatusExportableDataTable,
+} from './types/exportable-data-table';
 import type { ExportableFolder } from './types/exportable-folders';
 import type { ExportableProject, ExportableProjectWithFileName } from './types/exportable-project';
 import type { ExportableTags } from './types/exportable-tags';
@@ -1261,10 +1265,6 @@ export class SourceControlImportService {
 		// Get database type from the repository's connection
 		const dbType = this.dataTableRepository.manager.connection.options.type;
 
-		// Get the pulling user's personal project as a fallback for personal projects
-		const pullingUserPersonalProject =
-			await this.projectRepository.getPersonalProjectForUserOrFail(userId);
-
 		const result: { imported: string[]; conflicts: Array<{ id: string; name: string }> } = {
 			imported: [],
 			conflicts: [],
@@ -1304,45 +1304,24 @@ export class SourceControlImportService {
 				continue;
 			}
 
-			let targetProject: Project | null = null;
+			let targetProjectId: string;
 
-			if (dataTable.ownedBy) {
-				if (dataTable.ownedBy.type === 'personal') {
-					const personalEmail = dataTable.ownedBy.personalEmail;
-					if (personalEmail) {
-						const user = await this.userRepository.findOne({ where: { email: personalEmail } });
-						if (user) {
-							targetProject = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
-						} else {
-							this.logger.debug(
-								`User ${personalEmail} not found locally for data table ${dataTable.name}. Using pulling user's personal project as fallback.`,
-							);
-							targetProject = pullingUserPersonalProject;
-						}
-					}
-				} else if (dataTable.ownedBy.type === 'team') {
-					targetProject = await this.projectRepository.findOne({
+			if (dataTable.ownedBy?.type === 'team') {
+				const teamProject =
+					(await this.projectRepository.findOne({
 						where: { id: dataTable.ownedBy.teamId },
-					});
-
-					if (!targetProject) {
-						targetProject = await this.createTeamProject({
-							type: 'team',
-							teamId: dataTable.ownedBy.teamId,
-							teamName: dataTable.ownedBy.teamName,
-						});
-					}
-				}
+					})) ??
+					(await this.createTeamProject({
+						type: 'team',
+						teamId: dataTable.ownedBy.teamId,
+						teamName: dataTable.ownedBy.teamName,
+					}));
+				targetProjectId = teamProject.id;
+			} else {
+				targetProjectId = await this.resolveRemoteDataTableProjectId(dataTable.ownedBy, userId);
 			}
 
-			if (!targetProject) {
-				this.logger.debug(
-					`No owner specified for data table ${dataTable.name}. Using pulling user's personal project.`,
-				);
-				targetProject = pullingUserPersonalProject;
-			}
-
-			parsedTables.push({ dataTable, candidate, targetProjectId: targetProject.id });
+			parsedTables.push({ dataTable, candidate, targetProjectId });
 		}
 
 		// Phase 2: Resolve name collisions (same (project, name), different id —
@@ -1493,6 +1472,34 @@ export class SourceControlImportService {
 		}
 
 		return result;
+	}
+
+	/**
+	 * Resolves the local project a remote data table belongs to: the team id
+	 * for team-owned tables, the owner's personal project for personal ones,
+	 * falling back to the pulling user's personal project when the owner is
+	 * unknown locally. The status service uses this for collision detection so
+	 * the pull preview matches where the import will place the table.
+	 */
+	async resolveRemoteDataTableProjectId(
+		ownedBy: DataTableResourceOwner | null,
+		pullingUserId: string,
+	): Promise<string> {
+		if (ownedBy?.type === 'team') {
+			return ownedBy.teamId;
+		}
+		if (ownedBy?.type === 'personal' && ownedBy.personalEmail) {
+			const user = await this.userRepository.findOne({
+				where: { email: ownedBy.personalEmail },
+			});
+			if (user) {
+				return (await this.projectRepository.getPersonalProjectForUserOrFail(user.id)).id;
+			}
+			this.logger.debug(
+				`User ${ownedBy.personalEmail} not found locally. Using pulling user's personal project as fallback.`,
+			);
+		}
+		return (await this.projectRepository.getPersonalProjectForUserOrFail(pullingUserId)).id;
 	}
 
 	/**

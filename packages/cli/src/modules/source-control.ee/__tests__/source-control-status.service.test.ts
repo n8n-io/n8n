@@ -110,6 +110,11 @@ describe('getStatus', () => {
 		// data tables
 		sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([]);
 		sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([]);
+		// Mirrors the real resolution: team id for team owners, the pulling
+		// user's personal project otherwise
+		sourceControlImportService.resolveRemoteDataTableProjectId.mockImplementation(
+			async (ownedBy) => (ownedBy?.type === 'team' ? ownedBy.teamId : 'pulling-user-project'),
+		);
 
 		// repositories
 		tagRepository.find.mockResolvedValue([]);
@@ -2720,6 +2725,54 @@ describe('getStatus', () => {
 				expect(dataTableFiles[0]).toMatchObject({
 					id: 'dt-remote',
 					name: 'Shared Name',
+					status: 'modified',
+					conflict: true,
+				});
+			});
+
+			it('should emit a single modified entry for a personal-project name collision during pull', async () => {
+				// ARRANGE — the owner email resolves to the same local personal
+				// project the colliding table lives in
+				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
+
+				const remoteDataTable = {
+					id: 'dt-remote',
+					name: 'Shared Name',
+					ownedBy: { type: 'personal' as const, personalEmail: 'owner@test.com' },
+					columns: [{ id: 'rc1', name: 'col', type: 'string', index: 0 }],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				const localDataTable = {
+					id: 'dt-local',
+					name: 'Shared Name',
+					ownedBy: { type: 'personal' as const, projectId: 'pp-local', projectName: 'Owner' },
+					filename: 'test.json',
+					columns: [{ id: 'lc1', name: 'col', type: 'string', index: 0 }],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
+					remoteDataTable,
+				]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+				sourceControlImportService.resolveRemoteDataTableProjectId.mockResolvedValue('pp-local');
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'pull',
+					verbose: false,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT — one "modified" entry, never a "created" + "deleted" pair
+				if (!Array.isArray(result)) expect.fail('Expected result to be an array.');
+				const dataTableFiles = result.filter((f) => f.type === 'datatable');
+				expect(dataTableFiles).toHaveLength(1);
+				expect(dataTableFiles[0]).toMatchObject({
+					id: 'dt-remote',
 					status: 'modified',
 					conflict: true,
 				});

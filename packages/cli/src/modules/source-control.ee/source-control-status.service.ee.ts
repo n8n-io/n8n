@@ -97,35 +97,6 @@ export class SourceControlStatusService {
 		return;
 	}
 
-	/**
-	 * Checks whether a local and remote data table belong to the same project.
-	 * For team projects, compares the project/team ID.
-	 * Returns true when both owners are null (unowned) or when neither is a team
-	 * (conservative match to avoid suppressing real collisions).
-	 */
-	private isSameDataTableProject(
-		localOwner: StatusResourceOwner | null,
-		remoteOwner: DataTableResourceOwner | null,
-	): boolean {
-		if (!localOwner && !remoteOwner) {
-			return true;
-		}
-
-		if (localOwner?.type === 'team' && remoteOwner?.type === 'team') {
-			return localOwner.projectId === remoteOwner.teamId;
-		}
-
-		// Personal projects don't have stable IDs across instances,
-		// so we can't reliably determine if they're the same project.
-		// Return false to avoid false-positive collision flags.
-		if (localOwner?.type === 'personal' || remoteOwner?.type === 'personal') {
-			return false;
-		}
-
-		// Mixed (one null, one not) — different projects
-		return false;
-	}
-
 	private buildFolderPath(
 		parentFolderId: string | null | undefined,
 		foldersById: Map<string, FolderPathNode>,
@@ -715,16 +686,23 @@ export class SourceControlStatusService {
 		// Cross-id name collisions (same (project, name), different id — typically a
 		// delete+recreate upstream). Computed before the remote loop because a pull
 		// reports a collision as ONE user-facing change: the incoming id must not
-		// also appear as "created", nor the old local id as "deleted".
+		// also appear as "created", nor the old local id as "deleted". A remote
+		// table's project is resolved the way the import resolves it, so the
+		// preview matches where the pull will place the table.
 		const nameCollisionByLocalId = new Map<string, ExportableDataTable>();
 		for (const local of dataTablesLocal) {
-			if (remoteById.has(local.id)) continue;
-			const candidate = (remotesByName.get(local.name) ?? []).find(
-				(remote) =>
-					remote.id !== local.id && this.isSameDataTableProject(local.ownedBy, remote.ownedBy),
-			);
-			if (candidate) {
-				nameCollisionByLocalId.set(local.id, candidate);
+			if (remoteById.has(local.id) || !local.ownedBy) continue;
+			for (const candidate of remotesByName.get(local.name) ?? []) {
+				if (candidate.id === local.id) continue;
+				const candidateProjectId =
+					await this.sourceControlImportService.resolveRemoteDataTableProjectId(
+						candidate.ownedBy,
+						context.user.id,
+					);
+				if (candidateProjectId === local.ownedBy.projectId) {
+					nameCollisionByLocalId.set(local.id, candidate);
+					break;
+				}
 			}
 		}
 		const collidingRemoteIds = new Set(

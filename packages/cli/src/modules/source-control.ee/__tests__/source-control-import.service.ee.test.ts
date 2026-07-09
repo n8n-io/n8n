@@ -2971,6 +2971,55 @@ describe('SourceControlImportService', () => {
 		});
 	});
 
+	describe('resolveRemoteDataTableProjectId', () => {
+		it('resolves a team owner to the team id', async () => {
+			await expect(
+				service.resolveRemoteDataTableProjectId(
+					{ type: 'team', teamId: 'team1', teamName: 'Team 1' },
+					'puller',
+				),
+			).resolves.toBe('team1');
+		});
+
+		it('resolves a known personal owner to their personal project', async () => {
+			userRepository.findOne.mockResolvedValue({ id: 'user1' } as any);
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({ id: 'pp1' } as any);
+
+			await expect(
+				service.resolveRemoteDataTableProjectId(
+					{ type: 'personal', personalEmail: 'owner@test.com' },
+					'puller',
+				),
+			).resolves.toBe('pp1');
+			expect(projectRepository.getPersonalProjectForUserOrFail).toHaveBeenCalledWith('user1');
+		});
+
+		it("falls back to the pulling user's personal project for an unknown personal owner", async () => {
+			userRepository.findOne.mockResolvedValue(null);
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
+				id: 'pp-puller',
+			} as any);
+
+			await expect(
+				service.resolveRemoteDataTableProjectId(
+					{ type: 'personal', personalEmail: 'unknown@test.com' },
+					'puller',
+				),
+			).resolves.toBe('pp-puller');
+			expect(projectRepository.getPersonalProjectForUserOrFail).toHaveBeenCalledWith('puller');
+		});
+
+		it("falls back to the pulling user's personal project when there is no owner", async () => {
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
+				id: 'pp-puller',
+			} as any);
+
+			await expect(service.resolveRemoteDataTableProjectId(null, 'puller')).resolves.toBe(
+				'pp-puller',
+			);
+		});
+	});
+
 	describe('Data Tables', () => {
 		describe('getRemoteDataTablesFromFiles', () => {
 			it('should return data tables from individual files', async () => {
