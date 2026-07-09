@@ -1,0 +1,23 @@
+packages/@n8n/db/src/migrations/common/1784000000030-CreateAgentChatSubscriptions.ts
+  s_338d7dd00b0ccd::t_6fbfad4e5b2015 5
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_338d7dd00b0ccd::t_bbc5c02128dc41 197,201,402-403
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_338d7dd00b0ccd::t_bbc5c02128dc41 206-207,416-417
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "96f8663e1a4565b90c09fe39d790178d0902f3d4",
+  "prompts": {},
+  "sessions": {
+    "s_338d7dd00b0ccd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "939828d3-95c3-4fb8-a0fd-3c9772a56985",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

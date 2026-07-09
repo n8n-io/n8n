@@ -1,0 +1,23 @@
+packages/cli/src/events/maps/workflow-publication-metrics.event-map.ts
+  s_7f46b323ae9603::t_32775bc7d39a6a 23
+packages/cli/src/metrics/prometheus/__tests__/workflow-publication-metrics.service.test.ts
+  s_7f46b323ae9603::t_e366303a3d6754 91
+packages/cli/src/workflows/publication/workflow-publication-outbox-consumer.ts
+  s_7f46b323ae9603::t_6918137ccba036 240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a50cea275aec8b72d0cb2d26c3d8af77b52bdf9a",
+  "prompts": {},
+  "sessions": {
+    "s_7f46b323ae9603": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0aefafd-9c05-46c0-a779-19feac254952",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,55 @@
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/n8n-identifier.ts
+  s_bf47138ef55090::t_e97547df8c313e 12-13,21,30,33-36
+  s_bf47138ef55090::t_1981eae4af037f 19-20,22
+packages/core/src/execution-engine/__tests__/execution-context.test.ts
+  s_bf47138ef55090::t_322e38dacde109 1291
+  s_bf47138ef55090::t_1c72cc662fba1e 1253,1256
+  s_bf47138ef55090::t_ac14432d737fb7 1267,1270
+  s_bf47138ef55090::t_d325e9a3d3c879 23
+  s_bf47138ef55090::t_f1d17316acdfc8 1303
+  s_bf47138ef55090::t_3a28374fb68974 1322
+  s_bf47138ef55090::t_1b349b9f698330 1261,1288,1300
+packages/core/src/execution-engine/index.ts
+  s_bf47138ef55090::t_957169456c6896 83
+packages/cli/src/workflows/workflow-execution.service.ts
+  s_bf47138ef55090::t_2ffaeb781f0b66 229
+  s_bf47138ef55090::t_1b349b9f698330 7-12,60,230-231
+packages/workflow/src/interfaces.ts
+  s_bf47138ef55090::t_62ecfcfd55ca97 3144
+packages/core/src/execution-engine/execution-context.ts
+  s_bf47138ef55090::t_c33ad84f2c9f64 134
+  s_bf47138ef55090::t_510a2d2a7af873 133
+  s_bf47138ef55090::t_1b349b9f698330 5,107
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/__tests__/n8n-identifier.test.ts
+  s_bf47138ef55090::t_5fee61f8dd4c02 173
+  s_bf47138ef55090::t_00ef3340eddd90 92
+  s_bf47138ef55090::t_03d364979b41fa 129
+  s_bf47138ef55090::t_0a93713523a11d 211-272
+  s_bf47138ef55090::t_01cd11c3db0c37 42
+  s_bf47138ef55090::t_5f1e8e7b0e3b30 67
+  s_bf47138ef55090::t_531bfabfaec538 155
+packages/core/src/utils/assertions.ts
+  s_bf47138ef55090::t_1b349b9f698330 13,17
+packages/cli/src/workflow-runner.ts
+  s_bf47138ef55090::t_565de75b2ede82 223
+  s_bf47138ef55090::t_f464cd499517c0 376
+packages/cli/src/workflows/__tests__/workflow-execution.service.test.ts
+  s_bf47138ef55090::t_1b349b9f698330 103,461,531,700,853
+  s_bf47138ef55090::t_36a914750c20fe 987
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "6a20460748b5de995345613a93151d8eeec12c6c",
+  "prompts": {},
+  "sessions": {
+    "s_bf47138ef55090": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5ee91c11-846f-46c6-a2f7-86517b5cc290",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,33 @@
+packages/@n8n/instance-ai/evaluations/types.ts
+  s_49774f0fb0b969::t_5383fa74e5b4b8 243-250
+packages/@n8n/instance-ai/evaluations/data/workflows/advanced-behavior-findings.md
+  s_49774f0fb0b969::t_d02bb98e70f319 77,80-87,94-96,98-102
+packages/@n8n/instance-ai/evaluations/__tests__/transcript-from-events.test.ts
+  s_49774f0fb0b969::t_2fef7bd12ee419 152-163,169-177
+  ai_agent 164-168
+packages/@n8n/instance-ai/evaluations/report/workflow-report.ts
+  s_49774f0fb0b969::t_7e67b1dd71d59c 428-432
+packages/@n8n/instance-ai/evaluations/outcome/transcript-from-events.ts
+  s_49774f0fb0b969::t_5b96f0863c0f02 161,167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8c6656053e84b531d03fdf09328265f25a13d851",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_49774f0fb0b969": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "058ef848-ef42-44ad-bc5c-fa740d82f66f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

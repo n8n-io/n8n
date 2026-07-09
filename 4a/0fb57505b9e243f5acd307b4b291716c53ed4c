@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/app/components/WorkflowSettings.vue
+  s_384413aabe40fe::t_dac55312ee13ef 85
+  s_384413aabe40fe::t_085a8d55b29371 204,207,210-212,223-224,231-232
+  s_384413aabe40fe::t_4e64c46066ece4 41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "4a0fb57505b9e243f5acd307b4b291716c53ed4c",
+  "prompts": {},
+  "sessions": {
+    "s_384413aabe40fe": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2684f542-529c-4e5e-b546-090068a00632",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

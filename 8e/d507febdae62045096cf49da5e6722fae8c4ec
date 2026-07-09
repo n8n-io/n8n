@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Microsoft/OneDrive/MicrosoftOneDrive.node.ts
+  s_4bc542439d3b0e::t_97b38a9c7c7355 57
+packages/nodes-base/nodes/Microsoft/OneDrive/test/GenericFunctions.test.ts
+  s_4bc542439d3b0e::t_390094cf1e5180 214-236,238-250,252-259
+packages/nodes-base/nodes/Microsoft/OneDrive/MicrosoftOneDriveTrigger.node.ts
+  s_4bc542439d3b0e::t_4f120cbb0fbc42 59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8ed507febdae62045096cf49da5e6722fae8c4ec",
+  "prompts": {},
+  "sessions": {
+    "s_4bc542439d3b0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17000a00-3344-41af-b2fd-f2b2ad927f81",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

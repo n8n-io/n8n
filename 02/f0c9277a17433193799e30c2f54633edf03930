@@ -1,0 +1,23 @@
+packages/cli/src/services/inbound-secret-proxy.service.ts
+  s_ad72ea1c24d75b::t_304c4d9ff66c53 2
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-single-context.test.ts
+  s_ad72ea1c24d75b::t_77ab9bb87f45c6 202-216,221,224,231
+packages/cli/src/modules/inbound-secrets/inbound-secrets-access.service.ts
+  s_ad72ea1c24d75b::t_f53b050f146084 3-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "02f0c9277a17433193799e30c2f54633edf03930",
+  "prompts": {},
+  "sessions": {
+    "s_ad72ea1c24d75b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2398351-404b-443b-b321-0a68ac8c2244",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

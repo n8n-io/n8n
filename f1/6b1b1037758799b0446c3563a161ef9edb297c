@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/project-roles/ProjectRolesView.vue
+  s_e968d10a2e4d25::t_8b4e4e5045a6da 33
+packages/frontend/editor-ui/src/features/project-roles/RolesTable.vue
+  s_e968d10a2e4d25::t_afd028c0a77aea 137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "f16b1b1037758799b0446c3563a161ef9edb297c",
+  "prompts": {},
+  "sessions": {
+    "s_e968d10a2e4d25": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8aebc5bd-3430-43da-b585-4df998bf8c07",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

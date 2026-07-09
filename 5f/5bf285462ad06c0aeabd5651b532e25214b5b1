@@ -1,0 +1,36 @@
+packages/cli/src/modules/token-exchange/services/identity-resolution.service.ts
+  s_ed27954ecf642c::t_43fac800db8cb4 287,290,302,309-314
+  s_ed27954ecf642c::t_18e0954386cfd5 336
+  s_ed27954ecf642c::t_c476bef2a23a71 233,237,254,259-267,315
+  s_ed27954ecf642c::t_5dcf883c66cf49 185
+  s_ed27954ecf642c::t_8988faa13966a0 10,14
+  s_ed27954ecf642c::t_65564db3eafa7d 51
+  s_ed27954ecf642c::t_9945159e69a007 137
+  s_ed27954ecf642c::t_e50e1482434314 157
+  s_ed27954ecf642c::t_7d841f28ed9f8f 268-269
+  s_ed27954ecf642c::t_5994103fe6105b 316-317
+packages/cli/src/services/role.service.ts
+  s_ed27954ecf642c::t_a4308f31de4553 265-270
+packages/cli/src/modules/token-exchange/services/__tests__/identity-resolution.service.test.ts
+  s_ed27954ecf642c::t_2ca694eef26436 71-72
+  s_ed27954ecf642c::t_6f2fd29ccc5ff6 1-3,6-7,9-17,19-21,24-62,64-68,70,73-223
+  s_ed27954ecf642c::t_597e78cc221cbf 22-23
+  s_ed27954ecf642c::t_420231fdd46470 63,69
+  s_ed27954ecf642c::t_59e30d411c2806 4-5,8,18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5f5bf285462ad06c0aeabd5651b532e25214b5b1",
+  "prompts": {},
+  "sessions": {
+    "s_ed27954ecf642c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed15ffa8-f284-4b5f-b9cc-da240ab9cbe9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

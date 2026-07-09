@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/app/router.test.ts
+  s_5bce6f80a7735b::t_b69b4878a2b5d1 348-354
+packages/frontend/editor-ui/src/app/router.ts
+  s_5bce6f80a7735b::t_a49ea3312ea07b 849-853
+  s_5bce6f80a7735b::t_01d5e9228ac2aa 848
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d837e76f1f746e0661e26cb9e0881f61443c9a71",
+  "prompts": {},
+  "sessions": {
+    "s_5bce6f80a7735b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9a86bfe-2688-4db8-876a-9967e680dca2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

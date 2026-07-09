@@ -1,0 +1,46 @@
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_26a52030ea583f::t_4e044fa6d5a9d3 40
+packages/cli/src/modules/n8n-packages/engine/import-pipeline.ts
+  s_26a52030ea583f::t_144d33b73ccb92 9
+packages/cli/src/modules/n8n-packages/__tests__/import-folders.integration.test.ts
+  s_26a52030ea583f::t_5f1880f9edd958 15-20
+  ai_agent 351-354,380-385
+  s_26a52030ea583f::t_e317815258120f 345-350,355-379,386-398
+packages/cli/src/services/folder.service.ts
+  s_26a52030ea583f::t_2d9edfa6117188 48
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_26a52030ea583f::t_e933587566be4d 195-196
+  s_26a52030ea583f::t_c7e14b643dfacd 62-63
+packages/cli/src/modules/n8n-packages/entities/folder/folder-importer.ts
+  s_26a52030ea583f::t_28f7309f81c49c 108,116,125
+  s_26a52030ea583f::t_e9344b62dcffe7 99
+  s_26a52030ea583f::t_9f48fc03c6eafc 22-25
+  s_26a52030ea583f::t_86ca21897fb026 154
+  s_26a52030ea583f::t_1b1e41539ef4fb 92
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_26a52030ea583f::t_f1664db3c0cc95 14-17,21
+  s_26a52030ea583f::t_b73a811d2a1e75 31-32
+  s_26a52030ea583f::t_69d2784512e58c 209-224
+  s_26a52030ea583f::t_d7d7c55849254e 52-53,66-68
+  s_26a52030ea583f::t_afe71dbd883e87 162
+packages/cli/src/modules/n8n-packages/entities/folder/folder-import.types.ts
+  s_26a52030ea583f::t_170c3ba6c95b3c 21-27
+packages/cli/src/modules/n8n-packages/engine/package-layout.ts
+  s_26a52030ea583f::t_7f21b2971ca7f3 11-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4213b8dc0fa01312d886b5782b97a19059b082c7",
+  "prompts": {},
+  "sessions": {
+    "s_26a52030ea583f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "96d9bcff-3469-4b99-a44e-a554a538bf64",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

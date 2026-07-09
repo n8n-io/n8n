@@ -1,0 +1,24 @@
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  s_8f52ec7b6c500a::t_323e49b19ebc2d 144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "46f05fdf8f78441074b5d42fdf399d255959ece2",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8f52ec7b6c500a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "423ca37e-9e4c-479c-b2d1-af1ced0a48f6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/evaluations/__tests__/transcript-from-events.test.ts
+  s_49774f0fb0b969::t_7cfadbdf8da4e5 308
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a283cbd10708e5cdc678f34969022c5cebd3e7ef",
+  "prompts": {},
+  "sessions": {
+    "s_49774f0fb0b969": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "058ef848-ef42-44ad-bc5c-fa740d82f66f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

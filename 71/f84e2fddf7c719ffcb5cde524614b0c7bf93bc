@@ -1,0 +1,47 @@
+packages/frontend/editor-ui/src/features/execution/insights/components/InsightsDashboard.vue
+  h_c63dce324dfc7b 246
+  s_b3b1561fc123d8::t_f612f6fbf2e61d 240-241,243-245
+  s_b3b1561fc123d8::t_fbf21d6e98f671 242
+  s_b3b1561fc123d8::t_fe92f377ef9d17 27
+packages/cli/src/modules/insights/database/repositories/insights-by-period.repository.ts
+  s_b3b1561fc123d8::t_16466704f8368b 439-445
+packages/frontend/editor-ui/src/features/execution/insights/insights.store.ts
+  s_b3b1561fc123d8::t_8be53a447b1ccc 71-74,85
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b3b1561fc123d8::t_85ba5c49f3ae88 5744
+  s_b3b1561fc123d8::t_8d19d570924afa 5743,5745
+packages/frontend/editor-ui/src/features/execution/insights/components/InsightsDateRangeAlert.vue
+  s_b3b1561fc123d8::t_ff70ca41d7dcd5 4
+  s_b3b1561fc123d8::t_cf1db2725ba17f 1-3,5-48,50-51,70-73,75-81
+  s_b3b1561fc123d8::t_bda11d6682ed00 49,52-56
+  s_b3b1561fc123d8::t_716094c2dd45e9 57-61
+  s_b3b1561fc123d8::t_c30e4df93bd7b3 62-69
+  h_c63dce324dfc7b 74
+packages/frontend/editor-ui/src/features/execution/insights/components/InsightsDateRangeAlert.test.ts
+  s_b3b1561fc123d8::t_a42a63823263c7 1-112
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_b3b1561fc123d8::t_18e92126be1c80 275
+packages/cli/src/modules/insights/insights.settings.ts
+  s_b3b1561fc123d8::t_d552ea9d8ac5fb 5,9-12,14-15,20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "71f84e2fddf7c719ffcb5cde524614b0c7bf93bc",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b3b1561fc123d8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a6527c5-23c1-4b82-95f8-23067ec98591",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

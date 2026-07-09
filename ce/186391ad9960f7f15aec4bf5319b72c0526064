@@ -1,0 +1,66 @@
+packages/frontend/editor-ui/src/features/ai/mcpAccess/modals/MCPConnectWorkflowsModal.vue
+  s_76b3c38c5eba33::t_b9802a6f545584 69
+  s_76b3c38c5eba33::t_9bdda3bd9065ac 19,27,33
+  s_76b3c38c5eba33::t_6d6779cbe92911 103
+  s_76b3c38c5eba33::t_e731ae88c70099 42,46,49-50
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/WorkflowsTable.test.ts
+  s_76b3c38c5eba33::t_ed83d83c642446 105-166,169,171-174,178-199
+  s_76b3c38c5eba33::t_c3a232a802cea9 167-168,170,175-177
+packages/frontend/editor-ui/src/app/components/common/SelectedItemsInfo.vue
+  s_76b3c38c5eba33::t_73406232816ccc 46-55
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/WorkflowsTable.vue
+  s_76b3c38c5eba33::t_9d9d6e0eaa4f21 62,72-92
+  s_76b3c38c5eba33::t_0262f56c873e57 287-299
+  s_76b3c38c5eba33::t_5acf7b4748b3a6 175
+  s_76b3c38c5eba33::t_6b9940c39aff6d 180,187-188
+  s_76b3c38c5eba33::t_4d36f8831657f9 311-315
+  s_76b3c38c5eba33::t_34d9a684087f3d 2,17
+packages/frontend/@n8n/design-system/src/components/N8nDataTableServer/N8nDataTableServer.test.ts
+  s_76b3c38c5eba33::t_66cb8ea8a44e36 165-187
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/MCPWorkflowsSelect.vue
+  s_76b3c38c5eba33::t_a5a3e20ca4e95c 113
+  s_76b3c38c5eba33::t_4d5a3f7f2ac58a 82
+  s_76b3c38c5eba33::t_7d62560d2b6c66 4
+  s_76b3c38c5eba33::t_4aff7b0e0c30e0 19
+  s_76b3c38c5eba33::t_48e746865a18cf 109
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.test.ts
+  s_76b3c38c5eba33::t_b233c080899e6b 65
+  s_76b3c38c5eba33::t_2454d7200854a6 610-638,640-671
+  s_76b3c38c5eba33::t_e6aa02a82493dc 639
+packages/frontend/@n8n/design-system/src/components/N8nDataTableServer/N8nDataTableServer.vue
+  s_76b3c38c5eba33::t_6354e7c8bff7d2 313-315,320-337
+packages/frontend/editor-ui/src/features/ai/mcpAccess/modals/MCPConnectWorkflowsModal.test.ts
+  s_76b3c38c5eba33::t_a11414e8deda1a 218
+  s_76b3c38c5eba33::t_cbdcfa4e54e7e9 261-262
+  s_76b3c38c5eba33::t_249c37c6f05090 180
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/MCPWorkflowsSelect.test.ts
+  s_76b3c38c5eba33::t_ad478a4fececf8 215-219,221,238,241-242,246-252
+  s_76b3c38c5eba33::t_4daedd1daf7bf3 63-67
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.vue
+  s_76b3c38c5eba33::t_b421143e3e9b69 534
+  s_76b3c38c5eba33::t_44527bc78f32b7 330-331
+  s_76b3c38c5eba33::t_00afc574bf9ff9 199-225
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_76b3c38c5eba33::t_a6494b52373f61 3173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ce186391ad9960f7f15aec4bf5319b72c0526064",
+  "prompts": {},
+  "humans": {
+    "h_df158766ffbd97": {
+      "author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_76b3c38c5eba33": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "70d8e885-4a04-4884-a7b3-485a5893471f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

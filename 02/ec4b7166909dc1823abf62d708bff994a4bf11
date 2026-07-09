@@ -1,0 +1,436 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.groups.test.ts
+  s_f62ce817f68981::t_6bad24425b249e 354-376
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0001-1781086754713-unknown-host-POST-_v1_messages-1bceada7.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyScopes.vue
+  s_f62ce817f68981::t_6bad24425b249e 19-22,90
+packages/testing/playwright/expectations/instance-ai/should-close-preview-panel-via-close-button/0001-1781086771923-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+scripts/mutation-health/README.md
+  s_f62ce817f68981::t_6bad24425b249e 115-116,214-225
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0005-1781088395327-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/0003-1781086730799-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/trace.jsonl
+  s_f62ce817f68981::t_6bad24425b249e 1-6
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.unarchive.yml
+  s_f62ce817f68981::t_6bad24425b249e 3
+packages/testing/playwright/expectations/instance-ai/should-auto-open-preview-panel-when-workflow-is-built/0002-1781086712702-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-execute-workflow-from-run-button-and-show-success-indicators/0003-1781086644845-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/@n8n/workflow-sdk/src/generate-types/generate-zod-schemas.ts
+  s_f62ce817f68981::t_6bad24425b249e 27,837-844,857-863,989-1135,1331,1431-1432,1435-1438,1569,1689,1691-1694
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/data-tables.dataTableId.columns.columnId.yml
+  s_f62ce817f68981::t_6bad24425b249e 3,25
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/projects.projectId.yml
+  s_f62ce817f68981::t_6bad24425b249e 3,27
+packages/cli/src/public-api/v1/handlers/variables/spec/paths/variables.yml
+  s_f62ce817f68981::t_6bad24425b249e 3,25
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/groups/CanvasNodeGroupTitleBar.vue
+  s_f62ce817f68981::t_6bad24425b249e 8,140-144,173,352-356,363,415
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/0003-1781086300320-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/data-tables.dataTableId.rows.yml
+  s_f62ce817f68981::t_6bad24425b249e 3,50
+packages/cli/src/public-api/v1/handlers/source-control/spec/paths/sourceControl.yml
+  s_f62ce817f68981::t_6bad24425b249e 3
+packages/frontend/editor-ui/src/features/settings/otel/otel.constants.ts
+  s_f62ce817f68981::t_6bad24425b249e 3-5
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0004-1781086754724-unknown-host-POST-_v1_messages-18726485.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-workflow-setup.spec.ts
+  s_f62ce817f68981::t_6bad24425b249e 465
+packages/testing/playwright/expectations/instance-ai/should-execute-workflow-from-run-button-and-show-success-indicators/0001-1781086644842-unknown-host-POST-_v1_messages-86cfcfa8.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyCreateOrEditModal.test.ts
+  s_f62ce817f68981::t_6bad24425b249e 10-12,16-22,54-55,60-63,198,301-364
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f62ce817f68981::t_6bad24425b249e 2995-3001,3349,3353,3356
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-keep-it-unchanged-when-denied/trace.jsonl
+  s_f62ce817f68981::t_6bad24425b249e 1-5
+packages/cli/src/public-api/v1/handlers/users/spec/paths/users.yml
+  s_f62ce817f68981::t_6bad24425b249e 3,33
+packages/cli/src/public-api/v1/handlers/community-packages/spec/paths/community-packages.packageName.yml
+  s_f62ce817f68981::t_6bad24425b249e 3,50
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-apply-after-approval/trace.jsonl
+  s_f62ce817f68981::t_6bad24425b249e 1-7
+packages/testing/playwright/expectations/instance-ai/should-list-archived-workflows-and-restore-one-via-instance-ai/0003-1781086316025-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/trace.jsonl
+  s_f62ce817f68981::t_6bad24425b249e 1-2
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-confirmations.spec.ts
+  s_f62ce817f68981::t_6bad24425b249e 172,230-234,245,288-293
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/trace.jsonl
+  s_f62ce817f68981::t_6bad24425b249e 1-2
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.transfer.yml
+  s_f62ce817f68981::t_6bad24425b249e 3
+packages/testing/playwright/expectations/instance-ai/should-list-archived-workflows-and-restore-one-via-instance-ai/trace.jsonl
+  s_f62ce817f68981::t_6bad24425b249e 1-2
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0006-1781088395329-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-execute-individual-node-from-node-toolbar/trace.jsonl
+  s_f62ce817f68981::t_6bad24425b249e 1-2
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0002-1781086533102-unknown-host-POST-_v1_messages-9c6a250a.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-execute-individual-node-from-node-toolbar/0002-1781086662562-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/tests/e2e/instance-ai/fixtures.ts
+  s_f62ce817f68981::t_6bad24425b249e 524-530,653-656,658
+packages/@n8n/ai-utilities/src/node-catalog/__tests__/search-engine.test.ts
+  s_f62ce817f68981::t_6bad24425b249e 256-363,773-794
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/trace.jsonl
+  s_f62ce817f68981::t_6bad24425b249e 1-6
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/data-tables.dataTableId.rows.delete.yml
+  s_f62ce817f68981::t_6bad24425b249e 3
+packages/cli/src/public-api/v1/handlers/folders/spec/paths/folders.yml
+  s_f62ce817f68981::t_6bad24425b249e 3,40
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupLayout.test.ts
+  s_f62ce817f68981::t_6bad24425b249e 1-483
+packages/frontend/editor-ui/src/features/settings/otel/SettingsOpenTelemetryView.vue
+  s_f62ce817f68981::t_6bad24425b249e 2,23,157-194,520-558,926-927
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-apply-after-approval/0002-1781086560467-unknown-host-POST-_v1_messages-f0cfe7b8.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/projects.projectId.users.userId.yml
+  s_f62ce817f68981::t_6bad24425b249e 3,33
+packages/testing/playwright/expectations/instance-ai/should-execute-individual-node-from-node-toolbar/0001-1781086662560-unknown-host-POST-_v1_messages-5eb30c4c.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/cli/src/modules/n8n-packages/n8n-packages.controller.ts
+  s_f62ce817f68981::t_6bad24425b249e 3
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0000-1781086533098-unknown-host-POST-_v1_messages-d7fb1f1d.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyCreateOrEditModal.vue
+  s_f62ce817f68981::t_6bad24425b249e 3,8,10,16,43,48-50,64-65,121-130,144,219-223,235-250,270,317,366,370-378,383-421,450-453
+scripts/mutation-health/mutate.mjs
+  s_f62ce817f68981::t_6bad24425b249e 27-35,37-39,210,257-263,276,313-321,324,329,332,352,358,360,372,379-384,386-387,389-390
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/executions.yml
+  s_f62ce817f68981::t_6bad24425b249e 3
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/credentials.yml
+  s_f62ce817f68981::t_6bad24425b249e 4,25
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/data-tables.dataTableId.rows.update.yml
+  s_f62ce817f68981::t_6bad24425b249e 3
+packages/cli/src/modules/otel/otel.service.ts
+  s_f62ce817f68981::t_6bad24425b249e 8-12,16,19-23,48-98
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/0001-1781086730796-unknown-host-POST-_v1_messages-7ab402c8.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0001-1781086533101-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/cli/src/modules/otel/otel.constants.ts
+  s_f62ce817f68981::t_6bad24425b249e 16-17,25
+packages/testing/playwright/expectations/instance-ai/should-allow-re-running-workflow-after-initial-execution/0003-1781086696241-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-auto-open-preview-panel-when-workflow-is-built/trace.jsonl
+  s_f62ce817f68981::t_6bad24425b249e 1-2
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0005-1781086533107-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyTable.vue
+  s_f62ce817f68981::t_6bad24425b249e 50
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-apply-after-approval/0003-1781086560468-unknown-host-POST-_v1_messages-ec41fb8e.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0005-1781086754726-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-keep-it-unchanged-when-denied/0000-1781086595308-unknown-host-POST-_v1_messages-28ad2287.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_f62ce817f68981::t_6bad24425b249e 14
+packages/cli/src/public-api/v1/handlers/insights/spec/paths/insights.yml
+  s_f62ce817f68981::t_6bad24425b249e 3
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0002-1781086754718-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0004-1781086533104-unknown-host-POST-_v1_messages-f0769297.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.versionId.yml
+  s_f62ce817f68981::t_6bad24425b249e 3
+packages/testing/playwright/expectations/instance-ai/should-execute-individual-node-from-node-toolbar/0003-1781086662563-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_f62ce817f68981::t_6bad24425b249e 3
+packages/cli/src/modules/otel/otel-settings.service.ts
+  s_f62ce817f68981::t_6bad24425b249e 14-22,82-91
+packages/cli/src/public-api/v1/__tests__/scope-parity.test.ts
+  s_f62ce817f68981::t_6bad24425b249e 1-106
+packages/frontend/editor-ui/src/features/workflows/canvas/canvas.types.ts
+  s_f62ce817f68981::t_6bad24425b249e 144-153
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/groups/CanvasNodeGroupTitleBar.test.ts
+  s_f62ce817f68981::t_6bad24425b249e 28
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.ts
+  s_f62ce817f68981::t_6bad24425b249e 181,187
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0001-1781088395323-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/0001-1781086283320-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-keep-it-unchanged-when-denied/0002-1781086595310-unknown-host-POST-_v1_messages-2ff660d1.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/trace.jsonl
+  s_f62ce817f68981::t_6bad24425b249e 1-2
+packages/cli/src/public-api/v1/handlers/tags/spec/paths/tags.yml
+  s_f62ce817f68981::t_6bad24425b249e 3,31
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/0001-1781086300317-unknown-host-POST-_v1_messages-3b53cf28.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-show-execution-results-in-ndv-output-panel-when-opening-node-after-execution/0002-1781086680116-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupActions.test.ts
+  s_f62ce817f68981::t_6bad24425b249e 128-129,134-135,138-139,142-144
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_f62ce817f68981::t_6bad24425b249e 5735,5794,5848
+packages/cli/src/public-api/v1/handlers/users/spec/paths/users.id.role.yml
+  s_f62ce817f68981::t_6bad24425b249e 3
+packages/testing/playwright/expectations/instance-ai/should-close-preview-panel-via-close-button/0002-1781086771926-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0002-1781088457409-unknown-host-POST-_v1_messages-ad09d9a0.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-close-preview-panel-via-close-button/0000-1781086771920-unknown-host-POST-_v1_messages-b8fb8ca2.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-execute-workflow-from-run-button-and-show-success-indicators/0002-1781086644843-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupDrag.ts
+  s_f62ce817f68981::t_6bad24425b249e 6-9,22,24,30,46-47,55,60,66,76-77,84,88,94-97,99-100,104,126-140,168,171-184,248-258,268,272,275,297,302,305
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/0002-1781086300319-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-execute-workflow-from-run-button-and-show-success-indicators/trace.jsonl
+  s_f62ce817f68981::t_6bad24425b249e 1-2
+packages/cli/src/public-api/v1/handlers/audit/spec/paths/audit.yml
+  s_f62ce817f68981::t_6bad24425b249e 3
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0002-1781088395324-unknown-host-POST-_v1_messages-9c6a250a.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0009-1781086533113-unknown-host-POST-_v1_messages-b744b5ea.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeDefault.vue
+  s_f62ce817f68981::t_6bad24425b249e 32,109,115
+packages/@n8n/workflow-sdk/src/generate-types/generate-zod-schemas.test.ts
+  s_f62ce817f68981::t_6bad24425b249e 17,335-496,925,1025,1166
+packages/testing/playwright/expectations/instance-ai/should-show-execution-results-in-ndv-output-panel-when-opening-node-after-execution/0003-1781086680117-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/0000-1781086611719-unknown-host-POST-_v1_messages-86db2663.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-show-run-workflow-button-in-preview/0002-1781086629060-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/cli/src/public-api/v1/handlers/users/spec/paths/users.id.yml
+  s_f62ce817f68981::t_6bad24425b249e 3,23
+packages/testing/playwright/expectations/instance-ai/should-auto-open-preview-panel-when-workflow-is-built/0001-1781086712700-unknown-host-POST-_v1_messages-302c00c6.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/credentials.id.test.yml
+  s_f62ce817f68981::t_6bad24425b249e 3
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/0002-1781086283322-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/executions.id.retry.yml
+  s_f62ce817f68981::t_6bad24425b249e 3
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.activate.yml
+  s_f62ce817f68981::t_6bad24425b249e 3
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-apply-after-approval/0001-1781086560467-unknown-host-POST-_v1_messages-f0cfe7b8.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/frontend/editor-ui/src/features/settings/otel/otel.store.test.ts
+  s_f62ce817f68981::t_6bad24425b249e 10,21,117,280-388
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentNodeGroups.test.ts
+  s_f62ce817f68981::t_6bad24425b249e 37-48
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0003-1781086533103-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/0002-1781086611721-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-background-lifecycle.spec.ts
+  s_f62ce817f68981::t_6bad24425b249e 19
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentNodeGroups.ts
+  s_f62ce817f68981::t_6bad24425b249e 11-14,26,34-38,69,72-76,98
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useZoomAdjustedValues.ts
+  s_f62ce817f68981::t_6bad24425b249e 89-99,104
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/trace.jsonl
+  s_f62ce817f68981::t_6bad24425b249e 1-2
+packages/frontend/editor-ui/src/features/settings/otel/otel.api.ts
+  s_f62ce817f68981::t_6bad24425b249e 31-48
+packages/cli/src/modules/otel/otel-settings.controller.ts
+  s_f62ce817f68981::t_6bad24425b249e 1,4,8,16,41-46
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_f62ce817f68981::t_6bad24425b249e 3010-3016
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/credentials.schema.id.yml
+  s_f62ce817f68981::t_6bad24425b249e 3
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/data-tables.dataTableId.rows.upsert.yml
+  s_f62ce817f68981::t_6bad24425b249e 3
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0003-1781088457410-unknown-host-POST-_v1_messages-9e42aae5.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0006-1781086533110-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupLayout.ts
+  s_f62ce817f68981::t_6bad24425b249e 1-565
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/0000-1781086283318-unknown-host-POST-_v1_messages-7da59ccc.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/trace.jsonl
+  s_f62ce817f68981::t_6bad24425b249e 1-5
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/trace.jsonl
+  s_f62ce817f68981::t_6bad24425b249e 1,4
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.yml
+  s_f62ce817f68981::t_6bad24425b249e 3,31,52
+packages/testing/playwright/expectations/instance-ai/should-allow-re-running-workflow-after-initial-execution/0002-1781086696240-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-auto-open-preview-panel-when-workflow-is-built/0003-1781086712703-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupView.test.ts
+  s_f62ce817f68981::t_6bad24425b249e 5,11,174-209,291-905
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/credentials.id.yml
+  s_f62ce817f68981::t_6bad24425b249e 3,32,68
+packages/cli/src/public-api/v1/handlers/discover/spec/paths/discover.yml
+  s_f62ce817f68981::t_6bad24425b249e 3
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.export.yml
+  s_f62ce817f68981::t_6bad24425b249e 3
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/projects.projectId.users.yml
+  s_f62ce817f68981::t_6bad24425b249e 3,33
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.archive.yml
+  s_f62ce817f68981::t_6bad24425b249e 3
+packages/@n8n/api-types/src/dto/otel/test-otel-connection.dto.ts
+  s_f62ce817f68981::t_6bad24425b249e 1-12
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.deactivate.yml
+  s_f62ce817f68981::t_6bad24425b249e 3
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupView.ts
+  s_f62ce817f68981::t_6bad24425b249e 1,7-13,19,22-28,54-70,81-97,99-107,110-126,132-134,138-140,142,144-145,148-150,154,157-295,301-305,309-317,319,332-336
+packages/@n8n/ai-utilities/src/node-catalog/search-engine.ts
+  s_f62ce817f68981::t_6bad24425b249e 44-48,66-85,101-110,150-159,161,163-168,170-194,198-216,219-228,232,235-246,252-272,343,345
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-keep-it-unchanged-when-denied/0001-1781086595309-unknown-host-POST-_v1_messages-2ff660d1.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/executions.stop.yml
+  s_f62ce817f68981::t_6bad24425b249e 3
+packages/cli/src/public-api/v1/handlers/tags/spec/paths/tags.id.yml
+  s_f62ce817f68981::t_6bad24425b249e 3,24,47,76
+packages/cli/src/commands/worker.ts
+  s_f62ce817f68981::t_6bad24425b249e 20,192,195,199-204
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0000-1781088395322-unknown-host-POST-_v1_messages-5e7c5f8d.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0004-1781088395326-unknown-host-POST-_v1_messages-f0769297.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupDrag.test.ts
+  s_f62ce817f68981::t_6bad24425b249e 66,88,191-193,198-214,216-217,315-338
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0008-1781086533111-unknown-host-POST-_v1_messages-41863004.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0009-1781088395333-unknown-host-POST-_v1_messages-5196b912.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useZoomAdjustedValues.test.ts
+  s_f62ce817f68981::t_6bad24425b249e 154-155,157,159-163,166,168,170-174
+biome.jsonc
+  s_f62ce817f68981::t_6bad24425b249e 34-40
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.tags.yml
+  s_f62ce817f68981::t_6bad24425b249e 3,26,39,53
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_f62ce817f68981::t_6bad24425b249e 399,479-483,555-556,560-583,592,594,607,635-644,676
+packages/testing/playwright/expectations/instance-ai/should-list-archived-workflows-and-restore-one-via-instance-ai/0002-1781086316024-unknown-host-POST-_v1_messages-a4f4daba.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/data-tables.dataTableId.columns.yml
+  s_f62ce817f68981::t_6bad24425b249e 3,30
+packages/cli/src/public-api/v1/handlers/folders/spec/paths/folders.folderId.yml
+  s_f62ce817f68981::t_6bad24425b249e 3,41,99
+packages/frontend/editor-ui/src/features/settings/otel/SettingsOpenTelemetryView.test.ts
+  s_f62ce817f68981::t_6bad24425b249e 43,48,96,428-500
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0001-1781088457408-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/0001-1781086611720-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-show-execution-results-in-ndv-output-panel-when-opening-node-after-execution/trace.jsonl
+  s_f62ce817f68981::t_6bad24425b249e 1-2
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.yml
+  s_f62ce817f68981::t_6bad24425b249e 3,33
+packages/frontend/editor-ui/src/features/settings/otel/otel.api.test.ts
+  s_f62ce817f68981::t_6bad24425b249e 3-4,58-82
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.groups.ts
+  s_f62ce817f68981::t_6bad24425b249e 15,190,204,225,227,229,231-234
+packages/cli/test/integration/commands/worker.cmd.test.ts
+  s_f62ce817f68981::t_6bad24425b249e 3,7,47-64,84-105
+packages/cli/src/modules/otel/__tests__/otel-settings.service.test.ts
+  s_f62ce817f68981::t_6bad24425b249e 188-216
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/data-tables.dataTableId.yml
+  s_f62ce817f68981::t_6bad24425b249e 3,28,65
+packages/frontend/editor-ui/src/features/workflows/canvas/components/WorkflowCanvas.vue
+  s_f62ce817f68981::t_6bad24425b249e 26,128-145,151
+packages/testing/playwright/expectations/instance-ai/should-allow-re-running-workflow-after-initial-execution/0001-1781086696238-unknown-host-POST-_v1_messages-86dfd40b.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/credentials.id.transfer.yml
+  s_f62ce817f68981::t_6bad24425b249e 3
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-apply-after-approval/0000-1781086560466-unknown-host-POST-_v1_messages-7da6160c.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/cli/src/public-api/v1/handlers/community-packages/spec/paths/community-packages.yml
+  s_f62ce817f68981::t_6bad24425b249e 3,31
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-keep-it-unchanged-when-denied/0003-1781086595311-unknown-host-POST-_v1_messages-b744b5ea.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/cli/src/modules/otel/__tests__/otel.service.test.ts
+  s_f62ce817f68981::t_6bad24425b249e 3-4,8,10,16-23,32-48,303-361
+packages/cli/src/public-api/v1/handlers/variables/spec/paths/variables.id.yml
+  s_f62ce817f68981::t_6bad24425b249e 3,21
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0003-1781086754722-unknown-host-POST-_v1_messages-affb883c.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/cli/src/modules/otel/__tests__/otel-settings.controller.test.ts
+  s_f62ce817f68981::t_6bad24425b249e 7-11,13,37,46,52,131-167
+packages/testing/playwright/expectations/instance-ai/should-show-execution-results-in-ndv-output-panel-when-opening-node-after-execution/0001-1781086680114-unknown-host-POST-_v1_messages-13f5fda3.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/pages/InstanceAiPage.ts
+  s_f62ce817f68981::t_6bad24425b249e 294-298
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/executions.id.yml
+  s_f62ce817f68981::t_6bad24425b249e 3,28
+packages/testing/playwright/expectations/instance-ai/should-show-run-workflow-button-in-preview/trace.jsonl
+  s_f62ce817f68981::t_6bad24425b249e 1-2
+packages/testing/playwright/expectations/instance-ai/should-allow-re-running-workflow-after-initial-execution/trace.jsonl
+  s_f62ce817f68981::t_6bad24425b249e 1-2
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/0002-1781086730797-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0004-1781088457412-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-remediation-guard.spec.ts
+  s_f62ce817f68981::t_6bad24425b249e 252
+packages/testing/playwright/expectations/instance-ai/should-list-archived-workflows-and-restore-one-via-instance-ai/0001-1781086316024-unknown-host-POST-_v1_messages-8e142571.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+.github/workflows/mutation-health-nightly.yml
+  s_f62ce817f68981::t_6bad24425b249e 131-133,136
+packages/@n8n/permissions/src/constants.ee.ts
+  s_f62ce817f68981::t_6bad24425b249e 86
+packages/testing/playwright/expectations/instance-ai/should-close-preview-panel-via-close-button/trace.jsonl
+  s_f62ce817f68981::t_6bad24425b249e 1-2
+packages/testing/playwright/expectations/instance-ai/should-show-run-workflow-button-in-preview/0001-1781086629056-unknown-host-POST-_v1_messages-dd9996b0.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/services/api-helper.ts
+  s_f62ce817f68981::t_6bad24425b249e 327-331
+packages/testing/playwright/expectations/instance-ai/should-show-run-workflow-button-in-preview/0003-1781086629063-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/data-tables.yml
+  s_f62ce817f68981::t_6bad24425b249e 3,42
+packages/frontend/editor-ui/src/features/settings/otel/otel.store.ts
+  s_f62ce817f68981::t_6bad24425b249e 4,8-9,56-59,92-127,135-137,141-142
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/projects.yml
+  s_f62ce817f68981::t_6bad24425b249e 3,25
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/executions.id.stop.yml
+  s_f62ce817f68981::t_6bad24425b249e 3
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0000-1781088457406-unknown-host-POST-_v1_messages-a942b0c9.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0003-1781088395325-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/cli/src/commands/__tests__/worker.test.ts
+  s_f62ce817f68981::t_6bad24425b249e 136-150,158,161,163-168,172,176-177
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/executions.id.tags.yml
+  s_f62ce817f68981::t_6bad24425b249e 3,24
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0008-1781088395331-unknown-host-POST-_v1_messages-41863004.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-workflow-preview.spec.ts
+  s_f62ce817f68981::t_6bad24425b249e 56
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyTable.test.ts
+  s_f62ce817f68981::t_6bad24425b249e 1-75
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-apply-after-approval/0004-1781086560469-unknown-host-POST-_v1_messages-77bad225.json
+  s_f62ce817f68981::t_6bad24425b249e 1-108
+packages/@n8n/api-types/src/dto/index.ts
+  s_f62ce817f68981::t_6bad24425b249e 265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "02ec4b7166909dc1823abf62d708bff994a4bf11",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_f62ce817f68981": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5375f81a-00e9-4f44-a66b-9260f3748ec7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

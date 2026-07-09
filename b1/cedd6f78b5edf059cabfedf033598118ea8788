@@ -1,0 +1,23 @@
+packages/core/src/observability/tracing/span-sampling.ts
+  s_c712eb8319e5a7::t_0902b6e262ee28 57-61,63
+  s_c712eb8319e5a7::t_54e1abab9ae472 66-71
+packages/core/src/observability/tracing/__tests__/span-sampling.test.ts
+  s_c712eb8319e5a7::t_ad1bd8bba53051 21,27-35,39,43-64
+  ai_agent 22-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b1cedd6f78b5edf059cabfedf033598118ea8788",
+  "prompts": {},
+  "sessions": {
+    "s_c712eb8319e5a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5724a16f-77c3-4fd6-9bfc-39729acb86e9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

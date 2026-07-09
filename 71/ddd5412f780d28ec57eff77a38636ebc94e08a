@@ -1,0 +1,26 @@
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_1cff8190fb8fb1::t_aa144b982546ed 503-556
+packages/frontend/editor-ui/src/app/components/WorkflowSettings/WorkflowSettings.vue
+  s_1cff8190fb8fb1::t_5ab46bb2b57da3 80-81
+  s_1cff8190fb8fb1::t_7c67d4397584e2 750-769
+  s_1cff8190fb8fb1::t_7fde479fb397c7 345-369
+  s_1cff8190fb8fb1::t_34088808b38a12 961-963
+packages/frontend/editor-ui/src/app/components/WorkflowSettings/WorkflowSettings.test.ts
+  s_1cff8190fb8fb1::t_ed4794a20190e6 1754,1764-1765,1769,1774,1784-1813,1822-1835
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "71ddd5412f780d28ec57eff77a38636ebc94e08a",
+  "prompts": {},
+  "sessions": {
+    "s_1cff8190fb8fb1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81d052a4-1b16-4039-8720-545635f1d14a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

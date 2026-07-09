@@ -1,0 +1,43 @@
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/readRows.operation.ts
+  s_37e451fff42af7::t_c4c9ecb599ae25 11,13,16
+  s_37e451fff42af7::t_be33e6d1f05a2a 144-146
+  s_37e451fff42af7::t_242b652f7c75c7 163,171
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/methods/loadOptions.test.ts
+  s_37e451fff42af7::t_1c077aad0c92b2 37,70,102,124
+packages/nodes-base/nodes/Microsoft/Excel/v2/methods/listSearch.ts
+  s_37e451fff42af7::t_7b74ff777db36a 162-163
+  s_37e451fff42af7::t_5c1e611c39ce53 169,182
+  s_37e451fff42af7::t_7de18b6c9ff8d2 117,129
+packages/nodes-base/nodes/Microsoft/Excel/v2/methods/loadOptions.ts
+  s_37e451fff42af7::t_afaf4d2d7fb3a3 17-18
+  s_37e451fff42af7::t_13fb6851fdf757 79-80
+  s_37e451fff42af7::t_d52dc370ff61a3 4
+  s_37e451fff42af7::t_3a4022bd56f68c 26,39,84
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/getAll.operation.ts
+  s_37e451fff42af7::t_c4f6118e3d219b 81-82
+  s_37e451fff42af7::t_1dbd9b89c1e45a 94,103
+  s_37e451fff42af7::t_c04254d557d11b 10,12,15
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/methods/listSearch.test.ts
+  s_37e451fff42af7::t_858cc4c999c483 66-100
+  s_37e451fff42af7::t_a47a048f2b6489 4
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/getRows.operation.ts
+  s_37e451fff42af7::t_3b20edabd97d4d 10,12,15
+  s_37e451fff42af7::t_2fa7a563ecb32d 133-135
+  s_37e451fff42af7::t_341003fe2d81f5 152,162,176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "8bc45b9e387c8b186cb25819e9c1c1532bc231ac",
+  "prompts": {},
+  "sessions": {
+    "s_37e451fff42af7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9285862-7af0-4e1d-89ba-8bd58c2f345d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

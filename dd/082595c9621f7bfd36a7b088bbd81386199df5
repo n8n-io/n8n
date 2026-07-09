@@ -1,0 +1,22 @@
+packages/nodes-base/nodes/Kafka/configConverter.ts
+  s_7153fc25a42002::t_e75682a0d933a3 173-182
+packages/nodes-base/nodes/Kafka/KafkaTrigger.node.ts
+  s_7153fc25a42002::t_8f39e88965c0f2 207,209
+  s_7153fc25a42002::t_b3c77e21d02d5c 406
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "dd082595c9621f7bfd36a7b088bbd81386199df5",
+  "prompts": {},
+  "sessions": {
+    "s_7153fc25a42002": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc3fea42-c399-4e04-a01d-178e65e8af86",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

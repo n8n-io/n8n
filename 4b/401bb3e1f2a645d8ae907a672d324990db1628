@@ -1,0 +1,86 @@
+packages/cli/src/modules/agents/__tests__/agent-session-finalization.service.test.ts
+  s_657a31a402f36f::t_c28e52ef0f9819 1-132
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_657a31a402f36f::t_f224163cf0fe34 257-261
+  s_657a31a402f36f::t_6db72b405fe11b 199,228,253,264
+  s_657a31a402f36f::t_696b37be21b4a3 15-16,93-102,133-134,137,149,161-162,177-178,180-184,186,188-195,206-216,224-227,229-237,243,245-250,263,266-270
+  s_657a31a402f36f::t_1ab486049b00fd 78-88,179,185,187,196-198,200-205,217-223,238-242,244,251-252,254-256,262,265
+  s_657a31a402f36f::t_50306a7b98a4fd 271,499-519
+  s_657a31a402f36f::t_ec4c331d5edd15 272-274
+  s_657a31a402f36f::t_bd964a8331c35b 520-521
+packages/cli/src/modules/agents/agent-session-run-logger.ts
+  s_657a31a402f36f::t_e494689946ce81 1,3-9,11-212
+  s_657a31a402f36f::t_d04feb30f21253 2,10
+  s_657a31a402f36f::t_b5e384f368eab7 213-214
+packages/cli/src/modules/agents/repositories/agent-execution-event.repository.ts
+  s_657a31a402f36f::t_e073dd1e51b8b8 1-8,10-72,74,79-81,105-108
+  s_657a31a402f36f::t_0d8a02540f5818 9,82-97,99,103-104
+  s_657a31a402f36f::t_dab01db5bc5594 73,75-78,98,100-102
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_657a31a402f36f::t_726801e43521c1 211,423
+docs/generated/sqlite-schema/agent_execution_events.md
+  s_657a31a402f36f::t_030e18327e2902 1-95
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_657a31a402f36f::t_626d2f4e7979e0 37-40,131-132
+packages/cli/src/modules/agents/agent-session-finalization.service.ts
+  s_657a31a402f36f::t_53c23e8cf72a03 182,261
+  s_657a31a402f36f::t_b5406344f0c279 1-181,183-260,262-265
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_657a31a402f36f::t_030e18327e2902 11,61,107-108,119-131
+  s_657a31a402f36f::t_e541d76c27d815 132
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_657a31a402f36f::t_030e18327e2902 22,62,108-109,120-132
+  s_657a31a402f36f::t_d87f277879ede2 133
+docs/generated/postgres-schema/README.md
+  s_657a31a402f36f::t_030e18327e2902 13-14,147,324-325,336-348
+  s_657a31a402f36f::t_bc6bf1f2724f2b 349
+packages/cli/src/modules/agents/__tests__/agent-session-run-logger.test.ts
+  s_657a31a402f36f::t_8fe134e5029848 2,9-18,30,75-99
+  s_657a31a402f36f::t_c99dc6872c34f6 1,3-8,19-29,31-74,100-101
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_657a31a402f36f::t_daf9f78d79e149 59-62
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_657a31a402f36f::t_1379eeb8fea461 27-28,164,269,277-285,297,313-314,481,488-498,523,541-542,658,670-678,704,719-720
+  s_657a31a402f36f::t_4a333c9dbb654c 142-151,289-291,515-517,682-684
+packages/@n8n/db/src/migrations/common/1784000000042-AddAgentExecutionEvents.ts
+  s_657a31a402f36f::t_251eb09a2ffeb7 15
+  s_657a31a402f36f::t_726801e43521c1 1-2,13,58-59,68
+  s_657a31a402f36f::t_aa642ed38c8011 3-12,14,16-57,60-67
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  s_657a31a402f36f::t_bf0d951801e4a7 23
+  s_657a31a402f36f::t_8a06cd6ed77d4b 79-86
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_657a31a402f36f::t_726801e43521c1 218,439
+docs/generated/sqlite-schema/README.md
+  s_657a31a402f36f::t_030e18327e2902 13-14,131,312-313,324-336
+  s_657a31a402f36f::t_c99ac19817d9fa 337
+packages/cli/src/modules/agents/entities/agent-execution-event.entity.ts
+  s_657a31a402f36f::t_fd01799d63e2a0 1-57
+docs/generated/postgres-schema/public.agent_execution_events.md
+  s_657a31a402f36f::t_030e18327e2902 1-95
+packages/cli/src/modules/agents/agents.module.ts
+  s_657a31a402f36f::t_8da779570aea67 40
+  s_657a31a402f36f::t_5411b606ac07fb 37-39,41,119,150
+docs/generated/postgres-schema/public.agent_execution.md
+  s_657a31a402f36f::t_030e18327e2902 16-17,48,68-69
+packages/cli/src/modules/agents/agent-session-event.service.ts
+  s_657a31a402f36f::t_257335c9889c8c 1-78
+docs/generated/sqlite-schema/agent_execution.md
+  s_657a31a402f36f::t_030e18327e2902 9,27-28,54,74-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.8",
+  "base_commit_sha": "4b401bb3e1f2a645d8ae907a672d324990db1628",
+  "prompts": {},
+  "sessions": {
+    "s_657a31a402f36f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f13ea-d4c1-7d03-bc30-fcfd579f01c6",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

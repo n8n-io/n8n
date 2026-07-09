@@ -1,0 +1,38 @@
+packages/cli/src/scaling/redis-lock.service.ts
+  h_435b1d7d3e52c0 9,169-174
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/oauth.ts
+  h_435b1d7d3e52c0 30,37-38,91,126-127,129-130,132-137,139-147,150-152,161-176,178-181,183-185,191-193,195-197,200-211,214-215,218-221,223-228,235,241-255,268,270-275,277,397,547
+  s_f53809e38dc87c::t_d43dde2e1a83bc 7,17
+  s_f53809e38dc87c::t_f691b961850160 33-36,39,153-160,182,186-188,198,212,216,229-232,237-240,256-267,269
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/oauth.test.ts
+  s_f53809e38dc87c::t_3ce36aa49930f9 305-307
+  s_f53809e38dc87c::t_13271eb90bf663 754-756
+  s_f53809e38dc87c::t_4d585a3b1e4899 960-961
+  s_f53809e38dc87c::t_6e55ea5dba2b2a 209-210,213
+  s_f53809e38dc87c::t_47f23158c92e5d 1-8
+  s_f53809e38dc87c::t_79fb72c2b76da4 939-959,962-1067
+  s_f53809e38dc87c::t_5814bf653fecc4 54-58
+  s_f53809e38dc87c::t_87dba09244082a 40-46
+  s_f53809e38dc87c::t_3e62f7c3fbd85f 436-438
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "a89a1427a1d811921cfcb2032dc3346285e4ac67",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f53809e38dc87c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "09331b90-a65c-4834-bea3-9b8ff3cfce3a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

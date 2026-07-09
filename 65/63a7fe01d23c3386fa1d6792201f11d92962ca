@@ -1,0 +1,42 @@
+packages/frontend/editor-ui/src/features/ndv/agents/composables/useNdvAgentConfig.ts
+  s_bb07027ddb0032::t_adb32be7ad36bc 208-227
+  s_bb07027ddb0032::t_e667ae8e0140b9 158-185,197-204,235
+  s_bb07027ddb0032::t_8afe335699b613 254
+  s_bb07027ddb0032::t_c6b7511d0205f7 22,30,38-42
+  s_bb07027ddb0032::t_3d90d5098c8692 299,307-308
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.ts
+  s_bb07027ddb0032::t_f793d98dc34836 86
+  s_bb07027ddb0032::t_5c4223298e7e7e 57-65
+  s_bb07027ddb0032::t_c7dfee715697fb 253-282
+  s_bb07027ddb0032::t_d5bb484eb86e88 228,233,238,247
+  s_bb07027ddb0032::t_2d81028f18bb0f 310,313,322
+  s_bb07027ddb0032::t_58638ad189078a 15-16,18
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_bb07027ddb0032::t_f8a958f38e634c 699-701
+  s_bb07027ddb0032::t_3042e85bcd80b6 44
+  s_bb07027ddb0032::t_cceac8883eed93 1035-1037,1039
+  s_bb07027ddb0032::t_c09ba97187ce00 674-698,702
+  s_bb07027ddb0032::t_24de027c90a3ae 1066-1069,1072-1076
+  s_bb07027ddb0032::t_c391426d7d66d7 34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6563a7fe01d23c3386fa1d6792201f11d92962ca",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_bb07027ddb0032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ac5de5a-9d81-4e7b-9015-b5d135e16aa4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

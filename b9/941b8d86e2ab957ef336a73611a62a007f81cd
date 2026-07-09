@@ -1,0 +1,39 @@
+packages/frontend/editor-ui/src/app/components/WorkflowSettings/WorkflowSettings.vue
+  s_dc7c0d4a7b88b3::t_93c4a7179d966f 11
+  s_dc7c0d4a7b88b3::t_b5546d5fcbfdc7 1378-1383
+  s_dc7c0d4a7b88b3::t_224d622ac1ce74 1479-1484
+packages/frontend/editor-ui/src/features/execution/executions/components/RevealDataWarning.test.ts
+  s_dc7c0d4a7b88b3::t_56a3ad59679e6a 1-23
+packages/frontend/editor-ui/src/features/settings/security/SecuritySettings.test.ts
+  s_dc7c0d4a7b88b3::t_0c54f7c1af26c9 518-521
+packages/frontend/editor-ui/src/features/ndv/panel/components/RedactedDataState.vue
+  s_dc7c0d4a7b88b3::t_a7a63b1063301f 6
+  s_dc7c0d4a7b88b3::t_1b5796da318764 43-51
+packages/frontend/editor-ui/src/features/settings/security/DataRedactionSection.vue
+  s_dc7c0d4a7b88b3::t_71e9193fe9dad9 9
+  s_dc7c0d4a7b88b3::t_f49096b863c260 174-181
+  s_dc7c0d4a7b88b3::t_da3fae0ac26b15 23-26
+packages/frontend/editor-ui/src/features/execution/executions/components/RevealDataWarning.vue
+  s_dc7c0d4a7b88b3::t_31fa224b9e7c08 2-5,12-13,24-31
+packages/frontend/editor-ui/src/app/constants/urls.ts
+  s_dc7c0d4a7b88b3::t_383dfc3271fdb1 15-16
+packages/frontend/editor-ui/src/features/ndv/panel/components/RedactedDataState.test.ts
+  s_dc7c0d4a7b88b3::t_3a51693835ffb6 88-109
+  s_dc7c0d4a7b88b3::t_1fe6bafa15d5b1 17,27-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "b9941b8d86e2ab957ef336a73611a62a007f81cd",
+  "prompts": {},
+  "sessions": {
+    "s_dc7c0d4a7b88b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b8ccc0f3-72b7-4859-8496-01a2155c835f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

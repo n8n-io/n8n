@@ -1,0 +1,25 @@
+packages/cli/src/modules/otel/execution-level-tracer.types.ts
+  s_65bfc300f4051b::t_be80e452f0b53c 47-53
+packages/cli/src/modules/otel/execution-level-tracer.ts
+  s_65bfc300f4051b::t_089f84784935ee 19-21,298-300,304-305,307-308,310-313,321,328-337,339-345
+  s_65bfc300f4051b::t_54c31d720bc796 338
+packages/cli/src/modules/otel/__tests__/execution-level-tracer.test.ts
+  s_65bfc300f4051b::t_d2d1866e314de1 162-186
+  s_65bfc300f4051b::t_91405da057833e 401-474
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a2e2bf8f7ff1a9002838c1b8112a5f736b7003aa",
+  "prompts": {},
+  "sessions": {
+    "s_65bfc300f4051b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f234f-f17b-74f3-99d9-b47df3666f6b",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

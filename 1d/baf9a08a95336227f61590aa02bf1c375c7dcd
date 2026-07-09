@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_8dc574772799b2::t_aa3c32aca2a86f 17,42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "1dbaf9a08a95336227f61590aa02bf1c375c7dcd",
+  "prompts": {},
+  "sessions": {
+    "s_8dc574772799b2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ebad8-8ad9-7cf2-a034-cff73636a6b4",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

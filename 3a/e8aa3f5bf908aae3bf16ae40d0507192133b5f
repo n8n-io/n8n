@@ -1,0 +1,47 @@
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/task/update.operation.ts
+  s_9e3fb7eb7b1034::t_48ce224a4cd8e0 144-150
+  s_9e3fb7eb7b1034::t_81a3b4825d67c1 7
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channel/create.operation.ts
+  s_9e3fb7eb7b1034::t_f9924d4df0d590 6
+  s_9e3fb7eb7b1034::t_cb86ce26b4ad60 82-87
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/task/deleteTask.operation.ts
+  s_9e3fb7eb7b1034::t_3ac1c6c117902f 5
+  s_9e3fb7eb7b1034::t_d928a99001a81f 32-36
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channel/getAll.operation.ts
+  s_9e3fb7eb7b1034::t_10afe508cc3556 7
+  s_9e3fb7eb7b1034::t_9e06d4efdee5ec 25,27,30
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channel/get.operation.ts
+  s_9e3fb7eb7b1034::t_40464cadb015fb 6
+  s_9e3fb7eb7b1034::t_88ee8c5b3b6d7a 29
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/task/get.operation.ts
+  s_9e3fb7eb7b1034::t_5fb9c1cd2e6d59 5
+  s_9e3fb7eb7b1034::t_997cf6dec065cb 32-36
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/task/create.operation.ts
+  s_9e3fb7eb7b1034::t_437c06dcce8e11 7-12
+  s_9e3fb7eb7b1034::t_b9b57cc7f55e5a 84-93
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/getAll.operation.ts
+  s_9e3fb7eb7b1034::t_7ab597033baa1e 7
+  s_9e3fb7eb7b1034::t_ce202459bd0ed4 27-34,36,39
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channel/deleteChannel.operation.ts
+  s_9e3fb7eb7b1034::t_4fa5b3656603a0 26-30
+  s_9e3fb7eb7b1034::t_00bbd4e9baaa59 6
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channel/update.operation.ts
+  s_9e3fb7eb7b1034::t_3b4c15d4c0e9f5 6
+  s_9e3fb7eb7b1034::t_af9ba115dc7419 67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "3ae8aa3f5bf908aae3bf16ae40d0507192133b5f",
+  "prompts": {},
+  "sessions": {
+    "s_9e3fb7eb7b1034": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba225abc-2d80-4c6a-af99-cceaa9f6df99",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

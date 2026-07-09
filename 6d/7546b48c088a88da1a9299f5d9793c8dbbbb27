@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/settings/security/SecuritySettings.test.ts
+  s_0a2f18fab1b733::t_2ad1c01e32198b 664,672,678-754
+packages/frontend/editor-ui/src/features/settings/security/DataRedactionSection.vue
+  s_0a2f18fab1b733::t_d78ead551e0636 205,210-215,221-252
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "6d7546b48c088a88da1a9299f5d9793c8dbbbb27",
+  "prompts": {},
+  "sessions": {
+    "s_0a2f18fab1b733": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8fcdcc74-a8fa-48f1-b9cb-99a393455208",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

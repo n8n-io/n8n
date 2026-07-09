@@ -1,0 +1,40 @@
+packages/core/src/observability/index.ts
+  s_f1469b6e8771b3::t_fca2f71c520f59 12-13
+packages/core/src/observability/tracing/span-sampling.ts
+  s_0dc744bfe9d604::t_bc95fb5037059f 33-34,43-47
+  s_f1469b6e8771b3::t_8dc23abd86c447 22,25-32,35-42,48-49
+  ai_agent 23-24
+packages/core/src/observability/tracing/__tests__/span-sampling.test.ts
+  s_f1469b6e8771b3::t_e9d525cffd0246 185-209,216,226
+  ai_agent 210-215,223-225
+  s_f1469b6e8771b3::t_2f914c5246b504 3-8
+  s_0dc744bfe9d604::t_626ef70735569b 217-222
+packages/core/src/errors/error-reporter.ts
+  s_f1469b6e8771b3::t_a29973566a102e 256-266
+  s_f1469b6e8771b3::t_45f0fef1bd1d82 16-17
+  s_f1469b6e8771b3::t_c2b19e33bfb3ea 196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9a8ca09654ce73166a5fddc695c784cf7ae3008c",
+  "prompts": {},
+  "sessions": {
+    "s_0dc744bfe9d604": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f14f4-64e9-7c61-b1a6-db313d43871b",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_f1469b6e8771b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c94de749-b116-4f85-99ef-b67edd348bf0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

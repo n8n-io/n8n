@@ -1,0 +1,31 @@
+packages/testing/code-health/src/context.ts
+  s_04b8fe92354c24::t_974e809aedff91 15-16
+packages/testing/code-health/src/rules/migration-timestamp.rule.test.ts
+  s_04b8fe92354c24::t_d533b850a1bb55 283
+  s_04b8fe92354c24::t_26ab4a702d2b9d 43-44
+  s_04b8fe92354c24::t_674ed8954160a7 129
+  s_04b8fe92354c24::t_c81600d867680d 94-96
+  s_04b8fe92354c24::t_2cca009cd2ff04 176-179,181,183-184
+packages/testing/code-health/src/cli.ts
+  s_04b8fe92354c24::t_a099d7590aee42 28
+packages/testing/code-health/src/rules/migration-timestamp.rule.ts
+  s_04b8fe92354c24::t_0287773bd32f9e 109,111
+  s_04b8fe92354c24::t_c6adc35e32d648 69-79
+  s_04b8fe92354c24::t_073234508040c3 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c149151e2a39e35e2ec51d4879139802270fec55",
+  "prompts": {},
+  "sessions": {
+    "s_04b8fe92354c24": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5cd8da67-a7ad-4818-ad1c-f223fa4de7d8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

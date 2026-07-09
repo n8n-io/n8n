@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useResourceLocatorModes.ts
+  s_06bc7f3c2041cd::t_55d8a380400a2f 10
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useResourceLocatorModes.test.ts
+  s_06bc7f3c2041cd::t_c8c50afaff1899 5-20,46-54
+  s_06bc7f3c2041cd::t_24f93f7a47bc16 23-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f8ce423fba22afa260e22a9af0ce16d81afc770f",
+  "prompts": {},
+  "sessions": {
+    "s_06bc7f3c2041cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "340cc0d0-3bb1-46b2-aaf6-697dfc7f4960",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/cli/src/modules/redaction/redaction-enforcement.service.ts
+  s_1f22dcc0df8e3a::t_4f6fda78d52af5 5
+packages/cli/src/modules/redaction/__tests__/redaction-enforcement.service.test.ts
+  s_1f22dcc0df8e3a::t_b2de0c76615403 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "00c0eb09d2e33c246206b8d0c460ef1012572f4a",
+  "prompts": {},
+  "sessions": {
+    "s_1f22dcc0df8e3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c432fb02-3811-4896-9a55-56da41022781",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

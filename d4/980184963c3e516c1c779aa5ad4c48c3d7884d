@@ -1,0 +1,20 @@
+packages/cli/test/integration/controllers/security-settings.controller.test.ts
+  s_8ce68994e328bc::t_99d792daed7dce 52,64,238,269-271,277-280,283
+  s_8ce68994e328bc::t_25fe0284fcd0b2 298,309
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "d4980184963c3e516c1c779aa5ad4c48c3d7884d",
+  "prompts": {},
+  "sessions": {
+    "s_8ce68994e328bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "55d405f5-0eed-4fee-a11a-893b52a11ea3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

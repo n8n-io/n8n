@@ -1,0 +1,30 @@
+packages/testing/playwright/tests/e2e/workflows/editor/canvas/stickies.spec.ts
+  s_30e2d242c189d9::t_4ec87a4f8e1f25 34-45
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenuItems.focusHandoff.test.ts
+  s_30e2d242c189d9::t_d57b40a9a453bb 1-16
+packages/testing/playwright/pages/components/StickyComponent.ts
+  s_30e2d242c189d9::t_76c4ee8232c998 46-57
+packages/frontend/editor-ui/src/features/shared/contextMenu/components/ContextMenu.vue
+  s_30e2d242c189d9::t_71fda17103c173 3
+  s_30e2d242c189d9::t_128bc1303509ec 44-46,50
+  s_30e2d242c189d9::t_53be06b2c33448 47-48,54-58
+  s_30e2d242c189d9::t_8329f25f6ffa8e 87
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenuItems.ts
+  s_30e2d242c189d9::t_d7c7769b7ec022 44-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "065152195643471d7494ce7389d52c819b9aa480",
+  "prompts": {},
+  "sessions": {
+    "s_30e2d242c189d9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "30fd2cbc-66dd-4acc-bc9f-a078d5c5aa6a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

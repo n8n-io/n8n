@@ -1,0 +1,28 @@
+packages/cli/test/integration/api-keys.api.test.ts
+  s_b00f88b5d02ace::t_b185a750a1174f 15
+  s_b00f88b5d02ace::t_a1e32202f1d4cc 814-843
+packages/cli/src/controllers/__tests__/api-keys.controller.test.ts
+  s_b00f88b5d02ace::t_e2b1f5083fabf0 127,139,141,148,150
+packages/frontend/editor-ui/src/features/settings/apiKeys/apiKeys.store.test.ts
+  s_b00f88b5d02ace::t_75f3d34acdc8de 61,63-65,70-71
+  s_b00f88b5d02ace::t_b5d411cd9753cf 1-60,62,66-69,72-97
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyOwnerFilter.test.ts
+  s_b00f88b5d02ace::t_cbc8235c74ead8 1-69,73,75-80
+  s_b00f88b5d02ace::t_3ee2496e8fadbe 70-72,74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "9bfc03ab1640bcce44d46213423d9852083be3ae",
+  "prompts": {},
+  "sessions": {
+    "s_b00f88b5d02ace": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d2b7954-1b2a-4748-b82e-f3dc76c64fc3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

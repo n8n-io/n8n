@@ -1,0 +1,32 @@
+packages/testing/playwright/pages/WorkflowSettingsModal.ts
+  s_aaabdf4fe381cc::t_8682af24265032 128,130,133-134,136,140
+  s_aaabdf4fe381cc::t_02cfe5e899c19b 5-12,14-15,17
+packages/testing/playwright/eslint.config.mjs
+  s_aaabdf4fe381cc::t_912522d6e1d597 27-32
+packages/testing/playwright/services/security-settings-api-helper.ts
+  s_aaabdf4fe381cc::t_f4a93749c705f6 2
+  s_aaabdf4fe381cc::t_d8aef4328ceff3 34,42-47
+packages/testing/playwright/tests/e2e/redaction-enforcement/redaction-helpers.ts
+  ai_agent 46-49,64-66,71-74,87-89
+  s_aaabdf4fe381cc::t_d0c9f7c2f09e11 4-8,16-44,51-59,63,75-83,86
+packages/testing/playwright/tests/e2e/redaction-enforcement/redaction-enforcement.spec.ts
+  s_aaabdf4fe381cc::t_b18b44ba395da0 130
+  s_aaabdf4fe381cc::t_384c77e97b4098 2,4,6,17-23,27-28,30,36,39-64,66-74,78-80,121-129,131-133,162,173-175,177-179,182-184,186-187,234,238,244-247,252-255,264-265,268
+  ai_agent 75-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7bb6dc3135505e94c8aeae22c6b54e375613fcbe",
+  "prompts": {},
+  "sessions": {
+    "s_aaabdf4fe381cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "add461e2-273a-4b06-8479-f725428c479c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

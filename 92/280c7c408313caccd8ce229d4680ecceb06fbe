@@ -1,0 +1,37 @@
+packages/@n8n/expression-rules/test/evaluate.test.ts
+  s_467ede6818687a::t_4cd82d944c3d52 1-65
+packages/@n8n/expression-rules/src/evaluate.ts
+  s_467ede6818687a::t_2949559ae2c14c 1-51
+pnpm-lock.yaml
+  ai_agent 1765-1782
+packages/@n8n/expression-rules/tsconfig.build.json
+  s_467ede6818687a::t_83488794c26380 1-11
+packages/@n8n/expression-rules/vite.config.ts
+  s_467ede6818687a::t_83488794c26380 1-14
+packages/@n8n/expression-rules/eslint.config.mjs
+  s_467ede6818687a::t_83488794c26380 1-29
+packages/@n8n/expression-rules/tsconfig.json
+  s_467ede6818687a::t_83488794c26380 1-11
+packages/@n8n/expression-rules/src/types.ts
+  s_467ede6818687a::t_3004927653fac3 1-28
+packages/@n8n/expression-rules/src/index.ts
+  s_467ede6818687a::t_47eed424469bdf 1-2
+packages/@n8n/expression-rules/package.json
+  s_467ede6818687a::t_348f2e71e51a7d 1-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "92280c7c408313caccd8ce229d4680ecceb06fbe",
+  "prompts": {},
+  "sessions": {
+    "s_467ede6818687a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ee96959-2d33-4d77-9268-45e16a4f8ac8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

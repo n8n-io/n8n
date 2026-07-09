@@ -1,0 +1,52 @@
+packages/nodes-base/credentials/common/aws/utils.test.ts
+  s_b8d0273386475c::t_0cbb3de212e030 13-16,28-29,379,711,717,735,737,743
+  s_b8d0273386475c::t_15826fee7c5c23 28
+packages/nodes-base/credentials/common/aws/utils.ts
+  s_b8d0273386475c::t_bdd715ea1a1672 350
+packages/@n8n/nodes-langchain/utils/aws/test/resolveAwsCredentials.test.ts
+  s_8a9e0dcd051b91::t_41a42563b6dbc4 1
+  s_8a9e0dcd051b91::t_4747790765ef06 18-19
+  s_8a9e0dcd051b91::t_d6ac6dfac543c2 28
+packages/nodes-base/package.json
+  s_8a9e0dcd051b91::t_ca405a8aa0c44e 6-10
+  s_8a9e0dcd051b91::t_e089535b78d56d 31
+  s_8a9e0dcd051b91::t_298ebb2af9cdc3 30
+packages/nodes-base/credentials/common/aws/index.ts
+  s_8a9e0dcd051b91::t_5a66529cb4355a 1-4
+packages/nodes-base/aws-credentials.js
+  s_8a9e0dcd051b91::t_46e898427460bf 1
+packages/@n8n/nodes-langchain/utils/aws/resolveAwsCredentials.ts
+  s_8a9e0dcd051b91::t_36847bbd3945e5 4-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "3c803ce6b8a56fb98bdde94bda548697b686c930",
+  "prompts": {},
+  "sessions": {
+    "s_8a9e0dcd051b91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "83f4c075-2049-4a3e-b48a-caafe7069d0d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    },
+    "s_a882810ef4526e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7eb5a439-d7b0-4eb5-ae7d-2045cb927e51",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_b8d0273386475c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fafbcaa6-e0cd-4eee-8ba9-496bd316ad65",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

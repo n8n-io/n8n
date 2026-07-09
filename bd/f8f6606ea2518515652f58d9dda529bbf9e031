@@ -1,0 +1,85 @@
+packages/testing/playwright/expectations/instance-ai/should-route-back-to-an-earlier-unhandled-card-when-user-skips-a-later-one/trace.jsonl
+  s_ada89a76285e54::t_843046b0b0c6fc 1-3
+packages/testing/playwright/expectations/instance-ai/should-partially-apply-credentials-when-user-completes-one-card-and-skips-the-last/0002-1780493819215-unknown-host-POST-_v1_messages-77bad225.json
+  s_ada89a76285e54::t_843046b0b0c6fc 1-108
+packages/testing/playwright/expectations/instance-ai/should-route-back-to-an-earlier-unhandled-card-when-user-skips-a-later-one/0000-1780493843405-unknown-host-POST-_v1_messages-e1313108.json
+  s_ada89a76285e54::t_843046b0b0c6fc 1-108
+packages/testing/playwright/expectations/instance-ai/should-clear-required-parameter-issue-indicator-when-the-field-is-filled/0001-1780493855371-unknown-host-POST-_v1_messages-0942c6d0.json
+  s_ada89a76285e54::t_843046b0b0c6fc 1-108
+packages/testing/playwright/expectations/instance-ai/should-mark-a-skipped-card-and-keep-the-wizard-open-while-other-cards-are-unhandled/0001-1780493831857-unknown-host-POST-_v1_messages-07bcd594.json
+  s_ada89a76285e54::t_843046b0b0c6fc 1-108
+packages/testing/playwright/expectations/instance-ai/should-mark-a-skipped-card-and-keep-the-wizard-open-while-other-cards-are-unhandled/trace.jsonl
+  s_ada89a76285e54::t_843046b0b0c6fc 1-3
+packages/testing/playwright/expectations/instance-ai/should-persist-a-manually-selected-existing-credential-from-the-dropdown/0000-1780493901991-unknown-host-POST-_v1_messages-a66d5d8c.json
+  s_ada89a76285e54::t_843046b0b0c6fc 1-108
+packages/testing/playwright/expectations/instance-ai/should-persist-a-manually-selected-existing-credential-from-the-dropdown/0002-1780493901994-unknown-host-POST-_v1_messages-77bad225.json
+  s_ada89a76285e54::t_843046b0b0c6fc 1-108
+packages/testing/playwright/expectations/instance-ai/should-render-ai-agent-subnodes-as-one-group-step-with-separate-sections/0002-1780493923917-unknown-host-POST-_v1_messages-77bad225.json
+  s_ada89a76285e54::t_843046b0b0c6fc 1-108
+packages/testing/playwright/expectations/instance-ai/should-partially-apply-credentials-when-user-completes-one-card-and-skips-the-last/0001-1780493819215-unknown-host-POST-_v1_messages-ec80fa14.json
+  s_ada89a76285e54::t_843046b0b0c6fc 1-108
+packages/testing/playwright/expectations/instance-ai/should-apply-parameter-and-credential-edits-and-persist-them-to-the-workflow/0001-1780493870908-unknown-host-POST-_v1_messages-91029a75.json
+  s_ada89a76285e54::t_843046b0b0c6fc 1-108
+packages/testing/playwright/expectations/instance-ai/should-clear-required-parameter-issue-indicator-when-the-field-is-filled/0000-1780493855370-unknown-host-POST-_v1_messages-0854c325.json
+  s_ada89a76285e54::t_843046b0b0c6fc 1-108
+packages/testing/playwright/expectations/instance-ai/should-create-and-apply-a-mocked-testable-slack-credential-from-setup/0001-1780493886927-unknown-host-POST-_v1_messages-5311b1ec.json
+  s_ada89a76285e54::t_843046b0b0c6fc 1-108
+packages/testing/playwright/expectations/instance-ai/should-create-and-apply-a-mocked-testable-slack-credential-from-setup/trace.jsonl
+  s_ada89a76285e54::t_843046b0b0c6fc 1-4
+packages/testing/playwright/expectations/instance-ai/should-apply-parameter-and-credential-edits-and-persist-them-to-the-workflow/0002-1780493870909-unknown-host-POST-_v1_messages-77bad225.json
+  s_ada89a76285e54::t_843046b0b0c6fc 1-108
+packages/testing/playwright/expectations/instance-ai/should-create-and-apply-a-mocked-testable-slack-credential-from-setup/0000-1780493886926-unknown-host-POST-_v1_messages-fcbc85d4.json
+  s_ada89a76285e54::t_843046b0b0c6fc 1-108
+packages/testing/playwright/expectations/instance-ai/should-apply-parameter-and-credential-edits-and-persist-them-to-the-workflow/trace.jsonl
+  s_ada89a76285e54::t_843046b0b0c6fc 1-4
+packages/testing/playwright/expectations/instance-ai/should-partially-apply-credentials-when-user-completes-one-card-and-skips-the-last/trace.jsonl
+  s_ada89a76285e54::t_843046b0b0c6fc 1-4
+packages/testing/playwright/expectations/instance-ai/should-render-ai-agent-subnodes-as-one-group-step-with-separate-sections/0001-1780493923915-unknown-host-POST-_v1_messages-f0e5ecb3.json
+  s_ada89a76285e54::t_843046b0b0c6fc 1-108
+packages/testing/playwright/expectations/instance-ai/should-defer-all-setup-when-user-skips-every-card-without-persisting-credentials/0000-1780493803289-unknown-host-POST-_v1_messages-1a07624f.json
+  s_ada89a76285e54::t_843046b0b0c6fc 1-108
+packages/testing/playwright/expectations/instance-ai/should-apply-parameter-and-credential-edits-and-persist-them-to-the-workflow/0000-1780493870906-unknown-host-POST-_v1_messages-3c003bc2.json
+  s_ada89a76285e54::t_843046b0b0c6fc 1-108
+packages/testing/playwright/tests/e2e/instance-ai/fixtures.ts
+  s_ada89a76285e54::t_2f46c7fd5f13ff 653-656,658
+packages/testing/playwright/expectations/instance-ai/should-create-and-apply-a-mocked-testable-slack-credential-from-setup/0002-1780493886928-unknown-host-POST-_v1_messages-77bad225.json
+  s_ada89a76285e54::t_843046b0b0c6fc 1-108
+packages/testing/playwright/expectations/instance-ai/should-route-back-to-an-earlier-unhandled-card-when-user-skips-a-later-one/0001-1780493843406-unknown-host-POST-_v1_messages-d4b59b0e.json
+  s_ada89a76285e54::t_843046b0b0c6fc 1-108
+packages/testing/playwright/expectations/instance-ai/should-render-ai-agent-subnodes-as-one-group-step-with-separate-sections/0000-1780493923914-unknown-host-POST-_v1_messages-18169388.json
+  s_ada89a76285e54::t_843046b0b0c6fc 1-108
+packages/testing/playwright/expectations/instance-ai/should-defer-all-setup-when-user-skips-every-card-without-persisting-credentials/0002-1780493803292-unknown-host-POST-_v1_messages-77bad225.json
+  s_ada89a76285e54::t_843046b0b0c6fc 1-108
+packages/testing/playwright/expectations/instance-ai/should-defer-all-setup-when-user-skips-every-card-without-persisting-credentials/trace.jsonl
+  s_ada89a76285e54::t_843046b0b0c6fc 1-4
+packages/testing/playwright/expectations/instance-ai/should-mark-a-skipped-card-and-keep-the-wizard-open-while-other-cards-are-unhandled/0000-1780493831856-unknown-host-POST-_v1_messages-bf551cce.json
+  s_ada89a76285e54::t_843046b0b0c6fc 1-108
+packages/testing/playwright/expectations/instance-ai/should-persist-a-manually-selected-existing-credential-from-the-dropdown/trace.jsonl
+  s_ada89a76285e54::t_843046b0b0c6fc 1-4
+packages/testing/playwright/expectations/instance-ai/should-persist-a-manually-selected-existing-credential-from-the-dropdown/0001-1780493901993-unknown-host-POST-_v1_messages-d8202774.json
+  s_ada89a76285e54::t_843046b0b0c6fc 1-108
+packages/testing/playwright/expectations/instance-ai/should-partially-apply-credentials-when-user-completes-one-card-and-skips-the-last/0000-1780493819214-unknown-host-POST-_v1_messages-9db5700e.json
+  s_ada89a76285e54::t_843046b0b0c6fc 1-108
+packages/testing/playwright/expectations/instance-ai/should-defer-all-setup-when-user-skips-every-card-without-persisting-credentials/0001-1780493803291-unknown-host-POST-_v1_messages-d999a8e9.json
+  s_ada89a76285e54::t_843046b0b0c6fc 1-108
+packages/testing/playwright/expectations/instance-ai/should-clear-required-parameter-issue-indicator-when-the-field-is-filled/trace.jsonl
+  s_ada89a76285e54::t_843046b0b0c6fc 1-3
+packages/testing/playwright/expectations/instance-ai/should-render-ai-agent-subnodes-as-one-group-step-with-separate-sections/trace.jsonl
+  s_ada89a76285e54::t_843046b0b0c6fc 1-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bdf8f6606ea2518515652f58d9dda529bbf9e031",
+  "prompts": {},
+  "sessions": {
+    "s_ada89a76285e54": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "559ea97f-ae60-4dd2-b195-bff0516ef7ef",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

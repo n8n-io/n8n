@@ -1,0 +1,34 @@
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/addLargeAttachment.test.ts
+  s_51def3912d3fc1::t_42f5d27526bad3 40,49
+  s_51def3912d3fc1::t_ad5e51326ff483 66-68,72
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/getAll.test.ts
+  s_51def3912d3fc1::t_ad5e51326ff483 39-41
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/utils/utils.test.ts
+  s_51def3912d3fc1::t_ad5e51326ff483 262,278-280
+packages/nodes-base/nodes/Microsoft/Outlook/v2/transport/index.ts
+  s_51def3912d3fc1::t_c735e347a23de3 52-55,57
+  s_51def3912d3fc1::t_b9e90eabcce4c8 56
+  s_51def3912d3fc1::t_5316f7da8e7e3a 11
+packages/nodes-base/nodes/Microsoft/Outlook/test/trigger/MicrosoftOutlookTrigger.transport.test.ts
+  s_51def3912d3fc1::t_5b6ac8e9bfb102 1-32,38-117
+  s_51def3912d3fc1::t_cc556712c45582 34-37
+  s_51def3912d3fc1::t_ad5e51326ff483 33
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/transport/index.test.ts
+  s_51def3912d3fc1::t_ad5e51326ff483 283
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "c937f181691bce2f242e300d0323a28e8ca41e49",
+  "prompts": {},
+  "sessions": {
+    "s_51def3912d3fc1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31afa3d2-fd0e-4f42-93c3-95839cb0136c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

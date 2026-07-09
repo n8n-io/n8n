@@ -1,0 +1,183 @@
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-apply-after-approval/0002-1781086560467-unknown-host-POST-_v1_messages-f0cfe7b8.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-keep-it-unchanged-when-denied/0000-1781086595308-unknown-host-POST-_v1_messages-28ad2287.json
+  ai_agent 18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-run-workflow-button-in-preview/0002-1781086629060-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/trace.jsonl
+  ai_agent 1-2
+packages/testing/playwright/expectations/instance-ai/should-execute-individual-node-from-node-toolbar/0001-1781086662560-unknown-host-POST-_v1_messages-5eb30c4c.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-apply-after-approval/0001-1781086560467-unknown-host-POST-_v1_messages-f0cfe7b8.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-execution-results-in-ndv-output-panel-when-opening-node-after-execution/0002-1781086680116-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/trace.jsonl
+  ai_agent 1-5
+packages/testing/playwright/expectations/instance-ai/should-show-run-workflow-button-in-preview/0003-1781086629063-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/trace.jsonl
+  ai_agent 1-2
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/0002-1781086300319-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0001-1781086754713-unknown-host-POST-_v1_messages-1bceada7.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/0001-1781086300317-unknown-host-POST-_v1_messages-3b53cf28.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-execution-results-in-ndv-output-panel-when-opening-node-after-execution/0003-1781086680117-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-allow-re-running-workflow-after-initial-execution/0002-1781086696240-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/trace.jsonl
+  ai_agent 1,4
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0006-1781086533110-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0008-1781088395331-unknown-host-POST-_v1_messages-41863004.json
+  ai_agent 18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/0002-1781086611721-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-execution-results-in-ndv-output-panel-when-opening-node-after-execution/0001-1781086680114-unknown-host-POST-_v1_messages-13f5fda3.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0004-1781088457412-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-execute-individual-node-from-node-toolbar/0002-1781086662562-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/0000-1781086283318-unknown-host-POST-_v1_messages-7da59ccc.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0001-1781088457408-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 18,24,27,33,36,39,42,45,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/0001-1781086283320-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-close-preview-panel-via-close-button/trace.jsonl
+  ai_agent 1-2
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0008-1781086533111-unknown-host-POST-_v1_messages-41863004.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-apply-after-approval/trace.jsonl
+  ai_agent 1-7
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0004-1781086754724-unknown-host-POST-_v1_messages-18726485.json
+  ai_agent 18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0004-1781086533104-unknown-host-POST-_v1_messages-f0769297.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/0000-1781086611719-unknown-host-POST-_v1_messages-86db2663.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0000-1781086533098-unknown-host-POST-_v1_messages-d7fb1f1d.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0009-1781086533113-unknown-host-POST-_v1_messages-b744b5ea.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0005-1781088395327-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/trace.jsonl
+  ai_agent 1-6
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-keep-it-unchanged-when-denied/0002-1781086595310-unknown-host-POST-_v1_messages-2ff660d1.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-allow-re-running-workflow-after-initial-execution/trace.jsonl
+  ai_agent 1-2
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0001-1781086533101-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-list-archived-workflows-and-restore-one-via-instance-ai/0001-1781086316024-unknown-host-POST-_v1_messages-8e142571.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0006-1781088395329-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0002-1781088457409-unknown-host-POST-_v1_messages-ad09d9a0.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-allow-re-running-workflow-after-initial-execution/0001-1781086696238-unknown-host-POST-_v1_messages-86dfd40b.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/0002-1781086730797-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0005-1781086754726-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-apply-after-approval/0004-1781086560469-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/0002-1781086283322-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-execute-individual-node-from-node-toolbar/trace.jsonl
+  ai_agent 1-2
+packages/testing/playwright/expectations/instance-ai/should-close-preview-panel-via-close-button/0002-1781086771926-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-auto-open-preview-panel-when-workflow-is-built/trace.jsonl
+  ai_agent 1-2
+packages/testing/playwright/expectations/instance-ai/should-list-archived-workflows-and-restore-one-via-instance-ai/trace.jsonl
+  ai_agent 1-2
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/0003-1781086300320-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-apply-after-approval/0003-1781086560468-unknown-host-POST-_v1_messages-ec41fb8e.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-execute-workflow-from-run-button-and-show-success-indicators/0002-1781086644843-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-apply-after-approval/0000-1781086560466-unknown-host-POST-_v1_messages-7da6160c.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0002-1781086754718-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/trace.jsonl
+  ai_agent 1-2
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/0001-1781086730796-unknown-host-POST-_v1_messages-7ab402c8.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-keep-it-unchanged-when-denied/0001-1781086595309-unknown-host-POST-_v1_messages-2ff660d1.json
+  ai_agent 18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-keep-it-unchanged-when-denied/0003-1781086595311-unknown-host-POST-_v1_messages-b744b5ea.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-execute-individual-node-from-node-toolbar/0003-1781086662563-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-run-workflow-button-in-preview/0001-1781086629056-unknown-host-POST-_v1_messages-dd9996b0.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0004-1781088395326-unknown-host-POST-_v1_messages-f0769297.json
+  ai_agent 18,24,27,33,36,39,42,45,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0002-1781088395324-unknown-host-POST-_v1_messages-9c6a250a.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-close-preview-panel-via-close-button/0000-1781086771920-unknown-host-POST-_v1_messages-b8fb8ca2.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0002-1781086533102-unknown-host-POST-_v1_messages-9c6a250a.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-auto-open-preview-panel-when-workflow-is-built/0001-1781086712700-unknown-host-POST-_v1_messages-302c00c6.json
+  ai_agent 18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0001-1781088395323-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0000-1781088457406-unknown-host-POST-_v1_messages-a942b0c9.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0009-1781088395333-unknown-host-POST-_v1_messages-5196b912.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-run-workflow-button-in-preview/trace.jsonl
+  ai_agent 1-2
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-keep-it-unchanged-when-denied/trace.jsonl
+  ai_agent 1-5
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0003-1781088457410-unknown-host-POST-_v1_messages-9e42aae5.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-auto-open-preview-panel-when-workflow-is-built/0002-1781086712702-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0000-1781088395322-unknown-host-POST-_v1_messages-5e7c5f8d.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-execute-workflow-from-run-button-and-show-success-indicators/trace.jsonl
+  ai_agent 1-2
+packages/testing/playwright/expectations/instance-ai/should-close-preview-panel-via-close-button/0001-1781086771923-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-list-archived-workflows-and-restore-one-via-instance-ai/0002-1781086316024-unknown-host-POST-_v1_messages-a4f4daba.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0005-1781086533107-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-allow-re-running-workflow-after-initial-execution/0003-1781086696241-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/trace.jsonl
+  ai_agent 1-2
+packages/testing/playwright/expectations/instance-ai/should-execute-workflow-from-run-button-and-show-success-indicators/0003-1781086644845-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-execution-results-in-ndv-output-panel-when-opening-node-after-execution/trace.jsonl
+  ai_agent 1-2
+packages/testing/playwright/expectations/instance-ai/should-execute-workflow-from-run-button-and-show-success-indicators/0001-1781086644842-unknown-host-POST-_v1_messages-86cfcfa8.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/0003-1781086730799-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-list-archived-workflows-and-restore-one-via-instance-ai/0003-1781086316025-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-auto-open-preview-panel-when-workflow-is-built/0003-1781086712703-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/trace.jsonl
+  ai_agent 1-6
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/0001-1781086611720-unknown-host-POST-_v1_messages-77bad225.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "61ad88005484ac4f331bea70282b79aad474fdd6",
+  "prompts": {}
+}

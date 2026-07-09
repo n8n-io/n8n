@@ -1,0 +1,27 @@
+packages/@n8n/agents/src/__tests__/integration/reasoning-tool-replay.test.ts
+  s_b27df4b175479e::t_35eae1c610ccd8 53-56
+packages/@n8n/agents/src/__tests__/integration/cassettes/reasoning-tool-replay/openai-retains-reasoning-replay-metadata-on-history-messages.json
+  s_b27df4b175479e::t_f8986c0a7f9676 1-169
+packages/@n8n/agents/src/__tests__/integration/cassettes/reasoning-tool-replay/anthropic-retains-reasoning-replay-metadata-on-history-messages.json
+  s_b27df4b175479e::t_f8986c0a7f9676 1-202
+packages/@n8n/agents/src/__tests__/integration/cassettes/reasoning-tool-replay/anthropic-replays-reasoning-across-a-tool-call-round-trip.json
+  s_b27df4b175479e::t_f8986c0a7f9676 1-216
+packages/@n8n/agents/src/__tests__/integration/cassettes/reasoning-tool-replay/openai-replays-reasoning-across-a-tool-call-round-trip.json
+  s_b27df4b175479e::t_da1ee776c6d171 53,55-77,103,107,111,145,147-169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "f233d0183bdb382fec9fd9fb36ea745780d53ff4",
+  "prompts": {},
+  "sessions": {
+    "s_b27df4b175479e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78efe118-ae4c-4c30-b02f-ef1f2ef2e255",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

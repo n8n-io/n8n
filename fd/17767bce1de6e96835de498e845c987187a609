@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/app/components/WorkflowSettings/WorkflowSettings.vue
+  s_8ce68994e328bc::t_53a4e35d4aff48 255,258,941
+packages/frontend/editor-ui/src/features/settings/security/SecuritySettings.vue
+  s_8ce68994e328bc::t_53a4e35d4aff48 246
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "fd17767bce1de6e96835de498e845c987187a609",
+  "prompts": {},
+  "sessions": {
+    "s_8ce68994e328bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "55d405f5-0eed-4fee-a11a-893b52a11ea3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

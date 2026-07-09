@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Microsoft/Excel/v2/test/transport/index.test.ts
+  s_78f30b507db2b8::t_4694d88dbc0a29 1,5-6
+  s_78f30b507db2b8::t_a33794de37bd4f 306,314,326
+  s_78f30b507db2b8::t_fe733a4221a3af 216,218-222,226,234,238,246,250,255,259,263,267,280,286,292
+  s_78f30b507db2b8::t_dad2d13179b542 2
+  s_78f30b507db2b8::t_0cf06b5a53124c 27
+  s_78f30b507db2b8::t_ee795f38036249 212-215,223-225,227-233,235-237,239-245,247-249,251-254,256-258,260-262,264-266,268-279,281-285,287-291,293-298,301-303,305,307-313,315-316,318-325,327-331
+  s_78f30b507db2b8::t_ea51a77ffca951 299-300,304
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d9526cf3376319197795c1516710044bf92157ff",
+  "prompts": {},
+  "sessions": {
+    "s_78f30b507db2b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9be3181b-0eae-4a2d-90d9-d20b72288f1e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

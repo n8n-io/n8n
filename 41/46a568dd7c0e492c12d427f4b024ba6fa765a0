@@ -1,0 +1,34 @@
+packages/cli/src/workflows/triggers/trigger-execution-context.factory.ts
+  s_667b5ce1fedc78::t_97ea8b4e05b695 1-10,13-24,26-271,273-286
+  ai_agent 25,272
+  s_667b5ce1fedc78::t_d97e9dbbb17423 11-12
+packages/cli/src/active-workflow-manager.ts
+  s_667b5ce1fedc78::t_aeb0c2adb06835 86
+  s_667b5ce1fedc78::t_0185555fc7fe47 56
+  s_667b5ce1fedc78::t_f2f78c56945a18 371
+  ai_agent 631-632,732-733
+  s_667b5ce1fedc78::t_209ecda80b6aad 327-333
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_667b5ce1fedc78::t_06129a475d805a 609
+  s_667b5ce1fedc78::t_7256262186fc93 234
+  s_667b5ce1fedc78::t_1632acdbd28790 821
+  s_667b5ce1fedc78::t_2a41d2a6844022 35
+  s_667b5ce1fedc78::t_5675e5b7007924 369-370,382-393,396,398,400,404,406,408-410
+  s_667b5ce1fedc78::t_5180bb39aaa357 61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4146a568dd7c0e492c12d427f4b024ba6fa765a0",
+  "prompts": {},
+  "sessions": {
+    "s_667b5ce1fedc78": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cfde787b-c41b-4adb-af4f-3bbff63a3f6c",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

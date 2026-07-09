@@ -1,0 +1,50 @@
+packages/cli/src/webhooks/webhook-helpers.ts
+  h_435b1d7d3e52c0 85,681-684
+packages/cli/src/modules/dynamic-credentials.ee/context-establishment-hooks/n8n-oauth/n8n-oauth-seeder.ts
+  h_435b1d7d3e52c0 1-43
+packages/cli/src/workflows/workflow-validation.service.ts
+  h_435b1d7d3e52c0 28,423-433
+packages/workflow/src/constants.ts
+  s_d245c10a80e1ab::t_6612fba52ce1e2 117,131
+packages/workflow/src/interfaces.ts
+  h_435b1d7d3e52c0 2813
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/n8n-oauth2-auth.ts
+  h_435b1d7d3e52c0 31,33-37,70-74
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpTrigger.node.ts
+  h_435b1d7d3e52c0 159-160,171,219-220,232-234
+packages/cli/src/modules/dynamic-credentials.ee/context-establishment-hooks/n8n-oauth/n8n-oauth-extractor.ts
+  h_435b1d7d3e52c0 1-84
+packages/cli/src/services/trigger-auth-identity-seeder-proxy.service.ts
+  h_435b1d7d3e52c0 1-24
+packages/cli/src/modules/dynamic-credentials.ee/dynamic-credentials.module.ts
+  h_435b1d7d3e52c0 1,35-41
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/n8n-identifier.ts
+  h_435b1d7d3e52c0 7,20-24,28,48-49,70-81
+packages/cli/src/modules/dynamic-credentials.ee/context-establishment-hooks/n8n-oauth/metadata.ts
+  h_435b1d7d3e52c0 1-13
+packages/cli/src/modules/dynamic-credentials.ee/context-establishment-hooks/n8n-oauth/index.ts
+  h_435b1d7d3e52c0 1-2
+packages/cli/src/modules/dynamic-credentials.ee/services/dynamic-credential-storage.service.ts
+  h_435b1d7d3e52c0 74-77,112-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "d4792e6970f5956da64a6c267e044b5c061b127d",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_d245c10a80e1ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "154e3b5a-1052-458e-9708-4f2082d8aee2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

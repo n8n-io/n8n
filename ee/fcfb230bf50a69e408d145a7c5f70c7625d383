@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/collaboration/projects/components/RoleHoverPopover.test.ts
+  s_7866d352073a64::t_5c792327b5cc6d 95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.1",
+  "base_commit_sha": "eefcfb230bf50a69e408d145a7c5f70c7625d383",
+  "prompts": {},
+  "sessions": {
+    "s_7866d352073a64": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d13bfb88-4458-46bf-8ac0-0650df47527e",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

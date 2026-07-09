@@ -1,0 +1,126 @@
+packages/@n8n/config/test/config.test.ts
+  s_5b0f3d5f2911b6::t_fa25371d336567 469,820-832
+packages/@n8n/db/src/repositories/scheduled-task.repository.ts
+  s_5b0f3d5f2911b6::t_af064e39118242 1-121,127
+  s_5b0f3d5f2911b6::t_99550a20330cbf 122-126
+packages/cli/src/metrics/prometheus/distributed-scheduler-metrics.service.ts
+  s_5b0f3d5f2911b6::t_be8830fa749775 1-12,14-42,48-59,61-64,67-83,88-97
+  s_5b0f3d5f2911b6::t_f223cf764024af 13,43-47,84-87
+  s_5b0f3d5f2911b6::t_e8907bc4035f02 60,65-66
+packages/testing/playwright/tests/infrastructure/benchmarks/schedule-trigger/harness.ts
+  s_5b0f3d5f2911b6::t_b5c14d92e3c63c 1-3,5-200,205-257
+  s_5b0f3d5f2911b6::t_4f6a91a28a841c 201-204
+  s_5b0f3d5f2911b6::t_0bc5afa80c5736 4
+packages/@n8n/db/src/entities/scheduled-task.ts
+  s_5b0f3d5f2911b6::t_177af1c800d619 1-71
+packages/nodes-base/nodes/Schedule/ScheduleTrigger.node.ts
+  s_5b0f3d5f2911b6::t_8ec12968309f9a 12,14-18,460,471-476,479,481,483-484,487,490,502-504
+  s_5b0f3d5f2911b6::t_a05cdd7122e289 464
+packages/nodes-base/nodes/Schedule/test/ScheduleTriggerHelpers.test.ts
+  s_5b0f3d5f2911b6::t_8a4ad196908550 1-25,27-43,48-49,51-58,74-85
+  s_5b0f3d5f2911b6::t_96714bc74ed99d 50
+  s_5b0f3d5f2911b6::t_4f6a91a28a841c 26,59-73
+  s_5b0f3d5f2911b6::t_ff34b4fda16dff 44-47
+packages/cli/src/metrics/__tests__/prometheus-metrics.service.test.ts
+  s_5b0f3d5f2911b6::t_463a02cf77088b 10,45,69,100,130
+packages/testing/playwright/tests/infrastructure/benchmarks/schedule-trigger/sqlite-single-main.spec.ts
+  s_5b0f3d5f2911b6::t_b1e1a5768a4b49 1
+  s_5b0f3d5f2911b6::t_9ed886a6eefb07 2-48
+packages/cli/src/distributed-scheduler/distributed-schedule-trigger.service.ts
+  s_5b0f3d5f2911b6::t_4f6a91a28a841c 81-83
+  s_5b0f3d5f2911b6::t_281331862fbec2 1-20,22-68,71-80,84-86
+  s_5b0f3d5f2911b6::t_731180010a8329 21
+  s_5b0f3d5f2911b6::t_7bf2c4a0580a27 69-70
+packages/cli/src/distributed-scheduler/distributed-scheduler.service.ts
+  s_5b0f3d5f2911b6::t_8d039c381516e3 2
+  s_5b0f3d5f2911b6::t_1e57d9e4ac63ab 1,3-7,10-28,30,32-74,77-82,84-131
+  s_5b0f3d5f2911b6::t_58e8a43344d603 31
+  s_5b0f3d5f2911b6::t_67546b7fda2a13 8-9,29
+  s_5b0f3d5f2911b6::t_71ef5654f50152 75
+  s_5b0f3d5f2911b6::t_55cac4673b0124 76,83
+packages/@n8n/db/src/migrations/common/1784000000032-CreateDistributedScheduleTables.ts
+  s_5b0f3d5f2911b6::t_81014015b108f1 4-13,17-19,26-32,36-44,46-49,51-67,74-88,92-94
+  s_5b0f3d5f2911b6::t_0079cd9196920d 1-3,90-91,95-96
+  s_5b0f3d5f2911b6::t_4f6a91a28a841c 14-16,20-25,33-35,45,50,68-73,89
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_5b0f3d5f2911b6::t_0079cd9196920d 209,421
+docs/generated/sqlite-schema/README.md
+  s_5b0f3d5f2911b6::t_28421fcc465d0d 94-95,247-248,1073-1105
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_5b0f3d5f2911b6::t_f5a4a59f86e375 1-32,43-44,46-47,53-83,88-100,106,108-109,111-112,118-119,121-138,148,163-212,218
+  s_5b0f3d5f2911b6::t_4f6a91a28a841c 48-49
+  s_5b0f3d5f2911b6::t_071781c0ac9253 101-105,107,110,113-117,120,139-147,149-162
+  s_5b0f3d5f2911b6::t_cb52eb3eee180a 33-42,45,50-52,84-87
+  s_5b0f3d5f2911b6::t_db07e82a76d0fd 213-217
+packages/cli/src/metrics/prometheus/prometheus.service.ts
+  s_5b0f3d5f2911b6::t_78d7715a120490 10,46,67
+docs/generated/postgres-schema/public.workflow_entity.md
+  s_5b0f3d5f2911b6::t_28421fcc465d0d 12,77,222-234
+packages/cli/src/commands/start.ts
+  s_5b0f3d5f2911b6::t_b850db9d034f78 246-255
+packages/@n8n/db/src/entities/index.ts
+  s_5b0f3d5f2911b6::t_6a2d0ba22d7e05 31-32,81-83,155-156
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_5b0f3d5f2911b6::t_0079cd9196920d 202,405
+packages/cli/src/distributed-scheduler/distributed-schedule-executor.service.ts
+  s_5b0f3d5f2911b6::t_739e5550bdf8ec 96-99,127
+  s_5b0f3d5f2911b6::t_7a835368379829 14,40,87-90,136,138,149,158
+  s_5b0f3d5f2911b6::t_6736435ab0b075 148
+  s_5b0f3d5f2911b6::t_4f6a91a28a841c 81-86,124-126
+  s_5b0f3d5f2911b6::t_ca254248df57c1 17,42
+  s_5b0f3d5f2911b6::t_4f769224148567 1-13,15-16,18-39,41,43-80,91-95,100-123,128-135,137,139-147,150-157,159-176
+packages/nodes-base/nodes/Schedule/GenericFunctions.ts
+  s_5b0f3d5f2911b6::t_3a8f0ad8252d61 45-46
+  s_5b0f3d5f2911b6::t_d5975317a79e6f 47
+  s_5b0f3d5f2911b6::t_a02ce97d3efffc 48-59,62,66,70,75,84,89,92
+packages/@n8n/config/src/configs/executions.config.ts
+  s_5b0f3d5f2911b6::t_93ea59be052d44 161-164
+packages/testing/playwright/tests/infrastructure/benchmarks/schedule-trigger/postgres-multi-main.spec.ts
+  s_5b0f3d5f2911b6::t_f0779bddabb4c3 2-43
+  s_5b0f3d5f2911b6::t_56f7284c33e1af 1
+packages/cli/src/active-workflow-manager.ts
+  s_5b0f3d5f2911b6::t_e97dae87d39042 50,945-946,1005-1021,1025
+  s_5b0f3d5f2911b6::t_12caf50913d55a 13
+docs/generated/sqlite-schema/scheduled_job.md
+  s_5b0f3d5f2911b6::t_28421fcc465d0d 1-115
+packages/@n8n/db/src/entities/scheduled-job.ts
+  s_5b0f3d5f2911b6::t_86c2187ed6c1eb 1-56
+packages/cli/src/workflows/triggers/non-webhook-trigger-registrar.ts
+  s_5b0f3d5f2911b6::t_cf1fd7bc65102a 22,50,125-132,153-154
+docs/generated/postgres-schema/public.scheduled_task.md
+  s_5b0f3d5f2911b6::t_28421fcc465d0d 1-100
+packages/@n8n/db/src/repositories/index.ts
+  s_5b0f3d5f2911b6::t_48a3c004e948c5 39-40
+packages/nodes-base/nodes/Schedule/ScheduleTriggerHelpers.ts
+  s_5b0f3d5f2911b6::t_4d46824d2859e2 2,4-5,7-74,76-90,95
+  s_5b0f3d5f2911b6::t_09480de066f037 1,91-94
+  s_5b0f3d5f2911b6::t_4f6a91a28a841c 6
+  s_5b0f3d5f2911b6::t_194ef38a50eb5d 3,75
+docs/generated/postgres-schema/README.md
+  s_5b0f3d5f2911b6::t_28421fcc465d0d 94-95,263-264,1085-1117
+packages/cli/src/workflows/triggers/__tests__/non-webhook-trigger-registrar.test.ts
+  s_5b0f3d5f2911b6::t_73c87db9479030 95-140
+  s_5b0f3d5f2911b6::t_64eb0006bb61f5 7,14-18,22-23,31,49-54,87,146-151
+docs/generated/sqlite-schema/workflow_entity.md
+  s_5b0f3d5f2911b6::t_28421fcc465d0d 23,76,221-234
+docs/generated/sqlite-schema/scheduled_task.md
+  s_5b0f3d5f2911b6::t_28421fcc465d0d 1-99
+docs/generated/postgres-schema/public.scheduled_job.md
+  s_5b0f3d5f2911b6::t_28421fcc465d0d 1-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "489c22e1ea9175aa9e4a52e342c15b057015de38",
+  "prompts": {},
+  "sessions": {
+    "s_5b0f3d5f2911b6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ed1d8-5500-74b0-97ff-c1b3dfb259c4",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

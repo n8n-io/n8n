@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/__tests__/agents-builder.service.test.ts
+  s_8dc574772799b2::t_8c0fad01e2db66 1-71
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_8dc574772799b2::t_54be10c568ccfb 284
+packages/cli/src/modules/agents/__tests__/messages-envelope.test.ts
+  s_8dc574772799b2::t_653125074f347f 93-150
+packages/cli/src/modules/agents/utils/messages-envelope.ts
+  s_8dc574772799b2::t_7b3144012d3f81 6-8,11-14,17-56,82-87,89-97,100-118,124-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "f90c2a99c5e934a41f4e1bd24140e995ce5a31e1",
+  "prompts": {},
+  "sessions": {
+    "s_8dc574772799b2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ebad8-8ad9-7cf2-a034-cff73636a6b4",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

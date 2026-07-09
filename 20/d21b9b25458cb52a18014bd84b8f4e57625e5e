@@ -1,0 +1,19 @@
+pnpm-lock.yaml
+  s_0300db73a84a70::t_2ddea0c55013cf 21638
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.8",
+  "base_commit_sha": "20d21b9b25458cb52a18014bd84b8f4e57625e5e",
+  "prompts": {},
+  "sessions": {
+    "s_0300db73a84a70": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "179b6cc7-2fb7-4c6f-85d8-cc2998c8f065",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

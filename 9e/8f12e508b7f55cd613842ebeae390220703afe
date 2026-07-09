@@ -1,0 +1,19 @@
+packages/cli/src/services/frontend.service.ts
+  ai_agent 16,38,143,602-606
+packages/cli/src/services/workflow-review-policy.service.ts
+  ai_agent 1-47
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  ai_agent 20,191-192,221
+packages/@n8n/api-types/src/index.ts
+  ai_agent 15
+packages/@n8n/api-types/src/frontend-settings.ts
+  ai_agent 10,220
+packages/@n8n/api-types/src/workflow-reviews-policy.ts
+  ai_agent 1-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9e8f12e508b7f55cd613842ebeae390220703afe",
+  "prompts": {}
+}

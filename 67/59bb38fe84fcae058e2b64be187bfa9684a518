@@ -1,0 +1,61 @@
+packages/nodes-base/credentials/common/aws/system-credentials-utils.ts
+  s_81836eca248d3b::t_15905de60bf4ed 318
+packages/nodes-base/credentials/common/aws/system-credentials-sdk.test.ts
+  s_81836eca248d3b::t_1db8a9c6b1e9a6 443-444
+  s_81836eca248d3b::t_de82427e2df4e6 140,147,160,164,178,180-182,193-194,217,284,316,324,334,336,344,350,352,366,373,381
+  s_81836eca248d3b::t_8218eb12b38017 414
+  s_81836eca248d3b::t_35b26a7846d3ec 401
+  s_81836eca248d3b::t_04dfe15b840bdd 389
+  s_433e9d01df74f8::t_804aab6a2d32cc 29-30,33
+  s_433e9d01df74f8::t_fc0dcf5b59ee20 173-176,187-191
+  s_433e9d01df74f8::t_7e9dbb474b73f8 221,232-255,259,262
+  s_433e9d01df74f8::t_5ea4aa531e08a2 453,502-535
+  s_433e9d01df74f8::t_103b819b3f28fd 536-543
+  s_433e9d01df74f8::t_7b1b66a29b81b7 263-266,268-312
+  s_433e9d01df74f8::t_530cf9751990cf 267
+  s_433e9d01df74f8::t_2d23ab422251dd 38
+  s_433e9d01df74f8::t_205cfc1a798236 153-157,159,162,165-172,183-186,200-216
+  s_433e9d01df74f8::t_dc8edcb86719e0 9,22
+  s_433e9d01df74f8::t_eca3b701219478 87
+  s_433e9d01df74f8::t_c1b1f91c677b07 417,441,445-448
+packages/nodes-base/credentials/common/aws/system-credentials-sdk.ts
+  s_81836eca248d3b::t_1cca3d1258434a 93
+  s_433e9d01df74f8::t_a8808800e02170 115-117,126
+  s_433e9d01df74f8::t_d0b00144753b10 137-150,152,156-158,160,164
+  s_433e9d01df74f8::t_dcfc24d4cddf8a 151,153-155
+  s_433e9d01df74f8::t_d0ff32223697ae 94-113,119-122
+packages/nodes-base/package.json
+  s_b8d0273386475c::t_7ae24a8b09e690 920
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "6759bb38fe84fcae058e2b64be187bfa9684a518",
+  "prompts": {},
+  "sessions": {
+    "s_433e9d01df74f8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0431d0e4-d236-4227-8221-b0b2e3fcfd8a",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_81836eca248d3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "321ee3fb-df6a-48f4-999d-69946457bd1d",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_b8d0273386475c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fafbcaa6-e0cd-4eee-8ba9-496bd316ad65",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

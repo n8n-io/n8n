@@ -1,0 +1,173 @@
+packages/@n8n/local-gateway/src/renderer/permissions/thread-prompt-watcher.ts
+  s_999bc9dbe3a9fa::t_6966b2cd9b9a87 9
+  s_999bc9dbe3a9fa::t_f94e56f7509f4d 88-103,105-108,110-119
+  s_999bc9dbe3a9fa::t_c3f1206cf725a5 1-8,10-87,104,109,120-128
+packages/@n8n/local-gateway/src/renderer/App.vue
+  s_999bc9dbe3a9fa::t_ca4fb7908896a0 6,16-18
+  s_999bc9dbe3a9fa::t_17d9281f20d675 29
+  s_999bc9dbe3a9fa::t_d56ddadf7a9348 105-117
+  s_999bc9dbe3a9fa::t_126cc2f6e41a4f 64-66
+  s_999bc9dbe3a9fa::t_ae2af510f564f1 158-175
+packages/@n8n/local-gateway/src/renderer/app/view-title.test.ts
+  s_999bc9dbe3a9fa::t_47f186c317b19d 1-54
+packages/@n8n/local-gateway/src/main/daemon-controller.ts
+  s_999bc9dbe3a9fa::t_ee87396fba4c34 101
+  s_999bc9dbe3a9fa::t_766c7e5a446a34 6,17-19
+  s_999bc9dbe3a9fa::t_4075b3ac421128 30-33
+packages/@n8n/local-gateway/src/main/permission-broker.test.ts
+  s_999bc9dbe3a9fa::t_5b37e638b561d8 1-10,12-13,15-22,26-82
+  s_999bc9dbe3a9fa::t_ecec534f78edc5 11,14,23-25
+packages/@n8n/local-gateway/src/renderer/components/ChatPanel.vue
+  s_999bc9dbe3a9fa::t_2be910e5ec4651 3,10,19-32,35
+  s_999bc9dbe3a9fa::t_638090096bdbb6 8-9,14
+  s_999bc9dbe3a9fa::t_ee8e807080583a 62
+packages/@n8n/local-gateway/src/main/permission-broker.ts
+  s_999bc9dbe3a9fa::t_a4a90711d9d7bf 1-71
+packages/@n8n/local-gateway/src/main/notifications.ts
+  s_999bc9dbe3a9fa::t_10ada394b75b9d 1-43,45-51
+  s_999bc9dbe3a9fa::t_9175844cf52466 44
+packages/@n8n/local-gateway/src/main/notifications.test.ts
+  s_999bc9dbe3a9fa::t_c8760d6b0b7284 98
+  s_999bc9dbe3a9fa::t_aa6d8995b29ca8 1-97,99-103
+packages/@n8n/local-gateway/src/shared/types.ts
+  s_999bc9dbe3a9fa::t_3c11a9cd133e3c 15-16
+  s_999bc9dbe3a9fa::t_83db474c2f186e 113-134
+  s_999bc9dbe3a9fa::t_cb362ec9d01b4a 40,49,65-68,73-75,77
+  s_999bc9dbe3a9fa::t_47b45e4bed8f3f 224-239
+  s_999bc9dbe3a9fa::t_fdd05978634398 71
+  s_999bc9dbe3a9fa::t_96675ae8af75e4 64,72
+packages/@n8n/local-gateway/src/main/main-window.ts
+  s_999bc9dbe3a9fa::t_6bb061e4fbe855 150-154
+packages/@n8n/local-gateway/src/main/index.ts
+  s_999bc9dbe3a9fa::t_dec040bfab7ed2 143
+  s_999bc9dbe3a9fa::t_3682ef78f31aca 15,17
+  s_999bc9dbe3a9fa::t_98c5f87d75f89d 55-75,87-92
+  s_999bc9dbe3a9fa::t_4b252a3065ef8d 21
+packages/@n8n/local-gateway/src/renderer/permissions/prompt-classification.test.ts
+  s_999bc9dbe3a9fa::t_04e9fae2074a69 46
+  s_999bc9dbe3a9fa::t_8b7c0bec4cbdef 137
+  s_999bc9dbe3a9fa::t_f50b0dfe4e89f9 1-45,47-136,138-241
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_999bc9dbe3a9fa::t_fe1e2329648951 126-139
+packages/@n8n/local-gateway/src/main/settings-store.ts
+  s_999bc9dbe3a9fa::t_df0dc1472be466 80
+  s_999bc9dbe3a9fa::t_fb765d668c8480 44
+  s_999bc9dbe3a9fa::t_b754d7114fd143 21
+packages/@n8n/local-gateway/src/main/thread-service.ts
+  s_999bc9dbe3a9fa::t_2145d2dfcde417 1-5
+  s_999bc9dbe3a9fa::t_04e9fae2074a69 101-105
+  s_999bc9dbe3a9fa::t_8e4ab6d3035f14 98-100,106-109
+packages/@n8n/local-gateway/src/main/settings-store.test.ts
+  s_999bc9dbe3a9fa::t_fc69ced3639c54 89-97
+packages/@n8n/local-gateway/src/renderer/components/TaskComposer.vue
+  s_999bc9dbe3a9fa::t_73ead305e2899d 6,16
+  s_999bc9dbe3a9fa::t_ea53b6d4bd309e 101-104
+  s_999bc9dbe3a9fa::t_bb274286531d7b 236,238-239,241
+packages/@n8n/local-gateway/src/renderer/permissions/permission-prompt-store.ts
+  s_999bc9dbe3a9fa::t_b2b9d5f86f529e 1-175
+packages/@n8n/local-gateway/src/main/preload.ts
+  s_999bc9dbe3a9fa::t_ea23b52e72442b 155-192
+  s_999bc9dbe3a9fa::t_17385e3e7d7dac 6
+  s_999bc9dbe3a9fa::t_20b144a06758e2 17,20,23
+packages/@n8n/local-gateway/src/renderer/permissions/thread-prompt-watcher.test.ts
+  s_999bc9dbe3a9fa::t_f1e4ba0bf75c30 29
+  s_999bc9dbe3a9fa::t_faa6d4ce8e2b74 1-4,6-28,30-153,160-161,168-220,227-262
+  s_999bc9dbe3a9fa::t_04e9fae2074a69 5,154-159,162-167,221-226
+packages/@n8n/local-gateway/src/main/ipc-handlers.test.ts
+  s_999bc9dbe3a9fa::t_e4ab71a695bdaa 62
+  s_999bc9dbe3a9fa::t_15984a5e3a5d54 410-482
+  s_999bc9dbe3a9fa::t_a5a886d7540392 95-98
+  s_999bc9dbe3a9fa::t_b2782a4015a42d 483,493-494,497,500-501
+  s_999bc9dbe3a9fa::t_c53753ecb3f7ab 61
+  s_999bc9dbe3a9fa::t_0023f4e4a55ac6 208,210,217-218
+  s_999bc9dbe3a9fa::t_714a4a7a667a40 38
+  s_999bc9dbe3a9fa::t_950170fd6f9663 99
+packages/@n8n/local-gateway/src/renderer/components/PermissionPromptCard.vue
+  s_999bc9dbe3a9fa::t_9da5e848e8e5f4 42-52
+  s_999bc9dbe3a9fa::t_ee9157f0bacf58 1-33,35-41,53-268
+  s_999bc9dbe3a9fa::t_2930c722a8fe95 34
+packages/@n8n/local-gateway/src/main/daemon-controller.test.ts
+  s_999bc9dbe3a9fa::t_d8851819d80467 91,119,129,145,151,165,175,187,195,209
+  s_999bc9dbe3a9fa::t_718bf465510ce5 137-143
+  s_999bc9dbe3a9fa::t_bd0bac514757ab 10
+  s_999bc9dbe3a9fa::t_86bd72b2fe46c4 79-83
+packages/@n8n/local-gateway/src/main/thread-service.test.ts
+  s_999bc9dbe3a9fa::t_a7bc58eb3208d5 51,54,57
+  s_999bc9dbe3a9fa::t_d81f7c320835ab 291-319
+packages/@n8n/local-gateway/src/renderer/permissions/permission-prompt-store.test.ts
+  s_999bc9dbe3a9fa::t_04e9fae2074a69 120,130,202-213
+  s_999bc9dbe3a9fa::t_b4766c4caaad43 73-74,77-78
+  s_999bc9dbe3a9fa::t_77a59ff03e4dfa 293-294
+  s_999bc9dbe3a9fa::t_1916b8e142c85c 1-72,75-76,79-119,121-129,131-201,214-292,295-308
+packages/@n8n/local-gateway/src/renderer/app/view-title.ts
+  s_999bc9dbe3a9fa::t_29efdc599e615f 1-4,7-20,22-28,30-49
+  s_999bc9dbe3a9fa::t_6e8d9cea9058e1 5-6,21,29
+packages/@n8n/local-gateway/src/renderer/permissions/prompt-classification.ts
+  s_999bc9dbe3a9fa::t_148b11929e3e58 1-3,5-32,34-173,175-192,196-209
+  s_999bc9dbe3a9fa::t_08305c126b0405 174
+  s_999bc9dbe3a9fa::t_fa1541c799cf24 4
+  s_999bc9dbe3a9fa::t_04e9fae2074a69 193-195
+  s_999bc9dbe3a9fa::t_e1f5602c9c2ab4 33
+packages/@n8n/local-gateway/src/renderer/components/PermissionPromptStack.vue
+  s_999bc9dbe3a9fa::t_9c5f5c2a8eb083 46
+  s_999bc9dbe3a9fa::t_a67317bd1d4727 1-45,47-112
+packages/@n8n/local-gateway/src/main/instance-api.test.ts
+  s_999bc9dbe3a9fa::t_adc6b1da05c623 166-189
+packages/@n8n/local-gateway/src/main/instance-api.ts
+  s_999bc9dbe3a9fa::t_60cde5cbf16c47 201-202,212-214
+  s_999bc9dbe3a9fa::t_04e9fae2074a69 203-211
+  s_999bc9dbe3a9fa::t_370d5d72b704a0 9
+packages/@n8n/local-gateway/src/renderer/components/AppHeader.vue
+  s_999bc9dbe3a9fa::t_b96c116e469996 4,15
+  s_999bc9dbe3a9fa::t_2335f22d0e8746 39-40,45-46,50
+  s_999bc9dbe3a9fa::t_da4b9d452ce950 44
+  s_999bc9dbe3a9fa::t_38f3ac5d07bbd2 118
+packages/@n8n/local-gateway/src/main/ipc-handlers.ts
+  s_999bc9dbe3a9fa::t_e4aa1cd1785827 124
+  s_999bc9dbe3a9fa::t_36304ae407b082 1,3
+  s_999bc9dbe3a9fa::t_7a662fe4d89490 271-312
+  s_999bc9dbe3a9fa::t_669064f5dfc783 167-171
+  s_999bc9dbe3a9fa::t_33702a09cd7cf4 123
+  s_999bc9dbe3a9fa::t_9f933118700071 31
+  s_999bc9dbe3a9fa::t_ad8652544bcdd7 49-53
+  s_999bc9dbe3a9fa::t_5d65cf6f84ec48 48
+  s_999bc9dbe3a9fa::t_b8a5c784f8d0ef 15,20
+packages/@n8n/local-gateway/src/renderer/views/SettingsView.vue
+  s_999bc9dbe3a9fa::t_515619cf8dbba9 109-131,133-135
+  s_999bc9dbe3a9fa::t_60b0861e6214ba 88
+  s_999bc9dbe3a9fa::t_8c5ac562243535 28-36
+  s_999bc9dbe3a9fa::t_e95a9bea4e848e 183-190
+  s_999bc9dbe3a9fa::t_08044f2c04de97 221-237
+  s_999bc9dbe3a9fa::t_6844d02f5e3691 5-6,13
+  s_999bc9dbe3a9fa::t_c8285a6c50126b 2
+  s_999bc9dbe3a9fa::t_16424a1ee06ad8 132
+  s_999bc9dbe3a9fa::t_bde9fc37a53e30 75-76
+packages/@n8n/local-gateway/src/renderer/permissions/use-permission-prompts.test.ts
+  s_999bc9dbe3a9fa::t_04e9fae2074a69 6
+  s_999bc9dbe3a9fa::t_59c7b684412419 1-5,7-101
+packages/@n8n/computer-use/package.json
+  s_999bc9dbe3a9fa::t_7e27fdf2fc0bcc 34-35
+packages/@n8n/local-gateway/src/renderer/permissions/use-permission-prompts.ts
+  s_999bc9dbe3a9fa::t_fd1ec9f47514b9 1-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "f5c14d591a93b54436d0fed630273396d0d08186",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_999bc9dbe3a9fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a93bbb15-5c16-4e57-8f5e-13470db10695",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

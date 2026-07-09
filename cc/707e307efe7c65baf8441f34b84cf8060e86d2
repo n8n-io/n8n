@@ -1,0 +1,57 @@
+packages/cli/src/modules/oauth-server/oauth-server.service.ts
+  s_d080cd0071e0f4::t_a59f95c797d994 21-299
+packages/cli/src/modules/oauth-server/oauth-token.service.ts
+  s_d080cd0071e0f4::t_59aa5e7d844a08 8-277
+packages/cli/src/modules/oauth-server/__tests__/oauth-clients.controller.api.test.ts
+  s_d080cd0071e0f4::t_e23c93639af304 1-177
+packages/cli/src/modules/oauth-server/__tests__/oauth.helpers.test.ts
+  s_d080cd0071e0f4::t_c7e877ae602272 1-151
+packages/cli/src/modules/oauth-server/oauth-authorization-code.service.ts
+  s_d080cd0071e0f4::t_e6e06eba59bbb0 10-14
+packages/cli/src/modules/oauth-server/__tests__/oauth-consent.service.test.ts
+  s_d080cd0071e0f4::t_c7e877ae602272 1-290
+packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
+  s_d080cd0071e0f4::t_c3d4c92ade4091 494-496
+  s_d080cd0071e0f4::t_3998766de9f7c2 67-73
+  s_d080cd0071e0f4::t_977b6967576ea6 14-40
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_d080cd0071e0f4::t_2fa5c89f5162af 853
+  s_d080cd0071e0f4::t_357740f072ec61 12-42
+packages/testing/playwright/tests/e2e/mcp/mcp-oauth.spec.ts
+  s_d080cd0071e0f4::t_8f7b3a0f32b8dc 3-8
+packages/cli/src/modules/oauth-server/oauth-consent.controller.ts
+  s_d080cd0071e0f4::t_d3b27233e301ab 7-14
+packages/cli/src/modules/oauth-server/__tests__/oauth-consent.controller.api.test.ts
+  s_d080cd0071e0f4::t_e23c93639af304 1-433
+packages/cli/src/modules/oauth-server/oauth.helpers.ts
+  s_d080cd0071e0f4::t_b8e998f7d56d08 4
+packages/cli/src/modules/oauth-server/oauth.controller.ts
+  s_d080cd0071e0f4::t_3dd225ba211fbd 14-114
+packages/cli/src/modules/oauth-server/__tests__/oauth-authorization-code.service.test.ts
+  s_d080cd0071e0f4::t_c7e877ae602272 1-245
+packages/cli/src/modules/oauth-server/oauth-consent.service.ts
+  s_d080cd0071e0f4::t_9979f26a74ae84 7-21
+  s_d080cd0071e0f4::t_b8e998f7d56d08 70-103
+packages/cli/src/modules/oauth-server/__tests__/oauth.controller.api.test.ts
+  s_d080cd0071e0f4::t_e23c93639af304 9-12
+  s_d080cd0071e0f4::t_e0af2284b61a18 527-528
+  s_d080cd0071e0f4::t_2d2fc16294e8a7 294-302
+packages/cli/src/modules/oauth-server/oauth-clients.controller.ts
+  s_d080cd0071e0f4::t_646fc8beeef1bf 14-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "cc707e307efe7c65baf8441f34b84cf8060e86d2",
+  "prompts": {},
+  "sessions": {
+    "s_d080cd0071e0f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6faeb930-cf57-48d0-aa3c-235422c166e5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guillaume Jacquart <jacquart.guillaume@gmail.com>"
+    }
+  }
+}

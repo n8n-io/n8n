@@ -1,0 +1,9 @@
+packages/@n8n/instance-ai/src/mcp/mcp-client-manager.ts
+  ai_agent 199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "866af3562f7d98cb2e726621ee4713652fd422eb",
+  "prompts": {}
+}

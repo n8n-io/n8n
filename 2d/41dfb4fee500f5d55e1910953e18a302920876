@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_04fffcad4fa449::t_d9ae82d436ae7f 231-233,235,237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2d41dfb4fee500f5d55e1910953e18a302920876",
+  "prompts": {},
+  "sessions": {
+    "s_04fffcad4fa449": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "25d4fc9b-6cc9-41b7-974b-09cf8a5f5a93",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

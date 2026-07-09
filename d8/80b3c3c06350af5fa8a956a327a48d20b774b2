@@ -1,0 +1,19 @@
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-credentials.integration.test.ts
+  s_a63587c48ee4ce::t_059cf95c81ae68 252,284,306
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d880b3c3c06350af5fa8a956a327a48d20b774b2",
+  "prompts": {},
+  "sessions": {
+    "s_a63587c48ee4ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa3d87db-0b7d-4c2d-9faa-757f8dd0c78b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

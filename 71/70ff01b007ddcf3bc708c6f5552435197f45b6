@@ -1,0 +1,56 @@
+packages/nodes-base/credentials/test/Aws.credentials.test.ts
+  s_d3f6ecf4ef182f::t_9104a414e71005 75-85,99-101,103,115-119,133-135,137,174,177,179-181,202-204,206,229-233,245-246,258,260,263-265,280,282,284-286
+  s_de807c7b884146::t_2bc9073f87ae74 292-321
+  s_d3f6ecf4ef182f::t_844aa7f0581432 6-16,26
+  s_d3f6ecf4ef182f::t_bf11626046d3ef 5
+packages/nodes-base/credentials/test/Aws.signing.test.ts
+  s_de807c7b884146::t_19af50f472fe11 1-4,89-119,121-134,136-138,162
+  s_de807c7b884146::t_7031fc2c9e9970 120,135
+  s_de807c7b884146::t_fd71b222c0b8b5 5-88,141-143,146-147,149-151,153-159
+  s_de807c7b884146::t_74f7b74efc682b 139-140,144-145,148,152,160-161
+packages/nodes-base/credentials/test/AwsAssumeRole.credentials.test.ts
+  s_d3f6ecf4ef182f::t_f06eb715a74185 94-95
+  s_d3f6ecf4ef182f::t_c6bdecaa76807e 83-84
+  s_d3f6ecf4ef182f::t_66c7db5c66188c 7-19,26-29,58,85,91-93
+packages/nodes-base/credentials/common/aws/utils.ts
+  s_d3f6ecf4ef182f::t_1e2ae9e5f8cab4 396-397,402,404-406,415-417,434,442,448-449,462-464,466-470,472-474,489-491,493-494,502-507,513-522
+  s_de807c7b884146::t_3d556abbd11d50 438-441
+  s_de807c7b884146::t_4d979d5aed93bd 495-501,511-512
+  s_de807c7b884146::t_0feb8307ebf686 398-400,403,408
+  s_de807c7b884146::t_6e57f26585c2cb 407,409-414
+  s_de807c7b884146::t_9b23016469829e 418-420,426,432-433,435-437,446-447,450,453-458,460-461,465,471,475-488,492
+  s_d3f6ecf4ef182f::t_98d3157c6dadfd 451-452
+  s_d3f6ecf4ef182f::t_2b34de54b9b805 523,525,529
+  s_d3f6ecf4ef182f::t_bf896125291a51 443-445
+  s_d3f6ecf4ef182f::t_5c7dd19fa5258f 459,508-510
+  s_de807c7b884146::t_e8b273e80b3b3b 401
+  s_de807c7b884146::t_7773acb85ae7d7 1,4-5,7-8
+packages/nodes-base/credentials/Aws.credentials.ts
+  s_d3f6ecf4ef182f::t_fc2eea215c0920 99
+packages/nodes-base/credentials/AwsAssumeRole.credentials.ts
+  s_d3f6ecf4ef182f::t_831745b60f8492 160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "7170ff01b007ddcf3bc708c6f5552435197f45b6",
+  "prompts": {},
+  "sessions": {
+    "s_d3f6ecf4ef182f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce569422-462a-4802-bdc8-32dd5735c34f",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_de807c7b884146": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "289bcd83-7b99-424b-939a-8908368bbadf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

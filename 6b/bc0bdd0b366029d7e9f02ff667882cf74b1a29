@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/roles/components/RoleHoverPopover.test.ts
+  s_67efe79cc0a7a6::t_a06dc3232fbe6b 191,194,198-199,201-203
+packages/frontend/editor-ui/src/features/settings/users/components/SettingsUsersRoleCell.test.ts
+  s_67efe79cc0a7a6::t_a2e6a14c4d59b3 9
+  s_67efe79cc0a7a6::t_12adaaf5e6be0e 94-98
+  s_67efe79cc0a7a6::t_aca489edc42b88 165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "6bbc0bdd0b366029d7e9f02ff667882cf74b1a29",
+  "prompts": {},
+  "sessions": {
+    "s_67efe79cc0a7a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea7f3845-0fff-4e01-a2f0-ea7e584fb7c8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

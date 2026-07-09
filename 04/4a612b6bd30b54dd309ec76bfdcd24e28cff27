@@ -1,0 +1,55 @@
+packages/@n8n/db/src/migrations/common/1784000000040-AddEnvironmentIdToWebhookEntity.ts
+  s_9b5d8183594227::t_1d77d83bebe064 5-7,11
+  s_9b5d8183594227::t_6c5726218954c4 1-4,8-10,12-13
+packages/cli/src/active-workflow-manager.ts
+  s_9b5d8183594227::t_fd1475239847fb 188-191
+  s_9b5d8183594227::t_a58f9b6b283e1c 562
+  s_9b5d8183594227::t_d86eb5c8b04cb7 151
+packages/cli/src/webhooks/live-webhooks.ts
+  s_9b5d8183594227::t_70ae4df42aec6e 61-79,82,86
+  s_9b5d8183594227::t_8e3df64efb8cc5 127-147,159,176
+  s_9b5d8183594227::t_8edbd8daf3d8d5 272-309
+  s_9b5d8183594227::t_222b57c99a27dc 47-48
+  s_9b5d8183594227::t_6705b32d715486 3-9
+  s_9b5d8183594227::t_4c2ea392fc42a6 177-178
+  s_9b5d8183594227::t_8917282beb1424 310-311
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_9b5d8183594227::t_338c5cf8ee56d7 419
+  s_9b5d8183594227::t_b2d2e7d3b601ab 209
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_9b5d8183594227::t_8f831163637430 435
+  s_9b5d8183594227::t_3301dabdee6ba0 216
+single-instance-promotion-prototype/implementation-phase/SUMMARY_ACTIVATE_ENVIRONMENT_VERSIONS.md
+  h_c63dce324dfc7b 1-18
+packages/@n8n/db/src/entities/webhook-entity.ts
+  s_9b5d8183594227::t_9d9fd2f6c3eccd 25-28
+packages/cli/src/webhooks/__tests__/live-webhooks.test.ts
+  s_9b5d8183594227::t_1f91cb65f92f2d 43-45,61-62
+  s_9b5d8183594227::t_8cc3a53a6dd279 3-10
+  s_9b5d8183594227::t_d5834288053325 102
+  s_9b5d8183594227::t_156a55d2221855 454
+  s_9b5d8183594227::t_25b66254d74839 355
+single-instance-promotion-prototype/README.md
+  s_9b5d8183594227::t_d2f9c6688b1489 1-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "044a612b6bd30b54dd309ec76bfdcd24e28cff27",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_9b5d8183594227": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f134c29-96f9-429b-babd-895858012818",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

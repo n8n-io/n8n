@@ -1,0 +1,77 @@
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_22dba21f85aaca::t_898fedef714da4 43-47
+packages/@n8n/local-gateway/src/main/local-instance/local-instance-ui.ts
+  s_22dba21f85aaca::t_4e02e0084c740f 1-36
+packages/@n8n/agents/src/workspace/sandbox/workspace-root.ts
+  s_22dba21f85aaca::t_db468eaf6253cb 1-3,12-13,21-22
+packages/@n8n/agents/src/workspace/filesystem/local-filesystem.ts
+  s_22dba21f85aaca::t_7e5edaf61a04ca 1-39,41-145
+  s_22dba21f85aaca::t_4c1cfb4f97372d 40
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_22dba21f85aaca::t_2b14f8b9d099a0 1018
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_22dba21f85aaca::t_deb95f93433a56 16,20
+  s_22dba21f85aaca::t_4a571a21103a45 27
+packages/@n8n/instance-ai/src/workspace/create-workspace.ts
+  s_22dba21f85aaca::t_aadda7545e3e38 29-30
+  s_22dba21f85aaca::t_8f4a974c1bb0aa 8
+packages/@n8n/local-gateway/src/main/index.ts
+  s_22dba21f85aaca::t_54b9e5e1a7a315 12
+  s_22dba21f85aaca::t_e2297fea541b6b 233-249
+packages/@n8n/local-gateway/src/main/local-instance/local-instance-config.test.ts
+  s_22dba21f85aaca::t_3c4345baaa366e 28
+packages/@n8n/agents/src/workspace/sandbox/create-workspace.ts
+  s_22dba21f85aaca::t_5accacadc354b8 10
+  s_22dba21f85aaca::t_bf53a0f04647f4 89-92
+  s_22dba21f85aaca::t_277a1161017ee2 2,12
+  s_22dba21f85aaca::t_7e67cec4c40542 62-64
+  s_22dba21f85aaca::t_94908f73a5ea52 60-61,65-69
+packages/@n8n/agents/src/workspace/sandbox/provider.ts
+  s_22dba21f85aaca::t_7ed9c91ea8b2a9 5
+packages/@n8n/local-gateway/src/main/local-instance/local-instance-config.ts
+  s_22dba21f85aaca::t_d5b148c1e260a2 86-88,90
+packages/@n8n/local-gateway/src/main/local-instance/local-instance-manager.ts
+  s_22dba21f85aaca::t_a93c7c41c44777 134-141
+packages/@n8n/local-gateway/src/main/local-instance/local-instance-manager.test.ts
+  s_22dba21f85aaca::t_e61f020889f8bd 223-240
+packages/@n8n/local-gateway/src/main/tray.ts
+  s_22dba21f85aaca::t_b332f1eb91b542 62-63,70-72,77
+packages/@n8n/agents/src/workspace/sandbox/__tests__/local-sandbox.test.ts
+  s_22dba21f85aaca::t_5d646d1e4f1c93 1-86
+packages/@n8n/agents/src/workspace/sandbox/types.ts
+  s_22dba21f85aaca::t_ed8a993b569c83 54
+  s_22dba21f85aaca::t_0b1832d0823fa1 88-100
+packages/@n8n/local-gateway/src/main/local-instance/local-instance-ui.test.ts
+  s_22dba21f85aaca::t_ebd45aa5972a98 1-10,12-23,25-58
+  s_22dba21f85aaca::t_f20e5b5affe464 11
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_22dba21f85aaca::t_7935fb3214822c 834-835
+  s_22dba21f85aaca::t_25239d9ab58718 785-792
+packages/@n8n/agents/src/workspace/sandbox/index.ts
+  s_22dba21f85aaca::t_d251f3492c6ca0 11
+  s_22dba21f85aaca::t_ac9a2287c316ce 29
+packages/@n8n/agents/src/workspace/sandbox/local-sandbox.ts
+  s_22dba21f85aaca::t_f7cb1624fd4e9d 2-3,11-14,27-28,30-33,38-40,49,57
+  s_22dba21f85aaca::t_388ada613739a8 1,4-10,15-26,29,34-37,41-48,50-56,58-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "4360cb56a2f36e8abc45912911396495b099ecf0",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_22dba21f85aaca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e80c488b-60c5-4815-a664-397181ee7c3c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

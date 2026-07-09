@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Salesforce/__test__/GenericFunctions.test.ts
+  8f0cd2fabbd04d86 181,183,185-194,224,461-496
+packages/nodes-base/nodes/Salesforce/GenericFunctions.ts
+  8f0cd2fabbd04d86 210-217,232-235,276-279,281
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "262639d539444d917bf81f5dd27f684380a11950",
+  "prompts": {
+    "8f0cd2fabbd04d86": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71bb5790-df8a-4c6d-bd41-cd0302029761",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts",
+      "messages": [],
+      "total_additions": 87,
+      "total_deletions": 43,
+      "accepted_lines": 66,
+      "overriden_lines": 0
+    }
+  }
+}

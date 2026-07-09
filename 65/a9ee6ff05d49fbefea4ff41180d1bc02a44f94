@@ -1,0 +1,14 @@
+packages/testing/playwright/tests/e2e/ai/assistant-credential-help.spec.ts
+  h_330405ffe93e01 115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "65a9ee6ff05d49fbefea4ff41180d1bc02a44f94",
+  "prompts": {},
+  "humans": {
+    "h_330405ffe93e01": {
+      "author": "Jonathan Bennetts"
+    }
+  }
+}

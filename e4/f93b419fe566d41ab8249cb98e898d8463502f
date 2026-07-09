@@ -1,0 +1,19 @@
+packages/testing/playwright/tests/e2e/mcp/mcp-oauth.spec.ts
+  s_d080cd0071e0f4::t_c9f6b2c10e074e 3-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "e4f93b419fe566d41ab8249cb98e898d8463502f",
+  "prompts": {},
+  "sessions": {
+    "s_d080cd0071e0f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6faeb930-cf57-48d0-aa3c-235422c166e5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guillaume Jacquart <jacquart.guillaume@gmail.com>"
+    }
+  }
+}

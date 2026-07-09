@@ -1,0 +1,24 @@
+packages/nodes-base/nodes/Microsoft/Excel/v2/transport/index.ts
+  s_37e451fff42af7::t_7b3f05bed0642b 41,49
+  s_37e451fff42af7::t_b532447d51cc14 13-25
+packages/nodes-base/nodes/Microsoft/Excel/v2/helpers/errorHandling.ts
+  s_37e451fff42af7::t_a0a1c9cd7ccaf1 6-74
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/helpers/errorHandling.test.ts
+  s_37e451fff42af7::t_79d174f3668dd4 41-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "6f75e1e981f2b9c9923f11c34079f37edaf867f5",
+  "prompts": {},
+  "sessions": {
+    "s_37e451fff42af7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9285862-7af0-4e1d-89ba-8bd58c2f345d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

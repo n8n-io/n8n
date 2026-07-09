@@ -1,0 +1,50 @@
+packages/cli/src/modules/n8n-packages/engine/import-pipeline.ts
+  s_57e1c732a05437::t_7c3945140cf1fc 115-116,136-140
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_57e1c732a05437::t_a3412f7edef97b 1975-2037
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_57e1c732a05437::t_15c21126e11ad8 83-89
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-credentials.integration.test.ts
+  s_57e1c732a05437::t_4c73db3a25e231 10-12
+  s_57e1c732a05437::t_96bca5b964c16d 219-265,295-311
+  s_57e1c732a05437::t_a3f42a0140538e 266-294
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_57e1c732a05437::t_9ad97cfd6e96f6 86-97
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_57e1c732a05437::t_e3cf9ad10db973 27
+  s_57e1c732a05437::t_5c28b71433f4ae 60-66
+  s_57e1c732a05437::t_ed79c8f70b0ab0 6
+packages/cli/src/modules/n8n-packages/__tests__/import-pipeline.integration.test.ts
+  s_57e1c732a05437::t_f6bfcfb53dda61 1364-1368
+  s_57e1c732a05437::t_410c6e03a72e48 1278-1311
+  s_57e1c732a05437::t_56e0420eab9444 1162-1167,1230-1235,1263,1267-1272,1342-1363
+packages/cli/src/events/maps/relay.event-map.ts
+  s_57e1c732a05437::t_68a83ff3bbcde5 17
+  s_57e1c732a05437::t_4fa865177bcd92 101-107
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_57e1c732a05437::t_4f05733600d470 957-989
+  s_57e1c732a05437::t_91a19b5ec812a1 164-165
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_57e1c732a05437::t_539ddd1331c502 146-147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d53898ccfd0c6707e570173ed560165b92780d1e",
+  "prompts": {},
+  "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_57e1c732a05437": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e1af8da7-bfdb-4c1e-afe0-a8ce892378ba",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

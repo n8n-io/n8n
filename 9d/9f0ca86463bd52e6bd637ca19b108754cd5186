@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/components/WorkflowSettings.vue
+  s_9dc98feddc30c9::t_ed216ac909635c 205-207
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.9",
+  "base_commit_sha": "9d9f0ca86463bd52e6bd637ca19b108754cd5186",
+  "prompts": {},
+  "sessions": {
+    "s_9dc98feddc30c9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b583dea2-713a-4555-aedc-bba78a9acf3f",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

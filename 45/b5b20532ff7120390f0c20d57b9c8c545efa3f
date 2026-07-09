@@ -1,0 +1,14 @@
+packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
+  h_6ef4cecfee65a2 23-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "45b5b20532ff7120390f0c20d57b9c8c545efa3f",
+  "prompts": {},
+  "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

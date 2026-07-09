@@ -1,0 +1,87 @@
+packages/cli/src/credentials/credentials.controller.ts
+  s_47b6b2164e73ae::t_2eca1487461ac1 404-409,428
+  s_47b6b2164e73ae::t_9875e1c165f500 34,66
+packages/cli/src/services/project.service.ee.ts
+  s_47b6b2164e73ae::t_9159ca9527f06c 245
+  s_47b6b2164e73ae::t_985a3e80aef4aa 591
+  s_47b6b2164e73ae::t_9875e1c165f500 122-127,241-244,251,253-256,422,433,437-438,445,590,592-595,623-625
+  s_bb062005adc153::t_6ec3a2e0eaf3e7 420-421,423-432,435-436,442-444
+  s_47b6b2164e73ae::t_e174c98925f00d 434
+  s_f747d07f8f557b::t_80cf3d131b2d91 252
+packages/@n8n/db/src/repositories/shared-credentials.repository.ts
+  s_bb062005adc153::t_72a076284cedb7 150-184
+packages/cli/src/modules/dynamic-credentials.ee/database/repositories/dynamic-credential-user-entry.repository.ts
+  s_47b6b2164e73ae::t_861bbadcf2c2ee 2-4,14-20,22-34
+packages/cli/src/modules/dynamic-credentials.ee/services/__tests__/credential-connection-status.service.test.ts
+  s_f747d07f8f557b::t_ed2c0005546549 1
+  s_f747d07f8f557b::t_0dd8c9bf2dce28 2-7,9-197
+  s_f747d07f8f557b::t_3557fa2ec4be07 8
+packages/cli/src/credentials/credential-connection-status-proxy.ts
+  s_47b6b2164e73ae::t_9875e1c165f500 35-39
+packages/cli/src/modules/dynamic-credentials.ee/services/credential-connection-status.service.ts
+  s_bb062005adc153::t_4b9a1b86b71e40 97-99,104,107,112-127,130,134-136,138-149
+  s_47b6b2164e73ae::t_9875e1c165f500 34-36,39,79-96,100,102-103,105,111,128-129
+  s_bb062005adc153::t_3ed5f51dbef036 37
+  s_47b6b2164e73ae::t_c7ac4ada90f113 150
+  s_bb062005adc153::t_77764645cddddc 1,14-18
+  s_f747d07f8f557b::t_27b70c0936c23f 131-133
+  s_47b6b2164e73ae::t_049b8671bfd1c2 3
+  s_47b6b2164e73ae::t_38371b05dd8535 106,108-110
+  s_47b6b2164e73ae::t_381ed274ac2eea 8,38
+packages/cli/src/credentials/__tests__/credentials.controller.test.ts
+  s_47b6b2164e73ae::t_9875e1c165f500 86
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_f747d07f8f557b::t_3731993e26e038 210-213,216,584-587
+  s_f747d07f8f557b::t_12aa129914490e 536
+  s_f747d07f8f557b::t_81d501e78dd7ed 305
+  s_98431d37781875::t_eebdb7129736b4 517-519,528-529
+  s_f747d07f8f557b::t_b3ec7618a28b1d 569
+  s_98431d37781875::t_1758e88c6597fd 576
+  s_f747d07f8f557b::t_f34ff5840a6624 530-534,542-567,578-583
+  s_f747d07f8f557b::t_48bc05eb0326e6 204-209,214-215,217-235,237-264,266,269-304,306-345,347-351,354-356
+  s_98431d37781875::t_5f53b1a0d376c0 601
+  s_f747d07f8f557b::t_d7648a3316c915 11,17
+  s_98431d37781875::t_89a57c3581fab3 624
+packages/cli/src/credentials/credential-connection-status-provider.interface.ts
+  s_47b6b2164e73ae::t_9875e1c165f500 36-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c93438a4a28fc3e35a71f43c414bcbf489e3c138",
+  "prompts": {},
+  "sessions": {
+    "s_47b6b2164e73ae": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2dcb85db-0b0b-4d59-8f37-8422e522b9a4",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    },
+    "s_98431d37781875": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "9ef0e5b1-347d-4e53-8cc9-e518148baa25",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    },
+    "s_bb062005adc153": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "055583cd-9a91-41ba-aef8-dbe4e67fc2c7",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    },
+    "s_f747d07f8f557b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0e1a6406-7bab-4a7f-b8d7-c6f063555532",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

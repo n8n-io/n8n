@@ -1,0 +1,22 @@
+packages/core/src/credentials.ts
+  s_ed0abb33260ce8::t_4e969146f41ce9 74
+  s_ed0abb33260ce8::t_323bb7f833a950 4
+packages/core/src/nodes-loader/package-directory-loader.ts
+  s_ed0abb33260ce8::t_e2ad07a3da521b 90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ede9d5d373e41c28843ecf0c6ac530d6b2a21625",
+  "prompts": {},
+  "sessions": {
+    "s_ed0abb33260ce8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f4504ad9-c124-4413-8fdc-7b2545e3f862",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

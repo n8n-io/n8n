@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/roles/instance/components/ScopeGroupSelector.test.ts
+  s_7d7b0bde429fbc::t_63775b0d592033 5
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.test.ts
+  s_7d7b0bde429fbc::t_08e97673e14571 98-176
+  s_7d7b0bde429fbc::t_d2349bc9153cc3 8-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "1b4bea452cc063ef2fff607cac35a60b48dd5527",
+  "prompts": {},
+  "sessions": {
+    "s_7d7b0bde429fbc": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4a27d91f-5729-4345-a190-8ed486757b87",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

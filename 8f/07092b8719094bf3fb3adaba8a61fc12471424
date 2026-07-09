@@ -1,0 +1,42 @@
+packages/@n8n/workflow-sdk/src/workflow-builder.ts
+  s_c77c9c67421351::t_15c0796f00cc78 507,509-510,512,514,516-519,522
+  s_c77c9c67421351::t_5e6fa941919b1a 508
+packages/@n8n/workflow-sdk/src/node-groups.test.ts
+  s_c77c9c67421351::t_d5ea74db96b790 138,140-142
+  s_c77c9c67421351::t_aa6b51f839285b 48,55-56,58
+  s_c77c9c67421351::t_fddc36a0081e40 170
+packages/@n8n/workflow-sdk/src/prompts/sdk-reference/sdk-language.ts
+  s_c77c9c67421351::t_e4c67b0745dc8f 72-73,81,86-87
+packages/@n8n/workflow-sdk/src/codegen/code-generator.ts
+  s_c77c9c67421351::t_679fb97a4f0ecb 1449-1450,1457,1459,1461
+packages/@n8n/workflow-sdk/src/types/base.ts
+  s_c77c9c67421351::t_6487c60251a88c 1015
+  s_c77c9c67421351::t_5a0b47bdf58bff 1016,1018
+  s_c77c9c67421351::t_546aa99f717acc 1095-1097
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/types.ts
+  s_c77c9c67421351::t_dc6c90bf02e353 356-358,360
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/serializers/json-serializer.ts
+  s_c77c9c67421351::t_26c34503e5c33e 276-278,280,285
+packages/@n8n/workflow-sdk/src/workflow-builder/workflow-import.ts
+  s_c77c9c67421351::t_0150f2e58495f8 48-50
+  s_c77c9c67421351::t_865c5c8838bf3b 33
+  s_c77c9c67421351::t_e15c478271135b 176,183-184
+  ai_agent 34-37
+  s_c77c9c67421351::t_1b31cf96a8636f 128-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8f07092b8719094bf3fb3adaba8a61fc12471424",
+  "prompts": {},
+  "sessions": {
+    "s_c77c9c67421351": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd7b1752-695a-4039-902a-08408f1d312e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

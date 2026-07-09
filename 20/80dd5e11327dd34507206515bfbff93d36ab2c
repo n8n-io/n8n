@@ -1,0 +1,22 @@
+packages/nodes-base/nodes/Microsoft/OneDrive/MicrosoftOneDriveTrigger.node.ts
+  s_c10e563f7c2f73::t_57ca4814be8be7 111-118,120-122
+  s_c10e563f7c2f73::t_a2739ea8ee96a4 52-60,82-87,91
+  s_c10e563f7c2f73::t_596a85d76a05b7 11,17
+  s_c10e563f7c2f73::t_17faa2f4a45180 143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "2080dd5e11327dd34507206515bfbff93d36ab2c",
+  "prompts": {},
+  "sessions": {
+    "s_c10e563f7c2f73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db403f6c-3898-4d9e-af22-6e4e17cbd6c8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

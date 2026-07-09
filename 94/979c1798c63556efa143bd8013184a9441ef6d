@@ -1,0 +1,16 @@
+packages/@n8n/mcp-browser-extension/manifest.json
+  h_44f8d1c0f2f8c4 5,9-21
+packages/@n8n/mcp-browser-extension/package.json
+  h_44f8d1c0f2f8c4 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "94979c1798c63556efa143bd8013184a9441ef6d",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

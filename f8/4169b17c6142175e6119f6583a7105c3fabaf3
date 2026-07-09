@@ -1,0 +1,21 @@
+docs/superpowers/plans/2026-06-11-agent-input-data-and-opt-in-context.md
+  s_bb17b049fc2e2d::t_9ffbce91550bf5 900
+  s_bb17b049fc2e2d::t_456a490f32c2fb 868,872-878,881
+  s_bb17b049fc2e2d::t_adb4f055b142d0 1-867,869-871,879-880,882-899,901-1273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f84169b17c6142175e6119f6583a7105c3fabaf3",
+  "prompts": {},
+  "sessions": {
+    "s_bb17b049fc2e2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ce0c93e-11a0-4d60-b602-af5cd3c86750",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

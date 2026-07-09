@@ -1,0 +1,24 @@
+packages/nodes-base/nodes/Microsoft/OneDrive/GenericFunctions.ts
+  s_c10e563f7c2f73::t_cd5c04035b0389 392-394,398-399,401,403-404
+  s_c10e563f7c2f73::t_3553f01182a6d7 187-200,210,219-233,241,254-259
+  s_c10e563f7c2f73::t_bedcd50f66117e 57-60,66-68,79-185
+  s_c10e563f7c2f73::t_dd1b1cb3961dd4 274,283-295,314,323-333
+  s_c10e563f7c2f73::t_499528239e5a2e 5
+  s_c10e563f7c2f73::t_cb92c4a86ecc61 341-344
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "6247d442c7a8311d3be5273ac7971b4817030605",
+  "prompts": {},
+  "sessions": {
+    "s_c10e563f7c2f73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db403f6c-3898-4d9e-af22-6e4e17cbd6c8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

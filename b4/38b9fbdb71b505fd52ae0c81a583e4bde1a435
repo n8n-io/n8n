@@ -1,0 +1,25 @@
+packages/cli/src/oauth/oauth.service.ts
+  s_aa40f315c412bf::t_05736e28cf4bd3 681,684-685,690-695
+  s_aa40f315c412bf::t_955affe1faf837 682,688
+  s_aa40f315c412bf::t_040186030cb275 1215
+  s_aa40f315c412bf::t_04750462d2cbb9 1216-1219
+packages/cli/src/oauth/__tests__/oauth.service.test.ts
+  s_aa40f315c412bf::t_d161096c17e7fc 5067-5073,5079-5080,5082,5084-5088,5090-5100,5102-5103
+  s_aa40f315c412bf::t_31eb820a7bc1e5 5083
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b438b9fbdb71b505fd52ae0c81a583e4bde1a435",
+  "prompts": {},
+  "sessions": {
+    "s_aa40f315c412bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d1db2c7-ef71-408d-a28c-9f53a28738b9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

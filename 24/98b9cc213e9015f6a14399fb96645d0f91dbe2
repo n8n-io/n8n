@@ -1,0 +1,26 @@
+packages/nodes-base/nodes/Kafka/confluent/KafkaConfluentTrigger.node.ts
+  s_d4d3175b2de0d6::t_d413276d6ba260 317
+packages/nodes-base/nodes/Kafka/confluent/utils.ts
+  s_d4d3175b2de0d6::t_562489be7fb9a8 145,148-149,153-154
+  s_d4d3175b2de0d6::t_64da61e3655259 152
+  s_d4d3175b2de0d6::t_7cf0cfd15a7b3f 14
+  s_d4d3175b2de0d6::t_8083469ccdb6e9 155
+packages/nodes-base/nodes/Kafka/confluent/configConverter.ts
+  s_d4d3175b2de0d6::t_4cdb0458b6c931 127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2498b9cc213e9015f6a14399fb96645d0f91dbe2",
+  "prompts": {},
+  "sessions": {
+    "s_d4d3175b2de0d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c80b8a6c-e008-47b9-8718-338c7e9aaab8",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

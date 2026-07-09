@@ -1,0 +1,32 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f4cf17bdcc9083::t_d803fb919b31dd 2838
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleView.vue
+  s_f4cf17bdcc9083::t_9dbe1bf94beaf5 40
+  s_f4cf17bdcc9083::t_db25f2b034e818 78
+packages/frontend/editor-ui/src/features/roles/project/ProjectRoleView.vue
+  s_f4cf17bdcc9083::t_7cc44be5bdce4c 50
+  s_f4cf17bdcc9083::t_415c075791e689 136
+packages/frontend/editor-ui/src/features/roles/composables/useRoleEditorForm.ts
+  s_f4cf17bdcc9083::t_692822e00a8ab5 159
+  s_f4cf17bdcc9083::t_9649f4c79c9278 3
+  s_f4cf17bdcc9083::t_a0e26a03474155 39
+  s_f4cf17bdcc9083::t_a6ca2f8269bc82 118-123,127-133
+  s_f4cf17bdcc9083::t_373e980205fb0c 117
+  s_f4cf17bdcc9083::t_ff454de7443a24 124-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "2b022f64ce7ca659fd909fca9ad2c8697da98729",
+  "prompts": {},
+  "sessions": {
+    "s_f4cf17bdcc9083": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b86ea1f-b7d5-4710-9e60-6564f5ba36f7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListEmptyState.vue
+  s_794a1be4bba94d::t_227ce29c8ed8a7 1-90
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListEmptyState.test.ts
+  s_794a1be4bba94d::t_a43bea4ff353f6 3-5,10
+  s_794a1be4bba94d::t_bc2aa018c580c0 1-2,6-9,11-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d74613321fcff0640eb46cdf1d655e356801f11b",
+  "prompts": {},
+  "sessions": {
+    "s_794a1be4bba94d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1140a42c-88bd-49d1-8bf3-fc6f97744b2f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

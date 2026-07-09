@@ -1,0 +1,22 @@
+packages/cli/src/task-runners/task-broker/task-broker-server.ts
+  s_5008ce0326e03d::t_f246f93a6b24a4 138-139
+packages/cli/src/task-runners/task-runner-module.ts
+  s_5008ce0326e03d::t_b736c2873af797 163-166
+  s_5008ce0326e03d::t_b929342a0ddab2 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3fd07fd7dceb6111f7bb42b82667152af4859e01",
+  "prompts": {},
+  "sessions": {
+    "s_5008ce0326e03d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1836c857-b86f-4b8f-a64f-3f1dcb7234de",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

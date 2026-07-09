@@ -1,0 +1,1966 @@
+packages/@n8n/agents/src/runtime/telemetry/runtime-telemetry.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-251
+docs/generated/postgres-schema/public.workflows_tags.md
+  s_e370adc7569608::t_fc48ffd8e19605 8,15,17-18,25,33,37-43,47,50,53-54,56-59,61-62,64-65
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/deduplicates-concurrent-connect-calls-both-resolve-via-the-same-promise.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+docs/generated/sqlite-schema/test_run.md
+  s_e370adc7569608::t_fc48ffd8e19605 18-21,24-26,28,30-32,42,50,59-60,65-68,71-73,75,77-79,81-85,87-91,93-97,99-107,109,112-114,116,118-119,121-123,126-130,132-133,135,137-138,140,145
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-tools/provider-tool-executes-without-interruption-while-a-mixed-in-interruptible-tool-suspends.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-212
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_e370adc7569608::t_fc48ffd8e19605 27,103-108,511,531-542,569,572-577,603,611,633,682,805,807-812,836,854-868,890-965
+docs/generated/postgres-schema/public.user.md
+  s_e370adc7569608::t_fc48ffd8e19605 7-8,11-12,16-18,20-21,27-29,50,53-59,61,64-66,68-69,73-74,77-78,80-82,85-91,93-96,98,101,104-107,109-119,122-124,126-133,135,137,139-145,148-153,155-156,158-163,165,167-168,170-178,180-186,188,190,192-193,195,197,199,201-204,208-209,212-214,220,222-224,232,234-240,243,245-246,249-252,254-257,259,265,267-268,270-273,276,278,280-284,287,289,291
+packages/@n8n/agents/src/__tests__/integration/cassettes/thinking/emits-reasoning-delta-chunks-when-thinking-is-enabled.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-68
+docs/generated/sqlite-schema/execution_entity.md
+  s_e370adc7569608::t_fc48ffd8e19605 9,18-21,23-24,30,33-35,41,43,51,58-59,68-71,73-74,80,83-112,115,122,128,131-133,135,137-138,140-141,145-149,151-152,154,156-157,159,164
+packages/@n8n/api-types/src/schemas/project.schema.ts
+  s_e370adc7569608::t_fc48ffd8e19605 12
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-tools/stream-the-model-calls-the-web-search-provider-tool-without-suspending.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-73
+packages/@n8n/agents/src/__tests__/integration/cassettes/deferred-tools/resumes-a-suspended-deferred-tool-after-loading-it.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-594
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/keeps-type-value-shaped-tool-json-wrapped-when-building-tool-modelmessages.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/config/src/configs/runners.config.ts
+  s_e370adc7569608::t_fc48ffd8e19605 5
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_e370adc7569608::t_fc48ffd8e19605 11,13-17,31-36,42,188,228-229,231-235
+packages/@n8n/agents/src/runtime/streaming/stream.ts
+  s_e370adc7569608::t_fc48ffd8e19605 3-4,13-17,30,33,35
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-options/generates-with-model-config-object.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-58
+packages/@n8n/config/test/config.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 6,120-123,221-225,252-255,311,335-336,394,441,481,498-500,535,541,552,608,610,627-644,661-662,681-684,714-719,777-866,899,903,912
+packages/@n8n/backend-network/src/proxy/index.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-19
+packages/@n8n/agents/src/sdk/__tests__/agent-mcp-validation.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-68
+packages/@n8n/agents/src/runtime/loop/run-output-sink.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-109
+packages/@n8n/agents/src/__tests__/integration/vcr.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-42
+packages/@n8n/eslint-plugin-community-nodes/src/rules/valid-author.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-108
+docs/generated/sqlite-schema/instance_ai_mcp_registry_connections.md
+  s_e370adc7569608::t_fc48ffd8e19605 18,20,24,33,53,55,59,63-64,66,68,71-72,75-77,81,84-85,88-89,93-95,97-98
+packages/@n8n/agents/src/__tests__/integration/cassettes/evaluate/resume-generate-result-includes-the-resumed-tool-call-in-toolcalls.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-182
+.github/workflows/ci-codeowners-validation.yml
+  s_e370adc7569608::t_fc48ffd8e19605 2,8-9,22-23
+docs/generated/sqlite-schema/agents_messages.md
+  s_e370adc7569608::t_fc48ffd8e19605 18-19,23,32,51-52,56,61,63
+docs/generated/sqlite-schema/ai_builder_temporary_workflow.md
+  s_e370adc7569608::t_fc48ffd8e19605 19,21,30,45,48,50-53,55-59,63-67,69-70,72,74-75,77,82
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/tomessage-returns-a-user-message-with-file-part-for-image-results.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/backend-network/src/http/env-proxy-router.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-76
+docs/generated/postgres-schema/public.execution_annotation_tags.md
+  s_e370adc7569608::t_fc48ffd8e19605 15,17-18,26,41,43,46,49
+docs/generated/postgres-schema/public.processed_data.md
+  s_e370adc7569608::t_fc48ffd8e19605 11,17-18,43,47,50,53-54,56-59,61-65
+packages/@n8n/backend-network/src/http/env-proxy-https-agent.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-36
+packages/@n8n/backend-network/src/http/axios/user-agent.ts
+  s_e370adc7569608::t_fc48ffd8e19605 6
+docs/generated/postgres-schema/public.dynamic_credential_user_entry.md
+  s_e370adc7569608::t_fc48ffd8e19605 7,10,12,18-21,34-35,44,47,50,52,56,59,61,64-73,76-77,80-81,85-87,89
+packages/@n8n/eslint-config/src/rules/no-aws-credential-discovery-imports.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-265
+docs/generated/postgres-schema/public.workflow_published_version.md
+  s_e370adc7569608::t_fc48ffd8e19605 8,10,16-18,36,39,41-47,49-52,54-55,59,62,65-66,68-71,73-74,76-77
+docs/generated/postgres-schema/public.instance_ai_resources.md
+  s_e370adc7569608::t_fc48ffd8e19605 7,11,17,35,39
+docs/generated/postgres-schema/public.instance_version_history.md
+  s_e370adc7569608::t_fc48ffd8e19605 7,17,37
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-connection/does-not-wrap-tools-that-are-not-in-the-requireapproval-list.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-client-boundary/throws-and-clears-cache-when-server-is-unreachable.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-connection/wraps-only-the-listed-tool-when-requireapproval-names-a-single-tool.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+docs/generated/sqlite-schema/folder_tag.md
+  s_e370adc7569608::t_fc48ffd8e19605 27,29,50,58
+packages/@n8n/eslint-config/src/configs/backend-network-boundary.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-28
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-connection/does-not-wrap-any-tools-when-requireapproval-is-an-empty-array.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/calls-echo-tool-and-returns-text-content.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-metadata/finish-reason-is-stop-for-a-normal-completion.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-64
+packages/@n8n/config/src/configs/http-request.config.ts
+  s_e370adc7569608::t_fc48ffd8e19605 30-37
+.github/CI-TELEMETRY.md
+  s_e370adc7569608::t_fc48ffd8e19605 104-105,107
+.github/workflows/ci-owners-assign-reviewers.yml
+  s_e370adc7569608::t_fc48ffd8e19605 31-33,36-37
+docs/generated/sqlite-schema/processed_data.md
+  s_e370adc7569608::t_fc48ffd8e19605 22,29,31,51,54-58,60-61,63,65-66,68,73
+packages/@n8n/cli/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3,69-70
+packages/@n8n/agents/src/__tests__/integration/cassettes/concurrent-tool-execution/resume-resolves-one-tool-at-a-time-carrying-forward-the-rest-generate.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-79
+packages/@n8n/agents/src/workspace/sandbox/daytona-sandbox.ts
+  s_e370adc7569608::t_fc48ffd8e19605 10
+package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3,42-43,118,121,135,137,141,151,175,182,189-197
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-result-to-message/adds-a-custom-message-to-generate-result-that-is-visible-to-user-but-not-to-the-llm.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-191
+packages/@n8n/api-types/src/schemas/llm-step-display.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-773
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_e370adc7569608::t_fc48ffd8e19605 69
+packages/@n8n/decorators/src/multi-main/__tests__/multi-main-metadata.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-73
+packages/@n8n/agents/src/runtime/streaming/stream-writer-guard.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-65
+packages/@n8n/agents/src/__tests__/integration/cassettes/evaluate/runs-built-in-string-similarity-eval.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-58
+packages/@n8n/config/src/configs/sentry.config.ts
+  s_e370adc7569608::t_fc48ffd8e19605 4,39-48,66,70
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/node-class-description-name-camelcase.md
+  s_e370adc7569608::t_fc48ffd8e19605 1-41
+packages/@n8n/agents/src/runtime/__tests__/tool-adapter.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 5
+packages/@n8n/api-types/src/dto/evaluations/dataset-row.dto.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-56
+docs/generated/postgres-schema/public.agents_messages.md
+  s_e370adc7569608::t_fc48ffd8e19605 7-8,12,20-21,35-36,46-47,51,56,58
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/round-trips-type-value-shaped-tool-json-without-unwrapping-it.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 15-16
+.agents/skills/spec-driven-development/SKILL.md
+  s_e370adc7569608::t_fc48ffd8e19605 3,8,20,23,66
+docs/generated/sqlite-schema/role_mapping_rule.md
+  s_e370adc7569608::t_fc48ffd8e19605 18,20-21,31,33,41,52,54-55,62,65,67,69
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-connection/does-not-throw-and-calls-client-close-exactly-once-when-disconnect-is-called-concurrently.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/cli/README.md
+  s_e370adc7569608::t_fc48ffd8e19605 64
+packages/@n8n/backend-network/src/ssrf/__tests__/hostname-matcher.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 48-64
+.github/WORKFLOWS.md
+  s_e370adc7569608::t_fc48ffd8e19605 269,578
+packages/@n8n/backend-network/src/http/__tests__/legacy-request.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-402
+docs/generated/sqlite-schema/agents_threads.md
+  s_e370adc7569608::t_fc48ffd8e19605 18-20,44-45,49,52,54,57-60,62-64,67-71,73-74,78-79,81-85,91-93,98-100,105,108-115
+packages/@n8n/agents/src/__tests__/integration/cassettes/structured-output/returns-parsed-structuredoutput-in-stream-finish-chunk.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-89
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/throws-if-both-url-and-command-are-provided.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/decorators/src/multi-main/index.ts
+  s_e370adc7569608::t_fc48ffd8e19605 2
+packages/@n8n/instance-ai/evaluations/binaryChecks/checks/item-flow-independent-source-execute-once.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-2
+packages/@n8n/agents/AGENTS.md
+  s_e370adc7569608::t_fc48ffd8e19605 123-138,141-142
+packages/@n8n/eslint-plugin-community-nodes/src/rules/valid-peer-dependencies.ts
+  s_e370adc7569608::t_fc48ffd8e19605 8-10,18,27
+docs/generated/sqlite-schema/workflow_dependency.md
+  s_e370adc7569608::t_fc48ffd8e19605 20-23,25-26,33,41-42,54-57,59-60,63-67,69-70,72,74-75,77,82
+docs/generated/postgres-schema/public.workflow_publish_history.md
+  s_e370adc7569608::t_fc48ffd8e19605 7,9,11-12,19-22,33,41-42,45,47,49-50,52,54-65,67,72-73,75,77-80,82-85,87-95,97-102
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/suspends-only-the-listed-tool-when-config-requireapproval-is-a-string-array.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-118
+packages/@n8n/instance-ai/evaluations/binaryChecks/checks/item-flow-paired-item-references.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-2
+packages/@n8n/agents/src/runtime/__tests__/inmemory-messages.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 2
+docs/generated/postgres-schema/public.instance_ai_thread_grants.md
+  s_e370adc7569608::t_fc48ffd8e19605 1-78
+packages/@n8n/backend-network/src/http/legacy-request.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-155
+packages/@n8n/agents/src/runtime/__tests__/observation-log-observer.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 4,11,16,295,315-346
+packages/@n8n/agents/src/__tests__/workspace/test-utils.ts
+  s_e370adc7569608::t_fc48ffd8e19605 23-24,187-188,198-199
+packages/@n8n/instance-ai/evaluations/__tests__/runner-prebuilt.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 78,110
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/sets-inputschema-as-raw-json-schema-not-zod-and-sets-mcptool-flag.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/backend-network/src/http/__tests__/env-proxy-router.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-113
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-connection/does-not-wrap-any-tools-when-requireapproval-is-false.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-options/both-thinking-and-prompt-caching-work-simultaneously.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-140
+packages/@n8n/backend-network/src/http/__tests__/outbound-http.authorization.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-209
+docs/generated/sqlite-schema/auth_provider_sync_history.md
+  s_e370adc7569608::t_fc48ffd8e19605 30-33,38-39,55-58,63-64
+packages/@n8n/instance-ai/evaluations/__tests__/capture-run-debug.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-50
+packages/@n8n/ai-workflow-builder.ee/src/llm-config.ts
+  s_e370adc7569608::t_fc48ffd8e19605 3,14-20,33,48,70,91,111,146
+docs/generated/sqlite-schema/credentials_entity.md
+  s_e370adc7569608::t_fc48ffd8e19605 19-20,22,24,27-28,35,53-54,56,61-62,64,66,69,73-77,79,84-85,88-91,95-97,99-100,103,106-109,111-123,126,128,131,133-134,136-138,142-143
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime-conversion.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 18,96-126,175
+.claude/plugins/n8n/README.md
+  s_e370adc7569608::t_fc48ffd8e19605 3-5,18-28,41-42,46-48,57,59-60
+packages/@n8n/agents/src/__tests__/integration/cassettes/title-generation/accepts-a-custom-model-for-title-generation.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-114
+docs/generated/sqlite-schema/oauth_clients.md
+  s_e370adc7569608::t_fc48ffd8e19605 21-25,49,52-55,64,69,73-74,77-80,85,87-95
+docs/generated/sqlite-schema/agents.md
+  s_e370adc7569608::t_fc48ffd8e19605 9,18-21,26,28,34-35,44,52-53,55,57,60-66,70-71,73,78-79,81-84,86-98,103,105-111,113-125,128,130,132-135,138-139,141-144,147,150-152,159,161-162,164-171,173-175,181-183,188-191,197,200-202,205,208-211,214,217-224,228-232
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-edits-files-with-append-copy-move-delete-and-rmdir-tools.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-2775
+packages/@n8n/db/src/utils/__tests__/is-unique-constraint-error.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-71
+.agents/skills/community-pr-readiness-check/SKILL.md
+  s_e370adc7569608::t_fc48ffd8e19605 2,10-16,54-55,94,106-107,126,163,190-195,253
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-transform-error-resilience/tomodeloutput-throwing-during-resumed-tool-call-stream-does-not-close-with-error-and-messages-are-saved-to-memory.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-197
+docs/generated/postgres-schema/public.installed_packages.md
+  s_e370adc7569608::t_fc48ffd8e19605 8,10-11,18,39,41-42,47,49
+docs/generated/postgres-schema/public.agents_observation_locks.md
+  s_e370adc7569608::t_fc48ffd8e19605 8-10,20-22,36,48-50,56-57,59,64,66,69,71
+docs/generated/sqlite-schema/instance_ai_observational_memory.md
+  s_e370adc7569608::t_fc48ffd8e19605 20-22,25-29,32-33,35-37,39-48,56,64,77-79,82-86,89-90,92-94,96-105,109,111,113
+packages/@n8n/api-types/src/agents/agent-files.constants.ts
+  s_e370adc7569608::t_fc48ffd8e19605 4-6
+packages/@n8n/config/src/configs/collaboration.config.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-14
+docs/generated/postgres-schema/public.credential_dependency.md
+  s_e370adc7569608::t_fc48ffd8e19605 7,10-11,17-18,32,42,45-46,50,53,55,58-59
+packages/@n8n/agents/src/__tests__/integration/cassettes/multimodal/passes-image-content-through-the-run-path-non-streaming.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-66
+packages/@n8n/decorators/src/controller/__tests__/rate-limit.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-16
+packages/@n8n/agents/src/__tests__/integration/cassettes/to-model-output/does-not-affect-the-llm-output-when-tomodeloutput-is-not-set.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-182
+packages/@n8n/eslint-plugin-community-nodes/src/plugin.ts
+  s_e370adc7569608::t_fc48ffd8e19605 29,49,51,56,59,62-64,81,101,103,108,111,114-116
+.github/scripts/determine-release-candidate-branch-for-track.mjs
+  s_e370adc7569608::t_fc48ffd8e19605 32-36,39
+packages/@n8n/instance-ai/evaluations/cli/build-mcp-manifest.ts
+  s_e370adc7569608::t_fc48ffd8e19605 13,35-36,83-85,179-182,554-573,620-622,624-626
+docs/generated/postgres-schema/public.data_table.md
+  s_e370adc7569608::t_fc48ffd8e19605 7,17-19,42,49-50,52,58-62
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_e370adc7569608::t_fc48ffd8e19605 18-32,125,691-693,699,701-718,721-741,745,944-987,1004-1016,1031-1032,1067,1092,1147,1163,1340-1387
+packages/@n8n/backend-network/src/http/axios/invoke.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-28
+packages/@n8n/api-types/src/dto/binary-data/__tests__/binary-data-query.dto.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 36-44
+packages/@n8n/backend-network/src/http/client-default-headers.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-63
+packages/@n8n/agents/src/__tests__/integration/cassettes/evaluate/runs-llm-correctness-eval-on-fruit-bowl-agent-with-expected-output.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-290
+packages/@n8n/agents/src/__tests__/integration/cassettes/deferred-tools/searches-loads-and-uses-a-deferred-tool-in-stream-mode.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-628
+packages/@n8n/constants/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/throws-if-a-duplicate-server-name-is-registered.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/structured-output/returns-parsed-structuredoutput-via-generate.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-83
+packages/@n8n/create-node/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3
+packages/@n8n/agents/src/runtime/memory/strip-orphaned-tool-messages.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-2
+packages/@n8n/backend-network/src/proxy/proxy-resolution.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-81
+packages/@n8n/agents/src/__tests__/integration/cassettes/multimodal/accepts-an-image-via-binary-data-and-references-it-in-the-response.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-72
+packages/@n8n/agents/src/__tests__/integration/cassettes/title-generation/does-not-generate-a-title-when-titlegeneration-is-not-configured.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-58
+docs/generated/sqlite-schema/installed_nodes.md
+  s_e370adc7569608::t_fc48ffd8e19605 19,21,28,46,48,52,54-55
+packages/@n8n/agents/src/index.ts
+  s_e370adc7569608::t_fc48ffd8e19605 218-219,227-228,239,250-253,263,275,287,291-295,300,306-307,320,324,334,342,352
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-handles-multi-step-workflow-mkdir-write-list-read.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-1303
+packages/@n8n/instance-ai/evaluations/__tests__/data-workflows-schema.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 59-114,120,123-124,126-127,130,132-133,136,138,144,148-182
+docs/generated/sqlite-schema/instance_ai_thread_grants.md
+  s_e370adc7569608::t_fc48ffd8e19605 1-87
+packages/@n8n/crdt/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-client-boundary/returns-cached-tools-on-subsequent-calls-without-reconnecting.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-tools/openai-image-generation-provider-tool-can-be-attached-and-does-not-use-hitl-suspension.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-58
+packages/@n8n/benchmark/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/streams-a-response-that-includes-an-mcp-tool-call.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-260
+packages/@n8n/agents/src/types/sdk/provider.ts
+  s_e370adc7569608::t_fc48ffd8e19605 30-38
+packages/@n8n/agents/src/runtime/mcp/mcp-tool-resolver.ts
+  s_e370adc7569608::t_fc48ffd8e19605 5-6
+packages/@n8n/agents/src/runtime/tools/tool-adapter.ts
+  s_e370adc7569608::t_fc48ffd8e19605 4,12-15
+packages/@n8n/backend-network/src/http/axios/__tests__/user-agent.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 5,28,38,48,60,76,81
+packages/@n8n/db/src/index.ts
+  s_e370adc7569608::t_fc48ffd8e19605 16
+packages/@n8n/agents/src/__tests__/integration/cassettes/zod-validation-error/includes-the-zod-error-text-in-the-tool-result-visible-to-the-llm.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-331
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-client-boundary/throws-when-a-static-tool-and-an-mcp-tool-share-the-same-prefixed-name.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+docs/generated/postgres-schema/public.test_case_execution.md
+  s_e370adc7569608::t_fc48ffd8e19605 8,11-12,14,16,18-20,26-28,40,48,52,55-56,58,60,63,67-70,72-73,78,80-81,84-89,91-101
+.agents/skills/create-skill/SKILL.md
+  s_e370adc7569608::t_fc48ffd8e19605 16-18,20,25,35,53,59-62,90,119
+packages/@n8n/ai-workflow-builder.ee/src/utils/stream-processor.ts
+  s_e370adc7569608::t_fc48ffd8e19605 8
+packages/@n8n/ai-workflow-builder.ee/src/tools/get-node-context.tool.ts
+  s_e370adc7569608::t_fc48ffd8e19605 3
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 5,35-44
+packages/@n8n/agents/src/runtime/memory/episodic-memory.ts
+  s_e370adc7569608::t_fc48ffd8e19605 11,23-26
+packages/@n8n/instance-ai/docs/configuration.md
+  s_e370adc7569608::t_fc48ffd8e19605 27-32,72,80-83
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/returns-success-after-a-completed-stream.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-64
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-interrupt/pauses-the-stream-when-a-tool-suspends.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-86
+packages/@n8n/expression-runtime/src/extensions/string-extensions.ts
+  s_e370adc7569608::t_fc48ffd8e19605 326
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-error-handling/error-tool-result-appears-in-the-stream.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-197
+packages/@n8n/api-types/src/index.ts
+  s_e370adc7569608::t_fc48ffd8e19605 272,310-311,320-322,328-330,388-392,394-396,406-407,412-413,427-428,443,446-460
+packages/@n8n/agents/src/__tests__/integration/cassettes/telemetry-langsmith/includes-tool-call-spans-in-the-trace.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-187
+packages/@n8n/agents/src/__tests__/integration/cassettes/to-model-output/sends-the-transformed-output-to-the-llm-while-preserving-raw-output-in-toolcalls.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-182
+packages/@n8n/agents/src/runtime/model/message-list.ts
+  s_e370adc7569608::t_fc48ffd8e19605 5-10,15,19-56,266-268,272-276,297-304
+docs/generated/sqlite-schema/tag_entity.md
+  s_e370adc7569608::t_fc48ffd8e19605 19-20,43,46,55-57
+docs/generated/sqlite-schema/installed_packages.md
+  s_e370adc7569608::t_fc48ffd8e19605 19,21-22,47,49-50,55,57
+docs/generated/postgres-schema/public.execution_metadata.md
+  s_e370adc7569608::t_fc48ffd8e19605 8,16-17,28,39,44-47,49-50,56,59-60
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/throws-when-calltool-is-called-without-connecting-first.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/token-usage/reports-token-usage-after-a-multi-step-tool-call.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-205
+docs/generated/postgres-schema/public.instance_ai_pending_confirmations.md
+  s_e370adc7569608::t_fc48ffd8e19605 10-16,18,25-28,42,44-45,52,59,61-70,72-77,81,83-84,90-91,94-95,99-101,103
+docs/generated/sqlite-schema/instance_ai_observation_locks.md
+  s_e370adc7569608::t_fc48ffd8e19605 18-20,29,31,33,49-51,57,59,61
+packages/@n8n/backend-network/src/ssrf/__tests__/ssrf-protection.service.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 7,39,46-52,153,285-327,537-695,860
+  s_bb17b049fc2e2d::t_e56ced50495c7b 328-330,696-698
+packages/@n8n/backend-network/src/http/axios/__tests__/invoke.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-96
+packages/@n8n/ai-utilities/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3,96,107-108,112
+.github/scripts/send-build-stats.mjs
+  s_e370adc7569608::t_fc48ffd8e19605 73-79
+docs/generated/sqlite-schema/execution_annotation_tags.md
+  s_e370adc7569608::t_fc48ffd8e19605 27,29,36,52,54,57,60
+packages/@n8n/agents/src/__tests__/integration/cassettes/delegate-sub-agent/lets-a-real-parent-agent-call-delegate-subagent-and-use-its-result.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-293
+packages/@n8n/config/src/configs/__tests__/ssrf-protection.config.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 38-42,134-145
+packages/@n8n/eslint-config/src/rules/index.ts
+  s_e370adc7569608::t_fc48ffd8e19605 21-22,44-45
+packages/@n8n/agents/src/__tests__/integration/cassettes/usage/returns-token-usage-on-generate-result.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-58
+packages/@n8n/backend-network/src/transport.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-32
+docs/generated/postgres-schema/public.folder_tag.md
+  s_e370adc7569608::t_fc48ffd8e19605 15,17-18,39,49-50
+docs/generated/postgres-schema/public.project.md
+  s_e370adc7569608::t_fc48ffd8e19605 10-15,21,41-44,47-48,51-53,56-60,66-81,83-85,87-99,102-103,105-111,113,115,117-119,123,134-135,137-140,142-146,148-149,151,155,157-158,162,164,166,168,171,173-174,176,178-183
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/merges-role-tool-modelmessages-into-the-preceding-assistant-tool-call-block.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/ai-workflow-builder.ee/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3,63,67,81-84
+packages/@n8n/eslint-plugin-community-nodes/src/rules/node-registration-complete.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-87
+packages/@n8n/agents/src/runtime/__tests__/write-todos-tool.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 4
+docs/generated/sqlite-schema/instance_ai_iteration_logs.md
+  s_e370adc7569608::t_fc48ffd8e19605 18-19,22,30,48-49,52,56,58,60
+docs/generated/postgres-schema/public.chat_hub_agent_tools.md
+  s_e370adc7569608::t_fc48ffd8e19605 17-18,39-43,45,50-51,54-56,59
+packages/@n8n/agents/src/sdk/__tests__/inline-sub-agent-tools.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 3-4,8,13-14,36
+docs/generated/sqlite-schema/scope.md
+  s_e370adc7569608::t_fc48ffd8e19605 19-20,44-45
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-mkdir-and-workspace-list-files-together.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-810
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory-defaults.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 12
+packages/@n8n/agents/src/runtime/__tests__/title-generation.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 5-8
+packages/@n8n/agents/src/types/sdk/guardrail.ts
+  s_e370adc7569608::t_fc48ffd8e19605 3-12
+docs/generated/postgres-schema/public.agents_memory_entries.md
+  s_e370adc7569608::t_fc48ffd8e19605 10,12-13,15-18,26-29,45-48,55,65-66,68-72,76-77,79,84-85,87-89,91-96,100
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/parse-validate-handler.ts
+  s_e370adc7569608::t_fc48ffd8e19605 12,35-41,62,67,166-168,205-211,239-241,264-269,271
+packages/@n8n/backend-common/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3
+packages/@n8n/agents/src/runtime/streaming/stream-session.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-108
+packages/@n8n/agents/src/__tests__/integration/cassettes/title-generation/auto-generates-a-thread-title-after-stream-on-a-new-thread.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-120
+packages/@n8n/agents/src/__tests__/integration/cassettes/to-model-output/works-with-stream-llm-receives-transformed-output.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-196
+packages/@n8n/agents/src/__tests__/integration/cassettes/double-suspension/stream-tool-suspends-twice-then-completes-on-second-resume.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-200
+packages/@n8n/db/src/migrations/common/1784000000036-CreateInstanceAiThreadGrantTable.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-35
+docs/generated/postgres-schema/public.agents_memory_entry_locks.md
+  s_e370adc7569608::t_fc48ffd8e19605 9-11,18-20,33,46-48,52-53,55,60,62,65
+packages/@n8n/agents/src/__tests__/integration/cassettes/telemetry-langsmith/fires-telemetryintegration-hooks-alongside-langsmith-traces.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-187
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_e370adc7569608::t_fc48ffd8e19605 3,11,82-123,143,149-151,157-168,175,184-185,187-196,198-200,202-217,224-226,232-253,285-358
+docs/generated/sqlite-schema/agents_observation_cursors.md
+  s_e370adc7569608::t_fc48ffd8e19605 20-22,31-32,53-55,59-60,62,67,69,72,74
+packages/@n8n/agents/src/__tests__/integration/helpers.ts
+  s_e370adc7569608::t_fc48ffd8e19605 12,17-19,26-27,421-468
+packages/@n8n/agents/src/sdk/mcp-client.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1,5-16,206,209-210
+packages/@n8n/config/src/configs/security.config.ts
+  s_e370adc7569608::t_fc48ffd8e19605 58-59
+docs/generated/sqlite-schema/oauth_authorization_codes.md
+  s_e370adc7569608::t_fc48ffd8e19605 19,23-24,27-30,38,57,61-62,65-68,71-74,82-83,86-87,91-93,95-96
+packages/@n8n/eslint-plugin-community-nodes/src/rules/index.ts
+  s_e370adc7569608::t_fc48ffd8e19605 8,20,29,33,39,42-43,45,57,74,79,83,89,92-94
+docs/generated/postgres-schema/public.instance_ai_iteration_logs.md
+  s_e370adc7569608::t_fc48ffd8e19605 7-8,11,18-19,32,42-43,46,50,52-53
+packages/@n8n/computer-use/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3
+.github/scripts/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 4
+packages/@n8n/api-types/src/dto/roles/role-member.schema.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-9
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_e370adc7569608::t_419b6d749ac09c 1-2,4-5,8-9,11-12,22-24,31,36-54,58-64,76-78,80-81,83-88,93-94,98-107,109,111,113-124,127-129,131-133,135-136,139-141,143-144
+packages/@n8n/agents/src/runtime/model/__tests__/raw-usage.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-78
+packages/@n8n/agents/src/__tests__/integration/cassettes/to-model-output/works-alongside-tomessage-both-transforms-apply-independently.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-191
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-client-boundary/returns-empty-array-when-no-servers-are-configured.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/runtime/memory/scoped-memory-task-runner.ts
+  s_e370adc7569608::t_fc48ffd8e19605 5-6,42,119
+packages/@n8n/agents/src/skills/__tests__/runtime-skills.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 16
+docs/generated/sqlite-schema/workflow_published_version.md
+  s_e370adc7569608::t_fc48ffd8e19605 19,21,32,47-48,51,53-59,61-64,66-67,70-74,76-77,79,81-82,84,89
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/toolexecutionend-carries-the-correct-toolcallid-matching-toolexecutionstart.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-187
+packages/@n8n/agents/src/__tests__/integration/cassettes/runtime-skills/loads-and-follows-a-skill-in-stream.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-238
+.github/workflows/release-create-pr.yml
+  s_e370adc7569608::t_fc48ffd8e19605 131
+docs/generated/sqlite-schema/invalid_auth_token.md
+  s_e370adc7569608::t_fc48ffd8e19605 19,26,42
+packages/@n8n/agents/src/runtime/loop/__tests__/runtime-context.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-36
+docs/generated/postgres-schema/public.chat_hub_agents.md
+  s_e370adc7569608::t_fc48ffd8e19605 7-8,10-14,18-19,25-27,50,52-53,57-61,63,68-69,71,73-81,83-84,86,89-93,95-96,98,100-102,105,107,109-120,123-124,127-128,132-134,136
+docs/generated/postgres-schema/public.annotation_tag_entity.md
+  s_e370adc7569608::t_fc48ffd8e19605 7,16,27,37
+docs/generated/postgres-schema/public.agents.md
+  s_e370adc7569608::t_fc48ffd8e19605 7-10,15,17,23-25,41,48-49,53,56-62,66-67,69,73,75-83,85-86,88-90,92-94,100-102,108-112,115-117,121,124,126,128-131,134,137-140,143,146-148,155,157-158,160,162-163,169-171,174,177-179,182,185-190,193,196-198,201,204-207,210,213-220,224-228
+packages/@n8n/backend-network/src/http/__tests__/client-request-error.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-118
+docs/generated/sqlite-schema/oauth_refresh_tokens.md
+  s_e370adc7569608::t_fc48ffd8e19605 20,22-24,33,52,54-56,59-62,70-71,74-75,79-81,83-84
+packages/@n8n/di/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3
+docs/generated/sqlite-schema/test_case_execution.md
+  s_e370adc7569608::t_fc48ffd8e19605 19,22-24,26,28-29,31-33,43,59-61,65,68-70,72,74-75,78,82-85,87-88,94,97-117
+packages/@n8n/instance-ai/docs/architecture.md
+  s_e370adc7569608::t_fc48ffd8e19605 122,151-152,195,201,296,303,305,308,346
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/returns-empty-array-when-no-servers-are-configured.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/usage/includes-model-id-in-generate-result.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-58
+packages/@n8n/backend-network/src/http/local-server.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-34
+packages/@n8n/agents/src/__tests__/integration/cassettes/state-restore-after-suspension/resumes-with-stream-after-agent-instance-is-destroyed-and-recreated.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-196
+packages/@n8n/instance-ai/evaluations/cli/aggregator.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1,100
+packages/@n8n/ai-utilities/src/node-catalog/index.ts
+  s_e370adc7569608::t_fc48ffd8e19605 62-80
+packages/@n8n/cli/src/__tests__/package-export.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-43
+docs/generated/postgres-schema/public.tag_entity.md
+  s_e370adc7569608::t_fc48ffd8e19605 8-9,20,36,41-42,48-50
+packages/@n8n/agents/src/__tests__/integration/memory-conversation.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 4-5,136-139
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/require-version.md
+  s_e370adc7569608::t_fc48ffd8e19605 1-51
+packages/@n8n/agents/src/__tests__/integration/cassettes/orphaned-tool-messages/handles-history-containing-settled-tool-call-blocks.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-78
+packages/@n8n/agents/src/workspace/sandbox/types.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/backend-network/src/http/__tests__/outbound-http.node-agent.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-140
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory/recalls-previous-messages-within-the-same-thread.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-140
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/workspace-instructions-are-appended-to-agent-instructions.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/runtime/memory/title-generation.ts
+  s_e370adc7569608::t_fc48ffd8e19605 3-9,234-235,254
+packages/@n8n/eslint-plugin-community-nodes/src/rules/cred-filename-against-convention.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-48
+packages/@n8n/agents/src/__tests__/integration/cassettes/interim-user-message-during-suspend/preserves-chronological-ordering-of-messages-in-memory-after-resume.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-238
+packages/@n8n/agents/src/__tests__/integration/cassettes/orphaned-tool-messages/handles-pending-tool-call-blocks-interrupted-turn-in-history.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-78
+packages/@n8n/api-types/src/dto/roles/create-role.dto.ts
+  s_e370adc7569608::t_fc48ffd8e19605 9
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-observational/records-observations-and-emits-memory-task-lifecycle-events-after-generate.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-114
+packages/@n8n/agents/src/__tests__/integration/cassettes/usage/returns-token-usage-on-stream-finish-chunk.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-64
+packages/@n8n/agents/src/__tests__/integration/cassettes/multimodal/accepts-multiple-content-blocks-text-image-in-a-single-message.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-76
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/suspends-all-mcp-tools-when-config-requireapproval-true.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-118
+packages/@n8n/agents/src/__tests__/integration/cassettes/execution-options/calls-onstepstart-and-onstepfinish-for-generate-and-stream.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-120
+packages/@n8n/api-types/src/dto/ai/ai-gateway-config-response.dto.ts
+  s_e370adc7569608::t_fc48ffd8e19605 9-12,22
+packages/@n8n/config/src/configs/ssrf-protection.config.ts
+  s_e370adc7569608::t_fc48ffd8e19605 52-74,77-90,95-100,105-113,117-124,128-154
+packages/@n8n/expression-runtime/src/runtime/context.ts
+  s_e370adc7569608::t_fc48ffd8e19605 170-172,174
+packages/@n8n/instance-ai/evaluations/build-expectations/select.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-59
+docs/generated/postgres-schema/public.instance_ai_observation_locks.md
+  s_e370adc7569608::t_fc48ffd8e19605 7-9,19-20,42-44,50,52-53
+packages/@n8n/api-types/src/dto/instance-ai/instance-ai-mcp-update-connection-request.dto.ts
+  s_e370adc7569608::t_fc48ffd8e19605 6
+docs/generated/postgres-schema/public.agent_files.md
+  s_e370adc7569608::t_fc48ffd8e19605 9,12-13,20-21,36-38,50,53-54,58-59,61,66,68
+packages/@n8n/instance-ai/evaluations/build-expectations/verifier.ts
+  s_e370adc7569608::t_fc48ffd8e19605 9,153-155,165-167
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-execute-command-tool.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-802
+packages/@n8n/agents/src/runtime/memory/observation-log-reflector.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-2,4,15-16
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-options/cancels-a-stream-call-via-external-abortsignal.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/runtime/__tests__/message-list.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-2,10-17,87-112,159-161,182-183,185,191-216
+packages/@n8n/eslint-plugin-community-nodes/src/rules/valid-author.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-100
+docs/generated/postgres-schema/public.workflow_builder_session.md
+  s_e370adc7569608::t_fc48ffd8e19605 7-8,13-15,21-24,45,48-49,53-58,60-72,77,80,83-84,86-89,91-92,94-95
+packages/@n8n/backend-network/README.md
+  s_e370adc7569608::t_fc48ffd8e19605 7,9,13,15-146
+packages/@n8n/instance-ai/evaluations/__tests__/conversation-text.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-6,31-57
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-error-handling/llm-receives-the-error-message-and-acknowledges-it-in-the-response.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-197
+packages/@n8n/eslint-config/src/configs/base.ts
+  s_e370adc7569608::t_fc48ffd8e19605 337-357
+packages/@n8n/decorators/src/controller/index.ts
+  s_e370adc7569608::t_fc48ffd8e19605 23
+packages/@n8n/eslint-config/src/plugin.ts
+  s_e370adc7569608::t_fc48ffd8e19605 29
+docs/generated/sqlite-schema/insights_raw.md
+  s_e370adc7569608::t_fc48ffd8e19605 20,29,47,55-56
+packages/@n8n/db/src/repositories/__tests__/workflow.repository.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 2,579-591
+packages/@n8n/agents/src/__tests__/integration/cassettes/multi-tool-calls/correctly-merges-results-when-the-same-tool-is-called-multiple-times.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-228
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-persist-input.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-207
+packages/@n8n/agents/src/runtime/loop/__tests__/runtime-helpers.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-76
+packages/@n8n/backend-network/src/http/__tests__/outbound-http.error-tagging.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-57
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-streamable-http-transport/tomessage-returns-a-user-message-with-file-part-for-image-results.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/api-types/src/dto/api-keys/list-api-keys-query.dto.ts
+  s_e370adc7569608::t_fc48ffd8e19605 24-46
+docs/generated/postgres-schema/public.dynamic_credential_resolver.md
+  s_e370adc7569608::t_fc48ffd8e19605 9-11,18,31,40,43-44,52,55,57,60,64,67-71,73-75,77
+packages/@n8n/ai-node-sdk/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/rejects-when-mcp-server-is-unreachable.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/runtime/mcp/mcp-connection.ts
+  s_e370adc7569608::t_fc48ffd8e19605 10-12,57-75,147-148
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-stdio-transport/calls-image-tool-and-returns-mixed-text-image-content.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/api-types/src/dto/instance-ai/instance-ai-confirm-request.dto.ts
+  s_e370adc7569608::t_fc48ffd8e19605 18-20
+docs/generated/sqlite-schema/agent_history.md
+  s_e370adc7569608::t_fc48ffd8e19605 21-24,26,35,51-53,59-62,64,67-68,70,75,77,79,81-93,99-103,106-108,112,115,117-121,123
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/connects-and-returns-tools-when-server-is-reachable.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/throws-when-requireapproval-string-is-set-without-a-checkpoint-store.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/runtime/memory/memory-store.ts
+  s_e370adc7569608::t_fc48ffd8e19605 30-33,45
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/splits-a-resolved-tool-call-into-assistant-tool-modelmessages.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/prefixes-tool-names-with-the-server-name.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+docs/generated/sqlite-schema/workflow_publish_history.md
+  s_e370adc7569608::t_fc48ffd8e19605 18,20,22-23,29,34,47,50,53,55,57-58,60,62-74,80-81,83,85-88,90-93,95-103,105-110
+.github/workflows/util-qa-metrics-comment-reusable.yml
+  s_e370adc7569608::t_fc48ffd8e19605 14
+packages/@n8n/agents/src/__tests__/integration/cassettes/token-usage/reports-token-usage-on-a-simple-text-response-via-streamtext.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-64
+packages/@n8n/backend-network/src/http/axios/legacy.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-339
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/require-param-default.md
+  s_e370adc7569608::t_fc48ffd8e19605 1-60
+packages/@n8n/extension-sdk/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3,52
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_e370adc7569608::t_ad542f44d560a5 14-19
+  s_e370adc7569608::t_4cd09d96b6b34f 35-36
+  s_e370adc7569608::t_c3ed407f9e3732 5
+  s_e370adc7569608::t_b36e6fb24bac5c 565-593
+  s_e370adc7569608::t_0c0863ef9219a8 508-544
+packages/@n8n/agents/src/__tests__/integration/cassettes/evaluate/auto-resumes-interruptible-tool-calls-during-eval.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-214
+.github/scripts/send-docker-stats.mjs
+  s_e370adc7569608::t_fc48ffd8e19605 88-91
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-streamable-http-transport/connects-to-a-streamable-http-server-and-lists-tools.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-error-handling/llm-can-self-correct-by-retrying-a-flaky-tool.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-317
+packages/@n8n/backend-network/eslint.config.mjs
+  s_e370adc7569608::t_fc48ffd8e19605 4-35,37
+packages/@n8n/eslint-plugin-community-nodes/src/rules/no-emoji-in-options.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-157
+.github/actions/ci-filter/ci-filter.mjs
+  s_e370adc7569608::t_fc48ffd8e19605 2,107,117-191,237-262,293
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-client-boundary/reports-per-server-errors-for-partially-failing-multi-server-configs.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+.gitignore
+  s_e370adc7569608::t_fc48ffd8e19605 45,68-71,85
+docs/generated/postgres-schema/public.settings.md
+  s_e370adc7569608::t_fc48ffd8e19605 9,15,35
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/does-not-throw-when-requireapproval-is-an-empty-array-without-a-checkpoint-store.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/codemirror-lang/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3,42,45-46
+docs/generated/sqlite-schema/execution_metadata.md
+  s_e370adc7569608::t_fc48ffd8e19605 19,28,45,50-53,55-56,62,65-67
+.github/workflows/ci-pull-requests.yml
+  s_e370adc7569608::t_fc48ffd8e19605 73-77,86-90,111
+packages/@n8n/backend-network/src/http/__tests__/outbound-http.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-97
+packages/@n8n/agents/src/runtime/tools/delegate-sub-agent-tool.ts
+  s_e370adc7569608::t_fc48ffd8e19605 10-12,19-21,197,218-219,283,297-299,327-329,351-352
+packages/@n8n/instance-ai/evaluations/__tests__/collect-expectations.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-28
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 10,29,50,70,91,97-105
+docs/generated/postgres-schema/public.oauth_authorization_codes.md
+  s_e370adc7569608::t_fc48ffd8e19605 8,12-13,16-19,25-27,56,60-61,64-67,70-73,81-82,85-86,90-92,94-95
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-call-upsert/after-resume-with-denial-thread-has-exactly-one-resolved-tool-call-block.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-182
+packages/@n8n/agents/src/__tests__/integration/memory-episodic.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-2,9-15,18-21,25-34,37-43,59,62,70,83-86,94-97,101,104-106,110-114,123-129,155,170,173-175,180-182,213,219,247,250-252,257-259,280-281,286,290,298-300,327-341,346-353,357-372
+.claude/plugins/n8n/.claude-plugin/marketplace.json
+  s_e370adc7569608::t_fc48ffd8e19605 2-11
+docs/generated/sqlite-schema/evaluation_collection.md
+  s_e370adc7569608::t_fc48ffd8e19605 18-19,22,24,26,35,43,51-52,57-58,61,63-67,69-81,84-88,90-95,97-102,105-107,109,111-113,117-121,123-124,126,128-129,131,136
+packages/@n8n/computer-use/src/gateway-client.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 43-49,54,144-166,239-273
+.github/scripts/send-metrics.mjs
+  s_e370adc7569608::t_fc48ffd8e19605 6,8-9,82-95,97-103,105-107
+packages/@n8n/agents/src/runtime/model/messages.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-2,15,24-25,58-68,71-77,79-83,86-94,97-98,101-102,115-138,166-169,173,238-239,244,246-248,251
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_e370adc7569608::t_fc48ffd8e19605 51-60
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/round-trip-is-structurally-equivalent-for-a-resolved-tool-call.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/backend-network/src/http/axios/redirect.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-274
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-call-upsert/after-resume-thread-has-exactly-one-resolved-tool-call-block-no-duplicate-rows.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-182
+docs/generated/sqlite-schema/instance_version_history.md
+  s_e370adc7569608::t_fc48ffd8e19605 18,37
+docs/generated/sqlite-schema/oauth_access_tokens.md
+  s_e370adc7569608::t_fc48ffd8e19605 19,29,47,51-54,62-63,66-67,71-73,75-76
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-interrupt/resumes-the-stream-after-resume-with-denial.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-196
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/drops-pending-tool-call-blocks-from-both-assistant-and-tool-modelmessages.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+docs/generated/postgres-schema/public.scope.md
+  s_e370adc7569608::t_fc48ffd8e19605 8-9,16,33-34
+packages/@n8n/ai-utilities/src/node-catalog/__tests__/dynamic-node-parameters.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-235
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-tools/generate-the-model-calls-the-web-search-provider-tool.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-67
+packages/@n8n/db/src/connection/db-connection.ts
+  s_e370adc7569608::t_fc48ffd8e19605 92
+packages/@n8n/api-types/src/dto/otel/test-otel-connection.dto.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-12
+docs/generated/postgres-schema/public.instance_ai_run_snapshots.md
+  s_e370adc7569608::t_fc48ffd8e19605 10-12,14-17,23-24,36-37,50-52,54-57,60,62-63
+docs/generated/sqlite-schema/instance_ai_resources.md
+  s_e370adc7569608::t_fc48ffd8e19605 18,22,44,48
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/accepts-valid-command-based-config.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-options/cancels-a-generate-call-via-external-abortsignal.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-streamable-http-transport/disconnects-cleanly-without-throwing.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_e370adc7569608::t_fc48ffd8e19605 2,6-18,38-39,44-64,69-74,107-108,141,160-166,170,175,178-184,217-223,233-234,238-242,246,285,321,323-325,362-364,383,386-387,392-400,411,454,457-461,463,482,505-506,509-511,524-529,532-533,535-544,548-554,556-568,572-582,584,589-590,594-599,607,610-616,619,630-632,634-635,640,644-649,654-655,660-664,667-671,673,675-676,678-680,685-687,690-692,703-705,707-708,712,719-721,724-725,729-730,732-751,754-772,774-781,783-785,810
+packages/@n8n/agents/src/__tests__/integration/cassettes/token-usage/accumulates-higher-token-counts-with-more-complex-prompts.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-126
+packages/@n8n/backend-network/src/ssrf/index.ts
+  s_e370adc7569608::t_fc48ffd8e19605 4
+docs/generated/sqlite-schema/chat_hub_messages.md
+  s_e370adc7569608::t_fc48ffd8e19605 18-22,24-25,27,29-31,34,47,62-63,71-75,77-78,80,82-84,87,89-94,96-97,100-101,105-108,110-111,117,120-122,124-128,130-131,134-142,144-156,158-159
+.agents/skills/community-pr-readiness-check/reference/teams.md
+  s_e370adc7569608::t_fc48ffd8e19605 66
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/isolates-episodic-memory-between-resources-for-the-same-agent.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-818
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/get-resource-locator-options.tool.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 8,227-282
+packages/@n8n/cli/src/__tests__/package-error.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-63
+packages/@n8n/instance-ai/evaluations/binaryChecks/types.ts
+  s_e370adc7569608::t_fc48ffd8e19605 41-47,62
+packages/@n8n/agents/src/__tests__/integration/cassettes/double-suspension/stream-no-suspended-chunks-leak-into-the-final-completion-stream.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-196
+packages/@n8n/instance-ai/evaluations/build-expectations/collect.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-14
+docs/generated/sqlite-schema/folder.md
+  s_e370adc7569608::t_fc48ffd8e19605 18,31,52,64-68,70-71,73,75-76,78,83,86-90
+docs/generated/sqlite-schema/evaluation_config.md
+  s_e370adc7569608::t_fc48ffd8e19605 18,20,22-23,25-27,29,36,38,46,58,60,62-63,65-67,69,72-73,76,78,80,83-86,89-91,93,95-97,101-105,107-108,110,112-113,115,120
+packages/@n8n/eslint-plugin-community-nodes/src/rules/no-emoji-in-options.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-105
+docs/generated/postgres-schema/public.agent_history.md
+  s_e370adc7569608::t_fc48ffd8e19605 10-13,15,21-23,35,44-46,52-55,57,60-61,63,68-69,71-72,74-86,92-96,99-101,105,109-110,114,116
+docs/generated/sqlite-schema/event_destinations.md
+  s_e370adc7569608::t_fc48ffd8e19605 19-20,44-45
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-approval/deny-generate-declines-without-running-the-original-handler.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-182
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_e370adc7569608::t_fc48ffd8e19605 9-13,16-18,22,29-32,60,67-71,74-76,80,84-85,87,92-93,95-99,101-114,116,119-123,133-136,138
+packages/@n8n/agents/src/__tests__/integration/cassettes/custom-message-suspend-resume/preserves-custom-tool-message-in-stream-after-resume-complete.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-196
+docs/generated/postgres-schema/public.auth_identity.md
+  s_e370adc7569608::t_fc48ffd8e19605 7,11,18,38,42,45-46,49-50,54-56,58-59
+packages/@n8n/agents/src/runtime/__tests__/fix-tool-call.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 5
+docs/generated/postgres-schema/public.shared_credentials.md
+  s_e370adc7569608::t_fc48ffd8e19605 7,17-19,41,49,52,54,57-58,61-65
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-behavior/handlecancellation-routes-cancellation-into-the-tool-handler.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-182
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-list-files-for-a-pre-existing-directory.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-803
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-approval/needsapprovalfn-suspends-only-matching-inputs.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-259
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/calls-an-mcp-tool-during-generation-and-returns-the-result.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-242
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/preserves-provider-metadata-on-replayed-assistant-tool-call-parts.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-behavior/uses-tool-systeminstruction-to-decide-to-call-a-tool.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-182
+packages/@n8n/agents/src/runtime/loop/generate-sink.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-97
+docs/generated/postgres-schema/public.credentials_entity.md
+  s_e370adc7569608::t_fc48ffd8e19605 8-9,11,13,16-17,30,32,40,50,52-53,55,60,63,65,68,71-76,78-79,82-83,85-86,89-90,92-93,96-97,99,101,103-106,109,112-113,116,118-122,125,127,130,132-133,135-137,141-142
+packages/@n8n/backend-network/src/http/env-proxy-http-agent.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-42
+.github/workflows/release-build-daytona-snapshot.yml
+  s_e370adc7569608::t_fc48ffd8e19605 11,13-19,35,38-45,56-61
+packages/@n8n/ai-workflow-builder.ee/src/ai-workflow-builder-agent.service.ts
+  s_e370adc7569608::t_fc48ffd8e19605 7,52-53,69,86,128,147
+docs/generated/sqlite-schema/chat_hub_agents.md
+  s_e370adc7569608::t_fc48ffd8e19605 18-19,21-25,29-30,38,52,54,59-63,65,70-71,73,75-83,90-95,97-99,101-105,107-109,112-119,121-122,125-126,129-130,134-136,138
+docs/generated/sqlite-schema/auth_identity.md
+  s_e370adc7569608::t_fc48ffd8e19605 25,29,35,54,58,61-62,65-66,70-72,74-75
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-exact-artifacts-across-threads-when-explicitly-asked-for-prior-context.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-780
+packages/@n8n/backend-network/src/proxy/__tests__/no-proxy-patch.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1,3-5,7,9-11,13,15-20,23-32,35,43,46,54,57,65,68,76,79,81,87-115,119,126,129,132,134,142,149-150,160-176,180-181,193,197,200
+packages/@n8n/db/src/connection/db-connection-monitor.ts
+  s_e370adc7569608::t_fc48ffd8e19605 5,10-20,25-27,30-36,50-72,86-91,93,100,102,108-109,155,161,166,178,191-196,205,212,238,242-270,275,279,289-292,299-418
+docs/generated/sqlite-schema/user_favorites.md
+  s_e370adc7569608::t_fc48ffd8e19605 21,28,50,53-54,57-58,62-64,66-67
+packages/@n8n/eslint-plugin-community-nodes/src/rules/require-version.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-62
+packages/@n8n/agents/src/types/sdk/agent-builder.ts
+  s_e370adc7569608::t_fc48ffd8e19605 6,28
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/throws-when-requireapproval-true-is-set-without-a-checkpoint-store.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_e370adc7569608::t_fc48ffd8e19605 35-39,361-364,423,749,835,844-846
+docs/generated/postgres-schema/public.workflow_history.md
+  s_e370adc7569608::t_fc48ffd8e19605 9-10,12,14-17,23-24,40,55-56,58,60-63,67,70,73-74,76-79,81-85,88,90,92-93,97,99
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-client-boundary/connects-and-returns-tools-when-server-is-reachable.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+docs/generated/postgres-schema/public.workflow_statistics.md
+  s_e370adc7569608::t_fc48ffd8e19605 8,12,22,29,39,43
+packages/@n8n/instance-ai/evaluations/cli/index.ts
+  s_e370adc7569608::t_fc48ffd8e19605 10,31,43,46,68,78,92-93,162-163,221-222,232,250-260,267-277,279,286-294,299,316,321-325,401-402,404-407,410,420,427-430,435-436,452-479,481,514-516,700-705,714,963,1013-1015,1158,1302
+.agents/skills/human-like-code-review/SKILL.md
+  s_e370adc7569608::t_fc48ffd8e19605 2-3,10-13,29-42,53-63,68-73,77-85,96-160,172-174,183-205
+docs/generated/postgres-schema/public.insights_raw.md
+  s_e370adc7569608::t_fc48ffd8e19605 9,17-18,30,42,50-51
+packages/@n8n/agents/eslint.config.mjs
+  s_e370adc7569608::t_fc48ffd8e19605 8
+docs/generated/postgres-schema/README.md
+  s_e370adc7569608::t_fc48ffd8e19605 11-32,35-54,56,60,63-81,83-84,87-89,91,94-102,105-107,109-114,116-119,125,131-135,142-177,179-182,192-196,198-205,209-224,226-233,240-291,293-294,296-298,301-302,304-307,309-312,314-316,318-329,331-333,335-347,350-352,354-357,360-362,364-367,369,371-375,377-378,380-381,383-385,388,390-394,396,398-400,402-408,410-414,416-423,426-427,429-431,434-435,437-439,442-443,445-450,453-454,456-460,463-464,466-468,471-472,474-477,480-481,483-490,493,495-496,499,501-504,507,509,511,513,515-516,519,521-522,524,526-537,539,541-547,550-552,554-559,561-562,565-566,570-574,576-577,579,581-583,586,588-596,598-599,602-603,605,607,609-615,618,620-623,625,627-635,638-643,645,647-652,654-655,657-659,661,663,665-669,672-673,680,683-687,689-694,696,698,700-708,710,712,714-715,718-722,724-726,728,730,732-737,739-754,756-762,764-767,770-772,774-780,782-785,787-804,806-807,810,812-817,820,822-826,828,830,832-833,835,839-841,843,845-847,849-851,854,856-859,865-867,870-874,877-878,880-882,884-889,891,893,896,899-905,908-910,912-918,920,922,924-925,927,929,931-939,942,944-945,947,949,951-955,958,960-963,965,967,969-972,974-978,980-983,985,987-996,998-1002,1004-1005,1007-1009,1011-1015,1018-1019,1021-1023,1025,1027-1034,1037-1038,1040,1042-1048,1051,1053-1054,1056,1058,1060-1062,1065,1067-1071,1074,1076-1080,1083-1096,1098-1102,1105-1110,1112-1114,1117,1119-1120,1122,1124,1126-1127,1130-1131,1133-1143,1146-1149,1151-1159,1161-1162,1164-1165,1167-1169,1171-1173,1175-1176,1178-1182,1185,1187-1199,1202-1204,1206-1209,1211,1213-1235,1237-1240,1242-1243,1245,1247-1273,1275-1276,1278-1281,1283-1286,1288-1289,1292-1293,1298,1300-1308,1310,1312-1325
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/encodes-rejected-tool-call-as-error-text-in-the-tool-modelmessage.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+docs/generated/sqlite-schema/credential_dependency.md
+  s_e370adc7569608::t_fc48ffd8e19605 18,21-22,29,36-37,47,50-51,55-56,58,60,63-64
+.github/actions/ci-filter/__tests__/ci-filter.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 7-15,54-56,160,196-200,205-230,245-249,300-316,383-562,572-574,587-595,599-606,610-617,621-627,631-638
+packages/@n8n/agents/src/__tests__/integration/cassettes/state-restore-after-suspension/resumes-with-generate-after-agent-instance-is-destroyed-and-recreated.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-182
+packages/@n8n/ai-workflow-builder.ee/src/workflow-builder-agent.ts
+  s_e370adc7569608::t_fc48ffd8e19605 13,648,653
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/valid-peer-dependencies.md
+  s_e370adc7569608::t_fc48ffd8e19605 1
+docs/generated/postgres-schema/public.secrets_provider_connection.md
+  s_e370adc7569608::t_fc48ffd8e19605 7-8,10,19,33,43-44,46,53,55-56
+packages/@n8n/agents/src/workspace/sandbox/lazy-daytona.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1,8
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-error-handling/llm-self-correction-stream-mode-flaky-tool-succeeds-on-retry.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-338
+packages/@n8n/instance-ai/evaluations/__tests__/reshape.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 43,61,75-78,83,92,100,217-258
+docs/generated/postgres-schema/public.agent_task_snapshot.md
+  s_e370adc7569608::t_fc48ffd8e19605 7-8,12,14,20-21,45-46,50,52,58-61,63
+.agents/skills/community-pr-readiness-check/reference/checks.md
+  s_e370adc7569608::t_fc48ffd8e19605 21,57,83
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory/recalls-tool-results-with-stream.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-641
+docs/generated/postgres-schema/public.agents_memory_entry_cursors.md
+  s_e370adc7569608::t_fc48ffd8e19605 9-11,18-20,33,46-48,52-53,55,60,62,65,67
+packages/@n8n/agents/src/__tests__/integration/cassettes/max-iterations/returns-length-not-error-when-iteration-limit-is-reached-in-resumed-stream.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-86
+packages/@n8n/agents/src/__tests__/integration/cassettes/structured-output/returns-structuredoutput-after-resume-stream.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-239
+packages/@n8n/agents/src/runtime/__tests__/scoped-memory-task-runner.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 6,105
+packages/@n8n/agents/src/__tests__/integration/cassettes/usage/returns-token-usage-and-cost-on-generate-result.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-52
+packages/@n8n/agents/src/runtime/model/raw-usage.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-86
+packages/@n8n/agents/src/runtime/tools/deferred-tool-manager.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1,4-5
+packages/@n8n/backend-network/src/http/axios/__tests__/request.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 9-11,21,33,45,108,130,154,171-195,205-207,339,574
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-streamable-http-transport/calls-image-tool-and-returns-mixed-text-image-content.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/backend-network/src/http/__tests__/outbound-http.ssrf.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-322
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-stdio-transport/connects-to-a-stdio-server-and-lists-tools.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/concurrent-tool-execution/resumes-all-suspended-tools-one-by-one-until-the-llm-loop-continues-stream.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-212
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-transform-error-resilience/tomodeloutput-throwing-during-normal-tool-call-in-stream-stream-finishes-with-stop-not-error.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-197
+packages/@n8n/api-types/src/agents/rich-card.schema.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-157
+packages/@n8n/backend-test-utils/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3
+packages/@n8n/backend-network/src/http/__tests__/env-proxy-https-agent.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-62
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_e370adc7569608::t_569062163030a5 561-674
+  s_e370adc7569608::t_3da6c7675df168 7
+docs/generated/sqlite-schema/instance_ai_workflow_snapshots.md
+  s_e370adc7569608::t_fc48ffd8e19605 18,20,22,24,32,48,50,52,54
+docs/generated/postgres-schema/public.execution_annotations.md
+  s_e370adc7569608::t_fc48ffd8e19605 7,9,12,18-19,30,38,41,43,46,49-52,54-55,61,64-65,68-70
+packages/@n8n/db/src/entities/types-db.ts
+  s_e370adc7569608::t_fc48ffd8e19605 71,118-122,177-183,476
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-162
+packages/@n8n/instance-ai/docs/tools.md
+  s_e370adc7569608::t_fc48ffd8e19605 22-23,40,135-148,199,201,231-235,245-247,251-256,258,260-268,727,737,743
+docs/generated/postgres-schema/public.agents_observations.md
+  s_e370adc7569608::t_fc48ffd8e19605 8-9,11,15-16,25-29,45,48,55-56,63-64,66,70-71,75-76,78,83-84,86-88,90-95,99,101
+docs/generated/sqlite-schema/shared_credentials.md
+  s_e370adc7569608::t_fc48ffd8e19605 18,30-31,49,57-58,60,62,65-66,69-73
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-interrupt/auto-executes-non-interruptible-tools-while-suspending-interruptible-ones.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-234
+packages/@n8n/agents/src/__tests__/integration/mcp-streamable-http-transport.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 9
+packages/@n8n/agents/src/__tests__/integration/cassettes/max-iterations/returns-length-not-error-when-iteration-limit-is-reached-in-resumed-generate.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-79
+packages/@n8n/api-types/src/agents/types.ts
+  s_e370adc7569608::t_fc48ffd8e19605 196-207
+packages/@n8n/backend-network/src/http/client-request-error.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-94
+packages/@n8n/agents/src/workspace/sandbox/daytona-auth-manager.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/backend-network/src/http/__tests__/transport-timeouts.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-53
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/valid-author.md
+  s_e370adc7569608::t_fc48ffd8e19605 1-60
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/stream-agent-writes-a-file-and-streams-the-response.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-845
+docs/generated/sqlite-schema/workflow_builder_session.md
+  s_e370adc7569608::t_fc48ffd8e19605 18-19,24-26,34,36,43,51,54-55,59-64,66-78,82-86,88-89,91,93-94,96,101
+.claude/README.md
+  s_e370adc7569608::t_fc48ffd8e19605 5-7
+docs/generated/sqlite-schema/shared_workflow.md
+  s_e370adc7569608::t_fc48ffd8e19605 18,22,30,32,47,50,53-56,58-64,68-72,74-75,77,79-80,82,87
+packages/@n8n/agents/src/__tests__/integration/provider-tools.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 15,24-26,134-169
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-connection/does-not-throw-and-does-not-call-client-close-again-when-disconnect-is-called-on-an-already-closed-connection.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/telemetry-langsmith/supports-endpoint-shorthand-auto-appends-otel-v1-traces.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-187
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-stdio-transport/prefixes-tool-names-with-the-server-name.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/db/src/migrations/common/1784000000035-AddUniqueAgentFileNames.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-13
+packages/@n8n/agents/src/__tests__/integration/runtime-skills.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-137
+.github/workflows/util-claude-task.yml
+  s_e370adc7569608::t_fc48ffd8e19605 137-138
+packages/@n8n/agents/src/runtime/memory/observation-log-observer.ts
+  s_e370adc7569608::t_fc48ffd8e19605 2-5,13-14,83,222-234,239
+docs/generated/sqlite-schema/dynamic_credential_resolver.md
+  s_e370adc7569608::t_fc48ffd8e19605 20-22,46,49-50,58-59,61,63,66,70,73-77,79-81,83
+packages/@n8n/agents/src/__tests__/integration/memory-observational.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-96
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/emits-one-tool-modelmessage-per-settled-block-in-the-same-assistant-turn.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-9,11-16,267-295,315-316,367-368,441-442,620,633,722,771-774,782-783,791-1000
+docs/generated/sqlite-schema/agents_memory_entry_cursors.md
+  s_e370adc7569608::t_fc48ffd8e19605 20-22,31-32,53-55,59-60,62,67,69,72,74
+docs/generated/postgres-schema/public.agents_observation_cursors.md
+  s_e370adc7569608::t_fc48ffd8e19605 9-11,18-20,33,46-48,52-53,55,60,62,65,67
+packages/@n8n/agents/src/runtime/__tests__/event-bus.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1
+docs/generated/postgres-schema/public.ai_builder_temporary_workflow.md
+  s_e370adc7569608::t_fc48ffd8e19605 8,10,16-18,29,37,40,42-45,47-51,56,59,62-63,65-68,70-71,73-74
+docs/generated/postgres-schema/public.project_relation.md
+  s_e370adc7569608::t_fc48ffd8e19605 7,11,17-20,32-33,44,47,51,54-58,62-64,66-70,74-75,78-79,83-85,87
+docs/generated/postgres-schema/public.workflow_publication_outbox.md
+  s_e370adc7569608::t_fc48ffd8e19605 7-8,13,20,33,42-43,48
+packages/@n8n/agents/src/__tests__/integration/delegate-sub-agent.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 3,6,9,19-26,37,49-51,70-132,151
+packages/@n8n/db/src/migrations/sqlite/1784000000034-AllowAzureStoredAt.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-10
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/runner-langsmith.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 11
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/throws-and-clears-cache-when-server-is-unreachable.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/backend-network/src/http/index.ts
+  s_e370adc7569608::t_fc48ffd8e19605 5-9,13-32
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/preserves-content-tool-outputs-when-building-tool-modelmessages.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/tomessage-returns-undefined-for-text-only-results.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/cli/src/commands/package/import.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-79
+packages/@n8n/eslint-plugin-community-nodes/src/rules/node-registration-complete.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-79
+docs/generated/postgres-schema/public.trusted_key.md
+  s_e370adc7569608::t_fc48ffd8e19605 8-10,16-17,38-40,44-45,48-49
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/require-mit-license.md
+  s_e370adc7569608::t_fc48ffd8e19605 1-38
+docs/generated/postgres-schema/public.role_mapping_rule_project.md
+  s_e370adc7569608::t_fc48ffd8e19605 8,17-18,25,33,37,40-44,48-50,52-56
+docs/generated/sqlite-schema/agent_execution.md
+  s_e370adc7569608::t_fc48ffd8e19605 21-22,25-27,29-35,37,45-47,67-68,71-73,75-81,83,88-92,95-97,101
+packages/@n8n/agents/src/skills/validator.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1
+docs/generated/sqlite-schema/token_exchange_jti.md
+  s_e370adc7569608::t_fc48ffd8e19605 19-20,43-44
+docs/generated/postgres-schema/public.oauth_user_consents.md
+  s_e370adc7569608::t_fc48ffd8e19605 9-10,20-23,38,43-55,58-59,62-63,67-69,71
+docs/generated/sqlite-schema/project_secrets_provider_access.md
+  s_e370adc7569608::t_fc48ffd8e19605 19,21-22,28,31-32,47,51,53,57-61,65-67,69-73
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-interrupt/cancels-a-suspended-delete-file-tool-call-and-continues.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-186
+packages/@n8n/backend-common/src/license-state.ts
+  s_e370adc7569608::t_fc48ffd8e19605 129-132,137-138
+packages/@n8n/agents/src/runtime/loop/execution-counter.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1,10-31
+packages/@n8n/agents/src/__tests__/integration/cassettes/structured-output/returns-structuredoutput-after-resume-generate.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-232
+packages/@n8n/backend-network/src/proxy/__tests__/proxy-subpath-purity.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-113
+docs/generated/postgres-schema/public.data_table_column.md
+  s_e370adc7569608::t_fc48ffd8e19605 7-8,10,19-21,45-46,48,54
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/passes-an-aborting-signal-to-tool-context-during-stream.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-84
+.agents/skills/create-issue/SKILL.md
+  s_e370adc7569608::t_fc48ffd8e19605 126,156,221,240
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-819
+docs/generated/postgres-schema/public.trusted_key_source.md
+  s_e370adc7569608::t_fc48ffd8e19605 8-9,12-13,20,43-44,47-48,53-55
+.github/test-metrics/playwright.json
+  s_e370adc7569608::t_fc48ffd8e19605 4
+packages/@n8n/agents/vite.config.ts
+  s_e370adc7569608::t_fc48ffd8e19605 19-20
+packages/@n8n/backend-network/src/http/__tests__/transport-subpath-purity.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-109
+docs/generated/sqlite-schema/settings.md
+  s_e370adc7569608::t_fc48ffd8e19605 20,44
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/accepts-valid-url-based-config.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/api-types/src/dto/binary-data/binary-data-query.dto.ts
+  s_e370adc7569608::t_fc48ffd8e19605 14
+packages/@n8n/backend-network/src/http/client-options.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-30
+packages/@n8n/db/src/migrations/common/1784000000033-AddBinaryDataSizeBytesToExecutionEntity.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-28
+docs/generated/sqlite-schema/role_mapping_rule_project.md
+  s_e370adc7569608::t_fc48ffd8e19605 19,27-28,44,48,51-55,59-61,63-67
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-440
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-approval/approve-stream-runs-the-approved-tool-and-completes.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-196
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/does-not-throw-when-requireapproval-false-is-set-without-a-checkpoint-store.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  s_e370adc7569608::t_fc48ffd8e19605 13,18
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_e370adc7569608::t_fc48ffd8e19605 2,6,35-36,166-172,177-178
+packages/@n8n/agents/src/__tests__/integration/evaluate.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 12-21,33,36-38
+packages/@n8n/eslint-plugin-community-nodes/src/rules/valid-peer-dependencies.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 15-18
+packages/@n8n/agents/src/__tests__/integration/mcp-sse-transport.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 9
+docs/generated/sqlite-schema/variables.md
+  s_e370adc7569608::t_fc48ffd8e19605 20,29,36,50,55-59
+packages/@n8n/agents/src/sdk/__tests__/memory-builder-episodic.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1,6-7
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/calls-add-tool-and-returns-calculated-result.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/config/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3
+packages/@n8n/agents/src/runtime/state/event-bus.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-2
+packages/@n8n/agents/src/sdk/eval.ts
+  s_e370adc7569608::t_fc48ffd8e19605 2
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-call-upsert/if-same-thread-is-resumed-twice-re-suspend-then-resume-again-still-no-duplicate-rows.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-180
+packages/@n8n/agents/src/sdk/__tests__/agent-isolated-runtime.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 4-6
+packages/@n8n/constants/src/index.ts
+  s_e370adc7569608::t_fc48ffd8e19605 23,25
+packages/@n8n/eslint-plugin-community-nodes/src/rules/require-version.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-90
+packages/@n8n/codemirror-lang-sql/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3,45
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/merges-static-tools-and-mcp-tools-in-the-same-agent.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-275
+packages/@n8n/api-types/src/dto/index.ts
+  s_e370adc7569608::t_fc48ffd8e19605 181-185,270
+packages/@n8n/backend-network/src/http/http-proxy.ts
+  s_e370adc7569608::t_fc48ffd8e19605 5-7,18-21
+packages/@n8n/backend-network/src/ssrf/hostname-matcher.ts
+  s_e370adc7569608::t_fc48ffd8e19605 15-17,64-65
+packages/@n8n/eslint-plugin-community-nodes/src/rules/node-class-description-name-camelcase.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-121
+packages/@n8n/agents/src/__tests__/integration/cassettes/structured-output/returns-structuredoutput-after-tool-use-via-stream.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-246
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-connection/does-not-wrap-any-tools-when-requireapproval-is-not-set.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/eslint-plugin-community-nodes/src/rules/require-param-default.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-89
+packages/@n8n/agents/src/skills/registry.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/backend-network/src/http/__tests__/env-proxy-http-agent.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-60
+packages/@n8n/backend-network/src/http/axios/request.ts
+  s_e370adc7569608::t_fc48ffd8e19605 11-13,15,24-25,56-57,64-65,73,87,159,165-181,201-211
+packages/@n8n/agents/src/runtime/__tests__/delegate-sub-agent-tool.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 14,91-131,588
+packages/@n8n/ai-utilities/src/utils/follow-redirects.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1,48
+.github/workflows/release-publish.yml
+  s_e370adc7569608::t_fc48ffd8e19605 46
+packages/@n8n/ai-utilities/src/utils/http-proxy-agent.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-21,40-41,43,61,109,112,118
+docs/generated/sqlite-schema/instance_ai_pending_confirmations.md
+  s_e370adc7569608::t_fc48ffd8e19605 21-27,29,35,39,48-49,57,64,66-75,77-82,86,88,90,95-96,99-100,104-106,108
+AGENTS.md
+  s_e370adc7569608::t_fc48ffd8e19605 14-16,26,28-37
+docs/generated/sqlite-schema/agent_checkpoints.md
+  s_e370adc7569608::t_fc48ffd8e19605 20-22,30,50-52,56-57,59,64,66
+packages/@n8n/computer-use/spec/technical-spec.md
+  s_e370adc7569608::t_fc48ffd8e19605 280,307,319
+packages/@n8n/config/src/configs/executions.config.ts
+  s_e370adc7569608::t_fc48ffd8e19605 158-165
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/returns-success-after-a-successful-generate.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-58
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/cli.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 184-190
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-conversation/isolates-separate-threads.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-114
+packages/@n8n/engine/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3
+packages/@n8n/instance-ai/evaluations/binaryChecks/checks/index.ts
+  s_e370adc7569608::t_fc48ffd8e19605 29,88-89,99
+docs/generated/sqlite-schema/chat_hub_sessions.md
+  s_e370adc7569608::t_fc48ffd8e19605 18-21,25-27,29-30,36,41,55-56,63-66,70-74,76-77,79-102,106-110,112-113,115,117-119,122,129-130,133-134,138-140,142,146-150,152-153,155,157-158,160,165
+packages/@n8n/db/src/migrations/common/1784000000037-DropAgentDescriptionFromAgents.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-13
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/cred-filename-against-convention.md
+  s_e370adc7569608::t_fc48ffd8e19605 1-42
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/emits-turnstart-and-turnend-for-each-llm-call.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-58
+docs/generated/sqlite-schema/insights_metadata.md
+  s_e370adc7569608::t_fc48ffd8e19605 18,21-22,30,44,46,52-53,55,58-59,63,66,69-79,82-86,88-89,91,93-94,96,101
+packages/@n8n/api-types/src/api-keys.ts
+  s_e370adc7569608::t_fc48ffd8e19605 13-17,50-56
+docs/generated/sqlite-schema/instance_ai_checkpoints.md
+  s_e370adc7569608::t_fc48ffd8e19605 18-19,22,24,31,33,42,54-55,58,60,67-73,75,78,80,82
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/round-trips-content-tool-outputs-from-ai-sdk-tool-messages.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/reports-per-server-errors-for-partially-failing-multi-server-configs.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/telemetry-langsmith/sends-trace-data-to-langsmith-using-langsmithtelemetry.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-187
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-288
+packages/@n8n/agents/src/runtime/loop/stream-sink.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-213
+packages/@n8n/decorators/src/controller/rate-limit.ts
+  s_e370adc7569608::t_fc48ffd8e19605 35-49
+packages/@n8n/backend-network/src/ssrf/__tests__/mock-ssrf-bridge.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-19
+docs/generated/postgres-schema/public.chat_hub_sessions.md
+  s_e370adc7569608::t_fc48ffd8e19605 7-10,14-16,18-19,26-30,44,51-52,59-62,66-70,72-73,75-98,102-106,108-109,111,113-115,118,125-126,129-130,134-136,138,143,146,149-150,152-155,157-158,160-161
+docs/generated/sqlite-schema/agents_observation_locks.md
+  s_e370adc7569608::t_fc48ffd8e19605 19-21,30,33-34,36,55-57,63-64,66,71,73,76,78
+packages/@n8n/agents/src/runtime/__tests__/observation-log-store.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 2
+packages/@n8n/api-types/src/dto/workflows/__tests__/create-workflow.dto.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 91-109,115-124
+packages/@n8n/config/src/schemas.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-3
+packages/@n8n/backend-network/src/http/axios/__tests__/utils.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-2,5,7-8,10,17,20-21,25-36,159,182-183,200,202,462,469,482,494,499,502,504,506,508-510,513,515,517,519-645
+packages/@n8n/instance-ai/evaluations/__tests__/workflow-report.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 41-61,135-156
+packages/@n8n/agents/src/__tests__/integration/cassettes/execution-options/increments-executioncounter-for-messages-tool-calls-and-tokens.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-191
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-interrupt/resumes-each-pending-tool-call-one-by-one-when-multiple-tool-calls-are-suspended.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-212
+packages/@n8n/config/src/configs/workflows.config.ts
+  s_e370adc7569608::t_fc48ffd8e19605 5,36-55
+packages/@n8n/computer-use/src/tools/shell/build-shell-resource.ts
+  s_e370adc7569608::t_fc48ffd8e19605 17-20,31,34-36,50-52,58,63,65
+docs/generated/postgres-schema/public.deployment_key.md
+  s_e370adc7569608::t_fc48ffd8e19605 9-11,13,19,34-37,48-50,52
+packages/@n8n/agents/src/__tests__/integration/cassettes/multi-tool-calls/correctly-merges-results-via-the-run-path.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-210
+packages/@n8n/ai-workflow-builder.ee/src/test/workflow-builder-agent.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 7,203,223,227
+packages/@n8n/instance-ai/evaluations/__tests__/conversation-seed.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-294
+packages/@n8n/agents/src/runtime/__tests__/strip-orphaned-tool-messages.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 2
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/reflects-resourceid-and-threadid-from-runoptions.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-58
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-error-handling/does-not-crash-when-a-tool-throws-stream-completes-with-a-finish-chunk.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-197
+packages/@n8n/config/src/configs/database.config.ts
+  s_e370adc7569608::t_fc48ffd8e19605 174-232
+packages/@n8n/ai-utilities/src/node-catalog/dynamic-node-parameters.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-13,15-37,39-52,55-56,59-60,63-70,73-85,87-90,93-97,99-101,107-129,132-137,140-145,151-162,165-176,180-215,219-224,226-231,233-244,246,248-265,268-284
+docs/generated/sqlite-schema/mcp_registry_server.md
+  s_e370adc7569608::t_fc48ffd8e19605 18-20,24,30,48-50,54,57,59,63
+docs/generated/sqlite-schema/dynamic_credential_entry.md
+  s_e370adc7569608::t_fc48ffd8e19605 18,21-22,31-32,34,41,53,56-57,62-63,65,67,70-71,74-75
+packages/@n8n/agents/src/__tests__/integration/cassettes/concurrent-tool-execution/suspends-all-interruptible-tool-calls-concurrently-and-returns-them-as-an-array-generate.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-79
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/throws-when-a-static-tool-and-an-mcp-tool-share-the-same-prefixed-name.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-streamable-http-transport/calls-echo-tool-and-returns-text-content.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-tools/openai-web-search-provider-tool-can-be-attached-without-suspending.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-60
+packages/@n8n/backend-network/src/http/__tests__/outbound-http.dispatcher.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-54
+packages/@n8n/codemirror-lang-html/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3
+packages/@n8n/eslint-plugin-community-nodes/src/rules/require-param-default.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-227
+packages/@n8n/agents/src/__tests__/integration/cassettes/deferred-tools/searches-loads-and-uses-a-deferred-tool-in-generate-mode.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-603
+packages/@n8n/backend-network/src/http/__tests__/outbound-http.requests.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-3,5-7,9-11,13,15-19,21-22,25-27,29,32-33,35,37-39,42-44,46,48,51-53,55,57,60-61,63,65,68-70,72,74-80,83-92,95-97,99,101-104,107-108,110,112-115,119-123,125,127-133,135-138,140,142-146,148-168,170-179
+packages/@n8n/agents/src/__tests__/integration/tool-behavior.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-108
+docs/generated/postgres-schema/public.agent_checkpoints.md
+  s_e370adc7569608::t_fc48ffd8e19605 9-11,18-19,30,42-44,48-49,51,56,58
+packages/@n8n/agents/src/__tests__/integration/cassettes/json-schema-validation/passes-valid-input-to-the-handler-and-returns-a-successful-tool-result.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-182
+packages/@n8n/agents/src/__tests__/integration/cassettes/stream-timing/tool-input-delta-chunks-arrive-incrementally-not-all-buffered.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-196
+packages/@n8n/ai-workflow-builder.ee/src/utils/token-usage-tracking-handler.ts
+  s_e370adc7569608::t_fc48ffd8e19605 3
+.agents/skills/create-pr/SKILL.md
+  s_e370adc7569608::t_fc48ffd8e19605 56,58,103-106,170
+.github/workflows/mutation-health-nightly.yml
+  s_e370adc7569608::t_fc48ffd8e19605 17-20,25-30,39-44,50-79,84-87,89-103,107-111,117-124,126,136-137,142-153,157-159,162,165-166,168,178-191,210
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-streamable-http-transport/calls-add-tool-and-returns-calculated-result.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/config/src/configs/ai.config.ts
+  s_e370adc7569608::t_fc48ffd8e19605 26-33
+.agents/skills/experiments/SKILL.md
+  s_e370adc7569608::t_fc48ffd8e19605 2
+packages/@n8n/cli/src/index.ts
+  s_e370adc7569608::t_fc48ffd8e19605 27-28,126-127
+packages/@n8n/agents/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3,57-59,75,78,84-90,111-112
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/mcp-connections-persist-across-multiple-generate-calls.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-484
+docs/generated/sqlite-schema/agents_resources.md
+  s_e370adc7569608::t_fc48ffd8e19605 18,45,54,56-57,59-62,68-70
+packages/@n8n/agents/vitest.integration.setup.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-213
+docs/generated/postgres-schema/public.event_destinations.md
+  s_e370adc7569608::t_fc48ffd8e19605 8-9,20,36-37
+docs/generated/sqlite-schema/deployment_key.md
+  s_e370adc7569608::t_fc48ffd8e19605 20-22,24,37-38,54-56,58
+packages/@n8n/db/src/utils/is-unique-constraint-error.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-26
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/does-not-throw-when-requireapproval-true-is-set-with-a-checkpoint-store.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/instance-ai/evaluations/__tests__/select-expectations.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-111
+packages/@n8n/agents/src/__tests__/integration/cassettes/evaluate/evaluate-includes-hitl-tool-calls-in-toolcalls-passed-to-eval-scorers.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-182
+packages/@n8n/agents/src/runtime/__tests__/background-task-tracker.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/instance-ai/evaluations/binaryChecks/checks/no-excessive-build-failures.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-103
+packages/@n8n/agents/src/__tests__/integration/cassettes/double-suspension/generate-tool-suspends-twice-denial-on-second-resume-completes-without-deploying.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-186
+docs/generated/postgres-schema/public.project_secrets_provider_access.md
+  s_e370adc7569608::t_fc48ffd8e19605 8,10-11,18-20,39,43,45,49-53,57-59,61-65
+packages/@n8n/agents/src/__tests__/integration/cassettes/evaluate/evaluate-output-is-non-empty-when-agent-only-uses-an-interruptible-tool-no-text-response.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-180
+.github/scripts/jsconfig.json
+  s_e370adc7569608::t_fc48ffd8e19605 2-8
+packages/@n8n/agents/src/__tests__/integration/cassettes/structured-output/structuredoutput-conforms-to-the-schema.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-89
+packages/@n8n/agents/src/__tests__/integration/mcp-client-boundary.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-104
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_e370adc7569608::t_fc48ffd8e19605 209-213,425-429
+packages/@n8n/ai-workflow-builder.ee/src/tools/get-resource-locator-options.tool.ts
+  s_e370adc7569608::t_fc48ffd8e19605 2-9,11,98-100,102,112,114-118,129,136-137,148-151,169
+docs/generated/sqlite-schema/README.md
+  s_e370adc7569608::t_fc48ffd8e19605 11-32,35-54,56,60,63-81,83-85,87-89,91,94-102,105-107,109-112,114,116-119,126-161,163-166,180,182-189,193-217,224-229,234-279,281-282,284-286,289-290,292-294,297-302,304,306-315,317,319-321,323-335,338-340,342-343,345,348-350,352-355,357,359-360,362-365,368-369,371-373,376,378-382,384,386-387,389-395,397,399-402,404-411,414-415,417-419,422-423,425-427,430-431,433-438,441-442,444-448,451-452,454-456,459-460,462-465,467-468,470-474,476-479,481,483-484,487,489-493,495,497,499,501,503-504,507-527,529-535,543-547,549,554,557-560,562-572,574-578,581-584,588-590,592-593,595,597-603,607,610-611,613,615-623,626,628-631,633-635,637-638,642-643,645-647,649,651,653-656,659-660,662-664,667,669-671,673,675,677-683,686,688-696,698,700,702,706-710,712-714,716-722,725-728,730-731,737,740,742,744-751,754-755,758-792,794-795,798,800-805,808,810-813,816,818-821,823,825,828-832,835,837-839,842,844-847,850-859,861-881,884-885,888,892-898,900-906,908,910,912-913,915,917-930,932-933,935,937,939-943,946,948-951,953,955-966,968-971,973,975-984,986-990,992-993,995-997,999-1003,1006-1007,1009-1011,1013,1015-1022,1025-1026,1028,1030-1036,1039,1041-1042,1044,1046,1048-1050,1053,1055-1059,1062,1064-1068,1070-1079,1081-1082,1084,1086-1090,1093-1098,1100-1102,1105,1107-1108,1110,1112,1114-1115,1118-1119,1121-1133,1136-1139,1141-1149,1151-1152,1154-1166,1168-1172,1175,1177-1189,1192-1194,1196-1199,1201,1203-1206,1208-1225,1227-1230,1233-1249,1251-1263,1265-1266,1268-1271,1273-1276,1278-1279,1282-1283,1288,1290,1292-1296,1298,1300,1302-1315
+docs/generated/postgres-schema/public.agent_task_definition.md
+  s_e370adc7569608::t_fc48ffd8e19605 8-10,19-20,34,45-47,53-54,56,61,63
+docs/generated/postgres-schema/public.agent_task_run_lock.md
+  s_e370adc7569608::t_fc48ffd8e19605 9-11,18-19,43-45,49-50,52,57,59
+packages/@n8n/agents/src/runtime/__tests__/observation-log-reflector.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 4,10,16
+packages/@n8n/backend-network/src/http/axios/__tests__/ssrf-redirect.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-318
+packages/@n8n/expression-runtime/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3
+packages/@n8n/backend-network/src/http/__tests__/transport-integration.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-201
+docs/generated/postgres-schema/public.oauth_refresh_tokens.md
+  s_e370adc7569608::t_fc48ffd8e19605 9,11-13,19-21,47,49-51,54-57,65-66,69-70,74-76,78-79
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/does-not-suspend-a-tool-not-listed-in-config-requireapproval.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-243
+biome.jsonc
+  s_e370adc7569608::t_fc48ffd8e19605 34-40
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/stream-result-state-is-running-before-the-stream-is-drained.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-64
+docs/generated/sqlite-schema/instance_ai_observations.md
+  s_e370adc7569608::t_fc48ffd8e19605 18,21,25-26,33-34,38,45,60,63,67-68,72,74,76
+packages/@n8n/agents/src/__tests__/integration/cassettes/concurrent-tool-execution/cancels-one-of-multiple-suspended-delete-file-tool-calls-and-resolves-the-batch.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-202
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-history.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-95
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/test/parse-validate-handler.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 232-311,564-566
+packages/@n8n/db/src/entities/execution-entity.ts
+  s_e370adc7569608::t_fc48ffd8e19605 23,113-120
+packages/@n8n/agents/src/__tests__/integration/tool-call-upsert.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 11-15,78-79,88-89,92-93,95-96,142,144-146,210-220
+packages/@n8n/agents/src/runtime/__tests__/mcp-connection.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-2,122-228
+docs/generated/sqlite-schema/workflows_tags.md
+  s_e370adc7569608::t_fc48ffd8e19605 19,28-29,36,45,49-55,58-62,64-65,67,69-70,72,77
+packages/@n8n/agents/src/__tests__/integration/cassettes/json-schema-validation/allows-the-llm-to-self-correct-after-receiving-a-json-schema-validation-error.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-325
+docs/generated/postgres-schema/public.webhook_entity.md
+  s_e370adc7569608::t_fc48ffd8e19605 10-11,18-19,43-44,49,52,55-56,58-61,63-67
+packages/@n8n/agents/src/__tests__/integration/cassettes/batched-tool-execution/normal-tools-with-bounded-concurrency-complete-without-errors-generate.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-214
+docs/generated/sqlite-schema/agent_files.md
+  s_e370adc7569608::t_fc48ffd8e19605 20,23-24,32,40-41,54,57-58,62-63,65,70,72
+packages/@n8n/eslint-plugin-community-nodes/src/rules/ai-node-package-json.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 15-18
+packages/@n8n/backend-network/src/ssrf/ssrf-blocked-hostname.error.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-24
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_e370adc7569608::t_fc48ffd8e19605 20-24,27-29,33,43,52,61,68-72,75-77,81,85-86,88,93-94,96-100,102-115,117,120-124,134-137,139
+docs/generated/postgres-schema/public.instance_ai_checkpoints.md
+  s_e370adc7569608::t_fc48ffd8e19605 7-8,11,13,20-21,33,35,46-47,50,52,59-65,67,70,72-73
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-conversation/recalls-tool-results-with-generate.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-303
+docs/generated/sqlite-schema/agent_chat_subscriptions.md
+  s_e370adc7569608::t_fc48ffd8e19605 19,21,29-30,33,35,52,54,59-60,62,67,69
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-file-stat-to-get-file-metadata.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-794
+docs/generated/postgres-schema/public.instance_ai_threads.md
+  s_e370adc7569608::t_fc48ffd8e19605 7-10,19-20,34,43-44,47-48,50-51,55,57-58,61-63,65,67,69-81,83,85-87,89-91,93,95-97,99-109,115-117,120-124,127-128,130-132,134-139,141-143,147,150,154-155,158-160,162-168,170,172,174-182,185,187-188,190,193-197
+packages/@n8n/instance-ai/evaluations/__tests__/run-debug-report.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-83
+.opencode/skills/setup-mcps/SKILL.md
+  s_e370adc7569608::t_fc48ffd8e19605 1-84
+packages/@n8n/backend-network/src/http/axios/utils.ts
+  s_e370adc7569608::t_fc48ffd8e19605 15-18,76-95,106,112-113,121,123-124,126,202,246-293,300,303,319,321-324,364,372-373,375-379
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-stdio-transport/calls-echo-tool-and-returns-text-content.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/interim-message-ordering-tool-result-is-inserted-right-after-its-tool-call.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/backend-network/src/http/binary-buffer.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-2,6-19,22-76
+packages/@n8n/eslint-config/src/rules/no-uncentralized-http.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-241
+.tbls.sqlite.yml
+  s_e370adc7569608::t_fc48ffd8e19605 8-10,15
+docs/generated/sqlite-schema/instance_ai_threads.md
+  s_e370adc7569608::t_fc48ffd8e19605 18-20,22,31,48-50,53-54,56-57,61,63,65,67-69,71,73,75-87,89,91-93,95-97,99,101-103,105-115,121-123,126-130,133-134,136-138,140-147,149,153,156,160-161,164-166,168-174,176,178,180-188,191,193-194,196,199-203
+docker/images/runners/Dockerfile.distroless
+  s_e370adc7569608::t_fc48ffd8e19605 10,149-152,176,183
+docs/generated/postgres-schema/public.workflow_entity.md
+  s_e370adc7569608::t_fc48ffd8e19605 8,11-19,21,24,26,32-33,42,54-55,68-73,76-77,79-80,82,85,90,93,95,97-99,101-106,108-114,116,118-186,189-192,194-195,201,204,206,208-211,213,215-216,219-220,223,230-233,236-238,240,242-244,247-252,255-256,258-261,263-264,267,269-271,274-275,278,280,282,285,287,291-292,296
+docs/generated/sqlite-schema/agent_task_run_lock.md
+  s_e370adc7569608::t_fc48ffd8e19605 20-22,30,32,50-52,56-57,59,64,66
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-stdio-transport/calls-add-tool-and-returns-calculated-result.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-error-handling/does-not-crash-when-a-tool-throws-generate-returns-finishreason-stop.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-183
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/passes-an-aborting-signal-to-tool-context-during-generate.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-77
+packages/@n8n/db/src/connection/__tests__/db-connection-monitor.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 28-34,141,279,324,423-466,486,524,542-546,548-549,570,577-653,662,664-665,667-670,702-730,760-986,993,1001
+packages/@n8n/agents/src/__tests__/integration/cassettes/title-generation/auto-generates-a-thread-title-after-generate-on-a-new-thread.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-114
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/handler-calls-the-tool-and-returns-the-mcp-result.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/runtime-skills/discovers-skills-with-list-skills-before-loading-a-category-match.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-375
+packages/@n8n/agents/src/__tests__/integration/memory-custom-backend.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 10-12,68-70,72-82
+packages/@n8n/agents/src/__tests__/integration/cassettes/concurrent-tool-execution/auto-executes-non-interruptible-tools-concurrently-while-suspending-interruptible-ones.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-103
+packages/@n8n/agents/src/__tests__/integration/cassettes/execution-options/uses-agent-modelfetch-for-model-requests.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-58
+packages/@n8n/agents/src/runtime/__tests__/sub-agent-task-path.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 7
+docs/generated/sqlite-schema/data_table_column.md
+  s_e370adc7569608::t_fc48ffd8e19605 18-19,21,31,33,40,50-51,53,59
+packages/@n8n/chat-hub/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3
+packages/@n8n/cli/docs/commands/package.md
+  s_e370adc7569608::t_fc48ffd8e19605 1-50
+packages/@n8n/agents/src/__tests__/integration/cassettes/token-usage/emits-finish-chunks-with-token-usage-in-the-stream.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-64
+packages/@n8n/cli/src/commands/package/shared.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-46
+packages/@n8n/backend-network/src/http/node-agents.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-156
+packages/@n8n/api-types/src/dto/evaluations/index.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/runtime/__tests__/stream.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 3,9-39
+docs/generated/postgres-schema/public.chat_hub_session_tools.md
+  s_e370adc7569608::t_fc48ffd8e19605 15,17-18,39-42,46-48,50-51,54-56,59
+docs/generated/postgres-schema/public.dynamic_credential_entry.md
+  s_e370adc7569608::t_fc48ffd8e19605 7,10-11,18-20,34,45,48-49,54,57,59,62-63,66-67
+docs/generated/sqlite-schema/user.md
+  s_e370adc7569608::t_fc48ffd8e19605 18-19,22-23,27-29,31-32,39,41,48-49,56,60-61,64-66,69-75,79-80,83-84,86-88,91-97,99-102,104,107,111,114-118,120,125-126,129-132,136-138,140,142-143,145-151,154,156-160,163-164,167,169,171,173,175-178,180,186-192,196,198-199,201,203-205,210,214-215,218-221,224-227,229-232,234-235,237-238,240-246,248-290,293,295,297
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-metadata/includes-finishreason-in-finish-chunks.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-64
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-conversation/recalls-tool-results-with-stream.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-617
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-options/second-call-with-cached-instructions-reports-cacheread-tokens.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-120
+docs/generated/postgres-schema/public.test_run.md
+  s_e370adc7569608::t_fc48ffd8e19605 7-10,13-15,17,19-21,28-31,45-46,53-54,59-62,65-67,69,71-73,75-79,81-85,87-91,93-101,103,106-107,109,111,113-115,119,122,125-126,128-131,133-134,136-137
+packages/@n8n/agents/src/sdk/__tests__/memory-builder-observational.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-2
+packages/@n8n/agents/src/__tests__/integration/cassettes/evaluate/resume-generate-result-includes-the-resumed-tool-call-when-denied.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-182
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_e370adc7569608::t_fc48ffd8e19605 5-19,27,36-41,44-47,57-69,75,87,96,115-138,152-153,163,175,201-202,235-237,240-241,250,252,255-256,271-274,330,333,369,373-376,379,382-391,393-405,407-412,414-446
+packages/@n8n/eslint-plugin-community-nodes/README.md
+  s_e370adc7569608::t_fc48ffd8e19605 47-95
+packages/@n8n/agents/src/__tests__/integration/cassettes/evaluate/runs-multiple-dataset-rows-in-parallel.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-358
+.github/workflows/release-create-patch-pr.yml
+  s_e370adc7569608::t_fc48ffd8e19605 36,54,60,69
+docs/generated/postgres-schema/public.chat_hub_messages.md
+  s_e370adc7569608::t_fc48ffd8e19605 7-11,13-14,16,18-20,23,29-36,51,58-59,67-71,73-74,76,78-80,83,85-90,92-93,96-97,101-104,106-107,113,116-117,120-124,126-127,130-138,140-152,154-155
+docs/generated/postgres-schema/public.token_exchange_jti.md
+  s_e370adc7569608::t_fc48ffd8e19605 8-9,15,34-35
+docs/generated/postgres-schema/public.instance_ai_observations.md
+  s_e370adc7569608::t_fc48ffd8e19605 7,10,14-15,24-27,43-44,56,59,63-64,68,70-71
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-applies-single-and-batch-string-replacements.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-830
+docs/generated/sqlite-schema/workflow_entity.md
+  s_e370adc7569608::t_fc48ffd8e19605 19,21-30,32,37,45,53,67-68,72-76,78-79,81-84,88-92,94-95,97,99-100,102,107,109-112,114-117,119-120,122,124,126,129-133,135-136,138,140-142,148-151,155-157,159,161-162,164-169,173,175-183,185,188-191,193-194,200,203,205-215,218-219,221,223-224,226,229-232,235-237,239,241-243,246-254,256-276,278,280-284,287
+.github/scripts/post-qa-metrics-comment.mjs
+  s_e370adc7569608::t_fc48ffd8e19605 24
+docs/generated/postgres-schema/public.insights_by_period.md
+  s_e370adc7569608::t_fc48ffd8e19605 9-10,18-19,31,43-44,52-53
+docs/generated/sqlite-schema/agents_observations.md
+  s_e370adc7569608::t_fc48ffd8e19605 19-20,22,26-27,34-35,40,47,50,58-59,66-67,69,73-74,78-79,81,86-87,89-91,93-98,102,104
+docs/generated/postgres-schema/public.variables.md
+  s_e370adc7569608::t_fc48ffd8e19605 7,9,17,20,28,40,42,47-51
+packages/@n8n/agents/src/__tests__/integration/cassettes/max-iterations/persists-maxiterations-together-with-completed-iteration-count-in-checkpoints-generate.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-79
+packages/@n8n/agents/src/sdk/guardrails/patterns.ts
+  s_e370adc7569608::t_fc48ffd8e19605 2-3,64-156,176-222,226-229
+.tbls.postgres.yml
+  s_e370adc7569608::t_fc48ffd8e19605 8-10,15
+docs/generated/postgres-schema/public.oauth_access_tokens.md
+  s_e370adc7569608::t_fc48ffd8e19605 8,18-20,38,42-45,53-54,57-58,62-64,66-67
+packages/@n8n/expression-runtime/src/extensions/__tests__/string-extensions.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 8-9,38-64
+packages/@n8n/agents/src/runtime/__tests__/observation-log-renderer.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 2
+packages/@n8n/agents/src/__tests__/integration/cassettes/usage/includes-cost-in-stream-finish-chunk.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-64
+docs/generated/postgres-schema/public.agents_resources.md
+  s_e370adc7569608::t_fc48ffd8e19605 7,16,36,45,47-48,50-53,59-61
+packages/@n8n/errors/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3
+packages/@n8n/agents/src/__tests__/integration/cassettes/max-iterations/deletes-two-files-sequentially-and-stops-after-second-resume-with-length-in-stream.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-86
+docs/generated/sqlite-schema/chat_hub_session_tools.md
+  s_e370adc7569608::t_fc48ffd8e19605 27,29,50-53,57-59,61-62,65-67,70
+docs/generated/sqlite-schema/oauth_user_consents.md
+  s_e370adc7569608::t_fc48ffd8e19605 20-21,29,44,49-50,52-56,58-65,68-69,73-75,77
+packages/@n8n/eslint-config/src/configs/node.ts
+  s_e370adc7569608::t_fc48ffd8e19605 4,6
+packages/@n8n/agents/src/sdk/__tests__/delegate-sub-agent-routing.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 3,12,32
+docs/generated/sqlite-schema/agent_task_definition.md
+  s_e370adc7569608::t_fc48ffd8e19605 19-21,31,50-52,58-59,61,66,68
+.claude/plugins/n8n/.claude-plugin/plugin.json
+  s_e370adc7569608::t_fc48ffd8e19605 2-4
+packages/@n8n/ai-workflow-builder.ee/evaluations/evaluators/binary-checks/checks/no-empty-set-nodes.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1,3
+packages/@n8n/agents/src/__tests__/integration/execution-options.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-104
+docs/generated/postgres-schema/public.agents_threads.md
+  s_e370adc7569608::t_fc48ffd8e19605 7-9,18,36-37,41,44,46,49-52,54-56,59-63,65-66,70-71,73-77,83-85,90-92,97,100-101,103-107
+packages/@n8n/backend-network/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3,22-56,75,83
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/emits-agentstart-and-agentend-around-a-generate-call.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-58
+packages/@n8n/eslint-plugin-community-nodes/src/rules/cred-filename-against-convention.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-72
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-interrupt/resumes-the-stream-after-resume-with-approval.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-196
+packages/@n8n/agents/src/runtime/loop/runtime-helpers.ts
+  s_e370adc7569608::t_fc48ffd8e19605 5-7,59-60,65,67,93-97
+docs/generated/sqlite-schema/role.md
+  s_e370adc7569608::t_fc48ffd8e19605 18,20,22,47-48,51,53,55,57-59,61-72,80-81,84-85,89-91,93
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/no-emoji-in-options.md
+  s_e370adc7569608::t_fc48ffd8e19605 1-60
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-custom-backend/works-when-passed-directly-to-agent-memory-as-bare-builtmemory.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-132
+packages/@n8n/backend-network/src/testing.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-17
+packages/@n8n/agents/src/runtime/memory/observation-log-store.ts
+  s_e370adc7569608::t_fc48ffd8e19605 5,21
+docs/generated/sqlite-schema/project_relation.md
+  s_e370adc7569608::t_fc48ffd8e19605 18,22,31,33,40-42,52,55,59,62-66,70-72,74-78,82-83,86-87,91-93,95
+docs/generated/postgres-schema/public.chat_hub_tools.md
+  s_e370adc7569608::t_fc48ffd8e19605 7-10,12,21-22,38,46,50-52,55,64-67,69-70,73-74,78-80,82-83
+docs/generated/sqlite-schema/workflow_publication_outbox.md
+  s_e370adc7569608::t_fc48ffd8e19605 18-19,24,31,46-47,52
+packages/@n8n/agents/src/__tests__/integration/cassettes/batched-tool-execution/bounded-concurrency-suspends-first-batch-and-saves-unexecuted-tools-then-resumes-all-stream.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-228
+docs/generated/sqlite-schema/role_scope.md
+  s_e370adc7569608::t_fc48ffd8e19605 33-34,57,59,61,67-68
+packages/@n8n/eslint-plugin-community-nodes/src/utils/file-utils.ts
+  s_e370adc7569608::t_fc48ffd8e19605 182-219
+docs/generated/sqlite-schema/trusted_key_source.md
+  s_e370adc7569608::t_fc48ffd8e19605 19-20,23-24,49-50,53-54,59-61
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/emits-toolexecutionstart-and-toolexecutionend-when-a-tool-runs.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-187
+packages/@n8n/agents/src/sdk/__tests__/tool-name-collisions.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 6-8
+packages/@n8n/db/src/migrations/sqlite/1784000000037-DropAgentDescriptionFromAgents.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-9
+docs/generated/sqlite-schema/binary_data.md
+  s_e370adc7569608::t_fc48ffd8e19605 18,20,23-25,32,50,52,55-57
+packages/@n8n/backend-network/src/ssrf/ssrf-protection.service.ts
+  s_bb17b049fc2e2d::t_e56ced50495c7b 157-158,208,279-280,342
+  s_e370adc7569608::t_fc48ffd8e19605 13,18-19,38,50-61,75-76,101,144-156,190-193,203-207,271-278,285,336,340-341
+.github/workflows/test-workflows-nightly.yml
+  s_e370adc7569608::t_fc48ffd8e19605 3-8
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/sanitizes-replayed-non-object-tool-call-inputs-for-provider-requests.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/api-types/src/agents/__tests__/sanitize-agent-json-config.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 53-59,74,381,389-417,449,571,582
+docs/generated/postgres-schema/public.instance_ai_workflow_snapshots.md
+  s_e370adc7569608::t_fc48ffd8e19605 7,9,11,13,19,31,40,42,44,46
+.agents/skills/AGENTS.md
+  s_e370adc7569608::t_fc48ffd8e19605 1-39
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-indexed-entries-source-backed-with-source-thread-evidence.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-407
+docs/generated/sqlite-schema/chat_hub_agent_tools.md
+  s_e370adc7569608::t_fc48ffd8e19605 27,29,50-54,56,61-62,65-67,70
+docs/generated/postgres-schema/public.auth_provider_sync_history.md
+  s_e370adc7569608::t_fc48ffd8e19605 7-10,15-16,27,48-51,56-57
+docs/generated/postgres-schema/public.folder.md
+  s_e370adc7569608::t_fc48ffd8e19605 7-8,18-20,32,41,45,52-55,58,61,64-65,67-70,72-76,79-83
+docs/generated/postgres-schema/public.role_scope.md
+  s_e370adc7569608::t_fc48ffd8e19605 15,17-18,25,40,42,44,50-51
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/skips-legacy-tool-call-blocks-that-have-no-state-field-and-emits-nothing-when-they-are-the-only-content.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/eslint-plugin-community-nodes/src/rules/require-mit-license.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-67
+packages/@n8n/instance-ai/evaluations/binaryChecks/checks/no-excessive-build-failures.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-23
+docs/generated/sqlite-schema/annotation_tag_entity.md
+  s_e370adc7569608::t_fc48ffd8e19605 18,45
+packages/@n8n/agents/src/runtime/memory/observation-log-defaults.ts
+  s_e370adc7569608::t_fc48ffd8e19605 9-12,335,424,430
+packages/@n8n/eslint-config/src/plugin.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-12
+docs/generated/postgres-schema/public.agents_memory_entry_sources.md
+  s_e370adc7569608::t_fc48ffd8e19605 8-11,21-25,40,44,58-61,68-69,71,76,78,84,86-87,89-92,97-98,100,104-105,109,111
+docs/generated/sqlite-schema/data_table.md
+  s_e370adc7569608::t_fc48ffd8e19605 18,29,31,38,49,56-57,59,65-69
+docs/generated/sqlite-schema/webhook_entity.md
+  s_e370adc7569608::t_fc48ffd8e19605 21-23,31,50-52
+packages/@n8n/agents/src/__tests__/integration/cassettes/runtime-skills/loaded-skill-drives-a-domain-tool-call.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-423
+packages/@n8n/agents/src/runtime/__tests__/model-factory.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 3
+packages/@n8n/config/src/index.ts
+  s_e370adc7569608::t_fc48ffd8e19605 11,271-272
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/node-registration-complete.md
+  s_e370adc7569608::t_fc48ffd8e19605 1-46
+packages/@n8n/db/src/migrations/common/1784000000034-AllowAzureStoredAt.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-25
+packages/@n8n/eslint-plugin-community-nodes/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 4
+docs/generated/sqlite-schema/insights_by_period.md
+  s_e370adc7569608::t_fc48ffd8e19605 20-21,30,48-49,57-58
+packages/@n8n/instance-ai/evaluations/__tests__/langsmith-seed.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-440
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/disconnects-cleanly-without-throwing.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/eslint-config/src/rules/no-uncentralized-http.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-193
+docs/generated/postgres-schema/public.instance_ai_mcp_registry_connections.md
+  s_e370adc7569608::t_fc48ffd8e19605 7,9,13,19-22,35,47,49,53,57,60,62,65-66,69-71,75,78-79,82-83,87-89,91-92
+packages/@n8n/agents/src/__tests__/integration/cassettes/structured-output/returns-structuredoutput-after-tool-use-via-generate.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-232
+docs/generated/postgres-schema/public.evaluation_config.md
+  s_e370adc7569608::t_fc48ffd8e19605 7,9,11-12,14-16,18,24-26,43,53,57,59,61-62,64-66,68,70-74,76-78,80-83,86-87,91-94,96-97,101,104,107-108,110-113,115-119
+docs/generated/postgres-schema/public.agent_chat_subscriptions.md
+  s_e370adc7569608::t_fc48ffd8e19605 8,10,19-20,43,45,50-51,53,58,60
+packages/@n8n/agents/vitest.integration.config.mjs
+  s_e370adc7569608::t_fc48ffd8e19605 12
+lefthook.yml
+  s_e370adc7569608::t_fc48ffd8e19605 35-46
+docs/generated/postgres-schema/public.mcp_registry_server.md
+  s_e370adc7569608::t_fc48ffd8e19605 7-9,13,20,43-45,49,52,54,58
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-connection/wraps-multiple-listed-tools-when-requireapproval-names-several-tools.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 12,15-17,23-24,211,215,276,284-297,351-373,689-858,896-1165,1401-1406,1410,1436,3211-3313,4029-4257,4305-4311,4805,4813-4817,4860-4870
+packages/@n8n/cli/src/client.ts
+  s_e370adc7569608::t_fc48ffd8e19605 12-20,26,60-65,77-85,88,102,104-105,113-117,120-129,422-441
+packages/@n8n/agents/src/__tests__/integration/provider-options.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 4,171,173,190
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-custom-backend/recalls-previous-messages-across-turns.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-132
+docs/generated/sqlite-schema/user_api_keys.md
+  s_e370adc7569608::t_fc48ffd8e19605 20-22,24-26,33,35-36,43-44,56-58,60-62,65-66,69-70,74-76,78-79
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/returns-cached-tools-on-subsequent-calls-without-reconnecting.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+docs/generated/sqlite-schema/agents_memory_entry_sources.md
+  s_e370adc7569608::t_fc48ffd8e19605 19-22,36,45-46,61-64,71-72,74,79,81,87,89-90,92-95,100-101,103,107-108,112,114
+packages/@n8n/agents/src/__tests__/integration/cassettes/interim-user-message-during-suspend/stream-interim-message-does-not-break-provider-message-ordering.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-249
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/accepts-multiple-servers-with-distinct-names.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-stdio-transport/disconnects-cleanly-terminating-the-child-process.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/mcp-runtime.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 3,5
+docs/generated/postgres-schema/public.invalid_auth_token.md
+  s_e370adc7569608::t_fc48ffd8e19605 8,14,32
+packages/@n8n/agents/src/__tests__/integration/cassettes/max-iterations/persists-maxiterations-together-with-completed-iteration-count-in-checkpoints-stream.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-86
+packages/@n8n/db/src/connection/__tests__/db-connection-monitor.recovery.postgres.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-219
+packages/@n8n/config/src/configs/agents.config.ts
+  s_e370adc7569608::t_fc48ffd8e19605 11,20,22,24-28,44,61-64,69-71
+docs/generated/postgres-schema/public.execution_entity.md
+  s_e370adc7569608::t_fc48ffd8e19605 7-10,12-13,19,22-23,30-31,41,48,50-53,60-61,68-71,73-74,80,83-84,87-113,115,122,128,131-132,134,136,138-139,144,147,150-151,153-156,158-162
+docs/generated/postgres-schema/public.binary_data.md
+  s_e370adc7569608::t_fc48ffd8e19605 7,9,12-14,22,36,45,47,50-52
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-similar-customer-cases-distinct-during-cross-session-recall.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-1187
+docs/generated/postgres-schema/public.instance_ai_observation_cursors.md
+  s_e370adc7569608::t_fc48ffd8e19605 8-10,17-18,40-42,46,48-49
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-options/second-stream-with-cached-instructions-reports-cacheread-tokens-in-finish-chunk.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-132
+packages/@n8n/agents/src/__tests__/workspace/sandbox/daytona-sandbox.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 3,30
+packages/@n8n/backend-network/src/http/__tests__/binary-buffer.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-2,7,35-107
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/emits-toolexecutionstart-and-toolexecutionend-during-streaming.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-201
+packages/@n8n/agents/src/__tests__/integration/cassettes/state-restore-after-suspension/correctly-restores-message-history-so-the-llm-has-full-context.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-182
+docs/generated/postgres-schema/public.role.md
+  s_e370adc7569608::t_fc48ffd8e19605 7,9,11,19,30,39-40,43,45,47,52,55-58,60-64,71,73-85
+docs/generated/postgres-schema/public.oauth_clients.md
+  s_e370adc7569608::t_fc48ffd8e19605 10-14,21,42,47-50,57,59,61-64,68-69,72-74,80,82-84,89-90
+.github/workflows/test-e2e-infrastructure-reusable.yml
+  s_e370adc7569608::t_fc48ffd8e19605 47-91
+docs/generated/postgres-schema/public.role_mapping_rule.md
+  s_e370adc7569608::t_fc48ffd8e19605 7,9-10,19-21,34,47,49-50,57,60,62,64
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-streamable-http-transport/prefixes-tool-names-with-the-server-name.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-approval/stream-suspends-with-approval-payload-before-running-a-requireapproval-tool.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-86
+packages/@n8n/agents/src/runtime/memory/episodic-memory-defaults.ts
+  s_e370adc7569608::t_fc48ffd8e19605 14-16
+packages/@n8n/backend-network/src/http/outbound-http.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-234
+packages/@n8n/agents/src/__tests__/integration/cassettes/delegate-sub-agent/stream-emits-sub-agent-lifecycle-chunks-and-events.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-307
+packages/@n8n/ai-workflow-builder.ee/src/tools/utils/web-fetch.utils.ts
+  s_e370adc7569608::t_fc48ffd8e19605 2,134-149
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory/recalls-tool-results-with-generate.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-315
+packages/@n8n/config/src/configs/endpoints.config.ts
+  s_e370adc7569608::t_fc48ffd8e19605 94-109
+packages/@n8n/agents/src/__tests__/integration/double-suspension.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-170
+docs/generated/sqlite-schema/workflow_history.md
+  s_e370adc7569608::t_fc48ffd8e19605 20-21,23,25-28,36,50,53-54,60-61,63,65,67,71-75,77-78,80,82-83,85,90-104
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-options/second-call-with-call-level-cachecontrol-reports-cacheread-tokens.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-61
+docs/generated/sqlite-schema/workflow_statistics.md
+  s_e370adc7569608::t_fc48ffd8e19605 27,30,54,57
+packages/@n8n/computer-use/src/tools/shell/shell-execute.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 234-294,464,466
+packages/@n8n/decorators/src/multi-main/__tests__/on-multi-main-event.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 14,16,19,174-193
+packages/@n8n/api-types/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3,32,37
+packages/@n8n/eslint-plugin-community-nodes/src/rules/node-class-description-name-camelcase.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-114
+packages/@n8n/instance-ai/docs/sandboxing.md
+  s_e370adc7569608::t_fc48ffd8e19605 9,14,17,45,47,52,109,127,142,248
+packages/@n8n/db/src/repositories/role.repository.ts
+  s_e370adc7569608::t_fc48ffd8e19605 129-148
+docs/generated/postgres-schema/public.workflow_dependency.md
+  s_e370adc7569608::t_fc48ffd8e19605 7,9-11,14-15,21-22,37,39,49,51-53,56-57,61,64,67-68,70-73,75-79
+packages/@n8n/decorators/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3
+packages/@n8n/backend-network/src/proxy/no-proxy-patch.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-104
+packages/@n8n/agents/src/__tests__/integration/cassettes/double-suspension/generate-tool-suspends-twice-then-completes-on-second-resume.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-182
+docs/generated/sqlite-schema/execution_annotations.md
+  s_e370adc7569608::t_fc48ffd8e19605 18,20,23,30,44,47,49,52,55-58,60-61,67,70-76
+packages/@n8n/ai-workflow-builder.ee/evaluations/langsmith/trace-filters.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1
+docs/generated/postgres-schema/public.evaluation_collection.md
+  s_e370adc7569608::t_fc48ffd8e19605 7-8,11,13,15,21-24,38,45-46,51-52,55,57-61,63-75,78-82,84-89,91-96,99-101,103,105-107,112,115,118-119,121-124,126-127,129-130
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/throws-when-listtools-is-called-without-connecting-first.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-client-boundary/rejects-when-mcp-server-is-unreachable.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/api-types/src/schemas/__tests__/llm-step-display.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-290
+docs/generated/postgres-schema/public.shared_workflow.md
+  s_e370adc7569608::t_fc48ffd8e19605 7,11,17-19,31,39,42,45-48,50-56,61,64,67-68,70-73,75-76,78-79
+docs/generated/sqlite-schema/agents_memory_entries.md
+  s_e370adc7569608::t_fc48ffd8e19605 21,23-24,26-29,36,40,58,68-69,71-75,79-80,82,87-88,90-92,94-99,103
+packages/@n8n/agents/src/__tests__/integration/cassettes/concurrent-tool-execution/generate-resumes-all-tools-and-receives-a-final-text-response.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-198
+packages/@n8n/agents/src/__tests__/integration/cassettes/interim-user-message-during-suspend/generate-interim-message-does-not-break-provider-message-ordering.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-242
+packages/@n8n/agents/src/__tests__/integration/cassettes/evaluate/runs-deterministic-evals-against-a-fruit-bowl-agent.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-180
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/connects-to-an-sse-server-and-lists-tools.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+docs/generated/postgres-schema/public.agent_execution.md
+  s_e370adc7569608::t_fc48ffd8e19605 10-11,14-16,18-24,26,34-35,50,63-64,67-69,71-77,79,84-88,91-93,97
+docs/generated/sqlite-schema/instance_ai_messages.md
+  s_e370adc7569608::t_fc48ffd8e19605 19-21,23,32,40,52-54,56,61,63,65
+packages/@n8n/agents/src/__tests__/integration/cassettes/max-iterations/deletes-two-files-sequentially-and-stops-after-second-resume-with-length-in-generate.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-79
+packages/@n8n/agents/src/__tests__/integration/cassettes/usage/includes-estimated-cost-from-models-dev-pricing.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-58
+packages/@n8n/agents/src/__tests__/integration/cassettes/runtime-skills/loads-a-matching-skill-and-follows-its-instructions-with-generate.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-222
+packages/@n8n/api-types/src/dto/instance-ai/__tests__/instance-ai-confirm-request.dto.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 29-34,126-131
+CHANGELOG.md
+  s_e370adc7569608::t_fc48ffd8e19605 1-261
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-custom-backend/works-with-stream-path.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-138
+packages/@n8n/agents/src/__tests__/integration/cassettes/thinking/works-with-reasoning-model-and-thinking-enabled.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-51
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-connection/wraps-all-tools-when-requireapproval-true-in-server-config.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_e370adc7569608::t_fc48ffd8e19605 72-79,297
+packages/cli/src/modules/agents/agents.service.ts
+  s_e370adc7569608::t_419b6d749ac09c 1,3,7-9,20-21,85,102,110,119,132
+.github/workflows/clean-stale-branches.yml
+  s_e370adc7569608::t_fc48ffd8e19605 5
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/is-idempotent-calling-connect-twice-resolves-without-starting-a-second-connection.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+docs/generated/postgres-schema/public.instance_ai_observational_memory.md
+  s_e370adc7569608::t_fc48ffd8e19605 9-11,14-18,21-22,24-26,28-37,44-45,71,83-85,88-92,95-96,98-100,102-111,115,117-118
+packages/@n8n/cli/src/commands/package/export.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-48
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_e370adc7569608::t_fc48ffd8e19605 58-59,204-206,409-413
+packages/@n8n/backend-network/src/http/__tests__/http-proxy.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 7-9,72,238-239,242,244-245,248-249,251-252,255-257,259,261-263
+  s_bb17b049fc2e2d::t_e56ced50495c7b 258
+packages/@n8n/eslint-plugin-community-nodes/src/rules/ai-node-package-json.ts
+  s_e370adc7569608::t_fc48ffd8e19605 16,18,52-53
+packages/@n8n/instance-ai/docs/streaming-protocol.md
+  s_e370adc7569608::t_fc48ffd8e19605 485-486,492
+packages/@n8n/backend-network/src/http/axios/__tests__/config.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 6
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-corrected-current-state-without-treating-stale-values-as-current.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-1294
+packages/@n8n/backend-network/src/proxy/__tests__/proxy-resolution.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-52
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_e370adc7569608::t_fc48ffd8e19605 109,119-121,219-221,308-309
+docs/generated/sqlite-schema/chat_hub_tools.md
+  s_e370adc7569608::t_fc48ffd8e19605 18-21,23,33,49,53-55,58,67-70,72-73,76-77,81-83,85-86
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/multiple-handlers-on-the-same-event-are-all-called.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-58
+docs/generated/sqlite-schema/agents_memory_entry_locks.md
+  s_e370adc7569608::t_fc48ffd8e19605 20-22,31-32,53-55,59-60,62,67,69,72
+docs/generated/sqlite-schema/secrets_provider_connection.md
+  s_e370adc7569608::t_fc48ffd8e19605 18-19,21,46-47,49,56,58-59
+docs/generated/sqlite-schema/project.md
+  s_e370adc7569608::t_fc48ffd8e19605 21-26,33,47-50,53,57-59,62-66,70-72,74-86,89-91,93-105,108-121,123-125,129,140-141,143,145-149,152,154-155,157,161,163-164,168,170,172-174,177,179-180,182,184-186,188-189
+packages/@n8n/computer-use/src/tools/shell/build-shell-resource.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 3-5,17,29,49,59,68,77,87,96
+docs/generated/postgres-schema/public.user_favorites.md
+  s_e370adc7569608::t_fc48ffd8e19605 10,16-18,28-29,44,47-48,51-52,56-58,60-61
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-connection/ignores-the-removed-legacy-global-flag-and-only-uses-server-approval-config.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory/isolates-separate-threads.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-122
+packages/@n8n/agents/src/sdk/__tests__/mcp-client.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-47
+packages/@n8n/agents/src/__tests__/integration/tool-approval.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-177
+packages/@n8n/backend-network/src/http/axios/config.ts
+  s_e370adc7569608::t_fc48ffd8e19605 7
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/agentend-data-contains-the-response-messages.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-58
+packages/@n8n/imap/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3
+docs/generated/postgres-schema/public.user_api_keys.md
+  s_e370adc7569608::t_fc48ffd8e19605 9-11,13-15,21-22,36-37,49-51,53-55,58-59,62-63,67-69,71-72
+packages/@n8n/eslint-plugin-community-nodes/src/rules/require-mit-license.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-65
+packages/@n8n/agents/src/runtime/tools/sdk-owned-tool.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1
+docs/generated/postgres-schema/public.instance_ai_messages.md
+  s_e370adc7569608::t_fc48ffd8e19605 8-10,12,20-21,35,46-48,50,55,57-58
+packages/@n8n/instance-ai/docs/e2e-tests.md
+  s_e370adc7569608::t_fc48ffd8e19605 23,81,85,96,124,183-185,376
+packages/@n8n/agents/src/__tests__/integration/cassettes/concurrent-tool-execution/suspends-all-interruptible-tool-calls-concurrently-and-emits-multiple-chunks-stream.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-86
+docs/generated/postgres-schema/public.insights_metadata.md
+  s_e370adc7569608::t_fc48ffd8e19605 7,10-11,20-22,29,37,39,45-46,48,51-52,56,59,62-72,76,79,82-83,85-88,90-91,93-94
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-stdio-transport/handler-invokes-the-child-process-tool-and-returns-mcp-result.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/structured-output/returns-parsed-structuredoutput-when-configured-with-a-raw-json-schema.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-82
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/emits-nothing-for-an-assistant-message-whose-only-blocks-are-all-pending.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/token-usage/reports-token-usage-on-a-simple-text-response-via-run.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-58
+docs/generated/sqlite-schema/dynamic_credential_user_entry.md
+  s_e370adc7569608::t_fc48ffd8e19605 18,21,23,32-33,35,52,55,58,60,64-65,67,69,72-81,84-85,88-89,93-95,97
+docs/generated/sqlite-schema/instance_ai_observation_cursors.md
+  s_e370adc7569608::t_fc48ffd8e19605 19-21,29,47-49,53,55,57
+packages/@n8n/agents/src/sdk/memory.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1,8-9,18-20
+packages/@n8n/agents/src/__tests__/integration/cassettes/evaluate/provides-tool-call-inputs-and-outputs-as-json-objects-not-strings.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-180
+packages/@n8n/client-oauth2/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3,33-34
+packages/@n8n/agents/src/__tests__/integration/mcp-stdio-transport.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 10
+packages/@n8n/eslint-config/src/rules/no-aws-credential-discovery-imports.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-248
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/calls-image-tool-and-returns-mixed-text-image-content.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/runtime/tools/fix-tool-call.ts
+  s_e370adc7569608::t_fc48ffd8e19605 4-5
+packages/@n8n/backend-network/src/http/fake-outbound-http.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-145
+packages/@n8n/agents/src/__tests__/integration/cassettes/multi-tool-calls/correctly-merges-results-when-different-tools-are-called-in-sequence.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-256
+docs/generated/sqlite-schema/execution_data.md
+  s_e370adc7569608::t_fc48ffd8e19605 23,33,50,56-59,61-62,68,71-73
+packages/@n8n/api-types/src/dto/api-keys/__tests__/list-api-keys-query.dto.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-41
+docs/generated/sqlite-schema/trusted_key.md
+  s_e370adc7569608::t_fc48ffd8e19605 19-21,28-29,47-49,53-54,57-58
+docs/generated/postgres-schema/public.installed_nodes.md
+  s_e370adc7569608::t_fc48ffd8e19605 8,10,16-17,38,40,44,46-47
+packages/@n8n/agents/src/__tests__/integration/cassettes/batched-tool-execution/bounded-concurrency-suspends-first-batch-and-saves-unexecuted-tools-then-resumes-all-generate.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-218
+packages/@n8n/db/src/repositories/__tests__/execution.repository.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 194
+packages/@n8n/api-types/src/agents/index.ts
+  s_e370adc7569608::t_fc48ffd8e19605 9
+.github/OWNERS
+  s_e370adc7569608::t_fc48ffd8e19605 14,172
+docs/generated/sqlite-schema/agent_task_snapshot.md
+  s_e370adc7569608::t_fc48ffd8e19605 18-19,23,25,33-34,50-51,55,57,63-66,68
+packages/@n8n/agents/src/sdk/agent.ts
+  s_e370adc7569608::t_fc48ffd8e19605 11-20,33-35,139-140,159-160,228-236,330-335,954,973
+packages/@n8n/agents/src/__tests__/integration/cassettes/title-generation/does-not-overwrite-a-pre-existing-thread-title.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-58
+packages/@n8n/agents/src/__tests__/integration/mcp-connection.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 13
+packages/@n8n/agents/src/runtime/state/run-state.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/backend-network/src/http/axios/__tests__/legacy.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-275
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-transform-error-resilience/tomodeloutput-throwing-during-normal-tool-call-agent-continues-and-finishes-cleanly.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-183
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-connection/wraps-all-tools-when-config-requireapproval-true.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/agents/src/runtime/tools/write-todos-tool.ts
+  s_e370adc7569608::t_fc48ffd8e19605 5-6
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-write-file-and-workspace-read-file-tools.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-823
+packages/@n8n/ai-utilities/src/index.ts
+  s_e370adc7569608::t_fc48ffd8e19605 15
+packages/@n8n/api-types/src/dto/roles/role-members-response.dto.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-11
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-result-to-message/emits-tocontent-result-as-a-content-chunk-in-the-stream.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-205
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-connection/matches-tool-names-without-prefix-when-requireapproval-contains-un-prefixed-names.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/computer-use/src/tools/shell/shell-execute.ts
+  s_e370adc7569608::t_fc48ffd8e19605 4,37-40,46-49,53-54,59
+packages/@n8n/agents/src/__tests__/integration/workspace-agent.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 11-13,111,119,123-125,133,203-372
+docs/generated/sqlite-schema/instance_ai_run_snapshots.md
+  s_e370adc7569608::t_fc48ffd8e19605 21-23,25-28,35,37,58-60,62-65,68,70,72
+packages/@n8n/agents/src/runtime/memory/observation-log-renderer.ts
+  s_e370adc7569608::t_fc48ffd8e19605 5-6
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-metadata/result-contains-usage-metadata-from-the-provider.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-52
+docs/generated/postgres-schema/public.execution_data.md
+  s_e370adc7569608::t_fc48ffd8e19605 7,20,36,42-45,47-48,54,57-58
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-conversation/recalls-previous-messages-within-the-same-thread.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-132
+packages/@n8n/agents/src/sdk/__tests__/guardrails.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 81-151
+packages/@n8n/decorators/src/multi-main/multi-main-metadata.ts
+  s_e370adc7569608::t_fc48ffd8e19605 2,11,17-18,21,24-36
+packages/@n8n/instance-ai/eslint.config.mjs
+  s_e370adc7569608::t_fc48ffd8e19605 8
+packages/@n8n/api-types/src/dto/workflows/base-workflow.dto.ts
+  s_e370adc7569608::t_fc48ffd8e19605 123-127
+packages/@n8n/instance-ai/docs/ENGINEERING.md
+  s_e370adc7569608::t_fc48ffd8e19605 33,123,206,210,214
+packages/@n8n/api-types/src/push/instance-ai.ts
+  s_e370adc7569608::t_fc48ffd8e19605 15-25
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-custom-backend/isolates-threads-in-the-custom-backend.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-114
+packages/@n8n/db/package.json
+  s_e370adc7569608::t_fc48ffd8e19605 3,61
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/emits-agentstart-and-agentend-around-a-stream-call.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-64
+packages/@n8n/backend-network/src/http/undici/transport.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-277
+packages/@n8n/agents/src/__tests__/integration/cassettes/evaluate/runs-llm-as-judge-correctness-eval.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-114
+packages/@n8n/agents/src/__tests__/integration/cassettes/batched-tool-execution/normal-tools-with-bounded-concurrency-complete-without-errors-stream.json
+  s_e370adc7569608::t_fc48ffd8e19605 1-228
+packages/@n8n/ai-workflow-builder.ee/src/tools/utils/ssrf-guard.ts
+  s_e370adc7569608::t_fc48ffd8e19605 2,4-10,12-13,17-20
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_e370adc7569608::t_fc48ffd8e19605 67-75,160,167-174
+.agents/skills/linear-issue/SKILL.md
+  s_e370adc7569608::t_fc48ffd8e19605 29,33-34,45,47,49,91,98,108
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/throws-if-neither-url-nor-command-is-provided.json
+  s_e370adc7569608::t_fc48ffd8e19605 1
+packages/@n8n/backend-network/src/http/__tests__/node-agents.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 1-201
+packages/@n8n/api-types/src/dto/roles/role-project-members-response.dto.ts
+  s_e370adc7569608::t_fc48ffd8e19605 3,6,9
+packages/@n8n/api-types/src/dto/workflows/__tests__/update-workflow.dto.test.ts
+  s_e370adc7569608::t_fc48ffd8e19605 63-66,81-87
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_e370adc7569608::t_40c56370de5a4c 1130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1a01c5136593e5f3be2703297353cffce4e3f408",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_bb17b049fc2e2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ce0c93e-11a0-4d60-b602-af5cd3c86750",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_e370adc7569608": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd83840f-75fc-44e2-a789-c7753775ddcc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

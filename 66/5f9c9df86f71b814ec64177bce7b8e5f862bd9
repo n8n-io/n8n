@@ -1,0 +1,56 @@
+packages/@n8n/local-gateway/src/renderer/views/SignInView.vue
+  s_22dba21f85aaca::t_2281de7dc369d2 104
+  s_22dba21f85aaca::t_f151239baf3c6f 7,14-15
+  s_22dba21f85aaca::t_61b314b9b1f0eb 78
+  s_22dba21f85aaca::t_21063598443271 135-137
+  s_22dba21f85aaca::t_347eebdcc6823c 121-131,133-134,138-181
+  s_22dba21f85aaca::t_83ec27fbe9ad5d 17-22
+packages/@n8n/local-gateway/src/main/local-instance/instance-ui.test.ts
+  s_22dba21f85aaca::t_f02f647deb0f6f 28-30,35,38-43,57,60-78,81-96
+  s_22dba21f85aaca::t_a545d000681da5 18
+packages/@n8n/local-gateway/src/main/ipc-handlers.ts
+  s_22dba21f85aaca::t_9a0d1baf2c08cb 159,171
+  s_22dba21f85aaca::t_a22cffb4e99034 54-55
+packages/@n8n/local-gateway/src/main/local-instance/instance-ui.ts
+  s_22dba21f85aaca::t_e344270f3c214e 9-17,19-22,24-37
+packages/@n8n/local-gateway/src/shared/features.ts
+  s_22dba21f85aaca::t_7e3ee47b3e2e7d 1-13
+packages/@n8n/local-gateway/electron-builder.config.js
+  s_22dba21f85aaca::t_3c34f8fcb1eb9f 1-5,8-10
+packages/@n8n/local-gateway/vite.config.mts
+  s_22dba21f85aaca::t_d6a61bd9259fd6 22-27,31
+  s_22dba21f85aaca::t_4caa6e88ad79a9 46,59
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_22dba21f85aaca::t_2f45569964f57d 53-55
+  s_22dba21f85aaca::t_83bc8871c88e54 52
+packages/@n8n/local-gateway/src/main/index.ts
+  s_22dba21f85aaca::t_ff10d076141f39 99-109
+  s_22dba21f85aaca::t_714034175875ce 291
+  s_22dba21f85aaca::t_3b6c7bc0d224af 30
+  s_22dba21f85aaca::t_53118ca9b18501 33-36,40-42,45
+  s_22dba21f85aaca::t_93e7712b77fc55 249-250,252
+  s_22dba21f85aaca::t_a545d000681da5 9
+  s_22dba21f85aaca::t_15860a48bd5b06 235-237
+  s_22dba21f85aaca::t_9b181716008032 257-262
+  s_22dba21f85aaca::t_b54c857090d92b 37-39
+  s_22dba21f85aaca::t_b4af627edd92ef 189
+  s_22dba21f85aaca::t_5d4c147dad7c31 279
+packages/@n8n/local-gateway/package.json
+  s_22dba21f85aaca::t_aa736e1c172436 9,14,16,18,20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "665f9c9df86f71b814ec64177bce7b8e5f862bd9",
+  "prompts": {},
+  "sessions": {
+    "s_22dba21f85aaca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e80c488b-60c5-4815-a664-397181ee7c3c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

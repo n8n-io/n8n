@@ -1,0 +1,19 @@
+packages/workflow/src/interfaces.ts
+  s_53cef6894d9656::t_16a1d7daafb3a8 382-391
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "04cbd99dab197b35886bf83c112910aa4b2e01e9",
+  "prompts": {},
+  "sessions": {
+    "s_53cef6894d9656": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "80988671-9019-4d49-ace5-76c9b66cd316",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

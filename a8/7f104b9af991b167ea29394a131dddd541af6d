@@ -1,0 +1,32 @@
+packages/cli/test/integration/controllers/test-webhooks.controller.test.ts
+  s_209d5966855d20::t_fb59bb6aab10d1 32
+  s_209d5966855d20::t_4832ebfac4724c 1-29,31,33-45,47-48,50-53,55-58,60-82
+  s_209d5966855d20::t_88ff3e828e120e 46,49,54,59
+packages/cli/test/integration/shared/utils/test-server.ts
+  s_209d5966855d20::t_5d4b607a923a9b 361-364
+packages/cli/src/abstract-server.ts
+  s_209d5966855d20::t_8b38d3e66bb020 18
+packages/cli/test/integration/shared/types.ts
+  s_209d5966855d20::t_35436927854504 54-55
+packages/cli/src/server.ts
+  s_209d5966855d20::t_4b319048c80708 69
+packages/cli/src/webhooks/test-webhooks.controller.ts
+  s_209d5966855d20::t_b12f50f8c0827f 9,14
+  s_209d5966855d20::t_47c9c4899c52e4 1-8,10-13,15-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a87f104b9af991b167ea29394a131dddd541af6d",
+  "prompts": {},
+  "sessions": {
+    "s_209d5966855d20": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "efe7e75c-efed-4599-8cb1-61caeef7fa63",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

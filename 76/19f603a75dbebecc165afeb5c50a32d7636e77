@@ -1,0 +1,24 @@
+packages/cli/src/modules/agents/agents.service.ts
+  s_bb17b049fc2e2d::t_46b0ec95e1930a 57
+  s_bb17b049fc2e2d::t_63255358e829c6 1450-1456,1462
+packages/workflow/src/interfaces.ts
+  s_bb17b049fc2e2d::t_7d9f245e8f588a 2030
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_bb17b049fc2e2d::t_ddcbe0b46dbf44 1967-1968,1972-1973,2014-2019,2021-2024,2040-2063,2066
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7619f603a75dbebecc165afeb5c50a32d7636e77",
+  "prompts": {},
+  "sessions": {
+    "s_bb17b049fc2e2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ce0c93e-11a0-4d60-b602-af5cd3c86750",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

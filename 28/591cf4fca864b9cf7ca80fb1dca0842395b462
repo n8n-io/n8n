@@ -1,0 +1,19 @@
+packages/core/src/execution-engine/active-workflow-triggers.ts
+  s_7193dffb3f83fd::t_83d02fb4bb1b1d 162-163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "28591cf4fca864b9cf7ca80fb1dca0842395b462",
+  "prompts": {},
+  "sessions": {
+    "s_7193dffb3f83fd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab901c44-110d-43eb-82c5-3ad427037d7c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

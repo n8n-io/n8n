@@ -1,0 +1,30 @@
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder.exporter.test.ts
+  s_b9e402b75ca46c::t_9da13ed3532c87 24
+  s_b9e402b75ca46c::t_102e04a70f3f90 45
+packages/cli/src/services/folder-finder.service.ts
+  s_b9e402b75ca46c::t_ad847331d72413 39-62
+packages/cli/src/modules/n8n-packages/__tests__/export-folder.integration.test.ts
+  s_b9e402b75ca46c::t_840c1d52634dcf 11-18
+  s_b9e402b75ca46c::t_fb0d4e875330f7 81-125
+packages/cli/src/services/__tests__/folder-finder.service.test.ts
+  s_b9e402b75ca46c::t_ebc7ecf778171f 77-78
+  s_b9e402b75ca46c::t_c8184d9d60b7bd 62-76,79-90
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_b9e402b75ca46c::t_85fdf1cf1b94cd 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0ff984c4a81299e2c337931229c6cd8fc8239879",
+  "prompts": {},
+  "sessions": {
+    "s_b9e402b75ca46c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0175b21f-7e7d-491e-a496-459c2da5cb60",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

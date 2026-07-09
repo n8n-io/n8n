@@ -1,0 +1,62 @@
+packages/nodes-base/package.json
+  s_d3f6ecf4ef182f::t_b400d508a306dd 917,919-920
+packages/nodes-base/credentials/common/aws/utils.ts
+  s_d3f6ecf4ef182f::t_bf896125291a51 484-486
+  s_d3f6ecf4ef182f::t_98d3157c6dadfd 492-494,498
+  s_d3f6ecf4ef182f::t_5c7dd19fa5258f 495-497,499-504,530-532
+  s_d3f6ecf4ef182f::t_e46972d20d0864 350-392,397
+  s_d3f6ecf4ef182f::t_1e2ae9e5f8cab4 444-459,465-483,487-491,505-529,533-538,540,543,545
+  s_d3f6ecf4ef182f::t_bb977583ee3a7c 22-24
+  s_d3f6ecf4ef182f::t_2b34de54b9b805 546,548,552
+packages/nodes-base/credentials/AwsAssumeRole.credentials.ts
+  s_d3f6ecf4ef182f::t_831745b60f8492 160
+packages/nodes-base/credentials/common/aws/utils.test.ts
+  s_d3f6ecf4ef182f::t_8ee70be9df0725 326,328-332,334
+  s_d3f6ecf4ef182f::t_0a49822f4f8d3c 9-13
+  s_d3f6ecf4ef182f::t_603a9ecdd774fa 641
+  s_d3f6ecf4ef182f::t_58e2928fe295d4 7-8,14-15,23-24
+  s_d3f6ecf4ef182f::t_b02593d8d2fe82 374-382
+  s_d3f6ecf4ef182f::t_7351a5cb3cd758 802-810
+  s_d3f6ecf4ef182f::t_c45afe93b8a5e1 121,123,125
+  s_d3f6ecf4ef182f::t_b36beaccb891da 491-499
+  s_d3f6ecf4ef182f::t_5570b99f4517ec 197,199,201
+  s_d3f6ecf4ef182f::t_6d1dfd32286fe9 53
+  s_d3f6ecf4ef182f::t_dff557b5ff14a7 25-26
+packages/nodes-base/credentials/test/AwsAssumeRole.credentials.test.ts
+  s_d3f6ecf4ef182f::t_11368b6106066c 7-13,21-22
+  s_d3f6ecf4ef182f::t_5dd5dba8d199d6 58
+  s_d3f6ecf4ef182f::t_fbbfbe9798f624 86-87
+  s_d3f6ecf4ef182f::t_60293d040c33ff 77-79,85
+  s_d3f6ecf4ef182f::t_e64f493226c7bf 23-24
+  s_d3f6ecf4ef182f::t_33e3c35cc04ac4 88-89
+packages/nodes-base/credentials/test/Aws.credentials.test.ts
+  s_d3f6ecf4ef182f::t_844aa7f0581432 6-16,26
+  s_d3f6ecf4ef182f::t_9104a414e71005 75-85,99-101,103,115-119,133-135,137,174,177,179-181,202-204,206,229-233,245-246,258,260,263-265,280,282,284-286
+  s_d3f6ecf4ef182f::t_3fe8e35631ebce 5
+packages/nodes-base/credentials/common/aws/aws-signing.parity.test.ts
+  s_d3f6ecf4ef182f::t_e1cb0dff9cb16f 1-281,283-348
+  s_d3f6ecf4ef182f::t_f8c50addf4f9a6 282
+  s_d3f6ecf4ef182f::t_832c64daa9d5b1 349-356
+packages/nodes-base/credentials/Aws.credentials.ts
+  s_d3f6ecf4ef182f::t_fc2eea215c0920 99
+pnpm-lock.yaml
+  s_d3f6ecf4ef182f::t_c5fb53ab50df32 5006-5008,5033-5038
+packages/nodes-base/credentials/common/aws/__snapshots__/aws-signing.parity.test.ts.snap
+  s_d3f6ecf4ef182f::t_22b4503ae3dc13 1-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "2cd8cc42a87601e867d7b05216fe84afe3df5689",
+  "prompts": {},
+  "sessions": {
+    "s_d3f6ecf4ef182f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce569422-462a-4802-bdc8-32dd5735c34f",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

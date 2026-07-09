@@ -1,0 +1,30 @@
+packages/testing/playwright/services/api-helper.ts
+  s_d080cd0071e0f4::t_9b89262f61e34c 89
+  s_d080cd0071e0f4::t_96e4ad70190385 23
+  s_d080cd0071e0f4::t_9f0886b609d0bf 71
+packages/testing/playwright/services/mcp-oauth-api-helper.ts
+  s_d080cd0071e0f4::t_a9fc51a1b0150f 182
+  s_d080cd0071e0f4::t_3c5596d351b756 1-171,173-181,183-314
+  s_d080cd0071e0f4::t_7ed6be1ccdb796 172
+packages/testing/playwright/tests/e2e/mcp/mcp-oauth.spec.ts
+  s_d080cd0071e0f4::t_b6d5443258a6eb 25-28
+  s_d080cd0071e0f4::t_02dda1e1b27521 235,238-239,241-246
+  s_d080cd0071e0f4::t_b92821fdb01b25 1-24,29-34,43-234,236-237,247-250
+  s_d080cd0071e0f4::t_568cfaec8ac7d6 240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "083d8ea79b2e22756d66b692ff5a226a37bf1e14",
+  "prompts": {},
+  "sessions": {
+    "s_d080cd0071e0f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6faeb930-cf57-48d0-aa3c-235422c166e5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guillaume Jacquart <jacquart.guillaume@gmail.com>"
+    }
+  }
+}

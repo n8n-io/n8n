@@ -1,0 +1,40 @@
+packages/nodes-base/nodes/MessageAnAgent/v2/MessageAnAgentV2.node.ts
+  s_fca2302987ca57::t_14cb2a79abafda 4,12-60,78
+packages/frontend/editor-ui/src/features/ndv/agents/composables/useNdvAgentConfig.ts
+  h_7555c3ee6524cf 284,290,292
+  s_fca2302987ca57::t_7757965f0021cd 281-283,285,291,293-294
+packages/nodes-base/nodes/MessageAnAgent/__tests__/MessageAnAgent.node.test.ts
+  s_fca2302987ca57::t_4c905e73634b25 431-432,490-491,519-520
+  s_fca2302987ca57::t_16a8a706bba6cb 560-569
+  s_fca2302987ca57::t_5935ae3830e569 191-199,201,204-205,209
+packages/frontend/editor-ui/src/features/ndv/agents/composables/__tests__/useNdvAgentConfig.test.ts
+  s_fca2302987ca57::t_c93e6423d7a87a 235-268
+packages/nodes-base/nodes/MessageAnAgent/v1/MessageAnAgentV1.node.ts
+  s_fca2302987ca57::t_002a06f07749d4 55-67
+packages/nodes-base/nodes/MessageAnAgent/shared.ts
+  s_fca2302987ca57::t_1ab984ff1a441f 32,35
+  s_fca2302987ca57::t_332ccbcc746a62 33-34
+  s_fca2302987ca57::t_4bb423336c9d3f 226-229,231-236,238
+  s_fca2302987ca57::t_b9c4dc1b9e1d79 198-199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a4a8661c9b6ed4d059795c3ee26b48bce97cc41c",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_fca2302987ca57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a3ee84d5-1fd7-46c3-ba48-70e2c843ec51",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
