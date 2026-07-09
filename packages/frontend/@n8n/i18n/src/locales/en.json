@@ -2112,6 +2112,7 @@
 	"nodeCreator.subcategoryNames.miscellaneous": "Miscellaneous",
 	"nodeCreator.subcategoryNames.humanInTheLoop": "Human review",
 	"nodeCreator.subcategoryNames.modelContextProtocol": "MCP servers",
+	"nodeCreator.sectionNames.n8nConnect": "n8n Connect",
 	"nodeCreator.sectionNames.popular": "Popular",
 	"nodeCreator.sectionNames.other": "Other",
 	"nodeCreator.sectionNames.sendAndWait": "Send and wait for response",
