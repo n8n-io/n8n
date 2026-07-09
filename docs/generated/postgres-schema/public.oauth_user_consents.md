@@ -8,7 +8,7 @@
 | grantedAt | bigint |  | false |  |  | Unix timestamp in milliseconds |
 | id | integer |  | false |  |  |  |
 | lastActiveAt | bigint |  | true |  |  |  |
-| scope | json |  | true |  |  |  |
+| scope | json |  | false |  |  | OAuth scopes granted on the consent screen |
 | userId | uuid |  | false |  | [public.user](public.user.md) |  |
 
 ## Constraints
@@ -22,6 +22,7 @@
 | oauth_user_consents_clientId_not_null | n | NOT NULL "clientId" |
 | oauth_user_consents_grantedAt_not_null | n | NOT NULL "grantedAt" |
 | oauth_user_consents_id_not_null | n | NOT NULL id |
+| oauth_user_consents_scope_not_null | n | NOT NULL scope |
 | oauth_user_consents_userId_not_null | n | NOT NULL "userId" |
 
 ## Indexes

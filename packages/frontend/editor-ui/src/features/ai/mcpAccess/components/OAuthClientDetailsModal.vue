@@ -104,27 +104,22 @@ function onRevoke() {
 					{{ i18n.baseText('settings.mcp.oAuthClients.details.access') }}
 				</N8nText>
 				<div :class="$style.access" data-test-id="mcp-client-details-access">
-					<N8nText v-if="client.scopes === null" color="text-dark" size="small">
-						{{ i18n.baseText('settings.mcp.oAuthClients.scope.fullAccess') }}
-					</N8nText>
-					<template v-else>
-						<div v-if="readScopes.length" :class="$style['access-group']">
-							<N8nText color="text-light" size="xsmall" :class="$style['access-heading']">
-								{{ i18n.baseText('settings.mcp.oAuthClients.details.readOnly') }}
-							</N8nText>
-							<N8nText v-for="scope in readScopes" :key="scope" color="text-dark" size="small">
-								{{ scopeLabel(scope) }}
-							</N8nText>
-						</div>
-						<div v-if="writeScopes.length" :class="$style['access-group']">
-							<N8nText color="text-light" size="xsmall" :class="$style['access-heading']">
-								{{ i18n.baseText('settings.mcp.oAuthClients.details.write') }}
-							</N8nText>
-							<N8nText v-for="scope in writeScopes" :key="scope" color="text-dark" size="small">
-								{{ scopeLabel(scope) }}
-							</N8nText>
-						</div>
-					</template>
+					<div v-if="readScopes.length" :class="$style['access-group']">
+						<N8nText color="text-light" size="xsmall" :class="$style['access-heading']">
+							{{ i18n.baseText('settings.mcp.oAuthClients.details.readOnly') }}
+						</N8nText>
+						<N8nText v-for="scope in readScopes" :key="scope" color="text-dark" size="small">
+							{{ scopeLabel(scope) }}
+						</N8nText>
+					</div>
+					<div v-if="writeScopes.length" :class="$style['access-group']">
+						<N8nText color="text-light" size="xsmall" :class="$style['access-heading']">
+							{{ i18n.baseText('settings.mcp.oAuthClients.details.write') }}
+						</N8nText>
+						<N8nText v-for="scope in writeScopes" :key="scope" color="text-dark" size="small">
+							{{ scopeLabel(scope) }}
+						</N8nText>
+					</div>
 				</div>
 			</div>
 

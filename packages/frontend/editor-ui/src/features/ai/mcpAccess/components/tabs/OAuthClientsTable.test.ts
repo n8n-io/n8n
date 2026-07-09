@@ -104,19 +104,6 @@ describe('OAuthClientsTable', () => {
 			);
 		});
 
-		it('should show full access for consents that predate scoping', () => {
-			const client = createOAuthClient({ scopes: null });
-
-			const { getByTestId } = createComponent({
-				props: {
-					clients: [client],
-					loading: false,
-				},
-			});
-
-			expect(getByTestId('mcp-client-access')).toHaveTextContent('Full access');
-		});
-
 		it('should show a placeholder when the client has no recorded activity', () => {
 			const client = createOAuthClient({ lastActiveAt: null });
 

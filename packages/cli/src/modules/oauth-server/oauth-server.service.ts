@@ -36,7 +36,7 @@ export type ConnectedOAuthClient = Omit<
 	'clientSecret' | 'clientSecretExpiresAt' | 'setUpdateDate'
 > & {
 	grantedAt: number;
-	scopes: string[] | null;
+	scopes: string[];
 	lastActiveAt: number | null;
 };
 
@@ -332,12 +332,7 @@ export class OAuthServerService implements OAuthServerProvider {
 
 		await this.authorizationCodeService.markAuthorizationCodeAsUsed(authorizationCode);
 
-		// Substitutes the pre-scoping migration sentinel with full scopes for
-		// auth codes inserted by a not-yet-updated instance (rolling deploys).
-		const grantedScopes = await this.tokenService.resolveGrantedScopes(
-			authRecord.scope,
-			finalResource,
-		);
+		const grantedScopes = authRecord.scope;
 
 		const { accessToken, refreshToken } = this.tokenService.generateTokenPair(
 			authRecord.userId,
@@ -449,7 +444,6 @@ export class OAuthServerService implements OAuthServerProvider {
 				...sanitizedClient,
 				// bigint columns come back as strings on Postgres
 				grantedAt: Number(consent.grantedAt),
-				// NULL = consent predates scoping = full access
 				scopes: consent.scope,
 				lastActiveAt: consent.lastActiveAt === null ? null : Number(consent.lastActiveAt),
 			};

@@ -56,6 +56,7 @@ describe('GET /rest/mcp/oauth-clients', () => {
 			userId: member.id,
 			clientId: memberClient.id,
 			grantedAt: Date.now(),
+			scope: ['workflow:read'],
 		});
 
 		const response = await testServer.authAgentFor(owner).get('/mcp/oauth-clients');
@@ -69,31 +70,6 @@ describe('GET /rest/mcp/oauth-clients', () => {
 			id: ownerClient.id,
 			grantedAt,
 			scopes: ['workflow:read', 'execution:read'],
-			lastActiveAt: null,
-		});
-	});
-
-	test('should report full access for consents that predate scoping', async () => {
-		const client = await oauthClientRepository.save({
-			id: 'legacy-consent-client',
-			name: 'Legacy Client',
-			redirectUris: ['https://example.com/callback'],
-			grantTypes: ['authorization_code'],
-			tokenEndpointAuthMethod: 'none',
-		});
-
-		await userConsentRepository.save({
-			userId: owner.id,
-			clientId: client.id,
-			grantedAt: Date.now(),
-		});
-
-		const response = await testServer.authAgentFor(owner).get('/mcp/oauth-clients');
-
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data.data[0]).toMatchObject({
-			id: client.id,
-			scopes: null,
 			lastActiveAt: null,
 		});
 	});
@@ -161,6 +137,7 @@ describe('DELETE /rest/mcp/oauth-clients/:clientId', () => {
 			userId: owner.id,
 			clientId: client.id,
 			grantedAt: Date.now(),
+			scope: ['workflow:read'],
 		});
 
 		const response = await testServer.authAgentFor(owner).delete(`/mcp/oauth-clients/${client.id}`);
@@ -188,11 +165,13 @@ describe('DELETE /rest/mcp/oauth-clients/:clientId', () => {
 			userId: owner.id,
 			clientId: client.id,
 			grantedAt: Date.now(),
+			scope: ['workflow:read'],
 		});
 		await userConsentRepository.save({
 			userId: member.id,
 			clientId: client.id,
 			grantedAt: Date.now(),
+			scope: ['workflow:read'],
 		});
 
 		const response = await testServer.authAgentFor(owner).delete(`/mcp/oauth-clients/${client.id}`);
@@ -222,6 +201,7 @@ describe('DELETE /rest/mcp/oauth-clients/:clientId', () => {
 			userId: owner.id,
 			clientId: client.id,
 			grantedAt: Date.now(),
+			scope: ['workflow:read'],
 		});
 
 		const response = await testServer

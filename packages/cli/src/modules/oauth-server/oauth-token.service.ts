@@ -26,32 +26,6 @@ import type {
 } from '@/services/oauth-token-verifier-proxy.service';
 
 /**
- * Backfill value written to the `scope` column by migration 1784000000026 for
- * grants that predate scoping. No runtime code ever wrote this value, so it
- * provably identifies a grant made under the old full-delegation contract and
- * is substituted with the resource's full scope set on rotation.
- */
-const PRE_SCOPING_SENTINEL = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
-
-/**
- * The instance MCP scope set at the moment scoping shipped. Grants made
- * before scoping are grandfathered to at most this frozen set — never the
- * live scope list — so scopes added in later releases require a fresh
- * consent instead of silently widening old full-delegation grants.
- */
-const PRE_SCOPING_GRANT_SCOPES = [
-	'workflow:read',
-	'workflow:write',
-	'workflow:execute',
-	'execution:read',
-	'credential:read',
-	'dataTable:read',
-	'dataTable:write',
-	'project:read',
-	'tag:read',
-];
-
-/**
  * Manages the OAuth 2.1 token lifecycle for the shared OAuth server.
  * Generates, validates, rotates, and revokes access and refresh tokens.
  *
@@ -175,7 +149,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				throw new InvalidGrantError('Invalid refresh token');
 			}
 
-			const scopes = await this.resolveGrantedScopes(refreshTokenRecord.scope, resource);
+			const scopes = refreshTokenRecord.scope;
 
 			const { accessToken, refreshToken: newRefreshToken } = this.generateTokenPair(
 				refreshTokenRecord.userId,
@@ -211,42 +185,6 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				scope: scopes.join(' '),
 			};
 		});
-	}
-
-	/**
-	 * Effective scopes for a stored grant (auth code or refresh token). Grants
-	 * made before scoping shipped carry the migration backfill sentinel — those
-	 * were full user-delegations, so they keep the resource's full scope set.
-	 * The data self-heals: rows written from here on store real scopes.
-	 *
-	 * TODO: drop the sentinel substitution once refresh tokens minted before
-	 * scoping shipped (2026-07) have aged out (30-day refresh-token lifespan).
-	 */
-	async resolveGrantedScopes(
-		storedScopes: string[],
-		resource: string | undefined,
-	): Promise<string[]> {
-		const isPreScopingSentinel =
-			storedScopes.length === PRE_SCOPING_SENTINEL.length &&
-			PRE_SCOPING_SENTINEL.every((scope, i) => storedScopes[i] === scope);
-
-		if (!isPreScopingSentinel) return storedScopes;
-
-		return await this.grandfatheredScopes(resource);
-	}
-
-	/**
-	 * Scopes a pre-scoping grant keeps: the frozen launch scope set, capped by
-	 * what the resource supports. Scope-less resources (per-workflow MCP
-	 * triggers) keep their empty full delegation.
-	 */
-	private async grandfatheredScopes(resource: string | undefined): Promise<string[]> {
-		const target = resource
-			? await this.resourceRegistry.getByResourceUrl(resource)
-			: this.resourceRegistry.getDefaultResource();
-
-		const supported = target?.scopes ?? this.resourceRegistry.getDefaultResource()?.scopes ?? [];
-		return supported.filter((scope) => PRE_SCOPING_GRANT_SCOPES.includes(scope));
 	}
 
 	async verifyAccessToken(token: string, expectedAudience?: string): Promise<AuthInfo> {
@@ -285,7 +223,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		return {
 			token,
 			clientId,
-			scopes: await this.parseScopeClaim(decoded),
+			scopes: this.parseScopeClaim(decoded),
 			extra: {
 				userId,
 			},
@@ -293,16 +231,17 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 	}
 
 	/**
-	 * Scopes carried by an access token. New tokens always carry a `scope`
-	 * claim (empty string for scope-less grants); an absent claim means the
-	 * token was minted before scoping shipped (at most one access-token
-	 * lifetime ago) and keeps its original full delegation.
+	 * Scopes carried by an access token. Tokens always carry a `scope` claim
+	 * (empty string for scope-less grants).
 	 */
-	private async parseScopeClaim(decoded: unknown): Promise<string[]> {
+	private parseScopeClaim(decoded: unknown): string[] {
 		const scopeClaim = this.getStringClaim(decoded, 'scope');
 
+		// Migration 1784000000046 deleted every access token minted before
+		// scoping shipped, so a claim-less token cannot legitimately occur.
+		// Fail closed rather than granting anything.
 		if (scopeClaim === null) {
-			return await this.grandfatheredScopes(this.getStringClaim(decoded, 'aud') ?? undefined);
+			return [];
 		}
 
 		return scopeClaim === '' ? [] : scopeClaim.split(' ');

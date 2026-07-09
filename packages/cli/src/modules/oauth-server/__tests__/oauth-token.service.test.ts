@@ -686,7 +686,7 @@ describe('OAuthTokenService', () => {
 		});
 	});
 
-	describe('scope handling for pre-scoping grants', () => {
+	describe('scope handling', () => {
 		const RESOURCE_SCOPES = ['workflow:read', 'workflow:write', 'execution:read'];
 
 		let scopedService: OAuthTokenService;
@@ -713,74 +713,7 @@ describe('OAuthTokenService', () => {
 			);
 		});
 
-		it('substitutes the migration sentinel with the frozen launch scope set on rotation', async () => {
-			const refreshTokenRecord = {
-				token: 'legacy-refresh-token',
-				clientId: 'client-123',
-				userId: 'user-456',
-				expiresAt: Date.now() + 1000000,
-				scope: ['tool:listWorkflows', 'tool:getWorkflowDetails'],
-			} as RefreshToken;
-
-			mockTransactionManager.findOne.mockResolvedValue(refreshTokenRecord);
-			mockTransactionManager.delete.mockResolvedValue({ affected: 1 });
-
-			const result = await scopedService.validateAndRotateRefreshToken(
-				'legacy-refresh-token',
-				'client-123',
-			);
-
-			expect(result.scope).toBe(RESOURCE_SCOPES.join(' '));
-			expect(mockTransactionManager.insert).toHaveBeenCalledWith(
-				expect.anything(),
-				expect.objectContaining({ scope: RESOURCE_SCOPES }),
-			);
-		});
-
-		it('does not grandfather scopes added after scoping shipped', async () => {
-			// a future release registers a scope that did not exist at launch
-			const futureRegistry = new ProtectedResourceRegistry(mock<Logger>());
-			futureRegistry.register({
-				id: 'instance-mcp',
-				getResourceUrl: () => TEST_RESOURCE_URL,
-				getAudiences: () => [TEST_RESOURCE_URL, LEGACY_AUDIENCE],
-				scopes: [...RESOURCE_SCOPES, 'variable:read'],
-				isDefault: true,
-				authorize: async () => true,
-			});
-			const futureService = new OAuthTokenService(
-				logger,
-				jwtService,
-				userRepository,
-				accessTokenRepository,
-				refreshTokenRepository,
-				userConsentRepository,
-				futureRegistry,
-			);
-
-			const refreshTokenRecord = {
-				token: 'legacy-refresh-token',
-				clientId: 'client-123',
-				userId: 'user-456',
-				expiresAt: Date.now() + 1000000,
-				scope: ['tool:listWorkflows', 'tool:getWorkflowDetails'],
-			} as RefreshToken;
-
-			mockTransactionManager.findOne.mockResolvedValue(refreshTokenRecord);
-			mockTransactionManager.delete.mockResolvedValue({ affected: 1 });
-
-			const result = await futureService.validateAndRotateRefreshToken(
-				'legacy-refresh-token',
-				'client-123',
-			);
-
-			// pre-scoping grants stay capped at the launch set; the new scope
-			// requires a fresh consent
-			expect(result.scope).toBe(RESOURCE_SCOPES.join(' '));
-			expect(result.scope).not.toContain('variable:read');
-		});
-
-		it('does not substitute an explicit grant that differs from the sentinel', async () => {
+		it('carries the stored grant scopes over on rotation', async () => {
 			const refreshTokenRecord = {
 				token: 'scoped-refresh-token',
 				clientId: 'client-123',
@@ -800,7 +733,9 @@ describe('OAuthTokenService', () => {
 			expect(result.scope).toBe('workflow:read');
 		});
 
-		it('grandfathers a token without a scope claim to the resource full scope set', async () => {
+		it('treats a token without a scope claim as having no scopes', async () => {
+			// cannot occur legitimately: migration 1784000000046 deleted every
+			// access token minted before scoping shipped
 			const legacyToken = jwtService.sign({
 				sub: 'user-123',
 				aud: TEST_RESOURCE_URL,
@@ -812,7 +747,7 @@ describe('OAuthTokenService', () => {
 
 			const result = await scopedService.verifyAccessToken(legacyToken);
 
-			expect(result.scopes).toEqual(RESOURCE_SCOPES);
+			expect(result.scopes).toEqual([]);
 		});
 
 		it('parses the scope claim of a scoped token', async () => {

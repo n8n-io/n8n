@@ -30,9 +30,9 @@ export class UserConsent {
 	@Column({ type: 'bigint' })
 	grantedAt: number;
 
-	/** OAuth scopes granted on the consent screen. NULL = consent predates scoping. */
-	@JsonColumn({ nullable: true })
-	scope: string[] | null;
+	/** OAuth scopes granted on the consent screen. */
+	@JsonColumn()
+	scope: string[];
 
 	/** Unix ms of the last authenticated request with this grant's tokens. NULL = no activity recorded. */
 	@Column({ type: 'bigint', nullable: true })

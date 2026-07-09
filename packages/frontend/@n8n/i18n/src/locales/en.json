@@ -3191,7 +3191,6 @@
 	"settings.mcp.oAuthClients.scope.dataTable.write": "Create and update data tables",
 	"settings.mcp.oAuthClients.scope.project.read": "Search projects and folders",
 	"settings.mcp.oAuthClients.scope.tag.read": "List tags",
-	"settings.mcp.oAuthClients.scope.fullAccess": "Full access",
 	"settings.mcp.oAuthClients.scope.more": "+{count}",
 	"settings.mcp.oAuthClients.details.subtitle": "Connected to this instance over MCP",
 	"settings.mcp.oAuthClients.details.subtitleWithType": "{type} · Connected to this instance over MCP",

@@ -101,9 +101,6 @@ function scopeLabel(scope: string): string {
 }
 
 function accessSummary(client: OAuthClientResponseDto): string {
-	if (client.scopes === null) {
-		return i18n.baseText('settings.mcp.oAuthClients.scope.fullAccess');
-	}
 	const labels = client.scopes.map(scopeLabel);
 	const visible = labels.slice(0, 2).join(', ');
 	const remaining = labels.length - 2;

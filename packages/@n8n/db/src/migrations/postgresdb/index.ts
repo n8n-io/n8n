@@ -219,6 +219,7 @@ import { AddUsedPrivateCredentialsToExecutionEntity1784000000041 } from '../comm
 import { CreateSchedulerTables1784000000042 } from '../common/1784000000042-CreateSchedulerTables';
 import { AddScopeColumnToOAuthUserConsents1784000000044 } from '../common/1784000000044-AddScopeColumnToOAuthUserConsents';
 import { AddLastActiveAtToOAuthUserConsents1784000000045 } from '../common/1784000000045-AddLastActiveAtToOAuthUserConsents';
+import { BackfillPreScopingOAuthGrantScopes1784000000046 } from '../common/1784000000046-BackfillPreScopingOAuthGrantScopes';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -443,4 +444,5 @@ export const postgresMigrations: Migration[] = [
 	CreateWorkflowStatisticsDeltaTable1784000000043,
 	AddScopeColumnToOAuthUserConsents1784000000044,
 	AddLastActiveAtToOAuthUserConsents1784000000045,
+	BackfillPreScopingOAuthGrantScopes1784000000046,
 ];
