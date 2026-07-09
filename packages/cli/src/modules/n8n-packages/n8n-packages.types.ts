@@ -47,7 +47,12 @@ export type ImportPackageRequest = {
 	projectId?: string;
 	folderId?: string;
 	packageBuffer: Buffer;
-	bindings?: ImportBindingsInput;
+	/**
+	 * Explicit source→target id overrides supplied with the request, mirroring the
+	 * {@link PackageImportBindings} result shape. Only `credentials` is consumed
+	 * today (and accepted by the request DTO); the remaining keys are RFC seams.
+	 */
+	bindings?: Partial<PackageImportBindings>;
 } & ImportCredentialProperties &
 	ImportWorkflowProperties;
 
@@ -55,15 +60,6 @@ export type ImportCredentialProperties = {
 	credentialMatchingMode: CredentialMatchingMode;
 	credentialMissingMode: CredentialMissingMode;
 };
-
-/**
- * Explicit source→target id overrides supplied with an import request, keyed by
- * entity type and mirroring the {@link SerializedBindings} result shape. Only
- * `credentials` is honoured today; `dataTables`/`variables` are RFC seams.
- */
-export interface ImportBindingsInput {
-	credentials?: ImportBindingMap;
-}
 
 export type ImportWorkflowProperties = {
 	workflowConflictPolicy: WorkflowConflictPolicy;

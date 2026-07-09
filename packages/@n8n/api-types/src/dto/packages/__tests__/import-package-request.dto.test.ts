@@ -138,6 +138,12 @@ describe('ImportPackageRequestDto', () => {
 		{ name: 'non-string target id', bindings: '{"credentials":{"source":1}}' },
 		{ name: 'empty source id', bindings: '{"credentials":{"":"target"}}' },
 		{ name: 'empty target id', bindings: '{"credentials":{"source":""}}' },
+		{ name: 'a misspelled credentials key', bindings: '{"credential":{"source":"target"}}' },
+		{ name: 'an unsupported workflows key', bindings: '{"workflows":{"source":"target"}}' },
+		{
+			name: 'a mix of known and unknown keys',
+			bindings: '{"credentials":{"source":"target"},"nope":{"a":"b"}}',
+		},
 	])('rejects bindings with $name', ({ bindings }) => {
 		expect(
 			ImportPackageRequestDto.safeParse({
@@ -145,6 +151,22 @@ describe('ImportPackageRequestDto', () => {
 				workflowConflictPolicy: 'fail',
 			}).success,
 		).toBe(false);
+	});
+
+	it('names the offending key when bindings use an unknown entity type', () => {
+		const result = ImportPackageRequestDto.safeParse({
+			bindings: '{"credential":{"source":"target"}}',
+			workflowConflictPolicy: 'fail',
+		});
+
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			// The diagnostic must name the typo, not fall back to the generic message —
+			// only the unknown-key path says "unsupported entity type".
+			const message = result.error.errors.map((issue) => issue.message).join('; ');
+			expect(message).toContain('unsupported entity type');
+			expect(message).toContain('"credential"');
+		}
 	});
 
 	it('rejects omitted workflowConflictPolicy', () => {

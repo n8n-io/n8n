@@ -119,6 +119,24 @@ describe('POST /n8n-packages/import', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
+	test('rejects bindings keyed by an unsupported entity type', async () => {
+		const tarBuffer = await buildImportPackage();
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
+			// "credential" (no trailing s) is a plausible typo that must error, not silently no-op.
+			.field('bindings', '{"credential":{"source":"target"}}')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(400);
+		// Match the unique diagnostic phrase, not just "credential" — the generic binding
+		// error also contains that substring (inside "credentials"), so it would give false
+		// confidence that the offending key was named.
+		expect(response.body.message).toContain('unsupported entity type');
+		expect(response.body.message).toContain('credential');
+	});
+
 	test('imports a package and returns the rich ImportResult', async () => {
 		const tarBuffer = await buildImportPackage();
 

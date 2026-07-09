@@ -81,10 +81,12 @@ post:
               default: '{}'
               description: >
                 Optional JSON object of explicit source→target id bindings, keyed
-                by entity type. Today only `credentials` is honoured: send
+                by entity type. Only `credentials` is supported today: send
                 `{"credentials":{"<packageCredentialId>":"<targetCredentialId>"}}`
                 to map credential ids from the package manifest to credential ids
-                on the target instance. These explicit bindings are validated and
+                on the target instance. Any other top-level key (including a
+                misspelled `credentials`) is rejected with `400` rather than
+                silently ignored. These explicit bindings are validated and
                 applied before `credentialMatchingMode` resolution runs.
             workflowConflictPolicy:
               type: string
