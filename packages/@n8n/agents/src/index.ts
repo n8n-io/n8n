@@ -105,8 +105,16 @@ export {
 
 export { createCancellation, isCancellation, CANCELLATION_TYPE } from './sdk/cancellation';
 export type { Cancellation } from './sdk/cancellation';
-export { Tool, wrapToolForApproval } from './sdk/tool';
+export { Tool, wrapToolForApproval, sanitizeToolName } from './sdk/tool';
 export { Memory } from './sdk/memory';
+export { VectorStore } from './sdk/vector-store';
+export {
+	FILTER_OPERATORS,
+	normalizeFilterInput,
+	assertValidFilter,
+	buildFilterInputSchema,
+} from './sdk/vector-store-filter';
+export type { VectorFilterInput } from './sdk/vector-store-filter';
 export { Guardrail } from './sdk/guardrail';
 export {
 	redactText,
@@ -217,10 +225,21 @@ export type {
 	ModelLimits,
 } from './sdk/catalog';
 export { BaseMemory } from './storage/base-memory';
+export { BaseVectorStore } from './storage/base-vector-store';
 export type { ToolDescriptor } from './types/sdk/tool-descriptor';
+export type {
+	BuiltVectorStoreBackend,
+	VectorDocument,
+	VectorRecord,
+	VectorQueryResult,
+	FilterOperator,
+	FilterValue,
+	FilterCondition,
+	VectorFilter,
+} from './types';
 
 export { createModel } from './runtime/model/model-factory';
-export type { FetchFn } from './runtime/model/model-factory';
+export type { FetchFn, EmbeddingProviderOptions } from './runtime/model/model-factory';
 export {
 	DEFAULT_SUB_AGENT_MAX_CHILDREN,
 	ROOT_SUB_AGENT_TASK_PATH,
