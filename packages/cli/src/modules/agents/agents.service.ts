@@ -10,6 +10,7 @@ import { AgentTestChatService } from './agent-test-chat.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
+import { EventService } from '@/events/event.service';
 
 @Service()
 export class AgentsService {
@@ -20,6 +21,7 @@ export class AgentsService {
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly testChatService: AgentTestChatService,
+		private readonly eventService: EventService,
 	) {}
 
 	async create(projectId: string, name: string): Promise<Agent> {
@@ -126,6 +128,8 @@ export class AgentsService {
 		await this.agentRepository.remove(agent);
 
 		this.runtimeCacheService.clearRuntimes(agentId);
+
+		this.eventService.emit('agent-deleted', { agentId, projectId });
 
 		try {
 			const { AgentTaskService } = await import('./agent-task.service');

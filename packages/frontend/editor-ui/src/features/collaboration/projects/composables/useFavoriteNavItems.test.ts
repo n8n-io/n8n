@@ -269,7 +269,7 @@ describe('useFavoriteNavItems', () => {
 			expect(favoriteGroups.value[0].type).toBe('workflow');
 		});
 
-		it('should order groups: projects first, then folders, workflows, dataTables', () => {
+		it('should order groups: projects first, then folders, workflows, dataTables, agents', () => {
 			favoritesStore.favorites = [
 				makeFavorite({ id: 1, resourceId: 'wf-1', resourceType: 'workflow' }),
 				makeFavorite({
@@ -292,6 +292,13 @@ describe('useFavoriteNavItems', () => {
 					resourceName: 'Folder 1',
 					resourceProjectId: 'proj-1',
 				}),
+				makeFavorite({
+					id: 5,
+					resourceId: 'agent-1',
+					resourceType: 'agent',
+					resourceName: 'Agent 1',
+					resourceProjectId: 'proj-1',
+				}),
 			];
 
 			const { favoriteGroups } = useFavoriteNavItems();
@@ -301,6 +308,7 @@ describe('useFavoriteNavItems', () => {
 				'folder',
 				'workflow',
 				'dataTable',
+				'agent',
 			]);
 		});
 	});

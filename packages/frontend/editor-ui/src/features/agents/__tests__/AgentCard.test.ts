@@ -25,6 +25,15 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
+const favoritesStoreMock = {
+	isFavorite: vi.fn(() => false),
+	toggleFavorite: vi.fn().mockResolvedValue(undefined),
+};
+
+vi.mock('@/app/stores/favorites.store', () => ({
+	useFavoritesStore: () => favoritesStoreMock,
+}));
+
 const agentPermissionsMock = {
 	canCreate: ref(true),
 	canUpdate: ref(true),
@@ -54,8 +63,9 @@ const STUBS = {
 	N8nActionToggle: {
 		name: 'N8nActionToggle',
 		template:
-			'<div :data-test-id="$attrs[\'data-test-id\']"><button v-for="a in actions" :key="a.value" :data-action="a.value">{{ a.label }}</button></div>',
+			'<div :data-test-id="$attrs[\'data-test-id\']"><button v-for="a in actions" :key="a.value" :data-action="a.value" @click="$emit(\'action\', a.value)">{{ a.label }}</button></div>',
 		props: ['actions', 'theme'],
+		emits: ['action'],
 	},
 	TimeAgo: { template: '<span />' },
 };
@@ -99,6 +109,8 @@ describe('AgentCard', () => {
 		agentPermissionsMock.canDelete.value = true;
 		agentPermissionsMock.canPublish.value = true;
 		agentPermissionsMock.canUnpublish.value = true;
+		favoritesStoreMock.isFavorite.mockReturnValue(false);
+		favoritesStoreMock.toggleFavorite.mockClear();
 	});
 
 	it('hides the read-only badge when canUpdate is true', async () => {
@@ -115,13 +127,17 @@ describe('AgentCard', () => {
 		expect(badge.text()).toBe('agents.list.readonly');
 	});
 
-	it('hides the action toggle when no scopes grant any action', async () => {
+	it('shows only the favorite toggle when no scopes grant publish or delete', async () => {
 		agentPermissionsMock.canDelete.value = false;
 		agentPermissionsMock.canPublish.value = false;
 		agentPermissionsMock.canUnpublish.value = false;
 		const wrapper = await renderComponent();
 
-		expect(wrapper.find('[data-test-id="agent-card-actions"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="agent-card-actions"]').exists()).toBe(true);
+		expect(wrapper.find('[data-action="toggleFavorite"]').exists()).toBe(true);
+		expect(wrapper.find('[data-action="publish"]').exists()).toBe(false);
+		expect(wrapper.find('[data-action="unpublish"]').exists()).toBe(false);
+		expect(wrapper.find('[data-action="delete"]').exists()).toBe(false);
 	});
 
 	it('shows Publish + Delete on an unpublished agent with full scopes', async () => {
@@ -156,5 +172,33 @@ describe('AgentCard', () => {
 
 		expect(wrapper.find('[data-action="publish"]').exists()).toBe(false);
 		expect(wrapper.find('[data-action="delete"]').exists()).toBe(true);
+	});
+
+	it('shows the favorite toggle action labeled "add" when the agent is not favorited', async () => {
+		favoritesStoreMock.isFavorite.mockReturnValue(false);
+		const wrapper = await renderComponent();
+
+		expect(favoritesStoreMock.isFavorite).toHaveBeenCalledWith('agent-1', 'agent');
+		const toggle = wrapper.find('[data-action="toggleFavorite"]');
+		expect(toggle.exists()).toBe(true);
+		expect(toggle.text()).toBe('favorites.add');
+	});
+
+	it('shows the favorite toggle action labeled "remove" when the agent is favorited', async () => {
+		favoritesStoreMock.isFavorite.mockReturnValue(true);
+		const wrapper = await renderComponent();
+
+		const toggle = wrapper.find('[data-action="toggleFavorite"]');
+		expect(toggle.exists()).toBe(true);
+		expect(toggle.text()).toBe('favorites.remove');
+	});
+
+	it('toggles the favorite via the store when the toggle action is selected', async () => {
+		favoritesStoreMock.isFavorite.mockReturnValue(false);
+		const wrapper = await renderComponent();
+
+		await wrapper.find('[data-action="toggleFavorite"]').trigger('click');
+
+		expect(favoritesStoreMock.toggleFavorite).toHaveBeenCalledWith('agent-1', 'agent');
 	});
 });

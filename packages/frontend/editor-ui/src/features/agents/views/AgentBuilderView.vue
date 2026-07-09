@@ -25,6 +25,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { LOCAL_STORAGE_AGENT_BUILDER_CHAT_PANEL_WIDTH, MODAL_CONFIRM } from '@/app/constants';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
@@ -98,6 +99,7 @@ const sessionsStore = useAgentSessionsStore();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
+const favoritesStore = useFavoritesStore();
 
 // Gates the entire knowledge base feature (files panel + fetching) behind the
 // Daytona sandbox env vars on the backend (N8N_AGENTS_AI_SANDBOX_ENABLED + PROVIDER=daytona).
@@ -112,6 +114,7 @@ const projectId = computed(
 	() => (route.params.projectId as string) ?? projectsStore.personalProject?.id ?? '',
 );
 const agentId = computed(() => route.params.agentId as string);
+const isFavorite = computed(() => favoritesStore.isFavorite(agentId.value, 'agent'));
 
 const { canUpdate: canEditAgent, canDelete: canDeleteAgent } = useAgentPermissions(projectId);
 
@@ -766,10 +769,10 @@ const headerActions = computed(() => {
 	if (isBuilt.value === true && agent.value) {
 		actions.push({
 			id: 'toggleFavorite',
-			label: agent.value?.isFavorite
+			label: isFavorite.value
 				? locale.baseText('agents.builder.unfavorite')
 				: locale.baseText('agents.builder.favorite'),
-			icon: agent.value?.isFavorite ? 'star' : 'star-outline',
+			icon: isFavorite.value ? 'star' : 'star-outline',
 		});
 	}
 
@@ -828,6 +831,10 @@ async function onHeaderAction(action: string) {
 	}
 	if (action === 'import-json') {
 		openImportJsonModal();
+		return;
+	}
+	if (action === 'toggleFavorite') {
+		await favoritesStore.toggleFavorite(agentId.value, 'agent');
 		return;
 	}
 	if (action === 'delete') {
