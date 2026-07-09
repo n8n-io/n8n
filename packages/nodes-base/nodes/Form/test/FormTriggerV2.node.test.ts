@@ -569,6 +569,7 @@ describe('FormTrigger', () => {
 			});
 			expect(formTriggerV2.description.sensitiveOutputFields).toContain('headers.authorization');
 			expect(formTriggerV2.description.sensitiveOutputFields).toContain('headers.cookie');
+			expect(formTriggerV2.description.sensitiveOutputFields).toContain('headers.x-auth-token');
 		});
 
 		it('does not mark other headers as sensitive', () => {
