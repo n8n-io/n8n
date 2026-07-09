@@ -162,12 +162,35 @@ function isAiGatewayEligibleNode(nodeName: string): boolean {
 
 	const aiGatewayStore = useAiGatewayStore();
 	const baseName = nodeName.replace(/Tool$/, '');
-	const supportedName = [nodeName, baseName].find((n) => aiGatewayStore.isNodeSupported(n));
+	const candidates = [
+		nodeName,
+		baseName,
+		removePreviewToken(nodeName),
+		removePreviewToken(baseName),
+	];
+	const supportedName = candidates.find((n) => aiGatewayStore.isNodeSupported(n));
 	if (!supportedName) return false;
 
-	const versions = useNodeTypesStore().getNodeVersions(supportedName);
-	const latestVersion = versions.length > 0 ? Math.max(...versions) : 1;
-	return aiGatewayStore.isNodeTypeVersionSupported(supportedName, latestVersion);
+	return aiGatewayStore.isNodeTypeVersionSupported(
+		supportedName,
+		getLatestKnownVersion(supportedName),
+	);
+}
+
+/**
+ * Latest version we know about for a node. `getNodeVersions` only covers the
+ * core map (built-in + installed community nodes); preview community nodes live
+ * behind `communityNodeType`, so fall back to their description version before
+ * defaulting to 1.
+ */
+function getLatestKnownVersion(nodeName: string): number {
+	const nodeTypesStore = useNodeTypesStore();
+	const versions = nodeTypesStore.getNodeVersions(nodeName);
+	if (versions.length > 0) return Math.max(...versions);
+
+	const communityVersion = nodeTypesStore.communityNodeType(nodeName)?.nodeDescription?.version;
+	if (Array.isArray(communityVersion)) return Math.max(...communityVersion);
+	return communityVersion ?? 1;
 }
 
 function getAiGatewaySearchBoosts(

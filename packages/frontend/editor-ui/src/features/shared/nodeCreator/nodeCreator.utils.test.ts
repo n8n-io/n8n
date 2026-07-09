@@ -821,6 +821,7 @@ describe('NodeCreator - utils', () => {
 			const isNodeTypeVersionSupported = vi.fn(() => true);
 			vi.mocked(useNodeTypesStore).mockReturnValue({
 				getNodeVersions: vi.fn(() => []),
+				communityNodeType: vi.fn(() => null),
 			} as unknown as ReturnType<typeof useNodeTypesStore>);
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn(() => true),
@@ -829,6 +830,23 @@ describe('NodeCreator - utils', () => {
 
 			finalizeItems([makeGatewayNode('my-node')]);
 			expect(isNodeTypeVersionSupported).toHaveBeenCalledWith('my-node', 1);
+		});
+
+		it('should fall back to the community node description version for a preview node', () => {
+			// Preview community nodes are absent from the core map, so getNodeVersions
+			// is empty; the version must come from the community node description.
+			const isNodeTypeVersionSupported = vi.fn(() => true);
+			vi.mocked(useNodeTypesStore).mockReturnValue({
+				getNodeVersions: vi.fn(() => []),
+				communityNodeType: vi.fn(() => ({ nodeDescription: { version: [1, 2] } })),
+			} as unknown as ReturnType<typeof useNodeTypesStore>);
+			vi.mocked(useAiGatewayStore).mockReturnValue({
+				isNodeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported,
+			} as unknown as ReturnType<typeof useAiGatewayStore>);
+
+			finalizeItems([makeGatewayNode('my-node')]);
+			expect(isNodeTypeVersionSupported).toHaveBeenCalledWith('my-node', 2);
 		});
 
 		it('should show Free credits badge for a Tool-suffixed node whose base name is in the gateway config', () => {
@@ -840,6 +858,20 @@ describe('NodeCreator - utils', () => {
 
 			const [result] = finalizeItems([
 				makeGatewayNode('llamaParsePlatformTool'),
+			]) as NodeCreateElement[];
+			expect(result.properties.tag).toEqual({ text: expect.any(String), pill: true });
+		});
+
+		it('should show Free credits badge for an uninstalled preview node whose canonical name is in the gateway config', () => {
+			// Preview community nodes carry a `-preview` token; the gateway config
+			// only lists the canonical name, so the token must be stripped.
+			vi.mocked(useAiGatewayStore).mockReturnValue({
+				isNodeSupported: vi.fn((name: string) => name === '@vendor/n8n-nodes-connect.connect'),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+			} as unknown as ReturnType<typeof useAiGatewayStore>);
+
+			const [result] = finalizeItems([
+				makeGatewayNode('@vendor/n8n-nodes-preview-connect.connect'),
 			]) as NodeCreateElement[];
 			expect(result.properties.tag).toEqual({ text: expect.any(String), pill: true });
 		});
