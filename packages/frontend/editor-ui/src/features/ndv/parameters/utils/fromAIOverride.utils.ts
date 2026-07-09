@@ -205,6 +205,8 @@ export function reconcileFromAIKeys(
 	});
 }
 
+// Depth-1 by design: only reconciles a node's top-level list params. Overrides inside
+// lists nested within other list rows are left as-is — no tool-capable node has that shape today.
 export function reconcileNodeFromAIKeys(
 	properties: INodeProperties[],
 	nodeParameters: INodeParameters,
