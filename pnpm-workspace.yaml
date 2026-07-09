@@ -41,7 +41,7 @@ catalog:
   luxon: 3.4.4
   mime-types: 3.0.2
   mysql2: 3.17.0
-  nanoid: 3.3.8
+  nanoid: 3.3.12
   nodemailer: 7.0.11
   picocolors: 1.0.1
   reflect-metadata: 0.2.2
