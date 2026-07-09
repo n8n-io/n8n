@@ -188,9 +188,9 @@ export function assertSupportedAwsRegion(region: unknown): asserts region is AWS
 
 /**
  * Validates a user-supplied Bedrock endpoint override and returns the resolved URL.
- * Substitutes the `{region}` placeholder (after the region itself is validated) and
- * requires an `http:`/`https:` scheme. Host allow-listing is intentionally left to
- * `SsrfProtectionService`; this only guards against malformed input and non-HTTP schemes.
+ * Substitutes the `{region}` placeholder after the region itself is validated, and
+ * requires an `http:`/`https:` scheme. The value is credential-holder-configured and
+ * treated as trusted; no host allow-listing / SSRF check is applied on this path.
  *
  * @throws {UserError} When the region is unsupported, the URL is malformed, or the scheme is not http/https.
  */
@@ -201,7 +201,8 @@ export function validateBedrockEndpointOverride(override: string, region: AWSReg
 	try {
 		url = new URL(resolved);
 	} catch {
-		throw new UserError(`Invalid Bedrock endpoint URL: "${override}"`);
+		// Don't echo the raw value; it may contain URL userinfo (user:pass@host).
+		throw new UserError('Bedrock endpoint is not a valid URL');
 	}
 	if (url.protocol !== 'http:' && url.protocol !== 'https:') {
 		throw new UserError('Bedrock endpoint must use the http or https scheme');
@@ -313,9 +314,8 @@ export function awsGetSignInOptionsAndUpdateRequest(
 			if (parsed.region) {
 				region = parsed.region;
 			}
-			// Bedrock control-plane endpoint override: swap only the host of the request.
-			// The signing service and region are still derived from the default host above,
-			// so a custom (e.g. PrivateLink) host can never change how the request is signed.
+			// Swap only the host: signing service and region stay derived from the default
+			// host above, so a custom endpoint can never change how the request is signed.
 			if (service === 'bedrock' && credentials.bedrockEndpoint) {
 				const override = new URL(
 					validateBedrockEndpointOverride(credentials.bedrockEndpoint, region),

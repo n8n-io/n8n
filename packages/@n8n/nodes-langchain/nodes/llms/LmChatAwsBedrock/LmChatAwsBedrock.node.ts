@@ -356,9 +356,7 @@ export class LmChatAwsBedrock implements INodeType {
 		}
 
 		// We set-up client manually to pass httpAgent and httpsAgent.
-		// A credential override (e.g. PrivateLink) wins; otherwise getAwsDomain keeps
-		// China (amazonaws.com.cn) / GovCloud endpoints correct. The proxy agent and the
-		// SDK client are both resolved from this single URL.
+		// getAwsDomain keeps China (amazonaws.com.cn) / GovCloud endpoints correct.
 		const bedrockEndpoint = bedrockRuntimeEndpoint
 			? validateBedrockEndpointOverride(bedrockRuntimeEndpoint, region)
 			: `https://bedrock-runtime.${region}.${getAwsDomain(region)}`;
@@ -366,8 +364,6 @@ export class LmChatAwsBedrock implements INodeType {
 		const clientConfig: BedrockRuntimeClientConfig = {
 			region,
 			credentials,
-			// Only set an explicit endpoint for overrides; without one the SDK derives
-			// the default endpoint, keeping requests byte-identical to previous behaviour.
 			...(bedrockRuntimeEndpoint ? { endpoint: bedrockEndpoint } : {}),
 		};
 
