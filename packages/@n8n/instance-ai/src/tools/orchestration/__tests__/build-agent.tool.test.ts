@@ -431,6 +431,46 @@ describe('build-agent tool — interactive suspend/resume cascade', () => {
 		expect(result).toEqual({ ok: true, builderReply: 'Using Slack.', configUpdated: false });
 	});
 
+	it('publishes agent-spawned before any chunk events and exactly one agent-completed on the resume leg', async () => {
+		const { context, delegate, publishedEvents } = makeContext();
+		context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
+		vi.mocked(delegate.findOpenSuspension).mockResolvedValue({
+			runId: 'builder-run-1',
+			toolCallId: 'call-1',
+			toolName: ASK_QUESTION_TOOL_NAME,
+			suspendPayload: {
+				question: 'Which service?',
+				options: [{ label: 'Slack', value: 'slack' }],
+			},
+		});
+		vi.mocked(delegate.resumeBuild).mockResolvedValue(
+			fakeStream([{ type: 'text-delta', id: 'a', delta: 'Using Slack.' }], 'Using Slack.'),
+		);
+
+		await runToolWithCtx(
+			context,
+			{ message: 'anything' },
+			{
+				resumeData: { approved: true, answers: [{ questionId: 'q1', selectedOptions: ['slack'] }] },
+				suspend: vi.fn(),
+			},
+		);
+
+		expect(publishedEvents.map((event) => event.type)).toEqual([
+			'agent-spawned',
+			'text-delta',
+			'agent-completed',
+		]);
+		const spawned = publishedEvents[0];
+		expect(spawned).toMatchObject({ type: 'agent-spawned', agentId: 'agent-builder:agent-1' });
+		expect(spawned && 'payload' in spawned ? spawned.payload : undefined).toMatchObject({
+			role: 'agent-builder',
+			kind: 'agent-builder',
+			targetResource: { type: 'agent', id: 'agent-1' },
+		});
+		expect(publishedEvents.filter((event) => event.type === 'agent-completed')).toHaveLength(1);
+	});
+
 	it('bounces an ask_llm suspension back into the builder with a cancellation resume, without suspending', async () => {
 		const { context, delegate } = makeContext();
 		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
@@ -472,6 +512,50 @@ describe('build-agent tool — interactive suspend/resume cascade', () => {
 			ok: true,
 			builderReply: 'Got it, using Anthropic.',
 			configUpdated: false,
+		});
+	});
+
+	it('stops bouncing ask_llm after 3 cancellations and returns a friendly error, publishing one agent-spawned and one agent-completed', async () => {
+		const { context, delegate, publishedEvents } = makeContext();
+		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
+		const askLlmSuspension = () =>
+			fakeStream(
+				[
+					suspensionChunk({
+						toolCallId: 'call-1',
+						toolName: ASK_LLM_TOOL_NAME,
+						suspendPayload: { purpose: 'Main LLM' },
+					}),
+				],
+				'',
+			);
+		vi.mocked(delegate.streamBuild).mockResolvedValue(askLlmSuspension());
+		// A delegate that never accepts the "ask in plain text" cancellation and
+		// keeps re-suspending ask_llm on every resume.
+		vi.mocked(delegate.resumeBuild).mockImplementation(async () => {
+			await Promise.resolve();
+			return askLlmSuspension();
+		});
+
+		const result = await runTool(context, { message: 'Build it', name: 'New Agent' });
+
+		expect(delegate.resumeBuild).toHaveBeenCalledTimes(3);
+		expect(result).toEqual({
+			ok: false,
+			error:
+				'The agent builder repeatedly requested a model picker this chat cannot show. ' +
+				'Tell the user to configure the builder model in the agents module settings.',
+		});
+		expect(publishedEvents.filter((event) => event.type === 'agent-spawned')).toHaveLength(1);
+		const completedEvents = publishedEvents.filter((event) => event.type === 'agent-completed');
+		expect(completedEvents).toHaveLength(1);
+		expect(completedEvents[0]).toMatchObject({
+			type: 'agent-completed',
+			agentId: 'agent-builder:agent-1',
+		});
+		expect('payload' in completedEvents[0] ? completedEvents[0].payload : undefined).toMatchObject({
+			role: 'agent-builder',
+			error: result.error,
 		});
 	});
 

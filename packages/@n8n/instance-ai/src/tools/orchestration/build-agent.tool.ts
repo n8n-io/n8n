@@ -217,6 +217,34 @@ type BuildAgentToolContext = InterruptibleToolContext<
 	BuildAgentResumeData
 >;
 
+/**
+ * Publish the `agent-spawned` event announcing the builder sub-agent to the FE.
+ * Shared by the first-call and resume legs — the FE reducer's agent-spawned
+ * handler is idempotent (skips if `agentId` already has a node, see
+ * agent-run-reducer.ts), so re-publishing on resume is a safe no-op for the
+ * common case and a recovery for the rebuilt-state/replay edge case where the
+ * FE never saw the original event.
+ */
+function publishAgentSpawned(
+	context: OrchestrationContext,
+	builderAgentId: string,
+	target: AgentBuilderTarget,
+): void {
+	context.eventBus.publish(context.threadId, {
+		type: 'agent-spawned',
+		runId: context.runId,
+		agentId: builderAgentId,
+		payload: {
+			parentId: context.orchestratorAgentId,
+			role: 'agent-builder',
+			tools: [],
+			kind: 'agent-builder',
+			title: 'Building agent',
+			targetResource: { type: 'agent', id: target.agentId },
+		},
+	});
+}
+
 /** Publish the standard failure `agent-completed` event; returns the resolved message. */
 function publishAgentBuilderFailure(
 	context: OrchestrationContext,
@@ -266,6 +294,14 @@ async function finishTurn(
 }
 
 /**
+ * Cap on ask_llm cancellation bounces (see below) per invocation of the
+ * consume loop. Guards against a builder that keeps re-suspending ask_llm
+ * (e.g. it never accepts the "ask in plain text" cancellation) bouncing
+ * forever instead of terminating the turn.
+ */
+const ASK_LLM_BOUNCE_LIMIT = 3;
+
+/**
  * Drain one builder turn, cascading any interactive suspension into this
  * tool's own `ctx.suspend()`. Shared by the first-call and resume legs so
  * both loop until the builder either finishes or asks the user something.
@@ -282,6 +318,7 @@ async function runBuilderConsumeLoop(params: {
 }): Promise<BuildAgentOutput> {
 	const { context, domainContext, delegate, ctx, target, session, builderAgentId } = params;
 	let turn = params.initialTurn;
+	let askLlmBounceCount = 0;
 
 	for (;;) {
 		let result: ConsumeStreamCascadingResult;
@@ -305,6 +342,15 @@ async function runBuilderConsumeLoop(params: {
 
 		const toolName = result.suspension.toolName ?? '';
 		if (toolName === ASK_LLM_TOOL_NAME) {
+			askLlmBounceCount += 1;
+			if (askLlmBounceCount > ASK_LLM_BOUNCE_LIMIT) {
+				const message =
+					'The agent builder repeatedly requested a model picker this chat cannot show. ' +
+					'Tell the user to configure the builder model in the agents module settings.';
+				publishAgentBuilderFailure(context, builderAgentId, new Error(message));
+				return { ok: false, error: message };
+			}
+
 			// Temporary until the llm-picker FE kind ships: bounce back into the
 			// builder so it asks conversationally instead of dead-ending.
 			turn = await delegate.resumeBuild(
@@ -389,6 +435,9 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 					{ runId: open.runId, toolCallId: open.toolCallId, resumeData: translation.resumeData },
 					session,
 				);
+				// Idempotent republish — protects the rebuilt-state/replay edge case
+				// where the FE lost the builder node from the original invocation.
+				publishAgentSpawned(context, builderAgentId, target);
 				return await runBuilderConsumeLoop({
 					context,
 					domainContext,
@@ -431,19 +480,7 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 			const outboundMessage = buildOutboundMessage(input.message, input.workflowContext);
 			const builderAgentId = `agent-builder:${target.agentId}`;
 
-			context.eventBus.publish(context.threadId, {
-				type: 'agent-spawned',
-				runId: context.runId,
-				agentId: builderAgentId,
-				payload: {
-					parentId: context.orchestratorAgentId,
-					role: 'agent-builder',
-					tools: [],
-					kind: 'agent-builder',
-					title: 'Building agent',
-					targetResource: { type: 'agent', id: target.agentId },
-				},
-			});
+			publishAgentSpawned(context, builderAgentId, target);
 
 			let turn;
 			try {
