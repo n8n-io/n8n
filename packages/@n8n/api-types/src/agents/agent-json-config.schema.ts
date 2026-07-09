@@ -300,6 +300,15 @@ export const McpServerConfigSchema = z
 	.strict();
 
 export const AGENT_VECTOR_STORE_PROVIDERS = ['pinecone', 'supabase', 'qdrant', 'postgres'] as const;
+
+/** n8n credential type each vector store provider's connection credential must have. */
+export const AGENT_VECTOR_STORE_CREDENTIAL_TYPES = {
+	pinecone: 'pineconeApi',
+	supabase: 'supabaseApi',
+	qdrant: 'qdrantApi',
+	postgres: 'postgres',
+} as const satisfies Record<AgentVectorStoreProvider, string>;
+
 export const VECTOR_STORE_USE_WHEN_MAX_LENGTH = 512;
 export const VECTOR_STORE_NAME_REGEX = /^[a-zA-Z0-9_-]+$/;
 

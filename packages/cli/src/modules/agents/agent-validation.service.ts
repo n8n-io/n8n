@@ -1,5 +1,6 @@
 import { type CredentialProvider } from '@n8n/agents';
 import {
+	AGENT_VECTOR_STORE_CREDENTIAL_TYPES,
 	AgentModelSchema,
 	MANAGED_CREDENTIAL_TOKEN,
 	SUB_AGENT_TASK_DIFFICULTIES,
@@ -132,7 +133,11 @@ export class AgentValidationService {
 		for (const vectorStore of config.vectorStores ?? []) {
 			try {
 				const credentialId = vectorStore.credential?.trim();
-				if (!credentialId || !(await credentialExists(credentialId))) {
+				const credential =
+					credentialId && credentialId !== MANAGED_CREDENTIAL_TOKEN
+						? await findCredential(credentialId)
+						: undefined;
+				if (credential?.type !== AGENT_VECTOR_STORE_CREDENTIAL_TYPES[vectorStore.provider]) {
 					missing.push(`vectorStores.${vectorStore.name}.credential`);
 				}
 				const embeddingCredentialId = vectorStore.embedding.credential?.trim();

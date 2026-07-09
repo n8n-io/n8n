@@ -270,6 +270,47 @@ describe('AgentValidationService', () => {
 		expect(result.missing).not.toContain('vectorStores.ok_store.embedding.credential');
 	});
 
+	it('flags vector store connections whose credential type does not match the provider', async () => {
+		const { service, agentRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				vectorStores: [
+					{
+						provider: 'qdrant',
+						name: 'wrong_type',
+						credential: 'postgres-cred',
+						useWhen: 'Search docs',
+						embedding: { model: 'openai/text-embedding-3-small', credential: 'openai-main' },
+						collectionName: 'docs',
+					},
+					{
+						provider: 'qdrant',
+						name: 'right_type',
+						credential: 'qdrant-cred',
+						useWhen: 'Search notes',
+						embedding: { model: 'openai/text-embedding-3-small', credential: 'openai-main' },
+						collectionName: 'notes',
+					},
+				],
+			}),
+		);
+
+		const result = await service.validateAgentIsRunnable(
+			agentId,
+			projectId,
+			makeCredentialProvider([
+				{ id: 'openai-main', type: 'openAiApi' },
+				{ id: 'postgres-cred', type: 'postgres' },
+				{ id: 'qdrant-cred', type: 'qdrantApi' },
+			]),
+		);
+
+		expect(result.missing).toContain('vectorStores.wrong_type.credential');
+		expect(result.missing).not.toContain('vectorStores.right_type.credential');
+		expect(result.missing).not.toContain('vectorStores.wrong_type.embedding.credential');
+	});
+
 	it('rejects managed episodic memory credential when the assistant proxy is disabled', async () => {
 		const { service, agentRepository } = makeService(makeAiService(false));
 		agentRepository.findByIdAndProjectId.mockResolvedValue(

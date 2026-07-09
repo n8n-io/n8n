@@ -1,4 +1,4 @@
-import type { AgentVectorStoreProvider } from '@n8n/api-types';
+import { AGENT_VECTOR_STORE_CREDENTIAL_TYPES, type AgentVectorStoreProvider } from '@n8n/api-types';
 
 export interface AgentVectorStoreProviderDefinition {
 	displayName: string;
@@ -6,10 +6,19 @@ export interface AgentVectorStoreProviderDefinition {
 }
 
 export const AGENT_VECTOR_STORE_PROVIDER_DEFINITIONS = {
-	pinecone: { displayName: 'Pinecone', credentialType: 'pineconeApi' },
-	supabase: { displayName: 'Supabase', credentialType: 'supabaseApi' },
-	qdrant: { displayName: 'Qdrant', credentialType: 'qdrantApi' },
-	postgres: { displayName: 'Postgres', credentialType: 'postgres' },
+	pinecone: {
+		displayName: 'Pinecone',
+		credentialType: AGENT_VECTOR_STORE_CREDENTIAL_TYPES.pinecone,
+	},
+	supabase: {
+		displayName: 'Supabase',
+		credentialType: AGENT_VECTOR_STORE_CREDENTIAL_TYPES.supabase,
+	},
+	qdrant: { displayName: 'Qdrant', credentialType: AGENT_VECTOR_STORE_CREDENTIAL_TYPES.qdrant },
+	postgres: {
+		displayName: 'Postgres',
+		credentialType: AGENT_VECTOR_STORE_CREDENTIAL_TYPES.postgres,
+	},
 } satisfies Record<AgentVectorStoreProvider, AgentVectorStoreProviderDefinition>;
 
 export interface AgentEmbeddingModelOption {

@@ -121,6 +121,13 @@ function goBack() {
 	if (isEditing.value) return;
 	selectedProvider.value = null;
 	nameTouched.value = false;
+	name.value = '';
+	credential.value = '';
+	indexName.value = '';
+	namespace.value = '';
+	collectionName.value = '';
+	tableName.value = '';
+	queryName.value = '';
 }
 
 const locatorValue = computed(() => {

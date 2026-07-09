@@ -350,4 +350,52 @@ describe('AgentVectorStoresModal', () => {
 
 		expect(wrapper.find('[data-testid="agent-vector-stores-modal-name"]').exists()).toBe(true);
 	});
+
+	it('clears provider-specific fields when going back to the provider picker', async () => {
+		const pineconeCredential = { id: 'pinecone-cred-1', name: 'My Pinecone', type: 'pineconeApi' };
+		fetchAllCredentialsForWorkflowMock.mockResolvedValue([
+			pineconeCredential,
+			qdrantCredential,
+			openAiCredential,
+		]);
+
+		const wrapper = mount(AgentVectorStoresModal, {
+			props: {
+				modalName: 'agentVectorStoresModal',
+				data: { projectId: 'p1', agentId: 'a1', existingNames: [], onConfirm: vi.fn() },
+			},
+		});
+		await flushPromises();
+
+		// Configure Pinecone (first provider row): locator prefills the name.
+		await wrapper.findAll('[data-testid="agent-vector-stores-modal-connect"]')[0].trigger('click');
+		await wrapper
+			.find('[data-testid="agent-vector-stores-modal-index-name"] input')
+			.setValue('docs-index');
+		await wrapper
+			.find('[data-test-id="agent-vector-stores-modal-credential"]')
+			.setValue('pinecone-cred-1');
+
+		// Back to the picker, then pick Qdrant instead.
+		await wrapper.find('[data-testid="agent-vector-stores-modal-back"]').trigger('click');
+		await wrapper.findAll('[data-testid="agent-vector-stores-modal-connect"]')[2].trigger('click');
+
+		// Pinecone leftovers must be gone.
+		const nameInput = wrapper.find<HTMLInputElement>(
+			'[data-testid="agent-vector-stores-modal-name"] input',
+		);
+		expect(nameInput.element.value).toBe('');
+		const credentialSelect = wrapper.find<HTMLSelectElement>(
+			'[data-test-id="agent-vector-stores-modal-credential"]',
+		);
+		expect(credentialSelect.element.value).toBe('');
+
+		// Returning to Pinecone must not resurrect the old index name.
+		await wrapper.find('[data-testid="agent-vector-stores-modal-back"]').trigger('click');
+		await wrapper.findAll('[data-testid="agent-vector-stores-modal-connect"]')[0].trigger('click');
+		const indexInput = wrapper.find<HTMLInputElement>(
+			'[data-testid="agent-vector-stores-modal-index-name"] input',
+		);
+		expect(indexInput.element.value).toBe('');
+	});
 });
