@@ -203,10 +203,14 @@ export class Executor {
 		// The timer's clock (the one scheduling used) is used, not a fresh wall clock, so a
 		// skewed instance doesn't bias the lag it also scheduled against; clamp non-negative
 		// since a timer can fire marginally early.
-		this.metrics.recordDispatch(task.taskType);
-		const lagMs = this.timer.now() - task.runAt.getTime();
-		const lagSeconds = Math.max(0, lagMs) / Time.seconds.toMilliseconds;
-		this.metrics.observeDispatchLagSeconds(task.taskType, lagSeconds);
+		try {
+			this.metrics.recordDispatch(task.taskType);
+			const lagMs = this.timer.now() - task.runAt.getTime();
+			const lagSeconds = Math.max(0, lagMs) / Time.seconds.toMilliseconds;
+			this.metrics.observeDispatchLagSeconds(task.taskType, lagSeconds);
+		} catch {
+			// Metrics are best-effort observability and must not prevent task dispatch.
+		}
 
 		// Record success only after the try, so a failure to record it isn't taken for a
 		// handler failure. Such a failure propagates out (caught by the detached `.catch`
