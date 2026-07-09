@@ -335,9 +335,8 @@ for port in "${PORTS[@]}"; do
 		docker rm -f "$name" >/dev/null 2>&1 || true
 	fi
 
-	# Same bounds as CI (test-evals-instance-ai.yml): capped heap + memory so
-	# a leaking lane restarts instead of dying for the rest of the run, and
-	# pruned executions so the working set stays flat over long runs.
+	# Same bounds as CI (test-evals-instance-ai.yml): capped + restartable
+	# lanes, pruned executions.
 	docker run -d --name "$name" \
 		--env-file "$ENV_FILE_PATH" \
 		--memory 2.5g --memory-swap 2.5g \

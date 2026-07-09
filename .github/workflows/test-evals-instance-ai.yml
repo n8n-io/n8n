@@ -92,15 +92,16 @@ on:
 jobs:
   run-evals:
     name: 'Run Evals'
-    # 8vcpu = 32 GB RAM / 160 GB disk. Full-suite N=10 baselines need ~150 min
-    # of eval time and did not fit the 4vcpu tier at any timeout.
+    # 8vcpu/32GB: full-suite N=10 baselines need ~150 min of eval time and
+    # did not fit the 4vcpu tier at any timeout.
     runs-on: blacksmith-8vcpu-ubuntu-2204
-    timeout-minutes: 240
+    # Long ceiling only for high-N baseline captures; regular runs keep a
+    # tight guard so a wedged run fails fast.
+    timeout-minutes: ${{ fromJSON(inputs.iterations || '3') >= 5 && 240 || 90 }}
     env:
       # Each port hosts an independent n8n container. The eval CLI's
       # work-stealing allocator dispatches builds across them, capped per-lane.
-      # 10 lanes x 2.5 GB memory cap = 25 GB, leaving ~7 GB for the sandbox
-      # service, the eval CLI, dockerd, and the OS on the 32 GB runner.
+      # 10 lanes x 2.5 GB caps = 25 GB, leaving ~7 GB for sandbox + CLI + OS.
       LANE_PORTS: '5678,5679,5680,5681,5682,5683,5684,5685,5686,5687'
     permissions:
       contents: read
@@ -126,10 +127,8 @@ jobs:
         with:
           cache-sha: ${{ inputs.cache-sha }}
 
-      # Memory/disk regressions in this job have been undiagnosable from the
-      # log alone (host OOMs and disk exhaustion leave no application trace).
-      # Sample host + per-container telemetry every 60s for the whole run and
-      # upload it with the results artifact.
+      # Host OOMs and disk exhaustion leave no application trace — sample host
+      # + container telemetry every 60s and ship it with the results artifact.
       - name: Start host telemetry sampler
         run: |
           mkdir -p eval-diag
@@ -199,13 +198,9 @@ jobs:
           IFS=',' read -ra PORTS <<< "$LANE_PORTS"
           for i in "${!PORTS[@]}"; do
             port="${PORTS[$i]}"
-            # Bounded and self-healing: a lane that exhausts its heap dies
-            # predictably (V8 OOM inside the cgroup cap, no swap) and docker
-            # restarts it instead of leaving a dead lane for the rest of the
-            # run. Aggressive execution pruning keeps the working set flat —
-            # the harness reads execution output right after each run, so a
-            # 1h retention is safe. json-file logs are capped: error storms
-            # have filled runner disks through unbounded container logs.
+            # Bounded and self-healing: a lane that exhausts its capped heap is
+            # restarted by docker instead of staying dead; pruning + log caps
+            # keep per-lane disk and memory flat over a multi-hour run.
             docker run -d --name "n8n-eval-$((i+1))" \
               "${NETWORK_ARGS[@]}" \
               --memory 2.5g --memory-swap 2.5g \
@@ -386,9 +381,8 @@ jobs:
           # Layer 1 — accuracy filter: only surface diagnostic signals.
           # `tail -1000` after the filter so we get the LATEST matching lines
           # (post-eval failure signal), not the earliest startup-time ones.
-          # `docker logs -t` keeps timestamps so error onset can be ordered
-          # against the eval timeline post-mortem. The state line surfaces
-          # kernel OOM kills and restarts, which leave no log line of their own.
+          # -t keeps timestamps; the inspect line surfaces OOM kills/restarts,
+          # which leave no log line of their own.
           SIGNALS='sandbox|builder|sandbox-service|daytona|instance.?ai|error|warn|reject|exception|fail'
           for c in $(docker ps -aq --filter "name=n8n-eval-"); do
             name=$(docker inspect --format '{{.Name}}' "$c" | sed 's|^/||')
