@@ -221,6 +221,30 @@ export class InstanceAiPage extends BasePage {
 		return this.getPreviewPanel().getByRole('tab', { name });
 	}
 
+	getAgentArtifactHeader(): Locator {
+		return this.getPreviewPanel().getByTestId('agent-builder-header');
+	}
+
+	getAgentArtifactPreviewButton(): Locator {
+		return this.getPreviewPanel().getByTestId('agent-header-preview-btn');
+	}
+
+	getAgentArtifactPublishButton(): Locator {
+		return this.getPreviewPanel().getByTestId('publish-agent-button');
+	}
+
+	getAgentArtifactEditorColumn(): Locator {
+		return this.getPreviewPanel().getByTestId('agent-builder-editor-column');
+	}
+
+	getAgentArtifactTabs(): Locator {
+		return this.getPreviewPanel().getByTestId('agent-header-tabs');
+	}
+
+	getAgentArtifactChatColumn(): Locator {
+		return this.getPreviewPanel().getByTestId('agent-builder-chat-column');
+	}
+
 	/**
 	 * Resolves to the preview's canvas root. Used by tests to assert the
 	 * preview is hidden (collapsing the panel removes the host from the DOM

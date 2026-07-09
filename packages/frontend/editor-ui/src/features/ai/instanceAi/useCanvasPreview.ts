@@ -80,6 +80,16 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 		return tab?.type === 'agent' ? (tab.projectId ?? null) : null;
 	});
 
+	const activeAgentTarget = computed(() => {
+		const agentId = activeAgentId.value;
+		if (!agentId) return undefined;
+		const projectId = activeAgentProjectId.value;
+		return {
+			agentId,
+			...(projectId ? { projectId } : {}),
+		};
+	});
+
 	const executionResultsByWorkflow = computed(() => {
 		const results = new Map<string, ExecutionResult>();
 		for (const message of thread.messages) {
@@ -356,7 +366,7 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 		for (let i = thread.messages.length - 1; i >= 0; i--) {
 			const msg = thread.messages[i];
 			if (msg.agentTree) {
-				const result = getLatestAgentArtifactResult(msg.agentTree);
+				const result = getLatestAgentArtifactResult(msg.agentTree, activeAgentTarget.value);
 				if (result) return result;
 			}
 		}

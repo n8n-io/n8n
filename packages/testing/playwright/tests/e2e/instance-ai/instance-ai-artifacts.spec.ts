@@ -52,5 +52,27 @@ test.describe(
 				timeout: 30_000,
 			});
 		});
+
+		test('should open agent artifact preview after agent build', async ({ n8n }) => {
+			await n8n.navigate.toInstanceAi();
+
+			await n8n.instanceAi.sendMessage(
+				'Create a minimal n8n Agent named "artifact agent test" that can answer short triage questions.',
+			);
+
+			await expect(n8n.instanceAi.getPreviewTabByName(/artifact agent test/i)).toBeVisible({
+				timeout: 120_000,
+			});
+			await expect(n8n.instanceAi.getAgentArtifactHeader()).toBeVisible();
+			await expect(n8n.instanceAi.getAgentArtifactPreviewButton()).toBeVisible();
+			await expect(n8n.instanceAi.getAgentArtifactPublishButton()).toBeVisible();
+			await expect(n8n.instanceAi.getAgentArtifactEditorColumn()).toBeVisible();
+			await expect(n8n.instanceAi.getAgentArtifactTabs()).toContainText(/Agent/);
+			await expect(n8n.instanceAi.getAgentArtifactTabs()).toContainText(/Sessions/);
+			await expect(n8n.instanceAi.getAgentArtifactTabs()).toContainText(/Settings/);
+			await expect(n8n.instanceAi.getAgentArtifactChatColumn()).toBeHidden();
+
+			await n8n.instanceAi.waitForResponseComplete();
+		});
 	},
 );

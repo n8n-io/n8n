@@ -49,6 +49,8 @@ export interface AgentArtifactResult {
 	kind: 'created' | 'mutated';
 }
 
+type AgentArtifactTarget = Pick<AgentArtifactResult, 'agentId' | 'projectId'>;
+
 /**
  * Walks an agent tree depth-first (most recent last) and returns the workflowId
  * and toolCallId from the latest successful build-workflow / submit-workflow tool result.
@@ -349,9 +351,7 @@ const AGENT_BUILDER_MUTATING_ACTIONS = new Set([
 	'build_custom_tool',
 ]);
 
-function getAgentTarget(
-	node: InstanceAiAgentNode,
-): { agentId: string; projectId?: string } | undefined {
+function getAgentTarget(node: InstanceAiAgentNode): AgentArtifactTarget | undefined {
 	if (node.targetResource?.type !== 'agent' || typeof node.targetResource.id !== 'string') {
 		return undefined;
 	}
@@ -365,13 +365,14 @@ function getAgentTarget(
 
 export function getLatestAgentArtifactResult(
 	node: InstanceAiAgentNode,
+	fallbackTarget?: AgentArtifactTarget,
 ): AgentArtifactResult | undefined {
 	for (let i = node.children.length - 1; i >= 0; i--) {
-		const childResult = getLatestAgentArtifactResult(node.children[i]);
+		const childResult = getLatestAgentArtifactResult(node.children[i], fallbackTarget);
 		if (childResult) return childResult;
 	}
 
-	const target = getAgentTarget(node);
+	const target = getAgentTarget(node) ?? fallbackTarget;
 
 	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
 		const tc = node.toolCalls[i];

@@ -164,6 +164,17 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.emitted('toggle-artifacts-panel')).toBeUndefined();
 	});
 
+	it('hides header management actions in artifact mode', () => {
+		const wrapper = mountHeader({
+			artifactMode: true,
+			agent: { ...baseAgent, hasPublishHistory: true } as AgentResource,
+			headerActions: [{ id: 'delete', label: 'Delete' }],
+		});
+
+		expect(wrapper.find('[data-testid="agent-header-version-history-btn"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-header-actions"]').exists()).toBe(false);
+	});
+
 	it('uses the horizontal dots action menu icon', () => {
 		const wrapper = mountHeader({ headerActions: [{ id: 'delete', label: 'Delete' }] });
 		const action = wrapper.findComponent({ name: 'ActionDropdown' });

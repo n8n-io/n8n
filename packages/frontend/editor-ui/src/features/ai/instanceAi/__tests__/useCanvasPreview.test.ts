@@ -796,6 +796,32 @@ describe('useCanvasPreview', () => {
 			expect(ctx.agentRefreshKey.value).toBe(initialKey + 1);
 			expect(ctx.activeAgentId.value).toBe('agent-1');
 		});
+
+		test('increments agentRefreshKey for active agent mutations without targetResource', async () => {
+			const ctx = setup();
+			registerAgent(ctx.thread, 'agent-1', 'SEO Auditor', 'project-1');
+			ctx.openAgentPreview('agent-1', 'project-1');
+			const initialKey = ctx.agentRefreshKey.value;
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-build-agent',
+								toolName: 'agent_builder',
+								args: { action: 'build_agent' },
+								result: { ok: true, configHash: 'hash-1' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.agentRefreshKey.value).toBe(initialKey + 1);
+			expect(ctx.activeAgentId.value).toBe('agent-1');
+		});
 	});
 
 	describe('auto-open data table preview', () => {

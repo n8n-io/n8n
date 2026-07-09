@@ -222,7 +222,7 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 				@unpublished="(a: AgentResource) => emit('unpublished', a)"
 				@reverted="(a: AgentResource) => emit('reverted', a)"
 			/>
-			<N8nTooltip placement="bottom">
+			<N8nTooltip v-if="!props.artifactMode" placement="bottom">
 				<template #content>
 					<span v-if="isVersionHistoryDisabled">{{
 						i18n.baseText('agents.versionHistory.button.tooltip.empty')
@@ -242,7 +242,7 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 				/>
 			</N8nTooltip>
 			<N8nActionDropdown
-				v-if="headerActions.length > 0"
+				v-if="!props.artifactMode && headerActions.length > 0"
 				:items="headerActions"
 				activator-icon="ellipsis"
 				activator-size="medium"
