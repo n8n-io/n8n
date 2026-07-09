@@ -15,6 +15,7 @@ import type { ToolOpenTarget } from './AgentCapabilitiesSection.types';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
+import AgentChannelsSection from './AgentChannelsSection.vue';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentFilesPanel from './AgentFilesPanel.vue';
@@ -98,30 +99,15 @@ const i18n = useI18n();
 			</div>
 			<div :class="$style.panelAreaContainer">
 				<AgentBuilderTabPanel v-if="activeMainTab === 'agent'" data-testid="agent-tab-content">
-					<AgentCapabilitiesSection
-						:config="localConfig"
-						:tools="localConfig?.tools ?? []"
-						:custom-tools="agent?.tools ?? {}"
-						:skills="appliedSkills"
+					<AgentChannelsSection
 						:connected-triggers="connectedTriggers"
 						:disabled="childrenDisabled"
-						:project-id="projectId"
 						:agent-id="agentId"
+						:project-id="projectId"
 						:is-published="Boolean(agent?.activeVersionId)"
-						:task-refs="localConfig?.tasks ?? []"
-						:reload-key="tasksReloadKey"
 						:validation-issues="configValidationIssues ?? []"
-						@open-tool="emit('open-tool', $event)"
-						@open-skill="emit('open-skill', $event)"
-						@add-tool="emit('add-tool')"
-						@add-skill="emit('add-skill')"
-						@update:config="emit('update:config', $event)"
-						@remove-tool="emit('remove-tool', $event)"
-						@remove-skill="emit('remove-skill', $event)"
 						@update:connected-triggers="emit('update:connected-triggers', $event)"
 						@trigger-added="emit('trigger-added', $event)"
-						@toggle-task="emit('toggle-task', $event)"
-						@tasks-changed="emit('tasks-changed')"
 						@agent-changed="emit('agent-changed')"
 					/>
 
@@ -141,6 +127,28 @@ const i18n = useI18n();
 						:show-instructions-toolbar="true"
 						embedded
 						@update:config="emit('update:config', $event)"
+					/>
+					<AgentCapabilitiesSection
+						:config="localConfig"
+						:tools="localConfig?.tools ?? []"
+						:custom-tools="agent?.tools ?? {}"
+						:skills="appliedSkills"
+						:disabled="childrenDisabled"
+						:project-id="projectId"
+						:agent-id="agentId"
+						:is-published="Boolean(agent?.activeVersionId)"
+						:task-refs="localConfig?.tasks ?? []"
+						:reload-key="tasksReloadKey"
+						:validation-issues="configValidationIssues ?? []"
+						@open-tool="emit('open-tool', $event)"
+						@open-skill="emit('open-skill', $event)"
+						@add-tool="emit('add-tool')"
+						@add-skill="emit('add-skill')"
+						@update:config="emit('update:config', $event)"
+						@remove-tool="emit('remove-tool', $event)"
+						@remove-skill="emit('remove-skill', $event)"
+						@toggle-task="emit('toggle-task', $event)"
+						@tasks-changed="emit('tasks-changed')"
 					/>
 				</AgentBuilderTabPanel>
 

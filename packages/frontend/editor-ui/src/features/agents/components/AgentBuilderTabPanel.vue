@@ -6,7 +6,7 @@
 	display: flex;
 	flex: 0 0 auto;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--lg);
 	width: 100%;
 	padding: 0 0 var(--spacing--2xl);
 }
