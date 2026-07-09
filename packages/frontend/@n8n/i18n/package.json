@@ -53,7 +53,7 @@
     "@vueuse/core": "catalog:frontend",
     "vue": "catalog:frontend",
     "tsdown": "catalog:",
-    "typescript": "catalog:",
+    "typescript": "catalog:tsjs",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vue-tsc": "catalog:frontend"

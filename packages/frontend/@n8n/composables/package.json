@@ -42,7 +42,7 @@
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/tsconfig": "catalog:frontend",
     "tsdown": "catalog:",
-    "typescript": "catalog:",
+    "typescript": "catalog:tsjs",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vue-tsc": "catalog:frontend"

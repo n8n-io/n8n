@@ -8,7 +8,7 @@ import * as sqlUtils from '../utils/sql-utils';
 
 // Mock the sql-utils module
 vi.mock('../utils/sql-utils', async () => ({
-	...(await vi.importActual<typeof import('../utils/sql-utils')>('../utils/sql-utils')),
+	...(await vi.importActual<typeof import('../utils/sql-utils.js')>('../utils/sql-utils')),
 	renameColumnQuery: vi.fn(),
 	toTableName: vi.fn(),
 }));

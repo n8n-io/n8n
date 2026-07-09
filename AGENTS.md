@@ -171,6 +171,27 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
 - **Lazy-load heavy modules** — if a module is only used in a specific code
   path (not every request), use `await import()` at point of use instead of
   top-level `import`. Applies especially to native modules and large parsers.
+- **Dynamic `import()` of relative paths needs explicit extensions** under the
+  nodenext backend configs: `await import('./thing.js')` (or `/index.js` for a
+  directory) — nodenext keeps `import()` as a real dynamic import.
+
+### TypeScript 7 / 6 split
+
+The repo compiles and typechecks with TypeScript 7 (the native compiler;
+`typescript` in the default pnpm catalog). TS 7 ships no JS API, so anything
+that **imports the `typescript` module** stays on the maintained 6.x JS line
+via the `tsjs` named catalog (`"typescript": "catalog:tsjs"`): typescript-eslint
+(through `@n8n/eslint-config`), the vue-tsc frontend packages, editor-ui's
+in-browser language service, `@n8n/vitest-config` (tsc entity transform and the
+`typescript-estree` re-export for tests), tsdown d.ts emit, and the published
+community-node tooling. When adding a tool that needs the TypeScript API, give
+its package the `tsjs` catalog entry — or, for test-only helpers, route the
+import through `@n8n/vitest-config`.
+
+LangChain-heavy backend packages (`cli`, `nodes-langchain`, `ai-utilities`,
+`ai-workflow-builder.ee`) use `module: commonjs` + `moduleResolution: bundler`
+so dual-shipped `.d.ts`/`.d.cts` declarations resolve as a single flavor — see
+the comments in their tsconfigs before changing module settings there.
 
 ### Error Handling
 - Don't use the deprecated `ApplicationError` class anywhere — it's a

@@ -126,7 +126,7 @@ describe('PythonTaskRunnerSandbox', () => {
 			const executionError = { message: 'test error', stack: 'error stack' };
 			executeFunctions.startJob.mockResolvedValue(createResultError(executionError));
 
-			const throwExecutionErrorModule = await import('../throw-execution-error');
+			const throwExecutionErrorModule = await import('../throw-execution-error.js');
 			const throwExecutionErrorSpy = vi
 				.spyOn(throwExecutionErrorModule, 'throwExecutionError')
 				.mockImplementation(() => {
@@ -264,7 +264,7 @@ describe('PythonTaskRunnerSandbox', () => {
 			const executionError = { message: 'tool error', stack: 'error stack' };
 			executeFunctions.startJob.mockResolvedValue(createResultError(executionError));
 
-			const throwExecutionErrorModule = await import('../throw-execution-error');
+			const throwExecutionErrorModule = await import('../throw-execution-error.js');
 			const throwExecutionErrorSpy = vi
 				.spyOn(throwExecutionErrorModule, 'throwExecutionError')
 				.mockImplementation(() => {

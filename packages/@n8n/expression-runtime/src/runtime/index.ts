@@ -27,8 +27,8 @@ declare global {
 		var Duration: typeof import('luxon').Duration;
 		var Interval: typeof import('luxon').Interval;
 		var __prepareForTransfer: (value: unknown) => unknown;
-		var extend: typeof import('../extensions/extend').extend;
-		var extendOptional: typeof import('../extensions/extend').extendOptional;
+		var extend: typeof import('../extensions/extend.js').extend;
+		var extendOptional: typeof import('../extensions/extend.js').extendOptional;
 	}
 }
 

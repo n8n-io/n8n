@@ -322,7 +322,7 @@ export class DataTableService {
 		return result;
 	}
 
-	async upsertRow<T extends boolean | undefined>(
+	async upsertRow(
 		dataTableId: string,
 		projectId: string,
 		dto: Omit<UpsertDataTableRowDto, 'returnData' | 'dryRun'>,
@@ -423,7 +423,7 @@ export class DataTableService {
 		return { data: transformedData, filter: transformedFilter };
 	}
 
-	async updateRows<T extends boolean | undefined>(
+	async updateRows(
 		dataTableId: string,
 		projectId: string,
 		dto: Omit<UpdateDataTableRowDto, 'returnData' | 'dryRun'>,

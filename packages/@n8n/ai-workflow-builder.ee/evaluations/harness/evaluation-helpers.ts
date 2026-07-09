@@ -13,7 +13,10 @@ import { DEFAULTS } from '../support/constants';
  */
 export async function getTracingCallbacks(): Promise<Callbacks | undefined> {
 	try {
-		return await getLangchainCallbacks();
+		// langsmith ships ESM-flavor declarations, so its return type is the
+		// import-flavor CallbackManager — a structural duplicate of the
+		// require-flavor one this package resolves. Same runtime class.
+		return (await getLangchainCallbacks()) as Callbacks | undefined;
 	} catch {
 		return undefined;
 	}

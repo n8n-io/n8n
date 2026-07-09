@@ -6,6 +6,12 @@
 	"compilerOptions": {
 		"target": "es2023",
 		"lib": ["es2023"],
+		// bundler resolution keeps every @langchain/* type on the single import-flavor
+		// d.ts. Under nodenext, static imports (require flavor, .d.cts) and dynamic
+		// import() (import flavor, .d.ts) yield structurally-incompatible duplicates
+		// of BaseChatModel & co. Emit stays CommonJS.
+		"module": "commonjs",
+		"moduleResolution": "bundler",
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
 		"paths": {

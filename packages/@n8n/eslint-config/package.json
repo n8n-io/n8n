@@ -49,7 +49,7 @@
     "eslint-plugin-unused-imports": "^4.1.4",
     "eslint-plugin-vue": "^10.2.0",
     "globals": "^16.2.0",
-    "typescript": "catalog:",
+    "typescript": "catalog:tsjs",
     "typescript-eslint": "^8.35.0",
     "vite": "catalog:",
     "vitest": "catalog:"

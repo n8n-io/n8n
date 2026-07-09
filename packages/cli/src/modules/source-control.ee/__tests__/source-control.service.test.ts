@@ -35,7 +35,7 @@ vi.mock('@n8n/backend-common', async () => ({
 }));
 
 vi.mock('../source-control-helper.ee', async () => ({
-	...(await vi.importActual<typeof import('../source-control-helper.ee')>(
+	...(await vi.importActual<typeof import('../source-control-helper.ee.js')>(
 		'../source-control-helper.ee',
 	)),
 	sourceControlFoldersExistCheck: vi.fn(() => true),

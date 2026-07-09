@@ -4,6 +4,12 @@
 		"@n8n/typescript-config/tsconfig.backend.json"
 	],
 	"compilerOptions": {
+		// bundler resolution keeps dual-shipped deps (ldapts, @modelcontextprotocol/sdk,
+		// @langchain/*) on one declaration flavor — under nodenext, static imports and
+		// dynamic import() resolve structurally-incompatible .d.cts/.d.ts duplicates.
+		// module commonjs keeps the pre-TS7 emit: dynamic import() compiles to require.
+		"module": "commonjs",
+		"moduleResolution": "bundler",
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
 		"lib": ["es2023", "dom"],
@@ -23,7 +29,7 @@
 	"references": [
 		{ "path": "../core/tsconfig.build.json" },
 		{ "path": "../nodes-base/tsconfig.build.cjs.json" },
-		{ "path": "../workflow/tsconfig.build.esm.json" },
+		{ "path": "../workflow/tsconfig.build.cjs.json" },
 		{ "path": "../@n8n/ai-utilities/tsconfig.build.cjs.json" },
 		{ "path": "../@n8n/api-types/tsconfig.build.json" },
 		{ "path": "../@n8n/client-oauth2/tsconfig.build.json" },

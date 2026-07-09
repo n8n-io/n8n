@@ -6,8 +6,8 @@ import {
 import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { DynamicStructuredTool, Tool } from '@langchain/classic/tools';
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
-import type { StreamEvent } from '@langchain/core/dist/tracers/event_stream';
-import type { IterableReadableStream } from '@langchain/core/dist/utils/stream';
+import type { StreamEvent } from '@langchain/core/tracers/log_stream';
+import type { IterableReadableStream } from '@langchain/core/utils/stream';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { AIMessageChunk, MessageContentText } from '@langchain/core/messages';
 import type { ChatPromptTemplate } from '@langchain/core/prompts';

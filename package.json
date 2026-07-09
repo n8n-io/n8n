@@ -87,9 +87,9 @@
     "stylelint": "catalog:",
     "supertest": "^7.1.1",
     "tsc-alias": "^1.8.10",
-    "tsc-watch": "^6.2.0",
+    "tsc-watch": "^7.2.1",
     "turbo": "2.9.15",
-    "typescript": "*",
+    "typescript": "catalog:",
     "yaml": "catalog:",
     "zx": "^8.8.5"
   },
@@ -121,7 +121,6 @@
       "tar-fs": "2.1.4",
       "tslib": "^2.6.2",
       "tsconfig-paths": "^4.2.0",
-      "typescript": "catalog:",
       "vue-tsc": "catalog:frontend",
       "gaxios": ">=7.1.1",
       "google-gax": "^4.3.7",
@@ -207,7 +206,8 @@
       "@lezer/highlight": "patches/@lezer__highlight.patch",
       "v-code-diff": "patches/v-code-diff.patch",
       "vuedraggable@4.1.0": "patches/vuedraggable@4.1.0.patch",
-      "assert@2.1.0": "patches/assert@2.1.0.patch"
+      "assert@2.1.0": "patches/assert@2.1.0.patch",
+      "esprima-next@5.8.4": "patches/esprima-next@5.8.4.patch"
     }
   }
 }

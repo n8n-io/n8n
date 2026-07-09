@@ -1,5 +1,7 @@
-import type { TSESTree } from '@typescript-eslint/typescript-estree';
-import { parse, simpleTraverse, AST_NODE_TYPES } from '@typescript-eslint/typescript-estree';
+// estree is imported through @n8n/vitest-config so it binds to that package's
+// TypeScript 6.x JS API (this package's own `tsc` is the API-less TypeScript 7).
+import type { TSESTree } from '@n8n/vitest-config/typescript-estree';
+import { parse, simpleTraverse, AST_NODE_TYPES } from '@n8n/vitest-config/typescript-estree';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { describe, it, expect } from 'vitest';

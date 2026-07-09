@@ -676,7 +676,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		workflowIds?: string[];
 		status?: ExecutionStatus;
 		excludedExecutionsIds?: string[];
-	}) {
+	}): FindOptionsWhere<IExecutionFlattedDb> {
 		const where: FindOptionsWhere<IExecutionFlattedDb> = {
 			...this.getIdCondition({
 				lastId: params.lastId,

@@ -44,7 +44,9 @@ export const getToolArguments = (body: unknown): Record<string, unknown> => {
 	if (!isJSONRPCRequest(body)) return {};
 	if (!body.params) return {};
 
-	const { arguments: args } = body.params;
+	// Property access instead of `{ arguments: args }` destructuring: TS7 rejects
+	// the `arguments` identifier in a binding pattern inside an arrow function.
+	const args = body.params.arguments;
 	if (isRecord(args)) {
 		return args;
 	}

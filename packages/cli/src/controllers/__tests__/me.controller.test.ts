@@ -24,7 +24,7 @@ import { getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { badPasswords } from '@test/test-data';
 
 vi.mock('@/sso.ee/sso-helpers', async () => ({
-	...(await vi.importActual<typeof import('@/sso.ee/sso-helpers')>('@/sso.ee/sso-helpers')),
+	...(await vi.importActual<typeof import('@/sso.ee/sso-helpers.js')>('@/sso.ee/sso-helpers')),
 	getCurrentAuthenticationMethod: vi.fn(),
 }));
 

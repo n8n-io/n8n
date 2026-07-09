@@ -1,6 +1,6 @@
 import { InvalidGrantError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
-import { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types';
-import { OAuthTokens } from '@modelcontextprotocol/sdk/shared/auth';
+import { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
+import { OAuthTokens } from '@modelcontextprotocol/sdk/shared/auth.js';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { UserRepository, withTransaction } from '@n8n/db';

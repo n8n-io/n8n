@@ -4,7 +4,6 @@
 		"rootDir": "src",
 		"outDir": "dist",
 		"allowSyntheticDefaultImports": true,
-		"esModuleInterop": false,
 		"lib": ["DOM", "DOM.Iterable", "ESNext"],
 		"module": "ESNext",
 		"target": "ESNext",

@@ -44,7 +44,7 @@ vi.mock('ldapts', async () => {
 });
 
 vi.mock('../helpers.ee', async () => ({
-	...(await vi.importActual<typeof import('../helpers.ee')>('../helpers.ee')),
+	...(await vi.importActual<typeof import('../helpers.ee.js')>('../helpers.ee')),
 	getLdapIds: vi.fn(),
 	saveLdapSynchronization: vi.fn(),
 	resolveBinaryAttributes: vi.fn(),

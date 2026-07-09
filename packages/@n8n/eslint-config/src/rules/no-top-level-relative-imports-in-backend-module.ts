@@ -9,7 +9,7 @@ export const NoTopLevelRelativeImportsInBackendModuleRule = ESLintUtils.RuleCrea
 		},
 		messages: {
 			placeInsideInit:
-				"Place this relative import inside the `init` method, using `await import('./path')` syntax.",
+				"Place this relative import inside the `init` method, using `await import('./path.js')` syntax.",
 		},
 		schema: [],
 	},

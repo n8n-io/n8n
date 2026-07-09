@@ -106,7 +106,7 @@ export class FacadeResolver {
 
 /**
  * Extract simple type name from potentially complex type string.
- * Removes import() paths: import("./CanvasPage").CanvasPage → CanvasPage
+ * Removes import() paths: import("./CanvasPage.js").CanvasPage → CanvasPage
  */
 export function extractTypeName(typeText: string): string {
 	return typeText.replace(/import\([^)]+\)\./g, '');

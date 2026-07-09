@@ -12,69 +12,70 @@ const lazyMod = <T>(loader: () => T): (() => T) => {
 };
 
 const loadParseFileTool = lazyMod(
-	() => require('./attachments/parse-file.tool') as typeof import('./attachments/parse-file.tool'),
+	() =>
+		require('./attachments/parse-file.tool') as typeof import('./attachments/parse-file.tool.js'),
 );
 const loadCredentialsTool = lazyMod(
-	() => require('./credentials.tool') as typeof import('./credentials.tool'),
+	() => require('./credentials.tool') as typeof import('./credentials.tool.js'),
 );
 const loadDataTablesTool = lazyMod(
-	() => require('./data-tables.tool') as typeof import('./data-tables.tool'),
+	() => require('./data-tables.tool') as typeof import('./data-tables.tool.js'),
 );
 const loadEvalsTool = lazyMod(
-	() => require('./evals/evals.tool') as typeof import('./evals/evals.tool'),
+	() => require('./evals/evals.tool') as typeof import('./evals/evals.tool.js'),
 );
 const loadExecutionsTool = lazyMod(
-	() => require('./executions.tool') as typeof import('./executions.tool'),
+	() => require('./executions.tool') as typeof import('./executions.tool.js'),
 );
-const loadNodesTool = lazyMod(() => require('./nodes.tool') as typeof import('./nodes.tool'));
+const loadNodesTool = lazyMod(() => require('./nodes.tool') as typeof import('./nodes.tool.js'));
 const loadN8nDocsTool = lazyMod(
-	() => require('./n8n-docs.tool') as typeof import('./n8n-docs.tool'),
+	() => require('./n8n-docs.tool') as typeof import('./n8n-docs.tool.js'),
 );
 const loadCompleteCheckpointTool = lazyMod(
 	() =>
-		require('./orchestration/complete-checkpoint.tool') as typeof import('./orchestration/complete-checkpoint.tool'),
+		require('./orchestration/complete-checkpoint.tool') as typeof import('./orchestration/complete-checkpoint.tool.js'),
 );
 const loadEvalDataAgentTool = lazyMod(
 	() =>
-		require('./orchestration/eval-data-agent.tool') as typeof import('./orchestration/eval-data-agent.tool'),
+		require('./orchestration/eval-data-agent.tool') as typeof import('./orchestration/eval-data-agent.tool.js'),
 );
 const loadEvalSetupAgentTool = lazyMod(
 	() =>
-		require('./orchestration/eval-setup-agent.tool') as typeof import('./orchestration/eval-setup-agent.tool'),
+		require('./orchestration/eval-setup-agent.tool') as typeof import('./orchestration/eval-setup-agent.tool.js'),
 );
 const loadPlanTool = lazyMod(
-	() => require('./orchestration/plan.tool') as typeof import('./orchestration/plan.tool'),
+	() => require('./orchestration/plan.tool') as typeof import('./orchestration/plan.tool.js'),
 );
 const loadReportVerificationVerdictTool = lazyMod(
 	() =>
-		require('./orchestration/report-verification-verdict.tool') as typeof import('./orchestration/report-verification-verdict.tool'),
+		require('./orchestration/report-verification-verdict.tool') as typeof import('./orchestration/report-verification-verdict.tool.js'),
 );
 const loadVerifyBuiltWorkflowTool = lazyMod(
 	() =>
-		require('./orchestration/verify-built-workflow.tool') as typeof import('./orchestration/verify-built-workflow.tool'),
+		require('./orchestration/verify-built-workflow.tool') as typeof import('./orchestration/verify-built-workflow.tool.js'),
 );
 const loadResearchTool = lazyMod(
-	() => require('./research.tool') as typeof import('./research.tool'),
+	() => require('./research.tool') as typeof import('./research.tool.js'),
 );
 const loadAskUserTool = lazyMod(
-	() => require('./shared/ask-user.tool') as typeof import('./shared/ask-user.tool'),
+	() => require('./shared/ask-user.tool') as typeof import('./shared/ask-user.tool.js'),
 );
 const loadTaskControlTool = lazyMod(
-	() => require('./task-control.tool') as typeof import('./task-control.tool'),
+	() => require('./task-control.tool') as typeof import('./task-control.tool.js'),
 );
 const loadApplyWorkflowCredentialsTool = lazyMod(
 	() =>
-		require('./workflows/apply-workflow-credentials.tool') as typeof import('./workflows/apply-workflow-credentials.tool'),
+		require('./workflows/apply-workflow-credentials.tool') as typeof import('./workflows/apply-workflow-credentials.tool.js'),
 );
 const loadBuildWorkflowTool = lazyMod(
 	() =>
-		require('./workflows/build-workflow.tool') as typeof import('./workflows/build-workflow.tool'),
+		require('./workflows/build-workflow.tool') as typeof import('./workflows/build-workflow.tool.js'),
 );
 const loadWorkflowsTool = lazyMod(
-	() => require('./workflows.tool') as typeof import('./workflows.tool'),
+	() => require('./workflows.tool') as typeof import('./workflows.tool.js'),
 );
 const loadWorkspaceTool = lazyMod(
-	() => require('./workspace.tool') as typeof import('./workspace.tool'),
+	() => require('./workspace.tool') as typeof import('./workspace.tool.js'),
 );
 
 /**

@@ -48,7 +48,7 @@
     "remark-gfm": "^4.0.1",
     "storybook": "catalog:storybook",
     "storybook-addon-vue-mdx": "3.0.0",
-    "typescript": "catalog:",
+    "typescript": "catalog:tsjs",
     "unplugin-icons": "catalog:frontend",
     "vite": "catalog:",
     "vite-svg-loader": "catalog:frontend",

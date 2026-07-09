@@ -65,7 +65,7 @@ describe('Jira -> GenericFunctions', () => {
 
 		beforeEach(async () => {
 			vi.resetModules();
-			({ jiraSoftwareCloudApiRequest } = await import('../GenericFunctions'));
+			({ jiraSoftwareCloudApiRequest } = await import('../GenericFunctions.js'));
 			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 			mockExecuteFunctions.helpers.requestWithAuthentication.mockResolvedValue({});
 			mockExecuteFunctions.getNode.mockReturnValue({ name: 'Jira' } as ReturnType<

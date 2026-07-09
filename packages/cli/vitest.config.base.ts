@@ -1,9 +1,9 @@
 import { createVitestConfigWithDecorators } from '@n8n/vitest-config/node-decorators';
+import { tscEntityTransform } from '@n8n/vitest-config/tsc-entity-transform';
 import path from 'node:path';
 import { mergeConfig } from 'vite';
 import { configDefaults } from 'vitest/config';
 
-import { tscEntityTransform } from './vitest.tsc-entity-transform';
 import { workspaceDistExternals } from './vitest.workspace-externals';
 
 /**
@@ -28,7 +28,17 @@ export const baseConfig = mergeConfig(createVitestConfigWithDecorators(), {
 	// `workspaceDistExternals` must run before `tscEntityTransform`: once a
 	// workspace package is externalized to its built dist, the entity transform
 	// (which only targets first-party `src/**/*.entity.ts`) never sees it.
-	plugins: [workspaceDistExternals(), tscEntityTransform()],
+	plugins: [
+		workspaceDistExternals(),
+		tscEntityTransform({
+			// Tests always run with cwd = the package dir (per package.json scripts /
+			// CI `working-directory`); `__dirname` is unreliable when Vitest loads the
+			// config as ESM. cli's entities are not under a single directory, so key
+			// off the `*.entity.ts` / `*.config.ts` suffix instead.
+			projectDir: process.cwd(),
+			filter: (file) => /\.(entity|config)\.ts$/.test(file),
+		}),
+	],
 	resolve: { alias },
 	test: {
 		// Run each test file in its own forked process.

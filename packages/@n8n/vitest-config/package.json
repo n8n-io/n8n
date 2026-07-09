@@ -6,7 +6,10 @@
     "vite": "catalog:",
     "vitest": "catalog:"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@typescript-eslint/typescript-estree": "^8.35.0",
+    "typescript": "catalog:tsjs"
+  },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "vite": "catalog:",
@@ -36,6 +39,16 @@
       "import": "./dist/node-decorators.js",
       "require": "./dist/node-decorators.js",
       "types": "./dist/node-decorators.d.ts"
+    },
+    "./tsc-entity-transform": {
+      "import": "./dist/tsc-entity-transform.js",
+      "require": "./dist/tsc-entity-transform.js",
+      "types": "./dist/tsc-entity-transform.d.ts"
+    },
+    "./typescript-estree": {
+      "import": "./dist/typescript-estree.js",
+      "require": "./dist/typescript-estree.js",
+      "types": "./dist/typescript-estree.d.ts"
     }
   },
   "scripts": {

@@ -2,6 +2,8 @@
 	"extends": "@n8n/typescript-config/tsconfig.common.json",
 	"compilerOptions": {
 		"composite": true,
+		"module": "esnext",
+		"moduleResolution": "bundler",
 		"declaration": true,
 		"tsBuildInfoFile": "${configDir}/dist/backend.tsbuildinfo"
 	},

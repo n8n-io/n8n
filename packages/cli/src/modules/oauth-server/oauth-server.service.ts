@@ -1,4 +1,4 @@
-import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients';
+import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients.js';
 import {
 	InvalidGrantError,
 	InvalidTargetError,
@@ -6,13 +6,13 @@ import {
 import type {
 	AuthorizationParams,
 	OAuthServerProvider,
-} from '@modelcontextprotocol/sdk/server/auth/provider';
-import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types';
+} from '@modelcontextprotocol/sdk/server/auth/provider.js';
+import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import type {
 	OAuthClientInformationFull,
 	OAuthTokens,
 	OAuthTokenRevocationRequest,
-} from '@modelcontextprotocol/sdk/shared/auth';
+} from '@modelcontextprotocol/sdk/shared/auth.js';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';

@@ -58,6 +58,7 @@
     "vite": "catalog:",
     "vitest": "catalog:",
     "vite-plugin-dts": "catalog:",
+    "typescript": "catalog:tsjs",
     "vue-tsc": "catalog:frontend"
   },
   "license": "LicenseRef-n8n-sustainable-use"

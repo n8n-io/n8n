@@ -54,7 +54,7 @@
     "@testing-library/jest-dom": "catalog:frontend",
     "@testing-library/user-event": "catalog:frontend",
     "tsdown": "catalog:",
-    "typescript": "catalog:",
+    "typescript": "catalog:tsjs",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vue-tsc": "catalog:frontend"

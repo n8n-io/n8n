@@ -483,7 +483,7 @@ describe('createLlmMockHandler', () => {
 	});
 
 	it('should cache node config across calls for the same node name', async () => {
-		const { extractNodeConfig } = (await import('../node-config')) as unknown as {
+		const { extractNodeConfig } = (await import('../node-config.js')) as unknown as {
 			extractNodeConfig: Mock;
 		};
 		extractNodeConfig.mockReturnValue('{"resource":"message"}');
@@ -532,7 +532,7 @@ describe('createLlmMockHandler', () => {
 	});
 
 	it('should extract config separately for different node names', async () => {
-		const { extractNodeConfig } = (await import('../node-config')) as unknown as {
+		const { extractNodeConfig } = (await import('../node-config.js')) as unknown as {
 			extractNodeConfig: Mock;
 		};
 		extractNodeConfig.mockReturnValue('{}');

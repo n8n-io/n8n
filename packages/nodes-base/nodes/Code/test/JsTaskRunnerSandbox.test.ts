@@ -125,7 +125,7 @@ describe('JsTaskRunnerSandbox', () => {
 			executeFunctions.startJob.mockResolvedValue(createResultError(executionError));
 
 			// Mock throwExecutionError to throw an error for testing
-			const throwExecutionErrorModule = await import('../throw-execution-error');
+			const throwExecutionErrorModule = await import('../throw-execution-error.js');
 			const throwExecutionErrorSpy = vi
 				.spyOn(throwExecutionErrorModule, 'throwExecutionError')
 				.mockImplementation(() => {
@@ -209,7 +209,7 @@ describe('JsTaskRunnerSandbox', () => {
 			executeFunctions.startJob.mockResolvedValue(createResultError(executionError));
 
 			// Mock throwExecutionError to throw an error for testing
-			const throwExecutionErrorModule = await import('../throw-execution-error');
+			const throwExecutionErrorModule = await import('../throw-execution-error.js');
 			const throwExecutionErrorSpy = vi
 				.spyOn(throwExecutionErrorModule, 'throwExecutionError')
 				.mockImplementation(() => {
@@ -233,7 +233,7 @@ describe('JsTaskRunnerSandbox', () => {
 			>);
 
 			// Mock throwExecutionError to throw an error for testing
-			const throwExecutionErrorModule = await import('../throw-execution-error');
+			const throwExecutionErrorModule = await import('../throw-execution-error.js');
 			const throwExecutionErrorSpy = vi
 				.spyOn(throwExecutionErrorModule, 'throwExecutionError')
 				.mockImplementation(() => {

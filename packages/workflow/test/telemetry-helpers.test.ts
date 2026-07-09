@@ -37,7 +37,8 @@ import { randomInt } from '../src/utils';
 import { DEFAULT_EVALUATION_METRIC } from '../src/evaluation-helpers';
 
 vi.mock('../src/node-helpers', async () => {
-	const actual = await vi.importActual<typeof import('../src/node-helpers')>('../src/node-helpers');
+	const actual =
+		await vi.importActual<typeof import('../src/node-helpers.js')>('../src/node-helpers');
 	return {
 		...actual,
 		getNodeParameters: vi.fn().mockImplementation(actual.getNodeParameters),

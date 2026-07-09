@@ -69,6 +69,7 @@
     "vite": "catalog:",
     "vite-plugin-dts": "catalog:",
     "vitest": "catalog:",
+    "typescript": "catalog:tsjs",
     "vue-tsc": "catalog:frontend"
   },
   "files": [

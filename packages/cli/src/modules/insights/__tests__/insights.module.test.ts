@@ -33,7 +33,7 @@ describe('InsightsModule', () => {
 		Container.set(InstanceSettings, mockInstanceSettings);
 		Container.set(Logger, mockLogger());
 		Container.set(LicenseState, mock<LicenseState>());
-		// The conditional `await import('./insights-collection.service')` resolves
+		// The conditional `await import('./insights-collection.service.js')` resolves
 		// this DI token, so asserting on the mock's lifecycle calls verifies the
 		// load happened without probing module-loader internals.
 		Container.set(InsightsCollectionService, mockCollectionService);

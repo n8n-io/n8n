@@ -36,7 +36,7 @@ vi.mock('../community-node-types-utils', () => ({
 	getCommunityNodeTypes: vi.fn().mockResolvedValue([]),
 }));
 vi.mock('../npm-utils', async () => ({
-	...(await vi.importActual<typeof import('../npm-utils')>('../npm-utils')),
+	...(await vi.importActual<typeof import('../npm-utils.js')>('../npm-utils')),
 	executeNpmCommand: vi.fn(),
 	executeNpmRequest: vi.fn().mockResolvedValue({}),
 	checkIfVersionExistsOrThrow: vi.fn().mockResolvedValue(true),

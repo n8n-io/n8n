@@ -15,10 +15,11 @@ import type { InstalledPackages } from '../installed-packages.entity';
 import { executeNpmCommand } from '../npm-utils';
 
 vi.mock('../npm-utils', async () => ({
-	...(await vi.importActual<typeof import('../npm-utils')>('../npm-utils')),
+	...(await vi.importActual<typeof import('../npm-utils.js')>('../npm-utils')),
 	executeNpmCommand: vi.fn(),
-	isNpmExecErrorWithStdout: (await vi.importActual<typeof import('../npm-utils')>('../npm-utils'))
-		.isNpmExecErrorWithStdout,
+	isNpmExecErrorWithStdout: (
+		await vi.importActual<typeof import('../npm-utils.js')>('../npm-utils')
+	).isNpmExecErrorWithStdout,
 }));
 
 const mockedExecuteNpmCommand = vi.mocked(executeNpmCommand);

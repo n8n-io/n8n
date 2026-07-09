@@ -28,6 +28,7 @@
     "@types/chrome": "0.0.300",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/test-utils": "catalog:frontend",
+    "typescript": "catalog:tsjs",
     "unplugin-icons": "catalog:frontend",
     "vite": "catalog:",
     "vite-svg-loader": "catalog:frontend",

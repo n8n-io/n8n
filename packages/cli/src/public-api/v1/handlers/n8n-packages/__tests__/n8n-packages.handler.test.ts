@@ -23,7 +23,7 @@ let handler: Record<string, Array<(...args: unknown[]) => unknown>>;
 let exportPackage: (...args: unknown[]) => unknown;
 
 beforeAll(async () => {
-	handler = (await import('../n8n-packages.handler')) as unknown as typeof handler;
+	handler = (await import('../n8n-packages.handler.js')) as unknown as typeof handler;
 	exportPackage = handler.exportPackage[1];
 });
 

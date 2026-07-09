@@ -697,7 +697,7 @@ describe('Google Sheet - Append or Update', () => {
 		mockGoogleSheet.appendSheetData.mockResolvedValueOnce([]);
 
 		// Mock the checkForSchemaChanges import to verify it's called
-		const GoogleSheetsUtils = await import('../../../v2/helpers/GoogleSheets.utils');
+		const GoogleSheetsUtils = await import('../../../v2/helpers/GoogleSheets.utils.js');
 		vi.spyOn(GoogleSheetsUtils, 'checkForSchemaChanges').mockImplementation(() => {});
 
 		await execute.call(mockExecuteFunctions, mockGoogleSheet, 'Sheet1', '1234');

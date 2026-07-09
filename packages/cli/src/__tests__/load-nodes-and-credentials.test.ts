@@ -9,7 +9,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
 
-vi.mock('lodash/debounce', () => ({ default: (fn: () => void) => fn }));
+vi.mock('lodash/debounce.js', () => ({ default: (fn: () => void) => fn }));
 
 vi.mock('@parcel/watcher', () => {
 	const subscribe = vi.fn().mockResolvedValue(undefined);
@@ -520,7 +520,7 @@ describe('LoadNodesAndCredentials', () => {
 
 		beforeEach(async () => {
 			// Import the mocked functions
-			const toolGeneration = await import('@/tool-generation');
+			const toolGeneration = await import('@/tool-generation/index.js');
 			createAiTools = toolGeneration.createAiTools as Mock;
 			createHitlTools = toolGeneration.createHitlTools as Mock;
 

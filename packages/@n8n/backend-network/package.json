@@ -22,23 +22,23 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./src/index.ts",
-      "require": "./dist/index.js"
+      "require": "./dist/index.js",
+      "import": "./dist/index.js"
     },
     "./testing": {
       "types": "./dist/testing.d.ts",
-      "import": "./src/testing.ts",
-      "require": "./dist/testing.js"
+      "require": "./dist/testing.js",
+      "import": "./dist/testing.js"
     },
     "./transport": {
       "types": "./dist/transport.d.ts",
-      "import": "./src/transport.ts",
-      "require": "./dist/transport.js"
+      "require": "./dist/transport.js",
+      "import": "./dist/transport.js"
     },
     "./proxy": {
       "types": "./dist/proxy/index.d.ts",
-      "import": "./src/proxy/index.ts",
-      "require": "./dist/proxy/index.js"
+      "require": "./dist/proxy/index.js",
+      "import": "./dist/proxy/index.js"
     }
   },
   "typesVersions": {

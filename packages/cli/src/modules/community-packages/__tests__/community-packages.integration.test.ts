@@ -1,5 +1,5 @@
 vi.mock('../npm-utils', async () => ({
-	...(await vi.importActual<typeof import('../npm-utils')>('../npm-utils')),
+	...(await vi.importActual<typeof import('../npm-utils.js')>('../npm-utils')),
 	executeNpmCommand: vi.fn(),
 }));
 

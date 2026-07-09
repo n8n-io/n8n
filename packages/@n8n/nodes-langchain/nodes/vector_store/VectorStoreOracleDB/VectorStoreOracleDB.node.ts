@@ -1,5 +1,6 @@
 import type { Document } from '@langchain/core/documents';
 import type { EmbeddingsInterface } from '@langchain/core/embeddings';
+import type { VectorStore } from '@langchain/core/vectorstores';
 import { createVectorStoreNode, metadataFilterField } from '@n8n/ai-utilities';
 import { DistanceStrategy, OracleVS, type OracleDBVSArgs } from '@oracle/langchain-oracledb';
 import type { OracleDBNodeCredentials } from 'n8n-nodes-base/dist/nodes/Oracle/Sql/helpers/interfaces';
@@ -141,11 +142,19 @@ const createLazyOraclePool = (
 	return new LazyOraclePool(getPool) as unknown as oracledb.Pool;
 };
 
+// @oracle/langchain-oracledb ships CJS-flavor declarations, so every inherited
+// member's @langchain/core types read as duplicates of our import-flavor ones
+// ("two different types with this name exist"). Bridge the base class to the
+// local flavor once so the subclass satisfies `extends VectorStore`.
+const OracleVSAsVectorStore = OracleVS as unknown as new (
+	...args: ConstructorParameters<typeof OracleVS>
+) => InstanceType<typeof OracleVS> & VectorStore;
+
 /**
  * Extends OracleVS so retriever calls merge the node-level filter
  * with any ad-hoc filter provided at runtime.
  */
-class ExtendedOracleDBVectorStore extends OracleVS {
+class ExtendedOracleDBVectorStore extends OracleVSAsVectorStore {
 	static async initialize(
 		embeddings: EmbeddingsInterface,
 		args: OracleDBVSArgs,

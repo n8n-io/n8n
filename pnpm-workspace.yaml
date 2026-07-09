@@ -197,7 +197,7 @@ catalog:
   tsdown: ^0.16.5
   tsx: ^4.19.3
   turndown: ^7.2.2
-  typescript: 6.0.2
+  typescript: 7.0.2
   uuid: 11.1.1
   vite: ^8.0.2
   vite-plugin-dts: ^4.5.4
@@ -214,6 +214,12 @@ catalog:
 catalogMode: strict
 
 catalogs:
+  # TypeScript 7 (default catalog) is the native compiler with no JS API.
+  # Packages that import the `typescript` module (typescript-eslint, vue-tsc,
+  # editor-ui's in-browser language service, vite dts/decorator transforms)
+  # stay on the maintained 6.x JS line via this catalog.
+  tsjs:
+    typescript: 6.0.2
   e2e:
     '@currents/playwright': ^2.0.0
     '@playwright/cli': 0.1.0
@@ -267,3 +273,7 @@ minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
   - '@n8n/*'
   - '@n8n_io/*'
+  # TypeScript 7.0.2 GA (2026-07-08) is younger than the 3-day window.
+  # Remove this exclusion once the release ages out (after 2026-07-11).
+  - typescript
+  - '@typescript/*'

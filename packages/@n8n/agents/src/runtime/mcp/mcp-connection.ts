@@ -1,9 +1,5 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
-/** Don't remove the .js extensions. That's how the @modelcontextprotocol/sdk is packaged. */
-import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import type { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import type { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import type { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+/** Don't remove the .js extension. That's how the @modelcontextprotocol/sdk is packaged. */
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import { McpToolResolver } from './mcp-tool-resolver';
@@ -14,44 +10,46 @@ import type { BuiltTool } from '../../types/sdk/tool';
 /** The raw result returned by an MCP tool call. */
 export type McpCallToolResult = CallToolResult;
 
-interface McpSdkModule {
-	Client: typeof import('@modelcontextprotocol/sdk/client/index.js').Client;
-	SSEClientTransport: typeof import('@modelcontextprotocol/sdk/client/sse.js').SSEClientTransport;
-	StdioClientTransport: typeof import('@modelcontextprotocol/sdk/client/stdio.js').StdioClientTransport;
-	StreamableHTTPClientTransport: typeof import('@modelcontextprotocol/sdk/client/streamableHttp.js').StreamableHTTPClientTransport;
-	CallToolResultSchema: typeof import('@modelcontextprotocol/sdk/types.js').CallToolResultSchema;
-}
-
-let mcpSdkPromise: Promise<McpSdkModule> | undefined;
-
 /**
- * Load the @modelcontextprotocol/sdk client subpaths on first use. Deferred so
- * the agents module's startup cost stays low — the SDK loads ~12 MB of code
- * that is only needed once a user actually configures an MCP server.
+ * Load the @modelcontextprotocol/sdk client subpaths. Deferred so the agents
+ * module's startup cost stays low — the SDK loads ~12 MB of code that is only
+ * needed once a user actually configures an MCP server.
  */
-async function loadMcpSdk(): Promise<McpSdkModule> {
-	mcpSdkPromise ??= Promise.all([
+async function importMcpSdk() {
+	const [
+		{ Client },
+		{ SSEClientTransport },
+		{ StdioClientTransport },
+		{ StreamableHTTPClientTransport },
+		{ CallToolResultSchema },
+	] = await Promise.all([
 		import('@modelcontextprotocol/sdk/client/index.js'),
 		import('@modelcontextprotocol/sdk/client/sse.js'),
 		import('@modelcontextprotocol/sdk/client/stdio.js'),
 		import('@modelcontextprotocol/sdk/client/streamableHttp.js'),
 		import('@modelcontextprotocol/sdk/types.js'),
-	]).then(
-		([
-			{ Client },
-			{ SSEClientTransport },
-			{ StdioClientTransport },
-			{ StreamableHTTPClientTransport },
-			{ CallToolResultSchema },
-		]) => ({
-			Client,
-			SSEClientTransport,
-			StdioClientTransport,
-			StreamableHTTPClientTransport,
-			CallToolResultSchema,
-		}),
-	);
-	return await mcpSdkPromise;
+	]);
+	return {
+		Client,
+		SSEClientTransport,
+		StdioClientTransport,
+		StreamableHTTPClientTransport,
+		CallToolResultSchema,
+	};
+}
+
+// Derived from the actual dynamic imports so the members can't drift to the
+// other module flavor of the SDK's dual-shipped declarations.
+type McpSdkModule = Awaited<ReturnType<typeof importMcpSdk>>;
+type Client = InstanceType<McpSdkModule['Client']>;
+type SSEClientTransport = InstanceType<McpSdkModule['SSEClientTransport']>;
+type StdioClientTransport = InstanceType<McpSdkModule['StdioClientTransport']>;
+type StreamableHTTPClientTransport = InstanceType<McpSdkModule['StreamableHTTPClientTransport']>;
+
+let mcpSdkPromise: Promise<McpSdkModule> | undefined;
+
+async function loadMcpSdk(): Promise<McpSdkModule> {
+	return await (mcpSdkPromise ??= importMcpSdk());
 }
 
 function applyToolFilter<T extends { name: string }>(

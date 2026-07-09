@@ -20,7 +20,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import { Workflow, createEmptyRunExecutionData } from 'n8n-workflow';
-import type { ICredentialsDecrypted } from 'n8n-workflow/src';
+import type { ICredentialsDecrypted } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import * as executionContexts from '@/execution-engine/node-execution-context';

@@ -57,6 +57,7 @@
     "vite-svg-loader": "catalog:frontend",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
+    "typescript": "catalog:tsjs",
     "vue-tsc": "catalog:frontend"
   },
   "dependencies": {

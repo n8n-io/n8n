@@ -48,14 +48,14 @@ describe('combineBySql sandbox config', () => {
 	});
 
 	afterEach(async () => {
-		const { resetSandboxCache } = await import('../../v3/helpers/sandbox-utils');
+		const { resetSandboxCache } = await import('../../v3/helpers/sandbox-utils.js');
 		resetSandboxCache();
 		Container.reset();
 	});
 
 	it('passes the configured memory limit to isolated-vm', async () => {
 		Container.set(NodesConfig, { mergeSqlSandboxMemoryLimitMb: 128 } as NodesConfig);
-		const { createSandboxContext } = await import('../../v3/helpers/sandbox-utils');
+		const { createSandboxContext } = await import('../../v3/helpers/sandbox-utils.js');
 
 		const context = await createSandboxContext();
 		context.release();

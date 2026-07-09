@@ -1,7 +1,6 @@
 import { BufferLoader } from '@langchain/classic/document_loaders/fs/buffer';
 import { Document } from '@langchain/core/documents';
 import { LoggerProxy as Logger } from 'n8n-workflow';
-import type { PDFParse as PDFParseClass } from 'pdf-parse';
 
 export interface N8nPdfLoaderOptions {
 	splitPages?: boolean;
@@ -34,8 +33,9 @@ export class N8nPdfLoader extends BufferLoader {
 
 		const { PDFParse } = await import('pdf-parse');
 
-		// Buffer extends Uint8Array; PDFParse accepts it directly.
-		const parser: PDFParseClass = new PDFParse({ data: raw });
+		// Buffer extends Uint8Array; PDFParse accepts it directly. Type is inferred
+		// from the dynamic import so it can't drift to the other module flavor.
+		const parser = new PDFParse({ data: raw });
 
 		try {
 			// pageJoiner default ('-- page X of Y --') would pollute the extracted

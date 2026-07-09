@@ -4,43 +4,49 @@ import ts from 'typescript';
 import type { Plugin } from 'vite';
 
 /**
- * Vite plugin that transpiles this package's TypeORM entity files (`*.entity.ts`)
- * through the real TypeScript compiler (a full `ts.LanguageService`, not single-file
+ * Vite plugin that transpiles TypeORM entity / `@Config` class files through the
+ * real TypeScript compiler (a full `ts.LanguageService`, not single-file
  * `transpileModule`). Every other source file is left to Vite's fast oxc transform.
  *
  * TypeORM entities rely on `emitDecoratorMetadata` to derive column types from the
- * reflected `design:type`. For a string-literal union column, only `tsc` with
- * cross-file type information collapses the union to `String` — Vite's oxc transform
- * (and SWC) emit `Object`, which TypeORM rejects at `DataSource.initialize()`. oxc
- * additionally emits a runtime value reference for the type-only `Relation<T>` typeorm
- * export, so an entity importing `type Relation` fails to load at all (`@n8n/typeorm
- * does not provide an export named 'Relation'`). A full `tsc` Program fixes both.
+ * reflected `design:type`. For a string-literal union column (e.g.
+ * `providerType: AuthProviderType`, where the alias is imported from another file),
+ * only `tsc` with cross-file type information collapses the union to `String`. Vite's
+ * oxc transform — and SWC — emit `Object` instead, which TypeORM rejects at
+ * `DataSource.initialize()`. Single-file `transpileModule` also emits `Object` because
+ * it can't resolve the imported alias. A full Program is required.
  *
- * This mirrors `packages/@n8n/db/vite.config.ts`. cli's entities are not under a single
- * directory, so the plugin keys off the `*.entity.ts` suffix and roots the Program at
- * those files; the rest of `src` keeps the fast oxc path.
+ * This imports `typescript` from this package's own dependency (the 6.x JS line —
+ * the TypeScript 7 native compiler ships no JS API), so consumers can stay on
+ * TypeScript 7 for their own `tsc` while tests keep correct metadata emit.
+ *
+ * Scoping via `filter` keeps the cost contained: only the matched files pay the tsc
+ * price (and the Program is rooted there), while DI `@Service` constructor metadata —
+ * which oxc emits correctly — keeps the fast path for the rest of the sources.
  */
-export function tscEntityTransform(): Plugin {
-	// Tests always run with cwd = the package dir (per package.json scripts / CI
-	// `working-directory`). Deriving from `__dirname` is unreliable here because the
-	// plugin module may be loaded as ESM by Vitest's config loader.
-	const projectDir = process.cwd();
-	// TypeORM entities and `@Config` classes both rely on `emitDecoratorMetadata`
-	// (`design:type`) that oxc gets wrong for cross-file union/zod-inferred types.
-	const isEntity = (file: string) => /\.(entity|config)\.ts$/.test(file);
+export function tscEntityTransform(options: {
+	/** Directory containing the consuming package's tsconfig.json. */
+	projectDir: string;
+	/** Returns true for `path.normalize()`d absolute paths that need real tsc emit. */
+	filter: (file: string) => boolean;
+}): Plugin {
+	const { projectDir, filter } = options;
 	let emit: ((fileName: string) => { code: string; map: unknown } | null) | undefined;
 
 	function createEmitter() {
 		const configPath = ts.findConfigFile(projectDir, ts.sys.fileExists, 'tsconfig.json');
 		if (!configPath) {
-			throw new Error('Could not find tsconfig.json for cli');
+			throw new Error(`Could not find tsconfig.json for ${projectDir}`);
 		}
 
 		const { config } = ts.readConfigFile(configPath, ts.sys.readFile);
 		const parsed = ts.parseJsonConfigFileContent(config, ts.sys, projectDir);
-		const rootFiles = parsed.fileNames.filter((f) => isEntity(path.normalize(f)));
+		// Root the Program at the matched files only; their imported types (e.g. union
+		// aliases, related entities) are still resolved on demand via the host's
+		// snapshot reads, so cross-file metadata stays correct.
+		const rootFiles = parsed.fileNames.filter((f) => filter(path.normalize(f)));
 
-		const options: ts.CompilerOptions = {
+		const compilerOptions: ts.CompilerOptions = {
 			...parsed.options,
 			module: ts.ModuleKind.ESNext,
 			target: ts.ScriptTarget.ES2022,
@@ -67,6 +73,8 @@ export function tscEntityTransform(): Plugin {
 			versions.set(path.normalize(f), 0);
 		}
 
+		// Re-read `fileName` from disk and, if its content changed since the last read,
+		// bump the script version so the LanguageService invalidates its cached emit.
 		function refresh(fileName: string): string | undefined {
 			const norm = path.normalize(fileName);
 			const next = fs.existsSync(norm) ? fs.readFileSync(norm, 'utf-8') : undefined;
@@ -91,7 +99,7 @@ export function tscEntityTransform(): Plugin {
 				return text === undefined ? undefined : ts.ScriptSnapshot.fromString(text);
 			},
 			getCurrentDirectory: () => projectDir,
-			getCompilationSettings: () => options,
+			getCompilationSettings: () => compilerOptions,
 			getDefaultLibFileName: (o) => ts.getDefaultLibFilePath(o),
 			fileExists: ts.sys.fileExists,
 			readFile: ts.sys.readFile,
@@ -104,6 +112,8 @@ export function tscEntityTransform(): Plugin {
 
 		return (fileName: string) => {
 			const norm = path.normalize(fileName);
+			// Pick up on-disk edits (watch mode) by bumping the script version when the
+			// content changes; otherwise the LanguageService reuses a stale cached emit.
 			if (refresh(norm) === undefined) {
 				return null;
 			}
@@ -124,7 +134,7 @@ export function tscEntityTransform(): Plugin {
 		enforce: 'pre',
 		transform(_code, id) {
 			const file = path.normalize(id.split('?')[0]);
-			if (!isEntity(file)) return null;
+			if (!filter(file)) return null;
 			emit ??= createEmitter();
 			const result = emit(file);
 			return result ? { code: result.code, map: result.map as never } : null;

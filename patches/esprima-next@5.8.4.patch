@@ -1,0 +1,12 @@
+diff --git a/package.json b/package.json
+index b6705fb49ce415da70e43857f4abbe5356ba9088..ddfc34fb7f49e777dc3f3753f3301f9caea41e7a 100644
+--- a/package.json
++++ b/package.json
+@@ -7,6 +7,7 @@
+   "types": "./dist/esm/esprima.d.ts",
+   "exports": {
+     ".": {
++      "types": "./dist/esm/esprima.d.ts",
+       "require": "./dist/esprima.js",
+       "import": "./dist/esm/esprima.js",
+       "default": "./dist/esprima.js"

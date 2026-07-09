@@ -19,7 +19,7 @@
     "@typescript-eslint/parser": "^8.35.0",
     "eslint-plugin-n8n-nodes-base": "catalog:",
     "semver": "catalog:",
-    "typescript": "catalog:",
+    "typescript": "catalog:tsjs",
     "tmp": "0.2.4"
   },
   "devDependencies": {
