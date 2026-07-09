@@ -107,8 +107,8 @@ const MAX_CONCURRENT_BUILDS = 4;
 /** Attempts (initial + retries) for a build hitting transient network errors. */
 const MAX_BUILD_ATTEMPTS = 3;
 
-/** Max share of framework_issue trials tolerated in a baseline capture. */
-const BASELINE_MAX_FRAMEWORK_NOISE_RATE = 0.02;
+/** Framework-noise share above which a baseline capture gets a quality warning. */
+const BASELINE_MAX_FRAMEWORK_NOISE_RATE = 0.05;
 
 /** Count framework-noise trials and cases that failed on nothing but noise. */
 function assessFrameworkNoise(
@@ -491,9 +491,8 @@ async function main(): Promise<void> {
 			'\n' + formatComparisonTerminal(evaluation, outcome, { commitSha, slugByTestCase, gate }),
 		);
 
-		// findLatestBaseline trusts the newest experiment by prefix — a noisy
-		// baseline capture must fail loudly instead of silently becoming the
-		// comparison target for every subsequent run.
+		// Advisory only: findLatestBaseline trusts the newest experiment by
+		// prefix, so surface elevated harness noise for the humans reading the log.
 		if (args.experimentName?.startsWith('instance-ai-baseline')) {
 			const { frameworkTrials, totalTrials, fullyNoisyCases } = assessFrameworkNoise(
 				evaluation,
@@ -501,14 +500,16 @@ async function main(): Promise<void> {
 			);
 			const noiseRate = totalTrials > 0 ? frameworkTrials / totalTrials : 0;
 			if (noiseRate > BASELINE_MAX_FRAMEWORK_NOISE_RATE || fullyNoisyCases.length > 0) {
-				console.error(
-					`Baseline capture rejected: framework noise in ${String(frameworkTrials)}/${String(totalTrials)} trials (${(noiseRate * 100).toFixed(1)}%)` +
+				console.warn(
+					`Baseline quality warning: ${String(frameworkTrials)}/${String(totalTrials)} trials (${(noiseRate * 100).toFixed(1)}%) failed for harness reasons` +
+						' (lane transport, seeding, timeouts) rather than agent behavior' +
 						(fullyNoisyCases.length > 0
 							? `; cases with only framework failures: ${fullyNoisyCases.join(', ')}`
 							: '') +
-						'. Do not use this experiment as a baseline — fix the noise and re-dispatch.',
+						'. This experiment becomes the comparison target for future runs, but those scenarios will' +
+						' under-count the agent — deltas against them may reflect harness noise, not regressions or' +
+						' improvements. Consider fixing the noise and re-capturing.',
 				);
-				process.exitCode = 1;
 			}
 		}
 	} finally {

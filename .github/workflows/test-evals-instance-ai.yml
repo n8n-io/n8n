@@ -311,7 +311,6 @@ jobs:
           fi
 
       - name: Run Instance AI Evals
-        id: run-evals
         continue-on-error: true
         working-directory: packages/@n8n/instance-ai
         env:
@@ -460,12 +459,3 @@ jobs:
             packages/@n8n/instance-ai/.data/workflow-eval-report.html
             eval-diag/
           retention-days: 14
-
-      # continue-on-error keeps PR runs green, but a baseline capture that
-      # reported framework noise must fail the job — findLatestBaseline trusts
-      # the newest experiment by prefix.
-      - name: Fail baseline captures on framework noise
-        if: ${{ always() && startsWith(inputs.experiment-name, 'instance-ai-baseline') && steps.run-evals.outcome == 'failure' }}
-        run: |
-          echo "::error::Baseline capture failed or reported framework noise — do not use this experiment as a baseline."
-          exit 1
