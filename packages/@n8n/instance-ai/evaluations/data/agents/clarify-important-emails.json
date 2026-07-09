@@ -18,7 +18,7 @@
 	"tags": ["intent-resolution", "under-specified"],
 	"datasets": ["agents"],
 	"processExpectations": [
-		"Before proposing a concrete design, the agent asks the user how 'important' should be determined (fixed rules vs judgment), rather than proposing a build based on a guessed definition.",
+		"The agent asks the user how 'important' should be determined (fixed rules vs judgment) and does not commit to a guessed definition — a provisional outline that keeps the importance criterion open (e.g. presenting rule-based and AI-judgment as options) is acceptable; finalizing or building around one guessed interpretation is not.",
 		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to propose."
 	]
 }
