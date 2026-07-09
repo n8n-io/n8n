@@ -853,6 +853,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				passed: outcome.passed,
 				score: outcome.score,
 				reasoning: outcome.reasoning,
+				failureCategory: outcome.failureCategory,
 				...(outcome.incomplete ? { incomplete: true } : {}),
 				execErrors: [],
 				buildDurationMs,

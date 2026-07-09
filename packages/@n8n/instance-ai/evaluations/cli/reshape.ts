@@ -147,6 +147,9 @@ export function sentinelOutcomeFromVerdicts(verdicts: BuildExpectationResult[] |
 	score: number;
 	reasoning: string;
 	incomplete?: boolean;
+	/** Only on non-passing outcomes — without a category the feedback extractor
+	 *  files the row under 'unknown' in the LangSmith failure_category column. */
+	failureCategory?: 'expectations_failed' | 'verification_failure';
 } {
 	const evaluated = (verdicts ?? []).filter((v) => !v.incomplete);
 	if (evaluated.length === 0) {
@@ -155,6 +158,7 @@ export function sentinelOutcomeFromVerdicts(verdicts: BuildExpectationResult[] |
 			score: 0,
 			reasoning: 'Build-only case — no expectation verdicts (judge incomplete)',
 			incomplete: true,
+			failureCategory: 'verification_failure',
 		};
 	}
 	const failed = evaluated.filter((v) => !v.pass);
@@ -165,6 +169,7 @@ export function sentinelOutcomeFromVerdicts(verdicts: BuildExpectationResult[] |
 		reasoning: passed
 			? `Build-only case — all ${String(evaluated.length)} expectations passed`
 			: `Build-only case — failed expectations: ${failed.map((v) => v.expectation).join('; ')}`,
+		...(passed ? {} : { failureCategory: 'expectations_failed' as const }),
 	};
 }
 

@@ -344,6 +344,7 @@ describe('sentinelOutcomeFromVerdicts', () => {
 		const out = sentinelOutcomeFromVerdicts([pass('a'), pass('b')]);
 		expect(out).toMatchObject({ passed: true, score: 1 });
 		expect(out.incomplete).toBeUndefined();
+		expect(out.failureCategory).toBeUndefined();
 		expect(out.reasoning).toContain('all 2 expectations passed');
 	});
 
@@ -373,6 +374,19 @@ describe('sentinelOutcomeFromVerdicts', () => {
 				score: 0,
 				incomplete: true,
 			});
+		}
+	});
+
+	// Non-passing sentinels need an explicit category — target() forwards it, and
+	// without one the feedback extractor labels the LangSmith row 'unknown'.
+	it('categorizes failed expectations as expectations_failed', () => {
+		const out = sentinelOutcomeFromVerdicts([pass('a'), fail('b')]);
+		expect(out.failureCategory).toBe('expectations_failed');
+	});
+
+	it('categorizes judge-dead outcomes as verification_failure', () => {
+		for (const verdicts of [undefined, [], [noVerdict('a')]]) {
+			expect(sentinelOutcomeFromVerdicts(verdicts).failureCategory).toBe('verification_failure');
 		}
 	});
 });
