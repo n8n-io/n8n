@@ -3,6 +3,7 @@ import type { JsonValue } from 'n8n-workflow';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { TestCaseExecutionRecord, TestRunRecord } from './evaluation.api';
 import type { TestTableColumn } from './components/shared/TestTableBase.vue';
+import type { EvalCollectionRunStatus } from './evalCollections.types';
 
 /**
  * Extract a human-readable answer string from an end-node output value.
@@ -87,6 +88,16 @@ export function normalizeMetricValue(value: number | undefined): number | undefi
 // maxed-out bar and an avg doesn't blow up.
 export function isScoreShapedMetric(value: unknown): value is number {
 	return typeof value === 'number' && value >= 0 && value <= 1;
+}
+
+// A run set is "running" while any run is still queued or executing, else
+// "done". Shared by the collection card and the compare header so the two
+// surfaces can't disagree; callers that also have a not-yet-loaded state keep
+// their own `null` guard around this.
+export function deriveRunsStatus(
+	runs: Array<{ status: EvalCollectionRunStatus }>,
+): 'running' | 'done' {
+	return runs.some((run) => run.status === 'new' || run.status === 'running') ? 'running' : 'done';
 }
 
 // Reduce per-run aggregate metrics to the score-shaped ([0, 1]) metrics that

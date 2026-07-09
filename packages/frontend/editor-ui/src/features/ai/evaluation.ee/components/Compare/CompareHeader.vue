@@ -4,6 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 import type { CompareVersion } from '../../composables/useCompareData';
+import { deriveRunsStatus } from '../../evaluation.utils';
 import VersionAvatar from '../shared/VersionAvatar.vue';
 
 const props = defineProps<{
@@ -14,11 +15,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 
-// "running" while any run is still new/in-flight, else "done". Mirrors the
-// collection card's derivation so the two surfaces agree.
-const status = computed<'done' | 'running'>(() =>
-	props.versions.some((v) => v.status === 'new' || v.status === 'running') ? 'running' : 'done',
-);
+const status = computed(() => deriveRunsStatus(props.versions));
 
 const legend = computed(() =>
 	props.versions.map((version) => ({

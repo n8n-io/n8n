@@ -39,9 +39,10 @@ const letters = computed(() => props.versions.map((version) => version.letter));
 			<N8nText tag="h3" size="medium" bold>
 				{{ i18n.baseText('evaluation.compare.scoreChart.heading') }}
 			</N8nText>
+			<!-- Tooltip stays enabled so the "coming soon" hint on the disabled
+			     Per-case option is actually reachable. -->
 			<N8nTooltip
 				placement="top"
-				:disabled="mode === 'average'"
 				:content="i18n.baseText('evaluation.compare.scoreChart.toggle.perCaseComingSoon')"
 			>
 				<N8nRadioButtons v-model="mode" size="small" :options="modeOptions" />

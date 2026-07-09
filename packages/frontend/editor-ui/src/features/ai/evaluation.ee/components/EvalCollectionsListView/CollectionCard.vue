@@ -11,7 +11,7 @@ import type {
 	EvaluationCollectionDetail,
 	EvaluationCollectionRecord,
 } from '../../evalCollections.types';
-import { buildScoreShapedMetricGroups } from '../../evaluation.utils';
+import { buildScoreShapedMetricGroups, deriveRunsStatus } from '../../evaluation.utils';
 import GroupedMetricChart from '../shared/GroupedMetricChart.vue';
 import VersionAvatar from '../shared/VersionAvatar.vue';
 
@@ -36,11 +36,9 @@ const openCompare = () => {
 // `null` until the detail (with run statuses) has loaded — the list view only
 // pre-fetches detail for the first few cards and lazy-loads the rest on hover,
 // so we must not assert "Done" for a card whose runs might still be in flight.
-const status = computed<'done' | 'running' | null>(() => {
-	if (!props.detail) return null;
-	const inFlight = props.detail.runs.some((r) => r.status === 'new' || r.status === 'running');
-	return inFlight ? 'running' : 'done';
-});
+const status = computed<'done' | 'running' | null>(() =>
+	props.detail ? deriveRunsStatus(props.detail.runs) : null,
+);
 
 // Append a right arrow so the CTA reads "Open compare →" the way the
 // Figma mock does. N8nButton doesn't accept a trailing icon prop today,

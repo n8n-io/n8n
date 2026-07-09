@@ -19,6 +19,10 @@ vi.mock('@/app/composables/useToast', () => ({
 	useToast: vi.fn(() => ({ showError: vi.fn(), showMessage: vi.fn() })),
 }));
 
+vi.mock('@/app/stores/posthog.store', () => ({
+	usePostHog: () => ({ waitForFeatureFlags: vi.fn(async () => {}) }),
+}));
+
 const flagState = { enabled: true };
 vi.mock('../composables/useEvalCollectionsFlag', () => ({
 	useEvalCollectionsFlag: () => ({

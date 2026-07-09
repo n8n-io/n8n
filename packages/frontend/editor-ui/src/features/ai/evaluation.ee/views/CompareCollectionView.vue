@@ -6,6 +6,7 @@ import { useRouter } from 'vue-router';
 
 import { VIEWS } from '@/app/constants';
 import { useToast } from '@/app/composables/useToast';
+import { usePostHog } from '@/app/stores/posthog.store';
 
 import CompareHeader from '../components/Compare/CompareHeader.vue';
 import ScoreChart from '../components/Compare/ScoreChart.vue';
@@ -23,6 +24,7 @@ const i18n = useI18n();
 const router = useRouter();
 const toast = useToast();
 const store = useEvalCollectionsStore();
+const postHog = usePostHog();
 const isEvalCollectionsEnabled = useEvalCollectionsFlag();
 
 const detail = computed(() => store.getDetail(props.collectionId));
@@ -48,6 +50,10 @@ function backToList() {
 onMounted(async () => {
 	// A direct URL must not reach the compare view when the flag is off — mirror
 	// the backend 404-ing its routes by bouncing back to the evaluations list.
+	// Wait for client-side flag evaluation first: `isFeatureEnabled` coerces the
+	// still-pending state to `false`, which is right for a reactive `v-if` but
+	// would wrongly bounce an entitled cohort user hard-reloading this URL.
+	await postHog.waitForFeatureFlags();
 	if (!isEvalCollectionsEnabled.value) {
 		void router.replace({ name: VIEWS.EVALUATION_EDIT, params: { workflowId: props.workflowId } });
 		return;
@@ -59,12 +65,10 @@ onMounted(async () => {
 // (only the param changes), so tear down the previous collection's poll and
 // refetch — otherwise a stale timer keeps hitting the backend.
 watch(
-	() => `${props.workflowId}:${props.collectionId}`,
-	async (next, prev) => {
-		if (next === prev) return;
-		const [, prevCollectionId] = prev.split(':');
+	[() => props.workflowId, () => props.collectionId],
+	([, collectionId], [, prevCollectionId]) => {
 		store.stopPolling(prevCollectionId);
-		await load(props.workflowId, props.collectionId);
+		void load(props.workflowId, collectionId);
 	},
 );
 
