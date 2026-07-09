@@ -3,10 +3,8 @@ import { computed, onMounted } from 'vue';
 import { N8nTag } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
 
 const aiGatewayStore = useAiGatewayStore();
-const settingsStore = useSettingsStore();
 const i18n = useI18n();
 
 const text = computed(() => {
@@ -19,10 +17,10 @@ const text = computed(() => {
 			});
 });
 
+// No enabled-check needed: this tag only mounts inside the n8n Connect
+// section, which is only built when the AI gateway is enabled.
 onMounted(() => {
-	if (settingsStore.isAiGatewayEnabled) {
-		void aiGatewayStore.fetchWallet();
-	}
+	void aiGatewayStore.fetchWallet();
 });
 </script>
 
