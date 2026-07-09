@@ -61,6 +61,7 @@
     "@types/node": "catalog:",
     "@types/yargs-parser": "21.0.0",
     "@vitest/coverage-v8": "catalog:",
+    "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"
   },
