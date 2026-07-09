@@ -1,6 +1,9 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
+// AI root node types (single source in @n8n/workflow-sdk mock-data) — lets
+// the typo guard accept a no-sub-node Agent.
+import { isAiRootNodeType } from '@n8n/workflow-sdk';
 import {
 	findAiRootNodeNames,
 	type INode,
@@ -13,10 +16,6 @@ import {
 
 import { buildDateAnchors } from './date-anchors';
 import { extractNodeConfig } from './node-config';
-
-// AI root node types (single source in @n8n/workflow-sdk mock-data) — lets
-// the typo guard accept a no-sub-node Agent.
-import { isAiRootNodeType } from '@n8n/workflow-sdk';
 
 export { isAiRootNodeType };
 

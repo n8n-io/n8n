@@ -191,6 +191,20 @@ describe('generateSimulationFixtures', () => {
 		expect(result.B).toEqual([{ id: 'row-1' }]);
 	});
 
+	it('keeps other fixtures when the LLM returns an empty array for one node', async () => {
+		// The old .min(1) schema rejected the WHOLE batch on one empty array.
+		setupAgentMock(JSON.stringify({ A: [], B: [{ json: { id: 1 } }] }));
+		const result = await generateSimulationFixtures({
+			workflow: wf([
+				{ name: 'A', type: 'n8n-nodes-base.slack' },
+				{ name: 'B', type: 'n8n-nodes-base.gmail' },
+			]),
+			plan: [simulateVerdict('A'), simulateVerdict('B')],
+		});
+		expect(result.A).toEqual([{}]);
+		expect(result.B).toEqual([{ id: 1 }]);
+	});
+
 	it('repairs the output envelope for simulated Agent roots with a structured parser', async () => {
 		setupAgentMock(
 			// Failure mode: parsed fields spread flat with no `output` envelope.

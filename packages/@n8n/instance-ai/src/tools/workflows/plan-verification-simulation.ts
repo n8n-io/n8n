@@ -2,8 +2,8 @@
  * Verification Simulation Planning
  *
  * Single entry point for the execute-vs-simulate plan and its mock fixtures,
- * shared by the build and submit tools so the planning policy cannot drift
- * between the two submit paths. The policy:
+ * produced by the build tool at submit time (reconcile-simulation-plan
+ * re-derives parts of it when credentials change later). The policy:
  *
  * - Never blocks the submit — failures degrade, they do not throw.
  * - An empty plan (no candidate nodes) is kept as `[]` so verify can tell
@@ -79,8 +79,52 @@ function withSimulatedTriggerVerdicts(
 	return verdicts;
 }
 
-const CREDENTIALLESS_AI_ROOT_SIMULATION_REASON =
+export const CREDENTIALLESS_AI_ROOT_SIMULATION_REASON =
 	'Language model sub-node has no configured credentials — output is simulated during verification';
+
+/**
+ * AI-root node names whose `ai_languageModel` sub-node has no usable
+ * credentials (none configured, or configured but mocked). Exported so plan
+ * reconciliation can re-derive the same set from the live workflow once
+ * credentials change.
+ */
+export function findCredentiallessAiRoots(
+	workflow: WorkflowJSON,
+	mockedNodeNames: Set<string>,
+): Set<string> {
+	const nodesByName = new Map(
+		(workflow.nodes ?? [])
+			.filter((node): node is WorkflowJSON['nodes'][number] & { name: string } =>
+				Boolean(node.name),
+			)
+			.map((node) => [node.name, node] as const),
+	);
+
+	// `ai_languageModel` connections run sub-node → root, so the connection
+	// SOURCE is the model and the listed targets are the roots it feeds.
+	const roots = new Set<string>();
+	for (const [sourceName, nodeConns] of Object.entries(workflow.connections ?? {})) {
+		const modelConns = (nodeConns as Record<string, unknown>).ai_languageModel;
+		if (!Array.isArray(modelConns)) continue;
+
+		const subNode = nodesByName.get(sourceName);
+		if (!subNode || subNode.disabled) continue;
+		const credentialless =
+			mockedNodeNames.has(sourceName) ||
+			!subNode.credentials ||
+			Object.keys(subNode.credentials).length === 0;
+		if (!credentialless) continue;
+
+		for (const group of modelConns) {
+			if (!Array.isArray(group)) continue;
+			for (const conn of group) {
+				if (typeof conn !== 'object' || conn === null || !('node' in conn)) continue;
+				roots.add((conn as { node: string }).node);
+			}
+		}
+	}
+	return roots;
+}
 
 /**
  * AI roots (Agent/Chain) whose `ai_languageModel` sub-node has no usable
@@ -105,29 +149,7 @@ function withSimulatedCredentiallessAiRootVerdicts(
 			.map((node) => [node.name, node] as const),
 	);
 
-	// `ai_languageModel` connections run sub-node → root, so the connection
-	// SOURCE is the model and the listed targets are the roots it feeds.
-	const rootsWithCredentiallessModel = new Set<string>();
-	for (const [sourceName, nodeConns] of Object.entries(workflow.connections ?? {})) {
-		const modelConns = (nodeConns as Record<string, unknown>).ai_languageModel;
-		if (!Array.isArray(modelConns)) continue;
-
-		const subNode = nodesByName.get(sourceName);
-		if (!subNode || subNode.disabled) continue;
-		const credentialless =
-			mockedNodeNames.has(sourceName) ||
-			!subNode.credentials ||
-			Object.keys(subNode.credentials).length === 0;
-		if (!credentialless) continue;
-
-		for (const group of modelConns) {
-			if (!Array.isArray(group)) continue;
-			for (const conn of group) {
-				if (typeof conn !== 'object' || conn === null || !('node' in conn)) continue;
-				rootsWithCredentiallessModel.add((conn as { node: string }).node);
-			}
-		}
-	}
+	const rootsWithCredentiallessModel = findCredentiallessAiRoots(workflow, mockedNodeNames);
 	if (rootsWithCredentiallessModel.size === 0) return plan;
 
 	const verdicts = plan.map((verdict) =>
@@ -251,7 +273,19 @@ export async function planVerificationSimulation({
 			error: error instanceof Error ? error.message : String(error),
 		});
 		if (declaredFixtures) {
+			// Re-apply ALL deterministic passes, not just the declared verdicts: a
+			// classification failure must never leave a plan where a simulated-only
+			// trigger has no verdict — verify would accept the plan and the trigger
+			// (e.g. a polling node) would really fire. Fixture-less simulated nodes
+			// are pinned with an empty item downstream, so skipping generation here
+			// is safe.
 			nodeSimulationPlan = withDeclaredOutputVerdicts(nodeSimulationPlan ?? [], declaredFixtures);
+			nodeSimulationPlan = withSimulatedTriggerVerdicts(nodeSimulationPlan, workflow);
+			nodeSimulationPlan = withSimulatedCredentiallessAiRootVerdicts(
+				nodeSimulationPlan,
+				workflow,
+				new Set(mockedNodeNames ?? []),
+			);
 			simulationFixtures = declaredFixtures;
 		}
 	}

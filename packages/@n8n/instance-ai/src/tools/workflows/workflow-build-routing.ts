@@ -47,7 +47,7 @@ function determineVerificationReadiness(
 	if (!outcome.triggerNodes?.some((node) => isTriggerNodeType(node.nodeType))) {
 		return {
 			status: 'not_verifiable',
-			reason: 'non-mockable-trigger',
+			reason: 'no-trigger-node',
 			guidance: 'The workflow does not have a trigger node the post-build verifier can start from.',
 		};
 	}

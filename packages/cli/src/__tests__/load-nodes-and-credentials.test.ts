@@ -241,7 +241,7 @@ describe('LoadNodesAndCredentials', () => {
 			).toEqual({ type: 'object' });
 		});
 
-		it('should fall back to the nearest version', () => {
+		it('should fall back to an available older version', () => {
 			const lookup = instance.createOutputSchemaLookup();
 			expect(
 				lookup({

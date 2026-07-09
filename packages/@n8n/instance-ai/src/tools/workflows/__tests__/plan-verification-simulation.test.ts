@@ -175,6 +175,34 @@ describe('planVerificationSimulation — simulated trigger verdicts', () => {
 		});
 	});
 
+	it('still injects trigger and AI-root verdicts when classification throws but declared fixtures exist', async () => {
+		mockClassify.mockRejectedValue(new Error('classifier down'));
+
+		const { nodeSimulationPlan, simulationFixtures } = await planVerificationSimulation({
+			workflow: wf(
+				[
+					{ name: 'On New Email', type: 'n8n-nodes-base.gmailTrigger' },
+					{ name: 'Draft Reply', type: '@n8n/n8n-nodes-langchain.agent' },
+					{ name: 'OpenAI Model', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' },
+					{ name: 'Send Reply', type: 'n8n-nodes-base.gmail' },
+				],
+				modelConnection('OpenAI Model', 'Draft Reply'),
+			),
+			declaredOutputFixtures: { 'Send Reply': [{ id: 'declared' }] },
+			workflowId: 'wf-1',
+		});
+
+		// The catch path must not hand verify a plan where the polling trigger
+		// has no verdict — it would run for real.
+		expect(nodeSimulationPlan?.find((v) => v.nodeName === 'On New Email')).toMatchObject({
+			verdict: 'simulate',
+		});
+		expect(nodeSimulationPlan?.find((v) => v.nodeName === 'Draft Reply')).toMatchObject({
+			verdict: 'simulate',
+		});
+		expect(simulationFixtures).toEqual({ 'Send Reply': [{ id: 'declared' }] });
+	});
+
 	it('keeps declared-output fixtures authoritative over the trigger injection', async () => {
 		mockClassify.mockResolvedValue([]);
 

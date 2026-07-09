@@ -21,7 +21,6 @@ import type {
 	WorkflowJSON,
 } from '@n8n/workflow-sdk';
 import {
-	AGENT_NODE_TYPE,
 	buildDateAnchors,
 	buildPinDataUserPrompt,
 	buildSchemaContexts as buildSchemaContextsShared,
@@ -204,14 +203,9 @@ export async function generateEvalPinData(
 
 		const pinData = parsePinDataResponse(responseText, expectedNodeNames);
 
-		// The `{ output: ... }` envelope repair only holds for Agent roots —
-		// chainLlm unwraps parser output flat, so wrapping it would break
-		// downstream references.
-		const agentParserTargets = [...outputParserTargets.keys()].filter(
-			(name) =>
-				name in pinData && eligibleNodes.some((n) => n.name === name && n.type === AGENT_NODE_TYPE),
-		);
-		const repaired = repairStructuredAgentOutput(pinData, agentParserTargets);
+		// Envelope repair for Agent-with-parser roots; the shared helper scopes
+		// itself to Agent nodes (chainLlm output must stay flat).
+		const repaired = repairStructuredAgentOutput(pinData, workflowJson);
 
 		const generatedCount = Object.keys(repaired).length;
 		logger?.verbose(

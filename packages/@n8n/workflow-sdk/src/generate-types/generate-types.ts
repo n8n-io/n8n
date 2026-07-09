@@ -723,14 +723,14 @@ function compareVersionTuplesDesc(a: number[], b: number[]): number {
 
 /**
  * Find the best matching version directory for a given version.
- * Tries an exact full-semver match first (2.3 → v2.3.0), then the closest
- * lower version comparing full X.Y.Z tuples — so a minor-versioned node
- * (typeVersion 2.3 with dirs v2.0.0/v2.2.0/v2.4.0) resolves to v2.2.0, not
- * an arbitrary same-major pick.
+ * Tries an exact full-semver match first (2.3 → v2.3.0), then the nearest
+ * same-major dir (closest below, then closest above — a v2.x node must not
+ * lose its schemas just because only a higher v2 minor was recorded), then
+ * the newest lower-major dir.
  *
- * NOTE: the closest-LOWER fallback deliberately differs from n8n-core's
- * runtime resolver (newest-first); converging them is tracked with the
- * runtime-caller migration in the harmonization spec.
+ * NOTE: unlike n8n-core's runtime resolver this never falls forward to a
+ * NEWER major — generated types should not describe a next-generation API
+ * shape; converging the two is tracked in the harmonization spec.
  *
  * @param schemaDir Path to the __schema__ directory
  * @param version Target version number
@@ -742,18 +742,27 @@ function findVersionDirectory(schemaDir: string, version: number): string | unde
 		return exactPath;
 	}
 
-	// Scan for available versions and find the closest lower one
 	const target = padVersion(version).split('.').map(Number);
 	try {
 		const entries = fs.readdirSync(schemaDir, { withFileTypes: true });
 		const versionDirs = entries
 			.filter((e) => e.isDirectory() && /^v\d+(\.\d+)*$/.test(e.name))
-			.map((e) => ({ name: e.name, tuple: parseVersionDir(e.name) }))
-			.filter((v) => compareVersionTuplesDesc(v.tuple, target) >= 0)
-			.sort((a, b) => compareVersionTuplesDesc(a.tuple, b.tuple));
+			.map((e) => ({ name: e.name, tuple: parseVersionDir(e.name) }));
 
-		if (versionDirs.length > 0) {
-			return path.join(schemaDir, versionDirs[0].name);
+		const sameMajor = versionDirs.filter((v) => v.tuple[0] === target[0]);
+		const best =
+			sameMajor
+				.filter((v) => compareVersionTuplesDesc(v.tuple, target) >= 0)
+				.sort((a, b) => compareVersionTuplesDesc(a.tuple, b.tuple))[0] ??
+			sameMajor
+				.filter((v) => compareVersionTuplesDesc(v.tuple, target) < 0)
+				.sort((a, b) => compareVersionTuplesDesc(b.tuple, a.tuple))[0] ??
+			versionDirs
+				.filter((v) => v.tuple[0] < target[0])
+				.sort((a, b) => compareVersionTuplesDesc(a.tuple, b.tuple))[0];
+
+		if (best) {
+			return path.join(schemaDir, best.name);
 		}
 	} catch {
 		// Ignore read errors

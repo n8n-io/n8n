@@ -159,26 +159,46 @@ describe('repairStructuredAgentOutput', () => {
 	it('parses JSON-encoded string outputs', () => {
 		const repaired = repairStructuredAgentOutput(
 			{ 'AI Root': [{ json: { output: '{"summary":"hi"}' } }] },
-			['AI Root'],
+			workflow,
 		);
 
 		expect(repaired['AI Root'][0]).toEqual({ json: { output: { summary: 'hi' } } });
 	});
 
-	it('wraps flat parsed fields into the output envelope', () => {
-		const repaired = repairStructuredAgentOutput({ 'AI Root': [{ json: { summary: 'hi' } }] }, [
-			'AI Root',
-		]);
+	it('wraps flat parsed fields into the output envelope without mutating the input', () => {
+		const input = { 'AI Root': [{ json: { summary: 'hi' } }] };
+		const repaired = repairStructuredAgentOutput(input, workflow);
 
 		expect(repaired['AI Root'][0]).toEqual({ json: { output: { summary: 'hi' } } });
+		expect(input['AI Root'][0]).toEqual({ json: { summary: 'hi' } });
 	});
 
 	it('leaves well-shaped items and plain-text outputs alone', () => {
 		const wellShaped = { 'AI Root': [{ json: { output: { summary: 'hi' } } }] };
-		expect(repairStructuredAgentOutput(wellShaped, ['AI Root'])).toEqual(wellShaped);
+		expect(repairStructuredAgentOutput(wellShaped, workflow)).toEqual(wellShaped);
 
 		const plainText = { 'AI Root': [{ json: { output: 'just text' } }] };
-		expect(repairStructuredAgentOutput(plainText, ['AI Root'])).toEqual(plainText);
+		expect(repairStructuredAgentOutput(plainText, workflow)).toEqual(plainText);
+	});
+
+	it('never touches non-Agent parser targets — chainLlm output stays flat', () => {
+		const chainWorkflow = {
+			nodes: [
+				{ name: 'Chain', type: '@n8n/n8n-nodes-langchain.chainLlm', typeVersion: 1.5 },
+				{
+					name: 'Parser',
+					type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+					typeVersion: 1.2,
+					parameters: { schemaType: 'manual', inputSchema: '{"type":"object"}' },
+				},
+			],
+			connections: {
+				Parser: { ai_outputParser: [[{ node: 'Chain', type: 'ai_outputParser', index: 0 }]] },
+			},
+		} as unknown as WorkflowJSON;
+		const flat = { Chain: [{ json: { summary: 'hi' } }] };
+
+		expect(repairStructuredAgentOutput(flat, chainWorkflow)).toEqual(flat);
 	});
 });
 

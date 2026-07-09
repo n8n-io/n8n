@@ -52,7 +52,7 @@ describe('withDeterministicRouting', () => {
 
 			expect(outcome.verificationReadiness).toMatchObject({
 				status: 'not_verifiable',
-				reason: 'non-mockable-trigger',
+				reason: 'no-trigger-node',
 			});
 		}
 	});

@@ -18,7 +18,6 @@ import type {
 	PinDataGenerationInstructions,
 } from '@n8n/workflow-sdk';
 import {
-	AGENT_NODE_TYPE,
 	buildDateAnchors,
 	buildPinDataUserPrompt,
 	buildSchemaContexts,
@@ -106,12 +105,7 @@ export async function generatePinData(options: GeneratePinDataOptions): Promise<
 		);
 	}
 
-	// The `{ output: ... }` envelope repair only holds for Agent roots —
-	// chainLlm unwraps parser output flat, so wrapping it would break
-	// downstream references.
-	const agentParserTargets = [...outputParserTargets.keys()].filter(
-		(name) =>
-			name in pinData && targetNodes.some((n) => n.name === name && n.type === AGENT_NODE_TYPE),
-	);
-	return repairStructuredAgentOutput(pinData, agentParserTargets);
+	// Envelope repair for Agent-with-parser roots; the shared helper scopes
+	// itself to Agent nodes (chainLlm output must stay flat).
+	return repairStructuredAgentOutput(pinData, workflow);
 }

@@ -280,8 +280,9 @@ export class LoadNodesAndCredentials {
 
 	/**
 	 * Schema lookup for mock/pin-data generation: parsed `__schema__` content
-	 * with nearest-version fallback, resolved through `known.nodes` so it works
-	 * for community nodes and production installs alike.
+	 * with version fallback (same major first, then older, then newer — see the
+	 * n8n-core resolver), resolved through `known.nodes` so it works for
+	 * community nodes and production installs alike.
 	 */
 	createOutputSchemaLookup(): OutputSchemaLookup {
 		return ({ type, typeVersion, resource, operation }) => {

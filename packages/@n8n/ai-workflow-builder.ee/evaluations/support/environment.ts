@@ -232,12 +232,22 @@ export function createNodesBaseSchemaLookup(): OutputSchemaLookup | undefined {
 	if (!repoRoot) return undefined;
 	const packageRoot = path.join(repoRoot, 'packages', 'nodes-base');
 	const knownNodesPath = path.join(packageRoot, 'dist', 'known', 'nodes.json');
-	if (!fs.existsSync(knownNodesPath)) return undefined;
+	if (!fs.existsSync(knownNodesPath)) {
+		// Degradation is real but easy to miss: every fixture silently drops to
+		// API-knowledge-only generation, so make the stale/missing build loud.
+		console.warn(
+			`[SCHEMA-LOOKUP] ${knownNodesPath} not found (nodes-base not built?) — pin data will be generated without __schema__ shapes`,
+		);
+		return undefined;
+	}
 
 	let knownNodes: Record<string, { sourcePath?: string } | undefined>;
 	try {
 		knownNodes = jsonParse(fs.readFileSync(knownNodesPath, 'utf-8'));
 	} catch {
+		console.warn(
+			`[SCHEMA-LOOKUP] ${knownNodesPath} is unreadable — pin data will be generated without __schema__ shapes`,
+		);
 		return undefined;
 	}
 

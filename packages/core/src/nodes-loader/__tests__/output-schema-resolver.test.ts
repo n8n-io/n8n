@@ -52,7 +52,7 @@ describe('output-schema-resolver', () => {
 			).toBe(path.join(nodeDir, '__schema__', 'v2.0.0', 'playlist', 'get.json'));
 		});
 
-		it('falls back to the newest available version when enabled', () => {
+		it('falls back to the newest older version when enabled', () => {
 			writeSchema('v1.0.0/playlist/get.json');
 			const expected = writeSchema('v2.10.0/playlist/get.json');
 			writeSchema('v2.2.0/playlist/get.json');
@@ -61,6 +61,73 @@ describe('output-schema-resolver', () => {
 				resolveOutputSchemaPath({
 					nodeDir,
 					version: 3,
+					resource: 'playlist',
+					operation: 'get',
+					versionFallback: true,
+				}),
+			).toBe(expected);
+		});
+
+		it('prefers a same-major dir over a newer major', () => {
+			// The Notion shape: v2 node versions with dirs v1.0.0/v2.2.0/v3.0.0 —
+			// v3 schemas describe the next API generation and must not win.
+			writeSchema('v1.0.0/database/get.json');
+			const expected = writeSchema('v2.2.0/database/get.json');
+			writeSchema('v3.0.0/database/get.json');
+
+			for (const version of [2, 2.1]) {
+				expect(
+					resolveOutputSchemaPath({
+						nodeDir,
+						version,
+						resource: 'database',
+						operation: 'get',
+						versionFallback: true,
+					}),
+				).toBe(expected);
+			}
+		});
+
+		it('prefers the nearest lower same-major dir over a higher one', () => {
+			writeSchema('v2.4.0/playlist/get.json');
+			const expected = writeSchema('v2.2.0/playlist/get.json');
+
+			expect(
+				resolveOutputSchemaPath({
+					nodeDir,
+					version: 2.3,
+					resource: 'playlist',
+					operation: 'get',
+					versionFallback: true,
+				}),
+			).toBe(expected);
+		});
+
+		it('falls forward to the nearest newer major only as a last resort', () => {
+			writeSchema('v4.0.0/playlist/get.json');
+			const expected = writeSchema('v3.0.0/playlist/get.json');
+
+			expect(
+				resolveOutputSchemaPath({
+					nodeDir,
+					version: 2,
+					resource: 'playlist',
+					operation: 'get',
+					versionFallback: true,
+				}),
+			).toBe(expected);
+		});
+
+		it('ignores directories that are not plain vX.Y.Z versions', () => {
+			mkdirSync(path.join(nodeDir, '__schema__', 'v1.0.0-beta', 'playlist'), { recursive: true });
+			writeFileSync(path.join(nodeDir, '__schema__', 'v1.0.0-beta', 'playlist', 'get.json'), '{}');
+			mkdirSync(path.join(nodeDir, '__schema__', 'vendor'), { recursive: true });
+			const expected = writeSchema('v1.0.0/playlist/get.json');
+
+			expect(
+				resolveOutputSchemaPath({
+					nodeDir,
+					version: 2,
 					resource: 'playlist',
 					operation: 'get',
 					versionFallback: true,
