@@ -52,15 +52,17 @@ function compareVersionDirsDesc(a: string, b: string): number {
  * Without `versionFallback` this is a pure path computation — existence is
  * the caller's concern (the `/schemas` route probes with fsAccess before
  * serving). With `versionFallback` it returns the first *existing* match,
- * trying the exact version first, then all available versions newest-first.
+ * trying the exact version first, then all available versions newest-first;
+ * for refs without resource/operation it also probes the version-level
+ * `v<X>/output.json` layout (used by trigger nodes such as Webhook).
  */
 export function resolveOutputSchemaPath(ref: OutputSchemaRef): string | undefined {
 	const { nodeDir, version, resource, operation, versionFallback } = ref;
 	const schemaBaseDir = path.join(nodeDir, '__schema__');
 	const exactVersionDir = `v${padVersion(version)}`;
 
-	const buildPath = (versionDir: string) => {
-		const parts = [versionDir, resource, operation].filter(
+	const buildPath = (versionDir: string, filename?: string) => {
+		const parts = [versionDir, resource, operation, filename].filter(
 			(part): part is string => typeof part === 'string' && part.length > 0,
 		);
 		const filePath = path.resolve(schemaBaseDir, parts.join('/') + '.json');
@@ -78,9 +80,17 @@ export function resolveOutputSchemaPath(ref: OutputSchemaRef): string | undefine
 		return undefined;
 	}
 
+	// Nodes without resource/operation discriminators (currently only triggers,
+	// e.g. Webhook) store their single schema as `v<X>/output.json`.
+	const hasDiscriminators = Boolean(resource) || Boolean(operation);
+
 	for (const versionDir of [...new Set([exactVersionDir, ...available])]) {
 		const filePath = buildPath(versionDir);
 		if (filePath && existsSync(filePath)) return filePath;
+		if (!hasDiscriminators) {
+			const outputPath = buildPath(versionDir, 'output');
+			if (outputPath && existsSync(outputPath)) return outputPath;
+		}
 	}
 
 	return undefined;

@@ -2,10 +2,16 @@
  * Simulation Fixture Generation
  *
  * Generates realistic mock output (pin-data items) for nodes the
- * destructiveness classifier marked `simulate`. One batched LLM call keeps
- * the fixtures cross-node consistent. The fixtures live on the build outcome
- * sidecar and become per-execution pin data during verification — they are
- * never written to the workflow.
+ * destructiveness classifier marked `simulate` — including non-deterministic
+ * trigger nodes, whose fixture is the event payload they deliver. One batched
+ * LLM call keeps the fixtures cross-node consistent. The fixtures live on the
+ * build outcome sidecar and become per-execution pin data during
+ * verification — they are never written to the workflow.
+ *
+ * Schema/prompt building blocks come from `@n8n/workflow-sdk` (`mock-data/`),
+ * shared with the eval pin-data generators; this service keeps its own
+ * system prompt because simulated fixtures have different framing (single
+ * item, "simulated because" context, form/wait/trigger pass-through rules).
  *
  * Fallback posture: fixture generation is best-effort. On any failure every
  * simulated node gets a single empty item — verification stays safe (the node
@@ -13,10 +19,17 @@
  */
 
 import { isRecord } from '@n8n/utils/is-record';
-import type { OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
+import type { NodeSchemaContext, OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
+import {
+	buildDateAnchors,
+	buildNodeSchemaSection,
+	buildSchemaContexts,
+	findOutputParserTargets,
+} from '@n8n/workflow-sdk';
 import { getParentNodes, mapConnectionsByDestination, type IConnections } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { isTriggerNodeType } from './workflow-json-utils';
 import { SONNET_MODEL } from '../../utils/eval-agents';
 import { generateValidatedJson } from '../../utils/generate-validated-json';
 import type { NodeSimulationVerdict } from '../../workflow-loop/workflow-loop-state';
@@ -45,13 +58,16 @@ const FixturesResponseSchema = z.record(
 	z.array(z.object({ json: z.record(z.unknown()) })).min(1),
 );
 
-const SYSTEM_INSTRUCTIONS = `You generate realistic mock output for n8n workflow nodes whose real execution is being simulated (their operation would create, update, send, or delete data in an external system, or pause the workflow for user action).
+const SYSTEM_INSTRUCTIONS = `You generate realistic mock output for n8n workflow nodes whose real execution is being simulated (their operation would create, update, send, or delete data in an external system, would wait for an outside event, or would pause the workflow for user action).
 
 For each node, return the output items the node would naturally emit after a SUCCESSFUL run of its operation — matching the response shape of the underlying service (e.g. a Slack message post returns "ok", "ts" and "channel"; a row insert returns the row including its new "id"). Base the field values on the node's parameters so the data is plausible in context, and keep values consistent across nodes (same fictional users, ids, timestamps).
 
 When a node block includes an "Output JSON Schema", it is the node's real recorded output shape — follow its structure exactly (field names and types); only invent fields the schema doesn't cover when the node's parameters clearly require them.
 
+Dates and timestamps MUST be derived from the "## Date anchors" block at the end of the prompt — never from training data. Fixtures feed a real verification run that compares values against the execution clock ($now, Date.now()); stale dates get silently filtered out downstream.
+
 Special node types:
+- Trigger nodes (marked as the workflow's simulated event source): emit the EVENT PAYLOAD the trigger delivers into the workflow — the received email/message/record object itself — never an API response envelope, acknowledgement, or request metadata.
 - Form nodes (a mid-workflow form page): emit the submitted field values — one key per field defined in the node's formFields, with plausible values, plus "submittedAt".
 - Wait nodes: their real output is their INPUT passed through unchanged. Emit data matching what the listed upstream nodes would produce, so downstream expressions keep resolving.
 
@@ -61,31 +77,24 @@ Return only the JSON object. No prose, no markdown fences.`;
 
 const USER_ACTION_NODE_TYPES = new Set(['n8n-nodes-base.form', 'n8n-nodes-base.wait']);
 
-/** Keep embedded `__schema__` JSON bounded so one node can't flood the prompt. */
-const MAX_SCHEMA_CHARS = 3000;
-
 function formatNodeBlock(
 	node: WorkflowJSON['nodes'][number] & { name: string },
 	reason: string,
+	schemaContext: NodeSchemaContext | undefined,
 	upstreamContext?: string,
-	outputSchema?: Record<string, unknown>,
 ): string {
 	const params = isRecord(node.parameters)
 		? JSON.stringify(node.parameters).slice(0, 600)
 		: '(none)';
-	let schemaBlock: string | undefined;
-	if (outputSchema) {
-		const schemaStr = JSON.stringify(outputSchema);
-		schemaBlock = `Output JSON Schema: ${
-			schemaStr.length > MAX_SCHEMA_CHARS ? schemaStr.slice(0, MAX_SCHEMA_CHARS) + '…' : schemaStr
-		}`;
-	}
 	return [
 		`Node name: ${node.name}`,
 		`Node type: ${node.type}`,
 		`Simulated because: ${reason}`,
+		...(isTriggerNodeType(node.type)
+			? ["This node is the workflow's simulated event source — emit the event payload it delivers."]
+			: []),
 		`Parameters: ${params}`,
-		...(schemaBlock ? [schemaBlock] : []),
+		...(schemaContext ? buildNodeSchemaSection(schemaContext) : []),
 		...(upstreamContext ? [upstreamContext] : []),
 	].join('\n');
 }
@@ -125,21 +134,6 @@ function emptyFixtures(nodeNames: string[]): SimulationFixtures {
 	return Object.fromEntries(nodeNames.map((name) => [name, [{}]]));
 }
 
-/** Resolve a node's `__schema__` output schema through the injected lookup; best-effort. */
-function lookupOutputSchema(
-	node: WorkflowJSON['nodes'][number] & { name: string },
-	outputSchemaLookup: OutputSchemaLookup | undefined,
-): Record<string, unknown> | undefined {
-	if (!outputSchemaLookup) return undefined;
-	const params = isRecord(node.parameters) ? node.parameters : undefined;
-	return outputSchemaLookup({
-		type: node.type,
-		typeVersion: node.typeVersion,
-		resource: typeof params?.resource === 'string' ? params.resource : undefined,
-		operation: typeof params?.operation === 'string' ? params.operation : undefined,
-	});
-}
-
 /**
  * Generate one fixture per `simulate`-verdict node. Always returns an entry
  * for every simulated node — LLM output is used when valid, a single empty
@@ -160,6 +154,15 @@ export async function generateSimulationFixtures(
 	const nodeNames = nodes.map((n) => n.name);
 	if (nodeNames.length === 0) return {};
 
+	// Shared schema-context enrichment: __schema__ lookup + structured-output
+	// parser envelopes for AI roots, keyed back by node name for the blocks.
+	const schemaContexts = buildSchemaContexts(
+		nodes,
+		input.outputSchemaLookup,
+		findOutputParserTargets(input.workflow),
+	);
+	const schemaContextByName = new Map(schemaContexts.map((ctx) => [ctx.nodeName, ctx] as const));
+
 	const connectionsByDestination = mapConnectionsByDestination(
 		(input.workflow.connections ?? {}) as IConnections,
 	);
@@ -172,16 +175,19 @@ export async function generateSimulationFixtures(
 				formatNodeBlock(
 					n,
 					reasonByName.get(n.name) ?? '',
+					schemaContextByName.get(n.name),
 					USER_ACTION_NODE_TYPES.has(n.type)
 						? buildUpstreamContext(input.workflow, n.name, connectionsByDestination)
 						: undefined,
-					lookupOutputSchema(n, input.outputSchemaLookup),
 				),
 			)
 			.join('\n\n'),
 		'',
 		`Output a single JSON object with exactly these keys: ${nodeNames.map((n) => `"${n}"`).join(', ')}.`,
 		'Each value: an array with one item shaped like { "json": { ...fields } }.',
+		'',
+		'## Date anchors',
+		buildDateAnchors(new Date()),
 	].join('\n');
 
 	const result = await generateValidatedJson('verification-simulation-fixtures', {

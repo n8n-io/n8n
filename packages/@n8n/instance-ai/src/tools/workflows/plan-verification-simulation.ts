@@ -20,6 +20,7 @@ import {
 	generateSimulationFixtures,
 	type SimulationFixtures,
 } from './generate-simulation-fixtures.service';
+import { isMockableTriggerNodeType, isTriggerNodeType } from './workflow-json-utils';
 import type { Logger } from '../../logger';
 import type { NodeSimulationVerdict } from '../../workflow-loop/workflow-loop-state';
 
@@ -45,6 +46,38 @@ export interface VerificationSimulationPlan {
 }
 
 const DECLARED_OUTPUT_SIMULATION_REASON = 'Source declares verification output for this node';
+
+const TRIGGER_SIMULATION_REASON = 'Trigger event is simulated during verification';
+
+/**
+ * Non-deterministic triggers (anything outside `KNOWN_MOCKABLE_TRIGGER_TYPES`)
+ * get a deterministic `simulate` verdict so fixture generation produces the
+ * event payload the trigger would deliver and the real trigger (e.g. a
+ * polling node) never executes during verification. The destructiveness
+ * classifier deliberately skips triggers, so this is the single injection
+ * point for them.
+ */
+function withSimulatedTriggerVerdicts(
+	plan: NodeSimulationVerdict[],
+	workflow: WorkflowJSON,
+): NodeSimulationVerdict[] {
+	const plannedNodeNames = new Set(plan.map((verdict) => verdict.nodeName));
+	const verdicts = [...plan];
+
+	for (const node of workflow.nodes ?? []) {
+		if (!node.name || node.disabled || plannedNodeNames.has(node.name)) continue;
+		if (!isTriggerNodeType(node.type) || isMockableTriggerNodeType(node.type)) continue;
+		verdicts.push({
+			nodeName: node.name,
+			verdict: 'simulate',
+			reason: TRIGGER_SIMULATION_REASON,
+			confidence: 'high',
+			source: 'deterministic',
+		});
+	}
+
+	return verdicts;
+}
 
 function nonEmptyDeclaredFixtures(
 	fixtures: SimulationFixtures | undefined,
@@ -103,6 +136,7 @@ export async function planVerificationSimulation({
 	try {
 		nodeSimulationPlan = await classifyNodesForSimulation({ workflow, mockedNodeNames });
 		nodeSimulationPlan = withDeclaredOutputVerdicts(nodeSimulationPlan, declaredFixtures);
+		nodeSimulationPlan = withSimulatedTriggerVerdicts(nodeSimulationPlan, workflow);
 		if (nodeSimulationPlan.length > 0) {
 			const planNeedingGeneratedFixtures = nodeSimulationPlan.filter(
 				(verdict) =>

@@ -83,6 +83,28 @@ describe('output-schema-resolver', () => {
 			).toBe(expected);
 		});
 
+		it('resolves the version-level output.json layout for refs without resource/operation', () => {
+			const expected = writeSchema('v2.0.0/output.json');
+
+			expect(resolveOutputSchemaPath({ nodeDir, version: 2, versionFallback: true })).toBe(
+				expected,
+			);
+			// Discriminated refs never fall back to output.json.
+			expect(
+				resolveOutputSchemaPath({
+					nodeDir,
+					version: 2,
+					resource: 'playlist',
+					operation: 'get',
+					versionFallback: true,
+				}),
+			).toBeUndefined();
+			// Without versionFallback the computation stays pure (no output.json probe).
+			expect(resolveOutputSchemaPath({ nodeDir, version: 2 })).toBe(
+				path.join(nodeDir, '__schema__', 'v2.0.0.json'),
+			);
+		});
+
 		it('returns undefined when __schema__ does not exist', () => {
 			expect(
 				resolveOutputSchemaPath({

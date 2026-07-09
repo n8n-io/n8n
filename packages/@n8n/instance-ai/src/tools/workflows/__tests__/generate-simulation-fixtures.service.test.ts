@@ -203,7 +203,45 @@ describe('generateSimulationFixtures', () => {
 		const promptText = (generate.mock.calls[0][0] as Array<{ content: Array<{ text: string }> }>)[0]
 			.content[0].text;
 		expect(promptText).toContain('Output JSON Schema:');
-		expect(promptText).toContain('"ok":{"type":"boolean"}');
+		// Shared buildNodeSchemaSection embeds the schema pretty-printed.
+		expect(promptText).toContain('"type": "boolean"');
+	});
+
+	it('always appends a date-anchors block to the prompt', async () => {
+		const generate = vi.fn().mockResolvedValue({ messages: [] });
+		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
+			typeof createEvalAgent
+		>);
+		mockExtractText.mockReturnValue(JSON.stringify({ A: [{ json: { ok: true } }] }));
+
+		await generateSimulationFixtures({
+			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
+			plan: [simulateVerdict('A')],
+		});
+
+		const promptText = (generate.mock.calls[0][0] as Array<{ content: Array<{ text: string }> }>)[0]
+			.content[0].text;
+		expect(promptText).toContain('## Date anchors');
+		expect(promptText).toContain('- today:');
+	});
+
+	it('marks simulated trigger nodes as the event source in their prompt block', async () => {
+		const generate = vi.fn().mockResolvedValue({ messages: [] });
+		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
+			typeof createEvalAgent
+		>);
+		mockExtractText.mockReturnValue(
+			JSON.stringify({ 'On New Email': [{ json: { id: 'msg-1' } }] }),
+		);
+
+		await generateSimulationFixtures({
+			workflow: wf([{ name: 'On New Email', type: 'n8n-nodes-base.gmailTrigger' }]),
+			plan: [simulateVerdict('On New Email')],
+		});
+
+		const promptText = (generate.mock.calls[0][0] as Array<{ content: Array<{ text: string }> }>)[0]
+			.content[0].text;
+		expect(promptText).toContain('simulated event source — emit the event payload it delivers');
 	});
 
 	it('omits the schema block when the lookup finds nothing or is absent', async () => {
