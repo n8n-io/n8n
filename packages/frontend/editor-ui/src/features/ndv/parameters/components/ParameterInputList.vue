@@ -221,7 +221,7 @@ throttledWatch(
 		} else if (
 			node.value &&
 			node.value.type === AGENT_NODE_TYPE &&
-			(node.value.typeVersion ?? 0) >= 3
+			(node.value.typeVersion ?? 0) >= 3.1
 		) {
 			filteredParameters = updateAgentParameters(parameters, node.value.name);
 		} else {
@@ -407,11 +407,12 @@ function updateWaitParameters(parameters: INodeProperties[], nodeName: string) {
 }
 
 // Agent v3+ 'auto' prompt source reads the message from a connected chat trigger
-// (Chat Trigger or Manual Chat Trigger). Hide the option when neither is in the node's
-// main-connection ancestry so it can't be picked without a trigger to feed it.
-// Filter-only: the stored value is left untouched.
+// (Chat Trigger or Manual Chat Trigger). Keep it visible, but disable it when neither
+// is in the node's main-connection ancestry so users can still discover the mode.
 function updateAgentParameters(parameters: INodeProperties[], nodeName: string) {
-	if (workflowDocumentStore?.value?.checkIfNodeHasChatOrManualChatParent(nodeName)) {
+	const hasChatParent =
+		workflowDocumentStore?.value?.checkIfNodeHasChatOrManualChatParent(nodeName);
+	if (hasChatParent) {
 		return parameters;
 	}
 
@@ -419,9 +420,19 @@ function updateAgentParameters(parameters: INodeProperties[], nodeName: string) 
 		if (parameter.name !== 'promptType') return parameter;
 		return {
 			...parameter,
-			options: (parameter.options as INodePropertyOptions[]).filter(
-				(option) => option.value !== 'auto',
-			),
+			options: (parameter.options as INodePropertyOptions[]).map((option) => {
+				if (option.value !== 'auto') {
+					return option;
+				}
+
+				return {
+					...option,
+					disabled: true,
+					description:
+						option.description ??
+						i18n.baseText('parameterInputList.autoRequiresChatTriggerDescription'),
+				};
+			}),
 		};
 	});
 }

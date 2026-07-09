@@ -32,7 +32,7 @@ export function getPromptInputByType(options: {
 	let input;
 	if (promptType === 'auto') {
 		input = ctx.evaluateExpression('{{ $json["chatInput"] }}', i) as string;
-		if (fallbackToGuardrails && !input) {
+		if (fallbackToGuardrails && (input === undefined || input === '')) {
 			const guardrailsInput = ctx.evaluateExpression('{{ $json["guardrailsInput"] }}', i) as string;
 			if (guardrailsInput) {
 				input = guardrailsInput;
@@ -44,11 +44,19 @@ export function getPromptInputByType(options: {
 		input = ctx.getNodeParameter(inputKey, i) as string;
 	}
 
-	if (input === undefined) {
+	const isPromptMissing =
+		input === undefined || ((promptType === 'auto' || promptType === 'guardrails') && input === '');
+
+	if (isPromptMissing) {
 		if (promptType === 'auto' || promptType === 'guardrails') {
-			const key = promptType === 'auto' ? 'chatInput' : 'guardrailsInput';
+			const description =
+				promptType === 'guardrails'
+					? "Expected to find the prompt in an input field called 'guardrailsInput' (this is what the guardrails node outputs). To use something else, change the 'Prompt' parameter"
+					: fallbackToGuardrails
+						? "Expected to find the prompt in an input field called 'chatInput' or 'guardrailsInput' (the outputs of the chat trigger and guardrails nodes). To use something else, change the 'Prompt' parameter"
+						: "Expected to find the prompt in an input field called 'chatInput' (this is what the chat trigger node outputs). To use something else, change the 'Prompt' parameter";
 			throw new NodeOperationError(ctx.getNode(), 'No prompt specified', {
-				description: `Expected to find the prompt in an input field called '${key}' (this is what the ${promptType === 'auto' ? 'chat trigger node' : 'guardrails node'} node outputs). To use something else, change the 'Prompt' parameter`,
+				description,
 			});
 		} else {
 			throw new NodeOperationError(ctx.getNode(), 'No prompt specified', {

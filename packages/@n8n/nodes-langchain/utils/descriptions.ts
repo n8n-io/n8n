@@ -140,14 +140,26 @@ export const promptTypeOptions: INodeProperties = {
 		{
 			name: 'Define below',
 			value: 'define',
-			description:
-				'Use an expression to reference data in previous nodes or enter static text. If you are using a guardrails node, you should use `{{ $json.guardrailsInput }}` to reference the guardrails input.',
+			description: 'Use an expression to reference data in previous nodes or enter static text',
 		},
 	],
 	default: 'auto',
 	builderHint: {
 		propertyHint: "Use 'auto' when following a chat trigger, 'define' when custom prompt needed",
 	},
+};
+
+export const promptTypeOptionsAgentV3: INodeProperties = {
+	...promptTypeOptions,
+	options: promptTypeOptions.options!.map((option) =>
+		'value' in option && option.value === 'define'
+			? {
+					...option,
+					description:
+						'Use an expression to reference data in previous nodes or enter static text. When using a Guardrails node, reference its output with {{ $json.guardrailsInput }}.',
+				}
+			: option,
+	),
 };
 
 export const textInput: INodeProperties = {
