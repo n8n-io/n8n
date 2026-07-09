@@ -9,9 +9,6 @@
  * - crashResume rejects suspended checkpoints (those belong to resume()).
  */
 import * as aiModule from 'ai';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import * as path from 'node:path';
 import type { Mock } from 'vitest';
 import { z } from 'zod';
 
@@ -57,22 +54,6 @@ vi.mock('ai', async () => {
 });
 
 const { streamText } = aiModule as unknown as { streamText: Mock };
-
-const RESULTS_PATH =
-	process.env.DURABLE_LOG_RESULTS ?? path.join(tmpdir(), 'durable-log-synthetic.json');
-
-function recordResult(section: string, data: unknown): void {
-	let all: Record<string, unknown> = {};
-	if (existsSync(RESULTS_PATH)) {
-		try {
-			all = JSON.parse(readFileSync(RESULTS_PATH, 'utf8')) as Record<string, unknown>;
-		} catch {
-			// start fresh when the results file is unreadable
-		}
-	}
-	all[section] = data;
-	writeFileSync(RESULTS_PATH, JSON.stringify(all, null, 1));
-}
 
 function* makeChunkStream(
 	chunks: Array<Record<string, unknown>>,
@@ -249,13 +230,6 @@ describe('step checkpoints + crash resume (durable-log RFC)', () => {
 		expect(contextJson).toContain('tc-1');
 		expect(contextJson).toContain('tc-2');
 		expect(contextJson).toContain('interrupted by a restart');
-
-		recordResult('sdkCrashResume', {
-			stepCheckpointsWritten: stepSaves.length,
-			checkpointDeletedOnCompletion: true,
-			resumedUnderSameRunId: resumed.runId === result.runId,
-			resumedContextHasHistoryAndNotes: true,
-		});
 	});
 
 	it('a crash-resumed run that suspends at HITL persists a resumable suspended checkpoint', async () => {
@@ -329,5 +303,47 @@ describe('step checkpoints + crash resume (durable-log RFC)', () => {
 		await expect(runtime.crashResume({ runId: 'run_missing' })).rejects.toThrow(
 			/No checkpoint found/,
 		);
+	});
+
+	it('rejects a running checkpoint that still has pending tool calls (claimed HITL resume)', async () => {
+		const store = new RecordingCheckpointStore();
+		// The state claimResume() leaves behind if the process dies mid-resume:
+		// status flipped to 'running', pending HITL calls not yet settled.
+		store.map.set('run_claimed', {
+			status: 'running',
+			messageList: { messages: [] } as never,
+			pendingToolCalls: {
+				'tc-hitl': {
+					suspended: true,
+					toolCallId: 'tc-hitl',
+					toolName: 'approve',
+					input: {},
+					suspendPayload: { question: 'approve?' },
+					resumeSchema: {},
+					runId: 'run_claimed',
+				},
+			},
+		});
+		const runtime = createRuntime(store);
+		await expect(runtime.crashResume({ runId: 'run_claimed' })).rejects.toThrow(
+			/pending tool calls/,
+		);
+	});
+
+	it('surfaces an error when maxIterations is decreased on crashResume (parity with resume)', async () => {
+		const store = new RecordingCheckpointStore();
+		store.map.set('run_max', {
+			status: 'running',
+			messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+			pendingToolCalls: {},
+			executionOptions: { maxIterations: 5 },
+		});
+		const runtime = createRuntime(store);
+		const result = await runtime.crashResume({ runId: 'run_max', maxIterations: 2 });
+		const chunks = await collectChunks(result.stream);
+		const errorChunk = chunks.find((c) => c.type === 'error') as
+			| (StreamChunk & { type: 'error'; error: unknown })
+			| undefined;
+		expect(String(errorChunk?.error)).toContain('Cannot decrease maxIterations');
 	});
 });

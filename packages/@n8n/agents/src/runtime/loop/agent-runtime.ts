@@ -474,6 +474,14 @@ export class AgentRuntime {
 				`Checkpoint for runId ${this.runId} has status '${state.status}' — crashResume only accepts step checkpoints; use resume() for suspended runs`,
 			);
 		}
+		// A claimed HITL resume also persists as 'running' but still carries its
+		// pending tool calls; re-driving it would skip settling them. Step
+		// checkpoints are always written with empty pendingToolCalls.
+		if (Object.keys(state.pendingToolCalls).length > 0) {
+			throw new Error(
+				`Checkpoint for runId ${this.runId} has pending tool calls — crashResume only accepts step checkpoints`,
+			);
+		}
 
 		const list = AgentMessageList.deserialize(state.messageList);
 		this.context.hydrateDeferredToolsFromList(list);
@@ -482,7 +490,18 @@ export class AgentRuntime {
 		try {
 			const { runId: _rid, contextNotes, ...callerExecOptions } = options;
 			const persisted = state.executionOptions ?? {};
-			const mergedMaxIterations = callerExecOptions.maxIterations ?? persisted.maxIterations;
+			const persistedMaxIterations = persisted.maxIterations;
+			const callerMaxIterations = callerExecOptions.maxIterations;
+			if (
+				callerMaxIterations !== undefined &&
+				persistedMaxIterations !== undefined &&
+				callerMaxIterations < persistedMaxIterations
+			) {
+				throw new Error(
+					`Cannot decrease maxIterations when resuming a run. Expected >= ${persistedMaxIterations}, received ${callerMaxIterations}.`,
+				);
+			}
+			const mergedMaxIterations = callerMaxIterations ?? persistedMaxIterations;
 			const resumeOptions: RuntimeExecutionOptions = {
 				persistence: state.persistence,
 				...callerExecOptions,
