@@ -183,6 +183,53 @@ describe('sanitizeUnknownAgentCredentials', () => {
 		});
 	});
 
+	it('clears unknown credentials on vector store connections, including the nested embedding credential', () => {
+		const result = sanitizeUnknownAgentCredentials(
+			{
+				vectorStores: [
+					{
+						provider: 'qdrant',
+						name: 'product_docs',
+						credential: 'unknown-cred',
+						useWhen: 'Search product docs',
+						embedding: { model: 'openai/text-embedding-3-small', credential: 'unknown-cred' },
+						collectionName: 'docs',
+					},
+					{
+						provider: 'postgres',
+						name: 'faq',
+						credential: 'known-cred',
+						useWhen: 'Search FAQ',
+						embedding: { model: 'openai/text-embedding-3-small', credential: 'nested-cred' },
+						tableName: 'faq',
+					},
+				],
+			},
+			accessibleCredentialIds,
+		);
+
+		expect(result).toEqual({
+			vectorStores: [
+				{
+					provider: 'qdrant',
+					name: 'product_docs',
+					credential: '',
+					useWhen: 'Search product docs',
+					embedding: { model: 'openai/text-embedding-3-small', credential: '' },
+					collectionName: 'docs',
+				},
+				{
+					provider: 'postgres',
+					name: 'faq',
+					credential: 'known-cred',
+					useWhen: 'Search FAQ',
+					embedding: { model: 'openai/text-embedding-3-small', credential: 'nested-cred' },
+					tableName: 'faq',
+				},
+			],
+		});
+	});
+
 	it('preserves known nested credentials', () => {
 		const result = sanitizeUnknownAgentCredentials(
 			{

@@ -410,9 +410,25 @@ Push to master/1.x
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
 | Daily 04:00               | `test-e2e-vm-expressions-nightly.yml`| VM expression E2E     |
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
+| Daily 06:00               | `util-sync-master-to-3x.yml`      | Sync master → 3.x (v3)   |
+| Daily 08:00               | `build-v3-nightly.yml`            | Nightly v3 Docker images |
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
 | Saturday 22:00            | `test-evals-ai.yml`               | AI workflow evals        |
+
+---
+
+## v3 development (master + 3.x)
+
+During the v3 release window, `master` carries normal feature work (behind opt-in
+flags) and the long-lived `3.x` branch carries breaking changes. `master` is
+synced into `3.x` daily by `util-sync-master-to-3x.yml` (conflicts open a draft PR
+labeled `automation:v3-sync`, request the breaking-commit authors as reviewers via
+`sync-conflict-owners.mjs`, post to `#alerts-v3-sync`, and pause further syncs).
+`build-v3-nightly.yml` publishes `n8nio/n8n:v3-nightly[-<date>]` images from `3.x`
+by calling `docker-build-push.yml` with `ref: 3.x` + `date_tag`.
+
+See **[`DEVELOPING_V3.md`](./DEVELOPING_V3.md)** for the full model.
 
 ---
 
@@ -455,7 +471,7 @@ Workflows with `workflow_call` trigger:
 | `test-linting-reusable.yml`        | `ref`, `nodeVersion`                          | ESLint                |
 | `test-e2e-reusable.yml`            | `branch`, `test-mode`, `shards`, `runner`     | Core E2E executor     |
 | `test-workflows-callable.yml`      | `git_ref`, `compare_schemas`                  | Workflow tests        |
-| `docker-build-push.yml`            | `n8n_version`, `release_type`, `push_enabled` | Docker build          |
+| `docker-build-push.yml`            | `n8n_version`, `release_type`, `push_enabled`, `ref`, `date_tag` | Docker build |
 | `sec-ci-reusable.yml`              | `ref`                                         | Security orchestrator |
 | `sec-poutine-reusable.yml`         | `ref`                                         | Poutine scanner       |
 | `security-trivy-scan-callable.yml` | `image_ref`                                   | Trivy scan            |
