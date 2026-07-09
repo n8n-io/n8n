@@ -618,7 +618,6 @@ export type {
 	ProjectSummary,
 	FolderSummary,
 	ServiceProxyConfig,
-	ProjectAgentSummary,
 	InstanceAiBuilderDelegate,
 	BuilderDelegateSession,
 	BuilderTurnStream,

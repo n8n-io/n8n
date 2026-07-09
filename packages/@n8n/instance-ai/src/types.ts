@@ -741,14 +741,6 @@ export interface InstanceAiWorkspaceService {
 	): Promise<{ deletedCount: number }>;
 }
 
-// ── Agent builder service ────────────────────────────────────────────────────
-
-/** A published, same-project agent that can be attached as a sub-agent. */
-export interface ProjectAgentSummary {
-	agentId: string;
-	name: string;
-}
-
 // ── Builder delegate (sub-agent) ───────────────────────────────────────────────
 
 /** Reference to a workflow the current instance-AI session built or touched. */
