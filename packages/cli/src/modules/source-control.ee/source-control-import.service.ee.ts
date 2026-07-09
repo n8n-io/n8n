@@ -1508,9 +1508,9 @@ export class SourceControlImportService {
 	 * align the schema. Local columns adopt the incoming column id where
 	 * `(name, type)` matches, so an identical recreate imports as a no-op.
 	 *
-	 * Idempotent: on MySQL DDL commits implicitly, so a failure between rename
-	 * and metadata swap leaves the physical table already renamed; a retry
-	 * detects that and only completes the metadata swap.
+	 * Idempotent as defense in depth: a retry that finds the physical table
+	 * already renamed skips the rename and only completes the metadata swap,
+	 * so a half-finished adoption cannot wedge the pull.
 	 */
 	private async adoptDataTableIdentity(
 		localTable: DataTable,

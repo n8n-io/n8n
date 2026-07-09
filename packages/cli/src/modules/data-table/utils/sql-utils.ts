@@ -130,7 +130,7 @@ export function renameTableQuery(
 	newTableName: DataTableUserTableName,
 	dbType: DataSourceOptions['type'],
 ): string {
-	// `ALTER TABLE ... RENAME TO` is valid on SQLite, Postgres and MySQL 8+
+	// `ALTER TABLE ... RENAME TO` is valid on both SQLite and Postgres
 	return `ALTER TABLE ${quoteIdentifier(oldTableName, dbType)} RENAME TO ${quoteIdentifier(newTableName, dbType)}`;
 }
 
