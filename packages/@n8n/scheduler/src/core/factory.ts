@@ -290,38 +290,35 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 		);
 
 	const runReap = async (signal?: AbortSignal) =>
-		await tracer.startSpan(
-			{ name: 'Scheduler reap', op: 'scheduler.reap' },
-			async (span) => {
-				const result = await reap(
-					taskStore,
-					reaperOptions,
-					{
-						onRowError: (taskId, error) => {
-							emit(
-								'error',
-								'Scheduler could not recover an expired task; skipped until the next sweep',
-								{
-									taskId,
-									error: described(error),
-								},
-							);
-						},
-						onDeadLetter: (task) => {
-							emit('warn', 'Scheduler dead-lettered a task; its last attempt lost its lease', {
-								...task,
-							});
-						},
+		await tracer.startSpan({ name: 'Scheduler reap', op: 'scheduler.reap' }, async (span) => {
+			const result = await reap(
+				taskStore,
+				reaperOptions,
+				{
+					onRowError: (taskId, error) => {
+						emit(
+							'error',
+							'Scheduler could not recover an expired task; skipped until the next sweep',
+							{
+								taskId,
+								error: described(error),
+							},
+						);
 					},
-					signal,
-				);
-				span.setAttribute(SCHEDULER_ATTRIBUTES.reclaimed, result.reclaimed);
-				span.setAttribute(SCHEDULER_ATTRIBUTES.deadLettered, result.deadLettered);
-				recordMetric(() => metrics.recordReaped(result.reclaimed, result.deadLettered));
-				settlePassSpan(span, signal);
-				return result;
-			},
-		);
+					onDeadLetter: (task) => {
+						emit('warn', 'Scheduler dead-lettered a task; its last attempt lost its lease', {
+							...task,
+						});
+					},
+				},
+				signal,
+			);
+			span.setAttribute(SCHEDULER_ATTRIBUTES.reclaimed, result.reclaimed);
+			span.setAttribute(SCHEDULER_ATTRIBUTES.deadLettered, result.deadLettered);
+			recordMetric(() => metrics.recordReaped(result.reclaimed, result.deadLettered));
+			settlePassSpan(span, signal);
+			return result;
+		});
 
 	const runPrune = async (signal?: AbortSignal) =>
 		await tracer.startSpan(
