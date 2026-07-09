@@ -46,6 +46,7 @@ const props = withDefaults(defineProps<ComboboxProps>(), {
 	labelKey: 'label',
 	clearable: false,
 	teleported: true,
+	openOnFocus: true,
 });
 const emit = defineEmits<ComboboxEmits>();
 const slots = defineSlots<ComboboxSlots>();

@@ -47,7 +47,7 @@ Combobox (N8nCombobox2)
 - `ignoreFilter?: boolean` — Disable built-in filtering
 - `resetSearchTermOnBlur?: boolean` — Reset search text on blur | reka default: `true`
 - `resetSearchTermOnSelect?: boolean` — Reset search text on select | reka default: `true`
-- `openOnFocus?: boolean` — Open dropdown when input is focused | reka default: `false`
+- `openOnFocus?: boolean` — Open dropdown when input is focused | default: `true`
 - `openOnClick?: boolean` — Open dropdown when input is clicked | reka default: `false`
 - `highlightOnHover?: boolean` — Highlight items on hover (reka-ui root)
 - `clearable?: boolean` — When `true`, shows a clear button (×) when a value is selected. Hidden when disabled or empty. Default: `false`
