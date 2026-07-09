@@ -86,7 +86,18 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 		build: (creds, model, fetch) => {
 			const { createAnthropic } =
 				require('@ai-sdk/anthropic') as typeof import('@ai-sdk/anthropic');
-			return createAnthropic({ ...creds, fetch })(model);
+			let normalizedBaseURL = creds.baseURL;
+			// The SDK expects the versioned base (default `https://api.anthropic.com/v1`),
+			// but n8n Anthropic credentials store the host without `/v1` — their
+			// consumers append the version segment themselves.
+			if (normalizedBaseURL) {
+				const url = new URL(normalizedBaseURL);
+				if (!url.pathname.replace(/\/$/, '').endsWith('/v1')) {
+					url.pathname = url.pathname.replace(/\/?$/, '/v1');
+					normalizedBaseURL = url.toString();
+				}
+			}
+			return createAnthropic({ ...creds, baseURL: normalizedBaseURL, fetch })(model);
 		},
 	},
 	google: {
