@@ -5,6 +5,10 @@ import { messagesToDto } from '../agent-message-mapper';
 
 type MessageContentPart = AgentPersistedMessageDto['content'][number];
 
+// `PendingToolCall` isn't part of the package's public export surface; derive it
+// from the state shape instead of widening `@n8n/agents`' exports for one type.
+type PendingToolCall = SerializableAgentState['pendingToolCalls'][string];
+
 interface WithOpenSuspensionsOptions {
 	appendInactiveCheckpointMessages?: boolean;
 }
@@ -73,6 +77,19 @@ function mergeOpenSuspendedToolCalls(
 }
 
 /**
+ * Pending tool calls in a checkpoint's state that are currently suspended
+ * (awaiting a resume), in the state's insertion order (earliest first). Shared
+ * by `withOpenSuspensions` (builder chat history) and the instance-AI builder
+ * delegate (`findOpenSuspension`) so both read the same suspended-tool-call
+ * shape off `SerializableAgentState` instead of duplicating the walk.
+ */
+export function getSuspendedToolCalls(
+	checkpoint: SerializableAgentState,
+): Array<PendingToolCall & { suspended: true }> {
+	return Object.values(checkpoint.pendingToolCalls ?? {}).filter((tc) => tc.suspended);
+}
+
+/**
  * Merge an open suspended checkpoint into already-persisted history and
  * surface the open-suspensions sidecar (toolCallId + runId) so the FE can
  * re-arm suspended interactive cards after a refresh. Same contract as
@@ -89,9 +106,10 @@ export function withOpenSuspensions(
 ): AgentChatMessagesResponse {
 	if (!checkpoint) return { messages, openSuspensions: [] };
 
-	const openSuspensions = Object.values(checkpoint.pendingToolCalls ?? {})
-		.filter((tc) => tc.suspended)
-		.map((tc) => ({ toolCallId: tc.toolCallId, runId: tc.runId }));
+	const openSuspensions = getSuspendedToolCalls(checkpoint).map((tc) => ({
+		toolCallId: tc.toolCallId,
+		runId: tc.runId,
+	}));
 
 	const openToolCallIds = new Set(openSuspensions.map((s) => s.toolCallId));
 	const merged = [...messages];

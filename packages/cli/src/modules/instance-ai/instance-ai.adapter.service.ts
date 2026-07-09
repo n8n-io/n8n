@@ -110,7 +110,9 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
+import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
 import { InstanceAiAgentBuilderAdapterService } from '@/modules/agents/instance-ai-agent-builder.adapter';
+import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { NodeCatalogService } from '@/node-catalog';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
@@ -269,6 +271,7 @@ export class InstanceAiAdapterService {
 		const { searchProxyConfig, pushRef, threadId, projectId, credentialIdAllowlist, agentId } =
 			options ?? {};
 		const agentBuilderAdapter = this.getAgentBuilderAdapter();
+		const builderDelegateAdapter = this.getBuilderDelegateAdapter();
 		return {
 			userId: user.id,
 			projectId,
@@ -290,6 +293,15 @@ export class InstanceAiAdapterService {
 			...(agentBuilderAdapter && agentId && projectId
 				? { agentBuilderTarget: { agentId, projectId } }
 				: {}),
+			...(builderDelegateAdapter && projectId
+				? {
+						builderDelegate: builderDelegateAdapter.createDelegate(
+							user,
+							projectId,
+							new AgentsCredentialProvider(this.credentialsService, projectId, user),
+						),
+					}
+				: {}),
 		};
 	}
 
@@ -304,6 +316,21 @@ export class InstanceAiAdapterService {
 		if (!Container.get(ModuleRegistry).isActive('agents')) return null;
 		try {
 			return Container.get(InstanceAiAgentBuilderAdapterService);
+		} catch {
+			return null;
+		}
+	}
+
+	/**
+	 * Resolve the builder-delegate adapter only when the `agents` module is
+	 * active — same gating as {@link getAgentBuilderAdapter}. Returns null when
+	 * the module is off, so `builderDelegate` (and the build-agent sub-agent
+	 * tool it powers) is simply absent from the context.
+	 */
+	private getBuilderDelegateAdapter(): InstanceAiBuilderDelegateAdapterService | null {
+		if (!Container.get(ModuleRegistry).isActive('agents')) return null;
+		try {
+			return Container.get(InstanceAiBuilderDelegateAdapterService);
 		} catch {
 			return null;
 		}

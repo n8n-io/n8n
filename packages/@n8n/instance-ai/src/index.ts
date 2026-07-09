@@ -630,6 +630,10 @@ export type {
 	McpServerVerifyResult,
 	AttachableWorkflow,
 	ResolveResourceLocatorParams,
+	InstanceAiBuilderDelegate,
+	BuilderDelegateSession,
+	BuilderTurnStream,
+	BuilderOpenSuspension,
 } from './types';
 export type {
 	OrchestratorRunHandoffReason,
