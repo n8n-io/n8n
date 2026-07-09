@@ -1,3 +1,4 @@
+import { reconcileNativeWebSearch } from '@n8n/ai-utilities/agent-config';
 import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import {
 	AgentJsonConfigSchema,
@@ -119,7 +120,10 @@ export class AgentConfigService {
 			throw new UserError(`Invalid agent config: ${result.error}`);
 		}
 
-		const validatedConfig = result.config;
+		// Reconcile native web-search provider tools with the config's explicit
+		// `webSearch` state. This is the single write path, so persisted config
+		// always agrees with read/compose paths.
+		const validatedConfig = reconcileNativeWebSearch(result.config);
 
 		const tasksProvided = validatedConfig.tasks !== undefined;
 		const existingTaskIds = tasksProvided

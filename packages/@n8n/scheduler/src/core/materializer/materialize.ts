@@ -64,14 +64,23 @@ export interface MaterializerHooks {
  *
  * Persistence sits behind the {@link RunInTransaction} it is given, so this is only
  * the algorithm and a fake runner is enough to test it.
+ *
+ * Cancellation (`signal`, aborted when the driving loop times the pass out or
+ * shuts down) is all-or-nothing, because the pass is one transaction: at each
+ * checkpoint after an await, an observed abort throws, the transaction rolls
+ * back, and the pass leaves no trace — the claim is undone and the same jobs
+ * are simply due again for the next (or another instance's) pass.
  */
 export async function materialize(
 	runInTransaction: RunInTransaction,
 	options: MaterializerOptions = DEFAULT_MATERIALIZER_OPTIONS,
 	hooks: MaterializerHooks = {},
+	signal?: AbortSignal,
 ): Promise<MaterializerSummary> {
+	signal?.throwIfAborted();
 	return await runInTransaction<MaterializerSummary>(async (tx) => {
 		const claimed = await tx.claimDueJobs(options.batchSize);
+		signal?.throwIfAborted();
 		if (claimed === undefined) {
 			return { claimedJobs: 0, occurrences: 0, deferredJobs: 0 };
 		}
@@ -82,6 +91,7 @@ export async function materialize(
 		);
 		const rows = toNewOccurrences(occurrencesPlanned);
 		const occurrences = await tx.recordOccurrences(rows);
+		signal?.throwIfAborted();
 		if (occurrences < rows.length) {
 			try {
 				hooks.onSkippedDuplicates?.({ planned: rows.length, recorded: occurrences });

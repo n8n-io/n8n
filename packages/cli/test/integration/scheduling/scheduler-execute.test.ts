@@ -1,31 +1,41 @@
 import { testDb } from '@n8n/backend-test-utils';
 import type { ScheduledJob } from '@n8n/db';
-import { ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
+import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { ClaimedTask } from '@n8n/scheduler';
+import { createScheduler } from '@n8n/scheduler';
+import type { ClaimedTask, Scheduler, SchedulerPasses } from '@n8n/scheduler';
 
-import { DurableScheduler } from '@/scheduling/durable-scheduler';
+import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
 
 /**
- * The composed path against a real database: DurableScheduler binding the
- * repositories to the core algorithms, a registered handler, and the full
+ * The composed path against a real database: the storage bindings
+ * (`buildMaterializerTransaction` plus the repositories as the task store)
+ * composed by `createScheduler`, a registered handler, and the full
  * materialize -> claim -> fire -> terminal-write lifecycle. The unit suites
  * cover each piece with mocks; this proves the structural seams line up at
  * runtime.
  */
-describe('scheduler execution through DurableScheduler', () => {
+describe('scheduler execution over the storage bindings', () => {
 	const TASK_TYPE = 'integration-execute-test';
 
 	let jobRepo: ScheduledJobRepository;
 	let taskRepo: ScheduledTaskRepository;
-	let scheduler: DurableScheduler;
+	let scheduler: Scheduler & SchedulerPasses;
 	const executed: ClaimedTask[] = [];
 
 	beforeAll(async () => {
 		await testDb.init();
 		jobRepo = Container.get(ScheduledJobRepository);
 		taskRepo = Container.get(ScheduledTaskRepository);
-		scheduler = Container.get(DurableScheduler);
+		scheduler = createScheduler({
+			hostId: 'main-execute-test',
+			materializerTransaction: buildMaterializerTransaction(
+				Container.get(DataSource),
+				jobRepo,
+				taskRepo,
+			),
+			taskStore: taskRepo,
+		});
 		scheduler.registerTaskHandler(TASK_TYPE, {
 			execute: async (task) => {
 				executed.push(task);
