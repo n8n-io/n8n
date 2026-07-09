@@ -207,7 +207,9 @@ export function validateBedrockEndpointOverride(override: string, region: AWSReg
 	if (url.protocol !== 'http:' && url.protocol !== 'https:') {
 		throw new UserError('Bedrock endpoint must use the http or https scheme');
 	}
-	return url.toString();
+	// Strip a trailing slash only: on the SDK client's `endpoint` it would serialize
+	// operation paths as `//model/...`. Everything else the user configured is preserved.
+	return url.toString().replace(/\/$/, '');
 }
 
 /**

@@ -822,15 +822,15 @@ describe('awsGetSignInOptionsAndUpdateRequest', () => {
 });
 
 describe('validateBedrockEndpointOverride', () => {
-	it('accepts an https URL and returns it', () => {
+	it('accepts an https URL and returns it without a trailing slash', () => {
 		expect(
 			validateBedrockEndpointOverride('https://bedrock.us-east-1.amazonaws.com', 'us-east-1'),
-		).toBe('https://bedrock.us-east-1.amazonaws.com/');
+		).toBe('https://bedrock.us-east-1.amazonaws.com');
 	});
 
 	it('accepts an http URL (for LocalStack / on-prem gateways)', () => {
 		expect(validateBedrockEndpointOverride('http://localhost:4566', 'us-east-1')).toBe(
-			'http://localhost:4566/',
+			'http://localhost:4566',
 		);
 	});
 
@@ -840,7 +840,13 @@ describe('validateBedrockEndpointOverride', () => {
 				'https://bedrock-runtime.{region}.example.internal',
 				'eu-west-3',
 			),
-		).toBe('https://bedrock-runtime.eu-west-3.example.internal/');
+		).toBe('https://bedrock-runtime.eu-west-3.example.internal');
+	});
+
+	it('strips a trailing slash but preserves a meaningful base path', () => {
+		expect(validateBedrockEndpointOverride('https://proxy.internal/bedrock/', 'us-east-1')).toBe(
+			'https://proxy.internal/bedrock',
+		);
 	});
 
 	it.each(['ftp://bedrock.us-east-1.amazonaws.com', 'file:///etc/passwd', 'ws://host'])(

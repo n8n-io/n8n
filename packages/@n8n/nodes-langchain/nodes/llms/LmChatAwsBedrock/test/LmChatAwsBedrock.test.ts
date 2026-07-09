@@ -445,7 +445,7 @@ describe('LmChatAwsBedrock', () => {
 
 				await node.supplyData.call(ctx, 0);
 
-				const expected = 'https://vpce-abc.bedrock-runtime.us-east-1.vpce.amazonaws.com/';
+				const expected = 'https://vpce-abc.bedrock-runtime.us-east-1.vpce.amazonaws.com';
 				expect(mockedGetNodeProxyAgent).toHaveBeenCalledWith(expected);
 				expect(MockedBedrockRuntimeClient.mock.calls.at(-1)?.[0]?.endpoint).toBe(expected);
 			});

@@ -139,7 +139,7 @@ describe('EmbeddingsAwsBedrock', () => {
 			const node = new EmbeddingsAwsBedrock();
 			await node.supplyData.call(mockContext('amazon.titan-embed-text-v1'), 0);
 
-			const expected = 'https://vpce-abc.bedrock-runtime.us-east-1.vpce.amazonaws.com/';
+			const expected = 'https://vpce-abc.bedrock-runtime.us-east-1.vpce.amazonaws.com';
 			expect(mockedGetNodeProxyAgent).toHaveBeenCalledWith(expected);
 			expect(MockedBedrockRuntimeClient.mock.calls.at(-1)?.[0]?.endpoint).toBe(expected);
 		});

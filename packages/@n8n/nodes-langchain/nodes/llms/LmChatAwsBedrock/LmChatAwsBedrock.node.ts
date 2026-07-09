@@ -1,24 +1,12 @@
-import type {
-	BedrockRuntimeClientConfig,
-	GuardrailTrace,
-	PerformanceConfigLatency,
-} from '@aws-sdk/client-bedrock-runtime';
-import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
+import type { GuardrailTrace, PerformanceConfigLatency } from '@aws-sdk/client-bedrock-runtime';
 import { ChatBedrockConverse, type ChatBedrockConverseInput } from '@langchain/aws';
 import {
-	getNodeProxyAgent,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
-import { NodeHttpHandler } from '@smithy/node-http-handler';
 import type { DocumentType } from '@smithy/types';
-import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
-import {
-	assertSupportedAwsRegion,
-	getAwsDomain,
-	validateBedrockEndpointOverride,
-} from 'n8n-nodes-base/aws-credentials';
+import { assertSupportedAwsRegion } from 'n8n-nodes-base/aws-credentials';
 import { awsNodeAuthOptions, awsNodeCredentials } from 'n8n-nodes-base/dist/nodes/Aws/utils';
 import {
 	jsonParse,
@@ -29,6 +17,9 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
+
+import { createBedrockRuntimeClient } from '@utils/aws/createBedrockRuntimeClient';
+import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
 
 export class LmChatAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
@@ -355,27 +346,8 @@ export class LmChatAwsBedrock implements INodeType {
 			region = arnRegion;
 		}
 
-		// We set-up client manually to pass httpAgent and httpsAgent.
-		// getAwsDomain keeps China (amazonaws.com.cn) / GovCloud endpoints correct.
-		const bedrockEndpoint = bedrockRuntimeEndpoint
-			? validateBedrockEndpointOverride(bedrockRuntimeEndpoint, region)
-			: `https://bedrock-runtime.${region}.${getAwsDomain(region)}`;
-		const proxyAgent = getNodeProxyAgent(bedrockEndpoint);
-		const clientConfig: BedrockRuntimeClientConfig = {
-			region,
-			credentials,
-			...(bedrockRuntimeEndpoint ? { endpoint: bedrockEndpoint } : {}),
-		};
-
-		if (proxyAgent) {
-			clientConfig.requestHandler = new NodeHttpHandler({
-				httpAgent: proxyAgent,
-				httpsAgent: proxyAgent,
-			});
-		}
-
 		// Pass the pre-configured client to avoid credential resolution proxy issues
-		const client = new BedrockRuntimeClient(clientConfig);
+		const client = createBedrockRuntimeClient({ region, credentials, bedrockRuntimeEndpoint });
 
 		// Forward only user-set options; unset ones are omitted so model defaults are preserved.
 		const modelConfig: ChatBedrockConverseInput = {
