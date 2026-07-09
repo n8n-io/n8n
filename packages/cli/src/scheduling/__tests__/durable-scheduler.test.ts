@@ -6,6 +6,8 @@ import { createScheduler } from '@n8n/scheduler';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import type { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
+
 import { DurableScheduler } from '../durable-scheduler';
 import { SCHEDULE_TRIGGER_TASK_TYPE } from '../schedule-trigger-node/schedule-trigger-task';
 import type { ScheduleTriggerTaskHandler } from '../schedule-trigger-node/schedule-trigger-task-handler';
@@ -37,6 +39,7 @@ describe('DurableScheduler', () => {
 				scheduler: { enabled, executorIntervalSeconds: 5, jitterRatio: 0.1 },
 			}),
 			scheduleTriggerTaskHandler,
+			mock<PrometheusSchedulerMetricsService>(),
 		);
 		return { scheduler, inner, logger };
 	}

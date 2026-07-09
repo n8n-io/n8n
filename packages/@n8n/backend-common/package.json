@@ -44,6 +44,7 @@
     "@types/yargs-parser": "21.0.0",
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
+    "typescript": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
     "zod": "catalog:"

@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-07-08T17:24:05.137Z",
-	"totalViolations": 82,
+	"generated": "2026-07-09T01:18:33.533Z",
+	"totalViolations": 69,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -203,58 +203,6 @@
 				"hash": "140cf31c63ab"
 			}
 		],
-		"tests/e2e/chat-hub/chat-hub-personal-agent.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 90,
-				"message": "Direct page locator call: n8n.page.getByRole('dialog').getByText('Delete', { exact:...",
-				"hash": "e5c7b87a1265"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 90,
-				"message": "Direct page locator call: n8n.page.getByRole('dialog').getByText('Delete', { exact:...",
-				"hash": "e5c7b87a1265"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 90,
-				"message": "Chained locator call in test: n8n.page.getByRole('dialog').getByText('Delete', { exact:...",
-				"hash": "667398fd66e7"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 90,
-				"message": "Direct page locator call: n8n.page.getByRole('dialog')",
-				"hash": "31695787251c"
-			}
-		],
-		"tests/e2e/projects/projects.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 188,
-				"message": "Direct page locator call: subn8n.page.getByRole('heading', { name: 'My Sub-Workflow...",
-				"hash": "e4e2c9dc4c76"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 188,
-				"message": "Chained locator call in test: subn8n.page.getByRole('heading', { name: 'My Sub-Workflow...",
-				"hash": "b6043abb9fdc"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 193,
-				"message": "Direct page locator call: subn8n.page.getByRole('heading', { name: 'Notion account' })",
-				"hash": "28156d4663d0"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 193,
-				"message": "Chained locator call in test: subn8n.page.getByRole('heading', { name: 'Notion account' })",
-				"hash": "f2522e66d3fb"
-			}
-		],
 		"composables/BuilderWizardComposer.ts": [
 			{
 				"rule": "no-page-in-flow",
@@ -393,14 +341,6 @@
 				"hash": "39b87c0d6566"
 			}
 		],
-		"tests/e2e/building-blocks/workflow-entry-points.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 42,
-				"message": "Raw API call detected: request.post(",
-				"hash": "3ff16be38292"
-			}
-		],
 		"tests/e2e/capabilities/proxy-server.spec.ts": [
 			{
 				"rule": "api-purity",
@@ -453,30 +393,6 @@
 				"hash": "974d7953dd83"
 			}
 		],
-		"tests/e2e/nodes/send-and-wait.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 110,
-				"message": "Raw API call detected: request.get(",
-				"hash": "314e16747365"
-			}
-		],
-		"tests/e2e/workflows/editor/execution/execution.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 154,
-				"message": "Raw API call detected: request.get(",
-				"hash": "2548f52cf79f"
-			}
-		],
-		"tests/e2e/workflows/editor/execution/logs.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 282,
-				"message": "Raw API call detected: request.get(",
-				"hash": "3783a2d87c82"
-			}
-		],
 		"pages/WorkflowsPage.ts": [
 			{
 				"rule": "deduplication",
@@ -491,14 +407,6 @@
 				"line": 13,
 				"message": "Duplicate locator: this.page.getByTestId(\"menu-item\") in pages scope",
 				"hash": "5a1818f5f511"
-			}
-		],
-		"tests/e2e/instance-ai/instance-ai-timeline.spec.ts": [
-			{
-				"rule": "duplicate-logic",
-				"line": 12,
-				"message": "Duplicate test logic: \"should show artifact cards after workflow build completes\" has identical structure to tests/e2e/instance-ai/instance-ai-artifacts.spec.ts:\"should display artifact card in timeline after workflow build\"",
-				"hash": "da9226aef0eb"
 			}
 		],
 		"tests/infrastructure/benchmarks/kafka/queue-mode-sustained-rate.spec.ts": [

@@ -8,6 +8,7 @@ import type { McpClient } from './mcp-client';
 import { Memory, normalizeMemoryConfig, resolveMemoryConfigDefaults } from './memory';
 import { Telemetry } from './telemetry';
 import { wrapToolForApproval } from './tool';
+import type { VectorStore } from './vector-store';
 import { AgentRuntime, type AgentRuntimeConfig } from '../runtime/loop/agent-runtime';
 import { RECALL_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory';
 import type { ScopedMemoryTaskEvent } from '../runtime/memory/scoped-memory-task-runner';
@@ -257,6 +258,14 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}
 		this.tools.push(...builtTools);
 		return this;
+	}
+
+	/** Attach a vector store as a search tool. Accepts a VectorStore builder. */
+	vectorStore(
+		store: VectorStore,
+		options?: { name?: string; description?: string; filterableKeys?: Record<string, string> },
+	): this {
+		return this.tool(store.asTool(options));
 	}
 
 	/** Add tools that are searchable through `search_tools` and activated on demand with `load_tool`. */
@@ -714,6 +723,26 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		const active = this.createRuntime(config, options.runId);
 		try {
 			const result = await active.runtime.resume('stream', data, options);
+			return { ...result, stream: this.trackStreamRuntime(result.stream, active) };
+		} catch (error) {
+			await this.cleanupRuntime(active);
+			throw error;
+		}
+	}
+
+	/**
+	 * Durable-log RFC (resilience phase): re-drive a run from a `running`-status
+	 * step checkpoint after a process crash. There is no pending tool call to
+	 * settle — the loop re-enters at the next model call. See
+	 * AgentRuntime.crashResume for `contextNotes` semantics.
+	 */
+	async crashResume(
+		options: { runId: string; contextNotes?: string[] } & ExecutionOptions,
+	): Promise<StreamResult> {
+		const config = await this.ensureBuilt();
+		const active = this.createRuntime(config, options.runId);
+		try {
+			const result = await active.runtime.crashResume(options);
 			return { ...result, stream: this.trackStreamRuntime(result.stream, active) };
 		} catch (error) {
 			await this.cleanupRuntime(active);

@@ -50,6 +50,17 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 
 	readonly hints: NodeExecutionHint[] = [];
 
+	/**
+	 * The `additionalData` credential flags at 'input' time, per run index. The flags are
+	 * execution-shared and only reset per top-level engine node, so a sibling sub-node's
+	 * earlier resolution would otherwise be stamped onto this run's task too — stamping
+	 * only flags raised between 'input' and 'output' attributes usage to the right task.
+	 */
+	private readonly dynamicCredentialsFlagsAtInput = new Map<
+		number,
+		{ used: boolean; attempted: boolean }
+	>();
+
 	constructor(
 		workflow: Workflow,
 		node: INode,
@@ -272,6 +283,10 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			: [];
 
 		if (type === 'input') {
+			this.dynamicCredentialsFlagsAtInput.set(currentNodeRunIndex, {
+				used: additionalData.currentNodeUsedDynamicCredentials === true,
+				attempted: additionalData.currentNodeAttemptedDynamicCredentials === true,
+			});
 			taskData = {
 				startTime: Date.now(),
 				executionTime: 0,
@@ -312,6 +327,10 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			} as ITaskDataConnections;
 		}
 
+		if (type === 'output') {
+			this.stampDynamicCredentialsUsage(taskData, currentNodeRunIndex);
+		}
+
 		if (type === 'input') {
 			if (!(data instanceof Error)) {
 				this.inputData[connectionType] = data;
@@ -330,8 +349,6 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		} else {
 			// Outputs
 			taskData.executionTime = Date.now() - taskData.startTime;
-
-			this.stampDynamicCredentialUsage(taskData, runExecutionData);
 
 			// Add hints to task data if any were collected
 			if (this.hints.length > 0) {
@@ -368,32 +385,35 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 	}
 
 	/**
-	 * A node run as an AI tool (e.g. a tool connected to the MCP Server Trigger)
-	 * resolves its credentials through the same helper as the main execution loop,
-	 * but its task data is recorded here rather than there. Carry the
-	 * dynamic-credential flags over so the saved execution's
-	 * `usedPrivateCredentials` is set — otherwise the private-credential badge and
-	 * the redaction layer never see a tool-only run. Mirrors the stamping done in
-	 * the main loop (`WorkflowExecute`).
+	 * Sub-node executions can run during a trigger's webhook phase (e.g. MCP Trigger tool
+	 * calls), where no engine loop stamps the per-node credential flags onto task data —
+	 * stamp them here so the persisted execution still gets redacted. Engine-phase nodes
+	 * are stamped by `WorkflowExecute` from the same `additionalData` flags. Only flags
+	 * raised since this run's 'input' write are stamped, so a sibling sub-node's earlier
+	 * resolution is not attributed to this task.
 	 */
-	private stampDynamicCredentialUsage(
-		taskData: ITaskData,
-		runExecutionData: IRunExecutionData,
-	): void {
-		const { additionalData } = this;
+	private stampDynamicCredentialsUsage(taskData: ITaskData, currentNodeRunIndex: number) {
+		const { additionalData, runExecutionData } = this;
+		const atInput = this.dynamicCredentialsFlagsAtInput.get(currentNodeRunIndex) ?? {
+			used: false,
+			attempted: false,
+		};
+		this.dynamicCredentialsFlagsAtInput.delete(currentNodeRunIndex);
 
-		taskData.usedDynamicCredentials = additionalData.currentNodeUsedDynamicCredentials
-			? true
-			: undefined;
-		taskData.attemptedDynamicCredentials = additionalData.currentNodeAttemptedDynamicCredentials
-			? true
-			: undefined;
-
+		const used = additionalData.currentNodeUsedDynamicCredentials === true && !atInput.used;
+		if (used) {
+			taskData.usedDynamicCredentials = true;
+		}
+		if (additionalData.currentNodeAttemptedDynamicCredentials === true && !atInput.attempted) {
+			taskData.attemptedDynamicCredentials = true;
+		}
 		if (
-			additionalData.currentNodeUsedDynamicCredentials &&
+			used &&
 			additionalData.dynamicCredentialsResolvedUserId &&
 			runExecutionData.executionData?.runtimeData
 		) {
+			// Record the resolved user like the engine loop does, so the redaction layer can
+			// grant that user access to their own data (identity is execution-scoped).
 			runExecutionData.executionData.runtimeData.executedByUserId =
 				additionalData.dynamicCredentialsResolvedUserId;
 		}

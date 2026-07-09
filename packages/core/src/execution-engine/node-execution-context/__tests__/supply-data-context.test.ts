@@ -20,6 +20,7 @@ import {
 	createRunExecutionData,
 	ManualExecutionCancelledError,
 	NodeConnectionTypes,
+	NodeOperationError,
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -626,8 +627,22 @@ describe('SupplyDataContext', () => {
 		});
 	});
 
-	describe('dynamic credential flags on output', () => {
-		function buildContext(testAdditionalData: IWorkflowExecuteAdditionalData) {
+	// Sub-node executions can run during a trigger's webhook phase (e.g. MCP Trigger tool
+	// calls), where no engine loop stamps the per-node credential flags — the context must
+	// stamp them itself so the persisted execution still gets redacted.
+	describe('dynamic credential flag stamping', () => {
+		const buildStampingContext = () => {
+			const testAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				credentialsHelper,
+				hooks: { runHook: vi.fn().mockResolvedValue(undefined) },
+				currentNodeExecutionIndex: 0,
+				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+			});
+			testAdditionalData.currentNodeUsedDynamicCredentials = false;
+			testAdditionalData.currentNodeAttemptedDynamicCredentials = false;
+			testAdditionalData.dynamicCredentialsResolvedUserId = undefined;
+
 			const testRunExecutionData = createRunExecutionData({
 				resultData: {
 					runData: {
@@ -648,7 +663,7 @@ describe('SupplyDataContext', () => {
 					nodeExecutionStack: [],
 					waitingExecution: {},
 					waitingExecutionSource: {},
-					runtimeData: { version: 1, establishedAt: 0, source: 'webhook' },
+					runtimeData: { version: 1, establishedAt: 0, source: 'trigger' },
 				},
 			});
 
@@ -667,19 +682,14 @@ describe('SupplyDataContext', () => {
 				abortSignal,
 			);
 
-			return { testContext, testRunExecutionData };
-		}
+			return { testAdditionalData, testRunExecutionData, testContext };
+		};
 
-		it('stamps usedDynamicCredentials and executedByUserId when a private credential was resolved', async () => {
-			const testAdditionalData = mock<IWorkflowExecuteAdditionalData>({
-				credentialsHelper,
-				hooks: { runHook: vi.fn().mockResolvedValue(undefined) },
-				currentNodeExecutionIndex: 0,
-				currentNodeUsedDynamicCredentials: true,
-				currentNodeAttemptedDynamicCredentials: true,
-				dynamicCredentialsResolvedUserId: 'user-123',
-			});
-			const { testContext, testRunExecutionData } = buildContext(testAdditionalData);
+		it('stamps the flags and resolved user onto the output task data', async () => {
+			const { testAdditionalData, testRunExecutionData, testContext } = buildStampingContext();
+			testAdditionalData.currentNodeUsedDynamicCredentials = true;
+			testAdditionalData.currentNodeAttemptedDynamicCredentials = true;
+			testAdditionalData.dynamicCredentialsResolvedUserId = 'resolved-user';
 
 			await testContext.addExecutionDataFunctions(
 				'output',
@@ -692,18 +702,32 @@ describe('SupplyDataContext', () => {
 			const taskData = testRunExecutionData.resultData.runData[node.name][0];
 			expect(taskData.usedDynamicCredentials).toBe(true);
 			expect(taskData.attemptedDynamicCredentials).toBe(true);
-			expect(testRunExecutionData.executionData?.runtimeData?.executedByUserId).toBe('user-123');
+			expect(testRunExecutionData.executionData?.runtimeData?.executedByUserId).toBe(
+				'resolved-user',
+			);
 		});
 
-		it('stamps only attemptedDynamicCredentials when resolution was attempted but not used', async () => {
-			const testAdditionalData = mock<IWorkflowExecuteAdditionalData>({
-				credentialsHelper,
-				hooks: { runHook: vi.fn().mockResolvedValue(undefined) },
-				currentNodeExecutionIndex: 0,
-				currentNodeUsedDynamicCredentials: false,
-				currentNodeAttemptedDynamicCredentials: true,
-			});
-			const { testContext, testRunExecutionData } = buildContext(testAdditionalData);
+		it('stamps the attempted flag on an error output', async () => {
+			const { testAdditionalData, testRunExecutionData, testContext } = buildStampingContext();
+			testAdditionalData.currentNodeAttemptedDynamicCredentials = true;
+
+			await testContext.addExecutionDataFunctions(
+				'output',
+				new NodeOperationError(node, 'tool failed'),
+				NodeConnectionTypes.AiTool,
+				node.name,
+				0,
+			);
+
+			const taskData = testRunExecutionData.resultData.runData[node.name][0];
+			expect(taskData.executionStatus).toBe('error');
+			expect(taskData.attemptedDynamicCredentials).toBe(true);
+			expect(taskData.usedDynamicCredentials).toBeUndefined();
+			expect(testRunExecutionData.executionData?.runtimeData?.executedByUserId).toBeUndefined();
+		});
+
+		it('stamps nothing when no credential was attempted', async () => {
+			const { testRunExecutionData, testContext } = buildStampingContext();
 
 			await testContext.addExecutionDataFunctions(
 				'output',
@@ -715,30 +739,30 @@ describe('SupplyDataContext', () => {
 
 			const taskData = testRunExecutionData.resultData.runData[node.name][0];
 			expect(taskData.usedDynamicCredentials).toBeUndefined();
-			expect(taskData.attemptedDynamicCredentials).toBe(true);
+			expect(taskData.attemptedDynamicCredentials).toBeUndefined();
 			expect(testRunExecutionData.executionData?.runtimeData?.executedByUserId).toBeUndefined();
 		});
 
-		it('leaves the flags undefined when no private credential was involved', async () => {
-			const testAdditionalData = mock<IWorkflowExecuteAdditionalData>({
-				credentialsHelper,
-				hooks: { runHook: vi.fn().mockResolvedValue(undefined) },
-				currentNodeExecutionIndex: 0,
-				currentNodeUsedDynamicCredentials: undefined,
-				currentNodeAttemptedDynamicCredentials: undefined,
-				dynamicCredentialsResolvedUserId: undefined,
-			});
-			const { testContext, testRunExecutionData } = buildContext(testAdditionalData);
+		// The flags are execution-shared and only reset per top-level engine node, so a
+		// sibling sub-node's earlier resolution must not be attributed to this run's task.
+		it('does not stamp flags that were already set before this run started', async () => {
+			const { testAdditionalData, testRunExecutionData, testContext } = buildStampingContext();
+			testAdditionalData.currentNodeUsedDynamicCredentials = true;
+			testAdditionalData.currentNodeAttemptedDynamicCredentials = true;
+			testAdditionalData.dynamicCredentialsResolvedUserId = 'sibling-user';
 
+			const { index } = testContext.addInputData(NodeConnectionTypes.AiTool, [
+				[{ json: { query: 'test' } }],
+			]);
 			await testContext.addExecutionDataFunctions(
 				'output',
 				[[{ json: { result: 'success' } }]],
 				NodeConnectionTypes.AiTool,
 				node.name,
-				0,
+				index,
 			);
 
-			const taskData = testRunExecutionData.resultData.runData[node.name][0];
+			const taskData = testRunExecutionData.resultData.runData[node.name][index];
 			expect(taskData.usedDynamicCredentials).toBeUndefined();
 			expect(taskData.attemptedDynamicCredentials).toBeUndefined();
 			expect(testRunExecutionData.executionData?.runtimeData?.executedByUserId).toBeUndefined();
