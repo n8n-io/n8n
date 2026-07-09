@@ -9,6 +9,7 @@
   "dependencies": {},
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
+    "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"
   },

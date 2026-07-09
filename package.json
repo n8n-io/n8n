@@ -121,7 +121,6 @@
       "tar-fs": "2.1.4",
       "tslib": "^2.6.2",
       "tsconfig-paths": "^4.2.0",
-      "typescript": "catalog:",
       "vue-tsc": "catalog:frontend",
       "gaxios": ">=7.1.1",
       "google-gax": "^4.3.7",
