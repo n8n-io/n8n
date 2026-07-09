@@ -153,6 +153,17 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 	};
 	const described = (error: unknown) => ensureError(error).message;
 
+	// Metrics are best-effort observability: a throwing sink (e.g. a broken
+	// exporter) must never break the pass that emitted, so every record is
+	// wrapped and its failure swallowed.
+	const recordMetric = (record: () => void) => {
+		try {
+			record();
+		} catch {
+			// Deliberately swallowed; see above.
+		}
+	};
+
 	const registry = new TaskHandlerRegistry();
 	const executor = new Executor(taskStore, registry, new PrecisionTimer(), executorOptions, {
 		onLeaseShorterThanLookahead: (context) => {
@@ -180,16 +191,18 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 				error: described(error),
 			});
 		},
-		onDispatch: (taskType, lagSeconds) => {
-			metrics.recordDispatch(taskType);
-			metrics.observeDispatchLagSeconds(taskType, lagSeconds);
-		},
-		onFire: (taskType, result) => {
-			metrics.recordFireOutcome(taskType, result);
-			// An executor terminal failure (attempts exhausted) is a permanent failure = a dead-letter.
-			if (result === 'failure') metrics.recordDeadLettered();
-		},
-		onRetry: (taskType) => metrics.recordRetry(taskType),
+		onDispatch: (taskType, lagSeconds) =>
+			recordMetric(() => {
+				metrics.recordDispatch(taskType);
+				metrics.observeDispatchLagSeconds(taskType, lagSeconds);
+			}),
+		onFire: (taskType, result) =>
+			recordMetric(() => {
+				metrics.recordFireOutcome(taskType, result);
+				// An executor terminal failure (attempts exhausted) is a permanent failure = a dead-letter.
+				if (result === 'failure') metrics.recordDeadLettered();
+			}),
+		onRetry: (taskType) => recordMetric(() => metrics.recordRetry(taskType)),
 	});
 
 	if (retentionOptions.failedRetentionSeconds < retentionOptions.retentionSeconds) {
@@ -222,7 +235,7 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 			},
 			signal,
 		);
-		metrics.recordMaterialized(summary.occurrences, summary.deferredJobs);
+		recordMetric(() => metrics.recordMaterialized(summary.occurrences, summary.deferredJobs));
 		return summary;
 	};
 
@@ -252,7 +265,7 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 			},
 			signal,
 		);
-		metrics.recordReaped(result.reclaimed, result.deadLettered);
+		recordMetric(() => metrics.recordReaped(result.reclaimed, result.deadLettered));
 		return result;
 	};
 
@@ -265,7 +278,7 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 		} else if (summary.drained && summary.deleted > 0) {
 			emit('debug', 'Scheduler retention deleted finished tasks', { ...summary });
 		}
-		metrics.recordPruned(summary.deleted);
+		recordMetric(() => metrics.recordPruned(summary.deleted));
 		return summary;
 	};
 

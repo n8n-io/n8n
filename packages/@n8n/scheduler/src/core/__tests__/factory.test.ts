@@ -883,4 +883,37 @@ describe('createScheduler metrics', () => {
 		expect(metrics.recordFireOutcome).not.toHaveBeenCalled();
 		expect(metrics.recordDeadLettered).not.toHaveBeenCalled();
 	});
+
+	it('does not let a throwing metrics sink break a pass', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		metrics.recordPruned.mockImplementation(() => {
+			throw new Error('exporter down');
+		});
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		taskStore.deleteFinishedOlderThan.mockResolvedValueOnce(5).mockResolvedValue(0);
+
+		// The pass completes normally even though recording its outcome threw.
+		await expect(scheduler.prune()).resolves.toEqual({ deleted: 5, drained: true });
+	});
+
+	it('does not let a throwing metrics sink break a fire', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		metrics.recordDispatch.mockImplementation(() => {
+			throw new Error('exporter down');
+		});
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		const execute = vi.fn().mockResolvedValue(undefined);
+		scheduler.registerTaskHandler('test-task', { execute });
+		taskStore.claimDueTasks.mockResolvedValue([claimedTask()]);
+		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.completeTask.mockResolvedValue(1);
+
+		await scheduler.execute();
+
+		// The handler still runs and the task still completes despite the sink throwing.
+		await vi.waitFor(() => {
+			expect(taskStore.completeTask).toHaveBeenCalledTimes(1);
+		});
+		expect(execute).toHaveBeenCalledTimes(1);
+	});
 });
