@@ -17,7 +17,6 @@ describe('computeScope', () => {
 	it('returns full when CHANGED_FILES signal is missing (local dev)', () => {
 		const rootDir = makePackageDir('packages/cli');
 		const result = computeScope({
-			runner: 'vitest',
 			packageDir: 'packages/cli',
 			rootDir,
 			changedFiles: null,
@@ -29,7 +28,6 @@ describe('computeScope', () => {
 	it('returns skip when no in-package files changed', () => {
 		const rootDir = makePackageDir('packages/cli');
 		const result = computeScope({
-			runner: 'vitest',
 			packageDir: 'packages/cli',
 			rootDir,
 			changedFiles: ['packages/other/src/x.ts'],
@@ -41,7 +39,6 @@ describe('computeScope', () => {
 	it('returns scoped list when only source files changed', () => {
 		const rootDir = makePackageDir('packages/cli');
 		const result = computeScope({
-			runner: 'vitest',
 			packageDir: 'packages/cli',
 			rootDir,
 			changedFiles: ['packages/cli/src/a.ts', 'packages/cli/src/b.ts'],
@@ -56,7 +53,6 @@ describe('computeScope', () => {
 	it('bails to full on package.json change', () => {
 		const rootDir = makePackageDir('packages/cli');
 		const result = computeScope({
-			runner: 'vitest',
 			packageDir: 'packages/cli',
 			rootDir,
 			changedFiles: ['packages/cli/package.json'],
@@ -67,7 +63,6 @@ describe('computeScope', () => {
 	it('bails to full on tsconfig change', () => {
 		const rootDir = makePackageDir('packages/cli');
 		const result = computeScope({
-			runner: 'vitest',
 			packageDir: 'packages/cli',
 			rootDir,
 			changedFiles: ['packages/cli/tsconfig.build.json'],
@@ -78,7 +73,6 @@ describe('computeScope', () => {
 	it('ignores files outside the package even when configs match', () => {
 		const rootDir = makePackageDir('packages/cli');
 		const result = computeScope({
-			runner: 'vitest',
 			packageDir: 'packages/cli',
 			rootDir,
 			changedFiles: ['packages/other/package.json'],
@@ -89,7 +83,6 @@ describe('computeScope', () => {
 	it('bails to full on vitest.config change', () => {
 		const rootDir = makePackageDir('packages/cli');
 		const result = computeScope({
-			runner: 'vitest',
 			packageDir: 'packages/cli',
 			rootDir,
 			changedFiles: ['packages/cli/vitest.config.ts'],
@@ -100,7 +93,6 @@ describe('computeScope', () => {
 	it('bails to full on vite.config change (vitest reads vite.config)', () => {
 		const rootDir = makePackageDir('packages/frontend/editor-ui');
 		const result = computeScope({
-			runner: 'vitest',
 			packageDir: 'packages/frontend/editor-ui',
 			rootDir,
 			changedFiles: ['packages/frontend/editor-ui/vite.config.mts'],
@@ -111,7 +103,6 @@ describe('computeScope', () => {
 	it('bails to full on src/__tests__/setup.ts change', () => {
 		const rootDir = makePackageDir('packages/frontend/editor-ui');
 		const result = computeScope({
-			runner: 'vitest',
 			packageDir: 'packages/frontend/editor-ui',
 			rootDir,
 			changedFiles: ['packages/frontend/editor-ui/src/__tests__/setup.ts'],
@@ -129,7 +120,6 @@ describe('computeScope', () => {
 		])('bails to full on %s even when nothing changed in-package', (_label, changed) => {
 			const rootDir = makePackageDir('packages/cli');
 			const result = computeScope({
-				runner: 'vitest',
 				packageDir: 'packages/cli',
 				rootDir,
 				changedFiles: [changed],
@@ -141,7 +131,6 @@ describe('computeScope', () => {
 		it('a universal-sink change forces full for a downstream package too', () => {
 			const rootDir = makePackageDir('packages/nodes-base');
 			const result = computeScope({
-				runner: 'vitest',
 				packageDir: 'packages/nodes-base',
 				rootDir,
 				changedFiles: ['packages/workflow/src/Workflow.ts'],
@@ -152,7 +141,6 @@ describe('computeScope', () => {
 		it('does NOT treat a per-package package.json as a global trigger', () => {
 			const rootDir = makePackageDir('packages/cli');
 			const result = computeScope({
-				runner: 'vitest',
 				packageDir: 'packages/cli',
 				rootDir,
 				changedFiles: ['packages/other/package.json'],
@@ -163,7 +151,6 @@ describe('computeScope', () => {
 		it('still SKIPs an unrelated cross-package change', () => {
 			const rootDir = makePackageDir('packages/cli');
 			const result = computeScope({
-				runner: 'vitest',
 				packageDir: 'packages/cli',
 				rootDir,
 				changedFiles: ['packages/nodes-base/nodes/Slack/Slack.node.ts'],

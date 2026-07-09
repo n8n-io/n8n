@@ -66,7 +66,6 @@
     "@n8n/workflow-sdk": "workspace:*",
     "@opentelemetry/api": "^1.9.0",
     "@thednp/dommatrix": "^2.0.12",
-    "fast-json-patch": "catalog:",
     "ai": "catalog:",
     "csv-parse": "catalog:",
     "fast-glob": "catalog:",
@@ -97,6 +96,7 @@
     "@types/turndown": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "tsx": "catalog:",
+    "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"

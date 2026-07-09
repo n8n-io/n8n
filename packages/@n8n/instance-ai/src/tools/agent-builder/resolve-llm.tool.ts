@@ -2,9 +2,9 @@
  * resolve_llm — resolve the target agent's main LLM (provider/model/credential)
  * WITHOUT a picker, using the available LLM-provider credentials. Non-interactive:
  * returns ok=false with options when the choice is missing/ambiguous, so the
- * caller can fall back to the native ask-user tool and then write the choice via
- * write_config. (Instance AI has no picker cards, so there is no interactive
- * ask_llm tool here.)
+ * caller can fall back to the native ask-user tool and then write the choice
+ * into the config file and build_agent it. (Instance AI has no picker cards,
+ * so there is no interactive ask_llm tool here.)
  */
 import { Tool } from '@n8n/agents';
 import { z } from 'zod';
@@ -87,7 +87,7 @@ export function createResolveLlmTool(context: InstanceAiContext) {
 				'names a provider or model — do NOT call it proactively for fresh agents. If model is ' +
 				'omitted, uses the provider default. Returns ok=false with candidate credentials/models when ' +
 				'the choice is missing, unsupported, or ambiguous; ask the user (via the ask-user tool) to ' +
-				'pick, then write the choice with write_config.',
+				'pick, then write the choice into the config file and call build_agent.',
 		)
 		.input(
 			z.object({

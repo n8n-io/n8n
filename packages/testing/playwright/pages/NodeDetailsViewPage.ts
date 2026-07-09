@@ -15,6 +15,8 @@ import { ResourceLocator } from './components/ResourceLocator';
 import { RunDataPanel } from './components/RunDataPanel';
 import { locatorByIndex } from '../utils/index-helper';
 
+const containsValue = (value: string) => new RegExp(value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+
 export class NodeDetailsViewPage extends BasePage {
 	readonly setupHelper: NodeParameterHelper;
 	readonly editFields: EditFieldsNode;
@@ -596,12 +598,14 @@ export class NodeDetailsViewPage extends BasePage {
 		const selector = this.inputPanel.getRunSelector();
 		await selector.click();
 		await this.getVisiblePopoverOption(value).click();
+		await expect(this.inputPanel.getRunSelectorInput()).toHaveValue(containsValue(value));
 	}
 
 	async changeOutputRunSelector(value: string) {
 		const selector = this.outputPanel.getRunSelector();
 		await selector.click();
 		await this.getVisiblePopoverOption(value).click();
+		await expect(this.outputPanel.getRunSelectorInput()).toHaveValue(containsValue(value));
 	}
 
 	async getInputRunSelectorValue() {

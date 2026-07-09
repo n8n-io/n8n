@@ -398,5 +398,67 @@ export const describeCommonTests = (
 				expect(childParentExecution.executionContext).toBeUndefined();
 			});
 		});
+
+		describe('sub-workflow dynamic credential reporting', () => {
+			beforeEach(() => {
+				// The shared mock keeps assigned flags across tests; reset like the engine loop does.
+				additionalData.currentNodeUsedDynamicCredentials = false;
+				additionalData.currentNodeAttemptedDynamicCredentials = false;
+				additionalData.dynamicCredentialsResolvedUserId = undefined;
+			});
+
+			it('forwards the sub-workflow dynamic-credential usage onto the parent execution', async () => {
+				additionalData.executeWorkflow.mockResolvedValue({
+					...executeWorkflowData,
+					usedDynamicCredentials: true,
+					dynamicCredentialsResolvedUserId: 'sub-user',
+				});
+
+				await context.executeWorkflow(workflowInfo);
+
+				expect(additionalData.currentNodeUsedDynamicCredentials).toBe(true);
+				expect(additionalData.dynamicCredentialsResolvedUserId).toBe('sub-user');
+			});
+
+			it('forwards the attempted flag onto the parent execution', async () => {
+				additionalData.executeWorkflow.mockResolvedValue({
+					...executeWorkflowData,
+					attemptedDynamicCredentials: true,
+				});
+
+				await context.executeWorkflow(workflowInfo);
+
+				expect(additionalData.currentNodeAttemptedDynamicCredentials).toBe(true);
+			});
+
+			it('forwards usage attached to a failed sub-workflow error and rethrows', async () => {
+				const error = Object.assign(new Error('sub-workflow failed'), {
+					dynamicCredentialsUsage: {
+						usedDynamicCredentials: true,
+						attemptedDynamicCredentials: true,
+						dynamicCredentialsResolvedUserId: 'sub-user',
+					},
+				});
+				additionalData.executeWorkflow.mockRejectedValue(error);
+
+				await expect(context.executeWorkflow(workflowInfo)).rejects.toThrow('sub-workflow failed');
+
+				expect(additionalData.currentNodeUsedDynamicCredentials).toBe(true);
+				expect(additionalData.currentNodeAttemptedDynamicCredentials).toBe(true);
+				expect(additionalData.dynamicCredentialsResolvedUserId).toBe('sub-user');
+				// The marker is transport-only and must not persist into the node's taskData.error.
+				expect('dynamicCredentialsUsage' in error).toBe(false);
+			});
+
+			it('rethrows a failed sub-workflow error without usage untouched', async () => {
+				additionalData.executeWorkflow.mockRejectedValue(new Error('sub-workflow failed'));
+
+				await expect(context.executeWorkflow(workflowInfo)).rejects.toThrow('sub-workflow failed');
+
+				expect(additionalData.currentNodeUsedDynamicCredentials).toBe(false);
+				expect(additionalData.currentNodeAttemptedDynamicCredentials).toBe(false);
+				expect(additionalData.dynamicCredentialsResolvedUserId).toBeUndefined();
+			});
+		});
 	});
 };

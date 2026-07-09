@@ -239,7 +239,7 @@ export function showScopeHelp(): void {
 Scope - Per-package vitest scope from changed files
 
 Usage:
-  janitor scope --runner=vitest [--package-dir=<dir>] [--changed-files=<list>]
+  janitor scope [--package-dir=<dir>] [--changed-files=<list>]
 
   --package-dir:   defaults to cwd (matches how pnpm/turbo invoke test scripts).
   --changed-files: newline- OR comma-separated repo-root-relative paths.
@@ -257,7 +257,7 @@ export function showTestScopedHelp(): void {
 Test-Scoped - Compute scope and spawn vitest with the right flags
 
 Usage:
-  janitor test-scoped --runner=vitest [--package-dir=<dir>] [--changed-files=<list>] [extra runner args]
+  janitor test-scoped [--package-dir=<dir>] [--changed-files=<list>] [extra runner args]
 
   --package-dir:   defaults to cwd (matches how pnpm/turbo invoke test scripts).
   --changed-files: newline- OR comma-separated repo-root-relative paths.
