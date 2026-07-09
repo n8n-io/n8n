@@ -17,7 +17,6 @@ const plannedTaskSchema = z.object({
 			'Task IDs that must succeed before this task can start. ' +
 				'Workflows that consume outputs depend on workflows that produce them; independent workflows run in parallel.',
 		),
-	tools: z.array(z.string()).optional().describe('Required tool subset for delegate tasks'),
 	workflowId: z
 		.string()
 		.optional()

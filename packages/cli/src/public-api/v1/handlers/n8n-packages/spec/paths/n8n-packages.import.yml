@@ -23,9 +23,8 @@ post:
     fresh local id; imported workflows arrive inactive unless `workflowPublishingPolicy`
     publishes them after import.
 
-    Credential references are resolved before any workflow is written. Only credentials owned by the
-    target project (with `credential:read`) or global credentials (with `credential:read`)
-    match. Credentials shared into the project as `credential:user` are not matched.
+    Credential references are resolved before any workflow is written. Credentials owned by,
+    shared with, or global to the target project (with `credential:read`) match.
   requestBody:
     required: true
     content:
@@ -54,10 +53,18 @@ post:
               type: string
               enum:
                 - id-only
+                - name-and-type
+                - type-only
               default: id-only
               description: >
                 How credential references in `requirements.credentials` are matched on
-                the target instance. Only `id-only` is supported today.
+                the target instance. `id-only` (default) matches by id. `name-and-type`
+                matches credentials with the exact same name and type. `type-only`
+                matches any credential of the same type. For `name-and-type` and
+                `type-only`, candidates are ranked by scope — a credential owned by
+                the target project wins over one merely shared into it, which in
+                turn wins over a global credential; if several candidates remain
+                in the winning scope, the most recently updated one is chosen.
             credentialMissingMode:
               type: string
               enum:

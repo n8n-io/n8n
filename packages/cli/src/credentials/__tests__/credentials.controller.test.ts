@@ -35,6 +35,7 @@ describe('CredentialsController', () => {
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const credentialsFinderService = mock<CredentialsFinderService>();
 	const licenseState = mock<LicenseState>();
+	const credentialsOverwrites = mock<ConstructorParameters<typeof CredentialsController>[12]>();
 
 	// Mock the credentialsRepository with a working create method
 	const credentialsRepository = mock<CredentialsRepository>();
@@ -85,6 +86,7 @@ describe('CredentialsController', () => {
 		eventService,
 		credentialsFinderService,
 		mock(), // connectionStatusProxy
+		credentialsOverwrites,
 	);
 
 	let req: AuthenticatedRequest;
@@ -173,6 +175,30 @@ describe('CredentialsController', () => {
 			const [eventName, eventPayload] = emitSpy.mock.calls[0];
 			expect(eventName).toBe('credentials-created');
 			expect(eventPayload).toMatchObject({ jweEnabled: true });
+		});
+
+		it('should emit "credentials-created" with managed-auth flags derived from overwrites', async () => {
+			const newCredentialsPayload = createNewCredentialsPayload();
+			req.body = newCredentialsPayload;
+			const { data, ...payloadWithoutData } = newCredentialsPayload;
+			const createdCredentials = createdCredentialsWithScopes(payloadWithoutData);
+
+			createUnmanagedCredentialSpy.mockResolvedValue(createdCredentials);
+			findCredentialOwningProjectSpy.mockResolvedValue(mock<Project>());
+			credentialsOverwrites.supportsManagedAuth.mockReturnValue(true);
+			credentialsOverwrites.usesManagedAuth.mockReturnValue(true);
+
+			await credentialsController.createCredentials(req, res, newCredentialsPayload);
+
+			expect(credentialsOverwrites.supportsManagedAuth).toHaveBeenCalledWith(
+				createdCredentials.type,
+			);
+			expect(credentialsOverwrites.usesManagedAuth).toHaveBeenCalledWith(
+				createdCredentials.type,
+				newCredentialsPayload.data,
+			);
+			const [, eventPayload] = emitSpy.mock.calls[0];
+			expect(eventPayload).toMatchObject({ supportsManagedAuth: true, usesManagedAuth: true });
 		});
 
 		it('should emit "private-credential-created" when credential is created as resolvable', async () => {
@@ -347,6 +373,33 @@ describe('CredentialsController', () => {
 			expect(emitSpy).toHaveBeenCalledWith(
 				'credentials-updated',
 				expect.objectContaining({ jweEnabled: true }),
+			);
+		});
+
+		it('should emit "credentials-updated" with managed-auth flags derived from overwrites', async () => {
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: {
+					name: 'Updated Credential',
+					type: 'oAuth2Api',
+					data: { clientId: 'cid' },
+				},
+			} as unknown as CredentialRequest.Update;
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
+			updateSpy.mockResolvedValue({ ...existingCredential, name: 'Updated Credential' });
+			credentialsOverwrites.supportsManagedAuth.mockReturnValue(true);
+			credentialsOverwrites.usesManagedAuth.mockReturnValue(true);
+
+			await credentialsController.updateCredentials(ownerReq);
+
+			expect(credentialsOverwrites.supportsManagedAuth).toHaveBeenCalledWith(
+				existingCredential.type,
+			);
+			expect(emitSpy).toHaveBeenCalledWith(
+				'credentials-updated',
+				expect.objectContaining({ supportsManagedAuth: true, usesManagedAuth: true }),
 			);
 		});
 

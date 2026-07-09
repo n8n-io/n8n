@@ -378,3 +378,19 @@ export class Tool<
 		};
 	}
 }
+
+const MAX_TOOL_NAME_LENGTH = 64;
+
+/**
+ * Coerce an arbitrary string into a provider-safe tool name
+ * (`[a-zA-Z0-9_-]`, max 64 chars — OpenAI's limit). Mirrors
+ * `nodeNameToToolName` in `n8n-workflow`; keep the two in sync — the SDK
+ * deliberately has no dependency on that package.
+ */
+export function sanitizeToolName(name: string): string {
+	let toolName = name.replace(/[^a-zA-Z0-9_-]+/g, '_');
+	if (toolName.length > MAX_TOOL_NAME_LENGTH) {
+		toolName = toolName.slice(0, MAX_TOOL_NAME_LENGTH).replace(/[_-]+$/, '');
+	}
+	return toolName;
+}

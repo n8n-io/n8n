@@ -71,6 +71,75 @@ describe('fetchProviderCatalog', () => {
 		expect(catalog['azure-cognitive-services']).toBeUndefined();
 	});
 
+	it('drops models marked deprecated on models.dev', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () =>
+				await Promise.resolve({
+					anthropic: {
+						id: 'anthropic',
+						name: 'Anthropic',
+						models: {
+							'claude-3-haiku-20240307': {
+								id: 'claude-3-haiku-20240307',
+								name: 'Claude Haiku 3',
+								status: 'deprecated',
+							},
+							'claude-sonnet-4-6': {
+								id: 'claude-sonnet-4-6',
+								name: 'Claude Sonnet 4.6',
+							},
+							'claude-beta-model': {
+								id: 'claude-beta-model',
+								name: 'Claude Beta Model',
+								status: 'beta',
+							},
+						},
+					},
+				}),
+		});
+		global.fetch = fetchMock as typeof fetch;
+
+		const catalog = await fetchProviderCatalog();
+
+		expect(catalog.anthropic.models['claude-3-haiku-20240307']).toBeUndefined();
+		expect(catalog.anthropic.models['claude-sonnet-4-6'].name).toBe('Claude Sonnet 4.6');
+		expect(catalog.anthropic.models['claude-beta-model'].name).toBe('Claude Beta Model');
+	});
+
+	it('omits a provider whose models are all deprecated', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () =>
+				await Promise.resolve({
+					anthropic: {
+						id: 'anthropic',
+						name: 'Anthropic',
+						models: {
+							'claude-3-haiku-20240307': {
+								id: 'claude-3-haiku-20240307',
+								name: 'Claude Haiku 3',
+								status: 'deprecated',
+							},
+						},
+					},
+					openai: {
+						id: 'openai',
+						name: 'OpenAI',
+						models: {
+							'gpt-5': { id: 'gpt-5', name: 'GPT-5' },
+						},
+					},
+				}),
+		});
+		global.fetch = fetchMock as typeof fetch;
+
+		const catalog = await fetchProviderCatalog();
+
+		expect(catalog.anthropic).toBeUndefined();
+		expect(catalog.openai.models['gpt-5'].name).toBe('GPT-5');
+	});
+
 	it('strips the "(latest)" suffix from model names and drops duplicate pinned snapshots', async () => {
 		const fetchMock = vi.fn().mockResolvedValue({
 			ok: true,

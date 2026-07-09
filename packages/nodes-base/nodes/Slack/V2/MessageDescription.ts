@@ -685,14 +685,14 @@ export const messageFields: INodeProperties[] = [
 				name: 'unfurl_links',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to enable unfurling of primarily text-based content',
+				description: 'Whether to unfurl primarily text-based content in the message',
 			},
 			{
 				displayName: 'Unfurl Media',
 				name: 'unfurl_media',
 				type: 'boolean',
 				default: true,
-				description: 'Whether to disable unfurling of media content',
+				description: 'Whether to unfurl media content in the message',
 			},
 			{
 				displayName: 'Send as Ephemeral Message',

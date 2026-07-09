@@ -1,5 +1,5 @@
 import { ALLOWED_HTML_TAGS } from '@/app/constants';
-import { sanitizeHtml } from './htmlUtils';
+import { openSafeUrl, sanitizeHtml } from './htmlUtils';
 
 describe('sanitizeHtml', () => {
 	test.each(ALLOWED_HTML_TAGS)('should allow allowed HTML tag %s', (tag) => {
@@ -80,5 +80,36 @@ describe('sanitizeHtml', () => {
 		],
 	])('should escape js code %s to equal %s', (dirtyURL, expected) => {
 		expect(sanitizeHtml(dirtyURL)).toBe(expected);
+	});
+});
+
+describe('openSafeUrl', () => {
+	let openSpy: ReturnType<typeof vi.spyOn>;
+
+	beforeEach(() => {
+		openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+	});
+
+	afterEach(() => {
+		openSpy.mockRestore();
+	});
+
+	test.each(['https://example.com', 'http://example.com/path?q=1', '/relative/path'])(
+		'should open allowed url %s with noopener,noreferrer',
+		(url) => {
+			openSafeUrl(url);
+			expect(openSpy).toHaveBeenCalledWith(url, '_blank', 'noopener,noreferrer');
+		},
+	);
+
+	test.each([
+		'javascript:alert(1)',
+		'JavaScript:alert(1)',
+		'data:text/html,<script>alert(1)</script>',
+		'file:///etc/passwd',
+		'vbscript:msgbox(1)',
+	])('should not open disallowed url %s', (url) => {
+		openSafeUrl(url);
+		expect(openSpy).not.toHaveBeenCalled();
 	});
 });

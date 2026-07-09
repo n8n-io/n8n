@@ -37,6 +37,27 @@ export function sanitizeHtml(dirtyHtml: string) {
 	return sanitizedHtml;
 }
 
+const SAFE_OPEN_PROTOCOLS = ['http:', 'https:'];
+
+/**
+ * Opens a URL in a new tab, but only when it resolves to an http(s) protocol.
+ * Persisted, untrusted values (e.g. resource locator URLs) can carry schemes
+ * like `javascript:` or `data:`, so anything else is dropped. Always opens with
+ * `noopener,noreferrer` so the new tab cannot reach back to the opener window.
+ */
+export function openSafeUrl(url: string): void {
+	let protocol: string;
+	try {
+		protocol = new URL(url, window.location.origin).protocol;
+	} catch {
+		return;
+	}
+
+	if (SAFE_OPEN_PROTOCOLS.includes(protocol)) {
+		window.open(url, '_blank', 'noopener,noreferrer');
+	}
+}
+
 /**
  * Checks if the input is a string and sanitizes it by removing or escaping harmful characters,
  * returning the original input if it's not a string.

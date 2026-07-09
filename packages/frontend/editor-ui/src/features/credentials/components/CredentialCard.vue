@@ -18,6 +18,7 @@ import { useI18n } from '@n8n/i18n';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import type { CredentialsResource } from '@/Interface';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
+import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
 import { useCredentialOAuth } from '../composables/useCredentialOAuth';
 
 import {
@@ -25,7 +26,6 @@ import {
 	N8nBadge,
 	N8nButton,
 	N8nCard,
-	N8nIcon,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -238,24 +238,17 @@ function moveResource() {
 				<N8nBadge v-if="needsSetup" class="ml-3xs" theme="warning">
 					{{ locale.baseText('credentials.item.needsSetup') }}
 				</N8nBadge>
-				<N8nTooltip v-if="isPrivateCredentialsEnabled && data.isResolvable" placement="top">
-					<template #content>
-						<div :class="$style.tooltipContent">
-							<strong>{{ locale.baseText('credentials.private.tooltipTitle') }}</strong>
-							<span>{{ locale.baseText('credentials.private.tooltip') }}</span>
-						</div>
-					</template>
-					<N8nBadge
-						theme="tertiary"
-						class="ml-3xs pl-3xs pr-3xs"
-						data-test-id="credential-card-dynamic"
-					>
-						<span :class="$style.dynamicBadgeText">
-							<N8nIcon icon="key-round" size="small" />
-							{{ locale.baseText('credentials.private.badge') }}
-						</span>
-					</N8nBadge>
-				</N8nTooltip>
+				<span
+					v-if="isPrivateCredentialsEnabled && data.isResolvable"
+					class="ml-3xs"
+					data-test-id="credential-card-dynamic"
+				>
+					<PrivateCredentialIcon
+						:tooltip-title="locale.baseText('credentials.private.tooltipTitle')"
+						:tooltip-text="locale.baseText('credentials.private.tooltip')"
+						size="small"
+					/>
+				</span>
 			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
@@ -348,21 +341,6 @@ function moveResource() {
 	align-self: stretch;
 	padding: 0 var(--spacing--sm) 0 0;
 	cursor: default;
-}
-
-.dynamicBadgeText {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	font-size: var(--font-size--2xs);
-	line-height: 1;
-	vertical-align: middle;
-}
-
-.tooltipContent {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
 }
 
 @include mixins.breakpoint('sm-and-down') {

@@ -1,4 +1,4 @@
-import type { TerminalTaskStatus } from '../enums';
+import type { TerminalTaskStatus } from '@n8n/constants';
 
 export interface RetentionBatch {
 	/** Terminal statuses this batch may delete. */

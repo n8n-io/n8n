@@ -105,7 +105,7 @@ export {
 
 export { createCancellation, isCancellation, CANCELLATION_TYPE } from './sdk/cancellation';
 export type { Cancellation } from './sdk/cancellation';
-export { Tool, wrapToolForApproval } from './sdk/tool';
+export { Tool, wrapToolForApproval, sanitizeToolName } from './sdk/tool';
 export { Memory } from './sdk/memory';
 export { VectorStore } from './sdk/vector-store';
 export {
@@ -149,6 +149,7 @@ export {
 	createRuntimeSkillSource,
 	createRuntimeSkillTools,
 	createSkillLoadTool,
+	filterRuntimeSkillSource,
 	formatSkillValidationErrors,
 	InvalidRuntimeSkillError,
 	loadRuntimeSkillsFromDirectory,
@@ -165,6 +166,7 @@ export {
 	validateRuntimeSkill,
 } from './skills';
 export type {
+	LoadRuntimeSkillSourceFromDirectoryOptions,
 	RenderSkillCatalogOptions,
 	RuntimeSkill,
 	RuntimeSkillContent,
@@ -256,6 +258,7 @@ export {
 	failedDelegatedChildSuspendOutput,
 	generateResultToDelegateSubAgentOutput,
 	getInlineDelegateSubAgentToolOptions,
+	isDelegateSubAgentTool,
 	renderDelegateSubAgentPrompt,
 } from './runtime/tools/delegate-sub-agent-tool';
 export type {
@@ -270,6 +273,7 @@ export type {
 	SubAgentTaskDifficulty,
 } from './runtime/tools/delegate-sub-agent-tool';
 export { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from './runtime/tools/write-todos-tool';
+export type { CreateWriteTodosToolOptions } from './runtime/tools/write-todos-tool';
 export { createEmbeddingModel } from './runtime/model/model-factory';
 export { generateTitleFromMessage } from './runtime/memory/title-generation';
 export {
