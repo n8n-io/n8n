@@ -2,13 +2,12 @@
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { truncateBeforeLast } from '@n8n/utils/string/truncate';
+import { N8nAiModelSelectorDropdown, type AiModelSelectorMenuItem } from '@n8n/design-system';
 
-import AiModelSelectorDropdown from '@/features/ai/modelSelector/AiModelSelectorDropdown.vue';
-import ModelSelectorTriggerIcon from '@/features/ai/modelSelector/ModelSelectorTriggerIcon.vue';
-import ModelSelectorItemLeadingIcon from '@/features/ai/modelSelector/ModelSelectorItemLeadingIcon.vue';
-import { MAX_MODEL_NAME_CHARS, useAiModelSelectorMenu } from '@/features/ai/modelSelector/search';
-import { buildMenuItemId, parseMenuItemId } from '@/features/ai/modelSelector/menuItemId';
-import type { AiModelSelectorMenuItem } from '@/features/ai/modelSelector/types';
+import ModelSelectorTriggerIcon from './model-selector/ModelSelectorTriggerIcon.vue';
+import ModelSelectorItemLeadingIcon from './model-selector/ModelSelectorItemLeadingIcon.vue';
+import { MAX_MODEL_NAME_CHARS, useAiModelSelectorMenu } from './model-selector/search';
+import { buildMenuItemId, parseMenuItemId } from './model-selector/menuItemId';
 import { AGENT_MODEL_PROVIDER_DEFINITIONS, getProviderCredentialTypes } from '../model-providers';
 import {
 	AGENT_EMBEDDING_PROVIDERS,
@@ -26,14 +25,12 @@ const {
 	selectedCredentialId,
 	credentialsByType,
 	canCreateCredentials = false,
-	horizontal = false,
 	disabled = false,
 } = defineProps<{
 	selectedModel: string;
 	selectedCredentialId: string | null;
 	credentialsByType: Record<string, AgentCredentialOption[]>;
 	canCreateCredentials?: boolean;
-	horizontal?: boolean;
 	disabled?: boolean;
 }>();
 
@@ -175,14 +172,13 @@ function onSelect(id: string) {
 </script>
 
 <template>
-	<AiModelSelectorDropdown
+	<N8nAiModelSelectorDropdown
 		:items="filteredMenu"
 		:selected-label="selectedLabel"
 		:selected-credential-name="selectedCredentialName"
 		:credentials-missing="credentialsMissing"
 		:credentials-missing-label="i18n.baseText('agents.modelSelector.credentialsMissing')"
 		:no-match-label="i18n.baseText('agents.modelSelector.noMatch')"
-		:horizontal="horizontal"
 		:disabled="disabled"
 		data-test-id="agent-embedding-model-selector"
 		credential-data-test-id="agent-embedding-model-selector-credential"
@@ -199,5 +195,5 @@ function onSelect(id: string) {
 		<template #item-leading="{ item, ui }">
 			<ModelSelectorItemLeadingIcon :item="item" :class="ui.class" />
 		</template>
-	</AiModelSelectorDropdown>
+	</N8nAiModelSelectorDropdown>
 </template>

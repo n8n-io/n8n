@@ -10,8 +10,8 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
-vi.mock('@/features/ai/modelSelector/AiModelSelectorDropdown.vue', () => ({
-	default: {
+vi.mock('@n8n/design-system', () => ({
+	N8nAiModelSelectorDropdown: {
 		name: 'AiModelSelectorDropdown',
 		props: [
 			'items',
@@ -20,7 +20,6 @@ vi.mock('@/features/ai/modelSelector/AiModelSelectorDropdown.vue', () => ({
 			'credentialsMissing',
 			'credentialsMissingLabel',
 			'noMatchLabel',
-			'horizontal',
 			'disabled',
 			'dataTestId',
 			'credentialDataTestId',

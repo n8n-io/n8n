@@ -560,7 +560,6 @@ onMounted(() => {
 						:selected-credential-id="embeddingCredential || null"
 						:credentials-by-type="credentialsByType"
 						:can-create-credentials="credentialPermissions.create"
-						horizontal
 						@update:selected-model="onEmbeddingModelUpdate"
 						@update:selected-credential-id="embeddingCredential = $event"
 						@create-credential="onCreateEmbeddingCredential"
