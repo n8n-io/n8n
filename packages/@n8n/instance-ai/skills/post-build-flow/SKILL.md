@@ -257,6 +257,15 @@ default path. Workflow verification is automatic from the build outcome; the
 orchestrator handles workflow setup after verification when the saved workflow
 still has mocked credentials or placeholders.
 
+**Trust the build outcome over your own source file.** When `build-workflow`
+returns `resolvedCredentialsByNode` (or `setupRequirement.status ===
+"not_required"`), the saved workflow is already connected to existing
+credentials — even if your source used an unresolved `newCredential()` call.
+Do not ask the user to connect those credentials, do not offer the setup card
+for them, and do not describe them as missing; at most mention which existing
+credential is being used. Route credential setup only when the build outcome
+reports mocked credentials or `setupRequirement.status === "required"`.
+
 **Ask once when a service has multiple credentials of the same type.** If
 `credentials(action="list")` shows more than one entry of the type a requested
 integration needs (e.g. two `openAiApi` accounts, three Google Calendar

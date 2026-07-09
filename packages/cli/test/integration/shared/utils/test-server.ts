@@ -379,7 +379,7 @@ export const setupTestServer = ({
 		// Close the HTTP server first so any in-flight requests can't reach the
 		// DI container after testDb.terminate() resets it. Await the close so
 		// pending handlers drain before the next file's beforeAll runs in
-		// persistent Jest workers — otherwise stale handlers call
+		// persistent Vitest workers — otherwise stale handlers call
 		// Container.get(Logger), construct a fresh Logger, and trip Vitest's
 		// "environment torn down" guard when winston is imported.
 		// Skip when the server never started listening (some suites bail in

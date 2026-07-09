@@ -63,4 +63,3 @@ flowchart LR
 The in-tree addition of `workflowIdPolicy` is the canonical example — it landed
 in the module types + importer, the DTO (+ form-fields list), the handler, and
 the CLI. Grep `workflowIdPolicy` to see every site a new import knob must touch.
-

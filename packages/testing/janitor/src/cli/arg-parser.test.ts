@@ -197,17 +197,6 @@ describe('arg-parser', () => {
 			const result = parseArgs();
 			expect(result.testCommand).toBe('pnpm test');
 		});
-
-		it('parses --runner=vitest', () => {
-			setArgs(['--runner=vitest']);
-			const result = parseArgs();
-			expect(result.runner).toBe('vitest');
-		});
-
-		it('throws on unknown --runner value', () => {
-			setArgs(['--runner=jest']);
-			expect(() => parseArgs()).toThrow(/Unknown --runner=jest/);
-		});
 	});
 
 	describe('combined arguments', () => {

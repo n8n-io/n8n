@@ -123,7 +123,7 @@ of mocked) set the type's `EVAL_*` env var — e.g. `EVAL_SLACK_ACCESS_TOKEN`,
 Only a closed set of types is valid — declaring anything else fails at case-load
 with a pointer to add a template. From
 [`credentials/seeder.ts`](../../../packages/@n8n/instance-ai/evaluations/credentials/seeder.ts):
-`slackApi`, `notionApi`, `githubApi`, `gmailOAuth2Api`,
+`slackApi`, `notionApi`, `githubApi`, `gmailOAuth2`,
 `microsoftTeamsOAuth2Api`, `whatsAppTriggerApi`, `httpHeaderAuth`,
 `httpBasicAuth`. Need another? Add a `CredentialTemplate` to `seeder.ts` (a
 `defaultName`, optional `envVar`, and `buildData(token)`); that extends

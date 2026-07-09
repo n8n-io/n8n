@@ -128,6 +128,10 @@ export class ProjectSettingsPage extends BasePage {
 		return this.page.getByTestId('icon-picker-button');
 	}
 
+	getIconPickerIcon() {
+		return this.getIconPickerButton().locator('svg');
+	}
+
 	async clickIconPickerButton() {
 		await this.getIconPickerButton().click();
 	}

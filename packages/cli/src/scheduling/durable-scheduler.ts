@@ -7,6 +7,8 @@ import type { RunInTransaction, Scheduler, TaskHandler, Tracer } from '@n8n/sche
 import { createScheduler, executorLookaheadSeconds } from '@n8n/scheduler';
 import { InstanceSettings, Tracing } from 'n8n-core';
 
+import { ScheduleTriggerTaskHandler } from './schedule-trigger-node/schedule-trigger-task-handler';
+
 /**
  * The database-backed {@link Scheduler} and its process lifecycle.
  *
@@ -25,6 +27,7 @@ export class DurableScheduler implements Scheduler {
 		instanceSettings: InstanceSettings,
 		globalConfig: GlobalConfig,
 		tracing: Tracing,
+		scheduleTriggerTaskHandler: ScheduleTriggerTaskHandler,
 	) {
 		const config = globalConfig.scheduler;
 		const enabled = config.enabled && instanceSettings.instanceType === 'main';
@@ -75,6 +78,7 @@ export class DurableScheduler implements Scheduler {
 					tracer,
 				})
 			: undefined;
+		this.registerTaskHandler(scheduleTriggerTaskHandler.taskType, scheduleTriggerTaskHandler);
 	}
 
 	registerTaskHandler(taskType: string, handler: TaskHandler): void {

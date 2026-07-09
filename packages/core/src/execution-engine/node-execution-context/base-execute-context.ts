@@ -34,6 +34,8 @@ import {
 	WAIT_INDEFINITELY,
 	WorkflowDataProxy,
 	createEnvProviderState,
+	applyDynamicCredentialsUsage,
+	takeAttachedDynamicCredentialsUsage,
 } from 'n8n-workflow';
 
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
@@ -142,14 +144,29 @@ export class BaseExecuteContext extends NodeExecutionContext {
 				options.parentExecution.executionContext = this.getExecutionContext();
 			}
 		}
-		const result = await this.additionalData.executeWorkflow(workflowInfo, this.additionalData, {
-			...options,
-			parentWorkflowId: this.workflow.id,
-			inputData,
-			parentWorkflowSettings: this.workflow.settings,
-			node: this.node,
-			parentCallbackManager,
-		});
+		let result: ExecuteWorkflowData;
+		try {
+			result = await this.additionalData.executeWorkflow(workflowInfo, this.additionalData, {
+				...options,
+				parentWorkflowId: this.workflow.id,
+				inputData,
+				parentWorkflowSettings: this.workflow.settings,
+				node: this.node,
+				parentCallbackManager,
+			});
+		} catch (error) {
+			// A failed sub-workflow may still have attempted or resolved private credentials
+			// before failing; the usage rides on the error so a continue-on-fail parent task
+			// still inherits the flags.
+			const usage = takeAttachedDynamicCredentialsUsage(error);
+			if (usage) applyDynamicCredentialsUsage(this.additionalData, usage);
+			throw error;
+		}
+
+		// The sub-workflow resolved its credentials under its own context; forward the reported
+		// usage onto this parent node so its task inherits the flag and redaction covers the
+		// embedded output.
+		applyDynamicCredentialsUsage(this.additionalData, result);
 
 		// If a sub-workflow execution goes into the waiting state
 		if (result.waitTill) {
