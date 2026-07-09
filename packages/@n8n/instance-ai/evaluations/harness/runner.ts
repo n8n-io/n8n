@@ -7,6 +7,7 @@
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiConfirmRequest, InstanceAiEvalExecutionResult } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import crypto from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -699,7 +700,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			{ ...eventOutcome, workflowIds: threadWorkflowIds },
 			config.preRunWorkflowIds,
 			config.claimedWorkflowIds,
-			{ allowListDiffFallback: config.allowWorkflowListDiffFallback === true },
+			{ allowListDiffFallback: config.allowWorkflowListDiffFallback === true, logger },
 		);
 
 		if (outcome.workflowsCreated.length === 0) {
@@ -902,6 +903,21 @@ function scenarioMatchTokens(text: string): Set<string> {
 	);
 }
 
+/** Workflow ids referenced by enabled Execute Workflow nodes (database source,
+ *  plain string or resource-locator value) — those targets are dependencies of
+ *  this workflow, not entry points. */
+function executeWorkflowReferences(wf: WorkflowResponse): string[] {
+	const ids: string[] = [];
+	for (const node of wf.nodes) {
+		if (node.disabled || node.type !== 'n8n-nodes-base.executeWorkflow') continue;
+		const params = node.parameters ?? {};
+		if (typeof params.source === 'string' && params.source !== 'database') continue;
+		const raw = isRecord(params.workflowId) ? params.workflowId.value : params.workflowId;
+		if (typeof raw === 'string' && raw.trim() !== '' && !raw.startsWith('=')) ids.push(raw.trim());
+	}
+	return ids;
+}
+
 /**
  * Compositional builds split the system across multiple workflows (SKILL.md
  * endorses this), but execution historically always ran `build.workflowId` —
@@ -909,7 +925,11 @@ function scenarioMatchTokens(text: string): Set<string> {
  * while the expectations judge (which sees every workflowJson) passed the
  * same build. Mirror reality instead: a caller hits the specific endpoint, so
  * route the scenario to the workflow whose trigger-bearing content best
- * matches it. Single-workflow builds and ties keep the original id.
+ * matches it. Sub-workflows referenced by another candidate's Execute Workflow
+ * node are dependencies, not entry points — executing one directly starts it
+ * once with an empty payload, so they're demoted whenever an entry point
+ * remains. A single-candidate pool routes to that candidate: `workflowId`
+ * itself may be a sub-workflow (whichever the agent happened to save first).
  */
 export function selectScenarioWorkflowId(
 	scenario: ExecutionScenario,
@@ -921,15 +941,26 @@ export function selectScenarioWorkflowId(
 		(wf) =>
 			wf?.id && Array.isArray(wf.nodes) && wf.nodes.some((n) => isMockableTriggerNodeType(n.type)),
 	);
-	if (candidates.length <= 1) return workflowId;
+	if (candidates.length === 0) return workflowId;
 
+	const referencedIds = new Set(candidates.flatMap(executeWorkflowReferences));
+	const entryPoints = candidates.filter((wf) => !referencedIds.has(wf.id));
+	const pool = entryPoints.length > 0 ? entryPoints : candidates;
+	const fallbackId = pool.some((wf) => wf.id === workflowId) ? workflowId : pool[0].id;
 	const scenarioTokens = scenarioMatchTokens(`${scenario.name} ${scenario.dataSetup}`);
-	if (scenarioTokens.size === 0) return workflowId;
+	if (pool.length === 1 || scenarioTokens.size === 0) {
+		if (fallbackId !== workflowId) {
+			logger.info(
+				`    [${scenario.name}] multi-workflow build: routing to entry point ${fallbackId}`,
+			);
+		}
+		return fallbackId;
+	}
 
-	let bestId = workflowId;
+	let bestId = fallbackId;
 	let bestScore = -1;
 	let tied = false;
-	for (const wf of candidates) {
+	for (const wf of pool) {
 		const haystackParts: string[] = [wf.name ?? ''];
 		for (const node of wf.nodes) {
 			haystackParts.push(String(node.name ?? ''));
@@ -951,7 +982,7 @@ export function selectScenarioWorkflowId(
 		}
 	}
 
-	if (tied || bestScore <= 0) return workflowId;
+	if (tied || bestScore <= 0) bestId = fallbackId;
 	if (bestId !== workflowId) {
 		logger.info(
 			`    [${scenario.name}] multi-workflow build: routing to workflow ${bestId} (score ${String(bestScore)})`,
