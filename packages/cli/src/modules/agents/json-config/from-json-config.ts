@@ -33,9 +33,16 @@ import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
 import { createHash } from 'crypto';
 import { z } from 'zod';
 
-import { mapCredentialForProvider } from './credential-field-mapping';
+import {
+	resolveEmbeddingProviderOptionsFromCredential,
+	type ManagedEmbeddingProviderOptions,
+	type ManagedEmbeddingProviderOptionsResolver,
+} from './embedding-credential';
 import { resolveCredentialAwareModelConfig } from './model-config';
 import { resolveProviderToolName } from './provider-tool-aliases';
+import { buildVectorStore } from './vector-store-factory';
+
+export type { ManagedEmbeddingProviderOptions, ManagedEmbeddingProviderOptionsResolver };
 
 const WEB_SEARCH_TOOL_NAME = 'web_search';
 const WEB_SEARCH_INPUT_SCHEMA = z.object({
@@ -68,13 +75,6 @@ export type MemoryFactory = (params: AgentJsonMemoryConfig) => BuiltMemory | Pro
  * `buildFromJson`.
  */
 export type McpClientBuilder = (server: AgentJsonMcpServerConfig) => Promise<McpClient>;
-export interface ManagedEmbeddingProviderOptions {
-	apiKey?: string;
-	baseURL?: string;
-	fetch?: typeof globalThis.fetch;
-}
-export type ManagedEmbeddingProviderOptionsResolver =
-	() => Promise<ManagedEmbeddingProviderOptions | null>;
 
 type MemoryWorkerModelConfig = {
 	model: string;
@@ -147,6 +147,16 @@ export async function buildFromJson(
 		for (const server of config.mcpServers) {
 			const client = await options.buildMcpClient(server);
 			agent.mcp(client);
+		}
+	}
+
+	if (config.vectorStores?.length) {
+		for (const vectorStoreConfig of config.vectorStores) {
+			// Draft connections may not have a credential (or embedding credential)
+			// selected yet — skip them rather than failing the whole agent build.
+			if (!vectorStoreConfig.credential || !vectorStoreConfig.embedding.credential) continue;
+			const vectorStore = await buildVectorStore(vectorStoreConfig, options.credentialProvider);
+			agent.vectorStore(vectorStore, { description: vectorStoreConfig.useWhen });
 		}
 	}
 
@@ -541,19 +551,6 @@ async function resolveEpisodicMemoryJsonConfig(
 		...(config.topK !== undefined && { topK: config.topK }),
 		...(config.maxEntriesPerRun !== undefined && { maxEntriesPerRun: config.maxEntriesPerRun }),
 		embeddingProviderOptions,
-	};
-}
-
-async function resolveEmbeddingProviderOptionsFromCredential(
-	credential: string,
-	embeddingModel: string,
-	credentialProvider: CredentialProvider,
-): Promise<ManagedEmbeddingProviderOptions> {
-	const raw = await credentialProvider.resolve(credential);
-	const mapped = mapCredentialForProvider(getProviderPrefix(embeddingModel), raw);
-	return {
-		...(typeof mapped.apiKey === 'string' && { apiKey: mapped.apiKey }),
-		...(typeof mapped.baseURL === 'string' && { baseURL: mapped.baseURL }),
 	};
 }
 

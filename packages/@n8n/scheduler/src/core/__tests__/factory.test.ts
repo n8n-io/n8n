@@ -1,6 +1,7 @@
 import { ScheduledTaskStatus } from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
 
+import type { SchedulerMetrics } from '../../observability/metrics';
 import { InvalidLifecycleOptionsError } from '../errors';
 import { createScheduler } from '../factory';
 import type { SchedulerDeps, SchedulerTaskStore } from '../factory';
@@ -758,5 +759,161 @@ describe('createScheduler reap', () => {
 			message: 'Scheduler dead-lettered a task; its last attempt lost its lease',
 			context: { taskId: '7', attempts: 3, maxAttempts: 3 },
 		});
+	});
+});
+
+describe('createScheduler metrics', () => {
+	it('records the materialization outcome from the pass summary', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const corrupt: ScheduledJob = {
+			id: 7,
+			taskType: 'test-task',
+			payload: {},
+			kind: 'cron',
+			cronExpression: null,
+			timezone: null,
+			intervalSeconds: null,
+			fireAt: null,
+			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
+			lastFiredAt: null,
+			maxAttempts: 3,
+		};
+		const tx = mock<MaterializerTransaction>();
+		tx.claimDueJobs.mockResolvedValue({
+			now: new Date('2026-01-01T00:00:00.000Z'),
+			jobs: [corrupt],
+		});
+		tx.recordOccurrences.mockResolvedValue(0);
+		const materializerTransaction: RunInTransaction = async (work) => await work(tx);
+		const { scheduler } = makeScheduler({ materializerTransaction, metrics });
+
+		await scheduler.materialize();
+
+		// One corrupt job deferred, no occurrences recorded.
+		expect(metrics.recordMaterialized).toHaveBeenCalledWith(0, 1);
+	});
+
+	it('records the reaper outcome from the sweep result', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		taskStore.findExpiredLeases.mockResolvedValue([
+			{ id: '7', attempts: 2, maxAttempts: 3, leaseEpoch: 1 },
+		]);
+		taskStore.deadLetterExpired.mockResolvedValue(1);
+
+		await scheduler.reap();
+
+		expect(metrics.recordReaped).toHaveBeenCalledWith(0, 1);
+	});
+
+	it('records the retention outcome from the pass summary', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		taskStore.deleteFinishedOlderThan.mockResolvedValueOnce(5).mockResolvedValue(0);
+
+		await scheduler.prune();
+
+		expect(metrics.recordPruned).toHaveBeenCalledWith(5);
+	});
+
+	it('defaults to a safe no-op when no metrics port is supplied', async () => {
+		const { scheduler, taskStore } = makeScheduler();
+		taskStore.deleteFinishedOlderThan.mockResolvedValue(0);
+
+		// No metrics dep: the defaulted no-op must not throw.
+		await expect(scheduler.prune()).resolves.toEqual({ deleted: 0, drained: true });
+	});
+
+	it('maps a successful fire onto dispatch and success metrics', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		scheduler.registerTaskHandler('test-task', { execute: vi.fn().mockResolvedValue(undefined) });
+		// A task due in the past fires on the next timer tick.
+		taskStore.claimDueTasks.mockResolvedValue([claimedTask()]);
+		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.completeTask.mockResolvedValue(1);
+
+		await scheduler.execute();
+
+		// The fire is detached from the claim: wait for the timer to deliver it.
+		await vi.waitFor(() => {
+			expect(metrics.recordFireOutcome).toHaveBeenCalledWith('test-task', 'success');
+		});
+		expect(metrics.recordDispatch).toHaveBeenCalledWith('test-task');
+		expect(metrics.observeDispatchLagSeconds).toHaveBeenCalledWith('test-task', expect.any(Number));
+		expect(metrics.recordDeadLettered).not.toHaveBeenCalled();
+	});
+
+	it('maps a terminal failure onto a failure outcome and a dead-letter', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		scheduler.registerTaskHandler('test-task', {
+			execute: vi.fn().mockRejectedValue(new Error('boom')),
+		});
+		// Single attempt: the first failure exhausts it.
+		taskStore.claimDueTasks.mockResolvedValue([claimedTask({ attempts: 0, maxAttempts: 1 })]);
+		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.failTaskTerminal.mockResolvedValue(1);
+
+		await scheduler.execute();
+
+		await vi.waitFor(() => {
+			expect(metrics.recordFireOutcome).toHaveBeenCalledWith('test-task', 'failure');
+		});
+		expect(metrics.recordDeadLettered).toHaveBeenCalledTimes(1);
+		expect(metrics.recordRetry).not.toHaveBeenCalled();
+	});
+
+	it('maps a failure with attempts remaining onto a retry', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		scheduler.registerTaskHandler('test-task', {
+			execute: vi.fn().mockRejectedValue(new Error('boom')),
+		});
+		// Attempts remain, so the failure reschedules rather than fails terminally.
+		taskStore.claimDueTasks.mockResolvedValue([claimedTask({ attempts: 0, maxAttempts: 3 })]);
+		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.rescheduleTask.mockResolvedValue(1);
+
+		await scheduler.execute();
+
+		await vi.waitFor(() => {
+			expect(metrics.recordRetry).toHaveBeenCalledWith('test-task');
+		});
+		expect(metrics.recordFireOutcome).not.toHaveBeenCalled();
+		expect(metrics.recordDeadLettered).not.toHaveBeenCalled();
+	});
+
+	it('does not let a throwing metrics sink break a pass', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		metrics.recordPruned.mockImplementation(() => {
+			throw new Error('exporter down');
+		});
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		taskStore.deleteFinishedOlderThan.mockResolvedValueOnce(5).mockResolvedValue(0);
+
+		// The pass completes normally even though recording its outcome threw.
+		await expect(scheduler.prune()).resolves.toEqual({ deleted: 5, drained: true });
+	});
+
+	it('does not let a throwing metrics sink break a fire', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		metrics.recordDispatch.mockImplementation(() => {
+			throw new Error('exporter down');
+		});
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		const execute = vi.fn().mockResolvedValue(undefined);
+		scheduler.registerTaskHandler('test-task', { execute });
+		taskStore.claimDueTasks.mockResolvedValue([claimedTask()]);
+		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.completeTask.mockResolvedValue(1);
+
+		await scheduler.execute();
+
+		// The handler still runs and the task still completes despite the sink throwing.
+		await vi.waitFor(() => {
+			expect(taskStore.completeTask).toHaveBeenCalledTimes(1);
+		});
+		expect(execute).toHaveBeenCalledTimes(1);
 	});
 });
