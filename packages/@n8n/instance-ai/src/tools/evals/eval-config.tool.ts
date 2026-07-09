@@ -245,7 +245,7 @@ export function createEvalConfigTool(context: InstanceAiContext) {
 
 	return new Tool(EVAL_CONFIG_TOOL_ID)
 		.description(
-			'Manage configuration-based evaluations on a workflow — list, get, create, update, delete. ' +
+			'Manage configuration-based evaluations on a workflow. ' +
 				'A config-based eval attaches a name, a start/end node, judged metrics, and a Data Table ' +
 				'dataset to the workflow via the evaluation-config API (no eval nodes are added to the canvas). ' +
 				'Create/populate the dataset Data Table with the data-tables tool first, then link it by id.',
@@ -265,6 +265,10 @@ export function createEvalConfigTool(context: InstanceAiContext) {
 					return await handleUpdate(context, input, ctx);
 				case 'delete':
 					return await handleDelete(context, input, ctx);
+				default:
+					// Defensive: the input schema is a discriminated union, so this is
+					// unreachable for validated input — guards against an unknown action.
+					return { error: 'Unknown eval-config action' };
 			}
 		})
 		.build();
