@@ -12,6 +12,9 @@ export class EvaluationComparePage extends BasePage {
 		// `load` event (which can lag on a cold route), then wait for the view.
 		await this.page.goto(`/workflow/${workflowId}/evaluation/collections/${collectionId}/compare`, {
 			waitUntil: 'domcontentloaded',
+			// Generous nav timeout: the dev server can cold-compile this route on
+			// first navigation. Harmless against the prebuilt editor in CI.
+			timeout: 60_000,
 		});
 		await this.getView().waitFor({ state: 'visible', timeout: 30_000 });
 	}

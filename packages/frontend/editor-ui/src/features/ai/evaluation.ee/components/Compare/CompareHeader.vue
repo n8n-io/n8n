@@ -17,6 +17,26 @@ const i18n = useI18n();
 
 const status = computed(() => deriveRunsStatus(props.versions));
 
+const statusBadge = computed(() => {
+	switch (status.value) {
+		case 'error':
+			return {
+				theme: 'warning' as const,
+				label: i18n.baseText('evaluation.collections.card.failed'),
+			};
+		case 'running':
+			return {
+				theme: 'tertiary' as const,
+				label: i18n.baseText('evaluation.collections.card.running'),
+			};
+		default:
+			return {
+				theme: 'success' as const,
+				label: i18n.baseText('evaluation.collections.card.done'),
+			};
+	}
+});
+
 const legend = computed(() =>
 	props.versions.map((version) => ({
 		...version,
@@ -30,15 +50,7 @@ const legend = computed(() =>
 	<header :class="$style.header" data-test-id="compare-header">
 		<div :class="$style.titleRow">
 			<N8nText tag="h2" size="xlarge" bold>{{ collectionName }}</N8nText>
-			<N8nBadge :theme="status === 'done' ? 'success' : 'tertiary'" size="small">
-				{{
-					i18n.baseText(
-						status === 'done'
-							? 'evaluation.collections.card.done'
-							: 'evaluation.collections.card.running',
-					)
-				}}
-			</N8nBadge>
+			<N8nBadge :theme="statusBadge.theme" size="small">{{ statusBadge.label }}</N8nBadge>
 		</div>
 		<N8nText size="small" color="text-light">
 			{{

@@ -105,14 +105,22 @@ export function indexOfMax(values: Array<number | null>): number | null {
 	return best;
 }
 
-// A run set is "running" while any run is still queued or executing, else
-// "done". Shared by the collection card and the compare header so the two
-// surfaces can't disagree; callers that also have a not-yet-loaded state keep
-// their own `null` guard around this.
+// Overall status of a run set: "running" while any run is still queued or
+// executing, "error" when every run failed or was cancelled (so an all-failed
+// collection doesn't read as a green "done"), otherwise "done". Shared by the
+// collection card and the compare header so the two surfaces can't disagree;
+// callers that also have a not-yet-loaded state keep their own `null` guard.
 export function deriveRunsStatus(
 	runs: Array<{ status: EvalCollectionRunStatus }>,
-): 'running' | 'done' {
-	return runs.some((run) => run.status === 'new' || run.status === 'running') ? 'running' : 'done';
+): 'running' | 'done' | 'error' {
+	if (runs.some((run) => run.status === 'new' || run.status === 'running')) return 'running';
+	if (
+		runs.length > 0 &&
+		runs.every((run) => run.status === 'error' || run.status === 'cancelled')
+	) {
+		return 'error';
+	}
+	return 'done';
 }
 
 // Reduce per-run aggregate metrics to the score-shaped ([0, 1]) metrics that

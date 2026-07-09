@@ -5655,6 +5655,7 @@
 	"evaluation.collections.errors.fetchFailed": "Could not load evaluation collections",
 	"evaluation.collections.card.done": "Done",
 	"evaluation.collections.card.running": "Running",
+	"evaluation.collections.card.failed": "Failed",
 	"evaluation.collections.card.currentDraft": "Current draft",
 	"evaluation.collections.card.meta.versions": "{count} version | {count} versions",
 	"evaluation.collections.card.lastRunToday": "today, {time}",

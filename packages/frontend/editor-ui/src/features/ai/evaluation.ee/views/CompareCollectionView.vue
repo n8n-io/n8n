@@ -80,13 +80,28 @@ function isNotFoundError(error: unknown): boolean {
 	);
 }
 
+// Tracks unmount so a fetch that resolves after the user leaves can tear down
+// the poll it armed instead of letting it outlive the view.
+let unmounted = false;
+
 async function load(workflowId: string, collectionId: string) {
 	notFound.value = false;
 	try {
 		await store.fetchCollectionDetail(workflowId, collectionId);
+		// If we left or switched collections mid-fetch, `fetchCollectionDetail`
+		// may have just (re)armed polling for a collection we're no longer
+		// showing — stop it so the timer doesn't outlive the view.
+		if (unmounted || collectionId !== props.collectionId) {
+			store.stopPolling(collectionId);
+		}
 	} catch (error) {
-		toast.showError(error, i18n.baseText('evaluation.compare.errors.loadFailed'));
-		notFound.value = isNotFoundError(error);
+		// A 404 already shows the not-found state; a toast on top would be a
+		// second, contradictory signal. Only toast transient (non-404) failures.
+		if (isNotFoundError(error)) {
+			notFound.value = true;
+		} else {
+			toast.showError(error, i18n.baseText('evaluation.compare.errors.loadFailed'));
+		}
 	}
 }
 
@@ -121,6 +136,7 @@ watch(
 );
 
 onBeforeUnmount(() => {
+	unmounted = true;
 	store.stopPolling(props.collectionId);
 });
 </script>
