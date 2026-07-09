@@ -3,8 +3,8 @@ import type { CronExpression } from 'n8n-workflow';
 
 import { InvalidScheduleError } from '../../errors';
 import type { RecurringCronSchedule, ScheduledJob } from '../../types';
-import { periodsBetween } from '../periods';
 import { required } from '../field';
+import { periodsBetween } from '../periods';
 import { type CronCursor, cronNextRun, parseCron, resolvedTimezone, validateCron } from './cron';
 
 /**
