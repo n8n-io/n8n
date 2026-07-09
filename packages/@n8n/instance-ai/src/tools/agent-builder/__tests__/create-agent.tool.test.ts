@@ -16,6 +16,7 @@ function createService(
 		buildCustomTool: vi.fn(),
 		listChatIntegrations: vi.fn(),
 		listProjectAgents: vi.fn(),
+		listAllProjectAgents: vi.fn(),
 		listModels: vi.fn(),
 		searchMcpServers: vi.fn(),
 		verifyMcpServer: vi.fn(),
@@ -78,6 +79,36 @@ describe('create_agent tool', () => {
 		const after = await executeTool<{ ok: boolean }>(createReadConfigTool(context), {}, {});
 		expect(after.ok).toBe(true);
 		expect(service.getConfigSnapshot).toHaveBeenCalledWith('agent-9', 'project-7');
+	});
+
+	it('persists the target binding to thread metadata', async () => {
+		const service = createService({
+			createAgent: vi
+				.fn()
+				.mockResolvedValue({ agentId: 'agent-9', projectId: 'project-7', name: 'Triage' }),
+		});
+		const patchThread = vi.fn().mockResolvedValue({ id: 'thread-1' });
+		const context = {
+			userId: 'user-1',
+			projectId: 'project-7',
+			agentBuilderService: service,
+			threadId: 'thread-1',
+			threadMemory: { patchThread },
+			logger: { debug: vi.fn(), warn: vi.fn() },
+		} as unknown as InstanceAiContext;
+
+		await executeTool(createCreateAgentTool(context), { name: 'Triage' }, {});
+
+		expect(patchThread).toHaveBeenCalledWith(expect.objectContaining({ threadId: 'thread-1' }));
+		const { update } = patchThread.mock.calls[0][0] as {
+			update: (current: { metadata: Record<string, unknown> }) => {
+				metadata: Record<string, unknown>;
+			};
+		};
+		expect(update({ metadata: {} }).metadata.instanceAiAgentBuilderTarget).toEqual({
+			agentId: 'agent-9',
+			projectId: 'project-7',
+		});
 	});
 
 	it('reports an error when the service throws', async () => {
