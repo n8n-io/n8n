@@ -1,0 +1,26 @@
+{
+	"description": "Loop Over Items for rate limiting: process recipients in batches with a wait between batches and a feedback edge into the loop node.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "When someone submits our intake form, send a personalized welcome email to every address in the recipients field, but no more than 5 at a time with a 1-second pause between batches so we stay under our provider's rate limit."
+		}
+	],
+	"messageBudget": 8,
+	"complexity": "complex",
+	"tags": ["build", "loops", "loop-over-items", "form", "email"],
+	"triggerType": "form",
+	"datasets": ["full"],
+	"outcomeExpectations": [
+		"A Loop Over Items (Split In Batches) node batches recipients (batch size around 5) with per-batch processing wired through the loop output and back into the loop node.",
+		"A Wait (or equivalent delay) sits between batches to respect the 1-second pause requirement."
+	],
+	"executionScenarios": [
+		{
+			"name": "seven-recipients-two-batches",
+			"description": "Seven recipients split into batches of 5 then 2",
+			"dataSetup": "The form submission includes recipients: [\"a@example.com\", \"b@example.com\", \"c@example.com\", \"d@example.com\", \"e@example.com\", \"f@example.com\", \"g@example.com\"]. Each email send returns { \"ok\": true }.",
+			"successCriteria": "The workflow executes without errors. All seven welcome emails are sent (seven successful sends total). Email sends occur in at least two distinct batch groups (first batch up to 5, second batch the remainder) rather than all seven firing in one undifferentiated burst with no batching control."
+		}
+	]
+}

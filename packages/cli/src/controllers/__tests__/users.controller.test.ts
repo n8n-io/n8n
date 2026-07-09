@@ -104,6 +104,22 @@ describe('UsersController', () => {
 
 			expect(userService.changeUserRole).not.toHaveBeenCalled();
 		});
+
+		it('rejects a user changing their own global role', async () => {
+			const request = mock<AuthenticatedRequest>({
+				user: { id: '123', role: { slug: GLOBAL_ADMIN_ROLE.slug } },
+			});
+			provisioningService.isInstanceRoleManaged.mockResolvedValue(false);
+			userRepository.findOne.mockResolvedValue(
+				mock<User>({ id: '123', role: { slug: GLOBAL_ADMIN_ROLE.slug } }),
+			);
+
+			await expect(
+				controller.changeGlobalRole(request, mock(), mock({ newRoleName: 'global:member' }), '123'),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(userService.changeUserRole).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('generateInviteLink', () => {

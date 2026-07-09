@@ -1,12 +1,19 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
-import { N8nIcon, N8nResizeWrapper, type DropdownMenuItemProps } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nResizeWrapper,
+	type DropdownMenuItemProps,
+} from '@n8n/design-system';
+import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	MAX_AGENT_FILE_SIZE_BYTES,
 	MAX_AGENT_FILE_SIZE_MB,
+	MAX_AGENT_FILES_PER_UPLOAD,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
 } from '@n8n/api-types';
@@ -40,6 +47,7 @@ import type {
 	AgentJsonConfig,
 	AgentJsonMcpServerConfig,
 	AgentJsonToolConfig,
+	AgentJsonVectorStoreConfig,
 	AgentSkill,
 } from '../types';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
@@ -55,12 +63,15 @@ import { mcpServerToNode } from '../composables/useMcpServerAdapter';
 import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import { normalizeAgentSkillForSave } from '../utils/agentSkill';
+import { addMissingAgentPersonalisation } from '../utils/agentPersonalisation';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
+	AGENT_JSON_IMPORT_MODAL_KEY,
+	AGENT_VECTOR_STORES_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
 	PROJECT_AGENTS,
 } from '../constants';
@@ -170,10 +181,12 @@ function shouldAutoExpandInitialBuild(): boolean {
 
 const shouldStartWithExpandedBuildChat = shouldAutoExpandInitialBuild();
 const isChatFullWidth = ref(shouldStartWithExpandedBuildChat);
+const isBuildChatHidden = ref(!shouldStartWithExpandedBuildChat);
 const shouldCollapseChatAfterInitialBuild = ref(shouldStartWithExpandedBuildChat);
 const executionsCount = computed(() => sessionsStore.threads.length);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
 	executionsCount,
+	knowledgeBaseEnabled: isKnowledgeBaseEnabled,
 });
 
 const { ensureLoaded: ensureIntegrationsCatalog } = useAgentIntegrationsCatalog();
@@ -301,7 +314,7 @@ async function fetchAgentFiles(
 }
 
 async function onUploadAgentFiles(files: File[]) {
-	if (files.length === 0) return;
+	if (files.length === 0 || !agent.value?.activeVersionId) return;
 	const oversizedFiles = files.filter((file) => file.size > MAX_AGENT_FILE_SIZE_BYTES);
 	if (oversizedFiles.length > 0) {
 		showError(
@@ -315,6 +328,18 @@ async function onUploadAgentFiles(files: File[]) {
 	}
 	const filesWithinLimit = files.filter((file) => file.size <= MAX_AGENT_FILE_SIZE_BYTES);
 	if (filesWithinLimit.length === 0) return;
+
+	if (filesWithinLimit.length > MAX_AGENT_FILES_PER_UPLOAD) {
+		showError(
+			new Error(
+				locale.baseText('agents.builder.files.uploadTooManyFiles.message' as BaseTextKey, {
+					interpolate: { max: String(MAX_AGENT_FILES_PER_UPLOAD) },
+				}),
+			),
+			locale.baseText('agents.builder.files.uploadTooManyFiles.title' as BaseTextKey),
+		);
+		return;
+	}
 
 	const existingTotalSizeBytes = agentFiles.value.reduce(
 		(total, file) => total + file.fileSizeBytes,
@@ -470,6 +495,7 @@ function startChat(msg: string) {
 	} else {
 		// Fresh agent — route through the same build chat panel used for ongoing
 		// Build conversations.
+		isBuildChatHidden.value = false;
 		initialPrompt.value = msg;
 		telemetry.track('User started agent build', { agent_id: agentId.value });
 
@@ -484,6 +510,7 @@ function startChat(msg: string) {
 function onPublished(updated: AgentResource) {
 	agent.value = updated;
 	void versionHistoryPanel.value?.refresh();
+	warmAgentKnowledgeSandboxForPage();
 }
 
 function onUnpublished(updated: AgentResource) {
@@ -535,7 +562,7 @@ function bindPreviewSession() {
 }
 
 function warmAgentKnowledgeSandboxForPage() {
-	if (!initialized.value || !isKnowledgeBaseEnabled.value) return;
+	if (!initialized.value || !isKnowledgeBaseEnabled.value || !agent.value?.activeVersionId) return;
 
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
@@ -553,6 +580,7 @@ function warmAgentKnowledgeSandboxForPage() {
 }
 
 function onOpenBuildFromChat() {
+	isBuildChatHidden.value = false;
 	closePreview();
 }
 
@@ -690,6 +718,28 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	});
 }
 
+function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig, recordEdit = true) {
+	if (recordEdit) builderTelemetry.recordConfigEdit(nextConfig);
+	localConfig.value = deepCopy(nextConfig);
+	syncAgentIdentityFromConfig(localConfig.value);
+	configAutosave.scheduleAutosave({
+		projectId: projectId.value,
+		agentId: agentId.value,
+		type: 'config',
+		config: normalizeAgentMemoryConfig(deepCopy(localConfig.value)),
+	});
+}
+
+function persistMissingPersonalisationGradient() {
+	if (!canEditAgent.value) return;
+	if (!localConfig.value) return;
+
+	const nextConfig = addMissingAgentPersonalisation(localConfig.value);
+	if (!nextConfig) return;
+
+	replaceConfigAndScheduleSave(nextConfig, false);
+}
+
 async function onConfigUpdated() {
 	await Promise.all([fetchAgent(), fetchConfig(projectId.value, agentId.value)]);
 	// Refresh the connected-trigger list so chips reflect builder writes
@@ -711,13 +761,80 @@ function onBuildDone() {
 	shouldCollapseChatAfterInitialBuild.value = false;
 }
 
-const headerActions = computed(() =>
-	canDeleteAgent.value
-		? [{ id: 'delete', label: locale.baseText('agents.builder.deleteAgent') }]
-		: [],
-);
+const headerActions = computed(() => {
+	const actions: Array<ActionDropdownItem<string>> = [
+		{
+			id: 'export-json',
+			label: locale.baseText('agents.builder.exportJson' as BaseTextKey),
+			icon: 'download',
+		},
+	];
+
+	if (canEditAgent.value) {
+		actions.push({
+			id: 'import-json',
+			label: locale.baseText('agents.builder.importJson' as BaseTextKey),
+			icon: 'upload',
+		});
+	}
+
+	if (canDeleteAgent.value) {
+		actions.push({
+			id: 'delete',
+			label: locale.baseText('agents.builder.deleteAgent'),
+			icon: 'trash-2',
+			divided: true,
+		});
+	}
+
+	return actions;
+});
+
+async function exportAgentJson() {
+	if (!localConfig.value) return;
+
+	try {
+		await flushAutosave();
+	} catch {
+		return;
+	}
+	if (!localConfig.value) return;
+
+	const blob = new Blob([`${JSON.stringify(localConfig.value, null, 2)}\n`], {
+		type: 'application/json',
+	});
+	const url = URL.createObjectURL(blob);
+	const name = localConfig.value.name.trim().replace(/[\\/:*?"<>|]+/g, '-') || 'agent';
+	const link = Object.assign(document.createElement('a'), {
+		href: url,
+		download: `${name}.json`,
+	});
+	document.body.appendChild(link);
+	link.click();
+	link.remove();
+	URL.revokeObjectURL(url);
+}
+
+function openImportJsonModal() {
+	if (!canEditAgent.value) return;
+
+	uiStore.openModalWithData({
+		name: AGENT_JSON_IMPORT_MODAL_KEY,
+		data: {
+			onConfirm: replaceConfigAndScheduleSave,
+		},
+	});
+}
 
 async function onHeaderAction(action: string) {
+	if (action === 'export-json') {
+		await exportAgentJson();
+		return;
+	}
+	if (action === 'import-json') {
+		openImportJsonModal();
+		return;
+	}
 	if (action === 'delete') {
 		const confirmed = await openAgentConfirmationModal({
 			title: locale.baseText('agents.delete.modal.title', {
@@ -810,6 +927,7 @@ async function initialize() {
 			fetchConfig(projectId.value, agentId.value),
 			fetchAgentFiles(),
 		]);
+		persistMissingPersonalisationGradient();
 		builderTelemetry.captureToolsBaseline();
 		builderTelemetry.captureSkillsBaseline();
 		builderTelemetry.captureTasksBaseline();
@@ -909,6 +1027,74 @@ function onOpenAddToolModal() {
 					...(payload.mcpServers && { mcpServers: payload.mcpServers }),
 				}),
 		},
+	});
+}
+
+function onConfirmVectorStore(vectorStore: AgentJsonVectorStoreConfig, originalName?: string) {
+	const vectorStores = localConfig.value?.vectorStores ?? [];
+	const matchName = originalName ?? vectorStore.name;
+	const index = vectorStores.findIndex((existing) => existing.name === matchName);
+	const nextVectorStores =
+		index === -1
+			? [...vectorStores, vectorStore]
+			: vectorStores.map((existing, i) => (i === index ? vectorStore : existing));
+	onConfigFieldUpdate({ vectorStores: nextVectorStores });
+}
+
+function onOpenAddVectorStoreModal() {
+	const vectorStores = localConfig.value?.vectorStores ?? [];
+	uiStore.openModalWithData({
+		name: AGENT_VECTOR_STORES_MODAL_KEY,
+		data: {
+			projectId: projectId.value,
+			agentId: agentId.value,
+			existingNames: vectorStores.map((vectorStore) => vectorStore.name),
+			onConfirm: onConfirmVectorStore,
+		},
+	});
+}
+
+function onOpenEditVectorStoreModal(vectorStore: AgentJsonVectorStoreConfig) {
+	const vectorStores = localConfig.value?.vectorStores ?? [];
+	uiStore.openModalWithData({
+		name: AGENT_VECTOR_STORES_MODAL_KEY,
+		data: {
+			projectId: projectId.value,
+			agentId: agentId.value,
+			existingNames: vectorStores.map((existing) => existing.name),
+			vectorStore,
+			onConfirm: (updated: AgentJsonVectorStoreConfig) =>
+				onConfirmVectorStore(updated, vectorStore.name),
+			onRemove: (name: string) => {
+				onConfigFieldUpdate({
+					vectorStores: (localConfig.value?.vectorStores ?? []).filter(
+						(existing) => existing.name !== name,
+					),
+				});
+			},
+		},
+	});
+}
+
+async function onRemoveVectorStore(vectorStore: AgentJsonVectorStoreConfig) {
+	const confirmed = await openAgentConfirmationModal({
+		title: locale.baseText('agents.builder.vectorStores.panel.removeModal.title', {
+			interpolate: { name: vectorStore.name },
+		}),
+		description: locale.baseText('agents.builder.vectorStores.panel.removeModal.description', {
+			interpolate: { name: vectorStore.name },
+		}),
+		confirmButtonText: locale.baseText(
+			'agents.builder.vectorStores.panel.removeModal.button.remove',
+		),
+		cancelButtonText: locale.baseText('generic.cancel'),
+	});
+	if (confirmed !== MODAL_CONFIRM) return;
+
+	onConfigFieldUpdate({
+		vectorStores: (localConfig.value?.vectorStores ?? []).filter(
+			(existing) => existing.name !== vectorStore.name,
+		),
 	});
 }
 
@@ -1274,6 +1460,18 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					@continue-loaded="onContinueLoaded"
 					@open-build="onOpenBuildFromChat"
 				/>
+				<N8nButton
+					v-else-if="isBuildChatHidden"
+					variant="ghost"
+					icon-only
+					size="small"
+					:class="$style.showBuildChatButton"
+					:aria-label="locale.baseText('agents.builder.chat.show.ariaLabel' as BaseTextKey)"
+					data-testid="agent-build-chat-show-button"
+					@click="isBuildChatHidden = false"
+				>
+					<N8nIcon icon="panel-left" :size="14" />
+				</N8nButton>
 				<N8nResizeWrapper
 					v-else
 					:class="{
@@ -1313,7 +1511,10 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 						@update:tools="onQuickActionAddTool"
 						@update:mcp-servers="onQuickActionAddMcpServers"
 						@update:connected-triggers="onConnectedTriggersUpdate"
-						@update:full-width="isChatFullWidth = $event"
+						@hide="
+							isChatFullWidth = false;
+							isBuildChatHidden = true;
+						"
 						@trigger-added="onTriggerAdded"
 						@agent-published="onPublished"
 						@agent-changed="refreshAgentAfterIntegrationChange"
@@ -1321,7 +1522,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 				</N8nResizeWrapper>
 
 				<AgentBuilderEditorColumn
-					v-if="!isPreviewMode && !isChatFullWidth"
+					v-if="!isPreviewMode && (!isChatFullWidth || isBuildChatHidden)"
 					:class="$style.editorColumn"
 					v-model:active-main-tab="activeMainTab"
 					:local-config="localConfig"
@@ -1347,6 +1548,9 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					@add-skill="onOpenAddSkillModal"
 					@upload-files="onUploadAgentFiles"
 					@delete-file="onDeleteAgentFile"
+					@add-vector-store="onOpenAddVectorStoreModal"
+					@edit-vector-store="onOpenEditVectorStoreModal"
+					@remove-vector-store="onRemoveVectorStore"
 					@remove-tool="onRemoveTool"
 					@remove-skill="onRemoveSkill"
 					@update:connected-triggers="onConnectedTriggersUpdate"
@@ -1387,6 +1591,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 }
 
 .builder {
+	position: relative;
 	display: flex;
 	height: 100%;
 	min-height: 0;
@@ -1437,6 +1642,13 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 
 .chatResizerFullWidth {
 	flex: 1 1 auto;
+}
+
+.showBuildChatButton {
+	position: absolute;
+	top: var(--spacing--sm);
+	left: var(--spacing--sm);
+	z-index: 3;
 }
 
 .isResizingChat {

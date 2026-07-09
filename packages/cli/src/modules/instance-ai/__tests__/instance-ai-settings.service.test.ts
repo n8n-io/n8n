@@ -24,7 +24,6 @@ describe('InstanceAiSettingsService', () => {
 			modelApiKey: '',
 			observerMessageTokens: 30_000,
 			reflectorObservationTokens: 40_000,
-			subAgentMaxSteps: 10,
 			mcpServers: '',
 			sandboxEnabled: false,
 			sandboxProvider: 'n8n-sandbox',
@@ -100,9 +99,6 @@ describe('InstanceAiSettingsService', () => {
 			await expect(service.updateAdminSettings({ searchCredentialId: 'cred-1' })).rejects.toThrow(
 				UnprocessableRequestError,
 			);
-			await expect(service.updateAdminSettings({ subAgentMaxSteps: 50 })).rejects.toThrow(
-				UnprocessableRequestError,
-			);
 			await expect(service.updateAdminSettings({ mcpServers: '[]' })).rejects.toThrow(
 				UnprocessableRequestError,
 			);
@@ -111,7 +107,7 @@ describe('InstanceAiSettingsService', () => {
 		it('should reject env-managed fields even when proxy is enabled', async () => {
 			aiService.isProxyEnabled.mockReturnValue(true);
 
-			await expect(service.updateAdminSettings({ subAgentMaxSteps: 50 })).rejects.toThrow(
+			await expect(service.updateAdminSettings({ mcpServers: '[]' })).rejects.toThrow(
 				UnprocessableRequestError,
 			);
 		});
@@ -330,7 +326,7 @@ describe('InstanceAiSettingsService', () => {
 
 		describe('updateAdminSettings', () => {
 			it('should reject advanced fields on cloud', async () => {
-				await expect(service.updateAdminSettings({ subAgentMaxSteps: 50 })).rejects.toThrow(
+				await expect(service.updateAdminSettings({ mcpServers: '[]' })).rejects.toThrow(
 					UnprocessableRequestError,
 				);
 			});
@@ -342,7 +338,7 @@ describe('InstanceAiSettingsService', () => {
 			});
 
 			it('should include cloud-managed label in error message', async () => {
-				await expect(service.updateAdminSettings({ subAgentMaxSteps: 50 })).rejects.toThrow(
+				await expect(service.updateAdminSettings({ mcpServers: '[]' })).rejects.toThrow(
 					/cloud-managed/,
 				);
 			});

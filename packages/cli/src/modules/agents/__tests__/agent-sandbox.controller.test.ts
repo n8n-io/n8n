@@ -13,7 +13,6 @@ describe('AgentSandboxController', () => {
 		const controller = new AgentSandboxController(agentKnowledgeService, mock<Logger>(), {
 			sandboxEnabled: true,
 			sandboxProvider: 'daytona',
-			daytonaVolumeId: 'volume-1',
 		} as AgentsConfig);
 		const req = { user: { id: 'user-1' } } as AuthenticatedRequest<{ projectId: string }>;
 		const res = mock<Response>();

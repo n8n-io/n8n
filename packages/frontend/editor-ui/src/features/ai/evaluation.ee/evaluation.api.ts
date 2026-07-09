@@ -22,6 +22,9 @@ export interface TestRunRecord {
 	errorDetails?: Record<string, unknown>;
 	finalResult?: 'success' | 'error' | 'warning';
 	evaluationConfigId?: string;
+	// Set when the run belongs to an eval collection; null for standalone
+	// runs. Drives the "Ungrouped runs" split in the collections list view.
+	collectionId?: string | null;
 }
 
 interface GetTestRunParams {

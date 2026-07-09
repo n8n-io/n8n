@@ -17,7 +17,7 @@ export const GLOBAL_TRIGGER_FILES = new Set(['pnpm-lock.yaml', 'package.json']);
 /**
  * Directory prefixes consumed at runtime by packages that don't import them in
  * a way the test runner's import-graph walk can see. A change here is invisible
- * to `jest --findRelatedTests` / `vitest related` on the test file, so we bail
+ * to `vitest related` on the test file, so we bail
  * the workspace to full rather than silently skip:
  *   - `packages/@n8n/db/` — schema + entities resolved through the DI container
  *     by every consuming package's integration tests.

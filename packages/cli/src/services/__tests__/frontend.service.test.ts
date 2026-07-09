@@ -17,6 +17,7 @@ import type { PushConfig } from '@/push/push.config';
 import type { AiUsageService } from '@/services/ai-usage.service';
 import { FrontendService, type PublicFrontendSettings } from '@/services/frontend.service';
 import type { UrlService } from '@/services/url.service';
+import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { UserManagementMailer } from '@/user-management/email';
 import type { OwnershipService } from '../ownership.service';
 
@@ -187,6 +188,8 @@ describe('FrontendService', () => {
 		getPublishedCount: vi.fn().mockResolvedValue(7),
 	});
 
+	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
+
 	const createMockService = () => {
 		Container.set(
 			CommunityPackagesConfig,
@@ -215,6 +218,7 @@ describe('FrontendService', () => {
 				ownershipService,
 				aiUsageService,
 				workflowRepository,
+				workflowReviewPolicyService,
 			),
 			license,
 		};

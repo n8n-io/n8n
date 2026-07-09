@@ -210,13 +210,20 @@ test.describe(
 			await n8n.ndv.execute();
 			await expect(n8n.ndv.getWebhookTestEvent()).toBeVisible();
 
-			const failResponse = await n8n.api.webhooks.trigger(`/webhook-test/${webhookPath}`, {
-				headers: {
-					test: 'wrong',
-				},
-			});
-
-			expect(failResponse.status()).toBe(403);
+			// The test webhook can take a moment to register after "Listening for test
+			// event" appears. A wrong-credential request is safe to retry because it fails
+			// auth before the workflow runs, so it never consumes the one-shot test webhook.
+			// Polling until it returns 403 also confirms the webhook is registered before
+			// the (single-use) success request is fired, avoiding a registration race.
+			await expect(async () => {
+				const failResponse = await n8n.api.webhooks.trigger(`/webhook-test/${webhookPath}`, {
+					headers: {
+						test: 'wrong',
+					},
+					maxNotFoundRetries: 0,
+				});
+				expect(failResponse.status()).toBe(403);
+			}).toPass();
 
 			const successResponse = await n8n.api.webhooks.trigger(`/webhook-test/${webhookPath}`, {
 				headers: {
