@@ -197,25 +197,82 @@ describe('useContextMenu', () => {
 	});
 
 	describe('group target', () => {
-		it('shows only the group actions and resolves member node ids', () => {
+		it('shows the multi-selection actions with the group actions on top and resolves member node ids', () => {
 			const group = workflowDocumentStore.createGroup([nodes[0].id, nodes[1].id], 'My group');
 			const { open, actions, targetNodeIds, targetGroupId } = useContextMenu();
 			open(mockEvent, { source: 'group', groupId: group.id, nodeIds: group.nodeIds });
 
-			expect(actions.value.map((action) => action.id)).toEqual(['rename_group', 'ungroup_nodes']);
-			expect(actions.value.every((action) => !action.disabled)).toBe(true);
+			expect(actions.value.map((action) => action.id)).toEqual([
+				'rename_group',
+				'ungroup_nodes',
+				'toggle_activation',
+				'toggle_pin',
+				'copy',
+				'duplicate',
+				'tidy_up',
+				'extract_sub_workflow',
+				'select_all',
+				'deselect_all',
+				'delete',
+			]);
 			expect(targetNodeIds.value).toEqual([nodes[0].id, nodes[1].id]);
 			expect(targetGroupId.value).toBe(group.id);
 		});
 
-		it('disables the group actions in read-only mode', () => {
+		it('words the bulk actions for the group instead of the node count', () => {
+			const group = workflowDocumentStore.createGroup([nodes[0].id, nodes[1].id], 'My group');
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'group', groupId: group.id, nodeIds: group.nodeIds });
+
+			const labels = Object.fromEntries(actions.value.map((action) => [action.id, action.label]));
+			expect(labels.toggle_activation).toBe('Deactivate group');
+			expect(labels.toggle_pin).toBe('Pin group');
+			expect(labels.copy).toBe('Copy group');
+			expect(labels.duplicate).toBe('Duplicate group');
+			expect(labels.extract_sub_workflow).toBe('Convert group to sub-workflow');
+			expect(labels.delete).toBe('Delete group');
+		});
+
+		it('keeps the group wording even for a single-member group and hides single-node actions', () => {
+			// The "Group nodes" item must be absent — an existing group offers
+			// ungroup instead.
+			const group = workflowDocumentStore.createGroup([nodes[0].id], 'My group');
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'group', groupId: group.id, nodeIds: group.nodeIds });
+
+			const ids = actions.value.map((action) => action.id);
+			expect(ids).not.toContain('group_nodes');
+			for (const singleNodeAction of ['open', 'execute', 'rename', 'replace']) {
+				expect(ids).not.toContain(singleNodeAction);
+			}
+			expect(actions.value.find((action) => action.id === 'copy')?.label).toBe('Copy group');
+		});
+
+		it('falls back to the group actions alone when no member node resolves', () => {
+			const group = workflowDocumentStore.createGroup([nodes[0].id], 'My group');
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'group', groupId: group.id, nodeIds: ['non-existent'] });
+
+			expect(actions.value.map((action) => action.id)).toEqual(['rename_group', 'ungroup_nodes']);
+		});
+
+		it('disables the mutating actions in read-only mode but keeps copy available', () => {
 			vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(true);
 			const group = workflowDocumentStore.createGroup([nodes[0].id, nodes[1].id], 'My group');
 			const { open, actions } = useContextMenu();
 			open(mockEvent, { source: 'group', groupId: group.id, nodeIds: group.nodeIds });
 
-			expect(actions.value.map((action) => action.id)).toEqual(['rename_group', 'ungroup_nodes']);
-			expect(actions.value.every((action) => action.disabled)).toBe(true);
+			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
+			for (const mutating of [
+				'rename_group',
+				'ungroup_nodes',
+				'toggle_activation',
+				'duplicate',
+				'delete',
+			]) {
+				expect(byId[mutating]?.disabled).toBe(true);
+			}
+			expect(byId.copy?.disabled).toBeFalsy();
 		});
 
 		it('closes when re-invoked on the same group, letting the native menu through', () => {

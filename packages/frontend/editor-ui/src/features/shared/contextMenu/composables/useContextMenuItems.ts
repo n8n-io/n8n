@@ -165,36 +165,52 @@ export function useContextMenuItems(
 	};
 
 	return computed(() => {
-		// A group target replaces the node menu with group-specific actions
-		if (targetGroupId?.value) {
-			const groupActions: Item[] = [
-				{
-					id: 'rename_group',
-					label: i18n.baseText('contextMenu.renameGroup'),
-					disabled: isReadOnly.value,
-				},
-				{
-					id: 'ungroup_nodes',
-					label: i18n.baseText('contextMenu.ungroupNodes'),
-					shortcut: { metaKey: true, shiftKey: true, keys: ['G'] },
-					disabled: isReadOnly.value,
-				},
-			];
+		// A group target gets the multi-selection menu over its member nodes,
+		// worded for the group as a whole, plus the group's own actions on top.
+		const isGroupTarget = targetGroupId?.value !== undefined;
+		const groupActions: Item[] = isGroupTarget
+			? [
+					{
+						id: 'rename_group',
+						label: i18n.baseText('contextMenu.renameGroup'),
+						disabled: isReadOnly.value,
+					},
+					{
+						id: 'ungroup_nodes',
+						label: i18n.baseText('contextMenu.ungroupNodes'),
+						shortcut: { metaKey: true, shiftKey: true, keys: ['G'] },
+						disabled: isReadOnly.value,
+					},
+				]
+			: [];
+
+		const nodes = targetNodes.value;
+
+		// A group whose members can't be resolved anymore (e.g. deleted by a
+		// collaborator while the menu was open) keeps only its own actions.
+		if (isGroupTarget && nodes.length === 0) {
 			return groupActions;
 		}
 
-		const nodes = targetNodes.value;
 		const onlyStickies = nodes.every((node) => node.type === STICKY_NODE_TYPE);
 		const canExtract = nodes.some(isExecutable) && !nodes.every(isAiSubNode);
 
-		const i18nOptions = {
-			adjustToNumber: nodes.length,
-			interpolate: {
-				subject: onlyStickies
-					? i18n.baseText('contextMenu.sticky', { adjustToNumber: nodes.length })
-					: i18n.baseText('contextMenu.node', { adjustToNumber: nodes.length }),
-			},
-		};
+		const i18nOptions = isGroupTarget
+			? {
+					// Always the multi-selection wording ("Copy {subject}"), with the
+					// group as the subject, regardless of how many nodes it contains.
+					adjustToNumber: 2,
+					interpolate: { subject: i18n.baseText('contextMenu.nodeGroup') },
+				}
+			: {
+					adjustToNumber: nodes.length,
+					interpolate: {
+						subject: i18n.baseText(onlyStickies ? 'contextMenu.sticky' : 'contextMenu.node', {
+							adjustToNumber: nodes.length,
+							interpolate: { count: nodes.length },
+						}),
+					},
+				};
 
 		const selectionActions: Item[] = [
 			{
@@ -215,22 +231,25 @@ export function useContextMenuItems(
 			{
 				id: 'extract_sub_workflow',
 				divided: true,
-				label: i18n.baseText('contextMenu.extract', { adjustToNumber: nodes.length }),
+				label: i18n.baseText('contextMenu.extract', i18nOptions),
 				shortcut: { altKey: true, keys: ['X'] },
 				disabled: isReadOnly.value,
 			},
 		];
 
-		const groupingActions: Item[] = [
-			{
-				id: 'group_nodes',
-				// Starts its own section when the extraction item above is hidden
-				divided: !canExtract,
-				label: i18n.baseText('contextMenu.group', { adjustToNumber: nodes.length }),
-				shortcut: { metaKey: true, keys: ['G'] },
-				disabled: isReadOnly.value || !canGroupTargetNodes.value,
-			},
-		];
+		// Grouping doesn't apply to an existing group — it offers ungroup instead.
+		const groupingActions: Item[] = !isGroupTarget
+			? [
+					{
+						id: 'group_nodes',
+						// Starts its own section when the extraction item above is hidden
+						divided: !canExtract,
+						label: i18n.baseText('contextMenu.group', { adjustToNumber: nodes.length }),
+						shortcut: { metaKey: true, keys: ['G'] },
+						disabled: isReadOnly.value || !canGroupTargetNodes.value,
+					},
+				]
+			: [];
 
 		const aiActions: Item[] = [
 			!onlyStickies &&
@@ -239,10 +258,7 @@ export function useContextMenuItems(
 				focusedNodesStore.isFeatureEnabled && {
 					id: 'focus_ai_on_selected',
 					divided: true,
-					label: i18n.baseText('contextMenu.focusAiOnSelected', {
-						adjustToNumber: nodes.length,
-						interpolate: { count: nodes.length },
-					}),
+					label: i18n.baseText('contextMenu.focusAiOnSelected', i18nOptions),
 					shortcut: { altKey: true, keys: ['I'] },
 					disabled: isReadOnly.value,
 				},
@@ -320,7 +336,10 @@ export function useContextMenuItems(
 				},
 			].filter(Boolean) as Item[];
 
-			if (nodes.length === 1) {
+			if (isGroupTarget) {
+				// The group's own actions sit on top, like single-node actions do
+				menuActions.unshift(...groupActions);
+			} else if (nodes.length === 1) {
 				const copyWebhookActions: Item[] = [];
 
 				if (isWebhookNode(nodes[0])) {

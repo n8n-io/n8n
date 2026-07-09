@@ -47,7 +47,15 @@ const isToolbarVisible = computed(
 );
 
 const extractWorkflowLabel = computed(() =>
-	i18n.baseText('contextMenu.extract', { adjustToNumber: props.selectedNodes.length }),
+	i18n.baseText('contextMenu.extract', {
+		adjustToNumber: props.selectedNodes.length,
+		interpolate: {
+			subject: i18n.baseText('contextMenu.node', {
+				adjustToNumber: props.selectedNodes.length,
+				interpolate: { count: props.selectedNodes.length },
+			}),
+		},
+	}),
 );
 
 const position = computed(() => {

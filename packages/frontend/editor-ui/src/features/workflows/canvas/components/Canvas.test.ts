@@ -36,6 +36,7 @@ import {
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useContextMenu } from '@/features/shared/contextMenu/composables/useContextMenu';
 import { useUIStore } from '@/app/stores/ui.store';
+import { createTestNode } from '@/__tests__/mocks';
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
@@ -768,20 +769,33 @@ describe('Canvas', () => {
 			// tests run without a router, so isReadOnlyView would resolve to true.
 			workflowDocumentStore.setScopes(['workflow:update']);
 			vi.spyOn(useUIStore(), 'isReadOnlyView', 'get').mockReturnValue(false);
+			// Member nodes must resolve for the group menu to show the bulk actions
+			workflowDocumentStore.setNodes([
+				createTestNode({ id: 'a', name: 'Node A' }),
+				createTestNode({ id: 'b', name: 'Node B' }),
+			]);
 			const group = workflowDocumentStore.createGroup(['a', 'b'], 'My Group');
 			const groupNode = createCanvasGroupElement({
 				id: group.id,
 				name: group.name,
 				nodeIds: ['a', 'b'],
 			});
+			const looseNode = createCanvasNodeElement({
+				id: 'node-3',
+				label: 'Node 3',
+				position: { x: 600, y: 0 },
+			});
 
-			const rendered = renderComponent({ props: { nodes: [groupNode], ...props } });
+			const rendered = renderComponent({
+				props: { nodes: [groupNode, looseNode], ...props },
+				global: { provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(true) } },
+			});
 			await waitFor(() => expect(rendered.getByTestId('canvas-node-group')).toBeInTheDocument());
 
-			return { group, ...rendered };
+			return { group, groupNode, looseNode, ...rendered };
 		}
 
-		it('shows the group actions enabled when right-clicking a group title bar', async () => {
+		it('shows the group actions and the bulk actions when right-clicking a group title bar', async () => {
 			const { getByTestId } = await renderWithGroup();
 
 			await fireEvent.contextMenu(getByTestId('canvas-node-group'));
@@ -792,19 +806,63 @@ describe('Canvas', () => {
 			expect(getByTestId('context-menu-item-rename_group')).not.toHaveAttribute('aria-disabled');
 			expect(getByTestId('context-menu-item-ungroup_nodes')).toBeInTheDocument();
 			expect(getByTestId('context-menu-item-ungroup_nodes')).not.toHaveAttribute('aria-disabled');
+			expect(getByTestId('context-menu-item-copy')).toHaveTextContent('Copy group');
+			expect(getByTestId('context-menu-item-delete')).toHaveTextContent('Delete group');
 		});
 
-		it.each([{ readOnly: true }, { suppressInteraction: true }])(
-			'does not open the group context menu when the canvas has %o',
-			async (props) => {
-				const { getByTestId, queryByTestId } = await renderWithGroup(props);
+		it('selects the group when right-clicking its title bar', async () => {
+			const { group, getByTestId } = await renderWithGroup();
 
-				await fireEvent.contextMenu(getByTestId('canvas-node-group'));
+			await fireEvent.contextMenu(getByTestId('canvas-node-group'));
 
-				expect(useContextMenu().isOpen.value).toBe(false);
-				expect(queryByTestId('context-menu')).not.toBeInTheDocument();
-			},
-		);
+			const { getSelectedNodes } = useVueFlow(canvasId);
+			await waitFor(() =>
+				expect(getSelectedNodes.value.map(({ id }) => id)).toEqual([`group:${group.id}`]),
+			);
+		});
+
+		it('opens the selection menu instead when the group is part of a wider selection', async () => {
+			const { groupNode, looseNode, getByTestId } = await renderWithGroup();
+
+			const { addSelectedNodes, findNode } = useVueFlow(canvasId);
+			addSelectedNodes([findNode(groupNode.id)!, findNode(looseNode.id)!]);
+			await waitFor(() => expect(findNode(groupNode.id)?.selected).toBe(true));
+
+			await fireEvent.contextMenu(getByTestId('canvas-node-group'));
+
+			await waitFor(() => expect(useContextMenu().isOpen.value).toBe(true));
+			expect(useContextMenu().target.value?.source).toBe('canvas');
+			// The whole selection is targeted: the loose node plus the group members
+			expect([...useContextMenu().targetNodeIds.value].sort()).toEqual(['a', 'b', 'node-3']);
+		});
+
+		it('copies the group members through the copy action', async () => {
+			const { getByTestId, emitted } = await renderWithGroup();
+
+			await fireEvent.contextMenu(getByTestId('canvas-node-group'));
+			await waitFor(() => expect(getByTestId('context-menu-item-copy')).toBeInTheDocument());
+
+			await fireEvent.click(getByTestId('context-menu-item-copy'));
+
+			expect(emitted()['copy:nodes']).toEqual([[['a', 'b']]]);
+		});
+
+		it('opens the group context menu on a read-only canvas, like node menus', async () => {
+			const { getByTestId } = await renderWithGroup({ readOnly: true });
+
+			await fireEvent.contextMenu(getByTestId('canvas-node-group'));
+
+			await waitFor(() => expect(getByTestId('context-menu-item-copy')).toBeInTheDocument());
+		});
+
+		it('does not open the group context menu when interaction is suppressed', async () => {
+			const { getByTestId, queryByTestId } = await renderWithGroup({ suppressInteraction: true });
+
+			await fireEvent.contextMenu(getByTestId('canvas-node-group'));
+
+			expect(useContextMenu().isOpen.value).toBe(false);
+			expect(queryByTestId('context-menu')).not.toBeInTheDocument();
+		});
 
 		it('deletes the group when the ungroup action is selected', async () => {
 			const { group, getByTestId } = await renderWithGroup();
