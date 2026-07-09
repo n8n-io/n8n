@@ -14,20 +14,11 @@ import {
 import { buildDateAnchors } from './date-anchors';
 import { extractNodeConfig } from './node-config';
 
-/**
- * AI root node types — lets the typo guard accept a no-sub-node Agent.
- * Keep in sync with new agent/chain types in `@n8n/n8n-nodes-langchain`.
- */
-const AI_ROOT_NODE_TYPES = new Set<string>([
-	'@n8n/n8n-nodes-langchain.agent',
-	'@n8n/n8n-nodes-langchain.chainLlm',
-	'@n8n/n8n-nodes-langchain.chainRetrievalQa',
-	'@n8n/n8n-nodes-langchain.chainSummarization',
-]);
+// AI root node types (single source in @n8n/workflow-sdk mock-data) — lets
+// the typo guard accept a no-sub-node Agent.
+import { isAiRootNodeType } from '@n8n/workflow-sdk';
 
-export function isAiRootNodeType(nodeType: string): boolean {
-	return AI_ROOT_NODE_TYPES.has(nodeType);
-}
+export { isAiRootNodeType };
 
 /** Sources of `ai_*` connections — LLM/tool/memory sub-nodes. Handled via their root, never pinned individually. */
 function findAiSubNodeNames(workflow: IWorkflowBase): Set<string> {

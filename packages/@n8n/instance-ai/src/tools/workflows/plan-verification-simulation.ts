@@ -13,7 +13,7 @@
  *   the plan (verify pins fixture-less simulated nodes with an empty item).
  */
 
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import type { OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { classifyNodesForSimulation } from './classify-node-destructiveness.service';
 import {
@@ -34,6 +34,8 @@ export interface PlanVerificationSimulationInput {
 	declaredOutputFixtures?: SimulationFixtures;
 	/** Saved workflow id, for log context only. */
 	workflowId: string;
+	/** Node output `__schema__` lookup used to shape generated fixtures. */
+	outputSchemaLookup?: OutputSchemaLookup;
 	logger?: Logger;
 }
 
@@ -92,6 +94,7 @@ export async function planVerificationSimulation({
 	mockedNodeNames,
 	declaredOutputFixtures,
 	workflowId,
+	outputSchemaLookup,
 	logger,
 }: PlanVerificationSimulationInput): Promise<VerificationSimulationPlan> {
 	let nodeSimulationPlan: NodeSimulationVerdict[] | undefined;
@@ -107,7 +110,11 @@ export async function planVerificationSimulation({
 			);
 			const generatedFixtures =
 				planNeedingGeneratedFixtures.length > 0
-					? await generateSimulationFixtures({ workflow, plan: planNeedingGeneratedFixtures })
+					? await generateSimulationFixtures({
+							workflow,
+							plan: planNeedingGeneratedFixtures,
+							outputSchemaLookup,
+						})
 					: {};
 			const fixtures = { ...generatedFixtures, ...declaredFixtures };
 			simulationFixtures = Object.keys(fixtures).length > 0 ? fixtures : undefined;

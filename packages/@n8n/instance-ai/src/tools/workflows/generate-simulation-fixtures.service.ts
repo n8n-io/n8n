@@ -13,7 +13,7 @@
  */
 
 import { isRecord } from '@n8n/utils/is-record';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import type { OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 import { getParentNodes, mapConnectionsByDestination, type IConnections } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -32,6 +32,12 @@ export type SimulationFixtures = Record<string, Array<Record<string, unknown>>>;
 export interface GenerateSimulationFixturesInput {
 	workflow: WorkflowJSON;
 	plan: NodeSimulationVerdict[];
+	/**
+	 * Node output `__schema__` lookup (plumbed from the CLI adapter). When it
+	 * resolves a schema for a simulated node, the fixture must follow that
+	 * structure instead of the model's guess at the service's response shape.
+	 */
+	outputSchemaLookup?: OutputSchemaLookup;
 }
 
 const FixturesResponseSchema = z.record(
@@ -43,6 +49,8 @@ const SYSTEM_INSTRUCTIONS = `You generate realistic mock output for n8n workflow
 
 For each node, return the output items the node would naturally emit after a SUCCESSFUL run of its operation — matching the response shape of the underlying service (e.g. a Slack message post returns "ok", "ts" and "channel"; a row insert returns the row including its new "id"). Base the field values on the node's parameters so the data is plausible in context, and keep values consistent across nodes (same fictional users, ids, timestamps).
 
+When a node block includes an "Output JSON Schema", it is the node's real recorded output shape — follow its structure exactly (field names and types); only invent fields the schema doesn't cover when the node's parameters clearly require them.
+
 Special node types:
 - Form nodes (a mid-workflow form page): emit the submitted field values — one key per field defined in the node's formFields, with plausible values, plus "submittedAt".
 - Wait nodes: their real output is their INPUT passed through unchanged. Emit data matching what the listed upstream nodes would produce, so downstream expressions keep resolving.
@@ -53,19 +61,31 @@ Return only the JSON object. No prose, no markdown fences.`;
 
 const USER_ACTION_NODE_TYPES = new Set(['n8n-nodes-base.form', 'n8n-nodes-base.wait']);
 
+/** Keep embedded `__schema__` JSON bounded so one node can't flood the prompt. */
+const MAX_SCHEMA_CHARS = 3000;
+
 function formatNodeBlock(
 	node: WorkflowJSON['nodes'][number] & { name: string },
 	reason: string,
 	upstreamContext?: string,
+	outputSchema?: Record<string, unknown>,
 ): string {
 	const params = isRecord(node.parameters)
 		? JSON.stringify(node.parameters).slice(0, 600)
 		: '(none)';
+	let schemaBlock: string | undefined;
+	if (outputSchema) {
+		const schemaStr = JSON.stringify(outputSchema);
+		schemaBlock = `Output JSON Schema: ${
+			schemaStr.length > MAX_SCHEMA_CHARS ? schemaStr.slice(0, MAX_SCHEMA_CHARS) + '…' : schemaStr
+		}`;
+	}
 	return [
 		`Node name: ${node.name}`,
 		`Node type: ${node.type}`,
 		`Simulated because: ${reason}`,
 		`Parameters: ${params}`,
+		...(schemaBlock ? [schemaBlock] : []),
 		...(upstreamContext ? [upstreamContext] : []),
 	].join('\n');
 }
@@ -105,6 +125,21 @@ function emptyFixtures(nodeNames: string[]): SimulationFixtures {
 	return Object.fromEntries(nodeNames.map((name) => [name, [{}]]));
 }
 
+/** Resolve a node's `__schema__` output schema through the injected lookup; best-effort. */
+function lookupOutputSchema(
+	node: WorkflowJSON['nodes'][number] & { name: string },
+	outputSchemaLookup: OutputSchemaLookup | undefined,
+): Record<string, unknown> | undefined {
+	if (!outputSchemaLookup) return undefined;
+	const params = isRecord(node.parameters) ? node.parameters : undefined;
+	return outputSchemaLookup({
+		type: node.type,
+		typeVersion: node.typeVersion,
+		resource: typeof params?.resource === 'string' ? params.resource : undefined,
+		operation: typeof params?.operation === 'string' ? params.operation : undefined,
+	});
+}
+
 /**
  * Generate one fixture per `simulate`-verdict node. Always returns an entry
  * for every simulated node — LLM output is used when valid, a single empty
@@ -140,6 +175,7 @@ export async function generateSimulationFixtures(
 					USER_ACTION_NODE_TYPES.has(n.type)
 						? buildUpstreamContext(input.workflow, n.name, connectionsByDestination)
 						: undefined,
+					lookupOutputSchema(n, input.outputSchemaLookup),
 				),
 			)
 			.join('\n\n'),

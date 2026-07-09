@@ -171,4 +171,56 @@ describe('generateSimulationFixtures', () => {
 		expect(result).toEqual({});
 		expect(mockCreateEvalAgent).not.toHaveBeenCalled();
 	});
+
+	it('embeds the node output schema in the prompt when the lookup resolves one', async () => {
+		const generate = vi.fn().mockResolvedValue({ messages: [] });
+		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
+			typeof createEvalAgent
+		>);
+		mockExtractText.mockReturnValue(JSON.stringify({ 'Send Slack': [{ json: { ok: true } }] }));
+
+		const workflow = wf([{ name: 'Send Slack', type: 'n8n-nodes-base.slack' }]);
+		const node = workflow.nodes[0];
+		node.parameters = { resource: 'message', operation: 'post' };
+		node.typeVersion = 2.3;
+
+		const outputSchemaLookup = vi
+			.fn()
+			.mockReturnValue({ type: 'object', properties: { ok: { type: 'boolean' } } });
+
+		await generateSimulationFixtures({
+			workflow,
+			plan: [simulateVerdict('Send Slack')],
+			outputSchemaLookup,
+		});
+
+		expect(outputSchemaLookup).toHaveBeenCalledWith({
+			type: 'n8n-nodes-base.slack',
+			typeVersion: 2.3,
+			resource: 'message',
+			operation: 'post',
+		});
+		const promptText = (generate.mock.calls[0][0] as Array<{ content: Array<{ text: string }> }>)[0]
+			.content[0].text;
+		expect(promptText).toContain('Output JSON Schema:');
+		expect(promptText).toContain('"ok":{"type":"boolean"}');
+	});
+
+	it('omits the schema block when the lookup finds nothing or is absent', async () => {
+		const generate = vi.fn().mockResolvedValue({ messages: [] });
+		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
+			typeof createEvalAgent
+		>);
+		mockExtractText.mockReturnValue(JSON.stringify({ A: [{ json: { ok: true } }] }));
+
+		await generateSimulationFixtures({
+			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
+			plan: [simulateVerdict('A')],
+			outputSchemaLookup: vi.fn().mockReturnValue(undefined),
+		});
+
+		const promptText = (generate.mock.calls[0][0] as Array<{ content: Array<{ text: string }> }>)[0]
+			.content[0].text;
+		expect(promptText).not.toContain('Output JSON Schema:');
+	});
 });

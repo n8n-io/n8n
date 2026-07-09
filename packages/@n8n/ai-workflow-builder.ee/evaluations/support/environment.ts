@@ -1,9 +1,11 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { MemorySaver } from '@langchain/langgraph';
+import type { OutputSchemaLookup } from '@n8n/workflow-sdk';
 import fs from 'fs';
 import { Client } from 'langsmith/client';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { loadOutputSchema } from 'n8n-core';
+import { jsonParse, type INodeTypeDescription } from 'n8n-workflow';
 import path from 'path';
 
 import { DEFAULT_MODEL, getApiKeyEnvVar, MODEL_FACTORIES, type ModelId } from '@/llm-config';
@@ -220,14 +222,39 @@ export function findRepoRoot(startDir: string): string | undefined {
 }
 
 /**
- * Resolve the path to packages/nodes-base/nodes/ for __schema__ resolution.
- * Returns undefined if the path doesn't exist (e.g. running outside the monorepo).
+ * Build a `__schema__` output-schema lookup for n8n-nodes-base from the
+ * package's known-nodes manifest (`dist/known/nodes.json`) — the same node
+ * type → directory mapping the server uses, resolved through n8n-core's
+ * canonical schema resolver. Returns undefined outside the monorepo.
  */
-export function resolveNodesBasePath(): string | undefined {
+export function createNodesBaseSchemaLookup(): OutputSchemaLookup | undefined {
 	const repoRoot = findRepoRoot(__dirname);
 	if (!repoRoot) return undefined;
-	const p = path.join(repoRoot, 'packages', 'nodes-base', 'nodes');
-	return fs.existsSync(p) ? p : undefined;
+	const packageRoot = path.join(repoRoot, 'packages', 'nodes-base');
+	const knownNodesPath = path.join(packageRoot, 'dist', 'known', 'nodes.json');
+	if (!fs.existsSync(knownNodesPath)) return undefined;
+
+	let knownNodes: Record<string, { sourcePath?: string } | undefined>;
+	try {
+		knownNodes = jsonParse(fs.readFileSync(knownNodesPath, 'utf-8'));
+	} catch {
+		return undefined;
+	}
+
+	return ({ type, typeVersion, resource, operation }) => {
+		const [packageName, shortType] = type.split('.');
+		if (packageName !== 'n8n-nodes-base' || !shortType) return undefined;
+		const sourcePath = knownNodes[shortType]?.sourcePath;
+		if (!sourcePath) return undefined;
+
+		return loadOutputSchema({
+			nodeDir: path.dirname(path.join(packageRoot, sourcePath)),
+			version: typeVersion,
+			resource,
+			operation,
+			versionFallback: true,
+		});
+	};
 }
 
 /**

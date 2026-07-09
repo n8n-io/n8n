@@ -22,7 +22,7 @@ import type {
 	McpToolCallRequest,
 	McpToolCallResult,
 } from '@n8n/api-types';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import type { OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 import type {
 	GenericValue,
 	INodeInputConfiguration,
@@ -1038,6 +1038,11 @@ export interface InstanceAiContext {
 	 *  adapter; absent in pure-package contexts where no NodeTypes instance
 	 *  is reachable. */
 	nodeTypesProvider?: INodeTypes;
+	/** Node output `__schema__` lookup used to shape simulation fixtures.
+	 *  Plumbed from the CLI adapter (`LoadNodesAndCredentials.createOutputSchemaLookup`);
+	 *  absent in pure-package contexts — fixture generation then falls back to
+	 *  the model's API knowledge. */
+	outputSchemaLookup?: OutputSchemaLookup;
 	/**
 	 * Runtime-only workflow build loop context. The direct `build-workflow` tool
 	 * reports build outcomes here so planned build follow-ups and verification

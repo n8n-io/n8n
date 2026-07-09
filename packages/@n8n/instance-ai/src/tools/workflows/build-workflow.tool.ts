@@ -742,6 +742,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						mockedNodeNames: mockResult.mockedNodeNames,
 						declaredOutputFixtures: compiled.declaredOutputFixtures,
 						workflowId: saved.id,
+						outputSchemaLookup: context.outputSchemaLookup,
 						logger: context.logger,
 					});
 					const runId = buildContext?.runId ?? context.runId;

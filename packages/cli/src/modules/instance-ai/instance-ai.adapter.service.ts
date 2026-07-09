@@ -283,6 +283,9 @@ export class InstanceAiAdapterService {
 			licenseHints: this.buildLicenseHints(),
 			logger: this.logger,
 			nodeTypesProvider: this.nodeTypes,
+			// Optional call for the same reason as addPostProcessor?.() above:
+			// adapter tests construct the service with placeholder deps.
+			outputSchemaLookup: this.loadNodesAndCredentials.createOutputSchemaLookup?.(),
 			allowSendingParameterValues: this.allowSendingParameterValues,
 			...(agentBuilderAdapter
 				? { agentBuilderService: agentBuilderAdapter.createAdapter(user, projectId) }

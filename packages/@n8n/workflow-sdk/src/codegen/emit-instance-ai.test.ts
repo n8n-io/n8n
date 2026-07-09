@@ -260,6 +260,19 @@ describe('emit-instance-ai', () => {
 			'inferSchemasFromRunData',
 			'needsPinData',
 			'normalizePinData',
+			// Mock/pin-data generation building blocks (src/mock-data/) — eval
+			// and simulated-verification tooling, never in workflow bodies
+			'buildDateAnchors',
+			'buildNodeSchemaSection',
+			'buildPinDataUserPrompt',
+			'buildSchemaContexts',
+			'collectDownstreamConsumers',
+			'describeAiRootShape',
+			'findOutputParserTargets',
+			'isAiRootNodeType',
+			'parsePinDataResponse',
+			'repairStructuredAgentOutput',
+			'workflowToMermaid',
 			// Display-options matching
 			'matchesDisplayOptions',
 			// Plugin registration

@@ -1269,6 +1269,9 @@ importers:
       madge:
         specifier: ^8.0.0
         version: 8.0.0(typescript@6.0.2)
+      n8n-core:
+        specifier: workspace:*
+        version: link:../../core
       tsx:
         specifier: 'catalog:'
         version: 4.19.3

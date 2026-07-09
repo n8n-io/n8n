@@ -72,7 +72,7 @@ import { AGENT_TYPES, EVAL_TYPES, EVAL_USERS } from '../support/constants';
 import {
 	setupTestEnvironment,
 	createAgent,
-	resolveNodesBasePath,
+	createNodesBaseSchemaLookup,
 	type ResolvedStageLLMs,
 } from '../support/environment';
 import { generateEvalPinData } from '../support/pin-data-generator';
@@ -527,12 +527,12 @@ export async function runV2Evaluation(): Promise<void> {
 			: undefined,
 	);
 	// Create pin data generator for mocking service node outputs in evaluations
-	const nodesBasePath = resolveNodesBasePath();
+	const outputSchemaLookup = createNodesBaseSchemaLookup();
 	const pinDataGenerator = async (workflow: SimpleWorkflow) =>
 		await generateEvalPinData(workflow, {
 			llm: env.llms.judge,
 			nodeTypes: env.parsedNodeTypes,
-			nodesBasePath,
+			outputSchemaLookup,
 			logger,
 		});
 
