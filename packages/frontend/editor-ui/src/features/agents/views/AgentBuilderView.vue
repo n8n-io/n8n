@@ -13,6 +13,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	MAX_AGENT_FILE_SIZE_BYTES,
 	MAX_AGENT_FILE_SIZE_MB,
+	MAX_AGENT_FILES_PER_UPLOAD,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
 } from '@n8n/api-types';
@@ -21,14 +22,12 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
-import { useUIStore } from '@/app/stores/ui.store';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { LOCAL_STORAGE_AGENT_BUILDER_CHAT_PANEL_WIDTH, MODAL_CONFIRM } from '@/app/constants';
-import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useResizablePanel } from '@/app/composables/useResizablePanel';
 import { deepCopy } from 'n8n-workflow';
 import {
@@ -39,14 +38,12 @@ import {
 	deleteAgentFile,
 	warmAgentKnowledgeSandbox,
 	updateAgentSkill,
-	createAgentSkill,
 } from '../composables/useAgentApi';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import type {
 	AgentResource,
 	AgentJsonConfig,
-	AgentJsonMcpServerConfig,
-	AgentJsonToolConfig,
+	AgentJsonVectorStoreConfig,
 	AgentSkill,
 } from '../types';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
@@ -58,30 +55,24 @@ import { useAgentSessionsStore } from '../agentSessions.store';
 import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
 import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
-import { mcpServerToNode } from '../composables/useMcpServerAdapter';
+import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
 import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
-import { formatToolNameForDisplay } from '../utils/toolDisplayName';
-import { normalizeAgentSkillForSave } from '../utils/agentSkill';
 import { addMissingAgentPersonalisation } from '../utils/agentPersonalisation';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
-	AGENT_TOOLS_MODAL_KEY,
-	AGENT_TOOL_CONFIG_MODAL_KEY,
-	AGENT_SKILL_MODAL_KEY,
 	AGENT_JSON_IMPORT_MODAL_KEY,
+	AGENT_VECTOR_STORES_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
 	PROJECT_AGENTS,
 } from '../constants';
 import { agentsEventBus } from '../agents.eventBus';
-import type { ToolOpenTarget } from '../components/AgentCapabilitiesSection.types';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentBuilderPreviewHeader from '../components/AgentBuilderPreviewHeader.vue';
 import AgentBuilderChatColumn from '../components/AgentBuilderChatColumn.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
-import type { AgentSkillAllowedToolOption } from '../components/AgentSkillViewer.vue';
 
 const AGENT_CHAT_PANEL_MIN_WIDTH = 320;
 const AGENT_CHAT_PANEL_DEFAULT_WIDTH = 460;
@@ -93,12 +84,11 @@ const router = useRouter();
 const locale = useI18n();
 const rootStore = useRootStore();
 const projectsStore = useProjectsStore();
-const nodeTypesStore = useNodeTypesStore();
 const telemetry = useTelemetry();
 const sessionsStore = useAgentSessionsStore();
-const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
+const uiStore = useUIStore();
 const favoritesStore = useFavoritesStore();
 
 // Gates the entire knowledge base feature (files panel + fetching) behind the
@@ -329,6 +319,18 @@ async function onUploadAgentFiles(files: File[]) {
 	}
 	const filesWithinLimit = files.filter((file) => file.size <= MAX_AGENT_FILE_SIZE_BYTES);
 	if (filesWithinLimit.length === 0) return;
+
+	if (filesWithinLimit.length > MAX_AGENT_FILES_PER_UPLOAD) {
+		showError(
+			new Error(
+				locale.baseText('agents.builder.files.uploadTooManyFiles.message' as BaseTextKey, {
+					interpolate: { max: String(MAX_AGENT_FILES_PER_UPLOAD) },
+				}),
+			),
+			locale.baseText('agents.builder.files.uploadTooManyFiles.title' as BaseTextKey),
+		);
+		return;
+	}
 
 	const existingTotalSizeBytes = agentFiles.value.reduce(
 		(total, file) => total + file.fileSizeBytes,
@@ -590,6 +592,9 @@ interface SkillAutosaveSnapshot {
 
 async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<void> {
 	const result = await updateConfig(snapshot.projectId, snapshot.agentId, snapshot.config);
+	// The write landed regardless of staleness below — tell other surfaces
+	// (e.g. canvas agent cards invalidate their capability-summary cache).
+	agentsEventBus.emit('agentUpdated', { agentId: snapshot.agentId, source: 'agent-builder' });
 	// Drop the response if the user has switched to a different agent in the
 	// meantime — both `config` (handled inside useAgentConfig) and
 	// `agent.versionId` would otherwise be polluted with values for the
@@ -609,6 +614,7 @@ async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<void> {
 		snapshot.skillId,
 		snapshot.skill,
 	);
+	agentsEventBus.emit('agentUpdated', { agentId: snapshot.agentId, source: 'agent-builder' });
 	if (agent.value?.id !== snapshot.agentId) return;
 	agent.value = {
 		...agent.value,
@@ -706,6 +712,35 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	});
 }
 
+// Capability-section handlers (tools, skills, tasks, triggers). Extracted so the
+// agent node's NDV can reuse them with its own config/skill autosave funnels.
+const caps = useAgentCapabilitiesActions({
+	localConfig,
+	agent,
+	projectId,
+	agentId,
+	connectedTriggers,
+	scheduleConfigUpdate: onConfigFieldUpdate,
+	scheduleSkillSave: ({ skillId, skill }) =>
+		skillAutosave.scheduleAutosave({
+			type: 'skill',
+			projectId: projectId.value,
+			agentId: agentId.value,
+			skillId,
+			skill,
+		}),
+	telemetry: {
+		trackOpenedToolFromList: builderTelemetry.trackOpenedToolFromList,
+		trackOpenedSkillFromList: builderTelemetry.trackOpenedSkillFromList,
+		trackOpenedAddSkillModal: builderTelemetry.trackOpenedAddSkillModal,
+		trackTriggerListChanged: builderTelemetry.trackTriggerListChanged,
+		trackTriggerAdded: builderTelemetry.trackTriggerAdded,
+	},
+});
+// Top-level alias so the template auto-unwraps the ref (nested `caps.appliedSkills`
+// access is not unwrapped by the template compiler).
+const appliedSkills = caps.appliedSkills;
+
 function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig, recordEdit = true) {
 	if (recordEdit) builderTelemetry.recordConfigEdit(nextConfig);
 	localConfig.value = deepCopy(nextConfig);
@@ -729,6 +764,9 @@ function persistMissingPersonalisationGradient() {
 }
 
 async function onConfigUpdated() {
+	// Modal flows (e.g. skill creation) write through their own API calls, not
+	// `saveConfig` — notify other surfaces (canvas agent cards) here too.
+	agentsEventBus.emit('agentUpdated', { agentId: agentId.value, source: 'agent-builder' });
 	await Promise.all([fetchAgent(), fetchConfig(projectId.value, agentId.value)]);
 	// Refresh the connected-trigger list so chips reflect builder writes
 	// without waiting for a tab switch. Mirrors the initial baseline fetch.
@@ -869,7 +907,9 @@ async function onHeaderAction(action: string) {
 		// doesn't keep rendering data for an agent that no longer exists.
 		agent.value = null;
 		localConfig.value = null;
-		agentsEventBus.emit('agentUpdated');
+		// Targeted: an untargeted emit clears the whole capability-summary cache
+		// and forces every mounted card/NDV for *unrelated* agents to refetch.
+		agentsEventBus.emit('agentUpdated', { agentId: agentId.value, source: 'agent-builder' });
 
 		// Target path. Built as a plain string rather than via a named route so
 		// there's no risk of a named-route resolution race during the agent
@@ -912,6 +952,7 @@ async function initialize() {
 		builderTelemetry.resetForAgentSwitch();
 
 		agent.value = null;
+		agentName.value = '';
 		activeChatSessionId.value = null;
 		localConfig.value = null;
 		connectedTriggers.value = [];
@@ -1010,293 +1051,72 @@ function exitContinueMode() {
 	clearContinueSessionParam();
 }
 
-function onOpenAddToolModal() {
+function onConfirmVectorStore(vectorStore: AgentJsonVectorStoreConfig, originalName?: string) {
+	const vectorStores = localConfig.value?.vectorStores ?? [];
+	const matchName = originalName ?? vectorStore.name;
+	const index = vectorStores.findIndex((existing) => existing.name === matchName);
+	const nextVectorStores =
+		index === -1
+			? [...vectorStores, vectorStore]
+			: vectorStores.map((existing, i) => (i === index ? vectorStore : existing));
+	onConfigFieldUpdate({ vectorStores: nextVectorStores });
+}
+
+function onOpenAddVectorStoreModal() {
+	const vectorStores = localConfig.value?.vectorStores ?? [];
 	uiStore.openModalWithData({
-		name: AGENT_TOOLS_MODAL_KEY,
+		name: AGENT_VECTOR_STORES_MODAL_KEY,
 		data: {
-			tools: localConfig.value?.tools ?? [],
-			mcpServers: localConfig.value?.mcpServers ?? [],
 			projectId: projectId.value,
 			agentId: agentId.value,
-			// The modal confirms with a single object payload (the modal-data plumbing is
-			// untyped, so a signature drift here isn't caught by TS — a positional handler
-			// would write `{ tools, mcpServers }` into `config.tools` and fail backend
-			// validation).
-			onConfirm: (payload: {
-				tools?: AgentJsonToolConfig[];
-				mcpServers?: AgentJsonMcpServerConfig[];
-			}) =>
+			existingNames: vectorStores.map((vectorStore) => vectorStore.name),
+			onConfirm: onConfirmVectorStore,
+		},
+	});
+}
+
+function onOpenEditVectorStoreModal(vectorStore: AgentJsonVectorStoreConfig) {
+	const vectorStores = localConfig.value?.vectorStores ?? [];
+	uiStore.openModalWithData({
+		name: AGENT_VECTOR_STORES_MODAL_KEY,
+		data: {
+			projectId: projectId.value,
+			agentId: agentId.value,
+			existingNames: vectorStores.map((existing) => existing.name),
+			vectorStore,
+			onConfirm: (updated: AgentJsonVectorStoreConfig) =>
+				onConfirmVectorStore(updated, vectorStore.name),
+			onRemove: (name: string) => {
 				onConfigFieldUpdate({
-					...(payload.tools && { tools: payload.tools }),
-					...(payload.mcpServers && { mcpServers: payload.mcpServers }),
-				}),
-		},
-	});
-}
-
-function onOpenToolFromList(target: ToolOpenTarget | number) {
-	const tools = localConfig.value?.tools ?? [];
-
-	const toolIndex =
-		typeof target === 'number'
-			? target
-			: tools.findIndex((tool) => {
-					if (target.kind !== 'tool') return false;
-					if (tool.type !== target.toolType) return false;
-					if (tool.type === 'node') return tool.name === target.id;
-					if (tool.type === 'workflow') return tool.workflow === target.id;
-					return tool.id === target.id;
-				});
-
-	if (toolIndex >= 0) {
-		const tool = tools[toolIndex];
-		if (!tool) return;
-		builderTelemetry.trackOpenedToolFromList(tool.type);
-		const customTool =
-			tool.type === 'custom' && tool.id ? agent.value?.tools?.[tool.id] : undefined;
-		uiStore.openModalWithData({
-			name: AGENT_TOOL_CONFIG_MODAL_KEY,
-			data: {
-				toolRef: tool,
-				customTool,
-				projectId: projectId.value,
-				agentId: agentId.value,
-				existingToolNames: tools
-					.map((toolRef, i) => (i === toolIndex || toolRef.type === 'custom' ? null : toolRef.name))
-					.filter((name): name is string => !!name),
-				onConfirm: (updatedTool: AgentJsonToolConfig) => {
-					const nextTools = [...(localConfig.value?.tools ?? [])];
-					nextTools[toolIndex] = updatedTool;
-					onConfigFieldUpdate({ tools: nextTools });
-				},
-				onRemove: () => onRemoveTool(toolIndex),
-			},
-		});
-		return;
-	}
-
-	const mcpServers = localConfig.value?.mcpServers ?? [];
-	const mcpServerIndex =
-		typeof target === 'number'
-			? target - tools.length
-			: target.kind === 'mcpServer'
-				? mcpServers.findIndex((server) => server.name === target.serverName)
-				: -1;
-	const mcpServer = mcpServers[mcpServerIndex];
-	if (!mcpServer) return;
-
-	builderTelemetry.trackOpenedToolFromList('mcpServer');
-	const preferredNodeTypeName = mcpServer.metadata?.nodeTypeName ?? AI_MCP_TOOL_NODE_TYPE;
-	const nodeType =
-		nodeTypesStore.getNodeType(preferredNodeTypeName) ??
-		nodeTypesStore.getNodeType(AI_MCP_TOOL_NODE_TYPE);
-	if (!nodeType) return;
-
-	uiStore.openModalWithData({
-		name: AGENT_TOOL_CONFIG_MODAL_KEY,
-		data: {
-			kind: 'mcpServer',
-			mcpServer,
-			initialNode: mcpServerToNode(mcpServer, nodeType),
-			projectId: projectId.value,
-			agentId: agentId.value,
-			existingToolNames: mcpServers
-				.filter((_, i) => i !== mcpServerIndex)
-				.map((server) => server.name),
-			onConfirm: (updatedServer: AgentJsonMcpServerConfig) => {
-				const nextMcpServers = [...(localConfig.value?.mcpServers ?? [])];
-				nextMcpServers[mcpServerIndex] = updatedServer;
-				onConfigFieldUpdate({ mcpServers: nextMcpServers });
-			},
-			onRemove: () => {
-				const nextMcpServers = (localConfig.value?.mcpServers ?? []).filter(
-					(_, i) => i !== mcpServerIndex,
-				);
-				onConfigFieldUpdate({ mcpServers: nextMcpServers });
-			},
-		},
-	});
-}
-
-const appliedSkills = computed<Array<{ id: string; skill: AgentSkill }>>(() => {
-	const refs = localConfig.value?.skills ?? [];
-	const seen = new Set<string>();
-	const out: Array<{ id: string; skill: AgentSkill }> = [];
-
-	for (const skillRef of refs) {
-		if (!skillRef.id || seen.has(skillRef.id)) continue;
-		seen.add(skillRef.id);
-		out.push({
-			id: skillRef.id,
-			skill: agent.value?.skills?.[skillRef.id] ?? {
-				name: skillRef.id,
-				description: '',
-				instructions: '',
-			},
-		});
-	}
-
-	return out;
-});
-
-function onOpenSkillFromList(id: string) {
-	const skill = appliedSkills.value.find((s) => s.id === id)?.skill;
-	if (!skill) return;
-	builderTelemetry.trackOpenedSkillFromList(id);
-	uiStore.openModalWithData({
-		name: AGENT_SKILL_MODAL_KEY,
-		data: {
-			projectId: projectId.value,
-			agentId: agentId.value,
-			skill,
-			skillId: id,
-			availableTools: configuredToolOptions(),
-			onRemove: (skillId: string) => onRemoveSkill(skillId),
-			onConfirm: ({ id: skillId, skill: updatedSkill }: { id?: string; skill: AgentSkill }) => {
-				if (!skillId) return;
-				if (agent.value?.id !== agentId.value) return;
-				const sanitizedSkill = filterSkillAllowedTools(updatedSkill);
-				agent.value = {
-					...agent.value,
-					skills: {
-						...(agent.value.skills ?? {}),
-						[skillId]: sanitizedSkill,
-					},
-				};
-				const nextSkills = [...(localConfig.value?.skills ?? [])];
-				const skillRefIndex = nextSkills.findIndex((skillRef) => skillRef.id === id);
-				if (skillRefIndex !== -1) {
-					nextSkills[skillRefIndex] = { type: 'skill', id: skillId };
-					onConfigFieldUpdate({ skills: nextSkills });
-				}
-				skillAutosave.scheduleAutosave({
-					type: 'skill',
-					projectId: projectId.value,
-					agentId: agentId.value,
-					skillId,
-					skill: sanitizedSkill,
+					vectorStores: (localConfig.value?.vectorStores ?? []).filter(
+						(existing) => existing.name !== name,
+					),
 				});
 			},
 		},
 	});
 }
 
-function configuredToolOptions(): AgentSkillAllowedToolOption[] {
-	const tools: AgentSkillAllowedToolOption[] = [];
-	for (const tool of localConfig.value?.tools ?? []) {
-		if (tool.type === 'custom') {
-			const name = agent.value?.tools?.[tool.id]?.descriptor.name ?? tool.id;
-			if (name) {
-				tools.push({ name, label: formatToolNameForDisplay(name) || name, icon: 'code' });
-			}
-		} else if (tool.type === 'workflow') {
-			const name = tool.name ?? tool.workflow;
-			tools.push({ name, label: formatToolNameForDisplay(name) || name, icon: 'workflow' });
-		} else {
-			tools.push({
-				name: tool.name,
-				label: formatToolNameForDisplay(tool.name) || tool.name,
-				icon: 'globe',
-			});
-		}
-	}
-	return tools;
-}
-
-function configuredToolNames(): Set<string> {
-	return new Set(configuredToolOptions().map((tool) => tool.name));
-}
-
-function filterSkillAllowedTools(skill: AgentSkill): AgentSkill {
-	return normalizeAgentSkillForSave(skill, configuredToolNames());
-}
-
-function onRemoveTool(index: number) {
-	const currentTools = localConfig.value?.tools ?? [];
-	if (index < 0 || index >= currentTools.length) return;
-	const nextTools = currentTools.filter((_, i) => i !== index);
-	onConfigFieldUpdate({ tools: nextTools });
-}
-
-function onRemoveSkill(id: string) {
-	const currentSkills = localConfig.value?.skills ?? [];
-	const nextSkills = currentSkills.filter((skillRef) => skillRef.id !== id);
-	onConfigFieldUpdate({ skills: nextSkills });
-}
-
-function onToggleTask(payload: { id: string; enabled: boolean }) {
-	const nextTasks = (localConfig.value?.tasks ?? []).map((taskRef) =>
-		taskRef.id === payload.id ? { ...taskRef, enabled: payload.enabled } : taskRef,
-	);
-	onConfigFieldUpdate({ tasks: nextTasks });
-}
-
-function onOpenAddSkillModal() {
-	builderTelemetry.trackOpenedAddSkillModal();
-	uiStore.openModalWithData({
-		name: AGENT_SKILL_MODAL_KEY,
-		data: {
-			projectId: projectId.value,
-			agentId: agentId.value,
-			availableTools: configuredToolOptions(),
-			onConfirm: ({ skill }: { id?: string; skill: AgentSkill }) => {
-				void (async () => {
-					const sanitizedSkill = filterSkillAllowedTools(skill);
-					let created: AgentSkill;
-					let versionId: string | null;
-					let skillId: string;
-					try {
-						const result = await createAgentSkill(
-							rootStore.restApiContext,
-							projectId.value,
-							agentId.value,
-							sanitizedSkill,
-						);
-						skillId = result.id;
-						created = result.skill;
-						versionId = result.versionId;
-					} catch (error) {
-						showError(error, locale.baseText('agents.builder.skills.create.error'));
-						return;
-					}
-					if (agent.value?.id !== agentId.value) return;
-					agent.value = {
-						...agent.value,
-						versionId,
-						skills: {
-							...(agent.value.skills ?? {}),
-							[skillId]: created,
-						},
-					};
-					onConfigFieldUpdate({
-						skills: [...(localConfig.value?.skills ?? []), { type: 'skill', id: skillId }],
-					});
-					showMessage({
-						title: locale.baseText('agents.builder.skills.added'),
-						type: 'success',
-					});
-				})();
-			},
-		},
+async function onRemoveVectorStore(vectorStore: AgentJsonVectorStoreConfig) {
+	const confirmed = await openAgentConfirmationModal({
+		title: locale.baseText('agents.builder.vectorStores.panel.removeModal.title', {
+			interpolate: { name: vectorStore.name },
+		}),
+		description: locale.baseText('agents.builder.vectorStores.panel.removeModal.description', {
+			interpolate: { name: vectorStore.name },
+		}),
+		confirmButtonText: locale.baseText(
+			'agents.builder.vectorStores.panel.removeModal.button.remove',
+		),
+		cancelButtonText: locale.baseText('generic.cancel'),
 	});
-}
+	if (confirmed !== MODAL_CONFIRM) return;
 
-function onQuickActionAddTool(tools: AgentJsonToolConfig[]) {
-	onConfigFieldUpdate({ tools });
-}
-
-function onQuickActionAddMcpServers(mcpServers: AgentJsonMcpServerConfig[]) {
-	onConfigFieldUpdate({ mcpServers });
-}
-
-function onConnectedTriggersUpdate(triggers: string[]) {
-	connectedTriggers.value = triggers;
-	builderTelemetry.trackTriggerListChanged(triggers);
-}
-
-function onTriggerAdded(payload: { triggerType: string; triggers: string[] }) {
-	connectedTriggers.value = payload.triggers;
-	builderTelemetry.trackTriggerAdded(payload);
+	onConfigFieldUpdate({
+		vectorStores: (localConfig.value?.vectorStores ?? []).filter(
+			(existing) => existing.name !== vectorStore.name,
+		),
+	});
 }
 
 function onContinueLoaded(count: number) {
@@ -1444,14 +1264,14 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 						@config-updated="onConfigUpdated"
 						@build-done="onBuildDone"
 						@update:streaming="onBuildChatStreamingChange"
-						@update:tools="onQuickActionAddTool"
-						@update:mcp-servers="onQuickActionAddMcpServers"
-						@update:connected-triggers="onConnectedTriggersUpdate"
+						@update:tools="caps.onQuickActionAddTool"
+						@update:mcp-servers="caps.onQuickActionAddMcpServers"
+						@update:connected-triggers="caps.onConnectedTriggersUpdate"
 						@hide="
 							isChatFullWidth = false;
 							isBuildChatHidden = true;
 						"
-						@trigger-added="onTriggerAdded"
+						@trigger-added="caps.onTriggerAdded"
 						@agent-published="onPublished"
 						@agent-changed="refreshAgentAfterIntegrationChange"
 					/>
@@ -1478,17 +1298,20 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:main-tab-options="mainTabOptions"
 					:executions-description="executionsDescription"
 					@update:config="onConfigFieldUpdate"
-					@open-tool="onOpenToolFromList"
-					@open-skill="onOpenSkillFromList"
-					@add-tool="onOpenAddToolModal"
-					@add-skill="onOpenAddSkillModal"
+					@open-tool="caps.onOpenToolFromList"
+					@open-skill="caps.onOpenSkillFromList"
+					@add-tool="caps.onOpenAddToolModal"
+					@add-skill="caps.onOpenAddSkillModal"
 					@upload-files="onUploadAgentFiles"
 					@delete-file="onDeleteAgentFile"
-					@remove-tool="onRemoveTool"
-					@remove-skill="onRemoveSkill"
-					@update:connected-triggers="onConnectedTriggersUpdate"
-					@trigger-added="onTriggerAdded"
-					@toggle-task="onToggleTask"
+					@add-vector-store="onOpenAddVectorStoreModal"
+					@edit-vector-store="onOpenEditVectorStoreModal"
+					@remove-vector-store="onRemoveVectorStore"
+					@remove-tool="caps.onRemoveTool"
+					@remove-skill="caps.onRemoveSkill"
+					@update:connected-triggers="caps.onConnectedTriggersUpdate"
+					@trigger-added="caps.onTriggerAdded"
+					@toggle-task="caps.onToggleTask"
 					@tasks-changed="onConfigUpdated"
 					@agent-changed="refreshAgentAfterIntegrationChange"
 				/>
