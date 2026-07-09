@@ -278,6 +278,8 @@ describe('ParameterInput.vue', () => {
 		expect(optionsInDropdown).toHaveLength(2);
 		expect(optionsInDropdown[0]).toHaveAttribute('aria-disabled', 'true');
 		expect(optionsInDropdown[1]).not.toHaveAttribute('aria-disabled', 'true');
+	});
+
 	describe('AI gateway action filtering', () => {
 		const operationParameter = {
 			displayName: 'Operation',
