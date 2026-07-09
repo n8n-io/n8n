@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { N8nButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { VIEWS } from '@/app/constants';
@@ -31,15 +31,31 @@ const detail = computed(() => store.getDetail(props.collectionId));
 const { compareData } = useCompareData(detail);
 
 const loading = computed(() => store.loadingDetail[props.collectionId] ?? false);
-// Only show the empty/not-found state once the fetch has settled with no data,
-// so the loading skeleton isn't skipped past on first paint.
-const isEmpty = computed(() => !loading.value && compareData.value === null);
+// Set only when the collection is genuinely gone (404), so a deleted collection
+// stops rendering stale cached metrics. Transient failures keep the last-known
+// data on screen rather than blanking it on a network blip.
+const notFound = ref(false);
+// Show the empty/not-found state once the fetch settles with no data, or when
+// the collection 404s. Guarded on `loading` so the skeleton isn't skipped on
+// first paint.
+const isEmpty = computed(() => notFound.value || (!loading.value && compareData.value === null));
+
+function isNotFoundError(error: unknown): boolean {
+	return (
+		typeof error === 'object' &&
+		error !== null &&
+		'httpStatusCode' in error &&
+		error.httpStatusCode === 404
+	);
+}
 
 async function load(workflowId: string, collectionId: string) {
+	notFound.value = false;
 	try {
 		await store.fetchCollectionDetail(workflowId, collectionId);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('evaluation.compare.errors.loadFailed'));
+		notFound.value = isNotFoundError(error);
 	}
 }
 

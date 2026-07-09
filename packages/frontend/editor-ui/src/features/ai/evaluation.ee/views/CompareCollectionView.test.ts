@@ -151,6 +151,36 @@ describe('CompareCollectionView', () => {
 		);
 	});
 
+	it('shows the not-found state when the collection 404s, even with cached detail', async () => {
+		// Detail is cached (e.g. pre-fetched by the list), then the collection is
+		// deleted server-side → the refresh 404s and stale metrics must not persist.
+		store.$patch({ collectionDetailById: { 'col-1': DETAIL } });
+		store.fetchCollectionDetail = vi.fn(async () => {
+			throw Object.assign(new Error('not found'), { httpStatusCode: 404 });
+		}) as unknown as typeof store.fetchCollectionDetail;
+
+		const { container } = renderComponent();
+
+		await waitFor(() =>
+			expect(container.querySelector('[data-test-id="compare-empty"]')).not.toBeNull(),
+		);
+		expect(container.querySelector('[data-test-id="compare-header"]')).toBeNull();
+	});
+
+	it('keeps cached detail on a transient (non-404) load failure', async () => {
+		store.$patch({ collectionDetailById: { 'col-1': DETAIL } });
+		store.fetchCollectionDetail = vi.fn(async () => {
+			throw Object.assign(new Error('network'), { httpStatusCode: 500 });
+		}) as unknown as typeof store.fetchCollectionDetail;
+
+		const { container } = renderComponent();
+
+		await waitFor(() =>
+			expect(container.querySelector('[data-test-id="compare-header"]')).not.toBeNull(),
+		);
+		expect(container.querySelector('[data-test-id="compare-empty"]')).toBeNull();
+	});
+
 	it('stops the collection poll on unmount', async () => {
 		store.fetchCollectionDetail = vi.fn(async () => {
 			store.$patch({ collectionDetailById: { 'col-1': DETAIL } });

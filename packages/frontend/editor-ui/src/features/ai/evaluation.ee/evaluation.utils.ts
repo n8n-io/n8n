@@ -115,10 +115,13 @@ export function buildScoreShapedMetricGroups(
 	const seen = new Set<string>();
 	for (const run of runs) {
 		for (const key of Object.keys(run.metrics ?? {})) {
-			if (!seen.has(key)) {
-				seen.add(key);
-				orderedKeys.push(key);
-			}
+			// Skip predefined operational metrics (token counts, execution time) —
+			// they're absolute values, not scores, and would chart as a bogus
+			// percentage on the rare run where they land in [0, 1]. Matches the
+			// exclusion in `getUserDefinedMetricNames`.
+			if (PREDEFINED_METRIC_KEYS.has(key) || seen.has(key)) continue;
+			seen.add(key);
+			orderedKeys.push(key);
 		}
 	}
 

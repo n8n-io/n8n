@@ -22,8 +22,9 @@ const insights = computed(() => store.getInsights(props.collectionId));
 const loading = computed(() => store.loadingInsights[props.collectionId] ?? false);
 
 // Hidden entirely when the instance isn't entitled — a not-in-cohort state, not
-// an error. Wait for the license check so the card doesn't flash then vanish.
-const hidden = computed(() => licenseChecked.value && !license.isLicensed.value);
+// an error. Stay hidden until the license check resolves so an unlicensed user
+// never sees the card flash in before it vanishes.
+const hidden = computed(() => !licenseChecked.value || !license.isLicensed.value);
 
 const generatedTime = computed(() => {
 	const iso = insights.value?.generatedAt;
@@ -194,15 +195,15 @@ onMounted(async () => {
 }
 
 .winner {
-	background: var(--color--success--tint-3);
+	background: var(--callout--color--background--success);
 }
 
 .regression {
-	background: var(--color--danger--tint-3);
+	background: var(--callout--color--background--danger);
 }
 
 .next {
-	background: var(--color--primary--tint-3);
+	background: var(--callout--color--background--info);
 }
 
 .neutral {
@@ -217,21 +218,19 @@ onMounted(async () => {
 	height: 24px;
 	border-radius: var(--radius--full);
 	margin-bottom: var(--spacing--3xs);
+	background: var(--background--surface);
 }
 
 .badgeSuccess {
-	color: var(--color--success);
-	background: var(--color--success--tint-2);
+	color: var(--icon-color--success);
 }
 
 .badgeDanger {
-	color: var(--color--danger);
-	background: var(--color--danger--tint-2);
+	color: var(--icon-color--danger);
 }
 
 .badgeInfo {
-	color: var(--color--primary);
-	background: var(--color--primary--tint-2);
+	color: var(--icon-color--info);
 }
 
 .skeleton {

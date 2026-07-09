@@ -96,6 +96,28 @@ describe('useCompareData', () => {
 		expect(compareData.value!.bestVersionIndex).toBe(1);
 	});
 
+	it('excludes predefined operational metrics even when they land in [0, 1]', () => {
+		const source = ref(
+			detail([
+				{
+					testRunId: 'run-a',
+					workflowVersionId: 'v1',
+					status: 'completed',
+					runAt: null,
+					completedAt: null,
+					avgScore: 0.7,
+					// executionTime happens to be in [0, 1] here, but it's an absolute
+					// operational metric — it must not be charted as a score.
+					metrics: { helpfulness: 0.7, executionTime: 0.4, totalTokens: 1 },
+				},
+			]),
+		);
+		const { compareData } = useCompareData(source);
+		const keys = compareData.value!.metricGroups.map((g) => g.key);
+
+		expect(keys).toEqual(['helpfulness']);
+	});
+
 	it('aligns a metric missing on one run to null without shifting later versions', () => {
 		const source = ref(
 			detail([
