@@ -499,6 +499,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		return {
 			evaluation: { totalRuns: 0, testCases: [] },
 			experimentName: '',
+			experimentUrl: undefined,
 			outcome: { kind: 'no_baseline' },
 			slugByTestCase: new Map(),
 		};
