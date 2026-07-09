@@ -13,6 +13,14 @@ properties:
   name:
     type: string
     example: Workflow 1
+  externalId:
+    type: string
+    nullable: true
+    description: >-
+      Customer-assigned identifier for tracking this workflow as the same
+      entity across separate n8n instances. Settable on create; editable
+      afterward unless N8N_WORKFLOW_EXTERNAL_ID is set to MATCH_WORKFLOW_ID.
+    example: ext-workflow-1
   active:
     type: boolean
     readOnly: true

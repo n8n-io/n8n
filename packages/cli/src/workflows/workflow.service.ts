@@ -59,6 +59,7 @@ import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
+import { WorkflowExternalIdService } from './workflow-external-id.service';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 
@@ -91,6 +92,7 @@ export class WorkflowService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly redactionEnforcementService: RedactionEnforcementService,
 		private readonly workflowPublicationNotifier: WorkflowPublicationNotifier,
+		private readonly workflowExternalIdService: WorkflowExternalIdService,
 	) {}
 
 	async getMany(
@@ -363,6 +365,13 @@ export class WorkflowService {
 
 		if (workflow.isArchived) {
 			throw new BadRequestError('Cannot update an archived workflow.');
+		}
+
+		if ('externalId' in workflowUpdateData) {
+			this.workflowExternalIdService.validateUpdate(
+				workflow.externalId,
+				workflowUpdateData.externalId,
+			);
 		}
 
 		await this.redactionEnforcementService.assertPolicyChangeAllowed(

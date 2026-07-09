@@ -23,6 +23,7 @@ function makeWorkflow(overrides: Partial<WorkflowEntity> = {}): WorkflowEntity {
 		isArchived: false,
 		settings: undefined,
 		parentFolder: null,
+		externalId: null,
 		...overrides,
 	} as unknown as WorkflowEntity;
 }

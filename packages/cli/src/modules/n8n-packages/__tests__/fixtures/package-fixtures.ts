@@ -40,6 +40,7 @@ export function serializedWorkflow(
 		parentFolderId: null,
 		isPublished: false,
 		isArchived: false,
+		externalId: null,
 		...overrides,
 	};
 }

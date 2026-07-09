@@ -112,7 +112,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.webhook_entity](public.webhook_entity.md) | 6 |  | BASE TABLE |
 | [public.workflow_builder_session](public.workflow_builder_session.md) | 9 |  | BASE TABLE |
 | [public.workflow_dependency](public.workflow_dependency.md) | 9 |  | BASE TABLE |
-| [public.workflow_entity](public.workflow_entity.md) | 20 |  | BASE TABLE |
+| [public.workflow_entity](public.workflow_entity.md) | 21 |  | BASE TABLE |
 | [public.workflow_history](public.workflow_history.md) | 11 |  | BASE TABLE |
 | [public.workflow_publication_outbox](public.workflow_publication_outbox.md) | 7 |  | BASE TABLE |
 | [public.workflow_publication_trigger_status](public.workflow_publication_trigger_status.md) | 7 |  | BASE TABLE |
@@ -1303,6 +1303,7 @@ erDiagram
   json connections
   timestamp_3__with_time_zone createdAt
   text description
+  varchar externalId
   varchar_36_ id
   boolean isArchived
   json meta

@@ -9,6 +9,7 @@
 | connections | json |  | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | description | text |  | true |  |  |  |
+| externalId | varchar |  | true |  |  |  |
 | id | varchar(36) |  | false | [public.ai_builder_temporary_workflow](public.ai_builder_temporary_workflow.md) [public.chat_hub_messages](public.chat_hub_messages.md) [public.chat_hub_sessions](public.chat_hub_sessions.md) [public.evaluation_collection](public.evaluation_collection.md) [public.evaluation_config](public.evaluation_config.md) [public.execution_entity](public.execution_entity.md) [public.insights_metadata](public.insights_metadata.md) [public.processed_data](public.processed_data.md) [public.shared_workflow](public.shared_workflow.md) [public.test_run](public.test_run.md) [public.webhook_entity](public.webhook_entity.md) [public.workflow_builder_session](public.workflow_builder_session.md) [public.workflow_dependency](public.workflow_dependency.md) [public.workflow_history](public.workflow_history.md) [public.workflow_publication_trigger_status](public.workflow_publication_trigger_status.md) [public.workflow_publish_history](public.workflow_publish_history.md) [public.workflow_published_version](public.workflow_published_version.md) [public.workflows_tags](public.workflows_tags.md) |  |  |
 | isArchived | boolean | false | false |  |  |  |
 | meta | json |  | true |  |  |  |
@@ -49,6 +50,7 @@
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_workflow_entity_externalId | CREATE UNIQUE INDEX "IDX_workflow_entity_externalId" ON public.workflow_entity USING btree ("externalId") WHERE ("externalId" IS NOT NULL) |
 | IDX_workflow_entity_name | CREATE INDEX "IDX_workflow_entity_name" ON public.workflow_entity USING btree (name) |
 | IDX_workflow_entity_sourceWorkflowId | CREATE INDEX "IDX_workflow_entity_sourceWorkflowId" ON public.workflow_entity USING btree ("sourceWorkflowId") WHERE ("sourceWorkflowId" IS NOT NULL) |
 | pk_workflow_entity_id | CREATE UNIQUE INDEX pk_workflow_entity_id ON public.workflow_entity USING btree (id) |
@@ -92,6 +94,7 @@ erDiagram
   json connections
   timestamp_3__with_time_zone createdAt
   text description
+  varchar externalId
   varchar_36_ id
   boolean isArchived
   json meta

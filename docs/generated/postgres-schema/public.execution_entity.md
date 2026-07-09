@@ -148,6 +148,7 @@ erDiagram
   json connections
   timestamp_3__with_time_zone createdAt
   text description
+  varchar externalId
   varchar_36_ id
   boolean isArchived
   json meta

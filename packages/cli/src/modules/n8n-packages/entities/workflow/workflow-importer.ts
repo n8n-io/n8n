@@ -1,3 +1,4 @@
+import { ExternalIdConfig } from '@n8n/config';
 import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -46,6 +47,7 @@ export class WorkflowImporter {
 		private readonly workflowCreationService: WorkflowCreationService,
 		private readonly workflowService: WorkflowService,
 		private readonly workflowPublisher: WorkflowPublisher,
+		private readonly externalIdConfig: ExternalIdConfig,
 	) {}
 
 	async plan(
@@ -193,8 +195,13 @@ export class WorkflowImporter {
 		item: PersistedWorkflowPlanItem,
 		bindings: PackageImportBindings,
 	): Promise<WorkflowEntity> {
+		const workflowExternalIdMode = this.externalIdConfig.workflowExternalId;
+
 		if (item.action === 'create') {
-			const entity = prepareEntityForPersist(item.entity, bindings, item.decidedId);
+			const entity = prepareEntityForPersist(item.entity, bindings, {
+				decidedId: item.decidedId,
+				workflowExternalIdMode,
+			});
 			return await this.workflowCreationService.createWorkflow(context.user, entity, {
 				projectId: context.projectId,
 				parentFolderId: context.folderId ?? undefined,
@@ -204,7 +211,7 @@ export class WorkflowImporter {
 			});
 		}
 
-		const entity = prepareEntityForPersist(item.entity, bindings);
+		const entity = prepareEntityForPersist(item.entity, bindings, { workflowExternalIdMode });
 		return await this.workflowService.update(context.user, entity, item.existing.id, {
 			publicApi: true,
 			source: 'import',
@@ -216,9 +223,16 @@ export class WorkflowImporter {
 function prepareEntityForPersist(
 	source: WorkflowEntity,
 	bindings: PackageImportBindings,
-	decidedId?: string,
+	options: {
+		decidedId?: string;
+		workflowExternalIdMode: ExternalIdConfig['workflowExternalId'];
+	},
 ): WorkflowEntity {
-	const entity = Object.assign(new WorkflowEntity(), source, {
+	const { decidedId, workflowExternalIdMode } = options;
+	const { externalId, ...contentWithoutExternalId } = source;
+	const content = workflowExternalIdMode === 'MUTABLE' ? source : contentWithoutExternalId;
+
+	const entity = Object.assign(new WorkflowEntity(), content, {
 		nodes: structuredClone(source.nodes),
 		...(decidedId !== undefined ? { id: decidedId } : {}),
 	});

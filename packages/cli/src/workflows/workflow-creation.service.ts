@@ -33,6 +33,7 @@ import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { dropRedactionPolicy } from './utils';
+import { WorkflowExternalIdService } from './workflow-external-id.service';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 import { WorkflowValidationService } from './workflow-validation.service';
@@ -59,6 +60,7 @@ export class WorkflowCreationService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly workflowValidationService: WorkflowValidationService,
 		private readonly instanceRedactionEnforcementService: InstanceRedactionEnforcementService,
+		private readonly workflowExternalIdService: WorkflowExternalIdService,
 	) {}
 
 	async createWorkflow(
@@ -92,6 +94,8 @@ export class WorkflowCreationService {
 		newWorkflow.parentFolder = null;
 
 		newWorkflow.sourceWorkflowId = sourceWorkflowId ?? null;
+
+		await this.workflowExternalIdService.resolveOnCreate(newWorkflow);
 
 		await validateEntity(newWorkflow);
 

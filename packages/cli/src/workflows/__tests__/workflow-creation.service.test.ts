@@ -14,6 +14,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import type { ProjectService } from '@/services/project.service.ee';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import type { WorkflowExternalIdService } from '@/workflows/workflow-external-id.service';
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
@@ -69,6 +70,7 @@ describe('WorkflowCreationService', () => {
 			mock<NodeTypes>(),
 			workflowValidationServiceMock,
 			instanceRedactionEnforcementServiceMock,
+			mock<WorkflowExternalIdService>(),
 		);
 	});
 

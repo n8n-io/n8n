@@ -10,7 +10,7 @@ import {
 /** Fields restored from package workflow.json; the target instance assigns the rest. */
 type WorkflowPackageContent = Pick<
 	WorkflowEntity,
-	'name' | 'nodes' | 'connections' | 'isArchived' | 'settings'
+	'name' | 'nodes' | 'connections' | 'isArchived' | 'settings' | 'externalId'
 >;
 
 @Service()
@@ -26,6 +26,7 @@ export class WorkflowSerializer {
 			parentFolderId: workflow.parentFolder?.id ?? null,
 			isPublished: workflow.activeVersionId === workflow.versionId,
 			isArchived: workflow.isArchived,
+			externalId: workflow.externalId,
 		});
 	}
 
@@ -46,6 +47,7 @@ export class WorkflowSerializer {
 			nodes: parsed.nodes as INode[],
 			connections: parsed.connections as IConnections,
 			isArchived: parsed.isArchived,
+			externalId: parsed.externalId,
 			...(parsed.settings !== undefined ? { settings: parsed.settings } : {}),
 		};
 	}

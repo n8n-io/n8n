@@ -21,6 +21,16 @@ export const workflowNameSchema = z
 
 export const workflowDescriptionSchema = z.string().nullable();
 
+export const WORKFLOW_EXTERNAL_ID_MAX_LENGTH = 128;
+
+export const workflowExternalIdSchema = z
+	.string()
+	.min(1)
+	.max(WORKFLOW_EXTERNAL_ID_MAX_LENGTH, {
+		message: `External ID must be ${WORKFLOW_EXTERNAL_ID_MAX_LENGTH} characters or less`,
+	})
+	.regex(/^[\x20-\x7E]+$/, { message: 'External ID must only contain printable ASCII characters' });
+
 // Use z.custom() with type predicates for better type safety
 export const workflowNodesSchema = z.custom<INode[]>((val) => Array.isArray(val), {
 	message: 'Nodes must be an array',
@@ -119,6 +129,7 @@ export const baseWorkflowShape = {
 	pinData: workflowPinDataSchema.optional(),
 	nodeGroups: workflowNodeGroupsSchema.optional(),
 	hash: z.string().optional(),
+	externalId: workflowExternalIdSchema.optional(),
 
 	// Folder organization.
 	// `parentFolder` (the relation object) is intentionally NOT accepted as input: workflow

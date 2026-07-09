@@ -46,6 +46,7 @@ export interface WorkflowDataUpdate {
 	nodeGroups?: IWorkflowGroup[];
 	parentFolderId?: string;
 	uiContext?: string;
+	externalId?: string | null;
 	// checksum of workflow snapshot for conflict detection
 	expectedChecksum?: string;
 	aiBuilderAssisted?: boolean;

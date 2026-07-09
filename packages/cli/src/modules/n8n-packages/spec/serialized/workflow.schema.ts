@@ -49,6 +49,7 @@ export const serializedWorkflowSchema = z.object({
 	parentFolderId: z.string().nullable(),
 	isPublished: z.boolean(),
 	isArchived: z.boolean(),
+	externalId: z.string().nullable(),
 });
 
 export type SerializedWorkflow = z.infer<typeof serializedWorkflowSchema>;

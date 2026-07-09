@@ -19,6 +19,7 @@ const wire = (overrides: Partial<SerializedWorkflow> = {}): SerializedWorkflow =
 	parentFolderId: 'folder-from-source',
 	isPublished: true,
 	isArchived: false,
+	externalId: null,
 	...overrides,
 });
 
@@ -60,6 +61,12 @@ describe('WorkflowSerializer.deserialize', () => {
 		const result = serializer.deserialize(wire({ settings: undefined }));
 
 		expect(result.settings).toBeUndefined();
+	});
+
+	it('preserves externalId from the wire', () => {
+		const result = serializer.deserialize(wire({ externalId: 'ext-1' }));
+
+		expect(result.externalId).toBe('ext-1');
 	});
 
 	it('does not carry instance-owned fields from the wire', () => {

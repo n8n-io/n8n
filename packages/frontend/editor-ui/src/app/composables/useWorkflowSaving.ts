@@ -398,6 +398,11 @@ export function useWorkflowSaving({
 				delete workflowDataRequest.id;
 			}
 
+			// A duplicate is a logically distinct workflow, so it must never inherit the
+			// original's External ID (this would also fail server-side under
+			// MATCH_WORKFLOW_ID mode, or clash with the original under MUTABLE mode).
+			delete workflowDataRequest.externalId;
+
 			if (resetNodeIds) {
 				const nodeIdMap = new Map<string, string>();
 				workflowDataRequest.nodes = workflowDataRequest.nodes!.map((node) => {

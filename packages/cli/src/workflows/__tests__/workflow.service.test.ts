@@ -93,6 +93,7 @@ describe('WorkflowService', () => {
 				mock(), // projectRepository
 				mock(), // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
+				mock(), // workflowExternalIdService
 			);
 		});
 
@@ -354,6 +355,7 @@ describe('WorkflowService', () => {
 				mock(), // projectRepository
 				redactionEnforcementServiceMock, // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
+				mock(), // workflowExternalIdService
 			);
 
 			vi.clearAllMocks();
@@ -1050,6 +1052,7 @@ describe('WorkflowService', () => {
 				mock(), // projectRepository
 				mock(), // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
+				mock(), // workflowExternalIdService
 			);
 
 			// Bypass validation internals
@@ -1279,6 +1282,7 @@ describe('WorkflowService', () => {
 				mock(), // projectRepository
 				mock(), // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
+				mock(), // workflowExternalIdService
 			);
 		});
 

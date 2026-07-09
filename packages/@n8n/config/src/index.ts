@@ -22,6 +22,7 @@ import { EventBusConfig } from './configs/event-bus.config';
 import { ExecutionsConfig } from './configs/executions.config';
 import { ExpressionEngineConfig } from './configs/expression-engine.config';
 import { ExternalHooksConfig } from './configs/external-hooks.config';
+import { ExternalIdConfig } from './configs/external-id.config';
 import { GenericConfig } from './configs/generic.config';
 import { HiringBannerConfig } from './configs/hiring-banner.config';
 import { HttpRequestConfig } from './configs/http-request.config';
@@ -71,6 +72,7 @@ export { ExecutionsConfig } from './configs/executions.config';
 export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';
 export { WorkflowsConfig } from './configs/workflows.config';
+export { ExternalIdConfig } from './configs/external-id.config';
 export * from './custom-types';
 export { DeploymentConfig } from './configs/deployment.config';
 export { McpClientConfig } from './configs/mcp-client.config';
@@ -134,6 +136,9 @@ export class GlobalConfig {
 
 	@Nested
 	workflows: WorkflowsConfig;
+
+	@Nested
+	externalId: ExternalIdConfig;
 
 	@Nested
 	sentry: SentryConfig;

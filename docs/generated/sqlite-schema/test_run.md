@@ -128,6 +128,7 @@ erDiagram
   TEXT connections
   datetime_3_ createdAt
   TEXT description
+  varchar externalId
   varchar_36_ id PK
   boolean isArchived
   TEXT meta

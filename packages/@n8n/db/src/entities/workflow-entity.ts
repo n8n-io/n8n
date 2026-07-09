@@ -135,4 +135,12 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	@Index()
 	@Column({ type: 'varchar', nullable: true })
 	sourceWorkflowId: string | null;
+
+	/**
+	 * Customer-assigned identifier for tracking this workflow as "the same
+	 * entity" across separate n8n instances. See N8N_WORKFLOW_EXTERNAL_ID.
+	 */
+	@Index()
+	@Column({ type: 'varchar', nullable: true })
+	externalId: string | null;
 }

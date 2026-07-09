@@ -15,6 +15,7 @@ const workflowEntityWriteFields = [
 	'meta',
 	'pinData',
 	'nodeGroups',
+	'externalId',
 ] as const satisfies readonly (keyof WorkflowEntity)[];
 
 type WorkflowEntityWriteField = (typeof workflowEntityWriteFields)[number];
