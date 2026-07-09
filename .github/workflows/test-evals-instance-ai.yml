@@ -132,8 +132,8 @@ jobs:
       # upload it with the results artifact.
       - name: Start host telemetry sampler
         run: |
-          mkdir -p .eval-diag
-          { echo "=== disk at job start ==="; df -h /; docker system df; } > .eval-diag/df-at-start.log
+          mkdir -p eval-diag
+          { echo "=== disk at job start ==="; df -h /; docker system df; } > eval-diag/df-at-start.log
           nohup bash -c 'while true; do
             {
               date -u +%FT%TZ
@@ -142,10 +142,10 @@ jobs:
               docker stats --no-stream --format "{{.Name}} cpu={{.CPUPerc}} mem={{.MemUsage}}"
               ps -eo rss=,pid=,comm= --sort=-rss | head -5
               echo
-            } >> .eval-diag/host-samples.log 2>&1
+            } >> eval-diag/host-samples.log 2>&1
             sleep 60
           done' > /dev/null 2>&1 &
-          echo $! > .eval-diag/sampler.pid
+          echo $! > eval-diag/sampler.pid
 
       - name: Start sandbox service
         if: ${{ inputs.sandbox-provider == 'n8n-sandbox' }}
@@ -417,7 +417,7 @@ jobs:
       - name: Stop n8n containers
         if: ${{ always() }}
         run: |
-          [ -f .eval-diag/sampler.pid ] && kill "$(cat .eval-diag/sampler.pid)" 2>/dev/null || true
+          [ -f eval-diag/sampler.pid ] && kill "$(cat eval-diag/sampler.pid)" 2>/dev/null || true
           mapfile -t ids < <(docker ps -aq --filter "name=n8n-eval-")
           if [ "${#ids[@]}" -gt 0 ]; then
             docker stop "${ids[@]}" 2>/dev/null || true
@@ -463,5 +463,5 @@ jobs:
           path: |
             packages/@n8n/instance-ai/eval-results.json
             packages/@n8n/instance-ai/.data/workflow-eval-report.html
-            .eval-diag/
+            eval-diag/
           retention-days: 14
