@@ -115,7 +115,7 @@ export function buildScoreShapedMetricGroups(
 	const seen = new Set<string>();
 	for (const run of runs) {
 		for (const key of Object.keys(run.metrics ?? {})) {
-			if (!seen.has(key)) {
+			if (!seen.has(key) && !PREDEFINED_METRIC_KEYS.has(key)) {
 				seen.add(key);
 				orderedKeys.push(key);
 			}
