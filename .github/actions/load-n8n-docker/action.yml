@@ -52,3 +52,10 @@ runs:
       uses: ./.github/actions/build-n8n-docker
       with:
         build-variant: ${{ inputs.build-variant }}
+
+    # An on-runner rebuild leaves tens of GB of builder cache behind; long
+    # jobs (e.g. eval baselines) have exhausted runner disk because of it.
+    - name: Reclaim builder cache after fallback rebuild
+      if: steps.restore.outputs.cache-hit != 'true'
+      shell: bash
+      run: docker builder prune -f
