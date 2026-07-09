@@ -35,6 +35,7 @@ interface UseCanvasPreviewOptions {
 export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 	// --- Tab state ---
 	const activeTabId = ref<string>();
+	const isPreviewOpen = ref(false);
 
 	// All previewable artifacts in the current thread, derived from resource registry.
 	const allArtifactTabs = computed((): ArtifactTab[] => {
@@ -109,7 +110,7 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 	const dataTableRefreshKey = ref(0);
 	const agentRefreshKey = ref(0);
 
-	const isPreviewVisible = computed(() => activeTabId.value !== undefined);
+	const isPreviewVisible = computed(() => isPreviewOpen.value && activeTabId.value !== undefined);
 
 	// --- Workflow attachments (e.g. an editor hand-off) ---
 	// A workflow attached to a message surfaces as an artifact tab via the
@@ -131,6 +132,7 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 		(id) => {
 			if (!id || activeTabId.value !== undefined) return;
 			activeTabId.value = id;
+			isPreviewOpen.value = true;
 		},
 		{ immediate: true },
 	);
@@ -139,10 +141,11 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 
 	function selectTab(tabId: string) {
 		activeTabId.value = tabId;
+		isPreviewOpen.value = true;
 	}
 
 	function closePreview() {
-		activeTabId.value = undefined;
+		isPreviewOpen.value = false;
 	}
 
 	/**
@@ -151,8 +154,9 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 	 * active (so the caller can fall back to opening in a new tab instead).
 	 */
 	function openWorkflowPreview(workflowId: string): boolean {
-		if (activeTabId.value === workflowId) return false;
+		if (activeTabId.value === workflowId && isPreviewOpen.value) return false;
 		activeTabId.value = workflowId;
+		isPreviewOpen.value = true;
 		return true;
 	}
 
@@ -162,8 +166,9 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 	 * active (so the caller can fall back to opening in a new tab instead).
 	 */
 	function openDataTablePreview(dataTableId: string, _projectId: string): boolean {
-		if (activeTabId.value === dataTableId) return false;
+		if (activeTabId.value === dataTableId && isPreviewOpen.value) return false;
 		activeTabId.value = dataTableId;
+		isPreviewOpen.value = true;
 		return true;
 	}
 
@@ -173,8 +178,9 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 	 * active (so the caller can fall back to opening in a new tab instead).
 	 */
 	function openAgentPreview(agentId: string, _projectId: string): boolean {
-		if (activeTabId.value === agentId) return false;
+		if (activeTabId.value === agentId && isPreviewOpen.value) return false;
 		activeTabId.value = agentId;
+		isPreviewOpen.value = true;
 		return true;
 	}
 
@@ -221,6 +227,7 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 			if (thread.isHydratingThread) return;
 
 			activeTabId.value = latestBuildResult.value.workflowId;
+			isPreviewOpen.value = true;
 			workflowRefreshKey.value++;
 		},
 		{ flush: 'sync' },
@@ -251,6 +258,7 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 			if (thread.isHydratingThread) return;
 
 			activeTabId.value = latestBuilderTarget.value.workflowId;
+			isPreviewOpen.value = true;
 		},
 		{ flush: 'sync' },
 	);
@@ -310,6 +318,7 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 			const targetId = latestUpdateResult.value.workflowId;
 
 			activeTabId.value = targetId;
+			isPreviewOpen.value = true;
 			workflowRefreshKey.value++;
 		},
 		{ flush: 'sync' },
@@ -335,6 +344,7 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 			if (thread.isHydratingThread) return;
 
 			activeTabId.value = latestDataTableResult.value.dataTableId;
+			isPreviewOpen.value = true;
 			dataTableRefreshKey.value++;
 		},
 		{ flush: 'sync' },
@@ -357,6 +367,9 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 		if (deletedId && deletedId === activeTabId.value) {
 			const remaining = allArtifactTabs.value.filter((t) => t.id !== deletedId);
 			activeTabId.value = remaining.length > 0 ? remaining[0].id : undefined;
+			if (!activeTabId.value) {
+				isPreviewOpen.value = false;
+			}
 		}
 	});
 
@@ -382,6 +395,7 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 			const targetId = latestAgentArtifactResult.value.agentId;
 			if (latestAgentArtifactResult.value.kind === 'created') {
 				activeTabId.value = targetId;
+				isPreviewOpen.value = true;
 				agentRefreshKey.value++;
 				return;
 			}
