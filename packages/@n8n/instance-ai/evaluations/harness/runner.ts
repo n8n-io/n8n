@@ -277,6 +277,7 @@ export async function runWorkflowTestCase(
 				claimedWorkflowIds: config.claimedWorkflowIds,
 				logger,
 				laneTag: config.laneTag,
+				workflowExpected: workflowExpectedForCase(testCase),
 			});
 
 	if (isPrebuilt && build.success && !build.workflowChecks) {
@@ -532,6 +533,20 @@ export interface BuildWorkflowConfig {
 	allowWorkflowListDiffFallback?: boolean;
 	/** Let callers that own their own scoring avoid duplicate binary checks. */
 	skipWorkflowChecks?: boolean;
+	/** False for answer-only cases: ending the conversation without a saved
+	 *  workflow is then a valid outcome, not a failed build. Defaults to true. */
+	workflowExpected?: boolean;
+}
+
+/** A case needs a workflow iff something judges one: execution scenarios or
+ *  outcome expectations. Cases with neither are graded on the conversation. */
+export function workflowExpectedForCase(
+	testCase: Pick<WorkflowTestCase, 'executionScenarios' | 'outcomeExpectations'>,
+): boolean {
+	return (
+		(testCase.executionScenarios?.length ?? 0) > 0 ||
+		(testCase.outcomeExpectations?.length ?? 0) > 0
+	);
 }
 
 /** A conversation is multi-turn if it has more than one turn, or if the only
@@ -748,6 +763,28 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		);
 
 		if (outcome.workflowsCreated.length === 0) {
+			// Answer-only cases (no execution scenarios, no outcome expectations)
+			// are graded on the conversation — ending without a workflow is a
+			// valid outcome for them, not a failed build.
+			if (config.workflowExpected === false) {
+				logger.info(
+					`  Conversation completed without a workflow (none expected) [${String(Math.round((Date.now() - buildStart) / 1000))}s] [thread ${threadId}]`,
+				);
+				return {
+					success: true,
+					workflowJsons: [],
+					buildTrace,
+					createdWorkflowIds: restoredWorkflowIds,
+					createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
+					conversationMetrics,
+					events,
+					threadId,
+					proxyDecisionStats,
+					transcript,
+					credentialViewPinned,
+					seedingFailed,
+				};
+			}
 			return {
 				success: false,
 				error: summarizeMissingWorkflowError(events),
