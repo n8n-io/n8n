@@ -137,6 +137,55 @@ export interface AgentVersionListItemDto {
 	isActive: boolean;
 }
 
+/**
+ * Lightweight capability metadata for the AI Agent node card.
+ */
+export interface AgentCapabilityModel {
+	/** Provider prefix of the model id, e.g. 'anthropic'. Empty when the id has no prefix. */
+	provider: string;
+	/** Model name, e.g. 'claude-sonnet-4-5'. */
+	model: string;
+}
+
+export interface AgentCapabilityChannel {
+	/** Integration platform, e.g. 'slack' | 'telegram' | 'linear'. */
+	type: string;
+}
+
+export interface AgentCapabilityTool {
+	type: 'custom' | 'workflow' | 'node';
+	name: string;
+	/**
+	 * Node type + version for `type: 'node'` tools. Lets the card resolve the
+	 * node's display name and group same-node-type tools.
+	 * Absent for custom/workflow tools.
+	 */
+	nodeType?: string;
+	nodeTypeVersion?: number;
+}
+
+export interface AgentCapabilitySkill {
+	id: string;
+	name: string;
+}
+
+export interface AgentCapabilityTask {
+	id: string;
+	name: string;
+	enabled: boolean;
+}
+
+export interface AgentCapabilitySummary {
+	id: string;
+	name: string;
+	/** Null when no model is configured yet. */
+	model: AgentCapabilityModel | null;
+	channels: AgentCapabilityChannel[];
+	tools: AgentCapabilityTool[];
+	skills: AgentCapabilitySkill[];
+	tasks: AgentCapabilityTask[];
+}
+
 export interface AgentPersistedMessageContentPart {
 	type: 'text' | 'reasoning' | 'tool-call' | (string & {});
 	text?: string;

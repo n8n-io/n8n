@@ -4396,6 +4396,52 @@ describe('NodeHelpers', () => {
 				},
 			});
 		});
+
+		it('Should treat agentSelector like a resource locator when required and empty', () => {
+			const nodeProperties: INodeProperties = {
+				displayName: 'Agent',
+				name: 'agentId',
+				type: 'agentSelector',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{ displayName: 'From List', name: 'list', type: 'list' },
+					{ displayName: 'By ID', name: 'id', type: 'string' },
+				],
+			};
+			const nodeValues: INodeParameters = {
+				agentId: { __rl: true, mode: 'list', value: '' },
+			};
+
+			const result = getParameterIssues(nodeProperties, nodeValues, '', testNode, null);
+
+			expect(result).toEqual({
+				parameters: {
+					agentId: ['Parameter "Agent" is required.'],
+				},
+			});
+		});
+
+		it('Should not report an issue for a populated agentSelector', () => {
+			const nodeProperties: INodeProperties = {
+				displayName: 'Agent',
+				name: 'agentId',
+				type: 'agentSelector',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{ displayName: 'From List', name: 'list', type: 'list' },
+					{ displayName: 'By ID', name: 'id', type: 'string' },
+				],
+			};
+			const nodeValues: INodeParameters = {
+				agentId: { __rl: true, mode: 'list', value: 'agent-1' },
+			};
+
+			const result = getParameterIssues(nodeProperties, nodeValues, '', testNode, null);
+
+			expect(result).toEqual({});
+		});
 	});
 
 	describe('nodeIssuesToString', () => {
