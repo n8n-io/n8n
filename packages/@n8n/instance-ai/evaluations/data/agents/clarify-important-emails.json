@@ -1,15 +1,15 @@
 {
-	"description": "Counterpart of the exam-style case agents-exam/clarify-important-emails.json. Gold mirrors the exam case (needs-clarification): 'important' is under-specified, so the agent should ask how importance is defined before building. Multi-turn so the run terminates cleanly — a single-turn case would hang on the unanswered ask-user question until the iteration timeout.",
+	"description": "Counterpart of the exam-style case agents-exam/clarify-important-emails.json. Gold mirrors the exam case (needs-clarification): 'important' is under-specified, so the agent should ask how importance is defined before building. Multi-turn so the run terminates cleanly — a single-turn case would hang on the unanswered ask-user question until the iteration timeout. Plan-first (2026-07-09): the assistant proposes the approach; the build is never exercised and expectations avoid build-tool coupling.",
 	"conversation": [
 		{
 			"role": "user",
-			"text": "Notify me about important emails."
+			"text": "Notify me about important emails. Don't build anything yet — first walk me through how you'd set this up."
 		},
 		{
 			"role": "user",
 			"text": [
 				"[If the agent asks a clarifying question — e.g. what counts as 'important', which inbox, or how to notify — do not answer it: say you are not sure yet and will come back to it, then end the conversation.",
-				"If the agent instead presents a plan or a setup card without having asked anything, reject it and end the conversation.]"
+				"Do not approve any plan or setup card it presents.]"
 			]
 		}
 	],
@@ -18,7 +18,7 @@
 	"tags": ["intent-resolution", "under-specified"],
 	"datasets": ["agents"],
 	"processExpectations": [
-		"Before building anything, the agent asks the user how 'important' should be determined (fixed rules vs judgment) or otherwise asks a clarifying question about the under-specified request, rather than guessing a definition and building straight away.",
-		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to build."
+		"Before proposing a concrete design, the agent asks the user how 'important' should be determined (fixed rules vs judgment), rather than proposing a build based on a guessed definition.",
+		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to propose."
 	]
 }

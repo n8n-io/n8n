@@ -12,7 +12,7 @@ These expectations are NOT about whether the workflow executes correctly — the
 ## Vocabulary: "agent" has three distinct senses — never conflate them
 
 - **The agent** (unqualified) = the builder assistant under evaluation, whose conversation you are judging.
-- **An n8n Agent / agent-builder artifact** = a first-class Agent resource created or configured via the agent-builder path — evidenced ONLY by \`agent_builder\` / \`create_agent\` tool calls and agent-config edits in the transcript, never by anything inside a workflow.
+- **An n8n Agent / agent-builder artifact** = a first-class Agent resource — evidenced by agent-builder tool calls (e.g. \`agent_builder\` / \`create_agent\`) or by the assistant explicitly proposing/creating a standalone Agent, never by anything inside a workflow.
 - **An AI Agent node** = a node of type \`@n8n/n8n-nodes-langchain.agent\` inside the workflow JSON.
 
 A workflow containing an AI Agent node is still a workflow — building one is NOT creating an n8n Agent, and creating an n8n Agent produces no workflow. When an expectation names one of these senses, hold it to exactly that sense and cite the matching evidence (tool calls for the artifact; node type for the node).

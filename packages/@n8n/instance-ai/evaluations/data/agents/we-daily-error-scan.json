@@ -1,20 +1,26 @@
 {
-	"description": "Counterpart of the exam-style case agents-exam/we-daily-error-scan.json. Gold mirrors the exam case ({wf, true}): a scheduled workflow shell with the open-ended log analysis embedded as an AI Agent step.",
+	"description": "Counterpart of the exam-style case agents-exam/we-daily-error-scan.json. Gold mirrors the exam case ({wf, true}): a scheduled workflow shell with the open-ended log analysis embedded as an AI Agent step. Plan-first (2026-07-09): the assistant proposes the approach; the build is never exercised and expectations avoid build-tool coupling.",
 	"conversation": [
 		{
 			"role": "user",
-			"text": "Every morning at 8am, have an agent scan our overnight error logs, identify unusual patterns, and post a summary to the #eng-oncall Slack channel."
+			"text": "Every morning at 8am, have an agent scan our overnight error logs, identify unusual patterns, and post a summary to the #eng-oncall Slack channel. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
 		}
 	],
 	"complexity": "medium",
 	"tags": ["intent-resolution", "scheduled", "embed-agent", "notification"],
 	"datasets": ["agents"],
 	"processExpectations": [
-		"The agent builds this as a scheduled workflow (fixed 8am trigger and fixed Slack posting), and does not create a standalone n8n Agent via the agent-builder path (agent_builder / create_agent tools).",
-		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to build."
+		"The agent proposes a scheduled workflow shell — a fixed 8am trigger and a fixed Slack summary step — and does not propose a standalone n8n Agent.",
+		"In the proposed design the open-ended log analysis (identifying unusual patterns) is handled by an embedded agent or open-ended AI step, not by a fixed keyword filter.",
+		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to propose."
 	],
-	"outcomeExpectations": [
-		"The workflow runs on a daily 8am schedule trigger and posts a summary to the #eng-oncall Slack channel.",
-		"The open-ended analysis of the logs (identifying unusual patterns) is handled by an AI Agent node or an equivalent open-ended AI step between the log retrieval and the Slack notification, not by a fixed keyword filter."
-	]
+	"messageBudget": 4
 }

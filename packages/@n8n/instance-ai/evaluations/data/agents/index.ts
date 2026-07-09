@@ -1,11 +1,15 @@
 // ---------------------------------------------------------------------------
 // Intent-resolution eval cases for the agents module (`--tier agents`).
 //
-// Cases are plain build requests graded on enacted routing behavior — which
-// path the assistant takes (workflow-building tools vs the agent-builder
-// route vs a clarifying question vs a direct answer) and what artifact it
-// produces — via ordinary process/outcome expectations judged from the
-// transcript and workflow JSON. Requires N8N_ENABLED_MODULES=agents,instance-ai.
+// Cases are user-voiced build requests asked plan-first ("walk me through how
+// you'd set this up first") and graded on the approach the assistant PROPOSES
+// — workflow vs n8n Agent vs asking a clarifying question vs answering
+// directly — via ordinary processExpectations judged from the transcript. The
+// build itself is never exercised: a director turn declines every plan/setup
+// approval, keeping runs fast (~30-60s) and the expectations decoupled from
+// the agent-build tool surface, which is being redesigned (dedicated
+// sub-agent). Only load_skill(intent-recognition) is asserted by name.
+// Requires N8N_ENABLED_MODULES=agents,instance-ai.
 //
 // The exam-style corpus (loader-injected classification preamble + fenced
 // ```intent block, exact-match graded) lives in ../agents-exam as a fast

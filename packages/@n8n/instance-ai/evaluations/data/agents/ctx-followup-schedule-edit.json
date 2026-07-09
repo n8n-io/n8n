@@ -1,0 +1,25 @@
+{
+	"description": "Context-continuity bucket: a follow-up amendment stays on the automation being discussed, without re-classifying. Turn 1 elicits a proposed workflow design (plan-first); turn 2 asks for one schedule change. Doubles as the over-trigger guard: the intent gate must fire once and stay quiet for the amendment. No exam-corpus counterpart (its ctx cases fake prior context with priorConversation text). Plan-first (2026-07-09): the assistant proposes the approach; the build is never exercised and expectations avoid build-tool coupling.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every weekday at 9am, Slack me the Berlin weather forecast. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[After the assistant lays out its approach, ask for exactly one change: make it 8:30 instead of 9am.",
+				"Do not approve any plan, setup card, or build confirmation.",
+				"Once the change is reflected in the approach, end the conversation.]"
+			]
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "simple",
+	"tags": ["intent-resolution", "paradigm-continuity", "inline"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent calls the load_skill tool with the intent-recognition skill at most once in the whole conversation, before proposing the initial design — and does not load it again for the follow-up schedule change.",
+		"The agent treats the 8:30 request as an amendment to the proposed workflow rather than classifying it or proposing a new automation."
+	]
+}

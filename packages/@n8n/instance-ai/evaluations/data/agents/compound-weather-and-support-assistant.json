@@ -1,27 +1,27 @@
 {
-	"description": "Counterpart of the exam-style case agents-exam/compound-weather-and-support-assistant.json (parts: weather {wf, false}; assistant {agent, false|true}). Multi-artifact probe: the agent must treat the request as two independent automations and route each correctly — one workflow build, one agent-builder creation. Tranche 2 — calibrated at N=3 (2026-07-08).",
+	"description": "Counterpart of the exam-style case agents-exam/compound-weather-and-support-assistant.json (parts: weather {wf, false}; assistant {agent, false|true}). Multi-artifact probe: the agent must treat the request as two independent automations and route each correctly — one workflow build, one agent-builder creation. Plan-first (2026-07-09): the assistant proposes the approach; the build is never exercised and expectations avoid build-tool coupling.",
 	"conversation": [
 		{
 			"role": "user",
-			"text": "1) Every weekday at 9am, Slack me the Berlin weather. 2) Create a support assistant that chats with customers and decides when to escalate."
+			"text": "1) Every weekday at 9am, Slack me the Berlin weather. 2) Create a support assistant that chats with customers and decides when to escalate. Don't build anything yet — first walk me through how you'd set this up."
 		},
 		{
 			"role": "user",
 			"text": [
-				"[If the agent asks whether to do both or which to do first, say: yes, both, in whatever order.",
-				"If it asks any other clarifying question, give a minimal plausible answer (e.g. escalations go to support@acme.test).",
-				"Approve any reasonable plan or setup card. End the conversation once both automations have been created or the agent has clearly finished.]"
+				"[If the assistant asks whether to handle both or which first, say: both, in whatever order.",
+				"Do not approve any plan, setup card, or build confirmation.",
+				"Once it has laid out its approach for both automations, say you'll think it over and end the conversation.]"
 			]
 		}
 	],
-	"messageBudget": 8,
+	"messageBudget": 6,
 	"complexity": "simple",
 	"tags": ["intent-resolution", "compound", "independent-lifecycles"],
 	"datasets": ["agents"],
 	"processExpectations": [
-		"The agent treats the request as two independent automations with separate lifecycles rather than merging them into a single artifact.",
-		"The weather notification is built as a scheduled workflow via the workflow-building tools.",
-		"The support assistant is created via the agent-builder path (agent_builder / create_agent tools), not as a second workflow.",
-		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to build."
+		"The agent treats the request as two independent automations with separate lifecycles rather than merging them into a single design.",
+		"The weather notification is proposed as a scheduled workflow.",
+		"The support assistant is proposed as an n8n Agent (conversational, decides when to escalate), not as a second workflow.",
+		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to propose."
 	]
 }

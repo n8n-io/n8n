@@ -1,19 +1,26 @@
 {
-	"description": "Counterpart of the exam-style case agents-exam/wf-schedule-weather-slack.json: the same request sent as a real build prompt, no classification preamble. Gold mirrors the exam case ({anchor: wf, embedsOther: false}) expressed as observable routing behavior.",
+	"description": "Counterpart of the exam-style case agents-exam/wf-schedule-weather-slack.json: the same request sent as a real build prompt, no classification preamble. Gold mirrors the exam case ({anchor: wf, embedsOther: false}) expressed as observable routing behavior. Plan-first (2026-07-09): the assistant proposes the approach; the build is never exercised and expectations avoid build-tool coupling.",
 	"conversation": [
 		{
 			"role": "user",
-			"text": "Every weekday at 9am, Slack me the Berlin weather forecast."
+			"text": "Every weekday at 9am, Slack me the Berlin weather forecast. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
 		}
 	],
 	"complexity": "simple",
 	"tags": ["intent-resolution", "scheduled", "notification"],
 	"datasets": ["agents"],
 	"processExpectations": [
-		"The agent builds this as a workflow using the workflow-building tools, and does not create an n8n Agent via the agent-builder path (agent_builder / create_agent tools).",
-		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to build."
+		"The agent proposes building this as a single workflow — a fixed weekday-morning schedule trigger that fetches the Berlin weather and posts it to Slack — and does not propose creating an n8n Agent.",
+		"The proposed design has no embedded open-ended agent step; fetching and posting the weather needs fixed steps only.",
+		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to propose."
 	],
-	"outcomeExpectations": [
-		"The workflow starts from a schedule trigger on a weekday-morning cadence, fetches the Berlin weather, and posts it to Slack, without embedding an AI Agent node."
-	]
+	"messageBudget": 4
 }

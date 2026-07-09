@@ -1,19 +1,26 @@
 {
-	"description": "Counterpart of the exam-style case agents-exam/adv-says-assistant-is-wf.json ({wf, false}): 'assistant' wording over a fixed daily RSS-summarize-post pipeline. Outcome also probes whether the bounded summarization step becomes an AI Agent node (the vocabulary prior at node-choice level). Tranche 2 — calibrated at N=3 (2026-07-08).",
+	"description": "Counterpart of the exam-style case agents-exam/adv-says-assistant-is-wf.json ({wf, false}): 'assistant' wording over a fixed daily RSS-summarize-post pipeline. Outcome also probes whether the bounded summarization step becomes an AI Agent node (the vocabulary prior at node-choice level). Plan-first (2026-07-09): the assistant proposes the approach; the build is never exercised and expectations avoid build-tool coupling.",
 	"conversation": [
 		{
 			"role": "user",
-			"text": "Make an assistant that summarizes our RSS feed daily and posts to Slack."
+			"text": "Make an assistant that summarizes our RSS feed daily and posts to Slack. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
 		}
 	],
 	"complexity": "simple",
 	"tags": ["intent-resolution", "false-friend", "surface-vocab"],
 	"datasets": ["agents"],
 	"processExpectations": [
-		"Despite the request saying 'assistant', the agent builds a fixed scheduled workflow (daily RSS summarization posted to Slack) using the workflow-building tools, and does not create an agent via the agent-builder path.",
-		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to build."
+		"Despite the request saying 'assistant', the agent proposes a fixed scheduled workflow — daily RSS summarization posted to Slack — and does not propose creating an n8n Agent.",
+		"In the proposed design the summarization is a single bounded LLM step, not an AI Agent node or open-ended agent step.",
+		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to propose."
 	],
-	"outcomeExpectations": [
-		"The workflow runs on a daily schedule, condenses the RSS items with a bounded LLM transform rather than an AI Agent node with tools, and posts the summary to Slack."
-	]
+	"messageBudget": 4
 }
