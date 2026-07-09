@@ -39,6 +39,7 @@ describe('useAgentTelemetry', () => {
 			skills: [],
 			tasks: [],
 			triggers: [],
+			vector_stores: [],
 			memory: null,
 			model: 'gpt-4',
 			config_version: 'v1',
