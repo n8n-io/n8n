@@ -45,31 +45,6 @@ function select(value: boolean): void {
 			<button
 				type="button"
 				role="radio"
-				:aria-checked="modelValue"
-				data-test-id="credential-type-card-end-user"
-				:class="[$style.card, modelValue ? $style.cardSelected : $style.cardIdle]"
-				@click="select(true)"
-			>
-				<span :class="$style.cardTop">
-					<span :class="$style.cardLabel">
-						<N8nIcon icon="user-round" size="small" />
-						<N8nText size="medium" :bold="true">
-							{{ i18n.baseText('credentialEdit.credentialConfig.credentialType.endUser.title') }}
-						</N8nText>
-					</span>
-					<span
-						:class="[$style.radioOuter, modelValue && $style.radioOuterOn]"
-						aria-hidden="true"
-					/>
-				</span>
-				<N8nText size="xsmall" color="text-light" :class="$style.subtitle">
-					{{ i18n.baseText('credentialEdit.credentialConfig.credentialType.endUser.subtitle') }}
-				</N8nText>
-			</button>
-
-			<button
-				type="button"
-				role="radio"
 				:aria-checked="!modelValue"
 				data-test-id="credential-type-card-fixed"
 				:class="[$style.card, !modelValue ? $style.cardSelected : $style.cardIdle]"
@@ -89,6 +64,31 @@ function select(value: boolean): void {
 				</span>
 				<N8nText size="xsmall" color="text-light" :class="$style.subtitle">
 					{{ i18n.baseText('credentialEdit.credentialConfig.credentialType.fixed.subtitle') }}
+				</N8nText>
+			</button>
+
+			<button
+				type="button"
+				role="radio"
+				:aria-checked="modelValue"
+				data-test-id="credential-type-card-end-user"
+				:class="[$style.card, modelValue ? $style.cardSelected : $style.cardIdle]"
+				@click="select(true)"
+			>
+				<span :class="$style.cardTop">
+					<span :class="$style.cardLabel">
+						<N8nIcon icon="user-round" size="small" />
+						<N8nText size="medium" :bold="true">
+							{{ i18n.baseText('credentialEdit.credentialConfig.credentialType.endUser.title') }}
+						</N8nText>
+					</span>
+					<span
+						:class="[$style.radioOuter, modelValue && $style.radioOuterOn]"
+						aria-hidden="true"
+					/>
+				</span>
+				<N8nText size="xsmall" color="text-light" :class="$style.subtitle">
+					{{ i18n.baseText('credentialEdit.credentialConfig.credentialType.endUser.subtitle') }}
 				</N8nText>
 			</button>
 		</div>

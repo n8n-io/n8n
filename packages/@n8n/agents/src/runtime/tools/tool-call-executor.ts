@@ -1,8 +1,8 @@
 import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
 
 import {
-	DELEGATE_SUB_AGENT_TOOL_NAME,
 	getInlineDelegateSubAgentToolOptions,
+	isDelegateSubAgentTool,
 } from './delegate-sub-agent-tool';
 import { toJsonValue } from '../json-value';
 import { DEFAULT_SUB_AGENT_MAX_CHILDREN } from './sub-agent-task-path';
@@ -186,16 +186,16 @@ export class ToolCallExecutor {
 		return this.deps.concurrency;
 	}
 
-	private isDelegateSubAgentCall(toolName: string): boolean {
-		return toolName === DELEGATE_SUB_AGENT_TOOL_NAME;
+	private isDelegateSubAgentCall(toolName: string, toolMap: Map<string, BuiltTool>): boolean {
+		const tool = toolMap.get(toolName);
+		return tool !== undefined && isDelegateSubAgentTool(tool);
 	}
 
 	private getToolCallBatchSize(toolName: string, toolMap: Map<string, BuiltTool>): number {
-		if (!this.isDelegateSubAgentCall(toolName)) return this.concurrency;
-
 		const tool = toolMap.get(toolName);
 		const delegateOptions = tool ? getInlineDelegateSubAgentToolOptions(tool) : undefined;
-		return delegateOptions?.policy?.maxChildren ?? DEFAULT_SUB_AGENT_MAX_CHILDREN;
+		if (!delegateOptions) return this.concurrency;
+		return delegateOptions.policy?.maxChildren ?? DEFAULT_SUB_AGENT_MAX_CHILDREN;
 	}
 
 	private takeNextToolCallBatch<T extends { toolName: string }>(
@@ -208,7 +208,7 @@ export class ToolCallExecutor {
 			throw new Error('Unable to build tool-call batch');
 		}
 
-		const isDelegateBatch = this.isDelegateSubAgentCall(first.toolName);
+		const isDelegateBatch = this.isDelegateSubAgentCall(first.toolName, toolMap);
 		const batchSize = this.getToolCallBatchSize(first.toolName, toolMap);
 		if (
 			batchSize < 1 ||
@@ -221,7 +221,7 @@ export class ToolCallExecutor {
 
 		for (let i = start; i < calls.length && batch.length < batchSize; i++) {
 			const candidate = calls[i];
-			if (this.isDelegateSubAgentCall(candidate.toolName) !== isDelegateBatch) break;
+			if (this.isDelegateSubAgentCall(candidate.toolName, toolMap) !== isDelegateBatch) break;
 			batch.push(candidate);
 		}
 
@@ -231,7 +231,7 @@ export class ToolCallExecutor {
 	/**
 	 * Execute tool calls concurrently in batches.
 	 *
-	 * Regular tools use `toolCallConcurrency`. Consecutive `delegate_subagent`
+	 * Regular tools use `toolCallConcurrency`. Consecutive delegate-subagent
 	 * calls use the effective `maxChildren` policy from the built delegate tool.
 	 * Provider-executed calls are skipped.
 	 *

@@ -1,4 +1,5 @@
 import { UpdateSecuritySettingsDto } from '@n8n/api-types';
+import { LicenseState } from '@n8n/backend-common';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { type AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Licensed, Post, RestController } from '@n8n/decorators';
@@ -9,11 +10,13 @@ import {
 import type { DistributiveOmit } from '@n8n/utils/types';
 import type { Response } from 'express';
 
+import { isWorkflowReviewsFeatureAvailable } from '@/constants/workflow-reviews';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { SecuritySettingsService } from '@/services/security-settings.service';
+import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 
 /**
  * The `instance-policies-updated` payload without the `user` envelope. Kept as a
@@ -26,6 +29,8 @@ type InstancePolicyUpdate = DistributiveOmit<RelayEventMap['instance-policies-up
 export class SecuritySettingsController {
 	constructor(
 		private readonly securitySettingsService: SecuritySettingsService,
+		private readonly workflowReviewPolicyService: WorkflowReviewPolicyService,
+		private readonly licenseState: LicenseState,
 		private readonly eventService: EventService,
 		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
 		private readonly instanceRedactionEnforcementService: InstanceRedactionEnforcementService,
@@ -41,12 +46,14 @@ export class SecuritySettingsController {
 			sharedPersonalWorkflowsCount,
 			sharedPersonalCredentialsCount,
 			redactionSettings,
+			workflowReviews,
 		] = await Promise.all([
 			this.securitySettingsService.arePersonalSpaceSettingsEnabled(),
 			this.securitySettingsService.getPublishedPersonalWorkflowsCount(),
 			this.securitySettingsService.getSharedPersonalWorkflowsCount(),
 			this.securitySettingsService.getSharedPersonalCredentialsCount(),
 			this.instanceRedactionEnforcementService.get(),
+			this.getWorkflowReviewsIfAvailable(),
 		]);
 
 		return {
@@ -56,6 +63,7 @@ export class SecuritySettingsController {
 			sharedPersonalCredentialsCount,
 			managedByEnv: this.instanceSettingsLoaderConfig.securityPolicyManagedByEnv,
 			redactionEnforcement: { floor: redactionSettings },
+			...(workflowReviews !== undefined ? { workflowReviews } : {}),
 		};
 	}
 
@@ -71,6 +79,10 @@ export class SecuritySettingsController {
 			throw new ForbiddenError(
 				'Security settings are managed via environment variables and cannot be modified through the API',
 			);
+		}
+
+		if (dto.workflowReviews !== undefined) {
+			this.assertWorkflowReviewsAvailable();
 		}
 
 		const updatedSettings: Partial<UpdateSecuritySettingsDto> = {};
@@ -124,7 +136,36 @@ export class SecuritySettingsController {
 			}
 		}
 
+		if (dto.workflowReviews?.enabled !== undefined) {
+			const before = (await this.workflowReviewPolicyService.get()).enabled;
+			const after = dto.workflowReviews.enabled;
+			updatedSettings.workflowReviews = { enabled: after };
+			if (before !== after) {
+				const workflowReviews = await this.workflowReviewPolicyService.set(after);
+				updatedSettings.workflowReviews = workflowReviews;
+				this.emitInstancePolicyUpdated(req, {
+					settingName: 'workflow_reviews',
+					value: workflowReviews.enabled,
+				});
+			}
+		}
+
 		return updatedSettings;
+	}
+
+	private isWorkflowReviewsAvailable(): boolean {
+		return isWorkflowReviewsFeatureAvailable(this.licenseState.isWorkflowReviewsLicensed());
+	}
+
+	private async getWorkflowReviewsIfAvailable() {
+		if (!this.isWorkflowReviewsAvailable()) return undefined;
+		return await this.workflowReviewPolicyService.get();
+	}
+
+	private assertWorkflowReviewsAvailable(): void {
+		if (!this.isWorkflowReviewsAvailable()) {
+			throw new ForbiddenError('Workflow reviews settings are not enabled in this instance');
+		}
 	}
 
 	private emitInstancePolicyUpdated(req: AuthenticatedRequest, update: InstancePolicyUpdate) {

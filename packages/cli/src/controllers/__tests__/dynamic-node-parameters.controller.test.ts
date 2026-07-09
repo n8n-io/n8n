@@ -64,7 +64,7 @@ describe('DynamicNodeParametersController', () => {
 			expect(result).toEqual(expectedResult);
 		});
 
-		it('should call getOptionsViaLoadOptions when loadOptions is provided', async () => {
+		it('should call getOptionsViaLoadOptionsByPath when loadOptions is provided', async () => {
 			const loadOptions: ILoadOptions = {
 				routing: {
 					operations: {},
@@ -77,12 +77,12 @@ describe('DynamicNodeParametersController', () => {
 			const req = { user: mockUser } as AuthenticatedRequest;
 
 			const expectedResult: INodePropertyOptions[] = [{ name: 'test', value: 'value' }];
-			service.getOptionsViaLoadOptions.mockResolvedValue(expectedResult);
+			service.getOptionsViaLoadOptionsByPath.mockResolvedValue(expectedResult);
 
 			const result = await controller.getOptions(req, mock(), payload);
 
-			expect(service.getOptionsViaLoadOptions).toHaveBeenCalledWith(
-				loadOptions,
+			expect(service.getOptionsViaLoadOptionsByPath).toHaveBeenCalledWith(
+				'/test/path',
 				baseAdditionalData,
 				{ name: 'TestNode', version: 1 },
 				{},

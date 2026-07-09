@@ -16,6 +16,7 @@ import {
 	persistVerificationOutcome,
 } from './verification/finalize-result';
 import { prepareVerificationRun } from './verification/prepare-run';
+import { reconcileStaleCredentialPlan } from './verification/reconcile-plan';
 import { resolveVerificationTarget } from './verification/resolve-target';
 import { executionNodeErrorSchema } from '../../workflow-loop/workflow-loop-state';
 
@@ -125,7 +126,17 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			const targetResult = await resolveVerificationTarget(input, context);
 			if (targetResult.kind === 'blocked') return targetResult.result;
 			const { target } = targetResult;
-			const { input: resolvedInput, buildOutcome, workflowId, workflowTaskService } = target;
+			const { input: resolvedInput, workflowId, workflowTaskService } = target;
+
+			// Credentials assigned after the build never rebuild the plan, so
+			// refresh stale mocked-credential verdicts before pinning.
+			const buildOutcome = await reconcileStaleCredentialPlan({
+				buildOutcome: target.buildOutcome,
+				workflowId,
+				domainContext: target.domainContext,
+				workflowTaskService,
+				logger: context.logger,
+			});
 
 			if (buildOutcome.nodeSimulationPlan === undefined) {
 				return await handleMissingSimulationPlan({

@@ -108,10 +108,7 @@ describe('isEligible (vitest allowlist unit test)', () => {
 	});
 
 	it('rejects packages outside the allowlist', () => {
-		// expression-runtime is intentionally blocked on DEVP-257
-		assert.equal(isEligible('@n8n/expression-runtime'), false);
-		// jest packages aren't onboarded yet
-		assert.equal(isEligible('@n8n/cli'), false);
+		assert.equal(isEligible('@n8n/foo'), false);
 		assert.equal(isEligible(''), false);
 		assert.equal(isEligible(undefined), false);
 	});

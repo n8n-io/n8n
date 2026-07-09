@@ -1,4 +1,5 @@
-import { ScheduledTaskStatus } from '../../enums';
+import { ScheduledTaskStatus } from '@n8n/constants';
+
 import { DEFAULT_RETENTION_OPTIONS, type RetentionOptions } from '../options';
 import { prune } from '../prune';
 import type { RetentionBatch, RetentionStore } from '../store';
@@ -129,6 +130,34 @@ describe('prune', () => {
 		const store = new RecordingStore([10]);
 
 		const summary = await prune(store, { ...options, maxBatchesPerPass: 0 });
+
+		expect(summary).toEqual({ deleted: 0, drained: false });
+		expect(store.batches).toHaveLength(0);
+	});
+
+	it('cancelled mid-pass, it issues no further statements and cannot claim drained', async () => {
+		// Plenty of backlog and budget; only the cancellation ends the pass.
+		const store = new RecordingStore([10, 10, 10, 10]);
+		const controller = new AbortController();
+		const deleteFinishedOlderThan = store.deleteFinishedOlderThan.bind(store);
+		// The cancellation lands while the first delete statement is in flight.
+		store.deleteFinishedOlderThan = async (batch) => {
+			controller.abort();
+			return await deleteFinishedOlderThan(batch);
+		};
+
+		const summary = await prune(store, options, controller.signal);
+
+		expect(summary).toEqual({ deleted: 10, drained: false });
+		expect(store.batches.map((batch) => batch.statuses)).toEqual([CLEAN]);
+	});
+
+	it('cancelled before the first batch, it issues nothing', async () => {
+		const store = new RecordingStore([10]);
+		const controller = new AbortController();
+		controller.abort();
+
+		const summary = await prune(store, options, controller.signal);
 
 		expect(summary).toEqual({ deleted: 0, drained: false });
 		expect(store.batches).toHaveLength(0);

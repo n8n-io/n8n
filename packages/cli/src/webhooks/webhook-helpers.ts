@@ -31,6 +31,7 @@ import type {
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
 	WebhookResponseMode,
+	OAuth2FailureReason,
 	Workflow,
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
@@ -522,6 +523,18 @@ export async function executeWebhook(
 		};
 	};
 
+	const translateAuthFailureReason = (reason?: AuthFailureReason): OAuth2FailureReason => {
+		switch (reason) {
+			case 'verifier_not_registered':
+			case 'unknown_error':
+				return 'verifier_unavailable';
+			case 'insufficient_scope':
+				return 'insufficient_scope';
+			default:
+				return 'invalid_token';
+		}
+	};
+
 	additionalData.validateN8nOAuth2Token = async (token: string, resourceUrl: string) => {
 		const oauthTokenVerifierProxy = Container.get(OAuthTokenVerifierProxy);
 		const result = await oauthTokenVerifierProxy.verifyOAuthAccessToken(token, resourceUrl);
@@ -536,16 +549,10 @@ export async function executeWebhook(
 				},
 			};
 		}
-		const VERIFIER_UNAVAILABLE_REASONS: AuthFailureReason[] = [
-			'verifier_not_registered',
-			'unknown_error',
-		];
+
 		return {
 			valid: false,
-			reason:
-				result.context?.reason && VERIFIER_UNAVAILABLE_REASONS.includes(result.context.reason)
-					? 'verifier_unavailable'
-					: 'invalid_token',
+			reason: translateAuthFailureReason(result.context?.reason),
 		};
 	};
 

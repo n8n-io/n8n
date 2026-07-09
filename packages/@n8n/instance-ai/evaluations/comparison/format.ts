@@ -29,6 +29,13 @@ import {
 import type { GateCriterion, GateResult, GateUnit } from './gate';
 import { aggregateWorkflowChecks } from '../binaryChecks/aggregate';
 import { CHECK_DIMENSIONS } from '../binaryChecks/types';
+import {
+	countAggregatedUnitTrials,
+	getAggregatedCaseUnits,
+	getCaseRunStatus,
+	getCaseRunStatusLabel,
+	getCheckedRunCount,
+} from '../summary';
 import type { MultiRunEvaluation, TestCaseAggregation, WorkflowTestCase } from '../types';
 import { caseDisplayPrompt } from '../utils/conversation-text';
 
@@ -676,44 +683,40 @@ function renderPerTestCaseDetails(
 		const slug = slugByTestCase?.get(tc.testCase);
 		return slug ? `\`${slug}\`` : `\`${caseDisplayPrompt(tc.testCase).slice(0, 70)}\``;
 	};
-	if (totalRuns > 1) {
-		lines.push(`| Workflow | Built | pass@${totalRuns} | pass^${totalRuns} |`);
-		lines.push('|---|---|---|---|');
-		for (const tc of testCases) {
-			const units = [
-				...tc.executionScenarios.filter((sa) => sa.evaluatedCount > 0),
-				...evaluatedBuildExpectations(tc),
-			];
-			const meanPassAtK = units.length
-				? Math.round(
-						(units.reduce((sum, unit) => sum + (unit.passAtK[unit.passAtK.length - 1] ?? 0), 0) /
-							units.length) *
-							100,
-					)
-				: 0;
-			const meanPassHatK = units.length
-				? Math.round(
-						(units.reduce((sum, unit) => sum + (unit.passHatK[unit.passHatK.length - 1] ?? 0), 0) /
-							units.length) *
-							100,
-					)
+		if (totalRuns > 1) {
+			lines.push(`| Workflow | Status | pass@${totalRuns} | pass^${totalRuns} |`);
+			lines.push('|---|---|---|---|');
+			for (const tc of testCases) {
+				const units = [
+					...tc.executionScenarios.filter((sa) => sa.evaluatedCount > 0),
+					...evaluatedBuildExpectations(tc),
+				];
+				const meanPassAtK = units.length
+					? Math.round(
+							(units.reduce((sum, unit) => sum + (unit.passAtK[unit.passAtK.length - 1] ?? 0), 0) /
+								units.length) *
+								100,
+						)
+					: 0;
+				const meanPassHatK = units.length
+					? Math.round(
+							(units.reduce((sum, unit) => sum + (unit.passHatK[unit.passHatK.length - 1] ?? 0), 0) /
+								units.length) *
+								100,
+						)
 				: 0;
 			lines.push(
-				`| ${renderName(tc)} | ${tc.buildSuccessCount}/${totalRuns} | ${meanPassAtK}% | ${meanPassHatK}% |`,
+				`| ${renderName(tc)} | ${getCheckedRunCount(tc)}/${totalRuns} | ${meanPassAtK}% | ${meanPassHatK}% |`,
 			);
 		}
 	} else {
-		lines.push('| Workflow | Built | Pass rate |');
+		lines.push('| Workflow | Status | Pass rate |');
 		lines.push('|---|---|---|');
 		for (const tc of testCases) {
-			const built = tc.runs[0]?.workflowBuildSuccess ? '✓' : '✗';
-			const scoredScenarios = tc.executionScenarios.filter((sa) => !sa.runs[0]?.incomplete);
-			const scenariosPassed = scoredScenarios.filter((sa) => sa.runs[0]?.success).length;
-			const buildExpectations = evaluatedBuildExpectations(tc);
-			const expectationsPassed = buildExpectations.filter((ea) => ea.runs[0]?.pass).length;
-			const passed = scenariosPassed + expectationsPassed;
-			const total = scoredScenarios.length + buildExpectations.length;
-			lines.push(`| ${renderName(tc)} | ${built} | ${passed}/${total} |`);
+			const run = tc.runs[0];
+			const status = run ? getCaseRunStatusLabel(run) : 'NO RUN';
+			const { passCount, totalCount } = countAggregatedUnitTrials(getAggregatedCaseUnits(tc));
+			lines.push(`| ${renderName(tc)} | ${status} | ${passCount}/${totalCount} |`);
 		}
 	}
 	lines.push('');
@@ -1156,7 +1159,7 @@ function formatTerminalPerTestCase(
 
 	if (totalRuns > 1) {
 		const rows = testCases.map((tc) => {
-			const units = [...tc.executionScenarios, ...evaluatedBuildExpectations(tc)];
+			const units = getAggregatedCaseUnits(tc);
 			const meanPassAtK =
 				units.length > 0
 					? Math.round(
@@ -1175,18 +1178,19 @@ function formatTerminalPerTestCase(
 					: 0;
 			return {
 				name: nameOf(tc, 60),
-				builds: `${tc.buildSuccessCount}/${totalRuns}`,
+				status: `${getCheckedRunCount(tc)}/${totalRuns}`,
 				passAtK: `${meanPassAtK}%`,
 				passHatK: `${meanPassHatK}%`,
 			};
 		});
+		const statusHeader = 'status';
 		const nameW = maxWidth(
 			rows.map((r) => r.name),
 			'workflow',
 		);
 		const buildsW = maxWidth(
-			rows.map((r) => r.builds),
-			'builds',
+			rows.map((r) => r.status),
+			statusHeader,
 		);
 		const atKHeader = `pass@${totalRuns}`;
 		const hatKHeader = `pass^${totalRuns}`;
@@ -1200,7 +1204,7 @@ function formatTerminalPerTestCase(
 		);
 		lines.push(
 			TERMINAL_TABLE_INDENT +
-				`${'workflow'.padEnd(nameW)}  ${'builds'.padEnd(buildsW)}  ${atKHeader.padStart(atKW)}  ${hatKHeader.padStart(hatKW)}`,
+				`${'workflow'.padEnd(nameW)}  ${statusHeader.padEnd(buildsW)}  ${atKHeader.padStart(atKW)}  ${hatKHeader.padStart(hatKW)}`,
 		);
 		lines.push(
 			TERMINAL_TABLE_INDENT +
@@ -1209,17 +1213,19 @@ function formatTerminalPerTestCase(
 		for (const r of rows) {
 			lines.push(
 				TERMINAL_TABLE_INDENT +
-					`${r.name.padEnd(nameW)}  ${r.builds.padEnd(buildsW)}  ${r.passAtK.padStart(atKW)}  ${r.passHatK.padStart(hatKW)}`,
+					`${r.name.padEnd(nameW)}  ${r.status.padEnd(buildsW)}  ${r.passAtK.padStart(atKW)}  ${r.passHatK.padStart(hatKW)}`,
 			);
 		}
 	} else {
 		for (const tc of testCases) {
 			const r = tc.runs[0];
-			const buildStatus = r.workflowBuildSuccess ? 'BUILT' : 'BUILD FAILED';
+			const buildStatus = getCaseRunStatusLabel(r);
 			lines.push('');
 			lines.push(TERMINAL_INDENT + `${nameOf(tc, 70)}…`);
 			lines.push(TERMINAL_INDENT + `  ${buildStatus}${r.workflowId ? ` (${r.workflowId})` : ''}`);
-			if (r.buildError) lines.push(TERMINAL_INDENT + `  error: ${r.buildError.slice(0, 200)}`);
+			if (getCaseRunStatus(r) !== 'checked' && r.buildError) {
+				lines.push(TERMINAL_INDENT + `  error: ${r.buildError.slice(0, 200)}`);
+			}
 			for (const sa of tc.executionScenarios) {
 				const sr = sa.runs[0];
 				const status = sr.incomplete ? 'SKIP (no verdict)' : sr.success ? 'PASS' : 'FAIL';

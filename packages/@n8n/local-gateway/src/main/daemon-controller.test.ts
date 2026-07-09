@@ -66,7 +66,7 @@ const BASE_CONFIG: GatewayConfig = {
 	logLevel: 'info',
 	allowedOrigins: ['https://*.app.n8n.cloud'],
 	filesystem: { dir: '/' },
-	computer: { shell: { timeout: 30_000 } },
+	computer: { shell: { timeout: 30_000, dangerouslyDisableSandbox: false } },
 	browser: { defaultBrowser: 'chrome' },
 	permissions: {},
 	permissionConfirmation: 'instance',

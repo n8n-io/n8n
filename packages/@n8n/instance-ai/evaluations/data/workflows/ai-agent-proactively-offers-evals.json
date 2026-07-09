@@ -1,0 +1,28 @@
+{
+	"description": "GAP CASE (expected red today). After building an AI-agent workflow, does the agent PROACTIVELY offer to add evaluations / test cases — without the user asking? Observed today: it does not — the post-build flow offers verification, a live test, and an error workflow, but the evals `offer` precheck isn't wired into it. This case documents the target behaviour and measures the routing gap for TRUST-145. Kept OUT of the `full` tier (datasets omits `full`) so it doesn't gate the suite; run it with `--tier eval-offer`. The director never asks for evals — the offer must come unprompted.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build a workflow with a form where people submit a customer-support question (their name and their question). An AI agent should read the submitted question and write a helpful, friendly reply shown back on the form's completion screen."
+		},
+		{
+			"role": "assistant",
+			"text": "Got it — I'll build that now."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[This case tests whether the agent, after building this AI workflow, proactively offers to add evaluations / test cases on its own. Do NOT ask for evals, test cases, or metrics yourself — that is the behaviour under test.",
+				"Answer any other post-build follow-ups briefly and naturally (a live test, an error workflow, etc.) — decline or defer them. If the agent offers to add evaluations / test cases, that is the behaviour we want; you may accept. If it never offers, do not prompt it — just let the conversation end. Keep messages short.]"
+			]
+		}
+	],
+	"messageBudget": 8,
+	"complexity": "medium",
+	"tags": ["behaviour", "evals", "eval-offer", "gap", "ai-agent", "form"],
+	"triggerType": "form",
+	"datasets": ["eval-offer"],
+	"processExpectations": [
+		"After building the AI workflow, the agent proactively offered to add evaluations / test cases to guard the AI agent's replies — it raised this itself, without the user asking, rather than only offering verification / a live test / an error workflow and then stopping. (Gap: expected to fail until the evals offer is wired into the post-build flow.)"
+	]
+}

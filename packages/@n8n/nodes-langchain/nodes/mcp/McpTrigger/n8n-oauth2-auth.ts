@@ -15,13 +15,14 @@ function getBearerToken(headerValue: string | undefined): string | null {
 
 function sendUnauthorizedResponse(
 	resp: ReturnType<IWebhookFunctions['getResponseObject']>,
+	code: number,
 	prmUrl: string,
 	error?: string,
 ) {
 	const authenticateHeader =
 		`Bearer realm="n8n MCP Server", resource_metadata="${prmUrl}"` +
 		(error ? `, error="${error}"` : '');
-	resp.writeHead(401, {
+	resp.writeHead(code, {
 		'WWW-Authenticate': authenticateHeader,
 	});
 	resp.end();
@@ -54,14 +55,16 @@ export const n8nOAuth2Auth = async (
 	const authHeader = req.headers['authorization'];
 	const token = getBearerToken(authHeader);
 	if (!token) {
-		sendUnauthorizedResponse(resp, prmUrl);
+		sendUnauthorizedResponse(resp, 401, prmUrl);
 		return 'handled';
 	}
 
 	const validationResult = await context.validateN8nOAuth2Token(token, resourceUrl);
 	if (!validationResult.valid) {
 		if (validationResult.reason === 'invalid_token') {
-			sendUnauthorizedResponse(resp, prmUrl, 'invalid_token');
+			sendUnauthorizedResponse(resp, 401, prmUrl, 'invalid_token');
+		} else if (validationResult.reason === 'insufficient_scope') {
+			sendUnauthorizedResponse(resp, 403, prmUrl, 'insufficient_scope');
 		} else {
 			resp.status(503).send('OAuth token validation is not available');
 		}
