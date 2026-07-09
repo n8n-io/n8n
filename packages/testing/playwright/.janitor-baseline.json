@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-07-08T21:24:33.975Z",
-	"totalViolations": 74,
+	"generated": "2026-07-09T00:18:49.075Z",
+	"totalViolations": 73,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -433,14 +433,6 @@
 				"line": 13,
 				"message": "Duplicate locator: this.page.getByTestId(\"menu-item\") in pages scope",
 				"hash": "5a1818f5f511"
-			}
-		],
-		"tests/e2e/instance-ai/instance-ai-timeline.spec.ts": [
-			{
-				"rule": "duplicate-logic",
-				"line": 12,
-				"message": "Duplicate test logic: \"should show artifact cards after workflow build completes\" has identical structure to tests/e2e/instance-ai/instance-ai-artifacts.spec.ts:\"should display artifact card in timeline after workflow build\"",
-				"hash": "da9226aef0eb"
 			}
 		],
 		"tests/infrastructure/benchmarks/kafka/queue-mode-sustained-rate.spec.ts": [
