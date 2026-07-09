@@ -72,6 +72,10 @@ function isPrimitiveComboboxValue(item: ComboboxItem): item is string | number |
 	return item === null || typeof item !== 'object';
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 function stringifyAcceptableValue(value: string | number | bigint | null): string {
 	if (typeof value === 'string') {
 		return value;
@@ -128,8 +132,8 @@ function getDisplayValue(value: unknown): string {
 		return value.map((item) => getDisplayValue(item)).join(', ');
 	}
 
-	if (typeof value === 'object') {
-		return String(get(value as Record<string, unknown>, props.labelKey) ?? '');
+	if (isRecord(value)) {
+		return String(get(value, props.labelKey) ?? '');
 	}
 
 	const matchedItem = groups.value.find((item) => item.value === value);
