@@ -1365,8 +1365,6 @@ export class SourceControlImportService {
 			if (localTable && localTable.id !== dataTable.id) {
 				previouslySyncedIds ??= await this.getPreviouslySyncedDataTableIds();
 				if (!canReconcileDataTableNameCollision(localTable, dataTable, previouslySyncedIds)) {
-					// The status result can list the same table as both created and
-					// modified, so guard against recording the conflict twice
 					if (!result.conflicts.some((c) => c.id === dataTable.id)) {
 						this.logger.warn(
 							`Data table "${dataTable.name}" already exists locally with columns that the incoming table lacks. Skipping import; rename or delete the local data table to accept the incoming one.`,

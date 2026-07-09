@@ -562,10 +562,11 @@ describe('SourceControlService', () => {
 			expect(result).toMatchObject({ statusCode: 409, statusResult: statuses });
 		});
 
-		it('imports data tables before deleting them, so a reconciled old id no-ops in the delete phase', async () => {
-			// ARRANGE — a recreated table produces both a "modified" entry (new id) and
-			// a "deleted" entry (old id). Import must run first: identity adoption
-			// removes the old id, so the delete no-ops instead of dropping local rows.
+		it('imports data tables before deleting them', async () => {
+			// ARRANGE — a reconciled collision emits a single "modified" entry (no
+			// "deleted" for the old id), so ordering is defense in depth: should a
+			// "deleted" entry ever coincide with an adoption again, import must run
+			// first so the delete no-ops instead of dropping local rows.
 			const user = mock<User>();
 			const statuses = [
 				mock<SourceControlledFile>({

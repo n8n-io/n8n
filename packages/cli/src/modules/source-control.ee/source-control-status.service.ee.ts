@@ -698,7 +698,17 @@ export class SourceControlStatusService {
 
 		const localById = new Map(dataTablesLocal.map((dt) => [dt.id, dt]));
 		const remoteById = new Map(dataTablesRemote.map((dt) => [dt.id, dt]));
-		const remoteByName = new Map(dataTablesRemote.map((dt) => [dt.name, dt]));
+		// Same-named tables may exist in several projects, so group by name and
+		// pick the candidate per project below.
+		const remotesByName = new Map<string, ExportableDataTable[]>();
+		for (const dt of dataTablesRemote) {
+			const sameName = remotesByName.get(dt.name);
+			if (sameName) {
+				sameName.push(dt);
+			} else {
+				remotesByName.set(dt.name, [dt]);
+			}
+		}
 
 		// Query git history to find data table IDs that were previously synced.
 		// This lets us distinguish "deleted from remote" (should delete locally on pull)
@@ -711,12 +721,37 @@ export class SourceControlStatusService {
 		const dtMissingInRemote: StatusExportableDataTable[] = [];
 		const dtModifiedInEither: Array<ExportableDataTable | StatusExportableDataTable> = [];
 
+		// Cross-id name collisions (same (project, name), different id — typically a
+		// delete+recreate upstream). Computed before the remote loop because a pull
+		// reports a collision as ONE user-facing change: the incoming id must not
+		// also appear as "created", nor the old local id as "deleted".
+		const nameCollisionByLocalId = new Map<string, ExportableDataTable>();
+		for (const local of dataTablesLocal) {
+			if (remoteById.has(local.id)) continue;
+			const candidate = (remotesByName.get(local.name) ?? []).find(
+				(remote) =>
+					remote.id !== local.id && this.isSameDataTableProject(local.ownedBy, remote.ownedBy),
+			);
+			if (candidate) {
+				nameCollisionByLocalId.set(local.id, candidate);
+			}
+		}
+		const collidingRemoteIds = new Set(
+			[...nameCollisionByLocalId.values()].map((remote) => remote.id),
+		);
+
 		for (const remote of dataTablesRemote) {
 			if (!localById.has(remote.id)) {
 				// During push, a remote-only table would be marked as "deleted" from remote.
 				// Skip if this table was never synced from this instance (it was pushed by
 				// another instance and should not be deleted).
 				if (options.direction === 'push' && !previouslySyncedIds.has(remote.id)) {
+					continue;
+				}
+
+				// On pull, an id claimed by a name collision is covered by that
+				// collision's single "modified" entry.
+				if (options.direction === 'pull' && collidingRemoteIds.has(remote.id)) {
 					continue;
 				}
 
@@ -741,25 +776,20 @@ export class SourceControlStatusService {
 			const remote = remoteById.get(local.id);
 
 			if (!remote) {
-				// Check for cross-ID name collision (different tables sharing the same name
-				// in the same project). This must run before the never-synced early-continue
-				// below, otherwise a pull would silently create a remote table that collides
-				// with an unsynced local one.
-				const nameCandidate = remoteByName.get(local.name);
-				const nameCollision =
-					nameCandidate &&
-					nameCandidate.id !== local.id &&
-					this.isSameDataTableProject(local.ownedBy, nameCandidate.ownedBy)
-						? nameCandidate
-						: undefined;
+				const nameCollision = nameCollisionByLocalId.get(local.id);
 				if (nameCollision) {
+					const isPull = options.direction === 'pull';
 					// A pull reconciles the collision by adopting the incoming id; an
 					// unreconcilable one puts local-only column data at stake and is
-					// surfaced as a genuine conflict.
+					// surfaced as a genuine conflict. Either way the entry carries the
+					// incoming id and file — that is what the import consumes.
 					const canReconcile =
-						options.direction === 'pull' &&
-						canReconcileDataTableNameCollision(local, nameCollision, previouslySyncedIds);
-					const modified = options.preferLocalVersion ? local : nameCollision;
+						isPull && canReconcileDataTableNameCollision(local, nameCollision, previouslySyncedIds);
+					const modified = isPull
+						? nameCollision
+						: options.preferLocalVersion
+							? local
+							: nameCollision;
 					if (collectVerbose) {
 						dtModifiedInEither.push(modified);
 					}
@@ -774,6 +804,11 @@ export class SourceControlStatusService {
 						updatedAt: new Date().toISOString(),
 						owner: this.convertToStatusResourceOwner(modified.ownedBy),
 					});
+					// On pull the collision entry is the ONLY entry for this table:
+					// never emit a "deleted" entry for the old local id.
+					if (isPull) {
+						continue;
+					}
 				}
 
 				// During pull, a local-only table would be marked as "deleted" locally.

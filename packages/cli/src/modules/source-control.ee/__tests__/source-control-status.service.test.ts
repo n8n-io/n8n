@@ -2747,13 +2747,17 @@ describe('getStatus', () => {
 					preferLocalVersion: false,
 				});
 
-				// ASSERT — collision must be flagged even though the local table was never synced
+				// ASSERT — exactly ONE entry for the collision: a conflict on the
+				// incoming table, never a plain "created" alongside it
 				if (!Array.isArray(result)) expect.fail('Expected result to be an array.');
-				const collisionFile = result.find(
-					(f) => f.type === 'datatable' && f.status === 'modified' && f.conflict,
-				);
-				expect(collisionFile).toBeDefined();
-				expect(collisionFile?.name).toBe('Shared Name');
+				const dataTableFiles = result.filter((f) => f.type === 'datatable');
+				expect(dataTableFiles).toHaveLength(1);
+				expect(dataTableFiles[0]).toMatchObject({
+					id: 'dt-remote',
+					name: 'Shared Name',
+					status: 'modified',
+					conflict: true,
+				});
 			});
 
 			it('should mark a recreated table (previously synced, lossy merge) as reconcilable during pull', async () => {
@@ -2788,21 +2792,24 @@ describe('getStatus', () => {
 					new Set(['datatables/dt-local.json']),
 				);
 
-				// ACT
+				// ACT — preferLocalVersion true (the UI dry-run flag) must not change
+				// which id the entry carries
 				const result = await sourceControlStatusService.getStatus(user, {
 					direction: 'pull',
 					verbose: false,
-					preferLocalVersion: false,
+					preferLocalVersion: true,
 				});
 
-				// ASSERT
+				// ASSERT — exactly ONE "modified" entry carrying the incoming id: no
+				// "created" for the incoming id, no "deleted" for the old local id
 				if (!Array.isArray(result)) expect.fail('Expected result to be an array.');
-				const collisionFile = result.find(
-					(f) => f.type === 'datatable' && f.id === 'dt-recreated' && f.status === 'modified',
-				);
-				expect(collisionFile).toBeDefined();
-				expect(collisionFile?.status).toBe('modified');
-				expect(collisionFile?.conflict).toBe(false);
+				const dataTableFiles = result.filter((f) => f.type === 'datatable');
+				expect(dataTableFiles).toHaveLength(1);
+				expect(dataTableFiles[0]).toMatchObject({
+					id: 'dt-recreated',
+					status: 'modified',
+					conflict: false,
+				});
 			});
 
 			it('should mark a pre-sync twin (never synced, lossless merge) as reconcilable during pull', async () => {
@@ -2843,14 +2850,125 @@ describe('getStatus', () => {
 					preferLocalVersion: false,
 				});
 
+				// ASSERT — exactly ONE "modified" entry for the merge, no "created"
+				if (!Array.isArray(result)) expect.fail('Expected result to be an array.');
+				const dataTableFiles = result.filter((f) => f.type === 'datatable');
+				expect(dataTableFiles).toHaveLength(1);
+				expect(dataTableFiles[0]).toMatchObject({
+					id: 'dt-remote',
+					status: 'modified',
+					conflict: false,
+				});
+			});
+
+			it('should detect a collision even when another project has a same-named remote table', async () => {
+				// ARRANGE — the other-project table is listed last so a name-only
+				// lookup would mask the real same-project collision
+				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
+
+				const remoteSameProject = {
+					id: 'dt-remote-a',
+					name: 'Shared Name',
+					ownedBy: { type: 'team' as const, teamId: 'projA', teamName: 'ProjectA' },
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				const remoteOtherProject = {
+					id: 'dt-remote-b',
+					name: 'Shared Name',
+					ownedBy: { type: 'team' as const, teamId: 'projB', teamName: 'ProjectB' },
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				const localDataTable = {
+					id: 'dt-local',
+					name: 'Shared Name',
+					ownedBy: { type: 'team' as const, projectId: 'projA', projectName: 'ProjectA' },
+					filename: 'test.json',
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
+					remoteSameProject,
+					remoteOtherProject,
+				]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+				gitService.getHistoricallyTrackedFiles.mockResolvedValue(
+					new Set(['datatables/dt-local.json']),
+				);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'pull',
+					verbose: false,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT — the same-project collision reconciles; the other-project
+				// table is an unrelated plain create
+				if (!Array.isArray(result)) expect.fail('Expected result to be an array.');
+				const dataTableFiles = result.filter((f) => f.type === 'datatable');
+				expect(dataTableFiles).toHaveLength(2);
+				expect(dataTableFiles).toEqual(
+					expect.arrayContaining([
+						expect.objectContaining({ id: 'dt-remote-a', status: 'modified', conflict: false }),
+						expect.objectContaining({ id: 'dt-remote-b', status: 'created' }),
+					]),
+				);
+			});
+
+			it('should keep the created + conflict entry pair for a name collision during push', async () => {
+				// ARRANGE — the single-entry collision shape applies to pull only
+				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
+
+				const remoteDataTable = {
+					id: 'dt-remote',
+					name: 'Shared Name',
+					ownedBy: { type: 'team' as const, teamId: 'projA', teamName: 'ProjectA' },
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				const localDataTable = {
+					id: 'dt-local',
+					name: 'Shared Name',
+					ownedBy: { type: 'team' as const, projectId: 'projA', projectName: 'ProjectA' },
+					filename: 'test.json',
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
+					remoteDataTable,
+				]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+				gitService.getHistoricallyTrackedFiles.mockResolvedValue(new Set());
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: false,
+					preferLocalVersion: true,
+				});
+
 				// ASSERT
 				if (!Array.isArray(result)) expect.fail('Expected result to be an array.');
-				const collisionFile = result.find(
-					(f) => f.type === 'datatable' && f.id === 'dt-remote' && f.status === 'modified',
+				const dataTableFiles = result.filter((f) => f.type === 'datatable');
+				expect(dataTableFiles).toHaveLength(2);
+				expect(dataTableFiles).toEqual(
+					expect.arrayContaining([
+						expect.objectContaining({ id: 'dt-local', status: 'modified', conflict: true }),
+						expect.objectContaining({ id: 'dt-local', status: 'created' }),
+					]),
 				);
-				expect(collisionFile).toBeDefined();
-				expect(collisionFile?.status).toBe('modified');
-				expect(collisionFile?.conflict).toBe(false);
 			});
 		});
 	});
