@@ -54,6 +54,8 @@ const targetOutputSchema = z.object({
 	workflowChecks: z.array(checkOutcomeSchema).optional(),
 	workflowJson: z.unknown().optional(),
 	buildTrace: z.unknown().optional(),
+	/** Plan rejections the proxy issued — deterministic conversation counter. Multi-turn only. */
+	planRejections: z.number().optional(),
 });
 
 export type TargetOutput = Omit<
