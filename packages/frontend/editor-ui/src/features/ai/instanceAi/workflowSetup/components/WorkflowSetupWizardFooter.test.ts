@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
+import type { INodeUi } from '@/Interface';
 import WorkflowSetupWizardFooter from './WorkflowSetupWizardFooter.vue';
 import { makeWorkflowSetupSection } from '../__tests__/factories';
 import type { WorkflowSetupContext } from '../composables/useWorkflowSetupContext';
@@ -51,7 +52,7 @@ function makeContext(
 		isActionPending: ref(false),
 		setCredential: vi.fn(),
 		setParameterValue: vi.fn(),
-		getDisplayNode: (setupSection) => setupSection.node,
+		getDisplayNode: (setupSection) => setupSection.node as INodeUi,
 		isSectionComplete: () => isStepHandled,
 		isCredentialTestFailed: () => isCredentialTestFailed,
 		isSectionSkipped: () => false,
