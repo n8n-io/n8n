@@ -778,6 +778,8 @@ describe('createScheduler metrics', () => {
 			timezone: null,
 			intervalSeconds: null,
 			fireAt: null,
+			recurrenceUnit: null,
+			recurrenceSize: null,
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,

@@ -28,9 +28,11 @@ export function resolveSchedule(job: ScheduledJob, defaultTimezone: string): Sch
 			return resolveInterval(job);
 		case 'one_off':
 			return resolveOneOff(job);
-		default:
+		default: {
+			const exhaustive: never = job.kind;
 			throw new CorruptStorageRowError(
-				`scheduled_job ${job.id} has unknown kind '${String(job.kind)}'`,
+				`scheduled_job ${job.id} has unknown kind '${String(exhaustive)}'`,
 			);
+		}
 	}
 }
