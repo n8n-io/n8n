@@ -25,7 +25,7 @@ export class GoogleBigQueryOAuth2Api implements ICredentialType {
 		},
 		{
 			displayName:
-				'The default scopes needed for the node to work are already set, If you change these the node may not function correctly.',
+				'The default scopes needed for the node to work are already set. If you change these the node may not function correctly.',
 			name: 'customScopesNotice',
 			type: 'notice',
 			default: '',
