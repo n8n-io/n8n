@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-07-09T00:18:49.075Z",
-	"totalViolations": 73,
+	"generated": "2026-07-09T01:18:33.533Z",
+	"totalViolations": 69,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -201,32 +201,6 @@
 				"line": 65,
 				"message": "Chained locator call in test: newPage.locator('img')",
 				"hash": "140cf31c63ab"
-			}
-		],
-		"tests/e2e/projects/projects.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 188,
-				"message": "Direct page locator call: subn8n.page.getByRole('heading', { name: 'My Sub-Workflow...",
-				"hash": "e4e2c9dc4c76"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 188,
-				"message": "Chained locator call in test: subn8n.page.getByRole('heading', { name: 'My Sub-Workflow...",
-				"hash": "b6043abb9fdc"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 193,
-				"message": "Direct page locator call: subn8n.page.getByRole('heading', { name: 'Notion account' })",
-				"hash": "28156d4663d0"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 193,
-				"message": "Chained locator call in test: subn8n.page.getByRole('heading', { name: 'Notion account' })",
-				"hash": "f2522e66d3fb"
 			}
 		],
 		"composables/BuilderWizardComposer.ts": [
