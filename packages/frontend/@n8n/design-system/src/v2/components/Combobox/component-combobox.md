@@ -19,8 +19,7 @@ Combobox (N8nCombobox2)
     │   └── ComboboxGroup
     │       ├── ComboboxLabel (section headings)
     │       ├── ComboboxSeparator
-    │       └── N8nCombobox2Item (reka-ui ComboboxItem wrapper)
-    │           └── N8nCombobox2ItemDefault (default row: icon, label, check indicator)
+    │       └── N8nCombobox2Item (reka-ui ComboboxItem + default row: icon, label, check)
     └── footer slot
 ```
 
@@ -86,7 +85,6 @@ Non-prop attributes (e.g. `aria-label`, `data-test-id`) fall through to `Combobo
 
 **Slots**
 
-- `default`: `{ modelValue?: AcceptableValue | AcceptableValue[]; open: boolean }` — Custom trigger content inside the input
 - `item`: `{ item: ComboboxListItem }` — Replace the default item renderer
 - `item-leading`: `{ item: ComboboxListItem; ui: { class: string } }`
 - `item-label`: `{ item: ComboboxListItem }`
@@ -251,5 +249,4 @@ When the clear button is clicked, single selection emits `undefined`, multiple s
 ## Related components
 
 - **N8nSelect2** — Use for short static lists without search (fewer than ~10 items).
-- **N8nCombobox2Item** — Reka-ui combobox item wrapper used inside `N8nCombobox2`.
-- **N8nCombobox2ItemDefault** — Default row renderer used inside `N8nCombobox2Item`. Documented separately under `Experimental/Combobox/ComboboxItemDefault` in Storybook.
+- **N8nCombobox2Item** — Reka-ui combobox item with the default row layout (icon, label, check indicator). Used inside `N8nCombobox2`.

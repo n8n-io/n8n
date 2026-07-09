@@ -24,21 +24,17 @@ export { default as N8nTree2 } from './v2/components/Tree/Tree.vue';
 export type * from './v2/components/Tree/Tree.types';
 export { default as N8nCombobox2 } from './v2/components/Combobox/Combobox.vue';
 export { default as N8nCombobox2Item } from './v2/components/Combobox/ComboboxItem.vue';
-export { default as N8nCombobox2ItemDefault } from './v2/components/Combobox/ComboboxItemDefault.vue';
 export type { AcceptableValue } from './v2/components/Combobox/Combobox.types';
 export type { ComboboxItemProps } from 'reka-ui';
 export type {
 	ComboboxEmits,
 	ComboboxItem,
+	ComboboxItemSlots,
 	ComboboxListItem,
 	ComboboxProps,
 	ComboboxSizes,
 	ComboboxSlots,
 } from './v2/components/Combobox/Combobox.types';
-export type {
-	ComboboxItemDefaultProps,
-	ComboboxItemDefaultSlots,
-} from './v2/components/Combobox/ComboboxItemDefault.types';
 export { default as N8nSwitch2 } from './components/N8nSwitch/Switch.vue';
 export type * from './components/N8nSwitch/Switch.types';
 export { createPasswordRules } from './components/N8nFormInput/validators';

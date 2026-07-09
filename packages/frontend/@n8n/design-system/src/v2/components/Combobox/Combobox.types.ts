@@ -38,10 +38,18 @@ export type ComboboxItem = Exclude<AcceptableValue, undefined> | ComboboxListIte
 
 export type ComboboxSizes = InputSize;
 
-type SlotProps = (props: { item: ComboboxListItem; ui: Record<string, unknown> }) => unknown;
+type ComboboxItemUi = { class: string };
+
+type SlotProps = (props: { item: ComboboxListItem; ui: ComboboxItemUi }) => unknown;
+
+export type ComboboxItemSlots = {
+	'item-leading'?: SlotProps;
+	'item-label'?: (props: { item: ComboboxListItem }) => unknown;
+	'item-trailing'?: SlotProps;
+	'item-indicator'?: (props: { ui: ComboboxItemUi }) => unknown;
+};
 
 export type ComboboxSlots = {
-	default(props: { modelValue?: AcceptableValue | AcceptableValue[]; open: boolean }): unknown;
 	item: (props: { item: ComboboxListItem }) => unknown;
 	label: (props: { item: ComboboxListItem }) => unknown;
 	['item-leading']: SlotProps;
