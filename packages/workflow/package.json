@@ -37,7 +37,7 @@
     "watch": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json --watch",
     "test": "vitest run",
     "test:unit": "vitest run",
-    "test:changed": "janitor test-scoped --runner=vitest",
+    "test:changed": "janitor test-scoped",
     "test:dev": "vitest --watch",
     "mutate": "node ../../scripts/mutation-health/mutate.mjs --package-dir packages/workflow"
   },
@@ -61,6 +61,7 @@
     "@types/ssh2": "catalog:",
     "@types/xml2js": "catalog:",
     "fast-check": "catalog:",
+    "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",

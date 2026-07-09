@@ -49,13 +49,13 @@ export type ImportPackageRequest = {
 	projectId?: string;
 	folderId?: string;
 	packageBuffer: Buffer;
+	bindings?: Partial<PackageImportBindings>;
 } & ImportCredentialProperties &
 	ImportWorkflowProperties;
 
 export type ImportCredentialProperties = {
 	credentialMatchingMode: CredentialMatchingMode;
 	credentialMissingMode: CredentialMissingMode;
-	credentialBindings?: ImportBindingMap;
 };
 
 export type ImportWorkflowProperties = {
@@ -77,8 +77,7 @@ export interface ImportContext {
 	folderId: string | null;
 }
 
-export type ImportPackageEventOptions = Omit<ImportCredentialProperties, 'credentialBindings'> &
-	ImportWorkflowProperties;
+export type ImportPackageEventOptions = ImportCredentialProperties & ImportWorkflowProperties;
 
 /** Credential ids involved in a package import, shaped for forward-compatible audit events. */
 export type ImportAuditCredentialIds = {

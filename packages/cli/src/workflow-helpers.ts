@@ -8,6 +8,7 @@ import {
 	resolveNodeWebhookId,
 	resolveVariables,
 	safeParseWorkflowStructure,
+	summarizeDynamicCredentialsUsage,
 	validateNodeSelectionForGrouping,
 	type IDataObject,
 	type INode,
@@ -558,6 +559,46 @@ export async function updateParentExecutionWithChildResults(
 	const nodeExecutionStack = parentWithSubWorkflowResults.data.executionData?.nodeExecutionStack;
 	if (!nodeExecutionStack || nodeExecutionStack?.length === 0) {
 		return;
+	}
+
+	// On resume the parent's flagged 'waiting' task is popped and the node re-runs disabled
+	// (never calling `executeWorkflow` again), so the child's private-credential usage must
+	// ride on the stack entry to reach the freshly stamped task (see `WorkflowExecute`).
+	const dynamicCredentialsUsage = summarizeDynamicCredentialsUsage(subworkflowResults.data);
+	if (Object.keys(dynamicCredentialsUsage).length > 0) {
+		// Union with a sibling child's earlier report ("run once for each item" spawns several
+		// children per wait) — flags only ever accumulate, like every other flag writer.
+		nodeExecutionStack[0].metadata = {
+			...nodeExecutionStack[0].metadata,
+			dynamicCredentialsUsage: {
+				...nodeExecutionStack[0].metadata?.dynamicCredentialsUsage,
+				...dynamicCredentialsUsage,
+			},
+		};
+
+		// Also stamp the parent's waiting task and runtime data right away: the parent may sit
+		// in 'waiting' for a long time with the child's output already embedded in its data,
+		// and redaction scans runData task flags. The resume pops this task; the stash above
+		// restores the flags onto its replacement.
+		const waitingTasks =
+			parentWithSubWorkflowResults.data.resultData?.runData?.[nodeExecutionStack[0].node.name];
+		const waitingTask = waitingTasks?.[waitingTasks.length - 1];
+		if (waitingTask) {
+			if (dynamicCredentialsUsage.usedDynamicCredentials) {
+				waitingTask.usedDynamicCredentials = true;
+			}
+			if (dynamicCredentialsUsage.attemptedDynamicCredentials) {
+				waitingTask.attemptedDynamicCredentials = true;
+			}
+		}
+		const { runtimeData } = parentWithSubWorkflowResults.data.executionData ?? {};
+		if (
+			dynamicCredentialsUsage.usedDynamicCredentials &&
+			dynamicCredentialsUsage.dynamicCredentialsResolvedUserId &&
+			runtimeData
+		) {
+			runtimeData.executedByUserId = dynamicCredentialsUsage.dynamicCredentialsResolvedUserId;
+		}
 	}
 
 	if (subworkflowError) {
