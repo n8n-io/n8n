@@ -147,6 +147,12 @@ catalogs:
     '@openrouter/ai-sdk-provider':
       specifier: ^2.8.0
       version: 2.9.0
+    '@pinecone-database/pinecone':
+      specifier: ^5.0.2
+      version: 5.1.2
+    '@qdrant/js-client-rest':
+      specifier: ^1.16.2
+      version: 1.16.2
     '@rudderstack/rudder-sdk-node':
       specifier: 3.0.5
       version: 3.0.5
@@ -978,9 +984,21 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@pinecone-database/pinecone':
+        specifier: 'catalog:'
+        version: 5.1.2
+      '@qdrant/js-client-rest':
+        specifier: 'catalog:'
+        version: 1.16.2(typescript@6.0.2)
+      '@supabase/supabase-js':
+        specifier: 'catalog:'
+        version: 2.50.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       '@types/json-schema':
         specifier: 'catalog:'
         version: 7.0.15
+      '@types/pg':
+        specifier: ^8.15.6
+        version: 8.20.0
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
@@ -993,6 +1011,12 @@ importers:
       nock:
         specifier: 'catalog:'
         version: 14.0.14
+      pg:
+        specifier: 'catalog:'
+        version: 8.17.0(pg-native@3.8.0)
+      tsx:
+        specifier: 'catalog:'
+        version: 4.19.3
       vite:
         specifier: 'catalog:'
         version: 8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -1039,6 +1063,9 @@ importers:
       '@langchain/textsplitters':
         specifier: 1.0.1
         version: 1.0.1(@langchain/core@1.2.0(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../api-types
       '@n8n/backend-network':
         specifier: workspace:*
         version: link:../backend-network
@@ -2954,10 +2981,10 @@ importers:
         specifier: 0.2.0
         version: 0.2.0(@langchain/core@1.2.0(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@langchain/textsplitters@1.0.1(@langchain/core@1.2.0(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))))(oracledb@6.10.0)
       '@pinecone-database/pinecone':
-        specifier: ^5.0.2
+        specifier: 'catalog:'
         version: 5.1.2
       '@qdrant/js-client-rest':
-        specifier: ^1.16.2
+        specifier: 'catalog:'
         version: 1.16.2(typescript@6.0.2)
       '@smithy/node-http-handler':
         specifier: 4.5.0

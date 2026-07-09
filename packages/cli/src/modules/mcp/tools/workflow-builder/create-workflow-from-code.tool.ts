@@ -10,7 +10,7 @@ import {
 	trackAutoassignOutcomes,
 } from './credentials-auto-assign';
 import { validateDataTableReferencesForWorkflow } from './data-table-validation';
-import { sanitizeSkillsUsed } from './skills-used';
+import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
 import {
 	buildCreateVersionMetadata,
 	resolveVersionMetadata,
@@ -52,12 +52,7 @@ const inputSchema = {
 		.describe(
 			`Full TypeScript/JavaScript workflow code using the n8n Workflow SDK. Must be validated first with ${CODE_BUILDER_VALIDATE_TOOL.toolName}.`,
 		),
-	skillsUsed: z
-		.array(z.string())
-		.optional()
-		.describe(
-			'Names of n8n skills (lowercase kebab-case identifiers) used by the MCP client to produce this workflow create call. Server-side normalization will trim, lowercase, dedupe, and drop entries that are not valid skill identifiers.',
-		),
+	skillsUsed: z.array(z.string()).optional().describe(SKILLS_USED_PARAM_DESCRIPTION),
 	name: z
 		.string()
 		.max(128)

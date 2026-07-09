@@ -12,7 +12,7 @@ import { MCP_UPDATE_WORKFLOW_TOOL } from './constants';
 import { validateCredentialReferences } from './credential-validation';
 import { autoPopulateNodeCredentials, trackAutoassignOutcomes } from './credentials-auto-assign';
 import { validateDataTableReferencesForUpdate } from './data-table-validation';
-import { sanitizeSkillsUsed } from './skills-used';
+import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
 import {
 	buildUpdateVersionMetadata,
 	resolveVersionMetadata,
@@ -211,10 +211,7 @@ function collectTouchedNodes(operations: PartialUpdateOperation[]): Map<string, 
 
 const inputSchema: z.ZodRawShape = {
 	workflowId: z.string().describe('The ID of the workflow to update.'),
-	skillsUsed: z
-		.array(z.string())
-		.optional()
-		.describe('n8n skill IDs used for this update; normalized server-side.'),
+	skillsUsed: z.array(z.string()).optional().describe(SKILLS_USED_PARAM_DESCRIPTION),
 	operations: z
 		.array(operationInputSchema)
 		.min(1)
