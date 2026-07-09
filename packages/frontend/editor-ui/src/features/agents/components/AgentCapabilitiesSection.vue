@@ -506,7 +506,7 @@ function openExistingSubAgentModal(subAgent: {
 			data-testid="agent-capabilities-section"
 		>
 			<div v-if="showSection('tools')" :class="$style.capabilityRow">
-				<N8nText v-if="toolRows.length > 0" bold>
+				<N8nText v-if="toolRows.length > 0" bold :class="$style.rowLabel">
 					{{ i18n.baseText('agents.builder.tools.title') }}
 				</N8nText>
 
@@ -596,7 +596,7 @@ function openExistingSubAgentModal(subAgent: {
 			</div>
 
 			<div v-if="showSection('skills')" :class="$style.capabilityRow">
-				<N8nText v-if="skills.length > 0" bold>
+				<N8nText v-if="skills.length > 0" bold :class="$style.rowLabel">
 					{{ i18n.baseText('agents.builder.skills.title') }}
 				</N8nText>
 
@@ -639,7 +639,7 @@ function openExistingSubAgentModal(subAgent: {
 				</div>
 			</div>
 			<div v-if="showSection('subAgents')" :class="$style.capabilityRow">
-				<N8nText v-if="selectedSubAgents.length > 0" bold>
+				<N8nText v-if="selectedSubAgents.length > 0" bold :class="$style.rowLabel">
 					{{ i18n.baseText('agents.builder.subAgents.title') }}
 				</N8nText>
 
@@ -682,7 +682,7 @@ function openExistingSubAgentModal(subAgent: {
 				</div>
 			</div>
 			<div v-if="showSection('tasks')" :class="$style.capabilityRow">
-				<N8nText v-if="taskRows.length > 0" bold>
+				<N8nText v-if="taskRows.length > 0" bold :class="$style.rowLabel">
 					{{ i18n.baseText('agents.builder.tasks.title') }}
 				</N8nText>
 
@@ -743,8 +743,14 @@ function openExistingSubAgentModal(subAgent: {
 
 .capabilityRow {
 	display: flex;
-	flex-direction: column;
+	align-items: flex-start;
 	gap: var(--spacing--2xs);
+}
+
+.rowLabel {
+	flex: 0 0 var(--width--label--sm);
+	line-height: var(--line-height--sm);
+	margin-top: var(--spacing--3xs);
 }
 
 .chips {

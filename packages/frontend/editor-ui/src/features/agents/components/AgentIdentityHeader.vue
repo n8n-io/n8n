@@ -143,6 +143,13 @@ function personalisationStyle(value: AgentPersonalisation): Record<string, strin
 		cursor: default;
 		opacity: 0.7;
 	}
+
+	&[aria-expanded='true']::before {
+		background-color: var(--focus--border-color);
+	}
+	&[aria-expanded='true']::after {
+		inset: 2px;
+	}
 }
 
 .personalisationIcon::before,

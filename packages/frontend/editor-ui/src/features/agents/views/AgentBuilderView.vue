@@ -1430,6 +1430,55 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 	background-color: var(--background--surface);
 }
 
+
+.chatResizer {
+	flex-shrink: 0;
+	min-width: var(--agent-builder-chat-min-width);
+
+	:global([data-test-id='resize-handle']) {
+		width: var(--spacing--xs) !important;
+		right: calc(var(--spacing--xs) / -2) !important;
+
+		&::after {
+			content: '';
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			width: var(--spacing--5xs);
+			height: var(--spacing--xl);
+			border-radius: var(--radius--4xs);
+			background: var(--color--foreground);
+			opacity: 0;
+			transform: translate(-50%, -50%);
+			transition: opacity 0.15s ease;
+		}
+
+		&:hover::after {
+			opacity: 1;
+		}
+	}
+}
+
+.chatResizerFullWidth {
+	flex: 1 1 auto;
+}
+
+.showBuildChatButton {
+	position: absolute;
+	top: var(--spacing--2xs);
+	left: var(--spacing--2xs);
+	z-index: 3;
+}
+
+.isResizingChat {
+	.chatResizer {
+		:global([data-test-id='resize-handle'])::after {
+			opacity: 1;
+		}
+	}
+}
+
+
 .editorColumn {
 	flex: 1 1 auto;
 	min-width: 35rem;
