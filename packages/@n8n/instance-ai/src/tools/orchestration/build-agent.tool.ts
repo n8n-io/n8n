@@ -22,6 +22,11 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import {
+	resolveAgentBuilderTarget,
+	saveAgentBuilderTarget,
+	type AgentBuilderTarget,
+} from './agent-target-binding';
+import {
 	consumeStreamCascading,
 	type ConsumeStreamCascadingResult,
 } from '../../stream/consume-with-hitl';
@@ -33,11 +38,6 @@ import type {
 	OrchestrationContext,
 	SessionWorkflowRef,
 } from '../../types';
-import {
-	resolveAgentBuilderTarget,
-	saveAgentBuilderTarget,
-	type AgentBuilderTarget,
-} from '../agent-builder/agent-target-binding';
 import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
 import {
 	builderCancellationResume,

@@ -59,7 +59,7 @@ function toBuilderTurnStream(chunks: AsyncGenerator<StreamChunk>): BuilderTurnSt
  * `resumeBuild` call, with builder sessions keyed to an instance-AI-scoped
  * thread id (`session.threadId`) so nothing surfaces in the agents-module
  * builder UI. `createDelegate` returns a per-request object bound to the
- * calling user + project (mirrors `InstanceAiAgentBuilderAdapterService`).
+ * calling user + project.
  */
 @Service()
 export class InstanceAiBuilderDelegateAdapterService {

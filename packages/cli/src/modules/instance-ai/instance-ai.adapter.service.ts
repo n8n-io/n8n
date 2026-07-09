@@ -111,7 +111,6 @@ import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
-import { InstanceAiAgentBuilderAdapterService } from '@/modules/agents/instance-ai-agent-builder.adapter';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { NodeCatalogService } from '@/node-catalog';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
@@ -264,13 +263,12 @@ export class InstanceAiAdapterService {
 			/** Eval-only: restrict the credential `list()` view to these IDs. */
 			credentialIdAllowlist?: string[];
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
-			 *  assistant can create one via the create_agent tool. */
+			 *  assistant can create one via the build-agent tool. */
 			agentId?: string;
 		},
 	): InstanceAiContext {
 		const { searchProxyConfig, pushRef, threadId, projectId, credentialIdAllowlist, agentId } =
 			options ?? {};
-		const agentBuilderAdapter = this.getAgentBuilderAdapter();
 		const builderDelegateAdapter = this.getBuilderDelegateAdapter();
 		return {
 			userId: user.id,
@@ -287,10 +285,7 @@ export class InstanceAiAdapterService {
 			logger: this.logger,
 			nodeTypesProvider: this.nodeTypes,
 			allowSendingParameterValues: this.allowSendingParameterValues,
-			...(agentBuilderAdapter
-				? { agentBuilderService: agentBuilderAdapter.createAdapter(user, projectId) }
-				: {}),
-			...(agentBuilderAdapter && agentId && projectId
+			...(builderDelegateAdapter && agentId && projectId
 				? { agentBuilderTarget: { agentId, projectId } }
 				: {}),
 			...(builderDelegateAdapter && projectId
@@ -306,26 +301,12 @@ export class InstanceAiAdapterService {
 	}
 
 	/**
-	 * Resolve the agent-builder adapter only when the `agents` module is active.
-	 * The adapter class is statically imported (so its `@Service` is always
-	 * registered), so the module-enabled check is what gates
-	 * agent-building. Returns null when the module is off, so the tools are simply
-	 * absent.
-	 */
-	private getAgentBuilderAdapter(): InstanceAiAgentBuilderAdapterService | null {
-		if (!Container.get(ModuleRegistry).isActive('agents')) return null;
-		try {
-			return Container.get(InstanceAiAgentBuilderAdapterService);
-		} catch {
-			return null;
-		}
-	}
-
-	/**
 	 * Resolve the builder-delegate adapter only when the `agents` module is
-	 * active — same gating as {@link getAgentBuilderAdapter}. Returns null when
-	 * the module is off, so `builderDelegate` (and the build-agent sub-agent
-	 * tool it powers) is simply absent from the context.
+	 * active. The adapter class is statically imported (so its `@Service` is
+	 * always registered), so the module-enabled check is what gates
+	 * agent-building. Returns null when the module is off, so `builderDelegate`
+	 * (and the build-agent sub-agent tool it powers) is simply absent from the
+	 * context.
 	 */
 	private getBuilderDelegateAdapter(): InstanceAiBuilderDelegateAdapterService | null {
 		if (!Container.get(ModuleRegistry).isActive('agents')) return null;
