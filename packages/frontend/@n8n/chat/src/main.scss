@@ -1,0 +1,6 @@
+@use 'sass:meta';
+@use 'css';
+
+.n8n-chat {
+	@include meta.load-css('highlight.js/styles/github');
+}

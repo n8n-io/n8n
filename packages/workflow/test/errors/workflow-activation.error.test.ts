@@ -1,4 +1,4 @@
-import { WorkflowActivationError } from '@/errors';
+import { WorkflowActivationError } from '../../src/errors';
 
 describe('WorkflowActivationError', () => {
 	it('should default to `error` level', () => {
@@ -28,5 +28,20 @@ describe('WorkflowActivationError', () => {
 		const error = new WorkflowActivationError(code, { cause });
 
 		expect(error.level).toBe('warning');
+	});
+
+	it('should surface the cause message in `description`', () => {
+		const error = new WorkflowActivationError('Generic wrapper message', { cause });
+
+		expect(error.description).toBe('Some error message');
+	});
+
+	it("should prefer the cause's own `description` over its message", () => {
+		const richCause = new WorkflowActivationError('Cause message');
+		richCause.description = 'Actionable detail';
+
+		const error = new WorkflowActivationError('Generic wrapper message', { cause: richCause });
+
+		expect(error.description).toBe('Actionable detail');
 	});
 });

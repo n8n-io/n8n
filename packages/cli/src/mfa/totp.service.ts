@@ -1,5 +1,5 @@
-import OTPAuth from 'otpauth';
-import { Service } from 'typedi';
+import { Service } from '@n8n/di';
+import * as OTPAuth from 'otpauth';
 
 @Service()
 export class TOTPService {

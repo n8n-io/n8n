@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { NodeOperationError, type IExecuteFunctions, type INode } from 'n8n-workflow';
 
 import * as transport from '../../v2//transport/discord.api';
 import {
@@ -7,6 +7,7 @@ import {
 	prepareEmbeds,
 	checkAccessToGuild,
 	setupChannelGetter,
+	parseDiscordError,
 } from '../../v2/helpers/utils';
 
 const node: INode = {
@@ -67,6 +68,10 @@ describe('Test Discord > prepareOptions', () => {
 });
 
 describe('Test Discord > prepareEmbeds', () => {
+	const executeFunction = {
+		getNode: () => node,
+	} as unknown as IExecuteFunctions;
+
 	it('should return return empty object removing empty strings', () => {
 		const embeds = [
 			{
@@ -76,11 +81,56 @@ describe('Test Discord > prepareEmbeds', () => {
 			},
 		];
 
-		const executeFunction = {};
-
-		const result = prepareEmbeds.call(executeFunction as unknown as IExecuteFunctions, embeds);
+		const result = prepareEmbeds.call(executeFunction, embeds);
 
 		expect(result).toEqual(embeds);
+	});
+
+	it('should normalize string author from JSON embed to { name }', () => {
+		const embeds = [
+			{
+				inputMethod: 'json',
+				json: JSON.stringify({
+					title: 'T',
+					author: 'Plain',
+				}),
+			},
+		];
+
+		const result = prepareEmbeds.call(executeFunction, embeds);
+
+		expect(result).toEqual([
+			{
+				title: 'T',
+				author: { name: 'Plain' },
+			},
+		]);
+	});
+
+	it('should preserve object author from JSON embed (icon_url, url)', () => {
+		const author = {
+			name: 'N',
+			icon_url: 'https://example.com/x.png',
+			url: 'https://example.com',
+		};
+		const embeds = [
+			{
+				inputMethod: 'json',
+				json: JSON.stringify({
+					title: 'T',
+					author,
+				}),
+			},
+		];
+
+		const result = prepareEmbeds.call(executeFunction, embeds);
+
+		expect(result).toEqual([
+			{
+				title: 'T',
+				author,
+			},
+		]);
 	});
 });
 
@@ -116,17 +166,14 @@ describe('Test Discord > checkAccessToGuild', () => {
 });
 
 describe('Test Discord > setupChannelGetter & checkAccessToChannel', () => {
-	const discordApiRequestSpy = jest.spyOn(transport, 'discordApiRequest');
-	discordApiRequestSpy.mockImplementation(async (method: string) => {
-		if (method === 'GET') {
-			return {
-				guild_id: '123456',
-			};
-		}
-	});
-
-	afterAll(() => {
-		jest.restoreAllMocks();
+	beforeEach(() => {
+		vi.spyOn(transport, 'discordApiRequest').mockImplementation(async (method: string) => {
+			if (method === 'GET') {
+				return {
+					guild_id: '123456',
+				};
+			}
+		});
 	});
 
 	it('should setup channel getter and get channel id', async () => {
@@ -156,5 +203,40 @@ describe('Test Discord > setupChannelGetter & checkAccessToChannel', () => {
 		const getChannel = await setupChannelGetter.call(fakeExecuteFunction('botToken'), userGuilds);
 		const channelId = await getChannel(0);
 		expect(channelId).toBe('42');
+	});
+});
+
+describe('Test Discord > parseDiscordError', () => {
+	const errorMessage =
+		'400 - {"message":"Invalid Form Body","code":50035,"errors":{"embeds":{"0":{"description":{"_errors":[{"code":"BASE_TYPE_REQUIRED","message":"This field is required"}]}}}}}';
+
+	it('should parse error with description', () => {
+		const error = {
+			cause: {
+				error: 'Invalid Form Body',
+			},
+			description: errorMessage,
+		};
+		const executeFunction = {
+			getNode: () => {},
+		} as unknown as IExecuteFunctions;
+
+		const result = parseDiscordError.call(executeFunction, error);
+		expect(result).toBeInstanceOf(NodeOperationError);
+		expect(result.message).toBe('Invalid Form Body');
+	});
+
+	it('should parse error with messages array', () => {
+		const error = {
+			cause: undefined,
+			messages: [errorMessage],
+		};
+		const executeFunction = {
+			getNode: () => {},
+		} as unknown as IExecuteFunctions;
+
+		const result = parseDiscordError.call(executeFunction, error);
+		expect(result).toBeInstanceOf(NodeOperationError);
+		expect(result.message).toBe('Invalid Form Body');
 	});
 });

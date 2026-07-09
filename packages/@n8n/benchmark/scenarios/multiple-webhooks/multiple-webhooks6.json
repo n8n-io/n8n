@@ -1,0 +1,25 @@
+{
+	"createdAt": "2024-08-06T12:19:51.268Z",
+	"updatedAt": "2024-08-06T12:20:45.000Z",
+	"name": "Multiple Webhook 6",
+	"active": true,
+	"nodes": [
+		{
+			"parameters": { "path": "multiple-webhook6", "options": {} },
+			"id": "34ac4500-9a29-4f4f-a604-134aa2cb2889",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [760, 400],
+			"webhookId": "47fe25ac-1376-4ee7-b9de-3fff1d49281c"
+		}
+	],
+	"connections": {},
+	"settings": { "executionOrder": "v1" },
+	"staticData": null,
+	"meta": { "templateCredsSetupCompleted": true, "responseMode": "lastNode", "options": {} },
+	"pinData": {},
+	"versionId": "106d4d2c-49c0-45b8-8421-99cc0c8b1589",
+	"triggerCount": 1,
+	"tags": []
+}

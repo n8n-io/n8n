@@ -3,14 +3,16 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	ITriggerFunctions,
+	ITriggerResponse,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 export class ErrorTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Error Trigger',
 		name: 'errorTrigger',
-		icon: 'fa:bug',
+		icon: 'node:error-trigger',
 		iconColor: 'blue',
 		group: ['trigger'],
 		version: 1,
@@ -20,20 +22,25 @@ export class ErrorTrigger implements INodeType {
 		maxNodes: 1,
 		defaults: {
 			name: 'Error Trigger',
-			color: '#0000FF',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName:
-					'This node will trigger when there is an error in another workflow, as long as that workflow is set up to do so. <a href="https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.errortrigger" target="_blank">More info<a>',
+					'This node will trigger when there is an error in another workflow, as long as that workflow is set up to do so. <a href="https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.errortrigger" target="_blank">More info</a>',
 				name: 'notice',
 				type: 'notice',
 				default: '',
 			},
 		],
 	};
+
+	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
+		// ErrorTrigger is triggered by n8n's error handling system
+		// No setup or teardown is required, as the triggering is handled externally
+		return {};
+	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();

@@ -1,15 +1,22 @@
+import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
+import type { CredentialsEntity, User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { response as Response } from 'express';
 import nock from 'nock';
 import { parse as parseQs } from 'querystring';
-import { Container } from 'typedi';
 
-import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
 import { CredentialsHelper } from '@/credentials-helper';
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { User } from '@/databases/entities/user';
-import { saveCredential } from '@test-integration/db/credentials';
+import { ExternalHooks } from '@/external-hooks';
+import { OauthService, type OauthFlowState } from '@/oauth/oauth.service';
+import { MAX_CSRF_AGE } from '@/oauth/types';
+import { CacheService } from '@/services/cache/cache.service';
+import {
+	decryptCredentialData,
+	getCredentialById,
+	saveCredential,
+	shareCredentialWithUsers,
+} from '@test-integration/db/credentials';
 import { createMember, createOwner } from '@test-integration/db/users';
-import * as testDb from '@test-integration/test-db';
 import type { SuperAgentTest } from '@test-integration/types';
 import { setupTestServer } from '@test-integration/utils';
 
@@ -28,7 +35,7 @@ describe('OAuth2 API', () => {
 		authQueryParameters: 'access_type=offline',
 	};
 
-	CredentialsHelper.prototype.applyDefaultsAndOverwrites = (_, decryptedDataOriginal) =>
+	CredentialsHelper.prototype.applyDefaultsAndOverwrites = async (_, decryptedDataOriginal) =>
 		decryptedDataOriginal;
 
 	beforeAll(async () => {
@@ -38,7 +45,7 @@ describe('OAuth2 API', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['SharedCredentials', 'Credentials']);
+		await testDb.truncate(['SharedCredentials', 'CredentialsEntity']);
 		credential = await saveCredential(
 			{
 				name: 'Test',
@@ -52,10 +59,11 @@ describe('OAuth2 API', () => {
 		);
 	});
 
-	it('should return a valid auth URL when the auth flow is initiated', async () => {
-		const controller = Container.get(OAuth2CredentialController);
-		const csrfSpy = jest.spyOn(controller, 'createCsrfState').mockClear();
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
 
+	it('should return a valid auth URL when the auth flow is initiated', async () => {
 		const response = await ownerAgent
 			.get('/oauth2-credential/auth')
 			.query({ id: credential.id })
@@ -64,28 +72,88 @@ describe('OAuth2 API', () => {
 		expect(authUrl.hostname).toBe('test.domain');
 		expect(authUrl.pathname).toBe('/oauth2/auth');
 
-		expect(csrfSpy).toHaveBeenCalled();
-		const [_, state] = csrfSpy.mock.results[0].value;
-		expect(parseQs(authUrl.search.slice(1))).toEqual({
+		const queryParams = parseQs(authUrl.search.slice(1));
+		expect(queryParams).toMatchObject({
 			access_type: 'offline',
 			client_id: 'client_id',
 			redirect_uri: 'http://localhost:5678/rest/oauth2-credential/callback',
 			response_type: 'code',
-			state,
 			scope: 'openid',
 		});
+
+		// Verify state is base64-encoded and contains expected structure. The CSRF
+		// payload now lives server-side in the per-flow cache, so the URL state carries
+		// only the signed token and timestamp.
+		expect(queryParams.state).toBeDefined();
+		const decodedState = JSON.parse(Buffer.from(queryParams.state as string, 'base64').toString());
+		expect(decodedState).toMatchObject({
+			token: expect.any(String),
+			createdAt: expect.any(Number),
+		});
+		expect(decodedState.data).toBeUndefined();
+	});
+
+	it('should allow external hook to modify oAuthOptions and state', async () => {
+		const externalHooks = Container.get(ExternalHooks);
+
+		// Mock the external hook to modify both redirectUri and state
+		const hookSpy = vi.fn(async function (oAuthOptions) {
+			// Modify redirectUri directly in oAuthOptions
+			oAuthOptions.redirectUri = 'https://custom.domain/callback';
+
+			// Decode base64 state, add host property, and re-encode
+			const stateJson = JSON.parse(Buffer.from(oAuthOptions.state, 'base64').toString());
+			stateJson.host = 'custom.host.com';
+			oAuthOptions.state = Buffer.from(JSON.stringify(stateJson)).toString('base64');
+		});
+
+		externalHooks['registered']['oauth2.authenticate'] = [hookSpy];
+
+		const response = await ownerAgent
+			.get('/oauth2-credential/auth')
+			.query({ id: credential.id })
+			.expect(200);
+
+		const authUrl = new URL(response.body.data);
+		const queryParams = parseQs(authUrl.search.slice(1));
+
+		// Verify the hook was called
+		expect(hookSpy).toHaveBeenCalledTimes(1);
+
+		// Verify redirectUri was modified
+		expect(queryParams.redirect_uri).toBe('https://custom.domain/callback');
+
+		// Verify the state is base64-encoded
+		expect(queryParams.state).toBeDefined();
+		expect(typeof queryParams.state).toBe('string');
+
+		// Decode and verify the state contains the host property (plaintext in base64)
+		const decodedState = JSON.parse(Buffer.from(queryParams.state as string, 'base64').toString());
+		expect(decodedState.host).toBe('custom.host.com');
+		expect(decodedState.token).toBeDefined();
+		expect(decodedState.createdAt).toBeDefined();
+		// The CSRF payload is no longer carried in the URL.
+		expect(decodedState.data).toBeUndefined();
+
+		// The original CSRF data is preserved server-side in the per-flow cache.
+		const flowState = await Container.get(CacheService).get<OauthFlowState>(
+			`oauth:flow:${decodedState.token}`,
+		);
+		expect(flowState?.stateData?.cid).toBe(credential.id);
+		expect(flowState?.stateData?.userId).toBe(owner.id);
 	});
 
 	it('should fail on auth when callback is called as another user', async () => {
-		const controller = Container.get(OAuth2CredentialController);
-		const csrfSpy = jest.spyOn(controller, 'createCsrfState').mockClear();
-		const renderSpy = (Response.render = jest.fn(function () {
+		const oauthService = Container.get(OauthService);
+		const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
+		const renderSpy = vi.spyOn(Response, 'render').mockImplementation(function (this: any) {
 			this.end();
-		}));
+			return this;
+		});
 
 		await ownerAgent.get('/oauth2-credential/auth').query({ id: credential.id }).expect(200);
 
-		const [_, state] = csrfSpy.mock.results[0].value;
+		const [_, state] = await csrfSpy.mock.results[0].value;
 
 		await testServer
 			.authAgentFor(anotherUser)
@@ -98,16 +166,63 @@ describe('OAuth2 API', () => {
 		});
 	});
 
+	describe('callback route accessibility', () => {
+		// The callback route must be reachable without
+		// an n8n session (so external/dynamic-credential OAuth flows complete) while the handler
+		// still enforces session-bound validation for static credentials.
+		it('should reach the handler when called without authentication', async () => {
+			const renderSpy = vi.spyOn(Response, 'render').mockImplementation(function (this: any) {
+				this.end();
+				return this;
+			});
+
+			await testServer.authlessAgent
+				.get('/oauth2-credential/callback')
+				.query({ code: 'auth_code', state: 'invalid_state' })
+				.expect(200);
+
+			expect(renderSpy).toHaveBeenCalledWith(
+				'oauth-error-callback',
+				expect.objectContaining({
+					error: expect.objectContaining({ message: expect.any(String) }),
+				}),
+			);
+		});
+
+		it('should reject an unauthenticated callback for a static credential', async () => {
+			const oauthService = Container.get(OauthService);
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
+			const renderSpy = vi.spyOn(Response, 'render').mockImplementation(function (this: any) {
+				this.end();
+				return this;
+			});
+
+			await ownerAgent.get('/oauth2-credential/auth').query({ id: credential.id }).expect(200);
+
+			const [, state] = await csrfSpy.mock.results[0].value;
+
+			await testServer.authlessAgent
+				.get('/oauth2-credential/callback')
+				.query({ code: 'auth_code', state })
+				.expect(200);
+
+			expect(renderSpy).toHaveBeenCalledWith('oauth-error-callback', {
+				error: { message: 'Unauthorized' },
+			});
+		});
+	});
+
 	it('should handle a valid callback without auth', async () => {
-		const controller = Container.get(OAuth2CredentialController);
-		const csrfSpy = jest.spyOn(controller, 'createCsrfState').mockClear();
-		const renderSpy = (Response.render = jest.fn(function () {
+		const oauthService = Container.get(OauthService);
+		const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
+		const renderSpy = vi.spyOn(Response, 'render').mockImplementation(function (this: any) {
 			this.end();
-		}));
+			return this;
+		});
 
 		await ownerAgent.get('/oauth2-credential/auth').query({ id: credential.id }).expect(200);
 
-		const [_, state] = csrfSpy.mock.results[0].value;
+		const [_, state] = await csrfSpy.mock.results[0].value;
 
 		nock('https://test.domain').post('/oauth2/token').reply(200, { access_token: 'updated_token' });
 
@@ -122,9 +237,254 @@ describe('OAuth2 API', () => {
 			credential,
 			credential.type,
 		);
-		expect(updatedCredential.getData()).toEqual({
+		expect(await updatedCredential.getData()).toEqual({
 			...credentialData,
 			oauthTokenData: { access_token: 'updated_token' },
+		});
+		// CSRF/PKCE state must never be persisted on the credential.
+		expect(await updatedCredential.getData()).not.toHaveProperty('csrfSecret');
+		expect(await updatedCredential.getData()).not.toHaveProperty('codeVerifier');
+	});
+
+	describe('per-flow state isolation', () => {
+		const renderCallback = () =>
+			vi.spyOn(Response, 'render').mockImplementation(function (this: any) {
+				this.end();
+				return this;
+			});
+
+		// IAM-719: when two users on the same shared credential start OAuth concurrently,
+		// neither flow may clobber the other's CSRF/PKCE state.
+		// We use a project-scoped credential with two editors — both have credential:update,
+		// which is the realistic setup where multiple users connect their own account to
+		// the same shared blueprint.
+		it('lets two users complete concurrent OAuth flows on the same credential', async () => {
+			const teamProject = await createTeamProject(undefined, owner);
+			const editorA = await createMember();
+			const editorB = await createMember();
+			await linkUserToProject(editorA, teamProject, 'project:editor');
+			await linkUserToProject(editorB, teamProject, 'project:editor');
+			const projectCredential = await saveCredential(
+				{ name: 'Project OAuth2', type: 'testOAuth2Api', data: credentialData },
+				{ project: teamProject, role: 'credential:owner' },
+			);
+			const editorAAgent = testServer.authAgentFor(editorA);
+			const editorBAgent = testServer.authAgentFor(editorB);
+
+			const oauthService = Container.get(OauthService);
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
+			renderCallback();
+
+			// Both users initiate /auth back-to-back. Under the old behavior the second
+			// init would overwrite the first user's csrfSecret on the shared credential
+			// and the first user's callback would fail.
+			await editorAAgent
+				.get('/oauth2-credential/auth')
+				.query({ id: projectCredential.id })
+				.expect(200);
+			await editorBAgent
+				.get('/oauth2-credential/auth')
+				.query({ id: projectCredential.id })
+				.expect(200);
+
+			const [, stateA] = await csrfSpy.mock.results[0].value;
+			const [, stateB] = await csrfSpy.mock.results[1].value;
+			expect(stateA).not.toBe(stateB);
+
+			nock('https://test.domain').post('/oauth2/token').reply(200, { access_token: 'token_A' });
+			nock('https://test.domain').post('/oauth2/token').reply(200, { access_token: 'token_B' });
+
+			// Editor A completes first; editor B's flow must still succeed afterwards.
+			await editorAAgent
+				.get('/oauth2-credential/callback')
+				.query({ code: 'code_A', state: stateA })
+				.expect(200);
+
+			await editorBAgent
+				.get('/oauth2-credential/callback')
+				.query({ code: 'code_B', state: stateB })
+				.expect(200);
+		});
+
+		it('rejects a replayed callback (state token already consumed)', async () => {
+			const oauthService = Container.get(OauthService);
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
+			const renderSpy = renderCallback();
+
+			await ownerAgent.get('/oauth2-credential/auth').query({ id: credential.id }).expect(200);
+			const [, state] = await csrfSpy.mock.results[0].value;
+
+			nock('https://test.domain').post('/oauth2/token').reply(200, { access_token: 'first_token' });
+
+			// First callback consumes the state.
+			await ownerAgent
+				.get('/oauth2-credential/callback')
+				.query({ code: 'auth_code', state })
+				.expect(200);
+			expect(renderSpy).toHaveBeenLastCalledWith('oauth-callback');
+
+			// Replay with the same state must be rejected.
+			await ownerAgent
+				.get('/oauth2-credential/callback')
+				.query({ code: 'auth_code', state })
+				.expect(200);
+			expect(renderSpy).toHaveBeenLastCalledWith(
+				'oauth-error-callback',
+				expect.objectContaining({
+					error: expect.objectContaining({ message: 'The OAuth callback state is invalid!' }),
+				}),
+			);
+		});
+
+		it('rejects a callback whose state has no matching entry in the cache', async () => {
+			const oauthService = Container.get(OauthService);
+			const renderSpy = renderCallback();
+
+			// Build a syntactically valid encoded state — same shape as createCsrfState
+			// produces — but never stored in the cache. Must be rejected.
+			const fakeState = {
+				token: 'forged-token',
+				createdAt: Date.now(),
+				data: oauthService['cipher'].encrypt(
+					JSON.stringify({
+						cid: credential.id,
+						origin: 'static-credential',
+						userId: owner.id,
+					}),
+				),
+			};
+			const encodedState = Buffer.from(JSON.stringify(fakeState)).toString('base64');
+
+			await ownerAgent
+				.get('/oauth2-credential/callback')
+				.query({ code: 'auth_code', state: encodedState })
+				.expect(200);
+
+			expect(renderSpy).toHaveBeenLastCalledWith(
+				'oauth-error-callback',
+				expect.objectContaining({
+					error: expect.objectContaining({ message: 'The OAuth callback state is invalid!' }),
+				}),
+			);
+		});
+	});
+
+	describe('OAuth reconnect authorization', () => {
+		const sharedCredentialPayload = {
+			name: 'Shared OAuth2 credential',
+			type: 'testOAuth2Api',
+			data: credentialData,
+		};
+
+		const expectNoCsrfStateOnCredential = async (credentialId: string) => {
+			const stored = await getCredentialById(credentialId);
+			expect(stored).not.toBeNull();
+			const decrypted = (await decryptCredentialData(stored!)) as Record<string, unknown>;
+			expect(decrypted).not.toHaveProperty('csrfSecret');
+			expect(decrypted).not.toHaveProperty('codeVerifier');
+		};
+
+		it('should reject auth start for a sharee with credential:user role', async () => {
+			const sharee = await createMember();
+			await shareCredentialWithUsers(credential, [sharee]);
+
+			const response = await testServer
+				.authAgentFor(sharee)
+				.get('/oauth2-credential/auth')
+				.query({ id: credential.id });
+
+			expect(response.statusCode).toBe(404);
+			await expectNoCsrfStateOnCredential(credential.id);
+		});
+
+		it('should reject auth start for a project viewer on a project-shared credential', async () => {
+			const projectViewer = await createMember();
+			const teamProject = await createTeamProject(undefined, owner);
+			await linkUserToProject(projectViewer, teamProject, 'project:viewer');
+
+			const projectCredential = await saveCredential(sharedCredentialPayload, {
+				project: teamProject,
+				role: 'credential:owner',
+			});
+
+			const response = await testServer
+				.authAgentFor(projectViewer)
+				.get('/oauth2-credential/auth')
+				.query({ id: projectCredential.id });
+
+			expect(response.statusCode).toBe(404);
+			await expectNoCsrfStateOnCredential(projectCredential.id);
+		});
+
+		it('should allow auth start for a project editor on a project-shared credential', async () => {
+			const projectEditor = await createMember();
+			const teamProject = await createTeamProject(undefined, owner);
+			await linkUserToProject(projectEditor, teamProject, 'project:editor');
+
+			const projectCredential = await saveCredential(sharedCredentialPayload, {
+				project: teamProject,
+				role: 'credential:owner',
+			});
+
+			const response = await testServer
+				.authAgentFor(projectEditor)
+				.get('/oauth2-credential/auth')
+				.query({ id: projectCredential.id });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toContain('https://test.domain/oauth2/auth');
+		});
+
+		it('should reject callback when requester lacks credential:update on the target credential', async () => {
+			const sharee = await createMember();
+			await shareCredentialWithUsers(credential, [sharee]);
+
+			const oauthService = Container.get(OauthService);
+			const renderSpy = vi.spyOn(Response, 'render').mockImplementation(function (this: any) {
+				this.end();
+				return this;
+			});
+
+			// Make the flow's stored userId equal the requesting member, so the userId
+			// equality check inside decodeCsrfState passes and the credential scope check
+			// is the only remaining gate. The CSRF payload lives server-side in the
+			// per-flow cache now, so we rewrite the cached stateData (rather than the URL).
+			const ownerAgentForSetup = testServer.authAgentFor(owner);
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
+			await ownerAgentForSetup
+				.get('/oauth2-credential/auth')
+				.query({ id: credential.id })
+				.expect(200);
+			const [, ownerState] = await csrfSpy.mock.results[0].value;
+
+			const decoded = JSON.parse(Buffer.from(ownerState, 'base64').toString());
+			const cacheService = Container.get(CacheService);
+			const cacheKey = `oauth:flow:${decoded.token}`;
+			const flowState = await cacheService.get<OauthFlowState>(cacheKey);
+			flowState!.stateData!.userId = sharee.id;
+			await cacheService.set(cacheKey, flowState, MAX_CSRF_AGE);
+			const reencodedState = ownerState;
+
+			nock('https://test.domain')
+				.post('/oauth2/token')
+				.reply(200, { access_token: 'member_token' });
+
+			await testServer
+				.authAgentFor(sharee)
+				.get('/oauth2-credential/callback')
+				.query({ code: 'auth_code', state: reencodedState })
+				.expect(200);
+
+			expect(renderSpy).toHaveBeenCalledWith('oauth-error-callback', {
+				error: { message: 'Credential not found' },
+			});
+
+			const updatedCredential = await Container.get(CredentialsHelper).getCredentials(
+				credential,
+				credential.type,
+			);
+			const credentials = await updatedCredential.getData();
+			expect(credentials.oauthTokenData).toBeUndefined();
 		});
 	});
 });

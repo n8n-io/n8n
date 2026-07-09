@@ -1,5 +1,5 @@
+import { Service } from '@n8n/di';
 import type { ICredentialType, ICredentialTypes } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
@@ -25,11 +25,15 @@ export class CredentialTypes implements ICredentialTypes {
 	 */
 	getParentTypes(typeName: string): string[] {
 		const extendsArr = this.loadNodesAndCredentials.knownCredentials[typeName]?.extends ?? [];
-		if (extendsArr.length) {
-			extendsArr.forEach((type) => {
-				extendsArr.push(...this.getParentTypes(type));
-			});
+
+		if (extendsArr.length === 0) return [];
+
+		const extendsArrCopy = [...extendsArr];
+
+		for (const type of extendsArrCopy) {
+			extendsArrCopy.push(...this.getParentTypes(type));
 		}
-		return extendsArr;
+
+		return extendsArrCopy;
 	}
 }

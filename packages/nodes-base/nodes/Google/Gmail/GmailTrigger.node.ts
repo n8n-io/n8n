@@ -1,14 +1,14 @@
 import { DateTime } from 'luxon';
 import type {
-	IPollFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import {
 	googleApiRequest,
@@ -17,6 +17,17 @@ import {
 	prepareQuery,
 	simplifyOutput,
 } from './GenericFunctions';
+import type {
+	GmailTriggerFilters,
+	GmailTriggerOptions,
+	GmailWorkflowStaticData,
+	GmailWorkflowStaticDataDictionary,
+	Label,
+	ListMessage,
+	Message,
+	MessageBookkeeping,
+	MessageListResponse,
+} from './types';
 
 export class GmailTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,7 +35,7 @@ export class GmailTrigger implements INodeType {
 		name: 'gmailTrigger',
 		icon: 'file:gmail.svg',
 		group: ['trigger'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description:
 			'Fetches emails from Gmail and starts the workflow on specified polling intervals.',
 		subtitle: '={{"Gmail Trigger"}}',
@@ -53,7 +64,16 @@ export class GmailTrigger implements INodeType {
 		],
 		polling: true,
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
+		hints: [
+			{
+				type: 'info',
+				message:
+					'Multiple items will be returned if multiple messages are received within the polling interval. Make sure your workflow can handle multiple items.',
+				whenToDisplay: 'beforeExecution',
+				location: 'outputPane',
+			},
+		],
 		properties: [
 			{
 				displayName: 'Authentication',
@@ -91,6 +111,27 @@ export class GmailTrigger implements INodeType {
 				default: true,
 				description:
 					'Whether to return a simplified version of the response instead of the raw data',
+				builderHint: {
+					propertyHint:
+						'Set to false when the email body is needed for AI analysis, summarization, or content processing. When true, only returns snippet (preview text). When false, returns full email with {id, threadId, labelIds, headers, html, text, textAsHtml, subject, date, to, from, messageId, replyTo}.',
+				},
+			},
+			{
+				displayName: 'Max Emails per Poll',
+				name: 'maxResults',
+				type: 'number',
+				default: 10,
+				typeOptions: {
+					minValue: 1,
+					maxValue: 50,
+				},
+				description:
+					'Maximum number of emails to fetch each time the node polls for new messages. If more emails arrive between polls, the remaining ones will be picked up in subsequent polls.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.4 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Filters',
@@ -130,6 +171,10 @@ export class GmailTrigger implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'has:attachment',
+						builderHint: {
+							propertyHint:
+								'Always set a search query to filter emails. Uses Gmail search syntax, e.g. "from:example@gmail.com", "subject:invoice", "has:attachment", "label:important", "newer_than:1d". Combine with spaces for AND: "from:shop@example.com subject:delivery". Without this filter, ALL incoming emails will trigger the workflow.',
+						},
 						hint: 'Use the same format as in the Gmail search box. <a href="https://support.google.com/mail/answer/7190?hl=en">More info</a>.',
 						description: 'Only return messages matching the specified query',
 					},
@@ -206,12 +251,12 @@ export class GmailTrigger implements INodeType {
 			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const labels = await googleApiRequestAllItems.call(
+				const labels = (await googleApiRequestAllItems.call(
 					this,
 					'labels',
 					'GET',
 					'/gmail/v1/users/me/labels',
-				);
+				)) as Label[];
 
 				for (const label of labels) {
 					returnData.push({
@@ -234,105 +279,227 @@ export class GmailTrigger implements INodeType {
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
-		const workflowStaticData = this.getWorkflowStaticData('node');
+		const workflowStaticData = this.getWorkflowStaticData('node') as
+			| GmailWorkflowStaticData
+			| GmailWorkflowStaticDataDictionary;
 		const node = this.getNode();
 
-		let nodeStaticData = workflowStaticData;
+		let nodeStaticData = (workflowStaticData ?? {}) as GmailWorkflowStaticData;
 		if (node.typeVersion > 1) {
 			const nodeName = node.name;
-			if (workflowStaticData[nodeName] === undefined) {
-				workflowStaticData[nodeName] = {} as IDataObject;
-				nodeStaticData = workflowStaticData[nodeName] as IDataObject;
-			} else {
-				nodeStaticData = workflowStaticData[nodeName] as IDataObject;
+			const dictionary = workflowStaticData as GmailWorkflowStaticDataDictionary;
+			if (!(nodeName in workflowStaticData)) {
+				dictionary[nodeName] = {};
 			}
+
+			nodeStaticData = dictionary[nodeName];
 		}
 
-		let responseData;
-
 		const now = Math.floor(DateTime.now().toSeconds()).toString();
-		const startDate = (nodeStaticData.lastTimeChecked as string) || +now;
-		const endDate = +now;
 
-		const options = this.getNodeParameter('options', {}) as IDataObject;
-		const filters = this.getNodeParameter('filters', {}) as IDataObject;
+		if (this.getMode() !== 'manual') {
+			nodeStaticData.lastTimeChecked ??= +now;
+		}
+		const startDate = nodeStaticData.lastTimeChecked ?? +now;
 
-		try {
+		const options = this.getNodeParameter('options', {}) as GmailTriggerOptions;
+		const filters = this.getNodeParameter('filters', {}) as GmailTriggerFilters;
+		const simple = this.getNodeParameter('simple') as boolean;
+
+		const shouldLimitMessages = node.typeVersion >= 1.4 && this.getMode() !== 'manual';
+		const maxResults = shouldLimitMessages
+			? (this.getNodeParameter('maxResults', 10) as number)
+			: Infinity;
+
+		let responseData: INodeExecutionData[] = [];
+		const allFetchedMessages: MessageBookkeeping[] = [];
+
+		const getEmailDateAsSeconds = (email: Message): number => {
+			let date;
+
+			if (email.internalDate) {
+				date = +email.internalDate / 1000;
+			} else if (email.date) {
+				date = +DateTime.fromJSDate(new Date(email.date)).toSeconds();
+			} else if (email.headers?.date) {
+				date = +DateTime.fromJSDate(new Date(email.headers.date)).toSeconds();
+			}
+
+			if (!date || isNaN(date)) {
+				return +startDate;
+			}
+
+			return date;
+		};
+
+		const buildFetchQs = (): IDataObject => {
 			const qs: IDataObject = {};
-			filters.receivedAfter = startDate;
-
-			if (this.getMode() === 'manual') {
-				qs.maxResults = 1;
-				delete filters.receivedAfter;
-			}
-
-			Object.assign(qs, prepareQuery.call(this, filters, 0), options);
-
-			responseData = await googleApiRequest.call(
-				this,
-				'GET',
-				'/gmail/v1/users/me/messages',
-				{},
-				qs,
-			);
-			responseData = responseData.messages;
-
-			if (!responseData?.length) {
-				nodeStaticData.lastTimeChecked = endDate;
-				return null;
-			}
-
-			const simple = this.getNodeParameter('simple') as boolean;
-
 			if (simple) {
 				qs.format = 'metadata';
 				qs.metadataHeaders = ['From', 'To', 'Cc', 'Bcc', 'Subject'];
 			} else {
 				qs.format = 'raw';
 			}
+			return qs;
+		};
 
-			let includeDrafts;
-			if (node.typeVersion > 1.1) {
-				includeDrafts = (qs.includeDrafts as boolean) ?? false;
+		let includeDrafts = false;
+		if (node.typeVersion > 1.1) {
+			includeDrafts = filters.includeDrafts ?? false;
+		} else {
+			includeDrafts = filters.includeDrafts ?? true;
+		}
+
+		const fetchAndProcessMessage = async (
+			messageId: string,
+			fetchQs: IDataObject,
+		): Promise<void> => {
+			const fullMessage = (await googleApiRequest.call(
+				this,
+				'GET',
+				`/gmail/v1/users/me/messages/${messageId}`,
+				{},
+				fetchQs,
+			)) as Message;
+
+			allFetchedMessages.push({
+				id: fullMessage.id,
+				date: getEmailDateAsSeconds(fullMessage),
+			});
+
+			if (!includeDrafts && fullMessage.labelIds?.includes('DRAFT')) {
+				return;
+			}
+			if (
+				node.typeVersion > 1.2 &&
+				fullMessage.labelIds?.includes('SENT') &&
+				!fullMessage.labelIds?.includes('INBOX')
+			) {
+				return;
+			}
+
+			if (!simple) {
+				const dataPropertyNameDownload = options.dataPropertyAttachmentsPrefixName || 'attachment_';
+				const parsed = await parseRawEmail.call(this, fullMessage, dataPropertyNameDownload);
+				responseData.push(parsed);
 			} else {
-				includeDrafts = (qs.includeDrafts as boolean) ?? true;
+				responseData.push({ json: fullMessage });
 			}
-			delete qs.includeDrafts;
-			const withoutDrafts = [];
+		};
 
-			for (let i = 0; i < responseData.length; i++) {
-				responseData[i] = await googleApiRequest.call(
-					this,
-					'GET',
-					`/gmail/v1/users/me/messages/${responseData[i].id}`,
-					{},
-					qs,
-				);
-				if (!includeDrafts) {
-					if (responseData[i].labelIds.includes('DRAFT')) {
-						continue;
+		try {
+			let budget = maxResults;
+
+			// Process pending messages from previous poll first.
+			// These are IDs that were listed but not fetched last time due to maxResults.
+			const pendingIds = nodeStaticData.pendingMessageIds ?? [];
+			if (shouldLimitMessages && pendingIds.length > 0) {
+				const idsToFetch = pendingIds.slice(0, budget);
+				nodeStaticData.pendingMessageIds = pendingIds.slice(budget);
+				const fetchQs = buildFetchQs();
+
+				for (const id of idsToFetch) {
+					await fetchAndProcessMessage(id, fetchQs);
+				}
+
+				budget -= idsToFetch.length;
+
+				// Record drained IDs in possibleDuplicates so Gmail's boundary-inclusive
+				// `after:` query can't re-list a message we just emitted and push it back
+				// into pendingMessageIds as overflow. Also covers the early-return path,
+				// where the state update at the end of poll() is skipped.
+				if (allFetchedMessages.length > 0) {
+					const merged = new Set([
+						...(nodeStaticData.possibleDuplicates ?? []),
+						...allFetchedMessages.map((m) => m.id),
+					]);
+					nodeStaticData.possibleDuplicates = Array.from(merged);
+				}
+
+				// If we still have pending IDs, don't list new messages yet.
+				if (nodeStaticData.pendingMessageIds.length > 0) {
+					if (simple && responseData.length > 0) {
+						responseData = this.helpers.returnJsonArray(
+							await simplifyOutput.call(
+								this,
+								responseData.map((item) => item.json),
+							),
+						);
 					}
+					return responseData.length > 0 ? [responseData] : null;
 				}
-				if (!simple && responseData?.length) {
-					const dataPropertyNameDownload =
-						(options.dataPropertyAttachmentsPrefixName as string) || 'attachment_';
-
-					responseData[i] = await parseRawEmail.call(
-						this,
-						responseData[i],
-						dataPropertyNameDownload,
-					);
-				}
-				withoutDrafts.push(responseData[i]);
 			}
 
-			if (!includeDrafts) {
-				responseData = withoutDrafts;
+			// List new messages from Gmail.
+			const qs: IDataObject = {};
+			const allFilters: GmailTriggerFilters = { ...filters, receivedAfter: startDate };
+
+			if (this.getMode() === 'manual') {
+				qs.maxResults = 1;
+				delete allFilters.receivedAfter;
 			}
 
-			if (simple && responseData?.length) {
+			Object.assign(qs, prepareQuery.call(this, allFilters, 0), options);
+
+			if (node.typeVersion > 1.3) {
+				if (qs.q) {
+					qs.q += ' -in:scheduled';
+				} else {
+					qs.q = '-in:scheduled';
+				}
+			}
+
+			const messagesResponse: MessageListResponse = await googleApiRequest.call(
+				this,
+				'GET',
+				'/gmail/v1/users/me/messages',
+				{},
+				qs,
+			);
+
+			let messages: ListMessage[] = messagesResponse.messages ?? [];
+
+			if (!messages.length && !allFetchedMessages.length) {
+				return null;
+			}
+
+			// For v1.4+, filter out boundary duplicates before fetching to save API calls.
+			// Gmail's `after:` query is inclusive at the second boundary, so messages at
+			// the lastTimeChecked timestamp can reappear.
+			if (shouldLimitMessages) {
+				const possibleDuplicates = new Set(nodeStaticData.possibleDuplicates ?? []);
+				if (possibleDuplicates.size > 0) {
+					messages = messages.filter((m) => !possibleDuplicates.has(m.id));
+				}
+
+				if (!messages.length && !allFetchedMessages.length) {
+					return null;
+				}
+			}
+
+			// Take only what fits in the remaining budget, store the rest as pending.
+			let messagesToProcess = messages;
+			if (shouldLimitMessages && messages.length > budget) {
+				messagesToProcess = messages.slice(0, budget);
+				nodeStaticData.pendingMessageIds = messages.slice(budget).map((m) => m.id);
+			}
+
+			if (messagesToProcess.length > 0) {
+				const fetchQs = buildFetchQs();
+				Object.assign(fetchQs, options);
+				delete fetchQs.includeDrafts;
+
+				for (const message of messagesToProcess) {
+					await fetchAndProcessMessage(message.id, fetchQs);
+				}
+			}
+
+			if (simple && responseData.length > 0) {
 				responseData = this.helpers.returnJsonArray(
-					await simplifyOutput.call(this, responseData as IDataObject[]),
+					await simplifyOutput.call(
+						this,
+						responseData.map((item) => item.json),
+					),
 				);
 			}
 		} catch (error) {
@@ -349,60 +516,44 @@ export class GmailTrigger implements INodeType {
 				},
 			);
 		}
-		if (!responseData?.length) {
-			nodeStaticData.lastTimeChecked = endDate;
+
+		if (!allFetchedMessages.length) {
 			return null;
 		}
 
-		const emailsWithInvalidDate = new Set<string>();
-		const getEmailDateAsSeconds = (email: IDataObject): number => {
-			let date;
-			if (email.internalDate) {
-				date = +(email.internalDate as string) / 1000;
-			} else if (email.date) {
-				date = +DateTime.fromJSDate(new Date(email.date as string)).toSeconds();
-			} else {
-				date = +DateTime.fromJSDate(
-					new Date((email?.headers as IDataObject)?.date as string),
-				).toSeconds();
-			}
-
-			if (!date || isNaN(date)) {
-				emailsWithInvalidDate.add(email.id as string);
-				return +startDate;
-			}
-
-			return date;
-		};
-
-		const lastEmailDate = (responseData as IDataObject[]).reduce((lastDate, { json }) => {
-			const emailDate = getEmailDateAsSeconds(json as IDataObject);
-			return emailDate > lastDate ? emailDate : lastDate;
-		}, 0);
-
-		const nextPollPossibleDuplicates = (responseData as IDataObject[]).reduce(
-			(duplicates, { json }) => {
-				const emailDate = getEmailDateAsSeconds(json as IDataObject);
-				return emailDate <= lastEmailDate
-					? duplicates.concat((json as IDataObject).id as string)
-					: duplicates;
-			},
-			Array.from(emailsWithInvalidDate),
+		const lastEmailDate = allFetchedMessages.reduce(
+			(lastDate, message) => (message.date > lastDate ? message.date : lastDate),
+			0,
 		);
 
-		const possibleDuplicates = (nodeStaticData.possibleDuplicates as string[]) || [];
-		if (possibleDuplicates.length) {
-			responseData = (responseData as IDataObject[]).filter(({ json }) => {
-				const { id } = json as IDataObject;
-				return !possibleDuplicates.includes(id as string);
-			});
+		const nextPollPossibleDuplicates = allFetchedMessages.map((m) => m.id);
+
+		// For older versions, filter at the response level since the pre-fetch filter
+		// above is gated to v1.4+. v1.4+ already skipped these before fetching.
+		if (!shouldLimitMessages) {
+			const prevDuplicates = new Set(nodeStaticData.possibleDuplicates ?? []);
+			if (prevDuplicates.size > 0) {
+				responseData = responseData.filter(({ json }) => {
+					if (!json || typeof json.id !== 'string') return false;
+					return !prevDuplicates.has(json.id);
+				});
+			}
 		}
 
-		nodeStaticData.possibleDuplicates = nextPollPossibleDuplicates;
-		nodeStaticData.lastTimeChecked = lastEmailDate || endDate;
+		const effectiveLastTimeChecked = Math.floor(Math.max(lastEmailDate, +startDate)) || +startDate;
+
+		// When lastTimeChecked didn't advance (e.g., only older pending messages were processed),
+		// preserve existing possibleDuplicates — they're still at the query boundary.
+		if (effectiveLastTimeChecked === +startDate && nodeStaticData.possibleDuplicates?.length) {
+			const merged = new Set([...nodeStaticData.possibleDuplicates, ...nextPollPossibleDuplicates]);
+			nodeStaticData.possibleDuplicates = Array.from(merged);
+		} else {
+			nodeStaticData.possibleDuplicates = nextPollPossibleDuplicates;
+		}
+		nodeStaticData.lastTimeChecked = effectiveLastTimeChecked;
 
 		if (Array.isArray(responseData) && responseData.length) {
-			return [responseData as INodeExecutionData[]];
+			return [responseData];
 		}
 
 		return null;

@@ -1,0 +1,12 @@
+/src/**/*.{ts,vue,scss,snap}
+/theme/src
+!dist
+
+storybook-static
+.storybook
+
+.browserslistrc
+vite.config.ts
+
+*.md
+*.stories.js

@@ -10,12 +10,23 @@ export const COMMAND_PUBSUB_CHANNEL = 'n8n.commands';
 /** Pubsub channel for messages sent by workers in response to commands from main processes. */
 export const WORKER_RESPONSE_PUBSUB_CHANNEL = 'n8n.worker-response';
 
+/** Pubsub channel for MCP relay messages between main instances in multi-main queue mode. */
+export const MCP_RELAY_PUBSUB_CHANNEL = 'n8n.mcp-relay';
+
+/**
+ * Max allowed size in bytes of a message relayed over the pubsub channel. Events
+ * exceeding this are skipped (or trimmed) rather than bloating the channel.
+ */
+export const MAX_PUBSUB_PAYLOAD_BYTES = 5 * 1024 * 1024; // 5 MiB
+
 /**
  * Commands that should be sent to the sender as well, e.g. during workflow activation and
  * deactivation in multi-main setup. */
 export const SELF_SEND_COMMANDS = new Set<PubSub.Command['command']>([
 	'add-webhooks-triggers-and-pollers',
 	'remove-triggers-and-pollers',
+	// The leader may itself enqueue an outbox record, so it must receive its own wake-up.
+	'workflow-publish-wake-up',
 ]);
 
 /**
@@ -26,4 +37,14 @@ export const IMMEDIATE_COMMANDS = new Set<PubSub.Command['command']>([
 	'add-webhooks-triggers-and-pollers',
 	'remove-triggers-and-pollers',
 	'relay-execution-lifecycle-event',
+	'relay-chat-stream-event',
+	'relay-instance-ai-event',
+	'relay-instance-ai-task-control',
+	'agent-chat-subscription-changed',
+	'cancel-test-run',
+	'stop-execution',
+	'display-workflow-activation',
+	'display-workflow-deactivation',
+	'display-workflow-activation-error',
+	'workflow-publish-wake-up',
 ]);

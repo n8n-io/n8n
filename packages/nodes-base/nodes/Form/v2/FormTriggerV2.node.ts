@@ -1,7 +1,7 @@
 import {
 	ADD_FORM_NOTICE,
 	type INodePropertyOptions,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeProperties,
 	type INodeType,
 	type INodeTypeBaseDescription,
@@ -13,14 +13,17 @@ import {
 	appendAttributionToForm,
 	formDescription,
 	formFields,
+	formFieldsDynamic,
 	formRespondMode,
 	formTitle,
 	formTriggerPanel,
+	ipAllowlist,
 	respondWithOptions,
 	webhookPath,
 } from '../common.descriptions';
+import { cssVariables } from '../cssVariables';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
-import { formWebhook } from '../utils';
+import { formWebhook } from '../utils/utils';
 
 const useWorkflowTimezone: INodeProperties = {
 	displayName: 'Use Workflow Timezone',
@@ -33,16 +36,27 @@ const useWorkflowTimezone: INodeProperties = {
 const descriptionV2: INodeTypeDescription = {
 	displayName: 'n8n Form Trigger',
 	name: 'formTrigger',
-	icon: 'file:form.svg',
+	icon: 'node:form-trigger',
+	iconColor: 'teal',
 	group: ['trigger'],
-	version: [2, 2.1, 2.2],
+	// since trigger and node are sharing descriptions and logic we need to sync the versions
+	// and keep them aligned in both nodes
+	version: [2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6],
 	description: 'Generate webforms in n8n and pass their responses to the workflow',
 	defaults: {
 		name: 'On form submission',
 	},
+	builderHint: {
+		relatedNodes: [
+			{
+				nodeType: 'n8n-nodes-base.form',
+				relationHint: 'Add pages and final page to the form',
+			},
+		],
+	},
 
 	inputs: [],
-	outputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionTypes.Main],
 	webhooks: [
 		{
 			name: 'setup',
@@ -51,7 +65,7 @@ const descriptionV2: INodeTypeDescription = {
 			isFullPath: true,
 			path: '={{ $parameter["path"] || $parameter["options"]?.path || $webhookId }}',
 			ndvHideUrl: true,
-			isForm: true,
+			nodeType: 'form',
 		},
 		{
 			name: 'default',
@@ -61,7 +75,7 @@ const descriptionV2: INodeTypeDescription = {
 			isFullPath: true,
 			path: '={{ $parameter["path"] || $parameter["options"]?.path || $webhookId }}',
 			ndvHideMethod: true,
-			isForm: true,
+			nodeType: 'form',
 		},
 	],
 	eventTriggerDescription: 'Waiting for you to submit the form',
@@ -95,11 +109,44 @@ const descriptionV2: INodeTypeDescription = {
 				},
 			],
 			default: 'none',
+			displayOptions: { show: { '@version': [{ _cnd: { lte: 2.5 } }] } },
+			builderHint: {
+				propertyHint:
+					"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.",
+			},
+		},
+		{
+			displayName: 'Authentication',
+			name: FORM_TRIGGER_AUTHENTICATION_PROPERTY,
+			type: 'options',
+			options: [
+				{
+					name: 'Basic Auth',
+					value: 'basicAuth',
+				},
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					name: 'n8n User Auth',
+					value: 'n8nUserAuth',
+					description: 'Require user to be logged in with their n8n account',
+				},
+				{
+					name: 'None',
+					value: 'none',
+				},
+			],
+			default: 'none',
+			displayOptions: { show: { '@version': [{ _cnd: { gte: 2.6 } }] } },
+			builderHint: {
+				propertyHint:
+					"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.",
+			},
 		},
 		{ ...webhookPath, displayOptions: { show: { '@version': [{ _cnd: { lte: 2.1 } }] } } },
 		formTitle,
 		formDescription,
-		formFields,
+		{ ...formFields, displayOptions: { show: { '@version': [{ _cnd: { lt: 2.5 } }] } } },
+		{ ...formFieldsDynamic, displayOptions: { show: { '@version': [{ _cnd: { gte: 2.5 } }] } } },
 		{ ...formRespondMode, displayOptions: { show: { '@version': [{ _cnd: { lte: 2.1 } }] } } },
 		{
 			...formRespondMode,
@@ -133,6 +180,7 @@ const descriptionV2: INodeTypeDescription = {
 			default: {},
 			options: [
 				appendAttributionToForm,
+				ipAllowlist,
 				{
 					displayName: 'Button Label',
 					description: 'The label of the submit button in the form',
@@ -161,6 +209,20 @@ const descriptionV2: INodeTypeDescription = {
 					description: 'Whether to ignore requests from bots like link previewers and web crawlers',
 				},
 				{
+					displayName: 'Include User in Output',
+					name: 'includeUserInOutput',
+					type: 'boolean',
+					default: true,
+					description:
+						"Whether to include the logged-in user's ID, email and name in the trigger output",
+					displayOptions: {
+						show: {
+							'/authentication': ['n8nUserAuth'],
+							'@version': [{ _cnd: { gte: 2.6 } }],
+						},
+					},
+				},
+				{
 					...useWorkflowTimezone,
 					default: false,
 					description: "Whether to use the workflow timezone in 'submittedAt' field or UTC",
@@ -179,6 +241,22 @@ const descriptionV2: INodeTypeDescription = {
 							'@version': [{ _cnd: { gt: 2 } }],
 						},
 					},
+				},
+				{
+					displayName: 'Custom Form Styling',
+					name: 'customCss',
+					type: 'string',
+					typeOptions: {
+						rows: 10,
+						editor: 'cssEditor',
+					},
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { gt: 2 } }],
+						},
+					},
+					default: cssVariables.trim(),
+					description: 'Override default styling of the public form interface with CSS',
 				},
 			],
 		},

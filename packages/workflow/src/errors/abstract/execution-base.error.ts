@@ -1,15 +1,18 @@
-import type { Functionality, IDataObject, JsonObject } from '../../Interfaces';
-import { ApplicationError, type ReportingOptions } from '../application.error';
+import { BaseError, type BaseErrorOptions } from '../base/base.error';
+import type { Functionality, IDataObject, JsonObject } from '../../interfaces';
 
-interface ExecutionBaseErrorOptions extends ReportingOptions {
+interface ExecutionBaseErrorOptions extends BaseErrorOptions {
 	cause?: Error;
 	errorResponse?: JsonObject;
 }
 
-export abstract class ExecutionBaseError extends ApplicationError {
-	description: string | null | undefined;
+export abstract class ExecutionBaseError extends BaseError {
+	// `BaseError.description` is readonly, but subclasses (e.g. NodeApiError,
+	// ExpressionError) reassign it, so redeclare it as writable here. `declare`
+	// avoids re-initializing the field and clobbering the value set by `super`.
+	declare description: string | null | undefined;
 
-	cause?: Error;
+	override cause?: Error;
 
 	errorResponse?: JsonObject;
 

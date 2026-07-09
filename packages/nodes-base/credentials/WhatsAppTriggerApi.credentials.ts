@@ -5,7 +5,7 @@ export class WhatsAppTriggerApi implements ICredentialType {
 
 	displayName = 'WhatsApp OAuth API';
 
-	documentationUrl = 'whatsApp';
+	documentationUrl = 'whatsapp';
 
 	properties: INodeProperties[] = [
 		{

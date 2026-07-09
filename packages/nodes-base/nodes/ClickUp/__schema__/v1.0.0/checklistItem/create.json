@@ -1,0 +1,71 @@
+{
+    "type": "object",
+    "properties": {
+        "creator": {
+            "type": "integer"
+        },
+        "date_created": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "assignee": {
+                        "type": "null"
+                    },
+                    "date_created": {
+                        "type": "string"
+                    },
+                    "due_date": {
+                        "type": "null"
+                    },
+                    "due_date_time": {
+                        "type": "boolean"
+                    },
+                    "group_assignee": {
+                        "type": "null"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "parent": {
+                        "type": "null"
+                    },
+                    "resolved": {
+                        "type": "boolean"
+                    },
+                    "sent_due_date_notif": {
+                        "type": "null"
+                    },
+                    "start_date": {
+                        "type": "null"
+                    },
+                    "start_date_time": {
+                        "type": "boolean"
+                    }
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "orderindex": {
+            "type": "integer"
+        },
+        "resolved": {
+            "type": "integer"
+        },
+        "task_id": {
+            "type": "string"
+        },
+        "unresolved": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

@@ -1,7 +1,12 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, UserError } from 'n8n-workflow';
 
-import { cellFormat, handlingExtraData, locationDefine } from './commonDescription';
+import {
+	cellFormat,
+	handlingExtraData,
+	locationDefine,
+	upsertColumnsResourceMapperBuilderHint,
+} from './commonDescription';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
 import {
 	ROW_NUMBER,
@@ -157,6 +162,43 @@ export const description: SheetProperties = [
 			value: null,
 		},
 		required: true,
+		builderHint: upsertColumnsResourceMapperBuilderHint,
+		typeOptions: {
+			loadOptionsDependsOn: ['sheetName.value'],
+			resourceMapper: {
+				resourceMapperMethod: 'getMappingColumns',
+				mode: 'update',
+				fieldWords: {
+					singular: 'column',
+					plural: 'columns',
+				},
+				addAllFields: true,
+				multiKeyMatch: false,
+				allowEmptyValues: true,
+			},
+		},
+		displayOptions: {
+			show: {
+				resource: ['sheet'],
+				operation: ['update'],
+				'@version': [{ _cnd: { gte: 4.7 } }],
+			},
+			hide: {
+				...untilSheetSelected,
+			},
+		},
+	},
+	{
+		displayName: 'Columns',
+		name: 'columns',
+		type: 'resourceMapper',
+		noDataExpression: true,
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		required: true,
+		builderHint: upsertColumnsResourceMapperBuilderHint,
 		typeOptions: {
 			loadOptionsDependsOn: ['sheetName.value'],
 			resourceMapper: {
@@ -174,7 +216,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['update'],
-				'@version': [{ _cnd: { gte: 4 } }],
+				'@version': [{ _cnd: { between: { from: 4, to: 4.6 } } }],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -258,9 +300,26 @@ export async function execute(
 	const newColumns = new Set<string>();
 
 	const columnsToMatchOn: string[] =
-		nodeVersion < 4
-			? [this.getNodeParameter('columnToMatchOn', 0) as string]
-			: (this.getNodeParameter('columns.matchingColumns', 0) as string[]);
+		nodeVersion < 4 ? [this.getNodeParameter('columnToMatchOn', 0) as string] : [];
+	if (nodeVersion >= 4) {
+		// Use a fallback so the missing update key gets an operation-specific error.
+		const matchingColumns = this.getNodeParameter(
+			'columns.matchingColumns',
+			0,
+			[] as string[],
+		) as string[];
+		if (!Array.isArray(matchingColumns) || matchingColumns.length === 0) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'`columns.matchingColumns` is required for the Update Row operation',
+				{
+					description:
+						'Set `columns.matchingColumns` to a non-empty `string[]` of header names that uniquely identify the row to update (e.g. `["id"]` or `["email"]`).',
+				},
+			);
+		}
+		columnsToMatchOn.push(...matchingColumns);
+	}
 
 	const dataMode =
 		nodeVersion < 4
@@ -320,7 +379,7 @@ export async function execute(
 			const valueToMatchOn =
 				nodeVersion < 4
 					? (this.getNodeParameter('valueToMatchOn', i, '') as string)
-					: (this.getNodeParameter(`columns.value[${columnsToMatchOn[0]}]`, i, '') as string);
+					: (this.getNodeParameter(`columns.value["${columnsToMatchOn[0]}"]`, i, '') as string);
 
 			if (valueToMatchOn === '') {
 				throw new NodeOperationError(
@@ -340,7 +399,7 @@ export async function execute(
 						"At least one value has to be added under 'Values to Send'",
 					);
 				}
-				// eslint-disable-next-line @typescript-eslint/no-loop-func
+
 				const fields = valuesToSend.reduce((acc, entry) => {
 					if (entry.column === 'newColumn') {
 						const columnName = entry.columnName as string;
@@ -369,6 +428,22 @@ export async function execute(
 				}
 				// Setting empty values to empty string so that they are not ignored by the API
 				Object.keys(mappingValues).forEach((key) => {
+					// null and undefined values are mapped to undefined
+					if (key === 'row_number' && mappingValues[key] === undefined && nodeVersion >= 4.6) {
+						throw new UserError('row_number is null or undefined', {
+							description:
+								"Since it's being used to determine the row to update, it cannot be null or undefined",
+						});
+					}
+
+					// null and undefined values are mapped to undefined
+					if (mappingValues[key] === undefined) {
+						this.addExecutionHints({
+							message: 'Warning: The value of column to match is null or undefined',
+							location: 'outputPane',
+						});
+					}
+
 					if (mappingValues[key] === undefined || mappingValues[key] === null) {
 						mappingValues[key] = '';
 					}

@@ -1,4 +1,5 @@
 import { SEND_AND_WAIT_OPERATION, type INodeProperties } from 'n8n-workflow';
+import { slackChannelModes } from './utils';
 
 export const messageOperations: INodeProperties[] = [
 	{
@@ -18,9 +19,24 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Delete a message',
 			},
 			{
+				name: 'Delete Scheduled',
+				value: 'deleteScheduled',
+				action: 'Delete a scheduled message',
+			},
+			{
+				name: 'Get Many Scheduled',
+				value: 'getManyScheduled',
+				action: 'Get many scheduled messages',
+			},
+			{
 				name: 'Get Permalink',
 				value: 'getPermalink',
 				action: 'Get a message permalink',
+			},
+			{
+				name: 'Schedule',
+				value: 'schedule',
+				action: 'Schedule a message',
 			},
 			{
 				name: 'Search',
@@ -55,7 +71,7 @@ export const sendToSelector: INodeProperties = {
 	displayOptions: {
 		show: {
 			resource: ['message'],
-			operation: ['post'],
+			operation: ['post', 'schedule'],
 		},
 	},
 	options: [
@@ -96,9 +112,10 @@ export const channelRLC: INodeProperties = {
 			validation: [
 				{
 					type: 'regex',
+					// chat.postMessage accepts public channel names as well as IDs.
 					properties: {
-						regex: '[a-zA-Z0-9]{2,}',
-						errorMessage: 'Not a valid Slack Channel ID',
+						regex: '^(?:[CGD][A-Z0-9]{2,}|#?[a-z0-9_\\-]{2,})$',
+						errorMessage: 'Not a valid Slack Channel ID or name',
 					},
 				},
 			],
@@ -175,6 +192,40 @@ export const userRLC: INodeProperties = {
 	],
 };
 
+export const replyToMessageField: INodeProperties = {
+	displayName: 'Reply to a Message',
+	name: 'thread_ts',
+	type: 'fixedCollection',
+	default: {},
+	placeholder: 'Reply to a Message',
+	description: "Provide another message's Timestamp value to make this message a reply",
+	options: [
+		{
+			displayName: 'Reply to a Message',
+			name: 'replyValues',
+			values: [
+				{
+					displayName: 'Message Timestamp to Reply To',
+					name: 'thread_ts',
+					type: 'number',
+					default: undefined,
+					placeholder: '1663233118.856619',
+					description:
+						'Message timestamps are included in output data of Slack nodes, abbreviated to ts',
+				},
+				{
+					displayName: 'Also Send to Channel',
+					name: 'reply_broadcast',
+					type: 'boolean',
+					default: false,
+					description:
+						'Whether the reply should be made visible to everyone in the channel or conversation',
+				},
+			],
+		},
+	],
+};
+
 export const messageFields: INodeProperties[] = [
 	/* ----------------------------------------------------------------------- */
 	/*                                 message:getPermalink
@@ -192,52 +243,7 @@ export const messageFields: INodeProperties[] = [
 				operation: ['getPermalink'],
 			},
 		},
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a channel...',
-				typeOptions: {
-					searchListMethod: 'getChannels',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Not a valid Slack Channel ID',
-						},
-					},
-				],
-				placeholder: 'C0122KQ70S7E',
-			},
-			{
-				displayName: 'By URL',
-				name: 'url',
-				type: 'string',
-				placeholder: 'https://app.slack.com/client/TS9594PZK/B0556F47Z3A',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: 'http(s)?://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-							errorMessage: 'Not a valid Slack Channel URL',
-						},
-					},
-				],
-				extractValue: {
-					type: 'regex',
-					regex: 'https://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-				},
-			},
-		],
+		modes: slackChannelModes,
 	},
 	{
 		displayName: 'Message Timestamp',
@@ -263,7 +269,7 @@ export const messageFields: INodeProperties[] = [
 		...channelRLC,
 		displayOptions: {
 			show: {
-				operation: ['post'],
+				operation: ['post', 'schedule'],
 				resource: ['message'],
 				select: ['channel'],
 			},
@@ -273,7 +279,7 @@ export const messageFields: INodeProperties[] = [
 		...userRLC,
 		displayOptions: {
 			show: {
-				operation: ['post'],
+				operation: ['post', 'schedule'],
 				resource: ['message'],
 				select: ['user'],
 			},
@@ -285,7 +291,7 @@ export const messageFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				operation: ['post'],
+				operation: ['post', 'schedule'],
 				resource: ['message'],
 			},
 		},
@@ -318,7 +324,7 @@ export const messageFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['post'],
+				operation: ['post', 'schedule'],
 				resource: ['message'],
 				messageType: ['text'],
 			},
@@ -333,7 +339,7 @@ export const messageFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['post'],
+				operation: ['post', 'schedule'],
 				resource: ['message'],
 				messageType: ['block'],
 			},
@@ -353,7 +359,7 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: ['post'],
+				operation: ['post', 'schedule'],
 				resource: ['message'],
 				messageType: ['block'],
 			},
@@ -367,7 +373,7 @@ export const messageFields: INodeProperties[] = [
 		type: 'notice',
 		displayOptions: {
 			show: {
-				operation: ['post'],
+				operation: ['post', 'schedule'],
 				resource: ['message'],
 				messageType: ['attachment'],
 			},
@@ -384,7 +390,7 @@ export const messageFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: ['post'],
+				operation: ['post', 'schedule'],
 				resource: ['message'],
 				messageType: ['attachment'],
 			},
@@ -559,12 +565,27 @@ export const messageFields: INodeProperties[] = [
 		],
 	},
 	{
+		displayName: 'Post At',
+		name: 'postAt',
+		type: 'dateTime',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['schedule'],
+			},
+		},
+		description:
+			'When the message should be sent. Must be in the future and within 120 days from now.',
+	},
+	{
 		displayName: 'Options',
 		name: 'otherOptions',
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: ['post'],
+				operation: ['post', 'schedule'],
 				resource: ['message'],
 			},
 		},
@@ -651,39 +672,7 @@ export const messageFields: INodeProperties[] = [
 				default: false,
 				description: 'Whether to turn @users and #channels in message text into clickable links',
 			},
-			{
-				displayName: 'Reply to a Message',
-				name: 'thread_ts',
-				type: 'fixedCollection',
-				default: {},
-				placeholder: 'Reply to a Message',
-				description: "Provide another message's Timestamp value to make this message a reply",
-				options: [
-					{
-						displayName: 'Reply to a Message',
-						name: 'replyValues',
-						values: [
-							{
-								displayName: 'Message Timestamp to Reply To',
-								name: 'thread_ts',
-								type: 'number',
-								default: undefined,
-								placeholder: '1663233118.856619',
-								description:
-									'Message timestamps are included in output data of Slack nodes, abbreviated to ts',
-							},
-							{
-								displayName: 'Reply to Thread',
-								name: 'reply_broadcast',
-								type: 'boolean',
-								default: false,
-								description:
-									'Whether the reply should be made visible to everyone in the channel or conversation',
-							},
-						],
-					},
-				],
-			},
+			replyToMessageField,
 			{
 				displayName: 'Use Markdown?',
 				name: 'mrkdwn',
@@ -796,6 +785,114 @@ export const messageFields: INodeProperties[] = [
 	},
 
 	/* ----------------------------------------------------------------------- */
+	/*                                 message:deleteScheduled                 */
+	/* ----------------------------------------------------------------------- */
+	{
+		displayName: 'Channel',
+		name: 'channelId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		placeholder: 'Select a channel...',
+		modes: slackChannelModes,
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['deleteScheduled'],
+			},
+		},
+		description: 'The channel the scheduled message was sent to',
+	},
+	{
+		displayName: 'Scheduled Message ID',
+		name: 'scheduledMessageId',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['deleteScheduled'],
+			},
+		},
+		description: 'The ID returned when the message was originally scheduled',
+		placeholder: 'Q1298393284',
+	},
+
+	/* ----------------------------------------------------------------------- */
+	/*                                 message:getManyScheduled                */
+	/* ----------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['getManyScheduled'],
+			},
+		},
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['getManyScheduled'],
+				returnAll: [false],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		default: 50,
+		description: 'Max number of results to return',
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add filter',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['getManyScheduled'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Channel',
+				name: 'channelId',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				placeholder: 'Select a channel...',
+				modes: slackChannelModes,
+				description: 'Only show scheduled messages in this channel',
+			},
+			{
+				displayName: 'Latest',
+				name: 'latest',
+				type: 'dateTime',
+				default: '',
+				description: 'A point in time before which scheduled messages should be returned',
+			},
+			{
+				displayName: 'Oldest',
+				name: 'oldest',
+				type: 'dateTime',
+				default: '',
+				description: 'A point in time after which scheduled messages should be returned',
+			},
+		],
+	},
+
+	/* ----------------------------------------------------------------------- */
 	/*                                 message:update                          */
 	/* ----------------------------------------------------------------------- */
 	{
@@ -804,52 +901,7 @@ export const messageFields: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a channel...',
-				typeOptions: {
-					searchListMethod: 'getChannels',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Not a valid Slack Channel ID',
-						},
-					},
-				],
-				placeholder: 'C0122KQ70S7E',
-			},
-			{
-				displayName: 'By URL',
-				name: 'url',
-				type: 'string',
-				placeholder: 'https://app.slack.com/client/TS9594PZK/B0556F47Z3A',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: 'http(s)?://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-							errorMessage: 'Not a valid Slack Channel URL',
-						},
-					},
-				],
-				extractValue: {
-					type: 'regex',
-					regex: 'https://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-				},
-			},
-		],
+		modes: slackChannelModes,
 		required: true,
 		displayOptions: {
 			show: {
@@ -1055,52 +1107,7 @@ export const messageFields: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a channel...',
-				typeOptions: {
-					searchListMethod: 'getChannels',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Not a valid Slack Channel ID',
-						},
-					},
-				],
-				placeholder: 'C0122KQ70S7E',
-			},
-			{
-				displayName: 'By URL',
-				name: 'url',
-				type: 'string',
-				placeholder: 'https://app.slack.com/client/TS9594PZK/B0556F47Z3A',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: 'http(s)?://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-							errorMessage: 'Not a valid Slack Channel URL',
-						},
-					},
-				],
-				extractValue: {
-					type: 'regex',
-					regex: 'https://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-				},
-			},
-		],
+		modes: slackChannelModes,
 		displayOptions: {
 			show: {
 				operation: ['delete'],

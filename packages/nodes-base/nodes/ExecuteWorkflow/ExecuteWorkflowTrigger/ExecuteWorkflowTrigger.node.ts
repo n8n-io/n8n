@@ -1,10 +1,12 @@
-import _ from 'lodash';
+import pickBy from 'lodash/pickBy';
 import {
 	type INodeExecutionData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ITriggerFunctions,
+	type ITriggerResponse,
 } from 'n8n-workflow';
 
 import {
@@ -22,22 +24,23 @@ export class ExecuteWorkflowTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Execute Workflow Trigger',
 		name: 'executeWorkflowTrigger',
-		icon: 'fa:sign-out-alt',
+		icon: 'node:sub-workflow-trigger',
+		iconColor: 'black',
 		group: ['trigger'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description:
 			'Helpers for calling other n8n workflows. Used for designing modular, microservice-like workflows.',
 		eventTriggerDescription: '',
 		maxNodes: 1,
 		defaults: {
-			name: 'Workflow Input Trigger',
-			color: '#ff6d5a',
+			name: 'When Executed by Another Workflow',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		hints: [
 			{
-				message: 'Please make sure to define your input fields.',
+				message:
+					"This workflow isn't set to accept any input data. Fill out the workflow input schema or change the workflow to accept any data passed to it.",
 				// This condition checks if we have no input fields, which gets a bit awkward:
 				// For WORKFLOW_INPUTS: keys() only contains `VALUES` if at least one value is provided
 				// For JSON_EXAMPLE: We remove all whitespace and check if we're left with an empty object. Note that we already error if the example is not valid JSON
@@ -58,8 +61,8 @@ export class ExecuteWorkflowTrigger implements INodeType {
 					{
 						name: 'Workflow Call',
 						value: 'worklfow_call',
-						description: 'When called by another workflow using Execute Workflow Trigger',
-						action: 'When Called by Another Workflow',
+						description: 'When executed by another workflow using Execute Workflow Trigger',
+						action: 'When executed by Another Workflow',
 					},
 				],
 				default: 'worklfow_call',
@@ -142,7 +145,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 				},
 			},
 			{
-				displayName: 'Workflow Inputs',
+				displayName: 'Workflow Input Schema',
 				name: WORKFLOW_INPUTS,
 				placeholder: 'Add field',
 				type: 'fixedCollection',
@@ -168,7 +171,8 @@ export class ExecuteWorkflowTrigger implements INodeType {
 								type: 'string',
 								default: '',
 								placeholder: 'e.g. fieldName',
-								description: 'Name of the field',
+								description:
+									'A unique name for this workflow input, used to reference it from another workflows',
 								required: true,
 								noDataExpression: true,
 							},
@@ -176,7 +180,8 @@ export class ExecuteWorkflowTrigger implements INodeType {
 								displayName: 'Type',
 								name: 'type',
 								type: 'options',
-								description: 'The field value type',
+								description:
+									"Expected data type for this input value. Determines how this field's values are stored, validated, and displayed.",
 								options: TYPE_OPTIONS,
 								required: true,
 								default: 'string',
@@ -186,8 +191,40 @@ export class ExecuteWorkflowTrigger implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'Items to Return',
+				name: 'returnOutput',
+				type: 'options',
+				noDataExpression: true,
+				default: 'lastRunOnly',
+				description:
+					'Choose what to send back when the last node ran multiple times (for example, after a Loop Over Items)',
+				options: [
+					{
+						name: 'All Items From Every Run',
+						value: 'allRuns',
+						description: 'Send every item the last node produced, across all its runs',
+					},
+					{
+						name: 'Items From the Last Run Only',
+						value: 'lastRunOnly',
+						description: "Send only the items from the last node's final run",
+					},
+				],
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lt: 1.2 } }],
+					},
+				},
+			},
 		],
 	};
+
+	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
+		// ExecuteWorkflowTrigger is triggered by the ExecuteWorkflow node
+		// No setup or teardown is required, as the triggering is handled externally
+		return {};
+	}
 
 	async execute(this: IExecuteFunctions) {
 		const inputData = this.getInputData();
@@ -208,15 +245,16 @@ export class ExecuteWorkflowTrigger implements INodeType {
 			return [inputData];
 		} else {
 			const newParams = getFieldEntries(this);
-			const newKeys = new Set(newParams.map((x) => x.name));
-			const itemsInSchema: INodeExecutionData[] = inputData.map((row, index) => ({
+			const newKeys = new Set(newParams.fields.map((x) => x.name));
+			const itemsInSchema: INodeExecutionData[] = inputData.map(({ json, binary }, index) => ({
 				json: {
-					...Object.fromEntries(newParams.map((x) => [x.name, FALLBACK_DEFAULT_VALUE])),
+					...Object.fromEntries(newParams.fields.map((x) => [x.name, FALLBACK_DEFAULT_VALUE])),
 					// Need to trim to the expected schema to support legacy Execute Workflow callers passing through all their data
 					// which we do not want to expose past this node.
-					..._.pickBy(row.json, (_value, key) => newKeys.has(key)),
+					...pickBy(json, (_value, key) => newKeys.has(key)),
 				},
 				index,
+				binary,
 			}));
 
 			return [itemsInSchema];

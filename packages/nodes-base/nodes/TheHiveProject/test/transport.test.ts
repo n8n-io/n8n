@@ -1,14 +1,14 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
-import nock from 'nock';
 
 import { theHiveApiQuery } from '../transport/queryHelper';
 import * as transport from '../transport/requestApi';
+import type * as _importType0 from '../transport/requestApi';
 
-jest.mock('../transport/requestApi', () => {
-	const originalModule = jest.requireActual('../transport/requestApi');
+vi.mock('../transport/requestApi', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../transport/requestApi');
 	return {
 		...originalModule,
-		theHiveApiRequest: jest.fn(async function () {
+		theHiveApiRequest: vi.fn(async function () {
 			return {};
 		}),
 	};
@@ -17,15 +17,6 @@ jest.mock('../transport/requestApi', () => {
 const fakeExecuteFunction = {} as unknown as IExecuteFunctions;
 
 describe('Test TheHiveProject, theHiveApiQuery', () => {
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../transport/requestApi');
-	});
-
 	it('should make list query request', async () => {
 		const scope = {
 			query: 'listOrganisationPage',

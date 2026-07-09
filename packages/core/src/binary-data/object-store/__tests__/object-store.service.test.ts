@@ -1,0 +1,674 @@
+/* eslint-disable @typescript-eslint/naming-convention */
+import {
+	DeleteObjectCommand,
+	DeleteObjectsCommand,
+	GetObjectCommand,
+	HeadBucketCommand,
+	HeadObjectCommand,
+	ListObjectsV2Command,
+	PutObjectCommand,
+	type S3Client,
+} from '@aws-sdk/client-s3';
+import type { Logger } from '@n8n/backend-common';
+import { PassThrough, Readable } from 'stream';
+import { captor, mock } from 'vitest-mock-extended';
+
+import type { ObjectStoreConfig } from '../object-store.config';
+import { ObjectStoreService } from '../object-store.service.ee';
+
+const mockS3Send = vi.fn();
+const s3Client = mock<S3Client>({ send: mockS3Send });
+vi.mock('@aws-sdk/client-s3', async (importActual) => ({
+	...(await importActual()),
+	S3Client: class {
+		constructor() {
+			return s3Client;
+		}
+	},
+}));
+
+describe('ObjectStoreService', () => {
+	const mockBucket = { region: 'us-east-1', name: 'test-bucket' };
+	const mockHost = `s3.${mockBucket.region}.amazonaws.com`;
+	const FAILED_REQUEST_ERROR_MESSAGE = 'Request to S3 failed';
+	const mockError = new Error('Something went wrong!');
+	const workflowId = 'workflow-id';
+	const executionId = 999;
+	const binaryDataId = '71f6209b-5d48-41a2-a224-80d529d8bb32';
+	const fileId = `workflows/${workflowId}/executions/${executionId}/binary_data/${binaryDataId}`;
+	const mockBuffer = Buffer.from('Test data');
+	const s3Config = mock<ObjectStoreConfig>({
+		host: mockHost,
+		bucket: mockBucket,
+		credentials: {
+			accessKey: 'mock-access-key',
+			accessSecret: 'mock-secret-key',
+			authAutoDetect: false,
+		},
+		protocol: 'https',
+		forcePathStyle: true,
+		maxAttempts: 3,
+	});
+
+	let objectStoreService: ObjectStoreService;
+	const logger = mock<Logger>();
+
+	const now = new Date('2024-02-01T01:23:45.678Z');
+	vi.useFakeTimers({ now });
+
+	beforeEach(async () => {
+		objectStoreService = new ObjectStoreService(logger, s3Config);
+		await objectStoreService.init();
+		mockS3Send.mockClear();
+		logger.error.mockClear();
+		vi.restoreAllMocks();
+	});
+
+	describe('getClientConfig()', () => {
+		const credentials = {
+			accessKeyId: s3Config.credentials.accessKey,
+			secretAccessKey: s3Config.credentials.accessSecret,
+		};
+
+		it('should return client config with endpoint and forcePathStyle when custom host is provided', () => {
+			s3Config.host = 'example.com';
+			s3Config.forcePathStyle = true;
+
+			const clientConfig = objectStoreService.getClientConfig();
+
+			expect(clientConfig).toEqual({
+				endpoint: 'https://example.com',
+				forcePathStyle: true,
+				region: mockBucket.region,
+				credentials,
+				maxAttempts: 3,
+			});
+		});
+
+		it('should return client config with forcePathStyle disabled when configured', () => {
+			s3Config.host = 'example.com';
+			s3Config.forcePathStyle = false;
+
+			const clientConfig = objectStoreService.getClientConfig();
+
+			expect(clientConfig).toEqual({
+				endpoint: 'https://example.com',
+				forcePathStyle: false,
+				region: mockBucket.region,
+				credentials,
+				maxAttempts: 3,
+			});
+		});
+
+		it('should return client config without endpoint when host is not provided', () => {
+			s3Config.host = '';
+
+			const clientConfig = objectStoreService.getClientConfig();
+
+			expect(clientConfig).toEqual({
+				region: mockBucket.region,
+				credentials,
+				maxAttempts: 3,
+			});
+		});
+
+		it('should return client config without credentials when authAutoDetect is true', () => {
+			s3Config.credentials.authAutoDetect = true;
+
+			const clientConfig = objectStoreService.getClientConfig();
+
+			expect(clientConfig).toEqual({
+				region: mockBucket.region,
+				maxAttempts: 3,
+			});
+		});
+	});
+
+	describe('checkConnection()', () => {
+		it('should send a HEAD request to the correct bucket', async () => {
+			mockS3Send.mockResolvedValueOnce({});
+
+			objectStoreService.setReady(false);
+
+			await objectStoreService.checkConnection();
+
+			const commandCaptor = captor<HeadObjectCommand>();
+			expect(mockS3Send).toHaveBeenCalledWith(commandCaptor);
+			const command = commandCaptor.value;
+			expect(command).toBeInstanceOf(HeadBucketCommand);
+			expect(command.input).toEqual({ Bucket: 'test-bucket' });
+		});
+
+		it('should throw an error on request failure', async () => {
+			objectStoreService.setReady(false);
+
+			mockS3Send.mockRejectedValueOnce(mockError);
+
+			const promise = objectStoreService.checkConnection();
+
+			await expect(promise).rejects.toThrowError(FAILED_REQUEST_ERROR_MESSAGE);
+		});
+	});
+
+	describe('getMetadata()', () => {
+		it('should send a HEAD request to the correct bucket and key', async () => {
+			mockS3Send.mockResolvedValueOnce({
+				ContentType: 'text/plain',
+				ContentLength: 1024,
+				ETag: '"abc123"',
+				LastModified: new Date(),
+				Metadata: { filename: 'test.txt' },
+			});
+
+			await objectStoreService.getMetadata(fileId);
+
+			const commandCaptor = captor<HeadObjectCommand>();
+			expect(mockS3Send).toHaveBeenCalledWith(commandCaptor);
+			const command = commandCaptor.value;
+			expect(command).toBeInstanceOf(HeadObjectCommand);
+			expect(command.input).toEqual({
+				Bucket: 'test-bucket',
+				Key: fileId,
+			});
+		});
+
+		it('should throw an error on request failure', async () => {
+			mockS3Send.mockRejectedValueOnce(mockError);
+
+			const promise = objectStoreService.getMetadata(fileId);
+
+			await expect(promise).rejects.toThrowError(FAILED_REQUEST_ERROR_MESSAGE);
+		});
+	});
+
+	describe('put()', () => {
+		it('should send a PUT request to upload an object', async () => {
+			const metadata = { fileName: 'file.txt', mimeType: 'text/plain' };
+
+			mockS3Send.mockResolvedValueOnce({});
+
+			await objectStoreService.put(fileId, mockBuffer, metadata);
+
+			const commandCaptor = captor<PutObjectCommand>();
+			expect(mockS3Send).toHaveBeenCalledWith(commandCaptor);
+			const command = commandCaptor.value;
+			expect(command).toBeInstanceOf(PutObjectCommand);
+			expect(command.input).toEqual({
+				Bucket: 'test-bucket',
+				Key: fileId,
+				Body: mockBuffer,
+				ContentLength: mockBuffer.length,
+				ContentMD5: 'yh6gLBC3w39CW5t92G1eEQ==',
+				ContentType: 'text/plain',
+				Metadata: { filename: 'file.txt' },
+			});
+		});
+
+		it('should encode filename with non-ASCII characters in metadata', async () => {
+			const metadata = {
+				fileName: 'Order Form - Gunes Ekspres Havacılık A.Ş.',
+				mimeType: 'text/plain',
+			};
+
+			mockS3Send.mockResolvedValueOnce({});
+
+			await objectStoreService.put(fileId, mockBuffer, metadata);
+
+			const commandCaptor = captor<PutObjectCommand>();
+			expect(mockS3Send).toHaveBeenCalledWith(commandCaptor);
+			const command = commandCaptor.value;
+			expect(command).toBeInstanceOf(PutObjectCommand);
+			expect(command.input).toEqual({
+				Bucket: 'test-bucket',
+				Key: fileId,
+				Body: mockBuffer,
+				ContentLength: mockBuffer.length,
+				ContentMD5: 'yh6gLBC3w39CW5t92G1eEQ==',
+				ContentType: 'text/plain',
+				Metadata: {
+					filename: 'Order%20Form%20-%20Gunes%20Ekspres%20Havac%C4%B1l%C4%B1k%20A.%C5%9E.',
+				},
+			});
+		});
+
+		it('should throw an error on request failure', async () => {
+			const metadata = { fileName: 'file.txt', mimeType: 'text/plain' };
+
+			mockS3Send.mockRejectedValueOnce(mockError);
+
+			const promise = objectStoreService.put(fileId, mockBuffer, metadata);
+
+			await expect(promise).rejects.toThrowError(FAILED_REQUEST_ERROR_MESSAGE);
+		});
+	});
+
+	describe('get()', () => {
+		it('should send a GET request to download an object as a buffer', async () => {
+			const fileId = 'file.txt';
+			const body = Readable.from(mockBuffer);
+
+			mockS3Send.mockResolvedValueOnce({ Body: body });
+
+			const result = await objectStoreService.get(fileId, { mode: 'buffer' });
+
+			const command = mockS3Send.mock.calls[0][0] as GetObjectCommand;
+			expect(command).toBeInstanceOf(GetObjectCommand);
+			expect(command.input).toEqual({
+				Bucket: 'test-bucket',
+				Key: fileId,
+			});
+
+			expect(Buffer.isBuffer(result)).toBe(true);
+		});
+
+		it('should send a GET request to download an object as a stream', async () => {
+			const body = new Readable({ read() {} });
+
+			mockS3Send.mockResolvedValueOnce({ Body: body });
+
+			const result = await objectStoreService.get(fileId, { mode: 'stream' });
+
+			expect(mockS3Send).toHaveBeenCalledWith(
+				expect.any(GetObjectCommand),
+				expect.objectContaining({ abortSignal: expect.any(AbortSignal) }),
+			);
+			const command = mockS3Send.mock.calls[0][0] as GetObjectCommand;
+			expect(command.input).toEqual({
+				Bucket: 'test-bucket',
+				Key: fileId,
+			});
+
+			expect(result).toBeInstanceOf(PassThrough);
+		});
+
+		it('should abort the S3 request when wrapper stream is destroyed before body is fully consumed', async () => {
+			const body = new Readable({ read() {} });
+
+			mockS3Send.mockResolvedValueOnce({ Body: body });
+
+			const result = await objectStoreService.get(fileId, { mode: 'stream' });
+
+			const abortSignal = mockS3Send.mock.calls[0][1].abortSignal as AbortSignal;
+			expect(abortSignal.aborted).toBe(false);
+
+			result.destroy();
+
+			await new Promise((resolve) => result.on('close', resolve));
+
+			expect(abortSignal.aborted).toBe(true);
+		});
+
+		it('should pass through all data when the stream is fully consumed', async () => {
+			const data = 'hello world';
+			let pushCount = 0;
+			const body = new Readable({
+				read() {
+					if (pushCount === 0) {
+						this.push(data);
+						pushCount++;
+					} else {
+						this.push(null);
+					}
+				},
+			});
+
+			mockS3Send.mockResolvedValueOnce({ Body: body });
+
+			const result = await objectStoreService.get(fileId, { mode: 'stream' });
+
+			const chunks: Buffer[] = [];
+			for await (const chunk of result) {
+				chunks.push(Buffer.from(chunk));
+			}
+
+			expect(Buffer.concat(chunks).toString()).toBe(data);
+		});
+
+		it('should throw an error on request failure', async () => {
+			mockS3Send.mockRejectedValueOnce(mockError);
+
+			const promise = objectStoreService.get(fileId, { mode: 'buffer' });
+
+			await expect(promise).rejects.toThrowError(FAILED_REQUEST_ERROR_MESSAGE);
+		});
+
+		it('should re-emit stream data as chunks of exactly chunkSize (last chunk smaller)', async () => {
+			// Source pushes 4 x 2 bytes; chunkSize=3 should rewrite boundaries to [3, 3, 2].
+			// We listen to 'data' (which fires once per push) rather than iterate with `for await`,
+			// because the async iterator coalesces buffered pushes when all the data lands before the consumer starts reading.
+			// This is a quirk that only affects synthetic tests, not real streaming.
+			let pushes = 0;
+			const body = new Readable({
+				read() {
+					if (pushes < 4) {
+						this.push(Buffer.from([pushes * 2, pushes * 2 + 1]));
+						pushes++;
+					} else {
+						this.push(null);
+					}
+				},
+			});
+			mockS3Send.mockResolvedValueOnce({ Body: body });
+
+			const result = await objectStoreService.get(fileId, { mode: 'stream', chunkSize: 3 });
+
+			const chunks: Buffer[] = await new Promise((resolve, reject) => {
+				const out: Buffer[] = [];
+				result.on('data', (chunk: Buffer) => out.push(Buffer.from(chunk)));
+				result.on('end', () => resolve(out));
+				result.on('error', reject);
+			});
+
+			expect(chunks.map((c) => c.length)).toEqual([3, 3, 2]);
+			expect(Buffer.concat(chunks)).toEqual(Buffer.from([0, 1, 2, 3, 4, 5, 6, 7]));
+		});
+
+		it('should not rechunk when chunkSize is omitted or zero', async () => {
+			const body = new Readable({ read() {} });
+			mockS3Send.mockResolvedValueOnce({ Body: body });
+
+			const result = await objectStoreService.get(fileId, { mode: 'stream', chunkSize: 0 });
+
+			expect(result).toBeInstanceOf(PassThrough);
+		});
+
+		it('should propagate body errors to the rechunked consumer', async () => {
+			const failure = new Error('boom');
+			const body = new Readable({
+				read() {
+					this.destroy(failure);
+				},
+			});
+			mockS3Send.mockResolvedValueOnce({ Body: body });
+
+			const result = await objectStoreService.get(fileId, { mode: 'stream', chunkSize: 4 });
+
+			await expect(
+				new Promise((_, reject) => {
+					result.on('error', reject);
+					result.resume();
+				}),
+			).rejects.toThrow('boom');
+		});
+
+		it('should abort the S3 request when the rechunked consumer is destroyed', async () => {
+			const body = new Readable({ read() {} });
+			mockS3Send.mockResolvedValueOnce({ Body: body });
+
+			const result = await objectStoreService.get(fileId, { mode: 'stream', chunkSize: 4 });
+			const abortSignal = mockS3Send.mock.calls[0][1].abortSignal as AbortSignal;
+			expect(abortSignal.aborted).toBe(false);
+
+			result.destroy();
+			await new Promise((resolve) => result.on('close', resolve));
+
+			expect(abortSignal.aborted).toBe(true);
+		});
+	});
+
+	describe('deleteOne()', () => {
+		it('should send a DELETE request to delete a single object', async () => {
+			mockS3Send.mockResolvedValueOnce({});
+
+			await objectStoreService.deleteOne(fileId);
+
+			const commandCaptor = captor<DeleteObjectCommand>();
+			expect(mockS3Send).toHaveBeenCalledWith(commandCaptor);
+			const command = commandCaptor.value;
+			expect(command).toBeInstanceOf(DeleteObjectCommand);
+			expect(command.input).toEqual({
+				Bucket: 'test-bucket',
+				Key: fileId,
+			});
+		});
+
+		it('should throw an error on request failure', async () => {
+			mockS3Send.mockRejectedValueOnce(mockError);
+
+			const promise = objectStoreService.deleteOne(fileId);
+
+			await expect(promise).rejects.toThrowError(FAILED_REQUEST_ERROR_MESSAGE);
+		});
+	});
+
+	describe('deleteMany()', () => {
+		it('should send a DELETE request to delete multiple objects', async () => {
+			const prefix = 'test-dir/';
+			const fileName = 'file.txt';
+
+			const mockList = [
+				{
+					key: fileName,
+					lastModified: '2023-09-24T12:34:56Z',
+					eTag: 'abc123def456',
+					size: 456789,
+					storageClass: 'STANDARD',
+				},
+			];
+
+			objectStoreService.list = vi.fn().mockResolvedValue(mockList);
+			mockS3Send.mockResolvedValueOnce({});
+
+			await objectStoreService.deleteMany(prefix);
+
+			const commandCaptor = captor<DeleteObjectsCommand>();
+			expect(mockS3Send).toHaveBeenCalledWith(commandCaptor);
+			const command = commandCaptor.value;
+			expect(command).toBeInstanceOf(DeleteObjectsCommand);
+			expect(command.input).toEqual({
+				Bucket: 'test-bucket',
+				Delete: {
+					Objects: [{ Key: fileName }],
+				},
+			});
+		});
+
+		it('should not send a deletion request if no prefix match', async () => {
+			objectStoreService.list = vi.fn().mockResolvedValue([]);
+
+			const result = await objectStoreService.deleteMany('non-matching-prefix');
+
+			expect(result).toBeUndefined();
+			expect(mockS3Send).not.toHaveBeenCalled();
+		});
+
+		it('should throw an error on request failure', async () => {
+			objectStoreService.list = vi.fn().mockResolvedValue([{ key: 'file.txt' }]);
+			mockS3Send.mockRejectedValueOnce(mockError);
+
+			const promise = objectStoreService.deleteMany('test-dir/');
+
+			await expect(promise).rejects.toThrowError(FAILED_REQUEST_ERROR_MESSAGE);
+		});
+	});
+
+	describe('deleteByKeys()', () => {
+		it('should send a DELETE request for the given keys', async () => {
+			mockS3Send.mockResolvedValueOnce({});
+
+			await objectStoreService.deleteByKeys(['file-1.txt', 'file-2.txt']);
+
+			const commandCaptor = captor<DeleteObjectsCommand>();
+			expect(mockS3Send).toHaveBeenCalledTimes(1);
+			expect(mockS3Send).toHaveBeenCalledWith(commandCaptor);
+			const command = commandCaptor.value;
+			expect(command).toBeInstanceOf(DeleteObjectsCommand);
+			expect(command.input).toEqual({
+				Bucket: 'test-bucket',
+				Delete: {
+					Objects: [{ Key: 'file-1.txt' }, { Key: 'file-2.txt' }],
+				},
+			});
+		});
+
+		it('should batch requests of more than 1000 keys', async () => {
+			mockS3Send.mockResolvedValue({});
+			const keys = Array.from({ length: 1500 }, (_, i) => `file-${i}.txt`);
+
+			await objectStoreService.deleteByKeys(keys);
+
+			expect(mockS3Send).toHaveBeenCalledTimes(2);
+			const [first, second] = mockS3Send.mock.calls.map(
+				(call) => (call[0] as DeleteObjectsCommand).input.Delete?.Objects?.length,
+			);
+			expect(first).toBe(1000);
+			expect(second).toBe(500);
+		});
+
+		it('should not send a request for an empty array', async () => {
+			await objectStoreService.deleteByKeys([]);
+
+			expect(mockS3Send).not.toHaveBeenCalled();
+		});
+
+		it('should throw an error on request failure', async () => {
+			mockS3Send.mockRejectedValueOnce(mockError);
+
+			const promise = objectStoreService.deleteByKeys(['file.txt']);
+
+			await expect(promise).rejects.toThrowError(FAILED_REQUEST_ERROR_MESSAGE);
+		});
+
+		it('should throw an error when the response reports per-key failures', async () => {
+			mockS3Send.mockResolvedValueOnce({
+				Errors: [{ Key: 'file-1.txt', Code: 'AccessDenied', Message: 'Access Denied' }],
+			});
+
+			const promise = objectStoreService.deleteByKeys(['file-1.txt', 'file-2.txt']);
+
+			await expect(promise).rejects.toThrowError(
+				'Failed to delete 1 of 2 objects: file-1.txt (AccessDenied: Access Denied)',
+			);
+		});
+
+		it('should log the full failure set even when the thrown summary is truncated', async () => {
+			const errors = Array.from({ length: 8 }, (_, i) => ({
+				Key: `file-${i}.txt`,
+				Code: 'AccessDenied',
+				Message: 'Access Denied',
+			}));
+			mockS3Send.mockResolvedValueOnce({ Errors: errors });
+
+			await expect(objectStoreService.deleteByKeys(errors.map((e) => e.Key))).rejects.toThrowError(
+				'Failed to delete 8 of 8 objects',
+			);
+
+			expect(logger.error).toHaveBeenCalledWith('Failed to delete objects from S3', {
+				bucket: 'test-bucket',
+				failures: errors.map((e) => ({ key: e.Key, code: e.Code, message: e.Message })),
+			});
+		});
+	});
+
+	describe('list()', () => {
+		it('should list objects with a common prefix', async () => {
+			const prefix = 'test-dir/';
+
+			const mockListPage = {
+				contents: [{ key: `${prefix}file1.txt` }, { key: `${prefix}file2.txt` }],
+				isTruncated: false,
+			};
+
+			objectStoreService.getListPage = vi.fn().mockResolvedValue(mockListPage);
+
+			const result = await objectStoreService.list(prefix);
+
+			expect(result).toEqual(mockListPage.contents);
+		});
+
+		it('should consolidate pages', async () => {
+			const prefix = 'test-dir/';
+
+			const mockFirstListPage = {
+				contents: [{ key: `${prefix}file1.txt` }],
+				isTruncated: true,
+				nextContinuationToken: 'token1',
+			};
+
+			const mockSecondListPage = {
+				contents: [{ key: `${prefix}file2.txt` }],
+				isTruncated: false,
+			};
+
+			objectStoreService.getListPage = vi
+				.fn()
+				.mockResolvedValueOnce(mockFirstListPage)
+				.mockResolvedValueOnce(mockSecondListPage);
+
+			const result = await objectStoreService.list(prefix);
+
+			expect(result).toEqual([...mockFirstListPage.contents, ...mockSecondListPage.contents]);
+		});
+
+		it('should throw an error on request failure', async () => {
+			objectStoreService.getListPage = vi.fn().mockRejectedValueOnce(mockError);
+
+			const promise = objectStoreService.list('test-dir/');
+
+			await expect(promise).rejects.toThrowError(FAILED_REQUEST_ERROR_MESSAGE);
+		});
+	});
+
+	describe('getListPage()', () => {
+		it('should fetch a page of objects with a common prefix', async () => {
+			const prefix = 'test-dir/';
+			const mockContents = [
+				{
+					Key: `${prefix}file1.txt`,
+					LastModified: new Date(),
+					ETag: '"abc123"',
+					Size: 123,
+					StorageClass: 'STANDARD',
+				},
+			];
+
+			mockS3Send.mockResolvedValueOnce({
+				Contents: mockContents,
+				IsTruncated: false,
+			});
+
+			const result = await objectStoreService.getListPage(prefix);
+
+			const commandCaptor = captor<ListObjectsV2Command>();
+			expect(mockS3Send).toHaveBeenCalledWith(commandCaptor);
+			const command = commandCaptor.value;
+			expect(command).toBeInstanceOf(ListObjectsV2Command);
+			expect(command.input).toEqual({
+				Bucket: 'test-bucket',
+				Prefix: prefix,
+			});
+
+			expect(result.contents).toHaveLength(1);
+			expect(result.isTruncated).toBe(false);
+		});
+
+		it('should use continuation token when provided', async () => {
+			const prefix = 'test-dir/';
+			const token = 'next-page-token';
+
+			mockS3Send.mockResolvedValueOnce({
+				Contents: [],
+				IsTruncated: false,
+			});
+
+			await objectStoreService.getListPage(prefix, token);
+
+			const commandCaptor = captor<ListObjectsV2Command>();
+			expect(mockS3Send).toHaveBeenCalledWith(commandCaptor);
+			const command = commandCaptor.value;
+			expect(command.input).toEqual({
+				Bucket: 'test-bucket',
+				Prefix: prefix,
+				ContinuationToken: token,
+			});
+		});
+
+		it('should throw an error on request failure', async () => {
+			mockS3Send.mockRejectedValueOnce(mockError);
+
+			const promise = objectStoreService.getListPage('test-dir/');
+
+			await expect(promise).rejects.toThrowError(FAILED_REQUEST_ERROR_MESSAGE);
+		});
+	});
+});

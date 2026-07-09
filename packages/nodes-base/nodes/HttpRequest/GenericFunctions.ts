@@ -1,20 +1,22 @@
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import FormData from 'form-data';
 import get from 'lodash/get';
 import isPlainObject from 'lodash/isPlainObject';
 import set from 'lodash/set';
 import {
 	deepCopy,
+	getCredentialAllowedDomains,
 	type ICredentialDataDecryptedObject,
 	type IDataObject,
+	type INode,
 	type INodeExecutionData,
-	type INodeProperties,
 	type IOAuth2Options,
 	type IRequestOptions,
 } from 'n8n-workflow';
+import type { Readable } from 'stream';
 import type { SecureContextOptions } from 'tls';
 
 import type { HttpSslAuthCredentials } from './interfaces';
-import { formatPrivateKey } from '../../utils/utilities';
 
 export type BodyParameter = {
 	name: string;
@@ -39,17 +41,24 @@ function isObject(obj: unknown): obj is IDataObject {
 	return isPlainObject(obj);
 }
 
+function redactString(str: string, secrets: string[]): string {
+	return secrets.reduce((safe, secret) => safe.split(secret).join(REDACTED), str);
+}
+
 function redact<T = unknown>(obj: T, secrets: string[]): T {
 	if (typeof obj === 'string') {
-		return secrets.reduce((safe, secret) => safe.replace(secret, REDACTED), obj) as T;
+		return redactString(obj, secrets) as T;
 	}
 
 	if (Array.isArray(obj)) {
 		return obj.map((item) => redact(item, secrets)) as T;
 	} else if (isObject(obj)) {
+		const result: IDataObject = {};
 		for (const [key, value] of Object.entries(obj)) {
-			(obj as IDataObject)[key] = redact(value, secrets);
+			const redactedKey = redactString(key, secrets);
+			result[redactedKey] = redact(value, secrets);
 		}
+		return result as T;
 	}
 
 	return obj;
@@ -82,7 +91,6 @@ export function sanitizeUiMessage(
 		sendRequest = {
 			...sendRequest,
 			[requestProperty]: Object.keys(sendRequest[requestProperty] as object).reduce(
-				// eslint-disable-next-line @typescript-eslint/no-loop-func
 				(acc: IDataObject, curr) => {
 					acc[curr] = authDataKeys[requestProperty].includes(curr)
 						? REDACTED
@@ -118,20 +126,13 @@ export function sanitizeUiMessage(
 	return sendRequest;
 }
 
-export function getSecrets(
-	properties: INodeProperties[],
-	credentials: ICredentialDataDecryptedObject,
-): string[] {
-	const sensitivePropNames = new Set(
-		properties.filter((prop) => prop.typeOptions?.password).map((prop) => prop.name),
+export function getSecrets(credentials: ICredentialDataDecryptedObject): string[] {
+	const secrets = Object.values(credentials).filter(
+		(value): value is string => typeof value === 'string' && value.length > 0,
 	);
 
-	const secrets = Object.entries(credentials)
-		.filter(([propName]) => sensitivePropNames.has(propName))
-		.map(([_, value]) => value)
-		.filter((value): value is string => typeof value === 'string');
 	const oauthAccessToken = get(credentials, 'oauthTokenData.access_token');
-	if (typeof oauthAccessToken === 'string') {
+	if (typeof oauthAccessToken === 'string' && !secrets.includes(oauthAccessToken)) {
 		secrets.push(oauthAccessToken);
 	}
 
@@ -175,6 +176,9 @@ export const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {
 		},
 		mauticOAuth2Api: {
 			includeCredentialsOnRefreshOnBody: true,
+		},
+		microsoftAzureMonitorOAuth2Api: {
+			tokenExpiredStatusCode: 403,
 		},
 		microsoftDynamicsOAuth2Api: {
 			property: 'id_token',
@@ -260,7 +264,7 @@ export const prepareRequestBody = async (
 			if (parameter.parameterType === 'formBinaryData') {
 				const entry = await defaultReducer({}, parameter);
 				const key = Object.keys(entry)[0];
-				const data = entry[key] as { value: Buffer; options: FormData.AppendOptions };
+				const data = entry[key] as { value: Buffer | Readable; options: FormData.AppendOptions };
 				formData.append(key, data.value, data.options);
 				continue;
 			}
@@ -280,11 +284,33 @@ export const setAgentOptions = (
 ) => {
 	if (sslCertificates) {
 		const agentOptions: SecureContextOptions = {};
-		if (sslCertificates.ca) agentOptions.ca = formatPrivateKey(sslCertificates.ca);
-		if (sslCertificates.cert) agentOptions.cert = formatPrivateKey(sslCertificates.cert);
-		if (sslCertificates.key) agentOptions.key = formatPrivateKey(sslCertificates.key);
+		if (sslCertificates.ca) agentOptions.ca = formatPemBlock(sslCertificates.ca);
+		if (sslCertificates.cert) agentOptions.cert = formatPemBlock(sslCertificates.cert);
+		if (sslCertificates.key) agentOptions.key = formatPemBlock(sslCertificates.key);
 		if (sslCertificates.passphrase)
-			agentOptions.passphrase = formatPrivateKey(sslCertificates.passphrase);
+			agentOptions.passphrase = formatPemBlock(sslCertificates.passphrase);
 		requestOptions.agentOptions = agentOptions;
 	}
 };
+
+export const updadeQueryParameterConfig = (version: number) => {
+	if (version < 4.3) {
+		return (qs: IDataObject, name: string, value: string) => (qs[name] = value);
+	} else {
+		return (qs: { [key: string]: any }, name: string, value: any) => {
+			if (qs[name] === undefined) {
+				qs[name] = value;
+			} else if (Array.isArray(qs[name])) {
+				qs[name].push(value);
+			} else {
+				qs[name] = [qs[name], value];
+			}
+		};
+	}
+};
+
+export const getAllowedDomains = (
+	node: INode,
+	credentialData: ICredentialDataDecryptedObject,
+): string | undefined =>
+	getCredentialAllowedDomains({ node, credentialData, surface: 'HTTP Request or GraphQL' });

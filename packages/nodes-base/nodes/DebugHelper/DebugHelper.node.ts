@@ -6,10 +6,10 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
 	NodeApiError,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeOperationError,
+	UnexpectedError,
 } from 'n8n-workflow';
 
 import { generateGarbageMemory, runGarbageCollector } from './functions';
@@ -40,8 +40,8 @@ export class DebugHelper implements INodeType {
 		defaults: {
 			name: 'DebugHelper',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [],
 		properties: [
 			{
@@ -278,7 +278,7 @@ export class DebugHelper implements INodeType {
 									message: throwErrorMessage,
 								});
 							case 'Error':
-								throw new ApplicationError(throwErrorMessage);
+								throw new UnexpectedError(throwErrorMessage);
 							default:
 								break;
 						}

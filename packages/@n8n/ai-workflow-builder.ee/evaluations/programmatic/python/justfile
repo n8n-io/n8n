@@ -1,0 +1,37 @@
+check:
+    just lint
+    just format-check
+    just typecheck
+
+run:
+    uv run python -m src.main
+
+sync:
+    uv sync --group dev
+
+sync-all:
+    uv sync --all-extras --group dev
+
+lint:
+    uv run ruff check
+
+lintfix:
+    uv run ruff check --fix
+
+format:
+    uv run ruff format
+
+format-check:
+    uv run ruff format --check
+
+test:
+    uv run pytest
+
+test-cov:
+    uv run pytest --cov=src --cov-report=term-missing
+
+test-v:
+    uv run pytest -vv
+
+typecheck:
+    uv run ty check src/

@@ -1,9 +1,21 @@
-import { ApplicationError } from 'n8n-workflow';
 import type { IExecuteFunctions, IDataObject, INodeExecutionData, JsonObject } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 import type pgPromise from 'pg-promise';
 import type pg from 'pg-promise/typescript/pg-subset';
 
 import { getResolvables } from '@utils/utilities';
+
+import type { PgpDatabase } from '../v2/helpers/interfaces';
+
+const POSTGRES_TYPE_PATTERN =
+	/^[a-zA-Z_][a-zA-Z0-9_ ]*(\.[a-zA-Z_][a-zA-Z0-9_]*)?(\([a-zA-Z0-9_, ]+\)( [a-zA-Z_][a-zA-Z0-9_ ]*)?)?(\[\])*$/;
+
+function assertValidCast(cast: string | undefined): void {
+	if (cast === undefined || cast === '') return;
+	if (!POSTGRES_TYPE_PATTERN.test(cast)) {
+		throw new UserError(`Invalid column type: "${cast}"`);
+	}
+}
 
 /**
  * Returns of a shallow copy of the items which only contains the json data and
@@ -19,7 +31,7 @@ export function getItemsCopy(
 ): IDataObject[] {
 	let newItem: IDataObject;
 	return items.map((item) => {
-		newItem = {};
+		newItem = Object.create(null) as IDataObject;
 		if (guardedColumns) {
 			Object.keys(guardedColumns).forEach((column) => {
 				newItem[column] = item.json[guardedColumns[column]];
@@ -45,7 +57,7 @@ export function getItemCopy(
 	properties: string[],
 	guardedColumns?: { [key: string]: string },
 ): IDataObject {
-	const newItem: IDataObject = {};
+	const newItem: IDataObject = Object.create(null) as IDataObject;
 	if (guardedColumns) {
 		Object.keys(guardedColumns).forEach((column) => {
 			newItem[column] = item.json[guardedColumns[column]];
@@ -87,14 +99,14 @@ export function wrapData(data: IDataObject[]): INodeExecutionData[] {
  *
  * @param {Function} getNodeParam The getter for the Node's parameters
  * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
- * @param {pgPromise.IDatabase<{}, pg.IClient>} db The pgPromise database connection
+ * @param {PgpDatabase} db The pgPromise database connection
  * @param {input[]} input The Node's input data
  */
 export async function pgQuery(
-	// eslint-disable-next-line @typescript-eslint/ban-types
+	// eslint-disable-next-line @typescript-eslint/no-restricted-types
 	getNodeParam: Function,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
-	db: pgPromise.IDatabase<{}, pg.IClient>,
+	db: PgpDatabase,
 	items: INodeExecutionData[],
 	continueOnFail: boolean,
 	overrideMode?: string,
@@ -162,7 +174,7 @@ export async function pgQuery(
 			return result;
 		});
 	}
-	throw new ApplicationError('multiple, independently or transaction are valid options', {
+	throw new UserError('multiple, independently or transaction are valid options', {
 		level: 'warning',
 	});
 }
@@ -170,7 +182,7 @@ export async function pgQuery(
 export async function pgQueryV2(
 	this: IExecuteFunctions,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
-	db: pgPromise.IDatabase<{}, pg.IClient>,
+	db: PgpDatabase,
 	items: INodeExecutionData[],
 	continueOnFail: boolean,
 	options?: {
@@ -263,7 +275,7 @@ export async function pgQueryV2(
 			return result;
 		});
 	}
-	throw new ApplicationError('multiple, independently or transaction are valid options', {
+	throw new UserError('multiple, independently or transaction are valid options', {
 		level: 'warning',
 	});
 }
@@ -273,14 +285,14 @@ export async function pgQueryV2(
  *
  * @param {Function} getNodeParam The getter for the Node's parameters
  * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
- * @param {pgPromise.IDatabase<{}, pg.IClient>} db The pgPromise database connection
+ * @param {PgpDatabase} db The pgPromise database connection
  * @param {INodeExecutionData[]} items The items to be inserted
  */
 export async function pgInsert(
-	// eslint-disable-next-line @typescript-eslint/ban-types
+	// eslint-disable-next-line @typescript-eslint/no-restricted-types
 	getNodeParam: Function,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
-	db: pgPromise.IDatabase<{}, pg.IClient>,
+	db: PgpDatabase,
 	items: INodeExecutionData[],
 	continueOnFail: boolean,
 	overrideMode?: string,
@@ -294,6 +306,7 @@ export async function pgInsert(
 		.split(',')
 		.map((column) => column.trim().split(':'))
 		.map(([name, cast], i) => {
+			assertValidCast(cast);
 			guardedColumns[`column${i}`] = name;
 			return { name, cast, prop: `column${i}` };
 		});
@@ -354,7 +367,7 @@ export async function pgInsert(
 		});
 	}
 
-	throw new ApplicationError('multiple, independently or transaction are valid options', {
+	throw new UserError('multiple, independently or transaction are valid options', {
 		level: 'warning',
 	});
 }
@@ -364,13 +377,13 @@ export async function pgInsert(
  *
  * @param {Function} getNodeParam The getter for the Node's parameters
  * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
- * @param {pgPromise.IDatabase<{}, pg.IClient>} db`` The pgPromise database connection
+ * @param {PgpDatabase} db`` The pgPromise database connection
  * @param {INodeExecutionData[]} items The items to be inserted
  */
 export async function pgInsertV2(
 	this: IExecuteFunctions,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
-	db: pgPromise.IDatabase<{}, pg.IClient>,
+	db: PgpDatabase,
 	items: INodeExecutionData[],
 	continueOnFail: boolean,
 	overrideMode?: string,
@@ -384,6 +397,7 @@ export async function pgInsertV2(
 		.split(',')
 		.map((column) => column.trim().split(':'))
 		.map(([name, cast], i) => {
+			assertValidCast(cast);
 			guardedColumns[`column${i}`] = name;
 			return { name, cast, prop: `column${i}` };
 		});
@@ -464,7 +478,7 @@ export async function pgInsertV2(
 		});
 	}
 
-	throw new ApplicationError('multiple, independently or transaction are valid options', {
+	throw new UserError('multiple, independently or transaction are valid options', {
 		level: 'warning',
 	});
 }
@@ -474,14 +488,14 @@ export async function pgInsertV2(
  *
  * @param {Function} getNodeParam The getter for the Node's parameters
  * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
- * @param {pgPromise.IDatabase<{}, pg.IClient>} db The pgPromise database connection
+ * @param {PgpDatabase} db The pgPromise database connection
  * @param {INodeExecutionData[]} items The items to be updated
  */
 export async function pgUpdate(
-	// eslint-disable-next-line @typescript-eslint/ban-types
+	// eslint-disable-next-line @typescript-eslint/no-restricted-types
 	getNodeParam: Function,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
-	db: pgPromise.IDatabase<{}, pg.IClient>,
+	db: PgpDatabase,
 	items: INodeExecutionData[],
 	continueOnFail = false,
 ): Promise<IDataObject[]> {
@@ -495,12 +509,14 @@ export async function pgUpdate(
 		.split(',')
 		.map((column) => column.trim().split(':'))
 		.map(([name, cast], i) => {
+			assertValidCast(cast);
 			guardedColumns[`column${i}`] = name;
 			return { name, cast, prop: `column${i}` };
 		});
 
 	const updateKeys = updateKey.split(',').map((key, i) => {
 		const [name, cast] = key.trim().split(':');
+		assertValidCast(cast);
 		const targetCol = columns.find((column) => column.name === name);
 		const updateColumn = { name, cast, prop: targetCol ? targetCol.prop : `updateColumn${i}` };
 		if (!targetCol) {
@@ -594,7 +610,7 @@ export async function pgUpdate(
 			});
 		}
 	}
-	throw new ApplicationError('multiple, independently or transaction are valid options', {
+	throw new UserError('multiple, independently or transaction are valid options', {
 		level: 'warning',
 	});
 }
@@ -604,13 +620,13 @@ export async function pgUpdate(
  *
  * @param {Function} getNodeParam The getter for the Node's parameters
  * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
- * @param {pgPromise.IDatabase<{}, pg.IClient>} db The pgPromise database connection
+ * @param {PgpDatabase} db The pgPromise database connection
  * @param {INodeExecutionData[]} items The items to be updated
  */
 export async function pgUpdateV2(
 	this: IExecuteFunctions,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
-	db: pgPromise.IDatabase<{}, pg.IClient>,
+	db: PgpDatabase,
 	items: INodeExecutionData[],
 	continueOnFail = false,
 ): Promise<IDataObject[]> {
@@ -624,12 +640,14 @@ export async function pgUpdateV2(
 		.split(',')
 		.map((column) => column.trim().split(':'))
 		.map(([name, cast], i) => {
+			assertValidCast(cast);
 			guardedColumns[`column${i}`] = name;
 			return { name, cast, prop: `column${i}` };
 		});
 
 	const updateKeys = updateKey.split(',').map((key, i) => {
 		const [name, cast] = key.trim().split(':');
+		assertValidCast(cast);
 		const targetCol = columns.find((column) => column.name === name);
 		const updateColumn = { name, cast, prop: targetCol ? targetCol.prop : `updateColumn${i}` };
 		if (!targetCol) {
@@ -729,7 +747,7 @@ export async function pgUpdateV2(
 			});
 		}
 	}
-	throw new ApplicationError('multiple, independently or transaction are valid options', {
+	throw new UserError('multiple, independently or transaction are valid options', {
 		level: 'warning',
 	});
 }

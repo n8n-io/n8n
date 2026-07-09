@@ -1,7 +1,7 @@
 import ISO6391 from 'iso-639-1';
 import { DateTime } from 'luxon';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IDataObject,
 	type IExecuteFunctions,
 	type ILoadOptionsFunctions,
@@ -38,8 +38,9 @@ export class TwitterV2 implements INodeType {
 			defaults: {
 				name: 'X',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			usableAsTool: true,
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			credentials: [
 				{
 					name: 'twitterOAuth2Api',

@@ -1,0 +1,62 @@
+{
+	"name": "mail",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "0b4c0843-6007-4687-8e91-cf3b97cb0734",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "mail",
+				"fromEmail": "test@n8n.io",
+				"fromName": "Test Sender",
+				"toEmail": "test@n8n.io",
+				"subject": "Test Subject",
+				"contentValue": "Test Message",
+				"additionalFields": {
+					"replyToEmail": "test-reply-to@n8n.io"
+				}
+			},
+			"type": "n8n-nodes-base.sendGrid",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "69ea4501-a90d-4067-b9f7-a7b7f2b79a96",
+			"name": "SendGrid",
+			"credentials": {
+				"sendGridApi": {
+					"id": "3D7B6nvmzW0SZkjG",
+					"name": "SendGrid account"
+				}
+			}
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "SendGrid",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "7e4ed87a-64b8-4248-b78f-e2db21f1f603",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "35e7acdc2e5caa3b0a5fca77da6cc9361ca88ba3e6f6b97ecd8a8cf35cb2ea85"
+	},
+	"id": "YdfKbNlA37FExwxC",
+	"tags": []
+}

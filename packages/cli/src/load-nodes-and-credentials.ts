@@ -1,9 +1,14 @@
+import { inTest, isContainedWithin, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
+import { isWindowsFilePath } from '@n8n/utils/files/is-windows-file-path';
+import type ParcelWatcher from '@parcel/watcher';
 import glob from 'fast-glob';
 import fsPromises from 'fs/promises';
-import type { Class, DirectoryLoader, Types } from 'n8n-core';
+import type { Class, Types } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
+	DirectoryLoader,
 	ErrorReporter,
 	InstanceSettings,
 	CustomDirectoryLoader,
@@ -11,38 +16,27 @@ import {
 	LazyPackageDirectoryLoader,
 	UnrecognizedCredentialTypeError,
 	UnrecognizedNodeTypeError,
+	ExecutionContextHookRegistry,
+	CUSTOM_NODES_PACKAGE_NAME,
 } from 'n8n-core';
 import type {
 	KnownNodesAndCredentials,
-	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	INodeTypeData,
-	ICredentialTypeData,
 	LoadedClass,
 	ICredentialType,
 	INodeType,
 	IVersionedNodeType,
 	INodeProperties,
+	LoadedNodesAndCredentials,
+	NodeLoader,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionType } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { injectDomainRestrictionFields, UnexpectedError, UserError } from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
-import { Container, Service } from 'typedi';
 
-import {
-	CUSTOM_API_CALL_KEY,
-	CUSTOM_API_CALL_NAME,
-	inTest,
-	CLI_DIR,
-	inE2ETests,
-} from '@/constants';
-import { Logger } from '@/logging/logger.service';
-import { isContainedWithin } from '@/utils/path-util';
-
-interface LoadedNodesAndCredentials {
-	nodes: INodeTypeData;
-	credentials: ICredentialTypeData;
-}
+import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
+import { createAiTools, createHitlTools } from '@/tool-generation';
 
 @Service()
 export class LoadNodesAndCredentials {
@@ -55,7 +49,7 @@ export class LoadNodesAndCredentials {
 	// actual file, or the lazy loaded json
 	types: Types = { nodes: [], credentials: [] };
 
-	loaders: Record<string, DirectoryLoader> = {};
+	loaders: Record<string, NodeLoader> = {};
 
 	excludeNodes = this.globalConfig.nodes.exclude;
 
@@ -68,14 +62,20 @@ export class LoadNodesAndCredentials {
 		private readonly errorReporter: ErrorReporter,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
+		private readonly moduleRegistry: ModuleRegistry,
+		private readonly executionContextHookRegistry: ExecutionContextHookRegistry,
 	) {}
 
 	async init() {
-		if (inTest) throw new ApplicationError('Not available in tests');
+		if (inTest) throw new UnexpectedError('Not available in tests');
 
 		// Make sure the imported modules can resolve dependencies fine.
+		// Preserve any existing NODE_PATH (e.g. set by Docker ENV for global npm packages)
+		// so that the task runner subprocess can also resolve externally installed modules.
 		const delimiter = process.platform === 'win32' ? ';' : ':';
-		process.env.NODE_PATH = module.paths.join(delimiter);
+		process.env.NODE_PATH = [module.paths.join(delimiter), process.env.NODE_PATH]
+			.filter(Boolean)
+			.join(delimiter);
 
 		// @ts-ignore
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
@@ -84,6 +84,11 @@ export class LoadNodesAndCredentials {
 		if (!inE2ETests) {
 			this.excludeNodes = this.excludeNodes ?? [];
 			this.excludeNodes.push('n8n-nodes-base.e2eTest');
+		}
+
+		if (process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS !== 'true') {
+			this.excludeNodes = this.excludeNodes ?? [];
+			this.excludeNodes.push('n8n-nodes-base.dynamicCredentialCheck');
 		}
 
 		// Load nodes from `n8n-nodes-base`
@@ -100,18 +105,61 @@ export class LoadNodesAndCredentials {
 			await this.loadNodesFromNodeModules(nodeModulesDir, '@n8n/n8n-nodes-langchain');
 		}
 
-		// Load nodes from any other `n8n-nodes-*` packages in the download directory
-		// This includes the community nodes
-		await this.loadNodesFromNodeModules(
-			path.join(this.instanceSettings.nodesDownloadDir, 'node_modules'),
-		);
-
 		await this.loadNodesFromCustomDirectories();
+
+		for (const loader of this.moduleRegistry.nodeLoaders) {
+			if (loader.packageName in this.loaders) {
+				throw new UnexpectedError(
+					picocolors.red(`Node loader ${loader.packageName} is already registered.`),
+				);
+			}
+			try {
+				await loader.loadAll();
+				this.loaders[loader.packageName] = loader;
+			} catch (error) {
+				this.logger.error(`Failed to load package "${loader.packageName}"`, {
+					error: ensureError(error),
+				});
+				this.errorReporter.error(error, { extra: { packageName: loader.packageName } });
+			}
+		}
+
 		await this.postProcessLoaders();
 	}
 
 	addPostProcessor(fn: () => Promise<void>) {
 		this.postProcessors.push(fn);
+	}
+
+	releaseTypes() {
+		this.types = { nodes: [], credentials: [] };
+		for (const loader of Object.values(this.loaders)) {
+			loader.releaseTypes();
+		}
+	}
+
+	/**
+	 * Returns the current node and credential types.
+	 * If types have been released from memory, re-runs postProcessLoaders to
+	 * repopulate them first, then releases after snapshotting.
+	 *
+	 * WARNING: Holding types in memory is very consuming. Use sparingly and only
+	 * where the caller genuinely needs its own copy (e.g. the AI workflow builder
+	 * service or the frontend service writing static JSON files).
+	 */
+	async collectTypes(): Promise<Types> {
+		const needsReload = this.types.nodes.length === 0 && this.types.credentials.length === 0;
+		if (needsReload) {
+			await this.postProcessLoaders();
+		}
+		const types: Types = {
+			nodes: this.types.nodes,
+			credentials: this.types.credentials,
+		};
+		if (needsReload) {
+			this.releaseTypes();
+		}
+		return types;
 	}
 
 	isKnownNode(type: string) {
@@ -136,19 +184,13 @@ export class LoadNodesAndCredentials {
 
 	private async loadNodesFromNodeModules(
 		nodeModulesDir: string,
-		packageName?: string,
+		packageName: string,
 	): Promise<void> {
-		const globOptions = {
+		const installedPackagePaths = await glob(packageName, {
 			cwd: nodeModulesDir,
 			onlyDirectories: true,
 			deep: 1,
-		};
-		const installedPackagePaths = packageName
-			? await glob(packageName, globOptions)
-			: [
-					...(await glob('n8n-nodes-*', globOptions)),
-					...(await glob('@*/n8n-nodes-*', { ...globOptions, deep: 2 })),
-				];
+		});
 
 		for (const packagePath of installedPackagePaths) {
 			try {
@@ -163,15 +205,74 @@ export class LoadNodesAndCredentials {
 		}
 	}
 
+	/**
+	 * Resolves the node icon file path when loaded from /icons/${packageName}/${iconPath}.
+	 *
+	 * Using N8N_CUSTOM_EXTENSIONS, nodes can be loaded from any directory outside of CWD='$N8N_USER_FOLDER/.n8n/'.
+	 * Custom nodes are loaded by custom-directory-loader.ts using an absolute path, different from the default package-directory-loader.ts.
+	 * The icon loading logic for custom nodes seems a bit broken, because icons are resolved by absolute paths encoded in URLs.
+	 * Examples when served from `/icons/${packageName}/${iconPath}`:
+	 * - '/icons/CUSTOM//home/node/.n8n-custom'
+	 * - '/icons/CUSTOM/C:/User/name/.n8n-custom'
+	 *
+	 * resolveIcon() has a special path.resolve() strategy for custom nodes considering:
+	 * - An absolute Linux file path is encoded in the URL using '//'.
+	 * - '//' in URLs can be normalized to '/' by proxies, load balancers, etc.
+	 * - A Windows file path starts with drive letters like 'C:' not '/'.
+	 *
+	 * @todo Instead of fixing the broken custom node loading strategy here, make custom-directory-loader.ts also use relative paths.
+	 * Besides having different icon loading strategies, encoding an absolute path in URLs seems a security risk.
+	 */
 	resolveIcon(packageName: string, url: string): string | undefined {
+		const isCustom = packageName === CUSTOM_NODES_PACKAGE_NAME;
 		const loader = this.loaders[packageName];
-		if (!loader) {
+		if (!loader || !(loader instanceof DirectoryLoader)) {
 			return undefined;
 		}
-		const pathPrefix = `/icons/${packageName}/`;
-		const filePath = path.resolve(loader.directory, url.substring(pathPrefix.length));
 
+		const resolvePath = (iconPath: string) => {
+			return path.resolve(loader.directory, iconPath);
+		};
+
+		const resolvePathCustom = (path: string) => {
+			if (isWindowsFilePath(path)) return path;
+			return path.startsWith('/') ? path : '/' + path;
+		};
+
+		const pathPrefix = `/icons/${packageName}/`;
+		const urlFilePath = url.substring(pathPrefix.length);
+		if (isCustom && !isWindowsFilePath(urlFilePath)) {
+			const relativeFilePath = resolvePath(urlFilePath);
+			if (isContainedWithin(loader.directory, relativeFilePath)) {
+				return relativeFilePath;
+			}
+		}
+
+		const filePath = isCustom ? resolvePathCustom(urlFilePath) : resolvePath(urlFilePath);
 		return isContainedWithin(loader.directory, filePath) ? filePath : undefined;
+	}
+
+	resolveSchema({
+		node,
+		version,
+		resource,
+		operation,
+	}: {
+		node: string;
+		version: string;
+		resource?: string;
+		operation?: string;
+	}): string | undefined {
+		const nodePath = this.known.nodes[node]?.sourcePath;
+		if (!nodePath) {
+			return undefined;
+		}
+
+		const nodeParentPath = path.dirname(nodePath);
+		const schemaPath = ['__schema__', `v${version}`, resource, operation].filter(Boolean).join('/');
+		const filePath = path.resolve(nodeParentPath, schemaPath + '.json');
+
+		return isContainedWithin(nodeParentPath, filePath) ? filePath : undefined;
 	}
 
 	getCustomDirectories(): string[] {
@@ -261,6 +362,138 @@ export class LoadNodesAndCredentials {
 		});
 	}
 
+	private shouldInjectContextEstablishmentHooks() {
+		return process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS === 'true';
+	}
+
+	private injectContextEstablishmentHooks() {
+		// Check if the feature is enabled via environment variable
+		const isEnabled = this.shouldInjectContextEstablishmentHooks();
+
+		if (!isEnabled) {
+			this.logger.debug('Context establishment hooks feature is disabled');
+			return;
+		}
+
+		const triggerNodes = this.types.nodes.filter((node: INodeTypeDescription) =>
+			node.group.includes('trigger'),
+		);
+
+		this.logger.debug(
+			`Injecting context establishment hooks for ${triggerNodes.length} trigger nodes`,
+		);
+
+		triggerNodes.forEach(this.augmentNodeTypeDescription);
+	}
+
+	private augmentNodeTypeDescription = (node: INodeTypeDescription) => {
+		const hooks = this.executionContextHookRegistry.getHookForTriggerType(node.name);
+
+		if (hooks.length > 0) {
+			this.logger.debug(`Found ${hooks.length} hooks for trigger node: ${node.name}`);
+		}
+
+		// Only inject hook properties if there are applicable hooks
+		if (hooks.length === 0) return;
+
+		// This prevents double-injection if the function is called multiple times on the same node
+		if (node.properties.some((p) => p.name === 'executionsHooksVersion')) return;
+
+		// Create a fixedCollection with multipleValues for multiple hook selection
+		// Each hook becomes a separate item that can be added multiple times
+		const allHookValues: INodeProperties[] = [
+			{
+				displayName: 'User Identifier',
+				name: 'hookName',
+				type: 'options',
+				noDataExpression: true,
+				options: hooks.map((hook) => {
+					const displayName = hook.hookDescription.displayName ?? hook.hookDescription.name;
+					return {
+						name: displayName,
+						value: hook.hookDescription.name,
+						description: `Use ${displayName} hook`,
+					};
+				}),
+				// No default - force user to explicitly select a hook
+				// This ensures hookName is always serialized in the workflow JSON
+				default: '',
+				description:
+					'Configure how n8n extracts the identity token of the user triggering a webhook. It is used to run each execution with the correct user.',
+				required: true,
+			},
+		];
+
+		// Add all hook-specific options with display conditions
+		for (const hook of hooks) {
+			const hookOptions = hook.hookDescription.options ?? [];
+			if (hookOptions.length > 0) {
+				for (const hookOption of hookOptions) {
+					// Add display condition to show only when this specific hook is selected
+					const enhancedOption: INodeProperties = {
+						...hookOption,
+						displayOptions: {
+							...hookOption.displayOptions,
+							show: {
+								...hookOption.displayOptions?.show,
+								hookName: [hook.hookDescription.name],
+							},
+						},
+					};
+					allHookValues.push(enhancedOption);
+				}
+			}
+		}
+
+		// Create a hidden version property to track the hooks format version
+		const executionsHooksVersion: INodeProperties = {
+			displayName: 'Executions Hooks Version',
+			name: 'executionsHooksVersion',
+			type: 'hidden',
+			default: 1,
+		};
+
+		// Create the main context establishment hooks property as a fixedCollection
+		const contextHooksProperty: INodeProperties = {
+			displayName: 'Identify user for end-user credentials',
+			name: 'contextEstablishmentHooks',
+			type: 'fixedCollection',
+			placeholder: 'Add User Identifier',
+			default: {},
+			typeOptions: {
+				multipleValues: true,
+				hideEmptyMessage: true,
+			},
+			options: [
+				{
+					name: 'hooks',
+					displayName: 'Hooks',
+					values: allHookValues,
+				},
+			],
+			description:
+				'Configure how n8n extracts the identity token of the user triggering a webhook. It is used to run each execution with the correct user.',
+		};
+
+		// Create a notice that always appears after the hooks collection
+		const contextHooksNotice: INodeProperties = {
+			displayName:
+				'Configure how n8n extracts the identity token of the user triggering a webhook. It is used to run each execution with the correct user.',
+			name: 'contextHooksNotice',
+			type: 'notice',
+			default: '',
+		};
+
+		let index = node.properties.findIndex((p) => p.name === 'options');
+		if (index === -1) {
+			index = node.properties.length;
+		}
+
+		node.properties.splice(index, 0, contextHooksNotice);
+		node.properties.splice(index, 0, contextHooksProperty);
+		node.properties.splice(index, 0, executionsHooksVersion);
+	};
+
 	/**
 	 * Run a loader of source files of nodes and credentials in a directory.
 	 */
@@ -270,7 +503,7 @@ export class LoadNodesAndCredentials {
 	) {
 		const loader = new constructor(dir, this.excludeNodes, this.includeNodes);
 		if (loader instanceof PackageDirectoryLoader && loader.packageName in this.loaders) {
-			throw new ApplicationError(
+			throw new UserError(
 				picocolors.red(
 					`nodes package ${loader.packageName} is already loaded.\n Please delete this second copy at path ${dir}`,
 				),
@@ -281,64 +514,46 @@ export class LoadNodesAndCredentials {
 		return loader;
 	}
 
-	/**
-	 * This creates all AI Agent tools by duplicating the node descriptions for
-	 * all nodes that are marked as `usableAsTool`. It basically modifies the
-	 * description. The actual wrapping happens in the langchain code for getting
-	 * the connected tools.
-	 */
-	createAiTools() {
-		const usableNodes: Array<INodeTypeBaseDescription | INodeTypeDescription> =
-			this.types.nodes.filter((nodetype) => nodetype.usableAsTool === true);
-
-		for (const usableNode of usableNodes) {
-			const description: INodeTypeBaseDescription | INodeTypeDescription =
-				structuredClone(usableNode);
-			const wrapped = this.convertNodeToAiTool({ description }).description;
-
-			this.types.nodes.push(wrapped);
-			this.known.nodes[wrapped.name] = structuredClone(this.known.nodes[usableNode.name]);
-
-			const credentialNames = Object.entries(this.known.credentials)
-				.filter(([_, credential]) => credential?.supportedNodes?.includes(usableNode.name))
-				.map(([credentialName]) => credentialName);
-
-			credentialNames.forEach((name) =>
-				this.known.credentials[name]?.supportedNodes?.push(wrapped.name),
-			);
-		}
-	}
-
 	async postProcessLoaders() {
 		this.known = { nodes: {}, credentials: {} };
 		this.loaded = { nodes: {}, credentials: {} };
 		this.types = { nodes: [], credentials: [] };
 
 		for (const loader of Object.values(this.loaders)) {
+			// Reload types if they were released from memory
+			await loader.ensureTypesLoaded();
+
 			// list of node & credential types that will be sent to the frontend
-			const { known, types, directory, packageName } = loader;
+			const { known, types, packageName } = loader;
 			this.types.nodes = this.types.nodes.concat(
 				types.nodes.map(({ name, ...rest }) => ({
 					...rest,
 					name: `${packageName}.${name}`,
 				})),
 			);
-			this.types.credentials = this.types.credentials.concat(types.credentials);
 
-			// Nodes and credentials that have been loaded immediately
-			for (const nodeTypeName in loader.nodeTypes) {
-				this.loaded.nodes[`${packageName}.${nodeTypeName}`] = loader.nodeTypes[nodeTypeName];
-			}
+			const processedCredentials = types.credentials.map((credential) => ({
+				...credential,
+				properties: injectDomainRestrictionFields(credential),
+				supportedNodes:
+					loader instanceof PackageDirectoryLoader
+						? credential.supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
+						: undefined,
+			}));
 
-			for (const credentialTypeName in loader.credentialTypes) {
-				this.loaded.credentials[credentialTypeName] = loader.credentialTypes[credentialTypeName];
+			this.types.credentials = this.types.credentials.concat(processedCredentials);
+
+			// Add domain restriction fields to loaded credentials
+			for (const credentialTypeName in known.credentials) {
+				const credentialType = loader.getCredential(credentialTypeName);
+				credentialType.type.properties = injectDomainRestrictionFields(credentialType.type);
 			}
 
 			for (const type in known.nodes) {
 				const { className, sourcePath } = known.nodes[type];
 				this.known.nodes[`${packageName}.${type}`] = {
 					className,
-					sourcePath: path.join(directory, sourcePath),
+					sourcePath: loader.resolveSourcePath(sourcePath),
 				};
 			}
 
@@ -351,7 +566,7 @@ export class LoadNodesAndCredentials {
 				} = known.credentials[type];
 				this.known.credentials[type] = {
 					className,
-					sourcePath: path.join(directory, sourcePath),
+					sourcePath: loader.resolveSourcePath(sourcePath),
 					supportedNodes:
 						loader instanceof PackageDirectoryLoader
 							? supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
@@ -361,13 +576,23 @@ export class LoadNodesAndCredentials {
 			}
 		}
 
-		this.createAiTools();
+		createAiTools(this.types, this.known);
+		createHitlTools(this.types, this.known);
 
 		this.injectCustomApiCallOptions();
+
+		this.injectContextEstablishmentHooks();
 
 		for (const postProcessor of this.postProcessors) {
 			await postProcessor();
 		}
+	}
+
+	recognizesNode(fullNodeType: string): boolean {
+		const [packageName, nodeType] = fullNodeType.split('.');
+		const { loaders } = this;
+		const loader = loaders[packageName];
+		return !!loader && nodeType in loader.known.nodes;
 	}
 
 	getNode(fullNodeType: string): LoadedClass<INodeType | IVersionedNodeType> {
@@ -377,7 +602,14 @@ export class LoadNodesAndCredentials {
 		if (!loader) {
 			throw new UnrecognizedNodeTypeError(packageName, nodeType);
 		}
-		return loader.getNode(nodeType);
+		const loadedNode = loader.getNode(nodeType);
+		if (
+			this.shouldInjectContextEstablishmentHooks() &&
+			'properties' in loadedNode.type.description
+		) {
+			this.augmentNodeTypeDescription(loadedNode.type.description);
+		}
+		return loadedNode;
 	}
 
 	getCredential(credentialType: string): LoadedClass<ICredentialType> {
@@ -397,144 +629,88 @@ export class LoadNodesAndCredentials {
 		throw new UnrecognizedCredentialTypeError(credentialType);
 	}
 
-	/**
-	 * Modifies the description of the passed in object, such that it can be used
-	 * as an AI Agent Tool.
-	 * Returns the modified item (not copied)
-	 */
-	convertNodeToAiTool<
-		T extends object & { description: INodeTypeDescription | INodeTypeBaseDescription },
-	>(item: T): T {
-		// quick helper function for type-guard down below
-		function isFullDescription(obj: unknown): obj is INodeTypeDescription {
-			return typeof obj === 'object' && obj !== null && 'properties' in obj;
-		}
-
-		if (isFullDescription(item.description)) {
-			item.description.name += 'Tool';
-			item.description.inputs = [];
-			item.description.outputs = [NodeConnectionType.AiTool];
-			item.description.displayName += ' Tool';
-			delete item.description.usableAsTool;
-
-			const hasResource = item.description.properties.some((prop) => prop.name === 'resource');
-			const hasOperation = item.description.properties.some((prop) => prop.name === 'operation');
-
-			if (!item.description.properties.map((prop) => prop.name).includes('toolDescription')) {
-				const descriptionType: INodeProperties = {
-					displayName: 'Tool Description',
-					name: 'descriptionType',
-					type: 'options',
-					noDataExpression: true,
-					options: [
-						{
-							name: 'Set Automatically',
-							value: 'auto',
-							description: 'Automatically set based on resource and operation',
-						},
-						{
-							name: 'Set Manually',
-							value: 'manual',
-							description: 'Manually set the description',
-						},
-					],
-					default: 'auto',
-				};
-
-				const descProp: INodeProperties = {
-					displayName: 'Description',
-					name: 'toolDescription',
-					type: 'string',
-					default: item.description.description,
-					required: true,
-					typeOptions: { rows: 2 },
-					description:
-						'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
-					placeholder: `e.g. ${item.description.description}`,
-				};
-
-				const noticeProp: INodeProperties = {
-					displayName:
-						"Use the expression {{ $fromAI('placeholder_name') }} for any data to be filled by the model",
-					name: 'notice',
-					type: 'notice',
-					default: '',
-				};
-
-				item.description.properties.unshift(descProp);
-
-				// If node has resource or operation we can determine pre-populate tool description based on it
-				// so we add the descriptionType property as the first property
-				if (hasResource || hasOperation) {
-					item.description.properties.unshift(descriptionType);
-
-					descProp.displayOptions = {
-						show: {
-							descriptionType: ['manual'],
-						},
-					};
-				}
-
-				item.description.properties.unshift(noticeProp);
-			}
-		}
-
-		const resources = item.description.codex?.resources ?? {};
-
-		item.description.codex = {
-			categories: ['AI'],
-			subcategories: {
-				AI: ['Tools'],
-				Tools: ['Other Tools'],
-			},
-			resources,
-		};
-		return item;
-	}
-
 	async setupHotReload() {
 		const { default: debounce } = await import('lodash/debounce');
-		// eslint-disable-next-line import/no-extraneous-dependencies
-		const { watch } = await import('chokidar');
+
+		const { subscribe } = await import('@parcel/watcher');
 
 		const { Push } = await import('@/push');
 		const push = Container.get(Push);
 
-		Object.values(this.loaders).forEach(async (loader) => {
+		for (const loader of Object.values(this.loaders)) {
+			if (!(loader instanceof DirectoryLoader)) continue;
+			const { directory } = loader;
 			try {
-				await fsPromises.access(loader.directory);
+				await fsPromises.access(directory);
 			} catch {
 				// If directory doesn't exist, there is nothing to watch
-				return;
+				continue;
 			}
 
-			const realModulePath = path.join(await fsPromises.realpath(loader.directory), path.sep);
 			const reloader = debounce(async () => {
-				const modulesToUnload = Object.keys(require.cache).filter((filePath) =>
-					filePath.startsWith(realModulePath),
-				);
-				modulesToUnload.forEach((filePath) => {
-					delete require.cache[filePath];
-				});
-
-				loader.reset();
-				await loader.loadAll();
-				await this.postProcessLoaders();
-				push.broadcast({ type: 'nodeDescriptionUpdated', data: {} });
+				this.logger.info(`Hot reload triggered for ${loader.packageName}`);
+				try {
+					loader.reset();
+					await loader.loadAll();
+					await this.postProcessLoaders();
+					push.broadcast({ type: 'nodeDescriptionUpdated', data: {} });
+				} catch (error) {
+					this.logger.error(`Hot reload failed for ${loader.packageName}`);
+				}
 			}, 100);
 
-			const toWatch = loader.isLazyLoaded
-				? ['**/nodes.json', '**/credentials.json']
-				: ['**/*.js', '**/*.json'];
-			const files = await glob(toWatch, {
-				cwd: realModulePath,
-				ignore: ['node_modules/**'],
+			// For lazy loaded packages, we need to watch the dist directory
+			const watchPaths = loader.isLazyLoaded ? [path.join(directory, 'dist')] : [directory];
+			const customNodesRoot = path.join(directory, 'node_modules');
+
+			if (loader.packageName === CUSTOM_NODES_PACKAGE_NAME) {
+				const customNodeEntries = await fsPromises.readdir(customNodesRoot, {
+					withFileTypes: true,
+				});
+
+				// Custom nodes are usually symlinked using npm link. Resolve symlinks to support file watching
+				const realCustomNodesPaths = await Promise.all(
+					customNodeEntries
+						.filter(
+							(entry) =>
+								(entry.isDirectory() || entry.isSymbolicLink()) && !entry.name.startsWith('.'),
+						)
+						.map(
+							async (entry) =>
+								await fsPromises.realpath(path.join(customNodesRoot, entry.name)).catch(() => null),
+						),
+				);
+
+				watchPaths.push.apply(
+					watchPaths,
+					realCustomNodesPaths.filter((path): path is string => !!path),
+				);
+			}
+
+			this.logger.debug('Watching node folders for hot reload', {
+				loader: loader.packageName,
+				paths: watchPaths,
 			});
-			const watcher = watch(files, {
-				cwd: realModulePath,
-				ignoreInitial: true,
-			});
-			watcher.on('add', reloader).on('change', reloader).on('unlink', reloader);
-		});
+
+			for (const watchPath of watchPaths) {
+				const onFileEvent: ParcelWatcher.SubscribeCallback = async (_error, events) => {
+					if (events.some((event) => event.type !== 'delete')) {
+						const modules = Object.keys(require.cache).filter((module) =>
+							module.startsWith(watchPath),
+						);
+
+						for (const module of modules) {
+							delete require.cache[module];
+						}
+						await reloader();
+					}
+				};
+
+				// Ignore nested node_modules folders
+				const ignore = ['**/node_modules/**/node_modules/**'];
+
+				await subscribe(watchPath, onFileEvent, { ignore });
+			}
+		}
 	}
 }

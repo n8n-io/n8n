@@ -1,0 +1,134 @@
+{
+    "type": "object",
+    "properties": {
+        "allow_attachments": {
+            "type": "boolean"
+        },
+        "allow_channelback": {
+            "type": "boolean"
+        },
+        "brand_id": {
+            "type": "integer"
+        },
+        "collaborator_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "custom_fields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "custom_status_id": {
+            "type": "integer"
+        },
+        "description": {
+            "type": "string"
+        },
+        "email_cc_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "encoded_id": {
+            "type": "string"
+        },
+        "fields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "follower_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "followup_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "forum_topic_id": {
+            "type": "null"
+        },
+        "from_messaging_channel": {
+            "type": "boolean"
+        },
+        "generated_timestamp": {
+            "type": "integer"
+        },
+        "has_incidents": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "is_public": {
+            "type": "boolean"
+        },
+        "problem_id": {
+            "type": "null"
+        },
+        "requester_id": {
+            "type": "integer"
+        },
+        "result_type": {
+            "type": "string"
+        },
+        "satisfaction_rating": {
+            "type": "object",
+            "properties": {
+                "score": {
+                    "type": "string"
+                }
+            }
+        },
+        "status": {
+            "type": "string"
+        },
+        "submitter_id": {
+            "type": "integer"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        },
+        "via": {
+            "type": "object",
+            "properties": {
+                "channel": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 1
+}

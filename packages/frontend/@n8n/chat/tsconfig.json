@@ -1,0 +1,24 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.common.json",
+	"compilerOptions": {
+		"rootDir": "src",
+		"outDir": "dist",
+		"target": "esnext",
+		"module": "esnext",
+		"moduleResolution": "bundler",
+		"allowJs": true,
+		"importHelpers": true,
+		"incremental": false,
+		"allowSyntheticDefaultImports": true,
+		"resolveJsonModule": true,
+		"types": ["vitest/globals", "vitest/browser", "@testing-library/vue"],
+		"paths": {
+			"@n8n/chat/*": ["./src/*"],
+			"@n8n/design-system*": ["../design-system/src*"]
+		},
+		"lib": ["esnext", "dom", "dom.iterable", "scripthost"],
+		// TODO: remove all options below this line
+		"useUnknownInCatchVariables": false
+	},
+	"include": ["**/*.ts", "**/*.vue"]
+}

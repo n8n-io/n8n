@@ -1,24 +1,26 @@
-import { Container } from 'typedi';
+import { Command } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 
 import { License } from '@/license';
 
 import { BaseCommand } from '../base-command';
 
+@Command({
+	name: 'license:info',
+	description: 'Print license information',
+})
 export class LicenseInfoCommand extends BaseCommand {
-	static description = 'Print license information';
-
-	static examples = ['$ n8n license:info'];
-
 	async run() {
 		const license = Container.get(License);
-		await license.init();
+		await license.init({ isCli: true });
 
-		this.logger.info('Printing license information:\n' + license.getInfo());
+		// Write to stdout so output is independent of N8N_LOG_LEVEL.
+		process.stdout.write(license.getInfo() + '\n');
 	}
 
 	async catch(error: Error) {
-		this.logger.error('\nGOT ERROR');
-		this.logger.info('====================================');
-		this.logger.error(error.message);
+		process.stderr.write('\nGOT ERROR\n');
+		process.stderr.write('====================================\n');
+		process.stderr.write(error.message + '\n');
 	}
 }

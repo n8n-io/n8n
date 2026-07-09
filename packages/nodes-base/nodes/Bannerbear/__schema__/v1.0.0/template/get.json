@@ -1,0 +1,56 @@
+{
+    "type": "object",
+    "properties": {
+        "available_modifications": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "background": {
+                        "type": "null"
+                    },
+                    "color": {
+                        "type": "null"
+                    },
+                    "image_url": {
+                        "type": "null"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "text": {
+                        "type": "null"
+                    }
+                }
+            }
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "height": {
+            "type": "integer"
+        },
+        "metadata": {
+            "type": "null"
+        },
+        "name": {
+            "type": "string"
+        },
+        "preview_url": {
+            "type": "string"
+        },
+        "self": {
+            "type": "string"
+        },
+        "uid": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "width": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

@@ -6,23 +6,24 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { createTransport } from 'nodemailer';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport';
+import { prepareBinariesDataList } from '../../../utils/binary';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Send Email',
 	name: 'emailSend',
-	icon: 'fa:envelope',
+	icon: 'node:send-mail',
+	iconColor: 'black',
 	group: ['output'],
 	version: 1,
 	description: 'Sends an Email',
 	defaults: {
 		name: 'Send Email',
-		color: '#00bb88',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
 			name: 'smtp',
@@ -196,11 +197,7 @@ export class EmailSendV1 implements INodeType {
 
 				if (attachmentPropertyString && item.binary) {
 					const attachments = [];
-					const attachmentProperties: string[] = attachmentPropertyString
-						.split(',')
-						.map((propertyName) => {
-							return propertyName.trim();
-						});
+					const attachmentProperties = prepareBinariesDataList(attachmentPropertyString);
 
 					for (const propertyName of attachmentProperties) {
 						const binaryData = this.helpers.assertBinaryData(itemIndex, propertyName);

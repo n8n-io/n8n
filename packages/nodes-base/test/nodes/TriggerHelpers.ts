@@ -1,26 +1,45 @@
+import type { SsrfBridge } from '@n8n/backend-network';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type * as express from 'express';
-import { mock } from 'jest-mock-extended';
+import { type IncomingHttpHeaders } from 'http';
 import get from 'lodash/get';
 import merge from 'lodash/merge';
 import set from 'lodash/set';
-import { PollContext, returnJsonArray, type InstanceSettings } from 'n8n-core';
-import { ScheduledTaskManager } from 'n8n-core/dist/ScheduledTaskManager';
-import type {
-	IBinaryData,
-	ICredentialDataDecryptedObject,
-	IDataObject,
-	IHttpRequestOptions,
-	INode,
-	INodeType,
-	INodeTypes,
-	ITriggerFunctions,
-	IWebhookFunctions,
-	IWorkflowExecuteAdditionalData,
-	NodeTypeAndVersion,
-	VersionedNodeType,
-	Workflow,
-	WorkflowHooks,
+import { PollContext, returnJsonArray, ScheduledTaskManager } from 'n8n-core';
+import type { InstanceSettings, ExecutionLifecycleHooks } from 'n8n-core';
+import {
+	type IBinaryData,
+	type ICredentialDataDecryptedObject,
+	type IDataObject,
+	type IHttpRequestOptions,
+	type INode,
+	type INodeType,
+	type INodeTypes,
+	type ITriggerFunctions,
+	type IWebhookFunctions,
+	type IWorkflowExecuteAdditionalData,
+	type Logger as WorkflowLogger,
+	type NodeTypeAndVersion,
+	type VersionedNodeType,
+	type Workflow,
+	type CronContext,
+	type Cron,
 } from 'n8n-workflow';
+import type { MockedFunction } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
+type SchedulerLogger = ConstructorParameters<typeof ScheduledTaskManager>[1];
+
+const schedulerScopedLogger = mock<SchedulerLogger>({
+	debug: vi.fn(),
+	info: vi.fn(),
+	warn: vi.fn(),
+	error: vi.fn(),
+});
+
+const schedulerLogger = mock<SchedulerLogger>({
+	scoped: vi.fn().mockReturnValue(schedulerScopedLogger),
+});
 
 type MockDeepPartial<T> = Parameters<typeof mock<T>>[0];
 
@@ -30,6 +49,9 @@ type TestTriggerNodeOptions = {
 	timezone?: string;
 	workflowStaticData?: IDataObject;
 	credential?: ICredentialDataDecryptedObject;
+	credentials?: Record<string, ICredentialDataDecryptedObject>;
+	helpers?: Partial<ITriggerFunctions['helpers']>;
+	workflow?: { id?: string; name?: string; active?: boolean };
 };
 
 type TestWebhookTriggerNodeOptions = TestTriggerNodeOptions & {
@@ -37,6 +59,8 @@ type TestWebhookTriggerNodeOptions = TestTriggerNodeOptions & {
 	request?: MockDeepPartial<express.Request>;
 	bodyData?: IDataObject;
 	childNodes?: NodeTypeAndVersion[];
+	workflow?: Workflow;
+	headerData?: IncomingHttpHeaders;
 };
 
 type TestPollingTriggerNodeOptions = TestTriggerNodeOptions & {};
@@ -46,47 +70,83 @@ function getNodeVersion(Trigger: new () => VersionedNodeType, version?: number) 
 	return instance.nodeVersions[version ?? instance.currentVersion];
 }
 
-export async function testVersionedTriggerNode(
-	Trigger: new () => VersionedNodeType,
-	version?: number,
-	options: TestTriggerNodeOptions = {},
-) {
-	return await testTriggerNode(getNodeVersion(Trigger, version), options);
-}
-
 export async function testTriggerNode(
 	Trigger: (new () => INodeType) | INodeType,
 	options: TestTriggerNodeOptions = {},
 ) {
 	const trigger = 'description' in Trigger ? Trigger : new Trigger();
-	const emit: jest.MockedFunction<ITriggerFunctions['emit']> = jest.fn();
+	const emit: MockedFunction<ITriggerFunctions['emit']> = vi.fn();
+	const emitError: MockedFunction<ITriggerFunctions['emitError']> = vi.fn();
 
 	const timezone = options.timezone ?? 'Europe/Berlin';
 	const version = trigger.description.version;
 	const node = merge(
 		{
+			id: options.node?.id ?? '1',
 			type: trigger.description.name,
 			name: trigger.description.defaults.name ?? `Test Node (${trigger.description.name})`,
 			typeVersion: typeof version === 'number' ? version : version.at(-1),
 		} satisfies Partial<INode>,
 		options.node,
 	) as INode;
-	const workflow = mock<Workflow>({ timezone: options.timezone ?? 'Europe/Berlin' });
-
-	const scheduledTaskManager = new ScheduledTaskManager(mock<InstanceSettings>());
-	const helpers = mock<ITriggerFunctions['helpers']>({
-		returnJsonArray,
-		registerCron: (cronExpression, onTick) =>
-			scheduledTaskManager.registerCron(workflow, cronExpression, onTick),
+	const workflow = mock<Workflow>({
+		id: options.workflow?.id ?? 'workflow-1',
+		timezone: options.timezone ?? 'Europe/Berlin',
 	});
 
+	const scheduledTaskManager = new ScheduledTaskManager(
+		mock<InstanceSettings>({ isLeader: true }),
+		schedulerLogger,
+		mock(),
+	);
+	const helpers = mock<ITriggerFunctions['helpers']>({
+		createDeferredPromise,
+		returnJsonArray,
+		registerCron: (cron: Cron, onTick) => {
+			const ctx: CronContext = {
+				expression: cron.expression,
+				recurrence: cron.recurrence,
+				nodeId: node.id,
+				workflowId: workflow.id,
+				timezone: workflow.timezone,
+			};
+			scheduledTaskManager.register(
+				{
+					group: { type: 'workflow', id: ctx.workflowId },
+					targetId: ctx.nodeId,
+					timezone: ctx.timezone,
+					expression: ctx.expression,
+					recurrence: ctx.recurrence,
+				},
+				onTick,
+			);
+		},
+	});
+
+	const workflowMetadata = {
+		id: options.workflow?.id,
+		name: options.workflow?.name,
+		active: options.workflow?.active ?? false,
+	};
+	const triggerLogger = mock<WorkflowLogger>({
+		debug: vi.fn(),
+		info: vi.fn(),
+		warn: vi.fn(),
+		error: vi.fn(),
+	});
 	const triggerFunctions = mock<ITriggerFunctions>({
 		helpers,
 		emit,
+		emitError,
+		logger: triggerLogger,
 		getTimezone: () => timezone,
 		getNode: () => node,
+		getWorkflow: () => workflowMetadata,
+		getCredentials: async <T extends object = ICredentialDataDecryptedObject>(type: string) =>
+			(options.credentials?.[type] ?? options.credential ?? {}) as T,
 		getMode: () => options.mode ?? 'trigger',
 		getWorkflowStaticData: () => options.workflowStaticData ?? {},
+		getWorkflowSettings: () => ({}),
 		getNodeParameter: (parameterName, fallback) => get(node.parameters, parameterName) ?? fallback,
 	});
 
@@ -94,14 +154,14 @@ export async function testTriggerNode(
 
 	if (options.mode === 'manual') {
 		expect(response?.manualTriggerFunction).toBeInstanceOf(Function);
-		await response?.manualTriggerFunction?.();
-	} else {
-		expect(response?.manualTriggerFunction).toBeUndefined();
 	}
 
 	return {
-		close: jest.fn(response?.closeFunction),
+		close: vi.fn(response?.closeFunction),
+		manualTriggerFunction: options.mode === 'manual' ? response?.manualTriggerFunction : undefined,
 		emit,
+		emitError,
+		logger: triggerLogger,
 	};
 }
 
@@ -123,47 +183,79 @@ export async function testWebhookTriggerNode(
 	const version = trigger.description.version;
 	const node = merge(
 		{
+			id: options.node?.id ?? '1',
 			type: trigger.description.name,
 			name: trigger.description.defaults.name ?? `Test Node (${trigger.description.name})`,
 			typeVersion: typeof version === 'number' ? version : version.at(-1),
 		} satisfies Partial<INode>,
 		options.node,
 	) as INode;
-	const workflow = mock<Workflow>({ timezone: options.timezone ?? 'Europe/Berlin' });
+	const workflow =
+		options.workflow ??
+		mock<Workflow>({
+			id: 'workflow-1',
+			timezone: options.timezone ?? 'Europe/Berlin',
+		});
 
-	const scheduledTaskManager = new ScheduledTaskManager(mock<InstanceSettings>());
+	const scheduledTaskManager = new ScheduledTaskManager(
+		mock<InstanceSettings>({ isLeader: true }),
+		schedulerLogger,
+		mock(),
+	);
 	const helpers = mock<ITriggerFunctions['helpers']>({
 		returnJsonArray,
-		registerCron: (cronExpression, onTick) =>
-			scheduledTaskManager.registerCron(workflow, cronExpression, onTick),
+		registerCron: (cron: Cron, onTick) => {
+			const ctx: CronContext = {
+				expression: cron.expression,
+				recurrence: cron.recurrence,
+				nodeId: node.id,
+				workflowId: workflow.id,
+				timezone: workflow.timezone,
+			};
+			scheduledTaskManager.register(
+				{
+					group: { type: 'workflow', id: ctx.workflowId },
+					targetId: ctx.nodeId,
+					timezone: ctx.timezone,
+					expression: ctx.expression,
+					recurrence: ctx.recurrence,
+				},
+				onTick,
+			);
+		},
+		prepareBinaryData: options.helpers?.prepareBinaryData ?? vi.fn(),
 	});
 
 	const request = mock<express.Request>({
 		method: 'GET',
 		...options.request,
 	});
-	const response = mock<express.Response>({ status: jest.fn(() => mock<express.Response>()) });
+	const response = mock<express.Response>({ status: vi.fn(() => mock<express.Response>()) });
 	const webhookFunctions = mock<IWebhookFunctions>({
 		helpers,
 		nodeHelpers: {
-			copyBinaryFile: jest.fn(async () => mock<IBinaryData>()),
+			copyBinaryFile: vi.fn(async () => mock<IBinaryData>()),
 		},
 		getTimezone: () => timezone,
 		getNode: () => node,
 		getMode: () => options.mode ?? 'trigger',
 		getInstanceId: () => 'instanceId',
 		getBodyData: () => options.bodyData ?? {},
-		getHeaderData: () => ({}),
+		getHeaderData: () => options.headerData ?? request.headers ?? {},
 		getInputConnectionData: async () => ({}),
 		getNodeWebhookUrl: (name) => `/test-webhook-url/${name}`,
 		getParamsData: () => ({}),
 		getQueryData: () => ({}),
 		getRequestObject: () => request,
 		getResponseObject: () => response,
+		getWorkflow: () => options.workflow ?? mock<Workflow>(),
 		getWebhookName: () => options.webhookName ?? 'default',
 		getWorkflowStaticData: () => options.workflowStaticData ?? {},
+		getWorkflowSettings: () => ({}),
 		getNodeParameter: (parameterName, fallback) => get(node.parameters, parameterName) ?? fallback,
 		getChildNodes: () => options.childNodes ?? [],
+		getCredentials: async <T extends object = ICredentialDataDecryptedObject>(type: string) =>
+			(options.credentials?.[type] ?? options.credential ?? {}) as T,
 	});
 
 	const responseData = await trigger.webhook?.call(webhookFunctions);
@@ -194,35 +286,57 @@ export async function testPollingTriggerNode(
 	const workflow = mock<Workflow>({
 		timezone,
 		nodeTypes: mock<INodeTypes>({
-			getByNameAndVersion: () => mock<INodeType>({ description: trigger.description }),
+			getByNameAndVersion: () => {
+				const nodeType = mock<INodeType>();
+				nodeType.description = trigger.description;
+				return nodeType;
+			},
 		}),
 		getStaticData: () => options.workflowStaticData ?? {},
 	});
 	const mode = options.mode ?? 'trigger';
 
-	const pollContext = new PollContext(
-		workflow,
-		node,
-		mock<IWorkflowExecuteAdditionalData>({
-			currentNodeParameters: node.parameters,
-			credentialsHelper: mock<IWorkflowExecuteAdditionalData['credentialsHelper']>({
-				getParentTypes: () => [],
-				authenticate: async (_creds, _type, options) => {
-					set(options, 'headers.authorization', 'mockAuth');
-					return options as IHttpRequestOptions;
-				},
-			}),
-			hooks: mock<WorkflowHooks>(),
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
+		currentNodeParameters: node.parameters,
+		credentialsHelper: mock<IWorkflowExecuteAdditionalData['credentialsHelper']>({
+			getParentTypes: () => [],
+			authenticate: async (_creds, _type, options) => {
+				set(options, 'headers.authorization', 'mockAuth');
+				return options as IHttpRequestOptions;
+			},
 		}),
-		mode,
-		'init',
-	);
+		hooks: mock<ExecutionLifecycleHooks>(),
+		ssrfBridge: {
+			validateIp: vi.fn().mockReturnValue({ ok: true, result: undefined }),
+			validateUrl: vi.fn().mockResolvedValue({ ok: true, result: undefined }),
+			validateConnectionHost: vi.fn().mockReturnValue({ ok: true, result: undefined }),
+			validateRedirectSync: vi.fn(),
+			createSecureLookup: vi.fn().mockReturnValue(vi.fn()),
+		} as SsrfBridge,
+	});
+	// Prevent the auto-mocked property from being truthy so request helpers
+	// don't take the eval-mock code path.
+	(additionalData as unknown as Record<string, unknown>).evalLlmMockHandler = undefined;
+
+	const pollContext = new PollContext(workflow, node, additionalData, mode, 'init');
 
 	pollContext.getNode = () => node;
 	pollContext.getCredentials = async <T extends object = ICredentialDataDecryptedObject>() =>
 		(options.credential ?? {}) as T;
 	pollContext.getNodeParameter = (parameterName, fallback) =>
 		get(node.parameters, parameterName) ?? fallback;
+
+	// Override OAuth helpers so tests don't flow through the real OAuth2
+	// signing/token logic (which is fragile with mocked credentials).
+	const originalRequest = pollContext.helpers.request.bind(pollContext.helpers);
+	pollContext.helpers.requestOAuth2 = async function (_credentialsType, requestOptions) {
+		set(requestOptions, 'headers.authorization', 'mockAuth');
+		return await originalRequest(requestOptions);
+	};
+	pollContext.helpers.requestOAuth1 = async function (_credentialsType, requestOptions) {
+		set(requestOptions, 'headers.authorization', 'mockAuth');
+		return await originalRequest(requestOptions);
+	};
 
 	const response = await trigger.poll?.call(pollContext);
 

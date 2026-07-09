@@ -1,16 +1,18 @@
-import axios, { AxiosError } from 'axios';
-import { ensureError } from 'n8n-workflow';
-import { Service } from 'typedi';
+import { LicenseState, Logger } from '@n8n/backend-common';
+import { OutboundHttp, type HttpRequestClient, isHttpRequestError } from '@n8n/backend-network';
+import { Time } from '@n8n/constants';
+import type { User } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
+import { Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 
-import type { User } from '@/databases/entities/user';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
-import { Logger } from '@/logging/logger.service';
 import { UrlService } from '@/services/url.service';
 
-type LicenseError = Error & { errorId?: keyof typeof LicenseErrors };
+const REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;
 
 export const LicenseErrors = {
 	SCHEMA_VALIDATION: 'Activation key is in the wrong format',
@@ -23,16 +25,27 @@ export const LicenseErrors = {
 
 @Service()
 export class LicenseService {
+	private readonly http: HttpRequestClient;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly license: License,
+		private readonly licenseState: LicenseState,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly urlService: UrlService,
 		private readonly eventService: EventService,
-	) {}
+		outboundHttp: OutboundHttp,
+	) {
+		this.http = outboundHttp.requests({
+			ssrf: 'disabled', // Fixed, n8n-controlled host
+			timeout: REQUEST_TIMEOUT_MS,
+		});
+	}
 
 	async getLicenseData() {
 		const triggerCount = await this.workflowRepository.getActiveTriggerCount();
+		const workflowsWithEvaluationsCount =
+			await this.workflowRepository.getWorkflowsWithEvaluationCount();
 		const mainPlan = this.license.getMainPlan();
 
 		return {
@@ -41,6 +54,10 @@ export class LicenseService {
 					value: triggerCount,
 					limit: this.license.getTriggerLimit(),
 					warningThreshold: 0.8,
+				},
+				workflowsHavingEvaluations: {
+					value: workflowsWithEvaluationsCount,
+					limit: this.licenseState.getMaxWorkflowsWithEvaluations(),
 				},
 			},
 			license: {
@@ -51,12 +68,17 @@ export class LicenseService {
 	}
 
 	async requestEnterpriseTrial(user: User) {
-		await axios.post('https://enterprise.n8n.io/enterprise-trial', {
-			licenseType: 'enterprise',
-			firstName: user.firstName,
-			lastName: user.lastName,
-			email: user.email,
-			instanceUrl: this.urlService.getWebhookBaseUrl(),
+		await this.http.request({
+			url: 'https://enterprise.n8n.io/enterprise-trial',
+			method: 'POST',
+			body: {
+				licenseType: 'enterprise',
+				firstName: user.firstName,
+				lastName: user.lastName,
+				email: user.email,
+				instanceUrl: this.urlService.getWebhookBaseUrl(),
+			},
+			json: true,
 		});
 	}
 
@@ -74,23 +96,27 @@ export class LicenseService {
 		licenseType: string;
 	}): Promise<{ title: string; text: string }> {
 		try {
-			const {
-				data: { licenseKey, ...rest },
-			} = await axios.post<{ title: string; text: string; licenseKey: string }>(
-				'https://enterprise.n8n.io/community-registered',
-				{
+			const { licenseKey, ...rest } = await this.http.request<{
+				title: string;
+				text: string;
+				licenseKey: string;
+			}>({
+				url: 'https://enterprise.n8n.io/community-registered',
+				method: 'POST',
+				body: {
 					email,
 					instanceId,
 					instanceUrl,
 					licenseType,
 				},
-			);
+				json: true,
+			});
 			this.eventService.emit('license-community-plus-registered', { userId, email, licenseKey });
 			return rest;
 		} catch (e: unknown) {
-			if (e instanceof AxiosError) {
-				const error = e as AxiosError<{ message: string }>;
-				const errorMsg = error.response?.data?.message ?? e.message;
+			if (isHttpRequestError(e)) {
+				const data = e.response?.data as { message?: string } | undefined;
+				const errorMsg = data?.message ?? e.message;
 				throw new BadRequestError('Failed to register community edition: ' + errorMsg);
 			} else {
 				this.logger.error('Failed to register community edition', { error: ensureError(e) });
@@ -103,20 +129,61 @@ export class LicenseService {
 		return this.license.getManagementJwt();
 	}
 
-	async activateLicense(activationKey: string) {
+	// Overload signatures
+	async activateLicense(activationKey: string): Promise<void>;
+	async activateLicense(activationKey: string, eulaUri: string, userEmail: string): Promise<void>;
+	// Implementation signature
+	async activateLicense(
+		activationKey: string,
+		eulaUri?: string,
+		userEmail?: string,
+	): Promise<void> {
 		try {
-			await this.license.activate(activationKey);
+			if (eulaUri && userEmail) {
+				await this.license.activate(activationKey, eulaUri, userEmail);
+			} else if (!eulaUri && !userEmail) {
+				await this.license.activate(activationKey);
+			} else {
+				throw new BadRequestError('When providing eulaUri, userEmail is required');
+			}
 		} catch (e) {
-			const message = this.mapErrorMessage(e as LicenseError, 'activate');
+			// Check if this is a EULA_REQUIRED error from license server
+			if (this.isEulaRequiredError(e)) {
+				throw new LicenseEulaRequiredError('License activation requires EULA acceptance', {
+					eulaUrl: e.info.eula.uri,
+				});
+			}
+
+			const message = this.mapErrorMessage(ensureError(e), 'activate');
 			throw new BadRequestError(message);
 		}
 	}
 
+	private isEulaRequiredError(
+		error: unknown,
+	): error is Error & { errorId: string; info: { eula: { uri: string } } } {
+		return (
+			error instanceof Error &&
+			'errorId' in error &&
+			error.errorId === 'EULA_REQUIRED' &&
+			'info' in error &&
+			typeof error.info === 'object' &&
+			error.info !== null &&
+			'eula' in error.info &&
+			typeof error.info.eula === 'object' &&
+			error.info.eula !== null &&
+			'uri' in error.info.eula &&
+			typeof error.info.eula.uri === 'string'
+		);
+	}
+
 	async renewLicense() {
+		if (this.license.getPlanName() === 'Community') return; // unlicensed, nothing to renew
+
 		try {
 			await this.license.renew();
 		} catch (e) {
-			const message = this.mapErrorMessage(e as LicenseError, 'renew');
+			const message = this.mapErrorMessage(ensureError(e), 'renew');
 
 			this.eventService.emit('license-renewal-attempted', { success: false });
 			throw new BadRequestError(message);
@@ -125,12 +192,21 @@ export class LicenseService {
 		this.eventService.emit('license-renewal-attempted', { success: true });
 	}
 
-	private mapErrorMessage(error: LicenseError, action: 'activate' | 'renew') {
-		let message = error.errorId && LicenseErrors[error.errorId];
+	private mapErrorMessage(error: Error, action: 'activate' | 'renew') {
+		let message: string | undefined;
+
+		if (this.isLicenseError(error) && error.errorId in LicenseErrors) {
+			message = LicenseErrors[error.errorId as keyof typeof LicenseErrors];
+		}
+
 		if (!message) {
 			message = `Failed to ${action} license: ${error.message}`;
 			this.logger.error(message, { stack: error.stack ?? 'n/a' });
 		}
 		return message;
+	}
+
+	private isLicenseError(error: Error): error is Error & { errorId: string } {
+		return 'errorId' in error && typeof error.errorId === 'string';
 	}
 }

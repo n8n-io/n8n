@@ -1,0 +1,111 @@
+{
+    "type": "object",
+    "properties": {
+        "date": {
+            "type": "integer"
+        },
+        "hist_id": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "version": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "changes": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "after": {
+                                        "type": "integer"
+                                    },
+                                    "field": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        },
+                        "context": {
+                            "type": "object",
+                            "properties": {
+                                "audit_context": {
+                                    "type": "object",
+                                    "properties": {
+                                        "current_time": {
+                                            "type": "integer"
+                                        },
+                                        "route": {
+                                            "type": "string"
+                                        },
+                                        "userid": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                },
+                                "originating_service": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "relationships": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "object_type": {
+                                        "type": "string"
+                                    },
+                                    "type": {
+                                        "type": "string"
+                                    },
+                                    "workspace_id": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "date_created": {
+                    "type": "integer"
+                },
+                "date_updated": {
+                    "type": "integer"
+                },
+                "deleted": {
+                    "type": "boolean"
+                },
+                "event_publish_time": {
+                    "type": "integer"
+                },
+                "master_id": {
+                    "type": "integer"
+                },
+                "object_id": {
+                    "type": "string"
+                },
+                "object_type": {
+                    "type": "string"
+                },
+                "operation": {
+                    "type": "string"
+                },
+                "traceparent": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "integer"
+                },
+                "workspace_id": {
+                    "type": "integer"
+                }
+            }
+        }
+    },
+    "version": 1
+}

@@ -1,0 +1,254 @@
+{
+    "type": "object",
+    "properties": {
+        "agenda": {
+            "type": "string"
+        },
+        "assistant_id": {
+            "type": "string"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "duration": {
+            "type": "integer"
+        },
+        "host_email": {
+            "type": "string"
+        },
+        "host_id": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "join_url": {
+            "type": "string"
+        },
+        "pre_schedule": {
+            "type": "boolean"
+        },
+        "settings": {
+            "type": "object",
+            "properties": {
+                "allow_multiple_devices": {
+                    "type": "boolean"
+                },
+                "alternative_host_update_polls": {
+                    "type": "boolean"
+                },
+                "alternative_hosts": {
+                    "type": "string"
+                },
+                "alternative_hosts_email_notification": {
+                    "type": "boolean"
+                },
+                "approval_type": {
+                    "type": "integer"
+                },
+                "approved_or_denied_countries_or_regions": {
+                    "type": "object",
+                    "properties": {
+                        "enable": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "audio": {
+                    "type": "string"
+                },
+                "auto_recording": {
+                    "type": "string"
+                },
+                "auto_start_ai_companion_questions": {
+                    "type": "boolean"
+                },
+                "auto_start_meeting_summary": {
+                    "type": "boolean"
+                },
+                "breakout_room": {
+                    "type": "object",
+                    "properties": {
+                        "enable": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "close_registration": {
+                    "type": "boolean"
+                },
+                "cn_meeting": {
+                    "type": "boolean"
+                },
+                "continuous_meeting_chat": {
+                    "type": "object",
+                    "properties": {
+                        "auto_add_invited_external_users": {
+                            "type": "boolean"
+                        },
+                        "channel_id": {
+                            "type": "string"
+                        },
+                        "enable": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "device_testing": {
+                    "type": "boolean"
+                },
+                "email_in_attendee_report": {
+                    "type": "boolean"
+                },
+                "email_notification": {
+                    "type": "boolean"
+                },
+                "enable_dedicated_group_chat": {
+                    "type": "boolean"
+                },
+                "encryption_type": {
+                    "type": "string"
+                },
+                "enforce_login": {
+                    "type": "boolean"
+                },
+                "enforce_login_domains": {
+                    "type": "string"
+                },
+                "focus_mode": {
+                    "type": "boolean"
+                },
+                "global_dial_in_countries": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "global_dial_in_numbers": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "city": {
+                                "type": "string"
+                            },
+                            "country": {
+                                "type": "string"
+                            },
+                            "country_name": {
+                                "type": "string"
+                            },
+                            "number": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "host_save_video_order": {
+                    "type": "boolean"
+                },
+                "host_video": {
+                    "type": "boolean"
+                },
+                "in_meeting": {
+                    "type": "boolean"
+                },
+                "internal_meeting": {
+                    "type": "boolean"
+                },
+                "jbh_time": {
+                    "type": "integer"
+                },
+                "join_before_host": {
+                    "type": "boolean"
+                },
+                "meeting_authentication": {
+                    "type": "boolean"
+                },
+                "meeting_invitees": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "email": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "mute_upon_entry": {
+                    "type": "boolean"
+                },
+                "participant_focused_meeting": {
+                    "type": "boolean"
+                },
+                "participant_video": {
+                    "type": "boolean"
+                },
+                "private_meeting": {
+                    "type": "boolean"
+                },
+                "push_change_to_calendar": {
+                    "type": "boolean"
+                },
+                "registrants_confirmation_email": {
+                    "type": "boolean"
+                },
+                "registrants_email_notification": {
+                    "type": "boolean"
+                },
+                "request_permission_to_unmute_participants": {
+                    "type": "boolean"
+                },
+                "show_join_info": {
+                    "type": "boolean"
+                },
+                "show_share_button": {
+                    "type": "boolean"
+                },
+                "sign_language_interpretation": {
+                    "type": "object",
+                    "properties": {
+                        "enable": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "use_pmi": {
+                    "type": "boolean"
+                },
+                "waiting_room": {
+                    "type": "boolean"
+                },
+                "watermark": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "start_time": {
+            "type": "string"
+        },
+        "start_url": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "timezone": {
+            "type": "string"
+        },
+        "topic": {
+            "type": "string"
+        },
+        "type": {
+            "type": "integer"
+        },
+        "uuid": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

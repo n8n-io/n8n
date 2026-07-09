@@ -1,0 +1,79 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-40, -120],
+			"id": "7da2ce49-9a9d-4240-b082-ff1b12d101b1",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"user": {
+					"__rl": true,
+					"mode": "list",
+					"value": "accounts@this.de"
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.awsIam",
+			"typeVersion": 1,
+			"position": [140, -100],
+			"id": "982d8c6e-e94a-414c-90ba-35743676eef8",
+			"name": "getUser",
+			"credentials": {
+				"aws": {
+					"id": "exampleId",
+					"name": "AWS US EAST"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"getUser": [
+			{
+				"json": {
+					"Arn": "arn:aws:iam::130450532146:user/accounts@this.de",
+					"CreateDate": 1733911052,
+					"PasswordLastUsed": null,
+					"Path": "/",
+					"PermissionsBoundary": null,
+					"Tags": [
+						{
+							"Key": "AKIAR4X3VE4ZALQYFEMT",
+							"Value": "API dev"
+						}
+					],
+					"UserId": "AIDAR4X3VE4ZANWXRN2L2",
+					"UserName": "accounts@this.de"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "getUser",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "5ce54c9d-de6e-499a-b042-0bb89c41208c",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "26f38eb23ad84214537831cfef4032299ffac994ff18d5cb72e82d31ac4ceac4"
+	},
+	"id": "0qqycx08fTBpfbC9",
+	"tags": []
+}

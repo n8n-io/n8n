@@ -10,13 +10,18 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { oldVersionNotice } from '@utils/descriptions';
 
 import { channelFields, channelOperations } from './ChannelDescription';
 import { fileFields, fileOperations } from './FileDescription';
-import { slackApiRequest, slackApiRequestAllItems, validateJSON } from './GenericFunctions';
+import {
+	slackApiRequest,
+	slackApiRequestAllItems,
+	toMultiOptionsCsv,
+	validateJSON,
+} from './GenericFunctions';
 import { messageFields, messageOperations } from './MessageDescription';
 import type { IAttachment } from './MessageInterface';
 import { reactionFields, reactionOperations } from './ReactionDescription';
@@ -75,8 +80,8 @@ export class SlackV1 implements INodeType {
 			defaults: {
 				name: 'Slack',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			credentials: [
 				{
 					name: 'slackApi',
@@ -367,7 +372,7 @@ export class SlackV1 implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i);
 						if (filters.types) {
-							qs.types = (filters.types as string[]).join(',');
+							qs.types = toMultiOptionsCsv(filters.types);
 						}
 						if (filters.excludeArchived) {
 							qs.exclude_archived = filters.excludeArchived as boolean;
@@ -426,7 +431,7 @@ export class SlackV1 implements INodeType {
 					//https://api.slack.com/methods/conversations.invite
 					if (operation === 'invite') {
 						const channel = this.getNodeParameter('channelId', i) as string;
-						const userIds = (this.getNodeParameter('userIds', i) as string[]).join(',');
+						const userIds = toMultiOptionsCsv(this.getNodeParameter('userIds', i));
 						const body: IDataObject = {
 							channel,
 							users: userIds,
@@ -507,7 +512,7 @@ export class SlackV1 implements INodeType {
 							body.return_im = options.returnIm as boolean;
 						}
 						if (options.users) {
-							body.users = (options.users as string[]).join(',');
+							body.users = toMultiOptionsCsv(options.users);
 						}
 						responseData = await slackApiRequest.call(
 							this,
@@ -762,7 +767,6 @@ export class SlackV1 implements INodeType {
 									} else if (block.type === 'section') {
 										const textUi = (blockUi.textUi as IDataObject).textValue as IDataObject;
 										if (textUi) {
-											// eslint-disable-next-line @typescript-eslint/no-shadow
 											const text: Text = {};
 											if (textUi.type === 'plainText') {
 												text.type = 'plain_text';
@@ -827,7 +831,7 @@ export class SlackV1 implements INodeType {
 													const confirm: Confirm = {};
 													const titleUi = (confirmUi.titleUi as IDataObject)
 														.titleValue as IDataObject;
-													// eslint-disable-next-line @typescript-eslint/no-shadow
+
 													const textUi = (confirmUi.textUi as IDataObject).textValue as IDataObject;
 													const confirmTextUi = (confirmUi.confirmTextUi as IDataObject)
 														.confirmValue as IDataObject;
@@ -979,7 +983,7 @@ export class SlackV1 implements INodeType {
 					if (operation === 'getPermalink') {
 						const channel = this.getNodeParameter('channelId', i) as string;
 						const timestamp = this.getNodeParameter('timestamp', i) as string;
-						// eslint-disable-next-line @typescript-eslint/no-shadow
+
 						const qs = {
 							channel,
 							message_ts: timestamp,
@@ -1079,7 +1083,7 @@ export class SlackV1 implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						const body: IDataObject = {};
 						if (options.channelIds) {
-							body.channels = (options.channelIds as string[]).join(',');
+							body.channels = toMultiOptionsCsv(options.channelIds);
 						}
 						if (options.fileName) {
 							body.filename = options.fileName as string;
@@ -1149,7 +1153,7 @@ export class SlackV1 implements INodeType {
 							qs.ts_to = filters.tsTo as string;
 						}
 						if (filters.types) {
-							qs.types = (filters.types as string[]).join(',');
+							qs.types = toMultiOptionsCsv(filters.types);
 						}
 						if (filters.userId) {
 							qs.user = filters.userId as string;
@@ -1270,7 +1274,6 @@ export class SlackV1 implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
-						// eslint-disable-next-line @typescript-eslint/no-shadow
 						const qs: IDataObject = {};
 
 						Object.assign(qs, additionalFields);
@@ -1349,7 +1352,6 @@ export class SlackV1 implements INodeType {
 					if (operation === 'get') {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
-						// eslint-disable-next-line @typescript-eslint/no-shadow
 						const qs: IDataObject = {};
 
 						Object.assign(qs, additionalFields);

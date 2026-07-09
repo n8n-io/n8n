@@ -1,0 +1,47 @@
+{
+	"name": "Get Weather",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "82eed1ba-179b-4f8f-8a85-b45f0d4e5857",
+			"name": "Execute Workflow Trigger",
+			"type": "n8n-nodes-base.executeWorkflowTrigger",
+			"typeVersion": 1,
+			"position": [560, 340]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "6ad8dc55-20f3-45af-a724-c7ecac90d338",
+							"name": "response",
+							"value": "Weather is sunny",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "8f3e00f6-fc92-4aba-817b-93d206158bda",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [780, 340]
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Execute Workflow Trigger": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

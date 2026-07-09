@@ -5,7 +5,7 @@ export class SecurityScorecardApi implements ICredentialType {
 
 	displayName = 'SecurityScorecard API';
 
-	documentationUrl = 'securityScorecard';
+	documentationUrl = 'securityscorecard';
 
 	properties: INodeProperties[] = [
 		{

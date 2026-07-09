@@ -1,0 +1,125 @@
+{
+    "type": "object",
+    "properties": {
+        "client": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "client_key": {
+            "type": "string"
+        },
+        "closed_at": {
+            "type": "null"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "creator": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "currency": {
+            "type": "string"
+        },
+        "discount_amount": {
+            "type": "integer"
+        },
+        "due_date": {
+            "type": "string"
+        },
+        "estimate": {
+            "type": "null"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "issue_date": {
+            "type": "string"
+        },
+        "line_items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "description": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "kind": {
+                        "type": "string"
+                    },
+                    "project": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "taxed": {
+                        "type": "boolean"
+                    },
+                    "taxed2": {
+                        "type": "boolean"
+                    }
+                }
+            }
+        },
+        "notes": {
+            "type": "string"
+        },
+        "number": {
+            "type": "string"
+        },
+        "payment_options": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "payment_term": {
+            "type": "string"
+        },
+        "purchase_order": {
+            "type": "string"
+        },
+        "retainer": {
+            "type": "null"
+        },
+        "state": {
+            "type": "string"
+        },
+        "subject": {
+            "type": "string"
+        },
+        "tax2": {
+            "type": "null"
+        },
+        "tax2_amount": {
+            "type": "integer"
+        },
+        "updated_at": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

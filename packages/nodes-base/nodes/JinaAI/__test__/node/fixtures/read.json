@@ -1,0 +1,18 @@
+{
+	"code": 200,
+	"status": 20000,
+	"data": {
+		"title": "Jina AI - Your Search Foundation, Supercharged.",
+		"url": "https://jina.ai/",
+		"description": "Best-in-class embeddings, rerankers, web crawler scraper, deepsearch, small LMs. The search AI for multilingual and multimodal data.",
+		"content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+		"usage": {
+			"tokens": 123
+		}
+	},
+	"meta": {
+		"usage": {
+			"tokens": 123
+		}
+	}
+}

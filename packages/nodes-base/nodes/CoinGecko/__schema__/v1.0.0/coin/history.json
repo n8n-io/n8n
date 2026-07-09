@@ -1,0 +1,576 @@
+{
+    "type": "object",
+    "properties": {
+        "community_data": {
+            "type": "object",
+            "properties": {
+                "facebook_likes": {
+                    "type": "null"
+                },
+                "reddit_average_comments_48h": {
+                    "type": "integer"
+                },
+                "reddit_average_posts_48h": {
+                    "type": "integer"
+                },
+                "reddit_subscribers": {
+                    "type": "null"
+                }
+            }
+        },
+        "developer_data": {
+            "type": "object",
+            "properties": {
+                "closed_issues": {
+                    "type": "null"
+                },
+                "code_additions_deletions_4_weeks": {
+                    "type": "object",
+                    "properties": {
+                        "additions": {
+                            "type": "null"
+                        },
+                        "deletions": {
+                            "type": "null"
+                        }
+                    }
+                },
+                "commit_count_4_weeks": {
+                    "type": "null"
+                },
+                "forks": {
+                    "type": "null"
+                },
+                "pull_request_contributors": {
+                    "type": "null"
+                },
+                "pull_requests_merged": {
+                    "type": "null"
+                },
+                "stars": {
+                    "type": "null"
+                },
+                "subscribers": {
+                    "type": "null"
+                },
+                "total_issues": {
+                    "type": "null"
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "image": {
+            "type": "object",
+            "properties": {
+                "small": {
+                    "type": "string"
+                },
+                "thumb": {
+                    "type": "string"
+                }
+            }
+        },
+        "localization": {
+            "type": "object",
+            "properties": {
+                "ar": {
+                    "type": "string"
+                },
+                "bg": {
+                    "type": "string"
+                },
+                "cs": {
+                    "type": "string"
+                },
+                "da": {
+                    "type": "string"
+                },
+                "de": {
+                    "type": "string"
+                },
+                "el": {
+                    "type": "string"
+                },
+                "en": {
+                    "type": "string"
+                },
+                "es": {
+                    "type": "string"
+                },
+                "fi": {
+                    "type": "string"
+                },
+                "fr": {
+                    "type": "string"
+                },
+                "he": {
+                    "type": "string"
+                },
+                "hi": {
+                    "type": "string"
+                },
+                "hr": {
+                    "type": "string"
+                },
+                "hu": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "it": {
+                    "type": "string"
+                },
+                "ja": {
+                    "type": "string"
+                },
+                "ko": {
+                    "type": "string"
+                },
+                "lt": {
+                    "type": "string"
+                },
+                "nl": {
+                    "type": "string"
+                },
+                "no": {
+                    "type": "string"
+                },
+                "pl": {
+                    "type": "string"
+                },
+                "pt": {
+                    "type": "string"
+                },
+                "ro": {
+                    "type": "string"
+                },
+                "ru": {
+                    "type": "string"
+                },
+                "sk": {
+                    "type": "string"
+                },
+                "sl": {
+                    "type": "string"
+                },
+                "sv": {
+                    "type": "string"
+                },
+                "th": {
+                    "type": "string"
+                },
+                "tr": {
+                    "type": "string"
+                },
+                "uk": {
+                    "type": "string"
+                },
+                "vi": {
+                    "type": "string"
+                },
+                "zh": {
+                    "type": "string"
+                },
+                "zh-tw": {
+                    "type": "string"
+                }
+            }
+        },
+        "market_data": {
+            "type": "object",
+            "properties": {
+                "current_price": {
+                    "type": "object",
+                    "properties": {
+                        "aed": {
+                            "type": "number"
+                        },
+                        "ars": {
+                            "type": "number"
+                        },
+                        "aud": {
+                            "type": "number"
+                        },
+                        "bch": {
+                            "type": "number"
+                        },
+                        "bdt": {
+                            "type": "number"
+                        },
+                        "bhd": {
+                            "type": "number"
+                        },
+                        "bits": {
+                            "type": "number"
+                        },
+                        "bmd": {
+                            "type": "number"
+                        },
+                        "bnb": {
+                            "type": "number"
+                        },
+                        "brl": {
+                            "type": "number"
+                        },
+                        "cad": {
+                            "type": "number"
+                        },
+                        "chf": {
+                            "type": "number"
+                        },
+                        "clp": {
+                            "type": "number"
+                        },
+                        "cny": {
+                            "type": "number"
+                        },
+                        "czk": {
+                            "type": "number"
+                        },
+                        "dkk": {
+                            "type": "number"
+                        },
+                        "dot": {
+                            "type": "number"
+                        },
+                        "eos": {
+                            "type": "number"
+                        },
+                        "eth": {
+                            "type": "number"
+                        },
+                        "eur": {
+                            "type": "number"
+                        },
+                        "gbp": {
+                            "type": "number"
+                        },
+                        "gel": {
+                            "type": "number"
+                        },
+                        "hkd": {
+                            "type": "number"
+                        },
+                        "huf": {
+                            "type": "number"
+                        },
+                        "idr": {
+                            "type": "number"
+                        },
+                        "ils": {
+                            "type": "number"
+                        },
+                        "inr": {
+                            "type": "number"
+                        },
+                        "jpy": {
+                            "type": "number"
+                        },
+                        "krw": {
+                            "type": "number"
+                        },
+                        "kwd": {
+                            "type": "number"
+                        },
+                        "link": {
+                            "type": "number"
+                        },
+                        "lkr": {
+                            "type": "number"
+                        },
+                        "ltc": {
+                            "type": "number"
+                        },
+                        "mmk": {
+                            "type": "number"
+                        },
+                        "mxn": {
+                            "type": "number"
+                        },
+                        "myr": {
+                            "type": "number"
+                        },
+                        "ngn": {
+                            "type": "number"
+                        },
+                        "nok": {
+                            "type": "number"
+                        },
+                        "nzd": {
+                            "type": "number"
+                        },
+                        "php": {
+                            "type": "number"
+                        },
+                        "pkr": {
+                            "type": "number"
+                        },
+                        "pln": {
+                            "type": "number"
+                        },
+                        "rub": {
+                            "type": "number"
+                        },
+                        "sar": {
+                            "type": "number"
+                        },
+                        "sats": {
+                            "type": "number"
+                        },
+                        "sek": {
+                            "type": "number"
+                        },
+                        "sgd": {
+                            "type": "number"
+                        },
+                        "thb": {
+                            "type": "number"
+                        },
+                        "try": {
+                            "type": "number"
+                        },
+                        "twd": {
+                            "type": "number"
+                        },
+                        "uah": {
+                            "type": "number"
+                        },
+                        "usd": {
+                            "type": "number"
+                        },
+                        "vef": {
+                            "type": "number"
+                        },
+                        "vnd": {
+                            "type": "number"
+                        },
+                        "xag": {
+                            "type": "number"
+                        },
+                        "xau": {
+                            "type": "number"
+                        },
+                        "xdr": {
+                            "type": "number"
+                        },
+                        "xlm": {
+                            "type": "number"
+                        },
+                        "xrp": {
+                            "type": "number"
+                        },
+                        "yfi": {
+                            "type": "number"
+                        },
+                        "zar": {
+                            "type": "number"
+                        }
+                    }
+                },
+                "total_volume": {
+                    "type": "object",
+                    "properties": {
+                        "aed": {
+                            "type": "number"
+                        },
+                        "aud": {
+                            "type": "number"
+                        },
+                        "bch": {
+                            "type": "number"
+                        },
+                        "bdt": {
+                            "type": "number"
+                        },
+                        "bhd": {
+                            "type": "number"
+                        },
+                        "bits": {
+                            "type": "number"
+                        },
+                        "bmd": {
+                            "type": "number"
+                        },
+                        "bnb": {
+                            "type": "number"
+                        },
+                        "brl": {
+                            "type": "number"
+                        },
+                        "btc": {
+                            "type": "number"
+                        },
+                        "cad": {
+                            "type": "number"
+                        },
+                        "chf": {
+                            "type": "number"
+                        },
+                        "clp": {
+                            "type": "number"
+                        },
+                        "cny": {
+                            "type": "number"
+                        },
+                        "czk": {
+                            "type": "number"
+                        },
+                        "dkk": {
+                            "type": "number"
+                        },
+                        "dot": {
+                            "type": "number"
+                        },
+                        "eos": {
+                            "type": "number"
+                        },
+                        "eth": {
+                            "type": "number"
+                        },
+                        "eur": {
+                            "type": "number"
+                        },
+                        "gbp": {
+                            "type": "number"
+                        },
+                        "gel": {
+                            "type": "number"
+                        },
+                        "hkd": {
+                            "type": "number"
+                        },
+                        "huf": {
+                            "type": "number"
+                        },
+                        "ils": {
+                            "type": "number"
+                        },
+                        "inr": {
+                            "type": "number"
+                        },
+                        "jpy": {
+                            "type": "number"
+                        },
+                        "krw": {
+                            "type": "number"
+                        },
+                        "kwd": {
+                            "type": "number"
+                        },
+                        "link": {
+                            "type": "number"
+                        },
+                        "lkr": {
+                            "type": "number"
+                        },
+                        "ltc": {
+                            "type": "number"
+                        },
+                        "mmk": {
+                            "type": "number"
+                        },
+                        "mxn": {
+                            "type": "number"
+                        },
+                        "myr": {
+                            "type": "number"
+                        },
+                        "ngn": {
+                            "type": "number"
+                        },
+                        "nok": {
+                            "type": "number"
+                        },
+                        "nzd": {
+                            "type": "number"
+                        },
+                        "php": {
+                            "type": "number"
+                        },
+                        "pkr": {
+                            "type": "number"
+                        },
+                        "pln": {
+                            "type": "number"
+                        },
+                        "rub": {
+                            "type": "number"
+                        },
+                        "sar": {
+                            "type": "number"
+                        },
+                        "sats": {
+                            "type": "number"
+                        },
+                        "sek": {
+                            "type": "number"
+                        },
+                        "sgd": {
+                            "type": "number"
+                        },
+                        "thb": {
+                            "type": "number"
+                        },
+                        "try": {
+                            "type": "number"
+                        },
+                        "twd": {
+                            "type": "number"
+                        },
+                        "uah": {
+                            "type": "number"
+                        },
+                        "usd": {
+                            "type": "number"
+                        },
+                        "vef": {
+                            "type": "number"
+                        },
+                        "xag": {
+                            "type": "number"
+                        },
+                        "xau": {
+                            "type": "number"
+                        },
+                        "xdr": {
+                            "type": "number"
+                        },
+                        "xlm": {
+                            "type": "number"
+                        },
+                        "xrp": {
+                            "type": "number"
+                        },
+                        "yfi": {
+                            "type": "number"
+                        },
+                        "zar": {
+                            "type": "number"
+                        }
+                    }
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "public_interest_stats": {
+            "type": "object",
+            "properties": {
+                "alexa_rank": {
+                    "type": "null"
+                },
+                "bing_matches": {
+                    "type": "null"
+                }
+            }
+        },
+        "symbol": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

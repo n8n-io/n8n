@@ -1,0 +1,314 @@
+import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
+import {
+	getProxyAgent,
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
+import {
+	NodeConnectionTypes,
+	type INodeType,
+	type INodeTypeDescription,
+	type ISupplyDataFunctions,
+	type SupplyData,
+} from 'n8n-workflow';
+
+import type { OpenAICompatibleCredential } from '../../../types/types';
+import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
+
+export class LmChatXAiGrok implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'xAI Grok Chat Model',
+
+		name: 'lmChatXAiGrok',
+		icon: { light: 'file:logo.dark.svg', dark: 'file:logo.svg' },
+		group: ['transform'],
+		version: [1],
+		description: 'For advanced usage with an AI chain',
+		defaults: {
+			name: 'xAI Grok Chat Model',
+		},
+		codex: {
+			categories: ['AI'],
+			subcategories: {
+				AI: ['Language Models', 'Root Nodes'],
+				'Language Models': ['Chat Models (Recommended)'],
+			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatxaigrok/',
+					},
+				],
+			},
+		},
+
+		inputs: [],
+
+		outputs: [NodeConnectionTypes.AiLanguageModel],
+		outputNames: ['Model'],
+		credentials: [
+			{
+				name: 'xAiApi',
+				required: true,
+			},
+		],
+		requestDefaults: {
+			ignoreHttpStatusErrors: true,
+			baseURL: '={{ $credentials?.url }}',
+		},
+		properties: [
+			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
+			{
+				displayName:
+					'If using JSON response format, you must include word "json" in the prompt in your chain or agent. Also, make sure to select latest models released post November 2023.',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						'/options.responseFormat': ['json_object'],
+					},
+				},
+			},
+			{
+				displayName: 'Model',
+				name: 'model',
+				type: 'options',
+				description:
+					'The model which will generate the completion. <a href="https://docs.x.ai/docs/models">Learn more</a>.',
+				typeOptions: {
+					loadOptions: {
+						routing: {
+							request: {
+								method: 'GET',
+								url: '/models',
+							},
+							output: {
+								postReceive: [
+									{
+										type: 'rootProperty',
+										properties: {
+											property: 'data',
+										},
+									},
+									{
+										type: 'setKeyValue',
+										properties: {
+											name: '={{$responseItem.id}}',
+											value: '={{$responseItem.id}}',
+										},
+									},
+									{
+										type: 'sort',
+										properties: {
+											key: 'name',
+										},
+									},
+								],
+							},
+						},
+					},
+				},
+				routing: {
+					send: {
+						type: 'body',
+						property: 'model',
+					},
+				},
+				default: 'grok-2-vision-1212',
+				builderHint: {
+					propertyHint:
+						'Default to the latest flagship Grok (grok-4.20-0309-reasoning, or grok-4.20-multi-agent-0309 for agent workloads). Avoid grok-4, grok-2, and grok-1 variants.',
+				},
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				placeholder: 'Add Option',
+				description: 'Additional options to add',
+				type: 'collection',
+				default: {},
+				options: [
+					{
+						displayName: 'Frequency Penalty',
+						name: 'frequencyPenalty',
+						default: 0,
+						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
+						description:
+							"Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim",
+						type: 'number',
+					},
+					{
+						displayName: 'Maximum Number of Tokens',
+						name: 'maxTokens',
+						default: -1,
+						description:
+							'The maximum number of tokens to generate in the completion. Most models have a context length of 2048 tokens (except for the newest models, which support 32,768).',
+						type: 'number',
+						typeOptions: {
+							maxValue: 32768,
+						},
+					},
+					{
+						displayName: 'Response Format',
+						name: 'responseFormat',
+						default: 'text',
+						type: 'options',
+						options: [
+							{
+								name: 'Text',
+								value: 'text',
+								description: 'Regular text response',
+							},
+							{
+								name: 'JSON',
+								value: 'json_object',
+								description:
+									'Enables JSON mode, which should guarantee the message the model generates is valid JSON',
+							},
+						],
+					},
+					{
+						displayName: 'Presence Penalty',
+						name: 'presencePenalty',
+						default: 0,
+						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
+						description:
+							"Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics",
+						type: 'number',
+					},
+					{
+						displayName: 'Sampling Temperature',
+						name: 'temperature',
+						default: 0.7,
+						typeOptions: { maxValue: 2, minValue: 0, numberPrecision: 1 },
+						description:
+							'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive.',
+						type: 'number',
+					},
+					{
+						displayName: 'Timeout',
+						name: 'timeout',
+						default: 360000,
+						description: 'Maximum amount of time a request is allowed to take in milliseconds',
+						type: 'number',
+					},
+					{
+						displayName: 'Max Retries',
+						name: 'maxRetries',
+						default: 2,
+						description: 'Maximum number of retries to attempt',
+						type: 'number',
+					},
+					{
+						displayName: 'Top P',
+						name: 'topP',
+						default: 1,
+						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
+						description:
+							'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
+						type: 'number',
+					},
+					{
+						displayName: 'Enable Priority',
+						name: 'priority',
+						default: false,
+						description:
+							'Whether to give your xAI API requests higher scheduling priority (Priority Processing)',
+						type: 'boolean',
+					},
+					{
+						displayName: 'Reasoning Effort',
+						name: 'reasoning',
+						type: 'options',
+						default: 'low',
+						description: 'Effort the model spends thinking before responding',
+						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+						options: [
+							{
+								name: 'None',
+								value: 'none',
+								description: 'Disables reasoning entirely; no thinking tokens are used',
+							},
+							{
+								name: 'Low',
+								value: 'low',
+								description: 'Uses some reasoning tokens, but still fast',
+							},
+							{
+								name: 'Medium',
+								value: 'medium',
+								description: 'More thinking for less-latency sensitive applications',
+							},
+							{
+								name: 'High',
+								value: 'high',
+								description: 'Uses more reasoning tokens for deeper thinking',
+							},
+						],
+					},
+				],
+			},
+		],
+	};
+
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		const credentials = await this.getCredentials<OpenAICompatibleCredential>('xAiApi');
+
+		const modelName = this.getNodeParameter('model', itemIndex) as string;
+
+		const options = this.getNodeParameter('options', itemIndex, {}) as {
+			frequencyPenalty?: number;
+			maxTokens?: number;
+			maxRetries: number;
+			timeout: number;
+			presencePenalty?: number;
+			temperature?: number;
+			topP?: number;
+			responseFormat?: 'text' | 'json_object';
+			reasoning?: 'none' | 'low' | 'medium' | 'high';
+			priority?: boolean;
+		};
+
+		const timeout = options.timeout;
+		const configuration: ClientOptions = {
+			baseURL: credentials.url,
+			fetchOptions: {
+				dispatcher: getProxyAgent(credentials.url, {
+					headersTimeout: timeout,
+					bodyTimeout: timeout,
+				}),
+			},
+		};
+
+		// `reasoning` (xAI reasoning effort) and `priority` are xAI-specific and passed via
+		// modelKwargs, so keep them out of the spread into the ChatOpenAI constructor.
+		const { reasoning, priority, ...restOptions } = options;
+
+		const model = new ChatOpenAI({
+			apiKey: credentials.apiKey,
+			model: modelName,
+			...restOptions,
+			timeout,
+			maxRetries: options.maxRetries ?? 2,
+			configuration,
+			callbacks: [new N8nLlmTracing(this)],
+			modelKwargs: {
+				stream_options: undefined,
+				...(options.responseFormat
+					? {
+							response_format: { type: options.responseFormat },
+						}
+					: undefined),
+				reasoning_effort: reasoning,
+				service_tier: priority ? 'priority' : undefined,
+			},
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
+		});
+
+		return {
+			response: model,
+		};
+	}
+}

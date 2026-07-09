@@ -1,4 +1,4 @@
-import { NodeConnectionType, type INodeType, type INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes, type INodeType, type INodeTypeDescription } from 'n8n-workflow';
 
 import { auditFields, auditOperations } from './AuditDescription';
 import { credentialFields, credentialOperations } from './CredentialDescription';
@@ -15,7 +15,8 @@ export class N8n implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'n8n',
 		name: 'n8n',
-		icon: 'file:n8n.svg',
+		icon: 'node:n8n',
+		iconColor: 'pink-red',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -23,8 +24,8 @@ export class N8n implements INodeType {
 		defaults: {
 			name: 'n8n',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'n8nApi',

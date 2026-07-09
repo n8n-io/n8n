@@ -1,0 +1,107 @@
+{
+	"name": "Hosted n8n AI Chat",
+	"nodes": [
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "4c109d13-62a2-4e23-9979-e50201db743d",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1,
+			"position": [640, 540],
+			"credentials": {
+				"openAiApi": {
+					"id": "cIIkOhl7tUX1KsL6",
+					"name": "OpenAi account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"sessionKey": "={{ $json.sessionId }}"
+			},
+			"id": "b416df7b-4802-462f-8f74-f0a71dc4c0be",
+			"name": "Simple Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"typeVersion": 1,
+			"position": [340, 540]
+		},
+		{
+			"parameters": {
+				"text": "={{ $json.chatInput }}",
+				"options": {}
+			},
+			"id": "4de25807-a2ef-4453-900e-e00e0021ecdc",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 1.1,
+			"position": [620, 300]
+		},
+		{
+			"parameters": {
+				"public": true,
+				"options": {
+					"loadPreviousSession": "memory"
+				}
+			},
+			"id": "5a9612ae-51c1-4be2-bd8b-8556872d1149",
+			"name": "Chat Trigger",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"typeVersion": 1,
+			"position": [340, 300],
+			"webhookId": "f406671e-c954-4691-b39a-66c90aa2f103"
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_memory",
+						"index": 0
+					},
+					{
+						"node": "Chat Trigger",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Chat Trigger": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": true,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "6076136f-fdb4-48d9-b483-d1c24c95ef9e",
+	"id": "zaBHnDtj22BzEQ6K",
+	"meta": {
+		"instanceId": "374b43d8b8d6299cc777811a4ad220fc688ee2d54a308cfb0de4450a5233ca9e"
+	},
+	"tags": []
+}

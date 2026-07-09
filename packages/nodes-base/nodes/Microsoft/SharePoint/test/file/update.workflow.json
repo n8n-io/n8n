@@ -1,0 +1,175 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "37ab6212-d506-4b53-b63e-14b6a2a05907",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"site": {
+					"__rl": true,
+					"value": "site1",
+					"mode": "list",
+					"cachedResultName": "site1"
+				},
+				"folder": {
+					"__rl": true,
+					"value": "folder1",
+					"mode": "list",
+					"cachedResultName": "folder1"
+				},
+				"file": {
+					"__rl": true,
+					"value": "item1",
+					"mode": "list",
+					"cachedResultName": "file1.json"
+				},
+				"fileName": "file2.json",
+				"changeFileContent": true,
+				"fileContents": "data",
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.microsoftSharePoint",
+			"typeVersion": 1,
+			"position": [660, 0],
+			"id": "f9037af8-4f52-4f9f-b8ae-de860f890792",
+			"name": "Microsoft SharePoint",
+			"credentials": {
+				"microsoftSharePointOAuth2Api": {
+					"id": "cXXnMCWyk397M5qJ",
+					"name": "Microsoft SharePoint account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"mode": "jsonToBinary",
+				"convertAllData": false,
+				"options": {
+					"useRawData": true
+				}
+			},
+			"name": "Move Binary Data",
+			"type": "n8n-nodes-base.moveBinaryData",
+			"typeVersion": 1,
+			"position": [440, 0],
+			"id": "9cba2be3-50e0-4ae2-b7a6-2f0caefb50ef"
+		},
+		{
+			"parameters": {
+				"mode": "raw",
+				"jsonOutput": "{\n  \"data\": {\n    \"my_field_1\": \"value\",\n    \"my_field_2\": 1\n  }\n}\n",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [220, 0],
+			"id": "fdafc0d5-58dd-4f9e-a76b-0a3cb0e9a794",
+			"name": "Edit Fields"
+		}
+	],
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Move Binary Data": {
+			"main": [
+				[
+					{
+						"node": "Microsoft SharePoint",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Move Binary Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Microsoft SharePoint": [
+			{
+				"json": {
+					"@content.downloadUrl": "https://mydomain.sharepoint.com/sites/site1/_layouts/15/download.aspx?UniqueId=d86f89ab-378e-43bc-8d46-18d2f52bd603",
+					"@odata.context": "https://mydomain.sharepoint.com/sites/site1/_api/v2.0/$metadata#items/$entity",
+					"cTag": "\"c:{D86F89AB-378E-43BC-8D46-18D2F52BD603},2\"",
+					"createdBy": {
+						"application": {
+							"displayName": "sharepoint-n8n-test",
+							"id": "b9c26603-3c9b-4050-b848-27dfab0a52fa"
+						},
+						"user": {
+							"displayName": "John Doe",
+							"email": "john@doe.onmicrosoft.com",
+							"id": "5f7afebb-121d-4664-882b-a09fe6584ce0"
+						}
+					},
+					"createdDateTime": "2025-03-13T19:23:53Z",
+					"eTag": "\"{D86F89AB-378E-43BC-8D46-18D2F52BD603},3\"",
+					"file": {
+						"hashes": {
+							"quickXorHash": "jY7BcIP9Th3EZ4PMCLrv4DnQTY4="
+						},
+						"irmEffectivelyEnabled": false,
+						"irmEnabled": false,
+						"mimeType": "application/json"
+					},
+					"fileSystemInfo": {
+						"createdDateTime": "2025-03-13T19:23:53Z",
+						"lastModifiedDateTime": "2025-03-24T19:48:25Z"
+					},
+					"id": "01SPEVVYFLRFX5RDRXXRBY2RQY2L2SXVQD",
+					"lastModifiedBy": {
+						"application": {
+							"displayName": "sharepoint-n8n-test",
+							"id": "b9c26603-3c9b-4050-b848-27dfab0a52fa"
+						},
+						"user": {
+							"displayName": "John Doe",
+							"email": "john@doe.onmicrosoft.com",
+							"id": "5f7afebb-121d-4664-882b-a09fe6584ce0"
+						}
+					},
+					"lastModifiedDateTime": "2025-03-24T19:48:35Z",
+					"name": "file2.json",
+					"parentReference": {
+						"driveId": "b!HXyh83lynUOhdUenWLZcmP1mvjoj7J9Gq8YzLjqVv3W_vPrVy_93T7lzoXbjRjzK",
+						"driveType": "documentLibrary",
+						"id": "01SPEVVYBKV2ZKHGJASRA2HC7MOGBMUMAA",
+						"name": "folder1",
+						"path": "/drive/root:/folder1",
+						"siteId": "f3a17c1d-7279-439d-a175-47a758b65c98"
+					},
+					"shared": {
+						"effectiveRoles": ["write"],
+						"scope": "users"
+					},
+					"size": 37,
+					"webUrl": "https://mydomain.sharepoint.com/sites/site1/Shared%20Documents/folder1/file2.json"
+				}
+			}
+		]
+	}
+}

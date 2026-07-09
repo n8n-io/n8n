@@ -4,7 +4,7 @@ import { returnAllOrLimit } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { channelRLC, teamRLC } from '../../descriptions';
-import { microsoftApiRequestAllItems } from '../../transport';
+import { buildTeamsPath, microsoftApiRequestAllItems } from '../../transport';
 
 const properties: INodeProperties[] = [teamRLC, channelRLC, ...returnAllOrLimit];
 
@@ -24,22 +24,19 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	const channelId = this.getNodeParameter('channelId', i, '', { extractValue: true }) as string;
 	const returnAll = this.getNodeParameter('returnAll', i);
 
+	const endpoint = buildTeamsPath.call(this, [
+		'/beta/teams/',
+		{ id: teamId },
+		'/channels/',
+		{ id: channelId },
+		'/messages',
+	]);
+
 	if (returnAll) {
-		return await microsoftApiRequestAllItems.call(
-			this,
-			'value',
-			'GET',
-			`/beta/teams/${teamId}/channels/${channelId}/messages`,
-		);
+		return await microsoftApiRequestAllItems.call(this, 'value', 'GET', endpoint);
 	} else {
 		const limit = this.getNodeParameter('limit', i);
-		const responseData = await microsoftApiRequestAllItems.call(
-			this,
-			'value',
-			'GET',
-			`/beta/teams/${teamId}/channels/${channelId}/messages`,
-			{},
-		);
+		const responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', endpoint, {});
 		return responseData.splice(0, limit);
 	}
 }

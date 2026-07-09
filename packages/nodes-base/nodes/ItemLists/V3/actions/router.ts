@@ -16,19 +16,15 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		operation,
 	} as ItemListsType;
 
-	try {
-		switch (itemListsNodeData.resource) {
-			case 'itemList':
-				returnData = await itemList[itemListsNodeData.operation].execute.call(this, items);
-				break;
-			default:
-				throw new NodeOperationError(
-					this.getNode(),
-					`The operation "${operation}" is not supported!`,
-				);
-		}
-	} catch (error) {
-		throw error;
+	switch (itemListsNodeData.resource) {
+		case 'itemList':
+			returnData = await itemList[itemListsNodeData.operation].execute.call(this, items);
+			break;
+		default:
+			throw new NodeOperationError(
+				this.getNode(),
+				`The operation "${operation}" is not supported!`,
+			);
 	}
 
 	return [returnData];

@@ -10,7 +10,7 @@ import type {
 	INodeExecutionData,
 	IPairedItemData,
 } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import { fuzzyCompare, preparePairedItemDataArray } from '@utils/utilities';
 
@@ -306,14 +306,14 @@ export function mergeMatched(
 
 export function checkMatchFieldsInput(data: IDataObject[]) {
 	if (data.length === 1 && data[0].field1 === '' && data[0].field2 === '') {
-		throw new ApplicationError(
+		throw new UserError(
 			'You need to define at least one pair of fields in "Fields to Match" to match on',
 			{ level: 'warning' },
 		);
 	}
 	for (const [index, pair] of data.entries()) {
 		if (pair.field1 === '' || pair.field2 === '') {
-			throw new ApplicationError(
+			throw new UserError(
 				`You need to define both fields in "Fields to Match" for pair ${index + 1},
 				 field 1 = '${pair.field1}'
 				 field 2 = '${pair.field2}'`,
@@ -338,10 +338,9 @@ export function checkInput(
 			return get(entry.json, field, undefined) !== undefined;
 		});
 		if (!isPresent) {
-			throw new ApplicationError(
-				`Field '${field}' is not present in any of items in '${inputLabel}'`,
-				{ level: 'warning' },
-			);
+			throw new UserError(`Field '${field}' is not present in any of items in '${inputLabel}'`, {
+				level: 'warning',
+			});
 		}
 	}
 	return input;

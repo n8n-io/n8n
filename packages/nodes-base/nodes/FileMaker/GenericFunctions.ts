@@ -6,7 +6,7 @@ import type {
 	JsonObject,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { ApplicationError, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 interface ScriptsOptions {
 	script?: any;
@@ -80,7 +80,7 @@ export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions):
 		} else {
 			message = error.message;
 		}
-		throw new ApplicationError(message, { level: 'warning' });
+		throw new NodeOperationError(this.getNode(), message, { level: 'warning' });
 	}
 }
 
@@ -154,13 +154,8 @@ export async function getFields(this: ILoadOptionsFunctions): Promise<any> {
 		json: true,
 	};
 
-	try {
-		const responseData = await this.helpers.request(options);
-		return responseData.response.fieldMetaData;
-	} catch (error) {
-		// If that data does not exist for some reason return the actual error
-		throw error;
-	}
+	const responseData = await this.helpers.request(options);
+	return responseData.response.fieldMetaData;
 }
 
 /**
@@ -185,13 +180,8 @@ export async function getPortals(this: ILoadOptionsFunctions): Promise<any> {
 		json: true,
 	};
 
-	try {
-		const responseData = await this.helpers.request(options);
-		return responseData.response.portalMetaData;
-	} catch (error) {
-		// If that data does not exist for some reason return the actual error
-		throw error;
-	}
+	const responseData = await this.helpers.request(options);
+	return responseData.response.portalMetaData;
 }
 
 function parseScriptsList(scripts: ScriptObject[]): INodePropertyOptions[] {
@@ -230,15 +220,10 @@ export async function getScripts(this: ILoadOptionsFunctions): Promise<any> {
 		json: true,
 	};
 
-	try {
-		const responseData = await this.helpers.request(options);
-		const items = parseScriptsList(responseData.response.scripts as ScriptObject[]);
-		items.sort((a, b) => (a.name > b.name ? 0 : 1));
-		return items;
-	} catch (error) {
-		// If that data does not exist for some reason return the actual error
-		throw error;
-	}
+	const responseData = await this.helpers.request(options);
+	const items = parseScriptsList(responseData.response.scripts as ScriptObject[]);
+	items.sort((a, b) => (a.name > b.name ? 0 : 1));
+	return items;
 }
 
 export async function logout(

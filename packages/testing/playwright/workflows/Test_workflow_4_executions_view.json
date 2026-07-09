@@ -1,0 +1,74 @@
+{
+	"meta": {
+		"instanceId": "6b85439d79c07750ea49eced4bc2a12b283cfcba0ab2917cd4f3fee36080e869"
+	},
+	"nodes": [
+		{
+			"parameters": {
+				"jsCode": "// Loop over input items and add a new field\n// called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n  error\n}\n\nreturn $input.all();"
+			},
+			"id": "d0ab7e12-0e1b-4c08-8081-83107794f37d",
+			"name": "Error",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [680, 460],
+			"disabled": true
+		},
+		{
+			"parameters": {},
+			"id": "f5026145-66c1-463c-8ac8-46a1309a6632",
+			"name": "On clicking 'execute'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [460, 460]
+		},
+		{
+			"parameters": {
+				"jsCode": "// Loop over input items and add a new field\n// called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+			},
+			"id": "9926f884-348a-4af0-872e-dd7c8b3da811",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [900, 460]
+		}
+	],
+	"connections": {
+		"Error": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"On clicking 'execute'": {
+			"main": [
+				[
+					{
+						"node": "Error",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"tags": [
+		{
+			"name": "some-tag-1",
+			"createdAt": "2022-11-10T13:43:34.001Z",
+			"updatedAt": "2022-11-10T13:43:34.001Z",
+			"id": "6"
+		},
+		{
+			"name": "some-tag-2",
+			"createdAt": "2022-11-10T13:43:39.778Z",
+			"updatedAt": "2022-11-10T13:43:39.778Z",
+			"id": "7"
+		}
+	]
+}

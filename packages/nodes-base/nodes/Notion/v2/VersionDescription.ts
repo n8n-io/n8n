@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
 import { blockFields, blockOperations } from '../shared/descriptions/BlockDescription';
 import { databaseFields, databaseOperations } from '../shared/descriptions/DatabaseDescription';
@@ -21,54 +21,49 @@ export const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Notion',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	usableAsTool: true,
 	credentials: [
 		{
 			name: 'notionApi',
 			required: true,
-			// displayOptions: {
-			// 	show: {
-			// 		authentication: [
-			// 			'apiKey',
-			// 		],
-			// 	},
-			// },
+			displayOptions: {
+				show: {
+					authentication: ['apiKey'],
+				},
+			},
 		},
-		// {
-		// 	name: 'notionOAuth2Api',
-		// 	required: true,
-		// 	displayOptions: {
-		// 		show: {
-		// 			authentication: [
-		// 				'oAuth2',
-		// 			],
-		// 		},
-		// 	},
-		// },
+		{
+			name: 'notionOAuth2Api',
+			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['oAuth2'],
+				},
+			},
+		},
 	],
 	properties: [
-		// {
-		// 	displayName: 'Authentication',
-		// 	name: 'authentication',
-		// 	type: 'options',
-		// 	options: [
-		// 		{
-		// 			name: 'API Key',
-		// 			value: 'apiKey',
-		// 		},
-		// 		{
-		// 			name: 'OAuth2',
-		// 			value: 'oAuth2',
-		// 		},
-		// 	],
-		// 	default: 'apiKey',
-		// 	description: 'The resource to operate on.',
-		// },
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'options',
+			options: [
+				{
+					name: 'API Key',
+					value: 'apiKey',
+				},
+				{
+					name: 'OAuth2',
+					value: 'oAuth2',
+				},
+			],
+			default: 'apiKey',
+		},
 		{
 			displayName:
-				'In Notion, make sure to <a href="https://www.notion.so/help/add-and-manage-connections-with-the-api" target="_blank">add your connection</a> to the pages you want to access.',
+				'In Notion, make sure to <a href="https://www.notion.com/help/add-and-manage-connections-with-the-api" target="_blank">add your connection</a> to the pages you want to access.',
 			name: 'notionNotice',
 			type: 'notice',
 			default: '',

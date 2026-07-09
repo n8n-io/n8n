@@ -2,6 +2,7 @@ import { writeFile as fsWriteFile } from 'fs/promises';
 import getSystemFonts from 'get-system-fonts';
 import gm from 'gm';
 import type {
+	IBinaryData,
 	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -11,9 +12,17 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError, NodeConnectionType, deepCopy } from 'n8n-workflow';
+import { NodeOperationError, NodeConnectionTypes, deepCopy } from 'n8n-workflow';
 import { parse as pathParse } from 'path';
 import { file } from 'tmp-promise';
+
+type EditImageNodeOptions = {
+	destinationKey?: string;
+	font?: string;
+	fileName?: string;
+	format?: string;
+	quality?: number;
+};
 
 const nodeOperations: INodePropertyOptions[] = [
 	{
@@ -756,17 +765,16 @@ export class EditImage implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Edit Image',
 		name: 'editImage',
-		icon: 'fa:image',
+		icon: 'node:edit-image',
 		iconColor: 'purple',
 		group: ['transform'],
 		version: 1,
 		description: 'Edits an image like blur, resize or adding border and text',
 		defaults: {
 			name: 'Edit Image',
-			color: '#553399',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Operation',
@@ -871,6 +879,14 @@ export class EditImage implements INodeType {
 					},
 				},
 				options: [
+					{
+						displayName: 'Destination Output Field',
+						name: 'destinationKey',
+						type: 'string',
+						default: 'data',
+						placeholder: 'e.g image',
+						description: 'The name of the output field that will contain the file data',
+					},
 					{
 						displayName: 'File Name',
 						name: 'fileName',
@@ -993,9 +1009,16 @@ export class EditImage implements INodeType {
 				item = items[itemIndex];
 
 				const operation = this.getNodeParameter('operation', itemIndex);
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as
+					| string
+					| IBinaryData;
 
-				const options = this.getNodeParameter('options', itemIndex, {});
+				const options = this.getNodeParameter('options', itemIndex, {}) as EditImageNodeOptions;
+
+				let binaryPropertyName = options.destinationKey;
+				if (!binaryPropertyName) {
+					binaryPropertyName = typeof dataPropertyName === 'string' ? dataPropertyName : 'data';
+				}
 
 				const cleanupFunctions: Array<() => void> = [];
 
@@ -1059,6 +1082,8 @@ export class EditImage implements INodeType {
 					);
 					gmInstance = gm(binaryDataBuffer);
 					gmInstance = gmInstance.background('transparent');
+					gmInstance = gmInstance.autoOrient();
+					gmInstance = gmInstance.out('-orient', 'TopLeft');
 				}
 
 				const newItem: INodeExecutionData = {
@@ -1114,16 +1139,10 @@ export class EditImage implements INodeType {
 						cleanupFunctions.push(cleanup);
 						await fsWriteFile(path, binaryDataBuffer);
 
-						if (operations[0].operation === 'create') {
-							// It seems like if the image gets created newly we have to create a new gm instance
-							// else it fails for some reason
-							gmInstance = gm(gmInstance!.stream('png'))
-								.compose(operator)
-								.geometry(geometryString)
-								.composite(path);
-						} else {
-							gmInstance = gmInstance!.compose(operator).geometry(geometryString).composite(path);
-						}
+						gmInstance = gm(gmInstance!.stream('png'))
+							.compose(operator)
+							.geometry(geometryString)
+							.composite(path);
 
 						if (operations.length !== i + 1) {
 							// If there are other operations after the current one create a new gm instance
@@ -1261,13 +1280,13 @@ export class EditImage implements INodeType {
 					// but the incoming data does not get changed.
 					Object.assign(newItem.binary, item.binary);
 					// Make a deep copy of the binary data we change
-					if (newItem.binary[dataPropertyName]) {
-						newItem.binary[dataPropertyName] = deepCopy(newItem.binary[dataPropertyName]);
+					if (newItem.binary[binaryPropertyName]) {
+						newItem.binary[binaryPropertyName] = deepCopy(newItem.binary[binaryPropertyName]);
 					}
 				}
 
-				if (newItem.binary![dataPropertyName] === undefined) {
-					newItem.binary![dataPropertyName] = {
+				if (newItem.binary![binaryPropertyName] === undefined) {
+					newItem.binary![binaryPropertyName] = {
 						data: '',
 						mimeType: '',
 					};
@@ -1279,17 +1298,17 @@ export class EditImage implements INodeType {
 
 				if (options.format !== undefined) {
 					gmInstance = gmInstance!.setFormat(options.format as string);
-					newItem.binary![dataPropertyName].fileExtension = options.format as string;
-					newItem.binary![dataPropertyName].mimeType = `image/${options.format}`;
-					const fileName = newItem.binary![dataPropertyName].fileName;
+					newItem.binary![binaryPropertyName].fileExtension = options.format as string;
+					newItem.binary![binaryPropertyName].mimeType = `image/${options.format}`;
+					const fileName = newItem.binary![binaryPropertyName].fileName;
 					if (fileName?.includes('.')) {
-						newItem.binary![dataPropertyName].fileName =
+						newItem.binary![binaryPropertyName].fileName =
 							fileName.split('.').slice(0, -1).join('.') + '.' + options.format;
 					}
 				}
 
 				if (options.fileName !== undefined) {
-					newItem.binary![dataPropertyName].fileName = options.fileName as string;
+					newItem.binary![binaryPropertyName].fileName = options.fileName as string;
 				}
 
 				returnData.push(
@@ -1302,8 +1321,8 @@ export class EditImage implements INodeType {
 							}
 
 							const binaryData = await this.helpers.prepareBinaryData(Buffer.from(buffer));
-							newItem.binary![dataPropertyName] = {
-								...newItem.binary![dataPropertyName],
+							newItem.binary![binaryPropertyName] = {
+								...newItem.binary![binaryPropertyName],
 								...binaryData,
 							};
 

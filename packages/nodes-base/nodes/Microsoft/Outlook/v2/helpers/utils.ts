@@ -3,10 +3,35 @@ import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
+	INode,
 	IPollFunctions,
 	JsonObject,
 } from 'n8n-workflow';
-import { ApplicationError, jsonParse, NodeApiError } from 'n8n-workflow';
+import { jsonParse, NodeApiError, UserError } from 'n8n-workflow';
+
+import { validateUserTargetId, type UserTargetMessages } from '../../../GenericFunctions';
+
+// A mailbox is always a user, addressed as `/users/{id}`, so it validates via the shared
+// `validateUserTargetId` (the widened Entra UPN set — a GUID or a UPN, no bare host/domain
+// form). Only the throw-site copy is overridden to "mailbox" wording; the dots-only variant
+// gets an explicit mailbox message (previously a dots-only mailbox fell through to the
+// generic invalid copy).
+const MAILBOX_MESSAGES: UserTargetMessages = {
+	required: {
+		message: 'A mailbox is required for the Service Principal',
+		description:
+			'Set the Mailbox (a UPN or user object ID) — app-only Microsoft Graph has no personal mailbox to default to.',
+	},
+	dotsOnly: {
+		message: 'The mailbox is not valid',
+		description: 'A mailbox cannot consist only of dots.',
+	},
+	invalid: {
+		message: 'The mailbox is not valid',
+		description:
+			'Enter a user principal name (UPN) or object ID. Remove any slashes, backslashes, colons, commas, spaces, or encoded characters and try again.',
+	},
+};
 
 export const messageFields = [
 	'bccRecipients',
@@ -158,7 +183,7 @@ export function createMessage(fields: IDataObject) {
 			} else if (typeof value === 'string') {
 				message[key] = value.split(',').map((recipient: string) => makeRecipient(recipient.trim()));
 			} else {
-				throw new ApplicationError(`The "${key}" field must be a string or an array of strings`, {
+				throw new UserError(`The "${key}" field must be a string or an array of strings`, {
 					level: 'warning',
 				});
 			}
@@ -229,6 +254,27 @@ export function prepareContactFields(fields: IDataObject) {
 	return returnData;
 }
 
+export function prepareEventFields(fields: IDataObject): IDataObject {
+	const result = { ...fields };
+
+	if (result.location) {
+		result.location = { displayName: result.location };
+	}
+
+	if (result.attendees) {
+		const attendeeEntries = ((result.attendees as IDataObject).values as IDataObject[]) ?? [];
+		result.attendees = attendeeEntries.map((entry) => ({
+			emailAddress: {
+				address: entry.email,
+				...(entry.name ? { name: entry.name } : {}),
+			},
+			type: entry.type,
+		}));
+	}
+
+	return result;
+}
+
 export function prepareFilterString(filters: IDataObject) {
 	const selectedFilters = filters.filters as IDataObject;
 	const filterString: string[] = [];
@@ -239,7 +285,7 @@ export function prepareFilterString(filters: IDataObject) {
 			.map((folder) => `parentFolderId eq '${folder}'`)
 			.join(' or ');
 
-		filterString.push(folders);
+		filterString.push(`(${folders})`);
 	}
 
 	if (selectedFilters.foldersToExclude) {
@@ -294,6 +340,17 @@ export function prepareApiError(
 			.replace(/bodyContent/g, 'bodyContent (Message)')
 			.replace(/bodyContentType/g, 'bodyContentType (Message Type)'),
 	});
+}
+
+/**
+ * Validates a mailbox (a user object ID or UPN) before it is used to compose a Graph URL.
+ * Delegates to the shared `validateUserTargetId` with "mailbox" wording (see `MAILBOX_MESSAGES`
+ * above), which throws a `NodeOperationError` with a fully static message (never echoing the id)
+ * on a bad shape — that shared validator is the single interpolation gate for user-scoped Graph
+ * targets and carries the accepted-shape / validate-before-encode logic.
+ */
+export function validateMailbox(id: string, node: INode): void {
+	validateUserTargetId(id, node, MAILBOX_MESSAGES);
 }
 
 export const encodeOutlookId = (id: string) => {

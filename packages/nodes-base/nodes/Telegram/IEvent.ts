@@ -10,10 +10,35 @@ interface EventBody {
 	video?: {
 		file_id: string;
 	};
+	chat?: {
+		id: number;
+	};
+	from?: {
+		id: number;
+	};
+}
+
+interface CallbackQuery {
+	from?: {
+		id: number;
+	};
+	message?: EventBody;
+}
+
+interface QueryWithFrom {
+	from?: {
+		id: number;
+	};
 }
 
 export interface IEvent {
 	message?: EventBody;
+	edited_message?: EventBody;
 	channel_post?: EventBody;
+	edited_channel_post?: EventBody;
+	callback_query?: CallbackQuery;
+	inline_query?: QueryWithFrom;
+	pre_checkout_query?: QueryWithFrom;
+	shipping_query?: QueryWithFrom;
 	download_link?: string;
 }

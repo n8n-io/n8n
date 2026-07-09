@@ -1,0 +1,741 @@
+import {
+	DEFAULT_SETUP,
+	MAPPING_COLUMNS_RESPONSE,
+	UPDATED_SCHEMA,
+	getLatestValueChangeEvent,
+} from './ResourceMapper.test.utils';
+import type { MockedStore } from '@/__tests__/utils';
+import { mockedStore, waitAllPromises } from '@/__tests__/utils';
+import ResourceMapper from './ResourceMapper.vue';
+import userEvent from '@testing-library/user-event';
+import { createComponentRenderer } from '@/__tests__/render';
+import type { MockInstance } from 'vitest';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { ResourceMapperTypeOptions, ResourceMapperValue } from 'n8n-workflow';
+import { createTestNode, createTestNodeProperties } from '@/__tests__/mocks';
+import { createTestingPinia } from '@pinia/testing';
+import {
+	WORKFLOW_INPUTS_TEST_PARAMETER,
+	WORKFLOW_INPUTS_TEST_NODE,
+	WORKFLOW_INPUTS_TEST_PARAMETER_PATH,
+	EXECUTE_WORKFLOW_NODE_TYPE_TEST,
+} from './ResourceMapper.test.constants';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+
+let nodeTypeStore: ReturnType<typeof useNodeTypesStore>;
+let projectsStore: MockedStore<typeof useProjectsStore>;
+
+let fetchFieldsSpy: MockInstance;
+
+describe('ResourceMapper.vue', () => {
+	const renderComponent = createComponentRenderer(ResourceMapper, DEFAULT_SETUP);
+
+	beforeAll(() => {
+		nodeTypeStore = useNodeTypesStore();
+		fetchFieldsSpy = vi
+			.spyOn(nodeTypeStore, 'getResourceMapperFields')
+			.mockResolvedValue(MAPPING_COLUMNS_RESPONSE);
+	});
+
+	beforeEach(() => {
+		projectsStore = mockedStore(useProjectsStore);
+		projectsStore.currentProjectId = 'aProjectId';
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('renders default configuration properly', async () => {
+		const { getByTestId } = renderComponent();
+		await waitAllPromises();
+		expect(getByTestId('resource-mapper-container')).toBeInTheDocument();
+		expect(getByTestId('mapping-mode-select')).toBeInTheDocument();
+		expect(getByTestId('matching-column-select')).toBeInTheDocument();
+		expect(getByTestId('mapping-fields-container')).toBeInTheDocument();
+		// Should render one parameter input for each fetched column
+		expect(
+			getByTestId('mapping-fields-container').querySelectorAll('.parameter-input').length,
+		).toBe(MAPPING_COLUMNS_RESPONSE.fields.length);
+	});
+
+	it('renders correctly in read only mode', async () => {
+		const { getByTestId } = renderComponent({ props: { isReadOnly: true } });
+		await waitAllPromises();
+		expect(getByTestId('mapping-mode-select').querySelector('input')).toBeDisabled();
+		expect(getByTestId('matching-column-select').querySelector('input')).toBeDisabled();
+		expect(getByTestId('mapping-fields-container').querySelector('input')).toBeDisabled();
+	});
+
+	it('renders add mode properly', async () => {
+		const { getByTestId, queryByTestId } = renderComponent(
+			{
+				props: {
+					parameter: createTestNodeProperties({
+						name: 'columns',
+						typeOptions: {
+							resourceMapper: {
+								mode: 'add',
+							} as ResourceMapperTypeOptions,
+						},
+					}),
+				},
+			},
+			{ merge: true },
+		);
+		await waitAllPromises();
+		expect(getByTestId('resource-mapper-container')).toBeInTheDocument();
+		// This mode doesn't render matching column selector
+		expect(queryByTestId('matching-column-select')).not.toBeInTheDocument();
+	});
+
+	it('renders map mode properly', async () => {
+		const { getByTestId, queryByTestId } = renderComponent(
+			{
+				props: {
+					parameter: createTestNodeProperties({
+						name: 'columns',
+						typeOptions: {
+							resourceMapper: {
+								mode: 'map',
+							} as ResourceMapperTypeOptions,
+						},
+					}),
+				},
+			},
+			{ merge: true },
+		);
+		await waitAllPromises();
+		expect(getByTestId('resource-mapper-container')).toBeInTheDocument();
+		// This mode doesn't render matching column selector
+		expect(queryByTestId('matching-column-select')).not.toBeInTheDocument();
+	});
+
+	it('renders multi-key match selector properly', async () => {
+		const { container, getByTestId } = renderComponent(
+			{
+				props: {
+					parameter: createTestNodeProperties({
+						name: 'columns',
+						typeOptions: {
+							resourceMapper: {
+								mode: 'upsert',
+								multiKeyMatch: true,
+							} as ResourceMapperTypeOptions,
+						},
+					}),
+				},
+			},
+			{ merge: true },
+		);
+		await waitAllPromises();
+		expect(getByTestId('resource-mapper-container')).toBeInTheDocument();
+		expect(container.querySelector('.el-select__tags')).toBeInTheDocument();
+	});
+
+	it('does not render mapping mode selector if it is disabled', async () => {
+		const { getByTestId, queryByTestId } = renderComponent(
+			{
+				props: {
+					parameter: createTestNodeProperties({
+						name: 'columns',
+						typeOptions: {
+							resourceMapper: {
+								supportAutoMap: false,
+							} as ResourceMapperTypeOptions,
+						},
+					}),
+				},
+			},
+			{ merge: true },
+		);
+		await waitAllPromises();
+		expect(getByTestId('resource-mapper-container')).toBeInTheDocument();
+		expect(queryByTestId('mapping-mode-select')).not.toBeInTheDocument();
+	});
+
+	it('renders field on top of the list when they are selected for matching', async () => {
+		const user = userEvent.setup();
+		const { container, getByTestId } = renderComponent(
+			{
+				props: {
+					parameter: createTestNodeProperties({
+						name: 'columns',
+						typeOptions: {
+							resourceMapper: {
+								supportAutoMap: true,
+								mode: 'upsert',
+								multiKeyMatch: false,
+							} as ResourceMapperTypeOptions,
+						},
+					}),
+				},
+			},
+			{ merge: true },
+		);
+		await waitAllPromises();
+		expect(getByTestId('resource-mapper-container')).toBeInTheDocument();
+		// Id should be the first field in the list
+		expect(container.querySelector('.parameter-item')).toContainHTML('id (using to match)');
+		// Select Last Name as matching column
+		await user.click(getByTestId('matching-column-option-Last name'));
+		// Now, last name should be the first field in the list
+		expect(container.querySelector('.parameter-item div.title')).toHaveTextContent(
+			'Last name (using to match)',
+		);
+	}, 10000);
+
+	it('renders selected matching columns properly when multiple key matching is enabled', async () => {
+		const user = userEvent.setup();
+		const { getByTestId, getAllByText, queryByText } = renderComponent(
+			{
+				props: {
+					parameter: createTestNodeProperties({
+						name: 'columns',
+						typeOptions: {
+							resourceMapper: {
+								supportAutoMap: true,
+								mode: 'upsert',
+								multiKeyMatch: true,
+							} as ResourceMapperTypeOptions,
+						},
+					}),
+				},
+			},
+			{ merge: true },
+		);
+		await waitAllPromises();
+		expect(getByTestId('resource-mapper-container')).toBeInTheDocument();
+		await user.click(getByTestId('matching-column-option-Username'));
+
+		// Both matching columns (id and Username) should be rendered in the dropdown
+		expect(
+			getByTestId('matching-column-select').querySelector('.el-select  > div'),
+		).toHaveTextContent('idUsername');
+		// All selected columns should have correct labels
+		expect(getAllByText('id (using to match)')[0]).toBeInTheDocument();
+		expect(getAllByText('Username (using to match)')[0]).toBeInTheDocument();
+		expect(queryByText('First Name (using to match)')).not.toBeInTheDocument();
+	});
+
+	it('uses field words defined in node definition', async () => {
+		const { getByText } = renderComponent(
+			{
+				props: {
+					parameter: createTestNodeProperties({
+						name: 'columns',
+						typeOptions: {
+							resourceMapper: {
+								fieldWords: {
+									singular: 'foo',
+									plural: 'foos',
+								},
+							} as ResourceMapperTypeOptions,
+						},
+					}),
+				},
+			},
+			{ merge: true },
+		);
+
+		await waitAllPromises();
+		expect(getByText('Set the value for each foo')).toBeInTheDocument();
+		expect(
+			getByText('Look for incoming data that matches the foos in the service'),
+		).toBeInTheDocument();
+		expect(getByText('Foos to match on')).toBeInTheDocument();
+		expect(
+			getByText(
+				'The foos to use when matching rows in the service to the input items of this node. Usually an ID.',
+			),
+		).toBeInTheDocument();
+	});
+
+	it('should render correct fields based on saved schema', async () => {
+		const { getByTestId } = renderComponent(
+			{
+				props: {
+					node: createTestNode({
+						parameters: {
+							columns: {
+								schema: UPDATED_SCHEMA,
+							},
+						},
+					}),
+					parameter: createTestNodeProperties({
+						name: 'columns',
+						typeOptions: {
+							resourceMapper: {
+								mode: 'add',
+							} as ResourceMapperTypeOptions,
+						},
+					}),
+				},
+			},
+			{ merge: true },
+		);
+		await waitAllPromises();
+		// There should be 4 fields rendered and only 1 of them should have remove button
+		expect(
+			getByTestId('mapping-fields-container').querySelectorAll('.parameter-input').length,
+		).toBe(4);
+		expect(
+			getByTestId('mapping-fields-container').querySelectorAll(
+				'[data-test-id^="remove-field-button"]',
+			).length,
+		).toBe(1);
+	});
+
+	it('should render correct options based on saved schema', async () => {
+		const { getByTestId } = renderComponent(
+			{
+				props: {
+					node: createTestNode({
+						parameters: {
+							columns: {
+								schema: UPDATED_SCHEMA,
+							},
+						},
+					}),
+					parameter: createTestNodeProperties({
+						name: 'columns',
+						typeOptions: {
+							resourceMapper: {
+								mode: 'add',
+							} as ResourceMapperTypeOptions,
+						},
+					}),
+				},
+			},
+			{ merge: true },
+		);
+		await waitAllPromises();
+		// Should show an add button for one removed field
+		expect(getByTestId('add-fields-select').querySelector('button')).toBeTruthy();
+	});
+
+	it('should fetch fields if there is no cached schema', async () => {
+		renderComponent({
+			props: {
+				node: createTestNode({
+					parameters: {
+						columns: {
+							schema: null,
+						},
+					},
+				}),
+			},
+		});
+		await waitAllPromises();
+		expect(fetchFieldsSpy).toHaveBeenCalledTimes(1);
+	});
+
+	it('should not fetch fields if schema is already fetched', async () => {
+		renderComponent({
+			props: {
+				node: createTestNode({
+					parameters: {
+						columns: {
+							schema: UPDATED_SCHEMA,
+						},
+					},
+				}),
+				parameter: createTestNodeProperties({
+					name: 'columns',
+					typeOptions: {
+						resourceMapper: {
+							mode: 'add',
+						} as ResourceMapperTypeOptions,
+					},
+				}),
+			},
+		});
+		await waitAllPromises();
+		expect(fetchFieldsSpy).not.toHaveBeenCalled();
+	});
+
+	it('reconciles an incomplete cached schema with the live source when refreshIncompleteSchemaOnOpen is set', async () => {
+		// A cached schema that is structurally incomplete (missing the
+		// loader-populated `readOnly`), as produced by an AI builder rather than
+		// a real load. After reconciling, the rendered fields should match the
+		// live response (MAPPING_COLUMNS_RESPONSE), not the cached schema below.
+		const incompleteCachedSchema = [
+			{
+				id: 'cached_only_field',
+				displayName: 'cached_only_field',
+				required: false,
+				defaultMatch: false,
+				display: true,
+				type: 'string',
+				canBeUsedToMatch: true,
+				removed: false,
+			},
+		];
+
+		const { getByTestId } = renderComponent(
+			{
+				props: {
+					node: createTestNode({
+						parameters: {
+							columns: {
+								schema: incompleteCachedSchema,
+							},
+						},
+					}),
+					parameter: createTestNodeProperties({
+						name: 'columns',
+						typeOptions: {
+							resourceMapper: {
+								mode: 'add',
+								resourceMapperMethod: 'getMappingColumns',
+								refreshIncompleteSchemaOnOpen: true,
+							} as ResourceMapperTypeOptions,
+						},
+					}),
+				},
+			},
+			{ merge: true },
+		);
+		await waitAllPromises();
+		expect(fetchFieldsSpy).toHaveBeenCalledTimes(1);
+		// Schema was reconciled with the live source — the cached-only field
+		// is gone and a field from MAPPING_COLUMNS_RESPONSE is rendered.
+		const mappingContainer = getByTestId('mapping-fields-container');
+		expect(mappingContainer.textContent).not.toContain('cached_only_field');
+		expect(mappingContainer.textContent).toContain('First name');
+	});
+
+	it('does not reintroduce an incomplete field when reconciling a matching-id schema', async () => {
+		// A cached field that shares its id with the live schema but is missing the
+		// loader-populated readOnly/removed, as an AI-authored schema would be.
+		// The reconcile must not copy the cached field's missing `removed` onto the
+		// freshly loaded field, which would leave it incomplete and re-trigger the
+		// refresh on every open.
+		const incompleteMatchingSchema = [
+			{
+				id: 'First name',
+				displayName: 'First name',
+				required: false,
+				defaultMatch: false,
+				display: true,
+				type: 'string',
+				canBeUsedToMatch: true,
+			},
+		];
+
+		// Rendered without `{ merge: true }` to keep the cached schema deterministic
+		// (see the test below for why).
+		const { emitted } = renderComponent({
+			props: {
+				node: createTestNode({
+					parameters: {
+						columns: {
+							schema: incompleteMatchingSchema,
+						},
+					},
+				}),
+				parameter: createTestNodeProperties({
+					name: 'columns',
+					type: 'resourceMapper',
+					typeOptions: {
+						resourceMapper: {
+							mode: 'add',
+							resourceMapperMethod: 'getMappingColumns',
+							refreshIncompleteSchemaOnOpen: true,
+						} as ResourceMapperTypeOptions,
+					},
+				}),
+			},
+		});
+		await waitAllPromises();
+
+		const reconciledSchema = getLatestValueChangeEvent(emitted())[0].value.schema;
+		const firstName = reconciledSchema.find((field) => field.id === 'First name');
+		expect(firstName?.removed).toBe(false);
+	});
+
+	it('keeps the stale warning for a complete-but-drifted schema when refreshIncompleteSchemaOnOpen is set', async () => {
+		// A cached schema that is structurally complete (the loader-populated
+		// `readOnly`/`removed` are present) but has drifted from the live source,
+		// as happens when the user edits the table after configuring the node.
+		// The user's drift must NOT be auto-clobbered — it keeps the cached
+		// fields and surfaces the stale warning instead of reconciling.
+		const completeDriftedSchema = [
+			{
+				id: 'user_added_field',
+				displayName: 'user_added_field',
+				required: false,
+				defaultMatch: false,
+				display: true,
+				type: 'string',
+				canBeUsedToMatch: true,
+				readOnly: false,
+				removed: false,
+			},
+		];
+
+		// Rendered without `{ merge: true }` on purpose: the shared DEFAULT_SETUP
+		// is mutated by lodash merge across tests, and arrays merge by index, so a
+		// prior test's longer schema would leak residual fields into this single
+		// field one. A full-props render keeps the cached schema deterministic.
+		const { getByTestId } = renderComponent({
+			props: {
+				node: createTestNode({
+					parameters: {
+						columns: {
+							schema: completeDriftedSchema,
+						},
+					},
+				}),
+				parameter: createTestNodeProperties({
+					name: 'columns',
+					type: 'resourceMapper',
+					typeOptions: {
+						resourceMapper: {
+							mode: 'add',
+							resourceMapperMethod: 'getMappingColumns',
+							refreshIncompleteSchemaOnOpen: true,
+						} as ResourceMapperTypeOptions,
+					},
+				}),
+			},
+		});
+		await waitAllPromises();
+		// The schema was checked against the live source but NOT replaced — the
+		// cached field is still rendered and the live-only field is absent.
+		const mappingContainer = getByTestId('mapping-fields-container');
+		expect(mappingContainer.textContent).toContain('user_added_field');
+		expect(mappingContainer.textContent).not.toContain('First name');
+	});
+
+	it('renders initially selected matching column properly', async () => {
+		const { getByTestId } = renderComponent(
+			{
+				props: {
+					node: createTestNode({
+						parameters: {
+							columns: {
+								mappingMode: 'autoMapInputData',
+								matchingColumns: ['name'],
+								schema: [
+									{
+										id: 'name',
+										displayName: 'name',
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'email',
+										displayName: 'email',
+										canBeUsedToMatch: true,
+									},
+								],
+							},
+						},
+					}),
+					parameter: createTestNodeProperties({
+						name: 'columns',
+						typeOptions: {
+							resourceMapper: {
+								supportAutoMap: true,
+								mode: 'upsert',
+								multiKeyMatch: false,
+							} as ResourceMapperTypeOptions,
+						},
+					}),
+				},
+			},
+			{ merge: true },
+		);
+		await waitAllPromises();
+
+		expect(getByTestId('matching-column-select').querySelector('input')).toHaveValue('name');
+	});
+
+	it('ADO-5197: deletion must not mutate props.node.parameters in place', async () => {
+		// The store's change-detection (updateNodeAtIndex isEqual) compares the new
+		// parameters against the store's current parameters. If ResourceMapper shares
+		// nested refs with props.node.parameters (the store object), in-place mutations
+		// from deleteField propagate into the store BEFORE the explicit emit→save path
+		// runs — making isEqual see no change and silently skipping the dirty/save
+		// trigger. Result: the deletion is never persisted.
+		const originalValue = { 'First name': 'a', 'Last name': 'b', Username: 'c', Address: 'd' };
+		const originalSchema = UPDATED_SCHEMA.map((f) => ({ ...f }));
+		const node = createTestNode({
+			parameters: {
+				columns: {
+					mappingMode: 'defineBelow',
+					value: { ...originalValue },
+					schema: originalSchema,
+				},
+			},
+		});
+
+		const { getByTestId } = renderComponent(
+			{
+				props: {
+					node,
+					parameter: createTestNodeProperties({
+						name: 'columns',
+						typeOptions: {
+							resourceMapper: {
+								mode: 'add',
+							} as ResourceMapperTypeOptions,
+						},
+					}),
+				},
+			},
+			{ merge: true },
+		);
+		await waitAllPromises();
+
+		await userEvent.click(getByTestId('remove-field-button-Username'));
+		await waitAllPromises();
+
+		const columns = node.parameters.columns as ResourceMapperValue;
+		expect(columns.value).toEqual(originalValue);
+		const usernameSchema = (columns.schema ?? []).find((f) => f.id === 'Username');
+		expect(usernameSchema?.removed).not.toBe(true);
+	});
+
+	it('should set default value for the fields if provided', async () => {
+		fetchFieldsSpy.mockResolvedValue({
+			fields: [
+				{
+					id: 'foo',
+					displayName: 'Foo',
+					match: false,
+					required: true,
+					defaultMatch: false,
+					canBeUsedToMatch: false,
+					removed: false,
+					display: true,
+					type: 'string',
+					defaultValue: 'bar',
+				},
+			],
+		});
+
+		const { container } = renderComponent({
+			props: {
+				node: createTestNode({
+					parameters: {
+						columns: {
+							schema: null,
+						},
+					},
+				}),
+			},
+		});
+		await waitAllPromises();
+
+		const input = container.querySelectorAll('input')[1]; // the first input is the mapping mode selector
+		expect(input).toHaveValue('bar');
+	});
+});
+
+vi.mock('vue-router', async () => {
+	const actual = await vi.importActual('vue-router');
+	const params = {};
+	const location = {};
+	return {
+		...actual,
+		useRouter: () => ({
+			push: vi.fn(),
+		}),
+		useRoute: () => ({
+			params,
+			location,
+		}),
+	};
+});
+
+describe('ResourceMapper::Workflow Inputs', () => {
+	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+
+	const renderComponent = createComponentRenderer(ResourceMapper, {
+		props: {
+			inputSize: 'small',
+			labelSize: 'small',
+			dependentParametersValues: '-1',
+			teleported: false,
+		},
+		global: {
+			stubs: {
+				ParameterInputFull: { template: '<div data-test-id="field-input"></div>' },
+			},
+		},
+	});
+
+	beforeEach(() => {
+		createTestingPinia();
+		nodeTypesStore = mockedStore(useNodeTypesStore);
+		nodeTypesStore.nodeTypes = {
+			'n8n-nodes-base.executeWorkflow': {
+				1.2: EXECUTE_WORKFLOW_NODE_TYPE_TEST,
+			},
+		};
+	});
+
+	it('renders', async () => {
+		expect(() =>
+			renderComponent({
+				props: {
+					parameter: WORKFLOW_INPUTS_TEST_PARAMETER,
+					node: WORKFLOW_INPUTS_TEST_NODE,
+					path: WORKFLOW_INPUTS_TEST_PARAMETER_PATH,
+				},
+			}),
+		).not.toThrow();
+	});
+
+	it('renders workflow inputs list correctly', async () => {
+		nodeTypesStore.getLocalResourceMapperFields.mockResolvedValue({
+			fields: [
+				{
+					id: 'firstName',
+					displayName: 'First Name',
+					type: 'string',
+					required: false,
+					defaultMatch: false,
+					display: true,
+				},
+				{
+					id: 'lastName',
+					displayName: 'Last Name',
+					type: 'string',
+					required: false,
+					defaultMatch: false,
+					display: true,
+				},
+			],
+		});
+		const { getByTestId, getAllByTestId } = renderComponent({
+			props: {
+				parameter: WORKFLOW_INPUTS_TEST_PARAMETER,
+				node: WORKFLOW_INPUTS_TEST_NODE,
+				path: WORKFLOW_INPUTS_TEST_PARAMETER_PATH,
+			},
+		});
+		await waitAllPromises();
+		expect(getByTestId('mapping-fields-container')).toBeInTheDocument();
+		expect(getAllByTestId('field-input')).toHaveLength(2);
+	});
+
+	it('renders provided empty fields message', async () => {
+		nodeTypesStore.getLocalResourceMapperFields.mockResolvedValue({
+			fields: [],
+			emptyFieldsNotice: 'Nothing <b>here</b>',
+		});
+		const { queryByTestId, queryAllByTestId, getByTestId } = renderComponent({
+			props: {
+				parameter: WORKFLOW_INPUTS_TEST_PARAMETER,
+				node: WORKFLOW_INPUTS_TEST_NODE,
+				path: WORKFLOW_INPUTS_TEST_PARAMETER_PATH,
+			},
+		});
+		await waitAllPromises();
+		expect(queryByTestId('mapping-fields-container')).not.toBeInTheDocument();
+		expect(queryAllByTestId('field-input')).toHaveLength(0);
+		expect(getByTestId('empty-fields-notice')).toHaveTextContent('Nothing here');
+	});
+});

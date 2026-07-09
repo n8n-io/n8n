@@ -1,12 +1,14 @@
+import { inDevelopment, Logger } from '@n8n/backend-common';
+import { OutboundHttp, type HttpRequestClient } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
-import axios from 'axios';
+import { Time } from '@n8n/constants';
+import { separate } from '@n8n/db';
+import { Container, Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import { Service } from 'typedi';
+import type { IWorkflowBase } from 'n8n-workflow';
 
-import config from '@/config';
-import { getN8nPackageJson, inDevelopment } from '@/constants';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { Logger } from '@/logging/logger.service';
+import { N8N_VERSION } from '@/constants';
+import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { isApiEnabled } from '@/public-api';
 import {
 	ENV_VARS_DOCS_URL,
@@ -16,17 +18,26 @@ import {
 } from '@/security-audit/constants';
 import type { RiskReporter, Risk, n8n } from '@/security-audit/types';
 import { toFlaggedNode } from '@/security-audit/utils';
-import { separate } from '@/utils';
+
+const REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;
 
 @Service()
 export class InstanceRiskReporter implements RiskReporter {
+	private readonly http: HttpRequestClient;
+
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
-	) {}
+		outboundHttp: OutboundHttp,
+	) {
+		this.http = outboundHttp.requests({
+			ssrf: 'disabled', // Fixed, n8n-controlled host
+			timeout: REQUEST_TIMEOUT_MS,
+		});
+	}
 
-	async report(workflows: WorkflowEntity[]) {
+	async report(workflows: IWorkflowBase[]) {
 		const unprotectedWebhooks = this.getUnprotectedWebhookNodes(workflows);
 		const outdatedState = await this.getOutdatedState();
 		const securitySettings = this.getSecuritySettings();
@@ -84,12 +95,12 @@ export class InstanceRiskReporter implements RiskReporter {
 	}
 
 	private getSecuritySettings() {
-		if (config.getEnv('deployment.type') === 'cloud') return null;
+		if (this.globalConfig.deployment.type === 'cloud') return null;
 
 		const settings: Record<string, unknown> = {};
 
 		settings.features = {
-			communityPackagesEnabled: this.globalConfig.nodes.communityPackages.enabled,
+			communityPackagesEnabled: Container.get(CommunityPackagesConfig).enabled,
 			versionNotificationsEnabled: this.globalConfig.versionNotifications.enabled,
 			templatesEnabled: this.globalConfig.templates.enabled,
 			publicApiEnabled: isApiEnabled(),
@@ -116,8 +127,8 @@ export class InstanceRiskReporter implements RiskReporter {
 		node,
 		workflow,
 	}: {
-		node: WorkflowEntity['nodes'][number];
-		workflow: WorkflowEntity;
+		node: IWorkflowBase['nodes'][number];
+		workflow: IWorkflowBase;
 	}) {
 		const childNodeNames = workflow.connections[node.name]?.main[0]?.map((i) => i.node);
 
@@ -128,9 +139,9 @@ export class InstanceRiskReporter implements RiskReporter {
 		);
 	}
 
-	private getUnprotectedWebhookNodes(workflows: WorkflowEntity[]) {
+	private getUnprotectedWebhookNodes(workflows: IWorkflowBase[]) {
 		return workflows.reduce<Risk.NodeLocation[]>((acc, workflow) => {
-			if (!workflow.active) return acc;
+			if (!workflow.activeVersionId) return acc;
 
 			workflow.nodes.forEach((node) => {
 				if (
@@ -150,11 +161,14 @@ export class InstanceRiskReporter implements RiskReporter {
 		const BASE_URL = this.globalConfig.versionNotifications.endpoint;
 		const { instanceId } = this.instanceSettings;
 
-		const response = await axios.get<n8n.Version[]>(BASE_URL + currentVersionName, {
+		const response = await this.http.request<n8n.Version[]>({
+			url: BASE_URL + currentVersionName,
+			method: 'GET',
 			headers: { 'n8n-instance-id': instanceId },
+			json: true,
 		});
 
-		return response.data;
+		return response;
 	}
 
 	private removeIconData(versions: n8n.Version[]) {
@@ -176,7 +190,7 @@ export class InstanceRiskReporter implements RiskReporter {
 	private async getOutdatedState() {
 		let versions = [];
 
-		const localVersion = getN8nPackageJson().version;
+		const localVersion = N8N_VERSION;
 
 		try {
 			versions = await this.getNextVersions(localVersion).then((v) => this.removeIconData(v));

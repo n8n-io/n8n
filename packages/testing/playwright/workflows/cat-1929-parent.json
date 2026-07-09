@@ -1,0 +1,59 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"workflowId": {
+					"__rl": true,
+					"value": "placeholder",
+					"mode": "list"
+				},
+				"workflowInputs": {
+					"mappingMode": "defineBelow",
+					"value": {},
+					"matchingColumns": [],
+					"schema": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": true
+				},
+				"options": {
+					"waitForSubWorkflow": true
+				}
+			},
+			"type": "n8n-nodes-base.executeWorkflow",
+			"typeVersion": 1.3,
+			"position": [208, -352],
+			"id": "5f323e83-f19c-4e00-a47a-5383f07ffad8",
+			"name": "Execute Workflow"
+		},
+		{
+			"parameters": {
+				"path": "9735a722-ea8f-42e7-afcd-6f4a40030325",
+				"responseMode": "lastNode",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2.1,
+			"position": [-16, -352],
+			"id": "69d68817-741c-409a-bc8c-f9fff267b863",
+			"name": "Webhook",
+			"webhookId": "9735a722-ea8f-42e7-afcd-6f4a40030325"
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Execute Workflow",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"instanceId": "f21dcb5296ee365372dae8f32f5830ed6733682e3fba20fd801863fa536d3a9c"
+	}
+}

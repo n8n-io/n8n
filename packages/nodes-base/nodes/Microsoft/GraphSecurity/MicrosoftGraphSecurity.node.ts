@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import {
 	secureScoreControlProfileFields,
@@ -31,15 +31,49 @@ export class MicrosoftGraphSecurity implements INodeType {
 		defaults: {
 			name: 'Microsoft Graph Security',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'microsoftGraphSecurityOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftGraphSecurityOAuth2Api'],
+					},
+				},
+			},
+			{
+				name: 'microsoftOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftOAuth2Api'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Graph Security OAuth2',
+						value: 'microsoftGraphSecurityOAuth2Api',
+					},
+					{
+						name: 'Microsoft OAuth2 (Graph)',
+						value: 'microsoftOAuth2Api',
+						description:
+							'Generic Microsoft Graph credential. It must have the SecurityEvents.ReadWrite.All offline_access scope with Entra admin consent.',
+					},
+				],
+				default: 'microsoftGraphSecurityOAuth2Api',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',

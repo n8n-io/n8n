@@ -1,0 +1,1256 @@
+import { mockLogger } from '@n8n/backend-test-utils';
+import type { SecretsProviderConnectionRepository } from '@n8n/db';
+import type { Cipher } from 'n8n-core';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
+import { DummyProvider, MockProviders } from '@test/external-secrets/utils';
+
+import { ExternalSecretsManager } from '../external-secrets-manager.ee';
+import { ExternalSecretsProviderConnectionManager } from '../external-secrets-provider-connection-manager.ee';
+import type { ExternalSecretsConfig } from '../external-secrets.config';
+import { ExternalSecretsProviderLifecycle } from '../provider-lifecycle.service';
+import { ExternalSecretsProviderRegistry } from '../provider-registry.service';
+import { ExternalSecretsRetryManager } from '../retry-manager.service';
+import { ExternalSecretsSecretsCache } from '../secrets-cache.service';
+import type { ExternalSecretsSettingsStore } from '../settings-store.service';
+import type { ExternalSecretsSettings, SecretsProvider } from '../types';
+
+const createDeferred = () => {
+	let resolve!: () => void;
+	const promise = new Promise<void>((res) => {
+		resolve = res;
+	});
+
+	return { promise, resolve };
+};
+
+describe('ExternalSecretsManager', () => {
+	vi.useFakeTimers();
+
+	let manager: ExternalSecretsManager;
+	let mockConfig: ExternalSecretsConfig;
+	let mockProvidersFactory: MockProviders;
+	let mockEventService: any;
+	let mockPublisher: any;
+	let mockSettingsStore: Mocked<ExternalSecretsSettingsStore>;
+	let mockProviderRegistry: Mocked<ExternalSecretsProviderRegistry>;
+	let mockProviderLifecycle: Mocked<ExternalSecretsProviderLifecycle>;
+	let mockRetryManager: Mocked<ExternalSecretsRetryManager>;
+	let mockProviderConnectionManager: Mocked<ExternalSecretsProviderConnectionManager>;
+	let mockSecretsCache: Mocked<ExternalSecretsSecretsCache>;
+	let mockSecretsProviderConnectionRepository: Mocked<SecretsProviderConnectionRepository>;
+	let mockCipher: Mocked<Cipher>;
+
+	const mockSettings: ExternalSecretsSettings = {
+		dummy: {
+			connected: true,
+			connectedAt: new Date('2023-08-01T12:00:00Z'),
+			settings: { key: 'value' },
+		},
+	};
+
+	beforeEach(() => {
+		mockConfig = { updateInterval: 60 } as ExternalSecretsConfig;
+		mockProvidersFactory = new MockProviders();
+		mockProvidersFactory.setProviders({ dummy: DummyProvider });
+		mockEventService = { emit: vi.fn() };
+		mockPublisher = { publishCommand: vi.fn() };
+
+		// Mock SettingsStore
+		mockSettingsStore = mock<ExternalSecretsSettingsStore>();
+		mockSettingsStore.reload.mockResolvedValue(mockSettings);
+		mockSettingsStore.getProvider.mockResolvedValue(mockSettings.dummy);
+		mockSettingsStore.getCached.mockReturnValue(mockSettings);
+		mockSettingsStore.updateProvider.mockResolvedValue({
+			settings: mockSettings,
+			isNewProvider: false,
+		});
+
+		// Mock ProviderRegistry with a Map to simulate real behavior
+		const providersMap = new Map<string, any>();
+		mockProviderRegistry = mock<ExternalSecretsProviderRegistry>();
+		mockProviderRegistry.getNames.mockImplementation(() => Array.from(providersMap.keys()));
+		mockProviderRegistry.get.mockImplementation((name) => providersMap.get(name));
+		mockProviderRegistry.has.mockImplementation((name) => providersMap.has(name));
+		mockProviderRegistry.getAll.mockImplementation(() => new Map(providersMap));
+		mockProviderRegistry.set.mockImplementation((name, provider) => {
+			providersMap.set(name, provider);
+		});
+		mockProviderRegistry.remove.mockImplementation((name) => {
+			providersMap.delete(name);
+		});
+
+		// Mock ProviderLifecycle
+		mockProviderLifecycle = mock<ExternalSecretsProviderLifecycle>();
+		mockProviderLifecycle.initialize.mockResolvedValue({
+			success: true,
+			provider: new DummyProvider(),
+		});
+		mockProviderLifecycle.connect.mockResolvedValue({ success: true });
+
+		// Mock RetryManager
+		mockRetryManager = mock<ExternalSecretsRetryManager>();
+		mockRetryManager.runWithRetry.mockImplementation(async (_key, operation) => {
+			const result = await operation();
+			return result;
+		});
+
+		mockProviderConnectionManager = mock<ExternalSecretsProviderConnectionManager>();
+
+		// Mock SecretsCache
+		mockSecretsCache = mock<ExternalSecretsSecretsCache>();
+		mockSecretsCache.getSecret.mockReturnValue(undefined);
+		mockSecretsCache.hasSecret.mockReturnValue(false);
+		mockSecretsCache.getSecretNames.mockReturnValue([]);
+		mockSecretsCache.getAllSecretNames.mockReturnValue({});
+
+		// Mock SecretsProviderConnectionRepository
+		mockSecretsProviderConnectionRepository = mock<SecretsProviderConnectionRepository>();
+		mockSecretsProviderConnectionRepository.findAll.mockResolvedValue([]);
+
+		// Mock Cipher
+		mockCipher = mock<Cipher>();
+
+		manager = new ExternalSecretsManager(
+			mockLogger(),
+			mockConfig,
+			mockProvidersFactory,
+			mockEventService,
+			mockPublisher,
+			mockSettingsStore,
+			mockProviderRegistry,
+			mockProviderLifecycle,
+			mockRetryManager,
+			mockProviderConnectionManager,
+			mockSecretsCache,
+			mockSecretsProviderConnectionRepository,
+			mockCipher,
+		);
+	});
+
+	afterEach(() => {
+		manager?.shutdown();
+		vi.clearAllTimers();
+	});
+
+	describe('init', () => {
+		it('should initialize and load all providers', async () => {
+			await manager.init();
+
+			expect(mockSettingsStore.reload).toHaveBeenCalled();
+			expect(manager.initialized).toBe(true);
+		});
+
+		it('should start secrets refresh interval', async () => {
+			await manager.init();
+
+			// refreshAll is called once during init
+			expect(mockSecretsCache.refreshAll).toHaveBeenCalledTimes(1);
+
+			vi.advanceTimersByTime(60000); // 60 seconds
+
+			// Should be called again after interval
+			expect(mockSecretsCache.refreshAll).toHaveBeenCalledTimes(2);
+		});
+
+		it('should not initialize twice', async () => {
+			await manager.init();
+			await manager.init();
+
+			expect(mockSettingsStore.reload).toHaveBeenCalledTimes(1);
+		});
+
+		it('should handle initialization errors', async () => {
+			mockSettingsStore.reload.mockRejectedValue(new Error('Database error'));
+
+			await expect(manager.init()).rejects.toThrow('Database error');
+			expect(manager.initialized).toBe(false);
+		});
+	});
+
+	describe('shutdown', () => {
+		it('should stop refresh interval and disconnect all providers', async () => {
+			await manager.init();
+
+			manager.shutdown();
+
+			expect(mockRetryManager.cancelAll).toHaveBeenCalled();
+			expect(mockProviderRegistry.disconnectAll).toHaveBeenCalled();
+			expect(manager.initialized).toBe(false);
+		});
+
+		it('should stop calling refresh after shutdown', async () => {
+			await manager.init();
+
+			// refreshAll called once during init
+			const callsAfterInit = mockSecretsCache.refreshAll.mock.calls.length;
+
+			vi.advanceTimersByTime(60000);
+			expect(mockSecretsCache.refreshAll).toHaveBeenCalledTimes(callsAfterInit + 1);
+
+			manager.shutdown();
+
+			vi.advanceTimersByTime(60000);
+			expect(mockSecretsCache.refreshAll).toHaveBeenCalledTimes(callsAfterInit + 1); // No additional calls
+		});
+	});
+
+	describe('getProvider', () => {
+		it('should delegate to provider registry', () => {
+			const dummyProvider = new DummyProvider();
+			mockProviderRegistry.get.mockReturnValue(dummyProvider);
+
+			const result = manager.getProvider('dummy');
+
+			expect(result).toBe(dummyProvider);
+			expect(mockProviderRegistry.get).toHaveBeenCalledWith('dummy');
+		});
+	});
+
+	describe('getProviderProperties', () => {
+		it('should return property schema for the given provider type', () => {
+			const getProviderSpy = vi.spyOn(mockProvidersFactory, 'getProvider');
+
+			const result = manager.getProviderProperties('dummy');
+
+			expect(Array.isArray(result)).toBe(true);
+			expect(result).toHaveLength(3);
+			expect(result.map((p) => p.name)).toEqual(['username', 'other', 'password']);
+			expect(getProviderSpy).toHaveBeenCalledWith('dummy');
+			getProviderSpy.mockRestore();
+		});
+
+		it('should throw if provider type does not exist', () => {
+			const getProviderSpy = vi
+				.spyOn(mockProvidersFactory, 'getProvider')
+				.mockReturnValue(undefined as unknown as { new (): SecretsProvider });
+
+			expect(() => manager.getProviderProperties('nonexistentType')).toThrowError(
+				'Provider type "nonexistentType" not found',
+			);
+
+			getProviderSpy.mockRestore();
+		});
+	});
+
+	describe('hasProvider', () => {
+		it('should delegate to provider registry', () => {
+			mockProviderRegistry.has.mockReturnValue(true);
+
+			const result = manager.hasProvider('dummy');
+
+			expect(result).toBe(true);
+			expect(mockProviderRegistry.has).toHaveBeenCalledWith('dummy');
+		});
+	});
+
+	describe('getProviderNames', () => {
+		it('should delegate to provider registry', () => {
+			mockProviderRegistry.getNames.mockReturnValue(['dummy', 'another']);
+
+			const result = manager.getProviderNames();
+
+			expect(result).toEqual(['dummy', 'another']);
+			expect(mockProviderRegistry.getNames).toHaveBeenCalled();
+		});
+	});
+
+	describe('getProvidersWithSettings', () => {
+		it('should return all providers with their settings', () => {
+			const dummyProvider = new DummyProvider();
+			mockProviderRegistry.get.mockReturnValue(dummyProvider);
+
+			const result = manager.getProvidersWithSettings();
+
+			expect(result).toEqual([
+				{
+					provider: dummyProvider,
+					settings: mockSettings.dummy,
+				},
+			]);
+		});
+
+		it('should create new provider instance if not in registry', () => {
+			mockProviderRegistry.get.mockReturnValue(undefined);
+
+			const result = manager.getProvidersWithSettings();
+
+			expect(result).toHaveLength(1);
+			expect(result[0].provider).toBeInstanceOf(DummyProvider);
+		});
+	});
+
+	describe('getProviderWithSettings', () => {
+		it('should return provider with settings', () => {
+			const dummyProvider = new DummyProvider();
+			mockProviderRegistry.get.mockReturnValue(dummyProvider);
+
+			const result = manager.getProviderWithSettings('dummy');
+
+			expect(result).toEqual({
+				provider: dummyProvider,
+				settings: mockSettings.dummy,
+			});
+		});
+	});
+
+	describe('syncProviderConnection', () => {
+		const mockConnection = {
+			id: 1,
+			providerKey: 'my-vault',
+			type: 'dummy',
+			encryptedSettings: 'encrypted-data',
+			isEnabled: true,
+			projectAccess: [],
+			createdAt: new Date(),
+			updatedAt: new Date(),
+			setUpdateDate: vi.fn(),
+		};
+
+		it('should upsert provider connection, refresh cache, and broadcast', async () => {
+			const decryptedSettings = { key: 'value' };
+			mockSecretsProviderConnectionRepository.findOne.mockResolvedValue(mockConnection as any);
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify(decryptedSettings));
+
+			const newProvider = new DummyProvider();
+			await newProvider.init({ connected: true, connectedAt: null, settings: {} });
+			await newProvider.connect();
+			mockProviderConnectionManager.upsertProviderConnection.mockImplementation(async () => {
+				mockProviderRegistry.set('my-vault', newProvider);
+			});
+
+			await manager.syncProviderConnection('my-vault');
+
+			expect(mockCipher.decryptV2).toHaveBeenCalledWith('encrypted-data');
+			expect(mockProviderConnectionManager.upsertProviderConnection).toHaveBeenCalledWith(
+				'my-vault',
+				'dummy',
+				{
+					connected: true,
+					connectedAt: null,
+					settings: decryptedSettings,
+				},
+			);
+			expect(mockSecretsCache.refreshProvider).toHaveBeenCalledWith('my-vault', newProvider);
+			expect(mockPublisher.publishCommand).toHaveBeenCalledWith({
+				command: 'reload-external-secrets-providers',
+			});
+		});
+
+		it('should remove provider connection and broadcast when connection no longer exists', async () => {
+			mockSecretsProviderConnectionRepository.findOne.mockResolvedValue(null);
+
+			await manager.syncProviderConnection('my-vault');
+
+			expect(mockProviderConnectionManager.removeProviderConnection).toHaveBeenCalledWith(
+				'my-vault',
+			);
+			expect(mockProviderConnectionManager.upsertProviderConnection).not.toHaveBeenCalled();
+			expect(mockSecretsCache.refreshProvider).not.toHaveBeenCalled();
+			expect(mockPublisher.publishCommand).toHaveBeenCalledWith({
+				command: 'reload-external-secrets-providers',
+			});
+		});
+
+		it('should skip cache refresh when provider is not available after upsert', async () => {
+			mockSecretsProviderConnectionRepository.findOne.mockResolvedValue(mockConnection as any);
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
+
+			await manager.syncProviderConnection('my-vault');
+
+			expect(mockProviderConnectionManager.upsertProviderConnection).toHaveBeenCalled();
+			expect(mockSecretsCache.refreshProvider).not.toHaveBeenCalled();
+			expect(mockPublisher.publishCommand).toHaveBeenCalledWith({
+				command: 'reload-external-secrets-providers',
+			});
+		});
+
+		it('should broadcast reload when syncing an enabled connection', async () => {
+			mockSecretsProviderConnectionRepository.findOne.mockResolvedValue(mockConnection as any);
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
+
+			await manager.syncProviderConnection('my-vault');
+
+			expect(mockProviderConnectionManager.upsertProviderConnection).toHaveBeenCalled();
+			expect(mockPublisher.publishCommand).toHaveBeenCalledWith({
+				command: 'reload-external-secrets-providers',
+			});
+		});
+	});
+
+	describe('updateProvider', () => {
+		it('should update connected provider', async () => {
+			const dummyProvider = new DummyProvider();
+			await dummyProvider.init({ connected: true, connectedAt: new Date(), settings: {} });
+			await dummyProvider.connect();
+			vi.spyOn(dummyProvider, 'update');
+
+			mockProviderRegistry.get.mockReturnValue(dummyProvider);
+
+			await manager.updateProvider('dummy');
+
+			expect(dummyProvider.update).toHaveBeenCalled();
+			expect(mockPublisher.publishCommand).toHaveBeenCalledWith({
+				command: 'reload-external-secrets-providers',
+			});
+		});
+
+		it('should throw error if provider not found', async () => {
+			mockProviderRegistry.get.mockReturnValue(undefined);
+
+			await expect(manager.updateProvider('nonexistent')).rejects.toThrow(
+				'Provider "nonexistent" not found',
+			);
+		});
+
+		it('should throw error if provider not connected', async () => {
+			const dummyProvider = new DummyProvider();
+			mockProviderRegistry.get.mockReturnValue(dummyProvider);
+
+			await expect(manager.updateProvider('dummy')).rejects.toThrow(
+				'Provider "dummy" is not connected',
+			);
+		});
+	});
+
+	describe('getSecret', () => {
+		it('should delegate to secrets cache', () => {
+			mockSecretsCache.getSecret.mockReturnValue('secret-value');
+
+			const result = manager.getSecret('dummy', 'test-secret');
+
+			expect(result).toBe('secret-value');
+			expect(mockSecretsCache.getSecret).toHaveBeenCalledWith('dummy', 'test-secret');
+		});
+	});
+
+	describe('hasSecret', () => {
+		it('should delegate to secrets cache', () => {
+			mockSecretsCache.hasSecret.mockReturnValue(true);
+
+			const result = manager.hasSecret('dummy', 'test-secret');
+
+			expect(result).toBe(true);
+			expect(mockSecretsCache.hasSecret).toHaveBeenCalledWith('dummy', 'test-secret');
+		});
+	});
+
+	describe('getSecretNames', () => {
+		it('should delegate to secrets cache', () => {
+			mockSecretsCache.getSecretNames.mockReturnValue(['secret1', 'secret2']);
+
+			const result = manager.getSecretNames('dummy');
+
+			expect(result).toEqual(['secret1', 'secret2']);
+			expect(mockSecretsCache.getSecretNames).toHaveBeenCalledWith('dummy');
+		});
+	});
+
+	describe('getAllSecretNames', () => {
+		it('should delegate to secrets cache', () => {
+			mockSecretsCache.getAllSecretNames.mockReturnValue({
+				dummy: ['secret1', 'secret2'],
+			});
+
+			const result = manager.getAllSecretNames();
+
+			expect(result).toEqual({ dummy: ['secret1', 'secret2'] });
+			expect(mockSecretsCache.getAllSecretNames).toHaveBeenCalled();
+		});
+	});
+
+	describe('setProviderSettings', () => {
+		it('should update settings and reload provider', async () => {
+			await manager.setProviderSettings('dummy', { key: 'new-value' });
+
+			expect(mockSettingsStore.updateProvider).toHaveBeenCalledWith('dummy', {
+				settings: { key: 'new-value' },
+			});
+			expect(mockProviderConnectionManager.upsertProviderConnection).toHaveBeenCalledWith(
+				'dummy',
+				'dummy',
+				mockSettings.dummy,
+			);
+			expect(mockPublisher.publishCommand).toHaveBeenCalledWith({
+				command: 'reload-external-secrets-providers',
+			});
+		});
+
+		it('should track provider save event', async () => {
+			const dummyProvider = new DummyProvider();
+			await dummyProvider.init({ connected: true, connectedAt: new Date(), settings: {} });
+			vi.spyOn(dummyProvider, 'test').mockResolvedValue([true]);
+			mockProviderRegistry.get.mockReturnValue(dummyProvider);
+
+			await manager.setProviderSettings('dummy', { key: 'value' }, 'user-123');
+
+			await Promise.resolve();
+			await Promise.resolve();
+
+			expect(mockEventService.emit).toHaveBeenCalledWith(
+				'external-secrets-provider-settings-saved',
+				expect.objectContaining({
+					userId: 'user-123',
+					vaultType: 'dummy',
+					isValid: true,
+				}),
+			);
+		});
+	});
+
+	describe('setProviderConnected', () => {
+		it('should connect provider when set to connected', async () => {
+			await manager.setProviderConnected('dummy', true);
+
+			expect(mockSettingsStore.updateProvider).toHaveBeenCalledWith('dummy', { connected: true });
+			expect(mockProviderConnectionManager.connectProviderWithRetry).toHaveBeenCalledWith('dummy');
+			expect(mockPublisher.publishCommand).toHaveBeenCalled();
+		});
+
+		it('should disconnect provider when set to disconnected', async () => {
+			await manager.setProviderConnected('dummy', false);
+
+			expect(mockSettingsStore.updateProvider).toHaveBeenCalledWith('dummy', {
+				connected: false,
+			});
+			expect(mockProviderConnectionManager.disconnectProvider).toHaveBeenCalledWith('dummy');
+			expect(mockPublisher.publishCommand).toHaveBeenCalled();
+		});
+	});
+
+	describe('testProviderSettings', () => {
+		it('should connect provider before testing', async () => {
+			const dummyProvider = new DummyProvider();
+			vi.spyOn(dummyProvider, 'test').mockResolvedValue([true]);
+
+			mockProviderLifecycle.initialize.mockResolvedValue({
+				success: true,
+				provider: dummyProvider,
+			});
+			mockProviderLifecycle.connect.mockResolvedValue({ success: true });
+			mockSettingsStore.getProvider.mockResolvedValue({
+				connected: true,
+				connectedAt: new Date(),
+				settings: {},
+			});
+
+			await manager.testProviderSettings('dummy', { key: 'value' });
+
+			// Verify connect is called with the provider before test
+			expect(mockProviderLifecycle.connect).toHaveBeenCalledWith(dummyProvider);
+		});
+
+		it('should test provider with settings', async () => {
+			const dummyProvider = new DummyProvider();
+			vi.spyOn(dummyProvider, 'test').mockResolvedValue([true]);
+
+			mockProviderLifecycle.initialize.mockResolvedValue({
+				success: true,
+				provider: dummyProvider,
+			});
+			mockProviderLifecycle.connect.mockResolvedValue({ success: true });
+			mockSettingsStore.getProvider.mockResolvedValue({
+				connected: true,
+				connectedAt: new Date(),
+				settings: {},
+			});
+
+			const result = await manager.testProviderSettings('dummy', { key: 'value' });
+
+			expect(result).toEqual({
+				success: true,
+				testState: 'connected',
+				error: undefined,
+			});
+		});
+
+		it('should return tested state for non-connected provider', async () => {
+			const dummyProvider = new DummyProvider();
+			vi.spyOn(dummyProvider, 'test').mockResolvedValue([true]);
+
+			mockProviderLifecycle.initialize.mockResolvedValue({
+				success: true,
+				provider: dummyProvider,
+			});
+			mockProviderLifecycle.connect.mockResolvedValue({ success: true });
+			mockSettingsStore.getProvider.mockResolvedValue({
+				connected: false,
+				connectedAt: new Date(),
+				settings: {},
+			});
+
+			const result = await manager.testProviderSettings('dummy', { key: 'value' });
+
+			expect(result).toEqual({
+				success: true,
+				testState: 'tested',
+				error: undefined,
+			});
+		});
+
+		it('should return error state on initialization failure', async () => {
+			mockProviderLifecycle.initialize.mockResolvedValue({
+				success: false,
+				error: new Error('Init failed'),
+			});
+
+			const result = await manager.testProviderSettings('dummy', { key: 'value' });
+
+			expect(result).toEqual({
+				success: false,
+				testState: 'error',
+			});
+		});
+
+		it('should return error state on connection failure', async () => {
+			const dummyProvider = new DummyProvider();
+
+			mockProviderLifecycle.initialize.mockResolvedValue({
+				success: true,
+				provider: dummyProvider,
+			});
+			mockProviderLifecycle.connect.mockResolvedValue({
+				success: false,
+				error: new Error('Authentication failed'),
+			});
+
+			const result = await manager.testProviderSettings('dummy', { key: 'value' });
+
+			expect(result).toEqual({
+				success: false,
+				testState: 'error',
+				error: 'Authentication failed',
+			});
+		});
+
+		it('should return error state on test failure', async () => {
+			const dummyProvider = new DummyProvider();
+			vi.spyOn(dummyProvider, 'test').mockResolvedValue([false, 'Test failed']);
+
+			mockProviderLifecycle.initialize.mockResolvedValue({
+				success: true,
+				provider: dummyProvider,
+			});
+			mockProviderLifecycle.connect.mockResolvedValue({ success: true });
+
+			const result = await manager.testProviderSettings('dummy', { key: 'value' });
+
+			expect(result).toEqual({
+				success: false,
+				testState: 'error',
+				error: 'Test failed',
+			});
+		});
+
+		it('should disconnect provider after test', async () => {
+			const dummyProvider = new DummyProvider();
+			const disconnectSpy = vi.spyOn(dummyProvider, 'disconnect');
+
+			mockProviderLifecycle.initialize.mockResolvedValue({
+				success: true,
+				provider: dummyProvider,
+			});
+			mockProviderLifecycle.connect.mockResolvedValue({ success: true });
+
+			await manager.testProviderSettings('dummy', { key: 'value' });
+
+			expect(disconnectSpy).toHaveBeenCalled();
+		});
+
+		it('should disconnect provider even after connection failure', async () => {
+			const dummyProvider = new DummyProvider();
+			const disconnectSpy = vi.spyOn(dummyProvider, 'disconnect');
+
+			mockProviderLifecycle.initialize.mockResolvedValue({
+				success: true,
+				provider: dummyProvider,
+			});
+			mockProviderLifecycle.connect.mockResolvedValue({
+				success: false,
+				error: new Error('Connection failed'),
+			});
+
+			await manager.testProviderSettings('dummy', { key: 'value' });
+
+			expect(disconnectSpy).toHaveBeenCalled();
+		});
+	});
+
+	describe('reloadAllProviders', () => {
+		it('should reload settings and refresh secrets', async () => {
+			await manager.reloadAllProviders();
+
+			expect(mockSettingsStore.reload).toHaveBeenCalled();
+			expect(mockSecretsCache.refreshAll).toHaveBeenCalled();
+		});
+
+		it('should upsert providers from settings', async () => {
+			const newSettings = {
+				dummy: {
+					connected: true,
+					connectedAt: new Date(),
+					settings: {},
+				},
+			};
+
+			mockSettingsStore.reload.mockResolvedValue(newSettings);
+			mockSettingsStore.getProvider.mockResolvedValue(newSettings.dummy);
+
+			await manager.reloadAllProviders();
+
+			expect(mockProviderConnectionManager.upsertProviderConnection).toHaveBeenCalledWith(
+				'dummy',
+				'dummy',
+				newSettings.dummy,
+			);
+		});
+
+		it('should refresh secrets after reloading providers from settings', async () => {
+			await manager.reloadAllProviders();
+
+			expect(mockProviderConnectionManager.upsertProviderConnection).toHaveBeenCalledWith(
+				'dummy',
+				'dummy',
+				mockSettings.dummy,
+			);
+			expect(mockSecretsCache.refreshAll).toHaveBeenCalled();
+		});
+	});
+
+	describe('updateSecrets', () => {
+		it('should delegate to secrets cache', async () => {
+			await manager.updateSecrets();
+
+			expect(mockSecretsCache.refreshAll).toHaveBeenCalled();
+		});
+	});
+
+	describe('integration scenarios', () => {
+		it('should handle full lifecycle: init -> update -> shutdown', async () => {
+			await manager.init();
+
+			expect(manager.initialized).toBe(true);
+
+			await manager.updateSecrets();
+
+			expect(mockSecretsCache.refreshAll).toHaveBeenCalled();
+
+			manager.shutdown();
+
+			expect(manager.initialized).toBe(false);
+		});
+	});
+
+	describe('project-based providers (externalSecretsForProjects enabled)', () => {
+		let managerWithProjectMode: ExternalSecretsManager;
+		let mockConfigWithProjectMode: ExternalSecretsConfig;
+
+		beforeEach(() => {
+			// Create config with project mode enabled
+			mockConfigWithProjectMode = {
+				updateInterval: 60,
+				externalSecretsForProjects: true,
+			} as ExternalSecretsConfig;
+
+			// Create manager with project mode enabled
+			managerWithProjectMode = new ExternalSecretsManager(
+				mockLogger(),
+				mockConfigWithProjectMode,
+				mockProvidersFactory,
+				mockEventService,
+				mockPublisher,
+				mockSettingsStore,
+				mockProviderRegistry,
+				mockProviderLifecycle,
+				mockRetryManager,
+				mockProviderConnectionManager,
+				mockSecretsCache,
+				mockSecretsProviderConnectionRepository,
+				mockCipher,
+			);
+		});
+
+		afterEach(() => {
+			managerWithProjectMode?.shutdown();
+		});
+
+		it('should load providers from repository when flag is enabled', async () => {
+			const mockConnection = {
+				id: 1,
+				providerKey: 'my-vault-1',
+				type: 'dummy',
+				encryptedSettings: 'encrypted-data',
+				isEnabled: true,
+				projectAccess: [],
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				setUpdateDate: vi.fn(),
+			};
+
+			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue([mockConnection as any]);
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
+
+			await managerWithProjectMode.reloadAllProviders();
+
+			expect(mockSecretsProviderConnectionRepository.findAll).toHaveBeenCalled();
+			expect(mockSettingsStore.reload).not.toHaveBeenCalled();
+			expect(mockProviderConnectionManager.upsertProviderConnection).toHaveBeenCalledWith(
+				'my-vault-1',
+				'dummy',
+				{
+					connected: true,
+					connectedAt: null,
+					settings: { key: 'value' },
+				},
+			);
+		});
+
+		it('should remove disabled providers but not re-setup them', async () => {
+			const enabledConnection = {
+				id: 1,
+				providerKey: 'vault-enabled',
+				type: 'dummy',
+				encryptedSettings: 'encrypted-data',
+				isEnabled: true,
+				projectAccess: [],
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				setUpdateDate: vi.fn(),
+			};
+			const disabledConnection = {
+				id: 2,
+				providerKey: 'vault-disabled',
+				type: 'dummy',
+				encryptedSettings: 'encrypted-data',
+				isEnabled: false,
+				projectAccess: [],
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				setUpdateDate: vi.fn(),
+			};
+
+			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue([
+				enabledConnection,
+				disabledConnection,
+			] as any);
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
+
+			await managerWithProjectMode.reloadAllProviders();
+
+			expect(mockProviderConnectionManager.removeProviderConnection).toHaveBeenCalledWith(
+				'vault-disabled',
+			);
+			expect(mockProviderConnectionManager.upsertProviderConnection).toHaveBeenCalledWith(
+				'vault-enabled',
+				'dummy',
+				{
+					connected: true,
+					connectedAt: null,
+					settings: { key: 'value' },
+				},
+			);
+			expect(mockProviderConnectionManager.upsertProviderConnection).not.toHaveBeenCalledWith(
+				'vault-disabled',
+				expect.anything(),
+				expect.anything(),
+			);
+		});
+
+		it('should support multiple connections of the same provider type', async () => {
+			const mockConnections = [
+				{
+					id: 1,
+					providerKey: 'vault-1',
+					type: 'dummy',
+					encryptedSettings: 'encrypted-data-1',
+					isEnabled: true,
+					projectAccess: [],
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					setUpdateDate: vi.fn(),
+				},
+				{
+					id: 2,
+					providerKey: 'vault-2',
+					type: 'dummy',
+					encryptedSettings: 'encrypted-data-2',
+					isEnabled: true,
+					projectAccess: [],
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					setUpdateDate: vi.fn(),
+				},
+			];
+
+			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue(mockConnections as any);
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
+
+			await managerWithProjectMode.reloadAllProviders();
+
+			expect(mockProviderConnectionManager.upsertProviderConnection).toHaveBeenCalledWith(
+				'vault-1',
+				'dummy',
+				expect.objectContaining({ settings: { key: 'value' } }),
+			);
+			expect(mockProviderConnectionManager.upsertProviderConnection).toHaveBeenCalledWith(
+				'vault-2',
+				'dummy',
+				expect.objectContaining({ settings: { key: 'value' } }),
+			);
+		});
+
+		it('should decrypt settings from connections', async () => {
+			const encryptedSettings = 'encrypted-data-string';
+			const decryptedSettings = { username: 'test', password: 'secret' };
+
+			const mockConnection = {
+				id: 1,
+				providerKey: 'my-vault',
+				type: 'dummy',
+				encryptedSettings,
+				isEnabled: true,
+				projectAccess: [],
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				setUpdateDate: vi.fn(),
+			};
+
+			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue([mockConnection as any]);
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify(decryptedSettings));
+
+			await managerWithProjectMode.reloadAllProviders();
+
+			expect(mockCipher.decryptV2).toHaveBeenCalledWith(encryptedSettings);
+			expect(mockProviderConnectionManager.upsertProviderConnection).toHaveBeenCalledWith(
+				'my-vault',
+				'dummy',
+				{
+					connected: true,
+					connectedAt: null,
+					settings: decryptedSettings,
+				},
+			);
+		});
+
+		it('should delegate enabled provider connections during reload', async () => {
+			const mockConnection = {
+				id: 1,
+				providerKey: 'my-vault',
+				type: 'dummy',
+				encryptedSettings: 'encrypted-data',
+				isEnabled: true,
+				projectAccess: [],
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				setUpdateDate: vi.fn(),
+			};
+
+			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue([mockConnection as any]);
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
+
+			await managerWithProjectMode.reloadAllProviders();
+
+			expect(mockProviderConnectionManager.upsertProviderConnection).toHaveBeenCalledWith(
+				'my-vault',
+				'dummy',
+				expect.objectContaining({ settings: { key: 'value' } }),
+			);
+		});
+
+		it('should handle decryption errors gracefully', async () => {
+			const mockConnection = {
+				id: 1,
+				providerKey: 'my-vault',
+				type: 'dummy',
+				encryptedSettings: 'invalid-encrypted-data',
+				isEnabled: true,
+				projectAccess: [],
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				setUpdateDate: vi.fn(),
+			};
+
+			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue([mockConnection as any]);
+			mockCipher.decryptV2.mockResolvedValue('invalid-json{');
+
+			await expect(managerWithProjectMode.reloadAllProviders()).rejects.toThrow(
+				'External Secrets Settings could not be decrypted',
+			);
+		});
+
+		it('should handle repository errors during initialization', async () => {
+			mockSecretsProviderConnectionRepository.findAll.mockRejectedValue(
+				new Error('Database error'),
+			);
+
+			await expect(managerWithProjectMode.init()).rejects.toThrow('Database error');
+			expect(managerWithProjectMode.initialized).toBe(false);
+		});
+
+		it('should refresh secrets after loading all connections', async () => {
+			const mockConnections = [
+				{
+					id: 1,
+					providerKey: 'vault-1',
+					type: 'dummy',
+					encryptedSettings: 'encrypted-data-1',
+					isEnabled: true,
+					projectAccess: [],
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					setUpdateDate: vi.fn(),
+				},
+				{
+					id: 2,
+					providerKey: 'vault-2',
+					type: 'dummy',
+					encryptedSettings: 'encrypted-data-2',
+					isEnabled: true,
+					projectAccess: [],
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					setUpdateDate: vi.fn(),
+				},
+				{
+					id: 3,
+					providerKey: 'vault-3',
+					type: 'dummy',
+					encryptedSettings: 'encrypted-data-3',
+					isEnabled: true,
+					projectAccess: [],
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					setUpdateDate: vi.fn(),
+				},
+			];
+
+			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue(mockConnections as any);
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
+
+			mockSecretsCache.refreshAll.mockClear();
+
+			await managerWithProjectMode.reloadAllProviders();
+
+			expect(mockSecretsCache.refreshAll).toHaveBeenCalledTimes(1);
+		});
+
+		describe('provider reload consistency', () => {
+			const createProviderReloadTestManager = ({
+				providerClass = DummyProvider,
+				connections,
+			}: {
+				providerClass?: new () => SecretsProvider;
+				connections: Array<{
+					providerKey: string;
+					type: string;
+					encryptedSettings: string;
+					isEnabled: boolean;
+				}>;
+			}) => {
+				const providersFactory = new MockProviders();
+				providersFactory.setProviders({ dummy: providerClass });
+
+				const providerRegistry = new ExternalSecretsProviderRegistry();
+				const providerLifecycle = new ExternalSecretsProviderLifecycle(
+					mockLogger(),
+					providersFactory,
+				);
+				const retryManager = new ExternalSecretsRetryManager(mockLogger());
+				const providerConnectionManager = new ExternalSecretsProviderConnectionManager(
+					mockLogger(),
+					providerRegistry,
+					providerLifecycle,
+					retryManager,
+				);
+				const secretsCache = new ExternalSecretsSecretsCache(mockLogger(), providerRegistry);
+
+				const repository = mock<SecretsProviderConnectionRepository>();
+				repository.findAll.mockResolvedValue(connections as never);
+
+				const cipher = mock<Cipher>();
+				cipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
+
+				const manager = new ExternalSecretsManager(
+					mockLogger(),
+					{
+						updateInterval: 60,
+						externalSecretsForProjects: true,
+						externalSecretsMultipleConnections: false,
+					} as ExternalSecretsConfig,
+					providersFactory,
+					mockEventService,
+					mockPublisher,
+					mockSettingsStore,
+					providerRegistry,
+					providerLifecycle,
+					retryManager,
+					providerConnectionManager,
+					secretsCache,
+					repository,
+					cipher,
+				);
+
+				return {
+					manager,
+					providerRegistry,
+				};
+			};
+
+			const addConnectedProviderWithSecrets = async (
+				providerRegistry: ExternalSecretsProviderRegistry,
+				providerKey: string,
+				secrets: Record<string, string>,
+			) => {
+				const existingProvider = new DummyProvider();
+				await existingProvider.init({ connected: true, connectedAt: null, settings: {} });
+				await existingProvider.connect();
+				existingProvider.secrets = secrets;
+				providerRegistry.set(providerKey, existingProvider);
+			};
+
+			it('should keep serving existing secrets while provider connection reload is in progress', async () => {
+				const connectStarted = createDeferred();
+				const allowConnectToFinish = createDeferred();
+
+				class SlowConnectProvider extends DummyProvider {
+					protected override async doConnect(): Promise<void> {
+						connectStarted.resolve();
+						await allowConnectToFinish.promise;
+					}
+				}
+
+				const { manager, providerRegistry } = createProviderReloadTestManager({
+					providerClass: SlowConnectProvider,
+					connections: [
+						{
+							providerKey: 'my-vault',
+							type: 'dummy',
+							encryptedSettings: 'encrypted-data',
+							isEnabled: true,
+						},
+					],
+				});
+
+				await addConnectedProviderWithSecrets(providerRegistry, 'my-vault', {
+					test1: 'old-value',
+				});
+
+				const reloadPromise = manager.reloadAllProviders();
+				await connectStarted.promise;
+
+				try {
+					expect(manager.getSecret('my-vault', 'test1')).toBe('old-value');
+				} finally {
+					allowConnectToFinish.resolve();
+					await reloadPromise;
+					manager.shutdown();
+				}
+			});
+
+			it('should stop serving stale secrets when replacement connection fails', async () => {
+				class FailingConnectProvider extends DummyProvider {
+					protected override async doConnect(): Promise<void> {
+						throw new Error('Connection failed');
+					}
+				}
+
+				const { manager, providerRegistry } = createProviderReloadTestManager({
+					providerClass: FailingConnectProvider,
+					connections: [
+						{
+							providerKey: 'my-vault',
+							type: 'dummy',
+							encryptedSettings: 'encrypted-data',
+							isEnabled: true,
+						},
+					],
+				});
+
+				await addConnectedProviderWithSecrets(providerRegistry, 'my-vault', {
+					test1: 'old-value',
+				});
+
+				try {
+					await manager.reloadAllProviders();
+
+					expect(manager.getSecret('my-vault', 'test1')).toBeUndefined();
+					expect(providerRegistry.get('my-vault')?.state).toBe('error');
+				} finally {
+					manager.shutdown();
+				}
+			});
+
+			it('should stop serving secrets when a provider connection is disabled', async () => {
+				const { manager, providerRegistry } = createProviderReloadTestManager({
+					connections: [
+						{
+							providerKey: 'my-vault',
+							type: 'dummy',
+							encryptedSettings: 'encrypted-data',
+							isEnabled: false,
+						},
+					],
+				});
+
+				await addConnectedProviderWithSecrets(providerRegistry, 'my-vault', {
+					test1: 'old-value',
+				});
+
+				try {
+					await manager.reloadAllProviders();
+
+					expect(manager.getSecret('my-vault', 'test1')).toBeUndefined();
+					expect(providerRegistry.has('my-vault')).toBe(false);
+				} finally {
+					manager.shutdown();
+				}
+			});
+		});
+
+		it('should initialize successfully with project-based providers', async () => {
+			const mockConnections = [
+				{
+					id: 1,
+					providerKey: 'vault-1',
+					type: 'dummy',
+					encryptedSettings: 'encrypted-data-1',
+					isEnabled: true,
+					projectAccess: [],
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					setUpdateDate: vi.fn(),
+				},
+				{
+					id: 2,
+					providerKey: 'vault-2',
+					type: 'dummy',
+					encryptedSettings: 'encrypted-data-2',
+					isEnabled: true,
+					projectAccess: [],
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					setUpdateDate: vi.fn(),
+				},
+			];
+
+			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue(mockConnections as any);
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
+
+			await managerWithProjectMode.init();
+
+			expect(managerWithProjectMode.initialized).toBe(true);
+			expect(mockProviderConnectionManager.upsertProviderConnection).toHaveBeenCalledWith(
+				'vault-1',
+				'dummy',
+				expect.objectContaining({ settings: { key: 'value' } }),
+			);
+			expect(mockProviderConnectionManager.upsertProviderConnection).toHaveBeenCalledWith(
+				'vault-2',
+				'dummy',
+				expect.objectContaining({ settings: { key: 'value' } }),
+			);
+			expect(mockSecretsCache.refreshAll).toHaveBeenCalled();
+		});
+	});
+});

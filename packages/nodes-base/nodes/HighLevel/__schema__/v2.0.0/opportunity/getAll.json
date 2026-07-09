@@ -1,0 +1,128 @@
+{
+    "type": "object",
+    "properties": {
+        "attributions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "isFirst": {
+                        "type": "boolean"
+                    },
+                    "medium": {
+                        "type": "string"
+                    },
+                    "utmSessionSource": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "contact": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "contactId": {
+            "type": "string"
+        },
+        "createdAt": {
+            "type": "string"
+        },
+        "customFields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "fieldValueString": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "followers": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "lastStageChangeAt": {
+            "type": "string"
+        },
+        "lastStatusChangeAt": {
+            "type": "string"
+        },
+        "locationId": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "pipelineId": {
+            "type": "string"
+        },
+        "pipelineStageId": {
+            "type": "string"
+        },
+        "pipelineStageUId": {
+            "type": "string"
+        },
+        "relations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "associationId": {
+                        "type": "string"
+                    },
+                    "objectKey": {
+                        "type": "string"
+                    },
+                    "primary": {
+                        "type": "boolean"
+                    },
+                    "recordId": {
+                        "type": "string"
+                    },
+                    "relationId": {
+                        "type": "string"
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "status": {
+            "type": "string"
+        },
+        "updatedAt": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

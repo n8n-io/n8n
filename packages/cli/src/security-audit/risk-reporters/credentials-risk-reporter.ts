@@ -1,11 +1,9 @@
 import { SecurityConfig } from '@n8n/config';
+import { CredentialsRepository, MoreThanOrEqual } from '@n8n/db';
+import { Service } from '@n8n/di';
 import type { IWorkflowBase } from 'n8n-workflow';
-import { Service } from 'typedi';
 
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { ExecutionDataRepository } from '@/databases/repositories/execution-data.repository';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { CREDENTIALS_REPORT } from '@/security-audit/constants';
 import type { RiskReporter, Risk } from '@/security-audit/types';
 
@@ -13,16 +11,15 @@ import type { RiskReporter, Risk } from '@/security-audit/types';
 export class CredentialsRiskReporter implements RiskReporter {
 	constructor(
 		private readonly credentialsRepository: CredentialsRepository,
-		private readonly executionRepository: ExecutionRepository,
-		private readonly executionDataRepository: ExecutionDataRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly securityConfig: SecurityConfig,
 	) {}
 
-	async report(workflows: WorkflowEntity[]) {
+	async report(workflows: IWorkflowBase[]) {
 		const days = this.securityConfig.daysAbandonedWorkflow;
 
 		const allExistingCreds = await this.getAllExistingCreds();
-		const { credsInAnyUse, credsInActiveUse } = await this.getAllCredsInUse(workflows);
+		const { credsInAnyUse, credsInActiveUse } = this.getAllCredsInUse(workflows);
 		const recentlyExecutedCreds = await this.getCredsInRecentlyExecutedWorkflows(days);
 
 		const credsNotInAnyUse = allExistingCreds.filter((c) => !credsInAnyUse.has(c.id));
@@ -84,7 +81,7 @@ export class CredentialsRiskReporter implements RiskReporter {
 		return report;
 	}
 
-	private async getAllCredsInUse(workflows: WorkflowEntity[]) {
+	private getAllCredsInUse(workflows: IWorkflowBase[]) {
 		const credsInAnyUse = new Set<string>();
 		const credsInActiveUse = new Set<string>();
 
@@ -97,7 +94,9 @@ export class CredentialsRiskReporter implements RiskReporter {
 
 					credsInAnyUse.add(cred.id);
 
-					if (workflow.active) credsInActiveUse.add(cred.id);
+					if (workflow.activeVersionId !== null) {
+						credsInActiveUse.add(cred.id);
+					}
 				});
 			});
 		});
@@ -119,9 +118,12 @@ export class CredentialsRiskReporter implements RiskReporter {
 
 		date.setDate(date.getDate() - days);
 
-		const executionIds = await this.executionRepository.getIdsSince(date);
+		const executions = await this.executionPersistence.findMultipleExecutions(
+			{ where: { startedAt: MoreThanOrEqual(date) } },
+			{ includeData: true, unflattenData: false },
+		);
 
-		return await this.executionDataRepository.findByExecutionIds(executionIds);
+		return executions.map((execution) => execution.workflowData);
 	}
 
 	/**

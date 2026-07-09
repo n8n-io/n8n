@@ -1,8 +1,8 @@
 import { SecurityConfig } from '@n8n/config';
-import Container, { Service } from 'typedi';
+import { WorkflowRepository } from '@n8n/db';
+import { Container, Service } from '@n8n/di';
 
 import config from '@/config';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { RISK_CATEGORIES } from '@/security-audit/constants';
 import type { Risk, RiskReporter } from '@/security-audit/types';
 import { toReportTitle } from '@/security-audit/utils';
@@ -30,7 +30,7 @@ export class SecurityAuditService {
 		}
 
 		const workflows = await this.workflowRepository.find({
-			select: ['id', 'name', 'active', 'nodes', 'connections'],
+			select: ['id', 'name', 'active', 'activeVersionId', 'nodes', 'connections'],
 		});
 
 		const promises = categories.map(async (c) => await this.reporters[c].report(workflows));
@@ -62,8 +62,13 @@ export class SecurityAuditService {
 				NodesRiskReporter: 'nodes-risk-reporter',
 			};
 
+			// `@vite-ignore` keeps vite's dynamic-import-vars plugin from analyzing this
+			// runtime-only import: without a static file extension it otherwise errors,
+			// which surfaces fatally during v8 coverage's uncovered-file walk.
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			const RiskReporterModule = await import(`./risk-reporters/${toFilename[className]}`);
+			const RiskReporterModule = await import(
+				/* @vite-ignore */ `./risk-reporters/${toFilename[className]}`
+			);
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			const RiskReporterClass = RiskReporterModule[className] as { new (): RiskReporter };

@@ -7,14 +7,12 @@ import {
 	type INodeTypeDescription,
 	type IWebhookFunctions,
 	type IWebhookResponseData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { getAutomaticSecret, taigaApiRequest } from './GenericFunctions';
-
-// import {
-// 	createHmac,
-// } from 'crypto';
+import { verifySignature } from './TaigaTriggerHelpers';
+import type { Operations, Resources, WebhookPayload } from './types';
 
 export class TaigaTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -29,7 +27,7 @@ export class TaigaTrigger implements INodeType {
 			name: 'Taiga Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'taigaApi',
@@ -203,6 +201,12 @@ export class TaigaTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		if (!verifySignature.call(this)) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return { noWebhookResponse: true };
+		}
+
 		const body = this.getRequestObject().body as WebhookPayload;
 
 		const operations = this.getNodeParameter('operations', []) as Operations[];
@@ -215,25 +219,6 @@ export class TaigaTrigger implements INodeType {
 		if (!resources.includes('all') && !resources.includes(body.type)) {
 			return {};
 		}
-
-		// TODO: Signature does not match payload hash
-		// https://github.com/taigaio/taiga-back/issues/1031
-
-		// const webhookData = this.getWorkflowStaticData('node');
-		// const headerData = this.getHeaderData();
-
-		// // @ts-ignore
-		// const requestSignature = headerData['x-taiga-webhook-signature'];
-
-		// if (requestSignature === undefined) {
-		// 	return {};
-		// }
-
-		// const computedSignature = createHmac('sha1', webhookData.key as string).update(JSON.stringify(body)).digest('hex');
-
-		// if (requestSignature !== computedSignature) {
-		// 	return {};
-		// }
 
 		return {
 			workflowData: [this.helpers.returnJsonArray(body)],

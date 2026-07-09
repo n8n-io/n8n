@@ -1,4 +1,4 @@
-import type { INodeProperties } from 'n8n-workflow';
+import { SEND_AND_WAIT_OPERATION, type INodeProperties } from 'n8n-workflow';
 
 export const messageOperations: INodeProperties[] = [
 	{
@@ -31,6 +31,12 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Get a message',
 			},
 			{
+				name: 'Send and Wait for Response',
+				value: SEND_AND_WAIT_OPERATION,
+				description: 'Send a message and wait for response',
+				action: 'Send message and wait for response',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a message',
@@ -41,27 +47,44 @@ export const messageOperations: INodeProperties[] = [
 	},
 ];
 
+export const spaceIdProperty: INodeProperties = {
+	displayName: 'Space Name or ID',
+	name: 'spaceId',
+	type: 'options',
+	required: true,
+	typeOptions: {
+		loadOptionsMethod: 'getSpaces',
+	},
+	default: '',
+	description:
+		'Space resource name, in the form "spaces/*". Example: spaces/AAAAMpdlehY. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+};
+
+const messageResourceNameDescription =
+	'Resource name of the message. Format: spaces/{space}/messages/{message}. For system-assigned IDs, use the full message name, such as spaces/AAAAAAAAAAA/messages/BBBBBBBBBBB.BBBBBBBBBBB. For custom IDs, use spaces/AAAAAAAAAAA/messages/client-custom-name.';
+
+const messageResourceNameProperties: INodeProperties = {
+	displayName: 'Message Resource Name',
+	name: 'messageId',
+	type: 'string',
+	required: true,
+	default: '',
+	placeholder: 'e.g. spaces/AAAAAAAAAAA/messages/BBBBBBBBBBB.BBBBBBBBBBB',
+	description: messageResourceNameDescription,
+};
+
 export const messageFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 message:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Space Name or ID',
-		name: 'spaceId',
-		type: 'options',
-		required: true,
-		typeOptions: {
-			loadOptionsMethod: 'getSpaces',
-		},
+		...spaceIdProperty,
 		displayOptions: {
 			show: {
 				resource: ['message'],
 				operation: ['create'],
 			},
 		},
-		default: '',
-		description:
-			'Space resource name, in the form "spaces/*". Example: spaces/AAAAMpdlehY. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -213,54 +236,39 @@ export const messageFields: INodeProperties[] = [
 	/*                                 messages:delete                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Message ID',
-		name: 'messageId',
-		type: 'string',
-		required: true,
+		...messageResourceNameProperties,
 		displayOptions: {
 			show: {
 				resource: ['message'],
 				operation: ['delete'],
 			},
 		},
-		default: '',
-		description: 'Resource name of the message to be deleted, in the form "spaces//messages/"',
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 message:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Message ID',
-		name: 'messageId',
-		type: 'string',
-		required: true,
+		...messageResourceNameProperties,
 		displayOptions: {
 			show: {
 				resource: ['message'],
 				operation: ['get'],
 			},
 		},
-		default: '',
-		description: 'Resource name of the message to be retrieved, in the form "spaces//messages/"',
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 message:update                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Message ID',
-		name: 'messageId',
-		type: 'string',
-		required: true,
+		...messageResourceNameProperties,
 		displayOptions: {
 			show: {
 				resource: ['message'],
 				operation: ['update'],
 			},
 		},
-		default: '',
-		description: 'Resource name of the message to be updated, in the form "spaces//messages/"',
 	},
 	{
 		displayName: 'JSON Parameters',

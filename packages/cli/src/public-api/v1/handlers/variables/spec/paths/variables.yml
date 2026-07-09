@@ -1,5 +1,6 @@
 post:
   x-eov-operation-id: createVariable
+  x-required-scope: variable:create
   x-eov-operation-handler: v1/handlers/variables/variables.handler
   tags:
     - Variables
@@ -10,7 +11,7 @@ post:
     content:
       application/json:
         schema:
-          $ref: '../schemas/variable.yml'
+          $ref: '../schemas/variable.create.yml'
     required: true
   responses:
     '201':
@@ -21,6 +22,7 @@ post:
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
 get:
   x-eov-operation-id: getVariables
+  x-required-scope: variable:list
   x-eov-operation-handler: v1/handlers/variables/variables.handler
   tags:
     - Variables
@@ -29,6 +31,20 @@ get:
   parameters:
     - $ref: '../../../../shared/spec/parameters/limit.yml'
     - $ref: '../../../../shared/spec/parameters/cursor.yml'
+    - name: projectId
+      in: query
+      required: false
+      explode: false
+      allowReserved: true
+      schema:
+        type: string
+        example: VmwOO9HeTEj20kxM
+    - name: state
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [empty]
   responses:
     '200':
       description: Operation successful.

@@ -1,10 +1,17 @@
 import { DynamicTool, type Tool } from '@langchain/core/tools';
+import { StructuredToolkit } from 'n8n-core';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import { NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { ISupplyDataFunctions, IExecuteFunctions, INode } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { escapeSingleCurlyBrackets, getConnectedTools } from '../helpers';
+import {
+	escapeSingleCurlyBrackets,
+	getConnectedTools,
+	mergeCustomHeaders,
+	unwrapNestedOutput,
+	getSessionId,
+} from '../helpers';
 import { N8nTool } from '../N8nTool';
 
 describe('escapeSingleCurlyBrackets', () => {
@@ -165,16 +172,18 @@ describe('getConnectedTools', () => {
 			name: 'Test Node',
 			type: 'test',
 			typeVersion: 1,
-			position: [0, 0],
+			position: [0, 0] as [number, number],
 			parameters: {},
 		};
 
 		mockExecuteFunctions = createMockExecuteFunction({}, mockNode);
+		// Add getParentNodes mock for metadata functionality
+		mockExecuteFunctions.getParentNodes = vi.fn().mockReturnValue([]);
 
-		mockN8nTool = new N8nTool(mockExecuteFunctions, {
+		mockN8nTool = new N8nTool(mockExecuteFunctions as unknown as ISupplyDataFunctions, {
 			name: 'Dummy Tool',
 			description: 'A dummy tool for testing',
-			func: jest.fn(),
+			func: vi.fn(),
 			schema: z.object({
 				foo: z.string(),
 			}),
@@ -182,7 +191,7 @@ describe('getConnectedTools', () => {
 	});
 
 	it('should return empty array when no tools are connected', async () => {
-		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue([]);
+		mockExecuteFunctions.getInputConnectionData = vi.fn().mockResolvedValue([]);
 
 		const tools = await getConnectedTools(mockExecuteFunctions, true);
 		expect(tools).toEqual([]);
@@ -194,7 +203,7 @@ describe('getConnectedTools', () => {
 			{ name: 'tool1', description: 'desc2' }, // Duplicate name
 		];
 
-		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
+		mockExecuteFunctions.getInputConnectionData = vi.fn().mockResolvedValue(mockTools);
 
 		const tools = await getConnectedTools(mockExecuteFunctions, false);
 		expect(tools).toEqual(mockTools);
@@ -206,7 +215,7 @@ describe('getConnectedTools', () => {
 			{ name: 'tool1', description: 'desc2' },
 		];
 
-		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
+		mockExecuteFunctions.getInputConnectionData = vi.fn().mockResolvedValue(mockTools);
 
 		await expect(getConnectedTools(mockExecuteFunctions, true)).rejects.toThrow(NodeOperationError);
 	});
@@ -214,7 +223,7 @@ describe('getConnectedTools', () => {
 	it('should escape curly brackets in tool descriptions when escapeCurlyBrackets is true', async () => {
 		const mockTools = [{ name: 'tool1', description: 'Test {value}' }] as Tool[];
 
-		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
+		mockExecuteFunctions.getInputConnectionData = vi.fn().mockResolvedValue(mockTools);
 
 		const tools = await getConnectedTools(mockExecuteFunctions, true, false, true);
 		expect(tools[0].description).toBe('Test {{value}}');
@@ -224,12 +233,12 @@ describe('getConnectedTools', () => {
 		const mockDynamicTool = new DynamicTool({
 			name: 'dynamicTool',
 			description: 'desc',
-			func: jest.fn(),
+			func: vi.fn(),
 		});
-		const asDynamicToolSpy = jest.fn().mockReturnValue(mockDynamicTool);
+		const asDynamicToolSpy = vi.fn().mockReturnValue(mockDynamicTool);
 		mockN8nTool.asDynamicTool = asDynamicToolSpy;
 
-		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue([mockN8nTool]);
+		mockExecuteFunctions.getInputConnectionData = vi.fn().mockResolvedValue([mockN8nTool]);
 
 		const tools = await getConnectedTools(mockExecuteFunctions, true, true);
 		expect(asDynamicToolSpy).toHaveBeenCalled();
@@ -237,9 +246,501 @@ describe('getConnectedTools', () => {
 	});
 
 	it('should not convert N8nTool when convertStructuredTool is false', async () => {
-		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue([mockN8nTool]);
+		mockExecuteFunctions.getInputConnectionData = vi.fn().mockResolvedValue([mockN8nTool]);
 
 		const tools = await getConnectedTools(mockExecuteFunctions, true, false);
 		expect(tools[0]).toBe(mockN8nTool);
+	});
+
+	it('should flatten tools from a toolkit', async () => {
+		const mockTools = [
+			{ name: 'tool1', description: 'desc1' },
+
+			new StructuredToolkit([
+				{ name: 'toolkitTool1', description: 'toolkitToolDesc1' },
+				{ name: 'toolkitTool2', description: 'toolkitToolDesc2' },
+			] as any),
+		];
+
+		mockExecuteFunctions.getInputConnectionData = vi.fn().mockResolvedValue(mockTools);
+
+		const tools = await getConnectedTools(mockExecuteFunctions, false);
+		expect(tools).toEqual([
+			{
+				name: 'tool1',
+				description: 'desc1',
+				metadata: { isFromToolkit: false, sourceNodeName: undefined },
+			},
+			{
+				name: 'toolkitTool1',
+				description: 'toolkitToolDesc1',
+				metadata: { isFromToolkit: true, sourceNodeName: undefined },
+			},
+			{
+				name: 'toolkitTool2',
+				description: 'toolkitToolDesc2',
+				metadata: { isFromToolkit: true, sourceNodeName: undefined },
+			},
+		]);
+	});
+
+	it('should add metadata to all tools with source node information', async () => {
+		const mockParentNodes = [{ name: 'RegularTool' }, { name: 'MCP Client Tool' }];
+		const mockTools = [
+			{ name: 'tool1', description: 'desc1' },
+			new StructuredToolkit([
+				{ name: 'toolkitTool1', description: 'toolkitToolDesc1' },
+				{ name: 'toolkitTool2', description: 'toolkitToolDesc2' },
+			] as any),
+		];
+
+		mockExecuteFunctions.getInputConnectionData = vi.fn().mockResolvedValue(mockTools);
+		mockExecuteFunctions.getParentNodes = vi.fn().mockReturnValue(mockParentNodes);
+
+		const tools = await getConnectedTools(mockExecuteFunctions, false);
+
+		expect(tools).toHaveLength(3);
+
+		// Regular tool should have metadata with isFromToolkit: false
+		expect(tools[0].name).toBe('tool1');
+		expect(tools[0].metadata).toEqual({
+			isFromToolkit: false,
+			sourceNodeName: 'RegularTool',
+		});
+
+		// Toolkit tools should have metadata with isFromToolkit: true
+		expect(tools[1].name).toBe('toolkitTool1');
+		expect(tools[1].metadata).toEqual({
+			isFromToolkit: true,
+			sourceNodeName: 'MCP Client Tool',
+		});
+
+		expect(tools[2].name).toBe('toolkitTool2');
+		expect(tools[2].metadata).toEqual({
+			isFromToolkit: true,
+			sourceNodeName: 'MCP Client Tool',
+		});
+	});
+
+	it('should preserve existing metadata when adding toolkit metadata', async () => {
+		const mockParentNodes = [{ name: 'MCP Client Tool' }];
+		const mockTools = [
+			new StructuredToolkit([
+				{ name: 'toolkitTool1', description: 'desc1', metadata: { customField: 'value' } },
+			] as any),
+		];
+
+		mockExecuteFunctions.getInputConnectionData = vi.fn().mockResolvedValue(mockTools);
+		mockExecuteFunctions.getParentNodes = vi.fn().mockReturnValue(mockParentNodes);
+
+		const tools = await getConnectedTools(mockExecuteFunctions, false);
+
+		expect(tools[0].metadata).toEqual({
+			customField: 'value',
+			isFromToolkit: true,
+			sourceNodeName: 'MCP Client Tool',
+		});
+	});
+
+	it('should map source node names correctly when a disabled tool node is still connected', async () => {
+		// getParentNodes returns ALL parents including disabled ones,
+		// while getInputConnectionData filters disabled nodes out.
+		// getConnectedTools must skip disabled parents to keep the index in sync.
+		const mockParentNodes = [
+			{ name: 'Tool Alpha', disabled: false },
+			{ name: 'Tool Bravo', disabled: true },
+			{ name: 'Tool Charlie', disabled: false },
+		];
+		const mockTools = [
+			{ name: 'alpha', description: 'desc-alpha' },
+			{ name: 'charlie', description: 'desc-charlie' },
+		];
+
+		mockExecuteFunctions.getInputConnectionData = vi.fn().mockResolvedValue(mockTools);
+		mockExecuteFunctions.getParentNodes = vi.fn().mockReturnValue(mockParentNodes);
+
+		const tools = await getConnectedTools(mockExecuteFunctions, false);
+
+		expect(tools).toHaveLength(2);
+		expect(tools[0].name).toBe('alpha');
+		expect(tools[0].metadata).toEqual({
+			isFromToolkit: false,
+			sourceNodeName: 'Tool Alpha',
+		});
+		expect(tools[1].name).toBe('charlie');
+		expect(tools[1].metadata).toEqual({
+			isFromToolkit: false,
+			sourceNodeName: 'Tool Charlie',
+		});
+	});
+});
+
+describe('unwrapNestedOutput', () => {
+	it('should unwrap doubly nested output', () => {
+		const input = {
+			output: {
+				output: {
+					text: 'Hello world',
+					confidence: 0.95,
+				},
+			},
+		};
+
+		const expected = {
+			output: {
+				text: 'Hello world',
+				confidence: 0.95,
+			},
+		};
+
+		expect(unwrapNestedOutput(input)).toEqual(expected);
+	});
+
+	it('should not modify regular output object', () => {
+		const input = {
+			output: {
+				text: 'Hello world',
+				confidence: 0.95,
+			},
+		};
+
+		expect(unwrapNestedOutput(input)).toEqual(input);
+	});
+
+	it('should not modify object without output property', () => {
+		const input = {
+			result: 'success',
+			data: {
+				text: 'Hello world',
+			},
+		};
+
+		expect(unwrapNestedOutput(input)).toEqual(input);
+	});
+
+	it('should not modify when output is not an object', () => {
+		const input = {
+			output: 'Hello world',
+		};
+
+		expect(unwrapNestedOutput(input)).toEqual(input);
+	});
+
+	it('should not modify when object has multiple properties', () => {
+		const input = {
+			output: {
+				output: {
+					text: 'Hello world',
+				},
+			},
+			meta: {
+				timestamp: 123456789,
+			},
+		};
+
+		expect(unwrapNestedOutput(input)).toEqual(input);
+	});
+
+	it('should not modify when inner output has multiple properties', () => {
+		const input = {
+			output: {
+				output: {
+					text: 'Hello world',
+				},
+				meta: {
+					timestamp: 123456789,
+				},
+			},
+		};
+
+		expect(unwrapNestedOutput(input)).toEqual(input);
+	});
+
+	it('should handle null values properly', () => {
+		const input = {
+			output: null,
+		};
+
+		expect(unwrapNestedOutput(input)).toEqual(input);
+	});
+
+	it('should handle empty object values properly', () => {
+		const input = {
+			output: {},
+		};
+
+		expect(unwrapNestedOutput(input)).toEqual(input);
+	});
+});
+
+describe('getSessionId', () => {
+	let mockCtx: any;
+
+	beforeEach(() => {
+		mockCtx = {
+			getNodeParameter: vi.fn(),
+			evaluateExpression: vi.fn(),
+			getChatTrigger: vi.fn(),
+			getNode: vi.fn(),
+		};
+	});
+
+	it('should retrieve sessionId from bodyData', () => {
+		mockCtx.getBodyData = vi.fn();
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.getBodyData.mockReturnValue({ sessionId: '12345' });
+
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('12345');
+	});
+
+	it('should retrieve sessionId from chat trigger', () => {
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.evaluateExpression.mockReturnValueOnce(undefined);
+		mockCtx.getChatTrigger.mockReturnValue({ name: 'chatTrigger' });
+		mockCtx.evaluateExpression.mockReturnValueOnce('67890');
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('67890');
+	});
+
+	it('should throw error if sessionId is not found', () => {
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.evaluateExpression.mockReturnValue(undefined);
+		mockCtx.getChatTrigger.mockReturnValue(undefined);
+
+		expect(() => getSessionId(mockCtx, 0)).toThrow(NodeOperationError);
+	});
+
+	it('should use custom sessionId if provided', () => {
+		mockCtx.getNodeParameter.mockReturnValueOnce('custom').mockReturnValueOnce('customSessionId');
+
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('customSessionId');
+	});
+
+	it('should NOT scope sessionId when typeVersion is below the threshold for the node type', () => {
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.evaluateExpression.mockReturnValue('abc');
+		mockCtx.getNode.mockReturnValue({
+			name: 'Memory 1',
+			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+			typeVersion: 1.3,
+		});
+
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('abc');
+	});
+
+	it('should scope sessionId with node name when typeVersion is at the threshold', () => {
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.evaluateExpression.mockReturnValue('abc');
+		mockCtx.getNode.mockReturnValue({
+			name: 'Memory 1',
+			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+			typeVersion: 1.4,
+		});
+
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('abc__Memory_1');
+	});
+
+	it('should scope sessionId with node name when node is not among the listed ones', () => {
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.evaluateExpression.mockReturnValue('abc');
+		mockCtx.getNode.mockReturnValue({
+			name: 'Memory 1',
+			type: '@n8n/n8n-nodes-langchain.memoryDevNull',
+			typeVersion: 1,
+		});
+
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('abc__Memory_1');
+	});
+
+	it('should produce distinct sessionIds for two nodes with the same input sessionId', () => {
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.evaluateExpression.mockReturnValue('abc');
+
+		mockCtx.getNode.mockReturnValue({
+			name: 'Memory 1',
+			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+			typeVersion: 1.4,
+		});
+		const sessionId1 = getSessionId(mockCtx, 0);
+
+		mockCtx.getNode.mockReturnValue({
+			name: 'Memory 2',
+			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+			typeVersion: 1.4,
+		});
+		const sessionId2 = getSessionId(mockCtx, 0);
+
+		expect(sessionId1).toBe('abc__Memory_1');
+		expect(sessionId2).toBe('abc__Memory_2');
+	});
+
+	it('should sanitize node name characters unsafe for memory backends', () => {
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.evaluateExpression.mockReturnValue('abc');
+		mockCtx.getNode.mockReturnValue({
+			name: 'Memory (main)/v2',
+			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+			typeVersion: 1.4,
+		});
+
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('abc__Memory__main__v2');
+		expect(sessionId).toMatch(/^[A-Za-z0-9_-]+$/);
+	});
+
+	it('should preserve safe characters (alphanumeric, underscore, hyphen) unchanged', () => {
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.evaluateExpression.mockReturnValue('abc');
+		mockCtx.getNode.mockReturnValue({
+			name: 'memory_main-v2',
+			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+			typeVersion: 1.4,
+		});
+
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('abc__memory_main-v2');
+	});
+
+	it('should NOT scope when sessionIdType is customKey, even on new typeVersion', () => {
+		mockCtx.getNodeParameter.mockReturnValueOnce('customKey').mockReturnValueOnce('my-key');
+		mockCtx.getNode.mockReturnValue({
+			name: 'Memory 1',
+			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+			typeVersion: 1.4,
+		});
+
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('my-key');
+	});
+
+	it('should still throw if sessionId is missing on new typeVersion', () => {
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.evaluateExpression.mockReturnValue(undefined);
+		mockCtx.getChatTrigger.mockReturnValue(undefined);
+		mockCtx.getNode.mockReturnValue({
+			name: 'Memory 1',
+			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+			typeVersion: 1.4,
+		});
+
+		expect(() => getSessionId(mockCtx, 0)).toThrow(NodeOperationError);
+	});
+});
+
+describe('mergeCustomHeaders', () => {
+	it('should merge custom header when credential has header enabled', () => {
+		const credentials = {
+			apiKey: 'test-key',
+			header: true,
+			headerName: 'X-Custom-Header',
+			headerValue: 'custom-value',
+		};
+		const defaultHeaders = { 'Content-Type': 'application/json' };
+
+		const result = mergeCustomHeaders(credentials, defaultHeaders);
+
+		expect(result).toEqual({
+			'Content-Type': 'application/json',
+			'X-Custom-Header': 'custom-value',
+		});
+	});
+
+	it('should return original headers when header option is disabled', () => {
+		const credentials = {
+			apiKey: 'test-key',
+			header: false,
+			headerName: 'X-Custom-Header',
+			headerValue: 'custom-value',
+		};
+		const defaultHeaders = { 'Content-Type': 'application/json' };
+
+		const result = mergeCustomHeaders(credentials, defaultHeaders);
+
+		expect(result).toEqual({ 'Content-Type': 'application/json' });
+	});
+
+	it('should return original headers when headerName is empty', () => {
+		const credentials = {
+			apiKey: 'test-key',
+			header: true,
+			headerName: '',
+			headerValue: 'custom-value',
+		};
+		const defaultHeaders = { 'Content-Type': 'application/json' };
+
+		const result = mergeCustomHeaders(credentials, defaultHeaders);
+
+		expect(result).toEqual({ 'Content-Type': 'application/json' });
+	});
+
+	it('should return original headers when headerName is not a string', () => {
+		const credentials = {
+			apiKey: 'test-key',
+			header: true,
+			headerName: 123,
+			headerValue: 'custom-value',
+		};
+		const defaultHeaders = { 'Content-Type': 'application/json' };
+
+		const result = mergeCustomHeaders(credentials, defaultHeaders);
+
+		expect(result).toEqual({ 'Content-Type': 'application/json' });
+	});
+
+	it('should return original headers when headerValue is not a string', () => {
+		const credentials = {
+			apiKey: 'test-key',
+			header: true,
+			headerName: 'X-Custom-Header',
+			headerValue: 123,
+		};
+		const defaultHeaders = { 'Content-Type': 'application/json' };
+
+		const result = mergeCustomHeaders(credentials, defaultHeaders);
+
+		expect(result).toEqual({ 'Content-Type': 'application/json' });
+	});
+
+	it('should return original headers when credential has no header properties', () => {
+		const credentials = {
+			apiKey: 'test-key',
+		};
+		const defaultHeaders = { 'Content-Type': 'application/json' };
+
+		const result = mergeCustomHeaders(credentials, defaultHeaders);
+
+		expect(result).toEqual({ 'Content-Type': 'application/json' });
+	});
+
+	it('should handle empty defaultHeaders', () => {
+		const credentials = {
+			apiKey: 'test-key',
+			header: true,
+			headerName: 'X-Api-Key',
+			headerValue: 'my-api-key',
+		};
+
+		const result = mergeCustomHeaders(credentials, {});
+
+		expect(result).toEqual({ 'X-Api-Key': 'my-api-key' });
+	});
+
+	it('should override existing header with same name', () => {
+		const credentials = {
+			apiKey: 'test-key',
+			header: true,
+			headerName: 'Authorization',
+			headerValue: 'Bearer new-token',
+		};
+		const defaultHeaders = { Authorization: 'Bearer old-token' };
+
+		const result = mergeCustomHeaders(credentials, defaultHeaders);
+
+		expect(result).toEqual({ Authorization: 'Bearer new-token' });
 	});
 });

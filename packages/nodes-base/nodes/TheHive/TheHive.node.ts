@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/dot-notation */
 import set from 'lodash/set';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IDataObject,
 	type IExecuteFunctions,
 	type IHttpRequestMethods,
@@ -21,6 +20,7 @@ import { taskFields, taskOperations } from './descriptions/TaskDescription';
 import {
 	buildCustomFieldSearch,
 	mapResource,
+	parseAnalyzers,
 	prepareCustomFields,
 	prepareOptional,
 	prepareRangeQuery,
@@ -43,8 +43,9 @@ export class TheHive implements INodeType {
 		defaults: {
 			name: 'TheHive',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'theHiveApi',
@@ -752,14 +753,8 @@ export class TheHive implements INodeType {
 
 					if (operation === 'executeAnalyzer') {
 						const observableId = this.getNodeParameter('id', i);
-						const analyzers = (this.getNodeParameter('analyzers', i) as string[]).map(
-							(analyzer) => {
-								const parts = analyzer.split('::');
-								return {
-									analyzerId: parts[0],
-									cortexId: parts[1],
-								};
-							},
+						const analyzers = parseAnalyzers(
+							this.getNodeParameter('analyzers', i) as string | string[],
 						);
 						let response: any;
 						let body: IDataObject;

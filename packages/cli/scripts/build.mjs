@@ -1,5 +1,5 @@
 import path from 'path';
-import { writeFileSync } from 'fs';
+import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { fileURLToPath } from 'url';
 import shell from 'shelljs';
 import { rawTimeZones } from '@vvo/tzdb';
@@ -16,8 +16,10 @@ const publicApiEnabled = process.env.N8N_PUBLIC_API_DISABLED !== 'true';
 
 generateUserManagementEmailTemplates();
 generateTimezoneData();
+copyInstanceAiExamplesData();
 
 if (publicApiEnabled) {
+	createPublicApiDirectory();
 	copySwaggerTheme();
 	bundleOpenApiSpecs();
 }
@@ -33,11 +35,19 @@ function generateUserManagementEmailTemplates() {
 		if (template.startsWith('_')) return;
 		const source = path.resolve(sourceDir, template);
 		const destination = path.resolve(destinationDir, template.replace(/\.mjml$/, '.handlebars'));
-		const command = `pnpm mjml --output ${destination} ${source}`;
+		const command = `pnpm mjml --output "${destination}" "${source}"`;
 		shell.exec(command, { silent: false });
 	});
 
 	shell.cp(path.resolve(sourceDir, 'n8n-logo.png'), destinationDir);
+}
+
+function createPublicApiDirectory() {
+	const publicApiDirectory = path.resolve(ROOT_DIR, 'dist', 'public-api', 'v1');
+	if (!existsSync(publicApiDirectory)) {
+		console.log('Creating directory', publicApiDirectory);
+		mkdirSync(publicApiDirectory, { recursive: true });
+	}
 }
 
 function copySwaggerTheme() {
@@ -59,15 +69,43 @@ function bundleOpenApiSpecs() {
 		}, [])
 		.forEach((specPath) => {
 			const distSpecPath = path.resolve(ROOT_DIR, 'dist', specPath);
-			const command = `pnpm openapi bundle src/${specPath} --output ${distSpecPath}`;
+			const command = `pnpm openapi bundle "src/${specPath}" --output "${distSpecPath}"`;
+
 			shell.exec(command, { silent: true });
 		});
 }
 
+// Experiment cleanup: remove with InstanceAiTemplateExamplesExperiment.
+// The data lives in the frontend source tree but is read at runtime by the CLI, so it
+// must be bundled into `dist` to ship with the published package.
+function copyInstanceAiExamplesData() {
+	const source = path.resolve(
+		ROOT_DIR,
+		'..',
+		'frontend',
+		'editor-ui',
+		'src',
+		'experiments',
+		'instanceAiTemplateExamples',
+		'instance-ai-examples.data.json',
+	);
+
+	if (!existsSync(source)) {
+		throw new Error(`Instance AI examples data file not found: ${source}`);
+	}
+
+	const destination = path.resolve(ROOT_DIR, 'dist', 'instance-ai-examples.data.json');
+	shell.cp(source, destination);
+	if (!existsSync(destination)) {
+		throw new Error(`Failed to copy Instance AI examples data file to: ${destination}`);
+	}
+}
+
 function generateTimezoneData() {
-	const timezones = rawTimeZones.reduce((acc, tz) => {
-		acc[tz.name] = tz.name.replaceAll('_', ' ');
+	const timezones = ['Etc/UTC', 'Etc/GMT', ...rawTimeZones.map((tz) => tz.name)];
+	const data = timezones.sort().reduce((acc, name) => {
+		acc[name] = name.replaceAll('_', ' ');
 		return acc;
 	}, {});
-	writeFileSync(path.resolve(ROOT_DIR, 'dist/timezones.json'), JSON.stringify({ data: timezones }));
+	writeFileSync(path.resolve(ROOT_DIR, 'dist/timezones.json'), JSON.stringify({ data }));
 }

@@ -1,12 +1,11 @@
 {
-	"extends": ["../../../tsconfig.json"],
+	"extends": ["@n8n/typescript-config/tsconfig.backend.json"],
 	"compilerOptions": {
-		"rootDir": ".",
-		"baseUrl": "src",
 		"strict": true,
 		"noEmit": true,
 		"skipLibCheck": true,
-		"esModuleInterop": true
+		"esModuleInterop": true,
+		"types": ["vitest/globals"]
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts"]
 }

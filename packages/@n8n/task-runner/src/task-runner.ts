@@ -1,22 +1,18 @@
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isSerializedBuffer, toBuffer } from 'n8n-core';
-import { ApplicationError, ensureError, randomInt } from 'n8n-workflow';
+import { OperationalError, randomInt, UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { EventEmitter } from 'node:events';
 import { type MessageEvent, WebSocket } from 'ws';
 
 import type { BaseRunnerConfig } from '@/config/base-runner-config';
+import { TimeoutError } from '@/js-task-runner/errors/timeout-error';
 import type { BrokerMessage, RunnerMessage } from '@/message-types';
 import { TaskRunnerNodeTypes } from '@/node-types';
 import type { TaskResultData } from '@/runner-types';
+import { TaskState } from '@/task-state';
 
 import { TaskCancelledError } from './js-task-runner/errors/task-cancelled-error';
-
-export interface Task<T = unknown> {
-	taskId: string;
-	settings?: T;
-	active: boolean;
-	cancelled: boolean;
-}
 
 export interface TaskOffer {
 	offerId: string;
@@ -49,6 +45,14 @@ const OFFER_VALID_EXTRA_MS = 100;
 /** Converts milliseconds to nanoseconds */
 const msToNs = (ms: number) => BigInt(ms * 1_000_000);
 
+export const noOp = () => {};
+
+/** Params the task receives when it is executed */
+export interface TaskParams<T = unknown> {
+	taskId: string;
+	settings: T;
+}
+
 export interface TaskRunnerOpts extends BaseRunnerConfig {
 	taskType: string;
 	name?: string;
@@ -61,7 +65,7 @@ export abstract class TaskRunner extends EventEmitter {
 
 	canSendOffers = false;
 
-	runningTasks: Map<Task['taskId'], Task> = new Map();
+	runningTasks: Map<TaskState['taskId'], TaskState> = new Map();
 
 	offerInterval: NodeJS.Timeout | undefined;
 
@@ -81,6 +85,18 @@ export abstract class TaskRunner extends EventEmitter {
 
 	name: string;
 
+	private isShuttingDown = false;
+
+	/**
+	 * Whether the runner has committed to draining and should reject new tasks. Set on
+	 * `broker:drain` or when the grace period elapses — not when shutdown merely begins,
+	 * so the runner still accepts tasks during the grace period.
+	 */
+	private isDraining = false;
+
+	/** Resolver for the grace-period wait in {@link stop}, called once the broker drains. */
+	private brokerDrainResolve: (() => void) | undefined;
+
 	private idleTimer: NodeJS.Timeout | undefined;
 
 	/** How long (in seconds) a task is allowed to take for completion, else the task will be aborted. */
@@ -89,15 +105,18 @@ export abstract class TaskRunner extends EventEmitter {
 	/** How long (in seconds) a runner may be idle for before exit. */
 	private readonly idleTimeout: number;
 
-	protected taskCancellations = new Map<Task['taskId'], AbortController>();
+	/** How long (in seconds) to keep serving tasks on shutdown while waiting for the broker to drain. */
+	private readonly gracefulShutdownTimeout: number;
 
 	constructor(opts: TaskRunnerOpts) {
 		super();
+
 		this.taskType = opts.taskType;
 		this.name = opts.name ?? 'Node.js Task Runner SDK';
 		this.maxConcurrency = opts.maxConcurrency;
 		this.taskTimeout = opts.taskTimeout;
 		this.idleTimeout = opts.idleTimeout;
+		this.gracefulShutdownTimeout = opts.gracefulShutdownTimeout;
 
 		const { host: taskBrokerHost } = new URL(opts.taskBrokerUri);
 
@@ -120,14 +139,16 @@ export abstract class TaskRunner extends EventEmitter {
 				console.error(
 					`Error: Failed to connect to n8n task broker. Please ensure n8n task broker is reachable at: ${taskBrokerHost}`,
 				);
-				process.exit(1);
 			} else {
 				console.error(`Error: Failed to connect to n8n task broker at ${taskBrokerHost}`);
 				console.error('Details:', event.message || 'Unknown error');
 			}
+
+			// The grant token is single use only, we can't reconnect so we exit
+			process.exit(1);
 		});
 		this.ws.addEventListener('message', this.receiveMessage);
-		this.ws.addEventListener('close', this.stopTaskOffers);
+		this.ws.addEventListener('close', this.onConnectionClose);
 		this.resetIdleTimer();
 	}
 
@@ -145,6 +166,25 @@ export abstract class TaskRunner extends EventEmitter {
 		// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
 		const data = JSON.parse(message.data as string) as BrokerMessage.ToRunner.All;
 		void this.onMessage(data);
+	};
+
+	private onConnectionClose = () => {
+		this.stopTaskOffers();
+
+		if (this.isShuttingDown) {
+			// stop() is orchestrating shutdown; release its grace wait so it finishes
+			// promptly (no `broker:drain` is coming on a closed connection).
+			this.releaseBrokerDrainWait();
+			return;
+		}
+
+		if (this.isDraining) {
+			// Broker drained us then closed the connection — expected shutdown, so exit cleanly.
+			process.exit(0);
+		}
+
+		console.error('Connection to task broker closed unexpectedly, exiting...');
+		process.exit(1);
 	};
 
 	private stopTaskOffers = () => {
@@ -174,9 +214,11 @@ export abstract class TaskRunner extends EventEmitter {
 	sendOffers() {
 		this.deleteStaleOffers();
 
-		const offersToSend =
-			this.maxConcurrency -
-			(Object.values(this.openOffers).length + Object.values(this.runningTasks).length);
+		if (!this.canSendOffers) {
+			return;
+		}
+
+		const offersToSend = this.maxConcurrency - (this.openOffers.size + this.runningTasks.size);
 
 		for (let i = 0; i < offersToSend; i++) {
 			// Add a bit of randomness so that not all offers expire at the same time
@@ -217,7 +259,7 @@ export abstract class TaskRunner extends EventEmitter {
 				this.offerAccepted(message.offerId, message.taskId);
 				break;
 			case 'broker:taskcancel':
-				this.taskCancelled(message.taskId, message.reason);
+				void this.taskCancelled(message.taskId, message.reason);
 				break;
 			case 'broker:tasksettings':
 				void this.receivedSettings(message.taskId, message.settings);
@@ -230,6 +272,9 @@ export abstract class TaskRunner extends EventEmitter {
 				break;
 			case 'broker:nodetypes':
 				this.processNodeTypesResponse(message.requestId, message.nodeTypes);
+				break;
+			case 'broker:drain':
+				this.onBrokerDrain();
 				break;
 		}
 	}
@@ -254,25 +299,39 @@ export abstract class TaskRunner extends EventEmitter {
 		request.resolve(nodeTypes);
 	}
 
-	hasOpenTasks() {
-		return Object.values(this.runningTasks).length < this.maxConcurrency;
+	/**
+	 * Whether the task runner has capacity to accept more tasks.
+	 */
+	hasOpenTaskSlots() {
+		return this.runningTasks.size < this.maxConcurrency;
 	}
 
 	offerAccepted(offerId: string, taskId: string) {
-		if (!this.hasOpenTasks()) {
+		if (this.isDraining) {
 			this.send({
 				type: 'runner:taskrejected',
 				taskId,
-				reason: 'No open task slots',
+				reason: 'Runner is shutting down',
 			});
 			return;
 		}
+
+		if (!this.hasOpenTaskSlots()) {
+			this.openOffers.delete(offerId);
+			this.send({
+				type: 'runner:taskrejected',
+				taskId,
+				reason: 'No open task slots - runner already at capacity',
+			});
+			return;
+		}
+
 		const offer = this.openOffers.get(offerId);
 		if (!offer) {
 			this.send({
 				type: 'runner:taskrejected',
 				taskId,
-				reason: 'Offer expired and no open task slots',
+				reason: 'Offer expired - not accepted within validity window',
 			});
 			return;
 		} else {
@@ -280,11 +339,14 @@ export abstract class TaskRunner extends EventEmitter {
 		}
 
 		this.resetIdleTimer();
-		this.runningTasks.set(taskId, {
+		const taskState = new TaskState({
 			taskId,
-			active: false,
-			cancelled: false,
+			timeoutInS: this.taskTimeout,
+			onTimeout: () => {
+				void this.taskTimedOut(taskId);
+			},
 		});
+		this.runningTasks.set(taskId, taskState);
 
 		this.send({
 			type: 'runner:taskaccepted',
@@ -292,99 +354,102 @@ export abstract class TaskRunner extends EventEmitter {
 		});
 	}
 
-	taskCancelled(taskId: string, reason: string) {
-		const task = this.runningTasks.get(taskId);
-		if (!task) {
+	async taskCancelled(taskId: string, reason: string) {
+		const taskState = this.runningTasks.get(taskId);
+		if (!taskState) {
 			return;
 		}
-		task.cancelled = true;
 
-		for (const [requestId, request] of this.dataRequests.entries()) {
-			if (request.taskId === taskId) {
-				request.reject(new TaskCancelledError(reason));
-				this.dataRequests.delete(requestId);
-			}
-		}
+		await taskState.caseOf({
+			// If the cancelled task hasn't received settings yet, we can finish it
+			waitingForSettings: () => this.finishTask(taskState),
 
-		for (const [requestId, request] of this.nodeTypesRequests.entries()) {
-			if (request.taskId === taskId) {
-				request.reject(new TaskCancelledError(reason));
-				this.nodeTypesRequests.delete(requestId);
-			}
-		}
+			// If the task has already timed out or is already cancelled, we can
+			// ignore the cancellation
+			'aborting:timeout': noOp,
+			'aborting:cancelled': noOp,
 
-		const controller = this.taskCancellations.get(taskId);
-		if (controller) {
-			controller.abort();
-			this.taskCancellations.delete(taskId);
-		}
-
-		if (!task.active) this.runningTasks.delete(taskId);
-
-		this.sendOffers();
+			running: () => {
+				taskState.status = 'aborting:cancelled';
+				taskState.abortController.abort('cancelled');
+				this.cancelTaskRequests(taskId, reason);
+			},
+		});
 	}
 
-	taskErrored(taskId: string, error: unknown) {
-		this.send({
-			type: 'runner:taskerror',
-			taskId,
-			error,
-		});
-		this.runningTasks.delete(taskId);
-		this.sendOffers();
-	}
+	async taskTimedOut(taskId: string) {
+		const taskState = this.runningTasks.get(taskId);
+		if (!taskState) {
+			return;
+		}
 
-	taskDone(taskId: string, data: RunnerMessage.ToBroker.TaskDone['data']) {
-		this.send({
-			type: 'runner:taskdone',
-			taskId,
-			data,
+		await taskState.caseOf({
+			// If we are still waiting for settings for the task, we can error the
+			// task immediately
+			waitingForSettings: () => {
+				try {
+					this.send({
+						type: 'runner:taskerror',
+						taskId,
+						error: new TimeoutError(this.taskTimeout),
+					});
+				} finally {
+					this.finishTask(taskState);
+				}
+			},
+
+			// This should never happen, the timeout timer should only fire once
+			'aborting:timeout': TaskState.throwUnexpectedTaskStatus,
+
+			// If we are currently executing the task, abort the execution and
+			// mark the task as timed out
+			running: () => {
+				taskState.status = 'aborting:timeout';
+				taskState.abortController.abort('timeout');
+				this.cancelTaskRequests(taskId, 'timeout');
+			},
+
+			// If the task is already cancelling, we can ignore the timeout
+			'aborting:cancelled': noOp,
 		});
-		this.runningTasks.delete(taskId);
-		this.sendOffers();
 	}
 
 	async receivedSettings(taskId: string, settings: unknown) {
-		const task = this.runningTasks.get(taskId);
-		if (!task) {
-			return;
-		}
-		if (task.cancelled) {
-			this.runningTasks.delete(taskId);
+		const taskState = this.runningTasks.get(taskId);
+		if (!taskState) {
 			return;
 		}
 
-		const controller = new AbortController();
-		this.taskCancellations.set(taskId, controller);
+		await taskState.caseOf({
+			// These states should never happen, as they are handled already in
+			// the other lifecycle methods and the task should be removed from the
+			// running tasks
+			'aborting:cancelled': TaskState.throwUnexpectedTaskStatus,
+			'aborting:timeout': TaskState.throwUnexpectedTaskStatus,
+			running: TaskState.throwUnexpectedTaskStatus,
 
-		const taskTimeout = setTimeout(() => {
-			if (!task.cancelled) {
-				controller.abort();
-				this.taskCancellations.delete(taskId);
-			}
-		}, this.taskTimeout * 1_000);
+			waitingForSettings: async () => {
+				taskState.status = 'running';
 
-		task.settings = settings;
-		task.active = true;
-		try {
-			const data = await this.executeTask(task, controller.signal);
-			this.taskDone(taskId, data);
-		} catch (error) {
-			if (!task.cancelled) this.taskErrored(taskId, error);
-		} finally {
-			clearTimeout(taskTimeout);
-			this.taskCancellations.delete(taskId);
-			this.resetIdleTimer();
-		}
+				await this.executeTask(
+					{
+						taskId,
+						settings,
+					},
+					taskState.abortController.signal,
+				)
+					.then(async (data) => await this.taskExecutionSucceeded(taskState, data))
+					.catch(async (error) => await this.taskExecutionFailed(taskState, error));
+			},
+		});
 	}
 
-	// eslint-disable-next-line @typescript-eslint/naming-convention
-	async executeTask(_task: Task, _signal: AbortSignal): Promise<TaskResultData> {
-		throw new ApplicationError('Unimplemented');
+	async executeTask(_taskParams: TaskParams, _signal: AbortSignal): Promise<TaskResultData> {
+		throw new UnexpectedError('Unimplemented');
 	}
 
 	async requestNodeTypes<T = unknown>(
-		taskId: Task['taskId'],
+		taskId: TaskState['taskId'],
 		requestParams: RunnerMessage.ToBroker.NodeTypesRequest['requestParams'],
 	) {
 		const requestId = nanoid();
@@ -413,12 +478,12 @@ export abstract class TaskRunner extends EventEmitter {
 	}
 
 	async requestData<T = unknown>(
-		taskId: Task['taskId'],
+		taskId: TaskState['taskId'],
 		requestParams: RunnerMessage.ToBroker.TaskDataRequest['requestParams'],
 	): Promise<T> {
 		const requestId = nanoid();
 
-		const p = new Promise<T>((resolve, reject) => {
+		const dataRequestPromise = new Promise<T>((resolve, reject) => {
 			this.dataRequests.set(requestId, {
 				requestId,
 				taskId,
@@ -435,7 +500,7 @@ export abstract class TaskRunner extends EventEmitter {
 		});
 
 		try {
-			return await p;
+			return await dataRequestPromise;
 		} finally {
 			this.dataRequests.delete(requestId);
 		}
@@ -452,15 +517,15 @@ export abstract class TaskRunner extends EventEmitter {
 			});
 		});
 
-		this.send({
-			type: 'runner:rpc',
-			callId,
-			taskId,
-			name,
-			params,
-		});
-
 		try {
+			this.send({
+				type: 'runner:rpc',
+				callId,
+				taskId,
+				name,
+				params,
+			});
+
 			const returnValue = await dataPromise;
 
 			return isSerializedBuffer(returnValue) ? toBuffer(returnValue) : returnValue;
@@ -485,13 +550,71 @@ export abstract class TaskRunner extends EventEmitter {
 		}
 	}
 
-	/** Close the connection gracefully and wait until has been closed */
-	async stop() {
+	/** Handles `broker:drain`: commit to draining and release the grace-period wait in {@link stop}. */
+	private onBrokerDrain() {
+		this.isDraining = true;
+		this.stopTaskOffers();
+		this.releaseBrokerDrainWait();
+	}
+
+	/** Release the grace-period wait in {@link stop}, if one is pending. */
+	private releaseBrokerDrainWait() {
+		if (this.brokerDrainResolve) {
+			this.brokerDrainResolve();
+			this.brokerDrainResolve = undefined;
+		}
+	}
+
+	/**
+	 * Block until the broker signals draining (`broker:drain`), the connection closes,
+	 * or the grace period elapses. See {@link stop} for why the runner defers.
+	 */
+	private async waitForBrokerDrain(timeoutMs: number) {
+		if (this.isDraining || timeoutMs <= 0) return;
+
+		await new Promise<void>((resolve) => {
+			const timer = setTimeout(resolve, timeoutMs);
+			timer.unref?.();
+			this.brokerDrainResolve = () => {
+				clearTimeout(timer);
+				resolve();
+			};
+		});
+		this.brokerDrainResolve = undefined;
+	}
+
+	/**
+	 * Gracefully stop, bounded by the grace period: keep offering and serving until the
+	 * broker drains or the deadline, then commit to draining, finish any in-flight task
+	 * within the remaining budget, and close.
+	 *
+	 * @param deferToBrokerDrain When `false`, skip the keep-offering wait and drain
+	 * immediately (e.g. an idle-timeout exit, where nothing is waiting on this runner).
+	 */
+	async stop({ deferToBrokerDrain = true }: { deferToBrokerDrain?: boolean } = {}) {
+		this.isShuttingDown = true;
 		this.clearIdleTimer();
 
-		this.stopTaskOffers();
+		const graceMs = Math.max(0, this.gracefulShutdownTimeout) * 1000;
+		const deadline = Date.now() + graceMs;
 
-		await this.waitUntilAllTasksAreDone();
+		if (deferToBrokerDrain) {
+			await this.waitForBrokerDrain(graceMs);
+		}
+
+		// Commit to draining, then finish any in-flight task within the remaining budget
+		// (tasks accepted earlier have been running through the keep-offering phase).
+		this.isDraining = true;
+		this.stopTaskOffers();
+		this.openOffers.clear();
+
+		try {
+			await this.waitUntilAllTasksAreDone(Math.max(0, deadline - Date.now()));
+		} catch (error) {
+			// Task overran the grace period: abandon it (the broker will fail it) but
+			// still close cleanly below so no dangling runner is left behind.
+			console.error(ensureError(error).message);
+		}
 
 		await this.closeConnection();
 	}
@@ -502,6 +625,10 @@ export abstract class TaskRunner extends EventEmitter {
 	}
 
 	private async closeConnection() {
+		// If the broker already closed the socket while draining, awaiting another
+		// 'close' event below would hang shutdown.
+		if (this.ws.readyState === WebSocket.CLOSED) return;
+
 		// 1000 is the standard close code
 		// https://www.rfc-editor.org/rfc/rfc6455.html#section-7.1.5
 		this.ws.close(1000, 'Shutting down');
@@ -517,10 +644,92 @@ export abstract class TaskRunner extends EventEmitter {
 
 		while (this.runningTasks.size > 0) {
 			if (Date.now() - start > maxWaitTimeInMs) {
-				throw new ApplicationError('Timeout while waiting for tasks to finish');
+				throw new OperationalError('Timeout while waiting for tasks to finish');
 			}
 
 			await new Promise((resolve) => setTimeout(resolve, 100));
 		}
+	}
+
+	private async taskExecutionSucceeded(taskState: TaskState, data: TaskResultData) {
+		try {
+			const sendData = () => {
+				this.send({
+					type: 'runner:taskdone',
+					taskId: taskState.taskId,
+					data,
+				});
+			};
+
+			await taskState.caseOf({
+				waitingForSettings: TaskState.throwUnexpectedTaskStatus,
+
+				'aborting:cancelled': noOp,
+
+				// If the task timed out but we ended up reaching this point, we
+				// might as well send the data
+				'aborting:timeout': sendData,
+				running: sendData,
+			});
+		} finally {
+			this.finishTask(taskState);
+		}
+	}
+
+	private async taskExecutionFailed(taskState: TaskState, error: unknown) {
+		try {
+			const sendError = () => {
+				this.send({
+					type: 'runner:taskerror',
+					taskId: taskState.taskId,
+					error,
+				});
+			};
+
+			await taskState.caseOf({
+				waitingForSettings: TaskState.throwUnexpectedTaskStatus,
+
+				'aborting:cancelled': noOp,
+
+				'aborting:timeout': () => {
+					console.warn(`Task ${taskState.taskId} timed out`);
+
+					sendError();
+				},
+
+				running: sendError,
+			});
+		} finally {
+			this.finishTask(taskState);
+		}
+	}
+
+	/**
+	 * Cancels all node type and data requests made by the given task
+	 */
+	private cancelTaskRequests(taskId: string, reason: string) {
+		for (const [requestId, request] of this.dataRequests.entries()) {
+			if (request.taskId === taskId) {
+				request.reject(new TaskCancelledError(reason));
+				this.dataRequests.delete(requestId);
+			}
+		}
+
+		for (const [requestId, request] of this.nodeTypesRequests.entries()) {
+			if (request.taskId === taskId) {
+				request.reject(new TaskCancelledError(reason));
+				this.nodeTypesRequests.delete(requestId);
+			}
+		}
+	}
+
+	/**
+	 * Finishes task by removing it from the running tasks and sending new offers
+	 */
+	private finishTask(taskState: TaskState) {
+		taskState.cleanup();
+		this.runningTasks.delete(taskState.taskId);
+		this.sendOffers();
+		this.resetIdleTimer();
 	}
 }

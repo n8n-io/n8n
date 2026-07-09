@@ -1,0 +1,168 @@
+{
+	"name": "Jina AI -> Reader -> Read",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 100],
+			"id": "75a081a7-14e6-4f63-a0b6-86f54937d59d",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"url": "https://first.com/some/path",
+				"simplify": false,
+				"options": {},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.jinaAi",
+			"typeVersion": 1,
+			"position": [220, -100],
+			"id": "92e091b7-42dd-4751-8432-58a211840b35",
+			"name": "No options",
+			"credentials": {
+				"jinaAiApi": {
+					"id": "8ph5AE62dQFfqkLx",
+					"name": "Jina AI account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"url": "https://second.com/other?foo=bar",
+				"simplify": false,
+				"options": {
+					"outputFormat": "markdown",
+					"targetSelector": "article",
+					"excludeSelector": ".ad",
+					"enableImageCaptioning": true,
+					"waitForSelector": "#posts"
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.jinaAi",
+			"typeVersion": 1,
+			"position": [220, 100],
+			"id": "f598a0ee-794e-4c31-8833-327768f7eecb",
+			"name": "With options",
+			"credentials": {
+				"jinaAiApi": {
+					"id": "8ph5AE62dQFfqkLx",
+					"name": "Jina AI account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"url": "https://first.com/some/path",
+				"options": {},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.jinaAi",
+			"typeVersion": 1,
+			"position": [220, 300],
+			"id": "79d27978-20af-494d-b9bd-32f68883ac54",
+			"name": "Simplified",
+			"credentials": {
+				"jinaAiApi": {
+					"id": "8ph5AE62dQFfqkLx",
+					"name": "Jina AI account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"No options": [
+			{
+				"json": {
+					"code": 200,
+					"status": 20000,
+					"data": {
+						"title": "Jina AI - Your Search Foundation, Supercharged.",
+						"url": "https://jina.ai/",
+						"description": "Best-in-class embeddings, rerankers, web crawler scraper, deepsearch, small LMs. The search AI for multilingual and multimodal data.",
+						"content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+						"usage": {
+							"tokens": 123
+						}
+					},
+					"meta": {
+						"usage": {
+							"tokens": 123
+						}
+					}
+				}
+			}
+		],
+		"With options": [
+			{
+				"json": {
+					"code": 200,
+					"status": 20000,
+					"data": {
+						"title": "Jina AI - Your Search Foundation, Supercharged.",
+						"url": "https://jina.ai/",
+						"description": "Best-in-class embeddings, rerankers, web crawler scraper, deepsearch, small LMs. The search AI for multilingual and multimodal data.",
+						"content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+						"usage": {
+							"tokens": 123
+						}
+					},
+					"meta": {
+						"usage": {
+							"tokens": 123
+						}
+					}
+				}
+			}
+		],
+		"Simplified": [
+			{
+				"json": {
+					"title": "Jina AI - Your Search Foundation, Supercharged.",
+					"url": "https://jina.ai/",
+					"description": "Best-in-class embeddings, rerankers, web crawler scraper, deepsearch, small LMs. The search AI for multilingual and multimodal data.",
+					"content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+					"usage": {
+						"tokens": 123
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "No options",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "With options",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Simplified",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "41f0e679-7754-4b3c-a86c-e130a18d4378",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "e115be144a6a5547dbfca93e774dfffa178aa94a181854c13e2ce5e14d195b2e"
+	},
+	"id": "MFBoiglfRhCu9HgF",
+	"tags": []
+}

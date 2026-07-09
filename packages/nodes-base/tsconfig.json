@@ -1,25 +1,48 @@
 {
-	"extends": ["../../tsconfig.json", "../../tsconfig.backend.json"],
+	"extends": ["@n8n/typescript-config/modern/tsconfig.json"],
 	"compilerOptions": {
 		"paths": {
+			"@credentials/*": ["./credentials/*"],
 			"@test/*": ["./test/*"],
-			"@utils/*": ["./utils/*"]
+			"@utils/*": ["./utils/*"],
+			"@nodes-testing/*": ["../core/nodes-testing/*"]
 		},
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
-		// TODO: remove all options below this line
+
+		"types": ["node", "vitest/globals"],
+
+		"emitDecoratorMetadata": true,
+		"experimentalDecorators": true,
+
+		// TODO: remove all options below this line to align with the modern config
 		"noImplicitReturns": false,
-		"useUnknownInCatchVariables": false
+		"useUnknownInCatchVariables": false,
+		"isolatedModules": false,
+		"verbatimModuleSyntax": false,
+		"noUncheckedIndexedAccess": false,
+		"noImplicitOverride": false,
+
+		"noImplicitAny": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"strictNullChecks": true,
+		"preserveConstEnums": true
 	},
 	"include": [
+		"shims.d.ts",
 		"credentials/**/*.ts",
 		"nodes/**/*.ts",
+		"nodes/**/*.test.ts",
+		"nodes/**/*.json",
 		"test/**/*.ts",
+		"types/**/*.ts",
 		"utils/**/*.ts",
-		"types/**/*.ts"
+		"types/**/*.ts",
+		"../core/nodes-testing/**/*.ts"
 	],
+	"exclude": [],
 	"references": [
 		{ "path": "../@n8n/imap/tsconfig.build.json" },
-		{ "path": "../workflow/tsconfig.build.json" },
+		{ "path": "../workflow/tsconfig.build.esm.json" },
 		{ "path": "../core/tsconfig.build.json" }
 	]
 }

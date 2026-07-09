@@ -1,12 +1,10 @@
+import { inProduction, Logger } from '@n8n/backend-common';
+import { Container } from '@n8n/di';
 import { existsSync } from 'fs';
 import { mkdir, utimes, open, rm } from 'fs/promises';
 import { InstanceSettings } from 'n8n-core';
 import { sleep } from 'n8n-workflow';
 import { join, dirname } from 'path';
-import { Container } from 'typedi';
-
-import { inProduction } from '@/constants';
-import { Logger } from '@/logging/logger.service';
 
 export const touchFile = async (filePath: string): Promise<void> => {
 	await mkdir(dirname(filePath), { recursive: true });

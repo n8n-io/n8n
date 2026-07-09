@@ -1,3 +1,4 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import { BinaryDataService, FileNotFoundError } from 'n8n-core';
 import fsp from 'node:fs/promises';
 import { Readable } from 'node:stream';
@@ -5,16 +6,15 @@ import { Readable } from 'node:stream';
 import { createOwner } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import { setupTestServer } from './shared/utils';
-import { mockInstance } from '../shared/mocking';
 
-jest.mock('fs/promises');
+vi.mock('fs/promises');
 
 const throwFileNotFound = () => {
 	throw new FileNotFoundError('non/existing/path');
 };
 
 const binaryDataService = mockInstance(BinaryDataService);
-let testServer = setupTestServer({ endpointGroups: ['binaryData'] });
+const testServer = setupTestServer({ endpointGroups: ['binaryData'] });
 let authOwnerAgent: SuperAgentTest;
 
 beforeAll(async () => {
@@ -23,7 +23,7 @@ beforeAll(async () => {
 });
 
 afterEach(() => {
-	jest.restoreAllMocks();
+	vi.restoreAllMocks();
 });
 
 describe('GET /binary-data', () => {
@@ -41,7 +41,7 @@ describe('GET /binary-data', () => {
 	describe('should reject on missing or invalid binary data ID', () => {
 		test.each([['view'], ['download']])('on request to %s', async (action) => {
 			binaryDataService.getPath.mockReturnValue(binaryFilePath);
-			fsp.readFile = jest.fn().mockResolvedValue(buffer);
+			fsp.readFile = vi.fn().mockResolvedValue(buffer);
 
 			await authOwnerAgent
 				.get('/binary-data')

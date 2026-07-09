@@ -1,0 +1,130 @@
+{
+	"name": "Evaluation Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "285ac92b-256f-4bb2-a450-6486b01593cb",
+			"name": "Execute Workflow Trigger",
+			"type": "n8n-nodes-base.executeWorkflowTrigger",
+			"typeVersion": 1,
+			"position": [520, 340]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "9d3abc8d-3270-4bec-9a59-82622d5dbb5a",
+							"leftValue": "={{ $json.newExecution.Code[0].data.main[0].length }}",
+							"rightValue": 3,
+							"operator": {
+								"type": "number",
+								"operation": "gte"
+							}
+						},
+						{
+							"id": "894ce84b-13a4-4415-99c0-0c25182903bb",
+							"leftValue": "={{ $json.newExecution.Code[0].data.main[0][0].json.random }}",
+							"rightValue": 0.7,
+							"operator": {
+								"type": "number",
+								"operation": "lt"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			},
+			"id": "320b0355-3886-41df-b039-4666bf28e47b",
+			"name": "If",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [740, 340]
+		},
+		{
+			"parameters": {
+				"metrics": {
+					"assignments": [
+						{
+							"id": "3b65d55a-158f-40c6-9853-a1c44b7ba1e5",
+							"name": "success",
+							"value": true,
+							"type": "boolean"
+						},
+						{
+							"id": "877d1bf8-31a7-4571-9293-a6837b51d22b",
+							"name": "metric1",
+							"value": 0.1,
+							"type": "number"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "0c7a1ee8-0cf0-4d7f-99a3-186bbcd8815a",
+			"name": "Success",
+			"type": "n8n-nodes-base.evaluationMetrics",
+			"typeVersion": 1,
+			"position": [980, 220]
+		},
+		{
+			"parameters": {
+				"metrics": {
+					"assignments": [
+						{
+							"id": "6cc8b402-4a30-4873-b825-963a1f1b8b82",
+							"name": "success",
+							"value": false,
+							"type": "boolean"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "50d3f84a-d99f-4e04-bdbd-3e8c2668e708",
+			"name": "Fail",
+			"type": "n8n-nodes-base.evaluationMetrics",
+			"typeVersion": 1,
+			"position": [980, 420]
+		}
+	],
+	"connections": {
+		"Execute Workflow Trigger": {
+			"main": [
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If": {
+			"main": [
+				[
+					{
+						"node": "Success",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Fail",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {}
+}

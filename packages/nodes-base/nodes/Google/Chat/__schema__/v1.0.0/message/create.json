@@ -1,0 +1,77 @@
+{
+    "type": "object",
+    "properties": {
+        "argumentText": {
+            "type": "string"
+        },
+        "createTime": {
+            "type": "string"
+        },
+        "formattedText": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "sender": {
+            "type": "object",
+            "properties": {
+                "displayName": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "space": {
+            "type": "object",
+            "properties": {
+                "lastActiveTime": {
+                    "type": "string"
+                },
+                "membershipCount": {
+                    "type": "object",
+                    "properties": {
+                        "joinedDirectHumanUserCount": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "spaceHistoryState": {
+                    "type": "string"
+                },
+                "spaceThreadingState": {
+                    "type": "string"
+                },
+                "spaceType": {
+                    "type": "string"
+                },
+                "spaceUri": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "text": {
+            "type": "string"
+        },
+        "thread": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 6
+}

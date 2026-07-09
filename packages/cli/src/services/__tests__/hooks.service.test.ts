@@ -1,30 +1,36 @@
+import type {
+	AuthenticatedRequest,
+	SettingsRepository,
+	User,
+	CredentialsRepository,
+	WorkflowRepository,
+	UserRepository,
+} from '@n8n/db';
+import { IsNull, Not } from '@n8n/typeorm';
 import RudderStack from '@rudderstack/rudder-sdk-node';
 import type { Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
-import type { AuthUser } from '@/databases/entities/auth-user';
-import type { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
-import type { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import type { SettingsRepository } from '@/databases/repositories/settings.repository';
-import type { UserRepository } from '@/databases/repositories/user.repository';
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { Invitation } from '@/interfaces';
-import type { AuthenticatedRequest } from '@/requests';
 import { HooksService } from '@/services/hooks.service';
 import type { UserService } from '@/services/user.service';
 
-jest.mock('@rudderstack/rudder-sdk-node');
+vi.mock('@rudderstack/rudder-sdk-node');
 
 describe('HooksService', () => {
-	const mockedUser = mock<AuthUser>();
+	const mockedUser = mock<User>();
 	const userService = mock<UserService>();
 	const authService = mock<AuthService>();
 	const userRepository = mock<UserRepository>();
 	const settingsRepository = mock<SettingsRepository>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const credentialsRepository = mock<CredentialsRepository>();
-	const authUserRepository = mock<AuthUserRepository>();
+
+	const authMiddleware = vi.fn();
+
+	authService.createAuthMiddleware.mockReturnValue(authMiddleware);
+
 	const hooksService = new HooksService(
 		userService,
 		authService,
@@ -32,11 +38,10 @@ describe('HooksService', () => {
 		settingsRepository,
 		workflowRepository,
 		credentialsRepository,
-		authUserRepository,
 	);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('hooksService.inviteUsers should call userService.inviteUsers', async () => {
@@ -53,15 +58,16 @@ describe('HooksService', () => {
 	it('hooksService.issueCookie should call authService.issueCookie', async () => {
 		// ARRANGE
 		const res = mock<Response>();
+		mockedUser.mfaEnabled = false; // Mock mfaEnabled property
 
 		// ACT
 		hooksService.issueCookie(res, mockedUser);
 
 		// ASSERT
-		expect(authService.issueCookie).toHaveBeenCalledWith(res, mockedUser);
+		expect(authService.issueCookie).toHaveBeenCalledWith(res, mockedUser, false);
 	});
 
-	it('hooksService.findOneUser should call authUserRepository.findOne', async () => {
+	it('hooksService.findOneUser should call userRepository.findOne', async () => {
 		// ARRANGE
 		const filter = { where: { id: '1' } };
 
@@ -69,7 +75,7 @@ describe('HooksService', () => {
 		await hooksService.findOneUser(filter);
 
 		// ASSERT
-		expect(authUserRepository.findOne).toHaveBeenCalledWith(filter);
+		expect(userRepository.findOne).toHaveBeenCalledWith(filter);
 	});
 
 	it('hooksService.saveUser should call userRepository.save', async () => {
@@ -95,7 +101,7 @@ describe('HooksService', () => {
 
 	it('hooksService.workflowsCount should call workflowRepository.count', async () => {
 		// ARRANGE
-		const filter = { where: { active: true } };
+		const filter = { where: { activeVersionId: Not(IsNull()) } };
 
 		// ACT
 		await hooksService.workflowsCount(filter);
@@ -132,13 +138,13 @@ describe('HooksService', () => {
 
 		const req = mock<AuthenticatedRequest>();
 
-		const next = jest.fn();
+		const next = vi.fn();
 
 		// ACT
 		await hooksService.authMiddleware(req, res, next);
 
 		// ASSERT
-		expect(authService.authMiddleware).toHaveBeenCalledWith(req, res, next);
+		expect(authMiddleware).toHaveBeenCalledWith(req, res, next);
 	});
 
 	it('hooksService.dbCollections should return valid repositories', async () => {

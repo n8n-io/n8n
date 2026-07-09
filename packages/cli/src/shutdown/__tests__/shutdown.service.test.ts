@@ -1,10 +1,12 @@
-import { mock } from 'jest-mock-extended';
+import { ShutdownMetadata } from '@n8n/decorators';
+import type { ShutdownServiceClass } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import type { ErrorReporter } from 'n8n-core';
-import { ApplicationError } from 'n8n-workflow';
-import Container from 'typedi';
+import { UnexpectedError } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
-import type { ServiceClass } from '@/shutdown/shutdown.service';
-import { ShutdownService } from '@/shutdown/shutdown.service';
+import { ShutdownService } from '../shutdown.service';
 
 class MockComponent {
 	onShutdown() {}
@@ -13,20 +15,22 @@ class MockComponent {
 describe('ShutdownService', () => {
 	let shutdownService: ShutdownService;
 	let mockComponent: MockComponent;
-	let onShutdownSpy: jest.SpyInstance;
+	let onShutdownSpy: MockInstance;
 	const errorReporter = mock<ErrorReporter>();
+	const shutdownMetadata = Container.get(ShutdownMetadata);
 
 	beforeEach(() => {
-		shutdownService = new ShutdownService(mock(), errorReporter);
+		shutdownMetadata.clear();
+		shutdownService = new ShutdownService(mock(), errorReporter, shutdownMetadata);
 		mockComponent = new MockComponent();
 		Container.set(MockComponent, mockComponent);
-		onShutdownSpy = jest.spyOn(mockComponent, 'onShutdown');
+		onShutdownSpy = vi.spyOn(mockComponent, 'onShutdown');
 	});
 
 	describe('shutdown', () => {
 		it('should signal shutdown', () => {
 			shutdownService.register(10, {
-				serviceClass: MockComponent as unknown as ServiceClass,
+				serviceClass: MockComponent as unknown as ShutdownServiceClass,
 				methodName: 'onShutdown',
 			});
 			shutdownService.shutdown();
@@ -44,16 +48,16 @@ describe('ShutdownService', () => {
 			const mockService = new MockService();
 			Container.set(MockService, mockService);
 
-			jest.spyOn(mockService, 'onShutdownHighPrio').mockImplementation(() => order.push('high'));
-			jest.spyOn(mockService, 'onShutdownLowPrio').mockImplementation(() => order.push('low'));
+			vi.spyOn(mockService, 'onShutdownHighPrio').mockImplementation(() => order.push('high'));
+			vi.spyOn(mockService, 'onShutdownLowPrio').mockImplementation(() => order.push('low'));
 
 			shutdownService.register(100, {
-				serviceClass: MockService as unknown as ServiceClass,
+				serviceClass: MockService as unknown as ShutdownServiceClass,
 				methodName: 'onShutdownHighPrio',
 			});
 
 			shutdownService.register(10, {
-				serviceClass: MockService as unknown as ServiceClass,
+				serviceClass: MockService as unknown as ShutdownServiceClass,
 				methodName: 'onShutdownLowPrio',
 			});
 
@@ -65,7 +69,7 @@ describe('ShutdownService', () => {
 		it('should throw error if shutdown is already in progress', () => {
 			shutdownService.register(10, {
 				methodName: 'onShutdown',
-				serviceClass: MockComponent as unknown as ServiceClass,
+				serviceClass: MockComponent as unknown as ShutdownServiceClass,
 			});
 			shutdownService.shutdown();
 			expect(() => shutdownService.shutdown()).toThrow('App is already shutting down');
@@ -77,15 +81,15 @@ describe('ShutdownService', () => {
 				throw componentError;
 			});
 			shutdownService.register(10, {
-				serviceClass: MockComponent as unknown as ServiceClass,
+				serviceClass: MockComponent as unknown as ShutdownServiceClass,
 				methodName: 'onShutdown',
 			});
 			shutdownService.shutdown();
 			await shutdownService.waitForShutdown();
 
 			expect(errorReporter.error).toHaveBeenCalledTimes(1);
-			const error = errorReporter.error.mock.calls[0][0] as ApplicationError;
-			expect(error).toBeInstanceOf(ApplicationError);
+			const error = errorReporter.error.mock.calls[0][0] as UnexpectedError;
+			expect(error).toBeInstanceOf(UnexpectedError);
 			expect(error.message).toBe('Failed to shutdown gracefully');
 			expect(error.extra).toEqual({
 				component: 'MockComponent.onShutdown()',
@@ -97,7 +101,7 @@ describe('ShutdownService', () => {
 	describe('waitForShutdown', () => {
 		it('should wait for shutdown', async () => {
 			shutdownService.register(10, {
-				serviceClass: MockComponent as unknown as ServiceClass,
+				serviceClass: MockComponent as unknown as ShutdownServiceClass,
 				methodName: 'onShutdown',
 			});
 			shutdownService.shutdown();
@@ -114,7 +118,7 @@ describe('ShutdownService', () => {
 	describe('isShuttingDown', () => {
 		it('should return true if app is shutting down', () => {
 			shutdownService.register(10, {
-				serviceClass: MockComponent as unknown as ServiceClass,
+				serviceClass: MockComponent as unknown as ShutdownServiceClass,
 				methodName: 'onShutdown',
 			});
 			shutdownService.shutdown();
@@ -133,7 +137,7 @@ describe('ShutdownService', () => {
 			}
 
 			shutdownService.register(10, {
-				serviceClass: UnregisteredComponent as unknown as ServiceClass,
+				serviceClass: UnregisteredComponent as unknown as ShutdownServiceClass,
 				methodName: 'onShutdown',
 			});
 
@@ -146,7 +150,7 @@ describe('ShutdownService', () => {
 			class TestComponent {}
 
 			shutdownService.register(10, {
-				serviceClass: TestComponent as unknown as ServiceClass,
+				serviceClass: TestComponent as unknown as ShutdownServiceClass,
 				methodName: 'onShutdown',
 			});
 

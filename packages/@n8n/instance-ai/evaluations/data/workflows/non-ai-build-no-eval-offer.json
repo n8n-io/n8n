@@ -1,0 +1,29 @@
+{
+	"description": "Negative guard: the eval offer must be scoped to AI workflows. This workflow has no AI/LLM nodes, so the agent must NOT offer to add evaluations. Guards the `offer` eligibility precheck (no-ai-nodes) against over-eager offering. Single-turn conversation (auto-approve mode) — the base workflow builds and any post-build follow-ups are auto-approved; the assertion is judged from the transcript and the resulting workflow.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every weekday at 8am, pull yesterday's new signups from our Postgres database and post the total count to our Slack #growth channel."
+		}
+	],
+	"complexity": "simple",
+	"tags": [
+		"behaviour",
+		"build",
+		"evals",
+		"eval-offer",
+		"negative",
+		"schedule",
+		"slack",
+		"postgres"
+	],
+	"triggerType": "schedule",
+	"datasets": ["behaviour", "full"],
+	"processExpectations": [
+		"The agent did not offer to add evaluations or AI test cases for this workflow. Evaluations apply to workflows with AI/LLM nodes, and this workflow has none (a schedule → Postgres query → Slack count), so an eval offer would be inappropriate."
+	],
+	"outcomeExpectations": [
+		"The final workflow contains no n8n evaluation nodes: there is no `n8n-nodes-base.evaluationTrigger` and no `n8n-nodes-base.evaluation` node.",
+		"The workflow does what was asked: a schedule trigger runs on weekday mornings, yesterday's new signups are queried from Postgres, and the resulting count is posted to the Slack #growth channel."
+	]
+}

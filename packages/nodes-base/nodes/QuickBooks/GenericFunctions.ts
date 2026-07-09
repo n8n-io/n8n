@@ -43,9 +43,6 @@ export async function quickBooksApiRequest(
 	const credentials = await this.getCredentials<QuickBooksOAuth2Credentials>('quickBooksOAuth2Api');
 
 	const options: IRequestOptions = {
-		headers: {
-			'user-agent': 'n8n',
-		},
 		method,
 		uri: `${credentials.environment === 'sandbox' ? sandboxUrl : productionUrl}${endpoint}`,
 		qs,
@@ -329,9 +326,14 @@ export function processLines(this: IExecuteFunctions, lines: IDataObject[], reso
 					TaxCodeRef: {
 						value: line.TaxCodeRef,
 					},
+					Qty: line.Qty,
 				};
+				if (line.Qty === undefined) {
+					delete (line.SalesItemLineDetail as IDataObject).Qty;
+				}
 				delete line.itemId;
 				delete line.TaxCodeRef;
+				delete line.Qty;
 			}
 		}
 	});

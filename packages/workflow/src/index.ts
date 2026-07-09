@@ -1,40 +1,71 @@
-import * as LoggerProxy from './LoggerProxy';
-export * as ExpressionEvaluatorProxy from './ExpressionEvaluatorProxy';
-import * as NodeHelpers from './NodeHelpers';
-import * as ObservableObject from './ObservableObject';
-import * as TelemetryHelpers from './TelemetryHelpers';
+import * as LoggerProxy from './logger-proxy';
+import * as NodeHelpers from './node-helpers';
+import * as ObservableObject from './observable-object';
+import * as TelemetryHelpers from './telemetry-helpers';
 
 export * from './errors';
-export * from './Constants';
-export * from './Cron';
-export * from './DeferredPromise';
-export * from './GlobalState';
-export * from './Interfaces';
-export * from './MessageEventBus';
-export * from './ExecutionStatus';
-export * from './Expression';
-export * from './NodeHelpers';
-export * from './Workflow';
-export * from './WorkflowDataProxy';
-export * from './WorkflowDataProxyEnvProvider';
-export * from './WorkflowHooks';
-export * from './VersionedNodeType';
-export * from './TypeValidation';
-export * from './result';
+export * from './constants';
+export * from './common';
+export * from './cron';
+export * from './data-table.types';
+export * from './execution-context';
+export * from './execution-context-establishment-hooks';
+export * from './redaction-channels';
+export * from './dynamic-credentials-helpers';
+export * from './global-state';
+export * from './interfaces';
+export * from './sub-workflow-output';
+export * from './run-execution-data-factory';
+export * from './message-event-bus';
+export * from './execution-status';
+export * from './trimmed-task-data';
+export * from './expression';
+export * from './expressions/expression-helpers';
+export * from './from-ai-parse-utils';
+export * from './node-helpers';
+export * from './node-validation';
+export * from './node-grouping-validation';
+export * from './mcp-helpers';
+export * from './tool-helpers';
+export * from './trigger-identity';
+export * from './node-reference-parser-utils';
+export * from './metadata-utils';
+export * from './highlighted-data';
+export * from './workflow';
+export * from './workflow-checksum';
+export * from './workflow-data-proxy';
+export * from './workflow-data-proxy-env-provider';
+export * from './workflow-validation';
+export * from './workflow-structure-validation';
+export * from './versioned-node-type';
+export * from './type-validation';
+export * from './credential-domain-restrictions';
+export * from './schemas';
+export * from './run-execution-data/run-execution-data';
+export { WorkflowExpression } from './workflow-expression';
 export { LoggerProxy, NodeHelpers, ObservableObject, TelemetryHelpers };
 export {
 	isObjectEmpty,
 	deepCopy,
 	jsonParse,
+	base64DecodeUTF8,
 	jsonStringify,
 	replaceCircularReferences,
 	sleep,
+	sleepWithAbort,
 	fileTypeFromMimeType,
 	assert,
 	removeCircularRefs,
 	updateDisplayOptions,
 	randomInt,
 	randomString,
+	isSafeObjectProperty,
+	setSafeObjectProperty,
+	isCommunityPackageName,
+	dedupe,
+	sanitizeFilename,
+	sanitizeXmlName,
+	generateSecureToken,
 } from './utils';
 export {
 	isINodeProperties,
@@ -44,13 +75,31 @@ export {
 	isINodePropertyCollectionList,
 	isINodePropertyOptionsList,
 	isResourceMapperValue,
+	isResourceLocatorValue,
 	isFilterValue,
+	isNodeConnectionType,
+	isBinaryValue,
 } from './type-guards';
 
-export { ExpressionExtensions } from './Extensions';
-export * as ExpressionParser from './Extensions/ExpressionParser';
-export { NativeMethods } from './NativeMethods';
-export * from './NodeParameters/FilterParameter';
+export {
+	parseExtractableSubgraphSelection,
+	buildAdjacencyList,
+	type ExtractableErrorResult,
+	type ExtractableSubgraphData,
+	type IConnectionAdjacencyList as AdjacencyList,
+} from './graph/graph-utils';
+export { ExpressionExtensions, type Alias, type AliasCompletion } from './extensions';
+export * as ExpressionParser from './extensions/expression-parser';
+export { NativeMethods } from './native-methods';
+export * from './node-parameters/filter-parameter';
+export * from './node-parameters/parameter-type-validation';
+export * from './node-parameters/node-parameter-value-type-guard';
+export * from './node-parameters/path-utils';
+export * from './evaluation-helpers';
+export * from './workflow-diff';
+export * from './connections-diff';
+export * from './workflow-environments-helper';
+export { evaluateJmespathQuery, JmespathQueryError } from './jmespath-query';
 
 export type {
 	DocMetadata,
@@ -58,7 +107,7 @@ export type {
 	DocMetadataArgument,
 	DocMetadataExample,
 	Extension,
-} from './Extensions';
+} from './extensions';
 
 declare module 'http' {
 	export interface IncomingMessage {

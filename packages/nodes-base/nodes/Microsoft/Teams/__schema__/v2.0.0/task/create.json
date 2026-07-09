@@ -1,0 +1,93 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.context": {
+            "type": "string"
+        },
+        "@odata.etag": {
+            "type": "string"
+        },
+        "activeChecklistItemCount": {
+            "type": "integer"
+        },
+        "assigneePriority": {
+            "type": "string"
+        },
+        "bucketId": {
+            "type": "string"
+        },
+        "checklistItemCount": {
+            "type": "integer"
+        },
+        "completedBy": {
+            "type": "null"
+        },
+        "completedDateTime": {
+            "type": "null"
+        },
+        "conversationThreadId": {
+            "type": "null"
+        },
+        "createdBy": {
+            "type": "object",
+            "properties": {
+                "application": {
+                    "type": "object",
+                    "properties": {
+                        "displayName": {
+                            "type": "null"
+                        },
+                        "id": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "displayName": {
+                            "type": "null"
+                        },
+                        "id": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "createdDateTime": {
+            "type": "string"
+        },
+        "hasDescription": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "orderHint": {
+            "type": "string"
+        },
+        "percentComplete": {
+            "type": "integer"
+        },
+        "planId": {
+            "type": "string"
+        },
+        "previewType": {
+            "type": "string"
+        },
+        "priority": {
+            "type": "integer"
+        },
+        "referenceCount": {
+            "type": "integer"
+        },
+        "startDateTime": {
+            "type": "null"
+        },
+        "title": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

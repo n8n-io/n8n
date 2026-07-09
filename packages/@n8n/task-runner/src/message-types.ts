@@ -57,6 +57,11 @@ export namespace BrokerMessage {
 			nodeTypes: INodeTypeBaseDescription[];
 		}
 
+		/** Signals the runner to stop accepting tasks, complete active ones, and prepare for shutdown. */
+		export interface Drain {
+			type: 'broker:drain';
+		}
+
 		export type All =
 			| InfoRequest
 			| TaskOfferAccept
@@ -65,7 +70,8 @@ export namespace BrokerMessage {
 			| RunnerRegistered
 			| RPCResponse
 			| TaskDataResponse
-			| NodeTypes;
+			| NodeTypes
+			| Drain;
 	}
 
 	export namespace ToRequester {
@@ -85,6 +91,12 @@ export namespace BrokerMessage {
 			type: 'broker:taskerror';
 			taskId: string;
 			error: unknown;
+		}
+
+		export interface RequestExpired {
+			type: 'broker:requestexpired';
+			requestId: string;
+			reason: 'timeout' | 'draining';
 		}
 
 		export interface TaskDataRequest {
@@ -109,7 +121,14 @@ export namespace BrokerMessage {
 			params: unknown[];
 		}
 
-		export type All = TaskReady | TaskDone | TaskError | TaskDataRequest | NodeTypesRequest | RPC;
+		export type All =
+			| TaskReady
+			| TaskDone
+			| TaskError
+			| RequestExpired
+			| TaskDataRequest
+			| NodeTypesRequest
+			| RPC;
 	}
 }
 

@@ -1,47 +1,56 @@
-import nock from 'nock';
+import { mockDeep } from 'vitest-mock-extended';
+import get from 'lodash/get';
+import type { IExecuteFunctions } from 'n8n-workflow';
 
 import * as getSchema from '../../../../v2/actions/base/getSchema.operation';
 import * as transport from '../../../../v2/transport';
-import { createMockExecuteFunction } from '../helpers';
+import type * as _importType0 from '../../../../v2/transport';
 
-jest.mock('../../../../v2/transport', () => {
-	const originalModule = jest.requireActual('../../../../v2/transport');
+vi.mock('../../../../v2/transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../../../v2/transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async function () {
-			return {};
+		apiRequest: vi.fn(async function () {
+			return { tables: [] };
 		}),
 	};
 });
 
 describe('Test AirtableV2, base => getSchema', () => {
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../../../../v2/transport');
-	});
-
 	it('should return all bases', async () => {
 		const nodeParameters = {
 			resource: 'base',
 			operation: 'getSchema',
 			base: {
-				value: 'appYobase',
+				value: '={{$json.id}}',
 			},
 		};
 
 		const items = [
 			{
-				json: {},
+				json: { id: 'appYobase1' },
+			},
+			{
+				json: { id: 'appYobase2' },
 			},
 		];
 
-		await getSchema.execute.call(createMockExecuteFunction(nodeParameters), items);
+		await getSchema.execute.call(
+			mockDeep<IExecuteFunctions>({
+				getInputData: vi.fn(() => items),
+				getNodeParameter: vi.fn((param: string, itemIndex: number) => {
+					if (param === 'base') {
+						return items[itemIndex].json.id;
+					}
 
-		expect(transport.apiRequest).toBeCalledTimes(1);
-		expect(transport.apiRequest).toHaveBeenCalledWith('GET', 'meta/bases/appYobase/tables');
+					return get(nodeParameters, param);
+				}),
+			}),
+			items,
+		);
+
+		expect(transport.apiRequest).toBeCalledTimes(2);
+		expect(transport.apiRequest).toHaveBeenCalledWith('GET', 'meta/bases/appYobase1/tables');
+		expect(transport.apiRequest).toHaveBeenCalledWith('GET', 'meta/bases/appYobase2/tables');
 	});
 });

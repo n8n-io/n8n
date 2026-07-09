@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { N8nTrigger } from '../N8nTrigger.node';
 
 describe('N8nTrigger', () => {
@@ -10,12 +9,12 @@ describe('N8nTrigger', () => {
 
 		// Mock trigger functions
 		mockTriggerFunctions = {
-			emit: jest.fn(),
-			getNodeParameter: jest.fn(),
-			getActivationMode: jest.fn(),
-			getWorkflow: jest.fn(() => ({ id: 'test-workflow-id' })),
+			emit: vi.fn(),
+			getNodeParameter: vi.fn(),
+			getActivationMode: vi.fn(),
+			getWorkflow: vi.fn(() => ({ id: 'test-workflow-id' })),
 			helpers: {
-				returnJsonArray: jest.fn((data) => data),
+				returnJsonArray: vi.fn((data) => data),
 			},
 		};
 	});
@@ -30,7 +29,7 @@ describe('N8nTrigger', () => {
 			expect(mockTriggerFunctions.emit).toHaveBeenCalledWith([
 				[
 					{
-						event: 'Workflow activated',
+						event: 'Workflow published',
 						timestamp: expect.any(String),
 						workflow_id: 'test-workflow-id',
 					},

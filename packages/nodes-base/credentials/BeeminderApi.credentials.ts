@@ -14,12 +14,6 @@ export class BeeminderApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'User',
-			name: 'user',
-			type: 'string',
-			default: '',
-		},
-		{
 			displayName: 'Auth Token',
 			name: 'authToken',
 			type: 'string',
@@ -40,7 +34,7 @@ export class BeeminderApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://www.beeminder.com/api/v1',
-			url: '=/users/{{$credentials.user}}.json',
+			url: '/users/me.json',
 		},
 	};
 }

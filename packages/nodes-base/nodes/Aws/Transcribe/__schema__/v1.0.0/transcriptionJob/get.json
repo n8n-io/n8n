@@ -1,0 +1,40 @@
+{
+    "type": "object",
+    "properties": {
+        "CreationTime": {
+            "type": "number"
+        },
+        "Media": {
+            "type": "object",
+            "properties": {
+                "MediaFileUri": {
+                    "type": "string"
+                }
+            }
+        },
+        "Settings": {
+            "type": "object",
+            "properties": {
+                "ChannelIdentification": {
+                    "type": "boolean"
+                },
+                "ShowAlternatives": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "StartTime": {
+            "type": "number"
+        },
+        "transcript": {
+            "type": "string"
+        },
+        "TranscriptionJobName": {
+            "type": "string"
+        },
+        "TranscriptionJobStatus": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

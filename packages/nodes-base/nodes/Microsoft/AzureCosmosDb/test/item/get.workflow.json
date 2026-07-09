@@ -1,0 +1,67 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "49466d78-738a-4dee-a2fb-2143f7800b45",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "item",
+				"operation": "get",
+				"container": {
+					"__rl": true,
+					"value": "container1",
+					"mode": "list",
+					"cachedResultName": "container1"
+				},
+				"item": {
+					"__rl": true,
+					"value": "item1",
+					"mode": "list",
+					"cachedResultName": "item1"
+				},
+				"additionalFields": {
+					"partitionKey": "item1"
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.azureCosmosDb",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "00d6b986-6b8a-43ee-a6a5-b6a7c165c991",
+			"name": "Azure Cosmos Db",
+			"credentials": {
+				"microsoftAzureCosmosDbSharedKeyApi": {
+					"id": "exampleId",
+					"name": "Azure Cosmos DB account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Azure Cosmos Db",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Azure Cosmos Db": [
+			{
+				"json": {
+					"id": "item1"
+				}
+			}
+		]
+	}
+}

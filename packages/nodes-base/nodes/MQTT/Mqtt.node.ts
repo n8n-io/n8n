@@ -1,4 +1,5 @@
 import type { IClientPublishOptions } from 'mqtt';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	type IExecuteFunctions,
 	type ICredentialsDecrypted,
@@ -7,8 +8,7 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeConnectionType,
-	ensureError,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { createClient, type MqttCredential } from './GenericFunctions';
@@ -26,8 +26,9 @@ export class Mqtt implements INodeType {
 		defaults: {
 			name: 'MQTT',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'mqtt',

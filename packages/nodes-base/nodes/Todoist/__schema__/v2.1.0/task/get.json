@@ -1,0 +1,62 @@
+{
+    "type": "object",
+    "properties": {
+        "comment_count": {
+            "type": "integer"
+        },
+        "content": {
+            "type": "string"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "creator_id": {
+            "type": "string"
+        },
+        "description": {
+            "type": "string"
+        },
+        "due": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "is_recurring": {
+                    "type": "boolean"
+                },
+                "lang": {
+                    "type": "string"
+                },
+                "string": {
+                    "type": "string"
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "is_completed": {
+            "type": "boolean"
+        },
+        "labels": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "order": {
+            "type": "integer"
+        },
+        "priority": {
+            "type": "integer"
+        },
+        "project_id": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

@@ -1,0 +1,120 @@
+{
+    "type": "object",
+    "properties": {
+        "api_name": {
+            "type": "string"
+        },
+        "association_details": {
+            "type": "null"
+        },
+        "businesscard_supported": {
+            "type": "boolean"
+        },
+        "convert_mapping": {
+            "type": "object",
+            "properties": {
+                "Deals": {
+                    "type": "null"
+                }
+            }
+        },
+        "created_source": {
+            "type": "string"
+        },
+        "crypt": {
+            "type": "null"
+        },
+        "custom_field": {
+            "type": "boolean"
+        },
+        "data_type": {
+            "type": "string"
+        },
+        "decimal_place": {
+            "type": "null"
+        },
+        "display_label": {
+            "type": "string"
+        },
+        "external": {
+            "type": "null"
+        },
+        "field_label": {
+            "type": "string"
+        },
+        "field_read_only": {
+            "type": "boolean"
+        },
+        "history_tracking": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "json_type": {
+            "type": "string"
+        },
+        "length": {
+            "type": "integer"
+        },
+        "mass_update": {
+            "type": "boolean"
+        },
+        "pick_list_values": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "actual_value": {
+                        "type": "string"
+                    },
+                    "display_value": {
+                        "type": "string"
+                    },
+                    "reference_value": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "quick_sequence_number": {
+            "type": "string"
+        },
+        "read_only": {
+            "type": "boolean"
+        },
+        "subform": {
+            "type": "null"
+        },
+        "system_mandatory": {
+            "type": "boolean"
+        },
+        "ui_type": {
+            "type": "integer"
+        },
+        "view_type": {
+            "type": "object",
+            "properties": {
+                "create": {
+                    "type": "boolean"
+                },
+                "edit": {
+                    "type": "boolean"
+                },
+                "quick_create": {
+                    "type": "boolean"
+                },
+                "view": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "visible": {
+            "type": "boolean"
+        },
+        "webhook": {
+            "type": "boolean"
+        }
+    },
+    "version": 1
+}

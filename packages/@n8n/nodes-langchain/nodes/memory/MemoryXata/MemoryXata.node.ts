@@ -1,8 +1,7 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { XataChatMessageHistory } from '@langchain/community/stores/message/xata';
 import { BaseClient } from '@xata.io/client';
-import { BufferMemory, BufferWindowMemory } from 'langchain/memory';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { BufferMemory, BufferWindowMemory } from '@langchain/classic/memory';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	ISupplyDataFunctions,
 	INodeType,
@@ -11,14 +10,14 @@ import type {
 } from 'n8n-workflow';
 
 import { getSessionId } from '@utils/helpers';
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import {
 	sessionIdOption,
 	sessionKeyProperty,
 	contextWindowLengthProperty,
 	expressionSessionKeyProperty,
+	scopedSessionHint,
 } from '../descriptions';
 
 export class MemoryXata implements INodeType {
@@ -27,7 +26,7 @@ export class MemoryXata implements INodeType {
 		name: 'memoryXata',
 		icon: 'file:xata.svg',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
 		description: 'Use Xata Memory',
 		defaults: {
 			name: 'Xata',
@@ -38,6 +37,7 @@ export class MemoryXata implements INodeType {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Memory'],
+				Memory: ['Other memories'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -47,10 +47,10 @@ export class MemoryXata implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiMemory],
+
+		outputs: [NodeConnectionTypes.AiMemory],
 		outputNames: ['Memory'],
 		credentials: [
 			{
@@ -59,7 +59,7 @@ export class MemoryXata implements INodeType {
 			},
 		],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
 				displayName: 'Session ID',
 				name: 'sessionId',
@@ -94,6 +94,7 @@ export class MemoryXata implements INodeType {
 			},
 			sessionKeyProperty,
 			expressionSessionKeyProperty(1.4),
+			scopedSessionHint(1.5),
 			{
 				...contextWindowLengthProperty,
 				displayOptions: { hide: { '@version': [{ _cnd: { lt: 1.3 } }] } },

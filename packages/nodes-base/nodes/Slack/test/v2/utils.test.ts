@@ -1,7 +1,11 @@
-import { type MockProxy, mock } from 'jest-mock-extended';
+import { type MockProxy, mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
-import { getTarget, createSendAndWaitMessageBody } from '../../V2/GenericFunctions';
+import {
+	getTarget,
+	createSendAndWaitMessageBody,
+	toMultiOptionsCsv,
+} from '../../V2/GenericFunctions';
 
 describe('Slack Utility Functions', () => {
 	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
@@ -9,7 +13,50 @@ describe('Slack Utility Functions', () => {
 	beforeEach(() => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		mockExecuteFunctions.getNode.mockReturnValue({ name: 'Slack', typeVersion: 1 } as any);
-		jest.clearAllMocks();
+		mockExecuteFunctions.getSignedResumeUrl.mockReturnValueOnce(
+			'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+		);
+		mockExecuteFunctions.getSignedResumeUrl.mockReturnValueOnce(
+			'http://localhost/waiting-webhook/nodeID?approved=false&signature=abc',
+		);
+		vi.clearAllMocks();
+	});
+
+	describe('toMultiOptionsCsv', () => {
+		it('joins array values', () => {
+			expect(toMultiOptionsCsv(['U123', 'U456'])).toBe('U123,U456');
+		});
+
+		it('trims entries inside an array (interpolated array elements)', () => {
+			expect(toMultiOptionsCsv(['U123 ', ' U456'])).toBe('U123,U456');
+		});
+
+		it('drops empty array entries', () => {
+			expect(toMultiOptionsCsv(['U123', '', '  ', 'U456'])).toBe('U123,U456');
+		});
+
+		it('coerces non-string array entries via String()', () => {
+			expect(toMultiOptionsCsv([1, 2, 3])).toBe('1,2,3');
+		});
+
+		it('accepts a comma-joined string (the whitespace-expression coercion case)', () => {
+			expect(toMultiOptionsCsv('U123,U456')).toBe('U123,U456');
+		});
+
+		it('trims surrounding whitespace on a string value (trailing-space expression bug)', () => {
+			expect(toMultiOptionsCsv('U123,U456 ')).toBe('U123,U456');
+		});
+
+		it('trims whitespace around each entry in a comma-string', () => {
+			expect(toMultiOptionsCsv(' U123 , U456 ')).toBe('U123,U456');
+		});
+
+		it('returns empty string for undefined/null/empty', () => {
+			expect(toMultiOptionsCsv(undefined)).toBe('');
+			expect(toMultiOptionsCsv(null)).toBe('');
+			expect(toMultiOptionsCsv('')).toBe('');
+			expect(toMultiOptionsCsv([])).toBe('');
+		});
 	});
 
 	describe('getTarget', () => {
@@ -33,8 +80,6 @@ describe('Slack Utility Functions', () => {
 
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('message');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('subject');
-			mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('localhost');
-			mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('node123');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
 
 			expect(createSendAndWaitMessageBody(mockExecuteFunctions)).toEqual({
@@ -70,7 +115,7 @@ describe('Slack Utility Functions', () => {
 									type: 'plain_text',
 								},
 								type: 'button',
-								url: 'localhost/node123?approved=true',
+								url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
 							},
 						],
 						type: 'actions',
@@ -86,8 +131,6 @@ describe('Slack Utility Functions', () => {
 
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('message');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('subject');
-			mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('localhost');
-			mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('node123');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({ approvalType: 'double' });
 
 			expect(createSendAndWaitMessageBody(mockExecuteFunctions)).toEqual({
@@ -123,7 +166,7 @@ describe('Slack Utility Functions', () => {
 									type: 'plain_text',
 								},
 								type: 'button',
-								url: 'localhost/node123?approved=false',
+								url: 'http://localhost/waiting-webhook/nodeID?approved=false&signature=abc',
 							},
 
 							{
@@ -134,7 +177,7 @@ describe('Slack Utility Functions', () => {
 									type: 'plain_text',
 								},
 								type: 'button',
-								url: 'localhost/node123?approved=true',
+								url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
 							},
 						],
 						type: 'actions',
@@ -150,8 +193,6 @@ describe('Slack Utility Functions', () => {
 
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('message');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('subject');
-			mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('localhost');
-			mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('node123');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
 			mockExecuteFunctions.getNode.mockReturnValue({ name: 'Slack', typeVersion: 2.3 } as any);
 
@@ -187,7 +228,7 @@ describe('Slack Utility Functions', () => {
 									type: 'plain_text',
 								},
 								type: 'button',
-								url: 'localhost/node123?approved=true',
+								url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
 							},
 						],
 						type: 'actions',
@@ -203,8 +244,6 @@ describe('Slack Utility Functions', () => {
 
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('message');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('subject');
-			mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('localhost');
-			mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('node123');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({ approvalType: 'double' });
 
 			mockExecuteFunctions.getNode.mockReturnValue({ name: 'Slack', typeVersion: 2.3 } as any);
@@ -241,7 +280,7 @@ describe('Slack Utility Functions', () => {
 									type: 'plain_text',
 								},
 								type: 'button',
-								url: 'localhost/node123?approved=false',
+								url: 'http://localhost/waiting-webhook/nodeID?approved=false&signature=abc',
 							},
 
 							{
@@ -252,7 +291,7 @@ describe('Slack Utility Functions', () => {
 									type: 'plain_text',
 								},
 								type: 'button',
-								url: 'localhost/node123?approved=true',
+								url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
 							},
 						],
 						type: 'actions',

@@ -10,6 +10,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
+import { getSendAndWaitConfig } from '../../utils/sendAndWait/utils';
+import { createUtmCampaignLink } from '../../utils/utilities';
+
 // Interface in n8n
 export interface IMarkupKeyboard {
 	rows?: IMarkupKeyboardRow[];
@@ -78,9 +81,7 @@ export function addAdditionalFields(
 
 	if (operation === 'sendMessage') {
 		const attributionText = 'This message was sent automatically with ';
-		const link = `https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
-			'n8n-nodes-base.telegram',
-		)}${instanceId ? '_' + instanceId : ''}`;
+		const link = createUtmCampaignLink('n8n-nodes-base.telegram', instanceId);
 
 		if (nodeVersion && nodeVersion >= 1.1 && additionalFields.appendAttribution === undefined) {
 			additionalFields.appendAttribution = true;
@@ -119,6 +120,18 @@ export function addAdditionalFields(
 	Object.assign(body, additionalFields);
 
 	// Add the reply markup
+	addReplyMarkup.call(this, body, index);
+}
+
+/**
+ * Build the `reply_markup` field from the node's reply markup parameters
+ *
+ * @param {IDataObject} body The body object to add the reply markup to
+ * @param {number} index The index of the item
+ */
+export function addReplyMarkup(this: IExecuteFunctions, body: IDataObject, index: number) {
+	const operation = this.getNodeParameter('operation', index);
+
 	let replyMarkupOption = '';
 	if (operation !== 'sendMediaGroup') {
 		replyMarkupOption = this.getNodeParameter('replyMarkup', index) as string;
@@ -251,4 +264,38 @@ export function getSecretToken(this: IHookFunctions | IWebhookFunctions) {
 	// Only characters A-Z, a-z, 0-9, _ and - are allowed.
 	const secret_token = `${this.getWorkflow().id}_${this.getNode().id}`;
 	return secret_token.replace(/[^a-zA-Z0-9\_\-]+/g, '');
+}
+
+export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
+	const chat_id = context.getNodeParameter('chatId', 0) as string;
+
+	const config = getSendAndWaitConfig(context);
+	let text = config.message;
+
+	if (config.appendAttribution !== false) {
+		const instanceId = context.getInstanceId();
+		const attributionText = 'This message was sent automatically with ';
+		const link = createUtmCampaignLink('n8n-nodes-base.telegram', instanceId);
+		text = `${text}\n\n_${attributionText}_[n8n](${link})`;
+	}
+
+	const body = {
+		chat_id,
+		text,
+
+		disable_web_page_preview: true,
+		parse_mode: 'Markdown',
+		reply_markup: {
+			inline_keyboard: [
+				config.options.map((option) => {
+					return {
+						text: option.label,
+						url: option.url,
+					};
+				}),
+			],
+		},
+	};
+
+	return body;
 }

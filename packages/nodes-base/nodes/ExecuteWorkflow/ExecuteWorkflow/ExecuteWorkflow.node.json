@@ -11,7 +11,7 @@
 			}
 		]
 	},
-	"alias": ["n8n"],
+	"alias": ["n8n", "call", "sub", "workflow", "sub-workflow", "subworkflow"],
 	"subcategories": {
 		"Core Nodes": ["Helpers", "Flow"]
 	}

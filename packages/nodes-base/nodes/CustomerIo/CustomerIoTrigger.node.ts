@@ -1,23 +1,14 @@
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
-	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { customerIoApiRequest, eventExists } from './GenericFunctions';
-
-interface IEvent {
-	customer?: IDataObject;
-	email?: IDataObject;
-	push?: IDataObject;
-	slack?: IDataObject;
-	sms?: IDataObject;
-	webhook?: IDataObject;
-}
+import { verifySignature } from './CustomerIoTriggerHelpers';
+import { customerIoApiRequest, eventExists, toApiEventName } from './GenericFunctions';
 
 export class CustomerIoTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -31,7 +22,7 @@ export class CustomerIoTrigger implements INodeType {
 			name: 'Customer.io Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'customerIoApi',
@@ -236,7 +227,7 @@ export class CustomerIoTrigger implements INodeType {
 					'GET',
 					endpoint,
 					{},
-					'beta',
+					'app',
 				);
 
 				if (webhooks === null) {
@@ -246,7 +237,7 @@ export class CustomerIoTrigger implements INodeType {
 				for (const webhook of webhooks) {
 					if (
 						webhook.endpoint === webhookUrl &&
-						eventExists(currentEvents, webhook.events as IDataObject)
+						eventExists(currentEvents, webhook.events as string[])
 					) {
 						webhookData.webhookId = webhook.id;
 						return true;
@@ -261,42 +252,13 @@ export class CustomerIoTrigger implements INodeType {
 
 				const endpoint = '/reporting_webhooks';
 
-				const data: IEvent = {
-					customer: {},
-					email: {},
-					push: {},
-					slack: {},
-					sms: {},
-					webhook: {},
-				};
-
-				for (const event of events) {
-					const option = event.split('.')[1];
-					if (event.startsWith('customer')) {
-						data.customer![option] = true;
-					}
-					if (event.startsWith('email')) {
-						data.email![option] = true;
-					}
-					if (event.startsWith('push')) {
-						data.push![option] = true;
-					}
-					if (event.startsWith('slack')) {
-						data.slack![option] = true;
-					}
-					if (event.startsWith('sms')) {
-						data.sms![option] = true;
-					}
-					if (event.startsWith('webhook')) {
-						data.webhook![option] = true;
-					}
-				}
 				const body = {
+					name: `n8n webhook - ${webhookUrl}`,
 					endpoint: webhookUrl,
-					events: data,
+					events: events.map(toApiEventName),
 				};
 
-				const webhook = await customerIoApiRequest.call(this, 'POST', endpoint, body, 'beta');
+				const webhook = await customerIoApiRequest.call(this, 'POST', endpoint, body, 'app');
 
 				const webhookData = this.getWorkflowStaticData('node');
 				webhookData.webhookId = webhook.id as string;
@@ -308,7 +270,7 @@ export class CustomerIoTrigger implements INodeType {
 				if (webhookData.webhookId !== undefined) {
 					const endpoint = `/reporting_webhooks/${webhookData.webhookId}`;
 					try {
-						await customerIoApiRequest.call(this, 'DELETE', endpoint, {}, 'beta');
+						await customerIoApiRequest.call(this, 'DELETE', endpoint, {}, 'app');
 					} catch (error) {
 						return false;
 					}
@@ -320,6 +282,15 @@ export class CustomerIoTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const isSignatureValid = await verifySignature.call(this);
+		if (!isSignatureValid) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return {
+				noWebhookResponse: true,
+			};
+		}
+
 		const bodyData = this.getBodyData();
 		return {
 			workflowData: [this.helpers.returnJsonArray(bodyData)],

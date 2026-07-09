@@ -10,10 +10,10 @@ import {
 	type INodeTypeDescription,
 	type IWebhookResponseData,
 	type IBinaryKeyData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import { downloadFile, getChannelInfo, getUserInfo } from './SlackTriggerHelpers';
+import { downloadFile, getChannelInfo, getUserInfo, verifySignature } from './SlackTriggerHelpers';
 import { slackApiRequestAllItems } from './V2/GenericFunctions';
 
 export class SlackTrigger implements INodeType {
@@ -29,7 +29,7 @@ export class SlackTrigger implements INodeType {
 			name: 'Slack Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		webhooks: [
 			{
 				name: 'default',
@@ -53,7 +53,7 @@ export class SlackTrigger implements INodeType {
 			},
 			{
 				displayName:
-					'Set up a webhook in your Slack app to enable this node. <a href="https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/#configure-a-webhook-in-slack" target="_blank">More info</a>',
+					'Set up a webhook in your Slack app to enable this node. <a href="https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/#configure-a-webhook-in-slack" target="_blank">More info</a>. We also recommend setting up a <a href="https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/#verify-the-webhook" target="_blank">signing secret</a> to ensure the authenticity of requests.',
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -67,6 +67,11 @@ export class SlackTrigger implements INodeType {
 						name: 'Any Event',
 						value: 'any_event',
 						description: 'Triggers on any event',
+					},
+					{
+						name: 'App Home Opened',
+						value: 'app_home_opened',
+						description: "When a user opens your app's Home tab",
 					},
 					{
 						name: 'Bot / App Mention',
@@ -230,6 +235,20 @@ export class SlackTrigger implements INodeType {
 						description:
 							'A comma-separated string of encoded user IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
+					{
+						displayName: 'Emoji Names to Filter',
+						name: 'reactionEmojis',
+						type: 'string',
+						default: '',
+						placeholder: 'thumbsup, eyes, white_check_mark',
+						description:
+							'Comma-separated list of emoji names to allow (without colons). Leave empty to trigger on any reaction.',
+						displayOptions: {
+							show: {
+								'/trigger': ['reaction_added'],
+							},
+						},
+					},
 				],
 			},
 		],
@@ -320,9 +339,19 @@ export class SlackTrigger implements INodeType {
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 		const binaryData: IBinaryKeyData = {};
 		const watchWorkspace = this.getNodeParameter('watchWorkspace', false) as boolean;
+		let eventChannel: string = '';
 
-		// Check if the request is a challenge request
+		const isSignatureValid = await verifySignature.call(this);
+		if (!isSignatureValid) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return {
+				noWebhookResponse: true,
+			};
+		}
+
 		if (req.body.type === 'url_verification') {
+			// Check if the request is a challenge request
 			const res = this.getResponseObject();
 			res.status(200).json({ challenge: req.body.challenge }).end();
 
@@ -342,22 +371,41 @@ export class SlackTrigger implements INodeType {
 			return {};
 		}
 
-		const eventChannel = req.body.event.channel ?? req.body.event.item.channel;
+		const eventsWithoutChannel = ['team_join', 'app_home_opened'];
+		if (!eventsWithoutChannel.includes(eventType)) {
+			eventChannel =
+				req.body.event.channel ?? req.body.event.item?.channel ?? req.body.event.channel_id;
 
-		// Check for single channel
-		if (!watchWorkspace) {
-			if (
-				eventChannel !== (this.getNodeParameter('channelId', {}, { extractValue: true }) as string)
-			) {
-				return {};
+			// Check for single channel
+			if (!watchWorkspace) {
+				if (
+					eventChannel !==
+					(this.getNodeParameter('channelId', {}, { extractValue: true }) as string)
+				) {
+					return {};
+				}
 			}
 		}
 
 		// Check if user should be ignored
 		if (options.userIds) {
 			const userIds = options.userIds as string[];
-			if (userIds.includes(req.body.event.user)) {
+			if (userIds.includes(req.body.event.user ?? req.body.event.message?.user)) {
 				return {};
+			}
+		}
+
+		// Filter by reaction emoji for reaction_added events
+		if (eventType === 'reaction_added' && options.reactionEmojis) {
+			const allowedEmojis = (options.reactionEmojis as string)
+				.split(',')
+				.map((e) => e.trim().toLowerCase())
+				.filter(Boolean);
+			if (allowedEmojis.length > 0) {
+				const reaction = ((req.body.event.reaction as string | undefined) ?? '').toLowerCase();
+				if (!allowedEmojis.includes(reaction)) {
+					return {};
+				}
 			}
 		}
 
@@ -369,6 +417,8 @@ export class SlackTrigger implements INodeType {
 						this,
 						req.body.event.item_user,
 					);
+				} else if (req.body.event.type === 'team_join') {
+					req.body.event.user_resolved = req.body.event.user.name;
 				} else {
 					req.body.event.user_resolved = await getUserInfo.call(this, req.body.event.user);
 				}

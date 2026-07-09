@@ -7,10 +7,11 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { apiRequest, getImageBySize, getSecretToken } from './GenericFunctions';
+import { apiRequest, getSecretToken } from './GenericFunctions';
 import type { IEvent } from './IEvent';
+import { downloadFile } from './util/triggerUtils';
 
 export class TelegramTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -18,15 +19,15 @@ export class TelegramTrigger implements INodeType {
 		name: 'telegramTrigger',
 		icon: 'file:telegram.svg',
 		group: ['trigger'],
-		version: [1, 1.1],
-		defaultVersion: 1.1,
+		version: [1, 1.1, 1.2, 1.3, 1.4],
+		defaultVersion: 1.4,
 		subtitle: '=Updates: {{$parameter["updates"].join(", ")}}',
 		description: 'Starts the workflow on a Telegram update',
 		defaults: {
 			name: 'Telegram Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'telegramApi',
@@ -168,6 +169,32 @@ export class TelegramTrigger implements INodeType {
 						default: 'large',
 						description: 'The size of the image to be downloaded',
 					},
+					{
+						displayName: 'Restrict to Chat IDs',
+						name: 'chatIds',
+						type: 'string',
+						default: '',
+						description:
+							'The chat IDs to restrict the trigger to. Multiple can be defined separated by comma.',
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.1 } }],
+							},
+						},
+					},
+					{
+						displayName: 'Restrict to User IDs',
+						name: 'userIds',
+						type: 'string',
+						default: '',
+						description:
+							'The user IDs to restrict the trigger to. Multiple can be defined separated by comma.',
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.1 } }],
+							},
+						},
+					},
 				],
 			},
 		],
@@ -199,10 +226,13 @@ export class TelegramTrigger implements INodeType {
 
 				const secret_token = getSecretToken.call(this);
 
+				const drop_pending_updates = this.getNode().typeVersion >= 1.3;
+
 				const body = {
 					url: webhookUrl,
 					allowed_updates: allowedUpdates,
 					secret_token,
+					drop_pending_updates,
 				};
 
 				await apiRequest.call(this, 'POST', endpoint, body);
@@ -251,85 +281,50 @@ export class TelegramTrigger implements INodeType {
 
 		const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
 
-		if (additionalFields.download === true) {
-			let imageSize = 'large';
+		if (additionalFields.download) {
+			const downloadFilesResult = await downloadFile(this, credentials, bodyData, additionalFields);
 
-			let key: 'message' | 'channel_post' = 'message';
+			if (Object.entries(downloadFilesResult).length !== 0) return downloadFilesResult;
+		}
 
-			if (bodyData.channel_post) {
-				key = 'channel_post';
+		if (nodeVersion >= 1.2) {
+			if (additionalFields.chatIds) {
+				const chatIds = additionalFields.chatIds as string;
+				const splitIds = chatIds.split(',').map((chatId) => chatId.trim());
+				// Versions < 1.4 only resolve the chat ID from `message` updates; later
+				// versions resolve it from every update type that carries a chat.
+				const chatId =
+					nodeVersion >= 1.4
+						? (bodyData.message?.chat?.id ??
+							bodyData.edited_message?.chat?.id ??
+							bodyData.channel_post?.chat?.id ??
+							bodyData.edited_channel_post?.chat?.id ??
+							bodyData.callback_query?.message?.chat?.id)
+						: bodyData.message?.chat?.id;
+				if (!splitIds.includes(String(chatId))) {
+					return {};
+				}
 			}
 
-			if (
-				(bodyData[key]?.photo && Array.isArray(bodyData[key]?.photo)) ||
-				bodyData[key]?.document ||
-				bodyData[key]?.video
-			) {
-				if (additionalFields.imageSize) {
-					imageSize = additionalFields.imageSize as string;
+			if (additionalFields.userIds) {
+				const userIds = additionalFields.userIds as string;
+				const splitIds = userIds.split(',').map((userId) => userId.trim());
+				// Versions < 1.4 only resolve the user ID from `message` updates; later
+				// versions resolve it from every update type that carries a sender.
+				const userId =
+					nodeVersion >= 1.4
+						? (bodyData.message?.from?.id ??
+							bodyData.edited_message?.from?.id ??
+							bodyData.channel_post?.from?.id ??
+							bodyData.edited_channel_post?.from?.id ??
+							bodyData.callback_query?.from?.id ??
+							bodyData.inline_query?.from?.id ??
+							bodyData.pre_checkout_query?.from?.id ??
+							bodyData.shipping_query?.from?.id)
+						: bodyData.message?.from?.id;
+				if (!splitIds.includes(String(userId))) {
+					return {};
 				}
-
-				let fileId;
-
-				if (bodyData[key]?.photo) {
-					let image = getImageBySize(
-						bodyData[key]?.photo as IDataObject[],
-						imageSize,
-					) as IDataObject;
-
-					// When the image is sent from the desktop app telegram does not resize the image
-					// So return the only image available
-					// Basically the Image Size parameter would work just when the images comes from the mobile app
-					if (image === undefined) {
-						image = bodyData[key]!.photo![0];
-					}
-
-					fileId = image.file_id;
-				} else if (bodyData[key]?.video) {
-					fileId = bodyData[key]?.video?.file_id;
-				} else {
-					fileId = bodyData[key]?.document?.file_id;
-				}
-
-				const {
-					result: { file_path },
-				} = await apiRequest.call(this, 'GET', `getFile?file_id=${fileId}`, {});
-
-				const file = await apiRequest.call(
-					this,
-					'GET',
-					'',
-					{},
-					{},
-					{
-						json: false,
-						encoding: null,
-						uri: `${credentials.baseUrl}/file/bot${credentials.accessToken}/${file_path}`,
-						resolveWithFullResponse: true,
-					},
-				);
-
-				const data = Buffer.from(file.body as string);
-
-				const fileName = file_path.split('/').pop();
-
-				const binaryData = await this.helpers.prepareBinaryData(
-					data as unknown as Buffer,
-					fileName as string,
-				);
-
-				return {
-					workflowData: [
-						[
-							{
-								json: bodyData as unknown as IDataObject,
-								binary: {
-									data: binaryData,
-								},
-							},
-						],
-					],
-				};
 			}
 		}
 

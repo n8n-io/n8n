@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { pushoverApiRequest } from './GenericFunctions';
 
@@ -23,8 +23,9 @@ export class Pushover implements INodeType {
 		defaults: {
 			name: 'Pushover',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'pushoverApi',
@@ -251,12 +252,12 @@ export class Pushover implements INodeType {
 						description: "Your message's title, otherwise your app's name is used",
 					},
 					{
-						displayName: 'Timestamp',
-						name: 'timestamp',
-						type: 'dateTime',
+						displayName: 'TTL (Seconds)',
+						name: 'ttl',
+						type: 'number',
 						default: '',
 						description:
-							"A Unix timestamp of your message's date and time to display to the user, rather than the time your message is received by our API",
+							'Time to Live in seconds, after which the message will be automatically deleted from the devices it was delivered to',
 					},
 					{
 						displayName: 'URL',

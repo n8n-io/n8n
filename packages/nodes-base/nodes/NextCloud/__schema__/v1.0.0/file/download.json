@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "properties": {
+        "contentLength": {
+            "type": "string"
+        },
+        "contentType": {
+            "type": "string"
+        },
+        "eTag": {
+            "type": "string"
+        },
+        "lastModified": {
+            "type": "string"
+        },
+        "path": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        }
+    },
+    "version": 3
+}

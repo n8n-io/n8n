@@ -11,7 +11,7 @@ import {
 	type INodeTypeDescription,
 	type IWebhookResponseData,
 	type IRequestOptions,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { bitbucketApiRequest, bitbucketApiRequestAllItems } from './GenericFunctions';
@@ -22,18 +22,33 @@ export class BitbucketTrigger implements INodeType {
 		name: 'bitbucketTrigger',
 		icon: 'file:bitbucket.svg',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		description: 'Handle Bitbucket events via webhooks',
 		defaults: {
 			name: 'Bitbucket Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'bitbucketApi',
 				required: true,
 				testedBy: 'bitbucketApiTest',
+				displayOptions: {
+					show: {
+						authentication: ['password'],
+					},
+				},
+			},
+			{
+				name: 'bitbucketAccessTokenApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['accessToken'],
+					},
+				},
 			},
 		],
 		webhooks: [
@@ -45,6 +60,48 @@ export class BitbucketTrigger implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Password (Deprecated)',
+						value: 'password',
+					},
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+				],
+				default: 'password',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Password (Deprecated)',
+						value: 'password',
+					},
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+				],
+				default: 'accessToken',
+				displayOptions: {
+					show: {
+						'@version': [1.1],
+					},
+				},
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -158,7 +215,9 @@ export class BitbucketTrigger implements INodeType {
 
 				try {
 					const response = await this.helpers.request(options);
-					if (!response.username) {
+					// Bitbucket scoped API tokens may not include a `username` field,
+					// but always return `account_id` and `uuid` for valid credentials.
+					if (!response.account_id && !response.uuid) {
 						return {
 							status: 'Error',
 							message: `Token is not valid: ${response.error}`,
@@ -235,11 +294,11 @@ export class BitbucketTrigger implements INodeType {
 					this,
 					'values',
 					'GET',
-					'/workspaces',
+					'/user/workspaces',
 				);
-				for (const workspace of workspaces) {
+				for (const { workspace } of workspaces) {
 					returnData.push({
-						name: workspace.name,
+						name: workspace.name ?? workspace.slug,
 						value: workspace.slug,
 					});
 				}

@@ -1,0 +1,134 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "mappings": {
+            "type": "object",
+            "properties": {
+                "properties": {
+                    "type": "object",
+                    "properties": {
+                        "author": {
+                            "type": "object",
+                            "properties": {
+                                "fields": {
+                                    "type": "object",
+                                    "properties": {
+                                        "keyword": {
+                                            "type": "object",
+                                            "properties": {
+                                                "ignore_above": {
+                                                    "type": "integer"
+                                                },
+                                                "type": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "type": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "name": {
+                            "type": "object",
+                            "properties": {
+                                "fields": {
+                                    "type": "object",
+                                    "properties": {
+                                        "keyword": {
+                                            "type": "object",
+                                            "properties": {
+                                                "ignore_above": {
+                                                    "type": "integer"
+                                                },
+                                                "type": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "type": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "page_count": {
+                            "type": "object",
+                            "properties": {
+                                "type": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "release_date": {
+                            "type": "object",
+                            "properties": {
+                                "type": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "settings": {
+            "type": "object",
+            "properties": {
+                "index": {
+                    "type": "object",
+                    "properties": {
+                        "creation_date": {
+                            "type": "string"
+                        },
+                        "number_of_replicas": {
+                            "type": "string"
+                        },
+                        "number_of_shards": {
+                            "type": "string"
+                        },
+                        "provided_name": {
+                            "type": "string"
+                        },
+                        "routing": {
+                            "type": "object",
+                            "properties": {
+                                "allocation": {
+                                    "type": "object",
+                                    "properties": {
+                                        "include": {
+                                            "type": "object",
+                                            "properties": {
+                                                "_tier_preference": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "uuid": {
+                            "type": "string"
+                        },
+                        "version": {
+                            "type": "object",
+                            "properties": {
+                                "created": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "version": 1
+}

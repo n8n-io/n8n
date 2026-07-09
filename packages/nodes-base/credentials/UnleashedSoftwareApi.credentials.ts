@@ -5,7 +5,7 @@ export class UnleashedSoftwareApi implements ICredentialType {
 
 	displayName = 'Unleashed API';
 
-	documentationUrl = 'unleashedSoftware';
+	documentationUrl = 'unleashedsoftware';
 
 	properties: INodeProperties[] = [
 		{

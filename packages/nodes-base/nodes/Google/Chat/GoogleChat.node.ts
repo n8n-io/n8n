@@ -12,8 +12,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IRequestOptions,
+	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import {
 	// attachmentFields,
@@ -27,10 +28,23 @@ import {
 	messageFields,
 	messageOperations,
 	spaceFields,
+	spaceIdProperty,
 	spaceOperations,
 } from './descriptions';
-import { googleApiRequest, googleApiRequestAllItems, validateJSON } from './GenericFunctions';
+import {
+	createSendAndWaitMessageBody,
+	googleApiRequest,
+	googleApiRequestAllItems,
+	validateJSON,
+} from './GenericFunctions';
 import type { IMessage, IMessageUi } from './MessageInterface';
+import { configureWaitTillDate } from '../../../utils/sendAndWait/configureWaitTillDate.util';
+import { sendAndWaitWebhooksDescription } from '../../../utils/sendAndWait/descriptions';
+import {
+	getSendAndWaitProperties,
+	SEND_AND_WAIT_WAITING_TOOLTIP,
+	sendAndWaitWebhook,
+} from '../../../utils/sendAndWait/utils';
 
 export class GoogleChat implements INodeType {
 	description: INodeTypeDescription = {
@@ -41,19 +55,54 @@ export class GoogleChat implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Google Chat API',
+		schemaPath: 'Google/Chat',
 		defaults: {
 			name: 'Google Chat',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
+		webhooks: sendAndWaitWebhooksDescription,
 		credentials: [
 			{
 				name: 'googleApi',
 				required: true,
 				testedBy: 'testGoogleTokenAuth',
+				displayOptions: {
+					show: {
+						authentication: ['serviceAccount'],
+					},
+				},
+			},
+			{
+				name: 'googleChatOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'OAuth2 (recommended)',
+						value: 'oAuth2',
+					},
+					{
+						name: 'Service Account',
+						value: 'serviceAccount',
+					},
+				],
+				default: 'serviceAccount',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -100,8 +149,15 @@ export class GoogleChat implements INodeType {
 			...messageFields,
 			...spaceOperations,
 			...spaceFields,
+			...getSendAndWaitProperties([spaceIdProperty], 'message', undefined, {
+				noButtonStyle: true,
+				defaultApproveLabel: '✅ Approve',
+				defaultDisapproveLabel: '❌ Decline',
+			}).filter((p) => p.name !== 'subject'),
 		],
 	};
+
+	webhook = sendAndWaitWebhook;
 
 	methods = {
 		loadOptions: {
@@ -145,7 +201,6 @@ export class GoogleChat implements INodeType {
 						{
 							algorithm: 'RS256',
 							header: {
-								kid: privateKey,
 								typ: 'JWT',
 								alg: 'RS256',
 							},
@@ -196,6 +251,26 @@ export class GoogleChat implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
+
+		if (resource === 'message' && operation === SEND_AND_WAIT_OPERATION) {
+			const spaceId = this.getNodeParameter('spaceId', 0) as string;
+			const body = createSendAndWaitMessageBody(this);
+
+			try {
+				await googleApiRequest.call(this, 'POST', `/v1/${spaceId}/messages`, body);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					return [[{ json: { error: (error as JsonObject).message } }]];
+				}
+				throw error;
+			}
+
+			const waitTill = configureWaitTillDate(this);
+
+			await this.putExecutionToWait(waitTill);
+			return [this.getInputData()];
+		}
+
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'media') {

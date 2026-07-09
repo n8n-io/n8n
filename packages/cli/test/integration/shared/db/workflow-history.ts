@@ -1,30 +1,34 @@
-import Container from 'typedi';
+import type { WorkflowHistory } from '@n8n/db';
+import { WorkflowHistoryRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
-
-import type { WorkflowHistory } from '@/databases/entities/workflow-history';
-import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
 
 export async function createWorkflowHistoryItem(
 	workflowId: string,
 	data?: Partial<WorkflowHistory>,
 ) {
-	return await Container.get(WorkflowHistoryRepository).save({
-		authors: 'John Smith',
-		connections: {},
-		nodes: [
-			{
-				id: 'uuid-1234',
-				name: 'Start',
-				parameters: {},
-				position: [-20, 260],
-				type: 'n8n-nodes-base.start',
-				typeVersion: 1,
-			},
-		],
-		versionId: uuid(),
-		...(data ?? {}),
-		workflowId,
-	});
+	const repo = Container.get(WorkflowHistoryRepository);
+	return await repo.save(
+		repo.create({
+			authors: 'John Smith',
+			connections: {},
+			nodes: [
+				{
+					id: 'uuid-1234',
+					name: 'Start',
+					parameters: {},
+					position: [-20, 260],
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+				},
+			],
+			versionId: uuid(),
+			workflowPublishHistory: [],
+			autosaved: false,
+			...(data ?? {}),
+			workflowId,
+		}),
+	);
 }
 
 export async function createManyWorkflowHistoryItems(

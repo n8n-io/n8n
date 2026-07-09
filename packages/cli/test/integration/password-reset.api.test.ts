@@ -1,30 +1,30 @@
-import { compare } from 'bcryptjs';
-import { mock } from 'jest-mock-extended';
-import { randomString } from 'n8n-workflow';
-import { Container } from 'typedi';
-import { v4 as uuid } from 'uuid';
-
-import { AuthService } from '@/auth/auth.service';
-import config from '@/config';
-import type { User } from '@/databases/entities/user';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { ExternalHooks } from '@/external-hooks';
-import { License } from '@/license';
-import { JwtService } from '@/services/jwt.service';
-import { PasswordUtility } from '@/services/password.utility';
-import { setCurrentAuthenticationMethod } from '@/sso/sso-helpers';
-import { UserManagementMailer } from '@/user-management/email';
-
-import { createUser } from './shared/db/users';
 import {
 	randomEmail,
 	randomInvalidPassword,
 	randomName,
 	randomValidPassword,
-} from './shared/random';
-import * as testDb from './shared/test-db';
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
+import type { User } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
+import { compare } from 'bcryptjs';
+import { randomString } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
+
+import { AuthService } from '@/auth/auth.service';
+import config from '@/config';
+import { ExternalHooks } from '@/external-hooks';
+import { License } from '@/license';
+import { JwtService } from '@/services/jwt.service';
+import { PasswordUtility } from '@/services/password.utility';
+import { setCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
+import { UserManagementMailer } from '@/user-management/email';
+
+import { createUser } from './shared/db/users';
 import { getAuthToken, setupTestServer } from './shared/utils';
-import { mockInstance } from '../shared/mocking';
 
 config.set('userManagement.jwtSecret', randomString(5, 10));
 
@@ -39,10 +39,10 @@ let authService: AuthService;
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
-	owner = await createUser({ role: 'global:owner' });
-	member = await createUser({ role: 'global:member' });
+	owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+	member = await createUser({ role: GLOBAL_MEMBER_ROLE });
 	externalHooks.run.mockReset();
-	jest.replaceProperty(mailer, 'isEmailSetUp', true);
+	Object.assign(mailer, { isEmailSetUp: true });
 	authService = Container.get(AuthService);
 });
 
@@ -50,7 +50,7 @@ describe('POST /forgot-password', () => {
 	test('should send password reset email', async () => {
 		const member = await createUser({
 			email: 'test@test.com',
-			role: 'global:member',
+			role: { slug: 'global:member' },
 		});
 
 		await Promise.all(
@@ -64,7 +64,7 @@ describe('POST /forgot-password', () => {
 	});
 
 	test('should fail if emailing is not set up', async () => {
-		jest.replaceProperty(mailer, 'isEmailSetUp', false);
+		Object.assign(mailer, { isEmailSetUp: false });
 
 		await testServer.authlessAgent
 			.post('/forgot-password')
@@ -72,17 +72,18 @@ describe('POST /forgot-password', () => {
 			.expect(500);
 	});
 
-	test('should fail if SAML is authentication method', async () => {
+	test('should return 200 even if SAML is authentication method to prevent user enumeration', async () => {
 		await setCurrentAuthenticationMethod('saml');
 		const member = await createUser({
 			email: 'test@test.com',
-			role: 'global:member',
+			role: { slug: 'global:member' },
 		});
 
+		// Returns 200 to prevent email enumeration, but no reset email is sent
 		await testServer.authlessAgent
 			.post('/forgot-password')
 			.send({ email: member.email })
-			.expect(403);
+			.expect(200);
 
 		await setCurrentAuthenticationMethod('email');
 	});
@@ -261,7 +262,7 @@ describe('POST /change-password', () => {
 	});
 
 	test('owner should be able to reset its password when quota:users = 1', async () => {
-		jest.spyOn(Container.get(License), 'getUsersLimit').mockReturnValueOnce(1);
+		vi.spyOn(Container.get(License), 'getUsersLimit').mockReturnValueOnce(1);
 
 		const resetPasswordToken = authService.generatePasswordResetToken(owner);
 		const response = await testServer.authlessAgent.post('/change-password').send({
@@ -279,7 +280,7 @@ describe('POST /change-password', () => {
 			id: owner.id,
 		});
 
-		const comparisonResult = await compare(passwordToStore, storedPassword);
+		const comparisonResult = await compare(passwordToStore, storedPassword!);
 		expect(comparisonResult).toBe(true);
 		expect(storedPassword).not.toBe(passwordToStore);
 
@@ -290,7 +291,7 @@ describe('POST /change-password', () => {
 	});
 
 	test('member should not be able to reset its password when quota:users = 1', async () => {
-		jest.spyOn(Container.get(License), 'getUsersLimit').mockReturnValueOnce(1);
+		vi.spyOn(Container.get(License), 'getUsersLimit').mockReturnValueOnce(1);
 
 		const resetPasswordToken = authService.generatePasswordResetToken(member);
 		const response = await testServer.authlessAgent.post('/change-password').send({

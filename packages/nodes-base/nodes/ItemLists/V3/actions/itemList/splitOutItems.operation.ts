@@ -154,7 +154,7 @@ export async function execute(
 				}
 
 				if (typeof entityToSplit !== 'object' || entityToSplit === null) {
-					entityToSplit = [entityToSplit];
+					entityToSplit = [entityToSplit] as unknown as IDataObject[];
 				}
 
 				if (!Array.isArray(entityToSplit)) {

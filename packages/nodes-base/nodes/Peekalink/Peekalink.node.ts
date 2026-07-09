@@ -5,7 +5,7 @@ import {
 	type INodeExecutionData,
 	type INodeTypeDescription,
 	type JsonObject,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 export const apiUrl = 'https://api.peekalink.io';
@@ -25,8 +25,9 @@ export class Peekalink extends Node {
 		defaults: {
 			name: 'Peekalink',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'peekalinkApi',
@@ -68,18 +69,16 @@ export class Peekalink extends Node {
 	async execute(context: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = context.getInputData();
 		const operation = context.getNodeParameter('operation', 0) as Operation;
-		const credentials = await context.getCredentials('peekalinkApi');
 
 		const returnData = await Promise.all(
 			items.map(async (_, i) => {
 				try {
 					const link = context.getNodeParameter('url', i) as string;
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-					return await context.helpers.request({
+					return await context.helpers.requestWithAuthentication.call(context, 'peekalinkApi', {
 						method: 'POST',
 						uri: operation === 'preview' ? apiUrl : `${apiUrl}/is-available/`,
 						body: { link },
-						headers: { 'X-API-Key': credentials.apiKey },
 						json: true,
 					});
 				} catch (error) {

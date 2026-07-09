@@ -1,0 +1,82 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "99f866fa-f63c-477d-a0d0-48fbdb8a344a",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "blob",
+				"operation": "getAll",
+				"container": { "__rl": true, "value": "mycontainer", "mode": "list" },
+				"returnAll": true,
+				"options": { "simplify": false },
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.azureStorage",
+			"typeVersion": 1,
+			"position": [660, 0],
+			"id": "ab1b6258-5c75-4893-90bf-ef591264420c",
+			"name": "Azure Storage",
+			"credentials": {
+				"azureStorageSharedKeyApi": {
+					"id": "VPmcFM58eDDexWQL",
+					"name": "Azure Storage Shared Key account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Azure Storage", "type": "main", "index": 0 }]]
+		}
+	},
+	"pinData": {
+		"Azure Storage": [
+			{
+				"json": {
+					"name": "myblob1",
+					"properties": {
+						"creationTime": "Wed, 22 Jan 2025 18:53:15 GMT",
+						"lastModified": "Wed, 22 Jan 2025 18:53:15 GMT",
+						"etag": "0x1F8268B228AA730",
+						"contentLength": 37,
+						"contentType": "application/json",
+						"contentMD5": "aWQGHD8kGQd5ZtEN/S1/aw==",
+						"blobType": "BlockBlob",
+						"leaseStatus": "unlocked",
+						"leaseState": "available",
+						"serverEncrypted": true,
+						"accessTier": "Hot",
+						"accessTierInferred": true,
+						"accessTierChangeTime": "Wed, 22 Jan 2025 18:53:15 GMT"
+					}
+				}
+			},
+			{
+				"json": {
+					"name": "myblob1",
+					"properties": {
+						"creationTime": "Wed, 22 Jan 2025 18:53:15 GMT",
+						"lastModified": "Wed, 22 Jan 2025 18:53:15 GMT",
+						"etag": "0x1F8268B228AA730",
+						"contentLength": 37,
+						"contentType": "application/json",
+						"contentMD5": "aWQGHD8kGQd5ZtEN/S1/aw==",
+						"blobType": "BlockBlob",
+						"leaseStatus": "unlocked",
+						"leaseState": "available",
+						"serverEncrypted": true,
+						"accessTier": "Hot",
+						"accessTierInferred": true,
+						"accessTierChangeTime": "Wed, 22 Jan 2025 18:53:15 GMT"
+					}
+				}
+			}
+		]
+	}
+}

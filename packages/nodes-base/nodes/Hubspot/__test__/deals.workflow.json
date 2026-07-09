@@ -1,0 +1,676 @@
+{
+	"name": "Hubspot deals",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-220, 600],
+			"id": "4d956443-f695-467e-8ab4-3500914bb1dc",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "deal",
+				"operation": "delete",
+				"dealId": {
+					"__rl": true,
+					"value": "123",
+					"mode": "id"
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [0, 0],
+			"id": "c7db8b4e-7ceb-4070-8559-4daf1b23e63a",
+			"name": "HubSpot - Deal - Delete",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "deal",
+				"stage": "=test stage name",
+				"additionalFields": {
+					"amount": "100",
+					"closeDate": "2025-04-17T00:00:00",
+					"customPropertiesUi": {
+						"customPropertiesValues": [
+							{
+								"property": "=test_custom_prop_name",
+								"value": "test custom prop value"
+							}
+						]
+					},
+					"description": "Test Deal Desc",
+					"dealName": "Test Deal",
+					"pipeline": "=test pipeline name"
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [0, 400],
+			"id": "9abda6ab-bd8c-4e9e-9e9c-178f6241c7df",
+			"name": "HubSpot - Deal - Create",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "deal",
+				"operation": "update",
+				"dealId": {
+					"__rl": true,
+					"value": "123",
+					"mode": "id"
+				},
+				"updateFields": {
+					"closeDate": "2025-04-22T00:00:00",
+					"dealName": "New Name",
+					"dealOwner": {
+						"__rl": true,
+						"value": "123",
+						"mode": "id"
+					},
+					"stage": "=1234",
+					"pipeline": "123"
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [0, 200],
+			"id": "92854c9b-16d8-44e0-adba-2a4296476a02",
+			"name": "HubSpot - Deal - Update",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "deal",
+				"operation": "get",
+				"dealId": {
+					"__rl": true,
+					"value": "123",
+					"mode": "id"
+				},
+				"filters": {
+					"includePropertyVersions": true
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [0, 600],
+			"id": "3566fc17-93d8-4b89-8864-a26ea2f4de51",
+			"name": "HubSpot - Deal - Get",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "deal",
+				"operation": "getAll",
+				"limit": 2,
+				"filters": {
+					"includeAssociations": true
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [0, 800],
+			"id": "d0f5d2be-8369-494e-8526-452e6b2a51dc",
+			"name": "HubSpot - Deal - Get Many",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "deal",
+				"operation": "getRecentlyCreatedUpdated",
+				"limit": 2,
+				"filters": {
+					"since": "2025-04-21T00:00:00",
+					"includePropertyVersions": true
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [0, 1000],
+			"id": "4ac5aae3-0192-40bf-83d8-d36fadc19a57",
+			"name": "HubSpot - Deal - Get Recently Updated",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "deal",
+				"operation": "search",
+				"limit": 2,
+				"filterGroupsUi": {
+					"filterGroupsValues": [
+						{
+							"filtersUi": {
+								"filterValues": [
+									{
+										"propertyName": "=name",
+										"value": "Test Deal Name"
+									}
+								]
+							}
+						}
+					]
+				},
+				"additionalFields": {
+					"direction": "ASCENDING",
+					"sortBy": "=createdate"
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [0, 1200],
+			"id": "a6011494-27f9-4f09-bd30-f509f6438232",
+			"name": "HubSpot - Deal - Search",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"HubSpot - Deal - Delete": [
+			{
+				"json": {
+					"associations": {
+						"associatedCompanyIds": [237892],
+						"associatedDealIds": [],
+						"associatedVids": [393873, 734934]
+					},
+					"dealId": 18039629,
+					"imports": [],
+					"isDeleted": false,
+					"portalId": 62515,
+					"properties": {
+						"dealname": {
+							"source": "API",
+							"sourceId": null,
+							"timestamp": 1457040864519,
+							"value": "Company",
+							"versions": [
+								{
+									"name": "dealname",
+									"source": "API",
+									"sourceVid": [],
+									"timestamp": 1457040864519,
+									"value": "Company Name"
+								}
+							]
+						},
+						"num_associated_contacts": {
+							"source": "CALCULATED",
+							"sourceId": null,
+							"timestamp": 0,
+							"value": "2",
+							"versions": [
+								{
+									"name": "num_associated_contacts",
+									"source": "CALCULATED",
+									"sourceVid": [],
+									"value": "2"
+								}
+							]
+						}
+					}
+				}
+			}
+		],
+		"HubSpot - Deal - Create": [
+			{
+				"json": {
+					"associations": {
+						"associatedCompanyIds": [237892],
+						"associatedDealIds": [],
+						"associatedVids": [393873, 734934]
+					},
+					"dealId": 18039629,
+					"imports": [],
+					"isDeleted": false,
+					"portalId": 62515,
+					"properties": {
+						"dealname": {
+							"source": "API",
+							"sourceId": null,
+							"timestamp": 1457040864519,
+							"value": "Company",
+							"versions": [
+								{
+									"name": "dealname",
+									"source": "API",
+									"sourceVid": [],
+									"timestamp": 1457040864519,
+									"value": "Company Name"
+								}
+							]
+						},
+						"num_associated_contacts": {
+							"source": "CALCULATED",
+							"sourceId": null,
+							"timestamp": 0,
+							"value": "2",
+							"versions": [
+								{
+									"name": "num_associated_contacts",
+									"source": "CALCULATED",
+									"sourceVid": [],
+									"value": "2"
+								}
+							]
+						}
+					}
+				}
+			}
+		],
+		"HubSpot - Deal - Update": [
+			{
+				"json": {
+					"associations": {
+						"associatedCompanyIds": [237892],
+						"associatedDealIds": [],
+						"associatedVids": [393873, 734934]
+					},
+					"dealId": 18039629,
+					"imports": [],
+					"isDeleted": false,
+					"portalId": 62515,
+					"properties": {
+						"dealname": {
+							"source": "API",
+							"sourceId": null,
+							"timestamp": 1457040864519,
+							"value": "Company",
+							"versions": [
+								{
+									"name": "dealname",
+									"source": "API",
+									"sourceVid": [],
+									"timestamp": 1457040864519,
+									"value": "Company Name"
+								}
+							]
+						},
+						"num_associated_contacts": {
+							"source": "CALCULATED",
+							"sourceId": null,
+							"timestamp": 0,
+							"value": "2",
+							"versions": [
+								{
+									"name": "num_associated_contacts",
+									"source": "CALCULATED",
+									"sourceVid": [],
+									"value": "2"
+								}
+							]
+						}
+					}
+				}
+			}
+		],
+		"HubSpot - Deal - Get": [
+			{
+				"json": {
+					"associations": {
+						"associatedCompanyIds": [237892],
+						"associatedDealIds": [],
+						"associatedVids": [393873, 734934]
+					},
+					"dealId": 18039629,
+					"imports": [],
+					"isDeleted": false,
+					"portalId": 62515,
+					"properties": {
+						"dealname": {
+							"source": "API",
+							"sourceId": null,
+							"timestamp": 1457040864519,
+							"value": "Company",
+							"versions": [
+								{
+									"name": "dealname",
+									"source": "API",
+									"sourceVid": [],
+									"timestamp": 1457040864519,
+									"value": "Company Name"
+								}
+							]
+						},
+						"num_associated_contacts": {
+							"source": "CALCULATED",
+							"sourceId": null,
+							"timestamp": 0,
+							"value": "2",
+							"versions": [
+								{
+									"name": "num_associated_contacts",
+									"source": "CALCULATED",
+									"sourceVid": [],
+									"value": "2"
+								}
+							]
+						}
+					}
+				}
+			}
+		],
+		"HubSpot - Deal - Get Many": [
+			{
+				"json": {
+					"associations": {
+						"associatedCompanyIds": [237892],
+						"associatedDealIds": [],
+						"associatedVids": [393873, 734934]
+					},
+					"dealId": 18039629,
+					"imports": [],
+					"isDeleted": false,
+					"portalId": 62515,
+					"properties": {
+						"dealname": {
+							"source": "API",
+							"sourceId": null,
+							"timestamp": 1457040864519,
+							"value": "Company",
+							"versions": [
+								{
+									"name": "dealname",
+									"source": "API",
+									"sourceVid": [],
+									"timestamp": 1457040864519,
+									"value": "Company Name"
+								}
+							]
+						},
+						"num_associated_contacts": {
+							"source": "CALCULATED",
+							"sourceId": null,
+							"timestamp": 0,
+							"value": "2",
+							"versions": [
+								{
+									"name": "num_associated_contacts",
+									"source": "CALCULATED",
+									"sourceVid": [],
+									"value": "2"
+								}
+							]
+						}
+					}
+				}
+			},
+			{
+				"json": {
+					"associations": {
+						"associatedCompanyIds": [],
+						"associatedDealIds": [],
+						"associatedVids": []
+					},
+					"dealId": 18040854,
+					"imports": [],
+					"isDeleted": false,
+					"portalId": 62515,
+					"properties": {
+						"dealname": {
+							"source": "API",
+							"sourceId": null,
+							"timestamp": 1457042290572,
+							"value": "5678",
+							"versions": [
+								{
+									"name": "dealname",
+									"source": "API",
+									"sourceVid": [],
+									"timestamp": 1457042290572,
+									"value": "5678"
+								}
+							]
+						},
+						"num_associated_contacts": {
+							"source": "CALCULATED",
+							"sourceId": null,
+							"timestamp": 0,
+							"value": "0",
+							"versions": [
+								{
+									"name": "num_associated_contacts",
+									"source": "CALCULATED",
+									"sourceVid": [],
+									"value": "0"
+								}
+							]
+						}
+					}
+				}
+			}
+		],
+		"HubSpot - Deal - Get Recently Updated": [
+			{
+				"json": {
+					"associations": {
+						"associatedCompanyIds": [237892],
+						"associatedDealIds": [],
+						"associatedVids": [393873, 734934]
+					},
+					"dealId": 18039629,
+					"imports": [],
+					"isDeleted": false,
+					"portalId": 62515,
+					"properties": {
+						"dealname": {
+							"source": "API",
+							"sourceId": null,
+							"timestamp": 1457040864519,
+							"value": "Company",
+							"versions": [
+								{
+									"name": "dealname",
+									"source": "API",
+									"sourceVid": [],
+									"timestamp": 1457040864519,
+									"value": "Company Name"
+								}
+							]
+						},
+						"num_associated_contacts": {
+							"source": "CALCULATED",
+							"sourceId": null,
+							"timestamp": 0,
+							"value": "2",
+							"versions": [
+								{
+									"name": "num_associated_contacts",
+									"source": "CALCULATED",
+									"sourceVid": [],
+									"value": "2"
+								}
+							]
+						}
+					}
+				}
+			},
+			{
+				"json": {
+					"associations": {
+						"associatedCompanyIds": [],
+						"associatedDealIds": [],
+						"associatedVids": []
+					},
+					"dealId": 18040854,
+					"imports": [],
+					"isDeleted": false,
+					"portalId": 62515,
+					"properties": {
+						"dealname": {
+							"source": "API",
+							"sourceId": null,
+							"timestamp": 1457042290572,
+							"value": "5678",
+							"versions": [
+								{
+									"name": "dealname",
+									"source": "API",
+									"sourceVid": [],
+									"timestamp": 1457042290572,
+									"value": "5678"
+								}
+							]
+						},
+						"num_associated_contacts": {
+							"source": "CALCULATED",
+							"sourceId": null,
+							"timestamp": 0,
+							"value": "0",
+							"versions": [
+								{
+									"name": "num_associated_contacts",
+									"source": "CALCULATED",
+									"sourceVid": [],
+									"value": "0"
+								}
+							]
+						}
+					}
+				}
+			}
+		],
+		"HubSpot - Deal - Search": [
+			{
+				"json": {
+					"archived": false,
+					"archivedAt": "2025-04-17T07:56:45.039Z",
+					"createdAt": "2025-04-17T07:56:45.039Z",
+					"id": "512",
+					"objectWriteTraceId": "string",
+					"properties": {
+						"property_checkbox": "false",
+						"property_date": "1572480000000",
+						"property_dropdown": "choice_b",
+						"property_multiple_checkboxes": "chocolate;strawberry",
+						"property_number": "17",
+						"property_radio": "option_1",
+						"property_string": "value"
+					},
+					"propertiesWithHistory": {
+						"additionalProp1": [
+							{
+								"sourceId": "string",
+								"sourceLabel": "string",
+								"sourceType": "string",
+								"timestamp": "2025-04-17T07:56:45.039Z",
+								"updatedByUserId": 0,
+								"value": "string"
+							}
+						],
+						"additionalProp2": [
+							{
+								"sourceId": "string",
+								"sourceLabel": "string",
+								"sourceType": "string",
+								"timestamp": "2025-04-17T07:56:45.039Z",
+								"updatedByUserId": 0,
+								"value": "string"
+							}
+						],
+						"additionalProp3": [
+							{
+								"sourceId": "string",
+								"sourceLabel": "string",
+								"sourceType": "string",
+								"timestamp": "2025-04-17T07:56:45.039Z",
+								"updatedByUserId": 0,
+								"value": "string"
+							}
+						]
+					},
+					"updatedAt": "2025-04-17T07:56:45.039Z"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "HubSpot - Deal - Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HubSpot - Deal - Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HubSpot - Deal - Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HubSpot - Deal - Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HubSpot - Deal - Get Recently Updated",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HubSpot - Deal - Search",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HubSpot - Deal - Update",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "f124628e-1023-457a-92df-c9afd1a8b0e7",
+	"meta": {
+		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+	},
+	"id": "dsIoAai3PXpPeSDT",
+	"tags": []
+}

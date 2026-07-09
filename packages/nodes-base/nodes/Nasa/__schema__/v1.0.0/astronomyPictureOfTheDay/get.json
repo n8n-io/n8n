@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "properties": {
+        "copyright": {
+            "type": "string"
+        },
+        "date": {
+            "type": "string"
+        },
+        "explanation": {
+            "type": "string"
+        },
+        "hdurl": {
+            "type": "string"
+        },
+        "media_type": {
+            "type": "string"
+        },
+        "service_version": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

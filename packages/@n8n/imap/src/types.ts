@@ -18,7 +18,7 @@ export interface ImapSimpleOptions {
 
 export interface MessagePart {
 	partID: string;
-	encoding: 'BASE64' | 'QUOTED-PRINTABLE' | '7BIT' | '8BIT' | 'BINARY' | 'UUENCODE';
+	encoding: 'BASE64' | 'QUOTED-PRINTABLE' | '7BIT' | '8BIT' | 'BINARY' | 'UUENCODE' | null;
 	type: 'TEXT';
 	subtype: string;
 	params?: {
@@ -39,3 +39,5 @@ export interface Message {
 	parts: MessageBodyPart[];
 	seqNo?: number;
 }
+
+export type SearchCriteria = string | [string, string];

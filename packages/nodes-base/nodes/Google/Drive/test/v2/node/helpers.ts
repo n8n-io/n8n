@@ -1,5 +1,5 @@
-import { get } from 'lodash';
-import { constructExecutionMetaData, returnJsonArray } from 'n8n-core';
+import get from 'lodash/get';
+import { constructExecutionMetaData } from 'n8n-core';
 import type { IDataObject, IExecuteFunctions, IGetNodeParameterOptions, INode } from 'n8n-workflow';
 import { Readable } from 'stream';
 
@@ -21,8 +21,8 @@ export const createMockExecuteFunction = (
 		getNodeParameter(
 			parameterName: string,
 			_itemIndex: number,
-			fallbackValue?: IDataObject | undefined,
-			options?: IGetNodeParameterOptions | undefined,
+			fallbackValue?: IDataObject,
+			options?: IGetNodeParameterOptions,
 		) {
 			const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
 			return get(nodeParameters, parameter, fallbackValue);
@@ -32,7 +32,7 @@ export const createMockExecuteFunction = (
 		},
 		helpers: {
 			constructExecutionMetaData,
-			returnJsonArray,
+			returnJsonArray: () => [],
 			prepareBinaryData: () => {},
 			httpRequest: () => {},
 		},

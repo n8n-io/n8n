@@ -5,23 +5,23 @@ import type {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
-import {
-	NodeConnectionType,
-	NodeOperationError,
-	SEND_AND_WAIT_OPERATION,
-	WAIT_INDEFINITELY,
-} from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import { draftFields, draftOperations } from './DraftDescription';
 import { labelFields, labelOperations } from './LabelDescription';
 import { getGmailAliases, getLabels, getThreadMessages } from './loadOptions';
 import { messageFields, messageOperations } from './MessageDescription';
 import { threadFields, threadOperations } from './ThreadDescription';
+import { addThreadHeadersToEmail } from './utils/draft';
+import { configureWaitTillDate } from '../../../../utils/sendAndWait/configureWaitTillDate.util';
+import { sendAndWaitWebhooksDescription } from '../../../../utils/sendAndWait/descriptions';
 import type { IEmail } from '../../../../utils/sendAndWait/interfaces';
 import {
 	createEmail,
 	getSendAndWaitProperties,
+	SEND_AND_WAIT_WAITING_TOOLTIP,
 	sendAndWaitWebhook,
 } from '../../../../utils/sendAndWait/utils';
 import {
@@ -33,24 +33,24 @@ import {
 	prepareEmailBody,
 	prepareEmailsInput,
 	prepareQuery,
-	replyToEmail,
 	simplifyOutput,
 	unescapeSnippets,
 } from '../GenericFunctions';
+import { replyToEmail } from '../utils/replyToEmail';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Gmail',
 	name: 'gmail',
 	icon: 'file:gmail.svg',
 	group: ['transform'],
-	version: [2, 2.1],
+	version: [2, 2.1, 2.2],
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Consume the Gmail API',
 	defaults: {
 		name: 'Gmail',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	usableAsTool: true,
 	credentials: [
 		{
@@ -72,26 +72,8 @@ const versionDescription: INodeTypeDescription = {
 			},
 		},
 	],
-	webhooks: [
-		{
-			name: 'default',
-			httpMethod: 'GET',
-			responseMode: 'onReceived',
-			responseData: '',
-			path: '={{ $nodeId }}',
-			restartWebhook: true,
-			isFullPath: true,
-		},
-		{
-			name: 'default',
-			httpMethod: 'POST',
-			responseMode: 'onReceived',
-			responseData: '',
-			path: '={{ $nodeId }}',
-			restartWebhook: true,
-			isFullPath: true,
-		},
-	],
+	waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
+	webhooks: sendAndWaitWebhooksDescription,
 	properties: [
 		{
 			displayName: 'Authentication',
@@ -200,11 +182,20 @@ export class GmailV2 implements INodeType {
 		if (resource === 'message' && operation === SEND_AND_WAIT_OPERATION) {
 			const email: IEmail = createEmail(this);
 
-			await googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', {
-				raw: await encodeEmail(email),
-			});
+			try {
+				await googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', {
+					raw: await encodeEmail(email),
+				});
+			} catch (error) {
+				if (this.continueOnFail()) {
+					return [[{ json: { error: (error as JsonObject).message } }]];
+				}
+				throw error;
+			}
 
-			await this.putExecutionToWait(WAIT_INDEFINITELY);
+			const waitTill = configureWaitTillDate(this);
+
+			await this.putExecutionToWait(waitTill);
 			return [this.getInputData()];
 		}
 
@@ -352,7 +343,7 @@ export class GmailV2 implements INodeType {
 						const messageIdGmail = this.getNodeParameter('messageId', i) as string;
 						const options = this.getNodeParameter('options', i);
 
-						responseData = await replyToEmail.call(this, messageIdGmail, options, i);
+						responseData = await replyToEmail.call(this, messageIdGmail, options, i, nodeVersion);
 					}
 					if (operation === 'get') {
 						//https://developers.google.com/gmail/api/v1/reference/users/messages/get
@@ -394,7 +385,7 @@ export class GmailV2 implements INodeType {
 						const options = this.getNodeParameter('options', i, {});
 						const filters = this.getNodeParameter('filters', i, {});
 						const qs: IDataObject = {};
-						Object.assign(qs, prepareQuery.call(this, filters, i), options, i);
+						Object.assign(qs, prepareQuery.call(this, filters, i));
 
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(
@@ -579,6 +570,12 @@ export class GmailV2 implements INodeType {
 							...prepareEmailBody.call(this, i),
 							attachments,
 						};
+
+						if (threadId) {
+							// If a threadId is set, we need to add the Message-ID of the last message in the thread
+							// to the email so that Gmail can correctly associate the draft with the thread
+							await addThreadHeadersToEmail.call(this, email, threadId as string);
+						}
 
 						const body = {
 							message: {
@@ -770,7 +767,7 @@ export class GmailV2 implements INodeType {
 						const messageIdGmail = this.getNodeParameter('messageId', i) as string;
 						const options = this.getNodeParameter('options', i);
 
-						responseData = await replyToEmail.call(this, messageIdGmail, options, i);
+						responseData = await replyToEmail.call(this, messageIdGmail, options, i, nodeVersion);
 					}
 					if (operation === 'trash') {
 						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/trash

@@ -1,0 +1,237 @@
+{
+    "type": "object",
+    "properties": {
+        "addedAt": {
+            "type": "integer"
+        },
+        "canonical-vid": {
+            "type": "integer"
+        },
+        "form-submissions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "contact-associated-by": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "conversion-id": {
+                        "type": "string"
+                    },
+                    "form-id": {
+                        "type": "string"
+                    },
+                    "form-type": {
+                        "type": "string"
+                    },
+                    "page-title": {
+                        "type": "string"
+                    },
+                    "page-url": {
+                        "type": "string"
+                    },
+                    "portal-id": {
+                        "type": "integer"
+                    },
+                    "timestamp": {
+                        "type": "integer"
+                    },
+                    "title": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "identity-profiles": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "deleted-changed-timestamp": {
+                        "type": "integer"
+                    },
+                    "identities": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "is-primary": {
+                                    "type": "boolean"
+                                },
+                                "timestamp": {
+                                    "type": "integer"
+                                },
+                                "type": {
+                                    "type": "string"
+                                },
+                                "value": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "saved-at-timestamp": {
+                        "type": "integer"
+                    },
+                    "vid": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "is-contact": {
+            "type": "boolean"
+        },
+        "merge-audits": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "canonical-vid": {
+                        "type": "integer"
+                    },
+                    "entity-id": {
+                        "type": "string"
+                    },
+                    "first-name": {
+                        "type": "string"
+                    },
+                    "is-reverted": {
+                        "type": "boolean"
+                    },
+                    "last-name": {
+                        "type": "string"
+                    },
+                    "merged_from_email": {
+                        "type": "object",
+                        "properties": {
+                            "data-sensitivity": {
+                                "type": "null"
+                            },
+                            "is-encrypted": {
+                                "type": "null"
+                            },
+                            "selected": {
+                                "type": "boolean"
+                            },
+                            "source-label": {
+                                "type": "null"
+                            },
+                            "source-type": {
+                                "type": "string"
+                            },
+                            "timestamp": {
+                                "type": "integer"
+                            },
+                            "value": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "merged_to_email": {
+                        "type": "object",
+                        "properties": {
+                            "data-sensitivity": {
+                                "type": "null"
+                            },
+                            "is-encrypted": {
+                                "type": "null"
+                            },
+                            "selected": {
+                                "type": "boolean"
+                            },
+                            "source-label": {
+                                "type": "null"
+                            },
+                            "source-type": {
+                                "type": "string"
+                            },
+                            "timestamp": {
+                                "type": "integer"
+                            },
+                            "value": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "num-properties-moved": {
+                        "type": "integer"
+                    },
+                    "primary-vid-to-merge": {
+                        "type": "integer"
+                    },
+                    "timestamp": {
+                        "type": "integer"
+                    },
+                    "user-id": {
+                        "type": "integer"
+                    },
+                    "vid-to-merge": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "merged-vids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "portal-id": {
+            "type": "integer"
+        },
+        "properties": {
+            "type": "object",
+            "properties": {
+                "company": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "createdate": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "firstname": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "lastmodifieddate": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "lastname": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "vid": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

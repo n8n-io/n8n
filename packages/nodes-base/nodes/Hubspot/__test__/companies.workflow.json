@@ -1,0 +1,734 @@
+{
+	"name": "Hubspot Companies",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-400, 480],
+			"id": "b126b31f-c64f-472f-98ed-6ab9f0eb4e52",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "company",
+				"operation": "delete",
+				"companyId": {
+					"__rl": true,
+					"value": "123",
+					"mode": "id"
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [-180, -120],
+			"id": "7262d6df-23f4-425e-94c2-6ce67d1bc138",
+			"name": "HubSpot - Company - Delete",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "company",
+				"name": "test",
+				"additionalFields": {
+					"aboutUs": "test about us",
+					"annualRevenue": 123,
+					"city": "Gent",
+					"closeDate": "2025-04-17T00:00:00",
+					"companyDomainName": "example.com",
+					"companyOwner": "=123",
+					"countryRegion": "Belgium",
+					"customPropertiesUi": {
+						"customPropertiesValues": [
+							{
+								"property": "=test_custom_prop_name",
+								"value": "test custom prop value"
+							}
+						]
+					},
+					"description": "test description",
+					"isPublic": true,
+					"postalCode": "9000",
+					"twitterHandle": "x",
+					"websiteUrl": "example.com",
+					"yearFounded": "2000"
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [-180, 80],
+			"id": "2827f172-451b-4bab-bd91-36a2d0bc7013",
+			"name": "HubSpot - Company - Create",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "company",
+				"operation": "get",
+				"companyId": {
+					"__rl": true,
+					"value": "123",
+					"mode": "id"
+				},
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [-180, 480],
+			"id": "efbb6c5a-5061-4c6f-82a3-ae388f9e7690",
+			"name": "HubSpot - Company - Get",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "company",
+				"operation": "getAll",
+				"limit": 2,
+				"options": {
+					"includeMergeAudits": true,
+					"propertiesCollection": {
+						"propertiesValues": {
+							"properties": "={{ ['name', 'description', 'country'] }}"
+						}
+					}
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [-180, 680],
+			"id": "dc51cf19-947d-41d6-b2d2-908796039dc6",
+			"name": "HubSpot - Company - Get Many",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "company",
+				"operation": "getRecentlyCreatedUpdated",
+				"limit": 2,
+				"additionalFields": {
+					"since": "2025-04-10T00:00:00"
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [-180, 880],
+			"id": "af703bd7-ec3f-426e-a903-96d67410ee44",
+			"name": "HubSpot - Company - Get Recently Updated",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "company",
+				"operation": "searchByDomain",
+				"domain": "n8n.io",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [-180, 1080],
+			"id": "43db81bf-9f5f-4458-bd8f-c36c7162e53b",
+			"name": "HubSpot - Company - Search",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "company",
+				"operation": "update",
+				"companyId": {
+					"__rl": true,
+					"value": "=123",
+					"mode": "id"
+				},
+				"updateFields": {
+					"aboutUs": "test about us",
+					"city": "Gent"
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [-180, 280],
+			"id": "6c5c0be3-53ad-4eae-a535-6b19448fefb6",
+			"name": "HubSpot - Company - Update",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"HubSpot - Company - Create": [
+			{
+				"json": {
+					"additionalDomains": [],
+					"companyId": 115200636,
+					"isDeleted": false,
+					"portalId": 62515,
+					"properties": {
+						"name": {
+							"source": "BIDEN",
+							"sourceId": "name",
+							"timestamp": 1464484587592,
+							"value": "Example Company",
+							"versions": [
+								{
+									"name": "name",
+									"source": "BIDEN",
+									"sourceId": "name",
+									"sourceVid": [],
+									"timestamp": 1464484587592,
+									"value": "Example Company"
+								}
+							]
+						},
+						"website": {
+							"source": "COMPANIES",
+							"sourceId": null,
+							"timestamp": 1457513066540,
+							"value": "example.com",
+							"versions": [
+								{
+									"name": "website",
+									"source": "COMPANIES",
+									"sourceVid": [],
+									"timestamp": 1457513066540,
+									"value": "example.com"
+								}
+							]
+						}
+					}
+				}
+			}
+		],
+		"HubSpot - Company - Delete": [
+			{
+				"json": {
+					"additionalDomains": [],
+					"companyId": 115200636,
+					"isDeleted": false,
+					"portalId": 62515,
+					"properties": {
+						"name": {
+							"source": "BIDEN",
+							"sourceId": "name",
+							"timestamp": 1464484587592,
+							"value": "Example Company",
+							"versions": [
+								{
+									"name": "name",
+									"source": "BIDEN",
+									"sourceId": "name",
+									"sourceVid": [],
+									"timestamp": 1464484587592,
+									"value": "Example Company"
+								}
+							]
+						},
+						"website": {
+							"source": "COMPANIES",
+							"sourceId": null,
+							"timestamp": 1457513066540,
+							"value": "example.com",
+							"versions": [
+								{
+									"name": "website",
+									"source": "COMPANIES",
+									"sourceVid": [],
+									"timestamp": 1457513066540,
+									"value": "example.com"
+								}
+							]
+						}
+					}
+				}
+			}
+		],
+		"HubSpot - Company - Update": [
+			{
+				"json": {
+					"additionalDomains": [],
+					"companyId": 115200636,
+					"isDeleted": false,
+					"portalId": 62515,
+					"properties": {
+						"name": {
+							"source": "BIDEN",
+							"sourceId": "name",
+							"timestamp": 1464484587592,
+							"value": "Example Company",
+							"versions": [
+								{
+									"name": "name",
+									"source": "BIDEN",
+									"sourceId": "name",
+									"sourceVid": [],
+									"timestamp": 1464484587592,
+									"value": "Example Company"
+								}
+							]
+						},
+						"website": {
+							"source": "COMPANIES",
+							"sourceId": null,
+							"timestamp": 1457513066540,
+							"value": "example.com",
+							"versions": [
+								{
+									"name": "website",
+									"source": "COMPANIES",
+									"sourceVid": [],
+									"timestamp": 1457513066540,
+									"value": "example.com"
+								}
+							]
+						}
+					}
+				}
+			}
+		],
+		"HubSpot - Company - Get": [
+			{
+				"json": {
+					"additionalDomains": [],
+					"companyId": 115200636,
+					"isDeleted": false,
+					"portalId": 62515,
+					"properties": {
+						"name": {
+							"source": "BIDEN",
+							"sourceId": "name",
+							"timestamp": 1464484587592,
+							"value": "Example Company",
+							"versions": [
+								{
+									"name": "name",
+									"source": "BIDEN",
+									"sourceId": "name",
+									"sourceVid": [],
+									"timestamp": 1464484587592,
+									"value": "Example Company"
+								}
+							]
+						},
+						"website": {
+							"source": "COMPANIES",
+							"sourceId": null,
+							"timestamp": 1457513066540,
+							"value": "example.com",
+							"versions": [
+								{
+									"name": "website",
+									"source": "COMPANIES",
+									"sourceVid": [],
+									"timestamp": 1457513066540,
+									"value": "example.com"
+								}
+							]
+						}
+					}
+				}
+			}
+		],
+		"HubSpot - Company - Get Many": [
+			{
+				"json": {
+					"additionalDomains": [],
+					"companyId": 115200636,
+					"isDeleted": false,
+					"portalId": 62515,
+					"properties": {
+						"name": {
+							"source": "BIDEN",
+							"sourceId": "name",
+							"timestamp": 1464484587592,
+							"value": "Example Company",
+							"versions": [
+								{
+									"name": "name",
+									"source": "BIDEN",
+									"sourceId": "name",
+									"sourceVid": [],
+									"timestamp": 1464484587592,
+									"value": "Example Company"
+								}
+							]
+						},
+						"website": {
+							"source": "COMPANIES",
+							"sourceId": null,
+							"timestamp": 1457513066540,
+							"value": "example.com",
+							"versions": [
+								{
+									"name": "website",
+									"source": "COMPANIES",
+									"sourceVid": [],
+									"timestamp": 1457513066540,
+									"value": "example.com"
+								}
+							]
+						}
+					}
+				}
+			},
+			{
+				"json": {
+					"additionalDomains": [],
+					"companyId": 115279791,
+					"isDeleted": false,
+					"portalId": 62515,
+					"properties": {
+						"name": {
+							"source": "BIDEN",
+							"sourceId": "name",
+							"timestamp": 1468832771769,
+							"value": "Test Company",
+							"versions": [
+								{
+									"name": "name",
+									"source": "BIDEN",
+									"sourceId": "name",
+									"sourceVid": [],
+									"timestamp": 1468832771769,
+									"value": "Test Company"
+								}
+							]
+						},
+						"website": {
+							"source": "COMPANIES",
+							"sourceId": null,
+							"timestamp": 1457535205549,
+							"value": "test.com",
+							"versions": [
+								{
+									"name": "website",
+									"source": "COMPANIES",
+									"sourceVid": [],
+									"timestamp": 1457535205549,
+									"value": "test.com"
+								}
+							]
+						}
+					}
+				}
+			}
+		],
+		"HubSpot - Company - Search": [
+			{
+				"json": {
+					"additionalDomains": [],
+					"companyId": 184896670,
+					"isDeleted": false,
+					"mergeAudits": [],
+					"portalId": 62515,
+					"properties": {
+						"createdate": {
+							"source": "API",
+							"sourceId": null,
+							"timestamp": 1457708103847,
+							"value": "1457708103847",
+							"versions": [
+								{
+									"name": "createdate",
+									"source": "API",
+									"sourceVid": [],
+									"timestamp": 1457708103847,
+									"value": "1457708103847"
+								}
+							]
+						},
+						"domain": {
+							"source": "COMPANIES",
+							"sourceId": null,
+							"timestamp": 1457708103847,
+							"value": "hubspot.com",
+							"versions": [
+								{
+									"name": "domain",
+									"source": "COMPANIES",
+									"sourceVid": [],
+									"timestamp": 1457708103847,
+									"value": "hubspot.com"
+								}
+							]
+						},
+						"hs_lastmodifieddate": {
+							"source": "CALCULATED",
+							"sourceId": null,
+							"timestamp": 1502872954691,
+							"value": "1502872954691",
+							"versions": [
+								{
+									"name": "hs_lastmodifieddate",
+									"source": "CALCULATED",
+									"sourceVid": [],
+									"timestamp": 1502872954691,
+									"value": "1502872954691"
+								}
+							]
+						},
+						"name": {
+							"source": "BIDEN",
+							"sourceId": "name",
+							"timestamp": 1457708103906,
+							"value": "Hubspot, Inc.",
+							"versions": [
+								{
+									"name": "name",
+									"source": "BIDEN",
+									"sourceId": "name",
+									"sourceVid": [],
+									"timestamp": 1457708103906,
+									"value": "Hubspot, Inc."
+								}
+							]
+						}
+					},
+					"stateChanges": []
+				}
+			},
+			{
+				"json": {
+					"additionalDomains": [],
+					"companyId": 418736767,
+					"isDeleted": false,
+					"mergeAudits": [],
+					"portalId": 62515,
+					"properties": {
+						"createdate": {
+							"source": "API",
+							"sourceId": "API",
+							"timestamp": 1490280388204,
+							"value": "1490280388204",
+							"versions": [
+								{
+									"name": "createdate",
+									"source": "API",
+									"sourceId": "API",
+									"sourceVid": [],
+									"timestamp": 1490280388204,
+									"value": "1490280388204"
+								}
+							]
+						},
+						"domain": {
+							"source": "API",
+							"sourceId": null,
+							"timestamp": 1490280388204,
+							"value": "hubspot.com",
+							"versions": [
+								{
+									"name": "domain",
+									"source": "API",
+									"sourceVid": [],
+									"timestamp": 1490280388204,
+									"value": "hubspot.com"
+								}
+							]
+						},
+						"hs_lastmodifieddate": {
+							"source": "CALCULATED",
+							"sourceId": null,
+							"timestamp": 1498644245669,
+							"value": "1498644245669",
+							"versions": [
+								{
+									"name": "hs_lastmodifieddate",
+									"source": "CALCULATED",
+									"sourceVid": [],
+									"timestamp": 1498644245669,
+									"value": "1498644245669"
+								}
+							]
+						},
+						"name": {
+							"source": "API",
+							"sourceId": null,
+							"timestamp": 1490280388204,
+							"value": "qweqwe2323",
+							"versions": [
+								{
+									"name": "name",
+									"source": "API",
+									"sourceVid": [],
+									"timestamp": 1490280388204,
+									"value": "qweqwe2323"
+								}
+							]
+						}
+					},
+					"stateChanges": []
+				}
+			}
+		],
+		"HubSpot - Company - Get Recently Updated": [
+			{
+				"json": {
+					"additionalDomains": [],
+					"companyId": 115200636,
+					"isDeleted": false,
+					"portalId": 62515,
+					"properties": {
+						"name": {
+							"source": "BIDEN",
+							"sourceId": "name",
+							"timestamp": 1464484587592,
+							"value": "Example Company",
+							"versions": [
+								{
+									"name": "name",
+									"source": "BIDEN",
+									"sourceId": "name",
+									"sourceVid": [],
+									"timestamp": 1464484587592,
+									"value": "Example Company"
+								}
+							]
+						},
+						"website": {
+							"source": "COMPANIES",
+							"sourceId": null,
+							"timestamp": 1457513066540,
+							"value": "example.com",
+							"versions": [
+								{
+									"name": "website",
+									"source": "COMPANIES",
+									"sourceVid": [],
+									"timestamp": 1457513066540,
+									"value": "example.com"
+								}
+							]
+						}
+					}
+				}
+			},
+			{
+				"json": {
+					"additionalDomains": [],
+					"companyId": 115279791,
+					"isDeleted": false,
+					"portalId": 62515,
+					"properties": {
+						"name": {
+							"source": "BIDEN",
+							"sourceId": "name",
+							"timestamp": 1468832771769,
+							"value": "Test Company",
+							"versions": [
+								{
+									"name": "name",
+									"source": "BIDEN",
+									"sourceId": "name",
+									"sourceVid": [],
+									"timestamp": 1468832771769,
+									"value": "Test Company"
+								}
+							]
+						},
+						"website": {
+							"source": "COMPANIES",
+							"sourceId": null,
+							"timestamp": 1457535205549,
+							"value": "test.com",
+							"versions": [
+								{
+									"name": "website",
+									"source": "COMPANIES",
+									"sourceVid": [],
+									"timestamp": 1457535205549,
+									"value": "test.com"
+								}
+							]
+						}
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "HubSpot - Company - Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HubSpot - Company - Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HubSpot - Company - Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HubSpot - Company - Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HubSpot - Company - Get Recently Updated",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HubSpot - Company - Search",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HubSpot - Company - Update",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "9acf7d60-9b18-46f4-8a3e-6edd75806535",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+	},
+	"id": "CYeIbFIs8qLoLvBe",
+	"tags": []
+}

@@ -1,0 +1,146 @@
+{
+    "type": "object",
+    "properties": {
+        "analytics_domains": {
+            "type": "null"
+        },
+        "analytics_source": {
+            "type": "string"
+        },
+        "analytics_ua": {
+            "type": "string"
+        },
+        "cdate": {
+            "type": "string"
+        },
+        "created_by": {
+            "type": "null"
+        },
+        "created_timestamp": {
+            "type": "string"
+        },
+        "deletestamp": {
+            "type": "null"
+        },
+        "facebook_session": {
+            "type": "null"
+        },
+        "get_unsubscribe_reason": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "links": {
+            "type": "object",
+            "properties": {
+                "addressLists": {
+                    "type": "string"
+                },
+                "contactGoalLists": {
+                    "type": "string"
+                },
+                "user": {
+                    "type": "string"
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "optinmessageid": {
+            "type": "string"
+        },
+        "optinoptout": {
+            "type": "string"
+        },
+        "optoutconf": {
+            "type": "string"
+        },
+        "p_embed_image": {
+            "type": "string"
+        },
+        "p_use_analytics_link": {
+            "type": "string"
+        },
+        "p_use_analytics_read": {
+            "type": "string"
+        },
+        "p_use_captcha": {
+            "type": "string"
+        },
+        "p_use_facebook": {
+            "type": "string"
+        },
+        "p_use_tracking": {
+            "type": "string"
+        },
+        "p_use_twitter": {
+            "type": "string"
+        },
+        "private": {
+            "type": "string"
+        },
+        "require_name": {
+            "type": "string"
+        },
+        "send_last_broadcast": {
+            "type": "string"
+        },
+        "sender_addr1": {
+            "type": "string"
+        },
+        "sender_addr2": {
+            "type": "string"
+        },
+        "sender_city": {
+            "type": "string"
+        },
+        "sender_country": {
+            "type": "string"
+        },
+        "sender_name": {
+            "type": "string"
+        },
+        "sender_phone": {
+            "type": "string"
+        },
+        "sender_reminder": {
+            "type": "string"
+        },
+        "sender_state": {
+            "type": "string"
+        },
+        "sender_url": {
+            "type": "string"
+        },
+        "sender_zip": {
+            "type": "string"
+        },
+        "stringid": {
+            "type": "string"
+        },
+        "to_name": {
+            "type": "string"
+        },
+        "twitter_token": {
+            "type": "string"
+        },
+        "twitter_token_secret": {
+            "type": "string"
+        },
+        "updated_by": {
+            "type": "null"
+        },
+        "updated_timestamp": {
+            "type": "string"
+        },
+        "user": {
+            "type": "string"
+        },
+        "userid": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

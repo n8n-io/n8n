@@ -4,7 +4,7 @@ import type {
 	INodeTypeData,
 	WorkflowTestData,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { If } from '../../../nodes-base/dist/nodes/If/If.node';
 import { ManualTrigger } from '../../../nodes-base/dist/nodes/ManualTrigger/ManualTrigger.node';
@@ -12,7 +12,6 @@ import { Merge } from '../../../nodes-base/dist/nodes/Merge/Merge.node';
 import { NoOp } from '../../../nodes-base/dist/nodes/NoOp/NoOp.node';
 import { Set } from '../../../nodes-base/dist/nodes/Set/Set.node';
 import { SplitInBatches } from '../../../nodes-base/dist/nodes/SplitInBatches/SplitInBatches.node';
-import { Start } from '../../../nodes-base/dist/nodes/Start/Start.node';
 
 export const predefinedNodesTypes: INodeTypeData = {
 	'n8n-nodes-base.if': {
@@ -31,10 +30,6 @@ export const predefinedNodesTypes: INodeTypeData = {
 		type: new Set(),
 		sourcePath: '',
 	},
-	'n8n-nodes-base.start': {
-		type: new Start(),
-		sourcePath: '',
-	},
 	'n8n-nodes-base.manualTrigger': {
 		type: new ManualTrigger(),
 		sourcePath: '',
@@ -42,6 +37,44 @@ export const predefinedNodesTypes: INodeTypeData = {
 	'n8n-nodes-base.splitInBatches': {
 		type: new SplitInBatches(),
 		sourcePath: '',
+	},
+	'@n8n/n8n-nodes-langchain.toolExecutor': {
+		sourcePath: '',
+		type: {
+			description: {
+				displayName: 'Test tool executor',
+				name: 'toolTestExecutor',
+				group: ['transform'],
+				version: 1,
+				description: 'Test tool executor',
+				defaults: {
+					name: 'Test Tool Executor',
+					color: '#0000FF',
+				},
+				inputs: [NodeConnectionTypes.AiTool, NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.Main],
+				properties: [],
+			},
+		},
+	},
+	'n8n-nodes-base.toolTest': {
+		sourcePath: '',
+		type: {
+			description: {
+				displayName: 'Test tool',
+				name: 'toolTest',
+				group: ['transform'],
+				version: 1,
+				description: 'Test tool',
+				inputs: [],
+				defaults: {
+					name: 'Test Tool',
+					color: '#0000FF',
+				},
+				outputs: [NodeConnectionTypes.AiTool],
+				properties: [],
+			},
+		},
 	},
 	'n8n-nodes-base.versionTest': {
 		sourcePath: '',
@@ -56,8 +89,8 @@ export const predefinedNodesTypes: INodeTypeData = {
 					name: 'Version Test',
 					color: '#0000FF',
 				},
-				inputs: [NodeConnectionType.Main],
-				outputs: [NodeConnectionType.Main],
+				inputs: [NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.Main],
 				properties: [
 					{
 						displayName: 'Display V1',
@@ -115,8 +148,8 @@ export const predefinedNodesTypes: INodeTypeData = {
 					name: 'Set',
 					color: '#0000FF',
 				},
-				inputs: [NodeConnectionType.Main],
-				outputs: [NodeConnectionType.Main],
+				inputs: [NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.Main],
 				properties: [
 					{
 						displayName: 'Value1',
@@ -147,8 +180,8 @@ export const predefinedNodesTypes: INodeTypeData = {
 					name: 'Set Multi',
 					color: '#0000FF',
 				},
-				inputs: [NodeConnectionType.Main],
-				outputs: [NodeConnectionType.Main],
+				inputs: [NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.Main],
 				properties: [
 					{
 						displayName: 'Values',
@@ -348,7 +381,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 						parameters: {},
 						id: '41589b0b-0521-41ae-b0c6-80a016af803e',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [160, 240],
 					},
@@ -359,14 +392,14 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge3',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
 							[
 								{
 									node: 'Merge6',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -377,7 +410,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge5',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -388,7 +421,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'NoOp2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -399,14 +432,14 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge3',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
 							[
 								{
 									node: 'IF4',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -417,7 +450,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge4',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -428,14 +461,14 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
 							[
 								{
 									node: 'Merge2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -446,7 +479,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge7',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -457,7 +490,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge6',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -468,7 +501,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge5',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -479,7 +512,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge4',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -490,14 +523,14 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
 							[
 								{
 									node: 'Merge1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -508,17 +541,17 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'IF1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'IF2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'IF3',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -529,7 +562,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Set1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -699,7 +732,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 						parameters: {},
 						id: '89a78e50-2ec6-48bf-be5f-3838600cd08a',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [-20, 700],
 					},
@@ -710,7 +743,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'IF',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -721,19 +754,19 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Set',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Merge1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
 							[
 								{
 									node: 'Merge',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -744,7 +777,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -755,7 +788,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'IF1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -766,12 +799,12 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Set1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Merge1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -782,7 +815,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -793,17 +826,17 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 								{
 									node: 'Set1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Set',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -957,7 +990,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 						id: 'uuid-1',
 						parameters: {},
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [100, 300],
 					},
@@ -985,7 +1018,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Set',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -1018,7 +1051,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 						id: 'uuid-1',
 						parameters: {},
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [100, 300],
 					},
@@ -1063,12 +1096,12 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Set1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Set2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -1079,7 +1112,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Set2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -1240,7 +1273,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 						id: 'uuid-10',
 						parameters: {},
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [100, 300],
 					},
@@ -1251,12 +1284,12 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 								{
 									node: 'Merge2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -1267,7 +1300,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge3',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -1278,7 +1311,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Set4',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -1289,7 +1322,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge4',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -1300,7 +1333,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge3',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -1311,7 +1344,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -1322,12 +1355,12 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Set3',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -1338,17 +1371,17 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Set1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Set2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Merge4',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -1455,7 +1488,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 					{
 						parameters: {},
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						id: 'uuid-1',
 						position: [250, 450],
@@ -1529,7 +1562,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Set1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -1540,14 +1573,14 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Set2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
 							[
 								{
 									node: 'Merge1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -1558,12 +1591,12 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'IF',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Merge1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -1574,7 +1607,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -1611,7 +1644,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 						id: 'uuid-1',
 						parameters: {},
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [250, 300],
 					},
@@ -1733,7 +1766,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Set0',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -1744,7 +1777,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -1755,7 +1788,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -1766,7 +1799,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -1777,7 +1810,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -1788,7 +1821,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'IF',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -1834,7 +1867,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 						id: 'uuid-1',
 						parameters: {},
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [250, 300],
 					},
@@ -1908,7 +1941,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Set1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -1919,14 +1952,14 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
 							[
 								{
 									node: 'Set2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -1937,7 +1970,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -1948,7 +1981,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'IF',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -1984,7 +2017,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 						id: 'uuid-1',
 						parameters: {},
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [250, 300],
 					},
@@ -2054,7 +2087,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Set',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -2065,7 +2098,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'IF',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -2076,19 +2109,19 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'NoOpTrue',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Merge',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
 							[
 								{
 									node: 'NoOpFalse',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -2099,7 +2132,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -2132,7 +2165,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 						id: 'uuid-1',
 						parameters: {},
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [240, 300],
 					},
@@ -2179,7 +2212,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'VersionTest1a',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -2190,7 +2223,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'VersionTest1b',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -2201,7 +2234,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'VersionTest2a',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -2212,7 +2245,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'VersionTest2b',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -2274,7 +2307,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 						parameters: {},
 						id: '3e4ab8bb-2e22-45d9-9287-0265f2ee9c4b',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [300, 620],
 					},
@@ -2555,7 +2588,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Set',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -2566,7 +2599,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Wait2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -2577,32 +2610,32 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Wait',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Wait1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Wait6',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Wait7',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Wait8',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Wait9',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -2613,7 +2646,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Wait4',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -2624,12 +2657,12 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Wait3',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Merge',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -2640,12 +2673,12 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Wait10',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Wait11',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -2656,7 +2689,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Wait5',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -2667,7 +2700,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -2678,7 +2711,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Wait13',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -2689,7 +2722,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Wait12',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -2700,7 +2733,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Wait14',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -2711,12 +2744,12 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'IF',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'IF1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -2727,14 +2760,14 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Wait15',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
 							[
 								{
 									node: 'Wait16',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -2745,14 +2778,14 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Wait17',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
 							[
 								{
 									node: 'Wait18',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -2805,7 +2838,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 						id: 'uuid-1',
 						parameters: {},
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [100, 300],
 					},
@@ -2850,12 +2883,12 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Set1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Set2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -2866,7 +2899,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Set2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -3033,7 +3066,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 						id: 'uuid-10',
 						parameters: {},
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [100, 300],
 					},
@@ -3044,12 +3077,12 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 								{
 									node: 'Merge2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -3060,7 +3093,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge3',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -3071,7 +3104,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Set4',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -3082,7 +3115,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge4',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -3093,7 +3126,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge3',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -3104,7 +3137,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -3115,12 +3148,12 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Set3',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -3131,17 +3164,17 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Set1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Set2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Merge4',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -3264,7 +3297,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 						parameters: {},
 						id: '3e4ab8bb-2e22-45d9-9287-0265f2ee9c4b',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [300, 620],
 					},
@@ -3545,7 +3578,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Set',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -3556,7 +3589,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Wait2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -3567,32 +3600,32 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Wait',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Wait1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Wait6',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Wait7',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Wait8',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Wait9',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -3603,7 +3636,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Wait4',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -3614,12 +3647,12 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Wait3',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Merge',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -3630,12 +3663,12 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Wait10',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Wait11',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -3646,7 +3679,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Wait5',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -3657,7 +3690,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -3668,7 +3701,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Wait13',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -3679,7 +3712,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Wait12',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -3690,7 +3723,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Wait14',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -3701,12 +3734,12 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'IF',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'IF1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -3717,14 +3750,14 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Wait15',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
 							[
 								{
 									node: 'Wait16',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -3735,14 +3768,14 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Wait17',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
 							[
 								{
 									node: 'Wait18',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -3884,7 +3917,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 						parameters: {},
 						id: '89a78e50-2ec6-48bf-be5f-3838600cd08a',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [-20, 700],
 					},
@@ -3895,7 +3928,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'IF',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -3906,19 +3939,19 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Set',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Merge1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
 							[
 								{
 									node: 'Merge',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -3929,7 +3962,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -3940,7 +3973,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'IF1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -3951,12 +3984,12 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Set1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Merge1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -3967,7 +4000,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -3978,17 +4011,17 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 								{
 									node: 'Set1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Set',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -4170,7 +4203,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 						parameters: {},
 						id: '9c0cb647-5d60-40dc-b791-4946ee260a5d',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [180, 240],
 					},
@@ -4240,7 +4273,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Set',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -4251,7 +4284,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'IF',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -4262,14 +4295,14 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'NoOp',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
 							[
 								{
 									node: 'NoOp1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -4280,7 +4313,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -4291,7 +4324,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -4475,7 +4508,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 						parameters: {},
 						id: '41589b0b-0521-41ae-b0c6-80a016af803e',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [160, 240],
 					},
@@ -4486,14 +4519,14 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge3',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
 							[
 								{
 									node: 'Merge6',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -4504,7 +4537,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge5',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -4515,7 +4548,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'NoOp2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -4526,14 +4559,14 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge3',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
 							[
 								{
 									node: 'IF4',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -4544,7 +4577,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge4',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -4555,14 +4588,14 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
 							[
 								{
 									node: 'Merge2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -4573,7 +4606,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge7',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -4584,7 +4617,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge6',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -4595,7 +4628,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge5',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -4606,7 +4639,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge4',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -4617,14 +4650,14 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
 							[
 								{
 									node: 'Merge1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -4635,17 +4668,17 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'IF1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'IF2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'IF3',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -4656,7 +4689,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Set1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -4766,7 +4799,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 						parameters: {},
 						id: '84b789e9-0dfc-4aa3-b0b2-cedf8966f904',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						position: [440, 1100],
 						typeVersion: 1,
 					},
@@ -4920,12 +4953,12 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Edit Fields',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Edit Fields1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -4936,7 +4969,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -4947,7 +4980,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 1,
 								},
 							],
@@ -4958,7 +4991,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'If1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -4969,14 +5002,14 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Edit Fields2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
 							[
 								{
 									node: 'Edit Fields3',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],

@@ -5,7 +5,7 @@
 import type { Cache, Store, Config } from 'cache-manager';
 import Redis from 'ioredis';
 import type { Cluster, ClusterNode, ClusterOptions, RedisOptions } from 'ioredis';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
 export class NoCacheableError implements Error {
 	name = 'NoCacheableError';
@@ -61,7 +61,7 @@ function builder(
 			await redisCache.expire(key, ttlSeconds);
 		},
 		async set(key, value, ttl) {
-			// eslint-disable-next-line @typescript-eslint/no-throw-literal, @typescript-eslint/restrict-template-expressions
+			// eslint-disable-next-line @typescript-eslint/only-throw-error, @typescript-eslint/restrict-template-expressions
 			if (!isCacheable(value)) throw new NoCacheableError(`"${value}" is not a cacheable value`);
 			const t = ttl ?? options?.ttl;
 			if (t !== undefined && t !== 0) await redisCache.set(key, getVal(value), 'PX', t);
@@ -73,7 +73,7 @@ function builder(
 				const multi = redisCache.multi();
 				for (const [key, value] of args) {
 					if (!isCacheable(value))
-						// eslint-disable-next-line @typescript-eslint/no-throw-literal
+						// eslint-disable-next-line @typescript-eslint/only-throw-error
 						throw new NoCacheableError(`"${getVal(value)}" is not a cacheable value`);
 					multi.set(key, getVal(value), 'PX', t);
 				}
@@ -82,7 +82,7 @@ function builder(
 				await redisCache.mset(
 					args.flatMap(([key, value]) => {
 						if (!isCacheable(value))
-							throw new ApplicationError(`"${getVal(value)}" is not a cacheable value`);
+							throw new UnexpectedError(`"${getVal(value)}" is not a cacheable value`);
 						return [key, getVal(value)] as [string, string];
 					}),
 				);
@@ -129,7 +129,7 @@ function builder(
 			for (const field in fieldValueRecord) {
 				const value = fieldValueRecord[field];
 				if (!isCacheable(fieldValueRecord[field])) {
-					// eslint-disable-next-line @typescript-eslint/no-throw-literal, @typescript-eslint/restrict-template-expressions
+					// eslint-disable-next-line @typescript-eslint/only-throw-error, @typescript-eslint/restrict-template-expressions
 					throw new NoCacheableError(`"${value}" is not a cacheable value`);
 				}
 				fieldValueRecord[field] = getVal(value);

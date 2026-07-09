@@ -1,17 +1,12 @@
 import FormData from 'form-data';
-import { isEmpty } from 'lodash';
+import isEmpty from 'lodash/isEmpty';
 import { extension } from 'mime-types';
-import type {
-	IBinaryKeyData,
-	IDataObject,
-	IExecuteFunctions,
-	INode,
-	INodeExecutionData,
-} from 'n8n-workflow';
-import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
+import { jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { capitalize } from '../../../../utils/utilities';
-import { discordApiRequest } from '../transport';
+import { getSendAndWaitConfig } from '../../../../utils/sendAndWait/utils';
+import { capitalize, createUtmCampaignLink } from '../../../../utils/utilities';
+import { discordApiMultiPartRequest, discordApiRequest } from '../transport';
 
 export const createSimplifyFunction =
 	(includedFields: string[]) =>
@@ -28,9 +23,11 @@ export const createSimplifyFunction =
 	};
 
 export function parseDiscordError(this: IExecuteFunctions, error: any, itemIndex = 0) {
-	let errorData = error.cause.error;
+	let errorData = error.cause?.error;
 	const errorOptions: IDataObject = { itemIndex };
 
+	error.description =
+		Array.isArray(error.messages) && error.messages.length ? error.messages[0] : error.description;
 	if (!errorData && error.description) {
 		try {
 			const errorString = (error.description as string).split(' - ')[1];
@@ -139,7 +136,7 @@ export function prepareEmbeds(this: IExecuteFunctions, embeds: IDataObject[]) {
 				}
 			}
 
-			if (embedReturnData.author) {
+			if (embedReturnData.author && typeof embedReturnData.author === 'string') {
 				embedReturnData.author = {
 					name: embedReturnData.author,
 				};
@@ -172,7 +169,6 @@ export function prepareEmbeds(this: IExecuteFunctions, embeds: IDataObject[]) {
 
 export async function prepareMultiPartForm(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
 	files: IDataObject[],
 	jsonPayload: IDataObject,
 	i: number,
@@ -182,7 +178,7 @@ export async function prepareMultiPartForm(
 	const filesData: IDataObject[] = [];
 
 	for (const [index, file] of files.entries()) {
-		const binaryData = (items[i].binary as IBinaryKeyData)?.[file.inputFieldName as string];
+		const binaryData = this.helpers.assertBinaryData(i, file.inputFieldName as string);
 
 		if (!binaryData) {
 			throw new NodeOperationError(
@@ -220,8 +216,8 @@ export async function prepareMultiPartForm(
 
 	for (const [index, binaryData] of filesData.entries()) {
 		multiPartBody.append(`files[${index}]`, binaryData.data, {
-			contentType: binaryData.name as string,
-			filename: binaryData.mime as string,
+			contentType: binaryData.mime as string,
+			filename: binaryData.name as string,
 		});
 	}
 
@@ -284,4 +280,140 @@ export async function setupChannelGetter(this: IExecuteFunctions, userGuilds: ID
 
 		return channelId;
 	};
+}
+
+export async function sendDiscordMessage(
+	this: IExecuteFunctions,
+	{
+		guildId,
+		userGuilds,
+		isOAuth2,
+		body,
+		files = [],
+		itemIndex = 0,
+	}: {
+		guildId: string;
+		userGuilds: IDataObject[];
+		isOAuth2: boolean;
+		body: IDataObject;
+		files?: IDataObject[];
+		itemIndex?: number;
+	},
+) {
+	const sendTo = this.getNodeParameter('sendTo', itemIndex) as string;
+
+	let channelId = '';
+
+	if (sendTo === 'user') {
+		const userId = this.getNodeParameter('userId', itemIndex, undefined, {
+			extractValue: true,
+		}) as string;
+
+		if (isOAuth2) {
+			try {
+				await discordApiRequest.call(this, 'GET', `/guilds/${guildId}/members/${userId}`);
+			} catch (error) {
+				if (error instanceof NodeApiError && error.httpCode === '404') {
+					throw new NodeOperationError(
+						this.getNode(),
+						`User with the id ${userId} is not a member of the selected guild`,
+						{
+							itemIndex,
+						},
+					);
+				}
+
+				throw new NodeOperationError(this.getNode(), error, {
+					itemIndex,
+				});
+			}
+		}
+
+		channelId = (
+			(await discordApiRequest.call(this, 'POST', '/users/@me/channels', {
+				recipient_id: userId,
+			})) as IDataObject
+		).id as string;
+
+		if (!channelId) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Could not create a channel to send direct message to',
+				{ itemIndex },
+			);
+		}
+	}
+
+	if (sendTo === 'channel') {
+		channelId = this.getNodeParameter('channelId', itemIndex, undefined, {
+			extractValue: true,
+		}) as string;
+	}
+
+	if (isOAuth2 && sendTo !== 'user') {
+		await checkAccessToChannel.call(this, channelId, userGuilds, itemIndex);
+	}
+
+	if (!channelId) {
+		throw new NodeOperationError(this.getNode(), 'Channel ID is required', {
+			itemIndex,
+		});
+	}
+
+	let response: IDataObject[] = [];
+
+	if (files?.length) {
+		const multiPartBody = await prepareMultiPartForm.call(this, files, body, itemIndex);
+
+		response = await discordApiMultiPartRequest.call(
+			this,
+			'POST',
+			`/channels/${channelId}/messages`,
+			multiPartBody,
+		);
+	} else {
+		response = await discordApiRequest.call(this, 'POST', `/channels/${channelId}/messages`, body);
+	}
+
+	const executionData = this.helpers.constructExecutionMetaData(
+		this.helpers.returnJsonArray(response),
+		{ itemData: { item: itemIndex } },
+	);
+
+	return executionData;
+}
+
+export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
+	const config = getSendAndWaitConfig(context);
+	let description = config.message;
+	if (config.appendAttribution !== false) {
+		const instanceId = context.getInstanceId();
+		const attributionText = 'This message was sent automatically with ';
+		const link = createUtmCampaignLink('n8n-nodes-base.discord', instanceId);
+		description = `${config.message}\n\n_${attributionText}_[n8n](${link})`;
+	}
+
+	const body = {
+		embeds: [
+			{
+				description,
+				color: 5814783,
+			},
+		],
+		components: [
+			{
+				type: 1,
+				components: config.options.map((option) => {
+					return {
+						type: 2,
+						style: 5,
+						label: option.label,
+						url: option.url,
+					};
+				}),
+			},
+		],
+	};
+
+	return body;
 }

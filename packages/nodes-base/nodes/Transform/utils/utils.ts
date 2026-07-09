@@ -1,4 +1,4 @@
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 export const prepareFieldsArray = (fields: string | string[], fieldName = 'Fields') => {
 	if (typeof fields === 'string') {
@@ -10,7 +10,7 @@ export const prepareFieldsArray = (fields: string | string[], fieldName = 'Field
 	if (Array.isArray(fields)) {
 		return fields;
 	}
-	throw new ApplicationError(
+	throw new UserError(
 		`The \'${fieldName}\' parameter must be a string of fields separated by commas or an array of strings.`,
 		{ level: 'warning' },
 	);

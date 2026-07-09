@@ -9,15 +9,17 @@ export class EmailReadImap extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'Email Trigger (IMAP)',
 			name: 'emailReadImap',
-			icon: 'fa:inbox',
+			icon: 'node:email-trigger',
+			iconColor: 'green',
 			group: ['trigger'],
 			description: 'Triggers the workflow when a new email is received',
-			defaultVersion: 2,
+			defaultVersion: 2.1,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new EmailReadImapV1(baseDescription),
 			2: new EmailReadImapV2(baseDescription),
+			2.1: new EmailReadImapV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

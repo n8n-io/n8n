@@ -1,22 +1,22 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { HuggingFaceInference } from '@langchain/community/llms/hf';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
-
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 
 export class LmOpenHuggingFaceInference implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Hugging Face Inference Model',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
+
 		name: 'lmOpenHuggingFaceInference',
 		icon: 'file:huggingface.svg',
 		group: ['transform'],
@@ -39,10 +39,10 @@ export class LmOpenHuggingFaceInference implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiLanguageModel],
+
+		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
 			{
@@ -51,12 +51,12 @@ export class LmOpenHuggingFaceInference implements INodeType {
 			},
 		],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			{
 				displayName: 'Model',
 				name: 'model',
 				type: 'string',
-				default: 'gpt2',
+				default: 'mistralai/Mistral-Nemo-Base-2407',
 			},
 			{
 				displayName: 'Options',
@@ -140,6 +140,11 @@ export class LmOpenHuggingFaceInference implements INodeType {
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as object;
 
+		// LangChain does not yet support specifying Provider
+		// That's why mistral's model is the default value
+		// It is one of the few models that seem to work out of the box
+		// Other models are returning "Model x/y is not supported for task text-generation and provider z. Supported task: conversational."
+		// https://github.com/langchain-ai/langchainjs/discussions/8434#discussioncomment-13603787
 		const model = new HuggingFaceInference({
 			model: modelName,
 			apiKey: credentials.apiKey as string,

@@ -1,0 +1,78 @@
+{
+    "type": "object",
+    "properties": {
+        "active": {
+            "type": "boolean"
+        },
+        "cod_torre": {
+            "type": "string"
+        },
+        "contrato_sla": {
+            "type": "string"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "created_by_id": {
+            "type": "integer"
+        },
+        "dom_2nd": {
+            "type": "string"
+        },
+        "domain": {
+            "type": "string"
+        },
+        "domain_assignment": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "id_tele": {
+            "type": "string"
+        },
+        "member_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "r7regiao": {
+            "type": "string"
+        },
+        "sctntid": {
+            "type": "string"
+        },
+        "secondary_member_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "shared": {
+            "type": "boolean"
+        },
+        "stellar_case_min_score": {
+            "type": "integer"
+        },
+        "stellar_ia": {
+            "type": "boolean"
+        },
+        "stellarcyber_cases": {
+            "type": "boolean"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "updated_by_id": {
+            "type": "integer"
+        },
+        "vip": {
+            "type": "boolean"
+        }
+    },
+    "version": 1
+}

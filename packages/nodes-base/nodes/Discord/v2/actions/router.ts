@@ -1,5 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import * as channel from './channel';
 import * as member from './member';
@@ -45,6 +45,11 @@ export async function router(this: IExecuteFunctions) {
 		resource,
 		operation,
 	} as Discord;
+
+	if (discord.resource === 'message' && discord.operation === SEND_AND_WAIT_OPERATION) {
+		returnData = await message.sendAndWait.execute.call(this, guildId, userGuilds);
+		return [returnData];
+	}
 
 	switch (discord.resource) {
 		case 'channel':

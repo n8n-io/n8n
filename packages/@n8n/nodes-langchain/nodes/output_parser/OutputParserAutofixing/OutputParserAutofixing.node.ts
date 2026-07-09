@@ -1,6 +1,6 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { PromptTemplate } from '@langchain/core/prompts';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	ISupplyDataFunctions,
 	INodeType,
@@ -12,7 +12,7 @@ import {
 	N8nOutputFixingParser,
 	type N8nStructuredOutputParser,
 } from '@utils/output_parsers/N8nOutputParser';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import { NAIVE_FIX_PROMPT } from './prompt';
 
@@ -24,7 +24,7 @@ export class OutputParserAutofixing implements INodeType {
 		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
-		description: 'Automatically fix the output if it is not in the correct format',
+		description: 'Deprecated, use structured output parser',
 		defaults: {
 			name: 'Auto-fixing Output Parser',
 		},
@@ -42,24 +42,30 @@ export class OutputParserAutofixing implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: NodeConnectionType.AiLanguageModel,
+				type: NodeConnectionTypes.AiLanguageModel,
 				required: true,
 			},
 			{
 				displayName: 'Output Parser',
 				maxConnections: 1,
 				required: true,
-				type: NodeConnectionType.AiOutputParser,
+				type: NodeConnectionTypes.AiOutputParser,
 			},
 		],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiOutputParser],
+
+		outputs: [NodeConnectionTypes.AiOutputParser],
 		outputNames: ['Output Parser'],
+		builderHint: {
+			inputs: {
+				ai_languageModel: { required: true },
+				ai_outputParser: { required: true },
+			},
+		},
 		properties: [
 			{
 				displayName:
@@ -68,7 +74,7 @@ export class OutputParserAutofixing implements INodeType {
 				type: 'notice',
 				default: '',
 			},
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			{
 				displayName: 'Options',
 				name: 'options',
@@ -95,11 +101,11 @@ export class OutputParserAutofixing implements INodeType {
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const model = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
+			NodeConnectionTypes.AiLanguageModel,
 			itemIndex,
 		)) as BaseLanguageModel;
 		const outputParser = (await this.getInputConnectionData(
-			NodeConnectionType.AiOutputParser,
+			NodeConnectionTypes.AiOutputParser,
 			itemIndex,
 		)) as N8nStructuredOutputParser;
 		const prompt = this.getNodeParameter('options.prompt', itemIndex, NAIVE_FIX_PROMPT) as string;

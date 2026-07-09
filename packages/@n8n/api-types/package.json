@@ -1,18 +1,20 @@
 {
   "name": "@n8n/api-types",
-  "version": "0.11.0",
+  "version": "1.30.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "lint": "eslint .",
-    "lintfix": "eslint . --fix",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
-    "test": "jest",
-    "test:dev": "jest --watch"
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --silent=false"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -21,12 +23,24 @@
     "dist/**/*"
   ],
   "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
     "@n8n/config": "workspace:*",
-    "n8n-workflow": "workspace:*"
+    "@n8n/vitest-config": "workspace:*",
+    "@vitest/coverage-v8": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:",
+    "minifaker": "1.34.1",
+    "zod": "catalog:"
   },
   "dependencies": {
+    "@n8n_io/ai-assistant-sdk": "catalog:",
+    "n8n-workflow": "workspace:*",
     "xss": "catalog:",
-    "zod": "catalog:",
-    "zod-class": "0.0.15"
-  }
+    "@n8n/permissions": "workspace:*"
+  },
+  "peerDependencies": {
+    "zod": "catalog:"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

@@ -2,10 +2,32 @@ import type { INodeProperties } from 'n8n-workflow';
 
 export const nodeProperties: INodeProperties[] = [
 	{
+		displayName: 'Resource',
+		name: 'resource',
+		type: 'options',
+		noDataExpression: true,
+		options: [
+			{
+				name: 'Search Index',
+				value: 'searchIndexes',
+			},
+			{
+				name: 'Document',
+				value: 'document',
+			},
+		],
+		default: 'document',
+	},
+	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
 		noDataExpression: true,
+		displayOptions: {
+			show: {
+				resource: ['document'],
+			},
+		},
 		options: [
 			{
 				name: 'Aggregate',
@@ -52,7 +74,40 @@ export const nodeProperties: INodeProperties[] = [
 		],
 		default: 'find',
 	},
-
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		noDataExpression: true,
+		displayOptions: {
+			show: {
+				resource: ['searchIndexes'],
+			},
+		},
+		options: [
+			{
+				name: 'Create',
+				value: 'createSearchIndex',
+				action: 'Create Search Index',
+			},
+			{
+				name: 'Drop',
+				value: 'dropSearchIndex',
+				action: 'Drop Search Index',
+			},
+			{
+				name: 'List',
+				value: 'listSearchIndexes',
+				action: 'List Search Indexes',
+			},
+			{
+				name: 'Update',
+				value: 'updateSearchIndex',
+				action: 'Update Search Index',
+			},
+		],
+		default: 'createSearchIndex',
+	},
 	{
 		displayName: 'Collection',
 		name: 'collection',
@@ -75,6 +130,7 @@ export const nodeProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['aggregate'],
+				resource: ['document'],
 			},
 		},
 		default: '',
@@ -97,6 +153,7 @@ export const nodeProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['delete'],
+				resource: ['document'],
 			},
 		},
 		default: '{}',
@@ -115,6 +172,7 @@ export const nodeProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['find'],
+				resource: ['document'],
 			},
 		},
 		default: {},
@@ -175,6 +233,7 @@ export const nodeProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['find'],
+				resource: ['document'],
 			},
 		},
 		default: '{}',
@@ -193,6 +252,7 @@ export const nodeProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['insert'],
+				resource: ['document'],
 			},
 		},
 		default: '',
@@ -210,6 +270,7 @@ export const nodeProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['update', 'findOneAndReplace', 'findOneAndUpdate'],
+				resource: ['document'],
 			},
 		},
 		default: 'id',
@@ -225,6 +286,7 @@ export const nodeProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['update', 'findOneAndReplace', 'findOneAndUpdate'],
+				resource: ['document'],
 			},
 		},
 		default: '',
@@ -238,6 +300,7 @@ export const nodeProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['update', 'findOneAndReplace', 'findOneAndUpdate'],
+				resource: ['document'],
 			},
 		},
 		default: false,
@@ -250,6 +313,7 @@ export const nodeProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['update', 'insert', 'findOneAndReplace', 'findOneAndUpdate'],
+				resource: ['document'],
 			},
 		},
 		placeholder: 'Add option',
@@ -270,5 +334,75 @@ export const nodeProperties: INodeProperties[] = [
 				description: 'Whether to use dot notation to access date fields',
 			},
 		],
+	},
+	{
+		displayName: 'Index Name',
+		name: 'indexName',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: ['listSearchIndexes'],
+				resource: ['searchIndexes'],
+			},
+		},
+		default: '',
+		description: 'If provided, only lists indexes with the specified name',
+	},
+	{
+		displayName: 'Index Name',
+		name: 'indexNameRequired',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: ['createSearchIndex', 'dropSearchIndex', 'updateSearchIndex'],
+				resource: ['searchIndexes'],
+			},
+		},
+		default: '',
+		required: true,
+		description: 'The name of the search index',
+	},
+	{
+		displayName: 'Index Definition',
+		name: 'indexDefinition',
+		type: 'json',
+		displayOptions: {
+			show: {
+				operation: ['createSearchIndex', 'updateSearchIndex'],
+				resource: ['searchIndexes'],
+			},
+		},
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		placeholder: '{ "type": "vectorSearch", "definition": {} }',
+		hint: 'Learn more about search index definitions <a href="https://www.mongodb.com/docs/atlas/atlas-search/index-definitions/">here</a>',
+		default: '{}',
+		required: true,
+		description: 'The search index definition',
+	},
+	{
+		displayName: 'Index Type',
+		name: 'indexType',
+		type: 'options',
+		displayOptions: {
+			show: {
+				operation: ['createSearchIndex'],
+				resource: ['searchIndexes'],
+			},
+		},
+		options: [
+			{
+				value: 'vectorSearch',
+				name: 'Vector Search',
+			},
+			{
+				name: 'Search',
+				value: 'search',
+			},
+		],
+		default: 'vectorSearch',
+		required: true,
+		description: 'The search index index type',
 	},
 ];

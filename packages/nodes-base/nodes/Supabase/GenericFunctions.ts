@@ -3,9 +3,7 @@ import type {
 	ICredentialTestFunctions,
 	IDataObject,
 	IExecuteFunctions,
-	IHookFunctions,
 	ILoadOptionsFunctions,
-	IWebhookFunctions,
 	INodeProperties,
 	IPairedItemData,
 	JsonObject,
@@ -14,8 +12,43 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
+export function getSchemaHeader(
+	context: IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	contextType: 'execute' | 'loadOptions',
+) {
+	let useCustomSchema = false;
+
+	if (contextType === 'loadOptions') {
+		useCustomSchema = context.getNodeParameter('useCustomSchema', false) as boolean;
+	} else {
+		useCustomSchema = context.getNodeParameter('useCustomSchema', 0, false) as boolean;
+	}
+
+	if (useCustomSchema) {
+		let schema: string;
+		const headers: IDataObject = {};
+
+		if (contextType === 'loadOptions') {
+			schema = context.getNodeParameter('schema', 'public') as string;
+		} else {
+			schema = context.getNodeParameter('schema', 0, 'public') as string;
+		}
+
+		if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
+			headers['Content-Profile'] = schema;
+		} else if (['GET', 'HEAD'].includes(method)) {
+			headers['Accept-Profile'] = schema;
+		}
+
+		return headers;
+	}
+
+	return {};
+}
+
 export async function supabaseApiRequest(
-	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject | IDataObject[] = {},
@@ -35,18 +68,20 @@ export async function supabaseApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `${credentials.host}/rest/v1${resource}`,
+		uri: uri ?? `${credentials.host}/rest/v1${resource}`,
 		json: true,
 	};
+
 	try {
-		if (Object.keys(headers).length !== 0) {
-			options.headers = Object.assign({}, options.headers, headers);
-		}
+		options.headers = Object.assign({}, options.headers, headers);
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
 		return await this.helpers.requestWithAuthentication.call(this, 'supabaseApi', options);
 	} catch (error) {
+		if (error.description) {
+			error.message = `${error.message}: ${error.description}`;
+		}
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

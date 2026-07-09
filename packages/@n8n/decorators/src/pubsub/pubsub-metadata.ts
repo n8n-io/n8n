@@ -1,0 +1,67 @@
+import type { InstanceRole, InstanceType } from '@n8n/constants';
+import { Service } from '@n8n/di';
+
+import type { EventHandler } from '../types';
+
+export type PubSubEventName =
+	| 'add-webhooks-triggers-and-pollers'
+	| 'remove-triggers-and-pollers'
+	| 'clear-test-webhooks'
+	| 'display-workflow-activation'
+	| 'display-workflow-deactivation'
+	| 'display-workflow-activation-error'
+	| 'workflow-publish-wake-up'
+	| 'community-package-install'
+	| 'community-package-uninstall'
+	| 'community-package-update'
+	| 'get-worker-status'
+	| 'stop-execution'
+	| 'reload-external-secrets-providers'
+	| 'reload-license'
+	| 'reload-oidc-config'
+	| 'reload-saml-config'
+	| 'reload-overwrite-credentials'
+	| 'response-to-get-worker-status'
+	| 'restart-event-bus'
+	| 'relay-execution-lifecycle-event'
+	| 'relay-chat-stream-event'
+	| 'relay-instance-ai-event'
+	| 'relay-instance-ai-task-control'
+	| 'relay-chat-human-message'
+	| 'relay-chat-message-edit'
+	| 'reload-sso-provisioning-configuration'
+	| 'reload-source-control-config'
+	| 'reload-mcp-registry'
+	| 'reload-otel-config'
+	| 'cancel-test-run'
+	| 'cancel-collection'
+	| 'agent-chat-integration-changed'
+	| 'agent-chat-subscription-changed'
+	| 'agent-config-changed'
+	| 'agent-tasks-changed'
+	| 'redaction-floor-changed';
+
+export type PubSubEventFilter =
+	| {
+			instanceType: 'main';
+			instanceRole?: Omit<InstanceRole, 'unset'>;
+	  }
+	| {
+			instanceType: Omit<InstanceType, 'main'>;
+			instanceRole?: never;
+	  };
+
+type PubSubEventHandler = EventHandler<PubSubEventName> & { filter?: PubSubEventFilter };
+
+@Service()
+export class PubSubMetadata {
+	private readonly handlers: PubSubEventHandler[] = [];
+
+	register(handler: PubSubEventHandler) {
+		this.handlers.push(handler);
+	}
+
+	getHandlers(): PubSubEventHandler[] {
+		return this.handlers;
+	}
+}

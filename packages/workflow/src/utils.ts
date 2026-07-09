@@ -1,15 +1,15 @@
-import {
-	parse as esprimaParse,
-	Syntax,
-	type Node as SyntaxNode,
-	type ExpressionStatement,
-} from 'esprima-next';
+import { parse as esprimaParse, Syntax } from 'esprima-next';
+import type { Node as SyntaxNode, ExpressionStatement } from 'esprima-next';
 import FormData from 'form-data';
-import { merge } from 'lodash';
+import { jsonrepair } from 'jsonrepair';
+import merge from 'lodash/merge';
+import path from 'path';
 
-import { ALPHABET } from './Constants';
-import { ApplicationError } from './errors/application.error';
-import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './Interfaces';
+import { ALPHABET } from './constants';
+import { UserError } from './errors/base/user.error';
+import { ManualExecutionCancelledError } from './errors/execution-cancelled.error';
+import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './interfaces';
+import * as LoggerProxy from './logger-proxy';
 
 const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
 
@@ -18,6 +18,21 @@ const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
 BigInt.prototype.toJSON = function () {
 	return this.toString();
 };
+
+/**
+ * Type guard for plain objects suitable for key-based traversal/serialization.
+ *
+ * Returns `true` for objects whose prototype is `Object.prototype` (object literals)
+ * or `null` (`Object.create(null)`), and `false` for arrays and non-plain objects
+ * such as `Date`, `Map`, `Set`, and class instances.
+ */
+export function isObject(value: unknown): value is Record<string, unknown> {
+	if (value === null || typeof value !== 'object') return false;
+	if (Array.isArray(value)) return false;
+	if (Object.prototype.toString.call(value) !== '[object Object]') return false;
+
+	return Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null;
+}
 
 export const isObjectEmpty = (obj: object | null | undefined): boolean => {
 	if (obj === undefined || obj === null) return true;
@@ -33,6 +48,11 @@ export const isObjectEmpty = (obj: object | null | undefined): boolean => {
 };
 
 export type Primitives = string | number | boolean | bigint | symbol | null | undefined;
+
+// Property keys that must never be copied onto a clone: assigning `__proto__`
+// reassigns the clone's prototype, and `constructor`/`prototype` can shadow
+// built-ins. Source data parsed from JSON can carry these as own properties.
+const reservedCopyKeys = new Set(['__proto__', 'constructor', 'prototype']);
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
 export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string }) | Primitives>(
@@ -66,7 +86,7 @@ export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string })
 	const clone = Object.create(Object.getPrototypeOf({}));
 	hash.set(source, clone);
 	for (const i in source) {
-		if (hasOwnProp(i)) {
+		if (hasOwnProp(i) && !reservedCopyKeys.has(i)) {
 			clone[i] = deepCopy((source as any)[i], hash, path + `.${i}`);
 		}
 	}
@@ -88,6 +108,13 @@ function syntaxNodeToValue(expression?: SyntaxNode | null): unknown {
 			return expression.value;
 		case Syntax.ArrayExpression:
 			return expression.elements.map((exp) => syntaxNodeToValue(exp));
+		case Syntax.UnaryExpression: {
+			const value = syntaxNodeToValue(expression.argument);
+			if (typeof value === 'number' && expression.operator === '-') {
+				return -value;
+			}
+			return value;
+		}
 		default:
 			return undefined;
 	}
@@ -111,7 +138,7 @@ type MutuallyExclusive<T, U> =
 	| (T & { [k in Exclude<keyof U, keyof T>]?: never })
 	| (U & { [k in Exclude<keyof T, keyof U>]?: never });
 
-type JSONParseOptions<T> = { acceptJSObject?: boolean } & MutuallyExclusive<
+type JSONParseOptions<T> = { acceptJSObject?: boolean; repairJSON?: boolean } & MutuallyExclusive<
 	{ errorMessage?: string },
 	{ fallbackValue?: T }
 >;
@@ -122,6 +149,7 @@ type JSONParseOptions<T> = { acceptJSObject?: boolean } & MutuallyExclusive<
  * @param {string} jsonString - The JSON string to parse.
  * @param {Object} [options] - Optional settings for parsing the JSON string. Either `fallbackValue` or `errorMessage` can be set, but not both.
  * @param {boolean} [options.acceptJSObject=false] - If true, attempts to recover from common JSON format errors by parsing the JSON string as a JavaScript Object.
+ * @param {boolean} [options.repairJSON=false] - If true, attempts to repair common JSON format errors by repairing the JSON string.
  * @param {string} [options.errorMessage] - A custom error message to throw if the JSON string cannot be parsed.
  * @param {*} [options.fallbackValue] - A fallback value to return if the JSON string cannot be parsed.
  * @returns {Object} - The parsed object, or the fallback value if parsing fails and `fallbackValue` is set.
@@ -138,13 +166,21 @@ export const jsonParse = <T>(jsonString: string, options?: JSONParseOptions<T>):
 				// Ignore this error and return the original error or the fallback value
 			}
 		}
+		if (options?.repairJSON) {
+			try {
+				const jsonStringCleaned = jsonrepair(jsonString);
+				return JSON.parse(jsonStringCleaned) as T;
+			} catch (e) {
+				// Ignore this error and return the original error or the fallback value
+			}
+		}
 		if (options?.fallbackValue !== undefined) {
 			if (options.fallbackValue instanceof Function) {
 				return options.fallbackValue();
 			}
 			return options.fallbackValue;
 		} else if (options?.errorMessage) {
-			throw new ApplicationError(options.errorMessage);
+			throw new UserError(options.errorMessage);
 		}
 
 		throw error;
@@ -155,6 +191,28 @@ type JSONStringifyOptions = {
 	replaceCircularRefs?: boolean;
 };
 
+/**
+ * Decodes a Base64 string with proper UTF-8 character handling.
+ *
+ * @param str - The Base64 string to decode
+ * @returns The decoded UTF-8 string
+ */
+export const base64DecodeUTF8 = (str: string): string => {
+	try {
+		// Use modern TextDecoder for proper UTF-8 handling
+		const bytes = new Uint8Array(
+			atob(str)
+				.split('')
+				.map((char) => char.charCodeAt(0)),
+		);
+		return new TextDecoder('utf-8').decode(bytes);
+	} catch (error) {
+		// Fallback method for older browsers
+		console.warn('TextDecoder not available, using fallback method');
+		return atob(str);
+	}
+};
+
 export const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSet()): T => {
 	if (typeof value !== 'object' || value === null || value instanceof RegExp) return value;
 	if ('toJSON' in value && typeof value.toJSON === 'function') return value.toJSON() as T;
@@ -162,7 +220,19 @@ export const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSe
 	knownObjects.add(value);
 	const copy = (Array.isArray(value) ? [] : {}) as T;
 	for (const key in value) {
-		copy[key] = replaceCircularReferences(value[key], knownObjects);
+		if (reservedCopyKeys.has(key)) continue;
+		try {
+			copy[key] = replaceCircularReferences(value[key], knownObjects);
+		} catch (error: unknown) {
+			if (
+				error instanceof TypeError &&
+				error.message.includes('Cannot assign to read only property')
+			) {
+				LoggerProxy.error('Error while replacing circular references: ' + error.message, { error });
+				continue; // Skip properties that cannot be assigned to (readonly, non-configurable, etc.)
+			}
+			throw error;
+		}
 	}
 	knownObjects.delete(value);
 	return copy;
@@ -175,6 +245,23 @@ export const jsonStringify = (obj: unknown, options: JSONStringifyOptions = {}):
 export const sleep = async (ms: number): Promise<void> =>
 	await new Promise((resolve) => {
 		setTimeout(resolve, ms);
+	});
+
+export const sleepWithAbort = async (ms: number, abortSignal?: AbortSignal): Promise<void> =>
+	await new Promise((resolve, reject) => {
+		if (abortSignal?.aborted) {
+			reject(new ManualExecutionCancelledError(''));
+			return;
+		}
+
+		const timeout = setTimeout(resolve, ms);
+
+		const abortHandler = () => {
+			clearTimeout(timeout);
+			reject(new ManualExecutionCancelledError(''));
+		};
+
+		abortSignal?.addEventListener('abort', abortHandler, { once: true });
 	});
 
 export function fileTypeFromMimeType(mimeType: string): BinaryFileType | undefined {
@@ -275,4 +362,136 @@ export function randomString(minLength: number, maxLength?: number): string {
 	return [...crypto.getRandomValues(new Uint32Array(length))]
 		.map((byte) => ALPHABET[byte % ALPHABET.length])
 		.join('');
+}
+
+/**
+ * Checks if a value is an object with a specific key and provides a type guard for the key.
+ */
+export function hasKey<T extends PropertyKey>(value: unknown, key: T): value is Record<T, unknown> {
+	return value !== null && typeof value === 'object' && value.hasOwnProperty(key);
+}
+
+const unsafeObjectProperties = new Set([
+	'__proto__',
+	'prototype',
+	'constructor',
+	'getPrototypeOf',
+	'setPrototypeOf',
+	'getOwnPropertyDescriptor',
+	'getOwnPropertyDescriptors',
+	'defineProperty',
+	'defineProperties',
+	'mainModule',
+	'binding',
+	'_linkedBinding',
+	'_load',
+	'prepareStackTrace',
+	'__lookupGetter__',
+	'__lookupSetter__',
+	'__defineGetter__',
+	'__defineSetter__',
+	'caller',
+	'callee',
+	'arguments',
+	'getBuiltinModule',
+	'dlopen',
+	'execve',
+	'loadEnvFile',
+]);
+
+/**
+ * Checks if a property key is safe to use on an object, preventing prototype pollution.
+ * setting untrusted properties can alter the object's prototype chain and introduce vulnerabilities.
+ *
+ * @see setSafeObjectProperty
+ */
+export function isSafeObjectProperty(property: string) {
+	return !unsafeObjectProperties.has(property);
+}
+
+const unsafeObjectPropertyTokenPattern = new RegExp(
+	`\\b(?:${[...unsafeObjectProperties]
+		.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+		.join('|')})\\b`,
+);
+
+export function containsUnsafeObjectPropertyToken(input: string) {
+	return unsafeObjectPropertyTokenPattern.test(input);
+}
+
+/**
+ * Safely sets a property on an object, preventing prototype pollution.
+ *
+ * @see isSafeObjectProperty
+ */
+export function setSafeObjectProperty(
+	target: Record<string, unknown>,
+	property: string,
+	value: unknown,
+) {
+	if (isSafeObjectProperty(property)) {
+		target[property] = value;
+	}
+}
+
+const DANGEROUS_XML_NAMES = new Set(['__proto__', 'constructor', 'prototype']);
+
+export function sanitizeXmlName(name: string) {
+	if (DANGEROUS_XML_NAMES.has(name)) return `sanitized_${name}`;
+
+	return name;
+}
+
+const COMMUNITY_PACKAGE_NAME_REGEX = /^(?!@n8n\/)(@[\w.-]+\/)?n8n-nodes-(?!base\b)\b\w+/g;
+
+export function isCommunityPackageName(packageName: string): boolean {
+	COMMUNITY_PACKAGE_NAME_REGEX.lastIndex = 0;
+	// Community packages names start with <@username/>n8n-nodes- not followed by word 'base'
+	const nameMatch = COMMUNITY_PACKAGE_NAME_REGEX.exec(packageName);
+
+	return !!nameMatch;
+}
+
+export function dedupe<T>(arr: T[]): T[] {
+	return [...new Set(arr)];
+}
+
+/**
+ * Extracts a safe filename from a path or filename string.
+ *
+ * Handles both Unix and Windows path separators, removing directory
+ * components and null bytes to return just the filename.
+ *
+ * @param fileName - The filename or path to sanitize
+ * @returns The extracted filename without path components
+ *
+ * @example
+ * sanitizeFilename('path/to/file.txt') // returns 'file.txt'
+ * sanitizeFilename('/tmp/upload/doc.pdf') // returns 'doc.pdf'
+ * sanitizeFilename('C:\\Users\\file.txt') // returns 'file.txt'
+ * sanitizeFilename('../../../etc/passwd') // returns 'passwd'
+ */
+export function sanitizeFilename(fileName: string): string {
+	// Normalize to forward slashes first to handle Windows paths on Unix
+	const normalized = fileName.replace(/\\/g, '/');
+
+	// Extract just the filename, stripping all directory components
+	let sanitized = path.basename(normalized);
+
+	// Remove null bytes which could be used for null byte injection attacks
+	sanitized = sanitized.replace(/\0/g, '');
+
+	// If the result is empty or just dots, use a default name
+	if (!sanitized || /^\.+$/.test(sanitized)) {
+		sanitized = 'untitled';
+	}
+
+	return sanitized;
+}
+
+/** Generates a cryptographically secure 64-character hex token (256 bits). */
+export function generateSecureToken(): string {
+	const bytes = new Uint8Array(32);
+	crypto.getRandomValues(bytes);
+	return bytes.reduce((hex, byte) => hex + byte.toString(16).padStart(2, '0'), '');
 }

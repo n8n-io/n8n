@@ -1,0 +1,125 @@
+{
+    "type": "object",
+    "properties": {
+        "bio": {
+            "type": "null"
+        },
+        "email": {
+            "type": "string"
+        },
+        "emailProvider": {
+            "type": "boolean"
+        },
+        "employment": {
+            "type": "object",
+            "properties": {
+                "domain": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "facebook": {
+            "type": "object",
+            "properties": {
+                "handle": {
+                    "type": "null"
+                }
+            }
+        },
+        "fuzzy": {
+            "type": "boolean"
+        },
+        "googleplus": {
+            "type": "object",
+            "properties": {
+                "handle": {
+                    "type": "null"
+                }
+            }
+        },
+        "gravatar": {
+            "type": "object",
+            "properties": {
+                "avatars": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "type": {
+                                "type": "string"
+                            },
+                            "url": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "inactiveAt": {
+            "type": "null"
+        },
+        "indexedAt": {
+            "type": "string"
+        },
+        "name": {
+            "type": "object",
+            "properties": {
+                "familyName": {
+                    "type": "string"
+                },
+                "fullName": {
+                    "type": "string"
+                },
+                "givenName": {
+                    "type": "string"
+                }
+            }
+        },
+        "site": {
+            "type": "null"
+        },
+        "twitter": {
+            "type": "object",
+            "properties": {
+                "avatar": {
+                    "type": "null"
+                },
+                "bio": {
+                    "type": "null"
+                },
+                "favorites": {
+                    "type": "null"
+                },
+                "followers": {
+                    "type": "null"
+                },
+                "following": {
+                    "type": "null"
+                },
+                "handle": {
+                    "type": "null"
+                },
+                "id": {
+                    "type": "null"
+                },
+                "location": {
+                    "type": "null"
+                },
+                "site": {
+                    "type": "null"
+                },
+                "statuses": {
+                    "type": "null"
+                }
+            }
+        }
+    },
+    "version": 1
+}

@@ -71,7 +71,9 @@ export async function notionApiRequest(
 			delete options.body;
 		}
 		if (!uri) {
-			return await this.helpers.requestWithAuthentication.call(this, 'notionApi', options);
+			const authentication = this.getNodeParameter('authentication', 0, 'apiKey') as string;
+			const credentialType = authentication === 'oAuth2' ? 'notionOAuth2Api' : 'notionApi';
+			return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 		}
 		return await this.helpers.request(options);
 	} catch (error) {
@@ -89,6 +91,9 @@ export async function notionApiRequestAllItems(
 ): Promise<any> {
 	const resource = this.getNodeParameter('resource', 0);
 
+	const limit = query.limit as number | undefined;
+	delete query.limit;
+
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -102,13 +107,12 @@ export async function notionApiRequestAllItems(
 			body.start_cursor = next_cursor;
 		}
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
-		const limit = query.limit as number | undefined;
 		if (limit && limit <= returnData.length) {
-			return returnData;
+			return returnData.slice(0, limit);
 		}
 	} while (responseData.has_more !== false);
 
-	return returnData;
+	return limit ? returnData.slice(0, limit) : returnData;
 }
 
 export async function notionApiRequestGetBlockChildrens(
@@ -122,7 +126,7 @@ export async function notionApiRequestGetBlockChildrens(
 	for (const block of blocks) {
 		responseData.push(block);
 
-		if (block.type === 'child_page') continue;
+		if (block.type === 'child_page' || block.type === 'unsupported') continue;
 
 		if (block.has_children) {
 			let childrens = await notionApiRequestAllItems.call(
@@ -271,8 +275,7 @@ function getTexts(texts: TextData[]) {
 					type: 'mention',
 					mention: {
 						type: text.mentionType,
-						//@ts-expect-error any
-						[text.mentionType]: { id: text[text.mentionType] as string },
+						[text.mentionType]: { id: text[text.mentionType as keyof TextData] as string },
 					},
 					annotations: text.annotationUi,
 				});
@@ -763,7 +766,7 @@ export function getConditions() {
 		number: [
 			'equals',
 			'does_not_equal',
-			'grater_than',
+			'greater_than',
 			'less_than',
 			'greater_than_or_equal_to',
 			'less_than_or_equal_to',
@@ -923,10 +926,10 @@ export function getPageId(this: IExecuteFunctions, i: number) {
 		if (page.mode === 'id') {
 			pageId = page.value;
 		} else if (page.value.includes('p=')) {
-			// e.g https://www.notion.so/xxxxx?v=xxxxx&p=xxxxx&pm=s
+			// e.g https://www.notion.so/xxxxx?v=xxxxx&p=xxxxx&pm=s or https://www.notion.com/xxxxx?v=xxxxx&p=xxxxx&pm=s
 			pageId = new URLSearchParams(page.value).get('p') || '';
 		} else {
-			// e.g https://www.notion.so/page_name-xxxxx
+			// e.g https://www.notion.so/page_name-xxxxx or https://www.notion.com/page_name-xxxxx
 			pageId = page.value.match(databasePageUrlValidationRegexp)?.[1] || '';
 		}
 	}

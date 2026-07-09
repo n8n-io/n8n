@@ -1,14 +1,13 @@
-import nock from 'nock';
-
 import * as search from '../../../../v2/actions/record/search.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction } from '../helpers';
+import type * as _importType0 from '../../../../v2/transport';
 
-jest.mock('../../../../v2/transport', () => {
-	const originalModule = jest.requireActual('../../../../v2/transport');
+vi.mock('../../../../v2/transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../../../v2/transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async function (method: string) {
+		apiRequest: vi.fn(async function (method: string) {
 			if (method === 'GET') {
 				return {
 					records: [
@@ -23,7 +22,7 @@ jest.mock('../../../../v2/transport', () => {
 				};
 			}
 		}),
-		apiRequestAllItems: jest.fn(async function (method: string) {
+		apiRequestAllItems: vi.fn(async function (method: string) {
 			if (method === 'GET') {
 				return {
 					records: [
@@ -45,20 +44,27 @@ jest.mock('../../../../v2/transport', () => {
 				};
 			}
 		}),
+		downloadRecordAttachments: vi.fn(async function () {
+			return [
+				{
+					json: {
+						id: 'recYYY',
+						fields: {
+							foo: 'foo 2',
+							bar: 'bar 2',
+							attachment: [{ url: 'http://example.com/file.png' }],
+						},
+					},
+					binary: { attachment_0: { data: 'binary-data' } },
+					pairedItem: [{ item: 0 }],
+				},
+			];
+		}),
 	};
 });
 
 describe('Test AirtableV2, search operation', () => {
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../../../../v2/transport');
-	});
-
-	it('should return all records', async () => {
+	it('should return all records using nested fields structure for v2.2', async () => {
 		const nodeParameters = {
 			operation: 'search',
 			filterByFormula: 'foo',
@@ -108,7 +114,7 @@ describe('Test AirtableV2, search operation', () => {
 
 		expect(result).toHaveLength(2);
 		expect(result[0]).toEqual({
-			json: { id: 'recYYY', foo: 'foo 2', bar: 'bar 2' },
+			json: { id: 'recYYY', fields: { foo: 'foo 2', bar: 'bar 2' } },
 			pairedItem: [
 				{
 					item: 0,
@@ -117,7 +123,7 @@ describe('Test AirtableV2, search operation', () => {
 		});
 	});
 
-	it('should return all records', async () => {
+	it('should return limited records using nested fields structure for v2.2', async () => {
 		const nodeParameters = {
 			operation: 'search',
 			filterByFormula: 'foo',
@@ -148,6 +154,116 @@ describe('Test AirtableV2, search operation', () => {
 			'appYoLbase/tblltable',
 			{},
 			{ fields: ['foo', 'bar'], filterByFormula: 'foo', maxRecords: 1 },
+		);
+
+		expect(result).toHaveLength(1);
+		expect(result[0]).toEqual({
+			json: { id: 'recYYY', fields: { foo: 'foo 2', bar: 'bar 2' } },
+			pairedItem: [
+				{
+					item: 0,
+				},
+			],
+		});
+	});
+
+	afterEach(() => vi.clearAllMocks());
+
+	it('should search records with attachments and nested fields structure for v2.2', async () => {
+		const nodeParameters = {
+			operation: 'search',
+			filterByFormula: 'foo',
+			returnAll: false,
+			limit: 1,
+			options: {
+				fields: ['foo', 'bar'],
+				downloadFields: ['attachment'],
+			},
+			sort: {},
+		};
+
+		const items = [{ json: {} }];
+
+		const result = await search.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			items,
+			'appYoLbase',
+			'tblltable',
+		);
+
+		expect(transport.downloadRecordAttachments).toHaveBeenCalledTimes(1);
+		expect(result).toEqual([
+			{
+				json: {
+					id: 'recYYY',
+					fields: {
+						foo: 'foo 2',
+						bar: 'bar 2',
+						attachment: [{ url: 'http://example.com/file.png' }],
+					},
+				},
+				binary: { attachment_0: { data: 'binary-data' } },
+				pairedItem: [{ item: 0 }],
+			},
+		]);
+	});
+
+	it('should search records with attachments and flatten output for v2', async () => {
+		const nodeParameters = {
+			operation: 'search',
+			filterByFormula: 'foo',
+			returnAll: false,
+			limit: 1,
+			options: {
+				fields: ['foo', 'bar'],
+				downloadFields: ['attachment'],
+			},
+			sort: {},
+		};
+
+		const items = [{ json: {} }];
+
+		const result = await search.execute.call(
+			createMockExecuteFunction(nodeParameters, 2),
+			items,
+			'appYoLbase',
+			'tblltable',
+		);
+
+		expect(transport.downloadRecordAttachments).toHaveBeenCalledTimes(1);
+		expect(result).toEqual([
+			{
+				json: {
+					id: 'recYYY',
+					foo: 'foo 2',
+					bar: 'bar 2',
+					attachment: [{ url: 'http://example.com/file.png' }],
+				},
+				binary: { attachment_0: { data: 'binary-data' } },
+				pairedItem: [{ item: 0 }],
+			},
+		]);
+	});
+
+	it('should flatten output for v2', async () => {
+		const nodeParameters = {
+			operation: 'search',
+			filterByFormula: 'foo',
+			returnAll: false,
+			limit: 1,
+			options: {
+				fields: ['foo', 'bar'],
+			},
+			sort: {},
+		};
+
+		const items = [{ json: {} }];
+
+		const result = await search.execute.call(
+			createMockExecuteFunction(nodeParameters, 2),
+			items,
+			'appYoLbase',
+			'tblltable',
 		);
 
 		expect(result).toHaveLength(1);

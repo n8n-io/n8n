@@ -1,0 +1,662 @@
+import { createComponentRenderer } from '@/__tests__/render';
+import { type MockedStore, mockedStore } from '@/__tests__/utils';
+import { VIEWS } from '@/app/constants';
+import {
+	createCanvasNodeProvide,
+	createCanvasProvide,
+} from '@/features/workflows/canvas/__tests__/utils';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { createTestingPinia } from '@pinia/testing';
+import { fireEvent } from '@testing-library/vue';
+import { NodeConnectionTypes, type IPinData } from 'n8n-workflow';
+import { computed, type ComputedRef } from 'vue';
+import { setActivePinia } from 'pinia';
+import type * as actualVueRouter from 'vue-router';
+import { type RouteLocationNormalizedLoadedGeneric, useRoute } from 'vue-router';
+import {
+	CanvasConnectionMode,
+	CanvasNodeRenderType,
+	type CanvasConnectionPort,
+} from '../../../../canvas.types';
+import CanvasNodeDefault from './CanvasNodeDefault.vue';
+
+vi.mock('vue-router', async (importOriginal) => {
+	const actual = await importOriginal();
+	return {
+		...(actual as typeof actualVueRouter),
+		useRoute: vi.fn(),
+	};
+});
+
+const renderNodeInputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
+const renderNodeOutputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
+const pinnedDataByNodeName: IPinData = {};
+const executionPinDataByNodeName: IPinData = {};
+let isExecutionDataDisplayed = false;
+
+vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>();
+	return {
+		...actual,
+		injectCanvasRenderData: vi.fn(() => ({
+			value: actual.createEmptyCanvasRenderData({
+				nodeInputsByNodeId: renderNodeInputsMap,
+				nodeOutputsByNodeId: renderNodeOutputsMap,
+				pinnedDataByNodeName,
+				executionPinDataByNodeName,
+				isExecutionDataDisplayed,
+			}),
+		})),
+	};
+});
+
+vi.mock('@/features/resolvers/composables/useNodePrivateCredential', () => ({
+	useNodePrivateCredential: vi.fn(),
+}));
+
+import { useNodePrivateCredential } from '@/features/resolvers/composables/useNodePrivateCredential';
+
+const stubs = {
+	NodeIcon: {
+		template:
+			'<node-icon-stub :data-badge-name="iconSource?.badge?.name" :data-badge-tooltip="iconSource?.badge?.tooltip" :icon-source="iconSource" :size="size" :shrink="shrink" :disabled="disabled"></node-icon-stub>',
+		props: ['icon-source', 'size', 'shrink', 'disabled'],
+	},
+};
+
+const renderComponent = createComponentRenderer(CanvasNodeDefault, {
+	global: {
+		stubs,
+		provide: {
+			...createCanvasProvide(),
+		},
+	},
+});
+
+let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
+const mockedUseRoute = vi.mocked(useRoute);
+
+beforeEach(() => {
+	vi.clearAllMocks();
+	renderNodeInputsMap.clear();
+	renderNodeOutputsMap.clear();
+	for (const key of Object.keys(pinnedDataByNodeName)) {
+		delete pinnedDataByNodeName[key];
+	}
+	for (const key of Object.keys(executionPinDataByNodeName)) {
+		delete executionPinDataByNodeName[key];
+	}
+	isExecutionDataDisplayed = false;
+	const pinia = createTestingPinia();
+	setActivePinia(pinia);
+	nodeTypesStore = mockedStore(useNodeTypesStore);
+	mockedUseRoute.mockReturnValue({} as RouteLocationNormalizedLoadedGeneric);
+	vi.mocked(useNodePrivateCredential).mockReturnValue({
+		hasPrivateCredential: computed(() => false),
+		tooltipText: computed(() => ''),
+	});
+});
+
+describe('CanvasNodeDefault', () => {
+	it('should render node correctly', () => {
+		const { getByTestId } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasNodeProvide(),
+				},
+				stubs,
+			},
+		});
+
+		expect(getByTestId('canvas-default-node')).toMatchSnapshot();
+	});
+
+	describe('private credential', () => {
+		it('shows the private-credential icon (with tooltip) as the node badge, replacing the node badge', () => {
+			vi.mocked(useNodePrivateCredential).mockReturnValue({
+				hasPrivateCredential: computed(() => true),
+				tooltipText: computed(
+					() => 'This node uses private credentials that are resolved at runtime.',
+				),
+			});
+
+			const { getByTestId } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								render: {
+									type: CanvasNodeRenderType.Default,
+									options: { icon: { type: 'file', src: 'https://example.com/icon.png' } },
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			const nodeIcon = getByTestId('canvas-default-node').querySelector('node-icon-stub');
+			expect(nodeIcon).toHaveAttribute('data-badge-name', 'user-round-key');
+			expect(nodeIcon).toHaveAttribute(
+				'data-badge-tooltip',
+				'This node uses private credentials that are resolved at runtime.',
+			);
+		});
+	});
+
+	describe('inputs and outputs', () => {
+		it.each([
+			[1, 1, '96px'],
+			[1, 3, '128px'],
+			[1, 4, '160px'],
+			[3, 1, '128px'],
+			[4, 1, '160px'],
+			[4, 4, '160px'],
+		])(
+			'should adjust height css variable based on the number of inputs and outputs (%i inputs, %i outputs)',
+			(inputCount, outputCount, expected) => {
+				renderNodeInputsMap.set(
+					'node',
+					computed(() =>
+						Array.from({ length: inputCount }, () => ({
+							type: NodeConnectionTypes.Main,
+							index: 0,
+						})),
+					),
+				);
+				renderNodeOutputsMap.set(
+					'node',
+					computed(() =>
+						Array.from({ length: outputCount }, () => ({
+							type: NodeConnectionTypes.Main,
+							index: 0,
+						})),
+					),
+				);
+
+				const { getByText } = renderComponent({
+					global: {
+						stubs,
+						provide: {
+							...createCanvasNodeProvide(),
+						},
+					},
+				});
+
+				const nodeElement = getByText('Test Node').closest('.node');
+				expect(nodeElement).toHaveStyle({ '--canvas-node--height': expected });
+			},
+		);
+	});
+
+	describe('selected', () => {
+		it('should apply selected class when node is selected', () => {
+			const { getByText } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({ selected: true }),
+					},
+				},
+			});
+			expect(getByText('Test Node').closest('.node')).toHaveClass('selected');
+		});
+
+		it('should not apply selected class when node is not selected', () => {
+			const { getByText } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide(),
+					},
+				},
+			});
+			expect(getByText('Test Node').closest('.node')).not.toHaveClass('selected');
+		});
+	});
+
+	describe('disabled', () => {
+		it('should apply disabled class when node is disabled', () => {
+			const { getByText } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								disabled: true,
+							},
+						}),
+					},
+				},
+			});
+
+			expect(getByText('Test Node').closest('.node')).toHaveClass('disabled');
+			expect(getByText('(Deactivated)')).toBeVisible();
+		});
+
+		it('should apply disabled class when node is not installed', () => {
+			nodeTypesStore.getIsNodeInstalled = vi.fn().mockReturnValue(false);
+			const { getByText } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide({ data: { type: 'n8n-nodes-test.testNode' } }),
+					},
+				},
+			});
+			expect(getByText('Test Node').closest('.node')).toHaveClass('disabled');
+		});
+
+		it('should not apply disabled class when node is not installed and route is demo', () => {
+			mockedUseRoute.mockReturnValue({
+				name: VIEWS.DEMO,
+			} as RouteLocationNormalizedLoadedGeneric);
+			nodeTypesStore.getIsNodeInstalled = vi.fn().mockReturnValue(false);
+			const { getByText } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide({ data: { type: 'n8n-nodes-test.testNode' } }),
+					},
+				},
+			});
+			expect(getByText('Test Node').closest('.node')).not.toHaveClass('disabled');
+		});
+
+		it('should not apply disabled class when node is enabled', () => {
+			const { getByText } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide(),
+					},
+				},
+			});
+			expect(getByText('Test Node').closest('.node')).not.toHaveClass('disabled');
+		});
+
+		it('should render strike-through when node is disabled and has node input and output handles', () => {
+			renderNodeInputsMap.set(
+				'node',
+				computed(() => [{ type: NodeConnectionTypes.Main, index: 0 }]),
+			);
+			renderNodeOutputsMap.set(
+				'node',
+				computed(() => [{ type: NodeConnectionTypes.Main, index: 0 }]),
+			);
+
+			const { container } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								disabled: true,
+								connections: {
+									[CanvasConnectionMode.Input]: {
+										[NodeConnectionTypes.Main]: [
+											[{ node: 'node', type: NodeConnectionTypes.Main, index: 0 }],
+										],
+									},
+									[CanvasConnectionMode.Output]: {
+										[NodeConnectionTypes.Main]: [
+											[{ node: 'node', type: NodeConnectionTypes.Main, index: 0 }],
+										],
+									},
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			expect(container.querySelector('.disabledStrikeThrough')).toBeVisible();
+		});
+	});
+
+	describe('waiting', () => {
+		it('should apply waiting class when node is waiting', () => {
+			const { getByText } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({ data: { execution: { running: true, waiting: '123' } } }),
+					},
+				},
+			});
+			expect(getByText('Test Node').closest('.node')).toHaveClass('waiting');
+		});
+	});
+
+	describe('running', () => {
+		it('should apply running class when node is running', () => {
+			const { getByText } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({ data: { execution: { running: true } } }),
+					},
+				},
+			});
+			expect(getByText('Test Node').closest('.node')).toHaveClass('running');
+		});
+	});
+
+	describe('execution pin data', () => {
+		it('should apply pinned styling instead of success styling when node output used execution pin data', () => {
+			executionPinDataByNodeName['Test Node'] = [{ json: { ok: true } }];
+			isExecutionDataDisplayed = true;
+
+			const { getByText } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								execution: { status: 'success', running: false },
+								runData: { outputMap: {}, iterations: 1, visible: true },
+							},
+						}),
+					},
+				},
+			});
+
+			const nodeElement = getByText('Test Node').closest('.node');
+			expect(nodeElement).toHaveClass('pinned');
+			expect(nodeElement).not.toHaveClass('success');
+		});
+
+		it('should ignore workflow pin data when displaying an execution without pin data for the node', () => {
+			pinnedDataByNodeName['Test Node'] = [{ json: { stale: true } }];
+			isExecutionDataDisplayed = true;
+
+			const { getByText } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								execution: { status: 'success', running: false },
+								runData: { outputMap: {}, iterations: 1, visible: true },
+							},
+						}),
+					},
+				},
+			});
+
+			const nodeElement = getByText('Test Node').closest('.node');
+			expect(nodeElement).not.toHaveClass('pinned');
+			expect(nodeElement).toHaveClass('success');
+		});
+
+		it('should ignore execution pin data outside execution preview mode', () => {
+			executionPinDataByNodeName['Test Node'] = [{ json: { ok: true } }];
+
+			const { getByText } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								execution: { status: 'success', running: false },
+								runData: { outputMap: {}, iterations: 1, visible: true },
+							},
+						}),
+					},
+				},
+			});
+
+			const nodeElement = getByText('Test Node').closest('.node');
+			expect(nodeElement).not.toHaveClass('pinned');
+			expect(nodeElement).toHaveClass('success');
+		});
+	});
+
+	describe('configurable', () => {
+		it('should render configurable node correctly', () => {
+			const { getByTestId } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								render: {
+									type: CanvasNodeRenderType.Default,
+									options: { configurable: true },
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			expect(getByTestId('canvas-configurable-node')).toMatchSnapshot();
+		});
+
+		describe('inputs', () => {
+			it.each([
+				[
+					'1 required',
+					[{ type: NodeConnectionTypes.AiLanguageModel, index: 0, required: true }],
+					'224px',
+				],
+				[
+					'2 required, 1 optional',
+					[
+						{ type: NodeConnectionTypes.AiTool, index: 0 },
+						{ type: NodeConnectionTypes.AiDocument, index: 0, required: true },
+						{ type: NodeConnectionTypes.AiMemory, index: 0, required: true },
+					],
+					'224px',
+				],
+				[
+					'2 required, 2 optional',
+					[
+						{ type: NodeConnectionTypes.AiTool, index: 0 },
+						{ type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+						{ type: NodeConnectionTypes.AiDocument, index: 0, required: true },
+						{ type: NodeConnectionTypes.AiMemory, index: 0, required: true },
+					],
+					'224px',
+				],
+				[
+					'1 required, 4 optional',
+					[
+						{ type: NodeConnectionTypes.AiLanguageModel, index: 0, required: true },
+						{ type: NodeConnectionTypes.AiTool, index: 0 },
+						{ type: NodeConnectionTypes.AiDocument, index: 0 },
+						{ type: NodeConnectionTypes.AiMemory, index: 0 },
+						{ type: NodeConnectionTypes.AiMemory, index: 0 },
+					],
+					'272px',
+				],
+			])(
+				'should adjust width css variable based on the number of non-main inputs (%s)',
+				(_, nonMainInputs, expected) => {
+					renderNodeInputsMap.set(
+						'node',
+						computed(() => [
+							{ type: NodeConnectionTypes.Main, index: 0 },
+							...(nonMainInputs as CanvasConnectionPort[]),
+						]),
+					);
+
+					const { getByText } = renderComponent({
+						global: {
+							stubs,
+							provide: {
+								...createCanvasNodeProvide({
+									data: {
+										render: {
+											type: CanvasNodeRenderType.Default,
+											options: {
+												configurable: true,
+											},
+										},
+									},
+								}),
+							},
+						},
+					});
+
+					const nodeElement = getByText('Test Node').closest('.node');
+					expect(nodeElement).toHaveStyle({ '--canvas-node--width': expected });
+				},
+			);
+		});
+	});
+
+	describe('configuration', () => {
+		it('should render configuration node correctly', () => {
+			const { getByTestId } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								render: {
+									type: CanvasNodeRenderType.Default,
+									options: { configuration: true },
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			expect(getByTestId('canvas-configuration-node')).toMatchSnapshot();
+		});
+
+		it('should render configurable configuration node correctly', () => {
+			const { getByTestId } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								render: {
+									type: CanvasNodeRenderType.Default,
+									options: { configurable: true, configuration: true },
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			expect(getByTestId('canvas-configurable-node')).toMatchSnapshot();
+		});
+	});
+
+	describe('trigger', () => {
+		it('should render trigger node correctly', () => {
+			const { getByTestId } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								render: {
+									type: CanvasNodeRenderType.Default,
+									options: { trigger: true },
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			expect(getByTestId('canvas-trigger-node')).toMatchSnapshot();
+		});
+	});
+
+	it('should emit "activate" on double click', async () => {
+		const { getByText, emitted } = renderComponent({
+			global: {
+				stubs,
+				provide: {
+					...createCanvasNodeProvide(),
+				},
+			},
+		});
+
+		await fireEvent.dblClick(getByText('Test Node'));
+
+		expect(emitted()).toHaveProperty('activate');
+	});
+
+	describe('placeholder node', () => {
+		it('should emit "replace:node" event when placeholder node is double-clicked', async () => {
+			const nodeId = 'placeholder-node-id';
+			const { getByText, emitted } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							id: nodeId,
+							data: {
+								render: {
+									type: CanvasNodeRenderType.Default,
+									options: { placeholder: true },
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			await fireEvent.dblClick(getByText('Test Node'));
+
+			expect(emitted()).toHaveProperty('replace:node');
+			expect(emitted('replace:node')?.[0]).toEqual([nodeId]);
+		});
+
+		it('should emit "replace:node" instead of "activate" when placeholder node is double-clicked', async () => {
+			const nodeId = 'placeholder-node-id-2';
+			const { getByText, emitted } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							id: nodeId,
+							data: {
+								render: {
+									type: CanvasNodeRenderType.Default,
+									options: { placeholder: true },
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			await fireEvent.dblClick(getByText('Test Node'));
+
+			// Placeholder nodes should emit replace:node, not activate
+			expect(emitted()).toHaveProperty('replace:node');
+			expect(emitted()).not.toHaveProperty('activate');
+			expect(emitted('replace:node')?.[0]).toEqual([nodeId]);
+		});
+
+		it('should not emit "replace:node" when non-placeholder node is clicked', async () => {
+			const { getByText, emitted } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								render: {
+									type: CanvasNodeRenderType.Default,
+									options: { placeholder: false },
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			await fireEvent.click(getByText('Test Node'));
+
+			expect(emitted()).not.toHaveProperty('replace:node');
+		});
+	});
+});

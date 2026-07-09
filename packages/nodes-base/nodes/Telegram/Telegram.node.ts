@@ -1,3 +1,4 @@
+import { lookup } from 'mime-types';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -5,12 +6,31 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IHttpRequestMethods,
+	JsonObject,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import {
+	BINARY_ENCODING,
+	SEND_AND_WAIT_OPERATION,
+	NodeConnectionTypes,
+	NodeOperationError,
+} from 'n8n-workflow';
 import type { Readable } from 'stream';
 
-import { addAdditionalFields, apiRequest, getPropertyName } from './GenericFunctions';
+import {
+	addAdditionalFields,
+	addReplyMarkup,
+	apiRequest,
+	createSendAndWaitMessageBody,
+	getPropertyName,
+} from './GenericFunctions';
 import { appendAttributionOption } from '../../utils/descriptions';
+import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
+import { sendAndWaitWebhooksDescription } from '../../utils/sendAndWait/descriptions';
+import {
+	getSendAndWaitProperties,
+	SEND_AND_WAIT_WAITING_TOOLTIP,
+	sendAndWaitWebhook,
+} from '../../utils/sendAndWait/utils';
 
 export class Telegram implements INodeType {
 	description: INodeTypeDescription = {
@@ -25,14 +45,16 @@ export class Telegram implements INodeType {
 			name: 'Telegram',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'telegramApi',
 				required: true,
 			},
 		],
+		waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
+		webhooks: sendAndWaitWebhooksDescription,
 		properties: [
 			{
 				displayName: 'Resource',
@@ -213,7 +235,7 @@ export class Telegram implements INodeType {
 						name: 'Edit Message Text',
 						value: 'editMessageText',
 						description: 'Edit a text message',
-						action: 'Edit a test message',
+						action: 'Edit a text message',
 					},
 					{
 						name: 'Pin Chat Message',
@@ -262,6 +284,31 @@ export class Telegram implements INodeType {
 						value: 'sendMessage',
 						description: 'Send a text message',
 						action: 'Send a text message',
+					},
+					{
+						name: 'Send Message Draft',
+						value: 'sendMessageDraft',
+						description: 'Stream a partial message preview while it is being generated',
+						action: 'Send a message draft',
+					},
+					{
+						name: 'Send Rich Message',
+						value: 'sendRichMessage',
+						description:
+							'Send a richly formatted message with headings, lists, tables, media and more',
+						action: 'Send a rich message',
+					},
+					{
+						name: 'Send Rich Message Draft',
+						value: 'sendRichMessageDraft',
+						description: 'Stream a partial rich message preview while it is being generated',
+						action: 'Send a rich message draft',
+					},
+					{
+						name: 'Send and Wait for Response',
+						value: SEND_AND_WAIT_OPERATION,
+						description: 'Send a message and wait for response',
+						action: 'Send message and wait for response',
 					},
 					{
 						name: 'Send Photo',
@@ -317,8 +364,11 @@ export class Telegram implements INodeType {
 							'sendDocument',
 							'sendLocation',
 							'sendMessage',
+							'sendMessageDraft',
 							'sendMediaGroup',
 							'sendPhoto',
+							'sendRichMessage',
+							'sendRichMessageDraft',
 							'sendSticker',
 							'sendVideo',
 							'unpinChatMessage',
@@ -328,7 +378,7 @@ export class Telegram implements INodeType {
 				},
 				required: true,
 				description:
-					'Unique identifier for the target chat or username of the target channel (in the format @channelusername)',
+					'Unique identifier for the target chat or username, To find your chat ID ask @get_id_bot',
 			},
 
 			// ----------------------------------
@@ -636,6 +686,31 @@ export class Telegram implements INodeType {
 				default: true,
 				description: 'Whether to download the file',
 			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: ['get'],
+						resource: ['file'],
+						download: [true],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'MIME Type',
+						name: 'mimeType',
+						type: 'string',
+						placeholder: 'image/jpeg',
+						default: '',
+						description:
+							'The MIME type of the file. If not specified, the MIME type will be determined by the file extension.',
+					},
+				],
+			},
 
 			// ----------------------------------
 			//         message
@@ -683,7 +758,7 @@ export class Telegram implements INodeType {
 				},
 				required: true,
 				description:
-					'Unique identifier for the target chat or username of the target channel (in the format @channelusername). To find your chat ID ask @get_id_bot.',
+					'Unique identifier for the target chat or username, To find your chat ID ask @get_id_bot',
 			},
 			// ----------------------------------
 			//         message:sendAnimation/sendAudio/sendDocument/sendPhoto/sendSticker/sendVideo
@@ -1123,6 +1198,52 @@ export class Telegram implements INodeType {
 			},
 
 			// ----------------------------------
+			//   message:sendRichMessage/sendRichMessageDraft
+			// ----------------------------------
+			{
+				displayName: 'Format',
+				name: 'richFormat',
+				type: 'options',
+				options: [
+					{
+						name: 'Markdown',
+						value: 'markdown',
+					},
+					{
+						name: 'HTML',
+						value: 'html',
+					},
+				],
+				default: 'html',
+				displayOptions: {
+					show: {
+						operation: ['sendRichMessage', 'sendRichMessageDraft'],
+						resource: ['message'],
+					},
+				},
+				description: 'Which formatting syntax the rich message content uses',
+			},
+			{
+				displayName: 'Rich Message',
+				name: 'richMessageText',
+				type: 'string',
+				typeOptions: {
+					rows: 6,
+				},
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['sendRichMessage', 'sendRichMessageDraft'],
+						resource: ['message'],
+					},
+				},
+				description:
+					'Content of the rich message, written in the selected Markdown or HTML syntax. Supports headings, lists, tables, block quotes, media, collapsible blocks and more.',
+				hint: 'Limits: up to 32768 characters, 500 blocks and 50 media attachments',
+			},
+
+			// ----------------------------------
 			//         message:editMessageText/sendAnimation/sendAudio/sendLocation/sendMessage/sendPhoto/sendSticker/sendVideo
 			// ----------------------------------
 
@@ -1136,6 +1257,7 @@ export class Telegram implements INodeType {
 							'sendDocument',
 							'sendMessage',
 							'sendPhoto',
+							'sendRichMessage',
 							'sendSticker',
 							'sendVideo',
 							'sendAudio',
@@ -1735,8 +1857,192 @@ export class Telegram implements INodeType {
 					},
 				],
 			},
+
+			// ----------------------------------
+			//   message:sendMessageDraft/sendRichMessageDraft
+			// ----------------------------------
+			{
+				displayName: 'Draft ID',
+				name: 'draftId',
+				type: 'number',
+				default: 1,
+				displayOptions: {
+					show: {
+						operation: ['sendMessageDraft', 'sendRichMessageDraft'],
+						resource: ['message'],
+					},
+				},
+				required: true,
+				description:
+					'Unique identifier of the message draft; must be non-zero. Updates streamed with the same draft ID are animated.',
+			},
+
+			// ----------------------------------
+			//         message:sendMessageDraft
+			// ----------------------------------
+			{
+				displayName: 'Text',
+				name: 'text',
+				type: 'string',
+				typeOptions: {
+					rows: 5,
+				},
+				default: '',
+				displayOptions: {
+					show: {
+						operation: ['sendMessageDraft'],
+						resource: ['message'],
+					},
+				},
+				description: 'Text of the message draft, 0-4096 characters',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: ['sendMessageDraft'],
+						resource: ['message'],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Message Thread ID',
+						name: 'message_thread_id',
+						type: 'number',
+						default: 0,
+						description: 'The unique identifier of the forum topic',
+					},
+					{
+						displayName: 'Parse Mode',
+						name: 'parse_mode',
+						type: 'options',
+						options: [
+							{
+								name: 'Markdown (Legacy)',
+								value: 'Markdown',
+							},
+							{
+								name: 'MarkdownV2',
+								value: 'MarkdownV2',
+							},
+							{
+								name: 'HTML',
+								value: 'HTML',
+							},
+						],
+						default: 'HTML',
+						description: 'How to parse the text',
+					},
+				],
+			},
+
+			// ----------------------------------
+			//   message:sendRichMessage/sendRichMessageDraft additional fields
+			// ----------------------------------
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: ['sendRichMessage', 'sendRichMessageDraft'],
+						resource: ['message'],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Disable Notification',
+						name: 'disable_notification',
+						type: 'boolean',
+						default: false,
+						displayOptions: {
+							show: {
+								'/operation': ['sendRichMessage'],
+							},
+						},
+						description:
+							'Whether to send the message silently. Users will receive a notification with no sound.',
+					},
+					{
+						displayName: 'Message Effect ID',
+						name: 'message_effect_id',
+						type: 'string',
+						default: '',
+						displayOptions: {
+							show: {
+								'/operation': ['sendRichMessage'],
+							},
+						},
+						description:
+							'Unique identifier of the message effect to be added to the message; for private chats only',
+					},
+					{
+						displayName: 'Message Thread ID',
+						name: 'message_thread_id',
+						type: 'number',
+						default: 0,
+						description: 'The unique identifier of the forum topic',
+					},
+					{
+						displayName: 'Protect Content',
+						name: 'protect_content',
+						type: 'boolean',
+						default: false,
+						displayOptions: {
+							show: {
+								'/operation': ['sendRichMessage'],
+							},
+						},
+						description:
+							'Whether to protect the contents of the sent message from forwarding and saving',
+					},
+					{
+						displayName: 'Right-to-Left',
+						name: 'is_rtl',
+						type: 'boolean',
+						default: false,
+						description: 'Whether the rich message must be shown right-to-left',
+					},
+					{
+						displayName: 'Skip Entity Detection',
+						name: 'skip_entity_detection',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether to skip automatic detection of entities such as URLs, emails, mentions, hashtags and phone numbers',
+					},
+				],
+			},
+			...getSendAndWaitProperties(
+				[
+					{
+						displayName: 'Chat ID',
+						name: 'chatId',
+						type: 'string',
+						default: '',
+						required: true,
+						description:
+							'Unique identifier for the target chat or username of the target channel (in the format @channelusername). To find your chat ID ask @get_id_bot.',
+					},
+				],
+				'message',
+				undefined,
+				{
+					noButtonStyle: true,
+					defaultApproveLabel: '✅ Approve',
+					defaultDisapproveLabel: '❌ Decline',
+				},
+			).filter((p) => p.name !== 'subject'),
 		],
 	};
+
+	webhook = sendAndWaitWebhook;
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -1756,6 +2062,24 @@ export class Telegram implements INodeType {
 
 		const nodeVersion = this.getNode().typeVersion;
 		const instanceId = this.getInstanceId();
+
+		if (resource === 'message' && operation === SEND_AND_WAIT_OPERATION) {
+			body = createSendAndWaitMessageBody(this);
+
+			try {
+				await apiRequest.call(this, 'POST', 'sendMessage', body);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					return [[{ json: { error: (error as JsonObject).message } }]];
+				}
+				throw error;
+			}
+
+			const waitTill = configureWaitTillDate(this);
+
+			await this.putExecutionToWait(waitTill);
+			return [this.getInputData()];
+		}
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -2039,6 +2363,80 @@ export class Telegram implements INodeType {
 
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
+					} else if (operation === 'sendMessageDraft') {
+						// ----------------------------------
+						//        message:sendMessageDraft
+						// ----------------------------------
+
+						endpoint = 'sendMessageDraft';
+
+						const draftId = this.getNodeParameter('draftId', i) as number;
+						if (!draftId) {
+							throw new NodeOperationError(this.getNode(), 'Draft ID must be non-zero', {
+								itemIndex: i,
+							});
+						}
+
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.draft_id = draftId;
+						body.text = this.getNodeParameter('text', i, '') as string;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+						Object.assign(body, additionalFields);
+					} else if (operation === 'sendRichMessage' || operation === 'sendRichMessageDraft') {
+						// ----------------------------------------------
+						//   message:sendRichMessage/sendRichMessageDraft
+						// ----------------------------------------------
+
+						endpoint = operation;
+
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
+
+						if (operation === 'sendRichMessageDraft') {
+							const draftId = this.getNodeParameter('draftId', i) as number;
+							if (!draftId) {
+								throw new NodeOperationError(this.getNode(), 'Draft ID must be non-zero', {
+									itemIndex: i,
+								});
+							}
+							body.draft_id = draftId;
+						}
+
+						const format = this.getNodeParameter('richFormat', i) as string;
+						const content = this.getNodeParameter('richMessageText', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const { is_rtl, skip_entity_detection } = additionalFields;
+
+						// InputRichMessage requires exactly one of `html` or `markdown`
+						const richMessage: IDataObject =
+							format === 'html' ? { html: content } : { markdown: content };
+						if (is_rtl !== undefined) {
+							richMessage.is_rtl = is_rtl;
+						}
+						if (skip_entity_detection !== undefined) {
+							richMessage.skip_entity_detection = skip_entity_detection;
+						}
+
+						body.rich_message = richMessage;
+
+						// Assign only the fields consumed by the sendRichMessage API
+						if (additionalFields.disable_notification !== undefined) {
+							body.disable_notification = additionalFields.disable_notification;
+						}
+						if (additionalFields.protect_content !== undefined) {
+							body.protect_content = additionalFields.protect_content;
+						}
+						if (additionalFields.message_thread_id !== undefined) {
+							body.message_thread_id = additionalFields.message_thread_id;
+						}
+						if (additionalFields.message_effect_id !== undefined) {
+							body.message_effect_id = additionalFields.message_effect_id;
+						}
+
+						// sendRichMessage supports reply_markup; the draft endpoints do not
+						if (operation === 'sendRichMessage') {
+							addReplyMarkup.call(this, body, i);
+						}
 					}
 				} else {
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
@@ -2049,10 +2447,10 @@ export class Telegram implements INodeType {
 				let responseData;
 
 				if (binaryData) {
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
-					const itemBinaryData = items[i].binary![binaryPropertyName];
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+					const itemBinaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 					const propertyName = getPropertyName(operation);
-					const fileName = this.getNodeParameter('additionalFields.fileName', 0, '') as string;
+					const fileName = this.getNodeParameter('additionalFields.fileName', i, '') as string;
 
 					const filename = fileName || itemBinaryData.fileName?.toString();
 
@@ -2085,7 +2483,13 @@ export class Telegram implements INodeType {
 						},
 					};
 
-					responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs, { formData });
+					if (formData.reply_markup) {
+						formData.reply_markup = JSON.stringify(formData.reply_markup);
+					}
+
+					responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs, {
+						formData,
+					});
 				} else {
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 				}
@@ -2110,11 +2514,15 @@ export class Telegram implements INodeType {
 							},
 						);
 
-						const fileName = filePath.split('/').pop();
+						const fileName = filePath.split('/').pop() as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const providedMimeType = additionalFields?.mimeType as string | undefined;
+						const mimeType = providedMimeType ?? (lookup(fileName) || 'application/octet-stream');
 
 						const data = await this.helpers.prepareBinaryData(
 							file.body as Buffer,
-							fileName as string,
+							fileName,
+							mimeType,
 						);
 
 						returnData.push({
@@ -2132,7 +2540,6 @@ export class Telegram implements INodeType {
 					returnData.push(...executionData);
 					continue;
 				}
-
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
@@ -2140,7 +2547,11 @@ export class Telegram implements INodeType {
 				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: {}, error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.description ?? error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;

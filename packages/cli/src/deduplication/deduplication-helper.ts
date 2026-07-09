@@ -1,21 +1,22 @@
+import type { ProcessedData } from '@n8n/db';
+import { ProcessedDataRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { createHash } from 'crypto';
-import {
-	type ICheckProcessedContextData,
-	type IDataDeduplicator,
-	type ICheckProcessedOptions,
-	type IDeduplicationOutput,
-	type DeduplicationScope,
-	type DeduplicationItemTypes,
-	type DeduplicationMode,
-	tryToParseDateTime,
+import { tryToParseDateTime } from 'n8n-workflow';
+import type {
+	IProcessedDataEntries,
+	IProcessedDataLatest,
+	ICheckProcessedContextData,
+	IDataDeduplicator,
+	ICheckProcessedOptions,
+	IDeduplicationOutput,
+	DeduplicationScope,
+	DeduplicationItemTypes,
+	DeduplicationMode,
 } from 'n8n-workflow';
 import * as assert from 'node:assert/strict';
-import { Container } from 'typedi';
 
-import type { ProcessedData } from '@/databases/entities/processed-data';
-import { ProcessedDataRepository } from '@/databases/repositories/processed-data.repository';
 import { DeduplicationError } from '@/errors/deduplication.error';
-import type { IProcessedDataEntries, IProcessedDataLatest } from '@/interfaces';
 
 export class DeduplicationHelper implements IDataDeduplicator {
 	private static sortEntries(

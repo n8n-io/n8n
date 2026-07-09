@@ -1,5 +1,6 @@
 post:
   x-eov-operation-id: generateAudit
+  x-required-scope: securityAudit:generate
   x-eov-operation-handler: v1/handlers/audit/audit.handler
   tags:
     - Audit

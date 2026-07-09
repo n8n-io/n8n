@@ -9,7 +9,7 @@ export class ChainSummarization extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'Summarization Chain',
 			name: 'chainSummarization',
-			icon: 'fa:link',
+			icon: 'node:summarization-chain',
 			iconColor: 'black',
 			group: ['transform'],
 			description: 'Transforms text into a concise summary',
@@ -27,12 +27,13 @@ export class ChainSummarization extends VersionedNodeType {
 					],
 				},
 			},
-			defaultVersion: 2,
+			defaultVersion: 2.1,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new ChainSummarizationV1(baseDescription),
 			2: new ChainSummarizationV2(baseDescription),
+			2.1: new ChainSummarizationV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

@@ -1,0 +1,64 @@
+{
+  "name": "@n8n/n8n-extension-insights",
+  "version": "0.17.0",
+  "type": "module",
+  "files": [
+    "dist",
+    "n8n.manifest.json",
+    "LICENSE",
+    "README.md"
+  ],
+  "main": "./n8n.manifest.json",
+  "module": "./n8n.manifest.json",
+  "exports": {
+    ".": {
+      "import": "./n8n.manifest.json",
+      "require": "./n8n.manifest.json"
+    },
+    "./backend": {
+      "types": "./dist/backend/index.d.mts",
+      "import": "./dist/backend/index.mjs",
+      "require": "./dist/backend/index.cjs"
+    },
+    "./frontend": {
+      "types": "./dist/frontend/index.d.mts",
+      "import": "./dist/frontend/index.mjs",
+      "require": "./dist/frontend/index.umd.cjs"
+    },
+    "./*": "./*"
+  },
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "cleanup": "rimraf dist",
+    "dev": "tsdown --watch",
+    "lint": "eslint src --quiet",
+    "lint:fix": "eslint src --fix",
+    "lint:styles": "stylelint \"src/**/*.{scss,sass,vue}\" --cache",
+    "lint:styles:fix": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache",
+    "typecheck": "vue-tsc --noEmit",
+    "build:backend": "tsdown",
+    "build:frontend": "vite build",
+    "build": "pnpm cleanup && pnpm run \"/^build:.*/\"",
+    "build:unchecked": "pnpm cleanup && pnpm run build:backend && pnpm run build:frontend",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@n8n/extension-sdk": "workspace:*",
+    "vue": "catalog:frontend",
+    "vue-router": "catalog:frontend"
+  },
+  "devDependencies": {
+    "@n8n/stylelint-config": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
+    "@vitejs/plugin-vue": "catalog:frontend",
+    "@vue/tsconfig": "catalog:frontend",
+    "stylelint": "catalog:",
+    "tsdown": "catalog:",
+    "rimraf": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "vite-plugin-dts": "catalog:",
+    "vue-tsc": "catalog:frontend"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
+}

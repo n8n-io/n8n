@@ -1,0 +1,125 @@
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
+import { SEND_AND_WAIT_OPERATION, type IExecuteFunctions } from 'n8n-workflow';
+
+import { EmailSendV2, versionDescription } from '../../v2/EmailSendV2.node';
+import * as utils from '../../v2/utils';
+import type * as _importType0 from '../../v2/utils';
+
+const transporter = { sendMail: vi.fn() };
+
+vi.mock('../../v2/utils', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../v2/utils');
+	return {
+		...originalModule,
+		configureTransport: vi.fn(() => transporter),
+	};
+});
+
+describe('Test EmailSendV2, email => sendAndWait', () => {
+	let emailSendV2: EmailSendV2;
+	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
+
+	beforeEach(() => {
+		emailSendV2 = new EmailSendV2(versionDescription);
+		mockExecuteFunctions = mock<IExecuteFunctions>();
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('should send message and put execution to wait', async () => {
+		const items = [{ json: { data: 'test' } }];
+		//node
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(SEND_AND_WAIT_OPERATION);
+
+		//operation
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('from@mail.com');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('to@mail.com');
+		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+		mockExecuteFunctions.getCredentials.mockResolvedValue({});
+		mockExecuteFunctions.putExecutionToWait.mockImplementation(async () => {});
+		mockExecuteFunctions.getInputData.mockReturnValue(items);
+
+		//getSendAndWaitConfig
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my message');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my subject');
+		mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
+			'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+		);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // approvalOptions
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // options
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval');
+
+		// configureWaitTillDate
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); //options.limitWaitTime.values
+
+		const result = await emailSendV2.execute.call(mockExecuteFunctions);
+
+		expect(result).toEqual([items]);
+		expect(utils.configureTransport).toHaveBeenCalledTimes(1);
+		expect(mockExecuteFunctions.putExecutionToWait).toHaveBeenCalledTimes(1);
+
+		expect(transporter.sendMail).toHaveBeenCalledWith({
+			from: 'from@mail.com',
+			html: expect.stringContaining(
+				'href="http://localhost/waiting-webhook/nodeID?approved=true&signature=abc"',
+			),
+			subject: 'my subject',
+			to: 'to@mail.com',
+		});
+	});
+
+	it('should route SMTP errors to error output when continueOnFail is true', async () => {
+		const items = [{ json: { data: 'test' } }];
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(SEND_AND_WAIT_OPERATION);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('from@mail.com');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('to@mail.com');
+		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+		mockExecuteFunctions.getCredentials.mockResolvedValue({});
+		mockExecuteFunctions.getInputData.mockReturnValue(items);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my message');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my subject');
+		mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
+			'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+		);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval');
+		mockExecuteFunctions.continueOnFail.mockReturnValue(true);
+
+		transporter.sendMail.mockRejectedValueOnce(new Error('smtp_connection_refused'));
+
+		const result = await emailSendV2.execute.call(mockExecuteFunctions);
+
+		expect(result).toEqual([[{ json: { error: 'smtp_connection_refused' } }]]);
+		expect(mockExecuteFunctions.putExecutionToWait).not.toHaveBeenCalled();
+	});
+
+	it('should rethrow SMTP errors when continueOnFail is false', async () => {
+		const items = [{ json: { data: 'test' } }];
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(SEND_AND_WAIT_OPERATION);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('from@mail.com');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('to@mail.com');
+		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+		mockExecuteFunctions.getCredentials.mockResolvedValue({});
+		mockExecuteFunctions.getInputData.mockReturnValue(items);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my message');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my subject');
+		mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
+			'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+		);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval');
+		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
+
+		transporter.sendMail.mockRejectedValueOnce(new Error('smtp_connection_refused'));
+
+		await expect(emailSendV2.execute.call(mockExecuteFunctions)).rejects.toThrow(
+			'smtp_connection_refused',
+		);
+		expect(mockExecuteFunctions.putExecutionToWait).not.toHaveBeenCalled();
+	});
+});

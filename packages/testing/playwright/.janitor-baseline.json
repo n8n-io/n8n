@@ -1,0 +1,485 @@
+{
+	"version": 1,
+	"generated": "2026-07-09T01:18:33.533Z",
+	"totalViolations": 69,
+	"violations": {
+		"pages/AIAssistantPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 15,
+				"message": "AIAssistantPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "0d4d5092768f"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 19,
+				"message": "AIAssistantPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "0d4d5092768f"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 61,
+				"message": "AIAssistantPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "0d4d5092768f"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 61,
+				"message": "AIAssistantPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "0d4d5092768f"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 85,
+				"message": "AIAssistantPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "0d4d5092768f"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 109,
+				"message": "AIAssistantPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "0d4d5092768f"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 109,
+				"message": "AIAssistantPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "0d4d5092768f"
+			}
+		],
+		"pages/InstanceAiPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 32,
+				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "713916b2be0f"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 41,
+				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "713916b2be0f"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 74,
+				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "713916b2be0f"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 161,
+				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "713916b2be0f"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 351,
+				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "713916b2be0f"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 351,
+				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "713916b2be0f"
+			}
+		],
+		"pages/NodeDetailsViewPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 354,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "4087a9cf20cb"
+			}
+		],
+		"pages/SidebarPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 24,
+				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "b15fa9cfe2ac"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 28,
+				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "b15fa9cfe2ac"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 48,
+				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "b15fa9cfe2ac"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 52,
+				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "b15fa9cfe2ac"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 103,
+				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "b15fa9cfe2ac"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 107,
+				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "b15fa9cfe2ac"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 120,
+				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "b15fa9cfe2ac"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 128,
+				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "b15fa9cfe2ac"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 136,
+				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "b15fa9cfe2ac"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 144,
+				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "b15fa9cfe2ac"
+			}
+		],
+		"pages/WorkflowSettingsModal.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 84,
+				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
+				"hash": "d38a3afc984b"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 88,
+				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
+				"hash": "d38a3afc984b"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 88,
+				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
+				"hash": "d38a3afc984b"
+			}
+		],
+		"pages/WorkflowSharingModal.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 15,
+				"message": "WorkflowSharingModal: Unscoped locator - use this.container instead of this.page",
+				"hash": "32955f46012b"
+			}
+		],
+		"tests/e2e/chat-hub/chat-hub-attachment.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 63,
+				"message": "Chained locator call in test: newPage.locator('img')",
+				"hash": "140cf31c63ab"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 64,
+				"message": "Chained locator call in test: newPage.locator('img')",
+				"hash": "140cf31c63ab"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 65,
+				"message": "Chained locator call in test: newPage.locator('img')",
+				"hash": "140cf31c63ab"
+			}
+		],
+		"composables/BuilderWizardComposer.ts": [
+			{
+				"rule": "no-page-in-flow",
+				"line": 19,
+				"message": "Direct page access in composable: this.n8n.page.route",
+				"hash": "ceda398a2fc4"
+			},
+			{
+				"rule": "no-page-in-flow",
+				"line": 31,
+				"message": "Direct page access in composable: this.n8n.page.unroute",
+				"hash": "2a1f05cab567"
+			},
+			{
+				"rule": "no-page-in-flow",
+				"line": 52,
+				"message": "Direct page access in composable: this.n8n.page.route",
+				"hash": "ceda398a2fc4"
+			}
+		],
+		"composables/CanvasComposer.ts": [
+			{
+				"rule": "no-page-in-flow",
+				"line": 138,
+				"message": "Direct page access in composable: this.n8n.page.url",
+				"hash": "c978979c3eac"
+			},
+			{
+				"rule": "no-page-in-flow",
+				"line": 148,
+				"message": "Direct page access in composable: this.n8n.page.url",
+				"hash": "c978979c3eac"
+			}
+		],
+		"composables/DataTablesComposer.ts": [
+			{
+				"rule": "no-page-in-flow",
+				"line": 29,
+				"message": "Direct page access in composable: this.n8n.page.goto",
+				"hash": "5f9ae75f5f12"
+			},
+			{
+				"rule": "no-page-in-flow",
+				"line": 31,
+				"message": "Direct page access in composable: this.n8n.page.goto",
+				"hash": "5f9ae75f5f12"
+			},
+			{
+				"rule": "no-page-in-flow",
+				"line": 40,
+				"message": "Direct page access in composable: this.n8n.page.goto",
+				"hash": "5f9ae75f5f12"
+			}
+		],
+		"composables/ExecutionsComposer.ts": [
+			{
+				"rule": "no-page-in-flow",
+				"line": 21,
+				"message": "Direct page access in composable: this.n8n.page.waitForResponse",
+				"hash": "2bb43ddcf2ed"
+			},
+			{
+				"rule": "no-page-in-flow",
+				"line": 47,
+				"message": "Direct page access in composable: this.n8n.page.waitForRequest",
+				"hash": "ff02b5de4505"
+			}
+		],
+		"composables/ProjectComposer.ts": [
+			{
+				"rule": "no-page-in-flow",
+				"line": 51,
+				"message": "Direct page access in composable: this.n8n.page.url",
+				"hash": "378ec8b3ce94"
+			}
+		],
+		"composables/TestEntryComposer.ts": [
+			{
+				"rule": "no-page-in-flow",
+				"line": 45,
+				"message": "Direct page access in composable: this.n8n.page.goto",
+				"hash": "bdb7602d2cb2"
+			},
+			{
+				"rule": "no-page-in-flow",
+				"line": 63,
+				"message": "Direct page access in composable: this.n8n.page.goto",
+				"hash": "bdb7602d2cb2"
+			},
+			{
+				"rule": "no-page-in-flow",
+				"line": 90,
+				"message": "Direct page access in composable: this.n8n.page.waitForEvent",
+				"hash": "28286eb6437c"
+			},
+			{
+				"rule": "no-page-in-flow",
+				"line": 106,
+				"message": "Direct page access in composable: this.n8n.page.context",
+				"hash": "786c6592ceb9"
+			},
+			{
+				"rule": "no-page-in-flow",
+				"line": 132,
+				"message": "Direct page access in composable: this.n8n.page.context",
+				"hash": "786c6592ceb9"
+			}
+		],
+		"composables/WorkflowComposer.ts": [
+			{
+				"rule": "no-page-in-flow",
+				"line": 20,
+				"message": "Direct page access in composable: this.n8n.page.waitForResponse",
+				"hash": "652001b1476b"
+			}
+		],
+		"tests/e2e/ai/assistant-credential-help.spec.ts": [
+			{
+				"rule": "api-purity",
+				"line": 80,
+				"message": "Raw API call detected: fetch(",
+				"hash": "eb977c9c5bb7"
+			},
+			{
+				"rule": "api-purity",
+				"line": 122,
+				"message": "Raw API call detected: fetch(",
+				"hash": "eb977c9c5bb7"
+			}
+		],
+		"tests/e2e/app-config/nps-survey.spec.ts": [
+			{
+				"rule": "api-purity",
+				"line": 51,
+				"message": "Raw API call detected: fetch(",
+				"hash": "39b87c0d6566"
+			}
+		],
+		"tests/e2e/capabilities/proxy-server.spec.ts": [
+			{
+				"rule": "api-purity",
+				"line": 28,
+				"message": "Raw API call detected: fetch(",
+				"hash": "fa2bb9ca3bdb"
+			},
+			{
+				"rule": "api-purity",
+				"line": 65,
+				"message": "Raw API call detected: fetch(",
+				"hash": "fa2bb9ca3bdb"
+			}
+		],
+		"tests/e2e/credentials/crud.spec.ts": [
+			{
+				"rule": "api-purity",
+				"line": 299,
+				"message": "Raw API call detected: fetch(",
+				"hash": "34b1d021857e"
+			}
+		],
+		"tests/e2e/dynamic-credentials/execution-status.spec.ts": [
+			{
+				"rule": "api-purity",
+				"line": 203,
+				"message": "Raw API call detected: request.get(",
+				"hash": "c6217f17d2d7"
+			}
+		],
+		"tests/e2e/dynamic-credentials/external-user-trigger.spec.ts": [
+			{
+				"rule": "api-purity",
+				"line": 173,
+				"message": "Raw API call detected: request.get(",
+				"hash": "cc21f9656cd4"
+			}
+		],
+		"tests/e2e/nodes/community-nodes.spec.ts": [
+			{
+				"rule": "api-purity",
+				"line": 20,
+				"message": "Raw API call detected: fetch(",
+				"hash": "974d7953dd83"
+			},
+			{
+				"rule": "api-purity",
+				"line": 35,
+				"message": "Raw API call detected: fetch(",
+				"hash": "974d7953dd83"
+			}
+		],
+		"pages/WorkflowsPage.ts": [
+			{
+				"rule": "deduplication",
+				"line": 40,
+				"message": "Duplicate locator: this.page.getByTestId(\"project-name\") in pages scope",
+				"hash": "206b89bd1594"
+			}
+		],
+		"pages/WorkerViewPage.ts": [
+			{
+				"rule": "deduplication",
+				"line": 13,
+				"message": "Duplicate locator: this.page.getByTestId(\"menu-item\") in pages scope",
+				"hash": "5a1818f5f511"
+			}
+		],
+		"tests/infrastructure/benchmarks/kafka/queue-mode-sustained-rate.spec.ts": [
+			{
+				"rule": "duplicate-logic",
+				"line": 18,
+				"message": "Duplicate test logic: \"Kafka trigger + 1 noop, 1KB payload, 250 msg/s × 240s (1 main + 1 worker)\" has identical structure to tests/infrastructure/benchmarks/kafka/burst-drain-capacity.spec.ts:\"Kafka trigger + 1 noop, 1KB payload, drain 100k preloaded backlog (1 main + 1 worker)\"",
+				"hash": "388616eecbaa"
+			}
+		],
+		"tests/infrastructure/benchmarks/kafka/single-instance-ceiling.spec.ts": [
+			{
+				"rule": "duplicate-logic",
+				"line": 18,
+				"message": "Duplicate test logic: \"Kafka trigger + 1 noop, 1KB payload, 150k msgs\" has identical structure to tests/infrastructure/benchmarks/kafka/burst-drain-capacity.spec.ts:\"Kafka trigger + 1 noop, 1KB payload, drain 100k preloaded backlog (1 main + 1 worker)\"",
+				"hash": "1c5033214063"
+			}
+		],
+		"tests/infrastructure/benchmarks/kafka/steady-rate-breaking-point.spec.ts": [
+			{
+				"rule": "duplicate-logic",
+				"line": 35,
+				"message": "Duplicate test logic: \"anonymous\" has identical structure to tests/infrastructure/benchmarks/kafka/burst-drain-capacity.spec.ts:\"Kafka trigger + 1 noop, 1KB payload, drain 100k preloaded backlog (1 main + 1 worker)\"",
+				"hash": "5579d3e330e1"
+			}
+		],
+		"tests/infrastructure/benchmarks/kafka/output-size-impact.spec.ts": [
+			{
+				"rule": "duplicate-logic",
+				"line": 26,
+				"message": "Duplicate test logic: \"anonymous\" has identical structure to tests/infrastructure/benchmarks/kafka/node-count-scaling.spec.ts:\"anonymous\"",
+				"hash": "d676f700b46d"
+			}
+		],
+		"tests/infrastructure/benchmarks/webhook/webhook-dedicated-proc-2wp-2w.spec.ts": [
+			{
+				"rule": "duplicate-logic",
+				"line": 33,
+				"message": "Duplicate test logic: \"anonymous\" has identical structure to tests/infrastructure/benchmarks/webhook/webhook-dedicated-proc-2wp-1w.spec.ts:\"anonymous\"",
+				"hash": "bc07737c363b"
+			}
+		],
+		"tests/infrastructure/benchmarks/webhook/webhook-dedicated-proc-baseline.spec.ts": [
+			{
+				"rule": "duplicate-logic",
+				"line": 33,
+				"message": "Duplicate test logic: \"anonymous\" has identical structure to tests/infrastructure/benchmarks/webhook/webhook-dedicated-proc-2wp-1w.spec.ts:\"anonymous\"",
+				"hash": "20c97ee82b2c"
+			}
+		],
+		"tests/infrastructure/benchmarks/webhook/webhook-single-instance.spec.ts": [
+			{
+				"rule": "duplicate-logic",
+				"line": 27,
+				"message": "Duplicate test logic: \"anonymous\" has identical structure to tests/infrastructure/benchmarks/webhook/webhook-dedicated-proc-2wp-1w.spec.ts:\"anonymous\"",
+				"hash": "46d8dc14acc3"
+			}
+		],
+		"tests/infrastructure/benchmarks-local/instance-ai/thread-churn-delegation.spec.ts": [
+			{
+				"rule": "duplicate-logic",
+				"line": 24,
+				"message": "Duplicate test logic: \"heap returns to baseline after delegation rounds\" has identical structure to tests/infrastructure/benchmarks-local/instance-ai/thread-churn-datatables.spec.ts:\"heap returns to baseline after data table create/delete rounds\"",
+				"hash": "08c6be48273d"
+			}
+		],
+		"tests/infrastructure/benchmarks-local/instance-ai/thread-churn.spec.ts": [
+			{
+				"rule": "duplicate-logic",
+				"line": 17,
+				"message": "Duplicate test logic: \"heap returns to baseline after parallel build rounds\" has identical structure to tests/infrastructure/benchmarks-local/instance-ai/thread-churn-datatables.spec.ts:\"heap returns to baseline after data table create/delete rounds\"",
+				"hash": "3ac5475c5814"
+			}
+		]
+	}
+}

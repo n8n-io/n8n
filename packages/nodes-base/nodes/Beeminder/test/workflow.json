@@ -1,0 +1,238 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-848, -400],
+			"id": "852d5569-78ec-4d61-8b9c-8bdbe963fe6e",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "goal",
+				"operation": "create",
+				"slug": "test333",
+				"title": "test title",
+				"gunits": "unit",
+				"additionalFields": {
+					"goalval": 1000,
+					"rate": 1
+				}
+			},
+			"type": "n8n-nodes-base.beeminder",
+			"typeVersion": 1,
+			"position": [48, -400],
+			"id": "0fbc833e-f4fb-430e-a130-9fd6655a35f1",
+			"name": "Create a new goal",
+			"credentials": {
+				"beeminderOAuth2Api": {
+					"id": "tXjFNZhKeJFjFOl7",
+					"name": "Beeminder account 3"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"goalName": "={{ $json.slug }}",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.beeminder",
+			"typeVersion": 1,
+			"position": [272, -400],
+			"id": "b143d8f4-399c-47e9-9497-002497d0a2b3",
+			"name": "Create datapoint for goal",
+			"credentials": {
+				"beeminderOAuth2Api": {
+					"id": "tXjFNZhKeJFjFOl7",
+					"name": "Beeminder account 3"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"operation": "delete",
+				"goalName": "={{ $('Create a new goal').item.json.slug }}",
+				"datapointId": "={{ $json.id }}"
+			},
+			"type": "n8n-nodes-base.beeminder",
+			"typeVersion": 1,
+			"position": [720, -400],
+			"id": "69ef60fd-c66b-4cba-aaf6-96e4fd453ac2",
+			"name": "Delete a datapoint",
+			"credentials": {
+				"beeminderOAuth2Api": {
+					"id": "tXjFNZhKeJFjFOl7",
+					"name": "Beeminder account 3"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "goal",
+				"operation": "getAll",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.beeminder",
+			"typeVersion": 1,
+			"position": [-176, -400],
+			"id": "1bdce766-3434-4e43-81bb-80a313ef4f2d",
+			"name": "Get many goals",
+			"credentials": {
+				"beeminderOAuth2Api": {
+					"id": "tXjFNZhKeJFjFOl7",
+					"name": "Beeminder account 3"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "user",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.beeminder",
+			"typeVersion": 1,
+			"position": [-624, -400],
+			"id": "25bb239d-d990-4b82-9416-a282cc00f467",
+			"name": "Get user information",
+			"credentials": {
+				"beeminderOAuth2Api": {
+					"id": "tXjFNZhKeJFjFOl7",
+					"name": "Beeminder account 3"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "charge",
+				"amount": 10,
+				"additionalFields": {
+					"dryrun": true
+				}
+			},
+			"type": "n8n-nodes-base.beeminder",
+			"typeVersion": 1,
+			"position": [-400, -400],
+			"id": "2fa9ea2e-e4e7-4291-bb6d-75a6bc15bc4e",
+			"name": "Create a charge",
+			"credentials": {
+				"beeminderOAuth2Api": {
+					"id": "tXjFNZhKeJFjFOl7",
+					"name": "Beeminder account 3"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"operation": "update",
+				"goalName": "={{ $('Create a new goal').item.json.slug }}",
+				"datapointId": "={{ $json.id }}",
+				"updateFields": {}
+			},
+			"type": "n8n-nodes-base.beeminder",
+			"typeVersion": 1,
+			"position": [496, -400],
+			"id": "55d4490f-97a2-405b-8745-421291d0c82e",
+			"name": "Update a datapoint",
+			"credentials": {
+				"beeminderOAuth2Api": {
+					"id": "tXjFNZhKeJFjFOl7",
+					"name": "Beeminder account 3"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Get user information",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create a new goal": {
+			"main": [
+				[
+					{
+						"node": "Create datapoint for goal",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create datapoint for goal": {
+			"main": [
+				[
+					{
+						"node": "Update a datapoint",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get many goals": {
+			"main": [
+				[
+					{
+						"node": "Create a new goal",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get user information": {
+			"main": [
+				[
+					{
+						"node": "Create a charge",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create a charge": {
+			"main": [
+				[
+					{
+						"node": "Get many goals",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update a datapoint": {
+			"main": [
+				[
+					{
+						"node": "Delete a datapoint",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"When clicking ‘Execute workflow’": [{}]
+	},
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "f0e9801eba0feea6a9ddf9beeabe34b0843eae42a1dbc62eaadd68e8f576be64"
+	}
+}

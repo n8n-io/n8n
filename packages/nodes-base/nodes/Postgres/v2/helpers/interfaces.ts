@@ -5,7 +5,7 @@ import type pg from 'pg-promise/typescript/pg-subset';
 
 export type QueryMode = 'single' | 'transaction' | 'independently';
 
-export type QueryValue = string | number | IDataObject | string[];
+export type QueryValue = string | number | boolean | null | IDataObject | string[];
 export type QueryValues = QueryValue[];
 export type QueryWithValues = { query: string; values?: QueryValues; options?: IFormattingOptions };
 
@@ -18,7 +18,7 @@ export type ColumnInfo = {
 	udt_name?: string;
 	column_default?: string | null;
 	is_generated?: 'ALWAYS' | 'NEVER';
-	identity_generation?: 'ALWAYS' | 'NEVER';
+	identity_generation?: 'ALWAYS' | 'NEVER' | 'BY DEFAULT';
 };
 export type EnumInfo = {
 	typname: string;
@@ -28,11 +28,11 @@ export type EnumInfo = {
 export type PgpClient = pgPromise.IMain<{}, pg.IClient>;
 export type PgpDatabase = pgPromise.IDatabase<{}, pg.IClient>;
 export type PgpConnectionParameters = pg.IConnectionParameters<pg.IClient>;
+export type PgpConnection = pgPromise.IConnected<{}, pg.IClient>;
 export type ConnectionsData = { db: PgpDatabase; pgp: PgpClient };
 
 export type QueriesRunner = (
 	queries: QueryWithValues[],
-	items: INodeExecutionData[],
 	options: IDataObject,
 ) => Promise<INodeExecutionData[]>;
 
@@ -57,6 +57,7 @@ export type PostgresNodeCredentials = {
 	database: string;
 	user: string;
 	password: string;
+	maxConnections: number;
 	allowUnauthorizedCerts?: boolean;
 	ssl?: 'disable' | 'allow' | 'require' | 'verify' | 'verify-full';
 } & (

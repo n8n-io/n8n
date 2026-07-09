@@ -1,19 +1,17 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import { PromptTemplate } from '@langchain/core/prompts';
-import { PlanAndExecuteAgentExecutor } from 'langchain/experimental/plan_and_execute';
-import { CombiningOutputParser } from 'langchain/output_parsers';
+import { PlanAndExecuteAgentExecutor } from '@langchain/classic/experimental/plan_and_execute';
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeOperationError,
 } from 'n8n-workflow';
 
 import { getConnectedTools, getPromptInputByType } from '@utils/helpers';
-import { getOptionalOutputParsers } from '@utils/output_parsers/N8nOutputParser';
+import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { throwIfToolSchema } from '@utils/schemaParsing';
-import { getTracingConfig } from '@utils/tracing';
+import { buildTracingMetadata, getTracingConfig } from '@utils/tracing';
 
 import { checkForStructuredTools, extractParsedOutput } from '../utils';
 
@@ -23,18 +21,24 @@ export async function planAndExecuteAgentExecute(
 ): Promise<INodeExecutionData[][]> {
 	this.logger.debug('Executing PlanAndExecute Agent');
 	const model = (await this.getInputConnectionData(
-		NodeConnectionType.AiLanguageModel,
+		NodeConnectionTypes.AiLanguageModel,
 		0,
 	)) as BaseChatModel;
 
 	const tools = await getConnectedTools(this, nodeVersion >= 1.5, true, true);
 
 	await checkForStructuredTools(tools, this.getNode(), 'Plan & Execute Agent');
-	const outputParsers = await getOptionalOutputParsers(this);
+	const outputParser = await getOptionalOutputParser(this);
 
 	const options = this.getNodeParameter('options', 0, {}) as {
 		humanMessageTemplate?: string;
+		tracingMetadata?: { values?: Array<{ key: string; value: unknown }> };
 	};
+	const additionalMetadata = buildTracingMetadata(options.tracingMetadata?.values, this.logger);
+	if (Object.keys(additionalMetadata).length > 0) {
+		this.logger.debug('Tracing metadata', { additionalMetadata });
+	}
+	const tracingConfig = getTracingConfig(this, { additionalMetadata });
 
 	const agentExecutor = await PlanAndExecuteAgentExecutor.fromLLMAndTools({
 		llm: model,
@@ -44,12 +48,8 @@ export async function planAndExecuteAgentExecute(
 
 	const returnData: INodeExecutionData[] = [];
 
-	let outputParser: BaseOutputParser | undefined;
 	let prompt: PromptTemplate | undefined;
-	if (outputParsers.length) {
-		outputParser =
-			outputParsers.length === 1 ? outputParsers[0] : new CombiningOutputParser(...outputParsers);
-
+	if (outputParser) {
 		const formatInstructions = outputParser.getFormatInstructions();
 
 		prompt = new PromptTemplate({
@@ -83,8 +83,8 @@ export async function planAndExecuteAgentExecute(
 			}
 
 			const response = await agentExecutor
-				.withConfig(getTracingConfig(this))
-				.invoke({ input, outputParsers });
+				.withConfig(tracingConfig)
+				.invoke({ input, outputParser });
 
 			if (outputParser) {
 				response.output = await extractParsedOutput(this, outputParser, response.output as string);

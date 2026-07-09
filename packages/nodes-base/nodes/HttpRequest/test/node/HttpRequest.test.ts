@@ -1,23 +1,23 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 import { parse as parseUrl } from 'url';
 
-import {
-	initBinaryDataService,
-	setup,
-	equalityTest,
-	workflowToTests,
-	getWorkflowFilenames,
-} from '@test/nodes/Helpers';
-
 describe('Test HTTP Request Node', () => {
-	const workflows = getWorkflowFilenames(__dirname);
-	const tests = workflowToTests(workflows);
-
 	const baseUrl = 'https://dummyjson.com';
+	const uaBaseUrl = 'https://ua.example.com';
 
 	beforeAll(async () => {
-		await initBinaryDataService();
-		nock.disableNetConnect();
+		// User-Agent: default resolution applies when no override is set
+		nock(uaBaseUrl)
+			.matchHeader('user-agent', 'n8n')
+			.get('/default')
+			.reply(200, { ok: true, seen: 'default' });
+
+		// User-Agent: caller-supplied header must win over the default
+		nock(uaBaseUrl)
+			.matchHeader('user-agent', 'MyCustomAgent/1.0')
+			.get('/override')
+			.reply(200, { ok: true, seen: 'override' });
 
 		function getPaginationReturnData(this: nock.ReplyFnContext, limit = 10, skip = 0) {
 			const nextUrl = `${baseUrl}/users?skip=${skip + limit}&limit=${limit}`;
@@ -119,6 +119,7 @@ describe('Test HTTP Request Node', () => {
 				completed: false,
 				userId: 15,
 			});
+		nock(baseUrl).get('/html').reply(200, '<html><body><h1>Test</h1></body></html>');
 
 		//PUT
 		nock(baseUrl).put('/todos/10', { userId: '42' }).reply(200, {
@@ -193,13 +194,5 @@ describe('Test HTTP Request Node', () => {
 			});
 	});
 
-	afterAll(() => {
-		nock.restore();
-	});
-
-	const nodeTypes = setup(tests);
-
-	for (const testData of tests) {
-		test(testData.description, async () => await equalityTest(testData, nodeTypes));
-	}
+	new NodeTestHarness().setupTests();
 });

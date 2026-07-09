@@ -1,0 +1,166 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-opus-4-6",
+				"stream": true,
+				"max_tokens": 8192,
+				"tools": [
+					{
+						"name": "search",
+						"description": "a search engine. useful for when you need to answer questions about current events. input should be a search query.",
+						"input_schema": {
+							"type": "object",
+							"properties": {
+								"input": {
+									"type": "string"
+								}
+							},
+							"additionalProperties": false,
+							"$schema": "http://json-schema.org/draft-07/schema#"
+						}
+					}
+				],
+				"thinking": {
+					"type": "disabled"
+				},
+				"messages": [
+					{
+						"role": "user",
+						"content": "What is n8n?"
+					},
+					{
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "Calling SerpApi_Google_Search with input: {\"input\":\"What is n8n?\",\"id\":\"toolu_01GrsrvCgECXfs2Q5es3etf6\"}"
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_01GrsrvCgECXfs2Q5es3etf6",
+								"name": "SerpApi_Google_Search",
+								"input": {
+									"input": "What is n8n?",
+									"id": "toolu_01GrsrvCgECXfs2Q5es3etf6"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": [
+							{
+								"type": "tool_result",
+								"content": "[{\"response\":\"[\\\"n8n is a workflow automation platform that uniquely combines AI capabilities with business process automation, giving technical teams the flexibility of ...\\\"]\"}]",
+								"tool_use_id": "toolu_01GrsrvCgECXfs2Q5es3etf6"
+							}
+						]
+					},
+					{
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "Calling SerpApi_Google_Search with input: {\"input\":\"n8n workflow automation platform overview\",\"id\":\"toolu_01CiDhhrJFuMXh2o68CkioSL\"}"
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_01CiDhhrJFuMXh2o68CkioSL",
+								"name": "SerpApi_Google_Search",
+								"input": {
+									"input": "n8n workflow automation platform overview",
+									"id": "toolu_01CiDhhrJFuMXh2o68CkioSL"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": [
+							{
+								"type": "tool_result",
+								"content": "[{\"response\":\"[\\\"n8n is a workflow automation platform that uniquely combines AI capabilities with business process automation, giving technical teams the flexibility of ...\\\"]\"}]",
+								"tool_use_id": "toolu_01CiDhhrJFuMXh2o68CkioSL"
+							}
+						]
+					},
+					{
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "Calling SerpApi_Google_Search with input: {\"input\":\"n8n workflow automation platform overview features\",\"id\":\"toolu_016gRp4kKYpyKeHgso65Wuyp\"}"
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_016gRp4kKYpyKeHgso65Wuyp",
+								"name": "SerpApi_Google_Search",
+								"input": {
+									"input": "n8n workflow automation platform overview features",
+									"id": "toolu_016gRp4kKYpyKeHgso65Wuyp"
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": [
+							{
+								"type": "tool_result",
+								"content": "[{\"response\":\"[\\\"Send error notifications anywhere, separate or all at once · Call backup workflows to handle errors immediately · Get insights on workflow performance over time.\\\"]\"}]",
+								"tool_use_id": "toolu_016gRp4kKYpyKeHgso65Wuyp"
+							}
+						]
+					}
+				],
+				"system": "You are a helpful assistant.\n\n__e2e_system_prompt_placeholder__"
+			},
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1vcHVzLTQtNiIsInN0cmVhbSI6dHJ1ZSwibWF4X3Rva2VucyI6ODE5MiwidG9vbHMiOlt7Im5hbWUiOiJzZWFyY2giLCJkZXNjcmlwdGlvbiI6ImEgc2VhcmNoIGVuZ2luZS4gdXNlZnVsIGZvciB3aGVuIHlvdSBuZWVkIHRvIGFuc3dlciBxdWVzdGlvbnMgYWJvdXQgY3VycmVudCBldmVudHMuIGlucHV0IHNob3VsZCBiZSBhIHNlYXJjaCBxdWVyeS4iLCJpbnB1dF9zY2hlbWEiOnsidHlwZSI6Im9iamVjdCIsInByb3BlcnRpZXMiOnsiaW5wdXQiOnsidHlwZSI6InN0cmluZyJ9fSwiYWRkaXRpb25hbFByb3BlcnRpZXMiOmZhbHNlLCIkc2NoZW1hIjoiaHR0cDovL2pzb24tc2NoZW1hLm9yZy9kcmFmdC0wNy9zY2hlbWEjIn19XSwidGhpbmtpbmciOnsidHlwZSI6ImRpc2FibGVkIn0sIm1lc3NhZ2VzIjpbeyJyb2xlIjoidXNlciIsImNvbnRlbnQiOiJXaGF0IGlzIG44bj8ifSx7InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbeyJ0eXBlIjoidGV4dCIsInRleHQiOiJDYWxsaW5nIFNlcnBBcGlfR29vZ2xlX1NlYXJjaCB3aXRoIGlucHV0OiB7XCJpbnB1dFwiOlwiV2hhdCBpcyBuOG4/XCIsXCJpZFwiOlwidG9vbHVfMDFHcnNydkNnRUNYZnMyUTVlczNldGY2XCJ9In0seyJ0eXBlIjoidG9vbF91c2UiLCJpZCI6InRvb2x1XzAxR3JzcnZDZ0VDWGZzMlE1ZXMzZXRmNiIsIm5hbWUiOiJTZXJwQXBpX0dvb2dsZV9TZWFyY2giLCJpbnB1dCI6eyJpbnB1dCI6IldoYXQgaXMgbjhuPyIsImlkIjoidG9vbHVfMDFHcnNydkNnRUNYZnMyUTVlczNldGY2In19XX0seyJyb2xlIjoidXNlciIsImNvbnRlbnQiOlt7InR5cGUiOiJ0b29sX3Jlc3VsdCIsImNvbnRlbnQiOiJbe1wicmVzcG9uc2VcIjpcIltcXFwibjhuIGlzIGEgd29ya2Zsb3cgYXV0b21hdGlvbiBwbGF0Zm9ybSB0aGF0IHVuaXF1ZWx5IGNvbWJpbmVzIEFJIGNhcGFiaWxpdGllcyB3aXRoIGJ1c2luZXNzIHByb2Nlc3MgYXV0b21hdGlvbiwgZ2l2aW5nIHRlY2huaWNhbCB0ZWFtcyB0aGUgZmxleGliaWxpdHkgb2YgLi4uXFxcIl1cIn1dIiwidG9vbF91c2VfaWQiOiJ0b29sdV8wMUdyc3J2Q2dFQ1hmczJRNWVzM2V0ZjYifV19LHsicm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0IiwidGV4dCI6IkNhbGxpbmcgU2VycEFwaV9Hb29nbGVfU2VhcmNoIHdpdGggaW5wdXQ6IHtcImlucHV0XCI6XCJuOG4gd29ya2Zsb3cgYXV0b21hdGlvbiBwbGF0Zm9ybSBvdmVydmlld1wiLFwiaWRcIjpcInRvb2x1XzAxQ2lEaGhySkZ1TVhoMm82OENraW9TTFwifSJ9LHsidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMUNpRGhockpGdU1YaDJvNjhDa2lvU0wiLCJuYW1lIjoiU2VycEFwaV9Hb29nbGVfU2VhcmNoIiwiaW5wdXQiOnsiaW5wdXQiOiJuOG4gd29ya2Zsb3cgYXV0b21hdGlvbiBwbGF0Zm9ybSBvdmVydmlldyIsImlkIjoidG9vbHVfMDFDaURoaHJKRnVNWGgybzY4Q2tpb1NMIn19XX0seyJyb2xlIjoidXNlciIsImNvbnRlbnQiOlt7InR5cGUiOiJ0b29sX3Jlc3VsdCIsImNvbnRlbnQiOiJbe1wicmVzcG9uc2VcIjpcIltcXFwibjhuIGlzIGEgd29ya2Zsb3cgYXV0b21hdGlvbiBwbGF0Zm9ybSB0aGF0IHVuaXF1ZWx5IGNvbWJpbmVzIEFJIGNhcGFiaWxpdGllcyB3aXRoIGJ1c2luZXNzIHByb2Nlc3MgYXV0b21hdGlvbiwgZ2l2aW5nIHRlY2huaWNhbCB0ZWFtcyB0aGUgZmxleGliaWxpdHkgb2YgLi4uXFxcIl1cIn1dIiwidG9vbF91c2VfaWQiOiJ0b29sdV8wMUNpRGhockpGdU1YaDJvNjhDa2lvU0wifV19LHsicm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0IiwidGV4dCI6IkNhbGxpbmcgU2VycEFwaV9Hb29nbGVfU2VhcmNoIHdpdGggaW5wdXQ6IHtcImlucHV0XCI6XCJuOG4gd29ya2Zsb3cgYXV0b21hdGlvbiBwbGF0Zm9ybSBvdmVydmlldyBmZWF0dXJlc1wiLFwiaWRcIjpcInRvb2x1XzAxNmdScDRrS1lweUtlSGdzbzY1V3V5cFwifSJ9LHsidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMTZnUnA0a0tZcHlLZUhnc282NVd1eXAiLCJuYW1lIjoiU2VycEFwaV9Hb29nbGVfU2VhcmNoIiwiaW5wdXQiOnsiaW5wdXQiOiJuOG4gd29ya2Zsb3cgYXV0b21hdGlvbiBwbGF0Zm9ybSBvdmVydmlldyBmZWF0dXJlcyIsImlkIjoidG9vbHVfMDE2Z1JwNGtLWXB5S2VIZ3NvNjVXdXlwIn19XX0seyJyb2xlIjoidXNlciIsImNvbnRlbnQiOlt7InR5cGUiOiJ0b29sX3Jlc3VsdCIsImNvbnRlbnQiOiJbe1wicmVzcG9uc2VcIjpcIltcXFwiU2VuZCBlcnJvciBub3RpZmljYXRpb25zIGFueXdoZXJlLCBzZXBhcmF0ZSBvciBhbGwgYXQgb25jZSDCtyBDYWxsIGJhY2t1cCB3b3JrZmxvd3MgdG8gaGFuZGxlIGVycm9ycyBpbW1lZGlhdGVseSDCtyBHZXQgaW5zaWdodHMgb24gd29ya2Zsb3cgcGVyZm9ybWFuY2Ugb3ZlciB0aW1lLlxcXCJdXCJ9XSIsInRvb2xfdXNlX2lkIjoidG9vbHVfMDE2Z1JwNGtLWXB5S2VIZ3NvNjVXdXlwIn1dfV0sInN5c3RlbSI6IllvdSBhcmUgYSBoZWxwZnVsIGFzc2lzdGFudC5cblxuX19lMmVfc3lzdGVtX3Byb21wdF9wbGFjZWhvbGRlcl9fIn0="
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-envoy-upstream-service-time": ["1596"],
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"request-id": ["req_011CXrvBHsFmTv4cJimmZ63g"],
+			"cf-cache-status": ["DYNAMIC"],
+			"anthropic-ratelimit-tokens-reset": ["2026-02-06T13:46:12Z"],
+			"anthropic-ratelimit-tokens-remaining": ["4799000"],
+			"anthropic-ratelimit-tokens-limit": ["4800000"],
+			"anthropic-ratelimit-output-tokens-reset": ["2026-02-06T13:46:12Z"],
+			"anthropic-ratelimit-output-tokens-remaining": ["800000"],
+			"anthropic-ratelimit-output-tokens-limit": ["800000"],
+			"anthropic-ratelimit-input-tokens-reset": ["2026-02-06T13:46:12Z"],
+			"anthropic-ratelimit-input-tokens-remaining": ["3999000"],
+			"anthropic-ratelimit-input-tokens-limit": ["4000000"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Date": ["Fri, 06 Feb 2026 13:46:13 GMT"],
+			"Content-Type": ["text/event-stream; charset=utf-8"],
+			"Content-Security-Policy": ["default-src 'none'; frame-ancestors 'none'"],
+			"Cache-Control": ["no-cache"],
+			"CF-RAY": ["9c9b17a1fcfde523-TXL"]
+		},
+		"body": {
+			"type": "STRING",
+			"string": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-opus-4-6\",\"id\":\"msg_01BxfdYygYjsW8YAe8e43385\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"usage\":{\"input_tokens\":1209,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":25,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}    }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"tool_use\",\"id\":\"toolu_012CwNZ8mr6usBBdFjTZt2DX\",\"name\":\"search\",\"input\":{}}        }\n\nevent: ping\ndata: {\"type\": \"ping\"}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\"}       }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"input\\\": \\\"n\"}           }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"8n wor\"}    }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"kflow \"}       }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"automation \"}   }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"platfor\"} }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"m details\\\"}\"}        }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0            }\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\",\"stop_sequence\":null},\"usage\":{\"input_tokens\":1209,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"output_tokens\":57}        }\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"  }\n\n",
+			"rawBytes": "ZXZlbnQ6IG1lc3NhZ2Vfc3RhcnQKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdGFydCIsIm1lc3NhZ2UiOnsibW9kZWwiOiJjbGF1ZGUtb3B1cy00LTYiLCJpZCI6Im1zZ18wMUJ4ZmRZeWdZanNXOFlBZThlNDMzODUiLCJ0eXBlIjoibWVzc2FnZSIsInJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbXSwic3RvcF9yZWFzb24iOm51bGwsInN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6MTIwOSwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjI1LCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJnbG9iYWwifX0gICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfc3RhcnQKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19zdGFydCIsImluZGV4IjowLCJjb250ZW50X2Jsb2NrIjp7InR5cGUiOiJ0b29sX3VzZSIsImlkIjoidG9vbHVfMDEyQ3dOWjhtcjZ1c0JCZEZqVFp0MkRYIiwibmFtZSI6InNlYXJjaCIsImlucHV0Ijp7fX0gICAgICAgIH0KCmV2ZW50OiBwaW5nCmRhdGE6IHsidHlwZSI6ICJwaW5nIn0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiIifSAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoie1wiaW5wdXRcIjogXCJuIn0gICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiI4biB3b3IifSAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoia2Zsb3cgIn0gICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoiaW5wdXRfanNvbl9kZWx0YSIsInBhcnRpYWxfanNvbiI6ImF1dG9tYXRpb24gIn0gICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoicGxhdGZvciJ9IH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiJtIGRldGFpbHNcIn0ifSAgICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfc3RvcApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0b3AiLCJpbmRleCI6MCAgICAgICAgICAgIH0KCmV2ZW50OiBtZXNzYWdlX2RlbHRhCmRhdGE6IHsidHlwZSI6Im1lc3NhZ2VfZGVsdGEiLCJkZWx0YSI6eyJzdG9wX3JlYXNvbiI6InRvb2xfdXNlIiwic3RvcF9zZXF1ZW5jZSI6bnVsbH0sInVzYWdlIjp7ImlucHV0X3Rva2VucyI6MTIwOSwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwib3V0cHV0X3Rva2VucyI6NTd9ICAgICAgICB9CgpldmVudDogbWVzc2FnZV9zdG9wCmRhdGE6IHsidHlwZSI6Im1lc3NhZ2Vfc3RvcCIgIH0KCg==",
+			"contentType": "text/event-stream; charset=utf-8"
+		}
+	},
+	"id": "1770385602693-unknown-host-POST-_v1_messages-9d702ab3.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

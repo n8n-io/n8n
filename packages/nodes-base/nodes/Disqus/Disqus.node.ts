@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { disqusApiRequest, disqusApiRequestAllItems } from './GenericFunctions';
 
@@ -23,8 +23,8 @@ export class Disqus implements INodeType {
 		defaults: {
 			name: 'Disqus',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'disqusApi',
@@ -601,16 +601,12 @@ export class Disqus implements INodeType {
 
 						Object.assign(qs, additionalFields);
 
-						try {
-							const responseData = await disqusApiRequest.call(this, requestMethod, qs, endpoint);
-							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray(responseData.response as IDataObject[]),
-								{ itemData: { item: i } },
-							);
-							returnData.push(...executionData);
-						} catch (error) {
-							throw error;
-						}
+						const responseData = await disqusApiRequest.call(this, requestMethod, qs, endpoint);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData.response as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} else if (operation === 'getPosts') {
 						// ----------------------------------
 						//         getPosts
@@ -629,28 +625,24 @@ export class Disqus implements INodeType {
 						qs.forum = id;
 						qs.limit = 100;
 
-						try {
-							let responseData: IDataObject = {};
-							if (returnAll) {
-								responseData.response = await disqusApiRequestAllItems.call(
-									this,
-									requestMethod,
-									qs,
-									endpoint,
-								);
-							} else {
-								const limit = this.getNodeParameter('limit', i);
-								qs.limit = limit;
-								responseData = await disqusApiRequest.call(this, requestMethod, qs, endpoint);
-							}
-							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray(responseData.response as IDataObject),
-								{ itemData: { item: i } },
+						let responseData: IDataObject = {};
+						if (returnAll) {
+							responseData.response = await disqusApiRequestAllItems.call(
+								this,
+								requestMethod,
+								qs,
+								endpoint,
 							);
-							returnData.push(...executionData);
-						} catch (error) {
-							throw error;
+						} else {
+							const limit = this.getNodeParameter('limit', i);
+							qs.limit = limit;
+							responseData = await disqusApiRequest.call(this, requestMethod, qs, endpoint);
 						}
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData.response as IDataObject),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} else if (operation === 'getCategories') {
 						// ----------------------------------
 						//         getCategories
@@ -668,34 +660,30 @@ export class Disqus implements INodeType {
 						qs.forum = id;
 						qs.limit = 100;
 
-						try {
-							let responseData: IDataObject = {};
+						let responseData: IDataObject = {};
 
-							if (returnAll) {
-								responseData.response = await disqusApiRequestAllItems.call(
-									this,
-									requestMethod,
-									qs,
-									endpoint,
-								);
-							} else {
-								const limit = this.getNodeParameter('limit', i);
-								qs.limit = limit;
-								responseData = (await disqusApiRequest.call(
-									this,
-									requestMethod,
-									qs,
-									endpoint,
-								)) as IDataObject;
-							}
-							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray(responseData.response as IDataObject),
-								{ itemData: { item: i } },
+						if (returnAll) {
+							responseData.response = await disqusApiRequestAllItems.call(
+								this,
+								requestMethod,
+								qs,
+								endpoint,
 							);
-							returnData.push(...executionData);
-						} catch (error) {
-							throw error;
+						} else {
+							const limit = this.getNodeParameter('limit', i);
+							qs.limit = limit;
+							responseData = (await disqusApiRequest.call(
+								this,
+								requestMethod,
+								qs,
+								endpoint,
+							)) as IDataObject;
 						}
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData.response as IDataObject),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} else if (operation === 'getThreads') {
 						// ----------------------------------
 						//         getThreads
@@ -715,28 +703,24 @@ export class Disqus implements INodeType {
 
 						Object.assign(qs, additionalFields);
 
-						try {
-							let responseData: IDataObject = {};
-							if (returnAll) {
-								responseData.response = await disqusApiRequestAllItems.call(
-									this,
-									requestMethod,
-									qs,
-									endpoint,
-								);
-							} else {
-								const limit = this.getNodeParameter('limit', i);
-								qs.limit = limit;
-								responseData = await disqusApiRequest.call(this, requestMethod, qs, endpoint);
-							}
-							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray(responseData.response as IDataObject),
-								{ itemData: { item: i } },
+						let responseData: IDataObject = {};
+						if (returnAll) {
+							responseData.response = await disqusApiRequestAllItems.call(
+								this,
+								requestMethod,
+								qs,
+								endpoint,
 							);
-							returnData.push(...executionData);
-						} catch (error) {
-							throw error;
+						} else {
+							const limit = this.getNodeParameter('limit', i);
+							qs.limit = limit;
+							responseData = await disqusApiRequest.call(this, requestMethod, qs, endpoint);
 						}
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData.response as IDataObject),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),

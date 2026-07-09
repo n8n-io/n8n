@@ -1,5 +1,6 @@
 get:
   x-eov-operation-id: getExecutions
+  x-required-scope: execution:list
   x-eov-operation-handler: v1/handlers/executions/executions.handler
   tags:
     - Execution
@@ -7,13 +8,20 @@ get:
   description: Retrieve all executions from your instance.
   parameters:
     - $ref: '../schemas/parameters/includeData.yml'
+    - name: ignoreDataSizeLimit
+      in: query
+      description: Whether to return the full execution data even if it exceeds the configured size limit (EXECUTIONS_DATA_MAX_DISPLAY_SIZE). Oversized executions are otherwise returned without their data.
+      required: false
+      schema:
+        type: boolean
+    - $ref: '../schemas/parameters/redactExecutionData.yml'
     - name: status
       in: query
       description: Status to filter the executions by.
       required: false
       schema:
         type: string
-        enum: ['error', 'success', 'waiting']
+        enum: ['canceled', 'crashed', 'error', 'new', 'running', 'success', 'unknown', 'waiting']
     - name: workflowId
       in: query
       description: Workflow to filter the executions by.
@@ -40,5 +48,7 @@ get:
             $ref: '../schemas/executionList.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
     '404':
       $ref: '../../../../shared/spec/responses/notFound.yml'

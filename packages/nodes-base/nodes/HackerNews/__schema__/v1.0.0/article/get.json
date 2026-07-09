@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "properties": {
+        "author": {
+            "type": "string"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "created_at_i": {
+            "type": "integer"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "story_id": {
+            "type": "integer"
+        },
+        "type": {
+            "type": "string"
+        }
+    },
+    "version": 3
+}

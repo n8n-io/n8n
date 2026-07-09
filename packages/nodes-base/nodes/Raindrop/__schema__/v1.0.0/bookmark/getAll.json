@@ -1,0 +1,147 @@
+{
+    "type": "object",
+    "properties": {
+        "_id": {
+            "type": "integer"
+        },
+        "collection": {
+            "type": "object",
+            "properties": {
+                "$id": {
+                    "type": "integer"
+                },
+                "$ref": {
+                    "type": "string"
+                },
+                "oid": {
+                    "type": "integer"
+                }
+            }
+        },
+        "collectionId": {
+            "type": "integer"
+        },
+        "cover": {
+            "type": "string"
+        },
+        "created": {
+            "type": "string"
+        },
+        "creatorRef": {
+            "type": "object",
+            "properties": {
+                "_id": {
+                    "type": "integer"
+                },
+                "avatar": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain": {
+            "type": "string"
+        },
+        "excerpt": {
+            "type": "string"
+        },
+        "highlights": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "_id": {
+                        "type": "string"
+                    },
+                    "color": {
+                        "type": "string"
+                    },
+                    "created": {
+                        "type": "string"
+                    },
+                    "creatorRef": {
+                        "type": "integer"
+                    },
+                    "lastUpdate": {
+                        "type": "string"
+                    },
+                    "note": {
+                        "type": "string"
+                    },
+                    "text": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "important": {
+            "type": "boolean"
+        },
+        "lastUpdate": {
+            "type": "string"
+        },
+        "link": {
+            "type": "string"
+        },
+        "media": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "link": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "note": {
+            "type": "string"
+        },
+        "reminder": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "null"
+                }
+            }
+        },
+        "removed": {
+            "type": "boolean"
+        },
+        "sort": {
+            "type": "integer"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "title": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "user": {
+            "type": "object",
+            "properties": {
+                "$id": {
+                    "type": "integer"
+                },
+                "$ref": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 1
+}
