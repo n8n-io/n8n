@@ -20,8 +20,6 @@ import { useToast } from '@/app/composables/useToast';
 import type { LatestNodeInfo, LogEntry, LogTreeFilter } from '../logs.types';
 import { isChatNode } from '@/app/utils/aiUtils';
 import { CHAT_TRIGGER_NODE_TYPE, LOGS_EXECUTION_DATA_THROTTLE_DURATION } from '@/app/constants';
-import { CANVAS_NODES_GROUPING_EXPERIMENT } from '@/app/constants/experiments';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { useThrottleFn } from '@vueuse/core';
 import { useThrottleWithReactiveDelay } from '@n8n/composables/useThrottleWithReactiveDelay';
@@ -43,10 +41,6 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 	const currentExecution = computed(() => workflowExecutionStateStore.value.activeExecution);
 	const toast = useToast();
-	const posthogStore = usePostHog();
-	const isGroupingEnabled = computed(() =>
-		posthogStore.isFeatureEnabled(CANVAS_NODES_GROUPING_EXPERIMENT.name),
-	);
 
 	const state = ref<
 		| { response: IExecutionResponse; startData: { [nodeName: string]: ITaskStartedData[] } }
@@ -108,9 +102,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 		);
 
 		// Group membership comes from the execution snapshot so historical executions group too
-		const nodeGroups = isGroupingEnabled.value
-			? (mergedExecutionData.workflowData.nodeGroups ?? [])
-			: [];
+		const nodeGroups = mergedExecutionData.workflowData.nodeGroups ?? [];
 
 		return createLogTree(
 			workflow.value,
@@ -153,10 +145,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 				nodeTypes: nodeTypesStore.getAllNodeTypes(),
 			});
 
-			if (isGroupingEnabled.value) {
-				subWorkflowNodeGroups.value[locator.workflowId] =
-					subExecution.workflowData.nodeGroups ?? [];
-			}
+			subWorkflowNodeGroups.value[locator.workflowId] = subExecution.workflowData.nodeGroups ?? [];
 		} catch (e) {
 			toast.showError(e, 'Unable to load sub execution');
 		}
