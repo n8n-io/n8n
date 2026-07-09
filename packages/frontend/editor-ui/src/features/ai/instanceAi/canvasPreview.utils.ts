@@ -367,12 +367,12 @@ export function getLatestAgentArtifactResult(
 	node: InstanceAiAgentNode,
 	fallbackTarget?: AgentArtifactTarget,
 ): AgentArtifactResult | undefined {
+	const target = getAgentTarget(node) ?? fallbackTarget;
+
 	for (let i = node.children.length - 1; i >= 0; i--) {
-		const childResult = getLatestAgentArtifactResult(node.children[i], fallbackTarget);
+		const childResult = getLatestAgentArtifactResult(node.children[i], target);
 		if (childResult) return childResult;
 	}
-
-	const target = getAgentTarget(node) ?? fallbackTarget;
 
 	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
 		const tc = node.toolCalls[i];

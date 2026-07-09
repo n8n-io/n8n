@@ -97,10 +97,6 @@ const props = withDefaults(
 	},
 );
 
-const emit = defineEmits<{
-	'toggle-artifacts-panel': [];
-}>();
-
 const AGENT_CHAT_PANEL_MIN_WIDTH = 320;
 const AGENT_CHAT_PANEL_DEFAULT_WIDTH = 460;
 const AGENT_CHAT_PANEL_MAX_WIDTH = 720;
@@ -903,11 +899,6 @@ async function onHeaderAction(action: string) {
 		agent.value = null;
 		localConfig.value = null;
 		agentsEventBus.emit('agentUpdated');
-
-		if (isArtifactMode.value) {
-			emit('toggle-artifacts-panel');
-			return;
-		}
 
 		// Target path. Built as a plain string rather than via a named route so
 		// there's no risk of a named-route resolution race during the agent

@@ -918,7 +918,6 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 								:agent-id="preview.activeAgentId.value"
 								:project-id="preview.activeAgentProjectId.value"
 								:refresh-key="preview.agentRefreshKey.value"
-								@toggle-artifacts-panel="toggleArtifactsPreview"
 							/>
 						</div>
 					</TabsRoot>

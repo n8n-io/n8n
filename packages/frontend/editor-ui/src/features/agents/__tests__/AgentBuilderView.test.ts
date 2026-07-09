@@ -411,7 +411,6 @@ const commonStubs = {
 			'unpublished',
 			'reverted',
 			'switch-agent',
-			'toggle-artifacts-panel',
 		],
 	},
 	AgentBuilderPreviewHeader: {

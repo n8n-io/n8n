@@ -6,10 +6,6 @@ const props = defineProps<{
 	agentId: string;
 	refreshKey: number;
 }>();
-
-const emit = defineEmits<{
-	'toggle-artifacts-panel': [];
-}>();
 </script>
 
 <template>
@@ -18,6 +14,5 @@ const emit = defineEmits<{
 		:artifact-project-id="props.projectId"
 		:artifact-agent-id="props.agentId"
 		:artifact-refresh-key="props.refreshKey"
-		@toggle-artifacts-panel="emit('toggle-artifacts-panel')"
 	/>
 </template>
