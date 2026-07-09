@@ -31,8 +31,6 @@ import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
-import { usePostHog } from '@/app/stores/posthog.store';
-import { CANVAS_NODES_GROUPING_EXPERIMENT } from '@/app/constants';
 
 defineOptions({
 	inheritAttrs: false,
@@ -98,16 +96,10 @@ const nodes = computed(() => {
 });
 const connections = computed(() => workflowDocumentStore.value.connectionsBySourceNode);
 
-const posthogStore = usePostHog();
-const isCanvasNodeGroupingEnabled = computed(() =>
-	posthogStore.isFeatureEnabled(CANVAS_NODES_GROUPING_EXPERIMENT.name),
-);
-
 const nodeGroupView = useCanvasNodeGroupView({
 	workflowId: () => workflowDocumentStore.value.documentId.split('@')[0],
 	getCurrentGroupIds: () => workflowDocumentStore.value.allGroups.map((group) => group.id),
 	onNodeGroupsChange: (handler) => workflowDocumentStore.value.onNodeGroupsChange(handler),
-	isGroupingEnabled: () => isCanvasNodeGroupingEnabled.value,
 	getGroupExpansionMode: () => props.groupExpansionMode,
 });
 
@@ -165,9 +157,8 @@ function applyGroupExpansion() {
 watch(groupIdsToExpand, applyGroupExpansion, { immediate: true });
 
 const layoutComponents = computed(() =>
-	// Without grouping enabled or without groups there can be no pushes —
-	// skip building per-node components.
-	!isCanvasNodeGroupingEnabled.value || workflowDocumentStore.value.allGroups.length === 0
+	// Without groups there can be no pushes — skip building per-node components.
+	workflowDocumentStore.value.allGroups.length === 0
 		? []
 		: buildNodeGroupLayoutComponents({
 				allGroups: workflowDocumentStore.value.allGroups,
