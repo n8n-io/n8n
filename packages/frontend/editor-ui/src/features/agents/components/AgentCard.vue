@@ -98,6 +98,7 @@ async function onAction(action: string) {
 		if (confirmed !== MODAL_CONFIRM) return;
 		await deleteAgent(rootStore.restApiContext, props.projectId, props.agent.id);
 		removeProjectAgentFromListCache(props.projectId, props.agent.id);
+		favoriteStore.removeFavoriteLocally(props.agent.id, 'agent');
 		emit('deleted', props.agent.id);
 	}
 }

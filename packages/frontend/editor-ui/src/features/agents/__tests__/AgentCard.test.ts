@@ -5,12 +5,17 @@ import { ref } from 'vue';
 import type { AgentResource } from '../types';
 import type { AgentVersion } from '../agent.types';
 
+const { deleteAgentMock, openAgentConfirmationModalMock } = vi.hoisted(() => ({
+	deleteAgentMock: vi.fn().mockResolvedValue(undefined),
+	openAgentConfirmationModalMock: vi.fn(),
+}));
+
 vi.mock('../composables/useAgentApi', () => ({
-	deleteAgent: vi.fn(),
+	deleteAgent: deleteAgentMock,
 }));
 
 vi.mock('../composables/useAgentConfirmationModal', () => ({
-	useAgentConfirmationModal: () => ({ openAgentConfirmationModal: vi.fn() }),
+	useAgentConfirmationModal: () => ({ openAgentConfirmationModal: openAgentConfirmationModalMock }),
 }));
 
 vi.mock('../composables/useAgentPublish', () => ({
@@ -28,6 +33,7 @@ vi.mock('@n8n/i18n', () => ({
 const favoritesStoreMock = {
 	isFavorite: vi.fn(() => false),
 	toggleFavorite: vi.fn().mockResolvedValue(undefined),
+	removeFavoriteLocally: vi.fn(),
 };
 
 vi.mock('@/app/stores/favorites.store', () => ({
@@ -111,6 +117,9 @@ describe('AgentCard', () => {
 		agentPermissionsMock.canUnpublish.value = true;
 		favoritesStoreMock.isFavorite.mockReturnValue(false);
 		favoritesStoreMock.toggleFavorite.mockClear();
+		favoritesStoreMock.removeFavoriteLocally.mockClear();
+		deleteAgentMock.mockClear();
+		openAgentConfirmationModalMock.mockClear();
 	});
 
 	it('hides the read-only badge when canUpdate is true', async () => {
@@ -200,5 +209,16 @@ describe('AgentCard', () => {
 		await wrapper.find('[data-action="toggleFavorite"]').trigger('click');
 
 		expect(favoritesStoreMock.toggleFavorite).toHaveBeenCalledWith('agent-1', 'agent');
+	});
+
+	it('removes the agent from local favorites after a successful delete', async () => {
+		openAgentConfirmationModalMock.mockResolvedValue('confirm');
+		const wrapper = await renderComponent();
+
+		await wrapper.find('[data-action="delete"]').trigger('click');
+
+		expect(deleteAgentMock).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
+		expect(favoritesStoreMock.removeFavoriteLocally).toHaveBeenCalledWith('agent-1', 'agent');
+		expect(wrapper.emitted('deleted')).toEqual([['agent-1']]);
 	});
 });

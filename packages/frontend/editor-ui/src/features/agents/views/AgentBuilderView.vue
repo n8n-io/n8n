@@ -693,6 +693,7 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	if (updates.name !== undefined) {
 		agentName.value = updates.name;
 		if (agent.value) agent.value = { ...agent.value, name: updates.name };
+		favoritesStore.renameFavorite(agentId.value, 'agent', updates.name);
 	}
 	configAutosave.scheduleAutosave({
 		projectId: projectId.value,
@@ -766,13 +767,14 @@ const headerActions = computed(() => {
 		});
 	}
 
-	if (isBuilt.value === true && agent.value) {
+	if (agent.value) {
 		actions.push({
 			id: 'toggleFavorite',
-			label: isFavorite.value
-				? locale.baseText('agents.builder.unfavorite')
-				: locale.baseText('agents.builder.favorite'),
-			icon: isFavorite.value ? 'star' : 'star-outline',
+			label:
+				isFavorite.value === true
+					? locale.baseText('favorites.remove')
+					: locale.baseText('favorites.add'),
+			icon: isFavorite.value === true ? 'star-filled' : 'star',
 		});
 	}
 
@@ -858,6 +860,7 @@ async function onHeaderAction(action: string) {
 		try {
 			await deleteAgent(rootStore.restApiContext, capturedProjectId, agentId.value);
 			removeProjectAgentFromListCache(capturedProjectId, agentId.value);
+			favoritesStore.removeFavoriteLocally(agentId.value, 'agent');
 		} catch (error) {
 			showError(error, 'Could not delete agent');
 			return;
