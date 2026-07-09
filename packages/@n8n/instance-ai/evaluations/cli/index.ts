@@ -78,6 +78,7 @@ import {
 } from '../harness/runner';
 import {
 	extractErrorMessage,
+	isTransientNetworkError,
 	MAX_EXEC_ATTEMPTS,
 	shouldRetryScenarioExecution,
 } from '../harness/transient-error';
@@ -102,6 +103,39 @@ import { caseDisplayPrompt, conversationUserTurnsAsText } from '../utils/convers
 
 // n8n degrades above ~4 concurrent builds.
 const MAX_CONCURRENT_BUILDS = 4;
+
+/** Attempts (initial + retries) for a build hitting transient network errors. */
+const MAX_BUILD_ATTEMPTS = 3;
+
+/** Max share of framework_issue trials tolerated in a baseline capture. */
+const BASELINE_MAX_FRAMEWORK_NOISE_RATE = 0.02;
+
+/** Count framework-noise trials and cases that failed on nothing but noise. */
+function assessFrameworkNoise(
+	evaluation: MultiRunEvaluation,
+	slugByTestCase?: Map<WorkflowTestCase, string>,
+): { frameworkTrials: number; totalTrials: number; fullyNoisyCases: string[] } {
+	let frameworkTrials = 0;
+	let totalTrials = 0;
+	const fullyNoisyCases: string[] = [];
+	for (const tc of evaluation.testCases) {
+		let caseFramework = 0;
+		let caseTotal = 0;
+		for (const sa of tc.executionScenarios) {
+			for (const run of sa.runs) {
+				if (run.incomplete) continue;
+				caseTotal++;
+				if (!run.success && run.failureCategory === 'framework_issue') caseFramework++;
+			}
+		}
+		frameworkTrials += caseFramework;
+		totalTrials += caseTotal;
+		if (caseTotal > 0 && caseFramework === caseTotal) {
+			fullyNoisyCases.push(slugByTestCase?.get(tc.testCase) ?? caseDisplayPrompt(tc.testCase));
+		}
+	}
+	return { frameworkTrials, totalTrials, fullyNoisyCases };
+}
 
 /** Target input shape with the iteration index we inject for multi-run. */
 type TargetInputs = DatasetExampleInputs & { _iteration?: number };
@@ -456,6 +490,28 @@ async function main(): Promise<void> {
 		console.log(
 			'\n' + formatComparisonTerminal(evaluation, outcome, { commitSha, slugByTestCase, gate }),
 		);
+
+		// A noisy baseline capture must fail loudly: findLatestBaseline picks the
+		// newest experiment by prefix, so a silently-poisoned capture (e.g. a dead
+		// lane converting whole cases into 0-score rows) would become the
+		// comparison target for every subsequent run.
+		if (args.experimentName?.startsWith('instance-ai-baseline')) {
+			const { frameworkTrials, totalTrials, fullyNoisyCases } = assessFrameworkNoise(
+				evaluation,
+				slugByTestCase,
+			);
+			const noiseRate = totalTrials > 0 ? frameworkTrials / totalTrials : 0;
+			if (noiseRate > BASELINE_MAX_FRAMEWORK_NOISE_RATE || fullyNoisyCases.length > 0) {
+				console.error(
+					`Baseline capture rejected: framework noise in ${String(frameworkTrials)}/${String(totalTrials)} trials (${(noiseRate * 100).toFixed(1)}%)` +
+						(fullyNoisyCases.length > 0
+							? `; cases with only framework failures: ${fullyNoisyCases.join(', ')}`
+							: '') +
+						'. Do not use this experiment as a baseline — fix the noise and re-dispatch.',
+				);
+				process.exitCode = 1;
+			}
+		}
 	} finally {
 		// Per-lane cleanup: each lane only holds the workflows built/fetched on it,
 		// so delete them via that lane's own client (multi-lane MCP builds spread
@@ -552,6 +608,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	>;
 	interface LaneState {
 		runner: Lane;
+		laneNum: number;
 		activeBuilds: number;
 		inflightKeys: Set<string>;
 		tracedBuild: (buildArgs: BuildArgs) => Promise<BuildResult>;
@@ -568,6 +625,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		const laneTag = lanes.length > 1 ? ` [lane ${String(laneNum)}/${String(lanes.length)}]` : '';
 		return {
 			runner: lane,
+			laneNum,
 			activeBuilds: 0,
 			inflightKeys: new Set<string>(),
 			tracedBuild: traceable(
@@ -622,10 +680,43 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		};
 	});
 
+	// Direct fetch (not N8nClient) so a hung lane can't stall the probe.
+	async function laneHealthy(lane: LaneState): Promise<boolean> {
+		try {
+			const res = await fetch(`${lane.runner.baseUrl}/healthz/readiness`, {
+				signal: AbortSignal.timeout(5_000),
+			});
+			return res.ok;
+		} catch {
+			return false;
+		}
+	}
+
+	// Distinguish agent build failures from transport ones. Error-message
+	// matching alone misses the nastiest case — a build that sat out its
+	// timeout against a dead lane reports "Run timed out", not "fetch failed" —
+	// so any failed build also health-probes its lane.
+	async function isTransportFailure(build: BuildResult, lane: LaneState): Promise<boolean> {
+		if (build.success) return false;
+		if (build.error !== undefined && isTransientNetworkError(build.error)) return true;
+		return !(await laneHealthy(lane));
+	}
+
 	// Work-stealing: each build acquires a lane that isn't already running its
 	// fileSlug, runs there (capped per-lane), then releases. Scenarios re-use the
-	// lane that built their workflow.
-	const allocator = new LaneAllocator(laneStates, MAX_CONCURRENT_BUILDS);
+	// lane that built their workflow. Health options keep a dead lane's instant
+	// failures from turning it into the permanently-least-loaded "black hole":
+	// it gets quarantined and re-admitted only once /healthz responds again.
+	const allocator = new LaneAllocator(laneStates, MAX_CONCURRENT_BUILDS, {
+		probe: laneHealthy,
+		onQuarantine: (lane) =>
+			logger.error(
+				`[lane ${String(lane.laneNum)}] quarantined after consecutive transport failures; probing ${lane.runner.baseUrl} for recovery`,
+			),
+		onReadmit: (lane) => logger.info(`[lane ${String(lane.laneNum)}] healthy again — re-admitted`),
+		onAllQuarantined: () =>
+			logger.error('All lanes quarantined — builds paused pending lane recovery'),
+	});
 	const buildCache = new Map<
 		string,
 		Promise<{ build: BuildResult; lane: LaneState; buildDurationMs: number }>
@@ -668,6 +759,11 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					// LLM-judged bookkeeping below needs only the fetched JSON, and
 					// holding the slot through it would idle the lane's build capacity.
 					allocator.release(lane, fileSlug);
+				}
+				{
+					const transient = await isTransportFailure(build, lane);
+					if (!build.success) build.transportFailure = transient;
+					allocator.reportBuildOutcome(lane, transient ? 'transient-failure' : 'ok');
 				}
 				const buildDurationMs = Date.now() - start;
 				// Cleanup registration happens inside buildWorkflowViaMcpOnLane (as soon
@@ -720,30 +816,63 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			}
 			// Orchestrator path: allocator spreads distinct fileSlugs across lanes;
 			// the build cache dedupes scenarios within one file.
-			const lane = await allocator.acquire(fileSlug);
 			const entry = testCaseByFileSlug.get(fileSlug);
 			if (!entry) throw new Error(`No conversation found for fileSlug=${fileSlug}`);
-			try {
+			// A transient build failure (dropped socket, lane process dying) is a
+			// transport problem, not an agent verdict — retry on a different lane
+			// instead of recording a 0-score row for every scenario of the case.
+			let lane = await allocator.acquire(fileSlug);
+			let build: BuildResult;
+			let buildDurationMs: number;
+			for (let attempt = 1; ; attempt++) {
 				const start = Date.now();
-				const build = await lane.tracedBuild({
-					conversation: entry.conversation,
-					messageBudget: entry.messageBudget,
-					credentials: entry.credentials,
-					seedFile: entry.seedFile,
-					priorConversation: entry.priorConversation,
-					seedThread: entry.seedThread,
-				});
-				const buildDurationMs = Date.now() - start;
-				buildDurations.set(key, buildDurationMs);
-				stashTranscript(build);
-				stashBuildExpectations(key, fileSlug, build, false);
-				stashRunDebug(lane.runner.client, build);
-				return { build, lane, buildDurationMs };
-			} finally {
-				allocator.release(lane, fileSlug);
+				try {
+					build = await lane.tracedBuild({
+						conversation: entry.conversation,
+						messageBudget: entry.messageBudget,
+						credentials: entry.credentials,
+						seedFile: entry.seedFile,
+						priorConversation: entry.priorConversation,
+						seedThread: entry.seedThread,
+					});
+				} finally {
+					allocator.release(lane, fileSlug);
+				}
+				buildDurationMs = Date.now() - start;
+				const transient =
+					(await isTransportFailure(build, lane)) ||
+					(!build.success && allocator.wasQuarantinedSince(lane, start));
+				if (!build.success) build.transportFailure = transient;
+				allocator.reportBuildOutcome(lane, transient ? 'transient-failure' : 'ok');
+				if (!transient || attempt >= MAX_BUILD_ATTEMPTS) break;
+				logger.warn(
+					`Build ${fileSlug} attempt ${String(attempt)}/${String(MAX_BUILD_ATTEMPTS)} failed transiently on lane ${String(lane.laneNum)} (${build.error ?? 'unknown'}); retrying on another lane`,
+				);
+				lane = await allocator.acquire(fileSlug, { not: lane });
 			}
+			buildDurations.set(key, buildDurationMs);
+			stashTranscript(build);
+			stashBuildExpectations(key, fileSlug, build, false);
+			stashRunDebug(lane.runner.client, build);
+			logger.info(
+				`[lane ${String(lane.laneNum)}] built ${fileSlug} (iteration ${String(iteration)}) thread=${build.threadId ?? 'none'} success=${String(build.success)}`,
+			);
+			// Captured SSE events are only consumed by the pairwise flow; dropping
+			// them keeps the largest chunk of each BuildResult out of the run-long cache.
+			build.events = undefined;
+			return { build, lane, buildDurationMs };
 		})();
 		buildCache.set(key, promise);
+		// A transport-failed build must not poison every remaining scenario of
+		// the case — evict it so a later scenario triggers a fresh build. Agent
+		// build failures stay cached: they are the verdict, and rebuilding would
+		// multiply cost without changing it.
+		void promise.then(
+			({ build }) => {
+				if (build.transportFailure) buildCache.delete(key);
+			},
+			() => buildCache.delete(key),
+		);
 		return await promise;
 	}
 
@@ -815,9 +944,11 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				passed: false,
 				score: 0,
 				reasoning: `Build failed: ${build.error ?? 'unknown'}`,
-				// Seeding failures are a harness setup problem, not an agent build
-				// failure — keep them out of the agent's build_failure bucket.
-				failureCategory: build.seedingFailed ? 'framework_issue' : 'build_failure',
+				// Seeding failures and transport-level failures (retries exhausted
+				// against a dead/restarting lane) are harness problems, not agent
+				// build failures — keep them out of the agent's build_failure bucket.
+				failureCategory:
+					build.seedingFailed || build.transportFailure ? 'framework_issue' : 'build_failure',
 				execErrors: build.error ? [build.error] : [],
 				buildDurationMs,
 				execDurationMs: 0,

@@ -91,4 +91,109 @@ describe('LaneAllocator', () => {
 		await w1;
 		expect(order).toEqual(['p3', 'p1']);
 	});
+
+	describe('lane health', () => {
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('quarantines a lane after consecutive transient failures and stops assigning to it', async () => {
+			const lanes = newLanes(2);
+			const onQuarantine = vi.fn();
+			const a = new LaneAllocator(lanes, 4, {
+				probe: async () => await Promise.resolve(false),
+				quarantineThreshold: 3,
+				onQuarantine,
+			});
+			for (let i = 0; i < 3; i++) a.reportBuildOutcome(lanes[0], 'transient-failure');
+			expect(a.isQuarantined(lanes[0])).toBe(true);
+			expect(onQuarantine).toHaveBeenCalledWith(lanes[0]);
+			const l1 = await a.acquire('p1');
+			const l2 = await a.acquire('p2');
+			expect([l1.id, l2.id]).toEqual([1, 1]);
+		});
+
+		it('resets the consecutive-failure counter on a successful build', () => {
+			const lanes = newLanes(1);
+			const a = new LaneAllocator(lanes, 4, {
+				probe: async () => await Promise.resolve(false),
+				quarantineThreshold: 3,
+			});
+			a.reportBuildOutcome(lanes[0], 'transient-failure');
+			a.reportBuildOutcome(lanes[0], 'transient-failure');
+			a.reportBuildOutcome(lanes[0], 'ok');
+			a.reportBuildOutcome(lanes[0], 'transient-failure');
+			a.reportBuildOutcome(lanes[0], 'transient-failure');
+			expect(a.isQuarantined(lanes[0])).toBe(false);
+		});
+
+		it('re-admits a lane once the probe reports healthy and serves queued waiters', async () => {
+			vi.useFakeTimers();
+			const lanes = newLanes(1);
+			let healthy = false;
+			const onReadmit = vi.fn();
+			const a = new LaneAllocator(lanes, 4, {
+				probe: async () => await Promise.resolve(healthy),
+				probeIntervalMs: 1000,
+				quarantineThreshold: 1,
+				allQuarantinedGraceMs: 60_000,
+				onReadmit,
+			});
+			a.reportBuildOutcome(lanes[0], 'transient-failure');
+			expect(a.isQuarantined(lanes[0])).toBe(true);
+			const waiter = a.acquire('p1');
+			await vi.advanceTimersByTimeAsync(1000);
+			expect(a.isQuarantined(lanes[0])).toBe(true);
+			healthy = true;
+			await vi.advanceTimersByTimeAsync(1000);
+			expect(a.isQuarantined(lanes[0])).toBe(false);
+			expect(onReadmit).toHaveBeenCalledWith(lanes[0]);
+			await expect(waiter).resolves.toBe(lanes[0]);
+		});
+
+		it('prefers a lane other than `not`, falling back to it when nothing else is free', async () => {
+			const lanes = newLanes(2);
+			const a = new LaneAllocator(lanes, 4);
+			const first = await a.acquire('p1');
+			const retry = await a.acquire('p2', { not: first });
+			expect(retry.id).not.toBe(first.id);
+
+			const single = newLanes(1);
+			const b = new LaneAllocator(single, 4);
+			const only = await b.acquire('p1');
+			const fallback = await b.acquire('p2', { not: only });
+			expect(fallback).toBe(only);
+		});
+
+		it('remembers when a lane was quarantined so mid-flight failures can be attributed', () => {
+			const before = Date.now();
+			const lanes = newLanes(1);
+			const a = new LaneAllocator(lanes, 4, {
+				probe: async () => await Promise.resolve(false),
+				quarantineThreshold: 1,
+			});
+			expect(a.wasQuarantinedSince(lanes[0], before)).toBe(false);
+			a.reportBuildOutcome(lanes[0], 'transient-failure');
+			expect(a.wasQuarantinedSince(lanes[0], before)).toBe(true);
+			expect(a.wasQuarantinedSince(lanes[0], Date.now() + 1000)).toBe(false);
+		});
+
+		it('aborts pending and future acquires when all lanes stay quarantined past the grace period', async () => {
+			vi.useFakeTimers();
+			const lanes = newLanes(2);
+			const a = new LaneAllocator(lanes, 4, {
+				probe: async () => await Promise.resolve(false),
+				probeIntervalMs: 1000,
+				quarantineThreshold: 1,
+				allQuarantinedGraceMs: 5000,
+			});
+			a.reportBuildOutcome(lanes[0], 'transient-failure');
+			a.reportBuildOutcome(lanes[1], 'transient-failure');
+			const pending = a.acquire('p1');
+			const rejection = expect(pending).rejects.toThrow('All 2 lanes quarantined');
+			await vi.advanceTimersByTimeAsync(5000);
+			await rejection;
+			await expect(a.acquire('p2')).rejects.toThrow('quarantined');
+		});
+	});
 });
