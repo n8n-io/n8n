@@ -390,6 +390,7 @@ function onClear() {
 }
 
 .comboboxTrigger {
+	position: relative;
 	display: inline-flex;
 	flex-shrink: 0;
 	align-items: center;
@@ -397,8 +398,17 @@ function onClear() {
 	padding: 0;
 	border: none;
 	background: transparent;
-
 	cursor: pointer;
+
+	&::after {
+		content: '';
+		position: absolute;
+		width: var(--input--height);
+		height: var(--input--height);
+		inset-block-start: 50%;
+		inset-inline-start: 50%;
+		transform: translate(-50%, -50%);
+	}
 
 	&:disabled {
 		cursor: not-allowed;
