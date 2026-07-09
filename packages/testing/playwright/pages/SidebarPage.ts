@@ -1,12 +1,8 @@
-import { expect, type Locator, type Page } from '@playwright/test';
+import { expect, type Locator } from '@playwright/test';
 
-export class SidebarPage {
-	readonly page: Page;
+import { BasePage } from './BasePage';
 
-	constructor(page: Page) {
-		this.page = page;
-	}
-
+export class SidebarPage extends BasePage {
 	get container() {
 		return this.page.locator('#side-menu');
 	}
@@ -25,7 +21,7 @@ export class SidebarPage {
 	}
 
 	get visibleNavigationMenu() {
-		return this.page.locator('.el-popper:visible');
+		return this.getVisiblePopper();
 	}
 
 	getVisibleNavigationSubmenu(label: string): Locator {
@@ -45,11 +41,11 @@ export class SidebarPage {
 	}
 
 	async clickWorkflowsLink(): Promise<void> {
-		await this.page.getByRole('link', { name: 'Workflows' }).click();
+		await this.container.getByRole('link', { name: 'Workflows' }).click();
 	}
 
 	async clickCredentialsLink(): Promise<void> {
-		await this.page.getByRole('link', { name: 'Credentials' }).click();
+		await this.container.getByRole('link', { name: 'Credentials' }).click();
 	}
 
 	getProjectButtonInUniversalAdd(): Locator {
