@@ -4,12 +4,12 @@ import { createTeamProject, randomName, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import {
 	CREDENTIAL_BLANKING_VALUE,
 	type ICredentialDataDecryptedObject,
 	randomString,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsTester } from '@/services/credentials-tester.service';
@@ -913,9 +913,7 @@ describe('PATCH /credentials/:id', () => {
 
 		// Mock the license state to return false for sharing
 		const licenseState = Container.get(LicenseState);
-		const isSharingLicensedSpy = jest
-			.spyOn(licenseState, 'isSharingLicensed')
-			.mockReturnValue(false);
+		const isSharingLicensedSpy = vi.spyOn(licenseState, 'isSharingLicensed').mockReturnValue(false);
 
 		const updatePayload = {
 			isGlobal: true,
@@ -943,9 +941,7 @@ describe('PATCH /credentials/:id', () => {
 
 		// Mock the license state to return true for sharing
 		const licenseState = Container.get(LicenseState);
-		const isSharingLicensedSpy = jest
-			.spyOn(licenseState, 'isSharingLicensed')
-			.mockReturnValue(true);
+		const isSharingLicensedSpy = vi.spyOn(licenseState, 'isSharingLicensed').mockReturnValue(true);
 
 		const updatePayload = {
 			isGlobal: true,
@@ -976,9 +972,7 @@ describe('PATCH /credentials/:id', () => {
 
 		// Mock the license state to return true for sharing
 		const licenseState = Container.get(LicenseState);
-		const isSharingLicensedSpy = jest
-			.spyOn(licenseState, 'isSharingLicensed')
-			.mockReturnValue(true);
+		const isSharingLicensedSpy = vi.spyOn(licenseState, 'isSharingLicensed').mockReturnValue(true);
 
 		const updatePayload = {
 			isGlobal: true,
@@ -1010,9 +1004,7 @@ describe('PATCH /credentials/:id', () => {
 
 		// Mock the license state to return false for sharing
 		const licenseState = Container.get(LicenseState);
-		const isSharingLicensedSpy = jest
-			.spyOn(licenseState, 'isSharingLicensed')
-			.mockReturnValue(false);
+		const isSharingLicensedSpy = vi.spyOn(licenseState, 'isSharingLicensed').mockReturnValue(false);
 
 		const updatePayload = {
 			isGlobal: false,
@@ -1041,9 +1033,7 @@ describe('PATCH /credentials/:id', () => {
 
 		// Credential defaults to isGlobal=false, so sending isGlobal=false should succeed
 		const licenseState = Container.get(LicenseState);
-		const isSharingLicensedSpy = jest
-			.spyOn(licenseState, 'isSharingLicensed')
-			.mockReturnValue(false);
+		const isSharingLicensedSpy = vi.spyOn(licenseState, 'isSharingLicensed').mockReturnValue(false);
 
 		const updatePayload = {
 			name: 'Updated name',

@@ -76,6 +76,13 @@ function deriveStatus(
 	if (hasSuccessfulEvidence(outcome)) return 'verified';
 	if (hasSetupBlockingEvidence(state, outcome)) return 'needs_setup';
 	if (hasPartialSuccessfulCoverageEvidence(outcome)) return 'not_verifiable';
+	// A verification that was attempted and failed has already run end-to-end and
+	// produced a concrete error (e.g. a missing credential or a runtime error).
+	// Re-issuing it just replays the same failure, so once setup-blocking and
+	// partial-success cases are ruled out above, settle it as a manual outcome.
+	// Without this the switch below falls through to `ready_to_verify` and the
+	// planned orchestrator re-issues verification forever.
+	if (hasFailedEvidence(outcome)) return 'not_verifiable';
 
 	switch (outcome.verificationReadiness?.status) {
 		case 'already_verified':
@@ -121,6 +128,16 @@ function deriveBlockingReason(
 	if (hasPartialSuccessfulCoverageEvidence(outcome)) {
 		const nodesNotReached = outcome.verification?.evidence?.nodesNotReached ?? [];
 		return `Automatic verification only covered part of the workflow. Unreached nodes need manual testing: ${nodesNotReached.join(', ')}.`;
+	}
+	if (hasFailedEvidence(outcome) && !hasSetupBlockingEvidence(state, outcome)) {
+		const failure =
+			outcome.verification?.failureSignature ??
+			outcome.verification?.evidence?.errorMessage ??
+			'an error during execution';
+		const nodesNotReached = outcome.verification?.evidence?.nodesNotReached ?? [];
+		const unreached =
+			nodesNotReached.length > 0 ? ` Nodes not reached: ${nodesNotReached.join(', ')}.` : '';
+		return `Automatic verification failed with: ${failure}. Re-running it will reproduce the same failure — explain this blocker to the user and have them resolve it (e.g. configure credentials or fix the data) before verifying manually.${unreached}`;
 	}
 	const outcomeRemediation = outcome.remediation;
 	if (outcomeRemediation && setupRemediationBlocksVerification(outcomeRemediation, outcome)) {

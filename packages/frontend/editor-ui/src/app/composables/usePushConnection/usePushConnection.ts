@@ -27,7 +27,7 @@ import {
 import type { PushHandlerOptions } from '@/app/composables/usePushConnection/handlers/types';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useEditorContext } from '@/app/composables/useEditorContext';
-import { createEventQueue } from '@n8n/utils/event-queue';
+import { createEventQueue } from '@n8n/utils/create-event-queue';
 import type { useRouter } from 'vue-router';
 
 export function usePushConnection({ router }: { router: ReturnType<typeof useRouter> }) {

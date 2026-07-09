@@ -1,4 +1,4 @@
-import { inDevelopment, inProduction } from '@n8n/backend-common';
+import { inDevelopment, inProduction, ModuleRegistry } from '@n8n/backend-common';
 import { installGlobalProxyAgent } from '@n8n/backend-network';
 import { SecurityConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -37,6 +37,7 @@ import '@/controllers/binary-data.controller';
 import '@/controllers/ai.controller';
 import '@/controllers/dynamic-node-parameters.controller';
 import '@/controllers/dynamic-templates.controller';
+import '@/controllers/instance-ai-examples.controller';
 import '@/controllers/invitation.controller';
 import '@/controllers/me.controller';
 import '@/controllers/node-types.controller';
@@ -72,6 +73,7 @@ import '@/webhooks/webhooks.controller';
 
 import { ChatServer } from './chat/chat-server';
 import { MfaService } from './mfa/mfa.service';
+import { BrowserUseServer } from './modules/instance-ai/browser/browser-use-server';
 import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
 import { ApiKeyAuthStrategy } from './services/api-key-auth.strategy';
 import { AuthStrategyRegistry } from './services/auth-strategy.registry';
@@ -504,5 +506,8 @@ export class Server extends AbstractServer {
 		const { restEndpoint, server, app } = this;
 		Container.get(Push).setupPushServer(restEndpoint, server, app);
 		Container.get(ChatServer).setup(server, app);
+		if (Container.get(ModuleRegistry).isActive('instance-ai')) {
+			Container.get(BrowserUseServer).setup(server, app);
+		}
 	}
 }

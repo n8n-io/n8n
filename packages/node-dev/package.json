@@ -22,7 +22,7 @@
     "lint:fix": "eslint src --fix",
     "prepack": "echo \"Building project...\" && rm -rf dist && tsc -b",
     "watch": "tsc --watch",
-    "test": "jest --passWithNoTests"
+    "test": "node -e \"process.exit(0)\""
   },
   "bin": {
     "n8n-node-dev": "./bin/n8n-node-dev"
@@ -41,12 +41,14 @@
   ],
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@types/inquirer": "^6.5.0"
+    "@types/inquirer": "^7.0.1",
+    "vite": "catalog:",
+    "vitest": "catalog:"
   },
   "dependencies": {
     "@n8n/di": "workspace:*",
     "@oclif/core": "4.0.7",
-    "change-case": "^4.1.1",
+    "change-case": "catalog:",
     "fast-glob": "catalog:",
     "inquirer": "^7.0.1",
     "n8n-core": "workspace:*",

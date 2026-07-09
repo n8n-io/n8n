@@ -206,7 +206,6 @@ function onCancel() {
 				:is-loading="isLoading"
 				:project-id="projectId"
 				:warn-missing-credentials="true"
-				horizontal
 				@change="onModelChange"
 				@select-credential="onSelectCredential"
 			/>

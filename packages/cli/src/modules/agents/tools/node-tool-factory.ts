@@ -1,6 +1,8 @@
 import type { BuiltTool } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import { createZodSchemaFromArgs, extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
+import type { AgentJsonToolConfig } from '@n8n/api-types';
+import { Container } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
 import type { IDataObject, INodeParameters } from 'n8n-workflow';
 import { isToolType, nodeNameToToolName } from 'n8n-workflow';
@@ -8,9 +10,6 @@ import { z } from 'zod';
 
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
-import { Container } from '@n8n/di';
-
-import type { AgentJsonToolConfig } from '@n8n/api-types';
 
 type NodeToolInputSchema = JSONSchema7 | z.ZodType;
 

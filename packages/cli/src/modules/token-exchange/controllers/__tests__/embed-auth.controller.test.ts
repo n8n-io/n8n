@@ -1,16 +1,16 @@
 import { EmbedLoginBodyDto, EmbedLoginQueryDto } from '@n8n/api-types';
 import { GLOBAL_MEMBER_ROLE, type User } from '@n8n/db';
 import type { Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
 import type { EventService } from '@/events/event.service';
 import type { AuthlessRequest } from '@/requests';
 import type { UrlService } from '@/services/url.service';
 
-import { EmbedAuthController } from '../embed-auth.controller';
 import type { TokenExchangeService } from '../../services/token-exchange.service';
 import type { TokenExchangeConfig } from '../../token-exchange.config';
+import { EmbedAuthController } from '../embed-auth.controller';
 
 const config = mock<TokenExchangeConfig>({ embedEnabled: true });
 const tokenExchangeService = mock<TokenExchangeService>();
@@ -41,7 +41,7 @@ const embedLoginResult = {
 
 describe('EmbedAuthController', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		config.embedEnabled = true;
 		urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678');
 	});
@@ -62,7 +62,7 @@ describe('EmbedAuthController', () => {
 			});
 			expect(tokenExchangeService.embedLogin).not.toHaveBeenCalled();
 
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			res.status.mockReturnThis();
 
 			await controller.postLogin(req, res, new EmbedLoginBodyDto({ token: 'any' }));

@@ -7,6 +7,7 @@ const mockRootStore = {
 	restApiContext: {},
 	setUrlBaseWebhook: vi.fn(),
 	setUrlBaseEditor: vi.fn(),
+	setUrlBaseWebhookTest: vi.fn(),
 	setEndpointForm: vi.fn(),
 	setEndpointFormTest: vi.fn(),
 	setEndpointFormWaiting: vi.fn(),
@@ -286,6 +287,32 @@ describe('settings.store', () => {
 				// side effects
 				expect(sessionStarted).toHaveBeenCalled();
 			});
+		});
+	});
+
+	describe('isWorkflowPublicationServiceEnabled', () => {
+		it('should return true when useWorkflowPublicationService is true', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				useWorkflowPublicationService: true,
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isWorkflowPublicationServiceEnabled).toBe(true);
+		});
+
+		it('should return false when useWorkflowPublicationService is undefined', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				useWorkflowPublicationService: undefined,
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isWorkflowPublicationServiceEnabled).toBe(false);
 		});
 	});
 

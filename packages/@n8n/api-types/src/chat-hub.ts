@@ -595,6 +595,10 @@ export class UpdateChatSettingsRequest extends Z.class({
 	payload: chatProviderSettingsSchema,
 }) {}
 
+export class UpdateChatEnabledRequest extends Z.class({
+	enabled: z.boolean(),
+}) {}
+
 export class ChatHubSemanticSearchSettings extends Z.class({
 	vectorStore: z.object({
 		provider: chatHubVectorStoreProviderSchema,

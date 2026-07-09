@@ -2,7 +2,6 @@ import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
 import { defineConfig, mergeConfig, type UserConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
-import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import svgLoader from 'vite-svg-loader';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import { codecovVitePlugin } from '@codecov/vite-plugin';
@@ -55,6 +54,10 @@ const alias = [
 	{
 		find: /^@n8n\/constants(.+)$/,
 		replacement: resolve(packagesDir, '@n8n', 'constants', 'src$1'),
+	},
+	{
+		find: /^@n8n\/design-system$/,
+		replacement: resolve(packagesDir, 'frontend', '@n8n', 'design-system', 'src/index.ts'),
 	},
 	{
 		find: /^@n8n\/design-system(.+)$/,
@@ -158,9 +161,9 @@ const plugins: UserConfig['plugins'] = [
 		},
 	},
 	// For sanitize-html
-	nodePolyfills({
-		include: ['fs', 'path', 'url', 'util', 'timers'],
-	}),
+	// nodePolyfills({
+	// 	include: ['fs', 'path', 'url', 'util', 'timers'],
+	// }),
 	{
 		name: 'i18n-locales-hmr',
 		configureServer(server) {

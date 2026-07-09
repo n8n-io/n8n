@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	INode,
 	INodeExecutionData,
@@ -10,12 +11,7 @@ import type {
 	TriggerTime,
 	CronExpression,
 } from 'n8n-workflow';
-import {
-	createDeferredPromise,
-	LoggerProxy,
-	TriggerCloseError,
-	WorkflowActivationError,
-} from 'n8n-workflow';
+import { LoggerProxy, TriggerCloseError, WorkflowActivationError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -26,6 +22,7 @@ import { Tracing } from '@/observability';
 import { ActiveWorkflowTriggers } from '../active-workflow-triggers';
 import type { IGetExecuteTriggerFunctions } from '../interfaces';
 import type { PollContext } from '../node-execution-context';
+import { PollTriggerExecutor } from '../poll-trigger-executor';
 import { ScheduledTaskManager } from '../scheduled-task-manager';
 import type { TriggersAndPollers } from '../triggers-and-pollers';
 
@@ -79,7 +76,7 @@ describe('ActiveWorkflowTriggers', () => {
 			scheduledTaskManager,
 			triggersAndPollers,
 			errorReporter,
-			tracing,
+			new PollTriggerExecutor(logger, triggersAndPollers, tracing),
 		);
 	});
 
@@ -1202,7 +1199,7 @@ describe('ActiveWorkflowTriggers', () => {
 				realScheduledTaskManager,
 				triggersAndPollers,
 				errorReporter,
-				tracing,
+				new PollTriggerExecutor(realLogger, triggersAndPollers, tracing),
 			);
 		});
 

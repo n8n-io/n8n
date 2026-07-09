@@ -17,7 +17,6 @@ const plannedTaskSchema = z.object({
 			'Task IDs that must succeed before this task can start. ' +
 				'Workflows that consume outputs depend on workflows that produce them; independent workflows run in parallel.',
 		),
-	tools: z.array(z.string()).optional().describe('Required tool subset for delegate tasks'),
 	workflowId: z
 		.string()
 		.optional()
@@ -276,6 +275,7 @@ export function createPlanTool(context: OrchestrationContext) {
 			if (resumeData.approved) {
 				await context.plannedTaskService.approvePlan(context.threadId);
 				await context.schedulePlannedTasks();
+				context.requestRunHandoff?.('planned-tasks-scheduled');
 				trackPlanningRoute(context, input.tasks as PlannedTask[], {
 					route: input.planningContext?.source === 'replan' ? 'replan' : 'skill',
 					source: input.planningContext?.source,

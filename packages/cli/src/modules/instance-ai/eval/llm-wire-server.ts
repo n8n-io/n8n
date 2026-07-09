@@ -204,10 +204,33 @@ export class LlmWireServer {
 			mockResponse = await this.options.mockHandler(synthetic, subNode);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
-			this.options.logger.error(`[EvalMock] Wire-server mock generation failed: ${message}`);
+			this.options.logger.error(
+				`[EvalMock] Wire-server mock generation failed for root "${rootName}": ${message}`,
+			);
+			// Record failed turns too — this branch previously skipped the ledger,
+			// leaving downstream parser failures (e.g. error envelopes surfacing as
+			// stringified objects) with no captured evidence of the failed turn.
+			try {
+				this.options.onIntercept?.({
+					rootName,
+					url: req.originalUrl ?? req.url ?? '',
+					method: req.method ?? 'POST',
+					nodeType: subNode.type,
+					requestBody: req.body,
+					mockResponse: { evalMockGenerationError: message },
+				});
+			} catch {
+				// Ledger write must never block the error response.
+			}
 			this.respondWithError(adapter, res, message);
 			return;
 		}
+
+		// Diagnostic trace for structured-output coercion forensics: what the mock
+		// handler actually returned for each intercepted vendor turn.
+		this.options.logger.info(
+			`[EvalMock] wire turn root="${rootName}" stream=${String(stream)} responseHead=${JSON.stringify(mockResponse?.body ?? null).slice(0, 300)}`,
+		);
 
 		// Ledger write BEFORE the response so consumers see the entry deterministically
 		// after `await fetch(...)`. `requestBody` is stored by reference (express.json

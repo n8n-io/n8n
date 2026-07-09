@@ -1,26 +1,31 @@
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
-	findNodeParameterProperty,
-	getDynamicNodeParameterLookup,
-	normalizeParameterPath,
-} from '@n8n/ai-utilities/node-catalog';
+	applyNativeWebSearchDefaultOn,
+	getProviderPrefix,
+	rejectIfDynamicSelectorUsesFromAi,
+	rejectIfEmptyInstructions,
+	rejectIfUnsupportedNativeWebSearch,
+	type AgentConfigValidationMessages,
+} from '@n8n/ai-utilities/agent-config';
 import {
 	agentSkillSchema,
 	agentTaskSchema,
 	formatZodErrors,
+	PROVIDER_CAPABILITIES,
+	resolvePromptCaching,
 	RunnableAgentJsonConfigSchema,
 	sanitizeAgentJsonConfig,
 	tryParseConfigJson,
+	type AgentSkill,
 	type AgentJsonConfig,
 	type ConfigValidationError,
 } from '@n8n/api-types';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Operation } from 'fast-json-patch';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
@@ -29,6 +34,7 @@ import { CredentialTypes } from '@/credential-types';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
+import { AiService } from '@/services/ai.service';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 
@@ -39,16 +45,13 @@ import { AgentSkillsService } from '../agent-skills.service';
 import { AgentTaskService } from '../agent-task.service';
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
-import { BuilderModelLookupService } from './builder-model-lookup.service';
+import { AttachableWorkflowsService } from '../attachable-workflows.service';
+import { BuilderModelLiveLookupService } from './builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from './builder-tool-names';
-import {
-	collectFromAiParameterReferences,
-	hasMatchingFromAiParameterReference,
-	type FromAiParameterReference,
-} from './from-ai-node-parameters';
 import { buildGetResourceLocatorOptionsTool } from './get-resource-locator-options.tool';
 import {
 	buildAskCredentialTool,
+	buildAskEmbeddingCredentialTool,
 	buildAskLlmTool,
 	buildAskQuestionTool,
 	buildResolveLlmTool,
@@ -59,18 +62,8 @@ import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-templa
 import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
 import { buildVerifyMcpServerTool } from './verify-mcp-server.tool';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
-import {
-	getNativeWebSearchProviderTools,
-	hasNativeWebSearchProvider,
-} from '../json-config/native-web-search-provider-tools';
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-
-const EMPTY_INSTRUCTIONS_ERROR: ConfigValidationError = {
-	path: '/instructions',
-	message:
-		'Refusing to write an agent with empty instructions. Ask the user what the agent should do before calling write_config or patch_config again.',
-};
 
 const STALE_CONFIG_ERROR: ConfigValidationError = {
 	path: '(root)',
@@ -78,89 +71,37 @@ const STALE_CONFIG_ERROR: ConfigValidationError = {
 		'Agent config changed since you last read it. Call read_config and retry with the returned configHash.',
 };
 
+/** LLM-facing follow-up guidance for this builder surface (CLI skill-based tools). */
+const CLI_AGENT_CONFIG_MESSAGES: AgentConfigValidationMessages = {
+	emptyInstructionsFollowUp: 'saving the config again.',
+	dynamicSelectorFollowUp:
+		'Load skill agent-builder-resource-locators, resolve a credential if missing, then call ' +
+		'get_resource_locator_options and write the returned parameterValue into nodeParameters.',
+};
+
+const createSkillInputSchema = z
+	.object({
+		name: agentSkillSchema.shape.name.describe('Human-readable skill name'),
+		description: agentSkillSchema.shape.description.describe(SKILL_DESCRIPTION_RULE),
+		instructions: agentSkillSchema.shape.instructions.describe(SKILL_BODY_GUIDANCE),
+		allowedTools: agentSkillSchema.shape.allowedTools
+			.optional()
+			.describe('Exact target-agent tool names this skill is allowed to use.'),
+		references: agentSkillSchema.shape.references
+			.optional()
+			.describe(
+				'Markdown-only supporting files under references/... paths. References are not automatically loaded; instructions must say exactly when to load each reference by path.',
+			),
+	})
+	.strict();
+
+type CreateSkillInput = z.infer<typeof createSkillInputSchema>;
+
 export interface AgentConfigSnapshot {
 	config: AgentJsonConfig | null;
 	configHash: string | null;
 	updatedAt: string | null;
 	versionId: string | null;
-}
-
-function rejectIfEmptyInstructions(
-	config: AgentJsonConfig,
-): { errors: ConfigValidationError[] } | null {
-	if (!config.instructions.trim()) {
-		return { errors: [EMPTY_INSTRUCTIONS_ERROR] };
-	}
-	return null;
-}
-
-function rejectIfUnsupportedNativeWebSearch(
-	config: AgentJsonConfig,
-): { errors: ConfigValidationError[] } | null {
-	const webSearch = config.config?.webSearch;
-	const requestsNativeWebSearch =
-		webSearch?.enabled === true &&
-		(webSearch.provider === undefined ||
-			webSearch.provider === 'auto' ||
-			webSearch.provider === 'native');
-	if (!requestsNativeWebSearch || hasNativeWebSearchProvider(config.model)) return null;
-	return {
-		errors: [
-			{
-				path: '/config/webSearch/provider',
-				message:
-					'Native web search is only supported for Anthropic and OpenAI models. Use Brave or SearXNG fallback web search for this model.',
-			},
-		],
-	};
-}
-
-type AgentConfigTool = NonNullable<AgentJsonConfig['tools']>[number];
-type AgentConfigNodeTool = Extract<AgentConfigTool, { type: 'node' }>;
-
-function isNodeTool(tool: AgentConfigTool | undefined): tool is AgentConfigNodeTool {
-	return tool?.type === 'node';
-}
-
-function hasSameNodeType(left: AgentConfigNodeTool, right: AgentConfigNodeTool): boolean {
-	return (
-		left.node.nodeType === right.node.nodeType &&
-		left.node.nodeTypeVersion === right.node.nodeTypeVersion
-	);
-}
-
-function hasSameNodeToolIdentity(left: AgentConfigNodeTool, right: AgentConfigNodeTool): boolean {
-	return left.name === right.name && hasSameNodeType(left, right);
-}
-
-function findPreviousNodeTool(
-	previousConfig: AgentJsonConfig | null,
-	currentTool: AgentConfigNodeTool,
-	currentToolIndex: number,
-): AgentConfigNodeTool | null {
-	const previousTools = previousConfig?.tools ?? [];
-	const sameIndexTool = previousTools[currentToolIndex];
-	if (isNodeTool(sameIndexTool) && hasSameNodeToolIdentity(sameIndexTool, currentTool)) {
-		return sameIndexTool;
-	}
-
-	const matchingTools = previousTools.filter(
-		(tool): tool is AgentConfigNodeTool =>
-			isNodeTool(tool) && hasSameNodeToolIdentity(tool, currentTool),
-	);
-
-	return matchingTools.length === 1 ? matchingTools[0] : null;
-}
-
-function getPreviousFromAiReferences(
-	previousConfig: AgentJsonConfig | null,
-	currentTool: AgentConfigNodeTool,
-	currentToolIndex: number,
-): FromAiParameterReference[] {
-	const previousTool = findPreviousNodeTool(previousConfig, currentTool, currentToolIndex);
-	if (!previousTool) return [];
-
-	return collectFromAiParameterReferences(previousTool.node.nodeParameters);
 }
 
 function canonicalizeJson(value: unknown): unknown {
@@ -198,34 +139,25 @@ function snapshotFromConfig(
 }
 
 /**
- * The builder expresses web-search intent through `config.webSearch`; this
- * write-path normalizer persists provider-specific native tool details so
- * builder-saved configs are deterministic. Runtime reconstruction uses the
- * same policy defensively for configs saved through other entry points.
+ * Prompt caching is mandatory for OpenAI/Anthropic: this write-path
+ * normalizer guarantees `config.promptCaching` is force-enabled for those
+ * providers (the user cannot disable it, even if the LLM wrote
+ * `{ enabled: false }`), preserves an explicit Anthropic TTL, and strips the
+ * field entirely for every other provider — regardless of what the builder
+ * LLM wrote.
  */
-function applyNativeWebSearchBuilderDefaults(config: AgentJsonConfig): AgentJsonConfig {
-	const providerTools = getNativeWebSearchProviderTools(config, {
-		includeDefaultArgs: true,
-		defaultEnabled: true,
-	});
-	const webSearch = config.config?.webSearch;
-	const fallbackWebSearch =
-		webSearch?.enabled === true &&
-		(webSearch.provider === 'brave' || webSearch.provider === 'searxng');
-	const hasNativeWebSearch =
-		!fallbackWebSearch && webSearch?.enabled !== false && hasNativeWebSearchProvider(config.model);
+function applyPromptCachingBuilderDefaults(config: AgentJsonConfig): AgentJsonConfig {
+	const providerPrefix = getProviderPrefix(config.model);
+	const capability = PROVIDER_CAPABILITIES[providerPrefix]?.promptCaching ?? false;
+	const resolved = resolvePromptCaching(config.config?.promptCaching, capability);
 
-	if (!hasNativeWebSearch) {
-		const { webSearch, ...restConfig } = config.config ?? {};
-		const { config: _config, providerTools: _providerTools, ...restAgentConfig } = config;
-		const normalizedConfig = {
-			...restConfig,
-			...(fallbackWebSearch ? { webSearch } : {}),
-		};
+	if (!resolved) {
+		if (!config.config || !('promptCaching' in config.config)) return config;
+		const { promptCaching: _promptCaching, ...restConfig } = config.config;
+		const { config: _config, ...restAgentConfig } = config;
 		return {
 			...restAgentConfig,
-			...(Object.keys(normalizedConfig).length > 0 ? { config: normalizedConfig } : {}),
-			...(Object.keys(providerTools).length > 0 ? { providerTools } : {}),
+			...(Object.keys(restConfig).length > 0 ? { config: restConfig } : {}),
 		};
 	}
 
@@ -233,12 +165,10 @@ function applyNativeWebSearchBuilderDefaults(config: AgentJsonConfig): AgentJson
 		...config,
 		config: {
 			...(config.config ?? {}),
-			webSearch: { enabled: true },
+			promptCaching: resolved,
 		},
-		providerTools,
 	};
 }
-
 export interface BuilderTools {
 	json: BuiltTool[];
 	shared: BuiltTool[];
@@ -253,91 +183,21 @@ export class AgentsBuilderToolsService {
 		private readonly agentIntegrationPersistenceService: AgentIntegrationPersistenceService,
 		private readonly agentSkillsService: AgentSkillsService,
 		private readonly secureRuntime: AgentSecureRuntime,
-		private readonly workflowRepository: WorkflowRepository,
+		private readonly attachableWorkflowsService: AttachableWorkflowsService,
 		private readonly agentsToolsService: AgentsToolsService,
-		private readonly builderModelLookupService: BuilderModelLookupService,
+		private readonly builderModelLiveLookupService: BuilderModelLiveLookupService,
 		private readonly mcpRegistryService: McpRegistryService,
 		private readonly oauthService: OauthService,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly agentTaskService: AgentTaskService,
 		private readonly agentRepository: AgentRepository,
+		private readonly aiService: AiService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {}
-
-	private getDynamicSelectorPath(
-		nodeTypeDescription: ReturnType<NodeTypes['getByNameAndVersion']>,
-		parameterPath: string,
-	): string | null {
-		const normalizedPath = normalizeParameterPath(parameterPath);
-		const pathParts = normalizedPath.split('.');
-
-		for (let length = pathParts.length; length > 0; length--) {
-			const candidatePath = pathParts.slice(0, length).join('.');
-			const property = findNodeParameterProperty(
-				nodeTypeDescription.description.properties,
-				candidatePath,
-			);
-			if (!property) continue;
-
-			const lookup = getDynamicNodeParameterLookup(property);
-			if (lookup) return candidatePath;
-		}
-
-		return null;
-	}
-
-	private rejectIfDynamicSelectorUsesFromAi(
-		config: AgentJsonConfig,
-		previousConfig: AgentJsonConfig | null,
-	): { errors: ConfigValidationError[] } | null {
-		const errors: ConfigValidationError[] = [];
-
-		for (const [toolIndex, tool] of (config.tools ?? []).entries()) {
-			if (tool.type !== 'node') continue;
-
-			const fromAiReferences = collectFromAiParameterReferences(tool.node.nodeParameters);
-			if (fromAiReferences.length === 0) continue;
-
-			let nodeTypeDescription: ReturnType<NodeTypes['getByNameAndVersion']>;
-			try {
-				nodeTypeDescription = this.nodeTypes.getByNameAndVersion(
-					tool.node.nodeType,
-					tool.node.nodeTypeVersion,
-				);
-			} catch {
-				continue;
-			}
-
-			const previousFromAiReferences = getPreviousFromAiReferences(previousConfig, tool, toolIndex);
-			const reportedDynamicPaths = new Set<string>();
-			for (const fromAiReference of fromAiReferences) {
-				const { parameterPath, jsonPointer } = fromAiReference;
-				const dynamicPath = this.getDynamicSelectorPath(nodeTypeDescription, parameterPath);
-				if (!dynamicPath || reportedDynamicPaths.has(dynamicPath)) continue;
-				if (hasMatchingFromAiParameterReference(previousFromAiReferences, fromAiReference)) {
-					continue;
-				}
-
-				reportedDynamicPaths.add(dynamicPath);
-				errors.push({
-					path: `/tools/${toolIndex}/node/nodeParameters/${jsonPointer}`,
-					message:
-						`Node tool "${tool.name}" parameter "${dynamicPath}" is a dynamic selector. ` +
-						'Do not use $fromAI for this value. Load skill agent-builder-resource-locators, ' +
-						'use ask_credential if credentials are missing, then call get_resource_locator_options ' +
-						'and write the returned parameterValue into nodeParameters.',
-				});
-			}
-		}
-
-		if (errors.length === 0) return null;
-
-		return { errors };
-	}
 
 	getTools(
 		agentId: string,
@@ -420,27 +280,37 @@ export class AgentsBuilderToolsService {
 					if (!zodResult.success) {
 						return { ok: false, errors: formatZodErrors(zodResult.error) };
 					}
-					const emptyInstructions = rejectIfEmptyInstructions(zodResult.data);
+					const emptyInstructions = rejectIfEmptyInstructions(
+						zodResult.data,
+						CLI_AGENT_CONFIG_MESSAGES,
+					);
 					if (emptyInstructions) {
-						return { ok: false, errors: emptyInstructions.errors };
+						return { ok: false, errors: emptyInstructions };
 					}
 					const unsupportedNativeWebSearch = rejectIfUnsupportedNativeWebSearch(zodResult.data);
 					if (unsupportedNativeWebSearch) {
-						return { ok: false, errors: unsupportedNativeWebSearch.errors };
+						return { ok: false, errors: unsupportedNativeWebSearch };
 					}
-					const dynamicSelectorFromAi = this.rejectIfDynamicSelectorUsesFromAi(
+					const dynamicSelectorFromAi = rejectIfDynamicSelectorUsesFromAi(
 						zodResult.data,
 						snapshot.config,
+						this.nodeTypes,
+						CLI_AGENT_CONFIG_MESSAGES,
 					);
 					if (dynamicSelectorFromAi) {
-						return { ok: false, errors: dynamicSelectorFromAi.errors };
+						return { ok: false, errors: dynamicSelectorFromAi };
 					}
-					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
+					// Seed the builder's "native model gets web search by default" ergonomic
+					// as an explicit flag; updateConfig owns the actual provider-tool
+					// reconciliation so the write and read paths can't disagree.
+					const configWithDefaults = applyPromptCachingBuilderDefaults(
+						applyNativeWebSearchDefaultOn(zodResult.data),
+					);
 					try {
 						const result = await this.agentConfigService.updateConfig(
 							agentId,
 							projectId,
-							normalizedConfig,
+							configWithDefaults,
 						);
 						return {
 							ok: true,
@@ -535,28 +405,35 @@ export class AgentsBuilderToolsService {
 					if (!zodResult.success) {
 						return { ok: false, stage: 'schema', errors: formatZodErrors(zodResult.error) };
 					}
-					const emptyInstructions = rejectIfEmptyInstructions(zodResult.data);
+					const emptyInstructions = rejectIfEmptyInstructions(
+						zodResult.data,
+						CLI_AGENT_CONFIG_MESSAGES,
+					);
 					if (emptyInstructions) {
-						return { ok: false, stage: 'schema', errors: emptyInstructions.errors };
+						return { ok: false, stage: 'schema', errors: emptyInstructions };
 					}
 					const unsupportedNativeWebSearch = rejectIfUnsupportedNativeWebSearch(zodResult.data);
 					if (unsupportedNativeWebSearch) {
-						return { ok: false, stage: 'schema', errors: unsupportedNativeWebSearch.errors };
+						return { ok: false, stage: 'schema', errors: unsupportedNativeWebSearch };
 					}
-					const dynamicSelectorFromAi = this.rejectIfDynamicSelectorUsesFromAi(
+					const dynamicSelectorFromAi = rejectIfDynamicSelectorUsesFromAi(
 						zodResult.data,
 						snapshot.config,
+						this.nodeTypes,
+						CLI_AGENT_CONFIG_MESSAGES,
 					);
 					if (dynamicSelectorFromAi) {
-						return { ok: false, stage: 'schema', errors: dynamicSelectorFromAi.errors };
+						return { ok: false, stage: 'schema', errors: dynamicSelectorFromAi };
 					}
-					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
+					const configWithDefaults = applyPromptCachingBuilderDefaults(
+						applyNativeWebSearchDefaultOn(zodResult.data),
+					);
 
 					try {
 						const result = await this.agentConfigService.updateConfig(
 							agentId,
 							projectId,
-							normalizedConfig,
+							configWithDefaults,
 						);
 						return {
 							ok: true,
@@ -610,8 +487,14 @@ export class AgentsBuilderToolsService {
 			.build();
 
 		const modelLookup: ModelLookup = {
-			list: async (credentialId, credentialType, lookup) =>
-				await this.builderModelLookupService.list(user, credentialId, credentialType, lookup),
+			list: async (credentialId, credentialType, provider) =>
+				await this.builderModelLiveLookupService.list(
+					user,
+					projectId,
+					credentialId,
+					credentialType,
+					provider,
+				),
 		};
 
 		const tools: BuiltTool[] = [
@@ -624,6 +507,11 @@ export class AgentsBuilderToolsService {
 			buildAskCredentialTool({
 				credentialProvider,
 				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
+			}),
+			buildAskEmbeddingCredentialTool({
+				credentialProvider,
+				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
+				isAssistantProxyEnabled: () => this.aiService.isProxyEnabled(),
 			}),
 			buildAskLlmTool(),
 			buildAskQuestionTool(),
@@ -653,9 +541,11 @@ export class AgentsBuilderToolsService {
 			.description(
 				'Compile and store a custom tool. Pass the complete TypeScript source ' +
 					'using `export default new Tool(...)` builder chain. The code is validated in a ' +
-					'sandbox and saved against the agent, but this does NOT register the tool in the ' +
-					'agent config — follow up with patch_config (or write_config) to add a ' +
-					'`{ type: "custom", id }` entry to `tools` so the agent actually uses it. ' +
+					'sandbox and saved against the agent. The returned `id` equals the tool name ' +
+					'declared in the code (e.g. `new Tool("my_tool")` → id `"my_tool"`). ' +
+					'This does NOT register the tool in the agent config — follow up with ' +
+					'patch_config (or write_config) to add `{ type: "custom", id: "<tool name>" }` ' +
+					'to `tools`.' +
 					'Returns { ok: true, id, descriptor } or { ok: false, errors }.',
 			)
 			.input(
@@ -687,54 +577,42 @@ export class AgentsBuilderToolsService {
 		const createSkillTool = new Tool(BUILDER_TOOLS.CREATE_SKILL)
 			.description(
 				'Create and store an agent skill (a reusable, load-on-demand capability). Pass the skill name, a ' +
-					'routing description, and the full skill body. The description is what the runtime sees when ' +
-					'deciding when to load it, and the body MUST follow the required structured format (Overview, ' +
-					'Inputs, Steps, Rules, Example, Gotchas) filled with concrete content — see the body parameter ' +
-					'for the template. You MUST NOT call this with a vague description or a thin/placeholder body: ' +
+					'routing description, and the full skill instructions. The description is what the runtime sees when ' +
+					'deciding when to load it, and the instructions MUST follow the required structured format (Overview, ' +
+					'Inputs, Steps, Rules, Example, Gotchas) filled with concrete content — see the instructions parameter ' +
+					'for the template. You MUST NOT call this with a vague description or thin/placeholder instructions: ' +
 					'if you lack the domain detail to write a genuinely useful skill, ask the user clarifying ' +
-					'questions first. This does NOT attach the skill to the agent config; follow up with read_config ' +
+					'questions first. Use allowedTools only with exact target-agent tool names, ' +
+					'and references only for markdown supporting files under the references/ directory. References are not automatically loaded; when you provide references, instructions must say exactly when to load each one by path. Scripts and non-markdown linked files are not supported. ' +
+					'This does NOT attach the skill to the agent config; follow up with read_config ' +
 					'and patch_config (or write_config) to add a `{ type: "skill", id }` entry to `skills`. ' +
 					'Returns { ok: true, id, skill } or { ok: false, errors }.',
 			)
 			.systemInstruction(
 				'Never create a vague or placeholder skill. The description is the routing contract (what the ' +
-					'skill does + when to load it); the body must follow the required structured Markdown template ' +
+					'skill does + when to load it); the instructions must follow the required structured Markdown template ' +
 					'(Overview, Inputs, Steps, Rules, Example, Gotchas) with each applicable section filled in with ' +
 					'concrete, specific content. If you do not have enough domain detail to write a genuinely ' +
-					'useful skill, ask the user clarifying questions until you do before calling create_skill.',
+					'useful skill, ask the user clarifying questions until you do before calling create_skill. ' +
+					'Do not create references unless the instructions include explicit conditions for loading each referenced file. ' +
+					'Do not invent tool names or reference paths.',
 			)
-			.input(
-				z.object({
-					name: agentSkillSchema.shape.name.describe('Human-readable skill name'),
-					description: agentSkillSchema.shape.description.describe(SKILL_DESCRIPTION_RULE),
-					body: agentSkillSchema.shape.instructions.describe(SKILL_BODY_GUIDANCE),
-				}),
-			)
-			.handler(
-				async ({
-					name,
-					description,
-					body,
-				}: {
-					name: string;
-					description: string;
-					body: string;
-				}) => {
-					// Input is already validated against `.input()` (agentSkillSchema
-					// shapes) by the tool runtime before the handler runs.
-					const skill = { name, description, instructions: body };
+			.input(createSkillInputSchema)
+			.handler(async (input: CreateSkillInput) => {
+				// Input is already validated against `.input()` (agentSkillSchema
+				// shapes) by the tool runtime before the handler runs.
+				const skill: AgentSkill = input;
 
-					try {
-						const created = await this.agentSkillsService.createSkill(agentId, projectId, skill);
-						return { ok: true, id: created.id, skill: created.skill };
-					} catch (e) {
-						return {
-							ok: false,
-							errors: [{ message: e instanceof Error ? e.message : String(e) }],
-						};
-					}
-				},
-			)
+				try {
+					const created = await this.agentSkillsService.createSkill(agentId, projectId, skill);
+					return { ok: true, id: created.id, skill: created.skill };
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+			})
 			.build();
 
 		const createTaskTool = new Tool(BUILDER_TOOLS.CREATE_TASK)
@@ -814,45 +692,21 @@ export class AgentsBuilderToolsService {
 				'List the n8n workflows that can be attached as tools via `type: "workflow"` in the agent config. ' +
 					'ALWAYS call this at the start — workflows are the preferred way to give agents real capabilities ' +
 					'(sending emails, creating calendar events, querying databases, calling APIs, etc.). ' +
-					'Only returns workflows with supported trigger types.',
+					'Only returns workflows with supported trigger types. Pass `searchTerm` to narrow by workflow name; ' +
+					'omitting it returns the 10 most recently updated attachable workflows.',
 			)
-			.input(z.object({}))
-			.handler(async () => {
-				const workflows = await this.workflowRepository.find({
-					select: ['id', 'name', 'nodes', 'active', 'updatedAt'],
-					where: { shared: { projectId } },
-					relations: ['shared'],
-					order: { updatedAt: 'DESC' },
-					take: 100,
-				});
-
-				// Keys are n8n node type IDs, which use the dotted "package.nodeName"
-				// format — the naming-convention rule doesn't apply to those.
-				/* eslint-disable @typescript-eslint/naming-convention */
-				const SUPPORTED_TRIGGERS: Record<string, string> = {
-					'n8n-nodes-base.manualTrigger': 'manual',
-					'n8n-nodes-base.executeWorkflowTrigger': 'executeWorkflow',
-					'n8n-nodes-base.chatTrigger': 'chat',
-					'n8n-nodes-base.scheduleTrigger': 'schedule',
-					'n8n-nodes-base.formTrigger': 'form',
+			.input(
+				z.object({
+					searchTerm: z
+						.string()
+						.optional()
+						.describe('Optional workflow-name search term. Omit to return the first 10 results.'),
+				}),
+			)
+			.handler(async ({ searchTerm }: { searchTerm?: string }) => {
+				return {
+					workflows: await this.attachableWorkflowsService.list(user, projectId, searchTerm),
 				};
-				/* eslint-enable @typescript-eslint/naming-convention */
-
-				const compatible = workflows
-					.map((w) => {
-						const triggerNode = (w.nodes ?? []).find(
-							(n: { type: string }) => SUPPORTED_TRIGGERS[n.type],
-						);
-						if (!triggerNode) return null;
-						return {
-							name: w.name,
-							active: w.active,
-							triggerType: SUPPORTED_TRIGGERS[triggerNode.type],
-						};
-					})
-					.filter(Boolean);
-
-				return { workflows: compatible };
 			})
 			.build();
 

@@ -1,3 +1,5 @@
+import { AgentEvent } from '../../types/runtime/event';
+import type { AgentEventData } from '../../types/runtime/event';
 import type { RunOptions } from '../../types/sdk/agent';
 import type { AgentDbMessage, AgentMessage } from '../../types/sdk/message';
 import type { AgentRuntimeConfig } from '../loop/agent-runtime';
@@ -19,9 +21,12 @@ function assistantMsg(text: string): AgentMessage {
 	return { role: 'assistant', content: [{ type: 'text', text }] };
 }
 
-function buildOrchestrator(store?: InMemoryMemory): MemoryOrchestrator {
+function buildOrchestrator(
+	store?: InMemoryMemory,
+	bus: AgentEventBus = new AgentEventBus(),
+): MemoryOrchestrator {
 	const config = { memory: store } as unknown as AgentRuntimeConfig;
-	return new MemoryOrchestrator(config, new BackgroundTaskTracker(), new AgentEventBus());
+	return new MemoryOrchestrator(config, new BackgroundTaskTracker(), bus);
 }
 
 function textsOf(messages: AgentDbMessage[]): string[] {
@@ -103,22 +108,27 @@ describe('MemoryOrchestrator.persistInputMessages', () => {
 		expect(persisted.filter((m) => m.id === inputId)).toHaveLength(1);
 	});
 
-	it('does not throw when the underlying save fails (best-effort)', async () => {
+	it('does not throw, and emits AgentEvent.Error, when the underlying save fails (best-effort)', async () => {
 		const store = new InMemoryMemory();
 		await store.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID });
 		vi.spyOn(store, 'saveMessages').mockRejectedValue(new Error('db down'));
+		const bus = new AgentEventBus();
+		const errors: AgentEventData[] = [];
+		bus.on(AgentEvent.Error, (event) => errors.push(event));
 
 		const list = new AgentMessageList();
 		list.addInput([userMsg('the user prompt')]);
 
-		// A transient persistence failure must not abort the turn.
+		// A transient persistence failure must not abort the turn, but is reported.
 		await expect(
-			buildOrchestrator(store).persistInputMessages(list, PERSIST),
+			buildOrchestrator(store, bus).persistInputMessages(list, PERSIST),
 		).resolves.toBeUndefined();
+		expect(errors).toHaveLength(1);
+		expect(errors[0]).toMatchObject({ type: AgentEvent.Error, source: 'input-persistence' });
 	});
 });
 
-describe('MemoryOrchestrator.persistTurnOnSuspend', () => {
+describe('MemoryOrchestrator.persistTurnDelta', () => {
 	it('persists the full turn delta (input + response), not history', async () => {
 		const store = new InMemoryMemory();
 		await store.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID });
@@ -128,7 +138,7 @@ describe('MemoryOrchestrator.persistTurnOnSuspend', () => {
 		list.addInput([userMsg('please build it')]);
 		list.addResponse([assistantMsg('built the workflow')]);
 
-		await buildOrchestrator(store).persistTurnOnSuspend(list, PERSIST);
+		await buildOrchestrator(store).persistTurnDelta(list, PERSIST);
 
 		const persisted = await store.getMessages(THREAD_ID, { resourceId: RESOURCE_ID });
 		expect(textsOf(persisted)).toEqual(['please build it', 'built the workflow']);
@@ -142,7 +152,7 @@ describe('MemoryOrchestrator.persistTurnOnSuspend', () => {
 		list.addInput([userMsg('please build it')]);
 		list.addResponse([assistantMsg('built the workflow')]);
 
-		await buildOrchestrator(store).persistTurnOnSuspend(list, undefined);
+		await buildOrchestrator(store).persistTurnDelta(list, undefined);
 
 		const persisted = await store.getMessages(THREAD_ID, { resourceId: RESOURCE_ID });
 		expect(persisted).toEqual([]);
@@ -154,7 +164,7 @@ describe('MemoryOrchestrator.persistTurnOnSuspend', () => {
 		list.addResponse([assistantMsg('built the workflow')]);
 
 		await expect(
-			buildOrchestrator(undefined).persistTurnOnSuspend(list, PERSIST),
+			buildOrchestrator(undefined).persistTurnDelta(list, PERSIST),
 		).resolves.toBeUndefined();
 	});
 
@@ -165,7 +175,7 @@ describe('MemoryOrchestrator.persistTurnOnSuspend', () => {
 		const list = new AgentMessageList();
 		list.addHistory([{ id: 'h1', createdAt: new Date(2024, 0, 1), ...userMsg('old history') }]);
 
-		await buildOrchestrator(store).persistTurnOnSuspend(list, PERSIST);
+		await buildOrchestrator(store).persistTurnDelta(list, PERSIST);
 
 		const persisted = await store.getMessages(THREAD_ID, { resourceId: RESOURCE_ID });
 		expect(persisted).toEqual([]);
@@ -181,7 +191,7 @@ describe('MemoryOrchestrator.persistTurnOnSuspend', () => {
 
 		const orchestrator = buildOrchestrator(store);
 		// Save on suspend, then the end-of-turn save of the same delta after resume.
-		await orchestrator.persistTurnOnSuspend(list, PERSIST);
+		await orchestrator.persistTurnDelta(list, PERSIST);
 		await orchestrator.saveToMemory(list, PERSIST);
 
 		const persisted = await store.getMessages(THREAD_ID, { resourceId: RESOURCE_ID });
@@ -190,18 +200,23 @@ describe('MemoryOrchestrator.persistTurnOnSuspend', () => {
 		expect(persisted.filter((m) => m.id === responseId)).toHaveLength(1);
 	});
 
-	it('does not throw when the underlying save fails (best-effort)', async () => {
+	it('does not throw, and emits AgentEvent.Error, when the underlying save fails (best-effort)', async () => {
 		const store = new InMemoryMemory();
 		await store.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID });
 		vi.spyOn(store, 'saveMessages').mockRejectedValue(new Error('db down'));
+		const bus = new AgentEventBus();
+		const errors: AgentEventData[] = [];
+		bus.on(AgentEvent.Error, (event) => errors.push(event));
 
 		const list = new AgentMessageList();
 		list.addInput([userMsg('please build it')]);
 		list.addResponse([assistantMsg('built the workflow')]);
 
-		// A transient persistence failure must not abort the suspend flow.
+		// A transient persistence failure must not abort the suspend flow, but is reported.
 		await expect(
-			buildOrchestrator(store).persistTurnOnSuspend(list, PERSIST),
+			buildOrchestrator(store, bus).persistTurnDelta(list, PERSIST),
 		).resolves.toBeUndefined();
+		expect(errors).toHaveLength(1);
+		expect(errors[0]).toMatchObject({ type: AgentEvent.Error, source: 'turn-delta-persistence' });
 	});
 });

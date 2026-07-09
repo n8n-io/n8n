@@ -115,7 +115,7 @@ export const INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_EXPERIMENT = createExperim
 	'087_instance_ai_workflow_preview_suggestions',
 );
 export const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT = createExperiment(
-	'090_instance_ai_personalized_prompt_suggestions',
+	'093_instance_ai_personalized_prompt_suggestions',
 	{
 		control: 'control',
 		variantCards: 'variant-cards',
@@ -125,6 +125,21 @@ export const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT = createExpe
 
 export const INSTANCE_AI_MCP_CONNECTIONS_EXPERIMENT = createExperiment(
 	'089_instance_ai_mcp_connections',
+);
+
+export const INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT = createExperiment(
+	'089_instance_ai_split_empty_state',
+);
+
+export const INSTANCE_AI_BROWSER_USE_EXPERIMENT = createExperiment('090_instance_ai_browser_use');
+
+export const INSTANCE_AI_COMPUTER_USE_EXPERIMENT = createExperiment('091_instance_ai_computer_use');
+
+export const INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT = createExperiment(
+	'092_instance_ai_template_examples',
+);
+export const INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_EXPERIMENT = createExperiment(
+	'094_instance_ai_browser_credential_setup',
 );
 
 export const EXPERIMENTS_TO_TRACK = [
@@ -159,4 +174,9 @@ export const EXPERIMENTS_TO_TRACK = [
 	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_EXPERIMENT.name,
 	INSTANCE_AI_MCP_CONNECTIONS_EXPERIMENT.name,
 	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT.name,
+	INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT.name,
+	INSTANCE_AI_BROWSER_USE_EXPERIMENT.name,
+	INSTANCE_AI_COMPUTER_USE_EXPERIMENT.name,
+	INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT.name,
+	INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_EXPERIMENT.name,
 ];

@@ -391,6 +391,7 @@ const handleClick = (event: MouseEvent) => {
 }
 
 .button-inner {
+	flex: 1;
 	display: flex;
 	align-items: center;
 	justify-content: center;

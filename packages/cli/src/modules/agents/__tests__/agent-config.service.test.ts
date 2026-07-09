@@ -1,6 +1,7 @@
+import type { Mocked } from 'vitest';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 
@@ -74,7 +75,7 @@ function makeService() {
 }
 
 function mockAccessibleCredentials(
-	credentialsService: jest.Mocked<CredentialsService>,
+	credentialsService: Mocked<CredentialsService>,
 	credentialIds: string[],
 ) {
 	credentialsService.findAllCredentialIdsForProject.mockResolvedValue(
@@ -84,7 +85,11 @@ function mockAccessibleCredentials(
 
 describe('AgentConfigService', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
 	});
 
 	describe('validateConfig', () => {
@@ -131,6 +136,34 @@ describe('AgentConfigService', () => {
 	});
 
 	describe('updateConfig', () => {
+		it('persists an explicit web-search disable and clears native provider tools', async () => {
+			// Regression: previously the disable was stripped on write and resurrected
+			// on read, so the config hash never changed and the builder looped.
+			const { service, agentRepository } = makeService();
+			const agent = makeAgent({
+				schema: {
+					...baseConfig,
+					config: { webSearch: { enabled: true } },
+					providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+				} as unknown as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.updateConfig(agentId, projectId, {
+				...baseConfig,
+				config: { webSearch: { enabled: false } },
+				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+			} as unknown as AgentJsonConfig);
+
+			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.schema?.config?.webSearch).toEqual({ enabled: false });
+			expect(saved.schema?.providerTools).toEqual({});
+			// The returned (composed) config reflects the persisted state so the tool
+			// layer's freshness hash actually changes.
+			expect(result.config?.config?.webSearch).toEqual({ enabled: false });
+			expect(result.config?.providerTools).toEqual({});
+		});
+
 		it('preserves omitted stored fields but clears explicitly empty integrations', async () => {
 			const { service, agentRepository, credentialsService, runtimeCacheService } = makeService();
 			const agent = makeAgent({
@@ -178,13 +211,13 @@ describe('AgentConfigService', () => {
 			} = makeService();
 			const agent = makeAgent({
 				tools: {
-					'tool-1': {
+					tool_1: {
 						code: 'a',
-						descriptor: { name: 'tool-1', description: 'a', inputSchema: {} },
+						descriptor: { name: 'tool_1', description: 'a', inputSchema: {} },
 					},
-					'tool-2': {
+					tool_2: {
 						code: 'b',
-						descriptor: { name: 'tool-2', description: 'b', inputSchema: {} },
+						descriptor: { name: 'tool_2', description: 'b', inputSchema: {} },
 					},
 				} as unknown as Agent['tools'],
 				skills: {
@@ -200,8 +233,8 @@ describe('AgentConfigService', () => {
 			await service.updateConfig(agentId, projectId, {
 				...baseConfig,
 				tools: [
-					{ type: 'custom', id: 'tool-1' },
-					{ type: 'custom', id: 'missing-tool' },
+					{ type: 'custom', id: 'tool_1' },
+					{ type: 'custom', id: 'missing_tool' },
 				],
 				skills: [
 					{ type: 'skill', id: 'skill-1' },
@@ -214,10 +247,10 @@ describe('AgentConfigService', () => {
 			});
 
 			const saved = agentRepository.save.mock.calls[0][0] as Agent;
-			expect(saved.schema?.tools).toEqual([{ type: 'custom', id: 'tool-1' }]);
+			expect(saved.schema?.tools).toEqual([{ type: 'custom', id: 'tool_1' }]);
 			expect(saved.schema?.skills).toEqual([{ type: 'skill', id: 'skill-1' }]);
 			expect(saved.schema?.tasks).toEqual([{ type: 'task', id: 'task-1', enabled: true }]);
-			expect(Object.keys(saved.tools)).toEqual(['tool-1']);
+			expect(Object.keys(saved.tools)).toEqual(['tool_1']);
 			expect(agentTaskRepository.delete).toHaveBeenCalledWith(['task-2']);
 			expect(agentSkillsService.removeUnreferencedSkills).toHaveBeenCalled();
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
@@ -260,6 +293,89 @@ describe('AgentConfigService', () => {
 			);
 			expect(saved.integrations).toEqual([{ type: 'slack', credentialId: '' }]);
 			expect(savedConfig.mcpServers?.[0].credential).toBe('');
+		});
+
+		it('persists personalisation changes from the config payload', async () => {
+			const { service, agentRepository } = makeService();
+			const agent = makeAgent({
+				schema: {
+					...baseConfig,
+					personalisation: {
+						icon: 'bot',
+						gradient: {
+							from: '#111111',
+							to: '#222222',
+							angle: 135,
+							fromStop: 0,
+							toStop: 100,
+						},
+					},
+				},
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.updateConfig(agentId, projectId, {
+				...baseConfig,
+				personalisation: {
+					icon: 'mail',
+					gradient: {
+						from: '#333333',
+						to: '#444444',
+						angle: 42,
+						fromStop: 12,
+						toStop: 88,
+					},
+				},
+			});
+
+			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			expect(saved.schema?.personalisation).toEqual({
+				icon: 'mail',
+				gradient: {
+					from: '#333333',
+					to: '#444444',
+					angle: 42,
+					fromStop: 12,
+					toStop: 88,
+				},
+			});
+		});
+
+		it('preserves an existing personalisation gradient when only the icon changes', async () => {
+			const { service, agentRepository } = makeService();
+			const agent = makeAgent({
+				schema: {
+					...baseConfig,
+					personalisation: {
+						icon: 'bot',
+						gradient: {
+							from: '#111111',
+							to: '#222222',
+							angle: 42,
+							fromStop: 12,
+							toStop: 88,
+						},
+					},
+				},
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.updateConfig(agentId, projectId, {
+				...baseConfig,
+				personalisation: { icon: 'mail' },
+			});
+
+			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			expect(saved.schema?.personalisation).toEqual({
+				icon: 'mail',
+				gradient: {
+					from: '#111111',
+					to: '#222222',
+					angle: 42,
+					fromStop: 12,
+					toStop: 88,
+				},
+			});
 		});
 
 		it('stores only existing published subagents and rejects invalid subagent refs', async () => {

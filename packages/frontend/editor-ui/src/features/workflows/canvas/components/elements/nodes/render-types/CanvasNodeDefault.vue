@@ -8,6 +8,7 @@ import { injectCanvasRenderData } from '@/features/workflows/canvas/canvas.utils
 import { useCanvas } from '../../../../composables/useCanvas';
 import { useZoomAdjustedValues } from '../../../../composables/useZoomAdjustedValues';
 import CanvasNodeSettingsIcons from './parts/CanvasNodeSettingsIcons.vue';
+import { useNodePrivateCredential } from '@/features/resolvers/composables/useNodePrivateCredential';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { calculateNodeSize } from '@/app/utils/nodeViewUtils';
 import ExperimentalInPlaceNodeSettings from '../../../../experimental/components/ExperimentalEmbeddedNodeDetails.vue';
@@ -48,17 +49,25 @@ const {
 	render,
 	isNotInstalledCommunityNode,
 } = useCanvasNode();
+const { hasPrivateCredential, tooltipText: privateCredentialTooltip } =
+	useNodePrivateCredential(name);
 const renderData = injectCanvasRenderData();
 const inputs = computed(() => renderData.value.nodeInputsByNodeId.get(id.value)?.value ?? []);
 const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(id.value)?.value ?? []);
 const hasExecutionErrors = computed(
 	() => (renderData.value.executionIssuesByNodeName.get(name.value)?.value?.length ?? 0) > 0,
 );
-const hasPinnedData = computed(() => !!renderData.value.pinnedDataByNodeName[name.value]);
-const hasSimulatedOutput = computed(
-	() => !!renderData.value.executionSimulationByNodeName[name.value],
+const hasPinnedData = computed(
+	() =>
+		!renderData.value.isExecutionDataDisplayed &&
+		!!renderData.value.pinnedDataByNodeName[name.value],
 );
-const hasSubstitutedOutput = computed(() => hasPinnedData.value || hasSimulatedOutput.value);
+const hasExecutionPinData = computed(
+	() =>
+		renderData.value.isExecutionDataDisplayed &&
+		!!renderData.value.executionPinDataByNodeName[name.value],
+);
+const hasSubstitutedOutput = computed(() => hasPinnedData.value || hasExecutionPinData.value);
 const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
 	useNodeConnections({
 		inputs,
@@ -79,7 +88,7 @@ const classes = computed(() => {
 		[$style.disabled]:
 			isDisabled.value || (isNotInstalledCommunityNode.value && !isDemoRoute.value),
 		[$style.success]: Boolean(
-			hasRunData.value && executionStatus.value === 'success' && !hasSimulatedOutput.value,
+			hasRunData.value && executionStatus.value === 'success' && !hasExecutionPinData.value,
 		),
 		[$style.error]: hasExecutionErrors.value,
 		[$style.running]: running,
@@ -150,7 +159,20 @@ const iconSource = computed(() => {
 			name: 'plus',
 		} as NodeIconSource;
 	}
-	return renderOptions.value.icon;
+
+	const source = renderOptions.value.icon;
+	// When the node uses a private credential, that icon takes over the node badge
+	// slot, replacing any node-specific badge (e.g. the HTTP Request globe).
+	if (hasPrivateCredential.value && source) {
+		const badge: NodeIconSource['badge'] = {
+			type: 'icon',
+			name: 'user-round-key',
+			tooltip: privateCredentialTooltip.value,
+		};
+		return { ...source, badge };
+	}
+
+	return source;
 });
 
 const showTooltip = ref(false);

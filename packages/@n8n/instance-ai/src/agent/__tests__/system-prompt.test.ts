@@ -51,6 +51,60 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('need clarification');
 			expect(prompt).toContain('use the `ask-user` tool instead of asking in plain text');
 		});
+
+		it('does not route missing workflow setup values through ask-user before build', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('use `ask-user` only for choices that change the workflow intent');
+			expect(prompt).toContain('Do not use `ask-user` before the first build');
+			expect(prompt).toContain('leave them for post-build workflow setup');
+		});
+	});
+
+	describe('tool discovery', () => {
+		it('includes generic Tool Discovery guidance when deferred tool search is enabled', () => {
+			const prompt = getSystemPrompt({ toolSearchEnabled: true });
+
+			expect(prompt).toContain('## Tool Discovery');
+			expect(prompt).toContain('additional tools available beyond the ones listed above');
+			expect(prompt).toContain('search "credential" for the credentials tool');
+			expect(prompt).toContain('search "file" for filesystem tools');
+			expect(prompt).toContain('search "workflow" for workflow management');
+			expect(prompt).not.toContain('connected service or MCP integration');
+			expect(prompt).not.toContain('connected MCP integrations');
+		});
+
+		it('prompts the agent to search connected MCP integrations before declaring them unavailable', () => {
+			const prompt = getSystemPrompt({
+				toolSearchEnabled: true,
+				mcpToolSearchEnabled: true,
+			});
+
+			expect(prompt).toContain('connected MCP integrations');
+			expect(prompt).toContain('connected service or MCP integration');
+			expect(prompt).toContain('call `search_tools` with the service name and task keywords');
+			expect(prompt).toContain('before saying the integration is unavailable');
+			expect(prompt).toContain('asking the user to connect it');
+		});
+
+		it('anchors examples to connected MCP tool searches', () => {
+			const prompt = getSystemPrompt({
+				toolSearchEnabled: true,
+				mcpToolSearchEnabled: true,
+			});
+
+			expect(prompt).toContain(
+				'search "notion page" or "linear issue" for the corresponding MCP tool',
+			);
+			expect(prompt).toContain('search "credential" for the credentials tool');
+		});
+
+		it('omits Tool Discovery guidance when deferred tool search is disabled even if MCP tools exist', () => {
+			const prompt = getSystemPrompt({ mcpToolSearchEnabled: true });
+
+			expect(prompt).not.toContain('## Tool Discovery');
+			expect(prompt).not.toContain('connected service or MCP integration');
+		});
 	});
 
 	describe('license hints', () => {
@@ -137,7 +191,6 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain("Match the user's request against skill descriptions");
 			expect(prompt).toContain('**Single workflow build or edit**');
 			expect(prompt).toContain('`workflow-builder`');
-			expect(prompt).toContain('workspace file tools');
 			expect(prompt).toContain('`build-workflow`');
 			expect(prompt).toContain('**Multi-workflow or coordinated architecture**');
 			expect(prompt).toContain('`planning`');
@@ -147,6 +200,15 @@ describe('getSystemPrompt', () => {
 			expect(prompt).not.toContain('build-workflow-with-agent');
 		});
 
+		it('forbids the agent_builder tool during workflow building', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('do not call `agent_builder` at all');
+			expect(prompt).toContain(
+				'do not route around that by creating a custom tool through `agent_builder`',
+			);
+		});
+
 		it('routes standalone data-table work through the data-table-manager skill', () => {
 			const prompt = getSystemPrompt({});
 
@@ -154,9 +216,9 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('`data-table-manager`');
 			expect(prompt).toContain('what data tables do I have?');
 			expect(prompt).toContain(
-				'never call `data-tables` or `parse-file` without loading `data-table-manager` first',
+				'Never call `data-tables` or `parse-file` without loading `data-table-manager` first',
 			);
-			expect(prompt).toContain('Do not call `create-tasks` or `delegate`');
+			expect(prompt).toContain('Do not call `create-tasks`');
 		});
 
 		it('loads data-table-manager before workflow-builder when tables are involved', () => {
@@ -182,10 +244,24 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('Do not create a plan just for verification');
 		});
 
+		it('describes error workflows as per-workflow and publish-before-assign', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('n8n has no global/instance-wide error workflow setting');
+			expect(prompt).toContain('settings.errorWorkflow');
+			expect(prompt).toContain('only after that referenced error workflow is published');
+			expect(prompt).toContain(
+				'mention the missing global/instance-wide setting to the user only when they explicitly ask',
+			);
+			expect(prompt).not.toContain('global error workflow for this instance');
+		});
+
 		it('points post-build and follow-up work at dedicated skills', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain('`post-build-flow`');
+			expect(prompt).toContain('postBuildFlow.required: true');
+			expect(prompt).toContain('before verification, setup, error-workflow follow-up');
 			expect(prompt).toContain('`planned-task-runtime`');
 			expect(prompt).toContain('`debugging-executions`');
 		});
@@ -212,7 +288,7 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toContain('needsBrowserSetup=true');
 			expect(prompt).toContain('credential-setup-with-computer-use');
-			expect(prompt).toMatch(/use Computer Use `browser_\*` tools directly \(not `delegate`\)/);
+			expect(prompt).toMatch(/use Computer Use `browser_\*` tools directly/);
 		});
 	});
 

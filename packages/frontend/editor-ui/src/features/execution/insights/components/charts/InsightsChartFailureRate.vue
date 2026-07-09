@@ -6,7 +6,7 @@ import {
 	INSIGHTS_UNIT_MAPPING,
 } from '@/features/execution/insights/insights.constants';
 import { transformInsightsFailureRate } from '@/features/execution/insights/insights.utils';
-import { smartDecimal } from '@n8n/utils/number/smartDecimal';
+import { smartDecimal } from '@n8n/utils/number/smart-decimal';
 import { useCssVar } from '@vueuse/core';
 import type { ChartData } from 'chart.js';
 import { computed } from 'vue';

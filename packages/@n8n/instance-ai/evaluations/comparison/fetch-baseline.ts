@@ -44,6 +44,7 @@ const outputsSchema = z
 	.object({
 		passed: z.boolean().default(false),
 		failureCategory: z.string().optional(),
+		incomplete: z.boolean().optional(),
 	})
 	.passthrough();
 
@@ -51,12 +52,19 @@ const outputsSchema = z
  * Return the most recently created baseline experiment, or `undefined` if
  * none exist. We pick by `start_time` so a re-run of an older snapshot
  * doesn't displace the latest one.
+ *
+ * `prefix` defaults to the Instance AI baseline. Pass a different prefix (e.g.
+ * `mcp-baseline-`) to scope the lookup to an isolated cohort, so an MCP run
+ * compares MCP-vs-MCP instead of against the Instance AI baseline.
  */
-export async function findLatestBaseline(client: Client): Promise<string | undefined> {
+export async function findLatestBaseline(
+	client: Client,
+	prefix: string = BASELINE_EXPERIMENT_PREFIX,
+): Promise<string | undefined> {
 	let latest: { name: string; ts: number } | undefined;
-	for await (const project of client.listProjects({ nameContains: BASELINE_EXPERIMENT_PREFIX })) {
+	for await (const project of client.listProjects({ nameContains: prefix })) {
 		const name = project.name;
-		if (!name?.startsWith(BASELINE_EXPERIMENT_PREFIX)) continue;
+		if (!name?.startsWith(prefix)) continue;
 		const ts = project.start_time ? new Date(project.start_time).getTime() : 0;
 		if (!latest || ts > latest.ts) latest = { name, ts };
 	}
@@ -97,6 +105,8 @@ export async function fetchBaselineBucket(
 		}
 		const outputs = outputsSchema.safeParse(rawOutputs);
 		if (!outputs.success) continue;
+		// Verifier-incomplete rows carry no verdict — skip so they don't count as failed trials.
+		if (outputs.data.incomplete) continue;
 
 		const key = `${inputs.data.testCaseFile}/${inputs.data.scenarioName}`;
 		const existing: ScenarioCounts = scenarios.get(key) ?? {

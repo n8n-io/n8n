@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import {
 	SUB_AGENT_MAX_CHILDREN_DEFAULT,
 	SUB_AGENT_MAX_CHILDREN_MAX,
@@ -9,22 +9,18 @@ import {
 } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
 import {
-	N8nCard,
-	N8nIcon,
 	N8nIconButton,
 	N8nInputNumber2,
-	N8nScrollArea,
+	N8nSwitch2,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
-import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 
 import { useAgentModelCredentials } from '../composables/useAgentModelCredentials';
 import { useModelCatalog } from '../composables/useModelCatalog';
-import { useProjectAgentsList } from '../composables/useProjectAgentsList';
 import AgentModelSelector from './AgentModelSelector.vue';
 import {
 	type AgentCredentialsByProvider,
@@ -35,8 +31,8 @@ import {
 	isAgentModelProvider,
 } from '../model-providers';
 import type { AgentJsonConfig } from '../types';
-import { AGENT_SUB_AGENTS_MODAL_KEY } from '../constants';
 import { parseModelString, sanitizeModelId } from '../utils/model-string';
+import shared from '../styles/agent-panel.module.scss';
 
 const DIFFICULTY_LABEL_KEYS: Record<SubAgentTaskDifficulty, BaseTextKey> = {
 	low: 'agents.builder.subAgents.modelsByDifficulty.low.label',
@@ -63,11 +59,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const toast = useToast();
-const uiStore = useUIStore();
 const usersStore = useUsersStore();
-const { list: projectAgents, ensureLoaded: ensureProjectAgentsLoaded } = useProjectAgentsList(
-	computed(() => props.projectId),
-);
 const { ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
 const projectIdRef = computed(() => props.projectId);
 const { credentialsByProvider } = useAgentModelCredentials(
@@ -78,10 +70,6 @@ const maxChildrenHintInterpolate = {
 	min: String(SUB_AGENT_MAX_CHILDREN_MIN),
 	max: String(SUB_AGENT_MAX_CHILDREN_MAX),
 };
-
-onMounted(() => {
-	void ensureProjectAgentsLoaded().catch(() => {});
-});
 
 watch(
 	projectIdRef,
@@ -107,45 +95,6 @@ watch(
 		maxChildrenModelValue.value = resolveMaxChildrenDisplay(value);
 	},
 );
-
-const selectedSubAgentRefs = computed(() => props.config?.subAgents?.agents ?? []);
-const selectedSubAgentIds = computed(() =>
-	selectedSubAgentRefs.value.map(({ agentId }) => agentId),
-);
-const selectedSubAgentIdSet = computed(() => new Set(selectedSubAgentIds.value));
-const availableSubAgents = computed(() =>
-	(projectAgents.value ?? []).filter(
-		(agent) =>
-			agent.id !== props.agentId &&
-			Boolean(agent.activeVersionId) &&
-			!selectedSubAgentIdSet.value.has(agent.id),
-	),
-);
-const selectedSubAgents = computed(() =>
-	selectedSubAgentRefs.value.map(({ agentId, useWhen }) => {
-		const agent = projectAgents.value?.find((candidate) => candidate.id === agentId);
-		return {
-			id: agentId,
-			name: agent?.name ?? agentId,
-			...(useWhen !== undefined ? { useWhen } : {}),
-		};
-	}),
-);
-
-function buildSubAgentsUpdate(
-	overrides: Partial<NonNullable<AgentJsonConfig['subAgents']>>,
-): Partial<AgentJsonConfig> {
-	return {
-		subAgents: {
-			...(props.config?.subAgents ?? {}),
-			...overrides,
-		},
-	};
-}
-
-function emitSubAgentsAgents(agents: typeof selectedSubAgentRefs.value) {
-	emit('update:config', buildSubAgentsUpdate({ agents }));
-}
 
 function onMaxChildrenChange(n: number) {
 	if (props.disabled) return;
@@ -206,6 +155,30 @@ function hasDifficultyMapping(difficulty: SubAgentTaskDifficulty): boolean {
 	return Boolean(props.config?.subAgents?.modelsByDifficulty?.[difficulty]);
 }
 
+const hasAnyDifficultyMapping = computed(() =>
+	SUB_AGENT_TASK_DIFFICULTIES.some((difficulty) => hasDifficultyMapping(difficulty)),
+);
+
+const customModelRoutingEnabled = ref(hasAnyDifficultyMapping.value);
+
+watch(
+	() => props.agentId,
+	() => {
+		customModelRoutingEnabled.value = false;
+	},
+	{ flush: 'sync' },
+);
+
+watch(
+	() => props.config?.subAgents?.modelsByDifficulty,
+	() => {
+		if (hasAnyDifficultyMapping.value) {
+			customModelRoutingEnabled.value = true;
+		}
+	},
+	{ deep: true, immediate: true },
+);
+
 function emitModelsByDifficulty(
 	difficulty: SubAgentTaskDifficulty,
 	mapping: { model: string; credential: string } | undefined,
@@ -224,6 +197,17 @@ function emitModelsByDifficulty(
 		delete subAgents.modelsByDifficulty;
 	}
 
+	emit('update:config', { subAgents });
+}
+
+function onCustomModelRoutingToggle(enabled: boolean) {
+	if (props.disabled) return;
+
+	customModelRoutingEnabled.value = enabled;
+	if (enabled) return;
+
+	const subAgents = { ...(props.config?.subAgents ?? {}) };
+	delete subAgents.modelsByDifficulty;
 	emit('update:config', { subAgents });
 }
 
@@ -264,101 +248,16 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 
 	emitModelsByDifficulty(difficulty, undefined);
 }
-
-async function onOpenAddSubAgentsModal() {
-	if (props.disabled) return;
-
-	try {
-		await ensureProjectAgentsLoaded();
-	} catch (error) {
-		toast.showError(error, i18n.baseText('agents.builder.subAgents.loadError'));
-		return;
-	}
-
-	uiStore.openModalWithData({
-		name: AGENT_SUB_AGENTS_MODAL_KEY,
-		data: {
-			agents: availableSubAgents.value.map(({ id, name }) => ({
-				id,
-				name,
-			})),
-			onConfirm: ({ agentId, useWhen }: { agentId: string; useWhen?: string }) => {
-				if (selectedSubAgentIdSet.value.has(agentId)) return;
-
-				emitSubAgentsAgents([
-					...selectedSubAgentRefs.value,
-					{ agentId, ...(useWhen ? { useWhen } : {}) },
-				]);
-			},
-		},
-	});
-}
-
-function onOpenEditSubAgentModal(subAgent: { id: string; name: string; useWhen?: string }) {
-	if (props.disabled) return;
-
-	uiStore.openModalWithData({
-		name: AGENT_SUB_AGENTS_MODAL_KEY,
-		data: {
-			selectedAgent: {
-				id: subAgent.id,
-				name: subAgent.name,
-			},
-			...(subAgent.useWhen ? { useWhen: subAgent.useWhen } : {}),
-			onConfirm: ({ agentId, useWhen }: { agentId: string; useWhen?: string }) => {
-				emitSubAgentsAgents(
-					selectedSubAgentRefs.value.map((ref) =>
-						ref.agentId === agentId ? { agentId, ...(useWhen ? { useWhen } : {}) } : ref,
-					),
-				);
-			},
-			onRemove: onRemoveSubAgent,
-		},
-	});
-}
-
-function onRemoveSubAgent(agentId: string) {
-	if (props.disabled) return;
-
-	emitSubAgentsAgents(
-		selectedSubAgentRefs.value.filter((subAgent) => subAgent.agentId !== agentId),
-	);
-}
 </script>
 
 <template>
 	<div :class="[$style.subAgentsPanel, disabled && $style.disabled]" :aria-disabled="disabled">
-		<div :class="$style.subAgentsHeader">
-			<div :class="$style.subAgentsText">
-				<N8nText tag="h3" :bold="true">
-					{{ i18n.baseText('agents.builder.subAgents.title') }}
-				</N8nText>
-				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('agents.builder.subAgents.description') }}
-				</N8nText>
-			</div>
-			<div :class="$style.subAgentsHeaderActions">
-				<N8nTooltip :content="i18n.baseText('agents.builder.subAgents.add')" placement="top">
-					<N8nIconButton
-						icon="plus"
-						variant="ghost"
-						size="small"
-						icon-size="medium"
-						:disabled="disabled"
-						:aria-label="i18n.baseText('agents.builder.subAgents.add')"
-						data-testid="agent-sub-agents-open-add-modal"
-						@click="onOpenAddSubAgentsModal"
-					/>
-				</N8nTooltip>
-			</div>
-		</div>
-
 		<div :class="$style.settingRow">
 			<div :class="$style.settingLabel">
-				<N8nText size="small" :bold="true">
+				<N8nText step="sm" bold :class="shared.dataEntryLabel">
 					{{ i18n.baseText('agents.builder.subAgents.maxChildren.label') }}
 				</N8nText>
-				<N8nText size="xsmall" color="text-light">
+				<N8nText size="small" :class="shared.dataEntrySubLabel">
 					{{
 						i18n.baseText('agents.builder.subAgents.maxChildren.hint', {
 							interpolate: maxChildrenHintInterpolate,
@@ -378,16 +277,28 @@ function onRemoveSubAgent(agentId: string) {
 			/>
 		</div>
 
-		<div :class="$style.inlineModelsSection" data-testid="agent-sub-agents-inline-models">
-			<div :class="$style.inlineModelsIntro">
-				<N8nText size="small" :bold="true">
-					{{ i18n.baseText('agents.builder.subAgents.modelsByDifficulty.title') }}
+		<div :class="$style.settingRow">
+			<div :class="$style.settingLabel">
+				<N8nText step="sm" bold :class="shared.dataEntryLabel">
+					{{ i18n.baseText('agents.builder.subAgents.customModelRouting.label' as BaseTextKey) }}
 				</N8nText>
-				<N8nText size="xsmall" color="text-light">
-					{{ i18n.baseText('agents.builder.subAgents.modelsByDifficulty.hint') }}
+				<N8nText size="small" :class="shared.dataEntrySubLabel">
+					{{ i18n.baseText('agents.builder.subAgents.customModelRouting.hint' as BaseTextKey) }}
 				</N8nText>
 			</div>
+			<N8nSwitch2
+				:model-value="customModelRoutingEnabled"
+				:disabled="disabled"
+				data-testid="agent-sub-agents-custom-model-routing-toggle"
+				@update:model-value="onCustomModelRoutingToggle"
+			/>
+		</div>
 
+		<div
+			v-if="customModelRoutingEnabled"
+			:class="$style.inlineModelsSection"
+			data-testid="agent-sub-agents-inline-models"
+		>
 			<div :class="$style.difficultyRows">
 				<div
 					v-for="difficulty in SUB_AGENT_TASK_DIFFICULTIES"
@@ -396,10 +307,10 @@ function onRemoveSubAgent(agentId: string) {
 					:data-testid="`agent-sub-agents-difficulty-row-${difficulty}`"
 				>
 					<div :class="$style.difficultyLabel">
-						<N8nText size="small" :bold="true">
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">
 							{{ i18n.baseText(DIFFICULTY_LABEL_KEYS[difficulty]) }}
 						</N8nText>
-						<N8nText size="xsmall" color="text-light">
+						<N8nText size="small" :class="shared.dataEntrySubLabel">
 							{{ i18n.baseText(DIFFICULTY_DESCRIPTION_KEYS[difficulty]) }}
 						</N8nText>
 					</div>
@@ -412,7 +323,6 @@ function onRemoveSubAgent(agentId: string) {
 							:project-id="projectId"
 							:warn-missing-credentials="true"
 							:disabled="disabled"
-							horizontal
 							:data-testid="`agent-sub-agents-difficulty-${difficulty}-model`"
 							@change="(selection) => onDifficultyModelChange(difficulty, selection)"
 							@select-credential="
@@ -440,60 +350,6 @@ function onRemoveSubAgent(agentId: string) {
 				</div>
 			</div>
 		</div>
-
-		<hr v-if="selectedSubAgentRefs.length > 0" aria-hidden="true" :class="$style.divider" />
-
-		<div v-if="selectedSubAgents.length > 0" :class="$style.subAgentsContent">
-			<N8nScrollArea
-				max-height="calc((var(--spacing--2xl) + var(--spacing--sm)) * 5)"
-				type="auto"
-				:class="$style.rows"
-			>
-				<div :class="$style.rowList">
-					<N8nCard
-						v-for="subAgent in selectedSubAgents"
-						:key="subAgent.id"
-						:class="$style.row"
-						data-testid="agent-sub-agent-row"
-						@click="onOpenEditSubAgentModal(subAgent)"
-					>
-						<template #prepend>
-							<N8nIcon icon="bot" size="medium" :class="$style.itemIcon" />
-						</template>
-
-						<N8nText size="xsmall" color="text-dark" :bold="true" :class="$style.name">
-							{{ subAgent.name }}
-						</N8nText>
-
-						<template #append>
-							<N8nTooltip
-								:content="
-									i18n.baseText('agents.builder.subAgents.remove', {
-										interpolate: { name: subAgent.name },
-									})
-								"
-								placement="top"
-							>
-								<N8nIconButton
-									icon="trash-2"
-									variant="ghost"
-									size="mini"
-									icon-size="small"
-									:disabled="disabled"
-									:aria-label="
-										i18n.baseText('agents.builder.subAgents.remove', {
-											interpolate: { name: subAgent.name },
-										})
-									"
-									data-testid="agent-sub-agent-remove"
-									@click.stop="onRemoveSubAgent(subAgent.id)"
-								/>
-							</N8nTooltip>
-						</template>
-					</N8nCard>
-				</div>
-			</N8nScrollArea>
-		</div>
 	</div>
 </template>
 
@@ -505,30 +361,9 @@ function onRemoveSubAgent(agentId: string) {
 	width: 100%;
 }
 
-.subAgentsPanel.disabled > :not(.subAgentsHeader) {
+.subAgentsPanel.disabled {
 	pointer-events: none;
 	opacity: 0.6;
-}
-
-.subAgentsHeader {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-	width: 100%;
-}
-
-.subAgentsText {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
-}
-
-.subAgentsHeaderActions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	flex-shrink: 0;
 }
 
 .settingRow {
@@ -558,12 +393,6 @@ function onRemoveSubAgent(agentId: string) {
 	flex-direction: column;
 	gap: var(--spacing--xs);
 	width: 100%;
-}
-
-.inlineModelsIntro {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
 }
 
 .difficultyRows {
@@ -601,48 +430,5 @@ function onRemoveSubAgent(agentId: string) {
 .difficultyControls > :first-child {
 	flex: 1;
 	min-width: calc(var(--spacing--5xl) - var(--spacing--xl));
-}
-
-.divider {
-	border: none;
-	border-top: var(--border);
-	margin: var(--spacing--2xs) 0;
-}
-
-.subAgentsContent {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-	width: 100%;
-}
-
-.rowList {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-	padding-right: var(--spacing--xs);
-}
-
-.rows {
-	scrollbar-gutter: stable;
-}
-
-.row {
-	--card--append--width: auto;
-	flex-shrink: 0;
-	cursor: pointer;
-}
-
-.itemIcon {
-	flex-shrink: 0;
-	color: var(--text-color--subtle);
-}
-
-.name {
-	display: block;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	max-width: 100%;
 }
 </style>

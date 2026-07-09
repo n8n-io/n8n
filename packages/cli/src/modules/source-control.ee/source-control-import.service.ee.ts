@@ -31,13 +31,8 @@ import glob from 'fast-glob';
 import isEqual from 'lodash/isEqual';
 import { Credentials, ErrorReporter, InstanceSettings } from 'n8n-core';
 import type { AutoPublishMode } from 'n8n-workflow';
-import {
-	shouldAutoPublishWorkflow,
-	ensureError,
-	jsonParse,
-	UnexpectedError,
-	UserError,
-} from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { shouldAutoPublishWorkflow, jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
@@ -62,6 +57,7 @@ import {
 	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
 	SOURCE_CONTROL_GIT_FOLDER,
 	SOURCE_CONTROL_PROJECT_EXPORT_FOLDER,
+	SOURCE_CONTROL_READ_FILE_BATCH_SIZE,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
@@ -73,6 +69,7 @@ import {
 	getProjectExportPath,
 	getWorkflowExportPath,
 	isValidDataTableColumnType,
+	mapInBatches,
 	mergeRemoteCrendetialDataIntoLocalCredentialData,
 	sanitizeCredentialData,
 } from './source-control-helper.ee';
@@ -159,24 +156,26 @@ export class SourceControlImportService {
 			absolute: true,
 		});
 
-		const remoteWorkflowsRead = await Promise.all(
-			remoteWorkflowFiles.map(async (file) => await this.parseWorkflowFromFile(file)),
-		);
+		// Parse in bounded batches and project each workflow to its slim status shape
+		// right away, so at most one batch of full workflow graphs is in memory at a time
+		const remoteWorkflowFilesParsed = await mapInBatches(
+			remoteWorkflowFiles,
+			SOURCE_CONTROL_READ_FILE_BATCH_SIZE,
+			async (file): Promise<SourceControlWorkflowVersionId | undefined> => {
+				const remote = await this.parseWorkflowFromFile(file);
 
-		const remoteWorkflowFilesParsed = remoteWorkflowsRead
-			.filter((remote) => {
 				if (!remote?.id) {
-					return false;
+					return undefined;
 				}
-				return (
-					context.hasAccessToAllProjects() ||
-					(remote.owner && context.findAuthorizedProjectByOwner(remote.owner))
-				);
-			})
-			.map((remote) => {
+
 				const project = remote.owner
 					? context.findAuthorizedProjectByOwner(remote.owner)
 					: undefined;
+
+				if (!context.hasAccessToAllProjects() && !project) {
+					return undefined;
+				}
+
 				return {
 					id: remote.id,
 					versionId: remote.versionId ?? '',
@@ -184,12 +183,15 @@ export class SourceControlImportService {
 					parentFolderId: remote.parentFolderId,
 					remoteId: remote.id,
 					filename: getWorkflowExportPath(remote.id, this.workflowExportFolder),
-					owner: toStatusOwner(project ?? undefined),
+					owner: toStatusOwner(project),
 					isRemoteArchived: remote.isArchived,
 				};
-			});
+			},
+		);
 
-		return remoteWorkflowFilesParsed;
+		return remoteWorkflowFilesParsed.filter(
+			(workflow): workflow is SourceControlWorkflowVersionId => workflow !== undefined,
+		);
 	}
 
 	async getAllLocalVersionIdsFromDb(): Promise<SourceControlWorkflowVersionId[]> {
@@ -297,14 +299,16 @@ export class SourceControlImportService {
 			absolute: true,
 		});
 
-		const remoteCredentialFilesRead = await Promise.all(
-			remoteCredentialFiles.map(async (file) => {
+		const remoteCredentialFilesRead = await mapInBatches(
+			remoteCredentialFiles,
+			SOURCE_CONTROL_READ_FILE_BATCH_SIZE,
+			async (file) => {
 				this.logger.debug(`Parsing credential file ${file}`);
 				const remote = jsonParse<ExportableCredential>(
 					await fsReadFile(file, { encoding: 'utf8' }),
 				);
 				return remote;
-			}),
+			},
 		);
 
 		const remoteCredentialFilesParsed = remoteCredentialFilesRead
@@ -354,6 +358,8 @@ export class SourceControlImportService {
 				type: true,
 				data: true,
 				isGlobal: true,
+				isResolvable: true,
+				resolvableAllowFallback: true,
 				shared: {
 					project: {
 						id: true,
@@ -367,8 +373,11 @@ export class SourceControlImportService {
 				this.sourceControlScopedService.getCredentialsInAdminProjectsFromContextFilter(context),
 		});
 
-		return (await Promise.all(
-			localCredentials.map(async (local) => {
+		// Batched to bound the transient decryption allocations (plaintext + parsed object)
+		return (await mapInBatches(
+			localCredentials,
+			SOURCE_CONTROL_READ_FILE_BATCH_SIZE,
+			async (local) => {
 				const ownerProject = local.shared?.find((s) => s.role === 'credential:owner')?.project;
 
 				let data: Record<string, unknown> = {};
@@ -391,8 +400,10 @@ export class SourceControlImportService {
 					filename: getCredentialExportPath(local.id, this.credentialExportFolder),
 					ownedBy: toStatusOwner(ownerProject),
 					isGlobal: local.isGlobal,
+					isResolvable: local.isResolvable,
+					resolvableAllowFallback: local.resolvableAllowFallback,
 				};
-			}),
+			},
 		)) as StatusExportableCredential[];
 	}
 
@@ -429,8 +440,10 @@ export class SourceControlImportService {
 			return [];
 		}
 
-		const remoteTables = await Promise.all(
-			dataTableFiles.map(async (file): Promise<ExportableDataTable | undefined> => {
+		const remoteTables = await mapInBatches(
+			dataTableFiles,
+			SOURCE_CONTROL_READ_FILE_BATCH_SIZE,
+			async (file): Promise<ExportableDataTable | undefined> => {
 				this.logger.debug(`Parsing data table file ${file}`);
 				const fileContent = await fsReadFile(file, { encoding: 'utf8' });
 				try {
@@ -439,7 +452,7 @@ export class SourceControlImportService {
 					this.logger.warn(`Failed to parse data table from file ${file}: invalid JSON format`);
 					return undefined;
 				}
-			}),
+			},
 		);
 
 		return remoteTables.filter((table): table is ExportableDataTable => {
@@ -624,8 +637,10 @@ export class SourceControlImportService {
 			absolute: true,
 		});
 
-		const remoteProjects = await Promise.all(
-			remoteProjectFiles.map(async (file) => {
+		const remoteProjects = await mapInBatches(
+			remoteProjectFiles,
+			SOURCE_CONTROL_READ_FILE_BATCH_SIZE,
+			async (file) => {
 				this.logger.debug(`Parsing project file ${file}`);
 				const fileContent = await fsReadFile(file, { encoding: 'utf8' });
 				const parsedProject = jsonParse<ExportableProject>(fileContent);
@@ -634,7 +649,7 @@ export class SourceControlImportService {
 					...parsedProject,
 					filename: getProjectExportPath(parsedProject.id, this.projectExportFolder),
 				};
-			}),
+			},
 		);
 
 		if (context.hasAccessToAllProjects()) {
@@ -959,7 +974,17 @@ export class SourceControlImportService {
 					(e) => e.id === credential.id && e.type === credential.type,
 				);
 
-				const { name, type, data, id, isGlobal = false } = credential;
+				// Carry the "private"/resolvable nature across environments. resolverId is
+				// instance-local and handled separately (see IAM-906).
+				const {
+					name,
+					type,
+					data,
+					id,
+					isGlobal = false,
+					isResolvable = false,
+					resolvableAllowFallback = false,
+				} = credential;
 				const newCredentialObject = new Credentials({ id, name }, type);
 
 				if (existingCredential?.data) {
@@ -983,7 +1008,10 @@ export class SourceControlImportService {
 				}
 
 				this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);
-				await this.credentialsRepository.upsert({ ...newCredentialObject, isGlobal }, ['id']);
+				await this.credentialsRepository.upsert(
+					{ ...newCredentialObject, isGlobal, isResolvable, resolvableAllowFallback },
+					['id'],
+				);
 
 				const localOwner = existingSharedCredentials.find(
 					(c) => c.credentialsId === credential.id && c.role === 'credential:owner',

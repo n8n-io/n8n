@@ -80,6 +80,15 @@ export function normalizeMetricValue(value: number | undefined): number | undefi
 	return value;
 }
 
+// A metric value is "score-shaped" when it lands in [0, 1] — the range the
+// collection cards chart and average as a percentage. Absolute counts that
+// commonly share the metrics map (tokens, latency_ms) fall outside and are
+// excluded so a mini bar chart (clamped to max=1) doesn't render a bogus
+// maxed-out bar and an avg doesn't blow up.
+export function isScoreShapedMetric(value: unknown): value is number {
+	return typeof value === 'number' && value >= 0 && value <= 1;
+}
+
 export function computeDelta(
 	current: number | undefined,
 	previous: number | undefined,

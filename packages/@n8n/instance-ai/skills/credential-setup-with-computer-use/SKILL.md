@@ -20,8 +20,9 @@ recommended_tools:
 
 # Credential Setup With Computer Use
 
-Use this skill only when Computer Use browser tools are available. Do not use
-`delegate` or any non-Computer-Use browser bridge.
+Use this skill only when Computer Use browser tools are available. Handle
+credential setup directly with the browser tools — do not use any other browser
+bridge.
 
 ## Default Procedure
 

@@ -1,3 +1,4 @@
+import type { Mocked } from 'vitest';
 import { type AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type {
@@ -12,17 +13,18 @@ import type {
 	User,
 	CredentialsEntity,
 	ProjectRelationRepository,
-	UserRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { AiService } from '@/services/ai.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -60,6 +62,7 @@ import type { AgentTaskRepository } from '../repositories/agent-task.repository'
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
+import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -68,7 +71,7 @@ const versionId = 'v1';
 type N8nMemoryImplementation = ReturnType<N8nMemory['getImplementation']>;
 const testUser = { id: userId, firstName: 'Test', lastName: 'User' } as User;
 const testUserAuthor = `${testUser.firstName} ${testUser.lastName}`;
-let credentialsService: jest.Mocked<CredentialsService>;
+let credentialsService: Mocked<CredentialsService>;
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	return {
@@ -102,7 +105,7 @@ function makeRuntimeReconstructionService(
 	modules: string[] = [],
 ): AgentRuntimeReconstructionService {
 	const transport = mock<HttpTransport>();
-	transport.asCustomFetch.mockReturnValue(jest.fn() as unknown as CustomFetch);
+	transport.asCustomFetch.mockReturnValue(vi.fn() as unknown as CustomFetch);
 	const outboundHttp = mock<OutboundHttp>();
 	outboundHttp.transport.mockReturnValue(transport);
 	return new AgentRuntimeReconstructionService(
@@ -111,8 +114,6 @@ function makeRuntimeReconstructionService(
 		mock<AgentFileRepository>(),
 		mock<ActiveExecutions>(),
 		mock<WorkflowRepository>(),
-		mock<UserRepository>(),
-		mock<WorkflowFinderService>(),
 		mock<UrlService>(),
 		mock<N8NCheckpointStorage>(),
 		mock<AgentSecureRuntime>(),
@@ -120,10 +121,13 @@ function makeRuntimeReconstructionService(
 		mock<N8nMemory>(),
 		mock<OauthService>(),
 		{ modules } as unknown as AgentsConfig,
+		mock<AiService>(),
 		outboundHttp,
 		mock<AgentKnowledgeSandboxService>(),
 		mock<SsrfProtectionConfig>({ enabled: true }),
 		mock<SsrfProtectionService>(),
+		mock<CredentialsFinderService>(),
+		mock<WorkflowFinderService>(),
 	);
 }
 
@@ -169,19 +173,19 @@ function markSharedTestSetupAsUsed(...values: unknown[]) {
 describe('AgentRuntimeReconstructionService integration tools', () => {
 	let service: AgentExecutionOrchestratorService;
 
-	let agentRepository: jest.Mocked<AgentRepository>;
-	let agentTaskRepository: jest.Mocked<AgentTaskRepository>;
-	let agentTaskSnapshotRepository: jest.Mocked<AgentTaskSnapshotRepository>;
-	let agentHistoryRepository: jest.Mocked<AgentHistoryRepository>;
-	let n8nMemory: jest.Mocked<N8nMemory>;
-	let memoryBackend: jest.Mocked<N8nMemoryImplementation>;
-	let n8nCheckpointStorage: jest.Mocked<N8NCheckpointStorage>;
-	let agentExecutionService: jest.Mocked<AgentExecutionService>;
-	let chatIntegrationService: jest.Mocked<ChatIntegrationService>;
-	let agentKnowledgeService: jest.Mocked<AgentKnowledgeService>;
-	let publisher: jest.Mocked<Publisher>;
-	let globalConfig: jest.Mocked<GlobalConfig>;
-	let telemetry: jest.Mocked<Telemetry>;
+	let agentRepository: Mocked<AgentRepository>;
+	let agentTaskRepository: Mocked<AgentTaskRepository>;
+	let agentTaskSnapshotRepository: Mocked<AgentTaskSnapshotRepository>;
+	let agentHistoryRepository: Mocked<AgentHistoryRepository>;
+	let n8nMemory: Mocked<N8nMemory>;
+	let memoryBackend: Mocked<N8nMemoryImplementation>;
+	let n8nCheckpointStorage: Mocked<N8NCheckpointStorage>;
+	let agentExecutionService: Mocked<AgentExecutionService>;
+	let chatIntegrationService: Mocked<ChatIntegrationService>;
+	let agentKnowledgeService: Mocked<AgentKnowledgeService>;
+	let publisher: Mocked<Publisher>;
+	let globalConfig: Mocked<GlobalConfig>;
+	let telemetry: Mocked<Telemetry>;
 	let runtimeCacheService: AgentRuntimeCacheService;
 	let agentSkillsService: AgentSkillsService;
 	let agentConfigService: AgentConfigService;
@@ -194,7 +198,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 	let agentsService: AgentsService;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		agentRepository = mock<AgentRepository>();
 		agentTaskRepository = mock<AgentTaskRepository>();
@@ -231,7 +235,8 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentRuntimeReconstructionService,
 			credentialsService,
 		);
-		agentSkillsService = new AgentSkillsService(logger, agentRepository, runtimeCacheService);
+		Container.set(AgentRuntimeCacheService, runtimeCacheService);
+		agentSkillsService = new AgentSkillsService(logger, agentRepository);
 		agentConfigService = new AgentConfigService(
 			logger,
 			agentRepository,
@@ -267,12 +272,12 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentRepository,
 			agentHistoryRepository,
 			agentTaskSnapshotRepository,
-			agentSkillsService,
 			agentCustomToolsService,
 			runtimeCacheService,
+			mock<SubAgentCleanupService>(),
 		);
 		agentTestChatService = new AgentTestChatService(n8nMemory);
-		agentValidationService = new AgentValidationService(agentRepository, agentSkillsService);
+		agentValidationService = new AgentValidationService(agentRepository, mock<AiService>());
 		agentsService = new AgentsService(
 			logger,
 			agentRepository,
@@ -280,6 +285,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentKnowledgeService,
 			runtimeCacheService,
 			agentTestChatService,
+			mock<SubAgentCleanupService>(),
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(
@@ -319,14 +325,14 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 
 			const toolNames: string[] = [];
 			const runtimeAgent = {
-				tool: jest.fn((tool: { name?: string } | Array<{ name?: string }>) => {
+				tool: vi.fn((tool: { name?: string } | Array<{ name?: string }>) => {
 					for (const item of Array.isArray(tool) ? tool : [tool]) {
 						if (item.name) toolNames.push(item.name);
 					}
 				}),
-				on: jest.fn(),
-				hasCheckpointStorage: jest.fn().mockReturnValue(true),
-				checkpoint: jest.fn(),
+				on: vi.fn(),
+				hasCheckpointStorage: vi.fn().mockReturnValue(true),
+				checkpoint: vi.fn(),
 			};
 
 			const reconstructionService = makeRuntimeReconstructionService();
@@ -337,7 +343,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 						agentId: string;
 						projectId: string;
 						credentialProvider: unknown;
-						userId: string;
 						runtimeProfile: 'top-level';
 						config: AgentJsonConfig;
 						subAgentDelegation: {
@@ -353,7 +358,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				agentId,
 				projectId,
 				credentialProvider: mock(),
-				userId: 'user-1',
 				runtimeProfile: 'top-level',
 				config: {
 					name: 'Test Agent',
