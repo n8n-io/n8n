@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/agents",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-09T10:45:02.610Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            3273,
+            2967,
+            3043
+          ],
+          "min": 2967,
+          "median": 3043,
+          "mean": 3094
+        },
+        "build": {
+          "runsMs": [
+            2220,
+            3409,
+            2296
+          ],
+          "min": 2220,
+          "median": 2296,
+          "mean": 2642
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-09T11:34:24.593Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            880,
+            895,
+            845
+          ],
+          "min": 845,
+          "median": 880,
+          "mean": 873
+        },
+        "build": {
+          "runsMs": [
+            757,
+            1014,
+            743
+          ],
+          "min": 743,
+          "median": 757,
+          "mean": 838
+        }
+      }
+    }
+  }
+}

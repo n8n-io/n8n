@@ -564,6 +564,11 @@ export interface SectionCreateElement extends CreateElementBase {
 	 * Whether to render the section without its category header
 	 */
 	hideHeader?: boolean;
+	/**
+	 * Extra element rendered at the trailing edge of the section header.
+	 * Identifies what to render; the renderer maps it to a component.
+	 */
+	trailing?: 'creditsBalance';
 }
 
 export interface ViewCreateElement extends CreateElementBase {

@@ -721,7 +721,7 @@ export class TelemetryEventRelay extends EventRelay {
 		projectId,
 		projectType,
 	}: RelayEventMap['private-credential-created']) {
-		this.telemetry.track('User created private credential', {
+		this.telemetry.track('User created end-user credential', {
 			user_id: user.id,
 			user_role: user.role?.slug,
 			credential_type: credentialType,
@@ -736,7 +736,7 @@ export class TelemetryEventRelay extends EventRelay {
 		credentialId,
 		credentialType,
 	}: RelayEventMap['private-credential-toggled-to-private']) {
-		this.telemetry.track('User made credential private', {
+		this.telemetry.track('User made credential end-user', {
 			user_id: user.id,
 			user_role: user.role?.slug,
 			credential_type: credentialType,
@@ -749,7 +749,7 @@ export class TelemetryEventRelay extends EventRelay {
 		credentialId,
 		credentialType,
 	}: RelayEventMap['private-credential-toggled-to-static']) {
-		this.telemetry.track('User made credential static', {
+		this.telemetry.track('User made credential fixed', {
 			user_id: user.id,
 			user_role: user.role?.slug,
 			credential_type: credentialType,
@@ -762,7 +762,7 @@ export class TelemetryEventRelay extends EventRelay {
 		credentialId,
 		credentialType,
 	}: RelayEventMap['private-credential-connections-cleared']) {
-		this.telemetry.track('User cleared private credential connections', {
+		this.telemetry.track('User cleared end-user credential connections', {
 			user_id: user.id,
 			user_role: user.role?.slug,
 			credential_type: credentialType,
@@ -775,7 +775,7 @@ export class TelemetryEventRelay extends EventRelay {
 		credentialId,
 		credentialType,
 	}: RelayEventMap['private-credential-deleted']) {
-		this.telemetry.track('User deleted private credential', {
+		this.telemetry.track('User deleted end-user credential', {
 			user_id: user.id,
 			user_role: user.role?.slug,
 			credential_type: credentialType,
@@ -790,7 +790,7 @@ export class TelemetryEventRelay extends EventRelay {
 		supportsManagedAuth,
 		usesManagedAuth,
 	}: RelayEventMap['private-credential-user-connected']) {
-		this.telemetry.track('User connected to private credential', {
+		this.telemetry.track('User connected to end-user credential', {
 			user_id: user.id,
 			user_role: user.role?.slug,
 			credential_type: credentialType,
@@ -1194,9 +1194,9 @@ export class TelemetryEventRelay extends EventRelay {
 			version_cli: N8N_VERSION,
 			success: false,
 			...executionTelemetryProperties,
-			used_private_credentials: privateCredentialsAttemptedCount > 0,
-			private_credentials_attempted_count: privateCredentialsAttemptedCount,
-			private_credentials_resolved_count: privateCredentialsResolvedCount,
+			used_end_user_credentials: privateCredentialsAttemptedCount > 0,
+			end_user_credentials_attempted_count: privateCredentialsAttemptedCount,
+			end_user_credentials_resolved_count: privateCredentialsResolvedCount,
 		};
 
 		if (privateCredentialsAttemptedCount > 0) {
@@ -1300,11 +1300,11 @@ export class TelemetryEventRelay extends EventRelay {
 					is_managed: false,
 					eval_rows_left: null,
 					meta: JSON.stringify(workflow.meta),
-					used_private_credentials: telemetryProperties.used_private_credentials,
-					private_credentials_attempted_count:
-						telemetryProperties.private_credentials_attempted_count,
-					private_credentials_resolved_count:
-						telemetryProperties.private_credentials_resolved_count,
+					used_end_user_credentials: telemetryProperties.used_end_user_credentials,
+					end_user_credentials_attempted_count:
+						telemetryProperties.end_user_credentials_attempted_count,
+					end_user_credentials_resolved_count:
+						telemetryProperties.end_user_credentials_resolved_count,
 					credential_resolver_id: telemetryProperties.credential_resolver_id,
 					...executionTelemetryProperties,
 					...TelemetryHelpers.resolveAIMetrics(workflow.nodes, this.nodeTypes),

@@ -41,8 +41,8 @@ export function createInMemoryEventBus(): InstanceAiEventBus {
 				.map((event) => event.event)
 				.filter((event) => 'runId' in event && runIdSet.has(event.runId));
 		},
-		getNextEventId(threadId) {
-			return (storeByThread.get(threadId) ?? []).length + 1;
+		async getNextEventId(threadId) {
+			return await Promise.resolve((storeByThread.get(threadId) ?? []).length + 1);
 		},
 	};
 }

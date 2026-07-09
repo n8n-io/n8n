@@ -13,7 +13,11 @@ import type { JSONObject, JSONValue } from '../types/utils/json';
 const CONTENT_KEY = '_content';
 
 /** Pinecone caps upserts at 1,000 records / 2MB per request and the client does not auto-batch. */
-const UPSERT_BATCH_SIZE = 200;
+const UPSERT_MAX_RECORDS = 1000;
+const UPSERT_MAX_BYTES = 1_800_000; // headroom below the hard 2MB cap for JSON encoding overhead
+
+/** Pinecone caps deletes at 1,000 record IDs per request. */
+const DELETE_MAX_IDS = 1000;
 
 export type PineconeVectorStoreOptions = {
 	apiKey: string;
@@ -67,8 +71,8 @@ export class PineconeVectorStore extends BaseVectorStore<PineconeVectorStoreOpti
 			values: record.vector,
 			metadata: toPineconeMetadata(record.content, record.metadata),
 		}));
-		for (let i = 0; i < mapped.length; i += UPSERT_BATCH_SIZE) {
-			await index.upsert(mapped.slice(i, i + UPSERT_BATCH_SIZE));
+		for (const batch of batchBySize(mapped, UPSERT_MAX_RECORDS, UPSERT_MAX_BYTES)) {
+			await index.upsert(batch);
 		}
 	}
 
@@ -99,7 +103,9 @@ export class PineconeVectorStore extends BaseVectorStore<PineconeVectorStoreOpti
 		if (ids.length === 0) return;
 
 		const index = await this.getIndex();
-		await index.deleteMany(ids);
+		for (let i = 0; i < ids.length; i += DELETE_MAX_IDS) {
+			await index.deleteMany(ids.slice(i, i + DELETE_MAX_IDS));
+		}
 	}
 
 	close(): void {
@@ -117,6 +123,27 @@ export class PineconeVectorStore extends BaseVectorStore<PineconeVectorStoreOpti
 		}
 		return this.index;
 	}
+}
+
+/** Splits items into request-sized batches, respecting both a record-count and a serialized-byte-size limit. */
+function batchBySize<T>(items: T[], maxCount: number, maxBytes: number): T[][] {
+	const batches: T[][] = [];
+	let batch: T[] = [];
+	let batchBytes = 0;
+
+	for (const item of items) {
+		const itemBytes = Buffer.byteLength(JSON.stringify(item));
+		if (batch.length > 0 && (batch.length >= maxCount || batchBytes + itemBytes > maxBytes)) {
+			batches.push(batch);
+			batch = [];
+			batchBytes = 0;
+		}
+		batch.push(item);
+		batchBytes += itemBytes;
+	}
+	if (batch.length > 0) batches.push(batch);
+
+	return batches;
 }
 
 function toPineconeMetadata(content: string, metadata: JSONObject): RecordMetadata {

@@ -919,6 +919,7 @@
     "n8n-containers": "workspace:*",
     "n8n-core": "workspace:*",
     "reflect-metadata": "catalog:",
+    "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"

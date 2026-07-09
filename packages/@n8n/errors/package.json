@@ -23,7 +23,8 @@
   ],
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@sentry/node": "catalog:sentry"
+    "@sentry/node": "catalog:sentry",
+    "typescript": "catalog:"
   },
   "dependencies": {
     "callsites": "catalog:"
