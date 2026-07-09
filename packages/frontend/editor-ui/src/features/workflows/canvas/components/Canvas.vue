@@ -446,6 +446,20 @@ const keyMap = computed(() => {
 		z: onToggleZoomMode,
 	};
 
+	if (isCanvasNodeGroupingEnabled.value) {
+		// Group collapse state is a view preference, so expanding/collapsing
+		// all groups works in read-only canvases too.
+		const hasNoGroups = () => workflowDocumentStore.value.allGroups.length === 0;
+		readOnlyKeymap.alt_g = {
+			disabled: hasNoGroups,
+			run: () => onSetAllGroupsExpanded(true, 'keyboard-shortcut'),
+		};
+		readOnlyKeymap.shift_alt_g = {
+			disabled: hasNoGroups,
+			run: () => onSetAllGroupsExpanded(false, 'keyboard-shortcut'),
+		};
+	}
+
 	if (props.readOnly && props.canExecute) {
 		return { ...readOnlyKeymap, ctrl_enter: () => emit('run:workflow') };
 	}

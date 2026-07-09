@@ -286,11 +286,13 @@ export function useContextMenuItems(
 						id: 'expand_all_groups',
 						divided: true,
 						label: i18n.baseText('contextMenu.expandAllGroups'),
+						shortcut: { altKey: true, keys: ['G'] },
 						disabled: (workflowDocumentStore?.value?.allGroups ?? []).length === 0,
 					},
 					{
 						id: 'collapse_all_groups',
 						label: i18n.baseText('contextMenu.collapseAllGroups'),
+						shortcut: { shiftKey: true, altKey: true, keys: ['G'] },
 						disabled: (workflowDocumentStore?.value?.allGroups ?? []).length === 0,
 					},
 				]

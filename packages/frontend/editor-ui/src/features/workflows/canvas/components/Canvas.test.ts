@@ -905,6 +905,28 @@ describe('Canvas', () => {
 			);
 		});
 
+		it('expands all groups with the Alt+G shortcut', async () => {
+			const { group } = await renderWithGroup({}, { initialCollapsed: true });
+
+			await fireEvent.keyDown(document, { key: 'g', altKey: true });
+
+			expect(useTelemetry().track).toHaveBeenCalledWith(
+				'User expanded group',
+				expect.objectContaining({ group_id: group.id, source: 'keyboard-shortcut' }),
+			);
+		});
+
+		it('collapses all groups with the Shift+Alt+G shortcut, also on a read-only canvas', async () => {
+			const { group } = await renderWithGroup({ readOnly: true }, { initialCollapsed: false });
+
+			await fireEvent.keyDown(document, { key: 'G', altKey: true, shiftKey: true });
+
+			expect(useTelemetry().track).toHaveBeenCalledWith(
+				'User collapsed group',
+				expect.objectContaining({ group_id: group.id, source: 'keyboard-shortcut' }),
+			);
+		});
+
 		it('deletes the group when the ungroup action is selected', async () => {
 			const { group, getByTestId } = await renderWithGroup();
 
