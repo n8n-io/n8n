@@ -4,7 +4,7 @@ import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DATA_TABLE_SYSTEM_COLUMNS } from 'n8n-workflow';
 
-import type { DataTable } from '@/modules/data-table/data-table.entity';
+import type { DataTable } from '@n8n/data-table';
 
 import { createDataTable } from '../shared/db/data-tables';
 import { createOwnerWithApiKey, createMemberWithApiKey } from '../shared/db/users';

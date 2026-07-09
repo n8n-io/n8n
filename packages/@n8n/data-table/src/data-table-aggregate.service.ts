@@ -4,15 +4,14 @@ import { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 
-import { ProjectService } from '@/services/project.service.ee';
-
+import { DataTableCliBridge } from './data-table-cli-bridge';
 import { DataTableRepository } from './data-table.repository';
 
 @Service()
 export class DataTableAggregateService {
 	constructor(
 		private readonly dataTableRepository: DataTableRepository,
-		private readonly projectService: ProjectService,
+		private readonly bridge: DataTableCliBridge,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('data-table');
@@ -25,9 +24,7 @@ export class DataTableAggregateService {
 			return await this.dataTableRepository.getManyAndCount(options);
 		}
 
-		const projects = await this.projectService.getProjectRelationsForUser(user);
-
-		let projectIds = projects.map((x) => x.projectId);
+		let projectIds = await this.bridge.getUserProjectIds(user);
 		if (options.filter?.projectId) {
 			const mask = [options.filter?.projectId].flat();
 			projectIds = projectIds.filter((x) => mask.includes(x));

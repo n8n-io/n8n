@@ -6,9 +6,9 @@ import type { Mock, Mocked } from 'vitest';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { DataTableService } from '@/modules/data-table/data-table.service';
-import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
+import { DataTableRepository } from '@n8n/data-table';
+import { DataTableService } from '@n8n/data-table';
+import { DataTableNotFoundError } from '@n8n/data-table';
 import type { DataTableRequest } from '@/public-api/types';
 import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
 import { ProjectService } from '@/services/project.service.ee';

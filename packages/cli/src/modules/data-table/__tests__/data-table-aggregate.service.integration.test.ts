@@ -16,8 +16,9 @@ import { mock } from 'vitest-mock-extended';
 
 import { createUser } from '@test-integration/db/users';
 
-import { DataTableAggregateService } from '../data-table-aggregate.service';
-import { DataTableService } from '../data-table.service';
+import { DataTableAggregateService, DataTableCliBridge, DataTableService } from '@n8n/data-table';
+
+import { DataTableCliBridgeImpl } from '../data-table-cli-bridge.impl';
 
 beforeAll(async () => {
 	await testModules.loadModules(['data-table']);
@@ -40,6 +41,7 @@ describe('dataTableAggregate', () => {
 
 	beforeAll(() => {
 		Container.set(ProjectRelationRepository, projectRelationRepository);
+		Container.set(DataTableCliBridge, Container.get(DataTableCliBridgeImpl));
 		dataTableAggregateService = Container.get(DataTableAggregateService);
 		dataTableService = Container.get(DataTableService);
 	});

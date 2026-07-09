@@ -13,7 +13,7 @@ import { In } from '@n8n/typeorm';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import { DataTableRepository } from '@n8n/data-table';
 
 import { UserFavoriteRepository } from './database/repositories/user-favorite.repository';
 

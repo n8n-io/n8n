@@ -20,10 +20,10 @@ import { createOwner, createMember, createAdmin } from '@test-integration/db/use
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
 
-import { DataTableColumnRepository } from '../data-table-column.repository';
-import { DataTableRowsRepository } from '../data-table-rows.repository';
-import type { DataTable } from '../data-table.entity';
-import { DataTableRepository } from '../data-table.repository';
+import { DataTableColumnRepository } from '@n8n/data-table';
+import { DataTableRowsRepository } from '@n8n/data-table';
+import type { DataTable } from '@n8n/data-table';
+import { DataTableRepository } from '@n8n/data-table';
 import { mockDataTableSizeValidator } from './test-helpers';
 
 let owner: User;

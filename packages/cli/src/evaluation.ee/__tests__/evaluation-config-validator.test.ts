@@ -5,8 +5,8 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import type { DataTable as DataTableEntity } from '@/modules/data-table/data-table.entity';
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import type { DataTable as DataTableEntity } from '@n8n/data-table';
+import type { DataTableRepository } from '@n8n/data-table';
 
 import {
 	EvaluationConfigValidator,

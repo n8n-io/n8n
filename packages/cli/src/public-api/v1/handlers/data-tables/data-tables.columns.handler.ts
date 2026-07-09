@@ -3,9 +3,11 @@ import { Container } from '@n8n/di';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { DataTableService } from '@/modules/data-table/data-table.service';
-import { DataTableColumnNameConflictError } from '@/modules/data-table/errors/data-table-column-name-conflict.error';
-import { DataTableSystemColumnNameConflictError } from '@/modules/data-table/errors/data-table-system-column-name-conflict.error';
+import {
+	DataTableColumnNameConflictError,
+	DataTableService,
+	DataTableSystemColumnNameConflictError,
+} from '@n8n/data-table';
 
 import type { DataTableRequest } from '../../../types';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';

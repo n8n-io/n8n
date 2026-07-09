@@ -12,7 +12,7 @@ import { hasGlobalScope } from '@n8n/permissions';
 import type { FindOptionsWhere } from '@n8n/typeorm';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import type { DataTable } from '@/modules/data-table/data-table.entity';
+import type { DataTable } from '@n8n/data-table';
 
 import { SourceControlContextFactory } from './source-control-context.factory';
 import { SourceControlContext } from './types/source-control-context';

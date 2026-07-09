@@ -30,9 +30,9 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import type { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
-import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import type { DataTableColumnRepository } from '@n8n/data-table';
+import type { DataTableDDLService } from '@n8n/data-table';
+import type { DataTableRepository } from '@n8n/data-table';
 import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';

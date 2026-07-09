@@ -23,7 +23,7 @@ import { mock } from 'vitest-mock-extended';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
-import { DataTable } from '@/modules/data-table/data-table.entity';
+import { DataTable } from '@n8n/data-table';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER,

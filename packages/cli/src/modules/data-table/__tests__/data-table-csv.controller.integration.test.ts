@@ -14,8 +14,8 @@ import { createOwner, createMember } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
 
-import { DataTableColumnRepository } from '../data-table-column.repository';
-import { DataTableRowsRepository } from '../data-table-rows.repository';
+import { DataTableColumnRepository } from '@n8n/data-table';
+import { DataTableRowsRepository } from '@n8n/data-table';
 import { mockDataTableSizeValidator } from './test-helpers';
 
 let owner: User;

@@ -1,10 +1,10 @@
-import type { Mock } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { Request, Response } from 'express';
 import * as fsPromises from 'fs/promises';
-import { mock } from 'vitest-mock-extended';
 import multer from 'multer';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 vi.mock('../data-table-size-validator.service', () => ({
 	DataTableSizeValidator: class {},
@@ -33,10 +33,9 @@ vi.mock('multer', () => {
 	return { __esModule: true, default: multerMock };
 });
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-
 import type { DataTableSizeValidator } from '../data-table-size-validator.service';
 import type { DataTableRepository } from '../data-table.repository';
+import { BadRequestError } from '../errors/response.error';
 import { MulterUploadMiddleware } from '../multer-upload-middleware';
 import type { AuthenticatedRequestWithFile } from '../types';
 

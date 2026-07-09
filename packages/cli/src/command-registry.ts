@@ -8,6 +8,7 @@ import picocolors from 'picocolors';
 import { z, ZodError } from 'zod';
 
 import './zod-alias-support';
+import { registerModuleBridges } from './modules/module-bridges';
 
 /**
  * Registry that manages CLI commands, their execution, and metadata.
@@ -58,6 +59,10 @@ export class CommandRegistry {
 
 		// Load modules to ensure all module commands are registered
 		await this.moduleRegistry.loadModules();
+
+		// Bind cli implementations for tokens declared by package-hosted modules,
+		// before any command runs `initModules`.
+		registerModuleBridges(this.moduleRegistry);
 
 		const commandEntry = this.commandMetadata.get(this.commandName);
 		if (!commandEntry) {

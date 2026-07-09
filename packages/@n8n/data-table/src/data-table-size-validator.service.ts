@@ -2,8 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { DataTableSizeStatus, DataTablesSizeData } from 'n8n-workflow';
 
-import { Telemetry } from '@/telemetry';
-
+import { DataTableCliBridge } from './data-table-cli-bridge';
 import { DataTableValidationError } from './errors/data-table-validation.error';
 import { toMb } from './utils/size-utils';
 
@@ -15,7 +14,7 @@ export class DataTableSizeValidator {
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
-		private readonly telemetry: Telemetry,
+		private readonly bridge: DataTableCliBridge,
 	) {}
 
 	private shouldRefresh(now: Date): boolean {
@@ -59,10 +58,7 @@ export class DataTableSizeValidator {
 	): Promise<void> {
 		const size = await this.getCachedSizeData(fetchSizeFn, now);
 		if (size.totalBytes >= this.globalConfig.dataTable.maxSize) {
-			this.telemetry.track('User hit data table storage limit', {
-				total_bytes: size.totalBytes,
-				max_bytes: this.globalConfig.dataTable.maxSize,
-			});
+			this.bridge.trackStorageLimitHit(size.totalBytes, this.globalConfig.dataTable.maxSize);
 
 			throw new DataTableValidationError(
 				`Data table size limit exceeded: ${toMb(size.totalBytes)}MB used, limit is ${toMb(this.globalConfig.dataTable.maxSize)}MB`,

@@ -16,7 +16,13 @@ export async function loadModules(moduleNames: ModuleName[]) {
 		try {
 			await import(`${modulesDir}/${name}/${name}.module`);
 		} catch {
-			await import(`${modulesDir}/${name}.ee/${name}.module`);
+			try {
+				await import(`${modulesDir}/${name}.ee/${name}.module`);
+			} catch {
+				// Package-hosted module: `@n8n/<name>` exposing a `./module` export.
+				const packageEntry = `@n8n/${name}/module`;
+				await import(packageEntry);
+			}
 		}
 	}
 

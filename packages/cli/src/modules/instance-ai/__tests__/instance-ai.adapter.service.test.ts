@@ -1203,8 +1203,8 @@ import type {
 	SharedWorkflowRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
+import type { DataTableRepository } from '@n8n/data-table';
+import type { DataTableService } from '@n8n/data-table';
 import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import type { WorkflowService } from '@/workflows/workflow.service';

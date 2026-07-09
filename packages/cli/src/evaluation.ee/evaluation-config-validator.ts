@@ -10,7 +10,7 @@ import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { getChildNodes, getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import { DataTableRepository } from '@n8n/data-table';
 
 import { LlmJudgeProviderRegistry } from './llm-judge-provider-registry';
 

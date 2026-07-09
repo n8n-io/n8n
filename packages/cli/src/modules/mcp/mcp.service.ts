@@ -61,7 +61,7 @@ import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { N8N_VERSION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { DataTableProxyService } from '@n8n/data-table';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';

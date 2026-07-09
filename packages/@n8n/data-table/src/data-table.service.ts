@@ -30,9 +30,7 @@ import type {
 } from 'n8n-workflow';
 import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, validateFieldType } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
-import { RoleService } from '@/services/role.service';
-
+import { DataTableCliBridge } from './data-table-cli-bridge';
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTableColumnRepository } from './data-table-column.repository';
 import { DataTableCsvImportService } from './data-table-csv-import.service';
@@ -55,9 +53,8 @@ export class DataTableService {
 		private readonly logger: Logger,
 		private readonly dataTableSizeValidator: DataTableSizeValidator,
 		private readonly projectRelationRepository: ProjectRelationRepository,
-		private readonly roleService: RoleService,
 		private readonly csvImportService: DataTableCsvImportService,
-		private readonly eventService: EventService,
+		private readonly bridge: DataTableCliBridge,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -162,7 +159,7 @@ export class DataTableService {
 
 		if (result) {
 			for (const table of tables) {
-				this.eventService.emit('data-table-deleted', { dataTableId: table.id, projectId });
+				this.bridge.emitDataTableDeleted({ dataTableId: table.id, projectId });
 			}
 			this.dataTableSizeValidator.reset();
 		}
@@ -184,7 +181,7 @@ export class DataTableService {
 		await this.validateDataTableExists(dataTableId, projectId);
 
 		await this.dataTableRepository.deleteDataTable(dataTableId);
-		this.eventService.emit('data-table-deleted', { dataTableId, projectId });
+		this.bridge.emitDataTableDeleted({ dataTableId, projectId });
 
 		this.dataTableSizeValidator.reset();
 
@@ -746,7 +743,7 @@ export class DataTableService {
 		if (hasGlobalScope(user, 'dataTable:listProject')) {
 			dataTables = allSizeData.dataTables;
 		} else {
-			const roles = await this.roleService.rolesWithScope('project', ['dataTable:listProject']);
+			const roles = await this.bridge.rolesWithProjectScope(['dataTable:listProject']);
 
 			const accessibleProjectIds =
 				await this.projectRelationRepository.getAccessibleProjectsByRoles(user.id, roles);

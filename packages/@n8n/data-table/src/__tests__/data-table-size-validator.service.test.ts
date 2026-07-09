@@ -1,9 +1,9 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
-import { Telemetry } from '@/telemetry';
-
+import type { DataTableCliBridge } from '../data-table-cli-bridge';
 import { DataTableSizeValidator } from '../data-table-size-validator.service';
 
 describe('DataTableSizeValidator', () => {
@@ -16,9 +16,9 @@ describe('DataTableSizeValidator', () => {
 			maxSize: 100 * 1024 * 1024,
 		},
 	});
-	const telemetry = mockInstance(Telemetry);
+	const bridge = mock<DataTableCliBridge>();
 	beforeEach(() => {
-		validator = new DataTableSizeValidator(globalConfig, telemetry);
+		validator = new DataTableSizeValidator(globalConfig, bridge);
 		fetchSizeFn = vi.fn();
 		vi.clearAllMocks();
 	});

@@ -24,13 +24,10 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import { userHasScopes } from '@/permissions.ee/check-access';
-import { OwnershipService } from '@/services/ownership.service';
-
 import { DataTableAggregateService } from './data-table-aggregate.service';
+import { DataTableCliBridge } from './data-table-cli-bridge';
 import { DataTableService } from './data-table.service';
+import { ForbiddenError } from './errors/response.error';
 
 const ALLOWED_NODES = [
 	'n8n-nodes-base.dataTable',
@@ -50,16 +47,14 @@ export class DataTableProxyService implements DataTableProxyProvider {
 	constructor(
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableAggregateService: DataTableAggregateService,
-		private readonly ownershipService: OwnershipService,
+		private readonly bridge: DataTableCliBridge,
 		private readonly logger: Logger,
-		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
 
 	private checkInstanceWriteAccess(): void {
-		const preferences = this.sourceControlPreferencesService.getPreferences();
-		if (preferences.branchReadOnly) {
+		if (this.bridge.isBranchReadOnly()) {
 			throw new ForbiddenError(
 				'Cannot modify data tables on a protected instance. This instance is in read-only mode.',
 			);
@@ -73,8 +68,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 	}
 
 	private async getProjectId(workflow: Workflow) {
-		const homeProject = await this.ownershipService.getWorkflowProjectCached(workflow.id);
-		return homeProject.id;
+		return await this.bridge.getWorkflowProjectId(workflow.id);
 	}
 
 	async getDataTableAggregateProxy(
@@ -101,7 +95,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 	}
 
 	private async requireScope(user: User, scope: Scope, projectId: string): Promise<void> {
-		const hasScope = await userHasScopes(user, [scope], false, { projectId });
+		const hasScope = await this.bridge.hasProjectScope(user, scope, projectId);
 		if (!hasScope) {
 			throw new Error(`User does not have '${scope}' access on project '${projectId}'`);
 		}

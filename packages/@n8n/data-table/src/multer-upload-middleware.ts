@@ -8,10 +8,9 @@ import multer from 'multer';
 import { nanoid } from 'nanoid';
 import { extname } from 'path';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-
 import { DataTableSizeValidator } from './data-table-size-validator.service';
 import { DataTableRepository } from './data-table.repository';
+import { BadRequestError } from './errors/response.error';
 import {
 	type AuthenticatedRequestWithFile,
 	type MulterDestinationCallback,
