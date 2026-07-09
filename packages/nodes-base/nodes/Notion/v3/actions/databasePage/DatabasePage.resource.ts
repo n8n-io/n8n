@@ -25,7 +25,6 @@ import {
 	getDataSourceProperties,
 	notionApiRequestAllItemsV3,
 	notionApiRequestV3,
-	resolveDataSourceId,
 } from '../../transport';
 import {
 	blockBuilder,
@@ -459,7 +458,7 @@ export const description: INodeProperties[] = [
 			show: { resource: ['databasePage'], operation: ['create'], contentType: ['markdown'] },
 		},
 	},
-	iconOptions('databasePage', ['create', 'update'], 'database page'),
+	iconOptions('databasePage', ['create', 'update']),
 	...returnAllOrLimit('databasePage', 'getAll'),
 	...dataSourceSearchFilterDescriptions(),
 	{
@@ -495,10 +494,18 @@ export async function create(this: IExecuteFunctions, items: INodeExecutionData[
 	const returnData: INodeExecutionData[] = [];
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const selectedDataSourceId = this.getNodeParameter('dataSourceId', i, '', {
+			const dataSourceId = this.getNodeParameter('dataSourceId', i, '', {
 				extractValue: true,
 			}) as string;
-			const dataSourceId = resolveDataSourceId.call(this, selectedDataSourceId);
+			if (!dataSourceId) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'DataSource ID is required to create a database page',
+					{
+						itemIndex: i,
+					},
+				);
+			}
 			const title = this.getNodeParameter('title', i, '') as string;
 			if (!title.trim()) {
 				throw new NodeOperationError(
@@ -595,7 +602,7 @@ export async function getAll(this: IExecuteFunctions, items: INodeExecutionData[
 			const selectedDataSourceId = this.getNodeParameter('dataSourceId', i, '', {
 				extractValue: true,
 			}) as string;
-			const dataSourceId = resolveDataSourceId.call(this, selectedDataSourceId);
+			const dataSourceId = selectedDataSourceId;
 			const returnAll = this.getNodeParameter('returnAll', i);
 			const filterType = this.getNodeParameter('filterType', i) as string;
 			const body: IDataObject = {};

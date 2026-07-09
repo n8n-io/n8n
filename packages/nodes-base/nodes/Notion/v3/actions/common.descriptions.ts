@@ -228,11 +228,7 @@ export function blockBuilder(
 	})[0];
 }
 
-export function iconOptions(
-	resource: string,
-	operations: string[],
-	label: string,
-): INodeProperties {
+export function iconOptions(resource: string, operations: string[]): INodeProperties {
 	return {
 		displayName: 'Options',
 		name: 'options',
@@ -241,17 +237,6 @@ export function iconOptions(
 		placeholder: 'Add option',
 		displayOptions: { show: { resource: [resource], operation: operations } },
 		options: [
-			{
-				displayName: 'Icon Type',
-				name: 'iconType',
-				type: 'options',
-				options: [
-					{ name: 'Emoji', value: 'emoji', description: 'Use an emoji for the icon' },
-					{ name: 'File', value: 'file', description: 'Use a file for the icon' },
-				],
-				default: 'emoji',
-				description: `The icon type for the ${label}, either a URL or an emoji`,
-			},
 			{
 				displayName: 'Icon',
 				name: 'icon',
@@ -330,3 +315,12 @@ export const returnAllOrLimit = (resource: string, operation: string): INodeProp
 		description: 'Max number of results to return',
 	},
 ];
+
+export const simplify = (resource: string, operations: string[]): INodeProperties => ({
+	displayName: 'Simplify',
+	name: 'simple',
+	type: 'boolean',
+	default: true,
+	displayOptions: { show: { resource: [resource], operation: operations } },
+	description: 'Whether to return a simplified version of the response instead of the raw data',
+});

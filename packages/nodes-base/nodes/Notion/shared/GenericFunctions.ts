@@ -941,16 +941,16 @@ export function getPageId(this: IExecuteFunctions, i: number) {
 	return pageId;
 }
 
-export function extractDatabaseId(database: string) {
-	if (database.includes('?v=')) {
-		const data = database.split('?v=')[0].split('/');
+export function extractResourceId(resource: string): string {
+	if (resource.includes('?v=')) {
+		const data = resource.split('?v=')[0].split('/');
 		const index = data.length - 1;
 		return data[index];
-	} else if (database.includes('/')) {
-		const index = database.split('/').length - 1;
-		return database.split('/')[index];
+	} else if (resource.includes('/')) {
+		const index = resource.split('/').length - 1;
+		return resource.split('/')[index];
 	} else {
-		return database;
+		return resource;
 	}
 }
 

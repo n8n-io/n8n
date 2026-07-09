@@ -25,14 +25,12 @@ vi.mock('../v3/transport', async () => ({
 	getDataSourceProperties: vi.fn(),
 	notionApiRequestV3: vi.fn(),
 	notionApiRequestAllItemsV3: vi.fn(),
-	resolveDataSourceId: vi.fn(),
 }));
 
 const mockDownloadFiles = GenericFunctions.downloadFiles as Mock;
 const mockGetDataSourceProperties = Transport.getDataSourceProperties as Mock;
 const mockNotionApiRequest = Transport.notionApiRequestV3 as Mock;
 const mockNotionApiRequestAllItems = Transport.notionApiRequestAllItemsV3 as Mock;
-const mockResolveDataSourceId = Transport.resolveDataSourceId as Mock;
 
 function createMockExecuteFunction(
 	nodeParameters: IDataObject,
@@ -245,7 +243,6 @@ describe('NotionV3', () => {
 		mockGetDataSourceProperties.mockResolvedValueOnce({
 			Name: { type: 'title' },
 		});
-		mockResolveDataSourceId.mockReturnValueOnce('data-source-id');
 		mockNotionApiRequest.mockResolvedValueOnce({ object: 'page', id: 'page-id' });
 
 		const context = createMockExecuteFunction({
@@ -259,7 +256,6 @@ describe('NotionV3', () => {
 			contentType: 'json',
 			blocksJson: '[{"object":"block","type":"paragraph","paragraph":{"rich_text":[]}}]',
 			options: {
-				iconType: 'emoji',
 				icon: '🔥',
 			},
 		});
@@ -278,8 +274,6 @@ describe('NotionV3', () => {
 	});
 
 	it('does not create database pages without a title', async () => {
-		mockResolveDataSourceId.mockReturnValueOnce('data-source-id');
-
 		const nodeParameters: IDataObject = {
 			resource: 'databasePage',
 			operation: 'create',
@@ -503,7 +497,6 @@ describe('NotionV3', () => {
 			markdown: '# Content',
 			simple: false,
 			options: {
-				iconType: 'file',
 				icon: 'https://example.com/icon.png',
 			},
 		});
@@ -606,7 +599,6 @@ describe('NotionV3', () => {
 			Name: { type: 'title' },
 			Status: { type: 'status' },
 		});
-		mockResolveDataSourceId.mockReturnValueOnce('data-source-id');
 		mockNotionApiRequest.mockResolvedValueOnce({ object: 'page', id: 'page-id' });
 
 		const context = createMockExecuteFunction({
@@ -647,7 +639,6 @@ describe('NotionV3', () => {
 			Name: { type: 'title' },
 			['Strange | Column']: { type: 'rich_text' },
 		});
-		mockResolveDataSourceId.mockReturnValueOnce('data-source-id');
 		mockNotionApiRequest.mockResolvedValueOnce({ object: 'page', id: 'page-id' });
 
 		const context = createMockExecuteFunction({
@@ -687,7 +678,6 @@ describe('NotionV3', () => {
 			Name: { type: 'title' },
 			Due: { type: 'date' },
 		});
-		mockResolveDataSourceId.mockReturnValueOnce('data-source-id');
 		mockNotionApiRequest.mockResolvedValueOnce({ object: 'page', id: 'page-id' });
 
 		const context = createMockExecuteFunction({
@@ -734,7 +724,6 @@ describe('NotionV3', () => {
 			Name: { type: 'title' },
 			Due: { type: 'date' },
 		});
-		mockResolveDataSourceId.mockReturnValueOnce('data-source-id');
 		mockNotionApiRequest.mockResolvedValueOnce({ object: 'page', id: 'page-id' });
 
 		const context = createMockExecuteFunction({
@@ -786,7 +775,6 @@ describe('NotionV3', () => {
 			pageId: { __rl: true, mode: 'id', value: 'page-id' },
 			simple: false,
 			options: {
-				iconType: 'file',
 				icon: 'https://example.com/icon.png',
 			},
 			'propertiesUi.propertyValues': [
@@ -862,7 +850,6 @@ describe('NotionV3', () => {
 			Files: { type: 'files' },
 			Website: { type: 'url' },
 		});
-		mockResolveDataSourceId.mockReturnValueOnce('data-source-id');
 		mockNotionApiRequest.mockResolvedValueOnce({ object: 'page', id: 'page-id' });
 
 		const context = createMockExecuteFunction({
@@ -985,7 +972,6 @@ describe('NotionV3', () => {
 	});
 
 	it('queries data source pages with structured filters and sorting', async () => {
-		mockResolveDataSourceId.mockReturnValueOnce('data-source-id');
 		mockNotionApiRequestAllItems.mockResolvedValueOnce([]);
 
 		const context = createMockExecuteFunction({
@@ -1047,7 +1033,6 @@ describe('NotionV3', () => {
 	});
 
 	it('queries data source pages with timestamp filter syntax', async () => {
-		mockResolveDataSourceId.mockReturnValueOnce('data-source-id');
 		mockNotionApiRequestAllItems.mockResolvedValueOnce([]);
 
 		const context = createMockExecuteFunction({
@@ -1104,7 +1089,6 @@ describe('NotionV3', () => {
 				},
 			},
 		};
-		mockResolveDataSourceId.mockReturnValueOnce('data-source-id');
 		mockNotionApiRequestAllItems.mockResolvedValueOnce([page]);
 		mockDownloadFiles.mockResolvedValueOnce([{ json: page, binary: { file: {} } }]);
 
@@ -1161,7 +1145,6 @@ describe('NotionV3', () => {
 	});
 
 	it('keeps URLs when simplifying data source pages', async () => {
-		mockResolveDataSourceId.mockReturnValueOnce('data-source-id');
 		mockNotionApiRequestAllItems.mockResolvedValueOnce([
 			{
 				object: 'page',
@@ -1294,7 +1277,6 @@ describe('NotionV3', () => {
 	});
 
 	it('gets a data source directly', async () => {
-		mockResolveDataSourceId.mockReturnValueOnce('data-source-id');
 		mockNotionApiRequest.mockResolvedValueOnce({ object: 'data_source', id: 'data-source-id' });
 
 		const context = createMockExecuteFunction({
@@ -1310,7 +1292,6 @@ describe('NotionV3', () => {
 	});
 
 	it('simplifies a data source get response', async () => {
-		mockResolveDataSourceId.mockReturnValueOnce('data-source-id');
 		mockNotionApiRequest.mockResolvedValueOnce({
 			object: 'data_source',
 			id: 'data-source-id',

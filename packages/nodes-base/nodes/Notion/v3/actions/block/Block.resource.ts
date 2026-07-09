@@ -7,7 +7,7 @@ import type {
 
 import {
 	extractBlockId,
-	formatBlocksV3,
+	formatBlocks,
 	handleOperationError,
 	normalizeBlockValues,
 	simplifyBlocksOutput,
@@ -149,7 +149,7 @@ export async function append(this: IExecuteFunctions, items: INodeExecutionData[
 			const blockValues = Array.isArray(rawBlockValues) ? rawBlockValues.filter(isDataObject) : [];
 			const blockValuesData = normalizeBlockValues(blockValues);
 			const afterBlockId = this.getNodeParameter('afterBlockId', i, '') as string;
-			const body: IDataObject = { children: formatBlocksV3(blockValuesData) };
+			const body: IDataObject = { children: formatBlocks(blockValuesData) };
 			if (afterBlockId) {
 				body.position = {
 					type: 'after_block',

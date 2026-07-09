@@ -5,20 +5,75 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { dataSourceFields, dataSourceOperations } from '../../descriptions/DataSourceDescription';
+import { extractResourceId } from '../../../shared/GenericFunctions';
 import {
 	flattenDataSources,
 	getSearchSort,
 	handleOperationError,
 	simplifyObjects,
 } from '../../helpers/utils';
+import { notionApiRequestAllItemsV3, notionApiRequestV3 } from '../../transport';
 import {
-	notionApiRequestAllItemsV3,
-	notionApiRequestV3,
-	resolveDataSourceId,
-} from '../../transport';
+	dataSourceLocator,
+	returnAllOrLimit,
+	searchOptions,
+	simplify,
+} from '../common.descriptions';
 
-export const description: INodeProperties[] = [...dataSourceOperations, ...dataSourceFields];
+export const description: INodeProperties[] = [
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		noDataExpression: true,
+		displayOptions: {
+			show: {
+				resource: ['dataSource'],
+			},
+		},
+		options: [
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get a data source',
+				action: 'Get a data source',
+			},
+			{
+				name: 'Search',
+				value: 'search',
+				description: 'Search data sources',
+				action: 'Search data sources',
+			},
+		],
+		default: 'get',
+	},
+	{
+		...dataSourceLocator,
+		displayOptions: {
+			show: {
+				resource: ['dataSource'],
+				operation: ['get'],
+			},
+		},
+		description: 'The Notion data source to retrieve',
+	},
+	{
+		displayName: 'Search Text',
+		name: 'text',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['dataSource'],
+				operation: ['search'],
+			},
+		},
+		description: 'Text to search databases/data sources for',
+	},
+	...returnAllOrLimit('dataSource', 'search'),
+	simplify('dataSource', ['get', 'search']),
+	searchOptions('dataSource', 'search'),
+];
 
 export async function get(this: IExecuteFunctions, items: INodeExecutionData[]) {
 	const returnData: INodeExecutionData[] = [];
@@ -28,7 +83,7 @@ export async function get(this: IExecuteFunctions, items: INodeExecutionData[]) 
 			const selectedDataSourceId = this.getNodeParameter('dataSourceId', i, '', {
 				extractValue: true,
 			}) as string;
-			const dataSourceId = resolveDataSourceId.call(this, selectedDataSourceId);
+			const dataSourceId = extractResourceId(selectedDataSourceId);
 			let response: IDataObject | IDataObject[] = await notionApiRequestV3.call(
 				this,
 				'GET',

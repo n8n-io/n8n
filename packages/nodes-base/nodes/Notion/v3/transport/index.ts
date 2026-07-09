@@ -7,9 +7,7 @@ import type {
 	IPollFunctions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, setSafeObjectProperty } from 'n8n-workflow';
-
-import { extractDatabaseId } from '../../shared/GenericFunctions';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 type NotionFunctions = IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions;
 
@@ -26,43 +24,28 @@ export async function notionApiRequestV3(
 	resource: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	url?: string,
-	option: Partial<IHttpRequestOptions> = {},
 ): Promise<IDataObject> {
 	try {
 		const options: IHttpRequestOptions = {
-			headers: {
-				[NOTION_VERSION_HEADER]: NOTION_API_VERSION,
-			},
 			method,
 			qs,
 			body,
-			url: url ?? `https://api.notion.com/v1${resource}`,
+			url: `https://api.notion.com/v1${resource}`,
 			json: true,
-		};
-
-		const { headers: extraHeaders, ...restOptions } = option;
-		for (const [key, value] of Object.entries(restOptions)) {
-			setSafeObjectProperty(options as unknown as Record<string, unknown>, key, value);
-		}
-		options.headers = {
-			...options.headers,
-			...extraHeaders,
-			[NOTION_VERSION_HEADER]: NOTION_API_VERSION,
+			headers: {
+				[NOTION_VERSION_HEADER]: NOTION_API_VERSION,
+			},
 		};
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-		if (!url) {
-			const authentication = this.getNodeParameter('authentication', 0, 'apiKey') as string;
-			const credentialType = authentication === 'oAuth2' ? 'notionOAuth2Api' : 'notionApi';
-			return (await this.helpers.httpRequestWithAuthentication.call(
-				this,
-				credentialType,
-				options,
-			)) as IDataObject;
-		}
-		return (await this.helpers.httpRequest(options)) as IDataObject;
+		const authentication = this.getNodeParameter('authentication', 0, 'apiKey') as string;
+		const credentialType = authentication === 'oAuth2' ? 'notionOAuth2Api' : 'notionApi';
+		return (await this.helpers.httpRequestWithAuthentication.call(
+			this,
+			credentialType,
+			options,
+		)) as IDataObject;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -102,12 +85,7 @@ export async function notionApiRequestAllItemsV3(
 	return limit ? returnData.slice(0, limit) : returnData;
 }
 
-export function resolveDataSourceId(this: NotionFunctions, idOrUrl: string) {
-	return extractDatabaseId(idOrUrl);
-}
-
-export async function getDataSourceProperties(this: NotionFunctions, idOrUrl: string) {
-	const dataSourceId = resolveDataSourceId.call(this, idOrUrl);
+export async function getDataSourceProperties(this: NotionFunctions, dataSourceId: string) {
 	const dataSource = await notionApiRequestV3.call(this, 'GET', `/data_sources/${dataSourceId}`);
 	if (!isDataObject(dataSource.properties)) {
 		throw new NodeOperationError(this.getNode(), 'Notion did not return data source properties');

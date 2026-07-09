@@ -105,7 +105,7 @@ export const description: INodeProperties[] = [
 			show: { resource: ['page'], operation: ['create'], contentType: ['markdown'] },
 		},
 	},
-	iconOptions('page', ['create'], 'page'),
+	iconOptions('page', ['create']),
 	{
 		displayName: 'Include Transcript',
 		name: 'includeTranscript',

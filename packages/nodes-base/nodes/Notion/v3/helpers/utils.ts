@@ -1,7 +1,6 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	INode,
 	INodeExecutionData,
 	INodeParameterResourceLocator,
 } from 'n8n-workflow';
@@ -148,7 +147,13 @@ function formatMention(entry: RichTextEntry) {
 	};
 }
 
-function formatRichTextV3(values: unknown) {
+const parseText = (value: unknown): string => {
+	if (typeof value === 'string') return value;
+	if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+	throw new Error(`Text value must be a string, number, or boolean. Received: ${typeof value}`);
+};
+
+function formatRichText(values: unknown) {
 	if (!Array.isArray(values)) return [];
 
 	const results: IDataObject[] = [];
@@ -160,7 +165,7 @@ function formatRichTextV3(values: unknown) {
 			results.push({
 				type: 'text',
 				text: {
-					content: typeof entry.text === 'string' ? entry.text : '',
+					content: parseText(entry.text),
 					...getTextLink(entry),
 				},
 				...getRichTextAnnotations(entry),
@@ -172,7 +177,7 @@ function formatRichTextV3(values: unknown) {
 			results.push({
 				type: 'equation',
 				equation: {
-					expression: typeof entry.expression === 'string' ? entry.expression : '',
+					expression: parseText(entry.expression),
 				},
 				...getRichTextAnnotations(entry),
 			});
@@ -182,7 +187,7 @@ function formatRichTextV3(values: unknown) {
 	return results;
 }
 
-export function formatBlocksV3(blockValues: IDataObject[]) {
+export function formatBlocks(blockValues: IDataObject[]) {
 	const results: IDataObject[] = [];
 
 	for (const block of blockValues) {
@@ -190,21 +195,33 @@ export function formatBlocksV3(blockValues: IDataObject[]) {
 		if (typeof blockType !== 'string') continue;
 
 		const blockBody: IDataObject = {};
-		if (blockType === 'to_do') {
-			blockBody.checked = block.checked;
-		}
-		if (blockType === 'child_page') {
-			blockBody.title = block.title;
-		} else if (blockType === 'image') {
-			blockBody.type = 'external';
-			blockBody.external = { url: block.url };
-		} else {
+
+		const prepareText = () => {
+			// rich text uses `text` parameter
 			if (block.richText === true && isDataObject(block.text)) {
-				blockBody.rich_text = formatRichTextV3(block.text.text);
+				blockBody.rich_text = formatRichText(block.text.text);
 			} else {
-				const textContent = typeof block.textContent === 'string' ? block.textContent : '';
+				// regular text uses `textContent`
+				const textContent = parseText(block.textContent);
 				blockBody.rich_text = formatText(textContent).text;
 			}
+		};
+		switch (blockType) {
+			case 'to_do':
+				blockBody.checked = block.checked;
+				prepareText();
+				break;
+			case 'child_page':
+				blockBody.title = block.title;
+				break;
+			case 'image':
+				blockBody.type = 'external';
+				blockBody.external = { url: block.url };
+				break;
+			// other block types such as paragraph, heading, etc. don't need special handling
+			default:
+				prepareText();
+				break;
 		}
 
 		results.push({
@@ -317,7 +334,7 @@ export function getPageCreateContent(this: IExecuteFunctions, itemIndex: number)
 		this.getNodeParameter('blockUi.blockValues', itemIndex, []) as IDataObject[],
 	);
 	extractDatabaseMentionRLC(blockValues);
-	return { children: formatBlocksV3(blockValues) };
+	return { children: formatBlocks(blockValues) };
 }
 
 export function getIconFromOptions(this: IExecuteFunctions, itemIndex: number) {
@@ -325,7 +342,15 @@ export function getIconFromOptions(this: IExecuteFunctions, itemIndex: number) {
 	const icon = options.icon;
 	if (typeof icon !== 'string' || icon === '') return undefined;
 
-	if (options.iconType === 'file') {
+	let isUrl = false;
+	try {
+		const url = new URL(icon);
+		isUrl = url.protocol === 'http:' || url.protocol === 'https:';
+	} catch {
+		isUrl = false;
+	}
+
+	if (isUrl) {
 		return { type: 'external', external: { url: icon } };
 	}
 
@@ -391,9 +416,6 @@ export function flattenDataSources(searchResults: IDataObject[]) {
 	}
 	return dataSources;
 }
-
-export const withItemIndex = (node: INode, error: Error, itemIndex: number) =>
-	prepareNotionError(node, error, itemIndex);
 
 export function handleOperationError(
 	this: IExecuteFunctions,
