@@ -1,7 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 
-import { EventService } from '@/events/event.service';
 import { SecuritySettingsService } from '@/services/security-settings.service';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 
@@ -12,7 +11,6 @@ import { setupTestServer } from '../shared/utils';
 describe('SecuritySettingsController', () => {
 	const securitySettingsService = mockInstance(SecuritySettingsService);
 	const workflowReviewPolicyService = mockInstance(WorkflowReviewPolicyService);
-	const eventService = mockInstance(EventService);
 	const instanceSettingsLoaderConfig = mockInstance(InstanceSettingsLoaderConfig, {
 		securityPolicyManagedByEnv: false,
 	});
@@ -170,9 +168,9 @@ describe('SecuritySettingsController', () => {
 
 			expect(response.body.data).toEqual({ workflowReviews: { enabled: true } });
 			expect(workflowReviewPolicyService.set).toHaveBeenCalledWith(true);
-			expect(eventService.emit).toHaveBeenCalledWith(
-				'instance-policies-updated',
-				expect.objectContaining({ settingName: 'workflow_reviews', value: true }),
+			expect(securitySettingsService.emitInstancePolicyUpdated).toHaveBeenCalledWith(
+				expect.objectContaining({ id: expect.any(String) }),
+				{ settingName: 'workflow_reviews', value: true },
 			);
 		});
 
