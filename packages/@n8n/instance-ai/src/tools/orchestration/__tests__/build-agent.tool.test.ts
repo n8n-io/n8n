@@ -230,4 +230,73 @@ describe('build-agent tool', () => {
 			error: 'Agent building is not available on this instance.',
 		});
 	});
+
+	it('publishes agent-completed when the builder is not configured', async () => {
+		const { context, delegate, publishedEvents } = makeContext();
+		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
+		vi.mocked(delegate.streamBuild).mockRejectedValue(
+			Object.assign(new Error('not configured'), { code: 'BUILDER_NOT_CONFIGURED' }),
+		);
+
+		const result = await runTool(context, { message: 'Build it', name: 'New Agent' });
+
+		expect(result).toEqual({
+			ok: false,
+			error: 'The agent builder model is not configured. Set it up in the agents module settings.',
+		});
+		expect(publishedEvents.map((event) => event.type)).toEqual([
+			'agent-spawned',
+			'agent-completed',
+		]);
+		const completed = publishedEvents[1];
+		expect(completed).toMatchObject({ type: 'agent-completed', agentId: 'agent-builder:agent-1' });
+		expect(completed && 'payload' in completed ? completed.payload : undefined).toMatchObject({
+			role: 'agent-builder',
+			error: 'The agent builder model is not configured. Set it up in the agents module settings.',
+		});
+	});
+
+	it('publishes agent-completed when streamBuild throws an unknown error', async () => {
+		const { context, delegate, publishedEvents } = makeContext();
+		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
+		vi.mocked(delegate.streamBuild).mockRejectedValue(new Error('boom'));
+
+		await expect(runTool(context, { message: 'Build it', name: 'New Agent' })).rejects.toThrow(
+			'boom',
+		);
+
+		expect(publishedEvents.map((event) => event.type)).toEqual([
+			'agent-spawned',
+			'agent-completed',
+		]);
+		const completed = publishedEvents[1];
+		expect(completed).toMatchObject({ type: 'agent-completed', agentId: 'agent-builder:agent-1' });
+		expect(completed && 'payload' in completed ? completed.payload : undefined).toMatchObject({
+			role: 'agent-builder',
+			error: 'boom',
+		});
+	});
+
+	it('errors without persisting a target when agentId is given but no projectId', async () => {
+		const { context, delegate, publishedEvents } = makeContext();
+		context.domainContext!.projectId = undefined;
+		const threadMemory = {
+			getThread: vi.fn(),
+			patchThread: vi.fn(),
+		};
+		context.domainContext!.threadMemory =
+			threadMemory as unknown as InstanceAiContext['threadMemory'];
+		context.domainContext!.threadId = 'thread-1';
+
+		const result = await runTool(context, { message: 'Add a tool', agentId: 'agent-existing' });
+
+		expect(result).toEqual({
+			ok: false,
+			error:
+				'Cannot bind to agentId without an active project context. Start this conversation from within a project.',
+		});
+		expect(threadMemory.patchThread).not.toHaveBeenCalled();
+		expect(delegate.streamBuild).not.toHaveBeenCalled();
+		expect(publishedEvents).toEqual([]);
+	});
 });

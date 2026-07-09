@@ -109,7 +109,14 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 					const created = await delegate.createAgent(input.name);
 					target = { agentId: created.agentId, projectId: created.projectId };
 				} else if (input.agentId) {
-					target = { agentId: input.agentId, projectId: domainContext.projectId ?? '' };
+					if (!domainContext.projectId) {
+						return {
+							ok: false,
+							error:
+								'Cannot bind to agentId without an active project context. Start this conversation from within a project.',
+						};
+					}
+					target = { agentId: input.agentId, projectId: domainContext.projectId };
 				} else {
 					return {
 						ok: false,
@@ -144,12 +151,19 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 			try {
 				turn = await delegate.streamBuild(target.agentId, outboundMessage, session);
 			} catch (error) {
+				const message = isBuilderNotConfiguredError(error)
+					? 'The agent builder model is not configured. Set it up in the agents module settings.'
+					: error instanceof Error
+						? error.message
+						: 'The agent builder run failed unexpectedly.';
+				context.eventBus.publish(context.threadId, {
+					type: 'agent-completed',
+					runId: context.runId,
+					agentId: builderAgentId,
+					payload: { role: 'agent-builder', result: '', error: message },
+				});
 				if (isBuilderNotConfiguredError(error)) {
-					return {
-						ok: false,
-						error:
-							'The agent builder model is not configured. Set it up in the agents module settings.',
-					};
+					return { ok: false, error: message };
 				}
 				throw error;
 			}
