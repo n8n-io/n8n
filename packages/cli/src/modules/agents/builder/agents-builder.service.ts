@@ -1,4 +1,5 @@
 import type {
+	BuiltTool,
 	CredentialProvider,
 	SerializableAgentState,
 	StreamChunk,
@@ -35,10 +36,21 @@ interface FindSuspendedCheckpointOptions {
 	includeUnscoped?: boolean;
 }
 
-/** Derive a stable thread ID for the builder chat of a given agent. */
-function builderThreadId(agentId: string): string {
-	return `${AGENT_THREAD_PREFIX.BUILDER}${agentId}`;
+/** Options for a builder session that isn't the default agents-UI chat (e.g. an instance-AI sub-agent). */
+export interface BuilderSessionOptions {
+	/** Overrides the persistence thread id. Default: `builder:<agentId>`. */
+	threadId?: string;
+	/** Extra tools registered on the builder agent (e.g. instance-AI-injected). */
+	extraTools?: BuiltTool[];
 }
+
+/** Derive the builder chat thread ID; callers may override (e.g. instance-AI sessions). */
+export function resolveBuilderThreadId(agentId: string, override?: string): string {
+	return override ?? `${AGENT_THREAD_PREFIX.BUILDER}${agentId}`;
+}
+
+/** Derive a stable thread ID for the builder chat of a given agent. */
+const builderThreadId = resolveBuilderThreadId;
 
 @Service()
 export class AgentsBuilderService {
@@ -85,14 +97,21 @@ export class AgentsBuilderService {
 		message: string,
 		credentialProvider: CredentialProvider,
 		user: User,
+		session?: BuilderSessionOptions,
 	): AsyncGenerator<StreamChunk> {
-		const builder = await this.createBuilderAgent(agentId, projectId, credentialProvider, user);
+		const builder = await this.createBuilderAgent(
+			agentId,
+			projectId,
+			credentialProvider,
+			user,
+			session,
+		);
 
 		this.logger.debug('Starting builder agent stream', { agentId, projectId });
 
 		const resourceId = user.id;
 		const resultStream = await builder.stream(message, {
-			persistence: { threadId: builderThreadId(agentId), resourceId },
+			persistence: { threadId: resolveBuilderThreadId(agentId, session?.threadId), resourceId },
 		});
 
 		yield* this.streamFromAgent(resultStream);
@@ -116,6 +135,7 @@ export class AgentsBuilderService {
 		resumeData: unknown,
 		credentialProvider: CredentialProvider,
 		user: User,
+		session?: BuilderSessionOptions,
 	): AsyncGenerator<StreamChunk> {
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
 		if (checkpointStatus.status === 'expired') {
@@ -125,7 +145,13 @@ export class AgentsBuilderService {
 			throw new UserError(`Builder checkpoint ${runId} not found`);
 		}
 
-		const builder = await this.createBuilderAgent(agentId, projectId, credentialProvider, user);
+		const builder = await this.createBuilderAgent(
+			agentId,
+			projectId,
+			credentialProvider,
+			user,
+			session,
+		);
 
 		this.logger.debug('Resuming builder agent', { agentId, runId, toolCallId });
 
@@ -155,6 +181,7 @@ export class AgentsBuilderService {
 		projectId: string,
 		credentialProvider: CredentialProvider,
 		user: User,
+		session?: BuilderSessionOptions,
 	): Promise<RuntimeAgent> {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) {
@@ -222,13 +249,17 @@ export class AgentsBuilderService {
 			agentId,
 			projectId,
 			userId: user.id,
-			threadId: builderThreadId(agentId),
+			threadId: resolveBuilderThreadId(agentId, session?.threadId),
 			model: modelConfig,
 			tracingProxyConfig,
 		});
 		if (telemetry) builder.telemetry(telemetry);
 
 		for (const tool of [...tools.json, ...tools.shared]) {
+			builder.tool(tool);
+		}
+
+		for (const tool of session?.extraTools ?? []) {
 			builder.tool(tool);
 		}
 
