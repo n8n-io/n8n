@@ -39,6 +39,7 @@ const {
 	caseRows,
 	mismatch,
 	loading: casesLoading,
+	casesLoaded,
 	casesError,
 } = useCompareCases(detail, workflowIdRef);
 
@@ -46,7 +47,7 @@ const {
 // and the per-case data have resolved so `case_count` is accurate.
 const tracked = ref(false);
 watch(
-	() => compareData.value !== null && !casesLoading.value,
+	() => compareData.value !== null && casesLoaded.value,
 	(ready) => {
 		if (!ready || tracked.value) return;
 		tracked.value = true;
@@ -152,7 +153,7 @@ onBeforeUnmount(() => {
 
 		<template v-else-if="compareData">
 			<DatasetMismatchBanner
-				v-if="!casesLoading && !casesError && mismatch.hasMismatch"
+				v-if="casesLoaded && !casesError && mismatch.hasMismatch"
 				:mismatch="mismatch"
 			/>
 			<CompareHeader
@@ -170,6 +171,7 @@ onBeforeUnmount(() => {
 				:metric-groups="compareData.metricGroups"
 				:case-rows="caseRows"
 				:cases-loading="casesLoading"
+				:cases-error="casesError"
 			/>
 		</template>
 	</div>

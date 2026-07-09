@@ -23,10 +23,11 @@ const i18n = useI18n();
 // chart threshold).
 const CRITICAL_THRESHOLD = 0.6;
 
-type SortKey = 'delta' | 'index' | 'best';
+type SortKey = 'spread' | 'index' | 'best';
 // Default to the biggest regressions first, so the cases that moved most surface
-// at the top without scrolling.
-const sort = ref<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'delta', dir: 'desc' });
+// at the top without scrolling. "spread" = the gap between a case's best and
+// worst version, which is what the "Δ vs best" header sorts on.
+const sort = ref<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'spread', dir: 'desc' });
 
 function toggleSort(key: SortKey) {
 	if (sort.value.key === key) {
@@ -96,7 +97,7 @@ function deltas(row: CompareCaseRow) {
 				<th role="button" @click="toggleSort('best')">
 					{{ i18n.baseText('evaluation.compare.cases.col.best') }}
 				</th>
-				<th role="button" @click="toggleSort('delta')">
+				<th role="button" @click="toggleSort('spread')">
 					{{ i18n.baseText('evaluation.compare.cases.col.deltaVsBest') }}
 				</th>
 				<th :class="$style.chevronCol" />

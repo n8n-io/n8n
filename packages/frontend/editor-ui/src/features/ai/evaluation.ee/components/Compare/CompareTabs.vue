@@ -16,6 +16,7 @@ const props = defineProps<{
 	metricGroups: CompareMetricGroup[];
 	caseRows: CompareCaseRow[];
 	casesLoading: boolean;
+	casesError?: boolean;
 }>();
 
 const i18n = useI18n();
@@ -46,6 +47,10 @@ function onDrilldown(caseIndex: number) {
 	<section :class="$style.tabs" data-test-id="compare-tabs">
 		<N8nTabs v-model="activeTab" :options="tabs" />
 
+		<N8nText v-if="casesError" size="xsmall" color="danger" data-test-id="compare-cases-error">
+			{{ i18n.baseText('evaluation.compare.cases.loadError') }}
+		</N8nText>
+
 		<div :class="$style.panel">
 			<template v-if="activeTab === 'cases'">
 				<!-- Gate on loading first: the per-version case fetches resolve
@@ -60,13 +65,18 @@ function onDrilldown(caseIndex: number) {
 				<CasesTable v-else :versions="versions" :case-rows="caseRows" @drilldown="onDrilldown" />
 			</template>
 
-			<OutputsTab
-				v-else-if="activeTab === 'outputs'"
-				:versions="versions"
-				:case-rows="caseRows"
-				:selected-index="selectedCaseIndex"
-				@update:selected-index="selectedCaseIndex = $event"
-			/>
+			<template v-else-if="activeTab === 'outputs'">
+				<N8nText v-if="casesLoading" size="small" color="text-light">
+					{{ i18n.baseText('evaluation.compare.cases.loading') }}
+				</N8nText>
+				<OutputsTab
+					v-else
+					:versions="versions"
+					:case-rows="caseRows"
+					:selected-index="selectedCaseIndex"
+					@update:selected-index="selectedCaseIndex = $event"
+				/>
+			</template>
 
 			<MetricsTab
 				v-else-if="activeTab === 'metrics'"

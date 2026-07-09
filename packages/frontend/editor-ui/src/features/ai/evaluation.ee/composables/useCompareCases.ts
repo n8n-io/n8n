@@ -2,11 +2,12 @@ import orderBy from 'lodash/orderBy';
 import type { JsonObject } from 'n8n-workflow';
 import { computed, ref, watch, type Ref } from 'vue';
 
-import type { TestCaseExecutionRecord, TestCaseExecutionStatus } from '../evaluation.api';
+import type { TestCaseExecutionRecord } from '../evaluation.api';
 import { useEvaluationStore } from '../evaluation.store';
 import type { EvaluationCollectionDetail } from '../evalCollections.types';
 import {
 	getUserDefinedMetricNames,
+	indexOfMax,
 	isScoreShapedMetric,
 	stringifyValue,
 } from '../evaluation.utils';
@@ -16,7 +17,6 @@ import {
 export interface CompareCaseCell {
 	versionIndex: number;
 	testCaseId: string | null;
-	status: TestCaseExecutionStatus | null;
 	inputs: JsonObject | undefined;
 	outputs: JsonObject | undefined;
 	metrics: Record<string, number> | undefined;
@@ -53,18 +53,6 @@ function caseScore(metrics: Record<string, number> | undefined): number | null {
 	return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
-function indexOfMax(values: Array<number | null>): number | null {
-	let best: number | null = null;
-	let bestValue = -Infinity;
-	values.forEach((value, index) => {
-		if (value !== null && value > bestValue) {
-			bestValue = value;
-			best = index;
-		}
-	});
-	return best;
-}
-
 // Compact one-line preview of a case's inputs for the table's first column.
 function inputPreview(inputs: JsonObject | undefined): string {
 	if (!inputs) return '';
@@ -90,15 +78,31 @@ export function useCompareCases(
 	const evaluationStore = useEvaluationStore();
 
 	const loading = ref(false);
+	// True once the current run set's per-case fetches have completed at least
+	// once. Downstream gates (mismatch banner, telemetry) use this rather than
+	// `!loading` so they can't act on the empty window before the first load or
+	// on a superseded load's transient `loading = false`.
+	const casesLoaded = ref(false);
 	// True when any run's per-case fetch failed. Distinguishes a transient
 	// failure from a real dataset mismatch — a failed run also comes back with
 	// zero cases, which would otherwise read as "diverging case counts".
 	const casesError = ref(false);
 
+	// Monotonic token so a slow load for a previous collection can't flip state
+	// out from under the collection the user has since switched to.
+	let loadToken = 0;
+
 	async function load() {
 		const runs = detail.value?.runs ?? [];
-		if (runs.length === 0) return;
+		const token = ++loadToken;
+		if (runs.length === 0) {
+			loading.value = false;
+			casesError.value = false;
+			casesLoaded.value = true;
+			return;
+		}
 		loading.value = true;
+		casesLoaded.value = false;
 		casesError.value = false;
 		try {
 			const results = await Promise.allSettled(
@@ -109,21 +113,31 @@ export function useCompareCases(
 					}),
 				),
 			);
+			// A newer load for a different run set has taken over — don't clobber it.
+			if (token !== loadToken) return;
 			casesError.value = results.some((result) => result.status === 'rejected');
+			casesLoaded.value = true;
 		} finally {
-			loading.value = false;
+			if (token === loadToken) loading.value = false;
 		}
 	}
 
-	// Per-run, sorted case lists — same [runIndex, runAt] ordering as the
-	// run-detail view so aligned positions map to the same seeded case.
+	// Per-run, sorted case lists. Bucket the shared (app-global, poll-mutated)
+	// store map by `testRunId` in a single pass instead of re-scanning it per
+	// run, then sort each run's bucket by the same [runIndex, runAt] ordering
+	// the run-detail view uses so aligned positions map to the same seeded case.
 	const casesByVersion = computed<TestCaseExecutionRecord[][]>(() => {
 		const runs = detail.value?.runs ?? [];
+		const byRunId = new Map<string, TestCaseExecutionRecord[]>(
+			runs.map((run) => [run.testRunId, []]),
+		);
+		for (const record of Object.values(evaluationStore.testCaseExecutionsById)) {
+			const bucket = record.testRunId ? byRunId.get(record.testRunId) : undefined;
+			if (bucket) bucket.push(record);
+		}
 		return runs.map((run) =>
 			orderBy(
-				Object.values(evaluationStore.testCaseExecutionsById).filter(
-					(record) => record.testRunId === run.testRunId,
-				),
+				byRunId.get(run.testRunId) ?? [],
 				[(record) => record.runIndex ?? Number.MAX_SAFE_INTEGER, (record) => record.runAt ?? ''],
 				['asc', 'asc'],
 			),
@@ -151,7 +165,6 @@ export function useCompareCases(
 				return {
 					versionIndex,
 					testCaseId: record?.id ?? null,
-					status: record?.status ?? null,
 					inputs: record?.inputs,
 					outputs: record?.outputs,
 					metrics: record?.metrics,
@@ -181,5 +194,5 @@ export function useCompareCases(
 		{ immediate: true },
 	);
 
-	return { caseRows, mismatch, loading, casesError, load };
+	return { caseRows, mismatch, loading, casesLoaded, casesError, load };
 }

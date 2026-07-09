@@ -29,10 +29,6 @@ const selectedRow = computed(
 	() => props.caseRows.find((row) => row.index === props.selectedIndex) ?? props.caseRows[0],
 );
 
-function outputText(outputs: CompareCaseRow['cells'][number]['outputs']): string {
-	return outputs === undefined ? '' : extractAnswerText(outputs);
-}
-
 function metricEntries(metrics: Record<string, number> | undefined) {
 	if (!metrics) return [];
 	return getUserDefinedMetricNames(metrics).map((key) => ({
@@ -88,7 +84,7 @@ function metricEntries(metrics: Record<string, number> | undefined) {
 
 					<div :class="$style.answer">
 						<N8nText v-if="cell.outputs !== undefined" size="small">
-							{{ outputText(cell.outputs) }}
+							{{ extractAnswerText(cell.outputs) }}
 						</N8nText>
 						<N8nText v-else size="small" color="text-light">
 							{{ i18n.baseText('evaluation.compare.outputs.noOutput') }}

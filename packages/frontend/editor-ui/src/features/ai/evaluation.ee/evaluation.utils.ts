@@ -90,6 +90,21 @@ export function isScoreShapedMetric(value: unknown): value is number {
 	return typeof value === 'number' && value >= 0 && value <= 1;
 }
 
+// Index of the max value, ignoring nulls; ties resolve to the first (left-most)
+// entry, matching the version letter order users read. Returns null if every
+// value is null.
+export function indexOfMax(values: Array<number | null>): number | null {
+	let best: number | null = null;
+	let bestValue = -Infinity;
+	values.forEach((value, index) => {
+		if (value !== null && value > bestValue) {
+			bestValue = value;
+			best = index;
+		}
+	});
+	return best;
+}
+
 // A run set is "running" while any run is still queued or executing, else
 // "done". Shared by the collection card and the compare header so the two
 // surfaces can't disagree; callers that also have a not-yet-loaded state keep

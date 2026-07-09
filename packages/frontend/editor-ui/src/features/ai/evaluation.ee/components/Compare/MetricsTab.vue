@@ -44,7 +44,7 @@ const i18n = useI18n();
 			</tbody>
 		</table>
 		<N8nText v-else size="small" color="text-light">
-			{{ i18n.baseText('evaluation.compare.scoreChart.empty') }}
+			{{ i18n.baseText('evaluation.compare.metrics.empty') }}
 		</N8nText>
 	</div>
 </template>

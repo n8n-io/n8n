@@ -115,7 +115,7 @@ describe('useCompareCases', () => {
 		});
 		store.fetchTestCaseExecutions = fetchSpy as unknown as typeof store.fetchTestCaseExecutions;
 
-		const { loading, caseRows, load } = useCompareCases(
+		const { loading, casesLoaded, caseRows, load } = useCompareCases(
 			ref(detailWith(['run-a', 'run-b'])),
 			ref('wf-1'),
 		);
@@ -124,6 +124,7 @@ describe('useCompareCases', () => {
 		expect(fetchSpy).toHaveBeenCalledWith({ workflowId: 'wf-1', runId: 'run-a' });
 		expect(fetchSpy).toHaveBeenCalledWith({ workflowId: 'wf-1', runId: 'run-b' });
 		expect(loading.value).toBe(false);
+		expect(casesLoaded.value).toBe(true);
 		expect(caseRows.value).toHaveLength(1);
 	});
 
