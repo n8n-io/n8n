@@ -643,6 +643,13 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 	});
 
 	describe('View timeline action', () => {
+		beforeEach(() => {
+			workflowDocumentStore.setActiveState({
+				activeVersionId: 'active-version-1',
+				activeVersion: createMockActiveVersion('active-version-1'),
+			});
+		});
+
 		it('should be disabled when workflow is new', async () => {
 			const { getByTestId } = renderComponent({
 				props: {
