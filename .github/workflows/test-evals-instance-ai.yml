@@ -97,7 +97,7 @@ jobs:
     runs-on: blacksmith-8vcpu-ubuntu-2204
     # Long ceiling only for high-N baseline captures; regular runs keep a
     # tight guard so a wedged run fails fast.
-    timeout-minutes: ${{ fromJSON(inputs.iterations || '3') >= 5 && 300 || 90 }}
+    timeout-minutes: ${{ fromJSON(inputs.iterations || '3') >= 5 && 240 || 90 }}
     env:
       # Each port hosts an independent n8n container. The eval CLI's
       # work-stealing allocator dispatches builds across them, capped per-lane.
