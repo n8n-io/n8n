@@ -6,6 +6,7 @@ import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import * as checkAccess from '@/permissions.ee/check-access';
 
 import type { AgentConfigService } from '../agent-config.service';
@@ -194,8 +195,26 @@ describe('InstanceAiAgentBuilderAdapterService scope enforcement', () => {
 			expect(result).toEqual({ agentId: 'agent-1', projectId: 'project-1', name: 'My agent' });
 		});
 
+		it('createTask rejects an agent outside the scoped project', async () => {
+			const { adapter, agentsService, agentTaskService } = setup();
+			agentsService.findById.mockResolvedValue(null);
+
+			await expect(
+				adapter.createTask('agent-other-project', 'project-1', {
+					name: 'n',
+					objective: 'o',
+					cronExpression: '0 9 * * *',
+					enabled: true,
+				}),
+			).rejects.toThrow(NotFoundError);
+
+			expect(agentsService.findById).toHaveBeenCalledWith('agent-other-project', 'project-1');
+			expect(agentTaskService.create).not.toHaveBeenCalled();
+		});
+
 		it('createTask delegates to the task service with the agent id', async () => {
-			const { adapter, agentTaskService } = setup();
+			const { adapter, agentsService, agentTaskService } = setup();
+			agentsService.findById.mockResolvedValue(mock());
 			agentTaskService.create.mockResolvedValue({
 				id: 'task-1',
 				name: 'n',
