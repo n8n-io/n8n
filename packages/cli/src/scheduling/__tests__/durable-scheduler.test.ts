@@ -3,7 +3,7 @@ import type { GlobalConfig } from '@n8n/config';
 import type { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import type { Scheduler, SchedulerPasses } from '@n8n/scheduler';
 import { createScheduler } from '@n8n/scheduler';
-import type { InstanceSettings } from 'n8n-core';
+import type { InstanceSettings, Tracing } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { DurableScheduler } from '../durable-scheduler';
@@ -36,6 +36,7 @@ describe('DurableScheduler', () => {
 				database: { type: dbType as 'sqlite' | 'postgresdb' },
 				scheduler: { enabled, executorIntervalSeconds: 5, jitterRatio: 0.1 },
 			}),
+			mock<Tracing>(),
 			scheduleTriggerTaskHandler,
 		);
 		return { scheduler, inner, logger };

@@ -1,4 +1,5 @@
 import { ScheduledTaskStatus } from '@n8n/constants';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { mock } from 'vitest-mock-extended';
 
 import { SCHEDULER_ATTRIBUTES } from '../../observability/attributes';
@@ -11,11 +12,23 @@ import type { MaterializerTransaction, RunInTransaction } from '../materializer'
 import { DEFAULT_RETENTION_OPTIONS } from '../retention';
 import type { ClaimedTask, ScheduledJob } from '../types';
 
-/** A shared span so every pass records its attributes/status to the same spy. */
+/**
+ * A shared span (each tracing test drives a single pass, so one span suffices)
+ * behind a tracer that honours the port's contract: a throw from `run` marks the
+ * span errored and propagates, exactly as the concrete (Sentry) tracer does. This
+ * matters for the materializer, whose abort path throws rather than returning.
+ */
 const makeTracer = () => {
 	const span: Span = { setAttribute: vi.fn(), setStatus: vi.fn() };
 	const tracer = mock<Tracer>();
-	tracer.startSpan.mockImplementation(async (_options, run) => await run(span));
+	tracer.startSpan.mockImplementation(async (_options, run) => {
+		try {
+			return await run(span);
+		} catch (error) {
+			span.setStatus({ code: SpanStatus.error, message: ensureError(error).message });
+			throw error;
+		}
+	});
 	return { span, tracer };
 };
 
@@ -804,7 +817,7 @@ describe('createScheduler tracing', () => {
 
 		expect(summary).toEqual({ claimedJobs: 1, occurrences: 2, deferredJobs: 0 });
 		expect(tracer.startSpan).toHaveBeenCalledWith(
-			expect.objectContaining({ op: 'scheduler.materialize' }),
+			expect.objectContaining({ name: 'Scheduler materialize', op: 'scheduler.materialize' }),
 			expect.any(Function),
 		);
 		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.claimedJobs, 1);
@@ -823,6 +836,7 @@ describe('createScheduler tracing', () => {
 
 		expect(tracer.startSpan).toHaveBeenCalledWith(
 			expect.objectContaining({
+				name: 'Scheduler claim',
 				op: 'scheduler.claim',
 				attributes: { [SCHEDULER_ATTRIBUTES.host]: 'main-test' },
 			}),
@@ -850,7 +864,7 @@ describe('createScheduler tracing', () => {
 
 		expect(result).toEqual({ reclaimed: 2, deadLettered: 1 });
 		expect(tracer.startSpan).toHaveBeenCalledWith(
-			expect.objectContaining({ op: 'scheduler.reap' }),
+			expect.objectContaining({ name: 'Scheduler reap', op: 'scheduler.reap' }),
 			expect.any(Function),
 		);
 		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.reclaimed, 2);
@@ -866,7 +880,7 @@ describe('createScheduler tracing', () => {
 		const summary = await scheduler.prune();
 
 		expect(tracer.startSpan).toHaveBeenCalledWith(
-			expect.objectContaining({ op: 'scheduler.retention' }),
+			expect.objectContaining({ name: 'Scheduler retention', op: 'scheduler.retention' }),
 			expect.any(Function),
 		);
 		expect(span.setAttribute).toHaveBeenCalledWith(
@@ -880,7 +894,7 @@ describe('createScheduler tracing', () => {
 		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
 	});
 
-	it('records error on a pass abandoned by its loop timeout', async () => {
+	it('records error on the claim span when the executor pass is abandoned by its loop timeout', async () => {
 		const { span, tracer } = makeTracer();
 		const { scheduler, taskStore } = makeScheduler({ tracer });
 		taskStore.claimDueTasks.mockResolvedValue([]);
@@ -893,6 +907,53 @@ describe('createScheduler tracing', () => {
 			code: SpanStatus.error,
 			message: 'Scheduler pass timed out',
 		});
+		expect(span.setStatus).not.toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('records error on the reap span when the reaper pass is abandoned by its loop timeout', async () => {
+		const { span, tracer } = makeTracer();
+		const { scheduler, taskStore } = makeScheduler({ tracer });
+		taskStore.findExpiredLeases.mockResolvedValue([]);
+		const controller = new AbortController();
+		controller.abort(PASS_TIMED_OUT);
+
+		await scheduler.reap(controller.signal);
+
+		expect(span.setStatus).toHaveBeenCalledWith({
+			code: SpanStatus.error,
+			message: 'Scheduler pass timed out',
+		});
+		expect(span.setStatus).not.toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('records error on the retention span when the retention pass is abandoned by its loop timeout', async () => {
+		const { span, tracer } = makeTracer();
+		const { scheduler } = makeScheduler({ tracer });
+		const controller = new AbortController();
+		controller.abort(PASS_TIMED_OUT);
+
+		await scheduler.prune(controller.signal);
+
+		expect(span.setStatus).toHaveBeenCalledWith({
+			code: SpanStatus.error,
+			message: 'Scheduler pass timed out',
+		});
+		expect(span.setStatus).not.toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('records error on the materialize span when the materializer pass is abandoned by its loop timeout', async () => {
+		const { span, tracer } = makeTracer();
+		const { scheduler } = makeScheduler({ tracer });
+		const controller = new AbortController();
+		controller.abort(PASS_TIMED_OUT);
+
+		// The materializer aborts by throwing (throwIfAborted), so the tracer errors
+		// the span as the throw propagates, rather than settlePassSpan closing it.
+		await expect(scheduler.materialize(controller.signal)).rejects.toBeDefined();
+
+		expect(span.setStatus).toHaveBeenCalledWith(
+			expect.objectContaining({ code: SpanStatus.error }),
+		);
 		expect(span.setStatus).not.toHaveBeenCalledWith({ code: SpanStatus.ok });
 	});
 
