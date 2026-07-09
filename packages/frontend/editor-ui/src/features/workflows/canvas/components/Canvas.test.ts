@@ -112,11 +112,11 @@ function getSelectionRing(container: Element) {
 }
 
 function createNodeGroupViewMock(initialCollapsed: boolean) {
-	let collapsed = initialCollapsed;
+	const collapsedByGroupId = new Map<string, boolean>();
 	return {
-		isGroupCollapsed: () => collapsed,
-		toggleCollapsed: () => {
-			collapsed = !collapsed;
+		isGroupCollapsed: (id: string) => collapsedByGroupId.get(id) ?? initialCollapsed,
+		toggleCollapsed: (id: string) => {
+			collapsedByGroupId.set(id, !(collapsedByGroupId.get(id) ?? initialCollapsed));
 		},
 		getVisualOffsetForNode: () => ({ x: 0, y: 0 }),
 		getVisualOffsetForComponent: () => ({ x: 0, y: 0 }),
@@ -970,6 +970,61 @@ describe('Canvas', () => {
 			expect(useTelemetry().track).toHaveBeenCalledWith(
 				'User collapsed group',
 				expect.objectContaining({ group_id: group.id, source: 'keyboard-shortcut' }),
+			);
+		});
+
+		it('scopes Alt+G to the selected groups when a selection exists', async () => {
+			workflowDocumentStore.setScopes(['workflow:update']);
+			workflowDocumentStore.setNodes([
+				createTestNode({ id: 'a', name: 'Node A' }),
+				createTestNode({ id: 'b', name: 'Node B' }),
+			]);
+			const group1 = workflowDocumentStore.createGroup(['a'], 'Group 1');
+			const group2 = workflowDocumentStore.createGroup(['b'], 'Group 2');
+			const nodes = [
+				createCanvasGroupElement({ id: group1.id, name: group1.name, nodeIds: ['a'] }),
+				createCanvasGroupElement({
+					id: group2.id,
+					name: group2.name,
+					nodeIds: ['b'],
+					position: { x: 600, y: 0 },
+				}),
+			];
+
+			const { container } = renderComponent({
+				props: { nodes },
+				global: { provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(true) } },
+			});
+			await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(2));
+
+			const { addSelectedNodes, findNode } = useVueFlow(canvasId);
+			addSelectedNodes([findNode(`group:${group1.id}`)!]);
+			await waitFor(() => expect(findNode(`group:${group1.id}`)?.selected).toBe(true));
+
+			await fireEvent.keyDown(document, { key: 'g', altKey: true });
+
+			expect(useTelemetry().track).toHaveBeenCalledWith(
+				'User expanded group',
+				expect.objectContaining({ group_id: group1.id, source: 'keyboard-shortcut' }),
+			);
+			expect(useTelemetry().track).not.toHaveBeenCalledWith(
+				'User expanded group',
+				expect.objectContaining({ group_id: group2.id }),
+			);
+		});
+
+		it('does nothing on Alt+G when the selection contains no groups', async () => {
+			const { looseNode } = await renderWithGroup({}, { initialCollapsed: true });
+
+			const { addSelectedNodes, findNode } = useVueFlow(canvasId);
+			addSelectedNodes([findNode(looseNode.id)!]);
+			await waitFor(() => expect(findNode(looseNode.id)?.selected).toBe(true));
+
+			await fireEvent.keyDown(document, { key: 'g', altKey: true });
+
+			expect(useTelemetry().track).not.toHaveBeenCalledWith(
+				'User expanded group',
+				expect.anything(),
 			);
 		});
 

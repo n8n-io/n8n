@@ -448,15 +448,15 @@ const keyMap = computed(() => {
 
 	if (isCanvasNodeGroupingEnabled.value) {
 		// Group collapse state is a view preference, so expanding/collapsing
-		// all groups works in read-only canvases too.
+		// groups works in read-only canvases too.
 		const hasNoGroups = () => workflowDocumentStore.value.allGroups.length === 0;
 		readOnlyKeymap.alt_g = {
 			disabled: hasNoGroups,
-			run: () => onSetAllGroupsExpanded(true, 'keyboard-shortcut'),
+			run: () => onKeyboardSetGroupsExpanded(true),
 		};
 		readOnlyKeymap.shift_alt_g = {
 			disabled: hasNoGroups,
-			run: () => onSetAllGroupsExpanded(false, 'keyboard-shortcut'),
+			run: () => onKeyboardSetGroupsExpanded(false),
 		};
 	}
 
@@ -779,6 +779,21 @@ function resolveTargetGroupIds(nodeIds: string[], groupId?: string): string[] {
 		if (group) groupIds.add(group.id);
 	}
 	return [...groupIds];
+}
+
+// Context-aware Alt+G / Shift+Alt+G: an empty selection targets every group;
+// otherwise the action scopes to the selection's groups — and no-ops when the
+// selection has none.
+function onKeyboardSetGroupsExpanded(expanded: boolean) {
+	if (selectedNodesAndGroups.value.length === 0) {
+		onSetAllGroupsExpanded(expanded, 'keyboard-shortcut');
+		return;
+	}
+	setGroupsExpanded(
+		resolveTargetGroupIds(selectedNodeIdsWithGroupMembers.value),
+		expanded,
+		'keyboard-shortcut',
+	);
 }
 
 /**

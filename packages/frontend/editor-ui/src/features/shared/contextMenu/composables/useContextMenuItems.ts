@@ -286,6 +286,8 @@ export function useContextMenuItems(
 		const targetHasGroups =
 			isGroupTarget ||
 			nodes.some((node) => workflowDocumentStore?.value?.getGroupForNode(node.id) !== undefined);
+		// Alt+G is context-aware: with a selection it targets the selection's
+		// groups, matching these items.
 		const selectedGroupViewActions: Item[] =
 			isNodeGroupingEnabled.value && targetHasGroups
 				? [
@@ -293,10 +295,12 @@ export function useContextMenuItems(
 							id: 'expand_selected_groups',
 							divided: true,
 							label: i18n.baseText('contextMenu.expandSelectedGroups'),
+							shortcut: { altKey: true, keys: ['G'] },
 						},
 						{
 							id: 'collapse_selected_groups',
 							label: i18n.baseText('contextMenu.collapseSelectedGroups'),
+							shortcut: { shiftKey: true, altKey: true, keys: ['G'] },
 						},
 					]
 				: [];
