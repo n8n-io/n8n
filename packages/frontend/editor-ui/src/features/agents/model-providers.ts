@@ -95,3 +95,9 @@ export const AGENT_MODEL_PROVIDER_DEFINITIONS = {
 		isAggregator?: boolean;
 	}
 >;
+
+export function getProviderCredentialTypes(
+	provider: AgentModelProvider,
+): readonly [string, ...string[]] {
+	return AGENT_MODEL_PROVIDER_DEFINITIONS[provider].credentialTypes;
+}

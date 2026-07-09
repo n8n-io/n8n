@@ -18,6 +18,7 @@ import type { ReaperOptions, ReaperTaskStore } from './reaper';
 import { DEFAULT_RETENTION_OPTIONS, prune } from './retention';
 import type { RetentionOptions, RetentionStore } from './retention';
 import type { Scheduler, SchedulerPasses } from './scheduler';
+import { noopMetrics, type SchedulerMetrics } from '../observability/metrics';
 
 export type SchedulerEventLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -59,6 +60,9 @@ export interface SchedulerDeps {
 	lifecycle?: Partial<LifecycleOptions>;
 
 	onEvent?: (event: SchedulerEvent) => void;
+
+	/** Host metrics; defaults to a no-op. */
+	metrics?: SchedulerMetrics;
 }
 
 /**
@@ -86,6 +90,7 @@ function withDefaults<T extends object>(defaults: T, overrides: Partial<T> = {})
  */
 export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasses {
 	const { hostId, materializerTransaction, taskStore, onEvent } = deps;
+	const metrics = deps.metrics ?? noopMetrics;
 	const materializerOptions = withDefaults(DEFAULT_MATERIALIZER_OPTIONS, deps.materializer);
 	const executorOptions = withDefaults(DEFAULT_EXECUTOR_OPTIONS, deps.executor);
 	const reaperOptions = withDefaults(DEFAULT_REAPER_OPTIONS, deps.reaper);
@@ -148,6 +153,17 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 	};
 	const described = (error: unknown) => ensureError(error).message;
 
+	// Metrics are best-effort observability: a throwing sink (e.g. a broken
+	// exporter) must never break the pass that emitted, so every record is
+	// wrapped and its failure swallowed.
+	const recordMetric = (record: () => void) => {
+		try {
+			record();
+		} catch {
+			// Deliberately swallowed; see above.
+		}
+	};
+
 	const registry = new TaskHandlerRegistry();
 	const executor = new Executor(taskStore, registry, new PrecisionTimer(), executorOptions, {
 		onLeaseShorterThanLookahead: (context) => {
@@ -175,6 +191,18 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 				error: described(error),
 			});
 		},
+		onDispatch: (taskType, lagSeconds) =>
+			recordMetric(() => {
+				metrics.recordDispatch(taskType);
+				metrics.observeDispatchLagSeconds(taskType, lagSeconds);
+			}),
+		onFire: (taskType, result) =>
+			recordMetric(() => {
+				metrics.recordFireOutcome(taskType, result);
+				// An executor terminal failure (attempts exhausted) is a permanent failure = a dead-letter.
+				if (result === 'failure') metrics.recordDeadLettered();
+			}),
+		onRetry: (taskType) => recordMetric(() => metrics.recordRetry(taskType)),
 	});
 
 	if (retentionOptions.failedRetentionSeconds < retentionOptions.retentionSeconds) {
@@ -188,8 +216,8 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 		);
 	}
 
-	const runMaterialize = async (signal?: AbortSignal) =>
-		await materialize(
+	const runMaterialize = async (signal?: AbortSignal) => {
+		const summary = await materialize(
 			materializerTransaction,
 			materializerOptions,
 			{
@@ -207,12 +235,15 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 			},
 			signal,
 		);
+		recordMetric(() => metrics.recordMaterialized(summary.occurrences, summary.deferredJobs));
+		return summary;
+	};
 
 	const runExecute = async (signal?: AbortSignal) =>
 		await executor.claimAndSchedule(hostId, signal);
 
-	const runReap = async (signal?: AbortSignal) =>
-		await reap(
+	const runReap = async (signal?: AbortSignal) => {
+		const result = await reap(
 			taskStore,
 			reaperOptions,
 			{
@@ -234,6 +265,9 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 			},
 			signal,
 		);
+		recordMetric(() => metrics.recordReaped(result.reclaimed, result.deadLettered));
+		return result;
+	};
 
 	const runPrune = async (signal?: AbortSignal) => {
 		const summary = await prune(taskStore, retentionOptions, signal);
@@ -244,6 +278,7 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 		} else if (summary.drained && summary.deleted > 0) {
 			emit('debug', 'Scheduler retention deleted finished tasks', { ...summary });
 		}
+		recordMetric(() => metrics.recordPruned(summary.deleted));
 		return summary;
 	};
 

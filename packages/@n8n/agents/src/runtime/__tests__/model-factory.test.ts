@@ -357,6 +357,43 @@ describe('createModel', () => {
 		});
 	});
 
+	describe('anthropic baseURL normalization', () => {
+		it('appends /v1 to a custom baseURL without a version segment (e.g. Azure AI Foundry)', () => {
+			const model = createModel({
+				id: 'anthropic/claude-sonnet-4-6',
+				apiKey: 'sk-ant',
+				baseURL: 'https://internal.example.services.ai.azure.com/anthropic/',
+			}) as unknown as Record<string, unknown>;
+			expect(model.baseURL).toBe('https://internal.example.services.ai.azure.com/anthropic/v1');
+		});
+
+		it('appends /v1 to a bare host baseURL', () => {
+			const model = createModel({
+				id: 'anthropic/claude-sonnet-4-6',
+				apiKey: 'sk-ant',
+				baseURL: 'https://api.anthropic.com',
+			}) as unknown as Record<string, unknown>;
+			expect(model.baseURL).toBe('https://api.anthropic.com/v1');
+		});
+
+		it('leaves a baseURL that already ends in /v1 unchanged', () => {
+			const model = createModel({
+				id: 'anthropic/claude-sonnet-4-6',
+				apiKey: 'sk-ant',
+				baseURL: 'https://proxy.example/api-proxy/anthropic/v1',
+			}) as unknown as Record<string, unknown>;
+			expect(model.baseURL).toBe('https://proxy.example/api-proxy/anthropic/v1');
+		});
+
+		it('leaves baseURL undefined when none is provided', () => {
+			const model = createModel('anthropic/claude-sonnet-4-5') as unknown as Record<
+				string,
+				unknown
+			>;
+			expect(model.baseURL).toBeUndefined();
+		});
+	});
+
 	describe('azure-openai', () => {
 		it('should create model with resourceName', () => {
 			const model = createModel({

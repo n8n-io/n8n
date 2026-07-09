@@ -262,7 +262,7 @@ describe('TaskBroker', () => {
 				validUntil: createValidUntil(1000),
 			};
 
-			vi.spyOn(taskBroker, 'acceptOffer').mockResolvedValue(); // allow Jest to exit cleanly
+			vi.spyOn(taskBroker, 'acceptOffer').mockResolvedValue(); // allow Vitest to exit cleanly
 
 			taskBroker.taskOffered(offer);
 
