@@ -30,6 +30,10 @@ const loadNodesTool = lazyMod(() => require('./nodes.tool') as typeof import('./
 const loadN8nDocsTool = lazyMod(
 	() => require('./n8n-docs.tool') as typeof import('./n8n-docs.tool'),
 );
+const loadBuildAgentTool = lazyMod(
+	() =>
+		require('./orchestration/build-agent.tool') as typeof import('./orchestration/build-agent.tool'),
+);
 const loadCompleteCheckpointTool = lazyMod(
 	() =>
 		require('./orchestration/complete-checkpoint.tool') as typeof import('./orchestration/complete-checkpoint.tool'),
@@ -164,6 +168,13 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 		tools.push([
 			ORCHESTRATION_TOOL_IDS.APPLY_WORKFLOW_CREDENTIALS,
 			loadApplyWorkflowCredentialsTool().createApplyWorkflowCredentialsTool(context),
+		]);
+	}
+
+	if (context.domainContext?.builderDelegate) {
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.BUILD_AGENT,
+			loadBuildAgentTool().createBuildAgentTool(context),
 		]);
 	}
 

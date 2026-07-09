@@ -135,7 +135,13 @@ export type InstanceAiConfirmationSeverity = z.infer<typeof instanceAiConfirmati
 export const instanceAiAgentStatusSchema = z.enum(['active', 'completed', 'cancelled', 'error']);
 export type InstanceAiAgentStatus = z.infer<typeof instanceAiAgentStatusSchema>;
 
-export const instanceAiAgentKindSchema = z.enum(['builder', 'data-table', 'planner', 'eval-setup']);
+export const instanceAiAgentKindSchema = z.enum([
+	'builder',
+	'data-table',
+	'planner',
+	'eval-setup',
+	'agent-builder',
+]);
 export type InstanceAiAgentKind = z.infer<typeof instanceAiAgentKindSchema>;
 
 // ---------------------------------------------------------------------------
@@ -190,7 +196,7 @@ export const runFinishPayloadSchema = z.object({
 });
 
 export const agentSpawnedTargetResourceSchema = z.object({
-	type: z.enum(['workflow', 'data-table', 'credential', 'other']),
+	type: z.enum(['workflow', 'data-table', 'credential', 'agent', 'other']),
 	id: z.string().optional(),
 	name: z.string().optional(),
 });
