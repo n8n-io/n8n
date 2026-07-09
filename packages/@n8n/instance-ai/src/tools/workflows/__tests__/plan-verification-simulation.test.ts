@@ -20,7 +20,15 @@ const mockGenerateFixtures = generateSimulationFixtures as MockedFunction<
 	typeof generateSimulationFixtures
 >;
 
-const wf = (nodes: Array<{ name: string; type: string; disabled?: boolean }>): WorkflowJSON =>
+const wf = (
+	nodes: Array<{
+		name: string;
+		type: string;
+		disabled?: boolean;
+		credentials?: Record<string, { id?: string; name: string }>;
+	}>,
+	connections: Record<string, unknown> = {},
+): WorkflowJSON =>
 	({
 		name: 'test',
 		nodes: nodes.map((n, i) => ({
@@ -31,9 +39,14 @@ const wf = (nodes: Array<{ name: string; type: string; disabled?: boolean }>): W
 			position: [i * 100, 0],
 			parameters: {},
 			...(n.disabled !== undefined ? { disabled: n.disabled } : {}),
+			...(n.credentials !== undefined ? { credentials: n.credentials } : {}),
 		})),
-		connections: {},
+		connections,
 	}) as unknown as WorkflowJSON;
+
+const modelConnection = (subNode: string, root: string) => ({
+	[subNode]: { ai_languageModel: [[{ node: root, type: 'ai_languageModel', index: 0 }]] },
+});
 
 const executeVerdict = (nodeName: string): NodeSimulationVerdict => ({
 	nodeName,
@@ -88,6 +101,78 @@ describe('planVerificationSimulation — simulated trigger verdicts', () => {
 
 		expect(nodeSimulationPlan).toEqual([]);
 		expect(mockGenerateFixtures).not.toHaveBeenCalled();
+	});
+
+	it('overrides an AI root to simulate when its LLM sub-node has no credentials', async () => {
+		mockClassify.mockResolvedValue([executeVerdict('Draft Reply')]);
+
+		const { nodeSimulationPlan } = await planVerificationSimulation({
+			workflow: wf(
+				[
+					{ name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },
+					{ name: 'Draft Reply', type: '@n8n/n8n-nodes-langchain.agent' },
+					{ name: 'OpenAI Model', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' },
+				],
+				modelConnection('OpenAI Model', 'Draft Reply'),
+			),
+			workflowId: 'wf-1',
+		});
+
+		expect(nodeSimulationPlan).toContainEqual({
+			nodeName: 'Draft Reply',
+			verdict: 'simulate',
+			reason:
+				'Language model sub-node has no configured credentials — output is simulated during verification',
+			confidence: 'high',
+			source: 'deterministic',
+		});
+	});
+
+	it('overrides the AI root when its LLM sub-node credentials are mocked', async () => {
+		mockClassify.mockResolvedValue([executeVerdict('Draft Reply')]);
+
+		const { nodeSimulationPlan } = await planVerificationSimulation({
+			workflow: wf(
+				[
+					{ name: 'Draft Reply', type: '@n8n/n8n-nodes-langchain.agent' },
+					{
+						name: 'OpenAI Model',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						credentials: { openAiApi: { id: 'mocked', name: 'Mocked' } },
+					},
+				],
+				modelConnection('OpenAI Model', 'Draft Reply'),
+			),
+			mockedNodeNames: ['OpenAI Model'],
+			workflowId: 'wf-1',
+		});
+
+		expect(nodeSimulationPlan?.find((v) => v.nodeName === 'Draft Reply')).toMatchObject({
+			verdict: 'simulate',
+		});
+	});
+
+	it('leaves AI roots alone when the LLM sub-node has real credentials', async () => {
+		mockClassify.mockResolvedValue([executeVerdict('Draft Reply')]);
+
+		const { nodeSimulationPlan } = await planVerificationSimulation({
+			workflow: wf(
+				[
+					{ name: 'Draft Reply', type: '@n8n/n8n-nodes-langchain.agent' },
+					{
+						name: 'OpenAI Model',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						credentials: { openAiApi: { id: 'real-cred', name: 'OpenAI' } },
+					},
+				],
+				modelConnection('OpenAI Model', 'Draft Reply'),
+			),
+			workflowId: 'wf-1',
+		});
+
+		expect(nodeSimulationPlan?.find((v) => v.nodeName === 'Draft Reply')).toMatchObject({
+			verdict: 'execute',
+		});
 	});
 
 	it('keeps declared-output fixtures authoritative over the trigger injection', async () => {

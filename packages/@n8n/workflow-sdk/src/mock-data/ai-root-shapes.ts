@@ -10,6 +10,9 @@ const AI_ROOT_NODE_TYPES = new Set<string>([
 	'@n8n/n8n-nodes-langchain.chainLlm',
 	'@n8n/n8n-nodes-langchain.chainRetrievalQa',
 	'@n8n/n8n-nodes-langchain.chainSummarization',
+	'@n8n/n8n-nodes-langchain.informationExtractor',
+	'@n8n/n8n-nodes-langchain.textClassifier',
+	'@n8n/n8n-nodes-langchain.sentimentAnalysis',
 ]);
 
 export function isAiRootNodeType(nodeType: string): boolean {
@@ -38,6 +41,12 @@ export function describeAiRootShape(nodeType: string, hasParser: boolean): strin
 			return '`{ "json": { "response": "<answer text>" } }` — the key is `response`, a plain string.';
 		case '@n8n/n8n-nodes-langchain.chainSummarization':
 			return '`{ "json": { "output": { "output_text": "<summary text>" } } }`.';
+		case '@n8n/n8n-nodes-langchain.informationExtractor':
+			return '`{ "json": { "output": <object of extracted fields> } }` — `output` is a parsed object matching the extraction attributes, never a string.';
+		case '@n8n/n8n-nodes-langchain.textClassifier':
+			return 'the INPUT item passed through UNCHANGED (this node routes items to a category branch without reshaping them) — emit a plausible input item, no classification wrapper key.';
+		case '@n8n/n8n-nodes-langchain.sentimentAnalysis':
+			return 'the INPUT item with an added `sentimentAnalysis` object — `{ "json": { ...original input fields, "sentimentAnalysis": { "category": "<sentiment>" } } }`.';
 		default:
 			return '`{ "json": { "output": "<final response text>" } }`.';
 	}

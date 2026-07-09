@@ -172,6 +172,47 @@ describe('generateSimulationFixtures', () => {
 		expect(mockCreateEvalAgent).not.toHaveBeenCalled();
 	});
 
+	it('accepts unwrapped items without zeroing the whole batch', async () => {
+		// One node wrapped, one flat — the old strict schema rejected the batch.
+		setupAgentMock(
+			JSON.stringify({
+				A: [{ json: { ok: true } }],
+				B: [{ id: 'row-1' }],
+			}),
+		);
+		const result = await generateSimulationFixtures({
+			workflow: wf([
+				{ name: 'A', type: 'n8n-nodes-base.slack' },
+				{ name: 'B', type: 'n8n-nodes-base.gmail' },
+			]),
+			plan: [simulateVerdict('A'), simulateVerdict('B')],
+		});
+		expect(result.A).toEqual([{ ok: true }]);
+		expect(result.B).toEqual([{ id: 'row-1' }]);
+	});
+
+	it('repairs the output envelope for simulated Agent roots with a structured parser', async () => {
+		setupAgentMock(
+			// Failure mode: parsed fields spread flat with no `output` envelope.
+			JSON.stringify({ 'AI Root': [{ json: { summary: 'hi' } }] }),
+		);
+
+		const workflow = wf([
+			{ name: 'AI Root', type: '@n8n/n8n-nodes-langchain.agent' },
+			{ name: 'Parser', type: '@n8n/n8n-nodes-langchain.outputParserStructured' },
+		]);
+		(workflow.connections as Record<string, unknown>).Parser = {
+			ai_outputParser: [[{ node: 'AI Root', type: 'ai_outputParser', index: 0 }]],
+		};
+
+		const result = await generateSimulationFixtures({
+			workflow,
+			plan: [simulateVerdict('AI Root')],
+		});
+
+		expect(result['AI Root']).toEqual([{ output: { summary: 'hi' } }]);
+	});
+
 	it('embeds the node output schema in the prompt when the lookup resolves one', async () => {
 		const generate = vi.fn().mockResolvedValue({ messages: [] });
 		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<

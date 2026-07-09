@@ -182,6 +182,32 @@ describe('repairStructuredAgentOutput', () => {
 	});
 });
 
+describe('ai-root shapes', () => {
+	it('classifies the extractor/classifier/sentiment chains as AI roots', async () => {
+		const { isAiRootNodeType, describeAiRootShape } = await import('./ai-root-shapes');
+
+		for (const type of [
+			'@n8n/n8n-nodes-langchain.informationExtractor',
+			'@n8n/n8n-nodes-langchain.textClassifier',
+			'@n8n/n8n-nodes-langchain.sentimentAnalysis',
+		]) {
+			expect(isAiRootNodeType(type)).toBe(true);
+		}
+
+		// Verified against the node implementations: extractor wraps in `output`,
+		// classifier passes the input through, sentiment adds `sentimentAnalysis`.
+		expect(describeAiRootShape('@n8n/n8n-nodes-langchain.informationExtractor', false)).toContain(
+			'"output"',
+		);
+		expect(describeAiRootShape('@n8n/n8n-nodes-langchain.textClassifier', false)).toContain(
+			'passed through',
+		);
+		expect(describeAiRootShape('@n8n/n8n-nodes-langchain.sentimentAnalysis', false)).toContain(
+			'sentimentAnalysis',
+		);
+	});
+});
+
 describe('buildDateAnchors', () => {
 	it('renders anchors relative to the provided date', () => {
 		const anchors = buildDateAnchors(new Date('2026-01-15T12:00:00Z'));

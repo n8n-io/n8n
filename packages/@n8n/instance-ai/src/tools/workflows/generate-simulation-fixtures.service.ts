@@ -21,10 +21,13 @@
 import { isRecord } from '@n8n/utils/is-record';
 import type { NodeSchemaContext, OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 import {
+	AGENT_NODE_TYPE,
 	buildDateAnchors,
 	buildNodeSchemaSection,
 	buildSchemaContexts,
 	findOutputParserTargets,
+	parsePinDataResponse,
+	repairStructuredAgentOutput,
 } from '@n8n/workflow-sdk';
 import { getParentNodes, mapConnectionsByDestination, type IConnections } from 'n8n-workflow';
 import { z } from 'zod';
@@ -53,10 +56,11 @@ export interface GenerateSimulationFixturesInput {
 	outputSchemaLookup?: OutputSchemaLookup;
 }
 
-const FixturesResponseSchema = z.record(
-	z.string(),
-	z.array(z.object({ json: z.record(z.unknown()) })).min(1),
-);
+// Loose on purpose: items may arrive `{json: {...}}`-wrapped or flat — the
+// shared parsePinDataResponse normalizes both. A strict wrapped-only schema
+// would zero out EVERY fixture when the model emits one unwrapped item
+// (generateValidatedJson rejects the whole batch on any mismatch).
+const FixturesResponseSchema = z.record(z.string(), z.array(z.record(z.unknown())).min(1));
 
 const SYSTEM_INSTRUCTIONS = `You generate realistic mock output for n8n workflow nodes whose real execution is being simulated (their operation would create, update, send, or delete data in an external system, would wait for an outside event, or would pause the workflow for user action).
 
@@ -156,11 +160,8 @@ export async function generateSimulationFixtures(
 
 	// Shared schema-context enrichment: __schema__ lookup + structured-output
 	// parser envelopes for AI roots, keyed back by node name for the blocks.
-	const schemaContexts = buildSchemaContexts(
-		nodes,
-		input.outputSchemaLookup,
-		findOutputParserTargets(input.workflow),
-	);
+	const outputParserTargets = findOutputParserTargets(input.workflow);
+	const schemaContexts = buildSchemaContexts(nodes, input.outputSchemaLookup, outputParserTargets);
 	const schemaContextByName = new Map(schemaContexts.map((ctx) => [ctx.nodeName, ctx] as const));
 
 	const connectionsByDestination = mapConnectionsByDestination(
@@ -198,9 +199,22 @@ export async function generateSimulationFixtures(
 	});
 	if (!result.ok) return emptyFixtures(nodeNames);
 
+	// Shared normalization + envelope repair, matching the eval pin-data paths:
+	// wrap-or-passthrough items, then mechanically fix the two known LLM
+	// failure modes for Agent-with-parser roots (JSON-encoded `output` string,
+	// parsed fields spread flat without the `output` envelope).
+	let pinData = parsePinDataResponse(JSON.stringify(result.data), nodeNames);
+	const agentParserTargets = [...outputParserTargets.keys()].filter(
+		(name) => name in pinData && nodes.some((n) => n.name === name && n.type === AGENT_NODE_TYPE),
+	);
+	pinData = repairStructuredAgentOutput(pinData, agentParserTargets);
+
 	const fixtures: SimulationFixtures = {};
 	for (const name of nodeNames) {
-		fixtures[name] = result.data[name]?.map((item) => item.json) ?? [{}];
+		const items = pinData[name];
+		fixtures[name] = items?.length
+			? items.map((item) => (isRecord(item.json) ? item.json : {}))
+			: [{}];
 	}
 	return fixtures;
 }

@@ -703,35 +703,54 @@ export function discoverSchemasForNode(
 	return schemas;
 }
 
+/** Pad "1" / "2.3" to the on-disk "1.0.0" / "2.3.0" directory format. */
+function padVersion(version: number): string {
+	return String(version).split('.').concat(['0', '0']).slice(0, 3).join('.');
+}
+
+/** Parse a `vX.Y.Z` directory name into a comparable [X, Y, Z] tuple. */
+function parseVersionDir(name: string): number[] {
+	return name.slice(1).split('.').map(Number);
+}
+
+function compareVersionTuplesDesc(a: number[], b: number[]): number {
+	for (let i = 0; i < Math.max(a.length, b.length); i++) {
+		const diff = (b[i] ?? 0) - (a[i] ?? 0);
+		if (diff !== 0) return diff;
+	}
+	return 0;
+}
+
 /**
- * Find the best matching version directory for a given version
- * Tries exact match first (v{version}.0.0), then scans for closest lower version
+ * Find the best matching version directory for a given version.
+ * Tries an exact full-semver match first (2.3 → v2.3.0), then the closest
+ * lower version comparing full X.Y.Z tuples — so a minor-versioned node
+ * (typeVersion 2.3 with dirs v2.0.0/v2.2.0/v2.4.0) resolves to v2.2.0, not
+ * an arbitrary same-major pick.
+ *
+ * NOTE: the closest-LOWER fallback deliberately differs from n8n-core's
+ * runtime resolver (newest-first); converging them is tracked with the
+ * runtime-caller migration in the harmonization spec.
  *
  * @param schemaDir Path to the __schema__ directory
  * @param version Target version number
  * @returns Path to version directory, or undefined if not found
  */
 function findVersionDirectory(schemaDir: string, version: number): string | undefined {
-	// Try exact match first: v1.0.0, v2.0.0, etc.
-	const exactPath = path.join(schemaDir, `v${version}.0.0`);
+	const exactPath = path.join(schemaDir, `v${padVersion(version)}`);
 	if (fs.existsSync(exactPath)) {
 		return exactPath;
 	}
 
-	// Scan for available versions and find closest lower
+	// Scan for available versions and find the closest lower one
+	const target = padVersion(version).split('.').map(Number);
 	try {
 		const entries = fs.readdirSync(schemaDir, { withFileTypes: true });
 		const versionDirs = entries
 			.filter((e) => e.isDirectory() && /^v\d+(\.\d+)*$/.test(e.name))
-			.map((e) => {
-				const match = e.name.match(/^v(\d+)/);
-				return {
-					name: e.name,
-					majorVersion: match ? parseInt(match[1], 10) : 0,
-				};
-			})
-			.filter((v) => v.majorVersion <= version)
-			.sort((a, b) => b.majorVersion - a.majorVersion);
+			.map((e) => ({ name: e.name, tuple: parseVersionDir(e.name) }))
+			.filter((v) => compareVersionTuplesDesc(v.tuple, target) >= 0)
+			.sort((a, b) => compareVersionTuplesDesc(a.tuple, b.tuple));
 
 		if (versionDirs.length > 0) {
 			return path.join(schemaDir, versionDirs[0].name);

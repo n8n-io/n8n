@@ -98,6 +98,7 @@ import {
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	TimeoutExecutionCancelledError,
 	UnexpectedError,
+	isTriggerNodeType,
 	jsonParse,
 	createRunExecutionData,
 } from 'n8n-workflow';
@@ -3014,16 +3015,17 @@ const KNOWN_TRIGGER_TYPES = new Set([
 	SCHEDULE_TRIGGER_NODE_TYPE,
 ]);
 
-/** Find the trigger node: known types first, then fall back to naive string matching. */
+/**
+ * Find the trigger node: known types first (priority among multiple triggers),
+ * then the canonical n8n-workflow detection — the same detection the
+ * instance-ai simulation planner uses, so a trigger the planner simulates
+ * (e.g. suffix-less cron/emailReadImap) is always found here too.
+ */
 function findTriggerNode(nodes: INode[]): INode | undefined {
-	// Prefer known trigger types
 	const known = nodes.find((n) => KNOWN_TRIGGER_TYPES.has(n.type));
 	if (known) return known;
 
-	// Fall back to any node with "Trigger" or "webhook" in its type
-	return nodes.find(
-		(n) => n.type.includes('Trigger') || n.type.includes('trigger') || n.type.includes('webhook'),
-	);
+	return nodes.find((n) => isTriggerNodeType(n.type));
 }
 
 /** Get the execution mode based on the trigger node type. */
