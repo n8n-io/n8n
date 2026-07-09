@@ -57,11 +57,6 @@ vacuously when no changes actually landed.
 - Cases whose gold legitimately tolerates two shapes say so in one
   expectation ("either … or …"); compound requests assert each automation
   separately.
-- Most utterances are shared with the exam-style corpus in
-  [`../agents-exam`](../agents-exam) (see below), which keeps the two
-  gradable side by side. Where a case here has no exam counterpart
-  (continuity needs a real prior build; ops routing isn't classified at all),
-  the case description says so.
 
 ## Running
 
@@ -76,46 +71,4 @@ setup. For larger sweeps use dockerized lanes from a built `n8nio/n8n:local`
 image via `scripts/run-eval-lanes.sh` (comma-separated `--base-url`; the
 work-stealing allocator needs `LANGSMITH_API_KEY` set). Do **not** run
 multiple bare-process instances on one host — they collide on a shared
-sandbox-staging temp dir (details in [EXPERIMENT-LOG.md](EXPERIMENT-LOG.md)).
-
-## Relationship to `../agents-exam`
-
-The exam-style corpus grades a *stated* classification: a loader preamble
-injects the taxonomy, forbids building and clarifying questions, and requires
-a fenced ```` ```intent ```` block that `build-expectations/intent.ts`
-exact-matches. It is ~10× cheaper per run (nothing is built) and remains
-useful as a skill-iteration dev loop via `--tier agents-exam` +
-`pnpm eval:intent-slices`. This directory is the tracked suite: same
-utterances, graded on behavior.
-
-## Handover: remaining migration from `../agents-exam`
-
-12 of the 38 exam cases are migrated (shared slug = shared opening utterance,
-minus the plan-first suffix). Remaining 26, by bucket — same conversion
-recipe per case (plan-first suffix + declining director + proposal-graded
-expectations; see Authoring above):
-
-- **wf (no embed):** `wf-rss-summary-linkedin`, `wf-payroll-net-pay`,
-  `wf-long-linear-order-fulfillment`, `wf-fixed-label-classifier`,
-  `wf-ticket-classify-route`, `wf-review-sentiment-routing`,
-  `wf-lead-score-route`
-- **wf + embedded agent:** `we-ticket-branch-agent`,
-  `we-lead-personalized-outreach`, `we-weekly-feedback-investigation`
-- **agent axes:** `agent-chat-hr-policy`, `agent-proactive-oncall-burnout`,
-  `agent-long-running-launch`, `agent-self-improving-code-review`
-- **agent + wf-tools:** `at-support-agent`, `at-research-agent`
-- **tolerance:** `agent-incident-investigator`, `agent-sales-prospecting`,
-  `agent-research-report`
-- **clarify:** `clarify-inbox-handling`, `clarify-meeting-summary-followup`
-  (compound-partial)
-- **compound:** `compound-ingest-and-sdr-agent`
-- **meta:** `meta-wf-vs-agent`
-- **inline-context:** `ctx-inline-wf-add-classifier`,
-  `ctx-inline-agent-add-slack`, `ctx-inline-wf-agentic-request` — these need
-  real prior context (`ctx-followup-schedule-edit` shows the plan-first
-  pattern for the workflow side; the agent side needs a prior agent design in
-  the conversation)
-
-Dev-process history (A/B evidence, pivot rationale, run results) lives in
-[EXPERIMENT-LOG.md](EXPERIMENT-LOG.md) — throwaway, safe to delete once the
-approach discussion is settled.
+sandbox-staging temp dir.

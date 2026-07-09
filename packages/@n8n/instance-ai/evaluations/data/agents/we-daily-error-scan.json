@@ -1,5 +1,5 @@
 {
-	"description": "Counterpart of the exam-style case agents-exam/we-daily-error-scan.json. Gold mirrors the exam case ({wf, true}): a scheduled workflow shell with the open-ended log analysis embedded as an AI Agent step.",
+	"description": "Gold: {anchor: wf, embedsOther: true} — a scheduled workflow shell with the open-ended log analysis embedded as an AI Agent step.",
 	"conversation": [
 		{
 			"role": "user",

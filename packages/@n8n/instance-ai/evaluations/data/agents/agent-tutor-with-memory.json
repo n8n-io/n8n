@@ -1,5 +1,5 @@
 {
-	"description": "Counterpart of the exam-style case agents-exam/agent-tutor-with-memory.json. Gold mirrors the exam case ({agent, false}): cross-session memory plus chat interaction should route to the agent-builder path, not a workflow build.",
+	"description": "Gold: {anchor: agent, embedsOther: false} — cross-session memory plus chat interaction should route to the agent-builder path, not a workflow build.",
 	"conversation": [
 		{
 			"role": "user",

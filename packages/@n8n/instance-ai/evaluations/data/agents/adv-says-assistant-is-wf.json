@@ -1,5 +1,5 @@
 {
-	"description": "Counterpart of the exam-style case agents-exam/adv-says-assistant-is-wf.json ({wf, false}): 'assistant' wording over a fixed daily RSS-summarize-post pipeline. Outcome also probes whether the bounded summarization step becomes an AI Agent node (the vocabulary prior at node-choice level).",
+	"description": "Gold: {anchor: wf, embedsOther: false} — 'assistant' wording over a fixed daily RSS-summarize-post pipeline. Outcome also probes whether the bounded summarization step becomes an AI Agent node (the vocabulary prior at node-choice level).",
 	"conversation": [
 		{
 			"role": "user",

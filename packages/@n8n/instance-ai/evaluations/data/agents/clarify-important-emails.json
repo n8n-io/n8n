@@ -1,5 +1,5 @@
 {
-	"description": "Counterpart of the exam-style case agents-exam/clarify-important-emails.json. Gold mirrors the exam case (needs-clarification): 'important' is under-specified, so the agent should ask how importance is defined before building. Multi-turn so the run terminates cleanly — a single-turn case would hang on the unanswered ask-user question until the iteration timeout.",
+	"description": "Gold: needs-clarification — 'important' is under-specified, so the agent should ask how importance is defined before building. Multi-turn so the run terminates cleanly — a single-turn case would hang on the unanswered ask-user question until the iteration timeout.",
 	"conversation": [
 		{
 			"role": "user",

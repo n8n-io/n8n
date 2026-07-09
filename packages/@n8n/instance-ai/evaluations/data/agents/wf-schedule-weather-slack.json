@@ -1,5 +1,5 @@
 {
-	"description": "Counterpart of the exam-style case agents-exam/wf-schedule-weather-slack.json: the same request sent as a real build prompt, no classification preamble. Gold mirrors the exam case ({anchor: wf, embedsOther: false}) expressed as observable routing behavior.",
+	"description": "Gold: {anchor: wf, embedsOther: false} expressed as observable routing behavior — a real build prompt, no classification preamble.",
 	"conversation": [
 		{
 			"role": "user",

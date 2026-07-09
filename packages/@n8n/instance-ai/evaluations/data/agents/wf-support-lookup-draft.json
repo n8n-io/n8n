@@ -1,5 +1,5 @@
 {
-	"description": "Counterpart of the exam-style case agents-exam/wf-support-lookup-draft.json ({wf, false}): fixed lookups plus one bounded draft step with human review. Second probe of the node-choice bias — 'personalized reply' tempts an AI Agent node where a single bounded LLM step suffices.",
+	"description": "Gold: {anchor: wf, embedsOther: false} — fixed lookups plus one bounded draft step with human review. Second probe of the node-choice bias — 'personalized reply' tempts an AI Agent node where a single bounded LLM step suffices.",
 	"conversation": [
 		{
 			"role": "user",

@@ -1,5 +1,5 @@
 {
-	"description": "Counterpart of the exam-style case agents-exam/adv-says-agent-is-wf.json (false friend: says 'agent', behavior is a fixed daily pipeline). Gold mirrors the exam case ({wf, false}): the request should be BUILT as a scheduled workflow despite the word 'agent'.",
+	"description": "False friend: says 'agent', behavior is a fixed daily pipeline. Gold: {anchor: wf, embedsOther: false} — the request should be BUILT as a scheduled workflow despite the word 'agent'.",
 	"conversation": [
 		{
 			"role": "user",
