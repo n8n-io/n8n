@@ -3,10 +3,9 @@ import type { QuickReplyType } from '@n8n/api-types';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { computed, ref, useSlots } from 'vue';
-import { N8nAskAssistantChat, N8nInfoTip } from '@n8n/design-system';
+import { N8nAskAssistantChat } from '@n8n/design-system';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import AskModeEmptyState from './AskModeEmptyState.vue';
 
@@ -16,7 +15,6 @@ const emit = defineEmits<{
 
 const assistantStore = useAssistantStore();
 const workflowId = useInjectWorkflowId();
-const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const telemetry = useTelemetry();
 const slots = useSlots();
@@ -30,11 +28,6 @@ const user = computed(() => ({
 }));
 
 const loadingMessage = computed(() => assistantStore.assistantThinkingMessage);
-
-const showUsabilityNotice = computed(
-	() =>
-		assistantStore.canManageAISettings && !settingsStore.settings.ai.allowSendingParameterValues,
-);
 
 async function onUserMessage(content: string, quickReplyType?: string, isFeedback = false) {
 	// If there is no current session running, initialize the support chat session
@@ -99,11 +92,8 @@ defineExpose({
 			@code-replace="onCodeReplace"
 			@code-undo="undoCodeDiff"
 		>
-			<template v-if="slots.header || showUsabilityNotice" #header>
+			<template v-if="slots.header" #header>
 				<slot name="header" />
-				<N8nInfoTip v-if="showUsabilityNotice" theme="warning" type="tooltip">
-					<span>{{ i18n.baseText('aiAssistant.reducedHelp.chat.notice') }}</span>
-				</N8nInfoTip>
 			</template>
 			<template #placeholder>
 				<AskModeEmptyState />

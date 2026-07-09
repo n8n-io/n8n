@@ -46,13 +46,11 @@ import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { useErrorHandler } from '@/app/composables/useErrorHandler';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import shuffle from 'lodash/shuffle';
-import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
 import { useReviewChanges } from '@/features/ai/assistant/composables/useReviewChanges';
 import { watchExecutionCompletion } from '@/features/ai/assistant/composables/useExecutionWatcher';
 
-import { N8nAskAssistantChat, N8nInfoTip } from '@n8n/design-system';
+import { N8nAskAssistantChat } from '@n8n/design-system';
 import BuildModeEmptyState from './BuildModeEmptyState.vue';
 import { AiBuilderScrollToBottomKey } from '@/app/constants/injectionKeys';
 import {
@@ -88,8 +86,6 @@ const slots = useSlots();
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 );
-const assistantStore = useAssistantStore();
-const settingsStore = useSettingsStore();
 const chatPanelStateStore = useChatPanelStateStore();
 const router = useRouter();
 const i18n = useI18n();
@@ -132,11 +128,6 @@ watch(
 const showCreditBanner = computed(() => {
 	return builderStore.isLowCredits && !creditBannerDismissed.value;
 });
-
-const showUsabilityNotice = computed(
-	() =>
-		assistantStore.canManageAISettings && !settingsStore.settings.ai.allowSendingParameterValues,
-);
 
 const shouldShowNotificationBanner = computed(() => {
 	return builderStore.streaming && canPrompt.value;
@@ -739,11 +730,8 @@ defineExpose({
 			<template #focused-nodes-chips="{ message }">
 				<MessageFocusedNodesChips :focused-node-names="message.focusedNodeNames" />
 			</template>
-			<template v-if="slots.header || showUsabilityNotice" #header>
+			<template v-if="slots.header" #header>
 				<slot name="header" />
-				<N8nInfoTip v-if="showUsabilityNotice" theme="warning" type="tooltip">
-					<span>{{ i18n.baseText('aiAssistant.reducedHelp.chat.notice') }}</span>
-				</N8nInfoTip>
 			</template>
 			<template v-if="creditsQuota !== undefined && creditsRemaining !== undefined" #headerActions>
 				<CreditsSettingsDropdown
