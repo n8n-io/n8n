@@ -1,5 +1,5 @@
 {
-	"description": "Counterpart of the exam-style case agents-exam/compound-weather-and-support-assistant.json (parts: weather {wf, false}; assistant {agent, false|true}). Multi-artifact probe: the agent must treat the request as two independent automations and route each correctly — one workflow build, one agent-builder creation. Plan-first (2026-07-09): the assistant proposes the approach; the build is never exercised and expectations avoid build-tool coupling.",
+	"description": "Counterpart of the exam-style case agents-exam/compound-weather-and-support-assistant.json (parts: weather {wf, false}; assistant {agent, false|true}). Multi-artifact probe: the agent must treat the request as two independent automations and route each correctly — one workflow build, one agent-builder creation.",
 	"conversation": [
 		{
 			"role": "user",

@@ -1,5 +1,5 @@
 {
-	"description": "Counterpart of the exam-style case agents-exam/adv-many-tools-still-wf.json ({wf, false}): seven integrations, zero branches — tool count alone must not produce an agent. Also probes the node-choice bias: an AI Agent node orchestrating the seven fixed steps would be the tool-count variant of the vocabulary prior. Plan-first (2026-07-09): the assistant proposes the approach; the build is never exercised and expectations avoid build-tool coupling.",
+	"description": "Counterpart of the exam-style case agents-exam/adv-many-tools-still-wf.json ({wf, false}): seven integrations, zero branches — tool count alone must not produce an agent. Also probes the node-choice bias: an AI Agent node orchestrating the seven fixed steps would be the tool-count variant of the vocabulary prior.",
 	"conversation": [
 		{
 			"role": "user",

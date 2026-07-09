@@ -1,5 +1,5 @@
 {
-	"description": "Counterpart of the exam-style case agents-exam/wf-schedule-weather-slack.json: the same request sent as a real build prompt, no classification preamble. Gold mirrors the exam case ({anchor: wf, embedsOther: false}) expressed as observable routing behavior. Plan-first (2026-07-09): the assistant proposes the approach; the build is never exercised and expectations avoid build-tool coupling.",
+	"description": "Counterpart of the exam-style case agents-exam/wf-schedule-weather-slack.json: the same request sent as a real build prompt, no classification preamble. Gold mirrors the exam case ({anchor: wf, embedsOther: false}) expressed as observable routing behavior.",
 	"conversation": [
 		{
 			"role": "user",

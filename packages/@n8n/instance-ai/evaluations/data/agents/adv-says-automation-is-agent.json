@@ -1,5 +1,5 @@
 {
-	"description": "Counterpart of the exam-style case agents-exam/adv-says-automation-is-agent.json (tolerance case: exam accepts {agent, true} or {wf, true}). The open-ended incident investigation must land on an agent primitive one way or the other; a fixed pipeline with no open-ended step is wrong. Plan-first (2026-07-09): the assistant proposes the approach; the build is never exercised and expectations avoid build-tool coupling.",
+	"description": "Counterpart of the exam-style case agents-exam/adv-says-automation-is-agent.json (tolerance case: exam accepts {agent, true} or {wf, true}). The open-ended incident investigation must land on an agent primitive one way or the other; a fixed pipeline with no open-ended step is wrong.",
 	"conversation": [
 		{
 			"role": "user",

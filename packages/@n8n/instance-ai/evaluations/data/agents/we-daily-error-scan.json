@@ -1,5 +1,5 @@
 {
-	"description": "Counterpart of the exam-style case agents-exam/we-daily-error-scan.json. Gold mirrors the exam case ({wf, true}): a scheduled workflow shell with the open-ended log analysis embedded as an AI Agent step. Plan-first (2026-07-09): the assistant proposes the approach; the build is never exercised and expectations avoid build-tool coupling.",
+	"description": "Counterpart of the exam-style case agents-exam/we-daily-error-scan.json. Gold mirrors the exam case ({wf, true}): a scheduled workflow shell with the open-ended log analysis embedded as an AI Agent step.",
 	"conversation": [
 		{
 			"role": "user",

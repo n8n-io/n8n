@@ -1,5 +1,5 @@
 {
-	"description": "Counterpart of the exam-style case agents-exam/adv-says-wf-is-agent.json (false friend: says 'workflow', behavior is chat-based Q&A). Gold mirrors the exam case (agent-anchored, either embeds value). NOTE: a chat-trigger workflow with an AI Agent node is n8n's long-established pattern for this request — if real builds consistently go that way while the exam grades it agent-anchored, that divergence is a finding about the taxonomy vs the product, not noise. Plan-first (2026-07-09): the assistant proposes the approach; the build is never exercised and expectations avoid build-tool coupling.",
+	"description": "Counterpart of the exam-style case agents-exam/adv-says-wf-is-agent.json (false friend: says 'workflow', behavior is chat-based Q&A). Gold mirrors the exam case (agent-anchored, either embeds value). NOTE: a chat-trigger workflow with an AI Agent node is n8n's long-established pattern for this request — if real builds consistently go that way while the exam grades it agent-anchored, that divergence is a finding about the taxonomy vs the product, not noise.",
 	"conversation": [
 		{
 			"role": "user",

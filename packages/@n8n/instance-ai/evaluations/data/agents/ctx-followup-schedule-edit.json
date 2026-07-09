@@ -1,5 +1,5 @@
 {
-	"description": "Context-continuity bucket: a follow-up amendment stays on the automation being discussed, without re-classifying. Turn 1 elicits a proposed workflow design (plan-first); turn 2 asks for one schedule change. Doubles as the over-trigger guard: the intent gate must fire once and stay quiet for the amendment. No exam-corpus counterpart (its ctx cases fake prior context with priorConversation text). Plan-first (2026-07-09): the assistant proposes the approach; the build is never exercised and expectations avoid build-tool coupling.",
+	"description": "Context-continuity bucket: a follow-up amendment stays on the automation being discussed, without re-classifying. Turn 1 elicits a proposed workflow design (plan-first); turn 2 asks for one schedule change. Doubles as the over-trigger guard: the intent gate must fire once and stay quiet for the amendment. No exam-corpus counterpart (its ctx cases fake prior context with priorConversation text).",
 	"conversation": [
 		{
 			"role": "user",

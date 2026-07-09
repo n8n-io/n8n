@@ -1,5 +1,5 @@
 {
-	"description": "Counterpart of the exam-style case agents-exam/agent-tutor-with-memory.json. Gold mirrors the exam case ({agent, false}): cross-session memory plus chat interaction should route to the agent-builder path, not a workflow build. Plan-first (2026-07-09): the assistant proposes the approach; the build is never exercised and expectations avoid build-tool coupling.",
+	"description": "Counterpart of the exam-style case agents-exam/agent-tutor-with-memory.json. Gold mirrors the exam case ({agent, false}): cross-session memory plus chat interaction should route to the agent-builder path, not a workflow build.",
 	"conversation": [
 		{
 			"role": "user",

@@ -1,5 +1,5 @@
 {
-	"description": "Counterpart of the exam-style case agents-exam/meta-what-can-you-build.json (out-of-scope): not every message is a build request — users ask questions and investigate before building. The behavioral proof of an out-of-scope classification is that no build path is triggered at all: the agent answers directly, creates nothing, and loads no build skills. Whether intent-recognition itself loads is left unasserted (empirically it does not; the exam arm asserts it and flakes on exactly that).",
+	"description": "Counterpart of the exam-style case agents-exam/meta-what-can-you-build.json (out-of-scope): not every message is a build request — users ask questions and investigate before building. The behavioral proof of an out-of-scope classification is that no build path is triggered at all: the agent answers directly, creates nothing, and loads no build skills. Whether intent-recognition itself loads is left unasserted.",
 	"conversation": [
 		{
 			"role": "user",

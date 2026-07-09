@@ -1,5 +1,5 @@
 {
-	"description": "Counterpart of the exam-style case agents-exam/adv-says-agent-is-wf.json (false friend: says 'agent', behavior is a fixed daily pipeline). Gold mirrors the exam case ({wf, false}): the request should be BUILT as a scheduled workflow despite the word 'agent'. A red here alongside a green exam-corpus run is signal to inspect, not automatically a case bug. Plan-first (2026-07-09): the assistant proposes the approach; the build is never exercised and expectations avoid build-tool coupling.",
+	"description": "Counterpart of the exam-style case agents-exam/adv-says-agent-is-wf.json (false friend: says 'agent', behavior is a fixed daily pipeline). Gold mirrors the exam case ({wf, false}): the request should be BUILT as a scheduled workflow despite the word 'agent'.",
 	"conversation": [
 		{
 			"role": "user",
