@@ -96,6 +96,7 @@
     "@types/turndown": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "tsx": "catalog:",
+    "typescript": "catalog:typescript",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"

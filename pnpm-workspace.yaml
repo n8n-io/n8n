@@ -214,6 +214,8 @@ catalog:
 catalogMode: strict
 
 catalogs:
+  typescript:
+    typescript: 7.0.2
   e2e:
     '@currents/playwright': ^2.0.0
     '@playwright/cli': 0.1.0
@@ -267,3 +269,5 @@ minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
   - '@n8n/*'
   - '@n8n_io/*'
+  - 'typescript'
+  - '@typescript/*'

@@ -1,6 +1,7 @@
 import { type CredentialProvider } from '@n8n/agents';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import {
+	AGENT_VECTOR_STORE_CREDENTIAL_TYPES,
 	AgentModelSchema,
 	MANAGED_CREDENTIAL_TOKEN,
 	SUB_AGENT_TASK_DIFFICULTIES,
@@ -126,6 +127,25 @@ export class AgentValidationService {
 				} catch {
 					// Keep the same behavior as other credential checks.
 				}
+			}
+		}
+
+		for (const vectorStore of config.vectorStores ?? []) {
+			try {
+				const credentialId = vectorStore.credential?.trim();
+				const credential =
+					credentialId && credentialId !== MANAGED_CREDENTIAL_TOKEN
+						? await findCredential(credentialId)
+						: undefined;
+				if (credential?.type !== AGENT_VECTOR_STORE_CREDENTIAL_TYPES[vectorStore.provider]) {
+					missing.push(`vectorStores.${vectorStore.name}.credential`);
+				}
+				const embeddingCredentialId = vectorStore.embedding.credential?.trim();
+				if (!embeddingCredentialId || !(await credentialExists(embeddingCredentialId))) {
+					missing.push(`vectorStores.${vectorStore.name}.embedding.credential`);
+				}
+			} catch {
+				// Same behavior as other credential checks: runtime reconstruction surfaces the error.
 			}
 		}
 

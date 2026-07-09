@@ -84,7 +84,7 @@
     "source-map-support": "^0.5.21",
     "sqlite3": "5.1.7",
     "ts-node": "^10.9.1",
-    "typescript": "^5.3.3"
+    "typescript": "catalog:"
   },
   "peerDependencies": {
     "pg": "^8.17.0",
