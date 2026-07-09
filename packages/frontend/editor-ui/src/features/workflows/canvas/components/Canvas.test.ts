@@ -27,6 +27,7 @@ import { SIMULATE_NODE_TYPE } from '@/app/constants';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { GROUP_PADDING_Y_BOTTOM, GROUP_PADDING_Y_TOP } from '../stores/canvasNodeGroups.constants';
+import { computeGroupFrameRects } from '../composables/useCanvasMapping.groups';
 import {
 	NodeGroupViewKey,
 	useCanvasNodeGroupView,
@@ -387,6 +388,81 @@ describe('Canvas', () => {
 					container.querySelector('[data-id="node-2"] [data-test-id="canvas-node"]'),
 				).toHaveClass('selected');
 				expect(getSelectionRing(container)).not.toBeInTheDocument();
+			});
+		});
+	});
+
+	describe('selection box', () => {
+		const setupGroupAndLooseNode = async (initialCollapsed: boolean) => {
+			workflowDocumentStore.setNodeGroups([
+				{ id: 'g1', name: 'Group 1', nodeIds: ['node-1', 'node-2'] },
+			]);
+
+			const nodes = [
+				createCanvasNodeElement({ id: 'node-1', label: 'Node 1' }),
+				createCanvasNodeElement({ id: 'node-2', label: 'Node 2', position: { x: 200, y: 0 } }),
+				createCanvasNodeElement({ id: 'node-3', label: 'Node 3', position: { x: 800, y: 0 } }),
+				createCanvasGroupNode({ nodeIds: ['node-1', 'node-2'] }),
+			];
+
+			const rendered = renderComponent({
+				props: { nodes },
+				global: {
+					provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(initialCollapsed) },
+				},
+			});
+
+			await waitFor(() =>
+				expect(rendered.container.querySelectorAll('.vue-flow__node')).toHaveLength(4),
+			);
+
+			return { ...rendered, vueFlow: useVueFlow(canvasId) };
+		};
+
+		it('keeps the selection box when a collapsed group is selected alongside a node', async () => {
+			const { vueFlow } = await setupGroupAndLooseNode(true);
+
+			vueFlow.nodesSelectionActive.value = true;
+			vueFlow.addSelectedNodes([vueFlow.findNode('group:g1')!, vueFlow.findNode('node-3')!]);
+
+			await waitFor(() =>
+				expect(vueFlow.getSelectedNodes.value.map(({ id }) => id).sort()).toEqual([
+					'group:g1',
+					'node-3',
+				]),
+			);
+			expect(vueFlow.nodesSelectionActive.value).toBe(true);
+		});
+
+		it('drops the selection box when the selection folds into a single group', async () => {
+			const { vueFlow } = await setupGroupAndLooseNode(false);
+
+			vueFlow.nodesSelectionActive.value = true;
+			vueFlow.addSelectedNodes([vueFlow.findNode('group:g1')!]);
+
+			await waitFor(() => expect(vueFlow.nodesSelectionActive.value).toBe(false));
+		});
+
+		it('sizes the selection box to include expanded group frames', async () => {
+			const { vueFlow, getByTestId } = await setupGroupAndLooseNode(false);
+
+			vueFlow.addSelectedNodes([vueFlow.findNode('group:g1')!, vueFlow.findNode('node-3')!]);
+			await waitFor(() =>
+				expect(vueFlow.getSelectedNodes.value.map(({ id }) => id)).toHaveLength(4),
+			);
+
+			// The group's data.nodesRect is 300x100 at (0, 0); its expanded frame
+			// spans the header plus vertical paddings below the title bar node.
+			const { expanded } = computeGroupFrameRects({ x: 0, y: 0, width: 300, height: 100 });
+
+			await waitFor(() => {
+				const style = getByTestId('canvas').style;
+				expect(style.getPropertyValue('--canvas-selection-box--height')).toBe(
+					`${expanded.height}px`,
+				);
+				// Bounds stretch from the group frame's left edge to the loose node.
+				expect(style.getPropertyValue('--canvas-selection-box--left')).toBe('0px');
+				expect(style.getPropertyValue('--canvas-selection-box--width')).toBe('800px');
 			});
 		});
 	});

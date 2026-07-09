@@ -617,12 +617,27 @@ const groupDrag = useCanvasNodeGroupDrag({
 
 // Groups select as one unit: title bar and member selection stay in sync,
 // and a fully selected group surfaces the selection instead of its members.
-const { fullySelectedGroupMemberIds } = useCanvasNodeGroupSelection({
-	canvasId: props.id,
-	isEnabled: () => props.showNodeGroups,
-	getGroupById: (id) => workflowDocumentStore.value.getGroupById(id),
-	getGroupForNode: (id) => workflowDocumentStore.value.getGroupForNode(id),
-	isGroupCollapsed: (id) => injectedNodeGroupView?.isGroupCollapsed(id) ?? false,
+const { fullySelectedGroupMemberIds, selectedElementCount, selectionBoxBounds } =
+	useCanvasNodeGroupSelection({
+		canvasId: props.id,
+		isEnabled: () => props.showNodeGroups,
+		getGroupById: (id) => workflowDocumentStore.value.getGroupById(id),
+		getGroupForNode: (id) => workflowDocumentStore.value.getGroupForNode(id),
+		isGroupCollapsed: (id) => injectedNodeGroupView?.isGroupCollapsed(id) ?? false,
+	});
+
+// VueFlow sizes its selection box to the selected VueFlow nodes, but a group
+// node is only the title bar — its expanded frame overflows the box. Feed the
+// corrected bounds (full group frames included) to the box via CSS variables.
+const selectionBoxStyle = computed(() => {
+	const bounds = selectionBoxBounds.value;
+	if (!bounds) return undefined;
+	return {
+		'--canvas-selection-box--left': `${bounds.x}px`,
+		'--canvas-selection-box--top': `${bounds.y}px`,
+		'--canvas-selection-box--width': `${bounds.width}px`,
+		'--canvas-selection-box--height': `${bounds.height}px`,
+	};
 });
 
 function onNodeDragStart(event: NodeDragEvent) {
@@ -742,7 +757,9 @@ function onSelectionDragStop(event: NodeDragEvent) {
 }
 
 function onSelectionEnd(event: MouseEvent) {
-	if (selectedNodes.value.length === 1) {
+	// A single-element selection (one node, or one whole group) surfaces
+	// itself — the selection box would only add noise.
+	if (selectedElementCount.value <= 1) {
 		nodesSelectionActive.value = false;
 	}
 
@@ -1420,6 +1437,7 @@ defineExpose({
 		:nodes="vueFlowNodes"
 		:edges="connections"
 		:class="classes"
+		:style="selectionBoxStyle"
 		:apply-changes="false"
 		:connection-line-options="{ markerEnd: MarkerType.ArrowClosed }"
 		:connection-radius="60"
@@ -1594,6 +1612,20 @@ defineExpose({
 		/* stylelint-disable-next-line @n8n/css-var-naming */
 		--canvas-zoom-compensation-factor: 0.5;
 	}
+
+	// VueFlow sizes its selection box to the selected VueFlow nodes only, which
+	// cuts through expanded group frames (the frame overflows the title-bar
+	// node). Override its inline geometry with our corrected bounds (set as CSS
+	// variables in `selectionBoxStyle` whenever a selection exists), so the box
+	// always wraps selected groups in full.
+	/* stylelint-disable declaration-no-important */
+	:global(.vue-flow__nodesselection-rect) {
+		left: var(--canvas-selection-box--left) !important;
+		top: var(--canvas-selection-box--top) !important;
+		width: var(--canvas-selection-box--width) !important;
+		height: var(--canvas-selection-box--height) !important;
+	}
+	/* stylelint-enable declaration-no-important */
 }
 </style>
 

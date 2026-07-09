@@ -2,7 +2,14 @@ import { computed, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import { useVueFlow } from '@vue-flow/core';
 import type { IWorkflowGroup } from 'n8n-workflow';
 import { isPresent } from '@/app/utils/typesUtils';
-import { createCanvasGroupNodeId, parseCanvasGroupNodeId } from '../canvas.types';
+import {
+	createCanvasGroupNodeId,
+	isCanvasGroupNode,
+	parseCanvasGroupNodeId,
+	type BoundingBox,
+	type CanvasGroupNodeData,
+} from '../canvas.types';
+import { computeGroupFrameRects } from './useCanvasMapping.groups';
 
 export interface UseCanvasNodeGroupSelectionDeps {
 	canvasId?: string;
@@ -109,22 +116,6 @@ export function useCanvasNodeGroupSelection(deps: UseCanvasNodeGroupSelectionDep
 		if (nodesToRemove.length > 0) removeSelectedNodes(nodesToRemove);
 	}
 
-	// A rubber band that lands on exactly one whole group reads as "the group
-	// is selected" — drop VueFlow's selection box so only the group surfaces it,
-	// mirroring how a single-node selection drops the box.
-	function collapseSelectionBoxForSingleGroup() {
-		if (!nodesSelectionActive.value) return;
-		const ids = [...lastSelectedIds];
-		const groupNodeIds = ids.filter((id) => parseCanvasGroupNodeId(id) !== undefined);
-		if (groupNodeIds.length !== 1) return;
-		const group = expandedGroupOfGroupNode(groupNodeIds[0]);
-		if (!group) return;
-		const memberIds = new Set<string>(group.nodeIds);
-		if (ids.every((id) => id === groupNodeIds[0] || memberIds.has(id))) {
-			nodesSelectionActive.value = false;
-		}
-	}
-
 	watch([selectedIds, userSelectionActive], () => {
 		if (!toValue(deps.isEnabled)) {
 			lastSelectedIds = selectedIds.value;
@@ -144,7 +135,11 @@ export function useCanvasNodeGroupSelection(deps: UseCanvasNodeGroupSelectionDep
 		// resolved to no node don't get re-processed as removals.
 		lastSelectedIds = new Set(getSelectedNodes.value.map((node) => node.id));
 
-		collapseSelectionBoxForSingleGroup();
+		// A selection that folds into a single element (one node, or one whole
+		// group) surfaces itself — drop VueFlow's selection box.
+		if (nodesSelectionActive.value && selectedElementCount.value <= 1) {
+			nodesSelectionActive.value = false;
+		}
 	});
 
 	/**
@@ -163,7 +158,58 @@ export function useCanvasNodeGroupSelection(deps: UseCanvasNodeGroupSelectionDep
 		return result;
 	});
 
+	/**
+	 * Number of distinct elements in the selection, where a fully selected
+	 * group counts as one element in place of its members. Drives whether the
+	 * selection box is worth showing (a single element surfaces itself).
+	 */
+	const selectedElementCount = computed(() => {
+		const memberIdsFoldedIntoGroups = fullySelectedGroupMemberIds.value;
+		let count = 0;
+		for (const node of getSelectedNodes.value) {
+			if (!memberIdsFoldedIntoGroups.has(node.id)) count++;
+		}
+		return count;
+	});
+
+	/**
+	 * Bounding box of the selection in flow coordinates, sized to full visual
+	 * footprints: expanded groups contribute their whole frame, not just the
+	 * VueFlow node (the title bar). For group-less selections this equals the
+	 * native VueFlow selection box. Undefined when nothing is selected.
+	 */
+	const selectionBoxBounds = computed<BoundingBox | undefined>(() => {
+		const nodes = getSelectedNodes.value;
+		if (nodes.length === 0) return undefined;
+
+		let minX = Infinity;
+		let minY = Infinity;
+		let maxX = -Infinity;
+		let maxY = -Infinity;
+
+		for (const node of nodes) {
+			const { x, y } = node.computedPosition;
+			let { width, height } = node.dimensions;
+			if (isCanvasGroupNode(node)) {
+				const data = node.data as CanvasGroupNodeData;
+				if (!data.isCollapsed) {
+					const { expanded } = computeGroupFrameRects(data.nodesRect);
+					width = Math.max(width, expanded.width);
+					height = Math.max(height, expanded.height);
+				}
+			}
+			if (x < minX) minX = x;
+			if (y < minY) minY = y;
+			if (x + width > maxX) maxX = x + width;
+			if (y + height > maxY) maxY = y + height;
+		}
+
+		return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+	});
+
 	return {
 		fullySelectedGroupMemberIds,
+		selectedElementCount,
+		selectionBoxBounds,
 	};
 }
