@@ -375,6 +375,7 @@ describe('Executor.fire', () => {
 		const { store, registry, spanFor, tracer, executor } = setup();
 		const handler: TaskHandler = { execute: vi.fn().mockResolvedValue(undefined) };
 		store.markStarted.mockResolvedValue(1);
+		store.completeTask.mockResolvedValue(1);
 		registry.resolve.mockReturnValue(handler);
 		const task = claimedTask();
 
@@ -409,6 +410,7 @@ describe('Executor.fire', () => {
 		const { store, registry, spanFor, executor } = setup();
 		const handler: TaskHandler = { execute: vi.fn().mockRejectedValue(new Error('boom')) };
 		store.markStarted.mockResolvedValue(1);
+		store.rescheduleTask.mockResolvedValue(1);
 		registry.resolve.mockReturnValue(handler);
 		const task = claimedTask({ attempts: 0, maxAttempts: 3, leaseEpoch: 7 });
 
@@ -443,6 +445,7 @@ describe('Executor.fire', () => {
 		const { store, registry, spanFor, executor } = setup();
 		const handler: TaskHandler = { execute: vi.fn().mockRejectedValue(new Error('boom')) };
 		store.markStarted.mockResolvedValue(1);
+		store.failTaskTerminal.mockResolvedValue(1);
 		registry.resolve.mockReturnValue(handler);
 		// attempts 0, maxAttempts 1: this fire is the last attempt, so a failure is terminal.
 		const task = claimedTask({ attempts: 0, maxAttempts: 1 });
@@ -603,7 +606,7 @@ describe('Executor.fire metrics hooks', () => {
 	});
 
 	it('calls no outcome hook when a terminal write affects no row (reclaimed on lease overrun)', async () => {
-		const { store, registry, hooks, executor } = setup();
+		const { store, registry, hooks, spanFor, executor } = setup();
 		store.markStarted.mockResolvedValue(1);
 		registry.resolve.mockReturnValue({ execute: vi.fn().mockResolvedValue(undefined) });
 		// Every terminal write resolves 0: the row was reclaimed, so nothing is ours to count.
@@ -614,15 +617,27 @@ describe('Executor.fire metrics hooks', () => {
 		// Success path with a 0-row complete.
 		await executor.fire(HOST, claimedTask());
 		expect(hooks.onFire).not.toHaveBeenCalled();
+		expect(spanFor('scheduler.fire').setAttribute).toHaveBeenCalledWith(
+			SCHEDULER_ATTRIBUTES.outcome,
+			SCHEDULER_FIRE_OUTCOME.skippedNotOwned,
+		);
 
 		// Retry path with a 0-row reschedule.
 		registry.resolve.mockReturnValue({ execute: vi.fn().mockRejectedValue(new Error('boom')) });
 		await executor.fire(HOST, claimedTask({ attempts: 0, maxAttempts: 3 }));
 		expect(hooks.onRetry).not.toHaveBeenCalled();
+		expect(spanFor('scheduler.fire').setAttribute).toHaveBeenCalledWith(
+			SCHEDULER_ATTRIBUTES.outcome,
+			SCHEDULER_FIRE_OUTCOME.skippedNotOwned,
+		);
 
 		// Terminal-failure path with a 0-row failTaskTerminal.
 		await executor.fire(HOST, claimedTask({ attempts: 0, maxAttempts: 1 }));
 		expect(hooks.onFire).not.toHaveBeenCalled();
+		expect(spanFor('scheduler.fire').setAttribute).toHaveBeenCalledWith(
+			SCHEDULER_ATTRIBUTES.outcome,
+			SCHEDULER_FIRE_OUTCOME.skippedNotOwned,
+		);
 	});
 
 	it('defaults to a safe no-op when no hooks are supplied', async () => {

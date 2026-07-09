@@ -259,24 +259,36 @@ export class Executor {
 						// Guard the metric on rows affected: the write resolves 0 (not rejects) when the
 						// row was reclaimed by the reaper on lease overrun, so don't count that as ours.
 						const rowsAffected = await this.store.failTaskTerminal(claim, message);
-						if (rowsAffected > 0) this.hooks.onFire?.(task.taskType, 'failure');
-						span.setAttribute(SCHEDULER_ATTRIBUTES.outcome, SCHEDULER_FIRE_OUTCOME.deadLettered);
+						if (rowsAffected > 0) {
+							this.hooks.onFire?.(task.taskType, 'failure');
+							span.setAttribute(SCHEDULER_ATTRIBUTES.outcome, SCHEDULER_FIRE_OUTCOME.deadLettered);
+						} else {
+							span.setAttribute(SCHEDULER_ATTRIBUTES.outcome, SCHEDULER_FIRE_OUTCOME.skippedNotOwned);
+						}
 					} else {
 						const rowsAffected = await this.store.rescheduleTask(
 							claim,
 							backoff(nextAttempts),
 							message,
 						);
-						if (rowsAffected > 0) this.hooks.onRetry?.(task.taskType);
-						span.setAttribute(SCHEDULER_ATTRIBUTES.outcome, SCHEDULER_FIRE_OUTCOME.rescheduled);
+						if (rowsAffected > 0) {
+							this.hooks.onRetry?.(task.taskType);
+							span.setAttribute(SCHEDULER_ATTRIBUTES.outcome, SCHEDULER_FIRE_OUTCOME.rescheduled);
+						} else {
+							span.setAttribute(SCHEDULER_ATTRIBUTES.outcome, SCHEDULER_FIRE_OUTCOME.skippedNotOwned);
+						}
 					}
 					span.setStatus({ code: SpanStatus.error, message });
 					return;
 				}
 
 				const rowsAffected = await this.store.completeTask(claim);
-				if (rowsAffected > 0) this.hooks.onFire?.(task.taskType, 'success');
-				span.setAttribute(SCHEDULER_ATTRIBUTES.outcome, SCHEDULER_FIRE_OUTCOME.completed);
+				if (rowsAffected > 0) {
+					this.hooks.onFire?.(task.taskType, 'success');
+					span.setAttribute(SCHEDULER_ATTRIBUTES.outcome, SCHEDULER_FIRE_OUTCOME.completed);
+				} else {
+					span.setAttribute(SCHEDULER_ATTRIBUTES.outcome, SCHEDULER_FIRE_OUTCOME.skippedNotOwned);
+				}
 				span.setStatus({ code: SpanStatus.ok });
 			},
 		);
