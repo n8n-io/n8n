@@ -13,8 +13,16 @@ import type { ICredentialsOverwrite } from '@/interfaces';
 import { StaticAuthService } from '@/services/static-auth-service';
 
 describe('CredentialsOverwrites', () => {
-	const testCredentialType = mock<ICredentialType>({ name: 'test', extends: ['parent'] });
-	const parentCredentialType = mock<ICredentialType>({ name: 'parent', extends: undefined });
+	const testCredentialType = mock<ICredentialType>({
+		name: 'test',
+		extends: ['parent'],
+		properties: [],
+	});
+	const parentCredentialType = mock<ICredentialType>({
+		name: 'parent',
+		extends: undefined,
+		properties: [],
+	});
 
 	const globalConfig = mock<GlobalConfig>({ credentials: { overwrite: {} } });
 	const credentialTypes = mock<CredentialTypes>();
@@ -185,6 +193,76 @@ describe('CredentialsOverwrites', () => {
 				const result = credentialsOverwrites.applyOverwrite('parent', { password: '' });
 
 				expect(result).toEqual({ password: 'pass' });
+			});
+		});
+
+		describe('inherited scope', () => {
+			// A service-specific OAuth2 child (e.g. microsoftOneDriveOAuth2Api) defines its own
+			// baked-in `scope`; the managed overwrite lives on the generic parent app.
+			const childWithScope = mock<ICredentialType>({
+				name: 'childOAuth2',
+				extends: ['parentOAuth2'],
+				properties: [
+					{ displayName: 'Scope', name: 'scope', type: 'hidden', default: 'child.Scope' },
+				],
+			});
+			const childWithoutScope = mock<ICredentialType>({
+				name: 'childNoScope',
+				extends: ['parentOAuth2'],
+				properties: [],
+			});
+			const parentOAuth2 = mock<ICredentialType>({
+				name: 'parentOAuth2',
+				extends: undefined,
+				properties: [],
+			});
+
+			beforeEach(async () => {
+				globalConfig.credentials.overwrite.data = JSON.stringify({
+					parentOAuth2: { clientId: 'p-id', clientSecret: 'p-secret', scope: 'parent.Scope' },
+				});
+				credentialTypes.getByName.mockImplementation((credentialType) => {
+					if (credentialType === 'childOAuth2') return childWithScope;
+					if (credentialType === 'childNoScope') return childWithoutScope;
+					if (credentialType === 'parentOAuth2') return parentOAuth2;
+					throw new UnrecognizedCredentialTypeError(credentialType);
+				});
+				credentialTypes.getParentTypes.calledWith('childOAuth2').mockReturnValue(['parentOAuth2']);
+				credentialTypes.getParentTypes.calledWith('childNoScope').mockReturnValue(['parentOAuth2']);
+				credentialTypes.getParentTypes.calledWith('parentOAuth2').mockReturnValue([]);
+				credentialsOverwrites = new CredentialsOverwrites(
+					globalConfig,
+					credentialTypes,
+					logger,
+					mock(),
+					mock(),
+				);
+				await credentialsOverwrites.init();
+			});
+
+			it('does not fill a child scope from a parent overwrite when the child defines its own scope', () => {
+				const result = credentialsOverwrites.applyOverwrite('childOAuth2', {
+					clientId: '',
+					clientSecret: '',
+					scope: '',
+				});
+
+				// client credentials come from the parent overwrite, but the child's own scope is preserved
+				expect(result).toEqual({ clientId: 'p-id', clientSecret: 'p-secret', scope: '' });
+			});
+
+			it('still inherits the parent scope for a child that does not define its own scope', () => {
+				const result = credentialsOverwrites.applyOverwrite('childNoScope', {
+					clientId: '',
+					clientSecret: '',
+					scope: '',
+				});
+
+				expect(result).toEqual({
+					clientId: 'p-id',
+					clientSecret: 'p-secret',
+					scope: 'parent.Scope',
+				});
 			});
 		});
 	});

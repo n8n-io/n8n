@@ -163,9 +163,17 @@ export class CredentialsOverwrites {
 			}
 		}
 
+		// A credential type that defines its own `scope` (service-specific OAuth2 creds bake in the
+		// scopes they require) keeps that scope authoritative: a `scope` inherited from a parent
+		// type's overwrite must not fill it. Without this, a stripped/empty child scope would be
+		// replaced by the generic parent app's scope, dropping the child's required scopes.
+		const skipInheritedScope =
+			this.overwriteData[type]?.scope === undefined && this.typeDefinesOwnScope(type);
+
 		const returnData = deepCopy(data);
 		// Overwrite only if there is currently no data set
 		for (const key of Object.keys(overwrites)) {
+			if (key === 'scope' && skipInheritedScope) continue;
 			// @ts-ignore
 			if ([null, undefined, ''].includes(returnData[key])) {
 				returnData[key] = overwrites[key];
@@ -173,6 +181,12 @@ export class CredentialsOverwrites {
 		}
 
 		return returnData;
+	}
+
+	/** Whether the credential type declares a `scope` property in its own (non-inherited) properties. */
+	private typeDefinesOwnScope(type: string): boolean {
+		if (!this.credentialTypes.recognizes(type)) return false;
+		return this.credentialTypes.getByName(type).properties.some((p) => p.name === 'scope');
 	}
 
 	getOverwrites(type: string): ICredentialDataDecryptedObject | undefined {
