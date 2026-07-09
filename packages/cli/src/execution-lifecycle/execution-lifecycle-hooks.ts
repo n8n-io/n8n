@@ -700,6 +700,7 @@ function hookFunctionsSaveWorker(
 				runDataAttemptedDynamicCredentials(resultRunData);
 
 			const mainWillDiscardData =
+				process.env.N8N_SKIP_UNSAVED_EXECUTION_DATA_WRITES === 'true' &&
 				fullRunData.status === 'success' &&
 				!saveSettings.success &&
 				!fullRunData.waitTill &&
