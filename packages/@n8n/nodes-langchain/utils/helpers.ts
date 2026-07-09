@@ -49,15 +49,13 @@ export function getPromptInputByType(options: {
 
 	if (isPromptMissing) {
 		if (promptType === 'auto' || promptType === 'guardrails') {
-			const description =
+			const message =
 				promptType === 'guardrails'
 					? "Expected to find the prompt in an input field called 'guardrailsInput' (this is what the guardrails node outputs). To use something else, change the 'Prompt' parameter"
 					: fallbackToGuardrails
 						? "Expected to find the prompt in an input field called 'chatInput' or 'guardrailsInput' (the outputs of the chat trigger and guardrails nodes). To use something else, change the 'Prompt' parameter"
 						: "Expected to find the prompt in an input field called 'chatInput' (this is what the chat trigger node outputs). To use something else, change the 'Prompt' parameter";
-			throw new NodeOperationError(ctx.getNode(), 'No prompt specified', {
-				description,
-			});
+			throw new NodeOperationError(ctx.getNode(), message);
 		} else {
 			throw new NodeOperationError(ctx.getNode(), 'No prompt specified', {
 				description:
