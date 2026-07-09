@@ -1,6 +1,7 @@
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { mock } from 'vitest-mock-extended';
 
-import { SCHEDULER_ATTRIBUTES } from '../../../observability/attributes';
+import { SCHEDULER_ATTRIBUTES, SCHEDULER_FIRE_OUTCOME } from '../../../observability/attributes';
 import { SpanStatus, type Span, type Tracer } from '../../../observability/tracer';
 import type { ClaimedTask } from '../../types';
 import { backoff } from '../backoff';
@@ -36,10 +37,28 @@ const setup = (options?: Partial<ExecutorOptions>) => {
 		onFireError: vi.fn(),
 		onReleaseError: vi.fn(),
 	} satisfies ExecutorHooks;
-	// One shared span so every nested span records to the same spy.
-	const span: Span = { setAttribute: vi.fn(), setStatus: vi.fn() };
+	// A span per `op`, so the nested fire and handoff spans record to separate
+	// spies and their statuses can be told apart.
+	const spans = new Map<string, Span>();
+	const spanFor = (op: string): Span => {
+		const existing = spans.get(op);
+		if (existing) return existing;
+		const created: Span = { setAttribute: vi.fn(), setStatus: vi.fn() };
+		spans.set(op, created);
+		return created;
+	};
+	// Honour the tracer port's contract: a throw from `run` marks that span
+	// errored and propagates, exactly as the concrete (Sentry) tracer does.
 	const tracer = mock<Tracer>();
-	tracer.startSpan.mockImplementation(async (_options, run) => await run(span));
+	tracer.startSpan.mockImplementation(async (options, run) => {
+		const span = spanFor(options.op ?? options.name);
+		try {
+			return await run(span);
+		} catch (error) {
+			span.setStatus({ code: SpanStatus.error, message: ensureError(error).message });
+			throw error;
+		}
+	});
 	const executor = new Executor(
 		store,
 		registry,
@@ -48,7 +67,7 @@ const setup = (options?: Partial<ExecutorOptions>) => {
 		hooks,
 		tracer,
 	);
-	return { store, registry, timer, hooks, span, tracer, executor };
+	return { store, registry, timer, hooks, spanFor, tracer, executor };
 };
 
 describe('Executor construction', () => {
@@ -349,8 +368,8 @@ describe('Executor.fire', () => {
 		expect(hooks.onReleaseError).toHaveBeenCalledWith(task.id, failure);
 	});
 
-	it('opens a fire span with the task attributes and a nested handoff span, ok on success', async () => {
-		const { store, registry, span, tracer, executor } = setup();
+	it('opens a fire span with the task attributes and a nested handoff span, both ok on success', async () => {
+		const { store, registry, spanFor, tracer, executor } = setup();
 		const handler: TaskHandler = { execute: vi.fn().mockResolvedValue(undefined) };
 		store.markStarted.mockResolvedValue(1);
 		registry.resolve.mockReturnValue(handler);
@@ -358,24 +377,33 @@ describe('Executor.fire', () => {
 
 		await executor.fire(HOST, task);
 
-		const fireSpan = tracer.startSpan.mock.calls.find(([o]) => o.op === 'scheduler.fire')?.[0];
-		expect(fireSpan?.attributes).toMatchObject({
+		const fireOptions = tracer.startSpan.mock.calls.find(([o]) => o.op === 'scheduler.fire')?.[0];
+		expect(fireOptions?.name).toBe('Scheduler fire');
+		expect(fireOptions?.attributes).toMatchObject({
 			[SCHEDULER_ATTRIBUTES.taskId]: task.id,
 			[SCHEDULER_ATTRIBUTES.jobId]: task.jobId,
 			[SCHEDULER_ATTRIBUTES.host]: HOST,
+			[SCHEDULER_ATTRIBUTES.attempts]: task.attempts,
+			[SCHEDULER_ATTRIBUTES.maxAttempts]: task.maxAttempts,
 		});
-		const handoffSpan = tracer.startSpan.mock.calls.find(
+		const handoffOptions = tracer.startSpan.mock.calls.find(
 			([o]) => o.op === 'scheduler.handoff',
 		)?.[0];
-		expect(handoffSpan?.attributes).toEqual({
+		expect(handoffOptions?.name).toBe('Scheduler handoff');
+		expect(handoffOptions?.attributes).toEqual({
 			[SCHEDULER_ATTRIBUTES.taskId]: task.id,
 			[SCHEDULER_ATTRIBUTES.taskType]: task.taskType,
 		});
-		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+		expect(spanFor('scheduler.fire').setAttribute).toHaveBeenCalledWith(
+			SCHEDULER_ATTRIBUTES.outcome,
+			SCHEDULER_FIRE_OUTCOME.completed,
+		);
+		expect(spanFor('scheduler.fire').setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+		expect(spanFor('scheduler.handoff').setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
 	});
 
-	it('marks the fire span errored with the handler message and still reschedules', async () => {
-		const { store, registry, span, executor } = setup();
+	it('marks both the handoff and the fire span errored with the handler message and still reschedules', async () => {
+		const { store, registry, spanFor, executor } = setup();
 		const handler: TaskHandler = { execute: vi.fn().mockRejectedValue(new Error('boom')) };
 		store.markStarted.mockResolvedValue(1);
 		registry.resolve.mockReturnValue(handler);
@@ -383,8 +411,24 @@ describe('Executor.fire', () => {
 
 		await executor.fire(HOST, task);
 
-		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.error, message: 'boom' });
-		expect(span.setStatus).not.toHaveBeenCalledWith({ code: SpanStatus.ok });
+		// The handoff span is errored by the tracer as the handler throw propagates;
+		// the fire span is then errored explicitly with the same message.
+		expect(spanFor('scheduler.handoff').setStatus).toHaveBeenCalledWith({
+			code: SpanStatus.error,
+			message: 'boom',
+		});
+		expect(spanFor('scheduler.handoff').setStatus).not.toHaveBeenCalledWith({
+			code: SpanStatus.ok,
+		});
+		expect(spanFor('scheduler.fire').setStatus).toHaveBeenCalledWith({
+			code: SpanStatus.error,
+			message: 'boom',
+		});
+		expect(spanFor('scheduler.fire').setStatus).not.toHaveBeenCalledWith({ code: SpanStatus.ok });
+		expect(spanFor('scheduler.fire').setAttribute).toHaveBeenCalledWith(
+			SCHEDULER_ATTRIBUTES.outcome,
+			SCHEDULER_FIRE_OUTCOME.rescheduled,
+		);
 		expect(store.rescheduleTask).toHaveBeenCalledWith(
 			{ host: HOST, id: task.id, claimedEpoch: 7 },
 			backoff(1),
@@ -392,22 +436,48 @@ describe('Executor.fire', () => {
 		);
 	});
 
+	it('records the dead-lettered outcome on the fire span when the last attempt fails', async () => {
+		const { store, registry, spanFor, executor } = setup();
+		const handler: TaskHandler = { execute: vi.fn().mockRejectedValue(new Error('boom')) };
+		store.markStarted.mockResolvedValue(1);
+		registry.resolve.mockReturnValue(handler);
+		// attempts 0, maxAttempts 1: this fire is the last attempt, so a failure is terminal.
+		const task = claimedTask({ attempts: 0, maxAttempts: 1 });
+
+		await executor.fire(HOST, task);
+
+		expect(store.failTaskTerminal).toHaveBeenCalled();
+		expect(store.rescheduleTask).not.toHaveBeenCalled();
+		expect(spanFor('scheduler.fire').setAttribute).toHaveBeenCalledWith(
+			SCHEDULER_ATTRIBUTES.outcome,
+			SCHEDULER_FIRE_OUTCOME.deadLettered,
+		);
+		expect(spanFor('scheduler.fire').setStatus).toHaveBeenCalledWith({
+			code: SpanStatus.error,
+			message: 'boom',
+		});
+	});
+
 	it('settles the fire span ok and opens no handoff span when no handler resolves', async () => {
-		const { registry, span, tracer, executor } = setup();
+		const { registry, spanFor, tracer, executor } = setup();
 		registry.resolve.mockReturnValue(undefined);
 		const task = claimedTask({ taskType: 'gone' });
 
 		await executor.fire(HOST, task);
 
-		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
-		expect(span.setStatus).not.toHaveBeenCalledWith(
+		expect(spanFor('scheduler.fire').setAttribute).toHaveBeenCalledWith(
+			SCHEDULER_ATTRIBUTES.outcome,
+			SCHEDULER_FIRE_OUTCOME.skippedNoHandler,
+		);
+		expect(spanFor('scheduler.fire').setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+		expect(spanFor('scheduler.fire').setStatus).not.toHaveBeenCalledWith(
 			expect.objectContaining({ code: SpanStatus.error }),
 		);
 		expect(tracer.startSpan.mock.calls.some(([o]) => o.op === 'scheduler.handoff')).toBe(false);
 	});
 
 	it('settles the fire span ok and opens no handoff span when the claim is gone at markStarted', async () => {
-		const { store, registry, span, tracer, executor } = setup();
+		const { store, registry, spanFor, tracer, executor } = setup();
 		const handler: TaskHandler = { execute: vi.fn() };
 		registry.resolve.mockReturnValue(handler);
 		store.markStarted.mockResolvedValue(0);
@@ -416,8 +486,12 @@ describe('Executor.fire', () => {
 		await executor.fire(HOST, task);
 
 		expect(handler.execute).not.toHaveBeenCalled();
-		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
-		expect(span.setStatus).not.toHaveBeenCalledWith(
+		expect(spanFor('scheduler.fire').setAttribute).toHaveBeenCalledWith(
+			SCHEDULER_ATTRIBUTES.outcome,
+			SCHEDULER_FIRE_OUTCOME.skippedNotOwned,
+		);
+		expect(spanFor('scheduler.fire').setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+		expect(spanFor('scheduler.fire').setStatus).not.toHaveBeenCalledWith(
 			expect.objectContaining({ code: SpanStatus.error }),
 		);
 		expect(tracer.startSpan.mock.calls.some(([o]) => o.op === 'scheduler.handoff')).toBe(false);

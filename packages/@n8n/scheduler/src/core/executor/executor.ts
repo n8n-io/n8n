@@ -6,7 +6,11 @@ import { DEFAULT_EXECUTOR_OPTIONS, type ExecutorOptions } from './options';
 import type { PrecisionTimer } from './precision-timer';
 import type { ClaimedTaskRef, ClaimDueTasksBatch, ExecutorTaskStore } from './store';
 import type { TaskHandlerRegistry } from './task-handler';
-import { SCHEDULER_ATTRIBUTES, pickSchedulerTaskAttributes } from '../../observability/attributes';
+import {
+	SCHEDULER_ATTRIBUTES,
+	SCHEDULER_FIRE_OUTCOME,
+	pickSchedulerTaskAttributes,
+} from '../../observability/attributes';
 import { SpanStatus, noopTracer, type Tracer } from '../../observability/tracer';
 import type { ClaimedTask } from '../types';
 
@@ -197,6 +201,7 @@ export class Executor {
 				if (handler === undefined) {
 					this.hooks.onMissingHandler?.(task);
 					await this.releaseClaimBestEffort(claim);
+					span.setAttribute(SCHEDULER_ATTRIBUTES.outcome, SCHEDULER_FIRE_OUTCOME.skippedNoHandler);
 					span.setStatus({ code: SpanStatus.ok });
 					return;
 				}
@@ -205,6 +210,7 @@ export class Executor {
 				// dispatch an execution for work that is gone or no longer ours.
 				const started = await this.store.markStarted(claim);
 				if (started === 0) {
+					span.setAttribute(SCHEDULER_ATTRIBUTES.outcome, SCHEDULER_FIRE_OUTCOME.skippedNotOwned);
 					span.setStatus({ code: SpanStatus.ok });
 					return;
 				}
@@ -232,14 +238,17 @@ export class Executor {
 					const nextAttempts = task.attempts + 1;
 					if (nextAttempts >= task.maxAttempts) {
 						await this.store.failTaskTerminal(claim, message);
+						span.setAttribute(SCHEDULER_ATTRIBUTES.outcome, SCHEDULER_FIRE_OUTCOME.deadLettered);
 					} else {
 						await this.store.rescheduleTask(claim, backoff(nextAttempts), message);
+						span.setAttribute(SCHEDULER_ATTRIBUTES.outcome, SCHEDULER_FIRE_OUTCOME.rescheduled);
 					}
 					span.setStatus({ code: SpanStatus.error, message });
 					return;
 				}
 
 				await this.store.completeTask(claim);
+				span.setAttribute(SCHEDULER_ATTRIBUTES.outcome, SCHEDULER_FIRE_OUTCOME.completed);
 				span.setStatus({ code: SpanStatus.ok });
 			},
 		);
