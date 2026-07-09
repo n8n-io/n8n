@@ -20,6 +20,11 @@ export class CredentialsOverwrites {
 
 	private resolvedTypes: string[] = [];
 
+	// Types whose *own* overwrite payload defined a `scope`, captured before inheritance is
+	// resolved. `setPlainData` flattens inherited scopes into child entries, so this is the only
+	// reliable signal of whether a type's scope is its own or inherited from a parent.
+	private typesWithOwnScopeOverwrite = new Set<string>();
+
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly credentialTypes: CredentialTypes,
@@ -104,6 +109,12 @@ export class CredentialsOverwrites {
 		// If data gets reinitialized reset the resolved types cache
 		this.resolvedTypes.length = 0;
 
+		// Record which types carried their own `scope` before the loop below merges parent scopes
+		// into child entries.
+		this.typesWithOwnScopeOverwrite = new Set(
+			Object.keys(overwriteData).filter((type) => overwriteData[type]?.scope !== undefined),
+		);
+
 		this.overwriteData = overwriteData;
 
 		for (const type in overwriteData) {
@@ -167,8 +178,9 @@ export class CredentialsOverwrites {
 		// scopes they require) keeps that scope authoritative: a `scope` inherited from a parent
 		// type's overwrite must not fill it. Without this, a stripped/empty child scope would be
 		// replaced by the generic parent app's scope, dropping the child's required scopes.
+		// A `scope` set directly on this type's own overwrite is honoured (not skipped).
 		const skipInheritedScope =
-			this.overwriteData[type]?.scope === undefined && this.typeDefinesOwnScope(type);
+			!this.typesWithOwnScopeOverwrite.has(type) && this.typeDefinesOwnScope(type);
 
 		const returnData = deepCopy(data);
 		// Overwrite only if there is currently no data set

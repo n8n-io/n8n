@@ -264,6 +264,42 @@ describe('CredentialsOverwrites', () => {
 					scope: 'parent.Scope',
 				});
 			});
+
+			it('does not fill an inherited scope even when the child has its own (scope-less) overwrite entry', () => {
+				// `setPlainData` flattens the parent scope into the child entry; the fix must still
+				// recognise that the child did not define a scope of its own.
+				credentialsOverwrites.setPlainData({
+					parentOAuth2: { clientId: 'p-id', clientSecret: 'p-secret', scope: 'parent.Scope' },
+					childOAuth2: { clientId: 'c-id' },
+				});
+
+				const result = credentialsOverwrites.applyOverwrite('childOAuth2', {
+					clientId: '',
+					clientSecret: '',
+					scope: '',
+				});
+
+				expect(result).toEqual({ clientId: 'c-id', clientSecret: 'p-secret', scope: '' });
+			});
+
+			it("honours a scope set directly on the child's own overwrite", () => {
+				credentialsOverwrites.setPlainData({
+					parentOAuth2: { clientId: 'p-id', clientSecret: 'p-secret', scope: 'parent.Scope' },
+					childOAuth2: { scope: 'child.Override' },
+				});
+
+				const result = credentialsOverwrites.applyOverwrite('childOAuth2', {
+					clientId: '',
+					clientSecret: '',
+					scope: '',
+				});
+
+				expect(result).toEqual({
+					clientId: 'p-id',
+					clientSecret: 'p-secret',
+					scope: 'child.Override',
+				});
+			});
 		});
 	});
 
