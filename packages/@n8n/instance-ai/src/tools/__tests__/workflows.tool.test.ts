@@ -15,8 +15,6 @@ import { createWorkflowsTool, type WorkflowAction } from '../workflows.tool';
 // Mock the setup-workflow.service module to avoid pulling in heavy dependencies
 vi.mock('../workflows/setup-workflow.service', () => ({
 	analyzeWorkflow: vi.fn().mockResolvedValue([]),
-	applyNodeCredentials: vi.fn().mockResolvedValue({ failed: [] }),
-	applyNodeParameters: vi.fn().mockResolvedValue({ failed: [] }),
 	applyNodeChanges: vi.fn().mockResolvedValue({ applied: [], failed: [] }),
 	buildCompletedReport: vi.fn().mockReturnValue([]),
 }));
