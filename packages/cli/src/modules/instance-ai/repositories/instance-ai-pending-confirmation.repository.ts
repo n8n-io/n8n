@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, LessThan, Repository } from '@n8n/typeorm';
+import { DataSource, In, IsNull, LessThan, MoreThanOrEqual, Or, Repository } from '@n8n/typeorm';
 
 import { InstanceAiPendingConfirmation } from '../entities/instance-ai-pending-confirmation.entity';
 
@@ -15,7 +15,8 @@ export class InstanceAiPendingConfirmationRepository extends Repository<Instance
 	 * confirm/cancel/TTL sweep) all return `undefined` except one.
 	 *
 	 * Scoped by `userId` so a different user cannot claim a confirmation that
-	 * was registered for someone else.
+	 * was registered for someone else, and by `expiresAt` so an expired row
+	 * is treated as gone.
 	 */
 	async claim(
 		requestId: string,
@@ -23,15 +24,21 @@ export class InstanceAiPendingConfirmationRepository extends Repository<Instance
 	): Promise<InstanceAiPendingConfirmation | undefined> {
 		return await this.manager.transaction(async (manager) => {
 			const repo = manager.getRepository(InstanceAiPendingConfirmation);
+			const now = new Date();
+			const liveWhere = {
+				requestId,
+				userId,
+				expiresAt: Or(IsNull(), MoreThanOrEqual(now)),
+			};
 			const row = await repo.findOne({
-				where: { requestId, userId },
+				where: liveWhere,
 				...(manager.connection.options.type === 'postgres'
 					? { lock: { mode: 'pessimistic_write' as const } }
 					: {}),
 			});
 			if (!row) return undefined;
 
-			const result = await repo.delete({ requestId, userId });
+			const result = await repo.delete(liveWhere);
 			if (result.affected === 0) return undefined;
 			return row;
 		});
@@ -58,7 +65,34 @@ export class InstanceAiPendingConfirmationRepository extends Repository<Instance
 		return result.affected ?? 0;
 	}
 
+	/**
+	 * True when this user's confirmation row exists and its `expiresAt` is
+	 * already in the past. Scoped by `userId` — mirroring `claim` and the
+	 * in-memory path — so another user's request ID is treated as not-expired
+	 * here and left to the caller's existing not-found/not-authorized handling.
+	 * Rows with a null `expiresAt` (timeout disabled) — and a missing row — are
+	 * not expired.
+	 */
+	async isPastExpiry(requestId: string, userId: string, now: Date): Promise<boolean> {
+		const count = await this.count({ where: { requestId, userId, expiresAt: LessThan(now) } });
+		return count > 0;
+	}
+
 	async findByThreadId(threadId: string): Promise<InstanceAiPendingConfirmation[]> {
 		return await this.find({ where: { threadId } });
+	}
+
+	/** Of the given request IDs, return those still actionable (row exists and
+	 *  not past `expiresAt`). The complement is treated as expired by the UI. */
+	async findLiveRequestIds(requestIds: string[], now: Date): Promise<Set<string>> {
+		if (requestIds.length === 0) return new Set();
+		const rows = await this.find({
+			where: {
+				requestId: In(requestIds),
+				expiresAt: Or(IsNull(), MoreThanOrEqual(now)),
+			},
+			select: ['requestId'],
+		});
+		return new Set(rows.map((row) => row.requestId));
 	}
 }

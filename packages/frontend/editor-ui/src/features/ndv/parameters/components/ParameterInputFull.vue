@@ -26,6 +26,7 @@ import {
 } from 'n8n-workflow';
 import {
 	buildValueFromOverride,
+	canBeContentOverride,
 	type FromAIOverride,
 	isFromAIOverrideValue,
 	makeOverrideValue,
@@ -104,15 +105,15 @@ const activeNode = computed(() => {
 });
 const fromAIOverride = ref<FromAIOverride | null>(makeOverrideValue(props, activeNode.value));
 
-const canBeContentOverride = computed(() => {
+const canCreateContentOverride = computed(() => {
 	// The resourceLocator handles overrides separately
 	if (!activeNode.value || isResourceLocator.value) return false;
 
-	return fromAIOverride.value !== null;
+	return canBeContentOverride(props, activeNode.value);
 });
 
 const isContentOverride = computed(
-	() => canBeContentOverride.value && !!isFromAIOverrideValue(props.value?.toString() ?? ''),
+	() => fromAIOverride.value !== null && !!isFromAIOverrideValue(props.value?.toString() ?? ''),
 );
 
 const hint = computed(() =>
@@ -287,7 +288,7 @@ function onDrop(newParamValue: string) {
 }
 
 const showOverrideButton = computed(
-	() => canBeContentOverride.value && !isContentOverride.value && !props.isReadOnly,
+	() => canCreateContentOverride.value && !isContentOverride.value && !props.isReadOnly,
 );
 
 // When switching to read-only mode, reset the value to the default value
@@ -474,7 +475,7 @@ function removeOverride(clearField = false) {
 				<FromAiOverrideField
 					v-if="fromAIOverride && isContentOverride"
 					:is-read-only="isReadOnly"
-					@close="removeOverride"
+					@close="removeOverride(!canCreateContentOverride)"
 				/>
 				<div v-else>
 					<ParameterInputWrapper
@@ -493,7 +494,7 @@ function removeOverride(clearField = false) {
 						:hide-issues="hideIssues"
 						:label="label"
 						:event-bus="eventBus"
-						:can-be-overridden="canBeContentOverride"
+						:can-be-overridden="canCreateContentOverride"
 						:hide-label="hideLabel"
 						input-size="small"
 						@update="valueChanged"
@@ -552,7 +553,7 @@ function removeOverride(clearField = false) {
 			/>
 		</div>
 		<ParameterOverrideSelectableList
-			v-if="isContentOverride && fromAIOverride"
+			v-if="canCreateContentOverride && isContentOverride && fromAIOverride"
 			v-model="fromAIOverride"
 			:parameter="parameter"
 			:path="path"

@@ -68,6 +68,14 @@ describe('findMockQuirks (real registry)', () => {
 		expect(findMockQuirks('Stripe', 'POST', '/v1/charges')).toEqual([]);
 	});
 
+	it('returns Anthropic guidance requiring content-block arrays for /v1/messages', () => {
+		const guidance = findMockQuirks('Anthropic', 'POST', '/v1/messages');
+		expect(guidance.length).toBeGreaterThan(0);
+		const text = guidance.join('\n');
+		expect(text).toMatch(/content.*MUST be an ARRAY/i);
+		expect(text).toMatch(/NEVER a plain string/i);
+	});
+
 	describe('binary / file quirks', () => {
 		it('returns Telegram guidance that documents both bot-API and file-CDN shapes', () => {
 			const guidance = findMockQuirks('Telegram', 'GET', '/bot123/getFile');

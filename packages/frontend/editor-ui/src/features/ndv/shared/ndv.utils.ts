@@ -57,7 +57,7 @@ export function getNodeSettingsInitialValues(): INodeParameters {
 export function setValue(
 	nodeValues: Ref<INodeParameters>,
 	name: string,
-	value: NodeParameterValue,
+	value: NodeParameterValueType,
 ) {
 	const nameParts = name.split('.');
 	let lastNamePart: string | undefined = nameParts.pop();
@@ -433,6 +433,12 @@ export function parseFromExpression(
 			: null;
 	}
 
+	// `json` fields (e.g. HTTP Request "JSON Body") store raw text. Switching back to
+	// fixed mode must drop the internal "=" expression marker so the value parses as JSON.
+	if (parameterType === 'json' && typeof currentParameterValue === 'string') {
+		return currentParameterValue ? currentParameterValue.replace(/^=+/, '') : null;
+	}
+
 	if (typeof evaluatedExpressionValue !== 'undefined') {
 		return evaluatedExpressionValue;
 	}
@@ -458,7 +464,7 @@ export function shouldSkipParamValidation(
 export function createCommonNodeSettings(
 	isToolOrModelNode: boolean,
 	t: (key: BaseTextKey) => string,
-	isOtelEnabled = false,
+	canUseOtelCustomSpanAttributes = false,
 ) {
 	const ret: INodeProperties[] = [];
 
@@ -580,23 +586,23 @@ export function createCommonNodeSettings(
 		},
 	);
 
-	if (isOtelEnabled) {
+	if (canUseOtelCustomSpanAttributes) {
 		ret.push({
-			displayName: t('nodeSettings.customTelemetryTags.displayName'),
+			displayName: t('nodeSettings.customSpanAttributes.displayName'),
 			name: 'customTelemetryTags',
 			type: 'fixedCollection',
 			typeOptions: { multipleValues: true, sortable: true },
-			placeholder: t('nodeSettings.customTelemetryTags.placeholder'),
+			placeholder: t('nodeSettings.customSpanAttributes.placeholder'),
 			default: {},
-			description: t('nodeSettings.customTelemetryTags.description'),
+			description: t('nodeSettings.customSpanAttributes.description'),
 			isNodeSetting: true,
 			options: [
 				{
 					name: 'tag',
-					displayName: t('nodeSettings.customTelemetryTags.tag.displayName'),
+					displayName: t('nodeSettings.customSpanAttributes.tag.displayName'),
 					values: [
 						{
-							displayName: t('nodeSettings.customTelemetryTags.tag.key.displayName'),
+							displayName: t('nodeSettings.customSpanAttributes.tag.key.displayName'),
 							name: 'key',
 							type: 'string',
 							default: '',
@@ -604,7 +610,7 @@ export function createCommonNodeSettings(
 							isNodeSetting: true,
 						},
 						{
-							displayName: t('nodeSettings.customTelemetryTags.tag.value.displayName'),
+							displayName: t('nodeSettings.customSpanAttributes.tag.value.displayName'),
 							name: 'value',
 							type: 'string',
 							default: '',

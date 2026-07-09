@@ -1,4 +1,6 @@
 import type { Tool } from '@langchain/core/tools';
+import { McpServerConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
 import type {
@@ -10,7 +12,7 @@ import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprot
 import { randomUUID } from 'crypto';
 import type * as express from 'express';
 import type { IncomingMessage } from 'http';
-import type { Logger } from 'n8n-workflow';
+import type { CredentialCheckResult, Logger } from 'n8n-workflow';
 import { jsonParse, OperationalError } from 'n8n-workflow';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
@@ -54,7 +56,18 @@ export class McpServer {
 	private pendingCallsManager: PendingCallsManager;
 	private resolveFunctions: Record<string, () => void> = {};
 	private pendingResponses: Record<string, PendingResponse> = {};
+	/**
+	 * Request-scoped credential-gate results, keyed by callId. Set just before a
+	 * tool call is driven through the transport and consumed (then deleted) by the
+	 * CallTool handler. Plain serializable data, not a closure — set and read within
+	 * a single `handlePostMessage` on the transport-holding main.
+	 */
+	private pendingGateResults: Record<string, CredentialCheckResult> = {};
 	private logger: Logger;
+
+	private idleTtlMs: number;
+	private sweepIntervalMs: number;
+	private sweepTimer?: ReturnType<typeof setInterval>;
 
 	private constructor(logger: Logger) {
 		this.logger = logger;
@@ -62,12 +75,16 @@ export class McpServer {
 		this.transportFactory = new TransportFactory();
 		this.pendingCallsManager = new PendingCallsManager();
 		this.executionCoordinator = new ExecutionCoordinator();
+		const config = Container.get(McpServerConfig);
+		this.idleTtlMs = config.sessionIdleTtl;
+		this.sweepIntervalMs = config.sessionSweepInterval;
 		this.logger.debug('McpServer created');
 	}
 
 	static instance(logger: Logger): McpServer {
 		if (!McpServer.instance_) {
 			McpServer.instance_ = new McpServer(logger);
+			McpServer.instance_.startSweep();
 			logger.debug('Created singleton McpServer');
 		}
 		return McpServer.instance_;
@@ -119,8 +136,11 @@ export class McpServer {
 		resp: CompressionResponse,
 		tools: Tool[],
 		serverName?: string,
+		gateResult?: CredentialCheckResult,
 	): Promise<HandlePostResult> {
 		const sessionId = this.getSessionId(req);
+		// A request on a known session counts as activity (no-op for unknown ids).
+		if (sessionId) this.sessionManager.touch(sessionId);
 		let transport = sessionId ? this.sessionManager.getTransport(sessionId) : undefined;
 		const rawBody = req.rawBody.toString();
 		let toolCallInfo = MessageParser.extractToolCallInfo(rawBody);
@@ -181,13 +201,19 @@ export class McpServer {
 			const callId = messageId ? `${sessionId}_${messageId}` : sessionId;
 			this.sessionManager.setTools(sessionId, tools);
 
+			// Hand the gate result to the CallTool handler for this request only.
+			if (gateResult) {
+				this.pendingGateResults[callId] = gateResult;
+			}
+
 			try {
 				await new Promise<void>((resolve) => {
 					this.resolveFunctions[callId] = resolve;
-					void transport.handleRequest(req, resp, message as IncomingMessage);
+					void transport.handleRequest(req, resp, message as IncomingMessage).finally(resolve);
 				});
 			} finally {
 				delete this.resolveFunctions[callId];
+				delete this.pendingGateResults[callId];
 			}
 		} else {
 			this.logger.warn(`No transport found for session ${sessionId}`);
@@ -196,8 +222,13 @@ export class McpServer {
 
 		resp.flush?.();
 
+		// A not-ready gate makes the CallTool handler short-circuit (returning the
+		// actionable response over the transport instead of executing). Report it as
+		// not a tool call so the node does not also trigger a workflow execution.
+		const wasGated = !!gateResult && !gateResult.readyToExecute;
+
 		return {
-			wasToolCall: MessageParser.isToolCall(rawBody),
+			wasToolCall: MessageParser.isToolCall(rawBody) && !wasGated,
 			toolCallInfo,
 			messageId,
 		};
@@ -303,7 +334,10 @@ export class McpServer {
 						`SSE queue mode: sending response directly via transport for session ${sessionId}`,
 					);
 
-					const formattedResult = MessageFormatter.formatToolResult(result);
+					const formattedResult = MessageFormatter.formatToolResult(
+						result,
+						MessageFormatter.isErrorResult(result),
+					);
 					const response: JSONRPCMessage = {
 						jsonrpc: '2.0',
 						id: messageId,
@@ -344,6 +378,49 @@ export class McpServer {
 
 	setExecutionStrategy(strategy: ExecutionStrategy): void {
 		this.executionCoordinator.setStrategy(strategy);
+	}
+
+	private startSweep(): void {
+		if (this.sweepTimer) return;
+		this.sweepTimer = setInterval(() => {
+			void this.runSweep();
+		}, this.sweepIntervalMs);
+		this.sweepTimer.unref?.();
+	}
+
+	stopSweep(): void {
+		if (this.sweepTimer) {
+			clearInterval(this.sweepTimer);
+			this.sweepTimer = undefined;
+		}
+	}
+
+	private async runSweep(): Promise<void> {
+		for (const sessionId of this.sessionManager.getIdleSessions(this.idleTtlMs)) {
+			// SSE sessions are released reliably via the connection's close handler.
+			// Only Streamable HTTP sessions (stateless clients that never DELETE) leak.
+			if (this.sessionManager.getTransport(sessionId)?.transportType !== 'streamableHttp') continue;
+			// Don't evict a session whose tool call is still awaiting a result.
+			if (this.hasInFlightWork(sessionId)) continue;
+			try {
+				this.logger.debug(`Evicting idle MCP session ${sessionId}`);
+				await this.cleanupSession(sessionId);
+			} catch (error) {
+				this.logger.error(
+					`Failed to evict idle MCP session ${sessionId}: ${error instanceof Error ? error.message : String(error)}`,
+				);
+			}
+		}
+	}
+
+	private hasInFlightWork(sessionId: string): boolean {
+		if (this.pendingCallsManager.hasForSession(sessionId)) return true;
+		// Direct-mode tool calls are tracked only by resolveFunctions for their whole
+		// duration; queue-mode also uses pendingResponses below.
+		const ownsSession = (callId: string) =>
+			callId === sessionId || callId.startsWith(`${sessionId}_`);
+		if (Object.keys(this.resolveFunctions).some(ownsSession)) return true;
+		return Object.values(this.pendingResponses).some((pending) => pending.sessionId === sessionId);
 	}
 
 	isQueueMode(): boolean {
@@ -472,6 +549,17 @@ export class McpServer {
 				throw new OperationalError('Tool not found');
 			}
 
+			// Eager pre-execution credential gate: if the caller has not connected a
+			// required private credential, return the actionable connection URLs
+			// instead of executing (or enqueuing) the workflow.
+			const gateResult = this.pendingGateResults[callId];
+			if (gateResult && !gateResult.readyToExecute) {
+				if (this.resolveFunctions[callId]) {
+					this.resolveFunctions[callId]();
+				}
+				return MessageFormatter.formatCredentialGate(gateResult);
+			}
+
 			try {
 				if (this.executionCoordinator.isQueueMode()) {
 					const requestId = extra.requestId?.toString() ?? '';
@@ -489,7 +577,7 @@ export class McpServer {
 						messageId: requestId,
 					});
 
-					return MessageFormatter.formatToolResult(result);
+					return MessageFormatter.formatToolResult(result, MessageFormatter.isErrorResult(result));
 				}
 
 				const result = await this.executionCoordinator.executeTool(requestedTool, toolArguments, {
@@ -503,7 +591,7 @@ export class McpServer {
 					this.logger.warn(`No resolve function found for ${callId}`);
 				}
 
-				return MessageFormatter.formatToolResult(result);
+				return MessageFormatter.formatToolResult(result, MessageFormatter.isErrorResult(result));
 			} catch (error) {
 				const errorObject = error instanceof Error ? error : new Error(String(error));
 				this.logger.error(`Error while executing Tool ${toolName}: ${errorObject.message}`, {

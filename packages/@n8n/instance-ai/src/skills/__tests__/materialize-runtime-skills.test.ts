@@ -7,6 +7,7 @@ import {
 	type WorkspaceSandbox,
 } from '@n8n/agents';
 import { jsonParse } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 
 import {
 	N8N_SKILLS_DIR_ENV,
@@ -21,20 +22,30 @@ import {
 } from '../materialize-runtime-skills';
 import { loadInstanceAiRuntimeSkillSource } from '../runtime-skills';
 
+/** Extract the text body from the content-block form of a load_skill success result. */
+function skillLoadText(output: unknown): string {
+	const record = output as { type?: string; value?: Array<{ type: string; text: string }> };
+	if (record?.type !== 'content' || !Array.isArray(record.value)) {
+		throw new Error(`Expected content-form skill load output, got: ${JSON.stringify(output)}`);
+	}
+	return record.value.map((part) => part.text).join('\n');
+}
+
 function createMockWorkspace() {
 	const writes = new Map<string, string>();
-	const writeFile = jest.fn(async (path: string, content: string | Buffer) => {
+	const writeFile = vi.fn(async (path: string, content: string | Buffer) => {
 		writes.set(path, Buffer.isBuffer(content) ? content.toString('utf-8') : content);
 		await Promise.resolve();
 	});
-	const readFile = jest.fn(async (path: string) => {
+	const readFile = vi.fn(async (path: string) => {
 		const content = writes.get(path);
 		if (content === undefined) throw new Error(`ENOENT: ${path}`);
 		return await Promise.resolve(content);
 	});
-	const executeCommand = jest.fn<
-		ReturnType<NonNullable<WorkspaceSandbox['executeCommand']>>,
-		Parameters<NonNullable<WorkspaceSandbox['executeCommand']>>
+	const executeCommand = vi.fn<
+		(
+			...args: Parameters<NonNullable<WorkspaceSandbox['executeCommand']>>
+		) => ReturnType<NonNullable<WorkspaceSandbox['executeCommand']>>
 	>(
 		async () =>
 			await Promise.resolve({
@@ -106,12 +117,14 @@ function createRuntimeSkillSourceWithLinkedFile(path: string): RuntimeSkillSourc
 	};
 }
 
+const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never;
+
 describe('materializeRuntimeSkillsIntoWorkspace', () => {
 	it('builds a runtime skill workspace bundle without writing files', async () => {
 		const source = loadInstanceAiRuntimeSkillSource();
 		const root = '/home/daytona/workspace';
 
-		const bundle = await buildRuntimeSkillWorkspaceBundle({ source, root });
+		const bundle = await buildRuntimeSkillWorkspaceBundle({ source, root, logger: mockLogger });
 
 		if (!bundle) throw new Error('Expected runtime skill bundle');
 		const skillDir = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/data-table-manager`;
@@ -156,6 +169,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const root = '/home/daytona/workspace';
 
 		const materialized = await materializeRuntimeSkillsIntoWorkspace({
+			logger: mockLogger,
 			source,
 			workspace,
 			root,
@@ -206,6 +220,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const root = '/home/daytona/workspace';
 
 		const materialized = await materializeRuntimeSkillsIntoWorkspace({
+			logger: mockLogger,
 			source,
 			workspace,
 			root,
@@ -215,27 +230,17 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const loadTool = createSkillLoadTool(materialized.source);
 		const result = await loadTool.handler?.({ skillId: 'data-table-manager' }, {});
 
-		expect(result).toMatchObject({
-			success: true,
-			skillId: 'data-table-manager',
-			name: 'data-table-manager',
-			skillDir: `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/data-table-manager`,
-		});
-		if (
-			!result ||
-			typeof result !== 'object' ||
-			!('content' in result) ||
-			typeof result.content !== 'string'
-		) {
-			throw new Error('Expected load_skill to return materialized skill content');
-		}
-		expect(result.content).toContain('references/data-table-playbook.md');
+		const text = skillLoadText(result);
+		expect(text).toContain('[Skill: "data-table-manager"]');
+		expect(text).toContain(`${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/data-table-manager`);
+		expect(text).toContain('references/data-table-playbook.md');
 	});
 
 	it('materializes skills into the workspace before load_skill reads them', async () => {
 		const source = loadInstanceAiRuntimeSkillSource();
 		const { workspace, writes, executeCommand } = createMockWorkspace();
 		const runtimeSource = createLazyWorkspaceRuntimeSkillSource({
+			logger: mockLogger,
 			source,
 			workspace,
 		});
@@ -248,12 +253,9 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 
 		expect(executeCommand).toHaveBeenCalledTimes(1);
 		expect(writes.get(skillPath)).toContain('data-tables');
-		expect(result).toMatchObject({
-			success: true,
-			skillId: 'data-table-manager',
-			path: skillPath,
-			skillDir,
-		});
+		const text = skillLoadText(result);
+		expect(text).toContain('[Skill: "data-table-manager"]');
+		expect(text).toContain(skillPath);
 
 		await loadTool.handler?.({ skillId: 'data-table-manager' }, {});
 
@@ -264,11 +266,14 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const source = loadInstanceAiRuntimeSkillSource();
 		const { workspace, writes, executeCommand, writeFile } = createMockWorkspace();
 		const root = '/home/daytona/workspace';
-		const bundle = await buildRuntimeSkillWorkspaceBundle({ source, root });
+		const bundle = await buildRuntimeSkillWorkspaceBundle({ source, root, logger: mockLogger });
 		if (!bundle) throw new Error('Expected runtime skill bundle');
-		writes.set(bundle.manifestPath, bundle.files.get(bundle.manifestPath) ?? '');
+		for (const [path, content] of bundle.files) {
+			writes.set(path, content);
+		}
 
 		const runtimeSource = createLazyWorkspaceRuntimeSkillSource({
+			logger: mockLogger,
 			source,
 			workspace,
 		});
@@ -279,13 +284,10 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const skillPath = `${skillDir}/SKILL.md`;
 		expect(executeCommand).toHaveBeenCalledTimes(1);
 		expect(writeFile).not.toHaveBeenCalled();
-		expect(writes.get(skillPath)).toBeUndefined();
-		expect(result).toMatchObject({
-			success: true,
-			skillId: 'data-table-manager',
-			path: skillPath,
-			skillDir,
-		});
+		expect(writes.get(skillPath)).toContain('data-tables');
+		const text = skillLoadText(result);
+		expect(text).toContain('[Skill: "data-table-manager"]');
+		expect(text).toContain(skillPath);
 	});
 
 	it('falls back to live materialization when the prebaked manifest is stale', async () => {
@@ -302,6 +304,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		);
 
 		const runtimeSource = createLazyWorkspaceRuntimeSkillSource({
+			logger: mockLogger,
 			source,
 			workspace,
 		});
@@ -322,6 +325,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		writes.set(manifestPath, 'not json');
 
 		const runtimeSource = createLazyWorkspaceRuntimeSkillSource({
+			logger: mockLogger,
 			source,
 			workspace,
 		});
@@ -340,6 +344,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 
 		await expect(
 			materializeRuntimeSkillsIntoWorkspace({
+				logger: mockLogger,
 				source,
 				workspace,
 				root: '/home/daytona/workspace',
@@ -372,7 +377,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 				}),
 		};
 		const { workspace } = createMockWorkspace();
-		const logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
+		const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
 
 		await materializeRuntimeSkillsIntoWorkspace({
 			source,
@@ -381,12 +386,16 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 			logger,
 		});
 
-		const [[message, meta]] = logger.warn.mock.calls as [
-			[string, { skill?: unknown; bytes?: unknown; maxBytes?: unknown }],
-		];
+		const warnMock = logger.warn as Mock<
+			(message: string, meta?: { skill?: unknown; bytes?: unknown; maxBytes?: unknown }) => void
+		>;
+		const limitWarnCall = warnMock.mock.calls.find(
+			(call) => call[0] === 'Runtime skill file exceeds load_skill output limit',
+		);
+		expect(limitWarnCall).toBeDefined();
+		const [message, meta] = limitWarnCall!;
 		expect(message).toBe('Runtime skill file exceeds load_skill output limit');
-		expect(meta.skill).toBe('large-skill');
-		expect(typeof meta.bytes).toBe('number');
-		expect(meta.maxBytes).toBe(runtimeSkillMaxOutputBytes);
+		expect(meta?.skill).toBe('large-skill');
+		expect(meta?.maxBytes).toBe(runtimeSkillMaxOutputBytes);
 	});
 });

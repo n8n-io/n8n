@@ -1,12 +1,14 @@
 import * as download from '../../../../v2/actions/file/download.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction, driveNode } from '../helpers';
+import type { Mock } from 'vitest';
+import type * as _importType0 from '../../../../v2/transport';
 
-jest.mock('../../../../v2/transport', () => {
-	const originalModule = jest.requireActual('../../../../v2/transport');
+vi.mock('../../../../v2/transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../../../v2/transport');
 	return {
 		...originalModule,
-		googleApiRequest: jest.fn(async function () {
+		googleApiRequest: vi.fn(async function () {
 			return {};
 		}),
 	};
@@ -14,7 +16,7 @@ jest.mock('../../../../v2/transport', () => {
 
 describe('test GoogleDriveV2: file download', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should be called with', async () => {
@@ -68,7 +70,7 @@ describe('test GoogleDriveV2: file download', () => {
 			},
 		};
 
-		(transport.googleApiRequest as jest.Mock)
+		(transport.googleApiRequest as Mock)
 			.mockResolvedValueOnce({ mimeType: 'application/vnd.google-apps.document', name: 'test' })
 			.mockResolvedValueOnce({
 				headers: { 'content-type': 'text/markdown' },

@@ -4,6 +4,7 @@ import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
+import { inE2ETests } from '@/constants';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -12,6 +13,7 @@ import { McpRegistryServerRepository } from './mcp-registry-server.repository';
 import { McpRegistryNodeLoader } from '../mcp-registry-node-loader';
 import type { McpRegistryServerMetadata } from './mcp-registry-api.client';
 import { McpRegistryApiClient } from './mcp-registry-api.client';
+import { searchMcpRegistryServers, type McpRegistrySearchResult } from './mcp-registry-search';
 import type { McpRegistryServer } from './mcp-registry.types';
 import { toEntity, fromEntity } from './mcp-registry.types';
 import { MCP_REGISTRY_PACKAGE_NAME } from '../node-description-transform';
@@ -44,7 +46,10 @@ export class McpRegistryService {
 
 	async init(): Promise<void> {
 		await this.refreshRegistryNodeTypes(false);
-		if (this.instanceSettings.isLeader) {
+		// In E2E the registry is populated deterministically via the test seed
+		// endpoint; skip the remote refresh so tests never reach api.n8n.io and
+		// the background refresh can't race the seed.
+		if (this.instanceSettings.isLeader && !inE2ETests) {
 			// don't want to wait for API calls to block on init
 			void this.refreshFromApi('startup');
 			this.startPeriodicRefresh();
@@ -53,6 +58,7 @@ export class McpRegistryService {
 
 	@OnLeaderTakeover()
 	async onLeaderTakeover(): Promise<void> {
+		if (inE2ETests) return;
 		await this.refreshFromApi('leader-takeover');
 		this.startPeriodicRefresh();
 	}
@@ -88,6 +94,24 @@ export class McpRegistryService {
 	async get(slug: string): Promise<McpRegistryServer | undefined> {
 		const entity = await this.repository.findOneBy({ slug });
 		return entity ? fromEntity(entity) : undefined;
+	}
+
+	async getBySlugs(slugs: string[]): Promise<McpRegistryServer[]> {
+		if (slugs.length === 0) {
+			return [];
+		}
+
+		const entities = await this.repository.findBy(slugs.map((slug) => ({ slug })));
+		return entities.map(fromEntity);
+	}
+
+	/**
+	 * Match active registry servers against free-text queries and return them in
+	 * the config-ready shape used by the agent-builder tools. Centralizes the
+	 * matching + mapping that used to be re-implemented per call site.
+	 */
+	async search(queries: string[]): Promise<McpRegistrySearchResult[]> {
+		return searchMcpRegistryServers(await this.getAll(), queries);
 	}
 
 	private startPeriodicRefresh(): void {

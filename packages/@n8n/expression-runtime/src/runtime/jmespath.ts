@@ -36,18 +36,26 @@ const unsafeJmespathPropertyPattern = new RegExp(
 /**
  * In-isolate `$jmespath` / `$jmesPath` implementation.
  *
- * Mirrors the host-side wrapper in `packages/workflow/src/workflow-data-proxy.ts`
- * so that expressions resolve `$jmespath` from the in-isolate runtime via
- * Tournament's polyfill. `$jmespath` is a pure utility — it takes its
- * data as an argument and runs a query on it, with no need for host
- * context. Keeping it in-isolate means it does not appear as a
- * host-callable on the bridge, which shrinks the host-callable surface
- * the isolate can reach.
+ * In-isolate counterpart of the host-side wrapper in
+ * `packages/workflow/src/workflow-data-proxy.ts`, so that expressions
+ * resolve `$jmespath` from the in-isolate runtime via Tournament's
+ * polyfill. `$jmespath` is a pure utility — it takes its data as an
+ * argument and runs a query on it, with no need for host context.
+ * Keeping it in-isolate means it does not appear as a host-callable on
+ * the bridge, which shrinks the host-callable surface the isolate can
+ * reach.
  *
- * Behavioural parity with the host wrapper:
+ * Relationship to the host wrapper — same observable contract,
+ * deliberately different internals:
  *   - Throws `ExpressionError` (same name) when args are wrong.
  *   - Rejects queries that contain unsafe property tokens.
- *   - Spreads non-array, non-null objects to drop proxies at the top level.
+ *   - Does NOT spread `data` before querying. Host-side, the top-level
+ *     spread exists to strip proxies off the data before handing it to
+ *     jmespath; in-isolate that is a no-op (nested values stay lazy
+ *     proxies either way, and the isolate boundary already prevents
+ *     host-object leakage), while spreading a lazy proxy (e.g. `$json`)
+ *     would cost one synchronous host roundtrip per top-level key
+ *     before the query even runs.
  *
  * Note on lazy proxies: when `data` is a lazy proxy (e.g. `$json`), each
  * property access during `jmespath.search` triggers a synchronous host
@@ -69,10 +77,5 @@ export function jmesPath(data: unknown, query: string): unknown {
 		);
 	}
 
-	if (data !== null && !Array.isArray(data) && typeof data === 'object') {
-		return jmespath.search({ ...(data as Record<string, unknown>) }, query);
-	}
-
-	// Array or null — pass through to jmespath which accepts both
 	return jmespath.search(data as never, query);
 }

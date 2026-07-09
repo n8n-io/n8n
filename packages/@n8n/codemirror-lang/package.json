@@ -1,6 +1,6 @@
 {
   "name": "@n8n/codemirror-lang",
-  "version": "0.6.0",
+  "version": "0.10.0",
   "description": "Language support package for CodeMirror 6 in n8n",
   "sideEffects": false,
   "license": "MIT",
@@ -31,6 +31,7 @@
     "generate:expressions:grammar": "lezer-generator --typeScript --output src/expressions/grammar.ts src/expressions/expressions.grammar",
     "generate": "pnpm generate:expressions:grammar && pnpm format",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "test": "vitest run",
     "test:unit": "vitest run",
     "lint": "eslint . --quiet",
@@ -38,15 +39,16 @@
     "format": "biome format --write src test",
     "format:check": "biome ci src test"
   },
-  "peerDependencies": {
+  "dependencies": {
     "@codemirror/language": "catalog:",
     "@lezer/highlight": "catalog:",
-    "@lezer/lr": "catalog:"
+    "@lezer/lr": "catalog:",
+    "@lezer/generator": "catalog:"
   },
   "devDependencies": {
-    "@lezer/generator": "catalog:",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "vite": "catalog:",
     "vitest": "catalog:"
   }
 }

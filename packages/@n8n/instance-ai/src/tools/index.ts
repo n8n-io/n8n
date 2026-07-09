@@ -27,16 +27,12 @@ const loadExecutionsTool = lazyMod(
 	() => require('./executions.tool') as typeof import('./executions.tool'),
 );
 const loadNodesTool = lazyMod(() => require('./nodes.tool') as typeof import('./nodes.tool'));
-const loadBuildWorkflowAgentTool = lazyMod(
-	() =>
-		require('./orchestration/build-workflow-agent.tool') as typeof import('./orchestration/build-workflow-agent.tool'),
+const loadN8nDocsTool = lazyMod(
+	() => require('./n8n-docs.tool') as typeof import('./n8n-docs.tool'),
 );
 const loadCompleteCheckpointTool = lazyMod(
 	() =>
 		require('./orchestration/complete-checkpoint.tool') as typeof import('./orchestration/complete-checkpoint.tool'),
-);
-const loadDelegateTool = lazyMod(
-	() => require('./orchestration/delegate.tool') as typeof import('./orchestration/delegate.tool'),
 );
 const loadEvalDataAgentTool = lazyMod(
 	() =>
@@ -45,10 +41,6 @@ const loadEvalDataAgentTool = lazyMod(
 const loadEvalSetupAgentTool = lazyMod(
 	() =>
 		require('./orchestration/eval-setup-agent.tool') as typeof import('./orchestration/eval-setup-agent.tool'),
-);
-const loadPlanWithAgentTool = lazyMod(
-	() =>
-		require('./orchestration/plan-with-agent.tool') as typeof import('./orchestration/plan-with-agent.tool'),
 );
 const loadPlanTool = lazyMod(
 	() => require('./orchestration/plan.tool') as typeof import('./orchestration/plan.tool'),
@@ -87,7 +79,7 @@ const loadWorkspaceTool = lazyMod(
 
 /**
  * Creates all native n8n domain tools with the full action surface.
- * Used for delegate/builder tool resolution — sub-agents get unrestricted access.
+ * Used for sub-agent tool resolution — sub-agents get unrestricted access.
  */
 export function createAllTools(context: InstanceAiContext): InstanceAiToolRegistry {
 	const tools: Array<[string, BuiltTool]> = [
@@ -98,6 +90,7 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 		[DOMAIN_TOOL_IDS.DATA_TABLES, loadDataTablesTool().createDataTablesTool(context)],
 		[DOMAIN_TOOL_IDS.WORKSPACE, loadWorkspaceTool().createWorkspaceTool(context)],
 		[DOMAIN_TOOL_IDS.RESEARCH, loadResearchTool().createResearchTool(context)],
+		[DOMAIN_TOOL_IDS.N8N_DOCS, loadN8nDocsTool().createN8nDocsTool(context)],
 		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.ASK_USER, loadAskUserTool().createAskUserTool()],
 		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
@@ -111,9 +104,9 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 }
 
 /**
- * Creates orchestrator-scoped domain tools. Workflow and node tools keep
- * orchestrator-specific surfaces; data tables stay writable so the
- * data-table-manager skill can act directly without delegating.
+ * Creates orchestrator domain tools. Skills run in the orchestrator now, so
+ * domain tools keep their workflow-building surface while hiding raw full
+ * WorkflowJSON update actions.
  */
 export function createOrchestratorDomainTools(context: InstanceAiContext): InstanceAiToolRegistry {
 	const tools: Array<[string, BuiltTool]> = [
@@ -124,8 +117,10 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 		[DOMAIN_TOOL_IDS.DATA_TABLES, loadDataTablesTool().createDataTablesTool(context)],
 		[DOMAIN_TOOL_IDS.WORKSPACE, loadWorkspaceTool().createWorkspaceTool(context)],
 		[DOMAIN_TOOL_IDS.RESEARCH, loadResearchTool().createResearchTool(context)],
-		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context, 'orchestrator')],
+		[DOMAIN_TOOL_IDS.N8N_DOCS, loadN8nDocsTool().createN8nDocsTool(context)],
+		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.ASK_USER, loadAskUserTool().createAskUserTool()],
+		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
 	];
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {
@@ -136,19 +131,13 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 }
 
 /**
- * Creates orchestration-only tools (planner, delegation, task control).
+ * Creates orchestration-only tools (task planning, task control).
  * These tools are given to the orchestrator agent but never to sub-agents.
  */
 export function createOrchestrationTools(context: OrchestrationContext): InstanceAiToolRegistry {
 	const tools: Array<[string, BuiltTool]> = [
-		[ORCHESTRATION_TOOL_IDS.PLAN, loadPlanWithAgentTool().createPlanWithAgentTool(context)],
 		[ORCHESTRATION_TOOL_IDS.CREATE_TASKS, loadPlanTool().createPlanTool(context)],
 		[ORCHESTRATION_TOOL_IDS.TASK_CONTROL, loadTaskControlTool().createTaskControlTool(context)],
-		[ORCHESTRATION_TOOL_IDS.DELEGATE, loadDelegateTool().createDelegateTool(context)],
-		[
-			ORCHESTRATION_TOOL_IDS.BUILD_WORKFLOW_WITH_AGENT,
-			loadBuildWorkflowAgentTool().createBuildWorkflowAgentTool(context),
-		],
 		[
 			ORCHESTRATION_TOOL_IDS.COMPLETE_CHECKPOINT,
 			loadCompleteCheckpointTool().createCompleteCheckpointTool(context),

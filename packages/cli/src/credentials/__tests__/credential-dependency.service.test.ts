@@ -1,7 +1,7 @@
 import type { CredentialDependencyRepository, SecretsProviderConnectionRepository } from '@n8n/db';
 import { In } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	CredentialDependencyService,
@@ -17,7 +17,7 @@ describe('CredentialDependencyService', () => {
 	);
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('resolveExternalSecretsStoreDependencyFilter', () => {

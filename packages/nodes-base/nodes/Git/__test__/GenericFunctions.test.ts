@@ -1,4 +1,4 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { ConfigListSummary } from 'simple-git';
 
 import { mapGitConfigList } from '../GenericFunctions';

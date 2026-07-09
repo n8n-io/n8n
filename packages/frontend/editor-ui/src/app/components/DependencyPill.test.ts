@@ -29,10 +29,11 @@ let mockDepsResult:
 	  }
 	| undefined;
 
+const fetchDependenciesMock = vi.fn();
 vi.mock('@/app/composables/useDependencies', () => ({
 	useDependencies: () => ({
 		getDependencies: () => mockDepsResult,
-		fetchDependencies: vi.fn(),
+		fetchDependencies: fetchDependenciesMock,
 		getTotalCount: () => 0,
 	}),
 }));
@@ -282,6 +283,36 @@ describe('DependencyPill', () => {
 		capturedOpenHandler?.(false);
 
 		expect(telemetryTrackMock).not.toHaveBeenCalled();
+	});
+
+	it('should fetch dependencies when dropdown opens', () => {
+		renderComponent({ props: defaultProps });
+
+		capturedOpenHandler?.(true);
+
+		expect(fetchDependenciesMock).toHaveBeenCalledWith(['wf-test'], 'workflow');
+	});
+
+	it('should refetch dependencies on every open even when already cached', async () => {
+		mockDepsResult = createDepsResult();
+		renderComponent({ props: defaultProps });
+
+		capturedOpenHandler?.(true);
+		await vi.waitFor(() => expect(fetchDependenciesMock).toHaveBeenCalledTimes(1));
+		// Let the first toggle handler finish so the loading flag resets
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		capturedOpenHandler?.(false);
+		capturedOpenHandler?.(true);
+		await vi.waitFor(() => expect(fetchDependenciesMock).toHaveBeenCalledTimes(2));
+	});
+
+	it('should not fetch dependencies when dropdown closes', () => {
+		renderComponent({ props: defaultProps });
+
+		capturedOpenHandler?.(false);
+
+		expect(fetchDependenciesMock).not.toHaveBeenCalled();
 	});
 
 	it('should include inaccessible count in badge total', () => {

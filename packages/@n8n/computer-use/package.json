@@ -1,6 +1,6 @@
 {
   "name": "@n8n/computer-use",
-  "version": "0.8.0",
+  "version": "0.14.0",
   "description": "Local AI gateway for n8n AI Assistant — filesystem, shell, screenshots, mouse/keyboard, and browser automation",
   "publishConfig": {
     "bin": {
@@ -13,14 +13,15 @@
     "dev": "pnpm build && (pnpm watch & pnpm start)",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write src",
     "format:check": "biome ci src",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
-    "test": "jest",
-    "test:unit": "jest",
-    "test:dev": "jest --watch"
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --silent=false"
   },
   "main": "dist/cli.js",
   "exports": {
@@ -37,15 +38,16 @@
     "dist/**/*"
   ],
   "dependencies": {
-    "@anthropic-ai/sandbox-runtime": "^0.0.42",
+    "@anthropic-ai/sandbox-runtime": "^0.0.61",
     "@inquirer/prompts": "^8.3.2",
     "@jitsi/robotjs": "^0.6.21",
-    "@modelcontextprotocol/sdk": "1.26.0",
+    "@modelcontextprotocol/sdk": "catalog:",
     "@n8n/mcp-browser": "workspace:*",
     "@napi-rs/image": "^1.12.0",
     "@vscode/ripgrep": "^1.17.1",
     "eventsource": "^3.0.6",
     "fast-glob": "catalog:",
+    "mime-types": "catalog:",
     "node-screenshots": "^0.2.8",
     "picocolors": "catalog:",
     "yargs-parser": "21.1.1",
@@ -54,7 +56,13 @@
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "@types/mime-types": "catalog:",
     "@types/node": "catalog:",
-    "@types/yargs-parser": "21.0.0"
-  }
+    "@types/yargs-parser": "21.0.0",
+    "@vitest/coverage-v8": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

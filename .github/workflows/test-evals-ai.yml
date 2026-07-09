@@ -114,13 +114,14 @@ jobs:
           BRANCH: ${{ inputs.branch || 'master' }}
           SPEC_REPETITIONS: ${{ inputs.spec_repetitions || '1' }}
           SPEC_JUDGES: ${{ inputs.spec_judges || '1' }}
+          GITHUB_REF: ${{ github.ref_name }}
         run: |
           EVENT_NAME="${{ github.event_name }}"
 
           if [ "$EVENT_NAME" = "push" ]; then
             # Merge to master: spec evals use 1 rep, 1 judge
             {
-              echo "branch=${{ github.ref_name }}"
+              echo "branch=$GITHUB_REF"
               echo "spec_repetitions=1"
               echo "spec_judges=1"
               echo "experiment_prefix="

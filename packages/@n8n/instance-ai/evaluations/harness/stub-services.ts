@@ -18,6 +18,7 @@
 // even though they synchronously return canned data — there's nothing to
 // await here.
 
+import { isRecord } from '@n8n/utils/is-record';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { jsonParse } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
@@ -33,6 +34,7 @@ import {
 	resolveNodeTypeDefinition,
 } from '../../../../cli/src/modules/instance-ai/node-definition-resolver';
 import type {
+	InstanceAiAgentBuilderService,
 	InstanceAiContext,
 	InstanceAiCredentialService,
 	InstanceAiDataTableService,
@@ -43,10 +45,17 @@ import type {
 	SearchableNodeDescription,
 	WorkflowDetail,
 } from '../../src/types';
+import { isAgentFeatureEnabled } from '../../src/utils/agent-feature-enabled';
 
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
+
+// Single version id reported for every stubbed workflow. The stub doesn't model
+// version increments, so create/update, getWorkflowHead, and getWorkflowSnapshot
+// must all report the same value — otherwise the build-workflow patch cache
+// always sees a version mismatch and the cache-hit path is never exercised.
+const EVAL_WORKFLOW_VERSION_ID = 'eval-version';
 
 export interface StubServiceHandle {
 	context: InstanceAiContext;
@@ -58,7 +67,7 @@ export interface CreateStubServicesOptions {
 	/**
 	 * Absolute path to the nodes.json file produced by
 	 * `ai-workflow-builder.ee/pnpm export:nodes`. Required — the agent's
-	 * builder sub-agent needs a non-empty node catalogue.
+	 * workflow-builder skill path needs a non-empty node catalogue.
 	 */
 	nodesJsonPath: string;
 	/** Optional user id. */
@@ -82,6 +91,17 @@ export async function createStubServices(
 		async getAsWorkflowJSON(workflowId: string) {
 			const latest = capturedWorkflows[capturedWorkflows.length - 1];
 			return latest ?? { id: workflowId, name: 'empty', nodes: [], connections: {} };
+		},
+		async getWorkflowHead() {
+			return { versionId: EVAL_WORKFLOW_VERSION_ID, updatedAt: 0 };
+		},
+		async getWorkflowSnapshot(workflowId: string) {
+			const latest = capturedWorkflows[capturedWorkflows.length - 1];
+			return {
+				json: latest ?? { id: workflowId, name: 'empty', nodes: [], connections: {} },
+				versionId: EVAL_WORKFLOW_VERSION_ID,
+				updatedAt: 0,
+			};
 		},
 		async createFromWorkflowJSON(json: WorkflowJSON) {
 			capturedWorkflows.push(json);
@@ -189,14 +209,10 @@ export async function createStubServices(
 		async list() {
 			return [];
 		},
-		// `verify-built-workflow` invokes `executionService.run()` after
-		// `submit-workflow` has captured the TS-compiled workflow JSON. The eval
-		// has no execution backend, but we want the builder agent's submit →
-		// verify → done sequence to complete cleanly so the production briefing
-		// (`DETACHED_BUILDER_REQUIREMENTS`) reads coherently. Returning a
-		// synthetic success here lets the agent terminate after submit. The
-		// eval's `buildSuccess` metric is derived from `submit-workflow` capture
-		// — never from this synthetic verdict — so this can't inflate the score.
+		// `verify-built-workflow` invokes `executionService.run()` after the
+		// eval has captured a built workflow JSON. The eval has no execution
+		// backend, so return a synthetic success to keep discovery runs focused
+		// on tool dispatch rather than workflow execution fidelity.
 		async run(workflowId) {
 			return {
 				executionId: 'eval-exec-' + nanoid(),
@@ -289,9 +305,85 @@ export async function createStubServices(
 		credentialService,
 		nodeService,
 		dataTableService,
+		// Mirror production gating: the CLI only injects agentBuilderService when
+		// the agents module is active. Providing the stub here makes the
+		// `agent_builder` router register in agents-on eval runs, so leak checks
+		// exercise the same tool surface production would have.
+		...(isAgentFeatureEnabled() ? { agentBuilderService: createStubAgentBuilderService() } : {}),
 	};
 
 	return { context, capturedWorkflows };
+}
+
+/**
+ * Canned no-op implementation of the agent-builder port. Discovery evals
+ * measure dispatch decisions, not agent persistence — every method returns
+ * minimal valid data.
+ */
+function createStubAgentBuilderService(): InstanceAiAgentBuilderService {
+	return {
+		async createAgent(name, projectId) {
+			return { agentId: 'eval-agent-' + nanoid(6), projectId: projectId ?? 'eval-project', name };
+		},
+		async getConfigSnapshot() {
+			return { config: null, updatedAt: null, versionId: null };
+		},
+		async updateConfig(_agentId, _projectId, config) {
+			return { config, updatedAt: new Date().toISOString(), versionId: 'eval-version' };
+		},
+		async createSkill(_agentId, _projectId, skill) {
+			return { id: 'eval-skill-' + nanoid(6), skill };
+		},
+		async createTask(_agentId, _projectId, task) {
+			return {
+				id: 'eval-task-' + nanoid(6),
+				name: task.name,
+				objective: task.objective,
+				cronExpression: task.cronExpression,
+			};
+		},
+		async describeCustomTool() {
+			return {
+				name: 'eval-custom-tool',
+				description: 'stub: custom tools unavailable in eval',
+				systemInstruction: null,
+				inputSchema: null,
+				outputSchema: null,
+				hasSuspend: false,
+				hasResume: false,
+				hasToMessage: false,
+				requireApproval: false,
+				providerOptions: null,
+			};
+		},
+		async buildCustomTool() {
+			return { id: 'eval-custom-tool-' + nanoid(6) };
+		},
+		async listChatIntegrations() {
+			return [];
+		},
+		async listProjectAgents() {
+			return [];
+		},
+		async listModels() {
+			return [];
+		},
+		async searchMcpServers() {
+			return [];
+		},
+		async verifyMcpServer() {
+			return { ok: false, error: 'stub: MCP verification unavailable in eval' };
+		},
+		async searchNodes() {
+			return { results: [] };
+		},
+		async resolveResourceLocatorOptions() {
+			return { options: [] };
+		},
+		async listAttachableWorkflows() {
+			return [];
+		},
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -491,10 +583,6 @@ function coerceHintPortMap(
 	return Object.keys(result).length > 0 ? result : undefined;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
 function coerceVersion(value: unknown): number | number[] {
 	if (typeof value === 'number') return value;
 	if (Array.isArray(value)) {
@@ -518,7 +606,7 @@ function emptyWorkflowDetail(id: string): WorkflowDetail {
 	return {
 		id,
 		name: 'eval-workflow',
-		versionId: 'v1',
+		versionId: EVAL_WORKFLOW_VERSION_ID,
 		activeVersionId: null,
 		isArchived: false,
 		createdAt: now,

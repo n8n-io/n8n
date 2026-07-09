@@ -1,5 +1,5 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -11,17 +11,18 @@ import { NodeApiError } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { Harvest } from '../Harvest.node';
+import type { MockedFunction } from 'vitest';
 
-jest.mock('../GenericFunctions');
+vi.mock('../GenericFunctions');
 
 describe('Harvest Node', () => {
 	let harvest: Harvest;
 	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
 
-	const mockHarvestApiRequest = GenericFunctions.harvestApiRequest as jest.MockedFunction<
+	const mockHarvestApiRequest = GenericFunctions.harvestApiRequest as MockedFunction<
 		typeof GenericFunctions.harvestApiRequest
 	>;
-	const mockGetAllResource = GenericFunctions.getAllResource as jest.MockedFunction<
+	const mockGetAllResource = GenericFunctions.getAllResource as MockedFunction<
 		typeof GenericFunctions.getAllResource
 	>;
 
@@ -38,7 +39,7 @@ describe('Harvest Node', () => {
 		harvest = new Harvest();
 		mockExecuteFunctions = mock<IExecuteFunctions>({
 			helpers: {
-				constructExecutionMetaData: jest.fn(
+				constructExecutionMetaData: vi.fn(
 					(
 						data: INodeExecutionData[],
 						options: { itemData: IPairedItemData | IPairedItemData[] },
@@ -50,13 +51,13 @@ describe('Harvest Node', () => {
 						return data.map((item) => ({ ...item, pairedItem: { item: itemIndex } }));
 					},
 				),
-				returnJsonArray: jest.fn((data: IDataObject | IDataObject[]) =>
+				returnJsonArray: vi.fn((data: IDataObject | IDataObject[]) =>
 					Array.isArray(data) ? data.map((d) => ({ json: d })) : [{ json: data }],
 				),
 			},
 		});
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);

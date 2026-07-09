@@ -1,26 +1,27 @@
+import { ref } from 'vue';
 import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { createTestingPinia } from '@pinia/testing';
 import CanvasNodeToolbar from './CanvasNodeToolbar.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
+import { getTooltip, hoverTooltipTrigger, mockedStore } from '@/__tests__/utils';
 import {
 	createCanvasNodeProvide,
 	createCanvasProvide,
 } from '@/features/workflows/canvas/__tests__/utils';
 import { CanvasNodeRenderType } from '../../../canvas.types';
 import { createPinia, setActivePinia, type Pinia } from 'pinia';
+import { EditorEnabledFeaturesKey } from '@/app/constants/injectionKeys';
+import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
-vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>()),
-	injectCanvasRenderData: vi.fn(() => ({
-		value: {
-			nodeInputsByNodeId: new Map(),
-			nodeOutputsByNodeId: new Map(),
-			pinnedDataByNodeName: {},
-			executionIssuesByNodeName: new Map(),
-		},
-	})),
-}));
+vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>();
+	return {
+		...actual,
+		injectCanvasRenderData: vi.fn(() => ({ value: actual.createEmptyCanvasRenderData() })),
+	};
+});
 
 const renderComponent = createComponentRenderer(CanvasNodeToolbar);
 
@@ -275,6 +276,120 @@ describe('CanvasNodeToolbar', () => {
 		await userEvent.hover(toolbar);
 
 		expect(toolbar).toHaveClass('forceVisible');
+	});
+
+	describe('Add to AI button', () => {
+		// The focused-nodes experiment and the instance-wide AI flags gate the
+		// button; enable both so only the per-editor host override varies.
+		const setupAiStores = () => {
+			const testingPinia = createTestingPinia();
+			setActivePinia(testingPinia);
+			mockedStore(useFocusedNodesStore).isFeatureEnabled = true;
+			mockedStore(useSettingsStore).isAiAssistantEnabled = true;
+			return testingPinia;
+		};
+
+		it('should show when the focused-nodes feature is on and no host restricts AI', () => {
+			const { getByTestId } = renderComponent({
+				pinia: setupAiStores(),
+				global: {
+					provide: {
+						...createCanvasNodeProvide(),
+						...createCanvasProvide(),
+					},
+				},
+			});
+
+			expect(getByTestId('add-to-ai-button')).toBeInTheDocument();
+		});
+
+		it('should hide when the editor host disables AI (per-editor override)', () => {
+			const { queryByTestId } = renderComponent({
+				pinia: setupAiStores(),
+				global: {
+					provide: {
+						...createCanvasNodeProvide(),
+						...createCanvasProvide(),
+						[EditorEnabledFeaturesKey]: ref({
+							aiAssistant: false,
+							aiBuilder: false,
+							askAi: false,
+						}),
+					},
+				},
+			});
+
+			expect(queryByTestId('add-to-ai-button')).not.toBeInTheDocument();
+		});
+	});
+
+	// ADO-5556: All icon-only node hover actions (except "Add to n8n AI") lack an
+	// explanatory tooltip. They only carry a native `title`/`aria-label`, so no
+	// styled tooltip appears on hover to label the control.
+	describe('hover action tooltips (ADO-5556)', () => {
+		it('should show a tooltip labelling the execute step action on hover', async () => {
+			const { getByTestId } = renderComponent({
+				pinia,
+				global: {
+					provide: {
+						...createCanvasNodeProvide(),
+						...createCanvasProvide(),
+					},
+				},
+			});
+
+			await hoverTooltipTrigger(getByTestId('execute-node-button'));
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('Execute step'));
+		});
+
+		it('should show a tooltip labelling the deactivate action on hover', async () => {
+			const { getByTestId } = renderComponent({
+				pinia,
+				global: {
+					provide: {
+						...createCanvasNodeProvide(),
+						...createCanvasProvide(),
+					},
+				},
+			});
+
+			await hoverTooltipTrigger(getByTestId('disable-node-button'));
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('Deactivate'));
+		});
+
+		it('should show a tooltip labelling the delete action on hover', async () => {
+			const { getByTestId } = renderComponent({
+				pinia,
+				global: {
+					provide: {
+						...createCanvasNodeProvide(),
+						...createCanvasProvide(),
+					},
+				},
+			});
+
+			await hoverTooltipTrigger(getByTestId('delete-node-button'));
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('Delete'));
+		});
+
+		it('should show a tooltip labelling the more actions button on hover', async () => {
+			const { getByTestId } = renderComponent({
+				pinia,
+				global: {
+					provide: {
+						...createCanvasNodeProvide(),
+						...createCanvasProvide(),
+					},
+				},
+			});
+
+			await hoverTooltipTrigger(getByTestId('overflow-node-button'));
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('More actions'));
+		});
 	});
 
 	it('should have "forceVisible" class when sticky color picker is visible', async () => {

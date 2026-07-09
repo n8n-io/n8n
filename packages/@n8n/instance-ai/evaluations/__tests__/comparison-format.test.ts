@@ -6,7 +6,12 @@ import {
 	type ScenarioCounts,
 } from '../comparison/compare';
 import { formatComparisonMarkdown, formatComparisonTerminal } from '../comparison/format';
-import type { MultiRunEvaluation, WorkflowTestCase, ExecutionScenarioResult } from '../types';
+import type {
+	MultiRunEvaluation,
+	WorkflowTestCase,
+	ExecutionScenarioResult,
+	BuildExpectationResult,
+} from '../types';
 
 function ok(result: ComparisonResult): ComparisonOutcome {
 	return { kind: 'ok', result };
@@ -34,12 +39,17 @@ function evaluation(
 		testCases?: Array<{
 			userText?: string;
 			buildSuccessCount?: number;
+			buildError?: string;
 			scenarios?: Array<{
 				name: string;
 				passCount: number;
 				passes: boolean[]; // per-iteration pass/fail
 				reasoning?: string;
 				failureCategory?: string;
+			}>;
+			expectations?: Array<{
+				text: string;
+				passes: Array<boolean | 'incomplete'>;
 			}>;
 		}>;
 	} = {},
@@ -62,6 +72,7 @@ function evaluation(
 			const buildSuccessCount = tc.buildSuccessCount ?? totalRuns;
 			const scenarios = (tc.scenarios ?? []).map((sa) => ({
 				scenario: testCase.executionScenarios.find((sc) => sc.name === sa.name)!,
+				evaluatedCount: sa.passes.length,
 				passCount: sa.passCount,
 				passRate: totalRuns > 0 ? sa.passCount / totalRuns : 0,
 				passAtK: new Array(totalRuns).fill(sa.passCount > 0 ? 1 : 0) as number[],
@@ -76,17 +87,46 @@ function evaluation(
 					}),
 				),
 			}));
+			const buildExpectations = (tc.expectations ?? []).map((ea) => {
+				const runs = ea.passes.map(
+					(pass): BuildExpectationResult => ({
+						expectation: ea.text,
+						pass: pass === true,
+						reason: pass === 'incomplete' ? '' : 'reason',
+						...(pass === 'incomplete' ? { incomplete: true } : {}),
+					}),
+				);
+				const evaluated = runs.filter((run) => !run.incomplete);
+				const passCount = evaluated.filter((run) => run.pass).length;
+				return {
+					expectation: ea.text,
+					runs,
+					evaluatedCount: evaluated.length,
+					passCount,
+					passRate: evaluated.length > 0 ? passCount / evaluated.length : 0,
+					passAtK: new Array(evaluated.length).fill(passCount > 0 ? 1 : 0) as number[],
+					passHatK: new Array(evaluated.length).fill(
+						passCount === evaluated.length ? 1 : 0,
+					) as number[],
+				};
+			});
 			return {
 				testCase,
 				workflowBuildSuccess: buildSuccessCount > 0,
 				executionScenarioResults: [],
 				executionScenarios: scenarios,
-				runs: new Array(totalRuns).fill(null).map(() => ({
+				runs: new Array(totalRuns).fill(null).map((_, runIndex) => ({
 					testCase,
 					workflowBuildSuccess: buildSuccessCount > 0,
 					executionScenarioResults: [],
+					buildError: tc.buildError,
+					buildExpectationResults: buildExpectations.flatMap((ea) => {
+						const result = ea.runs[runIndex];
+						return result ? [result] : [];
+					}),
 				})),
 				buildSuccessCount,
+				buildExpectations,
 			};
 		}),
 	};
@@ -118,6 +158,33 @@ describe('formatComparisonMarkdown', () => {
 		expect(md).toMatch(/-100pp ↓/);
 	});
 
+	it('renders run-level pass metrics and the LangSmith experiment link when provided', () => {
+		const pr = bucket('pr', [s('a', 'happy', 0, 3)]);
+		const base = bucket('master-abc', [s('a', 'happy', 10, 10)]);
+		const md = formatComparisonMarkdown(evalFixture, ok(compareBuckets(pr, base)), {
+			passMetrics: { passAtK: 0.892, passHatK: 0.757 },
+			experimentUrl:
+				'https://eu.smith.langchain.com/o/org-1/datasets/ds-1/compare?selectedSessions=sess-1',
+		});
+
+		expect(md).toContain(
+			'_pass@3 89.2% · pass^3 75.7% · [LangSmith experiment](https://eu.smith.langchain.com/o/org-1/datasets/ds-1/compare?selectedSessions=sess-1)_',
+		);
+		// Rendered inside the header area, above the regression tables.
+		expect(md.indexOf('_pass@3 89.2%')).toBeLessThan(md.indexOf('#### Regressions'));
+	});
+
+	it('omits the run-meta line entirely when neither metrics nor URL are provided', () => {
+		const pr = bucket('pr', [s('a', 'happy', 0, 3)]);
+		const base = bucket('master-abc', [s('a', 'happy', 10, 10)]);
+		const md = formatComparisonMarkdown(evalFixture, ok(compareBuckets(pr, base)));
+
+		// The per-test-case table legitimately mentions pass@3 — assert only the
+		// meta line (leading underscore) is absent.
+		expect(md).not.toMatch(/_pass@3 /);
+		expect(md).not.toContain('LangSmith experiment');
+	});
+
 	it('uses TIP alert when there are only improvements', () => {
 		const pr = bucket('pr', [s('a', 'happy', 3, 3)]);
 		const base = bucket('master', [s('a', 'happy', 0, 10)]);
@@ -145,6 +212,43 @@ describe('formatComparisonMarkdown', () => {
 		expect(md).toMatch(/> \[!NOTE\]/);
 		expect(md).toMatch(/LangSmith disabled/);
 		expect(md).not.toMatch(/#### Regressions/);
+	});
+
+	it('counts build expectations in no-baseline build-only summaries', () => {
+		const buildOnly = evaluation({
+			totalRuns: 1,
+			testCases: [
+				{
+					userText: 'Build a workflow and ask a follow-up',
+					expectations: [
+						{ text: 'The workflow was built', passes: [true] },
+						{ text: 'The follow-up was asked', passes: [true] },
+					],
+				},
+			],
+		});
+		const slugs = slugMap(buildOnly, ['build-only']);
+
+		const md = formatComparisonMarkdown(
+			buildOnly,
+			{ kind: 'no_baseline' },
+			{ slugByTestCase: slugs },
+		);
+		expect(md).toContain(
+			'**Aggregate**: 100.0% pass (2/2 trials, 0 scenarios + 2 expectations, N=1)',
+		);
+		expect(md).toMatch(/\| `build-only` \| CHECKED \| 2\/2 \|/);
+
+		const terminal = formatComparisonTerminal(
+			buildOnly,
+			{ kind: 'no_baseline' },
+			{
+				slugByTestCase: slugs,
+			},
+		);
+		expect(terminal).toContain(
+			'Aggregate: 100.0% pass (2/2 trials, 0 scenarios + 2 expectations, N=1)',
+		);
 	});
 
 	it('renders distinct alerts per skip reason', () => {
@@ -181,13 +285,40 @@ describe('formatComparisonMarkdown', () => {
 		expect(md).toMatch(/#### Improvements/);
 	});
 
-	it('embeds commit SHA in heading when provided', () => {
+	it('omits commit SHA from the PR-comment heading even when provided', () => {
 		const pr = bucket('pr', [s('a', 'happy', 8, 10)]);
 		const base = bucket('master', [s('a', 'happy', 8, 10)]);
 		const md = formatComparisonMarkdown(evalFixture, ok(compareBuckets(pr, base)), {
 			commitSha: 'abc1234567890def',
 		});
-		expect(md).toMatch(/### Instance AI Workflow Eval — `abc12345`/);
+		expect(md).toContain('### Instance AI Workflow Eval');
+		expect(md).not.toContain('abc12345');
+	});
+
+	it('renders a self-seeded re-run command and button when a rerun hint is given', () => {
+		const md = formatComparisonMarkdown(
+			evalFixture,
+			{ kind: 'no_baseline' },
+			{
+				rerun: {
+					prNumber: '4242',
+					dispatchUrl: 'https://github.com/n8n-io/n8n/actions/workflows/ci-instance-ai-evals.yml',
+				},
+			},
+		);
+		expect(md).toContain('does not re-run on new commits');
+		expect(md).toContain('gh workflow run ci-instance-ai-evals.yml -f pr=4242');
+		expect(md).toContain(
+			'[Run workflow button](https://github.com/n8n-io/n8n/actions/workflows/ci-instance-ai-evals.yml)',
+		);
+		expect(md).toContain('**pr** = `4242`');
+	});
+
+	it('falls back to a generic re-run instruction when no rerun hint is given', () => {
+		const md = formatComparisonMarkdown(evalFixture, { kind: 'no_baseline' });
+		expect(md).toContain('does not re-run on new commits');
+		expect(md).toContain('dispatching the **Instance AI Evals: PR Gate** workflow');
+		expect(md).not.toContain('gh workflow run');
 	});
 
 	it('renders the Workflow checks table when at least one run has outcomes', () => {
@@ -222,6 +353,14 @@ describe('formatComparisonMarkdown', () => {
 				dimension: 'ai_nodes',
 				status: 'n_a',
 			},
+			{
+				name: 'fulfills_user_request',
+				description: 'd',
+				kind: 'llm',
+				dimension: 'intent_match',
+				status: 'error',
+				comment: 'LLM check "fulfills_user_request" timed out after 30000ms',
+			},
 		];
 		withChecks.testCases[0].runs[1].workflowChecks = [
 			{
@@ -245,6 +384,13 @@ describe('formatComparisonMarkdown', () => {
 				dimension: 'ai_nodes',
 				status: 'n_a',
 			},
+			{
+				name: 'fulfills_user_request',
+				description: 'd',
+				kind: 'llm',
+				dimension: 'intent_match',
+				status: 'pass',
+			},
 		];
 
 		const md = formatComparisonMarkdown(withChecks, { kind: 'no_baseline' });
@@ -254,17 +400,21 @@ describe('formatComparisonMarkdown', () => {
 		expect(md).toMatch(/`has_trigger`/);
 		expect(md).toMatch(/`valid_field_references`/);
 		expect(md).toMatch(/`agent_has_language_model`/);
-		// has_trigger → 2 pass, 0 fail, 0 N/A
+		// has_trigger → 2 pass, 0 fail, 0 N/A, 0 errors
 		expect(md).toMatch(
-			/\| `structure` \| `has_trigger` \| deterministic \| 2 \| 0 \| 0 \| 100% \|/,
+			/\| `structure` \| `has_trigger` \| deterministic \| 2 \| 0 \| 0 \| 0 \| 100% \|/,
 		);
-		// valid_field_references → 1 pass, 1 fail, 0 N/A → 50%
+		// valid_field_references → 1 pass, 1 fail, 0 N/A, 0 errors → 50%
 		expect(md).toMatch(
-			/\| `parameter_correctness` \| `valid_field_references` \| deterministic \| 1 \| 1 \| 0 \| 50% \|/,
+			/\| `parameter_correctness` \| `valid_field_references` \| deterministic \| 1 \| 1 \| 0 \| 0 \| 50% \|/,
 		);
 		// agent_has_language_model → 0/0 scored, 2 N/A
 		expect(md).toMatch(
-			/\| `ai_nodes` \| `agent_has_language_model` \| deterministic \| 0 \| 0 \| 2 \| — \|/,
+			/\| `ai_nodes` \| `agent_has_language_model` \| deterministic \| 0 \| 0 \| 2 \| 0 \| — \|/,
+		);
+		// fulfills_user_request → the errored run stays out of the denominator: 1/1 scored → 100%
+		expect(md).toMatch(
+			/\| `intent_match` \| `fulfills_user_request` \| llm \| 1 \| 0 \| 0 \| 1 \| 100% \|/,
 		);
 	});
 
@@ -377,8 +527,8 @@ describe('formatComparisonMarkdown', () => {
 			slugByTestCase: slugMap(evalWithFailures, ['cross-team-linear-report']),
 		});
 
-		expect(md).toMatch(/<summary>Failure details<\/summary>/);
-		expect(md).toMatch(/\*\*`cross-team-linear-report\/no-cross-team-issues`\*\* — 3 failed/);
+		expect(md).toMatch(/<summary>Failures \(1\)<\/summary>/);
+		expect(md).toMatch(/\*\*`cross-team-linear-report\/no-cross-team-issues`\*\* — passed 0\/3/);
 	});
 
 	it('attaches per-scenario failures to the right file slug when names collide', () => {
@@ -555,5 +705,47 @@ describe('formatComparisonTerminal', () => {
 		const base = bucket('master', [s('a', 'happy', 8, 10), s('b', 'happy', 5, 10)]);
 		const out = formatComparisonTerminal(evalFixture, ok(compareBuckets(pr, base)));
 		expect(out).toMatch(/partial: 1 baseline scenarios not run by PR/);
+	});
+
+	it('does not render workflow build failure text for process-only checks', () => {
+		const agentsEval = evaluation({
+			totalRuns: 1,
+			testCases: [
+					{
+						userText: 'workflow-scheduled-weather-and-agent',
+						buildSuccessCount: 0,
+						buildError: "Agent response: Here's the intent I'd detect",
+						expectations: [{ text: 'classifies the request intent', passes: [true] }],
+					},
+				],
+			});
+
+		const out = formatComparisonTerminal(agentsEval);
+
+		expect(out).toMatch(/CHECKED/);
+		expect(out).not.toMatch(/BUILD FAILED/);
+		expect(out).not.toMatch(/Agent response/);
+	});
+
+	it('counts evaluated expectations in the terminal aggregate', () => {
+		const agentsEval = evaluation({
+			totalRuns: 1,
+			testCases: [
+					{
+						userText: 'workflow-scheduled-weather-and-agent',
+						buildSuccessCount: 0,
+						expectations: [
+							{ text: 'does not build', passes: [true] },
+							{ text: 'classifies weather as workflow', passes: [true] },
+							{ text: 'classifies support as agent', passes: [true] },
+							{ text: 'brief reasoning only', passes: [true] },
+						],
+					},
+				],
+		});
+
+		const out = formatComparisonTerminal(agentsEval);
+
+		expect(out).toMatch(/Aggregate: 100\.0% pass \(4\/4 trials, 0 scenarios \+ 4 expectations, N=1\)/);
 	});
 });

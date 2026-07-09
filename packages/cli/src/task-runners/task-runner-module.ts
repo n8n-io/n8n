@@ -1,4 +1,4 @@
-import { Logger } from '@n8n/backend-common';
+import { inTest, Logger } from '@n8n/backend-common';
 import { TaskRunnersConfig } from '@n8n/config';
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -159,6 +159,10 @@ export class TaskRunnerModule {
 	private onRunnerRestartLoopDetected = async (error: TaskRunnerRestartLoopError) => {
 		this.logger.error(error.message);
 		this.errorReporter.error(error);
+
+		// A restart loop is unrecoverable, so exit and let the process manager
+		// restart n8n. Skip in tests, where exiting would kill the vi worker.
+		if (inTest) return;
 
 		// Allow some time for the error to be flushed
 		await sleep(1000);

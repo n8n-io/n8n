@@ -12,15 +12,30 @@ export class InstanceAiCheckpointRepository extends Repository<InstanceAiCheckpo
 	/**
 	 * Live (non-expired) checkpoints for a thread, newest first. Used to
 	 * surface in-flight messages from suspended runs whose `messageList`
-	 * hasn't been committed back to `instance_ai_messages` yet — the SDK
-	 * only saves the turn delta to memory at the end of a successful loop,
-	 * so messages from a turn that suspended at HITL live only in the
-	 * checkpoint blob until the run resumes and completes.
+	 * hasn't been committed back to `instance_ai_messages` yet. The inbound
+	 * user message is persisted on receipt, but the intermediate assistant
+	 * responses and pending tool-call from a turn suspended at HITL are only
+	 * committed at the end of a successful loop — until the run resumes and
+	 * completes, those artifacts live only in the checkpoint blob.
 	 */
 	async findActiveByThreadId(threadId: string): Promise<InstanceAiCheckpoint[]> {
 		return await this.find({
 			where: { threadId, expiredAt: IsNull() },
 			order: { createdAt: 'DESC' },
 		});
+	}
+
+	/**
+	 * Find the most recent active (non-expired) checkpoint for a given
+	 * resourceId. Sub-agent resourceIds are deterministically derived from the
+	 * parent thread and agent kind, so callers can compute the resourceId
+	 * without stashing it across suspend/resume cycles.
+	 */
+	async findActiveByResourceId(resourceId: string): Promise<InstanceAiCheckpoint | undefined> {
+		const row = await this.findOne({
+			where: { resourceId, expiredAt: IsNull() },
+			order: { createdAt: 'DESC' },
+		});
+		return row ?? undefined;
 	}
 }

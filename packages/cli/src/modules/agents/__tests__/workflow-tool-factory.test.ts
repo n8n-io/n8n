@@ -1,12 +1,9 @@
-import { mock } from 'jest-mock-extended';
-import type { WorkflowRepository, UserRepository } from '@n8n/db';
-import type { WorkflowEntity } from '@n8n/db';
+import type { WorkflowRepository, WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { WorkflowRunner } from '@/workflow-runner';
 import type { ActiveExecutions } from '@/active-executions';
-import type { ExecutionRepository } from '@n8n/db';
+import type { WorkflowRunner } from '@/workflow-runner';
 
 import {
 	normalizeTriggerInput,
@@ -85,31 +82,18 @@ function makeWorkflow(
 	} as unknown as WorkflowEntity;
 }
 
-function makeContext(workflowForUser: WorkflowEntity | null): WorkflowToolContext {
+function makeContext(foundWorkflow: WorkflowEntity | null): WorkflowToolContext {
 	const workflowRepository = mock<WorkflowRepository>();
-	const userRepository = mock<UserRepository>();
-	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowRunner = mock<WorkflowRunner>();
 	const activeExecutions = mock<ActiveExecutions>();
-	const executionRepository = mock<ExecutionRepository>();
 
-	// findOne returns a candidate workflow
-	workflowRepository.findOne.mockResolvedValue(workflowForUser ?? makeWorkflow());
-
-	// userRepository returns a dummy user
-	userRepository.findOne.mockResolvedValue({ id: 'user-1' } as never);
-
-	// workflowFinderService returns the full workflow for the user
-	workflowFinderService.findWorkflowForUser.mockResolvedValue(workflowForUser);
+	workflowRepository.findOne.mockResolvedValue(foundWorkflow);
 
 	return {
 		workflowRepository,
 		workflowRunner,
 		activeExecutions,
-		executionRepository,
-		workflowFinderService,
-		userRepository,
-		userId: 'user-1',
+		projectId: 'project-1',
 	};
 }
 
@@ -175,6 +159,27 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 			workflowId: 'wf-id-99',
 			workflowName: 'canonical-name',
 		});
+	});
+
+	it('scopes the workflow lookup to the project', async () => {
+		const workflow = makeWorkflow({ id: 'wf-scoped-1', name: 'Scoped Workflow' });
+		const context = makeContext(workflow);
+
+		await resolveWorkflowTool({ type: 'workflow', workflow: 'Scoped Workflow' }, context);
+
+		expect(context.workflowRepository.findOne).toHaveBeenCalledWith(
+			expect.objectContaining({
+				where: { name: 'Scoped Workflow', shared: { projectId: 'project-1' } },
+			}),
+		);
+	});
+
+	it('throws when the workflow is not shared with the project', async () => {
+		const context = makeContext(null);
+
+		await expect(
+			resolveWorkflowTool({ type: 'workflow', workflow: 'Missing Workflow' }, context),
+		).rejects.toThrow('Workflow "Missing Workflow" not found');
 	});
 });
 

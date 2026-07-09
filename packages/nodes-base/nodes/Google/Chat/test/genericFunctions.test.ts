@@ -1,13 +1,14 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { type IExecuteFunctions } from 'n8n-workflow';
 
 import * as googleHelpers from '../../GenericFunctions';
 import { googleApiRequest } from '../GenericFunctions';
+import type * as _importType0 from '../../GenericFunctions';
 
-jest.mock('../../GenericFunctions', () => ({
-	...jest.requireActual('../../GenericFunctions'),
-	getGoogleAccessToken: jest.fn().mockResolvedValue({ access_token: 'mock-access-token' }),
+vi.mock('../../GenericFunctions', async () => ({
+	...(await vi.importActual<typeof _importType0>('../../GenericFunctions')),
+	getGoogleAccessToken: vi.fn().mockResolvedValue({ access_token: 'mock-access-token' }),
 }));
 
 describe('Test GoogleChat, googleApiRequest', () => {
@@ -17,13 +18,13 @@ describe('Test GoogleChat, googleApiRequest', () => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 
 		mockExecuteFunctions.helpers = {
-			requestWithAuthentication: jest.fn().mockResolvedValue({}),
-			request: jest.fn().mockResolvedValue({}),
+			requestWithAuthentication: vi.fn().mockResolvedValue({}),
+			request: vi.fn().mockResolvedValue({}),
 		} as any;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should call requestWithAuthentication when authentication set to OAuth2', async () => {

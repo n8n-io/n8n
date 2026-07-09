@@ -34,9 +34,10 @@ vi.mock('@n8n/i18n', async (importOriginal) => {
 			baseText: vi.fn((key: string) => {
 				if (key === 'dataTable.dataTables') return 'Data Tables';
 				if (key === 'projects.menu.personal') return 'Personal';
-				if (key === 'dataTable.empty.label') return 'No data tables';
-				if (key === 'dataTable.empty.description') return 'No data tables description';
-				if (key === 'dataTable.empty.button.label') return 'Create data table';
+				if (key === 'dataTable.empty.heading') return 'Create your first data table';
+				if (key === 'dataTable.empty.description')
+					return 'Add your first data table to get started';
+				if (key === 'dataTable.add.button.label') return 'Create data table';
 				if (key === 'generic.rename') return 'Rename';
 				if (key === 'generic.delete') return 'Delete';
 				if (key === 'generic.clear') return 'Clear';
@@ -194,13 +195,70 @@ describe('DataTableView', () => {
 		beforeEach(() => {
 			dataTableStore.dataTables = [];
 			dataTableStore.totalCount = 0;
+			dataTableStore.projectPermissions = {
+				dataTable: { create: true },
+			} as typeof dataTableStore.projectPermissions;
+			sourceControlStore.preferences = {
+				branchReadOnly: false,
+			} as typeof sourceControlStore.preferences;
 		});
 
 		it('should show empty state when no data tables exist', async () => {
 			const { getByTestId } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(getByTestId('empty-data-table-action-box')).toBeInTheDocument();
+			const emptyBox = getByTestId('empty-resources-list');
+			expect(emptyBox).toBeInTheDocument();
+			expect(emptyBox).toHaveTextContent('Create your first data table');
+			expect(emptyBox).toHaveTextContent('Create data table');
+		});
+
+		it('should enable the create button when user can create and env is not read-only', async () => {
+			const { getByTestId } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			const button = getByTestId('empty-resources-list').querySelector('button');
+			expect(button).not.toBeDisabled();
+		});
+
+		// Render the tooltip content inline so its text can be asserted without
+		// triggering the teleported, hover-activated popper.
+		const renderWithInlineTooltip = () =>
+			renderComponent({
+				pinia,
+				global: {
+					stubs: {
+						N8nTooltip: {
+							template: '<div><slot /><slot name="content" /></div>',
+						},
+					},
+				},
+			});
+
+		it('should disable the create button and show a read-only tooltip on a read-only environment', async () => {
+			sourceControlStore.preferences = {
+				branchReadOnly: true,
+			} as typeof sourceControlStore.preferences;
+
+			const { getByTestId } = renderWithInlineTooltip();
+			await waitAllPromises();
+
+			const box = getByTestId('empty-resources-list');
+			expect(box.querySelector('button')).toBeDisabled();
+			expect(box).toHaveTextContent('readOnlyEnv.cantAdd.any');
+		});
+
+		it('should disable the create button and show a permission tooltip when user lacks create permission', async () => {
+			dataTableStore.projectPermissions = {
+				dataTable: { create: false },
+			} as typeof dataTableStore.projectPermissions;
+
+			const { getByTestId } = renderWithInlineTooltip();
+			await waitAllPromises();
+
+			const box = getByTestId('empty-resources-list');
+			expect(box.querySelector('button')).toBeDisabled();
+			expect(box).toHaveTextContent('dataTable.empty.button.disabled.tooltip');
 		});
 
 		it('should show description for overview sub page', async () => {
@@ -213,7 +271,7 @@ describe('DataTableView', () => {
 			const { getByTestId } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			const emptyBox = getByTestId('empty-data-table-action-box');
+			const emptyBox = getByTestId('empty-resources-list');
 			expect(emptyBox).toBeInTheDocument();
 		});
 	});

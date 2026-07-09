@@ -1,16 +1,17 @@
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
-import { Logger } from '@n8n/backend-common';
+import {
+	AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES,
+	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
+} from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { validateNodeConfig } from '@n8n/workflow-sdk';
 import { isToolType, isTriggerNodeType } from 'n8n-workflow';
-import type { IDataObject, INodeParameters } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { MCP_REGISTRY_PACKAGE_NAME } from '../mcp-registry/node-description-transform';
-
 import { NodeCatalogService } from '@/node-catalog';
-import { EphemeralNodeExecutor, isAgentProviderNode } from '@/node-execution';
+import { isAgentProviderNode } from '@/node-execution';
+
+import { MCP_REGISTRY_PACKAGE_NAME } from '../mcp-registry/node-description-transform';
 
 type NodeRequest =
 	| string
@@ -28,6 +29,11 @@ type NodeRequest =
  */
 export const isExecutableNodeType = (nodeId: string): boolean => !isTriggerNodeType(nodeId);
 
+const hiddenAgentToolNodeTypes = new Set<string>(AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES);
+const aiUtilityAgentToolNodeTypes = new Set<string>(
+	AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES,
+);
+
 /**
  * Node IDs the agent builder should surface when configuring node-backed
  * tools. For regular nodes marked `usableAsTool`, the loader creates a
@@ -36,6 +42,8 @@ export const isExecutableNodeType = (nodeId: string): boolean => !isTriggerNodeT
  * not approval-gated workflow steps. Provider nodes (OpenAI etc.) are
  * admitted via the explicit whitelist — they ship the full vendor API
  * (image, audio, …) but lack the `usableAsTool` flag.
+ * Frontend-hidden tool variants are excluded here too, so `search_nodes`
+ * cannot offer tools the modal intentionally hides.
  *
  * Exported as a stable reference so the catalog service can cache its
  * filtered search tool per filter identity.
@@ -44,9 +52,14 @@ export const isAgentToolNodeType = (nodeId: string): boolean => {
 	if (!isExecutableNodeType(nodeId)) {
 		return false;
 	}
+	if (hiddenAgentToolNodeTypes.has(nodeId)) {
+		return false;
+	}
+
+	const isAllowedAiUtilityTool = aiUtilityAgentToolNodeTypes.has(nodeId);
 	const isAllowedTool = isToolType(nodeId, { includeHitl: false }) && !isMcpToolNodeType(nodeId);
 	const isAllowedProviderNode = isAgentProviderNode(nodeId);
-	return isAllowedTool || isAllowedProviderNode;
+	return isAllowedAiUtilityTool || isAllowedTool || isAllowedProviderNode;
 };
 
 const MCP_CLIENT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClientTool';
@@ -88,39 +101,13 @@ const listCredentialsInputSchema = z.object({
 		),
 });
 
-const runNodeInputSchema = z.object({
-	nodeType: z.string().describe('Tool node type identifier from search_nodes'),
-	nodeTypeVersion: nodeVersionSchema,
-	nodeParameters: z
-		.record(z.unknown())
-		.optional()
-		.describe(
-			'Static node config. Use expressions like ={{ $json.url }} to reference inputData fields.',
-		),
-	credentials: z
-		.record(z.object({ id: z.string(), name: z.string() }))
-		.optional()
-		.describe('Credential slot → { id, name }. Copy from list_credentials results.'),
-	inputData: z
-		.record(z.unknown())
-		.optional()
-		.describe('Runtime input, available as $json inside nodeParameters expressions.'),
-});
-
 @Service()
 export class AgentsToolsService {
-	constructor(
-		private readonly logger: Logger,
-		private readonly nodeCatalogService: NodeCatalogService,
-		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
-	) {}
+	constructor(private readonly nodeCatalogService: NodeCatalogService) {}
 
 	/**
-	 * Tools usable from both the builder and the agent runtime.
-	 *
-	 * `listCredentialsUsageHint` lets each caller tailor the `list_credentials`
-	 * description to its flow — the runtime points at `run_node_tool`, while the
-	 * builder points at code generation.
+	 * Tools usable by the builder while configuring node-backed tools.
+	 * `listCredentialsUsageHint` lets callers tailor the credential guidance.
 	 */
 	getSharedTools(
 		credentialProvider: CredentialProvider,
@@ -130,17 +117,6 @@ export class AgentsToolsService {
 			this.buildSearchNodesTool(),
 			this.buildGetNodeTypesTool(),
 			this.buildListCredentialsTool(credentialProvider, listCredentialsUsageHint),
-		];
-	}
-
-	/** Shared tools plus the runtime-only `run_node_tool` which binds to a project. */
-	getRuntimeTools(credentialProvider: CredentialProvider, projectId: string): BuiltTool[] {
-		return [
-			...this.getSharedTools(
-				credentialProvider,
-				'Call this before run_node_tool to know which credential to pass.',
-			),
-			this.buildRunNodeTool(projectId),
 		];
 	}
 
@@ -200,70 +176,11 @@ export class AgentsToolsService {
 			})
 			.build();
 	}
-
-	private buildRunNodeTool(projectId: string): BuiltTool {
-		return new Tool('run_node_tool')
-			.description(
-				'Execute an n8n node for the current request. ' +
-					'Use the tool nodeType and nodeTypeVersion from search_nodes. ' +
-					'Call get_node_types first to understand what nodeParameters the node accepts. ' +
-					'nodeParameters holds static node config; use n8n expressions like ={{ $json.url }} to map inputData fields. ' +
-					'credentials maps slot names to { id, name } — copy from the list_credentials results. ' +
-					'inputData is the runtime payload available as $json inside expressions. ' +
-					'Parameters are validated against the node schema before execution.',
-			)
-			.input(runNodeInputSchema)
-			.handler(async ({ nodeType, nodeTypeVersion, nodeParameters, credentials, inputData }) => {
-				if (!isExecutableNodeType(nodeType)) {
-					return {
-						status: 'error',
-						message: `Node type "${nodeType}" cannot be executed directly — trigger nodes are not supported here.`,
-					};
-				}
-
-				if (nodeParameters) {
-					const { valid, errors } = validateNodeConfig(
-						nodeType,
-						nodeTypeVersion,
-						{
-							parameters: nodeParameters,
-						},
-						{ isToolNode: true },
-					);
-					if (!valid) {
-						return {
-							status: 'error',
-							message: `Invalid nodeParameters: ${errors.map((e) => e.message).join('; ')}`,
-						};
-					}
-				}
-
-				try {
-					return await this.ephemeralNodeExecutor.executeInline({
-						nodeType,
-						nodeTypeVersion,
-						nodeParameters: (nodeParameters ?? {}) as INodeParameters,
-						credentialDetails: credentials,
-						inputData: [{ json: (inputData ?? {}) as IDataObject }],
-						projectId,
-					});
-				} catch (error) {
-					const message = error instanceof Error ? error.message : String(error);
-					this.logger.warn('run_node_tool execution failed', { nodeType, error });
-					return {
-						status: 'error',
-						message: `Node execution failed: ${message}`,
-					};
-				}
-			})
-			.build();
-	}
 }
 
 /**
  * The catalog's `getNodeTypes` signature expects `version` as a string (matching the
- * code-builder tool's wire format). Our public schema uses `number` for consistency
- * with `run_node_tool`; adapt at the boundary.
+ * builder tool's wire format); adapt at the boundary.
  */
 function normalizeNodeRequestForCatalog(req: NodeRequest):
 	| string

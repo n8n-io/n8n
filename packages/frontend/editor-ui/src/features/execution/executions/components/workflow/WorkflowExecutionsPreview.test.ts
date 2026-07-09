@@ -16,7 +16,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import type { FrontendSettings } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
-import { nextTick, computed } from 'vue';
+import { nextTick, computed, ref } from 'vue';
 import type { WorkflowVersion } from '@n8n/rest-api-client/api/workflowHistory';
 
 const showMessage = vi.fn();
@@ -24,6 +24,17 @@ const showError = vi.fn();
 const showToast = vi.fn();
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showError, showToast }),
+}));
+
+// Force the add-to-dataset action available so tests can assert the
+// execution status/mode gating in the component itself.
+vi.mock('@/features/ai/evaluation.ee/composables/useAddExecutionToDataset', () => ({
+	useAddExecutionToDataset: () => ({
+		isFeatureEnabled: ref(true),
+		hasDataTableConfig: ref(true),
+		fetchDataTableConfigs: vi.fn(),
+		openModal: vi.fn(),
+	}),
 }));
 
 const routes = [
@@ -147,6 +158,56 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		});
 
 		expect(getByTestId('stop-execution')).toBeDisabled();
+	});
+
+	it('shows the add-to-dataset button for a successful non-evaluation execution', () => {
+		const { getByTestId } = renderComponent({
+			props: { execution: { ...executionData, status: 'success', mode: 'manual' } },
+		});
+
+		expect(getByTestId('execution-preview-add-to-dataset-button')).toBeInTheDocument();
+	});
+
+	it('enables the add-to-dataset button when the user can update the workflow', () => {
+		const workflowsListStore = mockedStore(useWorkflowsListStore);
+		workflowsListStore.getWorkflowById.mockReturnValue({
+			scopes: ['workflow:update'],
+		} as IWorkflowDb);
+
+		const { getByTestId } = renderComponent({
+			props: { execution: { ...executionData, status: 'success', mode: 'manual' } },
+		});
+
+		expect(getByTestId('execution-preview-add-to-dataset-button')).toBeEnabled();
+	});
+
+	it('disables the add-to-dataset button when the user cannot update the workflow', () => {
+		const workflowsListStore = mockedStore(useWorkflowsListStore);
+		workflowsListStore.getWorkflowById.mockReturnValue({
+			scopes: ['workflow:read'],
+		} as IWorkflowDb);
+
+		const { getByTestId } = renderComponent({
+			props: { execution: { ...executionData, status: 'success', mode: 'manual' } },
+		});
+
+		expect(getByTestId('execution-preview-add-to-dataset-button')).toBeDisabled();
+	});
+
+	it('hides the add-to-dataset button for evaluation-mode executions', () => {
+		const { queryByTestId } = renderComponent({
+			props: { execution: { ...executionData, status: 'success', mode: 'evaluation' } },
+		});
+
+		expect(queryByTestId('execution-preview-add-to-dataset-button')).toBeNull();
+	});
+
+	it('hides the add-to-dataset button for non-successful executions', () => {
+		const { queryByTestId } = renderComponent({
+			props: { execution: { ...executionData, status: 'error', mode: 'manual' } },
+		});
+
+		expect(queryByTestId('execution-preview-add-to-dataset-button')).toBeNull();
 	});
 
 	it('should display vote buttons when annotation is enabled', async () => {
@@ -325,6 +386,40 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		// Should not show annotation-related elements
 		expect(queryByTestId('annotation-tags-container')).not.toBeInTheDocument();
 		expect(queryByTestId('execution-preview-ellipsis-button')).not.toBeInTheDocument();
+	});
+
+	describe('execution data size', () => {
+		it('shows the combined json + binary size in human-readable form', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					execution: {
+						...executionData,
+						status: 'success',
+						jsonSizeBytes: 100 * 1024,
+						binaryDataSizeBytes: 44 * 1024,
+					},
+				},
+			});
+
+			await nextTick();
+
+			expect(getByTestId('execution-preview-id').textContent).toContain('144KB');
+		});
+
+		it('omits the size segment when both sizes are zero/undefined', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					execution: { ...executionData, status: 'success' },
+				},
+			});
+
+			await nextTick();
+
+			const header = getByTestId('execution-preview-id').textContent ?? '';
+			expect(header).toContain('ID#');
+			expect(header).not.toContain('KB');
+			expect(header).not.toContain('MB');
+		});
 	});
 
 	describe('workflow version link', () => {

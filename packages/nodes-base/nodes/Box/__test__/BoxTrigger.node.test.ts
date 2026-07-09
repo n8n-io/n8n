@@ -1,24 +1,25 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
 
 import { BoxTrigger } from '../BoxTrigger.node';
 
-jest.mock('../BoxTriggerHelpers', () => ({
-	verifySignature: jest.fn(),
+vi.mock('../BoxTriggerHelpers', () => ({
+	verifySignature: vi.fn(),
 }));
 
 import { verifySignature } from '../BoxTriggerHelpers';
+import type { Mock, MockedFunction } from 'vitest';
 
-const mockedVerifySignature = verifySignature as jest.MockedFunction<typeof verifySignature>;
+const mockedVerifySignature = verifySignature as MockedFunction<typeof verifySignature>;
 
 describe('Box Trigger Webhook Lifecycle', () => {
 	const mockHookFunctions = mock<IHookFunctions>();
 	const mockStaticData: Record<string, string> = {};
-	const mockRequestOAuth2 = jest.fn();
+	const mockRequestOAuth2 = vi.fn();
 
 	beforeEach(() => {
 		// resetAllMocks clears Once queues and implementations — prevents bleed between tests
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		Object.keys(mockStaticData).forEach((key) => delete mockStaticData[key]);
 		mockHookFunctions.getWorkflowStaticData.mockReturnValue(mockStaticData);
 		mockHookFunctions.getNodeWebhookUrl.mockReturnValue('https://n8n.io/webhook/box-test');
@@ -299,16 +300,16 @@ describe('Box Trigger Webhook Lifecycle', () => {
 
 describe('Box Trigger webhook()', () => {
 	let mockWebhookFunctions: ReturnType<typeof mock<IWebhookFunctions>>;
-	let mockResponseObject: { status: jest.Mock; send: jest.Mock; end: jest.Mock };
+	let mockResponseObject: { status: Mock; send: Mock; end: Mock };
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		mockWebhookFunctions = mock<IWebhookFunctions>();
 
 		mockResponseObject = {
-			status: jest.fn().mockReturnThis(),
-			send: jest.fn().mockReturnThis(),
-			end: jest.fn(),
+			status: vi.fn().mockReturnThis(),
+			send: vi.fn().mockReturnThis(),
+			end: vi.fn(),
 		};
 		mockWebhookFunctions.getResponseObject.mockReturnValue(mockResponseObject as never);
 		mockWebhookFunctions.getBodyData.mockReturnValue({
@@ -317,7 +318,7 @@ describe('Box Trigger webhook()', () => {
 		});
 		mockWebhookFunctions.helpers = {
 			...mockWebhookFunctions.helpers,
-			returnJsonArray: jest.fn().mockImplementation((data) => [{ json: data }]),
+			returnJsonArray: vi.fn().mockImplementation((data) => [{ json: data }]),
 		};
 	});
 

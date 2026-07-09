@@ -211,11 +211,11 @@ ci-filter (in install-and-build)
         │
         └─→ CHANGED_FILES forwarded to test jobs
               │
-              └─→ janitor test-scoped --runner=jest|vitest  (per-package)
+              └─→ janitor test-scoped --runner=vitest  (per-package)
                     │
                     ├─→ SKIP        → exit 0 (no in-package changes)
                     ├─→ RUN_FULL    → spawn runner with no scope flags
-                    └─→ scoped      → jest --findRelatedTests / vitest related
+                    └─→ scoped      → vitest related
 ```
 
 **Usage:**
@@ -233,9 +233,18 @@ janitor test-scoped --runner=vitest --shard=1/2 --coverage
 
 **Bailout triggers (force ALL packages):** `pnpm-lock.yaml`, root `package.json`.
 
-**Per-package bailout (force full suite):** `jest.config.*`, `vitest.config.*`,
+**Empty `CHANGED_FILES` means "no signal → run everything", not "nothing
+changed".** A `null`/empty value resolves to all packages (`affected-packages`)
+and `RUN_FULL` (`scope`) — never `SKIP`, which would be a false green. ci-filter
+relies on this: on a PR that touches more than `CI_FILTER_MAX_CHANGED_FILES`
+(default 1000) files it emits an empty list instead of the full one, because the
+joined paths would otherwise overflow the kernel's argv/env size limit and the
+test job's shell couldn't even start. Such a change set affects nearly every
+package anyway, so the full-suite fallback is both safe and correct.
+
+**Per-package bailout (force full suite):** `vitest.config.*`,
 `vite.config.*` (vitest reads vite config), `package.json`, `tsconfig.*`,
-plus setup files at `<pkg>/jest.setup.*`, `<pkg>/vitest.setup.*`, and
+plus setup files at `<pkg>/vitest.setup.*` and
 `<pkg>/src/__tests__/setup.*`. The scope analyzer detects these and emits
 `RUN_FULL`; `test-scoped` then spawns the runner without scope flags.
 
@@ -434,6 +443,77 @@ test('gets workflows', async ({ request }) => {
 test('gets workflows', async ({ api }) => {
   const workflows = await api.workflows.list();
 });
+```
+
+#### `no-raw-editor-navigation`
+
+**Severity:** error
+
+Tests must not navigate to the workflow editor with a raw `page.goto()`. The
+editor renders a full-screen loading overlay (`node-view-loader`) while it
+boots; `page.goto()` resolves before that overlay clears, so a test that
+navigates raw and then clicks a canvas control hits a button Playwright reports
+as "stable" while the overlay silently intercepts the click — the action hangs
+until it times out. Entry composers (`n8n.start.fromImportedWorkflow()`,
+`n8n.start.fromBlankCanvas()`) own the readiness wait, so navigation must go
+through them. Only editor routes (`/workflow/<id>`, `/workflow/new`) are
+flagged; the workflow list (`/workflows`) is not.
+
+```typescript
+// Bad - Raw navigation to the editor, canvas may still be covered by the loader
+test('opens workflow', async ({ n8n }) => {
+  await n8n.page.goto(`/workflow/${workflowId}`);
+  await n8n.canvas.clickZoomToFitButton(); // can hang on the loading overlay
+});
+
+// Good - Entry composer waits for the canvas to be ready
+test('opens workflow', async ({ n8n }) => {
+  await n8n.start.fromImportedWorkflow('my-workflow.json');
+  await n8n.canvas.clickZoomToFitButton();
+});
+```
+
+Legitimate raw navigations (e.g. benchmarks measuring cold load time, or tests
+exercising routing/URL behaviour directly) can opt out with a directive comment
+on the preceding line, ideally with a reason after `--`:
+
+```typescript
+// janitor-disable-next-line no-raw-editor-navigation -- benchmark measures cold load
+await n8n.page.goto(`/workflow/${workflowId}`);
+```
+
+#### `valid-owner-annotation`
+
+**Severity:** error
+
+Every spec must declare the team that owns it via a Playwright `owner`
+annotation, and the team must be one of the canonical owners. The owner drives
+flaky/failure-triage routing, so a missing owner means failures go nowhere and a
+misspelled one (e.g. `'Instance AI'` instead of `'instanceAI'`) routes to a team
+that doesn't exist.
+
+The canonical list (`CANONICAL_OWNERS`) lives in the rule itself, mirroring the
+"Ownership v2" register — update it there when ownership shifts. Owner is
+recognised both as the annotation literal and as an `owner` config property
+(e.g. `runMemoryBaseline({ owner })`).
+
+```typescript
+// Bad - no owner: triage can't route this spec's failures
+test.describe('My feature', () => { ... });
+
+// Bad - owner not in CANONICAL_OWNERS
+test.describe('My feature', { annotation: [{ type: 'owner', description: 'Instance AI' }] }, () => { ... });
+
+// Good - canonical owner
+test.describe('My feature', { annotation: [{ type: 'owner', description: 'instanceAI' }] }, () => { ... });
+```
+
+A spec that legitimately has no team owner can opt out of the check with a
+directive comment on the preceding line, ideally with a reason after `--`:
+
+```typescript
+// janitor-disable-next-line valid-owner-annotation -- vendor smoke, no team
+{ type: 'owner', description: 'n/a' }
 ```
 
 ### Code Quality Rules

@@ -24,6 +24,7 @@ Rules:
 - If the agent claims a specific configuration change, verify it differs between before and after.
 - If the agent claims connections between nodes, verify those connections exist in the AFTER workflow.
 - Ignore general/vague statements that don't make specific claims (e.g., "I built a workflow for you").
+- Treat SDK helper claims such as \`nodeJson(sourceNode, 'field.path')\` as equivalent to the generated workflow expression \`$('Source Node').item.json.field.path\` when the referenced node and JSON path match semantically.
 - If the agent's response contains NO specific claims about workflow changes, pass (nothing to verify).
 - A single verifiably false claim means fail.`,
 	humanTemplate: `User Request: {userPrompt}

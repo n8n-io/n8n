@@ -1,16 +1,33 @@
+/* eslint-disable import-x/order */
 import { createRuntimeSkillRegistry, type BuiltTool } from '@n8n/agents';
 import type { Context, ContextManager } from '@opentelemetry/api';
+import * as langsmithModule from 'langsmith';
 import { jsonParse } from 'n8n-workflow';
 import type * as AsyncHooks from 'node:async_hooks';
+import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import { createToolRegistry } from '../../tool-registry';
+import { createAskUserTool } from '../../tools/shared/ask-user.tool';
+import {
+	buildAgentTraceInputs,
+	createDetachedSubAgentTraceContext,
+	createInstanceAiTraceContext,
+	createInternalOperationTraceContext,
+	createTraceReplayOnlyContext,
+	continueInstanceAiTraceContext,
+	mergeTraceRunInputs,
+	redactLangSmithTelemetrySpan,
+	releaseTraceClient,
+	submitLangsmithUserFeedback,
+	withCurrentTraceSpan,
+} from '../langsmith-tracing';
 import { TraceWriter, type TraceToolCall, type TraceToolSuspend } from '../trace-replay';
 
-jest.mock('@n8n/agents', () => {
-	const actual = jest.requireActual<Record<string, unknown>>('@n8n/agents');
-	const { AsyncLocalStorage } = jest.requireActual<typeof AsyncHooks>('node:async_hooks');
-	const { ROOT_CONTEXT, context, trace } = jest.requireActual<{
+vi.mock('@n8n/agents', async () => {
+	const actual = await vi.importActual<Record<string, unknown>>('@n8n/agents');
+	const { AsyncLocalStorage } = await vi.importActual<typeof AsyncHooks>('node:async_hooks');
+	const { ROOT_CONTEXT, context, trace } = await vi.importActual<{
 		ROOT_CONTEXT: Context;
 		context: {
 			active(): Context;
@@ -118,8 +135,8 @@ jest.mock('@n8n/agents', () => {
 	};
 
 	const provider = {
-		forceFlush: jest.fn(async () => await Promise.resolve()),
-		shutdown: jest.fn(async () => await Promise.resolve()),
+		forceFlush: vi.fn(async () => await Promise.resolve()),
+		shutdown: vi.fn(async () => await Promise.resolve()),
 	};
 
 	class MockLangSmithTelemetry {
@@ -198,7 +215,7 @@ jest.mock('@n8n/agents', () => {
 	};
 });
 
-jest.mock('langsmith', () => {
+vi.mock('langsmith', () => {
 	const createFeedbackCalls: Array<{
 		runId: string;
 		key: string;
@@ -243,7 +260,7 @@ jest.mock('langsmith', () => {
 	};
 });
 
-jest.mock('langsmith/traceable', () => {
+vi.mock('langsmith/traceable', () => {
 	return {
 		traceable: () => {
 			throw new Error('Instance AI tracing must use OTel spans, not langsmith/traceable');
@@ -284,8 +301,8 @@ type AgentsMockModule = {
 			ended: boolean;
 		}>;
 		getProvider: () => {
-			forceFlush: jest.Mock<Promise<void>, []>;
-			shutdown: jest.Mock<Promise<void>, []>;
+			forceFlush: Mock<(...args: []) => Promise<void>>;
+			shutdown: Mock<(...args: []) => Promise<void>>;
 		};
 	};
 };
@@ -300,22 +317,6 @@ function isExecutableTool(
 		typeof value.handler === 'function'
 	);
 }
-
-const {
-	buildAgentTraceInputs,
-	createDetachedSubAgentTraceContext,
-	createInstanceAiTraceContext,
-	createInternalOperationTraceContext,
-	createTraceReplayOnlyContext,
-	continueInstanceAiTraceContext,
-	mergeTraceRunInputs,
-	redactLangSmithTelemetrySpan,
-	releaseTraceClient,
-	submitLangsmithUserFeedback,
-	withCurrentTraceSpan,
-} =
-	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
-	require('../langsmith-tracing') as typeof import('../langsmith-tracing');
 
 async function startForegroundActor(
 	tracing: NonNullable<Awaited<ReturnType<typeof createInstanceAiTraceContext>>>,
@@ -335,20 +336,18 @@ async function startForegroundActor(
 	tracing.orchestratorRun = actorRun;
 	return actorRun;
 }
-const { createAskUserTool } =
-	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
-	require('../../tools/shared/ask-user.tool') as typeof import('../../tools/shared/ask-user.tool');
-const { __mock: langsmithMock } =
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	require('langsmith') as LangSmithMockModule;
-const { __mock: agentsMock } =
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	require('@n8n/agents') as AgentsMockModule;
+
+import * as agentsModule from '@n8n/agents';
+
+const { __mock: langsmithMock } = langsmithModule as unknown as LangSmithMockModule;
+const { __mock: agentsMock } = agentsModule as unknown as AgentsMockModule;
 
 describe('createInstanceAiTraceContext', () => {
 	const originalLangSmithApiKey = process.env.LANGSMITH_API_KEY;
 	const originalLangSmithTracing = process.env.LANGSMITH_TRACING;
 	const originalLangChainTracingV2 = process.env.LANGCHAIN_TRACING_V2;
+	const originalLangSmithProject = process.env.LANGSMITH_PROJECT;
+	const originalLangChainProject = process.env.LANGCHAIN_PROJECT;
 	const originalTraceInternal = process.env.N8N_INSTANCE_AI_TRACE_INTERNAL;
 	const originalDiagnosticsEnabled = process.env.N8N_DIAGNOSTICS_ENABLED;
 
@@ -358,6 +357,8 @@ describe('createInstanceAiTraceContext', () => {
 		process.env.LANGSMITH_API_KEY = 'test-key';
 		delete process.env.LANGSMITH_TRACING;
 		delete process.env.LANGCHAIN_TRACING_V2;
+		delete process.env.LANGSMITH_PROJECT;
+		delete process.env.LANGCHAIN_PROJECT;
 		delete process.env.N8N_INSTANCE_AI_TRACE_INTERNAL;
 		delete process.env.N8N_DIAGNOSTICS_ENABLED;
 	});
@@ -373,6 +374,16 @@ describe('createInstanceAiTraceContext', () => {
 			delete process.env.LANGCHAIN_TRACING_V2;
 		} else {
 			process.env.LANGCHAIN_TRACING_V2 = originalLangChainTracingV2;
+		}
+		if (originalLangSmithProject === undefined) {
+			delete process.env.LANGSMITH_PROJECT;
+		} else {
+			process.env.LANGSMITH_PROJECT = originalLangSmithProject;
+		}
+		if (originalLangChainProject === undefined) {
+			delete process.env.LANGCHAIN_PROJECT;
+		} else {
+			process.env.LANGCHAIN_PROJECT = originalLangChainProject;
 		}
 		if (originalTraceInternal === undefined) {
 			delete process.env.N8N_INSTANCE_AI_TRACE_INTERNAL;
@@ -479,6 +490,32 @@ describe('createInstanceAiTraceContext', () => {
 		expect(process.env.LANGCHAIN_TRACING_V2).toBeUndefined();
 	});
 
+	it('defaults trace runs to the instance-ai project', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-project-default',
+			messageId: 'message-project-default',
+			runId: 'run-project-default',
+			userId: 'user-project-default',
+			input: { message: 'hello' },
+		});
+
+		expect(tracing?.rootRun.projectName).toBe('instance-ai');
+	});
+
+	it('routes trace runs to the project from LANGSMITH_PROJECT when set', async () => {
+		process.env.LANGSMITH_PROJECT = 'instance-ai-evals';
+
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-project-env',
+			messageId: 'message-project-env',
+			runId: 'run-project-env',
+			userId: 'user-project-env',
+			input: { message: 'hello' },
+		});
+
+		expect(tracing?.rootRun.projectName).toBe('instance-ai-evals');
+	});
+
 	it('uses the current foreground actor run in native telemetry metadata', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-1',
@@ -547,7 +584,9 @@ describe('createInstanceAiTraceContext', () => {
 						credentials: '[redacted]',
 					},
 				]),
-				'ai.response.text': '[REDACTED]',
+				// The Bearer value is redacted; the header label survives (the generic
+				// assignment pattern skips already-redacted values for idempotency).
+				'ai.response.text': 'Authorization: [REDACTED]',
 				'ai.telemetry.metadata.thread_id': 'thread-1',
 				'ai.usage.inputTokens': 123,
 				'ai.usage.outputTokens': 45,
@@ -615,6 +654,26 @@ describe('createInstanceAiTraceContext', () => {
 		expect(serialized).not.toContain('ghp_1234567890abcdefghijklmnop');
 		expect(serialized).not.toContain('secret123');
 		expect(serialized).not.toContain('abcdefghijklmnopqrstuvwxyz');
+		expect(serialized).toContain('[REDACTED]');
+	});
+
+	it('redacts PII (email, credit-card, SSN) from telemetry strings', () => {
+		const span = {
+			attributes: {
+				'ai.operationId': 'ai.streamText.doStream',
+				'ai.response.text': 'reach me at jane.doe@example.com about card 4111 1111 1111 1111',
+				'ai.prompt.messages': JSON.stringify([{ role: 'user', content: 'my ssn is 123-45-6789' }]),
+			},
+		};
+
+		const redacted = redactLangSmithTelemetrySpan(span) as {
+			attributes: Record<string, unknown>;
+		};
+		const serialized = JSON.stringify(redacted.attributes);
+
+		expect(serialized).not.toContain('jane.doe@example.com');
+		expect(serialized).not.toContain('4111 1111 1111 1111');
+		expect(serialized).not.toContain('123-45-6789');
 		expect(serialized).toContain('[REDACTED]');
 	});
 
@@ -1235,12 +1294,6 @@ describe('createInstanceAiTraceContext', () => {
 							},
 						} as never,
 					],
-					[
-						'submit-workflow',
-						{
-							description: 'Submit a workflow to n8n.',
-						} as never,
-					],
 				]),
 				runtimeTools: createToolRegistry([
 					[
@@ -1260,8 +1313,8 @@ describe('createInstanceAiTraceContext', () => {
 
 		expect(actorInputs.task).toBe('Build a workflow');
 		expect(actorInputs.model).toBe('anthropic/claude-sonnet-4-6');
-		expect(actorInputs.assigned_tool_count).toBe(2);
-		expect(actorInputs.assigned_tool_names).toEqual(['build-workflow', 'submit-workflow']);
+		expect(actorInputs.assigned_tool_count).toBe(1);
+		expect(actorInputs.assigned_tool_names).toEqual(['build-workflow']);
 		expect(actorInputs.assigned_tool_schema_hash).toEqual(expect.any(String));
 		expect(actorInputs.runtime_tool_count).toBe(1);
 		expect(actorInputs.runtime_tool_names).toEqual(['workspace_read_file']);
@@ -1278,7 +1331,7 @@ describe('createInstanceAiTraceContext', () => {
 		const spanInputs = jsonParse<Record<string, unknown>>(
 			actorSpan?.attributes['gen_ai.prompt'] as string,
 		);
-		expect(spanInputs.assigned_tool_names).toEqual(['build-workflow', 'submit-workflow']);
+		expect(spanInputs.assigned_tool_names).toEqual(['build-workflow']);
 		expect(spanInputs.runtime_tool_names).toEqual(['workspace_read_file']);
 		expect(spanInputs.loaded_tool_manifest).toBeUndefined();
 		expect(spanInputs.loaded_tools).toBeUndefined();
@@ -1506,13 +1559,74 @@ describe('createInstanceAiTraceContext', () => {
 		);
 
 		expect(result).toEqual({ denied: true, payload: suspendPayload });
-		const suspend = writer.getEvents()[1] as TraceToolSuspend;
+		const events = writer.getEvents();
+		expect(events).toHaveLength(2);
+		const suspend = events[1] as TraceToolSuspend;
 		expect(suspend).toEqual({
 			kind: 'tool-suspend',
 			stepId: 1,
 			agentRole: 'workflow-builder',
 			toolName: 'approval-tool',
 			input: { operation: 'write-file' },
+			output: {},
+			suspendPayload,
+		});
+	});
+
+	it('records suspend calls before the native suspend interrupts execution', async () => {
+		const writer = new TraceWriter('record-interrupted-suspend');
+		const tracing = createTraceReplayOnlyContext();
+		tracing.replayMode = 'record';
+		tracing.traceWriter = writer;
+
+		const suspendPayload = {
+			requestId: 'request-1',
+			inputType: 'plan-review',
+			message: 'Review the plan',
+		};
+		const interruptibleTool: BuiltTool = {
+			name: 'plan-tool',
+			description: 'Requests approval.',
+			suspendSchema: {},
+			handler: async (_input, context) => {
+				if (!('suspend' in context) || typeof context.suspend !== 'function') {
+					throw new Error('Expected interruptible tool context');
+				}
+				return await context.suspend(suspendPayload);
+			},
+		};
+
+		const wrappedTools = tracing.wrapTools(createToolRegistry([['plan-tool', interruptibleTool]]), {
+			agentRole: 'planner',
+		});
+		const wrappedTool = wrappedTools.get('plan-tool');
+		if (!isExecutableTool(wrappedTool)) {
+			throw new Error('Wrapped plan-tool is not executable');
+		}
+
+		await expect(
+			executeTool(
+				wrappedTool,
+				{ action: 'submit-plan' },
+				{
+					resumeData: undefined,
+					suspend: async (): Promise<never> => {
+						await Promise.resolve();
+						throw new Error('native suspend interrupted');
+					},
+				},
+			),
+		).rejects.toThrow('native suspend interrupted');
+
+		const events = writer.getEvents();
+		expect(events).toHaveLength(2);
+		const suspend = events[1] as TraceToolSuspend;
+		expect(suspend).toEqual({
+			kind: 'tool-suspend',
+			stepId: 1,
+			agentRole: 'planner',
+			toolName: 'plan-tool',
+			input: { action: 'submit-plan' },
 			output: {},
 			suspendPayload,
 		});
@@ -1575,12 +1689,12 @@ describe('createInstanceAiTraceContext', () => {
 		const regularTool = {
 			name: 'templates',
 			description: 'Search templates',
-			handler: jest.fn(),
+			handler: vi.fn(),
 		};
 		const workspaceTool = {
 			name: 'workspace_execute_command',
 			description: 'Run a workspace command',
-			handler: jest.fn(),
+			handler: vi.fn(),
 		};
 
 		const wrappedTools = tracing!.wrapTools(
@@ -1928,7 +2042,7 @@ describe('createInstanceAiTraceContext', () => {
 					{
 						name: 'workspace_write_file',
 						description: 'Write a file in the workspace.',
-						handler: jest.fn(async () => await Promise.resolve({ written: true })),
+						handler: vi.fn(async () => await Promise.resolve({ written: true })),
 					} as never,
 				],
 			]),
@@ -2115,7 +2229,7 @@ describe('submitLangsmithUserFeedback', () => {
 	});
 
 	it('routes through the proxy client when proxyConfig is provided', async () => {
-		const getAuthHeaders = jest.fn().mockResolvedValue({ Authorization: 'Bearer token' });
+		const getAuthHeaders = vi.fn().mockResolvedValue({ Authorization: 'Bearer token' });
 		await submitLangsmithUserFeedback({
 			langsmithRunId: 'ls-run-3',
 			langsmithTraceId: 'ls-trace-3',

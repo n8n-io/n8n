@@ -1,5 +1,6 @@
 import type {
 	IConnections,
+	IWorkflowGroup,
 	INodeTypeDescription,
 	NodeGroupValidationResult,
 	NodeSelectionValidationResult,
@@ -16,6 +17,10 @@ import type { INodeUi } from '@/Interface';
 
 export type SelectionValidationResult = NodeSelectionValidationResult<INodeUi>;
 export type GroupValidationResult = NodeGroupValidationResult<INodeUi>;
+
+type GroupValidationOptions = {
+	ignoredNodeGroupIds?: string[];
+};
 
 export function useSelectionValidation() {
 	const nodeTypesStore = useNodeTypesStore();
@@ -56,11 +61,17 @@ export function useSelectionValidation() {
 	function isSelectionGroupable(
 		nodeIds: string[],
 		connectionsBySourceNode?: IConnections,
+		options: GroupValidationOptions = {},
 	): GroupValidationResult {
 		const store = workflowDocumentStore.value;
+		const ignoredNodeGroupIds = new Set(options.ignoredNodeGroupIds ?? []);
+		const existingNodeGroups: IWorkflowGroup[] = (store?.allGroups ?? []).filter(
+			(group) => !ignoredNodeGroupIds.has(group.id),
+		);
+
 		return validateNodeSelectionForGrouping({
 			...getValidationInput(nodeIds, connectionsBySourceNode),
-			existingNodeGroups: store?.allGroups ?? [],
+			existingNodeGroups,
 		});
 	}
 

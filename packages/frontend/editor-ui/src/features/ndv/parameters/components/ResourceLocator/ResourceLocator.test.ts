@@ -131,7 +131,7 @@ describe('ResourceLocator', () => {
 		];
 		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 			results: TEST_ITEMS,
-			paginationToken: null,
+			paginationToken: undefined,
 		});
 		const { getByTestId, getByText, getAllByTestId } = renderComponent();
 
@@ -155,7 +155,7 @@ describe('ResourceLocator', () => {
 	it('renders add resource button', async () => {
 		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 			results: [],
-			paginationToken: null,
+			paginationToken: undefined,
 		});
 		const { getByTestId } = renderComponent({
 			props: {
@@ -178,7 +178,7 @@ describe('ResourceLocator', () => {
 	it('creates new resource passing search filter as name', async () => {
 		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 			results: [],
-			paginationToken: null,
+			paginationToken: undefined,
 		});
 		nodeTypesStore.getNodeParameterActionResult.mockResolvedValue('new-resource');
 
@@ -224,7 +224,7 @@ describe('ResourceLocator', () => {
 					url: 'https://test.com/test-resource',
 				},
 			],
-			paginationToken: null,
+			paginationToken: undefined,
 		});
 		nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
 			displayName: 'Test Node',
@@ -269,7 +269,7 @@ describe('ResourceLocator', () => {
 		];
 		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 			results: TEST_ITEMS,
-			paginationToken: null,
+			paginationToken: undefined,
 		});
 		nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
 			displayName: 'Test Node',
@@ -457,7 +457,7 @@ describe('ResourceLocator', () => {
 		const windowOpenSpy = vi.spyOn(window, 'open');
 		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 			results: [],
-			paginationToken: null,
+			paginationToken: undefined,
 		});
 
 		const { getByTestId } = renderComponent({
@@ -478,6 +478,7 @@ describe('ResourceLocator', () => {
 		expect(windowOpenSpy).toHaveBeenCalledWith(
 			'/projects/test-project-123/datatables/new',
 			'_blank',
+			'noopener,noreferrer',
 		);
 
 		expect(nodeTypesStore.getNodeParameterActionResult).not.toHaveBeenCalled();
@@ -488,10 +489,11 @@ describe('ResourceLocator', () => {
 		projectsStore.currentProjectId = undefined as unknown as string;
 		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 			results: [],
-			paginationToken: null,
+			paginationToken: undefined,
 		});
 
 		const mockWorkflowDocumentStore = shallowRef({
+			documentId: 'test-workflow@latest',
 			homeProject: { id: 'home-project-456', name: 'Test Project', type: 'team' },
 		});
 
@@ -517,7 +519,52 @@ describe('ResourceLocator', () => {
 		expect(windowOpenSpy).toHaveBeenCalledWith(
 			'/projects/home-project-456/datatables/new',
 			'_blank',
+			'noopener,noreferrer',
 		);
+	});
+
+	it('opens a list-mode cachedResultUrl with noopener,noreferrer', async () => {
+		const windowOpenSpy = vi.spyOn(window, 'open');
+		const { getByTestId } = renderComponent({
+			props: {
+				modelValue: {
+					__rl: true,
+					mode: 'list',
+					value: 'x',
+					cachedResultName: 'x',
+					cachedResultUrl: 'https://example.com/resource',
+				},
+			},
+		});
+
+		const link = await waitFor(() => getByTestId('rlc-open-resource-link'));
+		await userEvent.click(link);
+
+		expect(windowOpenSpy).toHaveBeenCalledWith(
+			'https://example.com/resource',
+			'_blank',
+			'noopener,noreferrer',
+		);
+	});
+
+	it('does not open a list-mode cachedResultUrl with a disallowed scheme', async () => {
+		const windowOpenSpy = vi.spyOn(window, 'open');
+		const { getByTestId } = renderComponent({
+			props: {
+				modelValue: {
+					__rl: true,
+					mode: 'list',
+					value: 'x',
+					cachedResultName: 'x',
+					cachedResultUrl: 'javascript:opener.document.body.dataset.xss="1";void 0',
+				},
+			},
+		});
+
+		const link = await waitFor(() => getByTestId('rlc-open-resource-link'));
+		await userEvent.click(link);
+
+		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
 	it('clears cached resources after URL redirect so fresh data is fetched on re-open', async () => {
@@ -528,8 +575,8 @@ describe('ResourceLocator', () => {
 		];
 
 		nodeTypesStore.getResourceLocatorResults
-			.mockResolvedValueOnce({ results: TEST_ITEMS, paginationToken: null })
-			.mockResolvedValueOnce({ results: TEST_ITEMS_UPDATED, paginationToken: null });
+			.mockResolvedValueOnce({ results: TEST_ITEMS, paginationToken: undefined })
+			.mockResolvedValueOnce({ results: TEST_ITEMS_UPDATED, paginationToken: undefined });
 
 		const { getByTestId, getByText } = renderComponent({
 			props: {
@@ -611,7 +658,7 @@ describe('ResourceLocator', () => {
 			expect(queryByText('This is taking longer than expected')).toBeInTheDocument();
 
 			if (resolvePromise) {
-				resolvePromise({ results: [], paginationToken: null });
+				resolvePromise({ results: [], paginationToken: undefined });
 			}
 			vi.useRealTimers();
 		}, 10000);
@@ -638,7 +685,7 @@ describe('ResourceLocator', () => {
 
 			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 				results: [],
-				paginationToken: null,
+				paginationToken: undefined,
 			});
 
 			const { queryByText } = renderComponent({
@@ -679,7 +726,7 @@ describe('ResourceLocator', () => {
 
 			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 				results: [{ name: 'Test Item', value: 'test-item' }],
-				paginationToken: null,
+				paginationToken: undefined,
 			});
 
 			const { getByTestId, queryByText } = renderComponent({
@@ -736,7 +783,7 @@ describe('ResourceLocator', () => {
 			expect(noticeContainer).not.toBeInTheDocument();
 
 			if (resolvePromise) {
-				resolvePromise({ results: [], paginationToken: null });
+				resolvePromise({ results: [], paginationToken: undefined });
 			}
 			vi.useRealTimers();
 		});
@@ -936,7 +983,7 @@ describe('ResourceLocator', () => {
 
 			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 				results: [],
-				paginationToken: null,
+				paginationToken: undefined,
 			});
 
 			const { getByTestId } = renderComponent({
@@ -963,7 +1010,7 @@ describe('ResourceLocator', () => {
 		it('passes empty object when no context is injected', async () => {
 			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 				results: [],
-				paginationToken: null,
+				paginationToken: undefined,
 			});
 
 			const { getByTestId } = renderComponent();
@@ -986,7 +1033,7 @@ describe('ResourceLocator', () => {
 
 			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 				results: [],
-				paginationToken: null,
+				paginationToken: undefined,
 			});
 			nodeTypesStore.getNodeParameterActionResult.mockResolvedValue('new-resource');
 

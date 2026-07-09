@@ -1,4 +1,10 @@
 <script lang="ts" setup>
+import {
+	N8nButton,
+	N8nIcon,
+	N8nText,
+	N8nAnimatedCollapsibleContent as AnimatedCollapsibleContent,
+} from '@n8n/design-system';
 /**
  * PlanReviewPanel.vue
  *
@@ -6,11 +12,9 @@
  * expandable specs, dependency info, and approve/ask-for-edits/deny controls.
  * "Ask for edits" hands off feedback collection to the main chat input.
  */
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
-import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
 export interface PlannedTaskArg {
@@ -33,6 +37,9 @@ const props = defineProps<{
 	loading?: boolean;
 	status?: PlanReviewStatus;
 	updating?: boolean;
+	/** The underlying pending confirmation is gone (TTL prune, restart, cancel)
+	 *  — render a terminal "expired" state with no actionable footer. */
+	expired?: boolean;
 }>();
 
 const i18n = useI18n();
@@ -50,13 +57,13 @@ const reviewStatus = computed<PlanReviewStatus>(
 	() => props.status ?? resolvedAction.value ?? 'pending',
 );
 
-const isExpanded = ref(!props.readOnly);
+const isExpanded = ref(!props.readOnly && !props.expired);
 
-const titleKey = computed<BaseTextKey>(() =>
-	isResolved.value || props.readOnly
-		? 'instanceAi.planReview.titleResolved'
-		: 'instanceAi.planReview.title',
-);
+const titleKey = computed<BaseTextKey>(() => {
+	if (props.expired) return 'instanceAi.planReview.titleExpired';
+	if (isResolved.value || props.readOnly) return 'instanceAi.planReview.titleResolved';
+	return 'instanceAi.planReview.title';
+});
 
 const showActions = computed(
 	() =>
@@ -64,10 +71,13 @@ const showActions = computed(
 		!isResolved.value &&
 		!props.readOnly &&
 		!props.loading &&
+		!props.expired &&
 		props.plannedTasks.length > 0,
 );
 
-const showChangesRequested = computed(() => reviewStatus.value === 'changes-requested');
+const showChangesRequested = computed(
+	() => reviewStatus.value === 'changes-requested' && !props.expired,
+);
 
 const isShimmering = computed(() => Boolean(props.loading || props.updating));
 
@@ -243,6 +253,13 @@ function handleDeny() {
 					{{ i18n.baseText('instanceAi.planReview.changesRequested') }}
 				</N8nButton>
 			</ConfirmationFooter>
+
+			<!-- Expired hint replaces the approval footer once the underlying state is gone. -->
+			<div v-else-if="props.expired" :class="$style.expiredHint">
+				<N8nText size="small" color="text-light">
+					{{ i18n.baseText('instanceAi.planReview.expiredHint') }}
+				</N8nText>
+			</div>
 		</AnimatedCollapsibleContent>
 	</CollapsibleRoot>
 </template>
@@ -257,6 +274,11 @@ function handleDeny() {
 	overflow: hidden;
 	background-color: var(--color--background--light-3);
 	max-width: 90%;
+}
+
+.expiredHint {
+	padding: var(--spacing--xs) var(--spacing--sm);
+	border-top: var(--border);
 }
 
 .header {

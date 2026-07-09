@@ -145,7 +145,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 		this.initialized = true;
 
-		this.logger.info('[IsolatedVmBridge] Initialized successfully');
+		this.logger.debug('[IsolatedVmBridge] Initialized successfully');
 	}
 
 	/**
@@ -173,7 +173,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			// This makes all exported globals available (DateTime, extend, extendOptional, SafeObject, SafeError, createDeepLazyProxy, buildContext)
 			await this.context.eval(runtimeBundle);
 
-			this.logger.info('[IsolatedVmBridge] Runtime bundle loaded');
+			this.logger.debug('[IsolatedVmBridge] Runtime bundle loaded');
 
 			// Verify vendor libraries loaded correctly
 			const hasDateTime = await this.context.eval('typeof DateTime !== "undefined"');
@@ -185,7 +185,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				);
 			}
 
-			this.logger.info('[IsolatedVmBridge] Vendor libraries verified successfully');
+			this.logger.debug('[IsolatedVmBridge] Vendor libraries verified successfully');
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			throw new Error(`Failed to load runtime bundle: ${errorMessage}`);
@@ -222,7 +222,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				);
 			}
 
-			this.logger.info('[IsolatedVmBridge] Proxy system verified successfully');
+			this.logger.debug('[IsolatedVmBridge] Proxy system verified successfully');
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			throw new Error(`Failed to verify proxy system: ${errorMessage}`);
@@ -273,7 +273,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			}
 		`);
 
-		this.logger.info('[IsolatedVmBridge] Error handler injected successfully');
+		this.logger.debug('[IsolatedVmBridge] Error handler injected successfully');
 	}
 
 	/**
@@ -338,6 +338,12 @@ export class IsolatedVmBridge implements RuntimeBridge {
 					};
 				}
 
+				// Dates have no enumerable own keys; pass through instead of
+				// marshaling as an empty object.
+				if (value instanceof Date) {
+					return value;
+				}
+
 				// Handle objects - return metadata with keys
 				if (value !== null && typeof value === 'object') {
 					return {
@@ -395,6 +401,12 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				}
 
 				const element = arr[index];
+
+				// Dates have no enumerable own keys; pass through instead of
+				// marshaling as an empty object.
+				if (element instanceof Date) {
+					return element;
+				}
 
 				// If element is object/array, return metadata
 				if (element !== null && typeof element === 'object') {
@@ -817,7 +829,7 @@ try {
 		this.disposed = true;
 		this.initialized = false;
 
-		this.logger.info('[IsolatedVmBridge] Disposed');
+		this.logger.debug('[IsolatedVmBridge] Disposed');
 	}
 
 	/**

@@ -1,7 +1,10 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
 
+// eslint-disable-next-line import-x/no-duplicates -- ?raw imports the source as a string
 import Tooltip from './Tooltip.vue';
+// eslint-disable-next-line import-x/no-duplicates -- ?raw imports the source as a string
+import tooltipSource from './Tooltip.vue?raw';
 
 /**
  * Get tooltip content element from the DOM.
@@ -489,6 +492,37 @@ describe('components/N8nTooltip', () => {
 				const trigger = document.querySelector('[data-grace-area-trigger]');
 				expect(trigger).toHaveAttribute('data-state', 'instant-open');
 			});
+		});
+	});
+
+	describe('long unbroken strings (ADO-5415)', () => {
+		// ADO-5415: Long unbroken strings (e.g. session IDs) overflow the tooltip bounds.
+		//
+		// The tooltip is a flex container with `max-width: 180px`. The inner content span
+		// is a flex item, which defaults to `min-width: auto` (= `min-content`). For a
+		// string with no break opportunities, `min-content` equals the full string width,
+		// so the flex item — and therefore the tooltip — overflows.
+		//
+		// `word-wrap: break-word` (currently set) does NOT shrink the min-content size of
+		// a flex item. To bound the tooltip width, the CSS must use one of:
+		//   - `overflow-wrap: anywhere`  (shrinks min-content)
+		//   - `word-break: break-all`    (breaks at any character)
+		//   - `word-break: break-word`   (legacy alias that shrinks min-content)
+		// …or set `min-width: 0` on the flex item so it can shrink below its content.
+		it('should declare CSS that breaks long unbroken strings', () => {
+			const globalRuleMatch = tooltipSource.match(/:global\(\.n8n-tooltip\)\s*\{([\s\S]*?)\}/);
+			expect(globalRuleMatch, 'expected :global(.n8n-tooltip) rule').not.toBeNull();
+			const globalRuleBody = globalRuleMatch![1];
+
+			const breaksUnbreakableContent =
+				/overflow-wrap:\s*anywhere/.test(globalRuleBody) ||
+				/word-break:\s*break-(all|word)/.test(globalRuleBody) ||
+				/min-width:\s*0/.test(globalRuleBody);
+
+			expect(
+				breaksUnbreakableContent,
+				'long unbroken strings will overflow the tooltip — see ADO-5415',
+			).toBe(true);
 		});
 	});
 
