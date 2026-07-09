@@ -176,6 +176,13 @@ export class ImportPipeline {
 			}),
 		);
 
+		const workflowExternalIdConflicts: BlockingIssue[] = workflowPlan.externalIdConflicts.map(
+			(conflict) => ({
+				type: 'workflow-external-id-conflict',
+				...conflict,
+			}),
+		);
+
 		const credentialFailures: BlockingIssue[] = this.credentialImporter
 			.blockingFailures(credentialRequest, credentialResolution)
 			.map(({ kind, sourceId, targetId, expectedType, actualType, usedByWorkflows }) => ({
@@ -192,6 +199,7 @@ export class ImportPipeline {
 			...workflowConflicts,
 			...workflowIdConflicts,
 			...workflowFolderConflicts,
+			...workflowExternalIdConflicts,
 			...credentialFailures,
 		];
 	}

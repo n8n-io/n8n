@@ -148,6 +148,12 @@ export type BlockingIssue =
 			name: string;
 	  }
 	| {
+			type: 'workflow-external-id-conflict';
+			sourceWorkflowId: string;
+			externalId: string;
+			name: string;
+	  }
+	| {
 			type: 'credential-unresolved';
 			kind: 'not_found' | 'unknown_type' | 'source_not_found' | 'type_mismatch';
 			sourceId: string;

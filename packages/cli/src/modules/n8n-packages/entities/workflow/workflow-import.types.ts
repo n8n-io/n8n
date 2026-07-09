@@ -62,6 +62,18 @@ export interface WorkflowFolderConflict {
 }
 
 /**
+ * A package workflow carries an externalId, but the target instance is
+ * configured to derive externalId strictly from the local workflow id
+ * (N8N_WORKFLOW_EXTERNAL_ID=MATCH_WORKFLOW_ID) — an externally-supplied
+ * value can never be honored under that mode.
+ */
+export interface WorkflowExternalIdConflict {
+	sourceWorkflowId: string;
+	externalId: string;
+	name: string;
+}
+
+/**
  * The planned actions for a batch of workflows, plus any conflicts that abort
  * the import before anything is written.
  */
@@ -70,6 +82,7 @@ export interface WorkflowImportPlan {
 	conflicts: WorkflowConflict[];
 	idConflicts: WorkflowIdConflict[];
 	folderConflicts: WorkflowFolderConflict[];
+	externalIdConflicts: WorkflowExternalIdConflict[];
 }
 
 export interface WorkflowImportOutcome {

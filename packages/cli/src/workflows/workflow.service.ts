@@ -540,6 +540,7 @@ export class WorkflowService {
 			'pinData',
 			'versionId',
 			'description',
+			'externalId',
 			'updatedAt',
 			// do not update active fields
 		];

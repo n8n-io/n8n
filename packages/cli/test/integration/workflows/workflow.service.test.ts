@@ -8,7 +8,7 @@ import {
 	linkUserToProject,
 	createWorkflow,
 } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
+import { ExternalIdConfig, GlobalConfig } from '@n8n/config';
 import {
 	SharedWorkflowRepository,
 	type WorkflowEntity,
@@ -24,6 +24,7 @@ import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { NodeTypes } from '@/node-types';
 import { OwnershipService } from '@/services/ownership.service';
@@ -215,6 +216,43 @@ describe('update()', () => {
 		expect(workflowData.nodes).toEqual(workflow.nodes);
 		expect(workflowData.versionId).not.toBe(workflow.versionId);
 		expect(addRecordSpy).not.toBeCalled();
+	});
+
+	afterEach(() => {
+		Container.get(ExternalIdConfig).workflowExternalId = 'MUTABLE';
+	});
+
+	test('persists a change to externalId under the default MUTABLE mode', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		await workflowService.update(owner, { externalId: 'ext-1' } as WorkflowEntity, workflow.id, {
+			forceSave: true,
+		});
+
+		const stored = await workflowRepository.findOneByOrFail({ id: workflow.id });
+		expect(stored.externalId).toBe('ext-1');
+	});
+
+	test('rejects changing an already-set externalId under MATCH_WORKFLOW_ID mode', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+		await workflowRepository.update(workflow.id, { externalId: workflow.id });
+		Container.get(ExternalIdConfig).workflowExternalId = 'MATCH_WORKFLOW_ID';
+
+		await expect(
+			workflowService.update(
+				owner,
+				{ externalId: 'something-else' } as WorkflowEntity,
+				workflow.id,
+				{
+					forceSave: true,
+				},
+			),
+		).rejects.toThrow(BadRequestError);
+
+		const stored = await workflowRepository.findOneByOrFail({ id: workflow.id });
+		expect(stored.externalId).toBe(workflow.id);
 	});
 });
 

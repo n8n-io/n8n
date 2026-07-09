@@ -15,6 +15,7 @@ import type {
 	PersistedWorkflowPlanItem,
 	PreparedWorkflow,
 	WorkflowConflict,
+	WorkflowExternalIdConflict,
 	WorkflowFolderConflict,
 	WorkflowImportContext,
 	WorkflowImportOutcome,
@@ -64,6 +65,7 @@ export class WorkflowImporter {
 		const items: WorkflowPlanItem[] = [];
 		const conflicts: WorkflowConflict[] = [];
 		const folderConflicts: WorkflowFolderConflict[] = [];
+		const externalIdConflicts: WorkflowExternalIdConflict[] = [];
 		// `source`-policy ids that would be freshly created — candidates for a
 		// global id collision check below. Blocked creates are excluded: they
 		// already report a workflow-conflict for the same workflow.
@@ -103,11 +105,27 @@ export class WorkflowImporter {
 					});
 				}
 			}
+
+			// MATCH_WORKFLOW_ID derives externalId strictly from the local workflow
+			// id — an externally-supplied value from the package can never be
+			// honored, so importing one is a hard block rather than a silent drop.
+			// Skipped items never persist anything, so they're exempt.
+			if (
+				item.action !== 'skip' &&
+				this.externalIdConfig.workflowExternalId === 'MATCH_WORKFLOW_ID' &&
+				workflow.entity.externalId
+			) {
+				externalIdConflicts.push({
+					sourceWorkflowId: workflow.sourceWorkflowId,
+					externalId: workflow.entity.externalId,
+					name: workflow.entity.name,
+				});
+			}
 		}
 
 		const idConflicts = await this.collectIdConflicts(sourceCreateIds);
 
-		return { items, conflicts, idConflicts, folderConflicts };
+		return { items, conflicts, idConflicts, folderConflicts, externalIdConflicts };
 	}
 
 	/**

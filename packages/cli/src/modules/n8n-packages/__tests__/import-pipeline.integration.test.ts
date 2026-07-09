@@ -8,6 +8,7 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
+import { ExternalIdConfig } from '@n8n/config';
 import type { Folder, Project } from '@n8n/db';
 import {
 	ProjectRepository,
@@ -994,6 +995,146 @@ describe('ImportPipeline workflow conflict policy', () => {
 		const workflows = await Container.get(WorkflowRepository).find();
 		expect(workflows).toHaveLength(1);
 		expect(workflows[0].name).toBe('Updated via re-import');
+	});
+});
+
+describe('ImportPipeline workflow externalId mode', () => {
+	afterEach(() => {
+		Container.get(ExternalIdConfig).workflowExternalId = 'MUTABLE';
+	});
+
+	it('persists a package-supplied externalId on create under the default MUTABLE mode', async () => {
+		const owner = await createOwner();
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'wf-x', name: 'X', externalId: 'ext-from-source' }),
+			]),
+		});
+
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({
+			id: result.workflows[0].localId,
+		});
+		expect(stored.externalId).toBe('ext-from-source');
+	});
+
+	it("syncs an existing workflow's externalId from a re-imported package under MUTABLE mode", async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const existing = await seedExistingWorkflow(
+			personalProject,
+			'Existing workflow',
+			'wf-existing',
+		);
+		await Container.get(WorkflowRepository).update(existing.id, { externalId: 'ext-old' });
+
+		await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({
+					id: 'wf-existing',
+					name: 'Imported replacement',
+					externalId: 'ext-new',
+				}),
+			]),
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
+		});
+
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: existing.id });
+		expect(stored.externalId).toBe('ext-new');
+	});
+
+	it("sets externalId to the new workflow's own id under MATCH_WORKFLOW_ID mode when the package has none", async () => {
+		Container.get(ExternalIdConfig).workflowExternalId = 'MATCH_WORKFLOW_ID';
+		const owner = await createOwner();
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'wf-x', name: 'X' }),
+			]),
+		});
+
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({
+			id: result.workflows[0].localId,
+		});
+		expect(stored.externalId).toBe(stored.id);
+	});
+
+	it('blocks creating a workflow whose package externalId cannot be honored under MATCH_WORKFLOW_ID mode', async () => {
+		Container.get(ExternalIdConfig).workflowExternalId = 'MATCH_WORKFLOW_ID';
+		const owner = await createOwner();
+		const workflowRepo = Container.get(WorkflowRepository);
+		const workflowsBefore = await workflowRepo.count();
+
+		await expect(
+			importPackage({
+				user: owner,
+				packageBuffer: await buildImportPackageBuffer([
+					serializedWorkflow({ id: 'wf-x', name: 'X', externalId: 'ext-from-source' }),
+				]),
+			}),
+		).rejects.toMatchObject({
+			message: expect.stringContaining('Import blocked'),
+			meta: {
+				issues: [
+					{
+						type: 'workflow-external-id-conflict',
+						sourceWorkflowId: 'wf-x',
+						externalId: 'ext-from-source',
+						name: 'X',
+					},
+				],
+			},
+		});
+
+		expect(await workflowRepo.count()).toBe(workflowsBefore);
+	});
+
+	it('blocks re-importing a package externalId onto an existing workflow under MATCH_WORKFLOW_ID mode', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const existing = await seedExistingWorkflow(
+			personalProject,
+			'Existing workflow',
+			'wf-existing',
+		);
+		Container.get(ExternalIdConfig).workflowExternalId = 'MATCH_WORKFLOW_ID';
+
+		await expect(
+			importPackage({
+				user: owner,
+				packageBuffer: await buildImportPackageBuffer([
+					serializedWorkflow({
+						id: 'wf-existing',
+						name: 'Imported replacement',
+						externalId: 'ext-from-source',
+					}),
+				]),
+				workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
+			}),
+		).rejects.toMatchObject({
+			message: expect.stringContaining('Import blocked'),
+			meta: {
+				issues: [
+					{
+						type: 'workflow-external-id-conflict',
+						sourceWorkflowId: 'wf-existing',
+						externalId: 'ext-from-source',
+						name: 'Imported replacement',
+					},
+				],
+			},
+		});
+
+		// Untouched — the existing workflow was never written to.
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: existing.id });
+		expect(stored.name).toBe('Existing workflow');
 	});
 });
 
