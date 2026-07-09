@@ -148,6 +148,7 @@ function onBuildChatStreamingChange(streaming: boolean) {
  *   - render the preview chat before the route/config/session state has settled.
  */
 const initialized = ref(false);
+const pendingArtifactRefreshKey = ref<number>();
 const agentName = ref('');
 const agent = ref<AgentResource | null>(null);
 const agentFiles = ref<AgentFileDto[]>([]);
@@ -816,12 +817,27 @@ async function onConfigUpdated() {
 	builderTelemetry.trackTasksChanged();
 }
 
+async function refreshArtifactShell() {
+	await settleAutosave();
+	await onConfigUpdated();
+}
+
+async function replayPendingArtifactRefresh() {
+	if (!isArtifactMode.value || pendingArtifactRefreshKey.value === undefined) return;
+	pendingArtifactRefreshKey.value = undefined;
+	await refreshArtifactShell();
+}
+
 watch(
 	() => props.artifactRefreshKey,
 	async (refreshKey, previousRefreshKey) => {
-		if (!isArtifactMode.value || refreshKey === previousRefreshKey || !initialized.value) return;
-		await settleAutosave();
-		await onConfigUpdated();
+		if (!isArtifactMode.value || refreshKey === previousRefreshKey) return;
+		if (!initialized.value) {
+			pendingArtifactRefreshKey.value = refreshKey;
+			return;
+		}
+		pendingArtifactRefreshKey.value = undefined;
+		await refreshArtifactShell();
 	},
 );
 
@@ -1046,6 +1062,7 @@ async function initialize() {
 		showError(error, locale.baseText('agents.builder.loadError'));
 	} finally {
 		initialized.value = true;
+		void replayPendingArtifactRefresh();
 		warmAgentKnowledgeSandboxForPage();
 	}
 }

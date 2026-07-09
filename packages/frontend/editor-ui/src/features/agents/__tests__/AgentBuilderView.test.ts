@@ -1134,6 +1134,44 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(fetchConfigMock).toHaveBeenCalledWith('p2', 'a2');
 	});
 
+	it('replays artifact refresh key changes that arrive before initialization completes', async () => {
+		let resolveAgent!: (agent: ReturnType<typeof makeAgentResponse>) => void;
+		getAgentMock.mockReturnValueOnce(new Promise((resolve) => (resolveAgent = resolve)));
+
+		const wrapper = await renderView({
+			waitForAsyncSetup: false,
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactRefreshKey: 0,
+			},
+		});
+		await vi.waitFor(() => {
+			expect(getAgentMock).toHaveBeenCalledTimes(1);
+			expect(fetchConfigMock).toHaveBeenCalledTimes(1);
+		});
+
+		await wrapper.setProps({ artifactRefreshKey: 1 });
+		await nextTick();
+		expect(getAgentMock).toHaveBeenCalledTimes(1);
+		expect(fetchConfigMock).toHaveBeenCalledTimes(1);
+
+		await wrapper.setProps({ artifactRefreshKey: 2 });
+		await nextTick();
+		expect(getAgentMock).toHaveBeenCalledTimes(1);
+		expect(fetchConfigMock).toHaveBeenCalledTimes(1);
+
+		resolveAgent(makeAgentResponse());
+		await flushPromises();
+		await flushPromises();
+
+		expect(getAgentMock).toHaveBeenCalledTimes(2);
+		expect(fetchConfigMock).toHaveBeenCalledTimes(2);
+		expect(getAgentMock).toHaveBeenLastCalledWith({ baseUrl: 'http://localhost:5678' }, 'p2', 'a2');
+		expect(fetchConfigMock).toHaveBeenLastCalledWith('p2', 'a2');
+	});
+
 	it('adds JSON import and export actions to the header menu', async () => {
 		const wrapper = await renderView();
 		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
