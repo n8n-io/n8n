@@ -130,10 +130,9 @@ describe('POST /n8n-packages/import', () => {
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(400);
-		// Match the unique diagnostic phrase, not just "credential" — the generic binding
-		// error also contains that substring (inside "credentials"), so it would give false
-		// confidence that the offending key was named.
-		expect(response.body.message).toContain('unsupported entity type');
+		// The strict schema names the offending key; assert that specific diagnostic so a
+		// regression to silently stripping unknown keys would fail here.
+		expect(response.body.message).toContain('Unrecognized key');
 		expect(response.body.message).toContain('credential');
 	});
 

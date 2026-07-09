@@ -24,37 +24,23 @@ const optionalFormId = z
 		return trimmed.length > 0 ? trimmed : undefined;
 	});
 
-function isStringRecord(value: unknown): value is Record<string, string> {
-	if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
-	return Object.entries(value).every(
-		([sourceId, targetId]) =>
-			sourceId.length > 0 && typeof targetId === 'string' && targetId.length > 0,
-	);
-}
+const BINDINGS_ERROR_MESSAGE =
+	'bindings must be a JSON object, e.g. {"credentials":{"<sourceId>":"<targetId>"}}';
 
-/** Entity types accepted in an import `bindings` object; only these are honoured today. */
-const KNOWN_BINDING_ENTITY_TYPES = ['credentials'] as const;
-type KnownBindingEntityType = (typeof KNOWN_BINDING_ENTITY_TYPES)[number];
+/** Source id → target id map; both ids are non-empty strings. */
+const bindingMapSchema = z.record(z.string().min(1), z.string().min(1));
 
-/** An import `bindings` object: known entity type → (source id → target id). */
-type BindingsInput = Partial<Record<KnownBindingEntityType, Record<string, string>>>;
+/**
+ * A `bindings` object keyed exclusively by known entity types. `.strict()` rejects
+ * unknown keys (e.g. a misspelled `credential`) with a naming error rather than
+ * silently ignoring them. Only `credentials` is honoured today; other entity types
+ * (`dataTables`/`variables`) are RFC seams — add a field here once honoured.
+ */
+const bindingsObjectSchema = z.object({ credentials: bindingMapSchema }).partial().strict();
 
-function isKnownBindingEntityType(key: string): key is KnownBindingEntityType {
-	return KNOWN_BINDING_ENTITY_TYPES.some((known) => known === key);
-}
+type BindingsInput = z.infer<typeof bindingsObjectSchema>;
 
-/** A `bindings` object keyed exclusively by known entity types, each a source→target id map. */
-function isBindingsObject(value: unknown): value is BindingsInput {
-	if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
-	return Object.entries(value).every(
-		([key, entry]) => isKnownBindingEntityType(key) && isStringRecord(entry),
-	);
-}
-
-const BINDINGS_ERROR_MESSAGE = `bindings must be a JSON object keyed by a supported entity type (${KNOWN_BINDING_ENTITY_TYPES.join(
-	', ',
-)}), e.g. {"credentials":{"<sourceId>":"<targetId>"}}`;
-
+/** Multipart text field: a JSON string parsed then validated against {@link bindingsObjectSchema}. */
 const bindingsSchema = z
 	.string()
 	.optional()
@@ -69,27 +55,15 @@ const bindingsSchema = z
 			return z.NEVER;
 		}
 
-		// Reject unknown keys explicitly — a typo like "credential" would otherwise
-		// pass validation and then be silently ignored during import.
-		if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-			const unknownKeys = Object.keys(parsed).filter((key) => !isKnownBindingEntityType(key));
-			if (unknownKeys.length > 0) {
-				const offending = unknownKeys.map((key) => `"${key}"`).join(', ');
-				const supported = KNOWN_BINDING_ENTITY_TYPES.join(', ');
-				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
-					message: `bindings contains unsupported entity type(s) ${offending}; supported: ${supported}`,
-				});
-				return z.NEVER;
+		const result = bindingsObjectSchema.safeParse(parsed);
+		if (!result.success) {
+			for (const issue of result.error.issues) {
+				ctx.addIssue({ code: z.ZodIssueCode.custom, message: issue.message, path: issue.path });
 			}
-		}
-
-		if (!isBindingsObject(parsed)) {
-			ctx.addIssue({ code: z.ZodIssueCode.custom, message: BINDINGS_ERROR_MESSAGE });
 			return z.NEVER;
 		}
 
-		return parsed;
+		return result.data;
 	});
 
 export class ImportPackageRequestDto extends Z.class({

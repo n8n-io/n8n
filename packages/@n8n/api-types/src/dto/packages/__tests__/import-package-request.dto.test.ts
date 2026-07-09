@@ -161,11 +161,11 @@ describe('ImportPackageRequestDto', () => {
 
 		expect(result.success).toBe(false);
 		if (!result.success) {
-			// The diagnostic must name the typo, not fall back to the generic message —
-			// only the unknown-key path says "unsupported entity type".
+			// The strict schema names the offending key, so the typo is discoverable
+			// rather than being silently stripped and ignored.
 			const message = result.error.errors.map((issue) => issue.message).join('; ');
-			expect(message).toContain('unsupported entity type');
-			expect(message).toContain('"credential"');
+			expect(message).toContain('Unrecognized key');
+			expect(message).toContain('credential');
 		}
 	});
 
