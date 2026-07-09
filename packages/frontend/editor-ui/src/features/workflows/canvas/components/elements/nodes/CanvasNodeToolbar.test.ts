@@ -323,6 +323,75 @@ describe('CanvasNodeToolbar', () => {
 		});
 	});
 
+	// ADO-5556: All icon-only node hover actions (except "Add to n8n AI") lack an
+	// explanatory tooltip. They only carry a native `title`/`aria-label`, so no
+	// styled tooltip appears on hover to label the control.
+	describe('hover action tooltips (ADO-5556)', () => {
+		it('should show a tooltip labelling the execute step action on hover', async () => {
+			const { getByTestId } = renderComponent({
+				pinia,
+				global: {
+					provide: {
+						...createCanvasNodeProvide(),
+						...createCanvasProvide(),
+					},
+				},
+			});
+
+			await hoverTooltipTrigger(getByTestId('execute-node-button'));
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('Execute step'));
+		});
+
+		it('should show a tooltip labelling the deactivate action on hover', async () => {
+			const { getByTestId } = renderComponent({
+				pinia,
+				global: {
+					provide: {
+						...createCanvasNodeProvide(),
+						...createCanvasProvide(),
+					},
+				},
+			});
+
+			await hoverTooltipTrigger(getByTestId('disable-node-button'));
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('Deactivate'));
+		});
+
+		it('should show a tooltip labelling the delete action on hover', async () => {
+			const { getByTestId } = renderComponent({
+				pinia,
+				global: {
+					provide: {
+						...createCanvasNodeProvide(),
+						...createCanvasProvide(),
+					},
+				},
+			});
+
+			await hoverTooltipTrigger(getByTestId('delete-node-button'));
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('Delete'));
+		});
+
+		it('should show a tooltip labelling the more actions button on hover', async () => {
+			const { getByTestId } = renderComponent({
+				pinia,
+				global: {
+					provide: {
+						...createCanvasNodeProvide(),
+						...createCanvasProvide(),
+					},
+				},
+			});
+
+			await hoverTooltipTrigger(getByTestId('overflow-node-button'));
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('More actions'));
+		});
+	});
+
 	it('should have "forceVisible" class when sticky color picker is visible', async () => {
 		const { getByTestId } = renderComponent({
 			pinia,

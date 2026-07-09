@@ -1,0 +1,22 @@
+{
+	"id": "workflow-builder-no-agent-builder-leak",
+	"userMessage": "Build a workflow that checks an RSS feed every hour and posts new items to a Slack channel.",
+	"expectedToolInvocations": {
+		"allOfToolCalls": [
+			{
+				"toolName": "load_skill",
+				"argsContainAny": ["workflow-builder"]
+			}
+		],
+		"noneOfToolCalls": [
+			{
+				"toolName": "load_skill",
+				"argsContainAny": ["agent-builder"]
+			},
+			{
+				"toolName": "agent_builder"
+			}
+		]
+	},
+	"rationale": "Regression gate for the agent-builder port into Instance AI. A plain workflow-building prompt must route through the workflow-builder skill and must never load the agent-builder skill or invoke the agent_builder router tool. Meaningful in both module modes; the strongest signal is a run with N8N_ENABLED_MODULES including 'agents', where the agent-builder skill is in the catalog and the agent_builder router is registered (eagerly, since discovery disables deferred tools) yet must still not be selected."
+}

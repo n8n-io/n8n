@@ -41,13 +41,14 @@
   },
   "dependencies": {
     "@codemirror/language": "catalog:",
+    "@lezer/generator": "catalog:",
     "@lezer/highlight": "catalog:",
-    "@lezer/lr": "catalog:",
-    "@lezer/generator": "catalog:"
+    "@lezer/lr": "catalog:"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "typescript": "catalog:typescript",
     "vite": "catalog:",
     "vitest": "catalog:"
   }

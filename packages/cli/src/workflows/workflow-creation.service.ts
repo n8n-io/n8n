@@ -75,6 +75,8 @@ export class WorkflowCreationService {
 			uiContext?: string;
 			publicApi?: boolean;
 			source?: WorkflowActionSource;
+			versionName?: string;
+			versionDescription?: string;
 		} = {},
 	): Promise<WorkflowEntity> {
 		const {
@@ -86,6 +88,8 @@ export class WorkflowCreationService {
 			uiContext,
 			publicApi = false,
 			source = 'ui',
+			versionName,
+			versionDescription,
 		} = options;
 
 		// Ensure workflow is created as inactive
@@ -225,8 +229,11 @@ export class WorkflowCreationService {
 				workflow,
 				workflow.id,
 				autosaved,
-				undefined,
+				source,
 				transactionManager,
+				versionName || versionDescription
+					? { name: versionName, description: versionDescription }
+					: undefined,
 			);
 
 			return await this.workflowFinderService.findWorkflowForUser(

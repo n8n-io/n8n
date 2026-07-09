@@ -336,6 +336,8 @@ export class WorkflowService {
 			expectedChecksum?: string;
 			autosaved?: boolean;
 			source?: WorkflowActionSource;
+			versionName?: string;
+			versionDescription?: string;
 		} = {},
 	): Promise<WorkflowEntity> {
 		const {
@@ -348,6 +350,8 @@ export class WorkflowService {
 			aiBuilderAssisted = false,
 			autosaved = false,
 			source = 'ui',
+			versionName,
+			versionDescription,
 		} = options;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:update',
@@ -553,6 +557,10 @@ export class WorkflowService {
 				workflowId,
 				autosaved,
 				source,
+				undefined,
+				versionName || versionDescription
+					? { name: versionName, description: versionDescription }
+					: undefined,
 			);
 		}
 

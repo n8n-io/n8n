@@ -182,6 +182,59 @@ describe('WorkflowHistoryService', () => {
 			);
 		});
 
+		it('should persist version name and description when metadata is provided', async () => {
+			// Arrange
+			const workflow = getWorkflow({ addNodeWithoutCreds: true });
+			const workflowId = '123';
+			workflow.connections = {};
+			workflow.id = workflowId;
+			workflow.versionId = '456';
+
+			// Act
+			await workflowHistoryService.saveVersion(
+				testUser,
+				workflow,
+				workflowId,
+				false,
+				'n8n-mcp',
+				undefined,
+				{ name: 'Added Slack alert', description: 'Notifies #ops on failure' },
+			);
+
+			// Assert
+			expect(workflowHistoryRepository.insert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					name: 'Added Slack alert',
+					description: 'Notifies #ops on failure',
+				}),
+			);
+		});
+
+		it('should not set name or description when metadata is partial', async () => {
+			// Arrange
+			const workflow = getWorkflow({ addNodeWithoutCreds: true });
+			const workflowId = '123';
+			workflow.connections = {};
+			workflow.id = workflowId;
+			workflow.versionId = '456';
+
+			// Act
+			await workflowHistoryService.saveVersion(
+				testUser,
+				workflow,
+				workflowId,
+				false,
+				'n8n-mcp',
+				undefined,
+				{ name: 'Added Slack alert' },
+			);
+
+			// Assert
+			const inserted = workflowHistoryRepository.insert.mock.calls[0][0];
+			expect(inserted).toEqual(expect.objectContaining({ name: 'Added Slack alert' }));
+			expect(inserted).not.toHaveProperty('description');
+		});
+
 		it('should throw an error when nodes or connections are missing', async () => {
 			// Arrange
 			const workflow = getWorkflow({ addNodeWithoutCreds: true });

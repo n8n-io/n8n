@@ -26,26 +26,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    },
-    "./storage": {
-      "types": "./dist/storage/index.d.ts",
-      "default": "./dist/storage/index.js"
-    }
-  },
-  "typesVersions": {
-    "*": {
-      "storage": [
-        "dist/storage/index.d.ts"
-      ]
     }
   },
   "dependencies": {
-    "@n8n/backend-common": "workspace:*",
-    "@n8n/config": "workspace:*",
     "@n8n/constants": "workspace:*",
-    "@n8n/db": "workspace:*",
-    "@n8n/di": "workspace:*",
-    "@n8n/typeorm": "workspace:*",
     "@n8n/utils": "workspace:*",
     "cron-parser": "catalog:",
     "luxon": "catalog:",
@@ -56,6 +40,7 @@
     "@n8n/vitest-config": "workspace:*",
     "@types/luxon": "catalog:",
     "@vitest/coverage-v8": "catalog:",
+    "typescript": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },

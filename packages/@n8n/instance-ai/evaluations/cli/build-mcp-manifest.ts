@@ -14,10 +14,10 @@ import {
 	stageMcpConfigFromClaudeJson,
 	uniqueProjectScopes,
 } from './mcp-builder';
-import { ConversationTurnSchema, DEFAULT_DATASETS } from '../data/workflows/schema';
 import { createLogger } from '../harness/logger';
 import { prebuiltManifestSchema, type PrebuiltManifest } from '../harness/prebuilt-workflows';
 import { runWithConcurrency } from '../harness/runner';
+import { ConversationTurnSchema, DEFAULT_DATASETS } from '../harness/schema';
 import { loadTestCasesFromLangTracer } from '../langtracer/provider';
 
 // ---------------------------------------------------------------------------

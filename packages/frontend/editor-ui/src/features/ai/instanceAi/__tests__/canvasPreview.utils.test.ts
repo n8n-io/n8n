@@ -235,7 +235,7 @@ describe('getLatestBuilderTarget', () => {
 		const credSetup = makeAgentNode({
 			agentId: 'agent-cred-1',
 			role: 'credential-setup',
-			kind: 'delegate',
+			kind: 'builder',
 			status: 'active',
 			targetResource: { type: 'credential', id: 'cred-1' },
 		});

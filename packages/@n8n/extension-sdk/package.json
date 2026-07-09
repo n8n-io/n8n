@@ -39,7 +39,7 @@
     "build:unchecked": "pnpm run build",
     "create-json-schema": "tsx scripts/create-json-schema.ts",
     "preview": "vite preview",
-    "test": "node -e \"process.exit(0);\""
+    "test": "node -e \"process.exit(0)\""
   },
   "peerDependencies": {
     "vue": "catalog:frontend",
@@ -51,6 +51,7 @@
     "@vue/tsconfig": "catalog:frontend",
     "prettier": "catalog:",
     "tsdown": "catalog:",
+    "typescript": "catalog:",
     "rimraf": "catalog:",
     "vite": "catalog:",
     "vue": "catalog:frontend",

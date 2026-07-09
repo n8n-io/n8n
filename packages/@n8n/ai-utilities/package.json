@@ -16,6 +16,9 @@
       "node-catalog": [
         "dist/esm/node-catalog/index.d.ts"
       ],
+      "agent-config": [
+        "dist/esm/agent-config/index.d.ts"
+      ],
       "fromai-helpers": [
         "dist/esm/utils/fromai-helpers.d.ts"
       ],
@@ -50,6 +53,11 @@
       "types": "./dist/esm/node-catalog/index.d.ts",
       "import": "./dist/esm/node-catalog/index.js",
       "require": "./dist/cjs/node-catalog/index.js"
+    },
+    "./agent-config": {
+      "types": "./dist/esm/agent-config/index.d.ts",
+      "import": "./dist/esm/agent-config/index.js",
+      "require": "./dist/cjs/agent-config/index.js"
     },
     "./fromai-helpers": {
       "types": "./dist/esm/utils/fromai-helpers.d.ts",
@@ -104,6 +112,7 @@
     "@types/proxy-from-env": "catalog:",
     "fast-glob": "catalog:",
     "tsx": "catalog:",
+    "typescript": "catalog:",
     "axios": "catalog:",
     "nock": "catalog:"
   },
@@ -117,6 +126,7 @@
     "@langchain/openai": "catalog:",
     "langchain": "catalog:",
     "lodash": "catalog:",
+    "@n8n/api-types": "workspace:*",
     "@n8n/backend-network": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",

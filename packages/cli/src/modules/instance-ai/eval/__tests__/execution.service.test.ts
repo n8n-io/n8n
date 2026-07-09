@@ -18,6 +18,7 @@ import type { NodeTypes } from '@/node-types';
 import type { PostHogClient } from '@/posthog';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 // ---------------------------------------------------------------------------
 // Mocks — must be before the import of the class under test
@@ -205,6 +206,7 @@ describe('EvalExecutionService', () => {
 	const activeExecutions = mock<ActiveExecutions>();
 	const executionsConfig = mock<ExecutionsConfig>({ mode: 'regular' });
 	const binaryDataService = mock<BinaryDataService>();
+	const workflowStaticDataService = mock<WorkflowStaticDataService>();
 
 	// Captured configureAdditionalData closure so tests can re-invoke it on a
 	// stub additionalData without booting the real runner.
@@ -237,6 +239,7 @@ describe('EvalExecutionService', () => {
 			activeExecutions,
 			executionsConfig,
 			binaryDataService,
+			workflowStaticDataService,
 		);
 		// Reset to safe default — tests that flip queue mode reassign in-test.
 		Object.assign(executionsConfig, { mode: 'regular' });
@@ -411,6 +414,49 @@ describe('EvalExecutionService', () => {
 					configureAdditionalData: expect.any(Function),
 				}),
 			);
+		});
+
+		it('runs with blank workflow staticData even when the entity carries some', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					staticData: { global: { lastLeadsRow: 4 } },
+				} as never) as never,
+			);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflowData: expect.objectContaining({ id: 'wf-1', staticData: undefined }),
+				}),
+			);
+		});
+
+		it('blanks the persisted workflow staticData after the run', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					staticData: { global: { lastLeadsRow: 4 } },
+				} as never) as never,
+			);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(workflowStaticDataService.saveStaticDataById).toHaveBeenCalledWith('wf-1', {});
+			// The blank must land after the run — it undoes what the execution's
+			// lifecycle hooks persisted.
+			expect(workflowRunner.run.mock.invocationCallOrder[0]).toBeLessThan(
+				workflowStaticDataService.saveStaticDataById.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('blanks the persisted workflow staticData even when the execution fails', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+			activeExecutions.getPostExecutePromise.mockRejectedValue(new Error('execution crashed'));
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(result.success).toBe(false);
+			expect(workflowStaticDataService.saveStaticDataById).toHaveBeenCalledWith('wf-1', {});
 		});
 
 		it('returns a framework failure when bypass pin data generation fails', async () => {
