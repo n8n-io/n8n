@@ -340,7 +340,7 @@ export function getParameterTypeOption<T extends keyof NonNullable<INodeProperti
 }
 
 export function isResourceLocatorParameterType(type: NodePropertyTypes) {
-	return type === 'resourceLocator' || type === 'workflowSelector';
+	return type === 'resourceLocator' || type === 'workflowSelector' || type === 'agentSelector';
 }
 
 export function isValidParameterOption(

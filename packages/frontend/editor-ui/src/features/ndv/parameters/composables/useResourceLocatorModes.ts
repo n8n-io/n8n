@@ -6,15 +6,17 @@ import type {
 	INodePropertyMode,
 	ResourceLocatorModes,
 } from 'n8n-workflow';
-import type { Router } from 'vue-router';
-import { useWorkflowResourcesLocator } from './useWorkflowResourcesLocator';
 
-export function useWorkflowResourceLocatorModes(
+/**
+ * Mode handling (list/id) for a resource-locator–style input. Shared by the
+ * workflow and agent selectors; the caller injects the name resolver used to
+ * cache the display name when switching modes.
+ */
+export function useResourceLocatorModes(
 	modelValue: Ref<INodeParameterResourceLocator>,
-	router: Router,
+	getName: (id: string) => string,
 ) {
 	const i18n = useI18n();
-	const { getWorkflowName } = useWorkflowResourcesLocator(router);
 
 	const supportedModes = computed<INodePropertyMode[]>(() => [
 		{
@@ -33,10 +35,7 @@ export function useWorkflowResourceLocatorModes(
 	const isListMode = computed(() => selectedMode.value === 'list');
 
 	function getUpdatedModePayload(value: ResourceLocatorModes): INodeParameterResourceLocator {
-		if (typeof modelValue !== 'object') {
-			return { __rl: true, value: modelValue, mode: value };
-		}
-
+		// Switching list → id keeps the raw value without re-caching the name
 		if (value === 'id' && selectedMode.value === 'list' && modelValue.value.value) {
 			return { __rl: true, mode: value, value: modelValue.value.value };
 		}
@@ -45,7 +44,7 @@ export function useWorkflowResourceLocatorModes(
 			__rl: true,
 			mode: value,
 			value: modelValue.value.value,
-			cachedResultName: getWorkflowName(modelValue.value.value?.toString() ?? ''),
+			cachedResultName: getName(modelValue.value.value?.toString() ?? ''),
 		};
 	}
 

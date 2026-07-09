@@ -894,6 +894,13 @@ export interface InstanceAiAgentBuilderService {
 	): Promise<{ id: string }>;
 	listChatIntegrations(): Promise<ChatIntegrationInfo[]>;
 	listProjectAgents(projectId: string, excludeAgentId: string): Promise<ProjectAgentSummary[]>;
+	/**
+	 * Every agent in the project (no exclude, no published-only filter), for
+	 * discovery flows like "which agents exist here?" Resolves a default
+	 * project when `projectId` is omitted (mirrors `listAttachableWorkflows`).
+	 * Scoped to `agent:read`.
+	 */
+	listAllProjectAgents(projectId?: string): Promise<ProjectAgentSummary[]>;
 	/** Live model ids for a credential, via the provider's chat-model node lookup (drives resolve_llm). */
 	listModels(
 		credentialId: string,
