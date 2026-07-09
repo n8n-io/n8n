@@ -106,11 +106,12 @@ export function useCompareCases(
 		casesError.value = false;
 		try {
 			const results = await Promise.allSettled(
-				runs.map((run) =>
-					evaluationStore.fetchTestCaseExecutions({
-						workflowId: workflowId.value,
-						runId: run.testRunId,
-					}),
+				runs.map(
+					async (run) =>
+						await evaluationStore.fetchTestCaseExecutions({
+							workflowId: workflowId.value,
+							runId: run.testRunId,
+						}),
 				),
 			);
 			// A newer load for a different run set has taken over — don't clobber it.
