@@ -2,7 +2,10 @@
 export { AI_NODE_SDK_VERSION } from './ai-node-sdk-version';
 
 // Utils
-export { lazyImport } from './utils/lazy-import';
+// NOTE: `lazyImport` is intentionally NOT re-exported here — import it from the
+// lightweight `@n8n/ai-utilities/lazy-import` subpath so callers that use it to
+// defer loading provider SDKs don't eagerly pull this barrel (which statically
+// imports @langchain/*).
 export { logWrapper } from './utils/log-wrapper';
 export { logAiEvent } from './utils/log-ai-event';
 export { parseSSEStream } from './utils/sse';
