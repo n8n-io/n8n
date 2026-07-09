@@ -13,6 +13,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	MAX_AGENT_FILE_SIZE_BYTES,
 	MAX_AGENT_FILE_SIZE_MB,
+	MAX_AGENT_FILES_PER_UPLOAD,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
 } from '@n8n/api-types';
@@ -46,6 +47,7 @@ import type {
 	AgentJsonConfig,
 	AgentJsonMcpServerConfig,
 	AgentJsonToolConfig,
+	AgentJsonVectorStoreConfig,
 	AgentSkill,
 } from '../types';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
@@ -69,6 +71,7 @@ import {
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
 	AGENT_JSON_IMPORT_MODAL_KEY,
+	AGENT_VECTOR_STORES_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
 	PROJECT_AGENTS,
 } from '../constants';
@@ -325,6 +328,18 @@ async function onUploadAgentFiles(files: File[]) {
 	}
 	const filesWithinLimit = files.filter((file) => file.size <= MAX_AGENT_FILE_SIZE_BYTES);
 	if (filesWithinLimit.length === 0) return;
+
+	if (filesWithinLimit.length > MAX_AGENT_FILES_PER_UPLOAD) {
+		showError(
+			new Error(
+				locale.baseText('agents.builder.files.uploadTooManyFiles.message' as BaseTextKey, {
+					interpolate: { max: String(MAX_AGENT_FILES_PER_UPLOAD) },
+				}),
+			),
+			locale.baseText('agents.builder.files.uploadTooManyFiles.title' as BaseTextKey),
+		);
+		return;
+	}
 
 	const existingTotalSizeBytes = agentFiles.value.reduce(
 		(total, file) => total + file.fileSizeBytes,
@@ -1015,6 +1030,74 @@ function onOpenAddToolModal() {
 	});
 }
 
+function onConfirmVectorStore(vectorStore: AgentJsonVectorStoreConfig, originalName?: string) {
+	const vectorStores = localConfig.value?.vectorStores ?? [];
+	const matchName = originalName ?? vectorStore.name;
+	const index = vectorStores.findIndex((existing) => existing.name === matchName);
+	const nextVectorStores =
+		index === -1
+			? [...vectorStores, vectorStore]
+			: vectorStores.map((existing, i) => (i === index ? vectorStore : existing));
+	onConfigFieldUpdate({ vectorStores: nextVectorStores });
+}
+
+function onOpenAddVectorStoreModal() {
+	const vectorStores = localConfig.value?.vectorStores ?? [];
+	uiStore.openModalWithData({
+		name: AGENT_VECTOR_STORES_MODAL_KEY,
+		data: {
+			projectId: projectId.value,
+			agentId: agentId.value,
+			existingNames: vectorStores.map((vectorStore) => vectorStore.name),
+			onConfirm: onConfirmVectorStore,
+		},
+	});
+}
+
+function onOpenEditVectorStoreModal(vectorStore: AgentJsonVectorStoreConfig) {
+	const vectorStores = localConfig.value?.vectorStores ?? [];
+	uiStore.openModalWithData({
+		name: AGENT_VECTOR_STORES_MODAL_KEY,
+		data: {
+			projectId: projectId.value,
+			agentId: agentId.value,
+			existingNames: vectorStores.map((existing) => existing.name),
+			vectorStore,
+			onConfirm: (updated: AgentJsonVectorStoreConfig) =>
+				onConfirmVectorStore(updated, vectorStore.name),
+			onRemove: (name: string) => {
+				onConfigFieldUpdate({
+					vectorStores: (localConfig.value?.vectorStores ?? []).filter(
+						(existing) => existing.name !== name,
+					),
+				});
+			},
+		},
+	});
+}
+
+async function onRemoveVectorStore(vectorStore: AgentJsonVectorStoreConfig) {
+	const confirmed = await openAgentConfirmationModal({
+		title: locale.baseText('agents.builder.vectorStores.panel.removeModal.title', {
+			interpolate: { name: vectorStore.name },
+		}),
+		description: locale.baseText('agents.builder.vectorStores.panel.removeModal.description', {
+			interpolate: { name: vectorStore.name },
+		}),
+		confirmButtonText: locale.baseText(
+			'agents.builder.vectorStores.panel.removeModal.button.remove',
+		),
+		cancelButtonText: locale.baseText('generic.cancel'),
+	});
+	if (confirmed !== MODAL_CONFIRM) return;
+
+	onConfigFieldUpdate({
+		vectorStores: (localConfig.value?.vectorStores ?? []).filter(
+			(existing) => existing.name !== vectorStore.name,
+		),
+	});
+}
+
 function onOpenToolFromList(target: ToolOpenTarget | number) {
 	const tools = localConfig.value?.tools ?? [];
 
@@ -1465,6 +1548,9 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					@add-skill="onOpenAddSkillModal"
 					@upload-files="onUploadAgentFiles"
 					@delete-file="onDeleteAgentFile"
+					@add-vector-store="onOpenAddVectorStoreModal"
+					@edit-vector-store="onOpenEditVectorStoreModal"
+					@remove-vector-store="onRemoveVectorStore"
 					@remove-tool="onRemoveTool"
 					@remove-skill="onRemoveSkill"
 					@update:connected-triggers="onConnectedTriggersUpdate"

@@ -1,9 +1,11 @@
 name: 'Community: Close Stale PRs'
 
 # Closes community PRs that were sent back to the contributor
-# (triage:needs-info / triage:tests-needed) and have been inactive since.
-# Scoped to those labels on purpose: we only close PRs where we asked for
-# changes and got no response — never PRs waiting on us.
+# (triage:needs-info / triage:tests-needed / Needs Feedback) and have been
+# inactive since. Scoped to those labels on purpose: we only close PRs where we
+# asked for changes and got no response — never PRs waiting on us.
+# "Needs Feedback" is the legacy equivalent of triage:needs-info (predates the
+# triage:* convention) and still sits on open community PRs awaiting a reply.
 
 on:
   schedule:
@@ -30,7 +32,7 @@ jobs:
           days-before-issue-stale: -1
           days-before-issue-close: -1
 
-          any-of-pr-labels: 'triage:needs-info,triage:tests-needed'
+          any-of-pr-labels: 'triage:needs-info,triage:tests-needed,Needs Feedback'
           days-before-pr-stale: 30
           days-before-pr-close: 14
           stale-pr-label: 'Stale'
