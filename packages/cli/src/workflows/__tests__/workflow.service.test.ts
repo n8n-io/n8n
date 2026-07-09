@@ -92,6 +92,7 @@ describe('WorkflowService', () => {
 				mock(), // licenseState
 				mock(), // projectRepository
 				mock(), // redactionEnforcementService
+				mock(), // workflowPublicationNotifier
 			);
 		});
 
@@ -352,6 +353,7 @@ describe('WorkflowService', () => {
 				licenseStateMock, // licenseState
 				mock(), // projectRepository
 				redactionEnforcementServiceMock, // redactionEnforcementService
+				mock(), // workflowPublicationNotifier
 			);
 
 			vi.clearAllMocks();
@@ -509,6 +511,8 @@ describe('WorkflowService', () => {
 				'workflow-1',
 				false,
 				'ui',
+				undefined,
+				undefined,
 			);
 		});
 
@@ -1047,6 +1051,7 @@ describe('WorkflowService', () => {
 				mock(), // licenseState
 				mock(), // projectRepository
 				mock(), // redactionEnforcementService
+				mock(), // workflowPublicationNotifier
 			);
 
 			// Bypass validation internals
@@ -1275,6 +1280,7 @@ describe('WorkflowService', () => {
 				mock(), // licenseState
 				mock(), // projectRepository
 				mock(), // redactionEnforcementService
+				mock(), // workflowPublicationNotifier
 			);
 		});
 

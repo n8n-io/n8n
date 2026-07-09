@@ -545,6 +545,43 @@ describe('eval-mock-helpers', () => {
 			expect(result.body).toEqual({ update: true });
 			expect(result.qs).toEqual({ version: '2' });
 		});
+
+		it('should fold the URL-encoded `form` slot into body (object form)', () => {
+			const requestObj: IRequestOptions = {
+				uri: 'https://api.example.com/token',
+				method: 'POST',
+				form: { grant_type: 'refresh_token', refresh_token: 'abc' },
+			};
+
+			const result = normalizeLegacyRequest(requestObj);
+
+			expect(result.body).toEqual({ grant_type: 'refresh_token', refresh_token: 'abc' });
+		});
+
+		it('should fold the multipart `formData` slot into body (string-uri form)', () => {
+			const options: IRequestOptions = {
+				method: 'POST',
+				formData: { file: 'binary-part' },
+			};
+
+			const result = normalizeLegacyRequest('https://api.example.com/upload', options);
+
+			expect(result.body).toEqual({ file: 'binary-part' });
+		});
+
+		it('should prefer body over formData and form when several slots are set', () => {
+			const requestObj: IRequestOptions = {
+				uri: 'https://api.example.com',
+				method: 'POST',
+				body: { fromBody: true },
+				formData: { fromFormData: true },
+				form: { fromForm: true },
+			};
+
+			const result = normalizeLegacyRequest(requestObj);
+
+			expect(result.body).toEqual({ fromBody: true });
+		});
 	});
 
 	// -----------------------------------------------------------------------

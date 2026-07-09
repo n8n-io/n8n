@@ -209,7 +209,7 @@ export class McpServer {
 			try {
 				await new Promise<void>((resolve) => {
 					this.resolveFunctions[callId] = resolve;
-					void transport.handleRequest(req, resp, message as IncomingMessage);
+					void transport.handleRequest(req, resp, message as IncomingMessage).finally(resolve);
 				});
 			} finally {
 				delete this.resolveFunctions[callId];

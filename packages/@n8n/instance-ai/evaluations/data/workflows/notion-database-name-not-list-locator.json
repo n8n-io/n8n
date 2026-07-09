@@ -1,0 +1,17 @@
+{
+	"description": "Regression guard for wrong-kind resource-locator values (PR #33530): the user names a Notion database by its human-readable title. The wrong build stuffs that title into a 'From list' or ID locator slot, which holds opaque IDs and fails at runtime. detectWrongKindLocatorValues now flags this deterministically during compile/setup; this case guards the loop end-to-end (warning → remediation → clean final workflow). No Notion credential is declared, so the agent cannot resolve the title by searching — the correct outcome leaves the database selection as a setup step (or a user-provided URL/ID), never the display name posing as an ID.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "When our lead form webhook receives a submission with the person's name and email, add them as a new entry in my Notion database called 'Q3 Sales Leads'."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["build", "notion", "resource-locator", "webhook", "regression"],
+	"triggerType": "webhook",
+	"datasets": ["full"],
+	"outcomeExpectations": [
+		"For each webhook submission the workflow creates an entry in a Notion database via a Notion node wired from the webhook data, mapping the submitter's name and email.",
+		"No Notion resource locator carries the human-readable title 'Q3 Sales Leads' as if it were an identifier — a 'From list' or ID-mode locator must hold an opaque ID, never a display name. Leaving the database selection unset for the user to pick during setup, or using a URL/ID placeholder the user would provide, is the correct outcome here since no credential exists to search by name."
+	]
+}

@@ -1,0 +1,49 @@
+{
+	"description": "Checks the intended opt-in flow for assigning a generated error workflow: first build a simple no-credential HTTP workflow, ask whether the user wants an error workflow, then after the user says yes publish the error workflow before assigning it to that specific workflow.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": [
+				"Build a simple workflow named \"Pokemon lookup\".",
+				"When I run it manually, call GET https://pokeapi.co/api/v2/pokemon/pikachu with an HTTP Request node and no credentials.",
+				"Return a small summary with Pikachu's name, ID, height, weight, and types."
+			]
+		},
+		{
+			"role": "assistant",
+			"text": "Do you want me to build an error workflow for Pokemon lookup?"
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Only respond after the agent has built the Pokemon lookup workflow and asked whether to build an error workflow for it. If the agent asks, say the following:]",
+				"Yes, build the error workflow. It should send a message to Slack channel #workflow-errors.",
+				"Publish the error workflow and set it as the error workflow for Pokemon lookup only.",
+				"[Approve HITL confirmations for publishing the error workflow and for setting it as the error workflow when the target is Pokemon lookup. Do not approve any global or instance-wide setting.]"
+			]
+		}
+	],
+	"messageBudget": 8,
+	"complexity": "medium",
+	"tags": [
+		"behaviour",
+		"error-workflow",
+		"publish",
+		"workflow-settings",
+		"manual",
+		"http",
+		"slack"
+	],
+	"credentials": [{ "type": "slackApi" }],
+	"datasets": ["behaviour", "full"],
+	"processExpectations": [
+		"The agent built and saved the simple Pokemon lookup workflow first, using a no-credential HTTP Request to the PokeAPI/Pokemon API, and did not create an error workflow before asking for user approval.",
+		"After the Pokemon lookup workflow was built, the agent asked the user whether they wanted to build an error workflow for that workflow. This opt-in question happened before the error workflow was created.",
+		"After the user said yes, the agent built the error workflow, published it with user/HITL approval before assigning it, and then set it as the error workflow for Pokemon lookup only. It did not mention, offer, or claim an instance-wide/global error workflow configuration."
+	],
+	"outcomeExpectations": [
+		"The build includes a Pokemon lookup workflow that starts from a Manual Trigger, calls https://pokeapi.co/api/v2/pokemon/pikachu or an equivalent no-auth Pokemon API endpoint with an HTTP Request node, uses no credentials, and returns or formats Pikachu's name, ID, height, weight, and types.",
+		"After the user opted in, the build includes an error workflow that sends a message to Slack channel #workflow-errors.",
+		"The Pokemon lookup workflow, and not a global setting, is the target for the workflow-level error workflow assignment. If the workflow JSON exposes settings, Pokemon lookup has an error workflow setting pointing at the generated error handler workflow ID, not a name, placeholder, or invented global identifier."
+	]
+}

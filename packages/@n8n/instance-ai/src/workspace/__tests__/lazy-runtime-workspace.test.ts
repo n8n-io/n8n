@@ -170,6 +170,32 @@ describe('createLazyRuntimeWorkspace', () => {
 		expect(lazyWorkspace.getInstructions()).toContain('Real filesystem instructions.');
 	});
 
+	it('returns stable sandbox and filesystem instructions regardless of resolution', async () => {
+		const { workspace } = createMockWorkspace();
+		const ensureWorkspace = vi.fn(async () => await Promise.resolve(workspace));
+		const lazyWorkspace = createLazyRuntimeWorkspace({
+			ensureWorkspace,
+			sandboxInstructions: 'Stable sandbox instructions.',
+			filesystemInstructions: 'Stable filesystem instructions.',
+		});
+
+		// Before resolution: the stable text, not the "on first use" fallback.
+		const sandboxBefore = lazyWorkspace.sandbox?.getInstructions?.();
+		const filesystemBefore = lazyWorkspace.filesystem?.getInstructions?.();
+		expect(sandboxBefore).toBe('Stable sandbox instructions.');
+		expect(filesystemBefore).toBe('Stable filesystem instructions.');
+
+		await lazyWorkspace.filesystem?.readFile('/workspace/report.md');
+
+		// After resolution: byte-identical — the live resolved text must not leak
+		// in, since that would shift the agent's cached prompt prefix on resume.
+		expect(lazyWorkspace.sandbox?.status).toBe('running');
+		expect(lazyWorkspace.sandbox?.getInstructions?.()).toBe(sandboxBefore);
+		expect(lazyWorkspace.filesystem?.getInstructions?.()).toBe(filesystemBefore);
+		expect(lazyWorkspace.getInstructions()).not.toContain('Real sandbox instructions.');
+		expect(lazyWorkspace.getInstructions()).not.toContain('Real filesystem instructions.');
+	});
+
 	it('destroys the resolved workspace when the lazy workspace is destroyed', async () => {
 		const { workspace, filesystem, sandbox } = createMockWorkspace();
 		const ensureWorkspace = vi.fn(async () => await Promise.resolve(workspace));
