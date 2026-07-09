@@ -56,7 +56,7 @@ Combobox (N8nCombobox2)
 
 **UI Props**
 
-- `size?`: `'mini' | 'small' | 'medium' | 'large' | 'xlarge'` | `default: 'large'`
+- `size?`: `'mini' | 'small' | 'medium' | 'large' | 'xlarge'` | `default: 'large'` — Applies to the trigger/input only. Dropdown items use a fixed size aligned with `DropdownMenu`.
 - `side?`: `'top' | 'right' | 'bottom' | 'left'` | `default: 'bottom'`
 - `sideOffset?`: `number` | `default: 4`
 - `align?`: `'start' | 'center' | 'end'` | `default: 'start'`
@@ -108,7 +108,6 @@ type ComboboxListItem = {
   type?: 'label' | 'separator' | 'item'; // omit for selectable items
   icon?: IconName;
   disabled?: boolean;
-  size?: ComboboxSizes; // per-item size override
 };
 
 type ComboboxItem = Exclude<AcceptableValue, undefined> | ComboboxListItem;

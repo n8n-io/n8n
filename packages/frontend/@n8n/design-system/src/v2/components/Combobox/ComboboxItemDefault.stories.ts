@@ -74,11 +74,6 @@ const meta = {
 			control: { type: 'boolean' },
 			description: 'Whether the item is disabled',
 		},
-		size: {
-			control: { type: 'select' },
-			options: ['mini', 'small', 'medium', 'large', 'xlarge'],
-			description: 'Item size',
-		},
 	},
 } satisfies Meta<typeof ComboboxItemDefault>;
 
@@ -95,55 +90,6 @@ export const Default: Story = {
 		template: `
 			<div style="width: 320px;">
 				<ComboboxItemDefault v-bind="args" />
-			</div>
-		`,
-	}),
-	args: {
-		label: 'Workflows',
-		icon: 'bolt-filled',
-		size: 'large',
-	},
-};
-
-export const Sizes: Story = {
-	render: (args) => ({
-		components: { ComboboxItemDefault },
-		setup() {
-			const { size: _size, ...itemArgs } = args;
-			return { itemArgs };
-		},
-		template: `
-			<div style="display: flex; flex-direction: column; gap: var(--spacing--sm); width: 320px;">
-				<div style="display: flex; flex-direction: column; gap: var(--spacing--4xs);">
-					<span style="color: var(--color--text--tint-1);">
-						xlarge
-					</span>
-					<ComboboxItemDefault v-bind="itemArgs" size="xlarge" />
-				</div>
-				<div style="display: flex; flex-direction: column; gap: var(--spacing--4xs);">
-					<span style="color: var(--color--text--tint-1);">
-						large (default)
-					</span>
-					<ComboboxItemDefault v-bind="itemArgs" size="large" />
-				</div>
-				<div style="display: flex; flex-direction: column; gap: var(--spacing--4xs);">
-					<span style="color: var(--color--text--tint-1);">
-						medium
-					</span>
-					<ComboboxItemDefault v-bind="itemArgs" size="medium" />
-				</div>
-				<div style="display: flex; flex-direction: column; gap: var(--spacing--4xs);">
-					<span style="color: var(--color--text--tint-1);">
-						small
-					</span>
-					<ComboboxItemDefault v-bind="itemArgs" size="small" />
-				</div>
-				<div style="display: flex; flex-direction: column; gap: var(--spacing--4xs);">
-					<span style="color: var(--color--text--tint-1);">
-						mini
-					</span>
-					<ComboboxItemDefault v-bind="itemArgs" size="mini" />
-				</div>
 			</div>
 		`,
 	}),
@@ -171,7 +117,6 @@ export const Variants: Story = {
 					</span>
 					<ComboboxItemDefault
 						v-bind="variant.props"
-						size="large"
 						:data-highlighted="variant.selected || undefined"
 					>
 						<template v-if="variant.selected" #item-trailing="{ ui }">
@@ -185,7 +130,6 @@ export const Variants: Story = {
 	args: {
 		label: 'Workflows',
 		icon: 'bolt-filled',
-		size: 'large',
 	},
 };
 
@@ -202,7 +146,7 @@ export const ItemSlots: Story = {
 		},
 		template: `
 			<div style="width: 320px;">
-				<ComboboxItemDefault v-bind="item" size="large" data-highlighted>
+				<ComboboxItemDefault v-bind="item" data-highlighted>
 					<template #item-leading="{ ui }">
 						<span v-bind="ui" style="color: var(--color--primary);">★</span>
 					</template>

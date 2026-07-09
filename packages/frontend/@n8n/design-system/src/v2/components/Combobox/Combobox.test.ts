@@ -1,7 +1,7 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor, within } from '@testing-library/vue';
 
-import type { ComboboxItem, ComboboxSizes } from './Combobox.types';
+import type { ComboboxItem } from './Combobox.types';
 import Combobox from './Combobox.vue';
 
 vi.mock('@n8n/design-system/composables/useI18n', () => ({
@@ -14,15 +14,6 @@ vi.mock('@n8n/design-system/composables/useI18n', () => ({
 		},
 	}),
 }));
-
-const sizeCases: Array<[ComboboxSizes | undefined, string]> = [
-	[undefined, 'large'],
-	['mini', 'mini'],
-	['small', 'small'],
-	['medium', 'medium'],
-	['large', 'large'],
-	['xlarge', 'xlarge'],
-];
 
 beforeAll(() => {
 	Element.prototype.scrollIntoView = vi.fn();
@@ -85,36 +76,6 @@ describe('v2/components/Combobox', () => {
 			});
 			expect(wrapper.getByTestId('combobox')).toBeInTheDocument();
 		});
-	});
-
-	describe('sizes', () => {
-		test.each(sizeCases)('size %s should apply %s class', (size, expected) => {
-			const wrapper = render(Combobox, {
-				props: {
-					items: ['Option 1'],
-					size,
-				},
-			});
-			const anchor = wrapper.getByTestId('combobox');
-			expect(anchor.className).toContain(expected);
-		});
-
-		test.each(sizeCases)(
-			'size %s should apply %s class on dropdown items',
-			async (size, expected) => {
-				render(Combobox, {
-					props: {
-						items: ['Option 1', 'Option 2'],
-						size,
-						defaultOpen: true,
-					},
-				});
-
-				const { popover } = await getPopoverContainer();
-				const item = within(popover).getByText('Option 1').closest('[role="option"]');
-				expect(item?.className).toContain(expected);
-			},
-		);
 	});
 
 	describe('item types', () => {

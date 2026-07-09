@@ -108,7 +108,6 @@ const groups = computed<ComboboxListItem[]>(() => {
 				value: item,
 				label,
 				textValue: label,
-				size: props.size,
 			};
 		}
 
@@ -117,7 +116,6 @@ const groups = computed<ComboboxListItem[]>(() => {
 			value: get<AcceptableValue>(item, props.valueKey) ?? null,
 			label: get<string>(item, props.labelKey),
 			textValue: get<string>(item, props.labelKey),
-			size: item.size ?? props.size,
 		};
 	});
 });
@@ -234,7 +232,7 @@ function onClear() {
 			>
 				<slot name="header" />
 
-				<ComboboxViewport :class="[$style.comboboxViewport, sizeClass]">
+				<ComboboxViewport :class="$style.comboboxViewport">
 					<ComboboxEmpty :class="$style.comboboxEmpty">
 						{{ props.emptyText }}
 					</ComboboxEmpty>

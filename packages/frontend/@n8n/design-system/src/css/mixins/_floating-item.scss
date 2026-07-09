@@ -1,0 +1,13 @@
+@mixin floating-item {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	position: relative;
+	user-select: none;
+	outline: none;
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--sm);
+	min-height: var(--spacing--xl);
+	padding: var(--spacing--2xs);
+	border-radius: var(--radius--2xs);
+}

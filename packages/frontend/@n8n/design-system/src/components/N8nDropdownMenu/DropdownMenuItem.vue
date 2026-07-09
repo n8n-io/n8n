@@ -313,6 +313,8 @@ watch(
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/floating-item' as floating-item;
+
 .wrapper {
 	display: contents;
 }
@@ -324,18 +326,9 @@ watch(
 }
 
 .item {
-	font-size: var(--font-size--2xs);
-	line-height: 1;
-	border-radius: var(--radius--2xs);
-	display: flex;
-	align-items: center;
-	min-height: var(--spacing--xl);
-	padding: var(--spacing--2xs);
-	position: relative;
-	user-select: none;
+	@include floating-item.floating-item;
+
 	color: var(--text-color);
-	gap: var(--spacing--2xs);
-	outline: none;
 
 	&:not([data-disabled]) {
 		&:hover,

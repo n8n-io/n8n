@@ -32,7 +32,6 @@ export type ComboboxListItem = ComboboxItemProps & {
 	label?: string;
 	type?: 'label' | 'separator' | 'item';
 	icon?: IconName;
-	size?: ComboboxSizes;
 };
 
 export type ComboboxItem = Exclude<AcceptableValue, undefined> | ComboboxListItem;
