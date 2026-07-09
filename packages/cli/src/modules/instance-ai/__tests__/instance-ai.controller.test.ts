@@ -1121,7 +1121,7 @@ describe('InstanceAiController', () => {
 		it('should return rich messages with nextEventId', async () => {
 			const richResult = mock<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>>();
 			memoryService.getRichMessages.mockResolvedValue(richResult);
-			eventBus.getNextEventId.mockReturnValue(42);
+			eventBus.getNextEventId.mockResolvedValue(42);
 			const query = mock<InstanceAiThreadMessagesQuery>({
 				limit: 50,
 				page: 0,
