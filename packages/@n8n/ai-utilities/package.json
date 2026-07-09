@@ -112,7 +112,7 @@
     "@types/proxy-from-env": "catalog:",
     "fast-glob": "catalog:",
     "tsx": "catalog:",
-    "typescript": "catalog:",
+    "typescript": "catalog:typescript",
     "axios": "catalog:",
     "nock": "catalog:"
   },
