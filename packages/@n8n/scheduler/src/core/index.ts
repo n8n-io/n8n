@@ -7,7 +7,16 @@ export type {
 	SchedulerTaskStore,
 } from './factory';
 
-export type { ClaimedTask } from './types';
+export type {
+	ClaimedTask,
+	CronSchedule,
+	IntervalSchedule,
+	OneOffSchedule,
+	RecurringCronSchedule,
+	Schedule,
+} from './types';
+export { computeFirstRunAt, computeNextRunAt } from './recurrence/next-run';
+export { validateSchedule } from './recurrence/validate';
 export type { ExecutorOptions, TaskHandler } from './executor';
 export type {
 	MaterializerOptions,
