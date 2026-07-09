@@ -642,6 +642,25 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 	});
 
+	describe('View timeline action', () => {
+		it('should be disabled when workflow is new', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					...defaultWorkflowProps,
+					isNewWorkflow: true,
+				},
+			});
+
+			const versionMenuButton = getByTestId('version-menu-button');
+			await userEvent.click(versionMenuButton);
+
+			const viewPublishTimelineAction = getByTestId('version-menu-item-publish-timeline');
+
+			expect(viewPublishTimelineAction).toBeInTheDocument();
+			expect(viewPublishTimelineAction).toHaveClass('is-disabled');
+		});
+	});
+
 	describe('Unpublish action', () => {
 		beforeEach(() => {
 			workflowDocumentStore.setActiveState({
