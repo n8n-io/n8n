@@ -156,6 +156,14 @@ function firstAnswerValues(confirmPayload: Record<string, unknown>): string[] | 
 	return values.length > 0 ? values : undefined;
 }
 
+/**
+ * `questionsConfirmSchema` (the FE wire DTO) has no top-level `approved` field, so its
+ * absence means approved (implicit-approval wire pattern) — only an explicit `false`
+ * is a dismissal. A skipped answer, or one with no selected/custom values, is treated
+ * as a cancellation rather than a hard failure: the FE questions card lets the user
+ * skip a question (see `skipQuestion()`/`goToNextInternal()` in InstanceAiQuestions.vue),
+ * which is a legitimate outcome, not a malformed payload.
+ */
 function translateAskQuestionResume(
 	confirmPayload: Record<string, unknown>,
 ): BuilderResumeTranslation {
@@ -163,8 +171,17 @@ function translateAskQuestionResume(
 		return { ok: true, resumeData: builderCancellationResume('User dismissed the question') };
 	}
 
+	const answers = confirmPayload.answers;
+	if (!isUnknownArray(answers) || answers.length === 0) {
+		return { ok: false, reason: 'Confirm payload has no answer values' };
+	}
+
+	const [first] = answers;
+	const skipped = isRecord(first) && first.skipped === true;
 	const values = firstAnswerValues(confirmPayload);
-	if (!values) return { ok: false, reason: 'Confirm payload has no answer values' };
+	if (skipped || !values) {
+		return { ok: true, resumeData: builderCancellationResume('User skipped the question') };
+	}
 
 	const parsed = askQuestionResumeSchema.safeParse({ values });
 	if (!parsed.success) return { ok: false, reason: parsed.error.message };

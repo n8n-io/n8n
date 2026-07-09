@@ -6,6 +6,7 @@ import {
 	askCredentialResumeSchema,
 	askQuestionInputSchema,
 	askQuestionResumeSchema,
+	cancellationResumeSchema,
 	credentialRequestSchema,
 } from '@n8n/api-types';
 import { describe, expect, it } from 'vitest';
@@ -256,6 +257,16 @@ describe('mapBuilderSuspendPayload', () => {
 
 			expect(result.message).toBe('42');
 		});
+
+		it('falls back to the default message when `message` is a non-primitive value', () => {
+			const result = mapBuilderSuspendPayload(
+				'some_other_tool',
+				{ message: { nested: 'object' } },
+				'req-13',
+			);
+
+			expect(result.message).toBe('The agent builder needs your input');
+		});
 	});
 });
 
@@ -268,6 +279,21 @@ describe('translateConfirmToBuilderResume', () => {
 				ok: true,
 				resumeData: builderCancellationResume('User dismissed the question'),
 			});
+			if (!result.ok) throw new Error('expected ok result');
+			expect(cancellationResumeSchema.parse(result.resumeData)).toEqual(
+				builderCancellationResume('User dismissed the question'),
+			);
+		});
+
+		it('treats a missing top-level `approved` field as approved', () => {
+			// `questionsConfirmSchema` (the FE wire DTO) has no top-level `approved` field.
+			const result = translateConfirmToBuilderResume(ASK_QUESTION_TOOL_NAME, {
+				answers: [{ questionId: 'q1', selectedOptions: ['slack'] }],
+			});
+
+			expect(result.ok).toBe(true);
+			if (!result.ok) throw new Error('expected ok result');
+			expect(askQuestionResumeSchema.parse(result.resumeData)).toEqual({ values: ['slack'] });
 		});
 
 		it('maps selected options from the first answer to `values`, validated by askQuestionResumeSchema', () => {
@@ -296,11 +322,39 @@ describe('translateConfirmToBuilderResume', () => {
 			});
 		});
 
-		it('returns ok:false when approved but no answer values are present', () => {
+		it('returns a cancellation resume when approved but no answer values are present', () => {
 			const result = translateConfirmToBuilderResume(ASK_QUESTION_TOOL_NAME, {
 				approved: true,
 				answers: [{ questionId: 'q1', selectedOptions: [] }],
 			});
+
+			expect(result).toEqual({
+				ok: true,
+				resumeData: builderCancellationResume('User skipped the question'),
+			});
+			if (!result.ok) throw new Error('expected ok result');
+			expect(cancellationResumeSchema.parse(result.resumeData)).toEqual(
+				builderCancellationResume('User skipped the question'),
+			);
+		});
+
+		it('returns a cancellation resume when the answer is explicitly skipped', () => {
+			const result = translateConfirmToBuilderResume(ASK_QUESTION_TOOL_NAME, {
+				answers: [{ questionId: 'q1', selectedOptions: ['slack'], skipped: true }],
+			});
+
+			expect(result).toEqual({
+				ok: true,
+				resumeData: builderCancellationResume('User skipped the question'),
+			});
+			if (!result.ok) throw new Error('expected ok result');
+			expect(cancellationResumeSchema.parse(result.resumeData)).toEqual(
+				builderCancellationResume('User skipped the question'),
+			);
+		});
+
+		it('returns ok:false when the confirm payload has no answers array and is not a dismissal', () => {
+			const result = translateConfirmToBuilderResume(ASK_QUESTION_TOOL_NAME, { approved: true });
 
 			expect(result.ok).toBe(false);
 		});
@@ -335,6 +389,8 @@ describe('translateConfirmToBuilderResume', () => {
 			});
 
 			expect(result).toEqual({ ok: true, resumeData: { skipped: true } });
+			if (!result.ok) throw new Error('expected ok result');
+			expect(askCredentialResumeSchema.parse(result.resumeData)).toEqual({ skipped: true });
 		});
 
 		it('returns ok:false when neither a credential nor a skip is present', () => {
@@ -361,9 +417,12 @@ describe('translateConfirmToBuilderResume', () => {
 
 describe('builderCancellationResume', () => {
 	it('builds an agent.cancellation resume payload', () => {
-		expect(builderCancellationResume('nope')).toEqual({
+		const resume = builderCancellationResume('nope');
+
+		expect(resume).toEqual({
 			_type: 'agent.cancellation',
 			message: 'nope',
 		});
+		expect(cancellationResumeSchema.parse(resume)).toEqual(resume);
 	});
 });
