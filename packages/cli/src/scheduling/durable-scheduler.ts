@@ -34,8 +34,6 @@ export class DurableScheduler implements Scheduler {
 	) {
 		const config = globalConfig.scheduler;
 		const enabled = config.enabled && instanceSettings.instanceType === 'main';
-		// Pass-through adapter: bridges the scheduler's dependency-light tracer port
-		// to n8n-core's concrete (Sentry-backed) Tracing service.
 		const tracer: Tracer = {
 			startSpan: async (options, run) => await tracing.startSpan(options, run),
 		};
