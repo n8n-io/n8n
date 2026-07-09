@@ -28,7 +28,7 @@
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
-    "test:changed": "janitor test-scoped --runner=vitest",
+    "test:changed": "janitor test-scoped",
     "test:dev": "vitest --silent=false",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix",
