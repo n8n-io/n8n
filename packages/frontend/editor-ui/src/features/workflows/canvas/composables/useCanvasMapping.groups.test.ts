@@ -361,9 +361,9 @@ describe('mapGroupsToVueFlowNodes', () => {
 		expect(out[0].connectable).toBe(false);
 	});
 
-	it("marks the title bar NOT selectable when expanded — the group's nodes are the interactive surface then", () => {
+	it('keeps the title bar selectable when expanded — selecting it selects the whole group', () => {
 		const out = setup(false);
-		expect(out[0].selectable).toBe(false);
+		expect(out[0].selectable).toBe(true);
 	});
 
 	it('keeps a collapsed title bar selectable but not draggable when readOnly', () => {

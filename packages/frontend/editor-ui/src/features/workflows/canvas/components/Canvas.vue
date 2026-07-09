@@ -78,6 +78,7 @@ import CanvasNodeGroupTitleBar from './elements/groups/CanvasNodeGroupTitleBar.v
 import CanvasSelectionToolbar from './elements/selection/CanvasSelectionToolbar.vue';
 import { useCanvasNodeGroupActions } from '../composables/useCanvasNodeGroupActions';
 import { useCanvasNodeGroupDrag } from '../composables/useCanvasNodeGroupDrag';
+import { useCanvasNodeGroupSelection } from '../composables/useCanvasNodeGroupSelection';
 import {
 	useCanvasNodeGroupTelemetry,
 	type CanvasNodeGroupEventSource,
@@ -507,8 +508,10 @@ useKeybindings(keyMap, { disabled: disableKeyBindings });
 
 const selectedNodeIds = computed(() => selectedNodes.value.map((node) => node.id));
 
-// Selected node ids, with each selected collapsed group expanded to its members
-// so bulk operations (copy, duplicate, …) reach the nodes its title bar stands for.
+// Selected node ids, with each selected group expanded to its members so bulk
+// operations (copy, duplicate, …) reach the nodes its title bar stands for.
+// Expanded groups already have their members selected; this mainly covers
+// collapsed groups, whose members are hidden.
 const selectedNodeIdsWithGroupMembers = computed(() => {
 	const ids = new Set(selectedNodeIds.value);
 	for (const node of selectedNodesAndGroups.value) {
@@ -550,7 +553,7 @@ watch(selectedNodeIds, (newIds) => {
 	}
 });
 
-// Surface a selected collapsed group so surfaces outside the canvas (logs panel) can sync to it
+// Surface a selected group so surfaces outside the canvas (logs panel) can sync to it
 const selectedCanvasGroupId = computed(() => {
 	const groupNode = selectedNodesAndGroups.value.find((node) => isCanvasGroupNode(node));
 	return (groupNode && parseCanvasGroupNodeId(groupNode.id)) ?? null;
@@ -612,6 +615,16 @@ const groupDrag = useCanvasNodeGroupDrag({
 	onMovedExpandedGroups: commitPushedPositionsForSourceGroups,
 });
 
+// Groups select as one unit: title bar and member selection stay in sync,
+// and a fully selected group surfaces the selection instead of its members.
+const { fullySelectedGroupMemberIds } = useCanvasNodeGroupSelection({
+	canvasId: props.id,
+	isEnabled: () => props.showNodeGroups,
+	getGroupById: (id) => workflowDocumentStore.value.getGroupById(id),
+	getGroupForNode: (id) => workflowDocumentStore.value.getGroupForNode(id),
+	isGroupCollapsed: (id) => injectedNodeGroupView?.isGroupCollapsed(id) ?? false,
+});
+
 function onNodeDragStart(event: NodeDragEvent) {
 	groupDrag.onNodeDragStart(event);
 }
@@ -648,9 +661,11 @@ function onCanvasGroupToggle(groupId: string) {
 		}
 	}
 
+	const memberNodeIds = workflowDocumentStore.value.getGroupById(groupId)?.nodeIds ?? [];
 	if (isCollapsed) {
-		// Collapsing hides the members, so drop them from the selection to clear the lingering box.
-		const memberNodeIds = workflowDocumentStore.value.getGroupById(groupId)?.nodeIds ?? [];
+		// Collapsing hides the members, so drop them from the selection to clear
+		// the lingering box. A selected title bar stays selected and keeps
+		// representing the group.
 		const selectedMembers = memberNodeIds
 			.map((nodeId) => findNode(nodeId))
 			.filter((node): node is NonNullable<typeof node> => node?.selected ?? false);
@@ -658,10 +673,12 @@ function onCanvasGroupToggle(groupId: string) {
 			removeSelectedNodes(selectedMembers);
 		}
 	} else {
-		// Expanding makes the title bar non-selectable, so drop any selection lingering on it.
+		// Expanding keeps the whole group selected: extend a selected title bar's
+		// selection to its now-visible members.
 		const groupNode = findNode(createCanvasGroupNodeId(groupId));
-		if (groupNode) {
-			removeSelectedNodes([groupNode]);
+		if (groupNode?.selected) {
+			const memberNodes = memberNodeIds.map(findNode).filter(isPresent);
+			addSelectedNodes([...selectedNodesAndGroups.value, ...memberNodes]);
 		}
 	}
 }
@@ -1061,7 +1078,9 @@ function onOpenContextMenu(
 ) {
 	contextMenu.open(event, {
 		source: 'canvas',
-		nodeIds: selectedNodeIds.value,
+		// Include collapsed group members so menu actions reach the nodes a
+		// selected title bar stands for.
+		nodeIds: selectedNodeIdsWithGroupMembers.value,
 		...target,
 	});
 }
@@ -1455,6 +1474,7 @@ defineExpose({
 				<Node
 					v-bind="nodeProps"
 					:data="nodeDataById[nodeProps.id]"
+					:selected="nodeProps.selected && !fullySelectedGroupMemberIds.has(nodeProps.id)"
 					:read-only="readOnly"
 					:can-execute="canExecute"
 					:event-bus="eventBus"

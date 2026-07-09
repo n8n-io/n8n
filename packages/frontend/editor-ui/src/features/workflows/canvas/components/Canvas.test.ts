@@ -83,10 +83,12 @@ const canvasId = 'canvas';
 
 function createCanvasGroupNode({
 	nodesRect = { x: 0, y: 0, width: 300, height: 100 },
-	selectable = false,
+	selectable = true,
+	nodeIds = ['node-1'],
 }: {
 	nodesRect?: NonNullable<CanvasGroupNode['data']>['nodesRect'];
 	selectable?: boolean;
+	nodeIds?: string[];
 } = {}): CanvasGroupNode {
 	return {
 		id: 'group:g1',
@@ -96,11 +98,30 @@ function createCanvasGroupNode({
 		height: 40,
 		selectable,
 		data: {
-			group: { id: 'g1', name: 'Group 1', nodeIds: ['node-1'] },
+			group: { id: 'g1', name: 'Group 1', nodeIds },
 			nodesRect,
 			isCollapsed: false,
 		},
 	};
+}
+
+function getSelectionRing(container: Element) {
+	return container.querySelector('[data-test-id="canvas-node-group-selection-ring"]');
+}
+
+function createNodeGroupViewMock(initialCollapsed: boolean) {
+	let collapsed = initialCollapsed;
+	return {
+		isGroupCollapsed: () => collapsed,
+		toggleCollapsed: () => {
+			collapsed = !collapsed;
+		},
+		getVisualOffsetForNode: () => ({ x: 0, y: 0 }),
+		getVisualOffsetForComponent: () => ({ x: 0, y: 0 }),
+		syncLayoutComponents: () => {},
+		settleManualNodePositions: (events: unknown) => events,
+		commitMovedPushSourceEffects: () => [],
+	} as unknown as CanvasNodeGroupView;
 }
 
 let renderComponent: ReturnType<typeof createComponentRenderer>;
@@ -189,29 +210,9 @@ describe('Canvas', () => {
 		});
 	});
 
-	it('should exclude expanded group title bars from select all', async () => {
+	it('should include group title bars in select all', async () => {
 		const node = createCanvasNodeElement({ id: 'node-1' });
-		const groupNode = createCanvasGroupNode({ selectable: false });
-		const eventBus = createEventBus<CanvasEventBusEvents>();
-
-		const { container } = renderComponent({
-			props: {
-				nodes: [node, groupNode],
-				eventBus,
-			},
-		});
-
-		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(2));
-
-		const { getSelectedNodes } = useVueFlow(canvasId);
-		eventBus.emit('nodes:selectAll');
-
-		await waitFor(() => expect(getSelectedNodes.value.map(({ id }) => id)).toEqual([node.id]));
-	});
-
-	it('should include collapsed group title bars in select all', async () => {
-		const node = createCanvasNodeElement({ id: 'node-1' });
-		const groupNode = createCanvasGroupNode({ selectable: true });
+		const groupNode = createCanvasGroupNode();
 		const eventBus = createEventBus<CanvasEventBusEvents>();
 
 		const { container } = renderComponent({
@@ -231,28 +232,13 @@ describe('Canvas', () => {
 		);
 	});
 
-	it('should clear selected members when their group is collapsed', async () => {
-		vi.spyOn(workflowDocumentStore, 'getGroupById').mockReturnValue({
-			id: 'g1',
-			name: 'Group 1',
-			nodeIds: ['node-1'],
-		});
+	it('should clear selected members but keep the title bar selected when their group is collapsed', async () => {
+		workflowDocumentStore.setNodeGroups([{ id: 'g1', name: 'Group 1', nodeIds: ['node-1'] }]);
 
-		let collapsed = false;
-		const nodeGroupView = {
-			isGroupCollapsed: () => collapsed,
-			toggleCollapsed: () => {
-				collapsed = !collapsed;
-			},
-			getVisualOffsetForNode: () => ({ x: 0, y: 0 }),
-			getVisualOffsetForComponent: () => ({ x: 0, y: 0 }),
-			syncLayoutComponents: () => {},
-			settleManualNodePositions: (events: unknown) => events,
-			commitMovedPushSourceEffects: () => [],
-		} as unknown as CanvasNodeGroupView;
+		const nodeGroupView = createNodeGroupViewMock(false);
 
 		const node = createCanvasNodeElement({ id: 'node-1' });
-		const groupNode = createCanvasGroupNode({ selectable: true });
+		const groupNode = createCanvasGroupNode();
 		const eventBus = createEventBus<CanvasEventBusEvents>();
 
 		const { container, getByTestId } = renderComponent({
@@ -269,23 +255,16 @@ describe('Canvas', () => {
 		await fireEvent.click(getByTestId('canvas-node-group-toggle'));
 
 		await waitFor(() => expect(getSelectedNodes.value.map(({ id }) => id)).not.toContain('node-1'));
+		expect(getSelectedNodes.value.map(({ id }) => id)).toContain('group:g1');
 	});
 
 	it('should select the group node when a collapsed group member is selected', async () => {
 		workflowDocumentStore.setNodeGroups([{ id: 'g1', name: 'Group 1', nodeIds: ['node-1'] }]);
 
-		const nodeGroupView = {
-			isGroupCollapsed: () => true,
-			toggleCollapsed: () => {},
-			getVisualOffsetForNode: () => ({ x: 0, y: 0 }),
-			getVisualOffsetForComponent: () => ({ x: 0, y: 0 }),
-			syncLayoutComponents: () => {},
-			settleManualNodePositions: (events: unknown) => events,
-			commitMovedPushSourceEffects: () => [],
-		} as unknown as CanvasNodeGroupView;
+		const nodeGroupView = createNodeGroupViewMock(true);
 
 		const node = createCanvasNodeElement({ id: 'node-1' });
-		const groupNode = createCanvasGroupNode({ selectable: true });
+		const groupNode = createCanvasGroupNode();
 		const eventBus = createEventBus<CanvasEventBusEvents>();
 
 		const { container } = renderComponent({
@@ -299,6 +278,117 @@ describe('Canvas', () => {
 		eventBus.emit('nodes:select', { ids: ['node-1'] });
 
 		await waitFor(() => expect(getSelectedNodes.value.map(({ id }) => id)).toEqual(['group:g1']));
+	});
+
+	describe('expanded group selection', () => {
+		const setupExpandedGroup = async (initialCollapsed = false) => {
+			workflowDocumentStore.setNodeGroups([
+				{ id: 'g1', name: 'Group 1', nodeIds: ['node-1', 'node-2'] },
+			]);
+
+			const nodeGroupView = createNodeGroupViewMock(initialCollapsed);
+			const nodes = [
+				createCanvasNodeElement({ id: 'node-1', label: 'Node 1' }),
+				createCanvasNodeElement({ id: 'node-2', label: 'Node 2', position: { x: 200, y: 0 } }),
+				createCanvasGroupNode({ nodeIds: ['node-1', 'node-2'] }),
+			];
+
+			const rendered = renderComponent({
+				props: { nodes },
+				global: { provide: { [NodeGroupViewKey as symbol]: nodeGroupView } },
+			});
+
+			await waitFor(() =>
+				expect(rendered.container.querySelectorAll('.vue-flow__node')).toHaveLength(3),
+			);
+
+			return { ...rendered, vueFlow: useVueFlow(canvasId) };
+		};
+
+		const selectedIds = (vueFlow: ReturnType<typeof useVueFlow>) =>
+			vueFlow.getSelectedNodes.value.map(({ id }) => id).sort();
+
+		it('selects all members when the title bar is selected', async () => {
+			const { vueFlow } = await setupExpandedGroup();
+			const groupNode = vueFlow.findNode('group:g1');
+
+			vueFlow.addSelectedNodes([groupNode!]);
+
+			await waitFor(() => expect(selectedIds(vueFlow)).toEqual(['group:g1', 'node-1', 'node-2']));
+		});
+
+		it('selects the title bar when all members are selected', async () => {
+			const { vueFlow } = await setupExpandedGroup();
+
+			vueFlow.addSelectedNodes([vueFlow.findNode('node-1')!, vueFlow.findNode('node-2')!]);
+
+			await waitFor(() => expect(selectedIds(vueFlow)).toEqual(['group:g1', 'node-1', 'node-2']));
+		});
+
+		it('deselects the title bar when a member leaves a full selection', async () => {
+			const { vueFlow } = await setupExpandedGroup();
+
+			vueFlow.addSelectedNodes([vueFlow.findNode('group:g1')!]);
+			await waitFor(() => expect(selectedIds(vueFlow)).toEqual(['group:g1', 'node-1', 'node-2']));
+
+			vueFlow.removeSelectedNodes([vueFlow.findNode('node-1')!]);
+
+			await waitFor(() => expect(selectedIds(vueFlow)).toEqual(['node-2']));
+		});
+
+		it('deselects the members when the title bar leaves a full selection', async () => {
+			const { vueFlow } = await setupExpandedGroup();
+
+			vueFlow.addSelectedNodes([vueFlow.findNode('group:g1')!]);
+			await waitFor(() => expect(selectedIds(vueFlow)).toEqual(['group:g1', 'node-1', 'node-2']));
+
+			vueFlow.removeSelectedNodes([vueFlow.findNode('group:g1')!]);
+
+			await waitFor(() => expect(selectedIds(vueFlow)).toEqual([]));
+		});
+
+		it('keeps partial member selections without selecting the title bar', async () => {
+			const { vueFlow } = await setupExpandedGroup();
+
+			vueFlow.addSelectedNodes([vueFlow.findNode('node-1')!]);
+
+			await waitFor(() => expect(selectedIds(vueFlow)).toEqual(['node-1']));
+		});
+
+		it('extends the selection to members when a selected group is expanded', async () => {
+			const { vueFlow, getByTestId } = await setupExpandedGroup(true);
+
+			vueFlow.addSelectedNodes([vueFlow.findNode('group:g1')!]);
+			await waitFor(() => expect(selectedIds(vueFlow)).toEqual(['group:g1']));
+
+			await fireEvent.click(getByTestId('canvas-node-group-toggle'));
+
+			await waitFor(() => expect(selectedIds(vueFlow)).toEqual(['group:g1', 'node-1', 'node-2']));
+		});
+
+		it('hides member selection rings while the whole group is selected', async () => {
+			const { vueFlow, container } = await setupExpandedGroup();
+
+			vueFlow.addSelectedNodes([vueFlow.findNode('group:g1')!]);
+			await waitFor(() => expect(selectedIds(vueFlow)).toEqual(['group:g1', 'node-1', 'node-2']));
+
+			// Members carry no individual selection ring; the group surfaces it.
+			await waitFor(() => {
+				expect(
+					container.querySelector('[data-id="node-1"] [data-test-id="canvas-node"]'),
+				).not.toHaveClass('selected');
+				expect(getSelectionRing(container)).toBeInTheDocument();
+			});
+
+			// A partial selection shows individual rings again.
+			vueFlow.removeSelectedNodes([vueFlow.findNode('node-1')!]);
+			await waitFor(() => {
+				expect(
+					container.querySelector('[data-id="node-2"] [data-test-id="canvas-node"]'),
+				).toHaveClass('selected');
+				expect(getSelectionRing(container)).not.toBeInTheDocument();
+			});
+		});
 	});
 
 	it('should expand a selected collapsed group to its members when copying', async () => {

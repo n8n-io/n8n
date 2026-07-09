@@ -82,6 +82,13 @@ const frameStyle = computed(() => {
 	};
 });
 
+// An expanded selected group shows one ring around header + frame; the
+// title bar ring alone would read as only the header being selected.
+const selectionRingStyle = computed(() => {
+	const { expanded } = computeGroupFrameRects(props.data.nodesRect);
+	return { height: `${expanded.height}px` };
+});
+
 const isTitleTruncated = ref(false);
 
 function updateTruncated() {
@@ -172,6 +179,9 @@ function onWrapperPointerDown(event: PointerEvent) {
 	// Clicks on .nodrag children (chevron, title edit, ungroup) aren't drag intent.
 	const target = event.target as HTMLElement | null;
 	if (target?.closest('.nodrag')) return;
+
+	// Modifier-clicks add to the selection instead of replacing it.
+	if (event.ctrlKey || event.metaKey) return;
 
 	const selected = getSelectedNodes.value;
 	if (selected.length === 0) return;
@@ -294,6 +304,13 @@ function onWrapperPointerDown(event: PointerEvent) {
 			:style="frameStyle"
 			data-test-id="canvas-node-group-frame"
 		/>
+
+		<div
+			v-if="!isCollapsed && selected"
+			:class="$style.selectionRing"
+			:style="selectionRingStyle"
+			data-test-id="canvas-node-group-selection-ring"
+		/>
 	</div>
 </template>
 
@@ -320,7 +337,9 @@ function onWrapperPointerDown(event: PointerEvent) {
 		border-radius: var(--radius--lg);
 	}
 
-	.wrapper.selected & {
+	// When expanded, the selection ring is drawn by .selectionRing around the
+	// whole group instead.
+	.wrapper.collapsed.selected & {
 		@include styles.canvas-node-selected-ring;
 	}
 
@@ -447,6 +466,16 @@ function onWrapperPointerDown(event: PointerEvent) {
 	pointer-events: none;
 	box-sizing: border-box;
 	z-index: 0;
+}
+
+.selectionRing {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	border-radius: var(--radius--lg);
+	pointer-events: none;
+	@include styles.canvas-node-selected-ring;
 }
 
 .handle {
