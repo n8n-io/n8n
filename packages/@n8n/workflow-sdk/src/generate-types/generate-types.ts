@@ -94,8 +94,8 @@ function buildNodeConfigType(
 const ICON_TS_TYPE = "{ type: 'icon' | 'emoji'; value: string }";
 
 /**
- * Runtime shape for `type: 'workflowSelector'` properties.
- * The UI hardcodes two modes (see useWorkflowResourceLocatorModes.ts): `list` and `id`.
+ * Runtime shape for `type: 'workflowSelector'` and `type: 'agentSelector'` properties.
+ * Both hardcode two modes (`list` and `id`); see useResourceLocatorModes.ts.
  * Stored as an INodeParameterResourceLocator, or as an Expression string.
  */
 const WORKFLOW_SELECTOR_TS_TYPE =
@@ -1002,6 +1002,7 @@ function mapNestedPropertyTypeInner(
 		case 'icon':
 			return ICON_TS_TYPE;
 		case 'workflowSelector':
+		case 'agentSelector':
 			return WORKFLOW_SELECTOR_TS_TYPE;
 		case 'credentialsSelect':
 			// credentialsSelect is a string value (credential type name)
@@ -1709,6 +1710,7 @@ function mapPropertyTypeInner(
 			return ICON_TS_TYPE;
 
 		case 'workflowSelector':
+		case 'agentSelector':
 			return WORKFLOW_SELECTOR_TS_TYPE;
 
 		case 'credentialsSelect':

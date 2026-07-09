@@ -1,7 +1,11 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import { ref } from 'vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -10,7 +14,12 @@ import * as nodeHelpers from '@/app/composables/useNodeHelpers';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import * as nodeSettingsUtils from '@/features/ndv/shared/ndv.utils';
 import * as nodeTypesUtils from '@/app/utils/nodeTypesUtils';
-import type { INodeParameters, INodeProperties, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	INodeParameters,
+	INodeProperties,
+	INodeTypeDescription,
+	NodeParameterValue,
+} from 'n8n-workflow';
 import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi } from '@/Interface';
@@ -103,6 +112,116 @@ describe('useNodeSettingsParameters', () => {
 			handleFocus(undefined, 'parameters.foo', parameter);
 
 			expect(focusPanelStore.openWithFocusedNodeParameter).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('updateNodeParameter $fromAI key reconciliation', () => {
+		const AUTO_MARKER = '/*n8n-auto-generated-fromAI-override*/';
+		const staleOverride = (desc: string) =>
+			`={{ ${AUTO_MARKER} $fromAI('Field_Value', \`${desc}\`, 'string') }}`;
+
+		const toolNodeType: INodeTypeDescription = {
+			version: 1,
+			name: 'testTool',
+			displayName: 'Test Tool',
+			description: '',
+			group: ['transform'],
+			defaults: { name: 'Test Tool' },
+			inputs: [],
+			outputs: [],
+			properties: [
+				{
+					displayName: 'Fields',
+					name: 'fieldsUi',
+					type: 'fixedCollection',
+					default: {},
+					typeOptions: { multipleValues: true },
+					options: [
+						{
+							displayName: 'Field',
+							name: 'fieldValues',
+							values: [
+								{ displayName: 'Field Value', name: 'fieldValue', type: 'string', default: '' },
+							],
+						},
+					],
+				},
+			],
+		};
+
+		const node: INodeUi = {
+			id: 'n1',
+			name: 'My Supabase Tool',
+			type: 'testTool',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+
+		const collidingCollection = () => ({
+			fieldValues: [{ fieldValue: staleOverride('A') }, { fieldValue: staleOverride('B') }],
+		});
+
+		let docStore: MockedStore<typeof useWorkflowDocumentStore>;
+
+		beforeEach(() => {
+			setActivePinia(createTestingPinia());
+
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(toolNodeType);
+
+			docStore = mockedStore(useWorkflowDocumentStore, createWorkflowDocumentId(''));
+
+			vi.spyOn(nodeSettingsUtils, 'updateDynamicConnections').mockReturnValue(null);
+			vi.spyOn(nodeHelpers, 'useNodeHelpers').mockReturnValue({
+				...nodeHelpers.useNodeHelpers(),
+				updateNodeParameterIssuesByName: vi.fn(),
+				updateNodeCredentialIssuesByName: vi.fn(),
+			});
+		});
+
+		afterEach(() => {
+			vi.resetAllMocks();
+		});
+
+		const persistedFieldValues = () => {
+			const persisted = vi.mocked(docStore.setNodeParameters).mock.calls[0][0]
+				.value as INodeParameters;
+			return (persisted.fieldsUi as { fieldValues: INodeParameters[] }).fieldValues;
+		};
+
+		it('reindexes colliding auto-generated keys when the node is used as a tool', () => {
+			const { updateNodeParameter } = useNodeSettingsParameters();
+			const collection = collidingCollection();
+
+			updateNodeParameter(
+				ref<INodeParameters>({}),
+				{ name: 'parameters.fieldsUi', value: collection },
+				collection as unknown as NodeParameterValue,
+				node,
+				true,
+			);
+
+			const rows = persistedFieldValues();
+			expect(rows[0].fieldValue).toContain("$fromAI('fieldValues0_Field_Value'");
+			expect(rows[1].fieldValue).toContain("$fromAI('fieldValues1_Field_Value'");
+		});
+
+		it('leaves keys untouched when the node is not a tool', () => {
+			const { updateNodeParameter } = useNodeSettingsParameters();
+			const collection = collidingCollection();
+
+			updateNodeParameter(
+				ref<INodeParameters>({}),
+				{ name: 'parameters.fieldsUi', value: collection },
+				collection as unknown as NodeParameterValue,
+				node,
+				false,
+			);
+
+			const rows = persistedFieldValues();
+			expect(rows[0].fieldValue).toContain("$fromAI('Field_Value'");
+			expect(rows[1].fieldValue).toContain("$fromAI('Field_Value'");
 		});
 	});
 

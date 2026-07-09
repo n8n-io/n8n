@@ -26,6 +26,16 @@ describe('buildAgentConfigFingerprint', () => {
 		],
 		skills: [{ type: 'skill', id: 'summarize_notes' }],
 		tasks: [{ type: 'task', id: 'daily_digest', enabled: true }],
+		vectorStores: [
+			{
+				provider: 'pinecone',
+				name: 'docs',
+				credential: 'cred-1',
+				indexName: 'docs-index',
+				useWhen: 'search docs',
+				embedding: { model: 'openai/text-embedding-3-small', credential: 'cred-2' },
+			},
+		],
 		memory: { enabled: true, storage: 'n8n' },
 	};
 
@@ -41,11 +51,32 @@ describe('buildAgentConfigFingerprint', () => {
 		expect(fp.skills).toEqual(['summarize_notes']);
 		expect(fp.tasks).toEqual(['daily_digest']);
 		expect(fp.triggers).toEqual(['slack', 'telegram']);
+		expect(fp.vector_stores).toEqual(['pinecone:docs']);
 	});
 
 	it('returns the same config_version for trigger inputs in different orders', async () => {
 		const a = await buildAgentConfigFingerprint(baseConfig, ['slack', 'telegram']);
 		const b = await buildAgentConfigFingerprint(baseConfig, ['telegram', 'slack']);
+		expect(a.config_version).toBe(b.config_version);
+	});
+
+	it('returns the same config_version for vector stores in different orders', async () => {
+		const second: AgentJsonConfig['vectorStores'] = [
+			{
+				provider: 'qdrant',
+				name: 'notes',
+				credential: 'cred-3',
+				collectionName: 'notes-collection',
+				useWhen: 'search notes',
+				embedding: { model: 'openai/text-embedding-3-small', credential: 'cred-2' },
+			},
+		];
+		const stores = [...(baseConfig.vectorStores ?? []), ...(second ?? [])];
+		const a = await buildAgentConfigFingerprint({ ...baseConfig, vectorStores: stores }, []);
+		const b = await buildAgentConfigFingerprint(
+			{ ...baseConfig, vectorStores: [...stores].reverse() },
+			[],
+		);
 		expect(a.config_version).toBe(b.config_version);
 	});
 
@@ -111,6 +142,38 @@ describe('buildAgentConfigFingerprint', () => {
 		);
 	});
 
+	it('changes config_version when a vector store is added', async () => {
+		const a = await buildAgentConfigFingerprint(baseConfig, []);
+		const withExtra: AgentJsonConfig = {
+			...baseConfig,
+			vectorStores: [
+				...(baseConfig.vectorStores ?? []),
+				{
+					provider: 'qdrant',
+					name: 'notes',
+					credential: 'cred-3',
+					collectionName: 'notes-collection',
+					useWhen: 'search notes',
+					embedding: { model: 'openai/text-embedding-3-small', credential: 'cred-2' },
+				},
+			],
+		};
+		expect((await buildAgentConfigFingerprint(withExtra, [])).config_version).not.toBe(
+			a.config_version,
+		);
+	});
+
+	it('changes config_version when a vector store is removed', async () => {
+		const a = await buildAgentConfigFingerprint(baseConfig, []);
+		const withoutVectorStores: AgentJsonConfig = {
+			...baseConfig,
+			vectorStores: [],
+		};
+		expect((await buildAgentConfigFingerprint(withoutVectorStores, [])).config_version).not.toBe(
+			a.config_version,
+		);
+	});
+
 	it('changes config_version when the model changes', async () => {
 		const a = await buildAgentConfigFingerprint(baseConfig, []);
 		const b = await buildAgentConfigFingerprint({ ...baseConfig, model: 'gpt-5' }, []);
@@ -128,6 +191,7 @@ describe('buildAgentConfigFingerprint', () => {
 		expect(fp.tools).toEqual([]);
 		expect(fp.skills).toEqual([]);
 		expect(fp.tasks).toEqual([]);
+		expect(fp.vector_stores).toEqual([]);
 		expect(fp.model).toBeNull();
 	});
 });

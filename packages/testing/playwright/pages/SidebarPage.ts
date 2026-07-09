@@ -19,6 +19,11 @@ export class SidebarPage {
 		await this.container.getByTestId('universal-add').click();
 	}
 
+	/** Dismiss an open navigation dropdown/menu by clicking away from it. */
+	async dismissMenu() {
+		await this.page.locator('body').click();
+	}
+
 	get visibleNavigationMenu() {
 		return this.page.locator('.el-popper:visible');
 	}

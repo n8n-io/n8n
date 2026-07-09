@@ -1,7 +1,11 @@
 import type { Ref } from 'vue';
 import { nextTick, ref } from 'vue';
 
-export function useWorkflowResourceLocatorDropdown(
+/**
+ * Open/close state for a resource-locator–style list dropdown. Shared by the
+ * workflow and agent selector inputs (the logic is not specific to either).
+ */
+export function useResourceLocatorDropdown(
 	isListMode: Ref<boolean>,
 	inputRef: Ref<HTMLInputElement | undefined>,
 ) {

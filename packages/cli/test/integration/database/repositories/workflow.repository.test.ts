@@ -41,7 +41,7 @@ function expectWorkflowsMatch(
 	const oldSorted = [...oldWorkflows].sort((a, b) => a.id.localeCompare(b.id));
 	const newSorted = [...newWorkflows].sort((a, b) => a.id.localeCompare(b.id));
 
-	// Jest's toEqual does deep recursive comparison of all fields
+	// Vitest's toEqual does deep recursive comparison of all fields
 	expect(newSorted).toEqual(oldSorted);
 }
 
