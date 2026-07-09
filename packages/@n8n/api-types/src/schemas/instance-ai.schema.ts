@@ -408,6 +408,12 @@ export type GatewayConfirmationRequiredPayload = z.infer<
 
 // ---------------------------------------------------------------------------
 
+export const channelConfigSchema = z.object({
+	integrationType: z.string(),
+	agentId: z.string(),
+});
+export type InstanceAiChannelConfig = z.infer<typeof channelConfigSchema>;
+
 export const confirmationInputTypeSchema = z.enum([
 	'approval',
 	'text',
@@ -482,6 +488,11 @@ export const confirmationRequestPayloadSchema = z.object({
 	resourceDecision: gatewayConfirmationRequiredPayloadSchema
 		.optional()
 		.describe('Gateway resource-access decision data (inputType=resource-decision)'),
+	channelConfig: channelConfigSchema
+		.optional()
+		.describe(
+			'When present, renders agent chat-channel setup UI for this integration type and agent',
+		),
 });
 export type InstanceAiConfirmationRequestPayload = z.infer<typeof confirmationRequestPayloadSchema>;
 
@@ -514,6 +525,7 @@ export function isDisplayableConfirmationRequest(
 	if (hasItems(payload.setupRequests)) return true;
 	if (hasItems(payload.credentialRequests)) return true;
 	if (payload.domainAccess) return true;
+	if (payload.channelConfig) return true;
 
 	const inputType = payload.inputType ?? 'approval';
 	switch (inputType) {
@@ -893,6 +905,7 @@ export interface InstanceAiConfirmation {
 	introMessage?: string;
 	tasks?: TaskList;
 	resourceDecision?: GatewayConfirmationRequiredPayload;
+	channelConfig?: InstanceAiChannelConfig;
 	expired?: boolean;
 }
 

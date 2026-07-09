@@ -12,7 +12,7 @@
     "typecheck": "vue-tsc --noEmit",
     "typecheck:watch": "vue-tsc --watch --noEmit",
     "test": "vitest run",
-    "test:changed": "janitor test-scoped --runner=vitest",
+    "test:changed": "janitor test-scoped",
     "test:dev": "vitest",
     "chromatic": "chromatic",
     "format": "biome format --write .  && prettier --write . --ignore-path ../../../../.prettierignore",

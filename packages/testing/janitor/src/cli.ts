@@ -629,14 +629,9 @@ function runAffectedPackages(options: CliOptions): void {
 }
 
 function runTestScopedCmd(options: CliOptions): void {
-	if (!options.runner) {
-		console.error('Error: --runner=vitest is required');
-		process.exit(1);
-	}
 	const packageDir = options.packageDir ?? process.cwd();
 	const changedFiles = readChangedFiles(options);
 	const exitCode = runTestScoped({
-		runner: options.runner,
 		packageDir,
 		rootDir: findWorkspaceRoot(process.cwd()),
 		changedFiles,
@@ -646,13 +641,7 @@ function runTestScopedCmd(options: CliOptions): void {
 }
 
 function runScope(options: CliOptions): void {
-	if (!options.runner) {
-		console.error('Error: --runner=vitest is required');
-		process.exit(1);
-	}
-
 	const result = computeScope({
-		runner: options.runner,
 		packageDir: options.packageDir ?? process.cwd(),
 		changedFiles: readChangedFiles(options),
 		rootDir: findWorkspaceRoot(process.cwd()),

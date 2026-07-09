@@ -36,6 +36,16 @@ vi.mock('@ai-sdk/openai', () => ({
 				specificationVersion: 'v3',
 			}),
 			{
+				chat: (model: string) => ({
+					provider: 'openai',
+					modelId: model,
+					api: 'chat-completions',
+					apiKey: opts?.apiKey,
+					baseURL: opts?.baseURL,
+					fetch: opts?.fetch,
+					headers: opts?.headers,
+					specificationVersion: 'v3',
+				}),
 				embeddingModel: (model: string) => ({
 					provider: 'openai',
 					modelId: model,
@@ -205,6 +215,39 @@ describe('createModel', () => {
 		}) as unknown as Record<string, unknown>;
 		expect(model.provider).toBe('openai');
 		expect(model.baseURL).toBe('https://custom.endpoint.com/v1');
+		// Custom endpoints are OpenAI-COMPATIBLE servers: they speak
+		// /chat/completions, not OpenAI's Responses API.
+		expect(model.api).toBe('chat-completions');
+	});
+
+	it('accepts `url` as an alias for baseURL (host configs like Instance AI)', () => {
+		const model = createModel({
+			id: 'openai/mock-model',
+			apiKey: 'sk-test',
+			url: 'http://127.0.0.1:1234/v1',
+		}) as unknown as Record<string, unknown>;
+		expect(model.baseURL).toBe('http://127.0.0.1:1234/v1');
+		expect(model.api).toBe('chat-completions');
+	});
+
+	it('treats an empty url as no custom endpoint (api-key-only host config)', () => {
+		// Instance AI emits { id, url: '', apiKey } when only the API key is set;
+		// the provider default endpoint and default model must be preserved.
+		const model = createModel({
+			id: 'anthropic/claude-sonnet-4-6',
+			apiKey: 'sk-ant-test',
+			url: '',
+		}) as unknown as Record<string, unknown>;
+		expect(model.baseURL).toBeUndefined();
+		expect(model.apiKey).toBe('sk-ant-test');
+	});
+
+	it('keeps the default Responses API model for plain OpenAI (no baseURL)', () => {
+		const model = createModel({
+			id: 'openai/gpt-4o',
+			apiKey: 'sk-test',
+		}) as unknown as Record<string, unknown>;
+		expect(model.api).toBeUndefined();
 	});
 
 	it('should pass through a prebuilt LanguageModel', () => {
