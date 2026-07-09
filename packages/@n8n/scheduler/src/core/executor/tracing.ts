@@ -3,20 +3,22 @@ import type { ClaimedTask } from '../types';
 /**
  * How firing one claimed task ended.
  *
- * - `completed`: the handler ran successfully.
+ * - `completed`: the handler ran successfully and the task was marked done.
  * - `rescheduled`: the handler failed; the task will be retried later.
  * - `dead-lettered`: the handler failed on its last allowed attempt; the task
  *   is now permanently failed.
  * - `skipped-no-handler`: no handler is registered for the task's type; the
  *   claim was released so another instance can pick the task up.
  * - `skipped-not-owned`: the task row was deleted or taken over by another
- *   instance in the meantime; nothing ran.
+ *   instance. Either nothing ran, or the handler did run but this instance no
+ *   longer owned the task when it tried to record the result.
  *
- * The two failure outcomes carry the handler's error message.
+ * `errorMessage` is present whenever the handler ran and failed, including a
+ * `skipped-not-owned` fire whose failure could not be recorded.
  */
 export type FireResult =
 	| { outcome: 'completed' | 'skipped-no-handler' | 'skipped-not-owned' }
-	| { outcome: 'rescheduled' | 'dead-lettered'; errorMessage: string };
+	| { outcome: 'rescheduled' | 'dead-lettered' | 'skipped-not-owned'; errorMessage: string };
 
 /**
  * Lets an observer wrap the execution of one fire, typically to record a

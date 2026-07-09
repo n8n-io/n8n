@@ -97,6 +97,11 @@ describe('createExecutorTracing', () => {
 	const failureOutcomes: Array<[FireResult, string]> = [
 		[{ outcome: 'rescheduled', errorMessage: 'boom' }, SCHEDULER_FIRE_OUTCOME.rescheduled],
 		[{ outcome: 'dead-lettered', errorMessage: 'boom' }, SCHEDULER_FIRE_OUTCOME.deadLettered],
+		// A fire whose handler failed but whose task was no longer ours to update.
+		[
+			{ outcome: 'skipped-not-owned', errorMessage: 'boom' },
+			SCHEDULER_FIRE_OUTCOME.skippedNotOwned,
+		],
 	];
 	it.each(failureOutcomes)(
 		'closes the span as errored with the handler message and the mapped outcome for %o',

@@ -235,24 +235,36 @@ export class Executor {
 			const errorMessage = ensureError(error).message;
 			const nextAttempts = task.attempts + 1;
 			if (nextAttempts >= task.maxAttempts) {
-				// Guard the metric on rows affected: the write resolves 0 (not rejects) when the
-				// row was reclaimed by the reaper on lease overrun, so don't count that as ours.
+				// A terminal write resolves 0 (it does not reject) when the row was
+				// reclaimed by the reaper after a lease overrun. The result is then no
+				// longer ours to record: report the fire as skipped, not as a state
+				// transition we did not make, and count no metric. Same on every
+				// terminal write below.
 				const rowsAffected = await this.store.failTaskTerminal(claim, errorMessage);
-				if (rowsAffected > 0) this.hooks.onFire?.(task.taskType, 'failure');
-				return { outcome: 'dead-lettered', errorMessage };
+				if (rowsAffected > 0) {
+					this.hooks.onFire?.(task.taskType, 'failure');
+					return { outcome: 'dead-lettered', errorMessage };
+				}
+				return { outcome: 'skipped-not-owned', errorMessage };
 			}
 			const rowsAffected = await this.store.rescheduleTask(
 				claim,
 				backoff(nextAttempts),
 				errorMessage,
 			);
-			if (rowsAffected > 0) this.hooks.onRetry?.(task.taskType);
-			return { outcome: 'rescheduled', errorMessage };
+			if (rowsAffected > 0) {
+				this.hooks.onRetry?.(task.taskType);
+				return { outcome: 'rescheduled', errorMessage };
+			}
+			return { outcome: 'skipped-not-owned', errorMessage };
 		}
 
 		const rowsAffected = await this.store.completeTask(claim);
-		if (rowsAffected > 0) this.hooks.onFire?.(task.taskType, 'success');
-		return { outcome: 'completed' };
+		if (rowsAffected > 0) {
+			this.hooks.onFire?.(task.taskType, 'success');
+			return { outcome: 'completed' };
+		}
+		return { outcome: 'skipped-not-owned' };
 	}
 
 	/** Release a claim, reporting but swallowing failures: the reaper still recovers the row. */

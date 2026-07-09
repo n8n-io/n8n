@@ -207,6 +207,7 @@ describe('Executor.fire', () => {
 		const { store, registry, executor } = setup();
 		const handler: TaskHandler = { execute: vi.fn().mockResolvedValue(undefined) };
 		store.markStarted.mockResolvedValue(1);
+		store.completeTask.mockResolvedValue(1);
 		registry.resolve.mockReturnValue(handler);
 		const task = claimedTask();
 
@@ -263,6 +264,7 @@ describe('Executor.fire', () => {
 		const { store, registry, executor } = setup();
 		const handler: TaskHandler = { execute: vi.fn().mockRejectedValue(new Error('boom')) };
 		store.markStarted.mockResolvedValue(1);
+		store.rescheduleTask.mockResolvedValue(1);
 		registry.resolve.mockReturnValue(handler);
 		const task = claimedTask({ attempts: 0, maxAttempts: 3, leaseEpoch: 7 });
 
@@ -300,6 +302,7 @@ describe('Executor.fire', () => {
 		const { store, registry, executor } = setup();
 		const handler: TaskHandler = { execute: vi.fn().mockRejectedValue(new Error('boom')) };
 		store.markStarted.mockResolvedValue(1);
+		store.failTaskTerminal.mockResolvedValue(1);
 		registry.resolve.mockReturnValue(handler);
 		const task = claimedTask({ attempts: 0, maxAttempts: 1, leaseEpoch: 7 });
 
@@ -366,6 +369,7 @@ describe('Executor.fire', () => {
 		const { store, registry, tracing, executor } = setup();
 		const handler: TaskHandler = { execute: vi.fn().mockResolvedValue(undefined) };
 		store.markStarted.mockResolvedValue(1);
+		store.completeTask.mockResolvedValue(1);
 		registry.resolve.mockReturnValue(handler);
 		const task = claimedTask();
 
@@ -492,7 +496,7 @@ describe('Executor.fire metrics hooks', () => {
 		expect(hooks.onRetry).not.toHaveBeenCalled();
 	});
 
-	it('calls no outcome hook when a terminal write affects no row (reclaimed on lease overrun)', async () => {
+	it('calls no outcome hook and reports the fire as skipped when a terminal write affects no row (reclaimed on lease overrun)', async () => {
 		const { store, registry, hooks, executor } = setup();
 		store.markStarted.mockResolvedValue(1);
 		registry.resolve.mockReturnValue({ execute: vi.fn().mockResolvedValue(undefined) });
@@ -502,16 +506,20 @@ describe('Executor.fire metrics hooks', () => {
 		store.rescheduleTask.mockResolvedValue(0);
 
 		// Success path with a 0-row complete.
-		await executor.fire(HOST, claimedTask());
+		const completedResult = await executor.fire(HOST, claimedTask());
+		expect(completedResult).toEqual({ outcome: 'skipped-not-owned' });
 		expect(hooks.onFire).not.toHaveBeenCalled();
 
-		// Retry path with a 0-row reschedule.
+		// Retry path with a 0-row reschedule. The handler did fail, so the result
+		// keeps its error message even though the failure was not recorded.
 		registry.resolve.mockReturnValue({ execute: vi.fn().mockRejectedValue(new Error('boom')) });
-		await executor.fire(HOST, claimedTask({ attempts: 0, maxAttempts: 3 }));
+		const retryResult = await executor.fire(HOST, claimedTask({ attempts: 0, maxAttempts: 3 }));
+		expect(retryResult).toEqual({ outcome: 'skipped-not-owned', errorMessage: 'boom' });
 		expect(hooks.onRetry).not.toHaveBeenCalled();
 
 		// Terminal-failure path with a 0-row failTaskTerminal.
-		await executor.fire(HOST, claimedTask({ attempts: 0, maxAttempts: 1 }));
+		const terminalResult = await executor.fire(HOST, claimedTask({ attempts: 0, maxAttempts: 1 }));
+		expect(terminalResult).toEqual({ outcome: 'skipped-not-owned', errorMessage: 'boom' });
 		expect(hooks.onFire).not.toHaveBeenCalled();
 	});
 
@@ -520,6 +528,7 @@ describe('Executor.fire metrics hooks', () => {
 		const registry = mock<TaskHandlerRegistry>();
 		const timer = mock<PrecisionTimer>();
 		store.markStarted.mockResolvedValue(1);
+		store.completeTask.mockResolvedValue(1);
 		registry.resolve.mockReturnValue({ execute: vi.fn().mockResolvedValue(undefined) });
 		// No hooks: the optional calls must not throw.
 		const executor = new Executor(store, registry, timer, {
