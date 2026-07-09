@@ -87,7 +87,7 @@ describe('MessageAnAgent Node', () => {
 			[
 				{
 					json: {
-						response: 'Hello from agent',
+						text: 'Hello from agent',
 						structuredOutput: null,
 						usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
 						toolCalls: [],
@@ -190,6 +190,84 @@ describe('MessageAnAgent Node', () => {
 		});
 	});
 
+	describe('inline agent source', () => {
+		const inlineAgent = {
+			config: {
+				name: 'Inline Agent',
+				model: 'openai/gpt-5',
+				credential: 'cred-1',
+				instructions: 'Help users',
+				tools: [
+					{
+						type: 'node',
+						name: 'HTTP Request',
+						node: {
+							nodeType: 'n8n-nodes-base.httpRequestTool',
+							nodeTypeVersion: 4.4,
+							nodeParameters: {
+								url: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('URL', ``, 'string') }}",
+							},
+						},
+					},
+				],
+			},
+		};
+
+		it('passes the inline definition and never resolves its embedded expressions', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams({ agentSource: 'inline', inlineAgent });
+			executeFunctions.executeAgent.mockResolvedValue({ ...mockAgentResult, session: null });
+
+			await node.execute.call(executeFunctions);
+
+			// Embedded node-tool parameters carry `$fromAI` overrides that only the
+			// agent's tool executor may resolve — the parameter must be read raw.
+			expect(executeFunctions.getNodeParameter).toHaveBeenCalledWith(
+				'inlineAgent',
+				0,
+				{},
+				{ rawExpressions: true },
+			);
+			expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
+				expect.objectContaining({ inlineAgent }),
+				'Hello agent',
+				'exec-123',
+				0,
+			);
+			const [source] = executeFunctions.executeAgent.mock.calls[0];
+			expect(source).not.toHaveProperty('agentId');
+		});
+
+		it('passes a session id override through for inline agents (thread memory)', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams({
+				agentSource: 'inline',
+				inlineAgent,
+				advanced: { sessionId: 'my-session' },
+			});
+			executeFunctions.executeAgent.mockResolvedValue({ ...mockAgentResult, session: null });
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
+				expect.objectContaining({ sessionId: 'my-session' }),
+				expect.any(String),
+				expect.any(String),
+				expect.any(Number),
+			);
+		});
+
+		it('throws when inline mode is selected but no agent is configured', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams({ agentSource: 'inline', inlineAgent: {} });
+			executeFunctions.continueOnFail.mockReturnValue(false);
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+				'Inline agent is not configured',
+			);
+		});
+	});
+
 	it('should process multiple items with different itemIndex values', async () => {
 		executeFunctions.getInputData.mockReturnValue([{ json: {} }, { json: {} }]);
 		executeFunctions.getNodeParameter.mockImplementation(
@@ -241,9 +319,9 @@ describe('MessageAnAgent Node', () => {
 			1,
 		);
 		expect(result[0]).toHaveLength(2);
-		expect(result[0][0].json.response).toBe('Response 1');
+		expect(result[0][0].json.text).toBe('Response 1');
 		expect(result[0][0].pairedItem).toEqual({ item: 0 });
-		expect(result[0][1].json.response).toBe('Response 2');
+		expect(result[0][1].json.text).toBe('Response 2');
 		expect(result[0][1].pairedItem).toEqual({ item: 1 });
 	});
 

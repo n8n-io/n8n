@@ -16,6 +16,7 @@ import type {
 	ExecuteWorkflowData,
 	ExecuteAgentInfo,
 	ExecuteAgentData,
+	ExecuteAgentSource,
 	ITaskMetadata,
 	ContextType,
 	IContextObject,
@@ -188,6 +189,15 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			throw new OperationalError('Agent execution is not available in this context');
 		}
 
+		let source: ExecuteAgentSource;
+		if (agentInfo.inlineAgent) {
+			source = { inlineAgent: agentInfo.inlineAgent };
+		} else if (agentInfo.agentId) {
+			source = { agentId: agentInfo.agentId };
+		} else {
+			throw new OperationalError('Either an agent id or an inline agent definition is required');
+		}
+
 		const threadId = agentInfo.sessionId?.trim() || `${executionId}-${itemIndex}`;
 
 		const inputDataScope = agentInfo.inputDataScope ?? 'item';
@@ -215,7 +225,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		};
 
 		return await this.additionalData.executeAgent(
-			agentInfo.agentId,
+			source,
 			message,
 			executionId,
 			threadId,

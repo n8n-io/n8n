@@ -296,11 +296,13 @@ describe('NodeToolSettingsContent', () => {
 		});
 
 		await waitFor(() => {
-			expect(credentialsStore.setCredentials).toHaveBeenCalledWith([]);
 			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
 				projectId: 'personal-project',
 			});
 		});
+		// The refetch REPLACES the store on resolve; clearing it up front would
+		// blank every credential-driven control still visible behind the modal.
+		expect(credentialsStore.setCredentials).not.toHaveBeenCalledWith([]);
 	});
 
 	it('fetches workflow-scoped credentials for the provided project even when the shared store is already populated', async () => {
@@ -321,11 +323,11 @@ describe('NodeToolSettingsContent', () => {
 		});
 
 		await waitFor(() => {
-			expect(credentialsStore.setCredentials).toHaveBeenCalledWith([]);
 			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
 				projectId: 'team-project',
 			});
 		});
+		expect(credentialsStore.setCredentials).not.toHaveBeenCalledWith([]);
 	});
 
 	describe('makeUniqueName', () => {

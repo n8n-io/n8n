@@ -484,7 +484,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
-	it('executes workflow runs with execution-scoped persistence and tool-call output', async () => {
+	it('executes workflow runs with thread-scoped persistence and tool-call output', async () => {
 		const { service, agentRepository, reconstructionService, executionService, telemetry } =
 			makeService();
 		const runtime = makeRuntime([
@@ -508,7 +508,10 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(runtime.agent.stream).toHaveBeenCalledWith(
 			'hello',
 			expect.objectContaining({
-				persistence: { resourceId: 'execution-1', threadId: 'thread-1' },
+				// resourceId is the memory store's read scope: it must be stable
+				// across executions (NOT the execution id) or a reused session id
+				// would never see its prior messages.
+				persistence: { resourceId: 'thread-1', threadId: 'thread-1' },
 			}),
 		);
 		expect(result).toEqual(
@@ -667,6 +670,157 @@ describe('AgentExecutionOrchestratorService', () => {
 			).rejects.toThrow('"fetch_input_data"');
 
 			expect(toolFn).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('executeInlineForWorkflow', () => {
+		const inlinePayload = {
+			config: {
+				name: 'Inline Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				credential: 'cred-1',
+				instructions: 'Help users',
+			},
+		};
+
+		it('compiles from the embedded config, records no session, and tracks inline telemetry', async () => {
+			const { service, agentRepository, reconstructionService, executionService, telemetry } =
+				makeService();
+			const runtime = makeRuntime([
+				{ type: 'text-start', id: 'text-1' },
+				{ type: 'text-delta', id: 'text-1', delta: 'answer' },
+				{ type: 'text-end', id: 'text-1' },
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+			reconstructionService.reconstructFromResolvedSource.mockResolvedValue(runtime);
+
+			const workflowContext: ExecuteAgentWorkflowContext = {
+				workflowId: 'wf-1',
+				callingNodeName: 'Message an Agent',
+				nodes: [],
+				runExecutionData: { resultData: { runData: {} } } as unknown as IRunExecutionData,
+			};
+			Object.assign(runtime.agent, { tool: vi.fn(), declaredTools: [] });
+
+			const result = await service.executeInlineForWorkflow(
+				inlinePayload,
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+				userId,
+				'production',
+				undefined,
+				workflowContext,
+			);
+
+			// No entity lookup — the embedded config is the source of truth.
+			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
+			expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
+				expect.objectContaining({
+					config: expect.objectContaining({
+						name: 'Inline Agent',
+						// Injected server-side: conversation-thread memory keeps a
+						// session-id-keyed thread across executions; long-term memory
+						// stays off (it would accumulate under the synthetic id).
+						memory: {
+							enabled: true,
+							storage: 'n8n',
+							observationalMemory: { enabled: false },
+							episodicMemory: { enabled: false },
+						},
+					}),
+					memoryOwnerAgentId: 'inline:wf-1:Message an Agent',
+					projectId,
+					runtimeProfile: 'inline',
+					skills: {},
+					toolDescriptors: {},
+					toolCodeByName: {},
+				}),
+			);
+
+			expect(result.response).toBe('answer');
+			// Inline runs have no persisted session.
+			expect(result.session).toBeNull();
+			expect(executionService.recordMessage).not.toHaveBeenCalled();
+
+			// Thread-scoped persistence: stable across executions, so a reused
+			// session id continues the same conversation.
+			expect(runtime.agent.stream).toHaveBeenCalledWith(
+				'hello',
+				expect.objectContaining({
+					persistence: { resourceId: 'thread-1', threadId: 'thread-1' },
+				}),
+			);
+
+			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					agent_id: 'inline:wf-1:Message an Agent',
+					agent_type: 'inline',
+					run_type: 'production',
+					turn_status: 'succeeded',
+					configuration: expect.objectContaining({ model: 'anthropic/claude-sonnet-4-5' }),
+				}),
+			);
+		});
+
+		it.each([
+			['skills', { skills: [{ type: 'skill', id: 'triage' }] }],
+			// Memory is injected server-side; the node cannot configure it.
+			['memory', { memory: { enabled: true, storage: 'n8n' } }],
+		])('rejects configs with saved-agent-only capabilities (%s)', async (_key, extra) => {
+			const { service, reconstructionService } = makeService();
+
+			await expect(
+				service.executeInlineForWorkflow(
+					{
+						config: {
+							...inlinePayload.config,
+							...extra,
+						} as unknown as typeof inlinePayload.config,
+					},
+					'hello',
+					'execution-1',
+					'thread-1',
+					projectId,
+				),
+			).rejects.toThrow(UserError);
+			expect(reconstructionService.reconstructFromResolvedSource).not.toHaveBeenCalled();
+		});
+
+		it('rejects custom (code) tools, whose bodies live only on saved agents', async () => {
+			const { service, reconstructionService } = makeService();
+
+			await expect(
+				service.executeInlineForWorkflow(
+					{
+						config: {
+							...inlinePayload.config,
+							tools: [{ type: 'custom', id: 'my_tool' }],
+						} as unknown as typeof inlinePayload.config,
+					},
+					'hello',
+					'execution-1',
+					'thread-1',
+					projectId,
+				),
+			).rejects.toThrow(UserError);
+			expect(reconstructionService.reconstructFromResolvedSource).not.toHaveBeenCalled();
+		});
+
+		it('rejects an unrunnable draft config (no credential)', async () => {
+			const { service, reconstructionService } = makeService();
+
+			await expect(
+				service.executeInlineForWorkflow(
+					{ config: { ...inlinePayload.config, credential: '' } },
+					'hello',
+					'execution-1',
+					'thread-1',
+					projectId,
+				),
+			).rejects.toThrow(UserError);
+			expect(reconstructionService.reconstructFromResolvedSource).not.toHaveBeenCalled();
 		});
 	});
 

@@ -355,9 +355,12 @@ onMounted(async () => {
 	// Ensure credentials are loaded for the credentials selector to work.
 	// Always refresh for the resolved project context so previously loaded
 	// credentials from another project do not bleed into this tool config.
+	// The fetch REPLACES the store atomically on resolve — do not clear it
+	// first: the credentials store is global, and emptying it here blanks
+	// every credential-driven control that is still visible behind this modal
+	// (e.g. the agent model selector flips to "Credentials missing").
 	const projectId = credentialProjectId.value;
 	if (projectId) {
-		credentialsStore.setCredentials([]);
 		await Promise.all([
 			credentialsStore.fetchCredentialTypes(false),
 			credentialsStore.fetchAllCredentialsForWorkflow({ projectId }),

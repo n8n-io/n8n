@@ -14,6 +14,7 @@ import type {
 	AiEvent,
 	EnvProviderState,
 	ExecuteAgentData,
+	ExecuteAgentSource,
 	ExecuteAgentWorkflowContext,
 	ExecuteWorkflowData,
 	ExecuteWorkflowOptions,
@@ -341,10 +342,11 @@ export async function executeWorkflow(
 }
 
 /**
- * Executes an agent with the given ID and message.
+ * Executes an agent — a saved one by ID, or an inline definition embedded in
+ * the calling node's parameters.
  */
 export async function executeAgent(
-	agentId: string,
+	source: ExecuteAgentSource,
 	message: string,
 	executionId: string,
 	threadId: string,
@@ -378,13 +380,32 @@ export async function executeAgent(
 	);
 	const agentExecutionOrchestratorService = Container.get(AgentExecutionOrchestratorService);
 
+	// Scope workflow session threads by project
+	const scopedThreadId = `workflow:project-${projectId}:${threadId}`;
+
+	if (source.inlineAgent) {
+		// Inline agents have no entity, so published/draft version gating does
+		// not apply — the embedded config is always what runs.
+		return await agentExecutionOrchestratorService.executeInlineForWorkflow(
+			source.inlineAgent,
+			message,
+			executionId,
+			scopedThreadId,
+			projectId,
+			telemetryUserId,
+			isManualOrChatExecution(executionMode) ? 'test' : 'production',
+			outputSchema,
+			workflowContext,
+		);
+	}
+
 	const useDraftVersion = isManualOrChatExecution(executionMode);
 
 	return await agentExecutionOrchestratorService.executeForWorkflow(
-		agentId,
+		source.agentId,
 		message,
 		executionId,
-		threadId,
+		scopedThreadId,
 		projectId,
 		telemetryUserId,
 		useDraftVersion,

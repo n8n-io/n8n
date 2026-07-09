@@ -5470,6 +5470,8 @@
 	"agentNode.ndv.section.agent": "Agent",
 	"agentNode.ndv.referenced.editInBuilder": "Edit in Agent Builder",
 	"agentNode.ndv.unavailable": "This agent was deleted or you lost access.",
+	"agentNode.ndv.inline.name.label": "Name",
+	"agentNode.ndv.inline.name.placeholder": "e.g. Support Agent",
 	"agentSelector.createAgentFailed": "Error creating agent",
 	"evaluation.listRuns.status.new": "New",
 	"evaluation.listRuns.status.running": "Running",

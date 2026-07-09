@@ -15,6 +15,7 @@ import type {
 	OnConnectStartParams,
 	ViewportTransform,
 } from '@vue-flow/core';
+import type { InlineAgentConfig } from '@n8n/api-types';
 import type { INodeUi } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { ComputedRef, Ref } from 'vue';
@@ -109,6 +110,11 @@ export type CanvasNodeAgentRender = {
 		// The node's `agentId` resource-locator. Empty `value` => unconfigured
 		// card (shows the agent picker); set => rich card keyed by this agent.
 		agentId: INodeParameterResourceLocator;
+		// 'inline' renders the card from the embedded definition below instead
+		// of fetching the referenced agent's capability summary.
+		agentSource: 'referenced' | 'inline';
+		// The node's `inlineAgent` parameter (when agentSource is 'inline').
+		inlineAgent: InlineAgentConfig;
 	}>;
 };
 

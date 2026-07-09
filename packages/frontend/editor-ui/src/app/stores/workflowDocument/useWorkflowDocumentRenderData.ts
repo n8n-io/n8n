@@ -19,6 +19,7 @@ import {
 	STICKY_NODE_TYPE,
 } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
+import { readAgentSource, readInlineAgentParameter } from '@/features/agents/utils/inlineAgent';
 import { checkOverlap } from '@/features/workflows/canvas/canvas.utils';
 import type {
 	BoundingBox,
@@ -264,6 +265,8 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 			type: CanvasNodeRenderType.Agent,
 			options: {
 				agentId: node.parameters.agentId as INodeParameterResourceLocator | undefined,
+				agentSource: readAgentSource(node),
+				inlineAgent: readInlineAgentParameter(node) ?? undefined,
 			},
 		};
 	}
