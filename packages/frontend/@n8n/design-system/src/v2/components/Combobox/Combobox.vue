@@ -46,7 +46,6 @@ const props = withDefaults(defineProps<ComboboxProps>(), {
 	labelKey: 'label',
 	clearable: false,
 	teleported: true,
-	openOnFocus: true,
 });
 const emit = defineEmits<ComboboxEmits>();
 const slots = defineSlots<ComboboxSlots>();
@@ -63,7 +62,6 @@ const rootProps = useForwardPropsEmits(
 		'ignoreFilter',
 		'resetSearchTermOnBlur',
 		'resetSearchTermOnSelect',
-		'openOnFocus',
 		'openOnClick',
 		'highlightOnHover',
 	),
@@ -179,7 +177,6 @@ function onClear() {
 
 <template>
 	<ComboboxRoot
-		v-slot="{ open }"
 		:name="props.name"
 		v-bind="rootProps"
 		:disabled="props.disabled"
@@ -202,9 +199,7 @@ function onClear() {
 				:auto-focus="props.autoFocus"
 				:display-value="getDisplayValue"
 				:aria-label="$attrs['aria-label'] ?? props.placeholder"
-			>
-				<slot :model-value="props.modelValue" :open="open" />
-			</ComboboxInput>
+			/>
 			<button
 				v-if="showClearButton"
 				type="button"
