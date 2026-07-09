@@ -113,7 +113,7 @@ function providerToMenuItem(provider: AgentEmbeddingProvider): MenuItem {
 						'agents.builder.vectorStores.modal.embeddingModel.dimensions',
 						{ interpolate: { dimensions: String(option.dimensions) } },
 					),
-					descriptionTooltipTeleported: false,
+					descriptionTooltipTeleported: true,
 				},
 			}))
 		: [];

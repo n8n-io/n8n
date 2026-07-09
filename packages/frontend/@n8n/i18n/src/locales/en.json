@@ -6918,7 +6918,7 @@
 	"agents.builder.vectorStores.panel.connectButton": "Connect vector store",
 	"agents.builder.vectorStores.panel.empty.title": "No vector stores connected",
 	"agents.builder.vectorStores.panel.empty.description": "Connect a vector store so this agent can search data you've already indexed.",
-	"agents.builder.vectorStores.panel.edit": "Edit connection",
+	"agents.builder.vectorStores.panel.edit": "Edit",
 	"agents.builder.vectorStores.panel.remove": "Remove connection",
 	"agents.builder.vectorStores.panel.removeModal.title": "Remove {name}?",
 	"agents.builder.vectorStores.panel.removeModal.description": "This removes {name} from the agent's connected vector stores.",
