@@ -2,7 +2,7 @@ import { ScheduledTaskStatus } from '@n8n/constants';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { mock } from 'vitest-mock-extended';
 
-import { SCHEDULER_ATTRIBUTES } from '../../observability/attributes';
+import { SCHEDULER_ATTRIBUTES, SCHEDULER_FIRE_OUTCOME } from '../../observability/attributes';
 import type { SchedulerMetrics } from '../../observability/metrics';
 import { SpanStatus, type Span, type Tracer } from '../../observability/tracer';
 import { InvalidLifecycleOptionsError } from '../errors';
@@ -845,6 +845,55 @@ describe('createScheduler tracing', () => {
 		);
 		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.claimedCount, tasks.length);
 		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('wraps a detached fire in a fire span with a nested handoff span around the handler', async () => {
+		// A span per `op`, so the claim, fire and handoff spans record to separate
+		// spies and their statuses can be told apart.
+		const spans = new Map<string, Span>();
+		const spanFor = (op: string): Span => {
+			let span = spans.get(op);
+			if (span === undefined) {
+				span = { setAttribute: vi.fn(), setStatus: vi.fn() };
+				spans.set(op, span);
+			}
+			return span;
+		};
+		const tracer = mock<Tracer>();
+		tracer.startSpan.mockImplementation(async (options, run) => {
+			const span = spanFor(options.op ?? options.name);
+			try {
+				return await run(span);
+			} catch (error) {
+				span.setStatus({ code: SpanStatus.error, message: ensureError(error).message });
+				throw error;
+			}
+		});
+		const { scheduler, taskStore } = makeScheduler({ tracer });
+		scheduler.registerTaskHandler('test-task', { execute: vi.fn().mockResolvedValue(undefined) });
+		taskStore.claimDueTasks.mockResolvedValue([claimedTask()]);
+		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.completeTask.mockResolvedValue(1);
+
+		await scheduler.execute();
+
+		// The fire is detached from the claim: wait for the timer to deliver it.
+		await vi.waitFor(() => {
+			expect(spanFor('scheduler.fire').setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+		});
+		expect(tracer.startSpan).toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'Scheduler fire', op: 'scheduler.fire' }),
+			expect.any(Function),
+		);
+		expect(spanFor('scheduler.fire').setAttribute).toHaveBeenCalledWith(
+			SCHEDULER_ATTRIBUTES.outcome,
+			SCHEDULER_FIRE_OUTCOME.completed,
+		);
+		expect(tracer.startSpan).toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'Scheduler handoff', op: 'scheduler.handoff' }),
+			expect.any(Function),
+		);
+		expect(spanFor('scheduler.handoff').setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
 	});
 
 	it('opens a reap span carrying the reclaimed and dead-lettered counts, with ok status', async () => {

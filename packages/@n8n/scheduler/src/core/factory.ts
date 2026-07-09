@@ -9,7 +9,7 @@ import {
 	TaskHandlerRegistry,
 } from './executor';
 import type { ExecutorOptions, ExecutorTaskStore } from './executor';
-import { DEFAULT_LIFECYCLE_OPTIONS, Loop, PASS_TIMED_OUT } from './lifecycle';
+import { DEFAULT_LIFECYCLE_OPTIONS, Loop } from './lifecycle';
 import type { LifecycleOptions } from './lifecycle';
 import { DEFAULT_MATERIALIZER_OPTIONS, materialize } from './materializer';
 import type { MaterializerOptions, RunInTransaction } from './materializer';
@@ -19,8 +19,10 @@ import { DEFAULT_RETENTION_OPTIONS, prune } from './retention';
 import type { RetentionOptions, RetentionStore } from './retention';
 import type { Scheduler, SchedulerPasses } from './scheduler';
 import { SCHEDULER_ATTRIBUTES } from '../observability/attributes';
+import { createExecutorTracing, withHandoffTracing } from '../observability/executor-tracing';
 import { noopMetrics, type SchedulerMetrics } from '../observability/metrics';
-import { SpanStatus, noopTracer, type Span, type Tracer } from '../observability/tracer';
+import { tracePass } from '../observability/pass-tracing';
+import { noopTracer, type Tracer } from '../observability/tracer';
 
 export type SchedulerEventLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -159,18 +161,6 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 	};
 	const described = (error: unknown) => ensureError(error).message;
 
-	// A pass abandoned by its loop's timeout aborts with PASS_TIMED_OUT and then
-	// returns early at its next cancellation point, so its span would otherwise
-	// close `ok` while the loop logs a timeout. Reconcile the two: a timed-out
-	// pass records error; a clean drain (graceful stop) or completion records ok.
-	const settlePassSpan = (span: Span, signal?: AbortSignal) => {
-		if (signal?.aborted === true && signal.reason === PASS_TIMED_OUT) {
-			span.setStatus({ code: SpanStatus.error, message: 'Scheduler pass timed out' });
-		} else {
-			span.setStatus({ code: SpanStatus.ok });
-		}
-	};
-
 	// Metrics are best-effort observability: a throwing sink (e.g. a broken
 	// exporter) must never break the pass that emitted, so every record is
 	// wrapped and its failure swallowed.
@@ -227,7 +217,7 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 				}),
 			onRetry: (taskType) => recordMetric(() => metrics.recordRetry(taskType)),
 		},
-		tracer,
+		createExecutorTracing(tracer),
 	);
 
 	if (retentionOptions.failedRetentionSeconds < retentionOptions.retentionSeconds) {
@@ -241,56 +231,53 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 		);
 	}
 
-	const runMaterialize = async (signal?: AbortSignal) =>
-		await tracer.startSpan(
-			{ name: 'Scheduler materialize', op: 'scheduler.materialize' },
-			async (span) => {
-				const summary = await materialize(
-					materializerTransaction,
-					materializerOptions,
-					{
-						onPlanError: (job, error) => {
-							emit('error', 'Scheduler could not plan a job schedule; deferred for retry', {
-								jobId: job.id,
-								error: described(error),
-							});
-						},
-						onSkippedDuplicates: (context) => {
-							emit(
-								'debug',
-								'Scheduler materializer skipped occurrences that were already recorded',
-								{ ...context },
-							);
-						},
+	const runMaterialize = tracePass(
+		tracer,
+		{ name: 'Scheduler materialize', op: 'scheduler.materialize' },
+		async (signal) => {
+			const summary = await materialize(
+				materializerTransaction,
+				materializerOptions,
+				{
+					onPlanError: (job, error) => {
+						emit('error', 'Scheduler could not plan a job schedule; deferred for retry', {
+							jobId: job.id,
+							error: described(error),
+						});
 					},
-					signal,
-				);
-				span.setAttribute(SCHEDULER_ATTRIBUTES.claimedJobs, summary.claimedJobs);
-				span.setAttribute(SCHEDULER_ATTRIBUTES.occurrences, summary.occurrences);
-				span.setAttribute(SCHEDULER_ATTRIBUTES.deferredJobs, summary.deferredJobs);
-				recordMetric(() => metrics.recordMaterialized(summary.occurrences, summary.deferredJobs));
-				settlePassSpan(span, signal);
-				return summary;
-			},
-		);
+					onSkippedDuplicates: (context) => {
+						emit('debug', 'Scheduler materializer skipped occurrences that were already recorded', {
+							...context,
+						});
+					},
+				},
+				signal,
+			);
+			recordMetric(() => metrics.recordMaterialized(summary.occurrences, summary.deferredJobs));
+			return summary;
+		},
+		(summary) => ({
+			[SCHEDULER_ATTRIBUTES.claimedJobs]: summary.claimedJobs,
+			[SCHEDULER_ATTRIBUTES.occurrences]: summary.occurrences,
+			[SCHEDULER_ATTRIBUTES.deferredJobs]: summary.deferredJobs,
+		}),
+	);
 
-	const runExecute = async (signal?: AbortSignal) =>
-		await tracer.startSpan(
-			{
-				name: 'Scheduler claim',
-				op: 'scheduler.claim',
-				attributes: { [SCHEDULER_ATTRIBUTES.host]: hostId },
-			},
-			async (span) => {
-				const tasks = await executor.claimAndSchedule(hostId, signal);
-				span.setAttribute(SCHEDULER_ATTRIBUTES.claimedCount, tasks.length);
-				settlePassSpan(span, signal);
-				return tasks;
-			},
-		);
+	const runExecute = tracePass(
+		tracer,
+		{
+			name: 'Scheduler claim',
+			op: 'scheduler.claim',
+			attributes: { [SCHEDULER_ATTRIBUTES.host]: hostId },
+		},
+		async (signal) => await executor.claimAndSchedule(hostId, signal),
+		(tasks) => ({ [SCHEDULER_ATTRIBUTES.claimedCount]: tasks.length }),
+	);
 
-	const runReap = async (signal?: AbortSignal) =>
-		await tracer.startSpan({ name: 'Scheduler reap', op: 'scheduler.reap' }, async (span) => {
+	const runReap = tracePass(
+		tracer,
+		{ name: 'Scheduler reap', op: 'scheduler.reap' },
+		async (signal) => {
 			const result = await reap(
 				taskStore,
 				reaperOptions,
@@ -313,32 +300,35 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 				},
 				signal,
 			);
-			span.setAttribute(SCHEDULER_ATTRIBUTES.reclaimed, result.reclaimed);
-			span.setAttribute(SCHEDULER_ATTRIBUTES.deadLettered, result.deadLettered);
 			recordMetric(() => metrics.recordReaped(result.reclaimed, result.deadLettered));
-			settlePassSpan(span, signal);
 			return result;
-		});
+		},
+		(result) => ({
+			[SCHEDULER_ATTRIBUTES.reclaimed]: result.reclaimed,
+			[SCHEDULER_ATTRIBUTES.deadLettered]: result.deadLettered,
+		}),
+	);
 
-	const runPrune = async (signal?: AbortSignal) =>
-		await tracer.startSpan(
-			{ name: 'Scheduler retention', op: 'scheduler.retention' },
-			async (span) => {
-				const summary = await prune(taskStore, retentionOptions, signal);
-				if (!summary.drained && signal?.aborted !== true) {
-					emit('warn', 'Scheduler retention pass hit its batch budget; backlog remains', {
-						...summary,
-					});
-				} else if (summary.drained && summary.deleted > 0) {
-					emit('debug', 'Scheduler retention deleted finished tasks', { ...summary });
-				}
-				span.setAttribute(SCHEDULER_ATTRIBUTES.retentionDeleted, summary.deleted);
-				span.setAttribute(SCHEDULER_ATTRIBUTES.retentionDrained, summary.drained);
-				recordMetric(() => metrics.recordPruned(summary.deleted));
-				settlePassSpan(span, signal);
-				return summary;
-			},
-		);
+	const runPrune = tracePass(
+		tracer,
+		{ name: 'Scheduler retention', op: 'scheduler.retention' },
+		async (signal) => {
+			const summary = await prune(taskStore, retentionOptions, signal);
+			if (!summary.drained && signal?.aborted !== true) {
+				emit('warn', 'Scheduler retention pass hit its batch budget; backlog remains', {
+					...summary,
+				});
+			} else if (summary.drained && summary.deleted > 0) {
+				emit('debug', 'Scheduler retention deleted finished tasks', { ...summary });
+			}
+			recordMetric(() => metrics.recordPruned(summary.deleted));
+			return summary;
+		},
+		(summary) => ({
+			[SCHEDULER_ATTRIBUTES.retentionDeleted]: summary.deleted,
+			[SCHEDULER_ATTRIBUTES.retentionDrained]: summary.drained,
+		}),
+	);
 
 	const loopOver = (
 		pass: string,
@@ -410,7 +400,9 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 
 	return {
 		registerTaskHandler(taskType, handler) {
-			registry.register(taskType, handler);
+			// Wrapped here, at registration, so the executor calls handlers without
+			// knowing a tracing span surrounds each run.
+			registry.register(taskType, withHandoffTracing(tracer, handler));
 		},
 
 		materialize: runMaterialize,

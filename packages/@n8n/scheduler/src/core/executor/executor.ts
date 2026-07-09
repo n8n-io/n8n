@@ -6,12 +6,8 @@ import { DEFAULT_EXECUTOR_OPTIONS, type ExecutorOptions } from './options';
 import type { PrecisionTimer } from './precision-timer';
 import type { ClaimedTaskRef, ClaimDueTasksBatch, ExecutorTaskStore } from './store';
 import type { TaskHandlerRegistry } from './task-handler';
-import {
-	SCHEDULER_ATTRIBUTES,
-	SCHEDULER_FIRE_OUTCOME,
-	pickSchedulerTaskAttributes,
-} from '../../observability/attributes';
-import { SpanStatus, noopTracer, type Tracer } from '../../observability/tracer';
+import { noopExecutorTracing } from './tracing';
+import type { ExecutorTracing, FireResult } from './tracing';
 import type { ClaimedTask } from '../types';
 
 type ClaimedEntry = { host: string; task: ClaimedTask };
@@ -96,7 +92,7 @@ export class Executor {
 		private readonly timer: PrecisionTimer,
 		private readonly options: ExecutorOptions = DEFAULT_EXECUTOR_OPTIONS,
 		private readonly hooks: ExecutorHooks = {},
-		private readonly tracer: Tracer = noopTracer,
+		private readonly tracing: ExecutorTracing = noopExecutorTracing,
 	) {
 		this.leaseMs = options.leaseSeconds * Time.seconds.toMilliseconds;
 		// Claim one driver tick ahead so a task due before the next tick fires precisely
@@ -190,96 +186,73 @@ export class Executor {
 	/**
 	 * Fire one claimed task: confirm it is still ours, dispatch to its handler, then
 	 * record the outcome. A row that vanished (cascade-delete) or was reclaimed after
-	 * a lease expiry is a benign no-op at every step, never an error.
+	 * a lease expiry is skipped quietly at every step, never treated as an error.
+	 *
+	 * @returns How the fire ended; see {@link FireResult}.
 	 */
-	async fire(host: string, task: ClaimedTask): Promise<void> {
-		await this.tracer.startSpan(
-			{
-				name: 'Scheduler fire',
-				op: 'scheduler.fire',
-				attributes: { ...pickSchedulerTaskAttributes(task), [SCHEDULER_ATTRIBUTES.host]: host },
-			},
-			async (span) => {
-				const claim: ClaimedTaskRef = { host, id: task.id, claimedEpoch: task.leaseEpoch };
+	async fire(host: string, task: ClaimedTask): Promise<FireResult> {
+		return await this.tracing.fire(host, task, async () => await this.runFire(host, task));
+	}
 
-				// Resolve the handler before marking the task started: don't mark a task started
-				// we can't run, and skip the write on the missing-handler path. The claim is
-				// scoped to registered types, so this normally resolves; if the handler went away
-				// (e.g. a rolling restart), release without counting an attempt so it isn't lost.
-				const handler = this.registry.resolve(task.taskType);
-				if (handler === undefined) {
-					this.hooks.onMissingHandler?.(task);
-					await this.releaseClaimBestEffort(claim);
-					span.setAttribute(SCHEDULER_ATTRIBUTES.outcome, SCHEDULER_FIRE_OUTCOME.skippedNoHandler);
-					span.setStatus({ code: SpanStatus.ok });
-					return;
-				}
+	/** The actual fire logic. {@link fire} wraps it in the tracing hook. */
+	private async runFire(host: string, task: ClaimedTask): Promise<FireResult> {
+		const claim: ClaimedTaskRef = { host, id: task.id, claimedEpoch: task.leaseEpoch };
 
-				// Guard + set `startedAt` in one write. 0 rows => deleted or reclaimed; don't
-				// dispatch an execution for work that is gone or no longer ours.
-				const started = await this.store.markStarted(claim);
-				if (started === 0) {
-					span.setAttribute(SCHEDULER_ATTRIBUTES.outcome, SCHEDULER_FIRE_OUTCOME.skippedNotOwned);
-					span.setStatus({ code: SpanStatus.ok });
-					return;
-				}
+		// Resolve the handler before marking the task started: don't mark a task started
+		// we can't run, and skip the write on the missing-handler path. The claim is
+		// scoped to registered types, so this normally resolves; if the handler went away
+		// (e.g. a rolling restart), release without counting an attempt so it isn't lost.
+		const handler = this.registry.resolve(task.taskType);
+		if (handler === undefined) {
+			this.hooks.onMissingHandler?.(task);
+			await this.releaseClaimBestEffort(claim);
+			return { outcome: 'skipped-no-handler' };
+		}
 
-				// Now that the task is confirmed ours and started, it is genuinely being dispatched.
-				// Lag is measured against `runAt` (the effective fire time, pushed forward by retry
-				// backoff), not the fixed original slot, so a retry's backoff wait isn't logged as lag.
-				// The timer's clock (the one scheduling used) is used, not a fresh wall clock, so a
-				// skewed instance doesn't bias the lag it also scheduled against; clamp non-negative
-				// since a timer can fire marginally early.
-				const lagMs = this.timer.now() - task.runAt.getTime();
-				const lagSeconds = Math.max(0, lagMs) / Time.seconds.toMilliseconds;
-				this.hooks.onDispatch?.(task.taskType, lagSeconds);
+		// Guard + set `startedAt` in one write. 0 rows => deleted or reclaimed; don't
+		// dispatch an execution for work that is gone or no longer ours.
+		const started = await this.store.markStarted(claim);
+		if (started === 0) {
+			return { outcome: 'skipped-not-owned' };
+		}
 
-				// Record success only after the try, so a failure to record it isn't taken for a
-				// handler failure. Such a failure propagates out (caught by the detached `.catch`
-				// in claimAndSchedule) and leaves the row `running` for the reaper.
-				try {
-					await this.tracer.startSpan(
-						{
-							name: 'Scheduler handoff',
-							op: 'scheduler.handoff',
-							attributes: {
-								[SCHEDULER_ATTRIBUTES.taskId]: task.id,
-								[SCHEDULER_ATTRIBUTES.taskType]: task.taskType,
-							},
-						},
-						async (handoffSpan) => {
-							await handler.execute(task);
-							handoffSpan.setStatus({ code: SpanStatus.ok });
-						},
-					);
-				} catch (error) {
-					const message = ensureError(error).message;
-					const nextAttempts = task.attempts + 1;
-					if (nextAttempts >= task.maxAttempts) {
-						// Guard the metric on rows affected: the write resolves 0 (not rejects) when the
-						// row was reclaimed by the reaper on lease overrun, so don't count that as ours.
-						const rowsAffected = await this.store.failTaskTerminal(claim, message);
-						if (rowsAffected > 0) this.hooks.onFire?.(task.taskType, 'failure');
-						span.setAttribute(SCHEDULER_ATTRIBUTES.outcome, SCHEDULER_FIRE_OUTCOME.deadLettered);
-					} else {
-						const rowsAffected = await this.store.rescheduleTask(
-							claim,
-							backoff(nextAttempts),
-							message,
-						);
-						if (rowsAffected > 0) this.hooks.onRetry?.(task.taskType);
-						span.setAttribute(SCHEDULER_ATTRIBUTES.outcome, SCHEDULER_FIRE_OUTCOME.rescheduled);
-					}
-					span.setStatus({ code: SpanStatus.error, message });
-					return;
-				}
+		// Now that the task is confirmed ours and started, it is genuinely being dispatched.
+		// Lag is measured against `runAt` (the effective fire time, pushed forward by retry
+		// backoff), not the fixed original slot, so a retry's backoff wait isn't logged as lag.
+		// The timer's clock (the one scheduling used) is used, not a fresh wall clock, so a
+		// skewed instance doesn't bias the lag it also scheduled against; clamp non-negative
+		// since a timer can fire marginally early.
+		const lagMs = this.timer.now() - task.runAt.getTime();
+		const lagSeconds = Math.max(0, lagMs) / Time.seconds.toMilliseconds;
+		this.hooks.onDispatch?.(task.taskType, lagSeconds);
 
-				const rowsAffected = await this.store.completeTask(claim);
-				if (rowsAffected > 0) this.hooks.onFire?.(task.taskType, 'success');
-				span.setAttribute(SCHEDULER_ATTRIBUTES.outcome, SCHEDULER_FIRE_OUTCOME.completed);
-				span.setStatus({ code: SpanStatus.ok });
-			},
-		);
+		// Record success only after the try, so a failure to record it isn't taken for a
+		// handler failure. Such a failure propagates out (caught by the detached `.catch`
+		// in claimAndSchedule) and leaves the row `running` for the reaper.
+		try {
+			await handler.execute(task);
+		} catch (error) {
+			const errorMessage = ensureError(error).message;
+			const nextAttempts = task.attempts + 1;
+			if (nextAttempts >= task.maxAttempts) {
+				// Guard the metric on rows affected: the write resolves 0 (not rejects) when the
+				// row was reclaimed by the reaper on lease overrun, so don't count that as ours.
+				const rowsAffected = await this.store.failTaskTerminal(claim, errorMessage);
+				if (rowsAffected > 0) this.hooks.onFire?.(task.taskType, 'failure');
+				return { outcome: 'dead-lettered', errorMessage };
+			}
+			const rowsAffected = await this.store.rescheduleTask(
+				claim,
+				backoff(nextAttempts),
+				errorMessage,
+			);
+			if (rowsAffected > 0) this.hooks.onRetry?.(task.taskType);
+			return { outcome: 'rescheduled', errorMessage };
+		}
+
+		const rowsAffected = await this.store.completeTask(claim);
+		if (rowsAffected > 0) this.hooks.onFire?.(task.taskType, 'success');
+		return { outcome: 'completed' };
 	}
 
 	/** Release a claim, reporting but swallowing failures: the reaper still recovers the row. */

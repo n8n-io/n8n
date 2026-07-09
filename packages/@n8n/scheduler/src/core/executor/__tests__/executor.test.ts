@@ -1,15 +1,14 @@
-import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { mock } from 'vitest-mock-extended';
 
-import { SCHEDULER_ATTRIBUTES, SCHEDULER_FIRE_OUTCOME } from '../../../observability/attributes';
-import { SpanStatus, type Span, type Tracer } from '../../../observability/tracer';
 import type { ClaimedTask } from '../../types';
 import { backoff } from '../backoff';
-import { Executor, type ExecutorHooks } from '../executor';
+import { Executor } from '../executor';
+import type { ExecutorHooks } from '../executor';
 import type { ExecutorOptions } from '../options';
 import type { PrecisionTimer } from '../precision-timer';
 import type { ExecutorTaskStore } from '../store';
 import type { TaskHandler, TaskHandlerRegistry } from '../task-handler';
+import type { ExecutorTracing, FireResult } from '../tracing';
 
 const HOST = 'main-abc';
 
@@ -40,37 +39,24 @@ const setup = (options?: Partial<ExecutorOptions>) => {
 		onFire: vi.fn(),
 		onRetry: vi.fn(),
 	} satisfies ExecutorHooks;
-	// A span per `op`, so the nested fire and handoff spans record to separate
-	// spies and their statuses can be told apart.
-	const spans = new Map<string, Span>();
-	const spanFor = (op: string): Span => {
-		const existing = spans.get(op);
-		if (existing) return existing;
-		const created: Span = { setAttribute: vi.fn(), setStatus: vi.fn() };
-		spans.set(op, created);
-		return created;
-	};
-	// Honour the tracer port's contract: a throw from `run` marks that span
-	// errored and propagates, exactly as the concrete (Sentry) tracer does.
-	const tracer = mock<Tracer>();
-	tracer.startSpan.mockImplementation(async (options, run) => {
-		const span = spanFor(options.op ?? options.name);
-		try {
-			return await run(span);
-		} catch (error) {
-			span.setStatus({ code: SpanStatus.error, message: ensureError(error).message });
-			throw error;
-		}
-	});
+	// A see-through tracing hook that records its calls and just runs the fire.
+	// The executor's only obligation is to route every fire through this hook;
+	// how spans are built from the result is tested in
+	// observability/__tests__/executor-tracing.test.ts.
+	const tracing = {
+		fire: vi.fn(
+			async (_host: string, _task: ClaimedTask, run: () => Promise<FireResult>) => await run(),
+		),
+	} satisfies ExecutorTracing;
 	const executor = new Executor(
 		store,
 		registry,
 		timer,
 		{ leaseSeconds: 60, lookaheadSeconds: 5, batchSize: 100, ...options },
 		hooks,
-		tracer,
+		tracing,
 	);
-	return { store, registry, timer, hooks, spanFor, tracer, executor };
+	return { store, registry, timer, hooks, tracing, executor };
 };
 
 describe('Executor construction', () => {
@@ -209,8 +195,9 @@ describe('Executor.fire', () => {
 		registry.resolve.mockReturnValue(handler);
 		store.markStarted.mockResolvedValue(0);
 
-		await executor.fire(HOST, claimedTask());
+		const result = await executor.fire(HOST, claimedTask());
 
+		expect(result).toEqual({ outcome: 'skipped-not-owned' });
 		expect(handler.execute).not.toHaveBeenCalled();
 		expect(store.completeTask).not.toHaveBeenCalled();
 		expect(store.failTaskTerminal).not.toHaveBeenCalled();
@@ -223,8 +210,9 @@ describe('Executor.fire', () => {
 		registry.resolve.mockReturnValue(handler);
 		const task = claimedTask();
 
-		await executor.fire(HOST, task);
+		const result = await executor.fire(HOST, task);
 
+		expect(result).toEqual({ outcome: 'completed' });
 		expect(handler.execute).toHaveBeenCalledWith(task);
 		expect(store.completeTask).toHaveBeenCalledWith({
 			host: HOST,
@@ -278,8 +266,9 @@ describe('Executor.fire', () => {
 		registry.resolve.mockReturnValue(handler);
 		const task = claimedTask({ attempts: 0, maxAttempts: 3, leaseEpoch: 7 });
 
-		await executor.fire(HOST, task);
+		const result = await executor.fire(HOST, task);
 
+		expect(result).toEqual({ outcome: 'rescheduled', errorMessage: 'boom' });
 		// nextAttempt = 1 -> backoff(1) = 5000ms (asserted as a literal to decouple the oracle).
 		expect(store.rescheduleTask).toHaveBeenCalledWith(
 			{ host: HOST, id: task.id, claimedEpoch: 7 },
@@ -314,8 +303,9 @@ describe('Executor.fire', () => {
 		registry.resolve.mockReturnValue(handler);
 		const task = claimedTask({ attempts: 0, maxAttempts: 1, leaseEpoch: 7 });
 
-		await executor.fire(HOST, task);
+		const result = await executor.fire(HOST, task);
 
+		expect(result).toEqual({ outcome: 'dead-lettered', errorMessage: 'boom' });
 		expect(store.failTaskTerminal).toHaveBeenCalledWith(
 			{ host: HOST, id: task.id, claimedEpoch: 7 },
 			'boom',
@@ -346,8 +336,9 @@ describe('Executor.fire', () => {
 		registry.resolve.mockReturnValue(undefined);
 		const task = claimedTask({ taskType: 'gone', leaseEpoch: 7 });
 
-		await executor.fire(HOST, task);
+		const result = await executor.fire(HOST, task);
 
+		expect(result).toEqual({ outcome: 'skipped-no-handler' });
 		// Resolved before markStarted, so a task with no handler is never marked started.
 		expect(store.markStarted).not.toHaveBeenCalled();
 		expect(store.releaseClaim).toHaveBeenCalledWith({
@@ -366,138 +357,37 @@ describe('Executor.fire', () => {
 		store.releaseClaim.mockRejectedValue(failure);
 		const task = claimedTask({ taskType: 'gone' });
 
-		await expect(executor.fire(HOST, task)).resolves.toBeUndefined();
+		await expect(executor.fire(HOST, task)).resolves.toEqual({ outcome: 'skipped-no-handler' });
 
 		expect(hooks.onReleaseError).toHaveBeenCalledWith(task.id, failure);
 	});
 
-	it('opens a fire span with the task attributes and a nested handoff span, both ok on success', async () => {
-		const { store, registry, spanFor, tracer, executor } = setup();
+	it('routes the fire through the tracing hook with the host and task, resolving with its result', async () => {
+		const { store, registry, tracing, executor } = setup();
 		const handler: TaskHandler = { execute: vi.fn().mockResolvedValue(undefined) };
 		store.markStarted.mockResolvedValue(1);
 		registry.resolve.mockReturnValue(handler);
 		const task = claimedTask();
 
-		await executor.fire(HOST, task);
+		const result = await executor.fire(HOST, task);
 
-		const fireOptions = tracer.startSpan.mock.calls.find(([o]) => o.op === 'scheduler.fire')?.[0];
-		expect(fireOptions?.name).toBe('Scheduler fire');
-		expect(fireOptions?.attributes).toMatchObject({
-			[SCHEDULER_ATTRIBUTES.taskId]: task.id,
-			[SCHEDULER_ATTRIBUTES.jobId]: task.jobId,
-			[SCHEDULER_ATTRIBUTES.host]: HOST,
-			[SCHEDULER_ATTRIBUTES.attempts]: task.attempts,
-			[SCHEDULER_ATTRIBUTES.maxAttempts]: task.maxAttempts,
-		});
-		const handoffOptions = tracer.startSpan.mock.calls.find(
-			([o]) => o.op === 'scheduler.handoff',
-		)?.[0];
-		expect(handoffOptions?.name).toBe('Scheduler handoff');
-		expect(handoffOptions?.attributes).toEqual({
-			[SCHEDULER_ATTRIBUTES.taskId]: task.id,
-			[SCHEDULER_ATTRIBUTES.taskType]: task.taskType,
-		});
-		expect(spanFor('scheduler.fire').setAttribute).toHaveBeenCalledWith(
-			SCHEDULER_ATTRIBUTES.outcome,
-			SCHEDULER_FIRE_OUTCOME.completed,
-		);
-		expect(spanFor('scheduler.fire').setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
-		expect(spanFor('scheduler.handoff').setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+		expect(tracing.fire).toHaveBeenCalledTimes(1);
+		expect(tracing.fire).toHaveBeenCalledWith(HOST, task, expect.any(Function));
+		expect(result).toEqual({ outcome: 'completed' });
 	});
 
-	it('marks both the handoff and the fire span errored with the handler message and still reschedules', async () => {
-		const { store, registry, spanFor, executor } = setup();
-		const handler: TaskHandler = { execute: vi.fn().mockRejectedValue(new Error('boom')) };
+	it('lets a throw from the fire reach the tracing hook instead of turning it into an outcome', async () => {
+		const { store, registry, tracing, executor } = setup();
+		const handler: TaskHandler = { execute: vi.fn().mockResolvedValue(undefined) };
 		store.markStarted.mockResolvedValue(1);
 		registry.resolve.mockReturnValue(handler);
-		const task = claimedTask({ attempts: 0, maxAttempts: 3, leaseEpoch: 7 });
+		// Recording the outcome fails after the handler already succeeded, so there
+		// is no result to return; the error must propagate as-is.
+		store.completeTask.mockRejectedValue(new Error('db down'));
 
-		await executor.fire(HOST, task);
+		await expect(executor.fire(HOST, claimedTask())).rejects.toThrow('db down');
 
-		// The handoff span is errored by the tracer as the handler throw propagates;
-		// the fire span is then errored explicitly with the same message.
-		expect(spanFor('scheduler.handoff').setStatus).toHaveBeenCalledWith({
-			code: SpanStatus.error,
-			message: 'boom',
-		});
-		expect(spanFor('scheduler.handoff').setStatus).not.toHaveBeenCalledWith({
-			code: SpanStatus.ok,
-		});
-		expect(spanFor('scheduler.fire').setStatus).toHaveBeenCalledWith({
-			code: SpanStatus.error,
-			message: 'boom',
-		});
-		expect(spanFor('scheduler.fire').setStatus).not.toHaveBeenCalledWith({ code: SpanStatus.ok });
-		expect(spanFor('scheduler.fire').setAttribute).toHaveBeenCalledWith(
-			SCHEDULER_ATTRIBUTES.outcome,
-			SCHEDULER_FIRE_OUTCOME.rescheduled,
-		);
-		expect(store.rescheduleTask).toHaveBeenCalledWith(
-			{ host: HOST, id: task.id, claimedEpoch: 7 },
-			backoff(1),
-			'boom',
-		);
-	});
-
-	it('records the dead-lettered outcome on the fire span when the last attempt fails', async () => {
-		const { store, registry, spanFor, executor } = setup();
-		const handler: TaskHandler = { execute: vi.fn().mockRejectedValue(new Error('boom')) };
-		store.markStarted.mockResolvedValue(1);
-		registry.resolve.mockReturnValue(handler);
-		// attempts 0, maxAttempts 1: this fire is the last attempt, so a failure is terminal.
-		const task = claimedTask({ attempts: 0, maxAttempts: 1 });
-
-		await executor.fire(HOST, task);
-
-		expect(store.failTaskTerminal).toHaveBeenCalled();
-		expect(store.rescheduleTask).not.toHaveBeenCalled();
-		expect(spanFor('scheduler.fire').setAttribute).toHaveBeenCalledWith(
-			SCHEDULER_ATTRIBUTES.outcome,
-			SCHEDULER_FIRE_OUTCOME.deadLettered,
-		);
-		expect(spanFor('scheduler.fire').setStatus).toHaveBeenCalledWith({
-			code: SpanStatus.error,
-			message: 'boom',
-		});
-	});
-
-	it('settles the fire span ok and opens no handoff span when no handler resolves', async () => {
-		const { registry, spanFor, tracer, executor } = setup();
-		registry.resolve.mockReturnValue(undefined);
-		const task = claimedTask({ taskType: 'gone' });
-
-		await executor.fire(HOST, task);
-
-		expect(spanFor('scheduler.fire').setAttribute).toHaveBeenCalledWith(
-			SCHEDULER_ATTRIBUTES.outcome,
-			SCHEDULER_FIRE_OUTCOME.skippedNoHandler,
-		);
-		expect(spanFor('scheduler.fire').setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
-		expect(spanFor('scheduler.fire').setStatus).not.toHaveBeenCalledWith(
-			expect.objectContaining({ code: SpanStatus.error }),
-		);
-		expect(tracer.startSpan.mock.calls.some(([o]) => o.op === 'scheduler.handoff')).toBe(false);
-	});
-
-	it('settles the fire span ok and opens no handoff span when the claim is gone at markStarted', async () => {
-		const { store, registry, spanFor, tracer, executor } = setup();
-		const handler: TaskHandler = { execute: vi.fn() };
-		registry.resolve.mockReturnValue(handler);
-		store.markStarted.mockResolvedValue(0);
-		const task = claimedTask();
-
-		await executor.fire(HOST, task);
-
-		expect(handler.execute).not.toHaveBeenCalled();
-		expect(spanFor('scheduler.fire').setAttribute).toHaveBeenCalledWith(
-			SCHEDULER_ATTRIBUTES.outcome,
-			SCHEDULER_FIRE_OUTCOME.skippedNotOwned,
-		);
-		expect(spanFor('scheduler.fire').setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
-		expect(spanFor('scheduler.fire').setStatus).not.toHaveBeenCalledWith(
-			expect.objectContaining({ code: SpanStatus.error }),
-		);
-		expect(tracer.startSpan.mock.calls.some(([o]) => o.op === 'scheduler.handoff')).toBe(false);
+		await expect(tracing.fire.mock.results[0].value).rejects.toThrow('db down');
 	});
 });
 
@@ -625,7 +515,7 @@ describe('Executor.fire metrics hooks', () => {
 		expect(hooks.onFire).not.toHaveBeenCalled();
 	});
 
-	it('defaults to a safe no-op when no hooks are supplied', async () => {
+	it('defaults to no-op hooks and pass-through tracing when neither is supplied', async () => {
 		const store = mock<ExecutorTaskStore>();
 		const registry = mock<TaskHandlerRegistry>();
 		const timer = mock<PrecisionTimer>();
@@ -638,7 +528,7 @@ describe('Executor.fire metrics hooks', () => {
 			batchSize: 100,
 		});
 
-		await expect(executor.fire(HOST, claimedTask())).resolves.toBeUndefined();
+		await expect(executor.fire(HOST, claimedTask())).resolves.toEqual({ outcome: 'completed' });
 	});
 });
 
