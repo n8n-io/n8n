@@ -42,6 +42,8 @@ export interface BuilderSessionOptions {
 	threadId?: string;
 	/** Extra tools registered on the builder agent (e.g. instance-AI-injected). */
 	extraTools?: BuiltTool[];
+	/** Extra text appended to the builder prompt (e.g. instance-AI sub-agent rules). */
+	instructionsAddendum?: string;
 }
 
 /** Derive the builder chat thread ID; callers may override (e.g. instance-AI sessions). */
@@ -222,6 +224,9 @@ export class AgentsBuilderService {
 			modelRecommendationsSection,
 			enabledModules,
 		});
+		const finalInstructions = session?.instructionsAddendum
+			? `${instructions}\n\n${session.instructionsAddendum}`
+			: instructions;
 		const runtimeSkills = getBuilderRuntimeSkills();
 
 		const tools = this.agentsBuilderToolsService.getTools(
@@ -239,7 +244,7 @@ export class AgentsBuilderService {
 
 		const builder = new Agent('agent-builder')
 			.model(modelConfig)
-			.instructions(instructions)
+			.instructions(finalInstructions)
 			.skills(runtimeSkills)
 			.memory(builderMemory)
 			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId))

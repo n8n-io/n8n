@@ -36,6 +36,7 @@ const agentsSdkMocks = vi.hoisted(() => {
 		message: string;
 		options: { persistence: { threadId: string; resourceId: string } };
 	}> = [];
+	const instructionsCalls: string[] = [];
 
 	function emptyStream() {
 		return new ReadableStream<StreamChunk>({
@@ -50,7 +51,8 @@ const agentsSdkMocks = vi.hoisted(() => {
 		model() {
 			return this;
 		}
-		instructions() {
+		instructions(text: string) {
+			instructionsCalls.push(text);
 			return this;
 		}
 		skills() {
@@ -92,7 +94,7 @@ const agentsSdkMocks = vi.hoisted(() => {
 		}
 	}
 
-	return { streamCalls, MockAgent, MockMemory };
+	return { streamCalls, instructionsCalls, MockAgent, MockMemory };
 });
 
 vi.mock('@n8n/agents', () => ({
@@ -170,6 +172,7 @@ function setup() {
 describe('AgentsBuilderService session isolation', () => {
 	beforeEach(() => {
 		agentsSdkMocks.streamCalls.length = 0;
+		agentsSdkMocks.instructionsCalls.length = 0;
 	});
 
 	it('uses the session threadId override for stream persistence when a session is provided', async () => {
@@ -209,5 +212,29 @@ describe('AgentsBuilderService session isolation', () => {
 
 		expect(memoryImplementation.getMessages).toHaveBeenCalledWith('builder:agent-1');
 		expect(memoryImplementation.getMessages).not.toHaveBeenCalledWith('ia-builder:t:agent-1');
+	});
+
+	it('appends the session instructionsAddendum to the built prompt when provided', async () => {
+		const { service, user, credentialProvider } = setup();
+
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
+				threadId: 'ia-builder:t:agent-1',
+				instructionsAddendum: 'Extra sub-agent rules go here.',
+			}),
+		);
+
+		expect(agentsSdkMocks.instructionsCalls).toHaveLength(1);
+		const instructions = agentsSdkMocks.instructionsCalls[0] ?? '';
+		expect(instructions.endsWith('\n\nExtra sub-agent rules go here.')).toBe(true);
+	});
+
+	it('does not append anything to the prompt when instructionsAddendum is absent', async () => {
+		const { service, user, credentialProvider } = setup();
+
+		await drain(service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user));
+
+		expect(agentsSdkMocks.instructionsCalls).toHaveLength(1);
+		expect(agentsSdkMocks.instructionsCalls[0]).not.toContain('Extra sub-agent rules');
 	});
 });

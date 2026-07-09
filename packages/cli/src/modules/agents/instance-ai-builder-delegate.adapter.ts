@@ -1,4 +1,4 @@
-import type { CredentialProvider, StreamChunk } from '@n8n/agents';
+import type { BuiltTool, CredentialProvider, StreamChunk } from '@n8n/agents';
 import type { BuilderTurnStream, InstanceAiBuilderDelegate } from '@n8n/instance-ai';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -7,8 +7,15 @@ import { type Scope } from '@n8n/permissions';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import { AgentIntegrationPersistenceService } from './agent-integration-persistence.service';
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
+import type { BuilderSessionOptions } from './builder/agents-builder.service';
+import {
+	createAskQuestionsBuilderTool,
+	createConfigureChannelBuilderTool,
+	INSTANCE_AI_BUILDER_ADDENDUM,
+} from './instance-ai-builder-extra-tools';
 import { getSuspendedToolCalls } from './utils/messages-envelope';
 
 function isTextDeltaChunk(
@@ -59,7 +66,34 @@ export class InstanceAiBuilderDelegateAdapterService {
 	constructor(
 		private readonly agentsService: AgentsService,
 		private readonly agentsBuilderService: AgentsBuilderService,
+		private readonly agentIntegrationPersistenceService: AgentIntegrationPersistenceService,
 	) {}
+
+	/**
+	 * Builder tools + prompt rules that only apply to the sub-agent surface:
+	 * chat channels must always go through `configure_channel` (never a bare
+	 * credential ask), and multiple questions must be batched into one
+	 * `ask_questions` card instead of sequential single-question calls.
+	 */
+	private buildSubAgentSession(
+		agentId: string,
+		projectId: string,
+		threadId: string,
+	): BuilderSessionOptions {
+		const extraTools: BuiltTool[] = [
+			createConfigureChannelBuilderTool({
+				agentId,
+				projectId,
+				listChatIntegrationTypes: () =>
+					this.agentIntegrationPersistenceService
+						.listChatIntegrations()
+						.map((integration) => integration.type),
+			}),
+			createAskQuestionsBuilderTool(),
+		];
+
+		return { threadId, extraTools, instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM };
+	}
 
 	createDelegate(
 		user: User,
@@ -92,7 +126,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 						message,
 						credentialProvider,
 						user,
-						{ threadId: session.threadId },
+						this.buildSubAgentSession(agentId, projectId, session.threadId),
 					),
 				);
 			},
@@ -108,7 +142,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 						resume.resumeData,
 						credentialProvider,
 						user,
-						{ threadId: session.threadId },
+						this.buildSubAgentSession(agentId, projectId, session.threadId),
 					),
 				);
 			},

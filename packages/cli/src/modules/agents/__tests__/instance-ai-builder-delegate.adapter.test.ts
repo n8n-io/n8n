@@ -5,22 +5,53 @@ import { mock } from 'vitest-mock-extended';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import * as checkAccess from '@/permissions.ee/check-access';
 
+import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import type { AgentsService } from '../agents.service';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
+import {
+	BUILDER_EXTRA_TOOL_NAMES,
+	INSTANCE_AI_BUILDER_ADDENDUM,
+} from '../instance-ai-builder-extra-tools';
 import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';
 
 function setup() {
 	const agentsService = mock<AgentsService>();
 	const agentsBuilderService = mock<AgentsBuilderService>();
+	const agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>();
+	agentIntegrationPersistenceService.listChatIntegrations.mockReturnValue([
+		{ type: 'slack', label: 'Slack', icon: 'slack', credentialTypes: ['slackOAuth2Api'] },
+	]);
 
-	const service = new InstanceAiBuilderDelegateAdapterService(agentsService, agentsBuilderService);
+	const service = new InstanceAiBuilderDelegateAdapterService(
+		agentsService,
+		agentsBuilderService,
+		agentIntegrationPersistenceService,
+	);
 
 	const user = mock<User>({ id: 'user-1' });
 	const credentialProvider = mock<CredentialProvider>();
 	const delegate = service.createDelegate(user, 'project-1', credentialProvider);
 
-	return { delegate, user, agentsService, agentsBuilderService, credentialProvider };
+	return {
+		delegate,
+		user,
+		agentsService,
+		agentsBuilderService,
+		agentIntegrationPersistenceService,
+		credentialProvider,
+	};
+}
+
+/** Extract the extraTools names + addendum from a builder-service session-arg call. */
+function sessionArg(call: unknown[]): { toolNames: string[]; instructionsAddendum?: string } {
+	const session = call.at(-1) as
+		| { extraTools?: Array<{ name: string }>; instructionsAddendum?: string }
+		| undefined;
+	return {
+		toolNames: (session?.extraTools ?? []).map((tool) => tool.name),
+		instructionsAddendum: session?.instructionsAddendum,
+	};
 }
 
 async function* asAsyncGenerator<T>(values: T[]): AsyncGenerator<T> {
@@ -68,8 +99,27 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				'hi',
 				credentialProvider,
 				user,
-				{ threadId: 'ia-builder:t:agent-1' },
+				expect.objectContaining({ threadId: 'ia-builder:t:agent-1' }),
 			);
+		});
+
+		it('injects the configure_channel and ask_questions builder tools plus the instance-AI prompt addendum', async () => {
+			const { delegate, agentsBuilderService } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsBuilderService.buildAgent.mockReturnValue(asAsyncGenerator<StreamChunk>([]));
+
+			await delegate.streamBuild('agent-1', 'hi', { threadId: 'ia-builder:t:agent-1' });
+
+			const { toolNames, instructionsAddendum } = sessionArg(
+				agentsBuilderService.buildAgent.mock.calls[0],
+			);
+			expect(toolNames).toEqual(
+				expect.arrayContaining([
+					BUILDER_EXTRA_TOOL_NAMES.CONFIGURE_CHANNEL,
+					BUILDER_EXTRA_TOOL_NAMES.ASK_QUESTIONS,
+				]),
+			);
+			expect(instructionsAddendum).toBe(INSTANCE_AI_BUILDER_ADDENDUM);
 		});
 
 		it('rejects when the user lacks agent:update scope', async () => {
@@ -103,8 +153,31 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				{ approved: true },
 				credentialProvider,
 				user,
+				expect.objectContaining({ threadId: 'ia-builder:t:agent-1' }),
+			);
+		});
+
+		it('injects the configure_channel and ask_questions builder tools plus the instance-AI prompt addendum', async () => {
+			const { delegate, agentsBuilderService } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsBuilderService.resumeBuild.mockReturnValue(asAsyncGenerator<StreamChunk>([]));
+
+			await delegate.resumeBuild(
+				'agent-1',
+				{ runId: 'run-1', toolCallId: 'tc-1', resumeData: { approved: true } },
 				{ threadId: 'ia-builder:t:agent-1' },
 			);
+
+			const { toolNames, instructionsAddendum } = sessionArg(
+				agentsBuilderService.resumeBuild.mock.calls[0],
+			);
+			expect(toolNames).toEqual(
+				expect.arrayContaining([
+					BUILDER_EXTRA_TOOL_NAMES.CONFIGURE_CHANNEL,
+					BUILDER_EXTRA_TOOL_NAMES.ASK_QUESTIONS,
+				]),
+			);
+			expect(instructionsAddendum).toBe(INSTANCE_AI_BUILDER_ADDENDUM);
 		});
 
 		it('rejects when the user lacks agent:update scope', async () => {
