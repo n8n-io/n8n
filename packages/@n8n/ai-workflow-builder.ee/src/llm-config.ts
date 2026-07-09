@@ -25,7 +25,7 @@ export interface LLMProviderConfig {
 
 export const gpt52 = async (config: LLMProviderConfig) => {
 	const { ChatOpenAI } = await lazyImport<typeof LangchainOpenAI>(
-		() => import('@langchain/openai'),
+		async () => await import('@langchain/openai'),
 	);
 	return new ChatOpenAI({
 		model: 'gpt-5.2-2025-12-11',
@@ -42,7 +42,7 @@ export const gpt52 = async (config: LLMProviderConfig) => {
 
 export const anthropicClaudeSonnet45 = async (config: LLMProviderConfig) => {
 	const { ChatAnthropic } = await lazyImport<typeof LangchainAnthropic>(
-		() => import('@langchain/anthropic'),
+		async () => await import('@langchain/anthropic'),
 	);
 	const model = new ChatAnthropic({
 		model: 'claude-sonnet-4-5-20250929',
@@ -63,7 +63,7 @@ export const anthropicClaudeSonnet45 = async (config: LLMProviderConfig) => {
 };
 export const anthropicClaudeSonnet45Think = async (config: LLMProviderConfig) => {
 	const { ChatAnthropic } = await lazyImport<typeof LangchainAnthropic>(
-		() => import('@langchain/anthropic'),
+		async () => await import('@langchain/anthropic'),
 	);
 	const model = new ChatAnthropic({
 		model: 'claude-sonnet-4-5-20250929',
@@ -89,7 +89,7 @@ export const anthropicClaudeSonnet45Think = async (config: LLMProviderConfig) =>
 
 export const anthropicHaiku45 = async (config: LLMProviderConfig) => {
 	const { ChatAnthropic } = await lazyImport<typeof LangchainAnthropic>(
-		() => import('@langchain/anthropic'),
+		async () => await import('@langchain/anthropic'),
 	);
 	const model = new ChatAnthropic({
 		model: 'claude-haiku-4-5-20251001',
@@ -111,7 +111,7 @@ export const anthropicHaiku45 = async (config: LLMProviderConfig) => {
 
 export const anthropicClaudeOpus45 = async (config: LLMProviderConfig) => {
 	const { ChatAnthropic } = await lazyImport<typeof LangchainAnthropic>(
-		() => import('@langchain/anthropic'),
+		async () => await import('@langchain/anthropic'),
 	);
 	const model = new ChatAnthropic({
 		model: 'claude-opus-4-5-20251101',
@@ -144,7 +144,7 @@ const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 function createOpenRouterModel(modelName: string) {
 	return async (config: LLMProviderConfig) => {
 		const { ChatOpenAI } = await lazyImport<typeof LangchainOpenAI>(
-			() => import('@langchain/openai'),
+			async () => await import('@langchain/openai'),
 		);
 		return new ChatOpenAI({
 			model: modelName,

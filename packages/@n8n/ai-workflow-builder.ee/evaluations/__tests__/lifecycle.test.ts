@@ -5,6 +5,8 @@
 import type { Client } from 'langsmith/client';
 import { mock } from 'vitest-mock-extended';
 
+import type { SimpleWorkflow } from '@/types/workflow';
+
 import type {
 	EvaluationLifecycle,
 	RunConfig,
@@ -13,8 +15,6 @@ import type {
 	Feedback,
 } from '../harness/harness-types';
 import { createLogger } from '../harness/logger';
-
-import type { SimpleWorkflow } from '@/types/workflow';
 
 const mockLangsmithClient = () => mock<Client>();
 

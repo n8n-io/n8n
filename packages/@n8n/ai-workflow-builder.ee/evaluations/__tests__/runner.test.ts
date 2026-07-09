@@ -1,3 +1,5 @@
+import type { SimpleWorkflow } from '@/types/workflow';
+
 import type {
 	Evaluator,
 	TestCase,
@@ -7,8 +9,6 @@ import type {
 	ExampleResult,
 } from '../harness/harness-types';
 import { createLogger } from '../harness/logger';
-
-import type { SimpleWorkflow } from '@/types/workflow';
 
 const silentLogger = createLogger(false);
 
