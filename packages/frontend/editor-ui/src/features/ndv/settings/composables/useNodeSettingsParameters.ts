@@ -32,6 +32,7 @@ import {
 } from '@/app/utils/nodeTypesUtils';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { reconcileNodeFromAIKeys } from '@/features/ndv/parameters/utils/fromAIOverride.utils';
 
 const hasPublicDisplayCondition = (parameter: INodeProperties, value: boolean) =>
 	parameter.displayOptions?.show?.public?.includes(value) ?? false;
@@ -120,6 +121,10 @@ export function useNodeSettingsParameters() {
 
 			if (updatedDescription && nodeParameters) {
 				nodeParameters.toolDescription = updatedDescription;
+			}
+
+			if (nodeParameters) {
+				reconcileNodeFromAIKeys(nodeTypeDescription.properties, nodeParameters);
 			}
 		}
 
