@@ -495,63 +495,13 @@ export function isDataTableModified(
 }
 
 /**
- * Extracts resource ids from git-tracked export file paths of the
- * `<folder>/<id>.json` form.
- */
-export function extractResourceIdsFromFilePaths(filePaths: Set<string>): Set<string> {
-	const ids = new Set<string>();
-	for (const filePath of filePaths) {
-		const match = filePath.match(/([^/]+)\.json$/);
-		if (match) {
-			ids.add(match[1]);
-		}
-	}
-	return ids;
-}
-
-/**
- * Identity of a data table column for merge purposes. Columns matched by this
- * key are treated as the same column across instances — the lossless-merge
- * rule and identity adoption must use the same matching.
+ * Identity of a data table column across instances for identity adoption:
+ * columns matching by `(name, type)` adopt the incoming column id.
  */
 export function dataTableColumnKey(
 	column: Pick<ExportableDataTableColumn, 'name' | 'type'>,
 ): string {
 	return `${column.name}:${column.type}`;
-}
-
-/**
- * A merge is lossless when every local column has an incoming `(name, type)`
- * match, so schema alignment would drop or retype no local column and no cell
- * data can be lost.
- */
-export function isLosslessDataTableMerge(
-	localColumns: Array<Pick<ExportableDataTableColumn, 'name' | 'type'>>,
-	incomingColumns: Array<Pick<ExportableDataTableColumn, 'name' | 'type'>>,
-): boolean {
-	const incoming = new Set(incomingColumns.map(dataTableColumnKey));
-	return localColumns.every((c) => incoming.has(dataTableColumnKey(c)));
-}
-
-type DataTableColumnsForMerge = {
-	columns: Array<Pick<ExportableDataTableColumn, 'name' | 'type'>>;
-};
-
-/**
- * Whether a pull may resolve a data table name collision by adopting the
- * incoming id: always when the local table was previously synced (recreated
- * upstream), otherwise only when the merge is lossless (pre-sync twin).
- * Status and import must share this rule so the pull preview matches pull
- * execution.
- */
-export function canReconcileDataTableNameCollision(
-	local: { id: string } & DataTableColumnsForMerge,
-	incoming: DataTableColumnsForMerge,
-	previouslySyncedIds: Set<string>,
-): boolean {
-	return (
-		previouslySyncedIds.has(local.id) || isLosslessDataTableMerge(local.columns, incoming.columns)
-	);
 }
 
 /**

@@ -21,7 +21,6 @@ import {
 	getTrackingInformationFromPrePushResult,
 	getTrackingInformationFromPullResult,
 	hasOwnerChanged,
-	isLosslessDataTableMerge,
 	isWorkflowModified,
 	mergeRemoteCrendetialDataIntoLocalCredentialData,
 	sanitizeCredentialData,
@@ -549,39 +548,6 @@ describe('Source Control Helper', () => {
 
 			const result = await readDataTablesFromSourceControlFile('valid/path/data_tables.json');
 			expect(result).toEqual(mockDataTables);
-		});
-	});
-
-	describe('isLosslessDataTableMerge', () => {
-		it('is lossless when every local column has an incoming (name, type) match', () => {
-			expect(
-				isLosslessDataTableMerge(
-					[{ name: 'a', type: 'string' }],
-					[
-						{ name: 'a', type: 'string' },
-						{ name: 'b', type: 'number' },
-					],
-				),
-			).toBe(true);
-		});
-
-		it('is lossless when the local table has no columns', () => {
-			expect(isLosslessDataTableMerge([], [{ name: 'a', type: 'string' }])).toBe(true);
-		});
-
-		it('is lossy when a local column is missing from the incoming table', () => {
-			expect(
-				isLosslessDataTableMerge(
-					[{ name: 'localOnly', type: 'string' }],
-					[{ name: 'a', type: 'string' }],
-				),
-			).toBe(false);
-		});
-
-		it('is lossy when a local column would be retyped', () => {
-			expect(
-				isLosslessDataTableMerge([{ name: 'a', type: 'string' }], [{ name: 'a', type: 'number' }]),
-			).toBe(false);
 		});
 	});
 

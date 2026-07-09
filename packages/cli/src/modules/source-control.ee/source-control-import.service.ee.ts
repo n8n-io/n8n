@@ -64,11 +64,8 @@ import {
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
 import { SourceControlContextFactory } from './source-control-context.factory';
-import { SourceControlGitService } from './source-control-git.service.ee';
 import {
-	canReconcileDataTableNameCollision,
 	dataTableColumnKey,
-	extractResourceIdsFromFilePaths,
 	getCredentialExportPath,
 	getDataTableExportPath,
 	getProjectExportPath,
@@ -142,7 +139,6 @@ export class SourceControlImportService {
 		private readonly dataTableDDLService: DataTableDDLService,
 		private readonly redactionEnforcementService: RedactionEnforcementService,
 		private readonly dataTableSizeValidator: DataTableSizeValidator,
-		private readonly gitService: SourceControlGitService,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -1350,11 +1346,10 @@ export class SourceControlImportService {
 		}
 
 		// Phase 2: Resolve name collisions (same (project, name), different id —
-		// typically a delete+recreate upstream). The local table adopts the
-		// incoming id when it was previously synced or the merge is lossless;
-		// otherwise local-only column data is at stake, so the single table is
-		// skipped as a conflict and the rest of the pull proceeds.
-		let previouslySyncedIds: Set<string> | undefined;
+		// typically a delete+recreate upstream). A same-named table in the same
+		// project is the same logical table: it adopts the incoming id, then the
+		// regular import path below aligns the schema. A failed adoption degrades
+		// to a per-table conflict so the rest of the pull proceeds.
 		const importableTables: typeof parsedTables = [];
 		for (const entry of parsedTables) {
 			const { dataTable, targetProjectId } = entry;
@@ -1363,16 +1358,6 @@ export class SourceControlImportService {
 				relations: ['columns'],
 			});
 			if (localTable && localTable.id !== dataTable.id) {
-				previouslySyncedIds ??= await this.getPreviouslySyncedDataTableIds();
-				if (!canReconcileDataTableNameCollision(localTable, dataTable, previouslySyncedIds)) {
-					if (!result.conflicts.some((c) => c.id === dataTable.id)) {
-						this.logger.warn(
-							`Data table "${dataTable.name}" already exists locally with columns that the incoming table lacks. Skipping import; rename or delete the local data table to accept the incoming one.`,
-						);
-						result.conflicts.push({ id: dataTable.id, name: dataTable.name });
-					}
-					continue;
-				}
 				try {
 					await this.adoptDataTableIdentity(localTable, dataTable, dbType);
 				} catch (error) {
@@ -1508,13 +1493,6 @@ export class SourceControlImportService {
 		}
 
 		return result;
-	}
-
-	/** Data table ids that have ever appeared in the git repository's history. */
-	private async getPreviouslySyncedDataTableIds(): Promise<Set<string>> {
-		return extractResourceIdsFromFilePaths(
-			await this.gitService.getHistoricallyTrackedFiles(SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER),
-		);
 	}
 
 	/**

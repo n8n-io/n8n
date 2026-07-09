@@ -110,7 +110,6 @@ describe('getStatus', () => {
 		// data tables
 		sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([]);
 		sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([]);
-		gitService.getHistoricallyTrackedFiles.mockResolvedValue(new Set());
 
 		// repositories
 		tagRepository.find.mockResolvedValue([]);
@@ -1853,8 +1852,6 @@ describe('getStatus', () => {
 
 			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([remoteDataTable]);
 			sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([]);
-			// Table was previously synced, so it should be marked as deleted during push
-			gitService.getHistoricallyTrackedFiles.mockResolvedValue(new Set(['datatables/dt1.json']));
 
 			// ACT
 			const result = await sourceControlStatusService.getStatus(user, {
@@ -2056,8 +2053,6 @@ describe('getStatus', () => {
 
 			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue(remoteDataTables);
 			sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue(localDataTables);
-			// dt8 was previously synced, so it should be marked as deleted during push
-			gitService.getHistoricallyTrackedFiles.mockResolvedValue(new Set(['datatables/dt8.json']));
 
 			// ACT
 			const result = await sourceControlStatusService.getStatus(user, {
@@ -2512,8 +2507,8 @@ describe('getStatus', () => {
 			});
 		});
 
-		describe('git history protection', () => {
-			it('should not mark local-only data table as deleted during pull when never synced', async () => {
+		describe('git as source of truth', () => {
+			it('should mark local-only data table as deleted during pull', async () => {
 				// ARRANGE
 				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
 
@@ -2529,8 +2524,6 @@ describe('getStatus', () => {
 
 				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([]);
 				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
-				// Table was never synced — no git history
-				gitService.getHistoricallyTrackedFiles.mockResolvedValue(new Set());
 
 				// ACT
 				const result = await sourceControlStatusService.getStatus(user, {
@@ -2539,50 +2532,19 @@ describe('getStatus', () => {
 					preferLocalVersion: false,
 				});
 
-				// ASSERT
+				// ASSERT — a table absent from git is deleted on pull, surfaced as a
+				// conflict so the non-force pull requires confirmation
 				if (!Array.isArray(result)) expect.fail('Expected result to be an array.');
 				const dataTableFiles = result.filter((f) => f.type === 'datatable');
-				expect(dataTableFiles).toHaveLength(0);
-			});
-
-			it('should mark local-only data table as deleted during pull when previously synced', async () => {
-				// ARRANGE
-				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
-
-				const localDataTable = {
-					id: 'dt-was-synced',
-					name: 'Previously Synced Table',
-					ownedBy: { type: 'team' as const, projectId: 'projA', projectName: 'ProjectA' },
-					filename: 'test.json',
-					columns: [],
-					createdAt: '2024-01-01T00:00:00.000Z',
-					updatedAt: '2024-01-01T00:00:00.000Z',
-				};
-
-				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([]);
-				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
-				// Table was previously synced — exists in git history
-				gitService.getHistoricallyTrackedFiles.mockResolvedValue(
-					new Set(['datatables/dt-was-synced.json']),
-				);
-
-				// ACT
-				const result = await sourceControlStatusService.getStatus(user, {
-					direction: 'pull',
-					verbose: false,
-					preferLocalVersion: false,
+				expect(dataTableFiles).toHaveLength(1);
+				expect(dataTableFiles[0]).toMatchObject({
+					id: 'dt-local-only',
+					status: 'deleted',
+					conflict: true,
 				});
-
-				// ASSERT
-				if (!Array.isArray(result)) expect.fail('Expected result to be an array.');
-				const dataTableFile = result.find(
-					(f) => f.type === 'datatable' && f.id === 'dt-was-synced',
-				);
-				expect(dataTableFile).toBeDefined();
-				expect(dataTableFile?.status).toBe('deleted');
 			});
 
-			it('should not mark remote-only data table as deleted during push when never synced locally', async () => {
+			it('should mark remote-only data table as deleted during push', async () => {
 				// ARRANGE
 				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
 
@@ -2599,8 +2561,6 @@ describe('getStatus', () => {
 					remoteDataTable,
 				]);
 				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([]);
-				// Table was never synced from this instance
-				gitService.getHistoricallyTrackedFiles.mockResolvedValue(new Set());
 
 				// ACT
 				const result = await sourceControlStatusService.getStatus(user, {
@@ -2609,13 +2569,18 @@ describe('getStatus', () => {
 					preferLocalVersion: false,
 				});
 
-				// ASSERT
+				// ASSERT — a table absent locally is offered as a deletion to push
 				if (!Array.isArray(result)) expect.fail('Expected result to be an array.');
 				const dataTableFiles = result.filter((f) => f.type === 'datatable');
-				expect(dataTableFiles).toHaveLength(0);
+				expect(dataTableFiles).toHaveLength(1);
+				expect(dataTableFiles[0]).toMatchObject({
+					id: 'dt-remote-only',
+					status: 'deleted',
+					location: 'local',
+				});
 			});
 
-			it('should preserve local table during pull when remote has same-named table in different project', async () => {
+			it('should not treat same-named tables in different projects as a collision during pull', async () => {
 				// ARRANGE
 				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
 
@@ -2642,10 +2607,6 @@ describe('getStatus', () => {
 					remoteDataTable,
 				]);
 				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
-				// Only the remote table has git history — local was never pushed
-				gitService.getHistoricallyTrackedFiles.mockResolvedValue(
-					new Set(['datatables/dt-remote.json']),
-				);
 
 				// ACT
 				const result = await sourceControlStatusService.getStatus(user, {
@@ -2654,16 +2615,20 @@ describe('getStatus', () => {
 					preferLocalVersion: false,
 				});
 
-				// ASSERT
+				// ASSERT — same name in DIFFERENT projects is not a collision: the
+				// remote table is a plain create, the local one a plain delete
 				if (!Array.isArray(result)) expect.fail('Expected result to be an array.');
 				const dataTableFiles = result.filter((f) => f.type === 'datatable');
-				// Only the remote table should appear as "created", local table should be preserved (not listed)
-				expect(dataTableFiles).toHaveLength(1);
-				expect(dataTableFiles[0].id).toBe('dt-remote');
-				expect(dataTableFiles[0].status).toBe('created');
+				expect(dataTableFiles).toHaveLength(2);
+				expect(dataTableFiles).toEqual(
+					expect.arrayContaining([
+						expect.objectContaining({ id: 'dt-remote', status: 'created' }),
+						expect.objectContaining({ id: 'dt-local', status: 'deleted' }),
+					]),
+				);
 			});
 
-			it('should not delete remote table from another instance during push', async () => {
+			it('should offer a remote-only table as a deletion during push even when a same-named local table exists in another project', async () => {
 				// ARRANGE
 				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
 
@@ -2690,8 +2655,6 @@ describe('getStatus', () => {
 					remoteFromInstanceA,
 				]);
 				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localTable]);
-				// Only the local table has been synced from this instance, not Instance A's table
-				gitService.getHistoricallyTrackedFiles.mockResolvedValue(new Set());
 
 				// ACT
 				const result = await sourceControlStatusService.getStatus(user, {
@@ -2700,16 +2663,20 @@ describe('getStatus', () => {
 					preferLocalVersion: false,
 				});
 
-				// ASSERT
+				// ASSERT — different projects, so no collision: local is a plain
+				// create, the remote-only table an offered deletion
 				if (!Array.isArray(result)) expect.fail('Expected result to be an array.');
 				const dataTableFiles = result.filter((f) => f.type === 'datatable');
-				// Local table should be "created", remote table should NOT be "deleted"
-				expect(dataTableFiles).toHaveLength(1);
-				expect(dataTableFiles[0].id).toBe('dt-local');
-				expect(dataTableFiles[0].status).toBe('created');
+				expect(dataTableFiles).toHaveLength(2);
+				expect(dataTableFiles).toEqual(
+					expect.arrayContaining([
+						expect.objectContaining({ id: 'dt-local', status: 'created' }),
+						expect.objectContaining({ id: 'dt-instance-a', status: 'deleted' }),
+					]),
+				);
 			});
 
-			it('should flag a genuine collision (never synced, lossy merge) as conflict during pull', async () => {
+			it('should emit a single modified entry for a name collision during pull', async () => {
 				// ARRANGE
 				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
 
@@ -2727,7 +2694,6 @@ describe('getStatus', () => {
 					name: 'Shared Name',
 					ownedBy: { type: 'team' as const, projectId: 'projA', projectName: 'ProjectA' },
 					filename: 'test.json',
-					// Local-only column that the incoming table lacks — lossy merge
 					columns: [{ id: 'lc1', name: 'localOnly', type: 'string', index: 0 }],
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-01T00:00:00.000Z',
@@ -2737,8 +2703,6 @@ describe('getStatus', () => {
 					remoteDataTable,
 				]);
 				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
-				// Local table was never synced
-				gitService.getHistoricallyTrackedFiles.mockResolvedValue(new Set());
 
 				// ACT
 				const result = await sourceControlStatusService.getStatus(user, {
@@ -2747,8 +2711,9 @@ describe('getStatus', () => {
 					preferLocalVersion: false,
 				});
 
-				// ASSERT — exactly ONE entry for the collision: a conflict on the
-				// incoming table, never a plain "created" alongside it
+				// ASSERT — exactly ONE "modified" entry carrying the incoming id,
+				// flagged like any other schema modification: no "created" for the
+				// incoming id, no "deleted" for the old local id
 				if (!Array.isArray(result)) expect.fail('Expected result to be an array.');
 				const dataTableFiles = result.filter((f) => f.type === 'datatable');
 				expect(dataTableFiles).toHaveLength(1);
@@ -2760,12 +2725,12 @@ describe('getStatus', () => {
 				});
 			});
 
-			it('should mark a recreated table (previously synced, lossy merge) as reconcilable during pull', async () => {
+			it('should carry the incoming id on a collision entry regardless of preferLocalVersion', async () => {
 				// ARRANGE
 				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
 
 				const remoteDataTable = {
-					id: 'dt-recreated',
+					id: 'dt-remote',
 					name: 'Shared Name',
 					ownedBy: { type: 'team' as const, teamId: 'projA', teamName: 'ProjectA' },
 					columns: [{ id: 'rc1', name: 'other', type: 'string', index: 0 }],
@@ -2787,10 +2752,6 @@ describe('getStatus', () => {
 					remoteDataTable,
 				]);
 				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
-				// Local table id appears in git history — delete+recreate upstream
-				gitService.getHistoricallyTrackedFiles.mockResolvedValue(
-					new Set(['datatables/dt-local.json']),
-				);
 
 				// ACT — preferLocalVersion true (the UI dry-run flag) must not change
 				// which id the entry carries
@@ -2800,64 +2761,14 @@ describe('getStatus', () => {
 					preferLocalVersion: true,
 				});
 
-				// ASSERT — exactly ONE "modified" entry carrying the incoming id: no
-				// "created" for the incoming id, no "deleted" for the old local id
-				if (!Array.isArray(result)) expect.fail('Expected result to be an array.');
-				const dataTableFiles = result.filter((f) => f.type === 'datatable');
-				expect(dataTableFiles).toHaveLength(1);
-				expect(dataTableFiles[0]).toMatchObject({
-					id: 'dt-recreated',
-					status: 'modified',
-					conflict: false,
-				});
-			});
-
-			it('should mark a pre-sync twin (never synced, lossless merge) as reconcilable during pull', async () => {
-				// ARRANGE
-				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
-
-				const sharedColumns = [{ id: 'rc1', name: 'shared', type: 'string', index: 0 }];
-				const remoteDataTable = {
-					id: 'dt-remote',
-					name: 'Shared Name',
-					ownedBy: { type: 'team' as const, teamId: 'projA', teamName: 'ProjectA' },
-					columns: sharedColumns,
-					createdAt: '2024-01-01T00:00:00.000Z',
-					updatedAt: '2024-01-01T00:00:00.000Z',
-				};
-
-				const localDataTable = {
-					id: 'dt-local',
-					name: 'Shared Name',
-					ownedBy: { type: 'team' as const, projectId: 'projA', projectName: 'ProjectA' },
-					filename: 'test.json',
-					// Same (name, type) columns under a different id — lossless merge
-					columns: [{ id: 'lc1', name: 'shared', type: 'string', index: 0 }],
-					createdAt: '2024-01-01T00:00:00.000Z',
-					updatedAt: '2024-01-01T00:00:00.000Z',
-				};
-
-				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
-					remoteDataTable,
-				]);
-				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
-				gitService.getHistoricallyTrackedFiles.mockResolvedValue(new Set());
-
-				// ACT
-				const result = await sourceControlStatusService.getStatus(user, {
-					direction: 'pull',
-					verbose: false,
-					preferLocalVersion: false,
-				});
-
-				// ASSERT — exactly ONE "modified" entry for the merge, no "created"
+				// ASSERT
 				if (!Array.isArray(result)) expect.fail('Expected result to be an array.');
 				const dataTableFiles = result.filter((f) => f.type === 'datatable');
 				expect(dataTableFiles).toHaveLength(1);
 				expect(dataTableFiles[0]).toMatchObject({
 					id: 'dt-remote',
 					status: 'modified',
-					conflict: false,
+					conflict: true,
 				});
 			});
 
@@ -2899,9 +2810,6 @@ describe('getStatus', () => {
 					remoteOtherProject,
 				]);
 				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
-				gitService.getHistoricallyTrackedFiles.mockResolvedValue(
-					new Set(['datatables/dt-local.json']),
-				);
 
 				// ACT
 				const result = await sourceControlStatusService.getStatus(user, {
@@ -2917,7 +2825,7 @@ describe('getStatus', () => {
 				expect(dataTableFiles).toHaveLength(2);
 				expect(dataTableFiles).toEqual(
 					expect.arrayContaining([
-						expect.objectContaining({ id: 'dt-remote-a', status: 'modified', conflict: false }),
+						expect.objectContaining({ id: 'dt-remote-a', status: 'modified', conflict: true }),
 						expect.objectContaining({ id: 'dt-remote-b', status: 'created' }),
 					]),
 				);
@@ -2950,7 +2858,6 @@ describe('getStatus', () => {
 					remoteDataTable,
 				]);
 				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
-				gitService.getHistoricallyTrackedFiles.mockResolvedValue(new Set());
 
 				// ACT
 				const result = await sourceControlStatusService.getStatus(user, {
@@ -2959,14 +2866,16 @@ describe('getStatus', () => {
 					preferLocalVersion: true,
 				});
 
-				// ASSERT
+				// ASSERT — the collision keeps its conflict pair; the remote-only id is
+				// additionally offered as a deletion (git as source of truth)
 				if (!Array.isArray(result)) expect.fail('Expected result to be an array.');
 				const dataTableFiles = result.filter((f) => f.type === 'datatable');
-				expect(dataTableFiles).toHaveLength(2);
+				expect(dataTableFiles).toHaveLength(3);
 				expect(dataTableFiles).toEqual(
 					expect.arrayContaining([
 						expect.objectContaining({ id: 'dt-local', status: 'modified', conflict: true }),
 						expect.objectContaining({ id: 'dt-local', status: 'created' }),
+						expect.objectContaining({ id: 'dt-remote', status: 'deleted' }),
 					]),
 				);
 			});

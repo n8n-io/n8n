@@ -24,8 +24,6 @@ import {
 	getVariablesPath,
 	isWorkflowModified,
 	isDataTableModified,
-	canReconcileDataTableNameCollision,
-	extractResourceIdsFromFilePaths,
 	areSameCredentials,
 } from './source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
@@ -710,13 +708,6 @@ export class SourceControlStatusService {
 			}
 		}
 
-		// Query git history to find data table IDs that were previously synced.
-		// This lets us distinguish "deleted from remote" (should delete locally on pull)
-		// from "never pushed" (should preserve locally on pull), and vice versa for push.
-		const previouslySyncedIds = extractResourceIdsFromFilePaths(
-			await this.gitService.getHistoricallyTrackedFiles(SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER),
-		);
-
 		const dtMissingInLocal: ExportableDataTable[] = [];
 		const dtMissingInRemote: StatusExportableDataTable[] = [];
 		const dtModifiedInEither: Array<ExportableDataTable | StatusExportableDataTable> = [];
@@ -742,13 +733,6 @@ export class SourceControlStatusService {
 
 		for (const remote of dataTablesRemote) {
 			if (!localById.has(remote.id)) {
-				// During push, a remote-only table would be marked as "deleted" from remote.
-				// Skip if this table was never synced from this instance (it was pushed by
-				// another instance and should not be deleted).
-				if (options.direction === 'push' && !previouslySyncedIds.has(remote.id)) {
-					continue;
-				}
-
 				// On pull, an id claimed by a name collision is covered by that
 				// collision's single "modified" entry.
 				if (options.direction === 'pull' && collidingRemoteIds.has(remote.id)) {
@@ -779,12 +763,11 @@ export class SourceControlStatusService {
 				const nameCollision = nameCollisionByLocalId.get(local.id);
 				if (nameCollision) {
 					const isPull = options.direction === 'pull';
-					// A pull reconciles the collision by adopting the incoming id; an
-					// unreconcilable one puts local-only column data at stake and is
-					// surfaced as a genuine conflict. Either way the entry carries the
-					// incoming id and file — that is what the import consumes.
-					const canReconcile =
-						isPull && canReconcileDataTableNameCollision(local, nameCollision, previouslySyncedIds);
+					// A same-named table in the same project is the same logical table:
+					// a pull adopts the incoming id and aligns the schema through the
+					// regular import path. The entry carries the incoming id and file —
+					// that is what the import consumes — and is flagged like any other
+					// schema modification.
 					const modified = isPull
 						? nameCollision
 						: options.preferLocalVersion
@@ -799,7 +782,7 @@ export class SourceControlStatusService {
 						type: 'datatable',
 						status: 'modified',
 						location: options.direction === 'push' ? 'local' : 'remote',
-						conflict: !canReconcile,
+						conflict: true,
 						file: getDataTableExportPath(modified.id, this.dataTableExportFolder),
 						updatedAt: new Date().toISOString(),
 						owner: this.convertToStatusResourceOwner(modified.ownedBy),
@@ -809,13 +792,6 @@ export class SourceControlStatusService {
 					if (isPull) {
 						continue;
 					}
-				}
-
-				// During pull, a local-only table would be marked as "deleted" locally.
-				// Skip if this table was never synced — it was created locally and not yet
-				// pushed, so it should not be deleted.
-				if (options.direction === 'pull' && !previouslySyncedIds.has(local.id)) {
-					continue;
 				}
 
 				if (collectVerbose) {
