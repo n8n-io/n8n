@@ -10,6 +10,7 @@ import { AgentTestChatService } from './agent-test-chat.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
+import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
 import { EventService } from '@/events/event.service';
 
 @Service()
@@ -21,6 +22,7 @@ export class AgentsService {
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly testChatService: AgentTestChatService,
+		private readonly subAgentCleanupService: SubAgentCleanupService,
 		private readonly eventService: EventService,
 	) {}
 
@@ -128,6 +130,8 @@ export class AgentsService {
 		await this.agentRepository.remove(agent);
 
 		this.runtimeCacheService.clearRuntimes(agentId);
+
+		await this.subAgentCleanupService.removeSubAgentFromParents(agentId, projectId);
 
 		this.eventService.emit('agent-deleted', { agentId, projectId });
 

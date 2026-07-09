@@ -1160,6 +1160,11 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect((wrapper.vm as unknown as { agent: { name: string } }).agent.name).toBe(
 			'Imported agent',
 		);
+		expect(favoritesStoreMock.renameFavorite).toHaveBeenLastCalledWith(
+			'a1',
+			'agent',
+			'Imported agent',
+		);
 
 		await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
 

@@ -236,6 +236,7 @@ watch(
 
 function syncAgentIdentityFromConfig(c: AgentJsonConfig) {
 	agentName.value = c.name;
+	favoritesStore.renameFavorite(agentId.value, 'agent', c.name);
 	if (!agent.value) return;
 	agent.value = {
 		...agent.value,
@@ -691,9 +692,7 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	// Mirror identity edits onto the agent resource so the header reflects them
 	// before the next fetch.
 	if (updates.name !== undefined) {
-		agentName.value = updates.name;
-		if (agent.value) agent.value = { ...agent.value, name: updates.name };
-		favoritesStore.renameFavorite(agentId.value, 'agent', updates.name);
+		syncAgentIdentityFromConfig(localConfig.value);
 	}
 	configAutosave.scheduleAutosave({
 		projectId: projectId.value,

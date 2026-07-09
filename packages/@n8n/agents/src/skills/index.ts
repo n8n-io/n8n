@@ -33,6 +33,7 @@ export {
 export {
 	createRuntimeSkillRegistry,
 	createRuntimeSkillSource,
+	filterRuntimeSkillSource,
 	formatSkillValidationErrors,
 	InvalidRuntimeSkillError,
 	loadRuntimeSkillsFromDirectory,

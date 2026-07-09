@@ -136,6 +136,34 @@ describe('AgentConfigService', () => {
 	});
 
 	describe('updateConfig', () => {
+		it('persists an explicit web-search disable and clears native provider tools', async () => {
+			// Regression: previously the disable was stripped on write and resurrected
+			// on read, so the config hash never changed and the builder looped.
+			const { service, agentRepository } = makeService();
+			const agent = makeAgent({
+				schema: {
+					...baseConfig,
+					config: { webSearch: { enabled: true } },
+					providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+				} as unknown as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.updateConfig(agentId, projectId, {
+				...baseConfig,
+				config: { webSearch: { enabled: false } },
+				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+			} as unknown as AgentJsonConfig);
+
+			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.schema?.config?.webSearch).toEqual({ enabled: false });
+			expect(saved.schema?.providerTools).toEqual({});
+			// The returned (composed) config reflects the persisted state so the tool
+			// layer's freshness hash actually changes.
+			expect(result.config?.config?.webSearch).toEqual({ enabled: false });
+			expect(result.config?.providerTools).toEqual({});
+		});
+
 		it('preserves omitted stored fields but clears explicitly empty integrations', async () => {
 			const { service, agentRepository, credentialsService, runtimeCacheService } = makeService();
 			const agent = makeAgent({

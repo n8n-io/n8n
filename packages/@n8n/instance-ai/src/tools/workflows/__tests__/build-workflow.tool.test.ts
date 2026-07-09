@@ -50,12 +50,14 @@ vi.mock('../workflow-source-compiler', () => ({
 
 vi.mock('../resolve-credentials', () => ({
 	buildCredentialMap: vi.fn(async () => await Promise.resolve(new Map())),
+	buildCredentialResolutionNote: vi.fn(() => undefined),
 	resolveCredentials: vi.fn(
 		async () =>
 			await Promise.resolve({
 				mockedNodeNames: [],
 				mockedCredentialTypes: [],
 				mockedCredentialsByNode: {},
+				resolvedCredentialsByNode: {},
 			}),
 	),
 }));

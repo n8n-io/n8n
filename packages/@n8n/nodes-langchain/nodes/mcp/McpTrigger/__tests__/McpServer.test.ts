@@ -314,6 +314,20 @@ describe('McpServer', () => {
 			expect(mcpServer.getTransport('busy-2')).toBeUndefined();
 		});
 
+		it('should evict a session whose only traffic was a handshake (no in-flight tool call)', async () => {
+			await registerSession('handshake-1');
+
+			void mcpServer.handlePostMessage(
+				createMockRequestWithSessionId('handshake-1', createListToolsMessage()),
+				createMockResponse(),
+				[],
+			);
+
+			await vi.advanceTimersByTimeAsync(TTL + INTERVAL);
+
+			expect(mcpServer.getTransport('handshake-1')).toBeUndefined();
+		});
+
 		it('should stop evicting once the sweep is stopped', async () => {
 			await registerSession('idle-2');
 			mcpServer.stopSweep();

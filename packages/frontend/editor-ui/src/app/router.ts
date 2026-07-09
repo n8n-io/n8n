@@ -98,8 +98,8 @@ const WorkerView = async () =>
 const WorkflowHistory = async () =>
 	await import('@/features/workflows/workflowHistory/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/app/views/WorkflowOnboardingView.vue');
-const EvaluationsView = async () =>
-	await import('@/features/ai/evaluation.ee/views/EvaluationsView.vue');
+const EvaluationsListSwitcher = async () =>
+	await import('@/features/ai/evaluation.ee/views/EvaluationsListSwitcher.vue');
 const TestRunDetailView = async () =>
 	await import('@/features/ai/evaluation.ee/views/TestRunDetailView.vue');
 const EvaluationRootView = async () =>
@@ -389,7 +389,7 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: '',
 				name: VIEWS.EVALUATION_EDIT,
-				component: EvaluationsView,
+				component: EvaluationsListSwitcher,
 				props: true,
 			},
 			{
