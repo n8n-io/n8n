@@ -201,6 +201,7 @@ export {
 	type DataTableListSortBy,
 	dateTimeSchema,
 	dataTableColumnNameSchema,
+	dataTableColumnTypeSchema,
 	dataTableIdSchema,
 } from './schemas/data-table.schema';
 
