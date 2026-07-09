@@ -31,6 +31,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { OwnershipService } from '@/services/ownership.service';
+import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
@@ -135,13 +136,16 @@ export class TriggerExecutionContextFactory {
 					// `executionId` is undefined when the catch above swallowed a
 					// duplicate scheduled execution; nothing ran, so nothing to emit.
 					if (executionId === undefined) return;
-					const project = await this.ownershipService.getWorkflowProjectCached(workflowData.id);
+					const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+						this.ownershipService,
+						workflowData.id,
+					);
 					this.eventService.emit('workflow-executed', {
 						workflowId: workflowData.id,
 						workflowName: workflowData.name,
 						executionId,
-						projectId: project.id,
-						projectName: project.name,
+						projectId,
+						projectName,
 						source: 'trigger',
 					});
 				});

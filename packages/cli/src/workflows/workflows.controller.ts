@@ -37,19 +37,9 @@ import {
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
-import express from 'express';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import express from 'express';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
-
-import { CollaborationService } from '../collaboration/collaboration.service';
-import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service';
-import { WorkflowCreationService } from './workflow-creation.service';
-import { createWorkflowEntityFromPayload } from './workflow-entity-mapper';
-import { WorkflowExecutionService } from './workflow-execution.service';
-import { WorkflowFinderService } from './workflow-finder.service';
-import { WorkflowRequest } from './workflow.request';
-import { WorkflowService } from './workflow.service';
-import { EnterpriseWorkflowService } from './workflow.service.ee';
 
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -67,6 +57,17 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
+import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
+
+import { CollaborationService } from '../collaboration/collaboration.service';
+import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service';
+import { WorkflowCreationService } from './workflow-creation.service';
+import { createWorkflowEntityFromPayload } from './workflow-entity-mapper';
+import { WorkflowExecutionService } from './workflow-execution.service';
+import { WorkflowFinderService } from './workflow-finder.service';
+import { WorkflowRequest } from './workflow.request';
+import { WorkflowService } from './workflow.service';
+import { EnterpriseWorkflowService } from './workflow.service.ee';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -534,7 +535,10 @@ export class WorkflowsController {
 		);
 
 		if ('executionId' in result) {
-			const project = await this.ownershipService.getWorkflowProjectCached(dbWorkflow.id);
+			const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+				this.ownershipService,
+				dbWorkflow.id,
+			);
 			this.eventService.emit('workflow-executed', {
 				user: {
 					id: req.user.id,
@@ -546,8 +550,8 @@ export class WorkflowsController {
 				workflowId: dbWorkflow.id,
 				workflowName: dbWorkflow.name,
 				executionId: result.executionId,
-				projectId: project.id,
-				projectName: project.name,
+				projectId,
+				projectName,
 				source: 'user-manual',
 			});
 		}

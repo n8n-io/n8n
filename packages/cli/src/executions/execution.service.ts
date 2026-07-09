@@ -18,6 +18,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { stringify } from 'flatted';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
@@ -28,7 +29,6 @@ import type {
 	IWorkflowExecutionDataProcess,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	ExecutionStatusList,
 	ManualExecutionCancelledError,
@@ -57,6 +57,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { RoleService } from '@/services/role.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
+import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
@@ -350,7 +351,10 @@ export class ExecutionService {
 			throw new UnexpectedError('The retry did not start for an unknown reason.');
 		}
 
-		const project = await this.ownershipService.getWorkflowProjectCached(execution.workflowId);
+		const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+			this.ownershipService,
+			execution.workflowId,
+		);
 
 		this.eventService.emit('workflow-executed', {
 			user: {
@@ -363,8 +367,8 @@ export class ExecutionService {
 			workflowId: execution.workflowId,
 			workflowName: execution.workflowData.name,
 			executionId: retriedExecutionId,
-			projectId: project.id,
-			projectName: project.name,
+			projectId,
+			projectName,
 			source: 'user-retry',
 		});
 

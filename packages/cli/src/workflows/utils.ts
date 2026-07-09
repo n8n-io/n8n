@@ -3,6 +3,8 @@ import type { Scope } from '@n8n/permissions';
 import { NodeApiError, NodeError, WorkflowActivationError } from 'n8n-workflow';
 import type { WorkflowSettings } from 'n8n-workflow';
 
+import type { OwnershipService } from '@/services/ownership.service';
+
 type RedactionMode = 'manual' | 'nonManual';
 
 const REDACTED_MODES: Record<WorkflowSettings.RedactionPolicy, ReadonlySet<RedactionMode>> = {
@@ -42,5 +44,21 @@ export function getErrorDescription(error: unknown): string | undefined {
 export function dropRedactionPolicy(newWorkflow: WorkflowEntity): void {
 	if (newWorkflow.settings?.redactionPolicy !== undefined) {
 		delete newWorkflow.settings.redactionPolicy;
+	}
+}
+
+/**
+ * Loads a workflow's owning project for event data purposes, falling back to empty
+ * strings when it can't be resolved. Project lookup must never break execution.
+ */
+export async function getWorkflowProjectDetailsSafe(
+	ownershipService: OwnershipService,
+	workflowId: string,
+): Promise<{ projectId: string; projectName: string }> {
+	try {
+		const project = await ownershipService.getWorkflowProjectCached(workflowId);
+		return { projectId: project.id, projectName: project.name };
+	} catch {
+		return { projectId: '', projectName: '' };
 	}
 }

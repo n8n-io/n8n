@@ -12,6 +12,7 @@ import { EventService } from '@/events/event.service';
 import { OwnershipService } from '@/services/ownership.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
+import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 import {
@@ -80,14 +81,17 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 
 			onDispatch();
 
-			const project = await this.ownershipService.getWorkflowProjectCached(workflowData.id);
+			const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+				this.ownershipService,
+				workflowData.id,
+			);
 
 			this.eventService.emit('workflow-executed', {
 				workflowId,
 				workflowName: workflowData.name,
 				executionId,
-				projectId: project.id,
-				projectName: project.name,
+				projectId,
+				projectName,
 				source: 'trigger',
 			});
 
