@@ -53,7 +53,7 @@ type ImportPackageParams = Omit<
 	ImportPackageRequest,
 	| 'credentialMatchingMode'
 	| 'credentialMissingMode'
-	| 'credentialBindings'
+	| 'bindings'
 	| 'workflowConflictPolicy'
 	| 'workflowPublishingPolicy'
 	| 'workflowIdPolicy'
@@ -63,7 +63,7 @@ type ImportPackageParams = Omit<
 			ImportPackageRequest,
 			| 'credentialMatchingMode'
 			| 'credentialMissingMode'
-			| 'credentialBindings'
+			| 'bindings'
 			| 'workflowConflictPolicy'
 			| 'workflowPublishingPolicy'
 			| 'workflowIdPolicy'
@@ -1454,7 +1454,7 @@ describe('ImportPipeline credential resolution', () => {
 
 		const result = await importPackage({
 			user: owner,
-			credentialBindings: new Map([['source-credential', targetCredential.id]]),
+			bindings: { credentials: new Map([['source-credential', targetCredential.id]]) },
 			packageBuffer: await buildImportPackageBuffer(
 				[
 					serializedWorkflowWithCredential({
@@ -1495,7 +1495,7 @@ describe('ImportPipeline credential resolution', () => {
 		await expect(
 			importPackage({
 				user: owner,
-				credentialBindings: new Map([['source-credential', mismatchedCredential.id]]),
+				bindings: { credentials: new Map([['source-credential', mismatchedCredential.id]]) },
 				packageBuffer: await buildImportPackageBuffer(
 					[
 						serializedWorkflowWithCredential({

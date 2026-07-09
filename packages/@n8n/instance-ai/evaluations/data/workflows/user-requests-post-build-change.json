@@ -1,0 +1,35 @@
+{
+	"description": "After the workflow build settles, the user sends a follow-up asking for a specific change. Exercises the multi-turn follow-up loop: the request is delivered post-build and the final workflow reflects it.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every day at 9am, fetch open incidents from our status API at https://status.example.com/api/incidents and post a summary to Slack #ops (C04OPS00001)."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Wait until the agent has finished building the workflow, then send ONE follow-up asking to change the schedule from daily at 9am to run hourly instead.",
+				"Once the agent acknowledges or applies that change, you're satisfied: finish the conversation. Don't repeat the request, don't ask it to rebuild from scratch, and don't ask for anything else.]"
+			]
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "medium",
+	"tags": ["build", "http", "slack", "schedule", "behaviour", "post-build-change", "follow-up"],
+	"triggerType": "schedule",
+	"datasets": ["behaviour", "full"],
+	"processExpectations": [
+		"After the workflow was first built, the user sent a follow-up asking to change the schedule to hourly, and the agent applied it as a modification to the existing workflow rather than ignoring it or starting over."
+	],
+	"outcomeExpectations": [
+		"The final workflow's schedule runs hourly, not daily at 9am — proving the post-build follow-up change was delivered and incorporated."
+	],
+	"executionScenarios": [
+		{
+			"name": "applies-followup-change",
+			"description": "The user's follow-up modification is reflected in the final workflow: the schedule runs hourly (changed from the original daily-9am request) and the incident summary still posts to Slack.",
+			"dataSetup": "The schedule trigger fires. The HTTP request to https://status.example.com/api/incidents returns a list of 3 open incidents — e.g. { \"id\": \"INC-1\", \"title\": \"API latency elevated\", \"severity\": \"high\" }, { \"id\": \"INC-2\", \"title\": \"Login errors in EU region\", \"severity\": \"critical\" }, { \"id\": \"INC-3\", \"title\": \"Delayed webhook delivery\", \"severity\": \"low\" }. The Slack post-message node returns a success response.",
+			"successCriteria": "The schedule trigger runs hourly, NOT daily at 9am. Because the opening request asked for daily at 9am, an hourly schedule is only reachable if the user's follow-up modification was delivered and incorporated into the build — so an hourly schedule is what proves the change was applied. The workflow still fetches incidents from the status API and posts a summary to Slack #ops (C04OPS00001), and executes without errors."
+		}
+	]
+}

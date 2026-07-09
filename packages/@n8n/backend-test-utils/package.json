@@ -12,7 +12,7 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
-    "test": "echo \"WARNING: no test specified\" && exit 0",
+    "test": "node -e \"process.exit(0)\"",
     "test:dev": "echo \"WARNING: no test specified\" && exit 0"
   },
   "main": "dist/index.js",
@@ -36,7 +36,8 @@
     "vitest-mock-extended": "catalog:"
   },
   "devDependencies": {
-    "@n8n/typescript-config": "workspace:*"
+    "@n8n/typescript-config": "workspace:*",
+    "typescript": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }
