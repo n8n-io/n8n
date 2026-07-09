@@ -39,6 +39,7 @@ function evaluation(
 		testCases?: Array<{
 			userText?: string;
 			buildSuccessCount?: number;
+			buildError?: string;
 			scenarios?: Array<{
 				name: string;
 				passCount: number;
@@ -71,6 +72,7 @@ function evaluation(
 			const buildSuccessCount = tc.buildSuccessCount ?? totalRuns;
 			const scenarios = (tc.scenarios ?? []).map((sa) => ({
 				scenario: testCase.executionScenarios.find((sc) => sc.name === sa.name)!,
+				evaluatedCount: sa.passes.length,
 				passCount: sa.passCount,
 				passRate: totalRuns > 0 ? sa.passCount / totalRuns : 0,
 				passAtK: new Array(totalRuns).fill(sa.passCount > 0 ? 1 : 0) as number[],
@@ -113,10 +115,15 @@ function evaluation(
 				workflowBuildSuccess: buildSuccessCount > 0,
 				executionScenarioResults: [],
 				executionScenarios: scenarios,
-				runs: new Array(totalRuns).fill(null).map(() => ({
+				runs: new Array(totalRuns).fill(null).map((_, runIndex) => ({
 					testCase,
 					workflowBuildSuccess: buildSuccessCount > 0,
 					executionScenarioResults: [],
+					buildError: tc.buildError,
+					buildExpectationResults: buildExpectations.flatMap((ea) => {
+						const result = ea.runs[runIndex];
+						return result ? [result] : [];
+					}),
 				})),
 				buildSuccessCount,
 				buildExpectations,
@@ -230,7 +237,7 @@ describe('formatComparisonMarkdown', () => {
 		expect(md).toContain(
 			'**Aggregate**: 100.0% pass (2/2 trials, 0 scenarios + 2 expectations, N=1)',
 		);
-		expect(md).toMatch(/\| `build-only` \| ✓ \| 2\/2 \|/);
+		expect(md).toMatch(/\| `build-only` \| CHECKED \| 2\/2 \|/);
 
 		const terminal = formatComparisonTerminal(
 			buildOnly,
@@ -698,5 +705,47 @@ describe('formatComparisonTerminal', () => {
 		const base = bucket('master', [s('a', 'happy', 8, 10), s('b', 'happy', 5, 10)]);
 		const out = formatComparisonTerminal(evalFixture, ok(compareBuckets(pr, base)));
 		expect(out).toMatch(/partial: 1 baseline scenarios not run by PR/);
+	});
+
+	it('does not render workflow build failure text for process-only checks', () => {
+		const agentsEval = evaluation({
+			totalRuns: 1,
+			testCases: [
+					{
+						userText: 'workflow-scheduled-weather-and-agent',
+						buildSuccessCount: 0,
+						buildError: "Agent response: Here's the intent I'd detect",
+						expectations: [{ text: 'classifies the request intent', passes: [true] }],
+					},
+				],
+			});
+
+		const out = formatComparisonTerminal(agentsEval);
+
+		expect(out).toMatch(/CHECKED/);
+		expect(out).not.toMatch(/BUILD FAILED/);
+		expect(out).not.toMatch(/Agent response/);
+	});
+
+	it('counts evaluated expectations in the terminal aggregate', () => {
+		const agentsEval = evaluation({
+			totalRuns: 1,
+			testCases: [
+					{
+						userText: 'workflow-scheduled-weather-and-agent',
+						buildSuccessCount: 0,
+						expectations: [
+							{ text: 'does not build', passes: [true] },
+							{ text: 'classifies weather as workflow', passes: [true] },
+							{ text: 'classifies support as agent', passes: [true] },
+							{ text: 'brief reasoning only', passes: [true] },
+						],
+					},
+				],
+		});
+
+		const out = formatComparisonTerminal(agentsEval);
+
+		expect(out).toMatch(/Aggregate: 100\.0% pass \(4\/4 trials, 0 scenarios \+ 4 expectations, N=1\)/);
 	});
 });

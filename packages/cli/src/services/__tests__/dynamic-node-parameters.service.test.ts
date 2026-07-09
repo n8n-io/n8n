@@ -2,25 +2,32 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { SharedWorkflowRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
+import { RoutingNode } from 'n8n-core';
 import {
-	type ILoadOptions,
 	type INodeParameters,
 	type INodeType,
 	type IWorkflowExecuteAdditionalData,
 	type ResourceMapperFields,
 	Expression,
 } from 'n8n-workflow';
-import type { MockInstance } from 'vitest';
+import type { Mock, MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+
+vi.mock('n8n-core', async () => {
+	return {
+		...(await vi.importActual('n8n-core')),
+		RoutingNode: vi.fn(),
+	};
+});
+
+import { DynamicNodeParametersService } from '../dynamic-node-parameters.service';
+import { WorkflowLoaderService } from '../workflow-loader.service';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NodeTypes } from '@/node-types';
 import * as checkAccess from '@/permissions.ee/check-access';
-
-import { DynamicNodeParametersService } from '../dynamic-node-parameters.service';
-import { WorkflowLoaderService } from '../workflow-loader.service';
 
 describe('DynamicNodeParametersService', () => {
 	const logger = mockInstance(Logger);
@@ -93,7 +100,7 @@ describe('DynamicNodeParametersService', () => {
 		let releaseSpy: MockInstance;
 
 		beforeEach(() => {
-			acquireSpy = vi.spyOn(Expression.prototype, 'acquireIsolate').mockResolvedValue(undefined);
+			acquireSpy = vi.spyOn(Expression.prototype, 'acquireIsolate').mockResolvedValue(true);
 			releaseSpy = vi.spyOn(Expression.prototype, 'releaseIsolate').mockResolvedValue(undefined);
 		});
 
@@ -222,12 +229,81 @@ describe('DynamicNodeParametersService', () => {
 
 			await expect(
 				service.getOptionsViaLoadOptions(
-					mock<ILoadOptions>(),
+					{ routing: { request: { url: '/v1/models' } } },
 					mock<IWorkflowExecuteAdditionalData>(),
 					{ name: 'TestNode', version: 1 },
 					mock<INodeParameters>(),
 				),
 			).rejects.toThrow(BadRequestError);
+		});
+	});
+
+	describe('getOptionsViaLoadOptionsByPath', () => {
+		it('should throw BadRequestError when no loadOptions routing exists at the parameter path', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: {
+						name: 'TestNode',
+						properties: [],
+						requestDefaults: { baseURL: 'https://api.example.com' },
+					},
+				}),
+			);
+
+			await expect(
+				service.getOptionsViaLoadOptionsByPath(
+					'parameters.unknown',
+					mock<IWorkflowExecuteAdditionalData>(),
+					{ name: 'TestNode', version: 1 },
+					mock<INodeParameters>(),
+				),
+			).rejects.toThrow(BadRequestError);
+		});
+
+		it('should resolve routing from the node definition and run it', async () => {
+			const runNode = vi.fn().mockResolvedValue([[{ json: { name: 'opt', value: 'v' } }]]);
+			(RoutingNode as unknown as Mock).mockImplementation(function () {
+				return { runNode };
+			});
+			vi.spyOn(Expression.prototype, 'acquireIsolate').mockResolvedValue(true);
+			vi.spyOn(Expression.prototype, 'releaseIsolate').mockResolvedValue(undefined);
+
+			const nodeRouting = { request: { url: '/v1/models', method: 'GET' as const } };
+			// Plain object (not a deep mock) so Workflow's parameter resolution doesn't
+			// trip over auto-generated mock fields on the property.
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: {
+					name: 'TestNode',
+					displayName: 'TestNode',
+					group: [],
+					version: 1,
+					defaults: {},
+					inputs: [],
+					outputs: [],
+					properties: [
+						{
+							displayName: 'Model',
+							name: 'model',
+							type: 'options',
+							default: '',
+							options: [],
+							typeOptions: { loadOptions: { routing: nodeRouting } },
+						},
+					],
+					requestDefaults: { baseURL: 'https://api.example.com' },
+				},
+			} as unknown as INodeType);
+
+			const result = await service.getOptionsViaLoadOptionsByPath(
+				'parameters.model',
+				mock<IWorkflowExecuteAdditionalData>(),
+				{ name: 'TestNode', version: 1 },
+				{} as INodeParameters,
+			);
+
+			expect(RoutingNode).toHaveBeenCalled();
+			expect(runNode).toHaveBeenCalled();
+			expect(result).toEqual([{ name: 'opt', value: 'v' }]);
 		});
 	});
 

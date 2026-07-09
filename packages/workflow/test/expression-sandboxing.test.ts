@@ -1,12 +1,8 @@
 import { Tournament } from '@n8n/tournament';
+import { existsSync, unlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
-import {
-	DollarSignValidator,
-	ThisSanitizer,
-	PrototypeSanitizer,
-	sanitizer,
-	DOLLAR_SIGN_ERROR,
-} from '../src/expression-sandboxing';
 import {
 	ExpressionClassExtensionError,
 	ExpressionComputedDestructuringError,
@@ -14,6 +10,13 @@ import {
 	ExpressionError,
 	ExpressionWithStatementError,
 } from '../src/errors';
+import {
+	DollarSignValidator,
+	ThisSanitizer,
+	PrototypeSanitizer,
+	sanitizer,
+	DOLLAR_SIGN_ERROR,
+} from '../src/expression-sandboxing';
 
 const tournament = new Tournament(
 	(e) => {
@@ -380,6 +383,51 @@ describe('PrototypeSanitizer', () => {
 					});
 				}).toThrowError(errorRegex);
 			});
+		});
+	});
+
+	describe('callee and caller access', () => {
+		const marker = join(tmpdir(), `expr-sandbox-${Date.now()}`);
+
+		afterEach(() => {
+			try {
+				unlinkSync(marker);
+			} catch {
+				// nothing written — expected
+			}
+		});
+
+		it('should reject static access to callee', () => {
+			expect(() => tournament.execute('{{ (()=>arguments)().callee }}', {})).toThrowError(
+				errorRegex,
+			);
+		});
+
+		it('should reject static access to caller', () => {
+			expect(() => tournament.execute('{{ (()=>arguments)().caller }}', {})).toThrowError(
+				errorRegex,
+			);
+		});
+
+		it('should reject caller access on a named function', () => {
+			expect(() =>
+				tournament.execute('{{ (function f(){ return f.caller })() }}', {}),
+			).toThrowError(errorRegex);
+		});
+
+		it('should reject computed access to callee', () => {
+			expect(() => tournament.execute('{{ (()=>arguments)()["callee"] }}', {})).toThrowError(
+				errorRegex,
+			);
+			expect(() =>
+				tournament.execute('{{ (()=>arguments)()["cal" + "lee"] }}', { __sanitize: sanitizer }),
+			).toThrowError(errorRegex);
+		});
+
+		it('should not evaluate an expression that rebinds the sanitizer context', () => {
+			const payload = `{{ (()=>arguments)().length>1 ? ({})["con"+"structor"]["con"+"structor"]("return require('fs').writeFileSync(${JSON.stringify(marker)}, 'x'), true")() : (()=>arguments)().callee.call({__sanitize:(x)=>x}, (()=>arguments)()[0], 1) }}`;
+			expect(() => tournament.execute(payload, { __sanitize: sanitizer })).toThrow();
+			expect(existsSync(marker)).toBe(false);
 		});
 	});
 

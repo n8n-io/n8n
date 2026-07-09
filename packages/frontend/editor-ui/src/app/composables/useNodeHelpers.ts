@@ -415,18 +415,37 @@ export function useNodeHelpers() {
 		return null;
 	}
 
-	function workflowHasIncompatibleTrigger(): boolean {
+	// Returns the trigger that blocks end-user credentials — a trigger to name in
+	// the incompatibility issue — or null when the workflow is compatible. Private
+	// (self-connected) credentials resolve via the system resolver, which keys on
+	// the n8n user identity. Mirror the backend publish check: the workflow is
+	// compatible as long as at least one enabled trigger establishes that identity,
+	// so a single compatible trigger clears the issue even if others can't.
+	function getBlockingTrigger(): INodeUi | null {
 		const triggers = workflowDocumentStore.value.workflowTriggerNodes.filter(
 			(trigger) => !trigger.disabled,
 		);
-		if (triggers.length === 0) return false;
+		if (triggers.length === 0) return null;
 
-		// Private (self-connected) credentials resolve via the system resolver, which
-		// keys on the n8n user identity. Mirror the backend publish check: the workflow
-		// is compatible as long as at least one trigger establishes that identity.
-		return !triggers.some(
+		const hasCompatibleTrigger = triggers.some(
 			(trigger) => classifyTriggerIdentity(trigger.type, trigger.parameters).providesN8nIdentity,
 		);
+		if (hasCompatibleTrigger) return null;
+
+		// No trigger establishes the identity — return an incompatible one to name
+		// in the issue.
+		return (
+			triggers.find(
+				(trigger) => !classifyTriggerIdentity(trigger.type, trigger.parameters).providesN8nIdentity,
+			) ?? null
+		);
+	}
+
+	function getTriggerDisplayName(trigger: INodeUi): string {
+		const displayName =
+			nodeTypesStore.getNodeType(trigger.type, trigger.typeVersion)?.displayName ?? trigger.name;
+		// Drop a trailing "Trigger" so the sentence doesn't read "the Schedule Trigger trigger".
+		return displayName.replace(/\s*trigger$/i, '').trim() || displayName;
 	}
 
 	function collectPrivateCredentialIssues(
@@ -435,7 +454,7 @@ export function useNodeHelpers() {
 	): void {
 		if (!isPrivateCredentialsEnabled.value) return;
 
-		const incompatibleTrigger = workflowHasIncompatibleTrigger();
+		const blockingTrigger = getBlockingTrigger();
 
 		for (const [credTypeName, details] of Object.entries(node.credentials ?? {})) {
 			if (foundIssues[credTypeName]?.length) continue;
@@ -447,9 +466,11 @@ export function useNodeHelpers() {
 			// Mirror the backend publish check: trigger incompatibility blocks publish
 			// regardless of who connected the credential, so warn on it here too. A
 			// merely-not-yet-connected credential is surfaced via the callout/banner.
-			if (incompatibleTrigger) {
+			if (blockingTrigger) {
 				foundIssues[credTypeName] = [
-					i18n.baseText('nodeIssues.credentials.privateRequiresManualTrigger'),
+					i18n.baseText('nodeIssues.credentials.privateRequiresManualTrigger', {
+						interpolate: { triggerName: getTriggerDisplayName(blockingTrigger) },
+					}),
 				];
 			}
 		}

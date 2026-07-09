@@ -455,7 +455,7 @@ export class LoadNodesAndCredentials {
 
 		// Create the main context establishment hooks property as a fixedCollection
 		const contextHooksProperty: INodeProperties = {
-			displayName: 'Identify user for dynamic credentials',
+			displayName: 'Identify user for end-user credentials',
 			name: 'contextEstablishmentHooks',
 			type: 'fixedCollection',
 			placeholder: 'Add User Identifier',

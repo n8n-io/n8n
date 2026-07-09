@@ -3,7 +3,7 @@
 ## Overview
 
 Instance AI uses a pub/sub event bus to deliver agent events to the frontend
-in real-time. All agents — the orchestrator and dynamically spawned sub-agents —
+in real-time. All agents — the orchestrator and eval-setup background agent —
 publish events to a per-thread channel. The frontend subscribes independently
 via SSE.
 
@@ -52,7 +52,9 @@ data: {"type":"text-delta","runId":"run_abc","agentId":"agent-001","payload":{"t
 ```
 
 Event IDs are monotonically increasing integers per thread channel and unique
-within that thread.
+within that thread. In multi-main deployments they come from a shared
+per-thread sequence (Redis), so ids — and the replay cursor built from them —
+are valid against any main.
 
 ## Event Schema
 
@@ -70,7 +72,7 @@ Every event follows this schema:
 The `runId` correlates all events belonging to one user message → assistant
 response cycle. It is returned by the POST endpoint and carried on every event.
 
-The `agentId` identifies which agent branch (orchestrator or sub-agent) the
+The `agentId` identifies which agent branch (orchestrator or background agent) the
 event belongs to. The frontend uses this to render an agent activity tree.
 
 For the full TypeScript type definitions, see
@@ -177,7 +179,8 @@ A tool has failed.
 
 ### `agent-spawned`
 
-The orchestrator has created a new sub-agent via the `delegate` tool.
+The orchestrator has started a detached background agent (for example via
+`eval-setup-with-agent`).
 
 ```json
 {
@@ -193,12 +196,12 @@ The orchestrator has created a new sub-agent via the `delegate` tool.
 ```
 
 The frontend adds a new node to the agent activity tree under the parent.
-For this event type, `agentId` is the spawned sub-agent ID; `payload.parentId`
+For this event type, `agentId` is the spawned background agent ID; `payload.parentId`
 links it to the orchestrator.
 
 ### `agent-completed`
 
-A sub-agent has finished its work.
+A background agent has finished its work.
 
 ```json
 {
@@ -212,7 +215,7 @@ A sub-agent has finished its work.
 }
 ```
 
-The frontend marks the sub-agent node as completed.
+The frontend marks the background agent node as completed.
 
 ### `confirmation-request`
 
@@ -335,28 +338,23 @@ When a run errors:
 ← run-finish      {runId: "r1", agentId: "a1", payload: {status: "completed"}}
 ```
 
-### Autonomous Loop (With Sub-Agents)
+### Autonomous Loop (With Planned Tasks and Background Agent)
 
 ```
 ← run-start       {runId: "r1", agentId: "a1", payload: {messageId: "m1"}}
 ← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "create-tasks", ...}}
 ← tool-result     {runId: "r1", agentId: "a1", payload: {result: {goal: "Weather to Slack"}}}
-← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "delegate", toolCallId: "tc2"}}
-← agent-spawned   {runId: "r1", agentId: "a2", payload: {parentId: "a1", role: "workflow builder"}}
-← tool-call       {runId: "r1", agentId: "a2", payload: {toolName: "create-workflow"}}
-← tool-result     {runId: "r1", agentId: "a2", payload: {result: {id: "wf-123"}}}
-← agent-completed {runId: "r1", agentId: "a2", payload: {result: "Created wf-123"}}
-← tool-result     {runId: "r1", agentId: "a1", payload: {toolCallId: "tc2", result: "Created wf-123"}}
+← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "build-workflow", toolCallId: "tc2"}}
+← tool-result     {runId: "r1", agentId: "a1", payload: {toolCallId: "tc2", result: {workflowId: "wf-123"}}}
 ← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "run-workflow"}}
 ← tool-result     {runId: "r1", agentId: "a1", payload: {result: {executionId: "exec-456"}}}
 ← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "get-execution"}}
 ← tool-result     {runId: "r1", agentId: "a1", payload: {result: {status: "error"}}}
-← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "delegate", toolCallId: "tc5"}}
-← agent-spawned   {runId: "r1", agentId: "a3", payload: {parentId: "a1", role: "execution debugger"}}
-← tool-call       {runId: "r1", agentId: "a3", payload: {toolName: "get-execution"}}
-← reasoning-delta {runId: "r1", agentId: "a3", payload: {text: "The HTTP node returned 401..."}}
-← agent-completed {runId: "r1", agentId: "a3", payload: {result: "Missing API key header"}}
-← tool-result     {runId: "r1", agentId: "a1", payload: {toolCallId: "tc5", result: "Missing API key"}}
+← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "eval-setup-with-agent", toolCallId: "tc5"}}
+← agent-spawned   {runId: "r1", agentId: "a2", payload: {parentId: "a1", role: "eval-setup"}}
+← tool-call       {runId: "r1", agentId: "a2", payload: {toolName: "workflows"}}
+← agent-completed {runId: "r1", agentId: "a2", payload: {result: "Added eval nodes"}}
+← tool-result     {runId: "r1", agentId: "a1", payload: {toolCallId: "tc5", result: "Eval setup complete"}}
 ← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "create-tasks", args: {planningContext: {source: "replan"}}}}
 ← ...loop continues...
 ← text-delta      {runId: "r1", agentId: "a1", payload: {text: "Done! I created a workflow..."}}
@@ -411,8 +409,13 @@ The backend must accept the cursor from both `Last-Event-ID` header and
 `?lastEventId` query parameter. If neither is present, replay starts from
 event ID 0 (full history).
 
-IDs are monotonically increasing integers per thread. Replay does not
-require dedup.
+IDs are monotonically increasing integers per thread, assigned from a shared
+per-thread sequence in multi-main. Assignment order is monotonic, but delivery
+order is not guaranteed to be: concurrent producers on different mains (e.g. a
+background task while the orchestrator runs elsewhere) can interleave, so a
+connection may occasionally deliver a lower id after a higher one. The
+frontend therefore tracks its reconnect cursor as the max id seen and drops
+already-seen ids on replay overlap.
 
 ## Abort Support
 
@@ -420,7 +423,7 @@ The frontend can abort a running agent by sending:
 
 - **Endpoint**: `POST /instance-ai/chat/:threadId/cancel`
 - **Semantics**: Idempotent. Cancels the active run for the thread (if any).
-- **Behavior**: Stops orchestrator and active sub-agents, then emits final
+- **Behavior**: Stops orchestrator and active background agents, then emits final
   `run-finish` with `payload.status = "cancelled"`.
 - **Race behavior**: If the run already completed, cancel is a no-op.
 
@@ -488,7 +491,7 @@ replaying all SSE events.
 
 2. **Agent tree snapshots** — after each `run-finish`, the backend replays
    events through `buildAgentTreeFromEvents()` and stores the resulting tree
-   in thread metadata. This preserves the full sub-agent hierarchy (tool
+   in thread metadata. This preserves the full agent hierarchy (tool
    calls, text, reasoning) that the message format alone cannot capture.
 
 3. **SSE cursor** — the messages response includes `nextEventId`. The frontend

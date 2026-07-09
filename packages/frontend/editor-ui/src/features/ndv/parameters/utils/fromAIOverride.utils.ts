@@ -1,6 +1,9 @@
 import {
 	extractFromAICalls,
 	FROM_AI_AUTO_GENERATED_MARKER,
+	isINodeProperties,
+	isINodePropertyCollection,
+	type INodeParameters,
 	type INodeProperties,
 	type NodeParameterValueType,
 	type NodePropertyTypes,
@@ -147,6 +150,10 @@ export function buildUniqueName(props: Pick<OverrideContext, 'parameter' | 'path
 	return result;
 }
 
+function buildFromAIKey(props: Pick<OverrideContext, 'parameter' | 'path'>) {
+	return sanitizeFromAiParameterName(buildUniqueName(props));
+}
+
 export function buildValueFromOverride(
 	override: FromAIOverride,
 	props: Pick<OverrideContext, 'parameter' | 'path'>,
@@ -154,7 +161,7 @@ export function buildValueFromOverride(
 ) {
 	const { extraPropValues, extraProps } = override;
 	const marker = includeMarker ? `${FROM_AI_AUTO_GENERATED_MARKER} ` : '';
-	const key = sanitizeFromAiParameterName(buildUniqueName(props));
+	const key = buildFromAIKey(props);
 	const description =
 		extraPropValues?.description?.toString() ?? extraProps.description.initialValue;
 
@@ -170,6 +177,70 @@ export function buildValueFromOverride(
 	const type = fieldTypeToFromAiType(props.parameter.type);
 
 	return `={{ ${marker}$fromAI('${key}', ${quoteChar}${sanitizedDescription}${quoteChar}, '${type}') }}`;
+}
+
+type ReconcileValueField = Pick<OverrideContext['parameter'], 'name' | 'displayName' | 'type'>;
+
+export function reconcileFromAIKeys(
+	rows: Array<Record<string, NodeParameterValueType>>,
+	basePath: string,
+	valueFields: ReconcileValueField[],
+): Array<Record<string, NodeParameterValueType>> {
+	return rows.map((row, index) => {
+		if (typeof row !== 'object' || row === null) return row;
+		const next = { ...row };
+
+		for (const field of valueFields) {
+			const value = next[field.name];
+			if (typeof value !== 'string' || !isFromAIOverrideValue(value)) continue;
+
+			const key = buildFromAIKey({
+				parameter: field,
+				path: `${basePath}[${index}].${field.name}`,
+			});
+			next[field.name] = value.replace(/(\$fromAI\(\s*')[^']*'/, `$1${key}'`);
+		}
+
+		return next;
+	});
+}
+
+// Depth-1 by design: only reconciles a node's top-level list params. Overrides inside
+// lists nested within other list rows are left as-is — no tool-capable node has that shape today.
+export function reconcileNodeFromAIKeys(
+	properties: INodeProperties[],
+	nodeParameters: INodeParameters,
+): INodeParameters {
+	for (const property of properties) {
+		const value = nodeParameters[property.name];
+		if (value === undefined || value === null) continue;
+
+		if (property.type === 'fixedCollection' && typeof value === 'object' && !Array.isArray(value)) {
+			const collection = value as Record<string, NodeParameterValueType>;
+			for (const option of property.options ?? []) {
+				if (!isINodePropertyCollection(option)) continue;
+				const rows = collection[option.name];
+				if (!Array.isArray(rows)) continue;
+				collection[option.name] = reconcileFromAIKeys(
+					rows as Array<Record<string, NodeParameterValueType>>,
+					`parameters.${property.name}.${option.name}`,
+					option.values,
+				);
+			}
+		} else if (
+			property.type === 'collection' &&
+			property.typeOptions?.multipleValues &&
+			Array.isArray(value)
+		) {
+			nodeParameters[property.name] = reconcileFromAIKeys(
+				value as Array<Record<string, NodeParameterValueType>>,
+				`parameters.${property.name}`,
+				(property.options ?? []).filter(isINodeProperties),
+			);
+		}
+	}
+
+	return nodeParameters;
 }
 
 export function parseOverrides(

@@ -1,0 +1,41 @@
+{
+	"description": "Guards the 'Keep Effects Independent' guardrail (PR #33530): a nice-to-have Slack notification must not block or fail order fulfillment. The correct build makes the Slack step error-tolerant (continue-on-error or an error branch) instead of the default abort-on-error, keeps both effects as real action nodes, and the fulfillment POST executes even when Slack errors. Calibrated 2026-07-07: all units green; the Slack failure is exercised in the Phase-2 scenario (dataSetup governs scenario execution, not the agent's own build-time verification mocks — a transcript-side assertion about the Slack error happening during the agent's verify is unjudgeable here; that regression lives in verify-surfaces-node-error-when-run-succeeds).",
+	"conversation": [
+		{
+			"role": "user",
+			"text": [
+				"When our order webhook receives a new order, send it to our fulfillment system by POSTing the order JSON to https://api.fulfillment.example.com/orders, and also post a short notification about the order to Slack #orders.",
+				"The Slack notification is nice-to-have: if posting to Slack fails for any reason, the order must still reach the fulfillment API. We also monitor failed executions, so a Slack hiccup shouldn't make the whole run count as failed — we don't want noise from that.",
+				"After building, verify the workflow by running it."
+			]
+		}
+	],
+	"complexity": "medium",
+	"tags": [
+		"build",
+		"continue-on-fail",
+		"effects-independent",
+		"webhook",
+		"slack",
+		"http-request",
+		"regression"
+	],
+	"triggerType": "webhook",
+	"datasets": ["full"],
+	"outcomeExpectations": [
+		"A webhook trigger receives the order and the order data is POSTed to https://api.fulfillment.example.com/orders.",
+		"A Slack node posts a notification about the order to the #orders channel.",
+		"The Slack step is error-tolerant — configured to continue on error or routed through an error branch — so a Slack failure neither prevents the fulfillment POST nor fails the whole execution. The default abort-on-error behavior on the Slack node does not satisfy the user's no-noise requirement."
+	],
+	"processExpectations": [
+		"The agent did not satisfy the failure-tolerance requirement by removing the Slack step, disabling it, or making the fulfillment POST conditional on Slack succeeding — the user asked for both effects, with Slack merely tolerated to fail."
+	],
+	"executionScenarios": [
+		{
+			"name": "slack-fails-order-still-fulfilled",
+			"description": "The Slack post errors but the order still reaches the fulfillment API and the run is not aborted.",
+			"dataSetup": "The webhook receives one order: { \"orderId\": \"ORD-1042\", \"item\": \"Standing desk\", \"quantity\": 1, \"customerEmail\": \"sam@example.com\" }. The fulfillment POST to api.fulfillment.example.com returns 201 { \"status\": \"accepted\" }. The Slack postMessage call FAILS: it returns { \"ok\": false, \"error\": \"channel_not_found\" } so the Slack node raises an error.",
+			"successCriteria": "The run completes with the fulfillment POST executed (the order reaches the API) despite the Slack node erroring. The Slack failure does not abort the execution or prevent fulfillment."
+		}
+	]
+}

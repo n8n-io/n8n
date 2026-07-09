@@ -288,7 +288,9 @@ export async function runWorkflowTestCase(
 	if (!build.success || !build.workflowId) {
 		result.buildError = build.error;
 		const expectationResults = await expectationsPromise;
-		if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
+		const buildExpectationResults = expectationResults;
+		if (buildExpectationResults.length > 0)
+			result.buildExpectationResults = buildExpectationResults;
 		return result;
 	}
 
@@ -347,7 +349,8 @@ export async function runWorkflowTestCase(
 		expectationsPromise,
 	]);
 	result.executionScenarioResults = scenarioResults;
-	if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
+	const buildExpectationResults = expectationResults;
+	if (buildExpectationResults.length > 0) result.buildExpectationResults = buildExpectationResults;
 
 	const scenarioMs = Date.now() - scenarioStart;
 	logger.info(
@@ -474,7 +477,7 @@ export interface BuildWorkflowConfig {
 	preRunWorkflowIds: Set<string>;
 	claimedWorkflowIds: Set<string>;
 	logger: EvalLogger;
-	/** Optional " [lane N/M]" suffix appended to the build log line. */
+	/** Optional " [lane N/M]" suffix appended to the scenario log line. */
 	laneTag?: string;
 	/**
 	 * Last-resort workflow discovery by list-diffing visible workflows. Keep this
@@ -557,7 +560,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		const openingMessage = conversation[0]?.text ?? '';
 		const isMultiTurn = isMultiTurnConversation(conversation);
 		logger.info(
-			`  Building workflow${isMultiTurn ? ' [multi-turn]' : ''}: "${truncate(openingMessage, 60)}"${config.laneTag ?? ''}`,
+			`  Running case${isMultiTurn ? ' [multi-turn]' : ''}: "${truncate(openingMessage, 60)}"${config.laneTag ?? ''}`,
 		);
 
 		const projectId = await client.getPersonalProjectId();
@@ -1008,6 +1011,12 @@ async function runScenario(
 
 	const verifyStart = Date.now();
 	const artifact = buildVerificationArtifact(scenario, evalResult, workflowJsons, targetWorkflowId);
+	const savedChars = artifact.truncationSavedChars ?? 0;
+	if (savedChars > 0) {
+		logger.info(
+			`    [${scenario.name}] scenario context capped: saved ${String(savedChars)} chars (~${String(Math.round(savedChars / 4))} tokens)`,
+		);
+	}
 
 	const scenarioChecklist: ChecklistItem[] = [
 		{
@@ -1035,13 +1044,23 @@ async function runScenario(
 		buildTrace,
 		logger,
 	});
-	const reasoning = result?.reasoning ?? 'No verification result — LLM verifier returned empty';
+	// Empty verification = the verifier itself failed after all attempts. The run
+	// is excluded from scoring (mirrors incomplete build expectations) but stays
+	// visible in console/report/artifact under `verification_failure`.
+	const incomplete = verificationResults.length === 0;
+	const attemptErrors = verification.attempts
+		.map((a) => a.error)
+		.filter((e): e is string => e !== null);
+	const reasoning =
+		result?.reasoning ??
+		`No verification result — verifier exhausted all attempts${attemptErrors.length > 0 ? ` (${attemptErrors.join('; ')})` : ''}`;
 	const failureCategory = result?.failureCategory ?? (result ? undefined : 'verification_failure');
 	const rootCause = result?.rootCause;
 
 	const categoryLabel = failureCategory ? ` [${failureCategory}]` : '';
+	const statusLabel = incomplete ? 'INCOMPLETE (excluded from scoring)' : passed ? 'PASS' : 'FAIL';
 	logger.info(
-		`    [${scenario.name}] ${passed ? 'PASS' : 'FAIL'}${categoryLabel} verify=${String(Math.round(verifyMs / 1000))}s`,
+		`    [${scenario.name}] ${statusLabel}${categoryLabel} verify=${String(Math.round(verifyMs / 1000))}s`,
 	);
 	if (!passed) {
 		logger.info(`    [${scenario.name}] ${reasoning}`);
@@ -1056,6 +1075,7 @@ async function runScenario(
 		reasoning,
 		failureCategory,
 		rootCause,
+		...(incomplete ? { incomplete: true } : {}),
 	};
 }
 
@@ -1068,6 +1088,33 @@ export interface VerificationArtifact {
 	workflowContext: string;
 	/** Scenario + execution trace + errors. Fresh per scenario. */
 	scenarioContext: string;
+	/** Chars dropped from oversized JSON blocks / request lists (head/tail truncation). */
+	truncationSavedChars?: number;
+}
+
+/** Per-JSON-block char cap in the scenario context (~1.5k tokens). */
+const SCENARIO_JSON_BLOCK_CAP = 6_000;
+/** Max intercepted requests rendered per node — first/last half beyond this. */
+const MAX_RENDERED_REQUESTS_PER_NODE = 12;
+
+/** Head/tail-truncate an oversized JSON block, keeping shape + boundaries. */
+function capJsonBlock(json: string, saved: { chars: number }): string {
+	if (json.length <= SCENARIO_JSON_BLOCK_CAP) return json;
+	const half = Math.floor(SCENARIO_JSON_BLOCK_CAP / 2);
+	const omitted = json.length - 2 * half;
+	saved.chars += omitted;
+	return `${json.slice(0, half)}\n… [${String(omitted)} chars truncated] …\n${json.slice(json.length - half)}`;
+}
+
+/** Keep the first/last half of an oversized list, dropping the middle. */
+function elideMiddle<T>(items: T[], max: number): { head: T[]; tail: T[]; omitted: T[] } {
+	if (items.length <= max) return { head: items, tail: [], omitted: [] };
+	const half = Math.floor(max / 2);
+	return {
+		head: items.slice(0, half),
+		tail: items.slice(items.length - half),
+		omitted: items.slice(half, items.length - half),
+	};
 }
 
 function isObjectRecord(v: unknown): v is Record<string, unknown> {
@@ -1121,6 +1168,7 @@ function renderNodeOutputs(
 	outputCount: number,
 	truncated: boolean | undefined,
 	connections: Record<string, unknown> | undefined,
+	saved: { chars: number },
 ): string[] {
 	const lines: string[] = [];
 	const connTypes = Object.keys(outputs);
@@ -1137,7 +1185,7 @@ function renderNodeOutputs(
 		const isMultiBranch = branches.length > 1 || connType !== 'main';
 		if (!isMultiBranch) {
 			lines.push(`**Output [${connType}]:** ${String(branches[0].length)} items`);
-			lines.push('```json', JSON.stringify(branches[0], null, 2), '```');
+			lines.push('```json', capJsonBlock(JSON.stringify(branches[0], null, 2), saved), '```');
 			continue;
 		}
 		for (let i = 0; i < branches.length; i++) {
@@ -1149,7 +1197,7 @@ function renderNodeOutputs(
 				`**Output [${connType} branch ${String(i)}] ${targetLabel}:** ${String(branch.length)} items`,
 			);
 			if (branch.length > 0) {
-				lines.push('```json', JSON.stringify(branch, null, 2), '```');
+				lines.push('```json', capJsonBlock(JSON.stringify(branch, null, 2), saved), '```');
 			}
 		}
 	}
@@ -1166,6 +1214,7 @@ function buildScenarioContextBlock(
 	scenario: ExecutionScenario,
 	evalResult: InstanceAiEvalExecutionResult,
 	wf: WorkflowResponse | undefined,
+	saved: { chars: number },
 ): string {
 	const sections: string[] = [];
 
@@ -1262,22 +1311,37 @@ function buildScenarioContextBlock(
 			sections.push(`**Config issues:** ${Object.values(nr.configIssues).flat().join('; ')}`);
 		}
 
-		for (const req of nr.interceptedRequests) {
+		const renderRequest = (req: (typeof nr.interceptedRequests)[number]): void => {
 			sections.push(`**Request:** ${req.method} ${req.url}`);
 			if (req.requestBody) {
-				sections.push('```json', JSON.stringify(req.requestBody, null, 2), '```');
+				sections.push(
+					'```json',
+					capJsonBlock(JSON.stringify(req.requestBody, null, 2), saved),
+					'```',
+				);
 			}
 			if (req.mockResponse !== undefined) {
 				sections.push('**Mock response:**');
-				sections.push('```json', JSON.stringify(req.mockResponse, null, 2), '```');
+				sections.push(
+					'```json',
+					capJsonBlock(JSON.stringify(req.mockResponse, null, 2), saved),
+					'```',
+				);
 			}
+		};
+		const reqs = elideMiddle(nr.interceptedRequests, MAX_RENDERED_REQUESTS_PER_NODE);
+		for (const req of reqs.head) renderRequest(req);
+		if (reqs.omitted.length > 0) {
+			saved.chars += reqs.omitted.reduce((n, r) => n + JSON.stringify(r).length, 0);
+			sections.push(`_… ${String(reqs.omitted.length)} further requests omitted for size …_`);
 		}
+		for (const req of reqs.tail) renderRequest(req);
 
 		const nodeOutputs = getNodeOutputs(nr.outputs);
 		const outputCount = getNumber(nr.outputCount);
 		const truncated = getOptionalBoolean(nr.truncated);
 		sections.push(
-			...renderNodeOutputs(nodeName, nodeOutputs, outputCount, truncated, wf?.connections),
+			...renderNodeOutputs(nodeName, nodeOutputs, outputCount, truncated, wf?.connections, saved),
 		);
 
 		sections.push('');
@@ -1294,9 +1358,11 @@ export function buildVerificationArtifact(
 	workflowId?: string,
 ): VerificationArtifact {
 	const wf = workflowJsons.find((w) => w.id === workflowId) ?? workflowJsons[0];
+	const saved = { chars: 0 };
 	return {
 		workflowContext: buildWorkflowContextBlock(wf),
-		scenarioContext: buildScenarioContextBlock(scenario, evalResult, wf),
+		scenarioContext: buildScenarioContextBlock(scenario, evalResult, wf, saved),
+		truncationSavedChars: saved.chars,
 	};
 }
 

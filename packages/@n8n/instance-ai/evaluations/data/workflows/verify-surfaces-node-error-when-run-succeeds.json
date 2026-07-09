@@ -1,0 +1,37 @@
+{
+	"description": "Regression guard for node-level errors inside an overall-success verification run (PR #33576 / INS-783): a continue-on-error Code node genuinely throws during verification (n8n internals execute for real — the agent's verification mocks cannot simulate this away, unlike external HTTP calls), so the run completes with status success while deterministically carrying a node error. Guards the user-facing symptom: the agent must name the errored step instead of claiming the workflow fully verified with all nodes successful. Calibrated 2026-07-07 (pre-#33576 branch, opus-4-8): green — the error is visible in the node's continueRegularOutput item, so the current builder already surfaces it; the assertion is never vacuous (the throw always fires) and fails any 'fully verified' claim. Note: #33576's sharpest production shape was an erroring AI TOOL sub-node (supplyData error, invisible in item data) — a variant using that would discriminate the plumbing more directly but is hard to author deterministically. Sibling of workflow-verification-failed-loop-repro (run-level FAILURE variant).",
+	"conversation": [
+		{
+			"role": "user",
+			"text": [
+				"Build a workflow named \"node error with successful run repro\" with exactly this shape:",
+				"",
+				"Manual Trigger",
+				"→ Code node named \"Flaky enrichment\" whose body is exactly `throw new Error('Enrichment service offline');`, with its error handling set to continue with regular output — this step is known-flaky and must never block the rest of the run or make the execution count as failed",
+				"→ HTTP Request node named \"Record POST\" configured as POST to https://example.com/records with a small JSON body",
+				"",
+				"The Code node is meant to fail at runtime on purpose — it simulates a flaky enrichment service we cannot fix from inside the workflow. Do NOT change the Code node to succeed, do NOT wrap it in try/catch, do NOT remove or alter its continue-on-error setting, and do NOT remove the HTTP POST.",
+				"After saving, verify the workflow by running it."
+			]
+		}
+	],
+	"complexity": "medium",
+	"tags": ["behaviour", "verification", "node-error", "continue-on-fail", "regression", "manual"],
+	"triggerType": "manual",
+	"datasets": ["behaviour", "verification", "full"],
+	"outcomeExpectations": [
+		"The 'Flaky enrichment' Code node still contains the scripted throw (it was not rewritten to succeed, wrapped in try/catch, or removed) and its on-error behavior is set to continue with regular output.",
+		"The 'Record POST' HTTP Request node is present downstream of the Code node and is not gated on the enrichment step succeeding."
+	],
+	"processExpectations": [
+		"In its final message after verification, the agent told the user that the 'Flaky enrichment' step errored during the verification run (while the run as a whole completed) — it did not describe the workflow as fully verified or all nodes as having executed successfully with no mention of the enrichment failure."
+	],
+	"executionScenarios": [
+		{
+			"name": "node-error-run-still-succeeds",
+			"description": "The enrichment Code node throws; because it continues on error, the run completes and the POST still executes.",
+			"dataSetup": "The manual trigger provides one empty item. The Code node genuinely throws (real code execution, not mocked). The POST to example.com/records returns 200 { \"ok\": true }.",
+			"successCriteria": "The execution completes without overall failure: the 'Flaky enrichment' Code node records an error but the run continues, and the 'Record POST' HTTP request executes. The run is NOT reported as an overall failed execution."
+		}
+	]
+}

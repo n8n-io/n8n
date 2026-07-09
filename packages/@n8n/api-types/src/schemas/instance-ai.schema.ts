@@ -135,13 +135,7 @@ export type InstanceAiConfirmationSeverity = z.infer<typeof instanceAiConfirmati
 export const instanceAiAgentStatusSchema = z.enum(['active', 'completed', 'cancelled', 'error']);
 export type InstanceAiAgentStatus = z.infer<typeof instanceAiAgentStatusSchema>;
 
-export const instanceAiAgentKindSchema = z.enum([
-	'builder',
-	'data-table',
-	'delegate',
-	'planner',
-	'eval-setup',
-]);
+export const instanceAiAgentKindSchema = z.enum(['builder', 'data-table', 'planner', 'eval-setup']);
 export type InstanceAiAgentKind = z.infer<typeof instanceAiAgentKindSchema>;
 
 // ---------------------------------------------------------------------------
@@ -408,6 +402,12 @@ export type GatewayConfirmationRequiredPayload = z.infer<
 
 // ---------------------------------------------------------------------------
 
+export const channelConfigSchema = z.object({
+	integrationType: z.string(),
+	agentId: z.string(),
+});
+export type InstanceAiChannelConfig = z.infer<typeof channelConfigSchema>;
+
 export const confirmationInputTypeSchema = z.enum([
 	'approval',
 	'text',
@@ -482,6 +482,11 @@ export const confirmationRequestPayloadSchema = z.object({
 	resourceDecision: gatewayConfirmationRequiredPayloadSchema
 		.optional()
 		.describe('Gateway resource-access decision data (inputType=resource-decision)'),
+	channelConfig: channelConfigSchema
+		.optional()
+		.describe(
+			'When present, renders agent chat-channel setup UI for this integration type and agent',
+		),
 });
 export type InstanceAiConfirmationRequestPayload = z.infer<typeof confirmationRequestPayloadSchema>;
 
@@ -514,6 +519,7 @@ export function isDisplayableConfirmationRequest(
 	if (hasItems(payload.setupRequests)) return true;
 	if (hasItems(payload.credentialRequests)) return true;
 	if (payload.domainAccess) return true;
+	if (payload.channelConfig) return true;
 
 	const inputType = payload.inputType ?? 'approval';
 	switch (inputType) {
@@ -875,6 +881,7 @@ export interface InstanceAiConfirmation {
 	introMessage?: string;
 	tasks?: TaskList;
 	resourceDecision?: GatewayConfirmationRequiredPayload;
+	channelConfig?: InstanceAiChannelConfig;
 	expired?: boolean;
 }
 
@@ -887,7 +894,6 @@ export interface InstanceAiToolCallState {
 	isLoading: boolean;
 	renderHint?:
 		| 'tasks'
-		| 'delegate'
 		| 'builder'
 		| 'researcher'
 		| 'data-table'
@@ -913,7 +919,7 @@ export interface InstanceAiAgentNode {
 	tools?: string[];
 	/** Background task ID — present only for background agents. */
 	taskId?: string;
-	/** Agent kind for card dispatch (builder, data-table, delegate, planner, eval-setup). */
+	/** Agent kind for card dispatch (builder, data-table, planner, eval-setup). */
 	kind?: InstanceAiAgentKind;
 	/** Short display title, e.g. "Building workflow". */
 	title?: string;
@@ -1229,7 +1235,6 @@ export function isInstanceAiSandboxProvider(value: unknown): value is InstanceAi
 
 export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
-	subAgentMaxSteps: number;
 	permissions: InstanceAiPermissions;
 	mcpServers: string;
 	mcpAccessEnabled: boolean;
@@ -1246,7 +1251,6 @@ export interface InstanceAiAdminSettingsResponse {
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	enabled: z.boolean().optional(),
-	subAgentMaxSteps: z.number().int().positive().optional(),
 	permissions: instanceAiPermissionsSchema.partial().optional(),
 	mcpServers: z.string().optional(),
 	mcpAccessEnabled: z.boolean().optional(),
@@ -1321,7 +1325,6 @@ export interface InstanceAiMcpConnectionToolResponse {
 
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
 	if (toolName === 'task-control') return 'tasks';
-	if (toolName === 'delegate') return 'delegate';
 	if (toolName === 'build-workflow' || toolName === 'build-workflow-with-agent') return 'builder';
 	if (toolName === 'research-with-agent') return 'researcher';
 	if (toolName === 'create-tasks') return 'planner';
