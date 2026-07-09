@@ -150,7 +150,7 @@ export class OidcController {
 		// presence also marks this session as OIDC-established, as opposed to
 		// e.g. an email session of the instance owner.
 		if (idToken) {
-			const encryptedIdToken = this.oidcService.encryptIdToken(idToken);
+			const encryptedIdToken = await this.oidcService.encryptIdToken(idToken);
 			if (Buffer.byteLength(encryptedIdToken, 'utf8') <= OIDC_ID_TOKEN_COOKIE_MAX_BYTES) {
 				const { samesite, secure } = this.globalConfig.auth.cookie;
 				res.cookie(OIDC_ID_TOKEN_COOKIE_NAME, encryptedIdToken, {
@@ -200,7 +200,7 @@ export class OidcController {
 			return { redirectUrl: null };
 		}
 
-		const idToken = this.oidcService.decryptIdToken(encryptedIdToken);
+		const idToken = await this.oidcService.decryptIdToken(encryptedIdToken);
 		if (!idToken) {
 			return { redirectUrl: null };
 		}

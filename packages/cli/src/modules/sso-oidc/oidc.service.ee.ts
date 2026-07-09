@@ -396,8 +396,8 @@ export class OidcService {
 	 * Encrypts the OIDC ID token with the instance encryption key so it can
 	 * be stored in an httpOnly cookie without exposing its claims.
 	 */
-	encryptIdToken(idToken: string): string {
-		return this.cipher.encrypt(idToken);
+	async encryptIdToken(idToken: string): Promise<string> {
+		return await this.cipher.encryptV2(idToken);
 	}
 
 	/**
@@ -405,9 +405,9 @@ export class OidcService {
 	 * the value cannot be decrypted (e.g. tampered cookie or rotated
 	 * encryption key), in which case sign-out degrades to a local logout.
 	 */
-	decryptIdToken(encryptedIdToken: string): string | undefined {
+	async decryptIdToken(encryptedIdToken: string): Promise<string | undefined> {
 		try {
-			const idToken = this.cipher.decrypt(encryptedIdToken);
+			const idToken = await this.cipher.decryptV2(encryptedIdToken);
 			return idToken === '' ? undefined : idToken;
 		} catch (error) {
 			this.logger.warn('Failed to decrypt the stored OIDC ID token', {
