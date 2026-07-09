@@ -1141,7 +1141,7 @@ importers:
         version: 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
       axios:
         specifier: 1.18.0
-        version: 1.18.0(debug@4.3.4)
+        version: 1.18.0(debug@4.4.3)
       fast-glob:
         specifier: 'catalog:'
         version: 3.2.12
@@ -1213,7 +1213,7 @@ importers:
         version: 1.24.0
       axios:
         specifier: 1.18.0
-        version: 1.18.0(debug@4.3.4)
+        version: 1.18.0(debug@4.4.3)
       csv-parse:
         specifier: 'catalog:'
         version: 6.2.1
@@ -1438,7 +1438,7 @@ importers:
         version: link:../utils
       axios:
         specifier: 1.18.0
-        version: 1.18.0(debug@4.3.4)
+        version: 1.18.0(debug@4.4.3)
       cache-manager:
         specifier: 'catalog:'
         version: 5.2.3
@@ -1554,7 +1554,7 @@ importers:
         version: 4.0.7
       axios:
         specifier: 1.18.0
-        version: 1.18.0(debug@4.3.4)
+        version: 1.18.0(debug@4.4.3)
       dotenv:
         specifier: 'catalog:'
         version: 17.2.3
@@ -1629,7 +1629,7 @@ importers:
         version: link:../utils
       axios:
         specifier: 1.18.0
-        version: 1.18.0(debug@4.3.4)
+        version: 1.18.0(debug@4.4.3)
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -3099,7 +3099,7 @@ importers:
         version: 2.5.7
       axios:
         specifier: 1.18.0
-        version: 1.18.0(debug@4.3.4)
+        version: 1.18.0(debug@4.4.3)
       basic-auth:
         specifier: 'catalog:'
         version: 2.0.1
@@ -3308,7 +3308,7 @@ importers:
         version: 8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2)
       axios:
         specifier: 1.18.0
-        version: 1.18.0(debug@4.3.4)
+        version: 1.18.0(debug@4.4.3)
       eslint:
         specifier: 'catalog:'
         version: 9.29.0(jiti@2.6.1)
@@ -3359,12 +3359,21 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@stryker-mutator/core':
+        specifier: 'catalog:'
+        version: 9.6.1(@types/node@20.19.41)
+      '@stryker-mutator/vitest-runner':
+        specifier: 'catalog:'
+        version: 9.6.1(@stryker-mutator/core@9.6.1(@types/node@20.19.41))(vitest@4.1.9)
       '@types/luxon':
         specifier: 'catalog:'
         version: 3.2.0
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
+      fast-check:
+        specifier: 'catalog:'
+        version: 3.23.2
       typescript:
         specifier: 'catalog:'
         version: 6.0.2
@@ -4376,7 +4385,7 @@ importers:
         version: 6.141.0
       axios:
         specifier: 1.18.0
-        version: 1.18.0(debug@4.3.4)
+        version: 1.18.0(debug@4.4.3)
       concurrently:
         specifier: ^8.2.0
         version: 8.2.0
@@ -4602,7 +4611,7 @@ importers:
         version: 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
       axios:
         specifier: 1.18.0
-        version: 1.18.0(debug@4.3.4)
+        version: 1.18.0(debug@4.4.3)
       nock:
         specifier: 'catalog:'
         version: 14.0.14
@@ -5111,7 +5120,7 @@ importers:
         version: link:../../../@n8n/utils
       axios:
         specifier: 1.18.0
-        version: 1.18.0(debug@4.3.4)
+        version: 1.18.0(debug@4.4.3)
       flatted:
         specifier: 3.4.2
         version: 3.4.2
@@ -5474,7 +5483,7 @@ importers:
         version: 1.1.4
       axios:
         specifier: 1.18.0
-        version: 1.18.0(debug@4.3.4)
+        version: 1.18.0(debug@4.4.3)
       bowser:
         specifier: 2.11.0
         version: 2.11.0
@@ -5899,7 +5908,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 1.18.0
-        version: 1.18.0(debug@4.3.4)
+        version: 1.18.0(debug@4.4.3)
       basic-auth:
         specifier: 'catalog:'
         version: 2.0.1
@@ -6553,7 +6562,7 @@ importers:
         version: 0.16.1
       axios:
         specifier: 1.18.0
-        version: 1.18.0(debug@4.3.4)
+        version: 1.18.0(debug@4.4.3)
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
@@ -24731,7 +24740,7 @@ snapshots:
 
   '@codspeed/core@5.2.0':
     dependencies:
-      axios: 1.18.0(debug@4.3.4)
+      axios: 1.18.0(debug@4.4.3)
       find-up: 6.3.0
       form-data: 4.0.6
       node-gyp-build: 4.8.4
@@ -24846,7 +24855,7 @@ snapshots:
 
   '@daytona/api-client@0.187.0':
     dependencies:
-      axios: 1.18.0(debug@4.3.4)
+      axios: 1.18.0(debug@4.4.3)
     transitivePeerDependencies:
       - debug
       - supports-color
@@ -24866,7 +24875,7 @@ snapshots:
       '@opentelemetry/sdk-node': 0.217.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-trace-base': 2.7.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.40.0
-      axios: 1.18.0(debug@4.3.4)
+      axios: 1.18.0(debug@4.4.3)
       busboy: 1.6.0
       dotenv: 17.4.2
       expand-tilde: 2.0.2
@@ -24884,7 +24893,7 @@ snapshots:
 
   '@daytona/toolbox-api-client@0.187.0':
     dependencies:
-      axios: 1.18.0(debug@4.3.4)
+      axios: 1.18.0(debug@4.4.3)
     transitivePeerDependencies:
       - debug
       - supports-color
@@ -26359,7 +26368,7 @@ snapshots:
       '@azure/core-auth': 1.10.1
       '@azure/msal-node': 3.8.4
       '@microsoft/agents-activity': 1.2.3
-      axios: 1.18.0(debug@4.3.4)
+      axios: 1.18.0(debug@4.4.3)
       jsonwebtoken: 9.0.3
       jwks-rsa: 3.2.2
       object-path: 0.11.8
@@ -26481,7 +26490,7 @@ snapshots:
 
   '@n8n/sandbox-client@0.0.4':
     dependencies:
-      axios: 1.18.0(debug@4.3.4)
+      axios: 1.18.0(debug@4.4.3)
     transitivePeerDependencies:
       - debug
       - supports-color
@@ -27691,7 +27700,7 @@ snapshots:
 
   '@rudderstack/rudder-sdk-node@3.0.5':
     dependencies:
-      axios: 1.18.0(debug@4.3.4)
+      axios: 1.18.0(debug@4.4.3)
       axios-retry: 4.5.0(axios@1.18.0)
       component-type: 2.0.0
       join-component: 1.1.0
@@ -27976,7 +27985,7 @@ snapshots:
       '@slack/types': 2.20.1
       '@types/node': 20.19.41
       '@types/retry': 0.12.0
-      axios: 1.18.0(debug@4.3.4)
+      axios: 1.18.0(debug@4.4.3)
       eventemitter3: 5.0.1
       form-data: 4.0.6
       is-electron: 2.2.2
@@ -30816,7 +30825,7 @@ snapshots:
 
   axios-retry@4.5.0(axios@1.18.0):
     dependencies:
-      axios: 1.18.0(debug@4.3.4)
+      axios: 1.18.0(debug@4.4.3)
       is-retry-allowed: 2.2.0
 
   axios@1.18.0(debug@4.3.4):
@@ -38381,7 +38390,7 @@ snapshots:
 
   retry-axios@2.6.0(axios@1.18.0):
     dependencies:
-      axios: 1.18.0(debug@4.3.4)
+      axios: 1.18.0(debug@4.4.3)
 
   retry-request@7.0.2(encoding@0.1.13):
     dependencies:
@@ -39078,7 +39087,7 @@ snapshots:
       asn1.js: 5.4.1
       asn1.js-rfc2560: 5.0.1(asn1.js@5.4.1)
       asn1.js-rfc5280: 3.0.0
-      axios: 1.18.0(debug@4.3.4)
+      axios: 1.18.0(debug@4.4.3)
       big-integer: 1.6.52
       bignumber.js: 9.1.2
       binascii: 0.0.2
