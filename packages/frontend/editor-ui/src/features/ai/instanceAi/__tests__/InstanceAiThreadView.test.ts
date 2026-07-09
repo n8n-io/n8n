@@ -59,10 +59,14 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: () => ({ goToUpgrade: vi.fn() }),
 }));
 
+const mockRouteState = vi.hoisted(() => ({
+	params: { threadId: 'thread-1' } as { threadId?: string },
+}));
+
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRoute: () => ({
-		params: { threadId: 'thread-1' },
+		params: mockRouteState.params,
 		path: '/instance-ai/thread-1',
 		matched: [],
 		fullPath: '/instance-ai/thread-1',
@@ -70,7 +74,15 @@ vi.mock('vue-router', async (importOriginal) => ({
 		hash: '',
 		meta: {},
 	}),
-	useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+	useRouter: () => ({
+		push: vi.fn(),
+		replace: vi.fn(),
+		currentRoute: {
+			get value() {
+				return { params: mockRouteState.params };
+			},
+		},
+	}),
 }));
 
 vi.mock('@vueuse/core', async (importOriginal) => ({
@@ -309,6 +321,7 @@ describe('InstanceAiThreadView', () => {
 		inputFocusSpy.mockClear();
 		telemetryTrackSpy.mockClear();
 		planEditSubmitState.message = 'Make the plan simpler';
+		mockRouteState.params = { threadId: 'thread-1' };
 	});
 
 	afterEach(() => {
@@ -693,6 +706,28 @@ describe('InstanceAiThreadView', () => {
 			expect(thread.clearPlanUpdatePending).toHaveBeenCalledWith('req-plan');
 		});
 		expect(thread.resolveConfirmation).not.toHaveBeenCalled();
+	});
+
+	describe('runtime disposal on unmount', () => {
+		it('keeps the runtime when unmounting while the route still points at the thread', () => {
+			// A duplicate instance created and discarded during a layout transition
+			// (e.g. an editor hand-off) unmounts while the route still shows the
+			// thread — it must not tear down the runtime the live instance renders.
+			const { unmount } = renderView({ props: { threadId: 'thread-1' } });
+
+			unmount();
+
+			expect(store.disposeRuntime).not.toHaveBeenCalled();
+		});
+
+		it('disposes the runtime when unmounting after the route left the thread', () => {
+			const { unmount } = renderView({ props: { threadId: 'thread-1' } });
+
+			mockRouteState.params = { threadId: 'thread-2' };
+			unmount();
+
+			expect(store.disposeRuntime).toHaveBeenCalledWith('thread-1');
+		});
 	});
 
 	it('keeps normal composer submissions as chat messages', async () => {

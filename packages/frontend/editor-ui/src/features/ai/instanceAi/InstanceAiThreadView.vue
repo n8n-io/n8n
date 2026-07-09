@@ -522,10 +522,15 @@ onMounted(() => {
 
 onUnmounted(() => {
 	// This view owns its thread's runtime, so it disposes it here (closes the
-	// SSE, clears state, drops it from the store). Per-thread ownership means a
-	// late-firing unmount only ever tears down its own thread — never a sibling
-	// or a freshly handed-off thread, which a bulk dispose-all would nuke.
-	store.disposeRuntime(props.threadId);
+	// SSE, clears state, drops it from the store) — but only once the app has
+	// left this thread's route. Suspense can create a duplicate instance of
+	// this view for the same thread during layout transitions (e.g. an editor
+	// hand-off that loads the AIA chunks) and discard one; that discarded
+	// instance's unmount fires while the route still points at the thread, and
+	// must not tear down the runtime the live instance is rendering.
+	if (router.currentRoute.value.params.threadId !== props.threadId) {
+		store.disposeRuntime(props.threadId);
+	}
 	contentResizeObserver?.disconnect();
 });
 
