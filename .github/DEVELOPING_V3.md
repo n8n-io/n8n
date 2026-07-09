@@ -36,6 +36,7 @@ flowchart LR
 |--------------|---------------|-----|
 | Ship a new feature/behavior | `master` | Behind an **opt-in flag** (see below) |
 | Warn engineers a function is going away | `master` | Add a **deprecation notice** so usage drops before v3 |
+| Create a migration | `master` | Create a non-destructive migration in master. After the release of v3, you can create the destructive part of migration if needed |
 | Remove/change something in a breaking way | `3.x` | A **separate PR targeting `3.x`** directly |
 
 ## Developing a normal feature on `master` (behind an opt-in flag)
