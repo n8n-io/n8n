@@ -45,6 +45,8 @@ export type ContextMenuAction =
 	| 'ungroup_nodes'
 	| 'expand_all_groups'
 	| 'collapse_all_groups'
+	| 'expand_selected_groups'
+	| 'collapse_selected_groups'
 	| 'focus_ai_on_selected';
 
 /**
@@ -278,6 +280,27 @@ export function useContextMenuItems(
 			},
 		];
 
+		// Expand/collapse the groups behind the target — a targeted title bar or
+		// the groups of targeted nodes; loose nodes are ignored. View
+		// preferences, so they stay enabled in read-only mode.
+		const targetHasGroups =
+			isGroupTarget ||
+			nodes.some((node) => workflowDocumentStore?.value?.getGroupForNode(node.id) !== undefined);
+		const selectedGroupViewActions: Item[] =
+			isNodeGroupingEnabled.value && targetHasGroups
+				? [
+						{
+							id: 'expand_selected_groups',
+							divided: true,
+							label: i18n.baseText('contextMenu.expandSelectedGroups'),
+						},
+						{
+							id: 'collapse_selected_groups',
+							label: i18n.baseText('contextMenu.collapseSelectedGroups'),
+						},
+					]
+				: [];
+
 		// Toggling group collapse is a view preference, not a workflow mutation,
 		// so these stay enabled in read-only mode.
 		const groupViewActions: Item[] = isNodeGroupingEnabled.value
@@ -346,6 +369,7 @@ export function useContextMenuItems(
 					disabled: isReadOnly.value || !nodes.every(canDuplicateNode),
 				},
 				...layoutActions,
+				...selectedGroupViewActions,
 				...(canExtract ? extractionActions : []),
 				...groupingActions,
 				...aiActions,

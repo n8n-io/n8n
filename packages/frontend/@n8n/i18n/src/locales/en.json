@@ -2422,6 +2422,8 @@
 	"contextMenu.ungroupNodes": "Ungroup nodes",
 	"contextMenu.expandAllGroups": "Expand all groups",
 	"contextMenu.collapseAllGroups": "Collapse all groups",
+	"contextMenu.expandSelectedGroups": "Expand selected",
+	"contextMenu.collapseSelectedGroups": "Collapse selected",
 	"contextMenu.replace": "Replace",
 	"contextMenu.duplicate": "Duplicate | Duplicate {subject}",
 	"contextMenu.open": "Open...",

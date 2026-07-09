@@ -742,17 +742,43 @@ function onCanvasGroupUngroup(
 	}
 }
 
-// Expand or collapse every group, through the same path as the single toggle
-// so selection sync, push layout and telemetry stay consistent.
-function onSetAllGroupsExpanded(expanded: boolean, source: CanvasNodeGroupEventSource) {
+// Expand or collapse groups through the same path as the single toggle so
+// selection sync, push layout and telemetry stay consistent. Groups already
+// in the target state are left alone.
+function setGroupsExpanded(
+	groupIds: string[],
+	expanded: boolean,
+	source: CanvasNodeGroupEventSource,
+) {
 	if (!injectedNodeGroupView) return;
-	for (const group of workflowDocumentStore.value.allGroups) {
+	for (const groupId of groupIds) {
 		// Collapsed groups need a toggle to expand; expanded ones to collapse.
-		const needsToggle = injectedNodeGroupView.isGroupCollapsed(group.id) === expanded;
+		const needsToggle = injectedNodeGroupView.isGroupCollapsed(groupId) === expanded;
 		if (needsToggle) {
-			onCanvasGroupToggle(group.id, source);
+			onCanvasGroupToggle(groupId, source);
 		}
 	}
+}
+
+function onSetAllGroupsExpanded(expanded: boolean, source: CanvasNodeGroupEventSource) {
+	setGroupsExpanded(
+		workflowDocumentStore.value.allGroups.map((group) => group.id),
+		expanded,
+		source,
+	);
+}
+
+// Distinct groups behind a context menu target: the carried group when a
+// title bar was targeted, otherwise the groups of the targeted nodes —
+// ungrouped nodes resolve to none and are ignored.
+function resolveTargetGroupIds(nodeIds: string[], groupId?: string): string[] {
+	if (groupId) return [groupId];
+	const groupIds = new Set<string>();
+	for (const nodeId of nodeIds) {
+		const group = workflowDocumentStore.value.getGroupForNode(nodeId);
+		if (group) groupIds.add(group.id);
+	}
+	return [...groupIds];
 }
 
 /**
@@ -1232,6 +1258,10 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 			return onSetAllGroupsExpanded(true, 'context-menu');
 		case 'collapse_all_groups':
 			return onSetAllGroupsExpanded(false, 'context-menu');
+		case 'expand_selected_groups':
+			return setGroupsExpanded(resolveTargetGroupIds(nodeIds, groupId), true, 'context-menu');
+		case 'collapse_selected_groups':
+			return setGroupsExpanded(resolveTargetGroupIds(nodeIds, groupId), false, 'context-menu');
 		case 'open_sub_workflow': {
 			return emit('open:sub-workflow', nodeIds[0]);
 		}

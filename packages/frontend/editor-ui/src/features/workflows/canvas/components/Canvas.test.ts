@@ -905,6 +905,52 @@ describe('Canvas', () => {
 			);
 		});
 
+		it('expands the targeted group through "Expand selected" in the group menu', async () => {
+			const { group, getByTestId } = await renderWithGroup({}, { initialCollapsed: true });
+
+			await fireEvent.contextMenu(getByTestId('canvas-node-group'));
+			await waitFor(() =>
+				expect(getByTestId('context-menu-item-expand_selected_groups')).toBeInTheDocument(),
+			);
+
+			await fireEvent.click(getByTestId('context-menu-item-expand_selected_groups'));
+
+			expect(useTelemetry().track).toHaveBeenCalledWith(
+				'User expanded group',
+				expect.objectContaining({ group_id: group.id, source: 'context-menu' }),
+			);
+		});
+
+		it('collapses only the selected groups from the selection menu, ignoring loose nodes', async () => {
+			const { group, groupNode, looseNode, getByTestId } = await renderWithGroup(
+				{},
+				{ initialCollapsed: false },
+			);
+
+			// Group + loose node selected → right-click on the group opens the
+			// selection menu; the action must resolve to the group alone.
+			const { addSelectedNodes, findNode } = useVueFlow(canvasId);
+			addSelectedNodes([findNode(groupNode.id)!, findNode(looseNode.id)!]);
+			await waitFor(() => expect(findNode(groupNode.id)?.selected).toBe(true));
+
+			await fireEvent.contextMenu(getByTestId('canvas-node-group'));
+			await waitFor(() =>
+				expect(getByTestId('context-menu-item-collapse_selected_groups')).toBeInTheDocument(),
+			);
+
+			await fireEvent.click(getByTestId('context-menu-item-collapse_selected_groups'));
+
+			expect(useTelemetry().track).toHaveBeenCalledWith(
+				'User collapsed group',
+				expect.objectContaining({ group_id: group.id, source: 'context-menu' }),
+			);
+			// Exactly one collapse — the loose node resolves to no group
+			const collapseCalls = vi
+				.mocked(useTelemetry().track)
+				.mock.calls.filter(([event]) => event === 'User collapsed group');
+			expect(collapseCalls).toHaveLength(1);
+		});
+
 		it('expands all groups with the Alt+G shortcut', async () => {
 			const { group } = await renderWithGroup({}, { initialCollapsed: true });
 

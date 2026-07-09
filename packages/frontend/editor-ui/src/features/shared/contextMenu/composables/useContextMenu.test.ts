@@ -197,6 +197,13 @@ describe('useContextMenu', () => {
 	});
 
 	describe('group target', () => {
+		beforeEach(() => {
+			// Group targets only occur with the grouping experiment enabled
+			vi.spyOn(usePostHog(), 'isFeatureEnabled').mockImplementation(
+				(flag) => flag === CANVAS_NODES_GROUPING_EXPERIMENT.name,
+			);
+		});
+
 		it('shows the multi-selection actions with the group actions on top and resolves member node ids', () => {
 			const group = workflowDocumentStore.createGroup([nodes[0].id, nodes[1].id], 'My group');
 			const { open, actions, targetNodeIds, targetGroupId } = useContextMenu();
@@ -210,6 +217,8 @@ describe('useContextMenu', () => {
 				'copy',
 				'duplicate',
 				'tidy_up',
+				'expand_selected_groups',
+				'collapse_selected_groups',
 				'extract_sub_workflow',
 				'select_all',
 				'deselect_all',
@@ -346,6 +355,45 @@ describe('useContextMenu', () => {
 			const ids = actions.value.map((action) => action.id);
 			expect(ids).not.toContain('expand_all_groups');
 			expect(ids).not.toContain('collapse_all_groups');
+		});
+	});
+
+	describe('expand/collapse selected groups', () => {
+		const enableGroupingFlag = () =>
+			vi
+				.spyOn(usePostHog(), 'isFeatureEnabled')
+				.mockImplementation((flag) => flag === CANVAS_NODES_GROUPING_EXPERIMENT.name);
+
+		it('shows the actions when the targeted nodes include grouped nodes', () => {
+			enableGroupingFlag();
+			workflowDocumentStore.createGroup([nodes[0].id], 'My group');
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [nodes[0].id, nodes[1].id] });
+
+			const ids = actions.value.map((action) => action.id);
+			expect(ids).toContain('expand_selected_groups');
+			expect(ids).toContain('collapse_selected_groups');
+		});
+
+		it('hides the actions when no targeted node belongs to a group', () => {
+			enableGroupingFlag();
+			workflowDocumentStore.createGroup([nodes[0].id], 'My group');
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [nodes[1].id, nodes[2].id] });
+
+			const ids = actions.value.map((action) => action.id);
+			expect(ids).not.toContain('expand_selected_groups');
+			expect(ids).not.toContain('collapse_selected_groups');
+		});
+
+		it('hides the actions when the grouping feature flag is off', () => {
+			workflowDocumentStore.createGroup([nodes[0].id], 'My group');
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [nodes[0].id] });
+
+			const ids = actions.value.map((action) => action.id);
+			expect(ids).not.toContain('expand_selected_groups');
+			expect(ids).not.toContain('collapse_selected_groups');
 		});
 	});
 
