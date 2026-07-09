@@ -94,9 +94,15 @@ function mapAskQuestionSuspend(
 	};
 }
 
+/** Enrichment the orchestration tool can supply — the builder's own suspend payload doesn't carry it. */
+export interface AskCredentialSuspendEnrichment {
+	existingCredentials?: Array<{ id: string; name: string }>;
+}
+
 function mapAskCredentialSuspend(
 	input: AskCredentialInput,
 	requestId: string,
+	enrichment: AskCredentialSuspendEnrichment,
 ): Record<string, unknown> {
 	return {
 		requestId,
@@ -105,8 +111,8 @@ function mapAskCredentialSuspend(
 		credentialRequests: [
 			{
 				credentialType: input.credentialType,
-				purpose: input.purpose,
-				...(input.nodeType ? { nodeType: input.nodeType } : {}),
+				reason: input.purpose,
+				existingCredentials: enrichment.existingCredentials ?? [],
 			},
 		],
 		credentialFlow: { stage: 'generic' },
@@ -118,6 +124,7 @@ export function mapBuilderSuspendPayload(
 	toolName: string,
 	suspendPayload: Record<string, unknown>,
 	requestId: string,
+	enrichment: AskCredentialSuspendEnrichment = {},
 ): Record<string, unknown> {
 	if (toolName === ASK_QUESTION_TOOL_NAME) {
 		const input = parseSuspendInput(suspendPayload, askQuestionInputSchema);
@@ -126,7 +133,7 @@ export function mapBuilderSuspendPayload(
 
 	if (toolName === ASK_CREDENTIAL_TOOL_NAME || toolName === ASK_EMBEDDING_CREDENTIAL_TOOL_NAME) {
 		const input = parseSuspendInput(suspendPayload, askCredentialInputSchema);
-		if (input) return mapAskCredentialSuspend(input, requestId);
+		if (input) return mapAskCredentialSuspend(input, requestId, enrichment);
 	}
 
 	return genericApprovalSuspend(suspendPayload, requestId);

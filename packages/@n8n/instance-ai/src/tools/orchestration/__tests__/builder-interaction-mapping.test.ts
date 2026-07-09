@@ -6,6 +6,7 @@ import {
 	askCredentialResumeSchema,
 	askQuestionInputSchema,
 	askQuestionResumeSchema,
+	credentialRequestSchema,
 } from '@n8n/api-types';
 import { describe, expect, it } from 'vitest';
 
@@ -94,7 +95,7 @@ describe('mapBuilderSuspendPayload', () => {
 	});
 
 	describe('ask_credential / ask_embedding_credential', () => {
-		it('maps ask_credential to a credential request card', () => {
+		it('maps ask_credential to a credential request card conforming to credentialRequestSchema', () => {
 			const payload = askCredentialSuspendPayload();
 
 			const result = mapBuilderSuspendPayload(ASK_CREDENTIAL_TOOL_NAME, payload, 'req-5');
@@ -106,12 +107,23 @@ describe('mapBuilderSuspendPayload', () => {
 				credentialRequests: [
 					{
 						credentialType: 'slackApi',
-						purpose: 'Connect to Slack to send messages',
-						nodeType: 'n8n-nodes-base.slack',
+						reason: 'Connect to Slack to send messages',
+						existingCredentials: [],
 					},
 				],
 				credentialFlow: { stage: 'generic' },
 			});
+			expect(
+				(result.credentialRequests as unknown[]).map((entry) =>
+					credentialRequestSchema.parse(entry),
+				),
+			).toEqual([
+				{
+					credentialType: 'slackApi',
+					reason: 'Connect to Slack to send messages',
+					existingCredentials: [],
+				},
+			]);
 		});
 
 		it('maps ask_embedding_credential the same way as ask_credential', () => {
@@ -123,24 +135,77 @@ describe('mapBuilderSuspendPayload', () => {
 				message: 'Embeddings for episodic memory',
 				credentialFlow: { stage: 'generic' },
 			});
+			expect(
+				(result.credentialRequests as unknown[]).map((entry) =>
+					credentialRequestSchema.parse(entry),
+				),
+			).toEqual([
+				{
+					credentialType: 'slackApi',
+					reason: 'Embeddings for episodic memory',
+					existingCredentials: [],
+				},
+			]);
 		});
 
-		it('omits nodeType when the tool input does not carry one', () => {
-			const payload = askCredentialSuspendPayload({ nodeType: undefined });
+		it('populates existingCredentials from the 4th `enrichment` parameter', () => {
+			const payload = askCredentialSuspendPayload();
 
-			const result = mapBuilderSuspendPayload(ASK_CREDENTIAL_TOOL_NAME, payload, 'req-7');
+			const result = mapBuilderSuspendPayload(ASK_CREDENTIAL_TOOL_NAME, payload, 'req-7', {
+				existingCredentials: [{ id: 'cred-1', name: 'My Slack account' }],
+			});
 
 			expect(result.credentialRequests).toEqual([
-				{ credentialType: 'slackApi', purpose: 'Connect to Slack to send messages' },
+				{
+					credentialType: 'slackApi',
+					reason: 'Connect to Slack to send messages',
+					existingCredentials: [{ id: 'cred-1', name: 'My Slack account' }],
+				},
+			]);
+			expect(
+				(result.credentialRequests as unknown[]).map((entry) =>
+					credentialRequestSchema.parse(entry),
+				),
+			).toEqual([
+				{
+					credentialType: 'slackApi',
+					reason: 'Connect to Slack to send messages',
+					existingCredentials: [{ id: 'cred-1', name: 'My Slack account' }],
+				},
+			]);
+		});
+
+		it('defaults existingCredentials to an empty array when enrichment is omitted', () => {
+			const payload = askCredentialSuspendPayload();
+
+			const result = mapBuilderSuspendPayload(ASK_CREDENTIAL_TOOL_NAME, payload, 'req-8');
+
+			expect(result.credentialRequests).toEqual([
+				{
+					credentialType: 'slackApi',
+					reason: 'Connect to Slack to send messages',
+					existingCredentials: [],
+				},
 			]);
 		});
 
 		it('parses defensively when the payload is nested under `input`', () => {
 			const payload = { input: askCredentialSuspendPayload() };
 
-			const result = mapBuilderSuspendPayload(ASK_CREDENTIAL_TOOL_NAME, payload, 'req-8');
+			const result = mapBuilderSuspendPayload(ASK_CREDENTIAL_TOOL_NAME, payload, 'req-9');
 
 			expect(result).toMatchObject({ credentialFlow: { stage: 'generic' } });
+			expect(
+				(result.credentialRequests as unknown[]).map((entry) =>
+					credentialRequestSchema.parse(entry),
+				),
+			).toEqual([
+				{
+					credentialType: 'slackApi',
+					reason: 'Connect to Slack to send messages',
+					existingCredentials: [],
+				},
+			]);
 		});
 	});
 
