@@ -27,6 +27,14 @@ must not fire on non-build messages or re-fire on edits).
   not one run's incidental choices. Clarify-bucket cases must be multi-turn
   with a director script that declines to elaborate — a single-turn case
   hangs on the unanswered ask-user question until the iteration timeout.
+- **"Agent" is three different things — never use it bare in the artifact
+  sense.** Unqualified "the agent" always means the assistant. For the
+  first-class resource write "an n8n Agent via the agent-builder path
+  (`agent_builder` / `create_agent` tools)"; for the workflow node write
+  "AI Agent node". The judge prompt carries a matching glossary
+  (`system-prompts/build-expectations-verify.ts`) so verdicts key on tool
+  calls vs node types, not on the word. (Glossary added 2026-07-09; N=3
+  re-validation of the suite against it still pending.)
 - Cases whose gold legitimately tolerates two shapes say so in one
   expectation ("either … or …"); compound requests assert each automation
   separately.

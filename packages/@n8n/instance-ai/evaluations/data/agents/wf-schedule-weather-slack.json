@@ -10,7 +10,7 @@
 	"tags": ["intent-resolution", "scheduled", "notification"],
 	"datasets": ["agents"],
 	"processExpectations": [
-		"The agent builds this as a workflow using the workflow-building tools, and does not create an agent or route the request to the agent builder.",
+		"The agent builds this as a workflow using the workflow-building tools, and does not create an n8n Agent via the agent-builder path (agent_builder / create_agent tools).",
 		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to build."
 	],
 	"outcomeExpectations": [
