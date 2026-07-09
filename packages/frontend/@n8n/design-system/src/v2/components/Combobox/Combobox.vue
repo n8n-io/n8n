@@ -473,9 +473,9 @@ function onClear() {
 }
 
 .comboboxLabel {
-	padding: var(--spacing--3xs) var(--input--padding) var(--spacing--2xs);
+	padding: var(--spacing--3xs) var(--spacing--2xs) var(--spacing--4xs);
 	color: var(--text-color--subtler);
-	font-size: var(--font-size--xs);
+	font-size: var(--font-size--2xs);
 }
 
 .comboboxSeparator {
