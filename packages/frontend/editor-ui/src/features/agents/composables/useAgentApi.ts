@@ -3,6 +3,7 @@ import type {
 	AgentChatMessagesResponse,
 	AgentFileDto,
 	AgentIntegrationStatusResponse,
+	AgentJsonVectorStoreConfig,
 	AgentSkill,
 	AgentSkillMutationResponse,
 	AgentTaskConfig,
@@ -13,6 +14,7 @@ import type {
 	ChatIntegrationDescriptor,
 	CreateSlackAgentAppResponse,
 	SlackAgentAppManifestResponse,
+	VectorStoreTestResult,
 } from '@n8n/api-types';
 import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -553,6 +555,19 @@ export const deleteCustomTool = async (
 		context,
 		'DELETE',
 		`/projects/${projectId}/agents/v2/${agentId}/tools/${toolId}`,
+	);
+};
+
+export const testAgentVectorStore = async (
+	context: IRestApiContext,
+	projectId: string,
+	vectorStore: AgentJsonVectorStoreConfig,
+): Promise<VectorStoreTestResult> => {
+	return await makeRestApiRequest<VectorStoreTestResult>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/vector-stores/test`,
+		{ vectorStore },
 	);
 };
 

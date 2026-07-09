@@ -100,6 +100,42 @@ describe('useAgentBuilderTelemetry', () => {
 		});
 	});
 
+	it('flushConfigEdits emits vectorStores config edits', async () => {
+		const initialConfig: AgentJsonConfig = {
+			name: 'Agent One',
+			model: 'gpt-4',
+			instructions: 'Help users.',
+			vectorStores: [],
+		};
+		const nextConfig: AgentJsonConfig = {
+			...initialConfig,
+			vectorStores: [
+				{
+					provider: 'qdrant',
+					name: 'product_docs',
+					credential: 'qdrant-cred',
+					useWhen: 'Search product docs',
+					embedding: { model: 'openai/text-embedding-3-small', credential: 'embed-cred' },
+					collectionName: 'docs',
+				},
+			],
+		};
+		const { deps, telemetry } = makeTelemetryDeps(initialConfig);
+
+		telemetry.recordConfigEdit({ vectorStores: nextConfig.vectorStores });
+		deps.savedConfig.value = nextConfig;
+		deps.localConfig.value = nextConfig;
+		telemetry.flushConfigEdits();
+
+		await vi.waitFor(() => expect(agentTelemetryMock.trackEditedConfig).toHaveBeenCalledOnce());
+		expect(agentTelemetryMock.trackEditedConfig).toHaveBeenCalledWith({
+			agentId: 'agent-1',
+			part: 'vectorStores',
+			configVersion: expect.any(String),
+			status: 'draft',
+		});
+	});
+
 	it('trackTasksChanged emits once per removed task', async () => {
 		const { deps, telemetry } = makeTelemetryDeps(configWithTasks('task-1', 'task-2'));
 		telemetry.captureTasksBaseline();
