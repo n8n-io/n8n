@@ -1,0 +1,23 @@
+packages/nodes-base/credentials/common/aws/utils.ts
+  s_8e501936e830be::t_87634c34409550 244-247,258-260,263
+packages/nodes-base/credentials/test/AwsAssumeRole.credentials.test.ts
+  s_8e501936e830be::t_9ac17b6c716757 143,153
+packages/nodes-base/credentials/common/aws/utils.test.ts
+  s_8e501936e830be::t_ed5851507d9bc7 834-848
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d5abd42dea207bd4164da9fce628010950cd7a03",
+  "prompts": {},
+  "sessions": {
+    "s_8e501936e830be": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "12d0d21b-c9b1-4213-9168-4efe434ca64e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
