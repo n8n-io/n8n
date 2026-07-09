@@ -108,6 +108,33 @@ export async function saveWorkflowSourceFileBinding(
 	return normalizedBinding;
 }
 
+/** Bind a source file to an existing workflow, seeding version/checksum for stale-save detection. */
+export async function bindSourceFileToExistingWorkflow(
+	context: InstanceAiContext,
+	binding: WorkflowSourceFileBinding,
+	workflowId: string,
+): Promise<WorkflowSourceFileBinding> {
+	const workflow = await context.workflowService.get(workflowId);
+	return await saveWorkflowSourceFileBinding(context, {
+		...binding,
+		workflowId,
+		workflowVersionId: workflow.versionId,
+		...(workflow.checksum ? { workflowChecksum: workflow.checksum } : {}),
+	});
+}
+
+/** Refresh binding checksum/version from the workflow's current DB state. */
+export async function refreshWorkflowSourceFileBindingFromWorkflow(
+	context: InstanceAiContext,
+	workflowId: string,
+): Promise<void> {
+	const workflow = await context.workflowService.get(workflowId);
+	await refreshWorkflowSourceFileBindingFromSave(context, workflowId, {
+		versionId: workflow.versionId,
+		checksum: workflow.checksum,
+	});
+}
+
 /** Refresh the binding checksum/version after an agent-side DB patch outside build-workflow. */
 export async function refreshWorkflowSourceFileBindingFromSave(
 	context: InstanceAiContext,
