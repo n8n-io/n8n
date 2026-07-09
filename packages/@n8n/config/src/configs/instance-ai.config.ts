@@ -172,6 +172,14 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_RUN_DEBUG_ENABLED')
 	runDebugEnabled: boolean = false;
 
+	/**
+	 * EXPERIMENTAL: persist Instance AI events to a durable DB log
+	 * (`instance_ai_events`) and serve SSE replay + history from it. Off =
+	 * today's in-memory-only behavior. See RFC: instance-ai durable event log.
+	 */
+	@Env('N8N_INSTANCE_AI_DURABLE_LOG')
+	durableLog: boolean = false;
+
 	/** Enable extended thinking / reasoning for the orchestrator agent. */
 	@Env('N8N_INSTANCE_AI_THINKING_ENABLED')
 	thinkingEnabled: boolean = true;
