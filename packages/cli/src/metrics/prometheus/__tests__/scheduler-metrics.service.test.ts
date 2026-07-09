@@ -200,7 +200,7 @@ describe('PrometheusSchedulerMetricsService', () => {
 		it('caches the snapshot query with the configured interval as TTL', async () => {
 			await gaugeOptsFor('n8n_scheduler_tasks_pending').collect.call({ set: vi.fn() });
 
-			// 20s interval → 20_000ms TTL.
+			// 20s interval means a 20_000ms TTL.
 			expect(cacheService.set).toHaveBeenCalledWith(
 				'metrics:scheduler:snapshot:v1',
 				snapshot,

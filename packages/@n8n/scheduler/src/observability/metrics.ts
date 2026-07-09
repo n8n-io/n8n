@@ -2,7 +2,7 @@
  * Minimal metrics port. The scheduler stays dependency-light: it depends on this
  * interface and records counts and timings through it, while the host adapts its
  * concrete (Prometheus-backed) metrics to it. Push-based: the scheduler calls a
- * method per event, so the port carries no reader/registry surface.
+ * method per event, so the port exposes no reader or registry API.
  */
 export interface SchedulerMetrics {
 	/** A claimed task is about to be dispatched to its handler. */

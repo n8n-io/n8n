@@ -38,7 +38,7 @@ export class DurableScheduler implements Scheduler {
 					hostId: instanceSettings.hostId,
 					materializerTransaction: buildMaterializerTransaction(dataSource, jobs, tasks),
 					taskStore: tasks,
-					// The collector implements SchedulerMetrics; it stays a no-op sink
+					// The collector implements `SchedulerMetrics`; it stays a no-op sink
 					// until its `init()` runs when metrics are enabled on a main instance.
 					metrics,
 					materializer: {
