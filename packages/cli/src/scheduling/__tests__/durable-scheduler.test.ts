@@ -7,6 +7,8 @@ import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { DurableScheduler } from '../durable-scheduler';
+import { SCHEDULE_TRIGGER_TASK_TYPE } from '../schedule-trigger-node/schedule-trigger-task';
+import type { ScheduleTriggerTaskHandler } from '../schedule-trigger-node/schedule-trigger-task-handler';
 
 // Keep the real exports (e.g. executorLookaheadSeconds) so the wiring is tested
 // against the actual formula; only the scheduler factory is stubbed.
@@ -20,6 +22,9 @@ describe('DurableScheduler', () => {
 		const inner = mock<Scheduler & SchedulerPasses>();
 		vi.mocked(createScheduler).mockReturnValue(inner);
 		const logger = mockLogger();
+		const scheduleTriggerTaskHandler = mock<ScheduleTriggerTaskHandler>({
+			taskType: SCHEDULE_TRIGGER_TASK_TYPE,
+		});
 		const scheduler = new DurableScheduler(
 			logger,
 			mock<DataSource>(),
@@ -31,6 +36,7 @@ describe('DurableScheduler', () => {
 				database: { type: dbType as 'sqlite' | 'postgresdb' },
 				scheduler: { enabled, executorIntervalSeconds: 5, jitterRatio: 0.1 },
 			}),
+			scheduleTriggerTaskHandler,
 		);
 		return { scheduler, inner, logger };
 	}
