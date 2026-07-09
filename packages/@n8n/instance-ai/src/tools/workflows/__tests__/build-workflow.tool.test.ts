@@ -143,12 +143,13 @@ function makeContext(input: {
 						checksum: 'checksum-update',
 					}),
 			),
-			get: vi.fn(async (workflowId: string) =>
-				Promise.resolve({
-					id: workflowId,
-					versionId: 'v-current',
-					checksum: 'checksum-current',
-				}),
+			get: vi.fn(
+				async (workflowId: string) =>
+					await Promise.resolve({
+						id: workflowId,
+						versionId: 'v-current',
+						checksum: 'checksum-current',
+					}),
 			),
 			getAsWorkflowJSON: vi.fn(async () => await Promise.resolve({ name: 'Target workflow' })),
 			clearAiTemporary: vi.fn(async () => await Promise.resolve()),
@@ -587,12 +588,13 @@ describe('createBuildWorkflowTool', () => {
 						async (workflowId: string) =>
 							await Promise.resolve({ id: workflowId, versionId: 'v-next' }),
 					),
-					get: vi.fn(async (workflowId: string) =>
-						Promise.resolve({
-							id: workflowId,
-							versionId: 'v-current',
-							checksum: 'checksum-current',
-						}),
+					get: vi.fn(
+						async (workflowId: string) =>
+							await Promise.resolve({
+								id: workflowId,
+								versionId: 'v-current',
+								checksum: 'checksum-current',
+							}),
 					),
 					getAsWorkflowJSON: vi.fn(async () => await Promise.resolve(existingWorkflow)),
 					clearAiTemporary: vi.fn(async () => await Promise.resolve()),
