@@ -407,7 +407,6 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 				<InstanceAiWorkflowSetup
 					v-if="chunk.item.toolCall.confirmation.setupRequests?.length"
 					:key="'setup-' + chunk.item.toolCall.confirmation.requestId"
-					:class="$style.confirmation"
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:setup-requests="chunk.item.toolCall.confirmation.setupRequests!"
 					:project-id="chunk.item.toolCall.confirmation.projectId"
@@ -419,7 +418,6 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 				<InstanceAiCredentialSetup
 					v-else-if="chunk.item.toolCall.confirmation.credentialRequests?.length"
 					:key="'cred-' + chunk.item.toolCall.confirmation.requestId"
-					:class="$style.confirmation"
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:credential-requests="chunk.item.toolCall.confirmation.credentialRequests!"
 					:message="chunk.item.toolCall.confirmation.message"
@@ -610,11 +608,9 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 }
 
 .root {
-	border: none;
+	border: 2px solid var(--color--primary);
 	border-radius: var(--radius--xl);
-	box-shadow:
-		var(--shadow--sm),
-		inset 0 0 0 1px light-dark(var(--color--black-alpha-100), var(--color--white-alpha-100));
+	box-shadow: var(--shadow--sm);
 	background-color: var(--background--surface);
 }
 
@@ -664,6 +660,8 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 }
 
 .textCard {
+	border: 2px solid var(--color--primary);
+	border-radius: var(--radius--xl);
 	background-color: var(--color--background--light-3);
 }
 </style>
