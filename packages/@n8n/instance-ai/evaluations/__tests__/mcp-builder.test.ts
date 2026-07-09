@@ -15,7 +15,7 @@ import {
 	uniqueProjectScopes,
 	unsupportedMcpBuildSetupFields,
 } from '../cli/mcp-builder';
-import { WORKFLOW_TEST_CASE_KEYS } from '../data/workflows/schema';
+import { WORKFLOW_TEST_CASE_KEYS } from '../harness/schema';
 import type { ConversationTurn, WorkflowTestCase } from '../types';
 
 vi.mock('child_process', () => ({ spawn: vi.fn() }));

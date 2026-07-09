@@ -82,14 +82,19 @@ export function aggregateResults(
 						reasoning: 'Build failed — scenario not executed',
 					},
 			);
-			const passCount = scenarioRuns.filter((sr) => sr.success).length;
-			const { passAtKValues, passHatKValues } = computePassMetrics(totalRuns, passCount);
+			// Verifier-incomplete runs carry no verdict — excluded from the count,
+			// mirroring build expectations (denominator = evaluated runs).
+			const evaluated = scenarioRuns.filter((sr) => !sr.incomplete);
+			const passCount = evaluated.filter((sr) => sr.success).length;
+			const n = evaluated.length;
+			const { passAtKValues, passHatKValues } = computePassMetrics(n, passCount);
 
 			executionScenarios.push({
 				scenario,
 				runs: scenarioRuns,
+				evaluatedCount: n,
 				passCount,
-				passRate: totalRuns > 0 ? passCount / totalRuns : 0,
+				passRate: n > 0 ? passCount / n : 0,
 				passAtK: passAtKValues,
 				passHatK: passHatKValues,
 			});

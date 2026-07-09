@@ -32,8 +32,14 @@ function mountChatColumn({
 		},
 		global: {
 			stubs: {
-				N8nButton: { template: '<button><slot /><slot name="icon" /></button>' },
-				N8nIcon: { template: '<span />' },
+				N8nButton: {
+					template: '<button @click="$emit(\'click\')"><slot /><slot name="icon" /></button>',
+					emits: ['click'],
+				},
+				N8nIcon: {
+					template: '<span :data-icon="icon" />',
+					props: ['icon'],
+				},
 				N8nTooltip: { template: '<span><slot /></span>' },
 				AgentBuilderUnconfiguredEmptyState: { template: '<div />' },
 				AgentChatPanel: {
@@ -74,6 +80,24 @@ function mountChatColumn({
 }
 
 describe('AgentBuilderChatColumn', () => {
+	it('emits hide when the floating hide button is clicked', async () => {
+		const wrapper = mountChatColumn({ isBuildChatStreaming: false });
+
+		await wrapper.find('[data-testid="agent-build-chat-hide-toggle"]').trigger('click');
+
+		expect(wrapper.emitted('hide')).toEqual([[]]);
+	});
+
+	it('uses a close-panel arrow icon for the floating hide button', () => {
+		const wrapper = mountChatColumn({ isBuildChatStreaming: false });
+
+		expect(
+			wrapper
+				.find('[data-testid="agent-build-chat-hide-toggle"] [data-icon="panel-left-close"]')
+				.exists(),
+		).toBe(true);
+	});
+
 	it('disables quick actions while the build chat is streaming', () => {
 		const wrapper = mountChatColumn({ isBuildChatStreaming: true });
 

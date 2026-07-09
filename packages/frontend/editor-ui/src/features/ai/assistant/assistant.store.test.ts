@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, type MockInstance } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, type MockInstance } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import {
 	useChatPanelStore,
@@ -79,6 +79,8 @@ vi.mock('vue-router', () => ({
 
 describe('AI Assistant store', () => {
 	beforeEach(() => {
+		// Use fake timers so store-scheduled timeouts can't leak past teardown.
+		vi.useFakeTimers();
 		vi.clearAllMocks();
 		apiSpy = vi.spyOn(chatAPI, 'chatWithAssistant');
 		vi.spyOn(telemetryModule, 'useTelemetry').mockImplementation(
@@ -101,6 +103,12 @@ describe('AI Assistant store', () => {
 		posthogStore = usePostHog();
 		posthogStore.init();
 		track.mockReset();
+	});
+
+	afterEach(() => {
+		// Drop any pending timers before restoring real timers so none survive into teardown.
+		vi.clearAllTimers();
+		vi.useRealTimers();
 	});
 
 	it('initializes with default values', () => {

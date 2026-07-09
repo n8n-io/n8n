@@ -1,0 +1,26 @@
+{
+	"description": "Mixed loop pattern: per-item fulfillment calls, then one summary notification after all items complete (executeOnce on the rollup step).",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Hourly, sync new orders from GET https://api.example.com/orders/new — the API returns a JSON envelope {orders: [...]}, so split that into individual items first. Call POST https://api.example.com/fulfillment once per order. When all orders in that run are processed, send one notification via POST https://api.example.com/notify with the total count and how many succeeded."
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "medium",
+	"tags": ["build", "loops", "execute-once", "implicit-iteration", "schedule", "http-request"],
+	"triggerType": "schedule",
+	"datasets": ["full"],
+	"outcomeExpectations": [
+		"Each new order triggers its own fulfillment POST (per-item processing after splitting the orders envelope into individual items).",
+		"The final notify POST runs once per workflow execution with rollup totals (total count and success count), not once per order — executeOnce or equivalent on the notify step."
+	],
+	"executionScenarios": [
+		{
+			"name": "three-orders-one-summary",
+			"description": "Three orders fulfilled; one notify POST with counts",
+			"dataSetup": "GET https://api.example.com/orders/new returns { \"orders\": [{ \"id\": \"ORD-1\" }, { \"id\": \"ORD-2\" }, { \"id\": \"ORD-3\" }] }. Each POST https://api.example.com/fulfillment returns { \"ok\": true, \"status\": \"fulfilled\" }. POST https://api.example.com/notify returns { \"ok\": true }.",
+			"successCriteria": "The workflow executes without errors. Fulfillment POST is called three times (once per order). Notify POST is called exactly once and its body references a total of 3 orders and 3 successes (or equivalent counts). A workflow that POSTs to notify three separate times FAILS."
+		}
+	]
+}

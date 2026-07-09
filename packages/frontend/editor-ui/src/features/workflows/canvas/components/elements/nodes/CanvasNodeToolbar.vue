@@ -158,8 +158,9 @@ function onAddToAi() {
 			<N8nTooltip
 				v-if="isExecuteNodeVisible"
 				placement="top"
-				:disabled="!isDisabled"
-				:content="i18n.baseText('ndv.execute.deactivated')"
+				:content="
+					isDisabled ? i18n.baseText('ndv.execute.deactivated') : i18n.baseText('node.testStep')
+				"
 			>
 				<N8nIconButton
 					variant="ghost"
@@ -167,31 +168,37 @@ function onAddToAi() {
 					size="small"
 					icon="node-play"
 					:disabled="isExecuting || isDisabled"
-					:title="i18n.baseText('node.testStep')"
+					:aria-label="i18n.baseText('node.testStep')"
 					@click.stop="executeNode"
 				/>
 			</N8nTooltip>
-			<N8nIconButton
-				variant="ghost"
-				v-if="isDisableNodeVisible"
-				data-test-id="disable-node-button"
-				size="small"
-				icon="node-power"
-				:title="nodeDisabledTitle"
-				@click.stop="onToggleNode"
-			/>
-			<N8nIconButton
-				variant="ghost"
+			<N8nTooltip v-if="isDisableNodeVisible" placement="top" :content="nodeDisabledTitle">
+				<N8nIconButton
+					variant="ghost"
+					data-test-id="disable-node-button"
+					size="small"
+					icon="node-power"
+					:aria-label="nodeDisabledTitle"
+					@click.stop="onToggleNode"
+				/>
+			</N8nTooltip>
+			<N8nTooltip
 				v-if="isDeleteNodeVisible"
-				data-test-id="delete-node-button"
-				size="small"
-				icon="node-trash"
-				:title="i18n.baseText('node.delete')"
-				@click.stop="onDeleteNode"
-			/>
+				placement="top"
+				:content="i18n.baseText('node.delete')"
+			>
+				<N8nIconButton
+					variant="ghost"
+					data-test-id="delete-node-button"
+					size="small"
+					icon="node-trash"
+					:aria-label="i18n.baseText('node.delete')"
+					@click.stop="onDeleteNode"
+				/>
+			</N8nTooltip>
 			<N8nIconButton
-				variant="ghost"
 				v-if="isFocusNodeVisible"
+				variant="ghost"
 				size="small"
 				icon="crosshair"
 				:aria-label="i18n.baseText('node.focusNode')"
@@ -213,14 +220,16 @@ function onAddToAi() {
 					@click.stop="onAddToAi"
 				/>
 			</N8nTooltip>
-			<N8nIconButton
-				variant="ghost"
-				data-test-id="overflow-node-button"
-				size="small"
-				icon="node-ellipsis"
-				:aria-label="i18n.baseText('node.moreActions')"
-				@click.stop="onOpenContextMenu"
-			/>
+			<N8nTooltip placement="top" :content="i18n.baseText('node.moreActions')">
+				<N8nIconButton
+					variant="ghost"
+					data-test-id="overflow-node-button"
+					size="small"
+					icon="node-ellipsis"
+					:aria-label="i18n.baseText('node.moreActions')"
+					@click.stop="onOpenContextMenu"
+				/>
+			</N8nTooltip>
 		</div>
 		<CanvasNodeStatusIcons
 			v-if="showStatusIcons"

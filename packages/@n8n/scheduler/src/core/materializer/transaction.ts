@@ -6,6 +6,15 @@ export interface PlannedJob {
 	plan: OccurrencePlan;
 }
 
+export interface NewOccurrence {
+	jobId: number;
+	taskType: string;
+	payload: Record<string, unknown>;
+	scheduledFor: Date;
+	runAt: Date;
+	maxAttempts: number;
+}
+
 export interface DueJobs {
 	/**
 	 * The clock's current time at the moment of claiming.
@@ -35,7 +44,7 @@ export interface MaterializerTransaction {
 	 * This is the idempotent step: recording the same occurrence twice is a no-op.
 	 * @returns how many occurrences were actually recorded
 	 */
-	recordOccurrences(planned: PlannedJob[]): Promise<number>;
+	recordOccurrences(occurrences: NewOccurrence[]): Promise<number>;
 
 	/**
 	 * Advance every job's next-run and last-fired time in one batch.

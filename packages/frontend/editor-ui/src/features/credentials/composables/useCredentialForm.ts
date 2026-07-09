@@ -1,4 +1,5 @@
 import get from 'lodash/get';
+import isEqual from 'lodash/isEqual';
 import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 
 import type {
@@ -474,6 +475,19 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		return true;
 	}
 
+	/**
+	 * Static (shared, non-resolvable) fields whose value in `data` differs from the
+	 * loaded credential. Pass the payload to be saved (defaults stripped) so the
+	 * result mirrors the backend's authoritative check.
+	 */
+	function getChangedSharedFields(data: ICredentialDataDecryptedObject): string[] {
+		const original = (currentCredential.value?.data as ICredentialDataDecryptedObject) ?? {};
+		return mergedProperties.value
+			.filter((prop) => prop.resolvableField !== true)
+			.map((prop) => prop.name)
+			.filter((name) => name in data && !isEqual(original[name], data[name]));
+	}
+
 	async function testCredential(details: ICredentialsDecrypted) {
 		const result = await credentialsStore.testCredential(details);
 		if (result.status === 'Error') {
@@ -550,6 +564,7 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		resetCredentialData,
 		loadCurrentCredential,
 		initialize,
+		getChangedSharedFields,
 		// actions
 		onDataChange,
 		testCredential,

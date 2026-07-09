@@ -46,3 +46,24 @@ connected.)
    authored case ([SKILL.md](SKILL.md), [`case-shapes.md`](case-shapes.md)). The
    failure mode is the anchor; the conversation is yours to write, in the user's
    voice.
+5. **Push it to a curated suite** (don't commit the JSON) with
+   `eval:langtracer-push` — see
+   [Push to a lang-tracer suite](SKILL.md#push-to-a-lang-tracer-suite). Exception:
+   seeded cases (`seedThread` / `seedFile` / `priorConversation`) can't be pushed —
+   the case-write API rejects every seeding mode, so the push lists them under
+   `skipped:`. And a `seedThread` case shouldn't be committed either — it dies when
+   its trace is pruned or deleted — so it has no durable home; that's exactly why
+   step 4 turns the confirmed failure into a durable synthetic case.
+
+## Two practical notes on `get_conversation_analysis`
+
+- **It hands you draft cases.** The response's
+  `aiAnalysis.structured.extractedCases[]` are pre-drafted candidates — each with
+  `expectedBehavior`, `proposedCheck`, and `failurePattern` that map almost 1:1
+  onto `outcomeExpectations` / `processExpectations`. Start from these rather than
+  a blank case (still verify against the raw trace per step 3, and rewrite the
+  prompt in the user's voice). `verdict` and `findings` sit alongside them.
+- **The payload is large** — tens of thousands of characters, enough to exceed a
+  tool's token cap and be spilled to a file. The useful part is
+  `aiAnalysis.structured`; `jq` into that (or into `.extractedCases`) rather than
+  reading the whole blob.

@@ -5,6 +5,7 @@ export * from './instance';
 export * from './execution';
 export * from './logstreaming';
 export * from './nodes';
+export * from './scheduler';
 
 export const LICENSE_FEATURES = {
 	SHARING: 'feat:sharing',
@@ -49,6 +50,7 @@ export const LICENSE_FEATURES = {
 	TOKEN_EXCHANGE: 'feat:tokenExchange',
 	DATA_REDACTION: 'feat:dataRedaction',
 	OTEL_CUSTOM_SPAN_ATTRIBUTES: 'feat:otel:customSpanAttributes',
+	WORKFLOW_REVIEWS: 'feat:workflowReviews',
 } as const;
 
 export const LICENSE_QUOTAS = {
