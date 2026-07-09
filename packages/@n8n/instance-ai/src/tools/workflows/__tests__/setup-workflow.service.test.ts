@@ -27,7 +27,11 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 			getWorkflowHead: vi.fn(),
 			getWorkflowSnapshot: vi.fn(),
 			createFromWorkflowJSON: vi.fn(),
-			updateFromWorkflowJSON: vi.fn(),
+			updateFromWorkflowJSON: vi.fn().mockResolvedValue({
+				id: 'wf-1',
+				versionId: 'v-next',
+				checksum: 'checksum-next',
+			}),
 			archive: vi.fn(),
 			unarchive: vi.fn(),
 			publish: vi.fn(),

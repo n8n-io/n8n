@@ -38,6 +38,7 @@ import {
 import { withDeterministicRouting } from './workflow-build-routing';
 import { trackWorkflowSourceBuild } from './workflow-build-telemetry';
 import {
+	bindSourceFileToExistingWorkflow,
 	getWorkflowSourceFileBinding,
 	hashWorkflowSource,
 	normalizeWorkflowSourceFilePath,
@@ -338,10 +339,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			}
 
 			if (input.workflowId && !binding.workflowId) {
-				binding = await saveWorkflowSourceFileBinding(context, {
-					...binding,
-					workflowId: input.workflowId,
-				});
+				binding = await bindSourceFileToExistingWorkflow(context, binding, input.workflowId);
 			}
 
 			const targetWorkflowId = binding.workflowId;

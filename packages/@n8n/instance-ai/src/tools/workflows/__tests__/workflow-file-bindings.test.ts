@@ -1,7 +1,9 @@
 import type { InstanceAiContext } from '../../../types';
 import {
+	bindSourceFileToExistingWorkflow,
 	getWorkflowSourceFileBinding,
 	refreshWorkflowSourceFileBindingFromSave,
+	refreshWorkflowSourceFileBindingFromWorkflow,
 	saveWorkflowSourceFileBinding,
 } from '../workflow-file-bindings';
 
@@ -87,5 +89,62 @@ describe('workflow source file bindings', () => {
 		await expect(
 			getWorkflowSourceFileBinding(context, 'src/workflows/main.workflow.ts'),
 		).resolves.not.toHaveProperty('workflowChecksum');
+	});
+
+	it('seeds version and checksum when binding a source file to an existing workflow', async () => {
+		const context = {
+			workflowService: {
+				get: vi.fn().mockResolvedValue({
+					id: 'wf-1',
+					versionId: 'v-current',
+					checksum: 'checksum-current',
+				}),
+			},
+			logger: { debug: vi.fn(), warn: vi.fn() },
+		} as unknown as InstanceAiContext;
+
+		await bindSourceFileToExistingWorkflow(
+			context,
+			{ filePath: 'src/workflows/main.workflow.ts' },
+			'wf-1',
+		);
+
+		await expect(
+			getWorkflowSourceFileBinding(context, 'src/workflows/main.workflow.ts'),
+		).resolves.toMatchObject({
+			workflowId: 'wf-1',
+			workflowVersionId: 'v-current',
+			workflowChecksum: 'checksum-current',
+		});
+	});
+
+	it('refreshes bindings from the current workflow record', async () => {
+		const context = {
+			workflowService: {
+				get: vi.fn().mockResolvedValue({
+					id: 'wf-1',
+					versionId: 'v-current',
+					checksum: 'checksum-current',
+				}),
+			},
+			logger: { debug: vi.fn(), warn: vi.fn() },
+		} as unknown as InstanceAiContext;
+
+		await saveWorkflowSourceFileBinding(context, {
+			filePath: 'src/workflows/main.workflow.ts',
+			workflowId: 'wf-1',
+			workflowVersionId: 'v-stale',
+			workflowChecksum: 'checksum-stale',
+		});
+
+		await refreshWorkflowSourceFileBindingFromWorkflow(context, 'wf-1');
+
+		await expect(
+			getWorkflowSourceFileBinding(context, 'src/workflows/main.workflow.ts'),
+		).resolves.toMatchObject({
+			workflowId: 'wf-1',
+			workflowVersionId: 'v-current',
+			workflowChecksum: 'checksum-current',
+		});
 	});
 });

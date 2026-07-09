@@ -1037,6 +1037,7 @@ describe('workflows tool', () => {
 				id: workflowId,
 				name: workflowId,
 				versionId: `${workflowId}-draft`,
+				checksum: `${workflowId}-checksum`,
 				activeVersionId: workflowId === 'sub-a' ? 'sub-a-previous' : null,
 				isArchived: false,
 				createdAt: '2024-01-01',
@@ -1047,6 +1048,19 @@ describe('workflows tool', () => {
 			(context.workflowService.publish as Mock).mockImplementation((workflowId: string) => {
 				if (workflowId === 'wf1') throw new Error('Main publish failed');
 				return { activeVersionId: `${workflowId}-active` };
+			});
+
+			await saveWorkflowSourceFileBinding(context, {
+				filePath: 'src/workflows/sub-a.workflow.ts',
+				workflowId: 'sub-a',
+				workflowVersionId: 'sub-a-previous',
+				workflowChecksum: 'sub-a-previous-checksum',
+			});
+			await saveWorkflowSourceFileBinding(context, {
+				filePath: 'src/workflows/sub-b.workflow.ts',
+				workflowId: 'sub-b',
+				workflowVersionId: 'sub-b-previous',
+				workflowChecksum: 'sub-b-previous-checksum',
 			});
 
 			const tool = createWorkflowsTool(context, 'full');
@@ -1067,6 +1081,20 @@ describe('workflows tool', () => {
 				success: false,
 				error: 'Main publish failed',
 				rolledBackWorkflowIds: ['sub-b', 'sub-a'],
+			});
+			await expect(
+				getWorkflowSourceFileBinding(context, 'src/workflows/sub-a.workflow.ts'),
+			).resolves.toMatchObject({
+				workflowId: 'sub-a',
+				workflowVersionId: 'sub-a-draft',
+				workflowChecksum: 'sub-a-checksum',
+			});
+			await expect(
+				getWorkflowSourceFileBinding(context, 'src/workflows/sub-b.workflow.ts'),
+			).resolves.toMatchObject({
+				workflowId: 'sub-b',
+				workflowVersionId: 'sub-b-draft',
+				workflowChecksum: 'sub-b-checksum',
 			});
 		});
 

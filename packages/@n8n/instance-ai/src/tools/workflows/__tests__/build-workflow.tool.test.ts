@@ -143,6 +143,13 @@ function makeContext(input: {
 						checksum: 'checksum-update',
 					}),
 			),
+			get: vi.fn(async (workflowId: string) =>
+				Promise.resolve({
+					id: workflowId,
+					versionId: 'v-current',
+					checksum: 'checksum-current',
+				}),
+			),
 			getAsWorkflowJSON: vi.fn(async () => await Promise.resolve({ name: 'Target workflow' })),
 			clearAiTemporary: vi.fn(async () => await Promise.resolve()),
 		},
@@ -440,7 +447,7 @@ describe('createBuildWorkflowTool', () => {
 			1,
 			'wf-bound',
 			expect.any(Object),
-			undefined,
+			{ expectedChecksum: 'checksum-current' },
 		);
 		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenNthCalledWith(
 			2,
@@ -580,6 +587,13 @@ describe('createBuildWorkflowTool', () => {
 						async (workflowId: string) =>
 							await Promise.resolve({ id: workflowId, versionId: 'v-next' }),
 					),
+					get: vi.fn(async (workflowId: string) =>
+						Promise.resolve({
+							id: workflowId,
+							versionId: 'v-current',
+							checksum: 'checksum-current',
+						}),
+					),
 					getAsWorkflowJSON: vi.fn(async () => await Promise.resolve(existingWorkflow)),
 					clearAiTemporary: vi.fn(async () => await Promise.resolve()),
 				} as unknown as InstanceAiContext['workflowService'],
@@ -594,7 +608,7 @@ describe('createBuildWorkflowTool', () => {
 		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
 			'wf-existing',
 			expect.any(Object),
-			undefined,
+			{ expectedChecksum: 'checksum-current' },
 		);
 		const savedWorkflow = vi.mocked(context.workflowService.updateFromWorkflowJSON).mock
 			.calls[0]?.[1];
@@ -657,7 +671,7 @@ describe('createBuildWorkflowTool', () => {
 		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
 			'wf-existing',
 			workflowJson,
-			undefined,
+			{ expectedChecksum: 'checksum-current' },
 		);
 		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
 	});
