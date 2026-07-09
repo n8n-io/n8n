@@ -6,12 +6,16 @@ import { useRouter } from 'vue-router';
 
 import { VIEWS } from '@/app/constants';
 import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { usePostHog } from '@/app/stores/posthog.store';
 
 import CompareHeader from '../components/Compare/CompareHeader.vue';
 import ScoreChart from '../components/Compare/ScoreChart.vue';
 import AiInsightsCard from '../components/Compare/AiInsightsCard.vue';
+import CompareTabs from '../components/Compare/CompareTabs.vue';
+import DatasetMismatchBanner from '../components/Compare/DatasetMismatchBanner.vue';
 import { useCompareData } from '../composables/useCompareData';
+import { useCompareCases } from '../composables/useCompareCases';
 import { useEvalCollectionsFlag } from '../composables/useEvalCollectionsFlag';
 import { useEvalCollectionsStore } from '../evalCollections.store';
 
@@ -23,12 +27,38 @@ const props = defineProps<{
 const i18n = useI18n();
 const router = useRouter();
 const toast = useToast();
+const telemetry = useTelemetry();
 const store = useEvalCollectionsStore();
 const postHog = usePostHog();
 const isEvalCollectionsEnabled = useEvalCollectionsFlag();
 
 const detail = computed(() => store.getDetail(props.collectionId));
 const { compareData } = useCompareData(detail);
+const workflowIdRef = computed(() => props.workflowId);
+const {
+	caseRows,
+	mismatch,
+	loading: casesLoading,
+	casesError,
+} = useCompareCases(detail, workflowIdRef);
+
+// Fire the compare-opened event once per collection, after both the versions
+// and the per-case data have resolved so `case_count` is accurate.
+const tracked = ref(false);
+watch(
+	() => compareData.value !== null && !casesLoading.value,
+	(ready) => {
+		if (!ready || tracked.value) return;
+		tracked.value = true;
+		telemetry.track('Eval collection compared opened', {
+			workflow_id: props.workflowId,
+			collection_id: props.collectionId,
+			version_count: compareData.value?.versions.length ?? 0,
+			case_count: mismatch.value.maxCount,
+		});
+	},
+	{ immediate: true },
+);
 
 const loading = computed(() => store.loadingDetail[props.collectionId] ?? false);
 // Set only when the collection is genuinely gone (404), so a deleted collection
@@ -84,6 +114,7 @@ watch(
 	[() => props.workflowId, () => props.collectionId],
 	([, collectionId], [, prevCollectionId]) => {
 		store.stopPolling(prevCollectionId);
+		tracked.value = false;
 		void load(props.workflowId, collectionId);
 	},
 );
@@ -120,6 +151,10 @@ onBeforeUnmount(() => {
 		</div>
 
 		<template v-else-if="compareData">
+			<DatasetMismatchBanner
+				v-if="!casesLoading && !casesError && mismatch.hasMismatch"
+				:mismatch="mismatch"
+			/>
 			<CompareHeader
 				:collection-name="detail?.name ?? ''"
 				:versions="compareData.versions"
@@ -130,6 +165,12 @@ onBeforeUnmount(() => {
 			     card and re-runs its fetch-on-mount, rather than relying on the
 			     surrounding v-if to cycle through null. -->
 			<AiInsightsCard :key="collectionId" :workflow-id="workflowId" :collection-id="collectionId" />
+			<CompareTabs
+				:versions="compareData.versions"
+				:metric-groups="compareData.metricGroups"
+				:case-rows="caseRows"
+				:cases-loading="casesLoading"
+			/>
 		</template>
 	</div>
 </template>
