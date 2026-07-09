@@ -319,6 +319,7 @@ describe('LmChatAnthropic', () => {
 
 			expect(MockedN8nLlmTracing).toHaveBeenCalledWith(mockContext, {
 				tokensUsageParser: expect.any(Function),
+				redactedHeaders: [],
 			});
 		});
 

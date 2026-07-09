@@ -28,7 +28,7 @@ export const coverageOptions: CoverageReportOptions = {
 	// Keep first-party application source after source-map expansion; drop deps
 	// and any unmapped dist files. NB nodes-base sources live under `nodes/`,
 	// `credentials/` etc — not `src/` — so don't require `/src/`. The test/mock
-	// exclusions mirror jest.coverage-excludes.js — keep them in sync.
+	// exclusions mirror the per-package vitest coverage excludes — keep them in sync.
 	sourceFilter: (sourcePath) =>
 		!sourcePath.includes('node_modules') &&
 		!sourcePath.includes('/dist/') &&

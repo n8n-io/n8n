@@ -78,11 +78,15 @@ export interface ReaperHooks {
  * One pass reclaims (or dead-letters) up to `batchSize` expired-lease tasks: a task
  * with attempts left goes back to `pending` with a backoff and a bumped epoch; one
  * at its last attempt fails terminally. Returns the counts.
+ *
+ * Cancellation (`signal`, aborted when the driving loop times the pass out or
+ * shuts down) is task-granular.
  */
 export async function reap(
 	store: ReaperTaskStore,
 	options: ReaperOptions = DEFAULT_REAPER_OPTIONS,
 	hooks: ReaperHooks = {},
+	signal?: AbortSignal,
 ): Promise<ReapResult> {
 	const expired = await store.findExpiredLeases(options.batchSize);
 	if (expired.length === 0) return { reclaimed: 0, deadLettered: 0 };
@@ -90,6 +94,9 @@ export async function reap(
 	let reclaimed = 0;
 	let deadLettered = 0;
 	for (const task of expired) {
+		if (signal?.aborted === true) {
+			break;
+		}
 		// A row that keeps throwing must not abort the pass: rows sort oldest-first,
 		// so it would head-of-line block every younger expired row on each sweep.
 		try {

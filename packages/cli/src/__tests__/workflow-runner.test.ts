@@ -425,7 +425,7 @@ describe('enqueueExecution', () => {
 		const error = new Error('stop for test purposes');
 
 		// mock a rejection to stop execution flow before we create the PCancelable promise,
-		// so that Jest does not move on to tear down the suite until the PCancelable settles
+		// so that Vitest does not move on to tear down the suite until the PCancelable settles
 		addJob.mockRejectedValueOnce(error);
 
 		// @ts-expect-error Private method

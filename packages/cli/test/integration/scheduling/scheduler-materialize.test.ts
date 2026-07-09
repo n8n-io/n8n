@@ -1,21 +1,24 @@
 import { testDb } from '@n8n/backend-test-utils';
-import { type ScheduledJob, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
+import {
+	DataSource,
+	type ScheduledJob,
+	ScheduledJobRepository,
+	ScheduledTaskRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createScheduler } from '@n8n/scheduler';
 import type { SchedulerDeps } from '@n8n/scheduler';
 
-import { DurableScheduler } from '@/scheduling/durable-scheduler';
+import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
 
 describe('scheduler materialization', () => {
 	let jobRepo: ScheduledJobRepository;
 	let taskRepo: ScheduledTaskRepository;
-	let scheduler: DurableScheduler;
 
 	beforeAll(async () => {
 		await testDb.init();
 		jobRepo = Container.get(ScheduledJobRepository);
 		taskRepo = Container.get(ScheduledTaskRepository);
-		scheduler = Container.get(DurableScheduler);
 	});
 
 	afterEach(async () => {
@@ -45,11 +48,15 @@ describe('scheduler materialization', () => {
 			}),
 		);
 
-	/** Compose a scheduler over the same storage bindings, with per-test tuning. */
-	const composeScheduler = (materializer: SchedulerDeps['materializer']) =>
+	/** Compose a scheduler over the production storage bindings, with per-test tuning. */
+	const composeScheduler = (materializer?: SchedulerDeps['materializer']) =>
 		createScheduler({
 			hostId: 'materialize-test',
-			materializerTransaction: scheduler.materializerTransaction,
+			materializerTransaction: buildMaterializerTransaction(
+				Container.get(DataSource),
+				jobRepo,
+				taskRepo,
+			),
 			taskStore: taskRepo,
 			materializer,
 		});
@@ -218,10 +225,10 @@ describe('scheduler materialization', () => {
 		expect(resumed.nextRunAt).not.toBeNull();
 	});
 
-	it('runs through DurableScheduler with its configured window', async () => {
+	it('materializes a due job with the default window', async () => {
 		const job = await createJob({ intervalSeconds: 3600, nextRunAt: secondsFromNow(-1) });
 
-		const summary = await scheduler.materialize();
+		const summary = await composeScheduler().materialize();
 
 		expect(summary.claimedJobs).toBe(1);
 		const [task] = await taskRepo.find();

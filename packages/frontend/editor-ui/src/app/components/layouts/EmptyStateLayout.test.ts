@@ -174,11 +174,11 @@ describe('EmptyStateLayout', () => {
 			recommendedTemplatesStore.isFeatureEnabled = false;
 		});
 
-		it('should render heading with user name', () => {
+		it('should render onboarding heading regardless of user name', () => {
 			const { getByRole } = renderComponent();
 
 			const heading = getByRole('heading', { level: 1 });
-			expect(heading).toHaveTextContent('John');
+			expect(heading).toHaveTextContent("Let's build your first automation");
 		});
 
 		it('should not render recommended templates section', () => {

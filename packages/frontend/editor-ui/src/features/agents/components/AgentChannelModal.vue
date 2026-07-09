@@ -11,22 +11,14 @@ import {
 } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { useI18n } from '@n8n/i18n';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, watch } from 'vue';
-import type { AgentIntegrationSettings, ChatIntegrationDescriptor } from '@n8n/api-types';
-import { useUIStore } from '@/app/stores/ui.store';
-import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { getResourcePermissions } from '@n8n/permissions';
-import { createSlackAgentApp } from '../composables/useAgentApi';
+import { useAgentChannelSetup } from '../composables/useAgentChannelSetup';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import AgentChannelListItem from './AgentChannelListItem.vue';
 import AgentChannelSlackSetup from './AgentChannelSlackSetup.vue';
 import AgentChannelLinearSetup from './AgentChannelLinearSetup.vue';
 import AgentChannelTelegramSetup from './AgentChannelTelegramSetup.vue';
-import type { AgentCredentialOption } from './AgentCredentialSelect.vue';
 
 export type ChannelView =
 	| 'list'
@@ -44,9 +36,16 @@ interface Props {
 	view: ChannelView;
 	connectedChannels: string[];
 	isPublished: boolean;
+	/**
+	 * Force creating a new credential in the setup flow (hides the existing-credential
+	 * picker). Used by the AIA channel-setup HITL so a new agent gets its own credential.
+	 */
+	forceNewCredential?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	forceNewCredential: false,
+});
 
 const emit = defineEmits<{
 	'update:open': [value: boolean];
@@ -57,10 +56,6 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const rootStore = useRootStore();
-const uiStore = useUIStore();
-const credentialsStore = useCredentialsStore();
-const projectsStore = useProjectsStore();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
 const {
 	fetchStatus,
@@ -74,22 +69,7 @@ const {
 	disconnect,
 } = useAgentIntegrationStatus(props.projectId, props.agentId);
 
-const SLACK_APP_SETUP_POLL_INTERVAL_MS = 2000;
-const SLACK_APP_SETUP_TIMEOUT_MS = 2 * 60 * 1000;
-
 const currentView = ref<ChannelView>(props.view);
-const selectedCredentials = ref<Record<string, string>>({});
-const credentialsByType = ref<Record<string, AgentCredentialOption[]>>({});
-const credentialsLoading = ref(false);
-const credentialIdsBeforeNew = ref<Record<string, Set<string>>>({});
-const pendingNewCredentialType = ref<string | null>(null);
-type ChannelSetupComponent = {
-	credentialId: string;
-	currentSettings?: AgentIntegrationSettings;
-	validationError: string | null;
-};
-
-const channelSetupRef = ref<ChannelSetupComponent>();
 
 watch(
 	() => props.view,
@@ -115,27 +95,35 @@ const currentIntegration = computed(() => {
 	return catalog.value?.find((i) => i.type === selectedChannelType.value) ?? null;
 });
 
+const {
+	channelSetupRef,
+	selectedCredentials,
+	credentialsLoading,
+	credentialPermissions,
+	credentialModalOpen,
+	getChannelCredentialId,
+	getCredentials,
+	loadChannelState: loadSharedChannelState,
+	createCredential,
+	editCredential,
+	setupSlackApp: runSlackAppSetup,
+} = useAgentChannelSetup({
+	projectId: () => props.projectId,
+	agentId: () => props.agentId,
+	currentIntegration,
+	connectedCredentials,
+	fetchStatus,
+	isIntegrationConnected,
+});
+
 const showFooterActions = computed(
 	() =>
 		isEditMode.value && selectedChannelType.value !== null && selectedChannelType.value !== 'slack',
 );
 
-const currentChannelCredentialId = computed(() => {
-	const channelType = selectedChannelType.value;
-	if (!channelType) return '';
-	return selectedCredentials.value[channelType] || connectedCredentials.value[channelType] || '';
-});
-
-const projectForPermissions = computed(() => {
-	if (projectsStore.currentProject?.id === props.projectId) return projectsStore.currentProject;
-	if (projectsStore.personalProject?.id === props.projectId) return projectsStore.personalProject;
-	return projectsStore.myProjects.find((project) => project.id === props.projectId) ?? null;
-});
-
-const credentialPermissions = computed(() => {
-	const permissions = getResourcePermissions(projectForPermissions.value?.scopes).credential;
-	return { ...permissions, create: !!permissions.create };
-});
+const currentChannelCredentialId = computed(() =>
+	getChannelCredentialId(selectedChannelType.value),
+);
 
 const canSaveChannelConfig = computed(() => {
 	const validationError = channelSetupRef.value?.validationError;
@@ -216,142 +204,12 @@ async function saveChannelConfig() {
 	closeModal();
 }
 
-async function fetchCredentials(integrations: ChatIntegrationDescriptor[] = catalog.value ?? []) {
-	credentialsLoading.value = true;
-	try {
-		credentialsStore.setCredentials([]);
-		const allCredentials = await credentialsStore.fetchAllCredentialsForWorkflow({
-			projectId: props.projectId,
-		});
-
-		for (const integration of integrations) {
-			credentialsByType.value[integration.type] = allCredentials
-				.filter((credential) => integration.credentialTypes.includes(credential.type))
-				.map((credential) => ({
-					id: credential.id,
-					name: credential.name,
-					typeDisplayName: credentialsStore.getCredentialTypeByName(credential.type)?.displayName,
-					homeProject: credential.homeProject,
-				}));
-		}
-	} catch {
-		for (const integration of integrations) {
-			credentialsByType.value[integration.type] = [];
-		}
-	} finally {
-		credentialsLoading.value = false;
-	}
-}
-
-function createCredential() {
-	const integration = currentIntegration.value;
-	const [primaryCredentialType] = integration?.credentialTypes ?? [];
-	if (!integration || !primaryCredentialType) return;
-
-	const existing = credentialsByType.value[integration.type] ?? [];
-	credentialIdsBeforeNew.value[integration.type] = new Set(
-		existing.map((credential) => credential.id),
-	);
-	pendingNewCredentialType.value = integration.type;
-	uiStore.openNewCredential(
-		primaryCredentialType,
-		false,
-		false,
-		props.projectId,
-		undefined,
-		undefined,
-		undefined,
-		{
-			hideAskAssistant: true,
-			appendToBody: true,
-		},
-	);
-}
-
-function editCredential() {
-	const credentialId = currentChannelCredentialId.value;
-	if (credentialId) {
-		uiStore.openExistingCredential(credentialId, { hideAskAssistant: true, appendToBody: true });
-	}
-}
-
-function openSlackAppAuthorizationPopup(installUrl: string): Window | null {
-	const parsedUrl = new URL(installUrl);
-	if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
-		throw new Error('Invalid Slack installation URL');
-	}
-
-	const params =
-		'scrollbars=no,resizable=yes,status=no,titlebar=no,location=no,toolbar=no,menubar=no,width=500,height=700';
-	return window.open(parsedUrl.toString(), 'Slack App Authorization', params);
-}
-
-async function waitForSlackAppSetupCompletion(popup: Window | null): Promise<boolean> {
-	return await new Promise((resolve) => {
-		const oauthChannel = new BroadcastChannel('oauth-callback');
-		let pollInFlight = false;
-		let settled = false;
-
-		const closePopup = () => {
-			if (!popup) return;
-			try {
-				popup.close();
-			} catch {}
-		};
-
-		const settle = (success: boolean) => {
-			if (settled) return;
-			settled = true;
-			window.clearInterval(pollInterval);
-			window.clearTimeout(timeout);
-			oauthChannel.close();
-			if (success) closePopup();
-			resolve(success);
-		};
-
-		const pollStatus = async () => {
-			if (pollInFlight || settled) return;
-			pollInFlight = true;
-			try {
-				await fetchStatus(['slack']);
-				if (isIntegrationConnected('slack')) settle(true);
-			} finally {
-				pollInFlight = false;
-			}
-		};
-
-		const pollInterval = window.setInterval(
-			() => void pollStatus(),
-			SLACK_APP_SETUP_POLL_INTERVAL_MS,
-		);
-		const timeout = window.setTimeout(() => settle(false), SLACK_APP_SETUP_TIMEOUT_MS);
-
-		oauthChannel.addEventListener('message', (event: MessageEvent) => {
-			settle(event.data === 'success');
-		});
-
-		void pollStatus();
-	});
-}
-
 async function setupSlackApp(appConfigurationToken: string): Promise<boolean> {
-	const { installUrl } = await createSlackAgentApp(
-		rootStore.restApiContext,
-		props.projectId,
-		props.agentId,
-		appConfigurationToken,
-	);
-	const popup = openSlackAppAuthorizationPopup(installUrl);
-	const connected = await waitForSlackAppSetupCompletion(popup);
-	if (!connected) {
-		throw new Error('Slack app installation was not completed');
-	}
-
-	await fetchStatus(['slack']);
-	emit('channel-connected', 'slack');
-	emit('agent-changed');
-	closeModal();
-	return true;
+	return await runSlackAppSetup(appConfigurationToken, () => {
+		emit('channel-connected', 'slack');
+		emit('agent-changed');
+		closeModal();
+	});
 }
 
 async function handleDisconnected(channelType: string) {
@@ -370,37 +228,8 @@ async function disconnectSlackApp() {
 
 async function loadChannelState() {
 	const integrations = await ensureLoaded(props.projectId).catch(() => catalog.value ?? []);
-	await Promise.all([
-		fetchStatus(integrations.map((integration) => integration.type)),
-		fetchCredentials(integrations),
-	]);
-
-	for (const [channelType, credentialId] of Object.entries(connectedCredentials.value)) {
-		if (!selectedCredentials.value[channelType]) {
-			selectedCredentials.value[channelType] = credentialId;
-		}
-	}
+	await loadSharedChannelState(integrations);
 }
-
-const credentialModalOpen = computed(
-	() => uiStore.isModalActiveById?.[CREDENTIAL_EDIT_MODAL_KEY] ?? false,
-);
-
-watch(credentialModalOpen, async (isOpen, wasOpen) => {
-	if (!wasOpen || isOpen) return;
-	const type = pendingNewCredentialType.value;
-	pendingNewCredentialType.value = null;
-	await fetchCredentials();
-	if (!type) return;
-
-	const before = credentialIdsBeforeNew.value[type];
-	const after = credentialsByType.value[type] ?? [];
-	const newCredential = before ? after.find((credential) => !before.has(credential.id)) : undefined;
-	if (newCredential) {
-		selectedCredentials.value[type] = newCredential.id;
-	}
-	delete credentialIdsBeforeNew.value[type];
-});
 
 watch(
 	() => props.open,
@@ -483,12 +312,13 @@ watch(
 						:project-id="projectId"
 						:agent-id="agentId"
 						:integration="currentIntegration ?? undefined"
-						:credentials="credentialsByType.slack ?? []"
+						:credentials="getCredentials('slack')"
 						:credential-permissions="credentialPermissions"
 						:credentials-loading="credentialsLoading"
 						:loading="isLoading('slack')"
 						:error-message="hasError('slack') ? errorMessages.slack : ''"
 						:error-is-conflict="errorIsConflict.slack"
+						:force-new-credential="forceNewCredential"
 						@create="createCredential"
 						@edit="editCredential"
 						@connect="saveChannelConfig"
@@ -499,7 +329,7 @@ watch(
 						v-model="selectedCredentials[currentIntegration.type]"
 						mode="setup"
 						:integration="currentIntegration"
-						:credentials="credentialsByType[currentIntegration.type] ?? []"
+						:credentials="getCredentials(currentIntegration.type)"
 						:credential-permissions="credentialPermissions"
 						:credentials-loading="credentialsLoading"
 						:loading="isLoading(currentIntegration.type)"
@@ -514,6 +344,7 @@ watch(
 						:agent-name="agentId"
 						:project-id="projectId"
 						:agent-id="agentId"
+						:force-new-credential="forceNewCredential"
 						@create="createCredential"
 						@edit="editCredential"
 						@connect="saveChannelConfig"
@@ -524,7 +355,7 @@ watch(
 						v-model="selectedCredentials[currentIntegration.type]"
 						mode="setup"
 						:integration="currentIntegration"
-						:credentials="credentialsByType[currentIntegration.type] ?? []"
+						:credentials="getCredentials(currentIntegration.type)"
 						:credential-permissions="credentialPermissions"
 						:credentials-loading="credentialsLoading"
 						:loading="isLoading(currentIntegration.type)"
@@ -539,6 +370,7 @@ watch(
 						:agent-name="agentId"
 						:project-id="projectId"
 						:agent-id="agentId"
+						:force-new-credential="forceNewCredential"
 						@create="createCredential"
 						@edit="editCredential"
 						@connect="saveChannelConfig"
@@ -556,7 +388,7 @@ watch(
 						:disabled="isLoading('slack')"
 						:disconnect-slack-app="disconnectSlackApp"
 						:integration="currentIntegration"
-						:credentials="credentialsByType.slack ?? []"
+						:credentials="getCredentials('slack')"
 						:credential-permissions="credentialPermissions"
 						:connected-credential-id="connectedCredentials.slack ?? ''"
 						:credentials-loading="credentialsLoading"
@@ -573,7 +405,7 @@ watch(
 						v-model="selectedCredentials[currentIntegration.type]"
 						mode="edit"
 						:integration="currentIntegration"
-						:credentials="credentialsByType[currentIntegration.type] ?? []"
+						:credentials="getCredentials(currentIntegration.type)"
 						:credential-permissions="credentialPermissions"
 						:credentials-loading="credentialsLoading"
 						:loading="isLoading(currentIntegration.type)"
@@ -596,7 +428,7 @@ watch(
 						v-model="selectedCredentials[currentIntegration.type]"
 						mode="edit"
 						:integration="currentIntegration"
-						:credentials="credentialsByType[currentIntegration.type] ?? []"
+						:credentials="getCredentials(currentIntegration.type)"
 						:credential-permissions="credentialPermissions"
 						:credentials-loading="credentialsLoading"
 						:loading="isLoading(currentIntegration.type)"

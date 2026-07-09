@@ -22,7 +22,7 @@ import {
 	isNodeLog,
 } from '@/features/execution/logs/logs.types';
 
-import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import AnimatedSpinner from '@/app/components/AnimatedSpinner.vue';
 const props = defineProps<{
 	data: LogEntry;
@@ -244,34 +244,49 @@ watch(
 			icon="triangle-alert"
 			:class="$style.compactErrorIcon"
 		/>
-		<N8nIconButton
-			v-if="!groupData && canOpenNdv && (!isCompact || !props.latestInfo?.deleted)"
-			variant="ghost"
-			size="small"
-			icon="square-pen"
-			icon-size="medium"
-			:style="{
-				visibility: props.data.isSubExecution ? 'hidden' : undefined,
-			}"
-			:disabled="props.latestInfo?.deleted"
-			:class="$style.openNdvButton"
-			:aria-label="locale.baseText('logs.overview.body.open')"
-			@click.stop="emit('openNdv')"
-		/>
-		<N8nIconButton
+		<N8nTooltip
+			v-if="canOpenNdv && (!isCompact || !props.latestInfo?.deleted)"
+			:content="locale.baseText('logs.overview.body.openTooltip')"
+			as-child
+		>
+			<N8nIconButton
+				v-if="!groupData && canOpenNdv && (!isCompact || !props.latestInfo?.deleted)"
+				variant="ghost"
+				size="small"
+				icon="square-pen"
+				icon-size="medium"
+				:style="{
+					visibility: props.data.isSubExecution ? 'hidden' : undefined,
+				}"
+				:disabled="props.latestInfo?.deleted"
+				:class="$style.openNdvButton"
+				:aria-label="locale.baseText('logs.overview.body.open')"
+				@click.stop="emit('openNdv')"
+			/>
+		</N8nTooltip>
+		<N8nTooltip
 			v-if="
-				!groupData &&
-				(!isCompact ||
-					(!props.isReadOnly && !props.latestInfo?.deleted && !props.latestInfo?.disabled))
+				!isCompact ||
+				(!props.isReadOnly && !props.latestInfo?.deleted && !props.latestInfo?.disabled)
 			"
-			variant="ghost"
-			size="small"
-			icon="play"
-			:aria-label="locale.baseText('logs.overview.body.run')"
-			:class="[$style.partialExecutionButton, indents.length > 0 ? $style.unavailable : '']"
-			:disabled="props.latestInfo?.deleted || props.latestInfo?.disabled"
-			@click.stop="emit('triggerPartialExecution')"
-		/>
+			:content="locale.baseText('logs.overview.body.run')"
+			as-child
+		>
+			<N8nIconButton
+				v-if="
+					!groupData &&
+					(!isCompact ||
+						(!props.isReadOnly && !props.latestInfo?.deleted && !props.latestInfo?.disabled))
+				"
+				variant="ghost"
+				size="small"
+				icon="play"
+				:aria-label="locale.baseText('logs.overview.body.run')"
+				:class="[$style.partialExecutionButton, indents.length > 0 ? $style.unavailable : '']"
+				:disabled="props.latestInfo?.deleted || props.latestInfo?.disabled"
+				@click.stop="emit('triggerPartialExecution')"
+			/>
+		</N8nTooltip>
 		<!-- Groups omit the action buttons above; reserve their width so columns stay aligned with node rows -->
 		<template v-if="groupData && !isCompact">
 			<div v-if="canOpenNdv" :class="$style.buttonSpacer" />

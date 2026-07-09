@@ -8,6 +8,7 @@ import {
 	createRuntimeSkillSource,
 	createRuntimeSkillTools,
 	createSkillLoadTool,
+	filterRuntimeSkillSource,
 	InvalidRuntimeSkillError,
 	loadRuntimeSkillSourceFromDirectory,
 	parseRuntimeSkillMarkdown,
@@ -357,6 +358,35 @@ Use the workflow SDK.`,
 		} finally {
 			rmSync(root, { recursive: true, force: true });
 		}
+	});
+
+	it('filters a source so hidden skills are unlisted, unloadable, and excluded from the hash', async () => {
+		const skills = [
+			{ id: 'hidden_skill', name: 'Hidden skill', description: 'Hide me.', instructions: 'Body.' },
+			{ id: 'kept_skill', name: 'Kept skill', description: 'Keep me.', instructions: 'Body.' },
+		];
+		const source = {
+			...createRuntimeSkillSource(skills),
+			loadFile: async (skillId: string, filePath: string) =>
+				await Promise.resolve({ skillId, filePath, content: 'file body' }),
+		};
+
+		const filtered = filterRuntimeSkillSource(source, ['hidden_skill']);
+
+		expect(filtered.registry.skills.map((skill) => skill.id)).toEqual(['kept_skill']);
+		// The hash must describe the filtered catalog, not the original one, so
+		// workspace manifests keyed on it can't match a differently-filtered set.
+		expect(filtered.registry.skillsHash).not.toBe(source.registry.skillsHash);
+		expect(filtered.registry.skillsHash).toBe(
+			createRuntimeSkillRegistry(skills.filter((skill) => skill.id !== 'hidden_skill')).skillsHash,
+		);
+
+		await expect(filtered.loadSkill('hidden_skill')).resolves.toBeNull();
+		await expect(filtered.loadSkill('kept_skill')).resolves.toMatchObject({ id: 'kept_skill' });
+		await expect(filtered.loadFile?.('hidden_skill', 'references/a.md')).resolves.toBeNull();
+		await expect(filtered.loadFile?.('kept_skill', 'references/a.md')).resolves.toMatchObject({
+			content: 'file body',
+		});
 	});
 
 	it('renders a compact skill catalog without skill bodies', () => {
