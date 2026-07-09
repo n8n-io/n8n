@@ -94,6 +94,7 @@
     "@types/lodash": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "adm-zip": "^0.5.16",
+    "typescript": "catalog:",
     "vitest": "catalog:"
   },
   "dependencies": {

@@ -1074,7 +1074,7 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('private-credential-created', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith('User created private credential', {
+			expect(telemetry.track).toHaveBeenCalledWith('User created end-user credential', {
 				user_id: 'user123',
 				user_role: GLOBAL_OWNER_ROLE.slug,
 				credential_type: 'gmailOAuth2',
@@ -1099,7 +1099,7 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('private-credential-toggled-to-private', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith('User made credential private', {
+			expect(telemetry.track).toHaveBeenCalledWith('User made credential end-user', {
 				user_id: 'user123',
 				user_role: GLOBAL_OWNER_ROLE.slug,
 				credential_type: 'gmailOAuth2',
@@ -1122,7 +1122,7 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('private-credential-toggled-to-static', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith('User made credential static', {
+			expect(telemetry.track).toHaveBeenCalledWith('User made credential fixed', {
 				user_id: 'user123',
 				user_role: GLOBAL_OWNER_ROLE.slug,
 				credential_type: 'gmailOAuth2',
@@ -1145,7 +1145,7 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('private-credential-deleted', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith('User deleted private credential', {
+			expect(telemetry.track).toHaveBeenCalledWith('User deleted end-user credential', {
 				user_id: 'user123',
 				user_role: GLOBAL_OWNER_ROLE.slug,
 				credential_type: 'gmailOAuth2',
@@ -1164,7 +1164,7 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('private-credential-user-connected', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith('User connected to private credential', {
+			expect(telemetry.track).toHaveBeenCalledWith('User connected to end-user credential', {
 				user_id: 'user123',
 				user_role: undefined,
 				credential_type: 'gmailOAuth2',
@@ -1667,13 +1667,13 @@ describe('TelemetryEventRelay', () => {
 				user_id: 'user123',
 				version_cli: N8N_VERSION,
 				workflow_id: 'workflow123',
-				used_private_credentials: false,
-				private_credentials_attempted_count: 0,
-				private_credentials_resolved_count: 0,
+				used_end_user_credentials: false,
+				end_user_credentials_attempted_count: 0,
+				end_user_credentials_resolved_count: 0,
 			});
 		});
 
-		it('should set `used_private_credentials` when a private credential resolution was attempted but failed', async () => {
+		it('should set `used_end_user_credentials` when an end-user credential resolution was attempted but failed', async () => {
 			const event: RelayEventMap['workflow-post-execute'] = {
 				workflow: mock<IWorkflowDb>({
 					id: 'workflow123',
@@ -1701,14 +1701,14 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
 				expect.objectContaining({
-					used_private_credentials: true,
-					private_credentials_attempted_count: 1,
-					private_credentials_resolved_count: 0,
+					used_end_user_credentials: true,
+					end_user_credentials_attempted_count: 1,
+					end_user_credentials_resolved_count: 0,
 				}),
 			);
 		});
 
-		it('should count attempted vs resolved private credentials and the effective resolver', async () => {
+		it('should count attempted vs resolved end-user credentials and the effective resolver', async () => {
 			dynamicCredentialsProxy.getEffectiveResolverId.mockReturnValueOnce('system-n8n');
 
 			const event: RelayEventMap['workflow-post-execute'] = {
@@ -1738,9 +1738,9 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
 				expect.objectContaining({
-					used_private_credentials: true,
-					private_credentials_attempted_count: 2,
-					private_credentials_resolved_count: 1,
+					used_end_user_credentials: true,
+					end_user_credentials_attempted_count: 2,
+					end_user_credentials_resolved_count: 1,
 					credential_resolver_id: 'system-n8n',
 				}),
 			);
@@ -2285,6 +2285,39 @@ describe('TelemetryEventRelay', () => {
 				workflow_count: 3,
 				folder_count: 1,
 				credential_count: 2,
+			});
+		});
+
+		it('should track on `n8n-package-export-failed` event with entity counts and reason only, not ids', () => {
+			const event: RelayEventMap['n8n-package-export-failed'] = {
+				user: { id: 'user123' },
+				reason: 'access-denied',
+				workflowIds: ['wf1', 'wf2'],
+			};
+
+			eventService.emit('n8n-package-export-failed', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User package export failed', {
+				user_id: 'user123',
+				reason: 'access-denied',
+				workflow_count: 2,
+				folder_count: 0,
+				project_count: 0,
+			});
+		});
+
+		it('should track on `n8n-package-import-failed` event with reason only, no project/folder ids', () => {
+			const event: RelayEventMap['n8n-package-import-failed'] = {
+				user: { id: 'user123' },
+				reason: 'blocked',
+				projectId: 'proj1',
+			};
+
+			eventService.emit('n8n-package-import-failed', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User package import failed', {
+				user_id: 'user123',
+				reason: 'blocked',
 			});
 		});
 	});

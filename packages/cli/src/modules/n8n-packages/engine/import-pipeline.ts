@@ -69,7 +69,7 @@ export class ImportPipeline {
 			requirements: manifest.requirements?.credentials,
 			matchingMode: request.credentialMatchingMode,
 			missingMode: request.credentialMissingMode,
-			credentialBindings: request.credentialBindings,
+			credentialBindings: request.bindings?.credentials,
 		};
 
 		const credentialPlan = await this.credentialImporter.plan(context, credentialRequest);

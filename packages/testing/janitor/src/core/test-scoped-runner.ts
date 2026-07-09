@@ -3,10 +3,9 @@
 import { spawnSync } from 'node:child_process';
 import { isAbsolute, resolve } from 'node:path';
 
-import { computeScope, type Runner, type ScopeResult } from './scope-analyzer.js';
+import { computeScope, type ScopeResult } from './scope-analyzer.js';
 
 export interface TestScopedOptions {
-	runner: Runner;
 	packageDir: string;
 	rootDir: string;
 	changedFiles: string[] | null;
@@ -35,7 +34,6 @@ export function buildRunnerArgs(
 
 export function runTestScoped(options: TestScopedOptions): number {
 	const scope = computeScope({
-		runner: options.runner,
 		packageDir: options.packageDir,
 		rootDir: options.rootDir,
 		changedFiles: options.changedFiles,
@@ -56,5 +54,5 @@ export function runTestScoped(options: TestScopedOptions): number {
 	// Pass cwd explicitly so an override via --package-dir is honoured
 	// (otherwise spawnSync inherits the caller's cwd and vitest would
 	// resolve config + tests from the wrong project).
-	return spawnSync(options.runner, args, { stdio: 'inherit', cwd: options.packageDir }).status ?? 1;
+	return spawnSync('vitest', args, { stdio: 'inherit', cwd: options.packageDir }).status ?? 1;
 }

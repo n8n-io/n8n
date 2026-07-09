@@ -291,7 +291,12 @@ vi.setConfig({ testTimeout: 30_000 });
 async function renderView({
 	knowledgeBaseEnabled = false,
 	waitForAsyncSetup = true,
-}: { knowledgeBaseEnabled?: boolean; waitForAsyncSetup?: boolean } = {}) {
+	props,
+}: {
+	knowledgeBaseEnabled?: boolean;
+	waitForAsyncSetup?: boolean;
+	props?: Record<string, unknown>;
+} = {}) {
 	const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
 	const pinia = createPinia();
 	setActivePinia(pinia);
@@ -305,6 +310,7 @@ async function renderView({
 		},
 	};
 	const wrapper = mount(AgentBuilderView, {
+		props,
 		global: {
 			plugins: [pinia],
 			stubs: commonStubs,
@@ -388,7 +394,7 @@ const commonStubs = {
 	AgentBuilderHeader: {
 		name: 'AgentBuilderHeader',
 		template:
-			'<div data-testid="stub-agent-builder-header" :data-project-name="projectName"></div>',
+			'<div data-testid="stub-agent-builder-header" :data-project-name="projectName" :data-artifact-mode="String(artifactMode)"></div>',
 		props: [
 			'agent',
 			'projectId',
@@ -396,6 +402,7 @@ const commonStubs = {
 			'projectName',
 			'headerActions',
 			'beforeRevertToPublished',
+			'artifactMode',
 		],
 		emits: [
 			'header-action',
@@ -461,6 +468,7 @@ const commonStubs = {
 	AgentSessionsListView: {
 		name: 'AgentSessionsListView',
 		template: '<div data-testid="stub-agent-sessions-list-view" />',
+		props: ['embedded', 'projectId', 'agentId', 'openSessionInNewTab'],
 	},
 	AgentBuilderUnconfiguredEmptyState: {
 		name: 'AgentBuilderUnconfiguredEmptyState',
@@ -1039,6 +1047,162 @@ describe('AgentBuilderView — three-column shell', () => {
 	it('renders the new top header above the three columns', async () => {
 		const wrapper = await renderView();
 		expect(wrapper.find('[data-testid="stub-agent-builder-header"]').exists()).toBe(true);
+	});
+
+	it('renders artifact mode with the editor and without the build chat', async () => {
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactRefreshKey: 0,
+			},
+		});
+
+		expect(getAgentMock).toHaveBeenCalledWith({ baseUrl: 'http://localhost:5678' }, 'p2', 'a2');
+		expect(fetchConfigMock).toHaveBeenCalledWith('p2', 'a2');
+		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-build-chat-show-button"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="stub-agent-builder-header"]').attributes()).toMatchObject({
+			'data-artifact-mode': 'true',
+		});
+	});
+
+	it('keeps artifact mode tab switching out of the route query', async () => {
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactRefreshKey: 0,
+			},
+		});
+		routerReplace.mockClear();
+
+		wrapper
+			.findComponent({ name: 'AgentBuilderEditorColumn' })
+			.vm.$emit('update:activeMainTab', 'settings');
+		await nextTick();
+
+		expect(routerReplace).not.toHaveBeenCalled();
+		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('activeMainTab')).toBe(
+			'settings',
+		);
+	});
+
+	it('passes artifact ids and new-tab behavior into the embedded sessions list', async () => {
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactRefreshKey: 0,
+			},
+		});
+
+		wrapper
+			.findComponent({ name: 'AgentBuilderEditorColumn' })
+			.vm.$emit('update:activeMainTab', 'sessions');
+		await nextTick();
+
+		const sessions = wrapper.findComponent({ name: 'AgentSessionsListView' });
+		expect(sessions.props()).toMatchObject({
+			embedded: true,
+			projectId: 'p2',
+			agentId: 'a2',
+			openSessionInNewTab: true,
+		});
+	});
+
+	it('refreshes the artifact shell when the artifact refresh key changes', async () => {
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactRefreshKey: 0,
+			},
+		});
+		getAgentMock.mockClear();
+		fetchConfigMock.mockClear();
+
+		await wrapper.setProps({ artifactRefreshKey: 1 });
+		await flushPromises();
+
+		expect(getAgentMock).toHaveBeenCalledWith({ baseUrl: 'http://localhost:5678' }, 'p2', 'a2');
+		expect(fetchConfigMock).toHaveBeenCalledWith('p2', 'a2');
+	});
+
+	it('replays artifact refresh key changes that arrive before initialization completes', async () => {
+		let resolveAgent!: (agent: ReturnType<typeof makeAgentResponse>) => void;
+		getAgentMock.mockReturnValueOnce(new Promise((resolve) => (resolveAgent = resolve)));
+
+		const wrapper = await renderView({
+			waitForAsyncSetup: false,
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactRefreshKey: 0,
+			},
+		});
+		await vi.waitFor(() => {
+			expect(getAgentMock).toHaveBeenCalledTimes(1);
+			expect(fetchConfigMock).toHaveBeenCalledTimes(1);
+		});
+
+		await wrapper.setProps({ artifactRefreshKey: 1 });
+		await nextTick();
+		expect(getAgentMock).toHaveBeenCalledTimes(1);
+		expect(fetchConfigMock).toHaveBeenCalledTimes(1);
+
+		await wrapper.setProps({ artifactRefreshKey: 2 });
+		await nextTick();
+		expect(getAgentMock).toHaveBeenCalledTimes(1);
+		expect(fetchConfigMock).toHaveBeenCalledTimes(1);
+
+		resolveAgent(makeAgentResponse());
+		await flushPromises();
+		await flushPromises();
+
+		expect(getAgentMock).toHaveBeenCalledTimes(2);
+		expect(fetchConfigMock).toHaveBeenCalledTimes(2);
+		expect(getAgentMock).toHaveBeenLastCalledWith({ baseUrl: 'http://localhost:5678' }, 'p2', 'a2');
+		expect(fetchConfigMock).toHaveBeenLastCalledWith('p2', 'a2');
+	});
+
+	it('surfaces errors from pending artifact refresh replay', async () => {
+		let resolveAgent!: (agent: ReturnType<typeof makeAgentResponse>) => void;
+		getAgentMock.mockReturnValueOnce(new Promise((resolve) => (resolveAgent = resolve)));
+		fetchConfigMock.mockImplementationOnce(async () => {
+			mockConfig.value = withDefaultLlm(intendedConfig);
+		});
+		const replayError = new Error('refresh failed');
+		fetchConfigMock.mockRejectedValueOnce(replayError);
+
+		const wrapper = await renderView({
+			waitForAsyncSetup: false,
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactRefreshKey: 0,
+			},
+		});
+		await vi.waitFor(() => {
+			expect(getAgentMock).toHaveBeenCalledTimes(1);
+			expect(fetchConfigMock).toHaveBeenCalledTimes(1);
+		});
+
+		await wrapper.setProps({ artifactRefreshKey: 1 });
+		await nextTick();
+
+		resolveAgent(makeAgentResponse());
+		await flushPromises();
+		await flushPromises();
+
+		expect(showErrorMock).toHaveBeenCalledWith(replayError, 'agents.builder.loadError');
 	});
 
 	it('adds JSON import and export actions to the header menu', async () => {

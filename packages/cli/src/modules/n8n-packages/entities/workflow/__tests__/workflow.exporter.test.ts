@@ -7,6 +7,10 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer';
 import { CredentialRequirementsExtractor } from '../../credential/credential-requirements.extractor';
 import type { WorkflowCredentialRequirement } from '../../credential/credential.types';
+import {
+	PackageEntityAccessDeniedError,
+	PackageEntityNotFoundError,
+} from '../../package-export.errors';
 import { WorkflowExporter } from '../workflow.exporter';
 import { WorkflowSerializer } from '../workflow.serializer';
 
@@ -30,6 +34,7 @@ function makeWorkflow(overrides: Partial<WorkflowEntity> = {}): WorkflowEntity {
 function makeExporter(returned: WorkflowEntity[], extractor?: CredentialRequirementsExtractor) {
 	const finder = mock<WorkflowFinderService>();
 	finder.findWorkflowsByIdsForUser.mockResolvedValue(returned);
+	finder.findExistingWorkflowIds.mockResolvedValue(new Set());
 	const exporter = new WorkflowExporter(
 		finder,
 		new WorkflowSerializer(),
@@ -66,6 +71,40 @@ describe('WorkflowExporter', () => {
 				writer,
 			}),
 		).rejects.toThrow('1 workflow(s) not found or not accessible. Export aborted.');
+	});
+
+	it('throws PackageEntityNotFoundError when the missing id does not exist at all', async () => {
+		const present = makeWorkflow({ id: 'present-1' });
+		const { exporter, finder } = makeExporter([present]);
+		finder.findExistingWorkflowIds.mockResolvedValue(new Set());
+		const writer = new CapturingWriter();
+
+		await expect(
+			exporter.export({ user, workflowIds: ['present-1', 'missing'], writer }),
+		).rejects.toBeInstanceOf(PackageEntityNotFoundError);
+	});
+
+	it('throws PackageEntityAccessDeniedError when the missing id exists but is inaccessible', async () => {
+		const present = makeWorkflow({ id: 'present-1' });
+		const { exporter, finder } = makeExporter([present]);
+		finder.findExistingWorkflowIds.mockResolvedValue(new Set(['denied-1']));
+		const writer = new CapturingWriter();
+
+		await expect(
+			exporter.export({ user, workflowIds: ['present-1', 'denied-1'], writer }),
+		).rejects.toBeInstanceOf(PackageEntityAccessDeniedError);
+	});
+
+	it('checks existence only for the missing ids, not the ones already found', async () => {
+		const present = makeWorkflow({ id: 'present-1' });
+		const { exporter, finder } = makeExporter([present]);
+		const writer = new CapturingWriter();
+
+		await expect(
+			exporter.export({ user, workflowIds: ['present-1', 'missing'], writer }),
+		).rejects.toThrow();
+
+		expect(finder.findExistingWorkflowIds).toHaveBeenCalledWith(['missing']);
 	});
 
 	it('writes one entry per finder-returned workflow, even if the request repeats an id', async () => {

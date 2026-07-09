@@ -238,6 +238,11 @@ export function useWorkflowSaving({
 				// Only mark state clean if no new changes were made during the save
 				if (uiStore.dirtyStateSetCount === dirtyCountBeforeSave) {
 					uiStore.markStateClean();
+					// A completed manual save supersedes any scheduled autosave.
+					// Disarming it keeps the timer from firing after a
+					// save-then-navigate, where the route no longer resolves a
+					// workflow id and the autosave would create an empty workflow.
+					if (!autosaved) cancelAutoSave();
 				}
 				uiStore.removeActiveAction('workflowSaving');
 				void useExternalHooks().run('workflow.afterUpdate', { workflowData });
@@ -534,6 +539,9 @@ export function useWorkflowSaving({
 			// Only mark state clean if no new changes were made during the save
 			if (uiStore.dirtyStateSetCount === dirtyCountBeforeSave) {
 				uiStore.markStateClean();
+				// A completed manual save supersedes any scheduled autosave (see
+				// the same disarm in the update path above).
+				if (!autosaved) cancelAutoSave();
 			}
 			void useExternalHooks().run('workflow.afterUpdate', { workflowData });
 
