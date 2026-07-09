@@ -43,6 +43,15 @@ export interface ExecutorHooks {
 
 	/** A best-effort claim release failed; the reaper still recovers the row. */
 	onReleaseError?: (taskId: string, error: unknown) => void;
+
+	// Fire-path metrics hooks (the normal path), distinct from the incident hooks above.
+
+	/** A claimed task was dispatched to its handler; `lagSeconds` is fire time minus its effective `runAt` (clamped >= 0). */
+	onDispatch?: (taskType: string, lagSeconds: number) => void;
+	/** A fire reached a terminal outcome: the handler completed ('success') or exhausted its attempts ('failure'). */
+	onFire?: (taskType: string, result: 'success' | 'failure') => void;
+	/** A fire failed but has attempts left; it was rescheduled with backoff. */
+	onRetry?: (taskType: string) => void;
 }
 
 /**
@@ -215,6 +224,16 @@ export class Executor {
 					return;
 				}
 
+				// Now that the task is confirmed ours and started, it is genuinely being dispatched.
+				// Lag is measured against `runAt` (the effective fire time, pushed forward by retry
+				// backoff), not the fixed original slot, so a retry's backoff wait isn't logged as lag.
+				// The timer's clock (the one scheduling used) is used, not a fresh wall clock, so a
+				// skewed instance doesn't bias the lag it also scheduled against; clamp non-negative
+				// since a timer can fire marginally early.
+				const lagMs = this.timer.now() - task.runAt.getTime();
+				const lagSeconds = Math.max(0, lagMs) / Time.seconds.toMilliseconds;
+				this.hooks.onDispatch?.(task.taskType, lagSeconds);
+
 				// Record success only after the try, so a failure to record it isn't taken for a
 				// handler failure. Such a failure propagates out (caught by the detached `.catch`
 				// in claimAndSchedule) and leaves the row `running` for the reaper.
@@ -237,17 +256,26 @@ export class Executor {
 					const message = ensureError(error).message;
 					const nextAttempts = task.attempts + 1;
 					if (nextAttempts >= task.maxAttempts) {
-						await this.store.failTaskTerminal(claim, message);
+						// Guard the metric on rows affected: the write resolves 0 (not rejects) when the
+						// row was reclaimed by the reaper on lease overrun, so don't count that as ours.
+						const rowsAffected = await this.store.failTaskTerminal(claim, message);
+						if (rowsAffected > 0) this.hooks.onFire?.(task.taskType, 'failure');
 						span.setAttribute(SCHEDULER_ATTRIBUTES.outcome, SCHEDULER_FIRE_OUTCOME.deadLettered);
 					} else {
-						await this.store.rescheduleTask(claim, backoff(nextAttempts), message);
+						const rowsAffected = await this.store.rescheduleTask(
+							claim,
+							backoff(nextAttempts),
+							message,
+						);
+						if (rowsAffected > 0) this.hooks.onRetry?.(task.taskType);
 						span.setAttribute(SCHEDULER_ATTRIBUTES.outcome, SCHEDULER_FIRE_OUTCOME.rescheduled);
 					}
 					span.setStatus({ code: SpanStatus.error, message });
 					return;
 				}
 
-				await this.store.completeTask(claim);
+				const rowsAffected = await this.store.completeTask(claim);
+				if (rowsAffected > 0) this.hooks.onFire?.(task.taskType, 'success');
 				span.setAttribute(SCHEDULER_ATTRIBUTES.outcome, SCHEDULER_FIRE_OUTCOME.completed);
 				span.setStatus({ code: SpanStatus.ok });
 			},

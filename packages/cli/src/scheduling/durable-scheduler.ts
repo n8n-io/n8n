@@ -7,6 +7,8 @@ import type { RunInTransaction, Scheduler, TaskHandler, Tracer } from '@n8n/sche
 import { createScheduler, executorLookaheadSeconds } from '@n8n/scheduler';
 import { InstanceSettings, Tracing } from 'n8n-core';
 
+import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
+
 import { ScheduleTriggerTaskHandler } from './schedule-trigger-node/schedule-trigger-task-handler';
 
 /**
@@ -28,6 +30,7 @@ export class DurableScheduler implements Scheduler {
 		globalConfig: GlobalConfig,
 		tracing: Tracing,
 		scheduleTriggerTaskHandler: ScheduleTriggerTaskHandler,
+		metrics: PrometheusSchedulerMetricsService,
 	) {
 		const config = globalConfig.scheduler;
 		const enabled = config.enabled && instanceSettings.instanceType === 'main';
@@ -41,6 +44,9 @@ export class DurableScheduler implements Scheduler {
 					hostId: instanceSettings.hostId,
 					materializerTransaction: buildMaterializerTransaction(dataSource, jobs, tasks),
 					taskStore: tasks,
+					// The collector implements `SchedulerMetrics`; it stays a no-op sink
+					// until its `init()` runs when metrics are enabled on a main instance.
+					metrics,
 					materializer: {
 						windowSeconds: config.materializationWindowSeconds,
 						defaultTimezone: globalConfig.generic.timezone,
