@@ -7,7 +7,9 @@ import {
 	askQuestionInputSchema,
 	askQuestionResumeSchema,
 	cancellationResumeSchema,
+	channelConfigSchema,
 	credentialRequestSchema,
+	InstanceAiConfirmRequestDto,
 } from '@n8n/api-types';
 import { describe, expect, it } from 'vitest';
 
@@ -40,6 +42,42 @@ const askCredentialSuspendPayload = (
 		credentialType: 'slackApi',
 		...overrides,
 	});
+
+// Local mirrors of the cli-injected tool names (BUILDER_EXTRA_TOOL_NAMES in
+// packages/cli/src/modules/agents/instance-ai-builder-extra-tools.ts) — tests
+// can't import from cli.
+const CONFIGURE_CHANNEL_TOOL_NAME = 'configure_channel';
+const ASK_QUESTIONS_TOOL_NAME = 'ask_questions';
+
+// configure_channel's suspend schema (configureChannelSuspendSchema) and
+// ask_questions's (askQuestionsSuspendSchema) both live in the cli-only
+// extra-tools file, so they can't be `.parse()`d here the way ask_question's/
+// ask_credential's can. `channelConfig` is built via the real, shared
+// `channelConfigSchema` so byte-for-byte preservation can be proven against it.
+const configureChannelSuspendPayload = (overrides: Record<string, unknown> = {}) => ({
+	requestId: 'tool-req-1',
+	message: 'Set up the slack channel',
+	severity: 'info' as const,
+	channelConfig: channelConfigSchema.parse({ integrationType: 'slack', agentId: 'agent-1' }),
+	projectId: 'project-1',
+	...overrides,
+});
+
+const askQuestionsSuspendPayload = (overrides: Record<string, unknown> = {}) => ({
+	requestId: 'tool-req-2',
+	message: 'The agent builder has questions',
+	severity: 'info' as const,
+	inputType: 'questions' as const,
+	questions: [
+		{
+			id: 'q1',
+			question: 'Which service should send the alert?',
+			type: 'single' as const,
+			options: ['Slack', 'Email'],
+		},
+	],
+	...overrides,
+});
 
 describe('mapBuilderSuspendPayload', () => {
 	describe('ask_question', () => {
@@ -207,6 +245,67 @@ describe('mapBuilderSuspendPayload', () => {
 					existingCredentials: [],
 				},
 			]);
+		});
+	});
+
+	describe('configure_channel', () => {
+		it('passes the suspend payload through with requestId replaced, preserving channelConfig byte-for-byte', () => {
+			const payload = configureChannelSuspendPayload();
+
+			const result = mapBuilderSuspendPayload(
+				CONFIGURE_CHANNEL_TOOL_NAME,
+				payload,
+				'orchestrator-req-1',
+			);
+
+			expect(result).toEqual({ ...payload, requestId: 'orchestrator-req-1' });
+			expect(channelConfigSchema.parse(result.channelConfig)).toEqual(payload.channelConfig);
+		});
+
+		it('takes precedence over the generic approval fallback even for a minimal payload', () => {
+			const result = mapBuilderSuspendPayload(
+				CONFIGURE_CHANNEL_TOOL_NAME,
+				{ message: 'Set up channel' },
+				'req-x',
+			);
+
+			expect(result).toEqual({ message: 'Set up channel', requestId: 'req-x' });
+			expect(result.inputType).toBeUndefined();
+		});
+	});
+
+	describe('ask_questions', () => {
+		it('passes the suspend payload through with requestId replaced', () => {
+			const payload = askQuestionsSuspendPayload();
+
+			const result = mapBuilderSuspendPayload(
+				ASK_QUESTIONS_TOOL_NAME,
+				payload,
+				'orchestrator-req-2',
+			);
+
+			expect(result).toEqual({ ...payload, requestId: 'orchestrator-req-2' });
+		});
+
+		it('preserves introMessage and multiple batched questions unchanged', () => {
+			const payload = askQuestionsSuspendPayload({
+				introMessage: 'A couple of quick questions',
+				questions: [
+					{ id: 'q1', question: 'Which service?', type: 'single', options: ['Slack', 'Email'] },
+					{ id: 'q2', question: 'Anything else?', type: 'text' },
+				],
+			});
+
+			const result = mapBuilderSuspendPayload(ASK_QUESTIONS_TOOL_NAME, payload, 'req-y');
+
+			expect(result).toEqual({ ...payload, requestId: 'req-y' });
+		});
+
+		it('takes precedence over the generic approval fallback', () => {
+			const result = mapBuilderSuspendPayload(ASK_QUESTIONS_TOOL_NAME, {}, 'req-z');
+
+			expect(result).toEqual({ requestId: 'req-z' });
+			expect(result.inputType).toBeUndefined();
 		});
 	});
 
@@ -397,6 +496,98 @@ describe('translateConfirmToBuilderResume', () => {
 			const result = translateConfirmToBuilderResume(ASK_CREDENTIAL_TOOL_NAME, {});
 
 			expect(result.ok).toBe(false);
+		});
+	});
+
+	describe('configure_channel', () => {
+		it('maps an approved confirm to { approved: true }', () => {
+			const result = translateConfirmToBuilderResume(CONFIGURE_CHANNEL_TOOL_NAME, {
+				approved: true,
+			});
+
+			expect(result).toEqual({ ok: true, resumeData: { approved: true } });
+		});
+
+		it('maps a dismissal (approved: false) to { approved: false }', () => {
+			const result = translateConfirmToBuilderResume(CONFIGURE_CHANNEL_TOOL_NAME, {
+				approved: false,
+			});
+
+			expect(result).toEqual({ ok: true, resumeData: { approved: false } });
+		});
+
+		it('defaults to { approved: false } when the field is absent (matches cli configureChannelResumeSchema)', () => {
+			const result = translateConfirmToBuilderResume(CONFIGURE_CHANNEL_TOOL_NAME, {});
+
+			expect(result).toEqual({ ok: true, resumeData: { approved: false } });
+		});
+
+		it('takes precedence over the generic approval fallback: never returns ok:false', () => {
+			const result = translateConfirmToBuilderResume(CONFIGURE_CHANNEL_TOOL_NAME, {
+				approved: 'yes',
+			});
+
+			expect(result).toEqual({ ok: true, resumeData: { approved: false } });
+		});
+	});
+
+	describe('ask_questions', () => {
+		it('passes an approved answers confirm payload through unchanged, matching the real FE-flattened shape', () => {
+			// VERIFIED FE SHAPE: build the real wire payload via the actual DTO
+			// (`questionsConfirmSchema` inside `InstanceAiConfirmRequestDto`), then apply
+			// the exact flattening `toConfirmationData` performs server-side (cli
+			// instance-ai.service.ts ~L318-329: `{ approved: true, answers: request.answers }`)
+			// so this fixture matches what really reaches `ctx.resumeData`.
+			const wirePayload = InstanceAiConfirmRequestDto.parse({
+				kind: 'questions',
+				answers: [
+					{ questionId: 'q1', selectedOptions: ['slack'] },
+					{ questionId: 'q2', selectedOptions: [], customText: 'Something custom' },
+				],
+			});
+			if (wirePayload.kind !== 'questions') throw new Error('expected questions kind');
+			const confirmPayload = { approved: true, answers: wirePayload.answers };
+
+			const result = translateConfirmToBuilderResume(ASK_QUESTIONS_TOOL_NAME, confirmPayload);
+
+			expect(result).toEqual({ ok: true, resumeData: confirmPayload });
+		});
+
+		it('passes a dismissal ({ approved: false }, no answers) through unchanged', () => {
+			const result = translateConfirmToBuilderResume(ASK_QUESTIONS_TOOL_NAME, {
+				approved: false,
+			});
+
+			expect(result).toEqual({ ok: true, resumeData: { approved: false } });
+		});
+
+		it('passes a skipped-answer confirm through unchanged for the cli tool to interpret', () => {
+			const wirePayload = InstanceAiConfirmRequestDto.parse({
+				kind: 'questions',
+				answers: [{ questionId: 'q1', selectedOptions: [], skipped: true }],
+			});
+			if (wirePayload.kind !== 'questions') throw new Error('expected questions kind');
+			const confirmPayload = { approved: true, answers: wirePayload.answers };
+
+			const result = translateConfirmToBuilderResume(ASK_QUESTIONS_TOOL_NAME, confirmPayload);
+
+			expect(result).toEqual({ ok: true, resumeData: confirmPayload });
+		});
+
+		it('returns ok:false for a non-record confirm payload', () => {
+			const result = translateConfirmToBuilderResume(ASK_QUESTIONS_TOOL_NAME, [
+				'not',
+				'a',
+				'record',
+			] as unknown as Record<string, unknown>);
+
+			expect(result.ok).toBe(false);
+		});
+
+		it('takes precedence over the generic approval fallback: no boolean-approved field required', () => {
+			const result = translateConfirmToBuilderResume(ASK_QUESTIONS_TOOL_NAME, { answers: [] });
+
+			expect(result).toEqual({ ok: true, resumeData: { answers: [] } });
 		});
 	});
 
