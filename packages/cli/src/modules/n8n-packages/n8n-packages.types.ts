@@ -47,11 +47,6 @@ export type ImportPackageRequest = {
 	projectId?: string;
 	folderId?: string;
 	packageBuffer: Buffer;
-	/**
-	 * Explicit source→target id overrides supplied with the request, mirroring the
-	 * {@link PackageImportBindings} result shape. Only `credentials` is consumed
-	 * today (and accepted by the request DTO); the remaining keys are RFC seams.
-	 */
 	bindings?: Partial<PackageImportBindings>;
 } & ImportCredentialProperties &
 	ImportWorkflowProperties;

@@ -27,20 +27,11 @@ const optionalFormId = z
 const BINDINGS_ERROR_MESSAGE =
 	'bindings must be a JSON object, e.g. {"credentials":{"<sourceId>":"<targetId>"}}';
 
-/** Source id → target id map; both ids are non-empty strings. */
 const bindingMapSchema = z.record(z.string().min(1), z.string().min(1));
-
-/**
- * A `bindings` object keyed exclusively by known entity types. `.strict()` rejects
- * unknown keys (e.g. a misspelled `credential`) with a naming error rather than
- * silently ignoring them. Only `credentials` is honoured today; other entity types
- * (`dataTables`/`variables`) are RFC seams — add a field here once honoured.
- */
 const bindingsObjectSchema = z.object({ credentials: bindingMapSchema }).partial().strict();
 
 type BindingsInput = z.infer<typeof bindingsObjectSchema>;
 
-/** Multipart text field: a JSON string parsed then validated against {@link bindingsObjectSchema}. */
 const bindingsSchema = z
 	.string()
 	.optional()

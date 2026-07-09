@@ -14,7 +14,6 @@ export interface ImportPackageFields {
 	folderId?: string;
 	credentialMatchingMode?: string;
 	credentialMissingMode?: string;
-	/** JSON object of explicit source→target id bindings, keyed by entity type. Sent verbatim; the server validates it. */
 	bindings?: string;
 	workflowConflictPolicy: string;
 	workflowIdPolicy?: string;

@@ -130,8 +130,6 @@ describe('POST /n8n-packages/import', () => {
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(400);
-		// The strict schema names the offending key; assert that specific diagnostic so a
-		// regression to silently stripping unknown keys would fail here.
 		expect(response.body.message).toContain('Unrecognized key');
 		expect(response.body.message).toContain('credential');
 	});
