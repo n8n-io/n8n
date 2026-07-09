@@ -217,8 +217,8 @@ import { DropAgentExecutionFallbackColumns1784000000039 } from '../common/178400
 import { CreateWorkflowPublicationTriggerStatusTable1784000000040 } from '../common/1784000000040-CreateWorkflowPublicationTriggerStatusTable';
 import { AddUsedPrivateCredentialsToExecutionEntity1784000000041 } from '../common/1784000000041-AddUsedPrivateCredentialsToExecutionEntity';
 import { CreateSchedulerTables1784000000042 } from '../common/1784000000042-CreateSchedulerTables';
-import type { Migration } from '../migration-types';
 import { AddPartialIndexForGlobalCredentials1784000000044 } from '../common/1784000000044-AddPartialIndexForGlobalCredentials';
+import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
