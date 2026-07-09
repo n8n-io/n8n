@@ -314,7 +314,121 @@ describe('Webhook Utils', () => {
 		it('should throw an error if response mode is not "responseNode" but a Respond to Webhook node is found', () => {
 			const context: Partial<IWebhookFunctions> = {
 				getNodeParameter: vi.fn().mockReturnValue('onReceived'),
-				getChildNodes: vi.fn().mockReturnValue([{ type: 'n8n-nodes-base.respondToWebhook' }]),
+				getChildNodes: vi
+					.fn()
+					.mockReturnValue([{ name: 'Respond', type: 'n8n-nodes-base.respondToWebhook' }]),
+				getParentNodes: vi.fn().mockReturnValue([]),
+				getNode: vi.fn().mockReturnValue({ name: 'Webhook' }),
+			};
+			expect(() => {
+				checkResponseModeConfiguration(context as IWebhookFunctions);
+			}).toThrowError('Unused Respond to Webhook node found in the workflow');
+		});
+
+		it('should not throw if the Respond to Webhook node belongs to a downstream Wait node resuming on webhook', () => {
+			const waitNode = {
+				name: 'Wait',
+				type: 'n8n-nodes-base.wait',
+				disabled: false,
+				parameters: { resume: 'webhook', responseMode: 'responseNode' },
+			};
+			const context: Partial<IWebhookFunctions> = {
+				getNodeParameter: vi.fn().mockReturnValue('onReceived'),
+				getChildNodes: vi
+					.fn()
+					.mockReturnValue([
+						{ name: 'Request2', type: 'n8n-nodes-base.httpRequest' },
+						waitNode,
+						{ name: 'Request', type: 'n8n-nodes-base.httpRequest' },
+						{ name: 'Respond success', type: 'n8n-nodes-base.respondToWebhook' },
+					]),
+				getParentNodes: vi
+					.fn()
+					.mockReturnValue([
+						{ name: 'Request', type: 'n8n-nodes-base.httpRequest' },
+						waitNode,
+						{ name: 'Request2', type: 'n8n-nodes-base.httpRequest' },
+						{ name: 'Webhook', type: 'n8n-nodes-base.webhook' },
+					]),
+				getNode: vi.fn().mockReturnValue({ name: 'Webhook' }),
+			};
+			expect(() => {
+				checkResponseModeConfiguration(context as IWebhookFunctions);
+			}).not.toThrow();
+		});
+
+		it('should throw if the Wait node upstream of the Respond to Webhook node does not resume on webhook', () => {
+			const waitNode = {
+				name: 'Wait',
+				type: 'n8n-nodes-base.wait',
+				disabled: false,
+				parameters: { resume: 'timeInterval' },
+			};
+			const context: Partial<IWebhookFunctions> = {
+				getNodeParameter: vi.fn().mockReturnValue('onReceived'),
+				getChildNodes: vi
+					.fn()
+					.mockReturnValue([
+						waitNode,
+						{ name: 'Respond', type: 'n8n-nodes-base.respondToWebhook' },
+					]),
+				getParentNodes: vi
+					.fn()
+					.mockReturnValue([waitNode, { name: 'Webhook', type: 'n8n-nodes-base.webhook' }]),
+				getNode: vi.fn().mockReturnValue({ name: 'Webhook' }),
+			};
+			expect(() => {
+				checkResponseModeConfiguration(context as IWebhookFunctions);
+			}).toThrowError('Unused Respond to Webhook node found in the workflow');
+		});
+
+		it('should throw if the webhook-resuming Wait node upstream of the Respond to Webhook node is disabled', () => {
+			const waitNode = {
+				name: 'Wait',
+				type: 'n8n-nodes-base.wait',
+				disabled: true,
+				parameters: { resume: 'webhook' },
+			};
+			const context: Partial<IWebhookFunctions> = {
+				getNodeParameter: vi.fn().mockReturnValue('onReceived'),
+				getChildNodes: vi
+					.fn()
+					.mockReturnValue([
+						waitNode,
+						{ name: 'Respond', type: 'n8n-nodes-base.respondToWebhook' },
+					]),
+				getParentNodes: vi
+					.fn()
+					.mockReturnValue([waitNode, { name: 'Webhook', type: 'n8n-nodes-base.webhook' }]),
+				getNode: vi.fn().mockReturnValue({ name: 'Webhook' }),
+			};
+			expect(() => {
+				checkResponseModeConfiguration(context as IWebhookFunctions);
+			}).toThrowError('Unused Respond to Webhook node found in the workflow');
+		});
+
+		it('should throw if any Respond to Webhook node is not owned by a downstream Wait node', () => {
+			const waitNode = {
+				name: 'Wait',
+				type: 'n8n-nodes-base.wait',
+				disabled: false,
+				parameters: { resume: 'webhook' },
+			};
+			const context: Partial<IWebhookFunctions> = {
+				getNodeParameter: vi.fn().mockReturnValue('onReceived'),
+				getChildNodes: vi
+					.fn()
+					.mockReturnValue([
+						waitNode,
+						{ name: 'Respond owned', type: 'n8n-nodes-base.respondToWebhook' },
+						{ name: 'Respond direct', type: 'n8n-nodes-base.respondToWebhook' },
+					]),
+				getParentNodes: vi.fn().mockImplementation((nodeName: string) => {
+					if (nodeName === 'Respond owned') {
+						return [waitNode, { name: 'Webhook', type: 'n8n-nodes-base.webhook' }];
+					}
+					return [{ name: 'Webhook', type: 'n8n-nodes-base.webhook' }];
+				}),
 				getNode: vi.fn().mockReturnValue({ name: 'Webhook' }),
 			};
 			expect(() => {

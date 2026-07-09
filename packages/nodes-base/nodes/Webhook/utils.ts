@@ -10,6 +10,7 @@ import type {
 	ICredentialDataDecryptedObject,
 	MultiPartFormData,
 	INode,
+	NodeTypeAndVersion,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import { createHmac, timingSafeEqual } from 'node:crypto';
@@ -205,11 +206,11 @@ export const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 	const responseMode = context.getNodeParameter('responseMode', 'onReceived') as string;
 	const connectedNodes = context.getChildNodes(context.getNode().name);
 
-	const isRespondToWebhookConnected = connectedNodes.some(
+	const respondToWebhookNodes = connectedNodes.filter(
 		(node) => node.type === 'n8n-nodes-base.respondToWebhook',
 	);
 
-	if (!isRespondToWebhookConnected && responseMode === 'responseNode') {
+	if (respondToWebhookNodes.length === 0 && responseMode === 'responseNode') {
 		throw new WorkflowConfigurationError(
 			context.getNode(),
 			new Error('No Respond to Webhook node found in the workflow'),
@@ -220,15 +221,35 @@ export const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 		);
 	}
 
-	if (isRespondToWebhookConnected && !['responseNode', 'streaming'].includes(responseMode)) {
-		throw new WorkflowConfigurationError(
-			context.getNode(),
-			new Error('Unused Respond to Webhook node found in the workflow'),
-			{
-				description:
-					'Set the “Respond” parameter to “Using Respond to Webhook Node” or remove the Respond to Webhook node',
-			},
+	if (respondToWebhookNodes.length > 0 && !['responseNode', 'streaming'].includes(responseMode)) {
+		// A Respond to Webhook node downstream of a Wait node resuming on
+		// webhook/form belongs to that Wait node, not to this webhook.
+		const descendantNames = new Set(connectedNodes.map((node) => node.name));
+		const isOwnedByDownstreamWait = (respondNode: NodeTypeAndVersion) =>
+			context
+				.getParentNodes(respondNode.name, { includeNodeParameters: true })
+				.some(
+					(node) =>
+						descendantNames.has(node.name) &&
+						node.type === 'n8n-nodes-base.wait' &&
+						!node.disabled &&
+						['webhook', 'form'].includes((node.parameters?.resume as string) ?? ''),
+				);
+
+		const hasUnusedRespondNode = respondToWebhookNodes.some(
+			(node) => !isOwnedByDownstreamWait(node),
 		);
+
+		if (hasUnusedRespondNode) {
+			throw new WorkflowConfigurationError(
+				context.getNode(),
+				new Error('Unused Respond to Webhook node found in the workflow'),
+				{
+					description:
+						'Set the “Respond” parameter to “Using Respond to Webhook Node” or remove the Respond to Webhook node',
+				},
+			);
+		}
 	}
 };
 
