@@ -7,7 +7,7 @@ import { BasePage } from './BasePage';
  * (`/workflow/:workflowId/evaluation/collections/:collectionId/compare`).
  */
 export class EvaluationComparePage extends BasePage {
-	async open(workflowId: string, collectionId: string): Promise<void> {
+	async goto(workflowId: string, collectionId: string): Promise<void> {
 		// The editor is an SPA — resolve on `domcontentloaded` rather than the full
 		// `load` event (which can lag on a cold route), then wait for the view.
 		await this.page.goto(`/workflow/${workflowId}/evaluation/collections/${collectionId}/compare`, {

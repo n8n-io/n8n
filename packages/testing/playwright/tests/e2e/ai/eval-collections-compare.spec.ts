@@ -167,7 +167,7 @@ test.describe(
 			n8n,
 		}) => {
 			const compare = n8n.evaluationCompare;
-			await compare.open(workflowId, COLLECTION_ID);
+			await compare.goto(workflowId, COLLECTION_ID);
 
 			await expect(compare.getHeader()).toContainText('Tone tuning experiment');
 			await expect(compare.getScoreChart()).toBeVisible();
@@ -201,7 +201,7 @@ test.describe(
 			);
 
 			const compare = n8n.evaluationCompare;
-			await compare.open(workflowId, COLLECTION_ID);
+			await compare.goto(workflowId, COLLECTION_ID);
 
 			await expect(compare.getDatasetMismatchBanner()).toBeVisible();
 		});
