@@ -439,7 +439,8 @@ export class MessageEventBusLogWriter {
 	}
 
 	getEventMessageObjectByType(message: AbstractEventMessageOptions): EventMessageTypes | null {
-		switch (message.__type as EventMessageTypeNames) {
+		const type = message.__type as EventMessageTypeNames;
+		switch (type) {
 			case EventMessageTypeNames.generic:
 				return new EventMessageGeneric(message as EventMessageGenericOptions);
 			case EventMessageTypeNames.workflow:
@@ -456,8 +457,19 @@ export class MessageEventBusLogWriter {
 				return new EventMessageRunner(message as EventMessageRunnerOptions);
 			case EventMessageTypeNames.queue:
 				return new EventMessageQueue(message as EventMessageQueueOptions);
-			default:
+			case EventMessageTypeNames.confirm:
+				// Confirm lines are not reconstructed here; they are handled
+				// separately via isEventMessageConfirm to mark messages as sent.
 				return null;
+			default: {
+				// Exhaustiveness guard: `_exhaustive` exists only so that adding a new
+				// EventMessageTypeNames member without a case above becomes a compile-time
+				// error here. At runtime an unknown/corrupt __type is skipped (null) so one
+				// bad line doesn't abort parsing the log file.
+				const _exhaustive: never = type;
+				void _exhaustive;
+				return null;
+			}
 		}
 	}
 }
