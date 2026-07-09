@@ -28,7 +28,7 @@ describe('isNonImpactful', () => {
 		'tsconfig.json',
 		'packages/cli/tsconfig.build.json',
 		'biome.jsonc',
-		'packages/testing/test-impact/jest.config.ts',
+		'packages/testing/test-impact/vitest.config.ts',
 		'.eslintrc.js',
 	])('treats %s as non-impactful', (file) => {
 		expect(isNonImpactful(file)).toBe(true);

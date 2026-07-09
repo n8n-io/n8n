@@ -485,6 +485,145 @@ describe('aiGateway.store', () => {
 		});
 	});
 
+	describe('isActionOptionVisible()', () => {
+		const managedNode = (parameters: Record<string, unknown> = {}) =>
+			({
+				type: '@n8n/n8n-nodes-langchain.openAi',
+				parameters,
+				credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+			}) as unknown as INode;
+
+		it('should return true for parameters other than resource/operation', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isActionOptionVisible(managedNode(), 'model', 'anything')).toBe(true);
+		});
+
+		it('should return true when no credential is gateway-managed', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			const node = {
+				type: '@n8n/n8n-nodes-langchain.openAi',
+				parameters: {},
+				credentials: { openAiApi: { id: 'cred-1', name: 'My Key' } },
+			} as unknown as INode;
+
+			expect(store.isActionOptionVisible(node, 'resource', 'file')).toBe(true);
+		});
+
+		it('should return true when the node has no supportedActions entry', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			const node = {
+				type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+				parameters: {},
+				credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+			} as unknown as INode;
+
+			expect(store.isActionOptionVisible(node, 'resource', 'anything')).toBe(true);
+		});
+
+		describe('resource options', () => {
+			it('should show a supported resource', async () => {
+				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+				const store = useAiGatewayStore();
+				await store.fetchConfig();
+
+				expect(store.isActionOptionVisible(managedNode(), 'resource', 'text')).toBe(true);
+			});
+
+			it('should hide an unsupported resource', async () => {
+				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+				const store = useAiGatewayStore();
+				await store.fetchConfig();
+
+				expect(store.isActionOptionVisible(managedNode(), 'resource', 'file')).toBe(false);
+			});
+
+			it('should keep all resources for operation-only nodes', async () => {
+				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+				const store = useAiGatewayStore();
+				await store.fetchConfig();
+
+				const node = {
+					type: 'n8n-nodes-pdfco.PDFco Api',
+					parameters: {},
+					credentials: { pdfcoApi: { id: null, name: '', __aiGatewayManaged: true } },
+				} as unknown as INode;
+
+				expect(store.isActionOptionVisible(node, 'resource', 'anything')).toBe(true);
+			});
+		});
+
+		describe('operation options', () => {
+			it('should show a supported operation for the selected resource', async () => {
+				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+				const store = useAiGatewayStore();
+				await store.fetchConfig();
+
+				expect(
+					store.isActionOptionVisible(managedNode({ resource: 'text' }), 'operation', 'message'),
+				).toBe(true);
+			});
+
+			it('should hide an unsupported operation for the selected resource', async () => {
+				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+				const store = useAiGatewayStore();
+				await store.fetchConfig();
+
+				expect(
+					store.isActionOptionVisible(managedNode({ resource: 'text' }), 'operation', 'unknownOp'),
+				).toBe(false);
+			});
+
+			it('should hide operations when the selected resource is unsupported', async () => {
+				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+				const store = useAiGatewayStore();
+				await store.fetchConfig();
+
+				expect(
+					store.isActionOptionVisible(managedNode({ resource: 'file' }), 'operation', 'upload'),
+				).toBe(false);
+			});
+
+			it('should filter operations by the OPERATION_ONLY list for operation-only nodes', async () => {
+				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+				const store = useAiGatewayStore();
+				await store.fetchConfig();
+
+				const node = {
+					type: 'n8n-nodes-pdfco.PDFco Api',
+					parameters: {},
+					credentials: { pdfcoApi: { id: null, name: '', __aiGatewayManaged: true } },
+				} as unknown as INode;
+
+				expect(store.isActionOptionVisible(node, 'operation', 'AI Invoice Parser')).toBe(true);
+				expect(store.isActionOptionVisible(node, 'operation', 'Unknown Operation')).toBe(false);
+			});
+		});
+
+		it('should fall back to the base node name for Tool-suffixed node types', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			const toolNode = {
+				type: '@n8n/n8n-nodes-langchain.openAiTool',
+				parameters: { resource: 'text' },
+				credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+			} as unknown as INode;
+
+			expect(store.isActionOptionVisible(toolNode, 'resource', 'file')).toBe(false);
+			expect(store.isActionOptionVisible(toolNode, 'operation', 'message')).toBe(true);
+		});
+	});
+
 	describe('isNodeTypeVersionSupported()', () => {
 		const CONFIG_WITH_VERSION_REQ = {
 			...MOCK_CONFIG,

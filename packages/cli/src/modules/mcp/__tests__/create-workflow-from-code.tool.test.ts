@@ -172,6 +172,8 @@ describe('create-workflow-from-code MCP tool', () => {
 			skillsUsed?: string[];
 			name?: string;
 			description?: string;
+			versionName?: string;
+			versionDescription?: string;
 			projectId?: string;
 			folderId?: string;
 		},
@@ -183,6 +185,8 @@ describe('create-workflow-from-code MCP tool', () => {
 				skillsUsed: input.skillsUsed,
 				name: input.name as string,
 				description: input.description as string,
+				versionName: input.versionName as string,
+				versionDescription: input.versionDescription as string,
 				projectId: input.projectId as string,
 				folderId: input.folderId as string,
 			},
@@ -314,7 +318,7 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(workflowCreationService.createWorkflow).toHaveBeenCalledWith(
 				user,
 				expect.any(WorkflowEntity),
-				{ projectId: 'personal-project-1', source: 'n8n-mcp' },
+				expect.objectContaining({ projectId: 'personal-project-1', source: 'n8n-mcp' }),
 			);
 		});
 
@@ -324,7 +328,37 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(workflowCreationService.createWorkflow).toHaveBeenCalledWith(
 				user,
 				expect.any(WorkflowEntity),
-				{ projectId: 'custom-project-id', source: 'n8n-mcp' },
+				expect.objectContaining({ projectId: 'custom-project-id', source: 'n8n-mcp' }),
+			);
+		});
+
+		test('passes client-provided version metadata to the service', async () => {
+			await callHandler({
+				code: 'const wf = ...',
+				versionName: 'Initial Slack notification workflow',
+				versionDescription: 'Posts to #ops when the webhook fires',
+			});
+
+			expect(workflowCreationService.createWorkflow).toHaveBeenCalledWith(
+				user,
+				expect.any(WorkflowEntity),
+				expect.objectContaining({
+					versionName: 'Initial Slack notification workflow',
+					versionDescription: 'Posts to #ops when the webhook fires',
+				}),
+			);
+		});
+
+		test('falls back to generated version metadata when the client omits it', async () => {
+			await callHandler({ code: 'const wf = ...' });
+
+			expect(workflowCreationService.createWorkflow).toHaveBeenCalledWith(
+				user,
+				expect.any(WorkflowEntity),
+				expect.objectContaining({
+					versionName: 'Initial version',
+					versionDescription: 'Created with 2 nodes: Webhook, Set',
+				}),
 			);
 		});
 

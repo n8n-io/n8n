@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { N8nCheckbox, N8nLoading, N8nTooltip } from '@n8n/design-system';
+import { N8nCallout, N8nCheckbox, N8nLink, N8nLoading, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { I18nT } from 'vue-i18n';
+import { CUSTOM_ROLES_DOCS_URL } from '@/app/constants';
 import {
-	INSTANCE_OPTION_LABEL_KEYS,
 	INSTANCE_SCOPE_GROUP_LIST,
 	SUPERSEDED_BY,
+	getEscalationWarningKey,
 	isOptionImplied,
 	resolveOptionState,
 	toggleOption,
@@ -33,12 +35,13 @@ function optionTestId(resource: string, option: InstanceScopeOption): string {
 	return `scope-option-${resource}-${slug}`;
 }
 
-function impliedTooltip(option: InstanceScopeOption): string {
+function impliedTooltip(option: InstanceScopeOption, groupOptions: InstanceScopeOption[]): string {
 	const supersededByKey = SUPERSEDED_BY[option.key];
 	if (!supersededByKey) return '';
-	const labelKey = INSTANCE_OPTION_LABEL_KEYS[supersededByKey];
+	const superseding = groupOptions.find((o) => o.key === supersededByKey);
+	if (!superseding) return '';
 	return i18n.baseText('instanceRoles.option.includedIn', {
-		interpolate: { option: i18n.baseText(labelKey) },
+		interpolate: { option: i18n.baseText(superseding.labelKey) },
 	});
 }
 
@@ -61,7 +64,7 @@ function onToggle(option: InstanceScopeOption, groupOptions: InstanceScopeOption
 					<N8nTooltip
 						v-for="option in group.options"
 						:key="option.key"
-						:content="impliedTooltip(option)"
+						:content="impliedTooltip(option, group.options)"
 						:disabled="!isOptionImplied(option, group.options, modelValue)"
 						placement="top"
 					>
@@ -78,6 +81,27 @@ function onToggle(option: InstanceScopeOption, groupOptions: InstanceScopeOption
 						/>
 					</N8nTooltip>
 				</template>
+				<N8nCallout
+					v-if="!readonly && getEscalationWarningKey(group.resource, modelValue)"
+					theme="warning"
+					:class="$style.warning"
+					:data-test-id="`scope-escalation-warning-${group.resource}`"
+				>
+					<I18nT :keypath="getEscalationWarningKey(group.resource, modelValue)!" scope="global">
+						<template #link>
+							<N8nLink
+								:href="CUSTOM_ROLES_DOCS_URL"
+								:new-window="true"
+								size="small"
+								theme="secondary"
+								:bold="true"
+								:underline="true"
+							>
+								{{ i18n.baseText('instanceRoles.warning.viewDocs') }}
+							</N8nLink>
+						</template>
+					</I18nT>
+				</N8nCallout>
 			</div>
 		</div>
 	</div>
@@ -116,5 +140,9 @@ function onToggle(option: InstanceScopeOption, groupOptions: InstanceScopeOption
 
 .checkbox {
 	margin-bottom: 0;
+}
+
+.warning {
+	margin-top: var(--spacing--2xs);
 }
 </style>

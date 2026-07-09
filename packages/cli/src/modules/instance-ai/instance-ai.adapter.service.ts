@@ -68,7 +68,7 @@ import {
 	WorkflowEntity,
 	WorkflowRepository,
 } from '@n8n/db';
-import { Logger } from '@n8n/backend-common';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
@@ -88,6 +88,8 @@ import {
 	type DataTableRows,
 	type WorkflowExecuteMode,
 	type ExecutionError,
+	type IRunData,
+	type ITaskData,
 	NodeHelpers,
 	Workflow,
 	CHAT_TRIGGER_NODE_TYPE,
@@ -108,6 +110,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
+import { InstanceAiAgentBuilderAdapterService } from '@/modules/agents/instance-ai-agent-builder.adapter';
 import { NodeCatalogService } from '@/node-catalog';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
@@ -258,10 +261,14 @@ export class InstanceAiAdapterService {
 			projectId?: string;
 			/** Eval-only: restrict the credential `list()` view to these IDs. */
 			credentialIdAllowlist?: string[];
+			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
+			 *  assistant can create one via the create_agent tool. */
+			agentId?: string;
 		},
 	): InstanceAiContext {
-		const { searchProxyConfig, pushRef, threadId, projectId, credentialIdAllowlist } =
+		const { searchProxyConfig, pushRef, threadId, projectId, credentialIdAllowlist, agentId } =
 			options ?? {};
+		const agentBuilderAdapter = this.getAgentBuilderAdapter();
 		return {
 			userId: user.id,
 			projectId,
@@ -277,7 +284,29 @@ export class InstanceAiAdapterService {
 			logger: this.logger,
 			nodeTypesProvider: this.nodeTypes,
 			allowSendingParameterValues: this.allowSendingParameterValues,
+			...(agentBuilderAdapter
+				? { agentBuilderService: agentBuilderAdapter.createAdapter(user, projectId) }
+				: {}),
+			...(agentBuilderAdapter && agentId && projectId
+				? { agentBuilderTarget: { agentId, projectId } }
+				: {}),
 		};
+	}
+
+	/**
+	 * Resolve the agent-builder adapter only when the `agents` module is active.
+	 * The adapter class is statically imported (so its `@Service` is always
+	 * registered), so the module-enabled check is what gates
+	 * agent-building. Returns null when the module is off, so the tools are simply
+	 * absent.
+	 */
+	private getAgentBuilderAdapter(): InstanceAiAgentBuilderAdapterService | null {
+		if (!Container.get(ModuleRegistry).isActive('agents')) return null;
+		try {
+			return Container.get(InstanceAiAgentBuilderAdapterService);
+		} catch {
+			return null;
+		}
 	}
 
 	private getTemplatesService(): BuilderTemplatesServiceInstance {
@@ -492,12 +521,14 @@ export class InstanceAiAdapterService {
 				});
 			},
 
-			async getAsWorkflowJSON(workflowId: string) {
+			async getAsWorkflowJSON(workflowId: string, versionId?: string) {
 				const wf = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:read',
 				]);
 				if (!wf) throw new Error(`Workflow ${workflowId} not found or not accessible`);
-				return toWorkflowJSON(wf, { redactParameters });
+				if (!versionId) return toWorkflowJSON(wf, { redactParameters });
+				const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
+				return toWorkflowJSON(wf, { redactParameters, graph: version });
 			},
 
 			async getWorkflowHead(workflowId: string) {
@@ -782,6 +813,7 @@ export class InstanceAiAdapterService {
 						(n): WorkflowNode => ({
 							name: n.name,
 							type: n.type,
+							typeVersion: n.typeVersion,
 							parameters: redactParameters ? undefined : (n.parameters as Record<string, unknown>),
 							position: n.position,
 						}),
@@ -2349,7 +2381,16 @@ export class InstanceAiAdapterService {
 				const workflowNode = workflow.getNode(nodeName);
 				if (!workflowNode) return [];
 
-				return NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType.description);
+				// Dynamic `inputs` expressions resolve via workflow.expression, which
+				// needs a V8 isolate acquired for this workflow when
+				// N8N_EXPRESSION_ENGINE=vm — otherwise the VM bridge throws "No bridge
+				// acquired" and getNodeInputs silently returns []. No-op in legacy mode.
+				await workflow.expression.acquireIsolate();
+				try {
+					return NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType.description);
+				} finally {
+					await workflow.expression.releaseIsolate();
+				}
 			},
 
 			exploreResources: async (params: ExploreResourcesParams): Promise<ExploreResourcesResult> =>
@@ -2694,6 +2735,56 @@ function wrapResultDataEntries(data: Record<string, unknown>): Record<string, un
 	return wrapped;
 }
 
+const MAX_NODE_ERRORS = 10;
+
+function isFailedNodeRun(nodeRun: ITaskData): boolean {
+	return (
+		nodeRun.executionStatus === 'error' ||
+		nodeRun.error !== undefined ||
+		nodeRun.redactedError !== undefined
+	);
+}
+
+function nodeContinuesOnError(node: INode | undefined): boolean {
+	return (
+		node?.continueOnFail === true ||
+		node?.onError === 'continueRegularOutput' ||
+		node?.onError === 'continueErrorOutput'
+	);
+}
+
+function extractNodeErrors(
+	runData: IRunData | undefined,
+	includeUpstreamDetails: boolean,
+	workflowNodes: INode[] = [],
+): NonNullable<ExecutionResult['nodeErrors']> {
+	if (!runData) return [];
+
+	const nodesByName = new Map(workflowNodes.map((node) => [node.name, node]));
+	const nodeErrors: NonNullable<ExecutionResult['nodeErrors']> = [];
+	for (const [nodeName, nodeRuns] of Object.entries(runData)) {
+		if (nodeErrors.length >= MAX_NODE_ERRORS) break;
+		if (nodeContinuesOnError(nodesByName.get(nodeName))) continue;
+
+		const failedRun = nodeRuns.find(isFailedNodeRun);
+		if (!failedRun) continue;
+
+		const message = failedRun.error
+			? formatExecutionError(failedRun.error, includeUpstreamDetails)
+			: failedRun.redactedError
+				? `${failedRun.redactedError.type} error${
+						failedRun.redactedError.httpCode ? ` (${failedRun.redactedError.httpCode})` : ''
+					}`
+				: undefined;
+		nodeErrors.push({
+			nodeName,
+			...(message ? { message } : {}),
+		});
+	}
+
+	return nodeErrors;
+}
+
 export async function extractExecutionResult(
 	executionId: string,
 	includeOutputData = true,
@@ -2723,9 +2814,9 @@ export async function extractExecutionResult(
 	// omits. Verification uses this to tell "ran and returned nothing" apart
 	// from "never reached". Node names only, so it is safe regardless of the
 	// parameter-values privacy setting.
-	const executedNodeNames = Object.keys(execution.data?.resultData?.runData ?? {});
+	const runData = execution.data?.resultData?.runData;
+	const executedNodeNames = Object.keys(runData ?? {});
 	if (includeOutputData) {
-		const runData = execution.data?.resultData?.runData;
 		if (runData) {
 			for (const [nodeName, nodeRuns] of Object.entries(runData)) {
 				const lastRun = nodeRuns[nodeRuns.length - 1];
@@ -2745,6 +2836,7 @@ export async function extractExecutionResult(
 	// Extract error if present
 	const error = execution.data?.resultData?.error;
 	const errorMessage = error ? formatExecutionError(error, includeOutputData) : undefined;
+	const nodeErrors = extractNodeErrors(runData, includeOutputData, execution.workflowData?.nodes);
 
 	return {
 		executionId,
@@ -2754,6 +2846,7 @@ export async function extractExecutionResult(
 				? wrapResultDataEntries(truncateResultData(resultData))
 				: undefined,
 		executedNodeNames: executedNodeNames.length > 0 ? executedNodeNames : undefined,
+		nodeErrors: nodeErrors.length > 0 ? nodeErrors : undefined,
 		lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
 		error: errorMessage,
 		startedAt: execution.startedAt?.toISOString(),
@@ -2985,7 +3078,7 @@ export async function extractExecutionDebugInfo(
 			nodeTrace.push({
 				name: nodeName,
 				type: nodeType,
-				status: lastRun.error !== undefined ? 'error' : 'success',
+				status: isFailedNodeRun(lastRun) ? 'error' : 'success',
 				startedAt:
 					lastRun.startTime !== undefined ? new Date(lastRun.startTime).toISOString() : undefined,
 				finishedAt:
@@ -3101,13 +3194,18 @@ function sanitizeCredentialReferencesForSave(nodes: WorkflowJSON['nodes']): Work
 
 function toWorkflowJSON(
 	workflow: WorkflowEntity,
-	options?: { redactParameters?: boolean },
+	options?: {
+		redactParameters?: boolean;
+		/** Substitute a history version's graph; id/name/settings stay from the live entity, as history rows only carry a version label. */
+		graph?: Pick<WorkflowEntity, 'nodes' | 'connections' | 'nodeGroups'>;
+	},
 ): WorkflowJSON {
 	const redact = options?.redactParameters ?? false;
+	const source = options?.graph ?? workflow;
 	return {
 		id: workflow.id,
 		name: workflow.name,
-		nodes: (workflow.nodes ?? []).map((n) => ({
+		nodes: (source.nodes ?? []).map((n) => ({
 			id: n.id ?? '',
 			name: n.name,
 			type: n.type,
@@ -3124,9 +3222,9 @@ function toWorkflowJSON(
 			alwaysOutputData: n.alwaysOutputData,
 			onError: n.onError,
 		})),
-		connections: workflow.connections as WorkflowJSON['connections'],
+		connections: source.connections as WorkflowJSON['connections'],
 		settings: workflow.settings as WorkflowJSON['settings'],
-		...(workflow.nodeGroups ? { nodeGroups: workflow.nodeGroups } : {}),
+		...(source.nodeGroups ? { nodeGroups: source.nodeGroups } : {}),
 	};
 }
 
@@ -3147,6 +3245,7 @@ function toWorkflowDetail(
 			(n): WorkflowNode => ({
 				name: n.name,
 				type: n.type,
+				typeVersion: n.typeVersion,
 				parameters: redact ? undefined : n.parameters,
 				position: n.position,
 				webhookId: n.webhookId,

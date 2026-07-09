@@ -410,4 +410,29 @@ describe('McpClientManager', () => {
 			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
 		});
 	});
+
+	describe('tool call callback', () => {
+		it('forwards native tool call events with the source server config', async () => {
+			const onToolCallSettled = vi.fn();
+			const manager = new McpClientManager(undefined, { onToolCallSettled });
+			const config = {
+				name: 'registry',
+				url: 'https://registry.example.com/mcp',
+				metadata: { serverSlug: 'linear', userId: 'user-1' },
+			};
+
+			await manager.getRegularTools([config], mockLogger);
+
+			const mcpClientCalls = mockedMcpClient.mock.calls as Array<
+				[Array<{ onToolCallSettled?: (event: { toolName: string; success: boolean }) => void }>]
+			>;
+			mcpClientCalls[0][0][0].onToolCallSettled?.({ toolName: 'search', success: true });
+
+			expect(onToolCallSettled).toHaveBeenCalledWith({
+				server: config,
+				toolName: 'search',
+				success: true,
+			});
+		});
+	});
 });

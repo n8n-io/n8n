@@ -1,0 +1,26 @@
+{
+	"description": "Anti-pattern guard: page-parameter APIs should use HTTP Request built-in pagination, not Loop Over Items with manual page counting.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every morning, pull all paginated records from GET https://api.example.com/records?page=N until a page comes back empty, then load them into our database at POST https://api.example.com/records/import."
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "medium",
+	"tags": ["build", "loops", "pagination", "anti-pattern", "schedule", "http-request"],
+	"triggerType": "schedule",
+	"datasets": ["full"],
+	"outcomeExpectations": [
+		"The HTTP Request node fetches all pages via built-in pagination until an empty page stops paging.",
+		"The agent did NOT implement paging with a Loop Over Items node plus manual $pageCount increment, nor a Code node loop, nor a hard-coded number of page requests."
+	],
+	"executionScenarios": [
+		{
+			"name": "two-pages-then-empty",
+			"description": "Records span two pages; empty page 3 stops paging",
+			"dataSetup": "This is a PAGINATED endpoint — serve each request strictly by its `page` query parameter and do NOT put every record on one page. Never return identical JSON for different page values or n8n stops with 'identical response 5x'. `GET https://api.example.com/records?page=1` returns { \"records\": [{ \"id\": \"R1\" }, { \"id\": \"R2\" }] }. `GET https://api.example.com/records?page=2` returns { \"records\": [{ \"id\": \"R3\" }] }. `GET https://api.example.com/records?page=3` and any later page return { \"records\": [] }. A request with no page parameter is page 1. POST https://api.example.com/records/import returns { \"ok\": true }.",
+			"successCriteria": "The workflow executes without errors. All THREE records (R1, R2, R3) are imported via POST https://api.example.com/records/import — having fetched page 1 and page 2 before the empty page 3. A workflow that only imports R1 and R2 FAILS."
+		}
+	]
+}

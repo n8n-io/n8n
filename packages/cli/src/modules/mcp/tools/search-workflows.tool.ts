@@ -40,32 +40,34 @@ const inputSchema = {
 const outputSchema = {
 	data: z
 		.array(
-			z.object({
-				id: z.string().describe('The unique identifier of the workflow'),
-				name: z.string().nullable().describe('The name of the workflow'),
-				description: z.string().nullable().optional().describe('The description of the workflow'),
-				active: z.boolean().nullable().describe('Whether the workflow is active'),
-				createdAt: z
-					.string()
-					.nullable()
-					.describe('The ISO timestamp when the workflow was created'),
-				updatedAt: z
-					.string()
-					.nullable()
-					.describe(
-						'ISO timestamp the workflow definition was last saved. Use this to identify recently edited workflows.',
-					),
-				triggerCount: z
-					.number()
-					.nullable()
-					.describe('The number of triggers associated with the workflow'),
-				scopes: z.array(z.string()).describe('User permissions for this workflow'),
-				canExecute: z
-					.boolean()
-					.describe('Whether the user has permission to execute this workflow'),
-				availableInMCP: z.boolean().describe('Whether the workflow is visible to MCP tools'),
-				tags: z.array(tagSchema).describe('Tags assigned to the workflow'),
-			}),
+			z
+				.object({
+					id: z.string().describe('The unique identifier of the workflow'),
+					name: z.string().nullable().describe('The name of the workflow'),
+					description: z.string().nullable().optional().describe('The description of the workflow'),
+					active: z.boolean().nullable().describe('Whether the workflow is active'),
+					createdAt: z
+						.string()
+						.nullable()
+						.describe('The ISO timestamp when the workflow was created'),
+					updatedAt: z
+						.string()
+						.nullable()
+						.describe(
+							'ISO timestamp the workflow definition was last saved. Use this to identify recently edited workflows.',
+						),
+					triggerCount: z
+						.number()
+						.nullable()
+						.describe('The number of triggers associated with the workflow'),
+					scopes: z.array(z.string()).describe('User permissions for this workflow'),
+					canExecute: z
+						.boolean()
+						.describe('Whether the user has permission to execute this workflow'),
+					availableInMCP: z.boolean().describe('Whether the workflow is visible to MCP tools'),
+					tags: z.array(tagSchema).describe('Tags assigned to the workflow'),
+				})
+				.passthrough(),
 		)
 		.describe('List of workflows matching the query'),
 	count: z.number().int().min(0).describe('Total number of workflows that match the filters'),
