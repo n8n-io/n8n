@@ -331,6 +331,18 @@ export async function runWorkflowTestCase(
 				})
 			: Promise.resolve<BuildExpectationResult[]>([]);
 
+	// Answer-only cases (workflowExpectedForCase === false) legitimately end
+	// without a saved workflow — buildWorkflow reports them as a successful
+	// no-workflow build. Grade them on the conversation via the author
+	// expectations below; there are no scenarios to execute.
+	if (build.success && !build.workflowId) {
+		result.workflowBuildSuccess = true;
+		result.buildTrace = build.buildTrace;
+		const expectationResults = await expectationsPromise;
+		if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
+		return result;
+	}
+
 	if (!build.success || !build.workflowId) {
 		result.buildError = build.error;
 		const expectationResults = await expectationsPromise;
