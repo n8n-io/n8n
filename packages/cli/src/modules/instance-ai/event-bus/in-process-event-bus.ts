@@ -10,12 +10,6 @@ import { InstanceSettings } from 'n8n-core';
 import { MAX_PUBSUB_PAYLOAD_BYTES } from '@/scaling/constants';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
-import { DurableEventLog, type DrainedEvent } from './durable-event-log';
-
-// With the durable log ON, the in-memory store is a live-delivery CACHE over
-// instance_ai_events, not the source of truth: eviction bounds the cache and
-// can no longer lose data (replay reads the DB through DurableEventLog).
-// With the flag OFF it is today's only store, and eviction is data loss.
 const MAX_EVENTS_PER_THREAD = 500;
 const MAX_BYTES_PER_THREAD = 2 * 1024 * 1024; // 2 MB
 
@@ -28,14 +22,11 @@ const MAX_BYTES_PER_THREAD = 2 * 1024 * 1024; // 2 MB
  */
 const SEQ_KEY_TTL_SECONDS = 14 * 24 * 60 * 60;
 
-/** Only id-bearing events enter the store; the id is the replay cursor. */
-type SequencedEvent = StoredEvent & { id: number };
-
 @Service()
 export class InProcessEventBus implements InstanceAiEventBus {
 	private readonly emitter = new EventEmitter();
 
-	private readonly store = new Map<string, SequencedEvent[]>();
+	private readonly store = new Map<string, StoredEvent[]>();
 
 	/** Approximate serialized size per thread for eviction. */
 	private readonly sizeBytes = new Map<string, number>();
@@ -65,18 +56,14 @@ export class InProcessEventBus implements InstanceAiEventBus {
 
 	private readonly seqKeyPrefix: string;
 
-	private readonly durableLogEnabled: boolean;
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
-		private readonly eventLog: DurableEventLog,
 		globalConfig: GlobalConfig,
 	) {
 		this.logger = this.logger.scoped('instance-ai');
 		this.seqKeyPrefix = `${globalConfig.redis.prefix}:instance-ai:event-seq:`;
-		this.durableLogEnabled = globalConfig.instanceAi.durableLog;
 		// Avoid warnings when many SSE clients connect (each adds a listener per thread)
 		this.emitter.setMaxListeners(0);
 	}
@@ -84,29 +71,15 @@ export class InProcessEventBus implements InstanceAiEventBus {
 	/**
 	 * Publish an event for a thread.
 	 *
-	 * Durable log ON: synchronous enqueue into the durable log's per-thread
-	 * drain, which assigns `seq` from the DB, persists durable facts, and hands
-	 * each event back here (`onDrained`): durable ones enter the cache; live
-	 * ones go to local SSE subscribers and — in multi-main — to sibling mains
-	 * via the pubsub relay. Ephemeral events (deltas, status) carry NO id, so
-	 * their SSE frames have no `id:` line and the browser's replay cursor only
-	 * ever points at durable facts. The Redis sequence machinery below is never
-	 * touched; INS-844 composes the two drains into one.
+	 * Single-main: assign the next local id and deliver in the same tick.
 	 *
-	 * Flag OFF, single-main: assign the next local id and deliver in the same tick.
-	 *
-	 * Flag OFF, multi-main: enqueue and drain asynchronously — event ids come
-	 * from a shared per-thread Redis sequence, so every main agrees on them and
-	 * the frontend's replay cursor is valid against any main. The queue
-	 * preserves publish order; each sequenced event is stored, delivered to
-	 * local SSE subscribers, and relayed to sibling mains with its id.
+	 * Multi-main: enqueue and drain asynchronously — event ids come from a
+	 * shared per-thread Redis sequence, so every main agrees on them and the
+	 * frontend's replay cursor is valid against any main. The queue preserves
+	 * publish order; each sequenced event is stored, delivered to local SSE
+	 * subscribers, and relayed to sibling mains with its id.
 	 */
 	publish(threadId: string, event: InstanceAiEvent): void {
-		if (this.durableLogEnabled) {
-			this.eventLog.publish(threadId, event, (drained) => this.onDrained(threadId, drained));
-			return;
-		}
-
 		if (!this.instanceSettings.isMultiMain) {
 			const id = (this.lastLocalId.get(threadId) ?? 0) + 1;
 			this.lastLocalId.set(threadId, id);
@@ -121,39 +94,6 @@ export class InProcessEventBus implements InstanceAiEventBus {
 			this.pendingByThread.set(threadId, [event]);
 		}
 		void this.drainQueue(threadId);
-	}
-
-	/**
-	 * An event handed back by the durable log's drain (flag on). Durable events
-	 * (id = DB-assigned seq) enter the live-delivery cache; live ones are
-	 * emitted to local SSE subscribers and relayed to sibling mains. Coalesced
-	 * blocks are durable but NOT live (subscribers already saw their deltas).
-	 */
-	private onDrained(threadId: string, drained: DrainedEvent): void {
-		const sizeBytes = Buffer.byteLength(JSON.stringify(drained.event), 'utf8');
-		if (drained.id !== undefined) {
-			this.cacheSequencedEvent(threadId, { id: drained.id, event: drained.event }, sizeBytes);
-		}
-		if (drained.live) {
-			const stored: StoredEvent = {
-				...(drained.id !== undefined ? { id: drained.id } : {}),
-				event: drained.event,
-			};
-			this.emitter.emit(threadId, stored);
-			this.relayToSiblings(threadId, stored, sizeBytes);
-		}
-	}
-
-	/** Insert into the bounded cache without emitting (durable-log path). */
-	private cacheSequencedEvent(
-		threadId: string,
-		sequenced: SequencedEvent,
-		sizeBytes: number,
-	): void {
-		const events = this.getOrCreateStore(threadId);
-		if (!this.insertById(events, sequenced)) return;
-		this.sizeBytes.set(threadId, (this.sizeBytes.get(threadId) ?? 0) + sizeBytes);
-		this.evictIfNeeded(threadId, events);
 	}
 
 	/**
@@ -172,7 +112,7 @@ export class InProcessEventBus implements InstanceAiEventBus {
 				// Never throws — falls back to local ids on Redis failure.
 				const firstId = await this.assignSequenceBlock(threadId, batch.length);
 				for (let i = 0; i < batch.length; i++) {
-					const stored: SequencedEvent = { id: firstId + i, event: batch[i] };
+					const stored: StoredEvent = { id: firstId + i, event: batch[i] };
 					// Serialize once: reused for the store's size accounting and the relay guard.
 					const sizeBytes = Buffer.byteLength(JSON.stringify(batch[i]), 'utf8');
 					this.storeAndEmit(threadId, stored, sizeBytes);
@@ -259,7 +199,7 @@ export class InProcessEventBus implements InstanceAiEventBus {
 		}
 	}
 
-	private storeAndEmit(threadId: string, stored: SequencedEvent, eventSizeBytes?: number): void {
+	private storeAndEmit(threadId: string, stored: StoredEvent, eventSizeBytes?: number): void {
 		const size = eventSizeBytes ?? Buffer.byteLength(JSON.stringify(stored.event), 'utf8');
 		const events = this.getOrCreateStore(threadId);
 
@@ -280,7 +220,7 @@ export class InProcessEventBus implements InstanceAiEventBus {
 	 * background task while the orchestrator runs elsewhere) can arrive with a
 	 * lower id than the latest stored one. Returns false for a duplicate id.
 	 */
-	private insertById(events: SequencedEvent[], stored: SequencedEvent): boolean {
+	private insertById(events: StoredEvent[], stored: StoredEvent): boolean {
 		if (events.length === 0 || events[events.length - 1].id < stored.id) {
 			events.push(stored);
 			return true;
@@ -317,10 +257,8 @@ export class InProcessEventBus implements InstanceAiEventBus {
 	}
 
 	/** A relayed event from another main, carrying its producer-assigned id
-	 *  from the shared sequence (or the DB-assigned seq with the durable log
-	 *  on; id-less = ephemeral, live-only). Stored/re-emitted only if this main
-	 *  holds a subscription for the thread (avoids every main buffering every
-	 *  thread). */
+	 *  from the shared sequence. Stored/re-emitted only if this main holds a
+	 *  subscription for the thread (avoids every main buffering every thread). */
 	@OnPubSubEvent('relay-instance-ai-event', { instanceType: 'main' })
 	handleRelayInstanceAiEvent({
 		threadId,
@@ -328,17 +266,9 @@ export class InProcessEventBus implements InstanceAiEventBus {
 	}: { threadId: string; storedEvent: StoredEvent }): void {
 		// Track the shared-sequence high-water mark even without subscribers, so
 		// a Redis-outage fallback keeps assigning ids above what siblings used.
-		if (storedEvent.id !== undefined) {
-			this.bumpLocalHighWaterMark(threadId, storedEvent.id);
-		}
+		this.bumpLocalHighWaterMark(threadId, storedEvent.id);
 		if (!this.hasSubscribers(threadId)) return;
-		if (storedEvent.id === undefined) {
-			// Ephemeral durable-log frame: deliver live, never store (the DB seq
-			// is the shared replay authority, so the cache doesn't need it).
-			this.emitter.emit(threadId, storedEvent);
-			return;
-		}
-		this.storeAndEmit(threadId, { id: storedEvent.id, event: storedEvent.event });
+		this.storeAndEmit(threadId, storedEvent);
 	}
 
 	subscribe(threadId: string, handler: (storedEvent: StoredEvent) => void): () => void {
@@ -355,9 +285,6 @@ export class InProcessEventBus implements InstanceAiEventBus {
 	 * Events still awaiting a sequence number are intentionally excluded: they
 	 * have no id yet, and once sequenced they reach subscribers live — the SSE
 	 * bootstrap subscribes before calling this, so nothing is missed.
-	 *
-	 * Durable log ON: cache-scoped read for same-process consumers;
-	 * cross-restart/cross-main replay must use DurableEventLog.getEventsAfter.
 	 */
 	getEventsAfter(threadId: string, afterId: number): StoredEvent[] {
 		const events = this.store.get(threadId);
@@ -387,12 +314,6 @@ export class InProcessEventBus implements InstanceAiEventBus {
 	}
 
 	async getNextEventId(threadId: string): Promise<number> {
-		if (this.durableLogEnabled) {
-			// Cache-scoped; the durable authority is DurableEventLog.getNextEventId.
-			const events = this.store.get(threadId);
-			const last = events?.length ? events[events.length - 1].id : undefined;
-			return (last ?? 0) + 1;
-		}
 		if (this.instanceSettings.isMultiMain) {
 			try {
 				const value = await this.getRedisClient().get(this.seqKey(threadId));
@@ -414,7 +335,6 @@ export class InProcessEventBus implements InstanceAiEventBus {
 		this.lastLocalId.delete(threadId);
 		this.pendingByThread.delete(threadId);
 		this.inFlightByThread.delete(threadId);
-		this.eventLog.clearThread(threadId);
 		this.emitter.removeAllListeners(threadId);
 		if (this.instanceSettings.isMultiMain) {
 			// Every main clears on thread deletion (task-control broadcast), so the
@@ -438,11 +358,10 @@ export class InProcessEventBus implements InstanceAiEventBus {
 		this.lastLocalId.clear();
 		this.pendingByThread.clear();
 		this.inFlightByThread.clear();
-		this.eventLog.clear();
 		this.emitter.removeAllListeners();
 	}
 
-	private evictIfNeeded(threadId: string, events: SequencedEvent[]): void {
+	private evictIfNeeded(threadId: string, events: StoredEvent[]): void {
 		let totalSize = this.sizeBytes.get(threadId) ?? 0;
 
 		while (events.length > MAX_EVENTS_PER_THREAD || totalSize > MAX_BYTES_PER_THREAD) {
@@ -454,7 +373,7 @@ export class InProcessEventBus implements InstanceAiEventBus {
 		this.sizeBytes.set(threadId, Math.max(0, totalSize));
 	}
 
-	private getOrCreateStore(threadId: string): SequencedEvent[] {
+	private getOrCreateStore(threadId: string): StoredEvent[] {
 		let events = this.store.get(threadId);
 		if (!events) {
 			events = [];

@@ -43,8 +43,6 @@ import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-s
 import { EvalExecutionService } from './eval/execution.service';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { EvalThreadRestoreService } from './eval/thread-restore.service';
-import { DurableEventLog } from './event-bus/durable-event-log';
-import { DurableLogMetrics } from './event-bus/durable-log-metrics';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
@@ -68,10 +66,6 @@ const KEEP_ALIVE_INTERVAL_MS = 15_000;
 @RestController('/instance-ai')
 export class InstanceAiController {
 	private readonly gatewayApiKey: string;
-
-	/** Durable-log prototype flag (N8N_INSTANCE_AI_DURABLE_LOG): replay and
-	 *  cursors come from the DB-backed log instead of the in-memory bus. */
-	private readonly durableLogEnabled: boolean;
 
 	private static getTreeRichnessScore(tree: InstanceAiAgentNode): number {
 		let score = 0;
@@ -113,8 +107,6 @@ export class InstanceAiController {
 		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
 		private readonly evalThreadRestore: EvalThreadRestoreService,
 		private readonly eventBus: InProcessEventBus,
-		private readonly eventLog: DurableEventLog,
-		private readonly durableLogMetrics: DurableLogMetrics,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly push: Push,
 		private readonly urlService: UrlService,
@@ -125,7 +117,6 @@ export class InstanceAiController {
 		globalConfig: GlobalConfig,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
-		this.durableLogEnabled = globalConfig.instanceAi.durableLog;
 	}
 
 	private requireInstanceAiEnabled(): void {
@@ -367,38 +358,15 @@ export class InstanceAiController {
 		// The client may have disconnected during the awaits above.
 		if (closed) return;
 
-		if (this.durableLogEnabled) {
-			// 6. Replay missed events from the DURABLE log — survives restarts and is
-			//    valid on any main (the table is in the shared DB). The read is async,
-			//    so unlike the old synchronous memory-store replay, live events can
-			//    land mid-read: buffer them and flush with seq dedupe (the drain
-			//    persists before it emits, so a fact is never in neither place).
-			const arrivedDuringReplay: StoredEvent[] = [];
-			const stopBuffering = this.eventBus.subscribe(threadId, (stored) => {
-				arrivedDuringReplay.push(stored);
-			});
-			const missed = await this.eventLog.getEventsAfter(threadId, cursor);
-			let lastReplayedSeq = cursor;
-			for (const stored of missed) {
-				deliver(stored);
-				if (stored.id !== undefined) lastReplayedSeq = stored.id;
-			}
-			for (const stored of arrivedDuringReplay) {
-				if (stored.id === undefined || stored.id > lastReplayedSeq) deliver(stored);
-			}
-			stopBuffering();
-			this.durableLogMetrics.recordReplay(missed.length, Math.max(0, lastReplayedSeq - cursor));
-		} else {
-			// 6. Replay missed events, emit run-sync frames, and flip to live delivery
-			//    in one synchronous block. The event bus store and emitter are
-			//    synchronous, so no event can slip between the replay and the live
-			//    handler taking over. Events that arrived during the awaits above are
-			//    already in the store (the early subscription in step 1 keeps relayed
-			//    events flowing in multi-main) and are included in the replay here.
-			const missed = this.eventBus.getEventsAfter(threadId, cursor);
-			for (const stored of missed) {
-				deliver(stored);
-			}
+		// 6. Replay missed events, emit run-sync frames, and flip to live delivery
+		//    in one synchronous block. The event bus store and emitter are
+		//    synchronous, so no event can slip between the replay and the live
+		//    handler taking over. Events that arrived during the awaits above are
+		//    already in the store (the early subscription in step 1 keeps relayed
+		//    events flowing in multi-main) and are included in the replay here.
+		const missed = this.eventBus.getEventsAfter(threadId, cursor);
+		for (const stored of missed) {
+			deliver(stored);
 		}
 
 		// 6b. Bootstrap sync: emit one run-sync control frame per live message
@@ -406,12 +374,7 @@ export class InstanceAiController {
 		//     NO id: field so the browser's lastEventId is unaffected and the
 		//     replay cursor stays consistent.
 		for (const [groupId, group] of liveGroups) {
-			// Flag on: build the bootstrap tree from the durable log, so a live
-			// group renders fully even when the bus cache was evicted, the process
-			// restarted, or this main never buffered the thread (sibling main).
-			const runEvents = this.durableLogEnabled
-				? await this.eventLog.getEventsForRuns(threadId, group.runIds)
-				: this.eventBus.getEventsForRuns(threadId, group.runIds);
+			const runEvents = this.eventBus.getEventsForRuns(threadId, group.runIds);
 			const persistedSnapshot = persistedSnapshots.get(groupId);
 			if (runEvents.length === 0 && !persistedSnapshot) continue;
 
@@ -719,11 +682,8 @@ export class InstanceAiController {
 
 		// Include the next SSE event ID so the frontend can skip past events
 		// already covered by these historical messages (prevents duplicates).
-		// Flag on: durable authority, valid across restarts and mains. Flag off:
-		// the shared sequence, so the cursor is valid against any main.
-		const nextEventId = this.durableLogEnabled
-			? await this.eventLog.getNextEventId(threadId)
-			: await this.eventBus.getNextEventId(threadId);
+		// Read from the shared sequence, so the cursor is valid against any main.
+		const nextEventId = await this.eventBus.getNextEventId(threadId);
 		return { ...result, nextEventId };
 	}
 
@@ -1166,12 +1126,8 @@ export class InstanceAiController {
 	}
 
 	private writeSseEvent(res: FlushableResponse, stored: StoredEvent): void {
-		// No `event:` field — events are discriminated by data.type per streaming-protocol.md.
-		// Ephemeral events (deltas/status) carry no `id:` line, so the browser's
-		// Last-Event-ID only ever advances on durable facts — same precedent as
-		// the run-sync control frames above.
-		const idLine = stored.id !== undefined ? `id: ${stored.id}\n` : '';
-		res.write(`${idLine}data: ${JSON.stringify(stored.event)}\n\n`);
+		// No `event:` field — events are discriminated by data.type per streaming-protocol.md
+		res.write(`id: ${stored.id}\ndata: ${JSON.stringify(stored.event)}\n\n`);
 		res.flush?.();
 	}
 }

@@ -66,8 +66,6 @@ import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-bro
 import type { EvalExecutionService } from '../eval/execution.service';
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import type { EvalThreadRestoreService } from '../eval/thread-restore.service';
-import type { DurableEventLog } from '../event-bus/durable-event-log';
-import type { DurableLogMetrics } from '../event-bus/durable-log-metrics';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { LocalGateway } from '../filesystem/local-gateway';
 import type { InstanceAiGatewayService } from '../instance-ai-gateway.service';
@@ -97,13 +95,11 @@ describe('InstanceAiController', () => {
 	const memoryService = mock<InstanceAiMemoryService>();
 	const settingsService = mock<InstanceAiSettingsService>();
 	const eventBus = mock<InProcessEventBus>();
-	const eventLog = mock<DurableEventLog>();
-	const durableLogMetrics = mock<DurableLogMetrics>();
 	const moduleRegistry = mock<ModuleRegistry>();
 	const push = mock<Push>();
 	const urlService = mock<UrlService>();
 	const globalConfig = mock<GlobalConfig>({
-		instanceAi: { gatewayApiKey: 'static-key', durableLog: false },
+		instanceAi: { gatewayApiKey: 'static-key' },
 		editorBaseUrl: 'http://localhost:5678',
 		port: 5678,
 	});
@@ -126,8 +122,6 @@ describe('InstanceAiController', () => {
 		evalCredentialAllowlists,
 		evalThreadRestore,
 		eventBus,
-		eventLog,
-		durableLogMetrics,
 		moduleRegistry,
 		push,
 		urlService,
@@ -1594,118 +1588,5 @@ describe('InstanceAiController', () => {
 			// validateGatewayApiKey receives 'key1' (the first element)
 			expect(gatewayService.getUserIdForApiKey).toHaveBeenCalledWith('key1');
 		});
-	});
-});
-
-describe('InstanceAiController — durable-log SSE replay (flag on)', () => {
-	const instanceAiService = mock<InstanceAiService>();
-	const memoryService = mock<InstanceAiMemoryService>();
-	const settingsService = mock<InstanceAiSettingsService>();
-	const eventBus = mock<InProcessEventBus>();
-	const eventLog = mock<DurableEventLog>();
-	const durableLogMetrics = mock<DurableLogMetrics>();
-	const globalConfig = mock<GlobalConfig>({
-		instanceAi: { gatewayApiKey: 'static-key', durableLog: true },
-		editorBaseUrl: 'http://localhost:5678',
-		port: 5678,
-	});
-
-	const controller = new InstanceAiController(
-		instanceAiService,
-		mock<InstanceAiGatewayService>(),
-		mock<InstanceAiBrowserSessionService>(),
-		memoryService,
-		settingsService,
-		mock<EvalExecutionService>(),
-		new EvalThreadCredentialAllowlistService(),
-		mock<EvalThreadRestoreService>(),
-		eventBus,
-		eventLog,
-		durableLogMetrics,
-		mock<ModuleRegistry>(),
-		mock<Push>(),
-		mock<UrlService>(),
-		mock<UserRepository>(),
-		mock<CredentialsService>(),
-		mock<ProjectService>(),
-		mock<InstanceAiErrorReporterService>(),
-		globalConfig,
-	);
-
-	beforeEach(() => {
-		vi.clearAllMocks();
-		settingsService.isInstanceAiEnabled.mockReturnValue(true);
-	});
-
-	it('replays from the durable log and dedups events that land during the async read', async () => {
-		memoryService.checkThreadOwnership.mockResolvedValue('owned');
-		instanceAiService.getThreadStatus.mockReturnValue({
-			hasActiveRun: false,
-			isSuspended: false,
-			backgroundTasks: [],
-		} as never);
-
-		const handlers: Array<(stored: unknown) => void> = [];
-		eventBus.subscribe.mockImplementation((_threadId, handler) => {
-			handlers.push(handler as never);
-			return vi.fn();
-		});
-
-		const factA = {
-			id: 6,
-			event: {
-				type: 'tool-call',
-				runId: 'run-1',
-				agentId: 'a1',
-				payload: { toolCallId: 'tc', toolName: 't', args: {} },
-			},
-		};
-		const factB = {
-			id: 7,
-			event: {
-				type: 'run-finish',
-				runId: 'run-1',
-				agentId: 'a1',
-				payload: { status: 'completed' },
-			},
-		};
-		eventLog.getEventsAfter.mockImplementation(async () => {
-			// While the DB read is in flight, the drain emits fact 7 live (already
-			// part of the replay result: must dedupe) and an id-less delta (must
-			// pass through: the cursor never points at it).
-			const buffering = handlers.at(-1)!;
-			buffering(factB);
-			buffering({
-				event: { type: 'text-delta', runId: 'run-1', agentId: 'a1', payload: { text: 'x' } },
-			});
-			return [factA, factB] as never;
-		});
-
-		const sseRes = mock<Response & { flush?: () => void }>({
-			setHeader: vi.fn(),
-			flushHeaders: vi.fn(),
-			write: vi.fn(),
-			end: vi.fn(),
-			flush: vi.fn(),
-		});
-		const sseReq = mock<AuthenticatedRequest>({
-			user: { id: USER_ID },
-			headers: {},
-			once: vi.fn(),
-		});
-
-		await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: 5 } as never);
-
-		expect(eventLog.getEventsAfter).toHaveBeenCalledWith(THREAD_ID, 5);
-		const frames = (sseRes.write as Mock).mock.calls.map(([frame]) => String(frame));
-		// Fact 7 was both replayed and buffered live: delivered exactly once.
-		expect(frames.filter((f) => f.includes('run-finish'))).toHaveLength(1);
-		expect(frames.filter((f) => f.includes('tool-call'))).toHaveLength(1);
-		// The id-less delta passes through with NO id: line.
-		const deltaFrame = frames.find((f) => f.includes('text-delta'));
-		expect(deltaFrame).toBeDefined();
-		expect(deltaFrame!.startsWith('data: ')).toBe(true);
-		// Replay instrumentation recorded events served + cursor age.
-		expect(durableLogMetrics.recordReplay).toHaveBeenCalledWith(2, 2);
 	});
 });

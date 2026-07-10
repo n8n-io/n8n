@@ -85,15 +85,10 @@ function appendTerminalOutcomeToAgentTree(
 // The slice of each collaborator the terminal-outcome coordinator actually
 // uses. Anchored to the concrete types via `Pick` so the signatures stay in
 // sync with the source.
-// Reads may be sync (in-memory bus, flag off) or async (durable log, flag on);
-// the host injects a flag-resolved adapter.
-export type InstanceAiTerminalOutcomeEventBus = Pick<InProcessEventBus, 'publish'> & {
-	getEventsForRun(threadId: string, runId: string): InstanceAiEvent[] | Promise<InstanceAiEvent[]>;
-	getEventsForRuns(
-		threadId: string,
-		runIds: string[],
-	): InstanceAiEvent[] | Promise<InstanceAiEvent[]>;
-};
+export type InstanceAiTerminalOutcomeEventBus = Pick<
+	InProcessEventBus,
+	'getEventsForRun' | 'getEventsForRuns' | 'publish'
+>;
 
 export type InstanceAiTerminalOutcomeSnapshotStorage = Pick<
 	DbSnapshotStorage,
@@ -119,13 +114,6 @@ export type InstanceAiTerminalOutcomeTracing = Pick<
 
 export interface InstanceAiTerminalOutcomeServiceOptions {
 	eventBus: InstanceAiTerminalOutcomeEventBus;
-	/**
-	 * Durable-log flag: outcome lines publish as `text-block` (a structural
-	 * fact, persisted before it is emitted live) instead of a trailing
-	 * `text-delta`, so a page reload right after a background outcome folds
-	 * the line from the log instead of racing the coalescer's idle flush.
-	 */
-	durableLog: boolean;
 	dbSnapshotStorage: InstanceAiTerminalOutcomeSnapshotStorage;
 	agentMemory: PatchableThreadMemory;
 	telemetry: InstanceAiTerminalOutcomeTelemetry;
@@ -178,8 +166,6 @@ export class InstanceAiTerminalOutcomeService {
 
 	private readonly eventBus: InstanceAiTerminalOutcomeEventBus;
 
-	private readonly durableLog: boolean;
-
 	private readonly dbSnapshotStorage: InstanceAiTerminalOutcomeSnapshotStorage;
 
 	private readonly agentMemory: PatchableThreadMemory;
@@ -200,7 +186,6 @@ export class InstanceAiTerminalOutcomeService {
 
 	constructor(options: InstanceAiTerminalOutcomeServiceOptions) {
 		this.eventBus = options.eventBus;
-		this.durableLog = options.durableLog;
 		this.dbSnapshotStorage = options.dbSnapshotStorage;
 		this.agentMemory = options.agentMemory;
 		this.telemetry = options.telemetry;
@@ -212,7 +197,7 @@ export class InstanceAiTerminalOutcomeService {
 		this.saveAgentTreeSnapshot = options.saveAgentTreeSnapshot;
 	}
 
-	async evaluateTerminalResponse(
+	evaluateTerminalResponse(
 		threadId: string,
 		runId: string,
 		status: Exclude<TerminalResponseStatus, 'waiting'>,
@@ -223,7 +208,7 @@ export class InstanceAiTerminalOutcomeService {
 			errorMessage?: string;
 			suppressCompletedFallback?: boolean;
 		} = {},
-	): Promise<TerminalResponseDecision | undefined> {
+	): TerminalResponseDecision | undefined {
 		const guard = new InstanceAiTerminalResponseGuard({
 			runId,
 			rootAgentId: orchestratorAgentId(runId),
@@ -231,7 +216,7 @@ export class InstanceAiTerminalOutcomeService {
 			correlationId: options.correlationId,
 		});
 		const decision = guard.evaluateTerminal(
-			await this.getTerminalGuardEvents(threadId, runId, options.messageGroupId),
+			this.getTerminalGuardEvents(threadId, runId, options.messageGroupId),
 			status,
 			{
 				workSummary: options.workSummary,
@@ -243,12 +228,12 @@ export class InstanceAiTerminalOutcomeService {
 		return decision;
 	}
 
-	async evaluateWaitingResponse(
+	evaluateWaitingResponse(
 		threadId: string,
 		runId: string,
 		confirmationEvent: Extract<InstanceAiEvent, { type: 'confirmation-request' }> | undefined,
 		options: { messageGroupId?: string; correlationId?: string } = {},
-	): Promise<TerminalResponseDecision | undefined> {
+	): TerminalResponseDecision | undefined {
 		const guard = new InstanceAiTerminalResponseGuard({
 			runId,
 			rootAgentId: orchestratorAgentId(runId),
@@ -256,24 +241,24 @@ export class InstanceAiTerminalOutcomeService {
 			correlationId: options.correlationId,
 		});
 		const decision = guard.evaluateWaiting(
-			await this.getTerminalGuardEvents(threadId, runId, options.messageGroupId),
+			this.getTerminalGuardEvents(threadId, runId, options.messageGroupId),
 			confirmationEvent,
 		);
 		this.handleTerminalResponseDecision(threadId, runId, decision, options.messageGroupId);
 		return decision;
 	}
 
-	private async getTerminalGuardEvents(
+	private getTerminalGuardEvents(
 		threadId: string,
 		runId: string,
 		messageGroupId?: string,
-	): Promise<InstanceAiEvent[]> {
-		if (!messageGroupId) return await this.eventBus.getEventsForRun(threadId, runId);
+	): InstanceAiEvent[] {
+		if (!messageGroupId) return this.eventBus.getEventsForRun(threadId, runId);
 
 		const groupRunIds = this.runState.getRunIdsForMessageGroup(messageGroupId);
 		return groupRunIds.length > 0
-			? await this.eventBus.getEventsForRuns(threadId, groupRunIds)
-			: await this.eventBus.getEventsForRun(threadId, runId);
+			? this.eventBus.getEventsForRuns(threadId, groupRunIds)
+			: this.eventBus.getEventsForRun(threadId, runId);
 	}
 
 	private handleTerminalResponseDecision(
@@ -409,7 +394,7 @@ export class InstanceAiTerminalOutcomeService {
 					error: getErrorMessage(error),
 				});
 				if (delivery === 'event') {
-					const published = await this.publishTerminalOutcomeLine(outcome, responseId);
+					const published = this.publishTerminalOutcomeLine(outcome, responseId);
 					this.telemetry.track('instance_ai_terminal_response_decision', {
 						thread_id: threadId,
 						run_id: outcome.runId,
@@ -428,7 +413,7 @@ export class InstanceAiTerminalOutcomeService {
 
 			let action = 'replay_snapshot';
 			if (delivery === 'event') {
-				const published = await this.publishTerminalOutcomeLine(outcome, responseId);
+				const published = this.publishTerminalOutcomeLine(outcome, responseId);
 				action = published ? 'replay_event' : 'already-emitted';
 			}
 
@@ -491,17 +476,14 @@ export class InstanceAiTerminalOutcomeService {
 		return true;
 	}
 
-	private async publishTerminalOutcomeLine(
-		outcome: TerminalOutcome,
-		responseId: string,
-	): Promise<boolean> {
-		const alreadyPublished = (
-			await this.eventBus.getEventsForRun(outcome.threadId, outcome.runId)
-		).some((event) => event.responseId === responseId);
+	private publishTerminalOutcomeLine(outcome: TerminalOutcome, responseId: string): boolean {
+		const alreadyPublished = this.eventBus
+			.getEventsForRun(outcome.threadId, outcome.runId)
+			.some((event) => event.responseId === responseId);
 		if (alreadyPublished) return false;
 
 		this.eventBus.publish(outcome.threadId, {
-			type: this.durableLog ? 'text-block' : 'text-delta',
+			type: 'text-delta',
 			runId: outcome.runId,
 			agentId: orchestratorAgentId(outcome.runId),
 			responseId,
@@ -534,7 +516,7 @@ export class InstanceAiTerminalOutcomeService {
 		}
 
 		const responseId = getBackgroundOutcomeResponseId(outcome);
-		const published = await this.publishTerminalOutcomeLine(outcome, responseId);
+		const published = this.publishTerminalOutcomeLine(outcome, responseId);
 
 		this.telemetry.track('instance_ai_terminal_response_decision', {
 			thread_id: task.threadId,

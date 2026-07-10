@@ -211,7 +211,6 @@ function createService(snapshotTree?: InstanceAiAgentNode): {
 	};
 
 	const options = {
-		durableLog: false,
 		eventBus: deps.eventBus,
 		dbSnapshotStorage: deps.dbSnapshotStorage,
 		agentMemory: {},
@@ -407,51 +406,11 @@ describe('InstanceAiTerminalOutcomeService — background outcome recording', ()
 	});
 });
 
-describe('InstanceAiTerminalOutcomeService — durable-log outcome lines', () => {
-	it('publishes the outcome line as a text-block when the durable log is on', async () => {
-		// A trailing delta would race the coalescer's idle flush on an immediate
-		// page reload; a text-block is persisted before it is emitted live.
-		const { deps } = createService(makeAgentTree());
-		const service = new InstanceAiTerminalOutcomeService({
-			durableLog: true,
-			eventBus: deps.eventBus,
-			dbSnapshotStorage: deps.dbSnapshotStorage,
-			agentMemory: {},
-			telemetry: deps.telemetry,
-			logger: deps.logger,
-			runState: deps.runState,
-			suspendedThreads: deps.suspendedThreads,
-			tracing: deps.tracing,
-			publishRunFinish: deps.publishRunFinish,
-			saveAgentTreeSnapshot: vi.fn(async () => {}),
-		} as never);
-
-		await service.recordBackgroundTerminalOutcome({
-			taskId: 'task-dl',
-			threadId: 'thread-dl',
-			runId: 'run-dl',
-			role: 'workflow-builder',
-			agentId: 'agent-builder',
-			status: 'cancelled',
-			result: undefined,
-			startedAt: 0,
-			lastActivityAt: 0,
-			abortController: new AbortController(),
-			corrections: [],
-		} as never);
-
-		const line = deps.eventBus.events.find(
-			(event) => event.type === 'text-block' || event.type === 'text-delta',
-		);
-		expect(line?.type).toBe('text-block');
-	});
-});
-
 describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', () => {
-	it('publishes fallback output before run-finish on a silent completed run', async () => {
+	it('publishes fallback output before run-finish on a silent completed run', () => {
 		const { service, deps } = createService();
 
-		await service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
+		service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
 			messageGroupId: 'group-1',
 		});
 		deps.publishRunFinish('thread-a', 'run-1', 'completed');
@@ -459,10 +418,10 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 		expect(deps.eventBus.events.map((event) => event.type)).toEqual(['text-delta', 'run-finish']);
 	});
 
-	it('does not publish completed fallback output when silence is expected', async () => {
+	it('does not publish completed fallback output when silence is expected', () => {
 		const { service, deps } = createService();
 
-		const decision = await service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
+		const decision = service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
 			messageGroupId: 'group-1',
 			suppressCompletedFallback: true,
 		});
@@ -474,10 +433,10 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 		expect(deps.eventBus.events).toEqual([]);
 	});
 
-	it('publishes fallback error before run-finish on a silent failed run', async () => {
+	it('publishes fallback error before run-finish on a silent failed run', () => {
 		const { service, deps } = createService();
 
-		await service.evaluateTerminalResponse('thread-a', 'run-1', 'errored', {
+		service.evaluateTerminalResponse('thread-a', 'run-1', 'errored', {
 			messageGroupId: 'group-1',
 			errorMessage: 'Safe user-facing error',
 		});
@@ -490,7 +449,7 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 		const { service, deps } = createService();
 		const abortController = new AbortController();
 
-		const decision = await service.evaluateWaitingResponse('thread-a', 'run-1', undefined, {
+		const decision = service.evaluateWaitingResponse('thread-a', 'run-1', undefined, {
 			messageGroupId: 'group-1',
 		});
 		expect(decision?.reason).toBe('confirmation-invalid');
@@ -516,10 +475,10 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 		});
 	});
 
-	it('reads events across the message group when a group id is provided', async () => {
+	it('reads events across the message group when a group id is provided', () => {
 		const { service, deps } = createService();
 
-		await service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
+		service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
 			messageGroupId: 'group-1',
 		});
 
@@ -527,11 +486,11 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 		expect(deps.eventBus.getEventsForRuns).toHaveBeenCalledWith('thread-a', ['run-1']);
 	});
 
-	it('falls back to the single run when the message group has no runs', async () => {
+	it('falls back to the single run when the message group has no runs', () => {
 		const { service, deps } = createService();
 		deps.runState.getRunIdsForMessageGroup.mockReturnValue([]);
 
-		await service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
+		service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
 			messageGroupId: 'group-1',
 		});
 

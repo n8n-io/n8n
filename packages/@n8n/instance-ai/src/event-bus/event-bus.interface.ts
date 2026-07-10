@@ -1,13 +1,8 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
 
-/**
- * Stored event with a per-thread monotonic ID for SSE replay.
- * `id` is absent on ephemeral events (text/reasoning deltas, status): they are
- * live-delivered but never persisted, and their SSE frames carry no `id:` line
- * so the browser replay cursor only advances on durable facts.
- */
+/** Stored event with a per-thread monotonic ID for SSE replay. */
 export interface StoredEvent {
-	id?: number; // monotonically increasing per thread, 1-based, durable facts only
+	id: number; // monotonically increasing per thread, 1-based
 	event: InstanceAiEvent;
 }
 

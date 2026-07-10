@@ -164,11 +164,9 @@ export type PubSubCommandMap = {
 		/**
 		 * Producer-assigned stored event. The id comes from the shared per-thread
 		 * sequence, so every main stores and serves identical event ids and the
-		 * frontend's replay cursor is valid against any main. With the durable
-		 * log enabled ids are DB-assigned seqs and ephemeral events (deltas,
-		 * status) carry no id at all: they are live-only.
+		 * frontend's replay cursor is valid against any main.
 		 */
-		storedEvent: { id?: number; event: InstanceAiEvent };
+		storedEvent: { id: number; event: InstanceAiEvent };
 	};
 
 	/**

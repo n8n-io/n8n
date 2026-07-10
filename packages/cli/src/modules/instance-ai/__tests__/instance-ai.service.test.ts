@@ -549,7 +549,6 @@ type ShutdownServiceInternals = {
 	browserSessionService: { shutdown: MockedFunction<() => Promise<void>> };
 	domainAccessTrackersByThread: Map<string, unknown>;
 	eventBus: { clear: MockedFunction<() => void> };
-	eventLog: { flushAll: MockedFunction<() => Promise<void>> };
 	_mcpClientManager?: { disconnect: MockedFunction<() => Promise<void>> };
 	inFlightExecutions: Set<Promise<unknown>>;
 	logger: { debug: Mock; warn: Mock };
@@ -638,7 +637,6 @@ type SnapshotServiceInternals = {
 		getEventsForRun: Mock;
 		getEventsForRuns: Mock;
 	};
-	instanceAiConfig: { durableLog: boolean };
 	tracing: { getTraceContext: Mock };
 	logger: { warn: Mock };
 };
@@ -695,7 +693,6 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.preserveHitlOnShutdown = new Set();
 
 	service.terminalOutcome = new InstanceAiTerminalOutcomeService({
-		durableLog: false,
 		eventBus: service.eventBus,
 		dbSnapshotStorage: {},
 		agentMemory: {},
@@ -733,7 +730,6 @@ function createSnapshotService(): SnapshotServiceInternals {
 		getEventsForRun: vi.fn(() => []),
 		getEventsForRuns: vi.fn(() => []),
 	};
-	service.instanceAiConfig = { durableLog: false };
 	service.tracing = { getTraceContext: vi.fn(() => undefined) };
 	service.logger = { warn: vi.fn() };
 	return service;
@@ -1057,7 +1053,6 @@ describe('InstanceAiService — shutdown', () => {
 		service.browserSessionService = { shutdown: vi.fn(async () => {}) };
 		service.domainAccessTrackersByThread = new Map();
 		service.eventBus = { clear: vi.fn() };
-		service.eventLog = { flushAll: vi.fn(async () => {}) };
 		service._mcpClientManager = { disconnect: vi.fn(async () => {}) };
 		service.inFlightExecutions = new Set();
 		service.logger = { debug: vi.fn(), warn: vi.fn() };
@@ -2561,7 +2556,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 
 	it('claims credits for the consumed segment when a resumed run suspends again', async () => {
 		const service = createTerminalGuardOrderService();
-		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockReturnValue(undefined);
 		const abortController = new AbortController();
 		const usageItem = {
 			type: 'llmTokens' as const,
@@ -2615,7 +2610,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 
 	it('bills each segment once under disjoint keys across suspend -> resume -> continue', async () => {
 		const service = createTerminalGuardOrderService();
-		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockReturnValue(undefined);
 		const abortController = new AbortController();
 		const segmentOneUsage = {
 			type: 'llmTokens' as const,
@@ -2701,7 +2696,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 
 	it('bills each segment once under disjoint keys across suspend -> resume -> abort', async () => {
 		const service = createTerminalGuardOrderService();
-		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockReturnValue(undefined);
 		const abortController = new AbortController();
 		const segmentOneUsage = {
 			type: 'llmTokens' as const,
