@@ -5,7 +5,7 @@
 // colocated `__tests__` layout under `src/`, keeping the `@ -> ./src` alias.
 
 import path from 'node:path';
-import { defineConfig, mergeConfig } from 'vite';
+import { defineConfig, mergeConfig } from 'vitest/config';
 import { createVitestConfig } from '@n8n/vitest-config/node';
 
 export default mergeConfig(
