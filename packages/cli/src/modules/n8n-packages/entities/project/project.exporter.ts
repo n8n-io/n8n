@@ -82,7 +82,7 @@ export class ProjectExporter {
 			entries: [{ id: project.id, name: project.name, target }],
 			folderEntries: folders.entries,
 			workflowEntries: [...folders.workflowEntries, ...rootWorkflows.entries],
-			workflowEntities: [...folders.workflowEntities, ...rootWorkflows.workflows],
+			workflowEntities: [...folders.workflowEntities, ...rootWorkflows.workflowEntities],
 			requirements: mergeRequirements(folders.requirements, rootWorkflows.requirements),
 			projectTargetsById: new Map([[project.id, target]]),
 			folderIds: folders.folderIds,
@@ -126,7 +126,7 @@ export class ProjectExporter {
 	): Promise<WorkflowExportResult> {
 		const rootWorkflowIds = await this.workflowFinder.findRootWorkflowIdsInProject(projectId);
 		if (rootWorkflowIds.length === 0) {
-			return { entries: [], requirements: mergeRequirements(), workflows: [] };
+			return { entries: [], requirements: mergeRequirements(), workflowEntities: [] };
 		}
 
 		return await this.workflowExporter.export({

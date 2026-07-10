@@ -91,7 +91,7 @@ export class N8nPackagesService {
 		];
 
 		const workflowEntitiesInPackage = [
-			...(workflowExportResult?.workflows ?? []),
+			...(workflowExportResult?.workflowEntities ?? []),
 			...(folderExportResult?.workflowEntities ?? []),
 			...(projectExportResult?.workflowEntities ?? []),
 		];

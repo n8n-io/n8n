@@ -153,7 +153,7 @@ export class FolderExporter {
 		const own: FolderExportResult = {
 			entries: [{ id: folder.id, name: folder.name, target }],
 			workflowEntries: contained.entries,
-			workflowEntities: contained.workflows,
+			workflowEntities: contained.workflowEntities,
 			requirements: contained.requirements,
 			folderIds: [folder.id],
 		};
@@ -178,7 +178,7 @@ export class FolderExporter {
 		request: FolderExportRequest,
 	): Promise<WorkflowExportResult> {
 		if (workflowIds.length === 0) {
-			return { entries: [], requirements: mergeRequirements(), workflows: [] };
+			return { entries: [], requirements: mergeRequirements(), workflowEntities: [] };
 		}
 
 		return await this.workflowExporter.export({

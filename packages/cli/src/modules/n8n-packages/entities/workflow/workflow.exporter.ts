@@ -24,7 +24,7 @@ export interface WorkflowExportRequest {
 export interface WorkflowExportResult {
 	entries: ManifestEntry[];
 	requirements: WorkflowExportRequirements;
-	workflows: WorkflowEntity[];
+	workflowEntities: WorkflowEntity[];
 }
 
 @Service()
@@ -73,6 +73,6 @@ export class WorkflowExporter {
 			credentials.push(...this.credentialRequirementsExtractor.extract(workflow));
 		}
 
-		return { entries, requirements: { credentials }, workflows };
+		return { entries, requirements: { credentials }, workflowEntities: workflows };
 	}
 }
