@@ -63,15 +63,15 @@ describe('AiGatewaySelector', () => {
 			expect(screen.getByTestId('ai-gateway-selector')).toBeInTheDocument();
 			expect(screen.getByTestId('ai-gateway-selector-connect')).toBeInTheDocument();
 			expect(screen.getByTestId('ai-gateway-mode-card-own')).toBeInTheDocument();
-			expect(screen.getByText('n8n Credits')).toBeInTheDocument();
+			expect(screen.getByText('n8n credits')).toBeInTheDocument();
 			expect(screen.getByText('My own credential')).toBeInTheDocument();
 		});
 
-		it('should render n8n Credits first by default', () => {
+		it('should render n8n credits first by default', () => {
 			renderComponent({ props: { aiGatewayEnabled: false, readonly: false } });
 
 			const cards = screen.getAllByRole('radio');
-			expect(cards[0]).toHaveTextContent('n8n Credits');
+			expect(cards[0]).toHaveTextContent('n8n credits');
 			expect(cards[1]).toHaveTextContent('My own credential');
 		});
 
@@ -81,7 +81,7 @@ describe('AiGatewaySelector', () => {
 
 			const cards = screen.getAllByRole('radio');
 			expect(cards[0]).toHaveTextContent('My own credential');
-			expect(cards[1]).toHaveTextContent('n8n Credits');
+			expect(cards[1]).toHaveTextContent('n8n credits');
 		});
 
 		it('should show balance badge when aiGatewayEnabled and balance is defined', () => {
@@ -129,7 +129,7 @@ describe('AiGatewaySelector', () => {
 	});
 
 	describe('selection', () => {
-		it('should emit select with true when n8n Credits card is clicked while disabled', async () => {
+		it('should emit select with true when n8n credits card is clicked while disabled', async () => {
 			const { emitted } = renderComponent({
 				props: { aiGatewayEnabled: false, readonly: false },
 			});
@@ -151,7 +151,7 @@ describe('AiGatewaySelector', () => {
 			expect(emitted('toggle')![0]).toEqual([false]);
 		});
 
-		it('should not emit when n8n Credits card is clicked while already selected', async () => {
+		it('should not emit when n8n credits card is clicked while already selected', async () => {
 			const { emitted } = renderComponent({
 				props: { aiGatewayEnabled: true, readonly: false },
 			});
