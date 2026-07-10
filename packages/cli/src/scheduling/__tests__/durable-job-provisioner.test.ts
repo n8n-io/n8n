@@ -228,6 +228,114 @@ describe('DurableJobProvisioner', () => {
 		});
 	});
 
+	describe('reading a stored schedule back to diff it', () => {
+		// Rows of each kind, matching the desired schedule the test provisions against.
+		// `jobRow` defaults to cron, so each override clears the cron columns it doesn't use.
+		const cronRow = () => jobRow();
+		const recurringCronRow = () =>
+			jobRow({
+				kind: 'recurring_cron',
+				cronExpression: '0 0 9 * * *',
+				timezone: 'UTC',
+				recurrenceUnit: 'weeks',
+				recurrenceSize: 2,
+			});
+		const intervalRow = () =>
+			jobRow({
+				kind: 'interval',
+				cronExpression: null,
+				timezone: null,
+				intervalSeconds: 300,
+			});
+		const oneOffRow = () =>
+			jobRow({
+				kind: 'one_off',
+				cronExpression: null,
+				timezone: null,
+				fireAt: FIRE_AT,
+			});
+
+		const cases: Array<{
+			name: string;
+			row: () => ScheduledJob;
+			same: ScheduleDefinition;
+			changed: ScheduleDefinition;
+		}> = [
+			{
+				name: 'cron',
+				row: cronRow,
+				same: { kind: 'cron', cronExpression: '0 0 9 * * *', timezone: 'UTC' },
+				changed: { kind: 'cron', cronExpression: '0 0 18 * * *', timezone: 'UTC' },
+			},
+			{
+				name: 'recurring_cron',
+				row: recurringCronRow,
+				same: {
+					kind: 'recurring_cron',
+					cronExpression: '0 0 9 * * *',
+					timezone: 'UTC',
+					recurrenceUnit: 'weeks',
+					recurrenceSize: 2,
+				},
+				changed: {
+					kind: 'recurring_cron',
+					cronExpression: '0 0 9 * * *',
+					timezone: 'UTC',
+					recurrenceUnit: 'weeks',
+					recurrenceSize: 3,
+				},
+			},
+			{
+				name: 'interval',
+				row: intervalRow,
+				same: { kind: 'interval', intervalSeconds: 300 },
+				changed: { kind: 'interval', intervalSeconds: 600 },
+			},
+			{
+				name: 'one_off',
+				row: oneOffRow,
+				same: { kind: 'one_off', fireAt: FIRE_AT },
+				changed: { kind: 'one_off', fireAt: new Date('2026-03-01T00:00:00.000Z') },
+			},
+		];
+
+		it.each(cases)('leaves an unchanged $name job untouched', async ({ row, same }) => {
+			jobs.findManyByWorkflowNode.mockResolvedValue([row()]);
+
+			const summary = await provisioner.provision('wf', 'node', 'schedule-trigger', {}, [
+				desiredJob('wf:node:0', same),
+			]);
+
+			expect(jobs.updateDefinition).not.toHaveBeenCalled();
+			expect(summary.unchanged).toEqual([{ id: 10, name: 'wf:node:0' }]);
+		});
+
+		it.each(cases)('rewrites a changed $name job in place', async ({ row, changed }) => {
+			jobs.findManyByWorkflowNode.mockResolvedValue([row()]);
+
+			const summary = await provisioner.provision('wf', 'node', 'schedule-trigger', {}, [
+				desiredJob('wf:node:0', changed),
+			]);
+
+			expect(jobs.updateDefinition).toHaveBeenCalledWith(
+				manager,
+				10,
+				expect.objectContaining({ kind: changed.kind }),
+			);
+			expect(summary.redefined).toEqual([{ id: 10, name: 'wf:node:0' }]);
+		});
+
+		it('throws on a stored row whose kind it does not recognise', async () => {
+			jobs.findManyByWorkflowNode.mockResolvedValue([
+				jobRow({ kind: 'made_up' as ScheduledJob['kind'] }),
+			]);
+
+			await expect(
+				provisioner.provision('wf', 'node', 'schedule-trigger', {}, [desiredJob('wf:node:0')]),
+			).rejects.toThrow('Unexpected scheduled job kind');
+		});
+	});
+
 	describe('deprovision', () => {
 		it('deletes the whole node scope inside a transaction and reports the count', async () => {
 			jobs.deleteByWorkflowNode.mockResolvedValue(3);

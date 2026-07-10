@@ -402,17 +402,38 @@ describe('scheduled repositories', () => {
 		// Postgres only: two transactions inserting the same name at once. The unique index
 		// lets exactly one row win; both callers read the winner's id back by name rather than
 		// the loser getting a gap from the skipped RETURNING row.
+		//
+		// runnerB draws from the secondary pool so both transactions are genuinely held open at
+		// once (the main pool is capped at a single connection in CI). A inserts and holds the
+		// new row's uncommitted unique-index entry; B's insert of the same name blocks on it
+		// until A commits, then `orIgnore` skips and B reads A's row back by name.
 		it.skipIf(!isPostgres)(
 			'converges on a single row when two transactions insert the same name at once',
 			async () => {
-				const [first, second] = await Promise.all([
-					dataSource.transaction(
-						async (trx) => await jobRepository.insertMany(trx, [newJobRow('wf:node:0')]),
-					),
-					dataSource.transaction(
-						async (trx) => await jobRepository.insertMany(trx, [newJobRow('wf:node:0')]),
-					),
-				]);
+				const runnerA = dataSource.createQueryRunner();
+				const runnerB = secondaryDataSource!.createQueryRunner();
+				let first: number[];
+				let second: number[];
+				try {
+					await runnerA.connect();
+					await runnerB.connect();
+					await runnerA.startTransaction();
+					await runnerB.startTransaction();
+
+					first = await jobRepository.insertMany(runnerA.manager, [newJobRow('wf:node:0')]);
+
+					// Start B's insert while A's transaction is still open; it blocks on A's
+					// uncommitted row, so don't await it until A has committed.
+					const secondPromise = jobRepository.insertMany(runnerB.manager, [newJobRow('wf:node:0')]);
+					await runnerA.commitTransaction();
+					second = await secondPromise;
+					await runnerB.commitTransaction();
+				} finally {
+					// Free the runners (runnerA holds the single main-pool connection) before the
+					// assertions below query through the main DataSource.
+					await runnerA.release();
+					await runnerB.release();
+				}
 
 				expect(await jobRepository.countBy({ name: 'wf:node:0' })).toBe(1);
 				const stored = await jobRepository.findOneByOrFail({ name: 'wf:node:0' });
