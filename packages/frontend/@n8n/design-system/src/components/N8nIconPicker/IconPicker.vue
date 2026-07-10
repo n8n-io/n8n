@@ -28,8 +28,6 @@ import {
 	type IconPickerVirtualRow,
 } from './useIconPickerVirtualRows';
 
-import IconShuffle from '~icons/lucide/shuffle';
-
 /**
  * Icon picker with support for all Lucide icons and emojis.
  * Search metadata (keywords, categories) and emoji data are lazy data modules,
@@ -334,7 +332,7 @@ function humanizeIconName(name: string): string {
 						data-test-id="icon-picker-random"
 						@click="selectedTab === 'icons' ? selectRandomIcon() : selectRandomEmoji()"
 					>
-						<IconShuffle :class="$style.shuffleIcon" />
+						<N8nIcon icon="shuffle" :class="$style.shuffleIcon" />
 					</N8nButton>
 				</N8nTooltip>
 			</div>

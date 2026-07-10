@@ -80,12 +80,21 @@ const styles = computed(() => {
 
 const nodeIconSetRef = shallowRef<typeof NodeIconSetType | null>(null);
 
-const resolvedComponent = computed(
+// Lucide icons in the eager sets are bundled SVG body strings; custom and node
+// icons are components. Both render synchronously (no async fallback needed).
+const resolvedIcon = computed(
 	() =>
 		nodeIconSetRef.value?.[props.icon as keyof typeof NodeIconSetType] ??
 		updatedIconSet[props.icon as keyof typeof updatedIconSet] ??
 		deprecatedIconSet[props.icon as keyof typeof deprecatedIconSet] ??
 		null,
+);
+
+const resolvedComponent = computed(() =>
+	typeof resolvedIcon.value === 'string' ? null : resolvedIcon.value,
+);
+const eagerBody = computed(() =>
+	typeof resolvedIcon.value === 'string' ? resolvedIcon.value : null,
 );
 
 watch(
@@ -105,10 +114,10 @@ const fallbackBody = ref<string | null>(null);
 let fallbackRequestId = 0;
 
 watch(
-	() => [props.icon, resolvedComponent.value] as const,
-	async ([iconName, resolvedIcon]) => {
+	() => [props.icon, resolvedIcon.value] as const,
+	async ([iconName, resolved]) => {
 		const requestId = ++fallbackRequestId;
-		if (resolvedIcon) {
+		if (resolved !== null) {
 			fallbackBody.value = null;
 			return;
 		}
@@ -141,12 +150,24 @@ watch(
 		:data-icon="props.icon"
 		:style="styles"
 	/><svg
+		v-else-if="eagerBody"
+		v-svg-content="eagerBody"
+		viewBox="0 0 24 24"
+		:class="classes"
+		:width="size.width"
+		:height="size.height"
+		aria-hidden="true"
+		focusable="false"
+		role="img"
+		:data-icon="props.icon"
+		:style="styles"
+	/><svg
 		v-else-if="fallbackBody"
+		v-svg-content="fallbackBody"
 		xmlns="http://www.w3.org/2000/svg"
 		viewBox="0 0 24 24"
 		:class="[...classes, $style.fallbackIcon]"
 		:height="size.height"
-		v-svg-content="fallbackBody"
 		:width="size.width"
 		fill="none"
 		stroke="currentColor"
