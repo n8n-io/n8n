@@ -25,13 +25,8 @@ on:
         required: false
         type: string
         default: 'mcp'
-      source:
-        description: 'Test-case source: "langtracer" (pull the suite from LangTracer) or "disk" (committed JSON files, local-dev escape hatch).'
-        required: false
-        type: string
-        default: 'langtracer'
       suite:
-        description: 'LangTracer suite slug or id to pull test cases from (when source is "langtracer").'
+        description: 'LangTracer suite slug or id to pull test cases from.'
         required: false
         type: string
         default: 'n8n-workflows'
@@ -81,8 +76,7 @@ on:
         required: false
       EVALS_LANGSMITH_API_KEY:
         required: false
-      # Needed at runtime when source=langtracer (the default): the eval CLI
-      # pulls the test-case suite from LangTracer.
+      # The eval CLI pulls the test-case suite from LangTracer.
       EVALS_LANGTRACER_URL:
         required: false
       LANGTRACER_API_KEY:
@@ -97,12 +91,8 @@ on:
         description: 'Test-case dataset to build + eval (e.g. "mcp")'
         required: false
         default: 'mcp'
-      source:
-        description: 'Test-case source: "langtracer" (pull the suite from LangTracer) or "disk" (committed JSON files, local-dev escape hatch).'
-        required: false
-        default: 'langtracer'
       suite:
-        description: 'LangTracer suite slug or id to pull test cases from (when source is "langtracer").'
+        description: 'LangTracer suite slug or id to pull test cases from.'
         required: false
         default: 'n8n-workflows'
       filter:
@@ -278,7 +268,6 @@ jobs:
           BASE_URLS: ${{ steps.lanes.outputs.base_urls }}
           LANES: ${{ inputs.lanes || '6' }}
           TIER: ${{ inputs.tier }}
-          SOURCE: ${{ inputs.source }}
           SUITE: ${{ inputs.suite }}
           LANGTRACER_URL: ${{ secrets.EVALS_LANGTRACER_URL }}
           LANGTRACER_API_KEY: ${{ secrets.LANGTRACER_API_KEY }}
@@ -312,9 +301,8 @@ jobs:
             --baseline-prefix mcp-baseline-
             --verbose
           )
-          if [ "${SOURCE:-langtracer}" = "langtracer" ]; then
-            ARGS+=(--source langtracer --suite "${SUITE:-n8n-workflows}")
-          fi
+          # LangTracer is the only CI case source (no disk fallback by design).
+          ARGS+=(--source langtracer --suite "${SUITE:-n8n-workflows}")
           [ -n "$FILTER" ] && ARGS+=(--filter "$FILTER")
           [ -n "$EXPERIMENT_NAME" ] && ARGS+=(--experiment-name "$EXPERIMENT_NAME")
           pnpm eval:instance-ai "${ARGS[@]}"
