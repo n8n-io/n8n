@@ -246,6 +246,7 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 				:items="headerActions"
 				activator-icon="ellipsis"
 				activator-size="medium"
+				:extra-popper-class="$style.headerActionsMenu"
 				data-testid="agent-header-actions"
 				@select="(item: string) => emit('header-action', item)"
 			/>
@@ -338,5 +339,9 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 
 .activeButton {
 	background-color: var(--background--active);
+}
+
+.headerActionsMenu {
+	--n8n--dropdown-menu-width: var(--spacing--5xl);
 }
 </style>

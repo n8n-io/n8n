@@ -629,6 +629,12 @@ export function createThreadRuntime(
 		// across mains — but concurrent producers on different mains can arrive
 		// interleaved out of order, so the reconnect cursor keeps the max seen
 		// rather than the latest, and duplicates are dropped by id.
+		//
+		// Durable-log follow-up (id-less ephemeral frames): once deltas/status
+		// frames ship without an `id:` line, `sseEvent.lastEventId` on those
+		// frames ECHOES the previous id-bearing value, so the duplicate-drop
+		// below would swallow them. The foundation PR must gate the dedup return
+		// on durable event types (parse first, dedup only non-ephemeral frames).
 		const eventId = sseEvent.lastEventId ? Number(sseEvent.lastEventId) : undefined;
 		if (eventId !== undefined && Number.isFinite(eventId)) {
 			// A backend sequence reset (single-main restart, or seq-key TTL expiry)

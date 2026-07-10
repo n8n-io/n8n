@@ -67,9 +67,10 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toContain('## Tool Discovery');
 			expect(prompt).toContain('additional tools available beyond the ones listed above');
-			expect(prompt).toContain('search "credential" for the credentials tool');
 			expect(prompt).toContain('search "file" for filesystem tools');
-			expect(prompt).toContain('search "workflow" for workflow management');
+			expect(prompt).toContain('search "n8n docs" for `n8n-docs`');
+			expect(prompt).toContain('search "create tasks" for `create-tasks`');
+			expect(prompt).toContain('search "eval" for `evals`');
 			expect(prompt).not.toContain('connected service or MCP integration');
 			expect(prompt).not.toContain('connected MCP integrations');
 		});
@@ -96,7 +97,7 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain(
 				'search "notion page" or "linear issue" for the corresponding MCP tool',
 			);
-			expect(prompt).toContain('search "credential" for the credentials tool');
+			expect(prompt).toContain('search "n8n docs" for `n8n-docs`');
 		});
 
 		it('omits Tool Discovery guidance when deferred tool search is disabled even if MCP tools exist', () => {
@@ -194,6 +195,7 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('`build-workflow`');
 			expect(prompt).toContain('**Multi-workflow or coordinated architecture**');
 			expect(prompt).toContain('`planning`');
+			expect(prompt).toContain('load `create-tasks` via `load_tool`');
 			expect(prompt).toContain('planningContext.source: "planning-skill"');
 			expect(prompt).toContain('multiple durable artifacts');
 			expect(prompt).toContain('shared data-table schema/migration');
@@ -218,6 +220,10 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain(
 				'Never call `data-tables` or `parse-file` without loading `data-table-manager` first',
 			);
+			expect(prompt).toContain(
+				'never call `create-tasks` without loading it via `load_tool` first',
+			);
+			expect(prompt).toContain('never call `n8n-docs` without loading it via `load_tool` first');
 			expect(prompt).toContain('Do not call `create-tasks`');
 		});
 
@@ -272,6 +278,7 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('**n8n docs/product guidance**');
 			expect(prompt).toContain('credential setup');
 			expect(prompt).toContain('`n8n-docs-assistant`');
+			expect(prompt).toContain('load `n8n-docs` via `load_tool`');
 			expect(prompt).toContain('`n8n-docs`');
 		});
 
@@ -314,6 +321,8 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('knowledge-base/reference/index.json');
 			expect(prompt).not.toContain('knowledge-base/templates/index.txt');
 			expect(prompt).toContain('workspace_execute_command');
+			expect(prompt).not.toContain('workspace_list_files');
+			expect(prompt).toContain('mkdir -p');
 			expect(prompt).toContain('Consult the knowledge base before planning or building');
 			expect(prompt).not.toContain('knowledge-base/best-practices/*.md');
 		});

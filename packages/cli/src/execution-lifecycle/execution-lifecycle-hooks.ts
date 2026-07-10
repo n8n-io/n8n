@@ -638,6 +638,8 @@ function hookFunctionsSave(
 	});
 }
 
+const DISCARDABLE_DATA_MODES: WorkflowExecuteMode[] = ['trigger', 'cli', 'error', 'internal'];
+
 /**
  * Returns hook functions to save workflow execution and call error workflow
  * for running with queues. Manual executions should never run on queues as
@@ -645,7 +647,7 @@ function hookFunctionsSave(
  */
 function hookFunctionsSaveWorker(
 	hooks: ExecutionLifecycleHooks,
-	{ pushRef, retryOf }: HooksSetupParameters,
+	{ pushRef, retryOf, saveSettings }: HooksSetupParameters,
 ) {
 	const logger = Container.get(Logger);
 	const errorReporter = Container.get(ErrorReporter);
@@ -697,12 +699,24 @@ function hookFunctionsSaveWorker(
 				runDataUsedDynamicCredentials(resultRunData) ||
 				runDataAttemptedDynamicCredentials(resultRunData);
 
+			const mainWillDiscardData =
+				process.env.N8N_SKIP_UNSAVED_EXECUTION_DATA_WRITES === 'true' &&
+				fullRunData.status === 'success' &&
+				!saveSettings.success &&
+				!fullRunData.waitTill &&
+				DISCARDABLE_DATA_MODES.includes(this.mode) &&
+				!Container.get(ExternalHooks).hasHook('workflow.postExecute');
+
+			const executionData = mainWillDiscardData
+				? { ...fullExecutionData, data: undefined, workflowData: undefined }
+				: fullExecutionData;
+
 			// In scaling mode, worker saves execution without metadata
 			// Main process will save metadata after deletion decisions to avoid FK violations
 			await updateExistingExecution({
 				executionId: this.executionId,
 				workflowId: this.workflowData.id,
-				executionData: fullExecutionData,
+				executionData,
 			});
 		} finally {
 			workflowStatisticsService.emit('workflowExecutionCompleted', {
