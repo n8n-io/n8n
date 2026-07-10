@@ -2,6 +2,7 @@ import {
 	createTestMigrationContext,
 	initDbUpToMigration,
 	runSingleMigration,
+	undoLastSingleMigration,
 	type TestMigrationContext,
 } from '@n8n/backend-test-utils';
 import { DbConnection } from '@n8n/db';
@@ -42,6 +43,20 @@ describe('AddRecurringCronScheduleKind Migration', () => {
 			{ name },
 		);
 		return inserted.id;
+	}
+
+	async function getColumnNames(context: TestMigrationContext): Promise<string[]> {
+		if (context.isSqlite) {
+			const rows = await context.runQuery<Array<{ name: string }>>(
+				`PRAGMA table_info(${context.escape.tableName('scheduled_job')})`,
+			);
+			return rows.map((row) => row.name);
+		}
+		const rows = await context.runQuery<Array<{ column_name: string }>>(
+			'SELECT column_name FROM information_schema.columns WHERE table_name = :tableName',
+			{ tableName: `${context.tablePrefix}scheduled_job` },
+		);
+		return rows.map((row) => row.column_name);
 	}
 
 	async function insertTask(context: TestMigrationContext, jobId: number): Promise<void> {
@@ -163,6 +178,22 @@ describe('AddRecurringCronScheduleKind Migration', () => {
 		}
 	});
 
+	it('rejects a recurring_cron job missing its anchor cron expression', async () => {
+		const context = createTestMigrationContext(dataSource);
+		try {
+			await expect(
+				insertJob(context, {
+					kind: 'recurring_cron',
+					cronExpression: null,
+					recurrenceUnit: 'weeks',
+					recurrenceSize: 3,
+				}),
+			).rejects.toThrow();
+		} finally {
+			await context.queryRunner.release();
+		}
+	});
+
 	it('rejects an out-of-set recurrence unit on any row', async () => {
 		const context = createTestMigrationContext(dataSource);
 		try {
@@ -212,5 +243,64 @@ describe('AddRecurringCronScheduleKind Migration', () => {
 		} finally {
 			await context.queryRunner.release();
 		}
+	});
+
+	// Declared last: the revert would undo the schema the tests above assert on.
+	describe('down', () => {
+		it('restores the pre-migration schema, keeping other kinds and dropping recurring_cron rows', async () => {
+			let context = createTestMigrationContext(dataSource);
+			const recurringJobId = await insertJob(context, {
+				kind: 'recurring_cron',
+				cronExpression: '0 0 9 * * 1',
+				recurrenceUnit: 'weeks',
+				recurrenceSize: 3,
+			});
+			await insertTask(context, recurringJobId);
+			await context.queryRunner.release();
+
+			await undoLastSingleMigration();
+
+			context = createTestMigrationContext(dataSource);
+			try {
+				const jobTable = context.escape.tableName('scheduled_job');
+				const taskTable = context.escape.tableName('scheduled_task');
+
+				// The seeded cron job and its queued occurrence survive the revert.
+				const [job] = await context.runQuery<Array<{ kind: string }>>(
+					`SELECT "kind" FROM ${jobTable} WHERE "id" = :id`,
+					{ id: seededJobId },
+				);
+				expect(job.kind).toBe('cron');
+				const seededTasks = await context.runQuery<unknown[]>(
+					`SELECT "id" FROM ${taskTable} WHERE "jobId" = :jobId`,
+					{ jobId: seededJobId },
+				);
+				expect(seededTasks).toHaveLength(1);
+
+				// The recurring_cron job and its occurrence are gone.
+				const recurringJobs = await context.runQuery<unknown[]>(
+					`SELECT "id" FROM ${jobTable} WHERE "id" = :id`,
+					{ id: recurringJobId },
+				);
+				expect(recurringJobs).toHaveLength(0);
+				const recurringTasks = await context.runQuery<unknown[]>(
+					`SELECT "id" FROM ${taskTable} WHERE "jobId" = :jobId`,
+					{ jobId: recurringJobId },
+				);
+				expect(recurringTasks).toHaveLength(0);
+
+				// The kind CHECK is narrowed again and the recurrence columns are gone.
+				await expect(insertJob(context, { kind: 'recurring_cron' })).rejects.toThrow();
+				const columns = await getColumnNames(context);
+				expect(columns).toContain('kind');
+				expect(columns).not.toContain('recurrenceUnit');
+				expect(columns).not.toContain('recurrenceSize');
+			} finally {
+				await context.queryRunner.release();
+			}
+
+			// The revert leaves a state up() applies cleanly to again.
+			await runSingleMigration(MIGRATION_NAME);
+		});
 	});
 });

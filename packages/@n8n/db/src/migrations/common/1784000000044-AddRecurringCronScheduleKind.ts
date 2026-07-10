@@ -1,10 +1,12 @@
 import { TableCheck } from '@n8n/typeorm';
 
-import type { IrreversibleMigration, MigrationContext } from '../migration-types';
+import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const table = 'scheduled_job';
+const taskTable = 'scheduled_task';
 const kindColumn = 'kind';
-const kindValues = ['cron', 'interval', 'one_off', 'recurring_cron'];
+const kindValuesBefore = ['cron', 'interval', 'one_off'];
+const kindValues = [...kindValuesBefore, 'recurring_cron'];
 const recurrenceUnitValues = ['hours', 'days', 'weeks', 'months'];
 
 /**
@@ -19,7 +21,7 @@ const recurrenceUnitValues = ['hours', 'days', 'weeks', 'months'];
  *   - `recurrenceUnit`: the calendar period counted (hours, days, weeks, months)
  *   - `recurrenceSize`: the N, e.g. 3 for "every 3 weeks" (at least 2)
  */
-export class AddRecurringCronScheduleKind1784000000044 implements IrreversibleMigration {
+export class AddRecurringCronScheduleKind1784000000044 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		await this.addRecurrenceColumns(context);
 
@@ -37,6 +39,55 @@ export class AddRecurringCronScheduleKind1784000000044 implements IrreversibleMi
 		await this.addRecurringCronPresenceCheck(context);
 		if (context.isPostgres) {
 			await this.commentColumns(context);
+		}
+	}
+
+	async down(context: MigrationContext) {
+		const { escape, queryRunner, tablePrefix, schemaBuilder } = context;
+		const jobTable = escape.tableName(table);
+		const kind = escape.columnName(kindColumn);
+
+		// recurring_cron rows cannot exist under the narrowed kind CHECK. Their
+		// queued occurrences are removed explicitly rather than via the job ->
+		// task CASCADE, which is off while SQLite runs with FKs disabled.
+		await context.runQuery(
+			`DELETE FROM ${escape.tableName(taskTable)} WHERE ${escape.columnName('jobId')} IN ` +
+				`(SELECT ${escape.columnName('id')} FROM ${jobTable} WHERE ${kind} = 'recurring_cron')`,
+		);
+		await context.runQuery(`DELETE FROM ${jobTable} WHERE ${kind} = 'recurring_cron'`);
+
+		await queryRunner.dropCheckConstraint(
+			`${tablePrefix}${table}`,
+			`CHK_${tablePrefix}scheduled_job_recurring_cron`,
+		);
+
+		await schemaBuilder.dropEnumCheck(table, kindColumn, { recreatesOnSqlite: true });
+		await schemaBuilder.addEnumCheck(table, kindColumn, kindValuesBefore, {
+			recreatesOnSqlite: true,
+		});
+
+		// The columns' own CHECK constraints must go before the columns: TypeORM's
+		// SQLite table rebuild keeps checks referencing dropped columns, and SQLite
+		// then reads `"recurrenceUnit"` as a string literal, failing every row copy.
+		await queryRunner.dropCheckConstraint(
+			`${tablePrefix}${table}`,
+			`CHK_${tablePrefix}scheduled_job_recurrence_unit`,
+		);
+		await queryRunner.dropCheckConstraint(
+			`${tablePrefix}${table}`,
+			`CHK_${tablePrefix}scheduled_job_recurrence_size`,
+		);
+
+		await schemaBuilder.dropColumns(table, ['recurrenceUnit', 'recurrenceSize'], {
+			recreatesOnSqlite: true,
+		});
+
+		if (context.isPostgres) {
+			// Restore the comment `up()` overwrote (wording from CreateSchedulerTables).
+			await context.runQuery(
+				`COMMENT ON COLUMN ${jobTable}.${escape.columnName('cronExpression')} IS ` +
+					"'Cron expression driving recurrence; set only when kind is ''cron''.'",
+			);
 		}
 	}
 
