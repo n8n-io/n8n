@@ -140,13 +140,13 @@ export const INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_EXPERIMENT = createExperiment(
 	'094_instance_ai_browser_credential_setup',
 );
 
+export const N8N_CREDITS_CREDENTIAL_SELECTION_EXPERIMENT = createExperiment(
+	'095_n8n_credits_credential_selection',
+);
+
 export const ENHANCED_HITL_SLACK_EXPERIMENT = createExperiment('096_enhanced_hitl_slack');
 export const ENHANCED_HITL_TELEGRAM_EXPERIMENT = createExperiment('097_enhanced_hitl_telegram');
 export const ENHANCED_HITL_GMAIL_EXPERIMENT = createExperiment('098_enhanced_hitl_gmail');
-
-export const N8N_CREDITS_CREDENTIAL_SELECTION_EXPERIMENT = createExperiment(
-	'099_n8n_credits_credential_selection',
-);
 
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
@@ -184,8 +184,8 @@ export const EXPERIMENTS_TO_TRACK = [
 	INSTANCE_AI_COMPUTER_USE_EXPERIMENT.name,
 	INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT.name,
 	INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_EXPERIMENT.name,
+	N8N_CREDITS_CREDENTIAL_SELECTION_EXPERIMENT.name,
 	ENHANCED_HITL_SLACK_EXPERIMENT.name,
 	ENHANCED_HITL_TELEGRAM_EXPERIMENT.name,
 	ENHANCED_HITL_GMAIL_EXPERIMENT.name,
-	N8N_CREDITS_CREDENTIAL_SELECTION_EXPERIMENT.name,
 ];
