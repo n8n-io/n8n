@@ -27,6 +27,13 @@ export interface ProtectedResource {
 	getResourceUrl(): string;
 
 	/**
+	 * Every resource URL this resource is served at: the canonical URL first,
+	 * then configured aliases (e.g. a dedicated MCP base URL on split-hostname
+	 * deployments). Treated as `[getResourceUrl()]` when not implemented.
+	 */
+	getResourceUrls?(): string[];
+
+	/**
 	 * All `aud` values accepted at this resource's gate. Must include the
 	 * canonical resource URL; may include resource-specific legacy audiences.
 	 */
@@ -96,6 +103,9 @@ export interface ProtectedResourceResolver {
 
 const trimTrailingSlash = (url: string): string => url.replace(/\/$/, '');
 
+const getResourceUrls = (resource: ProtectedResource): string[] =>
+	resource.getResourceUrls?.() ?? [resource.getResourceUrl()];
+
 /**
  * Registry of the protected resources served by this instance's shared OAuth
  * server. Modules register their resources on init (e.g. instance MCP
@@ -121,11 +131,13 @@ export class ProtectedResourceRegistry {
 		return this.resources.get(id);
 	}
 
-	/** Look up a resource by its canonical URL (trailing slashes ignored). */
+	/** Look up a resource by any of its resource URLs (trailing slashes ignored). */
 	async getByResourceUrl(resourceUrl: string): Promise<ProtectedResource | undefined> {
 		const normalized = trimTrailingSlash(resourceUrl);
 		for (const resource of this.resources.values()) {
-			if (trimTrailingSlash(resource.getResourceUrl()) === normalized) return resource;
+			if (getResourceUrls(resource).some((url) => trimTrailingSlash(url) === normalized)) {
+				return resource;
+			}
 		}
 		for (const resolver of this.resolvers) {
 			try {
@@ -142,12 +154,14 @@ export class ProtectedResourceRegistry {
 	async getByResourcePath(pathname: string): Promise<ProtectedResource | undefined> {
 		const normalized = trimTrailingSlash(pathname);
 		for (const resource of this.resources.values()) {
-			try {
-				if (trimTrailingSlash(new URL(resource.getResourceUrl()).pathname) === normalized) {
-					return resource;
+			for (const url of getResourceUrls(resource)) {
+				try {
+					if (trimTrailingSlash(new URL(url).pathname) === normalized) {
+						return resource;
+					}
+				} catch {
+					continue;
 				}
-			} catch {
-				continue;
 			}
 		}
 
