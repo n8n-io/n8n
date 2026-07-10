@@ -8,7 +8,7 @@ import {
 import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
-import { validateUserTargetId } from '../../GenericFunctions';
+import { stampItemIndexOnError, validateUserTargetId } from '../../GenericFunctions';
 import {
 	getServicePrincipalResourceRoot,
 	getToDoCredentialType,
@@ -421,6 +421,68 @@ describe('Microsoft ToDo GenericFunctions', () => {
 			await expect(
 				microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/todo/lists'),
 			).rejects.toThrow(NodeApiError);
+		});
+
+		it('resolves the user target at the passed itemIndex', async () => {
+			// The userTarget RLC accepts expressions, so execute call sites pass the loop
+			// index and the transport must read the target at exactly that index.
+			mockExecuteFunctions.getNodeParameter.mockImplementation((name, itemIndex, fallback) => {
+				if (name === 'authentication') return 'microsoftEntraServicePrincipalApi' as never;
+				if (name === 'userTarget')
+					return { value: itemIndex === 1 ? 'john@contoso.com' : 'jane@contoso.com' } as never;
+				return fallback as never;
+			});
+
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				'/todo/lists',
+				{},
+				{},
+				undefined,
+				{},
+				{ json: true },
+				1,
+			);
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({ uri: `${baseUrl}/v1.0/users/john%40contoso.com/todo/lists` }),
+			);
+		});
+
+		it('stamps context.itemIndex on a bad-target resolve error', async () => {
+			setSpParams({ userTarget: { value: 'not a user' } });
+
+			let caught: unknown;
+			try {
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/todo/lists',
+					{},
+					{},
+					undefined,
+					{},
+					{ json: true },
+					2,
+				);
+			} catch (error) {
+				caught = error;
+			}
+
+			expect(caught).toBeInstanceOf(NodeOperationError);
+			expect((caught as NodeOperationError).context.itemIndex).toBe(2);
+			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('stampItemIndexOnError', () => {
+		it('does not overwrite an already-set context.itemIndex', () => {
+			const error = new NodeOperationError(mockNode, 'boom', { itemIndex: 5 });
+
+			expect(stampItemIndexOnError(error, 9)).toBe(error);
+			expect(error.context.itemIndex).toBe(5);
 		});
 	});
 

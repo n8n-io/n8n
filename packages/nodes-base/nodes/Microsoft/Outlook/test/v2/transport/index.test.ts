@@ -4,6 +4,8 @@ import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
 import {
+	downloadAttachments,
+	getMimeContent,
 	getOutlookCredentialType,
 	getSubfolders,
 	microsoftApiRequest,
@@ -378,6 +380,132 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 				microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages'),
 			).rejects.toThrow('The mailbox is not valid');
 			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
+		});
+
+		// The mailbox RLC accepts expressions, so execute call sites pass the loop index
+		// and the transport must read the mailbox at exactly that index.
+		const setupSPPerItem = () => {
+			mockRequestWithAuthentication.mockResolvedValue({ data: 'test' });
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(name: string, itemIndex?: number) => {
+					if (name === 'authentication') return 'microsoftEntraServicePrincipalApi';
+					if (name === 'mailbox')
+						return itemIndex === 1 ? 'user2@example.com' : 'user1@example.com';
+					return undefined;
+				},
+			);
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				accessToken: 'test-access-token',
+				graphApiBaseUrl: '',
+			});
+		};
+
+		it('should resolve the mailbox at the passed itemIndex', async () => {
+			setupSPPerItem();
+
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				'/messages',
+				{},
+				{},
+				undefined,
+				{},
+				{ json: true },
+				0,
+			);
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				'/messages',
+				{},
+				{},
+				undefined,
+				{},
+				{ json: true },
+				1,
+			);
+
+			expect(mockRequestWithAuthentication).toHaveBeenNthCalledWith(
+				1,
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({
+					uri: 'https://graph.microsoft.com/v1.0/users/user1%40example.com/messages',
+				}),
+			);
+			expect(mockRequestWithAuthentication).toHaveBeenNthCalledWith(
+				2,
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({
+					uri: 'https://graph.microsoft.com/v1.0/users/user2%40example.com/messages',
+				}),
+			);
+		});
+
+		it('should stamp context.itemIndex on a bad-mailbox error at the failing item', async () => {
+			setupSP({ mailbox: 'contoso.com' });
+
+			let caught: unknown;
+			try {
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/messages',
+					{},
+					{},
+					undefined,
+					{},
+					{ json: true },
+					3,
+				);
+			} catch (error) {
+				caught = error;
+			}
+
+			expect(caught).toBeInstanceOf(NodeOperationError);
+			expect((caught as NodeOperationError).context.itemIndex).toBe(3);
+			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
+		});
+
+		it('should download attachments from the mailbox at the passed itemIndex', async () => {
+			setupSPPerItem();
+			mockRequestWithAuthentication
+				.mockResolvedValueOnce({
+					value: [{ id: 'att1', name: 'file.txt', contentType: 'text/plain' }],
+				})
+				.mockResolvedValueOnce({ body: 'DATA', headers: {} });
+
+			await downloadAttachments.call(
+				mockExecuteFunctions,
+				{ id: 'MSG1', hasAttachments: true },
+				'attachment_',
+				1,
+			);
+
+			const uris = mockRequestWithAuthentication.mock.calls.map(
+				(call) => (call[1] as IDataObject).uri,
+			);
+			expect(uris).toEqual([
+				'https://graph.microsoft.com/v1.0/users/user2%40example.com/messages/MSG1/attachments',
+				'https://graph.microsoft.com/v1.0/users/user2%40example.com/messages/MSG1/attachments/att1/$value',
+			]);
+		});
+
+		it('should fetch MIME content from the mailbox at the passed itemIndex', async () => {
+			setupSPPerItem();
+			mockRequestWithAuthentication.mockResolvedValue({
+				body: 'MIME',
+				headers: { 'content-type': 'message/rfc822' },
+			});
+
+			await getMimeContent.call(mockExecuteFunctions, 'MSG1', 'data', 1);
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({
+					uri: 'https://graph.microsoft.com/v1.0/users/user2%40example.com/messages/MSG1/$value',
+				}),
+			);
 		});
 	});
 });
