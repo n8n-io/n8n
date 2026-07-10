@@ -259,7 +259,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				const last = agent.timeline.at(-1);
 				const isOpenSegment =
 					last?.type === 'text' &&
-					event.responseId != null &&
+					event.responseId !== undefined &&
 					last.responseId === event.responseId &&
 					event.payload.text.startsWith(last.content);
 				if (isOpenSegment && agent.textContent.endsWith(last.content)) {
@@ -286,7 +286,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				const last = agent.timeline.at(-1);
 				const isOpenSegment =
 					last?.type === 'reasoning' &&
-					event.responseId != null &&
+					event.responseId !== undefined &&
 					last.responseId === event.responseId &&
 					event.payload.text.startsWith(last.content);
 				if (isOpenSegment && agent.reasoning.endsWith(last.content)) {
