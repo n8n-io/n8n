@@ -311,9 +311,12 @@ describe('aggregateResults — artifact units', () => {
 		expect(tc.artifacts[0].evaluatedCount).toBe(1);
 		expect(tc.artifacts[0].passCount).toBe(1);
 		expect(tc.artifacts[0].passRate).toBe(1);
+	});
+});
+
 describe('aggregateResults — build expectations as units', () => {
 	const expectationCase: WorkflowTestCase = {
-		...testCase,
+		...incompleteTestCase,
 		executionScenarios: undefined,
 		processExpectations: ['asks before building'],
 		outcomeExpectations: ['workflow has a trigger'],
