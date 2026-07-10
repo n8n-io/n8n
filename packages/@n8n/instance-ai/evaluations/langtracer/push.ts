@@ -3,8 +3,9 @@
 // seeding). Pure — no network — so the create/update/unchanged partitioning is
 // unit-testable against in-memory suite state.
 
+import type { LangTracerUpdateCaseBody } from './client';
 import { normalizeExportedCase } from './normalize';
-import { unsupportedPushReason } from './to-exported';
+import { unsupportedPushReason, type LangTracerCreateCaseBody } from './to-exported';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
 
 export interface PushPlan {
@@ -14,9 +15,8 @@ export interface PushPlan {
 	skipped: Array<{ fileSlug: string; reason: string }>;
 }
 
-/** Disk fields compared to decide create-vs-update. Deliberately EXCLUDES three
+/** Disk fields compared to decide create-vs-update. Deliberately EXCLUDES two
  *  fields that would make a re-push never converge (always "update"):
- *  - `executionScenarios`: sidecar rows `PATCH /cases/:id` can't update — written on create only.
  *  - `tags` and `datasets`: the lang-tracer suite export does not round-trip these
  *    (tags come back empty, default `datasets` comes back null/omitted), so a diff
  *    on them always fires. They're still SENT on create so new cases carry them;
@@ -30,7 +30,23 @@ const COMPARED_KEYS = [
 	'outcomeExpectations',
 	'messageBudget',
 	'credentials',
+	// Round-trips faithfully: PATCH /cases/:id reconciles scenario rows by name
+	// (lang-tracer #48) and the export emits them back in disk shape.
+	'executionScenarios',
 ] as const;
+
+/** Drop the create-only fields, leaving the patchable set (`scenarios` included —
+ *  `PATCH /cases/:id` reconciles them by name since lang-tracer #48). An absent
+ *  `scenarios` is sent as an explicit `[]`: a partial PATCH leaves missing keys
+ *  untouched, so omitting it would keep the server's old scenario rows alive
+ *  forever after a disk case drops its `executionScenarios`. */
+export function toUpdatePatch({
+	suiteId,
+	synthetic,
+	...patch
+}: LangTracerCreateCaseBody): LangTracerUpdateCaseBody {
+	return { scenarios: [], ...patch };
+}
 
 /** `existingBodies`: `<name>.json` → exported (disk-shape) body from `GET /suites/:id/export`.
  *  `existingIdsByName`: case name → id from `GET /suites/:id` (authoritative membership). */
