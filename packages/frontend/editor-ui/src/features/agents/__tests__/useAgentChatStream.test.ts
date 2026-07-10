@@ -5,6 +5,7 @@ import {
 	APPROVAL_TOOL_NAME,
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
+	ASK_QUESTIONS_TOOL_NAME,
 	N8N_CHAT_ACTION_TOOL_NAME,
 	type AgentSseEvent,
 } from '@n8n/api-types';
@@ -117,7 +118,15 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 					toolCallId: 'tc-1',
 					runId: 'run-42',
 					toolName: ASK_CREDENTIAL_TOOL_NAME,
-					input: { purpose: 'Slack', credentialType: 'slackApi' },
+					input: {
+						requestId: 'req-1',
+						message: 'Slack',
+						severity: 'info',
+						credentialRequests: [
+							{ credentialType: 'slackApi', reason: 'Slack', existingCredentials: [] },
+						],
+						credentialFlow: { stage: 'generic' },
+					},
 				},
 			},
 			{
@@ -925,27 +934,34 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		).toBeUndefined();
 	});
 
-	it('builder tool (ask_question) still sets tc.input from suspend payload and builds card', async () => {
+	it('builder tool (ask_questions) still sets tc.input from suspend payload and builds card', async () => {
 		const askInput = {
-			question: 'What is your preferred language?',
-			options: [
-				{ label: 'TypeScript', value: 'ts' },
-				{ label: 'Python', value: 'py' },
+			requestId: 'req-1',
+			message: 'The agent builder has questions',
+			severity: 'info',
+			inputType: 'questions',
+			questions: [
+				{
+					id: 'q1',
+					question: 'What is your preferred language?',
+					type: 'single',
+					options: ['TypeScript', 'Python'],
+				},
 			],
 		};
 		const events: AgentSseEvent[] = [
 			{
 				type: 'tool-call',
 				toolCallId: 'tc-ask',
-				toolName: 'ask_question',
-				input: { question: 'placeholder' },
+				toolName: ASK_QUESTIONS_TOOL_NAME,
+				input: { questions: [{ question: 'placeholder', type: 'single', options: ['a'] }] },
 			},
 			{
 				type: 'tool-call-suspended',
 				payload: {
 					toolCallId: 'tc-ask',
 					runId: 'run-ask',
-					toolName: 'ask_question',
+					toolName: ASK_QUESTIONS_TOOL_NAME,
 					input: askInput,
 				},
 			},
@@ -962,7 +978,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(tc.input).toEqual(askInput); // overwritten from suspend payload (builder behaviour)
 		expect(tc.suspendPayload).toBeUndefined();
 		expect(tc.state).toBe('suspended');
-		expect(msg.interactive?.toolName).toBe('ask_question');
+		expect(msg.interactive?.toolName).toBe(ASK_QUESTIONS_TOOL_NAME);
 		expect(msg.interactive?.runId).toBe('run-ask');
 		expect(msg.status).toBe('awaitingUser');
 	});

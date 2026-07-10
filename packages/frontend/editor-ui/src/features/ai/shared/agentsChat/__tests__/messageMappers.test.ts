@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	ASK_LLM_TOOL_NAME,
-	ASK_QUESTION_TOOL_NAME,
+	ASK_QUESTIONS_TOOL_NAME,
 	type AgentPersistedMessageDto,
 } from '@n8n/api-types';
 
@@ -44,9 +44,12 @@ describe('shared agents chat message mapping', () => {
 				content: [
 					{
 						type: 'tool-call',
-						toolName: ASK_QUESTION_TOOL_NAME,
+						toolName: ASK_QUESTIONS_TOOL_NAME,
 						toolCallId: 'question-1',
-						input: { question: 'Pick one', options: [{ label: 'A', value: 'a' }] },
+						// Persisted history only ever carries the tool's original call
+						// args, never the (transient, SSE-only) suspend payload —
+						// `rebuildInteractiveFromHistory` synthesizes the rest.
+						input: { questions: [{ question: 'Pick one', type: 'single', options: ['a'] }] },
 						state: 'pending',
 					},
 				],
@@ -58,16 +61,19 @@ describe('shared agents chat message mapping', () => {
 		expect(chat[0].interactive?.runId).toBe('run-1');
 	});
 
-	it('rebuilds resolved ask_question cards from tool output', () => {
+	it('rebuilds resolved ask_questions cards from tool output', () => {
 		const result = rebuildInteractiveFromHistory({
-			tool: ASK_QUESTION_TOOL_NAME,
+			tool: ASK_QUESTIONS_TOOL_NAME,
 			toolCallId: 'question-2',
-			input: { question: 'Pick one', options: [{ label: 'A', value: 'a' }] },
-			output: { values: ['a'] },
+			input: { questions: [{ id: 'q1', question: 'Pick one', type: 'single', options: ['a'] }] },
+			output: { answered: true, answers: [{ questionId: 'q1', selectedOptions: ['a'] }] },
 			state: 'done',
 		});
 
 		expect(result?.resolvedAt).toBeDefined();
-		expect(result?.resolvedValue).toEqual({ values: ['a'] });
+		expect(result?.resolvedValue).toEqual({
+			answered: true,
+			answers: [{ questionId: 'q1', selectedOptions: ['a'] }],
+		});
 	});
 });

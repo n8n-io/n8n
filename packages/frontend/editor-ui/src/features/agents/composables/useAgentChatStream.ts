@@ -124,7 +124,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				openSuspensions = envelope.openSuspensions;
 			}
 			if (dbMessages.length > 0) {
-				messages.value = applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions);
+				const context = { agentId: params.agentId.value, projectId: params.projectId.value };
+				messages.value = applyOpenSuspensions(
+					convertDbMessages(dbMessages, context),
+					openSuspensions,
+				);
 			}
 			params.onHistoryLoaded?.(messages.value.length);
 		} catch (error) {

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
-	ASK_QUESTION_TOOL_NAME,
+	ASK_QUESTIONS_TOOL_NAME,
 	APPROVAL_TOOL_NAME,
 	N8N_CHAT_ACTION_TOOL_NAME,
 	type AgentPersistedMessageContentPart,
@@ -16,6 +16,17 @@ import {
 } from '@/features/ai/shared/agentsChat/messageMappers';
 import { buildDisplayGroups, isGroupable } from '@/features/ai/shared/agentsChat/displayGroups';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
+
+/** A full `credentialSuspendPayloadSchema`-shaped input, for fixtures that construct `InteractivePayload` literals directly (bypassing `rebuildInteractiveFromHistory`'s raw-args fallback). */
+function credentialSuspendInput(credentialType: string, reason: string) {
+	return {
+		requestId: 'req-1',
+		message: reason,
+		severity: 'info' as const,
+		credentialRequests: [{ credentialType, reason, existingCredentials: [] }],
+		credentialFlow: { stage: 'generic' as const },
+	};
+}
 
 describe('rebuildInteractiveFromHistory', () => {
 	it('rebuilds an OPEN ask_llm card when output is missing', () => {
@@ -165,17 +176,20 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 				content: [
 					{
 						type: 'tool-call',
-						toolName: ASK_QUESTION_TOOL_NAME,
+						toolName: ASK_QUESTIONS_TOOL_NAME,
 						toolCallId: 'q-1',
 						input: {
-							question: 'Where to post?',
-							options: [
-								{ label: 'Slack', value: 'slack' },
-								{ label: 'Discord', value: 'discord' },
+							questions: [
+								{
+									id: 'q1',
+									question: 'Where to post?',
+									type: 'single',
+									options: ['Slack', 'Discord'],
+								},
 							],
 						},
 						state: 'resolved',
-						output: { values: ['slack'] },
+						output: { answered: true, answers: [{ questionId: 'q1', selectedOptions: ['Slack'] }] },
 					},
 				],
 			},
@@ -185,10 +199,16 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 		expect(chat).toHaveLength(1);
 		const assistant = chat[0];
 		expect(assistant.toolCalls?.[0].state).toBe('done');
-		expect(assistant.toolCalls?.[0].output).toEqual({ values: ['slack'] });
-		expect(assistant.interactive?.toolName).toBe(ASK_QUESTION_TOOL_NAME);
+		expect(assistant.toolCalls?.[0].output).toEqual({
+			answered: true,
+			answers: [{ questionId: 'q1', selectedOptions: ['Slack'] }],
+		});
+		expect(assistant.interactive?.toolName).toBe(ASK_QUESTIONS_TOOL_NAME);
 		expect(assistant.interactive?.resolvedAt).toBeDefined();
-		expect(assistant.interactive?.resolvedValue).toEqual({ values: ['slack'] });
+		expect(assistant.interactive?.resolvedValue).toEqual({
+			answered: true,
+			answers: [{ questionId: 'q1', selectedOptions: ['Slack'] }],
+		});
 	});
 
 	it('preserves multiple resolved n8n chat cards from one persisted assistant message', () => {
@@ -513,7 +533,7 @@ describe('buildDisplayGroups — interactive payloads', () => {
 				interactive: {
 					toolName: ASK_CREDENTIAL_TOOL_NAME,
 					toolCallId: 'c3',
-					input: { purpose: 'Slack', credentialType: 'slackApi' },
+					input: credentialSuspendInput('slackApi', 'Slack'),
 				},
 				status: 'awaitingUser',
 			},
@@ -637,7 +657,7 @@ describe('applyOpenSuspensions', () => {
 				interactive: {
 					toolName: ASK_CREDENTIAL_TOOL_NAME,
 					toolCallId: 'c-open',
-					input: { purpose: 'Slack', credentialType: 'slackApi' },
+					input: credentialSuspendInput('slackApi', 'Slack'),
 				},
 				status: 'awaitingUser',
 			},
