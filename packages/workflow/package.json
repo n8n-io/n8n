@@ -61,6 +61,7 @@
     "@types/ssh2": "catalog:",
     "@types/xml2js": "catalog:",
     "fast-check": "catalog:",
+    "nock": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
