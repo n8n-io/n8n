@@ -1,0 +1,229 @@
+import { describe, it, expect, beforeEach } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { createThreadComponentRenderer } from './createThreadComponentRenderer';
+import { createTestingPinia } from '@pinia/testing';
+import ThinkingBlock from '../components/ThinkingBlock.vue';
+import type {
+	InstanceAiAgentNode,
+	InstanceAiTimelineEntry,
+	InstanceAiToolCallState,
+} from '@n8n/api-types';
+
+const renderComponent = createThreadComponentRenderer(ThinkingBlock, {
+	global: {
+		stubs: {
+			InstanceAiMarkdown: { template: '<span>{{ content }}</span>', props: ['content'] },
+			ToolResultJson: true,
+			ToolResultRenderer: true,
+		},
+	},
+});
+
+function makeToolCall(overrides: Partial<InstanceAiToolCallState> = {}): InstanceAiToolCallState {
+	return {
+		toolCallId: 'tc-1',
+		toolName: 'search-nodes',
+		args: {},
+		isLoading: false,
+		...overrides,
+	};
+}
+
+function makeAgentNode(overrides: Partial<InstanceAiAgentNode> = {}): InstanceAiAgentNode {
+	return {
+		agentId: 'agent-1',
+		role: 'orchestrator',
+		status: 'completed',
+		textContent: '',
+		reasoning: '',
+		toolCalls: [],
+		children: [],
+		timeline: [],
+		...overrides,
+	};
+}
+
+const reasoning = (content: string): InstanceAiTimelineEntry => ({ type: 'reasoning', content });
+const text = (content: string): InstanceAiTimelineEntry => ({ type: 'text', content });
+const toolEntry = (toolCallId: string): InstanceAiTimelineEntry => ({
+	type: 'tool-call',
+	toolCallId,
+});
+
+describe('ThinkingBlock', () => {
+	beforeEach(() => {
+		createTestingPinia({ stubActions: false });
+	});
+
+	it('should show duration from tool-call timestamps when settled', () => {
+		const tc = makeToolCall({
+			startedAt: '2026-01-01T00:00:00Z',
+			completedAt: '2026-01-01T00:00:12Z',
+		});
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ toolCalls: [tc] }),
+				entries: [reasoning('hmm'), toolEntry('tc-1')],
+				active: false,
+			},
+		});
+
+		expect(getByTestId('thinking-block-header')).toHaveTextContent('Thought for 12s');
+	});
+
+	it('should format durations over a minute', () => {
+		const tc = makeToolCall({
+			startedAt: '2026-01-01T00:00:00Z',
+			completedAt: '2026-01-01T00:01:05Z',
+		});
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ toolCalls: [tc] }),
+				entries: [toolEntry('tc-1')],
+				active: false,
+			},
+		});
+
+		expect(getByTestId('thinking-block-header')).toHaveTextContent('Thought for 1m 5s');
+	});
+
+	it('should fall back to a static title when no timestamps exist', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode(),
+				entries: [reasoning('only reasoning, no tools')],
+				active: false,
+			},
+		});
+
+		expect(getByTestId('thinking-block-header')).toHaveTextContent('Finished thinking');
+	});
+
+	it('should be collapsed by default when settled', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode(),
+				entries: [reasoning('hmm')],
+				active: false,
+			},
+		});
+
+		expect(getByTestId('thinking-block-header').getAttribute('aria-expanded')).toBe('false');
+	});
+
+	it('should stay collapsed while active and stream the latest segment first sentence', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ status: 'active' }),
+				entries: [
+					reasoning('Reasoning start. More reasoning.'),
+					text('Checking the schema first. Then building.'),
+				],
+				active: true,
+			},
+		});
+
+		const header = getByTestId('thinking-block-header');
+		expect(header.getAttribute('aria-expanded')).toBe('false');
+		expect(header).toHaveTextContent('Checking the schema first.');
+	});
+
+	it('should keep the previous status line while a new segment is still blank', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ status: 'active' }),
+				entries: [
+					text('Checking the schema first. Then building.'),
+					reasoning('\n\n'), // reasoning streams often open with whitespace
+				],
+				active: true,
+			},
+		});
+
+		expect(getByTestId('thinking-block-header')).toHaveTextContent('Checking the schema first.');
+	});
+
+	it('should replace the status line when a new trace segment starts', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ status: 'active' }),
+				entries: [
+					text('Checking the schema first. Then building.'),
+					reasoning('The classifier needs rewiring. Fixing it.'),
+				],
+				active: true,
+			},
+		});
+
+		expect(getByTestId('thinking-block-header')).toHaveTextContent(
+			'The classifier needs rewiring.',
+		);
+	});
+
+	it('should show the reasoning first sentence before any narration exists', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ status: 'active' }),
+				entries: [reasoning('The user wants a Gmail workflow. Let me check the nodes.')],
+				active: true,
+			},
+		});
+
+		expect(getByTestId('thinking-block-header')).toHaveTextContent(
+			'The user wants a Gmail workflow.',
+		);
+	});
+
+	it('should title an expanded streaming block "Thinking"', async () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ status: 'active' }),
+				entries: [reasoning('Some reasoning. More.')],
+				active: true,
+			},
+		});
+
+		const header = getByTestId('thinking-block-header');
+		await userEvent.click(header);
+
+		expect(header.getAttribute('aria-expanded')).toBe('true');
+		expect(header).toHaveTextContent('Thinking');
+	});
+
+	it('should collapse a user-expanded block and settle the title when streaming ends', async () => {
+		const tc = makeToolCall({
+			startedAt: '2026-01-01T00:00:00Z',
+			completedAt: '2026-01-01T00:00:03Z',
+		});
+		const { getByTestId, rerender } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ status: 'active', toolCalls: [tc] }),
+				entries: [reasoning('hmm'), toolEntry('tc-1')],
+				active: true,
+			},
+		});
+
+		await userEvent.click(getByTestId('thinking-block-header'));
+		await rerender({ active: false });
+
+		const header = getByTestId('thinking-block-header');
+		expect(header.getAttribute('aria-expanded')).toBe('false');
+		expect(header).toHaveTextContent('Thought for 3s');
+	});
+
+	it('should render narration, reasoning, and tool rows inside the rail when expanded', async () => {
+		const tc = makeToolCall({ toolCallId: 'tc-1', toolName: 'credentials' });
+		const { getByTestId, getByText } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ status: 'active', toolCalls: [tc] }),
+				entries: [reasoning('deep thoughts'), text('Checking credentials now.'), toolEntry('tc-1')],
+				active: true,
+			},
+		});
+
+		await userEvent.click(getByTestId('thinking-block-header'));
+
+		expect(getByText('Checking credentials now.')).toBeInTheDocument();
+		expect(getByText('Reasoning')).toBeInTheDocument();
+	});
+});

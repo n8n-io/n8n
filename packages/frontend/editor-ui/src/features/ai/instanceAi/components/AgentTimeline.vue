@@ -8,22 +8,21 @@ import type {
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import {
+	buildTimelineBlocks,
 	extractArtifacts,
 	isStreamingTimelineEntry,
-	HIDDEN_TOOLS,
 	type ArtifactInfo,
 } from '../agentTimeline.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useThread } from '../instanceAi.store';
-import { isActiveBuilderAgent } from '../builderAgents';
 import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
 import ArtifactCard from './ArtifactCard.vue';
 import PlanReviewPanel, { type PlannedTaskArg, type PlanReviewStatus } from './PlanReviewPanel.vue';
 import TaskChecklist from './TaskChecklist.vue';
+import ThinkingBlock from './ThinkingBlock.vue';
 import TimelineTextSegment from './TimelineTextSegment.vue';
-import TraceChipStrip from './TraceChipStrip.vue';
 
 const i18n = useI18n();
 const thread = useThread();
@@ -113,83 +112,14 @@ const childrenById = computed(() => {
 	return map;
 });
 
-/** Tool render hints that produce no timeline output of their own. */
-const INVISIBLE_RENDER_HINTS = new Set(['builder', 'data-table', 'eval-setup', 'planner']);
-
-type TextEntry = Extract<InstanceAiTimelineEntry, { type: 'text' }>;
-
-/**
- * The timeline reduced to renderable blocks. Consecutive "trace" entries
- * (reasoning + generic tool calls) merge into horizontal chip strips;
- * invisible entries (hidden tools, builder/planner hints, pending questions)
- * are dropped without splitting a strip. Everything else renders standalone
- * and splits the strip.
- */
-type RenderBlock =
-	| { type: 'strip'; key: string; entries: InstanceAiTimelineEntry[] }
-	| { type: 'text'; key: string; entry: TextEntry }
-	| { type: 'tasks'; key: string; toolCall: InstanceAiToolCallState }
-	| { type: 'plan-review'; key: string; toolCall: InstanceAiToolCallState }
-	| { type: 'questions'; key: string; toolCall: InstanceAiToolCallState }
-	| { type: 'child'; key: string; child: InstanceAiAgentNode };
-
-const renderBlocks = computed<RenderBlock[]>(() => {
-	const blocks: RenderBlock[] = [];
-	let strip: Extract<RenderBlock, { type: 'strip' }> | null = null;
-
-	function pushStandalone(block: RenderBlock) {
-		strip = null;
-		blocks.push(block);
-	}
-
-	timelineEntries.value.forEach((entry, idx) => {
-		if (entry.type === 'text') {
-			pushStandalone({ type: 'text', key: `text-${idx}`, entry });
-			return;
-		}
-
-		if (entry.type === 'child') {
-			const child = childrenById.value[entry.agentId];
-			// Running builder sub-agents are extracted and rendered at the bottom
-			// of the conversation by InstanceAiView; once a builder finishes it
-			// reappears here in its chronological slot.
-			if (child && !isActiveBuilderAgent(child)) {
-				pushStandalone({ type: 'child', key: `child-${idx}`, child });
-			}
-			return;
-		}
-
-		if (entry.type === 'tool-call') {
-			const tc = toolCallsById.value[entry.toolCallId];
-			if (!tc || HIDDEN_TOOLS.has(tc.toolName)) return;
-			if (tc.renderHint === 'tasks') {
-				pushStandalone({ type: 'tasks', key: `tasks-${idx}`, toolCall: tc });
-				return;
-			}
-			if (tc.confirmation?.inputType === 'plan-review') {
-				pushStandalone({ type: 'plan-review', key: `plan-${idx}`, toolCall: tc });
-				return;
-			}
-			if (tc.renderHint && INVISIBLE_RENDER_HINTS.has(tc.renderHint)) return;
-			if (tc.confirmation?.inputType === 'questions') {
-				// Pending question forms are suppressed until answered.
-				if (!tc.isLoading) {
-					pushStandalone({ type: 'questions', key: `questions-${idx}`, toolCall: tc });
-				}
-				return;
-			}
-		}
-
-		// Reasoning entries and generic tool calls join the current chip strip.
-		if (!strip) {
-			strip = { type: 'strip', key: `strip-${idx}`, entries: [] };
-			blocks.push(strip);
-		}
-		strip.entries.push(entry);
-	});
-
-	return blocks;
-});
+const renderBlocks = computed(() =>
+	buildTimelineBlocks(
+		timelineEntries.value,
+		toolCallsById.value,
+		childrenById.value,
+		props.agentNode.status,
+	),
+);
 
 function getPlanTasks(tc: InstanceAiToolCallState): PlannedTaskArg[] {
 	return (
@@ -318,14 +248,15 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 <template>
 	<div v-if="renderBlocks.length > 0" :class="$style.timeline">
 		<template v-for="block in renderBlocks" :key="block.key">
-			<!-- Trace chip strip: consecutive reasoning + generic tool calls -->
-			<TraceChipStrip
-				v-if="block.type === 'strip'"
+			<!-- Collapsible thinking trace: reasoning + narration + tool calls -->
+			<ThinkingBlock
+				v-if="block.type === 'thinking'"
 				:agent-node="props.agentNode"
 				:entries="block.entries"
+				:active="block.active"
 			/>
 
-			<!-- Text segment (leaf keeps the per-token content read out of this render) -->
+			<!-- User-facing text (leaf keeps the per-token content read out of this render) -->
 			<TimelineTextSegment
 				v-else-if="block.type === 'text'"
 				:entry="block.entry"
@@ -356,7 +287,7 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 			<template v-else-if="block.type === 'child'">
 				<AgentSection :agent-node="block.child" />
 
-				<!-- Artifact cards for completed subagents (skip when inside grouped view) -->
+				<!-- Artifact cards for completed subagents (skip when inside scoped view) -->
 				<template v-if="!props.visibleEntries">
 					<ArtifactCard
 						v-for="artifact in extractArtifacts(block.child)"

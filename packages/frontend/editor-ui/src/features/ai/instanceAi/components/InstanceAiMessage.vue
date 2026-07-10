@@ -121,11 +121,7 @@ function formatJson(value: unknown): string {
 		<!-- Assistant message -->
 		<div v-else :class="$style.assistantWrapper" data-test-id="instance-ai-assistant-message">
 			<!-- Agent activity tree (handles reasoning, tool calls, sub-agents) -->
-			<AgentActivityTree
-				v-if="props.message.agentTree"
-				:agent-node="props.message.agentTree"
-				:is-root="true"
-			/>
+			<AgentActivityTree v-if="props.message.agentTree" :agent-node="props.message.agentTree" />
 
 			<!-- Run-level error -->
 			<N8nCallout v-if="runError" theme="danger">
