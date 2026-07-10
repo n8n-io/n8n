@@ -116,32 +116,6 @@ export function useCanvasNodeGroupSelection(deps: UseCanvasNodeGroupSelectionDep
 		if (nodesToRemove.length > 0) removeSelectedNodes(nodesToRemove);
 	}
 
-	watch([selectedIds, userSelectionActive], () => {
-		if (!toValue(deps.isEnabled)) {
-			lastSelectedIds = selectedIds.value;
-			return;
-		}
-		// Rubber-band selection updates continuously while the box is drawn;
-		// reconcile once it settles so additions don't fight the box contents.
-		if (userSelectionActive.value) return;
-
-		const currentIds = selectedIds.value;
-		const target = reconcile(currentIds);
-		const isInSync =
-			target.size === currentIds.size && [...target].every((id) => currentIds.has(id));
-		if (!isInSync) applySelection(target, currentIds);
-
-		// Snapshot the applied state (not the computed target) so ids that
-		// resolved to no node don't get re-processed as removals.
-		lastSelectedIds = new Set(getSelectedNodes.value.map((node) => node.id));
-
-		// A selection that folds into a single element (one node, or one whole
-		// group) surfaces itself — drop VueFlow's selection box.
-		if (nodesSelectionActive.value && selectedElementCount.value <= 1) {
-			nodesSelectionActive.value = false;
-		}
-	});
-
 	/**
 	 * Members of fully selected expanded groups. The group surfaces the
 	 * selection as a whole, so these skip their individual selection ring.
@@ -170,6 +144,32 @@ export function useCanvasNodeGroupSelection(deps: UseCanvasNodeGroupSelectionDep
 			if (!memberIdsFoldedIntoGroups.has(node.id)) count++;
 		}
 		return count;
+	});
+
+	watch([selectedIds, userSelectionActive], () => {
+		if (!toValue(deps.isEnabled)) {
+			lastSelectedIds = selectedIds.value;
+			return;
+		}
+		// Rubber-band selection updates continuously while the box is drawn;
+		// reconcile once it settles so additions don't fight the box contents.
+		if (userSelectionActive.value) return;
+
+		const currentIds = selectedIds.value;
+		const target = reconcile(currentIds);
+		const isInSync =
+			target.size === currentIds.size && [...target].every((id) => currentIds.has(id));
+		if (!isInSync) applySelection(target, currentIds);
+
+		// Snapshot the applied state (not the computed target) so ids that
+		// resolved to no node don't get re-processed as removals.
+		lastSelectedIds = new Set(getSelectedNodes.value.map((node) => node.id));
+
+		// A selection that folds into a single element (one node, or one whole
+		// group) surfaces itself — drop VueFlow's selection box.
+		if (nodesSelectionActive.value && selectedElementCount.value <= 1) {
+			nodesSelectionActive.value = false;
+		}
 	});
 
 	/**

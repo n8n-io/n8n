@@ -5,12 +5,6 @@ import { getMousePosition } from '@/app/utils/nodeViewUtils';
 import { useContextMenuItems, type ContextMenuAction } from './useContextMenuItems';
 
 export type ContextMenuTarget = {
-	/**
-	 * Whether the canvas that opened the menu is read-only. Canvases can be
-	 * read-only through props alone (e.g. while the AI builder streams, or in
-	 * embedded previews) without any instance-wide read-only flag being set,
-	 * so mutating items must also disable based on the opening target.
-	 */
 	readOnly?: boolean;
 } & (
 	| { source: 'canvas'; nodeIds: string[]; nodeId?: string }

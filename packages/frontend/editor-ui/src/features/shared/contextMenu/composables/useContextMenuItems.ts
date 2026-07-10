@@ -92,9 +92,6 @@ export function useContextMenuItems(
 		() => getResourcePermissions(workflowDocumentStore?.value?.scopes).workflow,
 	);
 
-	// The target flag covers canvases that are read-only through props alone
-	// (e.g. while the AI builder streams) — the instance-wide flags below
-	// don't know about per-canvas state.
 	const isReadOnly = computed(
 		() =>
 			(targetReadOnly?.value ?? false) ||
