@@ -51,10 +51,41 @@ const makeOneOffJob = (fireAt: Date): ScheduledJob => ({
 });
 
 /**
- * The materializer's planning invariants over arbitrary window/cap/interval
- * combinations: occurrences stay ordered, inside the window, and bounded, and
- * the returned cursor is a faithful continuation point.
+ * The recurring-schedule planning invariants, shared by the interval and cron
+ * properties: occurrences stay ordered, inside the window, bounded, start at
+ * the job's due instant, and the returned cursor is a faithful continuation.
  */
+function assertPlanInvariants(
+	plan: ReturnType<typeof planOccurrences>,
+	job: ScheduledJob,
+	windowEnd: number,
+	maxPerJob: number,
+): void {
+	expect(plan.occurrences.length).toBeLessThanOrEqual(maxPerJob);
+
+	for (let i = 1; i < plan.occurrences.length; i++) {
+		expect(plan.occurrences[i].getTime()).toBeGreaterThan(plan.occurrences[i - 1].getTime());
+	}
+	for (const occurrence of plan.occurrences) {
+		expect(occurrence.getTime()).toBeLessThanOrEqual(windowEnd);
+	}
+
+	// The first recorded occurrence is always the job's due instant (an
+	// occurrence can only exist when the starting cursor was non-null).
+	if (plan.occurrences.length > 0) {
+		expect(plan.occurrences[0].getTime()).toBe(job.nextRunAt!.getTime());
+	}
+
+	// lastFiredAt tracks the newest occurrence, or the prior value if none.
+	expect(plan.lastFiredAt).toEqual(plan.occurrences.at(-1) ?? job.lastFiredAt);
+
+	// When the plan stopped before the cap, the cursor must be exhausted or
+	// genuinely past the window, i.e. nothing runnable was skipped.
+	if (plan.occurrences.length < maxPerJob) {
+		expect(plan.nextRunAt === null || plan.nextRunAt.getTime() > windowEnd).toBe(true);
+	}
+}
+
 describe('planOccurrences (fast-check)', () => {
 	it('produces an ordered, in-window, bounded plan with a faithful cursor', () => {
 		fc.assert(
@@ -69,32 +100,7 @@ describe('planOccurrences (fast-check)', () => {
 						maxPerJob,
 						defaultTimezone: 'UTC',
 					});
-					const windowEnd = NOW.getTime() + windowSeconds * 1000;
-
-					expect(plan.occurrences.length).toBeLessThanOrEqual(maxPerJob);
-
-					for (let i = 1; i < plan.occurrences.length; i++) {
-						expect(plan.occurrences[i].getTime()).toBeGreaterThan(
-							plan.occurrences[i - 1].getTime(),
-						);
-					}
-					for (const occurrence of plan.occurrences) {
-						expect(occurrence.getTime()).toBeLessThanOrEqual(windowEnd);
-					}
-
-					// The first recorded occurrence is always the job's due instant.
-					if (plan.occurrences.length > 0) {
-						expect(plan.occurrences[0].getTime()).toBe(NOW.getTime());
-					}
-
-					// lastFiredAt tracks the newest occurrence, or the prior value if none.
-					expect(plan.lastFiredAt).toEqual(plan.occurrences.at(-1) ?? job.lastFiredAt);
-
-					// When the plan stopped before the cap, the cursor must be exhausted or
-					// genuinely past the window, i.e. nothing runnable was skipped.
-					if (plan.occurrences.length < maxPerJob) {
-						expect(plan.nextRunAt === null || plan.nextRunAt.getTime() > windowEnd).toBe(true);
-					}
+					assertPlanInvariants(plan, job, NOW.getTime() + windowSeconds * 1000, maxPerJob);
 				},
 			),
 		);
@@ -131,28 +137,7 @@ describe('planOccurrences (fast-check)', () => {
 						maxPerJob,
 						defaultTimezone: 'UTC',
 					});
-					const windowEnd = NOW.getTime() + windowSeconds * 1000;
-
-					expect(plan.occurrences.length).toBeLessThanOrEqual(maxPerJob);
-
-					for (let i = 1; i < plan.occurrences.length; i++) {
-						expect(plan.occurrences[i].getTime()).toBeGreaterThan(
-							plan.occurrences[i - 1].getTime(),
-						);
-					}
-					for (const occurrence of plan.occurrences) {
-						expect(occurrence.getTime()).toBeLessThanOrEqual(windowEnd);
-					}
-
-					if (plan.occurrences.length > 0) {
-						expect(plan.occurrences[0].getTime()).toBe(NOW.getTime());
-					}
-
-					expect(plan.lastFiredAt).toEqual(plan.occurrences.at(-1) ?? job.lastFiredAt);
-
-					if (plan.occurrences.length < maxPerJob) {
-						expect(plan.nextRunAt === null || plan.nextRunAt.getTime() > windowEnd).toBe(true);
-					}
+					assertPlanInvariants(plan, job, NOW.getTime() + windowSeconds * 1000, maxPerJob);
 				},
 			),
 		);

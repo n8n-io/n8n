@@ -77,10 +77,9 @@ describe('Executor claim/dispatch (fast-check)', () => {
 
 					for (const entry of entries) {
 						const dispatchCount = executeCalls.filter((id) => id === entry.id).length;
-						expect(dispatchCount).toBeLessThanOrEqual(1);
-						if (!entry.started) {
-							expect(dispatchCount).toBe(0);
-						}
+						// Exactly once: the setup is deterministic (handler registered, store
+						// mocked), so a started task must dispatch, not just "at most once".
+						expect(dispatchCount).toBe(entry.started ? 1 : 0);
 					}
 				},
 			),

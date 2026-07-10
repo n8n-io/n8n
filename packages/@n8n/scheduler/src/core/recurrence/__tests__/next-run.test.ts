@@ -48,9 +48,9 @@ describe('computeNextRunAt', () => {
 				cronExpression: '0 0 0 * * *',
 				timezone: null,
 			};
-			expect(() => computeNextRunAt(schedule, new Date('2026-01-10T12:00:00Z'))).toThrow(
-				/timezone must be resolved to a concrete zone/,
-			);
+			const compute = () => computeNextRunAt(schedule, new Date('2026-01-10T12:00:00Z'));
+			expect(compute).toThrow(InvalidScheduleError);
+			expect(compute).toThrow(/timezone must be resolved to a concrete zone/);
 		});
 
 		it('throws InvalidScheduleError on an out-of-range expression', () => {
@@ -73,9 +73,9 @@ describe('computeNextRunAt', () => {
 				cronExpression: '0 0 0 * * *',
 				timezone: 'UTC',
 			};
-			expect(() => computeNextRunAt(schedule, new Date('nope'))).toThrow(
-				/Failed to evaluate cron expression/,
-			);
+			const compute = () => computeNextRunAt(schedule, new Date('nope'));
+			expect(compute).toThrow(InvalidScheduleError);
+			expect(compute).toThrow(/Failed to evaluate cron expression/);
 		});
 	});
 
