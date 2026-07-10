@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { UnexpectedError } from 'n8n-workflow';
 
 /**
  * Descriptor for an OAuth 2.1 protected resource served by this instance.
@@ -119,7 +120,39 @@ export class ProtectedResourceRegistry {
 	constructor(private readonly logger: Logger) {}
 
 	register(resource: ProtectedResource): void {
+		this.assertHostAliasPathIsUnique(resource);
 		this.resources.set(resource.id, resource);
+	}
+
+	/**
+	 * The alias-by-path match in `getByResourceUrl` is only unambiguous while at
+	 * most one alias-accepting resource owns a given URL path: two would let a
+	 * token minted for one pass the other's gate (the path resolves to both).
+	 * Guard against that drift at registration time rather than shipping a silent
+	 * cross-resource replay.
+	 */
+	private assertHostAliasPathIsUnique(resource: ProtectedResource): void {
+		if (!resource.acceptsHostAliases) return;
+
+		let path: string;
+		try {
+			path = trimTrailingSlash(new URL(resource.getResourceUrl()).pathname);
+		} catch {
+			return;
+		}
+
+		for (const existing of this.resources.values()) {
+			if (existing.id === resource.id || !existing.acceptsHostAliases) continue;
+			try {
+				if (trimTrailingSlash(new URL(existing.getResourceUrl()).pathname) === path) {
+					throw new UnexpectedError(
+						`Cannot register protected resource "${resource.id}": another alias-accepting resource ("${existing.id}") already owns the path "${path}"`,
+					);
+				}
+			} catch (error) {
+				if (error instanceof UnexpectedError) throw error;
+			}
+		}
 	}
 
 	registerResolver(resolver: ProtectedResourceResolver) {

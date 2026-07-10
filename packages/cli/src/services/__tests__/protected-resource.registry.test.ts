@@ -106,6 +106,29 @@ describe('ProtectedResourceRegistry', () => {
 			expect(emptyDefault.getDefaultResource()).toBeUndefined();
 		});
 
+		it('should reject a second alias-accepting resource on the same path', () => {
+			const conflicting: ProtectedResource = {
+				id: 'other-instance-mcp',
+				getResourceUrl: () => 'https://other.example.com/mcp-server/http',
+				getAudiences: () => ['https://other.example.com/mcp-server/http'],
+				authorize: async () => true,
+				scopes: [],
+				acceptsHostAliases: true,
+			};
+			expect(() => registry.register(conflicting)).toThrow(/already owns the path/);
+		});
+
+		it('should allow a non-alias resource to share a path with an alias-accepting one', () => {
+			const sharedPath: ProtectedResource = {
+				id: 'strict-same-path',
+				getResourceUrl: () => 'https://other.example.com/mcp-server/http',
+				getAudiences: () => ['https://other.example.com/mcp-server/http'],
+				authorize: async () => true,
+				scopes: [],
+			};
+			expect(() => registry.register(sharedPath)).not.toThrow();
+		});
+
 		it('should replace a resource registered with the same id', () => {
 			const replacement: ProtectedResource = { ...resourceA, scopes: [] };
 			registry.register(replacement);
