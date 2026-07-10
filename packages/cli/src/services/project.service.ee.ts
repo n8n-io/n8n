@@ -64,9 +64,7 @@ class ProjectNotFoundError extends NotFoundError {
 	}
 }
 
-/** Identity fields a caller can set on a new team project beyond {@link CreateProjectDto}. */
 export interface ProjectCreateOverrides {
-	/** Reuse a specific id instead of minting one (e.g. importing a project by its source id). */
 	id?: string;
 	description?: string | null;
 }
@@ -386,11 +384,6 @@ export class ProjectService {
 		return project;
 	}
 
-	/**
-	 * Creates a team project owned by `adminUser`. `overrides` lets callers that
-	 * carry their own identity — the package importer reuses a source project id and
-	 * restores its description — set fields outside {@link CreateProjectDto}.
-	 */
 	async createTeamProject(
 		adminUser: User,
 		data: CreateProjectDto,

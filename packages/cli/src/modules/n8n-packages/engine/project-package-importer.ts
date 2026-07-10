@@ -1,16 +1,16 @@
 import { Service } from '@n8n/di';
 
 import { ProjectImporter } from '../entities/project/project-importer';
+import type { PackageReader } from '../io/package-reader';
 import { createBindings } from '../n8n-packages.types';
 import type { ImportPackageRequest, ImportResult } from '../n8n-packages.types';
-import type { PackageReader } from '../io/package-reader';
-import type { PackageManifest } from '../spec/manifest.schema';
 import {
 	assertPackageImportApiKeyScopes,
 	buildImportResult,
 	toPackageSummary,
 } from './import-result';
 import { N8nPackageParser } from './n8n-package-parser';
+import type { PackageManifest } from '../spec/manifest.schema';
 
 /**
  * Imports a package containing projects into the target instance.

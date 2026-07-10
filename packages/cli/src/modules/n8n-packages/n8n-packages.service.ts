@@ -150,12 +150,10 @@ export class N8nPackagesService {
 	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {
 		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
 		const manifest = await this.packageParser.getManifest(reader);
-		// A project package defines its own projects, so the request's target projectId/folderId
-		// don't apply — the package shape selects the importer.
-		const importer = isProjectPackage(manifest)
-			? this.projectPackageImporter
-			: this.workflowPackageImporter;
-		return await importer.import(request, reader, manifest);
+		if (isProjectPackage(manifest)) {
+			return await this.projectPackageImporter.import(request, reader, manifest);
+		}
+		return await this.workflowPackageImporter.import(request, reader, manifest);
 	}
 
 	filterWorkflowsAlreadyInFolders(workflowsInFolders: ManifestEntry[] = [], workflowIds: string[]) {
@@ -164,7 +162,6 @@ export class N8nPackagesService {
 	}
 }
 
-/** A project package carries whole projects; a workflow package carries loose workflows + folders. */
 function isProjectPackage(manifest: PackageManifest): boolean {
 	return (manifest.projects?.length ?? 0) > 0;
 }

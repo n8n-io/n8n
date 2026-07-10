@@ -9,14 +9,6 @@ import { ProjectService } from '@/services/project.service.ee';
 import type { PreparedProject, ProjectPlanItem } from './project-import.types';
 import type { ImportedProjectSummary } from '../../n8n-packages.types';
 
-/**
- * Imports the package's project shells. Project ids are reused verbatim (no id policy),
- * so a package project matched by id in the target instance is updated in place; otherwise
- * a fresh team project is created with the importing user as its sole admin.
- *
- * {@link plan} resolves each project's action and enforces authorization up front (so apply
- * cannot fail a permission check partway through); {@link apply} writes the decided plan.
- */
 @Service()
 export class ProjectImporter {
 	constructor(
@@ -31,7 +23,7 @@ export class ProjectImporter {
 			const existing = await this.projectService.findProject(project.sourceProjectId);
 
 			if (existing) {
-				// Never import over a personal project — matching by id must not clobber unrelated data.
+				// Never import over a personal project
 				if (existing.type !== 'team') {
 					throw new ForbiddenError(
 						`Cannot import project "${project.name}": its id belongs to a non-team project on this instance.`,
@@ -60,7 +52,6 @@ export class ProjectImporter {
 
 		for (const item of items) {
 			if (item.action === 'create') {
-				// createTeamProject enforces the team-project quota and links the importer as admin.
 				const project = await this.projectService.createTeamProject(
 					user,
 					{ name: item.name, icon: item.icon },

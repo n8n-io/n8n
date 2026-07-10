@@ -151,7 +151,6 @@ export interface ImportedFolderSummary {
 
 export interface ImportedProjectSummary {
 	sourceProjectId: string;
-	/** Local id of the imported project; equal to `sourceProjectId` since project ids are reused. */
 	localId: string;
 	name: string;
 	status: 'created' | 'updated';
