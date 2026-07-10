@@ -258,10 +258,6 @@ export declare namespace InsightsRequest {
 
 export type OperationID = 'getUsers' | 'getUser';
 
-export declare namespace WorkflowDependencyRequest {
-	type PostBody = AuthenticatedRequest<{}, {}, { resourceIds: string[]; resourceType: string }, {}>;
-}
-
 type PaginationBase = { limit: number };
 
 export type PaginationOffsetDecoded = PaginationBase & { offset: number };

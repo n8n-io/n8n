@@ -15,6 +15,12 @@ const LOOP_LIMIT = 1_000_000_000;
 // Placeholder key for workflows with no dependencies.
 const WORKFLOW_INDEXED_PLACEHOLDER_KEY = '__INDEXED__';
 
+const WORKFLOW_CALL_NODE_TYPES = new Set([
+	'n8n-nodes-base.executeWorkflow',
+	'@n8n/n8n-nodes-langchain.toolWorkflow',
+	'@n8n/n8n-nodes-langchain.retrieverWorkflow',
+]);
+
 /**
  * Service for managing the workflow dependency index. The index tracks dependencies such as node types,
  * credentials, workflow calls, and webhook paths used by each workflow. The service builds the index on server start
@@ -307,7 +313,7 @@ export class WorkflowIndexService {
 	}
 
 	private addWorkflowCallDependencies(node: INode, dependencyUpdates: WorkflowDependencies): void {
-		if (node.type !== 'n8n-nodes-base.executeWorkflow') {
+		if (!WORKFLOW_CALL_NODE_TYPES.has(node.type)) {
 			return;
 		}
 		const calledWorkflowId: string | undefined = this.getCalledWorkflowIdFrom(node);
