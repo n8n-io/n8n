@@ -2,7 +2,7 @@ import { DateTime } from 'luxon';
 
 import { InvalidScheduleError } from '../../errors';
 import type { CronSchedule, RecurringCronSchedule, Schedule } from '../../types';
-import { computeFirstRunAt, computeNextRunAt } from '../next-run';
+import { computeFirstRunAt, computeNextRunAt, occurrencesFrom } from '../next-run';
 
 /** computeNextRunAt asserting a non-null result, for the unbounded (cron/interval) cases. */
 const nextOf = (schedule: Schedule, after: Date): Date => {
@@ -416,5 +416,57 @@ describe('computeNextRunAt', () => {
 				'2026-03-08T12:00:00.000Z',
 			);
 		});
+	});
+});
+
+// The generator the materializer walks (planOccurrences); its recurring_cron
+// arm chains each fire off the previous one, so it is pinned directly here.
+describe('occurrencesFrom', () => {
+	const take = (generator: Generator<Date>, count: number): string[] =>
+		Array.from({ length: count }, () => (generator.next().value as Date).toISOString());
+
+	it('yields the seed fire verbatim, then walks the gated recurring_cron chain', () => {
+		const schedule: RecurringCronSchedule = {
+			kind: 'recurring_cron',
+			cronExpression: '0 0 9 * * 1,3' as RecurringCronSchedule['cronExpression'],
+			timezone: 'UTC',
+			recurrenceUnit: 'weeks',
+			recurrenceSize: 3,
+		};
+		expect(take(occurrencesFrom(schedule, new Date('2026-01-05T09:00:00Z')), 5)).toEqual([
+			'2026-01-05T09:00:00.000Z', // the seed (an already-due fire), ungated
+			'2026-01-07T09:00:00.000Z', // Wednesday of the same on-cadence week
+			'2026-01-26T09:00:00.000Z', // Monday three weeks on
+			'2026-01-28T09:00:00.000Z', // its Wednesday
+			'2026-02-16T09:00:00.000Z', // Monday three weeks on again
+		]);
+	});
+
+	it('surfaces the scan-bound throw mid-iteration (the path planOccurrences walks)', () => {
+		const schedule: RecurringCronSchedule = {
+			kind: 'recurring_cron',
+			// An every-second anchor gated to every 3 weeks: no candidate within
+			// the scan bound passes (same setup as the computeNextRunAt case).
+			cronExpression: '* * * * * *' as RecurringCronSchedule['cronExpression'],
+			timezone: 'UTC',
+			recurrenceUnit: 'weeks',
+			recurrenceSize: 3,
+		};
+		const fires = occurrencesFrom(schedule, new Date('2026-01-10T23:59:59Z'));
+		// The seed itself still comes out; the throw happens advancing past it.
+		expect((fires.next().value as Date).toISOString()).toBe('2026-01-10T23:59:59.000Z');
+		expect(() => fires.next()).toThrow(InvalidScheduleError);
+	});
+
+	it('validates the schedule on first pull', () => {
+		const schedule: RecurringCronSchedule = {
+			kind: 'recurring_cron',
+			cronExpression: '0 0 9 * * 1',
+			timezone: 'UTC',
+			recurrenceUnit: 'weeks',
+			recurrenceSize: 1,
+		};
+		const fires = occurrencesFrom(schedule, new Date('2026-01-05T09:00:00Z'));
+		expect(() => fires.next()).toThrow(InvalidScheduleError);
 	});
 });
