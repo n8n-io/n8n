@@ -3188,7 +3188,6 @@
 	"settings.mcp.allowedRedirectUris.validation.invalidUrl": "Invalid URL: {url}",
 	"settings.mcp.allowedRedirectUris.validation.invalidProtocol": "Invalid protocol for URL: {url}. Only http and https are allowed.",
 	"settings.mcp.allowedRedirectUris.validation.httpsRequired": "HTTPS required in production: {url}",
-	"settings.mcp.allowedRedirectUris.warning": "Configure a redirect URL allowlist to control which applications can complete the OAuth consent flow. Without one, a malicious application could register an OAuth client with an attacker-controlled redirect URL and use it to obtain access tokens for your n8n instance.",
 	"experiments.surfaceMcpToNewCloudUsers.onboarding.title": "Build from your assistant",
 	"experiments.surfaceMcpToNewCloudUsers.onboarding.description": "Connect MCP clients like Claude Code and Cursor to build, run, and iterate on workflows in your instance",
 	"experiments.surfaceMcpToNewCloudUsers.onboarding.client.claude": "Claude",
