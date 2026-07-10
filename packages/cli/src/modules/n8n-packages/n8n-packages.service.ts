@@ -109,12 +109,6 @@ export class N8nPackagesService {
 			projectTargetsById: projectExportResult?.projectTargetsById,
 		});
 
-		const manifestRequirements = {
-			...(credentialExportResult.requirements.length > 0
-				? { credentials: credentialExportResult.requirements }
-				: {}),
-		};
-
 		const manifest = packageManifestSchema.parse({
 			packageFormatVersion: FORMAT_VERSION,
 			exportedAt: new Date().toISOString(),
@@ -123,8 +117,8 @@ export class N8nPackagesService {
 			...(credentialExportResult.entries.length > 0
 				? { credentials: credentialExportResult.entries }
 				: {}),
-			...(Object.keys(manifestRequirements).length > 0
-				? { requirements: manifestRequirements }
+			...(credentialExportResult.requirements.length > 0
+				? { requirements: { credentials: credentialExportResult.requirements } }
 				: {}),
 			...(allWorkflowsInPackage.length > 0 ? { workflows: allWorkflowsInPackage } : {}),
 			...(allFolders.length > 0 ? { folders: allFolders } : {}),
