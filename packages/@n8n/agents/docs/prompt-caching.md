@@ -78,7 +78,12 @@ Other prefix-stability hygiene, already true or verified: tool ordering is
 append-only (`getCurrentTools()` only ever appends), and none of the current
 built-in `systemInstruction` sources (`delegate_subagent`, `write_todos`,
 `recall_memory`) interpolate timestamps, run IDs, or other per-request
-nondeterminism into their text.
+nondeterminism into their text. Hosts can rename the delegate tool and replace
+its description / system instruction (`createDelegateSubAgentTool({ name,
+description, systemInstruction })`, mirrored into `write_todos` via
+`createWriteTodosTool({ delegateToolName })`), but those values are fixed at
+tool-build time, so the instructions prefix stays byte-stable for the life of
+a run.
 
 ## Anthropic: instruction-level cache breakpoint
 

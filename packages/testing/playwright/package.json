@@ -83,6 +83,7 @@
     "otplib": "^12.0.1",
     "ts-morph": "catalog:",
     "tsx": "catalog:",
+    "typescript": "catalog:",
     "zod": "catalog:",
     "vitest": "catalog:"
   },

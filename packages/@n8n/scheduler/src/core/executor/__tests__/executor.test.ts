@@ -33,6 +33,9 @@ const setup = (options?: Partial<ExecutorOptions>) => {
 		onMissingHandler: vi.fn(),
 		onFireError: vi.fn(),
 		onReleaseError: vi.fn(),
+		onDispatch: vi.fn(),
+		onFire: vi.fn(),
+		onRetry: vi.fn(),
 	} satisfies ExecutorHooks;
 	const executor = new Executor(
 		store,
@@ -89,6 +92,68 @@ describe('Executor.claimAndSchedule', () => {
 		});
 		expect(timer.schedule).toHaveBeenCalledWith(task.runAt, expect.any(Function));
 		expect(claimed).toEqual([task]);
+	});
+
+	it('hands back a claim that resolves after stop instead of arming post-stop timers', async () => {
+		const { store, registry, timer, executor } = setup();
+		const task = claimedTask();
+		registry.registeredTypes.mockReturnValue(['workflow:schedule-trigger']);
+		// The claim hangs (slow storage) across the shutdown.
+		let resolveClaim!: (tasks: ClaimedTask[]) => void;
+		store.claimDueTasks.mockImplementation(
+			async () =>
+				await new Promise<ClaimedTask[]>((resolve) => {
+					resolveClaim = resolve;
+				}),
+		);
+		store.releaseClaim.mockResolvedValue(1);
+
+		const pending = executor.claimAndSchedule(HOST);
+		await executor.stop();
+		resolveClaim([task]);
+
+		expect(await pending).toEqual([]);
+		expect(timer.schedule).not.toHaveBeenCalled();
+		expect(store.releaseClaim).toHaveBeenCalledWith({
+			host: HOST,
+			id: task.id,
+			claimedEpoch: task.leaseEpoch,
+		});
+	});
+
+	it('hands back the claim of an abandoned tick (aborted signal) instead of scheduling it', async () => {
+		const { store, registry, timer, executor } = setup();
+		const task = claimedTask();
+		registry.registeredTypes.mockReturnValue(['workflow:schedule-trigger']);
+		store.claimDueTasks.mockResolvedValue([task]);
+		store.releaseClaim.mockResolvedValue(1);
+		// The driver abandoned this tick at its timeout before the claim resolved.
+		const controller = new AbortController();
+		controller.abort();
+
+		const claimed = await executor.claimAndSchedule(HOST, controller.signal);
+
+		expect(claimed).toEqual([]);
+		expect(timer.schedule).not.toHaveBeenCalled();
+		expect(store.releaseClaim).toHaveBeenCalledWith({
+			host: HOST,
+			id: task.id,
+			claimedEpoch: task.leaseEpoch,
+		});
+	});
+
+	it('a failed hand-back is reported and left to the reaper, like any release failure', async () => {
+		const { store, registry, hooks, executor } = setup();
+		const task = claimedTask();
+		registry.registeredTypes.mockReturnValue(['workflow:schedule-trigger']);
+		store.claimDueTasks.mockResolvedValue([task]);
+		const failure = new Error('db down');
+		store.releaseClaim.mockRejectedValue(failure);
+		const controller = new AbortController();
+		controller.abort();
+
+		await expect(executor.claimAndSchedule(HOST, controller.signal)).resolves.toEqual([]);
+		expect(hooks.onReleaseError).toHaveBeenCalledWith(task.id, failure);
 	});
 
 	it('scheduled callback dispatches the task, and a mid-fire rejection is reported not thrown', async () => {
@@ -278,6 +343,147 @@ describe('Executor.fire', () => {
 		await expect(executor.fire(HOST, task)).resolves.toBeUndefined();
 
 		expect(hooks.onReleaseError).toHaveBeenCalledWith(task.id, failure);
+	});
+});
+
+describe('Executor.fire metrics hooks', () => {
+	it('calls onDispatch with the lag against the timer clock when a task fires', async () => {
+		const { store, registry, timer, hooks, executor } = setup();
+		store.markStarted.mockResolvedValue(1);
+		store.completeTask.mockResolvedValue(1);
+		registry.resolve.mockReturnValue({ execute: vi.fn().mockResolvedValue(undefined) });
+		const task = claimedTask({ runAt: new Date('2026-07-01T00:00:00.000Z') });
+		// Fired 3s after runAt.
+		timer.now.mockReturnValue(new Date('2026-07-01T00:00:03.000Z').getTime());
+
+		await executor.fire(HOST, task);
+
+		expect(hooks.onDispatch).toHaveBeenCalledWith(task.taskType, 3);
+		expect(hooks.onDispatch).toHaveBeenCalledTimes(1);
+	});
+
+	it('measures dispatch lag from runAt, not the fixed scheduledFor slot', async () => {
+		const { store, registry, timer, hooks, executor } = setup();
+		store.markStarted.mockResolvedValue(1);
+		store.completeTask.mockResolvedValue(1);
+		registry.resolve.mockReturnValue({ execute: vi.fn().mockResolvedValue(undefined) });
+		// A retried task: runAt was pushed 60s past the original slot by backoff.
+		const task = claimedTask({
+			scheduledFor: new Date('2026-07-01T00:00:00.000Z'),
+			runAt: new Date('2026-07-01T00:01:00.000Z'),
+		});
+		// Fired 2s after runAt (62s after scheduledFor); lag is measured from runAt.
+		timer.now.mockReturnValue(new Date('2026-07-01T00:01:02.000Z').getTime());
+
+		await executor.fire(HOST, task);
+
+		expect(hooks.onDispatch).toHaveBeenCalledWith(task.taskType, 2);
+	});
+
+	it('clamps dispatch lag to zero when the timer fires before runAt', async () => {
+		const { store, registry, timer, hooks, executor } = setup();
+		store.markStarted.mockResolvedValue(1);
+		store.completeTask.mockResolvedValue(1);
+		registry.resolve.mockReturnValue({ execute: vi.fn().mockResolvedValue(undefined) });
+		const task = claimedTask({ runAt: new Date('2026-07-01T00:00:05.000Z') });
+		// Timer fires 1s before runAt; a negative sample must be clamped to 0.
+		timer.now.mockReturnValue(new Date('2026-07-01T00:00:04.000Z').getTime());
+
+		await executor.fire(HOST, task);
+
+		expect(hooks.onDispatch).toHaveBeenCalledWith(task.taskType, 0);
+	});
+
+	it('calls no hooks when the row is gone or reclaimed', async () => {
+		const { store, registry, hooks, executor } = setup();
+		registry.resolve.mockReturnValue({ execute: vi.fn() });
+		store.markStarted.mockResolvedValue(0);
+
+		await executor.fire(HOST, claimedTask());
+
+		expect(hooks.onDispatch).not.toHaveBeenCalled();
+		expect(hooks.onFire).not.toHaveBeenCalled();
+	});
+
+	it('calls onFire with success when the handler completes', async () => {
+		const { store, registry, hooks, executor } = setup();
+		store.markStarted.mockResolvedValue(1);
+		store.completeTask.mockResolvedValue(1);
+		registry.resolve.mockReturnValue({ execute: vi.fn().mockResolvedValue(undefined) });
+		const task = claimedTask();
+
+		await executor.fire(HOST, task);
+
+		expect(hooks.onFire).toHaveBeenCalledWith(task.taskType, 'success');
+		expect(hooks.onFire).toHaveBeenCalledTimes(1);
+		expect(hooks.onRetry).not.toHaveBeenCalled();
+	});
+
+	it('calls onRetry when the handler fails and attempts remain', async () => {
+		const { store, registry, hooks, executor } = setup();
+		store.markStarted.mockResolvedValue(1);
+		store.rescheduleTask.mockResolvedValue(1);
+		registry.resolve.mockReturnValue({ execute: vi.fn().mockRejectedValue(new Error('boom')) });
+		const task = claimedTask({ attempts: 0, maxAttempts: 3 });
+
+		await executor.fire(HOST, task);
+
+		expect(hooks.onRetry).toHaveBeenCalledWith(task.taskType);
+		expect(hooks.onRetry).toHaveBeenCalledTimes(1);
+		expect(hooks.onFire).not.toHaveBeenCalled();
+	});
+
+	it('calls onFire with failure when the handler fails terminally', async () => {
+		const { store, registry, hooks, executor } = setup();
+		store.markStarted.mockResolvedValue(1);
+		store.failTaskTerminal.mockResolvedValue(1);
+		registry.resolve.mockReturnValue({ execute: vi.fn().mockRejectedValue(new Error('boom')) });
+		const task = claimedTask({ attempts: 0, maxAttempts: 1 });
+
+		await executor.fire(HOST, task);
+
+		expect(hooks.onFire).toHaveBeenCalledWith(task.taskType, 'failure');
+		expect(hooks.onFire).toHaveBeenCalledTimes(1);
+		expect(hooks.onRetry).not.toHaveBeenCalled();
+	});
+
+	it('calls no outcome hook when a terminal write affects no row (reclaimed on lease overrun)', async () => {
+		const { store, registry, hooks, executor } = setup();
+		store.markStarted.mockResolvedValue(1);
+		registry.resolve.mockReturnValue({ execute: vi.fn().mockResolvedValue(undefined) });
+		// Every terminal write resolves 0: the row was reclaimed, so nothing is ours to count.
+		store.completeTask.mockResolvedValue(0);
+		store.failTaskTerminal.mockResolvedValue(0);
+		store.rescheduleTask.mockResolvedValue(0);
+
+		// Success path with a 0-row complete.
+		await executor.fire(HOST, claimedTask());
+		expect(hooks.onFire).not.toHaveBeenCalled();
+
+		// Retry path with a 0-row reschedule.
+		registry.resolve.mockReturnValue({ execute: vi.fn().mockRejectedValue(new Error('boom')) });
+		await executor.fire(HOST, claimedTask({ attempts: 0, maxAttempts: 3 }));
+		expect(hooks.onRetry).not.toHaveBeenCalled();
+
+		// Terminal-failure path with a 0-row failTaskTerminal.
+		await executor.fire(HOST, claimedTask({ attempts: 0, maxAttempts: 1 }));
+		expect(hooks.onFire).not.toHaveBeenCalled();
+	});
+
+	it('defaults to a safe no-op when no hooks are supplied', async () => {
+		const store = mock<ExecutorTaskStore>();
+		const registry = mock<TaskHandlerRegistry>();
+		const timer = mock<PrecisionTimer>();
+		store.markStarted.mockResolvedValue(1);
+		registry.resolve.mockReturnValue({ execute: vi.fn().mockResolvedValue(undefined) });
+		// No hooks: the optional calls must not throw.
+		const executor = new Executor(store, registry, timer, {
+			leaseSeconds: 60,
+			lookaheadSeconds: 5,
+			batchSize: 100,
+		});
+
+		await expect(executor.fire(HOST, claimedTask())).resolves.toBeUndefined();
 	});
 });
 

@@ -89,7 +89,7 @@
     "tsc-alias": "^1.8.10",
     "tsc-watch": "^6.2.0",
     "turbo": "2.9.15",
-    "typescript": "*",
+    "typescript": "6.0.2",
     "yaml": "catalog:",
     "zx": "^8.8.5"
   },
@@ -121,7 +121,6 @@
       "tar-fs": "2.1.4",
       "tslib": "^2.6.2",
       "tsconfig-paths": "^4.2.0",
-      "typescript": "catalog:",
       "vue-tsc": "catalog:frontend",
       "gaxios": ">=7.1.1",
       "google-gax": "^4.3.7",

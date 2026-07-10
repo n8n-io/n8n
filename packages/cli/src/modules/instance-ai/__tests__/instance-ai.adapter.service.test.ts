@@ -1,24 +1,35 @@
 // Mock the barrel import so these adapter tests only exercise local formatting helpers.
-vi.mock('@n8n/instance-ai', () => ({
-	wrapUntrustedData(content: string, source: string, label?: string): string {
-		const esc = (s: string) =>
-			s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-		const safeLabel = label ? ` label="${esc(label)}"` : '';
-		const safeContent = content.replace(/<\/untrusted_data/gi, '&lt;/untrusted_data');
-		return `<untrusted_data source="${esc(source)}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
-	},
-	builderTemplatesOptionsFromEnv: () => ({}),
-	BuilderTemplatesService: class {
-		async getBundle() {
-			return { files: [], indexTxt: '', version: null };
-		}
-		getVersion() {
-			return null;
-		}
-	},
-}));
+vi.mock('@n8n/instance-ai', async () => {
+	const { WorkflowSaveConflictError } = await import(
+		'../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error'
+	);
+	return {
+		WorkflowSaveConflictError,
+		wrapUntrustedData(content: string, source: string, label?: string): string {
+			const esc = (s: string) =>
+				s
+					.replace(/&/g, '&amp;')
+					.replace(/"/g, '&quot;')
+					.replace(/</g, '&lt;')
+					.replace(/>/g, '&gt;');
+			const safeLabel = label ? ` label="${esc(label)}"` : '';
+			const safeContent = content.replace(/<\/untrusted_data/gi, '&lt;/untrusted_data');
+			return `<untrusted_data source="${esc(source)}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
+		},
+		builderTemplatesOptionsFromEnv: () => ({}),
+		deriveCredentialHosts: vi.fn().mockReturnValue([]),
+		BuilderTemplatesService: class {
+			async getBundle() {
+				return { files: [], indexTxt: '', version: null };
+			}
+			getVersion() {
+				return null;
+			}
+		},
+	};
+});
 
-import type { Mock, Mocked } from 'vitest';
+import type { Mock, Mocked, MockInstance } from 'vitest';
 
 vi.mock('@n8n/ai-utilities', () => ({
 	braveSearch: vi.fn(),
@@ -27,6 +38,7 @@ vi.mock('@n8n/ai-utilities', () => ({
 
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
+import { Expression } from 'n8n-workflow';
 import type {
 	ExecutionError,
 	IConnections,
@@ -1206,7 +1218,9 @@ import type { DataTableRepository } from '@/modules/data-table/data-table.reposi
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { WorkflowSaveConflictError } from '../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error';
 import type { WorkflowService } from '@/workflows/workflow.service';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import type { License } from '@/license';
 import type { RoleService } from '@/services/role.service';
 
@@ -1427,6 +1441,52 @@ describe('createNodeAdapter', () => {
 				}
 			).nodesCache,
 		).toBeNull();
+	});
+
+	describe('getResolvedNodeInputs expression isolate lifecycle', () => {
+		// Dynamic `inputs` are resolved via workflow.expression, which under
+		// N8N_EXPRESSION_ENGINE=vm needs a V8 isolate acquired for the transient
+		// workflow first. Without it the VM bridge throws "No bridge acquired" and
+		// getNodeInputs silently returns []. These spies pin the acquire/release.
+		let acquireSpy: MockInstance;
+		let releaseSpy: MockInstance;
+
+		beforeEach(() => {
+			acquireSpy = vi.spyOn(Expression.prototype, 'acquireIsolate').mockResolvedValue(true);
+			releaseSpy = vi.spyOn(Expression.prototype, 'releaseIsolate').mockResolvedValue(undefined);
+		});
+
+		it('acquires and releases the isolate around dynamic input resolution', async () => {
+			const { service, nodeService } = createNodeAdapterServiceForTests([]);
+			(service as unknown as { nodeTypes: Pick<NodeTypes, 'getByNameAndVersion'> }).nodeTypes = {
+				getByNameAndVersion: vi
+					.fn()
+					.mockReturnValue({ description: { inputs: ['main'], properties: [] } }),
+			} as unknown as NodeTypes;
+
+			const workflowJson = {
+				nodes: [
+					{
+						id: 'agent',
+						name: 'Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			} as unknown as WorkflowJSON;
+
+			const inputs = await nodeService.getResolvedNodeInputs!(workflowJson, 'Agent');
+
+			expect(inputs).toEqual(['main']);
+			expect(acquireSpy).toHaveBeenCalledTimes(1);
+			expect(releaseSpy).toHaveBeenCalledTimes(1);
+			expect(acquireSpy.mock.invocationCallOrder[0]).toBeLessThan(
+				releaseSpy.mock.invocationCallOrder[0],
+			);
+		});
 	});
 });
 
@@ -2296,6 +2356,42 @@ describe('createWorkflowAdapter', () => {
 
 		const updateData = mockWorkflowService.update.mock.calls[0]?.[1] as { nodes: INode[] };
 		expect(updateData.nodes[0].credentials).toBeUndefined();
+	});
+
+	it('forwards expectedChecksum to workflowService.update', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+
+		await adapter.updateFromWorkflowJSON('wf-new', minimalWorkflowJSON, {
+			expectedChecksum: 'expected-checksum',
+		});
+
+		expect(mockWorkflowService.update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			'wf-new',
+			expect.objectContaining({ expectedChecksum: 'expected-checksum', source: 'n8n-ai' }),
+		);
+	});
+
+	it('throws WorkflowSaveConflictError when expectedChecksum mismatches', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+		mockWorkflowService.update.mockRejectedValueOnce(new ConflictError('conflict'));
+
+		await expect(
+			adapter.updateFromWorkflowJSON('wf-new', minimalWorkflowJSON, {
+				expectedChecksum: 'stale-checksum',
+			}),
+		).rejects.toBeInstanceOf(WorkflowSaveConflictError);
+	});
+
+	it('returns a checksum on create and update saves', async () => {
+		const { adapter } = createWorkflowAdapterForTests();
+
+		const created = await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+		const updated = await adapter.updateFromWorkflowJSON('wf-new', minimalWorkflowJSON);
+
+		expect(created.checksum).toEqual(expect.any(String));
+		expect(updated.checksum).toEqual(expect.any(String));
 	});
 
 	it('clears the AI-builder temporary marker when promoting the main workflow', async () => {

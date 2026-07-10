@@ -4,6 +4,7 @@ import type { TagEntity, WorkflowTagMapping } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { generateKeyPairSync } from 'crypto';
 import { accessSync, constants as fsConstants, mkdirSync } from 'fs';
+import chunk from 'lodash/chunk';
 import isEqual from 'lodash/isEqual';
 import {
 	deepCopy,
@@ -234,6 +235,23 @@ export async function readDataTablesFromSourceControlFile(
 		}
 		throw error;
 	}
+}
+
+/**
+ * Maps items in fixed-size batches (concurrency within a batch, batches sequential)
+ * to bound the peak memory of per-item work. Preserves input order; rejects on the
+ * first failing item, like `Promise.all`.
+ */
+export async function mapInBatches<T, R>(
+	items: T[],
+	batchSize: number,
+	fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+	const results: R[] = [];
+	for (const batch of chunk(items, batchSize)) {
+		results.push(...(await Promise.all(batch.map(fn))));
+	}
+	return results;
 }
 
 export function sourceControlFoldersExistCheck(

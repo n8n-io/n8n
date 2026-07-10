@@ -125,6 +125,51 @@ function deriveTestCaseArtifactName(testCase: WorkflowTestCase): string {
 	return slugifyArtifactSegment(testCase.conversation?.[0]?.text ?? '', 'workflow');
 }
 
+function eventPayload(event: CapturedEvent): Record<string, unknown> {
+	return typeof event.data.payload === 'object' && event.data.payload !== null
+		? (event.data.payload as Record<string, unknown>)
+		: event.data;
+}
+
+/**
+ * Best-effort explanation for a run that produced no workflow, drawn from the
+ * captured event stream. Tool errors are most specific; run-level `error`
+ * events (e.g. the terminal-fallback emitted when the run throws before doing
+ * any work — a crashed sandbox, a failed model call) carry the actual failure
+ * reason and must be surfaced, otherwise a crashed run reports nothing at all.
+ */
+export function summarizeMissingWorkflowError(events: CapturedEvent[]): string {
+	const toolErrors = events
+		.filter((e) => e.type === 'tool-error')
+		.map((e) => {
+			const payload = eventPayload(e);
+			const toolError = payload.error ?? payload.message;
+			return typeof toolError === 'string' ? toolError : 'unknown tool error';
+		});
+	if (toolErrors.length > 0) return `Tool errors: ${toolErrors.join('; ')}`;
+
+	const runErrors = events
+		.filter((e) => e.type === 'error')
+		.map((e) => {
+			const payload = eventPayload(e);
+			const runError = payload.content ?? payload.error ?? payload.message;
+			return typeof runError === 'string' ? runError : 'unknown agent error';
+		});
+	if (runErrors.length > 0) return `Agent error: ${runErrors.join('; ')}`;
+
+	const agentText = events
+		.filter((e) => e.type === 'text-delta')
+		.map((e) => {
+			const payload = eventPayload(e);
+			if (typeof e.data.text === 'string') return e.data.text;
+			return typeof payload.text === 'string' ? payload.text : '';
+		})
+		.join('');
+	if (agentText.length > 0) return `Agent response: ${agentText.slice(0, 500)}`;
+
+	return 'No workflow produced — no error details captured';
+}
+
 async function writeScenarioVerificationSnapshot(input: {
 	testCaseName: string;
 	scenarioName: string;
@@ -288,7 +333,9 @@ export async function runWorkflowTestCase(
 	if (!build.success || !build.workflowId) {
 		result.buildError = build.error;
 		const expectationResults = await expectationsPromise;
-		if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
+		const buildExpectationResults = expectationResults;
+		if (buildExpectationResults.length > 0)
+			result.buildExpectationResults = buildExpectationResults;
 		return result;
 	}
 
@@ -347,7 +394,8 @@ export async function runWorkflowTestCase(
 		expectationsPromise,
 	]);
 	result.executionScenarioResults = scenarioResults;
-	if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
+	const buildExpectationResults = expectationResults;
+	if (buildExpectationResults.length > 0) result.buildExpectationResults = buildExpectationResults;
 
 	const scenarioMs = Date.now() - scenarioStart;
 	logger.info(
@@ -474,7 +522,7 @@ export interface BuildWorkflowConfig {
 	preRunWorkflowIds: Set<string>;
 	claimedWorkflowIds: Set<string>;
 	logger: EvalLogger;
-	/** Optional " [lane N/M]" suffix appended to the build log line. */
+	/** Optional " [lane N/M]" suffix appended to the scenario log line. */
 	laneTag?: string;
 	/**
 	 * Last-resort workflow discovery by list-diffing visible workflows. Keep this
@@ -557,7 +605,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		const openingMessage = conversation[0]?.text ?? '';
 		const isMultiTurn = isMultiTurnConversation(conversation);
 		logger.info(
-			`  Building workflow${isMultiTurn ? ' [multi-turn]' : ''}: "${truncate(openingMessage, 60)}"${config.laneTag ?? ''}`,
+			`  Running case${isMultiTurn ? ' [multi-turn]' : ''}: "${truncate(openingMessage, 60)}"${config.laneTag ?? ''}`,
 		);
 
 		const projectId = await client.getPersonalProjectId();
@@ -700,42 +748,9 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		);
 
 		if (outcome.workflowsCreated.length === 0) {
-			const toolErrors = events
-				.filter((e) => e.type === 'tool-error')
-				.map((e) => {
-					const payload =
-						typeof e.data.payload === 'object' && e.data.payload !== null
-							? (e.data.payload as Record<string, unknown>)
-							: e.data;
-					const toolError = payload.error ?? payload.message;
-					return typeof toolError === 'string' ? toolError : 'unknown tool error';
-				});
-
-			const agentText = events
-				.filter((e) => e.type === 'text-delta')
-				.map((e) => {
-					const text =
-						typeof e.data.text === 'string'
-							? e.data.text
-							: typeof e.data.payload === 'object' &&
-									e.data.payload !== null &&
-									'text' in (e.data.payload as Record<string, unknown>)
-								? String((e.data.payload as Record<string, unknown>).text)
-								: '';
-					return text;
-				})
-				.join('');
-
-			const buildError =
-				toolErrors.length > 0
-					? `Tool errors: ${toolErrors.join('; ')}`
-					: agentText.length > 0
-						? `Agent response: ${agentText.slice(0, 500)}`
-						: 'No workflow produced — no error details captured';
-
 			return {
 				success: false,
-				error: buildError,
+				error: summarizeMissingWorkflowError(events),
 				workflowJsons: [],
 				buildTrace,
 				createdWorkflowIds: restoredWorkflowIds,

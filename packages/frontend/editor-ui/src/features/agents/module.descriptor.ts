@@ -12,9 +12,11 @@ import {
 	AGENT_SKILL_MODAL_KEY,
 	AGENT_TASK_MODAL_KEY,
 	AGENT_SUB_AGENTS_MODAL_KEY,
+	AGENT_VECTOR_STORES_MODAL_KEY,
 	AGENT_JSON_IMPORT_MODAL_KEY,
 	AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY,
 	AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE,
+	AGENT_MODEL_CREDENTIAL_MODAL_KEY,
 	AGENT_VIEW,
 	AGENT_SESSIONS_LIST_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
@@ -104,6 +106,19 @@ export const AgentsModule: FrontendModuleDescription = {
 			},
 		},
 		{
+			key: AGENT_VECTOR_STORES_MODAL_KEY,
+			component: async () => await import('./components/AgentVectorStoresModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					projectId: '',
+					agentId: '',
+					existingNames: [],
+					onConfirm: () => {},
+				},
+			},
+		},
+		{
 			key: AGENT_JSON_IMPORT_MODAL_KEY,
 			component: async () => await import('./components/AgentJsonImportModal.vue'),
 			initialState: {
@@ -115,12 +130,25 @@ export const AgentsModule: FrontendModuleDescription = {
 		},
 		{
 			key: AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY,
-			component: async () => await import('../ai/chatHub/components/CredentialSelectorModal.vue'),
+			component: async () => await import('../ai/components/CredentialSelectorModal.vue'),
 			initialState: {
 				open: false,
 				data: {
 					credentialType: AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE,
 					displayName: 'OpenAI',
+					initialValue: null,
+					onSelect: () => {},
+				},
+			},
+		},
+		{
+			key: AGENT_MODEL_CREDENTIAL_MODAL_KEY,
+			component: async () => await import('../ai/components/CredentialSelectorModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					credentialType: '',
+					displayName: '',
 					initialValue: null,
 					onSelect: () => {},
 				},

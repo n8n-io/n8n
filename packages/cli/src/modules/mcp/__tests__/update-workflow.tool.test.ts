@@ -193,7 +193,13 @@ describe('update-workflow MCP tool', () => {
 		);
 
 	const callHandler = async (
-		input: { workflowId: string; skillsUsed?: string[]; operations: unknown[] },
+		input: {
+			workflowId: string;
+			skillsUsed?: string[];
+			operations: unknown[];
+			versionName?: string;
+			versionDescription?: string;
+		},
 		tool = createTool(),
 	) =>
 		await tool.handler(
@@ -201,6 +207,8 @@ describe('update-workflow MCP tool', () => {
 				workflowId: input.workflowId,
 				skillsUsed: input.skillsUsed,
 				operations: input.operations as never,
+				versionName: input.versionName as string,
+				versionDescription: input.versionDescription as string,
 			},
 			{} as never,
 		);
@@ -279,6 +287,42 @@ describe('update-workflow MCP tool', () => {
 
 			expect(result.isError).toBeUndefined();
 			expect(() => buildStrictOutputSchema(tool).parse(result.structuredContent)).not.toThrow();
+		});
+	});
+
+	describe('version metadata', () => {
+		test('passes client-provided versionName and versionDescription to the update', async () => {
+			await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+				],
+				versionName: 'Pointed B at the new API',
+				versionDescription: 'Switched the request URL after the API migration',
+			});
+
+			expect(updateMock.mock.calls[0][3]).toEqual(
+				expect.objectContaining({
+					versionName: 'Pointed B at the new API',
+					versionDescription: 'Switched the request URL after the API migration',
+				}),
+			);
+		});
+
+		test('falls back to diff-based version metadata when the client omits it', async () => {
+			await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+				],
+			});
+
+			expect(updateMock.mock.calls[0][3]).toEqual(
+				expect.objectContaining({
+					versionName: 'Updated B',
+					versionDescription: 'Updated nodes: B',
+				}),
+			);
 		});
 	});
 
@@ -878,7 +922,7 @@ describe('update-workflow MCP tool', () => {
 				user,
 				expect.any(WorkflowEntity),
 				'wf-1',
-				{ aiBuilderAssisted: true, source: 'n8n-mcp' },
+				expect.objectContaining({ aiBuilderAssisted: true, source: 'n8n-mcp' }),
 			);
 			expect(updateMock.mock.calls[0][1].name).toBe('Renamed');
 			expect(updateMock.mock.calls[0][1].meta).toEqual(

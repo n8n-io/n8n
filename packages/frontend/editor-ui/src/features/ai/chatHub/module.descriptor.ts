@@ -66,7 +66,7 @@ export const ChatModule: FrontendModuleDescription = {
 		},
 		{
 			key: CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
-			component: async () => await import('./components/CredentialSelectorModal.vue'),
+			component: async () => await import('../components/CredentialSelectorModal.vue'),
 			initialState: {
 				open: false,
 				data: {
