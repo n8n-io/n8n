@@ -155,7 +155,7 @@ const plugins: UserConfig['plugins'] = [
 			return ctx.server
 				? html
 						.replace('%CONFIG_TAGS%', '')
-						.replaceAll('/{{BASE_PATH}}', '//localhost:5678')
+						.replaceAll('/{{BASE_PATH}}', `//localhost:${process.env.N8N_PORT ?? '5678'}`)
 						.replaceAll('/{{REST_ENDPOINT}}', '/rest')
 				: html;
 		},
