@@ -49,6 +49,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		onRunFinish: () => {
 			void loadThreads();
 		},
+		getThreadMetadata: (threadId) => threads.value.find((t) => t.id === threadId)?.metadata,
 	} satisfies Parameters<typeof createThreadRuntime>[1];
 
 	function getOrCreateRuntime(threadId: string, projectId?: string): ThreadRuntime {

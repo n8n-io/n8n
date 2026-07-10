@@ -139,6 +139,7 @@ describe('Instance AI runtime skills', () => {
 		expect(skill?.linkedFiles.references).toEqual([]);
 
 		const loaded = await source.loadSkill('n8n-docs-assistant');
+		expect(loaded?.instructions).toContain('Before calling `n8n-docs`, load it via `load_tool`');
 		expect(loaded?.instructions).toContain('n8n-docs(action="lookup")');
 		expect(loaded?.instructions).toContain('intent: "credential-setup"');
 		expect(loaded?.instructions).toContain('oauthRedirectUrl');
@@ -221,6 +222,9 @@ describe('Instance AI runtime skills', () => {
 
 		const loaded = await source.loadSkill('planning');
 		expect(loaded?.instructions).toContain('## When NOT to use this skill');
+		expect(loaded?.instructions).toContain(
+			'Before calling `create-tasks`, load it via `load_tool`',
+		);
 		expect(loaded?.instructions).toContain('Do not call `create-tasks` just to get approval');
 		expect(loaded?.instructions).toContain('planningContext.source: "planning-skill"');
 		expect(loaded?.instructions).toContain('Do not spawn another agent');
@@ -315,7 +319,10 @@ describe('Instance AI runtime skills', () => {
 		expect(skill?.description).toContain('planned-task-follow-up');
 
 		const loaded = await source.loadSkill('planned-task-runtime');
-		expect(loaded?.instructions).toContain('<planned-task-follow-up type="synthesize">');
+		expect(loaded?.instructions).toContain(
+			'Before calling `create-tasks`, load it via `load_tool`',
+		);
+		expect(loaded?.instructions).toContain('load `create-tasks` via `load_tool` if needed');
 		expect(loaded?.instructions).toContain('You MUST take action in this same turn');
 		expect(loaded?.instructions).toContain('awaiting_replan');
 		expect(loaded?.instructions).toMatch(/Do NOT reply with an\s+acknowledgement/);
@@ -362,6 +369,6 @@ async function loadRuntimeSkillSourceWithEnabledModules(enabledModules: string |
 		process.env.N8N_ENABLED_MODULES = enabledModules;
 	}
 
-	const { loadInstanceAiRuntimeSkillSource } = await import('../runtime-skills');
+	const { loadInstanceAiRuntimeSkillSource } = await import('../runtime-skills.js');
 	return loadInstanceAiRuntimeSkillSource();
 }

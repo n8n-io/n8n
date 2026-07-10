@@ -24,7 +24,7 @@
     "watch": "tsc-watch -p tsconfig.build.cjs.json --onCompilationComplete \"pnpm copy-nodes-json && tsc-alias -p tsconfig.build.cjs.json\" --onSuccess \"pnpm n8n-generate-metadata\"",
     "test": "vitest run",
     "test:unit": "vitest run",
-    "test:changed": "janitor test-scoped --runner=vitest",
+    "test:changed": "janitor test-scoped",
     "test:dev": "vitest --silent=false",
     "test:integration:skip": "vitest run --config vitest.integration.config.ts"
   },
@@ -919,6 +919,7 @@
     "n8n-containers": "workspace:*",
     "n8n-core": "workspace:*",
     "reflect-metadata": "catalog:",
+    "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
