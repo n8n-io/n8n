@@ -1464,6 +1464,7 @@ defineExpose({
 				v-bind="nodeProps"
 				:data="nodeProps.data"
 				@toggle="onSubWorkflowGroupToggle"
+				@open-settings="onSetNodeActivated"
 			/>
 		</template>
 

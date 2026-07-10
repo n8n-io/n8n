@@ -22,6 +22,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	toggle: [id: string];
+	'open-settings': [id: string];
 }>();
 
 const i18n = useI18n();
@@ -39,6 +40,10 @@ const toggleLabel = computed(() =>
 
 function onToggleClick() {
 	emit('toggle', group.value.id);
+}
+
+function onSettingsClick() {
+	emit('open-settings', group.value.id);
 }
 
 function onWrapperDblClick(event: MouseEvent) {
@@ -83,6 +88,15 @@ function onWrapperDblClick(event: MouseEvent) {
 				@click.stop="onToggleClick"
 			/>
 			<div :class="$style.title" data-test-id="canvas-node-group-title">{{ group.name }}</div>
+			<N8nIconButton
+				class="nodrag"
+				variant="ghost"
+				size="large"
+				icon="cog"
+				:aria-label="i18n.baseText('generic.settings')"
+				data-test-id="canvas-subworkflow-group-settings"
+				@click.stop="onSettingsClick"
+			/>
 		</div>
 
 		<div v-if="!isCollapsed" :class="$style.frame" data-test-id="canvas-node-group-frame" />

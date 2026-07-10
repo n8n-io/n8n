@@ -320,5 +320,20 @@ test.describe(
 
 			expect(groupAfter.x).toBeGreaterThan(groupBefore.x + 60);
 		});
+
+		test('opens the Execute Sub-workflow node settings from the group', async ({
+			n8n,
+			setupRequirements,
+		}) => {
+			await setupRequirements(requirements);
+			await n8n.start.fromImportedWorkflow(FIXTURE);
+			await n8n.canvas.clickZoomToFitButton();
+
+			await n8n.page.getByTestId('canvas-subworkflow-group-settings').click();
+			// The host Execute Sub-workflow node's own NDV opens.
+			const ndv = n8n.page.getByTestId('ndv');
+			await expect(ndv).toBeVisible();
+			await expect(ndv).toContainText('Call My Sub-workflow');
+		});
 	},
 );
