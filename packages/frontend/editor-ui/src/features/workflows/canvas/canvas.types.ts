@@ -156,6 +156,22 @@ export const CANVAS_NODE_GROUP_HANDLE_RIGHT = 'right';
 // Host override for group expansion; leaves persisted view state untouched.
 export type GroupExpansionMode = 'all' | 'errored';
 
+// A group derived from an Execute Sub-workflow node rather than an IWorkflowGroup.
+// Renders via the shared group shell but owns its geometry and wiring. Reuses the
+// group handle names so boundary connections can target the same handles.
+export const CANVAS_SUBWORKFLOW_GROUP_TYPE = 'canvas-subworkflow-group';
+export const CANVAS_SUBWORKFLOW_GROUP_ID_PREFIX = 'subworkflow-group:';
+
+export function createCanvasSubWorkflowGroupNodeId(hostNodeId: string): string {
+	return `${CANVAS_SUBWORKFLOW_GROUP_ID_PREFIX}${hostNodeId}`;
+}
+
+export function parseCanvasSubWorkflowGroupNodeId(id: string): string | undefined {
+	return id.startsWith(CANVAS_SUBWORKFLOW_GROUP_ID_PREFIX)
+		? id.slice(CANVAS_SUBWORKFLOW_GROUP_ID_PREFIX.length)
+		: undefined;
+}
+
 export function createCanvasGroupNodeId(groupId: string): string {
 	return `${CANVAS_NODE_GROUP_ID_PREFIX}${groupId}`;
 }

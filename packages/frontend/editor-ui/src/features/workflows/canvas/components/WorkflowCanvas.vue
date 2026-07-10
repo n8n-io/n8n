@@ -26,6 +26,10 @@ import {
 	mapGroupsToVueFlowNodes,
 } from '../composables/useCanvasMapping.groups';
 import { NodeGroupViewKey, useCanvasNodeGroupView } from '../composables/useCanvasNodeGroupView';
+import {
+	SubWorkflowGroupViewKey,
+	useCanvasSubWorkflowGroups,
+} from '../composables/useCanvasSubWorkflowGroups';
 import { buildNodeGroupLayoutComponents } from '../composables/useCanvasNodeGroupLayout';
 import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -133,6 +137,30 @@ const {
 	isExperimentalNdvActive,
 });
 
+// Sub-workflow group expansion is tracked in memory, keyed by host node id,
+// separately from real-group view state.
+const expandedSubWorkflowHostIds = ref(new Set<string>());
+const subWorkflowGroupView = {
+	isExpanded: (hostId: string) => expandedSubWorkflowHostIds.value.has(hostId),
+	toggle: (hostId: string) => {
+		const next = new Set(expandedSubWorkflowHostIds.value);
+		if (next.has(hostId)) next.delete(hostId);
+		else next.add(hostId);
+		expandedSubWorkflowHostIds.value = next;
+	},
+};
+provide(SubWorkflowGroupViewKey, subWorkflowGroupView);
+
+const subWorkflowGroups = useCanvasSubWorkflowGroups({
+	nodes: computed(() => workflowDocumentStore.value.allNodes),
+	getNodeDisplaySize: (id) => nodeDisplaySizeById.value[id],
+	isGroupExpanded: subWorkflowGroupView.isExpanded,
+	getCurrentWorkflowId: () => workflowDocumentStore.value.documentId.split('@')[0],
+});
+const subWorkflowHostIds = computed(() =>
+	isCanvasNodeGroupingEnabled.value ? subWorkflowGroups.hostNodeIds.value : new Set<string>(),
+);
+
 const groupIdsToExpand = computed(() => {
 	switch (props.groupExpansionMode) {
 		case 'all':
@@ -185,10 +213,23 @@ const mappedGroupVueFlowNodes = computed(() =>
 	}),
 );
 
-const mappedNodes = computed(() => [
-	...mappedWorkflowNodes.value,
-	...mappedGroupVueFlowNodes.value,
-]);
+const mappedNodes = computed(() => {
+	const hiddenHosts = subWorkflowHostIds.value;
+	const workflowNodes = hiddenHosts.size
+		? mappedWorkflowNodes.value.map((n) => (hiddenHosts.has(n.id) ? { ...n, hidden: true } : n))
+		: mappedWorkflowNodes.value;
+	return [
+		...workflowNodes,
+		...mappedGroupVueFlowNodes.value,
+		...(isCanvasNodeGroupingEnabled.value ? subWorkflowGroups.groupNodes.value : []),
+	];
+});
+
+const mappedConnectionsWithBoundary = computed(() =>
+	isCanvasNodeGroupingEnabled.value
+		? subWorkflowGroups.remapBoundaryConnections(mappedConnections.value)
+		: mappedConnections.value,
+);
 
 provide(NodeGroupViewKey, nodeGroupView);
 
@@ -204,7 +245,7 @@ const { off } = onNodesInitialized(() => {
 });
 
 const mappedNodesThrottled = throttledRef(mappedNodes, 200);
-const mappedConnectionsThrottled = throttledRef(mappedConnections, 200);
+const mappedConnectionsThrottled = throttledRef(mappedConnectionsWithBoundary, 200);
 
 defineExpose({
 	executeContextMenuAction: (action: ContextMenuAction, nodeIds: string[]) =>
@@ -283,7 +324,7 @@ defineExpose({
 				:id="id"
 				ref="canvas"
 				:nodes="executing ? mappedNodesThrottled : mappedNodes"
-				:connections="executing ? mappedConnectionsThrottled : mappedConnections"
+				:connections="executing ? mappedConnectionsThrottled : mappedConnectionsWithBoundary"
 				:render-data="renderData"
 				:node-display-size-by-id="nodeDisplaySizeById"
 				:event-bus="eventBus"

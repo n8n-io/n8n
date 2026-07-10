@@ -83,6 +83,7 @@ import {
 	type CanvasNodeGroupEventSource,
 } from '../composables/useCanvasNodeGroupTelemetry';
 import { NodeGroupViewKey } from '../composables/useCanvasNodeGroupView';
+import { SubWorkflowGroupViewKey } from '../composables/useCanvasSubWorkflowGroups';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
@@ -259,6 +260,11 @@ const selectableNodesAndGroups = computed(() =>
 const isPaneReady = ref(false);
 const autofocusGroupTitleId = ref<string | null>(null);
 const injectedNodeGroupView = inject(NodeGroupViewKey, null);
+const injectedSubWorkflowGroupView = inject(SubWorkflowGroupViewKey, null);
+
+function onSubWorkflowGroupToggle(hostNodeId: string) {
+	injectedSubWorkflowGroupView?.toggle(hostNodeId);
+}
 
 const classes = computed(() => ({
 	[$style.canvas]: true,
@@ -1409,6 +1415,15 @@ defineExpose({
 				@update:name="onCanvasGroupNameUpdate"
 				@title:focused="onNodeGroupTitleFocused"
 				@ungroup="onCanvasGroupUngroup"
+			/>
+		</template>
+
+		<template #node-canvas-subworkflow-group="nodeProps">
+			<CanvasNodeGroupTitleBar
+				v-bind="nodeProps"
+				:data="nodeProps.data"
+				read-only
+				@toggle="onSubWorkflowGroupToggle"
 			/>
 		</template>
 
