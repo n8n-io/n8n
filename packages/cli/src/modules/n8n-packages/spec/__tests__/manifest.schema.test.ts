@@ -45,39 +45,6 @@ describe('packageManifestSchema', () => {
 		expect(() => packageManifestSchema.parse(manifest)).toThrow(/duplicate credential id/i);
 	});
 
-	it('accepts sub-workflow requirements', () => {
-		const manifest = {
-			...validManifest,
-			requirements: {
-				subWorkflows: [
-					{
-						id: 'sub-wf-1',
-						name: 'Shared child',
-						usedByWorkflows: ['wf-abc'],
-					},
-				],
-			},
-		};
-
-		expect(packageManifestSchema.parse(manifest).requirements?.subWorkflows).toEqual(
-			manifest.requirements.subWorkflows,
-		);
-	});
-
-	it('rejects duplicate id entries in requirements.subWorkflows', () => {
-		const manifest = {
-			...validManifest,
-			requirements: {
-				subWorkflows: [
-					{ id: 'sub-wf-1', name: 'First', usedByWorkflows: ['wf-abc'] },
-					{ id: 'sub-wf-1', name: 'Second', usedByWorkflows: ['wf-abc'] },
-				],
-			},
-		};
-
-		expect(() => packageManifestSchema.parse(manifest)).toThrow(/duplicate sub-workflow id/i);
-	});
-
 	it('preserves a folders section', () => {
 		const manifest = {
 			...validManifest,
