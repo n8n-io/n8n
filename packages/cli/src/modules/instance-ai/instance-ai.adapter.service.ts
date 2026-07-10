@@ -45,6 +45,7 @@ import {
 	builderTemplatesOptionsFromEnv,
 	wrapUntrustedData,
 	deriveCredentialHosts,
+	WorkflowSaveConflictError,
 } from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { upsertEvaluationConfigSchema } from '@n8n/api-types';
@@ -105,9 +106,11 @@ import {
 	UnexpectedError,
 	jsonParse,
 	createRunExecutionData,
+	calculateWorkflowChecksum,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
@@ -458,7 +461,7 @@ export class InstanceAiAdapterService {
 					throw new Error(`Workflow ${workflowId} not found or not accessible`);
 				}
 
-				return toWorkflowDetail(workflow, { redactParameters });
+				return await toWorkflowDetailWithChecksum(workflow, { redactParameters });
 			},
 
 			async archive(workflowId: string) {
@@ -701,13 +704,13 @@ export class InstanceAiAdapterService {
 					});
 				}
 
-				return toWorkflowDetail(updated, { redactParameters });
+				return await toWorkflowDetailWithChecksum(updated, { redactParameters });
 			},
 
 			async updateFromWorkflowJSON(
 				workflowId: string,
 				json: WorkflowJSON,
-				_options?: { projectId?: string },
+				options?: { projectId?: string; expectedChecksum?: string },
 			) {
 				assertNotReadOnly();
 				// Strip redactionPolicy if the user lacks the required directional scope —
@@ -761,8 +764,12 @@ export class InstanceAiAdapterService {
 
 					updated = await workflowService.update(user, updateData, workflowId, {
 						source: 'n8n-ai',
+						...(options?.expectedChecksum ? { expectedChecksum: options.expectedChecksum } : {}),
 					});
 				} catch (error) {
+					if (error instanceof ConflictError) {
+						throw new WorkflowSaveConflictError(workflowId);
+					}
 					logger.warn('AI-builder workflow save failed', {
 						threadId,
 						workflowId,
@@ -778,7 +785,7 @@ export class InstanceAiAdapterService {
 					});
 				}
 
-				return toWorkflowDetail(updated, { redactParameters });
+				return await toWorkflowDetailWithChecksum(updated, { redactParameters });
 			},
 
 			async listVersions(workflowId, options) {
@@ -3387,4 +3394,13 @@ function toWorkflowDetail(
 		connections: workflow.connections as Record<string, unknown>,
 		settings: workflow.settings as Record<string, unknown> | undefined,
 	};
+}
+
+async function toWorkflowDetailWithChecksum(
+	workflow: WorkflowEntity,
+	options?: { redactParameters?: boolean },
+): Promise<WorkflowDetail> {
+	const detail = toWorkflowDetail(workflow, options);
+	detail.checksum = await calculateWorkflowChecksum(workflow);
+	return detail;
 }

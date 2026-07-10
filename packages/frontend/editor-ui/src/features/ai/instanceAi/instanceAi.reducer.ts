@@ -157,6 +157,7 @@ function hasSafeEventKeys(event: InstanceAiEvent): boolean {
 		case 'tool-call':
 		case 'tool-result':
 		case 'tool-error':
+		case 'tool-interrupted':
 		case 'confirmation-request':
 			return isSafeObjectKey(event.payload.toolCallId);
 		default:
@@ -255,7 +256,11 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 			return event.runId;
 		}
 
-		case 'text-delta': {
+		// text-block: a coalesced segment from the durable log. Live it appends
+		// like a delta; on replay the shared reducer REPLACES the segment's
+		// streamed deltas (keyed by responseId), so nothing renders twice.
+		case 'text-delta':
+		case 'text-block': {
 			const { msg, runState } = resolveTarget(state, event.runId);
 			if (runState) {
 				reduceRunEvent(runState, event);
@@ -268,6 +273,7 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 			return state.activeRunId;
 		}
 
+		case 'reasoning-block':
 		case 'reasoning-delta': {
 			const { msg, runState } = resolveTarget(state, event.runId);
 			if (runState) {
@@ -282,6 +288,7 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 		case 'tool-call':
 		case 'tool-result':
 		case 'tool-error':
+		case 'tool-interrupted':
 		case 'agent-spawned':
 		case 'agent-completed':
 		case 'confirmation-request':
