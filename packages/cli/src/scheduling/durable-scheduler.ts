@@ -35,7 +35,10 @@ export class DurableScheduler implements Scheduler {
 		const config = globalConfig.scheduler;
 		const enabled = config.enabled && instanceSettings.instanceType === 'main';
 		const tracer: Tracer = {
-			startSpan: async (options, run) => await tracing.startSpan(options, run),
+			startSpan: async ({ newTrace, ...options }, run) =>
+				await (newTrace === true
+					? tracing.startNewTraceSpan(options, run)
+					: tracing.startSpan(options, run)),
 		};
 		this.scheduler = enabled
 			? createScheduler({

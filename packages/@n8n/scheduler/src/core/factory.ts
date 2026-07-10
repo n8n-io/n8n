@@ -9,7 +9,7 @@ import {
 	TaskHandlerRegistry,
 } from './executor';
 import type { ExecutorOptions, ExecutorTaskStore } from './executor';
-import { DEFAULT_LIFECYCLE_OPTIONS, Loop } from './lifecycle';
+import { DEFAULT_LIFECYCLE_OPTIONS, Loop, PASS_TIMED_OUT } from './lifecycle';
 import type { LifecycleOptions } from './lifecycle';
 import { DEFAULT_MATERIALIZER_OPTIONS, materialize } from './materializer';
 import type { MaterializerOptions, RunInTransaction } from './materializer';
@@ -232,31 +232,46 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 		);
 	}
 
+	// Unlike the other passes, the materializer must throw on an observed abort
+	// rather than returning early: it is one open transaction, and only a throw
+	// out of `runInTransaction`'s callback rolls it back. A timeout is a real
+	// fault (the span stays errored, same as any other pass timing out); a plain
+	// shutdown abort is expected and rolled back cleanly, so it is reported the
+	// same way the other passes report one: a no-op summary, span ok.
 	const runMaterialize = tracePass(
 		tracer,
 		{ name: 'Scheduler materialize', op: 'scheduler.materialize' },
 		async (signal) => {
-			const summary = await materialize(
-				materializerTransaction,
-				materializerOptions,
-				{
-					onPlanError: (job, error) => {
-						emit('error', 'Scheduler could not plan a job schedule; deferred for retry', {
-							jobId: job.id,
-							error: described(error),
-						});
+			try {
+				const summary = await materialize(
+					materializerTransaction,
+					materializerOptions,
+					{
+						onPlanError: (job, error) => {
+							emit('error', 'Scheduler could not plan a job schedule; deferred for retry', {
+								jobId: job.id,
+								error: described(error),
+							});
+						},
+						onSkippedDuplicates: (context) => {
+							emit(
+								'debug',
+								'Scheduler materializer skipped occurrences that were already recorded',
+								{ ...context },
+							);
+						},
 					},
-					onSkippedDuplicates: (context) => {
-						emit('debug', 'Scheduler materializer skipped occurrences that were already recorded', {
-							...context,
-						});
-					},
-				},
-				signal,
-			);
-			await traceCreatedTasks(tracer, summary.created);
-			recordMetric(() => metrics.recordMaterialized(summary.occurrences, summary.deferredJobs));
-			return summary;
+					signal,
+				);
+				await traceCreatedTasks(tracer, summary.created);
+				recordMetric(() => metrics.recordMaterialized(summary.occurrences, summary.deferredJobs));
+				return summary;
+			} catch (error) {
+				if (signal?.aborted === true && signal.reason !== PASS_TIMED_OUT) {
+					return { claimedJobs: 0, occurrences: 0, created: [], deferredJobs: 0 };
+				}
+				throw error;
+			}
 		},
 		(summary) => ({
 			[SCHEDULER_ATTRIBUTES.claimedJobs]: summary.claimedJobs,

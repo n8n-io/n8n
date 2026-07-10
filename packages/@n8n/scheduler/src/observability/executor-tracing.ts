@@ -26,6 +26,11 @@ export function createExecutorTracing(tracer: Tracer): ExecutorTracing {
 					name: 'Scheduler fire',
 					op: 'scheduler.fire',
 					attributes: { ...pickSchedulerTaskAttributes(task), [SCHEDULER_ATTRIBUTES.host]: host },
+					// `fire` runs from inside a timer callback armed while the claim span
+					// (`scheduler.claim`) was active; the async context still carries that
+					// span here, so without a fresh trace the fire span would be parented
+					// under a claim span that may already have closed and been sent.
+					newTrace: true,
 				},
 				async (span) => {
 					// If `run` throws (e.g. writing the outcome to storage failed), the

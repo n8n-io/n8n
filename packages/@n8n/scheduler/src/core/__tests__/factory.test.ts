@@ -1041,14 +1041,33 @@ describe('createScheduler tracing', () => {
 		const controller = new AbortController();
 		controller.abort(PASS_TIMED_OUT);
 
-		// The materializer aborts by throwing (throwIfAborted), so the tracer errors
-		// the span as the throw propagates, rather than settlePassSpan closing it.
+		// The materializer aborts by throwing (throwIfAborted); a timeout is a real
+		// fault, so the pass boundary lets it propagate and the tracer errors the
+		// span, rather than settlePassSpan closing it.
 		await expect(scheduler.materialize(controller.signal)).rejects.toBeDefined();
 
 		expect(span.setStatus).toHaveBeenCalledWith(
 			expect.objectContaining({ code: SpanStatus.error }),
 		);
 		expect(span.setStatus).not.toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('records ok on the materialize span when aborted by a graceful stop, not a timeout', async () => {
+		const { span, tracer } = makeTracer();
+		const { scheduler } = makeScheduler({ tracer });
+		// A graceful stop aborts with the default reason, not PASS_TIMED_OUT.
+		const controller = new AbortController();
+		controller.abort();
+
+		// Unlike the timeout case, the materializer's throw-to-roll-back is caught
+		// at the pass boundary and reported as a no-op summary, not rethrown.
+		const summary = await scheduler.materialize(controller.signal);
+
+		expect(summary).toEqual({ claimedJobs: 0, occurrences: 0, created: [], deferredJobs: 0 });
+		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+		expect(span.setStatus).not.toHaveBeenCalledWith(
+			expect.objectContaining({ code: SpanStatus.error }),
+		);
 	});
 
 	it('records ok on a pass drained by a graceful stop, not a timeout', async () => {
