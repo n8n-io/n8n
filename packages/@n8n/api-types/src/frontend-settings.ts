@@ -257,6 +257,13 @@ export interface FrontendSettings {
 	easyAIWorkflowOnboarded: boolean;
 	evaluation: {
 		quota: number;
+		/**
+		 * Operator override (`N8N_EVAL_COLLECTIONS_ENABLED`) that force-enables the
+		 * eval-collections surface. Surfaced here so the frontend gate works even
+		 * when the in-browser PostHog client is disabled (telemetry off), where the
+		 * `084_eval_collections` flag would otherwise never resolve.
+		 */
+		collectionsEnabled: boolean;
 	};
 
 	/** Backend modules that were initialized during startup. */
