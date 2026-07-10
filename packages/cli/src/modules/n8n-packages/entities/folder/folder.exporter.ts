@@ -1,4 +1,4 @@
-import type { Folder, User } from '@n8n/db';
+import type { Folder, User, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { FolderFinderService } from '@/services/folder-finder.service';
@@ -31,8 +31,10 @@ export interface FolderExportResult {
 	entries: ManifestEntry[];
 	/** Workflows contained in the exported folders → `manifest.workflows[]`. */
 	workflowEntries: ManifestEntry[];
+	workflowEntities: WorkflowEntity[];
 	/** What the contained workflows need, gathered at the package top level (credentials today). */
 	requirements: WorkflowExportRequirements;
+	folderIds: string[];
 }
 
 interface FolderWriteContext {
@@ -151,7 +153,9 @@ export class FolderExporter {
 		const own: FolderExportResult = {
 			entries: [{ id: folder.id, name: folder.name, target }],
 			workflowEntries: contained.entries,
+			workflowEntities: contained.workflows,
 			requirements: contained.requirements,
+			folderIds: [folder.id],
 		};
 
 		return this.mergeFolderExportResults([own, descendants]);
@@ -174,7 +178,7 @@ export class FolderExporter {
 		request: FolderExportRequest,
 	): Promise<WorkflowExportResult> {
 		if (workflowIds.length === 0) {
-			return { entries: [], requirements: mergeRequirements() };
+			return { entries: [], requirements: mergeRequirements(), workflows: [] };
 		}
 
 		return await this.workflowExporter.export({
@@ -189,7 +193,9 @@ export class FolderExporter {
 		return {
 			entries: results.flatMap((result) => result.entries),
 			workflowEntries: results.flatMap((result) => result.workflowEntries),
+			workflowEntities: results.flatMap((result) => result.workflowEntities),
 			requirements: mergeRequirements(...results.map((result) => result.requirements)),
+			folderIds: results.flatMap((result) => result.folderIds),
 		};
 	}
 

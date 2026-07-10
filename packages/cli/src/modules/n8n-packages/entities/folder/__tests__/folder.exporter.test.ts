@@ -60,6 +60,7 @@ describe('FolderExporter', () => {
 		workflowFinder.findWorkflowIdsByFolder.mockResolvedValue(new Map([['fld-1', ['w1']]]));
 		workflowExporter.export.mockResolvedValue({
 			entries: [{ id: 'w1', name: 'W1', target: 'folders/toproduction/workflows/w1' }],
+			workflows: [],
 			requirements: {
 				credentials: [
 					{

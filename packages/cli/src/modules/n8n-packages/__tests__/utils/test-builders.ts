@@ -1,5 +1,6 @@
 import { createWorkflow } from '@n8n/backend-test-utils';
 import type { CredentialsEntity, Folder, Project, WorkflowEntity } from '@n8n/db';
+import type { INode } from 'n8n-workflow';
 
 interface BuildWorkflowReferencingCredentialByIdOptions {
 	name: string;
@@ -73,4 +74,41 @@ export async function buildWorkflowReferencingCredential({
 		credentialType: credential.type,
 		parentFolder,
 	});
+}
+
+interface BuildWorkflowCallingSubWorkflowOptions {
+	name: string;
+	project: Project;
+	subWorkflowId: string;
+	parentFolder?: Folder;
+}
+
+export async function buildWorkflowCallingSubWorkflow({
+	name,
+	project,
+	subWorkflowId,
+	parentFolder,
+}: BuildWorkflowCallingSubWorkflowOptions): Promise<WorkflowEntity> {
+	return await createWorkflow(
+		{
+			name,
+			nodes: [executeWorkflowNode(subWorkflowId)],
+			connections: {},
+			parentFolder,
+		},
+		project,
+	);
+}
+
+export function executeWorkflowNode(workflowId: string): INode {
+	return {
+		id: `execute-${workflowId}`,
+		name: `Execute ${workflowId}`,
+		type: 'n8n-nodes-base.executeWorkflow',
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: {
+			workflowId: { __rl: true, mode: 'list', value: workflowId },
+		},
+	};
 }
