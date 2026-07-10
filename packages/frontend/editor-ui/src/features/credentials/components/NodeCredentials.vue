@@ -48,6 +48,7 @@ import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import CredentialPrivateConnectionRow from './CredentialPrivateConnectionRow.vue';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import AiGatewaySelector from '@/app/components/AiGatewaySelector.vue';
+import { useN8nCreditsCredentialSelectionExperiment } from '@/experiments/n8nCreditsCredentialSelection';
 
 import {
 	N8nButton,
@@ -133,6 +134,8 @@ const { canOAuthCredentialQuickConnect, hasManualCredentialInputFields, authoriz
 	useCredentialOAuth();
 
 const aiGateway = useAiGateway();
+const { isFeatureEnabled: shouldShowOwnCredentialFirst } =
+	useN8nCreditsCredentialSelectionExperiment();
 const hideAskAssistant = computed(() => props.hideAskAssistant || isToolContext);
 
 const canCreateCredentials = computed(
@@ -313,8 +316,8 @@ watch(
 		if (allOptions.length === 0) {
 			// No credentials configured — auto-enable AI Gateway for supported types,
 			// but only on the initial setup so a later action change doesn't redirect
-			// the user onto n8n Connect.
-			if (aiGateway.isEnabled.value && isInitialEvaluation) {
+			// the user onto n8n credits. The experiment variant leaves it unselected.
+			if (aiGateway.isEnabled.value && isInitialEvaluation && !shouldShowOwnCredentialFirst.value) {
 				for (const { type } of types) {
 					if (
 						aiGateway.isCredentialTypeSupported(type.name) &&
