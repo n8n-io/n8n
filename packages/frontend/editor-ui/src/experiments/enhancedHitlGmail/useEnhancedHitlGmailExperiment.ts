@@ -6,10 +6,8 @@ import { usePostHog } from '@/app/stores/posthog.store';
 export function useEnhancedHitlGmailExperiment() {
 	const posthogStore = usePostHog();
 
-	const isFeatureEnabled = computed(
-		() =>
-			posthogStore.getVariant(ENHANCED_HITL_GMAIL_EXPERIMENT.name) ===
-			ENHANCED_HITL_GMAIL_EXPERIMENT.variant,
+	const isFeatureEnabled = computed(() =>
+		posthogStore.isFeatureEnabled(ENHANCED_HITL_GMAIL_EXPERIMENT.name),
 	);
 
 	return { isFeatureEnabled };

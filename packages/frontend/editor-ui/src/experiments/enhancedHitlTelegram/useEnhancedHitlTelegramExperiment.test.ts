@@ -7,30 +7,29 @@ import {
 
 import { useEnhancedHitlTelegramExperiment } from './useEnhancedHitlTelegramExperiment';
 
-const getVariant = vi.fn();
+const isFeatureEnabled = vi.fn();
 
 vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: vi.fn(() => ({
-		getVariant,
+		isFeatureEnabled,
 	})),
 }));
 
 describe('useEnhancedHitlTelegramExperiment', () => {
 	beforeEach(() => {
-		getVariant.mockReset();
+		isFeatureEnabled.mockReset();
 	});
 
 	it.each([
-		{ variant: ENHANCED_HITL_TELEGRAM_EXPERIMENT.variant, enabled: true },
-		{ variant: ENHANCED_HITL_TELEGRAM_EXPERIMENT.control, enabled: false },
-		{ variant: undefined, enabled: false },
-	])('returns $enabled when PostHog variant is $variant', ({ variant, enabled }) => {
-		getVariant.mockReturnValue(variant);
+		{ flag: true, enabled: true },
+		{ flag: false, enabled: false },
+	])('returns $enabled when PostHog flag is $flag', ({ flag, enabled }) => {
+		isFeatureEnabled.mockReturnValue(flag);
 
-		const { isFeatureEnabled } = useEnhancedHitlTelegramExperiment();
+		const { isFeatureEnabled: result } = useEnhancedHitlTelegramExperiment();
 
-		expect(isFeatureEnabled.value).toBe(enabled);
-		expect(getVariant).toHaveBeenCalledWith(ENHANCED_HITL_TELEGRAM_EXPERIMENT.name);
+		expect(result.value).toBe(enabled);
+		expect(isFeatureEnabled).toHaveBeenCalledWith(ENHANCED_HITL_TELEGRAM_EXPERIMENT.name);
 	});
 
 	it('registers the experiment for centralized enrollment tracking', () => {

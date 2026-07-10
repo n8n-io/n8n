@@ -4,30 +4,29 @@ import { ENHANCED_HITL_GMAIL_EXPERIMENT, EXPERIMENTS_TO_TRACK } from '@/app/cons
 
 import { useEnhancedHitlGmailExperiment } from './useEnhancedHitlGmailExperiment';
 
-const getVariant = vi.fn();
+const isFeatureEnabled = vi.fn();
 
 vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: vi.fn(() => ({
-		getVariant,
+		isFeatureEnabled,
 	})),
 }));
 
 describe('useEnhancedHitlGmailExperiment', () => {
 	beforeEach(() => {
-		getVariant.mockReset();
+		isFeatureEnabled.mockReset();
 	});
 
 	it.each([
-		{ variant: ENHANCED_HITL_GMAIL_EXPERIMENT.variant, enabled: true },
-		{ variant: ENHANCED_HITL_GMAIL_EXPERIMENT.control, enabled: false },
-		{ variant: undefined, enabled: false },
-	])('returns $enabled when PostHog variant is $variant', ({ variant, enabled }) => {
-		getVariant.mockReturnValue(variant);
+		{ flag: true, enabled: true },
+		{ flag: false, enabled: false },
+	])('returns $enabled when PostHog flag is $flag', ({ flag, enabled }) => {
+		isFeatureEnabled.mockReturnValue(flag);
 
-		const { isFeatureEnabled } = useEnhancedHitlGmailExperiment();
+		const { isFeatureEnabled: result } = useEnhancedHitlGmailExperiment();
 
-		expect(isFeatureEnabled.value).toBe(enabled);
-		expect(getVariant).toHaveBeenCalledWith(ENHANCED_HITL_GMAIL_EXPERIMENT.name);
+		expect(result.value).toBe(enabled);
+		expect(isFeatureEnabled).toHaveBeenCalledWith(ENHANCED_HITL_GMAIL_EXPERIMENT.name);
 	});
 
 	it('registers the experiment for centralized enrollment tracking', () => {
