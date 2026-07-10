@@ -1,0 +1,17 @@
+{
+	"workflowPreview.ariaLabel.creating": "워크플로우 생성 중",
+	"workflowPreview.ariaLabel.preview": "워크플로우 미리보기",
+	"workflowPreview.ariaLabel.ready": "워크플로우 열기 준비 완료",
+	"workflowPreview.error.detailsUnavailable": "미리보기를 불러올 수 없습니다. n8n에서 워크플로우를 열어 확인해 주세요.",
+	"workflowPreview.error.invalidWorkflow": "워크플로우 데이터가 불완전하여 미리보기를 불러올 수 없습니다. n8n에서 워크플로우를 열어 확인해 주세요.",
+	"workflowPreview.error.previewUnavailable": "사용 중인 MCP 클라이언트가 워크플로우 미리보기를 지원하지 않는 것 같습니다. n8n에서 워크플로우를 열어 확인해 주세요.",
+	"workflowPreview.fallbackDescription": "n8n에서 워크플로우 보기",
+	"workflowPreview.frameTitle": "n8n 워크플로우 미리보기",
+	"workflowPreview.loadingPreview": "미리보기 불러오는 중",
+	"workflowPreview.nodeCount.many": "노드 {count}개",
+	"workflowPreview.nodeCount.one": "노드 1개",
+	"workflowPreview.openButton": "n8n에서 열기",
+	"workflowPreview.openButtonShort": "열기",
+	"workflowPreview.readyLabel": "워크플로우 생성됨",
+	"workflowPreview.untitledWorkflow": "제목 없는 워크플로우"
+}

@@ -1,6 +1,7 @@
 import { createI18n, useI18n as useVueI18n } from 'vue-i18n';
 
 import en from '../locales/en.json';
+import ko from '../locales/ko.json';
 
 /**
  * Locales bundled with MCP apps. When adding a new locale:
@@ -9,7 +10,7 @@ import en from '../locales/en.json';
  * Locale files use the same flat-key style as `@n8n/i18n` (e.g.
  * `workflowPreview.openButton`), namespaced by app.
  */
-export const SUPPORTED_LOCALES = ['en'] as const;
+export const SUPPORTED_LOCALES = ['en', 'ko'] as const;
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 
 export const DEFAULT_LOCALE: SupportedLocale = 'en';
@@ -21,7 +22,7 @@ export const i18n = createI18n<MessageSchema, SupportedLocale, false>({
 	legacy: false,
 	locale: DEFAULT_LOCALE,
 	fallbackLocale: DEFAULT_LOCALE,
-	messages: { en },
+	messages: { en, ko },
 	warnHtmlMessage: false,
 });
 
