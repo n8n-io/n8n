@@ -1,5 +1,5 @@
 {
-	"description": "Tolerance case: gold accepts {anchor: agent, embedsOther: true} (event-triggered agent with wf-tools) or {anchor: wf, embedsOther: true} (alert workflow whose investigation step is an embedded agent). Reasoning dominates but the event trigger makes either anchoring defensible; a fixed pipeline with no open-ended step is wrong. Ported from the intent-resolution spec (§5.6 agent-incident-investigator).",
+	"description": "Tolerance case: gold accepts {anchor: agent, embedsOther: true} (event-triggered agent with wf-tools) or {anchor: wf, embedsOther: true} (alert workflow whose investigation step is an embedded agent). Reasoning dominates but the event trigger makes either anchoring defensible; a fixed pipeline with no open-ended step is wrong.",
 	"conversation": [
 		{
 			"role": "user",

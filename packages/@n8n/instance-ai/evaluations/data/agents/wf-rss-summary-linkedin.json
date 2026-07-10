@@ -1,5 +1,5 @@
 {
-	"description": "Gold: {anchor: wf, embedsOther: false} — event-triggered pipeline with the LLM as a stateless summarizer; linear, no reasoning. Ported from the intent-resolution spec (§5.1 wf-rss-summary-linkedin).",
+	"description": "Gold: {anchor: wf, embedsOther: false} — event-triggered pipeline with the LLM as a stateless summarizer; linear, no reasoning.",
 	"conversation": [
 		{
 			"role": "user",

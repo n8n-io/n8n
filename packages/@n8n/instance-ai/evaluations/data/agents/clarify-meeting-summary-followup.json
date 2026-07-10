@@ -1,5 +1,5 @@
 {
-	"description": "Compound with a partial clarify, per part: 'summarize my meetings' is {anchor: wf, embedsOther: false} (bounded LLM summarization); 'follow up on action items' is needs-clarification (autonomy and channel unspecified). The agent must not let the clear part drag the vague part into a guessed design. Ported from the intent-resolution spec (§5.7 clarify-meeting-summary-followup).",
+	"description": "Compound with a partial clarify, per part: 'summarize my meetings' is {anchor: wf, embedsOther: false} (bounded LLM summarization); 'follow up on action items' is needs-clarification (autonomy and channel unspecified). The agent must not let the clear part drag the vague part into a guessed design.",
 	"conversation": [
 		{
 			"role": "user",

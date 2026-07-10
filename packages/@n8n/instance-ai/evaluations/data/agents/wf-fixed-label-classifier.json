@@ -1,5 +1,5 @@
 {
-	"description": "Gold: {anchor: wf, embedsOther: false} — LLM as fixed-label classifier feeding a deterministic move; the dissolved 'hybrid' family (classify-then-route stays a workflow with a bounded LLM step). Ported from the intent-resolution spec (§5.1 wf-fixed-label-classifier).",
+	"description": "Gold: {anchor: wf, embedsOther: false} — LLM as fixed-label classifier feeding a deterministic move; the dissolved 'hybrid' family (classify-then-route stays a workflow with a bounded LLM step).",
 	"conversation": [
 		{
 			"role": "user",

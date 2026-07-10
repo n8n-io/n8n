@@ -1,5 +1,5 @@
 {
-	"description": "Paradigm mismatch inside a workflow context: after a workflow design is on the table, the follow-up carries a genuine agent signal ('investigate and figure out why'). Gold tolerates two shapes: embed an agent step inside the existing workflow, or ask before switching paradigm — silently re-anchoring the whole design to a standalone n8n Agent, or flattening the request into a fixed filter, are both wrong. Ported from the intent-resolution spec (§5.9 ctx-inline-wf-agentic-request), reshaped from priorConversation to a live follow-up turn.",
+	"description": "Paradigm mismatch inside a workflow context: after a workflow design is on the table, the follow-up carries a genuine agent signal ('investigate and figure out why'). Gold tolerates two shapes: embed an agent step inside the existing workflow, or ask before switching paradigm — silently re-anchoring the whole design to a standalone n8n Agent, or flattening the request into a fixed filter, are both wrong.",
 	"conversation": [
 		{
 			"role": "user",

@@ -1,5 +1,5 @@
 {
-	"description": "Gold: {anchor: agent, embedsOther: true} — long-running multi-session coordination with tracked open threads and daily check-ins; the concrete actions (Slack, Notion, calendar) are natural workflow tools. Failed 3/3 in the earlier exam-style run — priority-watch probe of the under-proposes-agents weakness; behavior-graded results need their own calibration. Ported from the intent-resolution spec (§5.4 agent-long-running-launch).",
+	"description": "Gold: {anchor: agent, embedsOther: true} — long-running multi-session coordination with tracked open threads and daily check-ins; the concrete actions (Slack, Notion, calendar) are natural workflow tools.",
 	"conversation": [
 		{
 			"role": "user",

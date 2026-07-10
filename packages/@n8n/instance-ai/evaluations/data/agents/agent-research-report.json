@@ -1,5 +1,5 @@
 {
-	"description": "Tolerance case: gold accepts {anchor: agent, embedsOther: true} or {anchor: wf, embedsOther: true} — reasoning drives paper selection while report compilation is deterministic. Failed 3/3 in the earlier exam-style run, always on the embeds decision (2× {agent,false}, 1× {wf,false}), so the embeds expectation below is the load-bearing one; behavior-graded results need their own calibration. Ported from the intent-resolution spec (§5.6 agent-research-report).",
+	"description": "Tolerance case: gold accepts {anchor: agent, embedsOther: true} or {anchor: wf, embedsOther: true} — reasoning drives paper selection while report compilation is deterministic.",
 	"conversation": [
 		{
 			"role": "user",

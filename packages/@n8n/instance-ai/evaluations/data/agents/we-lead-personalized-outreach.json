@@ -1,5 +1,5 @@
 {
-	"description": "Gold: {anchor: wf, embedsOther: true} — deterministic per-lead loop plus enrichment; the personalized outreach draft requires weighing per-lead context, so it is an embedded agent step, not a bounded template fill. The implicit-embeds probe: the request never says 'agent' for the shell, only for the drafting. Ported from the intent-resolution spec (§5.2 we-lead-personalized-outreach).",
+	"description": "Gold: {anchor: wf, embedsOther: true} — deterministic per-lead loop plus enrichment; the personalized outreach draft requires weighing per-lead context, so it is an embedded agent step, not a bounded template fill. The implicit-embeds probe: the request never says 'agent' for the shell, only for the drafting.",
 	"conversation": [
 		{
 			"role": "user",

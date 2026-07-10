@@ -1,5 +1,5 @@
 {
-	"description": "Gold: {anchor: wf, embedsOther: false} — deterministic per-row calculation where auditability requires reproducibility; no AI step belongs in the design at all. Ported from the intent-resolution spec (§5.1 wf-payroll-net-pay).",
+	"description": "Gold: {anchor: wf, embedsOther: false} — deterministic per-row calculation where auditability requires reproducibility; no AI step belongs in the design at all.",
 	"conversation": [
 		{
 			"role": "user",

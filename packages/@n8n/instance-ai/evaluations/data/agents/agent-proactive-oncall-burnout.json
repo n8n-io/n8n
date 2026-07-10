@@ -1,5 +1,5 @@
 {
-	"description": "Gold: {anchor: agent, embedsOther: false or true} — proactive/heartbeat-driven: wakes on its own, checks paging state, decides whether and whom to reach out to. The agent-axes bucket the suite previously did not cover. Ported from the intent-resolution spec (§5.4 agent-proactive-oncall-burnout).",
+	"description": "Gold: {anchor: agent, embedsOther: false or true} — proactive/heartbeat-driven: wakes on its own, checks paging state, decides whether and whom to reach out to. The agent-axes bucket the suite previously did not cover.",
 	"conversation": [
 		{
 			"role": "user",

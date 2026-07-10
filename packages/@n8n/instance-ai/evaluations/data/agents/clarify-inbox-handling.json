@@ -1,5 +1,5 @@
 {
-	"description": "Gold: needs-clarification — 'handle my inbox' is under-specified on several anchor-deciding axes (scope, autonomy, interaction mode): filing rules, triage with judgment, or an autonomous replier are all defensible readings. Unlike clarify-important-emails (one axis), this probes multi-dimension clarification. Ported from the intent-resolution spec (§5.7 clarify-inbox-handling).",
+	"description": "Gold: needs-clarification — 'handle my inbox' is under-specified on several anchor-deciding axes (scope, autonomy, interaction mode): filing rules, triage with judgment, or an autonomous replier are all defensible readings. Unlike clarify-important-emails (one axis), this probes multi-dimension clarification.",
 	"conversation": [
 		{
 			"role": "user",

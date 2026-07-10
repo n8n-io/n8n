@@ -1,5 +1,5 @@
 {
-	"description": "Gold: out-of-scope — a product/definition question, not a build intent. The behavioral proof is that no build path triggers: the agent answers directly and loads no build skills. Whether intent-recognition itself loads is left unasserted (mirrors meta-what-can-you-build). Ported from the intent-resolution spec (§5.11 meta-wf-vs-agent).",
+	"description": "Gold: out-of-scope — a product/definition question, not a build intent. The behavioral proof is that no build path triggers: the agent answers directly and loads no build skills. Whether intent-recognition itself loads is left unasserted (mirrors meta-what-can-you-build).",
 	"conversation": [
 		{
 			"role": "user",

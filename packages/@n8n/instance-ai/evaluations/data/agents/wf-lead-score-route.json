@@ -1,5 +1,5 @@
 {
-	"description": "Gold: {anchor: wf, embedsOther: false} — bounded scoring feeding enumerable branches (notify sales / nurture email). Dissolved-hybrid family; 'how promising' tempts judgment framing, but a single bounded score decision suffices. Ported from the intent-resolution spec (§5.1 wf-lead-score-route).",
+	"description": "Gold: {anchor: wf, embedsOther: false} — bounded scoring feeding enumerable branches (notify sales / nurture email). Dissolved-hybrid family; 'how promising' tempts judgment framing, but a single bounded score decision suffices.",
 	"conversation": [
 		{
 			"role": "user",

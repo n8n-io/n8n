@@ -1,5 +1,5 @@
 {
-	"description": "Gold: {anchor: wf, embedsOther: true} — event trigger with a deterministic FAQ-match branch; only the complex-case branch is open-ended investigation, so the agent is embedded on one branch, not anchoring the design. Ported from the intent-resolution spec (§5.2 we-ticket-branch-agent).",
+	"description": "Gold: {anchor: wf, embedsOther: true} — event trigger with a deterministic FAQ-match branch; only the complex-case branch is open-ended investigation, so the agent is embedded on one branch, not anchoring the design.",
 	"conversation": [
 		{
 			"role": "user",

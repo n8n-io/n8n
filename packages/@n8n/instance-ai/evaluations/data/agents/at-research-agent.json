@@ -1,5 +1,5 @@
 {
-	"description": "Gold: {anchor: agent, embedsOther: true} — reasoning-dominated research assistant with explicitly reusable workflow tools (doc crawl, stats query). Second probe of the agent-side embeds_other=true shape. Ported from the intent-resolution spec (§5.5 at-research-agent).",
+	"description": "Gold: {anchor: agent, embedsOther: true} — reasoning-dominated research assistant with explicitly reusable workflow tools (doc crawl, stats query). Second probe of the agent-side embeds_other=true shape.",
 	"conversation": [
 		{
 			"role": "user",

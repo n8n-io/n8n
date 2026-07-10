@@ -1,5 +1,5 @@
 {
-	"description": "Gold: {anchor: wf, embedsOther: false} — seven steps but zero branches or reasoning; length is not autonomy. Complements adv-many-tools-still-wf (tool count) by probing step count. Ported from the intent-resolution spec (§5.1 wf-long-linear-order-fulfillment).",
+	"description": "Gold: {anchor: wf, embedsOther: false} — seven steps but zero branches or reasoning; length is not autonomy. Complements adv-many-tools-still-wf (tool count) by probing step count.",
 	"conversation": [
 		{
 			"role": "user",

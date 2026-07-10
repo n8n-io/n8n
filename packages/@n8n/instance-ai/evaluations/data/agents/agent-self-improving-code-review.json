@@ -1,5 +1,5 @@
 {
-	"description": "Gold: {anchor: agent, embedsOther: false or true} — skill accretion is first-class: the assistant learns from the team's past comments and improves over time, which no fixed workflow provides. Ported from the intent-resolution spec (§5.4 agent-self-improving-code-review).",
+	"description": "Gold: {anchor: agent, embedsOther: false or true} — skill accretion is first-class: the assistant learns from the team's past comments and improves over time, which no fixed workflow provides.",
 	"conversation": [
 		{
 			"role": "user",

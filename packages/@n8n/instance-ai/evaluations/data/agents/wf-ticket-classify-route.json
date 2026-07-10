@@ -1,5 +1,5 @@
 {
-	"description": "Gold: {anchor: wf, embedsOther: false} — two bounded LLM classifications (category, priority) feeding finite branches; no iterative reasoning. Dissolved-hybrid family. Ported from the intent-resolution spec (§5.1 wf-ticket-classify-route).",
+	"description": "Gold: {anchor: wf, embedsOther: false} — two bounded LLM classifications (category, priority) feeding finite branches; no iterative reasoning. Dissolved-hybrid family.",
 	"conversation": [
 		{
 			"role": "user",

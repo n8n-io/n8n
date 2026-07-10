@@ -1,5 +1,5 @@
 {
-	"description": "Gold: {anchor: wf, embedsOther: true} — scheduled shell with deterministic aggregation and email; the per-ticket root-cause cross-referencing is agentic tool use (docs + past tickets), so an agent is embedded per item. Ported from the intent-resolution spec (§5.2 we-weekly-feedback-investigation).",
+	"description": "Gold: {anchor: wf, embedsOther: true} — scheduled shell with deterministic aggregation and email; the per-ticket root-cause cross-referencing is agentic tool use (docs + past tickets), so an agent is embedded per item.",
 	"conversation": [
 		{
 			"role": "user",

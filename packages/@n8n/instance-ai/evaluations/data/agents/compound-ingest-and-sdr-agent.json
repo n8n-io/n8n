@@ -1,5 +1,5 @@
 {
-	"description": "Compound coupled via data, per part: ingestion is {anchor: wf, embedsOther: false}; the SDR part tolerates {anchor: agent, embedsOther: true} or {anchor: wf, embedsOther: true}. Harder than compound-weather-and-support-assistant: no numbering, the parts share the leads data, and only 'and separately' marks the split. The SDR part failed 3/3 in the earlier exam-style run — priority-watch probe; behavior-graded results need their own calibration. Ported from the intent-resolution spec (§5.10 compound-ingest-and-sdr-agent).",
+	"description": "Compound coupled via data, per part: ingestion is {anchor: wf, embedsOther: false}; the SDR part tolerates {anchor: agent, embedsOther: true} or {anchor: wf, embedsOther: true}. Harder than compound-weather-and-support-assistant: no numbering, the parts share the leads data, and only 'and separately' marks the split.",
 	"conversation": [
 		{
 			"role": "user",

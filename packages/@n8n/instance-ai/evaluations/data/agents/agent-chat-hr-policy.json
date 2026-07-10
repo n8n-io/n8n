@@ -1,5 +1,5 @@
 {
-	"description": "Gold: {anchor: agent, embedsOther: false or true} — multi-turn chat plus tool use; the HR-policy lookup may be a native capability or a workflow tool, so embeds tolerates both. Ported from the intent-resolution spec (§5.3 agent-chat-hr-policy).",
+	"description": "Gold: {anchor: agent, embedsOther: false or true} — multi-turn chat plus tool use; the HR-policy lookup may be a native capability or a workflow tool, so embeds tolerates both.",
 	"conversation": [
 		{
 			"role": "user",

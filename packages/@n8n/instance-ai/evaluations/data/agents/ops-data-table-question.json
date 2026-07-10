@@ -1,5 +1,5 @@
 {
-	"description": "Out-of-scope/ops rule from the intent-recognition skill, enacted: requests to operate on existing resources are not classified by the skill at all — they route through their normal paths. Doubles as the over-trigger guard: the intent gate must not fire on an operational question. Calibrated at N=3 (2026-07-08): 3/3 fully green.",
+	"description": "Out-of-scope/ops rule from the intent-recognition skill, enacted: requests to operate on existing resources are not classified by the skill at all — they route through their normal paths. Doubles as the over-trigger guard: the intent gate must not fire on an operational question.",
 	"conversation": [
 		{
 			"role": "user",

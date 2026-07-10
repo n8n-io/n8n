@@ -1,5 +1,5 @@
 {
-	"description": "Gold: {anchor: wf, embedsOther: false} — sentiment classification feeding a fixed two-way branch. Dissolved-hybrid family. Ported from the intent-resolution spec (§5.1 wf-review-sentiment-routing).",
+	"description": "Gold: {anchor: wf, embedsOther: false} — sentiment classification feeding a fixed two-way branch. Dissolved-hybrid family.",
 	"conversation": [
 		{
 			"role": "user",

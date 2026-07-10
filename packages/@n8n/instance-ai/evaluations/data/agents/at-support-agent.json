@@ -1,5 +1,5 @@
 {
-	"description": "Gold: {anchor: agent, embedsOther: true} — agent outer shell whose actions (lookup, refund, escalation) are explicitly first-class reusable workflows, also triggerable manually. The agent-side embeds_other=true shape, previously uncovered. Ported from the intent-resolution spec (§5.5 at-support-agent).",
+	"description": "Gold: {anchor: agent, embedsOther: true} — agent outer shell whose actions (lookup, refund, escalation) are explicitly first-class reusable workflows, also triggerable manually. The agent-side embeds_other=true shape, previously uncovered.",
 	"conversation": [
 		{
 			"role": "user",

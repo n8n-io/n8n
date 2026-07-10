@@ -1,5 +1,5 @@
 {
-	"description": "Tolerance case: gold accepts {anchor: agent, embedsOther: true} or {anchor: wf, embedsOther: true} — reasoning and prioritization dominate, buildable as an agent with workflow tools or a scheduled workflow with an embedded agent. Failed 2/3 in the earlier exam-style run — priority-watch probe; behavior-graded results need their own calibration. Ported from the intent-resolution spec (§5.6 agent-sales-prospecting).",
+	"description": "Tolerance case: gold accepts {anchor: agent, embedsOther: true} or {anchor: wf, embedsOther: true} — reasoning and prioritization dominate, buildable as an agent with workflow tools or a scheduled workflow with an embedded agent.",
 	"conversation": [
 		{
 			"role": "user",
