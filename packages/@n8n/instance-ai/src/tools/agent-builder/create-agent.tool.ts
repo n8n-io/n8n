@@ -20,7 +20,7 @@ export function createCreateAgentTool(context: InstanceAiContext) {
 				'Pass a short human-readable name. After this succeeds the agent is the active build ' +
 				'target for the rest of the conversation, so follow up by writing the agent config JSON ' +
 				'to a workspace file and calling build_agent with its filePath. ' +
-				'Returns { ok: true, agentId, name }.',
+				'Returns { ok: true, agentId, projectId, name }.',
 		)
 		.input(
 			z.object({
@@ -47,7 +47,12 @@ export function createCreateAgentTool(context: InstanceAiContext) {
 				};
 				// Persist so follow-up turns stay targeted at the same agent.
 				await saveAgentBuilderTarget(context, context.agentBuilderTarget);
-				return { ok: true as const, agentId: created.agentId, name: created.name };
+				return {
+					ok: true as const,
+					agentId: created.agentId,
+					projectId: created.projectId,
+					name: created.name,
+				};
 			} catch (e) {
 				return {
 					ok: false as const,

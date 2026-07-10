@@ -25,6 +25,8 @@ interface PgVectorRow {
 export type PgVectorStoreOptions = {
 	connectionString: string;
 	tableName: string;
+	/** Passed through to `pg.Pool` so an unreachable host fails fast instead of hanging. */
+	connectionTimeoutMillis?: number;
 };
 
 /**
@@ -234,7 +236,12 @@ export class PgVectorStore extends BaseVectorStore<PgVectorStoreOptions> {
 	private async getPool(): Promise<Pool> {
 		if (!this.pool) {
 			const { Pool: PoolCtor } = await import('pg');
-			this.pool = new PoolCtor({ connectionString: this.constructorOptions.connectionString });
+			this.pool = new PoolCtor({
+				connectionString: this.constructorOptions.connectionString,
+				...(this.constructorOptions.connectionTimeoutMillis
+					? { connectionTimeoutMillis: this.constructorOptions.connectionTimeoutMillis }
+					: {}),
+			});
 		}
 		return this.pool;
 	}

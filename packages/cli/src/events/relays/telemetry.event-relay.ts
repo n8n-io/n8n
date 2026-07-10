@@ -166,6 +166,8 @@ export class TelemetryEventRelay extends EventRelay {
 			'workflow-sharing-updated': (event) => this.workflowSharingUpdated(event),
 			'n8n-package-imported': (event) => this.packageImported(event),
 			'n8n-package-exported': (event) => this.packageExported(event),
+			'n8n-package-export-failed': (event) => this.packageExportFailed(event),
+			'n8n-package-import-failed': (event) => this.packageImportFailed(event),
 			'workflow-saved': async (event) => await this.workflowSaved(event),
 			'workflow-activated': async (event) => await this.workflowActivated(event),
 			'workflow-deactivated': (event) => this.workflowDeactivated(event),
@@ -1053,6 +1055,29 @@ export class TelemetryEventRelay extends EventRelay {
 			workflow_count: counts.workflows,
 			folder_count: counts.folders,
 			credential_count: counts.credentials,
+		});
+	}
+
+	private packageExportFailed({
+		user,
+		reason,
+		workflowIds,
+		folderIds,
+		projectIds,
+	}: RelayEventMap['n8n-package-export-failed']) {
+		this.telemetry.track('User package export failed', {
+			user_id: user.id,
+			reason,
+			workflow_count: workflowIds?.length ?? 0,
+			folder_count: folderIds?.length ?? 0,
+			project_count: projectIds?.length ?? 0,
+		});
+	}
+
+	private packageImportFailed({ user, reason }: RelayEventMap['n8n-package-import-failed']) {
+		this.telemetry.track('User package import failed', {
+			user_id: user.id,
+			reason,
 		});
 	}
 

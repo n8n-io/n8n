@@ -94,6 +94,18 @@ export interface ThreadRuntimeHooks {
 	onTitleUpdated: (threadId: string, title: string) => void;
 	/** A run finished — refresh the thread list to pick up server-generated titles. */
 	onRunFinish: () => void;
+	/** Thread-list metadata, used to enrich historical artifacts. */
+	getThreadMetadata?: (threadId: string) => Record<string, unknown> | undefined;
+}
+
+const AGENT_BUILDER_TARGET_METADATA_KEY = 'instanceAiAgentBuilderTarget';
+
+function getAgentBuilderTargetFromThreadMetadata(metadata: Record<string, unknown> | undefined) {
+	const raw = metadata?.[AGENT_BUILDER_TARGET_METADATA_KEY];
+	if (!raw || typeof raw !== 'object') return undefined;
+	const target = raw as Record<string, unknown>;
+	if (typeof target.agentId !== 'string' || typeof target.projectId !== 'string') return undefined;
+	return { agentId: target.agentId, projectId: target.projectId };
 }
 
 /** Walk an agent tree, collecting tool calls that have an active (pending) confirmation. */
@@ -368,6 +380,7 @@ export function createThreadRuntime(
 		() => messages.value,
 		(id) => workflowsListStore.getWorkflowById(id)?.name,
 		() => archivedWorkflowIds.value,
+		() => getAgentBuilderTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
 	);
 
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
