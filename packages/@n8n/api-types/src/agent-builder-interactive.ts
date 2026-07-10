@@ -3,9 +3,6 @@ import { z } from 'zod';
 import {
 	ASK_QUESTIONS_TOOL_NAME,
 	CONFIGURE_CHANNEL_TOOL_NAME,
-	channelResumeSchema,
-	credentialResumeSchema,
-	questionsResumeSchema,
 } from './agents/agent-interaction.schema';
 
 /**
@@ -88,7 +85,7 @@ export type AskCredentialInput = z.infer<typeof askCredentialInputSchema>;
  */
 
 // ---------------------------------------------------------------------------
-// Discriminated union of all resume payloads (used by AgentBuildResumeDto)
+// Cancellation
 // ---------------------------------------------------------------------------
 
 export const cancellationResumeSchema = z.object({
@@ -97,13 +94,3 @@ export const cancellationResumeSchema = z.object({
 });
 
 export type CancellationResumeData = z.infer<typeof cancellationResumeSchema>;
-
-export const interactiveResumeDataSchema = z.union([
-	askLlmResumeSchema,
-	credentialResumeSchema,
-	questionsResumeSchema,
-	channelResumeSchema,
-	cancellationResumeSchema,
-]);
-
-export type InteractiveResumeData = z.infer<typeof interactiveResumeDataSchema>;

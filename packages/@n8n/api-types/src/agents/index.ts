@@ -26,12 +26,10 @@ export {
 	askLlmResumeSchema,
 	askCredentialInputSchema,
 	cancellationResumeSchema,
-	interactiveResumeDataSchema,
 	type InteractiveToolName,
 	type AskLlmInput,
 	type AskLlmResume,
 	type AskCredentialInput,
 	type CancellationResumeData,
-	type InteractiveResumeData,
 } from '../agent-builder-interactive';
 export * from './agent-interaction.schema';
