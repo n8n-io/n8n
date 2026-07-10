@@ -265,6 +265,18 @@ titles, test descriptions, and Linear URLs.
 - **Linear references:** Never include the URL slug
   (e.g. `.../N8N-1234/fix-ssrf-vulnerability`).
 
+### Customer Confidentiality
+
+**This is a public repository.** Never mention customer names in any
+public-facing artifact — not all customers have agreed to be named publicly,
+and naming them can reveal security-relevant details about their setup.
+
+This applies to PR titles and descriptions, branch names, commit messages,
+code, code comments, test names and test data, and fixtures. When implementing
+a customer request, describe the use case neutrally (e.g. "a customer with a
+large multi-main setup", not the company name) and use generic placeholder
+names (e.g. `Acme Corp`) in tests and examples.
+
 ## Github Guidelines
 - When creating a PR, use the conventions in
   `.github/pull_request_template.md` and
