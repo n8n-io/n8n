@@ -229,11 +229,17 @@ export function mapGroupsToVueFlowNodes({
 
 		const nodesRect = computeNodesRectFromStore(group.nodeIds, getNodeById, getNodeDisplaySize);
 		const collapsed = isGroupCollapsed(group.id);
+		const memberNodes = group.nodeIds
+			.map(getNodeById)
+			.filter((node): node is INodeUi => node !== undefined);
 		const data: CanvasGroupNodeData = {
 			group,
 			nodesRect,
 			isCollapsed: collapsed,
 			executionStatus: aggregateGroupExecution(group.nodeIds, getNodeExecutionSnapshot),
+			// The hasNode guard above keeps memberNodes non-empty, so `every`
+			// can't be vacuously true here.
+			allNodesDisabled: memberNodes.every((node) => node.disabled === true),
 		};
 
 		const id = createCanvasGroupNodeId(group.id);

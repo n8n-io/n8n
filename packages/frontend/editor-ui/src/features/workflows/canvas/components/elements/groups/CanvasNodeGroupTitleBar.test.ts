@@ -258,6 +258,28 @@ describe('CanvasNodeGroupTitleBar', () => {
 		});
 	});
 
+	describe('deactivated state', () => {
+		it('shows the deactivated label next to the name when every member node is disabled', () => {
+			const wrapper = render({ data: makeData({ allNodesDisabled: true }) });
+			expect(wrapper.getByTestId('canvas-node-group-deactivated-label')).toHaveTextContent(
+				'(Deactivated)',
+			);
+		});
+
+		it('applies a hashed `deactivated` class for the toned-down title styling', () => {
+			const wrapper = render({ data: makeData({ allNodesDisabled: true }) });
+			const root = wrapper.getByTestId('canvas-node-group');
+			expect([...root.classList].some((c) => /deactivated/i.test(c))).toBe(true);
+		});
+
+		it('hides the deactivated label while any member node is enabled', () => {
+			const wrapper = render();
+			expect(wrapper.queryByTestId('canvas-node-group-deactivated-label')).toBeNull();
+			const root = wrapper.getByTestId('canvas-node-group');
+			expect([...root.classList].some((c) => /deactivated/i.test(c))).toBe(false);
+		});
+	});
+
 	describe('title rename + ungroup parity with old overlay', () => {
 		it('emits update:name on commit', async () => {
 			const wrapper = render({ data: makeData({ isCollapsed: false }) });

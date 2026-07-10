@@ -55,6 +55,7 @@ const isAutofocusReady = computed(
 );
 const isCollapsed = computed(() => props.data.isCollapsed);
 const executionStatus = computed(() => props.data.executionStatus);
+const allNodesDisabled = computed(() => props.data.allNodesDisabled ?? false);
 
 // Statuses rendered as a status mark; running/waiting render as the animated border.
 const MARK_STATUSES = ['success', 'error', 'warning'] as const;
@@ -65,6 +66,7 @@ const wrapperClasses = computed(() => [
 	{
 		[$style.collapsed]: isCollapsed.value,
 		[$style.selected]: props.selected,
+		[$style.deactivated]: allNodesDisabled.value,
 		[$style.success]: executionStatus.value === 'success',
 		[$style.error]: executionStatus.value === 'error',
 		[$style.warning]: executionStatus.value === 'warning',
@@ -278,6 +280,13 @@ function onWrapperPointerDown(event: PointerEvent) {
 								:placeholder="i18n.baseText('canvas.nodeGroup.titlePlaceholder')"
 								@update:model-value="onTitleUpdate"
 							/>
+							<div
+								v-if="allNodesDisabled"
+								:class="$style.deactivatedLabel"
+								data-test-id="canvas-node-group-deactivated-label"
+							>
+								({{ i18n.baseText('node.disabled') }})
+							</div>
 						</div>
 					</N8nTooltip>
 				</div>
@@ -406,8 +415,14 @@ function onWrapperPointerDown(event: PointerEvent) {
 	font-weight: var(--font-weight--medium);
 }
 
+.wrapper.deactivated .title {
+	color: var(--text-color--subtler);
+}
+
 .titleText {
-	display: block;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 	width: 100%;
 	min-width: 0;
 	max-width: 100%;
@@ -418,6 +433,11 @@ function onWrapperPointerDown(event: PointerEvent) {
 .inlineEdit {
 	width: fit-content;
 	max-width: 100%;
+}
+
+.deactivatedLabel {
+	flex-shrink: 0;
+	white-space: nowrap;
 }
 
 .statusIcons {

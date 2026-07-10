@@ -438,6 +438,36 @@ describe('mapGroupsToVueFlowNodes', () => {
 			height: 96,
 		});
 	});
+
+	it('marks the group deactivated when every member node is disabled', () => {
+		const getById = nodeStore(
+			{ ...makeNode('a', 100, 200), disabled: true },
+			{ ...makeNode('b', 400, 200), disabled: true },
+		);
+		const out = mapGroupsToVueFlowNodes({
+			allGroups: [group],
+			getNodeById: getById,
+			isGroupCollapsed: () => true,
+			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
+		});
+		expect(out[0].data?.allNodesDisabled).toBe(true);
+	});
+
+	it('does not mark the group deactivated while any member node is enabled', () => {
+		const getById = nodeStore(
+			{ ...makeNode('a', 100, 200), disabled: true },
+			makeNode('b', 400, 200),
+		);
+		const out = mapGroupsToVueFlowNodes({
+			allGroups: [group],
+			getNodeById: getById,
+			isGroupCollapsed: () => true,
+			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
+		});
+		expect(out[0].data?.allNodesDisabled).toBe(false);
+	});
 });
 
 describe('buildCollapsedGroupByNodeId', () => {
