@@ -22,20 +22,45 @@ const PRE_SCOPING_FULL_SCOPES = [
 ];
 
 /**
- * Rewrites OAuth grants that predate scoping so no runtime grandfathering
- * logic is needed: sentinel-scoped refresh tokens and authorization codes get
- * the frozen launch scope set, and all access tokens are deleted. Access
- * tokens are 1-hour JWTs whose `scope` claim cannot be rewritten; deleting the
- * rows makes verification fail so clients transparently refresh, and the
- * refreshed tokens carry a real scope claim.
+ * Moves OAuth grants that predate scoping onto explicit scopes so no runtime
+ * grandfathering logic is needed:
+ * - `oauth_user_consents` gets a NOT NULL `scope` column, with existing
+ *   consents backfilled to the frozen launch scope set;
+ * - sentinel-scoped refresh tokens and authorization codes get the same set;
+ * - all access tokens are deleted. They are 1-hour JWTs whose `scope` claim
+ *   cannot be rewritten; deleting the rows makes verification fail so clients
+ *   transparently refresh, and the refreshed tokens carry a real scope claim.
  */
-export class BackfillPreScopingOAuthGrantScopes1784000000048 implements IrreversibleMigration {
+export class BackfillPreScopingOAuthGrantScopes1784000000047 implements IrreversibleMigration {
 	async up(context: MigrationContext) {
+		await this.addConsentScopeColumn(context);
 		await this.rewriteSentinelRows(context, 'oauth_refresh_tokens', 'token');
 		await this.rewriteSentinelRows(context, 'oauth_authorization_codes', 'code');
 
 		const accessTokens = context.escape.tableName('oauth_access_tokens');
 		await context.runQuery(`DELETE FROM ${accessTokens}`);
+	}
+
+	private async addConsentScopeColumn({
+		schemaBuilder: { addColumns, addNotNull, column },
+		escape,
+		runQuery,
+	}: MigrationContext) {
+		await addColumns(
+			'oauth_user_consents',
+			[column('scope').json.comment('OAuth scopes granted on the consent screen')],
+			{ recreatesOnSqlite: true },
+		);
+
+		const table = escape.tableName('oauth_user_consents');
+		const scopeColumn = escape.columnName('scope');
+		await runQuery(`UPDATE ${table} SET ${scopeColumn} = :scope WHERE ${scopeColumn} IS NULL`, {
+			scope: JSON.stringify(PRE_SCOPING_FULL_SCOPES),
+		});
+
+		// No default on purpose: an insert that forgets the scope must fail
+		// instead of silently granting anything.
+		await addNotNull('oauth_user_consents', 'scope', { recreatesOnSqlite: true });
 	}
 
 	private async rewriteSentinelRows(
