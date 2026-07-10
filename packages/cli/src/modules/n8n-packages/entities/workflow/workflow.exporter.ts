@@ -1,6 +1,7 @@
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowSerializer } from './workflow.serializer';
 import type { PackageWriter } from '../../io/package-writer';
@@ -10,9 +11,8 @@ import { CredentialRequirementsExtractor } from '../credential/credential-requir
 import type { WorkflowCredentialRequirement } from '../credential/credential.types';
 import { DataTableRequirementsExtractor } from '../data-table/data-table-requirements.extractor';
 import type { WorkflowDataTableRequirement } from '../data-table/data-table.types';
+import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
 import type { WorkflowExportRequirements } from '../requirements.types';
-
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 export interface WorkflowExportRequest {
 	user: User;
@@ -45,7 +45,12 @@ export class WorkflowExporter {
 			{ includeParentFolder: true },
 		);
 
-		this.assertAllRequestedWorkflowsFound(request.workflowIds, workflows);
+		await assertEveryRequestedEntityAccessible(
+			'workflow',
+			request.workflowIds,
+			workflows,
+			async (ids) => await this.workflowFinder.findExistingWorkflowIds(ids),
+		);
 
 		const entries: ManifestEntry[] = [];
 		const credentials: WorkflowCredentialRequirement[] = [];
@@ -73,27 +78,5 @@ export class WorkflowExporter {
 		}
 
 		return { entries, requirements: { credentials, dataTables } };
-	}
-
-	private assertAllRequestedWorkflowsFound(
-		requestedWorkflowIds: string[],
-		foundWorkflows: Array<{ id: string }>,
-	) {
-		const foundWorkflowIds = new Set(foundWorkflows.map(({ id }) => id));
-		const missingWorkflowIds = requestedWorkflowIds.filter((id) => !foundWorkflowIds.has(id));
-
-		if (missingWorkflowIds.length > 0) {
-			const displayedWorkflowIds = missingWorkflowIds.slice(0, 20);
-			const omittedCount = missingWorkflowIds.length - displayedWorkflowIds.length;
-
-			throw new UserError(
-				`${missingWorkflowIds.length} workflow(s) not found or not accessible. Export aborted.`,
-				{
-					description: `Missing workflow IDs: ${displayedWorkflowIds.join(', ')}${
-						omittedCount > 0 ? `, and ${omittedCount} more` : ''
-					}`,
-				},
-			);
-		}
 	}
 }

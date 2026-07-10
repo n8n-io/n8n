@@ -5,20 +5,9 @@ import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
 /**
- * Base capability: per-user "private credentials" resolved through the seeded
- * system resolver. Enabled by either the private-credentials flag or the
- * superset dynamic-credentials flag.
- */
-function isPrivateCredentialsEnabled(): boolean {
-	return (
-		process.env.N8N_ENV_FEAT_PRIVATE_CREDENTIALS === 'true' ||
-		process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS === 'true'
-	);
-}
-
-/**
  * Superset capability: external/custom credential resolvers (OAuth/Slack) plus
- * their management surfaces and identity-extractor hooks.
+ * their management surfaces and identity-extractor hooks. The base "private
+ * credentials" capability is always on once the module is licensed.
  */
 function isExternalResolversEnabled(): boolean {
 	return process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS === 'true';
@@ -27,9 +16,6 @@ function isExternalResolversEnabled(): boolean {
 @BackendModule({ name: 'dynamic-credentials', licenseFlag: LICENSE_FEATURES.DYNAMIC_CREDENTIALS })
 export class DynamicCredentialsModule implements ModuleInterface {
 	async init() {
-		if (!isPrivateCredentialsEnabled()) {
-			return;
-		}
 		await import('./dynamic-credentials.controller');
 
 		// Import the n8n oauth extractor and seeder
@@ -79,9 +65,6 @@ export class DynamicCredentialsModule implements ModuleInterface {
 	}
 
 	async entities() {
-		if (!isPrivateCredentialsEnabled()) {
-			return [];
-		}
 		const { DynamicCredentialResolver } = await import('./database/entities/credential-resolver');
 		const { DynamicCredentialEntry } = await import('./database/entities/dynamic-credential-entry');
 		const { DynamicCredentialUserEntry } = await import(
@@ -92,9 +75,6 @@ export class DynamicCredentialsModule implements ModuleInterface {
 	}
 
 	async context() {
-		if (!isPrivateCredentialsEnabled()) {
-			return {};
-		}
 		const { CredentialCheckProxyService } = await import(
 			'./services/credential-check-proxy.service'
 		);

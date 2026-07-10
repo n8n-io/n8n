@@ -10,6 +10,7 @@ import {
 	type WorkflowEntity,
 	type WorkflowRepository,
 	GLOBAL_OWNER_ROLE,
+	In,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { type BinaryDataConfig, InstanceSettings } from 'n8n-core';
@@ -1073,7 +1074,7 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('private-credential-created', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith('User created private credential', {
+			expect(telemetry.track).toHaveBeenCalledWith('User created end-user credential', {
 				user_id: 'user123',
 				user_role: GLOBAL_OWNER_ROLE.slug,
 				credential_type: 'gmailOAuth2',
@@ -1098,7 +1099,7 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('private-credential-toggled-to-private', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith('User made credential private', {
+			expect(telemetry.track).toHaveBeenCalledWith('User made credential end-user', {
 				user_id: 'user123',
 				user_role: GLOBAL_OWNER_ROLE.slug,
 				credential_type: 'gmailOAuth2',
@@ -1121,7 +1122,7 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('private-credential-toggled-to-static', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith('User made credential static', {
+			expect(telemetry.track).toHaveBeenCalledWith('User made credential fixed', {
 				user_id: 'user123',
 				user_role: GLOBAL_OWNER_ROLE.slug,
 				credential_type: 'gmailOAuth2',
@@ -1144,7 +1145,7 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('private-credential-deleted', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith('User deleted private credential', {
+			expect(telemetry.track).toHaveBeenCalledWith('User deleted end-user credential', {
 				user_id: 'user123',
 				user_role: GLOBAL_OWNER_ROLE.slug,
 				credential_type: 'gmailOAuth2',
@@ -1163,7 +1164,7 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('private-credential-user-connected', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith('User connected to private credential', {
+			expect(telemetry.track).toHaveBeenCalledWith('User connected to end-user credential', {
 				user_id: 'user123',
 				user_role: undefined,
 				credential_type: 'gmailOAuth2',
@@ -1448,7 +1449,7 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
-		it('should track on `workflow-activated` event with source', () => {
+		it('should track on `workflow-activated` event with source', async () => {
 			const event: RelayEventMap['workflow-activated'] = {
 				user: {
 					id: 'user123',
@@ -1470,15 +1471,19 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('workflow-activated', event);
 
+			await flushPromises();
+
 			expect(telemetry.track).toHaveBeenCalledWith('User activated workflow', {
 				user_id: 'user123',
 				workflow_id: 'workflow123',
 				public_api: true,
 				source: 'api',
+				private_credentials_count: 0,
+				private_credential_types: [],
 			});
 		});
 
-		it('should default source to ui on `workflow-activated` event', () => {
+		it('should default source to ui on `workflow-activated` event', async () => {
 			const event: RelayEventMap['workflow-activated'] = {
 				user: {
 					id: 'user123',
@@ -1499,11 +1504,15 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('workflow-activated', event);
 
+			await flushPromises();
+
 			expect(telemetry.track).toHaveBeenCalledWith('User activated workflow', {
 				user_id: 'user123',
 				workflow_id: 'workflow123',
 				public_api: false,
 				source: 'ui',
+				private_credentials_count: 0,
+				private_credential_types: [],
 			});
 		});
 
@@ -1658,11 +1667,13 @@ describe('TelemetryEventRelay', () => {
 				user_id: 'user123',
 				version_cli: N8N_VERSION,
 				workflow_id: 'workflow123',
-				used_private_credentials: false,
+				used_end_user_credentials: false,
+				end_user_credentials_attempted_count: 0,
+				end_user_credentials_resolved_count: 0,
 			});
 		});
 
-		it('should set `used_private_credentials` when a private credential resolution was attempted but failed', async () => {
+		it('should set `used_end_user_credentials` when an end-user credential resolution was attempted but failed', async () => {
 			const event: RelayEventMap['workflow-post-execute'] = {
 				workflow: mock<IWorkflowDb>({
 					id: 'workflow123',
@@ -1689,7 +1700,49 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
-				expect.objectContaining({ used_private_credentials: true }),
+				expect.objectContaining({
+					used_end_user_credentials: true,
+					end_user_credentials_attempted_count: 1,
+					end_user_credentials_resolved_count: 0,
+				}),
+			);
+		});
+
+		it('should count attempted vs resolved end-user credentials and the effective resolver', async () => {
+			dynamicCredentialsProxy.getEffectiveResolverId.mockReturnValueOnce('system-n8n');
+
+			const event: RelayEventMap['workflow-post-execute'] = {
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					nodes: [],
+				}),
+				userId: 'user123',
+				executionId: 'execution123',
+				runData: {
+					data: {
+						resultData: {
+							runData: {
+								Slack: [{ attemptedDynamicCredentials: true, usedDynamicCredentials: true }],
+								// Attempted but not resolved (e.g. running user has not connected).
+								Notion: [{ attemptedDynamicCredentials: true }],
+							},
+						},
+					},
+				} as unknown as IRun,
+			};
+
+			eventService.emit('workflow-post-execute', event);
+
+			await flushPromises();
+
+			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					used_end_user_credentials: true,
+					end_user_credentials_attempted_count: 2,
+					end_user_credentials_resolved_count: 1,
+					credential_resolver_id: 'system-n8n',
+				}),
 			);
 		});
 
@@ -1731,6 +1784,8 @@ describe('TelemetryEventRelay', () => {
 				ai_builder_assisted: false,
 				identity_extractor_changed: false,
 				redaction_policy: undefined,
+				private_credentials_count: 0,
+				private_credential_types: [],
 				otel_workflow_custom_tags_count: 0,
 				otel_nodes_with_custom_tags_count: 0,
 				otel_node_custom_tags_count: 0,
@@ -1856,6 +1911,8 @@ describe('TelemetryEventRelay', () => {
 				credential_resolver_id: 'resolver-123',
 				identity_extractor_changed: false,
 				redaction_policy: undefined,
+				private_credentials_count: 0,
+				private_credential_types: [],
 				otel_workflow_custom_tags_count: 0,
 				otel_nodes_with_custom_tags_count: 0,
 				otel_node_custom_tags_count: 0,
@@ -1898,6 +1955,180 @@ describe('TelemetryEventRelay', () => {
 				'User saved workflow',
 				expect.objectContaining({
 					credential_resolver_id: 'system-resolver',
+				}),
+			);
+		});
+
+		it('should report private credential usage on `workflow-saved` event', async () => {
+			licenseState.isDynamicCredentialsLicensed.mockReturnValueOnce(true);
+			credentialsRepository.find.mockResolvedValueOnce([
+				mock<CredentialsEntity>({ id: 'cred-1', type: 'slackApi' }),
+				mock<CredentialsEntity>({ id: 'cred-2', type: 'notionApi' }),
+			]);
+
+			const event: RelayEventMap['workflow-saved'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					connections: {},
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Slack',
+							type: 'n8n-nodes-base.slack',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							credentials: { slackApi: { id: 'cred-1', name: 'Slack account' } },
+						},
+						{
+							id: 'node-2',
+							name: 'Notion',
+							type: 'n8n-nodes-base.notion',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							credentials: { notionApi: { id: 'cred-2', name: 'Notion account' } },
+						},
+					],
+				}),
+				publicApi: false,
+			};
+
+			eventService.emit('workflow-saved', event);
+
+			await flushPromises();
+
+			expect(credentialsRepository.find).toHaveBeenCalledWith({
+				where: { id: In(['cred-1', 'cred-2']), isResolvable: true },
+				select: ['id', 'type'],
+			});
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User saved workflow',
+				expect.objectContaining({
+					private_credentials_count: 2,
+					private_credential_types: ['slackApi', 'notionApi'],
+				}),
+			);
+		});
+
+		it('should report private credential usage on `workflow-activated` event', async () => {
+			licenseState.isDynamicCredentialsLicensed.mockReturnValueOnce(true);
+			credentialsRepository.find.mockResolvedValueOnce([
+				mock<CredentialsEntity>({ id: 'cred-1', type: 'slackApi' }),
+			]);
+
+			const event: RelayEventMap['workflow-activated'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				workflowId: 'workflow123',
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					connections: {},
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Slack',
+							type: 'n8n-nodes-base.slack',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							credentials: { slackApi: { id: 'cred-1', name: 'Slack account' } },
+						},
+					],
+				}),
+				publicApi: false,
+			};
+
+			eventService.emit('workflow-activated', event);
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User activated workflow',
+				expect.objectContaining({
+					private_credentials_count: 1,
+					private_credential_types: ['slackApi'],
+				}),
+			);
+		});
+
+		it('should count each private credential but de-duplicate types when several share a type', async () => {
+			licenseState.isDynamicCredentialsLicensed.mockReturnValueOnce(true);
+			credentialsRepository.find.mockResolvedValueOnce([
+				mock<CredentialsEntity>({ id: 'cred-1', type: 'slackApi' }),
+				mock<CredentialsEntity>({ id: 'cred-2', type: 'slackApi' }),
+				mock<CredentialsEntity>({ id: 'cred-3', type: 'notionApi' }),
+			]);
+
+			const event: RelayEventMap['workflow-saved'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					connections: {},
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Slack 1',
+							type: 'n8n-nodes-base.slack',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							credentials: { slackApi: { id: 'cred-1', name: 'Slack account 1' } },
+						},
+						{
+							id: 'node-2',
+							name: 'Slack 2',
+							type: 'n8n-nodes-base.slack',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							credentials: { slackApi: { id: 'cred-2', name: 'Slack account 2' } },
+						},
+						{
+							id: 'node-3',
+							name: 'Notion',
+							type: 'n8n-nodes-base.notion',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							credentials: { notionApi: { id: 'cred-3', name: 'Notion account' } },
+						},
+					],
+				}),
+				publicApi: false,
+			};
+
+			eventService.emit('workflow-saved', event);
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User saved workflow',
+				expect.objectContaining({
+					// Three credentials, but only two distinct types.
+					private_credentials_count: 3,
+					private_credential_types: ['slackApi', 'notionApi'],
 				}),
 			);
 		});
@@ -2056,6 +2287,39 @@ describe('TelemetryEventRelay', () => {
 				folder_count: 1,
 				credential_count: 2,
 				data_table_count: 1,
+			});
+		});
+
+		it('should track on `n8n-package-export-failed` event with entity counts and reason only, not ids', () => {
+			const event: RelayEventMap['n8n-package-export-failed'] = {
+				user: { id: 'user123' },
+				reason: 'access-denied',
+				workflowIds: ['wf1', 'wf2'],
+			};
+
+			eventService.emit('n8n-package-export-failed', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User package export failed', {
+				user_id: 'user123',
+				reason: 'access-denied',
+				workflow_count: 2,
+				folder_count: 0,
+				project_count: 0,
+			});
+		});
+
+		it('should track on `n8n-package-import-failed` event with reason only, no project/folder ids', () => {
+			const event: RelayEventMap['n8n-package-import-failed'] = {
+				user: { id: 'user123' },
+				reason: 'blocked',
+				projectId: 'proj1',
+			};
+
+			eventService.emit('n8n-package-import-failed', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User package import failed', {
+				user_id: 'user123',
+				reason: 'blocked',
 			});
 		});
 	});

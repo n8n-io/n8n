@@ -106,7 +106,11 @@ vi.mock('../components/AgentSubAgentsPanel.vue', () => ({
 }));
 
 vi.mock('../views/AgentSessionsListView.vue', () => ({
-	default: { name: 'AgentSessionsListView', props: ['embedded'], template: '<div />' },
+	default: {
+		name: 'AgentSessionsListView',
+		props: ['embedded', 'projectId', 'agentId', 'openSessionInNewTab'],
+		template: '<div />',
+	},
 }));
 
 // First mount of this SFC eats the Vite transform cost; give it headroom.
