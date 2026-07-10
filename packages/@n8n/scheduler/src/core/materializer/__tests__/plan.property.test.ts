@@ -15,6 +15,8 @@ const makeIntervalJob = (intervalSeconds: number): ScheduledJob => ({
 	timezone: null,
 	intervalSeconds,
 	fireAt: null,
+	recurrenceUnit: null,
+	recurrenceSize: null,
 	nextRunAt: NOW,
 	lastFiredAt: null,
 	maxAttempts: 1,
@@ -29,6 +31,8 @@ const makeCronJob = (cronExpression: string, timezone: string): ScheduledJob => 
 	timezone,
 	intervalSeconds: null,
 	fireAt: null,
+	recurrenceUnit: null,
+	recurrenceSize: null,
 	nextRunAt: NOW,
 	lastFiredAt: null,
 	maxAttempts: 1,
@@ -43,6 +47,8 @@ const makeOneOffJob = (fireAt: Date): ScheduledJob => ({
 	timezone: null,
 	intervalSeconds: null,
 	fireAt,
+	recurrenceUnit: null,
+	recurrenceSize: null,
 	// A fresh one-off job is due exactly at its fireAt: the materializer's
 	// index only ever surfaces it once that instant is reached.
 	nextRunAt: fireAt,
