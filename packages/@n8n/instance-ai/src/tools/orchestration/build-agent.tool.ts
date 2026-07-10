@@ -32,6 +32,7 @@ import {
 } from '../../stream/consume-with-hitl';
 import type { WorkSummary } from '../../stream/work-summary-accumulator';
 import type {
+	BuilderDelegateSession,
 	BuilderTurnStream,
 	InstanceAiBuilderDelegate,
 	InstanceAiContext,
@@ -323,7 +324,7 @@ async function runBuilderConsumeLoop(params: {
 	delegate: InstanceAiBuilderDelegate;
 	ctx: BuildAgentToolContext;
 	target: AgentBuilderTarget;
-	session: { threadId: string };
+	session: BuilderDelegateSession;
 	builderAgentId: string;
 	initialTurn: BuilderTurnStream;
 }): Promise<BuildAgentOutput> {
