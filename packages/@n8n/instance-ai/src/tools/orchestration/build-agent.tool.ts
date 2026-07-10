@@ -307,7 +307,7 @@ async function finishTurn(
 /**
  * Cap on ask_llm cancellation bounces (see below) per invocation of the
  * consume loop. Guards against a builder that keeps re-suspending ask_llm
- * (e.g. it never accepts the "ask in plain text" cancellation) bouncing
+ * (e.g. it never accepts the "ask via ask_questions" cancellation) bouncing
  * forever instead of terminating the turn.
  */
 const ASK_LLM_BOUNCE_LIMIT = 3;
@@ -381,7 +381,9 @@ async function runBuilderConsumeLoop(params: {
 					runId: open.runId,
 					toolCallId: open.toolCallId,
 					resumeData: builderCancellationResume(
-						'This chat cannot show the model picker; ask for provider, model, and credential in plain text.',
+						'This chat cannot show the model picker. Ask which provider and model to use ' +
+							'via the ask_questions tool (single-select options with a recommended ' +
+							'default), then call resolve_llm with the choice to resolve the credential.',
 					),
 				},
 				session,

@@ -514,8 +514,9 @@ describe('build-agent tool — interactive suspend/resume cascade', () => {
 				toolCallId: 'tc-1',
 				resumeData: {
 					_type: 'agent.cancellation',
-					message:
-						'This chat cannot show the model picker; ask for provider, model, and credential in plain text.',
+					// Steers the builder to the injected ask_questions HITL card instead
+					// of a plain-text question that would end the turn.
+					message: expect.stringContaining('via the ask_questions tool') as string,
 				},
 			},
 			{ threadId: 'ia-builder:thread-1:agent-1' },
