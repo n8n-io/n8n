@@ -8,7 +8,10 @@ import type { IWorkflowBase, Workflow } from 'n8n-workflow';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
+import * as WebhookHelpers from '@/webhooks/webhook-helpers';
+import type { WebhookService } from '@/webhooks/webhook.service';
 import type { WaitingWebhookRequest } from '@/webhooks/webhook.types';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 class TestWaitingWebhooks extends WaitingWebhooks {
 	exposeCreateWorkflow(workflowData: IWorkflowBase): Workflow {
@@ -19,6 +22,7 @@ class TestWaitingWebhooks extends WaitingWebhooks {
 describe('WaitingWebhooks', () => {
 	const SIGNING_SECRET = 'test-secret';
 	const executionRepository = mock<ExecutionRepository>();
+	const webhookService = mock<WebhookService>();
 	const mockInstanceSettings = mock<InstanceSettings>({
 		hmacSignatureSecret: SIGNING_SECRET,
 	});
@@ -26,7 +30,7 @@ describe('WaitingWebhooks', () => {
 		mock(),
 		mock(),
 		executionRepository,
-		mock(),
+		webhookService,
 		mockInstanceSettings,
 	);
 
@@ -96,6 +100,93 @@ describe('WaitingWebhooks', () => {
 		 * Assert
 		 */
 		await expect(promise).rejects.toThrowError(ConflictError);
+	});
+
+	it('rejects (does not hang) when executeWebhook throws before invoking the callback', async () => {
+		const executionId = 'test-execution-id';
+		const lastNodeExecuted = 'WaitNode';
+
+		const mockExecution = mock<IExecutionResponse>({
+			id: executionId,
+			status: 'waiting',
+			finished: false,
+			mode: 'manual',
+			data: {
+				executionData: {
+					nodeExecutionStack: [
+						{
+							node: {
+								name: lastNodeExecuted,
+								type: 'n8n-nodes-base.wait',
+								typeVersion: 1,
+								parameters: {},
+								id: 'node-id',
+								position: [0, 0],
+								disabled: false,
+							},
+							data: {},
+							source: null,
+						},
+					],
+				},
+				resultData: {
+					runData: {
+						[lastNodeExecuted]: [
+							{ startTime: 123, executionTime: 456, executionIndex: 0, source: [] },
+						],
+					},
+					lastNodeExecuted,
+				},
+			},
+			workflowData: {
+				id: 'workflow-id',
+				name: 'Test Workflow',
+				nodes: [
+					{
+						name: lastNodeExecuted,
+						type: 'n8n-nodes-base.wait',
+						typeVersion: 1,
+						parameters: {},
+						id: 'node-id',
+						position: [0, 0],
+					},
+				],
+				connections: {},
+				active: true,
+				settings: {},
+				staticData: {},
+			},
+		});
+		mockExecution.data.resultData.error = undefined;
+		mockExecution.data.validateSignature = undefined;
+		executionRepository.findSingleExecution.mockResolvedValue(mockExecution);
+
+		const preCallbackError = new Error('response option expression failed');
+		jest.spyOn(WebhookHelpers, 'executeWebhook').mockRejectedValue(preCallbackError);
+
+		webhookService.getNodeWebhooks.mockReturnValue([
+			{
+				httpMethod: 'POST',
+				path: '',
+				webhookDescription: {
+					restartWebhook: true,
+					httpMethod: 'POST',
+					name: 'default',
+					path: '',
+					nodeType: undefined,
+				} as any,
+			},
+		] as any);
+		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+
+		const mockReq = mock<WaitingWebhookRequest>({
+			params: { path: executionId, suffix: undefined },
+			method: 'POST',
+		});
+
+		await expect(waitingWebhooks.executeWebhook(mockReq, mock<express.Response>())).rejects.toBe(
+			preCallbackError,
+		);
 	});
 
 	describe('findAccessControlOptions', () => {

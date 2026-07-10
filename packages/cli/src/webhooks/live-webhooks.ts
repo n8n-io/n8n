@@ -151,7 +151,7 @@ export class LiveWebhooks implements IWebhookManager {
 
 			return await new Promise((resolve, reject) => {
 				const executionMode = 'webhook';
-				void WebhookHelpers.executeWebhook(
+				WebhookHelpers.executeWebhook(
 					workflow,
 					webhookData,
 					workflowData,
@@ -170,7 +170,7 @@ export class LiveWebhooks implements IWebhookManager {
 						await this.workflowStaticDataService.saveStaticData(workflow);
 						resolve(data);
 					},
-				);
+				).catch(reject); // ensure the Promise settles even if executeWebhook throws
 			});
 		} finally {
 			await workflow.expression.releaseIsolate();
