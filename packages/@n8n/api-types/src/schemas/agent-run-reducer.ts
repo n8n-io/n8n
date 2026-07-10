@@ -248,16 +248,18 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			// so no text renders twice. The log flushes a block immediately before
 			// the segment's next structural fact, so on replay the partial deltas
 			// are always the last text entry when this event arrives.
-			// responseId is optional (synthetic blocks and some provider streams
-			// carry none), so id equality alone cannot prove the entry is this
-			// block's open segment: the block must also textually extend it —
-			// deltas stream in order, so a genuine partial is always a prefix.
-			// Otherwise (e.g. two adjacent id-less blocks) append, never overwrite.
+			// Replace requires a PRESENT, matching responseId: id-less blocks
+			// (synthetic markers, backfill) have no identity to match on, so they
+			// always append — two of them can never overwrite each other. The
+			// block must also textually extend the entry (deltas stream in order,
+			// so a genuine partial is always a prefix); the same id reused with
+			// unrelated text is a new message, not the open segment.
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				const last = agent.timeline.at(-1);
 				const isOpenSegment =
 					last?.type === 'text' &&
+					event.responseId != null &&
 					last.responseId === event.responseId &&
 					event.payload.text.startsWith(last.content);
 				if (isOpenSegment && agent.textContent.endsWith(last.content)) {
@@ -275,8 +277,8 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 
 		case 'reasoning-block': {
 			// Coalesced reasoning segment from the durable log (replay path). Same
-			// replace semantics as text-block (including the prefix requirement,
-			// since ids are optional): the segment's open streamed deltas are its
+			// replace semantics as text-block (present matching responseId plus
+			// textual extension): the segment's open streamed deltas are its
 			// timeline entry, so REPLACE that entry and strip the partial text
 			// from the aggregate — no text renders twice.
 			const agent = ensureAgent(state, event.agentId);
@@ -284,6 +286,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				const last = agent.timeline.at(-1);
 				const isOpenSegment =
 					last?.type === 'reasoning' &&
+					event.responseId != null &&
 					last.responseId === event.responseId &&
 					event.payload.text.startsWith(last.content);
 				if (isOpenSegment && agent.reasoning.endsWith(last.content)) {
