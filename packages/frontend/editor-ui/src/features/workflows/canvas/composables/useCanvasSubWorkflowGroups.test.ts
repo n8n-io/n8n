@@ -1,4 +1,5 @@
 import { ref } from 'vue';
+import { flushPromises } from '@vue/test-utils';
 import type { INodeUi } from '@/Interface';
 import { EXECUTE_WORKFLOW_NODE_TYPE } from 'n8n-workflow';
 import type { CanvasConnection } from '../canvas.types';
@@ -8,9 +9,21 @@ import {
 	CANVAS_SUBWORKFLOW_GROUP_TYPE,
 	createCanvasSubWorkflowGroupNodeId,
 } from '../canvas.types';
-import { useCanvasSubWorkflowGroups } from './useCanvasSubWorkflowGroups';
+import { phantomDisplayName, useCanvasSubWorkflowGroups } from './useCanvasSubWorkflowGroups';
 
 const CURRENT_WORKFLOW_ID = 'current-wf';
+
+const fetchWorkflow = vi.fn();
+
+vi.mock('@/app/stores/workflowsList.store', () => ({
+	useWorkflowsListStore: () => ({ fetchWorkflow }),
+}));
+vi.mock('@/app/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: () => ({ getNodeType: () => undefined }),
+}));
+vi.mock('@/app/utils/nodeIcon', () => ({
+	getNodeIconSource: () => undefined,
+}));
 
 function executeSubWorkflowNode(id: string, name: string, workflowId: string): INodeUi {
 	return {
@@ -26,16 +39,20 @@ function executeSubWorkflowNode(id: string, name: string, workflowId: string): I
 	} as INodeUi;
 }
 
-function setup(nodes: INodeUi[]) {
+function setup(nodes: INodeUi[], options: { expandedHostIds?: string[] } = {}) {
+	const expanded = new Set(options.expandedHostIds ?? []);
 	return useCanvasSubWorkflowGroups({
 		nodes: ref(nodes),
-		getNodeDisplaySize: () => ({ width: 100, height: 100 }),
-		isGroupExpanded: () => false,
+		isGroupExpanded: (hostId) => expanded.has(hostId),
 		getCurrentWorkflowId: () => CURRENT_WORKFLOW_ID,
 	});
 }
 
 describe('useCanvasSubWorkflowGroups', () => {
+	beforeEach(() => {
+		fetchWorkflow.mockReset();
+	});
+
 	describe('host eligibility', () => {
 		it('treats an Execute Sub-workflow node with a static target as a group host', () => {
 			const { hostNodeIds, groupNodes } = setup([
@@ -131,6 +148,63 @@ describe('useCanvasSubWorkflowGroups', () => {
 			const [remapped] = remapBoundaryConnections([connection]);
 
 			expect(remapped).toBe(connection);
+		});
+	});
+
+	describe('expanded interior namespacing', () => {
+		// A sub-workflow node and a caller node can share a name. Connections are keyed
+		// by name, so interior ids/names are namespaced per host to avoid rewiring the
+		// caller's real edges when the group expands.
+		it('namespaces interior node ids, names, and connections per host', async () => {
+			fetchWorkflow.mockResolvedValue({
+				nodes: [
+					{
+						id: 'sub-trigger',
+						name: 'When Executed by Another Workflow',
+						type: 'n8n-nodes-base.executeWorkflowTrigger',
+						typeVersion: 1.1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'sub-shared',
+						name: 'Shared',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3.4,
+						position: [220, 0],
+						parameters: {},
+					},
+				],
+				connections: {
+					'When Executed by Another Workflow': {
+						main: [[{ node: 'Shared', type: 'main', index: 0 }]],
+					},
+				},
+			});
+
+			const { phantomNodes, phantomConnections } = setup(
+				[executeSubWorkflowNode('host-1', 'Call My Sub-workflow', 'target-1')],
+				{ expandedHostIds: ['host-1'] },
+			);
+			await flushPromises();
+
+			expect(fetchWorkflow).toHaveBeenCalledWith('target-1');
+
+			const sharedPhantom = phantomNodes.value.find((n) => n.name.endsWith(':Shared'));
+			expect(sharedPhantom).toBeDefined();
+			expect(sharedPhantom?.id).toBe('sub:host-1:sub-shared');
+			expect(sharedPhantom?.name).toBe('sub:host-1:Shared');
+			// The plain caller name is never used as a phantom key, so a real "Shared"
+			// node in the caller keeps its own connections.
+			expect(phantomConnections.value.Shared).toBeUndefined();
+			expect(
+				phantomConnections.value['sub:host-1:When Executed by Another Workflow'],
+			).toBeDefined();
+		});
+
+		it('phantomDisplayName strips the per-host namespace for display', () => {
+			expect(phantomDisplayName('sub:host-1:Shared')).toBe('Shared');
+			expect(phantomDisplayName('Shared')).toBe('Shared');
 		});
 	});
 });

@@ -20,6 +20,9 @@ export interface UseCanvasNodeGroupViewDeps {
 	onNodeGroupsChange: (handler: (event: NodeGroupChangeEvent) => void) => { off: () => void };
 	// Host override for group expansion; leaves persisted view state untouched.
 	getGroupExpansionMode?: () => GroupExpansionMode | undefined;
+	// Group ids expanded outside this view (e.g. sub-workflow groups) that should
+	// still drive the repositioning push. Not persisted here.
+	getExternalExpandedGroupIds?: () => string[];
 }
 
 export interface NodeGroupNodePosition {
@@ -95,7 +98,9 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 	const pushSourceGroupIds = computed(
 		() =>
 			new Set(
-				[...expandedIds.value].filter((groupId) => !disabledPushSourceGroupIds.value.has(groupId)),
+				[...expandedIds.value, ...(deps.getExternalExpandedGroupIds?.() ?? [])].filter(
+					(groupId) => !disabledPushSourceGroupIds.value.has(groupId),
+				),
 			),
 	);
 

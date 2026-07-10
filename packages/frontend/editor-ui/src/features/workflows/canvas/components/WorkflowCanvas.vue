@@ -27,6 +27,7 @@ import {
 } from '../composables/useCanvasMapping.groups';
 import { NodeGroupViewKey, useCanvasNodeGroupView } from '../composables/useCanvasNodeGroupView';
 import {
+	phantomDisplayName,
 	SubWorkflowGroupViewKey,
 	useCanvasSubWorkflowGroups,
 } from '../composables/useCanvasSubWorkflowGroups';
@@ -35,6 +36,8 @@ import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { SUB_WORKFLOW_GROUPS_EXPERIMENT } from '@/app/constants';
 
 defineOptions({
 	inheritAttrs: false,
@@ -93,18 +96,57 @@ onScopeDispose(() => renderDataScope?.stop());
 
 const { onNodesInitialized, viewport, viewportRef, getNodes, fitBounds } = useVueFlow(props.id);
 
-const nodes = computed(() => {
-	return props.showFallbackNodes
-		? [...workflowDocumentStore.value.allNodes, ...props.fallbackNodes]
-		: workflowDocumentStore.value.allNodes;
+const posthogStore = usePostHog();
+const isSubWorkflowGroupsEnabled = computed(() =>
+	posthogStore.isFeatureEnabled(SUB_WORKFLOW_GROUPS_EXPERIMENT.name),
+);
+
+// Sub-workflow group expansion is tracked in memory, keyed by host node id,
+// separately from real-group view state.
+const expandedSubWorkflowHostIds = ref(new Set<string>());
+const subWorkflowGroupView = {
+	isExpanded: (hostId: string) => expandedSubWorkflowHostIds.value.has(hostId),
+	toggle: (hostId: string) => {
+		const next = new Set(expandedSubWorkflowHostIds.value);
+		if (next.has(hostId)) next.delete(hostId);
+		else next.add(hostId);
+		expandedSubWorkflowHostIds.value = next;
+	},
+};
+provide(SubWorkflowGroupViewKey, subWorkflowGroupView);
+
+const subWorkflowGroups = useCanvasSubWorkflowGroups({
+	nodes: computed(() => workflowDocumentStore.value.allNodes),
+	isGroupExpanded: subWorkflowGroupView.isExpanded,
+	getCurrentWorkflowId: () => workflowDocumentStore.value.documentId.split('@')[0],
 });
-const connections = computed(() => workflowDocumentStore.value.connectionsBySourceNode);
+const subWorkflowHostIds = computed(() =>
+	isSubWorkflowGroupsEnabled.value ? subWorkflowGroups.hostNodeIds.value : new Set<string>(),
+);
+
+const nodes = computed(() => {
+	const base = props.showFallbackNodes
+		? [...workflowDocumentStore.value.allNodes, ...props.fallbackNodes]
+		: [...workflowDocumentStore.value.allNodes];
+	return isSubWorkflowGroupsEnabled.value
+		? [...base, ...subWorkflowGroups.phantomNodes.value]
+		: base;
+});
+const connections = computed(() =>
+	isSubWorkflowGroupsEnabled.value
+		? {
+				...workflowDocumentStore.value.connectionsBySourceNode,
+				...subWorkflowGroups.phantomConnections.value,
+			}
+		: workflowDocumentStore.value.connectionsBySourceNode,
+);
 
 const nodeGroupView = useCanvasNodeGroupView({
 	workflowId: () => workflowDocumentStore.value.documentId.split('@')[0],
 	getCurrentGroupIds: () => workflowDocumentStore.value.allGroups.map((group) => group.id),
 	onNodeGroupsChange: (handler) => workflowDocumentStore.value.onNodeGroupsChange(handler),
 	getGroupExpansionMode: () => props.groupExpansionMode,
+	getExternalExpandedGroupIds: () => [...expandedSubWorkflowHostIds.value],
 });
 
 // Keep the group view in sync with the currently displayed document
@@ -123,6 +165,32 @@ const suppressInteractionRef = computed(() => props.suppressInteraction ?? false
 const experimentalNdvStore = useExperimentalNdvStore();
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
 
+// Phantom nodes aren't in the document store, so overlay their render data
+// (icon/type and input/output ports) so the canvas renders them with proper
+// handles. Other render-data maps default to empty for read-only phantoms.
+const mergedRenderData = computed<CanvasRenderData>(() => {
+	const base = renderData.value;
+	const phantoms = subWorkflowGroups.phantomNodes.value;
+	if (!isSubWorkflowGroupsEnabled.value || phantoms.length === 0) return base;
+	const asRefs = <T,>(entries: Map<string, T>) =>
+		[...entries].map(([id, value]) => [id, computed(() => value)] as const);
+	return {
+		...base,
+		renderTypeByNodeId: new Map([
+			...base.renderTypeByNodeId,
+			...asRefs(subWorkflowGroups.phantomRenderById.value),
+		]),
+		nodeInputsByNodeId: new Map([
+			...base.nodeInputsByNodeId,
+			...asRefs(subWorkflowGroups.phantomInputsById.value),
+		]),
+		nodeOutputsByNodeId: new Map([
+			...base.nodeOutputsByNodeId,
+			...asRefs(subWorkflowGroups.phantomOutputsById.value),
+		]),
+	};
+});
+
 const {
 	nodes: mappedWorkflowNodes,
 	connections: mappedConnections,
@@ -131,35 +199,11 @@ const {
 } = useCanvasMapping({
 	nodes,
 	connections,
-	renderData,
+	renderData: mergedRenderData,
 	allGroups,
 	nodeGroupView,
 	isExperimentalNdvActive,
 });
-
-// Sub-workflow group expansion is tracked in memory, keyed by host node id,
-// separately from real-group view state.
-const expandedSubWorkflowHostIds = ref(new Set<string>());
-const subWorkflowGroupView = {
-	isExpanded: (hostId: string) => expandedSubWorkflowHostIds.value.has(hostId),
-	toggle: (hostId: string) => {
-		const next = new Set(expandedSubWorkflowHostIds.value);
-		if (next.has(hostId)) next.delete(hostId);
-		else next.add(hostId);
-		expandedSubWorkflowHostIds.value = next;
-	},
-};
-provide(SubWorkflowGroupViewKey, subWorkflowGroupView);
-
-const subWorkflowGroups = useCanvasSubWorkflowGroups({
-	nodes: computed(() => workflowDocumentStore.value.allNodes),
-	getNodeDisplaySize: (id) => nodeDisplaySizeById.value[id],
-	isGroupExpanded: subWorkflowGroupView.isExpanded,
-	getCurrentWorkflowId: () => workflowDocumentStore.value.documentId.split('@')[0],
-});
-const subWorkflowHostIds = computed(() =>
-	isCanvasNodeGroupingEnabled.value ? subWorkflowGroups.hostNodeIds.value : new Set<string>(),
-);
 
 const groupIdsToExpand = computed(() => {
 	switch (props.groupExpansionMode) {
@@ -184,18 +228,26 @@ function applyGroupExpansion() {
 
 watch(groupIdsToExpand, applyGroupExpansion, { immediate: true });
 
-const layoutComponents = computed(() =>
+const layoutComponents = computed(() => {
+	// Real groups always drive the push algorithm; expanded sub-workflow groups
+	// only join when the sub-workflow groups experiment is enabled.
+	const subGroups = isSubWorkflowGroupsEnabled.value ? subWorkflowGroups.layoutGroups.value : [];
+	const allLayoutGroups = [...workflowDocumentStore.value.allGroups, ...subGroups];
 	// Without groups there can be no pushes — skip building per-node components.
-	workflowDocumentStore.value.allGroups.length === 0
-		? []
-		: buildNodeGroupLayoutComponents({
-				allGroups: workflowDocumentStore.value.allGroups,
-				nodes: nodes.value,
-				getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
-				getNodeDisplaySize: (id) => nodeDisplaySizeById.value[id],
-				isGroupCollapsed: (id) => nodeGroupView.isGroupCollapsed(id),
-			}),
-);
+	if (allLayoutGroups.length === 0) return [];
+	const subHostIds = subWorkflowHostIds.value;
+	return buildNodeGroupLayoutComponents({
+		allGroups: allLayoutGroups,
+		nodes: nodes.value,
+		getNodeById: (id) =>
+			subWorkflowGroups.phantomById.value.get(id) ?? workflowDocumentStore.value.getNodeById(id),
+		getNodeDisplaySize: (id) => nodeDisplaySizeById.value[id],
+		isGroupCollapsed: (id) =>
+			subHostIds.has(id)
+				? !subWorkflowGroupView.isExpanded(id)
+				: nodeGroupView.isGroupCollapsed(id),
+	});
+});
 
 watch(layoutComponents, (components) => nodeGroupView.syncLayoutComponents(components), {
 	immediate: true,
@@ -215,18 +267,24 @@ const mappedGroupVueFlowNodes = computed(() =>
 
 const mappedNodes = computed(() => {
 	const hiddenHosts = subWorkflowHostIds.value;
-	const workflowNodes = hiddenHosts.size
-		? mappedWorkflowNodes.value.map((n) => (hiddenHosts.has(n.id) ? { ...n, hidden: true } : n))
-		: mappedWorkflowNodes.value;
+	const phantoms = subWorkflowGroups.phantomById.value;
+	const workflowNodes = mappedWorkflowNodes.value.map((n) => {
+		// Host nodes are replaced by their group; phantom labels drop the namespace.
+		if (hiddenHosts.has(n.id)) return { ...n, hidden: true };
+		if (phantoms.has(n.id) && typeof n.label === 'string') {
+			return { ...n, label: phantomDisplayName(n.label) };
+		}
+		return n;
+	});
 	return [
 		...workflowNodes,
 		...mappedGroupVueFlowNodes.value,
-		...(isCanvasNodeGroupingEnabled.value ? subWorkflowGroups.groupNodes.value : []),
+		...(isSubWorkflowGroupsEnabled.value ? subWorkflowGroups.groupNodes.value : []),
 	];
 });
 
 const mappedConnectionsWithBoundary = computed(() =>
-	isCanvasNodeGroupingEnabled.value
+	isSubWorkflowGroupsEnabled.value
 		? subWorkflowGroups.remapBoundaryConnections(mappedConnections.value)
 		: mappedConnections.value,
 );
@@ -325,7 +383,7 @@ defineExpose({
 				ref="canvas"
 				:nodes="executing ? mappedNodesThrottled : mappedNodes"
 				:connections="executing ? mappedConnectionsThrottled : mappedConnectionsWithBoundary"
-				:render-data="renderData"
+				:render-data="mergedRenderData"
 				:node-display-size-by-id="nodeDisplaySizeById"
 				:event-bus="eventBus"
 				:read-only="readOnly"
