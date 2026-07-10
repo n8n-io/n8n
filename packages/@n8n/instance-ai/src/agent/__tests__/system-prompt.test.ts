@@ -12,7 +12,7 @@ async function getSystemPromptWithEnabledModules(
 		process.env.N8N_ENABLED_MODULES = enabledModules;
 	}
 
-	const { getSystemPrompt: getSystemPromptFresh } = await import('../system-prompt');
+	const { getSystemPrompt: getSystemPromptFresh } = await import('../system-prompt.js');
 	return getSystemPromptFresh({});
 }
 
