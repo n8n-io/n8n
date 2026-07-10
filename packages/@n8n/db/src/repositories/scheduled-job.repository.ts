@@ -107,14 +107,20 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	}
 
 	/**
-	 * Insert new job rows and return the ids of the rows this call actually inserted,
-	 * in the same order as `jobs`.
+	 * Insert new job rows and return one id per input job, in the same order as
+	 * `jobs`, so the caller can zip the ids back to the jobs by index.
 	 * Must run inside a transaction.
 	 *
 	 * `orIgnore` emits `ON CONFLICT DO NOTHING` (Postgres) / `INSERT OR IGNORE`
 	 * (SQLite): a name already taken is left as-is rather than erroring, so two mains
 	 * activating the same node at once converge on one set of rows (the first
 	 * writer's, clock intact) instead of the second failing on the unique index.
+	 *
+	 * The ids are read back by name rather than from `RETURNING`: `RETURNING` omits
+	 * the rows `orIgnore` skipped, so a name a concurrent writer already inserted
+	 * would come back without an id. `name` is unique and every input job has a row
+	 * once the insert returns (ours, or the concurrent writer's), so the read-back
+	 * yields exactly one id per job.
 	 */
 	async insertMany(manager: EntityManager, jobs: NewScheduledJob[]): Promise<number[]> {
 		if (manager.queryRunner === undefined) {
@@ -125,19 +131,14 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		}
 		// `payload` is a free-form JSON column, which TypeORM's QueryDeepPartialEntity can't express,
 		// so the well-typed rows are cast at this boundary.
-		const insert = manager
+		await manager
 			.createQueryBuilder()
 			.insert()
 			.into(ScheduledJob)
 			.values(jobs as Array<QueryDeepPartialEntity<ScheduledJob>>)
-			.orIgnore();
+			.orIgnore()
+			.execute();
 
-		if (this.isPostgres) {
-			const result = await insert.returning('id, name').execute();
-			return orderIdsByName(idNameRows(result.raw), jobs);
-		}
-
-		await insert.execute();
 		const rows = await manager.find(ScheduledJob, {
 			where: { name: In(jobs.map((job) => job.name)) },
 			select: { id: true, name: true },
@@ -220,29 +221,21 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	}
 }
 
-/** Ids for `jobs`, in input order, from rows carrying their `{ id, name }`. */
+/**
+ * Ids for `jobs`, in input order, from rows carrying their `{ id, name }`.
+ * Throws on a name with no row: the caller zips the result back to `jobs` by
+ * index, so a gap would misalign every id after it.
+ */
 function orderIdsByName(
 	rows: Array<{ id: number; name: string }>,
 	jobs: NewScheduledJob[],
 ): number[] {
 	const idByName = new Map(rows.map((row) => [row.name, row.id]));
-	return jobs.map((job) => idByName.get(job.name)).filter((id): id is number => id !== undefined);
-}
-
-const isIdNameRow = (row: unknown): row is { id: number; name: string } =>
-	typeof row === 'object' &&
-	row !== null &&
-	'id' in row &&
-	typeof row.id === 'number' &&
-	'name' in row &&
-	typeof row.name === 'string';
-
-/** Narrow a driver's raw `RETURNING id, name` result to typed rows. */
-function idNameRows(raw: unknown): Array<{ id: number; name: string }> {
-	if (Array.isArray(raw) && raw.every(isIdNameRow)) {
-		return raw;
-	}
-	throw new UnexpectedError(
-		`Expected RETURNING to yield { id, name } rows; got ${JSON.stringify(raw)}`,
-	);
+	return jobs.map((job) => {
+		const id = idByName.get(job.name);
+		if (id === undefined) {
+			throw new UnexpectedError(`No row found for scheduled job "${job.name}" after insert`);
+		}
+		return id;
+	});
 }

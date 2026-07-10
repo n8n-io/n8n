@@ -83,7 +83,7 @@ describe('ScheduledJobRepository', () => {
 			expect(entityManager.createQueryBuilder).not.toHaveBeenCalled();
 		});
 
-		it('inserts with orIgnore and reads ids back by name on SQLite, in input order', async () => {
+		it('inserts with orIgnore and reads ids back by name, in input order', async () => {
 			const jobs = [newJob('wf:node:0'), newJob('wf:node:1')];
 			const qb = insertQb();
 			qb.execute.mockResolvedValue(undefined);
@@ -106,55 +106,53 @@ describe('ScheduledJobRepository', () => {
 			expect(ids).toEqual([10, 20]);
 		});
 
-		it('omits a name a concurrent writer already held (SQLite read-back misses it)', async () => {
+		it('reads ids back by name on Postgres too, without RETURNING', async () => {
 			const jobs = [newJob('wf:node:0'), newJob('wf:node:1')];
 			const qb = insertQb();
 			qb.execute.mockResolvedValue(undefined);
 			entityManager.createQueryBuilder.mockReturnValue(qb as never);
-			// Only one row comes back: the other name was already taken.
-			entityManager.find.mockResolvedValueOnce([{ id: 10, name: 'wf:node:0' } as ScheduledJob]);
-
-			const ids = await repository.insertMany(entityManager, jobs);
-
-			expect(ids).toEqual([10]);
-		});
-
-		it('uses RETURNING and orders ids by name on Postgres', async () => {
-			const jobs = [newJob('wf:node:0'), newJob('wf:node:1')];
-			const qb = insertQb();
-			qb.execute.mockResolvedValue({
-				raw: [
-					{ id: 20, name: 'wf:node:1' },
-					{ id: 10, name: 'wf:node:0' },
-				],
-			});
-			entityManager.createQueryBuilder.mockReturnValue(qb as never);
+			entityManager.find.mockResolvedValueOnce([
+				{ id: 10, name: 'wf:node:0' } as ScheduledJob,
+				{ id: 20, name: 'wf:node:1' } as ScheduledJob,
+			]);
 
 			const ids = await postgresRepository.insertMany(entityManager, jobs);
 
-			expect(qb.returning).toHaveBeenCalledWith('id, name');
-			expect(entityManager.find).not.toHaveBeenCalled();
+			expect(qb.returning).not.toHaveBeenCalled();
+			expect(entityManager.find).toHaveBeenCalledWith(ScheduledJob, {
+				where: { name: In(['wf:node:0', 'wf:node:1']) },
+				select: { id: true, name: true },
+			});
 			expect(ids).toEqual([10, 20]);
 		});
 
-		it('returns an empty array on Postgres when every insert conflicted (RETURNING empty)', async () => {
+		it('returns the id of a name a concurrent writer already held', async () => {
+			const jobs = [newJob('wf:node:0'), newJob('wf:node:1')];
 			const qb = insertQb();
-			qb.execute.mockResolvedValue({ raw: [] });
+			qb.execute.mockResolvedValue(undefined);
 			entityManager.createQueryBuilder.mockReturnValue(qb as never);
+			// `wf:node:1` was already held by another writer; orIgnore skipped our row,
+			// but the read-back still finds every input name (id 99 is the other writer's).
+			entityManager.find.mockResolvedValueOnce([
+				{ id: 10, name: 'wf:node:0' } as ScheduledJob,
+				{ id: 99, name: 'wf:node:1' } as ScheduledJob,
+			]);
 
-			const ids = await postgresRepository.insertMany(entityManager, [newJob('wf:node:0')]);
+			const ids = await repository.insertMany(entityManager, jobs);
 
-			expect(ids).toEqual([]);
+			expect(ids).toEqual([10, 99]);
 		});
 
-		it('throws when the Postgres RETURNING payload is not id/name rows', async () => {
+		it('throws when a name has no row after insert', async () => {
+			const jobs = [newJob('wf:node:0'), newJob('wf:node:1')];
 			const qb = insertQb();
-			qb.execute.mockResolvedValue({ raw: [{ unexpected: true }] });
+			qb.execute.mockResolvedValue(undefined);
 			entityManager.createQueryBuilder.mockReturnValue(qb as never);
+			// A name unexpectedly missing from the read-back must fail loud rather than
+			// return a short array that would misalign the caller's index-based zip.
+			entityManager.find.mockResolvedValueOnce([{ id: 10, name: 'wf:node:0' } as ScheduledJob]);
 
-			await expect(
-				postgresRepository.insertMany(entityManager, [newJob('wf:node:0')]),
-			).rejects.toThrow(UnexpectedError);
+			await expect(repository.insertMany(entityManager, jobs)).rejects.toThrow(UnexpectedError);
 		});
 	});
 
