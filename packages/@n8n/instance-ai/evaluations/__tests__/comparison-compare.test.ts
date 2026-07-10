@@ -1,22 +1,31 @@
 import { vi } from 'vitest';
 
-import { compareBuckets, type ExperimentBucket, type ScenarioCounts } from '../comparison/compare';
+import {
+	compareBuckets,
+	unitKeyOf,
+	type EvaluationUnitCounts,
+	type ExperimentBucket,
+} from '../comparison/compare';
 
 function bucket(
 	name: string,
-	scenarios: ScenarioCounts[],
+	units: EvaluationUnitCounts[],
 	categories?: { totals: Record<string, number>; trialTotal: number },
 ): ExperimentBucket {
 	return {
 		experimentName: name,
-		scenarios: new Map(scenarios.map((s) => [`${s.testCaseFile}/${s.scenarioName}`, s])),
+		evaluationUnits: new Map(units.map((u) => [unitKeyOf(u), u])),
 		failureCategoryTotals: categories?.totals,
 		trialTotal: categories?.trialTotal,
 	};
 }
 
-function s(file: string, scenario: string, passed: number, total: number): ScenarioCounts {
-	return { testCaseFile: file, scenarioName: scenario, passed, total };
+function s(file: string, scenario: string, passed: number, total: number): EvaluationUnitCounts {
+	return { kind: 'scenario', testCaseFile: file, name: scenario, passed, total };
+}
+
+function e(file: string, expectation: string, passed: number, total: number): EvaluationUnitCounts {
+	return { kind: 'expectation', testCaseFile: file, name: expectation, passed, total };
 }
 
 describe('compareBuckets', () => {
@@ -26,7 +35,7 @@ describe('compareBuckets', () => {
 
 		const result = compareBuckets(pr, base);
 
-		expect(result.scenarios).toHaveLength(2);
+		expect(result.evaluationUnits).toHaveLength(2);
 		expect(result.prOnly).toEqual([]);
 		expect(result.baselineOnly).toEqual([]);
 		expect(result.aggregate.intersectionSize).toBe(2);
@@ -38,10 +47,63 @@ describe('compareBuckets', () => {
 
 		const result = compareBuckets(pr, base);
 
-		expect(result.scenarios).toHaveLength(1);
-		expect(result.scenarios[0].testCaseFile).toBe('contact');
-		expect(result.baselineOnly).toEqual([{ testCaseFile: 'weather', scenarioName: 'happy' }]);
+		expect(result.evaluationUnits).toHaveLength(1);
+		expect(result.evaluationUnits[0].testCaseFile).toBe('contact');
+		expect(result.baselineOnly).toEqual([
+			{ kind: 'scenario', testCaseFile: 'weather', name: 'happy' },
+		]);
 		expect(result.prOnly).toEqual([]);
+	});
+
+	it('compares expectation units alongside scenarios and classifies them into tiers', () => {
+		const pr = bucket('pr', [
+			s('contact', 'happy', 10, 10),
+			e('contact', 'asks before building', 0, 10),
+		]);
+		const base = bucket('master', [
+			s('contact', 'happy', 10, 10),
+			e('contact', 'asks before building', 10, 10),
+		]);
+
+		const result = compareBuckets(pr, base);
+
+		expect(result.evaluationUnits).toHaveLength(2);
+		const expectationUnit = result.evaluationUnits.find((u) => u.kind === 'expectation');
+		expect(expectationUnit?.name).toBe('asks before building');
+		expect(expectationUnit?.verdict).toBe('hard_regression');
+		expect(result.aggregate.intersectionSize).toBe(2);
+	});
+
+	it('pools scenario and expectation trials into the aggregate', () => {
+		const pr = bucket('pr', [s('a', 'happy', 10, 10), e('a', 'no dead ends', 0, 10)]);
+		const base = bucket('master', [s('a', 'happy', 10, 10), e('a', 'no dead ends', 10, 10)]);
+
+		const result = compareBuckets(pr, base);
+
+		expect(result.aggregate.prAggregatePassRate).toBe(0.5);
+		expect(result.aggregate.baselineAggregatePassRate).toBe(1);
+	});
+
+	it('degrades expectations to prOnly against a baseline captured before expectation persistence', () => {
+		const pr = bucket('pr', [s('a', 'happy', 9, 10), e('a', 'asks first', 10, 10)]);
+		const base = bucket('master', [s('a', 'happy', 9, 10)]); // old baseline: scenarios only
+
+		const result = compareBuckets(pr, base);
+
+		expect(result.evaluationUnits).toHaveLength(1);
+		expect(result.evaluationUnits[0].kind).toBe('scenario');
+		expect(result.prOnly).toEqual([{ kind: 'expectation', testCaseFile: 'a', name: 'asks first' }]);
+		expect(result.aggregate.intersectionSize).toBe(1);
+	});
+
+	it('never collides a scenario and an expectation that share a name', () => {
+		const pr = bucket('pr', [s('a', 'happy', 10, 10), e('a', 'happy', 0, 10)]);
+		const base = bucket('master', [s('a', 'happy', 10, 10), e('a', 'happy', 10, 10)]);
+
+		const result = compareBuckets(pr, base);
+
+		expect(result.evaluationUnits).toHaveLength(2);
+		expect(result.evaluationUnits.map((u) => u.kind).sort()).toEqual(['expectation', 'scenario']);
 	});
 
 	it('aggregates only over the intersection, not over baseline-only or pr-only', () => {
@@ -55,7 +117,7 @@ describe('compareBuckets', () => {
 		expect(result.aggregate.intersectionSize).toBe(1);
 	});
 
-	it('sorts scenarios with regressions first, then improvements, then stable', () => {
+	it('sorts units with regressions first, then improvements, then stable', () => {
 		const pr = bucket('pr', [
 			s('a', 'stable', 10, 10),
 			s('b', 'regression', 0, 10),
@@ -68,7 +130,7 @@ describe('compareBuckets', () => {
 		]);
 
 		const result = compareBuckets(pr, base);
-		expect(result.scenarios.map((sc) => sc.scenarioName)).toEqual([
+		expect(result.evaluationUnits.map((sc) => sc.name)).toEqual([
 			'regression',
 			'improvement',
 			'stable',
@@ -80,7 +142,7 @@ describe('compareBuckets', () => {
 		const base = bucket('master', [s('contact', 'happy', 10, 10)]);
 
 		const result = compareBuckets(pr, base);
-		expect(result.scenarios[0].verdict).toBe('insufficient_data');
+		expect(result.evaluationUnits[0].verdict).toBe('insufficient_data');
 	});
 
 	it('returns no failure-category drift when either side lacks category totals', () => {
@@ -181,12 +243,12 @@ describe('compareBuckets', () => {
 		// Defaults: 5/10 vs 8/10 = -30pp drop, p ≈ 0.18 → soft_regression
 		// (passes soft maxPValue=0.20, soft minDelta=0.15, baseline 80% above soft 50%).
 		const defaults = compareBuckets(pr, base);
-		expect(defaults.scenarios[0].verdict).toBe('soft_regression');
+		expect(defaults.evaluationUnits[0].verdict).toBe('soft_regression');
 
 		// Stricter soft p-value cutoff excludes this case.
 		const stricter = compareBuckets(pr, base, {
 			soft: { maxPValue: 0.1, minDelta: 0.15, minBaselinePassRate: 0.5 },
 		});
-		expect(['stable', 'watch']).toContain(stricter.scenarios[0].verdict);
+		expect(['stable', 'watch']).toContain(stricter.evaluationUnits[0].verdict);
 	});
 });

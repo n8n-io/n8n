@@ -161,9 +161,9 @@ describe('domain tool construction', () => {
 			'n8n-connect': { id: 'n8n-connect' },
 		});
 
-		const { createWorkflowsTool } = await import('../workflows.tool');
-		const { createNodesTool } = await import('../nodes.tool');
-		const { createDataTablesTool } = await import('../data-tables.tool');
+		const { createWorkflowsTool } = await import('../workflows.tool.js');
+		const { createNodesTool } = await import('../nodes.tool.js');
+		const { createDataTablesTool } = await import('../data-tables.tool.js');
 		expect(createWorkflowsTool).toHaveBeenCalledWith(context, 'orchestrator');
 		expect(createNodesTool).toHaveBeenCalledWith(context);
 		expect(createDataTablesTool).toHaveBeenCalledWith(context);

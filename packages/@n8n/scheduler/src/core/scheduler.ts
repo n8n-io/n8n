@@ -5,7 +5,9 @@ import type { RetentionSummary } from './retention';
 import type { ClaimedTask } from './types';
 
 /**
- * The package's contract: everything a composed scheduler does.
+ * The package's contract towards a host: handlers in, lifecycle. In
+ * production this is all a scheduler is driven through; the loops behind
+ * {@link start} own the pass cadences.
  */
 export interface Scheduler {
 	/**
@@ -15,6 +17,25 @@ export interface Scheduler {
 	 */
 	registerTaskHandler(taskType: string, handler: TaskHandler): void;
 
+	/**
+	 * Start the periodic loops that drive the passes ({@link SchedulerPasses}),
+	 * each on its own jittered cadence. Idempotent. A stopped scheduler cannot
+	 * be started again.
+	 */
+	start(): void;
+
+	/**
+	 * Stop the loops, waiting out any in-flight pass, then cancel unfired
+	 * timers and release their claims (shutdown).
+	 */
+	stop(): Promise<void>;
+}
+
+/**
+ * Single-pass entry points, for tests and manual driving only. In production
+ * nothing outside the loops behind {@link Scheduler.start}.
+ */
+export interface SchedulerPasses {
 	/** One materializer pass: record upcoming occurrences of due jobs as tasks. */
 	materialize(): Promise<MaterializerSummary>;
 
@@ -29,7 +50,4 @@ export interface Scheduler {
 
 	/** One retention pass: delete finished tasks past their windows. */
 	prune(): Promise<RetentionSummary>;
-
-	/** Cancel unfired timers and release their claims (shutdown). */
-	stop(): Promise<void>;
 }

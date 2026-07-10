@@ -25,12 +25,16 @@ import PlanReviewPanel, { type PlannedTaskArg, type PlanReviewStatus } from './P
 import ReasoningBlock from './ReasoningBlock.vue';
 import TaskChecklist from './TaskChecklist.vue';
 import TimelineTextSegment from './TimelineTextSegment.vue';
-import ToolCallStep from './ToolCallStep.vue';
+import ToolResultJson from './ToolResultJson.vue';
+import ToolResultRenderer from './ToolResultRenderer.vue';
+import { N8nAiActivityStep as ToolCallStep } from '@n8n/design-system';
+import { useToolLabel } from '../toolLabels';
 
 const i18n = useI18n();
 const thread = useThread();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
+const { getToolLabel } = useToolLabel();
 
 /** Resolve artifact name from the enriched registry (falls back to extracted name). */
 function resolveArtifactName(artifact: ArtifactInfo): string {
@@ -313,9 +317,28 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 						toolCallsById[entry.toolCallId].isLoading
 					"
 				/>
-				<!-- Keep slot-free: slot children disable the props bailout and would
-					 re-render every step on each timeline render -->
-				<ToolCallStep v-else :tool-call="toolCallsById[entry.toolCallId]" :show-connector="true" />
+				<ToolCallStep
+					v-else
+					:label="
+						getToolLabel(
+							toolCallsById[entry.toolCallId].toolName,
+							toolCallsById[entry.toolCallId].args,
+						)
+					"
+					:loading="toolCallsById[entry.toolCallId].isLoading"
+					:error="toolCallsById[entry.toolCallId].error"
+				>
+					<ToolResultJson
+						v-if="toolCallsById[entry.toolCallId].args"
+						:value="toolCallsById[entry.toolCallId].args"
+					/>
+					<ToolResultRenderer
+						v-if="toolCallsById[entry.toolCallId].result !== undefined"
+						:result="toolCallsById[entry.toolCallId].result"
+						:tool-name="toolCallsById[entry.toolCallId].toolName"
+						:tool-args="toolCallsById[entry.toolCallId].args"
+					/>
+				</ToolCallStep>
 			</template>
 
 			<!-- Child agent — flat section. Running builder sub-agents are
@@ -351,9 +374,11 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 
 <style lang="scss" module>
 .timeline {
+	/** Keep in sync with the nested activity rail overshoot in N8nAiActivityStep. */
+	--n8n--ai-activity-step-gap: var(--spacing--2xs);
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	gap: var(--n8n--ai-activity-step-gap);
 }
 
 .timelineItem {

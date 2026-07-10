@@ -59,7 +59,7 @@ export function isStreamingTimelineEntry(
 }
 
 export interface ArtifactInfo {
-	type: 'workflow' | 'data-table';
+	type: 'workflow' | 'data-table' | 'agent';
 	resourceId: string;
 	name: string;
 	projectId?: string;
@@ -67,24 +67,26 @@ export interface ArtifactInfo {
 	completedAt?: string;
 }
 
-/** Extract all artifacts (workflows and data tables) from a node's tool calls. */
+/** Extract all artifacts (workflows, data tables, and agents) from a node's tool calls. */
 export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 	if (node.status !== 'completed') return [];
 
 	const artifacts: ArtifactInfo[] = [];
 	const seenIds = new Set<string>();
 
-	// Check targetResource first (single-workflow agents)
+	// Check targetResource first (single-resource agents)
 	if (node.targetResource?.id && node.targetResource.type) {
 		const type = node.targetResource.type;
-		if (type === 'workflow' || type === 'data-table') {
+		if (type === 'workflow' || type === 'data-table' || type === 'agent') {
 			seenIds.add(node.targetResource.id);
-			artifacts.push({
+			const artifact: ArtifactInfo = {
 				type,
 				resourceId: node.targetResource.id,
 				name: node.targetResource.name ?? node.subtitle ?? 'Untitled',
 				completedAt: undefined,
-			});
+			};
+			if (node.targetResource.projectId) artifact.projectId = node.targetResource.projectId;
+			artifacts.push(artifact);
 		}
 	}
 
@@ -141,6 +143,28 @@ export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 				resourceId: tableId,
 				name: tableName ?? 'Untitled',
 				projectId: tableProjectId,
+				completedAt: tc.completedAt,
+			});
+		}
+
+		if (
+			tc.toolName === 'agent_builder' &&
+			(tc.args as Record<string, unknown> | undefined)?.action === 'create_agent' &&
+			result.ok === true &&
+			typeof result.agentId === 'string' &&
+			!seenIds.has(result.agentId)
+		) {
+			seenIds.add(result.agentId);
+			artifacts.push({
+				type: 'agent',
+				resourceId: result.agentId,
+				name:
+					(typeof result.name === 'string' ? result.name : undefined) ??
+					(typeof (tc.args as Record<string, unknown>)?.name === 'string'
+						? ((tc.args as Record<string, unknown>).name as string)
+						: undefined) ??
+					'Untitled',
+				projectId: typeof result.projectId === 'string' ? result.projectId : undefined,
 				completedAt: tc.completedAt,
 			});
 		}

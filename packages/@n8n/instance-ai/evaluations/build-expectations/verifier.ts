@@ -39,10 +39,11 @@ const VERIFY_ATTEMPT_TIMEOUT_MS = 120_000;
 
 /**
  * Judge author-written natural-language expectations about the build conversation +
- * resulting workflow. Informational only — never feeds verify_pass@k. On judge failure
- * (errors or timeouts across all attempts) it returns `incomplete` verdicts so the report
- * stays complete while reading as "no verdict" rather than failures; callers additionally
- * guard with `.catch()`.
+ * resulting workflow. Verdicts are scored as units alongside execution scenarios
+ * (pass rates, gate) and are embedded in LangSmith run outputs for the baseline
+ * comparison. On judge failure (errors or timeouts across all attempts) it returns
+ * `incomplete` verdicts so the report stays complete while reading as "no verdict"
+ * rather than failures; callers additionally guard with `.catch()`.
  */
 export async function verifyBuildExpectations(
 	expectations: string[],
