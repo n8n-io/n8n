@@ -11,7 +11,7 @@ import type { ExecutionDataPayload, ExecutionRef } from './types';
 
 /**
  * Stores execution data bundles as JSON blobs. The `fs` backend is always
- * available; `s3` and `az` are registered at startup when configured.
+ * available, but `s3` and `az` are registered at startup only if configured.
  */
 @Service()
 export class ExecutionDataJsonStore extends JsonStore<ExecutionRef, ExecutionDataPayload> {

@@ -379,7 +379,10 @@ export abstract class BaseCommand<F = never> {
 		await objectStoreService.init();
 
 		const { S3ByteStore } = await import('@/blob-storage/s3-byte-store.ee');
-		Container.get(ExecutionDataJsonStore).registerByteStore('s3', Container.get(S3ByteStore));
+		Container.get(ExecutionDataJsonStore).registerByteStore(
+			's3',
+			new S3ByteStore(objectStoreService),
+		);
 
 		return objectStoreService;
 	}
@@ -394,7 +397,10 @@ export abstract class BaseCommand<F = never> {
 		await azureBlobService.init();
 
 		const { AzureByteStore } = await import('@/blob-storage/azure-byte-store.ee');
-		Container.get(ExecutionDataJsonStore).registerByteStore('az', Container.get(AzureByteStore));
+		Container.get(ExecutionDataJsonStore).registerByteStore(
+			'az',
+			new AzureByteStore(azureBlobService),
+		);
 
 		return azureBlobService;
 	}
