@@ -1070,6 +1070,27 @@ describe('createScheduler tracing', () => {
 		);
 	});
 
+	it('still errors the materialize span when a real failure races a graceful stop', async () => {
+		const { span, tracer } = makeTracer();
+		const controller = new AbortController();
+		const dbError = new Error('connection reset');
+		// Simulates a shutdown (aborts the signal) landing at the same instant as
+		// an unrelated transaction failure — the signal is aborted, but this
+		// error is not `signal.reason`, so it must not be read as the abort.
+		const materializerTransaction: RunInTransaction = () => {
+			controller.abort();
+			throw dbError;
+		};
+		const { scheduler } = makeScheduler({ tracer, materializerTransaction });
+
+		await expect(scheduler.materialize(controller.signal)).rejects.toBe(dbError);
+
+		expect(span.setStatus).toHaveBeenCalledWith(
+			expect.objectContaining({ code: SpanStatus.error }),
+		);
+		expect(span.setStatus).not.toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
 	it('records ok on a pass drained by a graceful stop, not a timeout', async () => {
 		const { span, tracer } = makeTracer();
 		const { scheduler, taskStore } = makeScheduler({ tracer });

@@ -267,7 +267,14 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 				recordMetric(() => metrics.recordMaterialized(summary.occurrences, summary.deferredJobs));
 				return summary;
 			} catch (error) {
-				if (signal?.aborted === true && signal.reason !== PASS_TIMED_OUT) {
+				// `throwIfAborted` always throws `signal.reason` itself, so this only
+				// swallows the abort: a real storage failure that happens to race a
+				// shutdown throws its own error, not `signal.reason`, and still propagates.
+				if (
+					signal?.aborted === true &&
+					signal.reason !== PASS_TIMED_OUT &&
+					error === signal.reason
+				) {
 					return { claimedJobs: 0, occurrences: 0, created: [], deferredJobs: 0 };
 				}
 				throw error;
