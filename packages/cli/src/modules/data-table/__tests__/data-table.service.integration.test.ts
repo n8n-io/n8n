@@ -9,21 +9,24 @@ import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { DataTableRow } from 'n8n-workflow';
 
-import { DataTableRowsRepository } from '../data-table-rows.repository';
-import { DataTableRepository } from '../data-table.repository';
-import { DataTableService } from '../data-table.service';
+import { DataTableRowsRepository } from '@n8n/data-table';
+import { DataTableRepository } from '@n8n/data-table';
+import { DataTableService } from '@n8n/data-table';
+import { DataTableCliBridge } from '@n8n/data-table';
+import { DataTableCliBridgeImpl } from '../data-table-cli-bridge.impl';
 import { mockDataTableSizeValidator } from './test-helpers';
-import { DataTableColumnNameConflictError } from '../errors/data-table-column-name-conflict.error';
-import { DataTableSystemColumnNameConflictError } from '../errors/data-table-system-column-name-conflict.error';
-import { DataTableColumnNotFoundError } from '../errors/data-table-column-not-found.error';
-import { DataTableNameConflictError } from '../errors/data-table-name-conflict.error';
-import { DataTableNotFoundError } from '../errors/data-table-not-found.error';
-import { DataTableValidationError } from '../errors/data-table-validation.error';
-import { toTableName } from '../utils/sql-utils';
+import { DataTableColumnNameConflictError } from '@n8n/data-table';
+import { DataTableSystemColumnNameConflictError } from '@n8n/data-table';
+import { DataTableColumnNotFoundError } from '@n8n/data-table';
+import { DataTableNameConflictError } from '@n8n/data-table';
+import { DataTableNotFoundError } from '@n8n/data-table';
+import { DataTableValidationError } from '@n8n/data-table';
+import { toTableName } from '@n8n/data-table';
 
 beforeAll(async () => {
 	await testModules.loadModules(['data-table']);
 	await testDb.init();
+	Container.set(DataTableCliBridge, Container.get(DataTableCliBridgeImpl));
 	mockDataTableSizeValidator();
 });
 

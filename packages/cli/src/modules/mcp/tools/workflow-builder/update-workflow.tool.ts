@@ -32,7 +32,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
-import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
+import type { DataTableUserOperations } from '@n8n/data-table';
 import type { NodeTypes } from '@/node-types';
 import type { TagService } from '@/services/tag.service';
 import type { UrlService } from '@/services/url.service';

@@ -6,7 +6,7 @@ import { DataSource } from '@n8n/typeorm';
 import { mkdir, rm, readdir, appendFile, readFile } from 'fs/promises';
 import { Cipher } from 'n8n-core';
 
-import { quoteIdentifier, toTableName } from '@/modules/data-table/utils/sql-utils';
+import { quoteIdentifier, toTableName } from '@n8n/data-table';
 import { compressFolder } from '@/utils/compression.util';
 import { validateDbTypeForExportEntities } from '@/utils/validate-database-type';
 

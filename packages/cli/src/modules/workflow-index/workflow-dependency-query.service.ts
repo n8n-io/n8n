@@ -16,7 +16,7 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import { DataTableRepository } from '@n8n/data-table';
 import { RoleService } from '@/services/role.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 

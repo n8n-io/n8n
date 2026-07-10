@@ -3,8 +3,8 @@ import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils'
 import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { DataTableRepository } from '../data-table.repository';
-import { DataTableService } from '../data-table.service';
+import { DataTableRepository } from '@n8n/data-table';
+import { DataTableService } from '@n8n/data-table';
 import { mockDataTableSizeValidator } from './test-helpers';
 
 beforeAll(async () => {

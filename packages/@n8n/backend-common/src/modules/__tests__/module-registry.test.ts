@@ -345,6 +345,27 @@ describe('initModules', () => {
 
 		expect(ModuleClass.init).not.toHaveBeenCalled();
 	});
+
+	it('runs pre-init hooks before module init, in registration order', async () => {
+		const calls: string[] = [];
+		const ModuleClass = { init: vi.fn().mockImplementation(() => calls.push('init')) };
+		const moduleMetadata = mock<ModuleMetadata>({
+			getEntries: vi.fn().mockReturnValue([['test-module', { class: ModuleClass }]]),
+		});
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
+
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		moduleRegistry.registerPreInitHook(() => {
+			calls.push('hook-1');
+		});
+		moduleRegistry.registerPreInitHook(async () => {
+			calls.push('hook-2');
+		});
+
+		await moduleRegistry.initModules('main');
+
+		expect(calls).toEqual(['hook-1', 'hook-2', 'init']);
+	});
 });
 
 describe('nodeLoaders', () => {

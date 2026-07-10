@@ -29,15 +29,7 @@ import {
 import { NextFunction, Response } from 'express';
 import { DataTableRowReturn } from 'n8n-workflow';
 
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import { ProjectService } from '@/services/project.service.ee';
-
+import { DataTableCliBridge } from './data-table-cli-bridge';
 import { DataTableService } from './data-table.service';
 import { DataTableColumnNameConflictError } from './errors/data-table-column-name-conflict.error';
 import { FileUploadError } from './errors/data-table-file-upload.error';
@@ -45,13 +37,20 @@ import { DataTableNameConflictError } from './errors/data-table-name-conflict.er
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableSystemColumnNameConflictError } from './errors/data-table-system-column-name-conflict.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
+import {
+	BadRequestError,
+	ConflictError,
+	DataTableResponseError,
+	ForbiddenError,
+	InternalServerError,
+	NotFoundError,
+} from './errors/response.error';
 
 @RestController('/projects/:projectId/data-tables')
 export class DataTableController {
 	constructor(
 		private readonly dataTableService: DataTableService,
-		private readonly projectService: ProjectService,
-		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
+		private readonly bridge: DataTableCliBridge,
 	) {}
 
 	private handleDataTableColumnOperationError(e: unknown): never {
@@ -65,7 +64,7 @@ export class DataTableController {
 		if (e instanceof DataTableValidationError) {
 			throw new BadRequestError(e.message);
 		}
-		if (e instanceof ResponseError) {
+		if (e instanceof DataTableResponseError) {
 			throw e;
 		}
 		if (e instanceof Error) {
@@ -75,8 +74,7 @@ export class DataTableController {
 	}
 
 	private checkInstanceWriteAccess(): void {
-		const preferences = this.sourceControlPreferencesService.getPreferences();
-		if (preferences.branchReadOnly) {
+		if (this.bridge.isBranchReadOnly()) {
 			throw new ForbiddenError(
 				'Cannot modify data tables on a protected instance. This instance is in read-only mode.',
 			);
@@ -91,7 +89,7 @@ export class DataTableController {
 	) {
 		try {
 			const { projectId } = req.params;
-			await this.projectService.getProject(projectId);
+			await this.bridge.assertProjectExists(projectId);
 			next();
 		} catch (e) {
 			res.status(404).send('Project not found');

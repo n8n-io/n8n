@@ -22,13 +22,13 @@ import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
 import type { IWorkflowWithVersionMetadata } from '@/interfaces';
-import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
-import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
 import {
+	type DataTableColumn,
+	DataTableDDLService,
 	normalizeUserRowValueForDatabase,
 	quoteIdentifier,
 	toTableName,
-} from '@/modules/data-table/utils/sql-utils';
+} from '@n8n/data-table';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { decompressFolder } from '@/utils/compression.util';
 import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';

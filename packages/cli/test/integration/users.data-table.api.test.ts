@@ -2,8 +2,8 @@ import { testDb, getPersonalProject } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { toTableName } from '@/modules/data-table/utils/sql-utils';
+import { DataTableRepository } from '@n8n/data-table';
+import { toTableName } from '@n8n/data-table';
 
 import { createDataTable } from './shared/db/data-tables';
 import { createMember, createOwner } from './shared/db/users';

@@ -15,6 +15,7 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { License } from '@/license';
 import { rawBodyReader, bodyParser } from '@/middlewares';
+import { registerModuleBridges } from '@/modules/module-bridges';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
 import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
@@ -130,6 +131,9 @@ export const setupTestServer = ({
 	// eslint-disable-next-line complexity
 	beforeAll(async () => {
 		if (modules) await testModules.loadModules(modules);
+		// Bind cli implementations for tokens declared by package-hosted modules,
+		// before `ModuleRegistry.initModules` runs (mirrors `command-registry`).
+		registerModuleBridges(Container.get(ModuleRegistry));
 		await testDb.init();
 
 		Container.get(GlobalConfig).userManagement.jwtSecret = 'My JWT secret';
@@ -339,7 +343,7 @@ export const setupTestServer = ({
 						break;
 
 					case 'data-table':
-						await import('@/modules/data-table/data-table.module');
+						await import('@n8n/data-table');
 						break;
 
 					case 'mcp':

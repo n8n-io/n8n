@@ -38,7 +38,7 @@ import {
 } from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
 import { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { DataTableProxyService } from '@n8n/data-table';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';

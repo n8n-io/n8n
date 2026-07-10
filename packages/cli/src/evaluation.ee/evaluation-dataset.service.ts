@@ -22,8 +22,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { type DataTableColumn, DataTableService } from '@n8n/data-table';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
 

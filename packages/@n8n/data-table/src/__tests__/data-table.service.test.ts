@@ -1,13 +1,12 @@
 import type { RenameDataTableColumnDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { mockInstance, testModules } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { ProjectRelationRepository, type User } from '@n8n/db';
 import type { DataTableInfoById } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 
-import { EventService } from '@/events/event.service';
-import { RoleService } from '@/services/role.service';
-
+import type { DataTableCliBridge } from '../data-table-cli-bridge';
 import type { DataTableColumn } from '../data-table-column.entity';
 import { DataTableColumnRepository } from '../data-table-column.repository';
 import { DataTableCsvImportService } from '../data-table-csv-import.service';
@@ -28,13 +27,8 @@ describe('DataTableService', () => {
 	let mockLogger: Mocked<Logger>;
 	let mockDataTableSizeValidator: Mocked<DataTableSizeValidator>;
 	let mockProjectRelationRepository: Mocked<ProjectRelationRepository>;
-	let mockRoleService: Mocked<RoleService>;
 	let mockCsvImportService: Mocked<DataTableCsvImportService>;
-	let mockEventService: Mocked<EventService>;
-
-	beforeAll(async () => {
-		await testModules.loadModules(['data-table']);
-	});
+	let mockBridge: MockProxy<DataTableCliBridge>;
 
 	beforeEach(() => {
 		mockDataTableRepository = mockInstance(DataTableRepository);
@@ -43,9 +37,8 @@ describe('DataTableService', () => {
 		mockLogger = mockInstance(Logger);
 		mockDataTableSizeValidator = mockInstance(DataTableSizeValidator);
 		mockProjectRelationRepository = mockInstance(ProjectRelationRepository);
-		mockRoleService = mockInstance(RoleService);
 		mockCsvImportService = mockInstance(DataTableCsvImportService);
-		mockEventService = mockInstance(EventService);
+		mockBridge = mock<DataTableCliBridge>();
 
 		// Mock the logger.scoped method to return the logger itself
 		mockLogger.scoped = vi.fn().mockReturnValue(mockLogger);
@@ -57,9 +50,8 @@ describe('DataTableService', () => {
 			mockLogger,
 			mockDataTableSizeValidator,
 			mockProjectRelationRepository,
-			mockRoleService,
 			mockCsvImportService,
-			mockEventService,
+			mockBridge,
 		);
 
 		vi.clearAllMocks();
@@ -399,7 +391,7 @@ describe('DataTableService', () => {
 				return cachedSizeData;
 			});
 			mockDataTableSizeValidator.sizeToState.mockReturnValue('ok');
-			mockRoleService.rolesWithScope.mockResolvedValue([]);
+			mockBridge.rolesWithProjectScope.mockResolvedValue([]);
 		});
 
 		it('should return all data tables for a global admin', async () => {
@@ -455,7 +447,7 @@ describe('DataTableService', () => {
 		it('should query accessible projects using the correct role scope', async () => {
 			// Arrange
 			const mockRoles = [{ slug: 'project:member' }] as any[];
-			mockRoleService.rolesWithScope.mockResolvedValue(mockRoles);
+			mockBridge.rolesWithProjectScope.mockResolvedValue(mockRoles);
 			const regularUser = {
 				id: 'user-regular',
 				role: { slug: 'global:member', scopes: [] },
@@ -466,9 +458,7 @@ describe('DataTableService', () => {
 			await dataTableService.getDataTablesSize(regularUser);
 
 			// Assert
-			expect(mockRoleService.rolesWithScope).toHaveBeenCalledWith('project', [
-				'dataTable:listProject',
-			]);
+			expect(mockBridge.rolesWithProjectScope).toHaveBeenCalledWith(['dataTable:listProject']);
 			expect(mockProjectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledWith(
 				regularUser.id,
 				mockRoles,

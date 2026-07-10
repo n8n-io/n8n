@@ -5,8 +5,8 @@ import { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { mockDataTableSizeValidator } from './test-helpers';
-import { DataTableService } from '../data-table.service';
-import { DataTableValidationError } from '../errors/data-table-validation.error';
+import { DataTableService } from '@n8n/data-table';
+import { DataTableValidationError } from '@n8n/data-table';
 
 beforeAll(async () => {
 	await testModules.loadModules(['data-table']);

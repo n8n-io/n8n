@@ -3,10 +3,10 @@ import { GLOBAL_OWNER_ROLE, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { DataTableCliBridge, DataTableProxyService, DataTableService } from '@n8n/data-table';
 import { createUser } from '@test-integration/db/users';
 
+import { DataTableCliBridgeImpl } from '../../data-table/data-table-cli-bridge.impl';
 import {
 	validateDataTableReferencesForUpdate,
 	validateDataTableReferencesForWorkflow,
@@ -15,6 +15,7 @@ import {
 beforeAll(async () => {
 	await testModules.loadModules(['data-table']);
 	await testDb.init();
+	Container.set(DataTableCliBridge, Container.get(DataTableCliBridgeImpl));
 });
 
 beforeEach(async () => {

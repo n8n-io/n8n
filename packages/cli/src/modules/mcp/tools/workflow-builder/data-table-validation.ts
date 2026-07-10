@@ -2,10 +2,7 @@ import type { ListDataTableQueryDto } from '@n8n/api-types';
 import type { INode } from 'n8n-workflow';
 import { isExpression, isResourceLocatorValue } from 'n8n-workflow';
 
-import {
-	isAllowedNode,
-	type DataTableUserOperations,
-} from '@/modules/data-table/data-table-proxy.service';
+import { isAllowedNode, type DataTableUserOperations } from '@n8n/data-table';
 
 export interface DataTableValidationFailure {
 	ok: false;

@@ -38,11 +38,14 @@ import path from 'path';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { IWorkflowToImport } from '@/interfaces';
-import { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
-import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
-import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { isValidColumnName, isValidDataTableId } from '@/modules/data-table/utils/sql-utils';
+import {
+	DataTableColumn,
+	DataTableColumnRepository,
+	DataTableDDLService,
+	DataTableRepository,
+	isValidColumnName,
+	isValidDataTableId,
+} from '@n8n/data-table';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { isUniqueConstraintError } from '@/response-helper';
 import { TagService } from '@/services/tag.service';

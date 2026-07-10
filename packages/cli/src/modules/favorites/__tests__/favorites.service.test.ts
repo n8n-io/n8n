@@ -11,7 +11,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import type { DataTableRepository } from '@n8n/data-table';
 
 import type { UserFavorite } from '../database/entities/user-favorite.entity';
 import type { UserFavoriteRepository } from '../database/repositories/user-favorite.repository';

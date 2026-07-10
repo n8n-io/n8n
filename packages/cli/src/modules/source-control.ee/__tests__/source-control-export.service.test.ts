@@ -23,7 +23,7 @@ import fsp from 'node:fs/promises';
 vi.mock('node:fs/promises');
 import { captor, mock } from 'vitest-mock-extended';
 
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import type { DataTableRepository } from '@n8n/data-table';
 
 import type { VariablesService } from '../../../environments.ee/variables/variables.service.ee';
 import { SourceControlExportService } from '../source-control-export.service.ee';

@@ -1,6 +1,6 @@
 import { Container } from '@n8n/di';
 
-import { DataTableSizeValidator } from '../data-table-size-validator.service';
+import { DataTableSizeValidator } from '@n8n/data-table';
 
 export function mockDataTableSizeValidator() {
 	const sizeValidator = Container.get(DataTableSizeValidator);

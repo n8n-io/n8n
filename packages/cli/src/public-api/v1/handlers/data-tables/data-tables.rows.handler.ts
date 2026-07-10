@@ -9,9 +9,11 @@ import { Container } from '@n8n/di';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { DataTableService } from '@/modules/data-table/data-table.service';
-import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
-import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
+import {
+	DataTableNotFoundError,
+	DataTableService,
+	DataTableValidationError,
+} from '@n8n/data-table';
 
 import type { DataTableRequest } from '../../../types';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';

@@ -12,15 +12,19 @@ import { Container } from '@n8n/di';
 import { Telemetry } from '@/telemetry';
 import { createUser } from '@test-integration/db/users';
 
-import { DataTableSizeValidator } from '../data-table-size-validator.service';
-import { DataTableRepository } from '../data-table.repository';
-import { DataTableService } from '../data-table.service';
-import { DataTableValidationError } from '../errors/data-table-validation.error';
+import { DataTableSizeValidator } from '@n8n/data-table';
+import { DataTableCliBridge } from '@n8n/data-table';
+import { DataTableRepository } from '@n8n/data-table';
+
+import { DataTableCliBridgeImpl } from '../data-table-cli-bridge.impl';
+import { DataTableService } from '@n8n/data-table';
+import { DataTableValidationError } from '@n8n/data-table';
 
 beforeAll(async () => {
 	mockInstance(Telemetry);
 	await testModules.loadModules(['data-table']);
 	await testDb.init();
+	Container.set(DataTableCliBridge, Container.get(DataTableCliBridgeImpl));
 });
 
 beforeEach(async () => {

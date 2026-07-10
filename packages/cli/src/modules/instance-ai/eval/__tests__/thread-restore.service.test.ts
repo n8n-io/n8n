@@ -2,8 +2,8 @@ import type { Project, SharedWorkflowRepository, WorkflowRepository } from '@n8n
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { DataTable } from '@/modules/data-table/data-table.entity';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
+import type { DataTable } from '@n8n/data-table';
+import type { DataTableService } from '@n8n/data-table';
 
 import { EvalThreadRestoreService } from '../thread-restore.service';
 

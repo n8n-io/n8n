@@ -9,8 +9,8 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
+import type { DataTableColumn } from '@n8n/data-table';
+import type { DataTableService } from '@n8n/data-table';
 import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
 

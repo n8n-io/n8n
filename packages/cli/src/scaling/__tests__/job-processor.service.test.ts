@@ -28,7 +28,7 @@ import { VariablesService } from '@/environments.ee/variables/variables.service.
 import { ExternalHooks } from '@/external-hooks';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { ManualExecutionService } from '@/manual-execution.service';
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { DataTableProxyService } from '@n8n/data-table';
 import type { NodeTypes } from '@/node-types';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';

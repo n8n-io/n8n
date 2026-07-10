@@ -13,6 +13,14 @@ import type { ModuleName } from './modules.config';
 import { LicenseState } from '../license-state';
 import { Logger } from '../logging/logger';
 
+function isModuleNotFoundError(error: unknown): boolean {
+	return (
+		error instanceof Error &&
+		'code' in error &&
+		(error.code === 'MODULE_NOT_FOUND' || error.code === 'ERR_MODULE_NOT_FOUND')
+	);
+}
+
 @Service()
 export class ModuleRegistry {
 	readonly entities: EntityClass[] = [];
@@ -65,6 +73,17 @@ export class ModuleRegistry {
 
 	private readonly activeModules: string[] = [];
 
+	/**
+	 * Hooks run once at the start of `initModules`, before any module's `init`.
+	 * Lets higher-level packages (e.g. cli) bind dependencies that package-hosted
+	 * modules declare as abstract DI tokens but cannot implement themselves.
+	 */
+	private readonly preInitHooks: Array<() => Promise<void> | void> = [];
+
+	registerPreInitHook(hook: () => Promise<void> | void) {
+		this.preInitHooks.push(hook);
+	}
+
 	get eligibleModules(): ModuleName[] {
 		const { enabledModules, disabledModules } = this.modulesConfig;
 
@@ -87,6 +106,7 @@ export class ModuleRegistry {
 	 */
 	async loadModules(modules?: ModuleName[]) {
 		let modulesDir: string;
+		let packageResolveBase: string;
 
 		try {
 			// docker + tests
@@ -95,31 +115,16 @@ export class ModuleRegistry {
 			const srcDirExists = existsSync(path.join(n8nRoot, 'src'));
 			const dir = process.env.NODE_ENV === 'test' && srcDirExists ? 'src' : 'dist';
 			modulesDir = path.join(n8nRoot, dir, 'modules');
+			packageResolveBase = n8nRoot;
 		} catch {
 			// local dev
 			// n8n binary is inside the bin folder, so we need to go up two levels
 			modulesDir = path.resolve(process.argv[1], '../../dist/modules');
+			packageResolveBase = path.resolve(process.argv[1], '../..');
 		}
 
 		for (const moduleName of modules ?? this.eligibleModules) {
-			try {
-				await import(`${modulesDir}/${moduleName}/${moduleName}.module`);
-			} catch (primaryError) {
-				try {
-					await import(`${modulesDir}/${moduleName}.ee/${moduleName}.module`);
-				} catch (error) {
-					const loggedError =
-						primaryError instanceof Error &&
-						'code' in primaryError &&
-						primaryError.code !== 'MODULE_NOT_FOUND'
-							? primaryError
-							: error;
-					throw new MissingModuleError(
-						moduleName,
-						loggedError instanceof Error ? loggedError.message : '',
-					);
-				}
-			}
+			await this.importModuleEntrypoint(moduleName, modulesDir, packageResolveBase);
 		}
 
 		for (const ModuleClass of this.moduleMetadata.getClasses()) {
@@ -136,6 +141,52 @@ export class ModuleRegistry {
 	}
 
 	/**
+	 * Imports a module's entrypoint, firing its `@BackendModule` decorator.
+	 *
+	 * Resolution order: in-tree (`<cli>/dist/modules/<name>/<name>.module`), its
+	 * `.ee` variant, then a package-hosted module at `@n8n/<name>` exposing a
+	 * `./module` export. The package is resolved from the n8n (cli) root so this
+	 * low-level package needs no static dependency on the module package.
+	 */
+	private async importModuleEntrypoint(
+		moduleName: ModuleName,
+		modulesDir: string,
+		packageResolveBase: string,
+	) {
+		const attempts: Array<() => Promise<unknown>> = [
+			async () => await import(`${modulesDir}/${moduleName}/${moduleName}.module`),
+			async () => await import(`${modulesDir}/${moduleName}.ee/${moduleName}.module`),
+			async () => {
+				const entrypoint = require.resolve(`@n8n/${moduleName}/module`, {
+					paths: [packageResolveBase],
+				});
+				return await import(entrypoint);
+			},
+		];
+
+		let significantError: unknown;
+		for (const attempt of attempts) {
+			try {
+				await attempt();
+				return;
+			} catch (error) {
+				// A genuine load error (module found but failed to import) outranks a
+				// "not found" from a resolution path that simply does not apply.
+				if (isModuleNotFoundError(error)) {
+					significantError ??= error;
+				} else {
+					significantError = error;
+				}
+			}
+		}
+
+		throw new MissingModuleError(
+			moduleName,
+			significantError instanceof Error ? significantError.message : '',
+		);
+	}
+
+	/**
 	 * Calls `init` on each eligible module.
 	 *
 	 * This will do things like registering routes, setup timers or other module
@@ -144,6 +195,10 @@ export class ModuleRegistry {
 	 * `ModuleRegistry.loadModules` must have been called before.
 	 */
 	async initModules(instanceType: InstanceType) {
+		for (const hook of this.preInitHooks) {
+			await hook();
+		}
+
 		for (const [moduleName, moduleEntry] of this.moduleMetadata.getEntries()) {
 			const { licenseFlag, instanceTypes, class: ModuleClass } = moduleEntry;
 

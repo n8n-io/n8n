@@ -10,11 +10,13 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { DataTableService } from '@/modules/data-table/data-table.service';
-import { DataTableNameConflictError } from '@/modules/data-table/errors/data-table-name-conflict.error';
-import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
-import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
+import {
+	DataTableNameConflictError,
+	DataTableNotFoundError,
+	DataTableRepository,
+	DataTableService,
+	DataTableValidationError,
+} from '@n8n/data-table';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { getDataTableListFilter, resolveProjectIdForCreate } from './data-tables.service';
