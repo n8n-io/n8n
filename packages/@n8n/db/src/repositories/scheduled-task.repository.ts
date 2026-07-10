@@ -69,6 +69,24 @@ export interface NewOccurrence {
 	maxAttempts: number;
 }
 
+/** Identity of a row {@link ScheduledTaskRepository.insertIgnoringDuplicates} just created. */
+export interface RecordedOccurrence {
+	id: string;
+	jobId: number;
+	taskType: string;
+}
+
+export interface InsertOccurrencesResult {
+	/** How many rows were actually inserted (skipped duplicates excluded). */
+	recorded: number;
+	/**
+	 * The newly inserted rows' identity, for per-row tracing. Only Postgres can
+	 * return this (`RETURNING`); elsewhere it is empty even though `recorded` is
+	 * still accurate.
+	 */
+	created: RecordedOccurrence[];
+}
+
 /**
  * Point-in-time queue health, read at Prometheus scrape time
  * (see {@link ScheduledTaskRepository.getMetricSnapshot}).
@@ -110,7 +128,8 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 *
 	 * Must run inside a transaction!
 	 *
-	 * @returns how many rows were actually inserted (skipped duplicates excluded)
+	 * @returns how many rows were recorded, and (Postgres only) the identity of
+	 * each newly created row, for per-row tracing
 	 */
 	async insertIgnoringDuplicates(
 		manager: EntityManager,
@@ -118,7 +137,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		// Chunked so a large batch stays under the driver's bind-parameter ceiling
 		// (Postgres 65535, SQLite 32766); the default leaves headroom for the widest row.
 		chunkSize = 1000,
-	): Promise<number> {
+	): Promise<InsertOccurrencesResult> {
 		const { queryRunner } = manager;
 		if (queryRunner === undefined) {
 			throw new UnexpectedError('insertIgnoringDuplicates must run within a transaction');
@@ -129,20 +148,39 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		);
 
 		let recorded = 0;
+		const created: RecordedOccurrence[] = [];
 		for (const chunk of chunks) {
-			const [sql, parameters] = manager
+			const query = manager
 				.createQueryBuilder()
 				.insert()
 				.into(ScheduledTask)
 				// `payload` is a free-form JSON column, which TypeORM's QueryDeepPartialEntity
 				// can't express, so the well-typed rows are cast at this boundary.
 				.values(chunk as Array<QueryDeepPartialEntity<ScheduledTask>>)
-				.orIgnore()
-				.getQueryAndParameters();
+				.orIgnore();
+
+			// Only Postgres's driver surfaces RETURNING rows from a raw query
+			// (SQLite's `run()` callback gives back a change count, never rows), so row
+			// identity for tracing is a Postgres-only capability; `recorded` stays accurate
+			// everywhere via `affected`.
+			if (this.isPostgres) {
+				query.returning('"id", "jobId", "taskType"');
+			}
+
+			const [sql, parameters] = query.getQueryAndParameters();
 			const result = await queryRunner.query(sql, parameters, true);
 			recorded += result.affected ?? 0;
+			if (this.isPostgres) {
+				for (const row of (result.records ?? []) as Array<{
+					id: string | number;
+					jobId: number;
+					taskType: string;
+				}>) {
+					created.push({ id: String(row.id), jobId: row.jobId, taskType: row.taskType });
+				}
+			}
 		}
-		return recorded;
+		return { recorded, created };
 	}
 
 	/**

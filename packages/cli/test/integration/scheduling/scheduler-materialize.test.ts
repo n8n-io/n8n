@@ -75,7 +75,7 @@ describe('scheduler materialization', () => {
 
 		const summary = await runMaterialization(0);
 
-		expect(summary).toEqual({ claimedJobs: 1, occurrences: 1, deferredJobs: 0 });
+		expect(summary).toMatchObject({ claimedJobs: 1, occurrences: 1, deferredJobs: 0 });
 
 		const [task] = await taskRepo.find();
 		expect(task.jobId).toBe(job.id);
@@ -186,7 +186,7 @@ describe('scheduler materialization', () => {
 
 		const summary = await runMaterialization(0);
 
-		expect(summary).toEqual({ claimedJobs: 2, occurrences: 1, deferredJobs: 1 });
+		expect(summary).toMatchObject({ claimedJobs: 2, occurrences: 1, deferredJobs: 1 });
 
 		// The good job materialized normally.
 		const [task] = await taskRepo.find();
@@ -220,7 +220,7 @@ describe('scheduler materialization', () => {
 		const summary = await runMaterialization(0);
 
 		// The repaired job materializes again with no other intervention.
-		expect(summary).toEqual({ claimedJobs: 1, occurrences: 1, deferredJobs: 0 });
+		expect(summary).toMatchObject({ claimedJobs: 1, occurrences: 1, deferredJobs: 0 });
 		const resumed = await jobRepo.findOneByOrFail({ id: job.id });
 		expect(resumed.nextRunAt).not.toBeNull();
 	});

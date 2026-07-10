@@ -179,8 +179,12 @@ describe('createInstanceAgent', () => {
 
 		expect(Agent).toHaveBeenCalledTimes(2);
 		const attachedTools = getAttachedTools();
+		const deferredTools = getDeferredTools();
 		const secondRunAttachedTools = getAttachedTools(1);
-		expect(attachedTools['create-tasks-run-1']).toMatchObject({ name: 'create-tasks-run-1' });
+		expect(attachedTools['create-tasks-run-1']).toBeUndefined();
+		expect(deferredTools['create-tasks-run-1']).toMatchObject({ name: 'create-tasks-run-1' });
+		expect(attachedTools['evals-run-1']).toBeUndefined();
+		expect(deferredTools['evals-run-1']).toMatchObject({ name: 'evals-run-1' });
 		expect(attachedTools['plan-run-1']).toBeUndefined();
 		expect(attachedTools['research-run-1']).toMatchObject({ name: 'research-run-1' });
 		expect(attachedTools['build-workflow-run-1']).toMatchObject({
@@ -555,7 +559,7 @@ describe('createInstanceAgent', () => {
 		expect(mcpContextTools.get('github_workflows')).toMatchObject({ marker: 'github-workflows' });
 	});
 
-	it('keeps evals always loaded so user-requested eval setup can route directly', async () => {
+	it('defers evals behind tool search so the first prompt stays smaller', async () => {
 		const memoryConfig = {} as never;
 
 		await createInstanceAgent({
@@ -576,10 +580,10 @@ describe('createInstanceAgent', () => {
 		const attachedTools = getAttachedTools();
 		const deferredTools = getDeferredTools();
 
-		expect(attachedTools['evals-evals-test']).toMatchObject({
+		expect(attachedTools['evals-evals-test']).toBeUndefined();
+		expect(deferredTools['evals-evals-test']).toMatchObject({
 			name: 'evals-evals-test',
 		});
-		expect(deferredTools['evals-evals-test']).toBeUndefined();
 	});
 
 	it('configures observational memory on the Memory builder when provided', async () => {

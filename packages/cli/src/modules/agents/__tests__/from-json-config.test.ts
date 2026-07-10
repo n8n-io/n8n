@@ -10,6 +10,11 @@ import type { JSONSchema7 } from 'json-schema';
 
 import { buildFromJson, buildProviderToolsForModel } from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
+import { buildVectorStore } from '../json-config/vector-store-factory';
+
+vi.mock('../json-config/vector-store-factory', () => ({
+	buildVectorStore: vi.fn(),
+}));
 
 type EmbeddingProviderOpts = {
 	apiKey?: string;
@@ -1318,6 +1323,85 @@ describe('buildFromJson()', () => {
 			expect(buildMcpClient).toHaveBeenCalledTimes(2);
 			expect(buildMcpClient.mock.calls[0][0]).toMatchObject({ name: 'github' });
 			expect(buildMcpClient.mock.calls[1][0]).toMatchObject({ name: 'fs' });
+		});
+	});
+
+	// -------------------------------------------------------------------------
+	// Vector stores
+	// -------------------------------------------------------------------------
+
+	describe('vectorStores', () => {
+		beforeEach(() => {
+			vi.mocked(buildVectorStore).mockReset();
+		});
+
+		const vectorStoreConfig = {
+			provider: 'qdrant' as const,
+			name: 'product_docs',
+			credential: 'qdrant-cred',
+			useWhen: 'Search product docs when the user asks about features.',
+			embedding: { model: 'openai/text-embedding-3-small', credential: 'embed-cred' },
+			collectionName: 'docs',
+		};
+
+		it('registers a search_<name> tool for a fully configured vector store', async () => {
+			const fakeTool = {
+				name: 'search_product_docs',
+				description: vectorStoreConfig.useWhen,
+				handler: vi.fn(),
+			};
+			const mockVectorStore = { asTool: vi.fn().mockReturnValue(fakeTool) };
+			vi.mocked(buildVectorStore).mockResolvedValue(mockVectorStore as never);
+
+			const agent = await buildFromJson(
+				makeConfig({ vectorStores: [vectorStoreConfig] }),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+				},
+			);
+
+			expect(buildVectorStore).toHaveBeenCalledWith(vectorStoreConfig, expect.anything());
+			expect(mockVectorStore.asTool).toHaveBeenCalledWith({
+				description: vectorStoreConfig.useWhen,
+			});
+			expect(agent.snapshot.tools.some((t) => t.name === 'search_product_docs')).toBe(true);
+		});
+
+		it.each([
+			['no credential', { ...vectorStoreConfig, credential: '' }],
+			[
+				'no embedding credential',
+				{ ...vectorStoreConfig, embedding: { ...vectorStoreConfig.embedding, credential: '' } },
+			],
+		])('skips a vector store entry with %s', async (_label, entry) => {
+			await buildFromJson(
+				makeConfig({ vectorStores: [entry] }),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+				},
+			);
+
+			expect(buildVectorStore).not.toHaveBeenCalled();
+		});
+
+		it('does nothing when vectorStores is absent', async () => {
+			await buildFromJson(
+				makeConfig(),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+				},
+			);
+
+			expect(buildVectorStore).not.toHaveBeenCalled();
 		});
 	});
 });

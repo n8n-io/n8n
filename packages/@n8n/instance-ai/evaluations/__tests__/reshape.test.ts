@@ -1,6 +1,10 @@
 import type { Run } from 'langsmith/schemas';
 
-import { reshapeLangSmithRuns } from '../cli/reshape';
+import {
+	parseTargetOutput,
+	reshapeLangSmithRuns,
+	sentinelOutcomeFromVerdicts,
+} from '../cli/reshape';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
 import type {
@@ -315,5 +319,104 @@ describe('reshapeLangSmithRuns', () => {
 
 		expect(result[0][0]?.runDebug).toHaveLength(1);
 		expect(result[0][0]?.runDebug?.[0]?.runId).toBe('run-1');
+	});
+});
+
+describe('sentinelOutcomeFromVerdicts', () => {
+	const pass = (expectation: string): BuildExpectationResult => ({
+		expectation,
+		pass: true,
+		reason: 'ok',
+	});
+	const fail = (expectation: string): BuildExpectationResult => ({
+		expectation,
+		pass: false,
+		reason: 'nope',
+	});
+	const noVerdict = (expectation: string): BuildExpectationResult => ({
+		expectation,
+		pass: false,
+		reason: 'no verdict returned',
+		incomplete: true,
+	});
+
+	it('passes when every evaluated expectation passes', () => {
+		const out = sentinelOutcomeFromVerdicts([pass('a'), pass('b')]);
+		expect(out).toMatchObject({ passed: true, score: 1 });
+		expect(out.incomplete).toBeUndefined();
+		expect(out.failureCategory).toBeUndefined();
+		expect(out.reasoning).toContain('all 2 expectations passed');
+	});
+
+	it('fails with a fractional score and names the failed expectations', () => {
+		const out = sentinelOutcomeFromVerdicts([
+			pass('a'),
+			fail('sends a Slack alert'),
+			pass('c'),
+			fail('uses the IF node'),
+		]);
+		expect(out.passed).toBe(false);
+		expect(out.score).toBeCloseTo(0.5);
+		expect(out.reasoning).toContain('sends a Slack alert');
+		expect(out.reasoning).toContain('uses the IF node');
+	});
+
+	it('excludes incomplete verdicts from the denominator', () => {
+		const out = sentinelOutcomeFromVerdicts([pass('a'), noVerdict('b')]);
+		expect(out).toMatchObject({ passed: true, score: 1 });
+		expect(out.incomplete).toBeUndefined();
+	});
+
+	it('is incomplete when the judge produced no evaluated verdicts', () => {
+		for (const verdicts of [undefined, [], [noVerdict('a')]]) {
+			expect(sentinelOutcomeFromVerdicts(verdicts)).toMatchObject({
+				passed: false,
+				score: 0,
+				incomplete: true,
+			});
+		}
+	});
+
+	// Non-passing sentinels need an explicit category — target() forwards it, and
+	// without one the feedback extractor labels the LangSmith row 'unknown'.
+	it('categorizes failed expectations as expectations_failed', () => {
+		const out = sentinelOutcomeFromVerdicts([pass('a'), fail('b')]);
+		expect(out.failureCategory).toBe('expectations_failed');
+	});
+
+	it('categorizes judge-dead outcomes as verification_failure', () => {
+		for (const verdicts of [undefined, [], [noVerdict('a')]]) {
+			expect(sentinelOutcomeFromVerdicts(verdicts).failureCategory).toBe('verification_failure');
+		}
+	});
+});
+
+describe('parseTargetOutput expectationResults', () => {
+	const base = { buildSuccess: true, passed: true, score: 1, reasoning: 'ok' };
+
+	it('parses embedded expectation verdicts', () => {
+		const out = parseTargetOutput({
+			...base,
+			expectationResults: [
+				{ expectation: 'a', pass: true, reason: 'did' },
+				{ expectation: 'b', pass: false, reason: 'no verdict', incomplete: true },
+			],
+		});
+		expect(out?.expectationResults).toEqual([
+			{ expectation: 'a', pass: true, reason: 'did' },
+			{ expectation: 'b', pass: false, reason: 'no verdict', incomplete: true },
+		]);
+	});
+
+	it('leaves the field undefined when absent', () => {
+		const out = parseTargetOutput(base);
+		expect(out).toBeDefined();
+		expect(out?.expectationResults).toBeUndefined();
+	});
+
+	it('drops a malformed field without voiding the row', () => {
+		const out = parseTargetOutput({ ...base, expectationResults: 'garbage' });
+		expect(out?.passed).toBe(true);
+		expect(out?.expectationResults).toBeUndefined();
 	});
 });

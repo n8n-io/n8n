@@ -21,6 +21,7 @@ import {
 } from './credential-utils';
 import { coerceWrongKindListModeParams } from './detect-wrong-kind-locator';
 import type { SetupRequest } from './setup-workflow.schema';
+import { refreshWorkflowSourceFileBindingFromSave } from './workflow-file-bindings';
 import type { InstanceAiContext } from '../../types';
 
 // ── Credential cache ────────────────────────────────────────────────────────
@@ -765,7 +766,11 @@ export async function applyNodeCredentials(
 	}
 
 	try {
-		await context.workflowService.updateFromWorkflowJSON(workflowId, workflowJson);
+		const saved = await context.workflowService.updateFromWorkflowJSON(workflowId, workflowJson);
+		await refreshWorkflowSourceFileBindingFromSave(context, workflowId, {
+			versionId: saved.versionId,
+			checksum: saved.checksum,
+		});
 	} catch (error) {
 		// If the final save fails, mark all previously-applied nodes as failed
 		const saveError = `Failed to save workflow after credential apply: ${error instanceof Error ? error.message : 'Unknown error'}`;
@@ -808,7 +813,11 @@ export async function applyNodeParameters(
 	}
 
 	try {
-		await context.workflowService.updateFromWorkflowJSON(workflowId, workflowJson);
+		const saved = await context.workflowService.updateFromWorkflowJSON(workflowId, workflowJson);
+		await refreshWorkflowSourceFileBindingFromSave(context, workflowId, {
+			versionId: saved.versionId,
+			checksum: saved.checksum,
+		});
 	} catch (error) {
 		const saveError = `Failed to save workflow after parameter apply: ${error instanceof Error ? error.message : 'Unknown error'}`;
 		for (const nodeName of result.applied) {
@@ -909,7 +918,11 @@ export async function applyNodeChanges(
 
 	// Single save for all changes
 	try {
-		await context.workflowService.updateFromWorkflowJSON(workflowId, workflowJson);
+		const saved = await context.workflowService.updateFromWorkflowJSON(workflowId, workflowJson);
+		await refreshWorkflowSourceFileBindingFromSave(context, workflowId, {
+			versionId: saved.versionId,
+			checksum: saved.checksum,
+		});
 		result.applied = [...appliedNodes];
 	} catch (error) {
 		const saveError = `Failed to save workflow: ${error instanceof Error ? error.message : 'Unknown error'}`;

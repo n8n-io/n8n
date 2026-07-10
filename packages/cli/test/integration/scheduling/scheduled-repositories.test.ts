@@ -346,7 +346,7 @@ describe('scheduled repositories', () => {
 			const job = await createJob();
 			const scheduledFor = secondsFromNow(-60);
 
-			const recorded = await dataSource.transaction(
+			const result = await dataSource.transaction(
 				async (trx) =>
 					await taskRepository.insertIgnoringDuplicates(trx, [
 						{
@@ -360,10 +360,39 @@ describe('scheduled repositories', () => {
 					]),
 			);
 
-			expect(recorded).toBe(1);
+			expect(result.recorded).toBe(1);
 			const stored = await taskRepository.findBy({ jobId: job.id });
 			expect(stored).toHaveLength(1);
 			expect(stored[0].scheduledFor.getTime()).toBe(scheduledFor.getTime());
+		});
+
+		// Postgres only: SQLite's driver never surfaces RETURNING rows from a raw
+		// insert, so row identity for tracing is a Postgres-only capability.
+		it.skipIf(!isPostgres)('returns the identity of each newly created row', async () => {
+			const job = await createJob();
+			const scheduledFor = secondsFromNow(-60);
+
+			const result = await dataSource.transaction(
+				async (trx) =>
+					await taskRepository.insertIgnoringDuplicates(trx, [
+						{
+							jobId: job.id,
+							taskType: 'scheduleTrigger',
+							payload: {},
+							scheduledFor,
+							runAt: scheduledFor,
+							maxAttempts: 1,
+						},
+					]),
+			);
+
+			expect(result.created).toHaveLength(1);
+			const stored = await taskRepository.findOneByOrFail({ jobId: job.id });
+			expect(result.created[0]).toEqual({
+				id: stored.id,
+				jobId: job.id,
+				taskType: 'scheduleTrigger',
+			});
 		});
 
 		it('is idempotent on (jobId, scheduledFor): a duplicate is skipped and not counted', async () => {
@@ -385,8 +414,8 @@ describe('scheduled repositories', () => {
 				async (trx) => await taskRepository.insertIgnoringDuplicates(trx, [occurrence]),
 			);
 
-			expect(first).toBe(1);
-			expect(second).toBe(0);
+			expect(first.recorded).toBe(1);
+			expect(second.recorded).toBe(0);
 			expect(await taskRepository.findBy({ jobId: job.id })).toHaveLength(1);
 		});
 
@@ -406,11 +435,11 @@ describe('scheduled repositories', () => {
 				};
 			});
 
-			const recorded = await dataSource.transaction(
+			const result = await dataSource.transaction(
 				async (trx) => await taskRepository.insertIgnoringDuplicates(trx, occurrences),
 			);
 
-			expect(recorded).toBe(2500);
+			expect(result.recorded).toBe(2500);
 			expect(await taskRepository.countBy({ jobId: job.id })).toBe(2500);
 		});
 
@@ -439,7 +468,7 @@ describe('scheduled repositories', () => {
 					),
 				]);
 
-				expect(first + second).toBe(1);
+				expect(first.recorded + second.recorded).toBe(1);
 				expect(await taskRepository.findBy({ jobId: job.id })).toHaveLength(1);
 			},
 		);

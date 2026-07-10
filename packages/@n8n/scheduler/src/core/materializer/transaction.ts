@@ -15,6 +15,24 @@ export interface NewOccurrence {
 	maxAttempts: number;
 }
 
+/** Identity of a row {@link MaterializerTransaction.recordOccurrences} just created. */
+export interface RecordedOccurrence {
+	id: string;
+	jobId: number;
+	taskType: string;
+}
+
+export interface RecordOccurrencesResult {
+	/** How many occurrences were actually recorded (skipped duplicates excluded). */
+	recorded: number;
+	/**
+	 * The newly created rows' identity, for per-row tracing. Storage layers that
+	 * can't return inserted rows (e.g. SQLite) leave this empty; `recorded` is
+	 * still accurate either way.
+	 */
+	created: RecordedOccurrence[];
+}
+
 export interface DueJobs {
 	/**
 	 * The clock's current time at the moment of claiming.
@@ -42,9 +60,10 @@ export interface MaterializerTransaction {
 	 * Record every planned occurrence across all jobs in one batch,
 	 * skipping any that already exist (identity is the job and its instant).
 	 * This is the idempotent step: recording the same occurrence twice is a no-op.
-	 * @returns how many occurrences were actually recorded
+	 * @returns how many occurrences were recorded, and the identity of any
+	 * newly created rows (see {@link RecordOccurrencesResult})
 	 */
-	recordOccurrences(occurrences: NewOccurrence[]): Promise<number>;
+	recordOccurrences(occurrences: NewOccurrence[]): Promise<RecordOccurrencesResult>;
 
 	/**
 	 * Advance every job's next-run and last-fired time in one batch.
