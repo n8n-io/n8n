@@ -149,19 +149,6 @@ export const promptTypeOptions: INodeProperties = {
 	},
 };
 
-export const promptTypeOptionsAgentV3: INodeProperties = {
-	...promptTypeOptions,
-	options: promptTypeOptions.options!.map((option) =>
-		'value' in option && option.value === 'define'
-			? {
-					...option,
-					description:
-						'Use an expression to reference data in previous nodes or enter static text. When using a Guardrails node, reference its output with {{ $json.guardrailsInput }}.',
-				}
-			: option,
-	),
-};
-
 export const textInput: INodeProperties = {
 	displayName: 'Prompt (User Message)',
 	name: 'text',

@@ -11,7 +11,7 @@ import type {
 
 import type { RequestResponseMetadata } from '@utils/agent-execution';
 import {
-	promptTypeOptionsAgentV3,
+	promptTypeOptions,
 	promptTypeOptionsDeprecated,
 	textFromGuardrailsNode,
 	textFromPreviousNode,
@@ -65,7 +65,7 @@ export class AgentV3 implements INodeType {
 					displayOptions: { show: { '@version': [{ _cnd: { lt: 3.1 } }] } },
 				},
 				{
-					...promptTypeOptionsAgentV3,
+					...promptTypeOptions,
 					displayOptions: { show: { '@version': [{ _cnd: { gte: 3.1 } }] } },
 				},
 				{

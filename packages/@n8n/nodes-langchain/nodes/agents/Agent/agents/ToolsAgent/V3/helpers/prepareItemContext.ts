@@ -51,7 +51,6 @@ export async function prepareItemContext(
 		i: itemIndex,
 		inputKey: 'text',
 		promptTypeKey: 'promptType',
-		fallbackToGuardrails: true,
 	});
 	if (input === undefined) {
 		throw new NodeOperationError(ctx.getNode(), 'The "text" parameter is empty.');

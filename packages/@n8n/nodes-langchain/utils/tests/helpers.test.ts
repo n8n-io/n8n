@@ -8,7 +8,6 @@ import { z } from 'zod';
 import {
 	escapeSingleCurlyBrackets,
 	getConnectedTools,
-	getPromptInputByType,
 	mergeCustomHeaders,
 	unwrapNestedOutput,
 	getSessionId,
@@ -743,109 +742,5 @@ describe('mergeCustomHeaders', () => {
 		const result = mergeCustomHeaders(credentials, defaultHeaders);
 
 		expect(result).toEqual({ Authorization: 'Bearer new-token' });
-	});
-});
-
-describe('getPromptInputByType', () => {
-	let mockCtx: any;
-
-	beforeEach(() => {
-		mockCtx = {
-			getNode: vi.fn().mockReturnValue({ name: 'AI Agent' }),
-			getNodeParameter: vi.fn().mockReturnValue('auto'),
-			evaluateExpression: vi.fn(),
-		};
-	});
-
-	describe('auto mode guardrails fallback', () => {
-		it('should fall back to guardrailsInput when chatInput is falsy and fallbackToGuardrails is enabled', () => {
-			mockCtx.evaluateExpression.mockImplementation((expr: string) => {
-				if (expr.includes('chatInput')) return '';
-				if (expr.includes('guardrailsInput')) return 'guardrails prompt';
-				return undefined;
-			});
-
-			const input = getPromptInputByType({
-				ctx: mockCtx,
-				i: 0,
-				promptTypeKey: 'promptType',
-				inputKey: 'text',
-				fallbackToGuardrails: true,
-			});
-
-			expect(input).toBe('guardrails prompt');
-		});
-
-		it('should throw when chatInput is empty and fallbackToGuardrails is disabled (default)', () => {
-			mockCtx.evaluateExpression.mockImplementation((expr: string) => {
-				if (expr.includes('chatInput')) return '';
-				return undefined;
-			});
-
-			expect(() =>
-				getPromptInputByType({
-					ctx: mockCtx,
-					i: 0,
-					promptTypeKey: 'promptType',
-					inputKey: 'text',
-				}),
-			).toThrow("Expected to find the prompt in an input field called 'chatInput'");
-			expect(mockCtx.evaluateExpression).not.toHaveBeenCalledWith(
-				'{{ $json["guardrailsInput"] }}',
-				0,
-			);
-		});
-
-		it('should use chatInput and skip the fallback when chatInput is present', () => {
-			mockCtx.evaluateExpression.mockImplementation((expr: string) => {
-				if (expr.includes('chatInput')) return 'chat prompt';
-				if (expr.includes('guardrailsInput')) return 'guardrails prompt';
-				return undefined;
-			});
-
-			const input = getPromptInputByType({
-				ctx: mockCtx,
-				i: 0,
-				promptTypeKey: 'promptType',
-				inputKey: 'text',
-				fallbackToGuardrails: true,
-			});
-
-			expect(input).toBe('chat prompt');
-			expect(mockCtx.evaluateExpression).not.toHaveBeenCalledWith(
-				'{{ $json["guardrailsInput"] }}',
-				0,
-			);
-		});
-
-		it('should throw when both chatInput and guardrailsInput are empty', () => {
-			mockCtx.evaluateExpression.mockImplementation(() => '');
-
-			expect(() =>
-				getPromptInputByType({
-					ctx: mockCtx,
-					i: 0,
-					promptTypeKey: 'promptType',
-					inputKey: 'text',
-					fallbackToGuardrails: true,
-				}),
-			).toThrow(
-				"Expected to find the prompt in an input field called 'chatInput' or 'guardrailsInput'",
-			);
-		});
-
-		it('should throw a guardrails-specific error when promptType is guardrails and input is empty', () => {
-			mockCtx.getNodeParameter.mockReturnValue('guardrails');
-			mockCtx.evaluateExpression.mockReturnValue('');
-
-			expect(() =>
-				getPromptInputByType({
-					ctx: mockCtx,
-					i: 0,
-					promptTypeKey: 'promptType',
-					inputKey: 'text',
-				}),
-			).toThrow("Expected to find the prompt in an input field called 'guardrailsInput'");
-		});
 	});
 });
