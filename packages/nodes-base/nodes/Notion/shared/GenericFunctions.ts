@@ -664,9 +664,12 @@ export function getPropertyTitle(properties: { [key: string]: any }) {
 	);
 }
 
+// Fold non-ASCII to separators so keys keep their pre-change-case-v5 shape (é → `_`).
+const foldedSnakeCase = (value: string) => snakeCase(value.replace(/[^\x20-\x7E]/g, ' '));
+
 function prepend(stringKey: string, properties: { [key: string]: any }) {
 	for (const key of Object.keys(properties)) {
-		properties[`${stringKey}_${snakeCase(key)}`] = properties[key];
+		properties[`${stringKey}_${foldedSnakeCase(key)}`] = properties[key];
 		delete properties[key];
 	}
 	return properties;
