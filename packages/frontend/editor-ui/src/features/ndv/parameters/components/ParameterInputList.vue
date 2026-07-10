@@ -86,6 +86,7 @@ type Props = {
 	removeLastParameterMargin?: boolean;
 	newlyAddedParameters?: Set<string>;
 	optionsOverrides?: ParameterOptionsOverrides;
+	assignmentCollectionEditableValueIndices?: Record<string, number[]>;
 	layout?: 'inline';
 };
 
@@ -922,6 +923,8 @@ watch(
 				:is-read-only="isReadOnly"
 				:default-type="item.parameter.typeOptions?.assignment?.defaultType"
 				:disable-type="item.parameter.typeOptions?.assignment?.disableType"
+				:options-overrides="optionsOverrides"
+				:editable-value-indices="assignmentCollectionEditableValueIndices?.[item.parameter.name]"
 				@value-changed="valueChanged"
 			/>
 			<div v-else-if="credentialsParameterIndex !== index" class="parameter-item">
