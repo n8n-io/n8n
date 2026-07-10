@@ -33,7 +33,6 @@ function makeContext(
 		userId: 'user-1',
 		orchestratorAgentId: 'orc',
 		modelId: 'model' as OrchestrationContext['modelId'],
-		subAgentMaxSteps: 5,
 		eventBus: {
 			publish: vi.fn(),
 			subscribe: vi.fn(),

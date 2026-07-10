@@ -42,7 +42,9 @@ catalog:
   '@joplin/turndown-plugin-gfm': 1.0.64
   '@langchain/anthropic': 1.3.27
   '@langchain/community': 1.1.27
-  '@langchain/core': 1.1.41
+  '@langchain/core': 1.2.0
+  '@langchain/langgraph': 1.0.2
+  '@langchain/langgraph-checkpoint': 1.0.0
   '@langchain/openai': 1.4.4
   '@lezer/common': 1.5.0
   '@lezer/css': 1.3.0
@@ -56,6 +58,8 @@ catalog:
   '@mozilla/readability': ^0.6.0
   '@n8n_io/ai-assistant-sdk': 1.24.0
   '@openrouter/ai-sdk-provider': ^2.8.0
+  '@pinecone-database/pinecone': ^5.0.2
+  '@qdrant/js-client-rest': ^1.16.2
   '@rudderstack/rudder-sdk-node': 3.0.5
   '@sentry/node': ^10.55.0
   '@stryker-mutator/core': 9.6.1
@@ -132,6 +136,7 @@ catalog:
   fast-glob: 3.2.12
   fast-json-patch: ^3.1.1
   fastest-levenshtein: 1.0.16
+  fflate: 0.8.3
   file-type: 21.3.2
   flatted: 3.4.2
   form-data: 4.0.6
@@ -209,6 +214,8 @@ catalog:
 catalogMode: strict
 
 catalogs:
+  typescript:
+    typescript: 7.0.2
   e2e:
     '@currents/playwright': ^2.0.0
     '@playwright/cli': 0.1.0
@@ -262,3 +269,5 @@ minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
   - '@n8n/*'
   - '@n8n_io/*'
+  - 'typescript'
+  - '@typescript/*'

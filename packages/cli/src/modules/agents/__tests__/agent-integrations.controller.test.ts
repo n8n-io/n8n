@@ -317,7 +317,6 @@ describe('AgentIntegrationsController integration credentials', () => {
 		expect(chatIntegrationService.connect).toHaveBeenCalledWith(
 			'agent-1',
 			integration,
-			'user-1',
 			'project-1',
 		);
 		expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
@@ -429,7 +428,6 @@ describe('AgentIntegrationsController integration credentials', () => {
 		expect(chatIntegrationService.connect).toHaveBeenCalledWith(
 			'agent-1',
 			integration,
-			'user-1',
 			'project-1',
 		);
 		expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(

@@ -9,8 +9,10 @@ export type { CredentialResolution } from './entities/credential/credential.type
 export { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishing-policy.types';
 export type { WorkflowPublishingOutcome } from './entities/workflow/workflow-publishing-policy.types';
 
-export type CredentialMatchingMode = 'id-only';
+export type CredentialMatchingMode = 'id-only' | 'name-and-type' | 'type-only';
 export type CredentialMissingMode = 'must-preexist' | 'create-stub';
+
+export type PackageFailureReason = 'access-denied' | 'entity-not-found' | 'blocked' | 'validation';
 
 /* eslint-disable @typescript-eslint/naming-convention -- enum-like members for IDE documentation */
 export const WorkflowConflictPolicy = {
@@ -47,13 +49,13 @@ export type ImportPackageRequest = {
 	projectId?: string;
 	folderId?: string;
 	packageBuffer: Buffer;
+	bindings?: Partial<PackageImportBindings>;
 } & ImportCredentialProperties &
 	ImportWorkflowProperties;
 
 export type ImportCredentialProperties = {
 	credentialMatchingMode: CredentialMatchingMode;
 	credentialMissingMode: CredentialMissingMode;
-	credentialBindings?: ImportBindingMap;
 };
 
 export type ImportWorkflowProperties = {
@@ -75,8 +77,7 @@ export interface ImportContext {
 	folderId: string | null;
 }
 
-export type ImportPackageEventOptions = Omit<ImportCredentialProperties, 'credentialBindings'> &
-	ImportWorkflowProperties;
+export type ImportPackageEventOptions = ImportCredentialProperties & ImportWorkflowProperties;
 
 /** Credential ids involved in a package import, shaped for forward-compatible audit events. */
 export type ImportAuditCredentialIds = {

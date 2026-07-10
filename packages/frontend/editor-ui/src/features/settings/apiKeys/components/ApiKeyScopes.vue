@@ -14,8 +14,8 @@ import {
 	N8nInput,
 	N8nInputLabel,
 	N8nRadioGroup,
+	N8nRadioGroupItem,
 } from '@n8n/design-system';
-import type { RadioGroupOption } from '@n8n/design-system';
 
 import {
 	classifyScope,
@@ -109,21 +109,35 @@ function emitScopes(scopes: ApiKeyScope[]) {
 	emit('update:modelValue', scopes);
 }
 
-const modeOptions = computed<Array<RadioGroupOption<ApiKeyScopeSelectionMode>>>(() => [
-	{ value: 'all', label: i18n.baseText('settings.api.scopes.all'), testId: 'scopes-mode-all' },
+type ScopeModeOption = {
+	value: ApiKeyScopeSelectionMode;
+	label: string;
+	'data-test-id': string;
+};
+
+const modeOptions = computed<ScopeModeOption[]>(() => [
+	{
+		value: 'all',
+		label: i18n.baseText('settings.api.scopes.all'),
+		'data-test-id': 'scopes-mode-all',
+	},
 	{
 		value: 'readOnly',
 		label: i18n.baseText('settings.api.scopes.readOnly'),
-		testId: 'scopes-mode-read-only',
+		'data-test-id': 'scopes-mode-read-only',
 	},
 	{
 		value: 'custom',
 		label: i18n.baseText('settings.api.scopes.custom'),
-		testId: 'scopes-mode-custom',
+		'data-test-id': 'scopes-mode-custom',
 	},
 ]);
 
-function onModeChange(newMode: ApiKeyScopeSelectionMode) {
+function onModeChange(newMode: string | undefined) {
+	if (newMode === undefined) {
+		return;
+	}
+
 	userPickedCustom.value = newMode === 'custom';
 
 	if (newMode === 'all') {
@@ -185,12 +199,13 @@ function toggleScope(scope: ApiKeyScope, checked: boolean) {
 		<N8nInputLabel :label="i18n.baseText('settings.api.scopes.label')" color="text-dark">
 			<N8nRadioGroup
 				v-model="mode"
-				:options="modeOptions"
 				:disabled="disabled"
 				:aria-label="i18n.baseText('settings.api.scopes.label')"
 				data-test-id="scopes-mode-radio"
 				@update:model-value="onModeChange"
-			/>
+			>
+				<N8nRadioGroupItem v-for="option in modeOptions" :key="option.value" v-bind="option" />
+			</N8nRadioGroup>
 		</N8nInputLabel>
 
 		<div :class="$style.customSection">

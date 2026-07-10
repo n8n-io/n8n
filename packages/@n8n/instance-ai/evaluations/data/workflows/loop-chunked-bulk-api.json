@@ -1,0 +1,27 @@
+{
+	"description": "Chunked bulk API: POST up to 50 IDs per request with one POST per chunk (executeOnce on the HTTP node within each batch when using Loop Over Items). Code-based chunking that emits ≤50 IDs per downstream item is also valid.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Daily at midnight, fetch all pending user IDs from GET https://api.example.com/users/pending-update and push them to POST https://api.example.com/users/bulk-update. The endpoint accepts at most 50 IDs per request — if there are more than 50, send them in chunks."
+		}
+	],
+	"messageBudget": 8,
+	"complexity": "complex",
+	"tags": ["build", "loops", "loop-over-items", "execute-once", "schedule", "http-request"],
+	"triggerType": "schedule",
+	"datasets": ["full"],
+	"outcomeExpectations": [
+		"IDs are chunked so no single bulk-update request carries more than 50 IDs (Loop Over Items with batch size 50, or an equivalent chunking step such as Code).",
+		"Each bulk-update HTTP request sends one POST per chunk carrying multiple IDs (executeOnce on the HTTP node when inside a batch), not one POST per individual ID.",
+		"The workflow results in exactly two bulk POSTs for 55 IDs (50 + 5), not 55 separate single-ID POSTs."
+	],
+	"executionScenarios": [
+		{
+			"name": "fifty-five-ids-two-requests",
+			"description": "55 IDs require two bulk POSTs (50 + 5)",
+			"dataSetup": "GET https://api.example.com/users/pending-update returns { \"ids\": [\"u001\", \"u002\", \"u003\", \"u004\", \"u005\", \"u006\", \"u007\", \"u008\", \"u009\", \"u010\", \"u011\", \"u012\", \"u013\", \"u014\", \"u015\", \"u016\", \"u017\", \"u018\", \"u019\", \"u020\", \"u021\", \"u022\", \"u023\", \"u024\", \"u025\", \"u026\", \"u027\", \"u028\", \"u029\", \"u030\", \"u031\", \"u032\", \"u033\", \"u034\", \"u035\", \"u036\", \"u037\", \"u038\", \"u039\", \"u040\", \"u041\", \"u042\", \"u043\", \"u044\", \"u045\", \"u046\", \"u047\", \"u048\", \"u049\", \"u050\", \"u051\", \"u052\", \"u053\", \"u054\", \"u055\"] }. Each POST https://api.example.com/users/bulk-update returns { \"ok\": true, \"updated\": <count> }.",
+			"successCriteria": "The workflow executes without errors. POST https://api.example.com/users/bulk-update is called exactly twice — first with 50 IDs, second with 5 IDs — not 55 separate POSTs with one ID each. All 55 IDs are included across the two requests."
+		}
+	]
+}

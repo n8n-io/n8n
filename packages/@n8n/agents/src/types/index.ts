@@ -103,6 +103,17 @@ export type {
 	TitleGenerationConfig,
 } from './sdk/memory';
 
+export type {
+	VectorDocument,
+	VectorRecord,
+	VectorQueryResult,
+	BuiltVectorStoreBackend,
+	FilterOperator,
+	FilterValue,
+	FilterCondition,
+	VectorFilter,
+} from './sdk/vector-store';
+
 export type { ObservationCursor } from './sdk/observation';
 
 export type {
@@ -164,7 +175,7 @@ export type {
 	AgentMiddleware,
 } from './runtime/event';
 
-export type { McpServerConfig, McpVerifyResult } from './sdk/mcp';
+export type { McpServerConfig, McpToolCallSettledEvent, McpVerifyResult } from './sdk/mcp';
 
 export type { AgentBuilder } from './sdk/agent-builder';
 

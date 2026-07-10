@@ -39,7 +39,7 @@ import Toolbox from './custom/toolbox.svg';
 import Triangle from './custom/triangle.svg';
 import VectorSquare from './custom/vector-square.svg';
 import Webhook from './custom/webhook.svg';
-import type { NodeIconName } from './node-icons';
+import { nodeIconNames, type NodeIconName } from './node-icon-names';
 
 import IconLucideAlignRight from '~icons/lucide/align-right';
 import IconLucideArchive from '~icons/lucide/archive';
@@ -191,6 +191,7 @@ import IconLucideNotebookPen from '~icons/lucide/notebook-pen';
 import IconLucidePackageOpen from '~icons/lucide/package-open';
 import IconLucidePalette from '~icons/lucide/palette';
 import IconLucidePanelLeft from '~icons/lucide/panel-left';
+import IconLucidePanelLeftClose from '~icons/lucide/panel-left-close';
 import IconLucidePanelRight from '~icons/lucide/panel-right';
 import IconLucidePaperclip from '~icons/lucide/paperclip';
 import IconLucidePause from '~icons/lucide/pause';
@@ -254,6 +255,7 @@ import IconLucideType from '~icons/lucide/type';
 import IconLucideUndo2 from '~icons/lucide/undo-2';
 import IconLucideUngroup from '~icons/lucide/ungroup';
 import IconLucideUnlink from '~icons/lucide/unlink';
+import IconLucideUnplug from '~icons/lucide/unplug';
 import IconLucideUpload from '~icons/lucide/upload';
 import IconLucideUser from '~icons/lucide/user';
 import IconLucideUserCheck from '~icons/lucide/user-check';
@@ -685,6 +687,7 @@ export const updatedIconSet = {
 	'package-open': IconLucidePackageOpen,
 	palette: IconLucidePalette,
 	'panel-left': IconLucidePanelLeft,
+	'panel-left-close': IconLucidePanelLeftClose,
 	'panel-right': IconLucidePanelRight,
 	paperclip: IconLucidePaperclip,
 	pause: IconLucidePause,
@@ -747,6 +750,7 @@ export const updatedIconSet = {
 	'undo-2': IconLucideUndo2,
 	ungroup: IconLucideUngroup,
 	unlink: IconLucideUnlink,
+	unplug: IconLucideUnplug,
 	upload: IconLucideUpload,
 	user: IconLucideUser,
 	'user-check': IconLucideUserCheck,
@@ -776,19 +780,18 @@ export const updatedIconSet = {
 
 export type IconName = keyof typeof updatedIconSet; // only new icon names should be used moving forward
 
-export { type NodeIconName } from './node-icons';
+export { type NodeIconName } from './node-icon-names';
 
 const NODE_ICON_PREFIX = 'node:';
+const nodeIconNameSet = new Set<string>(nodeIconNames);
 
 export function isNodeIcon(iconName?: string): iconName is NodeIconName {
 	return typeof iconName === 'string' && iconName.startsWith(NODE_ICON_PREFIX);
 }
 
-export function isSupportedIconName(iconName?: string): iconName is IconName {
+export function isSupportedIconName(iconName?: string): iconName is IconName | NodeIconName {
 	return (
 		typeof iconName === 'string' &&
-		(iconName in updatedIconSet ||
-			iconName in deprecatedIconSet ||
-			iconName.startsWith(NODE_ICON_PREFIX))
+		(iconName in updatedIconSet || iconName in deprecatedIconSet || nodeIconNameSet.has(iconName))
 	);
 }

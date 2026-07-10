@@ -16,3 +16,14 @@
 		@include focus-ring;
 	}
 }
+
+@mixin focus-ring-offset {
+	outline: var(--focus--border-width) solid var(--focus--border-color);
+	outline-offset: var(--spacing--5xs);
+}
+
+@mixin focus-visible-ring-offset {
+	&:focus-visible {
+		@include focus-ring-offset;
+	}
+}

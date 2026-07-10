@@ -8,6 +8,7 @@ import {
 import { EventService } from '@/events/event.service';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { SecuritySettingsService } from '@/services/security-settings.service';
+import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 
 import { createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
@@ -15,6 +16,7 @@ import { setupTestServer } from '../shared/utils';
 
 describe('SecuritySettingsController', () => {
 	const securitySettingsService = mockInstance(SecuritySettingsService);
+	const workflowReviewPolicyService = mockInstance(WorkflowReviewPolicyService);
 	const instanceRedactionEnforcementService = mockInstance(InstanceRedactionEnforcementService);
 	const eventService = mockInstance(EventService);
 	const instanceSettingsLoaderConfig = mockInstance(InstanceSettingsLoaderConfig, {
@@ -416,6 +418,76 @@ describe('SecuritySettingsController', () => {
 					);
 				});
 			});
+		});
+	});
+
+	describe('workflowReviews', () => {
+		const originalWorkflowReviewsFlag = process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS;
+
+		const mockSecuritySettingsReadDependencies = () => {
+			securitySettingsService.arePersonalSpaceSettingsEnabled.mockResolvedValue({
+				personalSpacePublishing: true,
+				personalSpaceSharing: true,
+			});
+			securitySettingsService.getPublishedPersonalWorkflowsCount.mockResolvedValue(0);
+			securitySettingsService.getSharedPersonalWorkflowsCount.mockResolvedValue(0);
+			securitySettingsService.getSharedPersonalCredentialsCount.mockResolvedValue(0);
+			instanceRedactionEnforcementService.get.mockResolvedValue('off');
+		};
+
+		beforeEach(() => {
+			process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
+			testServer.license.enable('feat:workflowReviews');
+			workflowReviewPolicyService.get.mockResolvedValue({ enabled: false });
+			workflowReviewPolicyService.set.mockResolvedValue({ enabled: true });
+		});
+
+		afterEach(() => {
+			if (originalWorkflowReviewsFlag === undefined) {
+				delete process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS;
+			} else {
+				process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = originalWorkflowReviewsFlag;
+			}
+		});
+
+		it('GET should include workflowReviews when licensed and dev flag is on', async () => {
+			mockSecuritySettingsReadDependencies();
+			workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
+
+			const response = await ownerAgent.get('/settings/security').expect(200);
+
+			expect(response.body.data.workflowReviews).toEqual({ enabled: true });
+			expect(workflowReviewPolicyService.get).toHaveBeenCalledTimes(1);
+		});
+
+		it('POST should update workflowReviews when licensed and dev flag is on', async () => {
+			workflowReviewPolicyService.set.mockResolvedValue({ enabled: true });
+
+			const response = await ownerAgent
+				.post('/settings/security')
+				.send({ workflowReviews: { enabled: true } })
+				.expect(200);
+
+			expect(response.body.data).toEqual({ workflowReviews: { enabled: true } });
+			expect(workflowReviewPolicyService.set).toHaveBeenCalledWith(true);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'instance-policies-updated',
+				expect.objectContaining({
+					settingName: 'workflow_reviews',
+					value: true,
+				}),
+			);
+		});
+
+		it('POST should reject workflowReviews when license is off', async () => {
+			testServer.license.disable('feat:workflowReviews');
+
+			await ownerAgent
+				.post('/settings/security')
+				.send({ workflowReviews: { enabled: true } })
+				.expect(403);
+
+			expect(workflowReviewPolicyService.set).not.toHaveBeenCalled();
 		});
 	});
 });

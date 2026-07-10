@@ -9,9 +9,9 @@ export default defineConfig(
 		},
 	},
 	{
-		// Core must stay free of DB/DI coupling; enums.ts is the deliberate seam that re-exports DB enums for core use.
-		files: ['src/core/**/*.ts'],
-		ignores: ['src/core/enums.ts'],
+		// This package must stay free of DB/DI coupling: it declares the contracts,
+		// the host (cli's DurableScheduler) satisfies them.
+		files: ['src/**/*.ts'],
 		rules: {
 			'no-restricted-imports': [
 				'error',

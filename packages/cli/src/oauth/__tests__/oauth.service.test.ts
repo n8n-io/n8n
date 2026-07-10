@@ -1736,6 +1736,32 @@ describe('OauthService', () => {
 			);
 		});
 
+		it('should not delete scope for zendeskOAuth2Api credentials', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: '1',
+				type: 'zendeskOAuth2Api',
+				isManaged: false,
+			});
+			const mockDecryptedData = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockOAuthCredentials = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			vi.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
+			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+
+			await service.getOAuthCredentials(credential);
+
+			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
+				mockAdditionalData,
+				{ clientId: 'client-id', scope: 'custom-scope' },
+				credential.type,
+				'internal',
+				undefined,
+				undefined,
+			);
+		});
+
 		it('should not delete scope for non-OAuth2 credentials', async () => {
 			const credential = mock<CredentialsEntity>({
 				id: '1',
@@ -5137,7 +5163,10 @@ describe('OauthService', () => {
 			await service.refreshOAuth2CredentialById(credentialId, projectId);
 
 			expect(service.encryptAndSaveData).toHaveBeenCalledWith(credential, {
-				oauthTokenData: refreshedData,
+				oauthTokenData: {
+					refresh_token: 'refresh-tok',
+					...refreshedData,
+				},
 			});
 		});
 
@@ -5166,6 +5195,42 @@ describe('OauthService', () => {
 			expect(result).toEqual({ Authorization: 'Bearer cc-token' });
 			expect(getToken).toHaveBeenCalledTimes(1);
 			expect(mockToken.refresh).not.toHaveBeenCalled();
+		});
+
+		it('passes resource to token refresh and preserves it when the provider does not echo it', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const resource = 'https://mcp.example.com/mcp';
+			const refreshed = { data: { access_token: 'cc-token' }, accessToken: 'cc-token' };
+			const getToken = vi.fn().mockResolvedValue(refreshed);
+			const mockToken = { refresh: vi.fn(), client: { credentials: { getToken } } };
+			const credential = makeCredential({ isGlobal: true });
+			let capturedOptions: unknown;
+			vi.mocked(ClientOAuth2).mockImplementation(function (options) {
+				capturedOptions = options;
+				return { createToken: vi.fn().mockReturnValue(mockToken) } as never;
+			});
+
+			credentialsRepository.findOne.mockResolvedValue(credential as never);
+			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				clientId: 'id',
+				clientSecret: 'secret',
+				accessTokenUrl: 'https://example.com/token',
+				grantType: 'clientCredentials',
+				authentication: 'header',
+				oauthTokenData: { access_token: 'stale', resource },
+			} as unknown as OAuth2CredentialData);
+			vi.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			const result = await service.refreshOAuth2CredentialById(credentialId, projectId);
+
+			expect(result).toEqual({ Authorization: 'Bearer cc-token' });
+			expect(capturedOptions).toEqual(expect.objectContaining({ resource }));
+			expect(service.encryptAndSaveData).toHaveBeenCalledWith(credential, {
+				oauthTokenData: {
+					access_token: 'cc-token',
+					resource,
+				},
+			});
 		});
 
 		it('returns null and logs a warning when the refresh call throws', async () => {

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "2.29.0",
+  "version": "2.30.0",
   "description": "",
   "main": "index.js",
   "exports": {
@@ -228,6 +228,7 @@
     "@vitest/coverage-v8": "catalog:",
     "eslint-plugin-n8n-nodes-base": "catalog:",
     "fast-glob": "catalog:",
+    "typescript": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },
@@ -253,6 +254,8 @@
     "@langchain/google-genai": "2.1.24",
     "@langchain/google-vertexai": "2.1.24",
     "@langchain/groq": "1.0.2",
+    "@langchain/langgraph": "catalog:",
+    "@langchain/langgraph-checkpoint": "catalog:",
     "@langchain/mistralai": "1.0.1",
     "@langchain/mongodb": "1.0.1",
     "@langchain/ollama": "1.2.6",
@@ -282,8 +285,8 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@oracle/langchain-oracledb": "0.2.0",
-    "@pinecone-database/pinecone": "^5.0.2",
-    "@qdrant/js-client-rest": "^1.16.2",
+    "@pinecone-database/pinecone": "catalog:",
+    "@qdrant/js-client-rest": "catalog:",
     "@smithy/node-http-handler": "4.5.0",
     "@smithy/types": "4.13.1",
     "@supabase/supabase-js": "catalog:",

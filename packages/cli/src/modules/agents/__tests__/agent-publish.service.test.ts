@@ -15,6 +15,7 @@ import { ChatIntegrationService } from '../integrations/chat-integration.service
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -95,6 +96,7 @@ function makeService() {
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const chatIntegrationService = mock<ChatIntegrationService>();
 	const taskService = mock<AgentTaskService>();
+	const subAgentCleanupService = mock<SubAgentCleanupService>();
 	const { trx, taskRepo, transaction } = makeTransaction();
 
 	Object.defineProperty(agentRepository, 'manager', {
@@ -108,6 +110,7 @@ function makeService() {
 	chatIntegrationService.disconnect.mockResolvedValue();
 	chatIntegrationService.disconnectChannel.mockResolvedValue();
 	taskService.requestReconcile.mockResolvedValue();
+	subAgentCleanupService.removeSubAgentFromParents.mockResolvedValue();
 	Container.set(ChatIntegrationService, chatIntegrationService);
 	Container.set(AgentTaskService, taskService);
 
@@ -118,6 +121,7 @@ function makeService() {
 		taskSnapshotRepository,
 		customToolsService,
 		runtimeCacheService,
+		subAgentCleanupService,
 	);
 
 	return {
@@ -129,6 +133,7 @@ function makeService() {
 		runtimeCacheService,
 		chatIntegrationService,
 		taskService,
+		subAgentCleanupService,
 		trx,
 		taskRepo,
 	};
@@ -234,8 +239,13 @@ describe('AgentPublishService', () => {
 	});
 
 	it('avoids duplicate history inserts but creates a fresh version after unpublish', async () => {
-		const { service, agentRepository, agentHistoryRepository, chatIntegrationService } =
-			makeService();
+		const {
+			service,
+			agentRepository,
+			agentHistoryRepository,
+			chatIntegrationService,
+			subAgentCleanupService,
+		} = makeService();
 		const agent = makeAgent({
 			versionId: 'v1',
 			activeVersionId: 'v1',
@@ -250,6 +260,10 @@ describe('AgentPublishService', () => {
 		await service.unpublishAgent(agentId, projectId);
 		expect(agent.activeVersionId).toBeNull();
 		expect(agent.versionId).not.toBe('v1');
+		expect(subAgentCleanupService.removeSubAgentFromParents).toHaveBeenCalledWith(
+			agentId,
+			projectId,
+		);
 		expect(chatIntegrationService.disconnectChannel).toHaveBeenCalledWith(
 			agentId,
 			{
