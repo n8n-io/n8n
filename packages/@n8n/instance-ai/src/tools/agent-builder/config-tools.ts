@@ -8,17 +8,18 @@ import { Tool } from '@n8n/agents';
 import {
 	applyNativeWebSearchDefaultOn,
 	rejectIfDynamicSelectorUsesFromAi,
-	rejectIfEmptyInstructions,
 	rejectIfUnsupportedNativeWebSearch,
 	type AgentConfigValidationMessages,
 } from '@n8n/ai-utilities/agent-config';
 import {
+	AgentJsonConfigSchema,
 	formatZodErrors,
 	RunnableAgentJsonConfigSchema,
 	sanitizeAgentJsonConfig,
 	tryParseConfigJson,
 	type AgentJsonConfig,
 } from '@n8n/api-types';
+import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import { resolveAgentBuilderTarget } from './agent-target-binding';
@@ -41,6 +42,50 @@ interface AgentBuilderDeps {
 	projectId: string;
 	nodeTypesProvider: InstanceAiContext['nodeTypesProvider'];
 }
+
+interface CredentialBinding {
+	value: string;
+	context: string;
+	credentialType: string;
+}
+
+interface CredentialBindingWarning {
+	code: 'CREDENTIAL_BINDING_REMOVED';
+	message: string;
+	path: string;
+}
+
+interface DestructiveChanges {
+	customToolIds: string[];
+	skillIds: string[];
+}
+
+interface PersistConfigOptions {
+	destructiveChangeConfirmation?: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+const referenceValidationErrorSchema = z.object({
+	code: z.literal('AGENT_CONFIG_REFERENCE_VALIDATION'),
+	issues: z.array(z.object({ path: z.string(), message: z.string() })),
+});
+
+const nodeValidationErrorSchema = z.object({
+	code: z.literal('AGENT_CONFIG_NODE_VALIDATION'),
+	issues: z.array(
+		z.object({
+			code: z.string(),
+			path: z.string(),
+			message: z.string(),
+			toolName: z.string(),
+			nodeType: z.string(),
+			nodeTypeVersion: z.number(),
+		}),
+	),
+});
 
 /** Resolve the agent-builder deps from context or thread binding, or null when not configured. */
 async function resolveDeps(context: InstanceAiContext): Promise<AgentBuilderDeps | null> {
@@ -89,9 +134,6 @@ async function validateAndPersist(
 	candidate: AgentJsonConfig,
 	previousConfig: AgentJsonConfig | null,
 ) {
-	const empty = rejectIfEmptyInstructions(candidate, INSTANCE_AI_CONFIG_MESSAGES);
-	if (empty) return { ok: false as const, stage: 'validation', errors: empty };
-
 	const unsupportedWebSearch = rejectIfUnsupportedNativeWebSearch(candidate);
 	if (unsupportedWebSearch) {
 		return { ok: false as const, stage: 'validation', errors: unsupportedWebSearch };
@@ -118,14 +160,195 @@ async function validateAndPersist(
 			deps.projectId,
 			configWithDefaults,
 		);
-		return { ok: true as const, ...withConfigHash(result) };
+		if (!result.config) {
+			return {
+				ok: false as const,
+				stage: 'persist',
+				errors: [{ path: '(root)', message: 'Agent config persistence returned no config.' }],
+			};
+		}
+		return {
+			ok: true as const,
+			...withConfigHash(result),
+			validation: classifyAgentConfig(
+				result.config,
+				collectCredentialBindingWarnings(configWithDefaults, result.config),
+			),
+		};
 	} catch (e) {
+		const nodeError = nodeValidationErrorSchema.safeParse(e);
+		if (nodeError.success) {
+			return {
+				ok: false as const,
+				stage: 'node-validation',
+				errors: nodeError.data.issues,
+			};
+		}
+		const referenceError = referenceValidationErrorSchema.safeParse(e);
+		if (referenceError.success) {
+			return {
+				ok: false as const,
+				stage: 'reference-validation',
+				errors: referenceError.data.issues,
+			};
+		}
 		return {
 			ok: false as const,
 			stage: 'validation',
 			errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
 		};
 	}
+}
+
+type MissingAgentSetup = 'model' | 'credential' | 'instructions';
+
+function classifyAgentConfig(
+	config: AgentJsonConfig,
+	warnings: CredentialBindingWarning[] = [],
+): {
+	status: 'runnable' | 'valid-draft';
+	missingSetup: MissingAgentSetup[];
+	warnings: CredentialBindingWarning[];
+} {
+	const missingSetup: MissingAgentSetup[] = [];
+	if (config.model.trim().length === 0) missingSetup.push('model');
+	if (!config.credential || config.credential.trim().length === 0) missingSetup.push('credential');
+	if (config.instructions.trim().length === 0) missingSetup.push('instructions');
+
+	return {
+		status:
+			missingSetup.length === 0 && RunnableAgentJsonConfigSchema.safeParse(config).success
+				? 'runnable'
+				: 'valid-draft',
+		missingSetup,
+		warnings,
+	};
+}
+
+function collectCredentialBindings(config: AgentJsonConfig): Map<string, CredentialBinding> {
+	const bindings = new Map<string, CredentialBinding>();
+	if (config.credential && config.credential.trim().length > 0) {
+		bindings.set('credential', {
+			value: config.credential,
+			context: 'model',
+			credentialType: 'model',
+		});
+	}
+
+	const visit = (value: unknown, path: string, context: string): void => {
+		if (Array.isArray(value)) {
+			value.forEach((entry, index) =>
+				visit(entry, path ? `${path}.${index}` : String(index), context),
+			);
+			return;
+		}
+		if (typeof value !== 'object' || value === null) return;
+
+		for (const [key, entry] of Object.entries(value)) {
+			const entryPath = path ? `${path}.${key}` : key;
+			if (
+				(key === 'credential' || key === 'credentialId') &&
+				typeof entry === 'string' &&
+				entry.trim().length > 0
+			) {
+				bindings.set(entryPath, {
+					value: entry,
+					context,
+					credentialType: key,
+				});
+				continue;
+			}
+
+			if (key === 'credentials' && isRecord(entry)) {
+				for (const [credentialType, credentialRef] of Object.entries(entry)) {
+					const credentialPath = `${entryPath}.${credentialType}`;
+					if (!isRecord(credentialRef)) continue;
+					const id = credentialRef.id;
+					if (typeof id === 'string' && id.trim().length > 0) {
+						bindings.set(`${credentialPath}.id`, {
+							value: id,
+							context,
+							credentialType,
+						});
+					} else {
+						visit(credentialRef, credentialPath, context);
+					}
+				}
+				continue;
+			}
+
+			visit(entry, entryPath, context);
+		}
+	};
+
+	for (const [toolIndex, tool] of (config.tools ?? []).entries()) {
+		if (tool.type !== 'node') continue;
+		visit(tool.node, `tools.${toolIndex}.node`, `tool "${tool.name}"`);
+	}
+
+	const { credential: _credential, tools: _tools, ...remainingConfig } = config;
+	visit(remainingConfig, '', 'agent');
+	return bindings;
+}
+
+function collectCredentialBindingWarnings(
+	candidate: AgentJsonConfig,
+	persisted: AgentJsonConfig,
+): CredentialBindingWarning[] {
+	const candidateBindings = collectCredentialBindings(candidate);
+	const persistedBindings = collectCredentialBindings(persisted);
+	const warnings: CredentialBindingWarning[] = [];
+
+	for (const [path, binding] of candidateBindings) {
+		if (persistedBindings.get(path)?.value === binding.value) continue;
+		warnings.push({
+			code: 'CREDENTIAL_BINDING_REMOVED',
+			path,
+			message: `The ${binding.context} credential binding (${binding.credentialType}) at "${path}" was removed because it is not accessible in this project.`,
+		});
+	}
+
+	return warnings.sort((left, right) => left.path.localeCompare(right.path));
+}
+
+function collectDestructiveChanges(
+	previous: AgentJsonConfig | null,
+	candidate: AgentJsonConfig,
+): DestructiveChanges {
+	const previousCustomToolIds = new Set(
+		(previous?.tools ?? []).flatMap((tool) => (tool.type === 'custom' ? [tool.id] : [])),
+	);
+	const candidateCustomToolIds = new Set(
+		candidate.tools?.flatMap((tool) => (tool.type === 'custom' ? [tool.id] : [])),
+	);
+	const previousSkillIds = new Set((previous?.skills ?? []).map((skill) => skill.id));
+	const candidateSkillIds = new Set(candidate.skills?.map((skill) => skill.id));
+
+	return {
+		customToolIds:
+			candidate.tools === undefined
+				? []
+				: [...previousCustomToolIds].filter((id) => !candidateCustomToolIds.has(id)).sort(),
+		skillIds:
+			candidate.skills === undefined
+				? []
+				: [...previousSkillIds].filter((id) => !candidateSkillIds.has(id)).sort(),
+	};
+}
+
+function getDestructiveChangeConfirmationToken(
+	configHash: string | null,
+	changes: DestructiveChanges,
+): string {
+	return createHash('sha256')
+		.update(
+			JSON.stringify({
+				configHash,
+				customToolIds: changes.customToolIds,
+				skillIds: changes.skillIds,
+			}),
+		)
+		.digest('hex');
 }
 
 /** read_config handler — usable standalone or via the agent_builder router. */
@@ -151,11 +374,19 @@ export async function persistConfigJson(
 	json: string,
 	baseConfigHash: string | null,
 ) {
-	const deps = await resolveDeps(context);
-	if (!deps) return NOT_CONFIGURED;
-
 	const parsed = tryParseConfigJson(json);
 	if (!parsed.ok) return { ok: false as const, stage: 'parse', errors: parsed.errors };
+	return await persistConfigCandidate(context, parsed.data, baseConfigHash);
+}
+
+export async function persistConfigCandidate(
+	context: InstanceAiContext,
+	candidate: unknown,
+	baseConfigHash: string | null,
+	options: PersistConfigOptions = {},
+) {
+	const deps = await resolveDeps(context);
+	if (!deps) return NOT_CONFIGURED;
 
 	let snapshot: HashedSnapshot;
 	try {
@@ -171,9 +402,25 @@ export async function persistConfigJson(
 		return { ok: false as const, stage: 'stale', errors: [STALE_CONFIG_ERROR], ...snapshot };
 	}
 
-	const zodResult = RunnableAgentJsonConfigSchema.safeParse(sanitizeAgentJsonConfig(parsed.data));
+	const zodResult = AgentJsonConfigSchema.safeParse(sanitizeAgentJsonConfig(candidate));
 	if (!zodResult.success) {
 		return { ok: false as const, stage: 'schema', errors: formatZodErrors(zodResult.error) };
+	}
+
+	const destructiveChanges = collectDestructiveChanges(snapshot.config, zodResult.data);
+	if (destructiveChanges.customToolIds.length > 0 || destructiveChanges.skillIds.length > 0) {
+		const confirmationToken = getDestructiveChangeConfirmationToken(
+			snapshot.configHash,
+			destructiveChanges,
+		);
+		if (options.destructiveChangeConfirmation !== confirmationToken) {
+			return {
+				ok: false as const,
+				stage: 'confirmation',
+				destructiveChanges,
+				confirmationToken,
+			};
+		}
 	}
 
 	return await validateAndPersist(deps, zodResult.data, snapshot.config);
@@ -184,8 +431,8 @@ export function createReadConfigTool(context: InstanceAiContext) {
 		.description(
 			'Read the latest persisted agent configuration and freshness metadata. ' +
 				'Returns { ok: true, config, configHash, updatedAt, versionId }. ' +
-				'Call this before every build_agent and use configHash as baseConfigHash. Use the returned ' +
-				'config to (re)write the agent config file in the workspace when editing an existing agent.',
+				'Use for compatibility and debugging; prefer read_agent_source before TypeScript edits. ' +
+				'Its configHash can be used as build_agent baseConfigHash.',
 		)
 		.input(readConfigInputSchema)
 		.handler(async () => await handleReadConfig(context))

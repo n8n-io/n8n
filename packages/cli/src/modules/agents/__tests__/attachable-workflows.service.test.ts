@@ -53,7 +53,7 @@ describe('AttachableWorkflowsService', () => {
 
 		const result = await service.list(user, 'project-1');
 
-		expect(result).toEqual([{ name: 'Has trigger', active: true, triggerType: 'manual' }]);
+		expect(result).toEqual([{ id: 'a', name: 'Has trigger', active: true, triggerType: 'manual' }]);
 	});
 
 	it('dedupes workflows that surface via multiple share paths', async () => {
@@ -77,7 +77,9 @@ describe('AttachableWorkflowsService', () => {
 
 		const result = await service.list(user, 'project-1', 'billing');
 
-		expect(result).toEqual([{ name: 'Billing follow-up', active: false, triggerType: 'manual' }]);
+		expect(result).toEqual([
+			{ id: 'a', name: 'Billing follow-up', active: false, triggerType: 'manual' },
+		]);
 	});
 
 	it('returns at most 10 most recently updated workflows when search term is omitted', async () => {
@@ -97,11 +99,13 @@ describe('AttachableWorkflowsService', () => {
 
 		expect(result).toHaveLength(10);
 		expect(result[0]).toEqual({
+			id: 'wf-59',
 			name: 'Workflow 59',
 			active: false,
 			triggerType: 'manual',
 		});
 		expect(result.at(-1)).toEqual({
+			id: 'wf-50',
 			name: 'Workflow 50',
 			active: false,
 			triggerType: 'manual',
@@ -113,6 +117,23 @@ describe('AttachableWorkflowsService', () => {
 		workflowFinderService.findAllWorkflowsForUser.mockResolvedValue([]);
 
 		expect(await service.list(user, 'project-1')).toEqual([]);
+	});
+
+	it('accepts accessible workflow IDs and legacy names without applying the listing cap', async () => {
+		const { service, workflowFinderService, user } = setup();
+		workflowFinderService.findAllWorkflowsForUser.mockResolvedValue([
+			wf({ id: 'available', name: 'Available by name', nodes: [manualTrigger] }),
+			wf({ id: 'unsupported-trigger', nodes: [noTrigger] }),
+		]);
+
+		const unavailable = await service.findUnavailableReferences(user, 'project-1', [
+			'available',
+			'Available by name',
+			'unsupported-trigger',
+			'missing',
+		]);
+
+		expect(unavailable).toEqual(['unsupported-trigger', 'missing']);
 	});
 
 	it('caps the result at 10 most recently updated workflows', async () => {

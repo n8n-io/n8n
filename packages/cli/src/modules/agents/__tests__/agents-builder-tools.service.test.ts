@@ -1074,14 +1074,16 @@ describe('AgentsBuilderToolsService', () => {
 		it('passes the search term to the attachable workflows service', async () => {
 			const { service, attachableWorkflowsService } = makeService();
 			attachableWorkflowsService.list.mockResolvedValue([
-				{ name: 'Billing follow-up', active: true, triggerType: 'manual' },
+				{ id: 'workflow-1', name: 'Billing follow-up', active: true, triggerType: 'manual' },
 			]);
 
 			const result = await getListWorkflowsTool(service).handler!({ searchTerm: 'billing' }, ctx);
 
 			expect(attachableWorkflowsService.list).toHaveBeenCalledWith(user, projectId, 'billing');
 			expect(result).toEqual({
-				workflows: [{ name: 'Billing follow-up', active: true, triggerType: 'manual' }],
+				workflows: [
+					{ id: 'workflow-1', name: 'Billing follow-up', active: true, triggerType: 'manual' },
+				],
 			});
 		});
 	});

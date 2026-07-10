@@ -3,11 +3,13 @@
 vi.mock('@/utils/ai-proxy-fetch', () => ({ createAiMcpFetch: vi.fn() }));
 
 import type { User } from '@n8n/db';
+import type { AgentJsonConfig } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import * as checkAccess from '@/permissions.ee/check-access';
+import type { AiService } from '@/services/ai.service';
 
 import type { AgentConfigService } from '../agent-config.service';
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
@@ -27,6 +29,7 @@ function setup() {
 	const agentTaskService = mock<AgentTaskService>();
 	const agentCustomToolsService = mock<AgentCustomToolsService>();
 	const attachableWorkflowsService = mock<AttachableWorkflowsService>();
+	const aiService = mock<AiService>();
 
 	const service = new InstanceAiAgentBuilderAdapterService(
 		agentsService,
@@ -48,6 +51,7 @@ function setup() {
 		mock(),
 		mock(),
 		attachableWorkflowsService,
+		aiService,
 	);
 
 	const user = mock<User>({ id: 'user-1' });
@@ -62,6 +66,7 @@ function setup() {
 		agentTaskService,
 		agentCustomToolsService,
 		attachableWorkflowsService,
+		aiService,
 	};
 }
 
@@ -195,6 +200,60 @@ describe('InstanceAiAgentBuilderAdapterService scope enforcement', () => {
 			expect(result).toEqual({ agentId: 'agent-1', projectId: 'project-1', name: 'My agent' });
 		});
 
+		it.each([true, false])(
+			'reports managed Episodic Memory credential availability as %s',
+			async (enabled) => {
+				const { adapter, aiService } = setup();
+				aiService.isProxyEnabled.mockReturnValue(enabled);
+
+				await expect(adapter.isEpisodicMemoryManagedCredentialAvailable()).resolves.toBe(enabled);
+			},
+		);
+
+		it('validates workflow references and enables strict config references on update', async () => {
+			const { adapter, user, agentConfigService, attachableWorkflowsService } = setup();
+			const config: AgentJsonConfig = {
+				name: 'Agent',
+				model: '',
+				instructions: '',
+				tools: [{ type: 'workflow', workflow: 'workflow-1' }],
+			};
+			attachableWorkflowsService.findUnavailableReferences.mockResolvedValue([]);
+			agentConfigService.updateConfig.mockResolvedValue({
+				config,
+				updatedAt: 't1',
+				versionId: null,
+			});
+
+			await adapter.updateConfig('agent-1', 'project-1', config);
+
+			expect(attachableWorkflowsService.findUnavailableReferences).toHaveBeenCalledWith(
+				user,
+				'project-1',
+				['workflow-1'],
+			);
+			expect(agentConfigService.updateConfig).toHaveBeenCalledWith('agent-1', 'project-1', config, {
+				missingReferencePolicy: 'error',
+			});
+		});
+
+		it('rejects unavailable workflow references before persistence', async () => {
+			const { adapter, agentConfigService, attachableWorkflowsService } = setup();
+			const config: AgentJsonConfig = {
+				name: 'Agent',
+				model: '',
+				instructions: '',
+				tools: [{ type: 'workflow', workflow: 'missing-workflow' }],
+			};
+			attachableWorkflowsService.findUnavailableReferences.mockResolvedValue(['missing-workflow']);
+
+			await expect(adapter.updateConfig('agent-1', 'project-1', config)).rejects.toMatchObject({
+				code: 'AGENT_CONFIG_REFERENCE_VALIDATION',
+				issues: [{ path: 'tools.0.workflow' }],
+			});
+			expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
+		});
+
 		it('createTask rejects an agent outside the scoped project', async () => {
 			const { adapter, agentsService, agentTaskService } = setup();
 			agentsService.findById.mockResolvedValue(null);
@@ -245,7 +304,9 @@ describe('InstanceAiAgentBuilderAdapterService scope enforcement', () => {
 
 		it('listAttachableWorkflows delegates to the RBAC-scoped workflows service', async () => {
 			const { adapter, user, attachableWorkflowsService } = setup();
-			const workflows = [{ name: 'Send Email', active: true, triggerType: 'manual' }];
+			const workflows = [
+				{ id: 'workflow-1', name: 'Send Email', active: true, triggerType: 'manual' },
+			];
 			attachableWorkflowsService.list.mockResolvedValue(workflows);
 
 			const result = await adapter.listAttachableWorkflows('project-1', 'billing');

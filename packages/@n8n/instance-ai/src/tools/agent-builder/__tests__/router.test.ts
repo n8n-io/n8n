@@ -16,6 +16,7 @@ function createService(
 		listChatIntegrations: vi.fn(),
 		listProjectAgents: vi.fn(),
 		listAllProjectAgents: vi.fn(),
+		isEpisodicMemoryManagedCredentialAvailable: vi.fn(),
 		listModels: vi.fn(),
 		searchMcpServers: vi.fn(),
 		verifyMcpServer: vi.fn(),
@@ -73,11 +74,37 @@ describe('agent_builder router', () => {
 		expect(service.getConfigSnapshot).toHaveBeenCalledWith('agent-1', 'project-1');
 	});
 
+	it('routes read_agent_source to source materialization', async () => {
+		const service = createService({
+			getConfigSnapshot: vi.fn().mockResolvedValue({
+				config: { name: 'Agent', model: '', instructions: '' },
+				updatedAt: 't1',
+				versionId: 'v1',
+			}),
+		});
+		const writeFile = vi.fn();
+		const context = {
+			...createContext(service),
+			workspace: { filesystem: { writeFile } },
+			logger: { debug: vi.fn(), warn: vi.fn() },
+		} as unknown as InstanceAiContext;
+
+		const result = await executeTool<{ ok: boolean; filePath?: string }>(
+			createAgentBuilderRouterTool(context),
+			{ action: 'read_agent_source' },
+			{},
+		);
+
+		expect(result).toMatchObject({ ok: true, filePath: 'src/agents/agent-1.agent.ts' });
+	});
+
 	it('routes list_workflows to the host adapter', async () => {
 		const service = createService({
 			listAttachableWorkflows: vi
 				.fn()
-				.mockResolvedValue([{ name: 'Send Email', active: true, triggerType: 'manual' }]),
+				.mockResolvedValue([
+					{ id: 'workflow-1', name: 'Send Email', active: true, triggerType: 'manual' },
+				]),
 		});
 		const result = await executeTool<{ workflows: unknown[] }>(
 			createAgentBuilderRouterTool(createContext(service)),
@@ -99,6 +126,20 @@ describe('agent_builder router', () => {
 		);
 		expect(service.listAllProjectAgents).toHaveBeenCalledWith('project-1');
 		expect(result.agents).toEqual([{ agentId: 'agent-2', name: 'Triage' }]);
+	});
+
+	it('routes episodic-memory credential resolution', async () => {
+		const service = createService({
+			isEpisodicMemoryManagedCredentialAvailable: vi.fn().mockResolvedValue(true),
+		});
+		const result = await executeTool<{ ok: boolean; credentialId?: string }>(
+			createAgentBuilderRouterTool(createContext(service)),
+			{ action: 'resolve_episodic_memory_credential' },
+			{},
+		);
+
+		expect(service.isEpisodicMemoryManagedCredentialAvailable).toHaveBeenCalled();
+		expect(result).toMatchObject({ ok: true, credentialId: 'managed' });
 	});
 
 	it('routes build_agent to the build-agent handler', async () => {

@@ -5,6 +5,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 /** A workflow that can be attached to an agent as a `type: "workflow"` tool. */
 export interface AttachableWorkflow {
+	id: string;
 	name: string;
 	active: boolean;
 	triggerType: string;
@@ -23,6 +24,12 @@ const SUPPORTED_TRIGGERS: Record<string, string> = {
 // The result is embedded in an LLM tool response, so cap it because large tenants
 // can have thousands of readable workflows in a project.
 const MAX_ATTACHABLE_WORKFLOWS = 10;
+
+function getSupportedTriggerType(workflow: { nodes?: Array<{ type: string }> }):
+	| string
+	| undefined {
+	return workflow.nodes?.map((node) => SUPPORTED_TRIGGERS[node.type]).find(Boolean);
+}
 
 /**
  * Lists the workflows a user may attach to an agent as `type: "workflow"` tools.
@@ -57,16 +64,44 @@ export class AttachableWorkflowsService {
 			)
 			.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
 			.flatMap((workflow) => {
-				const triggerNode = (workflow.nodes ?? []).find((node) => SUPPORTED_TRIGGERS[node.type]);
-				if (!triggerNode) return [];
+				const triggerType = getSupportedTriggerType(workflow);
+				if (!triggerType) return [];
 				return [
 					{
+						id: workflow.id,
 						name: workflow.name,
 						active: workflow.active,
-						triggerType: SUPPORTED_TRIGGERS[triggerNode.type],
+						triggerType,
 					},
 				];
 			})
 			.slice(0, MAX_ATTACHABLE_WORKFLOWS);
+	}
+
+	async findUnavailableReferences(
+		user: User,
+		projectId: string,
+		workflowReferences: string[],
+	): Promise<string[]> {
+		const requestedReferences = [...new Set(workflowReferences)];
+		if (requestedReferences.length === 0) return [];
+
+		const workflows = await this.workflowFinderService.findAllWorkflowsForUser(
+			user,
+			['workflow:read'],
+			undefined,
+			projectId,
+		);
+		const requested = new Set(requestedReferences);
+		const availableReferences = new Set(
+			workflows
+				.filter(
+					(workflow) =>
+						(requested.has(workflow.id) || requested.has(workflow.name)) &&
+						getSupportedTriggerType(workflow),
+				)
+				.flatMap((workflow) => [workflow.id, workflow.name]),
+		);
+		return requestedReferences.filter((reference) => !availableReferences.has(reference));
 	}
 }

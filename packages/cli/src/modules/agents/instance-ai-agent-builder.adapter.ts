@@ -27,6 +27,7 @@ import { NodeCatalogService } from '@/node-catalog/node-catalog.service';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { AiService } from '@/services/ai.service';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
@@ -39,6 +40,7 @@ import { AgentTaskService } from './agent-task.service';
 import { AgentsService } from './agents.service';
 import { isAgentToolNodeType } from './agents-tools.service';
 import { AttachableWorkflowsService } from './attachable-workflows.service';
+import { AgentConfigReferenceValidationError } from './errors/agent-config-reference-validation.error';
 import { BuilderModelLiveLookupService } from './builder/builder-model-live-lookup.service';
 import { resolveResourceLocatorOptions as resolveResourceLocatorOptionsHandler } from './builder/get-resource-locator-options.tool';
 import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults';
@@ -83,6 +85,7 @@ export class InstanceAiAgentBuilderAdapterService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
 		private readonly attachableWorkflowsService: AttachableWorkflowsService,
+		private readonly aiService: AiService,
 	) {}
 
 	createAdapter(user: User, sessionProjectId?: string): InstanceAiAgentBuilderService {
@@ -135,7 +138,33 @@ export class InstanceAiAgentBuilderAdapterService {
 				config: AgentJsonConfig,
 			): Promise<AgentConfigSnapshot> => {
 				await assertProjectScope('agent:update', projectId);
-				const result = await this.agentConfigService.updateConfig(agentId, projectId, config);
+				const workflowRefs = (config.tools ?? []).flatMap((tool, index) =>
+					tool.type === 'workflow' ? [{ workflowId: tool.workflow, index }] : [],
+				);
+				const unavailableWorkflowReferences = new Set(
+					await this.attachableWorkflowsService.findUnavailableReferences(
+						user,
+						projectId,
+						workflowRefs.map(({ workflowId }) => workflowId),
+					),
+				);
+				const workflowIssues = workflowRefs.flatMap(({ workflowId, index }) =>
+					unavailableWorkflowReferences.has(workflowId)
+						? [
+								{
+									path: `tools.${index}.workflow`,
+									message: `Workflow "${workflowId}" is missing, inaccessible, or cannot be attached as an Agent tool.`,
+								},
+							]
+						: [],
+				);
+				if (workflowIssues.length > 0) {
+					throw new AgentConfigReferenceValidationError(workflowIssues);
+				}
+
+				const result = await this.agentConfigService.updateConfig(agentId, projectId, config, {
+					missingReferencePolicy: 'error',
+				});
 				return { config: result.config, updatedAt: result.updatedAt, versionId: result.versionId };
 			},
 
@@ -217,6 +246,9 @@ export class InstanceAiAgentBuilderAdapterService {
 					credentialType,
 					getModelLookupProvider(credentialType),
 				),
+
+			isEpisodicMemoryManagedCredentialAvailable: async (): Promise<boolean> =>
+				this.aiService.isProxyEnabled(),
 
 			searchMcpServers: async (queries): Promise<McpServerSearchResult[]> =>
 				await this.mcpRegistryService.search(queries),

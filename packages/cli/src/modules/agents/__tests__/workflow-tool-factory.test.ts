@@ -161,6 +161,19 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 		});
 	});
 
+	it('resolves a workflow by stable ID', async () => {
+		const workflow = makeWorkflow({ id: 'wf-id-99', name: 'Canonical workflow name' });
+		const context = makeContext(workflow);
+
+		const tool = await resolveWorkflowTool({ type: 'workflow', workflow: 'wf-id-99' }, context);
+
+		expect(tool.name).toBe('canonical-workflow-name');
+		expect(tool.metadata).toMatchObject({
+			workflowId: 'wf-id-99',
+			workflowName: 'Canonical workflow name',
+		});
+	});
+
 	it('scopes the workflow lookup to the project', async () => {
 		const workflow = makeWorkflow({ id: 'wf-scoped-1', name: 'Scoped Workflow' });
 		const context = makeContext(workflow);
@@ -169,7 +182,10 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 
 		expect(context.workflowRepository.findOne).toHaveBeenCalledWith(
 			expect.objectContaining({
-				where: { name: 'Scoped Workflow', shared: { projectId: 'project-1' } },
+				where: [
+					{ id: 'Scoped Workflow', shared: { projectId: 'project-1' } },
+					{ name: 'Scoped Workflow', shared: { projectId: 'project-1' } },
+				],
 			}),
 		);
 	});

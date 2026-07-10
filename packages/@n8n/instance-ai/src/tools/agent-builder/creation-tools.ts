@@ -223,7 +223,8 @@ export function createListWorkflowsTool(context: InstanceAiContext) {
 				'config. Workflows are the preferred way to give agents real capabilities (sending emails, ' +
 				'creating calendar events, querying databases, calling APIs). Only returns workflows with ' +
 				'supported trigger types. Pass `searchTerm` to narrow by workflow name; omit it to return the ' +
-				'10 most recently updated attachable workflows.',
+				'10 most recently updated attachable workflows. Use the returned id and name with ' +
+				'workflowTool(id, { name }).',
 		)
 		.input(
 			z.object({

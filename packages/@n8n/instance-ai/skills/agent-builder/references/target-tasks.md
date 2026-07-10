@@ -60,8 +60,8 @@ cadence. Never create a placeholder or "refine-it-later" task.
   asking clarifying questions until no section is a guess.
 - Write the objective using the exact template above, filling each section.
 - Make sure the agent already has every tool the steps need (an integration,
-  node/workflow tool, or web search). If something is missing, add it to the agent
-  config first — a task can only use tools the agent already has.
+  node/workflow tool, or web search). If something is missing, add it to Agent
+  source first — a task can only use tools the agent already has.
 - Translate the cadence into a valid 5-field cron expression (e.g. daily 09:00
   -> "0 9 * * *"; weekdays 08:30 -> "30 8 * * 1-5"; hourly -> "0 * * * *").
 - Call `agent_builder` (`action: "create_task"`) with `name`, `objective`, and
@@ -81,8 +81,7 @@ cadence. Never create a placeholder or "refine-it-later" task.
 - `create_task` adds a `{ type: "task", id, enabled }` ref to `config.tasks` and
   creates the task body. The task is enabled by default and only starts running
   once the agent is (re)published; tell the user this when relevant.
-- To disable or remove a task, edit `config.tasks` in the config file (set
-  `enabled: false`, or drop the ref) and persist with `agent_builder`
-  (`action: "build_agent"`). Changes take effect on the next publish.
+- Tasks are platform-owned and are not declared in Agent TypeScript source.
+  Disable or remove existing tasks in the Agent Builder task UI.
 - `create_task` does NOT add tools — if the task needs a tool the agent lacks,
-  add it to the config yourself first.
+  add it to Agent source first.

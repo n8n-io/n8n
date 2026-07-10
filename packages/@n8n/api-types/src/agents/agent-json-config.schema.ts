@@ -312,6 +312,25 @@ export const AGENT_VECTOR_STORE_CREDENTIAL_TYPES = {
 export const VECTOR_STORE_USE_WHEN_MAX_LENGTH = 512;
 export const VECTOR_STORE_NAME_REGEX = /^[a-zA-Z0-9_-]+$/;
 
+const MAX_OPENAI_TOOL_NAME_LENGTH = 64;
+
+function sanitizeOpenAiToolName(name: string): string {
+	let toolName = name.replace(/[^a-zA-Z0-9_-]+/g, '_');
+	if (toolName.length > MAX_OPENAI_TOOL_NAME_LENGTH) {
+		toolName = toolName.slice(0, MAX_OPENAI_TOOL_NAME_LENGTH).replace(/[_-]+$/, '');
+	}
+	return toolName;
+}
+
+function sanitizeWorkflowToolName(name: string): string {
+	if (/^[a-zA-Z0-9_-]{1,128}$/.test(name)) return name;
+	return name
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-|-$/g, '')
+		.slice(0, 128);
+}
+
 const VectorStoreEmbeddingSchema = z
 	.object({
 		model: AgentModelSchema,
@@ -447,10 +466,10 @@ export const AgentJsonConfigSchema = z.object({
 	vectorStores: z
 		.array(AgentVectorStoreConfigSchema)
 		.max(20)
-		// The SDK's asTool() sanitizes '-' to '_' when deriving the search_<name>
-		// tool name, so uniqueness must be checked on the sanitized form.
 		.refine(
-			(stores) => new Set(stores.map((s) => s.name.replace(/-/g, '_'))).size === stores.length,
+			(stores) =>
+				new Set(stores.map((store) => sanitizeOpenAiToolName(`search_${store.name}`))).size ===
+				stores.length,
 			{ message: 'Vector store names must be unique within an agent' },
 		)
 		.optional(),
@@ -536,16 +555,32 @@ export function findVectorStoreToolNameCollisions(
 				case 'custom':
 					return tool.id;
 				case 'workflow':
-					return tool.name ?? tool.workflow;
+					return sanitizeWorkflowToolName(tool.name ?? tool.workflow);
 				case 'node':
-					return tool.name;
+					return sanitizeOpenAiToolName(tool.name);
 			}
 		}),
 	);
 
 	return config.vectorStores
-		.map((store) => `search_${store.name.replace(/-/g, '_')}`)
+		.map((store) => sanitizeOpenAiToolName(`search_${store.name}`))
 		.filter((toolName) => toolNames.has(toolName));
+}
+
+export function findAgentToolNameCollisions(config: Pick<AgentJsonConfig, 'tools'>): string[] {
+	const seen = new Set<string>();
+	const collisions = new Set<string>();
+	for (const tool of config.tools ?? []) {
+		const providerName =
+			tool.type === 'custom'
+				? tool.id
+				: tool.type === 'workflow'
+					? sanitizeWorkflowToolName(tool.name ?? tool.workflow)
+					: sanitizeOpenAiToolName(tool.name);
+		if (seen.has(providerName)) collisions.add(providerName);
+		seen.add(providerName);
+	}
+	return [...collisions].sort();
 }
 
 export function formatZodErrors(error: ZodError): ConfigValidationError[] {

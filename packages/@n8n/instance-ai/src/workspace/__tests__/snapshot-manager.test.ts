@@ -182,6 +182,9 @@ describe('SnapshotManager.ensureImage', () => {
 		await expect(
 			readFile(join(stagingDir, 'knowledge-base/.manifest.json'), 'utf-8'),
 		).resolves.toBeDefined();
+		await expect(readFile(join(stagingDir, 'build-agent.mjs'), 'utf-8')).resolves.toContain(
+			"from '@n8n/workflow-sdk/agent'",
+		);
 	});
 
 	it('uses a content-hash cache key when no n8n version is configured', async () => {

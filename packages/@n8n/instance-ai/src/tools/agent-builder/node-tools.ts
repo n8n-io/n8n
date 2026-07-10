@@ -12,7 +12,7 @@ import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
-import { nodeRequestSchema, resolveNodeTypeDefinitions } from '../nodes.tool';
+import { resolveNodeTypeDefinitions } from '../nodes.tool';
 import { AGENT_BUILDER_TOOL_IDS } from '../tool-ids';
 
 const NODE_TOOLS_UNAVAILABLE = {
@@ -20,6 +20,40 @@ const NODE_TOOLS_UNAVAILABLE = {
 	code: 'not_available',
 	message: 'Agent building is not available in this context.',
 };
+
+const agentNodeVersionSchema = z.union([
+	z.number().finite(),
+	z.string().regex(/^\d+(?:\.\d+)?$/, 'Node version must be a semantic number such as 1.3.'),
+]);
+
+const agentNodeRequestSchema = z.union([
+	z.string(),
+	z.object({
+		nodeType: z.string(),
+		version: agentNodeVersionSchema.optional(),
+		resource: z.string().optional(),
+		operation: z.string().optional(),
+		mode: z.string().optional(),
+	}),
+]);
+
+type AgentNodeRequest = z.infer<typeof agentNodeRequestSchema>;
+
+function normalizeAgentNodeRequest(request: AgentNodeRequest): AgentNodeRequest {
+	if (typeof request === 'string' || request.version === undefined) return request;
+	const version = typeof request.version === 'number' ? request.version : Number(request.version);
+	if (!Number.isFinite(version)) {
+		throw new Error('Node version must be a semantic number such as 1.3.');
+	}
+	return { ...request, version };
+}
+
+function normalizeResolvedNodeVersion(version: string | number): number {
+	if (typeof version === 'number') return version;
+	const normalized = Number(version);
+	if (!Number.isFinite(normalized)) throw new Error(`Invalid resolved node version: "${version}".`);
+	return normalized;
+}
 
 export function createSearchNodesTool(context: InstanceAiContext) {
 	return new Tool(AGENT_BUILDER_TOOL_IDS.SEARCH_NODES)
@@ -46,12 +80,25 @@ export function createSearchNodesTool(context: InstanceAiContext) {
 export function createGetNodeTypesTool(context: InstanceAiContext) {
 	return new Tool(AGENT_BUILDER_TOOL_IDS.GET_NODE_TYPES)
 		.description(
-			'Get TypeScript type definitions for node types — exact parameter names, enum values, ' +
+			'Get host-installed TypeScript definitions for node types — exact semantic versions, parameter names, enum values, ' +
 				'credential types, display conditions, and `@searchListMethod` / `@loadOptionsMethod` / ' +
-				'`@builderHint` annotations. Call before configuring a node tool in the agent config.',
+				'`@builderHint` annotations. Call before writing each node `tool(...)` in the agent source, ' +
+				'and use the returned numeric version.',
 		)
-		.input(z.object({ nodeTypes: z.array(nodeRequestSchema).min(1).max(5) }))
-		.handler(async ({ nodeTypes }) => await resolveNodeTypeDefinitions(context, nodeTypes))
+		.input(z.object({ nodeTypes: z.array(agentNodeRequestSchema).min(1).max(5) }))
+		.handler(async ({ nodeTypes }) => {
+			const result = await resolveNodeTypeDefinitions(
+				context,
+				nodeTypes.map(normalizeAgentNodeRequest),
+			);
+			return {
+				definitions: result.definitions.map((definition) =>
+					!('version' in definition) || definition.version === undefined
+						? definition
+						: { ...definition, version: normalizeResolvedNodeVersion(definition.version) },
+				),
+			};
+		})
 		.build();
 }
 

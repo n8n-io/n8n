@@ -33,7 +33,8 @@ const nodeVersionNumbers = (description: INodeTypeDescription): number[] => {
 const maxNodeVersion = (description: INodeTypeDescription): number =>
 	Math.max(0, ...nodeVersionNumbers(description));
 
-const parseRequestedVersion = (version: string): number => {
+const parseRequestedVersion = (version: string | number): number => {
+	if (typeof version === 'number') return version;
 	const normalized = version.replace(/^v/i, '');
 	if (/^\d+$/.test(normalized) && normalized.length === 2) {
 		return Number(`${normalized[0]}.${normalized[1]}`);
@@ -57,7 +58,7 @@ export interface SearchNodesOptions {
 
 export interface NodeTypeDefinitionRequest {
 	nodeId: string;
-	version?: string;
+	version?: string | number;
 	resource?: string;
 	operation?: string;
 	mode?: string;
@@ -65,6 +66,7 @@ export interface NodeTypeDefinitionRequest {
 
 export interface NodeTypeDefinitionResult {
 	content: string;
+	/** Semantic node version (for example `1.3`), never an on-disk label such as `v13`. */
 	version?: string;
 	error?: string;
 	builderHint?: string;
@@ -348,15 +350,22 @@ export class NodeCatalogService {
 		request: NodeTypeDefinitionRequest,
 	): Promise<NodeTypeDefinitionResult> {
 		const { getNodeTypeDefinition } = await import('@n8n/ai-utilities/node-catalog');
-		const result = getNodeTypeDefinition(request.nodeId, request.version, this.nodeDefinitionDirs, {
-			resource: request.resource,
-			operation: request.operation,
-			mode: request.mode,
-		});
+		const requestedVersion =
+			typeof request.version === 'number' ? String(request.version) : request.version;
+		const result = getNodeTypeDefinition(
+			request.nodeId,
+			requestedVersion,
+			this.nodeDefinitionDirs,
+			{
+				resource: request.resource,
+				operation: request.operation,
+				mode: request.mode,
+			},
+		);
 
 		const candidates = this.descriptionsById.get(request.nodeId);
 		const description = candidates
-			? this.selectDescription(candidates, result.version ?? request.version)
+			? this.selectDescription(candidates, request.version)
 			: undefined;
 		const builderHint = description?.builderHint?.searchHint;
 
@@ -368,9 +377,19 @@ export class NodeCatalogService {
 			};
 		}
 
+		const requestedSemanticVersion =
+			request.version === undefined ? undefined : parseRequestedVersion(request.version);
+		const semanticVersion =
+			requestedSemanticVersion !== undefined && Number.isFinite(requestedSemanticVersion)
+				? String(requestedSemanticVersion)
+				: description
+					? versionLabel(description)
+					: undefined;
+		const resolvedVersion = semanticVersion ?? result.version;
+
 		return {
 			content: result.content,
-			...(result.version ? { version: result.version } : {}),
+			...(resolvedVersion ? { version: resolvedVersion } : {}),
 			...(builderHint ? { builderHint } : {}),
 		};
 	}
@@ -423,7 +442,7 @@ export class NodeCatalogService {
 	 */
 	private selectDescription(
 		candidates: INodeTypeDescription[],
-		requestedVersion?: string,
+		requestedVersion?: string | number,
 	): INodeTypeDescription | undefined {
 		if (requestedVersion !== undefined) {
 			const wanted = parseRequestedVersion(requestedVersion);
@@ -437,7 +456,7 @@ export class NodeCatalogService {
 
 	private versionNotFoundError(
 		nodeId: string,
-		requestedVersion: string | undefined,
+		requestedVersion: string | number | undefined,
 		candidates: INodeTypeDescription[],
 	): string {
 		const available = [...new Set(candidates.flatMap(nodeVersionNumbers))].sort((a, b) => a - b);

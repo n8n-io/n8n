@@ -73,8 +73,8 @@ When `build_agent` rejects a dynamic selector using `$fromAI`:
 2. Inspect the node metadata if needed.
 3. Resolve the parameter with `agent_builder` (`action:
    "get_resource_locator_options"`).
-4. In the config file, replace only that parameter with the returned
-   `parameterValue`, then call `build_agent` again.
+4. In the node tool's source `parameters`, replace only that parameter with the
+   returned `parameterValue`, then call `build_agent` again.
 
 ## Example
 

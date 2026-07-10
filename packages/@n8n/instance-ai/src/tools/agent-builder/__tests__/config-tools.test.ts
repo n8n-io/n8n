@@ -26,6 +26,7 @@ function createService(
 		listChatIntegrations: vi.fn(),
 		listProjectAgents: vi.fn(),
 		listAllProjectAgents: vi.fn(),
+		isEpisodicMemoryManagedCredentialAvailable: vi.fn(),
 		listModels: vi.fn(),
 		searchMcpServers: vi.fn(),
 		verifyMcpServer: vi.fn(),

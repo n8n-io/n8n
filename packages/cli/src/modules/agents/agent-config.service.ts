@@ -2,6 +2,7 @@ import { reconcileNativeWebSearch } from '@n8n/ai-utilities/agent-config';
 import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import {
 	AgentJsonConfigSchema,
+	findAgentToolNameCollisions,
 	findVectorStoreToolNameCollisions,
 	sanitizeAgentJsonConfig,
 	type AgentJsonConfig,
@@ -17,7 +18,16 @@ import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-def
 
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSkillsService } from './agent-skills.service';
+import { isAgentToolNodeType } from './agents-tools.service';
 import type { Agent } from './entities/agent.entity';
+import {
+	AgentConfigNodeValidationError,
+	type AgentConfigNodeValidationIssue,
+} from './errors/agent-config-node-validation.error';
+import {
+	AgentConfigReferenceValidationError,
+	type AgentConfigReferenceIssue,
+} from './errors/agent-config-reference-validation.error';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
@@ -26,6 +36,10 @@ import { AgentRepository } from './repositories/agent.repository';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
 import { resolveUniqueSubAgents, type ResolvedSubAgentRef } from './utils/sub-agent-resolver';
+
+export interface AgentConfigUpdateOptions {
+	missingReferencePolicy?: 'drop' | 'error';
+}
 
 @Service()
 export class AgentConfigService {
@@ -57,7 +71,11 @@ export class AgentConfigService {
 	 */
 	async validateConfig(
 		raw: unknown,
-	): Promise<{ valid: true; config: AgentJsonConfig } | { valid: false; error: string }> {
+	): Promise<
+		| { valid: true; config: AgentJsonConfig }
+		| { valid: false; error: string }
+		| { valid: false; error: string; nodeIssues: AgentConfigNodeValidationIssue[] }
+	> {
 		if (hasNodeToolInputSchema(raw)) {
 			return { valid: false, error: 'Node tool configs must not include inputSchema.' };
 		}
@@ -68,6 +86,13 @@ export class AgentConfigService {
 		}
 
 		const config = parsed.data;
+		const duplicateToolNames = findAgentToolNameCollisions(config);
+		if (duplicateToolNames.length > 0) {
+			return {
+				valid: false,
+				error: `Agent tool names collide after provider normalization: ${duplicateToolNames.join(', ')}`,
+			};
+		}
 
 		const toolNameCollisions = findVectorStoreToolNameCollisions(config);
 		if (toolNameCollisions.length > 0) {
@@ -87,9 +112,13 @@ export class AgentConfigService {
 			};
 		}
 
-		const nodeError = await this.validateNodeToolConfigs(config);
-		if (nodeError) {
-			return { valid: false, error: nodeError };
+		const nodeIssues = await this.validateNodeToolConfigs(config);
+		if (nodeIssues.length > 0) {
+			return {
+				valid: false,
+				error: nodeIssues.map((issue) => `${issue.path}: ${issue.message}`).join('\n'),
+				nodeIssues,
+			};
 		}
 
 		return { valid: true, config };
@@ -110,6 +139,7 @@ export class AgentConfigService {
 		agentId: string,
 		projectId: string,
 		config: unknown,
+		options: AgentConfigUpdateOptions = {},
 	): Promise<{ config: AgentJsonConfig; updatedAt: string; versionId: string | null }> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
@@ -126,6 +156,9 @@ export class AgentConfigService {
 
 		const result = await this.validateConfig(sanitizedConfig);
 		if (!result.valid) {
+			if ('nodeIssues' in result) {
+				throw new AgentConfigNodeValidationError(result.nodeIssues);
+			}
 			throw new UserError(`Invalid agent config: ${result.error}`);
 		}
 
@@ -143,6 +176,7 @@ export class AgentConfigService {
 			validatedConfig,
 			entity,
 			new Set(existingTaskIds),
+			options.missingReferencePolicy ?? 'drop',
 		);
 		this.validateSubAgentRefs(resolvedSubAgents, entity);
 
@@ -240,12 +274,18 @@ export class AgentConfigService {
 		};
 	}
 
-	private async validateNodeToolConfigs(config: AgentJsonConfig): Promise<string | null> {
-		const nodeTools = (config.tools ?? []).filter(
-			(t): t is Extract<AgentJsonToolConfig, { type: 'node' }> => t.type === 'node',
-		);
+	private async validateNodeToolConfigs(
+		config: AgentJsonConfig,
+	): Promise<AgentConfigNodeValidationIssue[]> {
+		const nodeTools: Array<{
+			tool: Extract<AgentJsonToolConfig, { type: 'node' }>;
+			index: number;
+		}> = [];
+		for (const [index, tool] of (config.tools ?? []).entries()) {
+			if (tool.type === 'node') nodeTools.push({ tool, index });
+		}
 
-		if (nodeTools.length === 0) return null;
+		if (nodeTools.length === 0) return [];
 
 		const { setSchemaBaseDirs, validateNodeConfig } = await import('@n8n/workflow-sdk');
 
@@ -254,12 +294,23 @@ export class AgentConfigService {
 			setSchemaBaseDirs(dirs);
 		}
 
-		const errors: string[] = [];
+		const issues: AgentConfigNodeValidationIssue[] = [];
 
-		for (const tool of nodeTools) {
+		for (const { tool, index } of nodeTools) {
 			const nodeType: string = tool.node.nodeType;
 			const nodeTypeVersion: number = tool.node.nodeTypeVersion;
 			const nodeParameters = tool.node.nodeParameters ?? {};
+			if (!isAgentToolNodeType(nodeType)) {
+				issues.push({
+					code: 'NODE_NOT_AGENT_TOOL',
+					path: `tools.${index}.node.nodeType`,
+					message: `Node tool "${tool.name}" uses "${nodeType}", which is not available as an Agent tool.`,
+					toolName: tool.name,
+					nodeType,
+					nodeTypeVersion,
+				});
+				continue;
+			}
 
 			const result = validateNodeConfig(
 				nodeType,
@@ -269,51 +320,112 @@ export class AgentConfigService {
 			);
 
 			if (!result.valid) {
-				const messages = result.errors
-					.map((e: { path: string; message: string }) => e.message)
-					.join('; ');
-				errors.push(`Node tool "${tool.name}" (${nodeType}@${nodeTypeVersion}): ${messages}`);
+				for (const error of result.errors) {
+					const parameterPath = error.path
+						.replace(/^\/?parameters(?:\.|\/)?/, '')
+						.replaceAll('/', '.');
+					issues.push({
+						code: 'INVALID_NODE_PARAMETERS',
+						path: `tools.${index}.node.nodeParameters${parameterPath ? `.${parameterPath}` : ''}`,
+						message: error.message,
+						toolName: tool.name,
+						nodeType,
+						nodeTypeVersion,
+					});
+				}
 			}
 		}
 
-		return errors.length > 0 ? errors.join('\n') : null;
+		return issues;
 	}
 
 	private async removeMissingConfigRefs(
 		config: AgentJsonConfig,
 		entity: Agent,
 		existingTaskIds: ReadonlySet<string>,
+		missingReferencePolicy: 'drop' | 'error',
 	): Promise<ResolvedSubAgentRef[]> {
+		const issues: AgentConfigReferenceIssue[] = [];
+
 		if (config.skills !== undefined) {
 			const skills = entity.skills ?? {};
-			config.skills = config.skills.filter((ref) => Boolean(skills[ref.id]));
+			config.skills.forEach((ref, index) => {
+				if (!skills[ref.id]) {
+					issues.push({
+						path: `skills.${index}.id`,
+						message: `Skill "${ref.id}" does not exist on this agent.`,
+					});
+				}
+			});
+			if (missingReferencePolicy === 'drop') {
+				config.skills = config.skills.filter((ref) => Boolean(skills[ref.id]));
+			}
 		}
 
 		if (config.tools !== undefined) {
 			const tools = entity.tools ?? {};
-			config.tools = config.tools.filter((ref) => ref.type !== 'custom' || Boolean(tools[ref.id]));
+			config.tools.forEach((ref, index) => {
+				if (ref.type === 'custom' && !tools[ref.id]) {
+					issues.push({
+						path: `tools.${index}.id`,
+						message: `Custom tool "${ref.id}" does not exist on this agent.`,
+					});
+				}
+			});
+			if (missingReferencePolicy === 'drop') {
+				config.tools = config.tools.filter(
+					(ref) => ref.type !== 'custom' || Boolean(tools[ref.id]),
+				);
+			}
 		}
 
 		if (config.tasks !== undefined) {
-			config.tasks = config.tasks.filter((ref) => existingTaskIds.has(ref.id));
+			config.tasks.forEach((ref, index) => {
+				if (!existingTaskIds.has(ref.id)) {
+					issues.push({
+						path: `tasks.${index}.id`,
+						message: `Task "${ref.id}" does not exist on this agent.`,
+					});
+				}
+			});
+			if (missingReferencePolicy === 'drop') {
+				config.tasks = config.tasks.filter((ref) => existingTaskIds.has(ref.id));
+			}
 		}
 
+		let resolvedSubAgents: ResolvedSubAgentRef[] = [];
 		if (config.subAgents?.agents !== undefined) {
-			const resolvedSubAgents = await resolveUniqueSubAgents({
+			resolvedSubAgents = await resolveUniqueSubAgents({
 				refs: config.subAgents.agents,
 				projectId: entity.projectId,
 				agentRepository: this.agentRepository,
 			});
+			for (const { agentId, agent } of resolvedSubAgents) {
+				if (agent) continue;
+				const index = config.subAgents.agents.findIndex((ref) => ref.agentId === agentId);
+				issues.push({
+					path: `subAgents.agents.${index}.agentId`,
+					message: `Sub-agent "${agentId}" is not available in this project.`,
+				});
+			}
+
+			if (missingReferencePolicy === 'error' && issues.length > 0) {
+				throw new AgentConfigReferenceValidationError(issues);
+			}
+
 			config.subAgents.agents = resolvedSubAgents
 				.filter(({ agent }) => agent !== null)
 				.map(({ agentId, useWhen }) => ({
 					agentId,
 					...(useWhen ? { useWhen } : {}),
 				}));
-			return resolvedSubAgents;
 		}
 
-		return [];
+		if (missingReferencePolicy === 'error' && issues.length > 0) {
+			throw new AgentConfigReferenceValidationError(issues);
+		}
+
+		return resolvedSubAgents;
 	}
 
 	private validateSubAgentRefs(resolvedSubAgents: ResolvedSubAgentRef[], entity: Agent) {

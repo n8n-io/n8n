@@ -557,20 +557,24 @@ async function buildWorkflowTool(
 	context: WorkflowToolContext,
 ): Promise<BuiltTool> {
 	const { workflowRepository } = context;
-	const workflowName = descriptor.workflow;
+	const workflowReference = descriptor.workflow;
 
-	// Find the workflow by name. Access control is project sharing: the
-	// workflow must be shared with the agent's project.
+	// Source-authored agents use stable workflow IDs. Keep name lookup for
+	// existing JSON configs while preserving project-scoped access control.
 	const candidateWorkflow = await workflowRepository.findOne({
-		where: { name: workflowName, shared: { projectId: context.projectId } },
+		where: [
+			{ id: workflowReference, shared: { projectId: context.projectId } },
+			{ name: workflowReference, shared: { projectId: context.projectId } },
+		],
 		relations: ['shared'],
 	});
 
 	if (!candidateWorkflow) {
-		throw new Error(`Workflow "${workflowName}" not found`);
+		throw new Error(`Workflow "${workflowReference}" not found`);
 	}
 
 	const workflow = candidateWorkflow;
+	const workflowName = workflow.name;
 
 	validateCompatibility(workflow);
 	const { node: triggerNode, triggerType } = detectTriggerNode(workflow);

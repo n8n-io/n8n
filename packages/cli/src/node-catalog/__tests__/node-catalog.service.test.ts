@@ -459,6 +459,35 @@ describe('NodeCatalogService', () => {
 			expect(mockGenerateNodeTypeFile).not.toHaveBeenCalled();
 		});
 
+		test('returns the semantic built-in node version instead of its file label', async () => {
+			loadNodesAndCredentials.collectTypes.mockResolvedValue({
+				nodes: [
+					{
+						name: 'n8n-nodes-base.googleCalendarTool',
+						version: 1.3,
+						group: ['transform'],
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+				],
+			} as never);
+			mockGetNodeTypeDefinition.mockReturnValue({
+				nodeId: 'n8n-nodes-base.googleCalendarTool',
+				version: 'v13',
+				content: 'google-calendar-definition',
+			});
+			await service.initialize();
+
+			const result = await service.getNodeTypeDefinition({
+				nodeId: 'n8n-nodes-base.googleCalendarTool',
+				resource: 'event',
+				operation: 'getAll',
+			});
+
+			expect(result).toEqual({ content: 'google-calendar-definition', version: '1.3' });
+		});
+
 		test('does not cache error results', async () => {
 			mockGetNodeTypeDefinition
 				.mockReturnValueOnce({
@@ -606,6 +635,42 @@ describe('NodeCatalogService', () => {
 			expect(mockGenerateNodeTypeFile).toHaveBeenCalledWith(
 				expect.objectContaining({ version: 1 }),
 			);
+		});
+
+		test('treats numeric versions literally while retaining the legacy string heuristic', async () => {
+			loadNodesAndCredentials.collectTypes.mockResolvedValue({
+				nodes: [
+					{
+						name: 'n8n-nodes-multi.multi',
+						version: 4.3,
+						group: ['transform'],
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+					{
+						name: 'n8n-nodes-multi.multi',
+						version: 43,
+						group: ['transform'],
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+				],
+			} as never);
+			await service.initialize();
+
+			const numeric = await service.getNodeTypeDefinition({
+				nodeId: 'n8n-nodes-multi.multi',
+				version: 43,
+			});
+			const legacyString = await service.getNodeTypeDefinition({
+				nodeId: 'n8n-nodes-multi.multi',
+				version: '43',
+			});
+
+			expect(numeric.version).toBe('43');
+			expect(legacyString.version).toBe('4.3');
 		});
 
 		test('synthesizes type definitions for a node with expression connections', async () => {

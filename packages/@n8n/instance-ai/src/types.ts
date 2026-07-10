@@ -480,16 +480,22 @@ export interface InstanceAiNodeService {
 	getDescription(nodeType: string, version?: number): Promise<NodeDescription>;
 	/** Return all node types with the richer fields needed by NodeSearchEngine. */
 	listSearchable(): Promise<SearchableNodeDescription[]>;
-	/** Return the TypeScript type definition for a node, resolved by the host n8n instance. */
+	/** Return the TypeScript definition and semantic version resolved by the host n8n instance. */
 	getNodeTypeDefinition?(
 		nodeType: string,
 		options?: {
-			version?: string;
+			version?: string | number;
 			resource?: string;
 			operation?: string;
 			mode?: string;
 		},
-	): Promise<{ content: string; version?: string; error?: string; builderHint?: string } | null>;
+	): Promise<{
+		content: string;
+		/** Semantic node version (for example `1.3`), never an internal label such as `v13`. */
+		version?: string | number;
+		error?: string;
+		builderHint?: string;
+	} | null>;
 	/** List available resource/operation discriminators for a node. Null for flat nodes. */
 	listDiscriminators?(
 		nodeType: string,
@@ -879,6 +885,7 @@ export type McpServerVerifyResult =
 
 /** A workflow that can be attached to the agent as a `type: "workflow"` tool. */
 export interface AttachableWorkflow {
+	id: string;
 	name: string;
 	active: boolean;
 	triggerType: string;
@@ -966,6 +973,8 @@ export interface InstanceAiAgentBuilderService {
 		credentialType: string,
 		lookup: ModelLookupConfig,
 	): Promise<AgentModelOption[]>;
+	/** Whether Episodic Memory can use the n8n-managed OpenAI embedding credential. */
+	isEpisodicMemoryManagedCredentialAvailable(): Promise<boolean>;
 	searchMcpServers(queries: string[]): Promise<McpServerSearchResult[]>;
 	verifyMcpServer(params: McpServerVerifyParams): Promise<McpServerVerifyResult>;
 	/**

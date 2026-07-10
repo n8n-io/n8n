@@ -1,4 +1,9 @@
-import { AgentJsonConfigSchema, type AgentJsonConfig } from '@n8n/api-types';
+import {
+	AgentJsonConfigSchema,
+	type AgentJsonConfig,
+	type AgentJsonMemoryConfig,
+} from '@n8n/api-types';
+import type { AgentMemoryConfig } from '@n8n/workflow-sdk/agent';
 
 const baseConfig: AgentJsonConfig = {
 	name: 'Test Agent',
@@ -244,6 +249,10 @@ describe('AgentJsonConfigSchema — memory.observationalMemory', () => {
 
 describe('AgentJsonConfigSchema — memory.episodicMemory', () => {
 	const memoryBase = { enabled: true, storage: 'n8n' as const };
+
+	it('matches the workflow SDK source-authoring memory contract', () => {
+		expectTypeOf<AgentMemoryConfig>().toEqualTypeOf<AgentJsonMemoryConfig>();
+	});
 
 	it('preserves episodic memory task models', () => {
 		const parsed = AgentJsonConfigSchema.parse({

@@ -365,8 +365,14 @@ function createStubAgentBuilderService(): InstanceAiAgentBuilderService {
 		async listProjectAgents() {
 			return [];
 		},
+		async listAllProjectAgents() {
+			return [];
+		},
 		async listModels() {
 			return [];
+		},
+		async isEpisodicMemoryManagedCredentialAvailable() {
+			return false;
 		},
 		async searchMcpServers() {
 			return [];

@@ -7,6 +7,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./agent": {
+      "types": "./dist/agent/index.d.ts",
+      "default": "./dist/agent/index.js"
+    },
     "./package.json": "./package.json",
     "./scripts/generate-types": {
       "types": "./src/generate-types/generate-types.ts",
@@ -65,6 +69,9 @@
   "types": "dist/index.d.ts",
   "typesVersions": {
     "*": {
+      "agent": [
+        "./dist/agent/index.d.ts"
+      ],
       "prompts/sdk-reference": [
         "./dist/prompts/sdk-reference/index.d.ts"
       ],

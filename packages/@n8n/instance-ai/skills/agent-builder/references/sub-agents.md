@@ -45,10 +45,10 @@ subagent.
 5. If it is unclear when a selected saved subagent should be used, ask the user
    a follow-up before patching `subAgents.agents`. Do not invent vague routing
    guidance.
-6. Call `agent_builder` (`action: "read_config"`).
-7. Add the selected saved agents to `subAgents.agents` in the config file and
-   persist with `agent_builder` (`action: "build_agent"`; see the config
-   editing flow in SKILL.md). Avoid duplicates.
+6. Call `agent_builder` (`action: "read_agent_source"`).
+7. Add each selected Agent with `.subAgent({ agentId, useWhen })` and persist
+   with `agent_builder` (`action: "build_agent"`; see the source editing flow).
+   Avoid duplicates.
 
 Example flow:
 
@@ -57,10 +57,9 @@ Example flow:
    the `ask-user` tool (multi-select) with those agents as options.
 3. If the user's request does not make the routing rule clear, ask when each
    selected saved subagent should be used.
-4. `agent_builder({ action: "read_config" })`.
-5. In the config file, add the selected
-   `{ "agentId": "<returned-agent-id>", "useWhen": "Use for ..." }` refs to
-   `subAgents.agents`, then `agent_builder({ action: "build_agent", ... })`.
+4. `agent_builder({ action: "read_agent_source" })`.
+5. Add `.subAgent({ agentId: "<returned-agent-id>", useWhen: "Use for ..." })`
+   for each selection, then `agent_builder({ action: "build_agent", ... })`.
 
 ## Rules
 

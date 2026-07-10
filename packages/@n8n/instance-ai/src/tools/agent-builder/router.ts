@@ -32,6 +32,8 @@ import {
 	createGetResourceLocatorOptionsTool,
 	createSearchNodesTool,
 } from './node-tools';
+import { createReadAgentSourceTool } from './read-agent-source.tool';
+import { createResolveEpisodicMemoryCredentialTool } from './resolve-episodic-memory-credential.tool';
 import { createResolveLlmTool } from './resolve-llm.tool';
 import type { InstanceAiContext } from '../../types';
 import { AGENT_BUILDER_TOOL_IDS } from '../tool-ids';
@@ -40,6 +42,7 @@ import { AGENT_BUILDER_TOOL_IDS } from '../tool-ids';
 const ROUTER_TOOL_FACTORIES = [
 	createCreateAgentTool,
 	createReadConfigTool,
+	createReadAgentSourceTool,
 	createBuildAgentTool,
 	createSearchNodesTool,
 	createGetNodeTypesTool,
@@ -54,6 +57,7 @@ const ROUTER_TOOL_FACTORIES = [
 	createSearchMcpServersTool,
 	createVerifyMcpServerTool,
 	createResolveLlmTool,
+	createResolveEpisodicMemoryCredentialTool,
 ];
 
 function isZodObject(schema: unknown): schema is z.ZodObject<z.ZodRawShape> {
@@ -98,12 +102,13 @@ export function createAgentBuilderRouterTool(context: InstanceAiContext): BuiltT
 				'Only use this tool when the user is explicitly creating or editing an n8n Agent — never ' +
 				'while building or editing a workflow (use the workflow-builder skill and build-workflow ' +
 				'for that), and never to fabricate file/utility tools during a workflow build. Actions: ' +
-				'create_agent (create the agent first if none exists), read_config (read the persisted ' +
-				'agent JSON config + configHash), build_agent (validate and persist the config from a ' +
-				'workspace JSON file), search_nodes / get_node_types / ' +
+				'create_agent (create the agent first if none exists), read_agent_source (materialize ' +
+				'editable TypeScript + configHash), read_config (compatibility/debugging), build_agent ' +
+				'(compile and persist TypeScript Agent source), search_nodes / get_node_types / ' +
 				'get_resource_locator_options (node tools), create_skill, create_task, build_custom_tool, ' +
 				'list_integration_types, list_sub_agents, list_agents, list_workflows, ' +
-				'search_mcp_servers, verify_mcp_server, resolve_llm. To ask the user anything (a choice, ' +
+				'search_mcp_servers, verify_mcp_server, resolve_llm, ' +
+				'resolve_episodic_memory_credential. To ask the user anything (a choice, ' +
 				'which credential, which model) use the native `ask-user` tool; to list credentials use ' +
 				'the native `credentials` tool (action `list`).',
 		)
@@ -124,7 +129,8 @@ export function createAgentBuilderRouterTool(context: InstanceAiContext): BuiltT
 			// Re-validate against the action's strict schema (the flat input made
 			// every field optional) before dispatching.
 			if (isZodObject(tool.inputSchema)) {
-				const parsed = tool.inputSchema.safeParse(input);
+				const { action: _action, ...toolInput } = input;
+				const parsed = tool.inputSchema.safeParse(toolInput);
 				if (!parsed.success) {
 					return { ok: false as const, errors: formatZodErrors(parsed.error) };
 				}

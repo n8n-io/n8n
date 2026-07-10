@@ -38,9 +38,8 @@ notification while the conversation happens elsewhere.
 - If the requested platform is not returned by `list_integration_types`, tell the
   user it is not available as a chat channel and use a node/workflow tool when
   that matches the request.
-- Leave channel entries out of `write_config`/`patch_config` changes. The setup
-  UI persists them, so later config writes should preserve existing
-  integrations.
+- Leave channel entries out of Agent TypeScript source. The setup UI persists
+  them, and later source builds preserve existing integrations.
 
 ## Gotchas
 

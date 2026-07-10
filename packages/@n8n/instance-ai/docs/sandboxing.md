@@ -153,6 +153,11 @@ For local development, point `N8N_SANDBOX_SERVICE_URL` and
 `N8N_SANDBOX_SERVICE_API_KEY` at a running sandbox service and enable
 `N8N_INSTANCE_AI_SANDBOX_ENABLED=true`.
 
+When n8n resolves `@n8n/workflow-sdk` from the monorepo, sandbox setup packs and
+installs that local build automatically. This keeps unreleased SDK exports in
+sync with the host. Set `N8N_INSTANCE_AI_SANDBOX_LINK_SDK=false` to explicitly
+use the registry-pinned package instead.
+
 ### Providers at a glance
 
 | | n8n sandbox service | Daytona |
@@ -226,7 +231,12 @@ graph LR
 
 If any step fails, the agent reads the error output, fixes the code, and retries. This loop runs entirely inside the sandbox — the n8n host is never involved until the final save.
 
-The agent builder uses the workspace the same way, but purely as a file medium: the agent config JSON lives in a workspace file (`src/agents/<slug>.agent.json`) that the agent edits with the normal file tools and persists with `build_agent`. Nothing executes in the sandbox for agent configs — parsing, schema validation, and the freshness (hash) check all run host-side before the config is saved. Because config edits go through workspace files, the agent-builder skill is only offered when the sandbox workspace is available.
+The Agent builder uses the same edit-compile-submit loop. Agent core source lives
+at `src/agents/<slug>.agent.ts` and uses `@n8n/workflow-sdk/agent`. The sandbox
+executes `build-agent.mjs`, which accepts only the SDK's versioned serializable
+artifact. The host then materializes and validates canonical Agent JSON, checks
+freshness and references, and persists it. The sandbox SDK has no runtime
+dependency on `@n8n/api-types`; canonical config validation remains host-side.
 
 ## Boundaries
 

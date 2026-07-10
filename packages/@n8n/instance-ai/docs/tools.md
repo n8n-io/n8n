@@ -683,14 +683,12 @@ tools, skills, tasks, integrations, sub-agents). It is registered as a **deferre
 tool and loaded on demand by the `agent-builder` skill; it is present only when the
 `agents` module is enabled (and the skill is only offered when the sandbox
 workspace is available, since config edits go through workspace files). All
-builder capabilities are exposed as `action`s on this one tool. See
-`docs/agent-builder.md` for the design.
+builder capabilities are exposed as `action`s on this one tool.
 
-Config mutations are file-based: the assistant writes the agent config JSON to
-a workspace file (`src/agents/<slug>.agent.json`), edits it with the normal
-file tools, and persists it with `build_agent` — mirroring how workflow builds
-consume `.workflow.ts` sources. Validation stays host-side; the workspace is
-only the file medium.
+Config mutations are source-based: the assistant edits
+`src/agents/<slug>.agent.ts` using `@n8n/workflow-sdk/agent`, and `build_agent`
+compiles a versioned source artifact in the sandbox before host-side canonical
+Agent JSON validation and persistence.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -705,8 +703,9 @@ only the file medium.
 | Action | Description |
 |--------|-------------|
 | `create_agent` | Create a new empty agent and bind the conversation to it. Call this first when no agent is targeted yet. |
-| `read_config` | Read the current agent config plus freshness metadata (`configHash`, `updatedAt`, `versionId`). Call before every `build_agent`; use its `config` to (re)materialize the config file. |
-| `build_agent` | Validate and persist the agent config from a workspace JSON file (`filePath`). Validates the schema, rejects empty instructions and unsupported native web search, enforces no `$fromAI` on stable dynamic selectors, and normalizes native web-search provider tools. Requires `baseConfigHash` (stale-write guard) and the runtime workspace. |
+| `read_agent_source` | Materialize the current persisted Agent core as deterministic TypeScript and return its `filePath` plus fresh `configHash`. Preferred before edits. |
+| `read_config` | Read canonical Agent JSON plus freshness metadata for compatibility and debugging. Prefer `read_agent_source` before TypeScript edits. |
+| `build_agent` | Compile `.agent.ts[x]` source (or compatibility JSON), validate and persist canonical Agent JSON. Supports valid drafts, strict reference diagnostics, destructive-removal confirmation, credential warnings, and source rewrite after host normalization. Requires `baseConfigHash`. |
 | `search_nodes` | Search the node catalog for **agent-tool-capable** nodes (excludes triggers/hidden/HITL) to add as node tools. |
 | `get_node_types` | Get TypeScript type definitions for node types — exact parameter names, enums, credential types, and `@searchListMethod`/`@loadOptionsMethod`/`@builderHint` annotations. |
 | `get_resource_locator_options` | Resolve live options for a parameter behind a `resourceLocator` / `loadOptionsMethod` / `loadOptions` routing (stable IDs like Linear teamId, Slack channel, model). Returns each option's `parameterValue` to write into `nodeParameters` (instead of `$fromAI`). |
@@ -720,6 +719,7 @@ only the file medium.
 | `search_mcp_servers` | Search the MCP registry for servers to attach (returns url, transport, auth, credential type, tools). |
 | `verify_mcp_server` | Test connectivity to an MCP server and list its tools before adding it to the config. |
 | `resolve_llm` | Resolve the agent's main LLM (provider/model/credential) non-interactively; returns `ok: false` with candidates when the choice is missing/ambiguous. |
+| `resolve_episodic_memory_credential` | Resolve the OpenAI embedding credential for Episodic Memory, preferring the n8n-managed credential and otherwise returning a project-scoped credential or choices. |
 
 **Getting user input:** `configure_channel` is the only builder-specific interactive
 card — it renders the chat-channel setup UI inline in the chat so the user creates
@@ -727,7 +727,9 @@ a new credential and connects (or skips) a channel. For every other user input (
 choice, which credential, which model), use the native `ask-user` tool. Non-channel
 credentials are listed via the native `credentials` tool (`action: "list"`; +
 `ask-user` when several match); the main LLM via `resolve_llm` (+ `ask-user`
-fallback), then written into the config file and persisted with `build_agent`.
+fallback); and Episodic Memory embeddings via
+`resolve_episodic_memory_credential`. The resolved values are written into Agent
+source and persisted with `build_agent`.
 
 **`configure_channel`** *(standalone, not a router action)*: interactive HITL tool
 that opens the agent chat-channel setup UI. Takes `{ integrationType }` (from

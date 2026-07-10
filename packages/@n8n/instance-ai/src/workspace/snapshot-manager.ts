@@ -25,7 +25,7 @@ import {
 	BuilderTemplatesService,
 	builderTemplatesOptionsFromEnv,
 } from './builder-templates-service';
-import { PACKAGE_JSON, TSCONFIG_JSON, BUILD_MJS } from './sandbox-setup';
+import { AGENT_BUILD_MJS, PACKAGE_JSON, TSCONFIG_JSON, BUILD_MJS } from './sandbox-setup';
 import { stageWorkspaceFilesForImage } from './snapshot-image-context';
 import { buildRuntimeSkillWorkspaceBundle } from '../skills/materialize-runtime-skills';
 import { loadInstanceAiRuntimeSkillSource } from '../skills/runtime-skills';
@@ -80,6 +80,7 @@ export class SnapshotManager {
 		workspaceFiles.set(`${DAYTONA_WORKSPACE_ROOT}/package.json`, PACKAGE_JSON);
 		workspaceFiles.set(`${DAYTONA_WORKSPACE_ROOT}/tsconfig.json`, TSCONFIG_JSON);
 		workspaceFiles.set(`${DAYTONA_WORKSPACE_ROOT}/build.mjs`, BUILD_MJS);
+		workspaceFiles.set(`${DAYTONA_WORKSPACE_ROOT}/build-agent.mjs`, AGENT_BUILD_MJS);
 
 		const { stagingDir } = await stageWorkspaceFilesForImage(
 			workspaceFiles,

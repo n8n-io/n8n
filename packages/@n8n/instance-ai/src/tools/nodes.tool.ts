@@ -60,7 +60,10 @@ const describeAction = z.object({
 
 const nodeRequestObjectSchema = z.object({
 	nodeType: z.string().describe(NODE_TYPE_ID_DESCRIPTION),
-	version: z.string().optional().describe('Version, e.g. "4.3" or "v43"'),
+	version: z
+		.union([z.string(), z.number()])
+		.optional()
+		.describe('Version, e.g. 4.3, "4.3", or "v43"'),
 	resource: z.string().optional().describe('Resource discriminator for split nodes'),
 	operation: z.string().optional().describe('Operation discriminator for split nodes'),
 	mode: z.string().optional().describe('Mode discriminator for split nodes'),

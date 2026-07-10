@@ -27,9 +27,9 @@ Follow these steps in order when adding an MCP server:
    "Asking the user, credentials, and the LLM"). Never invent credential IDs.
 3. Verify: call `agent_builder` (`action: "verify_mcp_server"`) with `name`,
    `url`, `transport`, `authentication`, and (if applicable) `credential`.
-4. Write config: follow the config editing flow in SKILL.md — `read_config`,
-   add the entry to `mcpServers[]` in the config file (initialize the array if
-   missing), then `agent_builder` (`action: "build_agent"`).
+4. Edit source: follow the source editing flow in SKILL.md —
+   `read_agent_source`, add `.mcpServer(config)`, then `agent_builder`
+   (`action: "build_agent"`).
 
 If `search_mcp_servers` returns no matches and the user provides a custom
 server URL, skip the search result mapping and continue with manual
@@ -95,10 +95,10 @@ Auth, or None) via the `ask-user` tool. Then resolve a credential
 - `multipleHeadersAuth` -> `httpMultipleHeadersAuth`
 - `mcpOAuth2Api` -> `mcpOAuth2Api`
 
-### Config edit pattern
+### Source edit pattern
 
-In the config file, initialize `"mcpServers": []` if the array is missing,
-then append each server entry to it. Persist with `build_agent`.
+Add each verified server with `.mcpServer(config)` in Agent source and persist
+with `build_agent`.
 
 ## Gotchas
 

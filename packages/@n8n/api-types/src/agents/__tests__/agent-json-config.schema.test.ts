@@ -1,5 +1,6 @@
 import {
 	AgentJsonConfigSchema,
+	findAgentToolNameCollisions,
 	findVectorStoreToolNameCollisions,
 } from '../agent-json-config.schema';
 
@@ -339,13 +340,13 @@ describe('AgentJsonConfigSchema — vectorStores', () => {
 		}
 	});
 
-	it('rejects vector store names that collide after sanitization (- vs _)', () => {
+	it('rejects vector store names that collide after provider truncation', () => {
 		const result = AgentJsonConfigSchema.safeParse({
 			...minimalConfig,
 			vectorStores: [
 				{
 					provider: 'qdrant',
-					name: 'docs-a',
+					name: 'a'.repeat(64),
 					credential: 'qdrant-cred',
 					useWhen: 'Use A',
 					embedding,
@@ -353,7 +354,7 @@ describe('AgentJsonConfigSchema — vectorStores', () => {
 				},
 				{
 					provider: 'postgres',
-					name: 'docs_a',
+					name: `${'a'.repeat(63)}b`,
 					credential: 'postgres-cred',
 					useWhen: 'Use B',
 					embedding,
@@ -466,12 +467,21 @@ describe('AgentJsonConfigSchema — vectorStores', () => {
 			expect(collisions).toEqual(['search_product_docs']);
 		});
 
-		it('accounts for hyphen-to-underscore sanitization', () => {
+		it('keeps provider-valid hyphens distinct from underscores', () => {
 			const collisions = findVectorStoreToolNameCollisions({
 				tools: [{ type: 'custom', id: 'search_docs_a' }],
 				vectorStores: [{ ...vectorStore, name: 'docs-a' }],
 			});
-			expect(collisions).toEqual(['search_docs_a']);
+			expect(collisions).toEqual([]);
+		});
+
+		it('accounts for provider tool-name truncation', () => {
+			const longName = 'a'.repeat(64);
+			const collisions = findVectorStoreToolNameCollisions({
+				tools: [{ type: 'custom', id: `search_${'a'.repeat(57)}` }],
+				vectorStores: [{ ...vectorStore, name: longName }],
+			});
+			expect(collisions).toEqual([`search_${'a'.repeat(57)}`]);
 		});
 
 		it('returns no collisions when tool names differ', () => {
@@ -489,6 +499,46 @@ describe('AgentJsonConfigSchema — vectorStores', () => {
 				}),
 			).toEqual([]);
 		});
+	});
+});
+
+describe('findAgentToolNameCollisions', () => {
+	it('finds node tool names that collide after provider normalization', () => {
+		expect(
+			findAgentToolNameCollisions({
+				tools: [
+					{
+						type: 'node',
+						name: 'Create issue',
+						node: {
+							nodeType: 'n8n-nodes-base.linearTool',
+							nodeTypeVersion: 1,
+							nodeParameters: {},
+						},
+					},
+					{
+						type: 'node',
+						name: 'Create_issue',
+						node: {
+							nodeType: 'n8n-nodes-base.linearTool',
+							nodeTypeVersion: 1,
+							nodeParameters: {},
+						},
+					},
+				],
+			}),
+		).toEqual(['Create_issue']);
+	});
+
+	it('uses workflow runtime normalization', () => {
+		expect(
+			findAgentToolNameCollisions({
+				tools: [
+					{ type: 'workflow', workflow: 'workflow-1', name: 'D&D Invite' },
+					{ type: 'workflow', workflow: 'workflow-2', name: 'd-d-invite' },
+				],
+			}),
+		).toEqual(['d-d-invite']);
 	});
 });
 

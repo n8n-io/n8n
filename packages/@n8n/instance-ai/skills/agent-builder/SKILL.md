@@ -20,10 +20,11 @@ before acting — do not act on an area from memory.
 
 All builder actions run through a single `agent_builder` tool. Invoke an action
 as `agent_builder({ action: "<name>", ...args })`. Available actions:
-`create_agent`, `read_config`, `build_agent`, `search_nodes`,
+`create_agent`, `read_agent_source`, `read_config`, `build_agent`, `search_nodes`,
 `get_node_types`, `get_resource_locator_options`, `create_skill`, `create_task`,
 `build_custom_tool`, `list_integration_types`, `list_sub_agents`, `list_agents`,
-`list_workflows`, `search_mcp_servers`, `verify_mcp_server`, `resolve_llm`.
+`list_workflows`, `search_mcp_servers`, `verify_mcp_server`, `resolve_llm`,
+`resolve_episodic_memory_credential`.
 
 Credentials are listed via the native `credentials` tool (not an `agent_builder`
 action) — call `credentials({ action: "list", type?, name? })`.
@@ -31,28 +32,35 @@ action) — call `credentials({ action: "list", type?, name? })`.
 Where a reference below names an action (e.g. "call `build_agent`"), invoke it
 as `agent_builder({ action: "build_agent", ... })`.
 
-## Config editing flow (required)
+## Source editing flow (required)
 
-The agent config is edited as a JSON file in the workspace, then persisted with
-`build_agent` — never composed inline:
+Author the Agent core as TypeScript with `@n8n/workflow-sdk/agent`. The persisted
+artifact remains Agent JSON; `build_agent` compiles source and performs canonical
+host validation. Load [references/source-authoring.md](references/source-authoring.md)
+before every Agent source build or edit.
 
-1. Call `agent_builder({ action: "read_config" })` to get the persisted
-   `config` and `configHash`.
-2. Write the config JSON to a stable workspace file,
-   `src/agents/<slug>.agent.json` (for an existing agent, write the `config`
-   returned by `read_config`; for a brand-new agent, write the full new
-   config). Reuse the same file for the rest of the conversation; re-create it
-   from `read_config` if the workspace was reset.
-3. Make the requested change by editing that file with the workspace file
-   tools — always the smallest edit that fulfills the request.
+1. For an existing Agent, call `agent_builder({ action: "read_agent_source" })`.
+   It writes deterministic `src/agents/<agent-id>.agent.ts` and returns its
+   `filePath` and fresh `configHash`. For a new Agent, call `read_config` once to
+   confirm there is no config and use `baseConfigHash: null`.
+2. For a new Agent, pass complete TypeScript in `sourceCode` on the first
+   `build_agent` call. For an existing Agent, edit the returned source file with
+   workspace tools. Reuse the same file for subsequent edits.
+3. Make the smallest source edit that fulfills the request. Do not reconstruct
+   channels, tasks, personalisation, custom-tool bodies, or skill bodies in source.
 4. Call `agent_builder({ action: "build_agent", filePath:
-   "src/agents/<slug>.agent.json", baseConfigHash: <configHash from step 1> })`.
-   Pass `baseConfigHash: null` only when `read_config` showed no config yet.
+   "src/agents/<slug>.agent.ts", baseConfigHash: <fresh hash> })` (include
+   `sourceCode` only for the first/full rewrite).
 5. On `{ ok: false, stage: "stale" }` the config changed elsewhere: take the
-   returned `config`/`configHash`, re-apply the edit on top of it in the file,
-   and call `build_agent` again with the new hash. On validation errors, fix
-   the file and rebuild. On success, the returned `configHash` is the base for
-   the next edit.
+   returned hash, call `read_agent_source` again, re-apply the edit, and retry
+   once. On source/schema/node/reference errors, fix the exact returned path and
+   rebuild. On `stage: "confirmation"`, explain the listed custom-tool/skill body
+   deletions with `ask-user`; retry with `destructiveChangeConfirmation` only
+   after approval.
+6. `{ ok: true }` means compilation, canonical validation, and persistence
+   succeeded. `validation.status` is either `runnable` or `valid-draft`; for a
+   draft, report `missingSetup` without retrying or running a separate verifier.
+   Credential warnings mean the named binding was not saved and needs user setup.
 
 One builder capability is a separate tool, not an `agent_builder` action:
 `configure_channel({ integrationType })` — an interactive tool that opens the
@@ -78,7 +86,7 @@ There are no builder-specific picker cards. When you need input from the user:
   `agent_builder({ action: "resolve_llm", provider?, model? })`. If it returns
   `ok: true`, use the returned `provider`/`model`/`credentialId`. If it returns
   `ok: false` (missing/ambiguous/unsupported), ask the user with `ask-user` using
-  the returned options, then write the choice into the config file and call
+  the returned options, then write the choice into the Agent source and call
   `build_agent`.
 
 ## First: make sure an agent is being built
@@ -87,9 +95,8 @@ Every action below operates on a single target agent. If no agent is targeted
 yet (a fresh request to build an agent, or `read_config` / `build_agent`
 reports that no agent is being built), call
 `agent_builder({ action: "create_agent", name: "<short name>" })` once to create
-it. That binds the rest of the conversation to the new agent; then call
-`agent_builder({ action: "read_config" })` and proceed with the config editing
-flow above. Do not create the agent again if one is already being built or
+it. That binds the rest of the conversation to the new agent; then proceed with
+the source editing flow above. Do not create the agent again if one is already being built or
 edited — the binding persists across turns.
 
 ## Routing
@@ -99,6 +106,8 @@ edited — the binding persists across turns.
 - **MCP servers** — Use when adding, removing, or updating MCP (Model Context Protocol) servers on the target agent. Load [references/mcp.md](references/mcp.md).
 
 - **Resource locators** — Use when adding or changing node tools with stable dynamic selector fields: resourceLocator, loadOptionsMethod, loadOptions routing, "Name or ID" parameters, teamId, channelId, projectId, calendarId, databaseId, tableId, model selectors, or when build_agent rejects $fromAI on a dynamic selector. Load [references/resource-locators.md](references/resource-locators.md).
+
+- **Memory** — Use when enabling, disabling, or tuning session, observational, Episodic, long-term, remembered-conversation, or cross-session memory. Load [references/memory.md](references/memory.md).
 
 - **Sub-agents** — Use when configuring inline or saved sub-agent delegation for the target agent, selecting published same-project sub-agents, or changing subAgents.maxChildren. Load [references/sub-agents.md](references/sub-agents.md).
 

@@ -66,6 +66,8 @@ import type { InstanceAiContext, SearchableNodeDescription } from '../../types';
 import type { BuilderTemplatesBundle } from '../builder-templates-service';
 import type { SandboxWorkspace } from '../sandbox-fs';
 import {
+	AGENT_BUILD_MJS,
+	PACKAGE_JSON,
 	setupSandboxWorkspace,
 	type formatNodeCatalogLine as formatNodeCatalogLineFunction,
 } from '../sandbox-setup';
@@ -262,6 +264,15 @@ describe('PACKAGE_JSON', () => {
 		expect(packageJson.dependencies.tsx).toBeDefined();
 	});
 });
+
+describe('AGENT_BUILD_MJS', () => {
+	it('validates the serializable agent artifact without importing api-types', () => {
+		expect(AGENT_BUILD_MJS).toContain("from '@n8n/workflow-sdk/agent'");
+		expect(AGENT_BUILD_MJS).toContain('toAgentSource()');
+		expect(AGENT_BUILD_MJS).toContain('AgentSourceArtifactV1Schema.parse');
+		expect(AGENT_BUILD_MJS).not.toContain('@n8n/api-types');
+	});
+});
 describe('setupSandboxWorkspace', () => {
 	afterEach(() => {
 		vi.doUnmock('../sandbox-fs');
@@ -294,8 +305,15 @@ describe('setupSandboxWorkspace', () => {
 		const markerCallIndex = writeFile.mock.calls.findIndex(
 			([path]) => path === '/home/daytona/workspace/.sandbox-initialized',
 		);
+		const agentSourceMarkerCallIndex = writeFile.mock.calls.findIndex(
+			([path]) => path === '/home/daytona/workspace/.agent-source-initialized',
+		);
 		expect(markerCallIndex).toBeGreaterThan(-1);
+		expect(agentSourceMarkerCallIndex).toBeGreaterThan(-1);
 		expect(writeFile.mock.invocationCallOrder[markerCallIndex]).toBeGreaterThan(
+			runInSandbox.mock.invocationCallOrder[0],
+		);
+		expect(writeFile.mock.invocationCallOrder[agentSourceMarkerCallIndex]).toBeGreaterThan(
 			runInSandbox.mock.invocationCallOrder[0],
 		);
 	});
@@ -335,7 +353,7 @@ describe('setupSandboxWorkspace', () => {
 		);
 	});
 
-	it('upgrades the knowledge base when sandbox was initialized before templates existed', async () => {
+	it('upgrades Agent source support when the sandbox predates its initialization marker', async () => {
 		const runInSandbox: RunInSandboxMock =
 			vi.fn<
 				(
@@ -376,13 +394,57 @@ describe('setupSandboxWorkspace', () => {
 		);
 
 		expect(initialized).toBe(false);
-		expect(runInSandbox).not.toHaveBeenCalledWith(
+		expect(runInSandbox).toHaveBeenCalledWith(
 			expect.anything(),
 			'npm install --ignore-scripts',
 			'/sandbox',
 		);
 		const writtenPaths = writeFile.mock.calls.map(([path]) => path);
+		expect(writtenPaths).toContain('/sandbox/package.json');
+		expect(writtenPaths).toContain('/sandbox/tsconfig.json');
+		expect(writtenPaths).toContain('/sandbox/build-agent.mjs');
+		expect(writtenPaths).toContain('/sandbox/.agent-source-initialized');
 		expect(writtenPaths.some((p) => p.includes('/knowledge-base/templates/'))).toBe(true);
+	});
+
+	it('does not reinstall dependencies after Agent source support is initialized', async () => {
+		const runInSandbox: RunInSandboxMock = vi.fn().mockResolvedValue({
+			exitCode: 0,
+			stdout: '',
+			stderr: '',
+		});
+		const readFileViaSandbox: ReadFileViaSandboxMock = vi.fn().mockResolvedValue(null);
+		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
+			runInSandbox,
+			readFileViaSandbox,
+		);
+		const writeFile = vi.fn<
+			(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>
+		>(async () => await Promise.resolve());
+		const readFile = vi.fn(async (path: string) => {
+			if (path === '/sandbox/.sandbox-initialized') {
+				return await Promise.resolve('2024-01-01T00:00:00.000Z');
+			}
+			if (path === '/sandbox/.agent-source-initialized') {
+				return await Promise.resolve(PACKAGE_JSON);
+			}
+			return await Promise.reject(new Error(`ENOENT: ${path}`));
+		});
+
+		const initialized = await setupSandboxWorkspace(
+			createLocalWorkspace(writeFile, undefined, readFile),
+			createSetupContext(),
+		);
+
+		expect(initialized).toBe(false);
+		expect(runInSandbox).not.toHaveBeenCalledWith(
+			expect.anything(),
+			'npm install --ignore-scripts',
+			'/sandbox',
+		);
+		expect(writeFile.mock.calls.map(([path]) => path)).toEqual(
+			expect.arrayContaining(['/sandbox/build.mjs', '/sandbox/build-agent.mjs']),
+		);
 	});
 
 	it('materializes knowledge-base templates on the local provider when a bundle is available', async () => {

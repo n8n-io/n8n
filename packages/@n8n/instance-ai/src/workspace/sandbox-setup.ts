@@ -110,8 +110,9 @@ function resolveHostDepVersion(name: string): string {
  *      rebuilds the image. Floating `'*'` never changes the bytes, so stale
  *      images are reused indefinitely.
  *
- * When `N8N_INSTANCE_AI_SANDBOX_LINK_SDK=1` is set we deliberately fall
- * back to `latest` instead of the host version. The image's npm install
+ * When workspace SDK linking is enabled (automatically for a monorepo checkout,
+ * or via `N8N_INSTANCE_AI_SANDBOX_LINK_SDK=1`) we deliberately fall back to
+ * `latest` instead of the host version. The image's npm install
  * runs *before* the host SDK can be packed and uploaded, so a host version
  * that has not been published yet (e.g., a dev's freshly-bumped workspace
  * version) would otherwise fail the image build with `npm install` non-zero.
@@ -122,8 +123,7 @@ function resolveHostDepVersion(name: string): string {
 const SANDBOX_SDK_VERSION = resolveSandboxSdkVersion();
 
 function resolveSandboxSdkVersion(): string {
-	const linkFlag = process.env.N8N_INSTANCE_AI_SANDBOX_LINK_SDK;
-	if (linkFlag === '1' || linkFlag === 'true') return 'latest';
+	if (isLinkWorkspaceSdkEnabled()) return 'latest';
 	return resolveHostDepVersion('@n8n/workflow-sdk');
 }
 const SANDBOX_TSX_VERSION = resolveHostDepVersion('tsx');
@@ -190,7 +190,7 @@ export async function linkWorkspaceSdkIfEnabled(
 	if (!packed) {
 		sdkTarballPromise = null;
 		throw new Error(
-			'N8N_INSTANCE_AI_SANDBOX_LINK_SDK is enabled, but the workspace SDK could not be packed. Run `pnpm build` in packages/@n8n/workflow-sdk or unset N8N_INSTANCE_AI_SANDBOX_LINK_SDK.',
+			'Workspace SDK linking is enabled, but the workspace SDK could not be packed. Run `pnpm build` in packages/@n8n/workflow-sdk or set N8N_INSTANCE_AI_SANDBOX_LINK_SDK=false.',
 		);
 	}
 
@@ -244,6 +244,24 @@ try {
   // JSON.stringify drops the credential keys entirely and the server can't resolve them.
   const replacer = (k, v) => v === undefined ? null : v;
   console.log(JSON.stringify({ success: true, workflow: json, declaredOutputFixtures, warnings }, replacer));
+} catch (e) {
+  console.log(JSON.stringify({ success: false, errors: [e instanceof Error ? e.message : String(e)] }));
+  process.exit(1);
+}
+`;
+
+/** Runner for serializable Agent definitions authored with @n8n/workflow-sdk/agent. */
+export const AGENT_BUILD_MJS = `import { AgentSourceArtifactV1Schema } from '@n8n/workflow-sdk/agent';
+const filePath = process.argv[2] || './src/agent.ts';
+try {
+  const mod = await import(filePath);
+  const definition = mod.default;
+  if (!definition || definition._isAgentDefinitionBuilder !== true || typeof definition.toAgentSource !== 'function') {
+    console.log(JSON.stringify({ success: false, errors: ['Default export is not an Agent definition. Make sure your file has: export default agent(...)'] }));
+    process.exit(1);
+  }
+  const artifact = AgentSourceArtifactV1Schema.parse(definition.toAgentSource());
+  console.log(JSON.stringify({ success: true, artifact }));
 } catch (e) {
   console.log(JSON.stringify({ success: false, errors: [e instanceof Error ? e.message : String(e)] }));
   process.exit(1);
@@ -420,6 +438,7 @@ export async function setupSandboxWorkspace(
 		async () => await getWorkspaceRoot(workspace),
 	);
 	const markerFile = joinWorkspacePath(root, '.sandbox-initialized');
+	const agentSourceMarkerFile = joinWorkspacePath(root, '.agent-source-initialized');
 
 	// Check marker file for idempotency
 	const marker = await setupStep(
@@ -427,7 +446,51 @@ export async function setupSandboxWorkspace(
 		async () => await readWorkspaceFile(workspace, markerFile),
 	);
 	if (marker !== null) {
+		const agentSourceMarker = await setupStep(
+			'read-initialization-marker',
+			async () => await readWorkspaceFile(workspace, agentSourceMarkerFile),
+		);
+		const dependenciesNeedUpgrade = agentSourceMarker !== PACKAGE_JSON;
+		const sdkNeedsRelink = isLinkWorkspaceSdkEnabled();
+		const files = dependenciesNeedUpgrade
+			? new Map([
+					['package.json', PACKAGE_JSON],
+					['tsconfig.json', TSCONFIG_JSON],
+					['build.mjs', BUILD_MJS],
+					['build-agent.mjs', AGENT_BUILD_MJS],
+				])
+			: new Map([
+					['build.mjs', BUILD_MJS],
+					['build-agent.mjs', AGENT_BUILD_MJS],
+				]);
+		await setupStep(
+			'write-workspace-files',
+			async () => await writeWorkspaceFiles(workspace, root, files),
+		);
 		await materializeKnowledgeBaseStep(workspace, root, context);
+
+		if (dependenciesNeedUpgrade) {
+			await setupStep('install-dependencies', async () => {
+				const npmResult = await runInSandbox(workspace, 'npm install --ignore-scripts', root);
+				if (npmResult.exitCode !== 0) {
+					throw new Error(`Sandbox npm install failed: ${npmResult.stderr}`);
+				}
+			});
+		}
+		if (dependenciesNeedUpgrade || sdkNeedsRelink) {
+			await setupStep('link-workspace-sdk', async () => {
+				await linkWorkspaceSdkIfEnabled(workspace, root, context.logger);
+			});
+			await setupStep(
+				'write-initialization-marker',
+				async () =>
+					await writeWorkspaceFiles(
+						workspace,
+						root,
+						new Map([['.agent-source-initialized', PACKAGE_JSON]]),
+					),
+			);
+		}
 		return false;
 	}
 
@@ -438,6 +501,7 @@ export async function setupSandboxWorkspace(
 	files.set('package.json', PACKAGE_JSON);
 	files.set('tsconfig.json', TSCONFIG_JSON);
 	files.set('build.mjs', BUILD_MJS);
+	files.set('build-agent.mjs', AGENT_BUILD_MJS);
 
 	// Node types catalog
 	const nodeTypes = await setupStep(
@@ -492,7 +556,10 @@ export async function setupSandboxWorkspace(
 			await writeWorkspaceFiles(
 				workspace,
 				root,
-				new Map([['.sandbox-initialized', new Date().toISOString()]]),
+				new Map([
+					['.sandbox-initialized', new Date().toISOString()],
+					['.agent-source-initialized', PACKAGE_JSON],
+				]),
 			),
 	);
 

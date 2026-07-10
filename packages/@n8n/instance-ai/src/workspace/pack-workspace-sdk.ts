@@ -2,7 +2,8 @@
  * Host-side helper for injecting the workspace `@n8n/workflow-sdk` into a
  * remote Daytona / n8n-sandbox sandbox during local development.
  *
- * Opt-in via `N8N_INSTANCE_AI_SANDBOX_LINK_SDK=1`. Production sandboxes
+ * Enabled automatically when the host resolves the SDK from this monorepo, or
+ * explicitly via `N8N_INSTANCE_AI_SANDBOX_LINK_SDK=1`. Production sandboxes
  * continue to install the registry-pinned version from `PACKAGE_JSON`.
  *
  * Why this exists: remote sandboxes have no line-of-sight to the dev's
@@ -43,7 +44,10 @@ export interface WorkspaceSdkTarball {
 
 export function isLinkWorkspaceSdkEnabled(): boolean {
 	const v = process.env[ENV_FLAG];
-	return v === '1' || v === 'true';
+	if (v !== undefined) return v === '1' || v === 'true';
+
+	const sdkPath = resolvePackagePath('@n8n/workflow-sdk');
+	return sdkPath?.endsWith(path.join('packages', '@n8n', 'workflow-sdk')) ?? false;
 }
 
 /**
@@ -60,9 +64,7 @@ export async function packWorkspaceSdk(
 
 	const sdkPath = resolvePackagePath(packageName);
 	if (!sdkPath) {
-		logger.warn(
-			`${ENV_FLAG} is set but ${packageName} could not be resolved on the host — skipping SDK link`,
-		);
+		logger.warn(`${packageName} could not be resolved on the host — skipping SDK link`);
 		return null;
 	}
 
@@ -73,7 +75,7 @@ export async function packWorkspaceSdk(
 		await stat(distPath);
 	} catch {
 		logger.warn(
-			`${ENV_FLAG} is set but ${packageName}/dist is missing — run \`pnpm build\` in ${sdkPath} first. Skipping SDK link.`,
+			`${packageName}/dist is missing — run \`pnpm build\` in ${sdkPath} first. Skipping SDK link.`,
 		);
 		return null;
 	}

@@ -138,6 +138,23 @@ describe('AgentConfigService', () => {
 			});
 		});
 
+		it('rejects configured tools whose provider-facing names collide', async () => {
+			const { service } = makeService();
+
+			const result = await service.validateConfig({
+				...baseConfig,
+				tools: [
+					{ type: 'workflow', workflow: 'workflow-1', name: 'D&D Invite' },
+					{ type: 'workflow', workflow: 'workflow-2', name: 'd-d-invite' },
+				],
+			});
+
+			expect(result).toEqual({
+				valid: false,
+				error: 'Agent tool names collide after provider normalization: d-d-invite',
+			});
+		});
+
 		it('accepts draft credentials that are not checked until update sanitization', async () => {
 			const { service } = makeService();
 
@@ -156,6 +173,38 @@ describe('AgentConfigService', () => {
 					],
 				}),
 			).resolves.toMatchObject({ valid: true });
+		});
+
+		it('rejects a regular workflow node wrapped as an Agent node tool', async () => {
+			const { service } = makeService();
+
+			const result = await service.validateConfig({
+				...baseConfig,
+				tools: [
+					{
+						type: 'node',
+						name: 'set_values',
+						node: {
+							nodeType: 'n8n-nodes-base.set',
+							nodeTypeVersion: 3.4,
+							nodeParameters: {},
+						},
+					},
+				],
+			});
+
+			expect(result).toMatchObject({
+				valid: false,
+				nodeIssues: [
+					{
+						code: 'NODE_NOT_AGENT_TOOL',
+						path: 'tools.0.node.nodeType',
+						toolName: 'set_values',
+						nodeType: 'n8n-nodes-base.set',
+						nodeTypeVersion: 3.4,
+					},
+				],
+			});
 		});
 	});
 
@@ -278,6 +327,51 @@ describe('AgentConfigService', () => {
 			expect(agentTaskRepository.delete).toHaveBeenCalledWith(['task-2']);
 			expect(agentSkillsService.removeUnreferencedSkills).toHaveBeenCalled();
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		});
+
+		it('rejects missing references instead of filtering them in strict mode', async () => {
+			const { service, agentRepository, agentTaskRepository } = makeService();
+			const agent = makeAgent({
+				tools: {
+					tool_1: {
+						code: 'a',
+						descriptor: { name: 'tool_1', description: 'a', inputSchema: {} },
+					},
+				} as unknown as Agent['tools'],
+				skills: {
+					'skill-1': { name: 'Skill', description: 'desc', instructions: 'Use it' },
+				},
+			});
+			agentRepository.findByIdAndProjectId.mockImplementation(async (id) =>
+				id === agentId ? agent : null,
+			);
+			agentTaskRepository.findByAgentId.mockResolvedValue([{ id: 'task-1' }] as never);
+
+			await expect(
+				service.updateConfig(
+					agentId,
+					projectId,
+					{
+						...baseConfig,
+						tools: [{ type: 'custom', id: 'missing_tool' }],
+						skills: [{ type: 'skill', id: 'missing-skill' }],
+						tasks: [{ type: 'task', id: 'missing-task', enabled: true }],
+						subAgents: { agents: [{ agentId: 'missing-agent' }] },
+					},
+					{ missingReferencePolicy: 'error' },
+				),
+			).rejects.toMatchObject({
+				code: 'AGENT_CONFIG_REFERENCE_VALIDATION',
+				issues: expect.arrayContaining([
+					expect.objectContaining({ path: 'tools.0.id' }),
+					expect.objectContaining({ path: 'skills.0.id' }),
+					expect.objectContaining({ path: 'tasks.0.id' }),
+					expect.objectContaining({ path: 'subAgents.agents.0.agentId' }),
+				]),
+			});
+			expect(agentRepository.save).not.toHaveBeenCalled();
+			expect(agent.tools).toHaveProperty('tool_1');
+			expect(agent.skills).toHaveProperty('skill-1');
 		});
 
 		it('sanitizes inaccessible credentials before saving nested config', async () => {
