@@ -41,7 +41,7 @@ export function useCredentialTestInBackground() {
 			return;
 		}
 
-		let credentialData;
+		let credentialData: ICredentialDataDecryptedObject | string | undefined;
 		try {
 			credentialData = (await credentialsStore.getCredentialData({ id: credentialId }))?.data;
 		} catch {
