@@ -1,7 +1,9 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, In, Repository } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { ScheduledJob } from '../entities/scheduled-job';
 import { dbNowLiteral, parseDbTime } from '../utils/dialect-time';
@@ -12,6 +14,37 @@ export interface JobAdvance {
 	nextRunAt: Date | null;
 	lastFiredAt: Date | null;
 }
+
+/** A job row to insert; bookkeeping columns take their schema defaults. */
+export type NewScheduledJob = Pick<
+	ScheduledJob,
+	| 'name'
+	| 'workflowId'
+	| 'nodeId'
+	| 'taskType'
+	| 'payload'
+	| 'kind'
+	| 'cronExpression'
+	| 'timezone'
+	| 'recurrenceUnit'
+	| 'recurrenceSize'
+	| 'intervalSeconds'
+	| 'fireAt'
+	| 'nextRunAt'
+>;
+
+/** A changed schedule definition, plus the fresh clock it restarts from. */
+export type ScheduledJobDefinitionUpdate = Pick<
+	ScheduledJob,
+	| 'kind'
+	| 'cronExpression'
+	| 'timezone'
+	| 'recurrenceUnit'
+	| 'recurrenceSize'
+	| 'intervalSeconds'
+	| 'fireAt'
+	| 'nextRunAt'
+>;
 
 @Service()
 export class ScheduledJobRepository extends Repository<ScheduledJob> {
@@ -64,6 +97,85 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		};
 	}
 
+	/** All jobs owned by one trigger node */
+	async findManyByWorkflowNode(
+		manager: EntityManager,
+		workflowId: string,
+		nodeId: string,
+	): Promise<ScheduledJob[]> {
+		return await manager.findBy(ScheduledJob, { workflowId, nodeId });
+	}
+
+	/**
+	 * Insert new job rows and return the ids of the rows this call actually inserted,
+	 * in the same order as `jobs`.
+	 * Must run inside a transaction.
+	 *
+	 * `orIgnore` emits `ON CONFLICT DO NOTHING` (Postgres) / `INSERT OR IGNORE`
+	 * (SQLite): a name already taken is left as-is rather than erroring, so two mains
+	 * activating the same node at once converge on one set of rows (the first
+	 * writer's, clock intact) instead of the second failing on the unique index.
+	 */
+	async insertMany(manager: EntityManager, jobs: NewScheduledJob[]): Promise<number[]> {
+		if (manager.queryRunner === undefined) {
+			throw new UnexpectedError('insertMany must run within a transaction');
+		}
+		if (jobs.length === 0) {
+			return [];
+		}
+		// `payload` is a free-form JSON column, which TypeORM's QueryDeepPartialEntity can't express,
+		// so the well-typed rows are cast at this boundary.
+		const insert = manager
+			.createQueryBuilder()
+			.insert()
+			.into(ScheduledJob)
+			.values(jobs as Array<QueryDeepPartialEntity<ScheduledJob>>)
+			.orIgnore();
+
+		if (this.isPostgres) {
+			const result = await insert.returning('id, name').execute();
+			return orderIdsByName(idNameRows(result.raw), jobs);
+		}
+
+		await insert.execute();
+		const rows = await manager.find(ScheduledJob, {
+			where: { name: In(jobs.map((job) => job.name)) },
+			select: { id: true, name: true },
+		});
+		return orderIdsByName(rows, jobs);
+	}
+
+	/**
+	 * Rewrite a job's schedule in place,
+	 * keeping its id so queued tasks stay attributable.
+	 */
+	async updateDefinition(
+		manager: EntityManager,
+		id: number,
+		update: ScheduledJobDefinitionUpdate,
+	): Promise<void> {
+		await manager.update(ScheduledJob, { id }, update);
+	}
+
+	async deleteManyByIds(manager: EntityManager, ids: number[]): Promise<void> {
+		if (ids.length > 0) {
+			await manager.delete(ScheduledJob, ids);
+		}
+	}
+
+	/**
+	 * Delete all jobs owned by one trigger node; their tasks cascade away.
+	 * @returns how many jobs were deleted (0 when the driver can't report it).
+	 */
+	async deleteByWorkflowNode(
+		manager: EntityManager,
+		workflowId: string,
+		nodeId: string,
+	): Promise<number> {
+		const result = await manager.delete(ScheduledJob, { workflowId, nodeId });
+		return result.affected ?? 0;
+	}
+
 	/**
 	 * Advance many jobs' clocks, a statement per chunk.
 	 * Callers pass distinct ids (a batch of claimed jobs).
@@ -106,4 +218,31 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 			.setParameters(parameters)
 			.execute();
 	}
+}
+
+/** Ids for `jobs`, in input order, from rows carrying their `{ id, name }`. */
+function orderIdsByName(
+	rows: Array<{ id: number; name: string }>,
+	jobs: NewScheduledJob[],
+): number[] {
+	const idByName = new Map(rows.map((row) => [row.name, row.id]));
+	return jobs.map((job) => idByName.get(job.name)).filter((id): id is number => id !== undefined);
+}
+
+const isIdNameRow = (row: unknown): row is { id: number; name: string } =>
+	typeof row === 'object' &&
+	row !== null &&
+	'id' in row &&
+	typeof row.id === 'number' &&
+	'name' in row &&
+	typeof row.name === 'string';
+
+/** Narrow a driver's raw `RETURNING id, name` result to typed rows. */
+function idNameRows(raw: unknown): Array<{ id: number; name: string }> {
+	if (Array.isArray(raw) && raw.every(isIdNameRow)) {
+		return raw;
+	}
+	throw new UnexpectedError(
+		`Expected RETURNING to yield { id, name } rows; got ${JSON.stringify(raw)}`,
+	);
 }
