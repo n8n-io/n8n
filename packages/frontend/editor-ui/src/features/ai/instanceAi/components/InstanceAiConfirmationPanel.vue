@@ -650,7 +650,6 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 }
 
 .textCard {
-	// N8nCard already rounds to --radius--lg; only the border needs overriding.
 	border: 2px solid var(--color--primary);
 	background-color: var(--color--background--light-3);
 }
