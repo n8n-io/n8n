@@ -11,13 +11,10 @@ import { execFileSync } from 'node:child_process';
 import { basename } from 'node:path';
 
 import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
-import { LangTracerClient, type LangTracerUpdateCaseBody } from '../langtracer/client';
+import { LangTracerClient } from '../langtracer/client';
 import { resolveLangTracerConfig } from '../langtracer/config';
-import { planPush } from '../langtracer/push';
-import {
-	diskCaseToLangTracerCreate,
-	type LangTracerCreateCaseBody,
-} from '../langtracer/to-exported';
+import { planPush, toUpdatePatch } from '../langtracer/push';
+import { diskCaseToLangTracerCreate } from '../langtracer/to-exported';
 
 interface CliArgs {
 	suite: string;
@@ -152,16 +149,6 @@ function gitChangedSlugs(): string[] {
 		}
 	}
 	return slugs;
-}
-
-/** Drop the create-only fields `PATCH /cases/:id` rejects, leaving the patchable set. */
-function toUpdatePatch({
-	suiteId,
-	synthetic,
-	scenarios,
-	...patch
-}: LangTracerCreateCaseBody): LangTracerUpdateCaseBody {
-	return patch;
 }
 
 async function main() {

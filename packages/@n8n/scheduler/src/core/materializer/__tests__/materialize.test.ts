@@ -16,6 +16,8 @@ const makeJob = (id: number): ScheduledJob => ({
 	timezone: null,
 	intervalSeconds: 10,
 	fireAt: null,
+	recurrenceUnit: null,
+	recurrenceSize: null,
 	nextRunAt: NOW,
 	lastFiredAt: null,
 	maxAttempts: 1,

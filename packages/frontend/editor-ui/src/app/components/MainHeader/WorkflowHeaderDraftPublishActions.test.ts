@@ -718,6 +718,22 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { container } = renderComponent();
 			expect(container).toBeInTheDocument();
 		});
+
+		it('should disable the menu button when workflow is new', () => {
+			settingsStore.isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
+				[EnterpriseEditionFeature.NamedVersions]: false,
+			});
+
+			const { getByTestId } = renderComponent({
+				props: {
+					...defaultWorkflowProps,
+					isNewWorkflow: true,
+				},
+			});
+
+			const versionMenuButton = getByTestId('version-menu-button');
+			expect(versionMenuButton).toBeDisabled();
+		});
 	});
 
 	describe('Publication service states (flag on)', () => {

@@ -35,6 +35,11 @@ export default class PackageImport extends BaseCommand {
 			options: ['new', 'source'],
 			aliases: ['workflow-id-policy'],
 		}),
+		folderConflictPolicy: Flags.string({
+			description: 'What to do when a package folder already exists in the target project',
+			options: ['merge', 'fail'],
+			aliases: ['folder-conflict-policy'],
+		}),
 		credentialMatchingMode: Flags.string({
 			description: 'How credential references are matched on the target instance',
 			options: ['id-only', 'name-and-type', 'type-only'],
@@ -71,6 +76,7 @@ export default class PackageImport extends BaseCommand {
 						folderId: flags.folder,
 						workflowConflictPolicy: flags.conflictPolicy,
 						workflowIdPolicy: flags.workflowIdPolicy,
+						folderConflictPolicy: flags.folderConflictPolicy,
 						credentialMatchingMode: flags.credentialMatchingMode,
 						credentialMissingMode: flags.credentialMissingMode,
 						bindings: flags.bindings,
