@@ -33,23 +33,3 @@ properties:
       minLength: 1
     example:
       - Ox8O54VQrmBrb4qL
-  subworkflowBehaviour:
-    type: string
-    enum:
-      - included-in-package
-      - references-only
-    default: included-in-package
-    description: >-
-      Sub-workflow export mode. Supported values are `included-in-package`
-      (default) and `references-only`.
-  externalSubworkflowBehaviour:
-    type: string
-    enum:
-      - block
-      - include-top-level
-      - references-only
-    default: block
-    description: >-
-      How to handle project/folder sub-workflows outside the selected export
-      boundary. `include-top-level` bundles them under top-level `workflows/`
-      and does not preserve their original project/folder placement on import.

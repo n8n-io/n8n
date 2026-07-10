@@ -14,7 +14,6 @@ and/or folder IDs, or project IDs, but not both groups in the same command.
 n8n-cli package export --workflow-id=abc --output=export.n8np
 n8n-cli package export -w abc -w def -o team.n8np
 n8n-cli package export --folder-id=xyz -o folders.n8np
-n8n-cli package export --workflow-id=abc --subworkflow-behaviour=references-only -o refs.n8np
 n8n-cli package export --project-id=abc -o project.n8np
 n8n-cli package export -p abc -p def -o projects.n8np
 ```
@@ -24,13 +23,17 @@ n8n-cli package export -p abc -p def -o projects.n8np
 | `-w, --workflow-id` | Workflow ID to include. Repeat the flag to export several. |
 | `-f, --folder-id` | Folder ID to include with its nested folders. Repeat the flag to export several. |
 | `-p, --project-id` | Project ID to include. Repeat the flag to export several. |
-| `--subworkflow-behaviour` | Sub-workflow export mode: `included-in-package` (default) or `references-only`. |
-| `--external-subworkflow-behaviour` | How to handle project/folder sub-workflows outside the export boundary: `block` (default), `include-top-level`, or `references-only`. `include-top-level` does not preserve original project/folder placement on import. |
 | `-o, --output` | File to write the package to. Defaults to `export.n8np`. |
 
 Provide at least one `--workflow-id`, `--folder-id`, or `--project-id`. Requires
 the API key to hold `workflow:export` when exporting workflows or folders, or
 `project:export` when exporting projects.
+
+Statically referenced sub-workflows must also be included in the resulting
+package. For workflow exports, include referenced sub-workflows with additional
+`--workflow-id` flags. For folder exports, referenced sub-workflows must be in
+the exported folder tree or included with `--workflow-id`. For project exports,
+referenced sub-workflows must be in one of the exported projects.
 
 ## `package import`
 

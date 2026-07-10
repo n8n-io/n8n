@@ -36,16 +36,6 @@ export default class PackageExport extends BaseCommand {
 			multiple: true,
 			aliases: ['project-id'],
 		}),
-		subworkflowBehaviour: Flags.string({
-			description: 'Sub-workflow export mode: included-in-package or references-only',
-			options: ['included-in-package', 'references-only'],
-			aliases: ['subworkflow-behaviour'],
-		}),
-		externalSubworkflowBehaviour: Flags.string({
-			description: 'How to handle project/folder sub-workflows outside the export boundary',
-			options: ['block', 'include-top-level', 'references-only'],
-			aliases: ['external-subworkflow-behaviour'],
-		}),
 		output: Flags.string({
 			char: 'o',
 			description: 'File to write the package to',
@@ -71,12 +61,6 @@ export default class PackageExport extends BaseCommand {
 			const client = this.getClient(flags);
 			const exportPackageFields: ExportPackageFields =
 				projectIds.length > 0 ? { projectIds } : { workflowIds, folderIds };
-			if (flags.subworkflowBehaviour) {
-				exportPackageFields.subworkflowBehaviour = flags.subworkflowBehaviour;
-			}
-			if (flags.externalSubworkflowBehaviour) {
-				exportPackageFields.externalSubworkflowBehaviour = flags.externalSubworkflowBehaviour;
-			}
 
 			let archive: Buffer;
 			try {

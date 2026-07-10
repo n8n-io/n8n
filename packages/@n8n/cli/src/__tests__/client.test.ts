@@ -86,37 +86,6 @@ describe('N8nClient packages', () => {
 			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 			expect(init.body).toBe(JSON.stringify({ folderIds: ['f1'] }));
 		});
-
-		it('includes subworkflowBehaviour in the body when provided', async () => {
-			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
-
-			await client.exportPackage({
-				workflowIds: ['a'],
-				subworkflowBehaviour: 'references-only',
-			});
-
-			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-			expect(init.body).toBe(
-				JSON.stringify({ workflowIds: ['a'], subworkflowBehaviour: 'references-only' }),
-			);
-		});
-
-		it('includes externalSubworkflowBehaviour in the body when provided', async () => {
-			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
-
-			await client.exportPackage({
-				folderIds: ['f1'],
-				externalSubworkflowBehaviour: 'include-top-level',
-			});
-
-			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-			expect(init.body).toBe(
-				JSON.stringify({
-					folderIds: ['f1'],
-					externalSubworkflowBehaviour: 'include-top-level',
-				}),
-			);
-		});
 	});
 
 	describe('importPackage', () => {

@@ -23,8 +23,6 @@ export interface ExportPackageFields {
 	workflowIds?: string[];
 	folderIds?: string[];
 	projectIds?: string[];
-	subworkflowBehaviour?: string;
-	externalSubworkflowBehaviour?: string;
 }
 
 export class ApiError extends Error {
@@ -436,10 +434,6 @@ export class N8nClient {
 		if (fields.workflowIds?.length) body.workflowIds = fields.workflowIds;
 		if (fields.folderIds?.length) body.folderIds = fields.folderIds;
 		if (fields.projectIds?.length) body.projectIds = fields.projectIds;
-		if (fields.subworkflowBehaviour) body.subworkflowBehaviour = fields.subworkflowBehaviour;
-		if (fields.externalSubworkflowBehaviour) {
-			body.externalSubworkflowBehaviour = fields.externalSubworkflowBehaviour;
-		}
 
 		return await this.request<Buffer>('POST', '/n8n-packages/export', {
 			body,

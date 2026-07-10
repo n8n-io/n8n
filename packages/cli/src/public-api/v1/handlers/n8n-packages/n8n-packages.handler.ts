@@ -100,7 +100,6 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 				workflowIds = payload.data.workflowIds ?? [];
 				folderIds = payload.data.folderIds ?? [];
 				projectIds = payload.data.projectIds ?? [];
-				const { subworkflowBehaviour, externalSubworkflowBehaviour } = payload.data;
 
 				// A package is either a set of loose workflows/folders or a set of whole projects, not both.
 				if (projectIds.length > 0 && (workflowIds.length > 0 || folderIds.length > 0)) {
@@ -118,8 +117,6 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					workflowIds,
 					folderIds,
 					projectIds,
-					...(subworkflowBehaviour ? { subworkflowBehaviour } : {}),
-					...(externalSubworkflowBehaviour ? { externalSubworkflowBehaviour } : {}),
 				});
 
 				return await streamPackageExport(res, stream);

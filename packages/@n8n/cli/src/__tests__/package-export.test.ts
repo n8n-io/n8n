@@ -16,8 +16,6 @@ interface ExportInternals {
 			workflowId?: string[];
 			folderId?: string[];
 			projectId?: string[];
-			subworkflowBehaviour?: 'included-in-package' | 'references-only';
-			externalSubworkflowBehaviour?: 'block' | 'include-top-level' | 'references-only';
 			output: string;
 		};
 	}>;
@@ -31,8 +29,6 @@ function stubCommand(
 		workflowId?: string[];
 		folderId?: string[];
 		projectId?: string[];
-		subworkflowBehaviour?: 'included-in-package' | 'references-only';
-		externalSubworkflowBehaviour?: 'block' | 'include-top-level' | 'references-only';
 		output: string;
 	},
 	exportPackage = vi.fn().mockResolvedValue(Buffer.from([1, 2, 3])),
@@ -111,38 +107,6 @@ describe('package export command', () => {
 			projectIds: ['proj-1', 'proj-2'],
 		});
 		expect(mockedWriteFileSync).toHaveBeenCalledWith('/tmp/projects.n8np', Buffer.from([1, 2, 3]));
-	});
-
-	it('forwards subworkflow behaviour', async () => {
-		const { command, exportPackage } = stubCommand({
-			workflowId: ['wf-1'],
-			subworkflowBehaviour: 'references-only',
-			output: '/tmp/export.n8np',
-		});
-
-		await command.run();
-
-		expect(exportPackage).toHaveBeenCalledWith({
-			workflowIds: ['wf-1'],
-			folderIds: [],
-			subworkflowBehaviour: 'references-only',
-		});
-	});
-
-	it('forwards external subworkflow behaviour', async () => {
-		const { command, exportPackage } = stubCommand({
-			folderId: ['fld-1'],
-			externalSubworkflowBehaviour: 'include-top-level',
-			output: '/tmp/export.n8np',
-		});
-
-		await command.run();
-
-		expect(exportPackage).toHaveBeenCalledWith({
-			workflowIds: [],
-			folderIds: ['fld-1'],
-			externalSubworkflowBehaviour: 'include-top-level',
-		});
 	});
 
 	it('rejects providing both workflow and project IDs', async () => {
