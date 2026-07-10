@@ -6,6 +6,7 @@ import { N8N_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
 
 import { N8nPackageParser } from './engine/n8n-package-parser';
+import { ProjectPackageImporter } from './engine/project-package-importer';
 import { WorkflowPackageImporter } from './engine/workflow-package-importer';
 import { CredentialExporter } from './entities/credential/credential.exporter';
 import { FolderExporter } from './entities/folder/folder.exporter';
@@ -21,7 +22,11 @@ import type {
 	ImportResult,
 } from './n8n-packages.types';
 import { FORMAT_VERSION } from './spec/constants';
-import { type ManifestEntry, packageManifestSchema } from './spec/manifest.schema';
+import {
+	type ManifestEntry,
+	type PackageManifest,
+	packageManifestSchema,
+} from './spec/manifest.schema';
 
 @Service()
 export class N8nPackagesService {
@@ -33,6 +38,7 @@ export class N8nPackagesService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly packageParser: N8nPackageParser,
 		private readonly packageImportConfig: PackageImportConfig,
+		private readonly projectPackageImporter: ProjectPackageImporter,
 		private readonly workflowPackageImporter: WorkflowPackageImporter,
 		private readonly eventService: EventService,
 	) {}
@@ -144,11 +150,21 @@ export class N8nPackagesService {
 	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {
 		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
 		const manifest = await this.packageParser.getManifest(reader);
-		return await this.workflowPackageImporter.import(request, reader, manifest);
+		// A project package defines its own projects, so the request's target projectId/folderId
+		// don't apply — the package shape selects the importer.
+		const importer = isProjectPackage(manifest)
+			? this.projectPackageImporter
+			: this.workflowPackageImporter;
+		return await importer.import(request, reader, manifest);
 	}
 
 	filterWorkflowsAlreadyInFolders(workflowsInFolders: ManifestEntry[] = [], workflowIds: string[]) {
 		const folderWorkflowIds = new Set(workflowsInFolders.map((entry) => entry.id) ?? []);
 		return workflowIds.filter((id) => !folderWorkflowIds.has(id));
 	}
+}
+
+/** A project package carries whole projects; a workflow package carries loose workflows + folders. */
+function isProjectPackage(manifest: PackageManifest): boolean {
+	return (manifest.projects?.length ?? 0) > 0;
 }
