@@ -145,6 +145,25 @@ describe('N8nClient packages', () => {
 			expect(form.get('credentialMissingMode')).toBe('create-stub');
 		});
 
+		it('forwards bindings verbatim as a form field', async () => {
+			fetchMock.mockResolvedValue(
+				jsonResponse(200, {
+					workflows: [],
+					bindings: {},
+					credentials: { matched: [], stubbed: [] },
+				}),
+			);
+
+			const bindings = '{"credentials":{"source-cred":"target-cred"}}';
+			await client.importPackage(
+				{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
+				{ workflowConflictPolicy: 'fail', bindings },
+			);
+
+			const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+			expect(form.get('bindings')).toBe(bindings);
+		});
+
 		it('omits credentialMissingMode so the instance default applies', async () => {
 			fetchMock.mockResolvedValue(
 				jsonResponse(200, {

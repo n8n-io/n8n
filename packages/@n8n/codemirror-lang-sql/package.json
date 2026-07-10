@@ -50,6 +50,7 @@
   "devDependencies": {
     "@lezer/generator": "catalog:",
     "@n8n/typescript-config": "workspace:*",
+    "typescript": "catalog:typescript",
     "@n8n/vitest-config": "workspace:*",
     "vitest": "catalog:"
   },
