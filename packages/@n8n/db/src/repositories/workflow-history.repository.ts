@@ -109,16 +109,37 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 			.orderBy('wh.createdAt', 'ASC')
 			.getMany();
 
-		// Group by workflowId
-		const publishedVersions =
-			await this.workflowPublishHistoryRepository.getPublishedVersions(workflowId);
+		// The audit log alone is not a reliable source for versions that must be
+		// preserved: the live pointers (workflow_published_version.publishedVersionId,
+		// workflow_entity.activeVersionId) can reference versions that have no audit
+		// row, and both carry ON DELETE RESTRICT FKs that would abort the delete below.
+		// The current version (workflow_entity.versionId) has no FK, so pruning it
+		// would silently orphan the pointer instead. Mirror the exclusions of
+		// deleteEarlierThanExceptCurrentAndActive().
+		const [publishedVersions, publishedVersion, workflow] = await Promise.all([
+			this.workflowPublishHistoryRepository.getPublishedVersions(workflowId),
+			this.manager.findOne(WorkflowPublishedVersion, {
+				where: { workflowId },
+				select: ['publishedVersionId'],
+			}),
+			this.manager.findOne(WorkflowEntity, {
+				where: { id: workflowId },
+				select: ['versionId', 'activeVersionId'],
+			}),
+		]);
+
+		const preservedVersionIds = new Set(
+			publishedVersions.map((v) => v.versionId).filter((v) => v !== null),
+		);
+		if (publishedVersion) preservedVersionIds.add(publishedVersion.publishedVersionId);
+		if (workflow?.versionId) preservedVersionIds.add(workflow.versionId);
+		if (workflow?.activeVersionId) preservedVersionIds.add(workflow.activeVersionId);
+
 		const grouped = groupWorkflows<WorkflowHistory>(
 			workflows,
 			rules,
 			[
-				this.makeSkipActiveAndNamedVersionsRule(
-					new Set(publishedVersions.map((v) => v.versionId).filter((v) => v !== null)),
-				),
+				this.makeSkipActiveAndNamedVersionsRule(preservedVersionIds),
 				SKIP_RULES.skipDifferentUsers,
 				...skipRules,
 			],

@@ -4,7 +4,11 @@ import {
 	createWorkflowWithHistory,
 	testDb,
 } from '@n8n/backend-test-utils';
-import { WorkflowHistoryRepository, WorkflowPublishedVersionRepository } from '@n8n/db';
+import {
+	WorkflowHistoryRepository,
+	WorkflowPublishedVersionRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { RULES, type INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -26,11 +30,13 @@ describe('WorkflowHistoryRepository', () => {
 	});
 
 	beforeEach(async () => {
+		// WorkflowEntity before WorkflowHistory: activeVersionId carries a RESTRICT
+		// FK onto workflow_history, so the referencing workflow must go first.
 		await testDb.truncate([
 			'WorkflowPublishedVersion',
 			'WorkflowPublishHistory',
-			'WorkflowHistory',
 			'WorkflowEntity',
+			'WorkflowHistory',
 			'User',
 		]);
 	});
@@ -63,6 +69,8 @@ describe('WorkflowHistoryRepository', () => {
 				versionId: id2,
 				nodes: [{ ...testNode1, parameters: { a: 'abcd' } }],
 			});
+			// The workflow's current version is the latest save
+			await Container.get(WorkflowRepository).update(workflow.id, { versionId: id2 });
 
 			// ACT
 			const repository = Container.get(WorkflowHistoryRepository);
@@ -211,6 +219,8 @@ describe('WorkflowHistoryRepository', () => {
 				versionId: id5,
 				nodes: [{ ...testNode1, parameters: { a: 'abcde' } }],
 			});
+			// The workflow's current version is the latest save
+			await Container.get(WorkflowRepository).update(workflow.id, { versionId: id5 });
 
 			// ACT
 			const repository = Container.get(WorkflowHistoryRepository);
@@ -241,6 +251,160 @@ describe('WorkflowHistoryRepository', () => {
 			// ASSERT
 			expect(redo.deleted).toBe(0);
 			expect(redo.seen).toBe(3);
+		});
+
+		// The live published version (workflow_published_version, RESTRICT FK) can be
+		// absent from the workflow_publish_history audit log, e.g. rows written by the
+		// startup backfill applier or activations predating the audit table. Pruning
+		// it aborts the whole DELETE with "FOREIGN KEY constraint failed", wedging
+		// compaction for the workflow.
+		it('should preserve the live published version even when absent from the publish history audit log', async () => {
+			// ARRANGE
+			const vPublished = uuid();
+			const vMid = uuid();
+			const vLatest = uuid();
+
+			const workflow = await createWorkflowWithHistory({
+				versionId: vPublished,
+				nodes: [{ ...testNode1, parameters: { a: 'a' } }],
+			});
+			await createWorkflowHistory({
+				...workflow,
+				versionId: vMid,
+				nodes: [{ ...testNode1, parameters: { a: 'ab' } }],
+			});
+			await createWorkflowHistory({
+				...workflow,
+				versionId: vLatest,
+				nodes: [{ ...testNode1, parameters: { a: 'abc' } }],
+			});
+
+			// The workflow's current version is the latest save
+			await Container.get(WorkflowRepository).update(workflow.id, { versionId: vLatest });
+			// Live pointer at the oldest version, audit log stays empty
+			await Container.get(WorkflowPublishedVersionRepository).setPublishedVersion(
+				workflow.id,
+				vPublished,
+			);
+
+			const repository = Container.get(WorkflowHistoryRepository);
+
+			const aDayAgo = new Date();
+			aDayAgo.setDate(aDayAgo.getDate() - 1);
+
+			const nextDay = new Date();
+			nextDay.setDate(nextDay.getDate() + 1);
+
+			// ACT
+			// Must not throw "SQLITE_CONSTRAINT: FOREIGN KEY constraint failed"
+			const { deleted, seen } = await repository.pruneHistory(workflow.id, aDayAgo, nextDay, [
+				alwaysMergeRule,
+			]);
+
+			// ASSERT
+			expect(seen).toBe(3);
+			expect(deleted).toBe(1);
+
+			const remainingIds = (await repository.find()).map((r) => r.versionId);
+			expect(remainingIds).toContain(vPublished);
+			expect(remainingIds).toContain(vLatest);
+			expect(remainingIds).not.toContain(vMid);
+		});
+
+		// Same failure mode via workflow_entity.activeVersionId (also RESTRICT FK):
+		// the active version is only protected through its audit-log rows, which the
+		// backfill applier does not write.
+		it('should preserve the active version even when absent from the publish history audit log', async () => {
+			// ARRANGE
+			const vActive = uuid();
+			const vMid = uuid();
+			const vLatest = uuid();
+
+			const workflow = await createWorkflowWithHistory({
+				versionId: vActive,
+				nodes: [{ ...testNode1, parameters: { a: 'a' } }],
+			});
+			await createWorkflowHistory({
+				...workflow,
+				versionId: vMid,
+				nodes: [{ ...testNode1, parameters: { a: 'ab' } }],
+			});
+			await createWorkflowHistory({
+				...workflow,
+				versionId: vLatest,
+				nodes: [{ ...testNode1, parameters: { a: 'abc' } }],
+			});
+
+			// Current version is the latest save; active pointer at the oldest
+			// version, audit log stays empty
+			await Container.get(WorkflowRepository).update(workflow.id, {
+				versionId: vLatest,
+				activeVersionId: vActive,
+			});
+
+			const repository = Container.get(WorkflowHistoryRepository);
+
+			const aDayAgo = new Date();
+			aDayAgo.setDate(aDayAgo.getDate() - 1);
+
+			const nextDay = new Date();
+			nextDay.setDate(nextDay.getDate() + 1);
+
+			// ACT
+			// Must not throw "SQLITE_CONSTRAINT: FOREIGN KEY constraint failed"
+			const { deleted, seen } = await repository.pruneHistory(workflow.id, aDayAgo, nextDay, [
+				alwaysMergeRule,
+			]);
+
+			// ASSERT
+			expect(seen).toBe(3);
+			expect(deleted).toBe(1);
+
+			const remainingIds = (await repository.find()).map((r) => r.versionId);
+			expect(remainingIds).toContain(vActive);
+			expect(remainingIds).toContain(vLatest);
+			expect(remainingIds).not.toContain(vMid);
+		});
+
+		// workflow_entity.versionId has no FK, so pruning the current version would
+		// silently orphan the pointer rather than abort. It is normally the newest
+		// version and survives as the group representative, but createdAt ordering
+		// is not guaranteed to put it last (e.g. timestamp ties).
+		it('should preserve the current version even when it is not the newest history entry', async () => {
+			// ARRANGE
+			const vCurrent = uuid();
+			const vLatest = uuid();
+
+			const workflow = await createWorkflowWithHistory({
+				versionId: vCurrent,
+				nodes: [{ ...testNode1, parameters: { a: 'a' } }],
+			});
+			await createWorkflowHistory({
+				...workflow,
+				versionId: vLatest,
+				nodes: [{ ...testNode1, parameters: { a: 'ab' } }],
+			});
+
+			const repository = Container.get(WorkflowHistoryRepository);
+
+			const aDayAgo = new Date();
+			aDayAgo.setDate(aDayAgo.getDate() - 1);
+
+			const nextDay = new Date();
+			nextDay.setDate(nextDay.getDate() + 1);
+
+			// ACT
+			const { deleted, seen } = await repository.pruneHistory(workflow.id, aDayAgo, nextDay, [
+				alwaysMergeRule,
+			]);
+
+			// ASSERT
+			expect(seen).toBe(2);
+			expect(deleted).toBe(0);
+
+			const remainingIds = (await repository.find()).map((r) => r.versionId);
+			expect(remainingIds).toContain(vCurrent);
+			expect(remainingIds).toContain(vLatest);
 		});
 	});
 	describe('deleteEarlierThanExceptCurrentAndActive', () => {
