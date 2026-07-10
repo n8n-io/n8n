@@ -332,12 +332,52 @@ export async function runWorkflowTestCase(
 				})
 			: Promise.resolve<BuildExpectationResult[]>([]);
 
+	// Capture + judge non-workflow artifacts (agent, config-eval). Driven purely by the
+	// thread's messages + the case's expectedArtifacts, so it's independent of whether a
+	// workflow was built — agent/config-eval artifacts save outside the workflow path.
+	// Runs concurrently with scenarios/expectations; workflow-only cases discover nothing
+	// here and resolve to []. Re-fetches thread messages (buildWorkflow reads them
+	// internally but doesn't expose them); artifacts are discovered from the agent-tree.
+	const artifactResultsPromise: Promise<ArtifactVerdict[]> = build.threadId
+		? client
+				.getThreadMessages(build.threadId)
+				.catch((error: unknown) => {
+					logger.warn(
+						`  Fetching thread messages for artifact discovery failed: ${error instanceof Error ? error.message : String(error)}`,
+					);
+					return { messages: [] };
+				})
+				.then(
+					async (threadMessages) =>
+						await resolveArtifactResults({
+							messages: threadMessages.messages,
+							testCase,
+							client,
+							logger,
+						}),
+				)
+				.catch((error: unknown) => {
+					logger.warn(
+						`  Artifact resolution failed: ${error instanceof Error ? error.message : String(error)}`,
+					);
+					return [];
+				})
+		: Promise.resolve<ArtifactVerdict[]>([]);
+
+	// No workflow was built. For agent/config-eval-only cases this is the expected
+	// outcome — score them on the artifacts discovered above instead of failing them as
+	// missing workflows. A missing workflow is only a build failure when the case
+	// actually expected one.
 	if (!build.success || !build.workflowId) {
-		result.buildError = build.error;
-		const expectationResults = await expectationsPromise;
-		const buildExpectationResults = expectationResults;
-		if (buildExpectationResults.length > 0)
-			result.buildExpectationResults = buildExpectationResults;
+		const [expectationResults, artifactResults] = await Promise.all([
+			expectationsPromise,
+			artifactResultsPromise,
+		]);
+		if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
+		if (artifactResults.length > 0) result.artifactResults = artifactResults;
+
+		const expectsWorkflow = (testCase.expectedArtifacts ?? ['workflow']).includes('workflow');
+		if (expectsWorkflow) result.buildError = build.error;
 		return result;
 	}
 
@@ -391,37 +431,6 @@ export async function runWorkflowTestCase(
 		},
 		MAX_CONCURRENT_SCENARIOS,
 	);
-
-	// Capture + judge non-workflow artifacts (agent, config-eval), run concurrently with
-	// scenarios/expectations since it only needs the thread. Workflow-only cases discover
-	// nothing here and resolve to []. Re-fetches thread messages (buildWorkflow already read
-	// them internally, but doesn't expose them); artifacts are then discovered from the
-	// agent-tree.
-	const artifactResultsPromise: Promise<ArtifactVerdict[]> = build.threadId
-		? client
-				.getThreadMessages(build.threadId)
-				.catch((error: unknown) => {
-					logger.warn(
-						`  Fetching thread messages for artifact discovery failed: ${error instanceof Error ? error.message : String(error)}`,
-					);
-					return { messages: [] };
-				})
-				.then(
-					async (threadMessages) =>
-						await resolveArtifactResults({
-							messages: threadMessages.messages,
-							testCase,
-							client,
-							logger,
-						}),
-				)
-				.catch((error: unknown) => {
-					logger.warn(
-						`  Artifact resolution failed: ${error instanceof Error ? error.message : String(error)}`,
-					);
-					return [];
-				})
-		: Promise.resolve<ArtifactVerdict[]>([]);
 
 	const [scenarioResults, expectationResults, artifactResults] = await Promise.all([
 		scenariosPromise,

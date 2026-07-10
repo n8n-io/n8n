@@ -48,7 +48,12 @@ export function countAggregatedUnitTrials(units: AggregatedCaseUnit[]): ScoredCo
 export function getCheckedRunCount(tc: TestCaseAggregation): number {
 	if (requiresWorkflowOutput(tc.testCase)) return tc.buildSuccessCount;
 
-	return tc.runs.filter((run) => (run.buildExpectationResults?.length ?? 0) > 0).length;
+	// A workflow-less case is "checked" on any run that produced a scoreable unit —
+	// a judged build expectation or a discovered artifact (agent/config-eval).
+	return tc.runs.filter(
+		(run) =>
+			(run.buildExpectationResults?.length ?? 0) > 0 || (run.artifactResults?.length ?? 0) > 0,
+	).length;
 }
 
 export function getRunScoredCounts(result: WorkflowTestCaseResult): ScoredCounts {
@@ -67,8 +72,13 @@ export function getRunScoredCounts(result: WorkflowTestCaseResult): ScoredCounts
 }
 
 export function getCaseRunStatus(result: WorkflowTestCaseResult): CaseRunStatus {
+	// An agent/config-eval-only case produces no workflow by design; treat it as
+	// checked (not build-failed) once it has any scoreable unit — a judged build
+	// expectation or a discovered artifact.
 	const checkedWithoutWorkflow =
-		!requiresWorkflowOutput(result.testCase) && (result.buildExpectationResults?.length ?? 0) > 0;
+		!requiresWorkflowOutput(result.testCase) &&
+		((result.buildExpectationResults?.length ?? 0) > 0 ||
+			(result.artifactResults?.length ?? 0) > 0);
 
 	if (checkedWithoutWorkflow) return 'checked';
 	if (result.workflowBuildSuccess) return 'built';
