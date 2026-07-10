@@ -1,73 +1,106 @@
-import { Time } from '@n8n/constants';
-import { CronExpressionParser } from 'cron-parser';
-
 import { InvalidScheduleError } from '../errors';
-import type { CronSchedule, IntervalSchedule, OneOffSchedule, Schedule } from '../types';
+import type { Schedule } from '../types';
+import { cronNextRun, cronOccurrences } from './kinds/cron';
+import { intervalNextRun, intervalOccurrences } from './kinds/interval';
+import { oneOffNextRun, oneOffOccurrences } from './kinds/one-off';
+import {
+	recurringCronFirstRun,
+	recurringCronNextRun,
+	recurringCronOccurrences,
+} from './kinds/recurring-cron';
 import { validateSchedule } from './validate';
 
 /**
- * Cron: next fire strictly after `after`, in the schedule's IANA timezone.
- * `cron-parser` advances from `currentDate` with strictly-after semantics and
- * resolves DST via luxon. The timezone must already be resolved to a concrete
- * zone (a `null` instance default is rejected upstream). Wall-clock: a
- * nonexistent local time (spring-forward) shifts forward; a repeated local time
- * (fall-back) fires once.
- */
-function cronNextRun(schedule: CronSchedule, after: Date, timezone: string): Date {
-	try {
-		const it = CronExpressionParser.parse(schedule.cronExpression, {
-			currentDate: after,
-			tz: timezone,
-		});
-		return it.next().toDate();
-	} catch (error) {
-		throw new InvalidScheduleError(
-			`Failed to evaluate cron expression ${JSON.stringify(schedule.cronExpression)} in timezone ${JSON.stringify(timezone)}: ${(error as Error).message}`,
-		);
-	}
-}
-
-/**
- * Interval: advances by `intervalSeconds` of real elapsed time (UTC) from
- * `after` (the prior occurrence), so the cadence is deterministic and DST never
- * shifts a fire. Always strictly after `after` (intervalSeconds is positive).
- */
-function intervalNextRun(schedule: IntervalSchedule, after: Date): Date {
-	return new Date(after.getTime() + schedule.intervalSeconds * Time.seconds.toMilliseconds);
-}
-
-/** One-off: `fireAt` when it is strictly after `after`, otherwise `null` (exhausted). */
-function oneOffNextRun(schedule: OneOffSchedule, after: Date): Date | null {
-	return after.getTime() < schedule.fireAt.getTime() ? schedule.fireAt : null;
-}
-
-/**
- * Compute the next occurrence strictly after `after` (a job's current
- * `nextRunAt` / last scheduled instant), as a UTC instant. This is what the
- * materializer advances `next_run_at` with.
+ * Computes the next occurrence of a schedule, strictly after `after`, as a UTC
+ * instant. The materializer uses the result to advance `next_run_at`.
  *
- * The schedule is validated first, so malformed input (non-positive interval,
- * invalid `fireAt`, bad cron expression, unresolved `null` cron timezone) throws
- * {@link InvalidScheduleError} rather than returning a wrong or `Invalid` instant.
+ * How the next fire is found depends on the kind:
+ * - `cron`: the next time the cron expression matches.
+ * - `interval`: `after` plus the interval.
+ * - `one_off`: the fire time, or `null` if it already passed (exhausted).
+ * - `recurring_cron`: the next cron fire the every-N rule keeps.
  *
- * Returns `null` only when the schedule is exhausted (a one-off already at or
- * past `after`); cron and interval schedules are unbounded.
+ * @param schedule The schedule to advance. Validated first, so bad input throws instead of returning a wrong instant.
+ * @param after The job's last scheduled fire (its current `nextRunAt`). For
+ * `recurring_cron` this must be the previous fire, since the rule counts periods
+ * from it; seed a fresh job with {@link computeFirstRunAt}, not an arbitrary
+ * instant.
+ * @returns The next occurrence, or `null` when exhausted. Only `one_off` ever
+ * returns `null`; the other kinds never run out.
+ * @throws {InvalidScheduleError} On malformed input: a non-positive interval, an
+ * invalid `fireAt`, or a broken cron expression.
  */
 export function computeNextRunAt(schedule: Schedule, after: Date): Date | null {
 	validateSchedule(schedule);
 
 	switch (schedule.kind) {
 		case 'cron':
-			if (schedule.timezone === null) {
-				throw new InvalidScheduleError(
-					'Cron timezone must be resolved to a concrete zone before computing the next run, got null',
-				);
-			}
-			return cronNextRun(schedule, after, schedule.timezone);
+			return cronNextRun(schedule, after);
+		case 'recurring_cron':
+			return recurringCronNextRun(schedule, after);
 		case 'interval':
 			return intervalNextRun(schedule, after);
 		case 'one_off':
 			return oneOffNextRun(schedule, after);
+		default: {
+			const exhaustive: never = schedule;
+			throw new InvalidScheduleError(
+				`Unknown schedule kind: ${JSON.stringify((exhaustive as Schedule).kind)}`,
+			);
+		}
+	}
+}
+
+/**
+ * Computes a fresh job's first occurrence after `from` (its registration
+ * instant). The one seeding API for `next_run_at`. Every kind but
+ * `recurring_cron` has no history and matches {@link computeNextRunAt}; a
+ * `recurring_cron` fires at its next cron instant with the every-N rule ignored.
+ * @param schedule The schedule to seed.
+ * @param from The registration instant.
+ * @returns The first occurrence, or `null` for an already-passed one-off.
+ * @throws {InvalidScheduleError} On malformed input.
+ */
+export function computeFirstRunAt(schedule: Schedule, from: Date): Date | null {
+	if (schedule.kind === 'recurring_cron') {
+		validateSchedule(schedule);
+		return recurringCronFirstRun(schedule, from);
+	}
+	return computeNextRunAt(schedule, from);
+}
+
+/**
+ * The successive occurrences of a schedule for one materialization walk, oldest
+ * first, beginning with `first` (a job's current `next_run_at`: an already-due
+ * fire) and continuing until the schedule is exhausted. Parses any cron
+ * expression once and advances a single cursor, so walking a wide window costs
+ * no repeated parsing — unlike calling {@link computeNextRunAt} in a loop.
+ *
+ * Like {@link computeNextRunAt}, `first` for a `recurring_cron` must be a real
+ * fire, not an arbitrary lower bound: each step counts periods from the fire
+ * before it, so the sequence is only correct when seeded from one (via
+ * {@link computeFirstRunAt}).
+ * @param schedule The schedule to walk.
+ * @param first The first occurrence to yield.
+ * @returns A generator of occurrences, oldest first.
+ * @throws {InvalidScheduleError} On malformed input.
+ */
+export function* occurrencesFrom(schedule: Schedule, first: Date): Generator<Date> {
+	validateSchedule(schedule);
+
+	switch (schedule.kind) {
+		case 'cron':
+			yield* cronOccurrences(schedule, first);
+			return;
+		case 'recurring_cron':
+			yield* recurringCronOccurrences(schedule, first);
+			return;
+		case 'interval':
+			yield* intervalOccurrences(schedule, first);
+			return;
+		case 'one_off':
+			yield* oneOffOccurrences(first);
+			return;
 		default: {
 			const exhaustive: never = schedule;
 			throw new InvalidScheduleError(

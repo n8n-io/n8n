@@ -10,8 +10,6 @@ import { isAbsolute, relative, resolve } from 'node:path';
 import { matchesGlobalTrigger } from './global-triggers.js';
 import { toPosix } from './path-utils.js';
 
-export type Runner = 'vitest';
-
 // Bailout patterns are centralised here (vs the original DEVP-194 spec's
 // per-package `n8nTestChanged.inPackageBailouts` field) because the n8n
 // workspace shares the same vitest config helpers + setup file layout via
@@ -36,7 +34,6 @@ const VITEST_BAILOUT = [
 ];
 
 export interface ComputeScopeOptions {
-	runner: Runner;
 	packageDir: string;
 	rootDir: string;
 	/** `null` = no signal → RUN_FULL (local dev with unset env). */

@@ -159,7 +159,7 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--build-mcp-timeout-ms` | `120000` | `MCP_TIMEOUT` passed to the `claude` build subprocess — bounds one MCP tool call (`--build-via-mcp`) |
 | `--build-timeout-ms` | `1800000` | Wall-clock cap per build attempt; on expiry the `claude` process is killed so a hung build can't hold its lane. `0` disables. A timed-out build is not retried (`--build-via-mcp`) |
 
-**pass@k / pass^k**: with `--iterations N`, each scenario runs N times. `pass@k` is the fraction of scenarios that passed *at least once*; `pass^k` is the fraction that passed *every* time. `pass@k` shows whether something is *possible*; `pass^k` shows whether it's *reliable*.
+**pass@k / pass^k**: with `--iterations N`, each unit — an execution scenario or an evaluated process/outcome expectation — is measured N times. `pass@k` is the fraction of units that passed *at least once*; `pass^k` is the fraction that passed *every* time. `pass@k` shows whether something is *possible*; `pass^k` shows whether it's *reliable*.
 
 ### Test-case datasets (logical groupings)
 
@@ -206,7 +206,7 @@ Every run produces:
 
 After every successful build, the eval grades the workflow JSON against the binary-check rubric in `binaryChecks/checks/`. Each named check is yes/no with a structured N/A for "no subject to evaluate in this workflow" (e.g. an agent-only check on a workflow with no agent).
 
-The 28 checks are grouped into 7 WHAT-side rubric dimensions (the 8th, `execution_outcome`, is served by the existing execution verifier):
+The 28 checks are grouped into 8 WHAT-side rubric dimensions (the 9th, `execution_outcome`, is served by the existing execution verifier):
 
 | Dimension | Checks |
 |---|---|
@@ -214,8 +214,9 @@ The 28 checks are grouped into 7 WHAT-side rubric dimensions (the 8th, `executio
 | `connection_topology` | 4 — graph reachability, branch wiring, multi-item handling |
 | `parameter_correctness` | 8 — node config, expressions, field references |
 | `intent_match` | 1 — workflow fulfills the user's request |
+| `communication` | 1 — agent narration honestly describes the changes made |
 | `ai_nodes` | 6 — agent / memory / vector-store / tool wiring |
-| `nodes_craftsmanship` | 3 — naming, no-code preference, response honesty |
+| `nodes_craftsmanship` | 2 — naming, no-code preference |
 | `security` | 2 — hardcoded credentials, inbound auth defaults |
 
 The signal surfaces in:
@@ -228,7 +229,7 @@ Operational details:
 
 - Checks run **once per built workflow**, not per scenario — every scenario row in LangSmith carries the same outcomes for its build.
 - Failures don't flip `scenario_pass`; they're independent signals per the rubric design.
-- LLM checks (`fulfills_user_request`, `valid_data_flow`, `correct_node_operations`, `handles_multiple_items`, `descriptive_node_names`, `response_matches_workflow_changes`) reuse the same Sonnet model as the verifier — auto-skipped (N/A) when no Anthropic key is set.
+- LLM checks (`fulfills_user_request`, `valid_data_flow`, `correct_node_operations`, `handles_multiple_items`, `descriptive_node_names`, `response_describes_changes_accurately`) reuse the same Sonnet model as the verifier — auto-skipped (N/A) when no Anthropic key is set.
 
 ### Build expectations (per test case)
 
@@ -284,7 +285,7 @@ Operational details:
 
 ## Regression detection
 
-When `LANGSMITH_API_KEY` is set, every eval run automatically compares its results against the most recent pinned baseline (any experiment whose name starts with `instance-ai-baseline-`). Two output files are written:
+When `LANGSMITH_API_KEY` is set, every eval run automatically compares its results against the most recent pinned baseline (any experiment whose name starts with `instance-ai-baseline-`). The comparison is **unit-based**: execution scenarios and evaluated build expectations are compared side by side, keyed `file/scenario` and `file#expectation:text` respectively (`comparison.result.evaluationUnits`, each entry carrying `kind: 'scenario' | 'expectation'`). Expectation verdicts reach the baseline via the per-run `expectationResults` embedded in LangSmith run outputs — a baseline captured before that persistence simply contributes no expectation units, so those show as PR-only (with an explanatory note) until the baseline is refreshed. Renaming an expectation's text drops it out of the intersection until the next refresh — same semantics as renaming a scenario. Two output files are written:
 
 - `eval-results.json` — structured data only, including `comparison.result` when a baseline was found.
 - `eval-pr-comment.md` — the full PR comment rendered as markdown, including the alert, aggregate, comparison sections, per-test-case results, and failure details. Always written; falls back to a no-baseline summary when no comparison ran.
@@ -313,9 +314,9 @@ LANGSMITH_API_KEY=... dotenvx run -f ../../../.env.local -- \
 
 LangSmith appends a random suffix (e.g. `instance-ai-baseline-7abc1234`); the most recently started one becomes the comparison target on the next eval run. The comparison is silently skipped on the baseline-creation run itself.
 
-### How scenarios are tiered
+### How units are tiered
 
-Each scenario lands in one of three regression tiers, evaluated in order of strictness:
+Each unit (scenario or expectation) lands in one of three regression tiers, evaluated in order of strictness:
 
 - **Regression** — high-confidence flag, gating-grade. The drop must be statistically significant (chance of seeing it by noise < 5%), at least 30 percentage points in size, and the baseline must have been reliable (≥ 70% pass rate).
 - **Likely regression** — looser bar for visibility on borderline cases. Looser confidence threshold (chance by noise < 20%), drop ≥ 15 percentage points, baseline ≥ 50%. Frequently natural variance — worth a glance only if your changes touch related code paths.

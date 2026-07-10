@@ -5,7 +5,7 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| cronExpression | varchar(255) |  | true |  |  | Cron expression driving recurrence; set only when kind is 'cron'. |
+| cronExpression | varchar(255) |  | true |  |  | Cron expression. For kind 'cron' it is the schedule; for 'recurring_cron' it lists the candidate run times that the every-N-periods filter then keeps every Nth of. |
 | enabled | boolean | true | false |  |  | Whether the scheduler considers this job for firing. |
 | fireAt | timestamp(3) with time zone |  | true |  |  | Absolute time the job fires once; set only when kind is 'one_off'. |
 | id | integer |  | false | [public.scheduled_task](public.scheduled_task.md) |  |  |
@@ -17,6 +17,8 @@
 | nextRunAt | timestamp(3) with time zone |  | true |  |  | Next time an occurrence is due; the scheduler sweep reads this to find work. NULL once disabled or a one-off has fired. |
 | nodeId | varchar(36) |  | true |  |  | Trigger node within the workflow that owns this job; NULL for non-trigger jobs. |
 | payload | json | '{}'::json | false |  |  | Input passed to the task handler when an occurrence runs. |
+| recurrenceSize | integer |  | true |  |  | The N in a recurring_cron schedule's every-N-periods filter, e.g. 3 for every 3 weeks; at least 2. Set only when kind is 'recurring_cron'. |
+| recurrenceUnit | varchar(16) |  | true |  |  | Calendar period counted by a recurring_cron schedule's every-N-periods filter (hours, days, weeks, months). Set only when kind is 'recurring_cron'. |
 | taskType | varchar(128) |  | false |  |  | Selects which registered handler runs the task. |
 | timezone | varchar(64) |  | true |  |  | IANA timezone the cron expression is evaluated in; NULL uses the instance default. |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -29,7 +31,10 @@
 | CHK_scheduled_job_cron_expression | CHECK | CHECK ((((kind)::text <> 'cron'::text) OR ("cronExpression" IS NOT NULL))) |
 | CHK_scheduled_job_fire_at | CHECK | CHECK ((((kind)::text <> 'one_off'::text) OR ("fireAt" IS NOT NULL))) |
 | CHK_scheduled_job_interval_seconds | CHECK | CHECK ((((kind)::text <> 'interval'::text) OR ("intervalSeconds" IS NOT NULL))) |
-| CHK_scheduled_job_kind | CHECK | CHECK (((kind)::text = ANY ((ARRAY['cron'::character varying, 'interval'::character varying, 'one_off'::character varying])::text[]))) |
+| CHK_scheduled_job_kind | CHECK | CHECK (((kind)::text = ANY ((ARRAY['cron'::character varying, 'interval'::character varying, 'one_off'::character varying, 'recurring_cron'::character varying])::text[]))) |
+| CHK_scheduled_job_recurrence_size | CHECK | CHECK (("recurrenceSize" >= 2)) |
+| CHK_scheduled_job_recurrence_unit | CHECK | CHECK ((("recurrenceUnit")::text = ANY ((ARRAY['hours'::character varying, 'days'::character varying, 'weeks'::character varying, 'months'::character varying])::text[]))) |
+| CHK_scheduled_job_recurring_cron | CHECK | CHECK ((((kind)::text <> 'recurring_cron'::text) OR (("cronExpression" IS NOT NULL) AND ("recurrenceUnit" IS NOT NULL) AND ("recurrenceSize" IS NOT NULL)))) |
 | FK_scheduled_job_workflowId | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_published_version("workflowId") ON DELETE CASCADE |
 | PK_893185383f029ca8d57bb781fa8 | PRIMARY KEY | PRIMARY KEY (id) |
 | scheduled_job_createdAt_not_null | n | NOT NULL "createdAt" |
@@ -73,6 +78,8 @@ erDiagram
   timestamp_3__with_time_zone nextRunAt
   varchar_36_ nodeId
   json payload
+  integer recurrenceSize
+  varchar_16_ recurrenceUnit
   varchar_128_ taskType
   varchar_64_ timezone
   timestamp_3__with_time_zone updatedAt

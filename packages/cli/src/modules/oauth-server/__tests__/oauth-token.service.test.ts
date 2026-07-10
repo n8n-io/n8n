@@ -734,7 +734,7 @@ describe('OAuthTokenService', () => {
 		});
 
 		it('treats a token without a scope claim as having no scopes', async () => {
-			// cannot occur legitimately: migration 1784000000046 deleted every
+			// cannot occur legitimately: migration 1784000000048 deleted every
 			// access token minted before scoping shipped
 			const legacyToken = jwtService.sign({
 				sub: 'user-123',

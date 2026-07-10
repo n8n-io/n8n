@@ -187,7 +187,7 @@ async function handleRead(context: Pick<InstanceAiContext, 'logger'>, input: N8n
 export function createN8nDocsTool(context: Pick<InstanceAiContext, 'logger'>) {
 	return new Tool(N8N_DOCS_TOOL_ID)
 		.description(
-			`Search and read current n8n documentation from docs.n8n.io. Use for n8n product, setup, credential, node, hosting, API, and troubleshooting questions. ${SOURCE_ATTRIBUTION_INSTRUCTION}`,
+			`Search and read current n8n documentation from docs.n8n.io. Load via \`load_tool\` before calling (search "n8n docs" if not visible). Use for n8n product, setup, credential, node, hosting, API, and troubleshooting questions. ${SOURCE_ATTRIBUTION_INSTRUCTION}`,
 		)
 		.input(n8nDocsToolInputSchema)
 		.handler(async (input) => {

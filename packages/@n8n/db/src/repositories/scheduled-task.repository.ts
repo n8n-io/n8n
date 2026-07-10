@@ -10,7 +10,7 @@ import {
 	type TerminalTaskStatus,
 	TerminalTaskStatusList,
 } from '../entities/scheduled-task';
-import { dbNowLiteral, dbNowPlusMsLiteral } from '../utils/dialect-time';
+import { dbNowLiteral, dbNowPlusMsLiteral, parseDbTime } from '../utils/dialect-time';
 
 /** Inputs to a claim (see {@link ScheduledTaskRepository.claimDueTasks}). */
 export interface ClaimDueTasksOptions {
@@ -69,6 +69,42 @@ export interface NewOccurrence {
 	maxAttempts: number;
 }
 
+/** Identity of a row {@link ScheduledTaskRepository.insertIgnoringDuplicates} just created. */
+export interface RecordedOccurrence {
+	id: string;
+	jobId: number;
+	taskType: string;
+}
+
+export interface InsertOccurrencesResult {
+	/** How many rows were actually inserted (skipped duplicates excluded). */
+	recorded: number;
+	/**
+	 * The newly inserted rows' identity, for per-row tracing. Only Postgres can
+	 * return this (`RETURNING`); elsewhere it is empty even though `recorded` is
+	 * still accurate.
+	 */
+	created: RecordedOccurrence[];
+}
+
+/**
+ * Point-in-time queue health, read at Prometheus scrape time
+ * (see {@link ScheduledTaskRepository.getMetricSnapshot}).
+ *
+ * Declared as a `type` (not `interface`) so it satisfies structural `JsonObject`
+ * constraints (e.g. cli's `CachedMetricQuery`) without a duplicate local alias.
+ */
+export type ScheduledTaskMetricSnapshot = {
+	/** Rows awaiting dispatch, whether or not they are due yet. */
+	pending: number;
+	/** Pending rows already due (`runAt <= DB-now`): the actionable queue depth. */
+	due: number;
+	/** Rows currently claimed and in flight (leased to an instance). */
+	running: number;
+	/** How far the oldest due pending row has waited (against DB-now), in ms; `null` when none is due. */
+	oldestPendingAgeMs: number | null;
+};
+
 @Service()
 export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	private readonly isPostgres: boolean;
@@ -92,7 +128,8 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 *
 	 * Must run inside a transaction!
 	 *
-	 * @returns how many rows were actually inserted (skipped duplicates excluded)
+	 * @returns how many rows were recorded, and (Postgres only) the identity of
+	 * each newly created row, for per-row tracing
 	 */
 	async insertIgnoringDuplicates(
 		manager: EntityManager,
@@ -100,7 +137,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		// Chunked so a large batch stays under the driver's bind-parameter ceiling
 		// (Postgres 65535, SQLite 32766); the default leaves headroom for the widest row.
 		chunkSize = 1000,
-	): Promise<number> {
+	): Promise<InsertOccurrencesResult> {
 		const { queryRunner } = manager;
 		if (queryRunner === undefined) {
 			throw new UnexpectedError('insertIgnoringDuplicates must run within a transaction');
@@ -111,20 +148,39 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		);
 
 		let recorded = 0;
+		const created: RecordedOccurrence[] = [];
 		for (const chunk of chunks) {
-			const [sql, parameters] = manager
+			const query = manager
 				.createQueryBuilder()
 				.insert()
 				.into(ScheduledTask)
 				// `payload` is a free-form JSON column, which TypeORM's QueryDeepPartialEntity
 				// can't express, so the well-typed rows are cast at this boundary.
 				.values(chunk as Array<QueryDeepPartialEntity<ScheduledTask>>)
-				.orIgnore()
-				.getQueryAndParameters();
+				.orIgnore();
+
+			// Only Postgres's driver surfaces RETURNING rows from a raw query
+			// (SQLite's `run()` callback gives back a change count, never rows), so row
+			// identity for tracing is a Postgres-only capability; `recorded` stays accurate
+			// everywhere via `affected`.
+			if (this.isPostgres) {
+				query.returning('"id", "jobId", "taskType"');
+			}
+
+			const [sql, parameters] = query.getQueryAndParameters();
 			const result = await queryRunner.query(sql, parameters, true);
 			recorded += result.affected ?? 0;
+			if (this.isPostgres) {
+				for (const row of (result.records ?? []) as Array<{
+					id: string | number;
+					jobId: number;
+					taskType: string;
+				}>) {
+					created.push({ id: String(row.id), jobId: row.jobId, taskType: row.taskType });
+				}
+			}
 		}
-		return recorded;
+		return { recorded, created };
 	}
 
 	/**
@@ -304,6 +360,56 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			.orderBy('t.leaseExpiresAt', 'ASC')
 			.limit(limit)
 			.getMany();
+	}
+
+	/**
+	 * Read queue health for the Prometheus scrape: the counts behind the queue-depth
+	 * gauges (`pending`, `due`, `running`) and the scheduling-lag gauge
+	 * (`oldestPendingAgeMs`). Everything reads the DB clock, so `due`-ness and the
+	 * oldest-age reference are consistent regardless of any instance clock skew.
+	 *
+	 * One conditional-aggregation pass (`COUNT(*) FILTER`) over the live working set,
+	 * rather than several round-trips: `status IN ('pending','running')` keeps the scan
+	 * off the terminal rows that grow the table (and that retention prunes), so cost
+	 * scales with the backlog, not total history. The caller runs this behind a short
+	 * scrape cache.
+	 */
+	async getMetricSnapshot(): Promise<ScheduledTaskMetricSnapshot> {
+		const now = dbNowLiteral(this.isPostgres);
+		// Double-quoted identifiers and `FILTER` are accepted by both dialects; the only
+		// per-dialect bit is the DB-now literal. `oldestDueRunAt` is NULL when nothing is
+		// due, and `dbNow` is selected so the age is measured against the same instant the
+		// `due` filter used.
+		const [row]: [
+			{
+				pending: number | string;
+				due: number | string;
+				running: number | string;
+				oldestDueRunAt: Date | string | null;
+				dbNow: Date | string;
+			},
+		] = await this.query(
+			`SELECT
+			   COUNT(*) FILTER (WHERE "status" = '${ScheduledTaskStatus.Pending}') AS "pending",
+			   COUNT(*) FILTER (WHERE "status" = '${ScheduledTaskStatus.Pending}' AND "runAt" <= ${now}) AS "due",
+			   COUNT(*) FILTER (WHERE "status" = '${ScheduledTaskStatus.Running}') AS "running",
+			   MIN("runAt") FILTER (WHERE "status" = '${ScheduledTaskStatus.Pending}' AND "runAt" <= ${now}) AS "oldestDueRunAt",
+			   ${now} AS "dbNow"
+			 FROM ${this.tableName}
+			 WHERE "status" IN ('${ScheduledTaskStatus.Pending}', '${ScheduledTaskStatus.Running}')`,
+		);
+
+		const oldestPendingAgeMs =
+			row.oldestDueRunAt !== null
+				? parseDbTime(row.dbNow).getTime() - parseDbTime(row.oldestDueRunAt).getTime()
+				: null;
+
+		return {
+			pending: Number(row.pending),
+			due: Number(row.due),
+			running: Number(row.running),
+			oldestPendingAgeMs,
+		};
 	}
 
 	/**

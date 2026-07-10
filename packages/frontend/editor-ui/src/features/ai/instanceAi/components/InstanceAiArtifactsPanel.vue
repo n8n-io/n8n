@@ -37,6 +37,10 @@ const openDataTablePreview = inject<((id: string, projectId: string) => void) | 
 	'openDataTablePreview',
 	undefined,
 );
+const openAgentPreview = inject<((id: string, projectId: string) => void) | undefined>(
+	'openAgentPreview',
+	undefined,
+);
 
 function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
 	if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -49,6 +53,10 @@ function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
 		if (!artifact.projectId || !openDataTablePreview) return;
 		e.preventDefault();
 		openDataTablePreview(artifact.id, artifact.projectId);
+	} else if (artifact.type === 'agent' && artifact.id) {
+		if (!artifact.projectId || !openAgentPreview) return;
+		e.preventDefault();
+		openAgentPreview(artifact.id, artifact.projectId);
 	}
 }
 
@@ -72,7 +80,7 @@ const statusIconMap: Record<
 const artifacts = computed((): ResourceEntry[] => {
 	const result: ResourceEntry[] = [];
 	for (const entry of thread.producedArtifacts.values()) {
-		if (entry.type === 'workflow' || entry.type === 'data-table') {
+		if (entry.type === 'workflow' || entry.type === 'data-table' || entry.type === 'agent') {
 			result.push(entry);
 		}
 	}
@@ -82,6 +90,7 @@ const artifacts = computed((): ResourceEntry[] => {
 const artifactIconMap: Record<string, IconName> = {
 	workflow: 'workflow',
 	'data-table': 'table',
+	agent: 'robot',
 };
 
 function artifactHref(artifact: ResourceEntry) {
@@ -90,6 +99,11 @@ function artifactHref(artifact: ResourceEntry) {
 		return artifact.projectId
 			? `/projects/${artifact.projectId}/datatables/${artifact.id}`
 			: '/data-tables';
+	}
+	if (artifact.type === 'agent') {
+		return artifact.projectId
+			? `/projects/${artifact.projectId}/agents/${artifact.id}`
+			: '/home/agents';
 	}
 	return '#';
 }

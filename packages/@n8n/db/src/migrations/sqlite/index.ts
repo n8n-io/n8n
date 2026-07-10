@@ -57,6 +57,7 @@ import { AddScopeColumnToOAuthTables1784000000026 } from './1784000000026-AddSco
 import { AddProjectIdToInstanceAiThread1784000000028 } from './1784000000028-AddProjectIdToInstanceAiThread';
 import { AllowAzureStoredAt1784000000034 } from './1784000000034-AllowAzureStoredAt';
 import { DropAgentDescriptionFromAgents1784000000037 } from './1784000000037-DropAgentDescriptionFromAgents';
+import { AddRecurringCronScheduleKind1784000000045 } from './1784000000045-AddRecurringCronScheduleKind';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -209,9 +210,10 @@ import { DropAgentExecutionFallbackColumns1784000000039 } from '../common/178400
 import { CreateWorkflowPublicationTriggerStatusTable1784000000040 } from '../common/1784000000040-CreateWorkflowPublicationTriggerStatusTable';
 import { AddUsedPrivateCredentialsToExecutionEntity1784000000041 } from '../common/1784000000041-AddUsedPrivateCredentialsToExecutionEntity';
 import { CreateSchedulerTables1784000000042 } from '../common/1784000000042-CreateSchedulerTables';
-import { AddScopeColumnToOAuthUserConsents1784000000044 } from '../common/1784000000044-AddScopeColumnToOAuthUserConsents';
-import { AddLastActiveAtToOAuthUserConsents1784000000045 } from '../common/1784000000045-AddLastActiveAtToOAuthUserConsents';
-import { BackfillPreScopingOAuthGrantScopes1784000000046 } from '../common/1784000000046-BackfillPreScopingOAuthGrantScopes';
+import { AddPartialIndexForGlobalCredentials1784000000044 } from '../common/1784000000044-AddPartialIndexForGlobalCredentials';
+import { AddScopeColumnToOAuthUserConsents1784000000047 } from '../common/1784000000047-AddScopeColumnToOAuthUserConsents';
+import { BackfillPreScopingOAuthGrantScopes1784000000048 } from '../common/1784000000048-BackfillPreScopingOAuthGrantScopes';
+import { AddLastActiveAtToOAuthUserConsents1784000000049 } from '../common/1784000000049-AddLastActiveAtToOAuthUserConsents';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -424,9 +426,11 @@ const sqliteMigrations: Migration[] = [
 	CreateWorkflowPublicationTriggerStatusTable1784000000040,
 	AddUsedPrivateCredentialsToExecutionEntity1784000000041,
 	CreateSchedulerTables1784000000042,
-	AddScopeColumnToOAuthUserConsents1784000000044,
-	AddLastActiveAtToOAuthUserConsents1784000000045,
-	BackfillPreScopingOAuthGrantScopes1784000000046,
+	AddPartialIndexForGlobalCredentials1784000000044,
+	AddRecurringCronScheduleKind1784000000045,
+	AddScopeColumnToOAuthUserConsents1784000000047,
+	BackfillPreScopingOAuthGrantScopes1784000000048,
+	AddLastActiveAtToOAuthUserConsents1784000000049,
 ];
 
 export { sqliteMigrations };
