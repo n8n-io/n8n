@@ -34,6 +34,9 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 
 		workflow = await createWorkflow();
 		await seedVersions(workflow, ['v1', 'v2']);
+		// Mark the workflow active: `findActivatedInMemoryTriggers` only considers
+		// workflows with an `activeVersionId`. Set after seeding to satisfy the FK.
+		await workflowRepository.update(workflow.id, { activeVersionId: 'v1' });
 	});
 	afterEach(async () => {
 		await testDb.truncate(['WorkflowPublicationTriggerStatus', 'WorkflowPublicationOutbox']);
@@ -225,6 +228,7 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 		it('spans multiple workflows', async () => {
 			const otherWorkflow = await createWorkflow();
 			await seedVersions(otherWorkflow, ['v-other']);
+			await workflowRepository.update(otherWorkflow.id, { activeVersionId: 'v-other' });
 
 			await repo.replaceForWorkflow(workflow.id, [
 				{
@@ -254,6 +258,24 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 				]),
 			);
 			expect(rows).toHaveLength(2);
+		});
+
+		it('excludes stale rows of workflows without an active version', async () => {
+			// Simulates rows orphaned by an interrupted unpublish: the workflow is no
+			// longer active but its `activated` rows were never cleared.
+			const unpublishedWorkflow = await createWorkflow();
+			await seedVersions(unpublishedWorkflow, ['v-stale']);
+			await repo.replaceForWorkflow(unpublishedWorkflow.id, [
+				{
+					nodeId: 'poll-stale',
+					versionId: 'v-stale',
+					status: 'activated',
+					errorMessage: null,
+					triggerKind: 'poll',
+				},
+			]);
+
+			expect(await repo.findActivatedInMemoryTriggers()).toEqual([]);
 		});
 	});
 });
