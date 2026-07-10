@@ -10,6 +10,7 @@ import type { AgentsService } from '../agents.service';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
 import {
+	BUILDER_EXCLUDED_TOOL_NAMES,
 	BUILDER_EXTRA_TOOL_NAMES,
 	INSTANCE_AI_BUILDER_ADDENDUM,
 } from '../instance-ai-builder-extra-tools';
@@ -43,14 +44,23 @@ function setup() {
 	};
 }
 
-/** Extract the extraTools names + addendum from a builder-service session-arg call. */
-function sessionArg(call: unknown[]): { toolNames: string[]; instructionsAddendum?: string } {
+/** Extract the extraTools names + addendum + excludeTools from a builder-service session-arg call. */
+function sessionArg(call: unknown[]): {
+	toolNames: string[];
+	instructionsAddendum?: string;
+	excludeTools?: string[];
+} {
 	const session = call.at(-1) as
-		| { extraTools?: Array<{ name: string }>; instructionsAddendum?: string }
+		| {
+				extraTools?: Array<{ name: string }>;
+				instructionsAddendum?: string;
+				excludeTools?: string[];
+		  }
 		| undefined;
 	return {
 		toolNames: (session?.extraTools ?? []).map((tool) => tool.name),
 		instructionsAddendum: session?.instructionsAddendum,
+		excludeTools: session?.excludeTools,
 	};
 }
 
@@ -110,7 +120,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 			await delegate.streamBuild('agent-1', 'hi', { threadId: 'ia-builder:t:agent-1' });
 
-			const { toolNames, instructionsAddendum } = sessionArg(
+			const { toolNames, instructionsAddendum, excludeTools } = sessionArg(
 				agentsBuilderService.buildAgent.mock.calls[0],
 			);
 			expect(toolNames).toEqual(
@@ -120,6 +130,8 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				]),
 			);
 			expect(instructionsAddendum).toBe(INSTANCE_AI_BUILDER_ADDENDUM);
+			expect(excludeTools).toEqual(BUILDER_EXCLUDED_TOOL_NAMES);
+			expect(excludeTools).toContain('ask_llm');
 		});
 
 		it('rejects when the user lacks agent:update scope', async () => {
@@ -168,7 +180,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				{ threadId: 'ia-builder:t:agent-1' },
 			);
 
-			const { toolNames, instructionsAddendum } = sessionArg(
+			const { toolNames, instructionsAddendum, excludeTools } = sessionArg(
 				agentsBuilderService.resumeBuild.mock.calls[0],
 			);
 			expect(toolNames).toEqual(
@@ -178,6 +190,8 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				]),
 			);
 			expect(instructionsAddendum).toBe(INSTANCE_AI_BUILDER_ADDENDUM);
+			expect(excludeTools).toEqual(BUILDER_EXCLUDED_TOOL_NAMES);
+			expect(excludeTools).toContain('ask_llm');
 		});
 
 		it('rejects when the user lacks agent:update scope', async () => {

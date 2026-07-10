@@ -1,4 +1,4 @@
-import type { CredentialProvider, StreamChunk } from '@n8n/agents';
+import type { BuiltTool, CredentialProvider, StreamChunk } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -37,6 +37,7 @@ const agentsSdkMocks = vi.hoisted(() => {
 		options: { persistence: { threadId: string; resourceId: string } };
 	}> = [];
 	const instructionsCalls: string[] = [];
+	const registeredToolNames: string[] = [];
 
 	function emptyStream() {
 		return new ReadableStream<StreamChunk>({
@@ -70,7 +71,8 @@ const agentsSdkMocks = vi.hoisted(() => {
 		telemetry() {
 			return this;
 		}
-		tool() {
+		tool(tool: BuiltTool) {
+			registeredToolNames.push(tool.name);
 			return this;
 		}
 		async stream(
@@ -94,7 +96,7 @@ const agentsSdkMocks = vi.hoisted(() => {
 		}
 	}
 
-	return { streamCalls, instructionsCalls, MockAgent, MockMemory };
+	return { streamCalls, instructionsCalls, registeredToolNames, MockAgent, MockMemory };
 });
 
 vi.mock('@n8n/agents', () => ({
@@ -121,7 +123,14 @@ async function drain<T>(generator: AsyncGenerator<T>): Promise<T[]> {
 	return values;
 }
 
-function setup() {
+/** Minimal `BuiltTool` stand-in — only `name` is read by the code under test. */
+function fakeTool(name: string): BuiltTool {
+	return { name, description: `${name} description` } as BuiltTool;
+}
+
+function setup(
+	standardTools: { json: BuiltTool[]; shared: BuiltTool[] } = { json: [], shared: [] },
+) {
 	const agentsService = mock<AgentsService>();
 	const nodeCatalogService = mock<NodeCatalogService>();
 	const agentsBuilderToolsService = mock<AgentsBuilderToolsService>();
@@ -136,7 +145,7 @@ function setup() {
 		config: 'anthropic/claude-3-5-haiku',
 		isProxied: false,
 	});
-	agentsBuilderToolsService.getTools.mockReturnValue({ json: [], shared: [] });
+	agentsBuilderToolsService.getTools.mockReturnValue(standardTools);
 
 	const memoryImplementation = mock<N8nMemoryImpl>();
 	memoryImplementation.getMessages.mockResolvedValue([]);
@@ -166,13 +175,14 @@ function setup() {
 	const user = mock<User>({ id: 'user-1' });
 	const credentialProvider = mock<CredentialProvider>();
 
-	return { service, memoryImplementation, user, credentialProvider };
+	return { service, memoryImplementation, user, credentialProvider, agentsBuilderToolsService };
 }
 
 describe('AgentsBuilderService session isolation', () => {
 	beforeEach(() => {
 		agentsSdkMocks.streamCalls.length = 0;
 		agentsSdkMocks.instructionsCalls.length = 0;
+		agentsSdkMocks.registeredToolNames.length = 0;
 	});
 
 	it('uses the session threadId override for stream persistence when a session is provided', async () => {
@@ -236,5 +246,37 @@ describe('AgentsBuilderService session isolation', () => {
 
 		expect(agentsSdkMocks.instructionsCalls).toHaveLength(1);
 		expect(agentsSdkMocks.instructionsCalls[0]).not.toContain('Extra sub-agent rules');
+	});
+
+	it('omits standard tools named in session.excludeTools while still registering the rest', async () => {
+		const { service, user, credentialProvider } = setup({
+			json: [fakeTool('ask_llm'), fakeTool('read_config')],
+			shared: [fakeTool('ask_credential')],
+		});
+
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
+				threadId: 'ia-builder:t:agent-1',
+				excludeTools: ['ask_llm'],
+			}),
+		);
+
+		expect(agentsSdkMocks.registeredToolNames).not.toContain('ask_llm');
+		expect(agentsSdkMocks.registeredToolNames).toEqual(
+			expect.arrayContaining(['read_config', 'ask_credential']),
+		);
+	});
+
+	it('registers all standard tools when session.excludeTools is absent', async () => {
+		const { service, user, credentialProvider } = setup({
+			json: [fakeTool('ask_llm'), fakeTool('read_config')],
+			shared: [],
+		});
+
+		await drain(service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user));
+
+		expect(agentsSdkMocks.registeredToolNames).toEqual(
+			expect.arrayContaining(['ask_llm', 'read_config']),
+		);
 	});
 });

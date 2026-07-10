@@ -2,7 +2,10 @@ import { channelConfigSchema } from '@n8n/api-types';
 import type { InterruptibleToolContext } from '@n8n/agents';
 import type { Mock } from 'vitest';
 
+import { ASK_LLM_TOOL_NAME } from '@n8n/api-types';
+
 import {
+	BUILDER_EXCLUDED_TOOL_NAMES,
 	BUILDER_EXTRA_TOOL_NAMES,
 	createAskQuestionsBuilderTool,
 	createConfigureChannelBuilderTool,
@@ -266,5 +269,19 @@ describe('INSTANCE_AI_BUILDER_ADDENDUM', () => {
 	it('instructs the sub-agent to batch multiple questions with ask_questions', () => {
 		expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('ask_questions');
 		expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('ask_question');
+		expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain(
+			'ALWAYS use this when you have more than one question',
+		);
+	});
+
+	it('declares ask_llm unavailable and never used for chat-channel credentials', () => {
+		expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('ask_llm` is NOT available');
+		expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('NEVER use it for chat-channel credentials');
+	});
+});
+
+describe('BUILDER_EXCLUDED_TOOL_NAMES', () => {
+	it('excludes ask_llm, which has no card UI in instance-AI chat', () => {
+		expect(BUILDER_EXCLUDED_TOOL_NAMES).toContain(ASK_LLM_TOOL_NAME);
 	});
 });

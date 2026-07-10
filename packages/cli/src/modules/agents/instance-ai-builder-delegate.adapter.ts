@@ -12,6 +12,7 @@ import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import type { BuilderSessionOptions } from './builder/agents-builder.service';
 import {
+	BUILDER_EXCLUDED_TOOL_NAMES,
 	createAskQuestionsBuilderTool,
 	createConfigureChannelBuilderTool,
 	INSTANCE_AI_BUILDER_ADDENDUM,
@@ -72,8 +73,9 @@ export class InstanceAiBuilderDelegateAdapterService {
 	/**
 	 * Builder tools + prompt rules that only apply to the sub-agent surface:
 	 * chat channels must always go through `configure_channel` (never a bare
-	 * credential ask), and multiple questions must be batched into one
-	 * `ask_questions` card instead of sequential single-question calls.
+	 * credential ask), multiple questions must be batched into one
+	 * `ask_questions` card instead of sequential single-question calls, and
+	 * `ask_llm` (no card UI in this chat) is excluded from the standard tool set.
 	 */
 	private buildSubAgentSession(
 		agentId: string,
@@ -92,7 +94,12 @@ export class InstanceAiBuilderDelegateAdapterService {
 			createAskQuestionsBuilderTool(),
 		];
 
-		return { threadId, extraTools, instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM };
+		return {
+			threadId,
+			extraTools,
+			instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
+			excludeTools: BUILDER_EXCLUDED_TOOL_NAMES,
+		};
 	}
 
 	createDelegate(

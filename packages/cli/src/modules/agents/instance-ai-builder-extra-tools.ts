@@ -14,7 +14,7 @@
  */
 import type { BuiltTool } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
-import { channelConfigSchema } from '@n8n/api-types';
+import { ASK_LLM_TOOL_NAME, channelConfigSchema } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -24,13 +24,27 @@ export const BUILDER_EXTRA_TOOL_NAMES = {
 	ASK_QUESTIONS: 'ask_questions',
 } as const;
 
+/**
+ * Standard builder tool names to omit for instance-AI sub-agent sessions.
+ * `ask_llm` has no card UI in instance-AI chat (a bounce workaround exists in
+ * instance-ai's build-agent tool instead), so it must never be offered here.
+ */
+export const BUILDER_EXCLUDED_TOOL_NAMES: string[] = [ASK_LLM_TOOL_NAME];
+
 /** Prompt addendum for sub-agent runs; exported for tests. */
 export const INSTANCE_AI_BUILDER_ADDENDUM = `## Instance AI session rules
 
 You are running as a sub-agent inside n8n's instance AI chat; the user sees your questions as chat cards.
-- Chat channels: to connect ANY chat platform (Slack, Telegram, ...) as an agent channel, ALWAYS call \`configure_channel\` with a type from \`list_integration_types\`. NEVER use \`ask_credential\` for chat-channel credentials — the channel setup UI creates and connects the credential itself.
-- Questions: when you have more than one question, ALWAYS batch them into a single \`ask_questions\` call (one card with a list) instead of sequential \`ask_question\` calls. Use \`ask_question\` only for a genuinely single follow-up.
-- The agent preview link is not visible in this chat; describe outcomes in text instead of linking the preview.`;
+
+Interacting with the user — the ONLY interaction tools available in this chat are:
+- \`ask_questions\` — batched questions, one card with a list. ALWAYS use this when you have more than one question; also use it for single choice questions (e.g. which provider/model to use), with single-select options and a recommended default.
+- \`ask_question\` — a single quick follow-up only.
+- \`ask_credential\` — pick an existing credential. NEVER use it for chat-channel credentials.
+- \`configure_channel\` — connect ANY chat platform (Slack, Telegram, ...) as an agent channel; ALWAYS use this for channels, with a type from \`list_integration_types\`. The setup UI creates and connects the credential itself.
+
+\`ask_llm\` is NOT available in this chat. For model selection: ask via \`ask_questions\`, then call \`resolve_llm\` with the choice to resolve the credential.
+
+The agent preview link is not visible in this chat; describe outcomes in text instead of linking the preview.`;
 
 // ---------------------------------------------------------------------------
 // configure_channel

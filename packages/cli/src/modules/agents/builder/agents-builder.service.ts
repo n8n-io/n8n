@@ -44,6 +44,12 @@ export interface BuilderSessionOptions {
 	extraTools?: BuiltTool[];
 	/** Extra text appended to the builder prompt (e.g. instance-AI sub-agent rules). */
 	instructionsAddendum?: string;
+	/**
+	 * Tool names to omit for this session, e.g. interactive tools with no UI on
+	 * the host surface. Only filters the standard tool set — `extraTools` are
+	 * always registered regardless of this list.
+	 */
+	excludeTools?: string[];
 }
 
 /** Derive the builder chat thread ID; callers may override (e.g. instance-AI sessions). */
@@ -260,7 +266,9 @@ export class AgentsBuilderService {
 		});
 		if (telemetry) builder.telemetry(telemetry);
 
+		const excludeTools = new Set(session?.excludeTools ?? []);
 		for (const tool of [...tools.json, ...tools.shared]) {
+			if (excludeTools.has(tool.name)) continue;
 			builder.tool(tool);
 		}
 
