@@ -1,6 +1,7 @@
 import type {
 	BuiltTool,
 	CredentialProvider,
+	ModelConfig,
 	SerializableAgentState,
 	StreamChunk,
 	StreamResult,
@@ -50,6 +51,12 @@ export interface BuilderSessionOptions {
 	 * always registered regardless of this list.
 	 */
 	excludeTools?: string[];
+	/**
+	 * Overrides model resolution for this session — when set, the builder runs
+	 * on this model directly instead of `AgentsBuilderSettingsService.resolveModelConfig`.
+	 * Used by hosts (e.g. instance AI) that already resolved a model upstream.
+	 */
+	modelConfig?: ModelConfig;
 }
 
 /** Derive the builder chat thread ID; callers may override (e.g. instance-AI sessions). */
@@ -205,11 +212,14 @@ export class AgentsBuilderService {
 			});
 		});
 
-		// Resolve the model the builder should run on. Throws
-		// `BuilderNotConfiguredError` when none of custom-credential / proxy /
-		// env-var fallback is available.
-		const { config: modelConfig, tracingProxyConfig } =
-			await this.builderSettings.resolveModelConfig(user);
+		// Resolve the model the builder should run on. When the session already
+		// carries a host-resolved model (e.g. instance AI's sub-agent), use it
+		// directly and skip the builder's own settings chain entirely — no
+		// `BuilderNotConfiguredError` is possible on this path, and there is no
+		// tracing-proxy config to forward since it isn't the builder's own proxy.
+		const { config: modelConfig, tracingProxyConfig } = session?.modelConfig
+			? { config: session.modelConfig, tracingProxyConfig: undefined }
+			: await this.builderSettings.resolveModelConfig(user);
 
 		const currentConfig = composeJsonConfig(agent) as unknown as AgentJsonConfig | null;
 		const currentToolsMap = agent.tools ?? {};

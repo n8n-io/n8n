@@ -113,6 +113,22 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			);
 		});
 
+		it('passes the session modelConfig through to the builder service', async () => {
+			const { delegate, agentsBuilderService } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsBuilderService.buildAgent.mockReturnValue(asAsyncGenerator<StreamChunk>([]));
+
+			await delegate.streamBuild('agent-1', 'hi', {
+				threadId: 'ia-builder:t:agent-1',
+				modelConfig: 'anthropic/claude-sonnet-host-resolved',
+			});
+
+			const session = agentsBuilderService.buildAgent.mock.calls[0]?.at(-1) as
+				| { modelConfig?: unknown }
+				| undefined;
+			expect(session?.modelConfig).toBe('anthropic/claude-sonnet-host-resolved');
+		});
+
 		it('injects the configure_channel and ask_questions builder tools plus the instance-AI prompt addendum', async () => {
 			const { delegate, agentsBuilderService } = setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
@@ -167,6 +183,23 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				user,
 				expect.objectContaining({ threadId: 'ia-builder:t:agent-1' }),
 			);
+		});
+
+		it('passes the session modelConfig through to the builder service', async () => {
+			const { delegate, agentsBuilderService } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsBuilderService.resumeBuild.mockReturnValue(asAsyncGenerator<StreamChunk>([]));
+
+			await delegate.resumeBuild(
+				'agent-1',
+				{ runId: 'run-1', toolCallId: 'tc-1', resumeData: { approved: true } },
+				{ threadId: 'ia-builder:t:agent-1', modelConfig: 'anthropic/claude-sonnet-host-resolved' },
+			);
+
+			const session = agentsBuilderService.resumeBuild.mock.calls[0]?.at(-1) as
+				| { modelConfig?: unknown }
+				| undefined;
+			expect(session?.modelConfig).toBe('anthropic/claude-sonnet-host-resolved');
 		});
 
 		it('injects the configure_channel and ask_questions builder tools plus the instance-AI prompt addendum', async () => {

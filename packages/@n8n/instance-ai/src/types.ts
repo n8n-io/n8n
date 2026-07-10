@@ -813,6 +813,12 @@ export interface SessionWorkflowRef {
 export interface BuilderDelegateSession {
 	/** Builder persistence thread id, e.g. `ia-builder:<instanceThreadId>:<agentId>`. */
 	threadId: string;
+	/**
+	 * Host-resolved model for the builder run — overrides the agents-module
+	 * builder's own model settings so the sub-agent inherits the instance-AI
+	 * model.
+	 */
+	modelConfig?: ModelConfig;
 }
 
 /** A builder turn stream: consumable by normalizeStreamSource, plus final text. */

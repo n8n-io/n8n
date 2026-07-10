@@ -1,5 +1,9 @@
 import type { BuiltTool, CredentialProvider, StreamChunk } from '@n8n/agents';
-import type { BuilderTurnStream, InstanceAiBuilderDelegate } from '@n8n/instance-ai';
+import type {
+	BuilderDelegateSession,
+	BuilderTurnStream,
+	InstanceAiBuilderDelegate,
+} from '@n8n/instance-ai';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { type Scope } from '@n8n/permissions';
@@ -80,7 +84,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 	private buildSubAgentSession(
 		agentId: string,
 		projectId: string,
-		threadId: string,
+		session: BuilderDelegateSession,
 	): BuilderSessionOptions {
 		const extraTools: BuiltTool[] = [
 			createConfigureChannelBuilderTool({
@@ -95,10 +99,11 @@ export class InstanceAiBuilderDelegateAdapterService {
 		];
 
 		return {
-			threadId,
+			threadId: session.threadId,
 			extraTools,
 			instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
 			excludeTools: BUILDER_EXCLUDED_TOOL_NAMES,
+			modelConfig: session.modelConfig,
 		};
 	}
 
@@ -133,7 +138,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 						message,
 						credentialProvider,
 						user,
-						this.buildSubAgentSession(agentId, projectId, session.threadId),
+						this.buildSubAgentSession(agentId, projectId, session),
 					),
 				);
 			},
@@ -149,7 +154,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 						resume.resumeData,
 						credentialProvider,
 						user,
-						this.buildSubAgentSession(agentId, projectId, session.threadId),
+						this.buildSubAgentSession(agentId, projectId, session),
 					),
 				);
 			},

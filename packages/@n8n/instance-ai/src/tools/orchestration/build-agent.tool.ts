@@ -435,7 +435,10 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 					return { ok: false, error: 'No agent build in progress for this conversation.' };
 				}
 
-				const session = { threadId: `ia-builder:${context.threadId}:${target.agentId}` };
+				const session = {
+					threadId: `ia-builder:${context.threadId}:${target.agentId}`,
+					modelConfig: context.modelId,
+				};
 				const open = await delegate.findOpenSuspension(target.agentId, session);
 				if (!open) {
 					return { ok: false, error: 'The builder question this answered is no longer open.' };
@@ -500,7 +503,10 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 				await saveAgentBuilderTarget(domainContext, target);
 			}
 
-			const session = { threadId: `ia-builder:${context.threadId}:${target.agentId}` };
+			const session = {
+				threadId: `ia-builder:${context.threadId}:${target.agentId}`,
+				modelConfig: context.modelId,
+			};
 			const outboundMessage = buildOutboundMessage(input.message, input.workflowContext);
 			const builderAgentId = `agent-builder:${target.agentId}`;
 

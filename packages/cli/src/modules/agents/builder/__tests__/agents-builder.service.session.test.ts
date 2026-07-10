@@ -38,6 +38,7 @@ const agentsSdkMocks = vi.hoisted(() => {
 	}> = [];
 	const instructionsCalls: string[] = [];
 	const registeredToolNames: string[] = [];
+	const modelCalls: unknown[] = [];
 
 	function emptyStream() {
 		return new ReadableStream<StreamChunk>({
@@ -49,7 +50,8 @@ const agentsSdkMocks = vi.hoisted(() => {
 
 	class MockAgent {
 		constructor(_name: string) {}
-		model() {
+		model(config: unknown) {
+			modelCalls.push(config);
 			return this;
 		}
 		instructions(text: string) {
@@ -96,7 +98,7 @@ const agentsSdkMocks = vi.hoisted(() => {
 		}
 	}
 
-	return { streamCalls, instructionsCalls, registeredToolNames, MockAgent, MockMemory };
+	return { streamCalls, instructionsCalls, registeredToolNames, modelCalls, MockAgent, MockMemory };
 });
 
 vi.mock('@n8n/agents', () => ({
@@ -175,7 +177,14 @@ function setup(
 	const user = mock<User>({ id: 'user-1' });
 	const credentialProvider = mock<CredentialProvider>();
 
-	return { service, memoryImplementation, user, credentialProvider, agentsBuilderToolsService };
+	return {
+		service,
+		memoryImplementation,
+		user,
+		credentialProvider,
+		agentsBuilderToolsService,
+		builderSettings,
+	};
 }
 
 describe('AgentsBuilderService session isolation', () => {
@@ -183,6 +192,7 @@ describe('AgentsBuilderService session isolation', () => {
 		agentsSdkMocks.streamCalls.length = 0;
 		agentsSdkMocks.instructionsCalls.length = 0;
 		agentsSdkMocks.registeredToolNames.length = 0;
+		agentsSdkMocks.modelCalls.length = 0;
 	});
 
 	it('uses the session threadId override for stream persistence when a session is provided', async () => {
@@ -278,5 +288,28 @@ describe('AgentsBuilderService session isolation', () => {
 		expect(agentsSdkMocks.registeredToolNames).toEqual(
 			expect.arrayContaining(['ask_llm', 'read_config']),
 		);
+	});
+
+	it('uses session.modelConfig directly and skips resolveModelConfig when provided', async () => {
+		const { service, user, credentialProvider, builderSettings } = setup();
+
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
+				threadId: 'ia-builder:t:agent-1',
+				modelConfig: 'anthropic/claude-sonnet-host-resolved',
+			}),
+		);
+
+		expect(agentsSdkMocks.modelCalls).toEqual(['anthropic/claude-sonnet-host-resolved']);
+		expect(builderSettings.resolveModelConfig).not.toHaveBeenCalled();
+	});
+
+	it('falls back to resolveModelConfig when session.modelConfig is absent', async () => {
+		const { service, user, credentialProvider, builderSettings } = setup();
+
+		await drain(service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user));
+
+		expect(agentsSdkMocks.modelCalls).toEqual(['anthropic/claude-3-5-haiku']);
+		expect(builderSettings.resolveModelConfig).toHaveBeenCalledWith(user);
 	});
 });

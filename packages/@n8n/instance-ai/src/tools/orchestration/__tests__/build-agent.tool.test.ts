@@ -110,6 +110,9 @@ function makeContext(overrides: { delegate?: InstanceAiBuilderDelegate } = {}): 
 	context.abortSignal = new AbortController().signal;
 	context.eventBus = eventBus;
 	context.logger = logger;
+	// Sentinel model — the orchestrator's own resolved model, which the
+	// builder sub-agent session must inherit (see `session.modelConfig`).
+	context.modelId = 'anthropic/claude-sonnet-host-resolved';
 
 	return { context, delegate, publishedEvents };
 }
@@ -143,6 +146,7 @@ describe('build-agent tool', () => {
 		expect(delegate.createAgent).toHaveBeenCalledWith('Support Agent');
 		expect(delegate.streamBuild).toHaveBeenCalledWith('agent-1', 'Build me a support agent', {
 			threadId: 'ia-builder:thread-1:agent-1',
+			modelConfig: context.modelId,
 		});
 	});
 
@@ -257,6 +261,7 @@ describe('build-agent tool', () => {
 		expect(delegate.createAgent).not.toHaveBeenCalled();
 		expect(delegate.streamBuild).toHaveBeenCalledWith('agent-existing', 'Add a tool', {
 			threadId: 'ia-builder:thread-1:agent-existing',
+			modelConfig: context.modelId,
 		});
 	});
 
@@ -428,7 +433,7 @@ describe('build-agent tool — interactive suspend/resume cascade', () => {
 		expect(delegate.resumeBuild).toHaveBeenCalledWith(
 			'agent-1',
 			{ runId: 'builder-run-1', toolCallId: 'call-1', resumeData: { values: ['slack'] } },
-			{ threadId: 'ia-builder:thread-1:agent-1' },
+			{ threadId: 'ia-builder:thread-1:agent-1', modelConfig: context.modelId },
 		);
 		expect(result).toEqual({ ok: true, builderReply: 'Using Slack.', configUpdated: false });
 	});
@@ -519,7 +524,7 @@ describe('build-agent tool — interactive suspend/resume cascade', () => {
 					message: expect.stringContaining('via the ask_questions tool') as string,
 				},
 			},
-			{ threadId: 'ia-builder:thread-1:agent-1' },
+			{ threadId: 'ia-builder:thread-1:agent-1', modelConfig: context.modelId },
 		);
 		expect(suspendFn).not.toHaveBeenCalled();
 		expect(result).toEqual({
@@ -797,7 +802,7 @@ describe('build-agent tool — interactive suspend/resume cascade', () => {
 				toolCallId: 'call-1',
 				resumeData: { credentialId: 'cred-1', credentialName: 'My Slack account' },
 			},
-			{ threadId: 'ia-builder:thread-1:agent-1' },
+			{ threadId: 'ia-builder:thread-1:agent-1', modelConfig: context.modelId },
 		);
 	});
 
@@ -826,7 +831,7 @@ describe('build-agent tool — interactive suspend/resume cascade', () => {
 				toolCallId: 'call-1',
 				resumeData: { credentialId: 'cred-1', credentialName: 'cred-1' },
 			},
-			{ threadId: 'ia-builder:thread-1:agent-1' },
+			{ threadId: 'ia-builder:thread-1:agent-1', modelConfig: context.modelId },
 		);
 	});
 
@@ -850,7 +855,7 @@ describe('build-agent tool — interactive suspend/resume cascade', () => {
 		expect(delegate.resumeBuild).toHaveBeenCalledWith(
 			'agent-1',
 			{ runId: 'builder-run-1', toolCallId: 'call-1', resumeData: { skipped: true } },
-			{ threadId: 'ia-builder:thread-1:agent-1' },
+			{ threadId: 'ia-builder:thread-1:agent-1', modelConfig: context.modelId },
 		);
 		expect(context.domainContext!.credentialService.list).not.toHaveBeenCalled();
 	});
