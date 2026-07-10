@@ -51,6 +51,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 
 import { McpService } from '../mcp.service';
 
@@ -106,6 +107,7 @@ describe('McpService', () => {
 			mockInstance(WorkflowsConfig),
 			mockInstance(WorkflowPublishedDataService),
 			mockInstance(SubworkflowPolicyChecker),
+			mockInstance(WorkflowDependencyQueryService),
 		);
 	});
 
@@ -154,6 +156,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
 				mockInstance(SubworkflowPolicyChecker),
+				mockInstance(WorkflowDependencyQueryService),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -355,6 +358,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
 				mockInstance(SubworkflowPolicyChecker),
+				mockInstance(WorkflowDependencyQueryService),
 			);
 
 		const user = Object.assign(new User(), { id: 'user-1' });
@@ -464,6 +468,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
 				mockInstance(SubworkflowPolicyChecker),
+				mockInstance(WorkflowDependencyQueryService),
 			);
 
 			const server = await service.getServer(user, false);
@@ -514,6 +519,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
 				mockInstance(SubworkflowPolicyChecker),
+				mockInstance(WorkflowDependencyQueryService),
 			);
 
 			const server = await service.getServer(user, false);
@@ -588,6 +594,7 @@ describe('McpService', () => {
 					mockInstance(WorkflowsConfig),
 					mockInstance(WorkflowPublishedDataService),
 					mockInstance(SubworkflowPolicyChecker),
+					mockInstance(WorkflowDependencyQueryService),
 				);
 			};
 

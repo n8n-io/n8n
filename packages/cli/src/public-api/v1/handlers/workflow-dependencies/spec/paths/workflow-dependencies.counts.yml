@@ -1,0 +1,28 @@
+post:
+  operationId: getResourceDependencyCounts
+  x-eov-operation-id: getResourceDependencyCounts
+  x-required-scope: workflow:read,credential:read,dataTable:listProject
+  x-eov-operation-handler: v1/handlers/workflow-dependencies/workflow-dependencies.handler
+  tags:
+    - Workflow
+  summary: Get resource dependency counts
+  description: Retrieve dependency counts (how many credentials, workflows, etc. depend on or are depended on by) for the specified resources. Only resources the user has access to are returned.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/get-dependency-counts-request.yml'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/dependency-counts-response.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'

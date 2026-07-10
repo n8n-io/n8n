@@ -1,0 +1,19 @@
+type: object
+required:
+  - resourceIds
+  - resourceType
+properties:
+  resourceIds:
+    type: array
+    items:
+      type: string
+    minItems: 1
+    maxItems: 100
+    description: IDs of the resources to query dependency counts for.
+  resourceType:
+    type: string
+    enum:
+      - workflow
+      - credential
+      - dataTable
+    description: The type of resources specified in resourceIds.

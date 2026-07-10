@@ -1,0 +1,43 @@
+type: object
+additionalProperties:
+  type: object
+  required:
+    - dependencies
+    - inaccessibleCount
+  properties:
+    dependencies:
+      type: array
+      items:
+        type: object
+        required:
+          - type
+          - id
+          - name
+        properties:
+          type:
+            type: string
+            enum:
+              - credentialId
+              - dataTableId
+              - errorWorkflow
+              - errorWorkflowParent
+              - workflowCall
+              - workflowParent
+            description: The type of the dependency.
+          id:
+            type: string
+            description: The ID of the dependency (a resource ID).
+          name:
+            type: string
+            description: The human-readable name of the dependency.
+          projectId:
+            type: string
+            description: Project ID for the dependency (included for data tables to build direct links).
+      description: List of resolved dependencies with names and types.
+    inaccessibleCount:
+      type: integer
+      description: |
+        Number of dependencies on this resource that the user does not have permission to view.
+        Inaccessible dependencies are not included in the `dependencies` array.
+description: |
+  Map of resource ID to resolved dependency details. Only resources the user has access to are included.
