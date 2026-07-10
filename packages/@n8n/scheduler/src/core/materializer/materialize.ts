@@ -3,7 +3,13 @@ import { Time } from '@n8n/constants';
 import type { ScheduledJob } from '../types';
 import { DEFAULT_MATERIALIZER_OPTIONS, type MaterializerOptions } from './options';
 import { planOccurrences } from './plan';
-import type { DueJobs, NewOccurrence, PlannedJob, RunInTransaction } from './transaction';
+import type {
+	DueJobs,
+	NewOccurrence,
+	PlannedJob,
+	RecordedOccurrence,
+	RunInTransaction,
+} from './transaction';
 
 export type { MaterializerOptions } from './options';
 
@@ -12,6 +18,12 @@ export interface MaterializerSummary {
 	claimedJobs: number;
 	/** How many occurrences were newly recorded (duplicates already present don't count). */
 	occurrences: number;
+	/**
+	 * The newly recorded rows' identity, for per-row tracing at the callsite.
+	 * Only as complete as the storage layer's `recordOccurrences` allows (e.g.
+	 * empty on SQLite); `occurrences` is the accurate count regardless.
+	 */
+	created: RecordedOccurrence[];
 	/** How many claimed jobs could not be planned and were deferred (see {@link OnJobPlanError}). */
 	deferredJobs: number;
 }
@@ -82,7 +94,7 @@ export async function materialize(
 		const claimed = await tx.claimDueJobs(options.batchSize);
 		signal?.throwIfAborted();
 		if (claimed === undefined) {
-			return { claimedJobs: 0, occurrences: 0, deferredJobs: 0 };
+			return { claimedJobs: 0, occurrences: 0, created: [], deferredJobs: 0 };
 		}
 		const { occurrencesPlanned, numberOfJobsDeferred } = planOrDeferJobs(
 			claimed,
@@ -90,11 +102,11 @@ export async function materialize(
 			hooks.onPlanError,
 		);
 		const rows = toNewOccurrences(occurrencesPlanned);
-		const occurrences = await tx.recordOccurrences(rows);
+		const { recorded, created } = await tx.recordOccurrences(rows);
 		signal?.throwIfAborted();
-		if (occurrences < rows.length) {
+		if (recorded < rows.length) {
 			try {
-				hooks.onSkippedDuplicates?.({ planned: rows.length, recorded: occurrences });
+				hooks.onSkippedDuplicates?.({ planned: rows.length, recorded });
 			} catch {
 				// A broken reporter must not roll back the pass.
 			}
@@ -103,7 +115,8 @@ export async function materialize(
 
 		return {
 			claimedJobs: claimed.jobs.length,
-			occurrences,
+			occurrences: recorded,
+			created,
 			deferredJobs: numberOfJobsDeferred,
 		};
 	});

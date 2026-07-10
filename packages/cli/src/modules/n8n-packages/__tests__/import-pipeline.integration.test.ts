@@ -23,7 +23,11 @@ import { CredentialTypes } from '@/credential-types';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
-import { affixRoleToSaveCredential, saveCredential } from '@test-integration/db/credentials';
+import {
+	affixRoleToSaveCredential,
+	saveCredential,
+	shareCredentialWithProjects,
+} from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
@@ -1570,6 +1574,408 @@ describe('ImportPipeline credential resolution', () => {
 		});
 
 		expect(await Container.get(WorkflowRepository).count()).toBe(0);
+	});
+});
+
+describe('ImportPipeline credential matching modes', () => {
+	const sourceId = 'credential-matching-mode-test';
+	const SOURCE_CRED_ID = 'src-cred';
+	const MATCHING_NAME = 'QA GitHub';
+
+	async function setUpdatedAt(credentialId: string, iso: string) {
+		await Container.get(CredentialsRepository).update(credentialId, { updatedAt: new Date(iso) });
+	}
+
+	async function importWithMode(params: {
+		user: Awaited<ReturnType<typeof createOwner>>;
+		projectId?: string;
+		credentialMatchingMode: ImportPackageRequest['credentialMatchingMode'];
+		credentialMissingMode?: ImportPackageRequest['credentialMissingMode'];
+		bindings?: ImportPackageRequest['bindings'];
+		workflowId: string;
+		credentialName?: string;
+	}) {
+		return await importPackage({
+			user: params.user,
+			projectId: params.projectId,
+			credentialMatchingMode: params.credentialMatchingMode,
+			credentialMissingMode: params.credentialMissingMode ?? 'must-preexist',
+			bindings: params.bindings,
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					serializedWorkflowWithCredential({
+						id: params.workflowId,
+						name: params.workflowId,
+						credentialId: SOURCE_CRED_ID,
+						credentialName: params.credentialName ?? 'Source GitHub',
+					}),
+				],
+				{ sourceId },
+			),
+		});
+	}
+
+	const expectNotFound = async (promise: Promise<unknown>) =>
+		await expect(promise).rejects.toMatchObject({
+			meta: {
+				issues: expect.arrayContaining([
+					expect.objectContaining({
+						type: 'credential-unresolved',
+						kind: 'not_found',
+						sourceId: SOURCE_CRED_ID,
+					}),
+				]),
+			},
+		});
+
+	describe('name-and-type', () => {
+		it('binds to a credential with the exact same name and type owned by the target project', async () => {
+			const owner = await createOwner();
+			const teamProject = await createTeamProject('Team Project', owner);
+			const target = await saveOwnedCredential(githubCredentialPayload({ name: MATCHING_NAME }), {
+				project: teamProject,
+			});
+
+			const result = await importWithMode({
+				user: owner,
+				projectId: teamProject.id,
+				credentialMatchingMode: 'name-and-type',
+				workflowId: 'wf-name-type-match',
+				credentialName: MATCHING_NAME,
+			});
+
+			expect(result.bindings.credentials).toEqual({ [SOURCE_CRED_ID]: target.id });
+		});
+
+		it('does not match when only the name is equal but the type differs', async () => {
+			const owner = await createOwner();
+			const teamProject = await createTeamProject('Team Project', owner);
+			await saveOwnedCredential(
+				{ ...randomCredentialPayload({ type: 'slackApi' }), name: MATCHING_NAME },
+				{ project: teamProject },
+			);
+
+			await expectNotFound(
+				importWithMode({
+					user: owner,
+					projectId: teamProject.id,
+					credentialMatchingMode: 'name-and-type',
+					workflowId: 'wf-name-only',
+					credentialName: MATCHING_NAME,
+				}),
+			);
+			expect(await Container.get(WorkflowRepository).count()).toBe(0);
+		});
+
+		it('does not match when only the type is equal but the name differs', async () => {
+			const owner = await createOwner();
+			const teamProject = await createTeamProject('Team Project', owner);
+			await saveOwnedCredential(githubCredentialPayload({ name: 'Unrelated' }), {
+				project: teamProject,
+			});
+
+			await expectNotFound(
+				importWithMode({
+					user: owner,
+					projectId: teamProject.id,
+					credentialMatchingMode: 'name-and-type',
+					workflowId: 'wf-type-only',
+					credentialName: MATCHING_NAME,
+				}),
+			);
+			expect(await Container.get(WorkflowRepository).count()).toBe(0);
+		});
+
+		it('binds to the most recently updated candidate when several share the same name and type', async () => {
+			const owner = await createOwner();
+			const teamProject = await createTeamProject('Team Project', owner);
+			const older = await saveOwnedCredential(githubCredentialPayload({ name: MATCHING_NAME }), {
+				project: teamProject,
+			});
+			const newer = await saveOwnedCredential(githubCredentialPayload({ name: MATCHING_NAME }), {
+				project: teamProject,
+			});
+			await setUpdatedAt(older.id, '2024-01-01T00:00:00.000Z');
+			await setUpdatedAt(newer.id, '2024-06-01T00:00:00.000Z');
+
+			const first = await importWithMode({
+				user: owner,
+				projectId: teamProject.id,
+				credentialMatchingMode: 'name-and-type',
+				workflowId: 'wf-tie-1',
+				credentialName: MATCHING_NAME,
+			});
+			expect(first.bindings.credentials).toEqual({ [SOURCE_CRED_ID]: newer.id });
+
+			// Bumping the older credential's updatedAt past the newer one flips the winner
+			await setUpdatedAt(older.id, '2024-12-01T00:00:00.000Z');
+			const second = await importWithMode({
+				user: owner,
+				projectId: teamProject.id,
+				credentialMatchingMode: 'name-and-type',
+				workflowId: 'wf-tie-2',
+				credentialName: MATCHING_NAME,
+			});
+			expect(second.bindings.credentials).toEqual({ [SOURCE_CRED_ID]: older.id });
+		});
+	});
+
+	describe('type-only', () => {
+		it('binds to any credential of the required type regardless of name', async () => {
+			const owner = await createOwner();
+			const teamProject = await createTeamProject('Team Project', owner);
+			const target = await saveOwnedCredential(githubCredentialPayload({ name: 'Random Name' }), {
+				project: teamProject,
+			});
+
+			const result = await importWithMode({
+				user: owner,
+				projectId: teamProject.id,
+				credentialMatchingMode: 'type-only',
+				workflowId: 'wf-type-match',
+				credentialName: 'Totally Different Name',
+			});
+
+			expect(result.bindings.credentials).toEqual({ [SOURCE_CRED_ID]: target.id });
+		});
+
+		it('binds to the most recently updated candidate when several share the required type', async () => {
+			const owner = await createOwner();
+			const teamProject = await createTeamProject('Team Project', owner);
+			const older = await saveOwnedCredential(githubCredentialPayload({ name: 'Cred Old' }), {
+				project: teamProject,
+			});
+			const newer = await saveOwnedCredential(githubCredentialPayload({ name: 'Cred New' }), {
+				project: teamProject,
+			});
+			await setUpdatedAt(older.id, '2024-01-01T00:00:00.000Z');
+			await setUpdatedAt(newer.id, '2024-06-01T00:00:00.000Z');
+
+			const result = await importWithMode({
+				user: owner,
+				projectId: teamProject.id,
+				credentialMatchingMode: 'type-only',
+				workflowId: 'wf-type-tie',
+			});
+
+			expect(result.bindings.credentials).toEqual({ [SOURCE_CRED_ID]: newer.id });
+		});
+
+		it('fails under must-preexist and stubs under create-stub when no credential of the type exists', async () => {
+			const owner = await createOwner();
+			const teamProject = await createTeamProject('Team Project', owner);
+
+			await expectNotFound(
+				importWithMode({
+					user: owner,
+					projectId: teamProject.id,
+					credentialMatchingMode: 'type-only',
+					credentialMissingMode: 'must-preexist',
+					workflowId: 'wf-missing-preexist',
+				}),
+			);
+			expect(await Container.get(CredentialsRepository).count()).toBe(0);
+
+			const stubbed = await importWithMode({
+				user: owner,
+				projectId: teamProject.id,
+				credentialMatchingMode: 'type-only',
+				credentialMissingMode: 'create-stub',
+				workflowId: 'wf-missing-stub',
+			});
+			expect(stubbed.credentials.stubbed).toEqual([SOURCE_CRED_ID]);
+			expect(await Container.get(CredentialsRepository).count()).toBe(1);
+		});
+	});
+
+	describe('scope priority (owned > shared-in > global)', () => {
+		it('prefers the target-project-owned credential over shared-in and global, even when it is the oldest', async () => {
+			const owner = await createOwner();
+			const member = await createMember();
+			const teamProject = await createTeamProject('Team Project', owner);
+
+			const owned = await saveOwnedCredential(githubCredentialPayload({ name: 'Owned' }), {
+				project: teamProject,
+			});
+			await setUpdatedAt(owned.id, '2024-01-01T00:00:00.000Z');
+
+			const shared = await saveCredential(githubCredentialPayload({ name: 'Shared' }), {
+				user: member,
+				role: 'credential:owner',
+			});
+			await shareCredentialWithProjects(shared, [teamProject]);
+			await setUpdatedAt(shared.id, '2024-06-01T00:00:00.000Z');
+
+			const global = await saveCredential(
+				githubCredentialPayload({ name: 'Global', isGlobal: true }),
+				{ user: member, role: 'credential:owner' },
+			);
+			await setUpdatedAt(global.id, '2024-12-01T00:00:00.000Z');
+
+			const result = await importWithMode({
+				user: owner,
+				projectId: teamProject.id,
+				credentialMatchingMode: 'type-only',
+				workflowId: 'wf-scope-owned',
+			});
+
+			expect(result.bindings.credentials).toEqual({ [SOURCE_CRED_ID]: owned.id });
+		});
+
+		it('falls back to a credential shared into the target project over a newer global one when none is owned', async () => {
+			const owner = await createOwner();
+			const member = await createMember();
+			const teamProject = await createTeamProject('Team Project', owner);
+
+			const shared = await saveCredential(githubCredentialPayload({ name: 'Shared' }), {
+				user: member,
+				role: 'credential:owner',
+			});
+			await shareCredentialWithProjects(shared, [teamProject]);
+			await setUpdatedAt(shared.id, '2024-01-01T00:00:00.000Z');
+			const global = await saveCredential(
+				githubCredentialPayload({ name: 'Global', isGlobal: true }),
+				{ user: member, role: 'credential:owner' },
+			);
+			await setUpdatedAt(global.id, '2024-12-01T00:00:00.000Z');
+
+			const result = await importWithMode({
+				user: owner,
+				projectId: teamProject.id,
+				credentialMatchingMode: 'type-only',
+				workflowId: 'wf-scope-shared',
+			});
+
+			expect(result.bindings.credentials).toEqual({ [SOURCE_CRED_ID]: shared.id });
+		});
+
+		it('falls back to a global credential when nothing is owned by or shared into the target project', async () => {
+			const owner = await createOwner();
+			const member = await createMember();
+			const teamProject = await createTeamProject('Team Project', owner);
+
+			const global = await saveCredential(
+				githubCredentialPayload({ name: 'Global', isGlobal: true }),
+				{ user: member, role: 'credential:owner' },
+			);
+
+			const result = await importWithMode({
+				user: owner,
+				projectId: teamProject.id,
+				credentialMatchingMode: 'type-only',
+				workflowId: 'wf-scope-global',
+			});
+
+			expect(result.bindings.credentials).toEqual({ [SOURCE_CRED_ID]: global.id });
+		});
+
+		it('does not match a credential that only lives in another project (importing into a team project)', async () => {
+			const owner = await createOwner();
+			const member = await createMember();
+			const teamProject = await createTeamProject('Team Project', owner);
+			// A matching-name/type credential owned by the member's personal project,
+			// neither shared into the team project nor global — out of reach for the
+			// team project import.
+			await saveCredential(githubCredentialPayload({ name: MATCHING_NAME }), {
+				user: member,
+				role: 'credential:owner',
+			});
+
+			await expectNotFound(
+				importWithMode({
+					user: owner,
+					projectId: teamProject.id,
+					credentialMatchingMode: 'name-and-type',
+					workflowId: 'wf-scope-isolated',
+					credentialName: MATCHING_NAME,
+				}),
+			);
+			expect(await Container.get(WorkflowRepository).count()).toBe(0);
+		});
+	});
+
+	describe('explicit credentialBindings', () => {
+		it('bypasses type-only matching and binds to the explicit target even when another credential would win the search', async () => {
+			const owner = await createOwner();
+			const teamProject = await createTeamProject('Team Project', owner);
+
+			const fuzzyWinner = await saveOwnedCredential(githubCredentialPayload({ name: 'Fuzzy' }), {
+				project: teamProject,
+			});
+			await setUpdatedAt(fuzzyWinner.id, '2024-12-10T00:00:00.000Z');
+			// The explicitly bound target (older, so it would lose the fuzzy search).
+			const explicitTarget = await saveOwnedCredential(
+				githubCredentialPayload({ name: 'Explicit' }),
+				{ project: teamProject },
+			);
+			await setUpdatedAt(explicitTarget.id, '2024-12-05T00:00:00.000Z');
+
+			const result = await importWithMode({
+				user: owner,
+				projectId: teamProject.id,
+				credentialMatchingMode: 'type-only',
+				bindings: { credentials: new Map([[SOURCE_CRED_ID, explicitTarget.id]]) },
+				workflowId: 'wf-explicit-bypass',
+			});
+
+			expect(result.bindings.credentials).toEqual({ [SOURCE_CRED_ID]: explicitTarget.id });
+		});
+
+		it('fails with a type mismatch when the explicit binding targets a wrong-type credential, without falling back to the fuzzy match', async () => {
+			const owner = await createOwner();
+			const teamProject = await createTeamProject('Team Project', owner);
+			await saveOwnedCredential(githubCredentialPayload({ name: 'Fuzzy' }), {
+				project: teamProject,
+			});
+			const wrongType = await saveOwnedCredential(randomCredentialPayload({ type: 'slackApi' }), {
+				project: teamProject,
+			});
+
+			await expect(
+				importWithMode({
+					user: owner,
+					projectId: teamProject.id,
+					credentialMatchingMode: 'type-only',
+					bindings: { credentials: new Map([[SOURCE_CRED_ID, wrongType.id]]) },
+					workflowId: 'wf-explicit-mismatch',
+				}),
+			).rejects.toMatchObject({
+				meta: {
+					issues: expect.arrayContaining([
+						expect.objectContaining({
+							type: 'credential-unresolved',
+							kind: 'type_mismatch',
+							sourceId: SOURCE_CRED_ID,
+							targetId: wrongType.id,
+							expectedType: PACKAGE_GITHUB_CREDENTIAL_TYPE,
+							actualType: 'slackApi',
+						}),
+					]),
+				},
+			});
+			expect(await Container.get(WorkflowRepository).count()).toBe(0);
+		});
+	});
+
+	describe('id-only (default) is unchanged', () => {
+		it('does not fall back to name/type matching for a credential whose id differs', async () => {
+			const owner = await createOwner();
+			const teamProject = await createTeamProject('Team Project', owner);
+			await saveOwnedCredential(githubCredentialPayload({ name: MATCHING_NAME }), {
+				project: teamProject,
+			});
+
+			await expectNotFound(
+				importWithMode({
+					user: owner,
+					projectId: teamProject.id,
+					credentialMatchingMode: 'id-only',
+					workflowId: 'wf-id-only',
+					credentialName: MATCHING_NAME,
+				}),
+			);
+			expect(await Container.get(WorkflowRepository).count()).toBe(0);
+		});
 	});
 });
 
