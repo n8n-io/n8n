@@ -15,6 +15,7 @@ import {
 	pgQueryV2,
 	pgUpdate,
 } from '../Postgres/v1/genericFunctions';
+import { getDateAsStringTypeParsers } from '../Postgres/transport';
 
 export class CrateDb implements INodeType {
 	description: INodeTypeDescription = {
@@ -23,7 +24,7 @@ export class CrateDb implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:cratedb.png',
 		group: ['input'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Add and update data in CrateDB',
 		defaults: {
 			name: 'CrateDB',
@@ -273,7 +274,11 @@ export class CrateDb implements INodeType {
 			sslmode: (credentials.ssl as string) || 'disable',
 		};
 
-		const db = pgp(config);
+		const db = pgp({
+			...config,
+			// Return date/timestamp columns as strings so node output stays JSON-safe
+			...(this.getNode().typeVersion >= 1.1 ? { types: getDateAsStringTypeParsers(pgp) } : {}),
+		});
 
 		let returnItems: INodeExecutionData[] = [];
 
