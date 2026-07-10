@@ -764,7 +764,10 @@ describe('Canvas', () => {
 
 		async function renderWithGroup(
 			props: { readOnly?: boolean; suppressInteraction?: boolean } = {},
-			{ initialCollapsed = true }: { initialCollapsed?: boolean } = {},
+			{
+				initialCollapsed = true,
+				withMemberElements = false,
+			}: { initialCollapsed?: boolean; withMemberElements?: boolean } = {},
 		) {
 			// The menu items are disabled unless the workflow is editable: these
 			// tests run without a router, so isReadOnlyView would resolve to true.
@@ -786,9 +789,17 @@ describe('Canvas', () => {
 				label: 'Node 3',
 				position: { x: 600, y: 0 },
 			});
+			// Expanded groups render their members as canvas elements — include
+			// them when a test exercises member selection.
+			const memberElements = withMemberElements
+				? [
+						createCanvasNodeElement({ id: 'a', label: 'Node A', position: { x: 40, y: 40 } }),
+						createCanvasNodeElement({ id: 'b', label: 'Node B', position: { x: 200, y: 40 } }),
+					]
+				: [];
 
 			const rendered = renderComponent({
-				props: { nodes: [groupNode, looseNode], ...props },
+				props: { nodes: [groupNode, looseNode, ...memberElements], ...props },
 				global: {
 					provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(initialCollapsed) },
 				},
@@ -822,6 +833,30 @@ describe('Canvas', () => {
 			await waitFor(() =>
 				expect(getSelectedNodes.value.map(({ id }) => id)).toEqual([`group:${group.id}`]),
 			);
+		});
+
+		it('keeps the selection when right-clicking the selected expanded group', async () => {
+			const { group, getByTestId } = await renderWithGroup(
+				{},
+				{ initialCollapsed: false, withMemberElements: true },
+			);
+
+			// A fully selected expanded group: title bar plus every member
+			const { addSelectedNodes, findNode, getSelectedNodes } = useVueFlow(canvasId);
+			addSelectedNodes([findNode(`group:${group.id}`)!, findNode('a')!, findNode('b')!]);
+			await waitFor(() => expect(getSelectedNodes.value).toHaveLength(3));
+
+			await fireEvent.contextMenu(getByTestId('canvas-node-group'));
+
+			await waitFor(() => expect(useContextMenu().isOpen.value).toBe(true));
+			expect(useContextMenu().target.value?.source).toBe('group');
+			// Reselecting the group must not round-trip through a state the
+			// selection reconciler reads as a title-bar deselect.
+			expect(getSelectedNodes.value.map(({ id }) => id).sort()).toEqual([
+				'a',
+				'b',
+				`group:${group.id}`,
+			]);
 		});
 
 		it('opens the selection menu instead when the group is part of a wider selection', async () => {

@@ -1212,7 +1212,12 @@ function onOpenGroupContextMenu(groupId: string, event: MouseEvent) {
 		return;
 	}
 
-	onSelectNodes({ ids: group.nodeIds });
+	// Reselecting an already-selected group would pass through a members-only
+	// state the selection reconciler reads as a title-bar deselect, cascading
+	// to a full deselect — keep the selection untouched instead.
+	if (!groupNode?.selected) {
+		onSelectNodes({ ids: group.nodeIds });
+	}
 	contextMenu.open(event, {
 		source: 'group',
 		groupId,
