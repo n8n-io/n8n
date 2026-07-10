@@ -119,7 +119,7 @@ describe('ScheduleTriggerJobRegistrar deviations', () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(NOW);
 		jobProvisioner.provision.mockResolvedValue({
-			inserted: [1],
+			inserted: [],
 			redefined: [],
 			unchanged: [],
 			removed: [],
