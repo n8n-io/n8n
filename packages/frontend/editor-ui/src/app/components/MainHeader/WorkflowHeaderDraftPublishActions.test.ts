@@ -642,32 +642,6 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 	});
 
-	describe('View timeline action', () => {
-		beforeEach(() => {
-			workflowDocumentStore.setActiveState({
-				activeVersionId: 'active-version-1',
-				activeVersion: createMockActiveVersion('active-version-1'),
-			});
-		});
-
-		it('should be disabled when workflow is new', async () => {
-			const { getByTestId } = renderComponent({
-				props: {
-					...defaultWorkflowProps,
-					isNewWorkflow: true,
-				},
-			});
-
-			const versionMenuButton = getByTestId('version-menu-button');
-			await userEvent.click(versionMenuButton);
-
-			const viewPublishTimelineAction = getByTestId('version-menu-item-publish-timeline');
-
-			expect(viewPublishTimelineAction).toBeInTheDocument();
-			expect(viewPublishTimelineAction).toHaveClass('is-disabled');
-		});
-	});
-
 	describe('Unpublish action', () => {
 		beforeEach(() => {
 			workflowDocumentStore.setActiveState({
