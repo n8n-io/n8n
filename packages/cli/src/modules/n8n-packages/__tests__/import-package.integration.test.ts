@@ -36,6 +36,7 @@ import { initNodeTypes } from '@test-integration/utils';
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
 import { N8nPackagesService } from '../n8n-packages.service';
 import {
+	FolderConflictPolicy,
 	WorkflowConflictPolicy,
 	WorkflowIdPolicy,
 	WorkflowPublishingPolicy,
@@ -61,6 +62,7 @@ type ImportPackageParams = Omit<
 	| 'workflowConflictPolicy'
 	| 'workflowPublishingPolicy'
 	| 'workflowIdPolicy'
+	| 'folderConflictPolicy'
 > &
 	Partial<
 		Pick<
@@ -71,6 +73,7 @@ type ImportPackageParams = Omit<
 			| 'workflowConflictPolicy'
 			| 'workflowPublishingPolicy'
 			| 'workflowIdPolicy'
+			| 'folderConflictPolicy'
 		>
 	>;
 
@@ -81,6 +84,7 @@ async function importPackage(params: ImportPackageParams) {
 		workflowConflictPolicy: WorkflowConflictPolicy.Fail,
 		workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
 		workflowIdPolicy: WorkflowIdPolicy.New,
+		folderConflictPolicy: FolderConflictPolicy.Merge,
 		...params,
 	});
 }
@@ -158,7 +162,7 @@ beforeEach(async () => {
 	]);
 });
 
-describe('ImportPipeline batch validation', () => {
+describe('Package import batch validation', () => {
 	it('rejects the package before any workflow is persisted when prepare-phase validation fails', async () => {
 		const owner = await createOwner();
 		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
@@ -221,7 +225,7 @@ describe('ImportPipeline batch validation', () => {
 	});
 });
 
-describe('ImportPipeline routing matrix', () => {
+describe('Package import routing matrix', () => {
 	async function singleWorkflowPackage(): Promise<Buffer> {
 		return await buildImportPackageBuffer([
 			serializedWorkflow({ id: 'wf-routed', name: 'Routed Workflow' }),
@@ -375,7 +379,7 @@ describe('ImportPipeline routing matrix', () => {
 	});
 });
 
-describe('ImportPipeline workflowIdPolicy: new', () => {
+describe('Package import workflowIdPolicy: new', () => {
 	it('mints a fresh id and records the package id as sourceWorkflowId', async () => {
 		const owner = await createOwner();
 
@@ -476,7 +480,7 @@ describe('ImportPipeline workflowIdPolicy: new', () => {
 	});
 });
 
-describe('ImportPipeline workflowIdPolicy: source', () => {
+describe('Package import workflowIdPolicy: source', () => {
 	it('creates with the source id and records it as sourceWorkflowId when the id is free', async () => {
 		const owner = await createOwner();
 
@@ -763,7 +767,7 @@ describe('ImportPipeline workflowIdPolicy: source', () => {
 	});
 });
 
-describe('ImportPipeline workflow conflict policy', () => {
+describe('Package import workflow conflict policy', () => {
 	it.each<WorkflowConflictPolicy>([WorkflowConflictPolicy.NewVersion, WorkflowConflictPolicy.Skip])(
 		'%s handles matched and fresh workflows in one package',
 		async (workflowConflictPolicy) => {
@@ -1001,7 +1005,7 @@ describe('ImportPipeline workflow conflict policy', () => {
 	});
 });
 
-describe('ImportPipeline rejection cases', () => {
+describe('Package import rejection cases', () => {
 	async function singleWorkflowPackage(): Promise<Buffer> {
 		return await buildImportPackageBuffer([serializedWorkflow({ id: 'wf-x', name: 'X' })]);
 	}
@@ -1122,7 +1126,7 @@ describe('ImportPipeline rejection cases', () => {
 	});
 });
 
-describe('ImportPipeline event emission', () => {
+describe('Package import event emission', () => {
 	it('emits workflow-created per workflow plus one n8n-package-imported on success', async () => {
 		const owner = await createOwner();
 		const eventService = Container.get(EventService);
@@ -1396,7 +1400,7 @@ describe('ImportPipeline event emission', () => {
 	});
 });
 
-describe('ImportPipeline credential resolution', () => {
+describe('Package import credential resolution', () => {
 	const sourceId = 'credential-resolution-test';
 
 	it('imports when credentials are accessible to the importer', async () => {
@@ -2161,7 +2165,7 @@ describe('credential-missing-mode: create-stub', () => {
 	});
 });
 
-describe('ImportPipeline workflow publishing policy', () => {
+describe('Package import workflow publishing policy', () => {
 	// Trigger needed to be able to publish workflows
 	const scheduleTriggerNodes = () => [
 		{
