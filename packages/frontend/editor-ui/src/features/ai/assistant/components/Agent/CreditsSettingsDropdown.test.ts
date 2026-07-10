@@ -93,6 +93,22 @@ describe('CreditsSettingsDropdown', () => {
 		expect(wrapper.find('[data-test-id="credits-thread-used"]').exists()).toBe(false);
 	});
 
+	it('emits upgrade-click and closes the dropdown when the upgrade CTA is clicked', async () => {
+		const wrapper = mountOpen({
+			creditsRemaining: 50,
+			creditsQuota: 100,
+			isLowCredits: false,
+		});
+		await wrapper.vm.$nextTick();
+
+		const cta = wrapper.get('[data-test-id="credits-get-more"]');
+		expect(cta.text()).toContain('generic.upgrade');
+		await cta.trigger('click');
+
+		expect(wrapper.emitted('upgrade-click')).toHaveLength(1);
+		expect(wrapper.find('[data-test-id="credits-dropdown"]').exists()).toBe(false);
+	});
+
 	it('omits the per-thread line when creditsUsed rounds to 0', async () => {
 		// A tiny usage that rounds to 0 would read "used 0 credits so far" — show nothing.
 		const wrapper = mountOpen({

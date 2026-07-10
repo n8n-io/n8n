@@ -93,7 +93,7 @@ function toggleDropdown() {
 	isOpen.value = !isOpen.value;
 }
 
-function onGetMoreCredits() {
+function onUpgradeClick() {
 	emit('upgrade-click');
 	isOpen.value = false;
 }
@@ -136,13 +136,13 @@ function onGetMoreCredits() {
 						{{ threadCreditsUsedText }}
 					</span>
 					<N8nButton
-						variant="outline"
+						variant="success"
 						size="small"
-						:class="$style.getMoreButton"
+						:class="$style.upgradeButton"
 						data-test-id="credits-get-more"
-						@click="onGetMoreCredits"
+						@click="onUpgradeClick"
 					>
-						{{ i18n.baseText('aiAssistant.builder.settings.getMoreCredits') }}
+						{{ i18n.baseText('generic.upgrade') }}
 					</N8nButton>
 				</div>
 			</div>
@@ -235,7 +235,7 @@ function onGetMoreCredits() {
 	background-color: light-dark(var(--color--black-alpha-100), var(--color--white-alpha-100));
 }
 
-.getMoreButton {
+.upgradeButton {
 	width: 100%;
 }
 </style>

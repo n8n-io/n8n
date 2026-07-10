@@ -60,12 +60,12 @@ const tooltipContent = computed(() => {
 			</N8nTooltip>
 		</div>
 		<N8nButton
-			variant="outline"
+			variant="success"
 			size="xsmall"
 			data-test-id="credit-banner-get-more"
 			@click="emit('upgrade-click')"
 		>
-			{{ i18n.baseText('aiAssistant.builder.creditBanner.getMore') }}
+			{{ i18n.baseText('generic.upgrade') }}
 		</N8nButton>
 		<N8nIcon
 			icon="x"
