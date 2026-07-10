@@ -377,7 +377,8 @@ export async function runWorkflowTestCase(
 		if (artifactResults.length > 0) result.artifactResults = artifactResults;
 
 		const expectsWorkflow = (testCase.expectedArtifacts ?? ['workflow']).includes('workflow');
-		if (expectsWorkflow) result.buildError = build.error;
+		const artifactOnlyCompleted = !expectsWorkflow && build.transcript !== undefined;
+		if (!artifactOnlyCompleted) result.buildError = build.error;
 		return result;
 	}
 
