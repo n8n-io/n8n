@@ -7,6 +7,7 @@ import type { CompletionResult } from '@codemirror/autocomplete';
 import { createTestingPinia } from '@pinia/testing';
 import { faker } from '@faker-js/faker';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import userEvent from '@testing-library/user-event';
 import type { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -1115,13 +1116,12 @@ describe('ParameterInput.vue', () => {
 		});
 	});
 
-	describe('credential change resets options value', () => {
-		test('should reset options value when credentials change', async () => {
-			mockNodeTypesState.getNodeParameterOptions = vi.fn(async () => [
-				{ name: 'GPT-4', value: 'gpt-4' },
-				{ name: 'GPT-3.5', value: 'gpt-3.5-turbo' },
-			]);
-
+	describe('credential change validates options value', () => {
+		function renderModelParam(
+			getModels: () => Promise<Array<{ name: string; value: string }>>,
+			modelValue: string = 'gpt-3.5-turbo',
+		) {
+			mockNodeTypesState.getNodeParameterOptions = vi.fn(getModels);
 			const activeNode = reactive({
 				id: faker.string.uuid(),
 				name: 'Test Node',
@@ -1129,16 +1129,12 @@ describe('ParameterInput.vue', () => {
 				position: [0, 0] as [number, number],
 				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
 				typeVersion: 1,
-				credentials: {
-					openAiApi: { id: '1', name: 'OpenAI Account 1' },
-				},
+				credentials: { openAiApi: { id: '1', name: 'OpenAI Account 1' } } as Record<
+					string,
+					{ id: string; name: string }
+				>,
 			});
-
-			mockNdvState = {
-				...getNdvStateMock(),
-				activeNode,
-			};
-
+			mockNdvState = { ...getNdvStateMock(), activeNode };
 			const { emitted } = renderComponent({
 				props: {
 					path: 'model',
@@ -1149,25 +1145,106 @@ describe('ParameterInput.vue', () => {
 						default: 'gpt-4',
 						typeOptions: { loadOptionsMethod: 'getModels' },
 					}),
-					modelValue: 'gpt-3.5-turbo',
+					modelValue,
 				},
 			});
+			return { emitted, activeNode };
+		}
 
-			await waitFor(() => {
-				expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalled();
-			});
-
-			// Change credentials — the previously selected model should be reset to the default
-			activeNode.credentials = {
-				openAiApi: { id: '2', name: 'OpenAI Account 2' },
-			};
+		async function switchCredentialsAndReload(activeNode: {
+			credentials: Record<string, { id: string; name: string }>;
+		}) {
+			await waitFor(() => expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalled());
+			activeNode.credentials = { openAiApi: { id: '2', name: 'OpenAI Account 2' } };
 			await nextTick();
+			await waitFor(() =>
+				expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalledTimes(2),
+			);
+			await flushPromises();
+		}
 
+		async function expectModelResetToDefault(
+			emitted: ReturnType<typeof renderComponent>['emitted'],
+		) {
 			await waitFor(() => {
 				expect(emitted('update')).toContainEqual([
 					expect.objectContaining({ name: 'model', value: 'gpt-4' }),
 				]);
 			});
+		}
+
+		test('should preserve options value when it is still valid for the new credentials', async () => {
+			const { emitted, activeNode } = renderModelParam(async () => [
+				{ name: 'GPT-4', value: 'gpt-4' },
+				{ name: 'GPT-3.5', value: 'gpt-3.5-turbo' },
+			]);
+			await switchCredentialsAndReload(activeNode);
+			expect(emitted('update') ?? []).not.toContainEqual([
+				expect.objectContaining({ name: 'model' }),
+			]);
+		});
+
+		test('should not reset an expression value on credential change', async () => {
+			const { emitted, activeNode } = renderModelParam(
+				async () => [{ name: 'GPT-4', value: 'gpt-4' }],
+				'={{ $json.model }}',
+			);
+			await switchCredentialsAndReload(activeNode);
+			expect(emitted('update') ?? []).not.toContainEqual([
+				expect.objectContaining({ name: 'model' }),
+			]);
+		});
+
+		test('should reset options value to default when it is no longer valid for the new credentials', async () => {
+			const { emitted, activeNode } = renderModelParam(async () => [
+				{ name: 'GPT-4', value: 'gpt-4' },
+			]);
+			await switchCredentialsAndReload(activeNode);
+			await expectModelResetToDefault(emitted);
+		});
+
+		test('should reset options value to default when the reloaded options fail to load', async () => {
+			const { emitted, activeNode } = renderModelParam(async () => {
+				throw new Error('Failed to load options');
+			});
+			await switchCredentialsAndReload(activeNode);
+			await expectModelResetToDefault(emitted);
+		});
+
+		test('should reset options value to default when the reloaded list is empty', async () => {
+			const { emitted, activeNode } = renderModelParam(async () => []);
+			await switchCredentialsAndReload(activeNode);
+			await expectModelResetToDefault(emitted);
+		});
+
+		test('should not apply a stale reload when credentials change again mid-load', async () => {
+			let resolveLoad!: (options: Array<{ name: string; value: string }>) => void;
+			const pendingLoad = new Promise<Array<{ name: string; value: string }>>((resolve) => {
+				resolveLoad = resolve;
+			});
+			let call = 0;
+			const { emitted, activeNode } = renderModelParam(async () => {
+				call += 1;
+				return call === 1 ? [{ name: 'GPT-3.5', value: 'gpt-3.5-turbo' }] : await pendingLoad;
+			});
+
+			await waitFor(() => expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalled());
+
+			activeNode.credentials = { openAiApi: { id: '2', name: 'OpenAI Account 2' } };
+			await nextTick();
+			await waitFor(() =>
+				expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalledTimes(2),
+			);
+
+			// Swap again before the first reload resolves, then resolve it stale.
+			activeNode.credentials = { openAiApi: { id: '3', name: 'OpenAI Account 3' } };
+			await nextTick();
+			resolveLoad([{ name: 'GPT-4', value: 'gpt-4' }]);
+			await flushPromises();
+
+			expect(emitted('update') ?? []).not.toContainEqual([
+				expect.objectContaining({ name: 'model' }),
+			]);
 		});
 
 		test('should not reset non-options parameter when credentials change', async () => {
