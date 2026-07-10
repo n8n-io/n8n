@@ -1265,9 +1265,12 @@ export class SourceControlImportService {
 		// Get database type from the repository's connection
 		const dbType = this.dataTableRepository.manager.connection.options.type;
 
-		const result: { imported: string[]; conflicts: Array<{ id: string; name: string }> } = {
+		const result: {
+			imported: string[];
+			reconciliationFailures: Array<{ id: string; name: string }>;
+		} = {
 			imported: [],
-			conflicts: [],
+			reconciliationFailures: [],
 		};
 
 		// Phase 1: Parse all data table files and resolve target projects upfront
@@ -1343,7 +1346,7 @@ export class SourceControlImportService {
 					this.logger.error(`Failed to reconcile data table ${dataTable.name}`, {
 						error: ensureError(error),
 					});
-					result.conflicts.push({ id: dataTable.id, name: dataTable.name });
+					result.reconciliationFailures.push({ id: dataTable.id, name: dataTable.name });
 					continue;
 				}
 			}

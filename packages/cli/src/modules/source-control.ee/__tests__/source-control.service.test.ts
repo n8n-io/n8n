@@ -590,7 +590,7 @@ describe('SourceControlService', () => {
 			const callOrder: string[] = [];
 			sourceControlImportService.importDataTablesFromWorkFolder.mockImplementation(async () => {
 				callOrder.push('import');
-				return { imported: [], conflicts: [] };
+				return { imported: [], reconciliationFailures: [] };
 			});
 			sourceControlImportService.deleteDataTablesNotInWorkFolder.mockImplementation(async () => {
 				callOrder.push('delete');
@@ -626,7 +626,7 @@ describe('SourceControlService', () => {
 			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([]);
 			sourceControlImportService.importDataTablesFromWorkFolder.mockResolvedValue({
 				imported: [],
-				conflicts: [{ id: 'dtNew', name: 'Test Table' }],
+				reconciliationFailures: [{ id: 'dtNew', name: 'Test Table' }],
 			});
 
 			// ACT

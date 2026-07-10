@@ -622,11 +622,11 @@ export class SourceControlService {
 					user.id,
 				);
 
-			// Surface conflicts only discovered at import time (e.g. a failed
-			// reconciliation) on the pull result, not just in the logs
-			for (const conflict of dataTableImportResult?.conflicts ?? []) {
+			// Surface reconciliation failures as conflicts on the pull result, not
+			// just in the logs
+			for (const failure of dataTableImportResult?.reconciliationFailures ?? []) {
 				for (const item of statusResult) {
-					if (item.type === 'datatable' && item.id === conflict.id) {
+					if (item.type === 'datatable' && item.id === failure.id) {
 						item.conflict = true;
 					}
 				}

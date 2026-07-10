@@ -3604,7 +3604,7 @@ describe('SourceControlImportService', () => {
 						expect.objectContaining({ id: 'dt1' }),
 						['id'],
 					);
-					expect(result?.conflicts).toEqual([]);
+					expect(result?.reconciliationFailures).toEqual([]);
 				});
 
 				it('should degrade a failed adoption to a per-table conflict and import the rest', async () => {
@@ -3638,7 +3638,7 @@ describe('SourceControlImportService', () => {
 					await expect(
 						service.importDataTablesFromWorkFolder([mockCandidate, otherCandidate], mockUser.id),
 					).resolves.toMatchObject({
-						conflicts: [{ id: 'dt1', name: 'Test Table' }],
+						reconciliationFailures: [{ id: 'dt1', name: 'Test Table' }],
 					});
 					expect(mockLogger.error).toHaveBeenCalledWith(
 						expect.stringContaining('Test Table'),
