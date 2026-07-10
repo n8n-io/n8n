@@ -343,6 +343,26 @@ describe('LmChatAwsBedrock', () => {
 				expect(config).not.toHaveProperty('guardrailConfig');
 			});
 
+			it('defaults the guardrail version to DRAFT when left blank', async () => {
+				const ctx = setupMockContext();
+				ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'amazon.nova-pro-v1:0';
+					if (paramName === 'options')
+						return {
+							guardrail: { values: { guardrailIdentifier: 'gr-123', guardrailVersion: '' } },
+						};
+					return undefined;
+				});
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(MockedChatBedrockConverse).toHaveBeenCalledWith(
+					expect.objectContaining({
+						guardrailConfig: { guardrailIdentifier: 'gr-123', guardrailVersion: 'DRAFT' },
+					}),
+				);
+			});
+
 			it('passes an inference-profile ARN model ID through verbatim without building a URL', async () => {
 				const arn =
 					'arn:aws:bedrock:eu-west-3:123456789012:inference-profile/eu.amazon.nova-pro-v1:0';
