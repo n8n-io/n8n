@@ -25,6 +25,39 @@ incidents. In n8n that host is the cli's `DurableScheduler`
 (`packages/cli/src/scheduling/`), which wires DI, config and instance identity,
 and routes events to the logger.
 
+## Schedule kinds
+
+A scheduled job says *when* something should run. There are four kinds:
+
+| Kind | Meaning | Example |
+|---|---|---|
+| `cron` | Fires at fixed clock times, written as a cron expression. | `0 0 9 * * 1` = every Monday at 09:00 |
+| `interval` | Fires every N seconds of elapsed time. | every 3600s = once an hour |
+| `one_off` | Fires once, at a single instant, then never again. | fire at 2026-01-01 00:00 |
+| `recurring_cron` | A cron *anchor* thinned by an "every N periods" gate, for cadences plain cron cannot express. | every 3 weeks on Monday |
+
+### Why `recurring_cron`?
+
+Plain cron can say "every Monday", but not "every *third* Monday".
+`recurring_cron` builds that from two parts:
+
+- an **anchor**: a normal cron that lists candidate dates (often too many),
+- a **gate**: keeps a candidate only once at least `recurrenceSize` periods of
+  `recurrenceUnit` (`hours` / `days` / `weeks` / `months`) have passed since the
+  last kept fire.
+
+"Every 3 weeks on Monday" = anchor "every Monday" + gate "1 per 3 weeks":
+
+```
+Anchor (every Monday):  M   M   M   M   M   M   M
+Gate (1 per 3 weeks):   ✓   ✗   ✗   ✓   ✗   ✗   ✓
+Fires:                  M           M           M
+```
+
+The gate looks only at the previous fire, with no stored counter. So any
+instance in the cluster can compute the next run, and a restart never loses the
+cadence.
+
 ## Status
 
 Early foundation. The algorithms, schedule math and composition surface are in
