@@ -25,7 +25,9 @@ export interface UseCanvasNodeGroupSelectionDeps {
  * - selecting the title bar selects every member node;
  * - deselecting the title bar of a fully selected group deselects the members;
  * - selecting every member selects the title bar;
- * - breaking a full selection (deselecting a member) deselects the title bar.
+ * - breaking a full selection (deselecting a member) deselects the title bar;
+ * - a title bar mounting around a fully selected member set selects itself
+ *   (grouping the current selection via toolbar/shortcut/context menu).
  *
  * Collapsed groups are left alone: their members are hidden, so the title bar
  * stands in for them and bulk operations expand membership at operation time
@@ -39,6 +41,7 @@ export function useCanvasNodeGroupSelection(deps: UseCanvasNodeGroupSelectionDep
 		findNode,
 		userSelectionActive,
 		nodesSelectionActive,
+		nodes,
 	} = useVueFlow(deps.canvasId);
 
 	// Selection snapshot from the last reconciliation — diffing against it
@@ -46,6 +49,14 @@ export function useCanvasNodeGroupSelection(deps: UseCanvasNodeGroupSelectionDep
 	let lastSelectedIds = new Set<string>();
 
 	const selectedIds = computed(() => new Set(getSelectedNodes.value.map((node) => node.id)));
+
+	const mountedGroupNodeIdsKey = computed(() =>
+		nodes.value
+			.filter(isCanvasGroupNode)
+			.map((node) => node.id)
+			.sort()
+			.join('|'),
+	);
 
 	function expandedGroupOfGroupNode(id: string): IWorkflowGroup | undefined {
 		const groupId = parseCanvasGroupNodeId(id);
@@ -81,10 +92,13 @@ export function useCanvasNodeGroupSelection(deps: UseCanvasNodeGroupSelectionDep
 			for (const memberId of group.nodeIds) target.delete(memberId);
 		}
 
-		// Member changes sync the title bar to "all members selected".
+		// Title bars sync to "all members selected". Checked for every group
+		// the target selection touches — not just changed ids — so the
+		// invariant also holds when a title bar mounts around an
+		// already-selected member set (grouping the current selection).
 		const groupsToCheck = new Map<string, IWorkflowGroup>();
-		for (const id of [...added, ...removed]) {
-			const group = expandedGroupOfMember(id);
+		for (const id of target) {
+			const group = expandedGroupOfMember(id) ?? expandedGroupOfGroupNode(id);
 			if (group) groupsToCheck.set(group.id, group);
 		}
 		for (const group of groupsToCheck.values()) {
@@ -146,7 +160,7 @@ export function useCanvasNodeGroupSelection(deps: UseCanvasNodeGroupSelectionDep
 		return count;
 	});
 
-	watch([selectedIds, userSelectionActive], () => {
+	watch([selectedIds, userSelectionActive, mountedGroupNodeIdsKey], () => {
 		if (!toValue(deps.isEnabled)) {
 			lastSelectedIds = selectedIds.value;
 			return;
@@ -179,15 +193,15 @@ export function useCanvasNodeGroupSelection(deps: UseCanvasNodeGroupSelectionDep
 	 * native VueFlow selection box. Undefined when nothing is selected.
 	 */
 	const selectionBoxBounds = computed<BoundingBox | undefined>(() => {
-		const nodes = getSelectedNodes.value;
-		if (nodes.length === 0) return undefined;
+		const selectedNodes = getSelectedNodes.value;
+		if (selectedNodes.length === 0) return undefined;
 
 		let minX = Infinity;
 		let minY = Infinity;
 		let maxX = -Infinity;
 		let maxY = -Infinity;
 
-		for (const node of nodes) {
+		for (const node of selectedNodes) {
 			const { x, y } = node.computedPosition;
 			let { width, height } = node.dimensions;
 			if (isCanvasGroupNode(node)) {

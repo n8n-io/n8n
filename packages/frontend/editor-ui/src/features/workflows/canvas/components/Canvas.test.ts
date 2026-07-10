@@ -755,6 +755,58 @@ describe('Canvas', () => {
 		});
 	});
 
+	describe('group selection reconciliation', () => {
+		it('folds the selection into the group when one is created around fully selected nodes', async () => {
+			workflowDocumentStore.setScopes(['workflow:update']);
+			workflowDocumentStore.setNodes([
+				createTestNode({ id: 'a', name: 'Node A' }),
+				createTestNode({ id: 'b', name: 'Node B' }),
+			]);
+			const memberA = createCanvasNodeElement({ id: 'a', label: 'Node A' });
+			const memberB = createCanvasNodeElement({
+				id: 'b',
+				label: 'Node B',
+				position: { x: 300, y: 100 },
+			});
+			const rendered = renderComponent({
+				props: { nodes: [memberA, memberB] },
+				global: {
+					provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(false) },
+				},
+			});
+			await waitFor(() =>
+				expect(rendered.container.querySelectorAll('.vue-flow__node')).toHaveLength(2),
+			);
+
+			const { addSelectedNodes, findNode, getSelectedNodes, nodesSelectionActive } =
+				useVueFlow(canvasId);
+			addSelectedNodes([findNode('a')!, findNode('b')!]);
+			nodesSelectionActive.value = true;
+			await waitFor(() => expect(getSelectedNodes.value).toHaveLength(2));
+
+			// The title bar node mounts a pass after the group is created, as in
+			// the real mapping flow — without any selection change.
+			const group = workflowDocumentStore.createGroup(['a', 'b'], 'My Group');
+			await rendered.rerender({
+				nodes: [
+					createCanvasGroupElement({ id: group.id, name: group.name, nodeIds: ['a', 'b'] }),
+					memberA,
+					memberB,
+				],
+			});
+
+			await waitFor(() =>
+				expect([...getSelectedNodes.value.map(({ id }) => id)].sort()).toEqual([
+					'a',
+					'b',
+					`group:${group.id}`,
+				]),
+			);
+			// The selection now folds into a single element — the box goes away
+			expect(nodesSelectionActive.value).toBe(false);
+		});
+	});
+
 	describe('group context menu', () => {
 		// The context menu state is a module-scoped singleton — reset it so an
 		// open menu can't leak into other tests.
