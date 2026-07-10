@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "tooling", "scope": "tooling" },
 	"name": "@n8n/rules-engine",
 	"private": true,
 	"version": "0.1.0",

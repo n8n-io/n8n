@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "util", "scope": "ai" },
   "name": "@n8n/mcp-browser",
   "version": "0.13.0",
   "description": "Browser automation MCP tools built on Playwright, WebDriver BiDi, and safaridriver",

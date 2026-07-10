@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "data-access", "scope": "shared" },
   "name": "@n8n/api-types",
   "version": "1.30.0",
   "scripts": {

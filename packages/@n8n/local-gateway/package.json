@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "app", "scope": "platform" },
   "name": "@n8n/local-gateway",
   "version": "0.1.0",
   "description": "n8n Local Gateway",

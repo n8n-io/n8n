@@ -19,7 +19,17 @@ import { ESLintUtils } from '@typescript-eslint/utils';
  * `n8n.tags` field at config-build time (one fs scan, cached). Add when adopted.
  */
 
-export type BoundaryType = 'app' | 'feature' | 'data-access' | 'domain-ui' | 'ui' | 'util';
+export type BoundaryType =
+	| 'app'
+	| 'feature'
+	| 'runtime'
+	| 'nodes'
+	| 'sdk'
+	| 'data-access'
+	| 'domain-ui'
+	| 'ui'
+	| 'util'
+	| 'tooling';
 
 export interface PackageTag {
 	name: string;
@@ -40,9 +50,26 @@ export interface Options {
 
 // Konstantin's hierarchy: apps glue everything, features slice vertically and
 // must not import each other, data-access stays UI-free, utils are universal.
+const ALL_TYPES: BoundaryType[] = [
+	'app',
+	'feature',
+	'runtime',
+	'nodes',
+	'sdk',
+	'data-access',
+	'domain-ui',
+	'ui',
+	'util',
+	'tooling',
+];
+
 const DEFAULT_ALLOWED_TYPES: Record<BoundaryType, BoundaryType[]> = {
-	app: ['app', 'feature', 'data-access', 'domain-ui', 'ui', 'util'],
-	feature: ['data-access', 'domain-ui', 'ui', 'util'],
+	app: ALL_TYPES, // apps glue everything together
+	tooling: ALL_TYPES, // dev/CI only, not in any runtime bundle
+	feature: ['data-access', 'domain-ui', 'ui', 'util', 'sdk'],
+	runtime: ['runtime', 'data-access', 'util'],
+	nodes: ['nodes', 'runtime', 'data-access', 'sdk', 'util'],
+	sdk: ['sdk', 'runtime', 'data-access', 'util'],
 	'data-access': ['data-access', 'util'],
 	'domain-ui': ['domain-ui', 'ui', 'util'],
 	ui: ['ui', 'util'],
@@ -112,6 +139,7 @@ export const EnforceModuleBoundariesRule = ESLintUtils.RuleCreator.withoutDocs({
 
 				const scopeAllowed =
 					fromPkg.type === 'app' || // apps glue every scope together
+					fromPkg.type === 'tooling' || // dev/CI crosses every domain
 					fromPkg.scope === toPkg.scope ||
 					sharedScopes.includes(toPkg.scope) ||
 					(allowedScopeDependencies[fromPkg.scope] ?? []).includes(toPkg.scope);

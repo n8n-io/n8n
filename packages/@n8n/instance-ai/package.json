@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "feature", "scope": "ai" },
   "name": "@n8n/instance-ai",
   "version": "1.15.0",
   "scripts": {

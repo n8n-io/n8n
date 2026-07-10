@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "tooling", "scope": "nodes" },
   "name": "@n8n/create-node",
   "version": "0.38.0",
   "description": "Official CLI to create new community nodes for n8n",

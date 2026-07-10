@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "app", "scope": "editor" },
   "name": "n8n-editor-ui",
   "version": "2.30.0",
   "description": "Workflow Editor UI for n8n",

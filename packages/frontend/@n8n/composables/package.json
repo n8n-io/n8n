@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "util", "scope": "editor" },
   "name": "@n8n/composables",
   "type": "module",
   "version": "1.20.0",

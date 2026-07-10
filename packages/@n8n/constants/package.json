@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "util", "scope": "shared" },
   "name": "@n8n/constants",
   "version": "0.30.0",
   "scripts": {

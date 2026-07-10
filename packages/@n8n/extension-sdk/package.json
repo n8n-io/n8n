@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "sdk", "scope": "nodes" },
   "name": "@n8n/extension-sdk",
   "version": "0.14.0",
   "type": "module",

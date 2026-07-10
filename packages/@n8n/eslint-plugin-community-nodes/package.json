@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "tooling", "scope": "nodes" },
   "name": "@n8n/eslint-plugin-community-nodes",
   "type": "module",
   "version": "0.24.0",

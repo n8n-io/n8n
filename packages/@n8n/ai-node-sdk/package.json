@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "sdk", "scope": "nodes" },
   "name": "@n8n/ai-node-sdk",
   "version": "0.20.0",
   "description": "SDK for building AI nodes in n8n",

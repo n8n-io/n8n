@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "feature", "scope": "ai" },
   "name": "@n8n/chat",
   "version": "1.29.0",
   "scripts": {

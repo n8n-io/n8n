@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "tooling", "scope": "tooling" },
   "name": "@n8n/typescript-config",
   "version": "1.8.0",
   "type": "module",

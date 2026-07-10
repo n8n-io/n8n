@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "sdk", "scope": "workflow-engine" },
   "name": "@n8n/workflow-sdk",
   "version": "0.23.0",
   "description": "TypeScript SDK for programmatically creating n8n workflows",

@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "tooling", "scope": "tooling" },
   "name": "@n8n/vitest-config",
   "version": "1.17.0",
   "type": "module",

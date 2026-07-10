@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "util", "scope": "persistence" },
   "name": "@n8n/crdt",
   "version": "0.8.0",
   "description": "CRDT abstraction layer for n8n collaborative editing",

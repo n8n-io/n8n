@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "app", "scope": "platform" },
   "name": "@n8n/cli",
   "version": "0.10.0",
   "description": "[beta] Client CLI for n8n — manage workflows, executions, and credentials from the terminal",

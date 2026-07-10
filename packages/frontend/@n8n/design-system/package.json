@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "ui", "scope": "editor" },
   "type": "module",
   "name": "@n8n/design-system",
   "version": "2.29.0",

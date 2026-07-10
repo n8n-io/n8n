@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "util", "scope": "shared" },
   "name": "@n8n/decorators",
   "version": "1.30.0",
   "scripts": {

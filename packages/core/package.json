@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "runtime", "scope": "workflow-engine" },
   "name": "n8n-core",
   "version": "2.30.0",
   "description": "Core functionality of n8n",

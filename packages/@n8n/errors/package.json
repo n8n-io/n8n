@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "util", "scope": "shared" },
   "name": "@n8n/errors",
   "version": "0.11.0",
   "scripts": {

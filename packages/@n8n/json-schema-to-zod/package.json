@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "util", "scope": "shared" },
   "name": "@n8n/json-schema-to-zod",
   "version": "1.13.0",
   "description": "Converts JSON schema objects into Zod schemas",

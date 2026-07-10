@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "util", "scope": "nodes" },
   "name": "@n8n/ai-utilities",
   "version": "0.23.0",
   "description": "Utilities for building AI nodes in n8n",

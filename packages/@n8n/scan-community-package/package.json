@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "tooling", "scope": "nodes" },
   "name": "@n8n/scan-community-package",
   "version": "0.26.0",
   "description": "Static code analyser for n8n community packages",
