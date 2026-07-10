@@ -18,6 +18,7 @@ import type {
 	WorkflowId,
 } from 'n8n-workflow';
 
+import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import type { TriggerFailureHandler } from '@/workflows/triggers/trigger-execution-context.factory';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
@@ -46,6 +47,7 @@ export class NonWebhookTriggerRegistrar {
 		private readonly logger: Logger,
 		private readonly activeWorkflowTriggers: ActiveWorkflowTriggers,
 		private readonly triggerExecutionContextFactory: TriggerExecutionContextFactory,
+		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
 		private readonly tracing: Tracing,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
@@ -131,16 +133,21 @@ export class NonWebhookTriggerRegistrar {
 				},
 			},
 			async (span) => {
-				await this.activeWorkflowTriggers.addTriggers(
-					workflow.id,
-					workflow,
-					[nodeId],
-					additionalData,
-					executionMode,
-					activationMode,
-					getTriggerFunctions,
-					getPollFunctions,
-				);
+				try {
+					await this.activeWorkflowTriggers.addTriggers(
+						workflow.id,
+						workflow,
+						[nodeId],
+						additionalData,
+						executionMode,
+						activationMode,
+						getTriggerFunctions,
+						getPollFunctions,
+					);
+					await this.scheduleTriggerJobRegistrar.commit(workflow.id, nodeId);
+				} finally {
+					this.scheduleTriggerJobRegistrar.discard(workflow.id, nodeId);
+				}
 
 				span.setStatus({ code: SpanStatus.ok });
 			},
@@ -162,6 +169,7 @@ export class NonWebhookTriggerRegistrar {
 			},
 			async (span) => {
 				await this.activeWorkflowTriggers.removeTriggers(workflowId, new Set([nodeId]));
+				await this.scheduleTriggerJobRegistrar.remove(workflowId, nodeId);
 
 				span.setStatus({ code: SpanStatus.ok });
 			},

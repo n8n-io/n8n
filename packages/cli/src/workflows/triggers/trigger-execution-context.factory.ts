@@ -28,6 +28,7 @@ import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import { EventService } from '@/events/event.service';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import { ExecutionService } from '@/executions/execution.service';
+import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
@@ -62,6 +63,7 @@ export class TriggerExecutionContextFactory {
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly storageConfig: StorageConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
+		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -172,6 +174,10 @@ export class TriggerExecutionContextFactory {
 					});
 			};
 
+			const schedulingFunctions = this.scheduleTriggerJobRegistrar.interceptsNode(node)
+				? this.scheduleTriggerJobRegistrar.createCollector(workflow, node)
+				: undefined;
+
 			return new TriggerContext(
 				workflow,
 				node,
@@ -181,6 +187,7 @@ export class TriggerExecutionContextFactory {
 				emit,
 				emitError,
 				saveFailedExecution,
+				schedulingFunctions,
 			);
 		};
 	}
