@@ -7,6 +7,8 @@ on:
       - opened
       - edited
       - synchronize
+      - labeled
+      - unlabeled
   issue_comment:
     types:
       - created
@@ -50,6 +52,8 @@ jobs:
     # routinely exceed the size limit and shouldn't be gated on it.
     if: |
       github.event_name == 'pull_request' &&
+      github.event.action != 'labeled' &&
+      github.event.action != 'unlabeled' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       !contains(github.event.pull_request.labels.*.name, 'automation:backport') &&
       !contains(github.event.pull_request.title, '(backport to') &&
@@ -77,7 +81,11 @@ jobs:
 
   changes:
     name: Detect Changes
-    if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+    if: |
+      (github.event_name == 'pull_request' &&
+       github.event.action != 'labeled' &&
+       github.event.action != 'unlabeled') ||
+      github.event_name == 'merge_group'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -125,9 +133,24 @@ jobs:
         if: ${{ !cancelled() && (github.event_name == 'merge_group' || needs.changes.outputs.janitor == 'true') }}
         run: pnpm --filter=n8n-playwright janitor
 
+  check-do-not-merge:
+    name: Do Not Merge
+    # Fails while the 'Do Not Merge' label is present. Re-runs on labeled/unlabeled
+    # so the gate flips as the label is toggled on the current commit.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Fail if 'Do Not Merge' label is present
+        if: contains(github.event.pull_request.labels.*.name, 'Do Not Merge')
+        run: |
+          echo "::error::This PR has the 'Do Not Merge' label and cannot be merged."
+          exit 1
+
   required-pr-quality-checks:
     name: Required PR Quality Checks
-    needs: [check-pr-size, check-static-analysis]
+    needs: [check-pr-size, check-static-analysis, check-do-not-merge]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5

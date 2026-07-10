@@ -20,9 +20,12 @@ import { ExecutionCoordinator } from './execution/ExecutionCoordinator';
 import type { ExecutionStrategy } from './execution/ExecutionStrategy';
 import { PendingCallsManager } from './execution/PendingCallsManager';
 import { QueuedExecutionStrategy } from './execution/QueuedExecutionStrategy';
-import { MessageFormatter } from './protocol/MessageFormatter';
+import {
+	MessageFormatter,
+	type CredentialGateElicitationOutcome,
+} from './protocol/MessageFormatter';
 import { MessageParser } from './protocol/MessageParser';
-import type { McpToolCallInfo } from './protocol/types';
+import type { McpToolCallInfo, McpToolResult } from './protocol/types';
 import { MCP_LIST_TOOLS_REQUEST_MARKER } from './protocol/types';
 import { InMemorySessionStore } from './session/InMemorySessionStore';
 import { SessionManager } from './session/SessionManager';
@@ -31,6 +34,14 @@ import type { SSETransport } from './transport/SSETransport';
 import { StreamableHttpTransport } from './transport/StreamableHttpTransport';
 import type { CompressionResponse, McpTransport } from './transport/Transport';
 import { TransportFactory } from './transport/TransportFactory';
+
+/**
+ * How long to wait for the client to complete a URL-mode elicitation (open the
+ * connection page and act on it) before giving up and falling back to the
+ * plain-text response. Connecting a credential involves an out-of-band OAuth
+ * flow, so this is generous relative to the SDK's default request timeout.
+ */
+const ELICITATION_TIMEOUT_MS = 300_000;
 
 export interface HandlePostResult {
 	wasToolCall: boolean;
@@ -506,6 +517,69 @@ export class McpServer {
 		return true;
 	}
 
+	/**
+	 * Whether the connected client advertised URL-mode elicitation support during
+	 * initialization (`clientCapabilities.elicitation.url`).
+	 */
+	private clientSupportsUrlElicitation(server: Server): boolean {
+		const elicitation = server.getClientCapabilities()?.elicitation;
+		return Boolean(elicitation && typeof elicitation === 'object' && 'url' in elicitation);
+	}
+
+	/**
+	 * Handles a not-ready credential gate. When the client supports URL-mode
+	 * elicitation and every missing credential has a connection URL, the
+	 * connection page is driven through the client's native elicitation UI so the
+	 * link is surfaced by the client rather than relayed as tool text (which chat
+	 * clients tend to withhold). Otherwise — and on any elicitation failure — it
+	 * falls back to the plain-text response carrying the raw URLs.
+	 */
+	private async handleCredentialGate(
+		server: Server,
+		gateResult: CredentialCheckResult,
+		callId: string,
+	): Promise<McpToolResult> {
+		const missing = gateResult.credentials.filter((c) => c.status !== 'configured');
+		const connectable = missing.filter((c) => !!c.authorizationUrl);
+		const canElicit =
+			connectable.length > 0 &&
+			connectable.length === missing.length &&
+			this.clientSupportsUrlElicitation(server);
+
+		if (canElicit) {
+			try {
+				const outcomes: CredentialGateElicitationOutcome[] = [];
+				for (const cred of connectable) {
+					const { action } = await server.elicitInput(
+						{
+							mode: 'url',
+							elicitationId: randomUUID(),
+							url: cred.authorizationUrl!,
+							message: `Connect ${cred.credentialName} (${cred.credentialType}) to run this tool.`,
+						},
+						{ timeout: ELICITATION_TIMEOUT_MS },
+					);
+					outcomes.push({
+						credentialName: cred.credentialName,
+						credentialType: cred.credentialType,
+						action,
+					});
+				}
+				if (this.resolveFunctions[callId]) this.resolveFunctions[callId]();
+				return MessageFormatter.formatCredentialGateElicited(outcomes);
+			} catch (error) {
+				this.logger.warn(
+					`Credential gate elicitation failed, falling back to text response: ${
+						error instanceof Error ? error.message : String(error)
+					}`,
+				);
+			}
+		}
+
+		if (this.resolveFunctions[callId]) this.resolveFunctions[callId]();
+		return MessageFormatter.formatCredentialGate(gateResult);
+	}
+
 	private setupHandlers(server: Server): void {
 		server.setRequestHandler(
 			ListToolsRequestSchema,
@@ -550,14 +624,12 @@ export class McpServer {
 			}
 
 			// Eager pre-execution credential gate: if the caller has not connected a
-			// required private credential, return the actionable connection URLs
-			// instead of executing (or enqueuing) the workflow.
+			// required private credential, surface the actionable connection URLs
+			// (via elicitation when supported, otherwise as text) instead of
+			// executing (or enqueuing) the workflow.
 			const gateResult = this.pendingGateResults[callId];
 			if (gateResult && !gateResult.readyToExecute) {
-				if (this.resolveFunctions[callId]) {
-					this.resolveFunctions[callId]();
-				}
-				return MessageFormatter.formatCredentialGate(gateResult);
+				return await this.handleCredentialGate(server, gateResult, callId);
 			}
 
 			try {

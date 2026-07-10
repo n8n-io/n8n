@@ -14,7 +14,8 @@ them. Some are conditional on context availability.
 
 Persist a dependency-aware task plan for detached multi-step execution. For
 initial plan-worthy work, the orchestrator loads the `planning` skill, performs
-discovery with normal domain tools, then calls `create-tasks` with
+discovery with normal domain tools, loads `create-tasks` via `load_tool`, then
+calls `create-tasks` with
 `planningContext.source: "planning-skill"`. For
 `<planned-task-follow-up type="replan">` turns, use
 `planningContext.source: "replan"` when multiple dependent tasks still need
@@ -758,6 +759,8 @@ only the domain tools wired into that agent.
 | Tool Category | Orchestrator | Specialized background agents |
 |---------------|:---:|:---:|
 | Orchestration tools (`create-tasks`, etc.) | ✅ | ❌ |
+| Docs search (`n8n-docs`) | ✅ (search/load) | ❌ |
+| Eval tools (`evals`) | ✅ (search/load) | ❌ |
 | Workflow tools | ✅ | ✅ (eval-setup) |
 | Execution tools | ✅ | ❌ |
 | Credential tools | ✅ | ✅ (eval-setup — setup only) |
