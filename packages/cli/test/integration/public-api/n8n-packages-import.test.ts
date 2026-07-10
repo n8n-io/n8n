@@ -218,6 +218,7 @@ describe('POST /n8n-packages/import', () => {
 					status: 'created',
 				},
 			],
+			folders: [],
 			bindings: {
 				workflows: { 'wf-http-source': expect.any(String) },
 				credentials: {},
