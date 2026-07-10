@@ -13,6 +13,7 @@ import pgPromise from 'pg-promise';
 
 import type {
 	ConnectionsData,
+	PgpClient,
 	PgpConnectionParameters,
 	PostgresNodeCredentials,
 	PostgresNodeOptions,
@@ -21,6 +22,11 @@ import type {
 // dataTypeIDs for bigint (int8) and numeric types in PostgreSQL
 const BIGINT_TYPE_ID = 20;
 const NUMERIC_TYPE_ID = 1700;
+
+// Array type OIDs, not exposed via pg-types `builtins`
+const DATE_ARRAY_TYPE_ID = 1182; // _date
+const TIMESTAMP_ARRAY_TYPE_ID = 1115; // _timestamp
+const TIMESTAMPTZ_ARRAY_TYPE_ID = 1185; // _timestamptz
 
 export function applyLargeNumbersReceive(e: {
 	data: Array<Record<string, unknown>>;
@@ -58,6 +64,53 @@ export function parseDateToISO(value: string) {
 		return value;
 	}
 	return parsedDate.toISOString();
+}
+
+// pg-promise's bundled pg-types exposes `arrayParser.create(source, transform)`,
+// but the published typings type `arrayParser` as a plain function.
+type ArrayParser = {
+	create: (source: string, transform: (entry: string) => unknown) => { parse: () => unknown[] };
+};
+
+/**
+ * Per-connection type parsers that return date/timestamp columns (and their array
+ * variants) as JSON-safe strings, so node output never contains live `Date` objects.
+ * DATE stays as its `YYYY-MM-DD` wire value; timestamps are normalized to ISO. Every
+ * other OID falls back to the default parser. Applied via the pg `types` connection
+ * option so we don't mutate global pg-types state shared across all pools.
+ */
+export function getDateAsStringTypeParsers(
+	pgp: PgpClient,
+): NonNullable<PgpConnectionParameters['types']> {
+	const { builtins } = pgp.pg.types;
+	const arrayParser = pgp.pg.types.arrayParser as unknown as ArrayParser;
+	const parseElements = (transform: (entry: string) => unknown) => (value: string) =>
+		arrayParser.create(value, transform).parse();
+
+	const overrides = new Map<number, (value: string) => unknown>([
+		[builtins.DATE, (value) => value],
+		[builtins.TIMESTAMP, parseDateToISO],
+		[builtins.TIMESTAMPTZ, parseDateToISO],
+		[DATE_ARRAY_TYPE_ID, parseElements((value) => value)],
+		[TIMESTAMP_ARRAY_TYPE_ID, parseElements(parseDateToISO)],
+		[TIMESTAMPTZ_ARRAY_TYPE_ID, parseElements(parseDateToISO)],
+	]);
+
+	return {
+		setTypeParser(
+			id: number,
+			formatOrParseFn: string | ((value: string) => unknown),
+			parseFn?: string | ((value: string) => unknown),
+		) {
+			const fn = parseFn ?? formatOrParseFn;
+			if (typeof fn === 'function') overrides.set(id, fn);
+		},
+		getTypeParser(id: number, format?: 'text' | 'binary') {
+			const override = overrides.get(id);
+			if (override && (format === undefined || format === 'text')) return override;
+			return pgp.pg.types.getTypeParser(id, format);
+		},
+	};
 }
 
 const getPostgresConfig = (
@@ -135,14 +188,18 @@ export async function configurePostgres(
 			receive: createReceiveHandler(options.largeNumbersOutput),
 		});
 
-		if (typeof options.nodeVersion === 'number' && options.nodeVersion >= 2.1) {
-			// Always return dates as ISO strings
+		const dbConfig = getPostgresConfig(credentials, options);
+
+		if (typeof options.nodeVersion === 'number' && options.nodeVersion >= 2.7) {
+			// Return DATE, TIME and array date/timestamp columns as strings too, via a
+			// per-connection type config that leaves global pg-types state untouched.
+			dbConfig.types = getDateAsStringTypeParsers(pgp);
+		} else if (typeof options.nodeVersion === 'number' && options.nodeVersion >= 2.1) {
+			// Return TIMESTAMP columns as ISO strings (DATE columns still return Date objects)
 			[pgp.pg.types.builtins.TIMESTAMP, pgp.pg.types.builtins.TIMESTAMPTZ].forEach((type) => {
 				pgp.pg.types.setTypeParser(type, parseDateToISO);
 			});
 		}
-
-		const dbConfig = getPostgresConfig(credentials, options);
 
 		if (!credentials.sshTunnel) {
 			const db = pgp(dbConfig);
