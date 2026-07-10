@@ -1,3 +1,11 @@
+## [2.29.10](https://github.com/n8n-io/n8n/compare/n8n@2.29.9...n8n@2.29.10) (2026-07-10)
+
+
+### Bug Fixes
+
+* **editor:** Keep AI Assistant thread state intact on editor hand-off ([#33925](https://github.com/n8n-io/n8n/issues/33925)) ([3934a83](https://github.com/n8n-io/n8n/commit/3934a83e4757fac493446bc505d1edd3804c27c2))
+
+
 ## [2.29.9](https://github.com/n8n-io/n8n/compare/n8n@2.29.8...n8n@2.29.9) (2026-07-09)
 
 
