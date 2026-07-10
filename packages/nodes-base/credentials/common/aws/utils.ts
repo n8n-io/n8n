@@ -195,6 +195,15 @@ function isSupportedAwsRegion(region: string): region is AWSRegion {
 }
 
 /**
+ * Matches genuine AWS endpoint hosts (public and China partitions). Custom
+ * hostnames (API Gateway custom domains, proxies, S3-compatible stores) don't
+ * match, so labels mis-parsed as a region from them must not fail the request.
+ */
+function isAwsEndpointHostname(hostname: string): boolean {
+	return /\.amazonaws\.com(\.cn)?$/i.test(hostname);
+}
+
+/**
  * Ensures the region value belongs to the supported AWS regions list before it
  * is interpolated into request URLs or signing options. Anything outside the
  * known set is rejected with a controlled error.
@@ -241,10 +250,12 @@ export function parseAwsUrl(url: URL): { region: string | null; service: string 
  *   service that URL parsing can't reliably infer, without regressing
  *   callers that rely on the URL as the source of truth (the common case:
  *   no qs.service is set).
- * - `region` is only taken from the URL when it's a recognized AWS region. An
- *   unrecognized label (a malformed/mistyped host, or an odd endpoint shape the
- *   parser mis-split) throws a UserError, so the request fails fast with a clear
- *   message instead of signing with a bad region.
+ * - `region` is only taken from the URL when it's a recognized AWS region. On
+ *   an AWS endpoint host, an unrecognized label (a malformed/mistyped host, or
+ *   an odd endpoint shape the parser mis-split) throws a UserError, so the
+ *   request fails fast with a clear message instead of signing with a bad
+ *   region. On a custom (non-AWS) host, the second DNS label is usually not a
+ *   region at all, so the credential region is kept instead.
  */
 function resolveServiceAndRegion(
 	url: URL,
@@ -255,12 +266,13 @@ function resolveServiceAndRegion(
 	const resolvedService = service || parsed.service;
 	let resolvedRegion = region;
 	if (parsed.region) {
-		if (!isSupportedAwsRegion(parsed.region)) {
+		if (isSupportedAwsRegion(parsed.region)) {
+			resolvedRegion = parsed.region;
+		} else if (isAwsEndpointHostname(url.hostname)) {
 			throw new UserError(
 				`Unsupported AWS region "${parsed.region}" parsed from endpoint host ${url.hostname}`,
 			);
 		}
-		resolvedRegion = parsed.region;
 	}
 	return { service: resolvedService, region: resolvedRegion };
 }

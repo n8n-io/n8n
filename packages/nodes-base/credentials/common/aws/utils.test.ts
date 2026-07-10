@@ -884,4 +884,56 @@ describe('awsGetSignInOptionsAndUpdateRequest', () => {
 			expect(signOpts.service).toBe('bedrock');
 		});
 	});
+
+	describe('custom (non-AWS) endpoint hosts', () => {
+		it('keeps the credential region when the host label is not a region (uri branch)', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://myapi.example.com/prod/resource',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'execute-api',
+				'us-east-1',
+			);
+
+			expect(signOpts.region).toBe('us-east-1');
+		});
+
+		it('keeps the credential region when the host label is not a region (baseURL/url branch)', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					baseURL: 'https://sqs.mycompany.dev',
+					url: '/queue',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'eu-central-1',
+			);
+
+			expect(signOpts.region).toBe('eu-central-1');
+			expect(signOpts.service).toBe('sqs');
+		});
+
+		it('adopts a recognized region label from a custom host', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://sqs.us-west-2.mycompany.dev/queue',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.region).toBe('us-west-2');
+		});
+	});
 });
