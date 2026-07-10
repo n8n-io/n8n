@@ -2537,6 +2537,7 @@
 	"parameterInputList.callout.dismiss.confirm.text": "Do you want to permanently hide this?",
 	"parameterInputList.callout.dismiss.confirm.confirmButtonText": "Confirm",
 	"parameterInputList.callout.dismiss.confirm.cancelButtonText": "Cancel",
+	"parameterInputList.autoRequiresChatTriggerDescription": "Available when connected to a Chat Trigger node.",
 	"parameterOverride.overridePanelText": "Defined automatically by the <b>model</b>",
 	"parameterOverride.applyOverrideButtonTooltip": "Let the model define this parameter",
 	"parameterOverride.descriptionTooltip": "Explain to the LLM how it should generate this value, a good, specific description would allow LLMs to produce expected results much more often",

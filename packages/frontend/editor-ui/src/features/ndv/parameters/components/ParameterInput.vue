@@ -789,6 +789,10 @@ function isRemoteParameterOption(option: INodePropertyOptions) {
 	return remoteParameterOptionsKeys.value.includes(option.name);
 }
 
+function isOptionDisabled(option: INodePropertyOptions) {
+	return 'disabled' in option && option.disabled === true;
+}
+
 function credentialSelected(updateInformation: INodeUpdatePropertiesInformation) {
 	// Update the values on the node
 	workflowDocumentStore?.value?.updateNodeProperties(updateInformation);
@@ -1985,6 +1989,7 @@ onUpdated(async () => {
 					v-for="option in parameterOptions"
 					:key="option.value.toString()"
 					:value="option.value"
+					:disabled="isOptionDisabled(option)"
 					:label="getOptionsOptionDisplayName(option)"
 					data-test-id="parameter-input-item"
 				>
@@ -2024,6 +2029,7 @@ onUpdated(async () => {
 					v-for="option in parameterOptions"
 					:key="option.value.toString()"
 					:value="option.value"
+					:disabled="isOptionDisabled(option)"
 					:label="getOptionsOptionDisplayName(option)"
 				>
 					<div class="list-option">
