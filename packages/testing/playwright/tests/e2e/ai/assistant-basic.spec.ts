@@ -19,22 +19,27 @@ type ChatRequestBody = {
 	};
 };
 
-test.describe('AI Assistant::disabled', () => {
-	test('does not show assistant button if feature is disabled', async ({
-		n8n,
-		setupRequirements,
-	}) => {
-		await setupRequirements(aiDisabledRequirements);
-		await n8n.page.goto('/workflow/new');
-		await expect(n8n.canvas.canvasPane()).toBeVisible();
-		await expect(n8n.aiAssistant.getAskAssistantFloatingButton()).toHaveCount(0);
-	});
-});
+test.describe(
+	'AI Assistant::disabled',
+	{
+		annotation: [{ type: 'owner', description: 'AI' }],
+	},
+	() => {
+		test('does not show assistant button if feature is disabled', async ({
+			n8n,
+			setupRequirements,
+		}) => {
+			await setupRequirements(aiDisabledRequirements);
+			await n8n.start.fromBlankCanvas();
+			await expect(n8n.aiAssistant.getAskAssistantFloatingButton()).toHaveCount(0);
+		});
+	},
+);
 
 test.describe('AI Assistant::enabled', () => {
 	test('renders placeholder UI', async ({ n8n, setupRequirements }) => {
 		await setupRequirements(aiEnabledRequirements);
-		await n8n.page.goto('/workflow/new');
+		await n8n.start.fromBlankCanvas();
 
 		await expect(n8n.aiAssistant.getAskAssistantCanvasActionButton()).toBeVisible();
 
@@ -57,7 +62,7 @@ test.describe('AI Assistant::enabled', () => {
 
 	test('should show resizer when chat is open', async ({ n8n, setupRequirements }) => {
 		await setupRequirements(aiEnabledRequirements);
-		await n8n.page.goto('/workflow/new');
+		await n8n.start.fromBlankCanvas();
 
 		await n8n.aiAssistant.getAskAssistantCanvasActionButton().click();
 
@@ -159,10 +164,7 @@ test.describe('AI Assistant::enabled', () => {
 
 		await expect(n8n.aiAssistant.getNewAssistantSessionModal()).toBeVisible();
 
-		await n8n.aiAssistant
-			.getNewAssistantSessionModal()
-			.getByRole('button', { name: 'Start new session' })
-			.click();
+		await n8n.aiAssistant.getStartNewSessionButton().click();
 
 		await expect(n8n.aiAssistant.getChatMessagesAll()).toHaveCount(1);
 	});
@@ -193,7 +195,7 @@ test.describe('AI Assistant::enabled', () => {
 		setupRequirements,
 	}) => {
 		await setupRequirements(aiEnabledRequirements);
-		await n8n.page.goto('/workflow/new');
+		await n8n.start.fromBlankCanvas();
 
 		await n8n.page.route('**/rest/ai/chat', async (route) => {
 			const requestBody = route.request().postDataJSON() as ChatRequestBody;
@@ -251,7 +253,7 @@ test.describe('AI Assistant::enabled', () => {
 		setupRequirements,
 	}) => {
 		await setupRequirements(aiEnabledWithSimpleChatRequirements);
-		await n8n.page.goto('/workflow/new');
+		await n8n.start.fromBlankCanvas();
 
 		await n8n.canvas.addInitialNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		await n8n.ndv.clickBackToCanvasButton();
@@ -272,7 +274,7 @@ test.describe('AI Assistant::enabled', () => {
 		setupRequirements,
 	}) => {
 		await setupRequirements(aiEnabledWithSimpleChatRequirements);
-		await n8n.page.goto('/workflow/new');
+		await n8n.start.fromBlankCanvas();
 
 		await n8n.canvas.addInitialNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		await n8n.ndv.clickBackToCanvasButton();

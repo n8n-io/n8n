@@ -30,7 +30,7 @@ export function useBugReporting() {
 	const getReportingURL = () => {
 		const url = new URL(BASE_FORUM_URL);
 
-		const report = `${REPORT_TEMPLATE}\n${debugInfo.generateDebugInfo({ skipSensitive: true, secondaryHeader: true })}}`;
+		const report = `${REPORT_TEMPLATE}\n${debugInfo.generateDebugInfo({ skipSensitive: true, secondaryHeader: true })}`;
 		url.searchParams.append('body', report);
 
 		return url.toString();

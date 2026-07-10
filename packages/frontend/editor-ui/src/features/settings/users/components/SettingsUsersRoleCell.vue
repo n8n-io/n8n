@@ -1,88 +1,100 @@
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
-import { ROLE, type Role, type UsersList } from '@n8n/api-types';
-import { ElRadio } from 'element-plus';
-import { N8nActionDropdown, N8nIcon, N8nText, type ActionDropdownItem } from '@n8n/design-system';
-const props = defineProps<{
-	data: UsersList['items'][number];
-	roles: Partial<Record<Role, { label: string; desc: string }>>;
-	actions: Array<ActionDropdownItem<Role>>;
-}>();
+import { ROLE, type UsersList } from '@n8n/api-types';
+import type { Role } from '@n8n/permissions';
+import { computed, ref } from 'vue';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useRolesStore } from '@/app/stores/roles.store';
+import { hasPermission } from '@/app/utils/rbac/permissions';
+import { VIEWS } from '@/app/constants';
+import {
+	TOTAL_INSTANCE_PERMISSIONS,
+	countGrantedInstancePermissions,
+} from '@/features/roles/instance/instanceRoleScopes';
+import RoleSelectDropdown from '@/features/roles/components/RoleSelectDropdown.vue';
+import CustomRolesUpgradeModal from '@/features/roles/components/CustomRolesUpgradeModal.vue';
+
+const props = withDefaults(
+	defineProps<{
+		data: UsersList['items'][number];
+		loading?: boolean;
+	}>(),
+	{ loading: false },
+);
 
 const emit = defineEmits<{
-	'update:role': [payload: { role: Role; userId: string }];
+	'update:role': [payload: { role: string; userId: string }];
 }>();
 
-const selectedRole = ref<Role>(props.data.role ?? ROLE.Default);
-const isEditable = computed(() => props.data.role !== ROLE.Owner);
-const roleLabel = computed(() => props.roles[selectedRole.value]?.label);
+const settingsStore = useSettingsStore();
+const rolesStore = useRolesStore();
 
-const onActionSelect = (role: Role) => {
-	emit('update:role', {
-		role,
-		userId: props.data.id,
-	});
+const currentRole = computed<string>(() => props.data.role ?? ROLE.Default);
+// Resolve the label against the full global list (incl. owner) so non-editable rows render.
+const selectedRole = computed(() =>
+	rolesStore.roles.global.find((role) => role.slug === currentRole.value),
+);
+const isEditable = computed(
+	() => currentRole.value !== ROLE.Owner && currentRole.value !== ROLE.Default,
+);
+
+const hasCustomRolesLicense = computed(() => settingsStore.isCustomRolesFeatureEnabled);
+const canChangeRole = computed(() =>
+	hasPermission(['rbac'], { rbac: { scope: 'user:changeRole' } }),
+);
+
+const canManageRoles = computed(() => hasPermission(['rbac'], { rbac: { scope: 'role:manage' } }));
+
+// Assignable instance roles (sorted, owner excluded).
+const assignableRoles = computed(() => rolesStore.processedInstanceRoles);
+const systemRoles = computed(() => assignableRoles.value.filter((role) => role.systemRole));
+const customRoles = computed(() => rolesStore.customInstanceRoles);
+
+const permissionCountFor = (role: Role) => countGrantedInstancePermissions(role.scopes ?? []);
+
+const upgradeModalVisible = ref(false);
+
+const onRoleUpdate = (role: string) => {
+	emit('update:role', { role, userId: props.data.id });
 };
 </script>
 
 <template>
-	<div>
-		<N8nActionDropdown
-			v-if="isEditable"
-			placement="bottom-start"
-			:items="props.actions"
-			data-test-id="user-role-dropdown"
-			@select="onActionSelect"
-		>
-			<template #activator>
-				<button :class="$style.roleLabel" type="button">
-					<N8nText color="text-dark">{{ roleLabel }}</N8nText>
-					<N8nIcon color="text-dark" icon="chevron-down" size="large" />
-				</button>
-			</template>
-			<template #menuItem="item">
-				<ElRadio
-					:model-value="selectedRole"
-					:label="item.id"
-					@update:model-value="selectedRole = item.id as Role"
-				>
-					<span :class="$style.radioLabel">
-						<N8nText color="text-dark" class="pb-3xs">{{ item.label }}</N8nText>
-						<N8nText color="text-dark" size="small">{{
-							props.roles[item.id as Role]?.desc
-						}}</N8nText>
-					</span>
-				</ElRadio>
-			</template>
-		</N8nActionDropdown>
-		<span v-else>{{ roleLabel }}</span>
+	<div :class="$style.roleCell">
+		<RoleSelectDropdown
+			v-if="isEditable && canChangeRole"
+			:system-roles="systemRoles"
+			:custom-roles="customRoles"
+			:current-role="currentRole"
+			:has-custom-roles-license="hasCustomRolesLicense"
+			:can-manage-roles="canManageRoles"
+			:add-custom-role-route-name="VIEWS.INSTANCE_NEW_ROLE"
+			:loading="loading"
+			:permission-count-fn="permissionCountFor"
+			:total-permissions="TOTAL_INSTANCE_PERMISSIONS"
+			:edit-route-name="VIEWS.INSTANCE_ROLE_SETTINGS"
+			:view-route-name="VIEWS.INSTANCE_ROLE_VIEW"
+			:from-view="VIEWS.USERS_SETTINGS"
+			test-id="user-role-dropdown"
+			@update:role="onRoleUpdate"
+			@system-role-upgrade-needed="upgradeModalVisible = true"
+		/>
+		<span v-else :class="$style.roleName">{{ selectedRole?.displayName }}</span>
+		<CustomRolesUpgradeModal v-model="upgradeModalVisible" />
 	</div>
 </template>
 
 <style lang="scss" module>
-.roleLabel {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	background: transparent;
-	padding: 0;
-	border: none;
-	cursor: pointer;
+/* Wrapper renders as if it weren't there. */
+.roleCell {
+	display: contents;
 }
 
-.radioLabel {
-	max-width: 268px;
-	display: inline-flex;
-	flex-direction: column;
-	padding: var(--spacing--2xs) 0;
-
-	span {
-		white-space: normal;
-	}
-}
-
-.removeUser {
+/* Non-editable role name — truncates so it doesn't overflow the adjacent column */
+.roleName {
 	display: block;
-	padding: var(--spacing--2xs) var(--spacing--lg);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 200px;
 }
 </style>

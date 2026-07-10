@@ -1,8 +1,33 @@
+import { ref, shallowRef } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { flushPromises } from '@vue/test-utils';
 import SetupWorkflowCredentialsButton from './SetupWorkflowCredentialsButton.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
+import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
+import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { SETUP_CREDENTIALS_MODAL_KEY, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+
+const mockDoesNodeHaveAllCredentialsFilled = vi.fn();
+
+vi.mock('@/app/utils/nodes/nodeTransforms', async () => {
+	const actual = await vi.importActual('@/app/utils/nodes/nodeTransforms');
+	return {
+		...actual,
+		doesNodeHaveAllCredentialsFilled: (...args: unknown[]) =>
+			mockDoesNodeHaveAllCredentialsFilled(...args),
+	};
+});
+
+const mockRouteQuery = vi.fn<() => Record<string, string | undefined>>(() => ({}));
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -16,13 +41,38 @@ vi.mock('vue-router', async () => {
 		useRoute: () => ({
 			params,
 			location,
+			get query() {
+				return mockRouteQuery();
+			},
 		}),
 	};
 });
 
 let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
+let focusPanelStore: ReturnType<typeof mockedStore<typeof useFocusPanelStore>>;
+let readyToRunStore: ReturnType<typeof mockedStore<typeof useReadyToRunStore>>;
+let setupPanelStore: ReturnType<typeof mockedStore<typeof useSetupPanelStore>>;
 
-const renderComponent = createComponentRenderer(SetupWorkflowCredentialsButton);
+const mockGetVariant = vi.fn();
+
+vi.mock('@/app/stores/posthog.store', () => ({
+	usePostHog: () => ({
+		getVariant: mockGetVariant,
+	}),
+}));
+
+const workflowDocumentStoreRef = shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>(
+	null,
+);
+
+const renderComponent = createComponentRenderer(SetupWorkflowCredentialsButton, {
+	global: {
+		provide: {
+			[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+		},
+	},
+});
 
 const EMPTY_WORKFLOW = {
 	id: '__EMPTY__',
@@ -39,20 +89,447 @@ const EMPTY_WORKFLOW = {
 	meta: { templateId: '2722', templateCredsSetupCompleted: true },
 };
 
+function setWorkflowDocumentStoreState(meta: Record<string, unknown>, nodes: unknown[] = []) {
+	const workflowDocumentStore = useWorkflowDocumentStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
+	// Note: createTestingPinia() stubs actions by default, so setMeta()/getNodes() won't work
+	Object.defineProperty(workflowDocumentStore, 'meta', { value: meta, configurable: true });
+	Object.defineProperty(workflowDocumentStore, 'getNodes', {
+		value: () => nodes.map((n) => ({ ...(n as Record<string, unknown>) })),
+		configurable: true,
+	});
+	Object.defineProperty(workflowDocumentStore, 'allNodes', { value: nodes, configurable: true });
+	workflowDocumentStoreRef.value = workflowDocumentStore;
+}
+
 describe('SetupWorkflowCredentialsButton', () => {
 	beforeEach(() => {
+		vi.clearAllMocks();
 		createTestingPinia();
 		workflowsStore = mockedStore(useWorkflowsStore);
+		uiStore = mockedStore(useUIStore);
+		focusPanelStore = mockedStore(useFocusPanelStore);
+		readyToRunStore = mockedStore(useReadyToRunStore);
+		setupPanelStore = mockedStore(useSetupPanelStore);
 	});
 
 	it('renders', () => {
-		workflowsStore.workflow = EMPTY_WORKFLOW;
+		workflowsStore.workflowId = EMPTY_WORKFLOW.id;
+		setWorkflowDocumentStoreState(EMPTY_WORKFLOW.meta, []);
 		expect(() => renderComponent()).not.toThrow();
 	});
 
 	it('does not render the button if there are no nodes', () => {
-		workflowsStore.workflow = EMPTY_WORKFLOW;
+		workflowsStore.workflowId = EMPTY_WORKFLOW.id;
+		setWorkflowDocumentStoreState(EMPTY_WORKFLOW.meta, []);
 		const { queryByTestId } = renderComponent();
 		expect(queryByTestId('setup-credentials-button')).toBeNull();
+	});
+
+	it('disables button when setup panel feature is enabled and setup sidebar is open', () => {
+		const workflowWithNodes = {
+			...EMPTY_WORKFLOW,
+			meta: { templateId: '2722', templateCredsSetupCompleted: false },
+			nodes: [
+				{
+					id: '1',
+					name: 'OpenAI Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+				},
+			],
+		};
+		workflowsStore.workflowId = workflowWithNodes.id;
+		setWorkflowDocumentStoreState(workflowWithNodes.meta, workflowWithNodes.nodes);
+		mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(false);
+		setupPanelStore.isFeatureEnabled = true;
+		focusPanelStore.focusPanelActive = true;
+		focusPanelStore.selectedTab = 'setup';
+
+		const { getByTestId } = renderComponent();
+		expect(getByTestId('setup-credentials-button')).toBeDisabled();
+	});
+
+	it('does not disable button when setup panel feature is enabled but sidebar is closed', () => {
+		const workflowWithNodes = {
+			...EMPTY_WORKFLOW,
+			meta: { templateId: '2722', templateCredsSetupCompleted: false },
+			nodes: [
+				{
+					id: '1',
+					name: 'OpenAI Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+				},
+			],
+		};
+		workflowsStore.workflowId = workflowWithNodes.id;
+		setWorkflowDocumentStoreState(workflowWithNodes.meta, workflowWithNodes.nodes);
+		mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(false);
+		setupPanelStore.isFeatureEnabled = true;
+		focusPanelStore.focusPanelActive = false;
+
+		const { getByTestId } = renderComponent();
+		expect(getByTestId('setup-credentials-button')).not.toBeDisabled();
+	});
+
+	it('does not disable button when setup panel feature is disabled even if sidebar is open', () => {
+		const workflowWithNodes = {
+			...EMPTY_WORKFLOW,
+			meta: { templateId: '2722', templateCredsSetupCompleted: false },
+			nodes: [
+				{
+					id: '1',
+					name: 'OpenAI Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+				},
+			],
+		};
+		workflowsStore.workflowId = workflowWithNodes.id;
+		setWorkflowDocumentStoreState(workflowWithNodes.meta, workflowWithNodes.nodes);
+		mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(false);
+		setupPanelStore.isFeatureEnabled = false;
+		focusPanelStore.focusPanelActive = true;
+		focusPanelStore.selectedTab = 'setup';
+
+		const { getByTestId } = renderComponent();
+		expect(getByTestId('setup-credentials-button')).not.toBeDisabled();
+	});
+
+	it('does not auto-open modal for ready-to-run AI workflows even when showButton would be true', () => {
+		const readyToRunWorkflow = {
+			...EMPTY_WORKFLOW,
+			meta: { templateId: 'ready-to-run-ai-workflow', templateCredsSetupCompleted: false },
+			nodes: [
+				{
+					id: '1',
+					name: 'OpenAI Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+				},
+			],
+		};
+		workflowsStore.workflowId = readyToRunWorkflow.id;
+		setWorkflowDocumentStoreState(readyToRunWorkflow.meta, readyToRunWorkflow.nodes);
+
+		mockGetVariant.mockReturnValue(TEMPLATE_SETUP_EXPERIENCE.variant);
+
+		readyToRunStore.isReadyToRunTemplateId.mockReturnValue(true);
+
+		renderComponent();
+
+		// Modal should NOT be opened for ready-to-run workflows
+		expect(uiStore.openModal).not.toHaveBeenCalled();
+	});
+
+	it('calls isReadyToRunTemplateId with the correct template ID', async () => {
+		const templateWorkflow = {
+			...EMPTY_WORKFLOW,
+			meta: { templateId: 'ready-to-run-ai-workflow-v5', templateCredsSetupCompleted: false },
+			nodes: [],
+		};
+		workflowsStore.workflowId = templateWorkflow.id;
+		setWorkflowDocumentStoreState(templateWorkflow.meta, []);
+
+		mockGetVariant.mockReturnValue(TEMPLATE_SETUP_EXPERIENCE.variant);
+		mockRouteQuery.mockReturnValue({ templateId: 'ready-to-run-ai-workflow-v5' });
+
+		renderComponent();
+		await flushPromises();
+
+		expect(readyToRunStore.isReadyToRunTemplateId).toHaveBeenCalledWith(
+			'ready-to-run-ai-workflow-v5',
+		);
+	});
+
+	describe('button visibility with setup panel feature enabled', () => {
+		const workflowWithNodes = {
+			...EMPTY_WORKFLOW,
+			meta: { templateId: '2722', templateCredsSetupCompleted: false },
+			nodes: [
+				{
+					id: '1',
+					name: 'OpenAI Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+				},
+			],
+		};
+
+		it('hides the button once all credentials are filled', () => {
+			workflowsStore.workflowId = workflowWithNodes.id;
+			setWorkflowDocumentStoreState(workflowWithNodes.meta, workflowWithNodes.nodes);
+			setupPanelStore.isFeatureEnabled = true;
+			mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(true);
+
+			const { queryByTestId } = renderComponent();
+			expect(queryByTestId('setup-credentials-button')).toBeNull();
+		});
+
+		it('hides the button when template setup is already completed', () => {
+			workflowsStore.workflowId = workflowWithNodes.id;
+			setWorkflowDocumentStoreState(
+				{ templateId: '2722', templateCredsSetupCompleted: true },
+				workflowWithNodes.nodes,
+			);
+			setupPanelStore.isFeatureEnabled = true;
+			mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(false);
+
+			const { queryByTestId } = renderComponent();
+			expect(queryByTestId('setup-credentials-button')).toBeNull();
+		});
+
+		it('shows the button while credentials are still missing', () => {
+			workflowsStore.workflowId = workflowWithNodes.id;
+			setWorkflowDocumentStoreState(workflowWithNodes.meta, workflowWithNodes.nodes);
+			setupPanelStore.isFeatureEnabled = true;
+			mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(false);
+
+			const { getByTestId } = renderComponent();
+			expect(getByTestId('setup-credentials-button')).toBeVisible();
+		});
+
+		it('ignores disabled nodes when deciding whether all credentials are filled', () => {
+			const nodes = [
+				{
+					id: '1',
+					name: 'OpenAI Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'Disabled Slack',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+					position: [200, 0] as [number, number],
+					parameters: {},
+					disabled: true,
+				},
+			];
+			workflowsStore.workflowId = workflowWithNodes.id;
+			setWorkflowDocumentStoreState(
+				{ templateId: '2722', templateCredsSetupCompleted: false },
+				nodes,
+			);
+			setupPanelStore.isFeatureEnabled = true;
+			// The enabled node has its credentials filled; the disabled node does not.
+			mockDoesNodeHaveAllCredentialsFilled.mockImplementation(
+				(_provider: unknown, node: { id: string }) => node.id === '1',
+			);
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('setup-credentials-button')).toBeNull();
+			// The disabled node must never be checked for credentials.
+			expect(mockDoesNodeHaveAllCredentialsFilled).not.toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ id: '2' }),
+			);
+		});
+	});
+
+	describe('modal auto-open on mount', () => {
+		const workflowWithUnfilledCredentials = {
+			...EMPTY_WORKFLOW,
+			meta: { templateId: '123', templateCredsSetupCompleted: false },
+			nodes: [
+				{
+					id: '1',
+					name: 'OpenAI Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+				},
+			],
+		};
+
+		it('opens modal when all conditions are met and setup panel is disabled', async () => {
+			workflowsStore.workflowId = workflowWithUnfilledCredentials.id;
+			setWorkflowDocumentStoreState(
+				workflowWithUnfilledCredentials.meta,
+				workflowWithUnfilledCredentials.nodes,
+			);
+			mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(false);
+			mockGetVariant.mockReturnValue(TEMPLATE_SETUP_EXPERIENCE.variant);
+			readyToRunStore.isReadyToRunTemplateId.mockReturnValue(false);
+			setupPanelStore.isFeatureEnabled = false;
+			mockRouteQuery.mockReturnValue({ templateId: '123' });
+
+			renderComponent();
+			await flushPromises();
+
+			expect(uiStore.openModal).toHaveBeenCalledWith(SETUP_CREDENTIALS_MODAL_KEY);
+		});
+
+		it('opens setup panel when all conditions are met and setup panel is enabled', async () => {
+			workflowsStore.workflowId = workflowWithUnfilledCredentials.id;
+			setWorkflowDocumentStoreState(
+				workflowWithUnfilledCredentials.meta,
+				workflowWithUnfilledCredentials.nodes,
+			);
+			mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(false);
+			mockGetVariant.mockReturnValue(TEMPLATE_SETUP_EXPERIENCE.variant);
+			readyToRunStore.isReadyToRunTemplateId.mockReturnValue(false);
+			setupPanelStore.isFeatureEnabled = true;
+			mockRouteQuery.mockReturnValue({ templateId: '123' });
+
+			renderComponent();
+			await flushPromises();
+
+			expect(focusPanelStore.setSelectedTab).toHaveBeenCalledWith('setup');
+			expect(focusPanelStore.openFocusPanel).toHaveBeenCalled();
+			expect(uiStore.openModal).not.toHaveBeenCalled();
+		});
+
+		it('does not open modal when not on template import route (no templateId in query)', () => {
+			workflowsStore.workflowId = workflowWithUnfilledCredentials.id;
+			setWorkflowDocumentStoreState(
+				workflowWithUnfilledCredentials.meta,
+				workflowWithUnfilledCredentials.nodes,
+			);
+			mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(false);
+			mockGetVariant.mockReturnValue(TEMPLATE_SETUP_EXPERIENCE.variant);
+			readyToRunStore.isReadyToRunTemplateId.mockReturnValue(false);
+			mockRouteQuery.mockReturnValue({});
+
+			renderComponent();
+
+			expect(uiStore.openModal).not.toHaveBeenCalled();
+		});
+
+		it('does not open modal when feature flag is disabled', () => {
+			workflowsStore.workflowId = workflowWithUnfilledCredentials.id;
+			setWorkflowDocumentStoreState(
+				workflowWithUnfilledCredentials.meta,
+				workflowWithUnfilledCredentials.nodes,
+			);
+			mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(false);
+			mockGetVariant.mockReturnValue('control');
+			readyToRunStore.isReadyToRunTemplateId.mockReturnValue(false);
+			mockRouteQuery.mockReturnValue({ templateId: '123' });
+
+			renderComponent();
+
+			expect(uiStore.openModal).not.toHaveBeenCalled();
+		});
+
+		it('does not open modal when template credentials setup is already completed', () => {
+			const completedWorkflow = {
+				...workflowWithUnfilledCredentials,
+				meta: { templateId: '123', templateCredsSetupCompleted: true },
+			};
+			workflowsStore.workflowId = completedWorkflow.id;
+			setWorkflowDocumentStoreState(completedWorkflow.meta, completedWorkflow.nodes);
+			mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(false);
+			mockGetVariant.mockReturnValue(TEMPLATE_SETUP_EXPERIENCE.variant);
+			readyToRunStore.isReadyToRunTemplateId.mockReturnValue(false);
+			mockRouteQuery.mockReturnValue({ templateId: '123' });
+
+			renderComponent();
+
+			expect(uiStore.openModal).not.toHaveBeenCalled();
+		});
+
+		it('does not open modal when workflow is not created from a template', () => {
+			const nonTemplateWorkflow = {
+				...workflowWithUnfilledCredentials,
+				meta: {},
+			};
+			workflowsStore.workflowId = nonTemplateWorkflow.id;
+			setWorkflowDocumentStoreState(nonTemplateWorkflow.meta, nonTemplateWorkflow.nodes);
+			mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(false);
+			mockGetVariant.mockReturnValue(TEMPLATE_SETUP_EXPERIENCE.variant);
+			readyToRunStore.isReadyToRunTemplateId.mockReturnValue(false);
+			mockRouteQuery.mockReturnValue({ templateId: '123' });
+
+			renderComponent();
+
+			expect(uiStore.openModal).not.toHaveBeenCalled();
+		});
+
+		it('does not open modal when all credentials are already filled', () => {
+			workflowsStore.workflowId = workflowWithUnfilledCredentials.id;
+			setWorkflowDocumentStoreState(
+				workflowWithUnfilledCredentials.meta,
+				workflowWithUnfilledCredentials.nodes,
+			);
+			mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(true);
+			mockGetVariant.mockReturnValue(TEMPLATE_SETUP_EXPERIENCE.variant);
+			readyToRunStore.isReadyToRunTemplateId.mockReturnValue(false);
+			mockRouteQuery.mockReturnValue({ templateId: '123' });
+
+			renderComponent();
+
+			expect(uiStore.openModal).not.toHaveBeenCalled();
+		});
+
+		it('opens modal once conditions become true after mount (nodes load late)', async () => {
+			// Nodes/node types load asynchronously, so the auto-open conditions can
+			// only hold after mount. The modal must still open reactively.
+			const nodesRef = ref<unknown[]>([]);
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowWithUnfilledCredentials.id),
+			);
+			Object.defineProperty(workflowDocumentStore, 'meta', {
+				value: workflowWithUnfilledCredentials.meta,
+				configurable: true,
+			});
+			Object.defineProperty(workflowDocumentStore, 'allNodes', {
+				get: () => nodesRef.value,
+				configurable: true,
+			});
+			workflowsStore.workflowId = workflowWithUnfilledCredentials.id;
+			workflowDocumentStoreRef.value = workflowDocumentStore;
+
+			mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(false);
+			mockGetVariant.mockReturnValue(TEMPLATE_SETUP_EXPERIENCE.variant);
+			readyToRunStore.isReadyToRunTemplateId.mockReturnValue(false);
+			setupPanelStore.isFeatureEnabled = false;
+			mockRouteQuery.mockReturnValue({ templateId: '123' });
+
+			renderComponent();
+			await flushPromises();
+
+			// No nodes yet -> all credentials appear filled -> modal stays closed.
+			expect(uiStore.openModal).not.toHaveBeenCalled();
+
+			// Nodes finish loading with unfilled credentials.
+			nodesRef.value = workflowWithUnfilledCredentials.nodes;
+			await flushPromises();
+
+			expect(uiStore.openModal).toHaveBeenCalledWith(SETUP_CREDENTIALS_MODAL_KEY);
+		});
+
+		it('does not open modal for ready-to-run workflows', () => {
+			workflowsStore.workflowId = workflowWithUnfilledCredentials.id;
+			setWorkflowDocumentStoreState(
+				workflowWithUnfilledCredentials.meta,
+				workflowWithUnfilledCredentials.nodes,
+			);
+			mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(false);
+			mockGetVariant.mockReturnValue(TEMPLATE_SETUP_EXPERIENCE.variant);
+			readyToRunStore.isReadyToRunTemplateId.mockReturnValue(true);
+			mockRouteQuery.mockReturnValue({ templateId: '123' });
+
+			renderComponent();
+
+			expect(uiStore.openModal).not.toHaveBeenCalled();
+		});
 	});
 });

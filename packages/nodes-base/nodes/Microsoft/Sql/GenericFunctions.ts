@@ -16,7 +16,7 @@ import type { ITables, OperationInputData } from './interfaces';
  */
 export function copyInputItem(item: INodeExecutionData, properties: string[]): IDataObject {
 	// Prepare the data to insert and copy it to be returned
-	const newItem: IDataObject = {};
+	const newItem: IDataObject = Object.create(null);
 	for (const property of properties) {
 		if (item.json[property] === undefined) {
 			newItem[property] = null;
@@ -44,20 +44,21 @@ export function createTableStruct(
 		const table = getNodeParam('table', index) as string;
 		const columnString = getNodeParam('columns', index) as string;
 		const columns = columnString.split(',').map((column) => column.trim());
+
 		const itemCopy = copyInputItem(item, columns.concat(additionalProperties));
 		const keyParam = keyName ? (getNodeParam(keyName, index) as string) : undefined;
-		if (tables[table] === undefined) {
-			tables[table] = {};
+		if (!Object.hasOwn(tables, table)) {
+			tables[table] = Object.create(null);
 		}
-		if (tables[table][columnString] === undefined) {
+		if (!Object.hasOwn(tables[table], columnString)) {
 			tables[table][columnString] = [];
 		}
 		if (keyName) {
 			itemCopy[keyName] = keyParam;
 		}
-		tables[table][columnString].push(itemCopy);
+		(tables[table][columnString] as IDataObject[]).push(itemCopy);
 		return tables;
-	}, {} as ITables);
+	}, Object.create(null) as ITables);
 }
 
 /**
@@ -89,7 +90,7 @@ export async function executeQueryQueue(
 export function formatColumns(columns: string) {
 	return columns
 		.split(',')
-		.map((column) => `[${column.trim()}]`)
+		.map((column) => escapeIdentifier(column.trim()))
 		.join(', ');
 }
 
@@ -114,14 +115,30 @@ export function configurePool(credentials: IDataObject) {
 	return new mssql.ConnectionPool(config);
 }
 
-const escapeTableName = (table: string) => {
+export function escapeIdentifier(identifier: string) {
+	if (identifier.startsWith('[') && identifier.endsWith(']')) {
+		identifier = identifier.slice(1, -1);
+	}
+
+	return `[${identifier.replaceAll(']', ']]')}]`;
+}
+
+export function escapeTableName(table: string) {
 	table = table.trim();
 	if (table.startsWith('[') && table.endsWith(']')) {
-		return table;
-	} else {
-		return `[${table}]`;
+		return (
+			table
+				// remove outer brackets
+				.slice(1, -1)
+				// split by inner parts, for example when database name is provided in form of [db].[dbo].[receipts]
+				.split('].[')
+				.map((part) => escapeIdentifier(`[${part}]`))
+				.join('.')
+		);
 	}
-};
+
+	return escapeIdentifier(table);
+}
 
 const MSSQL_PARAMETER_LIMIT = 2100;
 
@@ -182,11 +199,12 @@ export async function updateOperation(tables: ITables, pool: mssql.ConnectionPoo
 				const columns = columnString.split(',').map((column) => column.trim());
 
 				const setValues: string[] = [];
-				const condition = `${item.updateKey} = @condition`;
-				request.input('condition', item[item.updateKey as string]);
+				const updateKey = item.updateKey as string;
+				const condition = `${escapeIdentifier(updateKey)} = @condition`;
+				request.input('condition', item[updateKey]);
 
 				for (const [index, col] of columns.entries()) {
-					setValues.push(`[${col}] = @v${index}`);
+					setValues.push(`${escapeIdentifier(col)} = @v${index}`);
 					request.input(`v${index}`, item[col]);
 				}
 
@@ -221,7 +239,7 @@ export async function deleteOperation(tables: ITables, pool: mssql.ConnectionPoo
 
 					const query = `DELETE FROM ${escapeTableName(
 						table,
-					)} WHERE [${deleteKey}] IN (${valuesPlaceholder.join(', ')});`;
+					)} WHERE ${escapeIdentifier(deleteKey)} IN (${valuesPlaceholder.join(', ')});`;
 
 					return await request.query(query);
 				});
@@ -242,8 +260,21 @@ export async function executeSqlQueryAndPrepareResults(
 	pool: mssql.ConnectionPool,
 	rawQuery: string,
 	itemIndex: number,
+	queryValues: Array<string | number | boolean | IDataObject> = [],
 ): Promise<INodeExecutionData[]> {
-	const rawResult: IResult<any> = await pool.request().query(rawQuery);
+	const request = pool.request();
+
+	let processedQuery = rawQuery;
+	if (queryValues.length > 0) {
+		// Process in reverse order so $10 is replaced before $1
+		for (let i = queryValues.length; i >= 1; i--) {
+			const paramName = `p${i}`;
+			processedQuery = processedQuery.replace(new RegExp(`\\$${i}(?!\\d)`, 'g'), `@${paramName}`);
+			request.input(paramName, queryValues[i - 1]);
+		}
+	}
+
+	const rawResult: IResult<any> = await request.query(processedQuery);
 	const { recordsets, rowsAffected } = rawResult;
 	if (Array.isArray(recordsets) && recordsets.length > 0) {
 		const result: IDataObject[] = recordsets.length > 1 ? flatten(recordsets) : recordsets[0];

@@ -1,8 +1,8 @@
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Redis as SingleNodeClient } from 'ioredis';
-import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import type { RedisClientService } from '@/services/redis-client.service';
 
@@ -141,6 +141,34 @@ describe('Publisher', () => {
 				}),
 			);
 		});
+
+		it.each([
+			'display-workflow-activation',
+			'display-workflow-deactivation',
+			'display-workflow-activation-error',
+		] as const)('should not debounce `%s`', async (command) => {
+			const publisher = new Publisher(
+				logger,
+				redisClientService,
+				instanceSettings,
+				executionsConfig,
+				globalConfig,
+			);
+			const msg = mock<PubSub.Command>({ command });
+
+			await publisher.publishCommand(msg);
+
+			expect(client.publish).toHaveBeenCalledWith(
+				'n8n:n8n.commands',
+				JSON.stringify({
+					...msg,
+					_isMockObject: true,
+					senderId: hostId,
+					selfSend: false,
+					debounce: false,
+				}),
+			);
+		});
 	});
 
 	describe('publishWorkerResponse', () => {
@@ -159,6 +187,61 @@ describe('Publisher', () => {
 			await publisher.publishWorkerResponse(msg);
 
 			expect(client.publish).toHaveBeenCalledWith('n8n:n8n.worker-response', JSON.stringify(msg));
+		});
+	});
+
+	describe('publishMcpRelay', () => {
+		it('should do nothing if not in scaling mode', async () => {
+			// Clear previous mock calls from other tests
+			client.publish.mockClear();
+
+			const regularModeConfig = mockInstance(ExecutionsConfig, { mode: 'regular' });
+			const publisher = new Publisher(
+				logger,
+				redisClientService,
+				instanceSettings,
+				regularModeConfig,
+				globalConfig,
+			);
+			const msg = { sessionId: 'session-123', messageId: 'msg-456', response: { test: true } };
+
+			await publisher.publishMcpRelay(msg);
+
+			expect(client.publish).not.toHaveBeenCalled();
+		});
+
+		it('should publish MCP relay message to prefixed channel', async () => {
+			const publisher = new Publisher(
+				logger,
+				redisClientService,
+				instanceSettings,
+				executionsConfig,
+				globalConfig,
+			);
+			const msg = { sessionId: 'session-123', messageId: 'msg-456', response: { test: true } };
+
+			await publisher.publishMcpRelay(msg);
+
+			expect(client.publish).toHaveBeenCalledWith('n8n:n8n.mcp-relay', JSON.stringify(msg));
+		});
+
+		it('should apply configured prefix to MCP relay channel', async () => {
+			const customConfig = mockInstance(GlobalConfig, { redis: { prefix: 'n8n-instance-1' } });
+			const publisher = new Publisher(
+				logger,
+				redisClientService,
+				instanceSettings,
+				executionsConfig,
+				customConfig,
+			);
+			const msg = { sessionId: 'session-123', messageId: 'msg-456', response: { test: true } };
+
+			await publisher.publishMcpRelay(msg);
+
+			expect(client.publish).toHaveBeenCalledWith(
+				'n8n-instance-1:n8n.mcp-relay',
+				JSON.stringify(msg),
+			);
 		});
 	});
 

@@ -14,7 +14,11 @@ import type { OracleDBNodeOptions, OracleDBNodeCredentials } from '../helpers/in
 let initializeDriverMode = false;
 
 const getOracleDBConfig = (credentials: OracleDBNodeCredentials) => {
-	const { useThickMode, useSSL, ...dbConfig } = credentials;
+	const { useThickMode, useSSL, ...dbConfig } = {
+		...credentials,
+		privilege: credentials.privilege || undefined,
+	};
+
 	return dbConfig;
 };
 
@@ -54,6 +58,7 @@ export async function configureOracleDB(
 		nodeType: 'oracledb',
 		nodeVersion: String(options.nodeVersion ?? '1'),
 		fallBackHandler,
+		isIdle: (pool) => pool.connectionsInUse === 0,
 		wasUsed: (pool) => {
 			if (pool) {
 				this.logger.debug(`DB pool reused, open connections: ${pool.connectionsOpen}`);

@@ -1,37 +1,43 @@
 import type { FrontendSettings, ITelemetrySettings, N8nEnvFeatFlags } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig, SecurityConfig } from '@n8n/config';
-import { LICENSE_FEATURES } from '@n8n/constants';
+import { LICENSE_FEATURES, LICENSE_QUOTAS, Time } from '@n8n/constants';
+import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
 import uniq from 'lodash/uniq';
 import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
-import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
+import type { ICredentialType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
 import path from 'path';
-
-import { UrlService } from './url.service';
 
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
+import { isWorkflowReviewsFeatureAvailable } from '@/constants/workflow-reviews';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { getLdapLoginLabel } from '@/ldap.ee/helpers.ee';
+import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
-import { OwnershipService } from '@/services/ownership.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import type { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { isApiEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
-import { getSamlLoginLabel } from '@/sso.ee/saml/saml-helpers';
-import { getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
+import { OwnershipService } from '@/services/ownership.service';
+import { getSamlLoginLabel, getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
+import { resolveFrontendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
 } from '@/workflows/workflow-history/workflow-history-helper';
+
+import { AiUsageService } from './ai-usage.service';
+import { UrlService } from './url.service';
+import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
+
+const DYNAMIC_BANNER_FILTERS_CACHE_TTL = 30 * Time.seconds.toMilliseconds;
 
 /**
  * IMPORTANT: Only add settings that are absolutely necessary for non-authenticated pages
@@ -60,6 +66,9 @@ export type PublicFrontendSettings = {
 
 		/** Determines forgot password page UX */
 		smtpSetup: FrontendSettings['userManagement']['smtpSetup'];
+
+		/** Configurable minimum password length for password requirement display */
+		passwordMinLength: FrontendSettings['userManagement']['passwordMinLength'];
 	};
 
 	enterprise: {
@@ -93,6 +102,13 @@ export type PublicFrontendSettings = {
 			loginUrl: FrontendSettings['sso']['oidc']['loginUrl'];
 		};
 	};
+	/** Used to fetch community nodes on preview instance */
+	communityNodesEnabled: FrontendSettings['communityNodesEnabled'];
+
+	mfa?: {
+		enabled: boolean;
+		enforced: boolean;
+	};
 };
 
 @Service()
@@ -100,6 +116,10 @@ export class FrontendService {
 	private settings: FrontendSettings;
 
 	private communityPackagesService?: CommunityPackagesService;
+
+	private publishedWorkflowCountCache?: { value: number; expiresAt: number };
+
+	private publishedWorkflowCountRequest?: Promise<number>;
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
@@ -118,6 +138,9 @@ export class FrontendService {
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly mfaService: MfaService,
 		private readonly ownershipService: OwnershipService,
+		private readonly aiUsageService: AiUsageService,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly workflowReviewPolicyService: WorkflowReviewPolicyService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -143,6 +166,13 @@ export class FrontendService {
 		return envFeatureFlags;
 	}
 
+	private async getShowSetupOnFirstLoad() {
+		const previewMode = process.env.N8N_PREVIEW_MODE === 'true';
+		const hasInstanceOwner = await this.ownershipService.hasInstanceOwner();
+		// In preview mode, skip the setup redirect to allow accessing demo routes
+		return previewMode ? false : !hasInstanceOwner;
+	}
+
 	private async initSettings() {
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		const restEndpoint = this.globalConfig.endpoints.rest;
@@ -165,12 +195,14 @@ export class FrontendService {
 			telemetrySettings.config = { key, url, proxy, sourceConfig };
 		}
 
+		const previewMode = process.env.N8N_PREVIEW_MODE === 'true';
+
 		this.settings = {
 			settingsMode: 'authenticated',
 			inE2ETests,
 			isDocker: this.instanceSettings.isDocker,
 			databaseType: this.globalConfig.database.type,
-			previewMode: process.env.N8N_PREVIEW_MODE === 'true',
+			previewMode,
 			endpointForm: this.globalConfig.endpoints.form,
 			endpointFormTest: this.globalConfig.endpoints.formTest,
 			endpointFormWaiting: this.globalConfig.endpoints.formWaiting,
@@ -179,6 +211,7 @@ export class FrontendService {
 			endpointWebhook: this.globalConfig.endpoints.webhook,
 			endpointWebhookTest: this.globalConfig.endpoints.webhookTest,
 			endpointWebhookWaiting: this.globalConfig.endpoints.webhookWaiting,
+			endpointHealth: resolveFrontendHealthEndpointPath(this.globalConfig),
 			saveDataErrorExecution: this.globalConfig.executions.saveDataOnError,
 			saveDataSuccessExecution: this.globalConfig.executions.saveDataOnSuccess,
 			saveManualExecutions: this.globalConfig.executions.saveDataManualExecutions,
@@ -189,11 +222,16 @@ export class FrontendService {
 			timezone: this.globalConfig.generic.timezone,
 			urlBaseWebhook: this.urlService.getWebhookBaseUrl(),
 			urlBaseEditor: instanceBaseUrl,
+			urlBaseWebhookTest: this.urlService.getTestWebhookBaseUrl(),
 			binaryDataMode: this.binaryDataConfig.mode,
 			nodeJsVersion: process.version.replace(/^v/, ''),
 			nodeEnv: process.env.NODE_ENV,
 			versionCli: N8N_VERSION,
 			concurrency: this.globalConfig.executions.concurrency.productionLimit,
+			evaluationConcurrencyLimit: resolveEvaluationConcurrencyLimit(
+				this.globalConfig.executions,
+				this.license,
+			),
 			authCookie: {
 				secure: this.globalConfig.auth.cookie.secure,
 			},
@@ -202,6 +240,7 @@ export class FrontendService {
 				oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
 				oauth2: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`,
 			},
+			jwksUri: `${instanceBaseUrl}/${restEndpoint}/.well-known/jwks.json`,
 			versionNotifications: {
 				enabled: this.globalConfig.versionNotifications.enabled,
 				endpoint: this.globalConfig.versionNotifications.endpoint,
@@ -211,7 +250,10 @@ export class FrontendService {
 			},
 			dynamicBanners: {
 				endpoint: this.globalConfig.dynamicBanners.endpoint,
-				enabled: this.globalConfig.dynamicBanners.enabled,
+				enabled: this.globalConfig.dynamicBanners.enabled && this.globalConfig.diagnostics.enabled,
+				filters: {
+					publishedWorkflowCount: 0,
+				},
 			},
 			instanceId: this.instanceSettings.instanceId,
 			telemetry: telemetrySettings,
@@ -221,7 +263,7 @@ export class FrontendService {
 				apiKey: this.globalConfig.diagnostics.posthogConfig.apiKey,
 				autocapture: false,
 				disableSessionRecording: this.globalConfig.deployment.type !== 'cloud',
-				proxy: `${instanceBaseUrl}/${restEndpoint}/posthog`,
+				proxy: `${instanceBaseUrl}/${restEndpoint}/ph`,
 				debug: this.globalConfig.logging.level === 'debug',
 			},
 			personalizationSurveyEnabled:
@@ -229,11 +271,13 @@ export class FrontendService {
 			defaultLocale: this.globalConfig.defaultLocale,
 			userManagement: {
 				quota: this.license.getUsersLimit(),
-				showSetupOnFirstLoad: !(await this.ownershipService.hasInstanceOwner()),
+				showSetupOnFirstLoad: await this.getShowSetupOnFirstLoad(),
 				smtpSetup: this.mailer.isEmailSetUp,
 				authenticationMethod: getCurrentAuthenticationMethod(),
+				passwordMinLength: this.globalConfig.userManagement.password.minLength,
 			},
 			sso: {
+				managedByEnv: this.globalConfig.instanceSettingsLoader.ssoManagedByEnv,
 				saml: {
 					loginEnabled: false,
 					loginLabel: '',
@@ -248,6 +292,9 @@ export class FrontendService {
 					callbackUrl: `${instanceBaseUrl}/${restEndpoint}/sso/oidc/callback`,
 				},
 			},
+			logStreaming: {
+				managedByEnv: this.globalConfig.instanceSettingsLoader.logStreamingManagedByEnv,
+			},
 			dataTables: {
 				maxSize: this.globalConfig.dataTable.maxSize,
 			},
@@ -260,6 +307,8 @@ export class FrontendService {
 				},
 			},
 			workflowTagsDisabled: this.globalConfig.tags.disabled,
+			workflowsAutosaveDisabled: this.globalConfig.workflows.autosaveDisabled,
+			useWorkflowPublicationService: this.globalConfig.workflows.useWorkflowPublicationService,
 			logLevel: this.globalConfig.logging.level,
 			hiringBannerEnabled: this.globalConfig.hiringBanner.enabled,
 			aiAssistant: {
@@ -277,6 +326,8 @@ export class FrontendService {
 			// @TODO: Move to community-packages module
 			communityNodesEnabled: Container.get(CommunityPackagesConfig).enabled,
 			unverifiedCommunityNodesEnabled: Container.get(CommunityPackagesConfig).unverifiedEnabled,
+			communityNodesManagedByEnv:
+				this.globalConfig.instanceSettingsLoader.communityPackagesManagedByEnv,
 
 			deployment: {
 				type: this.globalConfig.deployment.type,
@@ -302,8 +353,9 @@ export class FrontendService {
 				binaryDataS3: false,
 				workerView: false,
 				advancedPermissions: false,
-				apiKeyScopes: false,
+
 				workflowDiffs: false,
+				namedVersions: false,
 				provisioning: false,
 				projects: {
 					team: {
@@ -311,6 +363,10 @@ export class FrontendService {
 					},
 				},
 				customRoles: false,
+				personalSpacePolicy: false,
+				dataRedaction: false,
+				otelCustomSpanAttributes: false,
+				workflowReviews: false,
 			},
 			mfa: {
 				enabled: false,
@@ -337,6 +393,10 @@ export class FrontendService {
 			aiCredits: {
 				enabled: false,
 				credits: 0,
+				setup: false,
+			},
+			ai: {
+				allowSendingParameterValues: true,
 			},
 			workflowHistory: {
 				pruneTime: getWorkflowHistoryPruneTime(),
@@ -350,6 +410,9 @@ export class FrontendService {
 			security: {
 				blockFileAccessToN8nFiles: this.securityConfig.blockFileAccessToN8nFiles,
 			},
+			chatTrigger: {
+				disablePublicChat: this.globalConfig.chatTrigger.disablePublicChat,
+			},
 			easyAIWorkflowOnboarded: false,
 			folders: {
 				enabled: false,
@@ -358,6 +421,10 @@ export class FrontendService {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
+			canvasOnly: this.globalConfig.canvasOnly,
+			collaboration: {
+				crdt: this.globalConfig.collaboration.crdt,
+			},
 			envFeatureFlags: this.collectEnvFeatureFlags(),
 		};
 	}
@@ -365,12 +432,15 @@ export class FrontendService {
 	async generateTypes() {
 		this.overwriteCredentialsProperties();
 
+		const { credentials, nodes } = await this.loadNodesAndCredentials.collectTypes();
+
 		const { staticCacheDir } = this.instanceSettings;
 		// pre-render all the node and credential types as static json files
 		await mkdir(path.join(staticCacheDir, 'types'), { recursive: true });
-		const { credentials, nodes } = this.loadNodesAndCredentials.types;
-		this.writeStaticJSON('nodes', nodes);
-		this.writeStaticJSON('credentials', credentials);
+		await this.writeStaticJSON('nodes', nodes);
+		const nodeVersionIdentifiers = this.getNodeVersionIdentifiers(nodes);
+		await this.writeStaticJSON('node-versions', nodeVersionIdentifiers);
+		await this.writeStaticJSON('credentials', credentials);
 	}
 
 	async getSettings(): Promise<FrontendSettings> {
@@ -379,20 +449,23 @@ export class FrontendService {
 		}
 		const restEndpoint = this.globalConfig.endpoints.rest;
 
-		// Update all urls, in case `WEBHOOK_URL` was updated by `--tunnel`
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		this.settings.urlBaseWebhook = this.urlService.getWebhookBaseUrl();
 		this.settings.urlBaseEditor = instanceBaseUrl;
+		this.settings.urlBaseWebhookTest = this.urlService.getTestWebhookBaseUrl();
 		this.settings.oauthCallbackUrls = {
 			oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
 			oauth2: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`,
 		};
+		this.settings.jwksUri = `${instanceBaseUrl}/${restEndpoint}/.well-known/jwks.json`;
+		this.settings.dynamicBanners.filters.publishedWorkflowCount =
+			await this.getPublishedWorkflowCountForDynamicBanners();
 
 		// refresh user management status
 		Object.assign(this.settings.userManagement, {
 			quota: this.license.getUsersLimit(),
 			authenticationMethod: getCurrentAuthenticationMethod(),
-			showSetupOnFirstLoad: !(await this.ownershipService.hasInstanceOwner()),
+			showSetupOnFirstLoad: await this.getShowSetupOnFirstLoad(),
 		});
 
 		let dismissedBanners: string[] = [];
@@ -409,6 +482,11 @@ export class FrontendService {
 		} catch {
 			this.settings.easyAIWorkflowOnboarded = false;
 		}
+		try {
+			this.settings.ai.allowSendingParameterValues = await this.aiUsageService.getAiUsageSettings();
+		} catch {
+			this.settings.ai.allowSendingParameterValues = true;
+		}
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';
 		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');
@@ -420,6 +498,14 @@ export class FrontendService {
 
 		this.settings.license.planName = this.license.getPlanName();
 		this.settings.license.consumerId = this.license.getConsumerId();
+
+		// Re-resolve on every settings fetch so a license upgrade/downgrade
+		// (and the tier-default it implies) propagates to the FE without an
+		// instance restart. The env override still wins inside the resolver.
+		this.settings.evaluationConcurrencyLimit = resolveEvaluationConcurrencyLimit(
+			this.globalConfig.executions,
+			this.license,
+		);
 
 		// refresh enterprise status
 		Object.assign(this.settings.enterprise, {
@@ -439,14 +525,19 @@ export class FrontendService {
 			binaryDataS3: isS3Available && isS3Selected && isS3Licensed,
 			workerView: this.license.isWorkerViewLicensed(),
 			advancedPermissions: this.license.isAdvancedPermissionsLicensed(),
-			apiKeyScopes: this.license.isApiKeyScopesEnabled(),
+
 			workflowDiffs: this.licenseState.isWorkflowDiffsLicensed(),
+			namedVersions: this.license.isLicensed(LICENSE_FEATURES.NAMED_VERSIONS),
 			customRoles: this.licenseState.isCustomRolesLicensed(),
+			personalSpacePolicy: this.licenseState.isPersonalSpacePolicyLicensed(),
+			dataRedaction: this.licenseState.isDataRedactionLicensed(),
+			otelCustomSpanAttributes: this.licenseState.isOtelCustomSpanAttributesLicensed(),
+			workflowReviews: this.licenseState.isWorkflowReviewsLicensed(),
 		});
 
 		if (this.license.isLdapEnabled()) {
 			Object.assign(this.settings.sso.ldap, {
-				loginLabel: getLdapLoginLabel(),
+				loginLabel: this.globalConfig.sso.ldap.loginLabel,
 				loginEnabled: this.globalConfig.sso.ldap.loginEnabled,
 			});
 		}
@@ -485,6 +576,16 @@ export class FrontendService {
 		if (isAiCreditsEnabled) {
 			this.settings.aiCredits.enabled = isAiCreditsEnabled;
 			this.settings.aiCredits.credits = this.license.getAiCredits();
+			this.settings.aiCredits.setup = !!this.globalConfig.aiAssistant.baseUrl;
+		}
+
+		const isAiGatewayEnabled =
+			this.licenseState.isAiGatewayLicensed() && !!this.globalConfig.aiAssistant.baseUrl;
+		if (isAiGatewayEnabled) {
+			this.settings.aiGateway = {
+				enabled: true,
+				budget: this.license.getValue(LICENSE_QUOTAS.AI_GATEWAY_BUDGET) ?? 0,
+			};
 		}
 
 		if (isAiBuilderEnabled) {
@@ -496,7 +597,13 @@ export class FrontendService {
 		this.settings.mfa.enabled = this.globalConfig.mfa.enabled;
 
 		// TODO: read from settings
-		this.settings.mfa.enforced = this.mfaService.isMFAEnforced();
+		this.settings.mfa.enforced = await this.mfaService.isMFAEnforced();
+
+		if (isWorkflowReviewsFeatureAvailable(this.licenseState.isWorkflowReviewsLicensed())) {
+			this.settings.workflowReviews = await this.workflowReviewPolicyService.get();
+		} else {
+			delete this.settings.workflowReviews;
+		}
 
 		this.settings.executionMode = this.globalConfig.executions.mode;
 
@@ -515,25 +622,59 @@ export class FrontendService {
 		return this.settings;
 	}
 
+	private async getPublishedWorkflowCountForDynamicBanners(): Promise<number> {
+		if (!this.settings.dynamicBanners.enabled) return 0;
+
+		const now = Date.now();
+		if (this.publishedWorkflowCountCache && this.publishedWorkflowCountCache.expiresAt > now) {
+			return this.publishedWorkflowCountCache.value;
+		}
+
+		try {
+			this.publishedWorkflowCountRequest ??= this.workflowRepository
+				.getPublishedCount()
+				.finally(() => {
+					this.publishedWorkflowCountRequest = undefined;
+				});
+
+			const value = await this.publishedWorkflowCountRequest;
+			this.publishedWorkflowCountCache = {
+				value,
+				expiresAt: Date.now() + DYNAMIC_BANNER_FILTERS_CACHE_TTL,
+			};
+
+			return value;
+		} catch (error) {
+			this.logger.warn('Failed to fetch published workflow count for dynamic banners', { error });
+			return this.publishedWorkflowCountCache?.value ?? 0;
+		}
+	}
+
 	/**
 	 * Only add settings that are absolutely necessary for non-authenticated pages
 	 * @returns Public settings for unauthenticated users
 	 */
-	async getPublicSettings(): Promise<PublicFrontendSettings> {
+	async getPublicSettings(includeMfaSettings: boolean): Promise<PublicFrontendSettings> {
 		// Get full settings to ensure all required properties are initialized
 		const {
 			defaultLocale,
-			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
+			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup, passwordMinLength },
 			sso: { saml: ssoSaml, ldap: ssoLdap, oidc: ssoOidc },
 			authCookie,
 			previewMode,
 			enterprise: { saml, ldap, oidc },
+			mfa,
+			communityNodesEnabled,
 		} = await this.getSettings();
-
 		const publicSettings: PublicFrontendSettings = {
 			settingsMode: 'public',
 			defaultLocale,
-			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
+			userManagement: {
+				authenticationMethod,
+				showSetupOnFirstLoad,
+				smtpSetup,
+				passwordMinLength,
+			},
 			sso: {
 				saml: {
 					loginEnabled: ssoSaml.loginEnabled,
@@ -547,7 +688,11 @@ export class FrontendService {
 			authCookie,
 			previewMode,
 			enterprise: { saml, ldap, oidc },
+			communityNodesEnabled,
 		};
+		if (includeMfaSettings) {
+			publicSettings.mfa = mfa;
+		}
 		return publicSettings;
 	}
 
@@ -555,24 +700,54 @@ export class FrontendService {
 		return Object.fromEntries(this.moduleRegistry.settings);
 	}
 
-	private writeStaticJSON(name: string, data: INodeTypeBaseDescription[] | ICredentialType[]) {
+	getNodeVersionIdentifiers(nodes: INodeTypeDescription[]): string[] {
+		const identifiers = new Set<string>();
+
+		for (const node of nodes) {
+			if (!node?.name || node.version === undefined) continue;
+
+			const versions = Array.isArray(node.version) ? node.version : [node.version];
+			for (const version of versions) {
+				if (version === undefined) continue;
+				identifiers.add(`${node.name}@${String(version)}`);
+			}
+		}
+
+		return Array.from(identifiers);
+	}
+
+	private async writeStaticJSON(
+		name: string,
+		data: Array<INodeTypeBaseDescription | ICredentialType | string>,
+	): Promise<void> {
 		const { staticCacheDir } = this.instanceSettings;
 		const filePath = path.join(staticCacheDir, `types/${name}.json`);
 		const stream = createWriteStream(filePath, 'utf-8');
-		stream.write('[\n');
-		data.forEach((entry, index) => {
-			stream.write(JSON.stringify(entry));
-			if (index !== data.length - 1) stream.write(',');
-			stream.write('\n');
+
+		return await new Promise<void>((resolve, reject) => {
+			stream.on('error', reject);
+			stream.on('finish', resolve);
+
+			stream.write('[\n');
+			data.forEach((entry, index) => {
+				stream.write(JSON.stringify(entry));
+				if (index !== data.length - 1) stream.write(',');
+				stream.write('\n');
+			});
+			stream.write(']\n');
+			stream.end();
 		});
-		stream.write(']\n');
-		stream.end();
 	}
 
 	private overwriteCredentialsProperties() {
 		const { credentials } = this.loadNodesAndCredentials.types;
 		const credentialsOverwrites = this.credentialsOverwrites.getAll();
+		const { skipTypes } = this.globalConfig.credentials.overwrite;
 		for (const credential of credentials) {
+			// Clear any existing overwritten properties to prevent stale data
+			delete credential.__overwrittenProperties;
+			delete credential.__skipManagedCreation;
+
 			const overwrittenProperties = [];
 			this.credentialTypes
 				.getParentTypes(credential.name)
@@ -588,6 +763,29 @@ export class FrontendService {
 
 			if (overwrittenProperties.length) {
 				credential.__overwrittenProperties = uniq(overwrittenProperties);
+			}
+
+			// For skip-list types, prevent managed credential creation in the frontend
+			// (overwrite is conditional on stored data; users should provide their own credentials)
+			if (skipTypes.includes(credential.name)) {
+				credential.__skipManagedCreation = true;
+			}
+
+			// Inject the per-instance JWKS URI as the default of any `jwksUri`
+			// property on `oAuth2Api` itself or any credential that extends it
+			// and explicitly re-declares the field. Inheritance is blocked by
+			// `doNotInherit: true` on both `jweEnabled` and `jwksUri` so that
+			// extending credentials don't silently inherit half a dependency
+			// pair (which would crash `getParameterResolveOrder`); custom
+			// JWE-aware OAuth2 extensions can re-declare both fields together.
+			const isOAuth2Credential =
+				credential.name === 'oAuth2Api' ||
+				this.credentialTypes.getParentTypes(credential.name).includes('oAuth2Api');
+			if (isOAuth2Credential && credential.properties) {
+				const jwksUri = this.urlService.getInstanceJwksUri();
+				credential.properties = credential.properties.map((property) =>
+					property.name === 'jwksUri' ? { ...property, default: jwksUri } : property,
+				);
 			}
 		}
 	}

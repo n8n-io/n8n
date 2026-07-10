@@ -1,111 +1,101 @@
-import type { Locator } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { WorkflowMenu } from './components/WorkflowMenu';
 
 export class WorkflowSettingsModal extends BasePage {
-	getModal(): Locator {
+	private readonly workflowMenu: WorkflowMenu;
+
+	constructor(page: Page) {
+		super(page);
+		this.workflowMenu = new WorkflowMenu(page);
+	}
+
+	get container() {
 		return this.page.getByTestId('workflow-settings-dialog');
 	}
 
-	getWorkflowMenu(): Locator {
-		return this.page.getByTestId('workflow-menu');
-	}
-
-	getSettingsMenuItem(): Locator {
-		return this.page.getByTestId('workflow-menu-item-settings');
+	getModal(): Locator {
+		return this.container;
 	}
 
 	getErrorWorkflowField(): Locator {
-		return this.page.getByTestId('workflow-settings-error-workflow');
+		return this.container.getByTestId('workflow-settings-error-workflow');
 	}
 
 	getTimezoneField(): Locator {
-		return this.page.getByTestId('workflow-settings-timezone');
+		return this.container.getByTestId('workflow-settings-timezone');
 	}
 
 	getSaveFailedExecutionsField(): Locator {
-		return this.page.getByTestId('workflow-settings-save-failed-executions');
+		return this.container.getByTestId('workflow-settings-save-failed-executions');
 	}
 
 	getSaveSuccessExecutionsField(): Locator {
-		return this.page.getByTestId('workflow-settings-save-success-executions');
+		return this.container.getByTestId('workflow-settings-save-success-executions');
 	}
 
 	getSaveManualExecutionsField(): Locator {
-		return this.page.getByTestId('workflow-settings-save-manual-executions');
+		return this.container.getByTestId('workflow-settings-save-manual-executions');
 	}
 
 	getSaveExecutionProgressField(): Locator {
-		return this.page.getByTestId('workflow-settings-save-execution-progress');
+		return this.container.getByTestId('workflow-settings-save-execution-progress');
 	}
 
 	getTimeoutSwitch(): Locator {
-		return this.page.getByTestId('workflow-settings-timeout-workflow');
+		return this.container.getByTestId('workflow-settings-timeout-workflow');
 	}
 
 	getTimeoutInput(): Locator {
-		return this.page.getByTestId('workflow-settings-timeout-form').locator('input').first();
+		return this.container.getByTestId('workflow-settings-timeout-form').locator('input').first();
 	}
 
-	getDuplicateMenuItem(): Locator {
-		return this.page.getByTestId('workflow-menu-item-duplicate');
+	getRedactProductionSelect(): Locator {
+		return this.container.getByTestId('workflow-settings-redact-production-select');
 	}
 
-	getDeleteMenuItem(): Locator {
-		return this.page.getByTestId('workflow-menu-item-delete');
+	getRedactManualSelect(): Locator {
+		return this.container.getByTestId('workflow-settings-redact-manual-select');
 	}
 
-	getArchiveMenuItem(): Locator {
-		return this.page.getByTestId('workflow-menu-item-archive');
+	getRedactProductionInput(): Locator {
+		return this.getRedactProductionSelect().locator('input');
 	}
 
-	getUnarchiveMenuItem(): Locator {
-		return this.page.getByTestId('workflow-menu-item-unarchive');
+	getRedactManualInput(): Locator {
+		return this.getRedactManualSelect().locator('input');
 	}
 
-	getPushToGitMenuItem(): Locator {
-		return this.page.getByTestId('workflow-menu-item-push');
+	async hoverRedactProductionSelect(): Promise<void> {
+		await this.getRedactProductionSelect().hover();
 	}
 
-	getUnpublishMenuItem(): Locator {
-		return this.page.getByTestId('workflow-menu-item-unpublish');
+	async hoverRedactManualSelect(): Promise<void> {
+		await this.getRedactManualSelect().hover();
 	}
 
-	getUnpublishModal(): Locator {
-		return this.page.getByTestId('workflow-history-version-unpublish-modal');
+	async selectManualRedactMode(mode: string): Promise<void> {
+		await this.getRedactManualSelect().click();
+		await this.getVisiblePopoverOption(mode, { exact: true }).click();
 	}
 
-	async clickUnpublishMenuItem(): Promise<void> {
-		await this.getUnpublishMenuItem().click();
-	}
-
-	async confirmUnpublishModal(): Promise<void> {
-		await this.getUnpublishModal().getByRole('button', { name: 'Unpublish' }).click();
+	getTooltip(): Locator {
+		return this.page.getByTestId('tooltip-content').filter({ visible: true });
 	}
 
 	getSaveButton(): Locator {
-		return this.page.getByRole('button', { name: 'Save' });
-	}
-
-	getDuplicateModal(): Locator {
-		return this.page.getByTestId('duplicate-modal');
-	}
-
-	getDuplicateNameInput(): Locator {
-		return this.getDuplicateModal().locator('input').first();
-	}
-
-	getDuplicateTagsInput(): Locator {
-		return this.getDuplicateModal().locator('.el-select__tags input');
-	}
-
-	getDuplicateSaveButton(): Locator {
-		return this.getDuplicateModal().getByRole('button', { name: /duplicate|save/i });
+		return this.page.getByTestId('workflow-settings-save-button').getByRole('button');
 	}
 
 	async open(): Promise<void> {
-		await this.getWorkflowMenu().click();
-		await this.getSettingsMenuItem().click();
+		await this.workflowMenu.openSettings();
+		await this.waitUntilLoaded();
+	}
+
+	private async waitUntilLoaded(): Promise<void> {
+		// `v-loading` directive's class
+		await this.container.locator('.el-loading-mask').waitFor({ state: 'detached' });
 	}
 
 	async clickSave(): Promise<void> {
@@ -114,26 +104,6 @@ export class WorkflowSettingsModal extends BasePage {
 
 	async selectErrorWorkflow(workflowName: string): Promise<void> {
 		await this.getErrorWorkflowField().click();
-		await this.page.getByRole('option', { name: workflowName }).first().click();
-	}
-
-	async clickArchiveMenuItem(): Promise<void> {
-		await this.getArchiveMenuItem().click();
-	}
-
-	async clickUnarchiveMenuItem(): Promise<void> {
-		await this.getUnarchiveMenuItem().click();
-	}
-
-	async clickDeleteMenuItem(): Promise<void> {
-		await this.getDeleteMenuItem().click();
-	}
-
-	async confirmDeleteModal(): Promise<void> {
-		await this.page.getByRole('button', { name: 'delete' }).click();
-	}
-
-	async confirmArchiveModal(): Promise<void> {
-		await this.page.locator('.btn--confirm').click();
+		await this.getVisiblePopoverOption(workflowName).first().click();
 	}
 }

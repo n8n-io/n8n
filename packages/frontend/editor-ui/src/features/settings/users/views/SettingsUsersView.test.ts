@@ -14,8 +14,10 @@ import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useUsersStore } from '../users.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useRolesStore } from '@/app/stores/roles.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import * as permissions from '@/app/utils/rbac/permissions';
+import type { PermissionTypeOptions } from '@/app/types/rbac';
 
 const { emitters, addEmitter } = useEmitters<'settingsUsersTable'>();
 
@@ -75,6 +77,14 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: vi.fn(() => mockPageRedirectionHelper),
 }));
 
+const mockIsVariantEnabled = vi.fn().mockReturnValue(false);
+
+vi.mock('@/app/stores/posthog.store', () => ({
+	usePostHog: vi.fn(() => ({
+		isVariantEnabled: mockIsVariantEnabled,
+	})),
+}));
+
 const mockUsersList: UsersList = {
 	items: [
 		{
@@ -116,10 +126,15 @@ let renderComponent: ReturnType<typeof createComponentRenderer>;
 let usersStore: MockedStore<typeof useUsersStore>;
 let uiStore: MockedStore<typeof useUIStore>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
+let rolesStore: MockedStore<typeof useRolesStore>;
 let ssoStore: MockedStore<typeof useSSOStore>;
 
 describe('SettingsUsersView', () => {
 	beforeEach(() => {
+		// Reset mock to default state before each test
+		mockIsVariantEnabled.mockReset();
+		mockIsVariantEnabled.mockReturnValue(false);
+
 		renderComponent = createComponentRenderer(SettingsUsersView, {
 			pinia: createTestingPinia(),
 		});
@@ -127,6 +142,7 @@ describe('SettingsUsersView', () => {
 		usersStore = mockedStore(useUsersStore);
 		uiStore = mockedStore(useUIStore);
 		settingsStore = mockedStore(useSettingsStore);
+		rolesStore = mockedStore(useRolesStore);
 		ssoStore = mockedStore(useSSOStore);
 
 		// Setup default store states
@@ -146,55 +162,22 @@ describe('SettingsUsersView', () => {
 			.mockResolvedValue({ link: 'https://example.com/reset/123' });
 		usersStore.updateOtherUserSettings = vi.fn().mockResolvedValue(undefined);
 		usersStore.updateGlobalRole = vi.fn().mockResolvedValue(undefined);
-		usersStore.updateEnforceMfa = vi.fn().mockResolvedValue(undefined);
+		usersStore.generateInviteLink = vi
+			.fn()
+			.mockResolvedValue({ link: 'https://example.com/signup?token=generated-token' });
 
 		settingsStore.isSmtpSetup = true;
-		settingsStore.isMFAEnforced = false;
-		settingsStore.settings.enterprise = {
-			mfaEnforcement: true,
-		} as FrontendSettings['enterprise'];
+		settingsStore.settings.enterprise = {} as FrontendSettings['enterprise'];
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.AdvancedPermissions] = true;
 		ssoStore.isSamlLoginEnabled = false;
+		ssoStore.isOidcLoginEnabled = false;
 	});
 
 	afterEach(() => {
 		vi.clearAllMocks();
-	});
-
-	it('should turn enforcing mfa on', async () => {
-		const { getByTestId } = renderComponent();
-
-		const actionSwitch = getByTestId('enable-force-mfa');
-		expect(actionSwitch).toBeInTheDocument();
-
-		await userEvent.click(actionSwitch);
-
-		expect(usersStore.updateEnforceMfa).toHaveBeenCalledWith(true);
-	});
-
-	it('should turn enforcing mfa off', async () => {
-		settingsStore.isMFAEnforced = true;
-		const { getByTestId } = renderComponent();
-
-		const actionSwitch = getByTestId('enable-force-mfa');
-		expect(actionSwitch).toBeInTheDocument();
-
-		await userEvent.click(actionSwitch);
-
-		expect(usersStore.updateEnforceMfa).toHaveBeenCalledWith(false);
-	});
-
-	it('should handle MFA enforcement error', async () => {
-		usersStore.updateEnforceMfa = vi.fn().mockRejectedValue(new Error('MFA update failed'));
-
-		const { getByTestId } = renderComponent();
-
-		const actionSwitch = getByTestId('enable-force-mfa');
-		await userEvent.click(actionSwitch);
-
-		await waitFor(() => {
-			expect(mockToast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
-		});
+		// Reset mock implementation to default (feature flag disabled)
+		mockIsVariantEnabled.mockReset();
+		mockIsVariantEnabled.mockReturnValue(false);
 	});
 
 	it('should handle missing user settings in SSO actions', async () => {
@@ -232,8 +215,17 @@ describe('SettingsUsersView', () => {
 		});
 	});
 
-	it('should disable invite button when SSO is enabled', () => {
+	it('should disable invite button when SAML SSO is enabled', () => {
 		ssoStore.isSamlLoginEnabled = true;
+
+		renderComponent();
+
+		const inviteButton = screen.getByTestId('settings-users-invite-button');
+		expect(inviteButton).toBeDisabled();
+	});
+
+	it('should disable invite button when OIDC SSO is enabled', () => {
+		ssoStore.isOidcLoginEnabled = true;
 
 		renderComponent();
 
@@ -316,6 +308,75 @@ describe('SettingsUsersView', () => {
 		expect(actionsList).toBeInTheDocument();
 		expect(screen.getByTestId('action-delete-2')).toBeInTheDocument();
 		spy.mockRestore();
+	});
+
+	it('should show allow SSO manual login action when SAML is enabled', () => {
+		ssoStore.isSamlLoginEnabled = true;
+		// Ensure user 2 doesn't have allowSSOManualLogin set
+		usersStore.usersList.state.items[1].settings = {};
+
+		renderComponent();
+
+		const actionsList = screen.getByTestId('actions-for-2');
+		expect(actionsList).toBeInTheDocument();
+		expect(screen.getByTestId('action-allowSSOManualLogin-2')).toBeInTheDocument();
+	});
+
+	it('should show allow SSO manual login action when OIDC is enabled', () => {
+		ssoStore.isOidcLoginEnabled = true;
+		// Ensure user 2 doesn't have allowSSOManualLogin set
+		usersStore.usersList.state.items[1].settings = {};
+
+		renderComponent();
+
+		const actionsList = screen.getByTestId('actions-for-2');
+		expect(actionsList).toBeInTheDocument();
+		expect(screen.getByTestId('action-allowSSOManualLogin-2')).toBeInTheDocument();
+	});
+
+	it('should not show allow SSO manual login action when SSO is disabled', () => {
+		ssoStore.isSamlLoginEnabled = false;
+		ssoStore.isOidcLoginEnabled = false;
+
+		renderComponent();
+
+		const actionsList = screen.getByTestId('actions-for-2');
+		expect(actionsList).toBeInTheDocument();
+		expect(screen.queryByTestId('action-allowSSOManualLogin-2')).not.toBeInTheDocument();
+	});
+
+	it('should show disallow SSO manual login action when SAML is enabled and user has allowSSOManualLogin', () => {
+		ssoStore.isSamlLoginEnabled = true;
+		usersStore.usersList.state.items[1].settings = { allowSSOManualLogin: true };
+
+		renderComponent();
+
+		const actionsList = screen.getByTestId('actions-for-2');
+		expect(actionsList).toBeInTheDocument();
+		expect(screen.getByTestId('action-disallowSSOManualLogin-2')).toBeInTheDocument();
+	});
+
+	it('should show disallow SSO manual login action when OIDC is enabled and user has allowSSOManualLogin', () => {
+		ssoStore.isOidcLoginEnabled = true;
+		usersStore.usersList.state.items[1].settings = { allowSSOManualLogin: true };
+
+		renderComponent();
+
+		const actionsList = screen.getByTestId('actions-for-2');
+		expect(actionsList).toBeInTheDocument();
+		expect(screen.getByTestId('action-disallowSSOManualLogin-2')).toBeInTheDocument();
+	});
+
+	it('should not show disallow SSO manual login action when SSO is disabled', () => {
+		ssoStore.isSamlLoginEnabled = false;
+		ssoStore.isOidcLoginEnabled = false;
+		usersStore.usersList.state.items[1].settings = { allowSSOManualLogin: true };
+
+		renderComponent();
+
+		const actionsList = screen.getByTestId('actions-for-2');
+		expect(actionsList).toBeInTheDocument();
+		expect(screen.queryByTestId('action-disallowSSOManualLogin-2')).not.toBeInTheDocument();
 	});
 
 	describe('search functionality', () => {
@@ -478,6 +539,60 @@ describe('SettingsUsersView', () => {
 			});
 		});
 
+		it('should handle generate invite link action', async () => {
+			const spy = vi
+				.spyOn(permissions, 'hasPermission')
+				.mockImplementation((features: string[], options?: Partial<PermissionTypeOptions>) => {
+					if (features.includes('rbac') && options?.rbac?.scope === 'user:generateInviteLink') {
+						return true;
+					}
+					return false;
+				});
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'generateInviteLink', userId: '3' });
+
+			expect(usersStore.generateInviteLink).toHaveBeenCalledWith({ id: '3' });
+			await waitFor(() => {
+				expect(mockClipboard.copy).toHaveBeenCalledWith(
+					'https://example.com/signup?token=generated-token',
+				);
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.any(String),
+				});
+			});
+
+			spy.mockRestore();
+		});
+
+		it('should handle generate invite link error', async () => {
+			usersStore.generateInviteLink = vi
+				.fn()
+				.mockRejectedValue(new Error('Failed to generate link'));
+
+			const spy = vi
+				.spyOn(permissions, 'hasPermission')
+				.mockImplementation((features: string[], options?: Partial<PermissionTypeOptions>) => {
+					if (features.includes('rbac') && options?.rbac?.scope === 'user:generateInviteLink') {
+						return true;
+					}
+					return false;
+				});
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'generateInviteLink', userId: '3' });
+
+			await waitFor(() => {
+				expect(mockToast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+			});
+
+			spy.mockRestore();
+		});
+
 		it('should handle copy password reset link action', async () => {
 			renderComponent();
 
@@ -494,7 +609,9 @@ describe('SettingsUsersView', () => {
 			});
 		});
 
-		it('should handle allow SSO manual login action', async () => {
+		it('should handle allow SSO manual login action when SAML is enabled', async () => {
+			ssoStore.isSamlLoginEnabled = true;
+
 			renderComponent();
 
 			emitters.settingsUsersTable.emit('action', { action: 'allowSSOManualLogin', userId: '2' });
@@ -511,7 +628,48 @@ describe('SettingsUsersView', () => {
 			});
 		});
 
-		it('should handle disallow SSO manual login action', async () => {
+		it('should handle allow SSO manual login action when OIDC is enabled', async () => {
+			ssoStore.isOidcLoginEnabled = true;
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'allowSSOManualLogin', userId: '2' });
+
+			expect(usersStore.updateOtherUserSettings).toHaveBeenCalledWith('2', {
+				allowSSOManualLogin: true,
+			});
+			await waitFor(() => {
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.any(String),
+				});
+			});
+		});
+
+		it('should handle disallow SSO manual login action when SAML is enabled', async () => {
+			ssoStore.isSamlLoginEnabled = true;
+			// Set user to have SSO manual login enabled
+			usersStore.usersList.state.items[1].settings = { allowSSOManualLogin: true };
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'disallowSSOManualLogin', userId: '2' });
+
+			expect(usersStore.updateOtherUserSettings).toHaveBeenCalledWith('2', {
+				allowSSOManualLogin: false,
+			});
+			await waitFor(() => {
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.any(String),
+				});
+			});
+		});
+
+		it('should handle disallow SSO manual login action when OIDC is enabled', async () => {
+			ssoStore.isOidcLoginEnabled = true;
 			// Set user to have SSO manual login enabled
 			usersStore.usersList.state.items[1].settings = { allowSSOManualLogin: true };
 
@@ -556,6 +714,47 @@ describe('SettingsUsersView', () => {
 			expect(mockToast.showToast).not.toHaveBeenCalled();
 		});
 
+		it('should show generate invite link action', () => {
+			const spy = vi
+				.spyOn(permissions, 'hasPermission')
+				.mockImplementation((features: string[], options?: Partial<PermissionTypeOptions>) => {
+					if (features.includes('rbac') && options?.rbac?.scope === 'user:generateInviteLink') {
+						return true;
+					}
+					return false;
+				});
+
+			renderComponent();
+
+			// User 3 is not the current user, so generateInviteLink should show
+			const actionsList = screen.getByTestId('actions-for-3');
+			expect(actionsList).toBeInTheDocument();
+			expect(screen.getByTestId('action-generateInviteLink-3')).toBeInTheDocument();
+
+			spy.mockRestore();
+		});
+
+		it('should hide generate invite link action when user has already accepted invite', () => {
+			const spy = vi
+				.spyOn(permissions, 'hasPermission')
+				.mockImplementation((features: string[], options?: Partial<PermissionTypeOptions>) => {
+					if (features.includes('rbac') && options?.rbac?.scope === 'user:generateInviteLink') {
+						return true;
+					}
+					return false;
+				});
+
+			// Set user with firstName (already accepted)
+			usersStore.usersList.state.items[2].firstName = 'John';
+
+			renderComponent();
+
+			// Generate invite link should not be in the actions list when user has accepted
+			expect(screen.queryByTestId('action-generateInviteLink-3')).not.toBeInTheDocument();
+
+			spy.mockRestore();
+		});
+
 		it('should handle copy password reset link error', async () => {
 			usersStore.getUserPasswordResetLink = vi
 				.fn()
@@ -572,15 +771,60 @@ describe('SettingsUsersView', () => {
 			});
 		});
 
-		it('should handle reinvite with invalid role', async () => {
-			// Set user with invalid role
-			usersStore.usersList.state.items[2].role = 'invalid-role' as Role;
+		it('should not call reinviteUser for owner role', async () => {
+			usersStore.usersList.state.items[2].role = ROLE.Owner;
 
 			renderComponent();
 
 			emitters.settingsUsersTable.emit('action', { action: 'reinvite', userId: '3' });
 
-			// Should not call reinviteUser with invalid role
+			expect(usersStore.reinviteUser).not.toHaveBeenCalled();
+		});
+
+		it('should not call reinviteUser for default role', async () => {
+			usersStore.usersList.state.items[2].role = ROLE.Default;
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'reinvite', userId: '3' });
+
+			expect(usersStore.reinviteUser).not.toHaveBeenCalled();
+		});
+
+		it('should allow reinvite for a custom role', async () => {
+			rolesStore.customInstanceRoles = [
+				{
+					slug: 'custom:developer',
+					displayName: 'Developer',
+					description: '',
+					scopes: [],
+					licensed: true,
+					systemRole: false,
+					roleType: 'global',
+					usedByUsers: 0,
+				},
+			];
+			usersStore.usersList.state.items[2].role = 'custom:developer' as Role;
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'reinvite', userId: '3' });
+
+			await waitFor(() => {
+				expect(usersStore.reinviteUser).toHaveBeenCalledWith({
+					email: 'pending@example.com',
+					role: 'custom:developer',
+				});
+			});
+		});
+
+		it('should not call reinviteUser for chatUser role', async () => {
+			usersStore.usersList.state.items[2].role = ROLE.ChatUser;
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'reinvite', userId: '3' });
+
 			expect(usersStore.reinviteUser).not.toHaveBeenCalled();
 		});
 
@@ -628,6 +872,16 @@ describe('SettingsUsersView', () => {
 			});
 		});
 
+		it('should refresh the users list after a successful role update', async () => {
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('update:role', { role: ROLE.Admin, userId: '2' });
+
+			await waitFor(() => {
+				expect(usersStore.usersList.execute).toHaveBeenCalled();
+			});
+		});
+
 		it('should handle role update error', async () => {
 			usersStore.updateGlobalRole = vi.fn().mockRejectedValue(new Error('Failed to update role'));
 
@@ -666,6 +920,52 @@ describe('SettingsUsersView', () => {
 					type: 'success',
 					title: expect.any(String),
 					message: expect.stringContaining('member@example.com'),
+				});
+			});
+		});
+
+		it('should use displayName from custom role in success toast message', async () => {
+			rolesStore.customInstanceRoles = [
+				{
+					slug: 'custom:developer',
+					displayName: 'Developer',
+					description: '',
+					scopes: [],
+					licensed: true,
+					systemRole: false,
+					roleType: 'global',
+					usedByUsers: 0,
+				},
+			];
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('update:role', { role: 'custom:developer', userId: '2' });
+
+			await waitFor(() => {
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.stringContaining('Developer'),
+				});
+			});
+		});
+
+		it('should fall back to role slug in toast when custom role is not in the store', async () => {
+			rolesStore.customInstanceRoles = [];
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('update:role', {
+				role: 'custom:unknown-role',
+				userId: '2',
+			});
+
+			await waitFor(() => {
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.stringContaining('custom:unknown-role'),
 				});
 			});
 		});
@@ -906,33 +1206,6 @@ describe('SettingsUsersView', () => {
 				filter: {
 					fullText: '',
 				},
-			});
-		});
-
-		it('should handle MFA enforcement with partial success', async () => {
-			let callCount = 0;
-			usersStore.updateEnforceMfa = vi.fn().mockImplementation(async () => {
-				callCount++;
-				if (callCount === 1) {
-					throw Error('First attempt failed');
-				}
-				return await Promise.resolve();
-			});
-
-			const { getByTestId } = renderComponent();
-
-			const actionSwitch = getByTestId('enable-force-mfa');
-			await userEvent.click(actionSwitch);
-
-			await waitFor(() => {
-				expect(mockToast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
-			});
-
-			// Try again
-			await userEvent.click(actionSwitch);
-
-			await waitFor(() => {
-				expect(usersStore.updateEnforceMfa).toHaveBeenCalledTimes(2);
 			});
 		});
 

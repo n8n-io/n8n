@@ -1,17 +1,18 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { User } from '@n8n/db';
+import { User, type WorkflowEntity } from '@n8n/db';
+import { v4 as uuid } from 'uuid';
+
+import { CredentialsService } from '@/credentials/credentials.service';
+import { ProjectService } from '@/services/project.service.ee';
+import { RoleService } from '@/services/role.service';
+import { Telemetry } from '@/telemetry';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { createWorkflow } from './mock.utils';
 import { getWorkflowDetails, createWorkflowDetailsTool } from '../tools/get-workflow-details.tool';
 
-import { CredentialsService } from '@/credentials/credentials.service';
-import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-
-import { v4 as uuid } from 'uuid';
-
-jest.mock('../tools/webhook-utils', () => ({
-	getTriggerDetails: jest.fn().mockResolvedValue('MOCK_TRIGGER_DETAILS'),
+vi.mock('../tools/webhook-utils', () => ({
+	getTriggerDetails: vi.fn().mockResolvedValue('MOCK_TRIGGER_DETAILS'),
 }));
 
 describe('get-workflow-details MCP tool', () => {
@@ -21,11 +22,17 @@ describe('get-workflow-details MCP tool', () => {
 	describe('smoke tests', () => {
 		test('it creates tool correctly', () => {
 			const workflowFinderService = mockInstance(WorkflowFinderService, {
-				findWorkflowForUser: jest.fn(),
+				findWorkflowForUser: vi.fn(),
 			});
 			const credentialsService = mockInstance(CredentialsService, {});
 			const telemetry = mockInstance(Telemetry, {
-				track: jest.fn(),
+				track: vi.fn(),
+			});
+			const roleService = mockInstance(RoleService, {
+				addScopes: vi.fn((wf) => ({ ...wf, scopes: [] })) as unknown as RoleService['addScopes'],
+			});
+			const projectService = mockInstance(ProjectService, {
+				getProjectRelationsForUser: vi.fn().mockResolvedValue([]),
 			});
 			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
 
@@ -36,6 +43,8 @@ describe('get-workflow-details MCP tool', () => {
 				credentialsService,
 				endpoints,
 				telemetry,
+				roleService,
+				projectService,
 			);
 
 			expect(tool.name).toBe('get_workflow_details');
@@ -47,10 +56,20 @@ describe('get-workflow-details MCP tool', () => {
 	});
 
 	describe('handler tests', () => {
+		const roleService = mockInstance(RoleService, {
+			addScopes: vi.fn((wf) => ({
+				...wf,
+				scopes: ['workflow:read', 'workflow:execute'],
+			})) as unknown as RoleService['addScopes'],
+		});
+		const projectService = mockInstance(ProjectService, {
+			getProjectRelationsForUser: vi.fn().mockResolvedValue([]),
+		});
+
 		test('returns sanitized workflow and trigger info (active)', async () => {
 			const workflow = createWorkflow({ activeVersionId: uuid() });
 			const workflowFinderService = mockInstance(WorkflowFinderService, {
-				findWorkflowForUser: jest.fn().mockResolvedValue(workflow),
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
 			});
 			const credentialsService = mockInstance(CredentialsService, {});
 			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
@@ -61,50 +80,98 @@ describe('get-workflow-details MCP tool', () => {
 				workflowFinderService,
 				credentialsService,
 				endpoints,
+				roleService,
+				projectService,
 				{ workflowId: 'wf-1' },
 			);
 
 			expect('pinData' in payload.workflow).toBe(false);
 			expect(payload.workflow.nodes.every((n) => !('credentials' in n))).toBe(true);
 			expect(payload.triggerInfo).toContain('MOCK_TRIGGER_DETAILS');
+			expect(payload.workflow.versionId).toBe(workflow.versionId);
+			expect(payload.workflow.activeVersionId).toBe(workflow.activeVersionId);
+			expect(payload.workflow.activeVersion).not.toBeNull();
+			expect(payload.workflow.activeVersion?.nodes.every((n) => !('credentials' in n))).toBe(true);
+			expect(payload.workflow.scopes).toEqual(['workflow:read', 'workflow:execute']);
+			expect(payload.workflow.canExecute).toBe(true);
 		});
 
-		test('throws for not found/archived/unavailable workflow', async () => {
-			const archived = createWorkflow({ activeVersionId: uuid(), isArchived: true });
-			const unavailable = createWorkflow({
-				activeVersionId: uuid(),
-				settings: { availableInMCP: false },
+		test('requests and returns workflow tags', async () => {
+			const tags = [
+				{ id: 'tag-1', name: 'production' },
+				{ id: 'tag-2', name: 'billing' },
+			];
+			const workflow = createWorkflow({ tags } as Partial<WorkflowEntity>);
+			const findWorkflowForUser = vi.fn().mockResolvedValue(workflow);
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser,
 			});
-
 			const credentialsService = mockInstance(CredentialsService, {});
 			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
 
-			const wfFinder1 = mockInstance(WorkflowFinderService, {
-				findWorkflowForUser: jest.fn().mockResolvedValue(null),
-			});
-			await expect(
-				getWorkflowDetails(user, baseWebhookUrl, wfFinder1, credentialsService, endpoints, {
-					workflowId: 'missing',
-				}),
-			).rejects.toThrow('Workflow not found');
+			const payload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				workflowFinderService,
+				credentialsService,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1' },
+			);
 
-			const wfFinder2 = mockInstance(WorkflowFinderService, {
-				findWorkflowForUser: jest.fn().mockResolvedValue(archived),
-			});
-			await expect(
-				getWorkflowDetails(user, baseWebhookUrl, wfFinder2, credentialsService, endpoints, {
-					workflowId: 'archived',
-				}),
-			).rejects.toThrow('Workflow not found');
+			expect(findWorkflowForUser).toHaveBeenCalledWith(
+				'wf-1',
+				user,
+				['workflow:read'],
+				expect.objectContaining({ includeTags: true }),
+			);
+			expect(payload.workflow.tags).toEqual(tags);
+		});
 
-			const wfFinder3 = mockInstance(WorkflowFinderService, {
-				findWorkflowForUser: jest.fn().mockResolvedValue(unavailable),
+		test('propagates errors from workflow validation', async () => {
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+
+			const wfFinder = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(null),
 			});
+
 			await expect(
-				getWorkflowDetails(user, baseWebhookUrl, wfFinder3, credentialsService, endpoints, {
-					workflowId: 'unavailable',
-				}),
-			).rejects.toThrow('Workflow not found');
+				getWorkflowDetails(
+					user,
+					baseWebhookUrl,
+					wfFinder,
+					credentialsService,
+					endpoints,
+					roleService,
+					projectService,
+					{ workflowId: 'any-id' },
+				),
+			).rejects.toThrow();
+		});
+
+		test('returns null activeVersion for unpublished workflows', async () => {
+			const unpublished = createWorkflow({ activeVersionId: null });
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(unpublished),
+			});
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+
+			const payload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				workflowFinderService,
+				credentialsService,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1' },
+			);
+
+			expect(payload.workflow.activeVersion).toBeNull();
+			expect(payload.workflow.activeVersionId).toBeNull();
 		});
 	});
 });

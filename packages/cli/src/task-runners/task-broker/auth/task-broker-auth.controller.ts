@@ -1,10 +1,8 @@
 import { Service } from '@n8n/di';
-import type { NextFunction, Response } from 'express';
 
 import type { AuthlessRequest } from '@/requests';
-import type { TaskBrokerServerInitRequest } from '@/task-runners/task-broker/task-broker-types';
 
-import { taskBrokerAuthRequestBodySchema } from './task-broker-auth.schema';
+import { bearerTokenSchema, taskBrokerAuthRequestBodySchema } from './task-broker-auth.schema';
 import { TaskBrokerAuthService } from './task-broker-auth.service';
 import { BadRequestError } from '../../../errors/response-errors/bad-request.error';
 import { ForbiddenError } from '../../../errors/response-errors/forbidden.error';
@@ -14,10 +12,7 @@ import { ForbiddenError } from '../../../errors/response-errors/forbidden.error'
  */
 @Service()
 export class TaskBrokerAuthController {
-	constructor(private readonly authService: TaskBrokerAuthService) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		this.authMiddleware = this.authMiddleware.bind(this);
-	}
+	constructor(private readonly authService: TaskBrokerAuthService) {}
 
 	/**
 	 * Validates the provided auth token and creates and responds with a grant token,
@@ -41,22 +36,31 @@ export class TaskBrokerAuthController {
 	}
 
 	/**
-	 * Middleware to authenticate task runner init requests
+	 * Validates a WebSocket upgrade request by checking runner ID and grant token
+	 * @returns Object with validation result and appropriate HTTP status code
 	 */
-	async authMiddleware(req: TaskBrokerServerInitRequest, res: Response, next: NextFunction) {
-		const authHeader = req.headers.authorization;
-		if (typeof authHeader !== 'string' || !authHeader.startsWith('Bearer ')) {
-			res.status(401).json({ code: 401, message: 'Unauthorized' });
-			return;
+	async validateUpgradeRequest(
+		authHeader: string | undefined,
+	): Promise<{ isValid: boolean; statusCode: number; reason?: string }> {
+		const result = bearerTokenSchema.safeParse(authHeader);
+		if (!result.success) {
+			return {
+				isValid: false,
+				statusCode: 401,
+				reason: 'missing or invalid Authorization header',
+			};
 		}
 
-		const grantToken = authHeader.slice('Bearer '.length);
-		const isConsumed = await this.authService.tryConsumeGrantToken(grantToken);
-		if (!isConsumed) {
-			res.status(403).json({ code: 403, message: 'Forbidden' });
-			return;
+		const grantToken = result.data;
+		const isValid = await this.authService.tryConsumeGrantToken(grantToken);
+		if (!isValid) {
+			return {
+				isValid: false,
+				statusCode: 403,
+				reason: 'invalid or expired grant token',
+			};
 		}
 
-		next();
+		return { isValid: true, statusCode: 200 };
 	}
 }

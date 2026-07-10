@@ -1,0 +1,19 @@
+type: object
+properties:
+  data:
+    type: array
+    items:
+      type: object
+      additionalProperties: true
+    description: Array of rows to insert. Each row is an object with column names as keys.
+    minItems: 1
+  returnType:
+    type: string
+    enum: [count, id, all]
+    default: count
+    description: |
+      - count: Return only the number of rows inserted
+      - id: Return an array of inserted row IDs
+      - all: Return the full row data for all inserted rows
+required:
+  - data

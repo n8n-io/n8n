@@ -3,7 +3,7 @@ import { MAIN_HEADER_TABS } from '@/app/constants';
 import { render } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { useHistoryHelper } from './useHistoryHelper';
-import { defineComponent, type PropType } from 'vue';
+import { defineComponent, ref, type PropType } from 'vue';
 import type { RouteLocationNormalizedLoaded } from 'vue-router';
 import { mock } from 'vitest-mock-extended';
 import { Command, BulkCommand } from '@/app/models/history';
@@ -22,20 +22,24 @@ const historyStoreMock = {
 	pushBulkCommandToUndo: pushBulkCommandToUndoMock,
 	bulkInProgress: false,
 };
+const markStateDirtyMock = vi.fn();
 
 const uiStoreMock = {
 	isAnyModalOpen: false,
-	stateIsDirty: false,
+	markStateDirty: markStateDirtyMock,
 };
 
 const telemetryTrackMock = vi.fn();
 
+const mockNdvStoreValue = {
+	activeNodeName: null,
+	activeNode: {},
+	isNDVOpen: false,
+};
+
 vi.mock('@/features/ndv/shared/ndv.store', () => ({
-	useNDVStore: () => ({
-		activeNodeName: null,
-		activeNode: {},
-		isNDVOpen: false,
-	}),
+	useNDVStore: () => mockNdvStoreValue,
+	injectNDVStore: () => ({ value: mockNdvStoreValue }),
 }));
 
 vi.mock('@/app/stores/history.store', () => ({
@@ -65,7 +69,10 @@ const TestComponent = defineComponent({
 		},
 	},
 	setup(props) {
-		useHistoryHelper(props.route);
+		useHistoryHelper(
+			props.route,
+			ref('wf@latest') as unknown as Parameters<typeof useHistoryHelper>[1],
+		);
 		return {};
 	},
 	template: '<div />',
@@ -80,7 +87,7 @@ describe('useHistoryHelper', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		historyStoreMock.bulkInProgress = false;
-		uiStoreMock.stateIsDirty = false;
+		markStateDirtyMock.mockClear();
 	});
 
 	describe('keyboard shortcuts', () => {
@@ -138,7 +145,7 @@ describe('useHistoryHelper', () => {
 			expect(mockCommand.revert).toHaveBeenCalled();
 			expect(mockCommand.getReverseCommand).toHaveBeenCalled();
 			expect(pushUndoableToRedoMock).toHaveBeenCalled();
-			expect(uiStoreMock.stateIsDirty).toBe(true);
+			expect(markStateDirtyMock).toHaveBeenCalled();
 			expect(telemetryTrackMock).toHaveBeenCalledWith('User hit undo', expect.any(Object));
 		});
 
@@ -187,7 +194,7 @@ describe('useHistoryHelper', () => {
 			expect(mockCommand.revert).toHaveBeenCalled();
 			expect(mockCommand.getReverseCommand).toHaveBeenCalled();
 			expect(pushCommandToUndoMock).toHaveBeenCalledWith(expect.any(Object), false);
-			expect(uiStoreMock.stateIsDirty).toBe(true);
+			expect(markStateDirtyMock).toHaveBeenCalled();
 			expect(telemetryTrackMock).toHaveBeenCalledWith('User hit redo', expect.any(Object));
 		});
 

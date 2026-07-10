@@ -3,9 +3,15 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import N8nText from './Text.vue';
 
 export default {
-	title: 'Atoms/Text',
+	title: 'Core/Text',
 	component: N8nText,
 	argTypes: {
+		step: {
+			control: {
+				type: 'select',
+			},
+			options: [undefined, '4xs', '3xs', '2xs', 'xs', 'sm', 'md', 'lg', 'xl', '2xl'],
+		},
 		size: {
 			control: {
 				type: 'select',
@@ -25,6 +31,12 @@ export default {
 				'danger',
 				'success',
 			],
+		},
+	},
+
+	parameters: {
+		docs: {
+			description: { component: 'A typography component for styled body text and inline copy.' },
 		},
 	},
 };

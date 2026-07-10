@@ -1,7 +1,6 @@
+import { validateEmbedQueryInput, validateEmbedDocumentsInput } from '@n8n/ai-utilities';
 import type { INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-
-import { validateEmbedQueryInput, validateEmbedDocumentsInput } from './embeddingInputValidation';
 
 const createMockNode = (): INode => ({
 	id: 'test-node',
@@ -41,7 +40,7 @@ describe('embeddingInputValidation', () => {
 		it('should include helpful error message', () => {
 			try {
 				validateEmbedQueryInput(undefined, mockNode);
-				fail('Expected error to be thrown');
+				expect.fail('Expected error to be thrown');
 			} catch (e) {
 				expect(e).toBeInstanceOf(NodeOperationError);
 				expect((e as NodeOperationError).message).toContain('empty or undefined text');
@@ -51,7 +50,7 @@ describe('embeddingInputValidation', () => {
 		it('should include description with possible causes', () => {
 			try {
 				validateEmbedQueryInput(undefined, mockNode);
-				fail('Expected error to be thrown');
+				expect.fail('Expected error to be thrown');
 			} catch (e) {
 				expect(e).toBeInstanceOf(NodeOperationError);
 				const description = (e as NodeOperationError).description as string;
@@ -110,7 +109,7 @@ describe('embeddingInputValidation', () => {
 		it('should include index of invalid document in error message', () => {
 			try {
 				validateEmbedDocumentsInput(['valid', 'also valid', undefined], mockNode);
-				fail('Expected error to be thrown');
+				expect.fail('Expected error to be thrown');
 			} catch (e) {
 				expect(e).toBeInstanceOf(NodeOperationError);
 				expect((e as NodeOperationError).message).toContain('index 2');
@@ -120,7 +119,7 @@ describe('embeddingInputValidation', () => {
 		it('should include helpful description in error', () => {
 			try {
 				validateEmbedDocumentsInput(['valid', null], mockNode);
-				fail('Expected error to be thrown');
+				expect.fail('Expected error to be thrown');
 			} catch (e) {
 				expect(e).toBeInstanceOf(NodeOperationError);
 				expect((e as NodeOperationError).description).toContain('non-empty strings');

@@ -17,6 +17,9 @@
                     },
                     "initials": {
                         "type": "string"
+                    },
+                    "username": {
+                        "type": "string"
                     }
                 }
             }
@@ -260,10 +263,13 @@
                     },
                     "initials": {
                         "type": "string"
+                    },
+                    "username": {
+                        "type": "string"
                     }
                 }
             }
         }
     },
-    "version": 2
+    "version": 3
 }

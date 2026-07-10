@@ -60,6 +60,12 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "date": {
+                        "type": "string"
+                    },
+                    "last_updated": {
+                        "type": "string"
+                    },
                     "snippet": {
                         "type": "string"
                     },
@@ -104,5 +110,5 @@
             }
         }
     },
-    "version": 4
+    "version": 5
 }

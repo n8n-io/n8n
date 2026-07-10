@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, type MockInstance } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import {
 	useChatPanelStore,
@@ -10,7 +10,9 @@ import { ASSISTANT_ENABLED_VIEWS } from './constants';
 
 const ENABLED_VIEWS = ASSISTANT_ENABLED_VIEWS;
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -18,25 +20,40 @@ import { defaultSettings } from '@/__tests__/defaults';
 import merge from 'lodash/merge';
 import { DEFAULT_POSTHOG_SETTINGS } from '@/app/stores/posthog.store.test';
 import { VIEWS } from '@/app/constants';
-import { reactive } from 'vue';
+import { reactive, shallowRef } from 'vue';
 import * as chatAPI from '@/features/ai/assistant/assistant.api';
 import * as telemetryModule from '@/app/composables/useTelemetry';
 import type { Telemetry } from '@/app/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
+import type { INodeUi } from '@/Interface';
+
+const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
+	mockWorkflowDocumentStore: {
+		documentId: 'test-id',
+		allNodes: [] as INodeUi[],
+		workflowTriggerNodes: [] as INodeUi[],
+		name: '',
+		settings: {},
+		getPinDataSnapshot: vi.fn().mockReturnValue({}),
+		getNodeByName: vi.fn().mockReturnValue(null),
+		getSnapshot: vi.fn().mockReturnValue({}),
+	},
+}));
+
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockWorkflowDocumentStore),
+	injectWorkflowDocumentStore: () => shallowRef(mockWorkflowDocumentStore),
+	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
+}));
 
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let posthogStore: ReturnType<typeof usePostHog>;
 
-const apiSpy = vi.spyOn(chatAPI, 'chatWithAssistant');
+// `restoreMocks` restores spies before each test, so these are (re)established
+// in beforeEach rather than once at module scope.
+let apiSpy: MockInstance;
 
 const track = vi.fn();
-const spy = vi.spyOn(telemetryModule, 'useTelemetry');
-spy.mockImplementation(
-	() =>
-		({
-			track,
-		}) as unknown as Telemetry,
-);
 
 const setAssistantEnabled = (enabled: boolean) => {
 	settingsStore.setSettings(
@@ -62,13 +79,21 @@ vi.mock('vue-router', () => ({
 
 describe('AI Assistant store', () => {
 	beforeEach(() => {
+		// Use fake timers so store-scheduled timeouts can't leak past teardown.
+		vi.useFakeTimers();
 		vi.clearAllMocks();
+		apiSpy = vi.spyOn(chatAPI, 'chatWithAssistant');
+		vi.spyOn(telemetryModule, 'useTelemetry').mockImplementation(
+			() => ({ track }) as unknown as Telemetry,
+		);
 		currentRouteParams = {};
+		mockWorkflowDocumentStore.allNodes = [];
 		setActivePinia(createPinia());
 		settingsStore = useSettingsStore();
 		settingsStore.setSettings(
 			merge({}, defaultSettings, {
 				posthog: DEFAULT_POSTHOG_SETTINGS,
+				aiAssistant: { enabled: true, setup: true },
 			}),
 		);
 		window.posthog = {
@@ -78,6 +103,12 @@ describe('AI Assistant store', () => {
 		posthogStore = usePostHog();
 		posthogStore.init();
 		track.mockReset();
+	});
+
+	afterEach(() => {
+		// Drop any pending timers before restoring real timers so none survive into teardown.
+		vi.clearAllTimers();
+		vi.useRealTimers();
 	});
 
 	it('initializes with default values', () => {
@@ -277,7 +308,7 @@ describe('AI Assistant store', () => {
 		assistantStore.addAssistantMessages([message], '1');
 		expect(assistantStore.chatMessages.length).toBe(1);
 
-		assistantStore.resetAssistantChat();
+		assistantStore.resetAssistantChat('test-workflow-id');
 		expect(assistantStore.chatMessages).toEqual([]);
 		expect(assistantStore.currentSessionId).toBeUndefined();
 	});
@@ -323,15 +354,17 @@ describe('AI Assistant store', () => {
 			currentRouteName = view;
 			currentRouteParams = nodeId ? { nodeId } : {};
 
-			const workflowsStore = useWorkflowsStore();
-			workflowsStore.activeNode = () => ({
+			const testNode: INodeUi = {
 				id: 'test-node',
 				name: 'Test Node',
 				type: 'test',
 				typeVersion: 1,
 				position: [0, 0],
 				parameters: {},
-			});
+			};
+			mockWorkflowDocumentStore.getNodeByName.mockReturnValue(testNode);
+			const ndvStore = useNDVStore(createWorkflowDocumentId('test-workflow'));
+			ndvStore.setActiveNodeName(testNode.name, 'other');
 
 			const assistantStore = useAssistantStore();
 
@@ -344,8 +377,9 @@ describe('AI Assistant store', () => {
 		it(`should hide ai assistant floating button if on canvas of ${view} page`, () => {
 			currentRouteName = view;
 
-			const workflowsStore = useWorkflowsStore();
-			workflowsStore.activeNode = () => null;
+			mockWorkflowDocumentStore.getNodeByName.mockReturnValue(null);
+			const ndvStore = useNDVStore(createWorkflowDocumentId('test-workflow'));
+			ndvStore.unsetActiveNodeName();
 
 			const assistantStore = useAssistantStore();
 
@@ -371,7 +405,7 @@ describe('AI Assistant store', () => {
 			},
 		};
 		const assistantStore = useAssistantStore();
-		await assistantStore.initErrorHelper(context);
+		await assistantStore.initErrorHelper('test-workflow', context);
 		expect(apiSpy).toHaveBeenCalled();
 	});
 
@@ -401,11 +435,12 @@ describe('AI Assistant store', () => {
 			});
 		});
 
-		await assistantStore.initErrorHelper(context);
+		await assistantStore.initErrorHelper('test-workflow', context);
 		expect(apiSpy).toHaveBeenCalled();
 		expect(assistantStore.currentSessionId).toEqual(mockSessionId);
 
 		assistantStore.trackUserOpenedAssistant({
+			workflowId: 'test-workflow',
 			task: 'error',
 			source: 'error',
 			has_existing_session: true,
@@ -428,7 +463,7 @@ describe('AI Assistant store', () => {
 			node_type: 'n8n-nodes-base.stopAndError',
 			source: 'error',
 			task: 'error',
-			workflow_id: '',
+			workflow_id: 'test-workflow',
 			instance_id: '',
 			canvas_status: 'empty',
 		});
@@ -436,12 +471,12 @@ describe('AI Assistant store', () => {
 
 	it('should call telemetry for opening assistant with build_with_ai source on empty canvas', () => {
 		const assistantStore = useAssistantStore();
-		const workflowsStore = useWorkflowsStore();
 
 		// Ensure canvas is empty
-		workflowsStore.workflow.nodes = [];
+		mockWorkflowDocumentStore.allNodes = [];
 
 		assistantStore.trackUserOpenedAssistant({
+			workflowId: '',
 			task: 'placeholder',
 			source: 'build_with_ai',
 			has_existing_session: false,
@@ -464,8 +499,11 @@ describe('AI Assistant store', () => {
 		const assistantStore = useAssistantStore();
 		const workflowsStore = useWorkflowsStore();
 
+		// Set workflow id so workflowDocumentStore is created
+		workflowsStore.workflowId = 'test-wf';
+
 		// Add a node to the workflow
-		workflowsStore.workflow.nodes = [
+		mockWorkflowDocumentStore.allNodes = [
 			{
 				id: '1',
 				type: 'n8n-nodes-base.start',
@@ -474,9 +512,10 @@ describe('AI Assistant store', () => {
 				position: [250, 250],
 				parameters: {},
 			},
-		];
+		] as INodeUi[];
 
 		assistantStore.trackUserOpenedAssistant({
+			workflowId: 'test-wf',
 			task: 'placeholder',
 			source: 'canvas',
 			has_existing_session: false,
@@ -487,7 +526,7 @@ describe('AI Assistant store', () => {
 			task: 'placeholder',
 			has_existing_session: false,
 			instance_id: '',
-			workflow_id: '',
+			workflow_id: 'test-wf',
 			canvas_status: 'existing_workflow',
 			node_type: undefined,
 			error: undefined,
@@ -512,6 +551,81 @@ describe('AI Assistant store', () => {
 		await errorMessage.retry?.();
 
 		expect(mockFn).toHaveBeenCalled();
+	});
+
+	it('should not add error message when handleServiceError receives an AbortError', () => {
+		const assistantStore = useAssistantStore();
+		const abortError = new Error('The operation was aborted');
+		abortError.name = 'AbortError';
+
+		assistantStore.handleServiceError(abortError, '125');
+		expect(assistantStore.chatMessages.length).toBe(0);
+		expect(assistantStore.streaming).toBe(false);
+	});
+
+	it('should pass abort signal to chatWithAssistant when initializing support chat', async () => {
+		const assistantStore = useAssistantStore();
+		setAssistantEnabled(true);
+
+		await assistantStore.initSupportChat('test-workflow', 'hello');
+
+		expect(apiSpy).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			expect.any(Function),
+			expect.any(Function),
+			expect.any(Function),
+			expect.any(AbortSignal),
+		);
+	});
+
+	it('should pass abort signal to chatWithAssistant when initializing error helper', async () => {
+		const context: ChatRequest.ErrorContext = {
+			error: {
+				description: '',
+				message: 'Hey',
+				name: 'NodeOperationError',
+			},
+			node: {
+				id: '1',
+				type: 'n8n-nodes-base.stopAndError',
+				typeVersion: 1,
+				name: 'Stop and Error',
+				position: [250, 250],
+				parameters: {},
+			},
+		};
+
+		const assistantStore = useAssistantStore();
+		await assistantStore.initErrorHelper('test-workflow', context);
+
+		expect(apiSpy).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			expect.any(Function),
+			expect.any(Function),
+			expect.any(Function),
+			expect.any(AbortSignal),
+		);
+	});
+
+	it('should abort streaming and stop when abortStreaming is called', async () => {
+		const assistantStore = useAssistantStore();
+		const mockSessionId = 'test-session';
+
+		apiSpy.mockImplementationOnce((_ctx, _payload, onMessage) => {
+			onMessage({
+				messages: [{ type: 'message', role: 'assistant', text: 'Hello!' }],
+				sessionId: mockSessionId,
+			});
+			// Don't call onDone to simulate ongoing streaming
+		});
+
+		await assistantStore.initSupportChat('test-workflow', 'hello');
+		expect(assistantStore.streaming).toBe(true);
+
+		assistantStore.abortStreaming();
+		expect(assistantStore.streaming).toBe(false);
 	});
 
 	it('should properly clear messages on retry in a chat session', async () => {
@@ -540,13 +654,13 @@ describe('AI Assistant store', () => {
 			onDone();
 		});
 
-		await assistantStore.initSupportChat('hello');
+		await assistantStore.initSupportChat('test-workflow', 'hello');
 
 		expect(assistantStore.chatMessages.length).toBe(2);
 		expect(assistantStore.chatMessages[0].type).toBe('text');
 		expect(assistantStore.chatMessages[1].type).toBe('text');
 
-		await assistantStore.sendMessage({ text: 'test' });
+		await assistantStore.sendMessage('test-workflow', { text: 'test' });
 
 		expect(assistantStore.chatMessages.length).toBe(4);
 		expect(assistantStore.chatMessages[0].type).toBe('text');

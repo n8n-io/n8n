@@ -10,16 +10,29 @@ import { setActivePinia } from 'pinia';
 import { beforeEach, describe, vi } from 'vitest';
 import { defineComponent, h, ref, toValue } from 'vue';
 import { useExpressionEditor } from './useExpressionEditor';
+import { Expression } from 'n8n-workflow';
+import * as completionUtils from '../plugins/codemirror/completions/utils';
 
 vi.mock('@/app/composables/useAutocompleteTelemetry', () => ({
 	useAutocompleteTelemetry: vi.fn(),
 }));
 
+const mockNdvStoreValue = {
+	activeNode: { type: 'n8n-nodes-base.test' },
+};
+
 vi.mock('@/features/ndv/shared/ndv.store', () => ({
-	useNDVStore: vi.fn(() => ({
-		activeNode: { type: 'n8n-nodes-base.test' },
-	})),
+	useNDVStore: vi.fn(() => mockNdvStoreValue),
+	injectNDVStore: vi.fn(() => ({ value: mockNdvStoreValue })),
 }));
+
+vi.mock(import('../plugins/codemirror/completions/utils'), async (importOriginal) => {
+	const actual = await importOriginal();
+	return {
+		...actual,
+		isCredentialsModalOpen: vi.fn(() => false),
+	};
+});
 
 describe('useExpressionEditor', () => {
 	const mockResolveExpression = () => {
@@ -124,6 +137,31 @@ describe('useExpressionEditor', () => {
 					kind: 'plaintext',
 					plaintext: ' after',
 					to: 36,
+				},
+			]);
+		});
+	});
+
+	test('surfaces deprecated $getPairedItem as an error segment', async () => {
+		mockResolveExpression();
+
+		const {
+			expressionEditor: { segments },
+		} = await renderExpressionEditor({
+			editorValue: '{{ $getPairedItem }}',
+			extensions: [n8nLang()],
+		});
+
+		await waitFor(() => {
+			expect(toValue(segments.resolvable)).toEqual([
+				{
+					error: expect.any(Error),
+					from: 0,
+					kind: 'resolvable',
+					resolvable: '{{ $getPairedItem }}',
+					resolved: '[$getPairedItem is deprecated and will be removed]',
+					state: 'invalid',
+					to: 20,
 				},
 			]);
 		});
@@ -287,6 +325,58 @@ describe('useExpressionEditor', () => {
 		});
 	});
 
+	describe('initialCursorPosition', () => {
+		test('should place cursor inside the empty expression block when value is auto-converted', async () => {
+			const editorValue = 'Hello {{  }}';
+			const expectedPosition = editorValue.lastIndexOf(' }}');
+			const {
+				expressionEditor: { editor },
+			} = await renderExpressionEditor({
+				editorValue,
+				initialCursorPosition: 'lastExpression',
+				extensions: [n8nLang()],
+			});
+
+			expect(toValue(editor)?.state.selection).toEqual(EditorSelection.single(expectedPosition));
+		});
+
+		test('should place cursor at end when option is "end"', async () => {
+			const editorValue = 'text here';
+			const {
+				expressionEditor: { editor },
+			} = await renderExpressionEditor({
+				editorValue,
+				initialCursorPosition: 'end',
+			});
+
+			expect(toValue(editor)?.state.selection).toEqual(EditorSelection.single(editorValue.length));
+		});
+
+		test('should place cursor at the given numeric position', async () => {
+			const editorValue = 'text here';
+			const {
+				expressionEditor: { editor },
+			} = await renderExpressionEditor({
+				editorValue,
+				initialCursorPosition: 3,
+			});
+
+			expect(toValue(editor)?.state.selection).toEqual(EditorSelection.single(3));
+		});
+
+		test('should default to position 0 when no option is provided', async () => {
+			const editorValue = 'Hello {{  }}';
+			const {
+				expressionEditor: { editor },
+			} = await renderExpressionEditor({
+				editorValue,
+				extensions: [n8nLang()],
+			});
+
+			expect(toValue(editor)?.state.selection).toEqual(EditorSelection.single(0));
+		});
+	});
+
 	describe('select()', () => {
 		test('should select number range', async () => {
 			const editorValue = 'text here';
@@ -353,6 +443,38 @@ describe('useExpressionEditor', () => {
 
 			await fireEvent(document, new MouseEvent('click'));
 			expect(expressionEditor.editor.value?.hasFocus).toBe(true);
+		});
+	});
+
+	describe('credential modal expression resolution', () => {
+		test('should use resolveWithoutWorkflow when credentials modal is open, even with active node', async () => {
+			const resolveWithoutWorkflowSpy = vi.spyOn(Expression, 'resolveWithoutWorkflow');
+			const resolveExpressionMock = mockResolveExpression();
+			vi.spyOn(completionUtils, 'isCredentialsModalOpen').mockReturnValueOnce(true);
+
+			const secretsData = {
+				$secrets: { awsSecretsManager: { cred: '***' } },
+			};
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: "{{ $secrets.awsSecretsManager['cred'] }}",
+				extensions: [n8nLang()],
+				additionalData: secretsData,
+			});
+
+			await waitFor(() => {
+				const resolvable = toValue(segments.resolvable);
+				expect(resolvable).toHaveLength(1);
+				expect(resolvable[0].state).toBe('valid');
+			});
+
+			expect(resolveWithoutWorkflowSpy).toHaveBeenCalledWith(
+				"{{ $secrets.awsSecretsManager['cred'] }}",
+				secretsData,
+			);
+			expect(resolveExpressionMock).not.toHaveBeenCalled();
 		});
 	});
 });

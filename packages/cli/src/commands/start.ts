@@ -1,13 +1,20 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { ExecutionRepository, SettingsRepository } from '@n8n/db';
+import {
+	AuthRolesService,
+	DeploymentKeyRepository,
+	ExecutionRepository,
+	SettingsRepository,
+} from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { McpServer } from '@n8n/n8n-nodes-langchain/mcp/core';
 import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { mkdir } from 'fs/promises';
-import { jsonParse, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import { BinaryDataConfig } from 'n8n-core';
+import { jsonParse, sleep, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import path from 'path';
 import replaceStream from 'replacestream';
 import { pipeline } from 'stream/promises';
@@ -17,38 +24,36 @@ import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
 import { EDITOR_UI_DIST_DIR, N8N_VERSION } from '@/constants';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { DeprecationService } from '@/deprecation/deprecation.service';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
+import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { Server } from '@/server';
+import { JwtService } from '@/services/jwt.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
+import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
+import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { UrlService } from '@/services/url.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { BaseCommand } from './base-command';
-import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { DeprecationService } from '@/deprecation/deprecation.service';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const open = require('open');
 
 const flagsSchema = z.object({
 	open: z.boolean().alias('o').describe('opens the UI automatically in browser').optional(),
-	tunnel: z
-		.boolean()
-		.describe(
-			'runs the webhooks via a hooks.n8n.cloud tunnel server. Use only for testing and development!',
-		)
-		.optional(),
 });
 
 @Command({
@@ -97,7 +102,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 			await this.externalHooks?.run('n8n.stop');
 
-			await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
+			await this.activeWorkflowManager.removeAllNonWebhookTriggerWorkflows();
 
 			if (this.instanceSettings.isMultiMain) {
 				await Container.get(MultiMainSetup).shutdown();
@@ -199,6 +204,10 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			const scopedLogger = this.logger.scoped('scaling');
 			scopedLogger.debug('Starting main instance in scaling mode');
 			scopedLogger.debug(`Host ID: ${this.instanceSettings.hostId}`);
+
+			if (process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true') {
+				this.needsTaskRunner = false;
+			}
 		}
 
 		await super.init();
@@ -225,18 +234,37 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			await this.initOrchestration();
 		}
 
+		await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository));
+		await Container.get(JwtService).initialize(Container.get(DeploymentKeyRepository));
+		await Container.get(BinaryDataConfig).initialize(Container.get(DeploymentKeyRepository));
+
 		await this.initLicense();
 
-		if (isMultiMainEnabled && !this.license.isMultiMainLicensed()) {
-			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
+		if (isMultiMainEnabled) {
+			await this.ensureMultiMainLicensed();
 		}
 
+		await this.initCommunityPackages();
+
+		// Initialize the auth roles service to make sure that roles are correctly setup for the instance.
+		// Only run on main instance - workers should not modify auth roles/scopes as they may have
+		// different code versions, and scope sync would incorrectly delete scopes they don't know about.
+		// All main instances sync on startup; a Postgres advisory lock inside a transaction
+		// serializes concurrent callers to prevent duplicate-key crashes.
+		if (this.instanceSettings.instanceType === 'main') {
+			await Container.get(AuthRolesService).init();
+			this.logger.debug('Auth roles service init complete');
+
+			await this.initInstanceSettingsLoader();
+			this.logger.debug('Instance settings loader init complete');
+		}
+
+		await this.initBinaryDataService();
+		this.logger.debug('Binary data service init complete');
 		Container.get(WaitTracker).init();
 		this.logger.debug('Wait tracker init complete');
 		await Container.get(CredentialsOverwrites).init();
 		this.logger.debug('Credentials overwrites init complete');
-		await this.initBinaryDataService();
-		this.logger.debug('Binary data service init complete');
 		await this.initDataDeduplicationService();
 		this.logger.debug('Data deduplication service init complete');
 		await this.initExternalHooks();
@@ -255,18 +283,23 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 
-		if (this.instanceSettings.isMultiMain) {
-			// we instantiate `PrometheusMetricsService` early to register its multi-main event handlers
-			if (this.globalConfig.endpoints.metrics.enable) {
-				const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
-				Container.get(PrometheusMetricsService);
-			}
+		// Initialize auth handler registry after modules are loaded
+		const { AuthHandlerRegistry } = await import('@/auth/auth-handler.registry');
+		await Container.get(AuthHandlerRegistry).init();
 
+		if (this.instanceSettings.isMultiMain) {
 			Container.get(MultiMainSetup).registerEventHandlers();
 		}
 
 		await this.executionContextHookRegistry.init();
 		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
+	}
+
+	private async initInstanceSettingsLoader(): Promise<void> {
+		const { InstanceSettingsLoaderService } = await import(
+			'@/instance-settings-loader/instance-settings-loader.service'
+		);
+		await Container.get(InstanceSettingsLoaderService).init();
 	}
 
 	async initOrchestration() {
@@ -277,12 +310,71 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		const subscriber = Container.get(Subscriber);
 		await subscriber.subscribe(subscriber.getCommandChannel());
 		await subscriber.subscribe(subscriber.getWorkerResponseChannel());
+		await subscriber.subscribe(subscriber.getMcpRelayChannel());
+
+		// Set up MCP relay handler for multi-main queue mode
+		subscriber.setMcpRelayHandler((msg) => {
+			try {
+				const mcpServer = McpServer.instance(this.logger);
+				mcpServer.handleWorkerResponse(msg.sessionId, msg.messageId, msg.response);
+			} catch (error) {
+				this.logger.error('Failed to handle MCP relay message', {
+					sessionId: msg.sessionId,
+					messageId: msg.messageId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		});
 
 		if (this.instanceSettings.isMultiMain) {
 			await Container.get(MultiMainSetup).init();
 		} else {
 			this.instanceSettings.markAsLeader();
 		}
+	}
+
+	/**
+	 * Ensures the multi-main license entitlement is present. Followers retry with
+	 * exponential backoff because the leader may not have written the cert to the
+	 * database yet when the follower starts up.
+	 */
+	private async ensureMultiMainLicensed() {
+		if (this.license.isMultiMainLicensed()) return;
+
+		if (!this.instanceSettings.isLeader) {
+			const maxRetries = 5;
+			for (let attempt = 1; attempt <= maxRetries; attempt++) {
+				const delayMs = 2 ** attempt * 1000; // 2s, 4s, 8s, 16s, 32s (~62s total)
+				this.logger.warn(
+					`Instance not licensed for multi-main — retrying license check in ${delayMs / 1000}s (attempt ${attempt}/${maxRetries})`,
+				);
+				await sleep(delayMs);
+				await this.license.reload();
+				if (this.license.isMultiMainLicensed()) return;
+			}
+		}
+
+		throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES, {
+			extra: {
+				instance: {
+					type: this.instanceSettings.instanceType,
+					isLeader: this.instanceSettings.isLeader,
+				},
+				config: {
+					autoRenewalEnabled: this.globalConfig.license?.autoRenewalEnabled,
+					activationKeySet: !!this.globalConfig.license?.activationKey,
+					usingEphemeralCert: !!this.globalConfig.license?.cert,
+				},
+				cert: {
+					exists: (await this.license.loadCertStr()).length > 0,
+					isValid: this.license.isCertValid(),
+					hasMultiMain: this.license.hasFeatureInCert(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES),
+					expiresAt: this.license.getExpiryDate()?.toISOString() ?? null,
+					terminatesAt: this.license.getTerminationDate()?.toISOString() ?? null,
+					consumerId: this.license.getConsumerId(),
+				},
+			},
+		});
 	}
 
 	async run() {
@@ -304,26 +396,54 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			}
 		}
 
-		if (this.globalConfig.database.isLegacySqlite) {
-			// Employ lazy loading to avoid unnecessary imports in the CLI
-			// and to ensure that the legacy recovery service is only used when needed.
-			const { LegacySqliteExecutionRecoveryService } = await import(
-				'@/executions/legacy-sqlite-execution-recovery.service'
-			);
-			await Container.get(LegacySqliteExecutionRecoveryService).cleanupWorkflowExecutions();
-		}
-
 		await this.server.start();
 
 		Container.get(ExecutionsPruningService).init();
 		Container.get(WorkflowHistoryCompactionService).init();
+		Container.get(WorkflowStatisticsRollupService).init();
+		Container.get(N8NCheckpointStorage).init();
+		Container.get(DurableScheduler).start();
 
 		if (this.globalConfig.executions.mode === 'regular') {
 			await this.runEnqueuedExecutions();
 		}
 
 		// Start to get active workflows and run their triggers
-		await this.activeWorkflowManager.init();
+		if (this.globalConfig.workflows.useWorkflowPublicationService) {
+			const { PublishedWorkflowEnqueuer } = await import(
+				'@/workflows/publication/published-workflow-enqueuer'
+			);
+			const { WorkflowPublicationOutboxConsumer } = await import(
+				'@/workflows/publication/workflow-publication-outbox-consumer'
+			);
+			const { WorkflowPublicationOutboxCleanupService } = await import(
+				'@/workflows/publication/workflow-publication-outbox-cleanup.service'
+			);
+
+			// Import for its side effect: registering the trigger deactivator's
+			// @OnLeaderStepdown and @OnShutdown handlers. Nothing else loads this module.
+			await import('@/workflows/publication/published-workflow-trigger-deactivator');
+
+			// Enqueue needs to happen before outbox consumer init, so it can activate
+			// everything on the first drain
+			if (this.instanceSettings.isLeader) {
+				await Container.get(PublishedWorkflowEnqueuer).enqueueActiveWorkflows();
+			}
+
+			// Don't await: the immediate drain activates every trigger and can take a
+			// while, so let it run in the background instead of blocking startup.
+			void Container.get(WorkflowPublicationOutboxConsumer)
+				.init()
+				.catch((error) => {
+					this.errorReporter.error(error, { shouldBeLogged: true });
+				});
+
+			Container.get(WorkflowPublicationOutboxCleanupService).init();
+		} else {
+			await this.activeWorkflowManager.init();
+		}
+
+		Container.get(LoadNodesAndCredentials).releaseTypes();
 
 		const editorUrl = this.getEditorUrl();
 

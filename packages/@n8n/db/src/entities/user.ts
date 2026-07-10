@@ -113,7 +113,12 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	@AfterLoad()
 	@AfterUpdate()
 	computeIsPending(): void {
-		this.isPending = this.password === null && this.role?.slug !== GLOBAL_OWNER_ROLE.slug;
+		const hasExternalAuthIdentity =
+			this.authIdentities?.some((identity) => identity.providerType !== 'email') ?? false;
+		this.isPending =
+			this.password === null &&
+			!hasExternalAuthIdentity &&
+			this.role?.slug !== GLOBAL_OWNER_ROLE.slug;
 	}
 
 	toJSON() {

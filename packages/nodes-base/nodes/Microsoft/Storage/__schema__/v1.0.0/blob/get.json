@@ -10,6 +10,9 @@
                 "blobType": {
                     "type": "string"
                 },
+                "contentDisposition": {
+                    "type": "string"
+                },
                 "contentLength": {
                     "type": "integer"
                 },
@@ -25,6 +28,9 @@
                 "etag": {
                     "type": "string"
                 },
+                "group": {
+                    "type": "string"
+                },
                 "lastModified": {
                     "type": "string"
                 },
@@ -34,11 +40,20 @@
                 "leaseStatus": {
                     "type": "string"
                 },
+                "owner": {
+                    "type": "string"
+                },
+                "permissions": {
+                    "type": "string"
+                },
+                "resourceType": {
+                    "type": "string"
+                },
                 "serverEncrypted": {
                     "type": "boolean"
                 }
             }
         }
     },
-    "version": 1
+    "version": 3
 }

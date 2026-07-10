@@ -1,8 +1,8 @@
+import { binaryToBuffer, binaryToString } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import chardet from 'chardet';
-import FileType from 'file-type';
 import { IncomingMessage } from 'http';
-import iconv from 'iconv-lite';
+import get from 'lodash/get';
 import { extension, lookup } from 'mime-types';
 import type { StringValue as TimeUnitValue } from 'ms';
 import type {
@@ -11,12 +11,17 @@ import type {
 	INode,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
+	WorkflowSettingsBinaryMode,
 } from 'n8n-workflow';
 import {
 	NodeOperationError,
 	fileTypeFromMimeType,
-	ApplicationError,
+	UserError,
 	UnexpectedError,
+	isBinaryValue,
+	BINARY_MODE_COMBINED,
+	BINARY_MODE_SEPARATE,
+	sanitizeFilename,
 } from 'n8n-workflow';
 import path from 'path';
 import type { Readable } from 'stream';
@@ -24,18 +29,6 @@ import { URL } from 'url';
 
 import { BinaryDataService } from '@/binary-data/binary-data.service';
 import type { BinaryData } from '@/binary-data/types';
-import { binaryToBuffer } from '@/binary-data/utils';
-
-import { parseIncomingMessage } from './parse-incoming-message';
-
-export async function binaryToString(body: Buffer | Readable, encoding?: string) {
-	if (!encoding && body instanceof IncomingMessage) {
-		parseIncomingMessage(body);
-		encoding = body.encoding;
-	}
-	const buffer = await binaryToBuffer(body);
-	return iconv.decode(buffer, encoding ?? 'utf-8');
-}
 
 function getBinaryPath(binaryDataId: string): string {
 	return Container.get(BinaryDataService).getPath(binaryDataId);
@@ -56,13 +49,6 @@ async function getBinaryStream(binaryDataId: string, chunkSize?: number): Promis
 }
 
 /**
- * Check if object is a binary data
- */
-function isBinaryData(obj: unknown): obj is IBinaryData {
-	return typeof obj === 'object' && obj !== null && 'data' in obj && 'mimeType' in obj;
-}
-
-/**
  * If parameterData is a string, returns the binary data the given item index and
  * property name from the input data.
  * Else if parameterData is a binary data object, returns the binary data object.
@@ -73,8 +59,9 @@ export function assertBinaryData(
 	itemIndex: number,
 	parameterData: string | IBinaryData,
 	inputIndex: number,
+	binaryMode: WorkflowSettingsBinaryMode = BINARY_MODE_SEPARATE,
 ): IBinaryData {
-	if (isBinaryData(parameterData)) {
+	if (isBinaryValue(parameterData)) {
 		return parameterData;
 	}
 	if (typeof parameterData !== 'string') {
@@ -88,32 +75,49 @@ export function assertBinaryData(
 			},
 		);
 	}
-	const binaryKeyData = inputData.main[inputIndex]![itemIndex].binary;
-	if (binaryKeyData === undefined) {
-		throw new NodeOperationError(
-			node,
-			`This operation expects the node's input data to contain a binary file '${parameterData}', but none was found [item ${itemIndex}]`,
-			{
-				itemIndex,
-				description: 'Make sure that the previous node outputs a binary file',
-			},
-		);
-	}
 
-	const binaryPropertyData = binaryKeyData[parameterData];
-	if (binaryPropertyData === undefined) {
-		throw new NodeOperationError(
-			node,
-			`The item has no binary field '${parameterData}' [item ${itemIndex}]`,
-			{
-				itemIndex,
-				description:
-					'Check that the parameter where you specified the input binary field name is correct, and that it matches a field in the binary input',
-			},
-		);
-	}
+	if (binaryMode === BINARY_MODE_COMBINED) {
+		const itemData = inputData.main[inputIndex]![itemIndex].json;
+		const binaryData = get(itemData, parameterData);
+		if (!isBinaryValue(binaryData)) {
+			throw new NodeOperationError(
+				node,
+				`The path '${parameterData}' does not resolve to a binary data object in the input data [item ${itemIndex}]`,
+				{
+					itemIndex,
+					description: `Check that the path '${parameterData}' is correct, and that it resolves to a binary data object in the input data`,
+				},
+			);
+		}
+		return binaryData;
+	} else {
+		const binaryKeyData = inputData.main[inputIndex]![itemIndex].binary;
+		if (binaryKeyData === undefined) {
+			throw new NodeOperationError(
+				node,
+				`This operation expects the node's input data to contain a binary file '${parameterData}', but none was found [item ${itemIndex}]`,
+				{
+					itemIndex,
+					description: 'Make sure that the previous node outputs a binary file',
+				},
+			);
+		}
 
-	return binaryPropertyData;
+		const binaryPropertyData = binaryKeyData[parameterData];
+		if (binaryPropertyData === undefined) {
+			throw new NodeOperationError(
+				node,
+				`The item has no binary field '${parameterData}' [item ${itemIndex}]`,
+				{
+					itemIndex,
+					description:
+						'Check that the parameter where you specified the input binary field name is correct, and that it matches a field in the binary input',
+				},
+			);
+		}
+
+		return binaryPropertyData;
+	}
 }
 
 /**
@@ -126,13 +130,21 @@ export async function getBinaryDataBuffer(
 	itemIndex: number,
 	parameterData: string | IBinaryData,
 	inputIndex: number,
+	binaryMode: WorkflowSettingsBinaryMode = BINARY_MODE_SEPARATE,
 ): Promise<Buffer> {
 	let binaryData: IBinaryData;
 
-	if (isBinaryData(parameterData)) {
+	if (isBinaryValue(parameterData)) {
 		binaryData = parameterData;
-	} else if (typeof parameterData === 'string') {
+	} else if (typeof parameterData === 'string' && binaryMode !== BINARY_MODE_COMBINED) {
 		binaryData = inputData.main[inputIndex]![itemIndex].binary![parameterData];
+	} else if (typeof parameterData === 'string') {
+		const itemData = inputData.main[inputIndex]![itemIndex].json;
+		const data = get(itemData, parameterData);
+		if (!isBinaryValue(data)) {
+			throw new UnexpectedError('Provided parameter is not a string or binary data object.');
+		}
+		binaryData = data;
 	} else {
 		throw new UnexpectedError('Provided parameter is not a string or binary data object.');
 	}
@@ -186,7 +198,8 @@ export async function copyBinaryFile(
 
 		if (!mimeType) {
 			// read the first bytes of the file to guess mime type
-			const fileTypeData = await FileType.fromFile(filePath);
+			const { fileTypeFromFile } = await import('file-type');
+			const fileTypeData = await fileTypeFromFile(filePath);
 			if (fileTypeData) {
 				mimeType = fileTypeData.mime;
 				fileExtension = fileTypeData.ext;
@@ -211,9 +224,9 @@ export async function copyBinaryFile(
 	};
 
 	if (fileName) {
-		returnData.fileName = fileName;
+		returnData.fileName = sanitizeFilename(fileName);
 	} else if (filePath) {
-		returnData.fileName = path.parse(filePath).base;
+		returnData.fileName = sanitizeFilename(filePath);
 	}
 
 	return await Container.get(BinaryDataService).copyBinaryFile(
@@ -241,10 +254,19 @@ export async function prepareBinaryData(
 		if (!filePath) {
 			try {
 				const { responseUrl } = binaryData;
+				let sanitizedUrl: string | undefined;
+				let urlPathname: string | undefined;
+				if (responseUrl) {
+					const parsed = new URL(responseUrl);
+					parsed.username = '';
+					parsed.password = '';
+					sanitizedUrl = parsed.toString();
+					urlPathname = parsed.pathname;
+				}
 				filePath =
 					binaryData.contentDisposition?.filename ??
-					((responseUrl && new URL(responseUrl).pathname) ?? binaryData.req?.path)?.slice(1);
-				fullUrl = responseUrl;
+					(urlPathname ?? binaryData.req?.path)?.slice(1);
+				fullUrl = sanitizedUrl;
 			} catch {}
 		}
 		if (!mimeType) {
@@ -266,7 +288,8 @@ export async function prepareBinaryData(
 		if (!mimeType) {
 			if (Buffer.isBuffer(binaryData)) {
 				// Use buffer to guess mime type
-				const fileTypeData = await FileType.fromBuffer(binaryData);
+				const { fileTypeFromBuffer } = await import('file-type');
+				const fileTypeData = await fileTypeFromBuffer(binaryData);
 				if (fileTypeData) {
 					mimeType = fileTypeData.mime;
 					fileExtension = fileTypeData.ext;
@@ -334,6 +357,6 @@ export const getBinaryHelperFunctions = (
 	setBinaryDataBuffer: async (data, binaryData) =>
 		await setBinaryDataBuffer(data, binaryData, workflowId, executionId!),
 	copyBinaryFile: async () => {
-		throw new ApplicationError('`copyBinaryFile` has been removed. Please upgrade this node.');
+		throw new UserError('`copyBinaryFile` has been removed. Please upgrade this node.');
 	},
 });

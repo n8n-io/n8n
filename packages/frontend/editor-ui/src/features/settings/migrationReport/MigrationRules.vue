@@ -17,6 +17,7 @@ import orderBy from 'lodash/orderBy';
 import SeverityTag from './components/SeverityTag.vue';
 import EmptyTab from './components/EmptyTab.vue';
 import { useI18n } from '@n8n/i18n';
+import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 
 const $style = useCssModule();
 const rootStore = useRootStore();
@@ -25,9 +26,17 @@ const i18n = useI18n();
 const currentTab = ref('workflow-issues');
 const shouldShowRefreshButton = ref(false);
 
+const versionQuery = MIGRATION_REPORT_TARGET_VERSION
+	? { version: MIGRATION_REPORT_TARGET_VERSION }
+	: undefined;
+
+const targetVersionMajor = MIGRATION_REPORT_TARGET_VERSION?.slice(1) ?? '2';
+const targetVersionDisplay = `${targetVersionMajor}.0.0`;
+const documentationUrl = `https://docs.n8n.io/${targetVersionMajor}-0-breaking-changes/`;
+
 const { state, isLoading, execute } = useAsyncState(async (refresh: boolean = false) => {
 	if (refresh) {
-		const response = await breakingChangesApi.refreshReport(rootStore.restApiContext);
+		const response = await breakingChangesApi.refreshReport(rootStore.restApiContext, versionQuery);
 		// set tab based on available issues
 		if (
 			response.report.workflowResults.length === 0 &&
@@ -39,7 +48,7 @@ const { state, isLoading, execute } = useAsyncState(async (refresh: boolean = fa
 
 		return response;
 	}
-	const response = await breakingChangesApi.getReport(rootStore.restApiContext);
+	const response = await breakingChangesApi.getReport(rootStore.restApiContext, versionQuery);
 	shouldShowRefreshButton.value = response.shouldCache;
 
 	return response;
@@ -117,7 +126,11 @@ const sortedInstanceResults = computed(() => {
 <template>
 	<div style="max-width: 700px; margin: 0 auto; padding-bottom: 40px">
 		<N8nText tag="h2" size="xlarge" color="text-dark" class="mb-2xs">
-			{{ i18n.baseText('settings.migrationReport.title') }}
+			{{
+				i18n.baseText('settings.migrationReport.title', {
+					interpolate: { version: targetVersionDisplay },
+				})
+			}}
 		</N8nText>
 		<N8nText tag="p" color="text-base" class="mb-2xl">
 			{{
@@ -125,15 +138,11 @@ const sortedInstanceResults = computed(() => {
 					interpolate: {
 						compatibleCount: String(compatibleWorkflowsCount),
 						totalCount: String(state?.totalWorkflows ?? 0),
+						version: targetVersionDisplay,
 					},
 				})
 			}}
-			<N8nLink
-				theme="text"
-				href="https://docs.n8n.io/2-0-breaking-changes/"
-				target="_blank"
-				rel="noopener noreferrer"
-			>
+			<N8nLink theme="text" :href="documentationUrl" target="_blank" rel="noopener noreferrer">
 				<span :class="$style.UnderlinedText">{{
 					i18n.baseText('settings.migrationReport.documentationLink')
 				}}</span>
@@ -144,10 +153,10 @@ const sortedInstanceResults = computed(() => {
 		<div :class="$style.ActionBar">
 			<N8nTabs v-model="currentTab" :options="tabs" variant="modern" />
 			<N8nButton
+				variant="subtle"
 				v-if="shouldShowRefreshButton"
 				:label="i18n.baseText('settings.migrationReport.refreshButton')"
 				icon="refresh-cw"
-				type="secondary"
 				:loading="isLoading"
 				:disabled="isLoading"
 				@click="refreshReport"
@@ -169,7 +178,9 @@ const sortedInstanceResults = computed(() => {
 						i18n.baseText('settings.migrationReport.emptyWorkflowIssues.title')
 					}}</template>
 					<template #description>{{
-						i18n.baseText('settings.migrationReport.emptyWorkflowIssues.description')
+						i18n.baseText('settings.migrationReport.emptyWorkflowIssues.description', {
+							interpolate: { version: targetVersionDisplay },
+						})
 					}}</template>
 				</EmptyTab>
 			</template>
@@ -227,7 +238,9 @@ const sortedInstanceResults = computed(() => {
 						i18n.baseText('settings.migrationReport.emptyInstanceIssues.title')
 					}}</template>
 					<template #description>{{
-						i18n.baseText('settings.migrationReport.emptyInstanceIssues.description')
+						i18n.baseText('settings.migrationReport.emptyInstanceIssues.description', {
+							interpolate: { version: targetVersionDisplay },
+						})
 					}}</template>
 				</EmptyTab>
 			</template>

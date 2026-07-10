@@ -1,14 +1,14 @@
 import type { Locator } from '@playwright/test';
 
 import { BaseModal } from './BaseModal';
+import { NodeCredentials } from './NodeCredentials';
 
 export class ChatHubCredentialModal extends BaseModal {
+	private readonly credentials: NodeCredentials;
+
 	constructor(private root: Locator) {
 		super(root.page());
-	}
-
-	getRoot(): Locator {
-		return this.root;
+		this.credentials = new NodeCredentials(root);
 	}
 
 	getCredentialSelector(): Locator {
@@ -16,6 +16,6 @@ export class ChatHubCredentialModal extends BaseModal {
 	}
 
 	getCreateButton(): Locator {
-		return this.page.getByTestId('node-credentials-select-item-new');
+		return this.credentials.getCreateNewItem();
 	}
 }

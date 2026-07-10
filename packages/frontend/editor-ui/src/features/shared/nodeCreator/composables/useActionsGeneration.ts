@@ -5,20 +5,25 @@ import {
 	AI_SUBCATEGORY,
 	CUSTOM_API_CALL_KEY,
 	HTTP_REQUEST_NODE_TYPE,
+	SIMPLE_MEMORY_NODE_TYPE,
 } from '@/app/constants';
 import memoize from 'lodash/memoize';
 import startCase from 'lodash/startCase';
-import type {
-	ICredentialType,
-	INodeProperties,
-	INodePropertyCollection,
-	INodePropertyOptions,
-	INodeTypeDescription,
+import {
+	checkConditions,
+	EVALUATION_NODE_TYPE,
+	EVALUATION_TRIGGER_NODE_TYPE,
+	type ICredentialType,
+	type INodeProperties,
+	type INodePropertyCollection,
+	type INodePropertyOptions,
+	type INodeTypeDescription,
 } from 'n8n-workflow';
 
 import { i18n } from '@n8n/i18n';
 
 import { getCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { formatTriggerActionName } from '../nodeCreator.utils';
 import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store';
 
@@ -95,8 +100,34 @@ function getNodeTypeBase(nodeTypeDescription: INodeTypeDescription, label?: stri
 	};
 }
 
+// Actions represent adding a new node, which uses the default (latest) version.
+function getDefaultNodeVersion(nodeTypeDescription: INodeTypeDescription): number {
+	if (typeof nodeTypeDescription.defaultVersion === 'number') {
+		return nodeTypeDescription.defaultVersion;
+	}
+	return Array.isArray(nodeTypeDescription.version)
+		? Math.max(...nodeTypeDescription.version)
+		: nodeTypeDescription.version;
+}
+
+// Whether a property shows for a version, honoring `_cnd` `@version` conditions.
+function isPropertyForVersion(property: INodeProperties, version: number): boolean {
+	const versionConditions = property.displayOptions?.show?.['@version'];
+	if (!versionConditions) return true;
+	return checkConditions(versionConditions, [version]);
+}
+
 function operationsCategory(nodeTypeDescription: INodeTypeDescription): ActionTypeDescription[] {
-	if (nodeTypeDescription.properties.find((property) => property.name === 'resource')) return [];
+	const defaultVersion = getDefaultNodeVersion(nodeTypeDescription);
+
+	// Defer to resourceCategories only if the default version is resource-based;
+	// a node may keep a legacy `resource` for old versions and a flat `operation` now.
+	if (
+		nodeTypeDescription.properties.some(
+			(property) => property.name === 'resource' && isPropertyForVersion(property, defaultVersion),
+		)
+	)
+		return [];
 
 	if (nodeTypeDescription.name === 'n8n-nodes-base.code') {
 		const languageProperty = nodeTypeDescription.properties.find(
@@ -113,9 +144,13 @@ function operationsCategory(nodeTypeDescription: INodeTypeDescription): ActionTy
 		}
 	}
 
-	const matchedProperty = nodeTypeDescription.properties.find(
-		(property) => property.name?.toLowerCase() === 'operation',
-	);
+	const matchedProperty =
+		nodeTypeDescription.properties.find(
+			(property) =>
+				property.name?.toLowerCase() === 'operation' &&
+				isPropertyForVersion(property, defaultVersion),
+		) ??
+		nodeTypeDescription.properties.find((property) => property.name?.toLowerCase() === 'operation');
 
 	if (!matchedProperty?.options) return [];
 
@@ -228,8 +263,9 @@ function triggersCategory(nodeTypeDescription: INodeTypeDescription): ActionType
 
 function resourceCategories(nodeTypeDescription: INodeTypeDescription): ActionTypeDescription[] {
 	const transformedNodes: ActionTypeDescription[] = [];
+	const defaultVersion = getDefaultNodeVersion(nodeTypeDescription);
 	const matchedProperties = nodeTypeDescription.properties.filter(
-		(property) => property.name === 'resource',
+		(property) => property.name === 'resource' && isPropertyForVersion(property, defaultVersion),
 	);
 
 	matchedProperties.forEach((property) => {
@@ -245,19 +281,7 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription): ActionTy
 						operation.displayOptions?.show?.resource?.includes(resourceOption.value) ??
 						isSingleResource;
 
-					// If the operation doesn't have a version defined, it should be
-					// available for all versions. Otherwise, make sure the node type
-					// version matches the operation version
-					const operationVersions = operation.displayOptions?.show?.['@version'];
-					const nodeTypeVersions = Array.isArray(nodeTypeDescription.version)
-						? nodeTypeDescription.version
-						: [nodeTypeDescription.version];
-
-					const isMatchingVersion = operationVersions
-						? operationVersions.some(
-								(version) => typeof version === 'number' && nodeTypeVersions.includes(version),
-							)
-						: true;
+					const isMatchingVersion = isPropertyForVersion(operation, defaultVersion);
 
 					return isOperation && isMatchingResource && isMatchingVersion;
 				});
@@ -304,12 +328,15 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription): ActionTy
 
 export function useActionsGenerator() {
 	function generateNodeActions(node: INodeTypeDescription | undefined) {
-		if (!node) return [];
+		if (!node) {
+			return [];
+		}
 		if (
 			node.codex?.subcategories?.AI?.includes(AI_CATEGORY_TOOLS) &&
 			!node.codex?.subcategories?.AI?.includes(AI_CATEGORY_ROOT_NODES)
-		)
+		) {
 			return [];
+		}
 		return [
 			...triggersCategory(node),
 			...operationsCategory(node),
@@ -367,15 +394,25 @@ export function useActionsGenerator() {
 		httpOnlyCredentials: ICredentialType[],
 	) {
 		const evaluationStore = useEvaluationStore();
+		const settingsStore = useSettingsStore();
 
 		const visibleNodeTypes = nodeTypes.filter((node) => {
-			if (evaluationStore.isEvaluationEnabled) {
-				return true;
+			// Filter out evaluation nodes if evaluation is not enabled
+			if (!evaluationStore.isEvaluationEnabled) {
+				if ([EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE].includes(node.name)) {
+					return false;
+				}
 			}
-			return (
-				node.name !== 'n8n-nodes-base.evaluation' &&
-				node.name !== 'n8n-nodes-base.evaluationTrigger'
-			);
+
+			// Filter out Simple Memory node in queue mode or multi-main setup
+			// because it stores memory in-process which doesn't work with multiple workers
+			if (settingsStore.isQueueModeEnabled || settingsStore.isMultiMain) {
+				if (node.name === SIMPLE_MEMORY_NODE_TYPE) {
+					return false;
+				}
+			}
+
+			return true;
 		});
 
 		const actions: ActionsRecord<typeof mergedNodes> = {};

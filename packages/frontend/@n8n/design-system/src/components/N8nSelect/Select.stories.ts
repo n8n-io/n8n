@@ -6,7 +6,7 @@ import N8nIcon from '../N8nIcon';
 import N8nOption from '../N8nOption';
 
 export default {
-	title: 'Atoms/Select',
+	title: 'Core/Select',
 	component: N8nSelect,
 	argTypes: {
 		disabled: {
@@ -37,6 +37,9 @@ export default {
 		},
 	},
 	parameters: {
+		docs: {
+			description: { component: 'A select input for choosing from predefined options.' },
+		},
 		backgrounds: { default: '--color--background--light-2' },
 	},
 };

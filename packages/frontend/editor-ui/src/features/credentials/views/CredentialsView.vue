@@ -2,8 +2,9 @@
 import CredentialCard from '../components/CredentialCard.vue';
 import EmptySharedSectionActionBox from '@/features/core/folders/components/EmptySharedSectionActionBox.vue';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
+import ResourcesListEmptyState from '@/app/components/layouts/ResourcesListEmptyState.vue';
 import type { BaseFilters, Resource } from '@/Interface';
-import type { ICredentialTypeMap } from '../credentials.types';
+import type { ICredentialsResponse, ICredentialTypeMap } from '../credentials.types';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
@@ -18,7 +19,6 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { listenForModalChanges, useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import { isCredentialsResource } from '@/app/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
@@ -30,8 +30,10 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 import { useCredentialsStore } from '../credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
+import { useDependencies } from '@/app/composables/useDependencies';
+import { useInstanceAiCredentialHelp } from '@/features/ai/instanceAi/composables/useInstanceAiCredentialHelp';
 
-import { N8nActionBox, N8nCheckbox, N8nInputLabel, N8nOption, N8nSelect } from '@n8n/design-system';
+import { N8nCheckbox, N8nInputLabel, N8nOption, N8nSelect } from '@n8n/design-system';
 const props = defineProps<{
 	credentialId?: string;
 }>();
@@ -42,8 +44,12 @@ const uiStore = useUIStore();
 const sourceControlStore = useSourceControlStore();
 const externalSecretsStore = useExternalSecretsStore();
 const projectsStore = useProjectsStore();
-const usersStore = useUsersStore();
+
+// Credentials-list credential help (shared with the new-credential dialog): opens
+// Instance AI in a new tab asking about the credential alone.
+const instanceAiCredentialHelp = useInstanceAiCredentialHelp();
 const insightsStore = useInsightsStore();
+const { fetchDependencyCounts } = useDependencies();
 
 const documentTitle = useDocumentTitle();
 const route = useRoute();
@@ -52,7 +58,11 @@ const telemetry = useTelemetry();
 const i18n = useI18n();
 const overview = useProjectPages();
 
-type Filters = BaseFilters & { type?: string[]; setupNeeded?: boolean };
+type Filters = BaseFilters & {
+	type?: string[];
+	setupNeeded?: boolean;
+	externalSecretsStore?: string;
+};
 const updateFilter = (state: Filters) => {
 	void router.replace({ query: pickBy(state) as LocationQueryRaw });
 };
@@ -64,11 +74,18 @@ const onSearchUpdated = (search: string) => {
 const filters = ref<Filters>({
 	...route.query,
 	setupNeeded: route.query.setupNeeded?.toString() === 'true',
+	...(route.query.externalSecretsStore
+		? { externalSecretsStore: route.query.externalSecretsStore.toString() }
+		: {}),
 } as Filters);
 const loading = ref(false);
 
-const needsSetup = (data: string | undefined): boolean => {
-	const dataObject = data as unknown as ICredentialsDecrypted['data'];
+const needsSetup = (credential: ICredentialsResponse): boolean => {
+	// Private (resolvable) credentials store their connection data per-user via a
+	// resolver, so their own `data` is always empty and they never need setup.
+	if (credential.isResolvable) return false;
+
+	const dataObject = credential.data as unknown as ICredentialsDecrypted['data'];
 	if (!dataObject) return false;
 
 	if (Object.keys(dataObject).length === 0) return true;
@@ -88,8 +105,10 @@ const allCredentials = computed<Resource[]>(() =>
 		scopes: credential.scopes,
 		sharedWithProjects: credential.sharedWithProjects,
 		readOnly: !getResourcePermissions(credential.scopes).credential.update,
-		needsSetup: needsSetup(credential.data),
+		needsSetup: needsSetup(credential),
 		isGlobal: credential.isGlobal,
+		isResolvable: credential.isResolvable,
+		connectedByMe: credential.connectedByMe,
 		type: credential.type,
 	})),
 );
@@ -112,8 +131,22 @@ const personalProject = computed<Project | null>(() => {
 	return projectsStore.personalProject;
 });
 
+const showSecretStoreFilter = computed(() => {
+	return (
+		!!route.query.externalSecretsStore && externalSecretsStore.isEnterpriseExternalSecretsEnabled
+	);
+});
+
 const setRouteCredentialId = (credentialId?: string) => {
 	void router.replace({ params: { credentialId }, query: route.query });
+};
+
+const refreshCredentials = () => {
+	void credentialsStore.fetchAllCredentials({
+		projectId: route?.params?.projectId as string | undefined,
+		includeScopes: true,
+		externalSecretsStore: filters.value.externalSecretsStore,
+	});
 };
 
 const addCredential = () => {
@@ -128,6 +161,10 @@ listenForModalChanges({
 	onModalClosed(modalName) {
 		if ([CREDENTIAL_SELECT_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY].includes(modalName as string)) {
 			void router.replace({ params: { credentialId: '' }, query: route.query });
+		}
+		if (modalName === CREDENTIAL_EDIT_MODAL_KEY && credentialsStore.pendingOAuthRefresh) {
+			credentialsStore.pendingOAuthRefresh = false;
+			refreshCredentials();
 		}
 	},
 });
@@ -177,7 +214,9 @@ const maybeEditCredential = async () => {
 		}
 
 		if (credentialPermissions.update || credentialPermissions.read) {
-			uiStore.openExistingCredential(props.credentialId);
+			uiStore.openExistingCredential(props.credentialId, {
+				instanceAiCredentialHelp: instanceAiCredentialHelp(),
+			});
 			return;
 		}
 
@@ -199,14 +238,14 @@ const initialize = async () => {
 		route?.params?.projectId === projectsStore.personalProject?.id;
 
 	const loadPromises = [
-		credentialsStore.fetchAllCredentials(
-			route?.params?.projectId as string | undefined,
-			true,
-			overview.isSharedSubPage,
-			!isPersonalView, // don't include global credentials if personal
-		),
+		credentialsStore.fetchAllCredentials({
+			projectId: route?.params?.projectId as string | undefined,
+			includeScopes: true,
+			onlySharedWithMe: overview.isSharedSubPage,
+			includeGlobal: !isPersonalView, // don't include global credentials if personal
+			externalSecretsStore: filters.value.externalSecretsStore,
+		}),
 		credentialsStore.fetchCredentialTypes(false),
-		externalSecretsStore.fetchAllSecrets(),
 		nodeTypesStore.loadNodeTypesIfNotLoaded(),
 		isVarsEnabled ? useEnvironmentsStore().fetchAllVariables() : Promise.resolve(), // for expression resolution
 	];
@@ -215,12 +254,16 @@ const initialize = async () => {
 	maybeCreateCredential();
 	await maybeEditCredential();
 	loading.value = false;
+
+	// Fire-and-forget: fetch which workflows use these credentials
+	const credentialIds = credentialsStore.allCredentials.map((c) => c.id);
+	void fetchDependencyCounts(credentialIds, 'credential');
 };
 
 credentialsStore.$onAction(({ name, after }) => {
-	if (name === 'createNewCredential') {
+	if (name === 'createNewCredential' || name === 'updateCredential') {
 		after(() => {
-			void credentialsStore.fetchAllCredentials(route?.params?.projectId as string | undefined);
+			refreshCredentials();
 		});
 	}
 });
@@ -239,6 +282,18 @@ watch(
 	() => {
 		maybeCreateCredential();
 		void maybeEditCredential();
+	},
+);
+
+// Watch for changes to externalSecretsStore filter and refetch data
+// since this is a backend filter that affects what credentials are returned
+watch(
+	() => filters.value.externalSecretsStore,
+	async (newValue, oldValue) => {
+		// Only refetch if the filter actually changed (not on initial mount)
+		if (newValue !== oldValue && (newValue !== undefined || oldValue !== undefined)) {
+			void initialize();
+		}
 	},
 );
 
@@ -279,6 +334,7 @@ onMounted(() => {
 				:read-only="data.readOnly"
 				:needs-setup="data.needsSetup"
 				@click="setRouteCredentialId"
+				@connected="refreshCredentials"
 			/>
 		</template>
 		<template #filters="{ setKeyValue }">
@@ -324,6 +380,27 @@ onMounted(() => {
 				>
 				</N8nCheckbox>
 			</div>
+
+			<!-- secret store filter is only shown if query parameter is set in url
+			 -  needed for handling deletion of enterprise external secrets -->
+			<div v-if="showSecretStoreFilter && filters.externalSecretsStore" class="mb-s">
+				<N8nInputLabel
+					:label="i18n.baseText('credentials.filters.secretStore')"
+					:bold="false"
+					size="small"
+					color="text-base"
+					class="mb-3xs"
+				/>
+				<N8nSelect
+					:model-value="filters.externalSecretsStore"
+					size="medium"
+					disabled
+					data-test-id="credential-filter-secret-store"
+					:class="$style['type-input']"
+				>
+					<N8nOption :value="filters.externalSecretsStore" :label="filters.externalSecretsStore" />
+				</N8nSelect>
+			</div>
 		</template>
 		<template #empty>
 			<EmptySharedSectionActionBox
@@ -331,35 +408,15 @@ onMounted(() => {
 				:personal-project="personalProject"
 				resource-type="credentials"
 			/>
-			<N8nActionBox
+			<ResourcesListEmptyState
 				v-else
-				data-test-id="empty-resources-list"
-				:icon="{ type: 'icon', value: 'lock' }"
-				:heading="
-					i18n.baseText(
-						usersStore.currentUser?.firstName
-							? 'credentials.empty.heading'
-							: 'credentials.empty.heading.userNotSetup',
-						{
-							interpolate: { name: usersStore.currentUser?.firstName ?? '' },
-						},
-					)
-				"
-				:description="i18n.baseText('credentials.empty.description')"
-				:button-text="i18n.baseText('credentials.empty.button')"
-				button-type="secondary"
+				resource-key="credentials"
 				:button-disabled="readOnlyEnv || !projectPermissions.credential.create"
-				:button-icon="readOnlyEnv || !projectPermissions.credential.create ? 'lock' : undefined"
+				:disabled-tooltip-text="
+					readOnlyEnv ? i18n.baseText('readOnlyEnv.cantAdd.credential') : undefined
+				"
 				@click:button="addCredential"
-			>
-				<template #disabledButtonTooltip>
-					{{
-						readOnlyEnv
-							? i18n.baseText('readOnlyEnv.cantAdd.credential')
-							: i18n.baseText('credentials.empty.button.disabled.tooltip')
-					}}
-				</template>
-			</N8nActionBox>
+			/>
 		</template>
 	</ResourcesListLayout>
 </template>

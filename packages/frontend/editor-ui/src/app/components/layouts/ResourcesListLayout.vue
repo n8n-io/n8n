@@ -4,7 +4,9 @@ import { computed, nextTick, ref, onMounted, watch, onBeforeUnmount } from 'vue'
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/app/components/layouts/PageViewLayoutList.vue';
 import ResourceFiltersDropdown from '@/app/components/forms/ResourceFiltersDropdown.vue';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import ResourcesListEmptyState, {
+	isEmptyStateResourceKey,
+} from '@/app/components/layouts/ResourcesListEmptyState.vue';
 import type { DatatableColumn } from '@n8n/design-system';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -12,12 +14,11 @@ import { useRoute, useRouter } from 'vue-router';
 
 import type { BaseFilters, Resource, SortingAndPaginationUpdates } from '@/Interface';
 import { isSharedResource, isResourceSortableByDate } from '@/app/utils/typeGuards';
-import { useN8nLocalStorage } from '@/app/composables/useN8nLocalStorage';
+import { type LocalStorageTabKey, useN8nLocalStorage } from '@/app/composables/useN8nLocalStorage';
 import { useResourcesListI18n } from '@/app/composables/useResourcesListI18n';
 
 import { ElPagination } from 'element-plus';
 import {
-	N8nActionBox,
 	N8nDatatable,
 	N8nIcon,
 	N8nInfoTip,
@@ -38,7 +39,6 @@ type UIConfig = {
 const route = useRoute();
 const router = useRouter();
 const { callDebounced } = useDebounce();
-const usersStore = useUsersStore();
 const telemetry = useTelemetry();
 const n8nLocalStorage = useN8nLocalStorage();
 
@@ -69,6 +69,8 @@ const props = withDefaults(
 		dontPerformSortingAndFiltering?: boolean;
 		hasEmptyState?: boolean;
 		uiConfig?: UIConfig;
+		tabKey?: LocalStorageTabKey;
+		persistKeyExclusions?: string[];
 	}>(),
 	{
 		displayName: (resource: ResourceType) => resource.name || '',
@@ -92,6 +94,8 @@ const props = withDefaults(
 			showFiltersDropdown: true,
 			sortEnabled: true,
 		}),
+		tabKey: 'workflows',
+		persistKeyExclusions: () => [],
 	},
 );
 
@@ -155,6 +159,18 @@ const showEmptyState = computed(() => {
 		!hasFilters.value &&
 		!filtersModel.value.search &&
 		!props.resourcesRefreshing
+	);
+});
+
+// Skeleton instead of list chrome while a refresh is deciding whether an
+// unfiltered list is empty — prevents a chrome flash before the empty state.
+const showLoadingState = computed(() => {
+	return (
+		props.loading ||
+		(props.resourcesRefreshing &&
+			props.resources.length === 0 &&
+			!hasFilters.value &&
+			!filtersModel.value.search)
 	);
 });
 
@@ -310,6 +326,7 @@ onBeforeUnmount(() => {
 
 //methods
 const captureSearchHotKey = (e: KeyboardEvent) => {
+	if (!props.uiConfig.searchEnabled) return;
 	if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
 		e.preventDefault();
 		focusSearchInput();
@@ -492,7 +509,7 @@ const savePaginationPreferences = async () => {
 		delete currentQuery.pageSize;
 	}
 
-	if (sortBy.value !== preferredSort.value) {
+	if (sortBy.value !== preferredSort.value && !props.persistKeyExclusions.includes(sortBy.value)) {
 		currentQuery.sort = sortBy.value;
 		preferredSort.value = sortBy.value;
 	} else {
@@ -501,9 +518,9 @@ const savePaginationPreferences = async () => {
 
 	n8nLocalStorage.saveProjectPreferencesToLocalStorage(
 		(route.params.projectId as string) ?? '',
-		'workflows',
+		props.tabKey,
 		{
-			sort: sortBy.value,
+			sort: props.persistKeyExclusions.includes(sortBy.value) ? preferredSort.value : sortBy.value,
 			pageSize: rowsPerPage.value,
 		},
 	);
@@ -527,7 +544,7 @@ const loadPaginationPreferences = async () => {
 	// For now, only load workflow list preferences from local storage
 	const localStorageValues = n8nLocalStorage.loadProjectPreferencesFromLocalStorage(
 		(route.params.projectId as string) ?? '',
-		'workflows',
+		props.tabKey,
 	);
 
 	const emitPayload: SortingAndPaginationUpdates = {};
@@ -587,32 +604,18 @@ defineExpose({
 		<template #header>
 			<slot name="header" />
 		</template>
-		<div v-if="loading" class="resource-list-loading">
+		<div v-if="showLoadingState" class="resource-list-loading">
 			<N8nLoading :rows="25" :shrink-last="false" />
 		</div>
 		<template v-else>
 			<div v-if="showEmptyState">
 				<slot name="empty">
-					<N8nActionBox
-						data-test-id="empty-resources-list"
-						:icon="{ type: 'emoji', value: '👋' }"
-						:heading="
-							getResourceText(
-								usersStore.currentUser?.firstName ? 'empty.heading' : 'empty.heading.userNotSetup',
-								usersStore.currentUser?.firstName ? 'empty.heading' : 'empty.heading.userNotSetup',
-								{ name: usersStore.currentUser?.firstName ?? '' },
-							)
-						"
-						:description="getResourceText('empty.description')"
-						:button-text="getResourceText('empty.button')"
-						button-type="secondary"
+					<ResourcesListEmptyState
+						v-if="isEmptyStateResourceKey(props.resourceKey)"
+						:resource-key="props.resourceKey"
 						:button-disabled="disabled"
 						@click:button="onAddButtonClick"
-					>
-						<template #disabledButtonTooltip>
-							{{ getResourceText('empty.button.disabled.tooltip') }}
-						</template>
-					</N8nActionBox>
+					/>
 				</slot>
 			</div>
 			<PageViewLayoutList v-else>
@@ -626,7 +629,7 @@ defineExpose({
 								:model-value="filtersModel.search"
 								:class="$style.search"
 								:placeholder="getResourceText('search.placeholder', 'search.placeholder')"
-								size="small"
+								size="medium"
 								clearable
 								data-test-id="resources-list-search"
 								@update:model-value="onSearch"
@@ -639,6 +642,7 @@ defineExpose({
 								<N8nSelect
 									v-model="sortBy"
 									size="small"
+									:class="$style.resourceList"
 									data-test-id="resources-list-sort"
 									@change="setSorting(sortBy)"
 								>
@@ -803,6 +807,12 @@ defineExpose({
 		display: flex;
 		gap: var(--spacing--4xs);
 		align-items: center;
+
+		input {
+			min-height: 0;
+			width: 196px;
+			height: 32px;
+		}
 	}
 
 	@include mixins.breakpoint('xs-only') {
@@ -815,10 +825,6 @@ defineExpose({
 .search {
 	max-width: 196px;
 	justify-self: end;
-
-	input {
-		height: 30px;
-	}
 
 	@include mixins.breakpoint('sm-and-down') {
 		max-width: 100%;

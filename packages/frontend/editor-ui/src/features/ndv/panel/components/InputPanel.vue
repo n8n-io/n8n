@@ -1,15 +1,23 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { CRON_NODE_TYPE, INTERVAL_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/app/constants';
+import {
+	CRON_NODE_TYPE,
+	INTERVAL_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	WORKFLOW_SETTINGS_MODAL_KEY,
+} from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { waitingNodeTooltip } from '@/features/execution/executions/executions.utils';
+import { useExecutionRedaction } from '@/features/execution/executions/composables/useExecutionRedaction';
 import uniqBy from 'lodash/uniqBy';
 import {
 	type INodeInputConfiguration,
 	type INodeOutputConfiguration,
-	type Workflow,
 	type NodeConnectionType,
 	NodeConnectionTypes,
 	NodeHelpers,
@@ -18,6 +26,7 @@ import { computed, ref, watch } from 'vue';
 import InputNodeSelect from './InputNodeSelect.vue';
 import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 import NDVEmptyState from './NDVEmptyState.vue';
+import RedactedDataState from './RedactedDataState.vue';
 import RunData from '@/features/ndv/runData/components/RunData.vue';
 import WireMeUp from './WireMeUp.vue';
 import { type IRunDataDisplayMode } from '@/Interface';
@@ -27,12 +36,10 @@ import { useRouter } from 'vue-router';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 
 import { N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 type MappingMode = 'debugging' | 'mapping';
 
 export type Props = {
 	runIndex: number;
-	workflowObject: Workflow;
 	pushRef: string;
 	activeNodeName: string;
 	currentNodeName?: string;
@@ -79,6 +86,7 @@ const emit = defineEmits<{
 	changeInputNode: [nodeName: string, index: number];
 	execute: [];
 	activatePane: [];
+	openSettings: [];
 	displayModeChange: [IRunDataDisplayMode];
 }>();
 
@@ -95,30 +103,41 @@ const inputModes = [
 	{ value: 'debugging', label: i18n.baseText('ndv.input.fromAI') },
 ];
 
+const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
-const workflowsStore = useWorkflowsStore();
-const workflowState = injectWorkflowState();
+const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
+const workflowExecution = computed(() => workflowExecutionStateStore.value.activeExecution);
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
+const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
+const uiStore = useUIStore();
 
-const activeNode = computed(() => workflowsStore.getNodeByName(props.activeNodeName));
+const workflowObject = computed(() =>
+	workflowDocumentStore.value.getWorkflowObjectAccessorSnapshot(),
+);
+
+const openWorkflowSettings = () => {
+	uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+};
+
+const activeNode = computed(
+	() => workflowDocumentStore?.value?.getNodeByName(props.activeNodeName) ?? null,
+);
 
 const rootNode = computed(() => {
 	if (!activeNode.value) return null;
 
-	return workflowsStore.findRootWithMainConnection(activeNode.value.name);
+	return workflowDocumentStore?.value?.findRootWithMainConnection(activeNode.value.name) ?? null;
 });
 
 const hasRootNodeRun = computed(() => {
-	return !!(
-		rootNode.value && workflowsStore.getWorkflowExecution?.data?.resultData.runData[rootNode.value]
-	);
+	return !!(rootNode.value && workflowExecution.value?.data?.resultData.runData[rootNode.value]);
 });
 
 const inputMode = ref<MappingMode>(
 	// Show debugging mode by default only when the node has already run
-	activeNode.value &&
-		workflowsStore.getWorkflowExecution?.data?.resultData.runData[activeNode.value.name]
+	activeNode.value && workflowExecution.value?.data?.resultData.runData[activeNode.value.name]
 		? 'debugging'
 		: 'mapping',
 );
@@ -137,12 +156,12 @@ const isActiveNodeConfig = computed(() => {
 	let inputs = activeNodeType.value?.inputs ?? [];
 	let outputs = activeNodeType.value?.outputs ?? [];
 
-	if (props.workflowObject && activeNode.value) {
-		const node = props.workflowObject.getNode(activeNode.value.name);
+	if (activeNode.value) {
+		const node = workflowDocumentStore.value.getNodeByName(activeNode.value.name);
 
 		if (node && activeNodeType.value) {
-			inputs = NodeHelpers.getNodeInputs(props.workflowObject, node, activeNodeType.value);
-			outputs = NodeHelpers.getNodeOutputs(props.workflowObject, node, activeNodeType.value);
+			inputs = NodeHelpers.getNodeInputs(workflowObject.value, node, activeNodeType.value);
+			outputs = NodeHelpers.getNodeOutputs(workflowObject.value, node, activeNodeType.value);
 		}
 	}
 
@@ -171,16 +190,16 @@ const isMappingEnabled = computed(() => {
 	return true;
 });
 const isExecutingPrevious = computed(() => {
-	if (!workflowsStore.isWorkflowRunning) {
+	if (!workflowExecutionStateStore.value.isWorkflowRunning) {
 		return false;
 	}
-	const triggeredNode = workflowsStore.executedNode;
-	const executingNode = workflowState.executingNode.executingNode;
+	const triggeredNode = workflowExecutionStateStore.value.activeExecutionExecutedNode;
+	const executingNode = workflowExecutionStateStore.value.executingNode.executingNode;
 
 	if (
 		activeNode.value &&
 		triggeredNode === activeNode.value.name &&
-		workflowState.executingNode.isNodeExecuting(props.currentNodeName)
+		workflowExecutionStateStore.value.executingNode.isNodeExecuting(props.currentNodeName)
 	) {
 		return true;
 	}
@@ -188,7 +207,8 @@ const isExecutingPrevious = computed(() => {
 	if (executingNode.length || triggeredNode) {
 		return !!parentNodes.value.find(
 			(node) =>
-				workflowState.executingNode.isNodeExecuting(node.name) || node.name === triggeredNode,
+				workflowExecutionStateStore.value.executingNode.isNodeExecuting(node.name) ||
+				node.name === triggeredNode,
 		);
 	}
 	return false;
@@ -196,14 +216,14 @@ const isExecutingPrevious = computed(() => {
 
 const rootNodesParents = computed(() => {
 	if (!rootNode.value) return [];
-	return props.workflowObject.getParentNodesByDepth(rootNode.value);
+	return workflowObject.value.getParentNodesByDepth(rootNode.value);
 });
 
 const currentNode = computed(() => {
 	if (isActiveNodeConfig.value) {
 		// if we're mapping node we want to show the output of the mapped node
 		if (mappedNode.value) {
-			return workflowsStore.getNodeByName(mappedNode.value);
+			return workflowDocumentStore?.value?.getNodeByName(mappedNode.value) ?? null;
 		}
 
 		// in debugging mode data does get set manually and is only for debugging
@@ -211,7 +231,7 @@ const currentNode = computed(() => {
 		return activeNode.value;
 	}
 
-	return workflowsStore.getNodeByName(props.currentNodeName ?? '');
+	return workflowDocumentStore?.value?.getNodeByName(props.currentNodeName ?? '') ?? null;
 });
 
 const connectedCurrentNodeOutputs = computed(() => {
@@ -223,7 +243,7 @@ const parentNodes = computed(() => {
 		return [];
 	}
 
-	const parents = props.workflowObject
+	const parents = workflowObject.value
 		.getParentNodesByDepth(activeNode.value.name)
 		.filter((parent) => parent.name !== activeNode.value?.name);
 	return uniqBy(parents, (parent) => parent.name);
@@ -243,9 +263,15 @@ const activeNodeType = computed(() => {
 
 const waitingMessage = computed(() => {
 	const parentNode = parentNodes.value[0];
-	return (
-		parentNode &&
-		waitingNodeTooltip(workflowsStore.getNodeByName(parentNode.name), props.workflowObject)
+	if (!parentNode) return '';
+
+	const runData = workflowExecution.value?.data?.resultData?.runData;
+	const parentRunData = runData?.[parentNode.name]?.[0];
+
+	return waitingNodeTooltip(
+		workflowDocumentStore?.value?.getNodeByName(parentNode.name) ?? null,
+		workflowObject.value,
+		parentRunData?.metadata,
 	);
 });
 
@@ -314,7 +340,7 @@ function onNodeExecute() {
 	if (activeNode.value) {
 		telemetry.track('User clicked ndv button', {
 			node_type: activeNode.value.type,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 			push_ref: props.pushRef,
 			pane: 'input',
 			type: 'executePrevious',
@@ -360,7 +386,7 @@ function onConnectionHelpClick() {
 	if (activeNode.value) {
 		telemetry.track('User clicked ndv link', {
 			node_type: activeNode.value.type,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 			push_ref: props.pushRef,
 			pane: 'input',
 			type: 'not-connected-help',
@@ -436,7 +462,6 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<InputNodeSelect
 				v-if="parentNodes.length && currentNodeName"
 				:model-value="currentNodeName"
-				:workflow="workflowObject"
 				:nodes="parentNodes"
 				@update:model-value="onInputNodeChange"
 			/>
@@ -450,7 +475,6 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<div :class="$style.mappedNode">
 				<InputNodeSelect
 					:model-value="mappedNode"
-					:workflow="workflowObject"
 					:nodes="rootNodesParents"
 					@update:model-value="onMappedNodeSelected"
 				/>
@@ -496,7 +520,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 								<NodeExecuteButton
 									hide-icon
 									transparent
-									type="secondary"
+									variant="subtle"
 									:node-name="nodeNameToExecute"
 									:label="i18n.baseText('ndv.input.noOutputData.v2.action')"
 									:tooltip="i18n.baseText('ndv.input.noOutputData.v2.tooltip')"
@@ -556,7 +580,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 					</template>
 					<NodeExecuteButton
 						v-if="!readOnly"
-						type="secondary"
+						variant="subtle"
 						hide-icon
 						:transparent="true"
 						:node-name="nodeNameToExecute"
@@ -651,6 +675,26 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<NDVEmptyState :title="i18n.baseText('executionDetails.executionFailed.recoveredNodeTitle')">
 				{{ i18n.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
 			</NDVEmptyState>
+		</template>
+
+		<template #data-redacted>
+			<RedactedDataState
+				:title="i18n.baseText('ndv.input.redacted.title')"
+				:is-dynamic-credentials="isDynamicCredentials"
+				:can-reveal="canReveal"
+				@open-settings="openWorkflowSettings"
+				@reveal="revealData"
+			/>
+		</template>
+
+		<template #redacted-error>
+			<RedactedDataState
+				:title="i18n.baseText('ndv.input.redacted.title')"
+				:is-dynamic-credentials="isDynamicCredentials"
+				:can-reveal="canReveal"
+				@open-settings="openWorkflowSettings"
+				@reveal="revealData"
+			/>
 		</template>
 	</RunData>
 </template>

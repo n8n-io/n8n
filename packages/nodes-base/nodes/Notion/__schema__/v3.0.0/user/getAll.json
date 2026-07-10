@@ -1,0 +1,35 @@
+{
+	"type": "object",
+	"properties": {
+		"object": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"name": {
+			"type": ["string", "null"]
+		},
+		"avatar_url": {
+			"type": ["string", "null"]
+		},
+		"type": {
+			"type": "string"
+		},
+		"person": {
+			"type": "object",
+			"properties": {
+				"email": {
+					"type": "string"
+				},
+				"email_verified": {
+					"type": "boolean"
+				}
+			}
+		},
+		"bot": {
+			"type": "object"
+		}
+	},
+	"version": 1
+}

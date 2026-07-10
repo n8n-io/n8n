@@ -1,21 +1,24 @@
-import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
+import { mockDeep } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import * as helpers from '@utils/helpers';
 
 import * as image from './actions/image';
 import * as text from './actions/text';
-import * as transport from './transport';
 import type { OllamaChatResponse, OllamaMessage } from './helpers/interfaces';
+import * as transport from './transport';
 
 describe('Ollama Node', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
-	const apiRequestMock = jest.spyOn(transport, 'apiRequest');
-	const getConnectedToolsMock = jest.spyOn(helpers, 'getConnectedTools');
+	let apiRequestMock: MockInstance;
+	let getConnectedToolsMock: MockInstance;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
+		apiRequestMock = vi.spyOn(transport, 'apiRequest');
+		getConnectedToolsMock = vi.spyOn(helpers, 'getConnectedTools');
 	});
 
 	describe('Text -> Message', () => {
@@ -122,7 +125,7 @@ describe('Ollama Node', () => {
 				schema: z.object({
 					expression: z.string().describe('Mathematical expression to evaluate'),
 				}),
-				invoke: jest.fn().mockResolvedValue({ result: 42 }),
+				invoke: vi.fn().mockResolvedValue({ result: 42 }),
 			};
 
 			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
@@ -140,7 +143,6 @@ describe('Ollama Node', () => {
 				}
 			});
 			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }, { type: 'ai_tool' }]);
-			// @ts-expect-error: Mocking a tool, we do not implement the full interface
 			getConnectedToolsMock.mockResolvedValue([mockTool]);
 
 			apiRequestMock.mockResolvedValueOnce({
@@ -185,7 +187,7 @@ describe('Ollama Node', () => {
 				name: 'failing_tool',
 				description: 'A tool that fails',
 				schema: z.object({}),
-				invoke: jest.fn().mockRejectedValue(new Error('Tool execution failed')),
+				invoke: vi.fn().mockRejectedValue(new Error('Tool execution failed')),
 			};
 
 			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
@@ -203,7 +205,6 @@ describe('Ollama Node', () => {
 				}
 			});
 			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }, { type: 'ai_tool' }]);
-			// @ts-expect-error: Mocking a tool, we do not implement the full interface
 			getConnectedToolsMock.mockResolvedValue([mockTool]);
 
 			apiRequestMock.mockResolvedValueOnce({

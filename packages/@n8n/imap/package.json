@@ -1,11 +1,12 @@
 {
   "name": "@n8n/imap",
-  "version": "0.16.0",
+  "version": "0.23.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write src test",
     "format:check": "biome ci src test",
     "lint": "eslint . --quiet",
@@ -25,8 +26,7 @@
     "iconv-lite": "catalog:",
     "imap": "0.8.19",
     "quoted-printable": "1.0.1",
-    "utf8": "3.0.0",
-    "uuencode": "0.0.4"
+    "utf8": "3.0.0"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
@@ -34,7 +34,10 @@
     "@types/imap": "^0.8.40",
     "@types/quoted-printable": "^1.0.2",
     "@types/utf8": "^3.0.3",
-    "@types/uuencode": "^0.0.3",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

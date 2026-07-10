@@ -1,17 +1,38 @@
 import { Container } from '@n8n/di';
-import { ensureError, setGlobalState } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { setGlobalState } from 'n8n-workflow';
 
 import { MainConfig } from './config/main-config';
 import type { HealthCheckServer } from './health-check-server';
 import { JsTaskRunner } from './js-task-runner/js-task-runner';
 import { TaskRunnerSentry } from './task-runner-sentry';
 
+// Initialize module paths from NODE_PATH environment variable.
+// This is necessary because Node.js doesn't automatically pick up NODE_PATH
+// after the process starts. Without this, external npm packages installed
+// in custom locations won't be found by the require() calls.
+if (process.env.NODE_PATH) {
+	// @ts-expect-error - _initPaths is an internal Node.js API
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+	module.constructor._initPaths();
+}
+
+interface ShutdownOptions {
+	/** Hard force-exit backstop, in seconds, if graceful stop does not finish in time. */
+	timeoutInS?: number;
+	/** Whether to keep serving until the broker drains (vs. drain immediately). */
+	deferToBrokerDrain?: boolean;
+}
+
 let healthCheckServer: HealthCheckServer | undefined;
 let runner: JsTaskRunner | undefined;
 let isShuttingDown = false;
 let sentry: TaskRunnerSentry | undefined;
 
-function createSignalHandler(signal: string, timeoutInS = 10) {
+function createSignalHandler(
+	signal: string,
+	{ timeoutInS = 10, deferToBrokerDrain = true }: ShutdownOptions = {},
+) {
 	return async function onSignal() {
 		if (isShuttingDown) {
 			return;
@@ -27,7 +48,7 @@ function createSignalHandler(signal: string, timeoutInS = 10) {
 		isShuttingDown = true;
 		try {
 			if (runner) {
-				await runner.stop();
+				await runner.stop({ deferToBrokerDrain });
 				runner = undefined;
 				void healthCheckServer?.stop();
 			}
@@ -66,8 +87,9 @@ void (async function start() {
 
 	runner = new JsTaskRunner(config);
 	runner.on('runner:reached-idle-timeout', () => {
-		// Use shorter timeout since we know we don't have any tasks running
-		void createSignalHandler('IDLE_TIMEOUT', 3)();
+		// Nothing is waiting on this runner, so drain immediately (don't keep offering for
+		// the grace period) with a short force-exit backstop.
+		void createSignalHandler('IDLE_TIMEOUT', { timeoutInS: 3, deferToBrokerDrain: false })();
 	});
 
 	const { enabled, host, port } = config.baseRunnerConfig.healthcheckServer;
@@ -78,8 +100,14 @@ void (async function start() {
 		await healthCheckServer.start(host, port);
 	}
 
-	process.on('SIGINT', createSignalHandler('SIGINT'));
-	process.on('SIGTERM', createSignalHandler('SIGTERM'));
+	// Hard backstop if the graceful stop hangs: force-exit one margin past the grace period.
+	// In external mode the launcher force-kills at grace + 2 × margin (see launcherShutdownTimeout
+	// in task-runner-launcher), so it always outlasts this and can't kill a draining runner.
+	const { gracefulShutdownTimeout, shutdownForceKillMargin } = config.baseRunnerConfig;
+	const forceExitTimeoutInS =
+		Math.max(0, gracefulShutdownTimeout) + Math.max(0, shutdownForceKillMargin);
+	process.on('SIGINT', createSignalHandler('SIGINT', { timeoutInS: forceExitTimeoutInS }));
+	process.on('SIGTERM', createSignalHandler('SIGTERM', { timeoutInS: forceExitTimeoutInS }));
 })().catch((e) => {
 	const error = ensureError(e);
 	console.error('Task runner failed to start', { error });

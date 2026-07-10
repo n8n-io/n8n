@@ -1,3 +1,4 @@
+import { LicenseState } from '@n8n/backend-common';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Project, SharedCredentials, SharedCredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -8,12 +9,16 @@ import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TransferCredentialError } from '@/errors/response-errors/transfer-credential.error';
+import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 
+import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
 import { CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
+import { validateAccessToReferencedSecretProviders } from './validation';
 
 @Service()
 export class EnterpriseCredentialsService {
@@ -24,6 +29,10 @@ export class EnterpriseCredentialsService {
 		private readonly projectService: ProjectService,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly roleService: RoleService,
+		private readonly externalSecretsConfig: ExternalSecretsConfig,
+		private readonly externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
+		private readonly licenseState: LicenseState,
+		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
 	) {}
 
 	async shareWithProjects(
@@ -100,13 +109,26 @@ export class EnterpriseCredentialsService {
 		if (credential) {
 			// Decrypt the data if we found the credential with the `credential:update`
 			// scope.
-			decryptedData = this.credentialsService.decrypt(credential);
+			decryptedData = await this.credentialsService.decrypt(credential);
 		} else {
 			// Otherwise try to find them with only the `credential:read` scope. In
 			// that case we return them without the decrypted data.
 			credential = await this.credentialsFinderService.findCredentialForUser(credentialId, user, [
 				'credential:read',
 			]);
+
+			// Connect-capable users of a private credential need the redacted blueprint
+			// (secrets stay masked) so the UI can detect the OAuth type and render the
+			// per-user connect flow, even without edit rights.
+			if (
+				includeDecryptedData &&
+				credential?.isResolvable &&
+				(await this.credentialsFinderService.findCredentialForUser(credentialId, user, [
+					'credential:connect',
+				]))
+			) {
+				decryptedData = await this.credentialsService.decrypt(credential);
+			}
 		}
 
 		if (!credential) {
@@ -119,16 +141,34 @@ export class EnterpriseCredentialsService {
 
 		const { data: _, ...rest } = credential;
 
+		const enriched: typeof rest & { connectedByMe?: boolean; connectedUserCount?: number } = rest;
+		await this.credentialsService.populateConnectedByMe([enriched], user);
+
+		if (credential.isResolvable) {
+			enriched.connectedUserCount = await this.credentialsService.countConnectedUsers(
+				credential.id,
+			);
+		}
+
 		if (decryptedData) {
 			// We never want to expose the oauthTokenData to the frontend, but it
 			// expects it to check if the credential is already connected.
-			if (decryptedData?.oauthTokenData) {
+			if (credential.isResolvable) {
+				// For resolvable credentials, the "connected" signal lives in the
+				// per-user storage — mirror that into the existing oauthTokenData
+				// flag the frontend banner already reads.
+				if (enriched.connectedByMe) {
+					decryptedData.oauthTokenData = true;
+				} else {
+					delete decryptedData.oauthTokenData;
+				}
+			} else if (decryptedData?.oauthTokenData) {
 				decryptedData.oauthTokenData = true;
 			}
-			return { data: decryptedData, ...rest };
+			return { data: decryptedData, ...enriched };
 		}
 
-		return { ...rest };
+		return { ...enriched };
 	}
 
 	async transferOne(user: User, credentialId: string, destinationProjectId: string) {
@@ -171,8 +211,25 @@ export class EnterpriseCredentialsService {
 			);
 		}
 
+		// 6. validate that the destination project has access to all external secret providers
+		if (
+			this.licenseState.isExternalSecretsLicensed() &&
+			this.externalSecretsConfig.externalSecretsForProjects
+		) {
+			const decryptedData = await this.credentialsService.decrypt(credential, true);
+			await validateAccessToReferencedSecretProviders(
+				destinationProject.id,
+				decryptedData,
+				this.externalSecretsProviderAccessCheckService,
+				'transfer',
+			);
+		}
+
+		// 7. projects losing access — the move drops all their sharings
+		const affectedProjectIds = [...new Set(credential.shared.map((s) => s.projectId))];
+
 		await this.sharedCredentialsRepository.manager.transaction(async (trx) => {
-			// 6. transfer the credential
+			// 8. transfer the credential
 			// remove all sharings
 			await trx.remove(credential.shared);
 
@@ -183,6 +240,13 @@ export class EnterpriseCredentialsService {
 					projectId: destinationProject.id,
 					role: 'credential:owner',
 				}),
+			);
+
+			// 9. drop connections for members who lost access in the new project
+			await this.connectionStatusProxy.cleanupOrphanedEntriesForProjects(
+				credential.id,
+				affectedProjectIds,
+				trx,
 			);
 		});
 	}

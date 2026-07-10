@@ -1,0 +1,1223 @@
+/**
+ * Integration tests for useWorkflowDocumentNodes.
+ *
+ * These tests use a real Pinia store (createPinia, not createTestingPinia) so
+ * that every write goes through the actual workflowsStore and every read comes
+ * back through the public API. This "round-trip" pattern (write → read back →
+ * assert) is intentional:
+ *
+ *  - It catches regressions when consumers migrate from workflowsStore to
+ *    workflowDocumentStore — the round-trip proves both paths produce the same
+ *    result.
+ *  - It survives internal refactors. When the internals change (e.g. owning
+ *    its own refs instead of delegating), these tests stay unchanged because
+ *    they only exercise the public contract.
+ *  - Delegation-style tests (expect(store.method).toHaveBeenCalled()) would
+ *    need to be rewritten every time internals change; round-trips do not.
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { computed, nextTick, ref } from 'vue';
+import { setActivePinia, createPinia } from 'pinia';
+import { mock } from 'vitest-mock-extended';
+import { NodeConnectionTypes, type INodeTypeDescription, type Workflow } from 'n8n-workflow';
+import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
+import type { INodeUi } from '@/Interface';
+import {
+	useWorkflowDocumentNodes,
+	type WorkflowDocumentNodesDeps,
+} from './useWorkflowDocumentNodes';
+import { useWorkflowDocumentNodeMetadata } from './useWorkflowDocumentNodeMetadata';
+
+const getNodeType = vi.fn().mockReturnValue(null);
+const communityNodeType = vi.fn().mockReturnValue(undefined);
+vi.mock('@/app/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: vi.fn(() => ({
+		getNodeType,
+		communityNodeType,
+	})),
+}));
+
+function createNode(overrides: Partial<INodeUi> = {}): INodeUi {
+	return createTestNode({ name: 'Test Node', ...overrides }) as INodeUi;
+}
+
+function createDeps(overrides: Partial<WorkflowDocumentNodesDeps> = {}): WorkflowDocumentNodesDeps {
+	return {
+		getNodeType: vi.fn().mockReturnValue(null),
+		assignNodeId: vi.fn().mockReturnValue(''),
+		syncWorkflowObject: vi.fn(),
+		nodeMetadata: useWorkflowDocumentNodeMetadata(),
+		workflowObject: ref(
+			mock<Workflow>({ getNode: () => null }),
+		) as unknown as WorkflowDocumentNodesDeps['workflowObject'],
+		...overrides,
+	};
+}
+
+describe('useWorkflowDocumentNodes', () => {
+	let deps: WorkflowDocumentNodesDeps;
+
+	beforeEach(() => {
+		setActivePinia(createPinia());
+		deps = createDeps();
+	});
+
+	describe('round-trip: setNodes → read', () => {
+		it('nodes set via setNodes are readable via allNodes', () => {
+			const nodeA = createNode({ name: 'A' });
+			const nodeB = createNode({ name: 'B' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([nodeA, nodeB]);
+
+			expect(workflowDocumentNodes.allNodes.value).toHaveLength(2);
+			expect(workflowDocumentNodes.allNodes.value.map((n) => n.name)).toEqual(['A', 'B']);
+		});
+
+		it('nodes set via setNodes are readable via getNodeById', () => {
+			const node = createNode({ name: 'A' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+
+			expect(workflowDocumentNodes.getNodeById(node.id)).toBeDefined();
+			expect(workflowDocumentNodes.getNodeById(node.id)?.name).toBe('A');
+		});
+
+		it('nodes set via setNodes are readable via getNodeByName', () => {
+			const node = createNode({ name: 'MyNode' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+
+			expect(workflowDocumentNodes.getNodeByName('MyNode')).toBeDefined();
+			expect(workflowDocumentNodes.getNodeByName('MyNode')?.id).toBe(node.id);
+		});
+
+		it('nodes set via setNodes are readable via allNodes', () => {
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([createNode({ name: 'A' }), createNode({ name: 'B' })]);
+
+			const nodes = workflowDocumentNodes.allNodes.value;
+			expect(nodes).toHaveLength(2);
+		});
+
+		it('nodes set via setNodes are readable via nodesByName', () => {
+			const node = createNode({ name: 'Alpha' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+
+			expect(workflowDocumentNodes.nodesByName.value).toHaveProperty('Alpha');
+			expect(workflowDocumentNodes.nodesByName.value.Alpha.id).toBe(node.id);
+		});
+
+		it('canvasNames reflects set nodes', () => {
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([createNode({ name: 'X' }), createNode({ name: 'Y' })]);
+
+			expect(workflowDocumentNodes.canvasNames.value).toEqual(new Set(['X', 'Y']));
+		});
+
+		it('getNodesByIds returns matching nodes', () => {
+			const nodeA = createNode({ name: 'A' });
+			const nodeB = createNode({ name: 'B' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([nodeA, nodeB]);
+
+			const result = workflowDocumentNodes.getNodesByIds([nodeA.id]);
+			expect(result).toHaveLength(1);
+			expect(result[0].name).toBe('A');
+		});
+
+		it('findNodeByPartialId matches partial id', () => {
+			const node = createNode({ name: 'FindMe' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+
+			// Use first 8 chars of UUID as partial
+			const partial = node.id.slice(0, 8);
+			const found = workflowDocumentNodes.findNodeByPartialId(partial);
+			expect(found?.name).toBe('FindMe');
+		});
+	});
+
+	describe('round-trip: addNode → read', () => {
+		it('node added via addNode is readable via allNodes', () => {
+			const node = createNode({ name: 'Added' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.addNode(node);
+
+			expect(workflowDocumentNodes.allNodes.value).toHaveLength(1);
+			expect(workflowDocumentNodes.allNodes.value[0].name).toBe('Added');
+		});
+
+		it('node added via addNode is readable via getNodeById', () => {
+			const node = createNode({ name: 'Added' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.addNode(node);
+
+			expect(workflowDocumentNodes.getNodeById(node.id)?.name).toBe('Added');
+		});
+	});
+
+	describe('round-trip: removeNode → read', () => {
+		it('removeNode removes node from allNodes', () => {
+			const nodeA = createNode({ name: 'A' });
+			const nodeB = createNode({ name: 'B' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([nodeA, nodeB]);
+			workflowDocumentNodes.removeNode(nodeA);
+
+			expect(workflowDocumentNodes.allNodes.value).toHaveLength(1);
+			expect(workflowDocumentNodes.allNodes.value[0].name).toBe('B');
+		});
+
+		it('removeNodeById removes node from allNodes', () => {
+			const node = createNode({ name: 'ToRemove' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.removeNodeById(node.id);
+
+			expect(workflowDocumentNodes.allNodes.value).toHaveLength(0);
+		});
+
+		it('removeAllNodes empties all nodes', () => {
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([createNode({ name: 'A' }), createNode({ name: 'B' })]);
+
+			workflowDocumentNodes.removeAllNodes();
+
+			expect(workflowDocumentNodes.allNodes.value).toHaveLength(0);
+		});
+
+		it('removeAllNodes clears nodeMetadata', () => {
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([createNode({ name: 'A' })]);
+
+			expect(deps.nodeMetadata.nodeMetadata.value).toHaveProperty('A');
+
+			workflowDocumentNodes.removeAllNodes();
+
+			expect(deps.nodeMetadata.nodeMetadata.value).toEqual({});
+		});
+
+		it('setNodes replaces all metadata to match the new node list', () => {
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([createNode({ name: 'A' }), createNode({ name: 'B' })]);
+			deps.nodeMetadata.touchParametersLastUpdatedAt('A');
+
+			workflowDocumentNodes.setNodes([createNode({ name: 'A' }), createNode({ name: 'C' })]);
+
+			// Metadata is reset: 'B' removed, 'A' reset to pristine, 'C' added
+			expect(deps.nodeMetadata.nodeMetadata.value).toEqual({
+				A: { pristine: true },
+				C: { pristine: true },
+			});
+		});
+	});
+
+	describe('round-trip: mutations → read', () => {
+		it('setNodeParameters updates parameters readable via getNodeByName', () => {
+			const node = createNode({ name: 'Target', parameters: { old: 'value' } });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.setNodeParameters({ name: 'Target', value: { new: 'value' } });
+
+			expect(workflowDocumentNodes.getNodeByName('Target')?.parameters).toEqual({ new: 'value' });
+		});
+
+		it('setNodeParameters with append merges parameters', () => {
+			const node = createNode({ name: 'Target', parameters: { existing: 'keep' } });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.setNodeParameters({ name: 'Target', value: { added: 'new' } }, true);
+
+			expect(workflowDocumentNodes.getNodeByName('Target')?.parameters).toEqual({
+				existing: 'keep',
+				added: 'new',
+			});
+		});
+
+		it('setNodeParameters throws when node not found', () => {
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+
+			expect(() =>
+				workflowDocumentNodes.setNodeParameters({ name: 'NonExistent', value: {} }),
+			).toThrow('could not be found');
+		});
+
+		it('setNodeValue updates a property readable via getNodeByName', () => {
+			const node = createNode({ name: 'Target' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.setNodeValue({ name: 'Target', key: 'disabled', value: true });
+
+			expect(workflowDocumentNodes.getNodeByName('Target')?.disabled).toBe(true);
+		});
+
+		it('setNodeValue throws when node not found', () => {
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+
+			expect(() =>
+				workflowDocumentNodes.setNodeValue({ name: 'NonExistent', key: 'disabled', value: true }),
+			).toThrow('could not be found');
+		});
+
+		it('setNodePositionById updates position readable via getNodeById', () => {
+			const node = createNode({ name: 'Mover' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.setNodePositionById(node.id, [300, 400]);
+
+			expect(workflowDocumentNodes.getNodeById(node.id)?.position).toEqual([300, 400]);
+		});
+
+		it('updateNodeById updates node readable via getNodeById', () => {
+			const node = createNode({ name: 'Target' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			const result = workflowDocumentNodes.updateNodeById(node.id, { disabled: true });
+
+			expect(result).toBe(true);
+			expect(workflowDocumentNodes.getNodeById(node.id)?.disabled).toBe(true);
+		});
+
+		it('updateNodeById returns false when node not found', () => {
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+
+			expect(workflowDocumentNodes.updateNodeById('nonexistent', { disabled: true })).toBe(false);
+		});
+
+		it('updateNodeProperties updates properties readable via getNodeByName', () => {
+			const node = createNode({ name: 'Target' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.updateNodeProperties({
+				name: 'Target',
+				properties: { disabled: true },
+			});
+
+			expect(workflowDocumentNodes.getNodeByName('Target')?.disabled).toBe(true);
+		});
+
+		it('setNodeIssue adds issue readable via getNodeByName', () => {
+			const node = createNode({ name: 'Target' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.setNodeIssue({
+				node: 'Target',
+				type: 'parameters',
+				value: { param: ['Missing required parameter'] },
+			});
+
+			expect(workflowDocumentNodes.getNodeByName('Target')?.issues).toEqual({
+				parameters: { param: ['Missing required parameter'] },
+			});
+		});
+
+		it('setNodeIssue removes issue readable via getNodeByName', () => {
+			const node = createNode({ name: 'Target' });
+			node.issues = {
+				parameters: { param: ['Missing'] },
+				credentials: { cred: ['Invalid'] },
+			};
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.setNodeIssue({ node: 'Target', type: 'parameters', value: null });
+
+			const issues = workflowDocumentNodes.getNodeByName('Target')?.issues;
+			expect(issues).toEqual({ credentials: { cred: ['Invalid'] } });
+			expect(issues).not.toHaveProperty('parameters');
+		});
+
+		it('resetAllNodesIssues clears issues on all nodes', () => {
+			const nodeA = createNode({ name: 'A', issues: { parameters: { x: ['err'] } } });
+			const nodeB = createNode({ name: 'B', issues: { credentials: { y: ['err'] } } });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([nodeA, nodeB]);
+			const result = workflowDocumentNodes.resetAllNodesIssues();
+
+			expect(result).toBe(true);
+			expect(workflowDocumentNodes.getNodeByName('A')?.issues).toBeUndefined();
+			expect(workflowDocumentNodes.getNodeByName('B')?.issues).toBeUndefined();
+		});
+
+		it('setLastNodeParameters does nothing when node type is not found', () => {
+			const node = createNode({
+				name: 'Target',
+				type: 'n8n-nodes-base.set',
+				parameters: { old: 'value' },
+			});
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.setLastNodeParameters({
+				key: 'n8n-nodes-base.set',
+				name: '',
+				value: { new: 'value' },
+			});
+
+			// getNodeType returns null (default mock), so parameters should not change
+			expect(workflowDocumentNodes.getNodeByName('Target')?.parameters).toEqual({ old: 'value' });
+		});
+
+		it('setLastNodeParameters finds latest node by type and sets parameters', () => {
+			const node = createNode({
+				name: 'Target',
+				type: 'n8n-nodes-base.set',
+				parameters: { existing: 'keep' },
+			});
+
+			const mockNodeType = {
+				properties: [{ displayName: 'Value', name: 'value', type: 'string' as const, default: '' }],
+			};
+
+			const customDeps = createDeps({
+				getNodeType: vi.fn().mockReturnValue(mockNodeType),
+			});
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(customDeps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.setLastNodeParameters({
+				key: 'n8n-nodes-base.set',
+				name: '',
+				value: { value: 'hello' },
+			});
+
+			expect(customDeps.getNodeType).toHaveBeenCalledWith('n8n-nodes-base.set');
+		});
+	});
+
+	describe('dirty tracking', () => {
+		it('setNodeValue does not update parametersLastUpdatedAt for position changes', () => {
+			const node = createNode({ name: 'Target' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+
+			const tsBefore = deps.nodeMetadata.getParametersLastUpdate('Target');
+			workflowDocumentNodes.setNodeValue({ name: 'Target', key: 'position', value: [300, 400] });
+
+			expect(deps.nodeMetadata.getParametersLastUpdate('Target')).toBe(tsBefore);
+		});
+
+		it('setNodeValue updates parametersLastUpdatedAt for non-position changes', () => {
+			const node = createNode({ name: 'Target' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+
+			workflowDocumentNodes.setNodeValue({ name: 'Target', key: 'disabled', value: true });
+
+			expect(deps.nodeMetadata.getParametersLastUpdate('Target') ?? 0).toBeGreaterThan(0);
+		});
+	});
+
+	describe('events', () => {
+		it('setNodes fires onNodesChange with set action', () => {
+			const hookSpy = vi.fn();
+			const node = createNode();
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.onNodesChange(hookSpy);
+			workflowDocumentNodes.setNodes([node]);
+
+			expect(hookSpy).toHaveBeenCalledWith({
+				action: 'set',
+				payload: { nodeIds: [node.id] },
+			});
+		});
+
+		it('addNode fires onNodesChange with add action', () => {
+			const hookSpy = vi.fn();
+			const node = createNode();
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.onNodesChange(hookSpy);
+			workflowDocumentNodes.addNode(node);
+
+			expect(hookSpy).toHaveBeenCalledWith({
+				action: 'add',
+				payload: {
+					node: expect.objectContaining({ id: node.id, name: node.name }),
+				},
+			});
+		});
+
+		it('addNode emits the reactive proxy from nodes.value (not the raw input)', () => {
+			// Contract: ADD subscribers must receive the Vue-cached reactive proxy,
+			// not the raw input object. Otherwise, property reads on the payload
+			// node create no reactive dependencies and later mutations are silent.
+			// See CLAUDE.md "Reactivity invariant: events carry reactive references".
+			const hookSpy = vi.fn();
+			const rawNode = createNode({ id: 'a', name: 'Foo' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.onNodesChange(hookSpy);
+			workflowDocumentNodes.addNode(rawNode);
+
+			const payload = hookSpy.mock.calls[0][0].payload as { node: INodeUi };
+			// The emitted node must be the same JS reference Vue caches for the array slot
+			expect(payload.node).toBe(workflowDocumentNodes.nodesById.value.get('a'));
+			expect(payload.node).toBe(workflowDocumentNodes.allNodes.value.find((n) => n.id === 'a'));
+		});
+
+		it('removeNode fires onNodesChange with delete action', () => {
+			const hookSpy = vi.fn();
+			const node = createNode({ name: 'Target' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.onNodesChange(hookSpy);
+			workflowDocumentNodes.removeNode(node);
+
+			expect(hookSpy).toHaveBeenCalledWith({
+				action: 'delete',
+				payload: { name: 'Target', id: node.id },
+			});
+		});
+
+		it('removeNodeById fires onNodesChange with delete action', () => {
+			const hookSpy = vi.fn();
+			const node = createNode({ name: 'Target' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.onNodesChange(hookSpy);
+			workflowDocumentNodes.removeNodeById(node.id);
+
+			expect(hookSpy).toHaveBeenCalledWith({
+				action: 'delete',
+				payload: { name: 'Target', id: node.id },
+			});
+		});
+
+		it('addNode fires onStateDirty', () => {
+			const dirtySpy = vi.fn();
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.onStateDirty(dirtySpy);
+			workflowDocumentNodes.addNode(createNode());
+
+			expect(dirtySpy).toHaveBeenCalledOnce();
+		});
+
+		it('removeNode fires onStateDirty', () => {
+			const dirtySpy = vi.fn();
+			const node = createNode();
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.onStateDirty(dirtySpy);
+			workflowDocumentNodes.removeNode(node);
+
+			expect(dirtySpy).toHaveBeenCalledOnce();
+		});
+
+		it('removeNodeById fires onStateDirty', () => {
+			const dirtySpy = vi.fn();
+			const node = createNode();
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.onStateDirty(dirtySpy);
+			workflowDocumentNodes.removeNodeById(node.id);
+
+			expect(dirtySpy).toHaveBeenCalledOnce();
+		});
+
+		it('setNodes does not fire onStateDirty (initialization path)', () => {
+			const dirtySpy = vi.fn();
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.onStateDirty(dirtySpy);
+			workflowDocumentNodes.setNodes([createNode()]);
+
+			expect(dirtySpy).not.toHaveBeenCalled();
+		});
+
+		it('setNodeParameters fires onStateDirty when parameters change', () => {
+			const dirtySpy = vi.fn();
+			const node = createNode({ name: 'Target', parameters: { old: 'value' } });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.onStateDirty(dirtySpy);
+			workflowDocumentNodes.setNodeParameters({ name: 'Target', value: { new: 'value' } });
+
+			expect(dirtySpy).toHaveBeenCalledOnce();
+		});
+
+		it('setNodeValue fires onStateDirty when value changes', () => {
+			const dirtySpy = vi.fn();
+			const node = createNode({ name: 'Target' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.onStateDirty(dirtySpy);
+			workflowDocumentNodes.setNodeValue({ name: 'Target', key: 'disabled', value: true });
+
+			expect(dirtySpy).toHaveBeenCalledOnce();
+		});
+
+		it('removeAllNodes does not fire onStateDirty (initialization path)', () => {
+			const dirtySpy = vi.fn();
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([createNode()]);
+			workflowDocumentNodes.onStateDirty(dirtySpy);
+			workflowDocumentNodes.removeAllNodes();
+
+			expect(dirtySpy).not.toHaveBeenCalled();
+		});
+
+		// Orphan-pin-cleanup coverage (previously a direct dep of useWorkflowDocumentNodes
+		// via `unpinNodeData`) now lives in useWorkflowDocumentPinData.test.ts —
+		// pinData subscribes to onNodesChange and handles DELETE itself.
+
+		it('removeNodeById uses empty name when node not found', () => {
+			const hookSpy = vi.fn();
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.onNodesChange(hookSpy);
+			workflowDocumentNodes.removeNodeById('nonexistent');
+
+			expect(hookSpy).toHaveBeenCalledWith({
+				action: 'delete',
+				payload: { name: '', id: 'nonexistent' },
+			});
+		});
+	});
+
+	describe('index reactivity', () => {
+		it('property updates on a newly added node propagate to consumers reading via getNodeByName', async () => {
+			// Regression test for the linter-not-updating bug: when a node was
+			// added via addNode (rather than setNodes), the index stored the raw
+			// input object instead of Vue's cached reactive proxy. Consumers
+			// reading via getNodeByName got the raw object — property reads
+			// created no reactive dependencies, so later mutations through
+			// nodes.value[i] (the proxy) were silent to downstream computeds.
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			const node = createNode({
+				id: 'a',
+				name: 'Foo',
+				parameters: { mode: 'runOnceForAllItems' },
+			});
+			workflowDocumentNodes.addNode(node);
+
+			// Mirrors the ndvStore.activeNode → codeEditorMode chain
+			const observed = computed(() => workflowDocumentNodes.getNodeByName('Foo')?.parameters?.mode);
+			expect(observed.value).toBe('runOnceForAllItems');
+
+			workflowDocumentNodes.setNodeParameters({
+				name: 'Foo',
+				value: { mode: 'runOnceForEachItem' },
+			});
+			await nextTick();
+
+			expect(observed.value).toBe('runOnceForEachItem');
+		});
+
+		it('property updates on a newly added node propagate to consumers reading via getNodeById', async () => {
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			const node = createNode({
+				id: 'a',
+				name: 'Foo',
+				parameters: { mode: 'runOnceForAllItems' },
+			});
+			workflowDocumentNodes.addNode(node);
+
+			const observed = computed(() => workflowDocumentNodes.getNodeById('a')?.parameters?.mode);
+			expect(observed.value).toBe('runOnceForAllItems');
+
+			workflowDocumentNodes.setNodeParameters({
+				name: 'Foo',
+				value: { mode: 'runOnceForEachItem' },
+			});
+			await nextTick();
+
+			expect(observed.value).toBe('runOnceForEachItem');
+		});
+	});
+
+	describe('findNodeByPartialId', () => {
+		test.each([
+			[[], 'D', undefined],
+			[['A', 'B', 'C'], 'D', undefined],
+			[['A', 'B', 'C'], 'B', 1],
+			[['AA', 'BB', 'CC'], 'B', 1],
+			[['AA', 'BB', 'BC'], 'B', 1],
+			[['AA', 'BB', 'BC'], 'BC', 2],
+		] as Array<[string[], string, number | undefined]>)(
+			'with input %s , %s returns node with index %s',
+			(ids, id, expectedIndex) => {
+				const nodes = ids.map((x) => createNode({ id: x, name: x }));
+				const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+				workflowDocumentNodes.setNodes(nodes);
+
+				expect(workflowDocumentNodes.findNodeByPartialId(id)?.id).toBe(
+					nodes[expectedIndex ?? -1]?.id,
+				);
+			},
+		);
+	});
+
+	describe('workflowTriggerNodes', () => {
+		beforeEach(() => {
+			getNodeType.mockReset();
+			getNodeType.mockReturnValue({
+				inputs: [],
+				group: [],
+				webhooks: [],
+				properties: [],
+			});
+		});
+
+		it('should return only nodes that are triggers', () => {
+			getNodeType.mockImplementation((nodeTypeName: string) => ({
+				group: nodeTypeName === 'triggerNode' ? ['trigger'] : [],
+				inputs: [],
+				webhooks: [],
+				properties: [],
+			}));
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([
+				createNode({ name: 'Trigger', type: 'triggerNode', typeVersion: 1 }),
+				createNode({ name: 'Regular', type: 'nonTriggerNode', typeVersion: 1 }),
+			]);
+
+			expect(workflowDocumentNodes.workflowTriggerNodes.value).toHaveLength(1);
+			expect(workflowDocumentNodes.workflowTriggerNodes.value[0].type).toBe('triggerNode');
+		});
+
+		it('should return empty array when no nodes are triggers', () => {
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([
+				createNode({ name: 'Regular1', type: 'nonTriggerNode1', typeVersion: 1 }),
+				createNode({ name: 'Regular2', type: 'nonTriggerNode2', typeVersion: 1 }),
+			]);
+
+			expect(workflowDocumentNodes.workflowTriggerNodes.value).toHaveLength(0);
+		});
+	});
+
+	describe('assignCredentialToMatchingNodes', () => {
+		beforeEach(() => {
+			getNodeType.mockReset();
+		});
+
+		it("should assign credential to nodes that support it but don't have it set", () => {
+			const credential = { id: 'cred-1', name: 'Test Credential' };
+			const credentialType = 'slackApi';
+
+			getNodeType.mockReturnValue({
+				credentials: [{ name: 'slackApi', required: true }],
+				inputs: [],
+				group: [],
+				webhooks: [],
+				properties: [],
+			});
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([
+				createNode({ name: 'Current Node', type: 'n8n-nodes-base.slack', typeVersion: 1 }),
+				createNode({ name: 'Slack Node 1', type: 'n8n-nodes-base.slack', typeVersion: 1 }),
+				createNode({ name: 'Slack Node 2', type: 'n8n-nodes-base.slack', typeVersion: 1 }),
+			]);
+
+			const result = workflowDocumentNodes.assignCredentialToMatchingNodes({
+				credentials: credential,
+				type: credentialType,
+				currentNodeName: 'Current Node',
+			});
+
+			expect(result).toBe(2);
+			expect(workflowDocumentNodes.allNodes.value[1].credentials).toEqual({
+				slackApi: credential,
+			});
+			expect(workflowDocumentNodes.allNodes.value[2].credentials).toEqual({
+				slackApi: credential,
+			});
+		});
+
+		it('should not overwrite existing credentials of the same type', () => {
+			const newCredential = { id: 'cred-new', name: 'New Credential' };
+			const existingCredential = { id: 'cred-old', name: 'Existing Credential' };
+			const credentialType = 'slackApi';
+
+			getNodeType.mockReturnValue({
+				credentials: [{ name: 'slackApi', required: true }],
+				inputs: [],
+				group: [],
+				webhooks: [],
+				properties: [],
+			});
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([
+				createNode({ name: 'Current Node', type: 'n8n-nodes-base.slack', typeVersion: 1 }),
+				createNode({
+					name: 'Node With Existing Cred',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+					credentials: { slackApi: existingCredential },
+				}),
+				createNode({
+					name: 'Node Without Cred',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+				}),
+			]);
+
+			const result = workflowDocumentNodes.assignCredentialToMatchingNodes({
+				credentials: newCredential,
+				type: credentialType,
+				currentNodeName: 'Current Node',
+			});
+
+			expect(result).toBe(1);
+			expect(workflowDocumentNodes.allNodes.value[1].credentials?.slackApi).toEqual(
+				existingCredential,
+			);
+			expect(workflowDocumentNodes.allNodes.value[2].credentials?.slackApi).toEqual(newCredential);
+		});
+
+		it("should not affect nodes that don't support the credential type", () => {
+			const credential = { id: 'cred-1', name: 'Test Credential' };
+			const credentialType = 'slackApi';
+
+			getNodeType.mockImplementation((nodeType: string) => {
+				if (nodeType === 'n8n-nodes-base.slack') {
+					return {
+						credentials: [{ name: 'slackApi', required: true }],
+						inputs: [],
+						group: [],
+						webhooks: [],
+						properties: [],
+					};
+				}
+				return {
+					credentials: [{ name: 'httpBasicAuth', required: false }],
+					inputs: [],
+					group: [],
+					webhooks: [],
+					properties: [],
+				};
+			});
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([
+				createNode({ name: 'Current Node', type: 'n8n-nodes-base.slack', typeVersion: 1 }),
+				createNode({ name: 'Slack Node', type: 'n8n-nodes-base.slack', typeVersion: 1 }),
+				createNode({
+					name: 'HTTP Node',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+				}),
+			]);
+
+			const result = workflowDocumentNodes.assignCredentialToMatchingNodes({
+				credentials: credential,
+				type: credentialType,
+				currentNodeName: 'Current Node',
+			});
+
+			expect(result).toBe(1);
+			expect(workflowDocumentNodes.allNodes.value[1].credentials?.slackApi).toEqual(credential);
+			expect(workflowDocumentNodes.allNodes.value[2].credentials).toBeUndefined();
+		});
+
+		it('should handle nodes with no credential support', () => {
+			const credential = { id: 'cred-1', name: 'Test Credential' };
+			const credentialType = 'slackApi';
+
+			getNodeType.mockImplementation((nodeType: string) => {
+				if (nodeType === 'n8n-nodes-base.slack') {
+					return {
+						credentials: [{ name: 'slackApi', required: true }],
+						inputs: [],
+						group: [],
+						webhooks: [],
+						properties: [],
+					};
+				}
+				return { inputs: [], group: [], webhooks: [], properties: [] };
+			});
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([
+				createNode({ name: 'Current Node', type: 'n8n-nodes-base.slack', typeVersion: 1 }),
+				createNode({
+					name: 'Node Without Creds Support',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+				}),
+			]);
+
+			const result = workflowDocumentNodes.assignCredentialToMatchingNodes({
+				credentials: credential,
+				type: credentialType,
+				currentNodeName: 'Current Node',
+			});
+
+			expect(result).toBe(0);
+			expect(workflowDocumentNodes.allNodes.value[1].credentials).toBeUndefined();
+		});
+
+		it('should not assign credential to nodes where displayOptions do not match current parameters', () => {
+			const credential = { id: 'cred-1', name: 'Header Auth Credential' };
+			const credentialType = 'httpHeaderAuth';
+
+			getNodeType.mockImplementation((nodeType: string) => {
+				if (nodeType === 'n8n-nodes-base.httpRequest') {
+					return {
+						credentials: [{ name: 'httpHeaderAuth', required: false }],
+						inputs: [],
+						group: [],
+						webhooks: [],
+						properties: [],
+					};
+				}
+				return {
+					credentials: [
+						{
+							name: 'httpHeaderAuth',
+							required: false,
+							displayOptions: { show: { authentication: ['headerAuth'] } },
+						},
+					],
+					inputs: [],
+					group: [],
+					webhooks: [],
+					properties: [
+						{
+							displayName: 'Authentication',
+							name: 'authentication',
+							type: 'options',
+							default: 'none',
+							options: [
+								{ name: 'None', value: 'none' },
+								{ name: 'Header Auth', value: 'headerAuth' },
+							],
+						},
+					],
+				};
+			});
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([
+				createNode({
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+				}),
+				createNode({
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 1,
+					parameters: { authentication: 'none' },
+				}),
+			]);
+
+			const result = workflowDocumentNodes.assignCredentialToMatchingNodes({
+				credentials: credential,
+				type: credentialType,
+				currentNodeName: 'HTTP Request',
+			});
+
+			expect(result).toBe(0);
+			expect(workflowDocumentNodes.allNodes.value[1].credentials).toBeUndefined();
+		});
+
+		it('should return 0 when there are no matching nodes', () => {
+			const credential = { id: 'cred-1', name: 'Test Credential' };
+			const credentialType = 'slackApi';
+
+			getNodeType.mockReturnValue({
+				credentials: [{ name: 'slackApi', required: true }],
+				inputs: [],
+				group: [],
+				webhooks: [],
+				properties: [],
+			});
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([
+				createNode({ name: 'Current Node', type: 'n8n-nodes-base.slack', typeVersion: 1 }),
+			]);
+
+			const result = workflowDocumentNodes.assignCredentialToMatchingNodes({
+				credentials: credential,
+				type: credentialType,
+				currentNodeName: 'Current Node',
+			});
+
+			expect(result).toBe(0);
+		});
+	});
+
+	describe('port subsystem (nodeInputsByNodeId / nodeOutputsByNodeId)', () => {
+		function createNodeTypeDescription(
+			overrides: Partial<INodeTypeDescription> = {},
+		): INodeTypeDescription {
+			return mockNodeTypeDescription({
+				name: 'test.node',
+				inputs: [NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.Main],
+				...overrides,
+			});
+		}
+
+		function createWorkflowObjectForNodes(nodes: INodeUi[]) {
+			const byName = new Map(nodes.map((n) => [n.name, n]));
+			return mock<Workflow>({
+				getNode: (name: string) => byName.get(name) ?? null,
+			});
+		}
+
+		beforeEach(() => {
+			getNodeType.mockReturnValue(createNodeTypeDescription());
+			communityNodeType.mockReturnValue(undefined);
+		});
+
+		describe('initial reconciliation', () => {
+			it('seeds port entries for nodes set during construction lifetime', () => {
+				const nodeA = createNode({ name: 'A', id: 'a' });
+				const nodeB = createNode({ name: 'B', id: 'b' });
+				deps = createDeps({
+					workflowObject: ref(
+						createWorkflowObjectForNodes([nodeA, nodeB]),
+					) as unknown as WorkflowDocumentNodesDeps['workflowObject'],
+				});
+				const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+				workflowDocumentNodes.setNodes([nodeA, nodeB]);
+
+				expect(workflowDocumentNodes.nodeInputsByNodeId.size).toBe(2);
+				expect(workflowDocumentNodes.nodeOutputsByNodeId.size).toBe(2);
+				expect(workflowDocumentNodes.nodeInputsByNodeId.has('a')).toBe(true);
+				expect(workflowDocumentNodes.nodeInputsByNodeId.has('b')).toBe(true);
+			});
+
+			it('starts with empty port maps when no nodes are set', () => {
+				const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+
+				expect(workflowDocumentNodes.nodeInputsByNodeId.size).toBe(0);
+				expect(workflowDocumentNodes.nodeOutputsByNodeId.size).toBe(0);
+			});
+		});
+
+		describe('addNode', () => {
+			it('adds a port entry for the new node', () => {
+				const nodeA = createNode({ name: 'A', id: 'a' });
+				deps = createDeps({
+					workflowObject: ref(
+						createWorkflowObjectForNodes([nodeA]),
+					) as unknown as WorkflowDocumentNodesDeps['workflowObject'],
+				});
+				const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+				workflowDocumentNodes.addNode(nodeA);
+
+				expect(workflowDocumentNodes.nodeInputsByNodeId.has('a')).toBe(true);
+				expect(workflowDocumentNodes.nodeOutputsByNodeId.has('a')).toBe(true);
+			});
+
+			it('does not duplicate the entry for an existing node', () => {
+				const nodeA = createNode({ name: 'A', id: 'a' });
+				deps = createDeps({
+					workflowObject: ref(
+						createWorkflowObjectForNodes([nodeA]),
+					) as unknown as WorkflowDocumentNodesDeps['workflowObject'],
+				});
+				const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+				workflowDocumentNodes.addNode(nodeA);
+				const originalInputs = workflowDocumentNodes.nodeInputsByNodeId.get('a');
+				workflowDocumentNodes.addNode(nodeA);
+
+				expect(workflowDocumentNodes.nodeInputsByNodeId.size).toBe(1);
+				expect(workflowDocumentNodes.nodeInputsByNodeId.get('a')).toBe(originalInputs);
+			});
+		});
+
+		describe('removeNodeById', () => {
+			it('removes the port entry for the specified node', () => {
+				const nodeA = createNode({ name: 'A', id: 'a' });
+				const nodeB = createNode({ name: 'B', id: 'b' });
+				deps = createDeps({
+					workflowObject: ref(
+						createWorkflowObjectForNodes([nodeA, nodeB]),
+					) as unknown as WorkflowDocumentNodesDeps['workflowObject'],
+				});
+				const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+				workflowDocumentNodes.setNodes([nodeA, nodeB]);
+
+				workflowDocumentNodes.removeNodeById('a');
+
+				expect(workflowDocumentNodes.nodeInputsByNodeId.has('a')).toBe(false);
+				expect(workflowDocumentNodes.nodeOutputsByNodeId.has('a')).toBe(false);
+				expect(workflowDocumentNodes.nodeInputsByNodeId.has('b')).toBe(true);
+				expect(workflowDocumentNodes.nodeOutputsByNodeId.has('b')).toBe(true);
+			});
+		});
+
+		describe('removeAllNodes', () => {
+			it('clears all port entries', () => {
+				const nodeA = createNode({ name: 'A', id: 'a' });
+				const nodeB = createNode({ name: 'B', id: 'b' });
+				deps = createDeps({
+					workflowObject: ref(
+						createWorkflowObjectForNodes([nodeA, nodeB]),
+					) as unknown as WorkflowDocumentNodesDeps['workflowObject'],
+				});
+				const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+				workflowDocumentNodes.setNodes([nodeA, nodeB]);
+
+				workflowDocumentNodes.removeAllNodes();
+
+				expect(workflowDocumentNodes.nodeInputsByNodeId.size).toBe(0);
+				expect(workflowDocumentNodes.nodeOutputsByNodeId.size).toBe(0);
+			});
+		});
+
+		describe('setNodes', () => {
+			it('reconciles port entries: adds new ids, removes missing ones', () => {
+				const nodeA = createNode({ name: 'A', id: 'a' });
+				const nodeB = createNode({ name: 'B', id: 'b' });
+				const nodeC = createNode({ name: 'C', id: 'c' });
+				deps = createDeps({
+					workflowObject: ref(
+						createWorkflowObjectForNodes([nodeA, nodeB, nodeC]),
+					) as unknown as WorkflowDocumentNodesDeps['workflowObject'],
+				});
+				const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+				workflowDocumentNodes.setNodes([nodeA, nodeB]);
+				expect(workflowDocumentNodes.nodeInputsByNodeId.has('a')).toBe(true);
+
+				workflowDocumentNodes.setNodes([nodeB, nodeC]);
+
+				expect(workflowDocumentNodes.nodeInputsByNodeId.has('a')).toBe(false);
+				expect(workflowDocumentNodes.nodeInputsByNodeId.has('b')).toBe(true);
+				expect(workflowDocumentNodes.nodeInputsByNodeId.has('c')).toBe(true);
+			});
+
+			it('handles setNodes with empty array (clears entries)', () => {
+				const nodeA = createNode({ name: 'A', id: 'a' });
+				deps = createDeps({
+					workflowObject: ref(
+						createWorkflowObjectForNodes([nodeA]),
+					) as unknown as WorkflowDocumentNodesDeps['workflowObject'],
+				});
+				const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+				workflowDocumentNodes.setNodes([nodeA]);
+				expect(workflowDocumentNodes.nodeInputsByNodeId.has('a')).toBe(true);
+
+				workflowDocumentNodes.setNodes([]);
+
+				expect(workflowDocumentNodes.nodeInputsByNodeId.size).toBe(0);
+				expect(workflowDocumentNodes.nodeOutputsByNodeId.size).toBe(0);
+			});
+		});
+
+		describe('port computation', () => {
+			it('returns empty array when node type cannot be resolved', () => {
+				const nodeA = createNode({ name: 'A', id: 'a' });
+				getNodeType.mockReturnValue(null);
+				communityNodeType.mockReturnValue(undefined);
+				deps = createDeps({
+					workflowObject: ref(
+						createWorkflowObjectForNodes([nodeA]),
+					) as unknown as WorkflowDocumentNodesDeps['workflowObject'],
+				});
+				const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+				workflowDocumentNodes.setNodes([nodeA]);
+
+				expect(workflowDocumentNodes.nodeInputsByNodeId.get('a')?.value).toEqual([]);
+				expect(workflowDocumentNodes.nodeOutputsByNodeId.get('a')?.value).toEqual([]);
+			});
+
+			it('falls back to communityNodeType.nodeDescription when getNodeType returns null', () => {
+				const nodeA = createNode({ name: 'A', id: 'a', type: 'community.foo' });
+				const communityDescription = createNodeTypeDescription({ name: 'community.foo' });
+				getNodeType.mockReturnValue(null);
+				communityNodeType.mockReturnValue({ nodeDescription: communityDescription });
+				deps = createDeps({
+					workflowObject: ref(
+						createWorkflowObjectForNodes([nodeA]),
+					) as unknown as WorkflowDocumentNodesDeps['workflowObject'],
+				});
+				const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+				workflowDocumentNodes.setNodes([nodeA]);
+
+				const inputs = workflowDocumentNodes.nodeInputsByNodeId.get('a')?.value;
+				expect(inputs).toHaveLength(1);
+				expect(inputs?.[0].type).toBe(NodeConnectionTypes.Main);
+			});
+
+			it('maps node type inputs/outputs through canvas port mapper', () => {
+				const nodeA = createNode({ name: 'A', id: 'a' });
+				getNodeType.mockReturnValue(
+					createNodeTypeDescription({
+						inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.AiTool],
+						outputs: [NodeConnectionTypes.Main],
+					}),
+				);
+				deps = createDeps({
+					workflowObject: ref(
+						createWorkflowObjectForNodes([nodeA]),
+					) as unknown as WorkflowDocumentNodesDeps['workflowObject'],
+				});
+				const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+				workflowDocumentNodes.setNodes([nodeA]);
+
+				const inputs = workflowDocumentNodes.nodeInputsByNodeId.get('a')?.value;
+				const outputs = workflowDocumentNodes.nodeOutputsByNodeId.get('a')?.value;
+
+				expect(inputs).toHaveLength(2);
+				expect(inputs?.map((p) => p.type)).toEqual([
+					NodeConnectionTypes.Main,
+					NodeConnectionTypes.AiTool,
+				]);
+				expect(outputs).toHaveLength(1);
+				expect(outputs?.[0].type).toBe(NodeConnectionTypes.Main);
+			});
+		});
+
+		describe('removal lifecycle', () => {
+			it('re-adding a removed node creates a fresh computed entry', () => {
+				const nodeA = createNode({ name: 'A', id: 'a' });
+				deps = createDeps({
+					workflowObject: ref(
+						createWorkflowObjectForNodes([nodeA]),
+					) as unknown as WorkflowDocumentNodesDeps['workflowObject'],
+				});
+				const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+				workflowDocumentNodes.addNode(nodeA);
+				const originalInputs = workflowDocumentNodes.nodeInputsByNodeId.get('a');
+
+				workflowDocumentNodes.removeNodeById('a');
+				expect(workflowDocumentNodes.nodeInputsByNodeId.has('a')).toBe(false);
+
+				workflowDocumentNodes.addNode(nodeA);
+
+				expect(workflowDocumentNodes.nodeInputsByNodeId.has('a')).toBe(true);
+				expect(workflowDocumentNodes.nodeInputsByNodeId.get('a')).not.toBe(originalInputs);
+			});
+		});
+	});
+});

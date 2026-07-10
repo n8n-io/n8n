@@ -1,11 +1,32 @@
 export { default as N8nActionBox } from './N8nActionBox';
 export { default as N8nAskAssistantButton } from './AskAssistantButton';
-export { default as N8nAskAssistantChat } from './AskAssistantChat';
+export {
+	default as N8nAskAssistantChat,
+	MessageWrapper,
+	ThinkingMessage,
+} from './AskAssistantChat';
 export { default as N8nAssistantIcon } from './AskAssistantIcon';
 export { default as N8nAssistantAvatar } from './AskAssistantAvatar';
 export { default as N8nAssistantText } from './AskAssistantText';
 export { default as N8nActionDropdown } from './N8nActionDropdown';
 export { default as N8nActionToggle } from './N8nActionToggle';
+export { default as N8nDropdownMenu } from './N8nDropdownMenu/DropdownMenu.vue';
+export { default as N8nDropdownMenuItem } from './N8nDropdownMenu/DropdownMenuItem.vue';
+export { useDropdownSearch } from './N8nDropdownMenu/composables/useDropdownSearch';
+export { default as N8nAiModelSelectorDropdown } from './N8nAiModelSelectorDropdown';
+export type {
+	AiModelSelectorMenuItem,
+	AiModelSelectorMenuItemData,
+} from './N8nAiModelSelectorDropdown';
+export type {
+	DropdownMenuProps,
+	DropdownMenuItemProps,
+	DropdownMenuSlots,
+	DropdownMenuItemSlots,
+	DropdownMenuEmits,
+	DropdownMenuTrigger,
+	DropdownMenuPlacement,
+} from './N8nDropdownMenu/DropdownMenu.types';
 export { default as N8nAlert } from './N8nAlert';
 export { default as N8nAvatar } from './N8nAvatar';
 export { default as N8nBadge } from './N8nBadge';
@@ -13,17 +34,27 @@ export { default as N8nBlockUi } from './N8nBlockUi';
 export { default as N8nButton } from './N8nButton';
 export { default as N8nCallout } from './N8nCallout';
 export { default as N8nCanvasThinkingPill } from './CanvasThinkingPill';
+export { default as N8nCanvasCollaborationPill } from './CanvasCollaborationPill';
 export { default as N8nCard } from './N8nCard';
-export { default as N8nCheckbox } from './N8nCheckbox';
 export { default as N8nCircleLoader } from './N8nCircleLoader';
+export { default as N8nCollapsiblePanel } from './N8nCollapsiblePanel';
 export { default as N8nColorPicker } from './N8nColorPicker';
 export { default as N8nDatatable } from './N8nDatatable';
 export { default as N8nExternalLink } from './N8nExternalLink';
+export { default as N8nFloatingWindow } from './N8nFloatingWindow';
 export { default as N8nFormBox } from './N8nFormBox';
 export { default as N8nFormInputs } from './N8nFormInputs';
 export { default as N8nFormInput } from './N8nFormInput';
 export { default as N8nHeading } from './N8nHeading';
-export { default as N8nIcon } from './N8nIcon';
+export { default as N8nHeaderAction } from './N8nHeaderAction';
+export { default as N8nHoverCard } from './N8nHoverCard';
+export {
+	default as N8nIcon,
+	type IconName,
+	type NodeIconName,
+	isNodeIcon,
+	updatedIconSet,
+} from './N8nIcon';
 export { default as N8nIconButton } from './N8nIconButton';
 export { default as N8nInlineAskAssistantButton } from './InlineAskAssistantButton';
 export { default as N8nInfoAccordion } from './N8nInfoAccordion';
@@ -35,16 +66,40 @@ export { default as N8nLink } from './N8nLink';
 export { default as N8nLogo } from './N8nLogo';
 export { default as N8nLoading } from './N8nLoading';
 export { default as N8nMarkdown } from './N8nMarkdown';
+export { default as N8nMessageRating } from './AskAssistantChat/messages/MessageRating.vue';
 export { default as N8nMenuItem } from './N8nMenuItem';
 export { default as N8nNavigationDropdown } from './N8nNavigationDropdown';
 export { default as N8nNodeCreatorNode } from './N8nNodeCreatorNode';
 export { default as N8nNodeIcon } from './N8nNodeIcon';
 export { default as N8nNotice } from './N8nNotice';
 export { default as N8nOption } from './N8nOption';
+export { default as N8nPagination } from './N8nPagination';
+export { default as N8nSectionHeader } from './N8nSectionHeader';
 export { default as N8nSelectableList } from './N8nSelectableList';
+export { default as N8nSettingsLayout } from './N8nSettingsLayout';
+export type { SettingsLayoutProps } from './N8nSettingsLayout';
+export { default as N8nSettingsPageHeader } from './N8nSettingsPageHeader';
+export type { SettingsPageHeaderProps } from './N8nSettingsPageHeader';
+export { default as N8nSettingsRow } from './N8nSettingsRow';
+export type { SettingsRowProps, SettingsRowLayout } from './N8nSettingsRow';
+export { default as N8nSettingsRowConfigure } from './N8nSettingsRowConfigure';
+export type { SettingsRowConfigureProps } from './N8nSettingsRowConfigure';
+export { default as N8nSettingsRowGroup } from './N8nSettingsRowGroup';
+export type { SettingsRowGroupProps } from './N8nSettingsRowGroup';
+export { default as N8nSettingsSaveBar } from './N8nSettingsSaveBar';
+export type { SettingsSaveBarProps } from './N8nSettingsSaveBar';
+export { default as N8nSettingsSection } from './N8nSettingsSection';
+export type { SettingsSectionProps } from './N8nSettingsSection';
+export { default as N8nPreviewTag } from './PreviewTag/PreviewTag.vue';
+export { default as N8nActionPill } from './N8nActionPill/ActionPill.vue';
 export { default as N8nPopover } from './N8nPopover';
 export { default as N8nPopoverReka } from './N8nPopover'; // Alias for backwards compatibility
-export { default as N8nPromptInput } from './N8nPromptInput';
+export {
+	default as N8nChatInput,
+	useChatInputAutoFocus,
+	type ChatInputAutoFocusOptions,
+	type ChatInputAutoFocusTarget,
+} from './N8nChatInput';
 export { default as N8nPulse } from './N8nPulse';
 export { default as N8nSendStopButton } from './N8nSendStopButton';
 export { default as N8nRadioButtons } from './N8nRadioButtons';
@@ -56,11 +111,20 @@ export { default as N8nSpinner } from './N8nSpinner';
 export { default as N8nSticky } from './N8nSticky';
 export { default as N8nResizeableSticky } from './N8nResizeableSticky';
 export { default as N8nSuggestedActions } from './N8nSuggestedActions';
+export { default as N8nSwitch } from './N8nSwitch';
 export { default as N8nTabs } from './N8nTabs';
 export { default as N8nTag } from './N8nTag';
 export { default as N8nTags } from './N8nTags';
 export { default as N8nText } from './N8nText';
 export { default as N8nTooltip } from './N8nTooltip';
+export { default as N8nAiActivityStepButton } from './N8nAiActivityStepButton';
+export { default as N8nAiActivityStepChevron } from './N8nAiActivityStepChevron';
+export { default as N8nAiActivityStepGroup } from './N8nAiActivityStepGroup';
+export { default as N8nAiActivityStepResultSection } from './N8nAiActivityStepResultSection';
+export { default as N8nAiActivityStep } from './N8nAiActivityStep';
+export { default as N8nAnimatedCollapsibleContent } from './N8nAnimatedCollapsibleContent';
+export { default as N8nToggle } from './N8nToggle';
+export { default as N8nToggleGroup } from './N8nToggleGroup';
 export { default as N8nTree } from './N8nTree';
 export { default as N8nUserStack } from './N8nUserStack';
 export { default as N8nUserInfo } from './N8nUserInfo';
@@ -78,3 +142,5 @@ export { default as N8nInlineTextEdit } from './N8nInlineTextEdit';
 export { default as N8nScrollArea } from './N8nScrollArea';
 export * from './DateRangePicker';
 export { default as N8nCommandBar } from './N8nCommandBar';
+export * from './N8nDialog';
+export * from './N8nAlertDialog';

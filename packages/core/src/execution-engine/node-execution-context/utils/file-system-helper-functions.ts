@@ -1,17 +1,32 @@
-import { isContainedWithin, safeJoinPath } from '@n8n/backend-common';
+import {
+	containsSymlinkedComponent,
+	isContainedWithin,
+	pathComponents,
+	pathSegmentsBetween,
+	safeJoinPath,
+} from '@n8n/backend-common';
 import { SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { NodeOperationError } from 'n8n-workflow';
-import type { FileSystemHelperFunctions, INode, ResolvedFilePath } from 'n8n-workflow';
+import type {
+	FileSystemHelperFunctions,
+	INode,
+	PinnedDirectory,
+	ResolvedFilePath,
+} from 'n8n-workflow';
 import type { PathLike } from 'node:fs';
-import { constants, createReadStream } from 'node:fs';
+import { constants } from 'node:fs';
 import {
 	access as fsAccess,
-	writeFile as fsWriteFile,
 	realpath as fsRealpath,
+	stat as fsStat,
+	open as fsOpen,
+	mkdir as fsMkdir,
+	lstat as fsLstat,
 } from 'node:fs/promises';
+import type { FileHandle } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { resolve, posix } from 'node:path';
+import { posix, dirname, basename, join } from 'node:path';
 
 import {
 	BINARY_DATA_STORAGE_PATH,
@@ -37,11 +52,17 @@ const getAllowedPaths = () => {
 };
 
 async function resolvePath(path: PathLike): Promise<ResolvedFilePath> {
+	const pathStr = path.toString();
+
 	try {
-		return (await fsRealpath(path)) as ResolvedFilePath; // apply brand, since we know it's resolved now
+		return (await fsRealpath(pathStr)) as ResolvedFilePath; // apply brand, since we know it's resolved now
 	} catch (error: unknown) {
 		if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
-			return resolve(path.toString()) as ResolvedFilePath; // apply brand, since we know it's resolved now
+			// File doesn't exist - resolve the parent directory and append filename
+			const dir = dirname(pathStr);
+			const file = basename(pathStr);
+			const resolvedDir = await fsRealpath(dir);
+			return join(resolvedDir, file) as ResolvedFilePath;
 		}
 		throw error;
 	}
@@ -66,6 +87,36 @@ function isFilePatternBlocked(resolvedFilePath: ResolvedFilePath): boolean {
 		});
 }
 
+async function assertNoSymlinkInPath(
+	resolvedFilePath: ResolvedFilePath,
+	node: INode,
+): Promise<void> {
+	if (await containsSymlinkedComponent(dirname(resolvedFilePath))) {
+		throw new NodeOperationError(node, 'Access to the file is not allowed.', { level: 'warning' });
+	}
+}
+
+async function ensureParentDirectoryWithoutFollowingSymlinks(
+	resolvedFilePath: ResolvedFilePath,
+	node: INode,
+): Promise<void> {
+	for (const component of pathComponents(dirname(resolvedFilePath))) {
+		try {
+			await fsMkdir(component);
+		} catch (error) {
+			if (!(error instanceof Error && 'code' in error && error.code === 'EEXIST')) {
+				throw error;
+			}
+		}
+		const stats = await fsLstat(component);
+		if (stats.isSymbolicLink() || !stats.isDirectory()) {
+			throw new NodeOperationError(node, 'Access to the file is not allowed.', {
+				level: 'warning',
+			});
+		}
+	}
+}
+
 function isFilePathBlocked(resolvedFilePath: ResolvedFilePath): boolean {
 	const allowedPaths = getAllowedPaths();
 	const blockFileAccessToN8nFiles = process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] !== 'false';
@@ -88,8 +139,141 @@ function isFilePathBlocked(resolvedFilePath: ResolvedFilePath): boolean {
 	return false;
 }
 
+async function resolveContainingAllowedBase(targetPath: string): Promise<ResolvedFilePath | null> {
+	const containingBase = getAllowedPaths().find((allowedPath) =>
+		isContainedWithin(allowedPath, targetPath),
+	);
+	return containingBase === undefined
+		? null
+		: ((await fsRealpath(containingBase)) as ResolvedFilePath);
+}
+
+async function resolveStagingBaseForTarget(target: ResolvedFilePath): Promise<ResolvedFilePath> {
+	return (
+		(await resolveContainingAllowedBase(target)) ??
+		((await fsRealpath(Container.get(InstanceSettings).n8nFolder)) as ResolvedFilePath)
+	);
+}
+
+// Linux exposes every open descriptor under `/proc/self/fd/<fd>` as a magic symlink to the
+// object it holds. Resolving `<fd>/<name>` through it addresses `<name>` relative to that
+// descriptor.
+const PROC_SELF_FD = '/proc/self/fd';
+
+function hasErrorCode(error: unknown, ...codes: string[]): boolean {
+	if (typeof error !== 'object' || error === null || !('code' in error)) {
+		return false;
+	}
+	const { code } = error;
+	return typeof code === 'string' && codes.includes(code);
+}
+
+async function resolveTrustedAnchorForPath(targetPath: string): Promise<ResolvedFilePath | null> {
+	const containingBase = await resolveContainingAllowedBase(targetPath);
+	if (containingBase !== null) {
+		return containingBase;
+	}
+
+	const n8nFolder = (await fsRealpath(
+		Container.get(InstanceSettings).n8nFolder,
+	)) as ResolvedFilePath;
+	return isContainedWithin(n8nFolder, targetPath) ? n8nFolder : null;
+}
+
+async function pinDirectory(
+	directoryPath: string,
+	node: INode,
+	options: { create: boolean },
+): Promise<PinnedDirectory | null> {
+	// /proc/self/fd exists only on Linux; the caller falls back to the path-based check.
+	if (process.platform !== 'linux') {
+		return null;
+	}
+
+	const anchor = await resolveTrustedAnchorForPath(directoryPath);
+	if (anchor === null) {
+		return null;
+	}
+	const segments = pathSegmentsBetween(anchor, directoryPath);
+	if (segments === null) {
+		return null;
+	}
+
+	const directoryFlags = constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW;
+	let current: FileHandle = await fsOpen(anchor, directoryFlags);
+	try {
+		for (const segment of segments) {
+			const relativePath = `${PROC_SELF_FD}/${current.fd}/${segment}`;
+			if (options.create) {
+				try {
+					await fsMkdir(relativePath);
+				} catch (error) {
+					if (!hasErrorCode(error, 'EEXIST')) throw error;
+				}
+			}
+			let next: FileHandle;
+			try {
+				next = await fsOpen(relativePath, directoryFlags);
+			} catch (error) {
+				if (hasErrorCode(error, 'ELOOP', 'ENOTDIR')) {
+					throw new NodeOperationError(node, 'Access to the file is not allowed.', {
+						level: 'warning',
+					});
+				}
+				throw error;
+			}
+			const previous = current;
+			current = next;
+			await previous.close();
+		}
+	} catch (error) {
+		await current.close();
+		throw error;
+	}
+
+	const pinned = current;
+	return {
+		resolvePath(name: string) {
+			return `${PROC_SELF_FD}/${pinned.fd}/${name}`;
+		},
+		async close() {
+			await pinned.close();
+		},
+	};
+}
+
+async function openWithoutFollowingSymlinkedAncestors(
+	resolvedFilePath: ResolvedFilePath,
+	flags: number,
+	node: INode,
+): Promise<FileHandle> {
+	const pinnedParent = await pinDirectory(dirname(resolvedFilePath), node, { create: false });
+	try {
+		if (!pinnedParent) {
+			await assertNoSymlinkInPath(resolvedFilePath, node);
+		}
+		const openPath = pinnedParent
+			? pinnedParent.resolvePath(basename(resolvedFilePath))
+			: resolvedFilePath;
+		return await fsOpen(openPath, flags);
+	} catch (error) {
+		if (hasErrorCode(error, 'ELOOP')) {
+			throw new NodeOperationError(node, error instanceof Error ? error : '', {
+				message: 'Symlinks are not allowed.',
+				level: 'warning',
+			});
+		}
+		throw error;
+	} finally {
+		await pinnedParent?.close();
+	}
+}
+
 export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions => ({
 	async createReadStream(resolvedFilePath) {
+		// Get the device and inode number of the path we're checking.
+		const pathIdentity = await fsStat(resolvedFilePath);
+		// Check that the path is allowed.
 		if (isFilePathBlocked(resolvedFilePath)) {
 			const allowedPaths = getAllowedPaths();
 			const message = allowedPaths.length ? ` Allowed paths: ${allowedPaths.join(', ')}` : '';
@@ -111,27 +295,33 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 				: error;
 		}
 
-		// Use O_NOFOLLOW to prevent createReadStream from following symlinks. We require that the path
-		// already be resolved beforehand.
-		const stream = createReadStream(resolvedFilePath, {
-			flags: (constants.O_RDONLY | constants.O_NOFOLLOW) as unknown as string,
-		});
+		const fileHandle = await openWithoutFollowingSymlinkedAncestors(
+			resolvedFilePath,
+			constants.O_RDONLY | constants.O_NOFOLLOW,
+			node,
+		);
 
-		return await new Promise<ReturnType<typeof createReadStream>>((resolve, reject) => {
-			stream.once('error', (error) => {
-				if ((error as NodeJS.ErrnoException).code === 'ELOOP') {
-					reject(
-						new NodeOperationError(node, error, {
-							level: 'warning',
-							description: 'Symlinks are not allowed.',
-						}),
-					);
-				} else {
-					reject(error);
-				}
-			});
-			stream.once('open', () => resolve(stream));
-		});
+		try {
+			// Verify that the handle we've opened is the same as the path we checked earlier.
+			// This ensures nothing has changed between checking and reading.
+			const fileHandleIdentity = await fileHandle.stat();
+			if (
+				fileHandleIdentity.dev !== pathIdentity.dev ||
+				fileHandleIdentity.ino !== pathIdentity.ino
+			) {
+				throw new NodeOperationError(node, 'The file has changed and cannot be accessed.', {
+					level: 'warning',
+				});
+			}
+
+			// The file handle we opened matches the path we checked, and the path is allowed,
+			// so we can go ahead and read the file.
+			return fileHandle.createReadStream();
+		} catch (error) {
+			// Ensure the file handle is closed if verification fails or an error occurs.
+			await fileHandle.close();
+			throw error;
+		}
 	},
 
 	getStoragePath() {
@@ -139,6 +329,24 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 	},
 
 	async writeContentToFile(resolvedFilePath, content, flag) {
+		// Get the device and inode number of the path we're checking, if it exists.
+		// This establishes the file's identity before we open it.
+		let pathIdentity;
+		let fileExists = true;
+		try {
+			pathIdentity = await fsStat(resolvedFilePath);
+		} catch (error) {
+			// NOTE: for some reason instanceof Error does not work here in tests,
+			// so we just look for the code to catch ENOENT.
+			if ('code' in error && (error as unknown as { code: string }).code === 'ENOENT') {
+				// It's possible the file does not exist yet. In this case we'll create it later.
+				fileExists = false;
+			} else {
+				throw error;
+			}
+		}
+
+		// Check that the path is allowed.
 		if (isFilePathBlocked(resolvedFilePath)) {
 			const allowedPaths = getAllowedPaths();
 			const message = allowedPaths.length
@@ -152,13 +360,96 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 				},
 			);
 		}
-		return await fsWriteFile(resolvedFilePath, content, {
-			encoding: 'binary',
-			flag: (flag ?? 0) | constants.O_NOFOLLOW,
-		});
+
+		const shouldTruncate = flag === undefined || (flag & constants.O_TRUNC) === constants.O_TRUNC;
+		// We intentionally remove O_TRUNC to avoid destructive operations before verification.
+		// If we should truncate the file instead we will do it after verification.
+		const userFlags = flag ?? 0;
+		const openFlags =
+			constants.O_WRONLY |
+			constants.O_CREAT |
+			constants.O_NOFOLLOW |
+			(userFlags & ~constants.O_TRUNC); // Strip O_TRUNC if present
+
+		const fileHandle = await openWithoutFollowingSymlinkedAncestors(
+			resolvedFilePath,
+			openFlags,
+			node,
+		);
+
+		try {
+			// Verify that the handle we've opened is the same as the path we checked earlier.
+			// This ensures nothing has changed between checking and opening (TOCTOU protection).
+			const fileHandleIdentity = await fileHandle.stat();
+
+			if (fileExists && pathIdentity) {
+				if (
+					fileHandleIdentity.dev !== pathIdentity.dev ||
+					fileHandleIdentity.ino !== pathIdentity.ino
+				) {
+					throw new NodeOperationError(node, 'The file has changed and cannot be written.', {
+						level: 'warning',
+					});
+				}
+			} else {
+				// If the file did not exist before, ensure that we opened the path we expected.
+				pathIdentity = await fsStat(resolvedFilePath);
+				if (
+					fileHandleIdentity.dev !== pathIdentity.dev ||
+					fileHandleIdentity.ino !== pathIdentity.ino
+				) {
+					throw new NodeOperationError(
+						node,
+						'The file was created but its identity does not match and cannot be written.',
+						{
+							level: 'warning',
+						},
+					);
+				}
+			}
+
+			// Verify that the opened file is a regular file, not a directory or special file
+			if (!fileHandleIdentity.isFile()) {
+				throw new NodeOperationError(node, 'The path is not a regular file.', {
+					level: 'warning',
+				});
+			}
+
+			// The file handle we opened matches the path we checked (or the file was newly created),
+			// and the path is allowed, so we can now safely truncate and write.
+			if (shouldTruncate) {
+				await fileHandle.truncate(0);
+			} // Otherwise we'll append.
+
+			// Handle different content types
+			if (typeof content === 'string' || Buffer.isBuffer(content)) {
+				// FileHandle.writeFile supports string and Buffer
+				await fileHandle.writeFile(content, { encoding: 'binary' });
+			} else {
+				// Content is a Readable stream
+				const writeStream = fileHandle.createWriteStream({ encoding: 'binary' });
+				await new Promise<void>((resolve, reject) => {
+					content.pipe(writeStream);
+					writeStream.on('finish', resolve);
+					writeStream.on('error', reject);
+				});
+			}
+		} finally {
+			await fileHandle.close();
+		}
 	},
 	resolvePath,
 	isFilePathBlocked,
+	async assertNoSymlinkInPath(resolvedFilePath) {
+		await assertNoSymlinkInPath(resolvedFilePath, node);
+	},
+	async ensureParentDirectoryWithoutFollowingSymlinks(resolvedFilePath) {
+		await ensureParentDirectoryWithoutFollowingSymlinks(resolvedFilePath, node);
+	},
+	resolveStagingBaseForTarget,
+	async pinDirectory(directoryPath, options) {
+		return await pinDirectory(directoryPath, node, options);
+	},
 });
 
 /**

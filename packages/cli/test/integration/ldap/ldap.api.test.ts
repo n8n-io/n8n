@@ -19,8 +19,8 @@ import type { Entry as LdapUser } from 'ldapts';
 import { Cipher } from 'n8n-core';
 
 import config from '@/config';
-import { saveLdapSynchronization } from '@/ldap.ee/helpers.ee';
-import { LdapService } from '@/ldap.ee/ldap.service.ee';
+import { saveLdapSynchronization } from '@/modules/ldap.ee/helpers.ee';
+import { LdapService } from '@/modules/ldap.ee/ldap.service.ee';
 import {
 	getCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
@@ -31,7 +31,7 @@ import { createLdapConfig, defaultLdapConfig } from '../shared/ldap';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
-jest.mock('@/telemetry');
+vi.mock('@/telemetry');
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
@@ -39,6 +39,7 @@ let authOwnerAgent: SuperAgentTest;
 const testServer = utils.setupTestServer({
 	endpointGroups: ['auth', 'ldap'],
 	enabledFeatures: ['feat:ldap'],
+	modules: ['ldap'],
 });
 
 beforeAll(async () => {
@@ -62,7 +63,7 @@ beforeEach(async () => {
 
 	await Container.get(UserRepository).delete({ id: Not(owner.id) });
 
-	jest.mock('@/telemetry');
+	vi.mock('@/telemetry');
 
 	await setCurrentAuthenticationMethod('email');
 });
@@ -88,6 +89,11 @@ test('Chat user role should not be able to access ldap routes', async () => {
 });
 
 describe('PUT /ldap/config', () => {
+	test('should not allow access without license', async () => {
+		testServer.license.disable('feat:ldap');
+		await authOwnerAgent.put('/ldap/config').expect(403);
+	});
+
 	test('route should validate payload', async () => {
 		const invalidValuePayload = {
 			...LDAP_DEFAULT_CONFIGURATION,
@@ -168,25 +174,37 @@ describe('PUT /ldap/config', () => {
 	});
 });
 
-test('GET /ldap/config route should retrieve current configuration', async () => {
-	const validPayload = {
-		...LDAP_DEFAULT_CONFIGURATION,
-		loginEnabled: true,
-		loginLabel: '',
-	};
+describe('GET /ldap/config', () => {
+	test('should not allow access without license', async () => {
+		testServer.license.disable('feat:ldap');
+		await authOwnerAgent.get('/ldap/config').expect(403);
+	});
 
-	let response = await authOwnerAgent.put('/ldap/config').send(validPayload);
-	expect(response.statusCode).toBe(200);
-	expect(getCurrentAuthenticationMethod()).toBe('ldap');
+	test('route should retrieve current configuration', async () => {
+		const validPayload = {
+			...LDAP_DEFAULT_CONFIGURATION,
+			loginEnabled: true,
+			loginLabel: '',
+		};
 
-	response = await authOwnerAgent.get('/ldap/config');
+		let response = await authOwnerAgent.put('/ldap/config').send(validPayload);
+		expect(response.statusCode).toBe(200);
+		expect(getCurrentAuthenticationMethod()).toBe('ldap');
 
-	expect(response.body.data).toMatchObject(validPayload);
+		response = await authOwnerAgent.get('/ldap/config');
+
+		expect(response.body.data).toMatchObject(validPayload);
+	});
 });
 
 describe('POST /ldap/test-connection', () => {
+	test('should not allow access without license', async () => {
+		testServer.license.disable('feat:ldap');
+		await authOwnerAgent.post('/ldap/test-connection').expect(403);
+	});
+
 	test('route should success', async () => {
-		jest.spyOn(LdapService.prototype, 'testConnection').mockResolvedValue();
+		vi.spyOn(LdapService.prototype, 'testConnection').mockResolvedValue();
 
 		await authOwnerAgent.post('/ldap/test-connection').expect(200);
 	});
@@ -194,7 +212,7 @@ describe('POST /ldap/test-connection', () => {
 	test('route should fail', async () => {
 		const errorMessage = 'Invalid connection';
 
-		jest.spyOn(LdapService.prototype, 'testConnection').mockRejectedValue(new Error(errorMessage));
+		vi.spyOn(LdapService.prototype, 'testConnection').mockRejectedValue(new Error(errorMessage));
 
 		const response = await authOwnerAgent.post('/ldap/test-connection');
 		expect(response.statusCode).toBe(400);
@@ -204,6 +222,11 @@ describe('POST /ldap/test-connection', () => {
 });
 
 describe('POST /ldap/sync', () => {
+	test('should not allow access without license', async () => {
+		testServer.license.disable('feat:ldap');
+		await authOwnerAgent.post('/ldap/sync').expect(403);
+	});
+
 	beforeEach(async () => {
 		const ldapConfig = await createLdapConfig({
 			ldapIdAttribute: 'uid',
@@ -216,7 +239,7 @@ describe('POST /ldap/sync', () => {
 
 	describe('dry mode', () => {
 		const runTest = async (ldapUsers: LdapUser[]) => {
-			jest.spyOn(LdapService.prototype, 'searchWithAdminBinding').mockResolvedValue(ldapUsers);
+			vi.spyOn(LdapService.prototype, 'searchWithAdminBinding').mockResolvedValue(ldapUsers);
 
 			await authOwnerAgent.post('/ldap/sync').send({ type: 'dry' }).expect(200);
 
@@ -311,7 +334,7 @@ describe('POST /ldap/sync', () => {
 
 	describe('live mode', () => {
 		const runTest = async (ldapUsers: LdapUser[]) => {
-			jest.spyOn(LdapService.prototype, 'searchWithAdminBinding').mockResolvedValue(ldapUsers);
+			vi.spyOn(LdapService.prototype, 'searchWithAdminBinding').mockResolvedValue(ldapUsers);
 
 			await authOwnerAgent.post('/ldap/sync').send({ type: 'live' }).expect(200);
 
@@ -441,7 +464,7 @@ describe('POST /ldap/sync', () => {
 		test('should remove user instance access once the user is disabled during synchronization', async () => {
 			const member = await createLdapUser({ role: { slug: 'global:member' } }, uniqueId());
 
-			jest.spyOn(LdapService.prototype, 'searchWithAdminBinding').mockResolvedValue([]);
+			vi.spyOn(LdapService.prototype, 'searchWithAdminBinding').mockResolvedValue([]);
 
 			await authOwnerAgent.post('/ldap/sync').send({ type: 'live' });
 
@@ -468,7 +491,7 @@ describe('POST /ldap/sync', () => {
 
 			const ldapUsers = [validLdapUser, invalidLdapUser];
 
-			const loggerSpy = jest.spyOn(Container.get(LdapService)['logger'], 'warn');
+			const loggerSpy = vi.mocked(Container.get(LdapService)['logger'].warn);
 
 			const synchronization = await runTest(ldapUsers);
 
@@ -515,7 +538,7 @@ describe('POST /ldap/sync', () => {
 				uid: originalUserId,
 			};
 
-			const loggerSpy = jest.spyOn(Container.get(LdapService)['logger'], 'warn');
+			const loggerSpy = vi.mocked(Container.get(LdapService)['logger'].warn);
 
 			const synchronization = await runTest([invalidLdapUser]);
 
@@ -539,26 +562,33 @@ describe('POST /ldap/sync', () => {
 	});
 });
 
-test('GET /ldap/sync should return paginated synchronizations', async () => {
-	for (let i = 0; i < 2; i++) {
-		await saveLdapSynchronization({
-			created: 0,
-			scanned: 0,
-			updated: 0,
-			disabled: 0,
-			startedAt: new Date(),
-			endedAt: new Date(),
-			status: 'success',
-			error: '',
-			runMode: 'dry',
-		});
-	}
+describe('GET /ldap/sync', () => {
+	test('should not allow access without license', async () => {
+		testServer.license.disable('feat:ldap');
+		await authOwnerAgent.get('/ldap/sync').expect(403);
+	});
 
-	let response = await authOwnerAgent.get('/ldap/sync?perPage=1&page=0');
-	expect(response.body.data.length).toBe(1);
+	test('should return paginated synchronizations', async () => {
+		for (let i = 0; i < 2; i++) {
+			await saveLdapSynchronization({
+				created: 0,
+				scanned: 0,
+				updated: 0,
+				disabled: 0,
+				startedAt: new Date(),
+				endedAt: new Date(),
+				status: 'success',
+				error: '',
+				runMode: 'dry',
+			});
+		}
 
-	response = await authOwnerAgent.get('/ldap/sync?perPage=1&page=1');
-	expect(response.body.data.length).toBe(1);
+		let response = await authOwnerAgent.get('/ldap/sync?perPage=1&page=0');
+		expect(response.body.data.length).toBe(1);
+
+		response = await authOwnerAgent.get('/ldap/sync?perPage=1&page=1');
+		expect(response.body.data.length).toBe(1);
+	});
 });
 
 describe('POST /login', () => {
@@ -568,9 +598,9 @@ describe('POST /login', () => {
 
 		await setCurrentAuthenticationMethod('ldap');
 
-		jest.spyOn(LdapService.prototype, 'searchWithAdminBinding').mockResolvedValue([ldapUser]);
+		vi.spyOn(LdapService.prototype, 'searchWithAdminBinding').mockResolvedValue([ldapUser]);
 
-		jest.spyOn(LdapService.prototype, 'validUser').mockResolvedValue();
+		vi.spyOn(LdapService.prototype, 'validUser').mockResolvedValue();
 
 		const response = await testServer.authlessAgent
 			.post('/login')

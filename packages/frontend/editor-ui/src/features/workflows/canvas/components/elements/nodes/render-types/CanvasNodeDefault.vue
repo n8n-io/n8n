@@ -4,9 +4,11 @@ import { useNodeConnections } from '@/app/composables/useNodeConnections';
 import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '../../../../composables/useCanvasNode';
 import type { CanvasNodeDefaultRender } from '../../../../canvas.types';
+import { injectCanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 import { useCanvas } from '../../../../composables/useCanvas';
 import { useZoomAdjustedValues } from '../../../../composables/useZoomAdjustedValues';
 import CanvasNodeSettingsIcons from './parts/CanvasNodeSettingsIcons.vue';
+import { useNodePrivateCredential } from '@/features/resolvers/composables/useNodePrivateCredential';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { calculateNodeSize } from '@/app/utils/nodeViewUtils';
 import ExperimentalInPlaceNodeSettings from '../../../../experimental/components/ExperimentalEmbeddedNodeDetails.vue';
@@ -16,6 +18,7 @@ import CanvasNodeStatusIcons from './parts/CanvasNodeStatusIcons.vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
+import { getNodeIconSize, type NodeIconSource } from '@/app/utils/nodeIcon';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -23,31 +26,48 @@ const i18n = useI18n();
 const emit = defineEmits<{
 	'open:contextmenu': [event: MouseEvent];
 	activate: [id: string, event: MouseEvent];
+	'replace:node': [id: string];
 }>();
 
 const { initialized, viewport, isExperimentalNdvActive } = useCanvas();
-const { calculateNodeBorderOpacity } = useZoomAdjustedValues(viewport);
+const { calculateNodeBorderOpacityStyle } = useZoomAdjustedValues(viewport);
 const route = useRoute();
 const {
 	id,
+	name,
 	label,
 	subtitle,
-	inputs,
-	outputs,
 	connections,
 	isDisabled,
 	isReadOnly,
 	isSelected,
-	hasPinnedData,
 	executionStatus,
 	executionWaiting,
 	executionWaitingForNext,
 	executionRunning,
 	hasRunData,
-	hasExecutionErrors,
 	render,
 	isNotInstalledCommunityNode,
 } = useCanvasNode();
+const { hasPrivateCredential, tooltipText: privateCredentialTooltip } =
+	useNodePrivateCredential(name);
+const renderData = injectCanvasRenderData();
+const inputs = computed(() => renderData.value.nodeInputsByNodeId.get(id.value)?.value ?? []);
+const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(id.value)?.value ?? []);
+const hasExecutionErrors = computed(
+	() => (renderData.value.executionIssuesByNodeName.get(name.value)?.value?.length ?? 0) > 0,
+);
+const hasPinnedData = computed(
+	() =>
+		!renderData.value.isExecutionDataDisplayed &&
+		!!renderData.value.pinnedDataByNodeName[name.value],
+);
+const hasExecutionPinData = computed(
+	() =>
+		renderData.value.isExecutionDataDisplayed &&
+		!!renderData.value.executionPinDataByNodeName[name.value],
+);
+const hasSubstitutedOutput = computed(() => hasPinnedData.value || hasExecutionPinData.value);
 const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
 	useNodeConnections({
 		inputs,
@@ -60,26 +80,35 @@ const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRe
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 
 const classes = computed(() => {
+	const waiting = Boolean(executionWaiting.value || executionStatus.value === 'waiting');
+	const running = Boolean(executionRunning.value || executionWaitingForNext.value);
 	return {
 		[$style.node]: true,
 		[$style.selected]: isSelected.value,
 		[$style.disabled]:
 			isDisabled.value || (isNotInstalledCommunityNode.value && !isDemoRoute.value),
-		[$style.success]: hasRunData.value && executionStatus.value === 'success',
+		[$style.success]: Boolean(
+			hasRunData.value && executionStatus.value === 'success' && !hasExecutionPinData.value,
+		),
 		[$style.error]: hasExecutionErrors.value,
-		[$style.pinned]: hasPinnedData.value,
-		[$style.waiting]: executionWaiting.value || executionStatus.value === 'waiting',
-		[$style.running]: executionRunning.value || executionWaitingForNext.value,
+		[$style.running]: running,
+		[$style.waiting]: waiting,
+		[$style.pinned]: hasSubstitutedOutput.value,
 		[$style.configurable]: renderOptions.value.configurable,
 		[$style.configuration]: renderOptions.value.configuration,
 		[$style.trigger]: renderOptions.value.trigger,
 		[$style.warning]: renderOptions.value.dirtiness !== undefined,
-		waiting: executionWaiting.value || executionStatus.value === 'waiting',
-		running: executionRunning.value || executionWaitingForNext.value,
+		[$style.placeholder]: renderOptions.value.placeholder,
+		waiting,
+		running,
 	};
 });
 
-const iconSize = computed(() => (renderOptions.value.configuration ? 30 : 40));
+const iconSize = computed(() => {
+	const iconName = iconSource.value?.type === 'icon' ? iconSource.value.name : undefined;
+	if (renderOptions.value.configuration) return getNodeIconSize('configuration', iconName);
+	return getNodeIconSize('canvas', iconName);
+});
 
 const nodeSize = computed(() =>
 	calculateNodeSize(
@@ -92,14 +121,13 @@ const nodeSize = computed(() =>
 	),
 );
 
-const nodeBorderOpacity = calculateNodeBorderOpacity();
+const nodeBorderOpacityStyle = calculateNodeBorderOpacityStyle();
 
 const styles = computed(() => ({
 	'--canvas-node--width': `${nodeSize.value.width}px`,
 	'--canvas-node--height': `${nodeSize.value.height}px`,
 	'--node--icon--size': `${iconSize.value}px`,
-	'--canvas-node--border--opacity-light': nodeBorderOpacity.value.light,
-	'--canvas-node--border--opacity-dark': nodeBorderOpacity.value.dark,
+	...nodeBorderOpacityStyle.value,
 }));
 
 const dataTestId = computed(() => {
@@ -124,7 +152,28 @@ const isStrikethroughVisible = computed(() => {
 	return isDisabled.value && isSingleMainInputNode && isSingleMainOutputNode;
 });
 
-const iconSource = computed(() => renderOptions.value.icon);
+const iconSource = computed(() => {
+	if (renderOptions.value.placeholder) {
+		return {
+			type: 'icon',
+			name: 'plus',
+		} as NodeIconSource;
+	}
+
+	const source = renderOptions.value.icon;
+	// When the node uses a private credential, that icon takes over the node badge
+	// slot, replacing any node-specific badge (e.g. the HTTP Request globe).
+	if (hasPrivateCredential.value && source) {
+		const badge: NodeIconSource['badge'] = {
+			type: 'icon',
+			name: 'user-round-key',
+			tooltip: privateCredentialTooltip.value,
+		};
+		return { ...source, badge };
+	}
+
+	return source;
+});
 
 const showTooltip = ref(false);
 
@@ -146,6 +195,11 @@ function openContextMenu(event: MouseEvent) {
 }
 
 function onActivate(event: MouseEvent) {
+	if (renderOptions.value.placeholder) {
+		emit('replace:node', id.value);
+		return;
+	}
+
 	emit('activate', id.value, event);
 }
 </script>
@@ -179,7 +233,7 @@ function onActivate(event: MouseEvent) {
 			v-if="
 				!renderOptions.configuration &&
 				!isDisabled &&
-				!(hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value)
+				!(hasSubstitutedOutput && !nodeHelpers.isProductionExecutionPreview.value)
 			"
 		/>
 		<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
@@ -190,15 +244,19 @@ function onActivate(event: MouseEvent) {
 			<div v-if="isDisabled" :class="$style.disabledLabel">
 				({{ i18n.baseText('node.disabled') }})
 			</div>
-			<div v-if="subtitle" :class="$style.subtitle">{{ subtitle }}</div>
+			<div v-if="subtitle && !isNotInstalledCommunityNode" :class="$style.subtitle">
+				{{ subtitle }}
+			</div>
 		</div>
 		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
 	</div>
 </template>
 
 <style lang="scss" module>
+@use './_canvasNodeStyles.scss' as styles;
+
 .node {
-	--canvas-node--border-width: 1.5px;
+	@include styles.canvas-node-border-defaults;
 	--trigger-node--radius: 36px;
 	--canvas-node--status-icons--margin: var(--spacing--3xs);
 	--node--icon--color: var(--color--foreground--shade-1);
@@ -211,18 +269,7 @@ function onActivate(event: MouseEvent) {
 	justify-content: center;
 	background: var(--canvas-node--color--background, var(--node--color--background));
 	background-clip: padding-box;
-	border: var(--canvas-node--border-width) solid
-		var(
-			--canvas-node--border-color,
-			light-dark(
-				oklch(
-					from var(--color--neutral-black) l c h / var(--canvas-node--border--opacity-light, 0.1)
-				),
-				oklch(
-					from var(--color--neutral-white) l c h / var(--canvas-node--border--opacity-dark, 0.15)
-				)
-			)
-		);
+	@include styles.canvas-node-border;
 	border-radius: var(--radius--lg);
 
 	&.trigger {
@@ -286,11 +333,9 @@ function onActivate(event: MouseEvent) {
 				margin-left: calc((var(--canvas-node--height) - var(--node--icon--size) - 4px) / 2);
 			}
 
-			&:not(.running) {
-				.statusIcons {
-					position: static;
-					margin-right: var(--spacing--2xs);
-				}
+			.statusIcons {
+				position: static;
+				margin-right: var(--spacing--2xs);
 			}
 
 			.description {
@@ -305,26 +350,19 @@ function onActivate(event: MouseEvent) {
 	 */
 
 	&.selected {
-		/* stylelint-disable-next-line @n8n/css-var-naming */
-		box-shadow: 0 0 0 calc(6px * var(--canvas-zoom-compensation-factor, 1))
-			var(--canvas--color--selected-transparent);
+		@include styles.canvas-node-selected-ring;
 	}
 
 	&.success {
-		--canvas-node--border-width: 2px;
-		--canvas-node--border-color: var(
-			--color-canvas-node-success-border-color,
-			var(--color--success)
-		);
+		@include styles.status-success;
 	}
 
 	&.warning {
-		--canvas-node--border-width: 2px;
-		--canvas-node--border-color: var(--color--warning);
+		@include styles.status-warning;
 	}
 
 	&.error {
-		--canvas-node--border-color: var(--canvas-node--border-color--error, var(--color--danger));
+		@include styles.status-error;
 	}
 
 	&.pinned {
@@ -343,58 +381,40 @@ function onActivate(event: MouseEvent) {
 	}
 
 	&.running {
-		border-color: transparent;
-		--canvas-node--border-color: var(
-			--color-canvas-node-running-border-color,
-			var(--node--border-color--running)
-		);
+		@include styles.status-running-border;
 	}
 
 	&.waiting {
-		--canvas-node--border-color: transparent;
+		@include styles.status-waiting-border;
+	}
+
+	&.placeholder {
+		background: var(--color--foreground--tint-2);
+		border: 2px dashed var(--color--foreground--shade-2);
+		cursor: pointer;
+
+		&:hover {
+			.icon {
+				color: var(--color--primary);
+			}
+		}
 	}
 }
 
 /* stylelint-disable */
 .running::after,
 .waiting::after {
-	content: '';
-	position: absolute;
-	inset: -3px;
-	border-radius: 10px;
-	z-index: -1;
-	background: conic-gradient(
-		from var(--node--gradient-angle),
-		rgba(255, 109, 90, 1),
-		rgba(255, 109, 90, 1) 20%,
-		rgba(255, 109, 90, 0.2) 35%,
-		rgba(255, 109, 90, 0.2) 65%,
-		rgba(255, 109, 90, 1) 90%,
-		rgba(255, 109, 90, 1)
-	);
+	@include styles.status-animated-after;
 }
 
 .running::after {
-	animation: border-rotate 1.5s linear infinite;
+	@include styles.status-running-animation;
 }
 .waiting::after {
-	animation: border-rotate 4.5s linear infinite;
+	@include styles.status-waiting-animation;
 }
 
-@property --node--gradient-angle {
-	syntax: '<angle>';
-	initial-value: 0deg;
-	inherits: false;
-}
-
-@keyframes border-rotate {
-	from {
-		--node--gradient-angle: 0deg;
-	}
-	to {
-		--node--gradient-angle: 360deg;
-	}
-}
+@include styles.status-animation-definitions;
 /* stylelint-enable */
 
 .description {

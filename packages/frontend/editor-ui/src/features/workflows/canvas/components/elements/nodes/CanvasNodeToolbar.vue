@@ -4,9 +4,11 @@ import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '../../../composables/useCanvasNode';
 import { CanvasNodeRenderType } from '../../../canvas.types';
 import { useCanvas } from '../../../composables/useCanvas';
+import { useEditorContext } from '@/app/composables/useEditorContext';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useExperimentalNdvStore } from '../../../experimental/experimentalNdv.store';
+import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import CanvasNodeStatusIcons from './render-types/parts/CanvasNodeStatusIcons.vue';
 
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
@@ -19,13 +21,20 @@ const emit = defineEmits<{
 	update: [parameters: Record<string, unknown>];
 	'open:contextmenu': [event: MouseEvent];
 	focus: [id: string];
+	'add:ai': [id: string];
 }>();
 
-const props = defineProps<{
-	readOnly?: boolean;
-	showStatusIcons: boolean;
-	itemsClass: string;
-}>();
+const props = withDefaults(
+	defineProps<{
+		readOnly?: boolean;
+		canExecute?: boolean;
+		showStatusIcons: boolean;
+		itemsClass: string;
+	}>(),
+	{
+		canExecute: false,
+	},
+);
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -33,11 +42,18 @@ const i18n = useI18n();
 const { isExecuting, isExperimentalNdvActive } = useCanvas();
 const { isDisabled, render, name } = useCanvasNode();
 
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
 const experimentalNdvStore = useExperimentalNdvStore();
+const focusedNodesStore = useFocusedNodesStore();
 
-const node = computed(() => (name.value ? workflowsStore.getNodeByName(name.value) : null));
+// Per-editor host overrides — e.g. the Instance AI artifact preview supersedes
+// the AI capabilities of its embedded editor, which must hide this entry point.
+const { aiAssistant, aiBuilder, instanceAi } = useEditorContext();
+
+const node = computed(() =>
+	name.value ? workflowDocumentStore?.value?.getNodeByName(name.value) : null,
+);
 const isToolNode = computed(() => !!node.value && nodeTypesStore.isToolNode(node.value.type));
 
 const nodeDisabledTitle = computed(() => {
@@ -55,21 +71,44 @@ const classes = computed(() => ({
 }));
 
 const isExecuteNodeVisible = computed(() => {
+	if (props.readOnly && !props.canExecute) {
+		return false;
+	}
+
+	// The agent node is a regular executable main-flow node (not a configuration
+	// sub-node), so it always offers execute.
+	if (render.value.type === CanvasNodeRenderType.Agent) {
+		return true;
+	}
+
 	return (
-		!props.readOnly &&
 		render.value.type === CanvasNodeRenderType.Default &&
 		'configuration' in render.value.options &&
 		(!render.value.options.configuration || isToolNode.value)
 	);
 });
 
-const isDisableNodeVisible = computed(() => {
-	return !props.readOnly && render.value.type === CanvasNodeRenderType.Default;
-});
+const isDisableNodeVisible = computed(
+	() =>
+		!props.readOnly &&
+		(render.value.type === CanvasNodeRenderType.Default ||
+			render.value.type === CanvasNodeRenderType.Agent),
+);
 
 const isDeleteNodeVisible = computed(() => !props.readOnly);
 
 const isFocusNodeVisible = computed(() => experimentalNdvStore.isZoomedViewEnabled);
+
+// Feeds the builder side panel, so mirror the context menu's
+// assistant-or-builder semantics on top of the focused-nodes experiment.
+// Hidden when Instance AI supersedes the legacy builder/assistant.
+const isAddToAiVisible = computed(
+	() =>
+		!props.readOnly &&
+		focusedNodesStore.isFeatureEnabled &&
+		(aiAssistant.value || aiBuilder.value) &&
+		!instanceAi.value,
+);
 
 const isStickyNoteChangeColorVisible = computed(
 	() => !props.readOnly && render.value.type === CanvasNodeRenderType.StickyNote,
@@ -87,7 +126,7 @@ function onDeleteNode() {
 	emit('delete');
 }
 
-function onChangeStickyColor(color: number) {
+function onChangeStickyColor(color: number | string) {
 	emit('update', {
 		color,
 	});
@@ -110,6 +149,12 @@ function onFocusNode() {
 		emit('focus', node.value.id);
 	}
 }
+
+function onAddToAi() {
+	if (node.value) {
+		emit('add:ai', node.value.id);
+	}
+}
 </script>
 
 <template>
@@ -125,46 +170,50 @@ function onFocusNode() {
 			<N8nTooltip
 				v-if="isExecuteNodeVisible"
 				placement="top"
-				:disabled="!isDisabled"
-				:content="i18n.baseText('ndv.execute.deactivated')"
+				:content="
+					isDisabled ? i18n.baseText('ndv.execute.deactivated') : i18n.baseText('node.testStep')
+				"
 			>
 				<N8nIconButton
+					variant="ghost"
 					data-test-id="execute-node-button"
-					type="tertiary"
-					text
 					size="small"
 					icon="node-play"
 					:disabled="isExecuting || isDisabled"
-					:title="i18n.baseText('node.testStep')"
+					:aria-label="i18n.baseText('node.testStep')"
 					@click.stop="executeNode"
 				/>
 			</N8nTooltip>
-			<N8nIconButton
-				v-if="isDisableNodeVisible"
-				data-test-id="disable-node-button"
-				type="tertiary"
-				text
-				size="small"
-				icon="node-power"
-				:title="nodeDisabledTitle"
-				@click.stop="onToggleNode"
-			/>
-			<N8nIconButton
+			<N8nTooltip v-if="isDisableNodeVisible" placement="top" :content="nodeDisabledTitle">
+				<N8nIconButton
+					variant="ghost"
+					data-test-id="disable-node-button"
+					size="small"
+					icon="node-power"
+					:aria-label="nodeDisabledTitle"
+					@click.stop="onToggleNode"
+				/>
+			</N8nTooltip>
+			<N8nTooltip
 				v-if="isDeleteNodeVisible"
-				data-test-id="delete-node-button"
-				type="tertiary"
-				size="small"
-				text
-				icon="node-trash"
-				:title="i18n.baseText('node.delete')"
-				@click.stop="onDeleteNode"
-			/>
+				placement="top"
+				:content="i18n.baseText('node.delete')"
+			>
+				<N8nIconButton
+					variant="ghost"
+					data-test-id="delete-node-button"
+					size="small"
+					icon="node-trash"
+					:aria-label="i18n.baseText('node.delete')"
+					@click.stop="onDeleteNode"
+				/>
+			</N8nTooltip>
 			<N8nIconButton
 				v-if="isFocusNodeVisible"
-				type="tertiary"
+				variant="ghost"
 				size="small"
-				text
 				icon="crosshair"
+				:aria-label="i18n.baseText('node.focusNode')"
 				@click.stop="onFocusNode"
 			/>
 			<CanvasNodeStickyColorSelector
@@ -172,14 +221,27 @@ function onFocusNode() {
 				v-model:visible="isStickyColorSelectorOpen"
 				@update="onChangeStickyColor"
 			/>
-			<N8nIconButton
-				data-test-id="overflow-node-button"
-				type="tertiary"
-				size="small"
-				text
-				icon="node-ellipsis"
-				@click.stop="onOpenContextMenu"
-			/>
+			<N8nTooltip v-if="isAddToAiVisible" placement="top" :content="i18n.baseText('node.addToAi')">
+				<N8nIconButton
+					data-test-id="add-to-ai-button"
+					variant="ghost"
+					size="small"
+					text
+					icon="sparkles"
+					:aria-label="i18n.baseText('node.addToAi')"
+					@click.stop="onAddToAi"
+				/>
+			</N8nTooltip>
+			<N8nTooltip placement="top" :content="i18n.baseText('node.moreActions')">
+				<N8nIconButton
+					variant="ghost"
+					data-test-id="overflow-node-button"
+					size="small"
+					icon="node-ellipsis"
+					:aria-label="i18n.baseText('node.moreActions')"
+					@click.stop="onOpenContextMenu"
+				/>
+			</N8nTooltip>
 		</div>
 		<CanvasNodeStatusIcons
 			v-if="showStatusIcons"
@@ -193,7 +255,7 @@ function onFocusNode() {
 .canvasNodeToolbar {
 	padding-bottom: var(--spacing--xs);
 	display: flex;
-	justify-content: flex-end;
+	justify-content: center;
 	width: 100%;
 	cursor: default;
 	pointer-events: none;

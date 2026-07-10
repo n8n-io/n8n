@@ -22,7 +22,7 @@ import {
 	isLabelOperationType,
 	isReminderOperationType,
 } from './Service';
-import { todoistApiRequest } from '../GenericFunctions';
+import { todoistApiGetAllRequest } from '../GenericFunctions';
 
 const TODOIST_COLOR_OPTIONS: INodePropertyOptions[] = [
 	{ name: 'Berry Red', value: 'berry_red' },
@@ -52,7 +52,7 @@ const versionDescription: INodeTypeDescription = {
 	name: 'todoist',
 	icon: 'file:todoist.svg',
 	group: ['output'],
-	version: [2, 2.1],
+	version: [2, 2.1, 2.2],
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Consume Todoist API',
 	defaults: {
@@ -1802,11 +1802,8 @@ export class TodoistV2 implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				const projects: TodoistProjectType[] = await todoistApiRequest.call(
-					this,
-					'GET',
-					'/projects',
-				);
+				const projects: TodoistProjectType[] = await todoistApiGetAllRequest(this, '/projects');
+
 				return {
 					results: projects
 						.filter(
@@ -1824,7 +1821,8 @@ export class TodoistV2 implements INodeType {
 			// select them easily
 			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const projects = await todoistApiRequest.call(this, 'GET', '/projects');
+				const projects: TodoistProjectType[] = await todoistApiGetAllRequest(this, '/projects');
+
 				for (const project of projects) {
 					returnData.push({
 						name: project.name,
@@ -1851,7 +1849,7 @@ export class TodoistV2 implements INodeType {
 					(this.getCurrentNodeParameter('project', { extractValue: true }) as number);
 				if (projectId) {
 					const qs: IDataObject = { project_id: projectId };
-					const sections = await todoistApiRequest.call(this, 'GET', '/sections', {}, qs);
+					const sections = await todoistApiGetAllRequest(this, '/sections', qs);
 					for (const section of sections) {
 						returnData.push({
 							name: section.name,
@@ -1888,7 +1886,8 @@ export class TodoistV2 implements INodeType {
 						? { project_id: projectId, section_id: sectionId }
 						: { project_id: projectId };
 
-					const items = await todoistApiRequest.call(this, 'GET', '/tasks', {}, qs);
+					const items = await todoistApiGetAllRequest(this, '/tasks', qs);
+
 					for (const item of items) {
 						returnData.push({
 							name: item.content,
@@ -1904,7 +1903,8 @@ export class TodoistV2 implements INodeType {
 			// select them easily
 			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const labels = await todoistApiRequest.call(this, 'GET', '/labels');
+
+				const labels = await todoistApiGetAllRequest(this, '/labels');
 
 				for (const label of labels) {
 					returnData.push({

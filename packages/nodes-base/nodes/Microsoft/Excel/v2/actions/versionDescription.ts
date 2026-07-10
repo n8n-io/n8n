@@ -4,6 +4,7 @@ import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 import * as table from './table/Table.resource';
 import * as workbook from './workbook/Workbook.resource';
 import * as worksheet from './worksheet/Worksheet.resource';
+import { targetDescription } from '../descriptions/TargetDescription';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Microsoft Excel 365',
@@ -22,9 +23,56 @@ export const versionDescription: INodeTypeDescription = {
 		{
 			name: 'microsoftExcelOAuth2Api',
 			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['microsoftExcelOAuth2Api'],
+				},
+			},
+		},
+		{
+			name: 'microsoftOAuth2Api',
+			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['microsoftOAuth2Api'],
+				},
+			},
+		},
+		{
+			name: 'microsoftEntraServicePrincipalApi',
+			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['microsoftEntraServicePrincipalApi'],
+				},
+			},
 		},
 	],
 	properties: [
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'options',
+			noDataExpression: true,
+			options: [
+				{
+					name: 'Excel OAuth2',
+					value: 'microsoftExcelOAuth2Api',
+				},
+				{
+					name: 'Microsoft OAuth2 (Graph)',
+					value: 'microsoftOAuth2Api',
+				},
+				{
+					name: 'Microsoft Entra Service Principal (App-Only)',
+					value: 'microsoftEntraServicePrincipalApi',
+					description:
+						'App-only access via a Microsoft Entra app registration. Choose which user or drive to act on under "Access As".',
+				},
+			],
+			default: 'microsoftExcelOAuth2Api',
+		},
+		...targetDescription,
 		{
 			displayName:
 				'This node connects to the Microsoft 365 cloud platform. Use the \'Extract from File\' and \'Convert to File\' nodes to directly manipulate spreadsheet files (.xls, .csv, etc). <a href="https://n8n.io/workflows/890-read-in-an-excel-spreadsheet-file/" target="_blank">More info</a>.',

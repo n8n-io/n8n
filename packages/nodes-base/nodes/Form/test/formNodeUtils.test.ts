@@ -1,6 +1,6 @@
 import { type Response } from 'express';
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import {
 	type FormFieldsParameter,
 	type IWebhookFunctions,
@@ -19,7 +19,7 @@ describe('formNodeUtils', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should sanitize custom html', async () => {
@@ -30,7 +30,7 @@ describe('formNodeUtils', () => {
 			buttonLabel: 'Test Button Label',
 		});
 
-		const mockRender = jest.fn();
+		const mockRender = vi.fn();
 
 		const formFields: FormFieldsParameter = [
 			{
@@ -120,6 +120,147 @@ describe('formNodeUtils', () => {
 			testRun: true,
 			useResponseData: true,
 		});
+	});
+
+	it('should sanitize formDescription', async () => {
+		webhookFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+
+		const testCases = [
+			{
+				description: '<script>alert("hello world")</script>',
+				expected: '',
+			},
+			{
+				description: '<i>hello</i>',
+				expected: '<i>hello</i>',
+			},
+			{
+				description: 'Plain text description',
+				expected: 'Plain text description',
+			},
+			{
+				description: '<style>body { display: none; }</style><b>visible</b>',
+				expected: '<b>visible</b>',
+			},
+		];
+
+		const formFields: FormFieldsParameter = [];
+		const triggerMock = mock<NodeTypeAndVersion>({ name: 'triggerName' } as any);
+
+		for (const { description, expected } of testCases) {
+			webhookFunctions.getNodeParameter.calledWith('options').mockReturnValue({
+				formTitle: 'Test Title',
+				formDescription: description,
+				buttonLabel: 'Submit',
+			});
+
+			const mockRender = vi.fn();
+			const res = mock<Response>({ render: mockRender } as any);
+
+			await renderFormNode(webhookFunctions, res, triggerMock, formFields, 'test');
+
+			expect(mockRender).toHaveBeenCalledWith(
+				'form-trigger',
+				expect.objectContaining({ formDescription: expected }),
+			);
+		}
+	});
+
+	it('should resolve expressions in the form title inherited from the trigger', async () => {
+		webhookFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+		webhookFunctions.getNodeParameter.calledWith('options').mockReturnValue({
+			formTitle: '',
+			formDescription: '',
+			buttonLabel: '',
+		});
+
+		const triggerName = 'triggerName';
+		webhookFunctions.evaluateExpression.mockImplementation((expression) => {
+			// The trigger stores the raw, unresolved expression string in its params.
+			if (expression === `{{ $('${triggerName}').params.formTitle }}`) {
+				return "={{ $workflow.name.split('-')[0].trim() }}";
+			}
+			if (expression === "{{ $workflow.name.split('-')[0].trim() }}") {
+				return 'MyForm';
+			}
+			return '';
+		});
+
+		const mockRender = vi.fn();
+		const res = mock<Response>({ render: mockRender } as any);
+		const triggerMock = mock<NodeTypeAndVersion>({ name: triggerName } as any);
+
+		await renderFormNode(webhookFunctions, res, triggerMock, [], 'test');
+
+		expect(mockRender).toHaveBeenCalledWith(
+			'form-trigger',
+			expect.objectContaining({ formTitle: 'MyForm' }),
+		);
+	});
+
+	it('should resolve expressions in the button label inherited from the trigger', async () => {
+		webhookFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+		webhookFunctions.getNodeParameter.calledWith('options').mockReturnValue({
+			formTitle: 'Title',
+			formDescription: '',
+			buttonLabel: '',
+		});
+
+		const triggerName = 'triggerName';
+		webhookFunctions.evaluateExpression.mockImplementation((expression) => {
+			// The trigger stores the raw, unresolved expression string in its params.
+			if (expression === `{{ $('${triggerName}').params.options?.buttonLabel }}`) {
+				return '={{ $workflow.name }}';
+			}
+			if (expression === '{{ $workflow.name }}') {
+				return 'MyForm';
+			}
+			return '';
+		});
+
+		const mockRender = vi.fn();
+		const res = mock<Response>({ render: mockRender } as any);
+		const triggerMock = mock<NodeTypeAndVersion>({ name: triggerName } as any);
+
+		await renderFormNode(webhookFunctions, res, triggerMock, [], 'test');
+
+		expect(mockRender).toHaveBeenCalledWith(
+			'form-trigger',
+			expect.objectContaining({ buttonLabel: 'MyForm' }),
+		);
+	});
+
+	it('should render display values from node parameters as-is without re-evaluating them', async () => {
+		// `getNodeParameter` already resolves expressions, so the values it
+		// returns must be rendered verbatim. Resolving them a second time would
+		// evaluate expression-like text that is already a final value.
+		webhookFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+		webhookFunctions.getNodeParameter.calledWith('options').mockReturnValue({
+			formTitle: '={{ 1 + 1 }}',
+			formDescription: '={{ 1 + 1 }}',
+			buttonLabel: '={{ 1 + 1 }}',
+		});
+		// A second evaluation would turn `{{ 1 + 1 }}` into `2`, so the rendered
+		// values below would change if any of these were resolved again.
+		webhookFunctions.evaluateExpression.mockImplementation((expression) =>
+			expression === '{{ 1 + 1 }}' ? '2' : '',
+		);
+
+		const mockRender = vi.fn();
+		const res = mock<Response>({ render: mockRender } as any);
+		const triggerMock = mock<NodeTypeAndVersion>({ name: 'triggerName' } as any);
+
+		await renderFormNode(webhookFunctions, res, triggerMock, [], 'test');
+
+		expect(webhookFunctions.evaluateExpression).not.toHaveBeenCalledWith('{{ 1 + 1 }}');
+		expect(mockRender).toHaveBeenCalledWith(
+			'form-trigger',
+			expect.objectContaining({
+				formTitle: '={{ 1 + 1 }}',
+				formDescription: '={{ 1 + 1 }}',
+				buttonLabel: '={{ 1 + 1 }}',
+			}),
+		);
 	});
 
 	describe('getFormTriggerNode', () => {

@@ -3,10 +3,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
 	displayForm,
 	executionFilterToQueryFilter,
+	hasCancellableExecutions,
 	waitingNodeTooltip,
 	getExecutionErrorMessage,
 	getExecutionErrorToastConfiguration,
 	findTriggerNodeToAutoSelect,
+	buildExecutionResponseFromSchema,
+	generatePlaceholderValue,
+	generateFakeDataFromSchema,
 } from './executions.utils';
 import type {
 	INode,
@@ -15,8 +19,9 @@ import type {
 	ExecutionError,
 	INodeTypeDescription,
 	Workflow,
+	ExecutionSummary,
 } from 'n8n-workflow';
-import { type INodeUi } from '@/Interface';
+import { type INodeUi, type IWorkflowDb } from '@/Interface';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	CORE_NODES_CATEGORY,
@@ -30,7 +35,8 @@ import type { VNode } from 'vue';
 
 const WAIT_NODE_TYPE = 'waitNode';
 
-const windowOpenSpy = vi.spyOn(window, 'open');
+// `restoreMocks` restores spies before each test, so this is (re)established in beforeEach.
+let windowOpenSpy: MockInstance;
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({
@@ -41,6 +47,12 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 
 vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: () => ({
+		workflowId: 'test-workflow',
+	}),
+}));
+
+vi.mock('@/app/stores/workflowExecutionState.store', () => ({
+	useWorkflowExecutionStateStore: () => ({
 		activeExecutionId: '123',
 	}),
 }));
@@ -94,16 +106,11 @@ describe('displayForm', () => {
 		ok: true,
 	} as unknown as Response;
 
-	beforeAll(() => {
-		fetchMock = vi.spyOn(global, 'fetch');
-	});
-
-	afterAll(() => {
-		fetchMock.mockRestore();
-	});
-
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// `restoreMocks` restores spies before each test, so re-establish them here.
+		windowOpenSpy = vi.spyOn(window, 'open');
+		fetchMock = vi.spyOn(global, 'fetch');
 	});
 
 	it('should not call openPopUpWindow if node has already run or is pinned', async () => {
@@ -535,6 +542,54 @@ describe('waitingNodeTooltip', () => {
 		// Test without workflow - should return the raw tooltip string
 		expect(waitingNodeTooltip(node)).toBe('Waiting for approval...');
 	});
+
+	it('should use metadata.resumeUrl when provided for webhook resume type', () => {
+		const node: INodeUi = {
+			id: '1',
+			name: 'Wait',
+			type: 'n8n-nodes-base.wait',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {
+				resume: 'webhook',
+			},
+		};
+		const metadata = { resumeUrl: 'http://signed.com/wait/123?signature=abc123' };
+		const result = waitingNodeTooltip(node, mockWorkflow, metadata);
+		expect(result).toContain('http://signed.com/wait/123?signature=abc123');
+	});
+
+	it('should use metadata.resumeFormUrl when provided for form resume type', () => {
+		const node: INodeUi = {
+			id: '1',
+			name: 'Wait',
+			type: 'n8n-nodes-base.wait',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {
+				resume: 'form',
+			},
+		};
+		const metadata = { resumeFormUrl: 'http://signed.com/form/123?signature=xyz789' };
+		const result = waitingNodeTooltip(node, mockWorkflow, metadata);
+		expect(result).toContain('http://signed.com/form/123?signature=xyz789');
+	});
+
+	it('should fall back to constructed URL when metadata is not provided', () => {
+		const node: INodeUi = {
+			id: '1',
+			name: 'Wait',
+			type: 'n8n-nodes-base.wait',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {
+				resume: 'webhook',
+			},
+		};
+		// No metadata passed - should use constructed URL from store
+		const result = waitingNodeTooltip(node, mockWorkflow);
+		expect(result).toContain('http://localhost:5678/webhook-waiting/123');
+	});
 });
 
 const executionErrorFactory = (error: Record<string, unknown>) =>
@@ -591,6 +646,23 @@ describe('getExecutionErrorToastConfiguration', () => {
 			title: 'Subworkflow failed',
 			message: 'Workflow XYZ failed',
 		});
+	});
+
+	it('returns config for WorkflowHasIssuesError with multi-line message preserved', () => {
+		const result = getExecutionErrorToastConfiguration({
+			error: executionErrorFactory({
+				name: 'WorkflowHasIssuesError',
+				message: 'The \'HTTP Request\' node has issues:\n- Parameter "URL" is required.',
+			}),
+			lastNodeExecuted: 'HTTP Request',
+		});
+
+		expect(result.title).toBe('pushConnection.workflowHasIssues.title');
+		const message = result.message as VNode;
+		expect(message.props?.style).toBe('white-space: pre-line');
+		expect(message.children).toBe(
+			'The \'HTTP Request\' node has issues:\n- Parameter "URL" is required.',
+		);
 	});
 
 	it('returns config for configuration-node error with node name', () => {
@@ -702,5 +774,309 @@ describe(findTriggerNodeToAutoSelect, () => {
 				getNodeType,
 			),
 		).toEqual(expect.objectContaining({ name: 'B' }));
+	});
+});
+
+describe('buildExecutionResponseFromSchema', () => {
+	const mockWorkflow = {
+		id: 'test-workflow',
+		name: 'Test Workflow',
+		nodes: [
+			createTestNode({ name: 'Start', type: MANUAL_TRIGGER_NODE_TYPE }),
+			createTestNode({ name: 'HTTP Request', type: 'n8n-nodes-base.httpRequest' }),
+		],
+		connections: {},
+	} as unknown as IWorkflowDb;
+
+	it('builds execution response with all nodes success', () => {
+		const result = buildExecutionResponseFromSchema({
+			workflow: mockWorkflow,
+			nodeExecutionSchema: {
+				Start: { executionStatus: 'success', executionTime: 10 },
+				'HTTP Request': { executionStatus: 'success', executionTime: 200 },
+			},
+			executionStatus: 'success',
+		});
+
+		expect(result.id).toBe('preview');
+		expect(result.finished).toBe(true);
+		expect(result.mode).toBe('manual');
+		expect(result.status).toBe('success');
+		expect(result.workflowData).toBe(mockWorkflow);
+
+		const runData = result.data?.resultData.runData;
+		expect(runData).toBeDefined();
+		expect(runData?.Start).toHaveLength(1);
+		expect(runData?.Start[0].executionStatus).toBe('success');
+		expect(runData?.Start[0].executionTime).toBe(10);
+		expect(runData?.Start[0].data).toBeUndefined();
+		expect(runData?.['HTTP Request'][0].executionStatus).toBe('success');
+		expect(runData?.['HTTP Request'][0].executionTime).toBe(200);
+		expect(runData?.['HTTP Request'][0].data).toBeUndefined();
+	});
+
+	it('builds execution response with node error', () => {
+		const result = buildExecutionResponseFromSchema({
+			workflow: mockWorkflow,
+			nodeExecutionSchema: {
+				Start: { executionStatus: 'success', executionTime: 5 },
+				'HTTP Request': {
+					executionStatus: 'error',
+					error: { message: 'Connection refused', name: 'NodeApiError' },
+				},
+			},
+			executionStatus: 'error',
+			lastNodeExecuted: 'HTTP Request',
+		});
+
+		expect(result.finished).toBe(false);
+		expect(result.status).toBe('error');
+
+		const runData = result.data?.resultData.runData;
+		expect(runData?.['HTTP Request'][0].error).toBeDefined();
+		expect(runData?.['HTTP Request'][0].error?.message).toBe('Connection refused');
+		expect(result.data?.resultData.lastNodeExecuted).toBe('HTTP Request');
+	});
+
+	it('builds execution response with mixed statuses', () => {
+		const result = buildExecutionResponseFromSchema({
+			workflow: mockWorkflow,
+			nodeExecutionSchema: {
+				Start: { executionStatus: 'success', executionTime: 5 },
+				'HTTP Request': { executionStatus: 'canceled' },
+			},
+			executionStatus: 'canceled',
+		});
+
+		const runData = result.data?.resultData.runData;
+		expect(runData?.Start[0].executionStatus).toBe('success');
+		expect(runData?.['HTTP Request'][0].executionStatus).toBe('canceled');
+		expect(runData?.['HTTP Request'][0].executionTime).toBe(0);
+	});
+
+	it('builds execution response with empty schema', () => {
+		const result = buildExecutionResponseFromSchema({
+			workflow: mockWorkflow,
+			nodeExecutionSchema: {},
+			executionStatus: 'success',
+		});
+
+		expect(result.data?.resultData.runData).toEqual({});
+		expect(result.finished).toBe(true);
+	});
+
+	it('builds execution response with top-level execution error', () => {
+		const result = buildExecutionResponseFromSchema({
+			workflow: mockWorkflow,
+			nodeExecutionSchema: {
+				Start: { executionStatus: 'success' },
+			},
+			executionStatus: 'error',
+			executionError: { message: 'Workflow timed out', name: 'WorkflowOperationError' },
+		});
+
+		expect(result.data?.resultData.error).toBeDefined();
+		expect(result.data?.resultData.error?.message).toBe('Workflow timed out');
+		expect(result.finished).toBe(false);
+	});
+
+	it('includes fake data when outputSchema is provided', () => {
+		const result = buildExecutionResponseFromSchema({
+			workflow: mockWorkflow,
+			nodeExecutionSchema: {
+				'HTTP Request': {
+					executionStatus: 'success',
+					executionTime: 100,
+					outputSchema: {
+						itemCount: 2,
+						fields: [
+							{ name: 'id', type: 'number' },
+							{ name: 'name', type: 'string' },
+						],
+					},
+				},
+			},
+			executionStatus: 'success',
+		});
+
+		const taskData = result.data?.resultData.runData?.['HTTP Request']?.[0];
+		expect(taskData?.data).toBeDefined();
+		expect(taskData?.data?.main).toHaveLength(1);
+		expect(taskData?.data?.main[0]).toHaveLength(2);
+		expect(taskData?.data?.main[0]?.[0].json).toEqual({ id: 0, name: '' });
+	});
+
+	it('omits data when outputSchema has empty fields', () => {
+		const result = buildExecutionResponseFromSchema({
+			workflow: mockWorkflow,
+			nodeExecutionSchema: {
+				Start: {
+					executionStatus: 'success',
+					outputSchema: { fields: [] },
+				},
+			},
+			executionStatus: 'success',
+		});
+
+		expect(result.data?.resultData.runData?.Start?.[0].data).toBeUndefined();
+	});
+});
+
+describe('generatePlaceholderValue', () => {
+	it('returns empty string for string type', () => {
+		expect(generatePlaceholderValue({ name: 'x', type: 'string' })).toBe('');
+	});
+
+	it('returns 0 for number type', () => {
+		expect(generatePlaceholderValue({ name: 'x', type: 'number' })).toBe(0);
+	});
+
+	it('returns false for boolean type', () => {
+		expect(generatePlaceholderValue({ name: 'x', type: 'boolean' })).toBe(false);
+	});
+
+	it('returns empty object for object type with no fields', () => {
+		expect(generatePlaceholderValue({ name: 'x', type: 'object' })).toEqual({});
+	});
+
+	it('returns nested object for object type with fields', () => {
+		expect(
+			generatePlaceholderValue({
+				name: 'address',
+				type: 'object',
+				fields: [
+					{ name: 'street', type: 'string' },
+					{ name: 'zip', type: 'number' },
+				],
+			}),
+		).toEqual({ street: '', zip: 0 });
+	});
+
+	it('returns empty array for array type with no itemSchema', () => {
+		expect(generatePlaceholderValue({ name: 'x', type: 'array' })).toEqual([]);
+	});
+
+	it('returns array with one element matching itemSchema', () => {
+		expect(
+			generatePlaceholderValue({
+				name: 'tags',
+				type: 'array',
+				itemSchema: [
+					{ name: 'id', type: 'number' },
+					{ name: 'label', type: 'string' },
+				],
+			}),
+		).toEqual([{ id: 0, label: '' }]);
+	});
+
+	it('truncates at max nesting depth', () => {
+		let field: {
+			name: string;
+			type: 'object';
+			fields: Array<{ name: string; type: 'object'; fields?: unknown[] }>;
+		} = {
+			name: 'level0',
+			type: 'object',
+			fields: [{ name: 'leaf', type: 'object' }],
+		};
+		for (let i = 1; i < 7; i++) {
+			field = { name: `level${i}`, type: 'object', fields: [field] };
+		}
+		const result = generatePlaceholderValue(field as never);
+		expect(result).toBeDefined();
+	});
+});
+
+describe('generateFakeDataFromSchema', () => {
+	it('generates single item by default', () => {
+		const result = generateFakeDataFromSchema({
+			fields: [
+				{ name: 'id', type: 'number' },
+				{ name: 'name', type: 'string' },
+			],
+		});
+		expect(result).toHaveLength(1);
+		expect(result[0].json).toEqual({ id: 0, name: '' });
+	});
+
+	it('generates specified number of items', () => {
+		const result = generateFakeDataFromSchema({
+			itemCount: 3,
+			fields: [{ name: 'active', type: 'boolean' }],
+		});
+		expect(result).toHaveLength(3);
+		for (const item of result) {
+			expect(item.json).toEqual({ active: false });
+		}
+	});
+
+	it('clamps itemCount to max 10', () => {
+		const result = generateFakeDataFromSchema({
+			itemCount: 100,
+			fields: [{ name: 'x', type: 'string' }],
+		});
+		expect(result).toHaveLength(10);
+	});
+
+	it('uses minimum of 1 item for itemCount <= 0', () => {
+		const result = generateFakeDataFromSchema({
+			itemCount: 0,
+			fields: [{ name: 'x', type: 'string' }],
+		});
+		expect(result).toHaveLength(1);
+	});
+
+	it('generates items with complex nested schema', () => {
+		const result = generateFakeDataFromSchema({
+			fields: [
+				{ name: 'id', type: 'number' },
+				{
+					name: 'profile',
+					type: 'object',
+					fields: [
+						{ name: 'email', type: 'string' },
+						{ name: 'verified', type: 'boolean' },
+					],
+				},
+				{
+					name: 'roles',
+					type: 'array',
+					itemSchema: [{ name: 'name', type: 'string' }],
+				},
+			],
+		});
+		expect(result[0].json).toEqual({
+			id: 0,
+			profile: { email: '', verified: false },
+			roles: [{ name: '' }],
+		});
+	});
+
+	it('returns items with empty json when fields array is empty', () => {
+		const result = generateFakeDataFromSchema({ fields: [] });
+		expect(result).toHaveLength(1);
+		expect(result[0].json).toEqual({});
+	});
+});
+
+describe('hasCancellableExecutions', () => {
+	const executionWithStatus = (status: string) => ({ status }) as ExecutionSummary;
+
+	it.each(['new', 'running', 'waiting'])(
+		'returns true when at least one execution is %s',
+		(status) => {
+			expect(hasCancellableExecutions([executionWithStatus(status)])).toBe(true);
+		},
+	);
+
+	it.each(['success', 'error', 'crashed', 'canceled', 'unknown'])(
+		'returns false when executions are only %s',
+		(status) => {
+			expect(hasCancellableExecutions([executionWithStatus(status)])).toBe(false);
+		},
+	);
+
+	it('returns false for an empty executions list', () => {
+		expect(hasCancellableExecutions([])).toBe(false);
 	});
 });

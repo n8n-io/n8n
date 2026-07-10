@@ -1,16 +1,18 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { SEND_AND_WAIT_OPERATION, type IExecuteFunctions, type INode } from 'n8n-workflow';
 
 import { versionDescription } from '../../../../v2/actions/versionDescription';
 import { MicrosoftTeamsV2 } from '../../../../v2/MicrosoftTeamsV2.node';
 import * as transport from '../../../../v2/transport';
+import type { Mock } from 'vitest';
+import type * as _importType0 from '../../../../v2/transport';
 
-jest.mock('../../../../v2/transport', () => {
-	const originalModule = jest.requireActual('../../../../v2/transport');
+vi.mock('../../../../v2/transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../../../v2/transport');
 	return {
 		...originalModule,
-		microsoftApiRequest: jest.fn(),
+		microsoftApiRequest: vi.fn(),
 	};
 });
 
@@ -24,7 +26,7 @@ describe('Test MicrosoftTeamsV2, chatMessage => sendAndWait', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should send message and put execution to wait', async () => {
@@ -40,7 +42,7 @@ describe('Test MicrosoftTeamsV2, chatMessage => sendAndWait', () => {
 			if (key === 'options.limitWaitTime.values') return {};
 		});
 
-		mockExecuteFunctions.putExecutionToWait.mockImplementation();
+		mockExecuteFunctions.putExecutionToWait.mockImplementation(async () => {});
 		mockExecuteFunctions.getInputData.mockReturnValue(items);
 		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
 		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2 }));
@@ -66,5 +68,61 @@ describe('Test MicrosoftTeamsV2, chatMessage => sendAndWait', () => {
 				},
 			},
 		);
+	});
+
+	it('should route API errors to error output when continueOnFail is true', async () => {
+		const items = [{ json: { data: 'test' } }];
+		mockExecuteFunctions.getNodeParameter.mockImplementation((key: string) => {
+			if (key === 'operation') return SEND_AND_WAIT_OPERATION;
+			if (key === 'resource') return 'chatMessage';
+			if (key === 'chatId') return 'chatID';
+			if (key === 'message') return 'my message';
+			if (key === 'subject') return '';
+			if (key === 'approvalOptions.values') return {};
+			if (key === 'responseType') return 'approval';
+			if (key === 'options.limitWaitTime.values') return {};
+		});
+		mockExecuteFunctions.getInputData.mockReturnValue(items);
+		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2 }));
+		mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
+			'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+		);
+		mockExecuteFunctions.continueOnFail.mockReturnValue(true);
+
+		(transport.microsoftApiRequest as Mock).mockRejectedValueOnce(new Error('chat_not_found'));
+
+		const result = await microsoftTeamsV2.execute.call(mockExecuteFunctions);
+
+		expect(result).toEqual([[{ json: { error: 'chat_not_found' } }]]);
+		expect(mockExecuteFunctions.putExecutionToWait).not.toHaveBeenCalled();
+	});
+
+	it('should rethrow API errors when continueOnFail is false', async () => {
+		const items = [{ json: { data: 'test' } }];
+		mockExecuteFunctions.getNodeParameter.mockImplementation((key: string) => {
+			if (key === 'operation') return SEND_AND_WAIT_OPERATION;
+			if (key === 'resource') return 'chatMessage';
+			if (key === 'chatId') return 'chatID';
+			if (key === 'message') return 'my message';
+			if (key === 'subject') return '';
+			if (key === 'approvalOptions.values') return {};
+			if (key === 'responseType') return 'approval';
+			if (key === 'options.limitWaitTime.values') return {};
+		});
+		mockExecuteFunctions.getInputData.mockReturnValue(items);
+		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2 }));
+		mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
+			'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+		);
+		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
+
+		(transport.microsoftApiRequest as Mock).mockRejectedValueOnce(new Error('chat_not_found'));
+
+		await expect(microsoftTeamsV2.execute.call(mockExecuteFunctions)).rejects.toThrow(
+			'chat_not_found',
+		);
+		expect(mockExecuteFunctions.putExecutionToWait).not.toHaveBeenCalled();
 	});
 });

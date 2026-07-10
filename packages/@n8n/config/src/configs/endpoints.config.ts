@@ -1,7 +1,9 @@
+import { z } from 'zod';
+
 import { Config, Env, Nested } from '../decorators';
 
 @Config
-class PrometheusMetricsConfig {
+export class PrometheusMetricsConfig {
 	/** Whether to enable the `/metrics` endpoint to expose Prometheus metrics. */
 	@Env('N8N_METRICS')
 	enable: boolean = false;
@@ -58,6 +60,14 @@ class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_QUEUE_METRICS_INTERVAL')
 	queueMetricsInterval: number = 20;
 
+	/** Whether to include Durable Scheduler metrics (queue depth, scheduling lag, dispatches, retries, dead-letters). */
+	@Env('N8N_METRICS_INCLUDE_SCHEDULER_METRICS')
+	includeSchedulerMetrics: boolean = false;
+
+	/** How often (in seconds) the scheduler gauge queries are refreshed (cache TTL). */
+	@Env('N8N_METRICS_SCHEDULER_INTERVAL')
+	schedulerMetricsInterval: number = 20;
+
 	/** How often (in seconds) to update active workflow metric */
 	@Env('N8N_METRICS_ACTIVE_WORKFLOW_METRIC_INTERVAL')
 	activeWorkflowCountInterval: number = 60;
@@ -66,6 +76,10 @@ class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_INCLUDE_WORKFLOW_NAME_LABEL')
 	includeWorkflowNameLabel: boolean = false;
 
+	/** Whether to include a histogram metric for workflow execution duration. */
+	@Env('N8N_METRICS_INCLUDE_WORKFLOW_EXECUTION_DURATION')
+	includeWorkflowExecutionDuration: boolean = true;
+
 	/** Whether to include workflow execution statistics as metrics. */
 	@Env('N8N_METRICS_INCLUDE_WORKFLOW_STATISTICS')
 	includeWorkflowStatistics: boolean = false;
@@ -73,15 +87,55 @@ class PrometheusMetricsConfig {
 	/** How often (in seconds) to update workflow statistics metrics. */
 	@Env('N8N_METRICS_WORKFLOW_STATISTICS_INTERVAL')
 	workflowStatisticsInterval: number = 300;
+
+	/** Whether to include metrics for execution data reads and writes. */
+	@Env('N8N_METRICS_INCLUDE_EXECUTION_DATA_METRICS')
+	includeExecutionDataMetrics: boolean = false;
+
+	/** Whether to include metrics for SSRF protection checks. */
+	@Env('N8N_METRICS_INCLUDE_SSRF_METRICS')
+	includeSsrfMetrics: boolean = false;
+
+	/** Whether to include metrics for the DNS cache (currently only used by SSRF protection). */
+	@Env('N8N_METRICS_INCLUDE_DNS_CACHE_METRICS')
+	includeDnsCacheMetrics: boolean = false;
+
+	/** Whether to include a duration histogram metric for webhook requests. */
+	@Env('N8N_METRICS_INCLUDE_WEBHOOK_METRICS')
+	includeWebhookMetrics: boolean = false;
+
+	/** Whether to include a duration histogram metric for form submissions. */
+	@Env('N8N_METRICS_INCLUDE_FORM_METRICS')
+	includeFormMetrics: boolean = false;
+
+	/** Whether to include a gauge mapping workflow IDs to their human-readable names. */
+	@Env('N8N_METRICS_INCLUDE_WORKFLOW_INFO')
+	includeWorkflowInfoMetrics: boolean = false;
+
+	/** How often (in seconds) to refresh the workflow info metric cache. */
+	@Env('N8N_METRICS_WORKFLOW_INFO_METRIC_INTERVAL')
+	workflowInfoMetricInterval: number = 60;
+
+	/** Whether to include metrics for the database connection pool (size, usage, wait queue, acquire latency). */
+	@Env('N8N_METRICS_INCLUDE_DB_POOL_METRICS')
+	includeDbPoolMetrics: boolean = false;
+
+	/** Whether to include metrics for the workflow publication service (main instances only). */
+	@Env('N8N_METRICS_INCLUDE_WORKFLOW_PUBLICATION_METRICS')
+	includeWorkflowPublicationMetrics: boolean = false;
+
+	/** How often (in seconds) to refresh the cached workflow publication outbox gauges. */
+	@Env('N8N_METRICS_WORKFLOW_PUBLICATION_METRIC_INTERVAL')
+	workflowPublicationMetricInterval: number = 60;
 }
 
 @Config
 export class EndpointsConfig {
-	/** Max payload size in MiB */
+	/** Maximum request payload size in MiB for the API. */
 	@Env('N8N_PAYLOAD_SIZE_MAX')
 	payloadSizeMax: number = 16;
 
-	/** Max payload size for files in form-data webhook payloads in MiB */
+	/** Maximum size in MiB for a single file in multipart/form-data webhook payloads. */
 	@Env('N8N_FORMDATA_FILE_SIZE_MAX')
 	formDataFileSizeMax: number = 200;
 
@@ -124,6 +178,22 @@ export class EndpointsConfig {
 	@Env('N8N_ENDPOINT_MCP_TEST')
 	mcpTest: string = 'mcp-test';
 
+	/** Whether to enable workflow builder tools in the MCP server. */
+	@Env('N8N_MCP_BUILDER_ENABLED')
+	mcpBuilderEnabled: boolean = true;
+
+	/**
+	 * Force-enable MCP Apps support (the iframe UI attached to MCP tools).
+	 * Acts as an operator-level override of the PostHog experiment.
+	 * Cannot force-disable: setting this to `false` falls back to PostHog.
+	 */
+	@Env('N8N_MCP_APPS_ENABLED')
+	mcpAppsEnabled: boolean = false;
+
+	/** Maximum number of OAuth clients that can be registered for MCP. */
+	@Env('N8N_MCP_MAX_REGISTERED_CLIENTS')
+	mcpMaxRegisteredClients: number = 5000;
+
 	/** Whether to disable n8n's UI (frontend). */
 	@Env('N8N_DISABLE_UI')
 	disableUi: boolean = false;
@@ -132,7 +202,14 @@ export class EndpointsConfig {
 	@Env('N8N_DISABLE_PRODUCTION_MAIN_PROCESS')
 	disableProductionWebhooksOnMainProcess: boolean = false;
 
-	/** Colon-delimited list of additional endpoints to not open the UI on. */
+	/** Colon-separated list of path segments that should not serve the UI (for example, health or webhook-only routes). */
 	@Env('N8N_ADDITIONAL_NON_UI_ROUTES')
 	additionalNonUIRoutes: string = '';
+
+	/** Path for the health check endpoint. */
+	@Env(
+		'N8N_ENDPOINT_HEALTH',
+		z.string().transform((val) => (val.startsWith('/') ? val : `/${val}`)),
+	)
+	health: string = '/healthz';
 }

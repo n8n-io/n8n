@@ -8,7 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import type { Accumulator, BaserowCredentials, LoadedResource } from './types';
+import type { BaserowCredentials, LoadedResource } from './types';
 
 /**
  * Make a request to Baserow API.
@@ -17,20 +17,18 @@ export async function baserowApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
-	jwtToken: string,
+	credentialType: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const credentials = await this.getCredentials<BaserowCredentials>('baserowApi');
+	const credentials = await this.getCredentials<BaserowCredentials>(credentialType);
+	const host = (credentials.host as string).replace(/\/$/, '');
 
 	const options: IRequestOptions = {
-		headers: {
-			Authorization: `JWT ${jwtToken}`,
-		},
 		method,
 		body,
 		qs,
-		uri: `${credentials.host}${endpoint}`,
+		uri: `${host}${endpoint}`,
 		json: true,
 	};
 
@@ -43,7 +41,7 @@ export async function baserowApiRequest(
 	}
 
 	try {
-		return await this.helpers.request(options);
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -56,7 +54,7 @@ export async function baserowApiRequestAllItems(
 	this: IExecuteFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
-	jwtToken: string,
+	credentialType: string,
 	body: IDataObject,
 	qs: IDataObject = {},
 ): Promise<IDataObject[]> {
@@ -70,8 +68,8 @@ export async function baserowApiRequestAllItems(
 	const limit = this.getNodeParameter('limit', 0, 0);
 
 	do {
-		responseData = await baserowApiRequest.call(this, method, endpoint, jwtToken, body, qs);
-		returnData.push(...(responseData.results as IDataObject[]));
+		responseData = await baserowApiRequest.call(this, method, endpoint, credentialType, body, qs);
+		returnData.push.apply(returnData, responseData.results as IDataObject[]);
 
 		if (!returnAll && returnData.length > limit) {
 			return returnData.slice(0, limit);
@@ -83,42 +81,17 @@ export async function baserowApiRequestAllItems(
 	return returnData;
 }
 
-/**
- * Get a JWT token based on Baserow account username and password.
- */
-export async function getJwtToken(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
-	{ username, password, host }: BaserowCredentials,
-) {
-	const options: IRequestOptions = {
-		method: 'POST',
-		body: {
-			username,
-			password,
-		},
-		uri: `${host}/api/user/token-auth/`,
-		json: true,
-	};
-
-	try {
-		const { token } = (await this.helpers.request(options)) as { token: string };
-		return token;
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
-	}
-}
-
 export async function getFieldNamesAndIds(
 	this: IExecuteFunctions,
 	tableId: string,
-	jwtToken: string,
+	credentialType: string,
 ) {
 	const endpoint = `/api/database/fields/table/${tableId}/`;
 	const response = (await baserowApiRequest.call(
 		this,
 		'GET',
 		endpoint,
-		jwtToken,
+		credentialType,
 	)) as LoadedResource[];
 
 	return {
@@ -143,10 +116,10 @@ export class TableFieldMapper {
 	async getTableFields(
 		this: IExecuteFunctions,
 		table: string,
-		jwtToken: string,
+		credentialType: string,
 	): Promise<LoadedResource[]> {
 		const endpoint = `/api/database/fields/table/${table}/`;
-		return await baserowApiRequest.call(this, 'GET', endpoint, jwtToken);
+		return await baserowApiRequest.call(this, 'GET', endpoint, credentialType);
 	}
 
 	createMappings(tableFields: LoadedResource[]) {
@@ -155,14 +128,14 @@ export class TableFieldMapper {
 	}
 
 	private createIdToNameMapping(responseData: LoadedResource[]) {
-		return responseData.reduce<Accumulator>((acc, cur) => {
+		return responseData.reduce<Record<string, string>>((acc, cur) => {
 			acc[`field_${cur.id}`] = cur.name;
 			return acc;
 		}, {});
 	}
 
 	private createNameToIdMapping(responseData: LoadedResource[]) {
-		return responseData.reduce<Accumulator>((acc, cur) => {
+		return responseData.reduce<Record<string, string>>((acc, cur) => {
 			acc[cur.name] = `field_${cur.id}`;
 			return acc;
 		}, {});

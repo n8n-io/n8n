@@ -1,18 +1,18 @@
 import { SearxngSearch } from '@langchain/community/tools/searxng_search';
-import { mock } from 'jest-mock-extended';
 import type {
 	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
 	ISupplyDataFunctions,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ToolSearXng } from './ToolSearXng.node';
 
 describe('ToolSearXng', () => {
 	describe('supplyData', () => {
 		beforeEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		it('should return SearXNG tool instance', async () => {
@@ -20,9 +20,9 @@ describe('ToolSearXng', () => {
 
 			const supplyDataResult = await node.supplyData.call(
 				mock<ISupplyDataFunctions>({
-					getNode: jest.fn(() => mock<INode>({ name: 'test searxng' })),
-					getCredentials: jest.fn().mockResolvedValue({ apiUrl: 'https://searx.example.com' }),
-					getNodeParameter: jest.fn().mockReturnValue({}),
+					getNode: vi.fn(() => mock<INode>({ name: 'test searxng' })),
+					getCredentials: vi.fn().mockResolvedValue({ apiUrl: 'https://searx.example.com' }),
+					getNodeParameter: vi.fn().mockReturnValue({}),
 				}),
 				0,
 			);
@@ -33,7 +33,7 @@ describe('ToolSearXng', () => {
 
 	describe('execute', () => {
 		beforeEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		it('should execute SearXNG search and return result', async () => {
@@ -45,15 +45,15 @@ describe('ToolSearXng', () => {
 			];
 
 			const mockExecute = mock<IExecuteFunctions>({
-				getInputData: jest.fn(() => inputData),
-				getNode: jest.fn(() => mock<INode>({ name: 'test searxng' })),
-				getCredentials: jest.fn().mockResolvedValue({ apiUrl: 'https://searx.example.com' }),
-				getNodeParameter: jest.fn().mockReturnValue({}),
+				getInputData: vi.fn(() => inputData),
+				getNode: vi.fn(() => mock<INode>({ name: 'test searxng' })),
+				getCredentials: vi.fn().mockResolvedValue({ apiUrl: 'https://searx.example.com' }),
+				getNodeParameter: vi.fn().mockReturnValue({}),
 			});
 
 			// Mock the SearxngSearch.invoke method
 			const mockResult = 'Search results for artificial intelligence...';
-			SearxngSearch.prototype.invoke = jest.fn().mockResolvedValue(mockResult);
+			SearxngSearch.prototype.invoke = vi.fn().mockResolvedValue(mockResult);
 
 			const result = await node.execute.call(mockExecute);
 
@@ -86,14 +86,14 @@ describe('ToolSearXng', () => {
 			];
 
 			const mockExecute = mock<IExecuteFunctions>({
-				getInputData: jest.fn(() => inputData),
-				getNode: jest.fn(() => mock<INode>({ name: 'test searxng' })),
-				getCredentials: jest.fn().mockResolvedValue({ apiUrl: 'https://searx.example.com' }),
-				getNodeParameter: jest.fn().mockReturnValue({}),
+				getInputData: vi.fn(() => inputData),
+				getNode: vi.fn(() => mock<INode>({ name: 'test searxng' })),
+				getCredentials: vi.fn().mockResolvedValue({ apiUrl: 'https://searx.example.com' }),
+				getNodeParameter: vi.fn().mockReturnValue({}),
 			});
 
 			// Mock the SearxngSearch.invoke method
-			SearxngSearch.prototype.invoke = jest
+			SearxngSearch.prototype.invoke = vi
 				.fn()
 				.mockResolvedValueOnce('Machine learning search results')
 				.mockResolvedValueOnce('Deep learning search results');
@@ -133,13 +133,13 @@ describe('ToolSearXng', () => {
 
 			const testOptions = { engines: ['google'], safesearch: 1 };
 			const mockExecute = mock<IExecuteFunctions>({
-				getInputData: jest.fn(() => inputData),
-				getNode: jest.fn(() => mock<INode>({ name: 'test searxng' })),
-				getCredentials: jest.fn().mockResolvedValue({ apiUrl: 'https://searx.test.com' }),
-				getNodeParameter: jest.fn().mockReturnValue(testOptions),
+				getInputData: vi.fn(() => inputData),
+				getNode: vi.fn(() => mock<INode>({ name: 'test searxng' })),
+				getCredentials: vi.fn().mockResolvedValue({ apiUrl: 'https://searx.test.com' }),
+				getNodeParameter: vi.fn().mockReturnValue(testOptions),
 			});
 
-			SearxngSearch.prototype.invoke = jest.fn().mockResolvedValue('test result');
+			SearxngSearch.prototype.invoke = vi.fn().mockResolvedValue('test result');
 
 			await node.execute.call(mockExecute);
 

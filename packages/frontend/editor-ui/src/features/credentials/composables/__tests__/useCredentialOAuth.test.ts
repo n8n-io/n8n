@@ -1,0 +1,847 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
+import { useCredentialOAuth } from '../useCredentialOAuth';
+import { useCredentialsStore } from '../../credentials.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { mockedStore } from '@/__tests__/utils';
+import type { ICredentialType } from 'n8n-workflow';
+import type { ICredentialsResponse } from '../../credentials.types';
+
+const { mockShowError, mockShowMessage } = vi.hoisted(() => ({
+	mockShowError: vi.fn(),
+	mockShowMessage: vi.fn(),
+}));
+
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({
+		showError: mockShowError,
+		showMessage: mockShowMessage,
+	}),
+}));
+
+const mockTrack = vi.fn();
+vi.mock('@/app/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: mockTrack }),
+}));
+
+const oAuth2Api: ICredentialType = {
+	name: 'oAuth2Api',
+	displayName: 'OAuth2 API',
+	properties: [
+		{
+			displayName: 'Use Dynamic Client Registration',
+			name: 'useDynamicClientRegistration',
+			type: 'hidden',
+			default: false,
+		},
+		{
+			displayName: 'Client ID',
+			name: 'clientId',
+			type: 'string',
+			displayOptions: { show: { useDynamicClientRegistration: [false] } },
+			default: '',
+			required: true,
+		},
+		{
+			displayName: 'Client Secret',
+			name: 'clientSecret',
+			type: 'string',
+			displayOptions: { show: { useDynamicClientRegistration: [false] } },
+			default: '',
+			required: true,
+		},
+	],
+};
+
+const oAuth1Api: ICredentialType = {
+	name: 'oAuth1Api',
+	displayName: 'OAuth1 API',
+	properties: [],
+};
+
+const googleOAuth2Api: ICredentialType = {
+	name: 'googleOAuth2Api',
+	extends: ['oAuth2Api'],
+	displayName: 'Google OAuth2 API',
+	properties: [
+		{ displayName: 'Client ID', name: 'clientId', type: 'string', default: '', required: true },
+		{
+			displayName: 'Client Secret',
+			name: 'clientSecret',
+			type: 'string',
+			default: '',
+			required: true,
+		},
+	],
+};
+
+const googleSheetsOAuth2Api: ICredentialType = {
+	name: 'googleSheetsOAuth2Api',
+	extends: ['googleOAuth2Api'],
+	displayName: 'Google Sheets OAuth2 API',
+	properties: [
+		{ displayName: 'Scope', name: 'scope', type: 'string', default: '', required: true },
+	],
+};
+
+const slackOAuth2Api: ICredentialType = {
+	name: 'slackOAuth2Api',
+	extends: ['oAuth2Api'],
+	displayName: 'Slack OAuth2 API',
+	properties: [
+		{ displayName: 'Client ID', name: 'clientId', type: 'string', default: '', required: true },
+	],
+};
+
+const mcpOAuth2ApiWithNoVisibleProps: ICredentialType = {
+	name: 'mcpOAuth2Api',
+	extends: ['oAuth2Api'],
+	displayName: 'MCP OAuth2 API',
+	properties: [
+		{
+			displayName: 'Use Dynamic Client Registration',
+			name: 'useDynamicClientRegistration',
+			type: 'hidden',
+			default: true,
+		},
+		{
+			displayName: 'Server URL',
+			name: 'serverUrl',
+			type: 'hidden',
+			default: 'https://mcp.example.com/mcp',
+		},
+		{
+			displayName: 'Allowed HTTP Request Domains',
+			name: 'allowedHttpRequestDomains',
+			type: 'hidden',
+			default: 'none',
+		},
+	],
+};
+
+const oauth2ApiWithVisibleAllowedHttpRequestDomains: ICredentialType = {
+	name: 'customOAuth2Api',
+	extends: ['oAuth2Api'],
+	displayName: 'Custom OAuth2 API',
+	properties: [
+		{
+			displayName: 'Allowed HTTP Request Domains',
+			name: 'allowedHttpRequestDomains',
+			type: 'options',
+			options: [
+				{ name: 'All', value: 'all' },
+				{ name: 'Specific Domains', value: 'domains' },
+				{ name: 'None', value: 'none' },
+			],
+			default: 'all',
+		},
+	],
+};
+
+const nonOAuthApi: ICredentialType = {
+	name: 'openAiApi',
+	displayName: 'OpenAI API',
+	properties: [
+		{ displayName: 'API Key', name: 'apiKey', type: 'string', default: '', required: true },
+	],
+};
+
+function setupCredentialTypes(types: ICredentialType[]) {
+	const credentialsStore = mockedStore(useCredentialsStore);
+	const typeMap: Record<string, ICredentialType> = {};
+	for (const t of types) {
+		typeMap[t.name] = t;
+	}
+	credentialsStore.state.credentialTypes = typeMap;
+}
+
+describe('useCredentialOAuth', () => {
+	beforeEach(() => {
+		const pinia = createTestingPinia({ stubActions: false });
+		setActivePinia(pinia);
+		setupCredentialTypes([
+			oAuth2Api,
+			oAuth1Api,
+			googleOAuth2Api,
+			googleSheetsOAuth2Api,
+			slackOAuth2Api,
+			nonOAuthApi,
+		]);
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	describe('getParentTypes', () => {
+		it('should return empty array for types with no extends', () => {
+			const { getParentTypes } = useCredentialOAuth();
+			expect(getParentTypes('oAuth2Api')).toEqual([]);
+			expect(getParentTypes('openAiApi')).toEqual([]);
+		});
+
+		it('should return parent types for single-level inheritance', () => {
+			const { getParentTypes } = useCredentialOAuth();
+			expect(getParentTypes('googleOAuth2Api')).toEqual(['oAuth2Api']);
+		});
+
+		it('should return all ancestors for multi-level inheritance', () => {
+			const { getParentTypes } = useCredentialOAuth();
+			expect(getParentTypes('googleSheetsOAuth2Api')).toEqual(['googleOAuth2Api', 'oAuth2Api']);
+		});
+
+		it('should handle unknown credential types gracefully', () => {
+			const { getParentTypes } = useCredentialOAuth();
+			expect(getParentTypes('unknownType')).toEqual([]);
+		});
+	});
+
+	describe('isOAuthCredentialType', () => {
+		it('should return true for oAuth2Api directly', () => {
+			const { isOAuthCredentialType } = useCredentialOAuth();
+			expect(isOAuthCredentialType('oAuth2Api')).toBe(true);
+		});
+
+		it('should return true for oAuth1Api directly', () => {
+			const { isOAuthCredentialType } = useCredentialOAuth();
+			expect(isOAuthCredentialType('oAuth1Api')).toBe(true);
+		});
+
+		it('should return true for types extending oAuth2Api', () => {
+			const { isOAuthCredentialType } = useCredentialOAuth();
+			expect(isOAuthCredentialType('googleOAuth2Api')).toBe(true);
+			expect(isOAuthCredentialType('slackOAuth2Api')).toBe(true);
+		});
+
+		it('should return true for multi-level OAuth descendants', () => {
+			const { isOAuthCredentialType } = useCredentialOAuth();
+			expect(isOAuthCredentialType('googleSheetsOAuth2Api')).toBe(true);
+		});
+
+		it('should return false for non-OAuth types', () => {
+			const { isOAuthCredentialType } = useCredentialOAuth();
+			expect(isOAuthCredentialType('openAiApi')).toBe(false);
+		});
+
+		it('should return false for unknown types', () => {
+			const { isOAuthCredentialType } = useCredentialOAuth();
+			expect(isOAuthCredentialType('unknownType')).toBe(false);
+		});
+	});
+
+	describe('isGoogleOAuthType', () => {
+		it('should return true for googleOAuth2Api directly', () => {
+			const { isGoogleOAuthType } = useCredentialOAuth();
+			expect(isGoogleOAuthType('googleOAuth2Api')).toBe(true);
+		});
+
+		it('should return true for types extending googleOAuth2Api', () => {
+			const { isGoogleOAuthType } = useCredentialOAuth();
+			expect(isGoogleOAuthType('googleSheetsOAuth2Api')).toBe(true);
+		});
+
+		it('should return false for non-Google OAuth types', () => {
+			const { isGoogleOAuthType } = useCredentialOAuth();
+			expect(isGoogleOAuthType('slackOAuth2Api')).toBe(false);
+			expect(isGoogleOAuthType('oAuth2Api')).toBe(false);
+		});
+
+		it('should return false for non-OAuth types', () => {
+			const { isGoogleOAuthType } = useCredentialOAuth();
+			expect(isGoogleOAuthType('openAiApi')).toBe(false);
+		});
+	});
+
+	describe('canOAuthCredentialQuickConnect', () => {
+		it('should return false for non-OAuth types', () => {
+			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+			expect(canOAuthCredentialQuickConnect('openAiApi')).toBe(false);
+		});
+
+		it('should return false when no overwritten properties', () => {
+			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+			expect(canOAuthCredentialQuickConnect('slackOAuth2Api')).toBe(false);
+		});
+
+		it('should return false when some required properties not overwritten', () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.state.credentialTypes.slackOAuth2Api = {
+				...slackOAuth2Api,
+				__overwrittenProperties: ['someOtherProp'],
+			};
+
+			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+			expect(canOAuthCredentialQuickConnect('slackOAuth2Api')).toBe(false);
+		});
+
+		it('should return true when all required properties are overwritten', () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.state.credentialTypes.slackOAuth2Api = {
+				...slackOAuth2Api,
+				__overwrittenProperties: ['clientId', 'clientSecret'],
+			};
+
+			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+			expect(canOAuthCredentialQuickConnect('slackOAuth2Api')).toBe(true);
+		});
+
+		it('should ignore notice-type properties', () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.state.credentialTypes.slackOAuth2Api = {
+				...slackOAuth2Api,
+				properties: [
+					...slackOAuth2Api.properties,
+					{
+						displayName: 'Notice',
+						name: 'notice',
+						type: 'notice',
+						default: '',
+						required: true,
+					},
+				],
+				__overwrittenProperties: ['clientId', 'clientSecret'],
+			};
+
+			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+			expect(canOAuthCredentialQuickConnect('slackOAuth2Api')).toBe(true);
+		});
+
+		it('should ignore hidden properties even when required', () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.state.credentialTypes.dropboxOAuth2Api = {
+				name: 'dropboxOAuth2Api',
+				extends: ['oAuth2Api'],
+				displayName: 'Dropbox OAuth2 API',
+				properties: [
+					{
+						displayName: 'Authorization URL',
+						name: 'authUrl',
+						type: 'hidden',
+						default: 'https://www.dropbox.com/oauth2/authorize',
+						required: true,
+					},
+					{
+						displayName: 'Access Token URL',
+						name: 'accessTokenUrl',
+						type: 'hidden',
+						default: 'https://api.dropboxapi.com/oauth2/token',
+						required: true,
+					},
+				],
+				__overwrittenProperties: ['clientId', 'clientSecret'],
+			};
+
+			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+			expect(canOAuthCredentialQuickConnect('dropboxOAuth2Api')).toBe(true);
+		});
+
+		it('should return false for unknown credential types', () => {
+			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+			expect(canOAuthCredentialQuickConnect('unknownType')).toBe(false);
+		});
+
+		it('should return false when __skipManagedCreation is true', () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.state.credentialTypes.slackOAuth2Api = {
+				...slackOAuth2Api,
+				__overwrittenProperties: ['clientId'],
+				__skipManagedCreation: true,
+			};
+
+			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+			expect(canOAuthCredentialQuickConnect('slackOAuth2Api')).toBe(false);
+		});
+
+		it('should return when there are no visible properties even if there are no overwritten properties', () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.state.credentialTypes.mcpOAuth2Api = mcpOAuth2ApiWithNoVisibleProps;
+
+			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+			expect(canOAuthCredentialQuickConnect('mcpOAuth2Api')).toBe(true);
+		});
+
+		it('should not stack-overflow when the extends chain has a cycle', () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.state.credentialTypes.cyclicA = {
+				name: 'cyclicA',
+				extends: ['cyclicB'],
+				displayName: 'Cyclic A',
+				properties: [],
+			};
+			credentialsStore.state.credentialTypes.cyclicB = {
+				name: 'cyclicB',
+				extends: ['cyclicA', 'oAuth2Api'],
+				displayName: 'Cyclic B',
+				properties: [],
+			};
+
+			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+			expect(() => canOAuthCredentialQuickConnect('cyclicA')).not.toThrow();
+		});
+	});
+
+	describe('authorize', () => {
+		const mockCredential: ICredentialsResponse = {
+			id: 'cred-123',
+			name: 'Test OAuth2',
+			type: 'slackOAuth2Api',
+			data: 'dummy-data',
+			createdAt: '',
+			updatedAt: '',
+			isManaged: false,
+		};
+
+		let mockPopup: { closed: boolean; close: ReturnType<typeof vi.fn> };
+		class MockBroadcastChannel {
+			static failOauth = false;
+
+			static noopEventListener = false;
+
+			static closeCalled = false;
+
+			static __reset() {
+				MockBroadcastChannel.closeCalled = false;
+				MockBroadcastChannel.noopEventListener = false;
+				MockBroadcastChannel.failOauth = false;
+			}
+
+			close = () => {
+				MockBroadcastChannel.closeCalled = true;
+			};
+
+			addEventListener = (event: string, handler: (e: MessageEvent) => void) => {
+				if (MockBroadcastChannel.noopEventListener) {
+					return;
+				}
+
+				if (MockBroadcastChannel.failOauth) {
+					if (event === 'message') {
+						setTimeout(() => handler({ data: 'error' } as MessageEvent), 0);
+					}
+				} else {
+					if (event === 'message') {
+						setTimeout(() => handler({ data: 'success' } as MessageEvent), 0);
+					}
+				}
+			};
+
+			removeEventListener = vi.fn();
+
+			postMessage = vi.fn();
+		}
+
+		beforeEach(() => {
+			mockPopup = { closed: false, close: vi.fn() };
+
+			vi.stubGlobal('BroadcastChannel', MockBroadcastChannel);
+			vi.stubGlobal('open', vi.fn().mockReturnValue(mockPopup));
+		});
+
+		afterEach(() => {
+			MockBroadcastChannel.__reset();
+			vi.unstubAllGlobals();
+		});
+
+		it('should call oAuth2Authorize for OAuth2 types', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+
+			const { authorize } = useCredentialOAuth();
+			const result = await authorize(mockCredential);
+
+			expect(credentialsStore.oAuth2Authorize).toHaveBeenCalledWith(mockCredential);
+			expect(result).toBe(true);
+		});
+
+		it('should call oAuth1Authorize for OAuth1 types', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			const oauth1Credential: ICredentialsResponse = {
+				...mockCredential,
+				type: 'oAuth1Api',
+			};
+			credentialsStore.oAuth1Authorize.mockResolvedValue('https://oauth1.example.com/auth');
+
+			const { authorize } = useCredentialOAuth();
+			const result = await authorize(oauth1Credential);
+
+			expect(credentialsStore.oAuth1Authorize).toHaveBeenCalledWith(oauth1Credential);
+			expect(result).toBe(true);
+		});
+
+		it('should return false when API call fails', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.oAuth2Authorize.mockRejectedValue(new Error('API error'));
+
+			const { authorize } = useCredentialOAuth();
+			const result = await authorize(mockCredential);
+
+			expect(result).toBe(false);
+			expect(mockShowError).toHaveBeenCalled();
+		});
+
+		it('should return false for invalid URL protocol', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.oAuth2Authorize.mockResolvedValue('ftp://bad-protocol.com');
+
+			const { authorize } = useCredentialOAuth();
+			const result = await authorize(mockCredential);
+
+			expect(result).toBe(false);
+			expect(mockShowError).toHaveBeenCalled();
+		});
+
+		it('should return false when popup is blocked', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+			vi.stubGlobal('open', vi.fn().mockReturnValue(null));
+
+			const { authorize } = useCredentialOAuth();
+			const result = await authorize(mockCredential);
+
+			expect(result).toBe(false);
+		});
+
+		it('should return false on non-success BroadcastChannel message', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+
+			MockBroadcastChannel.failOauth = true;
+
+			const { authorize } = useCredentialOAuth();
+			const result = await authorize(mockCredential);
+
+			expect(result).toBe(false);
+			expect(mockPopup.close).toHaveBeenCalled();
+		});
+
+		it('should close BroadcastChannel after settling', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+
+			const { authorize } = useCredentialOAuth();
+			await authorize(mockCredential);
+
+			expect(MockBroadcastChannel.closeCalled).toBeTruthy();
+		});
+
+		it('should return false when aborted via signal', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+
+			// Don't fire any BroadcastChannel message - instead simulate abort
+			MockBroadcastChannel.noopEventListener = true;
+
+			const originalAddEventListener = AbortSignal.prototype.addEventListener;
+			vi.spyOn(AbortSignal.prototype, 'addEventListener').mockImplementation(function (
+				this: AbortSignal,
+				event: string,
+				handler: EventListenerOrEventListenerObject,
+			) {
+				return originalAddEventListener.call(this, event, handler);
+			});
+
+			const controller = new AbortController();
+			const { authorize } = useCredentialOAuth();
+			const promise = authorize(mockCredential, controller.signal);
+
+			// Give it a tick to enter waitForOAuthCallback
+			await new Promise((r) => setTimeout(r, 10));
+			controller.abort();
+
+			const result = await promise;
+			expect(result).toBe(false);
+		});
+
+		it('should resolve true when the callback posts success via window.opener from a trusted origin', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+			// Embed setup: editor and n8n backend live on different origins, so the
+			// BroadcastChannel never delivers and we rely on window.opener.
+			useRootStore().setUrlBaseEditor('https://integration-app.brevo.com');
+			MockBroadcastChannel.noopEventListener = true;
+
+			const { authorize } = useCredentialOAuth();
+			const promise = authorize(mockCredential);
+
+			// Let the window 'message' listener attach before dispatching.
+			await new Promise((r) => setTimeout(r, 0));
+			window.dispatchEvent(
+				new MessageEvent('message', {
+					data: 'success',
+					origin: 'https://integration-app.brevo.com',
+				}),
+			);
+
+			const result = await promise;
+			expect(result).toBe(true);
+			expect(mockPopup.close).toHaveBeenCalled();
+		});
+
+		it('should resolve false when the callback posts error via window.opener from a trusted origin', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+			useRootStore().setUrlBaseEditor('https://integration-app.brevo.com');
+			MockBroadcastChannel.noopEventListener = true;
+
+			const { authorize } = useCredentialOAuth();
+			const promise = authorize(mockCredential);
+
+			await new Promise((r) => setTimeout(r, 0));
+			window.dispatchEvent(
+				new MessageEvent('message', {
+					data: 'error',
+					origin: 'https://integration-app.brevo.com',
+				}),
+			);
+
+			const result = await promise;
+			expect(result).toBe(false);
+			expect(mockPopup.close).toHaveBeenCalled();
+		});
+
+		it('should ignore window messages from untrusted origins', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+			useRootStore().setUrlBaseEditor('https://integration-app.brevo.com');
+			MockBroadcastChannel.noopEventListener = true;
+
+			const controller = new AbortController();
+			const { authorize } = useCredentialOAuth();
+			const promise = authorize(mockCredential, controller.signal);
+
+			await new Promise((r) => setTimeout(r, 0));
+			window.dispatchEvent(
+				new MessageEvent('message', { data: 'success', origin: 'https://evil.example.com' }),
+			);
+
+			const race = await Promise.race([
+				promise.then(() => 'resolved'),
+				new Promise<string>((r) => setTimeout(() => r('pending'), 50)),
+			]);
+			expect(race).toBe('pending');
+
+			controller.abort();
+			await promise;
+		});
+
+		it('should ignore unrelated window messages without failing the flow', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+			useRootStore().setUrlBaseEditor('https://integration-app.brevo.com');
+			MockBroadcastChannel.noopEventListener = true;
+
+			const controller = new AbortController();
+			const { authorize } = useCredentialOAuth();
+			const promise = authorize(mockCredential, controller.signal);
+
+			await new Promise((r) => setTimeout(r, 0));
+			window.dispatchEvent(
+				new MessageEvent('message', {
+					data: { type: 'unrelated' },
+					origin: 'https://integration-app.brevo.com',
+				}),
+			);
+
+			const race = await Promise.race([
+				promise.then(() => 'resolved'),
+				new Promise<string>((r) => setTimeout(() => r('pending'), 50)),
+			]);
+			expect(race).toBe('pending');
+
+			controller.abort();
+			await promise;
+		});
+	});
+
+	describe('createAndAuthorize', () => {
+		const createdCredential: ICredentialsResponse = {
+			id: 'new-cred-123',
+			name: 'Slack OAuth2 API',
+			type: 'slackOAuth2Api',
+			data: 'dummy-data',
+			createdAt: '',
+			updatedAt: '',
+			isManaged: false,
+		};
+
+		let mockPopup: { closed: boolean; close: ReturnType<typeof vi.fn> };
+
+		class MockBroadcastChannel {
+			static failOauth = false;
+
+			close = vi.fn();
+
+			addEventListener = (event: string, handler: (e: MessageEvent) => void) => {
+				if (MockBroadcastChannel.failOauth) {
+					if (event === 'message') {
+						setTimeout(() => handler({ data: 'error' } as MessageEvent), 0);
+					}
+				} else {
+					if (event === 'message') {
+						setTimeout(() => handler({ data: 'success' } as MessageEvent), 0);
+					}
+				}
+			};
+
+			removeEventListener = vi.fn();
+
+			postMessage = vi.fn();
+		}
+
+		beforeEach(() => {
+			mockTrack.mockClear();
+			mockPopup = { closed: false, close: vi.fn() };
+			vi.stubGlobal('BroadcastChannel', MockBroadcastChannel);
+			vi.stubGlobal('open', vi.fn().mockReturnValue(mockPopup));
+		});
+
+		afterEach(() => {
+			vi.unstubAllGlobals();
+		});
+
+		function setupSuccessfulOAuthFlow() {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.createNewCredential.mockResolvedValue(createdCredential);
+			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+
+			MockBroadcastChannel.failOauth = false;
+			return credentialsStore;
+		}
+
+		function setupFailedOAuthFlow() {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.createNewCredential.mockResolvedValue(createdCredential);
+			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+
+			MockBroadcastChannel.failOauth = true;
+
+			return credentialsStore;
+		}
+
+		it('should not set allowedHttpRequestDomains for hidden property', async () => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			credentialsStore.state.credentialTypes.mcpOAuth2Api = mcpOAuth2ApiWithNoVisibleProps;
+
+			const { createAndAuthorize } = useCredentialOAuth();
+			await createAndAuthorize('mcpOAuth2Api');
+
+			expect(credentialsStore.createNewCredential).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'mcpOAuth2Api',
+					data: {},
+				}),
+				undefined,
+				undefined,
+				{ skipStoreUpdate: true },
+			);
+		});
+
+		it('should set allowedHttpRequestDomains when property is not hidden', async () => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			credentialsStore.state.credentialTypes.customOAuth2Api =
+				oauth2ApiWithVisibleAllowedHttpRequestDomains;
+
+			const { createAndAuthorize } = useCredentialOAuth();
+			await createAndAuthorize('customOAuth2Api');
+
+			expect(credentialsStore.createNewCredential).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'customOAuth2Api',
+					data: { allowedHttpRequestDomains: 'none' },
+				}),
+				undefined,
+				undefined,
+				{ skipStoreUpdate: true },
+			);
+		});
+
+		it('should track "User created credentials" after credential creation', async () => {
+			setupSuccessfulOAuthFlow();
+
+			const { createAndAuthorize } = useCredentialOAuth();
+			await createAndAuthorize('slackOAuth2Api');
+
+			expect(mockTrack).toHaveBeenCalledWith('User created credentials', {
+				credential_type: 'slackOAuth2Api',
+				credential_id: 'new-cred-123',
+				workflow_id: '',
+			});
+		});
+
+		it('should track "User saved credentials" with is_valid true on OAuth success', async () => {
+			setupSuccessfulOAuthFlow();
+
+			const { createAndAuthorize } = useCredentialOAuth();
+			await createAndAuthorize('slackOAuth2Api');
+
+			expect(mockTrack).toHaveBeenCalledWith('User saved credentials', {
+				credential_type: 'slackOAuth2Api',
+				workflow_id: '',
+				credential_id: 'new-cred-123',
+				is_complete: true,
+				is_new: true,
+				is_valid: true,
+				uses_external_secrets: false,
+			});
+		});
+
+		it('should track "User saved credentials" with is_valid false on OAuth failure', async () => {
+			setupFailedOAuthFlow();
+
+			const { createAndAuthorize } = useCredentialOAuth();
+			await createAndAuthorize('slackOAuth2Api');
+
+			expect(mockTrack).toHaveBeenCalledWith('User saved credentials', {
+				credential_type: 'slackOAuth2Api',
+				workflow_id: '',
+				credential_id: 'new-cred-123',
+				is_complete: true,
+				is_new: true,
+				is_valid: false,
+				uses_external_secrets: false,
+			});
+		});
+
+		it('should include node_type in tracking when provided', async () => {
+			setupSuccessfulOAuthFlow();
+
+			const { createAndAuthorize } = useCredentialOAuth();
+			await createAndAuthorize('slackOAuth2Api', 'n8n-nodes-base.slack');
+
+			expect(mockTrack).toHaveBeenCalledWith(
+				'User saved credentials',
+				expect.objectContaining({
+					node_type: 'n8n-nodes-base.slack',
+				}),
+			);
+		});
+
+		it('should not include node_type in tracking when not provided', async () => {
+			setupSuccessfulOAuthFlow();
+
+			const { createAndAuthorize } = useCredentialOAuth();
+			await createAndAuthorize('slackOAuth2Api');
+
+			const savedCall = mockTrack.mock.calls.find((call) => call[0] === 'User saved credentials');
+			expect(savedCall?.[1]).not.toHaveProperty('node_type');
+		});
+
+		it('should track "User saved credentials" after OAuth completes, not before', async () => {
+			setupSuccessfulOAuthFlow();
+
+			const { createAndAuthorize } = useCredentialOAuth();
+			await createAndAuthorize('slackOAuth2Api');
+
+			const createdIndex = mockTrack.mock.calls.findIndex(
+				(call) => call[0] === 'User created credentials',
+			);
+			const savedIndex = mockTrack.mock.calls.findIndex(
+				(call) => call[0] === 'User saved credentials',
+			);
+
+			expect(createdIndex).toBeGreaterThanOrEqual(0);
+			expect(savedIndex).toBeGreaterThan(createdIndex);
+		});
+	});
+});

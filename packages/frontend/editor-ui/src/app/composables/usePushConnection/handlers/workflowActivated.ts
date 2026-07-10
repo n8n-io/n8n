@@ -1,23 +1,30 @@
 import type { WorkflowActivated } from '@n8n/api-types/push/workflow';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import type { PushHandlerOptions } from './types';
 
-export async function workflowActivated({ data }: WorkflowActivated) {
+export async function workflowActivated(
+	{ data }: WorkflowActivated,
+	{ documentId }: PushHandlerOptions,
+) {
 	const { initializeWorkspace } = useCanvasOperations();
-	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
+	const workflowDocumentStore = useWorkflowDocumentStore(documentId);
 	const bannersStore = useBannersStore();
 	const uiStore = useUIStore();
 
 	const { workflowId, activeVersionId } = data;
 
-	const workflowIsBeingViewed = workflowsStore.workflowId === workflowId;
-	const activeVersionIsSet = workflowsStore.workflow.activeVersionId !== activeVersionId;
-	if (workflowIsBeingViewed && activeVersionIsSet) {
+	const workflowIsBeingViewed = workflowDocumentStore.workflowId === workflowId;
+	const activeVersionChanged = workflowDocumentStore.activeVersionId !== activeVersionId;
+	if (workflowIsBeingViewed && activeVersionChanged) {
 		// Only update workflow if there are no unsaved changes
 		if (!uiStore.stateIsDirty) {
-			const updatedWorkflow = await workflowsStore.fetchWorkflow(workflowId);
+			const updatedWorkflow = await workflowsListStore.fetchWorkflow(workflowId);
 			if (!updatedWorkflow.checksum) {
 				throw new Error('Failed to fetch workflow');
 			}
@@ -25,8 +32,11 @@ export async function workflowActivated({ data }: WorkflowActivated) {
 		}
 	}
 
-	// Remove auto-deactivated banner if viewing this workflow
+	// Resolve publication lifecycle and remove auto-deactivated banner if viewing this workflow
 	if (workflowIsBeingViewed) {
+		if (useSettingsStore().isWorkflowPublicationServiceEnabled) {
+			workflowDocumentStore.setPublicationStatus({ status: 'published', failures: [] });
+		}
 		bannersStore.removeBannerFromStack('WORKFLOW_AUTO_DEACTIVATED');
 	}
 }

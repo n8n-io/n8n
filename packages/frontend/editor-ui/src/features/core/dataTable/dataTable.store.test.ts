@@ -6,9 +6,11 @@ import * as dataTableApi from '@/features/core/dataTable/dataTable.api';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 vi.mock('@/features/collaboration/projects/projects.store');
 vi.mock('@/app/stores/settings.store');
+vi.mock('@/app/utils/rbac/permissions', () => ({ hasPermission: vi.fn(() => true) }));
 
 function createTable(data: Partial<DataTable>) {
 	return {
@@ -52,14 +54,15 @@ describe('dataTable.store', () => {
 	});
 
 	describe('fetchDataTables', () => {
+		const mockResponse = {
+			count: 50,
+			data: [
+				createTable({ id: 'dt-1', name: 'Table 1' }),
+				createTable({ id: 'dt-2', name: 'Table 2' }),
+			],
+		};
+
 		it('should fetch data tables with pagination', async () => {
-			const mockResponse = {
-				count: 50,
-				data: [
-					createTable({ id: 'dt-1', name: 'Table 1' }),
-					createTable({ id: 'dt-2', name: 'Table 2' }),
-				],
-			};
 			vi.spyOn(dataTableApi, 'fetchDataTablesApi').mockResolvedValue(mockResponse);
 
 			await dataTableStore.fetchDataTables('project-1', 2, 10);
@@ -68,6 +71,52 @@ describe('dataTable.store', () => {
 				rootStore.restApiContext,
 				'project-1',
 				{ skip: 10, take: 10 },
+				undefined,
+				undefined,
+			);
+			expect(dataTableStore.dataTables).toEqual(mockResponse.data);
+			expect(dataTableStore.totalCount).toBe(50);
+		});
+
+		it('should pass name filter to the API', async () => {
+			vi.spyOn(dataTableApi, 'fetchDataTablesApi').mockResolvedValue(mockResponse);
+
+			await dataTableStore.fetchDataTables('project-1', 1, 10, { name: 'my table' });
+
+			expect(dataTableApi.fetchDataTablesApi).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				'project-1',
+				{ skip: 0, take: 10 },
+				{ name: 'my table' },
+				undefined,
+			);
+		});
+
+		it('should pass sortBy to the API', async () => {
+			vi.spyOn(dataTableApi, 'fetchDataTablesApi').mockResolvedValue(mockResponse);
+
+			await dataTableStore.fetchDataTables('project-1', 1, 10, undefined, 'size:desc');
+
+			expect(dataTableApi.fetchDataTablesApi).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				'project-1',
+				{ skip: 0, take: 10 },
+				undefined,
+				'size:desc',
+			);
+		});
+
+		it('should pass both filter and sortBy to the API', async () => {
+			vi.spyOn(dataTableApi, 'fetchDataTablesApi').mockResolvedValue(mockResponse);
+
+			await dataTableStore.fetchDataTables('project-1', 1, 20, { name: 'sales' }, 'name:asc');
+
+			expect(dataTableApi.fetchDataTablesApi).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				'project-1',
+				{ skip: 0, take: 20 },
+				{ name: 'sales' },
+				'name:asc',
 			);
 			expect(dataTableStore.dataTables).toEqual(mockResponse.data);
 			expect(dataTableStore.totalCount).toBe(50);
@@ -134,6 +183,7 @@ describe('dataTable.store', () => {
 				updatedAt: '2024-01-01',
 				relations: [],
 				scopes: [],
+				rolesManaged: false,
 			};
 			vi.spyOn(dataTableApi, 'createDataTableApi').mockResolvedValue(mockTable);
 
@@ -215,6 +265,36 @@ describe('dataTable.store', () => {
 			const result = await dataTableStore.fetchDataTableDetails('dt-1', 'p1');
 
 			expect(result).toBeNull();
+		});
+	});
+
+	describe('fetchDataTableById', () => {
+		it('should look up a table across projects via the global endpoint', async () => {
+			const mockTable = createTable({ id: 'dt-1', projectId: 'p9' });
+			const spy = vi.spyOn(dataTableApi, 'fetchDataTablesApi').mockResolvedValue({
+				count: 1,
+				data: [mockTable],
+			});
+
+			const result = await dataTableStore.fetchDataTableById('dt-1');
+
+			expect(spy).toHaveBeenCalledWith(rootStore.restApiContext, '', undefined, { id: 'dt-1' });
+			expect(result).toBe(mockTable);
+			expect(dataTableStore.dataTables).toEqual([]); // does not mutate the list
+		});
+
+		it('should return null when the table does not exist', async () => {
+			vi.spyOn(dataTableApi, 'fetchDataTablesApi').mockResolvedValue({ count: 0, data: [] });
+
+			expect(await dataTableStore.fetchDataTableById('dt-1')).toBeNull();
+		});
+
+		it('should return null without a request when the user cannot list data tables', async () => {
+			vi.mocked(hasPermission).mockReturnValueOnce(false);
+			const spy = vi.spyOn(dataTableApi, 'fetchDataTablesApi');
+
+			expect(await dataTableStore.fetchDataTableById('dt-1')).toBeNull();
+			expect(spy).not.toHaveBeenCalled();
 		});
 	});
 

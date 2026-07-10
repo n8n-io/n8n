@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 import { BaseModal } from './components/BaseModal';
 import { FloatingUiHelper } from './components/FloatingUiHelper';
@@ -9,6 +9,22 @@ export abstract class BasePage extends FloatingUiHelper {
 	constructor(protected readonly page: Page) {
 		super(page);
 		this.baseModal = new BaseModal(this.page);
+	}
+
+	/**
+	 * Search input on the shared resources-list layout used across list pages
+	 * (workflows, credentials, variables, etc.).
+	 */
+	protected getResourcesListSearch(): Locator {
+		return this.page.getByTestId('resources-list-search');
+	}
+
+	/**
+	 * Root of the shared empty-state box rendered on the list pages
+	 * (workflows, credentials, variables, data tables, executions).
+	 */
+	protected getResourcesListEmptyState(): Locator {
+		return this.page.getByTestId('empty-resources-list');
 	}
 
 	protected async clickByTestId(testId: string) {
@@ -42,5 +58,24 @@ export abstract class BasePage extends FloatingUiHelper {
 			const matches = url.test(res.url());
 			return matches && (method ? res.request().method() === method : true);
 		});
+	}
+
+	/**
+	 * Wait for debounce to complete.
+	 * Respects the N8N_DEBOUNCE_MULTIPLIER sessionStorage setting.
+	 * With multiplier=0 (test mode), returns immediately.
+	 * @param baseTime - Base debounce time in milliseconds (default: 150)
+	 */
+	protected async waitForDebounce(baseTime = 150): Promise<void> {
+		const effectiveTime = await this.page.evaluate((time) => {
+			const stored = sessionStorage.getItem('N8N_DEBOUNCE_MULTIPLIER');
+			const multiplier = stored !== null ? parseFloat(stored) : 1;
+			return Math.round(time * (Number.isNaN(multiplier) ? 1 : multiplier));
+		}, baseTime);
+
+		if (effectiveTime > 0) {
+			// eslint-disable-next-line playwright/no-wait-for-timeout
+			await this.page.waitForTimeout(effectiveTime);
+		}
 	}
 }

@@ -1,29 +1,40 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type express from 'express';
-import { mock, type MockProxy } from 'jest-mock-extended';
-import { BinaryDataService, ErrorReporter } from 'n8n-core';
+import {
+	BinaryDataService,
+	ErrorReporter,
+	getHtmlSandboxCSP,
+	isWebhookHtmlSandboxingDisabled,
+} from 'n8n-core';
+
+vi.mock('n8n-core', async () => ({
+	...(await vi.importActual<typeof import('n8n-core')>('n8n-core')),
+	isWebhookHtmlSandboxingDisabled: vi.fn(),
+	getHtmlSandboxCSP: vi.fn(),
+}));
+import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	Workflow,
 	INode,
 	IDataObject,
 	IWebhookResponseData,
-	IDeferredPromise,
 	IN8nHttpFullResponse,
 	IWorkflowBase,
 	IRunExecutionData,
 	IExecuteData,
 } from 'n8n-workflow';
 import {
-	createDeferredPromise,
 	FORM_NODE_TYPE,
 	WAIT_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	WorkflowConfigurationError,
 	NodeOperationError,
+	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 import { finished } from 'stream/promises';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import {
 	autoDetectResponseMode,
@@ -35,8 +46,8 @@ import {
 } from '../webhook-helpers';
 import type { IWebhookResponseCallbackData } from '../webhook.types';
 
-jest.mock('stream/promises', () => ({
-	finished: jest.fn(),
+vi.mock('stream/promises', () => ({
+	finished: vi.fn(),
 }));
 
 describe('autoDetectResponseMode', () => {
@@ -205,7 +216,7 @@ describe('setupResponseNodePromise', () => {
 	const workflowId = 'test-workflow-id';
 	const executionId = 'test-execution-id';
 	const res = mock<express.Response>();
-	const responseCallback = jest.fn();
+	const responseCallback = vi.fn();
 	const workflowStartNode = mock<INode>();
 	const workflow = mock<Workflow>({ id: workflowId });
 	const binaryDataService = mockInstance(BinaryDataService);
@@ -215,7 +226,10 @@ describe('setupResponseNodePromise', () => {
 	let responsePromise: IDeferredPromise<IN8nHttpFullResponse>;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
+
+		vi.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValue(false);
+		vi.mocked(getHtmlSandboxCSP).mockReturnValue('sandbox allow-forms allow-scripts');
 
 		responsePromise = createDeferredPromise<IN8nHttpFullResponse>();
 
@@ -269,10 +283,35 @@ describe('setupResponseNodePromise', () => {
 		await new Promise(process.nextTick);
 
 		expect(binaryDataService.getAsStream).toHaveBeenCalledWith('binary-123');
-		expect(res.header).toHaveBeenCalledWith({ 'content-type': 'image/jpeg' });
+		expect(res.setHeaders).toHaveBeenCalledWith(new Map([['content-type', 'image/jpeg']]));
+		expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
 		expect(mockStream.pipe).toHaveBeenCalledWith(res, { end: false });
 		expect(finished).toHaveBeenCalledWith(mockStream);
 		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+	});
+
+	test('should not set sandbox CSP header on binary stream responses when sandboxing is disabled', async () => {
+		vi.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValue(true);
+		const mockStream = mock<Readable>();
+		binaryDataService.getAsStream.mockResolvedValue(mockStream);
+
+		setupResponseNodePromise(
+			responsePromise,
+			res,
+			responseCallback,
+			workflowStartNode,
+			executionId,
+			workflow,
+		);
+
+		responsePromise.resolve({
+			body: { binaryData: { id: 'binary-123' } },
+			headers: { 'content-type': 'text/html' },
+			statusCode: 200,
+		});
+		await new Promise(process.nextTick);
+
+		expect(res.setHeader).not.toHaveBeenCalledWith('Content-Security-Policy', expect.anything());
 	});
 
 	test('should handle buffer response', async () => {
@@ -293,9 +332,32 @@ describe('setupResponseNodePromise', () => {
 		});
 		await new Promise(process.nextTick);
 
-		expect(res.header).toHaveBeenCalledWith({ 'content-type': 'text/plain' });
+		expect(res.setHeaders).toHaveBeenCalledWith(new Map([['content-type', 'text/plain']]));
+		expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
 		expect(res.end).toHaveBeenCalledWith(buffer);
 		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+	});
+
+	test('should not set sandbox CSP header on buffer responses when sandboxing is disabled', async () => {
+		vi.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValue(true);
+
+		setupResponseNodePromise(
+			responsePromise,
+			res,
+			responseCallback,
+			workflowStartNode,
+			executionId,
+			workflow,
+		);
+
+		responsePromise.resolve({
+			body: Buffer.from('<html></html>'),
+			headers: { 'content-type': 'text/html' },
+			statusCode: 200,
+		});
+		await new Promise(process.nextTick);
+
+		expect(res.setHeader).not.toHaveBeenCalledWith('Content-Security-Policy', expect.anything());
 	});
 
 	test('should handle errors properly', async () => {
@@ -322,22 +384,25 @@ describe('setupResponseNodePromise', () => {
 });
 
 describe('handleHostedChatResponse', () => {
-	it('should send executionStarted: true and executionId when responseMode is hostedChat and didSendResponse is false', async () => {
+	it('should send executionStarted: true, executionId, and resumeToken when responseMode is hostedChat', async () => {
 		const res = {
-			send: jest.fn(),
-			end: jest.fn(),
+			send: vi.fn(),
+			end: vi.fn(),
 		} as unknown as express.Response;
-		const executionId = 'testExecutionId';
-		let didSendResponse = false;
 		const responseMode = 'hostedChat';
+		const didSendResponse = false;
+		const executionId = '123';
+		const resumeToken = 'a'.repeat(64);
 
-		(res.send as jest.Mock).mockImplementation((data) => {
-			expect(data).toEqual({ executionStarted: true, executionId });
-		});
+		const result = handleHostedChatResponse(
+			res,
+			responseMode,
+			didSendResponse,
+			executionId,
+			resumeToken,
+		);
 
-		const result = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
-
-		expect(res.send).toHaveBeenCalled();
+		expect(res.send).toHaveBeenCalledWith({ executionStarted: true, executionId, resumeToken });
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(res.end).toHaveBeenCalled();
 		expect(result).toBe(true);
@@ -345,11 +410,11 @@ describe('handleHostedChatResponse', () => {
 
 	it('should not send response when responseMode is not hostedChat', () => {
 		const res = {
-			send: jest.fn(),
-			end: jest.fn(),
+			send: vi.fn(),
+			end: vi.fn(),
 		} as unknown as express.Response;
 		const executionId = 'testExecutionId';
-		let didSendResponse = false;
+		const didSendResponse = false;
 		const responseMode = 'responseNode';
 
 		const result = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
@@ -361,11 +426,11 @@ describe('handleHostedChatResponse', () => {
 
 	it('should not send response when didSendResponse is true', () => {
 		const res = {
-			send: jest.fn(),
-			end: jest.fn(),
+			send: vi.fn(),
+			end: vi.fn(),
 		} as unknown as express.Response;
 		const executionId = 'testExecutionId';
-		let didSendResponse = true;
+		const didSendResponse = true;
 		const responseMode = 'hostedChat';
 
 		const result = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
@@ -497,6 +562,256 @@ describe('prepareExecutionData', () => {
 
 		expect(pinData).toBeUndefined();
 		expect(runExecutionData.resultData.pinData).toBeUndefined();
+	});
+
+	test('should populate manualData.userId for manual executions when userId is provided', () => {
+		const { runExecutionData } = prepareExecutionData(
+			'manual',
+			workflowStartNode,
+			webhookResultData,
+			undefined,
+			{},
+			undefined,
+			undefined,
+			workflowData,
+			'user-abc',
+		);
+
+		expect(runExecutionData.manualData).toEqual({ userId: 'user-abc' });
+	});
+
+	test('should not populate manualData when userId is undefined', () => {
+		const { runExecutionData } = prepareExecutionData(
+			'manual',
+			workflowStartNode,
+			webhookResultData,
+			undefined,
+			{},
+			undefined,
+			undefined,
+			workflowData,
+			undefined,
+		);
+
+		expect(runExecutionData.manualData).toBeUndefined();
+	});
+
+	test('should not populate manualData for non-manual execution modes', () => {
+		const { runExecutionData } = prepareExecutionData(
+			'webhook',
+			workflowStartNode,
+			webhookResultData,
+			undefined,
+			{},
+			undefined,
+			undefined,
+			workflowData,
+			'user-abc',
+		);
+
+		expect(runExecutionData.manualData).toBeUndefined();
+	});
+
+	describe('MICROSOFT_AGENT365_TRIGGER_NODE_TYPE merge condition', () => {
+		test('should merge nodeExecutionStack when node type is MICROSOFT_AGENT365_TRIGGER_NODE_TYPE and runExecutionData exists', () => {
+			const microsoftAgentNode = mock<INode>({
+				name: 'Microsoft Agent 365',
+				type: MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
+			});
+
+			const existingNodeExecutionStack: IExecuteData[] = [
+				{
+					node: mock<INode>({ name: 'ExistingNode' }),
+					data: {
+						main: [[{ json: { existing: 'data' } }]],
+					},
+					source: null,
+				},
+			];
+
+			const existingRunExecutionData: IRunExecutionData = {
+				version: 1,
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					metadata: {},
+					nodeExecutionStack: existingNodeExecutionStack,
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			} as IRunExecutionData;
+
+			const { runExecutionData } = prepareExecutionData(
+				'trigger',
+				microsoftAgentNode,
+				webhookResultData,
+				existingRunExecutionData,
+			);
+
+			expect(runExecutionData.executionData?.nodeExecutionStack).toHaveLength(1);
+			expect(runExecutionData.executionData?.nodeExecutionStack[0].node.name).toBe(
+				'Microsoft Agent 365',
+			);
+			expect(runExecutionData.executionData?.nodeExecutionStack[0].node.type).toBe(
+				MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
+			);
+			expect(runExecutionData.executionData?.nodeExecutionStack[0].data.main[0]).toHaveLength(1);
+			expect(runExecutionData.executionData?.nodeExecutionStack[0].data.main[0]?.[0]?.json).toEqual(
+				{
+					existing: 'data',
+					data: 'test',
+				},
+			);
+		});
+
+		test('should not merge when node type is MICROSOFT_AGENT365_TRIGGER_NODE_TYPE but runExecutionData is undefined', () => {
+			const microsoftAgentNode = mock<INode>({
+				name: 'Microsoft Agent 365',
+				type: MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
+			});
+
+			const { runExecutionData } = prepareExecutionData(
+				'trigger',
+				microsoftAgentNode,
+				webhookResultData,
+				undefined,
+			);
+
+			expect(runExecutionData.executionData?.nodeExecutionStack).toHaveLength(1);
+			expect(runExecutionData.executionData?.nodeExecutionStack[0].node).toEqual(
+				microsoftAgentNode,
+			);
+		});
+
+		test('should not merge when node type is MICROSOFT_AGENT365_TRIGGER_NODE_TYPE but nodeExecutionStack is undefined', () => {
+			const microsoftAgentNode = mock<INode>({
+				name: 'Microsoft Agent 365',
+				type: MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
+			});
+
+			const existingRunExecutionData: IRunExecutionData = {
+				version: 1,
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					metadata: {},
+					nodeExecutionStack: undefined as any,
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			} as IRunExecutionData;
+
+			const { runExecutionData } = prepareExecutionData(
+				'trigger',
+				microsoftAgentNode,
+				webhookResultData,
+				existingRunExecutionData,
+			);
+
+			expect(runExecutionData.executionData?.nodeExecutionStack).toBeUndefined();
+		});
+
+		test('should not merge when node type is not MICROSOFT_AGENT365_TRIGGER_NODE_TYPE', () => {
+			const regularNode = mock<INode>({
+				name: 'Regular Webhook',
+				type: 'n8n-nodes-base.webhook',
+			});
+
+			const existingNodeExecutionStack: IExecuteData[] = [
+				{
+					node: mock<INode>({ name: 'ExistingNode' }),
+					data: {
+						main: [[{ json: { existing: 'data' } }]],
+					},
+					source: null,
+				},
+			];
+
+			const existingRunExecutionData: IRunExecutionData = {
+				version: 1,
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					metadata: {},
+					nodeExecutionStack: existingNodeExecutionStack,
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			} as IRunExecutionData;
+
+			const { runExecutionData } = prepareExecutionData(
+				'trigger',
+				regularNode,
+				webhookResultData,
+				existingRunExecutionData,
+			);
+
+			expect(runExecutionData.executionData?.nodeExecutionStack).toHaveLength(1);
+			expect(runExecutionData.executionData?.nodeExecutionStack?.[0]?.node.name).toBe(
+				'ExistingNode',
+			);
+
+			expect(runExecutionData.executionData?.nodeExecutionStack?.[0]?.data.main).toEqual([
+				[{ json: { existing: 'data' } }],
+			]);
+		});
+
+		test('should merge existing data with new data for MICROSOFT_AGENT365_TRIGGER_NODE_TYPE', () => {
+			const microsoftAgentNode = mock<INode>({
+				name: 'Microsoft Agent 365',
+				type: MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
+			});
+
+			const existingData: IExecuteData = {
+				node: mock<INode>({ name: 'ExistingNode' }),
+				data: {
+					main: [[{ json: { existing: 'preserved' } }]],
+				},
+				source: { main: [{ previousNode: 'test' }] },
+			};
+
+			const existingRunExecutionData: IRunExecutionData = {
+				version: 1,
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					metadata: {},
+					nodeExecutionStack: [existingData],
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			} as IRunExecutionData;
+
+			const { runExecutionData } = prepareExecutionData(
+				'trigger',
+				microsoftAgentNode,
+				webhookResultData,
+				existingRunExecutionData,
+			);
+
+			expect(runExecutionData.executionData?.nodeExecutionStack).toHaveLength(1);
+
+			expect(runExecutionData.executionData?.nodeExecutionStack?.[0]?.node.name).toBe(
+				'Microsoft Agent 365',
+			);
+			expect(runExecutionData.executionData?.nodeExecutionStack?.[0]?.node.type).toBe(
+				MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
+			);
+
+			expect(runExecutionData.executionData?.nodeExecutionStack?.[0]?.data.main[0]).toHaveLength(1);
+			expect(
+				runExecutionData.executionData?.nodeExecutionStack?.[0]?.data.main[0]?.[0]?.json,
+			).toEqual({
+				existing: 'preserved',
+				data: 'test',
+			});
+
+			expect(runExecutionData.executionData?.nodeExecutionStack?.[0]?.source).toBeNull();
+		});
 	});
 });
 

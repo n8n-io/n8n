@@ -1,11 +1,17 @@
-import type { ICredentialsBase, IExecutionBase, IExecutionDb, ITagBase } from '@n8n/db';
+import type {
+	ICredentialsBase,
+	IExecutionBase,
+	IExecutionDb,
+	ITagBase,
+	IWorkflowDb,
+} from '@n8n/db';
 import type { AssignableGlobalRole } from '@n8n/permissions';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Application, Response } from 'express';
 import type {
 	ExecutionError,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
-	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IRun,
 	ITelemetryTrackProperties,
@@ -16,6 +22,7 @@ import type {
 	ExecutionSummary,
 	IWorkflowExecutionDataProcess,
 	IExecutionContext,
+	WorkflowExecutionSource,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
@@ -47,11 +54,19 @@ export interface IWorkflowResponse extends IWorkflowBase {
 	id: string;
 }
 
+export interface IWorkflowVersionMetadata {
+	versionMetadata?: {
+		name: string | null;
+		description: string | null;
+	} | null;
+}
+
 export interface IWorkflowToImport
 	extends Omit<
-		IWorkflowBase,
-		'staticData' | 'pinData' | 'createdAt' | 'updatedAt' | 'activeVersion'
-	> {
+			IWorkflowBase,
+			'staticData' | 'pinData' | 'createdAt' | 'updatedAt' | 'activeVersion'
+		>,
+		IWorkflowVersionMetadata {
 	owner?:
 		| {
 				type: 'personal';
@@ -65,6 +80,8 @@ export interface IWorkflowToImport
 	parentFolderId: string | null;
 }
 
+export type IWorkflowWithVersionMetadata = IWorkflowDb & IWorkflowVersionMetadata;
+
 // ----------------------------------
 //            credentials
 // ----------------------------------
@@ -76,7 +93,7 @@ export type ICredentialsDecryptedResponse = ICredentialsDecryptedDb;
 export type SaveExecutionDataType = 'all' | 'none';
 
 /** Payload for updating an execution. */
-export type UpdateExecutionPayload = Omit<IExecutionDb, 'id' | 'createdAt'>;
+export type UpdateExecutionPayload = Omit<IExecutionDb, 'id' | 'createdAt' | 'storedAt'>;
 
 // Flatted data to save memory when saving in database or transferring
 // via REST API
@@ -88,6 +105,8 @@ export interface IExecutionFlatted extends IExecutionBase {
 export interface IExecutionFlattedResponse extends IExecutionFlatted {
 	id: string;
 	retryOf?: string;
+	/** See {@link IExecutionResponse.dataTooLargeToDisplay}. When true, `data` is empty. */
+	dataTooLargeToDisplay?: boolean;
 }
 
 export interface IExecutionsListResponse {
@@ -168,6 +187,59 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 	error_node_type?: string;
 	is_manual: boolean;
 	crashed?: boolean;
+	used_end_user_credentials?: boolean;
+	/** Number of nodes that attempted to resolve an end-user credential (regardless of success). */
+	end_user_credentials_attempted_count?: number;
+	/** Number of nodes that successfully resolved an end-user credential. */
+	end_user_credentials_resolved_count?: number;
+	/** Effective resolver id the execution ran with (workflow override or seeded system resolver). */
+	credential_resolver_id?: string;
+	execution_source?: WorkflowExecutionSource;
+	mock_data_sources?: string;
+}
+
+export interface IAgentExecutionTrackProperties extends ITelemetryTrackProperties {
+	agent_id: string;
+	/** n8n user ID, present only when the agent run has direct n8n user context. */
+	user_id?: string;
+	/** Fresh user turns only. Resume continuations do not increment this count. */
+	message_count?: number;
+	/** AI SDK usage from agent, title, memory generation, and embedding calls. */
+	token_count?: number;
+	/** Tool invocations only. Resuming a suspended tool does not double-count it. */
+	tool_call_count?: number;
+}
+
+export type AgentRunTelemetryType = 'test' | 'production';
+
+export type AgentTurnTelemetryStatus = 'succeeded' | 'failed';
+
+export type AgentTelemetryMemoryType =
+	| 'none'
+	| 'n8n'
+	| 'n8n_observational'
+	| 'n8n_episodic'
+	| 'n8n_observational_episodic';
+
+export interface IAgentConfigurationTelemetryProperties {
+	model: string | null;
+	channels: string[];
+	tool_types: string[];
+	tool_count: number;
+	num_skills: number;
+	memory_type: AgentTelemetryMemoryType;
+}
+
+export interface IAgentTurnFinishedTrackProperties extends ITelemetryTrackProperties {
+	agent_id: string;
+	/** Internal aggregation key only. This must never be emitted to telemetry. */
+	thread_id: string;
+	run_type: AgentRunTelemetryType;
+	turn_status: AgentTurnTelemetryStatus;
+	configuration: IAgentConfigurationTelemetryProperties;
+	latency_ms: number;
+	cost: number;
+	tool_call_count: number;
 }
 
 // ----------------------------------

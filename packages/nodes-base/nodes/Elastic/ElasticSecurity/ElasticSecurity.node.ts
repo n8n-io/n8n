@@ -37,6 +37,7 @@ export class ElasticSecurity implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume the Elastic Security API',
+		schemaPath: 'Elastic/ElasticSecurity',
 		defaults: {
 			name: 'Elastic Security',
 		},

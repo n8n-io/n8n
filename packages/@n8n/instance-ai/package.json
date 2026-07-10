@@ -1,0 +1,105 @@
+{
+  "name": "@n8n/instance-ai",
+  "version": "1.15.0",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "build:unchecked": "tsc -p ./tsconfig.build.json --noCheck && tsc-alias -p tsconfig.build.json",
+    "format": "biome format --write src",
+    "format:check": "biome ci src",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --silent=false",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "eval:instance-ai": "tsx evaluations/cli/index.ts",
+    "eval:agents": "tsx evaluations/cli/index.ts --tier agents",
+    "eval:build-mcp-manifest": "tsx evaluations/cli/build-mcp-manifest.ts",
+    "eval:langtracer-push": "tsx evaluations/cli/langtracer-push.ts",
+    "eval:pairwise": "tsx evaluations/cli/pairwise.ts",
+    "eval:pairwise:report": "tsx evaluations/cli/report.ts",
+    "eval:pairwise:compare": "tsx evaluations/cli/compare-pairwise.ts",
+    "eval:subagent": "tsx evaluations/subagent/cli.ts",
+    "eval:computer-use": "tsx evaluations/computer-use/cli.ts",
+    "eval:discovery": "tsx evaluations/discovery/cli.ts",
+    "prompts:print": "tsx scripts/print-prompts.ts"
+  },
+  "main": "dist/index.js",
+  "module": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*",
+    "knowledge-base/**/*",
+    "skills/**/*"
+  ],
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./src/index.ts",
+      "types": "./dist/index.d.ts"
+    },
+    "./parsers": {
+      "require": "./dist/parsers/index.js",
+      "import": "./dist/parsers/index.js",
+      "types": "./dist/parsers/index.d.ts"
+    },
+    "./evaluations": "./evaluations/index.ts"
+  },
+  "typesVersions": {
+    "*": {
+      "parsers": [
+        "dist/parsers/index.d.ts"
+      ]
+    }
+  },
+  "dependencies": {
+    "@daytona/sdk": "catalog:",
+    "@joplin/turndown-plugin-gfm": "catalog:",
+    "@langchain/anthropic": "catalog:",
+    "@mozilla/readability": "catalog:",
+    "@n8n/agents": "workspace:*",
+    "@n8n/ai-utilities": "workspace:*",
+    "@n8n/api-types": "workspace:*",
+    "@n8n/mcp-browser": "workspace:*",
+    "@n8n/utils": "workspace:*",
+    "@n8n/workflow-sdk": "workspace:*",
+    "@opentelemetry/api": "^1.9.0",
+    "@thednp/dommatrix": "^2.0.12",
+    "ai": "catalog:",
+    "csv-parse": "catalog:",
+    "fast-glob": "catalog:",
+    "flatted": "catalog:",
+    "langsmith": "catalog:",
+    "linkedom": "^0.18.9",
+    "luxon": "catalog:",
+    "mammoth": "1.12.0",
+    "n8n-workflow": "workspace:*",
+    "nanoid": "catalog:",
+    "p-limit": "^3.1.0",
+    "pdf-parse": "catalog:",
+    "psl": "1.9.0",
+    "source-map-support": "catalog:",
+    "turndown": "catalog:",
+    "undici": "catalog:undici-v7",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
+    "zod": "catalog:",
+    "zod-from-json-schema-v3": "npm:zod-from-json-schema@^0.0.5"
+  },
+  "devDependencies": {
+    "@ai-sdk/anthropic": "catalog:",
+    "@langchain/core": "catalog:",
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "@types/luxon": "catalog:",
+    "@types/psl": "1.1.3",
+    "@types/turndown": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:typescript",
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
+}

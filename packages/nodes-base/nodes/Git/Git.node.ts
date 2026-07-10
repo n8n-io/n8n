@@ -1,9 +1,11 @@
-import { access, mkdir } from 'fs/promises';
+import { DeploymentConfig, SecurityConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	ResolvedFilePath,
 } from 'n8n-workflow';
 import {
 	NodeConnectionTypes,
@@ -11,9 +13,12 @@ import {
 	assertParamIsBoolean,
 	assertParamIsString,
 } from 'n8n-workflow';
+import { randomBytes } from 'node:crypto';
+import { mkdir, rename, rm } from 'node:fs/promises';
+import { basename, dirname, isAbsolute, join, resolve } from 'path';
 import type { LogOptions, SimpleGit, SimpleGitOptions } from 'simple-git';
 import simpleGit from 'simple-git';
-import { URL } from 'url';
+import { URL, fileURLToPath } from 'url';
 
 import {
 	addConfigFields,
@@ -23,11 +28,13 @@ import {
 	commitFields,
 	logFields,
 	pushFields,
+	reflogFields,
 	switchBranchFields,
 	tagFields,
 } from './descriptions';
-import { Container } from '@n8n/di';
-import { DeploymentConfig, SecurityConfig } from '@n8n/config';
+import { mapGitConfigList, validateGitReference } from './GenericFunctions';
+
+const REMOTE_HELPER_TRANSPORT = /^[a-zA-Z][a-zA-Z0-9+.-]*::/;
 
 export class Git implements INodeType {
 	description: INodeTypeDescription = {
@@ -145,6 +152,12 @@ export class Git implements INodeType {
 						action: 'Push tags to remote repository',
 					},
 					{
+						name: 'Reflog',
+						value: 'reflog',
+						description: 'Return reference log',
+						action: 'Return reference log',
+					},
+					{
 						name: 'Status',
 						value: 'status',
 						description: 'Return status of current repository',
@@ -206,6 +219,7 @@ export class Git implements INodeType {
 			...commitFields,
 			...logFields,
 			...pushFields,
+			...reflogFields,
 			...switchBranchFields,
 			...tagFields,
 			// ...userSetupFields,
@@ -252,6 +266,9 @@ export class Git implements INodeType {
 				setUpstream = false,
 				remoteName = 'origin',
 			} = options;
+
+			validateGitReference(branchName, this.getNode());
+
 			try {
 				if (force) {
 					await git.checkout(['-f', branchName]);
@@ -283,12 +300,143 @@ export class Git implements INodeType {
 			}
 		};
 
+		const hasUrlScheme = (repositoryPath: string) =>
+			/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(repositoryPath);
+
+		const isSshRepositoryPath = (repositoryPath: string) =>
+			/^(?:[^@\s]+@)?[^:\s]+:.+/.test(repositoryPath);
+
+		const assertLocalRepositoryPathAllowed = async (
+			repositoryPath: string,
+			repositoryType: 'source' | 'target',
+			baseDir: string,
+		): Promise<void> => {
+			const absoluteLocalRepositoryPath = isAbsolute(repositoryPath)
+				? repositoryPath
+				: resolve(baseDir, repositoryPath);
+			const resolvedLocalRepositoryPath = await this.helpers.resolvePath(
+				absoluteLocalRepositoryPath,
+			);
+
+			if (this.helpers.isFilePathBlocked(resolvedLocalRepositoryPath)) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Access to the ${repositoryType} repository path is not allowed`,
+				);
+			}
+		};
+
+		const assertRepositoryReferenceAllowed = async (
+			repository: string,
+			repositoryType: 'source' | 'target',
+			baseDir: string,
+		) => {
+			const trimmedRepository = repository.trim();
+			if (trimmedRepository.startsWith('-')) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`${repositoryType === 'source' ? 'Source' : 'Target'} repository cannot start with a hyphen`,
+				);
+			}
+
+			if (/^[a-zA-Z]:[\\/]/.test(trimmedRepository)) {
+				await assertLocalRepositoryPathAllowed(trimmedRepository, repositoryType, baseDir);
+				return;
+			}
+
+			if (REMOTE_HELPER_TRANSPORT.test(trimmedRepository)) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`${repositoryType === 'source' ? 'Source' : 'Target'} repository protocol is not allowed`,
+				);
+			}
+
+			if (hasUrlScheme(trimmedRepository)) {
+				let repositoryUrl: URL | undefined;
+				try {
+					repositoryUrl = new URL(trimmedRepository);
+				} catch {
+					repositoryUrl = undefined;
+				}
+
+				if (repositoryUrl?.protocol === 'file:') {
+					await assertLocalRepositoryPathAllowed(
+						fileURLToPath(repositoryUrl),
+						repositoryType,
+						baseDir,
+					);
+				}
+
+				return;
+			}
+
+			if (!isSshRepositoryPath(trimmedRepository)) {
+				await assertLocalRepositoryPathAllowed(trimmedRepository, repositoryType, baseDir);
+			}
+		};
+
+		const getRemoteOriginTargetRepositories = (
+			configValues: Record<string, Record<string, string | string[] | undefined>>,
+		) => {
+			const remoteOriginUrls: string[] = [];
+			const remoteOriginPushUrls: string[] = [];
+
+			for (const values of Object.values(configValues)) {
+				for (const key of ['remote.origin.url', 'remote.origin.pushurl'] as const) {
+					const value = values[key];
+					if (value === undefined) {
+						continue;
+					}
+
+					if (typeof value !== 'string') {
+						throw new NodeOperationError(this.getNode(), 'Target repository is required');
+					}
+
+					if (key === 'remote.origin.pushurl') {
+						remoteOriginPushUrls.push(value);
+					} else {
+						remoteOriginUrls.push(value);
+					}
+				}
+			}
+
+			return {
+				validationTargets: [...remoteOriginUrls, ...remoteOriginPushUrls],
+				pushTarget: remoteOriginPushUrls[0] ?? remoteOriginUrls[0],
+			};
+		};
+
+		const isFileNotFoundError = (error: unknown) =>
+			error instanceof Error && 'code' in error && error.code === 'ENOENT';
+
+		const resolvePathAllowingMissingParents = async (path: string): Promise<ResolvedFilePath> => {
+			try {
+				return await this.helpers.resolvePath(path);
+			} catch (error) {
+				if (!isFileNotFoundError(error)) {
+					throw error;
+				}
+
+				const parentPath = dirname(path);
+				if (parentPath === path) {
+					throw error;
+				}
+
+				const resolvedParentPath = await resolvePathAllowingMissingParents(parentPath);
+				return join(resolvedParentPath, basename(path)) as ResolvedFilePath;
+			}
+		};
+
 		const operation = this.getNodeParameter('operation', 0);
 		const returnItems: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				const repositoryPath = this.getNodeParameter('repositoryPath', itemIndex, '') as string;
-				const resolvedRepositoryPath = await this.helpers.resolvePath(repositoryPath);
+				const resolvedRepositoryPath =
+					operation === 'clone'
+						? await resolvePathAllowingMissingParents(repositoryPath)
+						: await this.helpers.resolvePath(repositoryPath);
+
 				const isFilePathBlocked = this.helpers.isFilePathBlocked(resolvedRepositoryPath);
 				if (isFilePathBlocked) {
 					throw new NodeOperationError(
@@ -299,13 +447,39 @@ export class Git implements INodeType {
 
 				const options = this.getNodeParameter('options', itemIndex, {});
 
+				let sourceRepository = '';
 				if (operation === 'clone') {
-					// Create repository folder if it does not exist
-					try {
-						await access(resolvedRepositoryPath);
-					} catch (error) {
-						await mkdir(resolvedRepositoryPath);
-					}
+					sourceRepository = this.getNodeParameter('sourceRepository', itemIndex, '') as string;
+					await assertRepositoryReferenceAllowed(
+						sourceRepository,
+						'source',
+						dirname(resolvedRepositoryPath),
+					);
+					sourceRepository = await prepareRepository(sourceRepository);
+				}
+
+				let customTargetRepository = '';
+				if (operation === 'push' && options.repository) {
+					customTargetRepository = options.targetRepository as string;
+					await assertRepositoryReferenceAllowed(
+						customTargetRepository,
+						'target',
+						resolvedRepositoryPath,
+					);
+				}
+
+				let cloneStagingBase = '';
+				let cloneStagingPath = '';
+				if (operation === 'clone') {
+					// Clone into an unguessable staging directory under a fixed base, then
+					// move the result into place, so the git subprocess only ever resolves
+					// paths under a directory n8n controls.
+					cloneStagingBase = await this.helpers.resolveStagingBaseForTarget(resolvedRepositoryPath);
+					cloneStagingPath = join(
+						cloneStagingBase,
+						`.n8n-clone-${randomBytes(12).toString('hex')}`,
+					);
+					await mkdir(cloneStagingPath);
 				}
 
 				const gitConfig: string[] = [];
@@ -323,15 +497,21 @@ export class Git implements INodeType {
 				}
 
 				const gitOptions: Partial<SimpleGitOptions> = {
-					baseDir: resolvedRepositoryPath,
+					baseDir: operation === 'clone' ? cloneStagingBase : resolvedRepositoryPath,
 					config: gitConfig,
+					// simple-git blocks callers from setting `core.hooksPath` via `config`
+					// unless this flag is set. We set it deliberately as a mitigation, so
+					// opt in to keep that mitigation working.
+					...(!enableHooks && { unsafe: { allowUnsafeHooksPath: true } }),
 				};
 
-				const git: SimpleGit = simpleGit(gitOptions)
-					// Tell git not to ask for any information via the terminal like for
-					// example the username. As nobody will be able to answer it would
-					// n8n keep on waiting forever.
-					.env('GIT_TERMINAL_PROMPT', '0');
+				const cleanEnv = Object.create(null) as Record<string, unknown>;
+				// Tell git not to ask for any information via the terminal like for
+				// example the username. As nobody will be able to answer it would
+				// n8n keep on waiting forever.
+				cleanEnv['GIT_TERMINAL_PROMPT'] = '0';
+				cleanEnv['GIT_ALLOW_PROTOCOL'] = 'file:git:http:https:ssh';
+				const git: SimpleGit = simpleGit(gitOptions).env(cleanEnv);
 
 				if (operation === 'add') {
 					// ----------------------------------
@@ -339,8 +519,13 @@ export class Git implements INodeType {
 					// ----------------------------------
 
 					const pathsToAdd = this.getNodeParameter('pathsToAdd', itemIndex, '') as string;
+					const paths = pathsToAdd
+						.split(',')
+						.map((p) => p.trim())
+						.filter((p) => p.length > 0);
 
-					await git.add(pathsToAdd.split(','));
+					// Use -- separator to prevent argument injection
+					await git.add(['--', ...paths]);
 
 					returnItems.push({
 						json: {
@@ -385,10 +570,37 @@ export class Git implements INodeType {
 					//         clone
 					// ----------------------------------
 
-					let sourceRepository = this.getNodeParameter('sourceRepository', itemIndex, '') as string;
-					sourceRepository = await prepareRepository(sourceRepository);
+					try {
+						await git.clone(sourceRepository, cloneStagingPath, ['--']);
 
-					await git.clone(sourceRepository, '.');
+						const pinnedParent = await this.helpers.pinDirectory(dirname(resolvedRepositoryPath), {
+							create: true,
+						});
+						try {
+							const renameTarget = pinnedParent
+								? pinnedParent.resolvePath(basename(resolvedRepositoryPath))
+								: resolvedRepositoryPath;
+							if (!pinnedParent) {
+								await this.helpers.ensureParentDirectoryWithoutFollowingSymlinks(
+									resolvedRepositoryPath,
+								);
+								await this.helpers.assertNoSymlinkInPath(resolvedRepositoryPath);
+							}
+							await rename(cloneStagingPath, renameTarget);
+						} catch (error) {
+							if (error instanceof Error && 'code' in error && error.code === 'EXDEV') {
+								throw new NodeOperationError(
+									this.getNode(),
+									'Cannot clone to a path on a different filesystem than the n8n data directory',
+								);
+							}
+							throw error;
+						} finally {
+							await pinnedParent?.close();
+						}
+					} finally {
+						await rm(cloneStagingPath, { recursive: true, force: true }).catch(() => {});
+					}
 
 					returnItems.push({
 						json: {
@@ -415,10 +627,18 @@ export class Git implements INodeType {
 
 					let pathsToAdd: string[] | undefined = undefined;
 					if (options.files !== undefined) {
-						pathsToAdd = (options.pathsToAdd as string).split(',');
+						pathsToAdd = (options.pathsToAdd as string)
+							.split(',')
+							.map((p) => p.trim())
+							.filter((p) => p.length > 0);
 					}
 
-					await git.commit(message, pathsToAdd);
+					// Use -- separator to prevent argument injection
+					if (pathsToAdd && pathsToAdd.length > 0) {
+						await git.commit(message, ['--', ...pathsToAdd]);
+					} else {
+						await git.commit(message);
+					}
 
 					returnItems.push({
 						json: {
@@ -498,23 +718,32 @@ export class Git implements INodeType {
 					}
 
 					if (options.repository) {
-						const targetRepository = await prepareRepository(options.targetRepository as string);
+						if (customTargetRepository === '') {
+							throw new NodeOperationError(this.getNode(), 'Target repository is required');
+						}
+						const targetRepository = await prepareRepository(customTargetRepository);
 						await git.push(targetRepository);
 					} else {
 						const authentication = this.getNodeParameter('authentication', 0) as string;
+						const config = await git.listConfig();
+						const { validationTargets, pushTarget } = getRemoteOriginTargetRepositories(
+							config.values,
+						);
+
+						for (const targetRepository of validationTargets) {
+							await assertRepositoryReferenceAllowed(
+								targetRepository,
+								'target',
+								resolvedRepositoryPath,
+							);
+						}
+
 						if (authentication === 'gitPassword') {
-							// Try to get remote repository path from git repository itself to add
-							// authentication data
-							const config = await git.listConfig();
-							let targetRepository;
-							for (const fileName of Object.keys(config.values)) {
-								if (config.values[fileName]['remote.origin.url']) {
-									targetRepository = config.values[fileName]['remote.origin.url'];
-									break;
-								}
+							if (pushTarget === undefined) {
+								throw new NodeOperationError(this.getNode(), 'Target repository is required');
 							}
 
-							targetRepository = await prepareRepository(targetRepository as string);
+							const targetRepository = await prepareRepository(pushTarget);
 							await git.push(targetRepository);
 						} else {
 							await git.push();
@@ -543,6 +772,57 @@ export class Git implements INodeType {
 							item: itemIndex,
 						},
 					});
+				} else if (operation === 'reflog') {
+					// ----------------------------------
+					//         reflog
+					// ----------------------------------
+
+					const returnAll = this.getNodeParameter('returnAll', itemIndex, false);
+
+					let reference = 'HEAD';
+					if (options.reference !== undefined && options.reference !== '') {
+						assertParamIsString('reference', options.reference, this.getNode());
+						validateGitReference(options.reference, this.getNode());
+
+						reference = options.reference;
+					}
+
+					const reflogResult = await git.raw(['reflog', reference]);
+
+					const reflogEntries = reflogResult
+						.trim()
+						.split('\n')
+						.filter((line) => line.length > 0)
+						.map((line) => {
+							// reflog format: hash ref@{number}: action: message
+							const match = line.match(/^(\S+)\s+(.+?):\s+(.+?):\s+(.+)$/);
+							if (match) {
+								return {
+									hash: match[1],
+									ref: match[2],
+									action: match[3],
+									message: match[4],
+									raw: line,
+								};
+							}
+							return {
+								raw: line,
+							};
+						});
+
+					const entries = returnAll
+						? reflogEntries
+						: reflogEntries.slice(0, this.getNodeParameter('limit', itemIndex, 100));
+
+					returnItems.push.apply(
+						returnItems,
+						this.helpers.returnJsonArray(entries).map((item) => {
+							return {
+								...item,
+								pairedItem: { item: itemIndex },
+							};
+						}),
+					);
 				} else if (operation === 'listConfig') {
 					// ----------------------------------
 					//         listConfig
@@ -550,13 +830,7 @@ export class Git implements INodeType {
 
 					const config = await git.listConfig();
 
-					const data = [];
-					for (const fileName of Object.keys(config.values)) {
-						data.push({
-							_file: fileName,
-							...config.values[fileName],
-						});
-					}
+					const data = mapGitConfigList(config);
 
 					returnItems.push(
 						...this.helpers.returnJsonArray(data).map((item) => {

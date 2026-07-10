@@ -10,6 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import { targetDescription } from './descriptions/TargetDescription';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from './GenericFunctions';
 import { linkedResourceFields, linkedResourceOperations } from './LinkedResourceDescription';
 import { listFields, listOperations } from './ListDescription';
@@ -24,6 +25,7 @@ export class MicrosoftToDo implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Microsoft To Do API.',
+		schemaPath: 'Microsoft/ToDo',
 		defaults: {
 			name: 'Microsoft To Do',
 		},
@@ -34,9 +36,58 @@ export class MicrosoftToDo implements INodeType {
 			{
 				name: 'microsoftToDoOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftToDoOAuth2Api'],
+					},
+				},
+			},
+			{
+				name: 'microsoftOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftOAuth2Api'],
+					},
+				},
+			},
+			{
+				name: 'microsoftEntraServicePrincipalApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftEntraServicePrincipalApi'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'To Do OAuth2',
+						value: 'microsoftToDoOAuth2Api',
+					},
+					{
+						name: 'Microsoft OAuth2 (Graph)',
+						value: 'microsoftOAuth2Api',
+						description:
+							'Generic Microsoft Graph credential. Enable the scopes this node needs (e.g. Tasks.ReadWrite) on the credential.',
+					},
+					{
+						name: 'Microsoft Entra Service Principal (App-Only)',
+						value: 'microsoftEntraServicePrincipalApi',
+						description:
+							'App-only access via a Microsoft Entra app registration. Choose which user to act on.',
+					},
+				],
+				default: 'microsoftToDoOAuth2Api',
+			},
+			...targetDescription,
 			{
 				displayName: 'Resource',
 				name: 'resource',

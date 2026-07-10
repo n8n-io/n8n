@@ -8,14 +8,18 @@ export const MFA_DOCS_URL = `https://${DOCS_DOMAIN}/user-management/two-factor-a
 export const NPM_PACKAGE_DOCS_BASE_URL = 'https://www.npmjs.com/package/';
 export const N8N_QUEUE_MODE_DOCS_URL = `https://${DOCS_DOMAIN}/hosting/scaling/queue-mode/`;
 export const CUSTOM_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/creating-nodes/code/create-n8n-nodes-module/`;
+export const CUSTOM_ROLES_DOCS_URL = `https://${DOCS_DOMAIN}/user-management/rbac/custom-roles/`;
 export const EXPRESSIONS_DOCS_URL = `https://${DOCS_DOMAIN}/code-examples/expressions/`;
 export const EVALUATIONS_DOCS_URL = `https://${DOCS_DOMAIN}/advanced-ai/evaluations/overview/`;
 export const ERROR_WORKFLOW_DOCS_URL = `https://${DOCS_DOMAIN}/flow-logic/error-handling/#create-and-set-an-error-workflow`;
+export const EXECUTION_DATA_REDACTION_DOCS_URL = `https://${DOCS_DOMAIN}/workflows/executions/execution-data-redaction/`;
+export const EXECUTION_DATA_REDACTION_ENFORCEMENT_DOCS_URL = `${EXECUTION_DATA_REDACTION_DOCS_URL}#instance-level-enforcement`;
 export const TIME_SAVED_DOCS_URL = `https://${DOCS_DOMAIN}/insights/#setting-the-time-saved-by-a-workflow`;
 export const N8N_PRICING_PAGE_URL = 'https://n8n.io/pricing';
 export const N8N_MAIN_GITHUB_REPO_URL = 'https://github.com/n8n-io/n8n';
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 export const RELEASE_NOTES_URL = 'https://docs.n8n.io/release-notes/';
+export const CHANGELOG_URL = 'https://docs.n8n.io/changelog';
 export const CREATOR_HUB_URL = 'https://creators.n8n.io/hub';
 
 export const CLOUD_CHANGE_PLAN_PAGE = window.location.host.includes('stage-app.n8n.cloud')

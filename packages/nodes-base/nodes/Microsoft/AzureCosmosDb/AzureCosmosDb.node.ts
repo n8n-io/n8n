@@ -16,6 +16,7 @@ export class AzureCosmosDb implements INodeType {
 		version: 1,
 		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
 		description: 'Interact with Azure Cosmos DB API',
+		schemaPath: 'Microsoft/AzureCosmosDb',
 		defaults: {
 			name: 'Azure Cosmos DB',
 		},

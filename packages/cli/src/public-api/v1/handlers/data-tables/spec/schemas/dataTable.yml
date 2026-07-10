@@ -1,0 +1,45 @@
+type: object
+properties:
+  id:
+    type: string
+    description: Unique identifier for the data table
+  name:
+    type: string
+    description: Name of the data table
+  columns:
+    type: array
+    description: Column definitions
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Column ID
+        name:
+          type: string
+          description: Column name
+        type:
+          type: string
+          enum: [string, number, boolean, date]
+          description: Column data type
+        index:
+          type: integer
+          description: Column position
+  projectId:
+    type: string
+    description: ID of the project this table belongs to
+  createdAt:
+    type: string
+    format: date-time
+    description: Timestamp when the table was created
+  updatedAt:
+    type: string
+    format: date-time
+    description: Timestamp when the table was last updated
+required:
+  - id
+  - name
+  - columns
+  - projectId
+  - createdAt
+  - updatedAt

@@ -5,6 +5,7 @@ import { useTelemetry } from './useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import type { CloudUpdateLinkSourceType, UTMCampaign } from '@/Interface';
 import { N8N_PRICING_PAGE_URL } from '@/app/constants';
+import { confirmIfBuilderStreaming } from '@/features/ai/assistant/composables/useBuilderStreamingGuard';
 
 export function usePageRedirectionHelper() {
 	const usersStore = useUsersStore();
@@ -19,15 +20,14 @@ export function usePageRedirectionHelper() {
 	 * Otherwise, it redirect them to our docs.
 	 */
 	const goToVersions = async () => {
-		let versionsLink = versionsStore.infoUrl;
-
 		if (usersStore.isInstanceOwner && settingsStore.isCloudDeployment) {
-			versionsLink = await cloudPlanStore.generateCloudDashboardAutoLoginLink({
+			location.href = await cloudPlanStore.generateCloudDashboardAutoLoginLink({
 				redirectionPath: '/manage',
 			});
+			return;
 		}
 
-		location.href = versionsLink;
+		window.open(versionsStore.infoUrl, '_blank', 'noopener');
 	};
 
 	const goToDashboard = async () => {
@@ -53,6 +53,9 @@ export function usePageRedirectionHelper() {
 		utm_campaign: UTMCampaign,
 		mode: 'open' | 'redirect' = 'open',
 	) => {
+		const shouldProceed = await confirmIfBuilderStreaming();
+		if (!shouldProceed) return;
+
 		const { usageLeft, trialDaysLeft, userIsTrialing } = cloudPlanStore;
 		const { executionsLeft, workflowsLeft } = usageLeft;
 		const deploymentType = settingsStore.deploymentType;

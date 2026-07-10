@@ -5,7 +5,7 @@ import { useTagsStore } from '../tags.store';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 
 interface Props {
-	tagIds: string[];
+	tagIds: readonly string[];
 	limit?: number;
 	clickable?: boolean;
 	responsive?: boolean;

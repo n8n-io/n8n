@@ -1,8 +1,9 @@
 import { SecurityConfig } from '@n8n/config';
-import { CredentialsRepository, ExecutionDataRepository, ExecutionRepository } from '@n8n/db';
+import { CredentialsRepository, MoreThanOrEqual } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { IWorkflowBase } from 'n8n-workflow';
 
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { CREDENTIALS_REPORT } from '@/security-audit/constants';
 import type { RiskReporter, Risk } from '@/security-audit/types';
 
@@ -10,8 +11,7 @@ import type { RiskReporter, Risk } from '@/security-audit/types';
 export class CredentialsRiskReporter implements RiskReporter {
 	constructor(
 		private readonly credentialsRepository: CredentialsRepository,
-		private readonly executionRepository: ExecutionRepository,
-		private readonly executionDataRepository: ExecutionDataRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly securityConfig: SecurityConfig,
 	) {}
 
@@ -118,9 +118,12 @@ export class CredentialsRiskReporter implements RiskReporter {
 
 		date.setDate(date.getDate() - days);
 
-		const executionIds = await this.executionRepository.getIdsSince(date);
+		const executions = await this.executionPersistence.findMultipleExecutions(
+			{ where: { startedAt: MoreThanOrEqual(date) } },
+			{ includeData: true, unflattenData: false },
+		);
 
-		return await this.executionDataRepository.findByExecutionIds(executionIds);
+		return executions.map((execution) => execution.workflowData);
 	}
 
 	/**

@@ -1,0 +1,24 @@
+[
+	{
+		"id": "test-workflow-123",
+		"name": "Workflow with History Metadata",
+		"nodes": [
+			{
+				"parameters": {},
+				"id": "node-uuid-1",
+				"name": "Manual Trigger",
+				"type": "n8n-nodes-base.manualTrigger",
+				"typeVersion": 1,
+				"position": [240, 300]
+			}
+		],
+		"connections": {},
+		"active": false,
+		"settings": {},
+		"versionId": "version-uuid-1",
+		"versionMetadata": {
+			"name": "Historical Version Name",
+			"description": "Historical version description"
+		}
+	}
+]

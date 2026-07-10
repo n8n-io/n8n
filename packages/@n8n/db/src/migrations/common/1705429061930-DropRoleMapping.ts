@@ -42,14 +42,13 @@ export class DropRoleMapping1705429061930 implements ReversibleMigration {
 	private async migrateUp(
 		table: Table,
 		{
-			dbType,
 			escape,
 			runQuery,
 			schemaBuilder: { addNotNull, addColumns, dropColumns, dropForeignKey, column },
 			tablePrefix,
 		}: MigrationContext,
 	) {
-		await addColumns(table, [column('role').text]);
+		await addColumns(table, [column('role').text], { recreatesOnSqlite: true });
 
 		const roleTable = escape.tableName('role');
 		const tableName = escape.tableName(table);
@@ -58,8 +57,7 @@ export class DropRoleMapping1705429061930 implements ReversibleMigration {
 		const roleColumnName = table === 'user' ? 'globalRoleId' : 'roleId';
 		const roleColumn = escape.columnName(roleColumnName);
 		const scope = roleScopes[table];
-		const isMySQL = ['mariadb', 'mysqldb'].includes(dbType);
-		const roleField = isMySQL ? `CONCAT('${scope}:', R.name)` : `'${scope}:' || R.name`;
+		const roleField = `'${scope}:' || R.name`;
 		const subQuery = `
         SELECT ${roleField} as role, T.${idColumn} as id${
 					table !== 'user' ? `, T.${uidColumn} as uid` : ''
@@ -70,17 +68,13 @@ export class DropRoleMapping1705429061930 implements ReversibleMigration {
 		const where = `WHERE ${tableName}.${idColumn} = mapping.id${
 			table !== 'user' ? ` AND ${tableName}.${uidColumn} = mapping.uid` : ''
 		}`;
-		const swQuery = isMySQL
-			? `UPDATE ${tableName}, (${subQuery}) as mapping
-            SET ${tableName}.role = mapping.role
-            ${where}`
-			: `UPDATE ${tableName}
+		const swQuery = `UPDATE ${tableName}
             SET role = mapping.role
             FROM (${subQuery}) as mapping
             ${where}`;
 		await runQuery(swQuery);
 
-		await addNotNull(table, 'role');
+		await addNotNull(table, 'role', { recreatesOnSqlite: true });
 
 		await dropForeignKey(
 			table,
@@ -88,13 +82,12 @@ export class DropRoleMapping1705429061930 implements ReversibleMigration {
 			['role', 'id'],
 			`FK_${tablePrefix}${foreignKeySuffixes[table]}`,
 		);
-		await dropColumns(table, [roleColumnName]);
+		await dropColumns(table, [roleColumnName], { recreatesOnSqlite: true });
 	}
 
 	private async migrateDown(
 		table: Table,
 		{
-			dbType,
 			escape,
 			runQuery,
 			schemaBuilder: { addNotNull, addColumns, dropColumns, addForeignKey, column },
@@ -102,7 +95,7 @@ export class DropRoleMapping1705429061930 implements ReversibleMigration {
 		}: MigrationContext,
 	) {
 		const roleColumnName = table === 'user' ? 'globalRoleId' : 'roleId';
-		await addColumns(table, [column(roleColumnName).int]);
+		await addColumns(table, [column(roleColumnName).int], { recreatesOnSqlite: true });
 
 		const roleTable = escape.tableName('role');
 		const tableName = escape.tableName(table);
@@ -110,8 +103,7 @@ export class DropRoleMapping1705429061930 implements ReversibleMigration {
 		const uidColumn = escape.columnName(uidColumns[table]);
 		const roleColumn = escape.columnName(roleColumnName);
 		const scope = roleScopes[table];
-		const isMySQL = ['mariadb', 'mysqldb'].includes(dbType);
-		const roleField = isMySQL ? `CONCAT('${scope}:', R.name)` : `'${scope}:' || R.name`;
+		const roleField = `'${scope}:' || R.name`;
 		const subQuery = `
 			SELECT R.id as role_id, T.${idColumn} as id${table !== 'user' ? `, T.${uidColumn} as uid` : ''}
 			FROM ${tableName} T
@@ -120,17 +112,13 @@ export class DropRoleMapping1705429061930 implements ReversibleMigration {
 		const where = `WHERE ${tableName}.${idColumn} = mapping.id${
 			table !== 'user' ? ` AND ${tableName}.${uidColumn} = mapping.uid` : ''
 		}`;
-		const query = isMySQL
-			? `UPDATE ${tableName}, (${subQuery}) as mapping
-				SET ${tableName}.${roleColumn} = mapping.role_id
-				${where}`
-			: `UPDATE ${tableName}
+		const query = `UPDATE ${tableName}
 				SET ${roleColumn} = mapping.role_id
 				FROM (${subQuery}) as mapping
 				${where}`;
 		await runQuery(query);
 
-		await addNotNull(table, roleColumnName);
+		await addNotNull(table, roleColumnName, { recreatesOnSqlite: true });
 		await addForeignKey(
 			table,
 			roleColumnName,
@@ -138,6 +126,6 @@ export class DropRoleMapping1705429061930 implements ReversibleMigration {
 			`FK_${tablePrefix}${foreignKeySuffixes[table]}`,
 		);
 
-		await dropColumns(table, ['role']);
+		await dropColumns(table, ['role'], { recreatesOnSqlite: true });
 	}
 }

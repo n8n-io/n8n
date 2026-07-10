@@ -1,8 +1,8 @@
 import xss from 'xss';
 import { z } from 'zod';
-import { Z } from 'zod-class';
 
 import { scopesSchema } from '../../schemas/scopes.schema';
+import { Z } from '../../zod-class';
 
 const xssCheck = (value: string) =>
 	value ===
@@ -11,6 +11,8 @@ const xssCheck = (value: string) =>
 	});
 
 export class UpdateApiKeyRequestDto extends Z.class({
-	label: z.string().max(50).min(1).refine(xssCheck),
+	label: z.string().max(50).min(1).refine(xssCheck, {
+		message: 'Label can only contain letters, numbers, spaces and punctuation',
+	}),
 	scopes: scopesSchema,
 }) {}

@@ -24,23 +24,13 @@ export class NodeCreator {
 	}
 
 	getNodeItems(): Locator {
-		return this.page.getByTestId('item-iterator-item');
-	}
-
-	getActionItems(): Locator {
-		return this.page.getByTestId('node-creator-action-item');
+		// Scope to the node creator root so items from a panel that is still
+		// sliding out during a view transition don't leak into the count.
+		return this.getRoot().getByTestId('item-iterator-item');
 	}
 
 	getCategoryItems(): Locator {
 		return this.page.getByTestId('node-creator-category-item');
-	}
-
-	getTabs(): Locator {
-		return this.page.getByTestId('node-creator-type-selector');
-	}
-
-	getSelectedTab(): Locator {
-		return this.getTabs().locator('.is-active');
 	}
 
 	getActiveSubcategory(): Locator {
@@ -49,6 +39,14 @@ export class NodeCreator {
 
 	getNoResults(): Locator {
 		return this.page.getByTestId('node-creator-no-results');
+	}
+
+	getNoTriggersCallout(): Locator {
+		return this.page.getByTestId('actions-panel-no-triggers-callout');
+	}
+
+	getActivationCallout(): Locator {
+		return this.page.getByTestId('actions-panel-activation-callout');
 	}
 
 	getTriggerText(): Locator {
@@ -60,7 +58,10 @@ export class NodeCreator {
 	}
 
 	// Item getters
-	getItem(text: string): Locator {
+	getItem(text: string, options: { exact?: boolean } = {}): Locator {
+		if (options.exact) {
+			return this.getNodeItems().filter({ has: this.page.getByText(text, { exact: true }) });
+		}
 		return this.getNodeItems().filter({ hasText: text }).first();
 	}
 
@@ -68,8 +69,15 @@ export class NodeCreator {
 		return this.getCategoryItems().filter({ hasText: text });
 	}
 
-	getPanelIcon(nodeName: string): Locator {
-		return this.getItem(nodeName).locator('[class*="panelIcon"]');
+	getCategoryContainer(text: string): Locator {
+		return this.getCategoryItem(text).locator('..');
+	}
+
+	async expectCategoryCollapsed(text: string, collapsed: boolean): Promise<void> {
+		await expect(this.getCategoryContainer(text)).toHaveAttribute(
+			'data-category-collapsed',
+			String(collapsed),
+		);
 	}
 
 	// Actions
@@ -98,8 +106,8 @@ export class NodeCreator {
 		await this.getCategoryItem(text).click();
 	}
 
-	async navigateToSubcategory(category: string): Promise<void> {
-		await this.getItem(category).click();
+	async navigateToSubcategory(category: string, options: { exact?: boolean } = {}): Promise<void> {
+		await this.getItem(category, options).click();
 		await expect(this.getActiveSubcategory()).toContainText(category);
 	}
 
@@ -107,8 +115,7 @@ export class NodeCreator {
 		await this.getActiveSubcategory().locator('button').click();
 	}
 
-	async selectWithKeyboard(direction: 'up' | 'down' | 'right'): Promise<void> {
-		const key = direction === 'up' ? 'ArrowUp' : direction === 'down' ? 'ArrowDown' : 'ArrowRight';
-		await this.page.keyboard.press(key);
+	async clickInsertOneLink(): Promise<void> {
+		await this.page.getByText('Insert one').click();
 	}
 }

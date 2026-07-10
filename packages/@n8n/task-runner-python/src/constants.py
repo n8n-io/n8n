@@ -14,6 +14,7 @@ BROKER_TASK_OFFER_ACCEPT = "broker:taskofferaccept"
 BROKER_TASK_SETTINGS = "broker:tasksettings"
 BROKER_TASK_CANCEL = "broker:taskcancel"
 BROKER_RPC_RESPONSE = "broker:rpcresponse"
+BROKER_DRAIN = "broker:drain"
 RUNNER_INFO = "runner:info"
 RUNNER_TASK_OFFER = "runner:taskoffer"
 RUNNER_TASK_ACCEPTED = "runner:taskaccepted"
@@ -39,6 +40,7 @@ MAX_VALIDATION_CACHE_SIZE = 500  # cached validation results
 # Executor
 EXECUTOR_USER_OUTPUT_KEY = "__n8n_internal_user_output__"
 EXECUTOR_CIRCULAR_REFERENCE_KEY = "__n8n_internal_circular_ref__"
+EXECUTOR_SAFE_FORMAT_KEY = "__n8n_internal_safe_format__"
 EXECUTOR_ALL_ITEMS_FILENAME = "<all_items_task_execution>"
 EXECUTOR_PER_ITEM_FILENAME = "<per_item_task_execution>"
 EXECUTOR_FILENAMES = {EXECUTOR_ALL_ITEMS_FILENAME, EXECUTOR_PER_ITEM_FILENAME}
@@ -68,6 +70,7 @@ ENV_GRACEFUL_SHUTDOWN_TIMEOUT = "N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT"
 ENV_STDLIB_ALLOW = "N8N_RUNNERS_STDLIB_ALLOW"
 ENV_EXTERNAL_ALLOW = "N8N_RUNNERS_EXTERNAL_ALLOW"
 ENV_BUILTINS_DENY = "N8N_RUNNERS_BUILTINS_DENY"
+ENV_ALLOW_TRANSITIVE_IMPORTS = "N8N_RUNNERS_ALLOW_TRANSITIVE_IMPORTS"
 ENV_HEALTH_CHECK_SERVER_ENABLED = "N8N_RUNNERS_HEALTH_CHECK_SERVER_ENABLED"
 ENV_HEALTH_CHECK_SERVER_HOST = "N8N_RUNNERS_HEALTH_CHECK_SERVER_HOST"
 ENV_HEALTH_CHECK_SERVER_PORT = "N8N_RUNNERS_HEALTH_CHECK_SERVER_PORT"
@@ -77,6 +80,8 @@ ENV_SENTRY_DSN = "N8N_SENTRY_DSN"
 ENV_N8N_VERSION = "N8N_VERSION"
 ENV_ENVIRONMENT = "ENVIRONMENT"
 ENV_DEPLOYMENT_NAME = "DEPLOYMENT_NAME"
+ENV_SENTRY_PROFILES_SAMPLE_RATE = "N8N_SENTRY_PROFILES_SAMPLE_RATE"
+ENV_SENTRY_TRACES_SAMPLE_RATE = "N8N_SENTRY_TRACES_SAMPLE_RATE"
 
 # Sentry
 SENTRY_TAG_SERVER_TYPE_KEY = "server_type"
@@ -113,12 +118,21 @@ TASK_REJECTED_REASON_AT_CAPACITY = "No open task slots - runner already at capac
 
 # Security
 BUILTINS_DENY_DEFAULT = "eval,exec,compile,open,input,breakpoint,getattr,object,type,vars,setattr,delattr,hasattr,dir,memoryview,__build_class__,globals,locals,license,help,credits,copyright"
+FORMAT_METHOD_NAMES = frozenset(
+    {
+        "format",
+        "format_map",
+        "vformat",
+        "get_field",
+    }
+)
 BLOCKED_NAMES = {
     "__loader__",
     "__builtins__",
     "__globals__",
     "__spec__",
     "__name__",
+    EXECUTOR_SAFE_FORMAT_KEY,
 }
 BLOCKED_ATTRIBUTES = {
     # runtime attributes
@@ -143,8 +157,19 @@ BLOCKED_ATTRIBUTES = {
     "cr_code",
     "ag_frame",
     "ag_code",
+    "obj",
     "__thisclass__",
     "__self_class__",
+    "__objclass__",
+    # serialization
+    "__reduce__",
+    "__reduce_ex__",
+    # metaclass
+    "__prepare__",
+    # match protocol
+    "__instancecheck__",
+    "__subclasscheck__",
+    "__match_args__",
     # introspection attributes
     "__base__",
     "__class__",
@@ -173,10 +198,20 @@ ERROR_STDLIB_DISALLOWED = "Import of standard library module '{module}' is disal
 ERROR_EXTERNAL_DISALLOWED = "Import of external package '{module}' is disallowed. Allowed external packages: {allowed}"
 ERROR_DANGEROUS_NAME = "Access to name '{name}' is disallowed, because it can be used to bypass security restrictions."
 ERROR_DANGEROUS_ATTRIBUTE = "Access to attribute '{attr}' is disallowed, because it can be used to bypass security restrictions."
+ERROR_DANGEROUS_STRING_PATTERN = "String pattern accessing '{attr}' is disallowed, because it can be used to bypass security restrictions."
 ERROR_NAME_MANGLED_ATTRIBUTE = "Access to name-mangled attributes (pattern: _ClassName__attr) is disallowed for security reasons."
 ERROR_DYNAMIC_IMPORT = (
     "Dynamic __import__() calls are not allowed for security reasons."
 )
+ERROR_MATCH_PATTERN_ATTRIBUTE = "Match pattern extracting attribute '{attr}' is disallowed, because it can be used to bypass security restrictions."
+ERROR_MATCH_POSITIONAL_PATTERN = (
+    "Positional match patterns are disallowed for security reasons."
+)
+ERROR_GLOBAL_BLOCKED_NAME = "Global declaration of '{name}' is disallowed, because it can be used to bypass security restrictions."
+ERROR_FUNCDEF_BLOCKED_NAME = "Function named '{name}' is disallowed, because it can be used to bypass security restrictions."
+ERROR_CLASSDEF_BLOCKED_NAME = "Class named '{name}' is disallowed, because it can be used to bypass security restrictions."
+ERROR_PARAM_BLOCKED_NAME = "Parameter named '{name}' is disallowed, because it can be used to bypass security restrictions."
+ERROR_BARE_FORMAT_ATTRIBUTE = "Extracting '{attr}' as a bound method is disallowed; call it directly on its receiver instead."
 ERROR_WINDOWS_NOT_SUPPORTED = (
     "Error: This task runner is not supported on Windows. "
     "Please use a Unix-like system (Linux or macOS)."
