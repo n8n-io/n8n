@@ -385,7 +385,7 @@ describe('AgentChatPanel', () => {
 		const wrapper = mountPanel();
 		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 
-		expect(chatInput.props('maxLength')).toBe(100_000);
+		expect(chatInput.props('maxLength')).toBe(25_000);
 	});
 
 	it('keeps the default character limit for the chat endpoint', () => {

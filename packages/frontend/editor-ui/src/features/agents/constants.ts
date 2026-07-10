@@ -39,4 +39,4 @@ export {
 /** Query-string key the builder uses to deep-link into a chat session. */
 export const CONTINUE_SESSION_ID_PARAM = 'continueSessionId';
 
-export const AGENT_BUILDER_PROMPT_MAX_LENGTH = 100_000;
+export { EXTENDED_PROMPT_MAX_LENGTH as AGENT_BUILDER_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';
