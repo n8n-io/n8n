@@ -80,6 +80,11 @@ export class InProcessEventBus implements InstanceAiEventBus {
 	 * subscribers, and relayed to sibling mains with its id.
 	 */
 	publish(threadId: string, event: InstanceAiEvent): void {
+		// Stamp publish time once — replays (SSE reconnect, snapshot rebuilds)
+		// rely on it to reconstruct real timing instead of processing time.
+		if (event.ts === undefined) {
+			event = { ...event, ts: Date.now() };
+		}
 		if (!this.instanceSettings.isMultiMain) {
 			const id = (this.lastLocalId.get(threadId) ?? 0) + 1;
 			this.lastLocalId.set(threadId, id);

@@ -109,6 +109,13 @@ function ensureAgent(state: AgentRunState, agentId: string): InstanceAiAgentNode
 	return state.agentsById[agentId];
 }
 
+/** When the event was published — falls back to "now" for live events and
+ *  old persisted events that predate the `ts` envelope field. Replays must
+ *  use the publish time or tool durations collapse to processing time. */
+function eventTimestamp(event: { ts?: number }): string {
+	return (event.ts !== undefined ? new Date(event.ts) : new Date()).toISOString();
+}
+
 /** Append text to timeline — merges consecutive text entries within the same responseId. */
 function appendTimelineText(
 	timeline: InstanceAiTimelineEntry[],
@@ -253,7 +260,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					args: {},
 					isLoading: true,
 					renderHint: getRenderHint(event.payload.toolName),
-					startedAt: new Date().toISOString(),
+					startedAt: eventTimestamp(event),
 				};
 				state.toolCallsById[event.payload.toolCallId] = tc;
 				agent.toolCalls.push(tc);
@@ -283,7 +290,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					args: event.payload.args,
 					isLoading: true,
 					renderHint: getRenderHint(event.payload.toolName),
-					startedAt: new Date().toISOString(),
+					startedAt: eventTimestamp(event),
 				};
 				state.toolCallsById[event.payload.toolCallId] = tc;
 				agent.toolCalls.push(tc);
@@ -302,7 +309,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			if (tc) {
 				tc.result = event.payload.result;
 				tc.isLoading = false;
-				tc.completedAt = new Date().toISOString();
+				tc.completedAt = eventTimestamp(event);
 			}
 			break;
 		}
@@ -313,7 +320,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			if (tc) {
 				tc.error = event.payload.error;
 				tc.isLoading = false;
-				tc.completedAt = new Date().toISOString();
+				tc.completedAt = eventTimestamp(event);
 			}
 			break;
 		}

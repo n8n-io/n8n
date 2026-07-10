@@ -419,7 +419,11 @@ describe('InProcessEventBus', () => {
 
 			expect(publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'relay-instance-ai-event',
-				payload: { threadId: 'thread-1', storedEvent: { id: 1, event } },
+				payload: {
+					threadId: 'thread-1',
+					// publish() stamps the publish time onto the event
+					storedEvent: { id: 1, event: { ...event, ts: expect.any(Number) } },
+				},
 			});
 		});
 

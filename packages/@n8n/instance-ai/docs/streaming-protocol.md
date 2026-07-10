@@ -65,6 +65,7 @@ Every event follows this schema:
   type: string;        // event type
   runId: string;       // correlates all events in a single message → response cycle
   agentId: string;     // agent this event is attributed to in the UI
+  ts?: number;         // epoch ms stamped at publish — replays reconstruct real timing from it
   payload?: object;    // event-specific data
 }
 ```
