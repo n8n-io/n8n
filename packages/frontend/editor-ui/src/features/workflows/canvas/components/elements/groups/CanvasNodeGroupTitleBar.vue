@@ -299,14 +299,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 	position: relative;
 	width: 100%;
 	height: 100%;
-	background: var(--background--surface);
-	background-clip: padding-box;
-	@include styles.canvas-node-border;
-	border-radius: var(--radius--lg) var(--radius--lg) 0 0;
-	box-sizing: border-box;
-	.wrapper.collapsed & {
-		border-radius: var(--radius--lg);
-	}
+	@include styles.group-title-bar-surface;
 
 	.wrapper.selected & {
 		@include styles.canvas-node-selected-ring;
@@ -357,12 +350,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 }
 
 .toggle {
-	flex-shrink: 0;
-}
-
-/*  Don't render the aria-expanded toggle as "pressed" while inactive */
-.toggle[aria-expanded='true']:not(:hover):not(:active) {
-	background-color: transparent;
+	@include styles.group-toggle;
 }
 
 .title {
@@ -428,12 +416,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 	position: absolute;
 	left: 0;
 	width: 100%;
-	background: var(--background--hover);
-	@include styles.canvas-node-border(dashed);
-	border-top: none;
-	border-radius: 0 0 var(--radius--lg) var(--radius--lg);
-	pointer-events: none;
-	box-sizing: border-box;
+	@include styles.group-frame-surface;
 	z-index: 0;
 }
 

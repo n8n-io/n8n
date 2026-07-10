@@ -98,3 +98,36 @@
 	}
 	/* stylelint-enable */
 }
+
+// Shared visual shell for canvas groups (real node groups and sub-workflow
+// groups). Layout (positioning, sizing) stays per-component; these cover the
+// common surface, frame, and toggle appearance.
+@mixin group-title-bar-surface {
+	background: var(--background--surface);
+	background-clip: padding-box;
+	@include canvas-node-border;
+	border-radius: var(--radius--lg) var(--radius--lg) 0 0;
+	box-sizing: border-box;
+
+	.wrapper.collapsed & {
+		border-radius: var(--radius--lg);
+	}
+}
+
+@mixin group-frame-surface {
+	background: var(--background--hover);
+	@include canvas-node-border(dashed);
+	border-top: none;
+	border-radius: 0 0 var(--radius--lg) var(--radius--lg);
+	pointer-events: none;
+	box-sizing: border-box;
+}
+
+@mixin group-toggle {
+	flex-shrink: 0;
+
+	// Don't render the aria-expanded toggle as "pressed" while inactive
+	&[aria-expanded='true']:not(:hover):not(:active) {
+		background-color: transparent;
+	}
+}
