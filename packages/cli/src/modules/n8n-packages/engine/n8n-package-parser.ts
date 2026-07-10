@@ -6,7 +6,7 @@ import { ZodError } from 'zod';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
-import { topLevelFolders, topLevelWorkflows } from './package-layout';
+import { deriveParentFolderId, foldersInScope, workflowsInScope } from './package-layout';
 import type { PreparedFolder } from '../entities/folder/folder-import.types';
 import type { PreparedProject } from '../entities/project/project-import.types';
 import type { PreparedWorkflow } from '../entities/workflow/workflow-import.types';
@@ -39,23 +39,29 @@ export class N8nPackageParser {
 		}
 	}
 
-	/** Reads the package's top-level workflows; those nested in a folder or project are skipped. */
-	async getWorkflows(reader: PackageReader): Promise<PreparedWorkflow[]> {
+	/**
+	 * Reads a scope's workflows — both scope-root and folder-nested — attaching each to its package
+	 * folder (via {@link deriveParentFolderId}). `basePrefix` selects the scope: `''` for a workflow
+	 * package's root, `projects/<slug>/` for a project's contents.
+	 */
+	async getWorkflows(reader: PackageReader, basePrefix = ''): Promise<PreparedWorkflow[]> {
 		const manifest = await this.getManifest(reader);
+		const folderTargetToId = new Map((manifest.folders ?? []).map((f) => [f.target, f.id]));
 
 		const workflows: PreparedWorkflow[] = [];
-		for (const entry of topLevelWorkflows(manifest.workflows)) {
-			workflows.push(await this.readWorkflow(reader, entry));
+		for (const entry of workflowsInScope(manifest.workflows, basePrefix)) {
+			const parentFolderId = deriveParentFolderId(entry.target, folderTargetToId);
+			workflows.push(await this.readWorkflow(reader, entry, parentFolderId));
 		}
 		return workflows;
 	}
 
-	/** Reads the package's top-level folder shells (project-nested folders are skipped). */
-	async getFolders(reader: PackageReader): Promise<PreparedFolder[]> {
+	/** Reads a scope's folder shells (whole subtree). `basePrefix` selects the scope (see {@link getWorkflows}). */
+	async getFolders(reader: PackageReader, basePrefix = ''): Promise<PreparedFolder[]> {
 		const manifest = await this.getManifest(reader);
 
 		const folders: PreparedFolder[] = [];
-		for (const entry of topLevelFolders(manifest.folders)) {
+		for (const entry of foldersInScope(manifest.folders, basePrefix)) {
 			folders.push(await this.readFolder(reader, entry));
 		}
 		return folders;
@@ -75,6 +81,7 @@ export class N8nPackageParser {
 	private async readWorkflow(
 		reader: PackageReader,
 		entry: ManifestEntry,
+		parentFolderId: string | null,
 	): Promise<PreparedWorkflow> {
 		const path = `${entry.target}/workflow.json`;
 		const wire = await this.readJson<SerializedWorkflow>(reader, path, 'workflow');
@@ -94,7 +101,12 @@ export class N8nPackageParser {
 
 		WorkflowHelpers.validateWorkflowStructure(entity);
 
-		return { entity, sourceWorkflowId: entry.id, sourcePublished: wire.isPublished };
+		return {
+			entity,
+			sourceWorkflowId: entry.id,
+			sourcePublished: wire.isPublished,
+			parentFolderId,
+		};
 	}
 
 	private async readFolder(reader: PackageReader, entry: ManifestEntry): Promise<PreparedFolder> {

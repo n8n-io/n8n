@@ -19,6 +19,12 @@ export interface PreparedWorkflow {
 	sourceWorkflowId: string;
 	/** Whether the workflow was published (active) in the source instance. */
 	sourcePublished: boolean;
+	/**
+	 * Source id of the package folder this workflow is nested under (equal to the recreated folder id,
+	 * since folders reuse source ids), or null for a scope-root workflow that lands in the request's
+	 * target folder.
+	 */
+	parentFolderId: string | null;
 }
 
 export type WorkflowPlannedAction = 'create' | 'update' | 'skip';
