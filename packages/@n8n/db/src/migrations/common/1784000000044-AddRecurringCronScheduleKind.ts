@@ -23,7 +23,15 @@ export class AddRecurringCronScheduleKind1784000000044 implements IrreversibleMi
 	async up(context: MigrationContext) {
 		await this.addRecurrenceColumns(context);
 
-		await context.queryRunner.getTable(`${context.tablePrefix}${table}`);
+		// `addRecurrenceColumns` adds the two columns via raw `ALTER TABLE ADD
+		// COLUMN`, which TypeORM doesn't observe, so its cached `Table` metadata is
+		// stale. On SQLite the next steps rebuild the whole table from that cache
+		// (see `widenKindCheck` / `addRecurringCronPresenceCheck`); without this
+		// refresh the rebuild would silently drop the two new columns.
+		// `getTable()` reloads the real schema from PRAGMA table_info.
+		if (context.isSqlite) {
+			await context.queryRunner.getTable(`${context.tablePrefix}${table}`);
+		}
 
 		await this.widenKindCheck(context);
 		await this.addRecurringCronPresenceCheck(context);
