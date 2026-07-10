@@ -10,7 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { validateUserTargetId } from '../GenericFunctions';
+import { stampItemIndexOnError, validateUserTargetId } from '../GenericFunctions';
 
 export type ToDoCredentialType =
 	| 'microsoftToDoOAuth2Api'
@@ -56,11 +56,14 @@ export function getServicePrincipalResourceRoot(rawId: string, node: INode): str
 
 /**
  * Resolves the app-only `/users/{id}` root for the current node context, or `undefined`
- * for the OAuth2 credentials (which use the `/me` path). The `userTarget` RLC value is
- * extracted manually (not via `{ extractValue: true }`) so the single call shape works in
- * both execute (`0` = itemIndex) and load-options (`0` = ignored fallback) contexts; an
- * unpersisted/empty target coalesces to `''`, which yields the intended "target ID
- * required" error rather than a malformed `/users/` URL.
+ * for the OAuth2 credentials (which use the `/me` path). The `userTarget` RLC accepts
+ * expressions and is resolved per item: execute call sites MUST pass the loop's item
+ * index. Load-options rely on the `itemIndex = 0` default — there `getNodeParameter`'s
+ * 2nd arg is a fallback, not an index, so the default keeps that context's reads
+ * unchanged. The RLC value is extracted manually (not via `{ extractValue: true }`) so
+ * the single call shape works in both contexts; an unpersisted/empty target coalesces to
+ * `''`, which yields the intended "target ID required" error rather than a malformed
+ * `/users/` URL.
  */
 export function resolveScopeRoot(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -74,7 +77,11 @@ export function resolveScopeRoot(
 		typeof raw === 'string'
 			? raw
 			: String((raw as INodeParameterResourceLocator | undefined)?.value ?? '');
-	return getServicePrincipalResourceRoot(id, this.getNode());
+	try {
+		return getServicePrincipalResourceRoot(id, this.getNode());
+	} catch (error) {
+		throw stampItemIndexOnError(error, itemIndex);
+	}
 }
 
 export async function microsoftApiRequest(
@@ -86,6 +93,7 @@ export async function microsoftApiRequest(
 	uri?: string,
 	_headers: IDataObject = {},
 	option: IDataObject = { json: true },
+	itemIndex = 0,
 ) {
 	const credentialType = getToDoCredentialType.call(this);
 	const isServicePrincipal = credentialType === 'microsoftEntraServicePrincipalApi';
@@ -97,12 +105,13 @@ export async function microsoftApiRequest(
 	).replace(/\/+$/, '');
 
 	// App-only Service Principal has no `/me`; rebase the request onto the chosen user.
-	// `userTarget` is `noDataExpression` (a node-level value, identical for every item), so
-	// resolving it once here is correct. Only page-1 (relative) requests are scoped —
-	// paginated follow-ups pass an absolute `@odata.nextLink` as `uri`, used verbatim.
+	// `userTarget` accepts expressions, so it is resolved per item — execute call sites
+	// MUST pass the loop's item index (loadOptions rely on the default, see
+	// resolveScopeRoot). Only page-1 (relative) requests are scoped — paginated
+	// follow-ups pass an absolute `@odata.nextLink` as `uri`, used verbatim.
 	let uriToUse = uri || `${baseUrl}/v1.0/me${resource}`;
 	if (!uri && isServicePrincipal) {
-		const scopeRoot = resolveScopeRoot.call(this);
+		const scopeRoot = resolveScopeRoot.call(this, itemIndex);
 		if (scopeRoot) {
 			uriToUse = `${baseUrl}/v1.0${scopeRoot}${resource}`;
 		}
@@ -133,7 +142,7 @@ export async function microsoftApiRequest(
 		}
 		return await this.helpers.requestOAuth2.call(this, credentialType, options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex });
 	}
 }
 
@@ -144,6 +153,7 @@ export async function microsoftApiRequestAllItems(
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
+	itemIndex = 0,
 ) {
 	const returnData: IDataObject[] = [];
 
@@ -152,7 +162,17 @@ export async function microsoftApiRequestAllItems(
 	query.$top = 100;
 
 	do {
-		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query, uri);
+		responseData = await microsoftApiRequest.call(
+			this,
+			method,
+			endpoint,
+			body,
+			query,
+			uri,
+			undefined,
+			undefined,
+			itemIndex,
+		);
 		uri = responseData['@odata.nextLink'];
 		if (uri?.includes('$top')) {
 			delete query.$top;
