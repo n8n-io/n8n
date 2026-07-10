@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon';
 import * as oracleDBTypes from 'oracledb';
-import type { IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 
 import type { ExecuteOpBindParam } from '../helpers/interfaces';
 import {
@@ -451,6 +451,88 @@ describe('Test configureQueryRunner', () => {
 			}),
 		);
 		expect(close).toHaveBeenCalledTimes(1);
+	});
+
+	it('should return RETURNING date out binds as ISO strings on version 1.1', async () => {
+		const date = new Date('2020-01-01T12:00:00.000Z');
+		const execute = vi.fn().mockResolvedValue({ outBinds: { created: date } });
+		const close = vi.fn().mockResolvedValue(undefined);
+		const connection = { execute, close };
+		const getConnection = vi.fn().mockResolvedValue(connection);
+		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
+		const constructExecutionMetaData = vi
+			.fn()
+			.mockImplementation((data: INodeExecutionData[]) => data);
+		const context = {
+			helpers: { constructExecutionMetaData },
+		} as unknown as IExecuteFunctions;
+		const node = { typeVersion: 1.1 } as unknown as INode;
+		const queryRunner = configureQueryRunner.call(context, node, false, pool);
+
+		const result = await queryRunner(
+			[{ query: 'INSERT ... RETURNING created INTO :created', values: {} }],
+			[],
+			{ operation: 'execute', stmtBatching: 'independently' },
+		);
+
+		expect(result).toEqual([{ json: { created: '2020-01-01T12:00:00.000Z' } }]);
+	});
+
+	it('should keep RETURNING date out binds as Date objects before version 1.1', async () => {
+		const date = new Date('2020-01-01T12:00:00.000Z');
+		const execute = vi.fn().mockResolvedValue({ outBinds: { created: date } });
+		const close = vi.fn().mockResolvedValue(undefined);
+		const connection = { execute, close };
+		const getConnection = vi.fn().mockResolvedValue(connection);
+		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
+		const constructExecutionMetaData = vi
+			.fn()
+			.mockImplementation((data: INodeExecutionData[]) => data);
+		const context = {
+			helpers: { constructExecutionMetaData },
+		} as unknown as IExecuteFunctions;
+		const node = { typeVersion: 1 } as unknown as INode;
+		const queryRunner = configureQueryRunner.call(context, node, false, pool);
+
+		const result = await queryRunner(
+			[{ query: 'INSERT ... RETURNING created INTO :created', values: {} }],
+			[],
+			{ operation: 'execute', stmtBatching: 'independently' },
+		);
+
+		expect((result[0].json as IDataObject).created).toBeInstanceOf(Date);
+	});
+
+	it('should move RETURNING binary out binds to the binary output on version 1.1', async () => {
+		const blob = Buffer.from('file-bytes');
+		const execute = vi.fn().mockResolvedValue({ outBinds: { doc: blob } });
+		const close = vi.fn().mockResolvedValue(undefined);
+		const connection = { execute, close };
+		const getConnection = vi.fn().mockResolvedValue(connection);
+		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
+		const constructExecutionMetaData = vi
+			.fn()
+			.mockImplementation((data: INodeExecutionData[]) => data);
+		const prepareBinaryData = vi.fn(async (buffer: Buffer, fileName?: string) => ({
+			data: buffer.toString('base64'),
+			fileName,
+			mimeType: 'application/octet-stream',
+		}));
+		const context = {
+			helpers: { constructExecutionMetaData, prepareBinaryData },
+		} as unknown as IExecuteFunctions;
+		const node = { typeVersion: 1.1 } as unknown as INode;
+		const queryRunner = configureQueryRunner.call(context, node, false, pool);
+
+		const result = await queryRunner(
+			[{ query: 'INSERT ... RETURNING doc INTO :doc', values: {} }],
+			[],
+			{ operation: 'execute', stmtBatching: 'independently' },
+		);
+
+		expect(result[0].json).not.toHaveProperty('doc');
+		expect(prepareBinaryData).toHaveBeenCalledWith(blob, 'doc');
+		expect((result[0] as INodeExecutionData).binary?.doc).toBeDefined();
 	});
 
 	it('should append out-bind execution data one item at a time without spread push', async () => {

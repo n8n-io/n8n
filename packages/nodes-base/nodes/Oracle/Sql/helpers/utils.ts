@@ -1,13 +1,14 @@
 import { randomUUID } from 'crypto';
 import { DateTime } from 'luxon';
 import type {
+	IBinaryKeyData,
 	IDataObject,
 	IExecuteFunctions,
 	INode,
 	IPairedItemData,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { NodeOperationError, UserError } from 'n8n-workflow';
+import { deepCopy, NodeOperationError, UserError } from 'n8n-workflow';
 import oracledb from 'oracledb';
 
 import { generatePairedItemData, wrapData } from '@utils/utilities';
@@ -411,22 +412,44 @@ function normalizeOutBinds(
 	return rows;
 }
 
-function _getResponseForOutbinds(
+async function _getResponseForOutbinds(
 	this: IExecuteFunctions,
 	results: oracledb.Results<unknown> | oracledb.Result<unknown>,
 	stmtBatching: string,
 	outputColumns: string[] = [],
 	returnData: INodeExecutionData[] = [],
+	serializeDates = false,
 ) {
 	if (results.outBinds) {
 		const normalizedRows = normalizeOutBinds(results.outBinds, stmtBatching, outputColumns);
 
 		for (let j = 0; j < normalizedRows.length; j++) {
-			const executionData = this.helpers.constructExecutionMetaData(wrapData(normalizedRows[j]), {
+			let row = normalizedRows[j];
+			const binary: IBinaryKeyData = {};
+
+			if (serializeDates) {
+				// RETURNING values bypass the fetch handler, so binds arrive as live JS objects.
+				// Move binary (BLOB/RAW) columns to the item's binary output and deep-serialize the
+				// rest (e.g. date binds become ISO strings) so json stays JSON-safe.
+				const json: Record<string, any> = {};
+				for (const [key, value] of Object.entries(row)) {
+					if (Buffer.isBuffer(value)) {
+						binary[key] = await this.helpers.prepareBinaryData(value, key);
+					} else {
+						json[key] = value;
+					}
+				}
+				row = deepCopy(json);
+			}
+
+			const executionData = this.helpers.constructExecutionMetaData(wrapData(row), {
 				itemData: { item: j },
 			});
 			if (!executionData?.length) continue;
 			for (const entry of executionData) {
+				if (Object.keys(binary).length) {
+					entry.binary = { ...(entry.binary ?? {}), ...binary };
+				}
 				returnData.push(entry);
 			}
 		}
@@ -488,18 +511,21 @@ export function configureQueryRunner(
 				? 'single'
 				: 'independently';
 		const stmtBatching = (options.stmtBatching as QueryMode) || defaultBatching;
+		const serializeDates = node.typeVersion >= 1.1;
 
 		if (stmtBatching === 'transaction' || stmtBatching === 'independently') {
 			// setup fetch Handler for specific types.
+			const dateDbTypes: oracledb.DbType[] = [
+				oracledb.DB_TYPE_DATE,
+				oracledb.DB_TYPE_TIMESTAMP_TZ,
+				oracledb.DB_TYPE_TIMESTAMP_LTZ,
+			];
+			if (node.typeVersion >= 1.1) {
+				// Plain TIMESTAMP columns used to leak JS Date objects
+				dateDbTypes.push(oracledb.DB_TYPE_TIMESTAMP);
+			}
 			const executeFetchHandler = function (metaData: oracledb.Metadata<any>) {
-				if (
-					metaData.dbType &&
-					[
-						oracledb.DB_TYPE_DATE,
-						oracledb.DB_TYPE_TIMESTAMP_TZ,
-						oracledb.DB_TYPE_TIMESTAMP_LTZ,
-					].includes(metaData.dbType as any)
-				) {
+				if (metaData.dbType && dateDbTypes.includes(metaData.dbType as any)) {
 					return {
 						converter: (val: unknown) => {
 							if (!(val instanceof Date)) return val;
@@ -564,12 +590,13 @@ export function configureQueryRunner(
 						returnData.push({ json: { message: error.message }, pairedItem });
 					}
 				} else {
-					_getResponseForOutbinds.call(
+					await _getResponseForOutbinds.call(
 						this,
 						results,
 						stmtBatching,
 						queries[0].outputColumns,
 						returnData,
+						serializeDates,
 					);
 				}
 
@@ -612,12 +639,13 @@ export function configureQueryRunner(
 						doesRowExist(query, transactionResults);
 
 						const resultOutBinds: INodeExecutionData[] = [];
-						_getResponseForOutbinds.call(
+						await _getResponseForOutbinds.call(
 							this,
 							transactionResults,
 							stmtBatching,
 							outputColumns,
 							resultOutBinds,
+							serializeDates,
 						);
 						if (!resultOutBinds.length) {
 							let rowData = transactionResults.rows ?? [];
@@ -671,12 +699,13 @@ export function configureQueryRunner(
 						doesRowExist(query, taskResults);
 
 						const resultOutBinds: INodeExecutionData[] = [];
-						_getResponseForOutbinds.call(
+						await _getResponseForOutbinds.call(
 							this,
 							taskResults,
 							stmtBatching,
 							outputColumns,
 							resultOutBinds,
+							serializeDates,
 						);
 						if (!resultOutBinds.length) {
 							// select query or no returning clause in DML
