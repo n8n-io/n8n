@@ -1,6 +1,7 @@
 export const DOMAIN_TOOL_IDS = {
 	WORKFLOWS: 'workflows',
 	EVALS: 'evals',
+	EVAL_CONFIG: 'eval-config',
 	EXECUTIONS: 'executions',
 	CREDENTIALS: 'credentials',
 	DATA_TABLES: 'data-tables',
@@ -37,6 +38,7 @@ export const WORKSPACE_TOOL_IDS = {
 
 export const CREDENTIALS_TOOL_ID = DOMAIN_TOOL_IDS.CREDENTIALS;
 export const DATA_TABLES_TOOL_ID = DOMAIN_TOOL_IDS.DATA_TABLES;
+export const EVAL_CONFIG_TOOL_ID = DOMAIN_TOOL_IDS.EVAL_CONFIG;
 export const ASK_USER_TOOL_ID = DOMAIN_TOOL_IDS.ASK_USER;
 export const N8N_DOCS_TOOL_ID = DOMAIN_TOOL_IDS.N8N_DOCS;
 

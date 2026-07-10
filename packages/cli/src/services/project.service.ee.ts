@@ -715,6 +715,15 @@ export class ProjectService {
 		return projects.map((p) => p.id);
 	}
 
+	async findExistingProjectIds(projectIds: string[]): Promise<Set<string>> {
+		if (projectIds.length === 0) return new Set();
+		const projects = await this.projectRepository.find({
+			select: ['id'],
+			where: { id: In(projectIds) },
+		});
+		return new Set(projects.map(({ id }) => id));
+	}
+
 	async findProjectsByIdsForUser(
 		user: User,
 		projectIds: string[],

@@ -13,7 +13,8 @@
 // Two functions, both small:
 //
 //   findLatestBaseline    — list baseline-prefixed projects, pick newest.
-//   fetchBaselineBucket   — read its root runs, bucket per scenario.
+//   fetchBaselineBucket   — read its root runs, bucket per evaluation unit
+//                           (execution scenarios + build expectations).
 //
 // Both throw on transport errors. Callers are expected to swallow with a log:
 // the comparison is advisory and shouldn't fail the eval run.
@@ -22,7 +23,14 @@
 import type { Client } from 'langsmith';
 import { z } from 'zod';
 
-import type { ExperimentBucket, ScenarioCounts } from './compare';
+import {
+	expectationUnitKey,
+	scenarioUnitKey,
+	type EvaluationUnitCounts,
+	type ExperimentBucket,
+} from './compare';
+import { expectationResultsSchema } from '../cli/reshape';
+import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
 
 /**
  * Prefix the latest-baseline lookup matches against. The CLI flag
@@ -37,6 +45,8 @@ const inputsSchema = z
 	.object({
 		testCaseFile: z.string().default(''),
 		scenarioName: z.string().default(''),
+		/** 0-based iteration index; absent on single-iteration runs. */
+		_iteration: z.number().int().nonnegative().default(0),
 	})
 	.passthrough();
 
@@ -45,6 +55,10 @@ const outputsSchema = z
 		passed: z.boolean().default(false),
 		failureCategory: z.string().optional(),
 		incomplete: z.boolean().optional(),
+		// Case-level expectation verdicts embedded by target(); absent on
+		// baselines captured before expectation persistence. `.catch` so a
+		// malformed field doesn't void the whole row.
+		expectationResults: expectationResultsSchema.optional().catch(undefined),
 	})
 	.passthrough();
 
@@ -72,9 +86,16 @@ export async function findLatestBaseline(
 }
 
 /**
- * Fetch a baseline experiment's per-scenario pass/fail counts. Each root run
+ * Fetch a baseline experiment's per-unit pass/fail counts. Each root run
  * corresponds to one (testCaseFile, scenarioName, iteration) triple — we
- * bucket by `${testCaseFile}/${scenarioName}` and accumulate.
+ * bucket scenarios by `${testCaseFile}/${scenarioName}` and accumulate.
+ *
+ * Every row of a case additionally embeds that (case, iteration)'s
+ * expectation verdicts, so expectations are deduped per (case, iteration) —
+ * the first row carrying the field wins — and accumulate into expectation
+ * units. The `__build_only__` sentinel is such a carrier but never a
+ * scenario unit. Baselines captured before expectation persistence simply
+ * produce no expectation units.
  *
  * Throws if the project does not exist.
  */
@@ -83,8 +104,9 @@ export async function fetchBaselineBucket(
 	experimentName: string,
 ): Promise<ExperimentBucket> {
 	const project = await client.readProject({ projectName: experimentName });
-	const scenarios = new Map<string, ScenarioCounts>();
+	const evaluationUnits = new Map<string, EvaluationUnitCounts>();
 	const failureCategoryTotals: Record<string, number> = {};
+	const seenExpectationCarriers = new Set<string>();
 	let trialTotal = 0;
 
 	for await (const run of client.listRuns({ projectId: project.id, isRoot: true })) {
@@ -105,13 +127,43 @@ export async function fetchBaselineBucket(
 		}
 		const outputs = outputsSchema.safeParse(rawOutputs);
 		if (!outputs.success) continue;
+
+		// Expectations ingest before the sentinel/incomplete guards: the sentinel
+		// row is the only carrier for build-only cases, and a scenario-incomplete
+		// row still holds valid expectation verdicts.
+		// Same shape as the build-cache key (`iteration:fileSlug`).
+		const carrierKey = `${String(inputs.data._iteration)}:${inputs.data.testCaseFile}`;
+		const expectationResults = outputs.data.expectationResults;
+		if (expectationResults && !seenExpectationCarriers.has(carrierKey)) {
+			seenExpectationCarriers.add(carrierKey);
+			for (const verdict of expectationResults) {
+				// Judge-incomplete verdicts carry no signal — outside the denominator.
+				if (verdict.incomplete) continue;
+				const key = expectationUnitKey(inputs.data.testCaseFile, verdict.expectation);
+				const existing: EvaluationUnitCounts = evaluationUnits.get(key) ?? {
+					kind: 'expectation',
+					testCaseFile: inputs.data.testCaseFile,
+					name: verdict.expectation,
+					passed: 0,
+					total: 0,
+				};
+				existing.total++;
+				if (verdict.pass) existing.passed++;
+				evaluationUnits.set(key, existing);
+			}
+		}
+
+		// Build-only sentinel rows aren't execution scenarios — counting them would
+		// add a pseudo-scenario per build-only case and skew the trial totals.
+		if (inputs.data.scenarioName === BUILD_ONLY_SCENARIO_NAME) continue;
 		// Verifier-incomplete rows carry no verdict — skip so they don't count as failed trials.
 		if (outputs.data.incomplete) continue;
 
-		const key = `${inputs.data.testCaseFile}/${inputs.data.scenarioName}`;
-		const existing: ScenarioCounts = scenarios.get(key) ?? {
+		const key = scenarioUnitKey(inputs.data.testCaseFile, inputs.data.scenarioName);
+		const existing: EvaluationUnitCounts = evaluationUnits.get(key) ?? {
+			kind: 'scenario',
 			testCaseFile: inputs.data.testCaseFile,
-			scenarioName: inputs.data.scenarioName,
+			name: inputs.data.scenarioName,
 			passed: 0,
 			total: 0,
 			failureCategories: {},
@@ -126,8 +178,8 @@ export async function fetchBaselineBucket(
 			existing.failureCategories[cat] = (existing.failureCategories[cat] ?? 0) + 1;
 			failureCategoryTotals[cat] = (failureCategoryTotals[cat] ?? 0) + 1;
 		}
-		scenarios.set(key, existing);
+		evaluationUnits.set(key, existing);
 	}
 
-	return { experimentName, scenarios, failureCategoryTotals, trialTotal };
+	return { experimentName, evaluationUnits, failureCategoryTotals, trialTotal };
 }
