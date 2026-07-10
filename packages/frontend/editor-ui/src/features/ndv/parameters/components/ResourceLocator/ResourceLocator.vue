@@ -611,7 +611,12 @@ onBeforeUnmount(() => {
 	}
 });
 
-onClickOutside(dropdownRef as Ref<VueInstance>, hideResourceDropdown);
+onClickOutside(dropdownRef as Ref<VueInstance>, (event) => {
+	if (event.target instanceof HTMLElement && dropdownRef.value?.isWithinDropdown(event.target)) {
+		return;
+	}
+	hideResourceDropdown();
+});
 
 function setWidth() {
 	if (containerRef.value) {

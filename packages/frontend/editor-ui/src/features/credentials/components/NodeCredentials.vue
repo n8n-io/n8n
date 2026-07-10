@@ -910,11 +910,27 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					data-test-id="node-credentials-empty-state"
 				>
 					<N8nSelect
+						ref="selectRefs"
 						:class="$style.emptySelect"
 						size="small"
-						disabled
+						:disabled="!canCreateCredentials"
 						:placeholder="i18n.baseText('nodeCredentials.emptyState.noCredentials')"
-					/>
+						:popper-class="$style.selectPopper"
+					>
+						<template #empty> </template>
+						<template #footer>
+							<button
+								type="button"
+								data-test-id="node-credentials-select-item-new"
+								:class="[$style.newCredential]"
+								:disabled="!canCreateCredentials"
+								@click="onClickCreateCredential(type)"
+							>
+								<N8nIcon size="xsmall" icon="plus" />
+								{{ NEW_CREDENTIALS_TEXT }}
+							</button>
+						</template>
+					</N8nSelect>
 					<N8nButton
 						v-if="canCreateCredentials"
 						variant="subtle"
