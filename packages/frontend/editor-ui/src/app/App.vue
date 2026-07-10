@@ -27,18 +27,35 @@ import { useExposeCssVar } from '@/app/composables/useExposeCssVar';
 import { useFloatingUiOffsets } from '@/app/composables/useFloatingUiOffsets';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
-import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import type {
+	WorkflowDocumentId,
+	WorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 const route = useRoute();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
-const ndvStore = useNDVStore();
+
+const workflowId = useWorkflowId();
+const currentWorkflowDocumentStore = shallowRef<WorkflowDocumentStore | null>(null);
+
+provide(WorkflowIdKey, workflowId);
+provide(WorkflowDocumentStoreKey, currentWorkflowDocumentStore);
+
+// App.vue provides WorkflowDocumentStoreKey, so it cannot inject it. Expose the
+// current workflow document id (null when no workflow is loaded, e.g.
+// settings/credentials views); consumers derive their own scoped NDV store from
+// it via useNDVStore() as needed.
+const workflowDocumentId = computed<WorkflowDocumentId | null>(
+	() => currentWorkflowDocumentStore.value?.documentId ?? null,
+);
+
 const { setAppZIndexes } = useStyles();
 const { toastBottomOffset, toastRightOffset, askAiFloatingButtonBottomOffset } =
-	useFloatingUiOffsets();
+	useFloatingUiOffsets(workflowDocumentId);
 
 // Initialize undo/redo
-useHistoryHelper(route);
+useHistoryHelper(route, workflowDocumentId);
 
 // Initialize workflow diff routing management
 useWorkflowDiffRouting();
@@ -52,13 +69,14 @@ const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);
 const isDemoMode = computed(() => route.name === VIEWS.DEMO);
 const hasContentFooter = ref(false);
-const workflowId = useWorkflowId();
-const currentWorkflowDocumentStore = shallowRef<WorkflowDocumentStore | null>(null);
 
-provide(WorkflowIdKey, workflowId);
-provide(WorkflowDocumentStoreKey, currentWorkflowDocumentStore);
-
-useTelemetryContext({ ndv_source: computed(() => ndvStore.lastSetActiveNodeSource) });
+useTelemetryContext({
+	ndv_source: computed(() =>
+		workflowDocumentId.value
+			? useNDVStore(workflowDocumentId.value).lastSetActiveNodeSource
+			: undefined,
+	),
+});
 
 onMounted(async () => {
 	setAppZIndexes();
@@ -112,7 +130,9 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 		</AppLayout>
 		<AppModals />
 		<AppCommandBar />
-		<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />
+		<template #overlays>
+			<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />
+		</template>
 		<template #aside>
 			<AppChatPanel v-if="layoutRef" :layout-ref="layoutRef" />
 		</template>

@@ -21,6 +21,7 @@ import {
 	normalizeResourceLocators,
 	escapeNewlinesInExpressionStrings,
 	parseVersion,
+	generateDeterministicGroupId,
 } from '../../string-utils';
 import type { SerializerPlugin, SerializerContext } from '../types';
 
@@ -142,11 +143,20 @@ function serializeNode(
 	if (config.retryOnFail) {
 		n8nNode.retryOnFail = config.retryOnFail;
 	}
+	if (typeof config.maxTries === 'number') {
+		n8nNode.maxTries = config.maxTries;
+	}
+	if (typeof config.waitBetweenTries === 'number') {
+		n8nNode.waitBetweenTries = config.waitBetweenTries;
+	}
 	if (config.alwaysOutputData) {
 		n8nNode.alwaysOutputData = config.alwaysOutputData;
 	}
 	if (config.onError) {
 		n8nNode.onError = config.onError;
+	}
+	if (config.extendsCredential) {
+		n8nNode.extendsCredential = config.extendsCredential;
 	}
 
 	return n8nNode;
@@ -261,6 +271,23 @@ export const jsonSerializer: SerializerPlugin<WorkflowJSON> = {
 
 		if (ctx.meta) {
 			json.meta = ctx.meta;
+		}
+
+		// Members already carry the emitted nodes' IDs; filter out any that aren't present
+		// in the output (defensive — should never happen). Group ID precedence: own ID
+		// (carried through fromJSON for a lossless round-trip), then a name match (preserves
+		// UI-assigned IDs across edits), else a deterministic ID from the name.
+		if (ctx.nodeGroups && ctx.nodeGroups.length > 0) {
+			const emittedIds = new Set(nodes.map((node) => node.id));
+
+			json.nodeGroups = ctx.nodeGroups.map((group) => ({
+				id:
+					group.id ??
+					ctx.existingGroupIdsByName?.get(group.name) ??
+					generateDeterministicGroupId(ctx.workflowId, group.name),
+				name: group.name,
+				nodeIds: group.memberIds.filter((id) => emittedIds.has(id)),
+			}));
 		}
 
 		return json;

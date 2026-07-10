@@ -1,132 +1,136 @@
 import { Workspace } from '@n8n/agents';
+import {
+	createFilesystem,
+	createSandbox as createSharedSandbox,
+	type CreateSandboxOptions,
+	type DaytonaSandboxConfig,
+	type DisabledSandboxConfig,
+	type N8nSandboxConfig,
+	type SandboxConfig as SharedSandboxConfig,
+	type SandboxInstance,
+	type SandboxProvider,
+} from '@n8n/agents/sandbox';
+import { randomUUID } from 'node:crypto';
 
-import { DaytonaFilesystem } from './daytona-filesystem';
-import { DaytonaSandbox } from './daytona-sandbox';
-import { LocalFilesystem } from './local-filesystem';
-import { LocalSandbox } from './local-sandbox';
-import { N8nSandboxFilesystem } from './n8n-sandbox-filesystem';
-import { N8nSandboxServiceSandbox } from './n8n-sandbox-sandbox';
+import type { Logger } from '../logger';
+import { SnapshotManager } from './snapshot-manager';
 
-export type SandboxProvider = 'daytona' | 'local' | 'n8n-sandbox';
-
-interface SandboxConfigBase {
-	provider: SandboxProvider;
-	timeout?: number;
-}
-
-interface DisabledSandboxConfig extends SandboxConfigBase {
-	enabled: false;
-}
-
-interface DaytonaSandboxConfig extends SandboxConfigBase {
-	enabled: true;
-	provider: 'daytona';
-	daytonaApiUrl?: string;
-	daytonaApiKey?: string;
-	image?: string;
-	/** Running n8n version, used to resolve a versioned prebuilt snapshot (`n8n-instance-ai-<version>`). */
+export type InstanceAiDaytonaSandboxConfig = DaytonaSandboxConfig & {
+	/** Running n8n version, used to resolve a versioned prebuilt snapshot. */
 	n8nVersion?: string;
-	/** Prefix prepended to the Daytona sandbox name; also surfaced as a `name_prefix` label. */
+	/** Prefix prepended to the Daytona sandbox name and surfaced as a label. */
 	namePrefix?: string;
-	/**
-	 * Seconds to wait for `daytona.create()` (image build + container boot).
-	 * Cold image builds can exceed the SDK default; bump this in environments
-	 * where the image has not been pre-warmed. Defaults to 300 in the factory
-	 * to preserve existing behavior when unset.
-	 */
-	createTimeoutSeconds?: number;
-	/** When provided, called before each Daytona interaction to get a fresh auth token (e.g. a short-lived JWT for proxy mode). */
-	getAuthToken?: () => Promise<string>;
-}
+};
 
-interface LocalSandboxConfig extends SandboxConfigBase {
-	enabled: true;
-	provider: 'local';
-}
-
-interface N8nSandboxConfig extends SandboxConfigBase {
-	enabled: true;
-	provider: 'n8n-sandbox';
-	serviceUrl?: string;
-	apiKey?: string;
-}
-
-export type SandboxConfig =
+export type InstanceAiSandboxConfig =
 	| DisabledSandboxConfig
-	| DaytonaSandboxConfig
-	| LocalSandboxConfig
+	| InstanceAiDaytonaSandboxConfig
 	| N8nSandboxConfig;
+
+export type SandboxConfig = InstanceAiSandboxConfig;
+export { type SandboxInstance, type SandboxProvider };
+
+export interface InstanceAiCreateSandboxOptions extends CreateSandboxOptions {
+	useSnapshotFallback?: boolean;
+}
+
+const NOOP_LOGGER: Logger = {
+	info: () => {},
+	warn: () => {},
+	error: () => {},
+	debug: () => {},
+};
+const INSTANCE_AI_SANDBOX_ID_LABEL = 'n8n-instance-ai-sandbox-id';
+
+function createSandboxId(): string {
+	return `daytona-sandbox-${randomUUID()}`;
+}
+
+function toSharedDaytonaSandboxConfig(
+	config: InstanceAiDaytonaSandboxConfig,
+): DaytonaSandboxConfig {
+	const id = config.id ?? createSandboxId();
+	const sharedConfig = {
+		...config,
+		id,
+		labels: {
+			...config.labels,
+			[INSTANCE_AI_SANDBOX_ID_LABEL]: id,
+		},
+	};
+	delete sharedConfig.n8nVersion;
+	delete sharedConfig.namePrefix;
+	delete sharedConfig.snapshot;
+	return sharedConfig;
+}
+
+function toSharedSandboxConfig(config: InstanceAiSandboxConfig): SharedSandboxConfig {
+	if (!config.enabled || config.provider !== 'daytona') return config;
+	return toSharedDaytonaSandboxConfig(config);
+}
 
 /**
  * Create a sandbox instance based on config.
  * Returns undefined when sandbox is disabled.
  *
- * - 'daytona': Isolated Docker container via Daytona API (production)
- * - 'local': Direct host execution via LocalSandbox (development only, no isolation)
+ * - 'daytona': Isolated Docker container via Daytona API.
+ * - 'n8n-sandbox': n8n sandbox service-backed container.
  */
 export async function createSandbox(
-	config: SandboxConfig,
-): Promise<DaytonaSandbox | LocalSandbox | N8nSandboxServiceSandbox | undefined> {
+	config: InstanceAiSandboxConfig,
+	options: InstanceAiCreateSandboxOptions = {},
+): Promise<SandboxInstance | undefined> {
 	if (!config.enabled) return undefined;
 
-	if (config.provider === 'daytona') {
-		// In proxy mode, resolve a fresh token via getAuthToken; in direct mode use the static key.
-		const apiKey = config.getAuthToken ? await config.getAuthToken() : config.daytonaApiKey;
-		return new DaytonaSandbox({
-			apiKey,
-			apiUrl: config.daytonaApiUrl,
-			...(config.image ? { image: config.image } : {}),
-			language: 'typescript',
-			timeout: config.timeout ?? 300_000,
+	if (config.provider !== 'daytona' || options.useSnapshotFallback !== true) {
+		return await createSharedSandbox(toSharedSandboxConfig(config), {
+			logger: options.logger,
+			errorReporter: options.errorReporter,
 		});
 	}
 
-	if (config.provider === 'n8n-sandbox') {
-		return new N8nSandboxServiceSandbox({
-			apiKey: config.apiKey,
-			serviceUrl: config.serviceUrl,
-			timeout: config.timeout ?? 300_000,
-		});
-	}
+	const logger = options.logger ?? config.logger ?? NOOP_LOGGER;
+	const snapshotManager = new SnapshotManager(
+		typeof config.image === 'string' ? config.image : undefined,
+		logger,
+		config.n8nVersion,
+	);
 
-	// Local fallback for development — no isolation, runs commands directly on host.
-	// Block in production to prevent unrestricted host command execution.
-	if (process.env.NODE_ENV === 'production') {
-		throw new Error(
-			'LocalSandbox (provider: "local") is not allowed in production. Use "daytona" provider for isolated sandbox execution.',
-		);
-	}
-
-	return new LocalSandbox({
-		workingDirectory: './workspace',
+	const isProxyMode = config.getAuthToken !== undefined;
+	// An explicit snapshot name (e.g. from N8N_INSTANCE_AI_SANDBOX_SNAPSHOT) overrides the
+	// version-derived default.
+	const snapshot = isProxyMode
+		? (config.snapshot ?? snapshotManager.snapshotName() ?? undefined)
+		: undefined;
+	logger.debug('Resolved Daytona sandbox snapshot', {
+		snapshot: snapshot ?? '(none — building from image)',
+		source: config.snapshot ? 'override' : isProxyMode ? 'n8n-version' : 'image-only',
 	});
+	const image = await snapshotManager.ensureImage();
+
+	return await createSharedSandbox(
+		{
+			...toSharedDaytonaSandboxConfig(config),
+			image,
+			...(snapshot ? { snapshot } : {}),
+		},
+		{
+			logger: options.logger,
+			errorReporter: options.errorReporter,
+		},
+	);
 }
 
 /**
  * Create a Workspace wrapping a sandbox instance.
- * When sandbox is a LocalSandbox, also provides a local filesystem.
  */
-export function createWorkspace(
-	sandbox: DaytonaSandbox | LocalSandbox | N8nSandboxServiceSandbox | undefined,
-): Workspace | undefined {
+export function createWorkspace(sandbox: SandboxInstance | undefined): Workspace | undefined {
 	if (!sandbox) return undefined;
 
-	if (sandbox instanceof LocalSandbox) {
-		return new Workspace({
-			sandbox,
-			filesystem: new LocalFilesystem({ basePath: './workspace' }),
-		});
-	}
-
-	if (sandbox instanceof N8nSandboxServiceSandbox) {
-		return new Workspace({
-			sandbox,
-			filesystem: new N8nSandboxFilesystem(sandbox),
-		});
-	}
+	const filesystem = createFilesystem(sandbox);
 
 	return new Workspace({
 		sandbox,
-		filesystem: new DaytonaFilesystem(sandbox),
+		filesystem,
 	});
 }

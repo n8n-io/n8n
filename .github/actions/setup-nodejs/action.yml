@@ -7,9 +7,9 @@ description: 'Configures Node.js with pnpm, installs Aikido SafeChain for supply
 
 inputs:
   node-version:
-    description: 'Node.js version to use. Pinned to 24.15.0 by default for reproducible builds.'
+    description: 'Node.js version to use. Pinned to 24.16.0 by default for reproducible builds.'
     required: false
-    default: '24.15.0'
+    default: '24.16.0'
   enable-docker-cache:
     description: 'Whether to set up Blacksmith Buildx for Docker layer caching (Blacksmith runners only).'
     required: false
@@ -90,26 +90,169 @@ runs:
         mkdir -p "$HOME/.safe-chain"
         cp "${{ github.action_path }}/safe-chain.config.json" "$HOME/.safe-chain/config.json"
 
-    - name: Install Aikido SafeChain
+    # Cache the SafeChain binary keyed on version + platform. The binary path
+    # is deterministic, so subsequent jobs across the CI fanout (E2E shards,
+    # docker-cluster, unit, lint, typecheck, ...) hit the cache instead of
+    # the GH release CDN. Layered with retry below — cache reduces blast
+    # radius across jobs, retry covers the first-job-per-key case where the
+    # CDN must be hit. Keep the version in sync with the download step below.
+    - name: Restore Aikido SafeChain Binary
+      id: cache-safe-chain
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      with:
+        path: ~/.safe-chain/bin
+        key: safe-chain-1.5.7-${{ runner.os }}-${{ runner.arch }}
+
+    # Download + install the SafeChain binary. This is the expensive,
+    # CDN-backed part and the only part worth gating on the cache. The install
+    # script also runs `setup-ci`, so on a cache miss this both downloads AND
+    # activates; the Activate step below then re-runs `setup-ci` idempotently.
+    - name: Download Aikido SafeChain
+      if: steps.cache-safe-chain.outputs.cache-hit != 'true'
       run: |
-        VERSION="1.5.3"
-        EXPECTED_SHA256="0107cbbbf90159379756157e902acae512d62ffbd174307e42c5fe9f266792d3"
+        VERSION="1.5.7"
+        EXPECTED_SHA256="07ab512fd8795ce41b2275be369aced4c9a93cc7bca9b397951507891a955239"
         node .github/scripts/retry.mjs --attempts 3 --delay 10 -- \
           curl -fsSL -o install-safe-chain.sh "https://github.com/AikidoSec/safe-chain/releases/download/${VERSION}/install-safe-chain.sh"
         echo "${EXPECTED_SHA256}  install-safe-chain.sh" | sha256sum -c -
-        sh install-safe-chain.sh --ci
+        # Wrap the install in retry too — it internally fetches the
+        # safe-chain binary from the GH release CDN, which has hit
+        # transient 404s.
+        node .github/scripts/retry.mjs --attempts 3 --delay 10 -- \
+          sh install-safe-chain.sh --ci
         rm install-safe-chain.sh
       shell: bash
 
-    - name: Install Dependencies
-      if: ${{ inputs.install-command != '' }}
-      env:
-        INSTALL_COMMAND: ${{ inputs.install-command }}
+    # ALWAYS runs, even on a cache hit. `setup-ci` installs SafeChain's
+    # executable shims and exposes them to subsequent steps via $GITHUB_PATH.
+    # That PATH wiring is per-job runtime state — it is NOT captured by the
+    # binary cache above. On a cache hit the download step is skipped, so this
+    # is the only thing that puts SafeChain on PATH for the install/build steps;
+    # without it the package managers run unwrapped and protection is inert.
+    # Runs the cached binary directly to avoid a redundant CDN round-trip.
+    - name: Activate Aikido SafeChain
       run: |
-        timeout --kill-after=30s 300s $INSTALL_COMMAND --reporter=append-only
+        "$HOME/.safe-chain/bin/safe-chain" setup-ci
       shell: bash
 
+    # Fail fast if activation did not take effect, mirroring the Node/pnpm
+    # verify guards above. We use SafeChain's own `safe-chain-verify` command,
+    # which runs *through* the wrapped package manager and prints
+    # "OK: Safe-chain works!" only when the shim is active.
+    # Kept as a step after Activate: `setup-ci` exposes the shims via
+    # $GITHUB_PATH, which only reaches PATH between steps.
+    - name: Verify SafeChain is active
+      shell: bash
+      run: node .github/scripts/verify-safechain.mjs
+
+    # `--loglevel` CLI flag does NOT override `.npmrc` for that path, but
+    # `--config.loglevel` does — so the failing script's real output reaches us.
+    # (Confirmed on CI across Blacksmith + GitHub-hosted, through the SafeChain
+    # shim and the real pnpm binary)
+    #
+    # Layered so the cause survives even failure modes pnpm can't report itself:
+    #  1. `--config.loglevel=info` un-suppresses lifecycle output (the actual fix).
+    #     `--reporter=append-only` is pinned so we don't drift if pnpm changes its
+    #     CI default; combined stdout+stderr is streamed live AND persisted to
+    #     `$INSTALL_LOG` via `tee`; `${PIPESTATUS[0]}` preserves pnpm's exit code.
+    #  2. `--config.logs-dir` routes pnpm's own `ERR_PNPM_*` diagnostic logs into
+    #     a dir we always collect.
+    #  3. On failure we dump an environment snapshot written by *this* shell —
+    #     node/pnpm versions, the resolved pnpm binary, SafeChain wiring, free
+    #     memory, disk, and kernel OOM lines — so OOM / wrong-binary deaths that
+    #     produce no pnpm output at all are still diagnosable.
+    #  4. Everything is uploaded as an artifact by the next step, so the full log
+    #     survives even when the live console stream is truncated by the runner.
+    #
+    # `SAFE_CHAIN_LOGGING=verbose` surfaces safe-chain's proxy decisions, which
+    # are otherwise buffered (and lost on failure) while pnpm is in flight.
+    - name: Install Dependencies
+      if: ${{ inputs.install-command != '' }}
+      id: install-deps
+      env:
+        INSTALL_COMMAND: ${{ inputs.install-command }}
+        INSTALL_LOG: ${{ runner.temp }}/pnpm-install.log
+        PNPM_DIAG_DIR: ${{ runner.temp }}/pnpm-diagnostics
+        SAFE_CHAIN_LOGGING: verbose
+        GITHUB_TOKEN: ${{ github.token }}
+      run: |
+        # Stable, artifact-name-safe id for the upload step (written first so it
+        # exists even if the install dies immediately).
+        DIAG_ID="$(printf '%s' "${GITHUB_JOB}-${RUNNER_NAME}-${GITHUB_RUN_ATTEMPT}-${RANDOM}" | tr -c 'A-Za-z0-9._-' '-')"
+        echo "diag-id=$DIAG_ID" >> "$GITHUB_OUTPUT"
+        mkdir -p "$PNPM_DIAG_DIR/pnpm-logs"
+
+        set +o pipefail
+        timeout --kill-after=30s 300s $INSTALL_COMMAND \
+          --config.logs-dir="$PNPM_DIAG_DIR/pnpm-logs" \
+          --reporter=append-only --config.loglevel=info 2>&1 | tee "$INSTALL_LOG"
+        rc=${PIPESTATUS[0]}
+        set -o pipefail
+
+        if [ "$rc" -ne 0 ]; then
+          # Self-emitted environment snapshot — cannot be swallowed by pnpm.
+          {
+            echo "exit_code=$rc"
+            echo "date=$(date -u +%FT%TZ)"
+            echo "install_command=$INSTALL_COMMAND"
+            echo "node=$(node --version 2>&1)"
+            echo "pnpm=$(pnpm --version 2>&1)"
+            echo "pnpm_resolved=$(command -v pnpm 2>&1) -> $(readlink -f "$(command -v pnpm 2>/dev/null)" 2>&1)"
+            echo "pnpm_on_path=$(which -a pnpm 2>&1 | tr '\n' ' ')"
+            echo "safe_chain_bin=$(ls -la "$HOME/.safe-chain/bin" 2>&1 | tr '\n' ' ')"
+            echo "mem_mb=$(free -m 2>/dev/null | tr '\n' ' ' || echo 'free unavailable')"
+            echo "disk=$(df -h "$PWD" 2>/dev/null | tail -1)"
+            echo "oom=$(dmesg 2>/dev/null | grep -iE 'killed process|out of memory' | tail -5 || true)"
+          } > "$PNPM_DIAG_DIR/environment.txt" 2>&1
+          cp "$INSTALL_LOG" "$PNPM_DIAG_DIR/" 2>/dev/null || true
+
+          echo "::error::pnpm install failed (exit $rc). Full output + diagnostics below; also uploaded as artifact 'pnpm-install-logs-${DIAG_ID}'."
+          echo "::group::Environment diagnostics"
+          cat "$PNPM_DIAG_DIR/environment.txt"
+          echo "::endgroup::"
+          echo "::group::pnpm install combined output ($INSTALL_LOG)"
+          cat "$INSTALL_LOG" 2>/dev/null || echo "(combined log empty — pnpm produced no capturable output; see environment diagnostics and the uploaded artifact)"
+          echo "::endgroup::"
+          echo "::group::pnpm diagnostic logs ($PNPM_DIAG_DIR/pnpm-logs)"
+          find "$PNPM_DIAG_DIR/pnpm-logs" -type f -exec sh -c 'echo "----- $1 -----"; cat "$1"' _ {} \; 2>/dev/null || echo "(none)"
+          echo "::endgroup::"
+          case "$rc" in
+            124) echo "::error::pnpm install timed out after 300s (exit 124)" ;;
+            137) echo "::error::pnpm install received SIGKILL (exit 137 — likely OOM or kill-after timeout)" ;;
+          esac
+        fi
+        exit "$rc"
+      shell: bash
+
+    # Persist the full combined log + diagnostics so the real cause survives even
+    # when the runner truncates the live console stream. Scoped to the install
+    # step's own failure so unrelated step failures don't trigger an empty upload.
+    - name: Upload pnpm install diagnostics
+      if: ${{ failure() && steps.install-deps.outcome == 'failure' }}
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      with:
+        name: pnpm-install-logs-${{ steps.install-deps.outputs.diag-id }}
+        path: |
+          ${{ runner.temp }}/pnpm-install.log
+          ${{ runner.temp }}/pnpm-diagnostics/**
+        if-no-files-found: ignore
+        retention-days: 7
+
+    # When setup-nodejs is nested inside another setup-nodejs invocation
+    # (e.g. load-n8n-docker's rebuild fallback → build-n8n-docker), a turbo
+    # cache server is already running and its TURBO_API env is already
+    # exported, so the nested builds can just use it. Starting a second
+    # server overwrites TURBOGHA_PORT, which both post-runs then read: the
+    # first post shuts the second server down, and the other post fails the
+    # job with a bare `fetch failed` — and the first server's caches are
+    # never saved.
+    - name: Check for running Turborepo cache server
+      id: turbo-server
+      shell: bash
+      run: echo "running=${TURBOGHA_PORT:+true}" >> "$GITHUB_OUTPUT"
+
     - name: Configure Turborepo Cache
+      if: steps.turbo-server.outputs.running != 'true'
       uses: rharkor/caching-for-turbo@5d14fba18e450c09393333cfd4242e8b3cb455a6 # v2.4.2
       with:
         server-port: 0

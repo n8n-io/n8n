@@ -15,13 +15,16 @@ import type {
 	WorkflowTagMappingRepository,
 	Variables,
 } from '@n8n/db';
-import { GLOBAL_ADMIN_ROLE, In, PROJECT_OWNER_ROLE, User } from '@n8n/db';
+import { GLOBAL_ADMIN_ROLE, In, PROJECT_OWNER_ROLE, User, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { captor, mock } from 'jest-mock-extended';
 import { Cipher, type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
 
+vi.mock('node:fs/promises');
+import { captor, mock } from 'vitest-mock-extended';
+
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
+
 import type { VariablesService } from '../../../environments.ee/variables/variables.service.ee';
 import { SourceControlExportService } from '../source-control-export.service.ee';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
@@ -61,11 +64,11 @@ describe('SourceControlExportService', () => {
 		dataTableRepository,
 	);
 
-	const fsWriteFile = jest.spyOn(fsp, 'writeFile');
-	const fsReadFile = jest.spyOn(fsp, 'readFile');
+	const fsWriteFile = vi.spyOn(fsp, 'writeFile');
+	const fsReadFile = vi.spyOn(fsp, 'readFile');
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter.mockReturnValue({});
 	});
 
@@ -103,7 +106,7 @@ describe('SourceControlExportService', () => {
 							},
 						],
 					}),
-				}),
+				} as never) as SharedCredentials,
 			]);
 
 			// Act
@@ -144,7 +147,7 @@ describe('SourceControlExportService', () => {
 						id: 'team1',
 						name: 'Test Team',
 					}),
-				}),
+				} as never) as SharedCredentials,
 			]);
 
 			// Act
@@ -200,6 +203,8 @@ describe('SourceControlExportService', () => {
 				type: 'oauth2',
 				data: cipher.encrypt(credentialData),
 				isGlobal: true,
+				isResolvable: false,
+				resolvableAllowFallback: false,
 			});
 
 			sharedCredentialsRepository.findByCredentialIds.mockResolvedValue([
@@ -210,7 +215,7 @@ describe('SourceControlExportService', () => {
 						id: 'team1',
 						name: 'Test Team',
 					}),
-				}),
+				} as never) as SharedCredentials,
 			]);
 
 			// Act
@@ -245,6 +250,8 @@ describe('SourceControlExportService', () => {
 					teamName: 'Test Team',
 				},
 				isGlobal: true,
+				isResolvable: false,
+				resolvableAllowFallback: false,
 			});
 		});
 
@@ -256,6 +263,8 @@ describe('SourceControlExportService', () => {
 				type: 'oauth2',
 				data: cipher.encrypt(credentialData),
 				isGlobal: false,
+				isResolvable: false,
+				resolvableAllowFallback: false,
 			});
 
 			sharedCredentialsRepository.findByCredentialIds.mockResolvedValue([
@@ -270,7 +279,7 @@ describe('SourceControlExportService', () => {
 							},
 						],
 					}),
-				}),
+				} as never) as SharedCredentials,
 			]);
 
 			// Act
@@ -303,7 +312,47 @@ describe('SourceControlExportService', () => {
 					personalEmail: 'user@example.com',
 				},
 				isGlobal: false,
+				isResolvable: false,
+				resolvableAllowFallback: false,
 			});
+		});
+
+		it('should export isResolvable and resolvableAllowFallback for private credentials', async () => {
+			// Arrange
+			const mockResolvableCredential = mock({
+				id: 'resolvable-cred1',
+				name: 'Resolvable Credential',
+				type: 'oauth2',
+				data: cipher.encrypt(credentialData),
+				isGlobal: false,
+				isResolvable: true,
+				resolvableAllowFallback: true,
+			});
+
+			// Ownership is not asserted here, so a minimal sharing mock is enough.
+			sharedCredentialsRepository.findByCredentialIds.mockResolvedValue([
+				mock<SharedCredentials>({
+					credentials: mockResolvableCredential,
+				}),
+			]);
+
+			// Act
+			const result = await service.exportCredentialsToWorkFolder([
+				mock<SourceControlledFile>({ id: 'resolvable-cred1' }),
+			]);
+
+			// Assert
+			expect(result.count).toBe(1);
+
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				'/mock/n8n/git/credential_stubs/resolvable-cred1.json',
+				dataCaptor,
+			);
+
+			const exportedData = JSON.parse(dataCaptor.value);
+			expect(exportedData.isResolvable).toBe(true);
+			expect(exportedData.resolvableAllowFallback).toBe(true);
 		});
 
 		it('should default isGlobal to false when not specified', async () => {
@@ -328,7 +377,7 @@ describe('SourceControlExportService', () => {
 							},
 						],
 					}),
-				}),
+				} as never) as SharedCredentials,
 			]);
 
 			// Act
@@ -526,25 +575,72 @@ describe('SourceControlExportService', () => {
 	});
 
 	describe('exportWorkflowsToWorkFolder', () => {
-		it('should export workflows to work folder', async () => {
+		it('should export workflows with all required fields', async () => {
 			// Arrange
-			workflowRepository.findByIds.mockResolvedValue([mock()]);
+			const workflowId = 'wf-1';
+			const nodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['node-1'] }];
+			const nodes = [
+				{
+					id: 'node-1',
+					type: 'n8n-nodes-base.noOp',
+					name: 'NoOp',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+				},
+			];
+			workflowRepository.find.mockResolvedValue([
+				Object.assign(new WorkflowEntity(), {
+					id: workflowId,
+					name: 'Test Workflow',
+					nodes,
+					connections: {},
+					settings: {},
+					triggerCount: 1,
+					versionId: 'v1',
+					parentFolder: null,
+					isArchived: false,
+					nodeGroups,
+				}),
+			]);
 			sharedWorkflowRepository.findByWorkflowIds.mockResolvedValue([
 				mock<SharedWorkflow>({
+					workflowId,
 					project: mock({
 						type: 'personal',
-						projectRelations: [{ role: PROJECT_OWNER_ROLE, user: mock() }],
+						projectRelations: [
+							{ role: PROJECT_OWNER_ROLE, user: mock({ email: 'user@test.com' }) },
+						],
 					}),
 					workflow: mock(),
-				}),
+				} as never) as SharedWorkflow,
 			]);
 
 			// Act
-			const result = await service.exportWorkflowsToWorkFolder([mock()]);
+			const result = await service.exportWorkflowsToWorkFolder([
+				mock<SourceControlledFile>({ id: workflowId }),
+			]);
 
 			// Assert
 			expect(result.count).toBe(1);
 			expect(result.files).toHaveLength(1);
+
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith(expect.stringContaining(workflowId), dataCaptor);
+			const exported = JSON.parse(dataCaptor.value);
+			expect(exported).toEqual({
+				id: workflowId,
+				name: 'Test Workflow',
+				nodes,
+				connections: {},
+				settings: {},
+				triggerCount: 1,
+				versionId: 'v1',
+				parentFolderId: null,
+				isArchived: false,
+				nodeGroups,
+				owner: { type: 'personal', personalEmail: 'user@test.com' },
+			});
 		});
 
 		it('should throw an error if workflow has no owner', async () => {
@@ -559,7 +655,7 @@ describe('SourceControlExportService', () => {
 						id: 'test-workflow-id',
 						name: 'TestWorkflow',
 					}),
-				}),
+				} as never) as SharedWorkflow,
 			]);
 
 			// Act & Assert

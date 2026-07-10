@@ -21,20 +21,21 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 	let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 	let currentProjectId: string | null = null;
 	let currentAgentId: string | null = null;
+	let autoRefreshActive = false;
 
 	// Tracks the most recently requested (project, agent) pair. Concurrent
 	// `fetchThreads` calls — typically when the user switches agents quickly —
 	// would otherwise race, and an older response could overwrite the newer
 	// agent's threads.
-	function keyFor(projectId: string, agentId: string | null) {
-		return `${projectId}:${agentId ?? ''}`;
+	function keyFor(projectId: string, agentId: string) {
+		return `${projectId}:${agentId}`;
 	}
 	let latestKey: string | null = null;
 
-	async function fetchThreads(projectId: string, agentId?: string) {
+	async function fetchThreads(projectId: string, agentId: string) {
 		currentProjectId = projectId;
-		currentAgentId = agentId ?? null;
-		const key = keyFor(projectId, currentAgentId);
+		currentAgentId = agentId;
+		const key = keyFor(projectId, agentId);
 		latestKey = key;
 		loading.value = true;
 		try {
@@ -42,9 +43,9 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 			const page = await listThreads(
 				rootStore.restApiContext,
 				projectId,
+				agentId,
 				ITEMS_PER_PAGE,
 				undefined,
-				agentId,
 			);
 			if (latestKey !== key) return;
 			threads.value = page.threads;
@@ -66,17 +67,17 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 	 *     existing cursor still points past everything we've loaded, while
 	 *     the cursor returned by a fresh first-page fetch would rewind us.
 	 */
-	async function refreshThreads(projectId: string, agentId?: string) {
-		const key = keyFor(projectId, agentId ?? null);
+	async function refreshThreads(projectId: string, agentId: string) {
+		const key = keyFor(projectId, agentId);
 		if (latestKey !== null && latestKey !== key) return;
 		try {
 			const rootStore = useRootStore();
 			const page = await listThreads(
 				rootStore.restApiContext,
 				projectId,
+				agentId,
 				ITEMS_PER_PAGE,
 				undefined,
-				agentId,
 			);
 			if (latestKey !== key) return;
 			const seen = new Set(page.threads.map((t) => t.id));
@@ -92,9 +93,9 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		}
 	}
 
-	async function loadMore(projectId: string, agentId?: string) {
+	async function loadMore(projectId: string, agentId: string) {
 		if (!nextCursor.value || loading.value) return;
-		const key = keyFor(projectId, agentId ?? null);
+		const key = keyFor(projectId, agentId);
 		// Don't paginate against a stale agent — the cursor belongs to the
 		// previous list.
 		if (latestKey !== null && latestKey !== key) return;
@@ -104,9 +105,9 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 			const page = await listThreads(
 				rootStore.restApiContext,
 				projectId,
+				agentId,
 				ITEMS_PER_PAGE,
 				nextCursor.value,
-				agentId,
 			);
 			if (latestKey !== key) return;
 			// Dedupe by id when appending: the server's cursor can be
@@ -125,31 +126,39 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 
 	async function getThreadDetail(
 		projectId: string,
+		agentId: string,
 		threadId: string,
-		agentId?: string,
 	): Promise<ThreadDetail> {
 		const rootStore = useRootStore();
-		return await getThreadDetailApi(rootStore.restApiContext, projectId, threadId, agentId);
+		return await getThreadDetailApi(rootStore.restApiContext, projectId, agentId, threadId);
 	}
 
-	async function deleteThread(projectId: string, threadId: string) {
+	async function deleteThread(projectId: string, agentId: string, threadId: string) {
 		const rootStore = useRootStore();
-		await deleteThreadApi(rootStore.restApiContext, projectId, threadId);
+		await deleteThreadApi(rootStore.restApiContext, projectId, agentId, threadId);
 		threads.value = threads.value.filter((t) => t.id !== threadId);
+	}
+
+	function scheduleAutoRefresh() {
+		if (!autoRefreshActive || !autoRefresh.value || !currentProjectId || !currentAgentId) return;
+		refreshTimer = setTimeout(async () => {
+			refreshTimer = null;
+			if (currentProjectId && currentAgentId && !document.hidden) {
+				await refreshThreads(currentProjectId, currentAgentId);
+			}
+			if (autoRefreshActive) scheduleAutoRefresh();
+		}, AUTO_REFRESH_INTERVAL_MS);
 	}
 
 	function startAutoRefresh() {
 		stopAutoRefresh();
-		if (!autoRefresh.value || !currentProjectId) return;
-		refreshTimer = setTimeout(async () => {
-			if (currentProjectId) {
-				await refreshThreads(currentProjectId, currentAgentId ?? undefined);
-			}
-			startAutoRefresh();
-		}, AUTO_REFRESH_INTERVAL_MS);
+		if (!autoRefresh.value || !currentProjectId || !currentAgentId) return;
+		autoRefreshActive = true;
+		scheduleAutoRefresh();
 	}
 
 	function stopAutoRefresh() {
+		autoRefreshActive = false;
 		if (refreshTimer) {
 			clearTimeout(refreshTimer);
 			refreshTimer = null;

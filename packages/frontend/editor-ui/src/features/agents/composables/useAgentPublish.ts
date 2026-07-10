@@ -7,6 +7,7 @@ import { publishAgent, revertAgentToPublished, unpublishAgent } from './useAgent
 import { useAgentTelemetry } from './useAgentTelemetry';
 import { buildAgentConfigFingerprint } from './agentTelemetry.utils';
 import { useAgentConfirmationModal } from './useAgentConfirmationModal';
+import { upsertProjectAgentsListCache } from './useProjectAgentsList';
 import type { AgentResource } from '../types';
 
 /**
@@ -28,6 +29,7 @@ export function useAgentPublish() {
 		publishing.value = true;
 		try {
 			const updated = await publishAgent(rootStore.restApiContext, projectId, agentId);
+			upsertProjectAgentsListCache(projectId, updated);
 			// Derive the fingerprint from the server's response so `config_version`
 			// reflects what was actually published regardless of the caller —
 			// list-card publishes don't have access to the live draft. Triggers
@@ -36,7 +38,7 @@ export function useAgentPublish() {
 			// throw in insecure contexts — swallow so telemetry never surfaces
 			// as a publish failure. `trackPublishedAgent` itself is already safe.
 			try {
-				const fp = await buildAgentConfigFingerprint(updated.publishedVersion?.schema ?? null, []);
+				const fp = await buildAgentConfigFingerprint(updated.activeVersion?.schema ?? null, []);
 				agentTelemetry.trackPublishedAgent({ agentId, configVersion: fp.config_version });
 			} catch {
 				// Swallow fingerprint failures.
@@ -70,6 +72,7 @@ export function useAgentPublish() {
 		publishing.value = true;
 		try {
 			const updated = await unpublishAgent(rootStore.restApiContext, projectId, agentId);
+			upsertProjectAgentsListCache(projectId, updated);
 			agentTelemetry.trackUnpublishedAgent({ agentId });
 			showMessage({ title: locale.baseText('agents.publish.toast.unpublished'), type: 'success' });
 			return updated;
@@ -97,6 +100,7 @@ export function useAgentPublish() {
 		publishing.value = true;
 		try {
 			const updated = await revertAgentToPublished(rootStore.restApiContext, projectId, agentId);
+			upsertProjectAgentsListCache(projectId, updated);
 			showMessage({ title: locale.baseText('agents.publish.toast.reverted'), type: 'success' });
 			return updated;
 		} catch (error) {

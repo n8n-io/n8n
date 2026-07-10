@@ -65,6 +65,28 @@ const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
  */
 const DISPLAY_ONLY_PROPERTY_TYPES = new Set(['notice', 'curlImport', 'credentials', 'callout']);
 
+function buildNodeConfigType(
+	paramsTypeName: string,
+	options: {
+		credentialsTypeName?: string;
+		subnodeConfigTypeName?: string;
+		subnodesRequired?: boolean;
+	} = {},
+): string {
+	const parts = [`NodeConfig<${paramsTypeName}>`];
+
+	if (options.credentialsTypeName) {
+		parts.push(`{ credentials?: ${options.credentialsTypeName} }`);
+	}
+
+	if (options.subnodeConfigTypeName) {
+		const optionalMark = options.subnodesRequired ? '' : '?';
+		parts.push(`{ subnodes${optionalMark}: ${options.subnodeConfigTypeName} }`);
+	}
+
+	return parts.join(' & ');
+}
+
 /**
  * Runtime shape for `type: 'icon'` properties (see N8nIconPicker).
  * Values are stored as `{ type: 'icon' | 'emoji'; value: string }`.
@@ -72,8 +94,8 @@ const DISPLAY_ONLY_PROPERTY_TYPES = new Set(['notice', 'curlImport', 'credential
 const ICON_TS_TYPE = "{ type: 'icon' | 'emoji'; value: string }";
 
 /**
- * Runtime shape for `type: 'workflowSelector'` properties.
- * The UI hardcodes two modes (see useWorkflowResourceLocatorModes.ts): `list` and `id`.
+ * Runtime shape for `type: 'workflowSelector'` and `type: 'agentSelector'` properties.
+ * Both hardcode two modes (`list` and `id`); see useResourceLocatorModes.ts.
  * Stored as an INodeParameterResourceLocator, or as an Expression string.
  */
 const WORKFLOW_SELECTOR_TS_TYPE =
@@ -269,6 +291,35 @@ export interface ParameterBuilderHint {
 	placeholderSupported?: boolean;
 }
 
+export interface NodePropertyOption {
+	name: string;
+	value?: string | number | boolean;
+	description?: string;
+	displayName?: string;
+	builderHint?: ParameterBuilderHint;
+	values?: NodeProperty[];
+	type?: string;
+	default?: unknown;
+	required?: boolean;
+	options?: NodePropertyOption[];
+	displayOptions?: {
+		show?: Record<string, unknown[]>;
+		hide?: Record<string, unknown[]>;
+	};
+	disabledOptions?: {
+		show?: Record<string, unknown[]>;
+		hide?: Record<string, unknown[]>;
+	};
+	typeOptions?: Record<string, unknown>;
+	noDataExpression?: boolean;
+	modes?: Array<{
+		name: string;
+		displayName?: string;
+		type?: string;
+		typeOptions?: Record<string, unknown>;
+	}>;
+}
+
 export interface NodeProperty {
 	name: string;
 	displayName: string;
@@ -278,14 +329,7 @@ export interface NodeProperty {
 	builderHint?: ParameterBuilderHint;
 	default?: unknown;
 	required?: boolean;
-	options?: Array<{
-		name: string;
-		value?: string | number | boolean;
-		description?: string;
-		displayName?: string;
-		builderHint?: ParameterBuilderHint;
-		values?: NodeProperty[];
-	}>;
+	options?: NodePropertyOption[];
 	displayOptions?: {
 		show?: Record<string, unknown[]>;
 		hide?: Record<string, unknown[]>;
@@ -313,8 +357,15 @@ export interface NodeTypeDescription {
 	defaultVersion?: number;
 	properties: NodeProperty[];
 	credentials?: Array<{ name: string; required?: boolean }>;
-	inputs: string[] | Array<{ type: string; displayName?: string }>;
-	outputs: string[] | Array<{ type: string; displayName?: string }>;
+	/**
+	 * Connections may be a runtime expression string (`={{ ... }}`) for nodes
+	 * whose shape depends on parameters (e.g. AI Agent, Merge). Generation
+	 * handles those lexically: `ai_*` connection types are extracted from the
+	 * expression source, and dynamic `main` connections don't influence
+	 * heuristics like trigger detection.
+	 */
+	inputs: string | string[] | Array<{ type: string; displayName?: string }>;
+	outputs: string | string[] | Array<{ type: string; displayName?: string }>;
 	subtitle?: string;
 	usableAsTool?: boolean;
 	hidden?: boolean;
@@ -951,6 +1002,7 @@ function mapNestedPropertyTypeInner(
 		case 'icon':
 			return ICON_TS_TYPE;
 		case 'workflowSelector':
+		case 'agentSelector':
 			return WORKFLOW_SELECTOR_TS_TYPE;
 		case 'credentialsSelect':
 			// credentialsSelect is a string value (credential type name)
@@ -1658,6 +1710,7 @@ function mapPropertyTypeInner(
 			return ICON_TS_TYPE;
 
 		case 'workflowSelector':
+		case 'agentSelector':
 			return WORKFLOW_SELECTOR_TS_TYPE;
 
 		case 'credentialsSelect':
@@ -2528,9 +2581,6 @@ export function generateSharedFile(
 	lines.push(`export interface ${baseTypeName} {`);
 	lines.push(`${INDENT}type: '${node.name}';`);
 	lines.push(`${INDENT}version: ${version};`);
-	if (credTypeName) {
-		lines.push(`${INDENT}credentials?: ${credTypeName};`);
-	}
 	if (isTrigger) {
 		lines.push(`${INDENT}isTrigger: true;`);
 	}
@@ -2706,19 +2756,18 @@ export function generateDiscriminatorFile(
 	lines.push(`export type ${nodeTypeName} = {`);
 	lines.push(`${INDENT}type: '${node.name}';`);
 	lines.push(`${INDENT}version: ${version};`);
-	if (node.credentials && node.credentials.length > 0) {
-		lines.push(`${INDENT}credentials?: Credentials;`);
-	}
 	if (isTrigger) {
 		lines.push(`${INDENT}isTrigger: true;`);
 	}
 	// Include subnodes in config if AI inputs exist
 	// subnodes field is required if any AI input type is required
 	const hasRequiredSubnodes = aiInputTypes.some((input) => input.required);
-	const subnodeOptionalMark = hasRequiredSubnodes ? '' : '?';
-	const configType = subnodeConfigTypeName
-		? `NodeConfig<${configName}> & { subnodes${subnodeOptionalMark}: ${subnodeConfigTypeName} }`
-		: `NodeConfig<${configName}>`;
+	const configType = buildNodeConfigType(configName, {
+		credentialsTypeName:
+			node.credentials && node.credentials.length > 0 ? 'Credentials' : undefined,
+		subnodeConfigTypeName: subnodeConfigTypeName ?? undefined,
+		subnodesRequired: hasRequiredSubnodes,
+	});
 	lines.push(`${INDENT}config: ${configType};`);
 	if (schema) {
 		lines.push(`${INDENT}output?: Items<${outputTypeName}>;`);
@@ -2965,18 +3014,23 @@ export function planSplitVersionFiles(
 }
 
 /**
- * Check if node is a trigger (no main input)
+ * Check if node is a trigger.
+ *
+ * Triggers produce main data without consuming any: they emit on the `main`
+ * output and have no `main` input. AI sub-tool nodes (mcpClientTool,
+ * `*Tool` variants, etc.) also have no `main` input, but they emit on
+ * `ai_tool` rather than `main` — so a heuristic that only inspects inputs
+ * misclassifies them. Check outputs explicitly.
  */
 function isTriggerNode(node: NodeTypeDescription): boolean {
-	const inputs = node.inputs;
-	if (Array.isArray(inputs)) {
-		if (inputs.length === 0) return true;
-		if (typeof inputs[0] === 'string') {
-			return !(inputs as string[]).includes('main');
-		}
-		return !inputs.some((i) => typeof i === 'object' && i.type === 'main');
-	}
-	return false;
+	return hasMainConnection(node.outputs) && !hasMainConnection(node.inputs);
+}
+
+function hasMainConnection(connections: NodeTypeDescription['inputs']): boolean {
+	if (!Array.isArray(connections)) return false;
+	return connections.some((connection) =>
+		typeof connection === 'string' ? connection === 'main' : connection.type === 'main',
+	);
 }
 
 /**
@@ -3156,9 +3210,6 @@ export function generateSingleVersionTypeFile(
 	lines.push(`interface ${baseTypeName} {`);
 	lines.push(`${INDENT}type: '${node.name}';`);
 	lines.push(`${INDENT}version: ${specificVersion};`);
-	if (credTypeName) {
-		lines.push(`${INDENT}credentials?: ${credTypeName};`);
-	}
 	if (isTrigger) {
 		lines.push(`${INDENT}isTrigger: true;`);
 	}
@@ -3184,15 +3235,13 @@ export function generateSingleVersionTypeFile(
 		lines.push(`export type ${finalTypeName} = ${baseTypeName} & {`);
 		// Include narrowed subnode config in the NodeConfig if available
 		// subnodes field is required if any AI input type is required
-		if (subnodeConfigTypeName) {
-			const hasRequiredSubnodes = aiInputTypes.some((input) => input.required);
-			const subnodeOptionalMark = hasRequiredSubnodes ? '' : '?';
-			lines.push(
-				`${INDENT}config: NodeConfig<${configInfo.typeName}> & { subnodes${subnodeOptionalMark}: ${subnodeConfigTypeName} };`,
-			);
-		} else {
-			lines.push(`${INDENT}config: NodeConfig<${configInfo.typeName}>;`);
-		}
+		const hasRequiredSubnodes = aiInputTypes.some((input) => input.required);
+		const configType = buildNodeConfigType(configInfo.typeName, {
+			credentialsTypeName: credTypeName,
+			subnodeConfigTypeName: subnodeConfigTypeName ?? undefined,
+			subnodesRequired: hasRequiredSubnodes,
+		});
+		lines.push(`${INDENT}config: ${configType};`);
 		if (outputTypeName) {
 			lines.push(`${INDENT}output?: Items<${outputTypeName}>;`);
 		}
@@ -3216,7 +3265,9 @@ export function generateSingleVersionTypeFile(
 	} else {
 		// No config types - shouldn't happen, but handle gracefully
 		lines.push(`export type ${nodeTypeName} = ${baseTypeName} & {`);
-		lines.push(`${INDENT}config: NodeConfig<Record<string, unknown>>;`);
+		lines.push(
+			`${INDENT}config: ${buildNodeConfigType('Record<string, unknown>', { credentialsTypeName: credTypeName })};`,
+		);
 		lines.push('};');
 	}
 
@@ -3416,13 +3467,16 @@ export function generateNodeTypeFile(nodes: NodeTypeDescription | NodeTypeDescri
 		const credType =
 			n.credentials && n.credentials.length > 0
 				? `${nodeName}${entryVersionSuffix}Credentials`
-				: 'Record<string, never>';
+				: undefined;
 
 		lines.push(`export type ${nodeTypeName} = {`);
 		lines.push(`${INDENT}type: '${n.name}';`);
 		lines.push(`${INDENT}version: ${versionUnion};`);
-		lines.push(`${INDENT}config: NodeConfig<${nodeName}${entryVersionSuffix}Params>;`);
-		lines.push(`${INDENT}credentials?: ${credType};`);
+		lines.push(
+			`${INDENT}config: ${buildNodeConfigType(`${nodeName}${entryVersionSuffix}Params`, {
+				credentialsTypeName: credType,
+			})};`,
+		);
 
 		if (isTrigger) {
 			lines.push(`${INDENT}isTrigger: true;`);

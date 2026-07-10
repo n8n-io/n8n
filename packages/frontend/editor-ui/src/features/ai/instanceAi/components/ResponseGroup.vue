@@ -1,13 +1,10 @@
 <script lang="ts" setup>
 import type { InstanceAiAgentNode } from '@n8n/api-types';
-import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
-import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
+import { N8nAiActivityStepGroup } from '@n8n/design-system';
 import { computed } from 'vue';
 import type { ResponseGroupSegment } from '../useTimelineGrouping';
 import AgentTimeline from './AgentTimeline.vue';
-import TimelineStepButton from './TimelineStepButton.vue';
 
 const props = defineProps<{
 	group: ResponseGroupSegment;
@@ -19,8 +16,11 @@ const props = defineProps<{
 const i18n = useI18n();
 
 const summaryText = computed(() => {
-	const { toolCallCount, textCount, questionCount, childCount } = props.group;
+	const { toolCallCount, textCount, reasoningCount, questionCount, childCount } = props.group;
 	const parts: string[] = [];
+	if (reasoningCount > 0) {
+		parts.push(i18n.baseText('instanceAi.activitySummary.reasoning'));
+	}
 	if (toolCallCount > 0) {
 		parts.push(
 			i18n.baseText('instanceAi.activitySummary.toolCalls', {
@@ -85,19 +85,9 @@ const isCollapsible = computed(
 
 <template>
 	<!-- Collapsible: groups with generic tool calls or children -->
-	<CollapsibleRoot v-if="isCollapsible" v-slot="{ open: isOpen }">
-		<CollapsibleTrigger as-child>
-			<TimelineStepButton size="medium">
-				<template #icon>
-					<N8nIcon :icon="isOpen ? 'chevron-down' : 'chevron-right'" size="small" />
-				</template>
-				{{ summaryText }}
-			</TimelineStepButton>
-		</CollapsibleTrigger>
-		<AnimatedCollapsibleContent>
-			<AgentTimeline :agent-node="props.agentNode" :visible-entries="props.group.entries" />
-		</AnimatedCollapsibleContent>
-	</CollapsibleRoot>
+	<N8nAiActivityStepGroup v-if="isCollapsible" :label="summaryText" size="medium">
+		<AgentTimeline :agent-node="props.agentNode" :visible-entries="props.group.entries" />
+	</N8nAiActivityStepGroup>
 
 	<!-- Flat: groups with only text + special UI (questions, plan-review) -->
 	<AgentTimeline v-else :agent-node="props.agentNode" :visible-entries="props.group.entries" />

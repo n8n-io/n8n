@@ -1,7 +1,7 @@
 import { inTest, isContainedWithin, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
-import { isWindowsFilePath } from '@n8n/utils';
+import { isWindowsFilePath } from '@n8n/utils/files/is-windows-file-path';
 import type ParcelWatcher from '@parcel/watcher';
 import glob from 'fast-glob';
 import fsPromises from 'fs/promises';
@@ -30,7 +30,8 @@ import type {
 	LoadedNodesAndCredentials,
 	NodeLoader,
 } from 'n8n-workflow';
-import { ensureError, UnexpectedError, UserError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { injectDomainRestrictionFields, UnexpectedError, UserError } from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
 
@@ -240,8 +241,14 @@ export class LoadNodesAndCredentials {
 
 		const pathPrefix = `/icons/${packageName}/`;
 		const urlFilePath = url.substring(pathPrefix.length);
-		const filePath = isCustom ? resolvePathCustom(urlFilePath) : resolvePath(urlFilePath);
+		if (isCustom && !isWindowsFilePath(urlFilePath)) {
+			const relativeFilePath = resolvePath(urlFilePath);
+			if (isContainedWithin(loader.directory, relativeFilePath)) {
+				return relativeFilePath;
+			}
+		}
 
+		const filePath = isCustom ? resolvePathCustom(urlFilePath) : resolvePath(urlFilePath);
 		return isContainedWithin(loader.directory, filePath) ? filePath : undefined;
 	}
 
@@ -448,7 +455,7 @@ export class LoadNodesAndCredentials {
 
 		// Create the main context establishment hooks property as a fixedCollection
 		const contextHooksProperty: INodeProperties = {
-			displayName: 'Identify user for dynamic credentials',
+			displayName: 'Identify user for end-user credentials',
 			name: 'contextEstablishmentHooks',
 			type: 'fixedCollection',
 			placeholder: 'Add User Identifier',
@@ -525,40 +532,21 @@ export class LoadNodesAndCredentials {
 				})),
 			);
 
-			const processedCredentials = types.credentials.map((credential) => {
-				if (this.shouldAddDomainRestrictions(credential)) {
-					const clonedCredential = { ...credential };
-					clonedCredential.properties = this.injectDomainRestrictionFields([
-						...(clonedCredential.properties ?? []),
-					]);
-					return {
-						...clonedCredential,
-						supportedNodes:
-							loader instanceof PackageDirectoryLoader
-								? credential.supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
-								: undefined,
-					};
-				}
-				return {
-					...credential,
-					supportedNodes:
-						loader instanceof PackageDirectoryLoader
-							? credential.supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
-							: undefined,
-				};
-			});
+			const processedCredentials = types.credentials.map((credential) => ({
+				...credential,
+				properties: injectDomainRestrictionFields(credential),
+				supportedNodes:
+					loader instanceof PackageDirectoryLoader
+						? credential.supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
+						: undefined,
+			}));
 
 			this.types.credentials = this.types.credentials.concat(processedCredentials);
 
 			// Add domain restriction fields to loaded credentials
 			for (const credentialTypeName in known.credentials) {
 				const credentialType = loader.getCredential(credentialTypeName);
-				if (this.shouldAddDomainRestrictions(credentialType)) {
-					// Access properties through the type field
-					credentialType.type.properties = this.injectDomainRestrictionFields([
-						...(credentialType.type.properties ?? []),
-					]);
-				}
+				credentialType.type.properties = injectDomainRestrictionFields(credentialType.type);
 			}
 
 			for (const type in known.nodes) {
@@ -724,68 +712,5 @@ export class LoadNodesAndCredentials {
 				await subscribe(watchPath, onFileEvent, { ignore });
 			}
 		}
-	}
-
-	private shouldAddDomainRestrictions(
-		credential: ICredentialType | LoadedClass<ICredentialType>,
-	): boolean {
-		// Handle both credential types by extracting the actual ICredentialType
-		const credentialType = 'type' in credential ? credential.type : credential;
-
-		return (
-			credentialType.authenticate !== undefined ||
-			credentialType.genericAuth === true ||
-			(Array.isArray(credentialType.extends) &&
-				(credentialType.extends.includes('oAuth2Api') ||
-					credentialType.extends.includes('oAuth1Api') ||
-					credentialType.extends.includes('googleOAuth2Api')))
-		);
-	}
-
-	private injectDomainRestrictionFields(properties: INodeProperties[]): INodeProperties[] {
-		// Check if fields already exist to avoid duplicates
-		if (properties.some((prop) => prop.name === 'allowedHttpRequestDomains')) {
-			return properties;
-		}
-		const domainFields: INodeProperties[] = [
-			{
-				displayName: 'Allowed HTTP Request Domains',
-				name: 'allowedHttpRequestDomains',
-				type: 'options',
-				options: [
-					{
-						name: 'All',
-						value: 'all',
-						description: 'Allow all requests when used in the HTTP Request node',
-					},
-					{
-						name: 'Specific Domains',
-						value: 'domains',
-						description: 'Restrict requests to specific domains',
-					},
-					{
-						name: 'None',
-						value: 'none',
-						description: 'Block all requests when used in the HTTP Request node',
-					},
-				],
-				default: 'all',
-				description: 'Control which domains this credential can be used with in HTTP Request nodes',
-			},
-			{
-				displayName: 'Allowed Domains',
-				name: 'allowedDomains',
-				type: 'string',
-				default: '',
-				placeholder: 'example.com, *.subdomain.com',
-				description: 'Comma-separated list of allowed domains (supports wildcards with *)',
-				displayOptions: {
-					show: {
-						allowedHttpRequestDomains: ['domains'],
-					},
-				},
-			},
-		];
-		return [...properties, ...domainFields];
 	}
 }

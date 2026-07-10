@@ -1,10 +1,10 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import { accessSync, constants as fsConstants } from 'fs';
-import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import path from 'path';
+import { mock } from 'vitest-mock-extended';
 
 import type { License } from '@/license';
 import {
@@ -22,6 +22,7 @@ import {
 	getTrackingInformationFromPullResult,
 	hasOwnerChanged,
 	isWorkflowModified,
+	mapInBatches,
 	mergeRemoteCrendetialDataIntoLocalCredentialData,
 	sanitizeCredentialData,
 	sourceControlFoldersExistCheck,
@@ -177,7 +178,7 @@ const license = mock<License>();
 const sourceControlPreferencesService = mock<SourceControlPreferencesService>();
 
 beforeAll(async () => {
-	jest.resetAllMocks();
+	vi.resetAllMocks();
 	license.isSourceControlLicensed.mockReturnValue(true);
 	sourceControlPreferencesService.getPreferences.mockReturnValue({
 		branchName: 'main',
@@ -242,6 +243,56 @@ describe('Source Control Helper', () => {
 			expect(getRepoType('git@github.com:n8ntest/n8n_testrepo.git')).toBe('github');
 			expect(getRepoType('git@gitlab.com:n8ntest/n8n_testrepo.git')).toBe('gitlab');
 			expect(getRepoType('git@mygitea.io:n8ntest/n8n_testrepo.git')).toBe('other');
+		});
+	});
+
+	describe('mapInBatches', () => {
+		it('should preserve input order and length', async () => {
+			const items = Array.from({ length: 45 }, (_, i) => i);
+
+			// Resolve items out of order within each batch to prove order is preserved
+			const result = await mapInBatches(items, 20, async (item) => {
+				await new Promise((resolve) => setTimeout(resolve, item % 3));
+				return item * 2;
+			});
+
+			expect(result).toEqual(items.map((item) => item * 2));
+		});
+
+		it('should never run more than batchSize items concurrently', async () => {
+			let inFlight = 0;
+			let maxInFlight = 0;
+
+			await mapInBatches(
+				Array.from({ length: 45 }, (_, i) => i),
+				20,
+				async (item) => {
+					inFlight++;
+					maxInFlight = Math.max(maxInFlight, inFlight);
+					await new Promise((resolve) => setImmediate(resolve));
+					inFlight--;
+					return item;
+				},
+			);
+
+			expect(maxInFlight).toBeLessThanOrEqual(20);
+			expect(maxInFlight).toBeGreaterThan(1);
+		});
+
+		it('should reject when an item fails', async () => {
+			await expect(
+				mapInBatches([1, 2, 3], 2, async (item) => {
+					await Promise.resolve();
+					if (item === 2) throw new Error('boom');
+					return item;
+				}),
+			).rejects.toThrow('boom');
+		});
+
+		it('should return an empty array for empty input', async () => {
+			const fn = vi.fn();
+			await expect(mapInBatches([], 20, fn)).resolves.toEqual([]);
+			expect(fn).not.toHaveBeenCalled();
 		});
 	});
 
@@ -466,8 +517,8 @@ describe('Source Control Helper', () => {
 	describe('readTagAndMappingsFromSourceControlFile', () => {
 		beforeEach(() => {
 			// Reset module registry so we can unmock properly
-			jest.resetModules();
-			jest.unmock('node:fs/promises');
+			vi.resetModules();
+			vi.unmock('node:fs/promises');
 		});
 
 		it('should return default mapping if the file path is not valid', async () => {
@@ -487,8 +538,8 @@ describe('Source Control Helper', () => {
 	describe('readFoldersFromSourceControlFile', () => {
 		beforeEach(() => {
 			// Reset module registry so we can unmock properly
-			jest.resetModules();
-			jest.unmock('node:fs/promises');
+			vi.resetModules();
+			vi.unmock('node:fs/promises');
 		});
 
 		it('should return default folders if the file path is not valid', async () => {
@@ -507,8 +558,8 @@ describe('Source Control Helper', () => {
 	describe('readDataTablesFromSourceControlFile', () => {
 		beforeEach(() => {
 			// Reset module registry so we can unmock properly
-			jest.resetModules();
-			jest.unmock('node:fs/promises');
+			vi.resetModules();
+			vi.unmock('node:fs/promises');
 		});
 
 		it('should return empty array if the file path is not valid (ENOENT)', async () => {
@@ -537,8 +588,8 @@ describe('Source Control Helper', () => {
 			];
 
 			// Mock fsReadFile to return valid JSON
-			jest.doMock('node:fs/promises', () => ({
-				readFile: jest.fn().mockResolvedValue(JSON.stringify(mockDataTables)),
+			vi.doMock('node:fs/promises', () => ({
+				readFile: vi.fn().mockResolvedValue(JSON.stringify(mockDataTables)),
 			}));
 
 			// Import the function after mocking
@@ -656,6 +707,27 @@ describe('Source Control Helper', () => {
 			const creds2 = mockCredential({ isGlobal: true });
 
 			expect(areSameCredentials(creds1, creds2)).toBe(false);
+		});
+
+		it('should return false when isResolvable differs', () => {
+			const creds1 = mockCredential();
+			const creds2 = mockCredential({ isResolvable: true });
+
+			expect(areSameCredentials(creds1, creds2)).toBe(false);
+		});
+
+		it('should return false when resolvableAllowFallback differs', () => {
+			const creds1 = mockCredential();
+			const creds2 = mockCredential({ resolvableAllowFallback: true });
+
+			expect(areSameCredentials(creds1, creds2)).toBe(false);
+		});
+
+		it('should treat undefined and false resolver fields as equal', () => {
+			const creds1 = mockCredential();
+			const creds2 = mockCredential({ isResolvable: false, resolvableAllowFallback: false });
+
+			expect(areSameCredentials(creds1, creds2)).toBe(true);
 		});
 
 		it('should return true when both have undefined data', () => {

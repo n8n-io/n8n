@@ -13,6 +13,7 @@ import {
 	type McpToolCallResult,
 } from '@n8n/api-types';
 import type * as McpBrowserCredentialMod from '@n8n/mcp-browser/dist/tools/credential';
+import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { convertJsonSchemaToZod } from 'zod-from-json-schema-v3';
@@ -44,6 +45,10 @@ import { createToolRegistry } from '../../tool-registry';
 import type { InstanceAiToolRegistry, LocalMcpServer } from '../../types';
 
 type McpContentBlock = McpToolCallResult['content'][number];
+type ModelContentPart =
+	| { type: 'text'; text: string }
+	| { type: 'image-data'; data: string; mediaType: string }
+	| { type: 'file-data'; data: string; mediaType: string };
 
 // ---------------------------------------------------------------------------
 // Schemas shared across all gateway-gated tools
@@ -79,15 +84,15 @@ function isGatewayResourceDecision(
 	return gatewayResourceDecisionSchema.safeParse(option).success;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 function isMcpContentBlock(value: unknown): value is McpContentBlock {
 	if (!isRecord(value)) return false;
 	if (value.type === 'text') return typeof value.text === 'string';
 	if (value.type === 'image') {
 		return typeof value.data === 'string' && typeof value.mimeType === 'string';
+	}
+	if (value.type === 'resource') {
+		if (!isRecord(value.resource)) return false;
+		return typeof value.resource.uri === 'string' && typeof value.resource.blob === 'string';
 	}
 	return false;
 }
@@ -159,20 +164,48 @@ function mcpBlockToMessagePart(block: McpContentBlock): ContentText | ContentFil
 		};
 	}
 
+	if (block.type === 'resource' && block.resource.blob) {
+		return {
+			type: 'file',
+			data: block.resource.blob,
+			mediaType: block.resource.mimeType ?? 'application/octet-stream',
+		};
+	}
+
 	return undefined;
 }
 
-function mcpBlockToModelTextPart(block: McpContentBlock): { type: 'text'; text: string } {
-	if (block.type === 'text') {
+function mcpBlockToModelContentPart(block: McpContentBlock): ModelContentPart | undefined {
+	if (block.type === 'text' && block.text) {
 		return { type: 'text', text: block.text };
 	}
 
-	return { type: 'text', text: `[image: ${block.mimeType || 'image/png'}]` };
+	if (block.type === 'image' && block.data) {
+		return {
+			type: 'image-data',
+			data: block.data,
+			mediaType: block.mimeType || 'image/png',
+		};
+	}
+
+	if (block.type === 'resource' && block.resource.blob) {
+		return {
+			type: 'file-data',
+			data: block.resource.blob,
+			mediaType: block.resource.mimeType ?? 'application/octet-stream',
+		};
+	}
+
+	return undefined;
+}
+
+function isMcpMediaBlock(block: McpContentBlock): boolean {
+	return block.type === 'image' || block.type === 'resource';
 }
 
 function buildNativeMcpMediaMessage(result: unknown): AgentMessage | undefined {
 	const raw = unwrapMcpToolResult(result);
-	if (!raw?.content.some((item) => item.type === 'image')) return undefined;
+	if (!raw?.content.some(isMcpMediaBlock)) return undefined;
 
 	const content = raw.content
 		.map(mcpBlockToMessagePart)
@@ -188,9 +221,9 @@ function buildNativeMcpMediaMessage(result: unknown): AgentMessage | undefined {
 
 const LOCAL_GATEWAY_MCP_SOURCE = 'local gateway MCP';
 
-function warnSkippedLocalMcpSchema(logger: Logger | undefined) {
+function warnSkippedLocalMcpSchema(logger: Logger) {
 	return (error: McpSchemaSanitizationError) => {
-		logger?.warn('Skipped local gateway MCP tool with unsupported schema', {
+		logger.warn('Skipped local gateway MCP tool with unsupported schema', {
 			toolName: error.details.toolName,
 			source: LOCAL_GATEWAY_MCP_SOURCE,
 			path: error.details.path,
@@ -203,9 +236,9 @@ function warnSkippedLocalMcpSchema(logger: Logger | undefined) {
 	};
 }
 
-function warnSkippedLocalMcpTool(logger: Logger | undefined) {
+function warnSkippedLocalMcpTool(logger: Logger) {
 	return (error: McpToolNameValidationError) => {
-		logger?.warn('Skipped local gateway MCP tool with unsafe name', {
+		logger.warn('Skipped local gateway MCP tool with unsafe name', {
 			toolName: error.toolName,
 			source: error.source,
 			reason: error.message,
@@ -227,12 +260,12 @@ function warnSkippedLocalMcpTool(logger: Logger | undefined) {
  * server restarts. On resume, the tool re-calls the daemon with the selected
  * decision token.
  *
- * The `toMessage` callback converts MCP image blocks into native file parts
- * so the LLM receives gateway screenshots as real multimodal input.
+ * The `toModelOutput` callback converts MCP image blocks into AI SDK content
+ * output parts so the LLM receives gateway screenshots as real multimodal input.
  */
 export function createToolsFromLocalMcpServer(
 	server: LocalMcpServer,
-	logger?: Logger,
+	logger: Logger,
 ): InstanceAiToolRegistry {
 	const tools = createToolRegistry();
 	const claimedToolNames = createClaimedToolNames([]);
@@ -271,10 +304,9 @@ export function createToolsFromLocalMcpServer(
 		try {
 			if (toolName === 'browser_create_credential') {
 				// when converting json schema the `inputSchema` has the correct shape and parsed to correct output
-				// but during execution all unspecified key from `data` and `resolveData` are stripped.
-				// somewhere in mastra core the inputSchema is converted multiple times back and forth and
-				// gets transformed to jsonSchema with `additionalProperties=false`
-				// this does not happen when passing the schema directly
+				// but during execution all unspecified keys from `data` and `resolveData` are stripped,
+				// because the schema is converted back and forth and transformed to jsonSchema with
+				// `additionalProperties=false`. Passing the schema directly avoids this.
 				inputSchema = loadMcpBrowserCredential().browserCreateCredentialSchema;
 			} else {
 				// Convert JSON Schema → Zod (v3) so the LLM sees the actual parameter shapes.
@@ -350,7 +382,9 @@ export function createToolsFromLocalMcpServer(
 					};
 				}
 
-				const value = raw.content.map(mcpBlockToModelTextPart);
+				const value = raw.content
+					.map(mcpBlockToModelContentPart)
+					.filter((part): part is ModelContentPart => part !== undefined);
 				return { type: 'content', value };
 			})
 			.build();

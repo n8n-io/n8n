@@ -1,8 +1,9 @@
 /**
  * Template usage telemetry for the builder agent.
  *
- * Pattern-detects template-related shell commands (grep on `examples/index.txt`,
- * cat/head/sed on `examples/*.ts`) and emits three event types via the existing
+ * Pattern-detects template-related shell commands (grep on
+ * `knowledge-base/templates/`, cat/head/sed on
+ * `knowledge-base/templates/*.ts`) and emits three event types via the existing
  * `context.trackTelemetry?.(name, props)` channel:
  *
  *   - `Builder template search` — fired per index grep, with the search query
@@ -14,18 +15,17 @@
  * calls `observe()` after each command — no caller-side threading required.
  */
 import type { InstanceAiEvent } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 
 import type { OrchestrationContext } from '../types';
-import { scrubSecretsInText } from '../utils/scrub-secrets';
 
 const MAX_QUERY_LENGTH = 200;
 const MAX_USER_REQUEST_LENGTH = 120;
 
-const SEARCH_PATTERN = /\bgrep\b[^|]*\bexamples\/index\.txt\b/;
+const SEARCH_PATTERN = /\bgrep\b[^|]*\bknowledge-base\/templates(?:\/|\s|$)/;
 const READ_COMMAND_HEADS = ['cat', 'head', 'tail', 'sed', 'less', 'more'];
-// Match `examples/<slug>.ts` anywhere in the path. `\b` boundaries reject
-// `someotherexamples/...` while accepting `/abs/path/examples/foo.ts`.
-const READ_FILE_PATTERN = /\bexamples\/([a-zA-Z0-9._-]+\.ts)\b/;
+const READ_FILE_PATTERN = /\bknowledge-base\/templates\/([a-zA-Z0-9._-]+\.ts)\b/;
 
 export interface TemplateTelemetrySession {
 	/** Inspect a command + its stdout; emits search/read events when patterns match. */
@@ -47,6 +47,13 @@ export interface TelemetrySessionOptions {
 	workItemId: string;
 	/** Optional NL request from the user; truncated to 120 chars. */
 	userRequestExcerpt?: string;
+	/**
+	 * Version identifier of the curated templates bundle in use this run
+	 * (typically a short git SHA from the n8n-sdk-templates manifest).
+	 * Emitted on every search/read/session event so we can correlate usage
+	 * to specific bundle revisions.
+	 */
+	templatesVersion?: string | null;
 }
 
 export function createTemplateTelemetrySession(
@@ -56,6 +63,7 @@ export function createTemplateTelemetrySession(
 		thread_id: opts.threadId,
 		run_id: opts.runId,
 		work_item_id: opts.workItemId,
+		templates_version: opts.templatesVersion ?? null,
 	};
 
 	let searchCount = 0;
@@ -89,7 +97,7 @@ export function createTemplateTelemetrySession(
 	function observe(command: string, stdout: string): void {
 		if (!open) return;
 
-		// Search detection: any grep at examples/index.txt
+		// Search detection: grep scoped to knowledge-base/templates/
 		if (SEARCH_PATTERN.test(command)) {
 			searchCount++;
 			emit('Builder template search', {
@@ -98,7 +106,7 @@ export function createTemplateTelemetrySession(
 			});
 		}
 
-		// Read detection: cat/head/sed/etc. against examples/*.ts
+		// Read detection: cat/head/sed/etc. against knowledge-base/templates/*.ts
 		const head = command.trim().split(/\s+/, 1)[0]?.split('/').pop() ?? '';
 		if (READ_COMMAND_HEADS.includes(head)) {
 			const match = command.match(READ_FILE_PATTERN);
@@ -203,9 +211,7 @@ export function getTemplateTelemetrySession(
 const TYPED_READ_TOOL = 'workspace_read_file';
 const TYPED_GREP_TOOL = 'workspace_grep';
 
-// Path either is `examples` itself or sits under it: `examples`, `examples/`,
-// `examples/foo.ts`, `/abs/examples/`, etc. Rejects `someexamples`, `examples-x`.
-const EXAMPLES_PATH_PATTERN = /(?:^|\/)examples(?:$|\/)/;
+const TEMPLATES_PATH_PATTERN = /(?:^|\/)knowledge-base\/templates(?:$|\/)/;
 
 type PendingTypedCall = { kind: 'read'; filename: string } | { kind: 'search'; query: string };
 
@@ -234,13 +240,13 @@ export function createTypedToolObserver(
 			if (!match) return;
 			pending.delete(event.payload.toolCallId);
 
-			const result = event.payload.result;
-			if (typeof result !== 'string') return;
+			const resultText = extractTypedToolResultText(event.payload.result);
+			if (resultText === null) return;
 
 			if (match.kind === 'read') {
-				session.observeTypedRead(match.filename, result.length);
+				session.observeTypedRead(match.filename, resultText.length);
 			} else {
-				session.observeTypedSearch(match.query, countResultLines(result));
+				session.observeTypedSearch(match.query, countResultLines(resultText));
 			}
 			return;
 		}
@@ -263,9 +269,17 @@ function matchTypedTemplateCall(
 	}
 	if (toolName === TYPED_GREP_TOOL) {
 		const path = typeof args.path === 'string' ? args.path : '';
-		if (!EXAMPLES_PATH_PATTERN.test(path)) return undefined;
+		if (!TEMPLATES_PATH_PATTERN.test(path)) return undefined;
 		const pattern = typeof args.pattern === 'string' ? args.pattern : '';
 		return { kind: 'search', query: pattern };
 	}
 	return undefined;
+}
+
+function extractTypedToolResultText(result: unknown): string | null {
+	if (typeof result === 'string') return result;
+	if (!isRecord(result)) return null;
+
+	const { content } = result;
+	return typeof content === 'string' ? content : null;
 }

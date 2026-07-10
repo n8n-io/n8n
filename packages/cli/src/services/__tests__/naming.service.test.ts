@@ -11,7 +11,7 @@ describe('NamingService', () => {
 	const namingService = new NamingService(workflowRepository, credentialsRepository);
 
 	beforeEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	describe('getUniqueWorkflowName()', () => {

@@ -2,7 +2,9 @@
  * Credential Resolution
  *
  * Shared helper that resolves undefined/null credentials in WorkflowJSON.
- * Produces sidecar verification pin data instead of mutating the workflow's pinData.
+ * Unresolvable credentials are removed ("mocked") and reported via the mock
+ * metadata fields; the node simulation plan (classify-node-destructiveness)
+ * picks mocked nodes up and pins them with generated fixtures at verify time.
  */
 
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
@@ -43,7 +45,15 @@ export async function buildCredentialMap(
 	return map;
 }
 
-/** Result of credential resolution — includes mock metadata and sidecar verification data. */
+/** A credential the resolver attached to a node without an explicit id in the source. */
+export interface ResolvedCredential {
+	/** Credential type key on the node, e.g. "openAiApi". */
+	type: string;
+	id: string;
+	name: string;
+}
+
+/** Result of credential resolution — mock metadata for the simulation plan. */
 export interface CredentialResolutionResult {
 	/** Node names whose credentials were mocked. */
 	mockedNodeNames: string[];
@@ -51,10 +61,30 @@ export interface CredentialResolutionResult {
 	mockedCredentialTypes: string[];
 	/** Map of node name → credential types that were mocked on that node. */
 	mockedCredentialsByNode: Record<string, string[]>;
-	/** Pin data for verification only — NEVER written to workflow JSON. */
-	verificationPinData: Record<string, Array<Record<string, unknown>>>;
-	/** True when mocked credential nodes can be skipped by existing workflow-level pin data. */
-	usesWorkflowPinDataForVerification: boolean;
+	/**
+	 * Map of node name → credentials the resolver attached automatically
+	 * (restored from the saved workflow or auto-bound to the sole existing
+	 * candidate). These nodes are already connected — the agent must not ask
+	 * the user to connect or create them.
+	 */
+	resolvedCredentialsByNode: Record<string, ResolvedCredential[]>;
+}
+
+/**
+ * Human-readable summary of automatically attached credentials, meant to be
+ * relayed on the build result so the agent knows setup is not needed for them.
+ */
+export function buildCredentialResolutionNote(
+	resolvedCredentialsByNode: Record<string, ResolvedCredential[]>,
+): string | undefined {
+	const parts: string[] = [];
+	for (const [nodeName, resolved] of Object.entries(resolvedCredentialsByNode)) {
+		for (const credential of resolved) {
+			parts.push(`"${credential.name}" (${credential.type}) on node "${nodeName}"`);
+		}
+	}
+	if (parts.length === 0) return undefined;
+	return `Connected existing credential(s) automatically: ${parts.join('; ')}. These are already set up — do not ask the user to connect or create them, and do not route them to credential setup.`;
 }
 
 /**
@@ -64,10 +94,9 @@ export interface CredentialResolutionResult {
  * in `toJSON()`. Resolution strategy (in order):
  * 1. Restore from the existing workflow (preserve the user's chosen credential on updates)
  * 2. Preserve explicit valid raw credential ids
- * 3. Mock: remove the credential key and produce sidecar verification pin data
+ * 3. Mock: remove the credential key and report the node in the mock metadata
  *
- * Mocked credentials produce verification-only pin data that is returned separately
- * and NEVER written into json.pinData. The saved workflow stays clean.
+ * Nothing is ever written into json.pinData — the saved workflow stays clean.
  */
 export async function resolveCredentials(
 	json: WorkflowJSON,
@@ -78,8 +107,7 @@ export async function resolveCredentials(
 	const mockedNodeNames: string[] = [];
 	const mockedCredentialTypesSet = new Set<string>();
 	const mockedCredentialsByNode: Record<string, string[]> = {};
-	const verificationPinData: Record<string, Array<Record<string, unknown>>> = {};
-	let usesWorkflowPinDataForVerification = false;
+	const resolvedCredentialsByNode: Record<string, ResolvedCredential[]> = {};
 
 	// Build a map of existing credentials by node name (for updates)
 	const existingCredsByNode = new Map<string, Record<string, unknown>>();
@@ -109,9 +137,21 @@ export async function resolveCredentials(
 			// when the LLM drops the id during an edit — e.g., emits newCredential('name')
 			// without the id, which serializes to undefined).
 			const existingCreds = node.name ? existingCredsByNode.get(node.name) : undefined;
+
+			const recordResolvedCredential = (id: string, name: string) => {
+				if (!node.name) return;
+				resolvedCredentialsByNode[node.name] ??= [];
+				resolvedCredentialsByNode[node.name].push({ type: key, id, name });
+			};
+
 			const restoreExistingCredential = () => {
-				if (!existingCreds?.[key]) return false;
-				creds[key] = existingCreds[key];
+				const restored = existingCreds?.[key];
+				if (!restored) return false;
+				creds[key] = restored;
+				const restoredId = getCredentialId(restored);
+				if (restoredId) {
+					recordResolvedCredential(restoredId, getCredentialName(restored) ?? restoredId);
+				}
 				cleanupMockPinData(json, node.name);
 				return true;
 			};
@@ -123,21 +163,11 @@ export async function resolveCredentials(
 				nodeMocked = true;
 
 				if (nodeName) {
-					// Track which credential types were mocked on this node
+					// Track which credential types were mocked on this node. The node
+					// simulation plan forces these nodes to `simulate`, so verification
+					// pins them with generated fixtures instead of executing them.
 					mockedCredentialsByNode[nodeName] ??= [];
 					mockedCredentialsByNode[nodeName].push(key);
-
-					// Produce sidecar verification pin data (never saved to workflow).
-					// If the workflow already has real pinData for this node, skip — the
-					// existing pinData will suffice for execution skipping.
-					if (json.pinData && nodeName in json.pinData) {
-						usesWorkflowPinDataForVerification = true;
-					} else {
-						verificationPinData[nodeName] ??= [];
-						if (verificationPinData[nodeName].length === 0) {
-							verificationPinData[nodeName].push({ _mockedCredential: key });
-						}
-					}
 				}
 			};
 
@@ -161,6 +191,7 @@ export async function resolveCredentials(
 			if (credentialsForType?.length === 1) {
 				const [credential] = credentialsForType;
 				creds[key] = { id: credential.id, name: credential.name };
+				recordResolvedCredential(credential.id, credential.name);
 				cleanupMockPinData(json, node.name);
 				continue;
 			}
@@ -181,8 +212,7 @@ export async function resolveCredentials(
 		mockedNodeNames,
 		mockedCredentialTypes: [...mockedCredentialTypesSet],
 		mockedCredentialsByNode,
-		verificationPinData,
-		usesWorkflowPinDataForVerification,
+		resolvedCredentialsByNode,
 	};
 }
 
@@ -193,6 +223,15 @@ function getCredentialId(value: unknown): string | undefined {
 	if (typeof id !== 'string' || id.trim() === '') return undefined;
 
 	return id;
+}
+
+function getCredentialName(value: unknown): string | undefined {
+	if (typeof value !== 'object' || value === null || !('name' in value)) return undefined;
+
+	const { name } = value;
+	if (typeof name !== 'string' || name.trim() === '') return undefined;
+
+	return name;
 }
 
 function isKnownCredentialForType(

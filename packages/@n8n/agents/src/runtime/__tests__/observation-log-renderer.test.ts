@@ -1,12 +1,11 @@
 import type { ObservationLogEntry, ObservationLogMarker } from '../../types/sdk/observation-log';
-import { renderObservationLog } from '../observation-log-renderer';
+import { renderObservationLog } from '../memory/observation-log-renderer';
 
 function entry(overrides: Partial<ObservationLogEntry> = {}): ObservationLogEntry {
 	const marker: ObservationLogMarker = overrides.marker ?? 'important';
 	return {
 		id: overrides.id ?? crypto.randomUUID(),
-		scopeKind: overrides.scopeKind ?? 'thread',
-		scopeId: overrides.scopeId ?? 'thread-1',
+		observationScopeId: overrides.observationScopeId ?? 'thread-1',
 		marker,
 		text: overrides.text ?? 'User chose the observation log model.',
 		parentId: overrides.parentId ?? null,
@@ -41,8 +40,6 @@ describe('renderObservationLog', () => {
 		expect(renderObservationLog([child, dropped, parent])).toBe(
 			[
 				'<observations>',
-				'## Memory',
-				'',
 				'The following is your memory of this conversation. It accumulates as observations are made. Older entries may have been merged or dropped during periodic restructuring.',
 				'Marker legend: CRITICAL = must retain, IMPORTANT = useful continuity, INFO = contextual detail, COMPLETION = completed/resolved.',
 				'',

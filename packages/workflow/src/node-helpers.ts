@@ -2,13 +2,14 @@
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-import { ApplicationError } from '@n8n/errors';
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 import { v4 as uuid } from 'uuid';
 
 import { EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from './constants';
+import { UnexpectedError, UserError } from './errors';
 import { isExpression } from './expressions/expression-helpers';
+import { isFromAIOnlyExpression } from './from-ai-parse-utils';
 import { NodeConnectionTypes } from './interfaces';
 import type {
 	FieldType,
@@ -518,7 +519,7 @@ export function getContext(
 ): IContextObject {
 	if (runExecutionData.executionData === undefined) {
 		// TODO: Should not happen leave it for test now
-		throw new ApplicationError('`executionData` is not initialized');
+		throw new UnexpectedError('`executionData` is not initialized');
 	}
 
 	let key: string;
@@ -527,13 +528,13 @@ export function getContext(
 	} else if (type === 'node') {
 		if (node === undefined) {
 			// @TODO: What does this mean?
-			throw new ApplicationError(
+			throw new UnexpectedError(
 				'The request data of context type "node" the node parameter has to be set!',
 			);
 		}
 		key = `node:${node.name}`;
 	} else {
-		throw new ApplicationError('Unknown context type. Only `flow` and `node` are supported.', {
+		throw new UnexpectedError('Unknown context type. Only `flow` and `node` are supported.', {
 			extra: { contextType: type },
 		});
 	}
@@ -635,7 +636,7 @@ function getParameterResolveOrder(
 		}
 
 		if (iterations > lastIndexReduction + nodePropertiesArray.length) {
-			throw new ApplicationError(
+			throw new UserError(
 				'Could not resolve parameter dependencies. Max iterations reached! Hint: If `displayOptions` are specified in any child parameter of a parent `collection` or `fixedCollection`, remove the `displayOptions` from the child parameter.',
 			);
 		}
@@ -823,7 +824,8 @@ export function getNodeParameters(
 			// Strip expression prefix if noDataExpression is true
 			if (nodeProperties.noDataExpression && nodeParameters[nodeProperties.name] !== undefined) {
 				const value = nodeParameters[nodeProperties.name];
-				if (isExpression(value)) {
+				// A lone $fromAI() placeholder must keep its "=" or the AI tool call never resolves it (#30531)
+				if (isExpression(value) && !isFromAIOnlyExpression(value)) {
 					nodeParameters[nodeProperties.name] = value.slice(1);
 					nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 				}
@@ -1271,6 +1273,33 @@ export function getNodeParametersIssues(
 	return foundIssues;
 }
 
+/**
+ * Returns the node's issues as a flat list of human-readable strings,
+ * covering execution errors, parameter/credential/input issues, and unknown node types.
+ */
+export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] {
+	const messages: string[] = [];
+
+	if (issues.execution !== undefined) {
+		messages.push('Execution Error.');
+	}
+
+	for (const propertyIssues of [issues.parameters, issues.credentials, issues.input]) {
+		if (propertyIssues === undefined) continue;
+		for (const parameterName of Object.keys(propertyIssues)) {
+			messages.push(...propertyIssues[parameterName]);
+		}
+	}
+
+	if (issues.typeUnknown !== undefined) {
+		messages.push(
+			node !== undefined ? `Node Type "${node.type}" is not known.` : 'Node Type is not known.',
+		);
+	}
+
+	return messages;
+}
+
 /*
  * Validates resource locator node parameters based on validation ruled defined in each parameter mode
  */
@@ -1382,7 +1411,9 @@ function addToIssuesIfMissing(
 		(nodeProperties.type === 'multiOptions' && Array.isArray(value) && value.length === 0) ||
 		(nodeProperties.type === 'dateTime' && (value === '' || value === undefined)) ||
 		(nodeProperties.type === 'options' && (value === '' || value === undefined)) ||
-		((nodeProperties.type === 'resourceLocator' || nodeProperties.type === 'workflowSelector') &&
+		((nodeProperties.type === 'resourceLocator' ||
+			nodeProperties.type === 'workflowSelector' ||
+			nodeProperties.type === 'agentSelector') &&
 			!isValidResourceLocatorParameterValue(value as INodeParameterResourceLocator))
 	) {
 		// Parameter is required but empty
@@ -1412,6 +1443,55 @@ export function getParameterValueByPath(
 	path: string,
 ) {
 	return get(nodeValues, path ? `${path}.${parameterName}` : parameterName);
+}
+
+/**
+ * Resolves the property definition for a parameter path, honoring `displayOptions` so that
+ * duplicate-named variants resolve to the one shown for the given node values (e.g. version- or
+ * source-gated parameters). Descends into `collection`/`fixedCollection`; the leading
+ * `parameters.` prefix and array indices in the path are ignored. Returns `undefined` when the
+ * path resolves to no displayed property.
+ */
+export function findDisplayedProperty(
+	parameterPath: string,
+	properties: INodeProperties[],
+	nodeValues: INodeParameters,
+	node: Pick<INode, 'typeVersion'> | null,
+	nodeTypeDescription: INodeTypeDescription | null,
+): INodePropertyOptions | INodeProperties | INodePropertyCollection | undefined {
+	const parts = parameterPath.replace(/^parameters\./, '').split('.');
+	let currentPath = '';
+	let property: INodePropertyOptions | INodeProperties | INodePropertyCollection | undefined;
+
+	const findProp = (
+		name: string,
+		options: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>,
+	) =>
+		options.find(
+			(option) =>
+				option.name === name &&
+				displayParameterPath(nodeValues, option, currentPath, node, nodeTypeDescription),
+		);
+
+	for (const part of parts) {
+		const name = part.split('[')[0];
+
+		if (!property) {
+			property = findProp(name, properties);
+		} else if ('options' in property && property.options) {
+			property = findProp(name, property.options);
+			currentPath += `.${name}`;
+		} else if ('values' in property) {
+			property = findProp(name, property.values);
+			currentPath += `.${name}`;
+		} else {
+			return undefined;
+		}
+
+		if (!property) return undefined;
+	}
+
+	return property;
 }
 
 function isINodeParameterResourceLocator(value: unknown): value is INodeParameterResourceLocator {
@@ -1464,7 +1544,9 @@ export function getParameterIssues(
 	}
 
 	if (
-		(nodeProperties.type === 'resourceLocator' || nodeProperties.type === 'workflowSelector') &&
+		(nodeProperties.type === 'resourceLocator' ||
+			nodeProperties.type === 'workflowSelector' ||
+			nodeProperties.type === 'agentSelector') &&
 		isDisplayed
 	) {
 		const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
@@ -1952,8 +2034,18 @@ export const getUpdatedToolDescription = (
 
 /**
  * Generates a tool description for a given node based on its parameters and type.
+ *
+ * When the user-provided `toolDescription` is an n8n expression (starts with `=`),
+ * the optional `resolveToolDescription` callback is used to evaluate it against
+ * the upstream input data — matching how other tool nodes (e.g. `toolWorkflow`)
+ * resolve their description parameter via `getNodeParameter`. Without a resolver,
+ * the raw value is returned unchanged for backward compatibility.
  */
-export function getToolDescriptionForNode(node: INode, nodeType: INodeType): string {
+export function getToolDescriptionForNode(
+	node: INode,
+	nodeType: INodeType,
+	resolveToolDescription?: () => string,
+): string {
 	let toolDescription;
 	if (
 		node.parameters.descriptionType === 'auto' ||
@@ -1961,7 +2053,12 @@ export function getToolDescriptionForNode(node: INode, nodeType: INodeType): str
 	) {
 		toolDescription = makeDescription(node.parameters, nodeType.description);
 	} else if (node?.parameters.toolDescription) {
-		toolDescription = node.parameters.toolDescription;
+		const raw = node.parameters.toolDescription;
+		if (resolveToolDescription && typeof raw === 'string' && raw.startsWith('=')) {
+			toolDescription = resolveToolDescription();
+		} else {
+			toolDescription = raw;
+		}
 	} else {
 		toolDescription = nodeType.description.description;
 	}

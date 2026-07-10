@@ -1,4 +1,3 @@
-import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -10,6 +9,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import type { StringValue as TimeUnitValue } from 'ms';
 
+import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
@@ -155,7 +155,7 @@ export class AuthService {
 			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
 			const shouldSkipAuth = (allowSkipPreviewAuth && isPreviewMode) || allowUnauthenticated;
 
-			if (req.user) next();
+			if (Object.hasOwn(req, 'user') && req.user) next();
 			else if (shouldSkipAuth) next();
 			else res.status(401).json({ status: 'error', message: 'Unauthorized' });
 		};
@@ -248,11 +248,15 @@ export class AuthService {
 	 * Validate a cookie auth token: checks revocation, JWT signature/expiry,
 	 * user existence, and hash consistency. Skips browser-id and MFA checks
 	 * since those are not applicable to webhook cookie validation.
+	 *
+	 * @returns the authenticated `User` on success
+	 * @throws `AuthError('Unauthorized')` if the token is revoked or invalid
 	 */
-	async validateCookieToken(token: string): Promise<void> {
+	async validateCookieToken(token: string): Promise<User> {
 		const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
 		if (isInvalid) throw new AuthError('Unauthorized');
-		await this.validateToken(token);
+		const { user } = await this.validateToken(token);
+		return user;
 	}
 
 	async authenticateUserBasedOnToken(
@@ -268,18 +272,39 @@ export class AuthService {
 
 		this.validateBrowserId(jwtPayload, browserId, endpoint, method);
 
-		const usedMfa = jwtPayload.usedMfa ?? false;
+		await this.checkMfaGate(user, jwtPayload);
 
-		// MFA was used, we are good either way.
-		if (usedMfa) {
-			return user;
+		return user;
+	}
+
+	/**
+	 * Validates an n8n auth cookie (JWT) without request-bound checks (browserId / endpoint / method).
+	 *
+	 * Use when the cookie was captured at the controller boundary and must be re-validated
+	 * later in the execution lifecycle, after the original HTTP request is no longer available.
+	 *
+	 * @param cookie - The JWT string extracted from the `n8n-auth` browser cookie.
+	 */
+	async authenticateUserByCookie(cookie: string): Promise<User> {
+		const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token: cookie });
+		if (isInvalid) throw new AuthError('Unauthorized');
+
+		const { user, jwtPayload } = await this.validateToken(cookie);
+
+		await this.checkMfaGate(user, jwtPayload);
+		return user;
+	}
+
+	private async checkMfaGate(user: User, jwtPayload: IssuedJWT): Promise<void> {
+		if (jwtPayload.usedMfa ?? false) {
+			return;
 		}
-		const mfaEnforced = await this.mfaService.isMFAEnforced();
 
+		const mfaEnforced = await this.mfaService.isMFAEnforced();
 		if (!mfaEnforced && !user.mfaEnabled) {
 			// MFA is not enforced and the user has MFA not enabled
 			// we are good
-			return user;
+			return;
 		}
 
 		// either MFA is enforced or user has MFA enabled

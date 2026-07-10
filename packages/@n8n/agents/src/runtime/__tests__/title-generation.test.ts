@@ -2,20 +2,28 @@ import type * as AiImport from 'ai';
 import type { LanguageModel } from 'ai';
 
 import type { BuiltTelemetry } from '../../types';
-import { generateTitleFromMessage } from '../title-generation';
+import {
+	generateTitleAndEmojiFromMessage,
+	generateTitleFromMessage,
+} from '../memory/title-generation';
 
 type GenerateTextCall = {
+	system?: string;
 	messages: Array<{ role: string; content: string }>;
 	experimental_telemetry?: Record<string, unknown>;
 };
 
-const mockGenerateText = jest.fn<Promise<{ text: string }>, [GenerateTextCall]>();
+type GenerateTextResult = { text: string; usage?: { totalTokens?: number } };
 
-jest.mock('ai', () => {
-	const actual = jest.requireActual<typeof AiImport>('ai');
+const { mockGenerateText } = vi.hoisted(() => ({
+	mockGenerateText: vi.fn<(...args: [GenerateTextCall]) => Promise<GenerateTextResult>>(),
+}));
+
+vi.mock('ai', async () => {
+	const actual = await vi.importActual<typeof AiImport>('ai');
 	return {
 		...actual,
-		generateText: async (call: GenerateTextCall): Promise<{ text: string }> =>
+		generateText: async (call: GenerateTextCall): Promise<GenerateTextResult> =>
 			await mockGenerateText(call),
 	};
 });
@@ -109,9 +117,8 @@ describe('generateTitleFromMessage', () => {
 		mockGenerateText.mockResolvedValue({ text: 'Berlin rain alert' });
 		await generateTitleFromMessage(fakeModel, 'Build a daily Berlin rain alert workflow');
 		const call = mockGenerateText.mock.calls[0][0];
-		expect(call.messages[0].role).toBe('system');
-		expect(call.messages[0].content).toContain('markdown');
-		expect(call.messages[0].content).toContain('sentence case');
+		expect(call.system).toContain('markdown');
+		expect(call.system).toContain('sentence case');
 	});
 
 	it('accepts custom instructions', async () => {
@@ -120,7 +127,7 @@ describe('generateTitleFromMessage', () => {
 			instructions: 'Custom system prompt',
 		});
 		const call = mockGenerateText.mock.calls[0][0];
-		expect(call.messages[0].content).toBe('Custom system prompt');
+		expect(call.system).toBe('Custom system prompt');
 	});
 
 	it('passes generic telemetry to the title LLM call', async () => {
@@ -151,15 +158,32 @@ describe('generateTitleFromMessage', () => {
 		});
 	});
 
+	it('counts title generation tokens when usage is available', async () => {
+		mockGenerateText.mockResolvedValue({ text: 'Berlin rain alert', usage: { totalTokens: 9 } });
+		const counter = {
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
+		};
+
+		await generateTitleFromMessage(fakeModel, 'Build a daily Berlin rain alert workflow', {
+			executionCounter: counter,
+		});
+
+		expect(counter.incrementTokenCount).toHaveBeenCalledWith(9);
+		expect(counter.incrementMessageCount).not.toHaveBeenCalled();
+		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();
+	});
+
 	it('wraps the user message in a title-generation instruction so the model does not answer it', async () => {
 		mockGenerateText.mockResolvedValue({ text: 'Berlin rain alert' });
 		await generateTitleFromMessage(fakeModel, 'Build a daily Berlin rain alert workflow');
 		const call = mockGenerateText.mock.calls[0][0];
-		expect(call.messages[1].role).toBe('user');
-		expect(call.messages[1].content).toContain('Generate a title');
-		expect(call.messages[1].content).toContain('<message>');
-		expect(call.messages[1].content).toContain('Build a daily Berlin rain alert workflow');
-		expect(call.messages[1].content).toContain('</message>');
+		expect(call.messages[0].role).toBe('user');
+		expect(call.messages[0].content).toContain('Generate a title');
+		expect(call.messages[0].content).toContain('<message>');
+		expect(call.messages[0].content).toContain('Build a daily Berlin rain alert workflow');
+		expect(call.messages[0].content).toContain('</message>');
 	});
 
 	it('drops a streamed code fence and everything after it', async () => {
@@ -184,5 +208,26 @@ describe('generateTitleFromMessage', () => {
 			'build a workflow that queries Scryfall for a random card',
 		);
 		expect(result).toBe('Scryfall random card workflow');
+	});
+});
+
+describe('generateTitleAndEmojiFromMessage', () => {
+	beforeEach(() => {
+		mockGenerateText.mockReset();
+	});
+
+	it('wraps the user message as conversation context so the model does not answer it', async () => {
+		mockGenerateText.mockResolvedValue({ text: '{"title":"Berlin rain alert","emoji":"rain"}' });
+		await generateTitleAndEmojiFromMessage(fakeModel, 'Build a daily Berlin rain alert workflow');
+
+		const call = mockGenerateText.mock.calls[0][0];
+		expect(call.messages[0]).toEqual({
+			role: 'user',
+			content: `
+Here's the conversation:
+<conversation>
+Build a daily Berlin rain alert workflow
+</conversation>`,
+		});
 	});
 });

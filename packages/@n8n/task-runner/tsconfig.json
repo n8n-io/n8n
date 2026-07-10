@@ -6,10 +6,10 @@
 	"compilerOptions": {
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
+		"types": ["node", "vitest/globals", "vite/client"],
 		"paths": {
 			"@/*": ["./src/*"]
-		},
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
+		}
 	},
 	"include": ["src/**/*.ts"]
 }

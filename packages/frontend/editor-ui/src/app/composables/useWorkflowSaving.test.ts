@@ -51,6 +51,13 @@ vi.mock('@n8n/permissions', () => ({
 	}),
 }));
 
+const mockRoute = { name: 'NodeViewExisting', params: {} as Record<string, string>, query: {} };
+
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRoute: () => mockRoute,
+}));
+
 const getDuplicateTestWorkflow = (): WorkflowDataUpdate => ({
 	name: 'Duplicate webhook test',
 	active: false,
@@ -105,6 +112,7 @@ describe('useWorkflowSaving', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+		mockRoute.params = {};
 	});
 
 	beforeEach(() => {
@@ -145,6 +153,7 @@ describe('useWorkflowSaving', () => {
 			// Populate workflowsById to mark workflow as existing (not new)
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 			workflowsStore.setWorkflowId(workflow.id);
+			mockRoute.params = { workflowId: workflow.id };
 
 			const next = vi.fn();
 			const confirm = vi.fn().mockResolvedValue(true);
@@ -225,6 +234,7 @@ describe('useWorkflowSaving', () => {
 			const MOCK_ID = 'existing-workflow-id';
 			const existingWorkflow = createTestWorkflow({ id: MOCK_ID });
 			workflowStore.setWorkflowId(MOCK_ID);
+			mockRoute.params = { workflowId: MOCK_ID };
 			// Populate workflowsById to mark workflow as existing (not new)
 			workflowListStore.workflowsById = { [MOCK_ID]: existingWorkflow };
 
@@ -313,6 +323,7 @@ describe('useWorkflowSaving', () => {
 			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			// Populate workflowsById to mark workflow as existing (not new)
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+			mockRoute.params = { workflowId: workflow.id };
 
 			const updateWorkflowSpy = vi.spyOn(workflowsStore, 'updateWorkflow');
 			updateWorkflowSpy.mockImplementation(() => {
@@ -750,6 +761,43 @@ describe('useWorkflowSaving', () => {
 
 			// After save, state should be clean
 			expect(uiStore.stateIsDirty).toBe(false);
+		});
+
+		it('should disarm a scheduled autosave when a manual save completes clean', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w-autosave-disarm',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+				active: true,
+			});
+
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue({
+				...workflow,
+				checksum: 'test-checksum',
+			});
+
+			workflowsStore.setWorkflowId(workflow.id);
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+
+			const uiStore = useUIStore();
+			const saveStore = useWorkflowSaveStore();
+			saveStore.reset();
+
+			const { saveCurrentWorkflow, autoSaveWorkflow } = useWorkflowSaving({ router });
+
+			// Dirty workflow with an armed autosave timer, then a manual save
+			// (e.g. save-then-navigate flows). Without the disarm, the timer
+			// fires after navigation with no workflow context and attempts to
+			// create an empty workflow.
+			uiStore.markStateDirty();
+			autoSaveWorkflow();
+			expect(saveStore.autoSaveState).toBe(AutoSaveState.Scheduled);
+
+			await saveCurrentWorkflow({ id: workflow.id }, false);
+
+			expect(uiStore.stateIsDirty).toBe(false);
+			expect(saveStore.autoSaveState).toBe(AutoSaveState.Idle);
 		});
 
 		it('should skip autosave when another save is already in progress', async () => {

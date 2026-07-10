@@ -7,14 +7,19 @@
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
-import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type express from 'express';
-import { BinaryDataService, ErrorReporter, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
+import merge from 'lodash/merge';
+import {
+	BinaryDataService,
+	ErrorReporter,
+	establishExecutionContext,
+	WAITING_TOKEN_QUERY_PARAM,
+} from 'n8n-core';
 import type {
 	IBinaryData,
 	IDataObject,
-	IDeferredPromise,
 	IExecuteData,
 	IExecuteResponsePromiseData,
 	IN8nHttpFullResponse,
@@ -26,6 +31,7 @@ import type {
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
 	WebhookResponseMode,
+	OAuth2FailureReason,
 	Workflow,
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
@@ -35,7 +41,6 @@ import type {
 } from 'n8n-workflow';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
-	createDeferredPromise,
 	createRunExecutionData,
 	ExecutionCancelledError,
 	FORM_NODE_TYPE,
@@ -50,22 +55,20 @@ import {
 } from 'n8n-workflow';
 import { finished } from 'stream/promises';
 
-import { WebhookService } from './webhook.service';
-import {
-	WebhookResponseHeaders,
-	type WebhookNodeResponseHeaders,
-} from './webhook-response-headers';
-import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
-
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
-import { EventService } from '@/events/event.service';
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { EventService } from '@/events/event.service';
 import { parseBody } from '@/middlewares';
+import {
+	type AuthFailureReason,
+	OAuthTokenVerifierProxy,
+} from '@/services/oauth-token-verifier-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
+import { TriggerAuthIdentitySeederProxy } from '@/services/trigger-auth-identity-seeder-proxy.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WebhookExecutionContext } from '@/webhooks/webhook-execution-context';
@@ -77,7 +80,14 @@ import { createStaticResponse, createStreamResponse } from '@/webhooks/webhook-r
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
-import merge from 'lodash/merge';
+
+import { applySandboxCSP } from './webhook-response-headers';
+import {
+	WebhookResponseHeaders,
+	type WebhookNodeResponseHeaders,
+} from './webhook-response-headers';
+import { WebhookService } from './webhook.service';
+import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
 
 // Type guards for MCP queue mode data validation
 interface McpToolCallPayload {
@@ -312,12 +322,14 @@ export function setupResponseNodePromise(
 			const binaryData = (response.body as IDataObject)?.binaryData as IBinaryData;
 			if (binaryData?.id) {
 				WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
+				applySandboxCSP(res);
 				const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
 				stream.pipe(res, { end: false });
 				await finished(stream);
 				responseCallback(null, { noWebhookResponse: true });
 			} else if (Buffer.isBuffer(response.body)) {
 				WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
+				applySandboxCSP(res);
 				res.end(response.body);
 				responseCallback(null, { noWebhookResponse: true });
 			} else {
@@ -502,7 +514,69 @@ export async function executeWebhook(
 
 	const authService = Container.get(AuthService);
 	additionalData.validateCookieAuth = async (token: string) => {
-		await authService.validateCookieToken(token);
+		const user = await authService.validateCookieToken(token);
+		return {
+			id: user.id,
+			email: user.email,
+			firstName: user.firstName,
+			lastName: user.lastName,
+		};
+	};
+
+	const translateAuthFailureReason = (reason?: AuthFailureReason): OAuth2FailureReason => {
+		switch (reason) {
+			case 'verifier_not_registered':
+			case 'unknown_error':
+				return 'verifier_unavailable';
+			case 'insufficient_scope':
+				return 'insufficient_scope';
+			default:
+				return 'invalid_token';
+		}
+	};
+
+	additionalData.validateN8nOAuth2Token = async (token: string, resourceUrl: string) => {
+		const oauthTokenVerifierProxy = Container.get(OAuthTokenVerifierProxy);
+		const result = await oauthTokenVerifierProxy.verifyOAuthAccessToken(token, resourceUrl);
+		if (result.user) {
+			return {
+				valid: true,
+				user: {
+					id: result.user.id,
+					email: result.user.email,
+					firstName: result.user.firstName,
+					lastName: result.user.lastName,
+				},
+			};
+		}
+
+		return {
+			valid: false,
+			reason: translateAuthFailureReason(result.context?.reason),
+		};
+	};
+
+	additionalData.establishTriggerIdentity = async (token: string, resource: string) => {
+		if (runExecutionData === undefined) {
+			throw new UnexpectedError('Execution data is not available to establish trigger identity');
+		}
+		await Container.get(TriggerAuthIdentitySeederProxy).seed(runExecutionData, token, resource);
+
+		await establishExecutionContext(workflow, runExecutionData, additionalData, executionMode);
+	};
+
+	// Eager pre-execution credential-status gate. Uses the execution context that
+	// `establishTriggerIdentity` already established (the triggering user's identity),
+	// so the check runs on the request-handling main, before any enqueue. Returns
+	// `undefined` when the dynamic-credentials module is disabled or no identity was
+	// established, in which case the caller proceeds to execute normally.
+	additionalData.checkTriggerCredentialStatus = async () => {
+		const credentialCheckProxy = additionalData['dynamic-credentials']?.credentialCheckProxy;
+		const executionContext = runExecutionData?.executionData?.runtimeData;
+		if (!credentialCheckProxy || !workflow.id || !executionContext?.credentials) {
+			return undefined;
+		}
+		return await credentialCheckProxy.checkCredentialStatus(workflow.id, executionContext);
 	};
 
 	let didSendResponse = false;
@@ -831,24 +905,10 @@ export async function executeWebhook(
 		const { parentExecution } = runExecutionData;
 		if (WorkflowHelpers.shouldRestartParentExecution(parentExecution)) {
 			// on child execution completion, resume parent execution
-			const executionRepository = Container.get(ExecutionRepository);
-			void executePromise
-				.then(async (subworkflowResults) => {
-					if (!subworkflowResults) return;
-					if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
-					await WorkflowHelpers.updateParentExecutionWithChildResults(
-						executionRepository,
-						parentExecution.executionId,
-						subworkflowResults,
-					);
-					return subworkflowResults;
-				})
-				.then((subworkflowResults) => {
-					if (!subworkflowResults) return;
-					if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
-					const waitTracker = Container.get(WaitTracker);
-					void waitTracker.startExecution(parentExecution.executionId);
-				});
+			void Container.get(WaitTracker).resumeParentExecution(parentExecution, executePromise, {
+				executionId,
+				workflowId: workflowData.id,
+			});
 		}
 
 		if (!didSendResponse) {
@@ -871,7 +931,7 @@ export async function executeWebhook(
 						runData.data.resultData.pinData = pinData;
 					}
 
-					const lastNodeTaskData = WorkflowHelpers.getDataLastExecutedNodeData(runData);
+					const lastNodeTaskData = WorkflowHelpers.getLastExecutedNodeData(runData);
 					if (runData.data.resultData.error || lastNodeTaskData?.error !== undefined) {
 						if (!didSendResponse) {
 							responseCallback(null, {
@@ -938,6 +998,8 @@ export async function executeWebhook(
 					return runData;
 				})
 				.catch((e) => {
+					Container.get(ErrorReporter).error(e, { executionId });
+
 					if (!didSendResponse) {
 						responseCallback(
 							new OperationalError('There was a problem executing the workflow', {
@@ -954,12 +1016,13 @@ export async function executeWebhook(
 		}
 		return executionId;
 	} catch (e) {
-		const error =
-			e instanceof UnprocessableRequestError
-				? e
-				: new OperationalError('There was a problem executing the workflow', {
-						cause: e,
-					});
+		let error: Error;
+		if (e instanceof ResponseError && e.httpStatusCode < 500) {
+			error = e;
+		} else {
+			Container.get(ErrorReporter).error(e, { executionId });
+			error = new OperationalError('There was a problem executing the workflow', { cause: e });
+		}
 		if (didSendResponse) throw error;
 		responseCallback(error, {});
 		return;

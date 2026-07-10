@@ -4,6 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { render } from '@testing-library/vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { CanvasEventBusEvents } from '@/features/workflows/canvas/canvas.types';
+import { createEmptyCanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 
 // Mock useVueFlow - capture onNodesInitialized callback and updateNode spy
 let nodesInitializedCallback: (() => void) | null = null;
@@ -44,7 +45,7 @@ const emitSpy = vi.fn();
 vi.mock('@/features/workflows/canvas/components/Canvas.vue', () => ({
 	default: defineComponent({
 		name: 'MockedCanvas',
-		props: ['id', 'nodes', 'connections', 'readOnly', 'eventBus'],
+		props: ['id', 'nodes', 'connections', 'readOnly', 'eventBus', 'showNodeGroups'],
 		emits: ['tidy-up'],
 		setup(props, { emit }) {
 			if (props.eventBus) {
@@ -92,11 +93,7 @@ describe('SyncedWorkflowCanvas', () => {
 				id: 'test-canvas',
 				nodes: [],
 				connections: [],
-				renderData: {
-					nodeInputsByNodeId: new Map(),
-					nodeOutputsByNodeId: new Map(),
-					executionIssuesByNodeName: new Map(),
-				},
+				renderData: createEmptyCanvasRenderData(),
 			},
 		});
 		expect(container).toBeTruthy();
@@ -110,11 +107,7 @@ describe('SyncedWorkflowCanvas', () => {
 					nodes: [],
 					connections: [],
 					applyLayout: true,
-					renderData: {
-						nodeInputsByNodeId: new Map(),
-						nodeOutputsByNodeId: new Map(),
-						executionIssuesByNodeName: new Map(),
-					},
+					renderData: createEmptyCanvasRenderData(),
 				},
 			});
 
@@ -137,11 +130,7 @@ describe('SyncedWorkflowCanvas', () => {
 					nodes: [],
 					connections: [],
 					applyLayout: false,
-					renderData: {
-						nodeInputsByNodeId: new Map(),
-						nodeOutputsByNodeId: new Map(),
-						executionIssuesByNodeName: new Map(),
-					},
+					renderData: createEmptyCanvasRenderData(),
 				},
 			});
 
@@ -160,11 +149,7 @@ describe('SyncedWorkflowCanvas', () => {
 					id: 'test-canvas',
 					nodes: [],
 					connections: [],
-					renderData: {
-						nodeInputsByNodeId: new Map(),
-						nodeOutputsByNodeId: new Map(),
-						executionIssuesByNodeName: new Map(),
-					},
+					renderData: createEmptyCanvasRenderData(),
 				},
 			});
 
@@ -184,11 +169,7 @@ describe('SyncedWorkflowCanvas', () => {
 					nodes: [],
 					connections: [],
 					applyLayout: true,
-					renderData: {
-						nodeInputsByNodeId: new Map(),
-						nodeOutputsByNodeId: new Map(),
-						executionIssuesByNodeName: new Map(),
-					},
+					renderData: createEmptyCanvasRenderData(),
 				},
 			});
 

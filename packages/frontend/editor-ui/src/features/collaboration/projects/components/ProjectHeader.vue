@@ -196,6 +196,7 @@ const createVariableButton = computed(() => ({
 	size: 'mini' as const,
 	disabled:
 		sourceControlStore.preferences.branchReadOnly ||
+		!settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables] ||
 		(!projectVariablePermissions.value.create && !globalVariablesPermissions.value.create),
 }));
 
@@ -496,6 +497,7 @@ const onSelect = (action: string, source: CreateSource) => {
 					v-if="isTeamProject"
 					:class="[$style.favoriteBtn, isProjectFavorited && $style.favoriteBtnActive]"
 					:icon="favoriteIcon"
+					:aria-label="i18n.baseText(isProjectFavorited ? 'favorites.remove' : 'favorites.add')"
 					variant="ghost"
 					size="medium"
 					data-test-id="project-favorite-btn"

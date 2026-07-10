@@ -17,6 +17,14 @@ export type CredentialResolutionResult = {
 	data: ICredentialDataDecryptedObject;
 	/** True only when the credential was actually resolved via a dynamic resolver (not a fallback to static data). */
 	isDynamic: boolean;
+	/**
+	 * The n8n user the resolved private credentials belong to, when the resolver
+	 * maps the context identity to an n8n user (n8n JWT resolver). Undefined for
+	 * external-identity resolvers (Slack, OAuth subjects) and static fallbacks.
+	 * Used by the redaction layer to grant the executing user access to their
+	 * own data.
+	 */
+	resolvedUserId?: string;
 };
 
 /**
@@ -43,7 +51,7 @@ export interface ICredentialResolutionProvider {
 	/**
 	 * Returns the seeded system resolver id used to store private credentials
 	 * on the running user's behalf (e.g. OAuth2 callback for `isResolvable`
-	 * credentials). Returns null when the provider is unavailable.
+	 * credentials). Returns null when the system resolver has not been seeded.
 	 */
 	getSystemResolverId(): string | null;
 }

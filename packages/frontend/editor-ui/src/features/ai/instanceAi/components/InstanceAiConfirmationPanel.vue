@@ -11,6 +11,7 @@ import { useToolLabel } from '../toolLabels';
 import ApprovalOptionList, { type ApprovalOption } from './ApprovalOptionList.vue';
 import DomainAccessApproval from './DomainAccessApproval.vue';
 import GatewayResourceDecision from './GatewayResourceDecision.vue';
+import InstanceAiChannelSetup from './InstanceAiChannelSetup.vue';
 import InstanceAiCredentialSetup from './InstanceAiCredentialSetup.vue';
 import type { QuestionAnswer } from './InstanceAiQuestions.vue';
 import InstanceAiQuestions from './InstanceAiQuestions.vue';
@@ -44,6 +45,7 @@ function getConfirmationType(conf: InstanceAiConfirmation): string {
 	if (conf.inputType) return conf.inputType;
 	if (conf.setupRequests?.length) return 'setup';
 	if (conf.credentialRequests?.length) return 'credential-setup';
+	if (conf.channelConfig) return 'channel-config';
 	return 'approval';
 }
 
@@ -168,7 +170,7 @@ function buildApprovalOptions(item: PendingConfirmationItem): ApprovalOption[] {
 	if (!destructive) {
 		options.push({
 			key: 'always-allow',
-			icon: 'check',
+			icon: 'check-check',
 			label: i18n.baseText('instanceAi.confirmation.alwaysAllow'),
 			suffix: i18n.baseText('instanceAi.confirmation.alwaysAllowSuffix'),
 			testId: 'instance-ai-panel-confirm-always-allow',
@@ -185,7 +187,6 @@ function buildApprovalOptions(item: PendingConfirmationItem): ApprovalOption[] {
 		key: 'deny',
 		icon: 'ban',
 		label: i18n.baseText('instanceAi.confirmation.deny'),
-		withArrow: false,
 		testId: 'instance-ai-panel-confirm-deny',
 	});
 	return options;
@@ -257,7 +258,11 @@ async function handleAlwaysAllow(item: PendingConfirmationItem) {
 		// failed POST would otherwise hide the card while the backend keeps
 		// waiting, AND seed an auto-approve key the watcher would use to
 		// silently approve later matching confirmations.
-		const ok = await thread.confirmAction(conf.requestId, { kind: 'approval', approved: true });
+		const ok = await thread.confirmAction(conf.requestId, {
+			kind: 'approval',
+			approved: true,
+			scope: 'session',
+		});
 		if (!ok) return;
 		thread.addAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {});
 		trackInputCompleted(
@@ -360,34 +365,36 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 	void thread.confirmAction(conf.requestId, { kind: 'questions', answers });
 }
 
+const PLAN_REVIEW_OPTIONS = ['approve', 'ask-for-edits', 'deny'] as const;
+
 function handlePlanApprove(conf: InstanceAiConfirmation, numTasks: number) {
 	trackInputCompleted(
 		conf,
-		[{ label: 'plan', options: ['approve', 'request-changes'], option_chosen: 'approve' }],
+		[{ label: 'plan', options: [...PLAN_REVIEW_OPTIONS], option_chosen: 'approve' }],
 		[],
-		{ num_tasks: numTasks },
+		{ num_tasks: numTasks, plan_feedback_type: 'accept' },
 	);
 	thread.resolveConfirmation(conf.requestId, 'approved');
 	void thread.confirmAction(conf.requestId, { kind: 'approval', approved: true });
 }
 
-function handlePlanRequestChanges(
-	conf: InstanceAiConfirmation,
-	feedback: string,
-	numTasks: number,
-) {
+function handlePlanAskForEdits(conf: InstanceAiConfirmation, numTasks: number) {
+	thread.startPlanEdit({
+		requestId: conf.requestId,
+		inputThreadId: conf.inputThreadId,
+		taskCount: numTasks,
+	});
+}
+
+function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 	trackInputCompleted(
 		conf,
-		[{ label: 'plan', options: ['approve', 'request-changes'], option_chosen: 'request-changes' }],
+		[{ label: 'plan', options: [...PLAN_REVIEW_OPTIONS], option_chosen: 'deny' }],
 		[],
-		{ num_tasks: numTasks, feedback },
+		{ num_tasks: numTasks, plan_feedback_type: 'deny' },
 	);
 	thread.resolveConfirmation(conf.requestId, 'denied');
-	void thread.confirmAction(conf.requestId, {
-		kind: 'approval',
-		approved: false,
-		userInput: feedback,
-	});
+	void thread.confirmAction(conf.requestId, { kind: 'planDeny' });
 }
 </script>
 
@@ -450,13 +457,17 @@ function handlePlanRequestChanges(
 							((chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length,
 						)
 					"
-					@request-changes="
-						(feedback) =>
-							handlePlanRequestChanges(
-								chunk.item.toolCall.confirmation,
-								feedback,
-								((chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length,
-							)
+					@ask-for-edits="
+						handlePlanAskForEdits(
+							chunk.item.toolCall.confirmation,
+							((chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length,
+						)
+					"
+					@deny="
+						handlePlanDeny(
+							chunk.item.toolCall.confirmation,
+							((chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length,
+						)
 					"
 				/>
 
@@ -531,6 +542,16 @@ function handlePlanRequestChanges(
 					:description="chunk.item.toolCall.confirmation.resourceDecision.description"
 					:options="chunk.item.toolCall.confirmation.resourceDecision.options"
 				/>
+
+				<!-- Chat-channel setup (agent-builder configure_channel) — presence-based -->
+				<InstanceAiChannelSetup
+					v-else-if="chunk.item.toolCall.confirmation.channelConfig"
+					:key="'channel-' + chunk.item.toolCall.confirmation.requestId"
+					:request-id="chunk.item.toolCall.confirmation.requestId"
+					:integration-type="chunk.item.toolCall.confirmation.channelConfig.integrationType"
+					:agent-id="chunk.item.toolCall.confirmation.channelConfig.agentId"
+					:project-id="chunk.item.toolCall.confirmation.projectId ?? ''"
+				/>
 			</template>
 
 			<!-- ============ Floating approval ============ -->
@@ -563,7 +584,7 @@ function handlePlanRequestChanges(
 						<div v-else>
 							<div :class="$style.approvalRow">
 								<div :class="$style.approvalRowBody">
-									<N8nText size="medium" bold>
+									<N8nText size="large" bold>
 										{{ buildApprovalTitle(chunk.item) }}
 									</N8nText>
 									<ConfirmationPreview>{{ buildApprovalSubtitle(chunk.item) }}</ConfirmationPreview>
@@ -589,9 +610,12 @@ function handlePlanRequestChanges(
 }
 
 .root {
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	background-color: var(--color--background--light-3);
+	border: none;
+	border-radius: var(--radius--xl);
+	box-shadow:
+		var(--shadow--sm),
+		inset 0 0 0 1px light-dark(var(--color--black-alpha-100), var(--color--white-alpha-100));
+	background-color: var(--background--surface);
 }
 
 .floatingRoot {
@@ -615,12 +639,12 @@ function handlePlanRequestChanges(
 .approvalRow {
 	display: flex;
 	flex-direction: column;
-	padding: var(--spacing--4xs) 0;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--sm);
 	font-size: var(--font-size--2xs);
 }
 
 .approvalRowBody {
-	padding: var(--spacing--sm) var(--spacing--sm) 0;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);

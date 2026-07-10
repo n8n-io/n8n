@@ -1,13 +1,14 @@
 import { generateKeyPairSync } from 'crypto';
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INodeTypeBaseDescription } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { CryptoV2 } from '../CryptoV2.node';
+import type { Mock, Mocked } from 'vitest';
 
 describe('CryptoV2 Node', () => {
 	let cryptoNode: CryptoV2;
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 
 	const baseDescription: INodeTypeBaseDescription = {
 		displayName: 'Crypto',
@@ -23,7 +24,7 @@ describe('CryptoV2 Node', () => {
 	beforeEach(() => {
 		cryptoNode = new CryptoV2(baseDescription);
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockExecuteFunctions.getNode.mockReturnValue({
 			id: 'crypto-node',
@@ -85,6 +86,58 @@ describe('CryptoV2 Node', () => {
 				const result = await cryptoNode.execute.call(mockExecuteFunctions);
 
 				expect(result[0][0].json.data).toBe('hoB1e7VM7nbOTl8floCPteEqN4ZODWlVc9IWQjsEhUk=');
+			});
+
+			it('should compute HMAC-SHA1 over a value with hex encoding', async () => {
+				mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					const params: Record<string, string | boolean> = {
+						action: 'hmac',
+						type: 'SHA1',
+						encoding: 'hex',
+						dataPropertyName: 'data',
+						binaryData: false,
+						value: 'test',
+					};
+					return params[paramName];
+				});
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					hmacSecret: 'key',
+					signPrivateKey: '',
+				});
+
+				const result = await cryptoNode.execute.call(mockExecuteFunctions);
+
+				expect(result[0][0].json.data).toBe('671f54ce0c540f78ffe1e26dcf9c2a047aea4fda');
+			});
+
+			it('should compute HMAC-SHA1 over in-memory binary data with hex encoding', async () => {
+				mockExecuteFunctions.getInputData.mockReturnValue([
+					{ json: {}, binary: { data: { data: 'dGVzdA==', mimeType: 'text/plain' } } },
+				]);
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					const params: Record<string, string | boolean> = {
+						action: 'hmac',
+						type: 'SHA1',
+						encoding: 'hex',
+						dataPropertyName: 'data',
+						binaryData: true,
+						binaryPropertyName: 'data',
+					};
+					return params[paramName];
+				});
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					hmacSecret: 'key',
+					signPrivateKey: '',
+				});
+				(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue({
+					data: 'dGVzdA==',
+					mimeType: 'text/plain',
+				});
+
+				const result = await cryptoNode.execute.call(mockExecuteFunctions);
+
+				expect(result[0][0].json.data).toBe('671f54ce0c540f78ffe1e26dcf9c2a047aea4fda');
 			});
 		});
 
@@ -181,6 +234,25 @@ describe('CryptoV2 Node', () => {
 			const result = await cryptoNode.execute.call(mockExecuteFunctions);
 
 			expect(result[0][0].json.data).toBe('CY9rzUYh03PK3k6DJie09g==');
+		});
+
+		it('should hash with SHA1 (hex encoding)', async () => {
+			mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, string | boolean> = {
+					action: 'hash',
+					type: 'SHA1',
+					encoding: 'hex',
+					dataPropertyName: 'data',
+					binaryData: false,
+					value: 'test',
+				};
+				return params[paramName];
+			});
+
+			const result = await cryptoNode.execute.call(mockExecuteFunctions);
+
+			expect(result[0][0].json.data).toBe('a94a8fe5ccb19ba61c4c0873d391e987982fbbd3');
 		});
 
 		it('should not require credentials for hash action', async () => {

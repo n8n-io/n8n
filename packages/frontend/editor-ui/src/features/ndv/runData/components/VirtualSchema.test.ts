@@ -28,18 +28,24 @@ import { userEvent } from '@testing-library/user-event';
 import { cleanup, waitFor } from '@testing-library/vue';
 import { computed, shallowRef } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
-import {
-	createResultOk,
-	NodeConnectionTypes,
-	type IBinaryData,
-	type INodeExecutionData,
-} from 'n8n-workflow';
+import { createResultOk } from '@n8n/utils/result';
+import { NodeConnectionTypes, type IBinaryData, type INodeExecutionData } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
 import { defaultSettings } from '@/__tests__/defaults';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
 
 const mockNode1 = createTestNode({
 	name: 'Manual Trigger',
@@ -171,7 +177,8 @@ async function setupStore() {
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const settingsStore = useSettingsStore();
-	const ndvStore = useNDVStore();
+	workflowsStore.setWorkflowId(workflow.id);
+	const ndvStore = useNDVStore(createWorkflowDocumentId(workflow.id));
 	settingsStore.setSettings(defaultSettings);
 
 	nodeTypesStore.setNodeTypes([
@@ -201,7 +208,6 @@ async function setupStore() {
 			outputs: [NodeConnectionTypes.Main],
 		}),
 	]);
-	workflowsStore.setWorkflowId(workflow.id);
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
 	workflowDocumentStore.hydrate(workflow);
 	ndvStore.setActiveNodeName('Test Node Name', 'other');
@@ -584,7 +590,7 @@ describe('VirtualSchema.vue', () => {
 	});
 
 	it('should show connections', async () => {
-		const ndvStore = useNDVStore();
+		const ndvStore = useNDVStore(createWorkflowDocumentId('123'));
 		vi.spyOn(ndvStore, 'ndvNodeInputNumber', 'get').mockReturnValue({
 			[defaultNodes[0].name]: [0],
 			[defaultNodes[1].name]: [0, 1, 2],
@@ -602,7 +608,7 @@ describe('VirtualSchema.vue', () => {
 
 	describe('telemetry', () => {
 		function dragDropPill(pill: HTMLElement) {
-			const ndvStore = useNDVStore();
+			const ndvStore = useNDVStore(createWorkflowDocumentId('123'));
 			const reset = vi.spyOn(ndvStore, 'resetMappingTelemetry');
 			fireEvent(
 				pill,

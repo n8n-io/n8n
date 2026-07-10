@@ -15,6 +15,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 
+import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
 import { CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
 import { validateAccessToReferencedSecretProviders } from './validation';
@@ -31,6 +32,7 @@ export class EnterpriseCredentialsService {
 		private readonly externalSecretsConfig: ExternalSecretsConfig,
 		private readonly externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
 		private readonly licenseState: LicenseState,
+		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
 	) {}
 
 	async shareWithProjects(
@@ -114,6 +116,19 @@ export class EnterpriseCredentialsService {
 			credential = await this.credentialsFinderService.findCredentialForUser(credentialId, user, [
 				'credential:read',
 			]);
+
+			// Connect-capable users of a private credential need the redacted blueprint
+			// (secrets stay masked) so the UI can detect the OAuth type and render the
+			// per-user connect flow, even without edit rights.
+			if (
+				includeDecryptedData &&
+				credential?.isResolvable &&
+				(await this.credentialsFinderService.findCredentialForUser(credentialId, user, [
+					'credential:connect',
+				]))
+			) {
+				decryptedData = await this.credentialsService.decrypt(credential);
+			}
 		}
 
 		if (!credential) {
@@ -126,16 +141,34 @@ export class EnterpriseCredentialsService {
 
 		const { data: _, ...rest } = credential;
 
+		const enriched: typeof rest & { connectedByMe?: boolean; connectedUserCount?: number } = rest;
+		await this.credentialsService.populateConnectedByMe([enriched], user);
+
+		if (credential.isResolvable) {
+			enriched.connectedUserCount = await this.credentialsService.countConnectedUsers(
+				credential.id,
+			);
+		}
+
 		if (decryptedData) {
 			// We never want to expose the oauthTokenData to the frontend, but it
 			// expects it to check if the credential is already connected.
-			if (decryptedData?.oauthTokenData) {
+			if (credential.isResolvable) {
+				// For resolvable credentials, the "connected" signal lives in the
+				// per-user storage — mirror that into the existing oauthTokenData
+				// flag the frontend banner already reads.
+				if (enriched.connectedByMe) {
+					decryptedData.oauthTokenData = true;
+				} else {
+					delete decryptedData.oauthTokenData;
+				}
+			} else if (decryptedData?.oauthTokenData) {
 				decryptedData.oauthTokenData = true;
 			}
-			return { data: decryptedData, ...rest };
+			return { data: decryptedData, ...enriched };
 		}
 
-		return { ...rest };
+		return { ...enriched };
 	}
 
 	async transferOne(user: User, credentialId: string, destinationProjectId: string) {
@@ -192,8 +225,11 @@ export class EnterpriseCredentialsService {
 			);
 		}
 
+		// 7. projects losing access — the move drops all their sharings
+		const affectedProjectIds = [...new Set(credential.shared.map((s) => s.projectId))];
+
 		await this.sharedCredentialsRepository.manager.transaction(async (trx) => {
-			// 7. transfer the credential
+			// 8. transfer the credential
 			// remove all sharings
 			await trx.remove(credential.shared);
 
@@ -204,6 +240,13 @@ export class EnterpriseCredentialsService {
 					projectId: destinationProject.id,
 					role: 'credential:owner',
 				}),
+			);
+
+			// 9. drop connections for members who lost access in the new project
+			await this.connectionStatusProxy.cleanupOrphanedEntriesForProjects(
+				credential.id,
+				affectedProjectIds,
+				trx,
 			);
 		});
 	}

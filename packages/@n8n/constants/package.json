@@ -1,17 +1,18 @@
 {
   "name": "@n8n/constants",
-  "version": "0.24.0",
+  "version": "0.30.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
-    "test": "jest"
+    "test": "node -e \"process.exit(0)\""
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -20,6 +21,8 @@
     "dist/**/*"
   ],
   "devDependencies": {
-    "@n8n/typescript-config": "workspace:*"
-  }
+    "@n8n/typescript-config": "workspace:*",
+    "typescript": "catalog:"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

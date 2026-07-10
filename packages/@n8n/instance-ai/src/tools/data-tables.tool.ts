@@ -75,10 +75,10 @@ function isNameConflictError(error: unknown): boolean {
 // ── Action schemas ─────────────────────────────────────────────────────────
 
 const projectIdDescribe =
-	'Project ID. For list/create, scopes the operation to this project (defaults to personal). For id-based actions (schema, query, delete, add-column, delete-column, rename-column, insert/update/delete-rows), disambiguates when `dataTableId` is a name that exists in multiple accessible projects. Ignored when `dataTableId` is a UUID; rejected when the UUID belongs to a different project.';
+	'Project ID. Scopes list/create (defaults to personal); for id-based actions, disambiguates when `dataTableId` is a name found in multiple accessible projects. Ignored when `dataTableId` is a UUID.';
 
 const dataTableNameDescribe =
-	'Human-readable name of the data table, shown alongside the ID in the approval card. Pass this whenever you know it (e.g. from a prior `list` call) so users see a recognisable label instead of a bare UUID.';
+	'Data table name, shown next to the ID in the approval card. Pass whenever known so users see a recognisable label instead of a bare UUID.';
 
 /** Renders `"{name} (ID: {id})"` when the agent supplied a name, otherwise the bare id. */
 function buildDataTableLabel(input: { dataTableId: string; dataTableName?: string }): string {
@@ -93,12 +93,17 @@ const listAction = z.object({
 });
 
 const schemaAction = z.object({
-	action: z.literal('schema').describe('Get column definitions for a data table'),
+	action: z
+		.literal('schema')
+		.describe(
+			'Get column definitions for a data table. Call before using a table in workflow code — column names are normalized to snake_case.',
+		),
 	dataTableId: z
 		.string()
 		.describe(
 			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
 		),
+	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 });
 
@@ -109,6 +114,7 @@ const queryAction = z.object({
 		.describe(
 			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
 		),
+	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 	filter: filterSchema.optional().describe('Row filter conditions'),
 	limit: z
@@ -230,8 +236,6 @@ const deleteRowsAction = z.object({
 	filter: filterSchemaWithMinOne.describe('Row filter conditions'),
 });
 
-const readOnlyActions = [listAction, schemaAction, queryAction] as const;
-
 const allActions = [
 	listAction,
 	schemaAction,
@@ -246,8 +250,34 @@ const allActions = [
 	deleteRowsAction,
 ] as const;
 
-type ReadOnlyInput = z.infer<z.ZodDiscriminatedUnion<'action', typeof readOnlyActions>>;
 type FullInput = z.infer<z.ZodDiscriminatedUnion<'action', typeof allActions>>;
+
+type DataTableReferenceInput = {
+	dataTableId: string;
+	dataTableName?: string;
+	projectId?: string;
+};
+
+async function resolveDataTableReference(
+	context: InstanceAiContext,
+	input: DataTableReferenceInput,
+	permission: 'read' | 'readRow',
+): Promise<{ dataTableId: string; dataTableName?: string; projectId?: string }> {
+	const reference = await context.dataTableService.resolveTableReference?.(input.dataTableId, {
+		projectId: input.projectId,
+		permission,
+	});
+
+	const table: { dataTableId: string; dataTableName?: string; projectId?: string } = {
+		dataTableId: reference?.id ?? input.dataTableId,
+	};
+	const dataTableName = reference?.name ?? input.dataTableName;
+	const projectId = reference?.projectId ?? input.projectId;
+	if (dataTableName !== undefined) table.dataTableName = dataTableName;
+	if (projectId !== undefined) table.projectId = projectId;
+
+	return table;
+}
 
 // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -263,16 +293,18 @@ async function handleSchema(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'schema' }>,
 ) {
+	const table = await resolveDataTableReference(context, input, 'read');
 	const columns = await context.dataTableService.getSchema(input.dataTableId, {
 		projectId: input.projectId,
 	});
-	return { columns };
+	return { ...table, columns };
 }
 
 async function handleQuery(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'query' }>,
 ) {
+	const table = await resolveDataTableReference(context, input, 'readRow');
 	const result = await context.dataTableService.queryRows(input.dataTableId, {
 		filter: input.filter,
 		limit: input.limit,
@@ -285,12 +317,13 @@ async function handleQuery(
 
 	if (remaining > 0) {
 		return {
+			...table,
 			...result,
-			hint: `${remaining} more rows available. Use plan with a manage-data-tables task for bulk operations.`,
+			hint: `${remaining} more rows available. Use additional paginated data-tables queries for bulk operations.`,
 		};
 	}
 
-	return result;
+	return { ...table, ...result };
 }
 
 async function handleCreate(
@@ -338,7 +371,7 @@ async function handleCreate(
 		if (isNameConflictError(error)) {
 			return {
 				denied: true,
-				reason: `Table "${input.name}" already exists. Use list-data-tables to find it and get-data-table-schema to check its columns.`,
+				reason: `Table "${input.name}" already exists. Use data-tables(action="list") to find it and data-tables(action="schema") to check its columns.`,
 			};
 		}
 		throw error;
@@ -598,33 +631,14 @@ async function handleDeleteRows(
 
 // ── Tool factory ───────────────────────────────────────────────────────────
 
-export function createDataTablesTool(
-	context: InstanceAiContext,
-	surface: 'full' | 'orchestrator' = 'full',
-) {
-	if (surface === 'orchestrator') {
-		const inputSchema = sanitizeInputSchema(z.discriminatedUnion('action', [...readOnlyActions]));
-
-		return new Tool(DATA_TABLES_TOOL_ID)
-			.description('Manage data tables — list, get schema, and query rows.')
-			.input(inputSchema)
-			.handler(async (input: ReadOnlyInput) => {
-				switch (input.action) {
-					case 'list':
-						return await handleList(context, input);
-					case 'schema':
-						return await handleSchema(context, input);
-					case 'query':
-						return await handleQuery(context, input);
-				}
-			})
-			.build();
-	}
-
+export function createDataTablesTool(context: InstanceAiContext) {
 	const inputSchema = sanitizeInputSchema(z.discriminatedUnion('action', [...allActions]));
 
 	return new Tool(DATA_TABLES_TOOL_ID)
-		.description('Manage data tables — list, query, create, modify columns, and manage rows.')
+		.description(
+			'Manage data tables — list, query, create, modify columns, and manage rows. ' +
+				'For workflow building, use list, create, and schema before referencing tables in SDK code.',
+		)
 		.input(inputSchema)
 		.suspend(confirmationSuspendSchema)
 		.resume(confirmationResumeSchema)

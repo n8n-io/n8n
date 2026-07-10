@@ -15,6 +15,7 @@ import type {
 	IHttpRequestMethods,
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	BINARY_ENCODING,
 	NodeApiError,
@@ -23,7 +24,6 @@ import {
 	jsonParse,
 	removeCircularRefs,
 	sleep,
-	ensureError,
 	setSafeObjectProperty,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
@@ -169,6 +169,7 @@ export class HttpRequestV3 implements INodeType {
 			options: IRequestOptions;
 			authKeys: IAuthDataSanitizeKeys;
 			credentialType?: string;
+			responseFileName?: string;
 		}> = [];
 
 		const updadeQueryParameter = updadeQueryParameterConfig(nodeVersion);
@@ -406,7 +407,7 @@ export class HttpRequestV3 implements INodeType {
 						accumulator[cur.name] = {
 							value: uploadData,
 							options: {
-								filename: binaryData.fileName,
+								filename: binaryData.fileName ?? 'file',
 								contentType: binaryData.mimeType,
 								...(knownLength !== undefined && { knownLength }),
 							},
@@ -617,6 +618,7 @@ export class HttpRequestV3 implements INodeType {
 					options: requestOptions,
 					authKeys: authDataKeys,
 					credentialType: nodeCredentialType ?? genericCredentialType,
+					responseFileName,
 				});
 
 				if (pagination && pagination.paginationMode !== 'off') {
@@ -715,6 +717,8 @@ export class HttpRequestV3 implements INodeType {
 						paginationData.binaryResult = true;
 					}
 
+					const sanitizedRequest = sanitizeUiMessage(requestOptions, authDataKeys);
+
 					const requestPromise = this.helpers.requestWithAuthenticationPaginated
 						.call(
 							this,
@@ -722,6 +726,8 @@ export class HttpRequestV3 implements INodeType {
 							itemIndex,
 							paginationData,
 							nodeCredentialType ?? genericCredentialType,
+							undefined,
+							sanitizedRequest,
 						)
 						.catch((error) => {
 							if (error instanceof NodeOperationError && error.type === 'invalid_url') {
@@ -783,6 +789,18 @@ export class HttpRequestV3 implements INodeType {
 
 				errorItems[itemIndex] = error.message;
 
+				// Ensure requests[] stays index-aligned with requestPromises[]/items[].
+				// If an item failed during request building, its slot may be empty.
+				// Assign a placeholder at the exact index so later items don't shift.
+				// Assign a placeholder with an empty options object to keep types happy.
+				// Error items are skipped before options is ever read.
+				if (!requests[itemIndex]) {
+					requests[itemIndex] = {
+						options: {} as IRequestOptions,
+						authKeys: {},
+					};
+				}
+
 				continue;
 			}
 		}
@@ -825,6 +843,8 @@ export class HttpRequestV3 implements INodeType {
 
 					continue;
 				}
+
+				const { responseFileName } = requests[itemIndex];
 
 				if (responseData!.status !== 'fulfilled') {
 					if (responseData.reason.statusCode === 429) {
@@ -999,7 +1019,8 @@ export class HttpRequestV3 implements INodeType {
 
 						preparedBinaryData.fileName = setFilename(
 							preparedBinaryData,
-							requestOptions,
+							// options is always set here: error items are skipped before this branch
+							requests[itemIndex].options,
 							responseFileName,
 						);
 

@@ -11,6 +11,8 @@ export class McpRegistryModule implements ModuleInterface {
 		const { McpRegistryService } = await import('./registry/mcp-registry.service');
 		await Container.get(McpRegistryService).init();
 
+		await import('./mcp-registry.controller');
+
 		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
 			await import('./mcp-registry-test.controller');
 		}

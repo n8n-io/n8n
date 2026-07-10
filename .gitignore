@@ -1,15 +1,19 @@
 node_modules
 .DS_Store
 .tmp
+.tmp-schema-docs
 tmp
 dist
 coverage
+coverage-by-spec
+coverage-by-spec-backend
 npm-debug.log*
 yarn.lock
 google-generated-credentials.json
 _START_PACKAGE
 .env
 .env.local
+.env.eval
 .vscode/*
 !.claude
 !.vscode/extensions.json
@@ -20,6 +24,8 @@ nodelinter.config.json
 !.github/scripts/package-lock.json
 packages/**/.turbo
 .turbo
+.stryker-tmp/
+**/reports/mutation/
 *.tsbuildinfo
 .stylelintcache
 *.swp
@@ -28,6 +34,9 @@ CHANGELOG-*.md
 !packages/frontend/@n8n/design-system/**/*.mdx
 build-storybook.log
 build.log
+tcr-dry.log
+.agent-setup/
+.agent-recordings/
 sbom-source.cdx.json
 *.junit.xml
 junit.xml
@@ -36,6 +45,7 @@ test-results.json
 packages/testing/playwright/playwright-report
 packages/testing/playwright/eval-report
 packages/testing/playwright/test-results
+packages/testing/playwright/results.xml
 packages/testing/playwright/eval-results.json
 packages/@n8n/instance-ai/eval-results.json
 packages/@n8n/instance-ai/.eval-output/
@@ -58,6 +68,10 @@ packages/cli/THIRD_PARTY_LICENSES.md
 .coverage
 .nyc_output
 coverage-gaps.json
+
+# Local regeneration cache for scripts/generate-lucide-icon-data.mjs (committed output: lucideIconData.ts)
+scripts/.lucide-tags-cache.json
+
 packages/cli/src/commands/export/outputs
 *.bak
 .data
@@ -71,4 +85,6 @@ packages/cli/src/commands/export/outputs
 .conductor
 .n8n
 lefthook-local.yml
+IMPROVEMENTS.md
 .playwright-mcp
+stryker.log

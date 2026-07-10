@@ -186,13 +186,13 @@ describe('InstanceAiMessage', () => {
 					content: '',
 					agentTree: makeAgentTree({
 						status: 'active',
-						statusMessage: 'Recalling conversation...',
+						statusMessage: 'Processing request...',
 					}),
 				}),
 			},
 		});
 
-		expect(getByText('Recalling conversation...')).toBeInTheDocument();
+		expect(getByText('Processing request...')).toBeInTheDocument();
 	});
 
 	it('should render agent activity tree when agentTree is present', () => {
@@ -205,5 +205,42 @@ describe('InstanceAiMessage', () => {
 		});
 
 		expect(getByTestId('agent-activity-tree')).toBeInTheDocument();
+	});
+
+	it('should attribute the stop to the user when cancelled by the user', () => {
+		const { getByTestId, getByText } = renderComponent({
+			props: {
+				message: makeMessage({
+					agentTree: makeAgentTree({ status: 'cancelled', cancellationReason: 'user' }),
+				}),
+			},
+		});
+
+		expect(getByTestId('instance-ai-run-cancelled')).toBeInTheDocument();
+		expect(getByText('You stopped this run')).toBeInTheDocument();
+	});
+
+	it('should label a timed-out run distinctly', () => {
+		const { getByText } = renderComponent({
+			props: {
+				message: makeMessage({
+					agentTree: makeAgentTree({ status: 'cancelled', cancellationReason: 'timeout' }),
+				}),
+			},
+		});
+
+		expect(getByText('Run timed out')).toBeInTheDocument();
+	});
+
+	it('should NOT show the stopped indicator for a completed run', () => {
+		const { queryByTestId } = renderComponent({
+			props: {
+				message: makeMessage({
+					agentTree: makeAgentTree({ status: 'completed' }),
+				}),
+			},
+		});
+
+		expect(queryByTestId('instance-ai-run-cancelled')).not.toBeInTheDocument();
 	});
 });

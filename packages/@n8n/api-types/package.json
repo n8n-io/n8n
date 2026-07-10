@@ -1,11 +1,12 @@
 {
   "name": "@n8n/api-types",
-  "version": "1.22.0",
+  "version": "1.30.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
@@ -26,16 +27,21 @@
     "@n8n/config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
+    "minifaker": "1.34.1",
     "zod": "catalog:"
   },
   "dependencies": {
+    "@n8n_io/ai-assistant-sdk": "catalog:",
     "n8n-workflow": "workspace:*",
     "xss": "catalog:",
     "@n8n/permissions": "workspace:*"
   },
   "peerDependencies": {
     "zod": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

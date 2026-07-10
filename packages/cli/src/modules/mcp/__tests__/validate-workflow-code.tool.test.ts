@@ -1,17 +1,23 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
+import { NodeConnectionTypes } from 'n8n-workflow';
+
+import { NodeTypes } from '@/node-types';
+import { Telemetry } from '@/telemetry';
 
 import { createValidateWorkflowCodeTool } from '../tools/workflow-builder/validate-workflow-code.tool';
 
-import { Telemetry } from '@/telemetry';
+// Mocks referenced inside vi.mock factories must come from vi.hoisted.
+const { mockParseAndValidate, mockStripImportStatements } = vi.hoisted(() => ({
+	mockParseAndValidate: vi.fn(),
+	mockStripImportStatements: vi.fn((code: string) => code),
+}));
 
-const mockParseAndValidate = jest.fn();
-const mockStripImportStatements = jest.fn((code: string) => code);
-
-jest.mock('@n8n/ai-workflow-builder', () => ({
-	ParseValidateHandler: jest.fn().mockImplementation(() => ({
-		parseAndValidate: mockParseAndValidate,
-	})),
+vi.mock('@n8n/ai-workflow-builder', () => ({
+	// `new ParseValidateHandler()` — use a constructable function, not an arrow.
+	ParseValidateHandler: vi.fn(function () {
+		return { parseAndValidate: mockParseAndValidate };
+	}),
 	stripImportStatements: (code: string) => mockStripImportStatements(code),
 	CODE_BUILDER_VALIDATE_TOOL: {
 		toolName: 'validate_workflow_code',
@@ -35,16 +41,27 @@ const parseResult = (result: { content: Array<{ type: string; text?: string }> }
 describe('validate-workflow-code MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	let telemetry: Telemetry;
+	let nodeTypes: ReturnType<typeof mockInstance<NodeTypes>>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		telemetry = mockInstance(Telemetry, {
-			track: jest.fn(),
+			track: vi.fn(),
 		});
+		nodeTypes = mockInstance(NodeTypes);
+		nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+			if (type === '@n8n/n8n-nodes-langchain.agent') {
+				return { description: { outputs: [NodeConnectionTypes.Main] } };
+			}
+			if (type === '@n8n/n8n-nodes-langchain.agentTool') {
+				return { description: { outputs: [NodeConnectionTypes.AiTool] } };
+			}
+			return { description: { outputs: [NodeConnectionTypes.Main] } };
+		}) as typeof nodeTypes.getByNameAndVersion);
 	});
 
-	const createTool = () => createValidateWorkflowCodeTool(user, telemetry);
+	const createTool = () => createValidateWorkflowCodeTool(user, telemetry, nodeTypes);
 
 	describe('smoke tests', () => {
 		test('creates tool with correct name and readOnlyHint=true', () => {
@@ -191,6 +208,46 @@ describe('validate-workflow-code MCP tool', () => {
 					}),
 				}),
 			);
+		});
+
+		test('returns valid=false when an agent is wired as a tool to another agent', async () => {
+			mockParseAndValidate.mockResolvedValue({
+				workflow: {
+					nodes: [
+						{
+							id: 'manager',
+							name: 'Manager Agent',
+							type: '@n8n/n8n-nodes-langchain.agent',
+							typeVersion: 3,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: 'worker',
+							name: 'Worker Agent',
+							type: '@n8n/n8n-nodes-langchain.agent',
+							typeVersion: 3,
+							position: [200, 0],
+							parameters: {},
+						},
+					],
+					connections: {
+						'Worker Agent': {
+							ai_tool: [[{ node: 'Manager Agent', type: 'ai_tool', index: 0 }]],
+						},
+					},
+				},
+				warnings: [],
+			});
+
+			const tool = createTool();
+			const result = await tool.handler({ code: 'const wf = ...' }, {} as never);
+
+			const response = parseResult(result);
+			expect(response.valid).toBe(false);
+			expect(Array.isArray(response.errors)).toBe(true);
+			expect((response.errors as string[])[0]).toContain('@n8n/n8n-nodes-langchain.agentTool');
+			expect(result.isError).toBe(true);
 		});
 
 		test('tracks telemetry on failure with error message', async () => {

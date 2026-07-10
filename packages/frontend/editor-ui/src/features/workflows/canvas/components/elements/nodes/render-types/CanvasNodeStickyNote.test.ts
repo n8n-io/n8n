@@ -5,16 +5,13 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { fireEvent } from '@testing-library/vue';
 
-vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>()),
-	injectCanvasRenderData: vi.fn(() => ({
-		value: {
-			nodeInputsByNodeId: new Map(),
-			nodeOutputsByNodeId: new Map(),
-			executionIssuesByNodeName: new Map(),
-		},
-	})),
-}));
+vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>();
+	return {
+		...actual,
+		injectCanvasRenderData: vi.fn(() => ({ value: actual.createEmptyCanvasRenderData() })),
+	};
+});
 
 const renderComponent = createComponentRenderer(CanvasNodeStickyNote);
 

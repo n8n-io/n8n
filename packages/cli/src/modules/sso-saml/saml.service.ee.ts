@@ -1,17 +1,21 @@
 import type { SamlPreferences, SamlPreferencesAttributeMapping } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import type { Settings, User } from '@n8n/db';
 import { isValidEmail, SettingsRepository, UserRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import axios from 'axios';
 import { createPublicKey, randomBytes, X509Certificate } from 'crypto';
 import type express from 'express';
-import { Cipher, createHttpProxyAgent, createHttpsProxyAgent, InstanceSettings } from 'n8n-core';
+import { Cipher, InstanceSettings } from 'n8n-core';
 import { CREDENTIAL_BLANKING_VALUE, jsonParse, UnexpectedError } from 'n8n-workflow';
 import { type IdentityProviderInstance, type ServiceProviderInstance } from 'samlify';
-import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
+import type {
+	BindingContext,
+	ESamlHttpRequest,
+	PostBindingContext,
+} from 'samlify/types/src/entity';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -98,6 +102,7 @@ export class SamlService {
 		private readonly provisioningService: ProvisioningService,
 		private readonly cipher: Cipher,
 		private readonly cacheService: CacheService,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	/**
@@ -677,23 +682,18 @@ export class SamlService {
 		const shouldIgnoreSSL = ignoreSSL ?? this._samlPreferences.ignoreSSL;
 		if (!url) throw new BadRequestError('Error fetching SAML Metadata, no Metadata URL set');
 		try {
-			// Create a proxy-aware HTTPS agent that respects HTTP_PROXY, HTTPS_PROXY, and NO_PROXY
-			// environment variables while also supporting SSL certificate validation options
-			const httpsAgent = createHttpsProxyAgent(
-				null, // Uses proxy from environment variables
-				url,
-				{
-					rejectUnauthorized: !shouldIgnoreSSL,
-				},
-			);
-			const httpAgent = createHttpProxyAgent(null, url);
-
-			const response = await axios.get(url, {
-				httpsAgent,
-				httpAgent,
-			});
-			if (response.status === 200 && response.data) {
-				const xml = (await response.data) as string;
+			const response = await this.outboundHttp
+				.requests({
+					ssrf: 'disabled', // The metadata URL is admin-configured and may point at an internal IdP, so SSRF protection is disabled.
+				})
+				.request({
+					url,
+					method: 'GET',
+					skipSslCertificateValidation: shouldIgnoreSSL,
+					returnFullResponse: true,
+				});
+			if (response.statusCode === 200 && response.body) {
+				const xml = response.body as string;
 				const validationResult = await this.validator.validateMetadata(xml);
 				if (!validationResult) {
 					throw new BadRequestError(`Data received from ${url} is not valid SAML metadata.`);
@@ -720,10 +720,14 @@ export class SamlService {
 			const idp = metadataOverride
 				? await this.createIdentityProviderFromMetadata(metadataOverride)
 				: this.getIdentityProviderInstance();
+			const samlRequest: ESamlHttpRequest = {
+				body: req.body,
+				query: req.query as Record<string, string | undefined>,
+			};
 			parsedSamlResponse = await this.getServiceProviderInstance().parseLoginResponse(
 				idp,
 				binding,
-				req,
+				samlRequest,
 			);
 		} catch (error) {
 			// throw error;

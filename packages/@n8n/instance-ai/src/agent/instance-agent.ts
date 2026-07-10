@@ -1,22 +1,25 @@
-import { Agent } from '@n8n/agents';
+import { Agent, Memory } from '@n8n/agents';
 
+import { applyAgentThinking } from './apply-agent-thinking';
 import {
 	addSafeMcpTools,
 	createClaimedToolNames,
 	type McpToolNameValidationError,
 } from './mcp-tool-name-validation';
+import { attachRuntimeWorkspaceCapabilities } from './runtime-workspace';
 import { getSystemPrompt } from './system-prompt';
-import {
-	createToolRegistry,
-	filterToolRegistry,
-	mergeToolRegistries,
-	toolRegistryValues,
-} from '../tool-registry';
+import { hasRuntimeSkills } from '../skills/runtime-skills';
+import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
 import { createAllTools, createOrchestratorDomainTools, createOrchestrationTools } from '../tools';
+import { createAgentBuilderTools } from '../tools/agent-builder';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
 import { ALWAYS_LOADED_TOOL_NAMES, CHECKPOINT_FOLLOW_UP_TOOL_NAMES } from '../tools/tool-ids';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
-import type { CreateInstanceAgentOptions, InstanceAiToolRegistry } from '../types';
+import type {
+	CreateInstanceAgentOptions,
+	InstanceAiContext,
+	InstanceAiToolRegistry,
+} from '../types';
 
 // ── Agent factory ───────────────────────────────────────────────────────────
 
@@ -51,46 +54,54 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		memoryConfig,
 	} = options;
 
-	// Build native n8n domain tools (context captured via closures — per-run)
-	const domainTools = createAllTools(context);
-	const orchestratorDomainTools = createOrchestratorDomainTools(context);
+	// Build native n8n domain tools (context captured via closures — per-run).
+	// Thread the trace handle in so domain tools (e.g. build-workflow) can emit
+	// explicit child runs that land on the active trace — orchestration tools
+	// (e.g. verify) already get it via OrchestrationContext.
+	const domainContext: InstanceAiContext = { ...context, tracing: orchestrationContext?.tracing };
+	const domainTools = createAllTools(domainContext);
+	const orchestratorDomainTools = createOrchestratorDomainTools(domainContext);
+	// Agent-builder tools (empty unless the host provides agentBuilderService).
+	// Deferred — loaded on demand by the agent-builder skill.
+	const agentBuilderTools = createAgentBuilderTools(domainContext);
 
 	// Load MCP tools (cached by config hash inside the manager — only spawns
 	// processes / opens connections on first call or config change).
-	const mcpTools = await mcpManager.getRegularTools(mcpServers, context.logger);
-	const browserMcpTools = await mcpManager.getBrowserTools(
-		orchestrationContext?.browserMcpConfig,
+	const requireMcpToolApproval = context.permissions?.executeMcpTool !== 'always_allow';
+	const mcpTools = await mcpManager.getRegularTools(
+		mcpServers,
 		context.logger,
+		requireMcpToolApproval,
 	);
 	const rawLocalMcpTools = context.localMcpServer
 		? createToolsFromLocalMcpServer(context.localMcpServer, context.logger)
 		: createToolRegistry();
 
-	// Browser tool names are excluded from the orchestrator's direct toolset.
-	// They remain available to browser-oriented sub-agents via orchestrationContext.mcpTools.
-	const browserToolNames = new Set([
-		...browserMcpTools.keys(),
-		...(context.localMcpServer?.getToolsByCategory('browser').map((tool) => tool.name) ?? []),
-	]);
+	const browserToolNames = new Set(
+		context.localMcpServer?.getToolsByCategory('browser').map((tool) => tool.name) ?? [],
+	);
 
 	const warnSkippedMcpTool = (error: McpToolNameValidationError) => {
-		context.logger?.warn('Skipped MCP tool with unsafe name', {
+		context.logger.warn('Skipped MCP tool with unsafe name', {
 			toolName: error.toolName,
 			source: error.source,
 			reason: error.message,
 		});
 	};
 
-	// Build orchestration tools (plan, delegate) — orchestrator-only.
+	// Build orchestration tools — orchestrator-only.
 	const orchestrationTools = orchestrationContext
 		? createOrchestrationTools(orchestrationContext)
 		: createToolRegistry();
 
-	// Keep MCP tools from shadowing domain or orchestration tools during object composition.
-	const reservedToolNames = new Set([...domainTools.keys(), ...orchestrationTools.keys()]);
+	// Keep MCP tools from shadowing domain, orchestration, or agent-builder tools.
+	const reservedToolNames = new Set([
+		...domainTools.keys(),
+		...orchestrationTools.keys(),
+		...agentBuilderTools.keys(),
+	]);
 
-	// Store all MCP tools (external + browser + local gateway) on orchestrationContext for
-	// sub-agents. These are not all given to the orchestrator directly.
+	// Store all MCP tools on orchestrationContext for sub-agents.
 	const allMcpTools = createToolRegistry();
 	const mcpContextToolNames = createClaimedToolNames(reservedToolNames);
 	addSafeMcpTools(allMcpTools, rawLocalMcpTools, {
@@ -103,23 +114,13 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		claimedToolNames: mcpContextToolNames,
 		warn: warnSkippedMcpTool,
 	});
-	addSafeMcpTools(allMcpTools, browserMcpTools, {
-		source: 'browser MCP',
-		claimedToolNames: mcpContextToolNames,
-		warn: warnSkippedMcpTool,
-	});
-
-	const orchestratorLocalMcpTools = filterToolRegistry(
-		rawLocalMcpTools,
-		([name]) => !browserToolNames.has(name),
-	);
 	if (orchestrationContext && allMcpTools.size > 0) {
 		orchestrationContext.mcpTools = allMcpTools;
 	}
 
 	const claimedOrchestratorToolNames = createClaimedToolNames(reservedToolNames);
 	const safeLocalMcpTools = createToolRegistry();
-	addSafeMcpTools(safeLocalMcpTools, orchestratorLocalMcpTools, {
+	addSafeMcpTools(safeLocalMcpTools, rawLocalMcpTools, {
 		source: 'local gateway MCP',
 		claimedToolNames: claimedOrchestratorToolNames,
 		warn: warnSkippedMcpTool,
@@ -134,6 +135,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	const allOrchestratorTools = mergeToolRegistries(
 		orchestratorDomainTools,
 		orchestrationTools,
+		agentBuilderTools,
 		safeLocalMcpTools,
 		safeMcpTools,
 	);
@@ -146,20 +148,24 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		isCheckpointFollowUp: orchestrationContext?.isCheckpointFollowUp,
 	});
 	const hasDeferrableTools = !options.disableDeferredTools && deferredTools.size > 0;
+	const hasDeferredExternalMcpTools =
+		hasDeferrableTools && Array.from(safeMcpTools.keys()).some((name) => deferredTools.has(name));
 	const runtimeTools = hasDeferrableTools ? coreTools : tracedOrchestratorTools;
 	const systemPrompt = getSystemPrompt({
 		webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
 		formBaseUrl: orchestrationContext?.formBaseUrl,
 		localGateway: context.localGatewayStatus,
 		toolSearchEnabled: hasDeferrableTools,
+		mcpToolSearchEnabled: hasDeferredExternalMcpTools,
 		licenseHints: context.licenseHints,
-		timeZone: options.timeZone,
 		browserAvailable: browserToolNames.size > 0,
 		branchReadOnly: context.branchReadOnly,
+		workspaceRoot:
+			orchestrationContext?.workspace && orchestrationContext.workspaceRoot
+				? orchestrationContext.workspaceRoot
+				: undefined,
 	});
 
-	// The orchestrator intentionally does not receive a workspace. Sandbox access
-	// is scoped to the workflow-builder subagent via `builderSandboxFactory`.
 	const telemetry = orchestrationContext?.tracing?.getTelemetry?.({
 		agentRole: 'orchestrator',
 		functionId: 'instance-ai.orchestrator',
@@ -174,28 +180,41 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		})
 		.tool(toolRegistryValues(runtimeTools))
 		.checkpoint(options.checkpointStore ?? 'memory');
+	if (options.thinkingEnabled !== false) {
+		applyAgentThinking(agent, modelId);
+	}
 	if (hasDeferrableTools) {
 		agent.deferredTool(toolRegistryValues(deferredTools), { search: { topK: 5 } });
+	}
+	const runtimeSkills = orchestrationContext?.runtimeSkills;
+	if (hasRuntimeSkills(runtimeSkills)) {
+		agent.skills(runtimeSkills);
 	}
 	if (telemetry) {
 		agent.telemetry(telemetry);
 	}
+	attachRuntimeWorkspaceCapabilities(agent, {
+		workspace: orchestrationContext?.workspace,
+		runtimeSkills: orchestrationContext?.runtimeSkills,
+	});
 
 	if (options.memory) {
-		agent.memory({
-			memory: options.memory,
-			lastMessages: memoryConfig.lastMessages ?? 20,
-			...(memoryConfig.embedderModel && memoryConfig.semanticRecallTopK
-				? {
-						semanticRecall: {
-							topK: memoryConfig.semanticRecallTopK,
-							embedder: memoryConfig.embedderModel,
-						},
-					}
-				: {}),
-		});
-	}
+		const mem = new Memory().storage(options.memory);
 
+		if (memoryConfig.observationalMemory) {
+			const { observerThresholdTokens, reflectorThresholdTokens } =
+				memoryConfig.observationalMemory;
+			mem.observationalMemory({
+				observerThresholdTokens,
+				reflectorThresholdTokens,
+			});
+		}
+
+		agent.memory(mem);
+	}
+	if (options.onMemoryTaskEvent) {
+		agent.memoryTaskObserver(options.onMemoryTaskEvent);
+	}
 	mergeTraceRunInputs(
 		orchestrationContext?.tracing?.actorRun,
 		buildAgentTraceInputs({
@@ -205,12 +224,22 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 			modelId,
 			memory: options.memory
 				? {
-						lastMessages: memoryConfig.lastMessages ?? 20,
-						semanticRecallTopK: memoryConfig.semanticRecallTopK,
+						...(memoryConfig.observationalMemory
+							? {
+									observationalMemory: {
+										enabled: true,
+										observerThresholdTokens:
+											memoryConfig.observationalMemory.observerThresholdTokens,
+										reflectorThresholdTokens:
+											memoryConfig.observationalMemory.reflectorThresholdTokens,
+									},
+								}
+							: {}),
 					}
 				: undefined,
 			toolSearchEnabled: hasDeferrableTools,
 			inputProcessors: hasDeferrableTools ? ['NativeToolSearch'] : undefined,
+			runtimeSkills: runtimeSkills?.registry,
 		}),
 	);
 

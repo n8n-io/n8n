@@ -9,9 +9,9 @@ Conventions for the `@n8n/agents` package.
 - **Builder pattern with lazy build** — all public primitives use a fluent
   builder API. **User code never calls `.build()`**. Builders are passed
   directly to the consuming method (e.g. `agent.tool(myTool)`) which calls
-  `.build()` internally. Agent and Network have `run()`/`stream()` directly
-  on the class, which lazy-build via `ensureBuilt()` on first call. `build()`
-  is `protected` on Agent and Network to keep it out of the public API.
+  `.build()` internally. Agent has `generate()`/`stream()` directly on the
+  class, which lazy-build via `ensureBuilt()` on first call. `build()` is
+  `protected` on Agent to keep it out of the public API.
 - **Zod for schemas** — all input/output schemas use Zod.
 
 ## Package Structure
@@ -34,7 +34,6 @@ src/
     mcp-client.ts       # MCP client integration
     memory.ts           # Memory builder
     message.ts          # LLM/DB message helpers
-    network.ts          # Network builder
     provider-tools.ts   # Provider-defined tool factories
     telemetry.ts        # Telemetry builder (OTel, redaction)
     tool.ts             # Tool builder
@@ -112,21 +111,35 @@ class EngineAgent extends Agent {
 ## Testing
 
 - Unit tests live in `src/__tests__/`, integration tests in `src/__tests__/integration/`
-- Unit tests use Jest (`pnpm test`)
+- Unit tests use Vitest (`pnpm test`)
 - Integration tests use Vitest (`pnpm test:integration`) with real LLM calls
   - A `.env` file at the package root is loaded automatically by the vitest config.
     Always assume it exists when running integration tests. Never commit it.
   - Required keys:
     - `ANTHROPIC_API_KEY` — all integration tests
-    - `OPENAI_API_KEY` — semantic recall tests (embeddings)
   - Tests skip automatically when the required API key is not set
 - Run from the package directory: `cd packages/@n8n/agents && pnpm test`
 
+### Integration tests
+
+Integration tests make real LLM calls. CI replays recorded HTTP cassettes
+instead, so every test must have a matching recording.
+
+**Workflow after changing or adding integration tests:**
+
+1. `pnpm test:integration <file>` — verify the test passes with a live API key
+2. `pnpm test:integration:record <file>` — record HTTP cassettes
+3. `pnpm test:integration:replay` — confirm the test passes from recordings
+
+**Rules:**
+- No random IDs or current timestamps in HTTP requests — the replay matcher
+  must be able to match recorded requests deterministically
+- Run only the affected test files, not the full suite, unless changes affect all tests
+
 ## Documentation
 
-- Runtime architecture notes: `docs/agent-runtime-architecture.md` (this package).
-- Spec-driven work in the wider repo may use `.claude/specs/` (see repo
-  `.claude/skills/spec-driven-development`).
+- Spec-driven work in the wider repo may use `.agents/specs/` (see repo skill
+  `.agents/skills/spec-driven-development`).
 
 ## Building
 
@@ -134,7 +147,7 @@ class EngineAgent extends Agent {
 cd packages/@n8n/agents
 pnpm build       # rimraf dist && tsc -p tsconfig.build.json → dist/
 pnpm typecheck   # tsc --noEmit
-pnpm test        # jest (unit)
+pnpm test        # vitest (unit)
 ```
 
 ## PR naming convention

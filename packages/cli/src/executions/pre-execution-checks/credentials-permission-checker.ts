@@ -104,7 +104,11 @@ export class CredentialsPermissionChecker {
 			const activeCredTypes = this.getActiveCredentialTypes(node);
 
 			for (const [credType, cred] of Object.entries(node.credentials)) {
-				if (!cred.id) throw new InvalidCredentialError(node);
+				if (!cred.id) {
+					// AI Gateway managed credentials have no real DB id — skip permission check
+					if (cred.__aiGatewayManaged === true) continue;
+					throw new InvalidCredentialError(node);
+				}
 
 				// Skip credentials that are not actively used by the node's current configuration
 				if (activeCredTypes !== null && !activeCredTypes.has(credType)) continue;

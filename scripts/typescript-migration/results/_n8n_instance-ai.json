@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/instance-ai",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-09T13:12:42.008Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            4842,
+            3360,
+            3357
+          ],
+          "min": 3357,
+          "median": 3360,
+          "mean": 3853
+        },
+        "build": {
+          "runsMs": [
+            3206,
+            3386,
+            3150
+          ],
+          "min": 3150,
+          "median": 3206,
+          "mean": 3248
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-09T13:18:52.244Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            1137,
+            1005,
+            1009
+          ],
+          "min": 1005,
+          "median": 1009,
+          "mean": 1050
+        },
+        "build": {
+          "runsMs": [
+            1465,
+            2198,
+            1913
+          ],
+          "min": 1465,
+          "median": 1913,
+          "mean": 1859
+        }
+      }
+    }
+  }
+}

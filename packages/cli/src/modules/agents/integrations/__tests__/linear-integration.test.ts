@@ -1,25 +1,32 @@
+import type { Mock, Mocked, MockedFunction } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
+import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
+import { mock } from 'vitest-mock-extended';
 
 import type { AgentChatIntegrationContext } from '../agent-chat-integration';
 import { LinearIntegration } from '../platforms/linear-integration';
 
-jest.mock('../esm-loader', () => ({
-	loadLinearAdapter: jest.fn(),
+vi.mock('../esm-loader', () => ({
+	loadLinearAdapter: vi.fn(),
 }));
 
 import { loadLinearAdapter } from '../esm-loader';
 
-const mockedLoadLinearAdapter = loadLinearAdapter as jest.MockedFunction<typeof loadLinearAdapter>;
+const mockedLoadLinearAdapter = loadLinearAdapter as MockedFunction<typeof loadLinearAdapter>;
 
 describe('LinearIntegration', () => {
 	const logger = mock<Logger>();
 	let integration: LinearIntegration;
-	let fetchSpy: jest.SpyInstance;
-	const createLinearAdapter = jest.fn();
+	let outboundHttp: Mocked<OutboundHttp>;
+	let requestMock: Mock;
+	const createLinearAdapter = vi.fn();
 
 	beforeEach(() => {
-		integration = new LinearIntegration(logger);
+		const httpClient = mock<HttpRequestClient>();
+		requestMock = httpClient.request as Mock;
+		outboundHttp = mock<OutboundHttp>();
+		outboundHttp.requests.mockReturnValue(httpClient);
+		integration = new LinearIntegration(logger, outboundHttp);
 		createLinearAdapter.mockReset();
 		createLinearAdapter.mockReturnValue({ marker: 'adapter' });
 		mockedLoadLinearAdapter.mockReset();
@@ -27,14 +34,10 @@ describe('LinearIntegration', () => {
 			createLinearAdapter,
 		} as unknown as Awaited<ReturnType<typeof loadLinearAdapter>>);
 
-		fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
-			ok: true,
-			json: async () => ({ data: { viewer: { displayName: 'AgentName' } } }),
-		} as Response);
-	});
-
-	afterEach(() => {
-		fetchSpy.mockRestore();
+		requestMock.mockResolvedValue({
+			statusCode: 200,
+			body: { data: { viewer: { displayName: 'AgentName' } } },
+		});
 	});
 
 	const ctx = (credential: Record<string, unknown>): AgentChatIntegrationContext => ({
@@ -45,17 +48,41 @@ describe('LinearIntegration', () => {
 		webhookUrlFor: () => 'https://example.test/webhook',
 	});
 
-	it('builds the adapter with an apiKey from a linearApi credential', async () => {
-		await integration.createAdapter(ctx({ apiKey: 'lin_api_xyz', signingSecret: 'sec' }));
+	it('only advertises the Linear OAuth credential type to agents', () => {
+		expect(integration.credentialTypes).toEqual(['linearOAuth2Api']);
+	});
 
-		expect(createLinearAdapter).toHaveBeenCalledWith({
-			apiKey: 'lin_api_xyz',
-			webhookSecret: 'sec',
-			userName: 'AgentName',
-		});
-		expect(fetchSpy.mock.calls[0][1]).toMatchObject({
-			headers: { Authorization: 'lin_api_xyz' },
-		});
+	it('advertises Linear issue, user, and workspace context queries', () => {
+		expect(integration.contextQueries).toEqual([
+			'get_current_message_context',
+			'get_current_subject',
+			'get_current_user',
+			'get_user',
+			'search_users',
+			'get_team',
+			'search_teams',
+			'get_project',
+			'search_projects',
+			'search_labels',
+			'search_issue_states',
+			'get_issue',
+			'search_issues',
+		]);
+	});
+
+	it('advertises Linear issue and comment actions', () => {
+		expect(integration.actions).toEqual([
+			'respond',
+			'create_issue',
+			'update_issue',
+			'create_comment',
+		]);
+	});
+
+	it('rejects Linear API token credentials', async () => {
+		await expect(
+			integration.createAdapter(ctx({ apiKey: 'lin_api_xyz', signingSecret: 'sec' })),
+		).rejects.toThrow(/OAuth access token/);
 	});
 
 	it('builds the adapter with an accessToken from a linearOAuth2Api credential', async () => {
@@ -71,31 +98,55 @@ describe('LinearIntegration', () => {
 			webhookSecret: 'sec',
 			userName: 'AgentName',
 		});
-		expect(fetchSpy.mock.calls[0][1]).toMatchObject({
+		expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+		expect(requestMock.mock.calls[0][0]).toMatchObject({
+			url: 'https://api.linear.app/graphql',
 			headers: { Authorization: 'Bearer oauth_token' },
 		});
 	});
 
-	it('omits userName when the viewer lookup fails', async () => {
-		fetchSpy.mockResolvedValue({ ok: false } as Response);
-
-		await integration.createAdapter(ctx({ apiKey: 'lin_api_xyz', signingSecret: 'sec' }));
+	it('uses agent sessions mode for Linear app actor credentials', async () => {
+		await integration.createAdapter(
+			ctx({
+				actor: 'app',
+				oauthTokenData: { access_token: 'oauth_token' },
+				signingSecret: 'sec',
+			}),
+		);
 
 		expect(createLinearAdapter).toHaveBeenCalledWith({
-			apiKey: 'lin_api_xyz',
+			accessToken: 'oauth_token',
+			webhookSecret: 'sec',
+			userName: 'AgentName',
+			mode: 'agent-sessions',
+		});
+	});
+
+	it('omits userName when the viewer lookup fails', async () => {
+		requestMock.mockResolvedValue({ statusCode: 401, body: {} });
+
+		await integration.createAdapter(
+			ctx({
+				oauthTokenData: { access_token: 'oauth_token' },
+				signingSecret: 'sec',
+			}),
+		);
+
+		expect(createLinearAdapter).toHaveBeenCalledWith({
+			accessToken: 'oauth_token',
 			webhookSecret: 'sec',
 		});
 	});
 
 	it('throws when the credential has no token', async () => {
 		await expect(integration.createAdapter(ctx({ signingSecret: 'sec' }))).rejects.toThrow(
-			/Could not extract an API token/,
+			/Could not extract an OAuth access token/,
 		);
 	});
 
 	it('throws when the credential has no signing secret', async () => {
-		await expect(integration.createAdapter(ctx({ apiKey: 'lin_api_xyz' }))).rejects.toThrow(
-			/missing a signing secret/,
-		);
+		await expect(
+			integration.createAdapter(ctx({ oauthTokenData: { access_token: 'oauth_token' } })),
+		).rejects.toThrow(/missing a signing secret/);
 	});
 });
