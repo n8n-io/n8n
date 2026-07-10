@@ -233,12 +233,15 @@ function explicitTimezone(workflow: Workflow): string | null {
 }
 
 /**
- * A rule the legacy engine's recurrence check rejects on every tick: an
- * activated gate whose stride is below the `recurring_cron` minimum of 2 (in
- * practice a non-positive size the node never rejects for the weeks field).
+ * A rule the legacy recurrence check treats as clock-dead: an activated gate
+ * whose interval size is falsy (`0`/`NaN`), which `recurrenceCheck` rejects on
+ * every tick via `if (!intervalSize) return false`. A negative size is *not*
+ * degenerate — legacy fires it on every candidate tick, so it falls through to
+ * the plain-cron representation (`intervalSize >= 2` in {@link toSchedule} is
+ * likewise false, so it never becomes a `recurring_cron` gate).
  */
 function isDegenerateRecurrence(recurrence: Cron['recurrence']): boolean {
-	return recurrence?.activated === true && recurrence.intervalSize < 2;
+	return recurrence?.activated === true && !recurrence.intervalSize;
 }
 
 /** Resolve a null (instance-default) cron timezone for the recurrence math only. */

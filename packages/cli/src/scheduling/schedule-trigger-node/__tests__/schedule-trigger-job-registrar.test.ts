@@ -180,7 +180,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			).toThrow();
 		});
 
-		it('mirrors a never-firing legacy rule (non-positive interval) as a job with no next run', async () => {
+		it('mirrors a never-firing legacy rule (zero interval) as a job with no next run', async () => {
 			const registrar = makeRegistrar();
 			const collector = registrar.createCollector(workflow, scheduleNode);
 			collector.registerCron(
@@ -196,6 +196,26 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			const desired = jobProvisioner.provision.mock.calls.at(-1)![4];
 			expect(desired[0].firstRunAt).toBeNull();
 			expect((desired[0].schedule as CronDefinition).kind).toBe('cron');
+		});
+
+		it('provisions a negative-interval rule as a live plain-cron job, matching legacy fire-every-tick', async () => {
+			const registrar = makeRegistrar();
+			const collector = registrar.createCollector(workflow, scheduleNode);
+			collector.registerCron(
+				{
+					expression: '0 0 9 * * 1' as CronExpression,
+					recurrence: { activated: true, index: 0, intervalSize: -1, typeInterval: 'weeks' },
+				},
+				vi.fn(),
+			);
+
+			await registrar.commit(WORKFLOW_ID, NODE_ID);
+
+			const desired = jobProvisioner.provision.mock.calls.at(-1)![4];
+			// Legacy fires a negative-stride rule on every candidate tick, so it must
+			// stay a live plain-cron job with a real first run, not a clock-dead row.
+			expect((desired[0].schedule as CronDefinition).kind).toBe('cron');
+			expect(desired[0].firstRunAt).toEqual(NEXT_NINE);
 		});
 
 		it('is a no-op for a node that collected nothing', async () => {
