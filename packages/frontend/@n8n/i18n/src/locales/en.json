@@ -2479,8 +2479,6 @@
 	"oauth.consentView.action.createDataTables": "Create and update data tables on your behalf",
 	"oauth.consentView.action.searchProjectsAndFolders": "Search for projects and folders",
 	"oauth.consentView.readMore": "Read more <a href='{docsUrl}' target='_blank'>here</a>",
-	"oauth.consentView.redirectWarning.title": "You will be redirected to the following location:",
-	"oauth.consentView.redirectWarning.confirm": "I recognize and trust this URL",
 	"oauth.consentView.error.deny": "Error denying access",
 	"oauth.consentView.error.allow": "Error allowing access",
 	"oauth.consentView.error.fetchDetails": "Error fetching client details",
