@@ -161,7 +161,12 @@ export type PubSubCommandMap = {
 	 */
 	'relay-instance-ai-event': {
 		threadId: string;
-		event: InstanceAiEvent;
+		/**
+		 * Producer-assigned stored event. The id comes from the shared per-thread
+		 * sequence, so every main stores and serves identical event ids and the
+		 * frontend's replay cursor is valid against any main.
+		 */
+		storedEvent: { id: number; event: InstanceAiEvent };
 	};
 
 	/**

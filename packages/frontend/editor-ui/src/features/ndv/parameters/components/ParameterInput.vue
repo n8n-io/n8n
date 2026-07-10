@@ -41,6 +41,7 @@ import ResourceLocator from './ResourceLocator/ResourceLocator.vue';
 import SqlEditor from '@/features/shared/editors/components/SqlEditor/SqlEditor.vue';
 import TextEdit from './TextEdit.vue';
 import WorkflowSelectorParameterInput from './WorkflowSelectorParameterInput/WorkflowSelectorParameterInput.vue';
+import AgentSelectorParameterInput from './AgentSelectorParameterInput/AgentSelectorParameterInput.vue';
 
 import {
 	formatAsExpression,
@@ -118,6 +119,11 @@ import {
 } from '@/features/ai/assistant/composables/useBuilderTodos';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
+
+// Upper bound for rows derived from a value's line count. Keeps a code editor's
+// rows-based min-height ((rows + 1) * 1.3em) within its max-height (40vh) so the
+// editor scrolls instead of overflowing the NDV boundary.
+const MAX_AUTO_DETECTED_ROWS = 10;
 
 type Props = {
 	parameter: INodeProperties;
@@ -381,10 +387,12 @@ const editorRows = computed(() => {
 	if (configuredRows !== undefined) return configuredRows;
 
 	// Auto-detect: when the stored value contains newlines, use a textarea
-	// so newlines are preserved natively without pipe substitution
+	// so newlines are preserved natively without pipe substitution.
+	// Cap the derived rows so code editors (e.g. sqlEditor) don't grow a
+	// min-height that exceeds their max-height and overflow the NDV boundary.
 	const value = props.modelValue;
 	if (props.parameter.type === 'string' && typeof value === 'string' && value.includes('\n')) {
-		return Math.max(2, value.split('\n').length);
+		return Math.min(MAX_AUTO_DETECTED_ROWS, Math.max(2, value.split('\n').length));
 	}
 
 	return undefined;
@@ -779,6 +787,10 @@ const isMapperAvailable = computed(
 
 function isRemoteParameterOption(option: INodePropertyOptions) {
 	return remoteParameterOptionsKeys.value.includes(option.name);
+}
+
+function isOptionDisabled(option: INodePropertyOptions) {
+	return 'disabled' in option && option.disabled === true;
 }
 
 function credentialSelected(updateInformation: INodeUpdatePropertiesInformation) {
@@ -1523,6 +1535,22 @@ onUpdated(async () => {
 				@blur="onBlur"
 				@drop="onResourceLocatorDrop"
 			/>
+			<AgentSelectorParameterInput
+				v-else-if="parameter.type === 'agentSelector'"
+				ref="resourceLocator"
+				:parameter="parameter"
+				:model-value="modelValueResourceLocator"
+				:expression-display-value="expressionDisplayValue"
+				:is-value-expression="isModelValueExpression"
+				:path="path"
+				:parameter-issues="getIssues"
+				:is-read-only="isReadOnly"
+				@update:model-value="valueChanged"
+				@modal-opener-click="openExpressionEditorModal"
+				@focus="setFocus"
+				@blur="onBlur"
+				@drop="onResourceLocatorDrop"
+			/>
 			<N8nIconPicker
 				v-else-if="parameter.type === 'icon' && !isModelValueExpression && !forceShowExpression"
 				ref="inputField"
@@ -1961,6 +1989,7 @@ onUpdated(async () => {
 					v-for="option in parameterOptions"
 					:key="option.value.toString()"
 					:value="option.value"
+					:disabled="isOptionDisabled(option)"
 					:label="getOptionsOptionDisplayName(option)"
 					data-test-id="parameter-input-item"
 				>
@@ -2000,6 +2029,7 @@ onUpdated(async () => {
 					v-for="option in parameterOptions"
 					:key="option.value.toString()"
 					:value="option.value"
+					:disabled="isOptionDisabled(option)"
 					:label="getOptionsOptionDisplayName(option)"
 				>
 					<div class="list-option">

@@ -40,6 +40,7 @@
     "@n8n/vitest-config": "workspace:*",
     "@types/luxon": "catalog:",
     "@vitest/coverage-v8": "catalog:",
+    "typescript": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },

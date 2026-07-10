@@ -141,4 +141,8 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 		},
 	);
 
-export type EvalTestCaseInput = z.infer<typeof EvalTestCaseSchema>;
+// Inferred from the pre-`.refine()` object schema, not `EvalTestCaseSchema`.
+// `.refine()` doesn't alter the inferred type, so this is identical — but resolving
+// the refined `ZodEffects` chain trips "type instantiation excessively deep" under
+// CI's type-aware lint (surfaces as `error`-typed field access in consumers).
+export type EvalTestCaseInput = z.infer<typeof evalTestCaseObjectSchema>;

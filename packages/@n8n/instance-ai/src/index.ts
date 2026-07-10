@@ -174,6 +174,7 @@ const loadValidateAttachments = lazyModule(
 );
 
 export { MAX_STEPS } from './constants/max-steps';
+export { WorkflowSaveConflictError } from './errors/workflow-save-conflict.error';
 export {
 	LEGACY_PLANNED_TASK_KINDS,
 	PLANNED_TASK_KINDS,
@@ -562,6 +563,11 @@ export type {
 	DataTableSummary,
 	DataTableColumnInfo,
 	DataTableFilterInput,
+	InstanceAiEvaluationConfigService,
+	EvaluationConfigSummary,
+	EvaluationConfigMetricInput,
+	EvaluationConfigMetricPreset,
+	UpsertEvaluationConfigInput,
 	LocalMcpServer,
 	McpServerConfig,
 	ModelConfig,
@@ -618,6 +624,18 @@ export type {
 	ProjectSummary,
 	FolderSummary,
 	ServiceProxyConfig,
+	InstanceAiAgentBuilderService,
+	AgentConfigSnapshot,
+	AgentBuilderSkill,
+	ChatIntegrationInfo,
+	ProjectAgentSummary,
+	AgentModelOption,
+	ModelLookupConfig,
+	McpServerSearchResult,
+	McpServerVerifyParams,
+	McpServerVerifyResult,
+	AttachableWorkflow,
+	ResolveResourceLocatorParams,
 } from './types';
 export type {
 	OrchestratorRunHandoffReason,

@@ -19,6 +19,7 @@ export const N8N_PRICING_PAGE_URL = 'https://n8n.io/pricing';
 export const N8N_MAIN_GITHUB_REPO_URL = 'https://github.com/n8n-io/n8n';
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 export const RELEASE_NOTES_URL = 'https://docs.n8n.io/release-notes/';
+export const CHANGELOG_URL = 'https://docs.n8n.io/changelog';
 export const CREATOR_HUB_URL = 'https://creators.n8n.io/hub';
 
 export const CLOUD_CHANGE_PLAN_PAGE = window.location.host.includes('stage-app.n8n.cloud')

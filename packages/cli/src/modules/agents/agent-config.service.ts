@@ -1,6 +1,8 @@
+import { reconcileNativeWebSearch } from '@n8n/ai-utilities/agent-config';
 import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import {
 	AgentJsonConfigSchema,
+	findVectorStoreToolNameCollisions,
 	sanitizeAgentJsonConfig,
 	type AgentJsonConfig,
 	type AgentJsonToolConfig,
@@ -67,6 +69,14 @@ export class AgentConfigService {
 
 		const config = parsed.data;
 
+		const toolNameCollisions = findVectorStoreToolNameCollisions(config);
+		if (toolNameCollisions.length > 0) {
+			return {
+				valid: false,
+				error: `Vector store tool name collides with an existing tool: ${toolNameCollisions.join(', ')}`,
+			};
+		}
+
 		try {
 			this.validateNodeToolExpressions(config);
 		} catch (error) {
@@ -119,7 +129,10 @@ export class AgentConfigService {
 			throw new UserError(`Invalid agent config: ${result.error}`);
 		}
 
-		const validatedConfig = result.config;
+		// Reconcile native web-search provider tools with the config's explicit
+		// `webSearch` state. This is the single write path, so persisted config
+		// always agrees with read/compose paths.
+		const validatedConfig = reconcileNativeWebSearch(result.config);
 
 		const tasksProvided = validatedConfig.tasks !== undefined;
 		const existingTaskIds = tasksProvided
@@ -146,6 +159,7 @@ export class AgentConfigService {
 		const providerToolsProvided = validatedConfig.providerTools !== undefined;
 		const configBlockProvided = validatedConfig.config !== undefined;
 		const mcpServersProvided = validatedConfig.mcpServers !== undefined;
+		const vectorStoresProvided = validatedConfig.vectorStores !== undefined;
 
 		const { schemaConfig: decomposedSchema, integrations: decomposedIntegrations } =
 			decomposeJsonConfig(validatedConfig);
@@ -174,6 +188,7 @@ export class AgentConfigService {
 			...(providerToolsProvided ? { providerTools: decomposedSchema.providerTools } : {}),
 			...(configBlockProvided ? { config: decomposedSchema.config } : {}),
 			...(mcpServersProvided ? { mcpServers: decomposedSchema.mcpServers } : {}),
+			...(vectorStoresProvided ? { vectorStores: decomposedSchema.vectorStores } : {}),
 		};
 
 		entity.schema = nextSchema;

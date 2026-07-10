@@ -18,7 +18,7 @@ import {
 	createTestNodeProperties,
 } from '@/__tests__/mocks';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { type INodeParameterResourceLocator } from 'n8n-workflow';
+import { type INodeParameterResourceLocator, type INodePropertyOptions } from 'n8n-workflow';
 import type { IWorkflowDb, WorkflowListResource } from '@/Interface';
 import { mock } from 'vitest-mock-extended';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
@@ -249,6 +249,35 @@ describe('ParameterInput.vue', () => {
 		await userEvent.click(options[1]);
 
 		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'append' })]);
+	});
+
+	test('should pass option disabled state to N8nOption', async () => {
+		const options = [
+			{ name: 'Connected Chat Trigger Node', value: 'auto', disabled: true },
+			{ name: 'Define below', value: 'define' },
+		] as unknown as INodePropertyOptions[];
+
+		const { container, baseElement } = renderComponent({
+			props: {
+				path: 'operation',
+				parameter: createTestNodeProperties({
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					options,
+					default: 'define',
+				}),
+				modelValue: 'define',
+			},
+		});
+
+		const selectTrigger = container.querySelector('.select-trigger') as HTMLElement;
+		await userEvent.click(selectTrigger);
+
+		const optionsInDropdown = baseElement.querySelectorAll('[data-test-id="parameter-input-item"]');
+		expect(optionsInDropdown).toHaveLength(2);
+		expect(optionsInDropdown[0]).toHaveAttribute('aria-disabled', 'true');
+		expect(optionsInDropdown[1]).not.toHaveAttribute('aria-disabled', 'true');
 	});
 
 	describe('AI gateway action filtering', () => {
@@ -1372,6 +1401,99 @@ describe('ParameterInput.vue', () => {
 			await waitFor(() => {
 				expect(textarea.value).toBe('a\n\n\nb');
 			});
+		});
+	});
+
+	describe('sqlEditor sizing (ADO-5553)', () => {
+		// Converts a CSS length ('40vh' | '53.3em' | '120px') to pixels using the
+		// current jsdom viewport, so a min-height in `em` can be compared against a
+		// max-height in `vh`.
+		function toPx(value: string): number {
+			const match = value.trim().match(/([\d.]+)\s*(vh|rem|em|px)/);
+			if (!match) throw new Error(`Unable to parse CSS length: "${value}"`);
+			const amount = Number.parseFloat(match[1]);
+			switch (match[2]) {
+				case 'vh':
+					return (amount / 100) * window.innerHeight;
+				case 'em':
+				case 'rem':
+					return amount * 16;
+				default:
+					return amount;
+			}
+		}
+
+		function getScrollerHeights() {
+			const css = Array.from(document.querySelectorAll('style'))
+				.map((style) => style.textContent ?? '')
+				.join('\n');
+			const rule = [...css.matchAll(/([^{}]*)\{([^}]*)\}/g)].find(
+				(match) =>
+					match[1].includes('cm-scroller') &&
+					/max-height/.test(match[2]) &&
+					/min-height/.test(match[2]),
+			);
+			if (!rule) throw new Error('Could not find the .cm-scroller sizing rule');
+			const body = rule[2];
+			const maxHeight = body.match(/max-height:\s*([^;]+);/)?.[1] ?? '';
+			const minHeight = body.match(/min-height:\s*([^;]+);/)?.[1] ?? '';
+			return { minHeight, maxHeight };
+		}
+
+		// Happy path: a short query fits comfortably, proving the harness reads the
+		// scroller sizing correctly and the assertion passes when sizing is sane.
+		it('keeps the editor min-height within its max-height for a short query', async () => {
+			const { container } = renderComponent({
+				props: {
+					path: 'sqlQuery',
+					parameter: createTestNodeProperties({
+						displayName: 'SQL Query',
+						name: 'sqlQuery',
+						type: 'string',
+						noDataExpression: true,
+						typeOptions: { editor: 'sqlEditor' },
+					}),
+					modelValue: 'SELECT * FROM dataset.table LIMIT 100',
+					expressionEvaluated: undefined,
+				},
+			});
+
+			await waitFor(() => expect(container.querySelector('.cm-scroller')).toBeInTheDocument());
+
+			const { minHeight, maxHeight } = getScrollerHeights();
+			expect(toPx(minHeight)).toBeLessThanOrEqual(toPx(maxHeight));
+		});
+
+		// The BigQuery "SQL Query" field is a `sqlEditor` string parameter with no
+		// `rows` typeOption, so the editor height auto-follows the number of lines
+		// in the query. A long query must still fit within the NDV: the editor's
+		// min-height must never exceed its max-height, otherwise its bottom is
+		// pushed past the NDV boundary and becomes unreachable even by scrolling.
+		it('keeps the editor min-height within its max-height for a long query', async () => {
+			const longQuery = Array.from(
+				{ length: 40 },
+				(_, i) => `SELECT col_${i} FROM dataset.table_${i}`,
+			).join('\n');
+
+			const { container } = renderComponent({
+				props: {
+					path: 'sqlQuery',
+					parameter: createTestNodeProperties({
+						displayName: 'SQL Query',
+						name: 'sqlQuery',
+						type: 'string',
+						noDataExpression: true,
+						typeOptions: { editor: 'sqlEditor' },
+					}),
+					modelValue: longQuery,
+					expressionEvaluated: undefined,
+				},
+			});
+
+			await waitFor(() => expect(container.querySelector('.cm-scroller')).toBeInTheDocument());
+
+			const { minHeight, maxHeight } = getScrollerHeights();
+			expect(toPx(minHeight)).toBeLessThanOrEqual(toPx(maxHeight));
 		});
 	});
 

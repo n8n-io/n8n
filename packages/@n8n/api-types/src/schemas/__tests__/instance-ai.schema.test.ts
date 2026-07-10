@@ -267,6 +267,14 @@ describe('isDisplayableConfirmationRequest', () => {
 				}),
 			),
 		).toBe(true);
+		expect(
+			isDisplayableConfirmationRequest(
+				makeConfirmation({
+					message: '',
+					channelConfig: { integrationType: 'slack', agentId: 'agent-1' },
+				}),
+			),
+		).toBe(true);
 	});
 
 	it('does not treat credential flow metadata as displayable on its own', () => {

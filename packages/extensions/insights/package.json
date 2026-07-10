@@ -38,7 +38,7 @@
     "typecheck": "vue-tsc --noEmit",
     "build:backend": "tsdown",
     "build:frontend": "vite build",
-    "build": "pnpm cleanup && pnpm run \"/^build:.*/\"",
+    "build": "pnpm cleanup && pnpm run \"/^build:(backend|frontend)$/\"",
     "build:unchecked": "pnpm cleanup && pnpm run build:backend && pnpm run build:frontend",
     "preview": "vite preview"
   },
@@ -54,6 +54,7 @@
     "@vue/tsconfig": "catalog:frontend",
     "stylelint": "catalog:",
     "tsdown": "catalog:",
+    "typescript": "catalog:",
     "rimraf": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
