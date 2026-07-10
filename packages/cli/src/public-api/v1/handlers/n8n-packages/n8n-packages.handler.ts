@@ -23,7 +23,11 @@ import { publicApiCompositeScope } from '../../shared/middlewares/global.middlew
 
 const PACKAGE_EXPORT_SCOPES = 'project:export,workflow:export';
 
-type ExportPackageRequest = AuthenticatedRequest<{}, {}, ExportPackageRequestDto>;
+type ExportPackageRequest = AuthenticatedRequest<
+	{},
+	{},
+	{ workflowIds?: string[]; folderIds?: string[]; projectIds?: string[] }
+>;
 
 type ImportPackageRequest = PackageRequest.Import & {
 	files?: Express.Multer.File[];
@@ -165,7 +169,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					credentialMatchingMode: payload.data.credentialMatchingMode,
 					credentialMissingMode: payload.data.credentialMissingMode,
 					bindings: {
-						credentials: new Map(Object.entries(payload.data.bindings?.credentials ?? {})),
+						credentials: new Map(Object.entries(payload.data.bindings.credentials ?? {})),
 					},
 					workflowConflictPolicy: payload.data.workflowConflictPolicy,
 					workflowPublishingPolicy: payload.data.workflowPublishingPolicy,

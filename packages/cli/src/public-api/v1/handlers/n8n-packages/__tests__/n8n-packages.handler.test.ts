@@ -1,4 +1,3 @@
-import type { ExportPackageRequestDto } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -43,7 +42,10 @@ describe('n8n-packages handler', () => {
 	let mockService: Mocked<N8nPackagesService>;
 	let mockEventService: Mocked<EventService>;
 
-	function makeRequest(body: ExportPackageRequestDto, apiKeyScopes?: string[]) {
+	function makeRequest(
+		body: { workflowIds?: string[]; folderIds?: string[]; projectIds?: string[] },
+		apiKeyScopes?: string[],
+	) {
 		return {
 			user: { id: 'user-1' },
 			body,

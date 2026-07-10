@@ -3,7 +3,6 @@ import * as fs from 'node:fs';
 
 import { toPackagesError } from './shared';
 import { BaseCommand } from '../../base-command';
-import type { ExportPackageFields } from '../../client';
 
 export default class PackageExport extends BaseCommand {
 	static override description = 'Export workflows, folders, or projects as an n8n package (.n8np)';
@@ -59,12 +58,11 @@ export default class PackageExport extends BaseCommand {
 
 		await this.execute(async () => {
 			const client = this.getClient(flags);
-			const exportPackageFields: ExportPackageFields =
-				projectIds.length > 0 ? { projectIds } : { workflowIds, folderIds };
-
 			let archive: Buffer;
 			try {
-				archive = await client.exportPackage(exportPackageFields);
+				archive = await client.exportPackage(
+					projectIds.length > 0 ? { projectIds } : { workflowIds, folderIds },
+				);
 			} catch (error) {
 				throw toPackagesError(error);
 			}
