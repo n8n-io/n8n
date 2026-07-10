@@ -5,6 +5,7 @@ export const createDueJobFactory = (
 	jobRepo: ScheduledJobRepository,
 	taskType: string,
 	namePrefix: string,
+	now = Date.now,
 ) => {
 	let seq = 0;
 	return async (overrides: Partial<ScheduledJob> = {}) =>
@@ -16,7 +17,7 @@ export const createDueJobFactory = (
 				kind: 'interval',
 				intervalSeconds: 3600,
 				enabled: true,
-				nextRunAt: new Date(Date.now() - 1000),
+				nextRunAt: new Date(now() - 1000),
 				maxAttempts: 3,
 				...overrides,
 			}),
