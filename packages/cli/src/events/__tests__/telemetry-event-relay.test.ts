@@ -117,6 +117,12 @@ describe('TelemetryEventRelay', () => {
 		database: {
 			type: 'sqlite',
 		},
+		instanceAi: {
+			sandboxEnabled: false,
+			sandboxProvider: 'n8n-sandbox',
+			braveSearchApiKey: '',
+			searxngUrl: '',
+		},
 		instanceSettingsLoader: getDefaultInstanceSettingsLoaderConfig(),
 	});
 	const binaryDataConfig = mock<BinaryDataConfig>({
@@ -2287,6 +2293,39 @@ describe('TelemetryEventRelay', () => {
 				credential_count: 2,
 			});
 		});
+
+		it('should track on `n8n-package-export-failed` event with entity counts and reason only, not ids', () => {
+			const event: RelayEventMap['n8n-package-export-failed'] = {
+				user: { id: 'user123' },
+				reason: 'access-denied',
+				workflowIds: ['wf1', 'wf2'],
+			};
+
+			eventService.emit('n8n-package-export-failed', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User package export failed', {
+				user_id: 'user123',
+				reason: 'access-denied',
+				workflow_count: 2,
+				folder_count: 0,
+				project_count: 0,
+			});
+		});
+
+		it('should track on `n8n-package-import-failed` event with reason only, no project/folder ids', () => {
+			const event: RelayEventMap['n8n-package-import-failed'] = {
+				user: { id: 'user123' },
+				reason: 'blocked',
+				projectId: 'proj1',
+			};
+
+			eventService.emit('n8n-package-import-failed', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User package import failed', {
+				user_id: 'user123',
+				reason: 'blocked',
+			});
+		});
 	});
 
 	describe('user events', () => {
@@ -2697,6 +2736,44 @@ describe('TelemetryEventRelay', () => {
 					}),
 				}),
 			);
+		});
+
+		it('should track instance AI sandbox and search configuration on `server-started` event', async () => {
+			workflowRepository.findOne.mockResolvedValue(null);
+			Object.assign(globalConfig.instanceAi, {
+				sandboxEnabled: true,
+				sandboxProvider: 'daytona',
+				braveSearchApiKey: 'some-api-key',
+				searxngUrl: '',
+			});
+
+			eventService.emit('server-started');
+
+			await flushPromises();
+
+			const startupEvent = telemetry.track.mock.calls.find(
+				([eventName]) => eventName === 'Instance started',
+			);
+			expect(startupEvent).toBeDefined();
+			expect(startupEvent?.[1]).toEqual(
+				expect.objectContaining({
+					instance_ai: {
+						sandbox_enabled: true,
+						sandbox_provider: 'daytona',
+						search_brave_set: true,
+						search_searxng_set: false,
+					},
+				}),
+			);
+			// Key values must never leave the instance — only set/unset booleans
+			expect(JSON.stringify(startupEvent?.[1])).not.toContain('some-api-key');
+
+			Object.assign(globalConfig.instanceAi, {
+				sandboxEnabled: false,
+				sandboxProvider: 'n8n-sandbox',
+				braveSearchApiKey: '',
+				searxngUrl: '',
+			});
 		});
 
 		it('should track on `session-started` event', () => {

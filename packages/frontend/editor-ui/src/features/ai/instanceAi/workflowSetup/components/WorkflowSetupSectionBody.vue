@@ -21,6 +21,7 @@ import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } fr
 import type { WorkflowSetupSection } from '../workflowSetup.types';
 import { useWorkflowSetupContext } from '../composables/useWorkflowSetupContext';
 import { AI_GATEWAY_MANAGED_TAG } from '../../constants';
+import { findPlaceholderDetails } from '@n8n/utils/placeholder';
 
 const props = defineProps<{
 	section: WorkflowSetupSection;
@@ -73,6 +74,25 @@ const parameterDefinitions = computed<INodeProperties[]>(() => {
 	if (!nodeType.value || props.section.parameterNames.length === 0) return [];
 	const names = new Set(props.section.parameterNames);
 	return nodeType.value.properties.filter((property) => names.has(property.name));
+});
+
+const assignmentCollectionEditableValueIndices = computed<Record<string, number[]>>(() => {
+	const result: Record<string, number[]> = {};
+	for (const parameter of parameterDefinitions.value) {
+		if (parameter.type !== 'assignmentCollection') continue;
+
+		const indices = new Set<number>();
+		const placeholderDetails = findPlaceholderDetails(
+			props.section.node.parameters[parameter.name],
+		);
+		for (const detail of placeholderDetails) {
+			if (detail.path[0] !== 'assignments' || detail.path[2] !== 'value') continue;
+			const match = /^\[(\d+)\]$/.exec(detail.path[1] ?? '');
+			if (match?.[1]) indices.add(Number.parseInt(match[1], 10));
+		}
+		result[parameter.name] = [...indices];
+	}
+	return result;
 });
 
 const revealedIssues = ref(new Set<string>());
@@ -212,6 +232,7 @@ function onParameterValueChanged(update: IUpdateInformation) {
 				:remove-first-parameter-margin="true"
 				:remove-last-parameter-margin="true"
 				:options-overrides="{ hideExpressionSelector: true, hideFocusPanelButton: true }"
+				:assignment-collection-editable-value-indices="assignmentCollectionEditableValueIndices"
 				@value-changed="onParameterValueChanged"
 				@parameter-blur="revealParameterIssues"
 			/>

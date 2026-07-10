@@ -1687,7 +1687,8 @@ export type NodePropertyTypes =
 	| 'filter'
 	| 'assignmentCollection'
 	| 'credentials'
-	| 'workflowSelector';
+	| 'workflowSelector'
+	| 'agentSelector';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
@@ -1993,6 +1994,7 @@ export interface INodePropertyOptions {
 	value: string | number | boolean;
 	action?: string;
 	description?: string;
+	disabled?: boolean;
 	builderHint?: IParameterBuilderHint;
 	routing?: INodePropertyRouting;
 	outputConnectionType?: NodeConnectionType;

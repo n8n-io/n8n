@@ -29,6 +29,7 @@ import { isApiEnabled, loadPublicApiVersions } from '@/public-api';
 import { Push } from '@/push';
 import * as ResponseHelper from '@/response-helper';
 import type { FrontendService } from '@/services/frontend.service';
+import { Telemetry } from '@/telemetry';
 
 import '@/controllers/active-workflows.controller';
 import '@/controllers/annotation-tags.controller.ee';
@@ -168,7 +169,12 @@ export class Server extends AbstractServer {
 
 		const { frontendService } = this;
 		if (frontendService) {
-			await this.externalHooks.run('frontend.settings', [await frontendService.getSettings()]);
+			const frontendSettings = await frontendService.getSettings();
+			await this.externalHooks.run('frontend.settings', [frontendSettings]);
+
+			if (this.globalConfig.deployment.type === 'cloud') {
+				Container.get(Telemetry).setUserCloudId(frontendSettings.n8nMetadata?.userId);
+			}
 		}
 
 		await this.postHogClient.init();

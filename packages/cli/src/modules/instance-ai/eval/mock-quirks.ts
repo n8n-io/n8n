@@ -173,6 +173,15 @@ export const MOCK_QUIRKS: MockQuirk[] = [
 			'S3 mixes binary and empty responses on the same path skeleton; downstream nodes (Extract from File, image processing) expect a real file body for GET.',
 		addedAt: '2026-05-19',
 	},
+	{
+		service: 'Generativelanguage',
+		hostnames: ['generativelanguage.googleapis.com'],
+		guidance:
+			'Google Gemini `POST /v1beta/models/{model}:generateContent` (also `/v1/...`) → the FULL Gemini envelope: `{ "candidates": [{ "content": { "parts": [{ "text": "<answer>" }], "role": "model" }, "finishReason": "STOP", "index": 0 }], "usageMetadata": { "promptTokenCount": 10, "candidatesTokenCount": 20, "totalTokenCount": 30 } }`. The `candidates[].content.parts[].text` path is REQUIRED — the n8n Gemini node reads exactly that and yields nothing (or crashes) without it. NEVER return a bare `{ "text": ... }`, `{ "content": ... }`, or the answer object at the top level. When the request demands JSON output (`generationConfig.responseMimeType: "application/json"`, a `responseSchema`, or prompt instructions for a JSON document), the JSON goes INSIDE `parts[0].text` as a STRING — still wrapped in the full envelope.',
+		rationale:
+			'The Gemini node parses candidates[].content.parts; bare payload objects yield empty output that downstream IF/parse nodes then misroute. Observed as mock_issue rows in run 29012884140 (whatsapp-faq-assistant, weekly-social-content-scheduler).',
+		addedAt: '2026-07-09',
+	},
 ];
 
 /**

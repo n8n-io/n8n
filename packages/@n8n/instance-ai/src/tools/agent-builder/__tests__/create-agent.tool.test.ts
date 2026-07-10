@@ -48,14 +48,20 @@ describe('create_agent tool', () => {
 		});
 		const context = createContext(service, 'project-7');
 
-		const result = await executeTool<{ ok: boolean; agentId?: string }>(
-			createCreateAgentTool(context),
-			{ name: 'Triage' },
-			{},
-		);
+		const result = await executeTool<{
+			ok: boolean;
+			agentId?: string;
+			projectId?: string;
+			name?: string;
+		}>(createCreateAgentTool(context), { name: 'Triage' }, {});
 
 		expect(service.createAgent).toHaveBeenCalledWith('Triage', 'project-7');
-		expect(result).toEqual({ ok: true, agentId: 'agent-9', name: 'Triage' });
+		expect(result).toEqual({
+			ok: true,
+			agentId: 'agent-9',
+			projectId: 'project-7',
+			name: 'Triage',
+		});
 		// The context is now bound, unlocking the config tools in the same run.
 		expect(context.agentBuilderTarget).toEqual({ agentId: 'agent-9', projectId: 'project-7' });
 	});

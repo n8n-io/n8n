@@ -98,4 +98,72 @@ describe('InstanceAiArtifactsPanel', () => {
 
 		expect(openWorkflowPreview).toHaveBeenCalledWith('wf-1');
 	});
+
+	it('renders agent artifacts and opens them in the side panel', async () => {
+		const openAgentPreview = vi.fn();
+		storeState.producedArtifacts = new Map<string, ResourceEntry>([
+			[
+				'agent-1',
+				{
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+					name: 'SEO Auditor',
+				},
+			],
+		]);
+
+		const { getByRole } = renderComponent({
+			global: {
+				provide: {
+					openAgentPreview,
+				},
+			},
+		});
+
+		const artifactLink = getByRole('link', { name: 'Open SEO Auditor' });
+		expect(artifactLink).toHaveAttribute('href', '/projects/proj-1/agents/agent-1');
+		expect(artifactLink.querySelector('[data-icon="robot"]')).toBeInTheDocument();
+
+		const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+		const wasNotPrevented = artifactLink.dispatchEvent(event);
+
+		expect(wasNotPrevented).toBe(false);
+		expect(openAgentPreview).toHaveBeenCalledExactlyOnceWith('agent-1', 'proj-1');
+	});
+
+	it('leaves modified agent artifact clicks to the browser', () => {
+		const openAgentPreview = vi.fn();
+		storeState.producedArtifacts = new Map<string, ResourceEntry>([
+			[
+				'agent-1',
+				{
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+					name: 'SEO Auditor',
+				},
+			],
+		]);
+
+		const { getByRole } = renderComponent({
+			global: {
+				provide: {
+					openAgentPreview,
+				},
+			},
+		});
+
+		const artifactLink = getByRole('link', { name: 'Open SEO Auditor' });
+		let wasDefaultPreventedByComponent: boolean | undefined;
+		artifactLink.addEventListener('click', (event) => {
+			wasDefaultPreventedByComponent = event.defaultPrevented;
+			event.preventDefault();
+		});
+		const event = new MouseEvent('click', { bubbles: true, cancelable: true, metaKey: true });
+		artifactLink.dispatchEvent(event);
+
+		expect(wasDefaultPreventedByComponent).toBe(false);
+		expect(openAgentPreview).not.toHaveBeenCalled();
+	});
 });

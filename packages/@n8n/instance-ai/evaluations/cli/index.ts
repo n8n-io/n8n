@@ -32,18 +32,18 @@ import {
 	isPlainObject,
 	parseTargetOutput,
 	reshapeLangSmithRuns,
+	sentinelOutcomeFromVerdicts,
 	type TargetOutput,
 } from './reshape';
 import { aggregateWorkflowChecks, statusMap } from '../binaryChecks/aggregate';
 import { selectAuthorExpectations } from '../build-expectations/select';
 import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
 import { N8nClient } from '../clients/n8n-client';
+import { bucketFromEvaluation } from '../comparison/bucket-from-evaluation';
 import {
 	compareBuckets,
 	type ComparisonOutcome,
 	type ComparisonResult,
-	type ExperimentBucket,
-	type ScenarioCounts,
 } from '../comparison/compare';
 import { fetchBaselineBucket, findLatestBaseline } from '../comparison/fetch-baseline';
 import {
@@ -72,6 +72,7 @@ import {
 	executeScenario,
 	cleanupBuild,
 	runWorkflowChecks,
+	effectiveTimeoutMs,
 	runWorkflowTestCase,
 	runWithConcurrency,
 	type BuildResult,
@@ -499,6 +500,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		return {
 			evaluation: { totalRuns: 0, testCases: [] },
 			experimentName: '',
+			experimentUrl: undefined,
 			outcome: { kind: 'no_baseline' },
 			slugByTestCase: new Map(),
 		};
@@ -549,7 +551,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		| 'seedFile'
 		| 'priorConversation'
 		| 'seedThread'
-	>;
+	> & { timeoutMs: number };
 	interface LaneState {
 		runner: Lane;
 		activeBuilds: number;
@@ -560,6 +562,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			scenario: ExecutionScenario;
 			workflowJsons: BuildResult['workflowJsons'];
 			buildTrace?: BuildResult['buildTrace'];
+			timeoutMs: number;
 		}) => Promise<Awaited<ReturnType<typeof executeScenario>>>;
 	}
 
@@ -581,7 +584,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 						priorConversation: buildArgs.priorConversation,
 						seedThread: buildArgs.seedThread,
 						createdCredentialIds: lane.createdCredentialIds,
-						timeoutMs: args.timeoutMs,
+						timeoutMs: buildArgs.timeoutMs,
 						preRunWorkflowIds: lane.preRunWorkflowIds,
 						claimedWorkflowIds: lane.claimedWorkflowIds,
 						logger,
@@ -600,6 +603,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					scenario: ExecutionScenario;
 					workflowJsons: BuildResult['workflowJsons'];
 					buildTrace?: BuildResult['buildTrace'];
+					timeoutMs: number;
 				}) =>
 					await executeScenario(
 						lane.client,
@@ -607,7 +611,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 						execArgs.scenario,
 						execArgs.workflowJsons,
 						logger,
-						args.timeoutMs,
+						execArgs.timeoutMs,
 						undefined,
 						execArgs.buildTrace,
 						args.pinAiRoots,
@@ -725,6 +729,12 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			if (!entry) throw new Error(`No conversation found for fileSlug=${fileSlug}`);
 			try {
 				const start = Date.now();
+				const timeoutMs = effectiveTimeoutMs(entry.complexity, args.timeoutMs);
+				if (timeoutMs !== args.timeoutMs) {
+					logger.info(
+						`  Complex case: per-iteration budget ${String(Math.round(timeoutMs / 1000))}s [${fileSlug}]`,
+					);
+				}
 				const build = await lane.tracedBuild({
 					conversation: entry.conversation,
 					messageBudget: entry.messageBudget,
@@ -732,6 +742,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					seedFile: entry.seedFile,
 					priorConversation: entry.priorConversation,
 					seedThread: entry.seedThread,
+					timeoutMs,
 				});
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
@@ -759,7 +770,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	}
 
 	// Judge author expectations once per build (off the scenario critical path);
-	// reshapeLangSmithRuns awaits and merges the verdicts by the build-cache key.
+	// reshapeLangSmithRuns awaits and merges the verdicts by the build-cache key,
+	// and target() embeds them in run outputs so baseline fetches can score them.
 	// Full builds judge process + outcome against the real transcript; prebuilt/MCP
 	// builds (no transcript) judge only outcome expectations against the workflow,
 	// with the authored conversation as request context — mirroring the direct loop.
@@ -809,8 +821,19 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			buildDurationMs,
 		} = await getOrBuild(iteration, inputs.testCaseFile);
 
+		// Stashed at build time with a `.catch` attached, so awaiting never rejects.
+		// Awaited only after each branch's own work is done, keeping the judge off
+		// the scenario critical path while persisting verdicts to run outputs.
+		const verdictsPromise = buildExpectationsByKey.get(
+			`${String(iteration)}:${inputs.testCaseFile}`,
+		);
+		const attachExpectations = async (output: TargetOutput): Promise<TargetOutput> => {
+			const verdicts = await verdictsPromise;
+			return verdicts && verdicts.length > 0 ? { ...output, expectationResults: verdicts } : output;
+		};
+
 		if (!build.success || !build.workflowId) {
-			return {
+			return await attachExpectations({
 				buildSuccess: false,
 				passed: false,
 				score: 0,
@@ -825,19 +848,24 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				threadId: build.threadId,
 				workflowChecks: build.workflowChecks,
 				buildTrace: build.buildTrace,
-			};
+				planRejections: build.proxyDecisionStats?.rejection ?? 0,
+			});
 		}
 
-		// Build-only case — the build plus its expectation judging (in getOrBuild) is the whole
-		// test; skip execution. A failed build returns above with its error reasoning; reflect
-		// the real build status here rather than assuming success.
+		// Build-only case — the build plus its expectation judging (in getOrBuild) is the
+		// whole test; skip execution. The sentinel's outcome IS the expectation verdicts,
+		// so LangSmith pass metrics stay truthful for scenario-less cases.
 		if (inputs.scenarioName === BUILD_ONLY_SCENARIO_NAME) {
+			const verdicts = await verdictsPromise;
+			const outcome = sentinelOutcomeFromVerdicts(verdicts);
 			return {
 				buildSuccess: build.success,
 				workflowId: build.workflowId,
-				passed: false,
-				score: 0,
-				reasoning: 'Build-only case — graded by process/outcome expectations',
+				passed: outcome.passed,
+				score: outcome.score,
+				reasoning: outcome.reasoning,
+				failureCategory: outcome.failureCategory,
+				...(outcome.incomplete ? { incomplete: true } : {}),
 				execErrors: [],
 				buildDurationMs,
 				execDurationMs: 0,
@@ -846,6 +874,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				workflowChecks: build.workflowChecks,
 				workflowJson: build.workflowJsons[0],
 				buildTrace: build.buildTrace,
+				...(verdicts && verdicts.length > 0 ? { expectationResults: verdicts } : {}),
 			};
 		}
 
@@ -859,6 +888,10 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					scenario,
 					workflowJsons: build.workflowJsons,
 					buildTrace: build.buildTrace,
+					timeoutMs: effectiveTimeoutMs(
+						testCaseByFileSlug.get(inputs.testCaseFile)?.complexity,
+						args.timeoutMs,
+					),
 				});
 				break;
 			} catch (error: unknown) {
@@ -875,7 +908,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				// escape to LangSmith, come back as a Run with null outputs, and be
 				// misclassified as builder regressions by the feedback extractor.
 				logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
-				return {
+				return await attachExpectations({
 					buildSuccess: true,
 					workflowId: build.workflowId,
 					passed: false,
@@ -890,7 +923,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					workflowChecks: build.workflowChecks,
 					workflowJson: build.workflowJsons[0],
 					buildTrace: build.buildTrace,
-				};
+					planRejections: build.proxyDecisionStats?.rejection ?? 0,
+				});
 			}
 		}
 		const execDurationMs = Date.now() - execStart;
@@ -900,7 +934,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		const failureCategory = result.success ? undefined : result.failureCategory;
 		const rootCause = result.success ? undefined : result.rootCause;
 
-		return {
+		return await attachExpectations({
 			buildSuccess: true,
 			workflowId: build.workflowId,
 			scenarioWorkflowId: result.workflowId,
@@ -919,7 +953,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			workflowChecks: build.workflowChecks,
 			workflowJson: build.workflowJsons[0],
 			buildTrace: build.buildTrace,
-		};
+			planRejections: build.proxyDecisionStats?.rejection ?? 0,
+		});
 	};
 
 	const feedbackExtractor = ({ run }: { run: Run }): EvaluationResult[] => {
@@ -956,7 +991,12 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		if (output.buildDurationMs !== undefined) {
 			feedback.push({ key: 'build_duration_s', score: output.buildDurationMs / 1000 });
 		}
-		// Skip N/A and errored so LangSmith column averages reduce to per-check pass-rate.
+		// Deterministic conversation counter (per evals rubric) — a navigation/feature
+		// signal for the HOW judges, not a gating check.
+		if (output.planRejections !== undefined) {
+			feedback.push({ key: 'plan_rejection_count', score: output.planRejections });
+		}
+		// Skip N/A so LangSmith column averages reduce to per-check pass-rate.
 		if (output.workflowChecks) {
 			for (const outcome of output.workflowChecks) {
 				if (outcome.status === 'n_a' || outcome.status === 'error') continue;
@@ -1233,6 +1273,9 @@ async function writePerRunPassMetrics(config: {
 		if (!exampleId) continue;
 		const output = parseTargetOutput(run.outputs);
 		if (!output) continue;
+		// Incomplete rows (judge/verifier dead) carry no verdict — keep them out of
+		// the pass_at_k/pass_hat_k denominator, mirroring feedbackExtractor.
+		if (output.incomplete) continue;
 		const entry = byExample.get(exampleId) ?? { runIds: [], passed: 0, total: 0 };
 		entry.runIds.push(run.id);
 		entry.total++;
@@ -1603,7 +1646,7 @@ function serializeComparison(result: ComparisonResult): {
 	pr: { experimentName: string };
 	baseline: { experimentName: string };
 	aggregate: ComparisonResult['aggregate'];
-	scenarios: ComparisonResult['scenarios'];
+	evaluationUnits: ComparisonResult['evaluationUnits'];
 	prOnly: ComparisonResult['prOnly'];
 	baselineOnly: ComparisonResult['baselineOnly'];
 	failureCategories: ComparisonResult['failureCategories'];
@@ -1612,7 +1655,7 @@ function serializeComparison(result: ComparisonResult): {
 		pr: result.pr,
 		baseline: result.baseline,
 		aggregate: result.aggregate,
-		scenarios: result.scenarios,
+		evaluationUnits: result.evaluationUnits,
 		prOnly: result.prOnly,
 		baselineOnly: result.baselineOnly,
 		failureCategories: result.failureCategories,
@@ -1665,57 +1708,6 @@ async function tryRunComparison(config: {
 		logger.warn(`Comparison vs baseline failed: ${msg}`);
 		return { kind: 'fetch_failed', error: msg };
 	}
-}
-
-/**
- * Project the in-memory MultiRunEvaluation onto the bucket shape used by
- * fetchBaselineBucket, keyed by `${fileSlug}/${scenarioName}`.
- *
- * Looks up `fileSlug` by test case reference rather than array index — the
- * comparison key depends on getting the right slug, and zipping by index
- * silently miscompares if anything ever reorders the aggregate.
- */
-function bucketFromEvaluation(
-	evaluation: MultiRunEvaluation,
-	testCasesWithFiles: WorkflowTestCaseWithFile[],
-	experimentName: string,
-): ExperimentBucket {
-	const slugByTestCase = new Map(
-		testCasesWithFiles.map(({ testCase, fileSlug }) => [testCase, fileSlug]),
-	);
-	const scenarios = new Map<string, ScenarioCounts>();
-	const failureCategoryTotals: Record<string, number> = {};
-	let trialTotal = 0;
-	for (const tc of evaluation.testCases) {
-		const fileSlug = slugByTestCase.get(tc.testCase);
-		if (!fileSlug) {
-			throw new Error(
-				`bucketFromEvaluation: no fileSlug for test case "${caseDisplayPrompt(tc.testCase, tc.runs[0]?.transcript).slice(0, 60)}"`,
-			);
-		}
-		for (const sa of tc.executionScenarios) {
-			const key = `${fileSlug}/${sa.scenario.name}`;
-			const failureCategories: Record<string, number> = {};
-			for (const sr of sa.runs) {
-				// Verifier-incomplete runs carry no verdict — not a trial.
-				if (sr.incomplete) continue;
-				trialTotal++;
-				if (!sr.success && sr.failureCategory) {
-					failureCategories[sr.failureCategory] = (failureCategories[sr.failureCategory] ?? 0) + 1;
-					failureCategoryTotals[sr.failureCategory] =
-						(failureCategoryTotals[sr.failureCategory] ?? 0) + 1;
-				}
-			}
-			scenarios.set(key, {
-				testCaseFile: fileSlug,
-				scenarioName: sa.scenario.name,
-				passed: sa.passCount,
-				total: sa.evaluatedCount,
-				failureCategories,
-			});
-		}
-	}
-	return { experimentName, scenarios, failureCategoryTotals, trialTotal };
 }
 
 main().catch((error) => {

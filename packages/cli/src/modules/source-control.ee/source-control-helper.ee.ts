@@ -513,6 +513,16 @@ export function isDataTableModified(
 }
 
 /**
+ * Identity of a data table column across instances for identity adoption:
+ * columns matching by `(name, type)` adopt the incoming column id.
+ */
+export function getDataTableColumnKey(
+	column: Pick<ExportableDataTableColumn, 'name' | 'type'>,
+): string {
+	return `${column.name}:${column.type}`;
+}
+
+/**
  * Type guard to check if a string is a valid DataTableColumnType.
  */
 export function isValidDataTableColumnType(type: string): type is DataTableColumnType {
