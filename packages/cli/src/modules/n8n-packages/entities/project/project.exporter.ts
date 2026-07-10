@@ -1,6 +1,5 @@
 import type { Project, User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
 
 import { FolderFinderService } from '@/services/folder-finder.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -12,6 +11,7 @@ import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import { FolderExporter } from '../folder/folder.exporter';
 import type { FolderExportResult } from '../folder/folder.exporter';
+import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
 import { mergeRequirements } from '../requirements.types';
 import type { WorkflowExportRequirements } from '../requirements.types';
 import { WorkflowExporter } from '../workflow/workflow.exporter';
@@ -49,7 +49,12 @@ export class ProjectExporter {
 			['project:export'],
 		);
 
-		this.assertAllRequestedProjectsFound(request.projectIds, projects);
+		await assertEveryRequestedEntityAccessible(
+			'project',
+			request.projectIds,
+			projects,
+			async (ids) => await this.projectService.findExistingProjectIds(ids),
+		);
 
 		const allocator = new UniqueFilenameAllocator('projects', 'project');
 		const results: ProjectExportResult[] = [];
@@ -130,27 +135,5 @@ export class ProjectExporter {
 			requirements: mergeRequirements(...results.map((result) => result.requirements)),
 			projectTargetsById: new Map(results.flatMap((result) => [...result.projectTargetsById])),
 		};
-	}
-
-	private assertAllRequestedProjectsFound(
-		requestedProjectIds: string[],
-		foundProjects: Array<{ id: string }>,
-	) {
-		const foundProjectIds = new Set(foundProjects.map(({ id }) => id));
-		const missingProjectIds = requestedProjectIds.filter((id) => !foundProjectIds.has(id));
-
-		if (missingProjectIds.length > 0) {
-			const displayedProjectIds = missingProjectIds.slice(0, 20);
-			const omittedCount = missingProjectIds.length - displayedProjectIds.length;
-
-			throw new UserError(
-				`${missingProjectIds.length} project(s) not found or not accessible. Export aborted.`,
-				{
-					description: `Missing project IDs: ${displayedProjectIds.join(', ')}${
-						omittedCount > 0 ? `, and ${omittedCount} more` : ''
-					}`,
-				},
-			);
-		}
 	}
 }
