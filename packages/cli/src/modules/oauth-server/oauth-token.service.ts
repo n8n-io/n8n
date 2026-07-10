@@ -237,7 +237,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 	private parseScopeClaim(decoded: unknown): string[] {
 		const scopeClaim = this.getStringClaim(decoded, 'scope');
 
-		// Migration 1784000000048 deleted every access token minted before
+		// Migration 1784000000047 deleted every access token minted before
 		// scoping shipped, so a claim-less token cannot legitimately occur.
 		// Fail closed rather than granting anything.
 		if (scopeClaim === null) {
