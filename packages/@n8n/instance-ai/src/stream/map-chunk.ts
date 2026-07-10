@@ -142,10 +142,11 @@ function readErrorCode(error: unknown): string | undefined {
 		return error.errorCode;
 	}
 
-	// ai-sdk APICallError exposes the raw provider body; the proxy tags `error.type`.
+	// ai-sdk APICallError exposes the raw provider body; the service tags the code
+	// top-level (`code`), with a nested `error.type` as the fallback shape.
 	if ('responseBody' in error && typeof error.responseBody === 'string') {
-		const { type } = parseResponseBody(error.responseBody);
-		if (type) return type;
+		const { code } = parseResponseBody(error.responseBody);
+		if (code) return code;
 	}
 
 	// The SDK error can reach us wrapped (thrown inside the model fetch); unwrap the cause chain.
@@ -156,11 +157,18 @@ function readErrorCode(error: unknown): string | undefined {
 	return undefined;
 }
 
-/** Parse an ai-sdk JSON `responseBody` into its `error.message` / `error.type`, if present. */
-function parseResponseBody(responseBody: string): { message?: string; type?: string } {
+/** Parse an ai-sdk JSON `responseBody` into its message and machine-readable code, if present. */
+function parseResponseBody(responseBody: string): { message?: string; code?: string } {
 	try {
-		const body = JSON.parse(responseBody) as { error?: { message?: string; type?: string } };
-		return { message: body?.error?.message, type: body?.error?.type };
+		const body = JSON.parse(responseBody) as {
+			message?: string;
+			code?: string;
+			error?: { message?: string; type?: string };
+		};
+		return {
+			message: body?.error?.message ?? body?.message,
+			code: body?.code ?? body?.error?.type,
+		};
 	} catch {
 		return {};
 	}

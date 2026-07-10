@@ -31,7 +31,16 @@ describe('isQuotaExhaustedError', () => {
 		expect(isQuotaExhaustedError(wrapped)).toBe(true);
 	});
 
-	it('matches the code parsed from an ai-sdk responseBody error.type', () => {
+	it('matches a top-level code in an ai-sdk responseBody', () => {
+		const error = apiError(
+			'Forbidden',
+			403,
+			JSON.stringify({ message: 'Have reached end of quota', code: 'quota_exhausted' }),
+		);
+		expect(isQuotaExhaustedError(error)).toBe(true);
+	});
+
+	it('falls back to a nested error.type in an ai-sdk responseBody', () => {
 		const error = apiError(
 			'Forbidden',
 			403,
