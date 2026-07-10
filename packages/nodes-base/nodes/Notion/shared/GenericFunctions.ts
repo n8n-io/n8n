@@ -656,9 +656,14 @@ export function getPropertyTitle(properties: { [key: string]: any }) {
 	);
 }
 
-function prepend(stringKey: string, properties: { [key: string]: any }) {
+// Fold non-ASCII to separators so keys keep their pre-change-case-v5 shape (é → `_`).
+const foldedSnakeCase = (value: string) => snakeCase(value.replace(/[^\x20-\x7E]/g, ' '));
+
+function prepend(stringKey: string, properties: { [key: string]: any }, version: number) {
+	// Pre-v3 restores the old ASCII key shape so existing workflows keep resolving.
+	const toKey = version >= 3 ? snakeCase : foldedSnakeCase;
 	for (const key of Object.keys(properties)) {
-		properties[`${stringKey}_${snakeCase(key)}`] = properties[key];
+		properties[`${stringKey}_${toKey(key)}`] = properties[key];
 		delete properties[key];
 	}
 	return properties;
@@ -683,7 +688,7 @@ export function simplifyObjects(objects: any, download = false, version = 2) {
 				...(notV1 ? { name: getPropertyTitle(properties as IDataObject) } : {}),
 				...(notV1 ? { url } : {}),
 				...(notV1
-					? { ...prepend('property', simplifyProperties(properties) as IDataObject) }
+					? { ...prepend('property', simplifyProperties(properties) as IDataObject, version) }
 					: { ...simplifyProperties(properties) }),
 			} as IDataObject);
 		} else if (download && json.object === 'page') {
@@ -693,7 +698,9 @@ export function simplifyObjects(objects: any, download = false, version = 2) {
 					...(notV1 ? { name: getPropertyTitle(json.properties as IDataObject) } : {}),
 					...(notV1 ? { url: json.url } : {}),
 					...(notV1
-						? { ...prepend('property', simplifyProperties(json.properties) as IDataObject) }
+						? {
+								...prepend('property', simplifyProperties(json.properties) as IDataObject, version),
+							}
 						: { ...simplifyProperties(json.properties) }),
 				},
 				binary,

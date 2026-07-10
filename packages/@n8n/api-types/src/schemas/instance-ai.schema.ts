@@ -102,9 +102,12 @@ export const instanceAiEventTypeSchema = z.enum([
 	'agent-completed',
 	'text-delta',
 	'reasoning-delta',
+	'text-block',
+	'reasoning-block',
 	'tool-call',
 	'tool-result',
 	'tool-error',
+	'tool-interrupted',
 	'confirmation-request',
 	'tasks-update',
 	'filesystem-request',
@@ -118,7 +121,10 @@ export type InstanceAiEventType = z.infer<typeof instanceAiEventTypeSchema>;
 // Run status
 // ---------------------------------------------------------------------------
 
-export const instanceAiRunStatusSchema = z.enum(['completed', 'cancelled', 'error']);
+// 'interrupted' (durable-log RFC, resilience phase): appended by the
+// interrupted-run sweep for a run whose process died mid-flight — the fold
+// renders every in-flight item as terminated, no walk-and-mutate.
+export const instanceAiRunStatusSchema = z.enum(['completed', 'cancelled', 'error', 'interrupted']);
 export type InstanceAiRunStatus = z.infer<typeof instanceAiRunStatusSchema>;
 
 // ---------------------------------------------------------------------------
@@ -712,9 +718,27 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		...eventBase,
 		payload: reasoningDeltaPayloadSchema,
 	}),
+	// Coalesced full text/reasoning of one streamed segment, produced by the
+	// durable event log (deltas are live-only and never persisted). On replay the
+	// reducer REPLACES the segment's streamed deltas, so a client that reconnects
+	// mid-block cannot see partial text twice.
+	z.object({ type: z.literal('text-block'), ...eventBase, payload: textDeltaPayloadSchema }),
+	z.object({
+		type: z.literal('reasoning-block'),
+		...eventBase,
+		payload: reasoningDeltaPayloadSchema,
+	}),
 	z.object({ type: z.literal('tool-call'), ...eventBase, payload: toolCallPayloadSchema }),
 	z.object({ type: z.literal('tool-result'), ...eventBase, payload: toolResultPayloadSchema }),
 	z.object({ type: z.literal('tool-error'), ...eventBase, payload: toolErrorPayloadSchema }),
+	// Durable-log RFC (resilience phase): appended by the interrupted-run sweep
+	// for a tool call that was in flight when the process died. Same payload
+	// shape as tool-error; the effect is unverified, never re-executed blindly.
+	z.object({
+		type: z.literal('tool-interrupted'),
+		...eventBase,
+		payload: toolErrorPayloadSchema,
+	}),
 	z.object({
 		type: z.literal('confirmation-request'),
 		...eventBase,
@@ -965,7 +989,7 @@ export interface InstanceAiAgentNode {
 }
 
 /** Semantic cause of a cancelled run, mapped from the backend's run-finish reason. */
-export type InstanceAiCancellationReason = 'user' | 'timeout' | 'shutdown';
+export type InstanceAiCancellationReason = 'user' | 'timeout' | 'shutdown' | 'interrupted';
 
 export interface InstanceAiMessage {
 	id: string;

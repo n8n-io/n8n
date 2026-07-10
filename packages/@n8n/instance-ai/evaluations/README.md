@@ -206,7 +206,7 @@ Every run produces:
 
 After every successful build, the eval grades the workflow JSON against the binary-check rubric in `binaryChecks/checks/`. Each named check is yes/no with a structured N/A for "no subject to evaluate in this workflow" (e.g. an agent-only check on a workflow with no agent).
 
-The 28 checks are grouped into 7 WHAT-side rubric dimensions (the 8th, `execution_outcome`, is served by the existing execution verifier):
+The 28 checks are grouped into 8 WHAT-side rubric dimensions (the 9th, `execution_outcome`, is served by the existing execution verifier):
 
 | Dimension | Checks |
 |---|---|
@@ -214,8 +214,9 @@ The 28 checks are grouped into 7 WHAT-side rubric dimensions (the 8th, `executio
 | `connection_topology` | 4 — graph reachability, branch wiring, multi-item handling |
 | `parameter_correctness` | 8 — node config, expressions, field references |
 | `intent_match` | 1 — workflow fulfills the user's request |
+| `communication` | 1 — agent narration honestly describes the changes made |
 | `ai_nodes` | 6 — agent / memory / vector-store / tool wiring |
-| `nodes_craftsmanship` | 3 — naming, no-code preference, response honesty |
+| `nodes_craftsmanship` | 2 — naming, no-code preference |
 | `security` | 2 — hardcoded credentials, inbound auth defaults |
 
 The signal surfaces in:
@@ -228,7 +229,7 @@ Operational details:
 
 - Checks run **once per built workflow**, not per scenario — every scenario row in LangSmith carries the same outcomes for its build.
 - Failures don't flip `scenario_pass`; they're independent signals per the rubric design.
-- LLM checks (`fulfills_user_request`, `valid_data_flow`, `correct_node_operations`, `handles_multiple_items`, `descriptive_node_names`, `response_matches_workflow_changes`) reuse the same Sonnet model as the verifier — auto-skipped (N/A) when no Anthropic key is set.
+- LLM checks (`fulfills_user_request`, `valid_data_flow`, `correct_node_operations`, `handles_multiple_items`, `descriptive_node_names`, `response_describes_changes_accurately`) reuse the same Sonnet model as the verifier — auto-skipped (N/A) when no Anthropic key is set.
 
 ### Build expectations (per test case)
 

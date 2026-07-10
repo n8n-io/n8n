@@ -200,7 +200,7 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 	font-size: var(--font-size--2xs);
 	line-height: 18px;
 	padding: var(--spacing--3xs) var(--spacing--2xs);
-
+	min-width: fit-content;
 	&.disabled {
 		.shortcut {
 			opacity: 0.3;

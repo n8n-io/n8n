@@ -298,8 +298,10 @@ watch(
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	padding-top: var(--spacing--sm);
-	border: var(--border);
-	border-radius: var(--radius);
+	/* Waiting-for-input highlight (#33959) — ported from InstanceAiChannelSetup
+	   when the card body moved here, so both surfaces get it. */
+	border: 2px solid var(--color--primary);
+	border-radius: var(--radius--lg);
 	background-color: var(--background--surface);
 }
 

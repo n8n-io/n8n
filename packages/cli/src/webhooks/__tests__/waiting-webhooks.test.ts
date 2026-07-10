@@ -583,6 +583,93 @@ describe('WaitingWebhooks', () => {
 			expect(nodeExecutionStack[0].node.rewireOutputLogTo).toBe('ai_tool');
 		});
 
+		it('rejects (does not hang) when executeWebhook throws before invoking the callback', async () => {
+			const executionId = 'test-execution-id';
+			const lastNodeExecuted = 'WaitNode';
+
+			const mockExecution = mock<IExecutionResponse>({
+				id: executionId,
+				status: 'waiting',
+				finished: false,
+				mode: 'manual',
+				data: {
+					executionData: {
+						nodeExecutionStack: [
+							{
+								node: {
+									name: lastNodeExecuted,
+									type: 'n8n-nodes-base.wait',
+									typeVersion: 1,
+									parameters: {},
+									id: 'node-id',
+									position: [0, 0],
+									disabled: false,
+								},
+								data: {},
+								source: null,
+							},
+						],
+					},
+					resultData: {
+						runData: {
+							[lastNodeExecuted]: [
+								{ startTime: 123, executionTime: 456, executionIndex: 0, source: [] },
+							],
+						},
+						lastNodeExecuted,
+					},
+				},
+				workflowData: {
+					id: 'workflow-id',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							name: lastNodeExecuted,
+							type: 'n8n-nodes-base.wait',
+							typeVersion: 1,
+							parameters: {},
+							id: 'node-id',
+							position: [0, 0],
+						},
+					],
+					connections: {},
+					active: true,
+					settings: {},
+					staticData: {},
+				},
+			});
+			mockExecution.data.resultData.error = undefined;
+			mockExecution.data.resumeToken = undefined;
+			executionPersistence.findSingleExecution.mockResolvedValue(mockExecution);
+
+			const preCallbackError = new Error('response option expression failed');
+			vi.spyOn(WebhookHelpers, 'executeWebhook').mockRejectedValue(preCallbackError);
+
+			mockWebhookService.getNodeWebhooks.mockReturnValue([
+				{
+					httpMethod: 'POST',
+					path: '',
+					webhookDescription: {
+						restartWebhook: true,
+						httpMethod: 'POST',
+						name: 'default',
+						path: '',
+						nodeType: undefined,
+					} as any,
+				},
+			] as any);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+
+			const mockReq = mock<WaitingWebhookRequest>({
+				params: { path: executionId, suffix: undefined },
+				method: 'POST',
+			});
+
+			await expect(waitingWebhooks.executeWebhook(mockReq, mock<express.Response>())).rejects.toBe(
+				preCallbackError,
+			);
+		});
+
 		it('should preserve inputOverride for nodes that have it', async () => {
 			/**
 			 * Arrange
