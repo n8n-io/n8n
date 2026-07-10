@@ -8,6 +8,7 @@ import { saveCredential } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner } from '@test-integration/db/users';
 
+import { PackageEntityAccessDeniedError } from '../entities/package-export.errors';
 import { N8nPackagesService } from '../n8n-packages.service';
 import { readExport } from './utils/tar-support';
 import { buildWorkflowReferencingCredential } from './utils/test-builders';
@@ -330,9 +331,13 @@ describe('folder package export — with contained workflows', () => {
 		// workflow:export the workflow. The per-workflow export gate must abort.
 		await createWorkflow({ name: 'secret', parentFolder: folder }, ownerProject);
 
-		await expect(
-			service.exportPackage({ user: member, workflowIds: [], folderIds: [folder.id] }),
-		).rejects.toThrow(/workflow\(s\) not found or not accessible/);
+		const exportPromise = service.exportPackage({
+			user: member,
+			workflowIds: [],
+			folderIds: [folder.id],
+		});
+		await expect(exportPromise).rejects.toThrow(/workflow\(s\) not found or not accessible/);
+		await expect(exportPromise).rejects.toBeInstanceOf(PackageEntityAccessDeniedError);
 	});
 
 	// Edge: a workflow in both folderIds and workflowIds is placed in the folder, once.

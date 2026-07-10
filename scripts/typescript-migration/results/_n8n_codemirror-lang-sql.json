@@ -1,0 +1,7 @@
+{
+  "package": "@n8n/codemirror-lang-sql",
+  "runs": {
+    "before": { "label": "before", "tsVersion": "6.0.2", "node": "v22.22.0", "timestamp": "2026-07-09T00:00:00.000Z", "tasks": { "typecheck": { "runsMs": [785], "min": 785, "median": 785, "mean": 785 }, "build": { "runsMs": [720], "min": 720, "median": 720, "mean": 720 } } },
+    "after": { "label": "after", "tsVersion": "7.0.0", "node": "v22.22.0", "timestamp": "2026-07-09T00:01:00.000Z", "tasks": { "typecheck": { "runsMs": [450], "min": 450, "median": 450, "mean": 450 }, "build": { "runsMs": [438], "min": 438, "median": 438, "mean": 438 } } }
+  }
+}

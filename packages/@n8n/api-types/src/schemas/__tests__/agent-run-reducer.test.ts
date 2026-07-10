@@ -1336,19 +1336,22 @@ describe('agent-run-reducer', () => {
 			]);
 		});
 
-		it('an id-less mid-block reconnect still replaces its own partial deltas', () => {
-			// Id-less deltas coalesce into an id-less block; the block extends the
-			// partial text (deltas stream in order), so it must replace, not append.
+		it('an id-less block never replaces, even when it textually extends the previous one', () => {
+			// Id-less blocks have no identity to match on, so text alone must
+			// never decide a replace: a block that merely happens to start with
+			// the previous block's text would silently overwrite it. Stream
+			// segments are stamped with responseIds, so the replace path never
+			// needs the id-less case.
 			let state = createInitialState(AGENT);
 			state = reduceEvent(state, makeRunStart(RUN, AGENT));
-			state = reduceEvent(state, makeTextDelta(RUN, AGENT, 'AAA'));
-			state = reduceEvent(state, makeTextDelta(RUN, AGENT, 'BBB'));
-			state = reduceEvent(state, makeTextBlock('AAABBBCCC'));
+			state = reduceEvent(state, makeTextBlock('Hello. '));
+			state = reduceEvent(state, makeTextBlock('Hello. World.'));
 
 			const agent = findAgent(state, AGENT)!;
-			expect(agent.textContent).toBe('AAABBBCCC');
+			// Nothing dropped: both blocks' text present, in order.
+			expect(agent.textContent).toBe('Hello. Hello. World.');
 			expect(agent.timeline.filter((e) => e.type === 'text')).toEqual([
-				{ type: 'text', content: 'AAABBBCCC' },
+				{ type: 'text', content: 'Hello. Hello. World.' },
 			]);
 		});
 
@@ -1381,6 +1384,19 @@ describe('agent-run-reducer', () => {
 			expect(agent.reasoning).toBe('first thoughts. second thoughts.');
 			expect(agent.timeline.filter((e) => e.type === 'reasoning')).toEqual([
 				{ type: 'reasoning', content: 'first thoughts. second thoughts.' },
+			]);
+		});
+
+		it('an id-less reasoning-block never replaces, even when it textually extends the previous one', () => {
+			let state = createInitialState(AGENT);
+			state = reduceEvent(state, makeRunStart(RUN, AGENT));
+			state = reduceEvent(state, makeReasoningBlock('so far. '));
+			state = reduceEvent(state, makeReasoningBlock('so far. and further.'));
+
+			const agent = findAgent(state, AGENT)!;
+			expect(agent.reasoning).toBe('so far. so far. and further.');
+			expect(agent.timeline.filter((e) => e.type === 'reasoning')).toEqual([
+				{ type: 'reasoning', content: 'so far. so far. and further.' },
 			]);
 		});
 

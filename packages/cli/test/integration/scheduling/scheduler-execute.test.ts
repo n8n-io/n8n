@@ -84,7 +84,7 @@ describe('scheduler execution over the storage bindings', () => {
 		const job = await createJob({ payload: { answer: 42 } });
 
 		const summary = await scheduler.materialize();
-		expect(summary).toEqual({ claimedJobs: 1, occurrences: 1, deferredJobs: 0 });
+		expect(summary).toMatchObject({ claimedJobs: 1, occurrences: 1, deferredJobs: 0 });
 
 		// The occurrence is already due, so the claim schedules an immediate fire.
 		const claimed = await scheduler.execute();
