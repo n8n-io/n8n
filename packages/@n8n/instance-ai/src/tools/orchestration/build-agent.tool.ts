@@ -187,7 +187,11 @@ const buildAgentInputSchema = z.object({
 	message: z
 		.string()
 		.min(1)
-		.describe('The instruction or user message to forward to the agent builder'),
+		.describe(
+			'The instruction or user message to forward to the agent builder. The builder cannot ' +
+				'see this chat — include every requirement, decision, and user answer already ' +
+				'gathered in this conversation, not just the latest message.',
+		),
 	name: z.string().optional().describe('Name for a NEW agent (first call only)'),
 	agentId: z.string().optional().describe('Existing agent id to edit (first call only)'),
 	workflowContext: z

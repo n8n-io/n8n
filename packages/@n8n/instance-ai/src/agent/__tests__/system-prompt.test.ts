@@ -204,7 +204,11 @@ describe('getSystemPrompt', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain('**Agent build or edit**');
-			expect(prompt).toContain("call `build-agent` with the user's request as `message`");
+			expect(prompt).toContain(
+				'call `build-agent` right away and let the builder gather requirements',
+			);
+			expect(prompt).toContain('The builder cannot see this conversation');
+			expect(prompt).toContain('include ALL of them in the first `message`');
 			expect(prompt).toContain('`name` for a new agent or `agentId` for an existing one');
 			expect(prompt).toContain('`workflowContext` for workflows built this session');
 			expect(prompt).toContain('forward each user follow-up to `build-agent` near-verbatim');
