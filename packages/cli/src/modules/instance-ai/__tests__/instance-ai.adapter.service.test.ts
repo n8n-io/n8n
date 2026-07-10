@@ -2532,42 +2532,27 @@ describe('createExecutionAdapter', () => {
 		vi.clearAllMocks();
 	});
 
-	it('passes user and sharingOptions to execution query when sharing is enabled', async () => {
-		const { adapter, mockExecutionRepository, mockUser } = createExecutionAdapterForTests({
-			sharingEnabled: true,
-		});
+	it.each([true, false])(
+		'passes scope-based sharingOptions to execution query (sharing licensed: %s)',
+		async (sharingEnabled) => {
+			const { adapter, mockExecutionRepository, mockUser } = createExecutionAdapterForTests({
+				sharingEnabled,
+			});
 
-		await adapter.list();
+			await adapter.list();
 
-		expect(mockExecutionRepository.findManyByRangeQuery).toHaveBeenCalledWith(
-			expect.objectContaining({
-				user: mockUser,
-				sharingOptions: {
-					scopes: ['workflow:read'],
-					projectRoles: ['project:editor'],
-					workflowRoles: ['workflow:owner', 'workflow:editor'],
-				},
-			}),
-		);
-	});
-
-	it('passes user and owner-only sharingOptions when sharing is disabled', async () => {
-		const { adapter, mockExecutionRepository, mockUser } = createExecutionAdapterForTests({
-			sharingEnabled: false,
-		});
-
-		await adapter.list();
-
-		expect(mockExecutionRepository.findManyByRangeQuery).toHaveBeenCalledWith(
-			expect.objectContaining({
-				user: mockUser,
-				sharingOptions: {
-					workflowRoles: ['workflow:owner'],
-					projectRoles: ['project:personalOwner'],
-				},
-			}),
-		);
-	});
+			expect(mockExecutionRepository.findManyByRangeQuery).toHaveBeenCalledWith(
+				expect.objectContaining({
+					user: mockUser,
+					sharingOptions: {
+						scopes: ['workflow:read'],
+						projectRoles: ['project:editor'],
+						workflowRoles: ['workflow:owner', 'workflow:editor'],
+					},
+				}),
+			);
+		},
+	);
 
 	it('does not pass accessibleWorkflowIds to execution query', async () => {
 		const { adapter, mockExecutionRepository } = createExecutionAdapterForTests({
