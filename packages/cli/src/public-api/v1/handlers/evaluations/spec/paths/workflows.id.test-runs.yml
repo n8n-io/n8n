@@ -37,7 +37,7 @@ post:
   tags:
     - Evaluation
   summary: Trigger a test run
-  description: Start a new evaluation test run for a workflow. The workflow must contain a configured evaluation trigger.
+  description: Start a new evaluation test run for a workflow. The workflow must contain a configured evaluation trigger. Requires the `workflow:execute` project scope in addition to the `testRun:create` API key scope.
   parameters:
     - $ref: '../schemas/parameters/testRunWorkflowId.yml'
   responses:

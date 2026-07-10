@@ -5,7 +5,7 @@ post:
   tags:
     - Evaluation
   summary: Cancel a test run
-  description: Cancel a running evaluation test run of a workflow.
+  description: Cancel a running evaluation test run of a workflow. Requires the `workflow:execute` project scope in addition to the `testRun:cancel` API key scope.
   parameters:
     - $ref: '../schemas/parameters/testRunWorkflowId.yml'
     - $ref: '../schemas/parameters/testRunId.yml'
