@@ -5,6 +5,7 @@ import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8
 import { Container } from '@n8n/di';
 import type { ClaimedTask } from '@n8n/scheduler';
 import type { InstanceSettings } from 'n8n-core';
+import { Tracing } from 'n8n-core';
 
 import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
@@ -71,6 +72,7 @@ describe('durable scheduler process lifecycle and flag gating', () => {
 			taskRepo,
 			instanceSettings,
 			globalConfig,
+			Container.get(Tracing),
 			// The auto-registered schedule-trigger handler is harmless here: no
 			// schedule-trigger occurrences are seeded, so it never fires.
 			Container.get(ScheduleTriggerTaskHandler),
