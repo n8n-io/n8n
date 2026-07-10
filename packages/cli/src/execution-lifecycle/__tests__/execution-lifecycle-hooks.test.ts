@@ -1554,6 +1554,17 @@ describe('Execution Lifecycle Hooks', () => {
 				expect(payload.workflowData).toBeDefined();
 			});
 
+			it('should write run data for integrated executions so the parent workflow can read it', async () => {
+				workflowData.settings = { saveDataSuccessExecution: 'none' };
+				const lifecycleHooks = createHooks('integrated');
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+				const payload = getUpdatePayload();
+				expect(payload.data).toBeDefined();
+				expect(payload.workflowData).toBeDefined();
+			});
+
 			it('should write run data when a workflow.postExecute external hook is registered', async () => {
 				workflowData.settings = { saveDataSuccessExecution: 'none' };
 				externalHooks.hasHook.mockReturnValueOnce(true);
