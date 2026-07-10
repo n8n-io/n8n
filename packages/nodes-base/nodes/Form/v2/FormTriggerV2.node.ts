@@ -93,6 +93,7 @@ const descriptionV2: INodeTypeDescription = {
 			},
 		},
 	],
+	sensitiveOutputFields: ['headers.authorization', 'headers.cookie', 'headers.x-auth-token'],
 	properties: [
 		{
 			displayName: 'Authentication',
@@ -257,6 +258,13 @@ const descriptionV2: INodeTypeDescription = {
 					},
 					default: cssVariables.trim(),
 					description: 'Override default styling of the public form interface with CSS',
+				},
+				{
+					displayName: 'Show Headers',
+					name: 'showHeaders',
+					type: 'boolean',
+					default: false,
+					description: 'Whether the form submit request headers are shown',
 				},
 			],
 		},

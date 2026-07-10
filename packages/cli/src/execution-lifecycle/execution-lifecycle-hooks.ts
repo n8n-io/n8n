@@ -21,6 +21,7 @@ import type {
 	RelatedExecution,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
+import { runDataAttemptedDynamicCredentials, runDataUsedDynamicCredentials } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -604,13 +605,10 @@ function hookFunctionsSave(
 				fullExecutionData.data.pushRef = pushRef;
 			}
 
-			fullExecutionData.usedPrivateCredentials = Object.values(
-				fullRunData.data?.resultData?.runData ?? {},
-			).some((taskDataList) =>
-				taskDataList.some(
-					(t) => t.usedDynamicCredentials === true || t.attemptedDynamicCredentials === true,
-				),
-			);
+			const resultRunData = fullRunData.data?.resultData?.runData;
+			fullExecutionData.usedPrivateCredentials =
+				runDataUsedDynamicCredentials(resultRunData) ||
+				runDataAttemptedDynamicCredentials(resultRunData);
 
 			await updateExistingExecution({
 				executionId: this.executionId,
@@ -694,13 +692,10 @@ function hookFunctionsSaveWorker(
 				fullExecutionData.data.pushRef = pushRef;
 			}
 
-			fullExecutionData.usedPrivateCredentials = Object.values(
-				fullRunData.data?.resultData?.runData ?? {},
-			).some((taskDataList) =>
-				taskDataList.some(
-					(t) => t.usedDynamicCredentials === true || t.attemptedDynamicCredentials === true,
-				),
-			);
+			const resultRunData = fullRunData.data?.resultData?.runData;
+			fullExecutionData.usedPrivateCredentials =
+				runDataUsedDynamicCredentials(resultRunData) ||
+				runDataAttemptedDynamicCredentials(resultRunData);
 
 			// In scaling mode, worker saves execution without metadata
 			// Main process will save metadata after deletion decisions to avoid FK violations

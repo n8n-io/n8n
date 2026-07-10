@@ -54,6 +54,7 @@
     "@vue/tsconfig": "catalog:frontend",
     "stylelint": "catalog:",
     "tsdown": "catalog:",
+    "typescript": "catalog:",
     "rimraf": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",

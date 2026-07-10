@@ -6,6 +6,7 @@ import {
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
 	getLatestWorkflowUpdateResult,
+	getLatestAgentArtifactResult,
 	getExecutionResultsByWorkflow,
 	isAgentEditingWorkflow,
 } from '../canvasPreview.utils';
@@ -277,6 +278,34 @@ describe('getLatestBuilderTarget', () => {
 		});
 		const parent = makeAgentNode({ children: [intermediate] });
 		expect(getLatestBuilderTarget(parent)?.workflowId).toBe('wf-nested');
+	});
+});
+
+describe('getLatestAgentArtifactResult', () => {
+	test('uses parent agent target for nested agent mutations', () => {
+		const nestedAgentBuilder = makeAgentNode({
+			agentId: 'nested-builder',
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-nested-build',
+					toolName: 'agent_builder',
+					args: { action: 'build_agent' },
+					result: { ok: true, configHash: 'hash-1' },
+				}),
+			],
+		});
+		const parentAgentBuilder = makeAgentNode({
+			agentId: 'agent-builder',
+			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
+			children: [nestedAgentBuilder],
+		});
+
+		expect(getLatestAgentArtifactResult(parentAgentBuilder)).toEqual({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			toolCallId: 'tc-nested-build',
+			kind: 'mutated',
+		});
 	});
 });
 

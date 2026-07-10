@@ -681,8 +681,9 @@ export class InstanceAiController {
 		});
 
 		// Include the next SSE event ID so the frontend can skip past events
-		// already covered by these historical messages (prevents duplicates)
-		const nextEventId = this.eventBus.getNextEventId(threadId);
+		// already covered by these historical messages (prevents duplicates).
+		// Read from the shared sequence, so the cursor is valid against any main.
+		const nextEventId = await this.eventBus.getNextEventId(threadId);
 		return { ...result, nextEventId };
 	}
 
