@@ -98,6 +98,11 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Connect Credential',
 		description: 'Allows connecting an own account to an end-user credential.',
 	},
+	'credential:createEndUser': {
+		displayName: 'Create End-User Credential',
+		description:
+			"Allows creating end-user credentials, which resolve to each user's own connection.",
+	},
 	'insights:read': {
 		displayName: 'Read Insights',
 		description: 'Allows reading insights data.',
