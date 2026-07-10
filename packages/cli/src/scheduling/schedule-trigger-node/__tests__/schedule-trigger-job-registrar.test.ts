@@ -146,6 +146,31 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			expect((desired[0].schedule as CronDefinition).timezone).toBeNull();
 		});
 
+		it('resolves a null (instance-default) timezone for the first-run math, but stores it as null', async () => {
+			// Instance default is not UTC, so a wrong resolution (e.g. falling back
+			// to UTC) would show up in firstRunAt rather than being masked by it.
+			const registrar = new ScheduleTriggerJobRegistrar(
+				mockLogger(),
+				mock<GlobalConfig>({
+					scheduler: { enabled: true },
+					generic: { timezone: 'Europe/Berlin' },
+				}),
+				mock<WorkflowsConfig>({ useWorkflowPublicationService: true }),
+				jobProvisioner,
+			);
+			const defaulted = { id: WORKFLOW_ID, settings: {} } as unknown as Workflow;
+			const collector = registrar.createCollector(defaulted, scheduleNode);
+			collector.registerCron(dailyAtNine, vi.fn());
+
+			await registrar.commit(WORKFLOW_ID, NODE_ID);
+
+			const desired = jobProvisioner.provision.mock.calls.at(-1)![4];
+			expect((desired[0].schedule as CronDefinition).timezone).toBeNull();
+			// 09:00 Berlin (UTC+1 in January) — would be 09:00 UTC if the default
+			// weren't resolved.
+			expect(desired[0].firstRunAt).toEqual(new Date('2026-01-05T08:00:00.000Z'));
+		});
+
 		it('throws synchronously from registerCron on an invalid cron expression', () => {
 			const registrar = makeRegistrar();
 			const collector = registrar.createCollector(workflow, scheduleNode);
@@ -170,6 +195,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			const desired = jobProvisioner.provision.mock.calls.at(-1)![4];
 			expect(desired[0].firstRunAt).toBeNull();
+			expect((desired[0].schedule as CronDefinition).kind).toBe('cron');
 		});
 
 		it('is a no-op for a node that collected nothing', async () => {
