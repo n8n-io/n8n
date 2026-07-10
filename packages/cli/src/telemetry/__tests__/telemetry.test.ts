@@ -999,6 +999,21 @@ describe('Telemetry', () => {
 			);
 		});
 
+		test('should call rudderStack.track() with the user_cloud_id context trait when set', () => {
+			telemetry.setUserCloudId('cloud-user-123');
+
+			telemetry.track('Test Event', { user_id: '1234' });
+
+			expect(mockRudderStack.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					context: {
+						ip: '0.0.0.0',
+						traits: { user_cloud_id: 'cloud-user-123' },
+					},
+				}),
+			);
+		});
+
 		test('should include instance_id, version_cli, and user_id in track properties', () => {
 			const eventName = 'Test Event';
 			const properties = { user_id: '1234', custom_prop: 'value' };
