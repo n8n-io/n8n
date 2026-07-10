@@ -24,6 +24,7 @@ import {
 	connectMongoClient,
 	prepareFields,
 	prepareItems,
+	serializeMongoItems,
 	stringifyObjectIDs,
 	validateAndResolveMongoCredentials,
 } from './GenericFunctions';
@@ -37,7 +38,7 @@ export class MongoDb implements INodeType {
 		name: 'mongoDb',
 		icon: 'file:mongodb.svg',
 		group: ['input'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description: 'Find, insert and update documents in MongoDB',
 		defaults: {
 			name: 'MongoDB',
@@ -820,6 +821,10 @@ export class MongoDb implements INodeType {
 			}
 		} finally {
 			await client.close().catch(() => {});
+		}
+
+		if (nodeVersion >= 1.4) {
+			return [await serializeMongoItems.call(this, returnData)];
 		}
 
 		return [stringifyObjectIDs(returnData)];

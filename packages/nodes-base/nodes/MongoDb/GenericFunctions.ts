@@ -1,11 +1,13 @@
 import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import get from 'lodash/get';
 import set from 'lodash/set';
-import { MongoClient, ObjectId } from 'mongodb';
-import { NodeOperationError } from 'n8n-workflow';
+import { Binary, MongoClient, ObjectId } from 'mongodb';
+import { deepCopy, NodeOperationError } from 'n8n-workflow';
 import type {
+	IBinaryKeyData,
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
 } from 'n8n-workflow';
@@ -182,6 +184,36 @@ export function stringifyObjectIDs(items: INodeExecutionData[]) {
 	});
 
 	return items;
+}
+
+// v1.4+: move top-level binary fields to the item's binary output, and deep-serialize
+// the remaining document so nested ObjectIds/Dates become JSON-safe (hex/ISO) strings.
+// (Deeply-nested binary values still serialize to base64 within json.)
+export async function serializeMongoItems(
+	this: IExecuteFunctions,
+	items: INodeExecutionData[],
+): Promise<INodeExecutionData[]> {
+	return await Promise.all(
+		items.map(async (item) => {
+			const json: IDataObject = {};
+			const binary: IBinaryKeyData = { ...(item.binary ?? {}) };
+			let hasBinary = item.binary !== undefined;
+
+			for (const [key, value] of Object.entries(item.json)) {
+				if (value instanceof Binary || Buffer.isBuffer(value)) {
+					const buffer = Buffer.isBuffer(value) ? value : Buffer.from(value.buffer);
+					binary[key] = await this.helpers.prepareBinaryData(buffer, key);
+					hasBinary = true;
+				} else {
+					json[key] = value;
+				}
+			}
+
+			const result: INodeExecutionData = { ...item, json: deepCopy(json) };
+			if (hasBinary) result.binary = binary;
+			return result;
+		}),
+	);
 }
 
 export async function connectMongoClient(
