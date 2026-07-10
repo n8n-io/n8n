@@ -8,11 +8,12 @@ import {
 import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
-import { stampItemIndexOnError, validateUserTargetId } from '../../GenericFunctions';
+import { validateUserTargetId } from '../../GenericFunctions';
 import {
 	getServicePrincipalResourceRoot,
 	getToDoCredentialType,
 	microsoftApiRequest,
+	microsoftApiRequestAllItems,
 	resolveScopeRoot,
 } from '../GenericFunctions';
 import { MicrosoftToDo } from '../MicrosoftToDo.node';
@@ -415,12 +416,28 @@ describe('Microsoft ToDo GenericFunctions', () => {
 			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
 		});
 
-		it('wraps a transport failure as NodeApiError', async () => {
+		it('wraps a transport failure as NodeApiError carrying the passed itemIndex', async () => {
 			mockRequestWithAuthentication.mockRejectedValue(new Error('boom'));
 
-			await expect(
-				microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/todo/lists'),
-			).rejects.toThrow(NodeApiError);
+			let caught: unknown;
+			try {
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/todo/lists',
+					{},
+					{},
+					undefined,
+					{},
+					{ json: true },
+					2,
+				);
+			} catch (error) {
+				caught = error;
+			}
+
+			expect(caught).toBeInstanceOf(NodeApiError);
+			expect((caught as NodeApiError).context.itemIndex).toBe(2);
 		});
 
 		it('resolves the user target at the passed itemIndex', async () => {
@@ -442,6 +459,32 @@ describe('Microsoft ToDo GenericFunctions', () => {
 				undefined,
 				{},
 				{ json: true },
+				1,
+			);
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({ uri: `${baseUrl}/v1.0/users/john%40contoso.com/todo/lists` }),
+			);
+		});
+
+		it('forwards the itemIndex through microsoftApiRequestAllItems to the request', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((name, itemIndex, fallback) => {
+				if (name === 'authentication') return 'microsoftEntraServicePrincipalApi' as never;
+				if (name === 'userTarget')
+					return { value: itemIndex === 1 ? 'john@contoso.com' : 'jane@contoso.com' } as never;
+				return fallback as never;
+			});
+			// single page: no @odata.nextLink
+			mockRequestWithAuthentication.mockResolvedValue({ value: [{ id: 'list-1' }] });
+
+			await microsoftApiRequestAllItems.call(
+				mockExecuteFunctions,
+				'value',
+				'GET',
+				'/todo/lists',
+				{},
+				{},
 				1,
 			);
 
@@ -474,15 +517,6 @@ describe('Microsoft ToDo GenericFunctions', () => {
 			expect(caught).toBeInstanceOf(NodeOperationError);
 			expect((caught as NodeOperationError).context.itemIndex).toBe(2);
 			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('stampItemIndexOnError', () => {
-		it('does not overwrite an already-set context.itemIndex', () => {
-			const error = new NodeOperationError(mockNode, 'boom', { itemIndex: 5 });
-
-			expect(stampItemIndexOnError(error, 9)).toBe(error);
-			expect(error.context.itemIndex).toBe(5);
 		});
 	});
 

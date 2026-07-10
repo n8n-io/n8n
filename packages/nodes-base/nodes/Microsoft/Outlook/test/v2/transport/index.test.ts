@@ -1,5 +1,5 @@
 import type { IDataObject, IExecuteFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -383,9 +383,10 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 		});
 
 		// The mailbox RLC accepts expressions, so execute call sites pass the loop index
-		// and the transport must read the mailbox at exactly that index.
+		// and the transport must read the mailbox at exactly that index. Reuses setupSP
+		// and only swaps in an index-aware mailbox read.
 		const setupSPPerItem = () => {
-			mockRequestWithAuthentication.mockResolvedValue({ data: 'test' });
+			setupSP();
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(name: string, itemIndex?: number) => {
 					if (name === 'authentication') return 'microsoftEntraServicePrincipalApi';
@@ -394,10 +395,6 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 					return undefined;
 				},
 			);
-			mockExecuteFunctions.getCredentials.mockResolvedValue({
-				accessToken: 'test-access-token',
-				graphApiBaseUrl: '',
-			});
 		};
 
 		it('should resolve the mailbox at the passed itemIndex', async () => {
@@ -465,6 +462,37 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 			expect(caught).toBeInstanceOf(NodeOperationError);
 			expect((caught as NodeOperationError).context.itemIndex).toBe(3);
 			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
+		});
+
+		it('should attribute a Graph error to the passed itemIndex (prepareApiError path)', async () => {
+			setupSP();
+			// "bad request" message + parseable description route the error through
+			// prepareApiError, which must receive the forwarded index.
+			mockRequestWithAuthentication.mockRejectedValue(
+				Object.assign(new Error('bad request'), {
+					description: '400 - {"error":{"code":"ErrorInvalidRequest","message":"broken"}} - broken',
+				}),
+			);
+
+			let caught: unknown;
+			try {
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/messages',
+					{},
+					{},
+					undefined,
+					{},
+					{ json: true },
+					2,
+				);
+			} catch (error) {
+				caught = error;
+			}
+
+			expect(caught).toBeInstanceOf(NodeApiError);
+			expect((caught as NodeApiError).context.itemIndex).toBe(2);
 		});
 
 		it('should download attachments from the mailbox at the passed itemIndex', async () => {

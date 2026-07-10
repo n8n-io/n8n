@@ -3,9 +3,9 @@ import nock from 'nock';
 
 import { credentials } from './credentials';
 
-// The userTarget RLC accepts expressions, so it must be resolved per input item: a Code
-// node fans out to two users and each item's request must be rebased onto that item's
-// `/users/{id}` root (encoding pin preserved). Both interceptors are consume-once and
+// The userTarget RLC accepts expressions, so it must be resolved per input item: the
+// Test Data node fans out to two users and each item's request must be rebased onto that
+// item's `/users/{id}` root (encoding pin preserved). Both interceptors are consume-once and
 // `pendingMocks` must be empty afterwards, so a run that sends both items to item 0's
 // user fails in either direction (unmatched second request AND an unconsumed mock).
 describe('Test MicrosoftToDo, Service Principal list:getAll per-item target', () => {

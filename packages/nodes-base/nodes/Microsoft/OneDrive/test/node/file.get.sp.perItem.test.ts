@@ -9,7 +9,7 @@ import { credentials } from '../credentials';
 // resolve aborted the whole run — while items 1 and 2 hit their own users' drives.
 // Only the two valid users are mocked; consume-once + empty pendingMocks pin the exact
 // request set in both directions.
-describe('Test MicrosoftOneDrive, Service Principal file:get per-item target', () => {
+describe('Test MicrosoftOneDrive, Service Principal file:get resolves the target per item and fails only the bad item under continueOnFail', () => {
 	nock('https://graph.microsoft.com/v1.0')
 		.matchHeader('Authorization', 'Bearer test-access-token')
 		.get('/users/alice%40contoso.com/drive/items/FILE123')
