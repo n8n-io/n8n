@@ -38,3 +38,13 @@ body {
 .sbdocs .sbdocs-content th:not(.sbdocs-preview th, .docs-story th) {
 	font-weight: var(--font-weight--bold);
 }
+
+/*
+ * The prose-table styling above is meant for Markdown/args tables in docs. Rendered component
+ * previews live inside `.sb-story` and bring their own table styling (e.g. N8nDataTableServer),
+ * so the docs prose block margin must not leak in — otherwise it pushes the header row down and
+ * leaves an empty gap at the top of the table card.
+ */
+.sbdocs .sbdocs-content .sb-story table {
+	margin-block: 0;
+}

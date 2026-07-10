@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-07-09T01:18:33.533Z",
-	"totalViolations": 69,
+	"generated": "2026-07-09T14:23:09.839Z",
+	"totalViolations": 66,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -235,26 +235,6 @@
 				"line": 148,
 				"message": "Direct page access in composable: this.n8n.page.url",
 				"hash": "c978979c3eac"
-			}
-		],
-		"composables/DataTablesComposer.ts": [
-			{
-				"rule": "no-page-in-flow",
-				"line": 29,
-				"message": "Direct page access in composable: this.n8n.page.goto",
-				"hash": "5f9ae75f5f12"
-			},
-			{
-				"rule": "no-page-in-flow",
-				"line": 31,
-				"message": "Direct page access in composable: this.n8n.page.goto",
-				"hash": "5f9ae75f5f12"
-			},
-			{
-				"rule": "no-page-in-flow",
-				"line": 40,
-				"message": "Direct page access in composable: this.n8n.page.goto",
-				"hash": "5f9ae75f5f12"
 			}
 		],
 		"composables/ExecutionsComposer.ts": [

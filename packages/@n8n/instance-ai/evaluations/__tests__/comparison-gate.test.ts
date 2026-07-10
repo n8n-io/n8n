@@ -417,14 +417,20 @@ describe('formatComparisonMarkdown — gate mode', () => {
 		const gate = evaluateGate(evaluation, { slugByTestCase });
 		const pr = {
 			experimentName: 'pr',
-			scenarios: new Map([
-				['a/happy', { testCaseFile: 'a', scenarioName: 'happy', passed: 0, total: 3 }],
+			evaluationUnits: new Map([
+				[
+					'a/happy',
+					{ kind: 'scenario' as const, testCaseFile: 'a', name: 'happy', passed: 0, total: 3 },
+				],
 			]),
 		};
 		const base = {
 			experimentName: 'master',
-			scenarios: new Map([
-				['a/happy', { testCaseFile: 'a', scenarioName: 'happy', passed: 10, total: 10 }],
+			evaluationUnits: new Map([
+				[
+					'a/happy',
+					{ kind: 'scenario' as const, testCaseFile: 'a', name: 'happy', passed: 10, total: 10 },
+				],
 			]),
 		};
 		const outcome = { kind: 'ok' as const, result: compareBuckets(pr, base) };
