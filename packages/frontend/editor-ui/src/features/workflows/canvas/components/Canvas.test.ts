@@ -589,12 +589,6 @@ describe('Canvas', () => {
 	});
 
 	describe('group context menu', () => {
-		beforeEach(() => {
-			vi.spyOn(usePostHog(), 'isFeatureEnabled').mockImplementation(
-				(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
-			);
-		});
-
 		// The context menu state is a module-scoped singleton — reset it so an
 		// open menu can't leak into other tests.
 		afterEach(() => {

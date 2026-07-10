@@ -3,10 +3,8 @@ import {
 	NOT_DUPLICATABLE_NODE_TYPES,
 	STICKY_NODE_TYPE,
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
-	CANVAS_NODES_GROUPING_EXPERIMENT,
 } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
@@ -77,7 +75,6 @@ export function useContextMenuItems(
 	const sourceControlStore = useSourceControlStore();
 	const collaborationStore = useCollaborationStore();
 	const focusedNodesStore = useFocusedNodesStore();
-	const posthogStore = usePostHog();
 	const { resolveGroupableNodeIds } = useSelectionValidation();
 	const i18n = useI18n();
 
@@ -113,10 +110,6 @@ export function useContextMenuItems(
 		targetNodeIds.value
 			.map((nodeId) => workflowDocumentStore?.value?.getNodeById(nodeId))
 			.filter(isPresent),
-	);
-
-	const isNodeGroupingEnabled = computed(() =>
-		posthogStore.isFeatureEnabled(CANVAS_NODES_GROUPING_EXPERIMENT.name),
 	);
 
 	// Mirrors the Cmd+G eligibility — the same resolver also produces the
@@ -228,18 +221,16 @@ export function useContextMenuItems(
 			},
 		];
 
-		const groupingActions: Item[] = isNodeGroupingEnabled.value
-			? [
-					{
-						id: 'group_nodes',
-						// Starts its own section when the extraction item above is hidden
-						divided: !canExtract,
-						label: i18n.baseText('contextMenu.group', { adjustToNumber: nodes.length }),
-						shortcut: { metaKey: true, keys: ['G'] },
-						disabled: isReadOnly.value || !canGroupTargetNodes.value,
-					},
-				]
-			: [];
+		const groupingActions: Item[] = [
+			{
+				id: 'group_nodes',
+				// Starts its own section when the extraction item above is hidden
+				divided: !canExtract,
+				label: i18n.baseText('contextMenu.group', { adjustToNumber: nodes.length }),
+				shortcut: { metaKey: true, keys: ['G'] },
+				disabled: isReadOnly.value || !canGroupTargetNodes.value,
+			},
+		];
 
 		const aiActions: Item[] = [
 			!onlyStickies &&

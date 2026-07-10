@@ -12,12 +12,10 @@ vi.mock('@/app/composables/useWorkflowId', async () => {
 });
 import {
 	BASIC_CHAIN_NODE_TYPE,
-	CANVAS_NODES_GROUPING_EXPERIMENT,
 	CHAT_TRIGGER_NODE_TYPE,
 	NO_OP_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/app/constants';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { faker } from '@faker-js/faker';
 import { shallowRef } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
@@ -142,15 +140,7 @@ describe('useContextMenu', () => {
 	});
 
 	describe('group_nodes gating', () => {
-		let posthogStore: ReturnType<typeof usePostHog>;
-
-		const enableGroupingFlag = () =>
-			vi
-				.spyOn(posthogStore, 'isFeatureEnabled')
-				.mockImplementation((flag) => flag === CANVAS_NODES_GROUPING_EXPERIMENT.name);
-
 		beforeEach(() => {
-			posthogStore = usePostHog();
 			// Connect the first two nodes so they form a groupable subgraph
 			workflowDocumentStore.setConnections({
 				[nodes[0].name]: {
@@ -161,15 +151,7 @@ describe('useContextMenu', () => {
 			});
 		});
 
-		it('does not show "Group nodes" when the feature flag is off', () => {
-			const { open, actions } = useContextMenu();
-			open(mockEvent, { source: 'canvas', nodeIds: [nodes[0].id, nodes[1].id] });
-
-			expect(actions.value.some((action) => action.id === 'group_nodes')).toBe(false);
-		});
-
 		it('shows "Group nodes" enabled for a groupable selection', () => {
-			enableGroupingFlag();
 			const { open, actions } = useContextMenu();
 			open(mockEvent, { source: 'canvas', nodeIds: [nodes[0].id, nodes[1].id] });
 
@@ -179,7 +161,6 @@ describe('useContextMenu', () => {
 		});
 
 		it('ignores unresolvable ids in the target when computing enablement', () => {
-			enableGroupingFlag();
 			const { open, actions } = useContextMenu();
 			open(mockEvent, {
 				source: 'canvas',
@@ -190,7 +171,6 @@ describe('useContextMenu', () => {
 		});
 
 		it('shows "Group nodes" disabled for an ineligible selection (disconnected nodes)', () => {
-			enableGroupingFlag();
 			const { open, actions } = useContextMenu();
 			open(mockEvent, { source: 'canvas', nodeIds: [nodes[0].id, nodes[2].id] });
 
@@ -200,7 +180,6 @@ describe('useContextMenu', () => {
 		});
 
 		it('shows "Group nodes" disabled for nodes that are already grouped', () => {
-			enableGroupingFlag();
 			workflowDocumentStore.createGroup([nodes[0].id, nodes[1].id], 'Group 1');
 			const { open, actions } = useContextMenu();
 			open(mockEvent, { source: 'canvas', nodeIds: [nodes[0].id, nodes[1].id] });
@@ -209,7 +188,6 @@ describe('useContextMenu', () => {
 		});
 
 		it('shows "Group nodes" disabled in read-only mode', () => {
-			enableGroupingFlag();
 			vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(true);
 			const { open, actions } = useContextMenu();
 			open(mockEvent, { source: 'canvas', nodeIds: [nodes[0].id, nodes[1].id] });
