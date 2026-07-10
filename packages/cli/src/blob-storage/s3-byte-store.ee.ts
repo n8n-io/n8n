@@ -1,10 +1,8 @@
-import { Service } from '@n8n/di';
-import { ObjectStoreService } from 'n8n-core/dist/binary-data/object-store/object-store.service.ee';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import type { ObjectStoreService } from 'n8n-core';
 
 import type { ByteStore, ByteStoreKey } from './types';
 
-@Service()
 export class S3ByteStore implements ByteStore {
 	constructor(private readonly objectStore: ObjectStoreService) {}
 

@@ -342,7 +342,7 @@ export class WaitingWebhooks implements IWebhookManager {
 			}
 
 			return await new Promise((resolve, reject) => {
-				void WebhookHelpers.executeWebhook(
+				WebhookHelpers.executeWebhook(
 					workflow,
 					webhookData,
 					workflowData,
@@ -360,7 +360,7 @@ export class WaitingWebhooks implements IWebhookManager {
 						}
 						resolve(data);
 					},
-				);
+				).catch(reject); // ensure the Promise settles even if executeWebhook throws
 			});
 		} finally {
 			await workflow.expression.releaseIsolate();

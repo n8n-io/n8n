@@ -72,6 +72,7 @@ import {
 	executeScenario,
 	cleanupBuild,
 	runWorkflowChecks,
+	effectiveTimeoutMs,
 	runWorkflowTestCase,
 	runWithConcurrency,
 	workflowExpectedForCase,
@@ -500,6 +501,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		return {
 			evaluation: { totalRuns: 0, testCases: [] },
 			experimentName: '',
+			experimentUrl: undefined,
 			outcome: { kind: 'no_baseline' },
 			slugByTestCase: new Map(),
 		};
@@ -552,7 +554,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		| 'seedThread'
 		| 'executionScenarios'
 		| 'outcomeExpectations'
-	>;
+	> & { timeoutMs: number };
 	interface LaneState {
 		runner: Lane;
 		activeBuilds: number;
@@ -563,6 +565,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			scenario: ExecutionScenario;
 			workflowJsons: BuildResult['workflowJsons'];
 			buildTrace?: BuildResult['buildTrace'];
+			timeoutMs: number;
 		}) => Promise<Awaited<ReturnType<typeof executeScenario>>>;
 	}
 
@@ -584,7 +587,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 						priorConversation: buildArgs.priorConversation,
 						seedThread: buildArgs.seedThread,
 						createdCredentialIds: lane.createdCredentialIds,
-						timeoutMs: args.timeoutMs,
+						timeoutMs: buildArgs.timeoutMs,
 						preRunWorkflowIds: lane.preRunWorkflowIds,
 						claimedWorkflowIds: lane.claimedWorkflowIds,
 						logger,
@@ -604,6 +607,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					scenario: ExecutionScenario;
 					workflowJsons: BuildResult['workflowJsons'];
 					buildTrace?: BuildResult['buildTrace'];
+					timeoutMs: number;
 				}) =>
 					await executeScenario(
 						lane.client,
@@ -611,7 +615,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 						execArgs.scenario,
 						execArgs.workflowJsons,
 						logger,
-						args.timeoutMs,
+						execArgs.timeoutMs,
 						undefined,
 						execArgs.buildTrace,
 						args.pinAiRoots,
@@ -729,6 +733,12 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			if (!entry) throw new Error(`No conversation found for fileSlug=${fileSlug}`);
 			try {
 				const start = Date.now();
+				const timeoutMs = effectiveTimeoutMs(entry.complexity, args.timeoutMs);
+				if (timeoutMs !== args.timeoutMs) {
+					logger.info(
+						`  Complex case: per-iteration budget ${String(Math.round(timeoutMs / 1000))}s [${fileSlug}]`,
+					);
+				}
 				const build = await lane.tracedBuild({
 					conversation: entry.conversation,
 					messageBudget: entry.messageBudget,
@@ -738,6 +748,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					seedThread: entry.seedThread,
 					executionScenarios: entry.executionScenarios,
 					outcomeExpectations: entry.outcomeExpectations,
+					timeoutMs,
 				});
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
@@ -885,6 +896,10 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					scenario,
 					workflowJsons: build.workflowJsons,
 					buildTrace: build.buildTrace,
+					timeoutMs: effectiveTimeoutMs(
+						testCaseByFileSlug.get(inputs.testCaseFile)?.complexity,
+						args.timeoutMs,
+					),
 				});
 				break;
 			} catch (error: unknown) {
