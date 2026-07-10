@@ -1482,6 +1482,7 @@ export class CredentialsService {
 
 		const credentialEntity = this.credentialsRepository.create({
 			...encryptedCredential,
+			description: opts.description ?? null,
 			isManaged: opts.isManaged,
 			isResolvable: opts.isResolvable ?? false,
 		});

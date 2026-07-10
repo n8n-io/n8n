@@ -74,6 +74,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		const defaultSelect: Select = [
 			'id',
 			'name',
+			'description',
 			'type',
 			'isManaged',
 			'createdAt',
@@ -234,6 +235,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		const defaultSelect: Array<keyof CredentialsEntity> = [
 			'id',
 			'name',
+			'description',
 			'type',
 			'isManaged',
 			'createdAt',
@@ -405,6 +407,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		const defaultSelect: Array<keyof CredentialsEntity> = [
 			'id',
 			'name',
+			'description',
 			'type',
 			'isManaged',
 			'createdAt',

@@ -204,6 +204,7 @@ const form = useCredentialForm({
 const {
 	credentialData,
 	credentialName,
+	credentialDescription,
 	credentialId,
 	currentCredential,
 	selectedCredential,
@@ -572,6 +573,11 @@ function onNameEdit(text: string) {
 	credentialName.value = text;
 }
 
+function onDescriptionEdit(text: string) {
+	hasUnsavedChanges.value = true;
+	credentialDescription.value = text.trim() === '' ? null : text;
+}
+
 function scrollToTop() {
 	setTimeout(() => {
 		if (contentRef.value) {
@@ -614,6 +620,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	const credentialDetails: ICredentialsDecrypted = {
 		id: credentialId.value,
 		name: credentialName.value,
+		description: credentialDescription.value,
 		type: credentialTypeName.value,
 		data: data as unknown as ICredentialDataDecryptedObject,
 		isGlobal: isSharedGlobally.value,
@@ -1385,7 +1392,17 @@ const { width } = useElementSize(credNameRef);
 						/>
 					</div>
 					<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">
-						<CredentialInfo :current-credential="currentCredential" />
+						<CredentialInfo
+							:current-credential="currentCredential"
+							:description="credentialDescription"
+							:readonly="
+								!(
+									(credentialPermissions.create && props.mode === 'new') ||
+									credentialPermissions.update
+								) || isEditingManagedCredential
+							"
+							@update:description="onDescriptionEdit"
+						/>
 					</div>
 				</div>
 			</template>

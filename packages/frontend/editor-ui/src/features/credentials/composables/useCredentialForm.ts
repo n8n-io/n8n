@@ -72,6 +72,7 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 	// --- state -------------------------------------------------------------
 	const credentialData = ref<ICredentialDataDecryptedObject>({});
 	const credentialName = ref('');
+	const credentialDescription = ref<string | null>(null);
 	const credentialId = ref('');
 	const currentCredential = ref<ICredentialsResponse | ICredentialsDecryptedResponse | null>(null);
 	/** Set when the host switches auth type; overrides `activeId` as the type source. */
@@ -410,6 +411,7 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 			credentialData.value.homeProject = loaded.homeProject;
 		}
 		credentialName.value = loaded.name;
+		credentialDescription.value = loaded.description ?? null;
 		isResolvable.value =
 			'isResolvable' in loaded && typeof loaded.isResolvable === 'boolean'
 				? loaded.isResolvable
@@ -523,6 +525,7 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		// state
 		credentialData,
 		credentialName,
+		credentialDescription,
 		credentialId,
 		currentCredential,
 		selectedCredential,

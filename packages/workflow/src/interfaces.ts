@@ -166,6 +166,7 @@ export type ProjectSharingData = {
 export interface ICredentialsDecrypted<T extends object = ICredentialDataDecryptedObject> {
 	id: string;
 	name: string;
+	description?: string | null;
 	type: string;
 	data?: T;
 	homeProject?: ProjectSharingData;

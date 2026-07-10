@@ -63,6 +63,7 @@ describe('list-credentials MCP tool', () => {
 				buildCredential({
 					id: 'a',
 					name: 'Slack',
+					description: 'Bot token for the #alerts channel',
 					type: 'slackApi',
 					scopes: ['credential:read', 'credential:update'],
 				}),
@@ -70,6 +71,7 @@ describe('list-credentials MCP tool', () => {
 					id: 'b',
 					name: 'HTTP Header',
 					type: 'httpHeaderAuth',
+					description: null,
 					isGlobal: true,
 					homeProject: null,
 					scopes: [],
@@ -84,6 +86,7 @@ describe('list-credentials MCP tool', () => {
 					{
 						id: 'a',
 						name: 'Slack',
+						description: 'Bot token for the #alerts channel',
 						type: 'slackApi',
 						scopes: ['credential:read', 'credential:update'],
 						isManaged: false,

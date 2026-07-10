@@ -1104,6 +1104,7 @@
 	"credentialEdit.credentialEdit.info.sharee.team": "Only users with credential edit permission can edit this connection",
 	"credentialEdit.credentialInfo.allowUseBy": "Allow use by",
 	"credentialEdit.credentialInfo.created": "Created",
+	"credentialEdit.credentialInfo.description": "Description",
 	"credentialEdit.credentialInfo.id": "ID",
 	"credentialEdit.credentialInfo.lastModified": "Last modified",
 	"credentialEdit.credentialEdit.setupGuide": "Setup guide",

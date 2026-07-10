@@ -344,6 +344,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			updatedAt: true,
 			id: true,
 			name: true,
+			description: true,
 			data: true,
 			type: true,
 			isManaged: true,
