@@ -328,6 +328,10 @@ jobs:
           ARGS=(--base-url "$BASE_URLS" --concurrency 32 --verbose --iterations "${ITERATIONS:-3}")
           if [ "${SOURCE:-langtracer}" = "langtracer" ]; then
             ARGS+=(--source langtracer --suite "${SUITE:-n8n-workflows}")
+            # Pin the LangSmith cohort: langtracer mode otherwise derives a
+            # suite-scoped dataset/baseline prefix, which would fork the KPI
+            # history and orphan the baseline comparison.
+            ARGS+=(--dataset instance-ai-workflow-evals --baseline-prefix instance-ai-baseline-)
           fi
           [ -n "$FILTER" ] && ARGS+=(--filter "$FILTER")
           [ -n "$TIER" ] && ARGS+=(--tier "$TIER")
