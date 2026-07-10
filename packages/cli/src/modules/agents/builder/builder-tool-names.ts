@@ -1,6 +1,11 @@
 /**
  * Tool names used by the agent builder. Centralised so prompts, the SSE event
  * routing, and tests can't drift on string typos.
+ *
+ * The interactive tools (`ask_llm`, `ask_credential`, `ask_embedding_credential`,
+ * `ask_questions`, `configure_channel`) are NOT listed here — their names live
+ * in `@n8n/api-types` (`agent-builder-interactive.ts` / `agents/agent-interaction.schema.ts`)
+ * alongside the suspend/resume schemas they share with instance AI's FE cards.
  */
 export const BUILDER_TOOLS = {
 	READ_CONFIG: 'read_config',

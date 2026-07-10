@@ -5,30 +5,20 @@ import { mock } from 'vitest-mock-extended';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import * as checkAccess from '@/permissions.ee/check-access';
 
-import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import type { AgentsService } from '../agents.service';
-import type { Agent } from '../entities/agent.entity';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
+import type { Agent } from '../entities/agent.entity';
 import {
 	BUILDER_EXCLUDED_TOOL_NAMES,
-	BUILDER_EXTRA_TOOL_NAMES,
 	INSTANCE_AI_BUILDER_ADDENDUM,
-} from '../instance-ai-builder-extra-tools';
-import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';
+	InstanceAiBuilderDelegateAdapterService,
+} from '../instance-ai-builder-delegate.adapter';
 
 function setup() {
 	const agentsService = mock<AgentsService>();
 	const agentsBuilderService = mock<AgentsBuilderService>();
-	const agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>();
-	agentIntegrationPersistenceService.listChatIntegrations.mockReturnValue([
-		{ type: 'slack', label: 'Slack', icon: 'slack', credentialTypes: ['slackOAuth2Api'] },
-	]);
 
-	const service = new InstanceAiBuilderDelegateAdapterService(
-		agentsService,
-		agentsBuilderService,
-		agentIntegrationPersistenceService,
-	);
+	const service = new InstanceAiBuilderDelegateAdapterService(agentsService, agentsBuilderService);
 
 	const user = mock<User>({ id: 'user-1' });
 	const credentialProvider = mock<CredentialProvider>();
@@ -39,14 +29,13 @@ function setup() {
 		user,
 		agentsService,
 		agentsBuilderService,
-		agentIntegrationPersistenceService,
 		credentialProvider,
 	};
 }
 
-/** Extract the extraTools names + addendum + excludeTools from a builder-service session-arg call. */
+/** Extract the extraTools/addendum/excludeTools from a builder-service session-arg call. */
 function sessionArg(call: unknown[]): {
-	toolNames: string[];
+	extraTools?: Array<{ name: string }>;
 	instructionsAddendum?: string;
 	excludeTools?: string[];
 } {
@@ -58,7 +47,7 @@ function sessionArg(call: unknown[]): {
 		  }
 		| undefined;
 	return {
-		toolNames: (session?.extraTools ?? []).map((tool) => tool.name),
+		extraTools: session?.extraTools,
 		instructionsAddendum: session?.instructionsAddendum,
 		excludeTools: session?.excludeTools,
 	};
@@ -129,22 +118,17 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			expect(session?.modelConfig).toBe('anthropic/claude-sonnet-host-resolved');
 		});
 
-		it('injects the configure_channel and ask_questions builder tools plus the instance-AI prompt addendum', async () => {
+		it('does not inject any extraTools — ask_questions/configure_channel are now standard builder tools', async () => {
 			const { delegate, agentsBuilderService } = setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			agentsBuilderService.buildAgent.mockReturnValue(asAsyncGenerator<StreamChunk>([]));
 
 			await delegate.streamBuild('agent-1', 'hi', { threadId: 'ia-builder:t:agent-1' });
 
-			const { toolNames, instructionsAddendum, excludeTools } = sessionArg(
+			const { extraTools, instructionsAddendum, excludeTools } = sessionArg(
 				agentsBuilderService.buildAgent.mock.calls[0],
 			);
-			expect(toolNames).toEqual(
-				expect.arrayContaining([
-					BUILDER_EXTRA_TOOL_NAMES.CONFIGURE_CHANNEL,
-					BUILDER_EXTRA_TOOL_NAMES.ASK_QUESTIONS,
-				]),
-			);
+			expect(extraTools).toBeUndefined();
 			expect(instructionsAddendum).toBe(INSTANCE_AI_BUILDER_ADDENDUM);
 			expect(excludeTools).toEqual(BUILDER_EXCLUDED_TOOL_NAMES);
 			expect(excludeTools).toContain('ask_llm');
@@ -202,7 +186,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			expect(session?.modelConfig).toBe('anthropic/claude-sonnet-host-resolved');
 		});
 
-		it('injects the configure_channel and ask_questions builder tools plus the instance-AI prompt addendum', async () => {
+		it('does not inject any extraTools — ask_questions/configure_channel are now standard builder tools', async () => {
 			const { delegate, agentsBuilderService } = setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			agentsBuilderService.resumeBuild.mockReturnValue(asAsyncGenerator<StreamChunk>([]));
@@ -213,15 +197,10 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				{ threadId: 'ia-builder:t:agent-1' },
 			);
 
-			const { toolNames, instructionsAddendum, excludeTools } = sessionArg(
+			const { extraTools, instructionsAddendum, excludeTools } = sessionArg(
 				agentsBuilderService.resumeBuild.mock.calls[0],
 			);
-			expect(toolNames).toEqual(
-				expect.arrayContaining([
-					BUILDER_EXTRA_TOOL_NAMES.CONFIGURE_CHANNEL,
-					BUILDER_EXTRA_TOOL_NAMES.ASK_QUESTIONS,
-				]),
-			);
+			expect(extraTools).toBeUndefined();
 			expect(instructionsAddendum).toBe(INSTANCE_AI_BUILDER_ADDENDUM);
 			expect(excludeTools).toEqual(BUILDER_EXCLUDED_TOOL_NAMES);
 			expect(excludeTools).toContain('ask_llm');

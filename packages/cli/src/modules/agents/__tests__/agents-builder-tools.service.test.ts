@@ -1,4 +1,3 @@
-import type { Mocked } from 'vitest';
 import type { CredentialProvider } from '@n8n/agents';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
@@ -13,12 +12,14 @@ import type {
 } from '@n8n/backend-network';
 import type { SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import { mock } from 'vitest-mock-extended';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { NodeTypes } from '@/node-types';
+import type { AiService } from '@/services/ai.service';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 
 import type { AgentConfigService } from '../agent-config.service';
@@ -38,7 +39,6 @@ import { BUILDER_TOOLS } from '../builder/builder-tool-names';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import type { AiService } from '@/services/ai.service';
 
 const ctx = {
 	resumeData: undefined,
@@ -237,6 +237,16 @@ describe('AgentsBuilderToolsService', () => {
 			const toolNames = tools.map((tool) => tool.name);
 			expect(toolNames).toContain(BUILDER_TOOLS.VERIFY_MCP_SERVER);
 			expect(toolNames).toContain(BUILDER_TOOLS.SEARCH_MCP_SERVERS);
+		});
+
+		it('registers the native ask_questions and configure_channel interactive tools, and no ask_question', () => {
+			const { service } = makeService();
+
+			const tools = service.getTools(agentId, projectId, credentialProvider, user).json;
+			const toolNames = tools.map((tool) => tool.name);
+			expect(toolNames).toContain('ask_questions');
+			expect(toolNames).toContain('configure_channel');
+			expect(toolNames).not.toContain('ask_question');
 		});
 
 		it('builds verify_mcp_server with OutboundHttp SSRF protection enabled', () => {

@@ -40,7 +40,7 @@ describe('sub-agent skill availability', () => {
 		expect(skill).toBeDefined();
 		expect(skill?.instructions).toContain('`delegate_subagent`');
 		expect(skill?.instructions).toContain('Call `list_sub_agents`');
-		expect(skill?.instructions).toContain('`allowMultiple: true`');
+		expect(skill?.instructions).toContain('`type: "multi"`');
 		expect(skill?.instructions).toContain('subAgentId: "inline"');
 		expect(skill?.instructions).toContain('`subAgents.maxChildren`');
 		expect(skill?.instructions).toContain(
