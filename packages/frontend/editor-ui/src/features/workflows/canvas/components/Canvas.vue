@@ -1158,6 +1158,11 @@ const groupNodeFallbackDataById = computed(() =>
 
 const contextMenu = useContextMenu();
 
+// Carried on the menu target so mutating items disable on canvases that are
+// read-only through props alone (e.g. while the AI builder streams) — the
+// instance-wide read-only checks don't cover per-canvas state.
+const isContextMenuReadOnly = computed(() => props.readOnly || props.suppressInteraction);
+
 function onOpenContextMenu(
 	event: MouseEvent,
 	target?: Pick<Extract<ContextMenuTarget, { source: 'canvas' }>, 'nodeId'>,
@@ -1167,6 +1172,7 @@ function onOpenContextMenu(
 		// Include collapsed group members so menu actions reach the nodes a
 		// selected title bar stands for.
 		nodeIds: selectedNodeIdsWithGroupMembers.value,
+		readOnly: isContextMenuReadOnly.value,
 		...target,
 	});
 }
@@ -1181,19 +1187,19 @@ function onOpenNodeContextMenu(
 	source: 'node-button' | 'node-right-click',
 ) {
 	if (source === 'node-button') {
-		contextMenu.open(event, { source, nodeId: id });
+		contextMenu.open(event, { source, nodeId: id, readOnly: isContextMenuReadOnly.value });
 	} else if (selectedNodeIds.value.length > 1 && selectedNodeIds.value.includes(id)) {
 		onOpenContextMenu(event, { nodeId: id });
 	} else {
 		onSelectNodes({ ids: [id] });
-		contextMenu.open(event, { source, nodeId: id });
+		contextMenu.open(event, { source, nodeId: id, readOnly: isContextMenuReadOnly.value });
 	}
 }
 
 function onOpenGroupContextMenu(groupId: string, event: MouseEvent) {
 	// Fall through to the native menu when interaction is suppressed. A
-	// read-only canvas keeps the menu (like nodes do) — mutating items are
-	// disabled through the instance-wide read-only checks.
+	// read-only canvas keeps the menu (like nodes do) — the target's readOnly
+	// flag disables the mutating items while view/copy actions stay usable.
 	if (props.suppressInteraction) return;
 	const group = workflowDocumentStore.value.getGroupById(groupId);
 	if (!group) return;
@@ -1207,7 +1213,12 @@ function onOpenGroupContextMenu(groupId: string, event: MouseEvent) {
 	}
 
 	onSelectNodes({ ids: group.nodeIds });
-	contextMenu.open(event, { source: 'group', groupId, nodeIds: [...group.nodeIds] });
+	contextMenu.open(event, {
+		source: 'group',
+		groupId,
+		nodeIds: [...group.nodeIds],
+		readOnly: isContextMenuReadOnly.value,
+	});
 }
 
 async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[], groupId?: string) {

@@ -850,12 +850,22 @@ describe('Canvas', () => {
 			expect(emitted()['copy:nodes']).toEqual([[['a', 'b']]]);
 		});
 
-		it('opens the group context menu on a read-only canvas, like node menus', async () => {
+		it('opens the group context menu on a read-only canvas, like node menus, with mutating items disabled', async () => {
+			// The workflow itself stays editable (see renderWithGroup) — the
+			// canvas prop alone must disable the mutating items, so embedded
+			// read-only canvases can't mutate through the menu.
 			const { getByTestId } = await renderWithGroup({ readOnly: true });
 
 			await fireEvent.contextMenu(getByTestId('canvas-node-group'));
 
 			await waitFor(() => expect(getByTestId('context-menu-item-copy')).toBeInTheDocument());
+			expect(getByTestId('context-menu-item-copy')).not.toHaveAttribute('aria-disabled');
+			for (const mutating of ['rename_group', 'ungroup_nodes', 'toggle_activation', 'delete']) {
+				expect(getByTestId(`context-menu-item-${mutating}`)).toHaveAttribute(
+					'aria-disabled',
+					'true',
+				);
+			}
 		});
 
 		it('does not open the group context menu when interaction is suppressed', async () => {

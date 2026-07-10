@@ -299,6 +299,65 @@ describe('useContextMenu', () => {
 		});
 	});
 
+	describe('target-level read-only', () => {
+		// The instance-wide flags stay editable in these tests (see beforeEach):
+		// only the opening canvas marks its target read-only, like an embedded
+		// read-only canvas on an editable route (e.g. while the AI builder
+		// streams).
+		it('disables the mutating actions when the canvas target is read-only', () => {
+			const { open, actions } = useContextMenu();
+			open(mockEvent, {
+				source: 'canvas',
+				nodeIds: selectedNodes.map((n) => n.id),
+				readOnly: true,
+			});
+
+			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
+			for (const mutating of ['toggle_activation', 'tidy_up', 'group_nodes', 'delete']) {
+				expect(byId[mutating]?.disabled).toBe(true);
+			}
+			expect(byId.copy?.disabled).toBeFalsy();
+			expect(byId.select_all?.disabled).toBeFalsy();
+		});
+
+		it('disables the group actions when the group target is read-only', () => {
+			const group = workflowDocumentStore.createGroup([nodes[0].id, nodes[1].id], 'My group');
+			const { open, actions } = useContextMenu();
+			open(mockEvent, {
+				source: 'group',
+				groupId: group.id,
+				nodeIds: group.nodeIds,
+				readOnly: true,
+			});
+
+			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
+			for (const mutating of ['rename_group', 'ungroup_nodes', 'toggle_activation', 'delete']) {
+				expect(byId[mutating]?.disabled).toBe(true);
+			}
+			// Copy and collapse state (a view preference) stay usable
+			expect(byId.copy?.disabled).toBeFalsy();
+			expect(byId.expand_selected_groups?.disabled).toBeFalsy();
+		});
+
+		it('disables the add actions in the empty-selection menu when the target is read-only', () => {
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [], readOnly: true });
+
+			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
+			expect(byId.add_node?.disabled).toBe(true);
+			expect(byId.add_sticky?.disabled).toBe(true);
+		});
+
+		it('keeps the mutating actions enabled when the target is not read-only', () => {
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: selectedNodes.map((n) => n.id) });
+
+			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
+			expect(byId.toggle_activation?.disabled).toBe(false);
+			expect(byId.delete?.disabled).toBe(false);
+		});
+	});
+
 	describe('expand/collapse all groups (empty selection menu)', () => {
 		it('shows the actions disabled when the workflow has no groups', () => {
 			const { open, actions } = useContextMenu();

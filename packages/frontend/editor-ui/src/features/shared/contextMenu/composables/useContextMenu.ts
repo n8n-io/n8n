@@ -4,11 +4,20 @@ import { computed, ref, watch } from 'vue';
 import { getMousePosition } from '@/app/utils/nodeViewUtils';
 import { useContextMenuItems, type ContextMenuAction } from './useContextMenuItems';
 
-export type ContextMenuTarget =
+export type ContextMenuTarget = {
+	/**
+	 * Whether the canvas that opened the menu is read-only. Canvases can be
+	 * read-only through props alone (e.g. while the AI builder streams, or in
+	 * embedded previews) without any instance-wide read-only flag being set,
+	 * so mutating items must also disable based on the opening target.
+	 */
+	readOnly?: boolean;
+} & (
 	| { source: 'canvas'; nodeIds: string[]; nodeId?: string }
 	| { source: 'node-right-click'; nodeId: string }
 	| { source: 'node-button'; nodeId: string }
-	| { source: 'group'; groupId: string; nodeIds: string[] };
+	| { source: 'group'; groupId: string; nodeIds: string[] }
+);
 export type ContextMenuActionCallback = (
 	action: ContextMenuAction,
 	nodeIds: string[],
@@ -40,6 +49,8 @@ export const useContextMenu = () => {
 		target.value?.source === 'group' ? target.value.groupId : undefined,
 	);
 
+	const targetReadOnly = computed(() => target.value?.readOnly ?? false);
+
 	const close = () => {
 		target.value = undefined;
 		position.value = [0, 0];
@@ -64,7 +75,7 @@ export const useContextMenu = () => {
 		position.value = getMousePosition(event);
 	};
 
-	const actions = useContextMenuItems(targetNodeIds, targetGroupId);
+	const actions = useContextMenuItems(targetNodeIds, targetGroupId, targetReadOnly);
 
 	watch(() => uiStore.nodeViewOffsetPosition, close);
 
