@@ -38,6 +38,25 @@ describe('getConnectionOptions', () => {
 		clientSessionKeepAlive: true,
 	};
 
+	describe('date serialization', () => {
+		const passwordCredential = {
+			...commonOptions,
+			authentication: 'password' as const,
+			username: 'test-username',
+			password: 'test-password',
+		};
+
+		it('should request dates as strings on version 1.1', () => {
+			const result = getConnectionOptions(passwordCredential, 1.1);
+			expect(result.fetchAsString).toEqual(['Date']);
+		});
+
+		it('should not request dates as strings before version 1.1', () => {
+			expect(getConnectionOptions(passwordCredential, 1)).not.toHaveProperty('fetchAsString');
+			expect(getConnectionOptions(passwordCredential)).not.toHaveProperty('fetchAsString');
+		});
+	});
+
 	describe('should return connection options', () => {
 		it('with username and password for password authentication', () => {
 			const result = getConnectionOptions({

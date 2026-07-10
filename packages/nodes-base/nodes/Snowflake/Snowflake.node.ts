@@ -26,7 +26,7 @@ export class Snowflake implements INodeType {
 		name: 'snowflake',
 		icon: 'file:snowflake.svg',
 		group: ['input'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Get, add and update data in Snowflake',
 		defaults: {
 			name: 'Snowflake',
@@ -237,7 +237,7 @@ export class Snowflake implements INodeType {
 			snowflakeCredential = await this.getCredentials<SnowflakeCredential>('snowflake');
 		}
 
-		const connectionOptions = getConnectionOptions(snowflakeCredential);
+		const connectionOptions = getConnectionOptions(snowflakeCredential, this.getNode().typeVersion);
 		const connection = snowflake.createConnection(connectionOptions);
 
 		await connect(connection);

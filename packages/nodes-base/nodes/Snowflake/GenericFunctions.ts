@@ -51,8 +51,12 @@ const extractPrivateKey = (credential: { privateKey: string; passphrase?: string
 	}) as string;
 };
 
-export const getConnectionOptions = (credential: SnowflakeCredential) => {
+export const getConnectionOptions = (credential: SnowflakeCredential, nodeVersion?: number) => {
 	const connectionOptions: snowflake.ConnectionOptions = pick(credential, commonConnectionFields);
+	if (typeof nodeVersion === 'number' && nodeVersion >= 1.1) {
+		// Return DATE/TIME/TIMESTAMP columns as strings so node output stays JSON-safe
+		connectionOptions.fetchAsString = ['Date'];
+	}
 	// Keep host out of commonConnectionFields so blank values can be trimmed and skipped.
 	const originHostname = credential.host?.trim();
 	if (originHostname) {
