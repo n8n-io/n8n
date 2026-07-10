@@ -1,6 +1,7 @@
 import type { IExecuteFunctions, INodeExecutionData, JsonObject } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
+import { stampItemIndexOnError } from '../../../GenericFunctions';
 import * as calendar from './calendar';
 import * as contact from './contact';
 import * as draft from './draft';
@@ -90,14 +91,8 @@ export async function router(this: IExecuteFunctions) {
 				returnData.push(...executionErrorData);
 				continue;
 			}
-			//NodeApiError will be missing the itemIndex, add it
-			if (error instanceof NodeApiError && error?.context?.itemIndex === undefined) {
-				if (error.context === undefined) {
-					error.context = {};
-				}
-				error.context.itemIndex = i;
-			}
-			throw error;
+			// A NodeError from the transport may be missing the itemIndex, add it
+			throw stampItemIndexOnError(error, i);
 		}
 	}
 	return [returnData];
