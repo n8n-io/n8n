@@ -5,7 +5,7 @@
 import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
-import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
+import { N8nApiError, type N8nClient, type WorkflowResponse } from '../clients/n8n-client';
 import type { AgentOutcome, EventOutcome, ExecutionSummary, WorkflowSummary } from '../types';
 
 // ---------------------------------------------------------------------------
@@ -38,6 +38,8 @@ export interface BuildAgentOutcomeOptions {
 	 * run can create a workflow while the current thread produces no IDs.
 	 */
 	allowListDiffFallback?: boolean;
+	/** Logs discovery decisions (dropped phantom ids, deferred fetch-failure stubs). */
+	logger?: { warn(message: string): void };
 }
 
 export async function buildAgentOutcome(
@@ -83,7 +85,13 @@ export async function buildAgentOutcome(
 		}
 	}
 
-	// Fetch workflow details
+	// Fetch workflow details. Candidate ids come from tool results and agent
+	// trees, which echo agent-INVENTED ids too (e.g. a failed build-workflow
+	// bind to a made-up id) — a 404/403 means no workflow ever carried the id,
+	// so drop it instead of recording a stub: a stub at index 0 becomes
+	// build.workflowId and every scenario then executes a nonexistent workflow.
+	// Transport-level fetch failures keep a stub, ordered after real workflows.
+	const fetchFailedStubs: WorkflowSummary[] = [];
 	for (const wfId of knownWfIds) {
 		try {
 			const wf = await client.getWorkflow(wfId);
@@ -94,9 +102,14 @@ export async function buildAgentOutcome(
 				active: wf.active,
 			});
 			workflowJsons.push(wf);
-		} catch {
-			// Workflow may have been deleted or is inaccessible
-			workflowsCreated.push({
+		} catch (error) {
+			if (error instanceof N8nApiError && (error.status === 404 || error.status === 403)) {
+				options.logger?.warn(
+					`  Discovery: dropping phantom workflow id "${wfId}" (fetch returned ${String(error.status)})`,
+				);
+				continue;
+			}
+			fetchFailedStubs.push({
 				id: wfId,
 				name: '(fetch failed)',
 				nodeCount: 0,
@@ -104,6 +117,7 @@ export async function buildAgentOutcome(
 			});
 		}
 	}
+	workflowsCreated.push(...fetchFailedStubs);
 
 	// Fetch execution details (one listing for all ids)
 	if (eventOutcome.executionIds.length > 0) {

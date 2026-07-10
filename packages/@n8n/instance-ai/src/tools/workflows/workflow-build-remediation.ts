@@ -1,4 +1,5 @@
 import type { WorkflowSourceCompileFailureReason } from './workflow-source-compiler';
+import { WorkflowSaveConflictError } from '../../errors/workflow-save-conflict.error';
 import { createRemediation } from '../../workflow-loop/remediation';
 import type { RemediationMetadata } from '../../workflow-loop/workflow-loop-state';
 
@@ -48,10 +49,22 @@ export function createCodeFixableRemediation(input: {
 	});
 }
 
+export function createWorkflowModifiedExternallyRemediation(): RemediationMetadata {
+	return createCodeFixableRemediation({
+		reason: 'workflow_modified_externally',
+		guidance:
+			'The workflow was modified outside this conversation since your last save (canvas edit, setup, credential change, or version revert). Call workflows(action="get-as-code", workflowId), re-apply your intended change to the returned code, write it to the same filePath, then call build-workflow again with the same filePath.',
+	});
+}
+
 export function createSaveFailureRemediation(
 	error: unknown,
 	hasBoundWorkflowId: boolean,
 ): RemediationMetadata {
+	if (error instanceof WorkflowSaveConflictError) {
+		return createWorkflowModifiedExternallyRemediation();
+	}
+
 	const text = getFailureText(error);
 
 	if (isCredentialSaveFailure(text)) {

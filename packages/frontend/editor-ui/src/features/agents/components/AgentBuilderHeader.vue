@@ -36,6 +36,7 @@ const props = defineProps<{
 	saveStatus?: 'idle' | 'saving' | 'saved';
 	beforeRevertToPublished?: () => Promise<void> | void;
 	isVersionHistoryOpen?: boolean;
+	artifactMode?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -53,6 +54,7 @@ const router = useRouter();
 
 const { list: agentsList, ensureLoaded } = useProjectAgentsList(computed(() => props.projectId));
 onMounted(() => {
+	if (props.artifactMode) return;
 	void ensureLoaded();
 });
 
@@ -143,7 +145,12 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 <template>
 	<header :class="$style.header" data-testid="agent-builder-header">
 		<div :class="$style.left">
-			<N8nBreadcrumbs :items="breadcrumbItems" theme="medium" @item-selected="onBreadcrumbSelect">
+			<N8nBreadcrumbs
+				v-if="!props.artifactMode"
+				:items="breadcrumbItems"
+				theme="medium"
+				@item-selected="onBreadcrumbSelect"
+			>
 				<template #append>
 					<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
 					<N8nDropdownMenu
@@ -215,7 +222,7 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 				@unpublished="(a: AgentResource) => emit('unpublished', a)"
 				@reverted="(a: AgentResource) => emit('reverted', a)"
 			/>
-			<N8nTooltip placement="bottom">
+			<N8nTooltip v-if="!props.artifactMode" placement="bottom">
 				<template #content>
 					<span v-if="isVersionHistoryDisabled">{{
 						i18n.baseText('agents.versionHistory.button.tooltip.empty')
@@ -235,10 +242,11 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 				/>
 			</N8nTooltip>
 			<N8nActionDropdown
-				v-if="headerActions.length > 0"
+				v-if="!props.artifactMode && headerActions.length > 0"
 				:items="headerActions"
 				activator-icon="ellipsis"
 				activator-size="medium"
+				:extra-popper-class="$style.headerActionsMenu"
 				data-testid="agent-header-actions"
 				@select="(item: string) => emit('header-action', item)"
 			/>
@@ -331,5 +339,9 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 
 .activeButton {
 	background-color: var(--background--active);
+}
+
+.headerActionsMenu {
+	--n8n--dropdown-menu-width: var(--spacing--5xl);
 }
 </style>

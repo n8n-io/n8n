@@ -41,6 +41,7 @@ const props = defineProps<{
 	canEditAgent: boolean;
 	executionsDescription: string;
 	tasksReloadKey?: number;
+	artifactMode?: boolean;
 }>();
 
 const childrenDisabled = computed(() => props.isBuildChatStreaming || !props.canEditAgent);
@@ -172,7 +173,13 @@ const i18n = useI18n();
 					v-else-if="activeMainTab === 'sessions'"
 					data-testid="agent-sessions-tab-content"
 				>
-					<AgentSessionsListView :embedded="true" data-testid="agent-executions-panel" />
+					<AgentSessionsListView
+						:embedded="true"
+						:project-id="projectId"
+						:agent-id="agentId"
+						:open-session-in-new-tab="artifactMode"
+						data-testid="agent-executions-panel"
+					/>
 				</AgentBuilderTabPanel>
 
 				<AgentBuilderTabPanel
