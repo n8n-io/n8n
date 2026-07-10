@@ -9,36 +9,47 @@ function apiError(message: string, statusCode?: number, responseBody?: string): 
 	return error;
 }
 
+/** Mirrors the SDK's APIResponseError carrying a machine-readable errorCode. */
+function sdkError(message: string, statusCode: number, errorCode?: string): Error {
+	const error = new Error(message) as Error & { statusCode: number; errorCode?: string };
+	error.statusCode = statusCode;
+	if (errorCode !== undefined) error.errorCode = errorCode;
+	return error;
+}
+
 describe('isQuotaExhaustedError', () => {
-	it('matches the proxy quota message on a plain string', () => {
-		expect(isQuotaExhaustedError('Have reached end of quota')).toBe(true);
+	it('matches the SDK errorCode from the token-endpoint 403', () => {
+		expect(
+			isQuotaExhaustedError(sdkError('Have reached end of quota', 403, 'quota_exhausted')),
+		).toBe(true);
 	});
 
-	it('matches quota keywords in an Error message regardless of status', () => {
-		expect(isQuotaExhaustedError(apiError('Have reached end of quota'))).toBe(true);
-		expect(isQuotaExhaustedError(apiError('You are out of credits'))).toBe(true);
+	it('matches the code carried on error.cause when the SDK error is wrapped', () => {
+		const wrapped = new Error('stream failed', {
+			cause: sdkError('Have reached end of quota', 403, 'quota_exhausted'),
+		});
+		expect(isQuotaExhaustedError(wrapped)).toBe(true);
 	});
 
-	it('matches a quota message carried in the JSON responseBody', () => {
+	it('matches the code parsed from an ai-sdk responseBody error.type', () => {
 		const error = apiError(
 			'Forbidden',
 			403,
-			JSON.stringify({ error: { message: 'Quota exceeded for this account' } }),
+			JSON.stringify({ error: { type: 'quota_exhausted', message: 'Have reached end of quota' } }),
 		);
 		expect(isQuotaExhaustedError(error)).toBe(true);
 	});
 
-	it('matches a 403 combined with a quota/credit token', () => {
-		expect(isQuotaExhaustedError(apiError('request blocked: quota', 403))).toBe(true);
+	it('does NOT match a quota-sounding message without a code (no string heuristic)', () => {
+		expect(isQuotaExhaustedError(apiError('Have reached end of quota'))).toBe(false);
+		expect(isQuotaExhaustedError('You are out of credits')).toBe(false);
+		expect(isQuotaExhaustedError(apiError('request blocked: quota', 403))).toBe(false);
 	});
 
-	it('does not match a bare 403 without quota/credit signal', () => {
+	it('does not match a bare 403 or unrelated errors', () => {
 		expect(isQuotaExhaustedError(apiError('Forbidden', 403))).toBe(false);
-	});
-
-	it('does not match unrelated errors', () => {
-		expect(isQuotaExhaustedError(apiError('Rate limited', 429))).toBe(false);
-		expect(isQuotaExhaustedError('Something went wrong')).toBe(false);
+		expect(isQuotaExhaustedError(sdkError('Forbidden', 403))).toBe(false);
+		expect(isQuotaExhaustedError(sdkError('rate limited', 429, 'rate_limit'))).toBe(false);
 		expect(isQuotaExhaustedError(undefined)).toBe(false);
 	});
 });
@@ -464,11 +475,10 @@ describe('mapAgentChunkToEvent', () => {
 	});
 
 	it('tags quota-exhausted error chunks with a quota_exhausted code', () => {
-		const error = apiError(
-			'Forbidden',
-			403,
-			JSON.stringify({ error: { message: 'Have reached end of quota' } }),
-		);
+		const responseBody = JSON.stringify({
+			error: { type: 'quota_exhausted', message: 'Have reached end of quota' },
+		});
+		const error = apiError('Forbidden', 403, responseBody);
 
 		expect(map({ type: 'error', error })).toEqual({
 			type: 'error',
@@ -478,7 +488,7 @@ describe('mapAgentChunkToEvent', () => {
 				content: 'Have reached end of quota',
 				statusCode: 403,
 				code: 'quota_exhausted',
-				technicalDetails: JSON.stringify({ error: { message: 'Have reached end of quota' } }),
+				technicalDetails: responseBody,
 			},
 		});
 	});

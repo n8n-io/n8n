@@ -3,21 +3,11 @@ vi.mock('@n8n/instance-ai', async () => {
 	const { z } = await vi.importActual<typeof import('zod')>('zod');
 	return {
 		orchestratorAgentId: (runId: string) => `orchestrator-${runId}`,
-		isQuotaExhaustedError: (error: unknown) => {
-			const message = error instanceof Error ? error.message.toLowerCase() : '';
-			const statusCode =
-				error instanceof Error && 'statusCode' in error && typeof error.statusCode === 'number'
-					? error.statusCode
-					: undefined;
-			if (
-				['end of quota', 'out of credits', 'quota exceeded', 'credit limit'].some((s) =>
-					message.includes(s),
-				)
-			) {
-				return true;
-			}
-			return statusCode === 403 && (message.includes('quota') || message.includes('credit'));
-		},
+		isQuotaExhaustedError: (error: unknown) =>
+			typeof error === 'object' &&
+			error !== null &&
+			'errorCode' in error &&
+			error.errorCode === 'quota_exhausted',
 		McpClientManager: class {
 			getRegularTools = vi.fn().mockResolvedValue({});
 			disconnect = vi.fn();

@@ -183,7 +183,10 @@ describe('executeResumableStream', () => {
 
 	it('publishes only the quota error when a follow-on error chunk arrives', async () => {
 		const eventBus = createEventBus();
-		const quotaError = new Error('Have reached end of quota');
+		const quotaError = Object.assign(new Error('Have reached end of quota'), {
+			statusCode: 403,
+			errorCode: 'quota_exhausted',
+		});
 		const followOn = new Error('No output generated. Check the stream for errors.');
 
 		await executeResumableStream({

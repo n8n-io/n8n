@@ -118,72 +118,56 @@ interface ErrorInfo {
 }
 
 /**
- * Human-readable signals the hosted AI proxy uses when a tenant's credit/quota
- * pool is exhausted. Kept as an exported const so detection stays cheap to adjust
- * if the proxy wording changes, and so tests can assert against the same list.
+ * Machine-readable code the AI service sets when the credit/quota pool is exhausted.
+ * Wire contract — kept in sync with the service/SDK and `INSTANCE_AI_ERROR_CODES`.
  */
-export const QUOTA_EXHAUSTED_MESSAGE_SIGNALS = [
-	'end of quota',
-	'out of credits',
-	'quota exceeded',
-	'credit limit',
-] as const;
+export const QUOTA_EXHAUSTED_ERROR_CODE = 'quota_exhausted';
 
 /**
- * Whether an error means the user has run out of AI credits/quota. Quota is
- * enforced by the proxy returning a 403 (no dedicated code), so we match on the
- * proxy's quota wording, plus a 403 combined with a quota/credit token. A bare
- * 403 must NOT match — it is also auth/permission-denied.
+ * Whether an error means the user has run out of AI credits/quota. Keyed off a
+ * machine-readable code, never the message text: the SDK exposes `errorCode` on
+ * the token-endpoint 403, and the ai-sdk carries the proxy's `error.type` in
+ * `responseBody`. The error can arrive wrapped, so its `cause` chain is inspected too.
  */
 export function isQuotaExhaustedError(error: unknown): boolean {
-	const { message, statusCode } = readError(error);
-	const haystack = message.toLowerCase();
-
-	if (QUOTA_EXHAUSTED_MESSAGE_SIGNALS.some((signal) => haystack.includes(signal))) {
-		return true;
-	}
-
-	return statusCode === 403 && (haystack.includes('quota') || haystack.includes('credit'));
+	return readErrorCode(error) === QUOTA_EXHAUSTED_ERROR_CODE;
 }
 
-/**
- * Normalize an unknown error into the message + statusCode we key detection on.
- * Folds the ai-sdk `responseBody` JSON `error.message` into the message so a
- * proxy quota body is matched even when the top-level message is a bare status.
- */
-function readError(error: unknown): { message: string; statusCode?: number } {
-	if (typeof error === 'string') return { message: error };
-	if (!(error instanceof Error)) return { message: '' };
+/** Read the machine-readable code from the error, its ai-sdk `responseBody`, or its `cause`. */
+function readErrorCode(error: unknown): string | undefined {
+	if (typeof error !== 'object' || error === null) return undefined;
 
-	let message = error.message;
-	let statusCode: number | undefined;
-
-	if ('statusCode' in error && typeof error.statusCode === 'number') {
-		statusCode = error.statusCode;
+	// SDK APIResponseError carries the parsed code directly.
+	if ('errorCode' in error && typeof error.errorCode === 'string') {
+		return error.errorCode;
 	}
 
+	// ai-sdk APICallError exposes the raw provider body; the proxy tags `error.type`.
 	if ('responseBody' in error && typeof error.responseBody === 'string') {
-		const bodyMessage = parseResponseBodyMessage(error.responseBody);
-		if (bodyMessage) message = bodyMessage;
+		const { type } = parseResponseBody(error.responseBody);
+		if (type) return type;
 	}
 
-	return { message, statusCode };
+	// The SDK error can reach us wrapped (thrown inside the model fetch); unwrap the cause chain.
+	if ('cause' in error && error.cause !== error) {
+		return readErrorCode(error.cause);
+	}
+
+	return undefined;
 }
 
-/** Pull `error.message` out of an ai-sdk JSON `responseBody`, if present. */
-function parseResponseBodyMessage(responseBody: string): string | undefined {
+/** Parse an ai-sdk JSON `responseBody` into its `error.message` / `error.type`, if present. */
+function parseResponseBody(responseBody: string): { message?: string; type?: string } {
 	try {
 		const body = JSON.parse(responseBody) as { error?: { message?: string; type?: string } };
-		return body?.error?.message;
+		return { message: body?.error?.message, type: body?.error?.type };
 	} catch {
-		return undefined;
+		return {};
 	}
 }
 
 function extractErrorInfo(error: unknown): ErrorInfo {
-	if (typeof error === 'string') {
-		return { content: error, ...(isQuotaExhaustedError(error) ? { code: 'quota_exhausted' } : {}) };
-	}
+	if (typeof error === 'string') return { content: error };
 
 	if (error instanceof Error) {
 		const info: ErrorInfo = { content: error.message };
@@ -195,8 +179,8 @@ function extractErrorInfo(error: unknown): ErrorInfo {
 
 		if ('responseBody' in error && typeof error.responseBody === 'string') {
 			info.technicalDetails = error.responseBody;
-			const bodyMessage = parseResponseBodyMessage(error.responseBody);
-			if (bodyMessage) info.content = bodyMessage;
+			const { message } = parseResponseBody(error.responseBody);
+			if (message) info.content = message;
 		}
 
 		// Extract provider from error name or URL if available
@@ -206,7 +190,7 @@ function extractErrorInfo(error: unknown): ErrorInfo {
 			else if (urlStr.includes('openai')) info.provider = 'OpenAI';
 		}
 
-		if (isQuotaExhaustedError(error)) info.code = 'quota_exhausted';
+		if (isQuotaExhaustedError(error)) info.code = QUOTA_EXHAUSTED_ERROR_CODE;
 
 		return info;
 	}
