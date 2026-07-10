@@ -236,6 +236,12 @@ function buildChannelPayloadFromInput(
 
 	const raw = rawConfigureChannelInputSchema.safeParse(input);
 	if (!raw.success || !context?.agentId || !context.projectId) return undefined;
+	// The tool's own args never carry agentId/projectId (they're server-injected
+	// deps, not LLM-facing input), so this fallback borrows them from the
+	// ambient route context instead. Safe here specifically because this path
+	// only runs from `convertDbMessages`, which only ever loads the history of
+	// the single agent the current chat route is scoped to — the reconstructed
+	// card can never end up attributed to a different agent/project.
 	return {
 		requestId: '',
 		message: `Set up the ${raw.data.integrationType} channel`,

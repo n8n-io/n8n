@@ -223,4 +223,29 @@ describe('InteractiveCard', () => {
 		expect(stub.attributes('data-agent-id')).toBe('a1');
 		expect(stub.attributes('data-project-id')).toBe('p1');
 	});
+
+	it('renders nothing, without crashing, for a payload whose toolName does not match the field it carries', () => {
+		// Malformed/corrupted payload: `channelConfig` is present (which the
+		// presence-based `matches()` checks for) but `toolName` is neither
+		// `configure_channel` nor any other known tool. Before the
+		// toolName+presence hardening, `'channelConfig' in payload.input` alone
+		// used to match the channel renderer and hand it `{}` from `getProps`
+		// (a strict toolName narrow), which would crash a real card expecting
+		// `integrationType` etc.
+		const malformedPayload = {
+			toolName: 'unknown_tool',
+			toolCallId: 'tc-malformed',
+			runId: 'run-malformed',
+			input: {
+				channelConfig: { integrationType: 'slack', agentId: 'a1' },
+			},
+		} as unknown as InteractivePayload;
+
+		expect(() => mountCard(malformedPayload)).not.toThrow();
+		const wrapper = mountCard(malformedPayload);
+
+		expect(wrapper.find('[data-testid="configure-channel-card-stub"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="ask-questions-card-stub"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="ask-credential-card-stub"]').exists()).toBe(false);
+	});
 });

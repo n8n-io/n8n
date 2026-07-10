@@ -55,16 +55,33 @@ const emit = defineEmits<{
  */
 const disabled = computed(() => !!props.payload.resolvedAt || !props.payload.runId);
 
+/**
+ * Presence checks also confirm `toolName`, not just the input shape. Without
+ * it, a malformed/corrupted payload whose `toolName` doesn't correspond to
+ * the field it happens to carry would still `match()` here, then fail to
+ * narrow in `getProps` (which discriminates strictly on `toolName`) and hand
+ * the card `{}` — missing required props it doesn't guard against. Tying the
+ * two together means a mismatch fails `matches()` and falls through to "no
+ * renderer" (nothing rendered) instead of a props-shape crash.
+ */
 function hasQuestionsInput(payload: InteractivePayload): boolean {
-	return 'inputType' in payload.input && payload.input.inputType === 'questions';
+	return (
+		payload.toolName === ASK_QUESTIONS_TOOL_NAME &&
+		'inputType' in payload.input &&
+		payload.input.inputType === 'questions'
+	);
 }
 
 function hasCredentialRequestsInput(payload: InteractivePayload): boolean {
-	return 'credentialRequests' in payload.input;
+	return (
+		(payload.toolName === ASK_CREDENTIAL_TOOL_NAME ||
+			payload.toolName === ASK_EMBEDDING_CREDENTIAL_TOOL_NAME) &&
+		'credentialRequests' in payload.input
+	);
 }
 
 function hasChannelConfigInput(payload: InteractivePayload): boolean {
-	return 'channelConfig' in payload.input;
+	return payload.toolName === CONFIGURE_CHANNEL_TOOL_NAME && 'channelConfig' in payload.input;
 }
 
 const interactiveRenderers = [

@@ -1,76 +1,31 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount, flushPromises } from '@vue/test-utils';
-import { ref } from 'vue';
-import { createTestingPinia } from '@pinia/testing';
-import { setActivePinia } from 'pinia';
+import { describe, it, expect, vi } from 'vitest';
+import { mount } from '@vue/test-utils';
 
-const mocks = vi.hoisted(() => {
-	const slackIntegration = {
-		type: 'slack',
-		label: 'Slack',
-		icon: 'slack',
-		credentialTypes: ['slackOAuth2Api'],
-	};
-	return {
-		slackIntegration,
-		ensureLoaded: vi.fn(),
-		fetchStatus: vi.fn(),
-		connect: vi.fn(),
-		getAgent: vi.fn(),
-	};
-});
-
+/**
+ * `ConfigureChannelCard` is a thin transport adapter around the shared
+ * `ChannelSetupCard` (body + composable wiring, tested on its own in
+ * `features/ai/shared/components/ChannelSetupCard.test.ts`). Here we only
+ * prove the adapter's own job: forwarding props down, mapping the shared
+ * `resolve` event onto the `submit` emit, and rendering the resolved-state
+ * summary once disabled.
+ */
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (k: string) => k }),
 }));
 
-vi.mock('@n8n/stores/useRootStore', () => ({
-	useRootStore: () => ({ restApiContext: {} }),
-}));
-
-vi.mock('@n8n/permissions', () => ({
-	getResourcePermissions: () => ({
-		credential: { create: true, read: true, update: true, delete: true, share: true, move: true },
-	}),
-}));
-
-vi.mock('@/features/agents/composables/useAgentIntegrationsCatalog', () => ({
-	useAgentIntegrationsCatalog: () => ({
-		catalog: ref([mocks.slackIntegration]),
-		ensureLoaded: mocks.ensureLoaded,
-	}),
-}));
-
-vi.mock('@/features/agents/composables/useAgentIntegrationStatus', () => ({
-	useAgentIntegrationStatus: () => ({
-		connectedCredentials: ref<Record<string, string>>({}),
-		integrationSettings: ref({}),
-		loadingMap: ref<Record<string, boolean>>({}),
-		errorMessages: ref<Record<string, string>>({}),
-		errorIsConflict: ref<Record<string, boolean>>({}),
-		fetchStatus: mocks.fetchStatus,
-		connect: mocks.connect,
-		isConnected: () => false,
-	}),
-}));
-
-vi.mock('@/features/agents/composables/useAgentApi', () => ({
-	getAgent: mocks.getAgent,
-}));
-
-vi.mock('@/features/agents/components/AgentChannelSlackSetup.vue', () => ({
+vi.mock('@/features/ai/shared/components/ChannelSetupCard.vue', () => ({
 	default: {
-		props: ['modelValue', 'setupMode'],
-		emits: ['update:modelValue', 'connect'],
-		template: `
-			<div data-testid="mock-slack-setup" :data-setup-mode="setupMode">
-				<button
-					data-testid="mock-slack-connect"
-					@click="$emit('update:modelValue', 'cred-1'); $emit('connect')"
-				>Connect</button>
-			</div>
-		`,
+		props: ['integrationType', 'agentId', 'projectId', 'disabled'],
+		emits: ['resolve'],
+		// No hardcoded `data-testid` on the root: the adapter passes its own
+		// (`configure-channel-card`) as a fallthrough attribute, which would
+		// just overwrite one set here anyway.
+		template:
+			'<div :data-integration-type="integrationType" :data-agent-id="agentId" :data-project-id="projectId" :data-disabled="disabled">' +
+			'<button data-testid="mock-resolve-approved" @click="$emit(\'resolve\', { approved: true })" />' +
+			'<button data-testid="mock-resolve-skipped" @click="$emit(\'resolve\', { approved: false })" />' +
+			'</div>',
 	},
 }));
 
@@ -87,11 +42,6 @@ function mountCard(props: Record<string, unknown> = {}) {
 		props: { ...defaultProps, ...props },
 		global: {
 			stubs: {
-				N8nButton: {
-					template:
-						'<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot/></button>',
-					props: ['disabled'],
-				},
 				N8nIcon: { template: '<i />', props: ['icon', 'size', 'color'] },
 				N8nText: { template: '<span><slot/></span>', props: ['size', 'bold', 'color', 'tag'] },
 			},
@@ -100,58 +50,52 @@ function mountCard(props: Record<string, unknown> = {}) {
 }
 
 describe('ConfigureChannelCard', () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-		setActivePinia(createTestingPinia({ stubActions: false }));
-		mocks.ensureLoaded.mockResolvedValue([mocks.slackIntegration]);
-		mocks.fetchStatus.mockResolvedValue(undefined);
-		mocks.connect.mockResolvedValue({ status: 'connected' });
-		mocks.getAgent.mockResolvedValue({ name: 'Agent', id: 'agent-1' });
+	it('renders the shared channel-setup card with the requested integration wired through', () => {
+		const wrapper = mountCard();
+
+		const stub = wrapper.find('[data-testid="configure-channel-card"]');
+		expect(stub.exists()).toBe(true);
+		expect(stub.attributes('data-integration-type')).toBe('slack');
+		expect(stub.attributes('data-agent-id')).toBe('agent-1');
+		expect(stub.attributes('data-project-id')).toBe('project-1');
 	});
 
-	it('renders the setup UI for the requested integration type', async () => {
+	it('emits { approved: true } when the shared card resolves connected', async () => {
 		const wrapper = mountCard();
-		await flushPromises();
+
+		await wrapper.find('[data-testid="mock-resolve-approved"]').trigger('click');
+
+		expect(wrapper.emitted('submit')).toEqual([[{ approved: true }]]);
+	});
+
+	it('emits { approved: false } when the shared card resolves skipped', async () => {
+		const wrapper = mountCard();
+
+		await wrapper.find('[data-testid="mock-resolve-skipped"]').trigger('click');
+
+		expect(wrapper.emitted('submit')).toEqual([[{ approved: false }]]);
+	});
+
+	it('does not emit submit twice for a duplicate resolve', async () => {
+		const wrapper = mountCard();
+
+		const button = wrapper.find('[data-testid="mock-resolve-approved"]');
+		await button.trigger('click');
+		await button.trigger('click');
+
+		expect(wrapper.emitted('submit')).toHaveLength(1);
+	});
+
+	it('renders a connected resolved summary when disabled and resolved as connected', () => {
+		const wrapper = mountCard({ disabled: true, resolvedValue: { connected: true } });
 
 		expect(wrapper.find('[data-testid="configure-channel-card"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="mock-slack-setup"]').attributes('data-setup-mode')).toBe(
-			'simple',
-		);
-	});
-
-	it('emits { approved: true } after the channel connects', async () => {
-		const wrapper = mountCard();
-		await flushPromises();
-
-		await wrapper.find('[data-testid="mock-slack-connect"]').trigger('click');
-		await flushPromises();
-
-		expect(mocks.connect).toHaveBeenCalledWith('slack', 'cred-1', undefined);
-		const emitted = wrapper.emitted('submit') as unknown[][];
-		expect(emitted[0][0]).toEqual({ approved: true });
-	});
-
-	it('emits { approved: false } when the user skips setup', async () => {
-		const wrapper = mountCard();
-		await flushPromises();
-
-		await wrapper.find('[data-testid="configure-channel-skip"]').trigger('click');
-
-		const emitted = wrapper.emitted('submit') as unknown[][];
-		expect(emitted[0][0]).toEqual({ approved: false });
-	});
-
-	it('renders a connected resolved summary when disabled and resolved as connected', async () => {
-		const wrapper = mountCard({ disabled: true, resolvedValue: { connected: true } });
-		await flushPromises();
-
-		expect(wrapper.find('[data-testid="mock-slack-setup"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="mock-resolve-approved"]').exists()).toBe(false);
 		expect(wrapper.text()).toContain('agents.channels.modal.connected');
 	});
 
-	it('renders a skipped resolved summary when disabled and resolved as not connected', async () => {
+	it('renders a skipped resolved summary when disabled and resolved as not connected', () => {
 		const wrapper = mountCard({ disabled: true, resolvedValue: { approved: false } });
-		await flushPromises();
 
 		expect(wrapper.text()).toContain('agents.chat.askCredential.skipped');
 	});
