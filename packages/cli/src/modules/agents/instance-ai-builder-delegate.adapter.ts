@@ -1,5 +1,4 @@
 import type { CredentialProvider, StreamChunk } from '@n8n/agents';
-import { ASK_LLM_TOOL_NAME } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
@@ -18,26 +17,17 @@ import type { BuilderSessionOptions } from './builder/agents-builder.service';
 import { getSuspendedToolCalls } from './utils/messages-envelope';
 
 /**
- * Standard builder tool names to omit for instance-AI sub-agent sessions.
- * `ask_llm` has no card UI in instance-AI chat (a bounce workaround exists in
- * instance-ai's build-agent tool instead), so it must never be offered here.
- */
-export const BUILDER_EXCLUDED_TOOL_NAMES: string[] = [ASK_LLM_TOOL_NAME];
-
-/**
- * Prompt addendum for sub-agent runs; exported for tests. `ask_questions` and
- * `configure_channel` are now part of the builder's own standard toolset and
- * carry their own usage guidance in the builder prompts/skills — only the
- * rules that are genuinely specific to running inside instance AI's chat
- * remain here.
+ * Prompt addendum for sub-agent runs; exported for tests. `ask_questions`,
+ * `resolve_llm`, and `configure_channel` are all part of the builder's own
+ * standard toolset and carry their own usage guidance in the builder
+ * prompts/skills — only the rule that is genuinely specific to running
+ * inside instance AI's chat remains here.
  */
 export const INSTANCE_AI_BUILDER_ADDENDUM = `## Instance AI session rules
 
 You are running as a sub-agent inside n8n's instance AI chat; the user sees your questions as chat cards.
 
-The agent preview link is not visible in this chat; describe outcomes in text instead of linking the preview.
-
-\`ask_llm\` is NOT available in this chat. For model selection: ask via \`ask_questions\`, then call \`resolve_llm\` with the choice to resolve the credential.`;
+The agent preview link is not visible in this chat; describe outcomes in text instead of linking the preview.`;
 
 function isTextDeltaChunk(
 	chunk: StreamChunk,
@@ -90,16 +80,14 @@ export class InstanceAiBuilderDelegateAdapterService {
 	) {}
 
 	/**
-	 * Prompt rules that only apply to the sub-agent surface: `ask_llm` (no
-	 * card UI in this chat) is excluded from the standard tool set.
-	 * `ask_questions` and `configure_channel` are now part of the builder's
+	 * Prompt rules that only apply to the sub-agent surface. `ask_questions`,
+	 * `resolve_llm`, and `configure_channel` are all part of the builder's
 	 * own standard toolset — no per-session tool injection needed anymore.
 	 */
 	private buildSubAgentSession(session: BuilderDelegateSession): BuilderSessionOptions {
 		return {
 			threadId: session.threadId,
 			instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
-			excludeTools: BUILDER_EXCLUDED_TOOL_NAMES,
 			modelConfig: session.modelConfig,
 		};
 	}

@@ -12,7 +12,6 @@
  * builder UI — it is a private sub-agent conversation.
  */
 import { Tool, type InterruptibleToolContext } from '@n8n/agents';
-import { ASK_LLM_TOOL_NAME, type CancellationResumeData } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -77,11 +76,6 @@ function formatWorkflowContextEnvelope(workflowContext: SessionWorkflowRef[]): s
 function buildOutboundMessage(message: string, workflowContext?: SessionWorkflowRef[]): string {
 	if (!workflowContext || workflowContext.length === 0) return message;
 	return `${message}\n\n${formatWorkflowContextEnvelope(workflowContext)}`;
-}
-
-/** Cancellation resume for interactions the builder can't surface yet (e.g. `ask_llm`, until its FE kind ships). */
-function builderCancellationResume(message: string): CancellationResumeData {
-	return { _type: 'agent.cancellation', message };
 }
 
 const buildAgentInputSchema = z.object({
@@ -206,14 +200,6 @@ async function finishTurn(
 }
 
 /**
- * Cap on ask_llm cancellation bounces (see below) per invocation of the
- * consume loop. Guards against a builder that keeps re-suspending ask_llm
- * (e.g. it never accepts the "ask via ask_questions" cancellation) bouncing
- * forever instead of terminating the turn.
- */
-const ASK_LLM_BOUNCE_LIMIT = 3;
-
-/**
  * Drain one builder turn, cascading any interactive suspension into this
  * tool's own `ctx.suspend()`. Shared by the first-call and resume legs so
  * both loop until the builder either finishes or asks the user something.
@@ -227,88 +213,45 @@ async function runBuilderConsumeLoop(params: {
 	builderAgentId: string;
 	initialTurn: BuilderTurnStream;
 }): Promise<BuildAgentOutput> {
-	const { context, delegate, ctx, target, session, builderAgentId } = params;
-	let turn = params.initialTurn;
-	let askLlmBounceCount = 0;
+	const { context, ctx, builderAgentId, initialTurn: turn } = params;
 
-	for (;;) {
-		let result: ConsumeStreamCascadingResult;
-		try {
-			result = await consumeStreamCascading({
-				agent: undefined,
-				stream: turn,
-				runId: context.runId,
-				agentId: builderAgentId,
-				eventBus: context.eventBus,
-				logger: context.logger,
-				threadId: context.threadId,
-				abortSignal: context.abortSignal,
-			});
-		} catch (error) {
-			publishAgentBuilderFailure(context, builderAgentId, error);
-			throw error;
-		}
-
-		if (result.status !== 'suspended') return await finishTurn(context, builderAgentId, result);
-
-		const toolName = result.suspension.toolName ?? '';
-		if (toolName === ASK_LLM_TOOL_NAME) {
-			askLlmBounceCount += 1;
-			if (askLlmBounceCount > ASK_LLM_BOUNCE_LIMIT) {
-				const message =
-					'The agent builder repeatedly requested a model picker this chat cannot show. ' +
-					'Tell the user to configure the builder model in the agents module settings.';
-				publishAgentBuilderFailure(context, builderAgentId, new Error(message));
-				return { ok: false, error: message };
-			}
-
-			// The stream never carries a real runId for builder turns (see
-			// resumable-stream-executor.ts), so resume routing must go through the
-			// same server-side checkpoint lookup the resume leg uses, not
-			// `result.agentRunId` (always `''`).
-			const open = await delegate.findOpenSuspension(target.agentId, session);
-			if (!open) {
-				const message = "The builder's question could not be recovered; the build turn was lost.";
-				publishAgentBuilderFailure(context, builderAgentId, new Error(message));
-				return { ok: false, error: message };
-			}
-
-			// Temporary until the llm-picker FE kind ships: bounce back into the
-			// builder so it asks conversationally instead of dead-ending.
-			turn = await delegate.resumeBuild(
-				target.agentId,
-				{
-					runId: open.runId,
-					toolCallId: open.toolCallId,
-					resumeData: builderCancellationResume(
-						'This chat cannot show the model picker. Ask which provider and model to use ' +
-							'via the ask_questions tool (single-select options with a recommended ' +
-							'default), then call resolve_llm with the choice to resolve the credential.',
-					),
-				},
-				session,
-			);
-			continue;
-		}
-
-		// The builder's interactive tools now natively emit the shared
-		// instance-AI confirmation payload shape, so this cascades the suspend
-		// payload straight through — only the requestId is re-minted at this
-		// (orchestrator) level. Still validated defensively: a malformed payload
-		// fails the turn instead of throwing out of the tool handler.
-		const suspendPayload = result.suspension.suspendPayload;
-		const parsedSuspend = isRecord(suspendPayload)
-			? buildAgentSuspendSchema.safeParse({ ...suspendPayload, requestId: nanoid() })
-			: undefined;
-		if (!parsedSuspend?.success) {
-			const message =
-				"The agent builder's confirmation request was malformed; the build turn was lost.";
-			publishAgentBuilderFailure(context, builderAgentId, new Error(message));
-			return { ok: false, error: message };
-		}
-
-		return await ctx.suspend(parsedSuspend.data);
+	let result: ConsumeStreamCascadingResult;
+	try {
+		result = await consumeStreamCascading({
+			agent: undefined,
+			stream: turn,
+			runId: context.runId,
+			agentId: builderAgentId,
+			eventBus: context.eventBus,
+			logger: context.logger,
+			threadId: context.threadId,
+			abortSignal: context.abortSignal,
+		});
+	} catch (error) {
+		publishAgentBuilderFailure(context, builderAgentId, error);
+		throw error;
 	}
+
+	if (result.status !== 'suspended') return await finishTurn(context, builderAgentId, result);
+
+	// Any interactive suspension — including one the FE has no dedicated card
+	// for — cascades through the generic passthrough: the suspend payload is
+	// forwarded as-is (only the requestId is re-minted at this orchestrator
+	// level) and the FE's approval-card fallback renders it. Still validated
+	// defensively: a malformed payload fails the turn instead of throwing out
+	// of the tool handler.
+	const suspendPayload = result.suspension.suspendPayload;
+	const parsedSuspend = isRecord(suspendPayload)
+		? buildAgentSuspendSchema.safeParse({ ...suspendPayload, requestId: nanoid() })
+		: undefined;
+	if (!parsedSuspend?.success) {
+		const message =
+			"The agent builder's confirmation request was malformed; the build turn was lost.";
+		publishAgentBuilderFailure(context, builderAgentId, new Error(message));
+		return { ok: false, error: message };
+	}
+
+	return await ctx.suspend(parsedSuspend.data);
 }
 
 export function createBuildAgentTool(context: OrchestrationContext) {

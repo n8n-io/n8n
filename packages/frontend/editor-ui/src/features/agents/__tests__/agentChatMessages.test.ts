@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
 	ASK_CREDENTIAL_TOOL_NAME,
-	ASK_LLM_TOOL_NAME,
 	ASK_QUESTIONS_TOOL_NAME,
 	APPROVAL_TOOL_NAME,
 	N8N_CHAT_ACTION_TOOL_NAME,
@@ -28,46 +27,18 @@ function credentialSuspendInput(credentialType: string, reason: string) {
 	};
 }
 
+/** A full `questionsSuspendPayloadSchema`-shaped input, for fixtures that construct `InteractivePayload` literals directly. */
+function questionsSuspendInput(question: string) {
+	return {
+		requestId: 'req-q1',
+		message: question,
+		severity: 'info' as const,
+		inputType: 'questions' as const,
+		questions: [{ id: 'q1', question, type: 'text' as const }],
+	};
+}
+
 describe('rebuildInteractiveFromHistory', () => {
-	it('rebuilds an OPEN ask_llm card when output is missing', () => {
-		const result = rebuildInteractiveFromHistory({
-			tool: ASK_LLM_TOOL_NAME,
-			toolCallId: 'call-1',
-			input: { purpose: 'pick a model' },
-			state: 'suspended',
-		});
-
-		expect(result).toBeTruthy();
-		expect(result?.toolName).toBe(ASK_LLM_TOOL_NAME);
-		expect(result?.resolvedAt).toBeUndefined();
-		expect(result?.resolvedValue).toBeUndefined();
-		// runId is the sidecar's responsibility — raw history doesn't carry it.
-		expect(result?.runId).toBeUndefined();
-	});
-
-	it('rebuilds a RESOLVED ask_llm card when output is present', () => {
-		const result = rebuildInteractiveFromHistory({
-			tool: ASK_LLM_TOOL_NAME,
-			toolCallId: 'call-1',
-			input: { purpose: 'pick a model' },
-			output: {
-				provider: 'anthropic',
-				model: 'claude-sonnet-4',
-				credentialId: 'cred-1',
-				credentialName: 'My Anthropic',
-			},
-			state: 'done',
-		});
-
-		expect(result?.resolvedAt).toBeGreaterThan(0);
-		expect(result?.resolvedValue).toEqual({
-			provider: 'anthropic',
-			model: 'claude-sonnet-4',
-			credentialId: 'cred-1',
-			credentialName: 'My Anthropic',
-		});
-	});
-
 	it('rebuilds an ask_credential card with skipped resolved value', () => {
 		const result = rebuildInteractiveFromHistory({
 			tool: ASK_CREDENTIAL_TOOL_NAME,
@@ -149,9 +120,11 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 				content: [
 					{
 						type: 'tool-call',
-						toolName: ASK_LLM_TOOL_NAME,
-						toolCallId: 'call-llm-1',
-						input: { purpose: 'main' },
+						toolName: ASK_QUESTIONS_TOOL_NAME,
+						toolCallId: 'call-q-1',
+						input: {
+							questions: [{ id: 'q1', question: 'Which model?', type: 'text' }],
+						},
 						state: 'pending',
 					},
 				],
@@ -163,7 +136,7 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 		const assistant = chat[1];
 		expect(assistant.role).toBe('assistant');
 		expect(assistant.status).toBe('awaitingUser');
-		expect(assistant.interactive?.toolName).toBe(ASK_LLM_TOOL_NAME);
+		expect(assistant.interactive?.toolName).toBe(ASK_QUESTIONS_TOOL_NAME);
 		expect(assistant.interactive?.resolvedAt).toBeUndefined();
 		expect(assistant.toolCalls?.[0].state).toBe('suspended');
 	});
@@ -470,11 +443,11 @@ describe('isGroupable', () => {
 			id: 'm1',
 			role: 'assistant',
 			content: '',
-			toolCalls: [{ tool: ASK_LLM_TOOL_NAME, toolCallId: 'c1', state: 'suspended' }],
+			toolCalls: [{ tool: ASK_QUESTIONS_TOOL_NAME, toolCallId: 'c1', state: 'suspended' }],
 			interactive: {
-				toolName: ASK_LLM_TOOL_NAME,
+				toolName: ASK_QUESTIONS_TOOL_NAME,
 				toolCallId: 'c1',
-				input: {},
+				input: questionsSuspendInput('Which model?'),
 			},
 			status: 'awaitingUser',
 		});
@@ -496,22 +469,20 @@ describe('isGroupable', () => {
 describe('buildDisplayGroups — interactive payloads', () => {
 	it('collects interactive payloads from each grouped message into the toolRun group', () => {
 		const groups = buildDisplayGroups([
-			// First grouped turn: a resolved ask_llm card
+			// First grouped turn: a resolved ask_questions card
 			{
 				id: 'm1',
 				role: 'assistant',
 				content: '',
-				toolCalls: [{ tool: ASK_LLM_TOOL_NAME, toolCallId: 'c1', state: 'done' }],
+				toolCalls: [{ tool: ASK_QUESTIONS_TOOL_NAME, toolCallId: 'c1', state: 'done' }],
 				interactive: {
-					toolName: ASK_LLM_TOOL_NAME,
+					toolName: ASK_QUESTIONS_TOOL_NAME,
 					toolCallId: 'c1',
-					input: {},
+					input: questionsSuspendInput('Which model?'),
 					resolvedAt: 1,
 					resolvedValue: {
-						provider: 'a',
-						model: 'b',
-						credentialId: 'x',
-						credentialName: 'y',
+						answered: true,
+						answers: [{ questionId: 'q1', selectedOptions: ['gpt-4'] }],
 					},
 				},
 				status: 'success',
@@ -545,7 +516,7 @@ describe('buildDisplayGroups — interactive payloads', () => {
 		if (grouped.kind !== 'toolRun') return;
 		expect(grouped.toolCalls).toHaveLength(3);
 		expect(grouped.interactives).toHaveLength(2);
-		expect(grouped.interactives[0].toolName).toBe(ASK_LLM_TOOL_NAME);
+		expect(grouped.interactives[0].toolName).toBe(ASK_QUESTIONS_TOOL_NAME);
 		expect(grouped.interactives[0].resolvedAt).toBeDefined();
 		expect(grouped.interactives[1].toolName).toBe(ASK_CREDENTIAL_TOOL_NAME);
 		expect(grouped.interactives[1].resolvedAt).toBeUndefined();
@@ -665,17 +636,15 @@ describe('applyOpenSuspensions', () => {
 				id: 'm2',
 				role: 'assistant',
 				content: '',
-				toolCalls: [{ tool: ASK_LLM_TOOL_NAME, toolCallId: 'c-resolved', state: 'done' }],
+				toolCalls: [{ tool: ASK_QUESTIONS_TOOL_NAME, toolCallId: 'c-resolved', state: 'done' }],
 				interactive: {
-					toolName: ASK_LLM_TOOL_NAME,
+					toolName: ASK_QUESTIONS_TOOL_NAME,
 					toolCallId: 'c-resolved',
-					input: { purpose: 'main' },
+					input: questionsSuspendInput('Which model?'),
 					resolvedAt: 1,
 					resolvedValue: {
-						provider: 'a',
-						model: 'b',
-						credentialId: 'x',
-						credentialName: 'y',
+						answered: true,
+						answers: [{ questionId: 'q1', selectedOptions: ['gpt-4'] }],
 					},
 				},
 				status: 'success',
@@ -696,9 +665,9 @@ describe('applyOpenSuspensions', () => {
 				role: 'assistant',
 				content: '',
 				interactive: {
-					toolName: ASK_LLM_TOOL_NAME,
+					toolName: ASK_QUESTIONS_TOOL_NAME,
 					toolCallId: 'c1',
-					input: { purpose: 'main' },
+					input: questionsSuspendInput('Which model?'),
 				},
 			},
 		];
@@ -714,9 +683,9 @@ describe('applyOpenSuspensions', () => {
 				role: 'assistant',
 				content: '',
 				interactive: {
-					toolName: ASK_LLM_TOOL_NAME,
+					toolName: ASK_QUESTIONS_TOOL_NAME,
 					toolCallId: 'c1',
-					input: { purpose: 'main' },
+					input: questionsSuspendInput('Which model?'),
 				},
 			},
 		];

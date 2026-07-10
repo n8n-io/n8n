@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
 	ASK_CREDENTIAL_TOOL_NAME,
-	ASK_LLM_TOOL_NAME,
 	ASK_QUESTIONS_TOOL_NAME,
 	CONFIGURE_CHANNEL_TOOL_NAME,
 	N8N_CHAT_ACTION_TOOL_NAME,
@@ -26,7 +25,6 @@ describe('summariseInteractiveOutput', () => {
 		'returns undefined for non-object output (%p)',
 		(value) => {
 			expect(summariseInteractiveOutput(ASK_CREDENTIAL_TOOL_NAME, value)).toBeUndefined();
-			expect(summariseInteractiveOutput(ASK_LLM_TOOL_NAME, value)).toBeUndefined();
 			expect(summariseInteractiveOutput(ASK_QUESTIONS_TOOL_NAME, value)).toBeUndefined();
 		},
 	);
@@ -61,17 +59,6 @@ describe('summariseInteractiveOutput', () => {
 
 	it('renders ask_credential skip', () => {
 		expect(summariseInteractiveOutput(ASK_CREDENTIAL_TOOL_NAME, { skipped: true })).toBe('Skipped');
-	});
-
-	it('renders ask_llm provider/model + credential', () => {
-		expect(
-			summariseInteractiveOutput(ASK_LLM_TOOL_NAME, {
-				provider: 'anthropic',
-				model: 'claude-sonnet-4-6',
-				credentialId: 'c1',
-				credentialName: 'My Anthropic',
-			}),
-		).toBe('anthropic/claude-sonnet-4-6 · My Anthropic');
 	});
 
 	it('renders configure_channel connected/skipped', () => {

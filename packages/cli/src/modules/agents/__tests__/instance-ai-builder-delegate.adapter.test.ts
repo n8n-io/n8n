@@ -9,7 +9,6 @@ import type { AgentsService } from '../agents.service';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
 import type { Agent } from '../entities/agent.entity';
 import {
-	BUILDER_EXCLUDED_TOOL_NAMES,
 	INSTANCE_AI_BUILDER_ADDENDUM,
 	InstanceAiBuilderDelegateAdapterService,
 } from '../instance-ai-builder-delegate.adapter';
@@ -33,23 +32,17 @@ function setup() {
 	};
 }
 
-/** Extract the extraTools/addendum/excludeTools from a builder-service session-arg call. */
+/** Extract the addendum from a builder-service session-arg call. */
 function sessionArg(call: unknown[]): {
-	extraTools?: Array<{ name: string }>;
 	instructionsAddendum?: string;
-	excludeTools?: string[];
 } {
 	const session = call.at(-1) as
 		| {
-				extraTools?: Array<{ name: string }>;
 				instructionsAddendum?: string;
-				excludeTools?: string[];
 		  }
 		| undefined;
 	return {
-		extraTools: session?.extraTools,
 		instructionsAddendum: session?.instructionsAddendum,
-		excludeTools: session?.excludeTools,
 	};
 }
 
@@ -118,20 +111,15 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			expect(session?.modelConfig).toBe('anthropic/claude-sonnet-host-resolved');
 		});
 
-		it('does not inject any extraTools — ask_questions/configure_channel are now standard builder tools', async () => {
+		it('passes the instance-AI session addendum through to the builder service', async () => {
 			const { delegate, agentsBuilderService } = setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			agentsBuilderService.buildAgent.mockReturnValue(asAsyncGenerator<StreamChunk>([]));
 
 			await delegate.streamBuild('agent-1', 'hi', { threadId: 'ia-builder:t:agent-1' });
 
-			const { extraTools, instructionsAddendum, excludeTools } = sessionArg(
-				agentsBuilderService.buildAgent.mock.calls[0],
-			);
-			expect(extraTools).toBeUndefined();
+			const { instructionsAddendum } = sessionArg(agentsBuilderService.buildAgent.mock.calls[0]);
 			expect(instructionsAddendum).toBe(INSTANCE_AI_BUILDER_ADDENDUM);
-			expect(excludeTools).toEqual(BUILDER_EXCLUDED_TOOL_NAMES);
-			expect(excludeTools).toContain('ask_llm');
 		});
 
 		it('rejects when the user lacks agent:update scope', async () => {
@@ -186,7 +174,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			expect(session?.modelConfig).toBe('anthropic/claude-sonnet-host-resolved');
 		});
 
-		it('does not inject any extraTools — ask_questions/configure_channel are now standard builder tools', async () => {
+		it('passes the instance-AI session addendum through to the builder service', async () => {
 			const { delegate, agentsBuilderService } = setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			agentsBuilderService.resumeBuild.mockReturnValue(asAsyncGenerator<StreamChunk>([]));
@@ -197,13 +185,8 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				{ threadId: 'ia-builder:t:agent-1' },
 			);
 
-			const { extraTools, instructionsAddendum, excludeTools } = sessionArg(
-				agentsBuilderService.resumeBuild.mock.calls[0],
-			);
-			expect(extraTools).toBeUndefined();
+			const { instructionsAddendum } = sessionArg(agentsBuilderService.resumeBuild.mock.calls[0]);
 			expect(instructionsAddendum).toBe(INSTANCE_AI_BUILDER_ADDENDUM);
-			expect(excludeTools).toEqual(BUILDER_EXCLUDED_TOOL_NAMES);
-			expect(excludeTools).toContain('ask_llm');
 		});
 
 		it('rejects when the user lacks agent:update scope', async () => {

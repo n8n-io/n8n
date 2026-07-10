@@ -1,5 +1,4 @@
 import type {
-	BuiltTool,
 	CredentialProvider,
 	ModelConfig,
 	SerializableAgentState,
@@ -41,16 +40,8 @@ interface FindSuspendedCheckpointOptions {
 export interface BuilderSessionOptions {
 	/** Overrides the persistence thread id. Default: `builder:<agentId>`. */
 	threadId?: string;
-	/** Extra tools registered on the builder agent (e.g. instance-AI-injected). */
-	extraTools?: BuiltTool[];
 	/** Extra text appended to the builder prompt (e.g. instance-AI sub-agent rules). */
 	instructionsAddendum?: string;
-	/**
-	 * Tool names to omit for this session, e.g. interactive tools with no UI on
-	 * the host surface. Only filters the standard tool set — `extraTools` are
-	 * always registered regardless of this list.
-	 */
-	excludeTools?: string[];
 	/**
 	 * Overrides model resolution for this session — when set, the builder runs
 	 * on this model directly instead of `AgentsBuilderSettingsService.resolveModelConfig`.
@@ -276,13 +267,7 @@ export class AgentsBuilderService {
 		});
 		if (telemetry) builder.telemetry(telemetry);
 
-		const excludeTools = new Set(session?.excludeTools ?? []);
 		for (const tool of [...tools.json, ...tools.shared]) {
-			if (excludeTools.has(tool.name)) continue;
-			builder.tool(tool);
-		}
-
-		for (const tool of session?.extraTools ?? []) {
 			builder.tool(tool);
 		}
 

@@ -17,18 +17,13 @@ export {
 // ASK_QUESTIONS_TOOL_NAME / CONFIGURE_CHANNEL_TOOL_NAME come from
 // ./agent-interaction.schema (re-exported below via `export *`).
 export {
-	ASK_LLM_TOOL_NAME,
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
 	APPROVAL_TOOL_NAME,
 	interactiveToolNameSchema,
-	askLlmInputSchema,
-	askLlmResumeSchema,
 	askCredentialInputSchema,
 	cancellationResumeSchema,
 	type InteractiveToolName,
-	type AskLlmInput,
-	type AskLlmResume,
 	type AskCredentialInput,
 	type CancellationResumeData,
 } from '../agent-builder-interactive';

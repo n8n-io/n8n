@@ -4,7 +4,6 @@ import {
 	APPROVAL_TOOL_NAME,
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
-	ASK_LLM_TOOL_NAME,
 	ASK_QUESTIONS_TOOL_NAME,
 	CONFIGURE_CHANNEL_TOOL_NAME,
 	N8N_CHAT_ACTION_TOOL_NAME,
@@ -13,15 +12,14 @@ import type { AgentsChatInteractionRenderer } from '@/features/ai/shared/agentsC
 import InteractionRenderer from '@/features/ai/shared/agentsChat/components/InteractionRenderer.vue';
 import type { InteractivePayload } from '@/features/ai/shared/agentsChat/types';
 import AskCredentialCard from './AskCredentialCard.vue';
-import AskLlmCard from './AskLlmCard.vue';
 import AskQuestionsCard from './AskQuestionsCard.vue';
 import ApprovalCard from './ApprovalCard.vue';
 import ConfigureChannelCard from './ConfigureChannelCard.vue';
 import N8nChatActionCard from './N8nChatActionCard.vue';
 
 /**
- * Single dispatch point for the interactive cards. `ask_llm`, `approval`,
- * and `chat_action` still dispatch by `toolName` (their payload shape isn't
+ * Single dispatch point for the interactive cards. `approval` and
+ * `chat_action` still dispatch by `toolName` (their payload shape isn't
  * shared with any other surface). `ask_questions`, `ask_credential` /
  * `ask_embedding_credential`, and `configure_channel` MATCH by the PAYLOAD
  * FIELD that's unique to their suspend schema
@@ -140,19 +138,6 @@ const interactiveRenderers = [
 				agentId: payload.input.channelConfig.agentId,
 				projectId: payload.input.projectId,
 				resolvedValue: payload.resolvedValue,
-			};
-		},
-	},
-	{
-		key: 'ask_llm',
-		component: AskLlmCard,
-		matches: (payload) => payload.toolName === ASK_LLM_TOOL_NAME,
-		getProps: (payload, context) => {
-			if (payload.toolName !== ASK_LLM_TOOL_NAME) return {};
-			return {
-				purpose: payload.input.purpose,
-				resolvedValue: payload.resolvedValue,
-				projectId: context?.projectId,
 			};
 		},
 	},

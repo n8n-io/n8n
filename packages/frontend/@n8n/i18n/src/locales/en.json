@@ -4822,7 +4822,6 @@
 	"agents.modelSelector.freeCredits.label": "Use free OpenAI credits",
 	"agents.modelSelector.freeCredits.badge": "free credits",
 	"agents.modelSelector.freeCredits.description": "Get {credits} free OpenAI API credits. Try it with gpt-5-mini.",
-	"agents.askLlm.chooseModel": "Choose a model",
 	"agents.builder.unconfigured.title": "Set up the agent builder",
 	"agents.builder.unconfigured.description.admin": "Choose a provider and credential so the agent builder can help you design agents.",
 	"agents.builder.unconfigured.description.nonAdmin": "Ask an instance admin to configure the agent builder before you can build agents here.",

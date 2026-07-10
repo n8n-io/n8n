@@ -1,11 +1,9 @@
 import {
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
-	ASK_LLM_TOOL_NAME,
 	ASK_QUESTIONS_TOOL_NAME,
 	CONFIGURE_CHANNEL_TOOL_NAME,
 	N8N_CHAT_ACTION_TOOL_NAME,
-	type AskLlmResume,
 } from '@n8n/api-types';
 
 import {
@@ -71,13 +69,6 @@ export function summariseInteractiveOutput(
 			return output.credentialName;
 		}
 		return undefined;
-	}
-
-	if (toolName === ASK_LLM_TOOL_NAME) {
-		const resume = output as AskLlmResume;
-		if (!resume.provider || !resume.model) return undefined;
-		const slug = `${resume.provider}/${resume.model}`;
-		return resume.credentialName ? `${slug} · ${resume.credentialName}` : slug;
 	}
 
 	if (toolName === CONFIGURE_CHANNEL_TOOL_NAME) {

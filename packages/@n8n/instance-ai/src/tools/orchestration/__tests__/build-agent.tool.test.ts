@@ -1,9 +1,7 @@
 import {
 	ASK_CREDENTIAL_TOOL_NAME,
-	ASK_LLM_TOOL_NAME,
 	ASK_QUESTIONS_TOOL_NAME,
 	CONFIGURE_CHANNEL_TOOL_NAME,
-	cancellationResumeSchema,
 	channelConfigSchema,
 	channelSuspendPayloadSchema,
 	credentialSuspendPayloadSchema,
@@ -674,149 +672,41 @@ describe('build-agent tool — interactive suspend/resume cascade', () => {
 		expect(publishedEvents.filter((event) => event.type === 'agent-completed')).toHaveLength(1);
 	});
 
-	it('bounces an ask_llm suspension back into the builder with a cancellation resume, without suspending', async () => {
-		const { context, delegate } = makeContext();
-		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
-		vi.mocked(delegate.streamBuild).mockResolvedValue(
-			fakeStream(
-				[
-					// `agentRunId` on cascading suspension results is always '' for
-					// builder turns — the stream never carries a real run id (see
-					// resumable-stream-executor.ts). Resume routing must come from
-					// `findOpenSuspension`, not this chunk.
-					suspensionChunk({
-						toolCallId: 'call-1',
-						toolName: ASK_LLM_TOOL_NAME,
-						suspendPayload: { purpose: 'Main LLM' },
-					}),
-				],
-				'',
-			),
-		);
-		vi.mocked(delegate.findOpenSuspension).mockResolvedValue({
-			runId: 'builder-run-1',
-			toolCallId: 'tc-1',
-			toolName: ASK_LLM_TOOL_NAME,
-			suspendPayload: {},
-		});
-		vi.mocked(delegate.resumeBuild).mockResolvedValue(fakeStream([], 'Got it, using Anthropic.'));
-		const suspendFn = vi.fn();
-
-		const result = await runToolWithCtx(
-			context,
-			{ message: 'Build it', name: 'New Agent' },
-			{ resumeData: undefined, suspend: suspendFn },
-		);
-
-		expect(delegate.resumeBuild).toHaveBeenCalledWith(
-			'agent-1',
-			{
-				runId: 'builder-run-1',
-				toolCallId: 'tc-1',
-				resumeData: {
-					_type: 'agent.cancellation',
-					// Steers the builder to the ask_questions HITL card instead of a
-					// plain-text question that would end the turn.
-					message: expect.stringContaining('via the ask_questions tool') as string,
-				},
-			},
-			{ threadId: 'ia-builder:thread-1:agent-1', modelConfig: context.modelId },
-		);
-		const [, resumeCall] = vi.mocked(delegate.resumeBuild).mock.calls[0];
-		expect(cancellationResumeSchema.parse(resumeCall.resumeData)).toEqual(resumeCall.resumeData);
-		expect(suspendFn).not.toHaveBeenCalled();
-		expect(result).toEqual({
-			ok: true,
-			builderReply: 'Got it, using Anthropic.',
-			configUpdated: false,
-		});
-	});
-
-	it('returns a friendly error and stops the loop when the ask_llm bounce cannot recover an open suspension', async () => {
+	it('cascades a suspension from an unrecognized tool through unchanged, with no special-casing by tool name', async () => {
 		const { context, delegate, publishedEvents } = makeContext();
 		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
+		const payload = {
+			message: 'The agent builder needs something this chat has no dedicated card for',
+			severity: 'info' as const,
+			somethingToolSpecific: { arbitrary: true },
+		};
 		vi.mocked(delegate.streamBuild).mockResolvedValue(
 			fakeStream(
 				[
 					suspensionChunk({
 						toolCallId: 'call-1',
-						toolName: ASK_LLM_TOOL_NAME,
-						suspendPayload: { purpose: 'Main LLM' },
+						toolName: 'some_future_interactive_tool',
+						suspendPayload: payload,
 					}),
 				],
 				'',
 			),
 		);
-		vi.mocked(delegate.findOpenSuspension).mockResolvedValue(null);
 		const suspendFn = vi.fn();
 
-		const result = await runToolWithCtx(
+		await runToolWithCtx(
 			context,
 			{ message: 'Build it', name: 'New Agent' },
 			{ resumeData: undefined, suspend: suspendFn },
 		);
 
-		expect(result.ok).toBe(false);
-		expect(result.error).toMatch(/builder's question could not be recovered/);
+		expect(suspendFn).toHaveBeenCalledTimes(1);
+		expect(suspendFn.mock.calls[0][0]).toEqual({
+			...payload,
+			requestId: expect.any(String) as unknown,
+		});
 		expect(delegate.resumeBuild).not.toHaveBeenCalled();
-		expect(suspendFn).not.toHaveBeenCalled();
-		expect(publishedEvents.filter((event) => event.type === 'agent-spawned')).toHaveLength(1);
-		const completedEvents = publishedEvents.filter((event) => event.type === 'agent-completed');
-		expect(completedEvents).toHaveLength(1);
-		expect('payload' in completedEvents[0] ? completedEvents[0].payload : undefined).toMatchObject({
-			role: 'agent-builder',
-			error: result.error,
-		});
-	});
-
-	it('stops bouncing ask_llm after 3 cancellations and returns a friendly error, publishing one agent-spawned and one agent-completed', async () => {
-		const { context, delegate, publishedEvents } = makeContext();
-		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
-		const askLlmSuspension = () =>
-			fakeStream(
-				[
-					suspensionChunk({
-						toolCallId: 'call-1',
-						toolName: ASK_LLM_TOOL_NAME,
-						suspendPayload: { purpose: 'Main LLM' },
-					}),
-				],
-				'',
-			);
-		vi.mocked(delegate.streamBuild).mockResolvedValue(askLlmSuspension());
-		vi.mocked(delegate.findOpenSuspension).mockResolvedValue({
-			runId: 'builder-run-1',
-			toolCallId: 'tc-1',
-			toolName: ASK_LLM_TOOL_NAME,
-			suspendPayload: {},
-		});
-		// A delegate that never accepts the "ask in plain text" cancellation and
-		// keeps re-suspending ask_llm on every resume.
-		vi.mocked(delegate.resumeBuild).mockImplementation(async () => {
-			await Promise.resolve();
-			return askLlmSuspension();
-		});
-
-		const result = await runTool(context, { message: 'Build it', name: 'New Agent' });
-
-		expect(delegate.resumeBuild).toHaveBeenCalledTimes(3);
-		expect(result).toEqual({
-			ok: false,
-			error:
-				'The agent builder repeatedly requested a model picker this chat cannot show. ' +
-				'Tell the user to configure the builder model in the agents module settings.',
-		});
-		expect(publishedEvents.filter((event) => event.type === 'agent-spawned')).toHaveLength(1);
-		const completedEvents = publishedEvents.filter((event) => event.type === 'agent-completed');
-		expect(completedEvents).toHaveLength(1);
-		expect(completedEvents[0]).toMatchObject({
-			type: 'agent-completed',
-			agentId: 'agent-builder:agent-1',
-		});
-		expect('payload' in completedEvents[0] ? completedEvents[0].payload : undefined).toMatchObject({
-			role: 'agent-builder',
-			error: result.error,
-		});
+		expect(publishedEvents.map((event) => event.type)).toEqual(['agent-spawned']);
 	});
 
 	it('returns a friendly error when resuming and the builder question is no longer open', async () => {
@@ -851,59 +741,6 @@ describe('build-agent tool — interactive suspend/resume cascade', () => {
 			error: 'No agent build in progress for this conversation.',
 		});
 		expect(delegate.findOpenSuspension).not.toHaveBeenCalled();
-	});
-
-	it('suspends on a second interactive question after bouncing an ask_llm suspension internally', async () => {
-		const { context, delegate } = makeContext();
-		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
-		vi.mocked(delegate.streamBuild).mockResolvedValue(
-			fakeStream(
-				[
-					suspensionChunk({
-						toolCallId: 'call-1',
-						toolName: ASK_LLM_TOOL_NAME,
-						suspendPayload: {},
-					}),
-				],
-				'',
-			),
-		);
-		vi.mocked(delegate.findOpenSuspension).mockResolvedValue({
-			runId: 'builder-run-1',
-			toolCallId: 'tc-1',
-			toolName: ASK_LLM_TOOL_NAME,
-			suspendPayload: {},
-		});
-		const secondPayload = askQuestionsSuspendPayload({
-			message: 'Continue?',
-			questions: [{ id: 'q1', question: 'Continue?', type: 'text' }],
-		});
-		vi.mocked(delegate.resumeBuild).mockResolvedValue(
-			fakeStream(
-				[
-					suspensionChunk({
-						toolCallId: 'call-2',
-						toolName: ASK_QUESTIONS_TOOL_NAME,
-						suspendPayload: secondPayload,
-					}),
-				],
-				'',
-			),
-		);
-		const suspendFn = vi.fn();
-
-		await runToolWithCtx(
-			context,
-			{ message: 'Build it', name: 'New Agent' },
-			{ resumeData: undefined, suspend: suspendFn },
-		);
-
-		expect(delegate.resumeBuild).toHaveBeenCalledTimes(1);
-		expect(suspendFn).toHaveBeenCalledTimes(1);
-		expect(suspendFn.mock.calls[0][0]).toEqual({
-			...secondPayload,
-			requestId: expect.any(String) as unknown,
-		});
 	});
 
 	it('publishes agent-completed and rethrows when consumeStreamCascading itself throws mid-loop', async () => {

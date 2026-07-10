@@ -2,12 +2,9 @@ import {
 	type APPROVAL_TOOL_NAME,
 	type ASK_CREDENTIAL_TOOL_NAME,
 	type ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
-	type ASK_LLM_TOOL_NAME,
 	type ASK_QUESTIONS_TOOL_NAME,
 	type CONFIGURE_CHANNEL_TOOL_NAME,
 	type N8N_CHAT_ACTION_TOOL_NAME,
-	type AskLlmInput,
-	type AskLlmResume,
 	type ChannelResumeData,
 	type ChannelSuspendPayload,
 	type CredentialResumeData,
@@ -78,8 +75,8 @@ export interface ApprovalResume {
 /**
  * `ask_questions` / `ask_credential` / `configure_channel` each transform
  * the FE's resume payload into a distinct tool-output shape rather than
- * echoing it back verbatim (unlike `ask_llm`). `resolvedValue` can therefore
- * be EITHER shape depending on where it came from:
+ * echoing it back verbatim. `resolvedValue` can therefore be EITHER shape
+ * depending on where it came from:
  *
  * - the resume payload itself (optimistic UI update in `useAgentChatStream`'s
  *   `resume()`, applied before the backend confirms), or
@@ -112,11 +109,6 @@ export type InteractivePayload =
 			toolName: typeof APPROVAL_TOOL_NAME;
 			input: ApprovalInput;
 			resolvedValue?: ApprovalResume;
-	  })
-	| (InteractivePayloadBase & {
-			toolName: typeof ASK_LLM_TOOL_NAME;
-			input: AskLlmInput;
-			resolvedValue?: AskLlmResume;
 	  })
 	| (InteractivePayloadBase & {
 			toolName: typeof ASK_QUESTIONS_TOOL_NAME;

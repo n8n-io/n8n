@@ -52,7 +52,6 @@ import { buildGetResourceLocatorOptionsTool } from './get-resource-locator-optio
 import {
 	buildAskCredentialTool,
 	buildAskEmbeddingCredentialTool,
-	buildAskLlmTool,
 	buildAskQuestionsTool,
 	buildConfigureChannelTool,
 	buildResolveLlmTool,
@@ -514,7 +513,6 @@ export class AgentsBuilderToolsService {
 				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
 				isAssistantProxyEnabled: () => this.aiService.isProxyEnabled(),
 			}),
-			buildAskLlmTool(),
 			buildAskQuestionsTool(),
 			buildConfigureChannelTool({
 				agentId,

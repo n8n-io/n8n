@@ -1,14 +1,11 @@
 import {
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
-	ASK_LLM_TOOL_NAME,
 	ASK_QUESTIONS_TOOL_NAME,
 	APPROVAL_TOOL_NAME,
 	CONFIGURE_CHANNEL_TOOL_NAME,
 	N8N_CHAT_ACTION_TOOL_NAME,
 	askCredentialInputSchema,
-	askLlmInputSchema,
-	askLlmResumeSchema,
 	channelResumeSchema,
 	channelSuspendPayloadSchema,
 	credentialResumeSchema,
@@ -49,7 +46,6 @@ import type {
 const INTERACTIVE_TOOL_NAMES = [
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
-	ASK_LLM_TOOL_NAME,
 	ASK_QUESTIONS_TOOL_NAME,
 	CONFIGURE_CHANNEL_TOOL_NAME,
 ] as readonly InteractiveToolName[];
@@ -156,7 +152,7 @@ function isDeclinedToolOutput(value: unknown): boolean {
 // ---------------------------------------------------------------------------
 //
 // These three tools transform their resume payload into a distinct tool
-// OUTPUT shape rather than echoing it back (unlike ask_llm). `tc.input` is
+// OUTPUT shape rather than echoing it back. `tc.input` is
 // similarly dual-shaped: live suspensions overwrite it with the full suspend
 // payload (see `useAgentChatStream`'s `tool-call-suspended` handler), but
 // persisted history only ever carries the tool's original call args (the
@@ -300,9 +296,8 @@ function parseAskEmbeddingCredentialOutput(value: unknown) {
  * reconstruct an `InteractivePayload` for it. The result is:
  *
  * - **resolved**: when `output` is present — `resolvedValue` is parsed from it
- *   via the matching zod schema. The output IS the user's resume payload (the
- *   tool handler returns `ctx.resumeData` after a resume) for `ask_llm`; the
- *   other interactive tools transform it, so `resolvedValue` is parsed
+ *   via the matching zod schema. Interactive tools transform the resume
+ *   payload into a distinct output shape, so `resolvedValue` is parsed
  *   defensively (see the `parse*ResolvedValue` helpers above).
  * - **open**: when `output` is absent — the card renders as an active
  *   awaiting-user prompt. Used when a refresh during a suspension restored the
@@ -370,18 +365,6 @@ export function rebuildInteractiveFromHistory(
 			toolName: tc.tool,
 			input,
 			...(resolved && { resolvedValue: resolved }),
-		};
-	}
-
-	if (tc.tool === ASK_LLM_TOOL_NAME) {
-		const input = askLlmInputSchema.safeParse(tc.input ?? {});
-		if (!input.success) return undefined;
-		const resolved = tc.output !== undefined ? askLlmResumeSchema.safeParse(tc.output) : null;
-		return {
-			...base,
-			toolName: ASK_LLM_TOOL_NAME,
-			input: input.data,
-			...(resolved?.success && { resolvedValue: resolved.data }),
 		};
 	}
 

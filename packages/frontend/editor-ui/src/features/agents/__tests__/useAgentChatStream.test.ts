@@ -4,7 +4,6 @@ import { ref, nextTick } from 'vue';
 import {
 	APPROVAL_TOOL_NAME,
 	ASK_CREDENTIAL_TOOL_NAME,
-	ASK_LLM_TOOL_NAME,
 	ASK_QUESTIONS_TOOL_NAME,
 	N8N_CHAT_ACTION_TOOL_NAME,
 	type AgentSseEvent,
@@ -79,15 +78,15 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		vi.restoreAllMocks();
 	});
 
-	it('renders an interactive ask_llm card and stamps the runId from the suspended event', async () => {
+	it('renders an interactive ask_questions card and stamps the runId from the suspended event', async () => {
 		const events: AgentSseEvent[] = [
 			{
 				type: 'tool-call-suspended',
 				payload: {
 					toolCallId: 'tc-1',
 					runId: 'run-42',
-					toolName: ASK_LLM_TOOL_NAME,
-					input: { purpose: 'main model' },
+					toolName: ASK_QUESTIONS_TOOL_NAME,
+					input: { questions: [{ question: 'Which model?', type: 'text' }] },
 				},
 			},
 			{ type: 'done' },
@@ -104,7 +103,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistant.status).toBe('awaitingUser');
 		expect(assistant.toolCalls).toHaveLength(1);
 		expect(assistant.toolCalls?.[0].state).toBe('suspended');
-		expect(assistant.interactive?.toolName).toBe(ASK_LLM_TOOL_NAME);
+		expect(assistant.interactive?.toolName).toBe(ASK_QUESTIONS_TOOL_NAME);
 		expect(assistant.interactive?.runId).toBe('run-42');
 		expect(assistant.interactive?.resolvedValue).toBeUndefined();
 		expect(assistant.interactive?.resolvedAt).toBeUndefined();
@@ -160,16 +159,16 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			{
 				type: 'tool-call',
 				toolCallId: 'tc-1',
-				toolName: ASK_LLM_TOOL_NAME,
-				input: { purpose: 'main' },
+				toolName: ASK_QUESTIONS_TOOL_NAME,
+				input: { questions: [{ question: 'Which model?', type: 'text' }] },
 			},
 			{
 				type: 'tool-call-suspended',
 				payload: {
 					toolCallId: 'tc-1',
 					runId: 'run-7',
-					toolName: ASK_LLM_TOOL_NAME,
-					input: { purpose: 'main' },
+					toolName: ASK_QUESTIONS_TOOL_NAME,
+					input: { questions: [{ question: 'Which model?', type: 'text' }] },
 				},
 			},
 			{ type: 'done' },
@@ -356,18 +355,18 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		// in place, not push a duplicate into a freshly-minted ChatMessage.
 		const events: AgentSseEvent[] = [
 			{ type: 'start-step' },
-			{ type: 'tool-input-start', toolCallId: 'tc-1', toolName: ASK_LLM_TOOL_NAME },
+			{ type: 'tool-input-start', toolCallId: 'tc-1', toolName: ASK_QUESTIONS_TOOL_NAME },
 			{
 				type: 'tool-call',
 				toolCallId: 'tc-1',
-				toolName: ASK_LLM_TOOL_NAME,
-				input: { purpose: 'main' },
+				toolName: ASK_QUESTIONS_TOOL_NAME,
+				input: { questions: [{ question: 'Which model?', type: 'text' }] },
 			},
 			{ type: 'finish-step' },
 			{
 				type: 'tool-execution-start',
 				toolCallId: 'tc-1',
-				toolName: ASK_LLM_TOOL_NAME,
+				toolName: ASK_QUESTIONS_TOOL_NAME,
 				startTime: 1_000,
 			},
 			{
@@ -375,8 +374,8 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 				payload: {
 					toolCallId: 'tc-1',
 					runId: 'run-9',
-					toolName: ASK_LLM_TOOL_NAME,
-					input: { purpose: 'main' },
+					toolName: ASK_QUESTIONS_TOOL_NAME,
+					input: { questions: [{ question: 'Which model?', type: 'text' }] },
 				},
 			},
 			{ type: 'done' },

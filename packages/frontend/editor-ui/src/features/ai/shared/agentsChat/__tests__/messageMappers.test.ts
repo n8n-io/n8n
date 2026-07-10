@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-	ASK_LLM_TOOL_NAME,
-	ASK_QUESTIONS_TOOL_NAME,
-	type AgentPersistedMessageDto,
-} from '@n8n/api-types';
+import { ASK_QUESTIONS_TOOL_NAME, type AgentPersistedMessageDto } from '@n8n/api-types';
 
 import {
 	applyOpenSuspensions,
@@ -20,9 +16,9 @@ describe('shared agents chat message mapping', () => {
 				content: [
 					{
 						type: 'tool-call',
-						toolName: ASK_LLM_TOOL_NAME,
+						toolName: ASK_QUESTIONS_TOOL_NAME,
 						toolCallId: 'call-1',
-						input: { purpose: 'main model' },
+						input: { questions: [{ question: 'Which model?', type: 'text' }] },
 						state: 'pending',
 					},
 				],
@@ -32,7 +28,7 @@ describe('shared agents chat message mapping', () => {
 		const chat = convertDbMessages(dbMessages);
 
 		expect(chat[0].status).toBe('awaitingUser');
-		expect(chat[0].interactive?.toolName).toBe(ASK_LLM_TOOL_NAME);
+		expect(chat[0].interactive?.toolName).toBe(ASK_QUESTIONS_TOOL_NAME);
 		expect(chat[0].toolCalls?.[0].state).toBe('suspended');
 	});
 

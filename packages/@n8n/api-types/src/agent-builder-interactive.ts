@@ -13,7 +13,6 @@ import {
  * by it. There is no separate `interactionType` field — the tool name IS the
  * interaction kind.
  */
-export const ASK_LLM_TOOL_NAME = 'ask_llm' as const;
 export const ASK_CREDENTIAL_TOOL_NAME = 'ask_credential' as const;
 export const ASK_EMBEDDING_CREDENTIAL_TOOL_NAME = 'ask_embedding_credential' as const;
 export { ASK_QUESTIONS_TOOL_NAME, CONFIGURE_CHANNEL_TOOL_NAME };
@@ -26,7 +25,6 @@ export { ASK_QUESTIONS_TOOL_NAME, CONFIGURE_CHANNEL_TOOL_NAME };
 export const APPROVAL_TOOL_NAME = 'approval' as const;
 
 export const interactiveToolNameSchema = z.union([
-	z.literal(ASK_LLM_TOOL_NAME),
 	z.literal(ASK_CREDENTIAL_TOOL_NAME),
 	z.literal(ASK_EMBEDDING_CREDENTIAL_TOOL_NAME),
 	z.literal(ASK_QUESTIONS_TOOL_NAME),
@@ -34,29 +32,6 @@ export const interactiveToolNameSchema = z.union([
 ]);
 
 export type InteractiveToolName = z.infer<typeof interactiveToolNameSchema>;
-
-// ---------------------------------------------------------------------------
-// ask_llm
-// ---------------------------------------------------------------------------
-
-export const askLlmInputSchema = z.object({
-	purpose: z
-		.string()
-		.optional()
-		.describe(
-			'Short sentence describing why the model is needed, e.g. "Main LLM for the Slack triage agent"',
-		),
-});
-
-export const askLlmResumeSchema = z.object({
-	provider: z.string(),
-	model: z.string(),
-	credentialId: z.string(),
-	credentialName: z.string(),
-});
-
-export type AskLlmInput = z.infer<typeof askLlmInputSchema>;
-export type AskLlmResume = z.infer<typeof askLlmResumeSchema>;
 
 // ---------------------------------------------------------------------------
 // ask_credential

@@ -258,35 +258,16 @@ describe('AgentsBuilderService session isolation', () => {
 		expect(agentsSdkMocks.instructionsCalls[0]).not.toContain('Extra sub-agent rules');
 	});
 
-	it('omits standard tools named in session.excludeTools while still registering the rest', async () => {
+	it('registers all standard tools returned by the tools service', async () => {
 		const { service, user, credentialProvider } = setup({
-			json: [fakeTool('ask_llm'), fakeTool('read_config')],
+			json: [fakeTool('resolve_llm'), fakeTool('read_config')],
 			shared: [fakeTool('ask_credential')],
-		});
-
-		await drain(
-			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
-				threadId: 'ia-builder:t:agent-1',
-				excludeTools: ['ask_llm'],
-			}),
-		);
-
-		expect(agentsSdkMocks.registeredToolNames).not.toContain('ask_llm');
-		expect(agentsSdkMocks.registeredToolNames).toEqual(
-			expect.arrayContaining(['read_config', 'ask_credential']),
-		);
-	});
-
-	it('registers all standard tools when session.excludeTools is absent', async () => {
-		const { service, user, credentialProvider } = setup({
-			json: [fakeTool('ask_llm'), fakeTool('read_config')],
-			shared: [],
 		});
 
 		await drain(service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user));
 
 		expect(agentsSdkMocks.registeredToolNames).toEqual(
-			expect.arrayContaining(['ask_llm', 'read_config']),
+			expect.arrayContaining(['resolve_llm', 'read_config', 'ask_credential']),
 		);
 	});
 
