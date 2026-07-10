@@ -3,9 +3,11 @@ import { GlobalConfig } from '@n8n/config';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import type { RunInTransaction, Scheduler, TaskHandler } from '@n8n/scheduler';
+import type { RunInTransaction, Scheduler, TaskHandler, Tracer } from '@n8n/scheduler';
 import { createScheduler, executorLookaheadSeconds } from '@n8n/scheduler';
-import { InstanceSettings } from 'n8n-core';
+import { InstanceSettings, Tracing } from 'n8n-core';
+
+import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
 
 import { ScheduleTriggerTaskHandler } from './schedule-trigger-node/schedule-trigger-task-handler';
 
@@ -26,15 +28,26 @@ export class DurableScheduler implements Scheduler {
 		tasks: ScheduledTaskRepository,
 		instanceSettings: InstanceSettings,
 		globalConfig: GlobalConfig,
+		tracing: Tracing,
 		scheduleTriggerTaskHandler: ScheduleTriggerTaskHandler,
+		metrics: PrometheusSchedulerMetricsService,
 	) {
 		const config = globalConfig.scheduler;
 		const enabled = config.enabled && instanceSettings.instanceType === 'main';
+		const tracer: Tracer = {
+			startSpan: async ({ newTrace, ...options }, run) =>
+				await (newTrace === true
+					? tracing.startNewTraceSpan(options, run)
+					: tracing.startSpan(options, run)),
+		};
 		this.scheduler = enabled
 			? createScheduler({
 					hostId: instanceSettings.hostId,
 					materializerTransaction: buildMaterializerTransaction(dataSource, jobs, tasks),
 					taskStore: tasks,
+					// The collector implements `SchedulerMetrics`; it stays a no-op sink
+					// until its `init()` runs when metrics are enabled on a main instance.
+					metrics,
 					materializer: {
 						windowSeconds: config.materializationWindowSeconds,
 						defaultTimezone: globalConfig.generic.timezone,
@@ -69,6 +82,7 @@ export class DurableScheduler implements Scheduler {
 						maxConcurrentPasses: config.maxConcurrentPasses,
 					},
 					onEvent: ({ level, message, context }) => logger[level](message, context),
+					tracer,
 				})
 			: undefined;
 		this.registerTaskHandler(scheduleTriggerTaskHandler.taskType, scheduleTriggerTaskHandler);

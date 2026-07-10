@@ -6,6 +6,7 @@ import {
 	plannedTaskArgSchema,
 	gatewayConfirmationRequiredPayloadSchema,
 	webSearchMetaSchema,
+	channelConfigSchema,
 } from '@n8n/api-types';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
@@ -287,6 +288,7 @@ function mapSuspendedChunk(
 		suspendPayload.resourceDecision,
 		gatewayConfirmationRequiredPayloadSchema,
 	);
+	const channelConfig = parseSchemaRecord(suspendPayload.channelConfig, channelConfigSchema);
 
 	return {
 		type: 'confirmation-request',
@@ -314,6 +316,7 @@ function mapSuspendedChunk(
 			...(tasks ? { tasks } : {}),
 			...(planItems ? { planItems } : {}),
 			...(resourceDecision ? { resourceDecision } : {}),
+			...(channelConfig ? { channelConfig } : {}),
 		},
 	};
 }

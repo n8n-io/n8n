@@ -1,0 +1,55 @@
+name: 'Community: Close Stale PRs'
+
+# Closes community PRs that were sent back to the contributor
+# (triage:needs-info / triage:tests-needed / Needs Feedback) and have been
+# inactive since. Scoped to those labels on purpose: we only close PRs where we
+# asked for changes and got no response — never PRs waiting on us.
+# "Needs Feedback" is the legacy equivalent of triage:needs-info (predates the
+# triage:* convention) and still sits on open community PRs awaiting a reply.
+
+on:
+  schedule:
+    - cron: '0 9 * * 1-5' # weekdays 9:00 UTC
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Dry run: log actions without commenting/closing.'
+        type: boolean
+        default: true
+
+permissions:
+  pull-requests: write
+  issues: write # actions/stale uses the issues API for comments/labels
+
+jobs:
+  close-stale-community-prs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/stale@eb5cf3af3ac0a1aa4c9c45633dd1ae542a27a899 # v10.3.0
+        with:
+          # PRs only — never touch issues
+          days-before-issue-stale: -1
+          days-before-issue-close: -1
+
+          any-of-pr-labels: 'triage:needs-info,triage:tests-needed,Needs Feedback'
+          days-before-pr-stale: 30
+          days-before-pr-close: 14
+          stale-pr-label: 'Stale'
+          close-pr-label: 'status:internal-closed'
+          # contributor activity resets the clock (remove-stale-when-updated defaults to true)
+          ascending: true # oldest first
+          debug-only: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+
+          stale-pr-message: >-
+            Hey! 👋 It's been a while since we asked for changes on this PR and
+            we haven't heard back. If you're still interested in getting it
+            merged, please address the feedback above — otherwise we'll close
+            it in 14 days to keep the review queue manageable. Closed PRs can
+            always be reopened, so nothing is lost. Thanks for contributing! 🙏
+
+          close-pr-message: >-
+            Closing this PR since the requested changes weren't made. This is
+            just housekeeping — if you'd like to pick it up again, address the
+            feedback and reopen (or open a fresh PR) and we'll happily take
+            another look. Thanks again for the contribution! 🙏

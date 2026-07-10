@@ -1,13 +1,14 @@
 /**
  * create_agent — create a brand-new (empty) n8n Agent and bind the rest of the
- * run to it. Target-less: available before any agent exists. On success it sets
- * `context.agentBuilderTarget` so subsequent config tools resolve the new agent
- * within the same run; the host adapter is responsible for persisting the
- * binding to thread state so later turns stay targeted.
+ * conversation to it. Target-less: available before any agent exists. On
+ * success it sets `context.agentBuilderTarget` for the current run and
+ * persists the binding to thread metadata so later turns keep editing the
+ * same agent.
  */
 import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
+import { saveAgentBuilderTarget } from './agent-target-binding';
 import type { InstanceAiContext } from '../../types';
 import { AGENT_BUILDER_TOOL_IDS } from '../tool-ids';
 
@@ -15,10 +16,11 @@ export function createCreateAgentTool(context: InstanceAiContext) {
 	return new Tool(AGENT_BUILDER_TOOL_IDS.CREATE_AGENT)
 		.description(
 			'Create a new, empty n8n agent and start building it. Call this first when there is no ' +
-				'agent to configure yet (read_config / write_config / patch_config report that no agent is ' +
-				'targeted). Pass a short human-readable name. After this succeeds the agent is the active ' +
-				'build target for the rest of the conversation, so follow up with read_config then ' +
-				'write_config to set its instructions, model, and tools. Returns { ok: true, agentId, name }.',
+				'agent to configure yet (read_config / build_agent report that no agent is targeted). ' +
+				'Pass a short human-readable name. After this succeeds the agent is the active build ' +
+				'target for the rest of the conversation, so follow up by writing the agent config JSON ' +
+				'to a workspace file and calling build_agent with its filePath. ' +
+				'Returns { ok: true, agentId, projectId, name }.',
 		)
 		.input(
 			z.object({
@@ -43,7 +45,14 @@ export function createCreateAgentTool(context: InstanceAiContext) {
 					agentId: created.agentId,
 					projectId: created.projectId,
 				};
-				return { ok: true as const, agentId: created.agentId, name: created.name };
+				// Persist so follow-up turns stay targeted at the same agent.
+				await saveAgentBuilderTarget(context, context.agentBuilderTarget);
+				return {
+					ok: true as const,
+					agentId: created.agentId,
+					projectId: created.projectId,
+					name: created.name,
+				};
 			} catch (e) {
 				return {
 					ok: false as const,

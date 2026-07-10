@@ -5,6 +5,13 @@ import { Timeline } from './timeline';
 const TIMED_OUT = Symbol('pass timed out');
 
 /**
+ * Abort reason a loop uses when it abandons a timed-out pass, distinct from the
+ * default reason a graceful {@link Loop.stop} aborts with. A pass can read
+ * `signal.reason === PASS_TIMED_OUT` to tell a timeout apart from a clean drain.
+ */
+export const PASS_TIMED_OUT = Symbol('pass aborted after timeout');
+
+/**
  * How a loop resolves a tick that would overlap in-flight passes.
  *
  * - `sequential`: at most one pass in flight; storage that serialises writers
@@ -165,7 +172,7 @@ export class Loop {
 		pass.catch(() => {}); // Deliberately NOT chained:
 		try {
 			if ((await Promise.race([pass, timeout.timedOut])) === TIMED_OUT) {
-				controller.abort();
+				controller.abort(PASS_TIMED_OUT);
 				this.hooks.onTimeout({ timeoutMs: this.options.timeoutMs });
 			}
 		} catch (error) {

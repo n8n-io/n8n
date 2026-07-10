@@ -34,6 +34,7 @@
     "@types/imap": "^0.8.40",
     "@types/quoted-printable": "^1.0.2",
     "@types/utf8": "^3.0.3",
+    "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"

@@ -12,7 +12,7 @@ locator values that the target agent cannot reliably guess at runtime.
   database, table, model, folder, or another "Name or ID" field.
 - `get_node_types` shows a parameter with `type: "resourceLocator"`,
   `typeOptions.loadOptionsMethod`, or `typeOptions.loadOptions`.
-- `write_config` or `patch_config` rejects a node parameter with a dynamic
+- `build_agent` rejects a node parameter with a dynamic
   selector / `get_resource_locator_options` error.
 
 ## Workflow
@@ -67,15 +67,14 @@ locator values that the target agent cannot reliably guess at runtime.
 
 ## Recovery From Config Errors
 
-When `write_config` or `patch_config` rejects a dynamic selector using
-`$fromAI`:
+When `build_agent` rejects a dynamic selector using `$fromAI`:
 
 1. Read the error path to find the offending node parameter.
 2. Inspect the node metadata if needed.
 3. Resolve the parameter with `agent_builder` (`action:
    "get_resource_locator_options"`).
-4. Patch the config (`agent_builder` `action: "patch_config"`) by replacing only
-   that parameter with the returned `parameterValue`.
+4. In the config file, replace only that parameter with the returned
+   `parameterValue`, then call `build_agent` again.
 
 ## Example
 

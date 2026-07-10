@@ -1,4 +1,4 @@
-import { AgentEvent } from '@n8n/agents';
+import { AgentEvent, filterRuntimeSkillSource } from '@n8n/agents';
 import type { Message, Workspace, ScopedMemoryTaskEvent, AgentEventData } from '@n8n/agents';
 import {
 	applyBranchReadOnlyOverrides,
@@ -1963,22 +1963,17 @@ export class InstanceAiService {
 		}
 
 		// The agent-builder tools are only registered when the agents module is
-		// active (InstanceAiAdapterService.getAgentBuilderAdapter), so hide its
-		// skill too when the module is off.
+		// active (InstanceAiAdapterService.getAgentBuilderAdapter), and the
+		// build_agent flow persists configs from workspace files, so the skill
+		// needs both the agents module and the sandbox workspace. Hide it when
+		// either is unavailable.
 		const allRuntimeSkills = loadInstanceAiRuntimeSkillSource();
 		const agentsModuleActive = this.moduleRegistry.isActive('agents');
-		const baseRuntimeSkills = agentsModuleActive
-			? allRuntimeSkills
-			: {
-					...allRuntimeSkills,
-					registry: {
-						...allRuntimeSkills.registry,
-						skills: allRuntimeSkills.registry.skills.filter(
-							(skill) => skill.id !== 'agent-builder',
-						),
-					},
-				};
-		let runtimeSkills = baseRuntimeSkills;
+		const withoutAgentBuilderSkill = filterRuntimeSkillSource(allRuntimeSkills, ['agent-builder']);
+		// Default assumes no workspace; the sandbox block below restores the
+		// agent-builder skill once the workspace is known to be available.
+		let availableRuntimeSkills = withoutAgentBuilderSkill;
+		let runtimeSkills = availableRuntimeSkills;
 		let runtimeWorkspace: Workspace | undefined;
 		let workspaceRoot: string | undefined;
 
@@ -2031,8 +2026,9 @@ export class InstanceAiService {
 					ensureWorkspace: async () =>
 						await scopeWorkspaceForAgent((await getSandboxEntry())?.workspace),
 				});
+				availableRuntimeSkills = agentsModuleActive ? allRuntimeSkills : withoutAgentBuilderSkill;
 				runtimeSkills = createLazyWorkspaceRuntimeSkillSource({
-					source: baseRuntimeSkills,
+					source: availableRuntimeSkills,
 					workspace: runtimeSkillWorkspace,
 					logger: this.logger,
 				});
@@ -2068,7 +2064,7 @@ export class InstanceAiService {
 			timeZone: this.defaultTimeZone,
 			localMcpServer: context.localMcpServer,
 			runtimeSkills,
-			runtimeSkillCatalog: baseRuntimeSkills,
+			runtimeSkillCatalog: availableRuntimeSkills,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,
 			webhookBaseUrl: this.webhookBaseUrl,
 			formBaseUrl: this.formBaseUrl,

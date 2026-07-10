@@ -57,6 +57,7 @@ import {
 	TimeoutExecutionCancelledError,
 	ManualExecutionCancelledError,
 	createRunExecutionData,
+	applyDynamicCredentialsUsage,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
@@ -1680,6 +1681,17 @@ export class WorkflowExecute {
 					// Reset per-node dynamic credential flags before each node execution
 					this.additionalData.currentNodeUsedDynamicCredentials = false;
 					this.additionalData.currentNodeAttemptedDynamicCredentials = false;
+
+					// A sub-execution that finished while this execution was waiting reported its
+					// private-credential usage on the resumed stack entry (the node re-runs disabled,
+					// so `executeWorkflow` never reports again) — restore it so the new task and
+					// `runtimeData.executedByUserId` still inherit the flags. The stash is
+					// transport-only, so consume it to keep it out of the persisted task metadata.
+					const reportedUsage = executionData.metadata?.dynamicCredentialsUsage;
+					if (reportedUsage) {
+						applyDynamicCredentialsUsage(this.additionalData, reportedUsage);
+						delete executionData.metadata?.dynamicCredentialsUsage;
+					}
 
 					const taskStartedData: ITaskStartedData = {
 						startTime: Date.now(),
