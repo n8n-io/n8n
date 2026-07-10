@@ -244,7 +244,14 @@ function publishAgentSpawned(
 			tools: [],
 			kind: 'agent-builder',
 			title: 'Building agent',
-			targetResource: { type: 'agent', id: target.agentId },
+			// name/projectId make the FE render the agent as a conversation artifact
+			// (artifact list + preview both require projectId).
+			targetResource: {
+				type: 'agent',
+				id: target.agentId,
+				projectId: target.projectId,
+				...(target.name ? { name: target.name } : {}),
+			},
 		},
 	});
 }
@@ -469,7 +476,7 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 			if (!target) {
 				if (input.name) {
 					const created = await delegate.createAgent(input.name);
-					target = { agentId: created.agentId, projectId: created.projectId };
+					target = { agentId: created.agentId, projectId: created.projectId, name: input.name };
 				} else if (input.agentId) {
 					if (!domainContext.projectId) {
 						return {

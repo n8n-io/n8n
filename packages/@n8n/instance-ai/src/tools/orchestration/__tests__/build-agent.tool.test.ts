@@ -185,7 +185,9 @@ describe('build-agent tool', () => {
 			role: 'agent-builder',
 			kind: 'agent-builder',
 			title: 'Building agent',
-			targetResource: { type: 'agent', id: 'agent-1' },
+			// projectId + name are required for the FE to surface the agent as a
+			// conversation artifact (list entry + preview).
+			targetResource: { type: 'agent', id: 'agent-1', projectId: 'proj-1', name: 'New Agent' },
 		});
 
 		const completed = publishedEvents[2];

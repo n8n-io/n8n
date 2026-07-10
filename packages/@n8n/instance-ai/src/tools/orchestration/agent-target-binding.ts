@@ -15,6 +15,8 @@ const METADATA_KEY = 'instanceAiAgentBuilderTarget';
 const agentBuilderTargetSchema = z.object({
 	agentId: z.string(),
 	projectId: z.string(),
+	/** Agent display name when known — lets the FE label the agent artifact. */
+	name: z.string().optional(),
 });
 
 export type AgentBuilderTarget = z.infer<typeof agentBuilderTargetSchema>;
