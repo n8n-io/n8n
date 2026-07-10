@@ -30,13 +30,6 @@ export const WorkflowIdPolicy = {
 	/** Reuses the package's own workflow id in the target instance. */
 	Source: 'source',
 } as const;
-
-export const SubworkflowBehaviour = {
-	/** Bundles statically referenced sub-workflows into the exported package. */
-	IncludedInPackage: 'included-in-package',
-	/** Keeps statically referenced sub-workflows as package requirements only. */
-	ReferencesOnly: 'references-only',
-} as const;
 /* eslint-enable @typescript-eslint/naming-convention */
 
 export type WorkflowConflictPolicy =
@@ -44,14 +37,11 @@ export type WorkflowConflictPolicy =
 
 export type WorkflowIdPolicy = (typeof WorkflowIdPolicy)[keyof typeof WorkflowIdPolicy];
 
-export type SubworkflowBehaviour = (typeof SubworkflowBehaviour)[keyof typeof SubworkflowBehaviour];
-
 export interface ExportPackageRequest {
 	user: User;
 	workflowIds?: string[];
 	folderIds?: string[];
 	projectIds?: string[];
-	subworkflowBehaviour?: SubworkflowBehaviour;
 }
 
 export type ImportPackageRequest = {
