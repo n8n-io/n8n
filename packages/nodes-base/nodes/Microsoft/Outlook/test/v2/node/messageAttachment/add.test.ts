@@ -96,6 +96,10 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 					contentBytes: 'SGVsbG8gV29ybGQ=',
 				},
 				{},
+				undefined,
+				undefined,
+				undefined,
+				0,
 			);
 
 			expect(result).toEqual([
@@ -143,6 +147,10 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 					contentBytes: 'JVBERi0xLjQK',
 				},
 				{},
+				undefined,
+				undefined,
+				undefined,
+				0,
 			);
 		});
 
@@ -229,6 +237,11 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 						size: 4 * 1024 * 1024,
 					},
 				},
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				0,
 			);
 
 			expect(mockExecuteFunctions.helpers.request).toHaveBeenCalledWith(

@@ -24,7 +24,17 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		}) as string,
 	);
 
-	await microsoftApiRequest.call(this, 'DELETE', `/calendar/events/${eventId}`);
+	await microsoftApiRequest.call(
+		this,
+		'DELETE',
+		`/calendar/events/${eventId}`,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		index,
+	);
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray({ success: true }),

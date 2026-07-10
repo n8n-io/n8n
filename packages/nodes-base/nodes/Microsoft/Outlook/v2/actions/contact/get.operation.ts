@@ -76,6 +76,10 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		`/contacts/${contactId}`,
 		undefined,
 		qs,
+		undefined,
+		undefined,
+		undefined,
+		index,
 	);
 
 	const executionData = this.helpers.constructExecutionMetaData(

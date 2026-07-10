@@ -20,7 +20,17 @@ export async function execute(this: IExecuteFunctions, index: number) {
 	const draftId = this.getNodeParameter('draftId', index, undefined, {
 		extractValue: true,
 	}) as string;
-	await microsoftApiRequest.call(this, 'DELETE', `/messages/${draftId}`);
+	await microsoftApiRequest.call(
+		this,
+		'DELETE',
+		`/messages/${draftId}`,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		index,
+	);
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray({ success: true }),

@@ -40,6 +40,11 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		'PATCH',
 		`/contacts/${contactId}`,
 		body,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		index,
 	);
 
 	const executionData = this.helpers.constructExecutionMetaData(

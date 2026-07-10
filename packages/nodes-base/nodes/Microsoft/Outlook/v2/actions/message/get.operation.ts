@@ -144,6 +144,10 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		`/messages/${messageId}`,
 		undefined,
 		qs,
+		undefined,
+		undefined,
+		undefined,
+		index,
 	);
 
 	if (output === 'simple') {
@@ -154,7 +158,12 @@ export async function execute(this: IExecuteFunctions, index: number) {
 
 	if (options.downloadAttachments) {
 		const prefix = (options.attachmentsPrefix as string) || 'attachment_';
-		executionData = await downloadAttachments.call(this, responseData as IDataObject, prefix);
+		executionData = await downloadAttachments.call(
+			this,
+			responseData as IDataObject,
+			prefix,
+			index,
+		);
 	} else {
 		executionData = this.helpers.constructExecutionMetaData(
 			this.helpers.returnJsonArray(responseData as IDataObject),
@@ -170,6 +179,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 			this,
 			messageId,
 			binaryPropertyName as string,
+			index,
 			outputFileName as string,
 		);
 

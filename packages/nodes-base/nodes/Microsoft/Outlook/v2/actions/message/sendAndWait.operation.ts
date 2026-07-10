@@ -56,7 +56,18 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 
 	const body: IDataObject = { message };
 
-	await microsoftApiRequest.call(this, 'POST', '/sendMail', body);
+	// sendAndWait runs once at index 0 (see router); pass it through for uniformity.
+	await microsoftApiRequest.call(
+		this,
+		'POST',
+		'/sendMail',
+		body,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		index,
+	);
 
 	return items;
 }

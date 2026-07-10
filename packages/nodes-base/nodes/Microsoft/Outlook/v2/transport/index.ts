@@ -10,6 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { isResourceLocatorValue } from 'n8n-workflow';
 
+import { stampItemIndexOnError } from '../../../GenericFunctions';
 import { prepareApiError, validateMailbox } from '../helpers/utils';
 
 export type OutlookCredentialType =
@@ -40,26 +41,32 @@ export function getOutlookCredentialType(
  * credential, app-only Graph has no `/me`, so the node's `mailbox` parameter is
  * read, validated, and returned as the bare (un-encoded) UPN/ID.
  *
- * The mailbox is read at the fixed item index 0 and treated as a per-node constant
- * for the whole run — the same contract as the `authentication` selector. Encoding
- * happens once at the URL-build site in `microsoftApiRequest`.
+ * The mailbox accepts expressions and is resolved per item: execute call sites MUST
+ * pass the loop's item index. Poll/loadOptions rely on the `itemIndex = 0` default —
+ * in those contexts `getNodeParameter`'s 2nd arg is a fallback, not an index, so the
+ * default keeps their reads unchanged. Encoding happens once at the URL-build site
+ * in `microsoftApiRequest`.
  */
 export function resolveMailbox(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
 	credentialType: OutlookCredentialType,
+	itemIndex = 0,
 ): string | undefined {
 	if (credentialType !== 'microsoftEntraServicePrincipalApi') return undefined;
-	// Read at item index 0 (per-node constant, same as the `authentication` selector).
-	// loadOptions' getNodeParameter has no itemIndex arg (execute/poll do), so the
-	// { extractValue: true } overload can't be shared across all three contexts.
+	// loadOptions'/poll's getNodeParameter has no itemIndex arg (only execute does), so
+	// the { extractValue: true } overload can't be shared across all three contexts.
 	// Read the raw param and take the id-mode RLC value directly (this RLC has no
 	// extractValue regex, so .value is already the bare mailbox id).
-	const raw = this.getNodeParameter('mailbox', 0);
+	const raw = this.getNodeParameter('mailbox', itemIndex);
 	const value = isResourceLocatorValue(raw) ? raw.value : raw;
 	// A non-string or whitespace-only value collapses to '', which validateMailbox
 	// reports as the "mailbox required" error (not "not valid").
 	const mailbox = (typeof value === 'string' ? value : '').trim();
-	validateMailbox(mailbox, this.getNode());
+	try {
+		validateMailbox(mailbox, this.getNode());
+	} catch (error) {
+		throw stampItemIndexOnError(error, itemIndex);
+	}
 	return mailbox;
 }
 
@@ -72,6 +79,7 @@ export async function microsoftApiRequest(
 	uri?: string,
 	headers: IDataObject = {},
 	option: IDataObject = { json: true },
+	itemIndex = 0,
 ) {
 	const credentialType = getOutlookCredentialType.call(this);
 	const credentials = await this.getCredentials(credentialType);
@@ -82,7 +90,7 @@ export async function microsoftApiRequest(
 			: 'https://graph.microsoft.com'
 	).replace(/\/+$/, '');
 
-	const mailbox = resolveMailbox.call(this, credentialType);
+	const mailbox = resolveMailbox.call(this, credentialType, itemIndex);
 
 	let apiUrl: string;
 	if (mailbox !== undefined) {
@@ -127,7 +135,7 @@ export async function microsoftApiRequest(
 			let updatedError;
 			// Try to return the error prettier, otherwise return the original one replacing the message with the description
 			try {
-				updatedError = prepareApiError.call(this, error);
+				updatedError = prepareApiError.call(this, error, itemIndex);
 			} catch (e) {}
 
 			if (updatedError) throw updatedError;
@@ -148,6 +156,7 @@ export async function microsoftApiRequestAllItems(
 	body: IDataObject = {},
 	query: IDataObject = {},
 	headers: IDataObject = {},
+	itemIndex = 0,
 ) {
 	const returnData: IDataObject[] = [];
 
@@ -164,6 +173,8 @@ export async function microsoftApiRequestAllItems(
 			nextLink ? undefined : query, // Do not add query parameters as nextLink already contains them
 			nextLink,
 			headers,
+			undefined,
+			itemIndex,
 		);
 		nextLink = responseData['@odata.nextLink'];
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
@@ -176,6 +187,7 @@ export async function downloadAttachments(
 	this: IExecuteFunctions | IPollFunctions,
 	messages: IDataObject[] | IDataObject,
 	prefix: string,
+	itemIndex = 0,
 ) {
 	const elements: INodeExecutionData[] = [];
 	if (!Array.isArray(messages)) {
@@ -193,6 +205,9 @@ export async function downloadAttachments(
 				'GET',
 				`/messages/${message.id}/attachments`,
 				{},
+				undefined,
+				undefined,
+				itemIndex,
 			);
 			for (const [index, attachment] of attachments.entries()) {
 				const response = await microsoftApiRequest.call(
@@ -204,6 +219,7 @@ export async function downloadAttachments(
 					undefined,
 					{},
 					{ encoding: null, resolveWithFullResponse: true },
+					itemIndex,
 				);
 
 				const data = Buffer.from(response.body as string, 'utf8');
@@ -222,10 +238,13 @@ export async function downloadAttachments(
 	return elements;
 }
 
+// `itemIndex` is REQUIRED (no default): this helper is execute-only (single caller in
+// message:get), so omitting the loop index at a new call site is a compile error.
 export async function getMimeContent(
 	this: IExecuteFunctions,
 	messageId: string,
 	binaryPropertyName: string,
+	itemIndex: number,
 	outputFileName?: string,
 ) {
 	const response = await microsoftApiRequest.call(
@@ -237,6 +256,7 @@ export async function getMimeContent(
 		undefined,
 		{},
 		{ encoding: null, resolveWithFullResponse: true },
+		itemIndex,
 	);
 
 	let mimeType: string | undefined;
@@ -260,6 +280,7 @@ export async function getSubfolders(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	folders: IDataObject[],
 	addPathToDisplayName = false,
+	itemIndex = 0,
 ) {
 	const returnData: IDataObject[] = [...folders];
 	for (const folder of folders) {
@@ -269,6 +290,10 @@ export async function getSubfolders(
 				'value',
 				'GET',
 				`/mailFolders/${folder.id}/childFolders`,
+				undefined,
+				undefined,
+				undefined,
+				itemIndex,
 			);
 
 			if (addPathToDisplayName) {
@@ -281,7 +306,12 @@ export async function getSubfolders(
 			}
 
 			returnData.push(
-				...(await getSubfolders.call(this, subfolders as IDataObject[], addPathToDisplayName)),
+				...(await getSubfolders.call(
+					this,
+					subfolders as IDataObject[],
+					addPathToDisplayName,
+					itemIndex,
+				)),
 			);
 		}
 	}

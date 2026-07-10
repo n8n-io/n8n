@@ -276,10 +276,22 @@ export async function execute(this: IExecuteFunctions, index: number) {
 			endpoint,
 			undefined,
 			qs,
+			undefined,
+			index,
 		);
 	} else {
 		qs.$top = this.getNodeParameter('limit', index);
-		responseData = await microsoftApiRequest.call(this, 'GET', endpoint, undefined, qs);
+		responseData = await microsoftApiRequest.call(
+			this,
+			'GET',
+			endpoint,
+			undefined,
+			qs,
+			undefined,
+			undefined,
+			undefined,
+			index,
+		);
 		responseData = responseData.value;
 	}
 
@@ -291,7 +303,12 @@ export async function execute(this: IExecuteFunctions, index: number) {
 
 	if (options.downloadAttachments) {
 		const prefix = (options.attachmentsPrefix as string) || 'attachment_';
-		executionData = await downloadAttachments.call(this, responseData as IDataObject, prefix);
+		executionData = await downloadAttachments.call(
+			this,
+			responseData as IDataObject,
+			prefix,
+			index,
+		);
 	} else {
 		executionData = this.helpers.constructExecutionMetaData(
 			this.helpers.returnJsonArray(responseData as IDataObject[]),

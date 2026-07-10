@@ -85,6 +85,10 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		`/messages/${messageId}/attachments/${attachmentId}`,
 		undefined,
 		qs,
+		undefined,
+		undefined,
+		undefined,
+		index,
 	);
 
 	const executionData = this.helpers.constructExecutionMetaData(

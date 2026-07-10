@@ -204,6 +204,10 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 					],
 				}),
 				{},
+				undefined,
+				undefined,
+				undefined,
+				0,
 			);
 
 			expect(result).toEqual([
@@ -258,6 +262,10 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 					],
 				}),
 				{},
+				undefined,
+				undefined,
+				undefined,
+				0,
 			);
 		});
 
@@ -309,6 +317,10 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 					]),
 				}),
 				{},
+				undefined,
+				undefined,
+				undefined,
+				0,
 			);
 		});
 	});

@@ -123,10 +123,22 @@ export async function execute(this: IExecuteFunctions, index: number) {
 			endpoint,
 			undefined,
 			qs,
+			undefined,
+			index,
 		);
 	} else {
 		qs.$top = this.getNodeParameter('limit', index);
-		responseData = await microsoftApiRequest.call(this, 'GET', endpoint, undefined, qs);
+		responseData = await microsoftApiRequest.call(
+			this,
+			'GET',
+			endpoint,
+			undefined,
+			qs,
+			undefined,
+			undefined,
+			undefined,
+			index,
+		);
 		responseData = responseData.value;
 	}
 
