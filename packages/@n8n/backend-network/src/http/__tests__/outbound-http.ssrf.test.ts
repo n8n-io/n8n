@@ -1,9 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
+import dns from 'node:dns';
+import type { LookupFunction } from 'node:net';
 import type { Dispatcher } from 'undici';
 import { mock } from 'vitest-mock-extended';
 
 import type { SsrfBridge, SsrfProtectionService } from '../../ssrf';
-import { makeSsrfBridge } from '../../ssrf/__tests__/mock-ssrf-bridge';
+import { makeLookupFn, makeSsrfBridge } from '../../ssrf/__tests__/mock-ssrf-bridge';
 import { type LocalServer, startServer } from '../local-server';
 import { OutboundHttp } from '../outbound-http';
 import { createSsrfInterceptor } from '../undici/transport';
@@ -131,9 +133,11 @@ function makeBridge(blockedPath: string): { bridge: SsrfBridge; error: Error } {
 	const bridge = makeSsrfBridge({
 		validateUrl: vi.fn(async (url: string | URL) => {
 			const href = typeof url === 'string' ? url : url.href;
-			return href.includes(blockedPath)
-				? { ok: false as const, error }
-				: { ok: true as const, result: undefined };
+			return await Promise.resolve(
+				href.includes(blockedPath)
+					? { ok: false as const, error }
+					: { ok: true as const, result: undefined },
+			);
 		}),
 	});
 	return { bridge, error };
@@ -253,5 +257,66 @@ describe('SSRF end-to-end', () => {
 
 			await dispatcher.close();
 		});
+	});
+});
+
+// ---------------------------------------------------------------------------
+// (c) connect-time secure lookup — DNS rebinding (TOCTOU) on the dispatcher path
+// ---------------------------------------------------------------------------
+//
+// The interceptor validates the request URL pre-flight, but undici resolves the hostname again at connect time.
+// A connect-time secure lookup pins the validated IP to the socket so the two resolutions cannot diverge (rebinding).
+
+describe('connect-time secure lookup (DNS rebinding)', () => {
+	it('routes direct hostname connections through the SSRF secure lookup', async () => {
+		const server = await startServer((_req, res) => {
+			res.writeHead(200, { 'content-type': 'text/plain' });
+			res.end('ok');
+		});
+		const lookupSpy = vi.fn((hostname: string, options: dns.LookupOptions, onResult: unknown) =>
+			dns.lookup(hostname, options, onResult as never),
+		);
+		const bridge = makeSsrfBridge({
+			createSecureLookup: () => lookupSpy as unknown as LookupFunction,
+		});
+		const { port } = new URL(server.url);
+		const fetchFn = makeTransport({ ssrf: bridge, proxy: false }).asCustomFetch();
+
+		try {
+			const res = await fetchFn(`http://localhost:${port}/x`);
+
+			expect(res.status).toBe(200);
+			expect(lookupSpy).toHaveBeenCalledWith('localhost', expect.anything(), expect.anything());
+		} finally {
+			await server.close();
+		}
+	});
+
+	it('rejects the connection when the secure lookup denies a rebound IP', async () => {
+		// `validateUrl` (pre-flight) passes, but the connect-time lookup denies the
+		// resolved IP — the connection must fail instead of reaching the target.
+		const denied = new Error('blocked: restricted IP address');
+		const lookup = ((_hostname: string, options: dns.LookupOptions, onResult: unknown) => {
+			(onResult as (error: Error | null, address?: unknown, family?: number) => void)(
+				denied,
+				options.all ? [] : '',
+				undefined,
+			);
+		}) as unknown as LookupFunction;
+		const bridge = makeSsrfBridge({ createSecureLookup: () => lookup });
+		const fetchFn = makeTransport({ ssrf: bridge, proxy: false }).asCustomFetch();
+
+		await expect(fetchFn('http://rebind.example/')).rejects.toThrow();
+	});
+
+	it('does not derive a connect-time lookup behind an explicit proxy', () => {
+		const createSecureLookup = vi.fn(makeLookupFn);
+		const bridge = makeSsrfBridge({ createSecureLookup });
+
+		// Forces the lazy dispatcher to build. The proxy resolves the target, so
+		// the secure lookup must not be consulted on our side.
+		makeTransport({ ssrf: bridge, proxy: 'http://proxy.invalid:3128' }).getDispatcher();
+
+		expect(createSecureLookup).not.toHaveBeenCalled();
 	});
 });

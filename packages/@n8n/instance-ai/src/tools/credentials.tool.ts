@@ -213,8 +213,12 @@ function formatActionList(actions: readonly CredentialAction[]): string {
 function getToolDescription(options: CredentialsToolOptions): string {
 	const actionList = formatActionList(getCredentialActions(options));
 	const description = `${options.descriptionPrefix ?? 'Manage credentials'} — ${actionList}.`;
+	const builderSuffix =
+		'Use list, get, search-types, and test for credential metadata and connection checks during workflow building.';
 
-	return options.descriptionSuffix ? `${description} ${options.descriptionSuffix}` : description;
+	return options.descriptionSuffix
+		? `${description} ${options.descriptionSuffix}`
+		: `${description} ${builderSuffix}`;
 }
 
 // ── Suspend / resume schemas (superset covering delete + setup) ────────────

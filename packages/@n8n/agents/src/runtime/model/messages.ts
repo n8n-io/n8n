@@ -1,3 +1,5 @@
+import type { ProviderOptions } from '@ai-sdk/provider-utils';
+import { isRecord } from '@n8n/utils/is-record';
 import type {
 	FilePart,
 	ModelMessage,
@@ -10,6 +12,7 @@ import type {
 	FinishReason as AiFinishReason,
 } from 'ai';
 
+import { getProviderQuirks, PROVIDER_QUIRKS } from './provider-quirks';
 import type { FinishReason } from '../../types';
 import type {
 	AgentMessage,
@@ -96,10 +99,6 @@ function toToolInputObject(value: JSONValue): JSONObject {
 	return normalizeToolInputForModel(value).input;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 function isJsonObject(value: unknown): value is JSONObject {
 	return isRecord(value);
 }
@@ -108,10 +107,54 @@ function getRecord(value: unknown): Record<string, unknown> | undefined {
 	return isRecord(value) ? value : undefined;
 }
 
+function hasEntries(value: Record<string, unknown>): boolean {
+	return Object.keys(value).length > 0;
+}
+
+function hasReplayableReasoningProviderOptions(
+	providerOptions: ProviderOptions | undefined,
+): boolean {
+	if (!providerOptions) return false;
+
+	return Object.entries(providerOptions).some(([provider, options]) => {
+		const replayKeys = getProviderQuirks(provider).reasoningReplayKeys;
+		if (replayKeys) return replayKeys.some((key) => typeof options[key] === 'string');
+		return hasEntries(options);
+	});
+}
+
 type ContentToolResultOutput = Extract<ToolResultPart['output'], { type: 'content' }>;
 
 function isContentToolResultOutput(value: JSONValue): value is ContentToolResultOutput {
 	return isRecord(value) && value.type === 'content' && Array.isArray(value.value);
+}
+
+/**
+ * Providers replay reasoning from `providerOptions`, but the AI SDK exposes the
+ * replay data in `providerMetadata` (see `PROVIDER_QUIRKS[provider].reasoningReplayKeys`).
+ * Copy it across so the next request can replay the reasoning block. Existing
+ * `providerOptions` values win.
+ */
+function toReasoningProviderOptions(block: ContentReasoning): ProviderOptions | undefined {
+	const additions: Record<string, JSONObject> = {};
+
+	for (const [provider, quirks] of Object.entries(PROVIDER_QUIRKS)) {
+		const replayKeys = quirks.reasoningReplayKeys;
+		if (!replayKeys) continue;
+
+		const metadata = getRecord(block.providerMetadata?.[provider]);
+		const replayed: JSONObject = {};
+		for (const key of replayKeys) {
+			if (typeof metadata?.[key] === 'string') replayed[key] = metadata[key];
+		}
+		if (hasEntries(replayed)) {
+			additions[provider] = { ...replayed, ...block.providerOptions?.[provider] };
+		}
+	}
+
+	if (!hasEntries(additions)) return block.providerOptions;
+
+	return { ...block.providerOptions, ...additions };
 }
 
 /** Convert a single n8n MessageContent block to an AI SDK content part. */
@@ -141,10 +184,17 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 		// Provider metadata can be required for replay. Gemini attaches
 		// `google.thoughtSignature` to function-call parts, and the next request
 		// is rejected if that signature is dropped from conversation history.
+		const providerOptions = isReasoning(block)
+			? toReasoningProviderOptions(block)
+			: block.providerOptions;
+		if (isReasoning(block) && !hasReplayableReasoningProviderOptions(providerOptions)) {
+			return undefined;
+		}
+
 		return {
 			...base,
 			...(block.providerMetadata && { providerMetadata: block.providerMetadata }),
-			...(block.providerOptions && { providerOptions: block.providerOptions }),
+			...(providerOptions && { providerOptions }),
 		} as AiContentPart;
 	}
 	return base;

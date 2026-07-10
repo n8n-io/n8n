@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from '@testing-library/vue';
+import { fireEvent, screen, waitFor, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useToast } from '@/app/composables/useToast';
@@ -10,10 +10,12 @@ import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useApiKeysStore } from '../apiKeys.store';
+import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '../apiKeys.constants';
 import { DateTime } from 'luxon';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useRBACStore } from '@/app/stores/rbac.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import type { ApiKey, ApiKeyOwner, ApiKeyOwnerSummary } from '@n8n/api-types';
 
@@ -110,6 +112,7 @@ const apiKeysStore = mockedStore(useApiKeysStore);
 const rootStore = mockedStore(useRootStore);
 const usersStore = mockedStore(useUsersStore);
 const rbacStore = mockedStore(useRBACStore);
+const uiStore = mockedStore(useUIStore);
 
 const ownerFixture: ApiKeyOwner = {
 	id: 'u1',
@@ -133,14 +136,18 @@ function makeKey(overrides: Partial<ApiKey> = {}): ApiKey {
 	};
 }
 
-const assertHintsAreShown = () => {
+const assertHintsAreShown = (expectedPlaygroundHref: string) => {
 	const apiDocsLink = screen.getByTestId('api-docs-link');
 	expect(apiDocsLink).toBeInTheDocument();
 	expect(apiDocsLink).toHaveAttribute('href', 'https://docs.n8n.io/api');
 	expect(apiDocsLink).toHaveAttribute('target', '_blank');
 
 	expect(screen.getByTestId('webhook-docs-link')).toBeInTheDocument();
-	expect(screen.getByTestId('api-playground-link')).toBeInTheDocument();
+
+	const playgroundLink = screen.getByTestId('api-playground-link');
+	expect(playgroundLink).toBeInTheDocument();
+	// The playground href must have exactly one slash between baseUrl and publicApiPath.
+	expect(playgroundLink).toHaveAttribute('href', expectedPlaygroundHref);
 };
 
 describe('SettingsApiView', () => {
@@ -178,7 +185,8 @@ describe('SettingsApiView', () => {
 		const dateInTheFuture = DateTime.now().plus({ days: 1 });
 
 		rootStore.baseUrl = 'http://localhost:5678';
-		settingsStore.publicApiPath = '/api';
+		// Match the backend default (no leading slash) so the join logic is tested as in prod.
+		settingsStore.publicApiPath = 'api';
 		settingsStore.publicApiLatestVersion = 1;
 		settingsStore.isPublicApiEnabled = true;
 		settingsStore.isSwaggerUIEnabled = true;
@@ -207,12 +215,14 @@ describe('SettingsApiView', () => {
 		// "Last used" is "Never" until populated.
 		expect(screen.getAllByText('Never').length).toBeGreaterThan(0);
 
-		assertHintsAreShown();
+		// Swagger UI enabled: link points at the instance's API docs, joined with a single slash.
+		assertHintsAreShown('http://localhost:5678/api/v1/docs');
 	});
 
 	it('renders the table when keys exist, without swagger', () => {
 		rootStore.baseUrl = 'http://localhost:5678';
-		settingsStore.publicApiPath = '/api';
+		// Match the backend default (no leading slash) so the join logic is tested as in prod.
+		settingsStore.publicApiPath = 'api';
 		settingsStore.publicApiLatestVersion = 1;
 		settingsStore.isPublicApiEnabled = true;
 		settingsStore.isSwaggerUIEnabled = false;
@@ -226,7 +236,31 @@ describe('SettingsApiView', () => {
 		renderComponent(SettingsApiView);
 
 		expect(screen.getByText('test-key-1')).toBeInTheDocument();
-		assertHintsAreShown();
+		// Swagger UI disabled: link falls back to the public docs API reference.
+		assertHintsAreShown('https://docs.n8n.io/api/api-reference/');
+	});
+
+	it('joins baseUrl and publicApiPath with a single slash regardless of their slash shape', () => {
+		// baseUrl with a trailing slash + publicApiPath with a leading slash would
+		// otherwise concatenate into a double slash ("…//api/…").
+		rootStore.baseUrl = 'http://localhost:5678/';
+		settingsStore.publicApiPath = '/api';
+		settingsStore.publicApiLatestVersion = 1;
+		settingsStore.isPublicApiEnabled = true;
+		settingsStore.isSwaggerUIEnabled = true;
+		cloudStore.userIsTrialing = false;
+		apiKeysStore.apiKeys = [makeKey({ id: '1', label: 'test-key-1', apiKey: '****Atcr' })];
+		apiKeysStore.allCount = 1;
+		apiKeysStore.mineCount = 1;
+		apiKeysStore.totalMineCount = apiKeysStore.mineCount;
+		apiKeysStore.totalAllCount = apiKeysStore.allCount || 1;
+
+		renderComponent(SettingsApiView);
+
+		expect(screen.getByTestId('api-playground-link')).toHaveAttribute(
+			'href',
+			'http://localhost:5678/api/v1/docs',
+		);
 	});
 
 	it('shows the revoke confirm dialog when the revoke action is clicked', async () => {
@@ -280,12 +314,13 @@ describe('SettingsApiView', () => {
 			expect(screen.queryByTestId('api-key-rotate-action')).toBeNull();
 		});
 
-		it('confirms, rotates via the store, and shows the new key in the success modal', async () => {
+		it('confirms, rotates via the store, and opens the created modal with the new key', async () => {
 			singleOwnedKey({ expiresAt: null });
-			apiKeysStore.rotateApiKey.mockResolvedValue({
+			const rotated = {
 				...makeKey({ id: '1', label: 'test-key-1' }),
 				rawApiKey: 'rotated-raw-key',
-			});
+			};
+			apiKeysStore.rotateApiKey.mockResolvedValue(rotated);
 
 			renderComponent(SettingsApiView);
 
@@ -297,7 +332,13 @@ describe('SettingsApiView', () => {
 			await fireEvent.click(rotateButtons[rotateButtons.length - 1]);
 
 			expect(apiKeysStore.rotateApiKey).toHaveBeenCalledWith('1');
-			expect(await screen.findByText('API key rotated successfully')).toBeInTheDocument();
+			// The rotated key is shown through the same modal used for newly created keys.
+			await waitFor(() =>
+				expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+					name: API_KEY_CREATE_OR_EDIT_MODAL_KEY,
+					data: { mode: 'new', rotatedApiKey: rotated },
+				}),
+			);
 		});
 	});
 

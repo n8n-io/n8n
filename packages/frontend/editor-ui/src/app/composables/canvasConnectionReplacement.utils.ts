@@ -62,6 +62,7 @@ type CanvasConnectionReplacementDependencies = {
 		nodeIds: string[];
 		connectionsToRemove?: Array<[IConnection, IConnection]>;
 		connectionsToAdd?: Array<[IConnection, IConnection]>;
+		trackHistory?: boolean;
 	}) => boolean;
 };
 
@@ -224,6 +225,7 @@ export function replaceCanvasConnection({
 			nodeIds,
 			connectionsToRemove: [removal.mappedConnection],
 			connectionsToAdd: additions.map(({ mappedConnection }) => mappedConnection),
+			trackHistory,
 		})
 	) {
 		return false;

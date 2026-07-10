@@ -6,13 +6,12 @@ post:
     - N8nPackage
   summary: 'Beta: Import an n8n package into a project'
   description: |
-    **Beta — disabled by default.** Set `N8N_PUBLIC_API_PACKAGES_ENABLED=true` on the
-    instance to enable this endpoint. While disabled, requests return `404`.
+    **Beta** — breaking changes may still occur without major version bump.
 
     Imports a gzip-compressed tar package (`.n8np`) into the target project. Send the
     archive as the multipart field `package`. Optional routing uses form fields
     `projectId` and `folderId` (omit or send empty for defaults). The optional
-    `credentialMatchingMode`, `credentialMissingMode`, `credentialBindings`,
+    `credentialMatchingMode`, `credentialMissingMode`, `bindings`,
     `workflowIdPolicy`, and `workflowPublishingPolicy` fields take their defaults when omitted. The required
     `workflowConflictPolicy` field controls what happens when a package workflow
     matches an existing workflow by source id in the target project. Maximum upload
@@ -24,9 +23,8 @@ post:
     fresh local id; imported workflows arrive inactive unless `workflowPublishingPolicy`
     publishes them after import.
 
-    Credential references are resolved before any workflow is written. Only credentials owned by the
-    target project (with `credential:read`) or global credentials (with `credential:read`)
-    match. Credentials shared into the project as `credential:user` are not matched.
+    Credential references are resolved before any workflow is written. Credentials owned by,
+    shared with, or global to the target project (with `credential:read`) match.
   requestBody:
     required: true
     content:
@@ -55,27 +53,39 @@ post:
               type: string
               enum:
                 - id-only
+                - name-and-type
+                - type-only
               default: id-only
               description: >
                 How credential references in `requirements.credentials` are matched on
-                the target instance. Only `id-only` is supported today.
+                the target instance. `id-only` (default) matches by id. `name-and-type`
+                matches credentials with the exact same name and type. `type-only`
+                matches any credential of the same type. For `name-and-type` and
+                `type-only`, candidates are ranked by scope — a credential owned by
+                the target project wins over one merely shared into it, which in
+                turn wins over a global credential; if several candidates remain
+                in the winning scope, the most recently updated one is chosen.
             credentialMissingMode:
               type: string
               enum:
                 - must-preexist
-              default: must-preexist
+                - create-stub
+              default: create-stub
               description: >
                 What to do when a credential reference cannot be resolved.
-                `must-preexist` requires every referenced credential to already
-                exist and be accessible on the target instance.
-            credentialBindings:
+                `create-stub` (default) creates empty credential placeholders in
+                the target project for missing references. `must-preexist`
+                requires every referenced credential to already exist.
+            bindings:
               type: string
               default: '{}'
               description: >
-                Optional JSON object mapping credential ids from the package
-                manifest to credential ids on the target instance. These explicit
-                bindings are validated and applied before `credentialMatchingMode`
-                resolution runs.
+                Optional JSON object of explicit source→target id bindings, keyed
+                by entity type. Only `credentials` is supported today: send
+                `{"credentials":{"<packageCredentialId>":"<targetCredentialId>"}}`
+                to map credential ids from the package to credential ids
+                on the target instance. These explicit bindings are validated on type and
+                applied before `credentialMatchingMode` resolution runs.
             workflowConflictPolicy:
               type: string
               enum:
@@ -118,6 +128,20 @@ post:
                 `publish-all` publishes every imported workflow.
                 `unpublish-all` leaves new workflows inactive and unpublishes
                 updated workflows that were published.
+            folderConflictPolicy:
+              type: string
+              enum:
+                - merge
+                - fail
+              default: merge
+              description: >
+                Controls what happens when a package folder (matched by id in the
+                target project) already exists at the same position. `merge`
+                (default) reuses the existing folder as-is and merges the package's
+                children into it; `fail` rejects the import. A folder whose id exists
+                under a different parent, or belongs to another project, always blocks
+                the import. Requires the `folder:create` scope and a license that
+                supports folders when the package contains folders.
   responses:
     '200':
       description: Import succeeded; the listed workflows were written to the target project.
@@ -128,7 +152,9 @@ post:
             required:
               - package
               - workflows
+              - folders
               - bindings
+              - credentials
             properties:
               package:
                 type: object
@@ -155,6 +181,7 @@ post:
                     - projectId
                     - parentFolderId
                     - activeVersionId
+                    - publishing
                     - status
                   properties:
                     sourceWorkflowId:
@@ -180,6 +207,49 @@ post:
                       description: >
                         Published version on the target instance, if any. `null` when the
                         workflow is not published after import.
+                    publishing:
+                      type: object
+                      required:
+                        - state
+                      description: >
+                        Outcome of applying the selected publishing policy to this workflow.
+                      properties:
+                        state:
+                          type: string
+                          enum:
+                            - published
+                            - unpublished
+                            - unchanged
+                            - blocked
+                            - failed
+                          description: >
+                            `blocked` means the imported version could not be published
+                            and no version is active (for example because the workflow
+                            uses a stubbed credential). When a prior published version
+                            remains active, `state` is `unchanged` with
+                            `skippedPublishReason` instead. `failed` means publish or
+                            unpublish was attempted but did not succeed.
+                        error:
+                          type: string
+                          description: >
+                            Present when `state` is `failed`. Explains why publish or unpublish
+                            could not be applied.
+                        blockedReason:
+                          type: string
+                          enum:
+                            - stub-credential
+                          description: >
+                            Present when `state` is `blocked`: the imported version
+                            could not be published and no version is active.
+                        skippedPublishReason:
+                          type: string
+                          enum:
+                            - stub-credential
+                          description: >
+                            Present when `state` is `unchanged` but the policy wanted
+                            to publish the imported version: a prior published version
+                            is still active (for example after an update with stubbed
+                            credentials).
                     status:
                       type: string
                       enum:
@@ -187,6 +257,60 @@ post:
                         - updated
                         - skipped
                       description: Import outcome for this package workflow.
+              folders:
+                type: array
+                description: Folder shells created or skipped in the target project.
+                items:
+                  type: object
+                  required:
+                    - sourceFolderId
+                    - localId
+                    - name
+                    - parentFolderId
+                    - status
+                  properties:
+                    sourceFolderId:
+                      type: string
+                      description: Folder id as it appeared in the package.
+                    localId:
+                      type: string
+                      description: Folder id on the target instance (equal to `sourceFolderId`; folder ids are reused).
+                    name:
+                      type: string
+                    parentFolderId:
+                      type: string
+                      nullable: true
+                      description: Resolved parent folder on the target, or `null` at the project root.
+                    status:
+                      type: string
+                      enum:
+                        - created
+                        - skipped
+                      description: Import outcome for this package folder.
+              credentials:
+                type: object
+                description: >
+                  Source credential ids grouped by whether they matched an
+                  existing credential or were created as stubs. Full
+                  source→target id mapping is in `bindings.credentials`.
+                required:
+                  - matched
+                  - stubbed
+                properties:
+                  matched:
+                    type: array
+                    items:
+                      type: string
+                    description: >
+                      Source credential ids from the package that matched
+                      existing credentials on the target instance.
+                  stubbed:
+                    type: array
+                    items:
+                      type: string
+                    description: >
+                      Source credential ids for which empty placeholder
+                      credentials were created in the target project.
               bindings:
                 type: object
                 description: >
@@ -210,8 +334,9 @@ post:
                       type: string
     '409':
       description: >
-        Import blocked, with at least one workflow source-id conflict among the
-        issues.
+        Import blocked by at least one conflict among the issues — a workflow
+        source-id conflict or a folder conflict (id under a different parent, id
+        owned by another project, or a `fail`-policy match).
       content:
         application/json:
           schema:

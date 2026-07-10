@@ -1,18 +1,18 @@
 import { GlobalConfig } from '@n8n/config';
-import type { SharedWorkflow, User } from '@n8n/db';
+import type { SharedWorkflow, User, WorkflowEntity } from '@n8n/db';
 import {
-	WorkflowEntity,
 	WorkflowTagMapping,
 	TagRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
+import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 
 import { License } from '@/license';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
@@ -44,7 +44,7 @@ export async function getSharedWorkflow(
 ): Promise<SharedWorkflow | null> {
 	return await Container.get(SharedWorkflowRepository).findOne({
 		where: {
-			...(!['global:owner', 'global:admin'].includes(user.role.slug) && { userId: user.id }),
+			...(!hasGlobalScope(user, ['workflow:read']) && { userId: user.id }),
 			...(workflowId && { workflowId }),
 		},
 		relations: [
@@ -65,7 +65,7 @@ export async function createWorkflow(
 	body: WorkflowEntity & { projectId?: string; parentFolderId?: string },
 ): Promise<WorkflowEntity> {
 	const { projectId, parentFolderId, ...rest } = body;
-	const workflow = Object.assign(new WorkflowEntity(), rest);
+	const workflow = createWorkflowEntityFromPayload(rest);
 
 	// A policy supplied via the API is explicit intent, so a below-floor value is
 	// rejected (422) rather than silently seeded up to the floor — matching the

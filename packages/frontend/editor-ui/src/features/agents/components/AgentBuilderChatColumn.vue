@@ -14,7 +14,7 @@ import AgentBuilderUnconfiguredEmptyState from './AgentBuilderUnconfiguredEmptyS
 import AgentChatPanel from './AgentChatPanel.vue';
 import AgentChatQuickActions from './AgentChatQuickActions.vue';
 
-const props = defineProps<{
+defineProps<{
 	initialized: boolean;
 	projectId: string;
 	agentId: string;
@@ -26,6 +26,7 @@ const props = defineProps<{
 	isBuilderConfigured: boolean;
 	isFullWidth: boolean;
 	canEditAgent: boolean;
+	isBuildChatStreaming: boolean;
 	beforeBuildSend?: () => Promise<void> | void;
 }>();
 
@@ -36,7 +37,7 @@ const emit = defineEmits<{
 	'update:tools': [tools: AgentJsonToolRef[]];
 	'update:mcp-servers': [mcpServers: AgentJsonMcpServerConfig[]];
 	'update:connected-triggers': [triggers: string[]];
-	'update:full-width': [fullWidth: boolean];
+	hide: [];
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
 	'agent-published': [agent: AgentResource];
 	'agent-changed': [];
@@ -44,13 +45,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-const fullWidthToggleLabel = computed(() =>
-	i18n.baseText(
-		props.isFullWidth
-			? 'agents.builder.chat.fullWidth.collapse.ariaLabel'
-			: 'agents.builder.chat.fullWidth.expand.ariaLabel',
-	),
-);
+const hideChatLabel = computed(() => i18n.baseText('agents.builder.chat.hide.ariaLabel'));
 
 const sharedInputDraft = ref('');
 </script>
@@ -61,18 +56,18 @@ const sharedInputDraft = ref('');
 		:aria-label="i18n.baseText('agents.builder.chatColumn.ariaLabel')"
 		data-testid="agent-builder-chat-column"
 	>
-		<span v-if="initialized" :class="$style.floatingFullWidthToggle">
-			<N8nTooltip placement="left" :content="fullWidthToggleLabel">
+		<span v-if="initialized" :class="$style.floatingHideToggle">
+			<N8nTooltip placement="left" :content="hideChatLabel">
 				<N8nButton
 					variant="ghost"
 					icon-only
 					size="small"
 					:class="$style.headerIconBtn"
-					:aria-label="fullWidthToggleLabel"
-					data-testid="agent-build-chat-full-width-toggle"
-					@click="emit('update:full-width', !isFullWidth)"
+					:aria-label="hideChatLabel"
+					data-testid="agent-build-chat-hide-toggle"
+					@click="emit('hide')"
 				>
-					<N8nIcon :icon="isFullWidth ? 'minimize-2' : 'maximize-2'" :size="14" />
+					<N8nIcon icon="panel-left-close" :size="14" />
 				</N8nButton>
 			</N8nTooltip>
 		</span>
@@ -94,7 +89,7 @@ const sharedInputDraft = ref('');
 				@build-done="emit('build-done')"
 				@update:streaming="emit('update:streaming', $event)"
 			>
-				<template v-if="canEditAgent" #above-input>
+				<template v-if="canEditAgent" #above-input="{ disabled: chatActionsDisabled }">
 					<div :class="$style.quickActionsRow">
 						<AgentChatQuickActions
 							:tools="localConfig?.tools ?? []"
@@ -105,6 +100,7 @@ const sharedInputDraft = ref('');
 							:is-published="
 								agent?.activeVersionId !== null && agent?.activeVersionId !== undefined
 							"
+							:disabled="isBuildChatStreaming || chatActionsDisabled"
 							@update:tools="emit('update:tools', $event)"
 							@update:mcp-servers="emit('update:mcp-servers', $event)"
 							@update:connected-triggers="emit('update:connected-triggers', $event)"
@@ -149,7 +145,7 @@ const sharedInputDraft = ref('');
 	}
 }
 
-.floatingFullWidthToggle {
+.floatingHideToggle {
 	position: absolute;
 	top: var(--spacing--2xs);
 	right: var(--spacing--sm);

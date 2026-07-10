@@ -6,8 +6,8 @@ import {
 	type CredentialsEntity,
 	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { NodeTypes } from '@/node-types';
 import type { OwnershipService } from '@/services/ownership.service';
@@ -49,7 +49,7 @@ describe('CredentialsPermissionChecker', () => {
 	});
 
 	beforeEach(async () => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		node.credentials!.someCredential.id = credentialId;
 		ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(personalProject);
@@ -65,6 +65,22 @@ describe('CredentialsPermissionChecker', () => {
 
 		expect(projectService.findProjectsWorkflowIsIn).toHaveBeenCalledWith(workflowId);
 		expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).not.toHaveBeenCalled();
+	});
+
+	it('should not throw for __aiGatewayManaged credentials with null id (member user)', async () => {
+		// Members don't get the owner short-circuit, so they reach mapCredIdsToNodes.
+		// AI Gateway managed credentials intentionally have id: null and must be skipped.
+		ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(null);
+		sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValueOnce([]);
+		credentialsRepository.find.mockResolvedValueOnce([]);
+
+		const managedNode = mock<INode>({
+			name: 'AI Node',
+			disabled: false,
+			credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+		});
+
+		await expect(permissionChecker.check(workflowId, [managedNode])).resolves.not.toThrow();
 	});
 
 	it('should throw if a credential is not accessible', async () => {
@@ -147,7 +163,7 @@ describe('CredentialsPermissionChecker', () => {
 			type: 'team',
 		});
 		// Reset and set up new mocks for this test
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(teamProject);
 		projectService.findProjectsWorkflowIsIn.mockResolvedValue([teamProject.id]);
 		ownershipService.getPersonalProjectOwnerCached.mockResolvedValue(null);
@@ -206,7 +222,7 @@ describe('CredentialsPermissionChecker', () => {
 		};
 
 		beforeEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 			ownershipService.getWorkflowProjectCached.mockResolvedValue(teamProject);
 			ownershipService.getPersonalProjectOwnerCached.mockResolvedValue(null);
 			projectService.findProjectsWorkflowIsIn.mockResolvedValue([teamProject.id]);

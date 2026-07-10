@@ -15,7 +15,10 @@ export const AGENT_TOOL_CONFIG_MODAL_KEY = 'agentToolConfigModal';
 export const AGENT_SKILL_MODAL_KEY = 'agentSkillModal';
 export const AGENT_TASK_MODAL_KEY = 'agentTaskModal';
 export const AGENT_SUB_AGENTS_MODAL_KEY = 'agentSubAgentsModal';
+export const AGENT_VECTOR_STORES_MODAL_KEY = 'agentVectorStoresModal';
+export const AGENT_JSON_IMPORT_MODAL_KEY = 'agentJsonImportModal';
 export const AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY = 'agentEpisodicMemoryCredentialModal';
+export const AGENT_MODEL_CREDENTIAL_MODAL_KEY = 'agentModelCredentialModal';
 export const AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE = 'openAiApi';
 
 /** Synthetic tree key for the combined "Agent" panel (name/model/credential/instructions). */
@@ -27,31 +30,14 @@ export const CONFIG_JSON_SECTION_KEY = '__config_json';
 /** Synthetic tree key for the agent executions tab. */
 export const EXECUTIONS_SECTION_KEY = '__executions';
 
-/**
- * Status of an assistant message during/after streaming.
- * Used by `useAgentChatStream`, `agentChatMessages`, and templates.
- */
-export const CHAT_MESSAGE_STATUS = {
-	STREAMING: 'streaming',
-	SUCCESS: 'success',
-	ERROR: 'error',
-	AWAITING_USER: 'awaitingUser',
-} as const;
-export type ChatMessageStatus = (typeof CHAT_MESSAGE_STATUS)[keyof typeof CHAT_MESSAGE_STATUS];
-
-/**
- * Lifecycle of a single tool-call as the agent runs.
- * `pending` → `running` → `done|error`, or `running` → `suspended` → `done`.
- */
-export const TOOL_CALL_STATE = {
-	PENDING: 'pending',
-	RUNNING: 'running',
-	SUSPENDED: 'suspended',
-	DONE: 'done',
-	CANCELLED: 'cancelled',
-	ERROR: 'error',
-} as const;
-export type ToolCallState = (typeof TOOL_CALL_STATE)[keyof typeof TOOL_CALL_STATE];
+export {
+	CHAT_MESSAGE_STATUS,
+	TOOL_CALL_STATE,
+	type ChatMessageStatus,
+	type ToolCallState,
+} from '@/features/ai/shared/agentsChat/constants';
 
 /** Query-string key the builder uses to deep-link into a chat session. */
 export const CONTINUE_SESSION_ID_PARAM = 'continueSessionId';
+
+export { EXTENDED_PROMPT_MAX_LENGTH as AGENT_BUILDER_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';

@@ -95,6 +95,9 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 			),
 		).toContain('# Per-trigger `inputData` shape');
 		expect(
+			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/open-ai-output-shape.md`),
+		).toContain('# OpenAI node output shape');
+		expect(
 			bundle.files.get(
 				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/workflow-builder-guardrails.md`,
 			),
@@ -106,7 +109,7 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 
 		const rootIndex = jsonParse<{
 			bestPractices: { indexFile: string; entries: Array<{ id: string }> };
-			templates: { indexFile: string; entries: unknown[] };
+			templates: { indexFile: string; entries?: unknown[] };
 			reference: { indexFile: string; entries: Array<{ id: string; file: string }> };
 		}>(
 			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_INDEX_FILE}`) ?? '',
@@ -114,11 +117,15 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 		expect(rootIndex.bestPractices.indexFile).toBe('best-practices/index.json');
 		expect(rootIndex.templates.indexFile).toBe('templates/index.json');
 		expect(rootIndex.reference.indexFile).toBe('reference/index.json');
-		expect(rootIndex.templates.entries).toEqual([]);
+		expect(rootIndex.templates.entries).toBeUndefined();
 		expect(rootIndex.reference.entries).toEqual([
 			expect.objectContaining({
 				id: 'trigger-input-data-shapes',
 				file: 'reference/trigger-input-data-shapes.md',
+			}),
+			expect.objectContaining({
+				id: 'open-ai-output-shape',
+				file: 'reference/open-ai-output-shape.md',
 			}),
 			expect.objectContaining({
 				id: 'workflow-builder-guardrails',
@@ -165,7 +172,7 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 		).toBe(false);
 	});
 
-	it('materializes templates as index.json and includes them in the root index', async () => {
+	it('materializes templates in templates/index.json without duplicating them in the root index', async () => {
 		const withoutTemplates = await buildKnowledgeBaseWorkspaceBundle({
 			root: ROOT,
 			logger: mockLogger,
@@ -217,19 +224,14 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 		).toBe(true);
 
 		const rootIndex = jsonParse<{
-			templates: { entries: Array<{ id: string }> };
+			templates: { indexFile: string; entries?: unknown[] };
 		}>(
 			withTemplates.files.get(
 				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_INDEX_FILE}`,
 			) ?? '',
 		);
-		expect(rootIndex.templates.entries).toEqual([
-			{
-				id: 'example',
-				description: 'Example template',
-				file: 'templates/example.ts',
-			},
-		]);
+		expect(rootIndex.templates.indexFile).toBe('templates/index.json');
+		expect(rootIndex.templates.entries).toBeUndefined();
 		expect(withTemplates.contentHash).not.toBe(withoutTemplates.contentHash);
 	});
 });

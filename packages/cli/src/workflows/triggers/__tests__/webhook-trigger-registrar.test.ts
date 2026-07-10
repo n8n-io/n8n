@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { WebhookEntity } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
-import type { ErrorReporter } from 'n8n-core';
+import { mock, type MockProxy } from 'vitest-mock-extended';
+import type { ErrorReporter, Span, Tracing } from 'n8n-core';
 import type { IWebhookData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { WebhookPathTakenError } from 'n8n-workflow';
+import { WebhookPathTakenError, WorkflowExpression } from 'n8n-workflow';
 
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import type { WebhookService } from '@/webhooks/webhook.service';
@@ -13,9 +13,12 @@ import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data
 import { createWorkflow, logger, node } from './trigger-test-utils';
 
 describe('WebhookTriggerRegistrar', () => {
+	const tracing = mock<Tracing>();
+
 	beforeEach(() => {
-		jest.clearAllMocks();
-		jest.restoreAllMocks();
+		vi.clearAllMocks();
+		vi.restoreAllMocks();
+		tracing.startSpan.mockImplementation(async (_opts, spanCb) => await spanCb(mock<Span>()));
 	});
 
 	test('resolves workflow webhook definitions', () => {
@@ -24,10 +27,11 @@ describe('WebhookTriggerRegistrar', () => {
 			mock<ErrorReporter>(),
 			mock<WebhookService>(),
 			mock<WorkflowStaticDataService>(),
+			tracing,
 		);
 		const additionalData = mock<IWorkflowExecuteAdditionalData>();
 		const webhookData = mock<IWebhookData>({ node: 'Webhook' });
-		jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhookData]);
+		vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhookData]);
 		const workflow = createWorkflow([node('webhook-node', 'webhook', { name: 'Webhook' })]);
 
 		expect(registrar.getWebhookTriggers(workflow, additionalData)).toEqual([webhookData]);
@@ -47,6 +51,7 @@ describe('WebhookTriggerRegistrar', () => {
 			mock<ErrorReporter>(),
 			webhookService,
 			workflowStaticDataService,
+			tracing,
 		);
 		const webhookEntity = { webhookPath: '/team/:id/', node: 'Webhook' } as WebhookEntity;
 		webhookService.createWebhook.mockReturnValue(webhookEntity);
@@ -91,6 +96,7 @@ describe('WebhookTriggerRegistrar', () => {
 			mock<ErrorReporter>(),
 			webhookService,
 			workflowStaticDataService,
+			tracing,
 		);
 		webhookService.createWebhook.mockImplementation(
 			(data) => ({ webhookPath: data.webhookPath, node: data.node }) as WebhookEntity,
@@ -136,6 +142,7 @@ describe('WebhookTriggerRegistrar', () => {
 			mock<ErrorReporter>(),
 			webhookService,
 			workflowStaticDataService,
+			tracing,
 		);
 		webhookService.createWebhook.mockImplementation(
 			(data) => ({ webhookPath: data.webhookPath, node: data.node }) as WebhookEntity,
@@ -181,6 +188,7 @@ describe('WebhookTriggerRegistrar', () => {
 			mock<ErrorReporter>(),
 			webhookService,
 			workflowStaticDataService,
+			tracing,
 		);
 		const webhookEntity = { webhookPath: 'taken', node: 'Webhook' } as WebhookEntity;
 		webhookService.createWebhook.mockReturnValue(webhookEntity);
@@ -190,7 +198,7 @@ describe('WebhookTriggerRegistrar', () => {
 			httpMethod: 'GET',
 			path: 'taken',
 		});
-		jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhookData]);
+		vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhookData]);
 		const workflow = createWorkflow([node('webhook-node', 'webhook', { name: 'Webhook' })]);
 		const dbError = new Error('duplicate');
 		dbError.name = 'QueryFailedError';
@@ -218,5 +226,225 @@ describe('WebhookTriggerRegistrar', () => {
 		).rejects.toBeInstanceOf(WebhookPathTakenError);
 		expect(webhookService.createWebhookIfNotExists).not.toHaveBeenCalled();
 		expect(workflowStaticDataService.saveStaticData).not.toHaveBeenCalled();
+	});
+
+	describe('getNodesWithUnregisteredWebhooks', () => {
+		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+		let webhookService: MockProxy<WebhookService>;
+		let registrar: WebhookTriggerRegistrar;
+
+		beforeEach(() => {
+			webhookService = mock<WebhookService>();
+			// `createWebhook` builds the entity the key is derived from; mirror the real
+			// passthrough so path normalization runs against the data under test.
+			webhookService.createWebhook.mockImplementation(
+				(data) =>
+					({
+						webhookPath: data.webhookPath,
+						node: data.node,
+						method: data.method,
+					}) as WebhookEntity,
+			);
+			registrar = new WebhookTriggerRegistrar(
+				logger,
+				mock<ErrorReporter>(),
+				webhookService,
+				mock<WorkflowStaticDataService>(),
+				tracing,
+			);
+		});
+
+		function desiredWebhook(overrides: Partial<IWebhookData>): IWebhookData {
+			return { workflowId: 'wf-1', ...overrides } as IWebhookData;
+		}
+
+		test('returns empty when every desired webhook has a registered row', async () => {
+			const workflow = createWorkflow([node('webhook-node', 'webhook', { name: 'Webhook' })]);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([
+				desiredWebhook({ node: 'Webhook', httpMethod: 'GET', path: 'users' }),
+			]);
+			webhookService.getRegisteredWebhooks.mockResolvedValue([
+				{ node: 'Webhook', method: 'GET', webhookPath: 'users' } as WebhookEntity,
+			]);
+
+			const result = await registrar.getNodesWithUnregisteredWebhooks(
+				workflow,
+				additionalData,
+				new Set(['webhook-node']),
+			);
+
+			expect(result).toEqual(new Set());
+			expect(webhookService.getRegisteredWebhooks).toHaveBeenCalledWith('wf-1');
+		});
+
+		test('returns a node that has no registered rows at all', async () => {
+			const workflow = createWorkflow([node('webhook-node', 'webhook', { name: 'Webhook' })]);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([
+				desiredWebhook({ node: 'Webhook', httpMethod: 'GET', path: 'users' }),
+			]);
+			webhookService.getRegisteredWebhooks.mockResolvedValue([]);
+
+			const result = await registrar.getNodesWithUnregisteredWebhooks(
+				workflow,
+				additionalData,
+				new Set(['webhook-node']),
+			);
+
+			expect(result).toEqual(new Set(['webhook-node']));
+		});
+
+		test('returns a node that is only partially registered', async () => {
+			const workflow = createWorkflow([node('webhook-node', 'webhook', { name: 'Webhook' })]);
+			// One node, two webhooks; only the first is present in storage.
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([
+				desiredWebhook({ node: 'Webhook', httpMethod: 'GET', path: 'users' }),
+				desiredWebhook({ node: 'Webhook', httpMethod: 'POST', path: 'users/action' }),
+			]);
+			webhookService.getRegisteredWebhooks.mockResolvedValue([
+				{ node: 'Webhook', method: 'GET', webhookPath: 'users' } as WebhookEntity,
+			]);
+
+			const result = await registrar.getNodesWithUnregisteredWebhooks(
+				workflow,
+				additionalData,
+				new Set(['webhook-node']),
+			);
+
+			expect(result).toEqual(new Set(['webhook-node']));
+		});
+
+		test('matches dynamic paths after normalization without re-adding', async () => {
+			const workflow = createWorkflow([
+				node('webhook-node', 'webhook', { name: 'Webhook', webhookId: 'hook-id' }),
+			]);
+			// Desired path has surrounding slashes; the stored row is already normalized.
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([
+				desiredWebhook({ node: 'Webhook', httpMethod: 'GET', path: '/team/:id/' }),
+			]);
+			webhookService.getRegisteredWebhooks.mockResolvedValue([
+				{ node: 'Webhook', method: 'GET', webhookPath: 'team/:id' } as WebhookEntity,
+			]);
+
+			const result = await registrar.getNodesWithUnregisteredWebhooks(
+				workflow,
+				additionalData,
+				new Set(['webhook-node']),
+			);
+
+			expect(result).toEqual(new Set());
+		});
+
+		test('ignores webhooks of nodes outside the requested set', async () => {
+			const workflow = createWorkflow([
+				node('webhook-node', 'webhook', { name: 'Webhook' }),
+				node('other-node', 'webhook', { name: 'Other' }),
+			]);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([
+				desiredWebhook({ node: 'Other', httpMethod: 'GET', path: 'other' }),
+			]);
+			webhookService.getRegisteredWebhooks.mockResolvedValue([]);
+
+			const result = await registrar.getNodesWithUnregisteredWebhooks(
+				workflow,
+				additionalData,
+				new Set(['webhook-node']),
+			);
+
+			expect(result).toEqual(new Set());
+		});
+
+		test('brackets expression resolution with an acquired isolate', async () => {
+			const callOrder: string[] = [];
+			vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockImplementation(async () => {
+				callOrder.push('acquire');
+				return true;
+			});
+			vi.spyOn(WorkflowExpression.prototype, 'releaseIsolate').mockImplementation(async () => {
+				callOrder.push('release');
+			});
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockImplementation(() => {
+				callOrder.push('resolve');
+				return [];
+			});
+			const workflow = createWorkflow([node('webhook-node', 'webhook', { name: 'Webhook' })]);
+
+			await registrar.getNodesWithUnregisteredWebhooks(
+				workflow,
+				additionalData,
+				new Set(['webhook-node']),
+			);
+
+			expect(callOrder).toEqual(['acquire', 'resolve', 'release']);
+		});
+
+		test('holds the isolate across the registered-webhook lookup', async () => {
+			const callOrder: string[] = [];
+			vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockImplementation(async () => {
+				callOrder.push('acquire');
+				return true;
+			});
+			vi.spyOn(WorkflowExpression.prototype, 'releaseIsolate').mockImplementation(async () => {
+				callOrder.push('release');
+			});
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockImplementation(() => {
+				callOrder.push('resolve');
+				return [desiredWebhook({ node: 'Webhook', httpMethod: 'GET', path: 'users' })];
+			});
+			webhookService.getRegisteredWebhooks.mockImplementation(async () => {
+				callOrder.push('db');
+				return [];
+			});
+			const workflow = createWorkflow([node('webhook-node', 'webhook', { name: 'Webhook' })]);
+
+			const result = await registrar.getNodesWithUnregisteredWebhooks(
+				workflow,
+				additionalData,
+				new Set(['webhook-node']),
+			);
+
+			expect(result).toEqual(new Set(['webhook-node']));
+			expect(callOrder).toEqual(['acquire', 'resolve', 'db', 'release']);
+		});
+
+		test('does not release an isolate it did not acquire', async () => {
+			// Simulates a caller that already holds the isolate for this workflow:
+			// acquire is idempotent per caller and reports it did not newly acquire.
+			vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockResolvedValue(false);
+			const releaseIsolate = vi
+				.spyOn(WorkflowExpression.prototype, 'releaseIsolate')
+				.mockResolvedValue(undefined);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([]);
+			const workflow = createWorkflow([node('webhook-node', 'webhook', { name: 'Webhook' })]);
+
+			await registrar.getNodesWithUnregisteredWebhooks(
+				workflow,
+				additionalData,
+				new Set(['webhook-node']),
+			);
+
+			// Releasing here would return the caller's bridge to the pool mid-bracket.
+			expect(releaseIsolate).not.toHaveBeenCalled();
+		});
+
+		test('releases the isolate when resolution throws', async () => {
+			vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockResolvedValue(true);
+			const releaseIsolate = vi
+				.spyOn(WorkflowExpression.prototype, 'releaseIsolate')
+				.mockResolvedValue(undefined);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockImplementation(() => {
+				throw new Error('boom');
+			});
+			const workflow = createWorkflow([node('webhook-node', 'webhook', { name: 'Webhook' })]);
+
+			await expect(
+				registrar.getNodesWithUnregisteredWebhooks(
+					workflow,
+					additionalData,
+					new Set(['webhook-node']),
+				),
+			).rejects.toThrow('boom');
+
+			expect(releaseIsolate).toHaveBeenCalledTimes(1);
+		});
 	});
 });

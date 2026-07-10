@@ -436,7 +436,7 @@ describe('FormTrigger, formWebhook', () => {
 		.calledWith('formDescription')
 		.mockReturnValue('Test Description');
 	executeFunctions.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
-	executeFunctions.getNodeParameter.calledWith('authentication').mockReturnValue('none');
+	executeFunctions.getNodeParameter.calledWith('authentication', 'none').mockReturnValue('none');
 	executeFunctions.getRequestObject.mockReturnValue({ method: 'GET', query: {} } as any);
 	executeFunctions.getMode.mockReturnValue('manual');
 	executeFunctions.getInstanceId.mockReturnValue('instanceId');
@@ -445,6 +445,32 @@ describe('FormTrigger, formWebhook', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it('renders the form when the node has no stored authentication parameter', async () => {
+		const ctx = mock<IWebhookFunctions>();
+		ctx.getNode.mockReturnValue({ typeVersion: 1, name: 'Form Trigger' } as INode);
+
+		// Mirror the engine: getNodeParameter throws when the key is absent and
+		// no default is supplied, but returns the default when one is given.
+		ctx.getNodeParameter.calledWith('authentication').mockImplementation(() => {
+			throw new Error('Could not get parameter');
+		});
+		ctx.getNodeParameter.calledWith('authentication', 'none').mockReturnValue('none');
+
+		ctx.getNodeParameter.calledWith('options').mockReturnValue({});
+		ctx.getNodeParameter.calledWith('formFields.values').mockReturnValue([]);
+		ctx.getNodeParameter.calledWith('formTitle').mockReturnValue('Test Form');
+		ctx.getNodeParameter.calledWith('formDescription').mockReturnValue('');
+		ctx.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
+
+		ctx.getRequestObject.mockReturnValue({ method: 'GET', query: {}, headers: {} } as any);
+		ctx.getResponseObject.mockReturnValue({ render: vi.fn(), setHeader: vi.fn() } as any);
+		ctx.getMode.mockReturnValue('manual');
+		ctx.getInstanceId.mockReturnValue('instanceId');
+		ctx.getChildNodes.mockReturnValue([]);
+
+		await expect(formWebhook(ctx)).resolves.toEqual({ noWebhookResponse: true });
 	});
 
 	it('should call response render', async () => {
@@ -831,7 +857,7 @@ describe('FormTrigger, formWebhook', () => {
 			ctx.getNodeParameter.calledWith('formTitle').mockReturnValue('Test Form');
 			ctx.getNodeParameter.calledWith('formDescription').mockReturnValue('Test Description');
 			ctx.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
-			ctx.getNodeParameter.calledWith('authentication').mockReturnValue('n8nUserAuth');
+			ctx.getNodeParameter.calledWith('authentication', 'none').mockReturnValue('n8nUserAuth');
 			ctx.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
 			ctx.getRequestObject.mockReturnValue(request as any);
 			ctx.getHeaderData.mockReturnValue(request.headers);
@@ -879,7 +905,7 @@ describe('FormTrigger, formWebhook', () => {
 			};
 			ctx.getNode.mockReturnValue({ typeVersion: 2.6 } as INode);
 			ctx.getNodeParameter.calledWith('options').mockReturnValue({});
-			ctx.getNodeParameter.calledWith('authentication').mockReturnValue('n8nUserAuth');
+			ctx.getNodeParameter.calledWith('authentication', 'none').mockReturnValue('n8nUserAuth');
 			ctx.getRequestObject.mockReturnValue({
 				method: 'GET',
 				originalUrl: '/form/test',
@@ -2523,6 +2549,29 @@ describe('prepareFormReturnItem', () => {
 				});
 				expect(resultSeparate.binary!.File).toEqual(mockBinaryData);
 			});
+		});
+	});
+
+	describe('showHeaders', () => {
+		it('should include headers when showHeaders is enabled', async () => {
+			const mockHeaders = {
+				'content-type': 'multipart/form-data',
+				'user-agent': 'Mozilla/5.0',
+			};
+			mockContext.getNodeParameter.calledWith('options.showHeaders', false).mockReturnValue(true);
+			mockContext.getHeaderData.mockReturnValue(mockHeaders);
+
+			const result = await prepareFormReturnItem(mockContext, [], 'test');
+
+			expect(result.json.headers).toEqual(mockHeaders);
+		});
+
+		it('should not include headers when showHeaders is disabled', async () => {
+			mockContext.getNodeParameter.calledWith('options.showHeaders', false).mockReturnValue(false);
+
+			const result = await prepareFormReturnItem(mockContext, [], 'test');
+
+			expect(result.json.headers).toBeUndefined();
 		});
 	});
 });

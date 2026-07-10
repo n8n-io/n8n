@@ -1,5 +1,5 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
-import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import {
 	type User,
@@ -28,12 +28,12 @@ import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
-import { OwnershipService } from './ownership.service';
-import { RoleService } from './role.service';
-
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
+import { OwnershipService } from './ownership.service';
+import { RoleService } from './role.service';
 
 export class TeamProjectOverQuotaError extends UserError {
 	constructor(limit: number) {
@@ -75,6 +75,7 @@ export class ProjectService {
 		private readonly licenseState: LicenseState,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly ownershipService: OwnershipService,
+		private readonly logger: Logger,
 	) {}
 
 	private get workflowService() {
@@ -234,7 +235,17 @@ export class ProjectService {
 			]);
 			const agents = await agentRepository.findByProjectId(project.id);
 			for (const agent of agents) {
-				await agentKnowledgeService.deleteAllFilesForAgent(agent.id);
+				try {
+					await agentKnowledgeService.deleteAllFilesForAgent(project.id, agent.id);
+				} catch (error) {
+					this.logger.warn('Failed to delete knowledge files on project delete', {
+						agentId: agent.id,
+						projectId: project.id,
+						error: error instanceof Error ? error.message : error,
+					});
+				}
+
+				await agentKnowledgeService.destroySandbox(project.id, agent.id);
 			}
 		}
 
@@ -704,6 +715,42 @@ export class ProjectService {
 		return projects.map((p) => p.id);
 	}
 
+	async findExistingProjectIds(projectIds: string[]): Promise<Set<string>> {
+		if (projectIds.length === 0) return new Set();
+		const projects = await this.projectRepository.find({
+			select: ['id'],
+			where: { id: In(projectIds) },
+		});
+		return new Set(projects.map(({ id }) => id));
+	}
+
+	async findProjectsByIdsForUser(
+		user: User,
+		projectIds: string[],
+		scopes: Scope[],
+	): Promise<Project[]> {
+		if (projectIds.length === 0) {
+			return [];
+		}
+
+		const where: FindOptionsWhere<Project> = {
+			id: In(projectIds),
+		};
+
+		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
+			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
+			where.projectRelations = {
+				role: In(projectRoles),
+				userId: user.id,
+			};
+		}
+
+		return await this.projectRepository.find({
+			where,
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
+	}
+
 	/**
 	 * Add a user to a team project with specified roles.
 	 *
@@ -729,6 +776,11 @@ export class ProjectService {
 				id: projectId,
 			},
 		});
+	}
+
+	/** Finds a project by id, or `null` when it does not exist. */
+	async findProject(projectId: string): Promise<Project | null> {
+		return await this.projectRepository.findOne({ where: { id: projectId } });
 	}
 
 	async getProjectRelations(projectId: string): Promise<ProjectRelation[]> {

@@ -11,6 +11,9 @@ frontend, and extensible node-based workflow engine.
 ## General Guidelines
 
 - Always use pnpm
+- When adding comments, keep them concise and to the point - explain the "why"
+  in a line or two; don't be overly verbose. Comments should be scoped and
+  relevant to the surrounding code, not just to the current task
 - We use Linear as a ticket tracking system
 - We use Posthog for feature flags
 - When starting to work on a new ticket – create a new branch from fresh
@@ -19,6 +22,9 @@ frontend, and extensible node-based workflow engine.
   suggested by Linear, **unless it is a security fix** (see Security Fix
   Hygiene below)
 - Use mermaid diagrams in MD files when you need to visualise something
+- **Developing v3 features:** land normal feature work on `master` behind an
+  opt-in flag; introduce breaking changes only on the `3.x` branch. See
+  [.github/DEVELOPING_V3.md](.github/DEVELOPING_V3.md).
 
 ## Agent Skills and Claude Code Plugin
 
@@ -119,7 +125,7 @@ The monorepo is organized into these key packages:
 
 - **Frontend:** Vue 3 + TypeScript + Vite + Pinia + Storybook UI Library
 - **Backend:** Node.js + TypeScript + Express + TypeORM
-- **Testing:** Jest (unit) + Playwright (E2E)
+- **Testing:** Vitest (unit) + Playwright (E2E)
 - **Database:** TypeORM with SQLite/PostgreSQL support
 - **Code Quality:** Biome (for formatting) + ESLint + lefthook git hooks
 
@@ -170,9 +176,15 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
   top-level `import`. Applies especially to native modules and large parsers.
 
 ### Error Handling
-- Don't use `ApplicationError` class in CLI and nodes for throwing errors,
-  because it's deprecated. Use `UnexpectedError`, `OperationalError` or
-  `UserError` instead.
+- Don't use the deprecated `ApplicationError` class anywhere — it's a
+  compatibility shim kept only so community nodes keep resolving. Use one of
+  these instead, picking by cause:
+  - `UserError` — the user caused it (invalid input, unauthorized action,
+    business-rule violation).
+  - `OperationalError` — a transient, expected issue (network request failing,
+    DB query timing out) that should be handled gracefully.
+  - `UnexpectedError` — a bug in the code (logic mistake, unhandled case,
+    failed assertion) that developers need to fix.
 - Import from appropriate error classes in each package
 
 ### Frontend Development
@@ -192,7 +204,7 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
 - **For Vitest packages that use `@n8n/di` decorators**, use `createVitestConfigWithDecorators` from `@n8n/vitest-config/node-decorators`. It enables SWC `decoratorMetadata` (esbuild doesn't emit it) and externalizes workspace packages that register services (`@n8n/di`, `@n8n/config`, `@n8n/constants`, `n8n-workflow`) so a single DI `Container` instance is shared across the runtime. Loading them through Vitest's pipeline alongside their CJS dist produces two `Container`s and `Container.get(...)` returns `undefined`.
 
 What we use for testing and writing tests:
-- For testing nodes and other backend components, we use Jest for unit tests. Examples can be found in `packages/nodes-base/nodes/**/*test*`.
+- For testing nodes and other backend components, we use Vitest for unit tests. Examples can be found in `packages/nodes-base/nodes/**/*test*`.
 - We use `nock` for server mocking
 - For frontend we use `vitest`
 - For E2E tests we use Playwright. Run with `pnpm --filter=n8n-playwright test:local`.

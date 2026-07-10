@@ -17,7 +17,7 @@ const instanceAiLazyRuntimeImports = [
 }));
 
 export default defineConfig(
-	globalIgnores(['scripts/**/*.mjs', 'jest.config*.js', 'test/*-testcontainers.js', 'coverage/**']),
+	globalIgnores(['scripts/**/*.mjs', 'vitest.*.ts', 'coverage/**']),
 	nodeConfig,
 	{
 		rules: {
@@ -114,6 +114,9 @@ export default defineConfig(
 	{
 		files: ['./test/**/*.ts', './src/**/__tests__/**/*.ts'],
 		rules: {
+			// Allow inline `typeof import('x')` type annotations — the idiomatic shape for
+			// `vi.importActual<typeof import('x')>('x')` in mock factories.
+			'@typescript-eslint/consistent-type-imports': ['error', { disallowTypeAnnotations: false }],
 			'id-denylist': 'warn',
 			'prefer-const': 'warn',
 			'n8n-local-rules/no-dynamic-import-template': 'off',

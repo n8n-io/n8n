@@ -11,6 +11,7 @@ import {
 import { WorkflowRepository, WorkflowDependencyRepository, WorkflowDependencies } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
+
 import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
 
 import { createTestRun } from '../../shared/db/evaluation';
@@ -40,7 +41,7 @@ function expectWorkflowsMatch(
 	const oldSorted = [...oldWorkflows].sort((a, b) => a.id.localeCompare(b.id));
 	const newSorted = [...newWorkflows].sort((a, b) => a.id.localeCompare(b.id));
 
-	// Jest's toEqual does deep recursive comparison of all fields
+	// Vitest's toEqual does deep recursive comparison of all fields
 	expect(newSorted).toEqual(oldSorted);
 }
 

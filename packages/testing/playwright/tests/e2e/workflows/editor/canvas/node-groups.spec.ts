@@ -1,7 +1,6 @@
 import { nanoid } from 'nanoid';
 
 import { test, expect } from '../../../../../fixtures/base';
-import type { TestRequirements } from '../../../../../Types';
 
 const FIXTURE = 'Canvas-node-groups-fixture.json';
 const IF_FIXTURE = 'Canvas-node-groups-if-fixture.json';
@@ -17,14 +16,6 @@ const AUTOSAVE_TIMEOUT = 5_000;
 // Groups load collapsed by default, so only 2 canvas nodes render (trigger + Set C).
 const VISIBLE_NODES_AFTER_COLLAPSED_LOAD = 2;
 
-const requirements: TestRequirements = {
-	storage: {
-		N8N_EXPERIMENT_OVERRIDES: JSON.stringify({
-			'083_canvas_nodes_grouping': true,
-		}),
-	},
-};
-
 test.describe(
 	'Canvas node groups',
 	{
@@ -33,8 +24,7 @@ test.describe(
 	() => {
 		let workflowId: string;
 
-		test.beforeEach(async ({ n8n, setupRequirements }) => {
-			await setupRequirements(requirements);
+		test.beforeEach(async ({ n8n }) => {
 			const importResult = await n8n.start.fromImportedWorkflow(FIXTURE);
 			workflowId = importResult.workflowId;
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(4);
@@ -65,6 +55,20 @@ test.describe(
 			const after = await n8n.canvas.getNodeGroupBoundingBox(DEFAULT_GROUP_TITLE);
 
 			expect(after.width).toBeGreaterThan(before.width);
+		});
+
+		test('drags the group when grabbing the title bar beside a short name', async ({ n8n }) => {
+			await n8n.canvas.selectNodes(['Set A', 'Set B']);
+			await n8n.canvas.selectionToolbar.groupButton().click();
+			await n8n.canvas.deselectAll();
+
+			const before = await n8n.canvas.getNodeGroupBoundingBox(DEFAULT_GROUP_TITLE);
+			// Grab the empty space to the right of the (short) name, not over the name input.
+			await n8n.canvas.dragNodeGroupFromTitleBar(DEFAULT_GROUP_TITLE, 120, 80);
+			const after = await n8n.canvas.getNodeGroupBoundingBox(DEFAULT_GROUP_TITLE);
+
+			expect(after.x).toBeGreaterThan(before.x);
+			expect(after.y).toBeGreaterThan(before.y);
 		});
 
 		test('commits a new title on Enter and reverts on Escape', async ({ n8n }) => {
@@ -243,8 +247,7 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Adore' }],
 	},
 	() => {
-		test.beforeEach(async ({ n8n, setupRequirements }) => {
-			await setupRequirements(requirements);
+		test.beforeEach(async ({ n8n }) => {
 			await n8n.start.fromImportedWorkflow(IF_FIXTURE);
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(5);
 			await n8n.canvas.clickZoomToFitButton();
@@ -274,8 +277,7 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Adore' }],
 	},
 	() => {
-		test.beforeEach(async ({ n8n, setupRequirements }) => {
-			await setupRequirements(requirements);
+		test.beforeEach(async ({ n8n }) => {
 			await n8n.start.fromImportedWorkflow(PERSISTED_FIXTURE);
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(VISIBLE_NODES_AFTER_COLLAPSED_LOAD);
 			await n8n.canvas.clickZoomToFitButton();
@@ -293,8 +295,7 @@ test.describe(
 	{ annotation: [{ type: 'owner', description: 'Adore' }] },
 	() => {
 		test.describe('Default state on workflow load', () => {
-			test.beforeEach(async ({ n8n, setupRequirements }) => {
-				await setupRequirements(requirements);
+			test.beforeEach(async ({ n8n }) => {
 				await n8n.start.fromImportedWorkflow(PERSISTED_FIXTURE);
 				await expect(n8n.canvas.getCanvasNodes()).toHaveCount(VISIBLE_NODES_AFTER_COLLAPSED_LOAD);
 				await n8n.canvas.clickZoomToFitButton();
@@ -344,8 +345,7 @@ test.describe(
 		});
 
 		test.describe('Newly created groups start expanded', () => {
-			test.beforeEach(async ({ n8n, setupRequirements }) => {
-				await setupRequirements(requirements);
+			test.beforeEach(async ({ n8n }) => {
 				await n8n.start.fromImportedWorkflow(FIXTURE);
 				await expect(n8n.canvas.getCanvasNodes()).toHaveCount(4);
 				await n8n.canvas.clickZoomToFitButton();
@@ -367,8 +367,7 @@ test.describe(
 		});
 
 		test.describe('Expand state persists across reload', () => {
-			test.beforeEach(async ({ n8n, setupRequirements }) => {
-				await setupRequirements(requirements);
+			test.beforeEach(async ({ n8n }) => {
 				await n8n.start.fromImportedWorkflow(PERSISTED_FIXTURE);
 				await expect(n8n.canvas.getCanvasNodes()).toHaveCount(VISIBLE_NODES_AFTER_COLLAPSED_LOAD);
 				await n8n.canvas.clickZoomToFitButton();

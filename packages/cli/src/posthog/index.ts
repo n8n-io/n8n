@@ -56,7 +56,6 @@ export class PostHogClient {
 		this.postHog?.capture({
 			event: payload.event,
 			distinctId: payload.userId,
-			sendFeatureFlags: true,
 			properties: payload.properties,
 			...(typeof instanceId === 'string' && {
 				groups: { [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId },
@@ -78,7 +77,6 @@ export class PostHogClient {
 		this.postHog?.capture({
 			distinctId: distinctId ?? `${POSTHOG_GROUP_TYPE_INSTANCE}_${instanceId}`,
 			event: '$groupidentify',
-			sendFeatureFlags: true,
 			properties: {
 				$group_type: POSTHOG_GROUP_TYPE_INSTANCE,
 				$group_key: instanceId,

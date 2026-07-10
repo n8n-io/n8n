@@ -1,4 +1,5 @@
 import type { User } from '@n8n/api-types';
+import type { APIResponse } from '@playwright/test';
 import { customAlphabet } from 'nanoid';
 
 import type { ApiHelpers } from './api-helper';
@@ -64,6 +65,17 @@ export class UserApiHelper {
 		}
 
 		return { id, ...user };
+	}
+
+	/**
+	 * Triggers a password reset email for the given address. Returns the raw
+	 * response so callers can assert on the status (the endpoint returns 200 even
+	 * for unknown emails to avoid leaking which accounts exist).
+	 */
+	async forgotPassword(email: string): Promise<APIResponse> {
+		return await this.api.request.post('/rest/forgot-password', {
+			data: { email },
+		});
 	}
 
 	/**

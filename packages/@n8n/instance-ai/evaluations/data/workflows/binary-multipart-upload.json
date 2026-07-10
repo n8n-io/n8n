@@ -8,6 +8,7 @@
 	"complexity": "medium",
 	"tags": ["webhook", "binary", "multipart", "slack", "upload"],
 	"triggerType": "webhook",
+	"datasets": ["mcp", "full"],
 	"executionScenarios": [
 		{
 			"name": "happy-path",

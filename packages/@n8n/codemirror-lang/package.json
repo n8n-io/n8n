@@ -1,6 +1,6 @@
 {
   "name": "@n8n/codemirror-lang",
-  "version": "0.8.0",
+  "version": "0.10.0",
   "description": "Language support package for CodeMirror 6 in n8n",
   "sideEffects": false,
   "license": "MIT",
@@ -39,15 +39,17 @@
     "format": "biome format --write src test",
     "format:check": "biome ci src test"
   },
-  "peerDependencies": {
+  "dependencies": {
     "@codemirror/language": "catalog:",
+    "@lezer/generator": "catalog:",
     "@lezer/highlight": "catalog:",
     "@lezer/lr": "catalog:"
   },
   "devDependencies": {
-    "@lezer/generator": "catalog:",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "typescript": "catalog:typescript",
+    "vite": "catalog:",
     "vitest": "catalog:"
   }
 }

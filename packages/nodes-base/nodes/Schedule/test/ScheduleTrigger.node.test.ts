@@ -1,5 +1,3 @@
-import { ExecutionsConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
 import * as n8nWorkflow from 'n8n-workflow';
 
 import { testTriggerNode } from '@test/nodes/TriggerHelpers';
@@ -34,22 +32,21 @@ describe('ScheduleTrigger', () => {
 			expect(emit).toHaveBeenCalledTimes(1);
 
 			// Filler second/minute are derived deterministically from
-			// `${workflowId ?? ''}:${nodeId}`. The default test setup
-			// leaves both ids undefined, so the seed is ':undefined' and
-			// resolves to second=34 / minute=52.
+			// `${workflowId ?? ''}:${nodeId}`. The default test helper uses
+			// `workflow-1:1`, which resolves to second=13 / minute=47.
 			const firstTriggerData = emit.mock.calls[0][0][0][0];
 			expect(firstTriggerData.json).toEqual({
 				'Day of month': '28',
 				'Day of week': 'Thursday',
 				Hour: '15',
-				Minute: '52',
+				Minute: '47',
 				Month: 'December',
-				'Readable date': 'December 28th 2023, 3:52:34 pm',
-				'Readable time': '3:52:34 pm',
-				Second: '34',
+				'Readable date': 'December 28th 2023, 3:47:13 pm',
+				'Readable time': '3:47:13 pm',
+				Second: '13',
 				Timezone: 'Europe/Berlin (UTC+01:00)',
 				Year: '2023',
-				timestamp: '2023-12-28T15:52:34.000+01:00',
+				timestamp: '2023-12-28T15:47:13.000+01:00',
 			});
 
 			vi.setSystemTime(new Date(firstTriggerData.json.timestamp as string));
@@ -59,6 +56,25 @@ describe('ScheduleTrigger', () => {
 
 			vi.advanceTimersByTime(HOUR);
 			expect(emit).toHaveBeenCalledTimes(2);
+		});
+
+		it('should re-arm a schedule whose stored recurrence state is stale', async () => {
+			// staticData carries a stale day-of-year value (200) and no signature, as if the
+			// interval was switched from "every N days" to "every 3 hours". Without re-arming,
+			// recurrenceCheck reads 200 as an hour and the trigger never fires again.
+			const { emit } = await testTriggerNode(ScheduleTrigger, {
+				timezone,
+				node: { parameters: { rule: { interval: [{ field: 'hours', hoursInterval: 3 }] } } },
+				workflowStaticData: { recurrenceRules: [200] },
+			});
+
+			expect(emit).not.toHaveBeenCalled();
+
+			vi.advanceTimersByTime(HOUR);
+			expect(emit).not.toHaveBeenCalled();
+
+			vi.advanceTimersByTime(2 * HOUR);
+			expect(emit).toHaveBeenCalledTimes(1);
 		});
 
 		it('should emit repeatedly for hourly intervals that do not divide evenly into a day', async () => {
@@ -222,19 +238,7 @@ describe('ScheduleTrigger', () => {
 		});
 
 		describe('deduplication key', () => {
-			const executionsConfig = Container.get(ExecutionsConfig);
-
-			beforeEach(() => {
-				executionsConfig.scheduledExecutionDeduplicationEnabled = false;
-			});
-
-			afterEach(() => {
-				executionsConfig.scheduledExecutionDeduplicationEnabled = false;
-			});
-
-			it('should emit a deduplication key when the feature flag is enabled', async () => {
-				executionsConfig.scheduledExecutionDeduplicationEnabled = true;
-
+			it('should emit a deduplication key for scheduled executions', async () => {
 				const workflowId = 'wf-123';
 				const nodeId = 'node-456';
 				const { emit } = await testTriggerNode(ScheduleTrigger, {
@@ -269,8 +273,6 @@ describe('ScheduleTrigger', () => {
 			});
 
 			it('should not emit a deduplication key for manual executions', async () => {
-				executionsConfig.scheduledExecutionDeduplicationEnabled = true;
-
 				const { emit, manualTriggerFunction } = await testTriggerNode(ScheduleTrigger, {
 					mode: 'manual',
 					timezone,

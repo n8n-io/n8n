@@ -21,6 +21,7 @@ const props = defineProps<{
 	agentId: string;
 	connectedTriggers: string[];
 	isPublished: boolean;
+	disabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -38,6 +39,8 @@ const channelModalOpen = ref(false);
 const channelModalView = ref<ChannelView>('list');
 
 function onAddTool() {
+	if (props.disabled) return;
+
 	uiStore.openModalWithData({
 		name: AGENT_TOOLS_MODAL_KEY,
 		data: {
@@ -45,15 +48,24 @@ function onAddTool() {
 			mcpServers: props.mcpServers ?? [],
 			projectId: props.projectId,
 			agentId: props.agentId,
-			onConfirm: (tools: AgentJsonToolRef[], mcpServers: AgentJsonMcpServerConfig[] = []) => {
-				emit('update:tools', tools);
-				emit('update:mcp-servers', mcpServers);
+			onConfirm: (props: {
+				tools?: AgentJsonToolRef[];
+				mcpServers?: AgentJsonMcpServerConfig[];
+			}) => {
+				if (props.tools) {
+					emit('update:tools', props.tools);
+				}
+				if (props.mcpServers) {
+					emit('update:mcp-servers', props.mcpServers);
+				}
 			},
 		},
 	});
 }
 
 function onAddTrigger() {
+	if (props.disabled) return;
+
 	channelModalView.value = 'list';
 	channelModalOpen.value = true;
 }
@@ -78,6 +90,7 @@ function handleChannelDisconnected(channelType: string) {
 			<AgentChipButton
 				variant="suggestion"
 				icon="wrench"
+				:disabled="props.disabled"
 				data-testid="agent-quick-action-add-tool"
 				@click="onAddTool"
 			>
@@ -86,6 +99,7 @@ function handleChannelDisconnected(channelType: string) {
 			<AgentChipButton
 				variant="suggestion"
 				icon="zap"
+				:disabled="props.disabled"
 				data-testid="agent-quick-action-add-trigger"
 				@click="onAddTrigger"
 			>

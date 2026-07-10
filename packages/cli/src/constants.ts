@@ -115,6 +115,11 @@ export const GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE = [
 	'wordpressOAuth2Api',
 	'figmaOAuth2Api',
 	'gumroadOAuth2Api',
+	'googleCloudStorageOAuth2Api',
+	'googleCalendarOAuth2Api',
+	'googleSheetsOAuth2Api',
+	'googleBigQueryOAuth2Api',
+	'zendeskOAuth2Api',
 ];
 
 export const ARTIFICIAL_TASK_DATA = {

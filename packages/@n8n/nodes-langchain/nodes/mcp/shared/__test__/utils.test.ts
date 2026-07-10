@@ -103,6 +103,49 @@ describe('utils', () => {
 				headers: { Authorization: 'Bearer access-token' },
 				credentials,
 			});
+			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+		});
+
+		it('should not send an undefined bearer token when mcpOAuth2Api token data is empty', async () => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			const credentials = {
+				clientId: 'client-id',
+				clientSecret: 'client-secret',
+				accessTokenUrl: 'https://auth.example.com/token',
+				grantType: 'clientCredentials',
+				authentication: 'header',
+				useDynamicClientRegistration: false,
+				resourceUrl: 'https://mcp.example.com/',
+				oauthTokenData: {},
+			};
+			ctx.getCredentials.mockResolvedValue(credentials);
+
+			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+
+			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+			expect(result).toEqual({ credentials });
+			expect(result.headers?.Authorization).not.toBe('Bearer undefined');
+		});
+
+		it('should not set headers when mcpOAuth2Api token data is undefined', async () => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			const credentials = {
+				clientId: 'client-id',
+				clientSecret: 'client-secret',
+				accessTokenUrl: 'https://auth.example.com/token',
+				grantType: 'clientCredentials',
+				authentication: 'header',
+				useDynamicClientRegistration: false,
+				resourceUrl: 'https://mcp.example.com/',
+				oauthTokenData: undefined,
+			};
+			ctx.getCredentials.mockResolvedValue(credentials);
+
+			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+
+			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+			expect(result).toEqual({ credentials });
+			expect(result.headers).toBeUndefined();
 		});
 
 		it('should return the headers and credentials for headerAuth', async () => {

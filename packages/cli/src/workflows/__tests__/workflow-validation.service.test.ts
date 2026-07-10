@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	ICredentialType,
 } from 'n8n-workflow';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
@@ -742,7 +742,7 @@ describe('WorkflowValidationService', () => {
 			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
 
 			expect(result.isValid).toBe(false);
-			expect(result.error).toContain('dynamic credentials');
+			expect(result.error).toContain('end-user credentials');
 			expect(result.error).toContain('"My OAuth2"');
 			expect(result.error).toContain('resolver');
 		});
@@ -816,7 +816,7 @@ describe('WorkflowValidationService', () => {
 			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
 
 			expect(result.isValid).toBe(false);
-			expect(result.error).toContain('dynamic credentials');
+			expect(result.error).toContain('end-user credentials');
 			expect(result.error).toContain('"My OAuth2"');
 			expect(result.error).toContain('identity extractor');
 		});
@@ -842,7 +842,7 @@ describe('WorkflowValidationService', () => {
 			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
 
 			expect(result.isValid).toBe(false);
-			expect(result.error).toContain('dynamic credentials');
+			expect(result.error).toContain('end-user credentials');
 			expect(result.error).toContain('identity extractor');
 		});
 
@@ -867,7 +867,7 @@ describe('WorkflowValidationService', () => {
 			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
 
 			expect(result.isValid).toBe(false);
-			expect(result.error).toContain('private credentials');
+			expect(result.error).toContain('end-user credentials');
 			expect(result.error).toContain('"My OAuth2"');
 			expect(result.error).toContain('manually');
 		});

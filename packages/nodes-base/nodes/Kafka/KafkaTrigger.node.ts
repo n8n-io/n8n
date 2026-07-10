@@ -6,12 +6,8 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 } from 'n8n-workflow';
-import {
-	ensureError,
-	NodeConnectionTypes,
-	NodeOperationError,
-	TriggerCloseError,
-} from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { NodeConnectionTypes, NodeOperationError, TriggerCloseError } from 'n8n-workflow';
 
 import {
 	type KafkaTriggerOptions,
@@ -24,6 +20,8 @@ import {
 	configureDataEmitter,
 	getAutoCommitSettings,
 	runWithHeartbeat,
+	toUserFacingConsumerError,
+	type ConsumerErrorHandler,
 } from './utils';
 
 export class KafkaTrigger implements INodeType {
@@ -485,9 +483,17 @@ export class KafkaTrigger implements INodeType {
 			}
 		};
 
-		const listeners = connectEventListeners(consumer, this.logger);
+		let closeGotCalled = false;
+		const handleConsumerError: ConsumerErrorHandler = (error) => {
+			// Don't surface errors that are a side effect of our own teardown.
+			if (!closeGotCalled) {
+				this.emitError(toUserFacingConsumerError(this.getNode(), error));
+			}
+		};
+		const listeners = connectEventListeners(consumer, this.logger, handleConsumerError);
 
 		const closeFunction = async () => {
+			closeGotCalled = true;
 			try {
 				disconnectEventListeners(listeners);
 				await consumer.stop();

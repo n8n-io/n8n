@@ -1,8 +1,9 @@
+import type { Mocked } from 'vitest';
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import { JwtService } from '@/services/jwt.service';
@@ -17,10 +18,10 @@ import { ProtectedResourceRegistry } from '@/services/protected-resource.registr
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 const jwtService = new JwtService(instanceSettings, mock());
 
-let logger: jest.Mocked<Logger>;
-let userRepository: jest.Mocked<UserRepository>;
-let accessTokenRepository: jest.Mocked<AccessTokenRepository>;
-let refreshTokenRepository: jest.Mocked<RefreshTokenRepository>;
+let logger: Mocked<Logger>;
+let userRepository: Mocked<UserRepository>;
+let accessTokenRepository: Mocked<AccessTokenRepository>;
+let refreshTokenRepository: Mocked<RefreshTokenRepository>;
 let service: OAuthTokenService;
 let mockTransactionManager: any;
 
@@ -35,28 +36,25 @@ registry.register({
 	getAudiences: () => [TEST_RESOURCE_URL, LEGACY_AUDIENCE],
 	scopes: [],
 	isDefault: true,
+	authorize: async () => true,
 });
 
 describe('OAuthTokenService', () => {
 	beforeAll(() => {
 		logger = mockInstance(Logger);
 		userRepository = mockInstance(UserRepository);
-		accessTokenRepository = mockInstance(
-			AccessTokenRepository,
-		) as jest.Mocked<AccessTokenRepository>;
-		refreshTokenRepository = mockInstance(
-			RefreshTokenRepository,
-		) as jest.Mocked<RefreshTokenRepository>;
+		accessTokenRepository = mockInstance(AccessTokenRepository) as Mocked<AccessTokenRepository>;
+		refreshTokenRepository = mockInstance(RefreshTokenRepository) as Mocked<RefreshTokenRepository>;
 
 		mockTransactionManager = {
-			insert: jest.fn().mockResolvedValue(mock()),
-			remove: jest.fn().mockResolvedValue(mock()),
-			findOne: jest.fn(),
-			delete: jest.fn(),
+			insert: vi.fn().mockResolvedValue(mock()),
+			remove: vi.fn().mockResolvedValue(mock()),
+			findOne: vi.fn(),
+			delete: vi.fn(),
 		};
 
 		const mockManager: any = {
-			transaction: jest.fn(async (cb: any) => await cb(mockTransactionManager)),
+			transaction: vi.fn(async (cb: any) => await cb(mockTransactionManager)),
 		};
 
 		(accessTokenRepository as any).manager = mockManager;
@@ -75,7 +73,7 @@ describe('OAuthTokenService', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('generateTokenPair', () => {
@@ -429,6 +427,21 @@ describe('OAuthTokenService', () => {
 
 			expect(result).toMatchObject({ user: null });
 		});
+
+		it('should deny when a resource-scoped audience cannot be resolved', async () => {
+			// Fail closed: the token carries an audience but no resource resolves for
+			// it (deleted, or a transient resolver failure the registry swallows), so
+			// the authorize gate cannot run and the token must be rejected.
+			const { accessToken } = service.generateTokenPair('user-123', 'client-456');
+
+			const result = await service.verifyOAuthAccessToken(
+				accessToken,
+				'https://unregistered.example.com/mcp',
+			);
+
+			expect(result.user).toBeNull();
+			expect(result.context?.reason).toBe('insufficient_scope');
+		});
 	});
 
 	describe('revokeAccessToken', () => {
@@ -505,12 +518,14 @@ describe('OAuthTokenService', () => {
 				getResourceUrl: () => RESOURCE_A_URL,
 				getAudiences: () => [RESOURCE_A_URL, LEGACY_AUDIENCE],
 				scopes: [],
+				authorize: async () => true,
 				isDefault: true,
 			});
 			multiResourceRegistry.register({
 				id: 'workflow-trigger',
 				getResourceUrl: () => RESOURCE_B_URL,
 				getAudiences: () => [RESOURCE_B_URL],
+				authorize: async () => true,
 				scopes: [],
 			});
 

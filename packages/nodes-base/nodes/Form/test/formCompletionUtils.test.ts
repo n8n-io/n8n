@@ -139,6 +139,63 @@ describe('formCompletionUtils', () => {
 			});
 		});
 
+		it('should render completionTitle and completionMessage as-is without re-evaluating them', async () => {
+			// `getNodeParameter` already resolves expressions, so the values it
+			// returns must be rendered verbatim. Resolving them a second time
+			// would evaluate expression-like text that is already a final value.
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					completionTitle: '={{ 1 + 1 }}',
+					completionMessage: '={{ 1 + 1 }}',
+					options: { formTitle: 'Form Title' },
+				};
+				return params[parameterName];
+			});
+			// A second evaluation would turn `{{ 1 + 1 }}` into `2`, so the
+			// rendered values below would change if either were resolved again.
+			mockWebhookFunctions.evaluateExpression.mockImplementation((expression) =>
+				expression === '{{ 1 + 1 }}' ? '2' : '',
+			);
+
+			await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
+
+			expect(mockWebhookFunctions.evaluateExpression).not.toHaveBeenCalledWith('{{ 1 + 1 }}');
+			expect(mockResponse.render).toHaveBeenCalledWith(
+				'form-trigger-completion',
+				expect.objectContaining({
+					title: '={{ 1 + 1 }}',
+					message: '={{ 1 + 1 }}',
+				}),
+			);
+		});
+
+		it('should resolve expressions in the form title inherited from the trigger', async () => {
+			// The completion page falls back to the trigger's stored `formTitle`
+			// parameter, which is returned verbatim, so it must be resolved here.
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					completionTitle: 'Form Completion',
+					completionMessage: 'Done',
+					options: {},
+				};
+				return params[parameterName];
+			});
+			mockWebhookFunctions.evaluateExpression.mockImplementation((expression) => {
+				if (expression === `{{ $('${trigger.name}').params.formTitle }}`) {
+					return "={{ $workflow.name.split('-')[0].trim() }}";
+				}
+				if (expression === "{{ $workflow.name.split('-')[0].trim() }}") return 'MyForm';
+				return '';
+			});
+
+			await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
+
+			expect(mockResponse.render).toHaveBeenCalledWith(
+				'form-trigger-completion',
+				expect.objectContaining({ formTitle: 'MyForm' }),
+			);
+		});
+
 		it('should call sanitizeHtml on completionMessage', async () => {
 			const sanitizeHtmlSpy = vi.spyOn(utils, 'sanitizeHtml');
 			const maliciousMessage = '<script>alert("xss")</script>Safe message<b>bold</b>';

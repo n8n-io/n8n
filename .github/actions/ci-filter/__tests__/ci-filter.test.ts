@@ -8,8 +8,10 @@ import {
 	matchGlob,
 	parseFilters,
 	evaluateFilter,
+	formatChangedFilesOutput,
 	runValidate,
 	getChangedFiles,
+	getAddedFiles,
 	getMergeBase,
 } from '../ci-filter.mjs';
 
@@ -201,6 +203,32 @@ describe('evaluateFilter', () => {
 	});
 });
 
+// --- formatChangedFilesOutput (oversized change-set cap) ---
+
+describe('formatChangedFilesOutput', () => {
+	it('joins the list with newlines when under the cap', () => {
+		const files = ['packages/cli/src/a.ts', 'packages/core/src/b.ts'];
+		assert.equal(
+			formatChangedFilesOutput(files, 10),
+			'packages/cli/src/a.ts\npackages/core/src/b.ts',
+		);
+	});
+
+	it('returns the full list at exactly the cap', () => {
+		const files = ['a', 'b', 'c'];
+		assert.equal(formatChangedFilesOutput(files, 3), 'a\nb\nc');
+	});
+
+	it('returns an empty string when the list exceeds the cap', () => {
+		const files = ['a', 'b', 'c', 'd'];
+		assert.equal(formatChangedFilesOutput(files, 3), '');
+	});
+
+	it('empty input stays empty', () => {
+		assert.equal(formatChangedFilesOutput([], 10), '');
+	});
+});
+
 // --- runtime filter (E2E-chain scoping) ---
 
 describe('runtime filter', () => {
@@ -215,6 +243,11 @@ describe('runtime filter', () => {
 		'!**/*.spec.ts',
 		'!packages/testing/playwright/**',
 		'!packages/frontend/@n8n/storybook/**',
+		'!scripts/agent-setup.mjs',
+		'!scripts/backend-module/**',
+		'!scripts/licenses/**',
+		'!scripts/mutation-health/**',
+		'!scripts/sync-agent-skill-links.mjs',
 	];
 
 	it('triggers on a runtime source file', () => {
@@ -264,6 +297,23 @@ describe('runtime filter', () => {
 	it('mixed PR with source and test file triggers (any positive-match file wins)', () => {
 		const files = ['packages/cli/src/foo.ts', 'packages/cli/src/foo.test.ts'];
 		assert.equal(evaluateFilter(files, runtimePatterns), true);
+	});
+
+	it('does not trigger on workflow-only tooling scripts', () => {
+		assert.equal(evaluateFilter(['scripts/mutation-health/pick-next.mjs'], runtimePatterns), false);
+		assert.equal(evaluateFilter(['scripts/licenses/enrich-sbom.mjs'], runtimePatterns), false);
+		assert.equal(
+			evaluateFilter(['scripts/backend-module/my-feature.service.template'], runtimePatterns),
+			false,
+		);
+		assert.equal(evaluateFilter(['scripts/agent-setup.mjs'], runtimePatterns), false);
+		assert.equal(evaluateFilter(['scripts/sync-agent-skill-links.mjs'], runtimePatterns), false);
+	});
+
+	it('still triggers on build/release-relevant scripts', () => {
+		assert.equal(evaluateFilter(['scripts/build-n8n.mjs'], runtimePatterns), true);
+		assert.equal(evaluateFilter(['scripts/dockerize-n8n.mjs'], runtimePatterns), true);
+		assert.equal(evaluateFilter(['scripts/smoke-n8n-image.mjs'], runtimePatterns), true);
 	});
 });
 
@@ -329,6 +379,20 @@ describe('getChangedFiles', () => {
 		assert.throws(() => getChangedFiles('main; rm -rf /'), /Unsafe/);
 		assert.throws(() => getChangedFiles('main$evil'), /Unsafe/);
 	});
+
+	it('getAddedFiles returns only added files, not modified ones', () => {
+		// Modify shared.ts on the PR branch alongside the existing add, then
+		// confirm getAddedFiles excludes the modification (--diff-filter=A).
+		writeFileSync(join(repoDir, 'shared.ts'), 'shared\npr-edit\n');
+		git(['commit', '-am', 'PR modifies shared']);
+		getChangedFiles('main'); // ensure FETCH_HEAD is populated
+		assert.deepEqual(getAddedFiles('main').sort(), ['pr-only.ts']);
+		assert.deepEqual(getChangedFiles('main').sort(), ['pr-only.ts', 'shared.ts']);
+	});
+
+	it('getAddedFiles rejects unsafe base refs', () => {
+		assert.throws(() => getAddedFiles('main; rm -rf /'), /Unsafe/);
+	});
 });
 
 // --- getChangedFiles deep merge-base (shallow clone, stale base) ---
@@ -371,7 +435,10 @@ describe('getChangedFiles (shallow clone, stale base)', () => {
 		git(['push', 'origin', 'main'], builderDir);
 
 		// Shallow checkout of the PR side, mirroring CI's depth-1 clone
-		git(['clone', '--depth=1', '--branch', 'pr-branch', `file://${remoteDir}`, repoDir], originalCwd);
+		git(
+			['clone', '--depth=1', '--branch', 'pr-branch', `file://${remoteDir}`, repoDir],
+			originalCwd,
+		);
 		git(['config', 'user.email', 'test@test.local'], repoDir);
 		git(['config', 'user.name', 'test'], repoDir);
 		// Tiny step so the deepen loop has to iterate to reach the merge base
@@ -392,6 +459,76 @@ describe('getChangedFiles (shallow clone, stale base)', () => {
 		assert.equal(git(['rev-parse', '--is-shallow-repository'], repoDir), 'true');
 		const changed = getChangedFiles('main');
 		assert.deepEqual(changed, ['pr-only.ts']);
+	});
+});
+
+// --- getChangedFiles deepen cap (falls back to --unshallow) ---
+
+describe('getChangedFiles (deepen cap falls back to --unshallow)', () => {
+	const builderDir = mkdtempSync(join(tmpdir(), 'ci-filter-build-cap-'));
+	const remoteDir = mkdtempSync(join(tmpdir(), 'ci-filter-remote-cap-'));
+	const repoDir = mkdtempSync(join(tmpdir(), 'ci-filter-cap-'));
+	const originalCwd = process.cwd();
+	const originalStep = process.env.CI_FILTER_DEEPEN_STEP;
+	const originalMax = process.env.CI_FILTER_MAX_DEEPEN;
+	const git = (args: string[], cwd: string) =>
+		execFileSync('git', args, { cwd, stdio: 'pipe' }).toString().trim();
+
+	before(() => {
+		execFileSync('git', ['init', '--bare', '-b', 'main', remoteDir], { stdio: 'pipe' });
+		git(['init', '-b', 'main'], builderDir);
+		git(['config', 'user.email', 'test@test.local'], builderDir);
+		git(['config', 'user.name', 'test'], builderDir);
+		git(['remote', 'add', 'origin', remoteDir], builderDir);
+
+		writeFileSync(join(builderDir, 'shared.ts'), 'shared\n');
+		git(['add', '.'], builderDir);
+		git(['commit', '-m', 'root'], builderDir);
+		git(['push', 'origin', 'main'], builderDir);
+
+		git(['checkout', '-b', 'pr-branch'], builderDir);
+		writeFileSync(join(builderDir, 'pr-only.ts'), 'pr\n');
+		git(['add', '.'], builderDir);
+		git(['commit', '-m', 'PR change'], builderDir);
+		git(['push', 'origin', 'pr-branch'], builderDir);
+
+		git(['checkout', 'main'], builderDir);
+		for (let i = 1; i <= 12; i++) {
+			writeFileSync(join(builderDir, 'shared.ts'), `shared\ndrift ${i}\n`);
+			git(['commit', '-am', `drift ${i}`], builderDir);
+		}
+		git(['push', 'origin', 'main'], builderDir);
+
+		git(
+			['clone', '--depth=1', '--branch', 'pr-branch', `file://${remoteDir}`, repoDir],
+			originalCwd,
+		);
+		git(['config', 'user.email', 'test@test.local'], repoDir);
+		git(['config', 'user.name', 'test'], repoDir);
+		// Tiny step + tiny cap so the loop hits the cap and falls back to --unshallow
+		// well before the merge base would otherwise be reachable by deepening.
+		process.env.CI_FILTER_DEEPEN_STEP = '1';
+		process.env.CI_FILTER_MAX_DEEPEN = '2';
+		process.chdir(repoDir);
+	});
+
+	after(() => {
+		process.chdir(originalCwd);
+		if (originalStep === undefined) delete process.env.CI_FILTER_DEEPEN_STEP;
+		else process.env.CI_FILTER_DEEPEN_STEP = originalStep;
+		if (originalMax === undefined) delete process.env.CI_FILTER_MAX_DEEPEN;
+		else process.env.CI_FILTER_MAX_DEEPEN = originalMax;
+		rmSync(builderDir, { recursive: true, force: true });
+		rmSync(remoteDir, { recursive: true, force: true });
+		rmSync(repoDir, { recursive: true, force: true });
+	});
+
+	it('resolves merge base via --unshallow once the cap is exceeded', () => {
+		assert.equal(git(['rev-parse', '--is-shallow-repository'], repoDir), 'true');
+		const changed = getChangedFiles('main');
+		assert.deepEqual(changed, ['pr-only.ts']);
+		// After --unshallow, the repo should no longer be shallow.
+		assert.equal(git(['rev-parse', '--is-shallow-repository'], repoDir), 'false');
 	});
 });
 

@@ -2,6 +2,8 @@
 import { computed, ref, watch } from 'vue';
 import { N8nTooltip, N8nIconButton, N8nText, N8nSwitch } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import {
@@ -21,6 +23,7 @@ import {
 } from '../model-providers';
 import type { AgentJsonConfig } from '../types';
 import { parseModelString, modelToString, sanitizeModelId } from '../utils/model-string';
+import shared from '../styles/agent-panel.module.scss';
 
 const props = withDefaults(
 	defineProps<{ config: AgentJsonConfig | null; disabled?: boolean; embedded?: boolean }>(),
@@ -32,6 +35,7 @@ const props = withDefaults(
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
 const i18n = useI18n();
+const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const { ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
@@ -42,8 +46,15 @@ const { credentialsByProvider, selectCredential } = useAgentModelCredentials(
 );
 const episodicMemory = computed(() => props.config?.memory?.episodicMemory ?? null);
 const episodicMemoryEnabled = computed(() => episodicMemory.value?.enabled === true);
+const isManagedEpisodicMemory = computed(
+	() =>
+		episodicMemory.value?.enabled && episodicMemory.value.credential === MANAGED_CREDENTIAL_TOKEN,
+);
 const episodicMemoryCredential = computed(() =>
 	episodicMemory.value?.enabled === true ? episodicMemory.value.credential : null,
+);
+const isManagedEpisodicMemoryCredential = computed(
+	() => episodicMemoryCredential.value === MANAGED_CREDENTIAL_TOKEN,
 );
 const configuredMemoryModel = computed(() => {
 	if (episodicMemory.value?.enabled !== true) return null;
@@ -172,7 +183,7 @@ function openEpisodicMemoryCredentialModal() {
 		data: {
 			credentialType: AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE,
 			displayName: 'OpenAI',
-			initialValue: episodicMemoryCredential.value,
+			initialValue: isManagedEpisodicMemoryCredential.value ? null : episodicMemoryCredential.value,
 			title: i18n.baseText('agents.builder.episodicMemoryCredentialModal.title'),
 			description: i18n.baseText('agents.builder.episodicMemoryCredentialModal.description'),
 			cancelLabel: i18n.baseText('generic.cancel'),
@@ -194,6 +205,11 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 		return;
 	}
 
+	if (settingsStore.isAiAssistantEnabled) {
+		enableEpisodicMemory(MANAGED_CREDENTIAL_TOKEN);
+		return;
+	}
+
 	openEpisodicMemoryCredentialModal();
 }
 </script>
@@ -202,10 +218,10 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 	<div :class="[$style.container, props.disabled && $style.disabled]">
 		<div v-if="episodicMemoryEnabled" :class="$style.row">
 			<div :class="$style.titleGroup">
-				<N8nText :bold="true">
+				<N8nText step="sm" bold :class="shared.dataEntryLabel">
 					{{ i18n.baseText('agents.builder.memory.recallModel.label') }}
 				</N8nText>
-				<N8nText size="small" color="text-light">
+				<N8nText size="small" :class="shared.dataEntrySubLabel">
 					{{ i18n.baseText('agents.builder.memory.recallModel.hint') }}
 				</N8nText>
 			</div>
@@ -217,7 +233,6 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 					:is-loading="isLoading"
 					:project-id="projectId"
 					:warn-missing-credentials="true"
-					horizontal
 					data-testid="agent-memory-recall-model-selector"
 					@change="onMemoryRecallModelChange"
 					@select-credential="onSelectCredential"
@@ -227,10 +242,10 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 
 		<div :class="$style.row">
 			<div :class="$style.titleGroup">
-				<N8nText :bold="true">
+				<N8nText step="sm" bold :class="shared.dataEntryLabel">
 					{{ i18n.baseText('agents.builder.memory.episodicMemory.label') }}
 				</N8nText>
-				<N8nText size="small" color="text-light">
+				<N8nText size="small" :class="shared.dataEntrySubLabel">
 					{{ i18n.baseText('agents.builder.memory.episodicMemory.hint') }}
 				</N8nText>
 			</div>
@@ -240,7 +255,7 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 						{{ i18n.baseText('agents.builder.memory.episodicMemory.changeCredential') }}
 					</template>
 					<N8nIconButton
-						v-if="episodicMemoryEnabled"
+						v-if="episodicMemoryEnabled && !isManagedEpisodicMemory"
 						variant="ghost"
 						size="small"
 						icon-size="medium"
@@ -275,8 +290,15 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 
 .titleGroup {
 	display: flex;
+	flex: 1 1 auto;
 	flex-direction: column;
 	gap: var(--spacing--3xs);
+	min-width: 0;
+}
+
+.titleGroup > :global(.n8n-text) {
+	max-width: 100%;
+	overflow-wrap: anywhere;
 }
 
 .header {
@@ -288,6 +310,7 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 
 .row {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
@@ -305,9 +328,10 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 
 .modelSelector {
 	display: flex;
+	flex: 0 1 280px;
 	justify-content: flex-end;
 	margin-left: auto;
-	min-width: 280px;
+	min-width: min(280px, 100%);
 }
 
 .container.disabled {

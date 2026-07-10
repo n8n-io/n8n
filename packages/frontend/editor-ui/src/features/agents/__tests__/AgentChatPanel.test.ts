@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
-import { computed, ref } from 'vue';
+import { computed, h, ref } from 'vue';
 import {
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
 	type InteractiveToolName,
 } from '@n8n/api-types';
-import type { ChatMessage } from '../composables/agentChatMessages';
+import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
 
 const sendMessageMock = vi.fn();
@@ -32,7 +32,7 @@ vi.mock('@/features/ai/shared/components/ChatInputBase.vue', () => ({
 		name: 'ChatInputBase',
 		template:
 			'<form data-testid="chat-input-stub" @submit.prevent="$emit(\'submit\')"><slot name="footer-start" /></form>',
-		props: ['modelValue', 'placeholder', 'isStreaming', 'canSubmit', 'disabled'],
+		props: ['modelValue', 'placeholder', 'isStreaming', 'canSubmit', 'disabled', 'maxLength'],
 		emits: ['submit', 'stop', 'update:modelValue'],
 	},
 }));
@@ -254,6 +254,81 @@ describe('AgentChatPanel', () => {
 		expect(chatInput.props('placeholder')).toBe('agents.chat.answerQuestionPlaceholder');
 	});
 
+	it('disables above-input actions while an interactive question is unresolved', () => {
+		messagesMock.value = [openInteractiveMessage()];
+
+		const wrapper = mount(AgentChatPanel, {
+			props: {
+				projectId: 'p1',
+				agentId: 'a1',
+				endpoint: 'build',
+				agentConfig: {
+					name: 'Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Help.',
+				},
+				agentStatus: 'draft',
+				connectedTriggers: [],
+			},
+			slots: {
+				'above-input': ({ disabled }) =>
+					h('div', {
+						'data-testid': 'above-input-actions',
+						'data-disabled': String(disabled),
+					}),
+			},
+		});
+
+		expect(wrapper.find('[data-testid="above-input-actions"]').attributes('data-disabled')).toBe(
+			'true',
+		);
+	});
+
+	it('keeps above-input actions enabled when the interactive card is resolved', () => {
+		messagesMock.value = [
+			{
+				...openInteractiveMessage(),
+				status: 'success',
+				interactive: {
+					toolName: ASK_QUESTION_TOOL_NAME,
+					toolCallId: 'tc-1',
+					resolvedAt: 1,
+					input: {
+						question: 'Pick one',
+						options: [{ label: 'Slack', value: 'slack' }],
+					},
+					resolvedValue: { values: ['slack'] },
+				},
+			},
+		];
+
+		const wrapper = mount(AgentChatPanel, {
+			props: {
+				projectId: 'p1',
+				agentId: 'a1',
+				endpoint: 'build',
+				agentConfig: {
+					name: 'Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Help.',
+				},
+				agentStatus: 'draft',
+				connectedTriggers: [],
+			},
+			slots: {
+				'above-input': ({ disabled }) =>
+					h('div', {
+						'data-testid': 'above-input-actions',
+						'data-disabled': String(disabled),
+					}),
+			},
+		});
+
+		expect(wrapper.find('[data-testid="above-input-actions"]').attributes('data-disabled')).toBe(
+			'false',
+		);
+	});
+
 	it('calls cancelAndSteer (not sendMessage) when the user submits while an interactive question is open', async () => {
 		messagesMock.value = [openInteractiveMessage()];
 
@@ -305,4 +380,31 @@ describe('AgentChatPanel', () => {
 			expect(chatInput.props('disabled')).toBe(false);
 		},
 	);
+
+	it('lifts the character limit for the build endpoint', () => {
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(chatInput.props('maxLength')).toBe(25_000);
+	});
+
+	it('keeps the default character limit for the chat endpoint', () => {
+		const wrapper = mount(AgentChatPanel, {
+			props: {
+				projectId: 'p1',
+				agentId: 'a1',
+				endpoint: 'chat',
+				agentConfig: {
+					name: 'Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Help.',
+				},
+				agentStatus: 'draft',
+				connectedTriggers: [],
+			},
+		});
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(chatInput.props('maxLength')).toBe(undefined);
+	});
 });

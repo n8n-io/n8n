@@ -64,4 +64,118 @@ describe('OutboundHttp.requests', () => {
 
 		expect(mockedHttpRequest).toHaveBeenCalledWith(REQUEST, undefined);
 	});
+
+	describe('bound baseURL', () => {
+		it('injects the bound baseURL when the request has none', async () => {
+			const client = makeFacade().requests({ baseURL: 'https://vault.test/v1/' });
+
+			await client.request({ url: 'auth/token/lookup-self', method: 'GET' });
+
+			expect(mockedHttpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: 'auth/token/lookup-self',
+					baseURL: 'https://vault.test/v1/',
+				}),
+				expect.anything(),
+			);
+		});
+
+		it('leaves an explicit per-request baseURL untouched', async () => {
+			const client = makeFacade().requests({ baseURL: 'https://vault.test/v1/' });
+
+			await client.request({ url: 'x', baseURL: 'https://other.test/', method: 'GET' });
+
+			expect(mockedHttpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({ baseURL: 'https://other.test/' }),
+				expect.anything(),
+			);
+		});
+	});
+
+	describe('bound timeout', () => {
+		it('injects the bound timeout when the request has none', async () => {
+			const client = makeFacade().requests({ timeout: 5000 });
+
+			await client.request(REQUEST);
+
+			expect(mockedHttpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({ timeout: 5000 }),
+				expect.anything(),
+			);
+		});
+
+		it('leaves an explicit per-request timeout untouched', async () => {
+			const client = makeFacade().requests({ timeout: 5000 });
+
+			await client.request({ ...REQUEST, timeout: 1000 });
+
+			expect(mockedHttpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({ timeout: 1000 }),
+				expect.anything(),
+			);
+		});
+	});
+
+	describe('bound headers', () => {
+		it('merges default headers, with per-request headers winning per key', async () => {
+			const client = makeFacade().requests({
+				headers: { 'X-Vault-Namespace': 'admin', Accept: 'application/json' },
+			});
+
+			await client.request({ ...REQUEST, headers: { Accept: 'text/plain' } });
+
+			expect(mockedHttpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					headers: { 'X-Vault-Namespace': 'admin', Accept: 'text/plain' },
+				}),
+				expect.anything(),
+			);
+		});
+
+		it('lets a per-request header override a default with different casing', async () => {
+			const client = makeFacade().requests({
+				headers: { 'Content-Type': 'application/json' },
+			});
+
+			await client.request({ ...REQUEST, headers: { 'content-type': 'text/plain' } });
+
+			expect(mockedHttpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({ headers: { 'content-type': 'text/plain' } }),
+				expect.anything(),
+			);
+		});
+
+		it('calls a headers factory per request so a rotating token is re-read', async () => {
+			let token = 'first';
+			const client = makeFacade().requests({
+				headers: () => ({ Authorization: `Bearer ${token}` }),
+			});
+
+			await client.request(REQUEST);
+			token = 'second';
+			await client.request(REQUEST);
+
+			expect(mockedHttpRequest).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({ headers: { Authorization: 'Bearer first' } }),
+				expect.anything(),
+			);
+			expect(mockedHttpRequest).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({ headers: { Authorization: 'Bearer second' } }),
+				expect.anything(),
+			);
+		});
+
+		it('drops default headers whose value is undefined', async () => {
+			const client = makeFacade().requests({ headers: () => ({ Authorization: undefined }) });
+
+			await client.request(REQUEST);
+
+			expect(mockedHttpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({ headers: {} }),
+				expect.anything(),
+			);
+		});
+	});
 });

@@ -37,6 +37,8 @@ CREATE TABLE "agent_files" ("id" varchar(16) PRIMARY KEY NOT NULL, "agentId" var
 | Name | Definition |
 | ---- | ---------- |
 | IDX_45dafc48fe2ce95eac30fc8ffd | CREATE INDEX "IDX_45dafc48fe2ce95eac30fc8ffd" ON "agent_files" ("agentId", "createdAt")  |
+| IDX_agent_files_agentId_binaryDataId | CREATE UNIQUE INDEX "IDX_agent_files_agentId_binaryDataId" ON "agent_files" ("agentId", "binaryDataId")  |
+| IDX_agent_files_agentId_fileName | CREATE UNIQUE INDEX "IDX_agent_files_agentId_fileName" ON "agent_files" ("agentId", "fileName")  |
 | sqlite_autoindex_agent_files_1 | PRIMARY KEY (id) |
 
 ## Relations
@@ -59,7 +61,6 @@ erDiagram
 "agents" {
   varchar_36_ activeVersionId FK
   datetime_3_ createdAt
-  varchar_512_ description
   varchar_36_ id PK
   TEXT integrations
   varchar_128_ name

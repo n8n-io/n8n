@@ -20,7 +20,7 @@ import type { ExecutionMetadata } from './execution-metadata';
 import { WorkflowEntity } from './workflow-entity';
 import { bigintStringToNumber, idStringifier } from '../utils/transformers';
 
-export type ExecutionDataStorageLocation = 'db' | 'fs' | 's3';
+export type ExecutionDataStorageLocation = 'db' | 'fs' | 's3' | 'az';
 
 @Entity()
 @Index(['workflowId', 'id'])
@@ -126,6 +126,9 @@ export class ExecutionEntity {
 	 */
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	workflowVersionId: string | null;
+
+	@Column({ default: false })
+	usedPrivateCredentials: boolean;
 
 	@OneToMany('ExecutionMetadata', 'execution')
 	metadata: ExecutionMetadata[];

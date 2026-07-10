@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 /**
  * Descriptor for an OAuth 2.1 protected resource served by this instance.
@@ -40,6 +41,23 @@ export interface ProtectedResource {
 	 * default.
 	 */
 	isDefault?: boolean;
+
+	/**
+	 * Optional explicit allowlist of `redirect_uri` values accepted at
+	 * `/authorize` for this resource. Returning an empty array means "no
+	 * additional restriction" — the OAuth server still enforces the
+	 * registered-URIs match per RFC 6749 §3.1.2.4.
+	 */
+	getAllowedRedirectUris?(): Promise<string[]>;
+
+	/**
+	 * Determine whether the given user is authorized to access this resource.
+	 * Called during the consent flow to gate access to the resource.
+	 *
+	 * @param user The user to authorize
+	 * @returns A promise that resolves to a boolean indicating whether the user is authorized
+	 **/
+	authorize(user: User): Promise<boolean>;
 }
 
 /**

@@ -56,6 +56,7 @@ const BASE_CONFIG: ResolvedConfig = {
 	defaultBrowser: 'chrome',
 	browsers: new Map(),
 	adapter: 'agent-browser',
+	mode: 'local',
 };
 
 // ---------------------------------------------------------------------------

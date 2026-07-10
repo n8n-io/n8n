@@ -10,14 +10,14 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | ---- | ------- | ------- | ---- |
 | [agent_chat_subscriptions](agent_chat_subscriptions.md) | 6 |  | table |
 | [agent_checkpoints](agent_checkpoints.md) | 6 |  | table |
-| [agent_execution](agent_execution.md) | 20 |  | table |
+| [agent_execution](agent_execution.md) | 18 |  | table |
 | [agent_execution_threads](agent_execution_threads.md) | 17 |  | table |
 | [agent_files](agent_files.md) | 8 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
 | [agent_task_definition](agent_task_definition.md) | 7 |  | table |
 | [agent_task_run_lock](agent_task_run_lock.md) | 6 |  | table |
 | [agent_task_snapshot](agent_task_snapshot.md) | 8 |  | table |
-| [agents](agents.md) | 12 |  | table |
+| [agents](agents.md) | 11 |  | table |
 | [agents_memory_entries](agents_memory_entries.md) | 13 |  | table |
 | [agents_memory_entry_cursors](agents_memory_entry_cursors.md) | 6 |  | table |
 | [agents_memory_entry_locks](agents_memory_entry_locks.md) | 6 |  | table |
@@ -53,7 +53,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [execution_annotation_tags](execution_annotation_tags.md) | 2 |  | table |
 | [execution_annotations](execution_annotations.md) | 6 |  | table |
 | [execution_data](execution_data.md) | 4 |  | table |
-| [execution_entity](execution_entity.md) | 18 |  | table |
+| [execution_entity](execution_entity.md) | 19 |  | table |
 | [execution_metadata](execution_metadata.md) | 4 |  | table |
 | [folder](folder.md) | 6 |  | table |
 | [folder_tag](folder_tag.md) | 2 |  | table |
@@ -73,6 +73,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [instance_ai_pending_confirmations](instance_ai_pending_confirmations.md) | 12 |  | table |
 | [instance_ai_resources](instance_ai_resources.md) | 5 |  | table |
 | [instance_ai_run_snapshots](instance_ai_run_snapshots.md) | 11 |  | table |
+| [instance_ai_thread_grants](instance_ai_thread_grants.md) | 5 |  | table |
 | [instance_ai_threads](instance_ai_threads.md) | 7 |  | table |
 | [instance_ai_workflow_snapshots](instance_ai_workflow_snapshots.md) | 7 |  | table |
 | [instance_version_history](instance_version_history.md) | 5 |  | table |
@@ -91,6 +92,8 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [role_mapping_rule](role_mapping_rule.md) | 7 |  | table |
 | [role_mapping_rule_project](role_mapping_rule_project.md) | 2 |  | table |
 | [role_scope](role_scope.md) | 2 |  | table |
+| [scheduled_job](scheduled_job.md) | 19 |  | table |
+| [scheduled_task](scheduled_task.md) | 16 |  | table |
 | [scope](scope.md) | 3 |  | table |
 | [secrets_provider_connection](secrets_provider_connection.md) | 7 |  | table |
 | [settings](settings.md) | 3 |  | table |
@@ -112,6 +115,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [workflow_entity](workflow_entity.md) | 20 |  | table |
 | [workflow_history](workflow_history.md) | 11 |  | table |
 | [workflow_publication_outbox](workflow_publication_outbox.md) | 7 |  | table |
+| [workflow_publication_trigger_status](workflow_publication_trigger_status.md) | 7 |  | table |
 | [workflow_publish_history](workflow_publish_history.md) | 6 |  | table |
 | [workflow_published_version](workflow_published_version.md) | 4 |  | table |
 | [workflow_statistics](workflow_statistics.md) | 7 |  | table |
@@ -134,8 +138,8 @@ erDiagram
 "agent_task_definition" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_run_lock" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_snapshot" |o--|| "agent_history" : "FOREIGN KEY (versionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"agents" }o--o| "agent_history" : "FOREIGN KEY (activeVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agents" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agents" }o--o| "agent_history" : "FOREIGN KEY (activeVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agents_memory_entries" }o--o| "agents_memory_entries" : "FOREIGN KEY (supersededBy) REFERENCES agents_memory_entries (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "agents_memory_entries" }o--|| "agents_resources" : "FOREIGN KEY (resourceId) REFERENCES agents_resources (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_memory_entries" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -221,6 +225,8 @@ erDiagram
 "instance_ai_pending_confirmations" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_pending_confirmations" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_run_snapshots" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"instance_ai_thread_grants" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"instance_ai_thread_grants" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_access_tokens" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_access_tokens" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -242,6 +248,8 @@ erDiagram
 "role_mapping_rule_project" |o--|| "role_mapping_rule" : "FOREIGN KEY (roleMappingRuleId) REFERENCES role_mapping_rule (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "role_scope" |o--|| "scope" : "FOREIGN KEY (scopeSlug) REFERENCES scope (slug) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
 "role_scope" |o--|| "role" : "FOREIGN KEY (roleSlug) REFERENCES role (slug) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
+"scheduled_job" }o--o| "workflow_published_version" : "FOREIGN KEY (workflowId) REFERENCES workflow_published_version (workflowId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"scheduled_task" }o--|| "scheduled_job" : "FOREIGN KEY (jobId) REFERENCES scheduled_job (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_credentials" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_credentials" |o--|| "credentials_entity" : "FOREIGN KEY (credentialsId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_workflow" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -264,6 +272,8 @@ erDiagram
 "workflow_entity" }o--o| "workflow_history" : "FOREIGN KEY (activeVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "workflow_entity" }o--o| "folder" : "FOREIGN KEY (parentFolderId) REFERENCES folder (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_history" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_publication_trigger_status" }o--|| "workflow_history" : "FOREIGN KEY (versionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_publication_trigger_status" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_publish_history" }o--o| "workflow_history" : "FOREIGN KEY (versionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_publish_history" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_publish_history" }o--o| "workflow_history" : "FOREIGN KEY (versionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -292,7 +302,6 @@ erDiagram
   datetime_3_ updatedAt
 }
 "agent_execution" {
-  TEXT assistantResponse
   INTEGER completionTokens
   REAL cost
   datetime_3_ createdAt
@@ -308,7 +317,6 @@ erDiagram
   datetime_3_ stoppedAt
   varchar_128_ threadId FK
   TEXT timeline
-  TEXT toolCalls
   INTEGER totalTokens
   datetime_3_ updatedAt
   TEXT userMessage
@@ -383,7 +391,6 @@ erDiagram
 "agents" {
   varchar_36_ activeVersionId FK
   datetime_3_ createdAt
-  varchar_512_ description
   varchar_36_ id PK
   TEXT integrations
   varchar_128_ name
@@ -720,13 +727,13 @@ erDiagram
   VARCHAR_36_ workflowVersionId
 }
 "execution_entity" {
-  BIGINT binaryDataSizeBytes
+  bigint binaryDataSizeBytes
   datetime_3_ createdAt
   varchar_255_ deduplicationKey
   datetime_3_ deletedAt
   boolean finished
   INTEGER id
-  BIGINT jsonSizeBytes
+  bigint jsonSizeBytes
   varchar mode
   varchar retryOf
   varchar retrySuccessId
@@ -735,9 +742,10 @@ erDiagram
   datetime stoppedAt
   varchar_2_ storedAt
   TEXT tracingContext
+  BOOLEAN usedPrivateCredentials
   datetime waitTill
   varchar_36_ workflowId FK
-  VARCHAR_36_ workflowVersionId
+  varchar_36_ workflowVersionId
 }
 "execution_metadata" {
   INTEGER executionId FK
@@ -925,6 +933,13 @@ erDiagram
   TEXT tree
   datetime_3_ updatedAt
 }
+"instance_ai_thread_grants" {
+  datetime_3_ createdAt
+  varchar_512_ grantKey PK
+  varchar threadId PK
+  datetime_3_ updatedAt
+  varchar userId PK
+}
 "instance_ai_threads" {
   datetime_3_ createdAt
   varchar id PK
@@ -1066,6 +1081,45 @@ erDiagram
 "role_scope" {
   VARCHAR_128_ roleSlug PK
   VARCHAR_128_ scopeSlug PK
+}
+"scheduled_job" {
+  datetime_3_ createdAt
+  varchar_255_ cronExpression
+  boolean enabled
+  datetime_3_ fireAt
+  INTEGER id
+  INTEGER intervalSeconds
+  varchar_16_ kind
+  datetime_3_ lastFiredAt
+  INTEGER maxAttempts
+  varchar_255_ name
+  datetime_3_ nextRunAt
+  varchar_36_ nodeId
+  TEXT payload
+  INT recurrenceSize
+  varchar_16_ recurrenceUnit
+  varchar_128_ taskType
+  varchar_64_ timezone
+  datetime_3_ updatedAt
+  varchar_36_ workflowId FK
+}
+"scheduled_task" {
+  INTEGER attempts
+  varchar_255_ claimedBy
+  datetime_3_ createdAt
+  TEXT errorMessage
+  datetime_3_ finishedAt
+  INTEGER id
+  INTEGER jobId FK
+  INTEGER leaseEpoch
+  datetime_3_ leaseExpiresAt
+  INTEGER maxAttempts
+  TEXT payload
+  datetime_3_ runAt
+  datetime_3_ scheduledFor
+  datetime_3_ startedAt
+  varchar_16_ status
+  varchar_128_ taskType
 }
 "scope" {
   TEXT description
@@ -1277,6 +1331,15 @@ erDiagram
   varchar_20_ status
   datetime_3_ updatedAt
   varchar_36_ workflowId
+}
+"workflow_publication_trigger_status" {
+  datetime_3_ createdAt
+  TEXT errorMessage
+  varchar_36_ nodeId PK
+  varchar_20_ status
+  datetime_3_ updatedAt
+  varchar_36_ versionId FK
+  varchar_36_ workflowId PK
 }
 "workflow_publish_history" {
   datetime_3_ createdAt

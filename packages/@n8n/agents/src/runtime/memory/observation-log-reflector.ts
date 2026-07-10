@@ -1,3 +1,5 @@
+import { isRecord } from '@n8n/utils/is-record';
+
 import { uniqueStrings } from './memory-lifecycle';
 import type { AgentExecutionCounter } from '../../types/sdk/agent';
 import type {
@@ -359,8 +361,4 @@ function compareEntries(a: ObservationLogEntry, b: ObservationLogEntry): number 
 
 function renderReflectionBullet(entry: ObservationLogEntry, indent = ''): string {
 	return `${indent}* [${entry.id}] ${MARKER_LABELS[entry.marker]} ${entry.createdAt.toISOString()} ${entry.text}`;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

@@ -15,7 +15,8 @@ vi.mock('../../agent/sanitize-mcp-schemas', () => ({
 }));
 
 import { McpClient } from '@n8n/agents';
-import { createResultError, createResultOk, UserError } from 'n8n-workflow';
+import { createResultError, createResultOk } from '@n8n/utils/result';
+import { UserError } from 'n8n-workflow';
 
 import { sanitizeMcpToolSchemas } from '../../agent/sanitize-mcp-schemas';
 import type { SsrfUrlValidator } from '../mcp-client-manager';
@@ -380,6 +381,58 @@ describe('McpClientManager', () => {
 			// Cleanup: let the stranded promise settle so the test doesn't hang.
 			deferred.resolve([]);
 			await stranded.catch(() => {});
+		});
+	});
+
+	describe('tool approval', () => {
+		const configs = [{ name: 'a', url: 'https://a.example.com/' }];
+
+		it('marks every server config as requiring approval by default', async () => {
+			const manager = new McpClientManager();
+			await manager.getRegularTools(configs, mockLogger);
+			expect(mockedMcpClient).toHaveBeenCalledWith(
+				expect.arrayContaining([expect.objectContaining({ requireApproval: true })]),
+			);
+		});
+
+		it('propagates requireApproval=false onto every server config', async () => {
+			const manager = new McpClientManager();
+			await manager.getRegularTools(configs, mockLogger, false);
+			expect(mockedMcpClient).toHaveBeenCalledWith(
+				expect.arrayContaining([expect.objectContaining({ requireApproval: false })]),
+			);
+		});
+
+		it('caches separately per approval mode', async () => {
+			const manager = new McpClientManager();
+			await manager.getRegularTools(configs, mockLogger, true);
+			await manager.getRegularTools(configs, mockLogger, false);
+			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('tool call callback', () => {
+		it('forwards native tool call events with the source server config', async () => {
+			const onToolCallSettled = vi.fn();
+			const manager = new McpClientManager(undefined, { onToolCallSettled });
+			const config = {
+				name: 'registry',
+				url: 'https://registry.example.com/mcp',
+				metadata: { serverSlug: 'linear', userId: 'user-1' },
+			};
+
+			await manager.getRegularTools([config], mockLogger);
+
+			const mcpClientCalls = mockedMcpClient.mock.calls as Array<
+				[Array<{ onToolCallSettled?: (event: { toolName: string; success: boolean }) => void }>]
+			>;
+			mcpClientCalls[0][0][0].onToolCallSettled?.({ toolName: 'search', success: true });
+
+			expect(onToolCallSettled).toHaveBeenCalledWith({
+				server: config,
+				toolName: 'search',
+				success: true,
+			});
 		});
 	});
 });

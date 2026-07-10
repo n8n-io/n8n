@@ -11,6 +11,7 @@ import { useRBACStore } from '@/app/stores/rbac.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import type { Scope } from '@n8n/permissions';
 import type { RouteRecordName } from 'vue-router';
+import type { MockInstance } from 'vitest';
 import * as init from '@/app/init';
 
 const App = {
@@ -22,7 +23,8 @@ let settingsStore: ReturnType<typeof useSettingsStore>;
 
 describe('router', () => {
 	let server: ReturnType<typeof setupServer>;
-	const initializeAuthenticatedFeaturesSpy = vi.spyOn(init, 'initializeAuthenticatedFeatures');
+	// `restoreMocks` restores this spy before each test, so it is re-created in beforeEach.
+	let initializeAuthenticatedFeaturesSpy: MockInstance;
 
 	beforeAll(async () => {
 		server = setupServer();
@@ -33,13 +35,22 @@ describe('router', () => {
 		renderComponent({ pinia });
 	});
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		settingsStore = useSettingsStore();
 		const usersStore = useUsersStore();
-		initializeAuthenticatedFeaturesSpy.mockImplementation(async () => {
-			await usersStore.initialize();
-		});
-	});
+		initializeAuthenticatedFeaturesSpy = vi
+			.spyOn(init, 'initializeAuthenticatedFeatures')
+			.mockImplementation(async () => {
+				await usersStore.initialize();
+			});
+		// Reset to a neutral route (an id no test targets) so each test's push is a
+		// real navigation that triggers the guard. `restoreMocks` clears call history
+		// per test, so a duplicate navigation (e.g. the '/' → '/workflows' redirect
+		// leaving us at '/workflows') would otherwise record zero calls and fail the
+		// toHaveBeenCalled assertion.
+		await router.replace('/workflow/router-test-reset');
+		initializeAuthenticatedFeaturesSpy.mockClear();
+	}, 20000);
 
 	afterAll(() => {
 		server.shutdown();
@@ -254,6 +265,7 @@ describe('router', () => {
 		const instanceAiModuleSettings = {
 			enabled: true,
 			localGatewayDisabled: false,
+			browserUseEnabled: true,
 			proxyEnabled: false,
 			cloudManaged: false,
 			sandboxEnabled: true,
@@ -317,6 +329,28 @@ describe('router', () => {
 			useRBACStore().setGlobalScopes(['instanceAi:message']);
 
 			expect(runRootRedirect()).toBe('/home/workflows');
+		});
+	});
+
+	describe('roles settings', () => {
+		beforeEach(async () => {
+			useRBACStore().setGlobalScopes(['role:manage']);
+			// Reset to a neutral route so each push re-triggers the guard.
+			await router.push('/workflows');
+		});
+
+		test('redirects /settings/project-roles to the Roles shell (project tab)', async () => {
+			await router.push('/settings/project-roles');
+
+			expect(router.currentRoute.value.name).toBe(VIEWS.ROLES_SETTINGS);
+			expect(router.currentRoute.value.query.tab).toBe('project');
+		});
+
+		test('redirects /settings/instance-roles to the Roles shell (instance tab)', async () => {
+			await router.push('/settings/instance-roles');
+
+			expect(router.currentRoute.value.name).toBe(VIEWS.ROLES_SETTINGS);
+			expect(router.currentRoute.value.query.tab).toBe('instance');
 		});
 	});
 

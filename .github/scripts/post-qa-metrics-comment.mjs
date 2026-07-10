@@ -21,7 +21,7 @@ const { values } = parseArgs({
 	options: {
 		metrics: { type: 'string' },
 		pr: { type: 'string' },
-		'baseline-days': { type: 'string', default: '14' },
+		'baseline-days': { type: 'string', default: '30' },
 		'dry-run': { type: 'boolean', default: false },
 	},
 	strict: true,

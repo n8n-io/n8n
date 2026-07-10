@@ -1,6 +1,6 @@
 {
   "name": "@n8n/mcp-apps",
-  "version": "0.4.0",
+  "version": "0.7.0",
   "description": "MCP Apps UI resources and server helpers for n8n",
   "main": "dist/server/index.js",
   "types": "dist/server/index.d.ts",
@@ -37,16 +37,20 @@
     "format:check": "biome ci src"
   },
   "dependencies": {
-    "@n8n/utils": "workspace:*"
+    "@modelcontextprotocol/ext-apps": "catalog:",
+    "@n8n/design-system": "workspace:*",
+    "@n8n/utils": "workspace:*",
+    "vue": "catalog:frontend",
+    "vue-i18n": "catalog:frontend",
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "@modelcontextprotocol/ext-apps": "catalog:",
+    "@iconify-json/lucide": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:",
-    "@n8n/design-system": "workspace:*",
     "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
-    "@types/semver": "^7.7.0",
+    "@types/semver": "catalog:",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/test-utils": "catalog:frontend",
     "rimraf": "catalog:",
@@ -57,8 +61,6 @@
     "vite-plugin-singlefile": "catalog:",
     "vite-svg-loader": "catalog:frontend",
     "vitest": "catalog:",
-    "vue": "catalog:frontend",
-    "vue-i18n": "catalog:frontend",
     "vue-tsc": "catalog:frontend"
   },
   "peerDependencies": {

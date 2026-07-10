@@ -22,15 +22,17 @@
 		}
 	],
 	"messageBudget": 6,
-	"buildExpectations": [
-		"Before building the workflow, the agent asked clarifying questions about the incoming payload shape and the urgency levels.",
-		"Before building the workflow, the agent asked where each urgency level should be routed.",
+	"processExpectations": [
+		"Before building the workflow, the agent established the incoming payload shape and the urgency levels from the user — by asking, or because the user stated them in an answer — rather than assuming or inventing payload fields the user never described.",
+		"Before building the workflow, the agent asked where each urgency level should be routed."
+	],
+	"outcomeExpectations": [
 		"The final workflow branches on the notification `level` (e.g. a Switch node) and routes High to Microsoft Teams, Medium to Slack, and Low to Gmail, as specified in the follow-up."
 	],
 	"complexity": "medium",
 	"tags": ["build", "webhook", "switch", "microsoft-teams", "slack", "gmail", "routing"],
 	"triggerType": "webhook",
-	"datasets": ["pr", "full"],
+	"datasets": ["mcp", "pr", "full"],
 	"executionScenarios": [
 		{
 			"name": "high-priority",

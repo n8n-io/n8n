@@ -9,8 +9,14 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { writeFileSync } from 'fs';
 import { UnexpectedError, UserError, jsonParse } from 'n8n-workflow';
+import pLimit from 'p-limit';
 import * as path from 'path';
 import type { PushResult } from 'simple-git';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
+import { IWorkflowToImport } from '@/interfaces';
 
 import {
 	SOURCE_CONTROL_DEFAULT_BRANCH_COLOR,
@@ -19,6 +25,7 @@ import {
 	SOURCE_CONTROL_README,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
+import { SourceControlContextFactory } from './source-control-context.factory';
 import { SourceControlExportService } from './source-control-export.service.ee';
 import { SourceControlGitService } from './source-control-git.service.ee';
 import {
@@ -35,17 +42,11 @@ import {
 	getDeletedResources,
 	getNonDeletedResources,
 } from './source-control-resource-helper';
-import { SourceControlContextFactory } from './source-control-context.factory';
 import { SourceControlScopedService } from './source-control-scoped.service';
 import { SourceControlStatusService } from './source-control-status.service.ee';
 import type { ImportResult } from './types/import-result';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
-import { IWorkflowToImport } from '@/interfaces';
 
 @Service()
 export class SourceControlService {
@@ -58,6 +59,13 @@ export class SourceControlService {
 
 	/** Flag to prevent concurrent configuration reloads */
 	private isReloading = false;
+
+	/**
+	 * Serializes all operations over the shared git work folder. The work folder is a single
+	 * local directory, so a concurrent reset (any push/pull/status call runs `git reset --hard`)
+	 * could otherwise discard files exported but not yet staged during an in-flight push.
+	 */
+	private readonly workfolderMutex = pLimit(1);
 
 	constructor(
 		private readonly logger: Logger,
@@ -278,6 +286,10 @@ export class SourceControlService {
 	// will reset the branch to the remote branch and pull
 	// this will discard all local changes
 	async resetWorkfolder(): Promise<ImportResult | undefined> {
+		return await this.workfolderMutex(async () => await this.resetWorkfolderWithoutLock());
+	}
+
+	private async resetWorkfolderWithoutLock(): Promise<ImportResult | undefined> {
 		if (!this.gitService.git) {
 			await this.initGitService();
 		}
@@ -294,6 +306,19 @@ export class SourceControlService {
 	}
 
 	async pushWorkfolder(
+		user: User,
+		options: PushWorkFolderRequestDto,
+	): Promise<{
+		statusCode: number;
+		pushResult: PushResult | undefined;
+		statusResult: SourceControlledFile[];
+	}> {
+		return await this.workfolderMutex(
+			async () => await this.pushWorkfolderWithoutLock(user, options),
+		);
+	}
+
+	private async pushWorkfolderWithoutLock(
 		user: User,
 		options: PushWorkFolderRequestDto,
 	): Promise<{
@@ -424,6 +449,17 @@ export class SourceControlService {
 
 			await this.gitService.stage(filesToBePushed, filesToBeDeleted);
 
+			// Set the author within the locked section so a concurrent push can't change the
+			// repo-wide git config between staging and this commit. Fall back to defaults when the
+			// user has no full profile, matching repo initialization, so the commit can't fail on an
+			// empty git identity.
+			await this.gitService.setGitUserDetails(
+				user.firstName && user.lastName
+					? `${user.firstName} ${user.lastName}`
+					: SOURCE_CONTROL_DEFAULT_NAME,
+				user.email || SOURCE_CONTROL_DEFAULT_EMAIL,
+			);
+
 			await this.gitService.commit(options.commitMessage ?? 'Updated Workfolder');
 		} catch (error) {
 			this.logger.error('Failed to export or commit changes', { error });
@@ -475,6 +511,15 @@ export class SourceControlService {
 		user: User,
 		options: PullWorkFolderRequestDto,
 	): Promise<{ statusCode: number; statusResult: SourceControlledFile[] }> {
+		return await this.workfolderMutex(
+			async () => await this.pullWorkfolderWithoutLock(user, options),
+		);
+	}
+
+	private async pullWorkfolderWithoutLock(
+		user: User,
+		options: PullWorkFolderRequestDto,
+	): Promise<{ statusCode: number; statusResult: SourceControlledFile[] }> {
 		await this.sanityCheck();
 
 		const statusResult = await this.sourceControlStatusService.getStatus(user, {
@@ -512,6 +557,15 @@ export class SourceControlService {
 			await this.sourceControlImportService.importFoldersFromWorkFolder(user, foldersToBeImported);
 		}
 
+		// IMPORTANT: Import credentials before workflows so that workflow publishing
+		// validates against the freshly imported credential state (e.g. a credential's
+		// resolvable/private status), instead of the stale local state.
+		const credentialsToBeImported = getNonDeletedResources(statusResult, 'credential');
+		await this.sourceControlImportService.importCredentialsFromWorkFolder(
+			credentialsToBeImported,
+			user.id,
+		);
+
 		const workflowsToBeImported = getNonDeletedResources(statusResult, 'workflow');
 		const workflowImportResults =
 			await this.sourceControlImportService.importWorkflowFromWorkFolder(
@@ -540,11 +594,6 @@ export class SourceControlService {
 			workflowsToBeDeleted,
 		);
 
-		const credentialsToBeImported = getNonDeletedResources(statusResult, 'credential');
-		await this.sourceControlImportService.importCredentialsFromWorkFolder(
-			credentialsToBeImported,
-			user.id,
-		);
 		const credentialsToBeDeleted = getDeletedResources(statusResult, 'credential');
 		await this.sourceControlImportService.deleteCredentialsNotInWorkfolder(
 			user,
@@ -595,16 +644,10 @@ export class SourceControlService {
 	}
 
 	async getStatus(user: User, options: SourceControlGetStatus) {
-		await this.sanityCheck();
-		return await this.sourceControlStatusService.getStatus(user, options);
-	}
-
-	async setGitUserDetails(
-		name = SOURCE_CONTROL_DEFAULT_NAME,
-		email = SOURCE_CONTROL_DEFAULT_EMAIL,
-	): Promise<void> {
-		await this.sanityCheck();
-		await this.gitService.setGitUserDetails(name, email);
+		return await this.workfolderMutex(async () => {
+			await this.sanityCheck();
+			return await this.sourceControlStatusService.getStatus(user, options);
+		});
 	}
 
 	async getRemoteFileEntity({

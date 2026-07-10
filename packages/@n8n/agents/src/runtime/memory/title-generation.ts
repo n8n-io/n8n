@@ -6,7 +6,7 @@ import type { AgentDbMessage } from '../../types/sdk/message';
 import { createFilteredLogger } from '../logger';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
 import { loadAi } from '../model/lazy-ai';
-import { createModel } from '../model/model-factory';
+import { createModel, type FetchFn } from '../model/model-factory';
 
 const logger = createFilteredLogger();
 
@@ -231,6 +231,8 @@ export async function generateThreadTitle(opts: {
 	titleConfig: TitleGenerationConfig;
 	/** The agent's own model, used as fallback when titleConfig.model is not set. */
 	agentModel: ModelConfig;
+	/** Proxy/SSRF-aware `fetch` for the title model call (see {@link AgentRuntimeConfig.modelFetch}). */
+	modelFetch?: FetchFn;
 	/** Messages from the current turn, used to find the first user message. */
 	turnDelta: AgentDbMessage[];
 	executionCounter?: AgentExecutionCounter;
@@ -249,7 +251,7 @@ export async function generateThreadTitle(opts: {
 		if (!userText) return;
 
 		const titleModelId = opts.titleConfig.model ?? opts.agentModel;
-		const titleModel = createModel(titleModelId);
+		const titleModel = createModel(titleModelId, opts.modelFetch);
 		const generated = await generateTitleAndEmojiFromMessage(titleModel, userText, {
 			instructions: opts.titleConfig.instructions,
 			executionCounter: opts.executionCounter,
