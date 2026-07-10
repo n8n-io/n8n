@@ -1,7 +1,13 @@
 import {
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
-	ASK_QUESTION_TOOL_NAME,
+	ASK_QUESTIONS_TOOL_NAME,
+	CONFIGURE_CHANNEL_TOOL_NAME,
+	cancellationResumeSchema,
+	channelConfigSchema,
+	channelSuspendPayloadSchema,
+	credentialSuspendPayloadSchema,
+	questionsSuspendPayloadSchema,
 	type InstanceAiEvent,
 } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
@@ -9,7 +15,6 @@ import { mock } from 'vitest-mock-extended';
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiEventBus } from '../../../event-bus/event-bus.interface';
 import type {
-	BuilderOpenSuspension,
 	BuilderTurnStream,
 	InstanceAiBuilderDelegate,
 	InstanceAiContext,
@@ -23,6 +28,53 @@ interface BuildAgentOutput {
 	configUpdated?: boolean;
 	error?: string;
 }
+
+// Fixtures built via `.parse()` on the shared instance-AI-compatible contract
+// the builder's interactive tools now natively emit (`@n8n/api-types`
+// `agent-interaction.schema.ts`) — proves the fixtures conform to the same
+// schemas the tools themselves are typed against.
+const askQuestionsSuspendPayload = (overrides: Record<string, unknown> = {}) =>
+	questionsSuspendPayloadSchema.parse({
+		requestId: 'tool-req-1',
+		message: 'The agent builder has questions',
+		severity: 'info',
+		inputType: 'questions',
+		questions: [
+			{
+				id: 'q1',
+				question: 'Which service should send the alert?',
+				type: 'single',
+				options: ['Slack', 'Email'],
+			},
+		],
+		...overrides,
+	});
+
+const askCredentialSuspendPayload = (overrides: Record<string, unknown> = {}) =>
+	credentialSuspendPayloadSchema.parse({
+		requestId: 'tool-req-2',
+		message: 'Connect to Slack to send messages',
+		severity: 'info',
+		credentialRequests: [
+			{
+				credentialType: 'slackApi',
+				reason: 'Connect to Slack to send messages',
+				existingCredentials: [],
+			},
+		],
+		credentialFlow: { stage: 'generic' },
+		...overrides,
+	});
+
+const configureChannelSuspendPayload = (overrides: Record<string, unknown> = {}) =>
+	channelSuspendPayloadSchema.parse({
+		requestId: 'tool-req-3',
+		message: 'Set up the Slack channel',
+		severity: 'info',
+		channelConfig: channelConfigSchema.parse({ integrationType: 'slack', agentId: 'agent-1' }),
+		projectId: 'proj-1',
+		...overrides,
+	});
 
 function fakeStream(chunks: unknown[], text: string): BuilderTurnStream {
 	return {
@@ -80,8 +132,9 @@ function makeContext(overrides: { delegate?: InstanceAiBuilderDelegate } = {}): 
 	domainContext.projectId = 'proj-1';
 	// `mock<InstanceAiContext>()`'s auto-deep-mock doesn't reliably produce a
 	// callable nested mock for interface-typed properties accessed through
-	// another mock — mock the credential service explicitly so `.list` etc.
-	// are real `vi.fn()`s the credential-enrichment tests can configure.
+	// another mock — mock the credential service explicitly so a test can
+	// assert it's never called now that the tool no longer enriches/resolves
+	// credentials itself (the builder's own ask_credential tool does that).
 	domainContext.credentialService = mock<InstanceAiContext['credentialService']>();
 	// Force resolveAgentBuilderTarget/saveAgentBuilderTarget onto the in-memory
 	// fallback path (no thread-persistence plumbing needed for these tests).
@@ -367,19 +420,17 @@ describe('build-agent tool', () => {
 });
 
 describe('build-agent tool — interactive suspend/resume cascade', () => {
-	it('cascades an ask_question suspension into ctx.suspend without publishing agent-completed', async () => {
+	it('cascades an ask_questions suspension into ctx.suspend, passing the payload through byte-for-byte apart from requestId', async () => {
 		const { context, delegate, publishedEvents } = makeContext();
 		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
+		const payload = askQuestionsSuspendPayload();
 		vi.mocked(delegate.streamBuild).mockResolvedValue(
 			fakeStream(
 				[
 					suspensionChunk({
 						toolCallId: 'call-1',
-						toolName: ASK_QUESTION_TOOL_NAME,
-						suspendPayload: {
-							question: 'Which service should send the alert?',
-							options: [{ label: 'Slack', value: 'slack' }],
-						},
+						toolName: ASK_QUESTIONS_TOOL_NAME,
+						suspendPayload: payload,
 					}),
 				],
 				'',
@@ -394,48 +445,196 @@ describe('build-agent tool — interactive suspend/resume cascade', () => {
 		);
 
 		expect(suspendFn).toHaveBeenCalledTimes(1);
-		expect(suspendFn.mock.calls[0][0]).toMatchObject({
-			inputType: 'questions',
-			questions: [
-				{
-					question: 'Which service should send the alert?',
-					type: 'single',
-					options: ['Slack'],
-				},
-			],
-		});
+		const suspended = suspendFn.mock.calls[0][0] as Record<string, unknown>;
+		expect(suspended).toEqual({ ...payload, requestId: expect.any(String) as unknown });
+		expect(suspended.requestId).not.toBe(payload.requestId);
 		expect(publishedEvents.map((event) => event.type)).toEqual(['agent-spawned']);
 	});
 
-	it('resumes an ask_question suspension with mapped answer values and returns the builder reply on completion', async () => {
+	it('cascades an ask_credential suspension through unchanged apart from requestId, without looking up credentials itself', async () => {
+		const { context, delegate } = makeContext();
+		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
+		const payload = askCredentialSuspendPayload({
+			credentialRequests: [
+				{
+					credentialType: 'slackApi',
+					reason: 'Connect to Slack',
+					existingCredentials: [{ id: 'cred-1', name: 'My Slack account' }],
+				},
+			],
+		});
+		vi.mocked(delegate.streamBuild).mockResolvedValue(
+			fakeStream(
+				[
+					suspensionChunk({
+						toolCallId: 'call-1',
+						toolName: ASK_CREDENTIAL_TOOL_NAME,
+						suspendPayload: payload,
+					}),
+				],
+				'',
+			),
+		);
+		const suspendFn = vi.fn();
+
+		await runToolWithCtx(
+			context,
+			{ message: 'Build it', name: 'New Agent' },
+			{ resumeData: undefined, suspend: suspendFn },
+		);
+
+		expect(suspendFn.mock.calls[0][0]).toEqual({
+			...payload,
+			requestId: expect.any(String) as unknown,
+		});
+		// The builder's own ask_credential tool now looks up existing credentials
+		// itself — this tool must not do it (no enrichment, no lookup call).
+		expect(context.domainContext!.credentialService.list).not.toHaveBeenCalled();
+	});
+
+	it('cascades a configure_channel suspension through unchanged apart from requestId, preserving channelConfig byte-for-byte', async () => {
+		const { context, delegate } = makeContext();
+		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
+		const payload = configureChannelSuspendPayload();
+		vi.mocked(delegate.streamBuild).mockResolvedValue(
+			fakeStream(
+				[
+					suspensionChunk({
+						toolCallId: 'call-1',
+						toolName: CONFIGURE_CHANNEL_TOOL_NAME,
+						suspendPayload: payload,
+					}),
+				],
+				'',
+			),
+		);
+		const suspendFn = vi.fn();
+
+		await runToolWithCtx(
+			context,
+			{ message: 'Build it', name: 'New Agent' },
+			{ resumeData: undefined, suspend: suspendFn },
+		);
+
+		expect(suspendFn.mock.calls[0][0]).toEqual({
+			...payload,
+			requestId: expect.any(String) as unknown,
+		});
+		expect(
+			channelConfigSchema.parse(
+				(suspendFn.mock.calls[0][0] as { channelConfig: unknown }).channelConfig,
+			),
+		).toEqual(payload.channelConfig);
+	});
+
+	it('fails the turn with a friendly error when the builder suspension payload is malformed', async () => {
+		const { context, delegate, publishedEvents } = makeContext();
+		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
+		vi.mocked(delegate.streamBuild).mockResolvedValue(
+			fakeStream(
+				[
+					suspensionChunk({
+						toolCallId: 'call-1',
+						toolName: ASK_QUESTIONS_TOOL_NAME,
+						// Missing the required `message`/`severity` fields.
+						suspendPayload: { foo: 'bar' },
+					}),
+				],
+				'',
+			),
+		);
+		const suspendFn = vi.fn();
+
+		const result = await runToolWithCtx(
+			context,
+			{ message: 'Build it', name: 'New Agent' },
+			{ resumeData: undefined, suspend: suspendFn },
+		);
+
+		expect(suspendFn).not.toHaveBeenCalled();
+		expect(result.ok).toBe(false);
+		expect(result.error).toMatch(/malformed/);
+		const completed = publishedEvents.find((event) => event.type === 'agent-completed');
+		expect(completed && 'payload' in completed ? completed.payload : undefined).toMatchObject({
+			role: 'agent-builder',
+			error: result.error,
+		});
+	});
+
+	it('resumes a suspension by passing ctx.resumeData through to delegate.resumeBuild unchanged (questions shape)', async () => {
 		const { context, delegate } = makeContext();
 		context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
 		vi.mocked(delegate.findOpenSuspension).mockResolvedValue({
 			runId: 'builder-run-1',
 			toolCallId: 'call-1',
-			toolName: ASK_QUESTION_TOOL_NAME,
-			suspendPayload: {
-				question: 'Which service?',
-				options: [{ label: 'Slack', value: 'slack' }],
-			},
+			toolName: ASK_QUESTIONS_TOOL_NAME,
+			suspendPayload: askQuestionsSuspendPayload(),
 		});
 		vi.mocked(delegate.resumeBuild).mockResolvedValue(fakeStream([], 'Using Slack.'));
+		// Exactly the shape `toConfirmationData` (cli instance-ai.service.ts) flattens
+		// a questions-wizard confirm to — no `values`-flattening on this side anymore.
+		const resumeData = {
+			approved: true,
+			answers: [{ questionId: 'q1', selectedOptions: ['slack'] }],
+		};
 
 		const result = await runToolWithCtx(
 			context,
 			{ message: 'anything' },
-			{
-				resumeData: { approved: true, answers: [{ questionId: 'q1', selectedOptions: ['slack'] }] },
-				suspend: vi.fn(),
-			},
+			{ resumeData, suspend: vi.fn() },
 		);
 
 		expect(delegate.resumeBuild).toHaveBeenCalledWith(
 			'agent-1',
-			{ runId: 'builder-run-1', toolCallId: 'call-1', resumeData: { values: ['slack'] } },
+			{ runId: 'builder-run-1', toolCallId: 'call-1', resumeData },
 			{ threadId: 'ia-builder:thread-1:agent-1', modelConfig: context.modelId },
 		);
 		expect(result).toEqual({ ok: true, builderReply: 'Using Slack.', configUpdated: false });
+	});
+
+	it('resumes a credential suspension by passing ctx.resumeData through unchanged, without resolving a display name itself', async () => {
+		const { context, delegate } = makeContext();
+		context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
+		vi.mocked(delegate.findOpenSuspension).mockResolvedValue({
+			runId: 'builder-run-1',
+			toolCallId: 'call-1',
+			toolName: ASK_CREDENTIAL_TOOL_NAME,
+			suspendPayload: askCredentialSuspendPayload(),
+		});
+		vi.mocked(delegate.resumeBuild).mockResolvedValue(fakeStream([], 'Connected.'));
+		const resumeData = { credentials: { slackApi: 'cred-1' } };
+
+		await runToolWithCtx(context, { message: 'anything' }, { resumeData, suspend: vi.fn() });
+
+		expect(delegate.resumeBuild).toHaveBeenCalledWith(
+			'agent-1',
+			{ runId: 'builder-run-1', toolCallId: 'call-1', resumeData },
+			{ threadId: 'ia-builder:thread-1:agent-1', modelConfig: context.modelId },
+		);
+		// No credential-name lookup on this side anymore — the builder's own
+		// ask_credential tool resolves the display name from the raw id.
+		expect(context.domainContext!.credentialService.list).not.toHaveBeenCalled();
+	});
+
+	it('resumes a configure_channel suspension by passing ctx.resumeData through unchanged', async () => {
+		const { context, delegate } = makeContext();
+		context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
+		vi.mocked(delegate.findOpenSuspension).mockResolvedValue({
+			runId: 'builder-run-1',
+			toolCallId: 'call-1',
+			toolName: CONFIGURE_CHANNEL_TOOL_NAME,
+			suspendPayload: configureChannelSuspendPayload(),
+		});
+		vi.mocked(delegate.resumeBuild).mockResolvedValue(fakeStream([], 'Connected.'));
+		const resumeData = { approved: false };
+
+		await runToolWithCtx(context, { message: 'anything' }, { resumeData, suspend: vi.fn() });
+
+		expect(delegate.resumeBuild).toHaveBeenCalledWith(
+			'agent-1',
+			{ runId: 'builder-run-1', toolCallId: 'call-1', resumeData },
+			{ threadId: 'ia-builder:thread-1:agent-1', modelConfig: context.modelId },
+		);
 	});
 
 	it('publishes agent-spawned before any chunk events and exactly one agent-completed on the resume leg', async () => {
@@ -444,11 +643,8 @@ describe('build-agent tool — interactive suspend/resume cascade', () => {
 		vi.mocked(delegate.findOpenSuspension).mockResolvedValue({
 			runId: 'builder-run-1',
 			toolCallId: 'call-1',
-			toolName: ASK_QUESTION_TOOL_NAME,
-			suspendPayload: {
-				question: 'Which service?',
-				options: [{ label: 'Slack', value: 'slack' }],
-			},
+			toolName: ASK_QUESTIONS_TOOL_NAME,
+			suspendPayload: askQuestionsSuspendPayload(),
 		});
 		vi.mocked(delegate.resumeBuild).mockResolvedValue(
 			fakeStream([{ type: 'text-delta', id: 'a', delta: 'Using Slack.' }], 'Using Slack.'),
@@ -519,13 +715,15 @@ describe('build-agent tool — interactive suspend/resume cascade', () => {
 				toolCallId: 'tc-1',
 				resumeData: {
 					_type: 'agent.cancellation',
-					// Steers the builder to the injected ask_questions HITL card instead
-					// of a plain-text question that would end the turn.
+					// Steers the builder to the ask_questions HITL card instead of a
+					// plain-text question that would end the turn.
 					message: expect.stringContaining('via the ask_questions tool') as string,
 				},
 			},
 			{ threadId: 'ia-builder:thread-1:agent-1', modelConfig: context.modelId },
 		);
+		const [, resumeCall] = vi.mocked(delegate.resumeBuild).mock.calls[0];
+		expect(cancellationResumeSchema.parse(resumeCall.resumeData)).toEqual(resumeCall.resumeData);
 		expect(suspendFn).not.toHaveBeenCalled();
 		expect(result).toEqual({
 			ok: true,
@@ -676,13 +874,17 @@ describe('build-agent tool — interactive suspend/resume cascade', () => {
 			toolName: ASK_LLM_TOOL_NAME,
 			suspendPayload: {},
 		});
+		const secondPayload = askQuestionsSuspendPayload({
+			message: 'Continue?',
+			questions: [{ id: 'q1', question: 'Continue?', type: 'text' }],
+		});
 		vi.mocked(delegate.resumeBuild).mockResolvedValue(
 			fakeStream(
 				[
 					suspensionChunk({
 						toolCallId: 'call-2',
-						toolName: ASK_QUESTION_TOOL_NAME,
-						suspendPayload: { question: 'Continue?', options: [] },
+						toolName: ASK_QUESTIONS_TOOL_NAME,
+						suspendPayload: secondPayload,
 					}),
 				],
 				'',
@@ -698,166 +900,10 @@ describe('build-agent tool — interactive suspend/resume cascade', () => {
 
 		expect(delegate.resumeBuild).toHaveBeenCalledTimes(1);
 		expect(suspendFn).toHaveBeenCalledTimes(1);
-		expect(suspendFn.mock.calls[0][0]).toMatchObject({
-			inputType: 'questions',
-			questions: [{ question: 'Continue?', type: 'text' }],
+		expect(suspendFn.mock.calls[0][0]).toEqual({
+			...secondPayload,
+			requestId: expect.any(String) as unknown,
 		});
-	});
-
-	it('enriches an ask_credential suspension with existing credentials of the requested type', async () => {
-		const { context, delegate } = makeContext();
-		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
-		vi.mocked(delegate.streamBuild).mockResolvedValue(
-			fakeStream(
-				[
-					suspensionChunk({
-						toolCallId: 'call-1',
-						toolName: ASK_CREDENTIAL_TOOL_NAME,
-						suspendPayload: { purpose: 'Connect to Slack', credentialType: 'slackApi' },
-					}),
-				],
-				'',
-			),
-		);
-		vi.mocked(context.domainContext!.credentialService.list).mockResolvedValue([
-			{ id: 'cred-1', name: 'My Slack account', type: 'slackApi' },
-		]);
-		const suspendFn = vi.fn();
-
-		await runToolWithCtx(
-			context,
-			{ message: 'Build it', name: 'New Agent' },
-			{ resumeData: undefined, suspend: suspendFn },
-		);
-
-		expect(context.domainContext!.credentialService.list).toHaveBeenCalledWith({
-			type: 'slackApi',
-			projectId: 'proj-1',
-		});
-		expect(suspendFn.mock.calls[0][0]).toMatchObject({
-			credentialRequests: [
-				expect.objectContaining({
-					existingCredentials: [{ id: 'cred-1', name: 'My Slack account' }],
-				}),
-			],
-		});
-	});
-
-	it('suspends with an empty existingCredentials list when the credential lookup throws', async () => {
-		const { context, delegate } = makeContext();
-		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
-		vi.mocked(delegate.streamBuild).mockResolvedValue(
-			fakeStream(
-				[
-					suspensionChunk({
-						toolCallId: 'call-1',
-						toolName: ASK_CREDENTIAL_TOOL_NAME,
-						suspendPayload: { purpose: 'Connect', credentialType: 'slackApi' },
-					}),
-				],
-				'',
-			),
-		);
-		vi.mocked(context.domainContext!.credentialService.list).mockRejectedValue(
-			new Error('db down'),
-		);
-		const suspendFn = vi.fn();
-
-		await runToolWithCtx(
-			context,
-			{ message: 'Build it', name: 'New Agent' },
-			{ resumeData: undefined, suspend: suspendFn },
-		);
-
-		expect(suspendFn.mock.calls[0][0]).toMatchObject({
-			credentialRequests: [expect.objectContaining({ existingCredentials: [] })],
-		});
-	});
-
-	it('normalizes the credentialRequests confirm payload into { credentialId, credentialName } on resume', async () => {
-		const { context, delegate } = makeContext();
-		context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
-		const openSuspension: BuilderOpenSuspension = {
-			runId: 'builder-run-1',
-			toolCallId: 'call-1',
-			toolName: ASK_CREDENTIAL_TOOL_NAME,
-			suspendPayload: { purpose: 'Connect', credentialType: 'slackApi' },
-		};
-		vi.mocked(delegate.findOpenSuspension).mockResolvedValue(openSuspension);
-		vi.mocked(context.domainContext!.credentialService.list).mockResolvedValue([
-			{ id: 'cred-1', name: 'My Slack account', type: 'slackApi' },
-		]);
-		vi.mocked(delegate.resumeBuild).mockResolvedValue(fakeStream([], 'Connected.'));
-
-		await runToolWithCtx(
-			context,
-			{ message: 'anything' },
-			{ resumeData: { credentials: { slackApi: 'cred-1' } }, suspend: vi.fn() },
-		);
-
-		expect(delegate.resumeBuild).toHaveBeenCalledWith(
-			'agent-1',
-			{
-				runId: 'builder-run-1',
-				toolCallId: 'call-1',
-				resumeData: { credentialId: 'cred-1', credentialName: 'My Slack account' },
-			},
-			{ threadId: 'ia-builder:thread-1:agent-1', modelConfig: context.modelId },
-		);
-	});
-
-	it('falls back to the credential id as the name when it cannot be resolved', async () => {
-		const { context, delegate } = makeContext();
-		context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
-		vi.mocked(delegate.findOpenSuspension).mockResolvedValue({
-			runId: 'builder-run-1',
-			toolCallId: 'call-1',
-			toolName: ASK_CREDENTIAL_TOOL_NAME,
-			suspendPayload: { purpose: 'Connect', credentialType: 'slackApi' },
-		});
-		vi.mocked(context.domainContext!.credentialService.list).mockResolvedValue([]);
-		vi.mocked(delegate.resumeBuild).mockResolvedValue(fakeStream([], 'Connected.'));
-
-		await runToolWithCtx(
-			context,
-			{ message: 'anything' },
-			{ resumeData: { credentials: { slackApi: 'cred-1' } }, suspend: vi.fn() },
-		);
-
-		expect(delegate.resumeBuild).toHaveBeenCalledWith(
-			'agent-1',
-			{
-				runId: 'builder-run-1',
-				toolCallId: 'call-1',
-				resumeData: { credentialId: 'cred-1', credentialName: 'cred-1' },
-			},
-			{ threadId: 'ia-builder:thread-1:agent-1', modelConfig: context.modelId },
-		);
-	});
-
-	it('passes a credentialRequests confirm payload through unchanged when it has no credentials key (dismissal)', async () => {
-		const { context, delegate } = makeContext();
-		context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
-		vi.mocked(delegate.findOpenSuspension).mockResolvedValue({
-			runId: 'builder-run-1',
-			toolCallId: 'call-1',
-			toolName: ASK_CREDENTIAL_TOOL_NAME,
-			suspendPayload: { purpose: 'Connect', credentialType: 'slackApi' },
-		});
-		vi.mocked(delegate.resumeBuild).mockResolvedValue(fakeStream([], 'Skipped.'));
-
-		await runToolWithCtx(
-			context,
-			{ message: 'anything' },
-			{ resumeData: { approved: false }, suspend: vi.fn() },
-		);
-
-		expect(delegate.resumeBuild).toHaveBeenCalledWith(
-			'agent-1',
-			{ runId: 'builder-run-1', toolCallId: 'call-1', resumeData: { skipped: true } },
-			{ threadId: 'ia-builder:thread-1:agent-1', modelConfig: context.modelId },
-		);
-		expect(context.domainContext!.credentialService.list).not.toHaveBeenCalled();
 	});
 
 	it('publishes agent-completed and rethrows when consumeStreamCascading itself throws mid-loop', async () => {

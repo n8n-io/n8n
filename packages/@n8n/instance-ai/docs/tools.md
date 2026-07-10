@@ -697,11 +697,14 @@ builder UI.
 **Returns**: `{ ok: true, builderReply, configUpdated }` on success, or
 `{ ok: false, error }`.
 
-Two extra tools are injected into the builder for sub-agent runs (constructed
-cli-side in `instance-ai-builder-extra-tools.ts`): `configure_channel`
-(mandatory channel-setup UX for chat integrations) and `ask_questions`
-(batched multi-question card). A session prompt addendum steers the builder to
-use them.
+`configure_channel` (mandatory channel-setup UX for chat integrations) and
+`ask_questions` (batched multi-question card) are standard builder tools —
+available in the agents-module builder's own UI chat too, not injected extras
+for sub-agent runs. Their suspend/resume payloads already match instance AI's
+confirmation-request/confirm-response wire contract
+(`@n8n/api-types` `agent-interaction.schema.ts`), so `build-agent` cascades
+them through unchanged. A slim session prompt addendum steers the builder
+away from the one tool this surface can't show a card for (`ask_llm`).
 
 ## Other Domain Tools
 

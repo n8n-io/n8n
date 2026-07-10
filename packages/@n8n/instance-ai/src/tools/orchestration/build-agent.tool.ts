@@ -12,11 +12,7 @@
  * builder UI — it is a private sub-agent conversation.
  */
 import { Tool, type InterruptibleToolContext } from '@n8n/agents';
-import {
-	ASK_CREDENTIAL_TOOL_NAME,
-	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
-	ASK_LLM_TOOL_NAME,
-} from '@n8n/api-types';
+import { ASK_LLM_TOOL_NAME, type CancellationResumeData } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -35,17 +31,10 @@ import type {
 	BuilderDelegateSession,
 	BuilderTurnStream,
 	InstanceAiBuilderDelegate,
-	InstanceAiContext,
 	OrchestrationContext,
 	SessionWorkflowRef,
 } from '../../types';
 import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
-import {
-	builderCancellationResume,
-	mapBuilderSuspendPayload,
-	translateConfirmToBuilderResume,
-	type AskCredentialSuspendEnrichment,
-} from './builder-interaction-mapping';
 
 /**
  * Mirrors `BUILDER_NOT_CONFIGURED_CODE` in
@@ -90,98 +79,9 @@ function buildOutboundMessage(message: string, workflowContext?: SessionWorkflow
 	return `${message}\n\n${formatWorkflowContextEnvelope(workflowContext)}`;
 }
 
-/** True for the two builder tools whose confirm/suspend payloads carry a credential. */
-function isCredentialToolName(toolName: string): boolean {
-	return toolName === ASK_CREDENTIAL_TOOL_NAME || toolName === ASK_EMBEDDING_CREDENTIAL_TOOL_NAME;
-}
-
-/**
- * The builder's ask_credential suspend payload (and the delegate's stored
- * open-suspension record) embed the tool input directly — see
- * `parseSuspendInput` in builder-interaction-mapping.ts for the same
- * defensive-nesting precedent.
- */
-function extractCredentialType(payload: Record<string, unknown>): string | undefined {
-	if (typeof payload.credentialType === 'string') return payload.credentialType;
-	const nested = payload.input;
-	return isRecord(nested) && typeof nested.credentialType === 'string'
-		? nested.credentialType
-		: undefined;
-}
-
-/**
- * Look up credentials of the requested type for the enrichment payload and
- * for resolving a credential's display name on resume. Scoped to the target
- * agent's project, matching what the editor's own credential picker would
- * offer. Never throws — a lookup failure degrades to an empty list rather
- * than failing the suspension/resume.
- */
-async function lookupExistingCredentials(
-	domainContext: InstanceAiContext,
-	projectId: string,
-	credentialType: string,
-): Promise<Array<{ id: string; name: string }>> {
-	try {
-		const credentials = await domainContext.credentialService.list({
-			type: credentialType,
-			projectId,
-		});
-		if (!Array.isArray(credentials)) return [];
-		return credentials.map((credential) => ({ id: credential.id, name: credential.name }));
-	} catch (error) {
-		domainContext.logger.warn('Failed to look up existing credentials for a builder suspension', {
-			credentialType,
-			error: error instanceof Error ? error.message : String(error),
-		});
-		return [];
-	}
-}
-
-/** Enrichment for `mapBuilderSuspendPayload`'s ask_credential branch — empty for every other tool. */
-async function buildCredentialEnrichment(
-	domainContext: InstanceAiContext,
-	projectId: string,
-	toolName: string,
-	suspendPayload: Record<string, unknown>,
-): Promise<AskCredentialSuspendEnrichment> {
-	if (!isCredentialToolName(toolName)) return {};
-
-	const credentialType = extractCredentialType(suspendPayload);
-	if (!credentialType) return {};
-
-	return {
-		existingCredentials: await lookupExistingCredentials(domainContext, projectId, credentialType),
-	};
-}
-
-/**
- * Normalize the FE's credentialRequests confirm payload — `{ credentials:
- * Record<credentialType, credentialId> }`, no name — into the
- * `{ credentialId, credentialName }` shape `translateConfirmToBuilderResume`
- * expects. Any other confirm shape (dismissal, approval) passes through
- * unchanged. Falls back to the id as the name if it can't be resolved.
- */
-async function normalizeCredentialConfirmPayload(
-	domainContext: InstanceAiContext,
-	projectId: string,
-	toolName: string,
-	suspendPayload: Record<string, unknown>,
-	confirmPayload: Record<string, unknown>,
-): Promise<Record<string, unknown>> {
-	if (!isCredentialToolName(toolName)) return confirmPayload;
-
-	const credentials = confirmPayload.credentials;
-	if (!isRecord(credentials)) return confirmPayload;
-
-	const credentialType = extractCredentialType(suspendPayload);
-	const credentialId = credentialType ? credentials[credentialType] : undefined;
-	if (typeof credentialId !== 'string') return confirmPayload;
-
-	const existingCredentials = credentialType
-		? await lookupExistingCredentials(domainContext, projectId, credentialType)
-		: [];
-	const match = existingCredentials.find((credential) => credential.id === credentialId);
-	return { credentialId, credentialName: match?.name ?? credentialId };
+/** Cancellation resume for interactions the builder can't surface yet (e.g. `ask_llm`, until its FE kind ships). */
+function builderCancellationResume(message: string): CancellationResumeData {
+	return { _type: 'agent.cancellation', message };
 }
 
 const buildAgentInputSchema = z.object({
@@ -320,7 +220,6 @@ const ASK_LLM_BOUNCE_LIMIT = 3;
  */
 async function runBuilderConsumeLoop(params: {
 	context: OrchestrationContext;
-	domainContext: InstanceAiContext;
 	delegate: InstanceAiBuilderDelegate;
 	ctx: BuildAgentToolContext;
 	target: AgentBuilderTarget;
@@ -328,7 +227,7 @@ async function runBuilderConsumeLoop(params: {
 	builderAgentId: string;
 	initialTurn: BuilderTurnStream;
 }): Promise<BuildAgentOutput> {
-	const { context, domainContext, delegate, ctx, target, session, builderAgentId } = params;
+	const { context, delegate, ctx, target, session, builderAgentId } = params;
 	let turn = params.initialTurn;
 	let askLlmBounceCount = 0;
 
@@ -392,17 +291,23 @@ async function runBuilderConsumeLoop(params: {
 			continue;
 		}
 
-		const enrichment = await buildCredentialEnrichment(
-			domainContext,
-			target.projectId,
-			toolName,
-			result.suspension.suspendPayload,
-		);
-		return await ctx.suspend(
-			buildAgentSuspendSchema.parse(
-				mapBuilderSuspendPayload(toolName, result.suspension.suspendPayload, nanoid(), enrichment),
-			),
-		);
+		// The builder's interactive tools now natively emit the shared
+		// instance-AI confirmation payload shape, so this cascades the suspend
+		// payload straight through — only the requestId is re-minted at this
+		// (orchestrator) level. Still validated defensively: a malformed payload
+		// fails the turn instead of throwing out of the tool handler.
+		const suspendPayload = result.suspension.suspendPayload;
+		const parsedSuspend = isRecord(suspendPayload)
+			? buildAgentSuspendSchema.safeParse({ ...suspendPayload, requestId: nanoid() })
+			: undefined;
+		if (!parsedSuspend?.success) {
+			const message =
+				"The agent builder's confirmation request was malformed; the build turn was lost.";
+			publishAgentBuilderFailure(context, builderAgentId, new Error(message));
+			return { ok: false, error: message };
+		}
+
+		return await ctx.suspend(parsedSuspend.data);
 	}
 }
 
@@ -445,22 +350,12 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 					return { ok: false, error: 'The builder question this answered is no longer open.' };
 				}
 
-				const confirmPayload = await normalizeCredentialConfirmPayload(
-					domainContext,
-					target.projectId,
-					open.toolName,
-					open.suspendPayload,
-					ctx.resumeData,
-				);
-				const translation = translateConfirmToBuilderResume(open.toolName, confirmPayload);
-				if (!translation.ok) {
-					return { ok: false, error: translation.reason };
-				}
-
+				// The builder's interactive tools now natively accept the FE confirm
+				// shapes, so `ctx.resumeData` passes straight through unchanged.
 				const builderAgentId = `agent-builder:${target.agentId}`;
 				const turn = await delegate.resumeBuild(
 					target.agentId,
-					{ runId: open.runId, toolCallId: open.toolCallId, resumeData: translation.resumeData },
+					{ runId: open.runId, toolCallId: open.toolCallId, resumeData: ctx.resumeData },
 					session,
 				);
 				// Idempotent republish — protects the rebuilt-state/replay edge case
@@ -468,7 +363,6 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 				publishAgentSpawned(context, builderAgentId, target);
 				return await runBuilderConsumeLoop({
 					context,
-					domainContext,
 					delegate,
 					ctx,
 					target,
@@ -526,7 +420,6 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 
 			return await runBuilderConsumeLoop({
 				context,
-				domainContext,
 				delegate,
 				ctx,
 				target,
