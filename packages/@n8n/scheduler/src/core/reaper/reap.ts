@@ -89,6 +89,8 @@ export async function reap(
 	signal?: AbortSignal,
 ): Promise<ReapResult> {
 	const expired = await store.findExpiredLeases(options.batchSize);
+	// Stryker disable next-line ConditionalExpression: pure early-return optimisation;
+	// without it the loop below is simply empty for an empty array, same result.
 	if (expired.length === 0) return { reclaimed: 0, deadLettered: 0 };
 
 	let reclaimed = 0;
@@ -113,6 +115,8 @@ export async function reap(
 				// race means another actor decided the row and there is nothing to report.
 				if (affected > 0) {
 					try {
+						// Stryker disable next-line OptionalChaining: the enclosing catch
+						// already swallows a call on an undefined hook, same as `?.` skipping it.
 						hooks.onDeadLetter?.({
 							taskId: task.id,
 							attempts: nextAttempts,
@@ -131,6 +135,8 @@ export async function reap(
 			}
 		} catch (error) {
 			try {
+				// Stryker disable next-line OptionalChaining: the enclosing catch already
+				// swallows a call on an undefined hook, same as `?.` skipping it.
 				hooks.onRowError?.(task.id, error);
 			} catch {
 				// The remaining rows still need recovering.

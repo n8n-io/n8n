@@ -778,6 +778,11 @@ export class ProjectService {
 		});
 	}
 
+	/** Finds a project by id, or `null` when it does not exist. */
+	async findProject(projectId: string): Promise<Project | null> {
+		return await this.projectRepository.findOne({ where: { id: projectId } });
+	}
+
 	async getProjectRelations(projectId: string): Promise<ProjectRelation[]> {
 		return await this.projectRelationRepository.find({
 			where: { projectId },

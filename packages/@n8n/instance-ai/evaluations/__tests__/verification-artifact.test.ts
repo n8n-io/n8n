@@ -216,6 +216,120 @@ describe('buildVerificationArtifact', () => {
 		expect(logger.info).not.toHaveBeenCalled();
 	});
 
+	it('routes to the entry point when the build saved a sub-workflow first', () => {
+		// Sub-workflow tool-result arrives first → build.workflowId is the sub.
+		// Executing it directly starts once with an empty payload; the caller's
+		// entry point is the trigger-bearing sibling.
+		const logger = { info: vi.fn() };
+		const sub: WorkflowResponse = {
+			id: 'process-order-sub',
+			name: 'Process Order',
+			active: false,
+			versionId: 'v1',
+			nodes: [
+				{
+					id: 'a',
+					name: 'Execute Workflow Trigger',
+					type: 'n8n-nodes-base.executeWorkflowTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+		};
+		const main: WorkflowResponse = {
+			id: 'orders-main',
+			name: 'Order Intake',
+			active: false,
+			versionId: 'v1',
+			nodes: [
+				{
+					id: 'b',
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'c',
+					name: 'Run Process Order',
+					type: 'n8n-nodes-base.executeWorkflow',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: { workflowId: { value: 'process-order-sub' } },
+				},
+			],
+			connections: {},
+		};
+
+		const selected = selectScenarioWorkflowId(
+			{ ...scenario, name: 'three-orders-three-runs', dataSetup: 'Process Order runs three times' },
+			'process-order-sub',
+			[sub, main],
+			logger as never,
+		);
+
+		expect(selected).toBe('orders-main');
+		expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('orders-main'));
+	});
+
+	it('demotes executeWorkflow-referenced candidates even when scenario tokens favor the sub', () => {
+		const logger = { info: vi.fn() };
+		const sub: WorkflowResponse = {
+			id: 'sub-with-own-trigger',
+			name: 'Process Order',
+			active: false,
+			versionId: 'v1',
+			nodes: [
+				{
+					id: 'a',
+					name: 'Process Order Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+		};
+		const main: WorkflowResponse = {
+			id: 'orders-main',
+			name: 'Order Intake',
+			active: false,
+			versionId: 'v1',
+			nodes: [
+				{
+					id: 'b',
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'c',
+					name: 'Run Sub',
+					type: 'n8n-nodes-base.executeWorkflow',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: { workflowId: 'sub-with-own-trigger' },
+				},
+			],
+			connections: {},
+		};
+
+		const selected = selectScenarioWorkflowId(
+			{ ...scenario, name: 'process-order-runs', dataSetup: 'Process Order handles each order' },
+			'orders-main',
+			[main, sub],
+			logger as never,
+		);
+
+		expect(selected).toBe('orders-main');
+	});
+
 	it('labels Filter branches with downstream node names so verifier can tell where items went', () => {
 		const wf: WorkflowResponse = {
 			id: 'w1',

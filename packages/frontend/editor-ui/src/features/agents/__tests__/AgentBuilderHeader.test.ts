@@ -76,7 +76,7 @@ vi.mock('@n8n/design-system', () => ({
 	N8nActionDropdown: {
 		name: 'ActionDropdown',
 		template: '<div v-bind="$attrs" />',
-		props: ['items', 'activatorIcon'],
+		props: ['items', 'activatorIcon', 'extraPopperClass'],
 		emits: ['select'],
 	},
 }));
@@ -177,6 +177,12 @@ describe('AgentBuilderHeader', () => {
 		const wrapper = mountHeader({ headerActions: [{ id: 'delete', label: 'Delete' }] });
 		const action = wrapper.findComponent({ name: 'ActionDropdown' });
 		expect(action.props('activatorIcon')).toBe('ellipsis');
+	});
+
+	it('widens the header action menu so labels are readable from the icon trigger', () => {
+		const wrapper = mountHeader({ headerActions: [{ id: 'delete', label: 'Delete agent' }] });
+		const action = wrapper.findComponent({ name: 'ActionDropdown' });
+		expect(action.props('extraPopperClass')).toBeTruthy();
 	});
 
 	it('hides the action dropdown when no header actions are available', () => {

@@ -434,6 +434,8 @@ describe('createLlmMockHandler', () => {
 	});
 
 	it('should surface the rejection reason when a rejected spec is never resubmitted', async () => {
+		// One rejected submission per attempt (initial + DEFAULT_MAX_RETRIES).
+		llmSubmits({ type: 'text', contentType: 'text/xml' });
 		llmSubmits({ type: 'text', contentType: 'text/xml' });
 		llmSubmits({ type: 'text', contentType: 'text/xml' });
 		const handler = createLlmMockHandler();
