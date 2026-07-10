@@ -1,5 +1,7 @@
+import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
+import { UserError } from 'n8n-workflow';
 import type { Readable } from 'node:stream';
 
 import { N8N_VERSION } from '@/constants';
@@ -9,14 +11,14 @@ import { ImportPipeline } from './engine/import-pipeline';
 import { CredentialExporter } from './entities/credential/credential.exporter';
 import { FolderExporter } from './entities/folder/folder.exporter';
 import { ProjectExporter } from './entities/project/project.exporter';
-import { mergeRequirements, toPackageSubWorkflowRequirements } from './entities/requirements.types';
+import { mergeRequirements } from './entities/requirements.types';
+import { extractSubWorkflowRequirements } from './entities/workflow/sub-workflow-requirements';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
-import {
-	SubworkflowBehaviour,
-	type ExportPackageRequest,
-	type ImportPackageRequest,
-	type ImportResult,
+import type {
+	ExportPackageRequest,
+	ImportPackageRequest,
+	ImportResult,
 } from './n8n-packages.types';
 import { FORMAT_VERSION } from './spec/constants';
 import { type ManifestEntry, packageManifestSchema } from './spec/manifest.schema';
@@ -35,8 +37,9 @@ export class N8nPackagesService {
 
 	async exportPackage(request: ExportPackageRequest): Promise<Readable> {
 		const writer = new TarPackageWriter();
-		const exportRequest = this.normalizeExportRequest(request);
-		const { workflowIds, folderIds, projectIds } = exportRequest;
+		const workflowIds = request.workflowIds ?? [];
+		const folderIds = request.folderIds ?? [];
+		const projectIds = request.projectIds ?? [];
 
 		const folderExportResult =
 			folderIds.length > 0
@@ -76,14 +79,6 @@ export class N8nPackagesService {
 			projectExportResult?.requirements,
 		);
 
-		const credentialExportResult = await this.credentialExporter.export({
-			user: request.user,
-			requirements: requirements.credentials,
-			writer,
-			// Routes project-owned credentials into their project namespace; others stay top-level.
-			projectTargetsById: projectExportResult?.projectTargetsById,
-		});
-
 		const allFolders = [
 			...(folderExportResult?.entries ?? []),
 			...(projectExportResult?.folderEntries ?? []),
@@ -95,15 +90,29 @@ export class N8nPackagesService {
 			...(projectExportResult?.workflowEntries ?? []),
 		];
 
-		const subWorkflowRequirements = toPackageSubWorkflowRequirements(
-			requirements.subWorkflows ?? [],
+		const workflowEntitiesInPackage = [
+			...(workflowExportResult?.workflows ?? []),
+			...(folderExportResult?.workflowEntities ?? []),
+			...(projectExportResult?.workflowEntities ?? []),
+		];
+
+		this.assertStaticSubWorkflowsIncluded(
+			workflowEntitiesInPackage,
+			new Set(allWorkflowsInPackage.map(({ id }) => id)),
 		);
+
+		const credentialExportResult = await this.credentialExporter.export({
+			user: request.user,
+			requirements: requirements.credentials,
+			writer,
+			// Routes project-owned credentials into their project namespace; others stay top-level.
+			projectTargetsById: projectExportResult?.projectTargetsById,
+		});
 
 		const manifestRequirements = {
 			...(credentialExportResult.requirements.length > 0
 				? { credentials: credentialExportResult.requirements }
 				: {}),
-			...(subWorkflowRequirements.length > 0 ? { subWorkflows: subWorkflowRequirements } : {}),
 		};
 
 		const manifest = packageManifestSchema.parse({
@@ -156,12 +165,33 @@ export class N8nPackagesService {
 		return workflowIds.filter((id) => !folderWorkflowIds.has(id));
 	}
 
-	private normalizeExportRequest(request: ExportPackageRequest) {
-		return {
-			workflowIds: request.workflowIds ?? [],
-			folderIds: request.folderIds ?? [],
-			projectIds: request.projectIds ?? [],
-			subworkflowBehaviour: request.subworkflowBehaviour ?? SubworkflowBehaviour.IncludedInPackage,
-		};
+	private assertStaticSubWorkflowsIncluded(
+		workflows: WorkflowEntity[],
+		exportedWorkflowIds: Set<string>,
+	) {
+		const missingSubWorkflowIds = new Set<string>();
+
+		for (const workflow of workflows) {
+			for (const reference of extractSubWorkflowRequirements(workflow)) {
+				if (!exportedWorkflowIds.has(reference.sourceWorkflowId)) {
+					missingSubWorkflowIds.add(reference.sourceWorkflowId);
+				}
+			}
+		}
+
+		if (missingSubWorkflowIds.size === 0) return;
+
+		const displayedWorkflowIds = [...missingSubWorkflowIds].slice(0, 20);
+		const omittedCount = missingSubWorkflowIds.size - displayedWorkflowIds.length;
+		const dependencyLabel = missingSubWorkflowIds.size === 1 ? 'dependency' : 'dependencies';
+
+		throw new UserError(
+			`${missingSubWorkflowIds.size} sub-workflow ${dependencyLabel} not included in the package. Export aborted.`,
+			{
+				description: `Sub-workflow IDs not included in the package: ${displayedWorkflowIds.join(', ')}${
+					omittedCount > 0 ? `, and ${omittedCount} more` : ''
+				}`,
+			},
+		);
 	}
 }
