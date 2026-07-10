@@ -74,6 +74,7 @@ onBeforeUnmount(() => {
 		:title="i18n.baseText('experiments.exposeAllWorkflowsToMcp.modal.title')"
 		width="480px"
 		:event-bus="modalBus"
+		:closeOnClickModal="false"
 	>
 		<template #content>
 			<N8nText color="text-base" data-test-id="expose-all-workflows-mcp-description">
