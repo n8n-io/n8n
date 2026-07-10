@@ -21,7 +21,8 @@
     "dist/**/*"
   ],
   "devDependencies": {
-    "@n8n/typescript-config": "workspace:*"
+    "@n8n/typescript-config": "workspace:*",
+    "typescript": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

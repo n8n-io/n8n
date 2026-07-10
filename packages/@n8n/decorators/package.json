@@ -27,6 +27,7 @@
     "@n8n/vitest-config": "workspace:*",
     "@types/express": "catalog:",
     "@types/lodash": "catalog:",
+    "typescript": "catalog:",
     "vitest": "catalog:",
     "zod": "catalog:"
   },

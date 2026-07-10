@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/ai-utilities",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-09T12:06:02.594Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            2565,
+            2350,
+            2154
+          ],
+          "min": 2154,
+          "median": 2350,
+          "mean": 2357
+        },
+        "build": {
+          "runsMs": [
+            4832,
+            4338,
+            4552
+          ],
+          "min": 4338,
+          "median": 4552,
+          "mean": 4574
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-09T12:16:24.007Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            840,
+            779,
+            753
+          ],
+          "min": 753,
+          "median": 779,
+          "mean": 791
+        },
+        "build": {
+          "runsMs": [
+            2717,
+            1674,
+            1427
+          ],
+          "min": 1427,
+          "median": 1674,
+          "mean": 1939
+        }
+      }
+    }
+  }
+}

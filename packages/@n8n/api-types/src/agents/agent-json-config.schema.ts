@@ -299,6 +299,71 @@ export const McpServerConfigSchema = z
 	})
 	.strict();
 
+export const AGENT_VECTOR_STORE_PROVIDERS = ['pinecone', 'supabase', 'qdrant', 'postgres'] as const;
+
+/** n8n credential type each vector store provider's connection credential must have. */
+export const AGENT_VECTOR_STORE_CREDENTIAL_TYPES = {
+	pinecone: 'pineconeApi',
+	supabase: 'supabaseApi',
+	qdrant: 'qdrantApi',
+	postgres: 'postgres',
+} as const satisfies Record<AgentVectorStoreProvider, string>;
+
+export const VECTOR_STORE_USE_WHEN_MAX_LENGTH = 512;
+export const VECTOR_STORE_NAME_REGEX = /^[a-zA-Z0-9_-]+$/;
+
+const VectorStoreEmbeddingSchema = z
+	.object({
+		model: AgentModelSchema,
+		credential: CredentialIdSchema,
+	})
+	.strict();
+
+const VectorStoreBaseShape = {
+	name: z
+		.string()
+		.min(1)
+		.max(64)
+		.regex(VECTOR_STORE_NAME_REGEX)
+		.describe('Unique connection name, also used as the SDK tool-name suffix: search_<name>'),
+	credential: CredentialIdSchema,
+	useWhen: z.string().trim().min(1).max(VECTOR_STORE_USE_WHEN_MAX_LENGTH),
+	embedding: VectorStoreEmbeddingSchema,
+};
+
+export const AgentVectorStoreConfigSchema = z.discriminatedUnion('provider', [
+	z
+		.object({
+			provider: z.literal('pinecone'),
+			...VectorStoreBaseShape,
+			indexName: z.string().min(1),
+			namespace: z.string().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			provider: z.literal('qdrant'),
+			...VectorStoreBaseShape,
+			collectionName: z.string().min(1),
+		})
+		.strict(),
+	z
+		.object({
+			provider: z.literal('supabase'),
+			...VectorStoreBaseShape,
+			tableName: z.string().min(1),
+			queryName: z.string().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			provider: z.literal('postgres'),
+			...VectorStoreBaseShape,
+			tableName: z.string().min(1),
+		})
+		.strict(),
+]);
+
 const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 	z.object({
 		type: z.literal('custom'),
@@ -379,6 +444,16 @@ export const AgentJsonConfigSchema = z.object({
 			message: 'MCP server names must be unique within an agent',
 		})
 		.optional(),
+	vectorStores: z
+		.array(AgentVectorStoreConfigSchema)
+		.max(20)
+		// The SDK's asTool() sanitizes '-' to '_' when deriving the search_<name>
+		// tool name, so uniqueness must be checked on the sanitized form.
+		.refine(
+			(stores) => new Set(stores.map((s) => s.name.replace(/-/g, '_'))).size === stores.length,
+			{ message: 'Vector store names must be unique within an agent' },
+		)
+		.optional(),
 	config: z
 		.object({
 			thinking: ThinkingConfigSchema.optional(),
@@ -421,6 +496,8 @@ export type NodeToolConfig = z.infer<typeof NodeConfigSchema>;
 export type AgentJsonMcpServerConfig = z.infer<typeof McpServerConfigSchema>;
 export type McpAuthenticationSchemaType = z.infer<typeof McpAuthenticationSchemaTypes>;
 export type SubAgentTaskDifficulty = z.infer<typeof SubAgentTaskDifficultySchema>;
+export type AgentVectorStoreProvider = (typeof AGENT_VECTOR_STORE_PROVIDERS)[number];
+export type AgentJsonVectorStoreConfig = z.infer<typeof AgentVectorStoreConfigSchema>;
 
 export interface ConfigValidationError {
 	path: string;
@@ -438,6 +515,37 @@ export function tryParseConfigJson(
 		const msg = e instanceof SyntaxError ? e.message : String(e);
 		return { ok: false, errors: [{ path: '(root)', message: `JSON parse error: ${msg}` }] };
 	}
+}
+
+/**
+ * Vector stores register a `search_<sanitized-name>` tool at runtime (see
+ * `@n8n/agents`' `VectorStore.asTool()`). The `vectorStores` array refine
+ * above only catches vector-store-vs-vector-store name collisions; this also
+ * catches a vector store colliding with a configured tool, which would
+ * otherwise only surface as a runtime "tool name collision" error once the
+ * agent is built. Returns the colliding `search_<name>` tool names, if any.
+ */
+export function findVectorStoreToolNameCollisions(
+	config: Pick<AgentJsonConfig, 'tools' | 'vectorStores'>,
+): string[] {
+	if (!config.vectorStores?.length) return [];
+
+	const toolNames = new Set(
+		(config.tools ?? []).map((tool) => {
+			switch (tool.type) {
+				case 'custom':
+					return tool.id;
+				case 'workflow':
+					return tool.name ?? tool.workflow;
+				case 'node':
+					return tool.name;
+			}
+		}),
+	);
+
+	return config.vectorStores
+		.map((store) => `search_${store.name.replace(/-/g, '_')}`)
+		.filter((toolName) => toolNames.has(toolName));
 }
 
 export function formatZodErrors(error: ZodError): ConfigValidationError[] {
