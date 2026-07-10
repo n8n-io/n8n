@@ -39,7 +39,6 @@ type BulkSetAvailableInMCPResult = {
 type WorkflowMCPAvailabilityChange = {
 	workflowId: string;
 	settings: Pick<IWorkflowSettings, 'availableInMCP'>;
-	checksum: string;
 };
 
 @Service()
@@ -176,31 +175,19 @@ export class McpSettingsService {
 						return { written: chunkWritten, noOp: chunkNoOp };
 					}
 
-					const rows = await trx.find(WorkflowEntity, {
-						where: { id: In([...nextSettingsByWorkflowId.keys()]), isArchived: false },
-						select: ['id', ...WORKFLOW_CHECKSUM_FIELDS],
-					});
-
-					for (const row of rows) {
-						const nextSettings = nextSettingsByWorkflowId.get(row.id);
-						if (nextSettings === undefined) continue;
-
+					// Checksums are only consumed by open editors, so they are computed
+					// lazily in the broadcast path instead of loading every workflow
+					// body here.
+					for (const [workflowId, nextSettings] of nextSettingsByWorkflowId) {
 						await trx.update(
 							WorkflowEntity,
-							{ id: row.id },
+							{ id: workflowId },
 							{ settings: nextSettings, updatedAt: now },
 						);
-						// Checksum reflects this transaction's post-commit state.
-						// A concurrent write after commit may make it stale, which is acceptable for a settings-only toggle.
-						const checksum = await calculateWorkflowChecksum({
-							...row,
-							settings: nextSettings,
-						});
 
 						chunkWritten.push({
-							workflowId: row.id,
+							workflowId,
 							settings: { availableInMCP },
-							checksum,
 						});
 					}
 
@@ -254,6 +241,26 @@ export class McpSettingsService {
 
 		const changesByWorkflowId = new Map(changes.map((change) => [change.workflowId, change]));
 
+		// Only open editors consume checksums (to refresh their expectedChecksum
+		// so the next save doesn't 409), so compute them from the committed rows
+		// for the open workflows only, instead of loading every workflow body
+		// during the bulk update.
+		const checksumByWorkflowId = new Map<string, string>();
+		try {
+			const openRows = await this.workflowRepository.find({
+				where: { id: In(openWorkflowIds) },
+				select: ['id', ...WORKFLOW_CHECKSUM_FIELDS],
+			});
+			for (const row of openRows) {
+				checksumByWorkflowId.set(row.id, await calculateWorkflowChecksum(row));
+			}
+		} catch (error) {
+			this.logger.warn('Failed to compute checksums for settings update broadcast', {
+				workflowCount: openWorkflowIds.length,
+				cause: error instanceof Error ? error.message : String(error),
+			});
+		}
+
 		await Promise.all(
 			openWorkflowIds.map(async (workflowId) => {
 				try {
@@ -263,7 +270,7 @@ export class McpSettingsService {
 					await this.collaborationService.broadcastWorkflowSettingsUpdated(
 						workflowId,
 						change.settings,
-						change.checksum,
+						checksumByWorkflowId.get(workflowId),
 					);
 				} catch (error) {
 					this.logger.warn('Failed to broadcast workflow settings update', {
