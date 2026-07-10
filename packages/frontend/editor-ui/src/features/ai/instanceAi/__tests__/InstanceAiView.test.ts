@@ -5,6 +5,8 @@ import InstanceAiView from '../InstanceAiView.vue';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { INSTANCE_AI_VIEW } from '../constants';
 
+const TEST_INSTANCE_ID = 'test-instance-id';
+
 const routerPush = vi.hoisted(() => vi.fn());
 const routerHistoryState = vi.hoisted(() => ({ back: null as string | null }));
 const telemetryTrack = vi.hoisted(() => vi.fn());
@@ -25,6 +27,10 @@ vi.mock('@n8n/composables/useDeviceSupport', () => ({
 	useDeviceSupport: () => ({
 		isCtrlKeyPressed: (event: KeyboardEvent) => event.ctrlKey || event.metaKey,
 	}),
+}));
+
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ instanceId: TEST_INSTANCE_ID }),
 }));
 
 const renderView = createComponentRenderer(InstanceAiView, {
@@ -71,6 +77,7 @@ describe('InstanceAiView', () => {
 		renderView({ pinia });
 
 		expect(telemetryTrack).toHaveBeenCalledWith('User viewed AI assistant', {
+			instance_id: TEST_INSTANCE_ID,
 			source_url: '/workflow/abc123',
 		});
 	});
@@ -81,6 +88,7 @@ describe('InstanceAiView', () => {
 		renderView({ pinia });
 
 		expect(telemetryTrack).toHaveBeenCalledWith('User viewed AI assistant', {
+			instance_id: TEST_INSTANCE_ID,
 			source_url: null,
 		});
 	});
