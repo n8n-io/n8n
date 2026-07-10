@@ -92,6 +92,23 @@ import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
 const DEFAULT_TIMEOUT_MS = 900_000;
 const EVAL_DATA_DIR = path.join(__dirname, '..', '..', '.data');
 
+/**
+ * Per-case budget: `complex` cases get 1.5× the base timeout. The heaviest
+ * builds (multi-agent fan-outs, 5-integration pipelines) legitimately run at
+ * the shared default's cap — observed 777–900s with 4/10 builds timing out on
+ * weekly-social-content-scheduler in run 29012884140 — while the default must
+ * NOT rise globally (see the comment above: a generous default lets starved
+ * scenarios amplify the contention that starved them). Keyed off the authored
+ * `complexity` field so the budget travels with the case (incl. through the
+ * lang-tracer mirror) instead of a bespoke per-case knob.
+ */
+export function effectiveTimeoutMs(
+	complexity: WorkflowTestCase['complexity'] | undefined,
+	baseMs: number,
+): number {
+	return complexity === 'complex' ? Math.round(baseMs * 1.5) : baseMs;
+}
+
 function getMaxConcurrentScenarios(): number {
 	const raw = process.env.N8N_EVAL_MAX_CONCURRENT_SCENARIOS;
 	const parsed = raw ? Number.parseInt(raw, 10) : 4;
@@ -251,7 +268,11 @@ export async function runWorkflowTestCase(
 	config: WorkflowTestCaseConfig,
 ): Promise<WorkflowTestCaseResult> {
 	const { client, testCase, logger } = config;
-	const timeoutMs = config.timeoutMs > 0 ? config.timeoutMs : DEFAULT_TIMEOUT_MS;
+	const baseTimeoutMs = config.timeoutMs > 0 ? config.timeoutMs : DEFAULT_TIMEOUT_MS;
+	const timeoutMs = effectiveTimeoutMs(testCase.complexity, baseTimeoutMs);
+	if (timeoutMs !== baseTimeoutMs) {
+		logger.info(`  Complex case: per-iteration budget ${String(Math.round(timeoutMs / 1000))}s`);
+	}
 
 	const result: WorkflowTestCaseResult = {
 		testCase,
