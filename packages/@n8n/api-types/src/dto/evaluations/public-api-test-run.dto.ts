@@ -35,6 +35,16 @@ export interface TestRunSummaryDto {
 	updatedAt: string;
 }
 
+// A newly triggered run: no metrics/timing yet, so kept separate from TestRunSummaryDto.
+export interface TestRunDto {
+	id: string;
+	status: PublicTestRunStatus;
+	workflowId: string;
+	createdAt: string;
+}
+
+export type TestRunCancelDto = Pick<TestRunDto, 'id' | 'status'>;
+
 export interface TestCaseExecutionDto {
 	id: string;
 	status: PublicTestCaseExecutionStatus;

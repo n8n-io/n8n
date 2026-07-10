@@ -565,6 +565,8 @@ export class TestRunnerService {
 			evaluationConfigId?: string;
 			evaluationConfigSnapshot?: IDataObject;
 			compileFromConfig?: boolean;
+			// Trigger source for telemetry; defaults to 'ui'.
+			via?: 'ui' | 'public-api';
 		},
 	): Promise<{ testRun: TestRun; finished: Promise<void> }> {
 		const requestedConcurrency = Math.max(1, Math.min(10, Math.floor(concurrency)));
@@ -664,6 +666,7 @@ export class TestRunnerService {
 			effectiveConcurrency,
 			concurrencyLimitedByConfig,
 			runType,
+			via: options?.via,
 		});
 
 		return { testRun, finished };
@@ -677,6 +680,7 @@ export class TestRunnerService {
 		effectiveConcurrency,
 		concurrencyLimitedByConfig,
 		runType,
+		via,
 	}: {
 		user: User;
 		workflowId: string;
@@ -685,6 +689,7 @@ export class TestRunnerService {
 		effectiveConcurrency: number;
 		concurrencyLimitedByConfig: boolean;
 		runType: 'config' | 'direct';
+		via?: 'ui' | 'public-api';
 	}): Promise<void> {
 		// Initialize telemetry metadata
 		const telemetryMeta = {
@@ -738,6 +743,7 @@ export class TestRunnerService {
 				run_id: testRun.id,
 				workflow_id: workflowId,
 				run_type: runType,
+				via: via ?? 'ui',
 			});
 
 			///
