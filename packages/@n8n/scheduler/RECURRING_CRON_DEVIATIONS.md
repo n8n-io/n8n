@@ -14,14 +14,14 @@ first implementation.
 ## 1. Legacy arithmetic bugs are fixed, not reproduced
 
 The legacy gate stores period *labels* and compares them with modular arithmetic. The domain
-math uses real calendar diffs instead (`src/core/recurrence/cadence.ts`). Consequences:
+math uses real calendar diffs instead (`src/core/recurrence/periods.ts`). Consequences:
 
 | Legacy formula | Bug | New behavior |
 |---|---|---|
-| `(dayOfYear - last + 365) % 365` | Day 366 of a leap year collides with Jan 1; Dec-to-Jan spans in leap years are off by one | Calendar-day diff in the schedule timezone; pinned by `counts correctly across a leap-year boundary` (cadence.test.ts) |
-| `(hour - last + 24) % 24` | Cannot represent a gap of 24h or more; a 27-hour gap reads as 3 | Unbounded wall-clock hour count; pinned by `does not wrap at a day boundary (27 hours later reads 27, not 3)` (cadence.test.ts) |
-| `(week - last + 52) % 52` | Week 53 squashed at year boundaries | Sunday-start calendar-week diff; pinned by `counts week boundaries across a year boundary` (cadence.test.ts) |
-| `month === (size + last) % 12` (historical) | "Every 12 months" never fired again | Absolute month count (`year*12 + month`), already fixed on legacy HEAD and reproduced here; pinned by `counts absolutely across year boundaries, so sizes of 12 and beyond work` (cadence.test.ts) |
+| `(dayOfYear - last + 365) % 365` | Day 366 of a leap year collides with Jan 1; Dec-to-Jan spans in leap years are off by one | Calendar-day diff in the schedule timezone; pinned by `counts correctly across a leap-year boundary` (periods.test.ts) |
+| `(hour - last + 24) % 24` | Cannot represent a gap of 24h or more; a 27-hour gap reads as 3 | Unbounded wall-clock hour count; pinned by `does not wrap at a day boundary (27 hours later reads 27, not 3)` (periods.test.ts) |
+| `(week - last + 52) % 52` | Week 53 squashed at year boundaries | Sunday-start calendar-week diff; pinned by `counts week boundaries across a year boundary` (periods.test.ts) |
+| `month === (size + last) % 12` (historical) | "Every 12 months" never fired again | Absolute month count (`year*12 + month`), already fixed on legacy HEAD and reproduced here; pinned by `counts absolutely across year boundaries, so sizes of 12 and beyond work` (periods.test.ts) |
 
 A schedule that legacy misfired (or permanently stalled) around these edges fires correctly
 under `recurring_cron`. That is a behavior change for the affected instants, by design.
@@ -30,7 +30,7 @@ under `recurring_cron`. That is a behavior change for the affected instants, by 
 
 Legacy used moment's `.week()`, which is locale-dependent. On the default en locale weeks start
 on Sunday, and `recurring_cron` pins that definition explicitly (`startOfSundayWeek` in
-`cadence.ts`). An instance that ran moment with a Monday-start locale would have had its
+`periods.ts`). An instance that ran moment with a Monday-start locale would have had its
 week boundaries one day later; such setups see the boundary shift. One documented definition
 replaces an implicit locale-dependent one.
 
@@ -57,7 +57,7 @@ size-6 gate would wrongly skip that candidate. Wall-clock counting matches the l
 semantics and keeps the redundant case correct. The flip side: "every 5 hours" can be 4 or 6
 physical hours across a DST transition. Pinned by the two `redundant divisible hours` tests and
 `every 5 hours on an hourly expression: five clock hours apart` (next-run.test.ts), plus the
-spring-forward/fall-back cases in cadence.test.ts. Safe on fall-back because cron-parser fires a
+spring-forward/fall-back cases in periods.test.ts. Safe on fall-back because cron-parser fires a
 repeated local time once.
 
 ## 5. A stride of 1 is rejected
