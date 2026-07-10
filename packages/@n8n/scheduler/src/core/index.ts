@@ -17,6 +17,25 @@ export type {
 } from './types';
 export { computeFirstRunAt, computeNextRunAt } from './recurrence/next-run';
 export { validateSchedule } from './recurrence/validate';
+
+export { provision, deprovision, createJobProvisioner } from './provisioning';
+export type {
+	JobProvisioner,
+	JobProvisionerDeps,
+	ProvisionTransaction,
+	RunInProvisionTransaction,
+	DeprovisionTransaction,
+	RunInDeprovisionTransaction,
+	ScheduleDefinition,
+	CronDefinition,
+	RecurringCronDefinition,
+	IntervalDefinition,
+	OneOffDefinition,
+	DesiredJob,
+	ExistingJob,
+	ProvisionedJob,
+	ProvisionSummary,
+} from './provisioning';
 export type { ExecutorOptions, TaskHandler } from './executor';
 export type {
 	MaterializerOptions,
