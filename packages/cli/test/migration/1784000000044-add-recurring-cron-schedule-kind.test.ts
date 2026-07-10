@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'AddRecurringCronScheduleKind1784000000044';
+const MIGRATION_NAME = 'AddRecurringCronScheduleKind1784000000045';
 
 describe('AddRecurringCronScheduleKind Migration', () => {
 	let dataSource: DataSource;

@@ -41,6 +41,16 @@ export interface DataTableResult {
 	toolCallId: string;
 }
 
+export interface AgentArtifactResult {
+	agentId: string;
+	projectId?: string;
+	/** Unique per operation — changes even when the same agent is modified again. */
+	toolCallId: string;
+	kind: 'created' | 'mutated';
+}
+
+type AgentArtifactTarget = Pick<AgentArtifactResult, 'agentId' | 'projectId'>;
+
 /**
  * Walks an agent tree depth-first (most recent last) and returns the workflowId
  * and toolCallId from the latest successful build-workflow / submit-workflow tool result.
@@ -331,6 +341,75 @@ export function getLatestDataTableResult(node: InstanceAiAgentNode): DataTableRe
 			}
 		}
 	}
+	return undefined;
+}
+
+const AGENT_BUILDER_MUTATING_ACTIONS = new Set([
+	'build_agent',
+	'create_skill',
+	'create_task',
+	'build_custom_tool',
+]);
+
+function getAgentTarget(node: InstanceAiAgentNode): AgentArtifactTarget | undefined {
+	if (node.targetResource?.type !== 'agent' || typeof node.targetResource.id !== 'string') {
+		return undefined;
+	}
+	return {
+		agentId: node.targetResource.id,
+		...(typeof node.targetResource.projectId === 'string'
+			? { projectId: node.targetResource.projectId }
+			: {}),
+	};
+}
+
+export function getLatestAgentArtifactResult(
+	node: InstanceAiAgentNode,
+	fallbackTarget?: AgentArtifactTarget,
+): AgentArtifactResult | undefined {
+	const target = getAgentTarget(node) ?? fallbackTarget;
+
+	for (let i = node.children.length - 1; i >= 0; i--) {
+		const childResult = getLatestAgentArtifactResult(node.children[i], target);
+		if (childResult) return childResult;
+	}
+
+	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
+		const tc = node.toolCalls[i];
+		if (tc.isLoading || !tc.result || typeof tc.result !== 'object') continue;
+		const result = tc.result as Record<string, unknown>;
+		const args = tc.args as Record<string, unknown> | undefined;
+
+		if (
+			tc.toolName === 'agent_builder' &&
+			args?.action === 'create_agent' &&
+			result.ok === true &&
+			typeof result.agentId === 'string'
+		) {
+			return {
+				agentId: result.agentId,
+				...(typeof result.projectId === 'string' ? { projectId: result.projectId } : {}),
+				toolCallId: tc.toolCallId,
+				kind: 'created',
+			};
+		}
+
+		if (
+			target &&
+			((tc.toolName === 'agent_builder' &&
+				typeof args?.action === 'string' &&
+				AGENT_BUILDER_MUTATING_ACTIONS.has(args.action) &&
+				result.ok === true) ||
+				(tc.toolName === 'configure_channel' && 'connected' in result))
+		) {
+			return {
+				...target,
+				toolCallId: tc.toolCallId,
+				kind: 'mutated',
+			};
+		}
+	}
+
 	return undefined;
 }
 

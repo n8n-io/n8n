@@ -52,15 +52,21 @@ export {
 	hardRegressions,
 	softRegressions,
 	watchList,
+	scenarioUnitKey,
+	expectationUnitKey,
+	unitKeyOf,
 } from './comparison/compare';
 export type {
 	ComparisonResult,
-	ScenarioComparison,
-	ScenarioCounts,
+	EvaluationUnitComparison,
+	EvaluationUnitCounts,
+	EvaluationUnitKind,
+	UnitRef,
 	ExperimentBucket,
 	AggregateComparison,
 	FailureCategoryComparison,
 } from './comparison/compare';
+export { bucketFromEvaluation } from './comparison/bucket-from-evaluation';
 export {
 	classifyScenario,
 	fishersExactOneSidedLeft,

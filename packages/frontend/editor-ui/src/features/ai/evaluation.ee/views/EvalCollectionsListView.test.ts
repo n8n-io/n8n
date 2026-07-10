@@ -133,7 +133,7 @@ describe('EvalCollectionsListView', () => {
 		expect(container.textContent).toContain('Tone tuning experiment');
 	});
 
-	it('CTA is disabled and surfaces the "coming soon" tooltip', async () => {
+	it('CTA is enabled to open the compare view', async () => {
 		const { container } = setup({ collections: [COLLECTION], details: [DETAIL] });
 
 		await waitFor(() =>
@@ -142,7 +142,8 @@ describe('EvalCollectionsListView', () => {
 		const cta = container.querySelector(
 			'[data-test-id="eval-collections-card-cta"]',
 		) as HTMLButtonElement;
-		expect(cta).toBeDisabled();
+		expect(cta).not.toBeDisabled();
+		expect(cta.textContent).toContain('Open compare');
 	});
 
 	it('renders ungrouped runs section with only runs that have no collectionId', async () => {

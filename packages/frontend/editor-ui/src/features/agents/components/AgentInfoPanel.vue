@@ -37,6 +37,8 @@ const props = withDefaults(
 		disabled?: boolean;
 		embedded?: boolean;
 		projectId?: string;
+		/** Cap for the instructions editor — compact hosts (NDV) pass a smaller value. */
+		instructionsMaxHeight?: string;
 		showModel?: boolean;
 		showInstructions?: boolean;
 		showInstructionsToolbar?: boolean;
@@ -44,6 +46,7 @@ const props = withDefaults(
 	{
 		disabled: false,
 		embedded: false,
+		instructionsMaxHeight: 'none',
 		showModel: true,
 		showInstructions: true,
 		showInstructionsToolbar: false,
@@ -108,9 +111,6 @@ const panelTestId = computed(() => {
 const instructionsToolbarMode = computed(() =>
 	props.showInstructionsToolbar ? 'always' : 'never',
 );
-const instructionsEditorVariant = computed(() =>
-	props.showInstructionsToolbar ? 'contained' : 'ghost',
-);
 
 function onModelChange(selection: AgentModelSelection) {
 	const credentialId = credentialsByProvider.value?.[selection.provider];
@@ -171,13 +171,14 @@ function onInstructionsInput(value: string) {
 			:description="i18n.baseText('agents.builder.agent.description')"
 		/>
 
-		<div v-if="props.showModel" :class="[$style.field, props.disabled && shared.disabledOverlay]">
-			<label :class="$style.label"
+		<div v-if="props.showModel" :class="[$style.field]">
+			<label :class="[$style.label, props.disabled && shared.disabled]"
 				><N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 					i18n.baseText('agents.builder.agent.model.label')
 				}}</N8nText></label
 			>
 			<AgentModelSelector
+				:disabled="props.disabled"
 				:selected-model="selectedAgent"
 				:credentials="credentialsByProvider"
 				:models-by-provider="filteredAgents"
@@ -190,8 +191,8 @@ function onInstructionsInput(value: string) {
 			/>
 		</div>
 
-		<div v-if="props.showInstructions" :class="[$style.field, $style.instructionsField]">
-			<label :class="$style.label">
+		<div v-if="props.showInstructions" :class="[$style.field]">
+			<label :class="[$style.label, props.disabled && shared.disabled]">
 				<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 					i18n.baseText('agents.builder.agent.instructions.label')
 				}}</N8nText>
@@ -199,10 +200,10 @@ function onInstructionsInput(value: string) {
 			<N8nMarkdownEditor
 				:class="$style.instructionsDocument"
 				:model-value="instructions"
-				:readonly="props.disabled"
-				:variant="instructionsEditorVariant"
+				:disabled="props.disabled"
 				:show-toolbar="instructionsToolbarMode"
-				max-height="none"
+				:max-height="props.instructionsMaxHeight"
+				variant="contained"
 				data-testid="agent-instructions-document"
 				@update:model-value="onInstructionsInput"
 			/>
@@ -225,11 +226,17 @@ function onInstructionsInput(value: string) {
 	width: 100%;
 }
 
+.instructionsDocument:disabled {
+	opacity: 0.5;
+}
+
+/* Follow the editor's max-height: unbounded hosts (the builder, which passes
+   `instructions-max-height="none"`) grow naturally, while capped hosts (the
+   NDV's 240px) scroll within the cap instead of clipping. */
 .instructionsDocument :global(.n8n-markdown) {
-	max-height: none;
+	max-height: var(--markdown-editor-max-height);
 	min-height: calc(var(--spacing--4xl) + var(--spacing--xl));
-	overflow-y: visible;
-	padding: 0;
+	overflow-y: auto;
 }
 
 .field {

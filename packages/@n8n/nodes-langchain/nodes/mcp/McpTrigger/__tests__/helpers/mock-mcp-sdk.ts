@@ -11,6 +11,9 @@ export function createMockServer(): Mocked<Server> {
 		connect: vi.fn().mockResolvedValue(undefined),
 		close: vi.fn().mockResolvedValue(undefined),
 		setRequestHandler: vi.fn(),
+		// Default: client advertised no capabilities (no elicitation support).
+		getClientCapabilities: vi.fn().mockReturnValue(undefined),
+		elicitInput: vi.fn().mockResolvedValue({ action: 'accept' }),
 		onclose: undefined,
 		onerror: undefined,
 	} as unknown as Mocked<Server>;
