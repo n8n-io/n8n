@@ -20,7 +20,8 @@ properties:
   parentFolderId:
     type: string
     nullable: true
-    description: ID of the folder to place the workflow in. Omit or null to place at the project root.
+    writeOnly: true
+    description: ID of the folder to move the workflow into. Pass null to move it to the project root; omit to leave its current folder unchanged.
     example: X8ovzm8lTQjcXRZQ
   active:
     type: boolean

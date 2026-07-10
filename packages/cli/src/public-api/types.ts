@@ -140,7 +140,7 @@ export declare namespace WorkflowRequest {
 	type Create = AuthenticatedRequest<
 		{},
 		{},
-		WorkflowEntity & { projectId?: string; parentFolderId?: string },
+		WorkflowEntity & { projectId?: string; parentFolderId?: string | null },
 		{}
 	>;
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { excludePinnedData?: boolean }>;
@@ -148,7 +148,7 @@ export declare namespace WorkflowRequest {
 	type Update = AuthenticatedRequest<
 		{ id: string },
 		{},
-		WorkflowEntity & { parentFolderId?: string },
+		WorkflowEntity & { parentFolderId?: string | null },
 		{}
 	>;
 	type Activate = AuthenticatedRequest<

@@ -62,7 +62,7 @@ export async function getWorkflowById(id: string): Promise<WorkflowEntity | null
 
 export async function createWorkflow(
 	user: User,
-	body: WorkflowEntity & { projectId?: string; parentFolderId?: string },
+	body: WorkflowEntity & { projectId?: string; parentFolderId?: string | null },
 ): Promise<WorkflowEntity> {
 	const { projectId, parentFolderId, ...rest } = body;
 	const workflow = createWorkflowEntityFromPayload(rest);
@@ -76,7 +76,9 @@ export async function createWorkflow(
 
 	return await Container.get(WorkflowCreationService).createWorkflow(user, workflow, {
 		projectId,
-		parentFolderId,
+		// For create, both null and undefined mean "project root" (a new workflow
+		// has no parent folder), so normalise null to undefined for the service.
+		parentFolderId: parentFolderId ?? undefined,
 		publicApi: true,
 		source: 'api',
 	});

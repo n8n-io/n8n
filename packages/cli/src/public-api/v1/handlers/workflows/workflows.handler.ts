@@ -6,8 +6,10 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { In, IsNull, Like, Not, QueryFailedError } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere } from '@n8n/typeorm';
+import { PROJECT_ROOT } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -28,6 +30,10 @@ import {
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 const handleError = (error: unknown) => {
+	// An unknown or cross-project folder surfaces as 404, matching the folders handler.
+	if (error instanceof FolderNotFoundError) {
+		throw new NotFoundError(error.message);
+	}
 	if (error instanceof ResponseError) {
 		throw error;
 	}
@@ -304,6 +310,11 @@ const workflowHandlers: WorkflowHandlers = {
 			const updateData = new WorkflowEntity();
 			Object.assign(updateData, rest);
 
+			// An explicit null moves the workflow to the project root, which the
+			// service expresses via the PROJECT_ROOT sentinel. Omitting the field
+			// (undefined) leaves the current folder untouched.
+			const resolvedParentFolderId = parentFolderId === null ? PROJECT_ROOT : parentFolderId;
+
 			try {
 				// Credential tamper protection is enforced centrally in WorkflowService.update
 				const updatedWorkflow = await Container.get(WorkflowService).update(
@@ -311,7 +322,7 @@ const workflowHandlers: WorkflowHandlers = {
 					updateData,
 					id,
 					{
-						parentFolderId,
+						parentFolderId: resolvedParentFolderId,
 						forceSave: true, // Skip version conflict check for public API
 						publicApi: true,
 						publishIfActive: true,
