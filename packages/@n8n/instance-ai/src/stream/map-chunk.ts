@@ -99,6 +99,7 @@ const agentStreamChunkTypes = new Set<string>([
 	'finish',
 	'text-delta',
 	'reasoning-delta',
+	'tool-input-start',
 	'tool-call',
 	'tool-result',
 	'error',
@@ -405,6 +406,14 @@ export function mapAgentChunkToEvent(
 			return { type: 'text-delta', ...base, payload: { text: chunk.delta } };
 		case 'reasoning-delta':
 			return { type: 'reasoning-delta', ...base, payload: { text: chunk.delta } };
+		case 'tool-input-start':
+			// Surfaces the pending tool call while its arguments stream — the
+			// full `tool-call` event follows once the args are complete.
+			return {
+				type: 'tool-input-start',
+				...base,
+				payload: { toolCallId: chunk.toolCallId, toolName: chunk.toolName },
+			};
 		case 'tool-call':
 			return mapToolCallChunk(chunk, base);
 		case 'tool-result':

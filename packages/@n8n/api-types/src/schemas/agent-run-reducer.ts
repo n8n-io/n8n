@@ -240,8 +240,41 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
+		case 'tool-input-start': {
+			// Announces a tool call whose arguments are still streaming — surfaces
+			// the pending call immediately; `tool-call` fills the args in later.
+			if (!isSafeObjectKey(event.payload.toolCallId)) break;
+			if (state.toolCallsById[event.payload.toolCallId]) break;
+			const agent = ensureAgent(state, event.agentId);
+			if (agent) {
+				const tc: InstanceAiToolCallState = {
+					toolCallId: event.payload.toolCallId,
+					toolName: event.payload.toolName,
+					args: {},
+					isLoading: true,
+					renderHint: getRenderHint(event.payload.toolName),
+					startedAt: new Date().toISOString(),
+				};
+				state.toolCallsById[event.payload.toolCallId] = tc;
+				agent.toolCalls.push(tc);
+				agent.timeline.push({
+					type: 'tool-call',
+					toolCallId: event.payload.toolCallId,
+					...(event.responseId ? { responseId: event.responseId } : {}),
+				});
+			}
+			break;
+		}
+
 		case 'tool-call': {
 			if (!isSafeObjectKey(event.payload.toolCallId)) break;
+			// Announced by a preceding tool-input-start: fill in the streamed args
+			// on the existing entry instead of duplicating it.
+			const announced = state.toolCallsById[event.payload.toolCallId];
+			if (announced) {
+				announced.args = event.payload.args;
+				break;
+			}
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				const tc: InstanceAiToolCallState = {

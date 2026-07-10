@@ -463,6 +463,67 @@ describe('agent-run-reducer', () => {
 			expect(state.toolCallsById['tc-skill'].renderHint).toBe('skill');
 		});
 
+		it('tool-input-start announces a pending tool call before its args stream', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, {
+				type: 'tool-input-start',
+				runId: 'run-1',
+				agentId: 'root',
+				responseId: 'resp-1',
+				payload: { toolCallId: 'tc-1', toolName: 'build-workflow' },
+			});
+
+			const tc = state.toolCallsById['tc-1'];
+			expect(tc).toBeDefined();
+			expect(tc.args).toEqual({});
+			expect(tc.isLoading).toBe(true);
+			expect(tc.renderHint).toBe('builder');
+			expect(state.agentsById['root'].timeline).toContainEqual({
+				type: 'tool-call',
+				toolCallId: 'tc-1',
+				responseId: 'resp-1',
+			});
+		});
+
+		it('tool-call fills args on an announced call without duplicating it', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, {
+				type: 'tool-input-start',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: 'tc-1', toolName: 'build-workflow' },
+			});
+			reduceEvent(state, {
+				type: 'tool-call',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: 'tc-1', toolName: 'build-workflow', args: { filePath: 'a.ts' } },
+			});
+
+			expect(state.toolCallsById['tc-1'].args).toEqual({ filePath: 'a.ts' });
+			expect(state.agentsById['root'].toolCalls).toHaveLength(1);
+			expect(state.agentsById['root'].timeline.filter((e) => e.type === 'tool-call')).toHaveLength(
+				1,
+			);
+		});
+
+		it('duplicate tool-input-start events are idempotent', () => {
+			const state = stateWithRun('run-1', 'root');
+			const event = {
+				type: 'tool-input-start',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: 'tc-1', toolName: 'some-tool' },
+			} as const;
+			reduceEvent(state, event);
+			reduceEvent(state, event);
+
+			expect(state.agentsById['root'].toolCalls).toHaveLength(1);
+			expect(state.agentsById['root'].timeline.filter((e) => e.type === 'tool-call')).toHaveLength(
+				1,
+			);
+		});
+
 		it('tool-result resolves tool call', () => {
 			const state = stateWithRun('run-1', 'root');
 			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'some-tool'));
