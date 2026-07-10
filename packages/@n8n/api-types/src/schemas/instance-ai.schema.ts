@@ -194,6 +194,7 @@ export const agentSpawnedTargetResourceSchema = z.object({
 	type: z.enum(['workflow', 'data-table', 'credential', 'other', 'agent', 'config-eval']),
 	id: z.string().optional(),
 	name: z.string().optional(),
+	projectId: z.string().optional(),
 });
 export type InstanceAiTargetResource = z.infer<typeof agentSpawnedTargetResourceSchema>;
 

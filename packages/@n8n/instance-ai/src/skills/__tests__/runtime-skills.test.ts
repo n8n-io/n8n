@@ -362,6 +362,6 @@ async function loadRuntimeSkillSourceWithEnabledModules(enabledModules: string |
 		process.env.N8N_ENABLED_MODULES = enabledModules;
 	}
 
-	const { loadInstanceAiRuntimeSkillSource } = await import('../runtime-skills');
+	const { loadInstanceAiRuntimeSkillSource } = await import('../runtime-skills.js');
 	return loadInstanceAiRuntimeSkillSource();
 }

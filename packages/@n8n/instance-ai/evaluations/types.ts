@@ -259,7 +259,8 @@ export interface ExecutionScenarioResult {
 	incomplete?: boolean;
 }
 
-/** Verdict for one author-written build expectation. Informational only. */
+/** Verdict for one author-written build expectation. Scored as a unit in the
+ *  pass rate alongside execution scenarios. */
 export interface BuildExpectationResult {
 	expectation: string;
 	pass: boolean;
@@ -306,7 +307,8 @@ export interface WorkflowTestCaseResult {
 	workflowChecks?: CheckOutcome[];
 	/** Captured build-time sub-agent/tool activity for builder debugging. */
 	buildTrace?: BuildTrace;
-	/** Per-expectation verdicts from the build-expectations judge. Not consumed by pass@k. */
+	/** Per-expectation verdicts from the build-expectations judge. Aggregated as
+	 *  scoring units alongside execution scenarios. */
 	buildExpectationResults?: BuildExpectationResult[];
 	/** Base URL of the n8n instance behind this run. Per-result so multi-lane
 	 *  configs each get their own URL for canvas/execution links. */
