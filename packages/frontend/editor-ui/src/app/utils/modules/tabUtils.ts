@@ -1,17 +1,10 @@
 import type { RouteLocationRaw } from 'vue-router';
 import type { TabOptions } from '@n8n/design-system';
+import type { DynamicTabOptions } from '@n8n/module-sdk';
 
-export type DynamicTabOptions = TabOptions<string> & {
-	dynamicRoute?: {
-		name: string;
-		includeProjectId?: boolean;
-	};
-	/**
-	 * Insert this tab immediately after the tab whose `value` matches.
-	 * If unset (or no match is found at render time), the tab is appended at the end.
-	 */
-	insertAfter?: string;
-};
+// `DynamicTabOptions` now lives in `@n8n/module-sdk` (module contract);
+// re-exported so existing importers of this module keep working.
+export type { DynamicTabOptions };
 
 export type ProcessedDynamicTab = TabOptions<string> & { insertAfter?: string };
 

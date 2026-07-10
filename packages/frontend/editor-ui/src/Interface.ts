@@ -10,6 +10,7 @@ import type { NodeViewItemSection } from '@/features/shared/nodeCreator/views/vi
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { Scope } from '@n8n/permissions';
 import type { NodeCreatorTag, IconName, BinaryMetadata } from '@n8n/design-system';
+import type { ModalState } from '@n8n/module-sdk';
 import type {
 	GenericValue,
 	IConnections,
@@ -645,14 +646,9 @@ export type Modals = {
 
 export type ModalKey = keyof Modals;
 
-export type ModalState = {
-	open: boolean;
-	mode?: string | null;
-	data?: Record<string, unknown>;
-	activeId?: string | null;
-	curlCommand?: string;
-	httpNodeParameters?: string;
-};
+// Canonical definition now lives in `@n8n/module-sdk` (owned by the module
+// contract); re-exported here so existing `@/Interface` consumers keep working.
+export type { ModalState };
 
 export interface NewCredentialsModal extends ModalState {
 	showAuthSelector?: boolean;

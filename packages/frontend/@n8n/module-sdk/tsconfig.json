@@ -1,0 +1,17 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.frontend.json",
+	"compilerOptions": {
+		"moduleResolution": "bundler",
+		"outDir": "dist",
+		"noEmit": true,
+		"useUnknownInCatchVariables": false,
+		"types": ["vite/client", "vitest/globals"],
+		"isolatedModules": true,
+		// Map the design-system self-referential imports to its source so
+		// vue-tsc can follow them (it ships types from source, not dist).
+		"paths": {
+			"@n8n/design-system*": ["../design-system/src*"]
+		}
+	},
+	"include": ["src/**/*.ts", "vite.config.ts", "tsdown.config.ts"]
+}

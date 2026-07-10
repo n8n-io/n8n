@@ -1,5 +1,5 @@
 import { useI18n } from '@n8n/i18n';
-import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
+import { type FrontendModuleDescription } from '@n8n/module-sdk';
 import { SURFACE_MCP_TO_NEW_CLOUD_USERS_MODALS } from '@/experiments/surfaceMcpToNewCloudUsers/modals';
 import {
 	MCP_CONNECT_WORKFLOWS_MODAL_KEY,

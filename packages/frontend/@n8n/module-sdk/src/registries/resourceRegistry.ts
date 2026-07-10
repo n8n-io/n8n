@@ -14,7 +14,7 @@
   	4. Import your resource type from the local types file in your components
  */
 
-import { type ResourceMetadata } from './module.types';
+import { type ResourceMetadata } from '../types/resource';
 
 // Private module state
 const resources: Map<string, ResourceMetadata> = new Map();
@@ -45,4 +45,11 @@ export function hasResource(key: string): boolean {
  */
 export function getAllResourceKeys(): string[] {
 	return Array.from(resources.keys());
+}
+
+/**
+ * Remove all registered resources. Primarily for test isolation.
+ */
+export function clearResources(): void {
+	resources.clear();
 }
