@@ -83,7 +83,16 @@ const searchTypesAction = z.object({
 	action: z.literal('search-types').describe('Search available credential types by keyword'),
 	query: z
 		.string()
-		.describe('Search keyword — typically the service name (e.g. "linear", "notion", "slack")'),
+		.optional()
+		.describe(
+			'Search keyword — typically the service name (e.g. "linear", "notion", "slack"). Optional when `n8nConnectOnly` is set.',
+		),
+	n8nConnectOnly: z
+		.boolean()
+		.optional()
+		.describe(
+			'When true, ignore `query` and return every credential type supported by n8n Connect. Use to answer "which credential types support n8n Connect?".',
+		),
 });
 
 const setupAction = z.object({
@@ -365,8 +374,21 @@ async function handleSearchTypes(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'search-types' }>,
 ) {
+	// Enumerate n8n Connect–supported types regardless of query.
+	if (input.n8nConnectOnly) {
+		const types = (await context.credentialService.listAiGatewayCredentialTypes?.()) ?? [];
+		return { results: types.map((type) => ({ type, n8nConnect: true })) };
+	}
+
 	if (!context.credentialService.searchCredentialTypes) {
 		return { results: [] };
+	}
+
+	if (!input.query) {
+		return {
+			results: [],
+			error: 'A `query` is required for search-types unless `n8nConnectOnly` is set.',
+		};
 	}
 
 	const allResults = await context.credentialService.searchCredentialTypes(input.query);

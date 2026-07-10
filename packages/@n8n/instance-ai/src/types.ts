@@ -223,6 +223,8 @@ export interface NodeSummary {
 	description: string;
 	group: string[];
 	version: number;
+	/** Present when the node is reachable via n8n Connect on this instance. */
+	aiGateway?: AiGatewayNodeMeta;
 }
 
 /**
@@ -455,12 +457,8 @@ export interface InstanceAiCredentialService {
 	getAccountContext?(credentialId: string): Promise<{ accountIdentifier?: string }>;
 	/** Whether the given credential type is supported by AI Gateway. */
 	isAiGatewayCredentialType?(credType: string): Promise<boolean>;
-	/** List node types supported by n8n Connect. */
-	listAiGatewayNodes?(): Promise<string[]>;
-	/** List credential types supported by n8n Connect. */
+	/** List all credential types supported by n8n Connect on this instance. */
 	listAiGatewayCredentialTypes?(): Promise<string[]>;
-	/** Get available operations for a node type supported by n8n Connect. */
-	getAiGatewayNodeOperations?(nodeType: string): Promise<Record<string, string[]> | undefined>;
 }
 
 export interface CredentialFieldInfo {
@@ -498,7 +496,7 @@ export interface ExploreResourcesResult {
 }
 
 export interface InstanceAiNodeService {
-	listAvailable(options?: { query?: string }): Promise<NodeSummary[]>;
+	listAvailable(options?: { query?: string; n8nConnectOnly?: boolean }): Promise<NodeSummary[]>;
 	getDescription(nodeType: string, version?: number): Promise<NodeDescription>;
 	/** Return all node types with the richer fields needed by NodeSearchEngine. */
 	listSearchable(): Promise<SearchableNodeDescription[]>;

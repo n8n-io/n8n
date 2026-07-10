@@ -626,6 +626,53 @@ describe('credentials tool', () => {
 
 			expect(result).toEqual({ results: [] });
 		});
+
+		it('should enumerate n8n Connect types when n8nConnectOnly is set, ignoring query', async () => {
+			const context = createMockContext();
+			context.credentialService.listAiGatewayCredentialTypes = vi
+				.fn()
+				.mockResolvedValue(['openAiApi', 'anthropicApi']);
+
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(
+				tool,
+				{ action: 'search-types' as const, n8nConnectOnly: true },
+				noSuspendCtx(),
+			);
+
+			expect(context.credentialService.listAiGatewayCredentialTypes).toHaveBeenCalled();
+			expect(context.credentialService.searchCredentialTypes).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				results: [
+					{ type: 'openAiApi', n8nConnect: true },
+					{ type: 'anthropicApi', n8nConnect: true },
+				],
+			});
+		});
+
+		it('should return empty results for n8nConnectOnly when the accessor is unavailable', async () => {
+			const context = createMockContext();
+			context.credentialService.listAiGatewayCredentialTypes = undefined;
+
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(
+				tool,
+				{ action: 'search-types' as const, n8nConnectOnly: true },
+				noSuspendCtx(),
+			);
+
+			expect(result).toEqual({ results: [] });
+		});
+
+		it('should error when query is omitted without n8nConnectOnly', async () => {
+			const context = createMockContext();
+
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(tool, { action: 'search-types' as const }, noSuspendCtx());
+
+			expect(context.credentialService.searchCredentialTypes).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ results: [], error: expect.stringContaining('query') });
+		});
 	});
 
 	// ── setup ───────────────────────────────────────────────────────────────

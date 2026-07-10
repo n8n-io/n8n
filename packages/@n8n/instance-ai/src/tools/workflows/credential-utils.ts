@@ -23,8 +23,13 @@ export const AI_GATEWAY_CREDENTIAL: AiGatewayCredential = {
 	__aiGatewayManaged: true,
 };
 
-export type ResolvedCredential = { id: string; name: string } | AiGatewayCredential;
-export type SetupNodeCredential = ResolvedCredential;
+/**
+ * A credential ready to write onto a node during setup — a stored credential
+ * (`{ id, name }`) or the n8n Connect managed marker. Distinct from the
+ * resolver-output `ResolvedCredential` in `resolved-credential.schema`, which
+ * additionally carries the credential `type` key.
+ */
+export type SetupNodeCredential = { id: string; name: string } | AiGatewayCredential;
 
 export function isAiGatewayManagedCredential(
 	credential: unknown,
@@ -50,7 +55,7 @@ export function toSetupNodeCredential(credential: {
 }
 
 export type ResolveCredentialResult =
-	| { resolved: true; credential: ResolvedCredential }
+	| { resolved: true; credential: SetupNodeCredential }
 	| { resolved: false; error: string };
 
 export async function resolveCredentialForApply(
@@ -89,8 +94,8 @@ export async function resolveCredentialForApply(
 export function assignCredentialToNode(
 	node: NodeJSON,
 	credType: string,
-	credential: ResolvedCredential,
+	credential: SetupNodeCredential,
 ): void {
 	node.credentials ??= {};
-	(node.credentials as unknown as Record<string, ResolvedCredential>)[credType] = credential;
+	(node.credentials as unknown as Record<string, SetupNodeCredential>)[credType] = credential;
 }

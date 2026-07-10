@@ -1629,21 +1629,9 @@ export class InstanceAiAdapterService {
 				return config?.credentialTypes.includes(credType) ?? false;
 			},
 
-			async listAiGatewayNodes(): Promise<string[]> {
-				const config = await getGatewayConfig();
-				return config?.nodes ?? [];
-			},
-
 			async listAiGatewayCredentialTypes(): Promise<string[]> {
 				const config = await getGatewayConfig();
 				return config?.credentialTypes ?? [];
-			},
-
-			async getAiGatewayNodeOperations(
-				nodeType: string,
-			): Promise<Record<string, string[]> | undefined> {
-				const config = await getGatewayConfig();
-				return config?.supportedActions?.[nodeType];
 			},
 		};
 
@@ -2196,12 +2184,15 @@ export class InstanceAiAdapterService {
 
 		return {
 			async listAvailable(options) {
-				const nodes = await getNodes();
+				const [nodes, gatewayConfig] = await Promise.all([
+					getNodes(),
+					options?.n8nConnectOnly ? getGatewayConfig() : Promise.resolve(null),
+				]);
 				let filtered = nodes;
 
 				if (options?.query) {
 					const q = options.query.toLowerCase();
-					filtered = nodes.filter(
+					filtered = filtered.filter(
 						(n) =>
 							n.displayName.toLowerCase().includes(q) ||
 							n.name.toLowerCase().includes(q) ||
@@ -2209,15 +2200,22 @@ export class InstanceAiAdapterService {
 					);
 				}
 
-				return filtered.map(
-					(n): NodeSummary => ({
+				const summaries = filtered.map((n): NodeSummary => {
+					const summary: NodeSummary = {
 						name: n.name,
 						displayName: n.displayName,
 						description: n.description ?? '',
 						group: n.group ?? [],
 						version: Array.isArray(n.version) ? n.version[n.version.length - 1] : n.version,
-					}),
-				);
+					};
+					const meta = buildMeta(gatewayConfig, n.name);
+					if (meta) summary.aiGateway = meta;
+					return summary;
+				});
+
+				// n8nConnectOnly answers "which nodes support n8n Connect?" — keep only
+				// nodes the gateway covers (meta present).
+				return options?.n8nConnectOnly ? summaries.filter((s) => s.aiGateway) : summaries;
 			},
 
 			async listSearchable() {

@@ -19,7 +19,6 @@ import {
 	isAiGatewayManagedCredential,
 	resolveCredentialForApply,
 	toSetupNodeCredential,
-	type ResolvedCredential,
 	type SetupNodeCredential,
 } from './credential-utils';
 import { coerceWrongKindListModeParams } from './detect-wrong-kind-locator';
@@ -897,7 +896,7 @@ async function trackCredentialAssignment(
 		credType: string;
 		nodeType: string;
 		workflowId: string;
-		credential: ResolvedCredential;
+		credential: SetupNodeCredential;
 		hadPriorCredential: boolean;
 	},
 ): Promise<void> {
@@ -945,6 +944,12 @@ async function applyCredentialsToNode(
 			});
 		} else {
 			nodeSucceeded = false;
+			context.trackTelemetry?.('Node credential assignment failed', {
+				credential_type: credType,
+				node_type: node.type,
+				workflow_id: workflowId,
+				error: resolved.error,
+			});
 			result.failed.push({
 				nodeName,
 				error: resolved.error,
