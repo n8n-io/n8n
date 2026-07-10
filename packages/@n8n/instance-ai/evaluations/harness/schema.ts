@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-import { SUPPORTED_CREDENTIAL_TYPES } from '../../credentials/seeder';
-import { ARTIFACT_TYPES } from '../../types';
-import type { ArtifactType } from '../../types';
+import { SUPPORTED_CREDENTIAL_TYPES } from '../credentials/seeder';
+import { ARTIFACT_TYPES } from '../types';
+import type { ArtifactType } from '../types';
 
 /** Default `datasets` grouping for a case that omits the field — the single
  *  source of truth shared by the loader schema and the mcp-manifest tier reader. */

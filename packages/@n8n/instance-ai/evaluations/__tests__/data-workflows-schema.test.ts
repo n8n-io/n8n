@@ -275,15 +275,15 @@ describe('loadWorkflowTestCasesWithFiles · file-aware errors', () => {
 	});
 });
 
-describe('WorkflowTestCaseSchema · expectedArtifacts / artifactExpectations', () => {
+describe('EvalTestCaseSchema · expectedArtifacts / artifactExpectations', () => {
 	it('defaults expectedArtifacts to ["workflow"] when omitted', () => {
-		const parsed = WorkflowTestCaseSchema.parse(validFixture());
+		const parsed = EvalTestCaseSchema.parse(validFixture());
 		expect(parsed.expectedArtifacts).toEqual(['workflow']);
 	});
 
 	it('still accepts a workflow case graded only by outcomeExpectations (regression)', () => {
 		const { executionScenarios: _omit, ...rest } = validFixture();
-		const parsed = WorkflowTestCaseSchema.parse({
+		const parsed = EvalTestCaseSchema.parse({
 			...rest,
 			outcomeExpectations: ['the final workflow posts to Slack'],
 		});
@@ -292,7 +292,7 @@ describe('WorkflowTestCaseSchema · expectedArtifacts / artifactExpectations', (
 	});
 
 	it('accepts expectedArtifacts: ["agent"] with a matching artifactExpectations.agent', () => {
-		const parsed = WorkflowTestCaseSchema.parse({
+		const parsed = EvalTestCaseSchema.parse({
 			...validFixture(),
 			expectedArtifacts: ['agent'],
 			artifactExpectations: { agent: ['the agent has a Slack tool'] },
@@ -303,7 +303,7 @@ describe('WorkflowTestCaseSchema · expectedArtifacts / artifactExpectations', (
 
 	it('rejects expectedArtifacts: ["agent"] with no artifactExpectations.agent', () => {
 		expect(() =>
-			WorkflowTestCaseSchema.parse({
+			EvalTestCaseSchema.parse({
 				...validFixture(),
 				expectedArtifacts: ['agent'],
 			}),
@@ -312,7 +312,7 @@ describe('WorkflowTestCaseSchema · expectedArtifacts / artifactExpectations', (
 
 	it('rejects expectedArtifacts: ["config-eval"] with no artifactExpectations["config-eval"]', () => {
 		expect(() =>
-			WorkflowTestCaseSchema.parse({
+			EvalTestCaseSchema.parse({
 				...validFixture(),
 				expectedArtifacts: ['config-eval'],
 			}),
@@ -320,7 +320,7 @@ describe('WorkflowTestCaseSchema · expectedArtifacts / artifactExpectations', (
 	});
 
 	it('accepts expectedArtifacts: ["config-eval"] with a matching artifactExpectations entry', () => {
-		const parsed = WorkflowTestCaseSchema.parse({
+		const parsed = EvalTestCaseSchema.parse({
 			...validFixture(),
 			expectedArtifacts: ['config-eval'],
 			artifactExpectations: { 'config-eval': ['the eval config scores against exact match'] },
@@ -332,7 +332,7 @@ describe('WorkflowTestCaseSchema · expectedArtifacts / artifactExpectations', (
 
 	it('rejects an unknown artifact type in expectedArtifacts', () => {
 		expect(() =>
-			WorkflowTestCaseSchema.parse({
+			EvalTestCaseSchema.parse({
 				...validFixture(),
 				expectedArtifacts: ['not-a-real-type'],
 			}),
