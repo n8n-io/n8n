@@ -108,6 +108,7 @@ import { Telemetry } from '@/telemetry';
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
+import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiCreditService } from './instance-ai-credit.service';
 import { BROWSER_TOOL_CATEGORY, InstanceAiGatewayService } from './instance-ai-gateway.service';
@@ -454,6 +455,7 @@ export class InstanceAiService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly adapterService: InstanceAiAdapterService,
 		private readonly eventBus: InProcessEventBus,
+		private readonly eventLog: DurableEventLog,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly gatewayService: InstanceAiGatewayService,
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
@@ -543,7 +545,21 @@ export class InstanceAiService {
 			aiService: this.aiService,
 		});
 		this.terminalOutcome = new InstanceAiTerminalOutcomeService({
-			eventBus: this.eventBus,
+			durableLog: globalConfig.instanceAi.durableLog,
+			// Flag-resolved reads: the terminal guard and outcome-replay dedup must
+			// see the run's events after a restart too, which only the durable log
+			// can provide (the bus cache is empty in a fresh process).
+			eventBus: {
+				publish: (threadId, event) => this.eventBus.publish(threadId, event),
+				getEventsForRun: async (threadId, runId) =>
+					this.instanceAiConfig.durableLog
+						? await this.eventLog.getEventsForRuns(threadId, [runId])
+						: this.eventBus.getEventsForRun(threadId, runId),
+				getEventsForRuns: async (threadId, runIds) =>
+					this.instanceAiConfig.durableLog
+						? await this.eventLog.getEventsForRuns(threadId, runIds)
+						: this.eventBus.getEventsForRuns(threadId, runIds),
+			},
 			dbSnapshotStorage: this.dbSnapshotStorage,
 			agentMemory: this.agentMemory,
 			telemetry: this.telemetry,
@@ -1409,6 +1425,10 @@ export class InstanceAiService {
 
 		this.domainAccessTrackersByThread.clear();
 		this.tracing.clear();
+
+		// Durable-log flag: flush in-flight drains + open coalesce buffers so the
+		// tail of every streamed segment survives the restart. No-op when off.
+		await this.eventLog.flushAll();
 
 		this.eventBus.clear();
 		await this._mcpClientManager?.disconnect();
@@ -2972,7 +2992,7 @@ export class InstanceAiService {
 			// Check if already cancelled before starting agent work
 			if (signal.aborted) {
 				await this.persistInterruptedUserMessage(threadId, user.id, message, turnStartedAt);
-				this.terminalOutcome.evaluateTerminalResponse(threadId, runId, 'cancelled', {
+				await this.terminalOutcome.evaluateTerminalResponse(threadId, runId, 'cancelled', {
 					messageGroupId,
 					correlationId: messageId,
 				});
@@ -3332,7 +3352,7 @@ export class InstanceAiService {
 					});
 				}
 
-				const waitingDecision = this.terminalOutcome.evaluateWaitingResponse(
+				const waitingDecision = await this.terminalOutcome.evaluateWaitingResponse(
 					threadId,
 					runId,
 					result.confirmationEvent,
@@ -3431,7 +3451,7 @@ export class InstanceAiService {
 			const userFacingErrorMessage =
 				result.status === 'errored' ? getUserFacingErrorMessage(result.error) : undefined;
 			if (runControl.shouldEmitTerminalOutcome(result.stopReason)) {
-				this.terminalOutcome.evaluateTerminalResponse(threadId, runId, result.status, {
+				await this.terminalOutcome.evaluateTerminalResponse(threadId, runId, result.status, {
 					messageGroupId,
 					correlationId: messageId,
 					workSummary: result.workSummary,
@@ -3508,7 +3528,7 @@ export class InstanceAiService {
 				if (cancellationReason === INSTANCE_AI_RUN_TIMEOUT_REASON) {
 					this.liveness.publishRunTimeoutNotice(threadId, runId);
 				}
-				this.terminalOutcome.evaluateTerminalResponse(threadId, runId, 'cancelled', {
+				await this.terminalOutcome.evaluateTerminalResponse(threadId, runId, 'cancelled', {
 					messageGroupId,
 					correlationId: messageId,
 				});
@@ -3562,7 +3582,7 @@ export class InstanceAiService {
 				...buildInstanceAiObservabilityContext(errCtx),
 			});
 			this.instanceAiErrorReporter.report(error, { component: 'instance-ai-run', ...errCtx });
-			this.terminalOutcome.evaluateTerminalResponse(threadId, runId, 'errored', {
+			await this.terminalOutcome.evaluateTerminalResponse(threadId, runId, 'errored', {
 				messageGroupId,
 				correlationId: messageId,
 				errorMessage: userFacingErrorMessage,
@@ -4461,7 +4481,7 @@ export class InstanceAiService {
 				}
 
 				const messageGroupId = this.tracing.getMessageGroupId(opts.runId);
-				const waitingDecision = this.terminalOutcome.evaluateWaitingResponse(
+				const waitingDecision = await this.terminalOutcome.evaluateWaitingResponse(
 					opts.threadId,
 					opts.runId,
 					result.confirmationEvent,
@@ -4551,14 +4571,19 @@ export class InstanceAiService {
 			const userFacingErrorMessage =
 				result.status === 'errored' ? getUserFacingErrorMessage(result.error) : undefined;
 			if (runControl.shouldEmitTerminalOutcome(result.stopReason)) {
-				this.terminalOutcome.evaluateTerminalResponse(opts.threadId, opts.runId, result.status, {
-					messageGroupId,
-					workSummary: result.workSummary,
-					errorMessage: userFacingErrorMessage,
-					suppressCompletedFallback:
-						opts.checkpoint?.isCheckpointFollowUp === true ||
-						opts.plannedBuild?.isPlannedBuildFollowUp === true,
-				});
+				await this.terminalOutcome.evaluateTerminalResponse(
+					opts.threadId,
+					opts.runId,
+					result.status,
+					{
+						messageGroupId,
+						workSummary: result.workSummary,
+						errorMessage: userFacingErrorMessage,
+						suppressCompletedFallback:
+							opts.checkpoint?.isCheckpointFollowUp === true ||
+							opts.plannedBuild?.isPlannedBuildFollowUp === true,
+					},
+				);
 			}
 			const finalStatus = result.status === 'errored' ? 'error' : result.status;
 			await this.tracing.finalizeRunTracing(opts.runId, opts.tracing, {
@@ -4624,9 +4649,14 @@ export class InstanceAiService {
 				if (cancellationReason === INSTANCE_AI_RUN_TIMEOUT_REASON) {
 					this.liveness.publishRunTimeoutNotice(opts.threadId, opts.runId);
 				}
-				this.terminalOutcome.evaluateTerminalResponse(opts.threadId, opts.runId, 'cancelled', {
-					messageGroupId,
-				});
+				await this.terminalOutcome.evaluateTerminalResponse(
+					opts.threadId,
+					opts.runId,
+					'cancelled',
+					{
+						messageGroupId,
+					},
+				);
 				await this.tracing.finalizeRunTracing(opts.runId, opts.tracing, {
 					status: 'cancelled',
 					reason: cancellationReason,
@@ -4675,7 +4705,7 @@ export class InstanceAiService {
 				...buildInstanceAiObservabilityContext(errCtx),
 			});
 			this.instanceAiErrorReporter.report(error, { component: 'instance-ai-run', ...errCtx });
-			this.terminalOutcome.evaluateTerminalResponse(opts.threadId, opts.runId, 'errored', {
+			await this.terminalOutcome.evaluateTerminalResponse(opts.threadId, opts.runId, 'errored', {
 				messageGroupId,
 				errorMessage: userFacingErrorMessage,
 			});
@@ -5325,10 +5355,18 @@ export class InstanceAiService {
 					const snapshot = await snapshotStorage.getLatest(threadId, { messageGroupId, runId });
 					groupRunIds = snapshot?.runIds?.length ? snapshot.runIds : [runId];
 				}
-				events = this.eventBus.getEventsForRuns(threadId, groupRunIds);
+				events = this.instanceAiConfig.durableLog
+					? await this.eventLog.getEventsForRuns(threadId, groupRunIds)
+					: this.eventBus.getEventsForRuns(threadId, groupRunIds);
 			} else {
-				events = this.eventBus.getEventsForRun(threadId, runId);
+				events = this.instanceAiConfig.durableLog
+					? await this.eventLog.getEventsForRuns(threadId, [runId])
+					: this.eventBus.getEventsForRun(threadId, runId);
 			}
+			// Durable-log flag on: the tree input comes from the DB, so long runs can
+			// no longer out-evict their own snapshot input (the empty-agentTree bug
+			// class). The snapshot write itself stays during migration so pre-log
+			// threads keep rendering; INS-841 moves history to fold-on-read.
 			if (isUpdate && events.length === 0) {
 				this.logger.warn('Skipped updating empty Instance AI agent tree snapshot', {
 					threadId,
