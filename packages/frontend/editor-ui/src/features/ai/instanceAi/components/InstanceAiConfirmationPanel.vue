@@ -407,7 +407,6 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 				<InstanceAiWorkflowSetup
 					v-if="chunk.item.toolCall.confirmation.setupRequests?.length"
 					:key="'setup-' + chunk.item.toolCall.confirmation.requestId"
-					:class="$style.confirmation"
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:setup-requests="chunk.item.toolCall.confirmation.setupRequests!"
 					:project-id="chunk.item.toolCall.confirmation.projectId"
@@ -419,7 +418,6 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 				<InstanceAiCredentialSetup
 					v-else-if="chunk.item.toolCall.confirmation.credentialRequests?.length"
 					:key="'cred-' + chunk.item.toolCall.confirmation.requestId"
-					:class="$style.confirmation"
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:credential-requests="chunk.item.toolCall.confirmation.credentialRequests!"
 					:message="chunk.item.toolCall.confirmation.message"
@@ -434,7 +432,6 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 						chunk.item.toolCall.confirmation.questions
 					"
 					:key="'q-' + chunk.item.toolCall.confirmation.requestId"
-					:class="$style.confirmation"
 					:questions="chunk.item.toolCall.confirmation.questions!"
 					:intro-message="chunk.item.toolCall.confirmation.introMessage"
 					@submit="(answers) => handleQuestionsSubmit(chunk.item.toolCall.confirmation, answers)"
@@ -444,7 +441,6 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 				<PlanReviewPanel
 					v-else-if="chunk.item.toolCall.confirmation.inputType === 'plan-review'"
 					:key="'plan-' + chunk.item.toolCall.confirmation.requestId"
-					:class="$style.confirmation"
 					:planned-tasks="
 						chunk.item.toolCall.confirmation?.planItems ??
 						(chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ??
@@ -475,7 +471,6 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 				<div
 					v-else-if="chunk.item.toolCall.confirmation.inputType === 'text'"
 					:key="'text-' + chunk.item.toolCall.confirmation.requestId"
-					:class="$style.confirmation"
 				>
 					<N8nCard :class="$style.textCard">
 						<N8nText tag="div">{{ chunk.item.toolCall.confirmation!.message }}</N8nText>
@@ -512,7 +507,6 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 				<div
 					v-else-if="chunk.item.toolCall.confirmation.inputType === 'continue'"
 					:key="'continue-' + chunk.item.toolCall.confirmation.requestId"
-					:class="$style.confirmation"
 				>
 					<N8nCard :class="$style.textCard">
 						<N8nText tag="div">{{ chunk.item.toolCall.confirmation!.message }}</N8nText>
@@ -535,7 +529,6 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 						chunk.item.toolCall.confirmation.resourceDecision
 					"
 					:key="'rd-' + chunk.item.toolCall.confirmation.requestId"
-					:class="$style.confirmation"
 					data-test-id="instance-ai-gateway-confirmation-panel"
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:resource="chunk.item.toolCall.confirmation.resourceDecision.resource"
@@ -604,17 +597,10 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 </template>
 
 <style lang="scss" module>
-.confirmation {
-	max-width: 90%;
-	width: 90%;
-}
-
 .root {
-	border: none;
-	border-radius: var(--radius--xl);
-	box-shadow:
-		var(--shadow--sm),
-		inset 0 0 0 1px light-dark(var(--color--black-alpha-100), var(--color--white-alpha-100));
+	border: 2px solid var(--color--primary);
+	border-radius: var(--radius--lg);
+	box-shadow: var(--shadow--sm);
 	background-color: var(--background--surface);
 }
 
@@ -664,6 +650,7 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 }
 
 .textCard {
+	border: 2px solid var(--color--primary);
 	background-color: var(--color--background--light-3);
 }
 </style>
