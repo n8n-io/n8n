@@ -11,6 +11,7 @@ import type {
 	AiModelSelectorMenuItem,
 	AiModelSelectorMenuItemData,
 } from './AiModelSelectorDropdown.types';
+import type { BadgeTheme } from '../../types';
 import { useI18n } from '../../composables/useI18n';
 import N8nBadge from '../N8nBadge';
 import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
@@ -26,6 +27,7 @@ const {
 	selectedCredentialName,
 	credentialsMissing = false,
 	credentialsMissingLabel,
+	credentialBadgeTheme,
 	noMatchLabel,
 	showBorder = true,
 	disabled = false,
@@ -42,6 +44,8 @@ const {
 	credentialsMissing?: boolean;
 	/** Text shown when credentials are required but missing. */
 	credentialsMissingLabel?: string;
+	/** When set, render the selected credential name as a badge with this theme (e.g. a managed n8n Connect credential). */
+	credentialBadgeTheme?: BadgeTheme;
 	/** Empty-state text shown when search returns no matching items. */
 	noMatchLabel: string;
 	/** Whether the trigger button should render with a border. */
@@ -127,6 +131,15 @@ defineExpose({
 							:class="$style.credsBadge"
 						>
 							{{ resolvedCredentialsMissingLabel }}
+						</N8nBadge>
+						<N8nBadge
+							v-else-if="selectedCredentialName && credentialBadgeTheme"
+							:theme="credentialBadgeTheme"
+							size="small"
+							:class="$style.credsBadge"
+							:data-test-id="credentialDataTestId"
+						>
+							{{ truncateBeforeLast(selectedCredentialName, MAX_SELECTED_NAME_CHARS) }}
 						</N8nBadge>
 						<N8nText
 							v-else-if="selectedCredentialName"

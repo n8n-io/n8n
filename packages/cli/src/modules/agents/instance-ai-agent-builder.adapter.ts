@@ -12,6 +12,7 @@ import type {
 	ModelLookupConfig,
 	ProjectAgentSummary,
 } from '@n8n/instance-ai';
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import type { AgentJsonConfig, AgentJsonMcpServerConfig } from '@n8n/api-types';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
@@ -209,14 +210,21 @@ export class InstanceAiAgentBuilderAdapterService {
 				credentialId,
 				credentialType,
 				_lookup: ModelLookupConfig,
-			): Promise<AgentModelOption[]> =>
-				await this.builderModelLiveLookupService.list(
+			): Promise<AgentModelOption[]> => {
+				const projectId = await resolveProjectId();
+				const provider = getModelLookupProvider(credentialType);
+				// n8n Connect managed slot: list the gateway's allowlisted models.
+				if (credentialId === AI_GATEWAY_MANAGED_TAG) {
+					return await this.builderModelLiveLookupService.listManaged(projectId, provider, user);
+				}
+				return await this.builderModelLiveLookupService.list(
 					user,
-					await resolveProjectId(),
+					projectId,
 					credentialId,
 					credentialType,
-					getModelLookupProvider(credentialType),
-				),
+					provider,
+				);
+			},
 
 			searchMcpServers: async (queries): Promise<McpServerSearchResult[]> =>
 				await this.mcpRegistryService.search(queries),

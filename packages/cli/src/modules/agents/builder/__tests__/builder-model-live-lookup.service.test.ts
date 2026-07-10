@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { BuilderModelLiveLookupService } from '../builder-model-live-lookup.service';
 
@@ -22,13 +23,15 @@ function makeService() {
 	transport.asCustomFetch.mockReturnValue(vi.fn() as unknown as CustomFetch);
 	const outboundHttp = mock<OutboundHttp>();
 	outboundHttp.transport.mockReturnValue(transport);
+	const aiGatewayService = mock<AiGatewayService>();
 
 	const service = new BuilderModelLiveLookupService(
 		credentialsService,
 		credentialsFinderService,
 		outboundHttp,
+		aiGatewayService,
 	);
-	return { service, credentialsService, credentialsFinderService };
+	return { service, credentialsService, credentialsFinderService, aiGatewayService };
 }
 
 function usable(id: string, type: string) {
@@ -104,5 +107,43 @@ describe('BuilderModelLiveLookupService', () => {
 			service.list(user, projectId, 'cred-1', 'anthropicApi', 'anthropic'),
 		).rejects.toThrow('not found or not accessible');
 		expect(listModelsForProvider).not.toHaveBeenCalled();
+	});
+
+	describe('listManaged', () => {
+		it('lists gateway-allowed models via the synthetic credential', async () => {
+			const { service, aiGatewayService } = makeService();
+			aiGatewayService.getCredentialTypeForProvider.mockResolvedValue('openAiApi');
+			aiGatewayService.getSyntheticCredential.mockResolvedValue({
+				apiKey: 'gateway-jwt',
+				url: 'https://gw.example/v1/gateway/openai/v1',
+			});
+			listModelsForProvider.mockResolvedValue([{ id: 'gpt-5-mini', name: 'GPT-5 mini' }]);
+
+			const result = await service.listManaged(projectId, 'openai', user);
+
+			expect(result).toEqual([{ name: 'GPT-5 mini', value: 'gpt-5-mini' }]);
+			expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledWith({
+				credentialType: 'openAiApi',
+				userId: 'user-1',
+				projectId,
+			});
+			// Discovery hits the gateway baseURL → the gateway returns only allowlisted models.
+			expect(listModelsForProvider).toHaveBeenCalledWith(
+				'openai',
+				expect.objectContaining({
+					apiKey: 'gateway-jwt',
+					baseURL: 'https://gw.example/v1/gateway/openai/v1',
+				}),
+			);
+		});
+
+		it('throws when the gateway does not serve the provider', async () => {
+			const { service, aiGatewayService } = makeService();
+			aiGatewayService.getCredentialTypeForProvider.mockResolvedValue(undefined);
+
+			await expect(service.listManaged(projectId, 'xai', user)).rejects.toThrow('does not support');
+			expect(aiGatewayService.getSyntheticCredential).not.toHaveBeenCalled();
+			expect(listModelsForProvider).not.toHaveBeenCalled();
+		});
 	});
 });

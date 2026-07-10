@@ -7,11 +7,15 @@
  * so there is no interactive ask_llm tool here.)
  */
 import { Tool } from '@n8n/agents';
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { z } from 'zod';
 
 import { LLM_PROVIDER_DEFAULTS, type LlmProviderDefault } from './llm-provider-defaults';
 import type { InstanceAiAgentBuilderService, InstanceAiContext } from '../../types';
 import { AGENT_BUILDER_TOOL_IDS } from '../tool-ids';
+
+/** User-facing name written for an n8n Connect (AI Gateway) managed model credential. */
+const N8N_CONNECT_CREDENTIAL_NAME = 'n8n Connect';
 
 function findProviderDefault(provider: string): [string, LlmProviderDefault] | undefined {
 	const requested = provider.trim().toLowerCase();
@@ -101,7 +105,27 @@ export function createResolveLlmTool(context: InstanceAiContext) {
 				return { ok: false as const, reason: 'not_available' as const };
 			}
 			const all = await context.credentialService.list();
-			const llmCredentials = all.filter((c) => LLM_PROVIDER_DEFAULTS[c.type]);
+			const ownCredentials = all.filter((c) => LLM_PROVIDER_DEFAULTS[c.type]);
+
+			// Offer n8n Connect as an additional credential for each gateway-supported
+			// provider the user has no own credential for. It then flows through the same
+			// resolution below as any credential: single → auto-use, several → ask, none →
+			// missing (a legitimate setup prompt, e.g. a provider n8n Connect does not support).
+			const managedCredentials = [];
+			for (const credentialType of Object.keys(LLM_PROVIDER_DEFAULTS)) {
+				const hasOwnCredential = ownCredentials.some((c) => c.type === credentialType);
+				if (
+					!hasOwnCredential &&
+					((await context.credentialService.isAiGatewayCredentialType?.(credentialType)) ?? false)
+				) {
+					managedCredentials.push({
+						id: AI_GATEWAY_MANAGED_TAG,
+						name: N8N_CONNECT_CREDENTIAL_NAME,
+						type: credentialType,
+					});
+				}
+			}
+			const llmCredentials = [...ownCredentials, ...managedCredentials];
 
 			if (provider) {
 				const providerEntry = findProviderDefault(provider);

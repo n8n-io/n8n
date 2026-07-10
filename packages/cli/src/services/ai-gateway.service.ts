@@ -312,6 +312,26 @@ export class AiGatewayService {
 	}
 
 	/**
+	 * Resolves the n8n credential type the gateway serves for a model-provider
+	 * prefix (e.g. `openai` → `openAiApi`), by matching the provider slug in each
+	 * `providerConfig` entry's `gatewayPath` (the segment right after
+	 * `/v1/gateway/`). Returns `undefined` when n8n Connect is unlicensed or the
+	 * gateway does not serve that provider. This is the authoritative n8n Connect
+	 * provider → credential-type mapping and support gate.
+	 */
+	async getCredentialTypeForProvider(provider: string): Promise<string | undefined> {
+		if (!this.licenseState.isAiGatewayLicensed()) return undefined;
+		const config = await this.getGatewayConfig();
+		const prefix = `${AiGatewayService.GATEWAY_PATH_PREFIX}/`;
+		for (const [credentialType, providerConfig] of Object.entries(config.providerConfig)) {
+			if (!providerConfig.gatewayPath.startsWith(prefix)) continue;
+			const slug = providerConfig.gatewayPath.slice(prefix.length).split('/')[0];
+			if (slug === provider) return credentialType;
+		}
+		return undefined;
+	}
+
+	/**
 	 * Headers required by the AI Gateway credentials endpoint (`HeadersMetadataDto`).
 	 */
 	private buildGatewayCredentialsHeaders(userId: string): Record<string, string> {

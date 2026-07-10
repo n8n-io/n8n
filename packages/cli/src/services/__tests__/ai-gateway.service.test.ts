@@ -781,4 +781,52 @@ describe('AiGatewayService', () => {
 			expect(credentialsCalls).toHaveLength(1);
 		});
 	});
+
+	describe('getCredentialTypeForProvider()', () => {
+		const MULTI_PROVIDER_CONFIG = {
+			nodes: [],
+			credentialTypes: ['openAiApi', 'anthropicApi', 'googlePalmApi'],
+			providerConfig: {
+				openAiApi: { gatewayPath: '/v1/gateway/openai/v1', urlField: 'url', apiKeyField: 'apiKey' },
+				anthropicApi: {
+					gatewayPath: '/v1/gateway/anthropic',
+					urlField: 'url',
+					apiKeyField: 'apiKey',
+				},
+				googlePalmApi: {
+					gatewayPath: '/v1/gateway/google',
+					urlField: 'host',
+					apiKeyField: 'apiKey',
+				},
+			},
+		};
+
+		it.each([
+			['openai', 'openAiApi'],
+			['anthropic', 'anthropicApi'],
+			['google', 'googlePalmApi'],
+		])(
+			'maps model provider prefix "%s" to gateway credential type "%s"',
+			async (provider, credType) => {
+				requestMock.mockResolvedValueOnce(ok(MULTI_PROVIDER_CONFIG));
+				const service = makeService();
+
+				await expect(service.getCredentialTypeForProvider(provider)).resolves.toBe(credType);
+			},
+		);
+
+		it('returns undefined for a provider the gateway does not serve', async () => {
+			requestMock.mockResolvedValueOnce(ok(MULTI_PROVIDER_CONFIG));
+			const service = makeService();
+
+			await expect(service.getCredentialTypeForProvider('xai')).resolves.toBeUndefined();
+		});
+
+		it('returns undefined (without fetching config) when n8n Connect is unlicensed', async () => {
+			const service = makeService({ isAiGatewayLicensed: false });
+
+			await expect(service.getCredentialTypeForProvider('openai')).resolves.toBeUndefined();
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+	});
 });
