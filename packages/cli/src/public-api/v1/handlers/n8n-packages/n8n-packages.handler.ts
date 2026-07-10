@@ -168,7 +168,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					credentialMatchingMode: payload.data.credentialMatchingMode,
 					credentialMissingMode: payload.data.credentialMissingMode,
 					bindings: {
-						credentials: new Map(Object.entries(payload.data.bindings.credentials ?? {})),
+						credentials: new Map(Object.entries(payload.data.bindings?.credentials ?? {})),
 					},
 					workflowConflictPolicy: payload.data.workflowConflictPolicy,
 					workflowPublishingPolicy: payload.data.workflowPublishingPolicy,
