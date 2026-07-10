@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import { versionColorVar } from './versionPalette';
+import { versionColorVar, versionLetter } from './versionPalette';
 
 // Identity for a version in a collection comparison. The same `index`
 // produces the same color across the wizard (avatar squares) and the
@@ -19,15 +19,7 @@ const props = withDefaults(
 	},
 );
 
-// Letters cycle past Z. We rarely show >5 versions on one card, but the
-// modulo keeps `Z`, `AA`, etc. legible if a collection ever does.
-const label = computed(() => {
-	const i = props.index;
-	if (i < 26) return String.fromCharCode(65 + i);
-	const first = Math.floor(i / 26) - 1;
-	const second = i % 26;
-	return String.fromCharCode(65 + first) + String.fromCharCode(65 + second);
-});
+const label = computed(() => versionLetter(props.index));
 
 const swatch = computed(() => versionColorVar(props.index));
 </script>
