@@ -70,6 +70,7 @@ import type {
 	WorkflowTestCaseResult,
 } from '../types';
 import {
+	agentTurnsAsText,
 	conversationUserTurnsAsText,
 	failedBuildsPerTurn,
 	lastAgentText,
@@ -776,7 +777,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			: await runWorkflowChecks({
 					workflow: outcome.workflowJsons[0],
 					prompt: userTurnsAsText(transcript),
-					agentText: outcome.finalText,
+					agentText: agentTurnsAsText(transcript),
 					failedBuildsPerTurn: failedBuildsPerTurn(transcript),
 					logger,
 				});
