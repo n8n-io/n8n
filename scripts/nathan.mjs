@@ -20,8 +20,11 @@ import { spawn, spawnSync } from 'node:child_process';
 
 const WEBHOOK = 'https://internal.users.n8n.cloud/webhook/85070485-140c-46e8-9b4b-d161bf7ee1ac';
 const IDLE_MS = Number(process.env.NATHAN_IDLE_MS ?? 8000); // grace after a result for trailing msgs
-const TIMEOUT_MS = Number(process.env.NATHAN_TIMEOUT_MS ?? 600000); // overall backstop (deploys are slow)
+// Overall backstop. A cold branch build (docker-build-push CI) + deploy can run
+// 15-20 min, so keep this generous; override via NATHAN_TIMEOUT_MS.
+const TIMEOUT_MS = Number(process.env.NATHAN_TIMEOUT_MS ?? 1_500_000); // 25 min
 const TUNNEL_START_MS = 45000;
+const STAGING_DOMAIN = 'stage-app.n8n.cloud'; // instances live at https://<name>.<domain>
 
 // Nathan sends these as an immediate ack before the async work; seeing one means
 // "keep waiting", not "done". Everything else is a terminal reply.
@@ -41,6 +44,20 @@ function extractText(payload) {
 	return parts.join('\n') || JSON.stringify(payload);
 }
 
+// For `deploy <target> <name>` with an explicit instance name, predict the
+// staging URL Nathan deploys to (mirrors its name sanitisation) so we can poll
+// the instance directly — a reliable backstop when the tunnel callback is lost.
+// Returns null when no explicit name is given (Nathan derives it from the branch
+// otherwise, which isn't safely predictable here).
+function predictDeployUrl(text) {
+	const t = text.trim().split(/\s+/);
+	if (t[0] !== 'deploy' || !t[2] || t[2].startsWith('-')) return null;
+	let name = t[2].replace(/[^a-zA-Z0-9_.-]/g, '-');
+	if (!name.startsWith('test-')) name = `test-${name}`;
+	if (name.length > 25) name = name.slice(0, 25);
+	return `https://${name}.${STAGING_DOMAIN}`;
+}
+
 if (process.argv.includes('--selftest')) {
 	const ok = (c, m) => { if (!c) { console.error('FAIL:', m); process.exit(1); } };
 	ok(isAck('🚀 Deploying *foo*'), 'deploy ack');
@@ -49,6 +66,11 @@ if (process.argv.includes('--selftest')) {
 	ok(!isAck('Error: unknown option'), 'error not ack');
 	ok(extractText({ text: 'hi' }) === 'hi', 'text');
 	ok(extractText({ blocks: [{ text: { text: 'blk' } }] }) === 'blk', 'block text');
+	ok(predictDeployUrl('deploy master test-foo') === `https://test-foo.${STAGING_DOMAIN}`, 'predict explicit name');
+	ok(predictDeployUrl('deploy br my/name') === `https://test-my-name.${STAGING_DOMAIN}`, 'predict sanitise + prefix');
+	ok(predictDeployUrl('deploy master') === null, 'predict no name');
+	ok(predictDeployUrl('deploy master --license pro2') === null, 'predict flag not name');
+	ok(predictDeployUrl('help') === null, 'predict non-deploy');
 	console.log('selftest OK');
 	process.exit(0);
 }
@@ -73,8 +95,9 @@ if (text.startsWith('local')) {
 }
 
 // --- local sink for Nathan's callbacks ---------------------------------------
-let done, doneReason;
+let done, doneReason, settled = false;
 const finished = new Promise((r) => (done = r));
+const finish = (reason) => { if (settled) return; settled = true; doneReason = reason; done(); };
 let idleTimer;
 const server = http.createServer((req, res) => {
 	let raw = '';
@@ -87,7 +110,7 @@ const server = http.createServer((req, res) => {
 		console.log('\n' + '─'.repeat(60) + '\n' + body + '\n');
 		clearTimeout(idleTimer); // any new message cancels a pending exit
 		if (isAck(body)) return; // work is starting; wait (overall timeout backstops)
-		idleTimer = setTimeout(() => done((doneReason = 'idle')), IDLE_MS);
+		idleTimer = setTimeout(() => finish('idle'), IDLE_MS);
 	});
 });
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
@@ -100,6 +123,8 @@ function hasBinary(bin) {
 }
 function startTunnel() {
 	const hasCloudflared = hasBinary('cloudflared');
+	if (!hasCloudflared)
+		console.error('⚠️  cloudflared not found — falling back to `npx localtunnel`, which often drops on\n    long deploys (you may miss the final reply). For reliable capture: brew install cloudflared\n');
 	const [cmd, args] = hasCloudflared
 		? ['cloudflared', ['tunnel', '--no-autoupdate', '--url', `http://127.0.0.1:${port}`]]
 		: ['npx', ['-y', 'localtunnel', '--port', String(port)]];
@@ -148,14 +173,35 @@ if (!res.ok) {
 }
 console.error('Sent. Waiting for Nathan to reply (Ctrl-C to stop)…\n');
 
-const overall = setTimeout(() => done((doneReason = 'timeout')), TIMEOUT_MS);
-process.on('SIGINT', () => done((doneReason = 'interrupted')));
+// Reliable backstop: if the instance URL is predictable, poll it directly so a
+// dropped tunnel doesn't cost us the result. Skip if it already responds — that's
+// the previous deployment still up mid-redeploy, indistinguishable from the new one.
+const pollUrl = predictDeployUrl(text);
+if (pollUrl) {
+	const up = (u) => fetch(`${u}/healthz`, { signal: AbortSignal.timeout(8000) }).then((r) => r.ok).catch(() => false);
+	if (await up(pollUrl)) {
+		console.error(`(${pollUrl} already responds — redeploy in progress; relying on the tunnel for completion.)`);
+	} else {
+		(async () => {
+			while (!settled) {
+				if (await up(pollUrl)) {
+					if (!settled) console.log(`\n${'─'.repeat(60)}\n✅ Instance is up: ${pollUrl}\n   Login: test@n8n.io / helloWorld7 (default test owner)\n`);
+					return finish('up');
+				}
+				await new Promise((r) => setTimeout(r, 10000));
+			}
+		})();
+	}
+}
+
+const overall = setTimeout(() => finish('timeout'), TIMEOUT_MS);
+process.on('SIGINT', () => finish('interrupted'));
 await finished;
 clearTimeout(overall);
 
 if (doneReason === 'timeout') console.error('\n⏱  Timed out waiting for the final reply — the deploy may still be running (check Slack / Grafana).');
 if (doneReason === 'interrupted') console.error('\nStopped. The command may still be running on Nathan.');
-await cleanup(doneReason === 'idle' ? 0 : 1);
+await cleanup(doneReason === 'idle' || doneReason === 'up' ? 0 : 1);
 
 function cleanup(code) {
 	try { tunnel?.proc.kill(); } catch {}

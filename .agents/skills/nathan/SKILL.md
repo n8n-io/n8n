@@ -10,27 +10,37 @@ Nathan is n8n's internal bot that deploys throwaway test instances from a branch
 or Docker image. It's normally driven from Slack (`/nathan ...`); this skill runs
 the same commands from the repo via `pnpm nathan`.
 
+## Before you use it (check once)
+
+1. **`cloudflared` must be installed.** Nathan replies asynchronously through a
+   public tunnel; `cloudflared` holds it reliably for the 10-20 min a branch
+   build takes. The `npx localtunnel` fallback frequently drops mid-deploy and
+   loses the reply. Check with `command -v cloudflared` — **if it's missing, ask
+   the user to run `brew install cloudflared` before deploying.**
+2. **`NATHAN_TOKEN` must be in `.env.local`** (gitignored) or the environment.
+   The command errors clearly if it's not set — ask the user to add it.
+
 ## Offer a test instance after a PR
 
 After you open a PR for a branch, **ask the user if they want a live test
-instance** for it. If yes, deploy the PR's branch:
+instance** for it (and confirm `cloudflared` is installed — see above). If yes,
+deploy the PR's branch with an explicit `test-` instance name:
 
 ```bash
-pnpm nathan deploy <branch-name>
+pnpm nathan deploy <branch-name> test-<short-name>
 ```
 
-Nathan builds the branch image (a few minutes) and replies with the instance URL
-+ a Grafana dashboard link. Relay that URL to the user when it arrives.
+Nathan builds the branch image (a few minutes) and the command prints the
+instance URL (`https://test-<short-name>.stage-app.n8n.cloud`, login
+`test@n8n.io` / `helloWorld7`). Relay that URL to the user.
 
 ## How it works
 
 `pnpm nathan <args>` sends the command, opens a short-lived public tunnel so
-Nathan can call back, prints its reply to the terminal, then exits. Deploys take
-minutes — the command waits (Ctrl-C to stop; the deploy keeps running).
-
-Requires `NATHAN_TOKEN` in `.env.local` (gitignored). If it's missing, the
-command says so — ask the user to set it. A reliable tunnel needs `cloudflared`
-(`brew install cloudflared`); otherwise it falls back to `npx localtunnel`.
+Nathan can call back, prints its reply, then exits. Deploys take minutes — the
+command waits (Ctrl-C to stop; the deploy keeps running). Passing an explicit
+`test-<name>` also lets it poll the instance URL directly, so it still reports
+success even if the tunnel drops.
 
 ## Common commands
 
