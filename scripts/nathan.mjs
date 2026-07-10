@@ -75,15 +75,18 @@ if (process.argv.includes('--selftest')) {
 	process.exit(0);
 }
 
-// --- token: load from .env.local / .env (repo root or cwd), then env ---------
-const root = path.resolve(import.meta.dirname, '..');
-for (const dir of [process.cwd(), root])
-	for (const f of ['.env.local', '.env']) {
-		try { process.loadEnvFile(path.join(dir, f)); } catch { /* missing file is fine */ }
-	}
-const token = process.env.NATHAN_TOKEN;
+// --- token: prefer the NATHAN_TOKEN env var; fall back to .env.local / .env --
+let token = process.env.NATHAN_TOKEN;
 if (!token) {
-	console.error('NATHAN_TOKEN is not set. Add it to .env.local (gitignored) at the repo root:\n  NATHAN_TOKEN=<token from the Nathan Slack bot>');
+	const root = path.resolve(import.meta.dirname, '..');
+	for (const dir of [process.cwd(), root])
+		for (const f of ['.env.local', '.env']) {
+			try { process.loadEnvFile(path.join(dir, f)); } catch { /* missing file is fine */ }
+		}
+	token = process.env.NATHAN_TOKEN;
+}
+if (!token) {
+	console.error('NATHAN_TOKEN is not set. Export it in your shell, or add it to .env.local (gitignored) at the repo root:\n  export NATHAN_TOKEN=<token from the Nathan Slack bot>\n  # or in .env.local:  NATHAN_TOKEN=<token>');
 	process.exit(1);
 }
 
