@@ -1,7 +1,6 @@
 import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
 import type { Readable } from 'node:stream';
 
 import { N8N_VERSION } from '@/constants';
@@ -10,6 +9,7 @@ import { EventService } from '@/events/event.service';
 import { ImportPipeline } from './engine/import-pipeline';
 import { CredentialExporter } from './entities/credential/credential.exporter';
 import { FolderExporter } from './entities/folder/folder.exporter';
+import { PackageExportBlockedError } from './entities/package-export.errors';
 import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
 import { extractSubWorkflowRequirements } from './entities/workflow/sub-workflow-requirements';
@@ -179,7 +179,7 @@ export class N8nPackagesService {
 		const omittedCount = missingSubWorkflowIds.size - displayedWorkflowIds.length;
 		const dependencyLabel = missingSubWorkflowIds.size === 1 ? 'dependency' : 'dependencies';
 
-		throw new UserError(
+		throw new PackageExportBlockedError(
 			`${missingSubWorkflowIds.size} sub-workflow ${dependencyLabel} not included in the package. Export aborted.`,
 			{
 				description: `Sub-workflow IDs not included in the package: ${displayedWorkflowIds.join(', ')}${

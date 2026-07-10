@@ -12,6 +12,7 @@ import { Container } from '@n8n/di';
 
 import { createMember, createOwner } from '@test-integration/db/users';
 
+import { PackageExportBlockedError } from '../entities/package-export.errors';
 import { N8nPackagesService } from '../n8n-packages.service';
 import { FORMAT_VERSION } from '../spec/constants';
 import { readExport } from './utils/tar-support';
@@ -151,9 +152,14 @@ describe('workflow package export', () => {
 				subWorkflowId: workflowB.id,
 			});
 
-			await expect(
-				service.exportPackage({ user: owner, workflowIds: [workflowA.id] }),
-			).rejects.toThrow('sub-workflow dependency not included in the package');
+			const missingDependencyExport = service.exportPackage({
+				user: owner,
+				workflowIds: [workflowA.id],
+			});
+			await expect(missingDependencyExport).rejects.toThrow(PackageExportBlockedError);
+			await expect(missingDependencyExport).rejects.toThrow(
+				'sub-workflow dependency not included in the package',
+			);
 
 			const stream = await service.exportPackage({
 				user: owner,
