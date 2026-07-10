@@ -23,6 +23,7 @@ import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import type { EventService } from '@/events/event.service';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import type { ExecutionService } from '@/executions/execution.service';
+import type { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import type {
 	PublishedWorkflowDataForExecution,
@@ -45,6 +46,7 @@ describe('TriggerExecutionContextFactory', () => {
 	const activeExecutions = mock<ActiveExecutions>();
 	const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
 	const storageConfig = mock<StorageConfig>({ modeTag: 'db' }) as unknown as StorageConfig;
+	const scheduleTriggerJobRegistrar = mock<ScheduleTriggerJobRegistrar>();
 
 	let factory: TriggerExecutionContextFactory;
 
@@ -54,6 +56,7 @@ describe('TriggerExecutionContextFactory', () => {
 		workflowExecutionService.runWorkflow.mockResolvedValue('exec-123');
 		executionService.createErrorExecution.mockResolvedValue(undefined);
 
+		scheduleTriggerJobRegistrar.interceptsNode.mockReturnValue(false);
 		const scopedLogger = mock<Logger>();
 		const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 
@@ -67,6 +70,7 @@ describe('TriggerExecutionContextFactory', () => {
 			workflowExecutionService,
 			storageConfig,
 			workflowPublishedDataService,
+			scheduleTriggerJobRegistrar,
 		);
 	});
 

@@ -347,6 +347,7 @@ describe('ActiveWorkflowManager', () => {
 				workflowExecutionService,
 				mock(), // storageConfig
 				mock(), // workflowPublishedDataService
+				mock(), // scheduleTriggerJobRegistrar
 			);
 
 			activeWorkflowManager = new ActiveWorkflowManager(
