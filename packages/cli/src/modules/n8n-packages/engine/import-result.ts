@@ -11,7 +11,6 @@ import type {
 } from '../n8n-packages.types';
 import type { PackageManifest } from '../spec/manifest.schema';
 
-/** The package-level provenance carried on every {@link ImportResult}. */
 export function toPackageSummary(manifest: PackageManifest): ImportPackageSummary {
 	return {
 		sourceN8nVersion: manifest.sourceN8nVersion,

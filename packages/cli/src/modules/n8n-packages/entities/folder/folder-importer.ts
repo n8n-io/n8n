@@ -18,12 +18,6 @@ interface ExistingFolder {
 	name: string;
 }
 
-/**
- * Imports the package's folder shells into the target project. `plan` matches each folder against
- * the target and decides create/update/skip (or a blocking conflict); `apply` writes it. Folder ids
- * are reused as-is, so a package folder's id is also its target id and a nested folder's
- * `parentFolderId` already names its in-package parent.
- */
 @Service()
 export class FolderImporter {
 	constructor(private readonly folderService: FolderService) {}
@@ -36,8 +30,6 @@ export class FolderImporter {
 		const conflicts: FolderConflict[] = [];
 
 		for (const folder of ordered) {
-			// Root-of-forest folders anchor under the request folder (or project root); nested
-			// folders reuse their in-package parent id, which is the same id in the target.
 			const targetParentFolderId =
 				folder.parentFolderId === null ? (context.folderId ?? null) : folder.parentFolderId;
 
@@ -96,7 +88,6 @@ export class FolderImporter {
 		return { items, conflicts };
 	}
 
-	// Parent-first ordering (from `plan`) means a nested folder's parent already exists when created.
 	async apply(
 		context: FolderImportContext,
 		plan: FolderImportPlan,
@@ -149,8 +140,8 @@ function toSummary(
 }
 
 /**
- * Orders folders so every parent precedes its children (the parent must exist before a child
- * references it). A `parentFolderId` that names no in-package folder, or a cycle, is a malformed package.
+ * Orders folders from parents -> children
+ * @param folders
  */
 function orderParentsFirst(folders: PreparedFolder[]): PreparedFolder[] {
 	const byId = new Map(folders.map((folder) => [folder.sourceFolderId, folder]));

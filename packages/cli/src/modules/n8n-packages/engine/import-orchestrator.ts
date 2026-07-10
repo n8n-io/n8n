@@ -45,7 +45,7 @@ export interface ImportOrchestrationResult {
 
 /**
  * Coordinates the credential, folder, and workflow importers to bring a package's
- * contents into one resolved project scope, running plan → gate → apply across them.
+ * contents into one resolved project scope
  */
 @Service()
 export class ImportOrchestrator {

@@ -64,10 +64,6 @@ export type ImportPackageRequest = {
 	folderId?: string;
 	packageBuffer: Buffer;
 	bindings?: Partial<PackageImportBindings>;
-	/**
-	 * API-key scopes of the caller (public API only). When set, the pipeline asserts the key carries
-	 * the scopes the package's contents require; internal callers omit it and rely on user RBAC.
-	 */
 	apiKeyScopes?: string[];
 } & ImportCredentialProperties &
 	ImportWorkflowProperties &
@@ -147,7 +143,6 @@ export interface ImportedWorkflowSummary {
 
 export interface ImportedFolderSummary {
 	sourceFolderId: string;
-	/** Local id of the imported folder; equal to `sourceFolderId` since folder ids are reused. */
 	localId: string;
 	name: string;
 	parentFolderId: string | null;
@@ -176,19 +171,12 @@ export type BlockingIssue =
 	  }
 	| ({ type: 'folder-conflict' } & FolderConflict);
 
-/**
- * A package folder that can't be imported: a matched folder would move (`parent-mismatch`), its id is
- * owned by another project (`id-in-other-project`), or it already exists under a `fail` policy.
- */
 export interface FolderConflict {
 	kind: 'parent-mismatch' | 'id-in-other-project' | 'fail-policy';
 	sourceFolderId: string;
 	name: string;
-	/** The matched folder's current parent in the target (for `parent-mismatch`). */
 	existingParentFolderId?: string | null;
-	/** The parent the package would place the folder under (for `parent-mismatch`). */
 	expectedParentFolderId?: string | null;
-	/** The project that already owns the id (for `id-in-other-project`). */
 	existingProjectId?: string | null;
 }
 
@@ -234,7 +222,6 @@ export interface ImportCredentialSummary {
 	stubbed: string[];
 }
 
-/** Result of an import: the entities written to the database. */
 export interface ImportResult {
 	package: ImportPackageSummary;
 	workflows: ImportedWorkflowSummary[];

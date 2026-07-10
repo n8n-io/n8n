@@ -45,7 +45,6 @@ export class FolderService {
 		}
 
 		const folderEntity = this.folderRepository.create({
-			// Reuse a preset id when given; @BeforeInsert only mints one when unset.
 			...(id ? { id } : {}),
 			name,
 			homeProject: { id: projectId },
@@ -57,7 +56,6 @@ export class FolderService {
 		return folder;
 	}
 
-	/** Fetches folders by id across all projects, with their home project loaded. */
 	async getFoldersByIds(folderIds: string[]): Promise<Folder[]> {
 		if (folderIds.length === 0) return [];
 		return await this.folderRepository.find({
