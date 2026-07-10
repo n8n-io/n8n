@@ -48,17 +48,6 @@ const uploadLabel = computed(() => i18n.baseText('agents.builder.files.addFile' 
 const uploadTooltip = computed(() =>
 	props.isPublished ? uploadLabel.value : i18n.baseText('agents.builder.files.publishRequired'),
 );
-const fileCountLabel = computed(() => {
-	const count = props.files.length;
-	if (count === 0) {
-		return i18n.baseText('agents.builder.files.summary.empty' as BaseTextKey);
-	}
-
-	return i18n.baseText('agents.builder.files.summary.count' as BaseTextKey, {
-		adjustToNumber: count,
-		interpolate: { count },
-	});
-});
 
 const acceptAttr = ALLOWED_AGENT_FILE_EXTENSIONS.join(',');
 
@@ -145,8 +134,14 @@ function onFilesSelected(event: Event) {
 <template>
 	<div :class="$style.panel" data-testid="agent-files-panel">
 		<div :class="$style.toolbar">
-			<span :class="$style.filesSummary" data-testid="agent-files-count">
-				{{ fileCountLabel }}
+			<span :class="$style.title" data-testid="agent-files-title">
+				{{ i18n.baseText('agents.builder.files.title') }}
+				<N8nTooltip
+					:content="i18n.baseText('agents.builder.files.titleTooltip' as BaseTextKey)"
+					placement="top"
+				>
+					<N8nIcon icon="circle-help" size="small" :class="$style.titleIcon" />
+				</N8nTooltip>
 			</span>
 
 			<input
@@ -174,7 +169,7 @@ function onFilesSelected(event: Event) {
 		</div>
 
 		<div :class="$style.tableContainer">
-			<N8nTableBase>
+			<N8nTableBase :max-displayed-rows="10">
 				<tbody>
 					<tr
 						v-for="file in props.files"
@@ -257,12 +252,19 @@ function onFilesSelected(event: Event) {
 	width: 100%;
 }
 
-.filesSummary {
+.title {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
 	min-width: 0;
 	color: var(--text-color--subtler);
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--medium);
 	line-height: var(--line-height--sm);
+}
+
+.titleIcon {
+	color: var(--text-color--subtler);
 }
 
 .fileInput {
@@ -278,6 +280,7 @@ function onFilesSelected(event: Event) {
 
 .titleCell {
 	width: 42%;
+	max-width: 0;
 }
 
 .fileTitle {

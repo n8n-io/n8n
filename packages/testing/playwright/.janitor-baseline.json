@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-07-08T19:25:22.774Z",
-	"totalViolations": 78,
+	"generated": "2026-07-09T14:23:09.839Z",
+	"totalViolations": 66,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -203,58 +203,6 @@
 				"hash": "140cf31c63ab"
 			}
 		],
-		"tests/e2e/chat-hub/chat-hub-personal-agent.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 90,
-				"message": "Direct page locator call: n8n.page.getByRole('dialog').getByText('Delete', { exact:...",
-				"hash": "e5c7b87a1265"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 90,
-				"message": "Direct page locator call: n8n.page.getByRole('dialog').getByText('Delete', { exact:...",
-				"hash": "e5c7b87a1265"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 90,
-				"message": "Chained locator call in test: n8n.page.getByRole('dialog').getByText('Delete', { exact:...",
-				"hash": "667398fd66e7"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 90,
-				"message": "Direct page locator call: n8n.page.getByRole('dialog')",
-				"hash": "31695787251c"
-			}
-		],
-		"tests/e2e/projects/projects.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 188,
-				"message": "Direct page locator call: subn8n.page.getByRole('heading', { name: 'My Sub-Workflow...",
-				"hash": "e4e2c9dc4c76"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 188,
-				"message": "Chained locator call in test: subn8n.page.getByRole('heading', { name: 'My Sub-Workflow...",
-				"hash": "b6043abb9fdc"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 193,
-				"message": "Direct page locator call: subn8n.page.getByRole('heading', { name: 'Notion account' })",
-				"hash": "28156d4663d0"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 193,
-				"message": "Chained locator call in test: subn8n.page.getByRole('heading', { name: 'Notion account' })",
-				"hash": "f2522e66d3fb"
-			}
-		],
 		"composables/BuilderWizardComposer.ts": [
 			{
 				"rule": "no-page-in-flow",
@@ -287,26 +235,6 @@
 				"line": 148,
 				"message": "Direct page access in composable: this.n8n.page.url",
 				"hash": "c978979c3eac"
-			}
-		],
-		"composables/DataTablesComposer.ts": [
-			{
-				"rule": "no-page-in-flow",
-				"line": 29,
-				"message": "Direct page access in composable: this.n8n.page.goto",
-				"hash": "5f9ae75f5f12"
-			},
-			{
-				"rule": "no-page-in-flow",
-				"line": 31,
-				"message": "Direct page access in composable: this.n8n.page.goto",
-				"hash": "5f9ae75f5f12"
-			},
-			{
-				"rule": "no-page-in-flow",
-				"line": 40,
-				"message": "Direct page access in composable: this.n8n.page.goto",
-				"hash": "5f9ae75f5f12"
 			}
 		],
 		"composables/ExecutionsComposer.ts": [
@@ -459,14 +387,6 @@
 				"line": 13,
 				"message": "Duplicate locator: this.page.getByTestId(\"menu-item\") in pages scope",
 				"hash": "5a1818f5f511"
-			}
-		],
-		"tests/e2e/instance-ai/instance-ai-timeline.spec.ts": [
-			{
-				"rule": "duplicate-logic",
-				"line": 12,
-				"message": "Duplicate test logic: \"should show artifact cards after workflow build completes\" has identical structure to tests/e2e/instance-ai/instance-ai-artifacts.spec.ts:\"should display artifact card in timeline after workflow build\"",
-				"hash": "da9226aef0eb"
 			}
 		],
 		"tests/infrastructure/benchmarks/kafka/queue-mode-sustained-rate.spec.ts": [

@@ -346,7 +346,7 @@ describe('scheduled repositories', () => {
 			const job = await createJob();
 			const scheduledFor = secondsFromNow(-60);
 
-			const recorded = await dataSource.transaction(
+			const result = await dataSource.transaction(
 				async (trx) =>
 					await taskRepository.insertIgnoringDuplicates(trx, [
 						{
@@ -360,10 +360,39 @@ describe('scheduled repositories', () => {
 					]),
 			);
 
-			expect(recorded).toBe(1);
+			expect(result.recorded).toBe(1);
 			const stored = await taskRepository.findBy({ jobId: job.id });
 			expect(stored).toHaveLength(1);
 			expect(stored[0].scheduledFor.getTime()).toBe(scheduledFor.getTime());
+		});
+
+		// Postgres only: SQLite's driver never surfaces RETURNING rows from a raw
+		// insert, so row identity for tracing is a Postgres-only capability.
+		it.skipIf(!isPostgres)('returns the identity of each newly created row', async () => {
+			const job = await createJob();
+			const scheduledFor = secondsFromNow(-60);
+
+			const result = await dataSource.transaction(
+				async (trx) =>
+					await taskRepository.insertIgnoringDuplicates(trx, [
+						{
+							jobId: job.id,
+							taskType: 'scheduleTrigger',
+							payload: {},
+							scheduledFor,
+							runAt: scheduledFor,
+							maxAttempts: 1,
+						},
+					]),
+			);
+
+			expect(result.created).toHaveLength(1);
+			const stored = await taskRepository.findOneByOrFail({ jobId: job.id });
+			expect(result.created[0]).toEqual({
+				id: stored.id,
+				jobId: job.id,
+				taskType: 'scheduleTrigger',
+			});
 		});
 
 		it('is idempotent on (jobId, scheduledFor): a duplicate is skipped and not counted', async () => {
@@ -385,8 +414,8 @@ describe('scheduled repositories', () => {
 				async (trx) => await taskRepository.insertIgnoringDuplicates(trx, [occurrence]),
 			);
 
-			expect(first).toBe(1);
-			expect(second).toBe(0);
+			expect(first.recorded).toBe(1);
+			expect(second.recorded).toBe(0);
 			expect(await taskRepository.findBy({ jobId: job.id })).toHaveLength(1);
 		});
 
@@ -406,11 +435,11 @@ describe('scheduled repositories', () => {
 				};
 			});
 
-			const recorded = await dataSource.transaction(
+			const result = await dataSource.transaction(
 				async (trx) => await taskRepository.insertIgnoringDuplicates(trx, occurrences),
 			);
 
-			expect(recorded).toBe(2500);
+			expect(result.recorded).toBe(2500);
 			expect(await taskRepository.countBy({ jobId: job.id })).toBe(2500);
 		});
 
@@ -439,7 +468,7 @@ describe('scheduled repositories', () => {
 					),
 				]);
 
-				expect(first + second).toBe(1);
+				expect(first.recorded + second.recorded).toBe(1);
 				expect(await taskRepository.findBy({ jobId: job.id })).toHaveLength(1);
 			},
 		);
@@ -634,5 +663,65 @@ describe('scheduled repositories', () => {
 				expect(await taskRepository.count()).toBe(0);
 			},
 		);
+	});
+
+	describe('ScheduledTaskRepository.getMetricSnapshot', () => {
+		it('reports queue depth counts and the oldest due pending age', async () => {
+			const job = await createJob();
+			const now = new Date();
+
+			// Two due pending rows (runAt in the past) and one not-yet-due pending row.
+			const dueOld = await createTask(job.id, {
+				status: 'pending',
+				runAt: new Date(now.getTime() - 120_000),
+			});
+			await createTask(job.id, { status: 'pending', runAt: new Date(now.getTime() - 30_000) });
+			await createTask(job.id, { status: 'pending', runAt: new Date(now.getTime() + 3_600_000) });
+			// A running row, plus terminal rows that must not be counted.
+			await createTask(job.id, {
+				status: 'running',
+				claimedBy: 'main-1',
+				leaseExpiresAt: new Date(now.getTime() + 60_000),
+			});
+			await createTask(job.id, { status: 'succeeded', finishedAt: secondsFromNow(-60) });
+			await createTask(job.id, { status: 'failed', finishedAt: secondsFromNow(-60) });
+
+			const snapshot = await taskRepository.getMetricSnapshot();
+
+			expect(snapshot.pending).toBe(3); // both due rows plus the future one
+			expect(snapshot.due).toBe(2); // only the two past-runAt rows are actionable
+			expect(snapshot.running).toBe(1);
+			// Lag tracks the oldest DUE pending row, not the future one. Measured against
+			// DB-now, so it's at least the row's age at seed time, plus the small elapsed
+			// time until the query ran.
+			const seededAgeMs = now.getTime() - dueOld.runAt.getTime();
+			expect(snapshot.oldestPendingAgeMs).toBeGreaterThanOrEqual(seededAgeMs);
+			expect(snapshot.oldestPendingAgeMs).toBeLessThan(seededAgeMs + 60_000);
+		});
+
+		it('returns a null oldest age when no pending row is due', async () => {
+			const job = await createJob();
+			const now = new Date();
+
+			await createTask(job.id, { status: 'pending', runAt: new Date(now.getTime() + 3_600_000) });
+			await createTask(job.id, {
+				status: 'running',
+				claimedBy: 'main-1',
+				leaseExpiresAt: new Date(now.getTime() + 60_000),
+			});
+
+			const snapshot = await taskRepository.getMetricSnapshot();
+
+			expect(snapshot.pending).toBe(1);
+			expect(snapshot.due).toBe(0);
+			expect(snapshot.running).toBe(1);
+			expect(snapshot.oldestPendingAgeMs).toBeNull();
+		});
+
+		it('reports all-zero counts and a null age on an empty queue', async () => {
+			const snapshot = await taskRepository.getMetricSnapshot();
+
+			expect(snapshot).toEqual({ pending: 0, due: 0, running: 0, oldestPendingAgeMs: null });
+		});
 	});
 });

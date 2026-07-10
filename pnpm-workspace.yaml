@@ -58,6 +58,8 @@ catalog:
   '@mozilla/readability': ^0.6.0
   '@n8n_io/ai-assistant-sdk': 1.24.0
   '@openrouter/ai-sdk-provider': ^2.8.0
+  '@pinecone-database/pinecone': ^5.0.2
+  '@qdrant/js-client-rest': ^1.16.2
   '@rudderstack/rudder-sdk-node': 3.0.5
   '@sentry/node': ^10.55.0
   '@stryker-mutator/core': 9.6.1
@@ -212,6 +214,8 @@ catalog:
 catalogMode: strict
 
 catalogs:
+  typescript:
+    typescript: 7.0.2
   e2e:
     '@currents/playwright': ^2.0.0
     '@playwright/cli': 0.1.0
@@ -265,3 +269,5 @@ minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
   - '@n8n/*'
   - '@n8n_io/*'
+  - 'typescript'
+  - '@typescript/*'

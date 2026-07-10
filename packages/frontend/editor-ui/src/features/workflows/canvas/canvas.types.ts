@@ -2,6 +2,7 @@ import type {
 	ExecutionStatus,
 	IConnections,
 	INodeConnections,
+	INodeParameterResourceLocator,
 	IWorkflowGroup,
 	NodeConnectionType,
 } from 'n8n-workflow';
@@ -54,6 +55,7 @@ export const enum CanvasNodeRenderType {
 	StickyNote = 'n8n-nodes-base.stickyNote',
 	AddNodes = 'n8n-nodes-internal.addNodes',
 	ChoicePrompt = 'n8n-nodes-internal.choicePrompt',
+	Agent = 'n8n-nodes-base.messageAnAgent',
 }
 
 export type CanvasNodeDefaultRenderLabelSize = 'small' | 'medium' | 'large';
@@ -101,6 +103,15 @@ export type CanvasNodeStickyNoteRender = {
 	}>;
 };
 
+export type CanvasNodeAgentRender = {
+	type: CanvasNodeRenderType.Agent;
+	options: Partial<{
+		// The node's `agentId` resource-locator. Empty `value` => unconfigured
+		// card (shows the agent picker); set => rich card keyed by this agent.
+		agentId: INodeParameterResourceLocator;
+	}>;
+};
+
 export interface CanvasNodeData {
 	id: INodeUi['id'];
 	name: INodeUi['name'];
@@ -131,7 +142,8 @@ export interface CanvasNodeData {
 		| CanvasNodeDefaultRender
 		| CanvasNodeStickyNoteRender
 		| CanvasNodeAddNodesRender
-		| CanvasNodeChoicePromptRender;
+		| CanvasNodeChoicePromptRender
+		| CanvasNodeAgentRender;
 }
 
 export type CanvasNode = Node<CanvasNodeData>;

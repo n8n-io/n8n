@@ -18,7 +18,7 @@ import {
 	createTestNodeProperties,
 } from '@/__tests__/mocks';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { type INodeParameterResourceLocator } from 'n8n-workflow';
+import { type INodeParameterResourceLocator, type INodePropertyOptions } from 'n8n-workflow';
 import type { IWorkflowDb, WorkflowListResource } from '@/Interface';
 import { mock } from 'vitest-mock-extended';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
@@ -249,6 +249,35 @@ describe('ParameterInput.vue', () => {
 		await userEvent.click(options[1]);
 
 		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'append' })]);
+	});
+
+	test('should pass option disabled state to N8nOption', async () => {
+		const options = [
+			{ name: 'Connected Chat Trigger Node', value: 'auto', disabled: true },
+			{ name: 'Define below', value: 'define' },
+		] as unknown as INodePropertyOptions[];
+
+		const { container, baseElement } = renderComponent({
+			props: {
+				path: 'operation',
+				parameter: createTestNodeProperties({
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					options,
+					default: 'define',
+				}),
+				modelValue: 'define',
+			},
+		});
+
+		const selectTrigger = container.querySelector('.select-trigger') as HTMLElement;
+		await userEvent.click(selectTrigger);
+
+		const optionsInDropdown = baseElement.querySelectorAll('[data-test-id="parameter-input-item"]');
+		expect(optionsInDropdown).toHaveLength(2);
+		expect(optionsInDropdown[0]).toHaveAttribute('aria-disabled', 'true');
+		expect(optionsInDropdown[1]).not.toHaveAttribute('aria-disabled', 'true');
 	});
 
 	describe('AI gateway action filtering', () => {

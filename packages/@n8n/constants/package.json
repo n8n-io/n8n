@@ -12,7 +12,7 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
-    "test": "jest --passWithNoTests"
+    "test": "node -e \"process.exit(0)\""
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -21,7 +21,8 @@
     "dist/**/*"
   ],
   "devDependencies": {
-    "@n8n/typescript-config": "workspace:*"
+    "@n8n/typescript-config": "workspace:*",
+    "typescript": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

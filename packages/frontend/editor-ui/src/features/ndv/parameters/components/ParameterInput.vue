@@ -41,6 +41,7 @@ import ResourceLocator from './ResourceLocator/ResourceLocator.vue';
 import SqlEditor from '@/features/shared/editors/components/SqlEditor/SqlEditor.vue';
 import TextEdit from './TextEdit.vue';
 import WorkflowSelectorParameterInput from './WorkflowSelectorParameterInput/WorkflowSelectorParameterInput.vue';
+import AgentSelectorParameterInput from './AgentSelectorParameterInput/AgentSelectorParameterInput.vue';
 
 import {
 	formatAsExpression,
@@ -788,6 +789,10 @@ function isRemoteParameterOption(option: INodePropertyOptions) {
 	return remoteParameterOptionsKeys.value.includes(option.name);
 }
 
+function isOptionDisabled(option: INodePropertyOptions) {
+	return 'disabled' in option && option.disabled === true;
+}
+
 function credentialSelected(updateInformation: INodeUpdatePropertiesInformation) {
 	// Update the values on the node
 	workflowDocumentStore?.value?.updateNodeProperties(updateInformation);
@@ -1530,6 +1535,22 @@ onUpdated(async () => {
 				@blur="onBlur"
 				@drop="onResourceLocatorDrop"
 			/>
+			<AgentSelectorParameterInput
+				v-else-if="parameter.type === 'agentSelector'"
+				ref="resourceLocator"
+				:parameter="parameter"
+				:model-value="modelValueResourceLocator"
+				:expression-display-value="expressionDisplayValue"
+				:is-value-expression="isModelValueExpression"
+				:path="path"
+				:parameter-issues="getIssues"
+				:is-read-only="isReadOnly"
+				@update:model-value="valueChanged"
+				@modal-opener-click="openExpressionEditorModal"
+				@focus="setFocus"
+				@blur="onBlur"
+				@drop="onResourceLocatorDrop"
+			/>
 			<N8nIconPicker
 				v-else-if="parameter.type === 'icon' && !isModelValueExpression && !forceShowExpression"
 				ref="inputField"
@@ -1968,6 +1989,7 @@ onUpdated(async () => {
 					v-for="option in parameterOptions"
 					:key="option.value.toString()"
 					:value="option.value"
+					:disabled="isOptionDisabled(option)"
 					:label="getOptionsOptionDisplayName(option)"
 					data-test-id="parameter-input-item"
 				>
@@ -2007,6 +2029,7 @@ onUpdated(async () => {
 					v-for="option in parameterOptions"
 					:key="option.value.toString()"
 					:value="option.value"
+					:disabled="isOptionDisabled(option)"
 					:label="getOptionsOptionDisplayName(option)"
 				>
 					<div class="list-option">

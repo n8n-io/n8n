@@ -23,10 +23,9 @@ import {
 
 import type { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useVueFlow } from '@vue-flow/core';
-import { CANVAS_NODES_GROUPING_EXPERIMENT, SIMULATE_NODE_TYPE } from '@/app/constants';
+import { SIMULATE_NODE_TYPE } from '@/app/constants';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { GROUP_PADDING_Y_BOTTOM, GROUP_PADDING_Y_TOP } from '../stores/canvasNodeGroups.constants';
 import {
 	NodeGroupViewKey,
@@ -163,11 +162,6 @@ describe('Canvas', () => {
 	});
 
 	it('should render group frame from live VueFlow node data', async () => {
-		const posthogStore = usePostHog();
-		vi.spyOn(posthogStore, 'isFeatureEnabled').mockImplementation(
-			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
-		);
-
 		const groupNode = createCanvasGroupNode();
 
 		const { getByTestId } = renderComponent({
@@ -194,11 +188,6 @@ describe('Canvas', () => {
 	});
 
 	it('should exclude expanded group title bars from select all', async () => {
-		const posthogStore = usePostHog();
-		vi.spyOn(posthogStore, 'isFeatureEnabled').mockImplementation(
-			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
-		);
-
 		const node = createCanvasNodeElement({ id: 'node-1' });
 		const groupNode = createCanvasGroupNode({ selectable: false });
 		const eventBus = createEventBus<CanvasEventBusEvents>();
@@ -219,11 +208,6 @@ describe('Canvas', () => {
 	});
 
 	it('should include collapsed group title bars in select all', async () => {
-		const posthogStore = usePostHog();
-		vi.spyOn(posthogStore, 'isFeatureEnabled').mockImplementation(
-			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
-		);
-
 		const node = createCanvasNodeElement({ id: 'node-1' });
 		const groupNode = createCanvasGroupNode({ selectable: true });
 		const eventBus = createEventBus<CanvasEventBusEvents>();
@@ -246,9 +230,6 @@ describe('Canvas', () => {
 	});
 
 	it('should clear selected members when their group is collapsed', async () => {
-		vi.spyOn(usePostHog(), 'isFeatureEnabled').mockImplementation(
-			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
-		);
 		vi.spyOn(workflowDocumentStore, 'getGroupById').mockReturnValue({
 			id: 'g1',
 			name: 'Group 1',
@@ -289,9 +270,6 @@ describe('Canvas', () => {
 	});
 
 	it('should select the group node when a collapsed group member is selected', async () => {
-		vi.spyOn(usePostHog(), 'isFeatureEnabled').mockImplementation(
-			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
-		);
 		workflowDocumentStore.setNodeGroups([{ id: 'g1', name: 'Group 1', nodeIds: ['node-1'] }]);
 
 		const nodeGroupView = {
@@ -322,10 +300,6 @@ describe('Canvas', () => {
 	});
 
 	it('should expand a selected collapsed group to its members when copying', async () => {
-		vi.spyOn(usePostHog(), 'isFeatureEnabled').mockImplementation(
-			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
-		);
-
 		const groupNode = createCanvasGroupElement({ id: 'g1', nodeIds: ['node-1', 'node-2'] });
 
 		const { container, emitted } = renderComponent({
@@ -588,12 +562,6 @@ describe('Canvas', () => {
 	});
 
 	describe('delete / backspace on group title bar', () => {
-		beforeEach(() => {
-			vi.spyOn(usePostHog(), 'isFeatureEnabled').mockImplementation(
-				(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
-			);
-		});
-
 		it("deletes a collapsed group's member nodes when backspace is pressed with a group title bar selected", async () => {
 			const group = workflowDocumentStore.createGroup([], 'My Group');
 			const groupNode = createCanvasGroupElement({
@@ -621,9 +589,6 @@ describe('Canvas', () => {
 	describe('node group telemetry', () => {
 		beforeEach(() => {
 			localStorage.clear();
-			vi.spyOn(usePostHog(), 'isFeatureEnabled').mockImplementation(
-				(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
-			);
 		});
 
 		function buildNodeGroupView() {
@@ -631,7 +596,6 @@ describe('Canvas', () => {
 				workflowId: () => 'wf-test',
 				getCurrentGroupIds: () => workflowDocumentStore.allGroups.map((group) => group.id),
 				onNodeGroupsChange: workflowDocumentStore.onNodeGroupsChange,
-				isGroupingEnabled: () => true,
 			});
 		}
 
