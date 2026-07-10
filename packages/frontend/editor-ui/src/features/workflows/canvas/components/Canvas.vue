@@ -381,10 +381,9 @@ function onToggleZoomMode() {
 }
 
 function onNodeGroupCreated(groupId: string) {
-	autofocusGroupTitleId.value = groupId;
 	const group = workflowDocumentStore.value.getGroupById(groupId);
 	if (group) {
-		groupTelemetry.trackGrouped(group, 'group-toolbar');
+		handleGroupCreated(group, 'group-toolbar');
 	}
 }
 
@@ -1142,9 +1141,6 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 			}
 			return;
 		}
-		// Group actions target the group carried by the menu target — resolving
-		// through member node ids could hit a different group if membership
-		// changed (e.g. by a collaborator) while the menu was open.
 		case 'rename_group': {
 			if (groupId && workflowDocumentStore.value.getGroupById(groupId)) {
 				autofocusGroupTitleId.value = groupId;
