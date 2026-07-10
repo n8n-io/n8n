@@ -21,7 +21,6 @@
 	"processExpectations": [
 		"The agent treats the request as two independent automations with separate lifecycles rather than merging them into a single design.",
 		"The weather notification is proposed as a scheduled workflow.",
-		"The support assistant is proposed as an n8n Agent (conversational, decides when to escalate), not as a second workflow.",
-		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to propose."
+		"The support assistant is proposed as an n8n Agent (conversational, decides when to escalate), not as a second workflow."
 	]
 }

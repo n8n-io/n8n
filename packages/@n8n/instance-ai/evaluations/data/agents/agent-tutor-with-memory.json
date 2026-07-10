@@ -19,6 +19,7 @@
 	"datasets": ["agents"],
 	"processExpectations": [
 		"The agent proposes creating an n8n Agent — an ongoing conversational tutor with cross-session memory — rather than building a workflow.",
+		"The proposed design is a self-contained conversational agent with memory — the tutor is not embedded as a step inside a workflow.",
 		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to propose."
 	],
 	"messageBudget": 4

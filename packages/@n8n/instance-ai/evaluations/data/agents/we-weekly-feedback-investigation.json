@@ -1,0 +1,25 @@
+{
+	"description": "Gold: {anchor: wf, embedsOther: true} — scheduled shell with deterministic aggregation and email; the per-ticket root-cause cross-referencing is agentic tool use (docs + past tickets), so an agent is embedded per item. Ported from the intent-resolution spec (§5.2 we-weekly-feedback-investigation).",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every Sunday, take last week's customer feedback tickets: for each, have an agent cross-reference our docs and past tickets to identify the root cause, then aggregate findings into a report and email leadership. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "complex",
+	"tags": ["intent-resolution", "scheduled", "batch", "embed-agent", "reporting"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent proposes a scheduled workflow shell — Sunday trigger, fetching last week's tickets, aggregating findings, and emailing leadership as fixed steps — and does not propose a standalone n8n Agent.",
+		"In the proposed design the per-ticket root-cause identification is handled by an embedded agent or open-ended AI step that cross-references docs and past tickets, not by a fixed keyword or template step."
+	]
+}

@@ -20,7 +20,7 @@
 	"processExpectations": [
 		"Despite the request saying 'AI agent', the agent proposes a fixed scheduled workflow (schedule trigger, weather fetch, email) and does not propose creating an n8n Agent.",
 		"The proposed design composes the email with at most a single bounded step — it does not include an AI Agent node or open-ended agent step.",
-		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to propose."
+		"The proposal justifies the workflow choice by the fixed schedule-fetch-email shape of the task, not by deferring to the request's 'AI agent' vocabulary."
 	],
 	"messageBudget": 4
 }

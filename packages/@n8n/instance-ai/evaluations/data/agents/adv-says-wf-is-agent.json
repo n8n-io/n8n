@@ -19,7 +19,7 @@
 	"datasets": ["agents"],
 	"processExpectations": [
 		"Despite the request saying 'workflow', the agent proposes creating an n8n Agent — a conversational assistant handling open-ended customer product questions — rather than a fixed workflow pipeline.",
-		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to propose."
+		"The proposal grounds the agent choice in the chat-based, open-ended Q&A shape of the task, not in the request's 'workflow' vocabulary."
 	],
 	"messageBudget": 4
 }

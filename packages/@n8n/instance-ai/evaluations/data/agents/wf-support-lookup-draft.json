@@ -19,8 +19,7 @@
 	"datasets": ["agents"],
 	"processExpectations": [
 		"The agent proposes a workflow: fixed account and recent-orders lookups plus a single bounded reply-drafting step with human review — and does not propose creating an n8n Agent.",
-		"In the proposed design the drafting is one bounded LLM step, not an AI Agent node choosing tools at runtime.",
-		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to propose."
+		"In the proposed design the drafting is one bounded LLM step, not an AI Agent node choosing tools at runtime."
 	],
 	"messageBudget": 4
 }

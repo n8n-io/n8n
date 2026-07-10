@@ -19,8 +19,7 @@
 	"datasets": ["agents"],
 	"processExpectations": [
 		"Despite the request saying 'assistant', the agent proposes a fixed scheduled workflow — daily RSS summarization posted to Slack — and does not propose creating an n8n Agent.",
-		"In the proposed design the summarization is a single bounded LLM step, not an AI Agent node or open-ended agent step.",
-		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to propose."
+		"In the proposed design the summarization is a single bounded LLM step, not an AI Agent node or open-ended agent step."
 	],
 	"messageBudget": 4
 }

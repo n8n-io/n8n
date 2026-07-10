@@ -1,0 +1,25 @@
+{
+	"description": "Gold: {anchor: agent, embedsOther: false or true} — multi-turn chat plus tool use; the HR-policy lookup may be a native capability or a workflow tool, so embeds tolerates both. Ported from the intent-resolution spec (§5.3 agent-chat-hr-policy).",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I want to chat with an assistant that can look up my company's HR policies and answer questions. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "simple",
+	"tags": ["intent-resolution", "chat", "tool-use"],
+	"datasets": ["agents", "agents-tolerance"],
+	"processExpectations": [
+		"The agent proposes creating an n8n Agent — a conversational assistant answering HR-policy questions turn by turn — rather than a fixed workflow pipeline.",
+		"The proposal grounds the agent choice in the chat/session interaction shape (open-ended Q&A where the assistant decides what to look up each turn), not in the surface vocabulary of the request."
+	]
+}

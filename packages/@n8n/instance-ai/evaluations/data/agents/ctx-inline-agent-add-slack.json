@@ -1,0 +1,25 @@
+{
+	"description": "Paradigm continuity inside an agent context: after an agent design is on the table, an incremental capability request ('also Slack me when it escalates') stays a tool/capability on that agent — not a separate spawned workflow and not a reason to re-anchor the design. Mirror of ctx-followup-schedule-edit on the agent side. Ported from the intent-resolution spec (§5.9 ctx-inline-agent-add-slack), reshaped from priorConversation to a live follow-up turn. Recalibrated 2026-07-10: the original ticket-triage premise was defensibly workflow-anchored (classify-then-route), so the continuity test never ran — the premise now carries an unambiguous chat signal, matching the shape that reliably anchors on an agent in compound-weather-and-support-assistant.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "A support assistant our customers chat with — it answers their product questions and escalates to a human when it can't help. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[After the assistant lays out its approach, ask for exactly one change: also send me a Slack message whenever it escalates to a human.",
+				"Do not approve any plan, setup card, or build confirmation.",
+				"Once the change is reflected in the approach, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "medium",
+	"tags": ["intent-resolution", "inline", "paradigm-continuity", "chat"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The initial proposal is agent-anchored: an n8n Agent that triages tickets and decides per ticket, not a fixed workflow pipeline.",
+		"The Slack notification request is treated as an added capability/tool of the proposed n8n Agent — the agent does not re-classify the automation, re-anchor to a workflow design, or propose a separate second automation for the notification."
+	]
+}

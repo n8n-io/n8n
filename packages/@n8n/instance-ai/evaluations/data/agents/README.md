@@ -23,10 +23,67 @@ sub-agent) — expectations name no build tools; only
 
 Grading uses ordinary `processExpectations` only — no bespoke schema fields,
 graders, or CLIs, and no `outcomeExpectations` (there is no built artifact to
-judge). Every routing case asserts both the proposed approach and that
-`load_skill(intent-recognition)` ran before the decision; the
-ops/meta/continuity cases guard the opposite direction (the intent gate must
-not fire on non-build messages or re-fire on amendments).
+judge). The case set mirrors the intent-resolution eval spec (Notion: "AIA
+Intent Resolution — Eval Suite"), with each spec grading field encoded as its
+own expectation instead of a schema field.
+
+## Grading convention (per routing case)
+
+One expectation per graded decision, so per-field pass rates can be read
+straight out of `eval-results.json`:
+
+1. **Anchor** — what the proposal anchors on ("proposes a workflow … and does
+   not propose creating an n8n Agent", or the reverse). Tolerance cases (the
+   spec's multi-tuple `accepts`) state both accepted shapes in one
+   expectation ("in one of two accepted shapes: …").
+2. **Embeds** — whether the other primitive appears inside, asserted in BOTH
+   truth directions: `embeds_other=false` cases assert the absence of an
+   agent step ("no AI Agent node or open-ended agent step"), `true` cases
+   assert its presence (embedded agent step, or workflows attached as Agent
+   tools).
+3. **Rationale** (where the case is a judgment probe) — the proposal justifies
+   the choice by the deciding signal from the taxonomy, not by the request's
+   surface vocabulary. This stands in for the spec's 0–2 rationale rubric,
+   collapsed to one strict boolean.
+4. **Clarify cases** — one expectation for "asks instead of committing", one
+   for "the question targets an anchor-deciding dimension" (the spec's
+   `clarifying_dimensions`).
+
+**Gate assertions are deliberately scarce.** `load_skill(intent-recognition)`
+firing is commanded verbatim by the system prompt, so asserting it on every
+case padded the aggregate with near-guaranteed passes. It is asserted only
+where the gate itself is under test — the ops/meta cases (must not fire), the
+ctx continuity cases (must not re-fire) — plus two routing canaries, one per
+anchor side (`wf-schedule-weather-slack`, `agent-tutor-with-memory`).
+
+## Slices
+
+Buckets are encoded in filename prefixes — `wf-` (workflow-anchored), `we-`
+(workflow + embedded agent), `agent-` (agent-anchored axes), `at-` (agent +
+workflow tools), `adv-` (false friends), `clarify-`, `ctx-` (continuity /
+paradigm), `compound-`, `meta-`/`ops-` (out-of-scope guards) — so
+`--filter adv-` runs a slice. Cases with legitimate multi-shape golds
+additionally carry the `agents-tolerance` dataset (`--tier agents-tolerance`),
+since tolerance spans several prefixes.
+
+Interpretation targets from the spec (regression tracker, not a release
+gate): joint accuracy ≥75%, false-friend slice ≥80%, easy cases ≥90%. A
+sustained 100% means the suite has lost headroom — add harder cases rather
+than celebrating.
+
+## Priority-watch cases
+
+Cases that failed in the spec's earlier **exam-style** run (AIA shown the four
+labels and asked to classify). Those results were measured under a different
+framing and do not transfer to this behavior-graded suite — calibrate here
+before trusting either color. If one goes red, that is likely the
+under-proposes-agents signal, not a case bug (see the eval-authoring skill:
+"a red is signal"):
+
+- `agent-long-running-launch` — failed 3/3 exam-style
+- `agent-sales-prospecting` — failed 2/3 exam-style
+- `agent-research-report` — failed 3/3 exam-style (embeds decision was the miss)
+- `compound-ingest-and-sdr-agent` — SDR part failed 3/3 exam-style
 
 **One deliberate exception:** `ctx-iterative-build-gate-once` runs a real
 build with several follow-up changes (director-scripted, one message at a

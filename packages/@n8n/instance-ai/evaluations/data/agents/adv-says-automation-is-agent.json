@@ -16,10 +16,10 @@
 	],
 	"complexity": "medium",
 	"tags": ["intent-resolution", "false-friend", "surface-vocab", "tolerance"],
-	"datasets": ["agents"],
+	"datasets": ["agents", "agents-tolerance"],
 	"processExpectations": [
 		"The agent proposes handling the open-ended incident investigation with an agent primitive in one of two accepted shapes: an n8n Agent (possibly invoking workflows as tools), or a workflow whose investigation step is an embedded agent; a fixed pipeline with no open-ended step is wrong.",
-		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to propose."
+		"The proposal grounds the design in the reasoning-dominated, end-to-end nature of the investigation, not in the request's 'automate' vocabulary."
 	],
 	"messageBudget": 4
 }

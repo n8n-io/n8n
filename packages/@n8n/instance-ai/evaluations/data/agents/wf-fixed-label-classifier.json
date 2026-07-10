@@ -1,0 +1,26 @@
+{
+	"description": "Gold: {anchor: wf, embedsOther: false} — LLM as fixed-label classifier feeding a deterministic move; the dissolved 'hybrid' family (classify-then-route stays a workflow with a bounded LLM step). Ported from the intent-resolution spec (§5.1 wf-fixed-label-classifier).",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Categorize each incoming email into one of: personal, work, newsletter, spam — and move it to that folder. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "medium",
+	"tags": ["intent-resolution", "event-triggered", "single-llm-transform", "dissolved-hybrid"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent proposes a workflow — incoming email trigger, a classification step over the four fixed labels, and a deterministic move to the matching folder — and does not propose creating an n8n Agent.",
+		"In the proposed design the classification is a bounded fixed-label step (an LLM classifier or rules), not an AI Agent node or open-ended agent step deciding actions at runtime.",
+		"The proposal grounds the workflow choice in the bounded classify-then-route shape (enumerable labels feeding fixed actions), rather than treating the AI classification as a reason to build an agent."
+	]
+}

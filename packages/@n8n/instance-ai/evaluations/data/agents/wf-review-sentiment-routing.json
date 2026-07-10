@@ -1,0 +1,25 @@
+{
+	"description": "Gold: {anchor: wf, embedsOther: false} — sentiment classification feeding a fixed two-way branch. Dissolved-hybrid family. Ported from the intent-resolution spec (§5.1 wf-review-sentiment-routing).",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Analyze review sentiment; send negative ones to support, auto-thank the positive ones. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "simple",
+	"tags": ["intent-resolution", "event-triggered", "bounded-llm", "dissolved-hybrid"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent proposes a workflow — reviews come in, sentiment is classified, negatives route to support and positives get a thank-you — and does not propose creating an n8n Agent.",
+		"In the proposed design the sentiment analysis is a single bounded classification step feeding a fixed two-way branch, not an AI Agent node or open-ended agent step."
+	]
+}

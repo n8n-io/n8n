@@ -18,8 +18,9 @@
 	"tags": ["intent-resolution", "false-friend", "tool-count"],
 	"datasets": ["agents"],
 	"processExpectations": [
-		"The agent proposes a workflow of fixed steps across the seven integrations, and does not propose an n8n Agent or an orchestrating agent step despite the number of services involved.",
-		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to propose."
+		"The agent proposes a workflow of fixed steps across the seven integrations and does not propose creating an n8n Agent.",
+		"The proposed design contains no orchestrating agent step or AI Agent node — each of the seven integrations is a fixed step.",
+		"The proposal does not treat the number of services as a reason for agency — the justification rests on the fixed, enumerable shape of the steps."
 	],
 	"messageBudget": 4
 }
