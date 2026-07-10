@@ -129,6 +129,33 @@ describe('periodsBetween', () => {
 				),
 			).toBe(3);
 		});
+
+		it('a week crossing spring-forward is still one week (not zero)', () => {
+			// America/New_York springs forward 2026-03-08. Week starts Sun 03-08
+			// 00:00 EST and Sun 03-15 00:00 EDT are only 6 days 23 hours apart;
+			// without rounding, the raw diff would read 0.99 weeks.
+			expect(
+				periodsBetween(
+					new Date('2026-03-11T09:00:00-04:00'),
+					new Date('2026-03-18T09:00:00-04:00'),
+					'weeks',
+					'America/New_York',
+				),
+			).toBe(1);
+		});
+
+		it('a week crossing fall-back is still one week (not two)', () => {
+			// America/New_York falls back 2026-11-01. Week starts Sun 11-01 00:00
+			// EDT and Sun 11-08 00:00 EST are 7 days 1 hour apart.
+			expect(
+				periodsBetween(
+					new Date('2026-11-04T09:00:00-05:00'),
+					new Date('2026-11-11T09:00:00-05:00'),
+					'weeks',
+					'America/New_York',
+				),
+			).toBe(1);
+		});
 	});
 
 	describe('months', () => {
