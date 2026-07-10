@@ -599,7 +599,7 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 <style lang="scss" module>
 .root {
 	border: 2px solid var(--color--primary);
-	border-radius: var(--radius--xl);
+	border-radius: var(--radius--lg);
 	box-shadow: var(--shadow--sm);
 	background-color: var(--background--surface);
 }
@@ -650,8 +650,8 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 }
 
 .textCard {
+	// N8nCard already rounds to --radius--lg; only the border needs overriding.
 	border: 2px solid var(--color--primary);
-	border-radius: var(--radius--xl);
 	background-color: var(--color--background--light-3);
 }
 </style>

@@ -269,7 +269,7 @@ function handleDeny() {
 
 .root {
 	border: var(--border);
-	border-radius: var(--radius--xl);
+	border-radius: var(--radius--lg);
 	margin: var(--spacing--2xs) 0;
 	overflow: hidden;
 	background-color: var(--color--background--light-3);

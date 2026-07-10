@@ -292,7 +292,7 @@ watch(
 	gap: var(--spacing--sm);
 	padding-top: var(--spacing--sm);
 	border: 2px solid var(--color--primary);
-	border-radius: var(--radius--xl);
+	border-radius: var(--radius--lg);
 	background-color: var(--background--surface);
 }
 

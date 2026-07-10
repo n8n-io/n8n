@@ -115,7 +115,7 @@ function getSectionNodeType(section: WorkflowSetupSection) {
 	display: flex;
 	flex-direction: column;
 	border: 2px solid var(--color--primary);
-	border-radius: var(--radius--xl);
+	border-radius: var(--radius--lg);
 	background-color: var(--color--background--light-3);
 }
 
