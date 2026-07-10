@@ -104,6 +104,7 @@ const isSubWorkflowGroupsEnabled = computed(() =>
 // Sub-workflow group expansion is tracked in memory, keyed by host node id,
 // separately from real-group view state.
 const expandedSubWorkflowHostIds = ref(new Set<string>());
+const dragHostPositionById = ref(new Map<string, [number, number]>());
 const subWorkflowGroupView = {
 	isExpanded: (hostId: string) => expandedSubWorkflowHostIds.value.has(hostId),
 	toggle: (hostId: string) => {
@@ -112,6 +113,12 @@ const subWorkflowGroupView = {
 		else next.add(hostId);
 		expandedSubWorkflowHostIds.value = next;
 	},
+	setDragPosition: (hostId: string, position: [number, number] | null) => {
+		const next = new Map(dragHostPositionById.value);
+		if (position) next.set(hostId, position);
+		else next.delete(hostId);
+		dragHostPositionById.value = next;
+	},
 };
 provide(SubWorkflowGroupViewKey, subWorkflowGroupView);
 
@@ -119,6 +126,7 @@ const subWorkflowGroups = useCanvasSubWorkflowGroups({
 	nodes: computed(() => workflowDocumentStore.value.allNodes),
 	isGroupExpanded: subWorkflowGroupView.isExpanded,
 	getCurrentWorkflowId: () => workflowDocumentStore.value.documentId.split('@')[0],
+	getLiveHostPosition: (hostId) => dragHostPositionById.value.get(hostId),
 });
 const subWorkflowHostIds = computed(() =>
 	isSubWorkflowGroupsEnabled.value ? subWorkflowGroups.hostNodeIds.value : new Set<string>(),

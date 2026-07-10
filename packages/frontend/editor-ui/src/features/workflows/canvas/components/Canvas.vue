@@ -28,7 +28,13 @@ import {
 	createCanvasGroupNodeId,
 	isCanvasGroupNode,
 	parseCanvasGroupNodeId,
+	parseCanvasSubWorkflowGroupNodeId,
 } from '../canvas.types';
+import {
+	GROUP_HEADER_HEIGHT,
+	GROUP_PADDING_X,
+	GROUP_PADDING_Y_TOP,
+} from '../stores/canvasNodeGroups.constants';
 import { isOutsideSelected } from '@/app/utils/htmlUtils';
 import {
 	getMousePosition,
@@ -75,6 +81,7 @@ import CanvasControlButtons from './elements/buttons/CanvasControlButtons.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
 import CanvasNodeGroupTitleBar from './elements/groups/CanvasNodeGroupTitleBar.vue';
+import CanvasSubWorkflowGroup from './elements/groups/CanvasSubWorkflowGroup.vue';
 import CanvasSelectionToolbar from './elements/selection/CanvasSelectionToolbar.vue';
 import { useCanvasNodeGroupActions } from '../composables/useCanvasNodeGroupActions';
 import { useCanvasNodeGroupDrag } from '../composables/useCanvasNodeGroupDrag';
@@ -83,7 +90,10 @@ import {
 	type CanvasNodeGroupEventSource,
 } from '../composables/useCanvasNodeGroupTelemetry';
 import { NodeGroupViewKey } from '../composables/useCanvasNodeGroupView';
-import { SubWorkflowGroupViewKey } from '../composables/useCanvasSubWorkflowGroups';
+import {
+	isPhantomNodeId,
+	SubWorkflowGroupViewKey,
+} from '../composables/useCanvasSubWorkflowGroups';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
@@ -514,6 +524,13 @@ const selectedNodeIds = computed(() => selectedNodes.value.map((node) => node.id
 const selectedNodeIdsWithGroupMembers = computed(() => {
 	const ids = new Set(selectedNodeIds.value);
 	for (const node of selectedNodesAndGroups.value) {
+		// A sub-workflow group stands in for its host node — operate on the host.
+		const subHostId = parseCanvasSubWorkflowGroupNodeId(node.id);
+		if (subHostId) {
+			ids.delete(node.id);
+			ids.add(subHostId);
+			continue;
+		}
 		if (!isCanvasGroupNode(node)) continue;
 		for (const memberId of (node.data as CanvasGroupNodeData).group.nodeIds) {
 			ids.add(memberId);
@@ -618,11 +635,35 @@ function onNodeDragStart(event: NodeDragEvent) {
 	groupDrag.onNodeDragStart(event);
 }
 
+// Group position → host node position (inverse of the frame anchoring).
+function subWorkflowHostPosition(node: GraphNode): [number, number] {
+	return [
+		node.position.x + GROUP_PADDING_X,
+		node.position.y + GROUP_PADDING_Y_TOP + GROUP_HEADER_HEIGHT,
+	];
+}
+
 function onNodeDrag(event: NodeDragEvent) {
+	// Feed the live host position so the interior tracks the group during the drag.
+	const hostId = event.node && parseCanvasSubWorkflowGroupNodeId(event.node.id);
+	if (hostId) {
+		injectedSubWorkflowGroupView?.setDragPosition(hostId, subWorkflowHostPosition(event.node));
+		return;
+	}
 	groupDrag.onNodeDrag(event);
 }
 
 function onNodeDragStop(event: NodeDragEvent) {
+	// Dragging a sub-workflow group moves its host node; persist the host position
+	// (the frame re-derives) and clear the live drag position.
+	const hostId = event.node && parseCanvasSubWorkflowGroupNodeId(event.node.id);
+	if (hostId) {
+		const [x, y] = subWorkflowHostPosition(event.node);
+		commitManualNodePositions([{ id: hostId, position: { x, y } }]);
+		injectedSubWorkflowGroupView?.setDragPosition(hostId, null);
+		return;
+	}
+
 	const moves = groupDrag.processNodeDragStop(event);
 	if (moves.length > 0) commitManualNodePositions(moves);
 }
@@ -1419,10 +1460,9 @@ defineExpose({
 		</template>
 
 		<template #node-canvas-subworkflow-group="nodeProps">
-			<CanvasNodeGroupTitleBar
+			<CanvasSubWorkflowGroup
 				v-bind="nodeProps"
 				:data="nodeProps.data"
-				read-only
 				@toggle="onSubWorkflowGroupToggle"
 			/>
 		</template>
@@ -1432,7 +1472,7 @@ defineExpose({
 				<Node
 					v-bind="nodeProps"
 					:data="nodeDataById[nodeProps.id]"
-					:read-only="readOnly"
+					:read-only="readOnly || isPhantomNodeId(nodeProps.id)"
 					:can-execute="canExecute"
 					:event-bus="eventBus"
 					:hovered="nodesHoveredById[nodeProps.id]"

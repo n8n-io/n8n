@@ -19,7 +19,7 @@ import {
 	createCanvasSubWorkflowGroupNodeId,
 } from '../canvas.types';
 import { GROUP_HEADER_HEIGHT } from '../stores/canvasNodeGroups.constants';
-import { titleBarFromNodesRect } from './useCanvasMapping.groups';
+import { computeGroupFrameRects, titleBarFromNodesRect } from './useCanvasMapping.groups';
 import {
 	createCanvasConnectionId,
 	mapLegacyEndpointsToCanvasConnectionPort,
@@ -33,6 +33,9 @@ const COLLAPSED_INTERIOR = { width: 200, height: 120 };
 export interface SubWorkflowGroupView {
 	isExpanded: (hostNodeId: string) => boolean;
 	toggle: (hostNodeId: string) => void;
+	// Live host position during a drag so the interior tracks the group without
+	// committing to the document until drag-stop; null clears it.
+	setDragPosition: (hostNodeId: string, position: [number, number] | null) => void;
 }
 export const SubWorkflowGroupViewKey: InjectionKey<SubWorkflowGroupView> =
 	Symbol('SubWorkflowGroupView');
@@ -40,12 +43,19 @@ export const SubWorkflowGroupViewKey: InjectionKey<SubWorkflowGroupView> =
 // Phantom id and name are namespaced per host so they can't collide with real
 // nodes — connections are keyed by name, so a shared name would rewire real edges.
 // The original name is restored for display via `phantomDisplayName`.
-const PHANTOM_NAME_PREFIX = /^sub:[^:]+:/;
-const phantomId = (hostId: string, subNodeId: string) => `sub:${hostId}:${subNodeId}`;
-const phantomName = (hostId: string, subNodeName: string) => `sub:${hostId}:${subNodeName}`;
+const PHANTOM_ID_PREFIX = 'sub:';
+const PHANTOM_NAMESPACE_PREFIX = new RegExp(`^${PHANTOM_ID_PREFIX}[^:]+:`);
+const phantomId = (hostId: string, subNodeId: string) =>
+	`${PHANTOM_ID_PREFIX}${hostId}:${subNodeId}`;
+const phantomName = (hostId: string, subNodeName: string) =>
+	`${PHANTOM_ID_PREFIX}${hostId}:${subNodeName}`;
 
 export function phantomDisplayName(name: string): string {
-	return name.replace(PHANTOM_NAME_PREFIX, '');
+	return name.replace(PHANTOM_NAMESPACE_PREFIX, '');
+}
+
+export function isPhantomNodeId(id: string): boolean {
+	return id.startsWith(PHANTOM_ID_PREFIX);
 }
 
 function eligibleWorkflowId(node: INodeUi): string | undefined {
@@ -64,6 +74,7 @@ export function useCanvasSubWorkflowGroups(deps: {
 	nodes: Ref<INodeUi[]>;
 	isGroupExpanded: (hostNodeId: string) => boolean;
 	getCurrentWorkflowId: () => string | undefined;
+	getLiveHostPosition?: (hostNodeId: string) => [number, number] | undefined;
 }) {
 	const workflowsListStore = useWorkflowsListStore();
 	const nodeTypesStore = useNodeTypesStore();
@@ -97,12 +108,13 @@ export function useCanvasSubWorkflowGroups(deps: {
 					const wf = await workflowsListStore.fetchWorkflow(workflowId);
 					const minX = Math.min(0, ...wf.nodes.map((n) => n.position[0]));
 					const minY = Math.min(0, ...wf.nodes.map((n) => n.position[1]));
-					const [hx, hy] = host.position;
+					// Positions are stored relative to the host and resolved live, so the
+					// interior follows when the group (host) is moved.
 					const nodes: INodeUi[] = wf.nodes.map((n) => ({
 						...n,
 						id: phantomId(host.id, n.id),
 						name: phantomName(host.id, n.name),
-						position: [hx + (n.position[0] - minX), hy + (n.position[1] - minY)],
+						position: [n.position[0] - minX, n.position[1] - minY],
 						draggable: false,
 					}));
 					// Remap connection keys and targets to the namespaced names.
@@ -116,10 +128,8 @@ export function useCanvasSubWorkflowGroups(deps: {
 						}
 						connections[phantomName(host.id, source)] = remappedByType;
 					}
-					const width =
-						Math.max(0, ...nodes.map((n) => n.position[0] - hx)) + PHANTOM_NODE_SIZE.width;
-					const height =
-						Math.max(0, ...nodes.map((n) => n.position[1] - hy)) + PHANTOM_NODE_SIZE.height;
+					const width = Math.max(0, ...nodes.map((n) => n.position[0])) + PHANTOM_NODE_SIZE.width;
+					const height = Math.max(0, ...nodes.map((n) => n.position[1])) + PHANTOM_NODE_SIZE.height;
 					interiorByHost.value.set(host.id, {
 						nodes,
 						connections,
@@ -134,8 +144,19 @@ export function useCanvasSubWorkflowGroups(deps: {
 		{ immediate: true },
 	);
 
+	// Resolve stored relative positions against the live host position so the
+	// interior tracks the group when it moves.
 	const phantomNodes = computed(() =>
-		expandedHosts.value.flatMap((h) => interiorByHost.value.get(h.id)?.nodes ?? []),
+		expandedHosts.value.flatMap((host) => {
+			const interior = interiorByHost.value.get(host.id);
+			if (!interior) return [];
+			// Track the live host position during a drag; fall back to the committed one.
+			const [hx, hy] = deps.getLiveHostPosition?.(host.id) ?? host.position;
+			return interior.nodes.map((n) => ({
+				...n,
+				position: [hx + n.position[0], hy + n.position[1]] as [number, number],
+			}));
+		}),
 	);
 
 	const phantomConnections = computed(() => {
@@ -200,21 +221,23 @@ export function useCanvasSubWorkflowGroups(deps: {
 				: (interiorByHost.value.get(host.id)?.rect ?? COLLAPSED_INTERIOR);
 			// `titleBarFromNodesRect` derives the title bar position from x/y only, so
 			// anchoring x/y to the host keeps the frame in place across collapse/expand.
-			const nodesRect = {
-				x: host.position[0],
-				y: host.position[1],
-				width: interior.width,
-				height: interior.height,
-			};
+			// During a drag, use the live host position so the group node's array
+			// position matches VueFlow's drag instead of snapping it back.
+			const [hx, hy] = deps.getLiveHostPosition?.(host.id) ?? host.position;
+			const nodesRect = { x: hx, y: hy, width: interior.width, height: interior.height };
 			const titleBar = titleBarFromNodesRect(nodesRect, collapsed);
+			const frames = computeGroupFrameRects(nodesRect);
+			// Full-height node (title bar + frame) so handles centre on the frame.
+			const height = collapsed ? GROUP_HEADER_HEIGHT : frames.expanded.height;
 			return {
 				id: createCanvasSubWorkflowGroupNodeId(host.id),
 				type: CANVAS_SUBWORKFLOW_GROUP_TYPE,
 				position: titleBar.position,
 				width: titleBar.width,
-				height: GROUP_HEADER_HEIGHT,
-				draggable: false,
-				selectable: collapsed,
+				height,
+				// Dragging the group moves the underlying host node.
+				draggable: true,
+				selectable: true,
 				connectable: false,
 				zIndex: -1,
 				data: {
