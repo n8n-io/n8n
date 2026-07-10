@@ -12,6 +12,7 @@ import type {
 	ScheduleDefinition,
 } from '@n8n/scheduler';
 import { Tracing } from 'n8n-core';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { createSchedulerTracer } from './scheduler-tracer';
 
@@ -190,6 +191,10 @@ function scheduleColumns(schedule: ScheduleDefinition): ScheduleColumns {
  * diff it against the desired schedule. Rows are written by {@link scheduleColumns},
  * so a row of a given kind always carries that kind's columns; the coalescing only
  * guards a hand-corrupted row, which then reads as changed and is rewritten.
+ *
+ * A `kind` outside the known set (a row from a newer main during a mixed-version
+ * deploy, a rollback, or a hand-edit) can't be diffed, so it throws rather than
+ * returning `undefined` and tripping a downstream `sameSchedule` on a bad value.
  */
 function rowSchedule(row: ScheduledJob): ScheduleDefinition {
 	switch (row.kind) {
@@ -207,5 +212,9 @@ function rowSchedule(row: ScheduledJob): ScheduleDefinition {
 			return { kind: 'interval', intervalSeconds: row.intervalSeconds ?? 0 };
 		case 'one_off':
 			return { kind: 'one_off', fireAt: row.fireAt ?? new Date(0) };
+		default: {
+			const exhaustive: never = row.kind;
+			throw new UnexpectedError(`Unexpected scheduled job kind: ${JSON.stringify(exhaustive)}`);
+		}
 	}
 }
