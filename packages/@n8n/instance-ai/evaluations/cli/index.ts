@@ -922,6 +922,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	// with the thread its sandbox) are deleted right away instead of at the end
 	// of the run: sandboxes have no auto-cleanup, so end-of-run-only deletion
 	// let the sandbox runner grow to ~15 GB over a full N=10 baseline.
+	// --keep-workflows deliberately keeps everything, thread/sandbox included —
+	// it's a debugging flag for small filtered runs, not baselines.
 	const remainingRowsByKey = new Map<string, number>();
 
 	function rowsPerCase(fileSlug: string): number {
@@ -936,12 +938,19 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		if (remaining > 0 || args.keepWorkflows) return;
 		const cached = buildCache.get(key);
 		if (!cached) return; // evicted (transport failure) — nothing to clean
-		buildCache.delete(key);
 		try {
 			const { build, lane } = await cached;
 			// Run-debug capture reads the thread — let it settle before deletion.
 			if (build.threadId) await runDebugByThreadId.get(build.threadId)?.catch(() => {});
-			await cleanupBuild(lane.runner.client, build, logger);
+			const clean = await cleanupBuild(lane.runner.client, build, logger);
+			if (!clean) {
+				// Leave the entry in buildCache — the end-of-run pass retries it.
+				logger.verbose(
+					`  [cleanup] ${fileSlug} (iteration ${String(iteration)}) incomplete, retrying at end of run`,
+				);
+				return;
+			}
+			buildCache.delete(key);
 			logger.verbose(`  [cleanup] ${fileSlug} (iteration ${String(iteration)}) artifacts deleted`);
 		} catch {
 			// Best-effort — a failed cleanup must never fail the row.
@@ -1248,6 +1257,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		};
 	} finally {
 		if (!args.keepWorkflows) {
+			// Entries still here had no rows run, or their per-case cleanup failed
+			// (releaseCaseRow leaves those cached so this pass can retry them).
 			await Promise.all(
 				[...buildCache.values()].map(async (promise) => {
 					try {

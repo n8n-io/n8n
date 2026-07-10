@@ -842,17 +842,21 @@ export async function executeScenario(
 
 /**
  * Clean up workflows and data tables created during a build.
+ *
+ * Returns false when any deletion failed so callers can retry later.
  */
 export async function cleanupBuild(
 	client: N8nClient,
 	build: BuildResult,
 	logger: EvalLogger,
-): Promise<void> {
+): Promise<boolean> {
+	let clean = true;
+
 	for (const id of build.createdWorkflowIds) {
 		try {
 			await client.deleteWorkflow(id);
 		} catch {
-			// Best-effort cleanup
+			clean = false; // Best-effort cleanup
 		}
 	}
 
@@ -863,12 +867,12 @@ export async function cleanupBuild(
 				try {
 					await client.deleteDataTable(projectId, dtId);
 				} catch {
-					// Best-effort cleanup
+					clean = false; // Best-effort cleanup
 				}
 			}
 			logger.verbose(`  Cleaned up ${String(build.createdDataTableIds.length)} data table(s)`);
 		} catch {
-			// Non-fatal — project ID lookup may fail
+			clean = false; // Non-fatal — project ID lookup may fail
 		}
 	}
 
@@ -878,9 +882,11 @@ export async function cleanupBuild(
 		try {
 			await client.deleteThread(build.threadId);
 		} catch {
-			// Best-effort cleanup
+			clean = false; // Best-effort cleanup
 		}
 	}
+
+	return clean;
 }
 
 // ---------------------------------------------------------------------------
