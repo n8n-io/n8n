@@ -76,7 +76,7 @@ export class ExecutionPersistence {
 	/**
 	 * Create an execution entity and persist its data to the configured storage.
 	 * - In `db` mode, we write both entity and data to the DB in a transaction.
-	 * - In `fs` mode, we write the entity to the DB and its data to the filesystem.
+	 * - In blob modes (`fs`, `s3`, `az`), we write the entity to the DB and its data to the blob store.
 	 */
 	async create(payload: CreateExecutionPayload) {
 		const { data: rawData, workflowData, ...rest } = payload;
@@ -127,7 +127,7 @@ export class ExecutionPersistence {
 	/**
 	 * Update an existing execution and, if the payload includes data fields, its data in the configured storage.
 	 * - In `db` mode, we update both entity and data in the DB in a transaction.
-	 * - In `fs` mode, we update the entity in the DB and write its data to the filesystem in a transaction.
+	 * - In blob modes (`fs`, `s3`, `az`), we update the entity in the DB and write its data to the blob store.
 	 */
 	async updateExistingExecution(
 		executionId: string,
@@ -161,14 +161,15 @@ export class ExecutionPersistence {
 	/**
 	 * Find a single execution by id, dispatching data reads to the store matching its `storedAt`.
 	 * - In `db` mode, we load entity, metadata, optional annotation, and data via `DbStore`.
-	 * - In `fs` mode, we load entity, metadata, optional annotation from the DB, and data via the JSON store.
+	 * - In blob modes (`fs`, `s3`, `az`), we load entity, metadata, optional annotation from the DB,
+	 *   and data via the JSON store.
 	 *
 	 * A missing data bundle is handled differently per store. In `db` mode the entity and its data
 	 * share one database, so an absent data row means a known-corrupt record we report and skip
-	 * (soft). In `fs` and `s3` modes the entity lives in the DB while its data lives out of band on
-	 * disk or in object storage, so a missing bundle points at an out-of-band loss (deletion,
-	 * unmounted volume, expired object) that a single-execution read should surface loudly rather
-	 * than silently swallow (hard).
+	 * (soft). In blob modes the entity lives in the DB while its data lives out of band on disk or
+	 * in object storage, so a missing bundle points at an out-of-band loss (deletion, unmounted
+	 * volume, expired object) that a single-execution read should surface loudly rather than
+	 * silently swallow (hard).
 	 */
 	async findSingleExecution(
 		id: string,
@@ -273,7 +274,7 @@ export class ExecutionPersistence {
 	 * Find multiple executions matching `queryParams`. With `includeData: true`, partitions
 	 * entities by `storedAt` and batch-fetches bundles from each store to avoid n+1 reads.
 	 * - In `db` mode, we issue one `In(ids)` query against `execution_data` per batch.
-	 * - In `fs` mode, we fan out reads across the filesystem.
+	 * - In blob modes (`fs`, `s3`, `az`), we fan out reads across the blob store.
 	 */
 	async findMultipleExecutions(
 		queryParams: FindManyOptions<ExecutionEntity>,
