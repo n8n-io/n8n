@@ -39,7 +39,8 @@ type BulkSetAvailableInMCPResult = {
 type WorkflowMCPAvailabilityChange = {
 	workflowId: string;
 	settings: Pick<IWorkflowSettings, 'availableInMCP'>;
-	checksum: string;
+	/** Present only for workflows that had an open editor session when the update ran. */
+	checksum?: string;
 };
 
 @Service()
@@ -138,6 +139,21 @@ export class McpSettingsService {
 			};
 		}
 
+		// Checksums are only consumed by collaboration pushes to open editors, and
+		// computing one requires the full workflow body. Resolve which candidates
+		// are open once, up front, so chunks only load bodies for those few.
+		let openWorkflowIds: Set<string>;
+		try {
+			openWorkflowIds = new Set(
+				await this.collaborationService.filterOpenWorkflowIds(candidateIds),
+			);
+		} catch (error) {
+			openWorkflowIds = new Set();
+			this.logger.warn('Failed to resolve open workflows before bulk MCP availability update', {
+				cause: error instanceof Error ? error.message : String(error),
+			});
+		}
+
 		const writtenIds: string[] = [];
 		const changedWorkflows: WorkflowMCPAvailabilityChange[] = [];
 		const noOpIds: string[] = [];
@@ -176,31 +192,36 @@ export class McpSettingsService {
 						return { written: chunkWritten, noOp: chunkNoOp };
 					}
 
-					const rows = await trx.find(WorkflowEntity, {
-						where: { id: In([...nextSettingsByWorkflowId.keys()]), isArchived: false },
-						select: ['id', ...WORKFLOW_CHECKSUM_FIELDS],
-					});
+					const openIdsInChunk = [...nextSettingsByWorkflowId.keys()].filter((id) =>
+						openWorkflowIds.has(id),
+					);
+					const checksumRows =
+						openIdsInChunk.length > 0
+							? await trx.find(WorkflowEntity, {
+									where: { id: In(openIdsInChunk), isArchived: false },
+									select: ['id', ...WORKFLOW_CHECKSUM_FIELDS],
+								})
+							: [];
+					const checksumRowByWorkflowId = new Map(checksumRows.map((row) => [row.id, row]));
 
-					for (const row of rows) {
-						const nextSettings = nextSettingsByWorkflowId.get(row.id);
-						if (nextSettings === undefined) continue;
-
+					for (const [workflowId, nextSettings] of nextSettingsByWorkflowId) {
 						await trx.update(
 							WorkflowEntity,
-							{ id: row.id },
+							{ id: workflowId, isArchived: false },
 							{ settings: nextSettings, updatedAt: now },
 						);
+
 						// Checksum reflects this transaction's post-commit state.
 						// A concurrent write after commit may make it stale, which is acceptable for a settings-only toggle.
-						const checksum = await calculateWorkflowChecksum({
-							...row,
-							settings: nextSettings,
-						});
+						const checksumRow = checksumRowByWorkflowId.get(workflowId);
+						const checksum = checksumRow
+							? await calculateWorkflowChecksum({ ...checksumRow, settings: nextSettings })
+							: undefined;
 
 						chunkWritten.push({
-							workflowId: row.id,
+							workflowId,
 							settings: { availableInMCP },
-							checksum,
+							...(checksum === undefined ? {} : { checksum }),
 						});
 					}
 
