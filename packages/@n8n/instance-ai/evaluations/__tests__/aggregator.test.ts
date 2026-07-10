@@ -263,6 +263,33 @@ describe('aggregateResults — artifact units', () => {
 		expect(tc.artifacts[0].passRate).toBe(0.5);
 	});
 
+	it('fails a run for a type when any of its multiple same-type artifacts fails', () => {
+		// A run that produced two agent artifacts — one passing, one failing — must not be
+		// scored as a pass just because the first verdict passed.
+		const testCase = baseTestCase({ expectedArtifacts: ['workflow', 'agent'] });
+		const runs: WorkflowTestCaseResult[][] = [
+			[
+				baseResult({
+					testCase,
+					artifactResults: [
+						{ type: 'agent', id: 'agent-1', pass: true },
+						{ type: 'agent', id: 'agent-2', pass: false, reason: 'missing skill' },
+					],
+				}),
+			],
+		];
+
+		const evaluation = aggregateResults(runs, 1);
+		const tc = evaluation.testCases[0];
+
+		expect(tc.artifacts).toHaveLength(1);
+		expect(tc.artifacts[0].evaluatedCount).toBe(1);
+		expect(tc.artifacts[0].passCount).toBe(0);
+		// The folded verdict surfaces the failing artifact for reporting.
+		expect(tc.artifacts[0].runs[0].pass).toBe(false);
+		expect(tc.artifacts[0].runs[0].id).toBe('agent-2');
+	});
+
 	it('an expected agent artifact that was never produced counts as a measured fail unit', () => {
 		const testCase = baseTestCase({ expectedArtifacts: ['workflow', 'agent'] });
 		const runs: WorkflowTestCaseResult[][] = [

@@ -12,7 +12,9 @@ import type { BuildExpectationResult } from '../types';
 export const expectationResultSchema = z.object({
 	results: z.array(
 		z.object({
-			index: z.number(),
+			// Must be an integer: a fractional index would parse but never map onto a
+			// numbered assertion, silently yielding "no verdict" instead of retrying.
+			index: z.number().int(),
 			pass: z.boolean(),
 			reason: z.string(),
 		}),

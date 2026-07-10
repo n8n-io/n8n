@@ -88,6 +88,21 @@ function aggregateUnit<T extends { pass: boolean; incomplete?: boolean }>(
 	};
 }
 
+/**
+ * Collapse all of a run's verdicts for one artifact TYPE into a single unit value.
+ * A run passes the type only if every measured (non-incomplete) verdict passes, so a
+ * second failed or `unexpected` artifact of the same type can't be masked by a passing
+ * first one. Prefers a failing verdict as the representative so its reason/assertions
+ * surface in reports; all-incomplete folds to a single incomplete (excluded from scoring).
+ */
+function foldRunArtifacts(verdicts: ArtifactVerdict[]): ArtifactVerdict | undefined {
+	if (verdicts.length === 0) return undefined;
+	const measured = verdicts.filter((v) => !v.incomplete);
+	if (measured.length === 0) return { ...verdicts[0], pass: false, incomplete: true };
+	const failing = measured.find((v) => !v.pass);
+	return { ...(failing ?? measured[0]), pass: failing === undefined, incomplete: false };
+}
+
 export function aggregateResults(
 	allRunResults: WorkflowTestCaseResult[][],
 	totalRuns: number,
@@ -158,7 +173,7 @@ export function aggregateResults(
 		const artifacts: ArtifactUnitAggregation[] = artifactTypes.map((type) => ({
 			type,
 			...aggregateUnit<ArtifactVerdict>(
-				runs.map((r) => (r.artifactResults ?? []).find((v) => v.type === type)),
+				runs.map((r) => foldRunArtifacts((r.artifactResults ?? []).filter((v) => v.type === type))),
 			),
 		}));
 

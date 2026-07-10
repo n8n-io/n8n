@@ -338,6 +338,30 @@ describe('EvalTestCaseSchema · expectedArtifacts / artifactExpectations', () =>
 			}),
 		).toThrow();
 	});
+
+	it('rejects artifactExpectations.agent when expectedArtifacts does not include agent', () => {
+		// Reverse relationship: assertions authored without declaring the type would be
+		// silently skipped at run time, so they must fail at case-load instead.
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				artifactExpectations: { agent: ['the agent has a Slack tool'] },
+			}),
+		).toThrow(/artifactExpectations\.agent is set but expectedArtifacts does not include agent/);
+	});
+
+	it('rejects artifactExpectations["config-eval"] when expectedArtifacts omits config-eval', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				expectedArtifacts: ['agent'],
+				artifactExpectations: {
+					agent: ['has a Slack tool'],
+					'config-eval': ['scores against exact match'],
+				},
+			}),
+		).toThrow(/config-eval.* is set but expectedArtifacts does not include config-eval/);
+	});
 });
 
 describe('conversationTurnTextSchema', () => {

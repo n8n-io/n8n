@@ -61,6 +61,9 @@ function evaluation(
 			artifacts?: Array<{
 				type: ArtifactType;
 				passes: Array<boolean | 'incomplete'>;
+				/** When set, failing runs render as judged failures: per-assertion
+				 *  `expectationResults` and no top-level `reason` (as resolveArtifactResults emits). */
+				failedAssertions?: Array<{ expectation: string; reason: string }>;
 			}>;
 		}>;
 	} = {},
@@ -122,12 +125,24 @@ function evaluation(
 				};
 			});
 			const artifacts = (tc.artifacts ?? []).map((a) => {
-				const runs: ArtifactVerdict[] = a.passes.map(
-					(pass): ArtifactVerdict =>
-						pass === 'incomplete'
-							? { type: a.type, id: 'art-1', pass: false, incomplete: true }
-							: { type: a.type, id: 'art-1', pass, ...(pass ? {} : { reason: 'reason' }) },
-				);
+				const runs: ArtifactVerdict[] = a.passes.map((pass): ArtifactVerdict => {
+					if (pass === 'incomplete')
+						return { type: a.type, id: 'art-1', pass: false, incomplete: true };
+					if (pass) return { type: a.type, id: 'art-1', pass: true };
+					if (a.failedAssertions) {
+						return {
+							type: a.type,
+							id: 'art-1',
+							pass: false,
+							expectationResults: a.failedAssertions.map((fa) => ({
+								expectation: fa.expectation,
+								pass: false,
+								reason: fa.reason,
+							})),
+						};
+					}
+					return { type: a.type, id: 'art-1', pass: false, reason: 'reason' };
+				});
 				const evaluated = runs.filter((run) => !run.incomplete);
 				const passCount = evaluated.filter((run) => run.pass).length;
 				return {
@@ -807,6 +822,34 @@ describe('formatComparisonTerminal', () => {
 		expect(out).not.toMatch(/REGRESSIONS/);
 	});
 
+	it('renders the per-assertion reason for a judged artifact failure (single run)', () => {
+		// A normal judged failure carries no top-level `reason`, only failed
+		// `expectationResults` — the terminal detail must still surface them.
+		const evalFixture1 = evaluation({
+			totalRuns: 1,
+			testCases: [
+				{
+					userText: 'agent-only',
+					buildSuccessCount: 0,
+					artifacts: [
+						{
+							type: 'agent',
+							passes: [false],
+							failedAssertions: [
+								{ expectation: 'has a Slack tool', reason: 'UNIQUE_ASSERTION_REASON' },
+							],
+						},
+					],
+				},
+			],
+		});
+
+		const out = formatComparisonTerminal(evalFixture1);
+
+		expect(out).toMatch(/FAIL {2}artifact: agent/);
+		expect(out).toContain('UNIQUE_ASSERTION_REASON');
+	});
+
 	it('shows partial banner when scenarios differ on each side', () => {
 		const pr = bucket('pr', [s('a', 'happy', 8, 10)]);
 		const base = bucket('master', [s('a', 'happy', 8, 10), s('b', 'happy', 5, 10)]);
@@ -818,14 +861,14 @@ describe('formatComparisonTerminal', () => {
 		const agentsEval = evaluation({
 			totalRuns: 1,
 			testCases: [
-					{
-						userText: 'workflow-scheduled-weather-and-agent',
-						buildSuccessCount: 0,
-						buildError: "Agent response: Here's the intent I'd detect",
-						expectations: [{ text: 'classifies the request intent', passes: [true] }],
-					},
-				],
-			});
+				{
+					userText: 'workflow-scheduled-weather-and-agent',
+					buildSuccessCount: 0,
+					buildError: "Agent response: Here's the intent I'd detect",
+					expectations: [{ text: 'classifies the request intent', passes: [true] }],
+				},
+			],
+		});
 
 		const out = formatComparisonTerminal(agentsEval);
 
@@ -838,17 +881,17 @@ describe('formatComparisonTerminal', () => {
 		const agentsEval = evaluation({
 			totalRuns: 1,
 			testCases: [
-					{
-						userText: 'workflow-scheduled-weather-and-agent',
-						buildSuccessCount: 0,
-						expectations: [
-							{ text: 'does not build', passes: [true] },
-							{ text: 'classifies weather as workflow', passes: [true] },
-							{ text: 'classifies support as agent', passes: [true] },
-							{ text: 'brief reasoning only', passes: [true] },
-						],
-					},
-				],
+				{
+					userText: 'workflow-scheduled-weather-and-agent',
+					buildSuccessCount: 0,
+					expectations: [
+						{ text: 'does not build', passes: [true] },
+						{ text: 'classifies weather as workflow', passes: [true] },
+						{ text: 'classifies support as agent', passes: [true] },
+						{ text: 'brief reasoning only', passes: [true] },
+					],
+				},
+			],
 		});
 
 		const out = formatComparisonTerminal(agentsEval);

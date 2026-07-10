@@ -94,4 +94,32 @@ describe('agentHandler', () => {
 		expect(output).toContain('UNIQUE_INSTRUCTIONS_MARKER');
 		expect(output).toContain('UNIQUE_REFERENCE_MARKER');
 	});
+
+	it("renderArtifact() surfaces each skill's allowedTools so tool-access assertions are judgeable", () => {
+		const output = agentHandler.renderArtifact({
+			config: { name: 'My Agent' },
+			skills: {
+				'skill-1': {
+					name: 'Skill One',
+					description: 'Does a thing',
+					instructions: 'do it',
+					allowedTools: ['load_workflow', 'search_nodes'],
+				},
+			},
+		});
+
+		expect(output).toContain('load_workflow');
+		expect(output).toContain('search_nodes');
+	});
+
+	it('renderArtifact() omits the allowedTools line when a skill declares none', () => {
+		const output = agentHandler.renderArtifact({
+			config: { name: 'My Agent' },
+			skills: {
+				'skill-1': { name: 'Skill One', description: 'd', instructions: 'i' },
+			},
+		});
+
+		expect(output).not.toContain('Allowed tools');
+	});
 });

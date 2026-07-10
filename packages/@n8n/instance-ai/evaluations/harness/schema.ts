@@ -172,10 +172,21 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 			'config-eval': "artifactExpectations['config-eval']",
 		};
 		for (const type of ['agent', 'config-eval'] as const) {
-			if (expectedArtifacts.includes(type) && (c.artifactExpectations?.[type]?.length ?? 0) === 0) {
+			const hasExpectations = (c.artifactExpectations?.[type]?.length ?? 0) > 0;
+			const isExpected = expectedArtifacts.includes(type);
+			if (isExpected && !hasExpectations) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
 					message: `expectedArtifacts includes ${type} — a case needs ${artifactAccessor[type]} to grade it`,
+				});
+			}
+			// Reverse relationship: assertions without the matching expectedArtifacts entry are
+			// silently skipped at run time (the type is never discovered/judged), so reject them
+			// at case-load instead of letting the author think they are graded.
+			if (hasExpectations && !isExpected) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: `${artifactAccessor[type]} is set but expectedArtifacts does not include ${type} — add ${type} to expectedArtifacts or remove the expectation`,
 				});
 			}
 		}

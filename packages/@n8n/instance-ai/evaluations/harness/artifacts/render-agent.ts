@@ -15,6 +15,9 @@ export function renderAgentArtifact(artifact: AgentArtifact): string {
 	for (const [skillId, skill] of skills) {
 		lines.push(`### ${skill.name} (\`${skillId}\`)`, '');
 		lines.push(`**Description:** ${skill.description}`, '');
+		if (skill.allowedTools && skill.allowedTools.length > 0) {
+			lines.push(`**Allowed tools:** ${skill.allowedTools.join(', ')}`, '');
+		}
 		lines.push('**Instructions:**', '', skill.instructions, '');
 
 		if (skill.references && skill.references.length > 0) {

@@ -1333,8 +1333,16 @@ function formatTerminalPerTestCase(
 				if (!ar) continue;
 				const status = ar.incomplete ? 'SKIP' : ar.pass ? 'PASS' : 'FAIL';
 				lines.push(TERMINAL_INDENT + `  ${status}  artifact: ${a.type}`);
-				if (status === 'FAIL' && ar.reason) {
-					lines.push(TERMINAL_INDENT + `        ${ar.reason.slice(0, 200)}`);
+				if (status === 'FAIL') {
+					// Enforcement failures (unexpected / not-produced / fetch error) carry a
+					// top-level reason; judged failures carry per-assertion reasons instead.
+					const detail =
+						ar.reason ??
+						(ar.expectationResults ?? [])
+							.filter((er) => !er.incomplete && !er.pass)
+							.map((er) => `${er.expectation}: ${er.reason}`)
+							.join('; ');
+					if (detail) lines.push(TERMINAL_INDENT + `        ${detail.slice(0, 200)}`);
 				}
 			}
 		}
