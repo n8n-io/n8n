@@ -20,6 +20,7 @@ import type { RetentionOptions, RetentionStore } from './retention';
 import type { Scheduler, SchedulerPasses } from './scheduler';
 import { SCHEDULER_ATTRIBUTES } from '../observability/attributes';
 import { createExecutorTracing, withHandoffTracing } from '../observability/executor-tracing';
+import { traceCreatedTasks } from '../observability/materializer-tracing';
 import { noopMetrics, type SchedulerMetrics } from '../observability/metrics';
 import { tracePass } from '../observability/pass-tracing';
 import { noopTracer, type Tracer } from '../observability/tracer';
@@ -253,6 +254,7 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 				},
 				signal,
 			);
+			await traceCreatedTasks(tracer, summary.created);
 			recordMetric(() => metrics.recordMaterialized(summary.occurrences, summary.deferredJobs));
 			return summary;
 		},

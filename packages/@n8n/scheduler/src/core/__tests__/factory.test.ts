@@ -292,13 +292,13 @@ describe('createScheduler materialize', () => {
 			now: new Date('2026-01-01T00:00:00.000Z'),
 			jobs: [corrupt],
 		});
-		tx.recordOccurrences.mockResolvedValue(0);
+		tx.recordOccurrences.mockResolvedValue({ recorded: 0, created: [] });
 		const materializerTransaction: RunInTransaction = async (work) => await work(tx);
 		const { scheduler, onEvent } = makeScheduler({ materializerTransaction });
 
 		const summary = await scheduler.materialize();
 
-		expect(summary).toEqual({ claimedJobs: 1, occurrences: 0, deferredJobs: 1 });
+		expect(summary).toEqual({ claimedJobs: 1, occurrences: 0, created: [], deferredJobs: 1 });
 		expect(onEvent).toHaveBeenCalledWith({
 			level: 'error',
 			message: 'Scheduler could not plan a job schedule; deferred for retry',
@@ -326,7 +326,7 @@ describe('createScheduler materialize', () => {
 			jobs: [due],
 		});
 		// The one planned occurrence already exists (recorded by a concurrent pass).
-		tx.recordOccurrences.mockResolvedValue(0);
+		tx.recordOccurrences.mockResolvedValue({ recorded: 0, created: [] });
 		const materializerTransaction: RunInTransaction = async (work) => await work(tx);
 		// windowSeconds: 0 keeps the plan to the single due fire.
 		const { scheduler, onEvent } = makeScheduler({
@@ -805,7 +805,7 @@ describe('createScheduler tracing', () => {
 		tx.claimDueJobs.mockResolvedValue({ now: new Date('2026-01-01T00:00:00.000Z'), jobs: [due] });
 		// Distinct counts (claimed 1, occurrences 2, deferred 0) so that recording a
 		// count under the wrong attribute key cannot slip past these assertions.
-		tx.recordOccurrences.mockResolvedValue(2);
+		tx.recordOccurrences.mockResolvedValue({ recorded: 2, created: [] });
 		const materializerTransaction: RunInTransaction = async (work) => await work(tx);
 		const { span, tracer } = makeTracer();
 		const { scheduler } = makeScheduler({
@@ -816,7 +816,7 @@ describe('createScheduler tracing', () => {
 
 		const summary = await scheduler.materialize();
 
-		expect(summary).toEqual({ claimedJobs: 1, occurrences: 2, deferredJobs: 0 });
+		expect(summary).toEqual({ claimedJobs: 1, occurrences: 2, created: [], deferredJobs: 0 });
 		expect(tracer.startSpan).toHaveBeenCalledWith(
 			expect.objectContaining({ name: 'Scheduler materialize', op: 'scheduler.materialize' }),
 			expect.any(Function),
@@ -825,6 +825,50 @@ describe('createScheduler tracing', () => {
 		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.occurrences, 2);
 		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.deferredJobs, 0);
 		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('emits one creation span per newly recorded row', async () => {
+		const due: ScheduledJob = {
+			id: 7,
+			taskType: 'test-task',
+			payload: {},
+			kind: 'interval',
+			cronExpression: null,
+			timezone: null,
+			intervalSeconds: 10,
+			fireAt: null,
+			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
+			lastFiredAt: null,
+			maxAttempts: 3,
+		};
+		const tx = mock<MaterializerTransaction>();
+		tx.claimDueJobs.mockResolvedValue({ now: new Date('2026-01-01T00:00:00.000Z'), jobs: [due] });
+		tx.recordOccurrences.mockResolvedValue({
+			recorded: 1,
+			created: [{ id: '99', jobId: 7, taskType: 'test-task' }],
+		});
+		const materializerTransaction: RunInTransaction = async (work) => await work(tx);
+		const { tracer } = makeTracer();
+		const { scheduler } = makeScheduler({
+			materializerTransaction,
+			materializer: { windowSeconds: 0 },
+			tracer,
+		});
+
+		await scheduler.materialize();
+
+		expect(tracer.startSpan).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: 'Scheduler task created',
+				op: 'scheduler.task.create',
+				attributes: {
+					[SCHEDULER_ATTRIBUTES.taskId]: '99',
+					[SCHEDULER_ATTRIBUTES.jobId]: 7,
+					[SCHEDULER_ATTRIBUTES.taskType]: 'test-task',
+				},
+			}),
+			expect.any(Function),
+		);
 	});
 
 	it('opens a claim span carrying the claimed count and host, with ok status', async () => {
@@ -1045,7 +1089,7 @@ describe('createScheduler metrics', () => {
 			now: new Date('2026-01-01T00:00:00.000Z'),
 			jobs: [corrupt],
 		});
-		tx.recordOccurrences.mockResolvedValue(0);
+		tx.recordOccurrences.mockResolvedValue({ recorded: 0, created: [] });
 		const materializerTransaction: RunInTransaction = async (work) => await work(tx);
 		const { scheduler } = makeScheduler({ materializerTransaction, metrics });
 
