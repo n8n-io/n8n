@@ -74,6 +74,7 @@ export declare namespace CredentialRequest {
 	type CredentialProperties = Partial<{
 		id: string; // deleted if sent
 		name: string;
+		description: string | null;
 		type: string;
 		data: ICredentialDataDecryptedObject;
 		projectId?: string;

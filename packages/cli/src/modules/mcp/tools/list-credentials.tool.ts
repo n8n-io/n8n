@@ -47,6 +47,10 @@ const outputSchema = {
 			z.object({
 				id: z.string().describe('The unique identifier of the credential'),
 				name: z.string().describe('The name of the credential'),
+				description: z
+					.string()
+					.optional()
+					.describe('A user-provided description of the credential, if set'),
 				type: z.string().describe('The credential type (e.g. "slackApi")'),
 				scopes: z
 					.array(z.string())
@@ -74,6 +78,7 @@ export type ListCredentialsParams = {
 export type ListCredentialsItem = {
 	id: string;
 	name: string;
+	description?: string;
 	type: string;
 	scopes: string[];
 	isManaged: boolean;
@@ -193,6 +198,7 @@ export async function listCredentials(
 	const data: ListCredentialsItem[] = enriched.map((c) => ({
 		id: c.id,
 		name: c.name,
+		description: c.description ?? undefined,
 		type: c.type,
 		scopes: c.scopes ?? [],
 		isManaged: c.isManaged,

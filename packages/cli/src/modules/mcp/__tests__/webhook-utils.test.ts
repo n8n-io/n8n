@@ -21,6 +21,7 @@ const mockCredentialsService = (
 			const data = await impl(id);
 			return {
 				name: 'MockCredentialsService',
+				description: null,
 				type: 'mock',
 				shared: [] as SharedCredentials[],
 				isManaged: false,

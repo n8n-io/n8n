@@ -14,6 +14,9 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 	})
 	name: string;
 
+	@Column({ type: 'text', nullable: true })
+	description: string | null;
+
 	@Column('text')
 	@IsObject()
 	data: string;

@@ -355,6 +355,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		const settingsStore = useSettingsStore();
 		const credential = await credentialsApi.createNewCredential(rootStore.restApiContext, {
 			name: data.name,
+			description: data.description,
 			type: data.type,
 			data: data.data ?? {},
 			projectId,

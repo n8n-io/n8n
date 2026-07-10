@@ -891,6 +891,18 @@ describe('POST /credentials', () => {
 		expect(sharedCredential.credentials.name).toBe(payload.name);
 	});
 
+	test('should create cred with description', async () => {
+		const payload = { ...randomCredentialPayload(), description: 'For the staging account' };
+
+		const response = await authMemberAgent.post('/credentials').send(payload);
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.description).toBe(payload.description);
+
+		const credential = await getCredentialById(response.body.data.id);
+		a.ok(credential);
+		expect(credential.description).toBe(payload.description);
+	});
+
 	test('should create cred with uiContext parameter', async () => {
 		const payload = { ...randomCredentialPayload(), uiContext: 'credentials_list' };
 
@@ -1280,6 +1292,33 @@ describe('PATCH /credentials/:id', () => {
 		});
 
 		expect(sharedCredential.credentials.name).toBe(patchPayload.name); // updated
+	});
+
+	test('should set, keep, and clear description', async () => {
+		const savedCredential = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		const setResponse = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send({ ...randomCredentialPayload(), description: 'Rotated key for prod' });
+		expect(setResponse.statusCode).toBe(200);
+		expect(setResponse.body.data.description).toBe('Rotated key for prod');
+
+		// a payload without the field keeps the existing description
+		const keepResponse = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(randomCredentialPayload());
+		expect(keepResponse.statusCode).toBe(200);
+		expect(keepResponse.body.data.description).toBe('Rotated key for prod');
+
+		// an explicit null clears it
+		const clearResponse = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send({ ...randomCredentialPayload(), description: null });
+		expect(clearResponse.statusCode).toBe(200);
+		expect(clearResponse.body.data.description).toBeNull();
 	});
 
 	test('should update non-owned cred for owner', async () => {

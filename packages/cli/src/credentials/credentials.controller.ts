@@ -268,6 +268,10 @@ export class CredentialsController {
 
 		newCredentialData.isResolvable = body.isResolvable ?? credential.isResolvable;
 
+		// `??` would discard an explicit `null`, which is how the description is cleared
+		newCredentialData.description =
+			body.description !== undefined ? body.description : credential.description;
+
 		// A private credential's per-user connections are minted against its shared
 		// (static) config, so changing that config makes them stale — invalidate them.
 		let sharedFieldsChanged = false;
