@@ -13,11 +13,12 @@ import { createDueJobFactory } from './shared/job-factory';
  * Two mains driving materialize+execute+reap concurrently, round after round,
  * against a shared backlog undersized enough to force both to participate.
  * The single-pass and multi-main suites prove each pass, and the claim/execute
- * race, in isolation; this repeats the claim race over several rounds (all
- * leases are short-lived relative to the run, so reap stays a no-op here -
- * lease reclaim under contention is covered by the multi-main suite): every
+ * race, in isolation; this repeats the claim race over several rounds: every
  * occurrence still fires exactly once, on the main that persisted as its
  * owner, with no task ever claimed by both.
+ *
+ * Leases are short-lived relative to the run, so reap stays a no-op here;
+ * lease reclaim under contention is covered by the multi-main suite.
  */
 describe('scheduler loops racing across two mains', () => {
 	const TASK_TYPE = 'integration-concurrent-loops-test';
@@ -56,8 +57,8 @@ describe('scheduler loops racing across two mains', () => {
 		taskRepo = Container.get(ScheduledTaskRepository);
 		createDueJob = createDueJobFactory(jobRepo, TASK_TYPE, 'job-loop');
 		// A batch smaller than the backlog, same as the multi-main suite: a single
-		// claim can't sweep it all, so both mains are structurally forced to
-		// participate across the rounds rather than one incidentally starving out.
+		// claim can't sweep it all, so both mains must participate across rounds
+		// rather than one incidentally draining it alone.
 		mainA = buildMain('main-loop-a', executedA, 2);
 		mainB = buildMain('main-loop-b', executedB, 2);
 	});
@@ -80,10 +81,10 @@ describe('scheduler loops racing across two mains', () => {
 			await createDueJob();
 		}
 
-		// A handful of rounds of every consumption-path pass, both mains racing on
-		// each. The batch size (2) is smaller than the backlog (5), so draining it
-		// takes more than one round; the later, now-empty rounds prove they are
-		// harmless no-ops rather than double-firing anything.
+		// A handful of rounds of every pass (materialize, execute, reap), both
+		// mains racing on each. The batch size (2) is smaller than the backlog (5),
+		// so draining it takes more than one round; the later, now-empty rounds
+		// prove they are harmless no-ops rather than double-firing anything.
 		for (let round = 0; round < 3; round++) {
 			await Promise.all([mainA.materialize(), mainB.materialize()]);
 			await Promise.all([mainA.execute(), mainB.execute()]);

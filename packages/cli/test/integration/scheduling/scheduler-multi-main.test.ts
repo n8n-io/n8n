@@ -165,12 +165,12 @@ describe('scheduler across two mains over one database', () => {
 		expect(done.claimedBy).toBe('main-b');
 	}, 15_000);
 
-	it('dead-letters a task whose lease expired on its last attempt instead of reclaiming it', async () => {
+	it('dead-letters a claim stranded on its last attempt instead of reclaiming it', async () => {
 		const job = await createJob({ maxAttempts: 3 });
 		const past = new Date(Date.now() - 60_000);
 		// main-a claimed this occurrence for its final attempt, then died: the
-		// lease is expired and no attempts remain, so the reaper must fail it
-		// terminally rather than hand it back to `pending` for a retry.
+		// lease is expired with no attempts left, so the reaper fails it
+		// terminally instead of retrying.
 		const doomed = await taskRepo.save(
 			taskRepo.create({
 				jobId: job.id,

@@ -50,8 +50,7 @@ describe('durable scheduler process lifecycle and flag gating', () => {
 		await testDb.terminate();
 	});
 
-	// Build a DurableScheduler with the flag/instance state under test. Intervals
-	// are pushed down to a second so the loops act within the test window.
+	// Push intervals down to a second so the loops act within the test window.
 	const buildScheduler = (opts: { enabled: boolean; instanceType?: 'main' | 'worker' }) => {
 		const globalConfig = Container.get(GlobalConfig);
 		globalConfig.scheduler.enabled = opts.enabled;
@@ -79,7 +78,7 @@ describe('durable scheduler process lifecycle and flag gating', () => {
 		);
 	};
 
-	it('runs the loops on a main and materializes then fires a due job end to end', async () => {
+	it('runs the loops on a main and fires a due job end to end', async () => {
 		scheduler = buildScheduler({ enabled: true });
 		scheduler.registerTaskHandler(TASK_TYPE, {
 			execute: async (task) => {
