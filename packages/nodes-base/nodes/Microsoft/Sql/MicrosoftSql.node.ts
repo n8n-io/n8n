@@ -30,7 +30,7 @@ export class MicrosoftSql implements INodeType {
 		name: 'microsoftSql',
 		icon: 'file:mssql.svg',
 		group: ['input'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Get, add and update data in Microsoft SQL',
 		defaults: {
 			name: 'Microsoft SQL',
@@ -322,7 +322,14 @@ export class MicrosoftSql implements INodeType {
 						queryValues = queryReplacement;
 					}
 
-					const results = await executeSqlQueryAndPrepareResults(pool, rawQuery, i, queryValues);
+					const results = await executeSqlQueryAndPrepareResults.call(
+						this,
+						pool,
+						rawQuery,
+						i,
+						queryValues,
+						this.getNode().typeVersion,
+					);
 					returnData = returnData.concat(results);
 				} catch (error) {
 					if (this.continueOnFail()) {

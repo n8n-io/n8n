@@ -1,6 +1,11 @@
 import type { IResult } from 'mssql';
 import mssql from 'mssql';
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type {
+	IBinaryKeyData,
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+} from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
 import { chunk, flatten } from '@utils/utilities';
@@ -256,11 +261,41 @@ export async function deleteOperation(tables: ITables, pool: mssql.ConnectionPoo
 	);
 }
 
+// Moves binary (varbinary/image) columns to the item's binary output and deep-serializes
+// the remaining columns so json stays JSON-safe (e.g. Dates become ISO strings)
+async function prepareRowWithBinary(
+	this: IExecuteFunctions,
+	row: IDataObject,
+	itemIndex: number,
+): Promise<INodeExecutionData> {
+	const json: IDataObject = {};
+	const binary: IBinaryKeyData = {};
+
+	for (const [key, value] of Object.entries(row)) {
+		if (Buffer.isBuffer(value)) {
+			binary[key] = await this.helpers.prepareBinaryData(value, key);
+		} else {
+			json[key] = value;
+		}
+	}
+
+	const item: INodeExecutionData = {
+		json: deepCopy(json),
+		pairedItem: [{ item: itemIndex }],
+	};
+	if (Object.keys(binary).length) {
+		item.binary = binary;
+	}
+	return item;
+}
+
 export async function executeSqlQueryAndPrepareResults(
+	this: IExecuteFunctions,
 	pool: mssql.ConnectionPool,
 	rawQuery: string,
 	itemIndex: number,
 	queryValues: Array<string | number | boolean | IDataObject> = [],
+	nodeVersion?: number,
 ): Promise<INodeExecutionData[]> {
 	const request = pool.request();
 
@@ -278,6 +313,12 @@ export async function executeSqlQueryAndPrepareResults(
 	const { recordsets, rowsAffected } = rawResult;
 	if (Array.isArray(recordsets) && recordsets.length > 0) {
 		const result: IDataObject[] = recordsets.length > 1 ? flatten(recordsets) : recordsets[0];
+
+		if (typeof nodeVersion === 'number' && nodeVersion >= 1.2) {
+			return await Promise.all(
+				result.map(async (entry) => await prepareRowWithBinary.call(this, entry, itemIndex)),
+			);
+		}
 
 		return result.map((entry) => ({
 			json: entry,
