@@ -446,19 +446,17 @@ const keyMap = computed(() => {
 		z: onToggleZoomMode,
 	};
 
-	if (isCanvasNodeGroupingEnabled.value) {
-		// Group collapse state is a view preference, so expanding/collapsing
-		// groups works in read-only canvases too.
-		const hasNoGroups = () => workflowDocumentStore.value.allGroups.length === 0;
-		readOnlyKeymap.alt_g = {
-			disabled: hasNoGroups,
-			run: () => onKeyboardSetGroupsExpanded(true),
-		};
-		readOnlyKeymap.shift_alt_g = {
-			disabled: hasNoGroups,
-			run: () => onKeyboardSetGroupsExpanded(false),
-		};
-	}
+	// Group collapse state is a view preference, so expanding/collapsing
+	// groups works in read-only canvases too.
+	const hasNoGroups = () => workflowDocumentStore.value.allGroups.length === 0;
+	readOnlyKeymap.alt_g = {
+		disabled: hasNoGroups,
+		run: () => onKeyboardSetGroupsExpanded(true),
+	};
+	readOnlyKeymap.shift_alt_g = {
+		disabled: hasNoGroups,
+		run: () => onKeyboardSetGroupsExpanded(false),
+	};
 
 	if (props.readOnly && props.canExecute) {
 		return { ...readOnlyKeymap, ctrl_enter: () => emit('run:workflow') };
@@ -1638,6 +1636,7 @@ defineExpose({
 		<CanvasSelectionToolbar
 			v-if="showNodeGroups"
 			:selected-nodes="selectedNodes"
+			:selection-bounds="selectionBoxBounds"
 			:read-only="readOnly || suppressInteraction"
 			@group-created="onNodeGroupCreated"
 			@extract-workflow="emit('extract-workflow', $event)"

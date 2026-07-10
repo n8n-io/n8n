@@ -288,42 +288,39 @@ export function useContextMenuItems(
 			nodes.some((node) => workflowDocumentStore?.value?.getGroupForNode(node.id) !== undefined);
 		// Alt+G is context-aware: with a selection it targets the selection's
 		// groups, matching these items.
-		const selectedGroupViewActions: Item[] =
-			isNodeGroupingEnabled.value && targetHasGroups
-				? [
-						{
-							id: 'expand_selected_groups',
-							divided: true,
-							label: i18n.baseText('contextMenu.expandSelectedGroups'),
-							shortcut: { altKey: true, keys: ['G'] },
-						},
-						{
-							id: 'collapse_selected_groups',
-							label: i18n.baseText('contextMenu.collapseSelectedGroups'),
-							shortcut: { shiftKey: true, altKey: true, keys: ['G'] },
-						},
-					]
-				: [];
-
-		// Toggling group collapse is a view preference, not a workflow mutation,
-		// so these stay enabled in read-only mode.
-		const groupViewActions: Item[] = isNodeGroupingEnabled.value
+		const selectedGroupViewActions: Item[] = targetHasGroups
 			? [
 					{
-						id: 'expand_all_groups',
+						id: 'expand_selected_groups',
 						divided: true,
-						label: i18n.baseText('contextMenu.expandAllGroups'),
+						label: i18n.baseText('contextMenu.expandSelectedGroups'),
 						shortcut: { altKey: true, keys: ['G'] },
-						disabled: (workflowDocumentStore?.value?.allGroups ?? []).length === 0,
 					},
 					{
-						id: 'collapse_all_groups',
-						label: i18n.baseText('contextMenu.collapseAllGroups'),
+						id: 'collapse_selected_groups',
+						label: i18n.baseText('contextMenu.collapseSelectedGroups'),
 						shortcut: { shiftKey: true, altKey: true, keys: ['G'] },
-						disabled: (workflowDocumentStore?.value?.allGroups ?? []).length === 0,
 					},
 				]
 			: [];
+
+		// Toggling group collapse is a view preference, not a workflow mutation,
+		// so these stay enabled in read-only mode.
+		const groupViewActions: Item[] = [
+			{
+				id: 'expand_all_groups',
+				divided: true,
+				label: i18n.baseText('contextMenu.expandAllGroups'),
+				shortcut: { altKey: true, keys: ['G'] },
+				disabled: (workflowDocumentStore?.value?.allGroups ?? []).length === 0,
+			},
+			{
+				id: 'collapse_all_groups',
+				label: i18n.baseText('contextMenu.collapseAllGroups'),
+				shortcut: { shiftKey: true, altKey: true, keys: ['G'] },
+				disabled: (workflowDocumentStore?.value?.allGroups ?? []).length === 0,
+			},
+		];
 
 		if (nodes.length === 0) {
 			return [
