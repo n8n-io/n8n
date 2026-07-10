@@ -52,7 +52,9 @@ data: {"type":"text-delta","runId":"run_abc","agentId":"agent-001","payload":{"t
 ```
 
 Event IDs are monotonically increasing integers per thread channel and unique
-within that thread.
+within that thread. In multi-main deployments they come from a shared
+per-thread sequence (Redis), so ids — and the replay cursor built from them —
+are valid against any main.
 
 ## Event Schema
 
@@ -407,8 +409,13 @@ The backend must accept the cursor from both `Last-Event-ID` header and
 `?lastEventId` query parameter. If neither is present, replay starts from
 event ID 0 (full history).
 
-IDs are monotonically increasing integers per thread. Replay does not
-require dedup.
+IDs are monotonically increasing integers per thread, assigned from a shared
+per-thread sequence in multi-main. Assignment order is monotonic, but delivery
+order is not guaranteed to be: concurrent producers on different mains (e.g. a
+background task while the orchestrator runs elsewhere) can interleave, so a
+connection may occasionally deliver a lower id after a higher one. The
+frontend therefore tracks its reconnect cursor as the max id seen and drops
+already-seen ids on replay overlap.
 
 ## Abort Support
 

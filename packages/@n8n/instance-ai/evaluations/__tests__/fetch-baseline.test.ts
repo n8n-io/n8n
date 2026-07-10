@@ -2,7 +2,12 @@ import type { Client } from 'langsmith';
 import { vi } from 'vitest';
 import type { Mock } from 'vitest';
 
-import { BASELINE_EXPERIMENT_PREFIX, findLatestBaseline } from '../comparison/fetch-baseline';
+import {
+	BASELINE_EXPERIMENT_PREFIX,
+	fetchBaselineBucket,
+	findLatestBaseline,
+} from '../comparison/fetch-baseline';
+import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
 
 interface FakeProject {
 	name?: string;
@@ -69,5 +74,198 @@ describe('findLatestBaseline', () => {
 			{ name: 'mcp-baseline-no-ts' }, // no start_time → ts 0, still the only match
 		]);
 		expect(await findLatestBaseline(client, 'mcp-baseline-')).toBe('mcp-baseline-no-ts');
+	});
+});
+
+interface FakeRun {
+	inputs?: Record<string, unknown>;
+	outputs?: Record<string, unknown> | null;
+}
+
+/** Mock a LangSmith client whose `listRuns` yields the given root runs. */
+function bucketClient(runs: FakeRun[]): Client {
+	return {
+		readProject: vi.fn(async () => await Promise.resolve({ id: 'proj-1' })),
+		listRuns: vi.fn(() =>
+			(async function* () {
+				await Promise.resolve();
+				for (const r of runs) yield r;
+			})(),
+		),
+	} as unknown as Client;
+}
+
+function scenarioRun(
+	scenarioName: string,
+	passed: boolean,
+	extra?: Record<string, unknown>,
+): FakeRun {
+	return {
+		inputs: { testCaseFile: 'my-case', scenarioName },
+		outputs: { passed, ...extra },
+	};
+}
+
+describe('fetchBaselineBucket', () => {
+	it('accumulates per-scenario pass/fail counts across iterations', async () => {
+		const client = bucketClient([
+			scenarioRun('happy-path', true),
+			scenarioRun('happy-path', false, { failureCategory: 'builder_issue' }),
+			scenarioRun('edge-case', true),
+		]);
+		const bucket = await fetchBaselineBucket(client, 'instance-ai-baseline-x');
+
+		expect(bucket.evaluationUnits.get('my-case/happy-path')).toMatchObject({
+			kind: 'scenario',
+			passed: 1,
+			total: 2,
+		});
+		expect(bucket.evaluationUnits.get('my-case/edge-case')).toMatchObject({ passed: 1, total: 1 });
+		expect(bucket.trialTotal).toBe(3);
+		expect(bucket.failureCategoryTotals).toEqual({ builder_issue: 1 });
+	});
+
+	it('never counts __build_only__ sentinel rows as scenario trials', async () => {
+		const client = bucketClient([
+			scenarioRun(BUILD_ONLY_SCENARIO_NAME, false),
+			scenarioRun('real-scenario', true),
+		]);
+		const bucket = await fetchBaselineBucket(client, 'instance-ai-baseline-x');
+
+		expect([...bucket.evaluationUnits.keys()]).toEqual(['my-case/real-scenario']);
+		expect(bucket.trialTotal).toBe(1);
+	});
+
+	it('skips runs with missing/empty outputs and verifier-incomplete rows', async () => {
+		const client = bucketClient([
+			{ inputs: { testCaseFile: 'my-case', scenarioName: 'happy-path' }, outputs: null },
+			{ inputs: { testCaseFile: 'my-case', scenarioName: 'happy-path' }, outputs: {} },
+			scenarioRun('happy-path', false, { incomplete: true }),
+			scenarioRun('happy-path', true),
+		]);
+		const bucket = await fetchBaselineBucket(client, 'instance-ai-baseline-x');
+
+		expect(bucket.evaluationUnits.get('my-case/happy-path')).toMatchObject({
+			passed: 1,
+			total: 1,
+		});
+		expect(bucket.trialTotal).toBe(1);
+	});
+
+	it('ingests expectation verdicts once per (case, iteration) even when every row carries them', async () => {
+		const verdicts = [
+			{ expectation: 'asks first', pass: true, reason: 'did' },
+			{ expectation: 'stays quiet', pass: false, reason: 'did not' },
+		];
+		const client = bucketClient([
+			// Two scenario rows of the same case+iteration both embed the same verdicts.
+			{
+				inputs: { testCaseFile: 'my-case', scenarioName: 's1', _iteration: 0 },
+				outputs: { passed: true, expectationResults: verdicts },
+			},
+			{
+				inputs: { testCaseFile: 'my-case', scenarioName: 's2', _iteration: 0 },
+				outputs: { passed: true, expectationResults: verdicts },
+			},
+			// Second iteration accumulates on top.
+			{
+				inputs: { testCaseFile: 'my-case', scenarioName: 's1', _iteration: 1 },
+				outputs: { passed: true, expectationResults: verdicts },
+			},
+		]);
+		const bucket = await fetchBaselineBucket(client, 'instance-ai-baseline-x');
+
+		expect(bucket.evaluationUnits.get('my-case#expectation:asks first')).toMatchObject({
+			kind: 'expectation',
+			passed: 2,
+			total: 2,
+		});
+		expect(bucket.evaluationUnits.get('my-case#expectation:stays quiet')).toMatchObject({
+			passed: 0,
+			total: 2,
+		});
+		// Expectation trials never enter the scenario trialTotal.
+		expect(bucket.trialTotal).toBe(3);
+	});
+
+	it('defaults a missing _iteration to 0 so single-iteration rows dedupe together', async () => {
+		const verdicts = [{ expectation: 'asks first', pass: true, reason: 'did' }];
+		const client = bucketClient([
+			{
+				inputs: { testCaseFile: 'my-case', scenarioName: 's1' },
+				outputs: { passed: true, expectationResults: verdicts },
+			},
+			{
+				inputs: { testCaseFile: 'my-case', scenarioName: 's2', _iteration: 0 },
+				outputs: { passed: true, expectationResults: verdicts },
+			},
+		]);
+		const bucket = await fetchBaselineBucket(client, 'instance-ai-baseline-x');
+
+		expect(bucket.evaluationUnits.get('my-case#expectation:asks first')).toMatchObject({
+			passed: 1,
+			total: 1,
+		});
+	});
+
+	it('ingests expectations from sentinel and scenario-incomplete rows', async () => {
+		const client = bucketClient([
+			// Build-only case: the sentinel row is the only expectation carrier.
+			{
+				inputs: { testCaseFile: 'build-only', scenarioName: BUILD_ONLY_SCENARIO_NAME },
+				outputs: {
+					passed: true,
+					expectationResults: [{ expectation: 'built it', pass: true, reason: 'ok' }],
+				},
+			},
+			// Verifier-incomplete scenario row: skipped as a trial, verdicts still valid.
+			{
+				inputs: { testCaseFile: 'my-case', scenarioName: 's1' },
+				outputs: {
+					passed: false,
+					incomplete: true,
+					expectationResults: [{ expectation: 'asks first', pass: true, reason: 'ok' }],
+				},
+			},
+		]);
+		const bucket = await fetchBaselineBucket(client, 'instance-ai-baseline-x');
+
+		expect(bucket.evaluationUnits.get('build-only#expectation:built it')).toMatchObject({
+			passed: 1,
+			total: 1,
+		});
+		expect(bucket.evaluationUnits.get('my-case#expectation:asks first')).toMatchObject({
+			passed: 1,
+			total: 1,
+		});
+		expect(bucket.trialTotal).toBe(0);
+	});
+
+	it('skips judge-incomplete verdicts and produces no expectation units from old baselines', async () => {
+		const client = bucketClient([
+			{
+				inputs: { testCaseFile: 'my-case', scenarioName: 's1' },
+				outputs: {
+					passed: true,
+					expectationResults: [
+						{ expectation: 'asks first', pass: true, reason: 'ok' },
+						{ expectation: 'no verdict', pass: false, reason: '', incomplete: true },
+					],
+				},
+			},
+			// Old-baseline row: no expectationResults field at all.
+			scenarioRun('legacy-scenario', true),
+		]);
+		const bucket = await fetchBaselineBucket(client, 'instance-ai-baseline-x');
+
+		expect(bucket.evaluationUnits.get('my-case#expectation:no verdict')).toBeUndefined();
+		expect(bucket.evaluationUnits.get('my-case#expectation:asks first')).toMatchObject({
+			passed: 1,
+			total: 1,
+		});
+		const expectationUnits = [...bucket.evaluationUnits.values()].filter(
+			(u) => u.kind === 'expectation',
+		);
+		expect(expectationUnits).toHaveLength(1);
 	});
 });

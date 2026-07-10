@@ -37,6 +37,7 @@
     "concurrently": "^8.2.0",
     "electron-builder": "^26.9.0",
     "rimraf": "catalog:",
+    "typescript": "catalog:",
     "vitest": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"

@@ -45,7 +45,8 @@ export interface InstanceAiEventBus {
 
 	/**
 	 * Get the next event ID that will be assigned for a thread.
-	 * Useful for the SSE endpoint to know whether there are events to replay.
+	 * Used to seed the frontend's SSE replay cursor after message hydration.
+	 * Async because multi-main implementations read a shared sequence.
 	 */
-	getNextEventId(threadId: string): number;
+	getNextEventId(threadId: string): Promise<number>;
 }

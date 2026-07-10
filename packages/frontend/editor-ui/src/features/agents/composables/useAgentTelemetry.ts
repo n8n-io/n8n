@@ -14,7 +14,8 @@ export type AgentConfigPart =
 	| 'triggers'
 	| 'subAgents'
 	| 'name'
-	| 'description';
+	| 'description'
+	| 'vectorStores';
 
 export function useAgentTelemetry() {
 	const telemetry = useTelemetry();

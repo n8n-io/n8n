@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import type { InstanceAiEvent } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { InstanceAiEventBus, StoredEvent } from '@n8n/instance-ai';
@@ -12,6 +13,15 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 const MAX_EVENTS_PER_THREAD = 500;
 const MAX_BYTES_PER_THREAD = 2 * 1024 * 1024; // 2 MB
 
+/**
+ * How long an idle thread's shared sequence key lives in Redis (refreshed on
+ * every assignment). Generous on purpose: if it ever expires and the sequence
+ * restarts at 1, clients holding stale high cursors get an empty replay
+ * (recovered via run-sync / hydration), and fresh page loads re-seed their
+ * cursor from `GET /messages` anyway.
+ */
+const SEQ_KEY_TTL_SECONDS = 14 * 24 * 60 * 60;
+
 @Service()
 export class InProcessEventBus implements InstanceAiEventBus {
 	private readonly emitter = new EventEmitter();
@@ -21,50 +31,182 @@ export class InProcessEventBus implements InstanceAiEventBus {
 	/** Approximate serialized size per thread for eviction. */
 	private readonly sizeBytes = new Map<string, number>();
 
-	/** Monotonic counter per thread — never resets even after eviction. */
-	private readonly nextId = new Map<string, number>();
+	/**
+	 * Highest event id this main has assigned or observed per thread. The id
+	 * source in single-main, and the fallback when Redis is unavailable in
+	 * multi-main (kept bumped from relayed events so fallback ids stay above
+	 * what siblings have already used).
+	 */
+	private readonly lastLocalId = new Map<string, number>();
+
+	/**
+	 * Events awaiting a sequence number (multi-main only). `publish()` stays
+	 * synchronous by enqueueing here; a single per-thread drain assigns ids.
+	 */
+	private readonly pendingByThread = new Map<string, InstanceAiEvent[]>();
+
+	/**
+	 * The batch currently being sequenced (multi-main only): taken off the
+	 * pending queue but not yet in the store. Kept visible so run-scoped reads
+	 * see events across the Redis round trip.
+	 */
+	private readonly inFlightByThread = new Map<string, InstanceAiEvent[]>();
+
+	private readonly drainingThreads = new Set<string>();
+
+	private readonly seqKeyPrefix: string;
 
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
+		globalConfig: GlobalConfig,
 	) {
 		this.logger = this.logger.scoped('instance-ai');
+		this.seqKeyPrefix = `${globalConfig.redis.prefix}:instance-ai:event-seq:`;
 		// Avoid warnings when many SSE clients connect (each adds a listener per thread)
 		this.emitter.setMaxListeners(0);
 	}
 
 	/**
-	 * Publish an event for a thread: store it, deliver it to local SSE
-	 * subscribers, and — in multi-main — relay it to sibling mains so the main
-	 * holding the client's SSE connection (which may not be this one) delivers it.
+	 * Publish an event for a thread.
+	 *
+	 * Single-main: assign the next local id and deliver in the same tick.
+	 *
+	 * Multi-main: enqueue and drain asynchronously — event ids come from a
+	 * shared per-thread Redis sequence, so every main agrees on them and the
+	 * frontend's replay cursor is valid against any main. The queue preserves
+	 * publish order; each sequenced event is stored, delivered to local SSE
+	 * subscribers, and relayed to sibling mains with its id.
 	 */
 	publish(threadId: string, event: InstanceAiEvent): void {
-		// Serialize once: reused for the store's size accounting and the relay guard.
-		const sizeBytes = Buffer.byteLength(JSON.stringify(event), 'utf8');
-		this.storeAndEmit(threadId, event, sizeBytes);
-		this.relayToSiblings(threadId, event, sizeBytes);
+		if (!this.instanceSettings.isMultiMain) {
+			const id = (this.lastLocalId.get(threadId) ?? 0) + 1;
+			this.lastLocalId.set(threadId, id);
+			this.storeAndEmit(threadId, { id, event });
+			return;
+		}
+
+		const pending = this.pendingByThread.get(threadId);
+		if (pending) {
+			pending.push(event);
+		} else {
+			this.pendingByThread.set(threadId, [event]);
+		}
+		void this.drainQueue(threadId);
 	}
 
 	/**
-	 * Store + deliver locally WITHOUT relaying. Used by the pubsub handler when a
-	 * relayed event arrives from another main — re-relaying would loop. The local
-	 * `nextId` stamps the SSE id, so this main is the id authority for the
-	 * connection it serves.
+	 * Assign sequence ids to queued events and dispatch them, preserving
+	 * publish order. Only one drain runs per thread; events queued while a
+	 * Redis round trip is in flight are picked up by the next loop iteration
+	 * and sequenced as one batch (single sequence round trip).
 	 */
-	publishLocalOnly(threadId: string, event: InstanceAiEvent): void {
-		this.storeAndEmit(threadId, event, Buffer.byteLength(JSON.stringify(event), 'utf8'));
+	private async drainQueue(threadId: string): Promise<void> {
+		if (this.drainingThreads.has(threadId)) return;
+		this.drainingThreads.add(threadId);
+		try {
+			let batch = this.takePending(threadId);
+			while (batch.length > 0) {
+				this.inFlightByThread.set(threadId, batch);
+				// Never throws — falls back to local ids on Redis failure.
+				const firstId = await this.assignSequenceBlock(threadId, batch.length);
+				for (let i = 0; i < batch.length; i++) {
+					const stored: StoredEvent = { id: firstId + i, event: batch[i] };
+					// Serialize once: reused for the store's size accounting and the relay guard.
+					const sizeBytes = Buffer.byteLength(JSON.stringify(batch[i]), 'utf8');
+					this.storeAndEmit(threadId, stored, sizeBytes);
+					this.relayToSiblings(threadId, stored, sizeBytes);
+				}
+				this.inFlightByThread.delete(threadId);
+				batch = this.takePending(threadId);
+			}
+		} finally {
+			this.inFlightByThread.delete(threadId);
+			this.drainingThreads.delete(threadId);
+		}
 	}
 
-	private storeAndEmit(threadId: string, event: InstanceAiEvent, eventSizeBytes: number): void {
+	private takePending(threadId: string): InstanceAiEvent[] {
+		const pending = this.pendingByThread.get(threadId);
+		if (!pending) return [];
+		this.pendingByThread.delete(threadId);
+		return pending;
+	}
+
+	/**
+	 * Reserve a contiguous block of `count` ids from the shared per-thread
+	 * sequence (atomic INCRBY). On Redis failure, continue monotonically from the
+	 * local high-water mark — ids stay usable for this main's connections, at the
+	 * cost of possible overlap with siblings until Redis recovers.
+	 *
+	 * Accepted degradation: after a Redis outage the shared counter can briefly
+	 * sit below this main's local high-water mark (the fallback advanced local ids
+	 * that never reached Redis), so INCRBY on recovery may re-issue an id already
+	 * in this main's store — `insertById` then drops it as a duplicate, i.e. a few
+	 * events can be lost from the live stream during recovery. Not worth an atomic
+	 * conditional-max (Lua/WATCH) here: it only bites during a Redis incident, and
+	 * the persisted run snapshot reconciles the tree via `run-sync` on reconnect.
+	 * (A single-main→multi-main flip mid-thread would collide the same way, but a
+	 * thread only starts producing events once the license has settled isMultiMain
+	 * at boot, so that path isn't reached in practice.)
+	 */
+	private async assignSequenceBlock(threadId: string, count: number): Promise<number> {
+		try {
+			const key = this.seqKey(threadId);
+			const results = await this.getRedisClient()
+				.multi()
+				.incrby(key, count)
+				.expire(key, SEQ_KEY_TTL_SECONDS)
+				.exec();
+			const [incrError, incrResult] = results?.[0] ?? [new Error('empty transaction result'), null];
+			if (incrError) throw incrError;
+			const endId = Number(incrResult);
+			if (!Number.isFinite(endId)) {
+				throw new Error(`non-numeric INCRBY result: ${String(incrResult)}`);
+			}
+			this.bumpLocalHighWaterMark(threadId, endId);
+			return endId - count + 1;
+		} catch (error) {
+			this.logger.error(
+				'Failed to assign Instance AI event sequence from Redis, falling back to local ids',
+				{ threadId, error },
+			);
+			const firstId = (this.lastLocalId.get(threadId) ?? 0) + 1;
+			this.lastLocalId.set(threadId, firstId + count - 1);
+			return firstId;
+		}
+	}
+
+	/**
+	 * The shared sequence lives on the pubsub publisher's Redis client. Only ever
+	 * reached in multi-main, which implies queue mode — where the publisher's
+	 * client is initialized. Reusing it avoids a second persistent connection per
+	 * main. Publishing never puts a client in subscriber mode, so running
+	 * sequence commands on it is safe.
+	 */
+	private getRedisClient() {
+		return this.publisher.getClient();
+	}
+
+	private seqKey(threadId: string): string {
+		return `${this.seqKeyPrefix}${threadId}`;
+	}
+
+	private bumpLocalHighWaterMark(threadId: string, id: number): void {
+		if (id > (this.lastLocalId.get(threadId) ?? 0)) {
+			this.lastLocalId.set(threadId, id);
+		}
+	}
+
+	private storeAndEmit(threadId: string, stored: StoredEvent, eventSizeBytes?: number): void {
+		const size = eventSizeBytes ?? Buffer.byteLength(JSON.stringify(stored.event), 'utf8');
 		const events = this.getOrCreateStore(threadId);
-		const id = (this.nextId.get(threadId) ?? 0) + 1;
-		this.nextId.set(threadId, id);
 
-		const stored: StoredEvent = { id, event };
+		// Duplicate id (e.g. an event relayed twice): already stored and emitted.
+		if (!this.insertById(events, stored)) return;
 
-		events.push(stored);
-		this.sizeBytes.set(threadId, (this.sizeBytes.get(threadId) ?? 0) + eventSizeBytes);
+		this.sizeBytes.set(threadId, (this.sizeBytes.get(threadId) ?? 0) + size);
 
 		// Evict oldest events if count or size exceeds caps
 		this.evictIfNeeded(threadId, events);
@@ -72,19 +214,40 @@ export class InProcessEventBus implements InstanceAiEventBus {
 		this.emitter.emit(threadId, stored);
 	}
 
-	private relayToSiblings(threadId: string, event: InstanceAiEvent, sizeBytes: number): void {
+	/**
+	 * Insert keeping the store sorted by id. Local events always append, but a
+	 * relayed event from a concurrent producer on another main (e.g. a
+	 * background task while the orchestrator runs elsewhere) can arrive with a
+	 * lower id than the latest stored one. Returns false for a duplicate id.
+	 */
+	private insertById(events: StoredEvent[], stored: StoredEvent): boolean {
+		if (events.length === 0 || events[events.length - 1].id < stored.id) {
+			events.push(stored);
+			return true;
+		}
+		let i = events.length - 1;
+		while (i >= 0 && events[i].id > stored.id) i--;
+		if (i >= 0 && events[i].id === stored.id) return false;
+		events.splice(i + 1, 0, stored);
+		return true;
+	}
+
+	private relayToSiblings(threadId: string, stored: StoredEvent, sizeBytes: number): void {
 		if (!this.instanceSettings.isMultiMain) return;
 
 		if (sizeBytes > MAX_PUBSUB_PAYLOAD_BYTES) {
 			this.logger.warn(
-				`Skipping cross-main relay of "${event.type}" event (${sizeBytes} bytes exceeds ${MAX_PUBSUB_PAYLOAD_BYTES})`,
-				{ threadId, runId: event.runId },
+				`Skipping cross-main relay of "${stored.event.type}" event (${sizeBytes} bytes exceeds ${MAX_PUBSUB_PAYLOAD_BYTES})`,
+				{ threadId, runId: stored.event.runId },
 			);
 			return;
 		}
 
 		void this.publisher
-			.publishCommand({ command: 'relay-instance-ai-event', payload: { threadId, event } })
+			.publishCommand({
+				command: 'relay-instance-ai-event',
+				payload: { threadId, storedEvent: stored },
+			})
 			.catch((error: unknown) =>
 				this.logger.error('Failed to relay Instance AI event to sibling mains', {
 					threadId,
@@ -93,16 +256,19 @@ export class InProcessEventBus implements InstanceAiEventBus {
 			);
 	}
 
-	/** A relayed event from another main: re-emit to this main's SSE clients only
-	 *  if it actually holds a subscription for the thread (avoids every main
-	 *  buffering every thread). */
+	/** A relayed event from another main, carrying its producer-assigned id
+	 *  from the shared sequence. Stored/re-emitted only if this main holds a
+	 *  subscription for the thread (avoids every main buffering every thread). */
 	@OnPubSubEvent('relay-instance-ai-event', { instanceType: 'main' })
 	handleRelayInstanceAiEvent({
 		threadId,
-		event,
-	}: { threadId: string; event: InstanceAiEvent }): void {
+		storedEvent,
+	}: { threadId: string; storedEvent: StoredEvent }): void {
+		// Track the shared-sequence high-water mark even without subscribers, so
+		// a Redis-outage fallback keeps assigning ids above what siblings used.
+		this.bumpLocalHighWaterMark(threadId, storedEvent.id);
 		if (!this.hasSubscribers(threadId)) return;
-		this.publishLocalOnly(threadId, event);
+		this.storeAndEmit(threadId, storedEvent);
 	}
 
 	subscribe(threadId: string, handler: (storedEvent: StoredEvent) => void): () => void {
@@ -115,6 +281,11 @@ export class InProcessEventBus implements InstanceAiEventBus {
 		return this.emitter.listenerCount(threadId) > 0;
 	}
 
+	/**
+	 * Events still awaiting a sequence number are intentionally excluded: they
+	 * have no id yet, and once sequenced they reach subscribers live — the SSE
+	 * bootstrap subscribes before calling this, so nothing is missed.
+	 */
 	getEventsAfter(threadId: string, afterId: number): StoredEvent[] {
 		const events = this.store.get(threadId);
 		if (!events) return [];
@@ -122,35 +293,71 @@ export class InProcessEventBus implements InstanceAiEventBus {
 	}
 
 	getEventsForRun(threadId: string, runId: string): InstanceAiEvent[] {
-		const events = this.store.get(threadId);
-		if (!events) return [];
-		return events.filter((e) => e.event.runId === runId).map((e) => e.event);
+		return this.getEventsForRuns(threadId, [runId]);
 	}
 
 	getEventsForRuns(threadId: string, runIds: string[]): InstanceAiEvent[] {
-		const events = this.store.get(threadId);
-		if (!events || runIds.length === 0) return [];
+		if (runIds.length === 0) return [];
 		const runIdSet = new Set(runIds);
-		return events.filter((e) => runIdSet.has(e.event.runId)).map((e) => e.event);
+		const stored = (this.store.get(threadId) ?? [])
+			.filter((e) => runIdSet.has(e.event.runId))
+			.map((e) => e.event);
+		// Include events still awaiting a sequence number (both the batch being
+		// sequenced and the queue behind it) so same-main callers (terminal
+		// outcomes, tracing, snapshots) read their own writes. A run's events are
+		// produced on one main, so unsequenced ones are always newest.
+		const unsequenced = [
+			...(this.inFlightByThread.get(threadId) ?? []),
+			...(this.pendingByThread.get(threadId) ?? []),
+		].filter((e) => runIdSet.has(e.runId));
+		return [...stored, ...unsequenced];
 	}
 
-	getNextEventId(threadId: string): number {
-		return (this.nextId.get(threadId) ?? 0) + 1;
+	async getNextEventId(threadId: string): Promise<number> {
+		if (this.instanceSettings.isMultiMain) {
+			try {
+				const value = await this.getRedisClient().get(this.seqKey(threadId));
+				if (value !== null) return Number(value) + 1;
+			} catch (error) {
+				this.logger.warn(
+					'Failed to read Instance AI event sequence from Redis, falling back to local high-water mark',
+					{ threadId, error },
+				);
+			}
+		}
+		return (this.lastLocalId.get(threadId) ?? 0) + 1;
 	}
 
 	/** Clear stored events for a specific thread (e.g. on thread expiration). */
 	clearThread(threadId: string): void {
 		this.store.delete(threadId);
 		this.sizeBytes.delete(threadId);
-		this.nextId.delete(threadId);
+		this.lastLocalId.delete(threadId);
+		this.pendingByThread.delete(threadId);
+		this.inFlightByThread.delete(threadId);
 		this.emitter.removeAllListeners(threadId);
+		if (this.instanceSettings.isMultiMain) {
+			// Every main clears on thread deletion (task-control broadcast), so the
+			// shared key DEL is idempotent across mains.
+			void this.getRedisClient()
+				.del(this.seqKey(threadId))
+				.catch((error: unknown) =>
+					this.logger.warn('Failed to delete Instance AI event sequence key', {
+						threadId,
+						error,
+					}),
+				);
+		}
 	}
 
-	/** Clear all stored events. Used during module shutdown. */
+	/** Clear all stored events. Used during module shutdown. Leaves the shared
+	 *  Redis sequence keys untouched — sibling mains still rely on them. */
 	clear(): void {
 		this.store.clear();
 		this.sizeBytes.clear();
-		this.nextId.clear();
+		this.lastLocalId.clear();
+		this.pendingByThread.clear();
+		this.inFlightByThread.clear();
 		this.emitter.removeAllListeners();
 	}
 

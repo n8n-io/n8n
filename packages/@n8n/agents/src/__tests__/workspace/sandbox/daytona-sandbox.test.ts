@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest';
 
 // Mock @daytona/sdk so we can drive sandbox creation, token refresh, and
-// sandbox refetch behavior from Jest without touching the network.
+// sandbox refetch behavior from Vitest without touching the network.
 
 interface MockSandbox {
 	id: string;
