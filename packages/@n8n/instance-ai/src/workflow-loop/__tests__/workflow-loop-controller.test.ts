@@ -159,7 +159,7 @@ describe('handleBuildOutcome', () => {
 		expect(attempt.attempt).toBe(2);
 	});
 
-	it('blocks unresolved placeholders as saved-workflow setup', () => {
+	it('blocks legacy unresolved placeholders as saved-workflow setup', () => {
 		const state = makeState();
 		const outcome = makeOutcome({
 			workflowId: 'wf_123',
@@ -187,6 +187,40 @@ describe('handleBuildOutcome', () => {
 			reason: 'mocked_credentials_or_placeholders',
 		});
 		expect(action.type).toBe('blocked');
+	});
+
+	it('verifies submitted workflows before setup when unresolved placeholders remain', () => {
+		const state = makeState();
+		const outcome = makeOutcome({
+			workflowId: 'wf_123',
+			sourceFilePath: 'src/workflows/main.workflow.ts',
+			hasUnresolvedPlaceholders: true,
+			needsUserInput: true,
+			blockingReason: 'Route to setup.',
+			verificationReadiness: { status: 'ready' },
+			setupRequirement: {
+				status: 'required',
+				reason: 'unresolved-placeholders',
+				guidance: 'Route to setup.',
+			},
+			remediation: createRemediation({
+				category: 'needs_setup',
+				shouldEdit: false,
+				reason: 'mocked_credentials_or_placeholders',
+				guidance: 'Route to setup.',
+			}),
+		});
+
+		const { state: next, action, attempt } = handleBuildOutcome(state, [], outcome);
+
+		expect(next.phase).toBe('verifying');
+		expect(next.status).toBe('active');
+		expect(next.workflowId).toBe('wf_123');
+		expect(next.hasUnresolvedPlaceholders).toBe(true);
+		expect(next.lastRemediation).toBeUndefined();
+		expect(action).toEqual({ type: 'verify', workflowId: 'wf_123' });
+		expect(attempt.result).toBe('success');
+		expect(attempt.remediationCategory).toBeUndefined();
 	});
 
 	it('allows two pre-save submit failures before blocking the third', () => {

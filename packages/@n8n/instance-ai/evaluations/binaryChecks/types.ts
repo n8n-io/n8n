@@ -16,6 +16,12 @@ export interface BinaryCheckResult {
 	comment?: string;
 	/** Omitted = true. `false` = no subject in this workflow (excluded from pass-rate denominator). */
 	applicable?: boolean;
+	/**
+	 * `true` = the check could not be measured (e.g. judge timeout). Excluded
+	 * from the pass-rate denominator like N/A, but reported separately so
+	 * infra flakiness stays distinguishable from genuine inapplicability.
+	 */
+	errored?: boolean;
 }
 
 /**
@@ -42,6 +48,13 @@ export interface BinaryCheckContext {
 	workflowBefore?: WorkflowResponse;
 	/** Per-test-case annotations forwarded from fixtures. Used by checks that opt into fixture-side overrides. */
 	annotations?: Record<string, unknown>;
+	/**
+	 * Per-live-turn count of build-workflow calls that FAILED (errored / returned
+	 * success:false) — error-forced rebuilds, the universal thrash signal (see
+	 * `failedBuildsPerTurn`). Absent when there's no build transcript
+	 * (e.g. prebuilt-workflow scoring).
+	 */
+	failedBuildsPerTurn?: number[];
 }
 
 /**
@@ -57,6 +70,7 @@ export const CHECK_DIMENSIONS = [
 	'communication',
 	'ai_nodes',
 	'nodes_craftsmanship',
+	'efficiency',
 	'security',
 ] as const;
 
@@ -84,7 +98,7 @@ export interface BinaryCheck {
 // Outcomes — projected per check after a run
 // ---------------------------------------------------------------------------
 
-export type CheckStatus = 'pass' | 'fail' | 'n_a';
+export type CheckStatus = 'pass' | 'fail' | 'n_a' | 'error';
 
 /** Per-run projection of a BinaryCheck result; surfaced in reports + LangSmith Feedback. */
 export interface CheckOutcome {

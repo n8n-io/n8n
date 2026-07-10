@@ -274,7 +274,7 @@ describe('RoleRepository', () => {
 				});
 
 				// Spy on transaction method to verify it's called
-				const transactionSpy = jest.spyOn(roleRepository.manager, 'transaction');
+				const transactionSpy = vi.spyOn(roleRepository.manager, 'transaction');
 
 				//
 				// ACT
@@ -596,6 +596,72 @@ describe('RoleRepository', () => {
 				expect(foundRole!.scopes).toHaveLength(1);
 				expect(foundRole!.scopes[0].slug).toBe(readScope.slug);
 			});
+		});
+	});
+
+	describe('findUsersWithGlobalRole()', () => {
+		beforeEach(async () => {
+			// default roles are needed for user creation (personal project owner role)
+			await Container.get(AuthRolesService).init();
+		});
+
+		it('returns only the users that hold the given global role, with public fields', async () => {
+			//
+			// ARRANGE
+			//
+			const globalRole = await createRole({
+				slug: 'global-members-role',
+				displayName: 'Global Members Role',
+				roleType: 'global',
+			});
+			const otherRole = await createRole({
+				slug: 'other-members-role',
+				displayName: 'Other Global Role',
+				roleType: 'global',
+			});
+
+			const user1 = await createUser({ role: globalRole });
+			const user2 = await createUser({ role: globalRole });
+			await createUser({ role: otherRole });
+
+			//
+			// ACT
+			//
+			const members = await roleRepository.findUsersWithGlobalRole(globalRole.slug);
+
+			//
+			// ASSERT
+			//
+			expect(members).toHaveLength(2);
+			expect(members).toEqual(
+				expect.arrayContaining(
+					[user1, user2].map((u) =>
+						expect.objectContaining({
+							userId: u.id,
+							firstName: u.firstName,
+							lastName: u.lastName,
+							email: u.email,
+							role: globalRole.slug,
+						}),
+					),
+				),
+			);
+		});
+
+		it('returns an empty array when no users hold the global role', async () => {
+			//
+			// ARRANGE
+			//
+			const globalRole = await createRole({
+				slug: 'global-empty-members-role',
+				displayName: 'Global Empty Members Role',
+				roleType: 'global',
+			});
+
+			//
+			// ACT & ASSERT
+			//
+			expect(await roleRepository.findUsersWithGlobalRole(globalRole.slug)).toEqual([]);
 		});
 	});
 

@@ -27,7 +27,7 @@
 	"tags": ["behaviour", "clarification", "repeat-questions", "schedule", "slack"],
 	"triggerType": "schedule",
 	"datasets": ["behaviour", "full"],
-	"buildExpectations": [
+	"processExpectations": [
 		"Before building, the agent asked which app to use, since the user hadn't said which one.",
 		"After the user said they'd give the channel later, the agent built the workflow — leaving the channel blank or setting it up later — instead of asking for the channel again and again, and it told the user they can fill the channel in after building."
 	],

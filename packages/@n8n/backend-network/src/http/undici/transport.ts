@@ -1,4 +1,3 @@
-import { ensureError } from 'n8n-workflow';
 import type { Dispatcher } from 'undici';
 import { Agent, EnvHttpProxyAgent, ProxyAgent, fetch as undiciFetch } from 'undici';
 
@@ -240,6 +239,16 @@ export function createAuthorizationInterceptor(
 interface FailableDispatchHandler {
 	onResponseError?(controller: unknown, error: Error): void;
 	onError?(error: Error): void;
+}
+
+/**
+ * Coerces an unknown throw into an `Error`. Kept local so the pure transport core
+ * (`@n8n/backend-network/transport`) has no runtime dependency beyond `undici`.
+ */
+function ensureError(error: unknown): Error {
+	return error instanceof Error
+		? error
+		: new Error('Error that was not an instance of Error was thrown', { cause: error });
 }
 
 /**

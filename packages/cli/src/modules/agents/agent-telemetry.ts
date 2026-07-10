@@ -23,7 +23,6 @@ export function buildAgentConfigurationTelemetryFromConfig(
 	]);
 	const providerToolCount = Object.keys(config?.providerTools ?? {}).length;
 	const hasWebSearch = config?.config?.webSearch?.enabled === true;
-	const hasNodeTools = config?.config?.nodeTools?.enabled === true;
 	const mcpServerCount = config?.mcpServers?.length ?? 0;
 	const subAgentCount = config?.subAgents?.agents?.length ?? 0;
 
@@ -31,7 +30,6 @@ export function buildAgentConfigurationTelemetryFromConfig(
 	if (mcpServerCount > 0) toolTypes.add('mcp');
 	if (providerToolCount > 0) toolTypes.add('provider');
 	if (hasWebSearch) toolTypes.add('web_search');
-	if (hasNodeTools) toolTypes.add('node_tools');
 	if (subAgentCount > 0) toolTypes.add('subagent');
 
 	return {
@@ -43,7 +41,6 @@ export function buildAgentConfigurationTelemetryFromConfig(
 			mcpServerCount +
 			providerToolCount +
 			(hasWebSearch ? 1 : 0) +
-			(hasNodeTools ? 1 : 0) +
 			subAgentCount,
 		num_skills: config?.skills?.length ?? 0,
 		memory_type: getMemoryType(config),

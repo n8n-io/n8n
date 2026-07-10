@@ -1,7 +1,10 @@
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import { validateWorkflow, type WorkflowJSON } from '@n8n/workflow-sdk';
 
+import { buildCredentialHostIndex, resolveCredentialByUrl } from './credential-url-resolver';
+import { detectArrayInputCollapse } from './detect-array-input-collapse';
+import { detectWrongKindLocatorValues } from './detect-wrong-kind-locator';
 import { collectValidationIssues, type ValidationWarning } from './workflow-validation-warnings';
 import type { InstanceAiContext } from '../../types';
 import { escapeSingleQuotes, runInSandbox } from '../../workspace/sandbox-fs';
@@ -21,6 +24,7 @@ export type WorkflowSourceCompileResult =
 	| {
 			success: true;
 			workflow: WorkflowJSON;
+			declaredOutputFixtures?: NonNullable<WorkflowJSON['pinData']>;
 			warnings: ValidationWarning[];
 			compiler: WorkflowSourceCompiler;
 	  }
@@ -35,6 +39,7 @@ export type WorkflowSourceCompileResult =
 interface SandboxWorkflowBuildOutput {
 	success: boolean;
 	workflow?: WorkflowJSON;
+	declaredOutputFixtures?: NonNullable<WorkflowJSON['pinData']>;
 	warnings?: ValidationWarning[];
 	errors?: string[];
 }
@@ -80,6 +85,8 @@ function validateCompiledWorkflow(
 	const warnings = [...compilerWarnings];
 	collectValidationIssues(schemaValidation.errors, warnings);
 	collectValidationIssues(schemaValidation.warnings, warnings);
+	warnings.push(...detectArrayInputCollapse(json));
+	warnings.push(...detectWrongKindLocatorValues(json, context.nodeTypesProvider));
 	return warnings;
 }
 
@@ -135,6 +142,31 @@ function parseSandboxErrors(value: unknown): string[] {
 	return value.filter((error): error is string => typeof error === 'string');
 }
 
+function isPinDataItem(
+	value: unknown,
+): value is NonNullable<WorkflowJSON['pinData']>[string][number] {
+	return isRecord(value);
+}
+
+function isPinDataItems(value: unknown): value is NonNullable<WorkflowJSON['pinData']>[string] {
+	return Array.isArray(value) && value.every(isPinDataItem);
+}
+
+function parseSandboxDeclaredOutputFixtures(
+	value: unknown,
+): NonNullable<WorkflowJSON['pinData']> | undefined {
+	if (!isRecord(value)) return undefined;
+
+	const fixtures: NonNullable<WorkflowJSON['pinData']> = {};
+	for (const [nodeName, items] of Object.entries(value)) {
+		if (isPinDataItems(items)) {
+			fixtures[nodeName] = items;
+		}
+	}
+
+	return Object.keys(fixtures).length > 0 ? fixtures : undefined;
+}
+
 function parseSandboxBuildOutput(stdout: string): SandboxWorkflowBuildOutput | undefined {
 	const lastJsonLine = stdout
 		.trim()
@@ -157,6 +189,7 @@ function parseSandboxBuildOutput(stdout: string): SandboxWorkflowBuildOutput | u
 	return {
 		success: parsed.success,
 		workflow: isWorkflowJson(parsed.workflow) ? parsed.workflow : undefined,
+		declaredOutputFixtures: parseSandboxDeclaredOutputFixtures(parsed.declaredOutputFixtures),
 		warnings: parseSandboxWarnings(parsed.warnings),
 		errors: parseSandboxErrors(parsed.errors),
 	};
@@ -247,9 +280,54 @@ async function compileTypeScriptWorkflowSource(
 	return {
 		success: true,
 		workflow: buildOutput.workflow,
+		declaredOutputFixtures: buildOutput.declaredOutputFixtures,
 		warnings: buildOutput.warnings ?? [],
 		compiler: 'sandbox-tsx',
 	};
+}
+
+const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
+
+/**
+ * Flag HTTP Request nodes that use a generic credential while a dedicated
+ * predefined credential already exists for the target host. The host->credential
+ * index is derived from the credential registry (no hardcoded service list);
+ * ambiguous hosts surface the candidates instead of auto-picking.
+ */
+async function collectCredentialResolutionWarnings(
+	json: WorkflowJSON,
+	context: InstanceAiContext,
+): Promise<ValidationWarning[]> {
+	const hosts = await context.credentialService.listHttpCredentialHosts?.();
+	if (!hosts?.length) return [];
+
+	const index = buildCredentialHostIndex(hosts);
+	const warnings: ValidationWarning[] = [];
+
+	for (const node of json.nodes ?? []) {
+		if (node.type !== HTTP_REQUEST_NODE_TYPE) continue;
+		const params = node.parameters;
+		if (!isRecord(params) || params.authentication !== 'genericCredentialType') continue;
+		const url = typeof params.url === 'string' ? params.url : '';
+		if (!url) continue;
+
+		const resolution = resolveCredentialByUrl(url, index);
+		if (resolution.status === 'match') {
+			warnings.push({
+				code: 'PREFER_PREDEFINED_CREDENTIAL',
+				nodeName: node.name,
+				message: `This request targets a service with a dedicated n8n credential ("${resolution.credentialType}"). Use authentication: "predefinedCredentialType" with nodeCredentialType: "${resolution.credentialType}" instead of a generic credential.`,
+			});
+		} else if (resolution.status === 'ambiguous') {
+			warnings.push({
+				code: 'PREFER_PREDEFINED_CREDENTIAL',
+				nodeName: node.name,
+				message: `This request targets a service with dedicated n8n credentials (${resolution.candidates.join(', ')}). Prefer authentication: "predefinedCredentialType" with the matching nodeCredentialType.`,
+			});
+		}
+	}
+
+	return warnings;
 }
 
 export async function compileWorkflowSource(
@@ -276,8 +354,11 @@ export async function compileWorkflowSource(
 
 	if (!result.success) return result;
 
+	const warnings = validateCompiledWorkflow(result.workflow, context, result.warnings);
+	const credentialWarnings = await collectCredentialResolutionWarnings(result.workflow, context);
+
 	return {
 		...result,
-		warnings: validateCompiledWorkflow(result.workflow, context, result.warnings),
+		warnings: [...warnings, ...credentialWarnings],
 	};
 }

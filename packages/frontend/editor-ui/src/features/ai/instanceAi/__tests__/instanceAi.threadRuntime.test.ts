@@ -1,3 +1,4 @@
+import { nextTick } from 'vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { describe, test, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
@@ -196,14 +197,15 @@ function activateThread(registry: RuntimeRegistry, threadId: string): void {
 
 	if (runtime.hydrationStatus === 'hydrating') return;
 	if (runtime.hydrationStatus === 'ready') {
-		void runtime.loadThreadStatus();
-		runtime.connectSSE();
+		void runtime.loadThreadStatus().then(() => {
+			runtime.connectSSE();
+		});
 		return;
 	}
 
-	void runtime.loadHistoricalMessages().then((hydrationStatus) => {
+	void runtime.loadHistoricalMessages().then(async (hydrationStatus) => {
 		if (activeThreadId !== threadId || hydrationStatus !== 'applied') return;
-		void runtime.loadThreadStatus();
+		await runtime.loadThreadStatus();
 		runtime.connectSSE();
 	});
 }
@@ -391,6 +393,69 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		);
 
 		expect(registry.getRuntime(threadId)?.lastEventId).toBe(43);
+	});
+
+	test('an event replayed with an already-seen id is dropped', () => {
+		const threadId = activeThreadId;
+		const event = {
+			type: 'text-delta',
+			runId: 'run-1',
+			agentId: 'agent-root',
+			payload: { text: 'hello' },
+		};
+
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root'), '1'));
+		capturedOnMessage!(makeSSEEvent(event, '2'));
+		// e.g. an auto-reconnect replaying an id that arrived just before the disconnect
+		capturedOnMessage!(makeSSEEvent(event, '2'));
+
+		expect(registry.getRuntime(threadId)?.debugEvents).toHaveLength(2);
+	});
+
+	test('the reconnect cursor keeps the max seen id when producers interleave out of order', () => {
+		const threadId = activeThreadId;
+
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root'), '43'));
+		// A concurrent producer on another main can relay a lower id afterwards.
+		capturedOnMessage!(
+			makeSSEEvent(
+				{
+					type: 'text-delta',
+					runId: 'run-1',
+					agentId: 'agent-root',
+					payload: { text: 'hello' },
+				},
+				'42',
+			),
+		);
+
+		// The out-of-order event is still applied, but the cursor never regresses.
+		expect(registry.getRuntime(threadId)?.debugEvents).toHaveLength(2);
+		expect(registry.getRuntime(threadId)?.lastEventId).toBe(43);
+	});
+
+	test('a backend sequence reset (id 1 re-issued) drops stale dedup state and renders the fresh run', () => {
+		const threadId = activeThreadId;
+		const event = (text: string) => ({
+			type: 'text-delta' as const,
+			runId: 'run-1',
+			agentId: 'agent-root',
+			payload: { text },
+		});
+
+		// First run before the backend restarts.
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root'), '1'));
+		capturedOnMessage!(makeSSEEvent(event('a'), '2'));
+		expect(registry.getRuntime(threadId)?.lastEventId).toBe(2);
+
+		// Backend restarts and re-issues ids from 1. Without reset detection these
+		// would be dropped as already-seen; instead the fresh sequence renders and
+		// the cursor snaps back down.
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-2', 'agent-root'), '1'));
+		capturedOnMessage!(makeSSEEvent(event('b'), '2'));
+
+		expect(registry.getRuntime(threadId)?.debugEvents).toHaveLength(4);
+		expect(registry.getRuntime(threadId)?.lastEventId).toBe(2);
 	});
 
 	test('deleting the last active thread clears stale routing state before the replacement thread starts', async () => {
@@ -920,8 +985,34 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			activeThreadId,
 			'hello',
 			undefined,
+			undefined,
 			expect.any(String),
 			'iframe-push-ref-123',
+		);
+	});
+
+	test('sendMessage forwards handoff context to postMessage', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const context = {
+			source: 'credential-modal' as const,
+			credential: {
+				credentialType: 'gmailOAuth2Api',
+				displayName: 'Gmail OAuth2 API',
+				documentationUrl:
+					'https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/',
+			},
+		};
+
+		await activeRuntime(registry).sendMessage('hello', undefined, undefined, context);
+
+		expect(mockPostMessage).toHaveBeenCalledWith(
+			expect.anything(),
+			activeThreadId,
+			'hello',
+			undefined,
+			context,
+			expect.any(String),
+			undefined,
 		);
 	});
 
@@ -934,6 +1025,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			expect.anything(),
 			activeThreadId,
 			'hello',
+			undefined,
 			undefined,
 			expect.any(String),
 			undefined,
@@ -1031,6 +1123,165 @@ describe('createThreadRuntime - feedback integration', () => {
 	});
 });
 
+describe('createThreadRuntime - loadThreadStatus and HITL reconnect', () => {
+	let registry: RuntimeRegistry;
+
+	beforeEach(() => {
+		setupRuntimePinia();
+		registry = createRuntimeRegistry();
+		activeThreadId = 'thread-hitl';
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+		mockFetchThreadStatus.mockResolvedValue({
+			hasActiveRun: false,
+			isSuspended: false,
+			backgroundTasks: [],
+		});
+	});
+
+	test('loadThreadStatus sets activeRunId and isStreaming for suspended run using runIds', async () => {
+		const runtime = activeRuntime(registry);
+		runtime.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				runId: 'run-a',
+				runIds: ['run-a', 'run-b'],
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-01-01T00:00:00.000Z',
+			},
+		];
+		mockFetchThreadStatus.mockResolvedValue({
+			hasActiveRun: false,
+			isSuspended: true,
+			backgroundTasks: [],
+		});
+
+		await runtime.loadThreadStatus();
+
+		expect(runtime.activeRunId).toBe('run-b');
+		expect(runtime.messages[0].isStreaming).toBe(true);
+	});
+
+	test('loadThreadStatus prefers runId from status API over message inference', async () => {
+		const runtime = activeRuntime(registry);
+		runtime.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				runId: 'run-a',
+				runIds: ['run-a', 'run-b'],
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-01-01T00:00:00.000Z',
+			},
+		];
+		mockFetchThreadStatus.mockResolvedValue({
+			hasActiveRun: false,
+			isSuspended: true,
+			runId: 'run-authoritative',
+			backgroundTasks: [],
+		});
+
+		await runtime.loadThreadStatus();
+
+		expect(runtime.activeRunId).toBe('run-authoritative');
+	});
+
+	test('confirmAction re-arms activeRunId and reconnects SSE after approval', async () => {
+		const runtime = activeRuntime(registry);
+		runtime.closeSSE();
+		runtime.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				runId: 'run-live',
+				runIds: ['run-live'],
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'agent-root',
+					role: 'orchestrator',
+					status: 'active',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [
+						{
+							toolCallId: 'tc-1',
+							toolName: 'workflows',
+							args: { action: 'run' },
+							isLoading: true,
+							confirmation: { requestId: 'req-1', severity: 'info', message: 'Run?' },
+						},
+					],
+					children: [],
+					timeline: [],
+				},
+			},
+		];
+		mockPostConfirmation.mockResolvedValue({ ok: true, runId: 'run-from-api' });
+		mockFetchThreadStatus.mockResolvedValue({
+			hasActiveRun: true,
+			isSuspended: false,
+			runId: 'run-from-api',
+			backgroundTasks: [],
+		});
+
+		const ok = await runtime.confirmAction('req-1', { kind: 'approval', approved: true });
+
+		expect(ok).toBe(true);
+		expect(runtime.activeRunId).toBe('run-from-api');
+		expect(runtime.messages[0].isStreaming).toBe(true);
+		expect(runtime.sseState).not.toBe('disconnected');
+		expect(mockFetchThreadStatus).toHaveBeenCalled();
+	});
+
+	test('confirmAction does not re-arm activeRunId on deny', async () => {
+		const runtime = activeRuntime(registry);
+		runtime.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				runId: 'run-live',
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'agent-root',
+					role: 'orchestrator',
+					status: 'active',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [
+						{
+							toolCallId: 'tc-1',
+							toolName: 'workflows',
+							args: { action: 'run' },
+							isLoading: true,
+							confirmation: { requestId: 'req-deny', severity: 'info', message: 'Run?' },
+						},
+					],
+					children: [],
+					timeline: [],
+				},
+			},
+		];
+		mockPostConfirmation.mockResolvedValue({ ok: true });
+
+		await runtime.confirmAction('req-deny', { kind: 'approval', approved: false });
+
+		expect(runtime.activeRunId).toBeNull();
+	});
+});
+
 // ---------------------------------------------------------------------------
 // confirmResourceDecision / confirmAction (resource-decision token)
 // ---------------------------------------------------------------------------
@@ -1047,7 +1298,7 @@ describe('createThreadRuntime - gateway resource-decision confirmation', () => {
 		await vi.waitFor(() => {
 			expect(capturedOnMessage).not.toBeNull();
 		});
-		mockPostConfirmation.mockResolvedValue(undefined);
+		mockPostConfirmation.mockResolvedValue({ ok: true });
 	});
 
 	afterEach(() => {
@@ -1130,7 +1381,7 @@ describe('createThreadRuntime - session always-allow', () => {
 		setupRuntimePinia();
 		registry = createRuntimeRegistry();
 		activeThreadId = 'thread-always-allow';
-		mockPostConfirmation.mockResolvedValue(undefined);
+		mockPostConfirmation.mockResolvedValue({ ok: true });
 	});
 
 	afterEach(() => {
@@ -1145,6 +1396,7 @@ describe('createThreadRuntime - session always-allow', () => {
 			toolName: string;
 			args?: Record<string, unknown>;
 			severity?: 'info' | 'warning' | 'destructive';
+			channelConfig?: { integrationType: string; agentId: string };
 		},
 	): void {
 		runtime.messages.push({
@@ -1173,6 +1425,7 @@ describe('createThreadRuntime - session always-allow', () => {
 							requestId: opts.requestId,
 							severity: opts.severity ?? 'info',
 							message: 'Approve?',
+							...(opts.channelConfig ? { channelConfig: opts.channelConfig } : {}),
 						},
 					},
 				],
@@ -1198,6 +1451,23 @@ describe('createThreadRuntime - session always-allow', () => {
 			kind: 'approval',
 			approved: true,
 		});
+	});
+
+	it('does not auto-approve channel-setup confirmations even when the key matches', async () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('configure_channel', {});
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-channel',
+			requestId: 'req-channel',
+			toolName: 'configure_channel',
+			args: {},
+			channelConfig: { integrationType: 'slack', agentId: 'agent-1' },
+		});
+
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(runtime.resolvedConfirmationIds.has('req-channel')).toBe(false);
+		expect(mockPostConfirmation).not.toHaveBeenCalled();
 	});
 
 	it('does not auto-approve destructive confirmations even when the key matches', async () => {
@@ -1477,5 +1747,124 @@ describe('createThreadRuntime - "User viewed new builder workflow" telemetry', (
 			'User viewed new builder workflow',
 			expect.anything(),
 		);
+	});
+});
+
+describe('createThreadRuntime - "Builder generation stalled" telemetry', () => {
+	let registry: RuntimeRegistry;
+
+	const stalledCalls = () =>
+		mockTelemetryTrack.mock.calls.filter(([event]) => event === 'Builder generation stalled');
+
+	beforeEach(async () => {
+		vi.useFakeTimers();
+		setupRuntimePinia();
+		capturedOnMessage = null;
+		registry = createRuntimeRegistry();
+		activeThreadId = 'thread-active';
+		activeRuntime(registry).connectSSE();
+		// Flush the MockEventSource constructor's setTimeout(0).
+		await vi.advanceTimersByTimeAsync(0);
+		expect(capturedOnMessage).not.toBeNull();
+	});
+
+	afterEach(() => {
+		activeRuntime(registry).closeSSE();
+		vi.useRealTimers();
+		vi.clearAllMocks();
+	});
+
+	test('fires once with thread_id after a minute of stream silence during an active run', async () => {
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+
+		await vi.advanceTimersByTimeAsync(59_000);
+		expect(stalledCalls()).toHaveLength(0);
+
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(stalledCalls()).toHaveLength(1);
+		expect(stalledCalls()[0][1]).toEqual({ thread_id: 'thread-active' });
+
+		// Continued silence does not re-fire — one event per silent stretch.
+		await vi.advanceTimersByTimeAsync(180_000);
+		expect(stalledCalls()).toHaveLength(1);
+	});
+
+	test('every received stream event re-arms the countdown', async () => {
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+
+		await vi.advanceTimersByTimeAsync(50_000);
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'text-delta',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { text: 'hello' },
+			}),
+		);
+
+		// 100s since run start, but only 50s since the last event — not stalled.
+		await vi.advanceTimersByTimeAsync(50_000);
+		expect(stalledCalls()).toHaveLength(0);
+
+		await vi.advanceTimersByTimeAsync(10_000);
+		expect(stalledCalls()).toHaveLength(1);
+	});
+
+	test('does not fire when the run finishes within the window', async () => {
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+		await vi.advanceTimersByTimeAsync(30_000);
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'run-finish',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { status: 'completed' },
+			}),
+		);
+
+		await vi.advanceTimersByTimeAsync(180_000);
+		expect(stalledCalls()).toHaveLength(0);
+	});
+
+	test('does not fire while the run waits on a user confirmation', async () => {
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'tool-call',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { toolCallId: 'tc-1', toolName: 'dangerous-tool', args: {} },
+			}),
+		);
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'confirmation-request',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					requestId: 'req-1',
+					toolCallId: 'tc-1',
+					toolName: 'dangerous-tool',
+					args: {},
+					severity: 'warning',
+					message: 'Are you sure?',
+				},
+			}),
+		);
+
+		await vi.advanceTimersByTimeAsync(180_000);
+		expect(stalledCalls()).toHaveLength(0);
+	});
+
+	test('arms when a message send starts a run while the stream stays silent', async () => {
+		mockPostMessage.mockResolvedValueOnce({ runId: 'run-silent' });
+
+		await activeRuntime(registry).sendMessage('build me a workflow');
+		// Let the isGenerationPending watcher observe the new run id.
+		await nextTick();
+
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(stalledCalls()).toHaveLength(1);
+		expect(stalledCalls()[0][1]).toEqual({ thread_id: 'thread-active' });
 	});
 });

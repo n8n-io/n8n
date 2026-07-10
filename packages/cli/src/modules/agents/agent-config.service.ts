@@ -1,13 +1,13 @@
+import { reconcileNativeWebSearch } from '@n8n/ai-utilities/agent-config';
 import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import {
 	AgentJsonConfigSchema,
-	isNodeToolsEnabled,
+	findVectorStoreToolNameCollisions,
 	sanitizeAgentJsonConfig,
 	type AgentJsonConfig,
 	type AgentJsonToolConfig,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { UserError, type INodeParameters } from 'n8n-workflow';
 
@@ -25,7 +25,7 @@ import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
-import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
+import { resolveUniqueSubAgents, type ResolvedSubAgentRef } from './utils/sub-agent-resolver';
 
 @Service()
 export class AgentConfigService {
@@ -34,14 +34,9 @@ export class AgentConfigService {
 		private readonly agentRepository: AgentRepository,
 		private readonly agentTaskRepository: AgentTaskRepository,
 		private readonly agentSkillsService: AgentSkillsService,
-		private readonly agentsConfig: AgentsConfig,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly credentialsService: CredentialsService,
 	) {}
-
-	private isNodeToolsModuleEnabled(): boolean {
-		return this.agentsConfig.modules.includes('node-tools-searcher');
-	}
 
 	/**
 	 * Get the JSON config for an agent.
@@ -74,11 +69,11 @@ export class AgentConfigService {
 
 		const config = parsed.data;
 
-		if (isNodeToolsEnabled(config.config) && !this.isNodeToolsModuleEnabled()) {
+		const toolNameCollisions = findVectorStoreToolNameCollisions(config);
+		if (toolNameCollisions.length > 0) {
 			return {
 				valid: false,
-				error:
-					'config.nodeTools.enabled requires the node-tools-searcher agents module to be enabled.',
+				error: `Vector store tool name collides with an existing tool: ${toolNameCollisions.join(', ')}`,
 			};
 		}
 
@@ -123,8 +118,9 @@ export class AgentConfigService {
 		const accessibleCredentialIds = new Set(
 			(await credentialProvider.list()).map((credential) => credential.id),
 		);
+		const sanitizedBaseConfig = sanitizeAgentJsonConfig(config);
 		const sanitizedConfig = sanitizeUnknownAgentCredentials(
-			sanitizeAgentJsonConfig(config),
+			sanitizedBaseConfig,
 			accessibleCredentialIds,
 		);
 
@@ -133,13 +129,18 @@ export class AgentConfigService {
 			throw new UserError(`Invalid agent config: ${result.error}`);
 		}
 
-		const tasksProvided = result.config.tasks !== undefined;
+		// Reconcile native web-search provider tools with the config's explicit
+		// `webSearch` state. This is the single write path, so persisted config
+		// always agrees with read/compose paths.
+		const validatedConfig = reconcileNativeWebSearch(result.config);
+
+		const tasksProvided = validatedConfig.tasks !== undefined;
 		const existingTaskIds = tasksProvided
 			? (await this.agentTaskRepository.findByAgentId(agentId)).map((task) => task.id)
 			: [];
 
 		const resolvedSubAgents = await this.removeMissingConfigRefs(
-			result.config,
+			validatedConfig,
 			entity,
 			new Set(existingTaskIds),
 		);
@@ -148,29 +149,37 @@ export class AgentConfigService {
 		const previousIntegrations = entity.integrations ?? [];
 		const previousSchema = entity.schema ?? null;
 
-		const integrationsProvided = result.config.integrations !== undefined;
-		const toolsProvided = result.config.tools !== undefined;
-		const skillsProvided = result.config.skills !== undefined;
-		const descriptionProvided = result.config.description !== undefined;
-		const credentialProvided = result.config.credential !== undefined;
-		const memoryProvided = result.config.memory !== undefined;
-		const subAgentsProvided = result.config.subAgents !== undefined;
-		const providerToolsProvided = result.config.providerTools !== undefined;
-		const configBlockProvided = result.config.config !== undefined;
-		const mcpServersProvided = result.config.mcpServers !== undefined;
+		const integrationsProvided = validatedConfig.integrations !== undefined;
+		const toolsProvided = validatedConfig.tools !== undefined;
+		const skillsProvided = validatedConfig.skills !== undefined;
+		const credentialProvided = validatedConfig.credential !== undefined;
+		const personalisationProvided = validatedConfig.personalisation !== undefined;
+		const memoryProvided = validatedConfig.memory !== undefined;
+		const subAgentsProvided = validatedConfig.subAgents !== undefined;
+		const providerToolsProvided = validatedConfig.providerTools !== undefined;
+		const configBlockProvided = validatedConfig.config !== undefined;
+		const mcpServersProvided = validatedConfig.mcpServers !== undefined;
+		const vectorStoresProvided = validatedConfig.vectorStores !== undefined;
 
 		const { schemaConfig: decomposedSchema, integrations: decomposedIntegrations } =
-			decomposeJsonConfig(result.config);
+			decomposeJsonConfig(validatedConfig);
 
 		const nextIntegrations = integrationsProvided ? decomposedIntegrations : previousIntegrations;
+		const nextPersonalisation = personalisationProvided
+			? mergePersonalisationWithPreviousGradient(
+					decomposedSchema.personalisation,
+					previousSchema,
+					config,
+				)
+			: undefined;
 
 		const nextSchema: AgentJsonConfig = {
-			...(previousSchema ?? ({} as AgentJsonConfig)),
+			...omitLegacyAgentDescription(previousSchema),
 			name: decomposedSchema.name,
 			model: decomposedSchema.model,
 			instructions: decomposedSchema.instructions,
-			...(descriptionProvided ? { description: decomposedSchema.description } : {}),
 			...(credentialProvided ? { credential: decomposedSchema.credential } : {}),
+			...(personalisationProvided ? { personalisation: nextPersonalisation } : {}),
 			...(memoryProvided ? { memory: decomposedSchema.memory } : {}),
 			...(subAgentsProvided ? { subAgents: decomposedSchema.subAgents } : {}),
 			...(toolsProvided ? { tools: decomposedSchema.tools } : {}),
@@ -179,17 +188,17 @@ export class AgentConfigService {
 			...(providerToolsProvided ? { providerTools: decomposedSchema.providerTools } : {}),
 			...(configBlockProvided ? { config: decomposedSchema.config } : {}),
 			...(mcpServersProvided ? { mcpServers: decomposedSchema.mcpServers } : {}),
+			...(vectorStoresProvided ? { vectorStores: decomposedSchema.vectorStores } : {}),
 		};
 
 		entity.schema = nextSchema;
-		entity.name = result.config.name;
-		if (descriptionProvided) entity.description = result.config.description ?? null;
+		entity.name = validatedConfig.name;
 		entity.integrations = nextIntegrations;
 		markAgentDraftDirty(entity);
 
 		if (toolsProvided) {
 			const referencedIds = new Set(
-				(result.config.tools ?? [])
+				(validatedConfig.tools ?? [])
 					.filter((t): t is Extract<AgentJsonToolConfig, { type: 'custom' }> => t.type === 'custom')
 					.map((t) => t.id),
 			);
@@ -204,7 +213,7 @@ export class AgentConfigService {
 		}
 
 		if (skillsProvided) {
-			this.agentSkillsService.removeUnreferencedSkills(entity, result.config);
+			this.agentSkillsService.removeUnreferencedSkills(entity, validatedConfig);
 		}
 
 		this.runtimeCacheService.clearRuntimes(agentId);
@@ -213,7 +222,7 @@ export class AgentConfigService {
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
 
 		if (tasksProvided) {
-			const referencedTaskIds = new Set((result.config.tasks ?? []).map((ref) => ref.id));
+			const referencedTaskIds = new Set((validatedConfig.tasks ?? []).map((ref) => ref.id));
 			const orphanTaskIds = existingTaskIds.filter((id) => !referencedTaskIds.has(id));
 			if (orphanTaskIds.length > 0) {
 				await this.agentTaskRepository.delete(orphanTaskIds);
@@ -225,7 +234,7 @@ export class AgentConfigService {
 		}
 
 		return {
-			config: composeJsonConfig(saved) ?? result.config,
+			config: composeJsonConfig(saved) ?? validatedConfig,
 			updatedAt: saved.updatedAt.toISOString(),
 			versionId: saved.versionId,
 		};
@@ -274,7 +283,7 @@ export class AgentConfigService {
 		config: AgentJsonConfig,
 		entity: Agent,
 		existingTaskIds: ReadonlySet<string>,
-	): Promise<Array<{ agentId: string; agent: Agent | null }>> {
+	): Promise<ResolvedSubAgentRef[]> {
 		if (config.skills !== undefined) {
 			const skills = entity.skills ?? {};
 			config.skills = config.skills.filter((ref) => Boolean(skills[ref.id]));
@@ -295,22 +304,19 @@ export class AgentConfigService {
 				projectId: entity.projectId,
 				agentRepository: this.agentRepository,
 			});
-			const existingSubAgentIds = new Set(
-				resolvedSubAgents.filter(({ agent }) => agent !== null).map(({ agentId }) => agentId),
-			);
 			config.subAgents.agents = resolvedSubAgents
-				.filter(({ agentId }) => existingSubAgentIds.has(agentId))
-				.map(({ agentId }) => ({ agentId }));
+				.filter(({ agent }) => agent !== null)
+				.map(({ agentId, useWhen }) => ({
+					agentId,
+					...(useWhen ? { useWhen } : {}),
+				}));
 			return resolvedSubAgents;
 		}
 
 		return [];
 	}
 
-	private validateSubAgentRefs(
-		resolvedSubAgents: Array<{ agentId: string; agent: Agent | null }>,
-		entity: Agent,
-	) {
+	private validateSubAgentRefs(resolvedSubAgents: ResolvedSubAgentRef[], entity: Agent) {
 		for (const { agentId, agent } of resolvedSubAgents) {
 			if (!agent) continue;
 			if (agentId === entity.id) {
@@ -327,8 +333,37 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function mergePersonalisationWithPreviousGradient(
+	personalisation: AgentJsonConfig['personalisation'],
+	previousSchema: AgentJsonConfig | null,
+	rawConfig: unknown,
+): AgentJsonConfig['personalisation'] {
+	if (!personalisation || !isRecord(rawConfig) || !isRecord(rawConfig.personalisation)) {
+		return personalisation;
+	}
+
+	if (rawConfig.personalisation.gradient !== undefined) return personalisation;
+
+	const previousGradient = previousSchema?.personalisation?.gradient;
+	if (!previousGradient) return personalisation;
+
+	return {
+		...personalisation,
+		gradient: previousGradient,
+	};
+}
+
 function hasNodeToolInputSchema(raw: unknown): boolean {
 	if (!isRecord(raw) || !Array.isArray(raw.tools)) return false;
 
 	return raw.tools.some((tool) => isRecord(tool) && tool.type === 'node' && 'inputSchema' in tool);
+}
+
+function omitLegacyAgentDescription(config: AgentJsonConfig | null): Partial<AgentJsonConfig> {
+	if (!config) return {};
+
+	const { description: _description, ...rest } = config as AgentJsonConfig & {
+		description?: unknown;
+	};
+	return rest;
 }

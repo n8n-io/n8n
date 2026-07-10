@@ -44,6 +44,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -2637,33 +2638,6 @@ describe('useCanvasOperations', () => {
 					([command]) => command instanceof UpdateNodeGroupCommand,
 				),
 			).toBe(false);
-		});
-
-		it('should skip node group validation when the grouping feature flag is disabled', () => {
-			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
-			const toast = useToast();
-			const nodeA = createGroupedNode('a', 'A');
-			const nodeB = createGroupedNode('b', 'B');
-			const nodeC = createGroupedNode('c', 'C');
-			const nodeD = createGroupedNode('d', 'D');
-			const group = { id: 'group', nodeIds: [nodeB.id, nodeC.id], name: 'Group 1' };
-			const { workflowDocumentStore } = setupGroupedCanvas({
-				nodes: [nodeA, nodeB, nodeC, nodeD],
-				connections: createConnectionsBySource(
-					workflowConnection(nodeA, nodeB),
-					workflowConnection(nodeB, nodeC),
-					workflowConnection(nodeC, nodeD),
-				),
-				groups: [group],
-			});
-			const addNodesToGroupSpy = vi.spyOn(workflowDocumentStore, 'addNodesToGroup');
-
-			const { createConnection } = useCanvasOperations();
-			createConnection(canvasConnection(nodeA, nodeC));
-
-			expect(addNodesToGroupSpy).not.toHaveBeenCalled();
-			expectConnectionAdded(nodeA, nodeC);
-			expect(toast.showToast).not.toHaveBeenCalled();
 		});
 
 		it('allows a main connection across the group boundary when the group stays valid', () => {
@@ -6062,6 +6036,71 @@ describe('useCanvasOperations', () => {
 			expect(groupCommand).toBeInstanceOf(AddNodeGroupCommand);
 			expect(groupCommand?.group.id).toBe('imported-group-id');
 			expect(groupCommand?.group.name).toBe('My Group');
+		});
+
+		describe('tag import', () => {
+			beforeEach(() => {
+				// Needed for addImportedNodesToWorkflow to run with an empty workflow.
+				vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue({
+					nodes: {},
+					connections: {},
+					connectionsBySourceNode: {},
+					renameNode: vi.fn(),
+				} as unknown as Workflow);
+			});
+
+			it('should complete the import and warn when the user cannot create tags', async () => {
+				const tagsStore = mockedStore(useTagsStore);
+				tagsStore.fetchAll.mockResolvedValue([]);
+				tagsStore.create.mockRejectedValue(new Error('Insufficient permissions to create tags'));
+
+				const toast = useToast();
+				const { importWorkflowData } = useCanvasOperations();
+
+				const result = await importWorkflowData(
+					{
+						name: 'Imported workflow',
+						nodes: [],
+						connections: {},
+						tags: [{ id: 't1', name: 'brand-new-tag' }] as never,
+					},
+					'file',
+					{ trackEvents: false },
+				);
+
+				// Import is not aborted: the workflow data (with its name) is returned, not `{}`.
+				expect(result).toMatchObject({ name: 'Imported workflow' });
+				// A permission failure is a non-blocking warning, not the import-failed error.
+				expect(toast.showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
+				expect(toast.showError).not.toHaveBeenCalled();
+				// No tag could be created, so none are linked.
+				expect(workflowDocumentStoreInstance.addTags).toHaveBeenCalledWith([]);
+			});
+
+			it('should link created tags without warning when the user can create tags', async () => {
+				const tagsStore = mockedStore(useTagsStore);
+				tagsStore.fetchAll.mockResolvedValue([]);
+				tagsStore.create.mockResolvedValue({ id: 'new-1', name: 'brand-new-tag' });
+
+				const toast = useToast();
+				const { importWorkflowData } = useCanvasOperations();
+
+				const result = await importWorkflowData(
+					{
+						name: 'Imported workflow',
+						nodes: [],
+						connections: {},
+						tags: [{ id: 't1', name: 'brand-new-tag' }] as never,
+					},
+					'file',
+					{ trackEvents: false },
+				);
+
+				expect(result).toMatchObject({ name: 'Imported workflow' });
+				expect(toast.showToast).not.toHaveBeenCalled();
+				expect(toast.showError).not.toHaveBeenCalled();
+				expect(workflowDocumentStoreInstance.addTags).toHaveBeenCalledWith(['new-1']);
+			});
 		});
 	});
 

@@ -7,6 +7,8 @@ import { ConvertToSubworkflowModal } from './components/ConvertToSubworkflowModa
 import { CredentialModal } from './components/CredentialModal';
 import { FocusPanel } from './components/FocusPanel';
 import { LogsPanel } from './components/LogsPanel';
+import { ManualChatModal } from './components/ManualChatModal';
+import { MessageBox } from './components/messageBoxLocators';
 import { NodeCreator } from './components/NodeCreator';
 import { SaveChangesModal } from './components/SaveChangesModal';
 import { StickyComponent } from './components/StickyComponent';
@@ -19,6 +21,7 @@ export class CanvasPage extends BasePage {
 
 	readonly sticky = new StickyComponent(this.page);
 	readonly logsPanel = new LogsPanel(this.page.getByTestId('logs-panel'));
+	readonly manualChat = new ManualChatModal(this.page.getByTestId('canvas-chat'));
 	readonly focusPanel = new FocusPanel(this.page.getByTestId('focus-panel'));
 	readonly credentialModal = CredentialModal.fromPage(this.page);
 	readonly nodeCreator = new NodeCreator(this.page);
@@ -388,6 +391,10 @@ export class CanvasPage extends BasePage {
 		return this.page.locator('.el-select-dropdown:visible');
 	}
 
+	getTagDropdownItems(): Locator {
+		return this.getVisibleDropdown().locator('li');
+	}
+
 	getTagItemsInDropdown(): Locator {
 		return this.getVisibleDropdown().locator('[data-test-id="tag"].tag');
 	}
@@ -487,11 +494,9 @@ export class CanvasPage extends BasePage {
 	}
 
 	async confirmIgnoreAllForAllWorkflows(): Promise<void> {
-		await expect(this.page.locator('.el-message-box')).toBeVisible();
-		await this.page
-			.locator('.el-message-box__btns button')
-			.filter({ hasText: /ignore for all workflows/i })
-			.click();
+		const messageBox = new MessageBox(this.page);
+		await expect(messageBox.root).toBeVisible();
+		await messageBox.buttonByText(/ignore for all workflows/i).click();
 	}
 
 	async duplicateNode(nodeName: string): Promise<void> {
@@ -648,6 +653,12 @@ export class CanvasPage extends BasePage {
 		);
 	}
 
+	getAddConnectionButtonBetweenNodes(sourceNodeName: string, targetNodeName: string): Locator {
+		return this.connectionToolbarBetweenNodes(sourceNodeName, targetNodeName).getByTestId(
+			'add-connection-button',
+		);
+	}
+
 	// Canvas action helpers
 	async addNodeBetweenNodes(
 		sourceNodeName: string,
@@ -764,21 +775,19 @@ export class CanvasPage extends BasePage {
 	}
 
 	getManualChatModal(): Locator {
-		return this.page.getByTestId('canvas-chat');
+		return this.manualChat.get();
 	}
 
 	getManualChatInput(): Locator {
-		return this.getManualChatModal().locator('.chat-inputs textarea');
+		return this.manualChat.getInput();
 	}
 
 	getManualChatMessages(): Locator {
-		return this.getManualChatModal().locator('.chat-messages-list .chat-message');
+		return this.manualChat.getMessages();
 	}
 
 	getManualChatLatestBotMessage(): Locator {
-		return this.getManualChatModal()
-			.locator('.chat-messages-list .chat-message.chat-message-from-bot')
-			.last();
+		return this.manualChat.getLatestBotMessage();
 	}
 
 	getWaitingNodes(): Locator {
@@ -830,7 +839,7 @@ export class CanvasPage extends BasePage {
 	}
 
 	getChatPanel(): Locator {
-		return this.page.getByTestId('canvas-chat');
+		return this.manualChat.get();
 	}
 
 	// Input plus endpoints (to add supplemental nodes to parent inputs)

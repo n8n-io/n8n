@@ -2,13 +2,17 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { ApiKey, User, UserRepository } from '@n8n/db';
 import { PROJECT_EDITOR_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
 import type { IWorkflowBase } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { UrlService } from '@/services/url.service';
 import type { InviteEmailData, PasswordResetData } from '@/user-management/email/interfaces';
 import { NodeMailer } from '@/user-management/email/node-mailer';
 import { UserManagementMailer } from '@/user-management/email/user-management-mailer';
+
+// This suite renders real email templates from disk; opt out of the global fs mocks.
+vi.unmock('node:fs/promises');
+vi.unmock('fs/promises');
 
 describe('UserManagementMailer', () => {
 	const email = 'test@user.com';
@@ -23,7 +27,7 @@ describe('UserManagementMailer', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		nodeMailer.sendMail.mockResolvedValue({ emailSent: true });
 	});
 

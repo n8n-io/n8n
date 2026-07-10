@@ -18,8 +18,8 @@ import ResourceLocatorDropdown from '../ResourceLocator/ResourceLocatorDropdown.
 import ParameterIssues from '../ParameterIssues.vue';
 import { onClickOutside } from '@vueuse/core';
 import { useRouter } from 'vue-router';
-import { useWorkflowResourceLocatorDropdown } from '../../composables/useWorkflowResourceLocatorDropdown';
-import { useWorkflowResourceLocatorModes } from '../../composables/useWorkflowResourceLocatorModes';
+import { useResourceLocatorDropdown } from '../../composables/useResourceLocatorDropdown';
+import { useResourceLocatorModes } from '../../composables/useResourceLocatorModes';
 import { useWorkflowResourcesLocator } from '../../composables/useWorkflowResourcesLocator';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -91,18 +91,6 @@ const toast = useToast();
 const width = ref(0);
 const inputRef = ref<HTMLInputElement | undefined>();
 
-const { isListMode, getUpdatedModePayload, selectedMode, supportedModes, getModeLabel } =
-	useWorkflowResourceLocatorModes(
-		computed(() => props.modelValue),
-		router,
-	);
-const { hideDropdown, isDropdownVisible, showDropdown } = useWorkflowResourceLocatorDropdown(
-	isListMode,
-	inputRef,
-);
-
-const { onDocumentVisible } = useDocumentVisibility();
-
 const {
 	hasMoreWorkflowsToLoad,
 	isLoadingResources,
@@ -116,6 +104,19 @@ const {
 	getWorkflowUrl,
 	workflowsResources,
 } = useWorkflowResourcesLocator(router);
+
+const { isListMode, getUpdatedModePayload, selectedMode, supportedModes, getModeLabel } =
+	useResourceLocatorModes(
+		computed(() => props.modelValue),
+		getWorkflowName,
+	);
+
+const { hideDropdown, isDropdownVisible, showDropdown } = useResourceLocatorDropdown(
+	isListMode,
+	inputRef,
+);
+
+const { onDocumentVisible } = useDocumentVisibility();
 
 const currentProjectName = computed(() => {
 	if (!projectStore.isTeamProjectFeatureEnabled) return '';

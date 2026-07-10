@@ -4,8 +4,11 @@ import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	formatWorkflowStructureIssuePath,
+	isSafeObjectProperty,
 	resolveNodeWebhookId,
+	resolveVariables,
 	safeParseWorkflowStructure,
+	summarizeDynamicCredentialsUsage,
 	validateNodeSelectionForGrouping,
 	type IDataObject,
 	type INode,
@@ -382,6 +385,11 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 		// extract credentials types
 		const allNodeCredentials = Object.entries(node.credentials);
 		for (const [nodeCredentialType, nodeCredentials] of allNodeCredentials) {
+			// Reject credential types that resolve to object internals,
+			// so the dynamic lookups and writes below cannot reach the prototype chain.
+			if (!isSafeObjectProperty(nodeCredentialType)) {
+				continue;
+			}
 			// Skip undefined/null credentials (e.g. from SDK's newCredential() which serializes to undefined)
 			if (nodeCredentials === null || nodeCredentials === undefined) {
 				continue;
@@ -491,18 +499,7 @@ export async function getVariables(workflowId?: string, projectId?: string): Pro
 	// Either projectId passed or use project from workflow
 	const projectIdToUse = projectId ?? project?.id;
 
-	return Object.freeze(
-		variables.reduce((acc, curr) => {
-			if (!curr.project) {
-				// always set globals
-				acc[curr.key] = curr.value;
-			} else if (projectIdToUse && curr.project.id === projectIdToUse) {
-				// project variables override globals
-				acc[curr.key] = curr.value;
-			}
-			return acc;
-		}, {} as IDataObject),
-	);
+	return Object.freeze(resolveVariables(variables, projectIdToUse));
 }
 
 /**
@@ -562,6 +559,46 @@ export async function updateParentExecutionWithChildResults(
 	const nodeExecutionStack = parentWithSubWorkflowResults.data.executionData?.nodeExecutionStack;
 	if (!nodeExecutionStack || nodeExecutionStack?.length === 0) {
 		return;
+	}
+
+	// On resume the parent's flagged 'waiting' task is popped and the node re-runs disabled
+	// (never calling `executeWorkflow` again), so the child's private-credential usage must
+	// ride on the stack entry to reach the freshly stamped task (see `WorkflowExecute`).
+	const dynamicCredentialsUsage = summarizeDynamicCredentialsUsage(subworkflowResults.data);
+	if (Object.keys(dynamicCredentialsUsage).length > 0) {
+		// Union with a sibling child's earlier report ("run once for each item" spawns several
+		// children per wait) — flags only ever accumulate, like every other flag writer.
+		nodeExecutionStack[0].metadata = {
+			...nodeExecutionStack[0].metadata,
+			dynamicCredentialsUsage: {
+				...nodeExecutionStack[0].metadata?.dynamicCredentialsUsage,
+				...dynamicCredentialsUsage,
+			},
+		};
+
+		// Also stamp the parent's waiting task and runtime data right away: the parent may sit
+		// in 'waiting' for a long time with the child's output already embedded in its data,
+		// and redaction scans runData task flags. The resume pops this task; the stash above
+		// restores the flags onto its replacement.
+		const waitingTasks =
+			parentWithSubWorkflowResults.data.resultData?.runData?.[nodeExecutionStack[0].node.name];
+		const waitingTask = waitingTasks?.[waitingTasks.length - 1];
+		if (waitingTask) {
+			if (dynamicCredentialsUsage.usedDynamicCredentials) {
+				waitingTask.usedDynamicCredentials = true;
+			}
+			if (dynamicCredentialsUsage.attemptedDynamicCredentials) {
+				waitingTask.attemptedDynamicCredentials = true;
+			}
+		}
+		const { runtimeData } = parentWithSubWorkflowResults.data.executionData ?? {};
+		if (
+			dynamicCredentialsUsage.usedDynamicCredentials &&
+			dynamicCredentialsUsage.dynamicCredentialsResolvedUserId &&
+			runtimeData
+		) {
+			runtimeData.executedByUserId = dynamicCredentialsUsage.dynamicCredentialsResolvedUserId;
+		}
 	}
 
 	if (subworkflowError) {

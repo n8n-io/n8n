@@ -1,7 +1,8 @@
+import type { Mocked } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Logger } from '@n8n/backend-common';
 import type { OAuthClient } from '../database/entities/oauth-client.entity';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.service';
 import { OAuthConsentService } from '../oauth-consent.service';
@@ -13,33 +14,31 @@ import {
 	type ProtectedResource,
 } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
+import type { User } from '@n8n/db';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 const issuer = 'https://n8n.example.com';
 
-let logger: jest.Mocked<Logger>;
-let oauthSessionService: jest.Mocked<OAuthSessionService>;
-let oauthClientRepository: jest.Mocked<OAuthClientRepository>;
-let userConsentRepository: jest.Mocked<UserConsentRepository>;
-let authorizationCodeService: jest.Mocked<OAuthAuthorizationCodeService>;
-let protectedResourceRegistry: jest.Mocked<ProtectedResourceRegistry>;
-let urlService: jest.Mocked<UrlService>;
+let logger: Mocked<Logger>;
+let oauthSessionService: Mocked<OAuthSessionService>;
+let oauthClientRepository: Mocked<OAuthClientRepository>;
+let userConsentRepository: Mocked<UserConsentRepository>;
+let authorizationCodeService: Mocked<OAuthAuthorizationCodeService>;
+let protectedResourceRegistry: Mocked<ProtectedResourceRegistry>;
+let urlService: Mocked<UrlService>;
 let service: OAuthConsentService;
 
 describe('OAuthConsentService', () => {
 	beforeAll(() => {
 		logger = mockInstance(Logger);
-		oauthSessionService = mockInstance(OAuthSessionService) as jest.Mocked<OAuthSessionService>;
-		oauthClientRepository = mockInstance(
-			OAuthClientRepository,
-		) as jest.Mocked<OAuthClientRepository>;
-		userConsentRepository = mockInstance(
-			UserConsentRepository,
-		) as jest.Mocked<UserConsentRepository>;
+		oauthSessionService = mockInstance(OAuthSessionService) as Mocked<OAuthSessionService>;
+		oauthClientRepository = mockInstance(OAuthClientRepository) as Mocked<OAuthClientRepository>;
+		userConsentRepository = mockInstance(UserConsentRepository) as Mocked<UserConsentRepository>;
 		authorizationCodeService = mockInstance(OAuthAuthorizationCodeService);
 		protectedResourceRegistry = mockInstance(
 			ProtectedResourceRegistry,
-		) as jest.Mocked<ProtectedResourceRegistry>;
-		urlService = mockInstance(UrlService) as jest.Mocked<UrlService>;
+		) as Mocked<ProtectedResourceRegistry>;
+		urlService = mockInstance(UrlService) as Mocked<UrlService>;
 
 		service = new OAuthConsentService(
 			logger,
@@ -53,7 +52,7 @@ describe('OAuthConsentService', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		urlService.getInstanceBaseUrl.mockReturnValue(issuer);
 	});
 
@@ -74,7 +73,7 @@ describe('OAuthConsentService', () => {
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
 			oauthClientRepository.findOne.mockResolvedValue(client);
 
-			const result = await service.getConsentDetails(sessionToken);
+			const result = await service.getConsentDetails(sessionToken, mock<User>({ id: 'user-id' }));
 
 			expect(result).toEqual({
 				ok: true,
@@ -101,7 +100,7 @@ describe('OAuthConsentService', () => {
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
 			oauthClientRepository.findOne.mockResolvedValue(null);
 
-			const result = await service.getConsentDetails(sessionToken);
+			const result = await service.getConsentDetails(sessionToken, mock<User>({ id: 'user-id' }));
 
 			expect(result).toBeNull();
 		});
@@ -113,7 +112,7 @@ describe('OAuthConsentService', () => {
 				throw new Error('Invalid session');
 			});
 
-			const result = await service.getConsentDetails(sessionToken);
+			const result = await service.getConsentDetails(sessionToken, mock<User>({ id: 'user-id' }));
 
 			expect(result).toBeNull();
 			expect(logger.error).toHaveBeenCalledWith('Error getting consent details', {
@@ -137,7 +136,7 @@ describe('OAuthConsentService', () => {
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
 			oauthClientRepository.findOne.mockResolvedValue(client);
 
-			const result = await service.getConsentDetails(sessionToken);
+			const result = await service.getConsentDetails(sessionToken, mock<User>({ id: 'user-id' }));
 
 			expect(result).toEqual({
 				ok: true,
@@ -161,10 +160,10 @@ describe('OAuthConsentService', () => {
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
 			oauthClientRepository.findOne.mockResolvedValue(client);
 			protectedResourceRegistry.getByResourceUrl.mockResolvedValue(
-				mock<ProtectedResource>({ displayName: 'My Workflow' }),
+				mock<ProtectedResource>({ displayName: 'My Workflow', authorize: async () => true }),
 			);
 
-			const result = await service.getConsentDetails(sessionToken);
+			const result = await service.getConsentDetails(sessionToken, mock<User>({ id: 'user-id' }));
 
 			expect(result).toEqual({
 				ok: true,
@@ -192,10 +191,14 @@ describe('OAuthConsentService', () => {
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
 			oauthClientRepository.findOne.mockResolvedValue(client);
 			protectedResourceRegistry.getByResourceUrl.mockResolvedValue(
-				mock<ProtectedResource>({ id: 'instance-mcp', displayName: undefined }),
+				mock<ProtectedResource>({
+					id: 'instance-mcp',
+					displayName: undefined,
+					authorize: async () => true,
+				}),
 			);
 
-			const result = await service.getConsentDetails(sessionToken);
+			const result = await service.getConsentDetails(sessionToken, mock<User>({ id: 'user-id' }));
 
 			expect(result).toEqual({
 				ok: true,
@@ -221,7 +224,7 @@ describe('OAuthConsentService', () => {
 			oauthClientRepository.findOne.mockResolvedValue(client);
 			protectedResourceRegistry.getByResourceUrl.mockResolvedValue(undefined);
 
-			const result = await service.getConsentDetails(sessionToken);
+			const result = await service.getConsentDetails(sessionToken, mock<User>({ id: 'user-id' }));
 
 			expect(result).toEqual({ ok: false, reason: 'resource_unavailable' });
 		});
@@ -240,7 +243,11 @@ describe('OAuthConsentService', () => {
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
 
-			const result = await service.handleConsentDecision(sessionToken, userId, false);
+			const result = await service.handleConsentDecision(
+				sessionToken,
+				mock<User>({ id: userId }),
+				false,
+			);
 
 			expect(result.redirectUrl).toContain('error=access_denied');
 			expect(result.redirectUrl).toContain(
@@ -270,8 +277,15 @@ describe('OAuthConsentService', () => {
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
 			userConsentRepository.upsert.mockResolvedValue(mock());
 			authorizationCodeService.createAuthorizationCode.mockResolvedValue(authCode);
+			protectedResourceRegistry.getByResourceUrl.mockResolvedValue(
+				mock<ProtectedResource>({ authorize: async () => true }),
+			);
 
-			const result = await service.handleConsentDecision(sessionToken, userId, true);
+			const result = await service.handleConsentDecision(
+				sessionToken,
+				mock<User>({ id: userId }),
+				true,
+			);
 
 			expect(result.redirectUrl).toContain('code=generated-auth-code');
 			expect(result.redirectUrl).toContain('state=state-xyz');
@@ -298,6 +312,29 @@ describe('OAuthConsentService', () => {
 			});
 		});
 
+		it('should throw ForbiddenError when the user is not authorized for the resource', async () => {
+			const sessionToken = 'valid-session-token';
+			const sessionPayload = {
+				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge-abc',
+				state: 'state-xyz',
+				resource: 'https://n8n.example.com/mcp-server/http',
+			};
+
+			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
+			protectedResourceRegistry.getByResourceUrl.mockResolvedValue(
+				mock<ProtectedResource>({ authorize: async () => false }),
+			);
+
+			await expect(
+				service.handleConsentDecision(sessionToken, mock<User>({ id: 'user-123' }), true),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(userConsentRepository.upsert).not.toHaveBeenCalled();
+			expect(authorizationCodeService.createAuthorizationCode).not.toHaveBeenCalled();
+		});
+
 		it('should handle approval without state parameter', async () => {
 			const sessionToken = 'valid-session-token';
 			const userId = 'user-123';
@@ -313,7 +350,11 @@ describe('OAuthConsentService', () => {
 			userConsentRepository.upsert.mockResolvedValue(mock());
 			authorizationCodeService.createAuthorizationCode.mockResolvedValue(authCode);
 
-			const result = await service.handleConsentDecision(sessionToken, userId, true);
+			const result = await service.handleConsentDecision(
+				sessionToken,
+				mock<User>({ id: userId }),
+				true,
+			);
 
 			expect(result.redirectUrl).toContain('code=generated-auth-code');
 			expect(result.redirectUrl).not.toContain('state=');
@@ -343,9 +384,9 @@ describe('OAuthConsentService', () => {
 			authorizationCodeService.createAuthorizationCode.mockResolvedValue(authCode);
 
 			// First authorization
-			await service.handleConsentDecision(sessionToken, userId, true);
+			await service.handleConsentDecision(sessionToken, mock<User>({ id: userId }), true);
 			// Re-authorization with same userId + clientId should not throw
-			await service.handleConsentDecision(sessionToken, userId, true);
+			await service.handleConsentDecision(sessionToken, mock<User>({ id: userId }), true);
 
 			expect(userConsentRepository.upsert).toHaveBeenCalledTimes(2);
 			expect(userConsentRepository.upsert).toHaveBeenCalledWith(
@@ -366,9 +407,9 @@ describe('OAuthConsentService', () => {
 				throw new Error('Invalid session');
 			});
 
-			await expect(service.handleConsentDecision(sessionToken, userId, true)).rejects.toThrow(
-				'Invalid or expired session',
-			);
+			await expect(
+				service.handleConsentDecision(sessionToken, mock<User>({ id: userId }), true),
+			).rejects.toThrow('Invalid or expired session');
 		});
 
 		it('should handle denial without state parameter', async () => {
@@ -383,7 +424,11 @@ describe('OAuthConsentService', () => {
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
 
-			const result = await service.handleConsentDecision(sessionToken, userId, false);
+			const result = await service.handleConsentDecision(
+				sessionToken,
+				mock<User>({ id: userId }),
+				false,
+			);
 
 			expect(result.redirectUrl).toContain('error=access_denied');
 			expect(result.redirectUrl).not.toContain('state=');

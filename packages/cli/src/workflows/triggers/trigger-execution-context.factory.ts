@@ -1,5 +1,7 @@
 import { Logger } from '@n8n/backend-common';
+import type { IWorkflowDb } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import {
 	ErrorReporter,
 	PollContext,
@@ -8,11 +10,8 @@ import {
 	type IGetExecutePollFunctions,
 	type IGetExecuteTriggerFunctions,
 } from 'n8n-core';
-
-import { ActiveExecutions } from '@/active-executions';
 import type {
 	ExecutionError,
-	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	INode,
 	INodeExecutionData,
@@ -24,6 +23,7 @@ import type {
 } from 'n8n-workflow';
 import { Workflow, UnexpectedError, createRunExecutionData } from 'n8n-workflow';
 
+import { ActiveExecutions } from '@/active-executions';
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import { EventService } from '@/events/event.service';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
@@ -31,7 +31,6 @@ import { ExecutionService } from '@/executions/execution.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
-import type { IWorkflowDb } from '@n8n/db';
 
 export type TriggerFailureHandler = (opts: {
 	error: Error;
@@ -273,24 +272,24 @@ export class TriggerExecutionContextFactory {
 	}
 
 	/**
-	 * Load the published workflow nodes/connections from the
-	 * `workflow_published_version` table. The passed-in workflow is used
-	 * for all other fields (staticData, settings, etc.).
+	 * Builds the {@link IWorkflowBase} to execute for an active trigger from the cached
+	 * published data. `pinData` and `meta` are deliberately left out — they are
+	 * irrelevant to a production trigger execution.
 	 *
 	 * TODO: Add error handling / fallback strategy for transient DB failures.
 	 */
-	async loadPublishedWorkflowData(initialWorkflowData: IWorkflowDb): Promise<IWorkflowBase> {
-		const publishedData = await this.workflowPublishedDataService.getPublishedWorkflowData(
-			initialWorkflowData.id,
-		);
+	async loadPublishedWorkflowData(workflowId: string): Promise<IWorkflowBase> {
+		const publishedData =
+			await this.workflowPublishedDataService.getCachedPublishedWorkflowDataForExecution(
+				workflowId,
+			);
 
 		if (!publishedData) {
 			throw new UnexpectedError('Published version not found for workflow', {
-				extra: { workflowId: initialWorkflowData.id },
+				extra: { workflowId },
 			});
 		}
 
-		const { nodes, connections } = publishedData.publishedVersion;
-		return { ...initialWorkflowData, nodes, connections };
+		return publishedData;
 	}
 }

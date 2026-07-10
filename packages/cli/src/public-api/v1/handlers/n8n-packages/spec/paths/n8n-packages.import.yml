@@ -6,13 +6,12 @@ post:
     - N8nPackage
   summary: 'Beta: Import an n8n package into a project'
   description: |
-    **Beta — disabled by default.** Set `N8N_PUBLIC_API_PACKAGES_ENABLED=true` on the
-    instance to enable this endpoint. While disabled, requests return `404`.
+    **Beta** — breaking changes may still occur without major version bump.
 
     Imports a gzip-compressed tar package (`.n8np`) into the target project. Send the
     archive as the multipart field `package`. Optional routing uses form fields
     `projectId` and `folderId` (omit or send empty for defaults). The optional
-    `credentialMatchingMode`, `credentialMissingMode`, `credentialBindings`,
+    `credentialMatchingMode`, `credentialMissingMode`, `bindings`,
     `workflowIdPolicy`, and `workflowPublishingPolicy` fields take their defaults when omitted. The required
     `workflowConflictPolicy` field controls what happens when a package workflow
     matches an existing workflow by source id in the target project. Maximum upload
@@ -24,9 +23,8 @@ post:
     fresh local id; imported workflows arrive inactive unless `workflowPublishingPolicy`
     publishes them after import.
 
-    Credential references are resolved before any workflow is written. Only credentials owned by the
-    target project (with `credential:read`) or global credentials (with `credential:read`)
-    match. Credentials shared into the project as `credential:user` are not matched.
+    Credential references are resolved before any workflow is written. Credentials owned by,
+    shared with, or global to the target project (with `credential:read`) match.
   requestBody:
     required: true
     content:
@@ -55,10 +53,18 @@ post:
               type: string
               enum:
                 - id-only
+                - name-and-type
+                - type-only
               default: id-only
               description: >
                 How credential references in `requirements.credentials` are matched on
-                the target instance. Only `id-only` is supported today.
+                the target instance. `id-only` (default) matches by id. `name-and-type`
+                matches credentials with the exact same name and type. `type-only`
+                matches any credential of the same type. For `name-and-type` and
+                `type-only`, candidates are ranked by scope — a credential owned by
+                the target project wins over one merely shared into it, which in
+                turn wins over a global credential; if several candidates remain
+                in the winning scope, the most recently updated one is chosen.
             credentialMissingMode:
               type: string
               enum:
@@ -70,14 +76,16 @@ post:
                 `create-stub` (default) creates empty credential placeholders in
                 the target project for missing references. `must-preexist`
                 requires every referenced credential to already exist.
-            credentialBindings:
+            bindings:
               type: string
               default: '{}'
               description: >
-                Optional JSON object mapping credential ids from the package
-                manifest to credential ids on the target instance. These explicit
-                bindings are validated and applied before `credentialMatchingMode`
-                resolution runs.
+                Optional JSON object of explicit source→target id bindings, keyed
+                by entity type. Only `credentials` is supported today: send
+                `{"credentials":{"<packageCredentialId>":"<targetCredentialId>"}}`
+                to map credential ids from the package to credential ids
+                on the target instance. These explicit bindings are validated on type and
+                applied before `credentialMatchingMode` resolution runs.
             workflowConflictPolicy:
               type: string
               enum:

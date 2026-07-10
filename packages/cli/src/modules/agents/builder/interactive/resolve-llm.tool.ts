@@ -1,19 +1,16 @@
-import { Tool } from '@n8n/agents/tool';
 import type { BuiltTool, CredentialListItem, CredentialProvider } from '@n8n/agents';
+import { Tool } from '@n8n/agents/tool';
+import { isModelDiscoveryProvider } from '@n8n/ai-utilities/model-discovery';
 import { z } from 'zod';
 
 import { BUILDER_TOOLS } from '../builder-tool-names';
-import {
-	LLM_PROVIDER_DEFAULTS,
-	type LlmProviderDefault,
-	type ModelLookupConfig,
-} from './llm-provider-defaults';
+import { LLM_PROVIDER_DEFAULTS, type LlmProviderDefault } from './llm-provider-defaults';
 
 export interface ModelLookup {
 	list(
 		credentialId: string,
 		credentialType: string,
-		lookup: ModelLookupConfig,
+		provider: string,
 	): Promise<Array<{ name: string; value: string }>>;
 }
 
@@ -52,13 +49,13 @@ async function resolveModelAgainstLookup(
 	modelLookup: ModelLookup,
 ) {
 	const trimmedModel = requestedModel.trim();
-	if (!defaults.modelLookup || !trimmedModel) {
+	if (!isModelDiscoveryProvider(defaults.provider) || !trimmedModel) {
 		return toLlmResolution(credential, defaults, requestedModel);
 	}
 
 	let availableModels: Array<{ name: string; value: string }>;
 	try {
-		availableModels = await modelLookup.list(credential.id, credential.type, defaults.modelLookup);
+		availableModels = await modelLookup.list(credential.id, credential.type, defaults.provider);
 	} catch (error) {
 		return {
 			ok: false as const,
@@ -94,8 +91,9 @@ async function resolveModelAgainstLookup(
 export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 	return new Tool(BUILDER_TOOLS.RESOLVE_LLM)
 		.description(
-			'Resolve the agent main LLM without showing a picker. Use this when the user ' +
-				'explicitly requests a provider/model, or when a fresh agent needs its main LLM set. ' +
+			'Resolve the agent main LLM without showing a picker. ' +
+				'Only call this when the user explicitly names a provider or model — do NOT call it ' +
+				'at the start of a conversation or proactively for fresh agents. ' +
 				'If provider is given, resolves only that provider; if model is omitted, uses the ' +
 				'provider default model. For "Anthropic via OpenRouter", pass provider="openrouter" ' +
 				'and omit model unless the user named a concrete OpenRouter model id. Returns ok=false ' +

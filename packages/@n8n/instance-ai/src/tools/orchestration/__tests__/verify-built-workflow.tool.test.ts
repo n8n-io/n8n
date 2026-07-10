@@ -8,12 +8,13 @@ import type {
 	OrchestrationContext,
 	WorkflowTaskService,
 } from '../../../types';
-import { createRemediation } from '../../../workflow-loop/remediation';
+import { createRemediation, MAX_VERIFY_ATTEMPTS } from '../../../workflow-loop/remediation';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 import { createVerifyBuiltWorkflowTool } from '../verify-built-workflow.tool';
 
 type VerifyBuiltWorkflowOutput = {
 	success: boolean;
+	resolvedWorkItemId?: string;
 	error?: string;
 	executionId?: string;
 	status?: string;
@@ -30,25 +31,28 @@ type VerifyBuiltWorkflowOutput = {
 	simulationNote?: string;
 	lastNodeExecuted?: string;
 	nodesNotReached?: string[];
+	nodeErrors?: Array<{ nodeName: string; message?: string }>;
 	coverageNote?: string;
 	data?: Record<string, unknown>;
 	remediation?: { category: string; shouldEdit: boolean; reason?: string };
 };
 
 function createContext(overrides: Partial<OrchestrationContext> = {}): OrchestrationContext {
+	const defaultBuildOutcome = {
+		workItemId: 'wi_1',
+		taskId: 'task_1',
+		workflowId: 'wf_1',
+		submitted: true,
+		triggerType: 'manual_or_testable',
+		nodeSimulationPlan: [],
+		needsUserInput: false,
+		summary: 'Built',
+	};
 	const workflowTaskService = {
 		reportBuildOutcome: vi.fn(),
 		reportVerificationVerdict: vi.fn(),
-		getBuildOutcome: vi.fn().mockResolvedValue({
-			workItemId: 'wi_1',
-			taskId: 'task_1',
-			workflowId: 'wf_1',
-			submitted: true,
-			triggerType: 'manual_or_testable',
-			nodeSimulationPlan: [],
-			needsUserInput: false,
-			summary: 'Built',
-		}),
+		getBuildOutcome: vi.fn().mockResolvedValue(defaultBuildOutcome),
+		getLatestBuildOutcomeForWorkflow: vi.fn().mockResolvedValue(defaultBuildOutcome),
 		getWorkflowLoopState: vi.fn(),
 		updateBuildOutcome: vi.fn(),
 	};
@@ -59,7 +63,6 @@ function createContext(overrides: Partial<OrchestrationContext> = {}): Orchestra
 		userId: 'user_1',
 		orchestratorAgentId: 'agent_1',
 		modelId: 'test-model',
-		subAgentMaxSteps: 5,
 		eventBus: {} as OrchestrationContext['eventBus'],
 		logger: {
 			debug: vi.fn(),
@@ -161,6 +164,70 @@ describe('verify-built-workflow tool — remediation guard', () => {
 			reason: 'runtime_failure',
 		});
 		expect(context.workflowTaskService!.reportVerificationVerdict).not.toHaveBeenCalled();
+	});
+
+	it('does not treat unresolved placeholders as setup when the execution error is code-fixable', async () => {
+		const context = createContext();
+		vi.mocked(context.workflowTaskService!.getBuildOutcome).mockResolvedValue({
+			workItemId: 'wi_1',
+			taskId: 'task_1',
+			workflowId: 'wf_1',
+			submitted: true,
+			triggerType: 'manual_or_testable',
+			nodeSimulationPlan: [],
+			needsUserInput: false,
+			hasUnresolvedPlaceholders: true,
+			summary: 'Built',
+		});
+		vi.mocked(context.domainContext!.executionService.run).mockResolvedValue({
+			executionId: 'exec_1',
+			status: 'error',
+			error: 'Code node failed: Cannot read properties of undefined',
+		});
+		const tool = createVerifyBuiltWorkflowTool(context);
+
+		const result = await executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' });
+
+		expect(result.remediation).toMatchObject({
+			category: 'code_fixable',
+			shouldEdit: true,
+			reason: 'runtime_failure',
+		});
+		expect(context.workflowTaskService!.reportVerificationVerdict).not.toHaveBeenCalled();
+	});
+
+	it('routes execution errors from reached placeholder values to setup', async () => {
+		const context = createContext();
+		vi.mocked(context.workflowTaskService!.getBuildOutcome).mockResolvedValue({
+			workItemId: 'wi_1',
+			taskId: 'task_1',
+			workflowId: 'wf_1',
+			submitted: true,
+			triggerType: 'manual_or_testable',
+			nodeSimulationPlan: [],
+			needsUserInput: false,
+			hasUnresolvedPlaceholders: true,
+			summary: 'Built',
+		});
+		vi.mocked(context.domainContext!.executionService.run).mockResolvedValue({
+			executionId: 'exec_1',
+			status: 'error',
+			error: 'Invalid value <__PLACEHOLDER_VALUE__Your email address__>',
+		});
+		const tool = createVerifyBuiltWorkflowTool(context);
+
+		const result = await executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' });
+
+		expect(result.remediation).toMatchObject({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'mocked_credentials_or_placeholders',
+		});
+		expect(context.workflowTaskService!.reportVerificationVerdict).toHaveBeenCalledWith(
+			expect.objectContaining({
+				verdict: 'needs_user_input',
+			}),
+		);
 	});
 
 	it('returns terminal remediation even when verdict persistence and telemetry fail', async () => {
@@ -368,6 +435,7 @@ type ExecutionRunResult = {
 	data?: Record<string, unknown>;
 	executedNodeNames?: string[];
 	lastNodeExecuted?: string;
+	nodeErrors?: Array<{ nodeName: string; message?: string }>;
 	error?: string;
 };
 
@@ -380,13 +448,14 @@ interface VerifyToolContext {
 					...args: [
 						string,
 						Record<string, unknown> | undefined,
-						{ timeout?: number; pinData?: unknown },
+						{ timeout?: number; verificationPinData?: unknown },
 					]
 				) => Promise<ExecutionRunResult>
 			>;
 		};
 		workflowService?: InstanceAiWorkflowService;
 		dataTableService?: InstanceAiDataTableService;
+		credentialService?: { list: Mock };
 	};
 	logger: { debug: Mock; info: Mock; warn: Mock; error: Mock };
 }
@@ -413,8 +482,15 @@ function makeContext(
 	outcome: WorkflowBuildOutcome | undefined,
 	runResult: ExecutionRunResult,
 	overrides: {
-		workflowNodes?: Array<{ name?: string; type: string; parameters?: Record<string, unknown> }>;
+		workflowNodes?: Array<{
+			name?: string;
+			type: string;
+			parameters?: Record<string, unknown>;
+			credentials?: Record<string, unknown>;
+		}>;
+		workflowConnections?: Record<string, unknown>;
 		tableRows?: Record<string, Array<Record<string, unknown>>>;
+		availableCredentials?: Array<{ id: string; name: string; type: string }>;
 	} = {},
 ) {
 	const updateBuildOutcome = vi.fn(
@@ -426,7 +502,7 @@ function makeContext(
 		async (
 			_workflowId: string,
 			_inputData: Record<string, unknown> | undefined,
-			_options: { timeout?: number; pinData?: unknown },
+			_options: { timeout?: number; verificationPinData?: unknown },
 		): Promise<ExecutionRunResult> => {
 			await Promise.resolve();
 			return runResult;
@@ -462,9 +538,19 @@ function makeContext(
 	const workflowService = {
 		getAsWorkflowJSON: vi.fn(async () => {
 			await Promise.resolve();
-			return { nodes: overrides.workflowNodes ?? [] };
+			return {
+				nodes: overrides.workflowNodes ?? [],
+				connections: overrides.workflowConnections ?? {},
+			};
 		}),
 	} as unknown as InstanceAiWorkflowService;
+
+	const credentialService = {
+		list: vi.fn(async () => {
+			await Promise.resolve();
+			return overrides.availableCredentials ?? [];
+		}),
+	};
 
 	const dataTableService = {
 		queryRows,
@@ -486,6 +572,10 @@ function makeContext(
 				await Promise.resolve();
 				return outcome;
 			}),
+			getLatestBuildOutcomeForWorkflow: vi.fn(async () => {
+				await Promise.resolve();
+				return outcome;
+			}),
 			getWorkflowLoopState: vi.fn(),
 			updateBuildOutcome,
 		} as unknown as WorkflowTaskService,
@@ -493,6 +583,7 @@ function makeContext(
 			executionService: { run },
 			workflowService,
 			dataTableService,
+			credentialService,
 		},
 		logger,
 	};
@@ -502,11 +593,12 @@ function makeContext(
 async function runTool(
 	ctx: VerifyToolContext,
 	input: {
-		workItemId: string;
+		workItemId?: string;
 		workflowId: string;
 		inputData?: Record<string, unknown>;
 		includeData?: boolean;
 		maxDataChars?: number;
+		fixtureOverrides?: Record<string, Array<Record<string, unknown>>>;
 	},
 ) {
 	const tool = createVerifyBuiltWorkflowTool(ctx as unknown as OrchestrationContext);
@@ -540,6 +632,37 @@ describe('verify-built-workflow tool', () => {
 		});
 		expect(update.verification?.evidence?.nodesExecuted).toEqual(['Form Trigger', 'Insert Row']);
 		expect(typeof update.verification?.verifiedAt).toBe('string');
+	});
+
+	it('increments the verify attempt count on the build outcome each run', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(makeBuildOutcome({ verifyAttempts: 2 }), {
+			executionId: 'exec-count',
+			status: 'success',
+			data: { 'Manual Trigger': [{ ok: true }] },
+		});
+
+		await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(updateBuildOutcome.mock.calls[0][1].verifyAttempts).toBe(3);
+	});
+
+	it('blocks verification once the verify attempt budget is exhausted', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(
+			makeBuildOutcome({ verifyAttempts: MAX_VERIFY_ATTEMPTS }),
+			{ executionId: 'exec-exhausted', status: 'success', data: {} },
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(false);
+		expect(result.remediation).toMatchObject({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'verify_budget_exhausted',
+		});
+		expect(result.error).toContain('executions(action="run")');
+		expect(ctx.domainContext.executionService.run).not.toHaveBeenCalled();
+		expect(updateBuildOutcome).not.toHaveBeenCalled();
 	});
 
 	it('returns compact verification evidence by default without full execution data', async () => {
@@ -633,6 +756,44 @@ describe('verify-built-workflow tool', () => {
 		expect(result.success).toBe(false);
 		expect(result.error).toMatch(/No build outcome found/);
 		expect(updateBuildOutcome).not.toHaveBeenCalled();
+	});
+
+	it('resolves the latest build outcome by workflow ID when work item ID is omitted', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(
+			makeBuildOutcome({ workItemId: 'wi-latest', workflowId: 'wf-1' }),
+			{
+				executionId: 'exec-latest',
+				status: 'success',
+				data: { 'Manual Trigger': [{ ok: true }] },
+			},
+		);
+
+		const result = await runTool(ctx, { workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(result.resolvedWorkItemId).toBe('wi-latest');
+		expect(ctx.workflowTaskService.getBuildOutcome).not.toHaveBeenCalled();
+		expect(ctx.workflowTaskService.getLatestBuildOutcomeForWorkflow).toHaveBeenCalledWith('wf-1');
+		expect(updateBuildOutcome.mock.calls[0][0]).toBe('wi-latest');
+	});
+
+	it('falls back to the workflow build outcome when the supplied work item ID is stale', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(
+			makeBuildOutcome({ workItemId: 'wi-latest', workflowId: 'wf-1' }),
+			{
+				executionId: 'exec-fallback',
+				status: 'success',
+				data: { 'Manual Trigger': [{ ok: true }] },
+			},
+		);
+		vi.mocked(ctx.workflowTaskService.getBuildOutcome).mockResolvedValueOnce(undefined);
+
+		const result = await runTool(ctx, { workItemId: 'wi-guessed', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(result.resolvedWorkItemId).toBe('wi-latest');
+		expect(ctx.workflowTaskService.getLatestBuildOutcomeForWorkflow).toHaveBeenCalledWith('wf-1');
+		expect(updateBuildOutcome.mock.calls[0][0]).toBe('wi-latest');
 	});
 
 	it('rejects verification when the requested workflow does not match the build outcome', async () => {
@@ -847,7 +1008,7 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		expect(run).toHaveBeenCalledTimes(1);
 		// Fixture items are passed unwrapped — the adapter wraps each in {json}.
 		expect(run.mock.calls[0][2]).toMatchObject({
-			pinData: {
+			verificationPinData: {
 				Gmail: [{ _mockedCredential: 'gmailOAuth2' }],
 				'Send Slack': [{ ok: true, ts: '1718000000.1' }],
 			},
@@ -866,8 +1027,76 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 
 		const run = vi.mocked(ctx.domainContext.executionService.run);
 		expect(run.mock.calls[0][2]).toMatchObject({
-			pinData: { 'Send Slack': [{}] },
+			verificationPinData: { 'Send Slack': [{}] },
 		});
+	});
+
+	it('passes source-declared read-node fixtures through verification pin data', async () => {
+		const reason = 'Source declares verification output for this node';
+		const weatherOutput = [{ daily: { precipitation_sum: [6.4] } }];
+		const { ctx } = makeContext(
+			makeBuildOutcome({
+				nodeSimulationPlan: [simulateVerdict('Get Berlin Weather', reason)],
+				simulationFixtures: { 'Get Berlin Weather': weatherOutput },
+			}),
+			{ executionId: 'exec-sim', status: 'success', data: {} },
+		);
+
+		await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		const run = vi.mocked(ctx.domainContext.executionService.run);
+		expect(run.mock.calls[0][2]).toMatchObject({
+			verificationPinData: { 'Get Berlin Weather': weatherOutput },
+		});
+	});
+
+	it('applies fixture overrides to simulated nodes for alternate verification scenarios', async () => {
+		const reason = 'Source declares verification output for this node';
+		const rainyOutput = [{ weather: [{ main: 'Rain' }] }];
+		const clearOutput = [{ weather: [{ main: 'Clear' }] }];
+		const { ctx } = makeContext(
+			makeBuildOutcome({
+				nodeSimulationPlan: [simulateVerdict('Get Berlin Forecast', reason)],
+				simulationFixtures: { 'Get Berlin Forecast': rainyOutput },
+			}),
+			{ executionId: 'exec-clear', status: 'success', data: {} },
+		);
+
+		const result = await runTool(ctx, {
+			workItemId: 'wi-1',
+			workflowId: 'wf-1',
+			fixtureOverrides: { 'Get Berlin Forecast': clearOutput },
+		});
+
+		expect(result.success).toBe(true);
+		const run = vi.mocked(ctx.domainContext.executionService.run);
+		expect(run.mock.calls[0][2]).toMatchObject({
+			verificationPinData: { 'Get Berlin Forecast': clearOutput },
+		});
+	});
+
+	it('rejects fixture overrides for nodes that are not simulated', async () => {
+		const { ctx } = makeContext(
+			makeBuildOutcome({
+				nodeSimulationPlan: [executeVerdict('Transform Rows')],
+			}),
+			{ executionId: 'exec-invalid-override', status: 'success', data: {} },
+		);
+
+		const result = await runTool(ctx, {
+			workItemId: 'wi-1',
+			workflowId: 'wf-1',
+			fixtureOverrides: { 'Transform Rows': [{ value: 1 }] },
+		});
+
+		expect(result.success).toBe(false);
+		expect(result.resolvedWorkItemId).toBe('wi-1');
+		expect(result.remediation).toMatchObject({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'invalid_fixture_override',
+		});
+		expect(ctx.domainContext.executionService.run).not.toHaveBeenCalled();
 	});
 
 	it('does not pin execute-verdict nodes', async () => {
@@ -881,7 +1110,7 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
 
 		const run = vi.mocked(ctx.domainContext.executionService.run);
-		expect(run.mock.calls[0][2]).toMatchObject({ pinData: undefined });
+		expect(run.mock.calls[0][2]).toMatchObject({ verificationPinData: undefined });
 	});
 
 	it('marks simulated nodes in previews and reports them with reasons', async () => {
@@ -967,6 +1196,68 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		expect(ctx.logger.warn).not.toHaveBeenCalled();
 	});
 
+	it('downgrades workflow success when an executed AI tool errored', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(makeBuildOutcome({ nodeSimulationPlan: [] }), {
+			executionId: 'exec-ai-tool-error',
+			status: 'success',
+			data: {
+				'API Request': [{ body: { city: 'Lisbon' } }],
+				'Destination Analyst': [{ output: '{"city":"Lisbon"}' }],
+				'Return Brief': [{ output: '{"city":"Lisbon"}' }],
+			},
+			executedNodeNames: [
+				'API Request',
+				'GPT Model',
+				'geocode_city',
+				'Destination Analyst',
+				'Return Brief',
+			],
+			nodeErrors: [
+				{
+					nodeName: 'geocode_city',
+					message:
+						'The node "@n8n/n8n-nodes-langchain.toolHttpRequest" has a "supplyData" method but no "execute" method.',
+				},
+			],
+			lastNodeExecuted: 'Return Brief',
+		});
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(false);
+		expect(result.nodeErrors).toHaveLength(1);
+		expect(result.nodeErrors?.[0]?.nodeName).toBe('geocode_city');
+		expect(result.nodeErrors?.[0]?.message).toContain('supplyData');
+		expect(result.error).toContain('geocode_city');
+		const verification = updateBuildOutcome.mock.calls[0][1].verification;
+		expect(verification?.success).toBe(false);
+		expect(verification?.status).toBe('success');
+		expect(verification?.failureSignature).toContain('geocode_city');
+		expect(verification?.evidence?.nodeErrors).toHaveLength(1);
+		expect(verification?.evidence?.nodeErrors?.[0]?.nodeName).toBe('geocode_city');
+		expect(verification?.evidence?.nodeErrors?.[0]?.message).toContain('supplyData');
+		expect(verification?.evidence?.errorMessage).toContain('geocode_city');
+	});
+
+	it('keeps needs_setup routing when a waiting execution also has node errors', async () => {
+		const { ctx } = makeContext(makeBuildOutcome({ nodeSimulationPlan: [] }), {
+			executionId: 'exec-waiting-node-error',
+			status: 'waiting',
+			data: {},
+			executedNodeNames: ['Lookup', 'Community Pause'],
+			nodeErrors: [{ nodeName: 'Lookup', message: 'lookup failed' }],
+		});
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(false);
+		expect(result.remediation).toMatchObject({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'execution_waiting',
+		});
+	});
+
 	it('reports planned simulations the execution never reached as unverified (empty-read dead-end)', async () => {
 		// Reproduces the order-fulfillment scenario: a data-table lookup on an
 		// empty table returns zero items mid-chain, so everything downstream —
@@ -1019,6 +1310,39 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		expect(result.coverageNote).toContain('Seed matching test data');
 	});
 
+	it('flags an items-dropped collapse with $input.all() guidance when a collection ran dry', async () => {
+		// INS-662: HTTP split a top-level array into N items, a Code node read $input.first() and emitted zero, downstream was skipped.
+		const { ctx } = makeContext(
+			makeBuildOutcome({
+				nodeSimulationPlan: [
+					executeVerdict('Get Top Stories'),
+					simulateVerdict('Post to Slack', 'Sends a message'),
+				],
+				simulationFixtures: { 'Post to Slack': [{ ok: true }] },
+			}),
+			{
+				executionId: 'exec-collapse',
+				status: 'success',
+				data: {
+					// HTTP Request split a bare array of IDs into three items.
+					'Get Top Stories': [{ json: 12345 }, { json: 12346 }, { json: 12347 }],
+				},
+				// The Code node ran but read $input.first(), so it emitted zero items.
+				executedNodeNames: ['Get Top Stories', 'Get Top N IDs'],
+				lastNodeExecuted: 'Get Top N IDs',
+			},
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(result.nodesNotReached).toEqual(['Post to Slack']);
+		expect(result.coverageNote).toContain('$input.all()');
+		expect(result.coverageNote).toContain('$input.first()');
+		// Must NOT misattribute the dead-end to an empty lookup.
+		expect(result.coverageNote).not.toContain('Seed matching test data');
+	});
+
 	it('persists unreached nodes in the verification evidence', async () => {
 		const { ctx, updateBuildOutcome } = makeContext(
 			makeBuildOutcome({
@@ -1069,5 +1393,106 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 
 		expect(result.success).toBe(true);
 		expect(deleteRows).not.toHaveBeenCalled();
+	});
+});
+
+describe('verify-built-workflow tool — stale mocked-credential plan', () => {
+	const mockedCredentialVerdict = {
+		nodeName: 'Notion',
+		verdict: 'simulate' as const,
+		reason: 'Credentials are not configured for this node',
+		confidence: 'high' as const,
+		source: 'deterministic' as const,
+	};
+	const staleOutcome = () =>
+		makeBuildOutcome({
+			mockedNodeNames: ['Notion'],
+			mockedCredentialTypes: ['notionApi'],
+			mockedCredentialsByNode: { Notion: ['notionApi'] },
+			nodeSimulationPlan: [mockedCredentialVerdict],
+			simulationFixtures: { Notion: [{ page: 'mock' }] },
+		});
+	const notionConnections = {
+		Trigger: { main: [[{ node: 'Notion', type: 'main', index: 0 }]] },
+	};
+
+	it('executes a node for real once its mocked credential was assigned after the build', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(
+			staleOutcome(),
+			{ executionId: 'exec-1', status: 'success', data: {} },
+			{
+				workflowNodes: [
+					{
+						name: 'Notion',
+						type: 'n8n-nodes-base.notion',
+						parameters: { operation: 'get' },
+						credentials: { notionApi: { id: 'cred-1', name: 'Notion' } },
+					},
+				],
+				workflowConnections: notionConnections,
+				availableCredentials: [{ id: 'cred-1', name: 'Notion', type: 'notionApi' }],
+			},
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(result.simulatedNodes).toBeUndefined();
+		const run = vi.mocked(ctx.domainContext.executionService.run);
+		expect(run.mock.calls[0][2]).toMatchObject({ verificationPinData: undefined });
+		expect(updateBuildOutcome).toHaveBeenCalledWith(
+			'wi-1',
+			expect.objectContaining({
+				mockedNodeNames: undefined,
+				mockedCredentialTypes: undefined,
+				mockedCredentialsByNode: undefined,
+				nodeSimulationPlan: [expect.objectContaining({ nodeName: 'Notion', verdict: 'execute' })],
+				simulationFixtures: undefined,
+			}),
+		);
+	});
+
+	it('keeps replaying the stored plan while the credential is still missing', async () => {
+		const { ctx } = makeContext(
+			staleOutcome(),
+			{ executionId: 'exec-1', status: 'success', data: {} },
+			{
+				workflowNodes: [
+					{ name: 'Notion', type: 'n8n-nodes-base.notion', parameters: { operation: 'get' } },
+				],
+				workflowConnections: notionConnections,
+			},
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.simulatedNodes).toBeUndefined(); // node not reached in this run result
+		const run = vi.mocked(ctx.domainContext.executionService.run);
+		expect(run.mock.calls[0][2]).toMatchObject({
+			verificationPinData: { Notion: [{ page: 'mock' }] },
+		});
+	});
+
+	it('proceeds with the stored plan when the live workflow cannot be loaded', async () => {
+		const { ctx } = makeContext(staleOutcome(), {
+			executionId: 'exec-1',
+			status: 'success',
+			data: {},
+		});
+		vi.mocked(ctx.domainContext.workflowService!.getAsWorkflowJSON).mockRejectedValue(
+			new Error('boom'),
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		const run = vi.mocked(ctx.domainContext.executionService.run);
+		expect(run.mock.calls[0][2]).toMatchObject({
+			verificationPinData: { Notion: [{ page: 'mock' }] },
+		});
+		expect(ctx.logger.warn).toHaveBeenCalledWith(
+			'verify-built-workflow: could not reconcile mocked-credential plan',
+			expect.objectContaining({ workItemId: 'wi-1' }),
+		);
 	});
 });

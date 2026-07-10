@@ -11,7 +11,7 @@ import { rawBodyReader } from '@/middlewares';
 import { createMultiFormDataParser } from '../webhook-form-data';
 
 // Formidable requires FS to store the uploaded files
-jest.unmock('node:fs');
+vi.unmock('node:fs');
 
 /** Test server for testing the form data parsing */
 class TestServer {

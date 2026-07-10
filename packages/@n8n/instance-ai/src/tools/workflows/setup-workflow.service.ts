@@ -5,14 +5,23 @@
  * Separated from the tool definition so the tool stays a thin suspend/resume
  * state machine, and this logic is testable independently.
  */
-import { findPlaceholderDetails } from '@n8n/utils';
+import { findPlaceholderDetails } from '@n8n/utils/placeholder';
 import type { IDataObject, NodeJSON, DisplayOptions, WorkflowJSON } from '@n8n/workflow-sdk';
 import { matchesDisplayOptions } from '@n8n/workflow-sdk';
 import type { IConnections, INode } from 'n8n-workflow';
 import { getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
+import {
+	assignCredentialToNode,
+	isAiGatewayManagedCredential,
+	resolveCredentialForApply,
+	toSetupNodeCredential,
+	type SetupNodeCredential,
+} from './credential-utils';
+import { coerceWrongKindListModeParams } from './detect-wrong-kind-locator';
 import type { SetupRequest } from './setup-workflow.schema';
+import { refreshWorkflowSourceFileBindingFromSave } from './workflow-file-bindings';
 import type { InstanceAiContext } from '../../types';
 
 // ── Credential cache ────────────────────────────────────────────────────────
@@ -313,12 +322,17 @@ async function resolveCredentialState(
 	const existingCredentials = sortedCreds.map((c) => ({ id: c.id, name: c.name }));
 
 	const existingOnNode = node.credentials?.[credentialType];
+	const existingCredentialId =
+		typeof existingOnNode?.id === 'string' && existingOnNode.id ? existingOnNode.id : undefined;
+	const hasExistingOnNode =
+		existingCredentialId !== undefined || isAiGatewayManagedCredential(existingOnNode);
 	// Only auto-apply when there is exactly one candidate. With multiple
 	// candidates, picking the first is a silent guess — surface the list
 	// so the setup wizard can prompt the user to choose.
-	const isAutoApplied = !existingOnNode?.id && existingCredentials.length === 1;
+	const isAutoApplied = !hasExistingOnNode && existingCredentials.length === 1;
 
-	const credToTest = existingOnNode?.id ?? (isAutoApplied ? existingCredentials[0]?.id : undefined);
+	const credToTest =
+		existingCredentialId ?? (isAutoApplied ? existingCredentials[0]?.id : undefined);
 	if (!credToTest) return { existingCredentials, isAutoApplied };
 
 	let testabilityPromise = cache?.testability.get(credentialType);
@@ -347,7 +361,7 @@ type RequestNodeCredentials = NonNullable<SetupRequest['node']['credentials']>;
 
 /** Build the optional `credentials` slice of a setup request's node, merging an auto-applied credential. */
 function buildRequestCredentials(
-	nodeCredentials: Record<string, { id: string; name?: string }> | undefined,
+	nodeCredentials: Record<string, SetupNodeCredential> | undefined,
 	isAutoApplied: boolean,
 	credentialType: string | undefined,
 	existingCredentials: Array<{ id: string; name: string }>,
@@ -381,7 +395,7 @@ async function resolveAppliedCredentialState(
 	credentialType: string | undefined,
 	cache: CredentialCache | undefined,
 	workflowId: string | undefined,
-	nodeCredentials: Record<string, { id: string; name?: string }> | undefined,
+	nodeCredentials: Record<string, SetupNodeCredential> | undefined,
 ): Promise<CredentialState> {
 	if (!credentialType) {
 		return { existingCredentials: [], isAutoApplied: false };
@@ -426,8 +440,10 @@ async function buildRequestForCredentialType(
 	const nodeCredentials = node.credentials
 		? Object.fromEntries(
 				Object.entries(node.credentials)
-					.filter(([, v]) => v.id !== undefined)
-					.map(([k, v]) => [k, { id: v.id!, name: v.name }]),
+					.map(([key, value]) => [key, toSetupNodeCredential(value)] as const)
+					.filter(
+						(entry): entry is readonly [string, SetupNodeCredential] => entry[1] !== undefined,
+					),
 			)
 		: undefined;
 
@@ -453,7 +469,7 @@ async function buildRequestForCredentialType(
 	if (credentialType) {
 		const existingOnNode = node.credentials?.[credentialType];
 		const hasValidCredential =
-			existingOnNode?.id !== undefined &&
+			(typeof existingOnNode?.id === 'string' || isAiGatewayManagedCredential(existingOnNode)) &&
 			(credentialTestResult === undefined || credentialTestResult.success);
 		needsAction = !hasValidCredential;
 	}
@@ -694,6 +710,28 @@ export interface ApplyResult {
 	failed: Array<{ nodeName: string; error: string }>;
 }
 
+function addUnknownNodeFailures(
+	result: ApplyResult,
+	workflowJson: WorkflowJSON,
+	nodeCredentials?: Record<string, Record<string, string>>,
+	nodeParameters?: Record<string, Record<string, unknown>>,
+): void {
+	const nodeNames = new Set(workflowJson.nodes.map((node) => node.name).filter(Boolean));
+	const submittedNodeNames = new Set([
+		...Object.keys(nodeCredentials ?? {}),
+		...Object.keys(nodeParameters ?? {}),
+	]);
+
+	for (const nodeName of submittedNodeNames) {
+		if (!nodeNames.has(nodeName)) {
+			result.failed.push({
+				nodeName,
+				error: `Node "${nodeName}" was not found in the workflow`,
+			});
+		}
+	}
+}
+
 /** Apply per-node credentials from resume data to a workflow. */
 export async function applyNodeCredentials(
 	context: InstanceAiContext,
@@ -702,6 +740,7 @@ export async function applyNodeCredentials(
 ): Promise<ApplyResult> {
 	const result: ApplyResult = { applied: [], failed: [] };
 	const workflowJson = await context.workflowService.getAsWorkflowJSON(workflowId);
+	addUnknownNodeFailures(result, workflowJson, nodeCredentials);
 
 	for (const node of workflowJson.nodes) {
 		if (!node.name) continue;
@@ -710,25 +749,14 @@ export async function applyNodeCredentials(
 
 		let nodeSucceeded = true;
 		for (const [credType, credId] of Object.entries(credsMap)) {
-			try {
-				const cred = await context.credentialService.get(credId);
-				if (cred) {
-					node.credentials = {
-						...node.credentials,
-						[credType]: { id: cred.id, name: cred.name },
-					};
-				} else {
-					nodeSucceeded = false;
-					result.failed.push({
-						nodeName: node.name,
-						error: `Credential ${credId} (type: ${credType}) not found — it may have been deleted`,
-					});
-				}
-			} catch (error) {
+			const resolved = await resolveCredentialForApply(credType, credId, context);
+			if (resolved.resolved) {
+				assignCredentialToNode(node, credType, resolved.credential);
+			} else {
 				nodeSucceeded = false;
 				result.failed.push({
 					nodeName: node.name,
-					error: `Failed to resolve credential ${credId} (type: ${credType}): ${error instanceof Error ? error.message : 'Unknown error'}`,
+					error: resolved.error,
 				});
 			}
 		}
@@ -738,7 +766,11 @@ export async function applyNodeCredentials(
 	}
 
 	try {
-		await context.workflowService.updateFromWorkflowJSON(workflowId, workflowJson);
+		const saved = await context.workflowService.updateFromWorkflowJSON(workflowId, workflowJson);
+		await refreshWorkflowSourceFileBindingFromSave(context, workflowId, {
+			versionId: saved.versionId,
+			checksum: saved.checksum,
+		});
 	} catch (error) {
 		// If the final save fails, mark all previously-applied nodes as failed
 		const saveError = `Failed to save workflow after credential apply: ${error instanceof Error ? error.message : 'Unknown error'}`;
@@ -759,6 +791,7 @@ export async function applyNodeParameters(
 ): Promise<ApplyResult> {
 	const result: ApplyResult = { applied: [], failed: [] };
 	const workflowJson = await context.workflowService.getAsWorkflowJSON(workflowId);
+	addUnknownNodeFailures(result, workflowJson, undefined, nodeParameters);
 
 	for (const node of workflowJson.nodes) {
 		if (!node.name) continue;
@@ -780,7 +813,11 @@ export async function applyNodeParameters(
 	}
 
 	try {
-		await context.workflowService.updateFromWorkflowJSON(workflowId, workflowJson);
+		const saved = await context.workflowService.updateFromWorkflowJSON(workflowId, workflowJson);
+		await refreshWorkflowSourceFileBindingFromSave(context, workflowId, {
+			versionId: saved.versionId,
+			checksum: saved.checksum,
+		});
 	} catch (error) {
 		const saveError = `Failed to save workflow after parameter apply: ${error instanceof Error ? error.message : 'Unknown error'}`;
 		for (const nodeName of result.applied) {
@@ -802,25 +839,14 @@ async function applyCredentialsToNode(
 ): Promise<boolean> {
 	let nodeSucceeded = true;
 	for (const [credType, credId] of Object.entries(credsMap)) {
-		try {
-			const cred = await context.credentialService.get(credId);
-			if (cred) {
-				node.credentials = {
-					...node.credentials,
-					[credType]: { id: cred.id, name: cred.name },
-				};
-			} else {
-				nodeSucceeded = false;
-				result.failed.push({
-					nodeName,
-					error: `Credential ${credId} (type: ${credType}) not found — it may have been deleted`,
-				});
-			}
-		} catch (error) {
+		const resolved = await resolveCredentialForApply(credType, credId, context);
+		if (resolved.resolved) {
+			assignCredentialToNode(node, credType, resolved.credential);
+		} else {
 			nodeSucceeded = false;
 			result.failed.push({
 				nodeName,
-				error: `Failed to resolve credential ${credId} (type: ${credType}): ${error instanceof Error ? error.message : 'Unknown error'}`,
+				error: resolved.error,
 			});
 		}
 	}
@@ -862,6 +888,7 @@ export async function applyNodeChanges(
 	const result: ApplyResult = { applied: [], failed: [] };
 	const workflowJson = await context.workflowService.getAsWorkflowJSON(workflowId);
 	const appliedNodes = new Set<string>();
+	addUnknownNodeFailures(result, workflowJson, nodeCredentials, nodeParameters);
 
 	for (const node of workflowJson.nodes) {
 		if (!node.name) continue;
@@ -873,8 +900,13 @@ export async function applyNodeChanges(
 		}
 
 		const params = nodeParameters?.[nodeName];
-		if (params && applyParametersToNode(node, nodeName, params, result)) {
-			appliedNodes.add(nodeName);
+		if (params) {
+			// A display name typed into a list-mode resource locator can never
+			// resolve (list values are opaque picker IDs) — store it as name mode.
+			coerceWrongKindListModeParams(context.nodeTypesProvider, node, params);
+			if (applyParametersToNode(node, nodeName, params, result)) {
+				appliedNodes.add(nodeName);
+			}
 		}
 
 		// Drop credential entries that are no longer valid for the node's current
@@ -886,7 +918,11 @@ export async function applyNodeChanges(
 
 	// Single save for all changes
 	try {
-		await context.workflowService.updateFromWorkflowJSON(workflowId, workflowJson);
+		const saved = await context.workflowService.updateFromWorkflowJSON(workflowId, workflowJson);
+		await refreshWorkflowSourceFileBindingFromSave(context, workflowId, {
+			versionId: saved.versionId,
+			checksum: saved.checksum,
+		});
 		result.applied = [...appliedNodes];
 	} catch (error) {
 		const saveError = `Failed to save workflow: ${error instanceof Error ? error.message : 'Unknown error'}`;
@@ -905,11 +941,14 @@ export async function applyNodeChanges(
 export function buildCompletedReport(
 	appliedCredentials?: Record<string, Record<string, string>>,
 	appliedParameters?: Record<string, Record<string, unknown>>,
+	appliedNodeNames?: string[],
 ): Array<{ nodeName: string; credentialType?: string; parametersSet?: string[] }> {
 	const byNode = new Map<string, { credentialTypes: string[]; parameterNames: string[] }>();
+	const appliedNodeNameSet = appliedNodeNames ? new Set(appliedNodeNames) : undefined;
 
 	if (appliedCredentials) {
 		for (const [nodeName, credMap] of Object.entries(appliedCredentials)) {
+			if (appliedNodeNameSet && !appliedNodeNameSet.has(nodeName)) continue;
 			for (const credType of Object.keys(credMap)) {
 				let entry = byNode.get(nodeName);
 				if (!entry) {
@@ -923,6 +962,7 @@ export function buildCompletedReport(
 
 	if (appliedParameters) {
 		for (const [nodeName, params] of Object.entries(appliedParameters)) {
+			if (appliedNodeNameSet && !appliedNodeNameSet.has(nodeName)) continue;
 			let entry = byNode.get(nodeName);
 			if (!entry) {
 				entry = { credentialTypes: [], parameterNames: [] };

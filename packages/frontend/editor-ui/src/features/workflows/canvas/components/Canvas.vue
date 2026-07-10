@@ -8,8 +8,7 @@ import { useCanvasNodeHover } from '../composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '../composables/useCanvasTraversal';
 import { type KeyMap, useKeybindings } from '@/app/composables/useKeybindings';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
-import { CanvasKey, CANVAS_NODES_GROUPING_EXPERIMENT } from '@/app/constants';
-import { usePostHog } from '@/app/stores/posthog.store';
+import { CanvasKey } from '@/app/constants';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { NODE_CREATOR_SHORTCUT_COACHMARK_KEY } from '@/features/shared/nodeCreator/composables/useNodeCreatorShortcutCoachmark';
@@ -25,9 +24,10 @@ import type {
 	ConnectStartEvent,
 } from '../canvas.types';
 import {
-	CANVAS_NODE_GROUP_ID_PREFIX,
 	CanvasNodeRenderType,
+	createCanvasGroupNodeId,
 	isCanvasGroupNode,
+	parseCanvasGroupNodeId,
 } from '../canvas.types';
 import { isOutsideSelected } from '@/app/utils/htmlUtils';
 import {
@@ -107,6 +107,7 @@ const emit = defineEmits<{
 	'update:logs:input-open': [open?: boolean];
 	'update:logs:output-open': [open?: boolean];
 	'update:has-range-selection': [isActive: boolean];
+	'update:selected-group': [id: string | null];
 	'click:node': [id: string, position: XYPosition];
 	'click:node:add': [id: string, handle: string];
 	'run:node': [id: string];
@@ -202,18 +203,11 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
 const chatPanelStore = useChatPanelStore();
 const setupPanelStore = useSetupPanelStore();
-const posthogStore = usePostHog();
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
 
-const isCanvasNodeGroupingEnabled = computed(() =>
-	posthogStore.isFeatureEnabled(CANVAS_NODES_GROUPING_EXPERIMENT.name),
-);
-
 const vueFlowNodes = computed(() =>
-	props.showNodeGroups && isCanvasNodeGroupingEnabled.value
-		? props.nodes
-		: props.nodes.filter((node) => !isCanvasGroupNode(node)),
+	props.showNodeGroups ? props.nodes : props.nodes.filter((node) => !isCanvasGroupNode(node)),
 );
 
 const vueFlow = useVueFlow(props.id);
@@ -483,22 +477,20 @@ const keyMap = computed(() => {
 		alt_i: emitWithSelectedNodes((ids) => onAddSelectedNodesToAi(ids)),
 	};
 
-	if (isCanvasNodeGroupingEnabled.value) {
-		fullKeymap.ctrl_g = {
-			disabled: () => !canGroupSelection.value,
-			run: onKeyboardGroup,
-		};
-		fullKeymap.ctrl_shift_g = {
-			disabled: () => !canUngroupSelection.value,
-			run: () => {
-				// Through the same path as the title-bar button so push effects
-				// are committed before each group is removed.
-				for (const groupId of selectedGroupIds.value) {
-					onCanvasGroupUngroup(groupId, 'keyboard-shortcut');
-				}
-			},
-		};
-	}
+	fullKeymap.ctrl_g = {
+		disabled: () => !canGroupSelection.value,
+		run: onKeyboardGroup,
+	};
+	fullKeymap.ctrl_shift_g = {
+		disabled: () => !canUngroupSelection.value,
+		run: () => {
+			// Through the same path as the title-bar button so push effects
+			// are committed before each group is removed.
+			for (const groupId of selectedGroupIds.value) {
+				onCanvasGroupUngroup(groupId, 'keyboard-shortcut');
+			}
+		},
+	};
 
 	return fullKeymap;
 });
@@ -553,6 +545,13 @@ watch(selectedNodeIds, (newIds) => {
 		focusedNodesStore.setUnconfirmedFromCanvasSelection(newIds);
 	}
 });
+
+// Surface a selected collapsed group so surfaces outside the canvas (logs panel) can sync to it
+const selectedCanvasGroupId = computed(() => {
+	const groupNode = selectedNodesAndGroups.value.find((node) => isCanvasGroupNode(node));
+	return (groupNode && parseCanvasGroupNodeId(groupNode.id)) ?? null;
+});
+watch(selectedCanvasGroupId, (id) => emit('update:selected-group', id), { immediate: true });
 
 watch(
 	() => chatPanelStore.isOpen,
@@ -656,7 +655,7 @@ function onCanvasGroupToggle(groupId: string) {
 		}
 	} else {
 		// Expanding makes the title bar non-selectable, so drop any selection lingering on it.
-		const groupNode = findNode(`${CANVAS_NODE_GROUP_ID_PREFIX}${groupId}`);
+		const groupNode = findNode(createCanvasGroupNodeId(groupId));
 		if (groupNode) {
 			removeSelectedNodes([groupNode]);
 		}
@@ -751,11 +750,24 @@ function onSelectNode() {
 }
 
 function onSelectNodes({ ids, panIntoView }: CanvasEventBusEvents['nodes:select']) {
+	// A collapsed group hides its members, so selecting one would leave a lingering
+	// selection box. Map members of collapsed groups to the group node instead.
+	const resolvedIds = [
+		...new Set(
+			ids.map((id) => {
+				const groupId = workflowDocumentStore.value.nodeIdToGroupId.get(id);
+				return groupId && injectedNodeGroupView?.isGroupCollapsed(groupId)
+					? createCanvasGroupNodeId(groupId)
+					: id;
+			}),
+		),
+	];
+
 	clearSelectedNodes();
-	addSelectedNodes(ids.map(findNode).filter(isPresent));
+	addSelectedNodes(resolvedIds.map(findNode).filter(isPresent));
 
 	if (panIntoView) {
-		const nodes = ids.map(findNode).filter(isPresent);
+		const nodes = resolvedIds.map(findNode).filter(isPresent);
 
 		if (nodes.length === 0) {
 			return;
@@ -1460,7 +1472,7 @@ defineExpose({
 		</slot>
 
 		<CanvasSelectionToolbar
-			v-if="showNodeGroups && isCanvasNodeGroupingEnabled"
+			v-if="showNodeGroups"
 			:selected-nodes="selectedNodes"
 			:read-only="readOnly || suppressInteraction"
 			@group-created="onNodeGroupCreated"

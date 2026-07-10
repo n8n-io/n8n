@@ -84,19 +84,18 @@ export async function paginatedRequest<T>(
 	do {
 		let response: ResponseData<T> | undefined;
 		try {
-			const body = await Container.get(OutboundHttp)
+			response = await Container.get(OutboundHttp)
 				.requests({
 					ssrf: 'disabled', // n8n-controlled templates/Strapi host
+					timeout: REQUEST_TIMEOUT_MS,
 				})
-				.request({
+				.request<ResponseData<T>>({
 					url,
 					method: 'GET',
 					headers: { 'Content-Type': 'application/json' },
 					qs: params,
 					json: true,
-					timeout: REQUEST_TIMEOUT_MS,
 				});
-			response = body as unknown as ResponseData<T>;
 		} catch (error) {
 			Container.get(ErrorReporter).error(error, {
 				tags: { source: 'strapiPaginatedRequest' },

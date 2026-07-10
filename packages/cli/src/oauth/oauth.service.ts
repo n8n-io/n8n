@@ -8,7 +8,7 @@ import Csrf from 'csrf';
 import type { Request, Response } from 'express';
 import { Credentials, Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { jsonParse, OperationalError, UnexpectedError } from 'n8n-workflow';
+import { jsonParse, jsonStringify, OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import {
 	GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE,
@@ -26,6 +26,7 @@ import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import {
 	ClientOAuth2,
+	resolveClientAuthOptions,
 	type ClientOAuth2Options,
 	type ClientOAuth2TokenData,
 	type OAuth2AuthenticationMethod,
@@ -133,6 +134,7 @@ export class OauthService {
 		// In the future, enabling SSRF "per feature" could be refined through configuration.
 		this.http = outboundHttp.requests({
 			ssrf: ssrfProtectionConfig.enabled ? ssrfProtectionService : 'disabled',
+			timeout: OAUTH_REQUEST_TIMEOUT_MS,
 		});
 	}
 
@@ -250,7 +252,7 @@ export class OauthService {
 		return `${restUrl}/oauth${oauthVersion}-credential`;
 	}
 
-	async getCredentialForUpdate(
+	async getCredentialForAuthFlow(
 		req: OAuthRequest.OAuth1Credential.Auth | OAuthRequest.OAuth2Credential.Auth,
 	): Promise<CredentialsEntity> {
 		const { id: credentialId } = req.query;
@@ -259,10 +261,18 @@ export class OauthService {
 			throw new BadRequestError('Required credential ID is missing');
 		}
 
+		// Private credentials are connected per-user, so executing users can authorize
+		// their own account without edit rights. Shared/static credentials store the
+		// token on the shared credential itself, so connecting them still requires edit.
+		const existingCredential = await this.credentialsFinderService.findCredentialById(credentialId);
+		const requiredScope = existingCredential?.isResolvable
+			? 'credential:connect'
+			: 'credential:update';
+
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			req.user,
-			['credential:update'],
+			[requiredScope],
 		);
 
 		if (!credential) {
@@ -619,6 +629,27 @@ export class OauthService {
 		res.render('oauth-error-callback', { error: { message, reason } });
 	}
 
+	/**
+	 * Derive a human-readable reason for the OAuth callback error page.
+	 * Prefers a structured HTTP `body`, then falls back to the wrapped `cause`
+	 * chain so errors like {@link CredentialStorageError} surface their root
+	 * cause instead of rendering an empty "More details" section.
+	 */
+	extractCallbackErrorReason(error: Error): string | undefined {
+		if ('body' in error && error.body) {
+			return jsonStringify(error.body, { replaceCircularRefs: true });
+		}
+
+		const causes: string[] = [];
+		let cause: unknown = error.cause;
+		while (cause instanceof Error) {
+			causes.push(cause.message);
+			cause = cause.cause;
+		}
+
+		return causes.length ? causes.join(': ') : undefined;
+	}
+
 	async getOAuthCredentials<T>(credential: CredentialsEntity): Promise<T> {
 		const additionalData = await this.getAdditionalData();
 		const decryptedDataOriginal = await this.getDecryptedDataForAuthUri(credential, additionalData);
@@ -650,6 +681,49 @@ export class OauthService {
 		return oauthCredentials;
 	}
 
+	private credentialIsAccessibleToProject(credential: CredentialsEntity, projectId: string) {
+		return credential.isGlobal || (credential.shared ?? []).some((s) => s.projectId === projectId);
+	}
+
+	private resolveOAuth2Resource(
+		oauthCredentials: OAuth2CredentialData,
+		oauthTokenData: ClientOAuth2TokenData,
+	) {
+		// oauthTokenData.resource: persisted resource from the original token exchange.
+		// oauthCredentials.resource: resolved resource from discovery/validation during setup.
+		// oauthCredentials.resourceUrl: raw credential input used before a resolved value exists.
+		return oauthTokenData.resource ?? oauthCredentials.resource ?? oauthCredentials.resourceUrl;
+	}
+
+	private createOAuth2ClientForRefresh(oauthCredentials: OAuth2CredentialData, resource?: string) {
+		const scopes = oauthCredentials.scope
+			?.split(' ')
+			.map((s) => s.trim())
+			.filter(Boolean);
+
+		return new ClientOAuth2({
+			clientId: oauthCredentials.clientId,
+			...resolveClientAuthOptions(oauthCredentials),
+			accessTokenUri: oauthCredentials.accessTokenUrl,
+			scopes: scopes?.length ? scopes : undefined,
+			...(resource ? { resource } : {}),
+			ignoreSSLIssues: oauthCredentials.ignoreSSLIssues,
+			authentication: oauthCredentials.authentication ?? 'header',
+		});
+	}
+
+	private mergeRefreshedOAuthTokenData(
+		oauthTokenData: ClientOAuth2TokenData,
+		refreshedData: ClientOAuth2TokenData,
+		resource?: string,
+	) {
+		return {
+			...oauthTokenData,
+			...refreshedData,
+			...(!refreshedData.resource && resource ? { resource } : {}),
+		};
+	}
+
 	/**
 	 * Refresh the OAuth2 token stored on a credential by id, persist the refreshed token data,
 	 * and return the new auth headers to inject into outbound requests.
@@ -664,27 +738,14 @@ export class OauthService {
 		});
 		if (!credential) return null;
 
-		const isAccessible =
-			credential.isGlobal || (credential.shared ?? []).some((s) => s.projectId === projectId);
-		if (!isAccessible) return null;
+		if (!this.credentialIsAccessibleToProject(credential, projectId)) return null;
 
 		const oauthCredentials = await this.getOAuthCredentials<OAuth2CredentialData>(credential);
 		const oauthTokenData = oauthCredentials.oauthTokenData as ClientOAuth2TokenData | undefined;
 		if (!oauthTokenData) return null;
 
-		const scopes = oauthCredentials.scope
-			?.split(' ')
-			.map((s) => s.trim())
-			.filter(Boolean);
-
-		const oAuthClient = new ClientOAuth2({
-			clientId: oauthCredentials.clientId,
-			clientSecret: oauthCredentials.clientSecret,
-			accessTokenUri: oauthCredentials.accessTokenUrl,
-			scopes: scopes?.length ? scopes : undefined,
-			ignoreSSLIssues: oauthCredentials.ignoreSSLIssues,
-			authentication: oauthCredentials.authentication ?? 'header',
-		});
+		const resource = this.resolveOAuth2Resource(oauthCredentials, oauthTokenData);
+		const oAuthClient = this.createOAuth2ClientForRefresh(oauthCredentials, resource);
 
 		const token = oAuthClient.createToken(
 			{
@@ -709,8 +770,14 @@ export class OauthService {
 			return null;
 		}
 
+		const refreshedTokenData = this.mergeRefreshedOAuthTokenData(
+			oauthTokenData,
+			refreshed.data,
+			resource,
+		);
+
 		try {
-			await this.encryptAndSaveData(credential, { oauthTokenData: refreshed.data });
+			await this.encryptAndSaveData(credential, { oauthTokenData: refreshedTokenData });
 		} catch (error) {
 			this.logger.warn('Refreshed OAuth2 token but failed to persist new token data', {
 				credentialId,
@@ -1031,7 +1098,6 @@ export class OauthService {
 			method: 'POST',
 			body: registerPayload,
 			json: true,
-			timeout: OAUTH_REQUEST_TIMEOUT_MS,
 		});
 		const registrationValidation =
 			dynamicClientRegistrationResponseSchema.safeParse(registerResult);
@@ -1103,7 +1169,6 @@ export class OauthService {
 			method: 'POST',
 			headers: { ...data },
 			encoding: 'text',
-			timeout: OAUTH_REQUEST_TIMEOUT_MS,
 		});
 
 		// Response comes as x-www-form-urlencoded string so convert it to JSON
@@ -1189,7 +1254,6 @@ export class OauthService {
 				'content-type': 'application/x-www-form-urlencoded',
 			},
 			encoding: 'text',
-			timeout: OAUTH_REQUEST_TIMEOUT_MS,
 		});
 
 		// Response comes as x-www-form-urlencoded string so convert it to JSON
@@ -1202,6 +1266,11 @@ export class OauthService {
 		return Object.fromEntries(new URLSearchParams(response).entries());
 	}
 
+	// Builds options for the authorization-redirect leg, consumed by the `oauth2.authenticate`
+	// hook and `code.getUri()`. Neither authenticates the client. The certificate is deliberately
+	// not mapped here — it would only leak the private key to the hook with no benefit. `clientSecret`
+	// is also unused by `getUri()` and reaches only the hook (pre-existing). The resulting asymmetry
+	// (secret reaches the hook, certificate does not) is intentional.
 	private convertCredentialToOptions(credential: OAuth2CredentialData): ClientOAuth2Options {
 		const options: ClientOAuth2Options = {
 			clientId: credential.clientId,
@@ -1242,7 +1311,6 @@ export class OauthService {
 			method: 'GET',
 			json: true,
 			returnFullResponse: true,
-			timeout: OAUTH_REQUEST_TIMEOUT_MS,
 		});
 		if (response.statusCode !== 200) {
 			throw new OperationalError(`Request failed with status code ${response.statusCode}`);

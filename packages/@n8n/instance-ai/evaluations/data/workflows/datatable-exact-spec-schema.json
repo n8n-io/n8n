@@ -30,7 +30,8 @@
 	"complexity": "complex",
 	"tags": ["data-table", "schema", "build", "behaviour", "no-simplify"],
 	"triggerType": "schedule",
-	"buildExpectations": [
+	"datasets": ["mcp", "full"],
+	"outcomeExpectations": [
 		"The agent created the pd_tq_clusters data table with all ten specified columns: theme_key, cluster_id, period_id, title, thread_count, rank, consecutive_weeks, first_seen_period, last_seen_period, and seen_at.",
 		"The agent created the pd_periods data table with all six specified columns: period_id, period_start, period_end, total_clusters, total_threads, and sent_at.",
 		"The agent gave the count columns (thread_count, rank, consecutive_weeks, total_clusters, total_threads) the number type, not string.",

@@ -62,7 +62,7 @@ async function openExecutionOutput(
 
 test.describe(
 	'Redaction enforcement',
-	{ annotation: [{ type: 'owner', description: 'Enterprise Node & Partnerships' }] },
+	{ annotation: [{ type: 'owner', description: 'Enterprise Nodes & Partnerships' }] },
 	() => {
 		// The redaction floor is a single instance-global value, so these tests cannot
 		// run in parallel against the shared instance without racing on it. Force serial

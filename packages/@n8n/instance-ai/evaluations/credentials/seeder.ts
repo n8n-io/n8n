@@ -39,7 +39,7 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 		envVar: 'EVAL_GITHUB_ACCESS_TOKEN',
 		buildData: (token) => ({ accessToken: token }),
 	},
-	gmailOAuth2Api: {
+	gmailOAuth2: {
 		defaultName: '[eval] Gmail',
 		envVar: 'EVAL_GMAIL_ACCESS_TOKEN',
 		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
@@ -51,6 +51,10 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 			scope: 'openid',
 			oauthTokenData: { access_token: token },
 		}),
+	},
+	whatsAppTriggerApi: {
+		defaultName: '[eval] WhatsApp OAuth account',
+		buildData: () => ({ clientId: 'eval-client-id', clientSecret: 'eval-client-secret' }),
 	},
 	httpHeaderAuth: {
 		defaultName: '[eval] HTTP Header',

@@ -1,10 +1,15 @@
 import {
+	buildMirrorFinalizeCommand,
 	buildReadKnowledgeCommand,
+	buildReadMirrorManifestCommand,
 	buildSearchKnowledgeCommand,
 	getSearchContextWindow,
+	MIRROR_SYNC_TIMEOUT_SECONDS,
 	parseReadKnowledgeOutput,
+	parseRipgrepCountOutput,
 	parseRipgrepOutput,
 } from '../agent-knowledge-commands';
+import { KNOWLEDGE_MIRROR_FILES_DIR, KNOWLEDGE_MIRROR_MANIFEST } from '../agent-knowledge-storage';
 import {
 	searchKnowledgeInputSchema,
 	type AgentKnowledgeFileReference,
@@ -13,6 +18,7 @@ import {
 const mobyDickFile: AgentKnowledgeFileReference = {
 	file: 'moby-dick.txt',
 	fileId: 'file-1',
+	binaryDataId: 'filesystem-v2:agents/agent-1/knowledge-files/file-1/binary_data/uuid',
 	displayName: 'moby-dick.txt',
 	mimeType: 'text/plain',
 	fileSizeBytes: 123,
@@ -55,22 +61,36 @@ describe('agent knowledge commands', () => {
 			expect(parsed.data.path).toEqual(['moby-dick.txt', 'extracts.txt']);
 		});
 
-		it('rejects global search path sentinels', () => {
-			for (const input of [
-				{},
-				{ path: '' },
-				{ path: ' ' },
-				{ path: '*' },
-				{ path: ' * ' },
-				{ path: [] },
-			]) {
-				expect(
-					searchKnowledgeInputSchema.safeParse({
-						pattern: 'Kubernetes Pod',
-						...input,
-					}).success,
-				).toBe(false);
+		it('allows an omitted path for global search', () => {
+			const parsed = searchKnowledgeInputSchema.safeParse({ pattern: 'Kubernetes Pod' });
+
+			expect(parsed.success).toBe(true);
+			if (!parsed.success) throw new Error('Expected omitted path to parse');
+			expect(parsed.data.path).toBeUndefined();
+		});
+
+		it('treats catch-all path placeholders as an omitted path', () => {
+			for (const path of ['', ' ', '.', '/', '*', ' * ', [], ['.', '/'], ['*']]) {
+				const parsed = searchKnowledgeInputSchema.safeParse({
+					pattern: 'Kubernetes Pod',
+					path,
+				});
+
+				expect(parsed.success).toBe(true);
+				if (!parsed.success) throw new Error('Expected placeholder path to parse');
+				expect(parsed.data.path).toBeUndefined();
 			}
+		});
+
+		it('keeps exact paths while dropping placeholder entries from a mixed array', () => {
+			const parsed = searchKnowledgeInputSchema.safeParse({
+				pattern: 'Kubernetes Pod',
+				path: ['moby-dick.txt', '*', '.'],
+			});
+
+			expect(parsed.success).toBe(true);
+			if (!parsed.success) throw new Error('Expected mixed path array to parse');
+			expect(parsed.data.path).toEqual(['moby-dick.txt']);
 		});
 
 		it('rejects stale search fields and removed context flags', () => {
@@ -118,12 +138,11 @@ describe('agent knowledge commands', () => {
 				['moby-dick.txt', 'extracts.txt'],
 			);
 
-			expect(command).toContain('rg --ignore-case --color=never --hidden --json');
+			expect(command).toContain('rg --ignore-case --color=never --hidden --text --json');
 			expect(command).toContain('--context 3');
 			expect(command).toContain("-e 'Moby Dick|white whale' -- './moby-dick.txt' './extracts.txt'");
 			expect(command).not.toContain('-- .');
 			expect(command).not.toContain('--fixed-strings');
-			expect(command).not.toContain('--text');
 		});
 
 		it('quotes scoped filenames safely', () => {
@@ -158,6 +177,13 @@ describe('agent knowledge commands', () => {
 			expect(command).toContain('/^\\{"type":"match"/ { matches += 1;');
 			expect(command).not.toContain('/"type":"match"/ { matches += 1;');
 		});
+
+		it('targets the current directory for an unscoped global search', () => {
+			const command = buildSearchKnowledgeCommand({ pattern: 'Moby Dick' }, []);
+
+			expect(command).toContain("-e 'Moby Dick' -- .");
+			expect(command).not.toContain("-- './");
+		});
 	});
 
 	describe('buildReadKnowledgeCommand', () => {
@@ -168,6 +194,45 @@ describe('agent knowledge commands', () => {
 			});
 
 			expect(command).not.toContain('substr($0');
+		});
+	});
+
+	describe('buildReadMirrorManifestCommand', () => {
+		it('reads the manifest and tolerates a missing file', () => {
+			const command = buildReadMirrorManifestCommand();
+
+			expect(command).toBe(`cat ${KNOWLEDGE_MIRROR_MANIFEST} 2>/dev/null || true`);
+		});
+	});
+
+	describe('buildMirrorFinalizeCommand', () => {
+		it('moves already-uploaded .tmp- names into place atomically', () => {
+			const command = buildMirrorFinalizeCommand(['doc1.txt'], [], ['doc1.txt']);
+
+			expect(command).toContain(`mkdir -p ${KNOWLEDGE_MIRROR_FILES_DIR}`);
+			expect(command).toContain(`${KNOWLEDGE_MIRROR_FILES_DIR}/.tmp-doc1.txt`);
+			expect(command).toContain(`${KNOWLEDGE_MIRROR_FILES_DIR}/doc1.txt`);
+			expect(command).toMatch(/mv\s+.*\.tmp-doc1\.txt.*doc1\.txt/);
+			expect(command).toContain(`timeout ${MIRROR_SYNC_TIMEOUT_SECONDS}`);
+		});
+
+		it('removes deleted names with rm -f', () => {
+			const command = buildMirrorFinalizeCommand([], ['stale.txt'], []);
+
+			expect(command).toContain('rm -f');
+			expect(command).toContain(`${KNOWLEDGE_MIRROR_FILES_DIR}/stale.txt`);
+		});
+
+		it('writes the full manifest via a temp file and mv', () => {
+			const command = buildMirrorFinalizeCommand([], [], ['a.txt', 'b.txt']);
+
+			expect(command).toContain(`> ${KNOWLEDGE_MIRROR_MANIFEST}.tmp`);
+			expect(command).toContain(`mv ${KNOWLEDGE_MIRROR_MANIFEST}.tmp ${KNOWLEDGE_MIRROR_MANIFEST}`);
+		});
+
+		it('rejects names that look like path traversal', () => {
+			expect(() => buildMirrorFinalizeCommand(['../secret'], [], ['../secret'])).toThrow();
+			expect(() => buildMirrorFinalizeCommand([], [], ['nested/name.txt'])).toThrow();
 		});
 	});
 
@@ -225,6 +290,27 @@ describe('agent knowledge commands', () => {
 			expect(match.context?.[0]?.text).toContain('[REDACTED]');
 			expect(match.context?.[0]?.text).not.toContain('Bearer');
 			expect(match.context?.[0]?.text).not.toContain('abc.def');
+		});
+	});
+
+	describe('count mode', () => {
+		it('builds a count command without a custom field separator', () => {
+			const command = buildSearchKnowledgeCommand(
+				{ pattern: 'whale', path: ['moby-dick.txt'], output_mode: 'count' },
+				['moby-dick.txt'],
+			);
+
+			expect(command).toContain('--count-matches --with-filename');
+			expect(command).not.toContain('--field-match-separator');
+		});
+
+		it('parses the path:count lines rg emits for --count-matches', () => {
+			const parsed = parseRipgrepCountOutput('./moby-dick.txt:97\n', filesByPath);
+
+			expect(parsed.incomplete).toBe(false);
+			expect(parsed.counts).toEqual([
+				expect.objectContaining({ file: 'moby-dick.txt', count: 97 }),
+			]);
 		});
 	});
 

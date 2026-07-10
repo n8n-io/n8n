@@ -321,15 +321,15 @@ test.describe('Workflow Executions', () => {
 			await n8n.canvas.clickExecutionsTab();
 			await expect(n8n.executions.getExecutionsSidebar()).toBeVisible();
 			await expect(n8n.executions.getExecutionsEmptyList()).toBeVisible();
-			await expect(n8n.page.getByTestId('workflow-execution-no-trigger-content')).toBeVisible();
+			await expect(n8n.executions.getNoTriggerContent()).toBeVisible();
 
-			await n8n.page.getByRole('button', { name: 'Add first step' }).click();
+			await n8n.executions.getAddFirstStepButton().click();
 			await n8n.canvas.nodeCreatorItemByName('Trigger manually').click();
 
 			await n8n.canvas.clickExecutionsTab();
 			await expect(n8n.executions.getExecutionsSidebar()).toBeVisible();
 			await expect(n8n.executions.getExecutionsEmptyList()).toBeVisible();
-			await expect(n8n.page.getByTestId('workflow-execution-no-content')).toBeVisible();
+			await expect(n8n.executions.getNoContent()).toBeVisible();
 
 			await n8n.canvas.waitForSaveWorkflowCompleted();
 			await n8n.page.waitForURL(/\/workflow\/.+\/executions$/);

@@ -101,7 +101,7 @@ export class Subscriber {
 
 	private handleMcpRelayMessage(str: string): void {
 		const msg = jsonParse<McpRelayMessage | null>(str, { fallbackValue: null });
-		if (!msg || !msg.sessionId || !msg.messageId) {
+		if (!msg?.sessionId || !msg.messageId) {
 			this.logger.error('Received malformed MCP relay message', { msg: str });
 			return;
 		}

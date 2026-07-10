@@ -1,6 +1,6 @@
 {
   "name": "@n8n/backend-network",
-  "version": "1.2.0",
+  "version": "1.4.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -34,6 +34,11 @@
       "types": "./dist/transport.d.ts",
       "import": "./src/transport.ts",
       "require": "./dist/transport.js"
+    },
+    "./proxy": {
+      "types": "./dist/proxy/index.d.ts",
+      "import": "./src/proxy/index.ts",
+      "require": "./dist/proxy/index.js"
     }
   },
   "typesVersions": {
@@ -43,6 +48,9 @@
       ],
       "transport": [
         "dist/transport.d.ts"
+      ],
+      "proxy": [
+        "dist/proxy/index.d.ts"
       ]
     }
   },
@@ -54,6 +62,7 @@
     "@n8n/config": "workspace:*",
     "@n8n/constants": "workspace:*",
     "@n8n/di": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "axios": "catalog:",
     "cache-manager": "catalog:",
     "form-data": "catalog:",
@@ -71,8 +80,10 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/proxy-from-env": "catalog:",
+    "@types/qs": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "nock": "catalog:",
+    "typescript": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },
