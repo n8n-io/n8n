@@ -13,6 +13,7 @@ import type {
 	ListInsightsWorkflowQueryDto,
 	InsightsDateFilterDto,
 } from '@n8n/api-types';
+import { getLocalTimeZone } from '@internationalized/date';
 import { expect } from 'vitest';
 
 vi.mock('@n8n/rest-api-client', () => ({
@@ -21,6 +22,7 @@ vi.mock('@n8n/rest-api-client', () => ({
 
 describe('insights.api', () => {
 	const mockContext = { baseUrl: '/rest', pushRef: 'test-push-ref' };
+	const timeZone = getLocalTimeZone();
 
 	afterEach(() => {
 		vi.clearAllMocks();
@@ -46,6 +48,7 @@ describe('insights.api', () => {
 			expect(result).toEqual({
 				startDate: '2025-01-01T00:00:00.000Z',
 				endDate: '2025-01-31T23:59:59.999Z',
+				timeZone,
 			});
 		});
 
@@ -60,6 +63,7 @@ describe('insights.api', () => {
 
 			expect(result).toEqual({
 				startDate: '2025-01-01T00:00:00.000Z',
+				timeZone,
 			});
 		});
 
@@ -74,6 +78,7 @@ describe('insights.api', () => {
 
 			expect(result).toEqual({
 				endDate: '2025-01-31T23:59:59.999Z',
+				timeZone,
 			});
 		});
 
@@ -97,6 +102,7 @@ describe('insights.api', () => {
 				take: 10,
 				skip: 0,
 				sortBy: 'workflowName:asc',
+				timeZone,
 			});
 		});
 
@@ -105,7 +111,17 @@ describe('insights.api', () => {
 
 			const result = serializeInsightsFilter(filter);
 
-			expect(result).toEqual({});
+			expect(result).toEqual({ timeZone });
+		});
+
+		it('should include the local timeZone in the serialized output', () => {
+			const filter: InsightsDateFilterDto = {
+				startDate: new Date('2025-01-01T00:00:00.000Z'),
+			};
+
+			const result = serializeInsightsFilter(filter);
+
+			expect(result?.timeZone).toBe(getLocalTimeZone());
 		});
 	});
 
@@ -156,6 +172,7 @@ describe('insights.api', () => {
 			expect(makeRestApiRequest).toHaveBeenCalledWith(mockContext, 'GET', '/insights/summary', {
 				startDate: '2025-01-01T00:00:00.000Z',
 				endDate: '2025-01-31T23:59:59.999Z',
+				timeZone,
 			});
 			expect(result).toEqual(mockSummary);
 		});
@@ -231,6 +248,7 @@ describe('insights.api', () => {
 			expect(makeRestApiRequest).toHaveBeenCalledWith(mockContext, 'GET', '/insights/by-time', {
 				startDate: '2025-01-01T00:00:00.000Z',
 				endDate: '2025-01-31T23:59:59.999Z',
+				timeZone,
 			});
 			expect(result).toEqual(mockInsightsByTime);
 		});
@@ -310,6 +328,7 @@ describe('insights.api', () => {
 				{
 					startDate: '2025-01-01T00:00:00.000Z',
 					endDate: '2025-01-31T23:59:59.999Z',
+					timeZone,
 				},
 			);
 			expect(result).toEqual(mockTimeSaved);
@@ -404,6 +423,7 @@ describe('insights.api', () => {
 				take: 10,
 				skip: 0,
 				sortBy: 'workflowName:asc',
+				timeZone,
 			});
 			expect(result).toEqual(mockInsightsByWorkflow);
 		});

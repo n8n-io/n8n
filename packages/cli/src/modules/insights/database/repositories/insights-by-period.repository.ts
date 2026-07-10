@@ -260,14 +260,15 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		startDate,
 		endDate,
 		projectId,
-	}: { projectId?: string; startDate: Date; endDate: Date }): Promise<
+		timeZone,
+	}: { projectId?: string; startDate: Date; endDate: Date; timeZone?: string }): Promise<
 		Array<{
 			period: 'previous' | 'current';
 			type: 0 | 1 | 2 | 3;
 			total_value: string | number;
 		}>
 	> {
-		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate });
+		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate, timeZone });
 
 		const rawRowsQuery = this.createQueryBuilder('insights')
 			.addCommonTableExpression(cte, 'date_ranges')
@@ -327,6 +328,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		take = 20,
 		sortBy = 'total:desc',
 		projectId,
+		timeZone,
 	}: {
 		skip?: number;
 		take?: number;
@@ -334,11 +336,12 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		projectId?: string;
 		startDate: Date;
 		endDate: Date;
+		timeZone?: string;
 	}) {
 		const [sortField, sortOrder] = this.parseSortingParams(sortBy);
 		const sumOfExecutions = sql`SUM(CASE WHEN insights.type IN (${TypeToNumber.success.toString()}, ${TypeToNumber.failure.toString()}) THEN value ELSE 0 END)`;
 
-		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate });
+		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate, timeZone });
 
 		const rawRowsQuery = this.createQueryBuilder('insights')
 			.addCommonTableExpression(cte, 'date_ranges')
@@ -395,14 +398,16 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		projectId,
 		startDate,
 		endDate,
+		timeZone,
 	}: {
 		periodUnit: PeriodUnit;
 		insightTypes: TypeUnit[];
 		projectId?: string;
 		startDate: Date;
 		endDate: Date;
+		timeZone?: string;
 	}) {
-		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate });
+		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate, timeZone });
 
 		const typesAggregation = insightTypes.map((type) => {
 			return `SUM(CASE WHEN insights.type = ${TypeToNumber[type]} THEN value ELSE 0 END) AS "${displayTypeName[TypeToNumber[type]]}"`;
