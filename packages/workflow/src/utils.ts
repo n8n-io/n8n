@@ -65,10 +65,9 @@ export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string })
 	if (source instanceof Date) {
 		return new Date(source.getTime()) as unknown as T;
 	}
-	// 2. We no longer call .toJSON() on random objects.
-	// They will now fall through to the Object clone logic below.
-	if (hash.has(source)) {
-		return hash.get(source);
+	// 2. THEN, if it's some other custom object that has .toJSON, let it simplify itself
+	if (typeof source.toJSON === 'function') {
+		return source.toJSON();
 	}
 	// Array
 	if (Array.isArray(source)) {
