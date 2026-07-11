@@ -3,10 +3,29 @@ import type { IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { folderRLC } from '../../descriptions';
+import { executeDeletion } from '../../helpers/delete';
 import { decodeOutlookId } from '../../helpers/utils';
-import { microsoftApiRequest } from '../../transport';
 
-export const properties: INodeProperties[] = [folderRLC];
+export const properties: INodeProperties[] = [
+	folderRLC,
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add option',
+		default: {},
+		options: [
+			{
+				displayName: 'Permanent Delete',
+				name: 'permanentDelete',
+				type: 'boolean',
+				default: false,
+				description:
+					"Permanently delete a mail folder and remove its items from the user's mailbox. Folders aren't placed in the purges folder when they're permanently deleted.",
+			},
+		],
+	},
+];
 
 const displayOptions = {
 	show: {
@@ -24,7 +43,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		}) as string,
 	);
 
-	await microsoftApiRequest.call(this, 'DELETE', `/mailFolders/${folderId}`);
+	await executeDeletion.call(this, index, `/mailFolders/${folderId}`);
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray({ success: true }),
