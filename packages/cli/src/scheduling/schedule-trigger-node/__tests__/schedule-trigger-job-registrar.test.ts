@@ -283,10 +283,12 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			expect(jobProvisioner.deprovision).toHaveBeenCalledWith(WORKFLOW_ID, NODE_ID);
 		});
 
-		it('never touches the store while the durable scheduler is off', async () => {
+		it('removes durable jobs left by an earlier activation even while the scheduler is off', async () => {
+			// A prior activation may have persisted rows while the durable engine was
+			// on; deactivation must clear them so they cannot re-fire on re-enable.
 			await makeRegistrar({ schedulerEnabled: false }).remove(WORKFLOW_ID, NODE_ID);
 
-			expect(jobProvisioner.deprovision).not.toHaveBeenCalled();
+			expect(jobProvisioner.deprovision).toHaveBeenCalledWith(WORKFLOW_ID, NODE_ID);
 		});
 	});
 });

@@ -209,11 +209,12 @@ export class ScheduleTriggerJobRegistrar {
 
 	/**
 	 * Delete the node's durable jobs on deactivation; their queued tasks cascade
-	 * away. Inert while the durable engine is off, so the flag-off path never
-	 * touches the database.
+	 * away. Runs regardless of the current interception state: an earlier
+	 * activation may have persisted rows while the durable engine was on, and
+	 * leaving them behind would re-fire the node if durability is later
+	 * re-enabled. Deprovision is a no-op when no such rows exist.
 	 */
 	async remove(workflowId: string, nodeId: string): Promise<void> {
-		if (!this.intercepting) return;
 		await this.jobProvisioner.deprovision(workflowId, nodeId);
 	}
 }
