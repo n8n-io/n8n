@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon, N8nIconButton, N8nInlineTextEdit, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nIcon,
+	N8nIconButton,
+	N8nInlineTextEdit,
+	N8nPopover,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { Handle, Position, useVueFlow } from '@vue-flow/core';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import CanvasNodeStatusMark from '../nodes/render-types/parts/CanvasNodeStatusMark.vue';
@@ -17,8 +24,6 @@ import {
 
 const UNGROUP_NODES_SHORTCUT = { metaKey: true, shiftKey: true, keys: ['G'] };
 
-// Only declare the props this component uses.
-// Extra VueFlow slot props passed via v-bind are ignored.
 defineOptions({ inheritAttrs: false });
 
 const props = withDefaults(
@@ -38,6 +43,8 @@ const props = withDefaults(
 
 const emit = defineEmits<{
 	'update:name': [id: string, name: string];
+	'update:description': [id: string, description: string];
+	'update:descriptionVisible': [id: string, visible: boolean];
 	'title:focused': [id: string];
 	ungroup: [id: string];
 	toggle: [id: string];
@@ -47,6 +54,9 @@ const i18n = useI18n();
 const $style = useCssModule();
 const titleEdit = useTemplateRef<InstanceType<typeof N8nInlineTextEdit>>('titleEdit');
 const titleText = useTemplateRef<HTMLElement>('titleText');
+const collapsedTitleText = useTemplateRef<HTMLElement>('collapsedTitleText');
+const descriptionTextarea = useTemplateRef<HTMLTextAreaElement>('descriptionTextarea');
+const infoButtonEl = useTemplateRef<HTMLElement>('infoButtonEl');
 
 const group = computed(() => props.data.group);
 const isAutofocusReady = computed(
@@ -55,7 +65,6 @@ const isAutofocusReady = computed(
 const isCollapsed = computed(() => props.data.isCollapsed);
 const executionStatus = computed(() => props.data.executionStatus);
 
-// Statuses rendered as a status mark; running/waiting render as the animated border.
 const MARK_STATUSES = ['success', 'error', 'warning'] as const;
 const markStatus = computed(() => MARK_STATUSES.find((status) => status === executionStatus.value));
 
@@ -64,6 +73,7 @@ const wrapperClasses = computed(() => [
 	{
 		[$style.collapsed]: isCollapsed.value,
 		[$style.selected]: props.selected,
+		[$style.headerHovered]: headerHovered.value,
 		[$style.success]: executionStatus.value === 'success',
 		[$style.error]: executionStatus.value === 'error',
 		[$style.warning]: executionStatus.value === 'warning',
@@ -72,8 +82,9 @@ const wrapperClasses = computed(() => [
 	},
 ]);
 
+const DESCRIPTION_HEIGHT = 48;
+
 const frameStyle = computed(() => {
-	// Frame sits below the header, so exclude the header height
 	const { expanded } = computeGroupFrameRects(props.data.nodesRect);
 	return {
 		top: `${HEADER_HEIGHT}px`,
@@ -82,14 +93,38 @@ const frameStyle = computed(() => {
 });
 
 const isTitleTruncated = ref(false);
+const showTemporaryDescription = ref(false);
+const isEditingDescription = ref(false);
+const editingFromPopover = ref(false);
+const headerHovered = ref(false);
+const editDescriptionText = ref('');
+let popoverCloseTimer: ReturnType<typeof setTimeout> | undefined;
+
+const isPermanentVisible = computed(() => group.value.descriptionVisible === true);
+
+const isDescriptionEmpty = computed(() => !group.value.description);
+
+const showPopoverDescription = computed(() => {
+	if (isEditingDescription.value && editingFromPopover.value) return true;
+	return showTemporaryDescription.value && !isPermanentVisible.value;
+});
+
+const showPermanentDescription = computed(() => {
+	if (isEditingDescription.value && !editingFromPopover.value) return true;
+	return isPermanentVisible.value;
+});
 
 function updateTruncated() {
-	const el = titleText.value;
+	const el = isCollapsed.value ? collapsedTitleText.value : titleText.value;
 	if (!el) {
 		isTitleTruncated.value = false;
 		return;
 	}
-	isTitleTruncated.value = el.scrollWidth > el.clientWidth + 1;
+	if (isCollapsed.value) {
+		isTitleTruncated.value = el.scrollHeight > el.clientHeight + 1;
+	} else {
+		isTitleTruncated.value = el.scrollWidth > el.clientWidth + 1;
+	}
 }
 
 watch(
@@ -113,19 +148,106 @@ function onToggleClick() {
 	emit('toggle', group.value.id);
 }
 
-// Toggle collapse on double clicking
-function onWrapperDblClick(event: MouseEvent) {
+function onWrapperClick(event: MouseEvent) {
 	const target = event.target as HTMLElement | null;
-	// if happened inside an element with its own click behavior, do nothing
 	if (target?.closest('.nodrag')) return;
-
 	emit('toggle', group.value.id);
+}
+
+function onInfoEnter() {
+	clearTimeout(popoverCloseTimer);
+	showTemporaryDescription.value = true;
+}
+
+function onInfoLeave() {
+	if (editingFromPopover.value) return;
+	popoverCloseTimer = setTimeout(() => {
+		showTemporaryDescription.value = false;
+	}, 150);
+}
+
+function onDescriptionEnter() {
+	clearTimeout(popoverCloseTimer);
+}
+
+function onDescriptionLeave() {
+	popoverCloseTimer = setTimeout(() => {
+		if (!editingFromPopover.value) {
+			showTemporaryDescription.value = false;
+		}
+	}, 150);
+}
+
+function onInfoClick() {
+	const next = !group.value.descriptionVisible;
+	showTemporaryDescription.value = false;
+	emit('update:descriptionVisible', group.value.id, next);
+	if (isDescriptionEmpty.value && next) {
+		isEditingDescription.value = true;
+		editDescriptionText.value = '';
+		nextTick(() => {
+			descriptionTextarea.value?.focus();
+		});
+	}
+}
+
+function autoResizeTextarea() {
+	const textarea = descriptionTextarea.value;
+	if (!textarea) return;
+	textarea.style.height = 'auto';
+	textarea.style.height = `${textarea.scrollHeight}px`;
+}
+
+function startEditing() {
+	if (props.readOnly) return;
+	editingFromPopover.value = !isPermanentVisible.value;
+	isEditingDescription.value = true;
+	editDescriptionText.value = group.value.description ?? '';
+	nextTick(() => {
+		const textarea = descriptionTextarea.value;
+		textarea?.focus();
+		textarea?.select();
+		autoResizeTextarea();
+	});
+}
+
+function onTextareaFocus() {
+	descriptionTextarea.value?.select();
+}
+
+function saveDescription() {
+	if (!isEditingDescription.value) return;
+	isEditingDescription.value = false;
+	editingFromPopover.value = false;
+	if (!isPermanentVisible.value) {
+		showTemporaryDescription.value = false;
+	}
+	const trimmed = editDescriptionText.value.trim();
+	if (trimmed !== (group.value.description ?? '')) {
+		emit('update:description', group.value.id, trimmed);
+	}
+}
+
+function onDescriptionKeydown(event: KeyboardEvent) {
+	if (event.key === 'Enter' && !event.shiftKey) {
+		event.preventDefault();
+		saveDescription();
+	}
+	if (event.key === 'Escape') {
+		isEditingDescription.value = false;
+		editingFromPopover.value = false;
+		showTemporaryDescription.value = false;
+	}
 }
 
 async function focusTitleEdit() {
 	if (props.autofocusGroupId !== group.value.id || props.readOnly || !isAutofocusReady.value)
 		return;
 	await nextTick();
+	if (isCollapsed.value) {
+		emit('title:focused', group.value.id);
+		return;
+	}
 	titleEdit.value?.forceFocus();
 	emit('title:focused', group.value.id);
 }
@@ -149,28 +271,33 @@ const toggleLabel = computed(() =>
 
 const { getSelectedNodes, removeSelectedNodes, viewport } = useVueFlow();
 
-// Match the zoom-adjusted border opacity normal nodes use
 const { calculateNodeBorderOpacityStyle } = useZoomAdjustedValues(viewport);
 const nodeBorderOpacityStyle = calculateNodeBorderOpacityStyle();
 
-// Clear unrelated pre-existing selection before VueFlow snapshots which
-// nodes to drag — otherwise those nodes ride along with the group drag.
-// Preserve the selection when this title bar is itself part of it
-// (intentional multi-select drag).
 function onWrapperPointerDown(event: PointerEvent) {
-	// Clicks on .nodrag children (chevron, title edit, ungroup) aren't drag intent.
 	const target = event.target as HTMLElement | null;
 	if (target?.closest('.nodrag')) return;
 
 	const selected = getSelectedNodes.value;
 	if (selected.length === 0) return;
 
-	// Multi-select drag that includes this title bar → preserve the selection.
 	const myVueFlowId = createCanvasGroupNodeId(group.value.id);
 	const isPartOfSelection = selected.some((n) => n.id === myVueFlowId);
 	if (isPartOfSelection) return;
 
 	removeSelectedNodes(selected);
+}
+
+function onWrapperMouseOver(event: MouseEvent) {
+	const target = event.target as HTMLElement | null;
+	headerHovered.value = !target?.closest('.nodrag');
+}
+
+function onWrapperMouseOut(event: MouseEvent) {
+	const relatedTarget = event.relatedTarget as HTMLElement | null;
+	if (!(event.currentTarget as HTMLElement)?.contains(relatedTarget)) {
+		headerHovered.value = false;
+	}
 }
 </script>
 
@@ -184,8 +311,10 @@ function onWrapperPointerDown(event: PointerEvent) {
 		}"
 		data-test-id="canvas-node-group"
 		:data-group-id="group.id"
+		@click="onWrapperClick"
+		@mouseover="onWrapperMouseOver"
+		@mouseout="onWrapperMouseOut"
 		@pointerdown="onWrapperPointerDown"
-		@dblclick.stop="onWrapperDblClick"
 	>
 		<div :class="$style.titleBar">
 			<Handle
@@ -227,24 +356,20 @@ function onWrapperPointerDown(event: PointerEvent) {
 			</div>
 
 			<div :class="$style.content" data-test-id="canvas-node-group-header">
-				<N8nIconButton
-					class="nodrag"
-					:class="$style.toggle"
-					variant="ghost"
-					size="large"
-					:icon="isCollapsed ? 'chevrons-up-down' : 'chevrons-down-up'"
-					:aria-label="toggleLabel"
-					:aria-expanded="!isCollapsed"
-					data-test-id="canvas-node-group-toggle"
-					@click.stop="onToggleClick"
-				/>
 				<div :class="$style.title" data-test-id="canvas-node-group-title">
-					<N8nTooltip
-						:content="group.name"
-						:disabled="!isTitleTruncated"
-						:show-after="500"
-						placement="bottom"
-					>
+					<template v-if="isCollapsed">
+						<N8nTooltip
+							:content="group.name"
+							:disabled="!isTitleTruncated"
+							:show-after="500"
+							placement="bottom"
+						>
+							<div ref="collapsedTitleText" :class="$style.titleTextCollapsed">
+								{{ group.name }}
+							</div>
+						</N8nTooltip>
+					</template>
+					<template v-else>
 						<div ref="titleText" :class="$style.titleText">
 							<N8nInlineTextEdit
 								ref="titleEdit"
@@ -257,8 +382,9 @@ function onWrapperPointerDown(event: PointerEvent) {
 								@update:model-value="onTitleUpdate"
 							/>
 						</div>
-					</N8nTooltip>
+					</template>
 				</div>
+
 				<div
 					v-if="isCollapsed && markStatus"
 					:class="$style.statusIcons"
@@ -273,6 +399,110 @@ function onWrapperPointerDown(event: PointerEvent) {
 				>
 					<N8nIcon icon="node-validation-error" size="large" />
 				</div>
+
+				<div :class="$style.actions">
+					<span
+						v-if="!readOnly"
+						ref="infoButtonEl"
+						:class="$style.infoWrapper"
+						@mouseenter="onInfoEnter"
+						@mouseleave="onInfoLeave"
+					>
+						<N8nIconButton
+							class="nodrag"
+							:class="{
+								[$style.infoButton]: true,
+								[$style.infoButtonActive]: isPermanentVisible,
+							}"
+							variant="ghost"
+							size="large"
+							icon="info"
+							:aria-label="i18n.baseText('canvas.nodeGroup.addDescription')"
+							data-test-id="canvas-node-group-info"
+							@click.stop="onInfoClick"
+						/>
+					</span>
+					<N8nPopover
+						:open="showPopoverDescription"
+						:reference="infoButtonEl"
+						side="bottom"
+						align="center"
+						:side-offset="0"
+						width="320px"
+						:enable-scrolling="false"
+					>
+						<template #content>
+							<div
+								:class="$style.descriptionPopoverContent"
+								@mouseenter="onDescriptionEnter"
+								@mouseleave="onDescriptionLeave"
+							>
+								<N8nText
+									v-if="!isEditingDescription && !isDescriptionEmpty"
+									:class="$style.descriptionText"
+									data-test-id="canvas-node-group-description-text"
+									@click.stop="startEditing"
+								>
+									{{
+										group.description || i18n.baseText('canvas.nodeGroup.descriptionPlaceholder')
+									}}
+								</N8nText>
+								<textarea
+									v-else
+									ref="descriptionTextarea"
+									v-model="editDescriptionText"
+									:class="$style.descriptionEdit"
+									:placeholder="i18n.baseText('canvas.nodeGroup.descriptionPlaceholder')"
+									@blur="saveDescription"
+									@focus="onTextareaFocus"
+									@input="autoResizeTextarea"
+									@keydown="onDescriptionKeydown"
+								/>
+							</div>
+						</template>
+					</N8nPopover>
+					<N8nIconButton
+						class="nodrag"
+						:class="$style.toggle"
+						variant="ghost"
+						size="large"
+						:icon="isCollapsed ? 'chevron-down' : 'chevron-up'"
+						:aria-label="toggleLabel"
+						:aria-expanded="!isCollapsed"
+						data-test-id="canvas-node-group-toggle"
+						@click.stop="onToggleClick"
+					/>
+				</div>
+			</div>
+
+			<div
+				v-if="showPermanentDescription"
+				:class="[
+					'nodrag',
+					$style.descriptionArea,
+					!isCollapsed ? $style.permanentExpanded : $style.permanentCollapsed,
+				]"
+				data-test-id="canvas-node-group-description"
+			>
+				<N8nText
+					v-if="!isEditingDescription && !isDescriptionEmpty"
+					:class="$style.descriptionText"
+					data-test-id="canvas-node-group-description-text"
+					@click.stop="startEditing"
+				>
+					{{ group.description || i18n.baseText('canvas.nodeGroup.descriptionPlaceholder') }}
+				</N8nText>
+				<textarea
+					v-else
+					ref="descriptionTextarea"
+					v-model="editDescriptionText"
+					:class="$style.descriptionEdit"
+					:placeholder="i18n.baseText('canvas.nodeGroup.descriptionPlaceholder')"
+					@blur="saveDescription"
+					@focus="onTextareaFocus"
+					@input="autoResizeTextarea"
+					@keydown="onDescriptionKeydown"
+				/>
 			</div>
 		</div>
 
@@ -288,9 +518,10 @@ function onWrapperPointerDown(event: PointerEvent) {
 <style lang="scss" module>
 @use '../../../components/elements/nodes/render-types/_canvasNodeStyles.scss' as styles;
 
+$header-height: 96px;
+$description-height: 48px;
+
 .wrapper {
-	// Border defaults live on the wrapper as custom properties so the
-	// frame inherits them through the cascade.
 	@include styles.canvas-node-border-defaults;
 	position: relative;
 }
@@ -312,8 +543,6 @@ function onWrapperPointerDown(event: PointerEvent) {
 		@include styles.canvas-node-selected-ring;
 	}
 
-	// Status only manifests when the group is collapsed — when expanded
-	// the nodes render their own outlines.
 	.wrapper.collapsed.success & {
 		@include styles.status-success;
 	}
@@ -331,7 +560,6 @@ function onWrapperPointerDown(event: PointerEvent) {
 	}
 }
 
-/* stylelint-disable */
 .wrapper.collapsed.running .titleBar::after,
 .wrapper.collapsed.waiting .titleBar::after {
 	@include styles.status-animated-after;
@@ -345,24 +573,14 @@ function onWrapperPointerDown(event: PointerEvent) {
 }
 
 @include styles.status-animation-definitions;
-/* stylelint-enable */
 
 .content {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
 	height: 100%;
-	padding: var(--spacing--lg);
+	padding: var(--spacing--lg) var(--spacing--sm) var(--spacing--lg) var(--spacing--lg);
 	overflow: hidden;
-}
-
-.toggle {
-	flex-shrink: 0;
-}
-
-/*  Don't render the aria-expanded toggle as "pressed" while inactive */
-.toggle[aria-expanded='true']:not(:hover):not(:active) {
-	background-color: transparent;
 }
 
 .title {
@@ -384,6 +602,17 @@ function onWrapperPointerDown(event: PointerEvent) {
 	overflow-clip-margin: var(--spacing--2xs);
 }
 
+.titleTextCollapsed {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	overflow: hidden;
+	overflow-wrap: anywhere;
+	line-height: var(--line-height--sm);
+	width: 100%;
+	min-width: 0;
+}
+
 .inlineEdit {
 	width: fit-content;
 	max-width: 100%;
@@ -396,9 +625,42 @@ function onWrapperPointerDown(event: PointerEvent) {
 	flex-shrink: 0;
 }
 
-// Validation issues mirror the single node: red triangle, no status border.
 .issues {
 	color: var(--color--danger);
+}
+
+.actions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	flex-shrink: 0;
+	margin-left: auto;
+}
+
+.infoWrapper {
+	display: flex;
+	align-items: center;
+}
+
+.infoButtonActive {
+	opacity: 1;
+	background-color: var(--background--active);
+}
+
+.descriptionPopoverContent {
+	padding: 12px;
+	font-size: var(--font-size--s);
+	color: var(--color--text-subtle);
+	max-height: 200px;
+	overflow-y: auto;
+}
+
+.toggle[aria-expanded='true']:not(:hover):not(:active) {
+	background-color: transparent;
+}
+
+.wrapper.headerHovered .toggle:not(:hover):not(:active) {
+	background-color: var(--background--hover);
 }
 
 .toolbar {
@@ -422,6 +684,54 @@ function onWrapperPointerDown(event: PointerEvent) {
 
 .titleBar:hover .toolbarItems {
 	opacity: 1;
+}
+
+.descriptionArea {
+	position: absolute;
+	background: var(--background--surface);
+	border: 1px solid var(--border-color--strong);
+	border-radius: var(--radius--xs);
+	padding: var(--spacing--md);
+	box-sizing: border-box;
+	z-index: 500;
+	overflow: hidden;
+
+	&.permanentCollapsed {
+		top: calc($header-height + 8px);
+		left: 0;
+		width: 100%;
+	}
+
+	&.permanentExpanded {
+		top: calc($header-height + 12px);
+		right: 12px;
+		width: 320px;
+
+		.descriptionEdit {
+			width: 320px;
+		}
+	}
+}
+
+.descriptionText {
+	font-size: var(--font-size--s);
+	color: var(--color--text-subtle);
+	cursor: text;
+}
+
+.descriptionEdit {
+	width: 100%;
+	padding: 0;
+	font-size: var(--font-size--s);
+	font-family: inherit;
+	color: var(--color--text-subtle);
+	background: var(--background--surface);
+	line-height: var(--line-height--lg);
+	border: none;
+	outline: none;
+	resize: none;
+	box-sizing: border-box;
+	overflow: hidden;
 }
 
 .frame {

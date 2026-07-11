@@ -8,7 +8,7 @@ import { useCanvasNodeHover } from '../composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '../composables/useCanvasTraversal';
 import { type KeyMap, useKeybindings } from '@/app/composables/useKeybindings';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
-import { CanvasKey, CANVAS_NODES_GROUPING_EXPERIMENT } from '@/app/constants';
+import { CanvasKey, CANVAS_NODES_GROUPING_EXPERIMENT, MODAL_CONFIRM } from '@/app/constants';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -77,6 +77,8 @@ import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
 import CanvasNodeGroupTitleBar from './elements/groups/CanvasNodeGroupTitleBar.vue';
 import CanvasSelectionToolbar from './elements/selection/CanvasSelectionToolbar.vue';
+import { useMessage } from '@/app/composables/useMessage';
+import { useI18n } from '@n8n/i18n';
 import { useCanvasNodeGroupActions } from '../composables/useCanvasNodeGroupActions';
 import { useCanvasNodeGroupDrag } from '../composables/useCanvasNodeGroupDrag';
 import {
@@ -205,6 +207,8 @@ const focusedNodesStore = useFocusedNodesStore();
 const chatPanelStore = useChatPanelStore();
 const setupPanelStore = useSetupPanelStore();
 const posthogStore = usePostHog();
+const message = useMessage();
+const i18n = useI18n();
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
 
@@ -315,6 +319,8 @@ useShortKeyPress(
 	() => {
 		if (lastSelectedNode.value) {
 			emit('update:node:name', lastSelectedNode.value.id);
+		} else if (selectedGroupIds.value.length > 0) {
+			onOpenRenameGroupModal(selectedGroupIds.value[0]);
 		}
 	},
 	{
@@ -461,7 +467,13 @@ const keyMap = computed(() => {
 		ctrl_d: emitWithSelectedNodes((ids) => emit('duplicate:nodes', ids)),
 		d: emitWithSelectedNodes((ids) => emit('update:nodes:enabled', ids)),
 		p: emitWithSelectedNodes((ids) => emit('update:nodes:pin', ids, 'keyboard-shortcut')),
-		f2: emitWithLastSelectedNode((id) => emit('update:node:name', id)),
+		f2: () => {
+			if (lastSelectedNode.value) {
+				emit('update:node:name', lastSelectedNode.value.id);
+			} else if (selectedGroupIds.value.length > 0) {
+				onOpenRenameGroupModal(selectedGroupIds.value[0]);
+			}
+		},
 		n: () => emit('create:node', 'node_shortcut'),
 		tab: {
 			disabled: () => usersStore.isCalloutDismissed(NODE_CREATOR_SHORTCUT_COACHMARK_KEY),
@@ -674,6 +686,37 @@ function onCanvasGroupToggle(groupId: string) {
 
 function onCanvasGroupNameUpdate(groupId: string, name: string) {
 	renameGroup(groupId, name);
+}
+
+async function onOpenRenameGroupModal(groupId: string) {
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (!group) return;
+	const currentName = group.name;
+	const promptResponse = await message.prompt(
+		i18n.baseText('nodeView.prompt.newName') + ':',
+		i18n.baseText('canvas.nodeGroup.renameGroup') + `: ${currentName}`,
+		{
+			customClass: 'rename-prompt',
+			confirmButtonText: i18n.baseText('nodeView.prompt.rename'),
+			cancelButtonText: i18n.baseText('nodeView.prompt.cancel'),
+			inputValue: currentName,
+			inputValidator: (value: string) => {
+				if (!value.trim()) return i18n.baseText('nodeView.prompt.invalidName');
+				return true;
+			},
+		},
+	);
+	if (promptResponse.action === MODAL_CONFIRM) {
+		renameGroup(groupId, promptResponse.value.trim());
+	}
+}
+
+function onCanvasGroupDescriptionUpdate(groupId: string, description: string) {
+	workflowDocumentStore.value.updateDescription(groupId, description);
+}
+
+function onCanvasGroupDescriptionVisibleUpdate(groupId: string, visible: boolean) {
+	workflowDocumentStore.value.updateDescriptionVisible(groupId, visible);
 }
 
 function onCanvasGroupUngroup(
@@ -1417,6 +1460,8 @@ defineExpose({
 				:read-only="readOnly || suppressInteraction"
 				@toggle="onCanvasGroupToggle"
 				@update:name="onCanvasGroupNameUpdate"
+				@update:description="onCanvasGroupDescriptionUpdate"
+				@update:descriptionVisible="onCanvasGroupDescriptionVisibleUpdate"
 				@title:focused="onNodeGroupTitleFocused"
 				@ungroup="onCanvasGroupUngroup"
 			/>

@@ -39,6 +39,14 @@ const baseGroup: IWorkflowGroup = {
 	name: 'My group',
 };
 
+const expandedBaseGroup: IWorkflowGroup = {
+	id: 'g1',
+	nodeIds: ['a', 'b'],
+	name: 'My group',
+	description: '',
+	descriptionVisible: false,
+};
+
 function makeData(overrides: Partial<CanvasGroupNodeData> = {}): CanvasGroupNodeData {
 	return {
 		group: baseGroup,
@@ -71,7 +79,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 	}
 
 	describe('chevron caption and icon by state', () => {
-		it('renders chevrons-up-down with Expand label when collapsed', () => {
+		it('renders chevron-down with Expand label when collapsed', () => {
 			const wrapper = render({ data: makeData({ isCollapsed: true }) });
 			const toggle = wrapper.getByTestId('canvas-node-group-toggle');
 			expect(toggle.getAttribute('aria-label')).toBe('Expand');
@@ -79,7 +87,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(toggle.querySelector('svg')).toBeTruthy();
 		});
 
-		it('renders chevrons-down-up with Collapse label when expanded', () => {
+		it('renders chevron-up with Collapse label when expanded', () => {
 			const wrapper = render({ data: makeData({ isCollapsed: false }) });
 			const toggle = wrapper.getByTestId('canvas-node-group-toggle');
 			expect(toggle.getAttribute('aria-label')).toBe('Collapse');
@@ -93,24 +101,24 @@ describe('CanvasNodeGroupTitleBar', () => {
 		});
 	});
 
-	describe('double-click to toggle collapse', () => {
-		it('emits toggle when the group body is double-clicked', async () => {
+	describe('single-click to toggle collapse', () => {
+		it('emits toggle when the group body is clicked', async () => {
 			const wrapper = render();
-			await fireEvent.dblClick(wrapper.getByTestId('canvas-node-group-header'));
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-header'));
 			expect(wrapper.emitted().toggle).toEqual([['g1']]);
 		});
 
-		it('does not emit toggle when the title is double-clicked', async () => {
-			const wrapper = render();
+		it('does not emit toggle when the expanded title edit is clicked', async () => {
+			const wrapper = render({ data: makeData({ isCollapsed: false }) });
 			const titleArea = wrapper.getByTestId('canvas-node-group-title');
 			const titleEdit = titleArea.querySelector('.nodrag') as HTMLElement;
-			await fireEvent.dblClick(titleEdit);
+			await fireEvent.click(titleEdit);
 			expect(wrapper.emitted().toggle).toBeUndefined();
 		});
 
-		it('does not emit toggle when the ungroup button is double-clicked', async () => {
+		it('does not emit toggle when the ungroup button is clicked', async () => {
 			const wrapper = render();
-			await fireEvent.dblClick(wrapper.getByTestId('canvas-node-group-ungroup'));
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-ungroup'));
 			expect(wrapper.emitted().toggle).toBeUndefined();
 		});
 	});
@@ -140,10 +148,17 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(ungroup.classList.contains('nodrag')).toBe(true);
 		});
 
-		it('title edit carries nodrag', () => {
-			const wrapper = render();
+		it('title edit carries nodrag when expanded', () => {
+			const wrapper = render({ data: makeData({ isCollapsed: false }) });
 			const titleArea = wrapper.getByTestId('canvas-node-group-title');
 			expect(titleArea.querySelector('.nodrag')).toBeTruthy();
+		});
+
+		it('collapsed title is static text without nodrag', () => {
+			const wrapper = render({ data: makeData({ isCollapsed: true }) });
+			const titleArea = wrapper.getByTestId('canvas-node-group-title');
+			expect(titleArea.querySelector('.nodrag')).toBeNull();
+			expect(titleArea.textContent).toBe('My group');
 		});
 	});
 
@@ -252,8 +267,8 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(wrapper.queryByTestId('canvas-node-group-toolbar')).toBeNull();
 		});
 
-		it('focuses the title when autofocusGroupId matches the group', async () => {
-			const wrapper = render({ autofocusGroupId: 'g1' });
+		it('focuses the title when autofocusGroupId matches the group (expanded)', async () => {
+			const wrapper = render({ data: makeData({ isCollapsed: false }), autofocusGroupId: 'g1' });
 			const input = wrapper.getByTestId('inline-edit-input') as HTMLInputElement;
 
 			await waitFor(() => {
@@ -264,8 +279,9 @@ describe('CanvasNodeGroupTitleBar', () => {
 			});
 		});
 
-		it('waits for VueFlow to initialize node dimensions before focusing the title', async () => {
+		it('waits for VueFlow to initialize node dimensions before focusing the title (expanded)', async () => {
 			const wrapper = render({
+				data: makeData({ isCollapsed: false }),
 				autofocusGroupId: 'g1',
 				dimensions: { width: 0, height: 0 },
 			});
@@ -277,7 +293,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(wrapper.emitted()['title:focused']).toBeUndefined();
 
 			await wrapper.rerender({
-				data: makeData(),
+				data: makeData({ isCollapsed: false }),
 				autofocusGroupId: 'g1',
 				dimensions: { width: 500, height: GROUP_HEADER_HEIGHT },
 				readOnly: false,
@@ -350,6 +366,120 @@ describe('CanvasNodeGroupTitleBar', () => {
 			const root = wrapper.getByTestId('canvas-node-group');
 			const hasSelectedClass = [...root.classList].some((c) => /selected/i.test(c));
 			expect(hasSelectedClass).toBe(true);
+		});
+	});
+
+	describe('description', () => {
+		it('shows the info button when expanded', () => {
+			const wrapper = render({ data: makeData({ isCollapsed: false }) });
+			expect(wrapper.queryByTestId('canvas-node-group-info')).toBeTruthy();
+		});
+
+		it('shows the info button when collapsed', () => {
+			const wrapper = render({ data: makeData({ isCollapsed: true }) });
+			expect(wrapper.queryByTestId('canvas-node-group-info')).toBeTruthy();
+		});
+
+		it('hides the info button in read-only mode', () => {
+			const wrapper = render({ data: makeData({ isCollapsed: false }), readOnly: true });
+			expect(wrapper.queryByTestId('canvas-node-group-info')).toBeNull();
+		});
+
+		it('shows description when descriptionVisible is true', () => {
+			const wrapper = render({
+				data: makeData({
+					isCollapsed: false,
+					group: { ...baseGroup, description: 'A test description', descriptionVisible: true },
+				}),
+			});
+			expect(wrapper.queryByTestId('canvas-node-group-description')).toBeTruthy();
+			expect(wrapper.getByTestId('canvas-node-group-description').textContent).toContain(
+				'A test description',
+			);
+		});
+
+		it('shows description when collapsed if descriptionVisible is true', () => {
+			const wrapper = render({
+				data: makeData({
+					isCollapsed: true,
+					group: {
+						...baseGroup,
+						description: 'A test description',
+						descriptionVisible: true,
+					},
+				}),
+			});
+			expect(wrapper.queryByTestId('canvas-node-group-description')).toBeTruthy();
+			expect(wrapper.getByTestId('canvas-node-group-description').textContent).toContain(
+				'A test description',
+			);
+		});
+
+		it('shows the placeholder when no description exists', () => {
+			const wrapper = render({
+				data: makeData({
+					isCollapsed: false,
+					group: { ...baseGroup, description: '', descriptionVisible: true },
+				}),
+			});
+			expect(wrapper.queryByTestId('canvas-node-group-description')).toBeTruthy();
+		});
+
+		it('emits update:descriptionVisible on info click', async () => {
+			const wrapper = render({
+				data: makeData({
+					isCollapsed: false,
+					group: { ...baseGroup, description: '', descriptionVisible: false },
+				}),
+			});
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-info'));
+			expect(wrapper.emitted()['update:descriptionVisible']).toEqual([['g1', true]]);
+		});
+
+		it('enters edit mode when clicking the description text', async () => {
+			const wrapper = render({
+				data: makeData({
+					isCollapsed: false,
+					group: {
+						...baseGroup,
+						description: 'Edit me',
+						descriptionVisible: true,
+					},
+				}),
+			});
+			const descriptionArea = wrapper.getByTestId('canvas-node-group-description');
+			const textEl = descriptionArea.querySelector(
+				'[data-test-id="canvas-node-group-description-text"]',
+			);
+			await fireEvent.click(textEl!);
+			const textarea = descriptionArea.querySelector('textarea');
+			expect(textarea).toBeTruthy();
+		});
+
+		it('emits update:description on save', async () => {
+			const wrapper = render({
+				data: makeData({
+					isCollapsed: false,
+					group: {
+						...baseGroup,
+						description: 'Old',
+						descriptionVisible: true,
+					},
+				}),
+			});
+			const descriptionArea = wrapper.getByTestId('canvas-node-group-description');
+			const textEl = descriptionArea.querySelector(
+				'[data-test-id="canvas-node-group-description-text"]',
+			);
+			await fireEvent.click(textEl!);
+			await fireEvent.keyDown(descriptionArea.querySelector('textarea')!, {
+				key: 'a',
+				ctrlKey: true,
+			});
+			const textarea = descriptionArea.querySelector('textarea') as HTMLTextAreaElement;
+			await fireEvent.update(textarea, 'New description');
+			await fireEvent.keyDown(textarea, { key: 'Enter' });
+			expect(wrapper.emitted()['update:description']).toEqual([['g1', 'New description']]);
 		});
 	});
 });
