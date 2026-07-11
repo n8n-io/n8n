@@ -1,13 +1,12 @@
-ARG NODE_VERSION=24.16.0
 ARG N8N_VERSION=snapshot
 
-# Builder stage exists because the runtime base image has no toolchain.
-# Pinned to multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
-# Bump the digest together with the tag when updating the base image.
-# Digest pins to node:24.16.0-alpine3.24 (Node 24.16.0, Alpine 3.24).
-FROM node:24.16.0-alpine3.24@sha256:21f403ab171f2dc89bad4dd69d7721bfd15f084ccb46cdd225f31f2bc59b5c9a AS builder
+# POINTER-COMPRESSION PROBE: builder and runtime must run the same
+# pointer-compressed Node binary. node-gyp derives addon build config from
+# the running node's process.config, so compiling inside this image is what
+# gives sqlite3 and isolated-vm the V8_COMPRESS_POINTERS ABI.
+FROM platformatic/node-caged:26.3.1-alpine AS builder
 COPY ./compiled /usr/local/lib/node_modules/n8n
-RUN apk add --no-cache python3 make g++ && \
+RUN apk add --no-cache python3 make g++ linux-headers && \
     cd /usr/local/lib/node_modules/n8n && \
     npm rebuild sqlite3 && \
     # Rebuild isolated-vm from source. node-gyp-build's musl detection relies
@@ -23,28 +22,44 @@ RUN apk add --no-cache python3 make g++ && \
     cd node_modules/isolated-vm && \
     node /usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js rebuild --release -j max
 
-# Pinned to multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
-# n8nio/base is republished by a separate workflow (docker/images/n8n-base) on every
-# base change, so a base rebuild does not reach this image until the digest is
-# manually re-pinned here. Bump the digest together with the tag whenever the base
-# image is intentionally updated.
-# Digest pins to n8nio/base:24.16.0 (Node 24.16.0, Alpine 3.24).
-FROM n8nio/base:24.16.0@sha256:25e5671a1b3e11cd576bc9a4409ebf962baea993a4bc7414168dfd357e85a7e8
+# POINTER-COMPRESSION PROBE: runtime is the same node-caged image as the
+# builder (same V8 ABI for the addons compiled above). Replicates the
+# n8nio/base provisioning inline: OS packages, fonts, node user, and the
+# node binary at /usr/local/bin/node that cloud launch and AppArmor expect
+# (node-caged installs there natively).
+FROM platformatic/node-caged:26.3.1-alpine
 
 ARG N8N_VERSION
 ARG N8N_RELEASE_TYPE=dev
 ENV NODE_ENV=production
 ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
 ENV SHELL=/bin/sh
+ENV NODE_PATH=/usr/local/lib/node_modules
+
+RUN apk --no-cache add --virtual .build-deps-fonts msttcorefonts-installer fontconfig && \
+    update-ms-fonts && \
+    fc-cache -f && \
+    apk del .build-deps-fonts && \
+    find /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \; && \
+    apk add --no-cache \
+        git \
+        openssh \
+        graphicsmagick \
+        tini \
+        tzdata \
+        ca-certificates \
+        libc6-compat && \
+    addgroup -g 1000 node && \
+    adduser -u 1000 -G node -s /bin/sh -D node && \
+    ln -sf /usr/local/bin/node /usr/bin/node && \
+    rm -rf /tmp/* /root/.npm
 
 WORKDIR /home/node
 
 COPY --from=builder /usr/local/lib/node_modules/n8n /usr/local/lib/node_modules/n8n
 COPY docker/images/n8n/docker-entrypoint.sh /
 
-# The Alpine 3.24 base has no /usr/local/bin (node lives in /usr/bin); create it for the symlink.
-RUN mkdir -p /usr/local/bin && \
-    ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
+RUN ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
     mkdir -p /home/node/.n8n && \
     chown -R node:node /home/node && \
     rm -rf /root/.npm /tmp/*
