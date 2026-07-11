@@ -10,7 +10,6 @@ import type {
 } from 'n8n-workflow';
 import { isResourceLocatorValue } from 'n8n-workflow';
 
-import { stampItemIndexOnError } from '../../../GenericFunctions';
 import { prepareApiError, validateMailbox } from '../helpers/utils';
 
 export type OutlookCredentialType =
@@ -41,11 +40,10 @@ export function getOutlookCredentialType(
  * credential, app-only Graph has no `/me`, so the node's `mailbox` parameter is
  * read, validated, and returned as the bare (un-encoded) UPN/ID.
  *
- * The mailbox accepts expressions and is resolved per item: execute call sites MUST
- * pass the loop's item index. Poll/loadOptions rely on the `itemIndex = 0` default —
- * in those contexts `getNodeParameter`'s 2nd arg is a fallback, not an index, so the
- * default keeps their reads unchanged. Encoding happens once at the URL-build site
- * in `microsoftApiRequest`.
+ * The mailbox accepts expressions and is resolved per item: execute call sites pass
+ * the loop's item index; poll/loadOptions call sites pass a literal 0 — in those
+ * contexts `getNodeParameter`'s 2nd arg is a fallback, not an index. Encoding happens
+ * once at the URL-build site in `microsoftApiRequest`.
  */
 export function resolveMailbox(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -60,26 +58,26 @@ export function resolveMailbox(
 	const raw = this.getNodeParameter('mailbox', itemIndex);
 	const value = isResourceLocatorValue(raw) ? raw.value : raw;
 	// A non-string or whitespace-only value collapses to '', which validateMailbox
-	// reports as the "mailbox required" error (not "not valid").
+	// reports as the "mailbox required" error (not "not valid"). A validation error
+	// gets its item index stamped in the router's catch.
 	const mailbox = (typeof value === 'string' ? value : '').trim();
-	try {
-		validateMailbox(mailbox, this.getNode());
-	} catch (error) {
-		throw stampItemIndexOnError(error, itemIndex);
-	}
+	validateMailbox(mailbox, this.getNode());
 	return mailbox;
 }
 
+// `itemIndex` is REQUIRED so the compiler enforces the per-item contract: execute
+// call sites pass the loop index; non-execute call sites (poll/loadOptions) pass a
+// literal 0, where `getNodeParameter`'s 2nd arg is a fallback, not an index.
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	uri?: string,
+	uri: string | undefined,
 	headers: IDataObject = {},
 	option: IDataObject = { json: true },
-	itemIndex = 0,
+	itemIndex: number,
 ) {
 	const credentialType = getOutlookCredentialType.call(this);
 	const credentials = await this.getCredentials(credentialType);
@@ -156,7 +154,7 @@ export async function microsoftApiRequestAllItems(
 	body: IDataObject = {},
 	query: IDataObject = {},
 	headers: IDataObject = {},
-	itemIndex = 0,
+	itemIndex: number,
 ) {
 	const returnData: IDataObject[] = [];
 
@@ -238,8 +236,6 @@ export async function downloadAttachments(
 	return elements;
 }
 
-// `itemIndex` is REQUIRED (no default): this helper is execute-only (single caller in
-// message:get), so omitting the loop index at a new call site is a compile error.
 export async function getMimeContent(
 	this: IExecuteFunctions,
 	messageId: string,
@@ -280,7 +276,7 @@ export async function getSubfolders(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	folders: IDataObject[],
 	addPathToDisplayName = false,
-	itemIndex = 0,
+	itemIndex: number,
 ) {
 	const returnData: IDataObject[] = [...folders];
 	for (const folder of folders) {

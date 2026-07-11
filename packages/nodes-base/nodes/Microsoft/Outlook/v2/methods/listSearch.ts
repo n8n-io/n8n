@@ -3,6 +3,9 @@ import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from '
 import { encodeOutlookId } from '../helpers/utils';
 import { getSubfolders, microsoftApiRequest } from '../transport';
 
+// listSearch context throughout this file: the transport's trailing `0` is its
+// fallback read (getNodeParameter's 2nd arg here is a fallback, not an item index).
+
 async function search(
 	this: ILoadOptionsFunctions,
 	resource: string,
@@ -20,6 +23,9 @@ async function search(
 			undefined,
 			undefined,
 			paginationToken, // paginationToken contains the full URL
+			undefined,
+			undefined,
+			0,
 		);
 	} else {
 		const qs: IDataObject = {
@@ -32,7 +38,17 @@ async function search(
 			qs.$filter = `contains(${nameProperty}, '${filterValue}')`;
 		}
 
-		response = await microsoftApiRequest.call(this, 'GET', resource, undefined, qs);
+		response = await microsoftApiRequest.call(
+			this,
+			'GET',
+			resource,
+			undefined,
+			qs,
+			undefined,
+			undefined,
+			undefined,
+			0,
+		);
 	}
 
 	return {
@@ -77,6 +93,9 @@ export async function searchDrafts(
 			undefined,
 			undefined,
 			paginationToken, // paginationToken contains the full URL
+			undefined,
+			undefined,
+			0,
 		);
 	} else {
 		const qs: IDataObject = {
@@ -90,7 +109,17 @@ export async function searchDrafts(
 			qs.$filter += ` AND contains(${'subject'}, '${filterValue}')`;
 		}
 
-		response = await microsoftApiRequest.call(this, 'GET', '/messages', undefined, qs);
+		response = await microsoftApiRequest.call(
+			this,
+			'GET',
+			'/messages',
+			undefined,
+			qs,
+			undefined,
+			undefined,
+			undefined,
+			0,
+		);
 	}
 
 	return {
@@ -120,6 +149,9 @@ export async function searchMessages(
 			undefined,
 			undefined,
 			paginationToken, // paginationToken contains the full URL
+			undefined,
+			undefined,
+			0,
 		);
 	} else {
 		const qs: IDataObject = {
@@ -132,7 +164,17 @@ export async function searchMessages(
 			qs.$filter = `contains(${'subject'}, '${filterValue}')`;
 		}
 
-		response = await microsoftApiRequest.call(this, 'GET', '/messages', undefined, qs);
+		response = await microsoftApiRequest.call(
+			this,
+			'GET',
+			'/messages',
+			undefined,
+			qs,
+			undefined,
+			undefined,
+			undefined,
+			0,
+		);
 	}
 
 	return {
@@ -166,6 +208,9 @@ export async function searchEvents(
 			undefined,
 			undefined,
 			paginationToken, // paginationToken contains the full URL
+			undefined,
+			undefined,
+			0,
 		);
 	} else {
 		const qs: IDataObject = {
@@ -184,6 +229,10 @@ export async function searchEvents(
 			`/calendars/${calendarId}/events`,
 			undefined,
 			qs,
+			undefined,
+			undefined,
+			undefined,
+			0,
 		);
 	}
 
@@ -214,16 +263,29 @@ export async function searchFolders(
 			undefined,
 			undefined,
 			paginationToken, // paginationToken contains the full URL
+			undefined,
+			undefined,
+			0,
 		);
 	} else {
 		const qs: IDataObject = {
 			$top: 100,
 		};
 
-		response = await microsoftApiRequest.call(this, 'GET', '/mailFolders', undefined, qs);
+		response = await microsoftApiRequest.call(
+			this,
+			'GET',
+			'/mailFolders',
+			undefined,
+			qs,
+			undefined,
+			undefined,
+			undefined,
+			0,
+		);
 	}
 
-	let folders = await getSubfolders.call(this, response.value as IDataObject[], true);
+	let folders = await getSubfolders.call(this, response.value as IDataObject[], true, 0);
 
 	if (filter) {
 		filter = filter.toLowerCase();
@@ -262,6 +324,9 @@ export async function searchAttachments(
 			undefined,
 			undefined,
 			paginationToken, // paginationToken contains the full URL
+			undefined,
+			undefined,
+			0,
 		);
 	} else {
 		const qs: IDataObject = {
@@ -275,6 +340,10 @@ export async function searchAttachments(
 			`/messages/${messageId}/attachments`,
 			undefined,
 			qs,
+			undefined,
+			undefined,
+			undefined,
+			0,
 		);
 	}
 

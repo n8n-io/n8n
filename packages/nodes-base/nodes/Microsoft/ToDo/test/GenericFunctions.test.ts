@@ -1,6 +1,7 @@
 import {
 	NodeApiError,
 	NodeOperationError,
+	type IDataObject,
 	type IExecuteFunctions,
 	type ILoadOptionsFunctions,
 	type INode,
@@ -57,7 +58,17 @@ describe('Microsoft ToDo GenericFunctions', () => {
 					graphApiBaseUrl: 'https://graph.microsoft.us',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/todo/lists');
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/todo/lists',
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					0,
+				);
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftToDoOAuth2Api',
@@ -79,7 +90,17 @@ describe('Microsoft ToDo GenericFunctions', () => {
 					graphApiBaseUrl: '',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/todo/lists');
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/todo/lists',
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					0,
+				);
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftToDoOAuth2Api',
@@ -100,7 +121,17 @@ describe('Microsoft ToDo GenericFunctions', () => {
 					},
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/todo/lists');
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/todo/lists',
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					0,
+				);
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftToDoOAuth2Api',
@@ -122,7 +153,17 @@ describe('Microsoft ToDo GenericFunctions', () => {
 					graphApiBaseUrl: 'https://graph.microsoft.com/',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/todo/lists');
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/todo/lists',
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					0,
+				);
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftToDoOAuth2Api',
@@ -144,7 +185,17 @@ describe('Microsoft ToDo GenericFunctions', () => {
 					graphApiBaseUrl: 'https://graph.microsoft.com///',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/todo/lists');
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/todo/lists',
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					0,
+				);
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftToDoOAuth2Api',
@@ -166,7 +217,17 @@ describe('Microsoft ToDo GenericFunctions', () => {
 					graphApiBaseUrl: 'https://graph.microsoft.us',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/todo/lists');
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/todo/lists',
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					0,
+				);
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftToDoOAuth2Api',
@@ -188,7 +249,17 @@ describe('Microsoft ToDo GenericFunctions', () => {
 					graphApiBaseUrl: 'https://dod-graph.microsoft.us',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/todo/lists');
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/todo/lists',
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					0,
+				);
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftToDoOAuth2Api',
@@ -210,7 +281,17 @@ describe('Microsoft ToDo GenericFunctions', () => {
 					graphApiBaseUrl: 'https://microsoftgraph.chinacloudapi.cn',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/todo/lists');
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/todo/lists',
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					0,
+				);
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftToDoOAuth2Api',
@@ -235,7 +316,17 @@ describe('Microsoft ToDo GenericFunctions', () => {
 		it('should use microsoftToDoOAuth2Api when authentication is not set (backward compatibility)', async () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/todo/lists');
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				'/todo/lists',
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				0,
+			);
 
 			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftToDoOAuth2Api');
 			expect(mockRequestOAuth2).toHaveBeenCalledWith('microsoftToDoOAuth2Api', expect.anything());
@@ -244,7 +335,17 @@ describe('Microsoft ToDo GenericFunctions', () => {
 		it('should use microsoftToDoOAuth2Api when explicitly selected', async () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftToDoOAuth2Api');
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/todo/lists');
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				'/todo/lists',
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				0,
+			);
 
 			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftToDoOAuth2Api');
 			expect(mockRequestOAuth2).toHaveBeenCalledWith('microsoftToDoOAuth2Api', expect.anything());
@@ -253,7 +354,17 @@ describe('Microsoft ToDo GenericFunctions', () => {
 		it('should use microsoftOAuth2Api when the generic credential is selected', async () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/todo/lists');
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				'/todo/lists',
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				0,
+			);
 
 			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
 			expect(mockRequestOAuth2).toHaveBeenCalledWith('microsoftOAuth2Api', expect.anything());
@@ -262,7 +373,17 @@ describe('Microsoft ToDo GenericFunctions', () => {
 		it('should resolve the credential name from the authentication parameter at index 0', async () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/todo/lists');
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				'/todo/lists',
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				0,
+			);
 
 			expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('authentication', 0);
 		});
@@ -270,7 +391,17 @@ describe('Microsoft ToDo GenericFunctions', () => {
 		it('should honor graphApiBaseUrl from the generic credential (sovereign cloud)', async () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/todo/lists');
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				'/todo/lists',
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				0,
+			);
 
 			expect(mockRequestOAuth2).toHaveBeenCalledWith(
 				'microsoftOAuth2Api',
@@ -333,7 +464,17 @@ describe('Microsoft ToDo GenericFunctions', () => {
 		});
 
 		it('routes through requestWithAuthentication, never requestOAuth2', async () => {
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/todo/lists');
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				'/todo/lists',
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				0,
+			);
 
 			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
@@ -346,7 +487,17 @@ describe('Microsoft ToDo GenericFunctions', () => {
 		});
 
 		it('rebases /me onto /users/{id} for the user target', async () => {
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/todo/lists');
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				'/todo/lists',
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				0,
+			);
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
@@ -359,7 +510,17 @@ describe('Microsoft ToDo GenericFunctions', () => {
 				graphApiBaseUrl: 'https://graph.microsoft.us',
 			});
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/todo/lists');
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				'/todo/lists',
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				0,
+			);
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
@@ -372,7 +533,17 @@ describe('Microsoft ToDo GenericFunctions', () => {
 		it('carries a B2B guest (#EXT#) UPN end-to-end into an encoded /users/{id} uri', async () => {
 			setSpParams({ userTarget: { value: 'user_contoso.com#EXT#@tenant.onmicrosoft.com' } });
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/todo/lists');
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				'/todo/lists',
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				0,
+			);
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
@@ -385,7 +556,17 @@ describe('Microsoft ToDo GenericFunctions', () => {
 		it('carries a "^"/"!" UPN end-to-end into an encoded /users/{id} uri', async () => {
 			setSpParams({ userTarget: { value: 'joe^smith@contoso.com' } });
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/todo/lists');
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				'/todo/lists',
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				0,
+			);
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
@@ -399,7 +580,17 @@ describe('Microsoft ToDo GenericFunctions', () => {
 			const nextLink =
 				'https://graph.microsoft.com/v1.0/users/jane%40contoso.com/todo/lists?$skiptoken=abc';
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/todo/lists', {}, {}, nextLink);
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				'/todo/lists',
+				{},
+				{},
+				nextLink,
+				undefined,
+				undefined,
+				0,
+			);
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
@@ -411,17 +602,28 @@ describe('Microsoft ToDo GenericFunctions', () => {
 			setSpParams({ userTarget: { value: '' } });
 
 			await expect(
-				microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/todo/lists'),
+				microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/todo/lists',
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					0,
+				),
 			).rejects.toThrow('A target ID is required for the Service Principal');
 			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
 		});
 
-		it('wraps a transport failure as NodeApiError carrying the passed itemIndex', async () => {
+		it('wraps a transport failure as NodeApiError', async () => {
+			// Item attribution happens in the node's execute catch, not here (see the
+			// 'execute error attribution' describe).
 			mockRequestWithAuthentication.mockRejectedValue(new Error('boom'));
 
-			let caught: unknown;
-			try {
-				await microsoftApiRequest.call(
+			await expect(
+				microsoftApiRequest.call(
 					mockExecuteFunctions,
 					'GET',
 					'/todo/lists',
@@ -431,13 +633,8 @@ describe('Microsoft ToDo GenericFunctions', () => {
 					{},
 					{ json: true },
 					2,
-				);
-			} catch (error) {
-				caught = error;
-			}
-
-			expect(caught).toBeInstanceOf(NodeApiError);
-			expect((caught as NodeApiError).context.itemIndex).toBe(2);
+				),
+			).rejects.toThrow(NodeApiError);
 		});
 
 		it('resolves the user target at the passed itemIndex', async () => {
@@ -494,29 +691,68 @@ describe('Microsoft ToDo GenericFunctions', () => {
 			);
 		});
 
-		it('stamps context.itemIndex on a bad-target resolve error', async () => {
-			setSpParams({ userTarget: { value: 'not a user' } });
+		it('paginates at the itemIndex root: page 1 scoped, page 2 via nextLink verbatim', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((name, itemIndex, fallback) => {
+				if (name === 'authentication') return 'microsoftEntraServicePrincipalApi' as never;
+				if (name === 'userTarget')
+					return { value: itemIndex === 1 ? 'john@contoso.com' : 'jane@contoso.com' } as never;
+				return fallback as never;
+			});
+			// The nextLink carries $top, which also exercises the $top-delete branch.
+			const nextLink = `${baseUrl}/v1.0/users/john%40contoso.com/todo/lists?$skiptoken=abc&$top=100`;
+			mockRequestWithAuthentication
+				.mockResolvedValueOnce({ value: [{ id: 'list-1' }], '@odata.nextLink': nextLink })
+				.mockResolvedValueOnce({ value: [{ id: 'list-2' }] });
+
+			const result = await microsoftApiRequestAllItems.call(
+				mockExecuteFunctions,
+				'value',
+				'GET',
+				'/todo/lists',
+				{},
+				{},
+				1,
+			);
+
+			const uris = mockRequestWithAuthentication.mock.calls.map(
+				(call) => (call[1] as IDataObject).uri,
+			);
+			expect(uris).toEqual([`${baseUrl}/v1.0/users/john%40contoso.com/todo/lists`, nextLink]);
+			expect(result).toEqual([{ id: 'list-1' }, { id: 'list-2' }]);
+		});
+	});
+
+	describe('execute error attribution', () => {
+		it('stamps context.itemIndex on a NodeError from the failing item', async () => {
+			const mockRequestWithAuthentication = vi.fn().mockResolvedValue({ value: [] });
+			mockExecuteFunctions.helpers.requestWithAuthentication = mockRequestWithAuthentication;
+			(mockExecuteFunctions.helpers.constructExecutionMetaData as Mock).mockReturnValue([]);
+			mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }, { json: {} }]);
+			mockExecuteFunctions.continueOnFail.mockReturnValue(false);
+			mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
+			mockExecuteFunctions.getNodeParameter.mockImplementation((name, itemIndex, fallback) => {
+				const params: Record<string, unknown> = {
+					authentication: 'microsoftEntraServicePrincipalApi',
+					resource: 'list',
+					operation: 'getAll',
+					returnAll: false,
+					limit: 50,
+				};
+				if (name === 'userTarget')
+					return { value: itemIndex === 1 ? 'not a user' : 'jane@contoso.com' } as never;
+				return (name in params ? params[name as string] : fallback) as never;
+			});
 
 			let caught: unknown;
 			try {
-				await microsoftApiRequest.call(
-					mockExecuteFunctions,
-					'GET',
-					'/todo/lists',
-					{},
-					{},
-					undefined,
-					{},
-					{ json: true },
-					2,
-				);
+				await new MicrosoftToDo().execute.call(mockExecuteFunctions);
 			} catch (error) {
 				caught = error;
 			}
 
 			expect(caught).toBeInstanceOf(NodeOperationError);
-			expect((caught as NodeOperationError).context.itemIndex).toBe(2);
-			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
+			expect((caught as NodeOperationError).message).toBe('The target ID is not valid');
+			expect((caught as NodeOperationError).context.itemIndex).toBe(1);
 		});
 	});
 

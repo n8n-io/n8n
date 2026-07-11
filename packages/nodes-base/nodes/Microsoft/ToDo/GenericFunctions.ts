@@ -10,7 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { stampItemIndexOnError, validateUserTargetId } from '../GenericFunctions';
+import { validateUserTargetId } from '../GenericFunctions';
 
 export type ToDoCredentialType =
 	| 'microsoftToDoOAuth2Api'
@@ -57,13 +57,13 @@ export function getServicePrincipalResourceRoot(rawId: string, node: INode): str
 /**
  * Resolves the app-only `/users/{id}` root for the current node context, or `undefined`
  * for the OAuth2 credentials (which use the `/me` path). The `userTarget` RLC accepts
- * expressions and is resolved per item: execute call sites MUST pass the loop's item
- * index. Load-options rely on the `itemIndex = 0` default — there `getNodeParameter`'s
- * 2nd arg is a fallback, not an index, so the default keeps that context's reads
- * unchanged. The RLC value is extracted manually (not via `{ extractValue: true }`) so
- * the single call shape works in both contexts; an unpersisted/empty target coalesces to
- * `''`, which yields the intended "target ID required" error rather than a malformed
- * `/users/` URL.
+ * expressions and is resolved per item: execute call sites pass the loop's item index;
+ * load-options call sites pass a literal 0 — there `getNodeParameter`'s 2nd arg is a
+ * fallback, not an index. The RLC value is extracted manually (not via
+ * `{ extractValue: true }`) so the single call shape works in both contexts; an
+ * unpersisted/empty target coalesces to `''`, which yields the intended "target ID
+ * required" error rather than a malformed `/users/` URL. A validation error gets its
+ * item index stamped in the node's execute catch.
  */
 export function resolveScopeRoot(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -77,23 +77,22 @@ export function resolveScopeRoot(
 		typeof raw === 'string'
 			? raw
 			: String((raw as INodeParameterResourceLocator | undefined)?.value ?? '');
-	try {
-		return getServicePrincipalResourceRoot(id, this.getNode());
-	} catch (error) {
-		throw stampItemIndexOnError(error, itemIndex);
-	}
+	return getServicePrincipalResourceRoot(id, this.getNode());
 }
 
+// `itemIndex` is REQUIRED so the compiler enforces the per-item contract: execute
+// call sites pass the loop index; loadOptions call sites pass a literal 0, where
+// `getNodeParameter`'s 2nd arg is a fallback, not an index.
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	uri?: string,
+	uri: string | undefined,
 	_headers: IDataObject = {},
 	option: IDataObject = { json: true },
-	itemIndex = 0,
+	itemIndex: number,
 ) {
 	const credentialType = getToDoCredentialType.call(this);
 	const isServicePrincipal = credentialType === 'microsoftEntraServicePrincipalApi';
@@ -104,11 +103,10 @@ export async function microsoftApiRequest(
 			: 'https://graph.microsoft.com'
 	).replace(/\/+$/, '');
 
-	// App-only Service Principal has no `/me`; rebase the request onto the chosen user.
-	// `userTarget` accepts expressions, so it is resolved per item — execute call sites
-	// MUST pass the loop's item index (loadOptions rely on the default, see
-	// resolveScopeRoot). Only page-1 (relative) requests are scoped — paginated
-	// follow-ups pass an absolute `@odata.nextLink` as `uri`, used verbatim.
+	// App-only Service Principal has no `/me`; rebase the request onto the chosen user,
+	// resolved per item (`userTarget` accepts expressions). Only page-1 (relative)
+	// requests are scoped — paginated follow-ups pass an absolute `@odata.nextLink` as
+	// `uri`, used verbatim.
 	let uriToUse = uri || `${baseUrl}/v1.0/me${resource}`;
 	if (!uri && isServicePrincipal) {
 		const scopeRoot = resolveScopeRoot.call(this, itemIndex);
@@ -142,7 +140,8 @@ export async function microsoftApiRequest(
 		}
 		return await this.helpers.requestOAuth2.call(this, credentialType, options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex });
+		// The node's execute catch stamps the failing item's index.
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -153,7 +152,7 @@ export async function microsoftApiRequestAllItems(
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
-	itemIndex = 0,
+	itemIndex: number,
 ) {
 	const returnData: IDataObject[] = [];
 
@@ -179,29 +178,6 @@ export async function microsoftApiRequestAllItems(
 		}
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData['@odata.nextLink'] !== undefined);
-
-	return returnData;
-}
-
-export async function microsoftApiRequestAllItemsSkip(
-	this: IExecuteFunctions,
-	propertyName: string,
-	method: IHttpRequestMethods,
-	endpoint: string,
-	body: IDataObject = {},
-	query: IDataObject = {},
-) {
-	const returnData: IDataObject[] = [];
-
-	let responseData;
-	query.$top = 100;
-	query.$skip = 0;
-
-	do {
-		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query);
-		query.$skip += query.$top;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
-	} while (responseData.value.length !== 0);
 
 	return returnData;
 }

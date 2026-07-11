@@ -666,9 +666,7 @@ export class MicrosoftOneDrive implements INodeType {
 					}
 					continue;
 				}
-				// The transport's NodeApiError (and the per-item resolve's validator error)
-				// lacks the item index; stamp it so the failing item is pinpointed
-				// (mirrors the Outlook router).
+				// A NodeError from the transport may be missing the itemIndex, add it
 				throw stampItemIndexOnError(error, i);
 			}
 			const executionData = this.helpers.constructExecutionMetaData(

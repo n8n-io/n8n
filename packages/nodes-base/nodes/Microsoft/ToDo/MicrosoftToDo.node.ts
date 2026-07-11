@@ -10,6 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import { stampItemIndexOnError } from '../GenericFunctions';
 import { targetDescription } from './descriptions/TargetDescription';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from './GenericFunctions';
 import { linkedResourceFields, linkedResourceOperations } from './LinkedResourceDescription';
@@ -124,7 +125,16 @@ export class MicrosoftToDo implements INodeType {
 			// select them easily
 			async getTaskLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const lists = await microsoftApiRequestAllItems.call(this, 'value', 'GET', '/todo/lists');
+				// loadOptions context: 0 is the transport's fallback read, not an item index.
+				const lists = await microsoftApiRequestAllItems.call(
+					this,
+					'value',
+					'GET',
+					'/todo/lists',
+					undefined,
+					undefined,
+					0,
+				);
 				for (const list of lists) {
 					returnData.push({
 						name: list.displayName as string,
@@ -540,7 +550,8 @@ export class MicrosoftToDo implements INodeType {
 					returnData.push(...executionErrorData);
 					continue;
 				}
-				throw error;
+				// A NodeError from the transport may be missing the itemIndex, add it
+				throw stampItemIndexOnError(error, i);
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(

@@ -37,6 +37,10 @@ describe('MicrosoftOutlookV2 - loadOptions methods', () => {
 				'value',
 				'GET',
 				'/outlook/masterCategories',
+				undefined,
+				undefined,
+				undefined,
+				0,
 			);
 			expect(result).toEqual([
 				{ name: 'Red Category', value: 'Red Category' },
@@ -126,8 +130,11 @@ describe('MicrosoftOutlookV2 - loadOptions methods', () => {
 				'GET',
 				'/mailFolders',
 				{},
+				undefined,
+				undefined,
+				0,
 			);
-			expect(mockTransport.getSubfolders).toHaveBeenCalledWith(mockResponse, true);
+			expect(mockTransport.getSubfolders).toHaveBeenCalledWith(mockResponse, true, 0);
 			expect(result).toEqual([
 				{ name: 'Inbox', value: 'folder1' },
 				{ name: 'Sent Items', value: 'folder2' },
@@ -223,6 +230,9 @@ describe('MicrosoftOutlookV2 - loadOptions methods', () => {
 				'GET',
 				'/calendarGroups',
 				{},
+				undefined,
+				undefined,
+				0,
 			);
 			expect(result).toEqual([
 				{ name: 'My Calendars', value: 'group1' },

@@ -1,7 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData, JsonObject } from 'n8n-workflow';
 import { NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
-import { stampItemIndexOnError } from '../../../GenericFunctions';
 import * as calendar from './calendar';
 import * as contact from './contact';
 import * as draft from './draft';
@@ -12,6 +11,7 @@ import * as message from './message';
 import * as messageAttachment from './messageAttachment';
 import type { MicrosoftOutlook } from './node.type';
 import { configureWaitTillDate } from '../../../../../utils/sendAndWait/configureWaitTillDate.util';
+import { stampItemIndexOnError } from '../../../GenericFunctions';
 
 export async function router(this: IExecuteFunctions) {
 	const items = this.getInputData();
