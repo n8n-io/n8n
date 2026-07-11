@@ -37,6 +37,7 @@
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "typescript": "catalog:typescript",
     "vitest": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"

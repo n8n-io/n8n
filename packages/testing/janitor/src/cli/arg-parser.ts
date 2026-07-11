@@ -56,7 +56,6 @@ export interface CliOptions {
 	impact: boolean;
 	// Affected-packages / scope options
 	changedFiles?: string;
-	runner?: 'vitest';
 	packageDir?: string;
 	/** Anything after `--` — forwarded to the test runner by `test-scoped`. */
 	passthroughArgs: string[];
@@ -190,13 +189,6 @@ const VALUE_FLAG_HANDLERS: Record<string, (options: CliOptions, value: string) =
 	'--changed-files=': (opts, value) => {
 		opts.changedFiles = value;
 	},
-	'--runner=': (opts, value) => {
-		if (value === 'vitest') {
-			opts.runner = value;
-		} else {
-			throw new Error(`Unknown --runner=${value}. Expected 'vitest'.`);
-		}
-	},
 	'--package-dir=': (opts, value) => {
 		opts.packageDir = value;
 	},
@@ -250,7 +242,6 @@ function createDefaultOptions(): CliOptions {
 		shardIndex: undefined,
 		impact: false,
 		changedFiles: undefined,
-		runner: undefined,
 		packageDir: undefined,
 		passthroughArgs: [],
 		url: undefined,

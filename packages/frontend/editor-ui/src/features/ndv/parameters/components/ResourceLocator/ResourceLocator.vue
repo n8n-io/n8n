@@ -57,6 +57,10 @@ import { completeExpressionSyntax } from '@/app/utils/expressions';
 import { openSafeUrl } from '@/app/utils/htmlUtils';
 import { DEBOUNCE_TIME, ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
+import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
+import { DATA_TABLE_NODES } from '@/app/constants/nodeTypes';
+import { useRouter } from 'vue-router';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import FromAiOverrideButton from '../ParameterInputOverrides/FromAiOverrideButton.vue';
 import FromAiOverrideField from '../ParameterInputOverrides/FromAiOverrideField.vue';
@@ -161,6 +165,8 @@ const ndvStore = injectNDVStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
+const dataTableStore = useDataTableStore();
+const router = useRouter();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
@@ -187,6 +193,8 @@ const selectedMode = computed(() => {
 });
 
 const isListMode = computed(() => selectedMode.value === 'list');
+
+const isDataTableNode = computed(() => !!props.node && DATA_TABLE_NODES.includes(props.node.type));
 
 /**
  * Check if the current response contains an error that indicates a credential issue.
@@ -269,6 +277,24 @@ const urlValue = computedAsync(async () => {
 		if (typeof valueToDisplay.value === 'string' && valueToDisplay.value.startsWith('http')) {
 			return valueToDisplay.value;
 		}
+	}
+
+	// Data table nodes have no url template, so resolve a link from the id by
+	// looking the table up — only link it when it actually exists for the user.
+	if (isDataTableNode.value && selectedMode.value === 'id') {
+		// Use the resolved value for expressions, but only if it's a concrete id —
+		// an unresolved template (still containing `{{ }}`) can't identify a table.
+		const raw = props.isValueExpression ? props.expressionComputedValue : valueToDisplay.value;
+		const id = typeof raw === 'string' ? raw.trim() : '';
+		if (!id || id.includes('{{') || id.includes('}}')) return null;
+		const table = await dataTableStore.fetchDataTableById(id);
+		// Resolve via the router so the link honours the configured base path (N8N_PATH).
+		return table
+			? router.resolve({
+					name: DATA_TABLE_DETAILS,
+					params: { projectId: table.projectId, id: table.id },
+				}).href
+			: null;
 	}
 
 	if (currentMode.value.url) {
@@ -543,23 +569,48 @@ watch(
 
 watch(
 	() => stringify(props.node?.credentials ?? {}),
-	(currentValue, oldValue) => {
+	async (currentValue, oldValue) => {
 		const emptyCredentials = stringify({});
 		const isUpdated =
 			oldValue !== undefined && oldValue !== emptyCredentials && currentValue !== oldValue;
 		if (
-			isUpdated &&
-			props.modelValue &&
-			isResourceLocatorValue(props.modelValue) &&
-			props.modelValue.value !== ''
+			!isUpdated ||
+			!props.modelValue ||
+			!isResourceLocatorValue(props.modelValue) ||
+			props.modelValue.value === '' ||
+			// Manual (id/url) mode: keep the user-entered value.
+			!isListMode.value
 		) {
+			return;
+		}
+
+		// Validate against the full current list: reset any stale search filter and clear the cache
+		// directly (skipping refreshList()'s "user refreshed" telemetry).
+		searchFilter.value = '';
+		cachedResponses.value = {};
+		await loadResources();
+
+		// Credentials changed again while loading — a newer run will validate the fresh results.
+		if (stringify(props.node?.credentials ?? {}) !== currentValue) return;
+
+		const selected = props.modelValue.value;
+		const match = currentQueryResults.value.find((result) => result.value === selected);
+		if (match) {
 			emit('update:modelValue', {
 				...props.modelValue,
-				cachedResultName: '',
-				cachedResultUrl: '',
-				value: '',
+				cachedResultName: match.name ?? '',
+				cachedResultUrl: match.url ?? '',
 			});
+			return;
 		}
+
+		const mayExistElsewhere = currentQueryHasMore.value || requiresSearchFilter.value;
+		emit('update:modelValue', {
+			...props.modelValue,
+			cachedResultName: '',
+			cachedResultUrl: '',
+			...(mayExistElsewhere ? {} : { value: '' }),
+		});
 	},
 );
 

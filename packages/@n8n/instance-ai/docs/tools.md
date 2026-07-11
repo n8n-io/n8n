@@ -14,7 +14,8 @@ them. Some are conditional on context availability.
 
 Persist a dependency-aware task plan for detached multi-step execution. For
 initial plan-worthy work, the orchestrator loads the `planning` skill, performs
-discovery with normal domain tools, then calls `create-tasks` with
+discovery with normal domain tools, loads `create-tasks` via `load_tool`, then
+calls `create-tasks` with
 `planningContext.source: "planning-skill"`. For
 `<planned-task-follow-up type="replan">` turns, use
 `planningContext.source: "replan"` when multiple dependent tasks still need
@@ -720,11 +721,21 @@ only the file medium.
 | `verify_mcp_server` | Test connectivity to an MCP server and list its tools before adding it to the config. |
 | `resolve_llm` | Resolve the agent's main LLM (provider/model/credential) non-interactively; returns `ok: false` with candidates when the choice is missing/ambiguous. |
 
-**Getting user input:** there are no builder-specific picker cards. To ask the user
-anything (a choice, which credential, which model), use the native `ask-user` tool.
-Credentials are listed via the native `credentials` tool (`action: "list"`; +
+**Getting user input:** `configure_channel` is the only builder-specific interactive
+card — it renders the chat-channel setup UI inline in the chat so the user creates
+a new credential and connects (or skips) a channel. For every other user input (a
+choice, which credential, which model), use the native `ask-user` tool. Non-channel
+credentials are listed via the native `credentials` tool (`action: "list"`; +
 `ask-user` when several match); the main LLM via `resolve_llm` (+ `ask-user`
 fallback), then written into the config file and persisted with `build_agent`.
+
+**`configure_channel`** *(standalone, not a router action)*: interactive HITL tool
+that opens the agent chat-channel setup UI. Takes `{ integrationType }` (from
+`list_integration_types`; unsupported types are rejected). Suspends the run,
+renders the setup UI, and resumes with `{ connected: boolean }` — `false` means
+the user skipped, do not re-prompt. The setup UI persists the connection itself;
+do **not** call the `credentials` tool for a channel and do **not** write channel
+entries into `integrations`.
 
 **Targeting:** actions that mutate a specific agent require a bound agent; before one
 exists they return a structured error telling the model to `create_agent` first.
@@ -748,6 +759,8 @@ only the domain tools wired into that agent.
 | Tool Category | Orchestrator | Specialized background agents |
 |---------------|:---:|:---:|
 | Orchestration tools (`create-tasks`, etc.) | ✅ | ❌ |
+| Docs search (`n8n-docs`) | ✅ (search/load) | ❌ |
+| Eval tools (`evals`) | ✅ (search/load) | ❌ |
 | Workflow tools | ✅ | ✅ (eval-setup) |
 | Execution tools | ✅ | ❌ |
 | Credential tools | ✅ | ✅ (eval-setup — setup only) |

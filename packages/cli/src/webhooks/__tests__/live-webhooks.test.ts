@@ -110,7 +110,13 @@ describe('LiveWebhooks', () => {
 		webhookService.getNodeWebhooks.mockReturnValue([webhookData]);
 
 		(WebhookHelpers.executeWebhook as Mock).mockImplementation(
-			(workflow: Workflow, wd: IWebhookData, workflowData: IWorkflowBase, ...args: unknown[]) => {
+			// eslint-disable-next-line @typescript-eslint/require-await
+			async (
+				workflow: Workflow,
+				wd: IWebhookData,
+				workflowData: IWorkflowBase,
+				...args: unknown[]
+			) => {
 				onExecuteWebhook?.({ workflow, webhookData: wd, workflowData });
 				const webhookCallback = args[args.length - 1] as (
 					error: Error | null,
@@ -262,6 +268,44 @@ describe('LiveWebhooks', () => {
 			// Verify it does NOT have draft nodes
 			expect(capturedWorkflowData!.nodes[0].id).not.toBe('webhook-node-draft');
 			expect(capturedWorkflowData!.nodes[1].id).not.toBe('set-node-draft');
+		});
+
+		it('rejects (does not hang) when executeWebhook throws before invoking the callback', async () => {
+			const webhookNode: INode = {
+				id: 'webhook-node',
+				name: NODE_NAME,
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { path: WEBHOOK_PATH, httpMethod: 'GET' },
+			};
+
+			const activeVersion = mock<WorkflowHistory>({
+				versionId: 'v1',
+				workflowId: WORKFLOW_ID,
+				nodes: [webhookNode],
+				connections: {},
+			});
+
+			const workflowEntity = mock<WorkflowEntity>({
+				id: WORKFLOW_ID,
+				name: 'Test Workflow',
+				active: true,
+				activeVersionId: activeVersion.versionId,
+				nodes: [webhookNode],
+				connections: {},
+				staticData: {},
+				activeVersion,
+				shared: [{ role: 'workflow:owner', project: { id: 'project-1', projectRelations: [] } }],
+			});
+
+			const request = setupExecuteWebhookMocks(workflowEntity);
+			const preCallbackError = new Error('response option expression failed');
+			(WebhookHelpers.executeWebhook as Mock).mockRejectedValue(preCallbackError);
+
+			await expect(liveWebhooks.executeWebhook(request, mock<Response>())).rejects.toBe(
+				preCallbackError,
+			);
 		});
 	});
 
@@ -467,7 +511,8 @@ describe('LiveWebhooks', () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(webhookNodeType);
 			webhookService.getNodeWebhooks.mockReturnValue([webhookData]);
 
-			(WebhookHelpers.executeWebhook as Mock).mockImplementation((...args: unknown[]) => {
+			// eslint-disable-next-line @typescript-eslint/require-await
+			(WebhookHelpers.executeWebhook as Mock).mockImplementation(async (...args: unknown[]) => {
 				const webhookCallback = args[args.length - 1] as (
 					error: Error | null,
 					data: object,

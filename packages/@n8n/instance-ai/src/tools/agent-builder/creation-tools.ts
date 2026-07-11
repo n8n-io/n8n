@@ -62,9 +62,9 @@ export function createCreateSkillTool(context: InstanceAiContext) {
 				'build_agent. Returns { ok: true, id, skill } or { ok: false, errors }.',
 		)
 		.systemInstruction(
-			'Never create a vague or placeholder skill. The description is the routing contract; the body ' +
-				'must be concrete and specific. If you lack the domain detail to write a genuinely useful ' +
-				'skill, ask the user clarifying questions first.',
+			'Create a reusable skill when the description is a concrete routing contract and the body ' +
+				'is specific enough to be useful. If domain details are missing, ask the user clarifying ' +
+				'questions first.',
 		)
 		.input(
 			z.object({
@@ -96,14 +96,14 @@ export function createCreateTaskTool(context: InstanceAiContext) {
 	return new Tool(AGENT_BUILDER_TOOL_IDS.CREATE_TASK)
 		.description(
 			'Create a recurring scheduled task for the target agent (name + objective + cron schedule). ' +
-				'The objective is the exact message the agent receives on each run, so it must be precise ' +
+				'The objective is the exact message the agent receives on each run, so keep it precise ' +
 				'and self-contained. Adds a `{ type: "task", id, enabled }` ref to the config; the task ' +
 				'starts once the agent is (re)published. Returns { ok: true, task } or { ok: false, errors }.',
 		)
 		.systemInstruction(
-			'Never create a task with a vague or placeholder objective. A task can only use tools the ' +
-				'agent already has: if a step needs a tool/integration/web search the agent is missing, add ' +
-				'it to the config file and build_agent it BEFORE calling create_task.',
+			'Create a task only when the objective is concrete and self-contained. A task can only ' +
+				'use tools the agent already has: if a step needs a missing tool, integration, or web ' +
+				'search, add it to the config file and build_agent it before calling create_task.',
 		)
 		.input(
 			z.object({
@@ -168,11 +168,11 @@ export function createBuildCustomToolTool(context: InstanceAiContext) {
 export function createListIntegrationTypesTool(context: InstanceAiContext) {
 	return new Tool(AGENT_BUILDER_TOOL_IDS.LIST_INTEGRATION_TYPES)
 		.description(
-			"List integration types that can be added to the agent's `integrations` array. Returns each " +
-				'chat platform with its supported `credentialTypes` and builder guidance (`capabilities`, ' +
-				'`useIntegrationWhen`, `useNodeToolWhen`). Call BEFORE resolving a credential, then resolve ' +
-				'a credential of ONE entry from `credentialTypes` (the credentials tool with action "list" ' +
-				'+ the ask-user tool).',
+			'List available chat-channel integration types. Returns each platform with its supported ' +
+				'`credentialTypes` plus builder guidance (`capabilities`, `useIntegrationWhen`, ' +
+				'`useNodeToolWhen`). Returned `type` values are the source of truth for ' +
+				'configure_channel. Channel setup creates the credential and persists the connection, so ' +
+				'leave channel entries out of config writes.',
 		)
 		.input(z.object({}))
 		.handler(async () => {

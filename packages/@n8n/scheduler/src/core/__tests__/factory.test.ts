@@ -1,12 +1,37 @@
 import { ScheduledTaskStatus } from '@n8n/constants';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { mock } from 'vitest-mock-extended';
 
+import { SCHEDULER_ATTRIBUTES, SCHEDULER_FIRE_OUTCOME } from '../../observability/attributes';
+import type { SchedulerMetrics } from '../../observability/metrics';
+import { SpanStatus, type Span, type Tracer } from '../../observability/tracer';
 import { InvalidLifecycleOptionsError } from '../errors';
 import { createScheduler } from '../factory';
 import type { SchedulerDeps, SchedulerTaskStore } from '../factory';
+import { PASS_TIMED_OUT } from '../lifecycle';
 import type { MaterializerTransaction, RunInTransaction } from '../materializer';
 import { DEFAULT_RETENTION_OPTIONS } from '../retention';
 import type { ClaimedTask, ScheduledJob } from '../types';
+
+/**
+ * A shared span (each tracing test drives a single pass, so one span suffices)
+ * behind a tracer that honours the port's contract: a throw from `run` marks the
+ * span errored and propagates, exactly as the concrete (Sentry) tracer does. This
+ * matters for the materializer, whose abort path throws rather than returning.
+ */
+const makeTracer = () => {
+	const span: Span = { setAttribute: vi.fn(), setStatus: vi.fn() };
+	const tracer = mock<Tracer>();
+	tracer.startSpan.mockImplementation(async (_options, run) => {
+		try {
+			return await run(span);
+		} catch (error) {
+			span.setStatus({ code: SpanStatus.error, message: ensureError(error).message });
+			throw error;
+		}
+	});
+	return { span, tracer };
+};
 
 /** Compose a scheduler over mocks, with non-default retention windows. */
 function makeScheduler(deps: Partial<SchedulerDeps> = {}) {
@@ -258,6 +283,8 @@ describe('createScheduler materialize', () => {
 			timezone: null,
 			intervalSeconds: null,
 			fireAt: null,
+			recurrenceUnit: null,
+			recurrenceSize: null,
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
@@ -267,13 +294,13 @@ describe('createScheduler materialize', () => {
 			now: new Date('2026-01-01T00:00:00.000Z'),
 			jobs: [corrupt],
 		});
-		tx.recordOccurrences.mockResolvedValue(0);
+		tx.recordOccurrences.mockResolvedValue({ recorded: 0, created: [] });
 		const materializerTransaction: RunInTransaction = async (work) => await work(tx);
 		const { scheduler, onEvent } = makeScheduler({ materializerTransaction });
 
 		const summary = await scheduler.materialize();
 
-		expect(summary).toEqual({ claimedJobs: 1, occurrences: 0, deferredJobs: 1 });
+		expect(summary).toEqual({ claimedJobs: 1, occurrences: 0, created: [], deferredJobs: 1 });
 		expect(onEvent).toHaveBeenCalledWith({
 			level: 'error',
 			message: 'Scheduler could not plan a job schedule; deferred for retry',
@@ -291,6 +318,8 @@ describe('createScheduler materialize', () => {
 			timezone: null,
 			intervalSeconds: 10,
 			fireAt: null,
+			recurrenceUnit: null,
+			recurrenceSize: null,
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
@@ -301,7 +330,7 @@ describe('createScheduler materialize', () => {
 			jobs: [due],
 		});
 		// The one planned occurrence already exists (recorded by a concurrent pass).
-		tx.recordOccurrences.mockResolvedValue(0);
+		tx.recordOccurrences.mockResolvedValue({ recorded: 0, created: [] });
 		const materializerTransaction: RunInTransaction = async (work) => await work(tx);
 		// windowSeconds: 0 keeps the plan to the single due fire.
 		const { scheduler, onEvent } = makeScheduler({
@@ -758,5 +787,489 @@ describe('createScheduler reap', () => {
 			message: 'Scheduler dead-lettered a task; its last attempt lost its lease',
 			context: { taskId: '7', attempts: 3, maxAttempts: 3 },
 		});
+	});
+});
+
+describe('createScheduler tracing', () => {
+	it('opens a materialize span carrying the summary counts, with ok status', async () => {
+		const due: ScheduledJob = {
+			id: 7,
+			taskType: 'test-task',
+			payload: {},
+			kind: 'interval',
+			cronExpression: null,
+			timezone: null,
+			intervalSeconds: 10,
+			fireAt: null,
+			recurrenceUnit: null,
+			recurrenceSize: null,
+			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
+			lastFiredAt: null,
+			maxAttempts: 3,
+		};
+		const tx = mock<MaterializerTransaction>();
+		tx.claimDueJobs.mockResolvedValue({ now: new Date('2026-01-01T00:00:00.000Z'), jobs: [due] });
+		// Distinct counts (claimed 1, occurrences 2, deferred 0) so that recording a
+		// count under the wrong attribute key cannot slip past these assertions.
+		tx.recordOccurrences.mockResolvedValue({ recorded: 2, created: [] });
+		const materializerTransaction: RunInTransaction = async (work) => await work(tx);
+		const { span, tracer } = makeTracer();
+		const { scheduler } = makeScheduler({
+			materializerTransaction,
+			materializer: { windowSeconds: 0 },
+			tracer,
+		});
+
+		const summary = await scheduler.materialize();
+
+		expect(summary).toEqual({ claimedJobs: 1, occurrences: 2, created: [], deferredJobs: 0 });
+		expect(tracer.startSpan).toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'Scheduler materialize', op: 'scheduler.materialize' }),
+			expect.any(Function),
+		);
+		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.claimedJobs, 1);
+		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.occurrences, 2);
+		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.deferredJobs, 0);
+		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('emits one creation span per newly recorded row', async () => {
+		const due: ScheduledJob = {
+			id: 7,
+			taskType: 'test-task',
+			payload: {},
+			kind: 'interval',
+			cronExpression: null,
+			timezone: null,
+			intervalSeconds: 10,
+			fireAt: null,
+			recurrenceUnit: null,
+			recurrenceSize: null,
+			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
+			lastFiredAt: null,
+			maxAttempts: 3,
+		};
+		const tx = mock<MaterializerTransaction>();
+		tx.claimDueJobs.mockResolvedValue({ now: new Date('2026-01-01T00:00:00.000Z'), jobs: [due] });
+		tx.recordOccurrences.mockResolvedValue({
+			recorded: 1,
+			created: [{ id: '99', jobId: 7, taskType: 'test-task' }],
+		});
+		const materializerTransaction: RunInTransaction = async (work) => await work(tx);
+		const { tracer } = makeTracer();
+		const { scheduler } = makeScheduler({
+			materializerTransaction,
+			materializer: { windowSeconds: 0 },
+			tracer,
+		});
+
+		await scheduler.materialize();
+
+		expect(tracer.startSpan).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: 'Scheduler task created',
+				op: 'scheduler.task.create',
+				attributes: {
+					[SCHEDULER_ATTRIBUTES.taskId]: '99',
+					[SCHEDULER_ATTRIBUTES.jobId]: 7,
+					[SCHEDULER_ATTRIBUTES.taskType]: 'test-task',
+				},
+			}),
+			expect.any(Function),
+		);
+	});
+
+	it('opens a claim span carrying the claimed count and host, with ok status', async () => {
+		const { span, tracer } = makeTracer();
+		const { scheduler, taskStore } = makeScheduler({ tracer });
+		scheduler.registerTaskHandler('test-task', { execute: vi.fn() });
+		taskStore.claimDueTasks.mockResolvedValue([claimedTask()]);
+
+		const tasks = await scheduler.execute();
+
+		expect(tracer.startSpan).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: 'Scheduler claim',
+				op: 'scheduler.claim',
+				attributes: { [SCHEDULER_ATTRIBUTES.host]: 'main-test' },
+			}),
+			expect.any(Function),
+		);
+		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.claimedCount, tasks.length);
+		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('wraps a detached fire in a fire span with a nested handoff span around the handler', async () => {
+		// A span per `op`, so the claim, fire and handoff spans record to separate
+		// spies and their statuses can be told apart.
+		const spans = new Map<string, Span>();
+		const spanFor = (op: string): Span => {
+			let span = spans.get(op);
+			if (span === undefined) {
+				span = { setAttribute: vi.fn(), setStatus: vi.fn() };
+				spans.set(op, span);
+			}
+			return span;
+		};
+		const tracer = mock<Tracer>();
+		tracer.startSpan.mockImplementation(async (options, run) => {
+			const span = spanFor(options.op ?? options.name);
+			try {
+				return await run(span);
+			} catch (error) {
+				span.setStatus({ code: SpanStatus.error, message: ensureError(error).message });
+				throw error;
+			}
+		});
+		const { scheduler, taskStore } = makeScheduler({ tracer });
+		scheduler.registerTaskHandler('test-task', { execute: vi.fn().mockResolvedValue(undefined) });
+		taskStore.claimDueTasks.mockResolvedValue([claimedTask()]);
+		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.completeTask.mockResolvedValue(1);
+
+		await scheduler.execute();
+
+		// The fire is detached from the claim: wait for the timer to deliver it.
+		await vi.waitFor(() => {
+			expect(spanFor('scheduler.fire').setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+		});
+		expect(tracer.startSpan).toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'Scheduler fire', op: 'scheduler.fire' }),
+			expect.any(Function),
+		);
+		expect(spanFor('scheduler.fire').setAttribute).toHaveBeenCalledWith(
+			SCHEDULER_ATTRIBUTES.outcome,
+			SCHEDULER_FIRE_OUTCOME.completed,
+		);
+		expect(tracer.startSpan).toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'Scheduler handoff', op: 'scheduler.handoff' }),
+			expect.any(Function),
+		);
+		expect(spanFor('scheduler.handoff').setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('opens a reap span carrying the reclaimed and dead-lettered counts, with ok status', async () => {
+		const { span, tracer } = makeTracer();
+		const { scheduler, taskStore } = makeScheduler({ tracer });
+		// Distinct counts (reclaimed 2, dead-lettered 1) so recording a count under
+		// the wrong attribute key cannot slip past these assertions: two leases with
+		// attempts left are reclaimed, one out of attempts is dead-lettered.
+		taskStore.findExpiredLeases.mockResolvedValue([
+			{ id: '7', attempts: 0, maxAttempts: 3, leaseEpoch: 1 },
+			{ id: '8', attempts: 0, maxAttempts: 3, leaseEpoch: 1 },
+			{ id: '9', attempts: 2, maxAttempts: 3, leaseEpoch: 1 },
+		]);
+		taskStore.reclaimExpired.mockResolvedValue(1);
+		taskStore.deadLetterExpired.mockResolvedValue(1);
+
+		const result = await scheduler.reap();
+
+		expect(result).toEqual({ reclaimed: 2, deadLettered: 1 });
+		expect(tracer.startSpan).toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'Scheduler reap', op: 'scheduler.reap' }),
+			expect.any(Function),
+		);
+		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.reclaimed, 2);
+		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.deadLettered, 1);
+		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('opens a retention span carrying the deleted count and drained flag, with ok status', async () => {
+		const { span, tracer } = makeTracer();
+		const { scheduler, taskStore } = makeScheduler({ tracer });
+		taskStore.deleteFinishedOlderThan.mockResolvedValueOnce(5).mockResolvedValue(0);
+
+		const summary = await scheduler.prune();
+
+		expect(tracer.startSpan).toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'Scheduler retention', op: 'scheduler.retention' }),
+			expect.any(Function),
+		);
+		expect(span.setAttribute).toHaveBeenCalledWith(
+			SCHEDULER_ATTRIBUTES.retentionDeleted,
+			summary.deleted,
+		);
+		expect(span.setAttribute).toHaveBeenCalledWith(
+			SCHEDULER_ATTRIBUTES.retentionDrained,
+			summary.drained,
+		);
+		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('records error on the claim span when the executor pass is abandoned by its loop timeout', async () => {
+		const { span, tracer } = makeTracer();
+		const { scheduler, taskStore } = makeScheduler({ tracer });
+		taskStore.claimDueTasks.mockResolvedValue([]);
+		const controller = new AbortController();
+		controller.abort(PASS_TIMED_OUT);
+
+		await scheduler.execute(controller.signal);
+
+		expect(span.setStatus).toHaveBeenCalledWith({
+			code: SpanStatus.error,
+			message: 'Scheduler pass timed out',
+		});
+		expect(span.setStatus).not.toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('records error on the reap span when the reaper pass is abandoned by its loop timeout', async () => {
+		const { span, tracer } = makeTracer();
+		const { scheduler, taskStore } = makeScheduler({ tracer });
+		taskStore.findExpiredLeases.mockResolvedValue([]);
+		const controller = new AbortController();
+		controller.abort(PASS_TIMED_OUT);
+
+		await scheduler.reap(controller.signal);
+
+		expect(span.setStatus).toHaveBeenCalledWith({
+			code: SpanStatus.error,
+			message: 'Scheduler pass timed out',
+		});
+		expect(span.setStatus).not.toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('records error on the retention span when the retention pass is abandoned by its loop timeout', async () => {
+		const { span, tracer } = makeTracer();
+		const { scheduler } = makeScheduler({ tracer });
+		const controller = new AbortController();
+		controller.abort(PASS_TIMED_OUT);
+
+		await scheduler.prune(controller.signal);
+
+		expect(span.setStatus).toHaveBeenCalledWith({
+			code: SpanStatus.error,
+			message: 'Scheduler pass timed out',
+		});
+		expect(span.setStatus).not.toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('records error on the materialize span when the materializer pass is abandoned by its loop timeout', async () => {
+		const { span, tracer } = makeTracer();
+		const { scheduler } = makeScheduler({ tracer });
+		const controller = new AbortController();
+		controller.abort(PASS_TIMED_OUT);
+
+		// The materializer aborts by throwing (throwIfAborted); a timeout is a real
+		// fault, so the pass boundary lets it propagate and the tracer errors the
+		// span, rather than settlePassSpan closing it.
+		await expect(scheduler.materialize(controller.signal)).rejects.toBeDefined();
+
+		expect(span.setStatus).toHaveBeenCalledWith(
+			expect.objectContaining({ code: SpanStatus.error }),
+		);
+		expect(span.setStatus).not.toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('records ok on the materialize span when aborted by a graceful stop, not a timeout', async () => {
+		const { span, tracer } = makeTracer();
+		const { scheduler } = makeScheduler({ tracer });
+		// A graceful stop aborts with the default reason, not PASS_TIMED_OUT.
+		const controller = new AbortController();
+		controller.abort();
+
+		// Unlike the timeout case, the materializer's throw-to-roll-back is caught
+		// at the pass boundary and reported as a no-op summary, not rethrown.
+		const summary = await scheduler.materialize(controller.signal);
+
+		expect(summary).toEqual({ claimedJobs: 0, occurrences: 0, created: [], deferredJobs: 0 });
+		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+		expect(span.setStatus).not.toHaveBeenCalledWith(
+			expect.objectContaining({ code: SpanStatus.error }),
+		);
+	});
+
+	it('still errors the materialize span when a real failure races a graceful stop', async () => {
+		const { span, tracer } = makeTracer();
+		const controller = new AbortController();
+		const dbError = new Error('connection reset');
+		// Simulates a shutdown (aborts the signal) landing at the same instant as
+		// an unrelated transaction failure — the signal is aborted, but this
+		// error is not `signal.reason`, so it must not be read as the abort.
+		const materializerTransaction: RunInTransaction = () => {
+			controller.abort();
+			throw dbError;
+		};
+		const { scheduler } = makeScheduler({ tracer, materializerTransaction });
+
+		await expect(scheduler.materialize(controller.signal)).rejects.toBe(dbError);
+
+		expect(span.setStatus).toHaveBeenCalledWith(
+			expect.objectContaining({ code: SpanStatus.error }),
+		);
+		expect(span.setStatus).not.toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('records ok on a pass drained by a graceful stop, not a timeout', async () => {
+		const { span, tracer } = makeTracer();
+		const { scheduler, taskStore } = makeScheduler({ tracer });
+		taskStore.claimDueTasks.mockResolvedValue([]);
+		// A graceful stop aborts with the default reason, not PASS_TIMED_OUT.
+		const controller = new AbortController();
+		controller.abort();
+
+		await scheduler.execute(controller.signal);
+
+		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+		expect(span.setStatus).not.toHaveBeenCalledWith(
+			expect.objectContaining({ code: SpanStatus.error }),
+		);
+	});
+});
+
+describe('createScheduler metrics', () => {
+	it('records the materialization outcome from the pass summary', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const corrupt: ScheduledJob = {
+			id: 7,
+			taskType: 'test-task',
+			payload: {},
+			kind: 'cron',
+			cronExpression: null,
+			timezone: null,
+			intervalSeconds: null,
+			fireAt: null,
+			recurrenceUnit: null,
+			recurrenceSize: null,
+			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
+			lastFiredAt: null,
+			maxAttempts: 3,
+		};
+		const tx = mock<MaterializerTransaction>();
+		tx.claimDueJobs.mockResolvedValue({
+			now: new Date('2026-01-01T00:00:00.000Z'),
+			jobs: [corrupt],
+		});
+		tx.recordOccurrences.mockResolvedValue({ recorded: 0, created: [] });
+		const materializerTransaction: RunInTransaction = async (work) => await work(tx);
+		const { scheduler } = makeScheduler({ materializerTransaction, metrics });
+
+		await scheduler.materialize();
+
+		// One corrupt job deferred, no occurrences recorded.
+		expect(metrics.recordMaterialized).toHaveBeenCalledWith(0, 1);
+	});
+
+	it('records the reaper outcome from the sweep result', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		taskStore.findExpiredLeases.mockResolvedValue([
+			{ id: '7', attempts: 2, maxAttempts: 3, leaseEpoch: 1 },
+		]);
+		taskStore.deadLetterExpired.mockResolvedValue(1);
+
+		await scheduler.reap();
+
+		expect(metrics.recordReaped).toHaveBeenCalledWith(0, 1);
+	});
+
+	it('records the retention outcome from the pass summary', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		taskStore.deleteFinishedOlderThan.mockResolvedValueOnce(5).mockResolvedValue(0);
+
+		await scheduler.prune();
+
+		expect(metrics.recordPruned).toHaveBeenCalledWith(5);
+	});
+
+	it('defaults to a safe no-op when no metrics port is supplied', async () => {
+		const { scheduler, taskStore } = makeScheduler();
+		taskStore.deleteFinishedOlderThan.mockResolvedValue(0);
+
+		// No metrics dep: the defaulted no-op must not throw.
+		await expect(scheduler.prune()).resolves.toEqual({ deleted: 0, drained: true });
+	});
+
+	it('maps a successful fire onto dispatch and success metrics', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		scheduler.registerTaskHandler('test-task', { execute: vi.fn().mockResolvedValue(undefined) });
+		// A task due in the past fires on the next timer tick.
+		taskStore.claimDueTasks.mockResolvedValue([claimedTask()]);
+		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.completeTask.mockResolvedValue(1);
+
+		await scheduler.execute();
+
+		// The fire is detached from the claim: wait for the timer to deliver it.
+		await vi.waitFor(() => {
+			expect(metrics.recordFireOutcome).toHaveBeenCalledWith('test-task', 'success');
+		});
+		expect(metrics.recordDispatch).toHaveBeenCalledWith('test-task');
+		expect(metrics.observeDispatchLagSeconds).toHaveBeenCalledWith('test-task', expect.any(Number));
+		expect(metrics.recordDeadLettered).not.toHaveBeenCalled();
+	});
+
+	it('maps a terminal failure onto a failure outcome and a dead-letter', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		scheduler.registerTaskHandler('test-task', {
+			execute: vi.fn().mockRejectedValue(new Error('boom')),
+		});
+		// Single attempt: the first failure exhausts it.
+		taskStore.claimDueTasks.mockResolvedValue([claimedTask({ attempts: 0, maxAttempts: 1 })]);
+		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.failTaskTerminal.mockResolvedValue(1);
+
+		await scheduler.execute();
+
+		await vi.waitFor(() => {
+			expect(metrics.recordFireOutcome).toHaveBeenCalledWith('test-task', 'failure');
+		});
+		expect(metrics.recordDeadLettered).toHaveBeenCalledTimes(1);
+		expect(metrics.recordRetry).not.toHaveBeenCalled();
+	});
+
+	it('maps a failure with attempts remaining onto a retry', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		scheduler.registerTaskHandler('test-task', {
+			execute: vi.fn().mockRejectedValue(new Error('boom')),
+		});
+		// Attempts remain, so the failure reschedules rather than fails terminally.
+		taskStore.claimDueTasks.mockResolvedValue([claimedTask({ attempts: 0, maxAttempts: 3 })]);
+		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.rescheduleTask.mockResolvedValue(1);
+
+		await scheduler.execute();
+
+		await vi.waitFor(() => {
+			expect(metrics.recordRetry).toHaveBeenCalledWith('test-task');
+		});
+		expect(metrics.recordFireOutcome).not.toHaveBeenCalled();
+		expect(metrics.recordDeadLettered).not.toHaveBeenCalled();
+	});
+
+	it('does not let a throwing metrics sink break a pass', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		metrics.recordPruned.mockImplementation(() => {
+			throw new Error('exporter down');
+		});
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		taskStore.deleteFinishedOlderThan.mockResolvedValueOnce(5).mockResolvedValue(0);
+
+		// The pass completes normally even though recording its outcome threw.
+		await expect(scheduler.prune()).resolves.toEqual({ deleted: 5, drained: true });
+	});
+
+	it('does not let a throwing metrics sink break a fire', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		metrics.recordDispatch.mockImplementation(() => {
+			throw new Error('exporter down');
+		});
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		const execute = vi.fn().mockResolvedValue(undefined);
+		scheduler.registerTaskHandler('test-task', { execute });
+		taskStore.claimDueTasks.mockResolvedValue([claimedTask()]);
+		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.completeTask.mockResolvedValue(1);
+
+		await scheduler.execute();
+
+		// The handler still runs and the task still completes despite the sink throwing.
+		await vi.waitFor(() => {
+			expect(taskStore.completeTask).toHaveBeenCalledTimes(1);
+		});
+		expect(execute).toHaveBeenCalledTimes(1);
 	});
 });

@@ -28,17 +28,19 @@ function substituteWorkspaceRoot(text: string, workspaceRoot?: string): string {
 
 export function getSandboxWorkspaceSection(workspaceRoot?: string): string {
 	const pathHint = workspaceRoot
-		? `\nWorkspace root: \`${workspaceRoot}\`. Paths below are under this root — pass them to \`workspace_read_file\`, \`workspace_list_files\`, and \`workspace_execute_command\` as shown (relative paths like \`knowledge-base/...\` also work).\n`
+		? `\nWorkspace root: \`${workspaceRoot}\`. Paths below are under this root — pass them to \`workspace_read_file\` and \`workspace_execute_command\` as shown (relative paths like \`knowledge-base/...\` also work).\n`
 		: '';
 
 	const section = `## Sandbox workspace
 ${pathHint}
-A thread-scoped sandbox workspace is available via \`workspace_read_file\`, \`workspace_list_files\`, and \`workspace_execute_command\` (use \`grep\` or \`rg\` to search). The workspace is created on first use and includes baked-in reference material:
+A thread-scoped sandbox workspace is available via \`workspace_read_file\`, \`workspace_write_file\`, \`workspace_str_replace_file\`, \`workspace_batch_str_replace_file\`, and \`workspace_execute_command\`. The workspace is created on first use and includes baked-in reference material:
 
 - \`<workspace_root>/knowledge-base/index.json\` — catalog of workflow technique guides (\`<workspace_root>/knowledge-base/best-practices/index.json\`; read the linked \`.md\` files) and orchestration reference docs (\`<workspace_root>/knowledge-base/reference/index.json\`, e.g. trigger \`inputData\` shapes for verification)
-- \`<workspace_root>/knowledge-base/templates/\` — curated SDK workflow examples: \`grep\` or \`rg\` this folder to find matches, then read only the relevant \`.ts\` files — never load \`templates/index.json\` wholesale
+- \`<workspace_root>/knowledge-base/templates/\` — curated SDK workflow examples: use \`workspace_execute_command\` with \`rg\` or \`find\` to locate matches, then read only the relevant \`.ts\` files — never load \`templates/index.json\` wholesale
 - \`<workspace_root>/node-types/index.txt\` — searchable catalog of available n8n nodes
 - \`<workspace_root>/workflows/*.json\` — existing workflows on this instance (when synced)
+
+For directory listing, file metadata, mkdir, copy, move, or delete, use \`workspace_execute_command\` with standard shell commands (\`ls\`, \`find\`, \`stat\`, \`mkdir -p\`, \`cp\`, \`mv\`, \`rm\`). Do not expect dedicated tools for these operations.
 
 **Consult the knowledge base before planning or building.** Read the relevant \`.md\` guides and templates for each technique the request involves. Skip only for trivial mechanical edits you have already reviewed in this thread.`;
 

@@ -43,13 +43,19 @@ describe('agent_builder router', () => {
 				.mockResolvedValue({ agentId: 'agent-9', projectId: 'project-1', name: 'Triage' }),
 		});
 		const context = createContext(service);
-		const result = await executeTool<{ ok: boolean; agentId?: string }>(
-			createAgentBuilderRouterTool(context),
-			{ action: 'create_agent', name: 'Triage' },
-			{},
-		);
+		const result = await executeTool<{
+			ok: boolean;
+			agentId?: string;
+			projectId?: string;
+			name?: string;
+		}>(createAgentBuilderRouterTool(context), { action: 'create_agent', name: 'Triage' }, {});
 		expect(service.createAgent).toHaveBeenCalledWith('Triage', 'project-1');
-		expect(result).toEqual({ ok: true, agentId: 'agent-9', name: 'Triage' });
+		expect(result).toEqual({
+			ok: true,
+			agentId: 'agent-9',
+			projectId: 'project-1',
+			name: 'Triage',
+		});
 	});
 
 	it('routes read_config to the read-config handler', async () => {
@@ -134,8 +140,8 @@ describe('agent_builder router', () => {
 		const routerTool = createAgentBuilderRouterTool(createContext(createService()));
 		expect(routerTool.systemInstruction).toContain('create_skill:');
 		expect(routerTool.systemInstruction).toContain('create_task:');
-		expect(routerTool.systemInstruction).toContain('placeholder skill');
-		expect(routerTool.systemInstruction).toContain('placeholder objective');
+		expect(routerTool.systemInstruction).toContain('concrete routing contract');
+		expect(routerTool.systemInstruction).toContain('concrete and self-contained');
 	});
 
 	it('does not expose interactive tools as router actions', async () => {
