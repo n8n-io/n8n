@@ -12,13 +12,13 @@ describe('Test MicrosoftToDo, Service Principal list:getAll per-item target', ()
 	nock('https://graph.microsoft.com/v1.0')
 		.matchHeader('Authorization', 'Bearer test-access-token')
 		.get('/users/jane%40contoso.com/todo/lists')
-		.query(true)
+		.query({ $top: 50 })
 		.reply(200, { value: [{ id: 'list-jane', displayName: 'Jane Tasks' }] });
 
 	nock('https://graph.microsoft.com/v1.0')
 		.matchHeader('Authorization', 'Bearer test-access-token')
 		.get('/users/john%40contoso.com/todo/lists')
-		.query(true)
+		.query({ $top: 50 })
 		.reply(200, { value: [{ id: 'list-john', displayName: 'John Tasks' }] });
 
 	new NodeTestHarness().setupTests({

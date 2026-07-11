@@ -171,4 +171,11 @@ describe('Microsoft shared stampItemIndexOnError', () => {
 		expect(stampItemIndexOnError(error, 9)).toBe(error);
 		expect(error.context.itemIndex).toBe(5);
 	});
+
+	it('returns a plain (non-Node) Error as-is, unstamped', () => {
+		const error = new Error('boom');
+
+		expect(stampItemIndexOnError(error, 3)).toBe(error);
+		expect((error as { context?: unknown }).context).toBeUndefined();
+	});
 });
