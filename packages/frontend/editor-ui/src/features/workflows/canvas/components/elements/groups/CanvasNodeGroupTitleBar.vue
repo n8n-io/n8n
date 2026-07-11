@@ -95,15 +95,22 @@ const { getSelectedNodes, removeSelectedNodes, viewport } = useVueFlow();
 const DESCRIPTION_MIN_ZOOM = 0.75;
 const DESCRIPTION_MAX_LENGTH = 280;
 const isDescriptionEnabled = computed(() => viewport.value.zoom >= DESCRIPTION_MIN_ZOOM);
+const isDescriptionHovered = ref(false);
+let hoverShowTimer: ReturnType<typeof setTimeout> | undefined;
+let hoverHideTimer: ReturnType<typeof setTimeout> | undefined;
 
 const isPermanentVisible = computed(
 	() => isDescriptionEnabled.value && group.value.descriptionVisible === true,
 );
 
+const HOVER_SHOW_DELAY_MS = 1000;
+const HOVER_LEAVE_DELAY_MS = 150;
 const isDescriptionEmpty = computed(() => !group.value.description);
 
 const showPermanentDescription = computed(
-	() => isDescriptionEnabled.value && (isPermanentVisible.value || isEditingDescription.value),
+	() =>
+		isDescriptionEnabled.value &&
+		(isPermanentVisible.value || isEditingDescription.value || isDescriptionHovered.value),
 );
 
 function updateTruncated() {
@@ -169,6 +176,33 @@ function autoResizeTextarea() {
 	if (!textarea) return;
 	textarea.style.height = 'auto';
 	textarea.style.height = `${textarea.scrollHeight}px`;
+}
+function onInfoMouseEnter() {
+	clearTimeout(hoverHideTimer);
+	hoverShowTimer = setTimeout(() => {
+		isDescriptionHovered.value = true;
+	}, HOVER_SHOW_DELAY_MS);
+}
+
+function onInfoMouseLeave() {
+	clearTimeout(hoverShowTimer);
+	hoverHideTimer = setTimeout(() => {
+		if (!isEditingDescription.value && !isPermanentVisible.value) {
+			isDescriptionHovered.value = false;
+		}
+	}, HOVER_LEAVE_DELAY_MS);
+}
+
+function onDescriptionMouseEnter() {
+	clearTimeout(hoverHideTimer);
+}
+
+function onDescriptionMouseLeave() {
+	hoverHideTimer = setTimeout(() => {
+		if (!isEditingDescription.value && !isPermanentVisible.value) {
+			isDescriptionHovered.value = false;
+		}
+	}, HOVER_LEAVE_DELAY_MS);
 }
 
 function startEditing() {
@@ -390,6 +424,8 @@ function onWrapperMouseOut(event: MouseEvent) {
 						class="nodrag"
 						:class="$style.toggle"
 						variant="ghost"
+						@mouseenter="onInfoMouseEnter"
+						@mouseleave="onInfoMouseLeave"
 						size="large"
 						:icon="isCollapsed ? 'chevron-down' : 'chevron-up'"
 						:aria-label="toggleLabel"
@@ -420,6 +456,8 @@ function onWrapperMouseOut(event: MouseEvent) {
 						:class="$style.descriptionText"
 						data-test-id="canvas-node-group-description-text"
 						@click.stop="startEditing"
+						@mouseenter="onDescriptionMouseEnter"
+						@mouseleave="onDescriptionMouseLeave"
 					>
 						{{ group.description || i18n.baseText('canvas.nodeGroup.descriptionPlaceholder') }}
 					</N8nText>
