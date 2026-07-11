@@ -31,8 +31,6 @@ export async function nextCloudApiRequest(
 		credentials = await this.getCredentials<{ webDavUrl: string }>('nextCloudOAuth2Api');
 	}
 
-	console.log('webDavUrl entering guard:', JSON.stringify(credentials.webDavUrl));
-
 	// Validate webDavUrl to catch credential corruption (empty, malformed, etc.)
 	const webDavUrl = (credentials.webDavUrl as string | undefined) ?? '';
 	if (!webDavUrl || !/^https?:\/\//.test(webDavUrl)) {
