@@ -94,7 +94,7 @@ catalog:
   '@types/lodash-es': ^4.17.12
   '@types/luxon': 3.2.0
   '@types/markdown-it': ^13.0.2
-  '@types/markdown-it-link-attributes': "^3.0.5"
+  '@types/markdown-it-link-attributes': '^3.0.5'
   '@types/mime-types': 3.0.1
   '@types/ms': 2.1.0
   '@types/node': 24.10.1
@@ -271,3 +271,4 @@ minimumReleaseAgeExclude:
   - '@n8n_io/*'
   - 'typescript'
   - '@typescript/*'
+# edit to trigger unit-test path
