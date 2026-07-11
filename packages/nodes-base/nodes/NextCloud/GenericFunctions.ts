@@ -32,7 +32,7 @@ export async function nextCloudApiRequest(
 	}
 
 	// Validate webDavUrl to catch credential corruption (empty, malformed, etc.)
-	const webDavUrl = (credentials.webDavUrl as string | undefined) ?? '';
+	const webDavUrl = credentials.webDavUrl ?? '';
 	if (!webDavUrl || !/^https?:\/\//.test(webDavUrl)) {
 		throw new NodeOperationError(
 			this.getNode(),
