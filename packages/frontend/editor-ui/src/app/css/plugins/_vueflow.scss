@@ -82,6 +82,11 @@
 		z-index: 1 !important;
 	}
 
+	// Collapsed groups render a description panel that must overlay other nodes
+	&:has(.group--collapsed) {
+		z-index: 10 !important;
+	}
+
 	// Bump z-index for unconnected nodes
 	&:has(.canvas-handle-plus):hover {
 		z-index: 2 !important;

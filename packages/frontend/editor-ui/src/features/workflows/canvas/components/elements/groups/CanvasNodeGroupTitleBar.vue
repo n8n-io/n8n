@@ -1,14 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import {
-	N8nIcon,
-	N8nIconButton,
-	N8nInlineTextEdit,
-	N8nPopover,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nIcon, N8nIconButton, N8nInlineTextEdit, N8nText, N8nTooltip } from '@n8n/design-system';
 import { Handle, Position, useVueFlow } from '@vue-flow/core';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import CanvasNodeStatusMark from '../nodes/render-types/parts/CanvasNodeStatusMark.vue';
@@ -56,7 +49,6 @@ const titleEdit = useTemplateRef<InstanceType<typeof N8nInlineTextEdit>>('titleE
 const titleText = useTemplateRef<HTMLElement>('titleText');
 const collapsedTitleText = useTemplateRef<HTMLElement>('collapsedTitleText');
 const descriptionTextarea = useTemplateRef<HTMLTextAreaElement>('descriptionTextarea');
-const infoButtonEl = useTemplateRef<HTMLElement>('infoButtonEl');
 
 const group = computed(() => props.data.group);
 const isAutofocusReady = computed(
@@ -72,6 +64,7 @@ const wrapperClasses = computed(() => [
 	$style.wrapper,
 	{
 		[$style.collapsed]: isCollapsed.value,
+		'group--collapsed': isCollapsed.value,
 		[$style.selected]: props.selected,
 		[$style.headerHovered]: headerHovered.value,
 		[$style.success]: executionStatus.value === 'success',
@@ -93,26 +86,25 @@ const frameStyle = computed(() => {
 });
 
 const isTitleTruncated = ref(false);
-const showTemporaryDescription = ref(false);
 const isEditingDescription = ref(false);
-const editingFromPopover = ref(false);
 const headerHovered = ref(false);
 const editDescriptionText = ref('');
-let popoverCloseTimer: ReturnType<typeof setTimeout> | undefined;
 
-const isPermanentVisible = computed(() => group.value.descriptionVisible === true);
+const { getSelectedNodes, removeSelectedNodes, viewport } = useVueFlow();
+
+const DESCRIPTION_MIN_ZOOM = 0.75;
+const DESCRIPTION_MAX_LENGTH = 280;
+const isDescriptionEnabled = computed(() => viewport.value.zoom >= DESCRIPTION_MIN_ZOOM);
+
+const isPermanentVisible = computed(
+	() => isDescriptionEnabled.value && group.value.descriptionVisible === true,
+);
 
 const isDescriptionEmpty = computed(() => !group.value.description);
 
-const showPopoverDescription = computed(() => {
-	if (isEditingDescription.value && editingFromPopover.value) return true;
-	return showTemporaryDescription.value && !isPermanentVisible.value;
-});
-
-const showPermanentDescription = computed(() => {
-	if (isEditingDescription.value && !editingFromPopover.value) return true;
-	return isPermanentVisible.value;
-});
+const showPermanentDescription = computed(
+	() => isDescriptionEnabled.value && (isPermanentVisible.value || isEditingDescription.value),
+);
 
 function updateTruncated() {
 	const el = isCollapsed.value ? collapsedTitleText.value : titleText.value;
@@ -136,6 +128,12 @@ watch(
 	{ immediate: true },
 );
 
+watch(isDescriptionEnabled, (enabled) => {
+	if (!enabled && isEditingDescription.value) {
+		saveDescription();
+	}
+});
+
 function onTitleUpdate(value: string) {
 	emit('update:name', group.value.id, value);
 }
@@ -154,33 +152,8 @@ function onWrapperClick(event: MouseEvent) {
 	emit('toggle', group.value.id);
 }
 
-function onInfoEnter() {
-	clearTimeout(popoverCloseTimer);
-	showTemporaryDescription.value = true;
-}
-
-function onInfoLeave() {
-	if (editingFromPopover.value) return;
-	popoverCloseTimer = setTimeout(() => {
-		showTemporaryDescription.value = false;
-	}, 150);
-}
-
-function onDescriptionEnter() {
-	clearTimeout(popoverCloseTimer);
-}
-
-function onDescriptionLeave() {
-	popoverCloseTimer = setTimeout(() => {
-		if (!editingFromPopover.value) {
-			showTemporaryDescription.value = false;
-		}
-	}, 150);
-}
-
 function onInfoClick() {
 	const next = !group.value.descriptionVisible;
-	showTemporaryDescription.value = false;
 	emit('update:descriptionVisible', group.value.id, next);
 	if (isDescriptionEmpty.value && next) {
 		isEditingDescription.value = true;
@@ -200,7 +173,6 @@ function autoResizeTextarea() {
 
 function startEditing() {
 	if (props.readOnly) return;
-	editingFromPopover.value = !isPermanentVisible.value;
 	isEditingDescription.value = true;
 	editDescriptionText.value = group.value.description ?? '';
 	nextTick(() => {
@@ -218,10 +190,6 @@ function onTextareaFocus() {
 function saveDescription() {
 	if (!isEditingDescription.value) return;
 	isEditingDescription.value = false;
-	editingFromPopover.value = false;
-	if (!isPermanentVisible.value) {
-		showTemporaryDescription.value = false;
-	}
 	const trimmed = editDescriptionText.value.trim();
 	if (trimmed !== (group.value.description ?? '')) {
 		emit('update:description', group.value.id, trimmed);
@@ -235,8 +203,6 @@ function onDescriptionKeydown(event: KeyboardEvent) {
 	}
 	if (event.key === 'Escape') {
 		isEditingDescription.value = false;
-		editingFromPopover.value = false;
-		showTemporaryDescription.value = false;
 	}
 }
 
@@ -268,8 +234,6 @@ const toggleLabel = computed(() =>
 		? i18n.baseText('canvas.nodeGroup.expand')
 		: i18n.baseText('canvas.nodeGroup.collapse'),
 );
-
-const { getSelectedNodes, removeSelectedNodes, viewport } = useVueFlow();
 
 const { calculateNodeBorderOpacityStyle } = useZoomAdjustedValues(viewport);
 const nodeBorderOpacityStyle = calculateNodeBorderOpacityStyle();
@@ -401,14 +365,14 @@ function onWrapperMouseOut(event: MouseEvent) {
 				</div>
 
 				<div :class="$style.actions">
-					<span
-						v-if="!readOnly"
-						ref="infoButtonEl"
-						:class="$style.infoWrapper"
-						@mouseenter="onInfoEnter"
-						@mouseleave="onInfoLeave"
+					<Transition
+						:enter-active-class="$style.descriptionFadeActive"
+						:leave-active-class="$style.descriptionFadeActive"
+						:enter-from-class="$style.descriptionFadeFrom"
+						:leave-to-class="$style.descriptionFadeFrom"
 					>
 						<N8nIconButton
+							v-if="!readOnly && isDescriptionEnabled"
 							class="nodrag"
 							:class="{
 								[$style.infoButton]: true,
@@ -421,46 +385,7 @@ function onWrapperMouseOut(event: MouseEvent) {
 							data-test-id="canvas-node-group-info"
 							@click.stop="onInfoClick"
 						/>
-					</span>
-					<N8nPopover
-						:open="showPopoverDescription"
-						:reference="infoButtonEl"
-						side="bottom"
-						align="center"
-						:side-offset="0"
-						width="320px"
-						:enable-scrolling="false"
-					>
-						<template #content>
-							<div
-								:class="$style.descriptionPopoverContent"
-								@mouseenter="onDescriptionEnter"
-								@mouseleave="onDescriptionLeave"
-							>
-								<N8nText
-									v-if="!isEditingDescription && !isDescriptionEmpty"
-									:class="$style.descriptionText"
-									data-test-id="canvas-node-group-description-text"
-									@click.stop="startEditing"
-								>
-									{{
-										group.description || i18n.baseText('canvas.nodeGroup.descriptionPlaceholder')
-									}}
-								</N8nText>
-								<textarea
-									v-else
-									ref="descriptionTextarea"
-									v-model="editDescriptionText"
-									:class="$style.descriptionEdit"
-									:placeholder="i18n.baseText('canvas.nodeGroup.descriptionPlaceholder')"
-									@blur="saveDescription"
-									@focus="onTextareaFocus"
-									@input="autoResizeTextarea"
-									@keydown="onDescriptionKeydown"
-								/>
-							</div>
-						</template>
-					</N8nPopover>
+					</Transition>
 					<N8nIconButton
 						class="nodrag"
 						:class="$style.toggle"
@@ -475,35 +400,43 @@ function onWrapperMouseOut(event: MouseEvent) {
 				</div>
 			</div>
 
-			<div
-				v-if="showPermanentDescription"
-				:class="[
-					'nodrag',
-					$style.descriptionArea,
-					!isCollapsed ? $style.permanentExpanded : $style.permanentCollapsed,
-				]"
-				data-test-id="canvas-node-group-description"
+			<Transition
+				:enter-active-class="$style.descriptionFadeActive"
+				:leave-active-class="$style.descriptionFadeActive"
+				:enter-from-class="$style.descriptionFadeFrom"
+				:leave-to-class="$style.descriptionFadeFrom"
 			>
-				<N8nText
-					v-if="!isEditingDescription && !isDescriptionEmpty"
-					:class="$style.descriptionText"
-					data-test-id="canvas-node-group-description-text"
-					@click.stop="startEditing"
+				<div
+					v-if="showPermanentDescription"
+					:class="[
+						'nodrag',
+						$style.descriptionArea,
+						!isCollapsed ? $style.permanentExpanded : $style.permanentCollapsed,
+					]"
+					data-test-id="canvas-node-group-description"
 				>
-					{{ group.description || i18n.baseText('canvas.nodeGroup.descriptionPlaceholder') }}
-				</N8nText>
-				<textarea
-					v-else
-					ref="descriptionTextarea"
-					v-model="editDescriptionText"
-					:class="$style.descriptionEdit"
-					:placeholder="i18n.baseText('canvas.nodeGroup.descriptionPlaceholder')"
-					@blur="saveDescription"
-					@focus="onTextareaFocus"
-					@input="autoResizeTextarea"
-					@keydown="onDescriptionKeydown"
-				/>
-			</div>
+					<N8nText
+						v-if="!isEditingDescription && !isDescriptionEmpty"
+						:class="$style.descriptionText"
+						data-test-id="canvas-node-group-description-text"
+						@click.stop="startEditing"
+					>
+						{{ group.description || i18n.baseText('canvas.nodeGroup.descriptionPlaceholder') }}
+					</N8nText>
+					<textarea
+						v-else
+						ref="descriptionTextarea"
+						v-model="editDescriptionText"
+						:class="$style.descriptionEdit"
+						:maxlength="DESCRIPTION_MAX_LENGTH"
+						:placeholder="i18n.baseText('canvas.nodeGroup.descriptionPlaceholder')"
+						@blur="saveDescription"
+						@focus="onTextareaFocus"
+						@input="autoResizeTextarea"
+						@keydown="onDescriptionKeydown"
+					/>
+				</div>
+			</Transition>
 		</div>
 
 		<div
@@ -637,22 +570,9 @@ $description-height: 48px;
 	margin-left: auto;
 }
 
-.infoWrapper {
-	display: flex;
-	align-items: center;
-}
-
 .infoButtonActive {
 	opacity: 1;
 	background-color: var(--background--active);
-}
-
-.descriptionPopoverContent {
-	padding: 12px;
-	font-size: var(--font-size--s);
-	color: var(--color--text-subtle);
-	max-height: 200px;
-	overflow-y: auto;
 }
 
 .toggle[aria-expanded='true']:not(:hover):not(:active) {
@@ -750,5 +670,13 @@ $description-height: 48px;
 .handle {
 	opacity: 0;
 	pointer-events: none;
+}
+
+.descriptionFadeActive {
+	transition: opacity 0.2s ease;
+}
+
+.descriptionFadeFrom {
+	opacity: 0;
 }
 </style>

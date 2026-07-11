@@ -46,8 +46,12 @@ vi.mock('@/app/composables/useWorkflowId', async () => {
 });
 
 const trackSpy = vi.hoisted(() => vi.fn());
+const mockPrompt = vi.hoisted(() => vi.fn());
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({ track: trackSpy })),
+}));
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: vi.fn(() => ({ prompt: mockPrompt })),
 }));
 
 let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
@@ -615,6 +619,41 @@ describe('Canvas', () => {
 			await fireEvent.keyUp(document, { key: 'Backspace' });
 
 			expect(emitted()['delete:nodes']?.[0]).toEqual([['a', 'b']]);
+		});
+	});
+
+	describe('rename group via keyboard shortcut', () => {
+		beforeEach(() => {
+			vi.spyOn(usePostHog(), 'isFeatureEnabled').mockImplementation(
+				(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
+			);
+		});
+
+		it('opens rename modal when space is pressed on a selected collapsed group and no node is selected', async () => {
+			mockPrompt.mockResolvedValue({ value: 'Renamed', action: 'confirm' });
+			workflowDocumentStore.createGroup(['node-1'], 'My Group');
+			const groupNode = createCanvasGroupElement({
+				id: 'g1',
+				name: 'My Group',
+				nodeIds: ['node-1'],
+			});
+
+			const { container, emitted } = renderComponent({
+				props: { nodes: [groupNode] },
+			});
+
+			await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
+
+			const { addSelectedNodes, nodes: graphNodes } = useVueFlow({ id: canvasId });
+			addSelectedNodes(graphNodes.value);
+
+			await fireEvent.keyDown(document, { key: ' ', view: window });
+			await fireEvent.keyUp(document, { key: ' ', view: window });
+
+			expect(mockPrompt).toHaveBeenCalled();
+			const group = workflowDocumentStore.getGroupById('g1');
+			expect(group?.name).toBe('Renamed');
+			expect(emitted()['update:node:name']).toBeUndefined();
 		});
 	});
 
