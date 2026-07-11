@@ -42,6 +42,7 @@ export type AppMetricsReport = {
 	heapSizeUsed?: AppMetricStats;
 	externalMemory?: AppMetricStats;
 	eventLoopLag?: AppMetricStats;
+	residentSetSize?: AppMetricStats;
 };
 
 export type TestReport = {
@@ -111,12 +112,17 @@ export function buildAppMetricsReport(metricsData: string[]): AppMetricsReport {
 		metricsData,
 		'n8n_nodejs_eventloop_lag_seconds',
 	);
+	const residentSetSize = PrometheusMetricsParser.calculateMetricStats(
+		metricsData,
+		'n8n_process_resident_memory_bytes',
+	);
 
 	return {
 		...(heapSizeTotal && { heapSizeTotal }),
 		...(heapSizeUsed && { heapSizeUsed }),
 		...(externalMemory && { externalMemory }),
 		...(eventLoopLag && { eventLoopLag }),
+		...(residentSetSize && { residentSetSize }),
 	};
 }
 

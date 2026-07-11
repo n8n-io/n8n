@@ -38,4 +38,4 @@ jobs:
           provenance: false
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/n8n-benchmark:latest
+            ghcr.io/${{ github.repository_owner }}/n8n-benchmark:rss-probe

@@ -127,6 +127,7 @@ export function handleSummary(data) {
 				appMetricsData,
 			);
 
+			console.log('TEST_REPORT_JSON', JSON.stringify(testReport));
 			await this.sendTestReport(testReport);
 		}
 	}
