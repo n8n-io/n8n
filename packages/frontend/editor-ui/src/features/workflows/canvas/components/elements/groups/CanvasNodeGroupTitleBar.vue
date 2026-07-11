@@ -92,7 +92,7 @@ const editDescriptionText = ref('');
 
 const { getSelectedNodes, removeSelectedNodes, viewport } = useVueFlow();
 
-const DESCRIPTION_MIN_ZOOM = 0.75;
+const DESCRIPTION_MIN_ZOOM = 0.5;
 const DESCRIPTION_MAX_LENGTH = 280;
 const isDescriptionEnabled = computed(() => viewport.value.zoom >= DESCRIPTION_MIN_ZOOM);
 const isDescriptionHovered = ref(false);
@@ -105,13 +105,16 @@ const isPermanentVisible = computed(
 
 const HOVER_SHOW_DELAY_MS = 1000;
 const HOVER_LEAVE_DELAY_MS = 150;
-const isDescriptionEmpty = computed(() => !group.value.description);
+const isDescriptionEmpty = computed(() => !group.value.description?.trim());
 
-const showPermanentDescription = computed(
+const showCollapsedDescription = computed(
 	() =>
+		isCollapsed.value &&
 		isDescriptionEnabled.value &&
 		(isPermanentVisible.value || isEditingDescription.value || isDescriptionHovered.value),
 );
+
+const showExpandedDescription = computed(() => !isCollapsed.value && isDescriptionEnabled.value);
 
 function updateTruncated() {
 	const el = isCollapsed.value ? collapsedTitleText.value : titleText.value;
@@ -162,12 +165,19 @@ function onWrapperClick(event: MouseEvent) {
 function onInfoClick() {
 	const next = !group.value.descriptionVisible;
 	emit('update:descriptionVisible', group.value.id, next);
-	if (isDescriptionEmpty.value && next) {
+	if (isDescriptionEmpty.value && next && isCollapsed.value) {
 		isEditingDescription.value = true;
 		editDescriptionText.value = '';
 		nextTick(() => {
 			descriptionTextarea.value?.focus();
 		});
+	}
+}
+
+function onDescriptionUpdate(value: string) {
+	const trimmed = value.trim();
+	if (trimmed !== (group.value.description ?? '')) {
+		emit('update:description', group.value.id, trimmed);
 	}
 }
 
@@ -354,33 +364,47 @@ function onWrapperMouseOut(event: MouseEvent) {
 			</div>
 
 			<div :class="$style.content" data-test-id="canvas-node-group-header">
-				<div :class="$style.title" data-test-id="canvas-node-group-title">
-					<template v-if="isCollapsed">
-						<N8nTooltip
-							:content="group.name"
-							:disabled="!isTitleTruncated"
-							:show-after="500"
-							placement="bottom"
-						>
-							<div ref="collapsedTitleText" :class="$style.titleTextCollapsed">
-								{{ group.name }}
+				<div :class="$style.titleColumn">
+					<div :class="$style.title" data-test-id="canvas-node-group-title">
+						<template v-if="isCollapsed">
+							<N8nTooltip
+								:content="group.name"
+								:disabled="!isTitleTruncated"
+								:show-after="500"
+								placement="bottom"
+							>
+								<div ref="collapsedTitleText" :class="$style.titleTextCollapsed">
+									{{ group.name }}
+								</div>
+							</N8nTooltip>
+						</template>
+						<template v-else>
+							<div ref="titleText" :class="$style.titleText">
+								<N8nInlineTextEdit
+									ref="titleEdit"
+									:class="['nodrag', $style.inlineEdit]"
+									:model-value="group.name"
+									:read-only="readOnly"
+									:min-width="0"
+									max-width="100%"
+									:placeholder="i18n.baseText('canvas.nodeGroup.titlePlaceholder')"
+									@update:model-value="onTitleUpdate"
+								/>
 							</div>
-						</N8nTooltip>
-					</template>
-					<template v-else>
-						<div ref="titleText" :class="$style.titleText">
-							<N8nInlineTextEdit
-								ref="titleEdit"
-								:class="['nodrag', $style.inlineEdit]"
-								:model-value="group.name"
-								:read-only="readOnly"
-								:min-width="0"
-								max-width="100%"
-								:placeholder="i18n.baseText('canvas.nodeGroup.titlePlaceholder')"
-								@update:model-value="onTitleUpdate"
-							/>
-						</div>
-					</template>
+						</template>
+					</div>
+
+					<N8nInlineTextEdit
+						v-if="!isCollapsed && showExpandedDescription"
+						:class="['nodrag', $style.inlineEdit, $style.descriptionInline]"
+						:model-value="group.description ?? ''"
+						:read-only="readOnly"
+						:min-width="0"
+						max-width="100%"
+						:placeholder="i18n.baseText('canvas.nodeGroup.descriptionPlaceholder')"
+						data-test-id="canvas-node-group-description"
+						@update:model-value="onDescriptionUpdate"
+					/>
 				</div>
 
 				<div
@@ -406,7 +430,7 @@ function onWrapperMouseOut(event: MouseEvent) {
 						:leave-to-class="$style.descriptionFadeFrom"
 					>
 						<N8nIconButton
-							v-if="!readOnly && isDescriptionEnabled"
+							v-if="!readOnly && isCollapsed && isDescriptionEnabled"
 							class="nodrag"
 							:class="{
 								[$style.infoButton]: true,
@@ -418,14 +442,14 @@ function onWrapperMouseOut(event: MouseEvent) {
 							:aria-label="i18n.baseText('canvas.nodeGroup.addDescription')"
 							data-test-id="canvas-node-group-info"
 							@click.stop="onInfoClick"
+							@mouseenter="onInfoMouseEnter"
+							@mouseleave="onInfoMouseLeave"
 						/>
 					</Transition>
 					<N8nIconButton
 						class="nodrag"
 						:class="$style.toggle"
 						variant="ghost"
-						@mouseenter="onInfoMouseEnter"
-						@mouseleave="onInfoMouseLeave"
 						size="large"
 						:icon="isCollapsed ? 'chevron-down' : 'chevron-up'"
 						:aria-label="toggleLabel"
@@ -443,21 +467,17 @@ function onWrapperMouseOut(event: MouseEvent) {
 				:leave-to-class="$style.descriptionFadeFrom"
 			>
 				<div
-					v-if="showPermanentDescription"
-					:class="[
-						'nodrag',
-						$style.descriptionArea,
-						!isCollapsed ? $style.permanentExpanded : $style.permanentCollapsed,
-					]"
+					v-if="showCollapsedDescription"
+					:class="['nodrag', $style.descriptionArea, $style.permanentCollapsed]"
 					data-test-id="canvas-node-group-description"
+					@mouseenter="onDescriptionMouseEnter"
+					@mouseleave="onDescriptionMouseLeave"
 				>
 					<N8nText
-						v-if="!isEditingDescription && !isDescriptionEmpty"
-						:class="$style.descriptionText"
+						v-if="!isEditingDescription"
+						:class="isDescriptionEmpty ? $style.descriptionPlaceholder : $style.descriptionText"
 						data-test-id="canvas-node-group-description-text"
 						@click.stop="startEditing"
-						@mouseenter="onDescriptionMouseEnter"
-						@mouseleave="onDescriptionMouseLeave"
 					>
 						{{ group.description || i18n.baseText('canvas.nodeGroup.descriptionPlaceholder') }}
 					</N8nText>
@@ -554,12 +574,21 @@ $description-height: 48px;
 	overflow: hidden;
 }
 
+.titleColumn {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+	gap: var(--spacing--3xs);
+}
+
 .title {
 	display: flex;
 	align-items: center;
 	flex: 1;
 	min-width: 0;
-	height: 100%;
 	font-size: var(--font-size--md);
 	font-weight: var(--font-weight--medium);
 }
@@ -659,21 +688,24 @@ $description-height: 48px;
 		left: 0;
 		width: 100%;
 	}
+}
 
-	&.permanentExpanded {
-		top: calc($header-height + 12px);
-		right: 12px;
-		width: 320px;
-
-		.descriptionEdit {
-			width: 320px;
-		}
-	}
+.descriptionInline {
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--regular);
+	color: var(--text-color--subtle);
+	max-height: 2em;
 }
 
 .descriptionText {
 	font-size: var(--font-size--s);
-	color: var(--color--text-subtle);
+	color: var(--text-color--subtle);
+	cursor: text;
+}
+
+.descriptionPlaceholder {
+	font-size: var(--font-size--s);
+	color: var(--text-color--disabled);
 	cursor: text;
 }
 
