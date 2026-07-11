@@ -86,8 +86,10 @@ export function driveEndpoint(root: string): string {
 
 /**
  * App-only Graph scope root (`/users/{id}` or `/drives/{id}`), or `undefined` for OAuth2 (`/me`).
- * The `|| 'user'` and `''` fallbacks cover load-options, where the 2nd getNodeParameter arg is the
- * fallback (not an itemIndex) — an unpersisted target then coalesces to the "target ID required" error.
+ * The target RLC accepts expressions and is resolved per item: execute call sites pass the loop's
+ * item index; load-options call sites pass a literal 0 — there the 2nd getNodeParameter arg is the
+ * fallback (not an itemIndex), which the `|| 'user'` and `''` fallbacks cover, so an unpersisted
+ * target coalesces to the "target ID required" error.
  */
 export function resolveScopeRoot(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -105,14 +107,19 @@ export function resolveScopeRoot(
 	return getServicePrincipalResourceRoot(target, id, this.getNode());
 }
 
+// `itemIndex` is REQUIRED so the compiler enforces the per-item contract: execute
+// call sites pass the loop index (batch ops pass a literal 0, matching their item-0
+// param reads); loadOptions/listSearch call sites pass a literal 0, where
+// `getNodeParameter`'s 2nd arg is a fallback, not an index.
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
+	uri: string | undefined,
 	headers: IDataObject = {},
+	itemIndex: number,
 ): Promise<any> {
 	const credentialType = getExcelCredentialType.call(this);
 	const isServicePrincipal = credentialType === 'microsoftEntraServicePrincipalApi';
@@ -124,9 +131,9 @@ export async function microsoftApiRequest(
 	).replace(/\/+$/, '');
 
 	let uriToUse = uri || `${baseUrl}/v1.0/me${resource}`;
-	// App-only has no `/me`; rebase page-1 onto the user/drive root. Absolute `@odata.nextLink` pages pass through.
+	// App-only has no `/me`; rebase page-1 onto the item's user/drive root. Absolute `@odata.nextLink` pages pass through.
 	if (!uri && isServicePrincipal) {
-		const driveScopeRoot = resolveScopeRoot.call(this);
+		const driveScopeRoot = resolveScopeRoot.call(this, itemIndex);
 		if (driveScopeRoot) {
 			// Programmer error, not user input: every Excel resource is `/drive`-rooted.
 			if (!resource.startsWith('/drive')) {
@@ -159,6 +166,7 @@ export async function microsoftApiRequest(
 		}
 		return await this.helpers.requestOAuth2.call(this, credentialType, options);
 	} catch (error) {
+		// The operation's catch stamps the failing item's index.
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
@@ -170,6 +178,7 @@ export async function microsoftApiRequestAllItems(
 	endpoint: string,
 	body: any = {},
 	query: IDataObject = {},
+	itemIndex: number,
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -178,7 +187,16 @@ export async function microsoftApiRequestAllItems(
 	query.$top = 100;
 
 	do {
-		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query, uri);
+		responseData = await microsoftApiRequest.call(
+			this,
+			method,
+			endpoint,
+			body,
+			query,
+			uri,
+			undefined,
+			itemIndex,
+		);
 		uri = responseData['@odata.nextLink'];
 		if (uri?.includes('$top')) {
 			delete query.$top;
@@ -196,6 +214,7 @@ export async function microsoftApiRequestAllItemsSkip(
 	endpoint: string,
 	body: any = {},
 	query: IDataObject = {},
+	itemIndex: number,
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -204,7 +223,17 @@ export async function microsoftApiRequestAllItemsSkip(
 	query.$skip = 0;
 
 	do {
-		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query);
+		// Every `$skip` page re-issues the scoped relative URL, re-resolved at the same index.
+		responseData = await microsoftApiRequest.call(
+			this,
+			method,
+			endpoint,
+			body,
+			query,
+			undefined,
+			undefined,
+			itemIndex,
+		);
 		query.$skip += query.$top;
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.value.length !== 0);
