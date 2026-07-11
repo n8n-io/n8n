@@ -5,12 +5,7 @@ import { computed, ref, watch, type Ref } from 'vue';
 import type { TestCaseExecutionRecord } from '../evaluation.api';
 import { useEvaluationStore } from '../evaluation.store';
 import type { EvaluationCollectionDetail } from '../evalCollections.types';
-import {
-	getUserDefinedMetricNames,
-	indexOfMax,
-	isScoreShapedMetric,
-	stringifyValue,
-} from '../evaluation.utils';
+import { averageNormalizedScore, indexOfMax, stringifyValue } from '../evaluation.utils';
 
 // One version's execution of a single aligned test case. `null`-valued fields
 // mark a case that this version's run didn't cover (dataset drift).
@@ -39,18 +34,6 @@ export interface DatasetMismatch {
 	// Case count per version, aligned to run order.
 	counts: number[];
 	maxCount: number;
-}
-
-// Mean of a case's score-shaped metrics, mirroring the hero chart's metric
-// selection so a case score and the aggregate bars can't disagree on which
-// metrics count.
-function caseScore(metrics: Record<string, number> | undefined): number | null {
-	if (!metrics) return null;
-	const values = getUserDefinedMetricNames(metrics)
-		.map((key) => metrics[key])
-		.filter(isScoreShapedMetric);
-	if (values.length === 0) return null;
-	return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 // Compact one-line preview of a case's inputs for the table's first column.
@@ -169,7 +152,7 @@ export function useCompareCases(
 					inputs: record?.inputs,
 					outputs: record?.outputs,
 					metrics: record?.metrics,
-					score: caseScore(record?.metrics),
+					score: averageNormalizedScore(record?.metrics),
 				};
 			});
 

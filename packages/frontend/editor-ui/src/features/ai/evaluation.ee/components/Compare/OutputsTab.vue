@@ -9,6 +9,7 @@ import {
 	extractAnswerText,
 	formatMetricLabel,
 	formatMetricPercent,
+	getMetricCategory,
 	getUserDefinedMetricNames,
 } from '../../evaluation.utils';
 import VersionAvatar from '../shared/VersionAvatar.vue';
@@ -34,7 +35,7 @@ function metricEntries(metrics: Record<string, number> | undefined) {
 	return getUserDefinedMetricNames(metrics).map((key) => ({
 		key,
 		label: formatMetricLabel(key),
-		value: formatMetricPercent(metrics[key]),
+		value: formatMetricPercent(metrics[key], { category: getMetricCategory(key) }),
 	}));
 }
 </script>

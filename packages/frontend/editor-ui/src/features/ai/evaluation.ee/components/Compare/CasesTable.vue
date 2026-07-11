@@ -3,7 +3,7 @@ import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 
-import type { CompareCaseRow } from '../../composables/useCompareCases';
+import type { CompareCaseCell, CompareCaseRow } from '../../composables/useCompareCases';
 import type { CompareVersion } from '../../composables/useCompareData';
 import { computeDelta, formatDeltaPercent, formatMetricPercent } from '../../evaluation.utils';
 import { versionColorVar } from '../shared/versionPalette';
@@ -65,8 +65,13 @@ function isCritical(score: number | null): boolean {
 	return score !== null && score < CRITICAL_THRESHOLD;
 }
 
-function scoreLabel(score: number | null): string {
-	return score === null ? '⊘' : formatMetricPercent(score);
+// A scored cell shows its percentage; an unscored one is either still running
+// (the case exists — `testCaseId` set — but hasn't produced a metric yet, shown
+// as a neutral dash) or genuinely absent from this version's run (dataset
+// drift → `⊘`).
+function scoreLabel(cell: CompareCaseCell): string {
+	if (cell.score !== null) return formatMetricPercent(cell.score);
+	return cell.testCaseId !== null ? '–' : '⊘';
 }
 
 // Non-winning versions' delta vs the best, for the "Δ vs best" column.
@@ -119,7 +124,7 @@ function deltas(row: CompareCaseRow) {
 					<span :class="$style.chip">
 						<span :class="$style.dot" :style="{ background: versionColorVar(cell.versionIndex) }" />
 						<N8nText size="xsmall" :color="isCritical(cell.score) ? 'danger' : 'text-base'" bold>
-							{{ scoreLabel(cell.score) }}
+							{{ scoreLabel(cell) }}
 						</N8nText>
 					</span>
 				</td>

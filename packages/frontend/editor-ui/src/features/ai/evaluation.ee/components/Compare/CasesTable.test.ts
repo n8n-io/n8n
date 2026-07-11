@@ -28,9 +28,12 @@ const versions: CompareVersion[] = [
 	},
 ];
 
+// A null score with no `testCaseId` represents a case this version's run never
+// covered (dataset drift → `⊘`); a null score with a `testCaseId` is a case
+// still running (→ `–`).
 const cell = (versionIndex: number, score: number | null): CompareCaseCell => ({
 	versionIndex,
-	testCaseId: `c${versionIndex}`,
+	testCaseId: score === null ? null : `c${versionIndex}`,
 	inputs: { q: 'x' },
 	outputs: { output: 'y' },
 	metrics: score === null ? undefined : { helpfulness: score },
@@ -82,11 +85,39 @@ describe('CasesTable', () => {
 		expect(emitted().drilldown).toEqual([[3]]);
 	});
 
-	it('renders a missing-case marker for null scores', () => {
+	it('renders a missing-case marker (⊘) for a case absent from a version', () => {
 		const { container } = renderComponent({
 			props: { versions, caseRows: [row(0, [0.7, null], 0)] },
 		});
 
 		expect(container.textContent).toContain('⊘');
+	});
+
+	it('renders a pending marker (–) for a scored-yet case that still exists', () => {
+		const pendingCell: CompareCaseCell = {
+			versionIndex: 1,
+			testCaseId: 'c1',
+			inputs: {},
+			outputs: undefined,
+			metrics: undefined,
+			score: null,
+		};
+		const { container } = renderComponent({
+			props: {
+				versions,
+				caseRows: [
+					{
+						index: 0,
+						displayIndex: 1,
+						inputPreview: 'case 0',
+						cells: [cell(0, 0.7), pendingCell],
+						bestVersionIndex: 0,
+					},
+				],
+			},
+		});
+
+		expect(container.textContent).toContain('–');
+		expect(container.textContent).not.toContain('⊘');
 	});
 });

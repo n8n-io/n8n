@@ -188,6 +188,7 @@ onBeforeUnmount(() => {
 				:case-rows="caseRows"
 				:cases-loading="casesLoading"
 				:cases-error="casesError"
+				:workflow-id="workflowId"
 			/>
 		</template>
 	</div>

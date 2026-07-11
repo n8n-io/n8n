@@ -6,6 +6,7 @@ import { computed, ref } from 'vue';
 
 import type { CompareCaseRow } from '../../composables/useCompareCases';
 import type { CompareMetricGroup, CompareVersion } from '../../composables/useCompareData';
+import { deriveRunsStatus } from '../../evaluation.utils';
 import CasesTable from './CasesTable.vue';
 import OutputsTab from './OutputsTab.vue';
 import MetricsTab from './MetricsTab.vue';
@@ -17,6 +18,7 @@ const props = defineProps<{
 	caseRows: CompareCaseRow[];
 	casesLoading: boolean;
 	casesError?: boolean;
+	workflowId: string;
 }>();
 
 const i18n = useI18n();
@@ -34,6 +36,10 @@ const tabs = computed<Array<TabOptions<TabValue>>>(() => [
 ]);
 
 const hasCases = computed(() => props.caseRows.length > 0);
+
+// While any version is still executing, per-case scores stream in — surface an
+// in-progress note so the partially-filled table doesn't read as broken.
+const isRunning = computed(() => deriveRunsStatus(props.versions) === 'running');
 
 // Drilling into a case row jumps to its side-by-side outputs — the same detail
 // a per-case drawer would show, without a second surface to keep in sync.
@@ -62,7 +68,18 @@ function onDrilldown(caseIndex: number) {
 				<N8nText v-else-if="!hasCases" size="small" color="text-light">
 					{{ i18n.baseText('evaluation.compare.cases.empty') }}
 				</N8nText>
-				<CasesTable v-else :versions="versions" :case-rows="caseRows" @drilldown="onDrilldown" />
+				<template v-else>
+					<N8nText
+						v-if="isRunning"
+						size="xsmall"
+						color="text-light"
+						:class="$style.runningNote"
+						data-test-id="compare-cases-running"
+					>
+						{{ i18n.baseText('evaluation.compare.cases.running') }}
+					</N8nText>
+					<CasesTable :versions="versions" :case-rows="caseRows" @drilldown="onDrilldown" />
+				</template>
 			</template>
 
 			<template v-else-if="activeTab === 'outputs'">
@@ -84,7 +101,7 @@ function onDrilldown(caseIndex: number) {
 				:metric-groups="metricGroups"
 			/>
 
-			<WorkflowDiffTab v-else />
+			<WorkflowDiffTab v-else :versions="versions" :workflow-id="workflowId" />
 		</div>
 	</section>
 </template>
@@ -98,5 +115,10 @@ function onDrilldown(caseIndex: number) {
 
 .panel {
 	min-height: 120px;
+}
+
+.runningNote {
+	display: block;
+	margin-bottom: var(--spacing--2xs);
 }
 </style>

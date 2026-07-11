@@ -60,12 +60,13 @@ describe('useCompareCases', () => {
 	}
 
 	it('aligns cases across runs by runIndex and picks the best version per case', async () => {
+		// helpfulness is a 1–5 AI-judge metric → normalized /5 (3.5 → 0.7 etc.).
 		seed([
-			caseRecord({ id: 'a0', testRunId: 'run-a', runIndex: 0, metrics: { helpfulness: 0.7 } }),
-			caseRecord({ id: 'a1', testRunId: 'run-a', runIndex: 1, metrics: { helpfulness: 0.5 } }),
+			caseRecord({ id: 'a0', testRunId: 'run-a', runIndex: 0, metrics: { helpfulness: 3.5 } }),
+			caseRecord({ id: 'a1', testRunId: 'run-a', runIndex: 1, metrics: { helpfulness: 2.5 } }),
 			// run-b returned out of order — alignment must sort by runIndex.
-			caseRecord({ id: 'b1', testRunId: 'run-b', runIndex: 1, metrics: { helpfulness: 0.9 } }),
-			caseRecord({ id: 'b0', testRunId: 'run-b', runIndex: 0, metrics: { helpfulness: 0.6 } }),
+			caseRecord({ id: 'b1', testRunId: 'run-b', runIndex: 1, metrics: { helpfulness: 4.5 } }),
+			caseRecord({ id: 'b0', testRunId: 'run-b', runIndex: 0, metrics: { helpfulness: 3 } }),
 		]);
 		const { caseRows, mismatch } = useCompareCases(
 			ref(detailWith(['run-a', 'run-b'])),
@@ -84,10 +85,11 @@ describe('useCompareCases', () => {
 	});
 
 	it('flags a dataset mismatch and null-fills missing cells when case counts diverge', async () => {
+		// helpfulness is a 1–5 AI-judge metric → normalized /5 (4 → 0.8 etc.).
 		seed([
-			caseRecord({ id: 'a0', testRunId: 'run-a', runIndex: 0, metrics: { helpfulness: 0.7 } }),
-			caseRecord({ id: 'a1', testRunId: 'run-a', runIndex: 1, metrics: { helpfulness: 0.8 } }),
-			caseRecord({ id: 'b0', testRunId: 'run-b', runIndex: 0, metrics: { helpfulness: 0.6 } }),
+			caseRecord({ id: 'a0', testRunId: 'run-a', runIndex: 0, metrics: { helpfulness: 3.5 } }),
+			caseRecord({ id: 'a1', testRunId: 'run-a', runIndex: 1, metrics: { helpfulness: 4 } }),
+			caseRecord({ id: 'b0', testRunId: 'run-b', runIndex: 0, metrics: { helpfulness: 3 } }),
 		]);
 		const { caseRows, mismatch } = useCompareCases(
 			ref(detailWith(['run-a', 'run-b'])),
@@ -146,13 +148,14 @@ describe('useCompareCases', () => {
 				id: 'a0',
 				testRunId: 'run-a',
 				runIndex: 0,
-				metrics: { helpfulness: 0.8, totalTokens: 1, executionTime: 0.4 },
+				metrics: { helpfulness: 4, totalTokens: 1, executionTime: 0.4 },
 			}),
 		]);
 		const { caseRows } = useCompareCases(ref(detailWith(['run-a'])), ref('wf-1'));
 		await nextTick();
 
-		// score is the mean of score-shaped, non-predefined metrics → just helpfulness
+		// score is the mean of normalized score metrics → just helpfulness (4/5 = 0.8);
+		// tokens/execution time are operational and excluded.
 		expect(caseRows.value[0].cells[0].score).toBe(0.8);
 	});
 });
