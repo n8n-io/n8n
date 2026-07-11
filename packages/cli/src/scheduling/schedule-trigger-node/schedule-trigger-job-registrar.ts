@@ -110,18 +110,17 @@ export class ScheduleTriggerJobRegistrar {
 						{ workflowId: workflow.id, nodeId: node.id },
 					);
 					collected.push({ schedule, firstRunAt: null });
-					return;
+				} else {
+					// Validates the expression/timezone and returns the first instant. A null
+					// (instance-default) timezone is resolved for the math while staying null
+					// in the stored row. `computeFirstRunAt` throws on a malformed rule.
+					const computed = computeFirstRunAt(
+						withResolvedTimezone(schedule, this.defaultTimezone),
+						new Date(),
+					);
+
+					collected.push({ schedule, firstRunAt: computed });
 				}
-
-				// Validates the expression/timezone and returns the first instant. A null
-				// (instance-default) timezone is resolved for the math while staying null
-				// in the stored row. `computeFirstRunAt` throws on a malformed rule.
-				const computed = computeFirstRunAt(
-					withResolvedTimezone(schedule, this.defaultTimezone),
-					new Date(),
-				);
-
-				collected.push({ schedule, firstRunAt: computed });
 			},
 		};
 	}
@@ -174,32 +173,33 @@ export class ScheduleTriggerJobRegistrar {
 	async commit(workflowId: string, nodeId: string): Promise<void> {
 		const key = pendingKey(workflowId, nodeId);
 		const collected = this.pending.get(key);
-		if (collected === undefined) return;
-		this.pending.delete(key);
+		if (collected !== undefined) {
+			this.pending.delete(key);
 
-		const desired = collected.map(({ schedule, firstRunAt }, ruleIndex) => ({
-			name: `${workflowId}:${nodeId}:${ruleIndex}`,
-			schedule,
-			firstRunAt,
-		}));
+			const desired = collected.map(({ schedule, firstRunAt }, ruleIndex) => ({
+				name: `${workflowId}:${nodeId}:${ruleIndex}`,
+				schedule,
+				firstRunAt,
+			}));
 
-		const payload: ScheduleTriggerTaskPayload = { workflowId, nodeId };
-		const summary = await this.jobProvisioner.provision(
-			workflowId,
-			nodeId,
-			SCHEDULE_TRIGGER_TASK_TYPE,
-			{ ...payload },
-			desired,
-		);
+			const payload: ScheduleTriggerTaskPayload = { workflowId, nodeId };
+			const summary = await this.jobProvisioner.provision(
+				workflowId,
+				nodeId,
+				SCHEDULE_TRIGGER_TASK_TYPE,
+				{ ...payload },
+				desired,
+			);
 
-		this.logger.debug('Provisioned durable schedules for trigger node', {
-			workflowId,
-			nodeId,
-			inserted: summary.inserted.length,
-			redefined: summary.redefined.length,
-			unchanged: summary.unchanged.length,
-			removed: summary.removed.length,
-		});
+			this.logger.debug('Provisioned durable schedules for trigger node', {
+				workflowId,
+				nodeId,
+				inserted: summary.inserted.length,
+				redefined: summary.redefined.length,
+				unchanged: summary.unchanged.length,
+				removed: summary.removed.length,
+			});
+		}
 	}
 
 	/** Drop collected-but-uncommitted rules after a failed activation. */
