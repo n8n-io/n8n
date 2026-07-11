@@ -1,5 +1,10 @@
 import type { User } from '@n8n/db';
 
+import type { WorkflowIdConflict } from './entities/workflow/workflow-import-match.service';
+import type {
+	WorkflowConflict,
+	WorkflowFolderConflict,
+} from './entities/workflow/workflow-import.types';
 import type {
 	WorkflowPublishingOutcome,
 	WorkflowPublishingPolicy,
@@ -11,6 +16,8 @@ export type { WorkflowPublishingOutcome } from './entities/workflow/workflow-pub
 
 export type CredentialMatchingMode = 'id-only' | 'name-and-type' | 'type-only';
 export type CredentialMissingMode = 'must-preexist' | 'create-stub';
+
+export type PackageFailureReason = 'access-denied' | 'entity-not-found' | 'blocked' | 'validation';
 
 /* eslint-disable @typescript-eslint/naming-convention -- enum-like members for IDE documentation */
 export const WorkflowConflictPolicy = {
@@ -28,12 +35,21 @@ export const WorkflowIdPolicy = {
 	/** Reuses the package's own workflow id in the target instance. */
 	Source: 'source',
 } as const;
+
+export const FolderConflictPolicy = {
+	/** Reuses an already-imported folder (matched by id) as-is and merges the package's children into it; otherwise creates it. */
+	Merge: 'merge',
+	/** Fails the import if any package folder already exists in the target project. */
+	Fail: 'fail',
+} as const;
 /* eslint-enable @typescript-eslint/naming-convention */
 
 export type WorkflowConflictPolicy =
 	(typeof WorkflowConflictPolicy)[keyof typeof WorkflowConflictPolicy];
 
 export type WorkflowIdPolicy = (typeof WorkflowIdPolicy)[keyof typeof WorkflowIdPolicy];
+
+export type FolderConflictPolicy = (typeof FolderConflictPolicy)[keyof typeof FolderConflictPolicy];
 
 export interface ExportPackageRequest {
 	user: User;
@@ -47,19 +63,25 @@ export type ImportPackageRequest = {
 	projectId?: string;
 	folderId?: string;
 	packageBuffer: Buffer;
+	bindings?: Partial<PackageImportBindings>;
+	apiKeyScopes?: string[];
 } & ImportCredentialProperties &
-	ImportWorkflowProperties;
+	ImportWorkflowProperties &
+	ImportFolderProperties;
 
 export type ImportCredentialProperties = {
 	credentialMatchingMode: CredentialMatchingMode;
 	credentialMissingMode: CredentialMissingMode;
-	credentialBindings?: ImportBindingMap;
 };
 
 export type ImportWorkflowProperties = {
 	workflowConflictPolicy: WorkflowConflictPolicy;
 	workflowPublishingPolicy: WorkflowPublishingPolicy;
 	workflowIdPolicy: WorkflowIdPolicy;
+};
+
+export type ImportFolderProperties = {
+	folderConflictPolicy: FolderConflictPolicy;
 };
 
 /**
@@ -75,8 +97,7 @@ export interface ImportContext {
 	folderId: string | null;
 }
 
-export type ImportPackageEventOptions = Omit<ImportCredentialProperties, 'credentialBindings'> &
-	ImportWorkflowProperties;
+export type ImportPackageEventOptions = ImportCredentialProperties & ImportWorkflowProperties;
 
 /** Credential ids involved in a package import, shaped for forward-compatible audit events. */
 export type ImportAuditCredentialIds = {
@@ -120,34 +141,23 @@ export interface ImportedWorkflowSummary {
 	status: 'created' | 'updated' | 'skipped';
 }
 
+export interface ImportedFolderSummary {
+	sourceFolderId: string;
+	localId: string;
+	name: string;
+	parentFolderId: string | null;
+	status: 'created' | 'skipped';
+}
+
 /**
  * A reason the import cannot proceed, produced by some policy from any subsystem.
  * Discriminated by `type` so new gates add a variant rather than a new throw site.
  * The import aborts when any are present.
  */
 export type BlockingIssue =
-	| {
-			type: 'workflow-conflict';
-			sourceWorkflowId: string;
-			existingWorkflowId: string;
-			name: string;
-	  }
-	| {
-			type: 'workflow-id-conflict';
-			sourceWorkflowId: string;
-			existingWorkflowId: string;
-			existingProjectId: string | null;
-			isArchived: boolean;
-			name: string;
-	  }
-	| {
-			type: 'workflow-folder-conflict';
-			sourceWorkflowId: string;
-			existingWorkflowId: string;
-			existingParentFolderId: string | null;
-			targetFolderId: string;
-			name: string;
-	  }
+	| ({ type: 'workflow-conflict' } & WorkflowConflict)
+	| ({ type: 'workflow-id-conflict' } & WorkflowIdConflict)
+	| ({ type: 'workflow-folder-conflict' } & WorkflowFolderConflict)
 	| {
 			type: 'credential-unresolved';
 			kind: 'not_found' | 'unknown_type' | 'source_not_found' | 'type_mismatch';
@@ -158,7 +168,17 @@ export type BlockingIssue =
 			/** For `type_mismatch`: the actual type of the resolved target credential. */
 			actualType?: string;
 			usedByWorkflows: string[];
-	  };
+	  }
+	| ({ type: 'folder-conflict' } & FolderConflict);
+
+export interface FolderConflict {
+	kind: 'parent-mismatch' | 'id-in-other-project' | 'fail-policy';
+	sourceFolderId: string;
+	name: string;
+	existingParentFolderId?: string | null;
+	expectedParentFolderId?: string | null;
+	existingProjectId?: string | null;
+}
 
 /** Source id → target id mapping for one entity type within an imported package. */
 export type ImportBindingMap = Map<string, string>;
@@ -202,10 +222,10 @@ export interface ImportCredentialSummary {
 	stubbed: string[];
 }
 
-/** Result of an import: the workflows written to the database. */
 export interface ImportResult {
 	package: ImportPackageSummary;
 	workflows: ImportedWorkflowSummary[];
+	folders: ImportedFolderSummary[];
 	bindings: SerializedBindings;
 	credentials: ImportCredentialSummary;
 }

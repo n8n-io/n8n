@@ -121,4 +121,6 @@ export type {
 	AgentJsonConfig as AgentJsonConfigRef,
 	AgentJsonMcpServerConfig,
 	AgentJsonConfig,
+	AgentJsonVectorStoreConfig,
+	AgentVectorStoreProvider,
 } from '@n8n/api-types';

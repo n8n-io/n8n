@@ -8,8 +8,7 @@ import { useCanvasNodeHover } from '../composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '../composables/useCanvasTraversal';
 import { type KeyMap, useKeybindings } from '@/app/composables/useKeybindings';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
-import { CanvasKey, CANVAS_NODES_GROUPING_EXPERIMENT } from '@/app/constants';
-import { usePostHog } from '@/app/stores/posthog.store';
+import { CanvasKey } from '@/app/constants';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { NODE_CREATOR_SHORTCUT_COACHMARK_KEY } from '@/features/shared/nodeCreator/composables/useNodeCreatorShortcutCoachmark';
@@ -204,18 +203,11 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
 const chatPanelStore = useChatPanelStore();
 const setupPanelStore = useSetupPanelStore();
-const posthogStore = usePostHog();
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
 
-const isCanvasNodeGroupingEnabled = computed(() =>
-	posthogStore.isFeatureEnabled(CANVAS_NODES_GROUPING_EXPERIMENT.name),
-);
-
 const vueFlowNodes = computed(() =>
-	props.showNodeGroups && isCanvasNodeGroupingEnabled.value
-		? props.nodes
-		: props.nodes.filter((node) => !isCanvasGroupNode(node)),
+	props.showNodeGroups ? props.nodes : props.nodes.filter((node) => !isCanvasGroupNode(node)),
 );
 
 const vueFlow = useVueFlow(props.id);
@@ -485,22 +477,20 @@ const keyMap = computed(() => {
 		alt_i: emitWithSelectedNodes((ids) => onAddSelectedNodesToAi(ids)),
 	};
 
-	if (isCanvasNodeGroupingEnabled.value) {
-		fullKeymap.ctrl_g = {
-			disabled: () => !canGroupSelection.value,
-			run: onKeyboardGroup,
-		};
-		fullKeymap.ctrl_shift_g = {
-			disabled: () => !canUngroupSelection.value,
-			run: () => {
-				// Through the same path as the title-bar button so push effects
-				// are committed before each group is removed.
-				for (const groupId of selectedGroupIds.value) {
-					onCanvasGroupUngroup(groupId, 'keyboard-shortcut');
-				}
-			},
-		};
-	}
+	fullKeymap.ctrl_g = {
+		disabled: () => !canGroupSelection.value,
+		run: onKeyboardGroup,
+	};
+	fullKeymap.ctrl_shift_g = {
+		disabled: () => !canUngroupSelection.value,
+		run: () => {
+			// Through the same path as the title-bar button so push effects
+			// are committed before each group is removed.
+			for (const groupId of selectedGroupIds.value) {
+				onCanvasGroupUngroup(groupId, 'keyboard-shortcut');
+			}
+		},
+	};
 
 	return fullKeymap;
 });
@@ -1482,7 +1472,7 @@ defineExpose({
 		</slot>
 
 		<CanvasSelectionToolbar
-			v-if="showNodeGroups && isCanvasNodeGroupingEnabled"
+			v-if="showNodeGroups"
 			:selected-nodes="selectedNodes"
 			:read-only="readOnly || suppressInteraction"
 			@group-created="onNodeGroupCreated"

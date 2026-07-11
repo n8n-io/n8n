@@ -3,10 +3,14 @@ import type { GlobalConfig } from '@n8n/config';
 import type { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import type { Scheduler, SchedulerPasses } from '@n8n/scheduler';
 import { createScheduler } from '@n8n/scheduler';
-import type { InstanceSettings } from 'n8n-core';
+import type { InstanceSettings, Tracing } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import type { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
+
 import { DurableScheduler } from '../durable-scheduler';
+import { SCHEDULE_TRIGGER_TASK_TYPE } from '../schedule-trigger-node/schedule-trigger-task';
+import type { ScheduleTriggerTaskHandler } from '../schedule-trigger-node/schedule-trigger-task-handler';
 
 // Keep the real exports (e.g. executorLookaheadSeconds) so the wiring is tested
 // against the actual formula; only the scheduler factory is stubbed.
@@ -20,6 +24,10 @@ describe('DurableScheduler', () => {
 		const inner = mock<Scheduler & SchedulerPasses>();
 		vi.mocked(createScheduler).mockReturnValue(inner);
 		const logger = mockLogger();
+		const scheduleTriggerTaskHandler = mock<ScheduleTriggerTaskHandler>({
+			taskType: SCHEDULE_TRIGGER_TASK_TYPE,
+		});
+		const tracing = mock<Tracing>();
 		const scheduler = new DurableScheduler(
 			logger,
 			mock<DataSource>(),
@@ -31,8 +39,11 @@ describe('DurableScheduler', () => {
 				database: { type: dbType as 'sqlite' | 'postgresdb' },
 				scheduler: { enabled, executorIntervalSeconds: 5, jitterRatio: 0.1 },
 			}),
+			tracing,
+			scheduleTriggerTaskHandler,
+			mock<PrometheusSchedulerMetricsService>(),
 		);
-		return { scheduler, inner, logger };
+		return { scheduler, inner, logger, tracing };
 	}
 
 	describe('composition', () => {
@@ -58,6 +69,33 @@ describe('DurableScheduler', () => {
 
 			const deps = vi.mocked(createScheduler).mock.calls.at(-1)?.[0];
 			expect(deps?.lifecycle?.concurrencyMode).toBe('sequential');
+		});
+	});
+
+	describe('tracer', () => {
+		// A fire span is opened from inside a timer callback armed while the claim
+		// span was active, so it needs a fresh trace instead of parenting under a
+		// (possibly already-closed) claim span; every other span parents normally.
+		it('routes a newTrace span through startNewTraceSpan, stripping the flag', async () => {
+			const { tracing } = makeScheduler();
+			const deps = vi.mocked(createScheduler).mock.calls.at(-1)?.[0];
+			const run = vi.fn();
+
+			await deps?.tracer?.startSpan({ name: 'Scheduler fire', newTrace: true }, run);
+
+			expect(tracing.startNewTraceSpan).toHaveBeenCalledWith({ name: 'Scheduler fire' }, run);
+			expect(tracing.startSpan).not.toHaveBeenCalled();
+		});
+
+		it('routes a plain span through startSpan', async () => {
+			const { tracing } = makeScheduler();
+			const deps = vi.mocked(createScheduler).mock.calls.at(-1)?.[0];
+			const run = vi.fn();
+
+			await deps?.tracer?.startSpan({ name: 'Scheduler materialize' }, run);
+
+			expect(tracing.startSpan).toHaveBeenCalledWith({ name: 'Scheduler materialize' }, run);
+			expect(tracing.startNewTraceSpan).not.toHaveBeenCalled();
 		});
 	});
 

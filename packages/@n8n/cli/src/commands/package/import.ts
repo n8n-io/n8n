@@ -12,6 +12,7 @@ export default class PackageImport extends BaseCommand {
 		'<%= config.bin %> package import --file=export.n8np --conflict-policy=fail',
 		'<%= config.bin %> package import --file=export.n8np --project=<id> --conflict-policy=new-version',
 		'<%= config.bin %> package import --file=export.n8np --conflict-policy=fail --credential-missing-mode=must-preexist',
+		'<%= config.bin %> package import --file=export.n8np --conflict-policy=fail --bindings=\'{"credentials":{"<sourceId>":"<targetId>"}}\'',
 	];
 
 	static override flags = {
@@ -34,6 +35,11 @@ export default class PackageImport extends BaseCommand {
 			options: ['new', 'source'],
 			aliases: ['workflow-id-policy'],
 		}),
+		folderConflictPolicy: Flags.string({
+			description: 'What to do when a package folder already exists in the target project',
+			options: ['merge', 'fail'],
+			aliases: ['folder-conflict-policy'],
+		}),
 		credentialMatchingMode: Flags.string({
 			description: 'How credential references are matched on the target instance',
 			options: ['id-only', 'name-and-type', 'type-only'],
@@ -44,6 +50,10 @@ export default class PackageImport extends BaseCommand {
 				'What to do when a referenced credential cannot be resolved (default on the instance: create-stub)',
 			options: ['must-preexist', 'create-stub'],
 			aliases: ['credential-missing-mode'],
+		}),
+		bindings: Flags.string({
+			description:
+				'Explicit source→target id bindings as a JSON object keyed by entity type, e.g. \'{"credentials":{"<sourceId>":"<targetId>"}}\'. Applied before credential-matching-mode resolution.',
 		}),
 	};
 
@@ -66,8 +76,10 @@ export default class PackageImport extends BaseCommand {
 						folderId: flags.folder,
 						workflowConflictPolicy: flags.conflictPolicy,
 						workflowIdPolicy: flags.workflowIdPolicy,
+						folderConflictPolicy: flags.folderConflictPolicy,
 						credentialMatchingMode: flags.credentialMatchingMode,
 						credentialMissingMode: flags.credentialMissingMode,
+						bindings: flags.bindings,
 					},
 				);
 			} catch (error) {

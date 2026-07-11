@@ -1,22 +1,33 @@
 // Mock the barrel import so these adapter tests only exercise local formatting helpers.
-vi.mock('@n8n/instance-ai', () => ({
-	wrapUntrustedData(content: string, source: string, label?: string): string {
-		const esc = (s: string) =>
-			s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-		const safeLabel = label ? ` label="${esc(label)}"` : '';
-		const safeContent = content.replace(/<\/untrusted_data/gi, '&lt;/untrusted_data');
-		return `<untrusted_data source="${esc(source)}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
-	},
-	builderTemplatesOptionsFromEnv: () => ({}),
-	BuilderTemplatesService: class {
-		async getBundle() {
-			return { files: [], indexTxt: '', version: null };
-		}
-		getVersion() {
-			return null;
-		}
-	},
-}));
+vi.mock('@n8n/instance-ai', async () => {
+	const { WorkflowSaveConflictError } = await import(
+		'../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error'
+	);
+	return {
+		WorkflowSaveConflictError,
+		wrapUntrustedData(content: string, source: string, label?: string): string {
+			const esc = (s: string) =>
+				s
+					.replace(/&/g, '&amp;')
+					.replace(/"/g, '&quot;')
+					.replace(/</g, '&lt;')
+					.replace(/>/g, '&gt;');
+			const safeLabel = label ? ` label="${esc(label)}"` : '';
+			const safeContent = content.replace(/<\/untrusted_data/gi, '&lt;/untrusted_data');
+			return `<untrusted_data source="${esc(source)}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
+		},
+		builderTemplatesOptionsFromEnv: () => ({}),
+		deriveCredentialHosts: vi.fn().mockReturnValue([]),
+		BuilderTemplatesService: class {
+			async getBundle() {
+				return { files: [], indexTxt: '', version: null };
+			}
+			getVersion() {
+				return null;
+			}
+		},
+	};
+});
 
 import type { Mock, Mocked, MockInstance } from 'vitest';
 
@@ -1207,7 +1218,9 @@ import type { DataTableRepository } from '@/modules/data-table/data-table.reposi
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { WorkflowSaveConflictError } from '../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error';
 import type { WorkflowService } from '@/workflows/workflow.service';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import type { License } from '@/license';
 import type { RoleService } from '@/services/role.service';
 
@@ -2345,6 +2358,42 @@ describe('createWorkflowAdapter', () => {
 		expect(updateData.nodes[0].credentials).toBeUndefined();
 	});
 
+	it('forwards expectedChecksum to workflowService.update', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+
+		await adapter.updateFromWorkflowJSON('wf-new', minimalWorkflowJSON, {
+			expectedChecksum: 'expected-checksum',
+		});
+
+		expect(mockWorkflowService.update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			'wf-new',
+			expect.objectContaining({ expectedChecksum: 'expected-checksum', source: 'n8n-ai' }),
+		);
+	});
+
+	it('throws WorkflowSaveConflictError when expectedChecksum mismatches', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+		mockWorkflowService.update.mockRejectedValueOnce(new ConflictError('conflict'));
+
+		await expect(
+			adapter.updateFromWorkflowJSON('wf-new', minimalWorkflowJSON, {
+				expectedChecksum: 'stale-checksum',
+			}),
+		).rejects.toBeInstanceOf(WorkflowSaveConflictError);
+	});
+
+	it('returns a checksum on create and update saves', async () => {
+		const { adapter } = createWorkflowAdapterForTests();
+
+		const created = await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+		const updated = await adapter.updateFromWorkflowJSON('wf-new', minimalWorkflowJSON);
+
+		expect(created.checksum).toEqual(expect.any(String));
+		expect(updated.checksum).toEqual(expect.any(String));
+	});
+
 	it('clears the AI-builder temporary marker when promoting the main workflow', async () => {
 		const { adapter, mockAiBuilderTemporaryWorkflowRepository, mockWorkflowRepository } =
 			createWorkflowAdapterForTests();
@@ -2615,42 +2664,27 @@ describe('createExecutionAdapter', () => {
 		vi.clearAllMocks();
 	});
 
-	it('passes user and sharingOptions to execution query when sharing is enabled', async () => {
-		const { adapter, mockExecutionRepository, mockUser } = createExecutionAdapterForTests({
-			sharingEnabled: true,
-		});
+	it.each([true, false])(
+		'passes scope-based sharingOptions to execution query (sharing licensed: %s)',
+		async (sharingEnabled) => {
+			const { adapter, mockExecutionRepository, mockUser } = createExecutionAdapterForTests({
+				sharingEnabled,
+			});
 
-		await adapter.list();
+			await adapter.list();
 
-		expect(mockExecutionRepository.findManyByRangeQuery).toHaveBeenCalledWith(
-			expect.objectContaining({
-				user: mockUser,
-				sharingOptions: {
-					scopes: ['workflow:read'],
-					projectRoles: ['project:editor'],
-					workflowRoles: ['workflow:owner', 'workflow:editor'],
-				},
-			}),
-		);
-	});
-
-	it('passes user and owner-only sharingOptions when sharing is disabled', async () => {
-		const { adapter, mockExecutionRepository, mockUser } = createExecutionAdapterForTests({
-			sharingEnabled: false,
-		});
-
-		await adapter.list();
-
-		expect(mockExecutionRepository.findManyByRangeQuery).toHaveBeenCalledWith(
-			expect.objectContaining({
-				user: mockUser,
-				sharingOptions: {
-					workflowRoles: ['workflow:owner'],
-					projectRoles: ['project:personalOwner'],
-				},
-			}),
-		);
-	});
+			expect(mockExecutionRepository.findManyByRangeQuery).toHaveBeenCalledWith(
+				expect.objectContaining({
+					user: mockUser,
+					sharingOptions: {
+						scopes: ['workflow:read'],
+						projectRoles: ['project:editor'],
+						workflowRoles: ['workflow:owner', 'workflow:editor'],
+					},
+				}),
+			);
+		},
+	);
 
 	it('does not pass accessibleWorkflowIds to execution query', async () => {
 		const { adapter, mockExecutionRepository } = createExecutionAdapterForTests({

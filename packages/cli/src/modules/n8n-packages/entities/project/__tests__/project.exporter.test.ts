@@ -8,6 +8,10 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 import type { PackageWriter } from '../../../io/package-writer';
 import type { FolderExporter } from '../../folder/folder.exporter';
+import {
+	PackageEntityAccessDeniedError,
+	PackageEntityNotFoundError,
+} from '../../package-export.errors';
 import type { WorkflowExporter } from '../../workflow/workflow.exporter';
 import { ProjectExporter } from '../project.exporter';
 import { ProjectSerializer } from '../project.serializer';
@@ -58,6 +62,7 @@ function makeExporter({
 			return createdAtDiff !== 0 ? createdAtDiff : left.id.localeCompare(right.id);
 		});
 	});
+	projectService.findExistingProjectIds.mockResolvedValue(new Set());
 
 	const folderFinder = mock<FolderFinderService>();
 	folderFinder.findFolderIdsInProject.mockResolvedValue([]);
@@ -109,6 +114,26 @@ describe('ProjectExporter', () => {
 		await expect(exporter.export({ user, projectIds: [project.id], writer })).rejects.toThrow(
 			'1 project(s) not found or not accessible. Export aborted.',
 		);
+	});
+
+	it('throws PackageEntityNotFoundError when the missing project does not exist at all', async () => {
+		const { exporter, projectService } = makeExporter({ projects: [] });
+		projectService.findExistingProjectIds.mockResolvedValue(new Set());
+		const writer = new CapturingWriter();
+
+		await expect(exporter.export({ user, projectIds: ['missing'], writer })).rejects.toBeInstanceOf(
+			PackageEntityNotFoundError,
+		);
+	});
+
+	it('throws PackageEntityAccessDeniedError when the missing project exists but is inaccessible', async () => {
+		const { exporter, projectService } = makeExporter({ projects: [] });
+		projectService.findExistingProjectIds.mockResolvedValue(new Set(['denied-1']));
+		const writer = new CapturingWriter();
+
+		await expect(
+			exporter.export({ user, projectIds: ['denied-1'], writer }),
+		).rejects.toBeInstanceOf(PackageEntityAccessDeniedError);
 	});
 
 	it('exports an empty team project with project.json only', async () => {

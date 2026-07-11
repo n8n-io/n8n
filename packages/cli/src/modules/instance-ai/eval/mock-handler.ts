@@ -74,7 +74,12 @@ For APIs that return empty responses on success (204/202), call submit_response 
 // Types
 // ---------------------------------------------------------------------------
 
-const DEFAULT_MAX_RETRIES = 1;
+// 2 retries: worst case 120s + 300s + 300s = 720s stays inside the 900s
+// scenario budget. One retry left large-payload generations (32-row klines,
+// multi-entry forecasts) failing both attempts under provider contention —
+// observed as _evalMockError mock_issue rows and client-side scenario aborts
+// in run 29012884140 (trading-bot, weather-alert families).
+const DEFAULT_MAX_RETRIES = 2;
 const ERROR_PREVIEW_MAX = 400;
 const ERROR_DETAIL_MAX = 300;
 
