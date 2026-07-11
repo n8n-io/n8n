@@ -19,6 +19,7 @@ catalog:
   '@ai-sdk/openai-compatible': ^2.0.48
   '@ai-sdk/provider-utils': ^4.0.27
   '@ai-sdk/xai': ^3.0.93
+  '@aws-sdk/client-bedrock-agent-runtime': ^3.1075.0
   '@azure/identity': 4.13.0
   '@azure/storage-blob': ^12.32.0
   '@chat-adapter/linear': ^4.28.1
@@ -67,7 +68,6 @@ catalog:
   '@testcontainers/postgresql': ^11.13.0
   '@testcontainers/redis': ^11.13.0
   '@tiptap/core': 3.22.5
-  '@tiptap/pm': 3.22.5
   '@tiptap/extension-link': 3.22.5
   '@tiptap/extension-placeholder': 3.22.5
   '@tiptap/extension-strike': 3.22.5
@@ -78,6 +78,7 @@ catalog:
   '@tiptap/extension-task-item': 3.22.5
   '@tiptap/extension-task-list': 3.22.5
   '@tiptap/markdown': 3.22.5
+  '@tiptap/pm': 3.22.5
   '@tiptap/starter-kit': 3.22.5
   '@tiptap/vue-3': 3.22.5
   '@types/basic-auth': ^1.1.3
@@ -125,8 +126,8 @@ catalog:
   electron: ^41.7.2
   esbuild: ^0.28.1
   eslint: 9.29.0
-  eslint-plugin-oxlint: ^1.61.0
   eslint-plugin-n8n-nodes-base: ^1.16.7
+  eslint-plugin-oxlint: ^1.61.0
   express: 5.1.0
   fast-check: ^3.23.2
   fast-glob: 3.2.12
@@ -218,8 +219,8 @@ catalogs:
   frontend:
     '@internationalized/date': ^3.9.0
     '@sentry/vue': ^10.36.0
-    '@testing-library/jest-dom': ^6.6.3
     '@testing-library/dom': ^10.4.0
+    '@testing-library/jest-dom': ^6.6.3
     '@testing-library/user-event': ^14.6.1
     '@testing-library/vue': ^8.1.0
     '@vitejs/plugin-vue': ^5.2.4
