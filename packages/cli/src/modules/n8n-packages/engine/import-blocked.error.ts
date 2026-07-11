@@ -15,7 +15,8 @@ export function toImportBlockedError(
 			(issue) =>
 				issue.type === 'workflow-conflict' ||
 				issue.type === 'workflow-id-conflict' ||
-				issue.type === 'workflow-folder-conflict',
+				issue.type === 'workflow-folder-conflict' ||
+				issue.type === 'folder-conflict',
 		)
 	) {
 		return new ConflictError(message, undefined, { issues });
