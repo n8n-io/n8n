@@ -40,10 +40,16 @@ const ivm = require('/usr/local/lib/node_modules/n8n/node_modules/isolated-vm');
 		await ctx.eval('const a = []; while (true) a.push(new Array(65536).fill(0));');
 	} catch (error) {
 		limited = true;
-		console.log('memory limit enforced:', error.message.slice(0, 60));
+		console.log('limit kill:', error.message.slice(0, 70));
 	}
 	assert.ok(limited, 'memory limit was not enforced');
-	iso.dispose();
+	console.log('isDisposed after kill:', iso.isDisposed);
+	if (!iso.isDisposed) iso.dispose();
+	const fresh = new ivm.Isolate({ memoryLimit: 64 });
+	const freshCtx = await fresh.createContext();
+	assert.strictEqual(await freshCtx.eval('"alive"'), 'alive');
+	console.log('fresh isolate after kill: ok');
+	fresh.dispose();
 	const isolates = Array.from({ length: 6 }, () => new ivm.Isolate({ memoryLimit: 128 }));
 	await Promise.all(
 		isolates.map(async (isolate, index) => {
@@ -54,10 +60,10 @@ const ivm = require('/usr/local/lib/node_modules/n8n/node_modules/isolated-vm');
 	const stats = isolates[0].getHeapStatisticsSync();
 	console.log('isolate heap_size_limit MB:', Math.round(stats.heap_size_limit / 1048576));
 	isolates.forEach((isolate) => isolate.dispose());
-	console.log('IVM-PC-CHECK PASSED');
+	console.log('IVM-PC-CHECK PASSED, exiting');
 })().catch((error) => {
 	console.error('IVM-PC-CHECK FAILED', error);
-	process.exit(1);
+	process.exitCode = 1;
 });
 EOF
 RUN node /tmp/ivm-pc-check.js && rm /tmp/ivm-pc-check.js
