@@ -233,6 +233,9 @@
         "permission_level": {
             "type": "string"
         },
+        "points": {
+            "type": ["null", "number"]
+        },
         "project": {
             "type": "object",
             "properties": {

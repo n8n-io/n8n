@@ -924,6 +924,9 @@ export class ClickUp implements INodeType {
 						if (additionalFields.parentId) {
 							body.parent = additionalFields.parentId as string;
 						}
+						if (additionalFields.points !== undefined) {
+							body.points = additionalFields.points as number;
+						}
 						if (additionalFields.markdownContent) {
 							delete body.content;
 							body.markdown_content = additionalFields.content as string;
@@ -968,6 +971,9 @@ export class ClickUp implements INodeType {
 						}
 						if (updateFields.parentId) {
 							body.parent = updateFields.parentId as string;
+						}
+						if (updateFields.points !== undefined) {
+							body.points = updateFields.points as number;
 						}
 						if (updateFields.addAssignees) {
 							//@ts-ignore
