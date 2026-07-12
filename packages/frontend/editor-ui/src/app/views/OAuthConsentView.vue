@@ -16,6 +16,7 @@ import {
 } from '@n8n/design-system';
 import { MCP_DOCS_PAGE_URL, MCP_SCOPE_GROUPS } from '@/features/ai/mcpAccess/mcp.constants';
 import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import ScopesSelector from '@/app/components/scopes/ScopesSelector.vue';
 
 const consentStore = useConsentStore();
@@ -23,6 +24,7 @@ const consentStore = useConsentStore();
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
 const toast = useToast();
+const telemetry = useTelemetry();
 
 // Success state:
 const waitingForRedirect = ref(false);
@@ -78,6 +80,12 @@ const handleAllow = async () => {
 			true,
 			hasScopes.value ? selectedScopes.value : undefined,
 		);
+		telemetry.track('User approved MCP consent', {
+			client_name: clientDetails.value?.clientName,
+			selected_scopes: selectedScopes.value,
+			selected_scopes_count: selectedScopes.value.length,
+			all_scopes_selected: selectedScopes.value.length === availableScopes.value.length,
+		});
 		waitingForRedirect.value = true;
 		window.location.href = response.redirectUrl;
 	} catch (err) {
@@ -88,6 +96,9 @@ const handleAllow = async () => {
 const handleDeny = async () => {
 	try {
 		await consentStore.approveConsent(false);
+		telemetry.track('User denied MCP consent', {
+			client_name: clientDetails.value?.clientName,
+		});
 		window.location.href = window.BASE_PATH ?? '/';
 	} catch (err) {
 		toast.showError(err, i18n.baseText('oauth.consentView.error.deny'));
@@ -104,6 +115,10 @@ onMounted(async () => {
 	documentTitle.set(i18n.baseText('oauth.consentView.title'));
 	try {
 		await consentStore.fetchConsentDetails();
+		telemetry.track('User viewed MCP consent screen', {
+			client_name: clientDetails.value?.clientName,
+			available_scopes_count: availableScopes.value.length,
+		});
 	} catch (err) {
 		toast.showError(err, i18n.baseText('oauth.consentView.error.fetchDetails'));
 	}
