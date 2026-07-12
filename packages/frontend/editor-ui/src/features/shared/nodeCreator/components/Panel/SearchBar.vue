@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { onMounted, reactive, toRefs, onBeforeUnmount } from 'vue';
+import { onMounted, reactive, ref, toRefs, onBeforeUnmount, watch } from 'vue';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
+import { useDebounce } from '@/app/composables/useDebounce';
+import { DEBOUNCE_TIME } from '@/app/constants';
 
 import { N8nIcon } from '@n8n/design-system';
 export interface Props {
@@ -8,7 +10,7 @@ export interface Props {
 	modelValue?: string;
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
 	placeholder: '',
 	modelValue: '',
 });
@@ -21,18 +23,37 @@ const state = reactive({
 	inputRef: null as HTMLInputElement | null,
 });
 
+// Local copy so the field and clear button react instantly, while the search
+// itself only runs once the user stops typing.
+const searchValue = ref(props.modelValue);
+
 const externalHooks = useExternalHooks();
+const { debounce } = useDebounce();
+
+const emitSearch = debounce((value: string) => emit('update:modelValue', value), {
+	debounceTime: DEBOUNCE_TIME.INPUT.SEARCH,
+	trailing: true,
+});
+
+watch(
+	() => props.modelValue,
+	(value) => {
+		if (value !== searchValue.value.trim()) searchValue.value = value;
+	},
+);
 
 function focus() {
 	state.inputRef?.focus();
 }
 
 function onInput(event: Event) {
-	const input = event.target as HTMLInputElement;
-	emit('update:modelValue', input.value.trim());
+	searchValue.value = (event.target as HTMLInputElement).value.trim();
+	emitSearch(searchValue.value);
 }
 
 function clear() {
+	emitSearch.cancel();
+	searchValue.value = '';
 	emit('update:modelValue', '');
 }
 
@@ -53,14 +74,14 @@ defineExpose({
 
 <template>
 	<div :class="$style.searchContainer" data-test-id="search-bar">
-		<div :class="{ [$style.prefix]: true, [$style.active]: modelValue.length > 0 }">
+		<div :class="{ [$style.prefix]: true, [$style.active]: searchValue.length > 0 }">
 			<N8nIcon icon="search" size="small" />
 		</div>
 		<div :class="$style.text">
 			<input
 				ref="inputRef"
 				:placeholder="placeholder"
-				:value="modelValue"
+				:value="searchValue"
 				:class="$style.input"
 				autofocus
 				data-test-id="node-creator-search-bar"
@@ -68,7 +89,12 @@ defineExpose({
 				@input="onInput"
 			/>
 		</div>
-		<div v-if="modelValue.length > 0" :class="[$style.suffix, $style.clickable]" @click="clear">
+		<div
+			v-if="searchValue.length > 0"
+			:class="[$style.suffix, $style.clickable]"
+			data-test-id="node-creator-search-clear"
+			@click="clear"
+		>
 			<N8nIcon size="small" icon="circle-x" />
 		</div>
 	</div>
