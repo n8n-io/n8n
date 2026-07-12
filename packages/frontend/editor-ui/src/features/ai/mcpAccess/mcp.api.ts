@@ -15,7 +15,8 @@ export type McpSettingsResponse = {
 export type ToggleWorkflowsMcpAccessTarget =
 	| { workflowIds: string[] }
 	| { projectId: string }
-	| { folderId: string };
+	| { folderId: string }
+	| { allWorkflows: true };
 
 export type ToggleWorkflowsMcpAccessResponse = {
 	updatedCount: number;
@@ -62,7 +63,8 @@ export async function updateAllowedRedirectUris(
 
 /**
  * Bulk-toggles MCP availability for a set of workflows scoped by either an
- * explicit id list, a project, or a folder (+ its descendants).
+ * explicit id list, a project, a folder (+ its descendants), or all
+ * workflows the user can update.
  */
 export async function toggleWorkflowsMcpAccessApi(
 	context: IRestApiContext,
