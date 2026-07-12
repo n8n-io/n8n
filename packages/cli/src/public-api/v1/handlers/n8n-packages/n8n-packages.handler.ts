@@ -22,7 +22,12 @@ const PACKAGE_EXPORT_SCOPES = 'project:export,workflow:export';
 type ExportPackageRequest = AuthenticatedRequest<
 	{},
 	{},
-	{ workflowIds?: string[]; folderIds?: string[]; projectIds?: string[] }
+	{
+		workflowIds?: string[];
+		folderIds?: string[];
+		projectIds?: string[];
+		includeVariableValues?: boolean;
+	}
 >;
 
 type ImportPackageRequest = PackageRequest.Import & {
@@ -39,6 +44,7 @@ function assertPackageExportApiKeyScopes(
 	workflowIds: string[],
 	folderIds: string[],
 	projectIds: string[],
+	includeVariableValues: boolean,
 ) {
 	const apiKeyScopes = req.tokenGrant?.apiKeyScopes;
 	if (!apiKeyScopes) {
@@ -52,6 +58,10 @@ function assertPackageExportApiKeyScopes(
 	}
 	if (projectIds.length > 0) {
 		requiredScopes.push('project:export');
+	}
+	// Bundling variable values uses the same listing path as GET /variables.
+	if (includeVariableValues) {
+		requiredScopes.push('variable:list');
 	}
 
 	for (const scope of requiredScopes) {
@@ -88,6 +98,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 			const workflowIds = payload.data.workflowIds ?? [];
 			const folderIds = payload.data.folderIds ?? [];
 			const projectIds = payload.data.projectIds ?? [];
+			const includeVariableValues = payload.data.includeVariableValues ?? true;
 
 			// A package is either a set of loose workflows/folders or a set of whole projects, not both.
 			if (projectIds.length > 0 && (workflowIds.length > 0 || folderIds.length > 0)) {
@@ -98,13 +109,20 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 				throw new BadRequestError('At least one workflowId, folderId, or projectId is required');
 			}
 
-			assertPackageExportApiKeyScopes(req, workflowIds, folderIds, projectIds);
+			assertPackageExportApiKeyScopes(
+				req,
+				workflowIds,
+				folderIds,
+				projectIds,
+				includeVariableValues,
+			);
 
 			const stream = await Container.get(N8nPackagesService).exportPackage({
 				user: req.user,
 				workflowIds,
 				folderIds,
 				projectIds,
+				includeVariableValues,
 			});
 
 			return await streamPackageExport(res, stream);

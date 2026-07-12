@@ -40,6 +40,7 @@ export interface ExportPackageRequest {
 	workflowIds?: string[];
 	folderIds?: string[];
 	projectIds?: string[];
+	includeVariableValues?: boolean;
 }
 
 export type ImportPackageRequest = {
@@ -106,6 +107,7 @@ export type ExportPackageEventCounts = {
 	workflows: number;
 	folders: number;
 	credentials: number;
+	variables: number;
 };
 
 export interface ImportedWorkflowSummary {

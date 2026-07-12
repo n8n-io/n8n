@@ -16,6 +16,7 @@ n8n-cli package export -w abc -w def -o team.n8np
 n8n-cli package export --folder-id=xyz -o folders.n8np
 n8n-cli package export --project-id=abc -o project.n8np
 n8n-cli package export -p abc -p def -o projects.n8np
+n8n-cli package export -w abc --include-variable-values=false -o export.n8np
 ```
 
 | Flag | Description |
@@ -24,6 +25,7 @@ n8n-cli package export -p abc -p def -o projects.n8np
 | `-f, --folder-id` | Folder ID to include with its nested folders. Repeat the flag to export several. |
 | `-p, --project-id` | Project ID to include. Repeat the flag to export several. |
 | `-o, --output` | File to write the package to. Defaults to `export.n8np`. |
+| `--include-variable-values` | `true` (default) or `false`. Whether values of variables referenced by the exported workflows are bundled into the package. Variable names are always listed in the package requirements. |
 
 Provide at least one `--workflow-id`, `--folder-id`, or `--project-id`. Requires
 the API key to hold `workflow:export` when exporting workflows or folders, or

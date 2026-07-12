@@ -1053,6 +1053,7 @@ export class TelemetryEventRelay extends EventRelay {
 			workflow_count: counts.workflows,
 			folder_count: counts.folders,
 			credential_count: counts.credentials,
+			variable_count: counts.variables,
 		});
 	}
 

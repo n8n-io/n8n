@@ -31,7 +31,12 @@ describe('n8n-packages handler', () => {
 	let mockService: Mocked<N8nPackagesService>;
 
 	function makeRequest(
-		body: { workflowIds?: string[]; folderIds?: string[]; projectIds?: string[] },
+		body: {
+			workflowIds?: string[];
+			folderIds?: string[];
+			projectIds?: string[];
+			includeVariableValues?: boolean;
+		},
 		apiKeyScopes?: string[],
 	) {
 		return {
@@ -161,13 +166,45 @@ describe('n8n-packages handler', () => {
 		expect(mockService.exportPackage).not.toHaveBeenCalled();
 	});
 
+	it('throws ForbiddenError when bundling variable values without variable:list scope', async () => {
+		const caught = await run(
+			makeRequest({ workflowIds: ['wf-1'] }, ['workflow:export']),
+			makeResponse(),
+		);
+
+		expect(caught).toBeInstanceOf(ForbiddenError);
+		expect(mockService.exportPackage).not.toHaveBeenCalled();
+	});
+
+	it('allows value-less export without variable:list scope', async () => {
+		const stream = new PassThrough();
+		mockService.exportPackage.mockResolvedValue(stream);
+		const res = makeResponse();
+
+		const resultPromise = run(
+			makeRequest({ workflowIds: ['wf-1'], includeVariableValues: false }, ['workflow:export']),
+			res,
+		);
+		stream.end(Buffer.from('package-bytes'));
+		const caught = await resultPromise;
+
+		expect(caught).toBeUndefined();
+		expect(mockService.exportPackage).toHaveBeenCalledWith({
+			user: { id: 'user-1' },
+			workflowIds: ['wf-1'],
+			folderIds: [],
+			projectIds: [],
+			includeVariableValues: false,
+		});
+	});
+
 	it('streams the export for a valid workflow request', async () => {
 		const stream = new PassThrough();
 		mockService.exportPackage.mockResolvedValue(stream);
 		const res = makeResponse();
 
 		const resultPromise = run(
-			makeRequest({ workflowIds: ['wf-1', 'wf-2'] }, ['workflow:export']),
+			makeRequest({ workflowIds: ['wf-1', 'wf-2'] }, ['workflow:export', 'variable:list']),
 			res,
 		);
 		stream.end(Buffer.from('package-bytes'));
@@ -192,7 +229,10 @@ describe('n8n-packages handler', () => {
 		mockService.exportPackage.mockResolvedValue(stream);
 		const res = makeResponse();
 
-		const resultPromise = run(makeRequest({ projectIds: ['project-1'] }, ['project:export']), res);
+		const resultPromise = run(
+			makeRequest({ projectIds: ['project-1'] }, ['project:export', 'variable:list']),
+			res,
+		);
 		stream.end(Buffer.from('package-bytes'));
 		const caught = await resultPromise;
 
@@ -210,7 +250,10 @@ describe('n8n-packages handler', () => {
 		mockService.exportPackage.mockResolvedValue(stream);
 		const res = makeResponse();
 
-		const resultPromise = run(makeRequest({ folderIds: ['fld-1'] }, ['workflow:export']), res);
+		const resultPromise = run(
+			makeRequest({ folderIds: ['fld-1'] }, ['workflow:export', 'variable:list']),
+			res,
+		);
 		stream.end(Buffer.from('package-bytes'));
 		const caught = await resultPromise;
 
@@ -220,6 +263,29 @@ describe('n8n-packages handler', () => {
 			workflowIds: [],
 			folderIds: ['fld-1'],
 			projectIds: [],
+			includeVariableValues: true,
+		});
+	});
+
+	it('forwards includeVariableValues=false to the service', async () => {
+		const stream = new PassThrough();
+		mockService.exportPackage.mockResolvedValue(stream);
+		const res = makeResponse();
+
+		const resultPromise = run(
+			makeRequest({ workflowIds: ['wf-1'], includeVariableValues: false }, ['workflow:export']),
+			res,
+		);
+		stream.end(Buffer.from('package-bytes'));
+		const caught = await resultPromise;
+
+		expect(caught).toBeUndefined();
+		expect(mockService.exportPackage).toHaveBeenCalledWith({
+			user: { id: 'user-1' },
+			workflowIds: ['wf-1'],
+			folderIds: [],
+			projectIds: [],
+			includeVariableValues: false,
 		});
 	});
 });

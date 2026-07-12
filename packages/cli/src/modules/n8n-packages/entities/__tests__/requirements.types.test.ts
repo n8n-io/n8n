@@ -1,5 +1,6 @@
 import type { WorkflowCredentialRequirement } from '../credential/credential.types';
 import { mergeRequirements } from '../requirements.types';
+import type { WorkflowVariableRequirement } from '../variable/variable.types';
 
 function cred(credentialId: string, workflowId: string): WorkflowCredentialRequirement {
 	return {
@@ -10,23 +11,36 @@ function cred(credentialId: string, workflowId: string): WorkflowCredentialRequi
 	};
 }
 
+function variable(variableName: string, workflowId: string): WorkflowVariableRequirement {
+	return { workflowId, variableName };
+}
+
 describe('mergeRequirements', () => {
 	it('concatenates each requirement type across parts, preserving order', () => {
 		const merged = mergeRequirements(
-			{ credentials: [cred('c1', 'w1')] },
-			{ credentials: [cred('c2', 'w2'), cred('c3', 'w3')] },
+			{ credentials: [cred('c1', 'w1')], variables: [variable('V1', 'w1')] },
+			{
+				credentials: [cred('c2', 'w2'), cred('c3', 'w3')],
+				variables: [variable('V2', 'w2')],
+			},
 		);
 
 		expect(merged.credentials).toEqual([cred('c1', 'w1'), cred('c2', 'w2'), cred('c3', 'w3')]);
+		expect(merged.variables).toEqual([variable('V1', 'w1'), variable('V2', 'w2')]);
 	});
 
 	it('skips undefined parts so optional export results can be passed directly', () => {
-		const merged = mergeRequirements(undefined, { credentials: [cred('c1', 'w1')] }, undefined);
+		const merged = mergeRequirements(
+			undefined,
+			{ credentials: [cred('c1', 'w1')], variables: [variable('V1', 'w1')] },
+			undefined,
+		);
 
 		expect(merged.credentials).toEqual([cred('c1', 'w1')]);
+		expect(merged.variables).toEqual([variable('V1', 'w1')]);
 	});
 
 	it('returns empty requirement lists when given no parts', () => {
-		expect(mergeRequirements()).toEqual({ credentials: [] });
+		expect(mergeRequirements()).toEqual({ credentials: [], variables: [] });
 	});
 });

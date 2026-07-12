@@ -9,6 +9,8 @@ import type { ManifestEntry } from '../../spec/manifest.schema';
 import { CredentialRequirementsExtractor } from '../credential/credential-requirements.extractor';
 import type { WorkflowCredentialRequirement } from '../credential/credential.types';
 import type { WorkflowExportRequirements } from '../requirements.types';
+import { VariableRequirementsExtractor } from '../variable/variable-requirements.extractor';
+import type { WorkflowVariableRequirement } from '../variable/variable.types';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -32,6 +34,7 @@ export class WorkflowExporter {
 		private readonly workflowFinder: WorkflowFinderService,
 		private readonly workflowSerializer: WorkflowSerializer,
 		private readonly credentialRequirementsExtractor: CredentialRequirementsExtractor,
+		private readonly variableRequirementsExtractor: VariableRequirementsExtractor,
 	) {}
 
 	async export(request: WorkflowExportRequest): Promise<WorkflowExportResult> {
@@ -46,6 +49,7 @@ export class WorkflowExporter {
 
 		const entries: ManifestEntry[] = [];
 		const credentials: WorkflowCredentialRequirement[] = [];
+		const variables: WorkflowVariableRequirement[] = [];
 		const fileNames = new UniqueFilenameAllocator(
 			request.basePrefix ? `${request.basePrefix}/workflows` : 'workflows',
 			'workflow',
@@ -65,9 +69,10 @@ export class WorkflowExporter {
 			});
 
 			credentials.push(...this.credentialRequirementsExtractor.extract(workflow));
+			variables.push(...this.variableRequirementsExtractor.extract(workflow));
 		}
 
-		return { entries, requirements: { credentials } };
+		return { entries, requirements: { credentials, variables } };
 	}
 
 	private assertAllRequestedWorkflowsFound(

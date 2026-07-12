@@ -7,6 +7,8 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer';
 import { CredentialRequirementsExtractor } from '../../credential/credential-requirements.extractor';
 import type { WorkflowCredentialRequirement } from '../../credential/credential.types';
+import { VariableRequirementsExtractor } from '../../variable/variable-requirements.extractor';
+import type { WorkflowVariableRequirement } from '../../variable/variable.types';
 import { WorkflowExporter } from '../workflow.exporter';
 import { WorkflowSerializer } from '../workflow.serializer';
 
@@ -27,13 +29,18 @@ function makeWorkflow(overrides: Partial<WorkflowEntity> = {}): WorkflowEntity {
 	} as unknown as WorkflowEntity;
 }
 
-function makeExporter(returned: WorkflowEntity[], extractor?: CredentialRequirementsExtractor) {
+function makeExporter(
+	returned: WorkflowEntity[],
+	credentialExtractor?: CredentialRequirementsExtractor,
+	variableExtractor?: VariableRequirementsExtractor,
+) {
 	const finder = mock<WorkflowFinderService>();
 	finder.findWorkflowsByIdsForUser.mockResolvedValue(returned);
 	const exporter = new WorkflowExporter(
 		finder,
 		new WorkflowSerializer(),
-		extractor ?? new CredentialRequirementsExtractor(),
+		credentialExtractor ?? new CredentialRequirementsExtractor(),
+		variableExtractor ?? new VariableRequirementsExtractor(),
 	);
 	return { exporter, finder };
 }
@@ -196,6 +203,29 @@ describe('WorkflowExporter', () => {
 				credentialName: 'wf-b',
 				credentialType: 'httpHeaderAuth',
 			},
+		]);
+	});
+
+	it('runs the variable extractor on each workflow and concatenates the results into requirements.variables', async () => {
+		const a = makeWorkflow({ id: 'wf-a' });
+		const b = makeWorkflow({ id: 'wf-b' });
+		const extractor = mock<VariableRequirementsExtractor>();
+		extractor.extract.mockImplementation((workflow) => [
+			{ workflowId: workflow.id, variableName: `VAR_FROM_${workflow.id}` },
+		]);
+		const { exporter } = makeExporter([a, b], undefined, extractor);
+		const writer = new CapturingWriter();
+
+		const { requirements } = await exporter.export({
+			user,
+			workflowIds: [a.id, b.id],
+			writer,
+		});
+
+		expect(extractor.extract).toHaveBeenCalledTimes(2);
+		expect(requirements.variables).toEqual<WorkflowVariableRequirement[]>([
+			{ workflowId: 'wf-a', variableName: 'VAR_FROM_wf-a' },
+			{ workflowId: 'wf-b', variableName: 'VAR_FROM_wf-b' },
 		]);
 	});
 });

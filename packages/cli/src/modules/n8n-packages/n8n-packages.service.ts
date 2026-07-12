@@ -10,6 +10,7 @@ import { CredentialExporter } from './entities/credential/credential.exporter';
 import { FolderExporter } from './entities/folder/folder.exporter';
 import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
+import { VariableExporter } from './entities/variable/variable.exporter';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
 import type {
@@ -27,6 +28,7 @@ export class N8nPackagesService {
 		private readonly workflowExporter: WorkflowExporter,
 		private readonly folderExporter: FolderExporter,
 		private readonly credentialExporter: CredentialExporter,
+		private readonly variableExporter: VariableExporter,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly importPipeline: ImportPipeline,
 		private readonly eventService: EventService,
@@ -84,6 +86,14 @@ export class N8nPackagesService {
 			projectTargetsById: projectExportResult?.projectTargetsById,
 		});
 
+		const variableExportResult = await this.variableExporter.export({
+			user: request.user,
+			requirements: requirements.variables,
+			writer,
+			includeVariableValues: request.includeVariableValues ?? true,
+			projectTargetsById: projectExportResult?.projectTargetsById,
+		});
+
 		const allFolders = [
 			...(folderExportResult?.entries ?? []),
 			...(projectExportResult?.folderEntries ?? []),
@@ -103,8 +113,21 @@ export class N8nPackagesService {
 			...(credentialExportResult.entries.length > 0
 				? { credentials: credentialExportResult.entries }
 				: {}),
-			...(credentialExportResult.requirements.length > 0
-				? { requirements: { credentials: credentialExportResult.requirements } }
+			...(variableExportResult.entries.length > 0
+				? { variables: variableExportResult.entries }
+				: {}),
+			...(credentialExportResult.requirements.length > 0 ||
+			variableExportResult.requirements.length > 0
+				? {
+						requirements: {
+							...(credentialExportResult.requirements.length > 0
+								? { credentials: credentialExportResult.requirements }
+								: {}),
+							...(variableExportResult.requirements.length > 0
+								? { variables: variableExportResult.requirements }
+								: {}),
+						},
+					}
 				: {}),
 			...(allWorkflowsInPackage.length > 0 ? { workflows: allWorkflowsInPackage } : {}),
 			...(allFolders.length > 0 ? { folders: allFolders } : {}),
@@ -130,6 +153,7 @@ export class N8nPackagesService {
 				workflows: allWorkflowsInPackage.length,
 				folders: allFolders.length,
 				credentials: credentialExportResult.entries.length,
+				variables: variableExportResult.entries.length,
 			},
 		});
 

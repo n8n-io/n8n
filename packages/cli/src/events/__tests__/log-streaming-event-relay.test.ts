@@ -143,6 +143,7 @@ describe('LogStreamingEventRelay', () => {
 					workflows: 2,
 					folders: 1,
 					credentials: 1,
+					variables: 1,
 				},
 			};
 
