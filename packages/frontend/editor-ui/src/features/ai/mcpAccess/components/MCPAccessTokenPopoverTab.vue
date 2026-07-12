@@ -9,7 +9,7 @@ import {
 	MCP_TOOLTIP_DELAY,
 } from '@/features/ai/mcpAccess/mcp.constants';
 import { N8nLoading, N8nTooltip, N8nButton, N8nMarkdown, N8nNotice } from '@n8n/design-system';
-import ConnectionParameter from '@/features/ai/mcpAccess/components/header/connectPopover/ConnectionParameter.vue';
+import ConnectionParameter from '@/features/ai/mcpAccess/components/ConnectionParameter.vue';
 
 type Props = {
 	serverUrl: string;

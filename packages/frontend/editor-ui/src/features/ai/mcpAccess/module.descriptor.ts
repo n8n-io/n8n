@@ -5,12 +5,15 @@ import { SURFACE_MCP_TO_NEW_CLOUD_USERS_MODALS } from '@/experiments/surfaceMcpT
 import {
 	MCP_CONNECT_WORKFLOWS_MODAL_KEY,
 	MCP_SETTINGS_VIEW,
+	MCP_WORKFLOWS_VIEW,
 } from '@/features/ai/mcpAccess/mcp.constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const i18n = useI18n();
 
 const SettingsMCPView = async () => await import('@/features/ai/mcpAccess/SettingsMCPView.vue');
+const SettingsMCPWorkflowsView = async () =>
+	await import('@/features/ai/mcpAccess/SettingsMCPWorkflowsView.vue');
 
 export const MCPModule: FrontendModuleDescription = {
 	id: 'mcp',
@@ -22,6 +25,18 @@ export const MCPModule: FrontendModuleDescription = {
 			path: 'mcp',
 			name: MCP_SETTINGS_VIEW,
 			component: SettingsMCPView,
+			meta: {
+				layout: 'settings',
+				middleware: ['authenticated', 'custom'],
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
+		},
+		{
+			path: 'mcp/workflows',
+			name: MCP_WORKFLOWS_VIEW,
+			component: SettingsMCPWorkflowsView,
 			meta: {
 				layout: 'settings',
 				middleware: ['authenticated', 'custom'],

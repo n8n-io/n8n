@@ -27,6 +27,7 @@ export const MCP_SCOPE_RESOURCE_ICONS: Record<string, IconName> = {
 export const ELIGIBLE_WORKFLOWS_DOCS_SECTION = 'workflow-eligibility';
 
 export const MCP_SETTINGS_VIEW = 'McpSettings';
+export const MCP_WORKFLOWS_VIEW = 'McpSettingsWorkflows';
 export const MCP_STORE = 'mcp';
 
 export const LOADING_INDICATOR_TIMEOUT = 200;
