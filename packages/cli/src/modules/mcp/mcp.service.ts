@@ -42,6 +42,7 @@ import { createSearchFoldersTool } from './tools/search-folders.tool';
 import { createSearchProjectsTool } from './tools/search-projects.tool';
 import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
 import { createUnpublishWorkflowTool } from './tools/unpublish-workflow.tool';
+import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL } from './tools/workflow-builder/constants';
 import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/create-workflow-from-code.tool';
 import { createArchiveWorkflowTool } from './tools/workflow-builder/delete-workflow.tool';
 import { createExploreNodeResourcesTool } from './tools/workflow-builder/explore-node-resources.tool';
@@ -218,17 +219,23 @@ export class McpService {
 	) {
 		const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp.js');
 		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
+		const allowedToolNames = getAllowedToolNames(grantedScopes);
+		// The builder walkthrough is only useful when the grant can actually
+		// create workflows; a read-only grant gets the plain intro instead of
+		// steps referencing tools it cannot call.
+		const builderInstructionsEnabled =
+			builderEnabled &&
+			(allowedToolNames?.has(MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName) ?? true);
 		const server = new McpServer(
 			{
 				name: 'n8n MCP Server',
 				version: builderEnabled ? '1.1.0' : '1.0.0',
 			},
 			{
-				instructions: getMcpInstructions(builderEnabled),
+				instructions: getMcpInstructions(builderInstructionsEnabled),
 			},
 		);
 
-		const allowedToolNames = getAllowedToolNames(grantedScopes);
 		const registerIfAllowed: RegisterToolFn = (tool) => {
 			if (allowedToolNames && !allowedToolNames.has(tool.name)) return;
 			server.registerTool(tool.name, tool.config, tool.handler);

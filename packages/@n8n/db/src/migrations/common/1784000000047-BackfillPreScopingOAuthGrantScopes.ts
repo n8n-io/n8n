@@ -73,9 +73,10 @@ export class BackfillPreScopingOAuthGrantScopes1784000000047 implements Irrevers
 		const keyColumn = escape.columnName(primaryKey);
 
 		let rewritten = 0;
-		// JSON equality is not portable SQL, so rows are compared in JS
+		// JSON equality is not portable SQL, so rows are compared in JS. The
+		// ORDER BY keeps LIMIT/OFFSET pages stable while rows are updated mid-scan.
 		await runInBatches<{ key: string; scope: string | string[] }>(
-			`SELECT ${keyColumn} AS key, ${scopeColumn} AS scope FROM ${table}`,
+			`SELECT ${keyColumn} AS key, ${scopeColumn} AS scope FROM ${table} ORDER BY ${keyColumn}`,
 			async (rows) => {
 				for (const row of rows) {
 					const scopes = parseJson<string[]>(row.scope);
