@@ -112,22 +112,23 @@ export function handleSummary(data) {
 
 		console.log('\n');
 
+		const endOfTestSummary = this.loadEndOfTestSummary(runDirPath, scenarioRunName);
+		const appMetricsData = metricsPoller?.getMetricsData();
+
+		const testReport = buildTestReport(
+			scenario,
+			endOfTestSummary,
+			[
+				...(this.opts.tags ?? []),
+				{ name: 'Vus', value: this.opts.vus.toString() },
+				{ name: 'Duration', value: this.opts.duration.toString() },
+			],
+			appMetricsData,
+		);
+
+		console.log('TEST_REPORT_JSON', JSON.stringify(testReport));
+
 		if (this.opts.resultsWebhook) {
-			const endOfTestSummary = this.loadEndOfTestSummary(runDirPath, scenarioRunName);
-			const appMetricsData = metricsPoller?.getMetricsData();
-
-			const testReport = buildTestReport(
-				scenario,
-				endOfTestSummary,
-				[
-					...(this.opts.tags ?? []),
-					{ name: 'Vus', value: this.opts.vus.toString() },
-					{ name: 'Duration', value: this.opts.duration.toString() },
-				],
-				appMetricsData,
-			);
-
-			console.log('TEST_REPORT_JSON', JSON.stringify(testReport));
 			await this.sendTestReport(testReport);
 		}
 	}
