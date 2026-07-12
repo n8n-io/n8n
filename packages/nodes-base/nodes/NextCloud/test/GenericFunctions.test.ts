@@ -7,7 +7,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
-import { vi } from 'vitest';
 
 import { nextCloudApiRequest } from '../GenericFunctions';
 
