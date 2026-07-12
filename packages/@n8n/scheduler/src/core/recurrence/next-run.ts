@@ -42,12 +42,16 @@ export function computeNextRunAt(schedule: Schedule, after: Date): Date | null {
 			return intervalNextRun(schedule, after);
 		case 'one_off':
 			return oneOffNextRun(schedule, after);
+		// Stryker disable all: unreachable via this function. validateSchedule above
+		// already exhaustively switches on `kind` and throws first for any value not
+		// in the union, so this default is defence-in-depth only, never exercised.
 		default: {
 			const exhaustive: never = schedule;
 			throw new InvalidScheduleError(
 				`Unknown schedule kind: ${JSON.stringify((exhaustive as Schedule).kind)}`,
 			);
 		}
+		// Stryker restore all
 	}
 }
 

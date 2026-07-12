@@ -1371,18 +1371,29 @@ onBeforeUnmount(() => {
 
 watch(
 	() => node.value?.credentials,
-	(_newCredentials, oldCredentials) => {
-		if (hasRemoteMethod.value && node.value) {
-			void loadRemoteParameterOptions();
-			// Reset options value when credentials change (not on initial load or first assignment)
-			const hadCredentials = oldCredentials !== undefined && Object.keys(oldCredentials).length > 0;
-			if (hadCredentials && props.parameter.type === 'options') {
-				emit('update', {
-					node: node.value.name,
-					name: props.path,
-					value: props.parameter.default ?? '',
-				});
-			}
+	async (newCredentials, oldCredentials) => {
+		if (!hasRemoteMethod.value || !node.value) return;
+		await loadRemoteParameterOptions();
+		// Credentials changed again while loading — a newer run will validate the fresh results.
+		if (!node.value || node.value.credentials !== newCredentials) return;
+		const hadCredentials = oldCredentials !== undefined && Object.keys(oldCredentials).length > 0;
+		if (
+			!hadCredentials ||
+			props.parameter.type !== 'options' ||
+			isModelValueExpression.value ||
+			remoteParameterOptionsLoading.value
+		) {
+			return;
+		}
+		const stillValid = remoteParameterOptions.value.some(
+			(option) => option.value === props.modelValue,
+		);
+		if (!stillValid) {
+			emit('update', {
+				node: node.value.name,
+				name: props.path,
+				value: props.parameter.default ?? '',
+			});
 		}
 	},
 	{ immediate: true },

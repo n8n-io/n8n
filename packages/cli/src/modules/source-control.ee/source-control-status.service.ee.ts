@@ -97,35 +97,6 @@ export class SourceControlStatusService {
 		return;
 	}
 
-	/**
-	 * Checks whether a local and remote data table belong to the same project.
-	 * For team projects, compares the project/team ID.
-	 * Returns true when both owners are null (unowned) or when neither is a team
-	 * (conservative match to avoid suppressing real collisions).
-	 */
-	private isSameDataTableProject(
-		localOwner: StatusResourceOwner | null,
-		remoteOwner: DataTableResourceOwner | null,
-	): boolean {
-		if (!localOwner && !remoteOwner) {
-			return true;
-		}
-
-		if (localOwner?.type === 'team' && remoteOwner?.type === 'team') {
-			return localOwner.projectId === remoteOwner.teamId;
-		}
-
-		// Personal projects don't have stable IDs across instances,
-		// so we can't reliably determine if they're the same project.
-		// Return false to avoid false-positive collision flags.
-		if (localOwner?.type === 'personal' || remoteOwner?.type === 'personal') {
-			return false;
-		}
-
-		// Mixed (one null, one not) — different projects
-		return false;
-	}
-
 	private buildFolderPath(
 		parentFolderId: string | null | undefined,
 		foldersById: Map<string, FolderPathNode>,
@@ -696,19 +667,15 @@ export class SourceControlStatusService {
 
 		const localById = new Map(dataTablesLocal.map((dt) => [dt.id, dt]));
 		const remoteById = new Map(dataTablesRemote.map((dt) => [dt.id, dt]));
-		const remoteByName = new Map(dataTablesRemote.map((dt) => [dt.name, dt]));
-
-		// Query git history to find data table IDs that were previously synced.
-		// This lets us distinguish "deleted from remote" (should delete locally on pull)
-		// from "never pushed" (should preserve locally on pull), and vice versa for push.
-		const historicallyTrackedFiles = await this.gitService.getHistoricallyTrackedFiles(
-			SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER,
-		);
-		const previouslySyncedIds = new Set<string>();
-		for (const filePath of historicallyTrackedFiles) {
-			const match = filePath.match(/([^/]+)\.json$/);
-			if (match) {
-				previouslySyncedIds.add(match[1]);
+		// Same-named tables may exist in several projects, so group by name and
+		// pick the candidate per project below.
+		const remotesByName = new Map<string, ExportableDataTable[]>();
+		for (const dt of dataTablesRemote) {
+			const sameName = remotesByName.get(dt.name);
+			if (sameName) {
+				sameName.push(dt);
+			} else {
+				remotesByName.set(dt.name, [dt]);
 			}
 		}
 
@@ -716,12 +683,37 @@ export class SourceControlStatusService {
 		const dtMissingInRemote: StatusExportableDataTable[] = [];
 		const dtModifiedInEither: Array<ExportableDataTable | StatusExportableDataTable> = [];
 
+		// Cross-id name collisions (same (project, name), different id — typically a
+		// delete+recreate upstream). Computed before the remote loop because a pull
+		// reports a collision as ONE user-facing change: the incoming id must not
+		// also appear as "created", nor the old local id as "deleted". A remote
+		// table's project is resolved the way the import resolves it, so the
+		// preview matches where the pull will place the table.
+		const nameCollisionByLocalId = new Map<string, ExportableDataTable>();
+		for (const local of dataTablesLocal) {
+			if (remoteById.has(local.id) || !local.ownedBy) continue;
+			for (const candidate of remotesByName.get(local.name) ?? []) {
+				if (candidate.id === local.id) continue;
+				const candidateProjectId =
+					await this.sourceControlImportService.resolveRemoteDataTableProjectId(
+						candidate.ownedBy,
+						context.user.id,
+					);
+				if (candidateProjectId === local.ownedBy.projectId) {
+					nameCollisionByLocalId.set(local.id, candidate);
+					break;
+				}
+			}
+		}
+		const collidingRemoteIds = new Set(
+			[...nameCollisionByLocalId.values()].map((remote) => remote.id),
+		);
+
 		for (const remote of dataTablesRemote) {
 			if (!localById.has(remote.id)) {
-				// During push, a remote-only table would be marked as "deleted" from remote.
-				// Skip if this table was never synced from this instance (it was pushed by
-				// another instance and should not be deleted).
-				if (options.direction === 'push' && !previouslySyncedIds.has(remote.id)) {
+				// On pull, an id claimed by a name collision is covered by that
+				// collision's single "modified" entry.
+				if (options.direction === 'pull' && collidingRemoteIds.has(remote.id)) {
 					continue;
 				}
 
@@ -746,19 +738,15 @@ export class SourceControlStatusService {
 			const remote = remoteById.get(local.id);
 
 			if (!remote) {
-				// Check for cross-ID name collision (different tables sharing the same name
-				// in the same project). This must run before the never-synced early-continue
-				// below, otherwise a pull would silently create a remote table that collides
-				// with an unsynced local one.
-				const nameCandidate = remoteByName.get(local.name);
-				const nameCollision =
-					nameCandidate &&
-					nameCandidate.id !== local.id &&
-					this.isSameDataTableProject(local.ownedBy, nameCandidate.ownedBy)
-						? nameCandidate
-						: undefined;
+				const nameCollision = nameCollisionByLocalId.get(local.id);
 				if (nameCollision) {
-					const modified = options.preferLocalVersion ? local : nameCollision;
+					const isPull = options.direction === 'pull';
+					// On pull the entry carries the incoming table regardless of
+					// preferLocalVersion: its file is what the import consumes, and the
+					// dry-run (which always has preferLocalVersion=true) must preview the
+					// same entry the pull acts on. On push the collision surfaces on the
+					// local table.
+					const modified = isPull ? nameCollision : local;
 					if (collectVerbose) {
 						dtModifiedInEither.push(modified);
 					}
@@ -773,13 +761,11 @@ export class SourceControlStatusService {
 						updatedAt: new Date().toISOString(),
 						owner: this.convertToStatusResourceOwner(modified.ownedBy),
 					});
-				}
-
-				// During pull, a local-only table would be marked as "deleted" locally.
-				// Skip if this table was never synced — it was created locally and not yet
-				// pushed, so it should not be deleted.
-				if (options.direction === 'pull' && !previouslySyncedIds.has(local.id)) {
-					continue;
+					// On pull the collision entry is the ONLY entry for this table:
+					// never emit a "deleted" entry for the old local id.
+					if (isPull) {
+						continue;
+					}
 				}
 
 				if (collectVerbose) {

@@ -3,19 +3,20 @@ import { GlobalConfig } from '@n8n/config';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import type { RunInTransaction, Scheduler, TaskHandler, Tracer } from '@n8n/scheduler';
+import type { RunInTransaction, Scheduler, TaskHandler } from '@n8n/scheduler';
 import { createScheduler, executorLookaheadSeconds } from '@n8n/scheduler';
 import { InstanceSettings, Tracing } from 'n8n-core';
 
 import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
 
 import { ScheduleTriggerTaskHandler } from './schedule-trigger-node/schedule-trigger-task-handler';
+import { createSchedulerTracer } from './scheduler-tracer';
 
 /**
- * The database-backed {@link Scheduler} and its process lifecycle.
+ * The database-backed {@link Scheduler} and its process lifecycle (the run side).
  *
- * The loops run on every main: claiming makes concurrent instances safe,
- * and sharing the work across mains is the point of the durable scheduler.
+ * The loops run on every main: claiming makes concurrent instances safe, and
+ * sharing the work across mains is the point of the durable scheduler.
  */
 @Service()
 export class DurableScheduler implements Scheduler {
@@ -34,12 +35,7 @@ export class DurableScheduler implements Scheduler {
 	) {
 		const config = globalConfig.scheduler;
 		const enabled = config.enabled && instanceSettings.instanceType === 'main';
-		const tracer: Tracer = {
-			startSpan: async ({ newTrace, ...options }, run) =>
-				await (newTrace === true
-					? tracing.startNewTraceSpan(options, run)
-					: tracing.startSpan(options, run)),
-		};
+		const tracer = createSchedulerTracer(tracing);
 		this.scheduler = enabled
 			? createScheduler({
 					hostId: instanceSettings.hostId,
