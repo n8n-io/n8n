@@ -198,6 +198,23 @@ describe('ExecutionPersistence', () => {
 					expect.objectContaining({ workflowVersionId: null }),
 				);
 			});
+
+			it('should compress the execution data when executionsConfig.compression is gzip', async () => {
+				executionsConfig.compression = 'gzip';
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.create(createPayload);
+
+				expect(dbStore.write).toHaveBeenCalledWith(
+					{ workflowId: 'workflow-123', executionId: 'exec-1' },
+					expect.objectContaining({
+						data: expect.stringMatching(/^gzip:base64:/),
+					}),
+					mockTx,
+				);
+				executionsConfig.compression = 'none';
+			});
 		});
 
 		describe('filesystem mode', () => {

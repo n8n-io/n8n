@@ -28,6 +28,7 @@ import { CorruptedExecutionDataError } from './execution-data/corrupted-executio
 import { DbStore } from './execution-data/db-store';
 import { ExecutionDataJsonStore } from './execution-data/execution-data-json-store';
 import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
+import { compressPayload, decompressPayload } from './execution-data/compression';
 import type {
 	BlobStorageLocation,
 	BundleWorkflowSnapshot,
@@ -100,8 +101,12 @@ export class ExecutionPersistence {
 				const ref = { workflowId: id, executionId };
 
 				const jsonSizeBytes = await this.trackWrite(storedAt, async () => {
+					const rawSerialized = stringify(rawData);
 					const bundle: ExecutionDataPayload = {
-						data: stringify(rawData),
+						data:
+							this.executionsConfig.compression === 'gzip'
+								? compressPayload(rawSerialized)
+								: rawSerialized,
 						workflowData: workflowSnapshot,
 						workflowVersionId,
 					};
@@ -581,8 +586,12 @@ export class ExecutionPersistence {
 			) {
 				const binaryDataSizeBytes = sumBinaryDataBytes(data);
 				const jsonSizeBytes = await this.trackWrite(mode, async () => {
+					const rawSerialized = stringify(data);
 					const bundle: ExecutionDataPayload = {
-						data: stringify(data),
+						data:
+							this.executionsConfig.compression === 'gzip'
+								? compressPayload(rawSerialized)
+								: rawSerialized,
 						workflowData: this.toWorkflowSnapshot(workflowData),
 						workflowVersionId,
 					};
@@ -606,8 +615,12 @@ export class ExecutionPersistence {
 			if (!existing) throw new MissingExecutionDataError(ref);
 
 			const jsonSizeBytes = await this.trackWrite(mode, async () => {
+				const rawSerialized = data !== undefined ? stringify(data) : existing.data;
 				const bundle: ExecutionDataPayload = {
-					data: data !== undefined ? stringify(data) : existing.data,
+					data:
+						data !== undefined && this.executionsConfig.compression === 'gzip'
+							? compressPayload(rawSerialized)
+							: rawSerialized,
 					workflowData: workflowData
 						? this.toWorkflowSnapshot(workflowData)
 						: existing.workflowData,
@@ -886,6 +899,7 @@ export class ExecutionPersistence {
 		options: { unflattenData?: boolean; includeAnnotation?: boolean },
 		max: number,
 	) {
+		bundle.data = decompressPayload(bundle.data);
 		if (max > 0 && entity.jsonSizeBytes === 0 && Buffer.byteLength(bundle.data, 'utf8') > max) {
 			return this.assembleOversizedExecution(
 				entity,
@@ -901,10 +915,11 @@ export class ExecutionPersistence {
 		data: string,
 		options: { unflattenData?: boolean },
 	): Promise<IRunExecutionData | string | undefined> {
-		if (!options.unflattenData) return data;
+		const decompressedData = decompressPayload(data);
+		if (!options.unflattenData) return decompressedData;
 
 		try {
-			const deserialized: unknown = await parseFlatted(data);
+			const deserialized: unknown = await parseFlatted(decompressedData);
 			if (!deserialized) return undefined;
 			return migrateRunExecutionData(deserialized as IRunExecutionDataAll);
 		} catch (error) {
