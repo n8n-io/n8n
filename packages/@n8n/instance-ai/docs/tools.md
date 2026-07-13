@@ -682,12 +682,12 @@ Delegates agent building to the agents-module builder chat
 one conversational turn per call. Registered in `createOrchestrationTools`
 only when the host provides `builderDelegate` (agents module active). The
 builder's own prompt and tools drive the build, but its interactive tools
-(`ask_llm`, `ask_question`, `ask_credential`, `ask_embedding_credential`) are
-excluded from this session — the builder cannot suspend mid-turn and must
-complete every call, reporting any open questions as plain text at the end of
-its reply (`builderReply`). Builder session state is keyed to instance-AI-scoped
-threads (`ia-builder:<threadId>:<agentId>`) and never appears in the
-agents-module builder UI.
+(`ask_questions`, `ask_credential`, `ask_embedding_credential`,
+`configure_channel`) are excluded from this session — the builder cannot
+suspend mid-turn and must complete every call, reporting any open questions as
+plain text at the end of its reply (`builderReply`). Builder session state is
+keyed to instance-AI-scoped threads (`ia-builder:<threadId>:<agentId>`) and
+never appears in the agents-module builder UI.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|

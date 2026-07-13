@@ -97,8 +97,8 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				'If provider is given, resolves only that provider; if model is omitted, uses the ' +
 				'provider default model. For "Anthropic via OpenRouter", pass provider="openrouter" ' +
 				'and omit model unless the user named a concrete OpenRouter model id. Returns ok=false ' +
-				'when credentials are missing, unsupported, or ambiguous; use ask_llm only when the ' +
-				'user must choose.',
+				'when credentials are missing, unsupported, or ambiguous; use ask_questions to let the ' +
+				'user choose, then call resolve_llm again with the choice.',
 		)
 		.input(
 			z.object({

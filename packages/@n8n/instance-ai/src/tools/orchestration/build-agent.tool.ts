@@ -4,13 +4,13 @@
  * per invocation.
  *
  * This is the non-interactive contract: the delegate session excludes every
- * interactive builder tool (`ask_llm`, `ask_question`, `ask_credential`,
- * `ask_embedding_credential` — see `NON_INTERACTIVE_EXCLUDED_TOOL_NAMES` in
- * the cli delegate adapter), so the builder cannot suspend mid-turn and must
- * complete, error, or be cancelled on every call. Any open questions the
- * builder still has come back as plain text at the end of its reply — the
- * calling assistant relays those to the user and sends the answers back
- * through another `build-agent` call.
+ * interactive builder tool (`ask_questions`, `ask_credential`,
+ * `ask_embedding_credential`, `configure_channel` — see
+ * `NON_INTERACTIVE_EXCLUDED_TOOL_NAMES` in the cli delegate adapter), so the
+ * builder cannot suspend mid-turn and must complete, error, or be cancelled
+ * on every call. Any open questions the builder still has come back as plain
+ * text at the end of its reply — the calling assistant relays those to the
+ * user and sends the answers back through another `build-agent` call.
  *
  * The builder session is keyed to an instance-AI-scoped thread id
  * (`ia-builder:<threadId>:<agentId>`) so nothing appears in the agents-module

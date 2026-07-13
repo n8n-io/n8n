@@ -1,9 +1,9 @@
 import type { CredentialProvider, StreamChunk } from '@n8n/agents';
 import {
-	ASK_LLM_TOOL_NAME,
-	ASK_QUESTION_TOOL_NAME,
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
+	ASK_QUESTIONS_TOOL_NAME,
+	CONFIGURE_CHANNEL_TOOL_NAME,
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -28,8 +28,8 @@ import type { BuilderSessionOptions } from './builder/agents-builder.service';
  * turn and report open questions as reply text instead of suspending.
  */
 export const NON_INTERACTIVE_EXCLUDED_TOOL_NAMES: string[] = [
-	ASK_LLM_TOOL_NAME,
-	ASK_QUESTION_TOOL_NAME,
+	ASK_QUESTIONS_TOOL_NAME,
+	CONFIGURE_CHANNEL_TOOL_NAME,
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
 ];
@@ -37,7 +37,7 @@ export const NON_INTERACTIVE_EXCLUDED_TOOL_NAMES: string[] = [
 /** Prompt addendum for sub-agent runs; exported for tests. */
 export const INSTANCE_AI_BUILDER_ADDENDUM = `## Instance AI session rules
 
-You are running as a sub-agent inside n8n's instance AI chat. You CANNOT ask the user anything mid-turn: the interactive tools (ask_llm, ask_question, ask_credential, ask_embedding_credential) are not available in this session.
+You are running as a sub-agent inside n8n's instance AI chat. You CANNOT ask the user anything mid-turn: the interactive tools (ask_questions, ask_credential, ask_embedding_credential, configure_channel) are not available in this session.
 
 - Never wait for user input. Complete every turn with your best result.
 - Make sensible default choices where the instructions leave room, and state the choices you made in your reply.

@@ -370,11 +370,20 @@ describe('AgentChatMessageList', () => {
 						role: 'assistant',
 						content: 'Thanks!',
 						interactive: {
-							toolName: 'ask_question',
+							toolName: 'ask_questions',
 							toolCallId: 'tc-q',
 							resolvedAt: 1,
-							input: { question: 'Pick one', options: [{ label: 'A', value: 'a' }] },
-							resolvedValue: { values: ['a'] },
+							input: {
+								requestId: 'req-1',
+								message: 'Pick one',
+								severity: 'info',
+								inputType: 'questions',
+								questions: [{ id: 'q1', question: 'Pick one', type: 'single', options: ['a'] }],
+							},
+							resolvedValue: {
+								answered: true,
+								answers: [{ questionId: 'q1', selectedOptions: ['a'] }],
+							},
 						},
 						status: 'success',
 					} satisfies ChatMessage,
