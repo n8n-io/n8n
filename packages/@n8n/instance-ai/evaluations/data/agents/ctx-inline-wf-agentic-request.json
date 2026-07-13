@@ -1,0 +1,26 @@
+{
+	"description": "Paradigm mismatch inside a workflow context: after a workflow design is on the table, the follow-up carries a genuine agent signal ('investigate and figure out why'). Gold tolerates two shapes: embed an agent step inside the existing workflow, or ask before switching paradigm — silently re-anchoring the whole design to a standalone n8n Agent, or flattening the request into a fixed filter, are both wrong.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every night, collect the day's failed background jobs and post the list to #eng-alerts in Slack. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[After the assistant lays out its approach, send exactly one follow-up: I want this to also investigate the failures and figure out what's wrong, not just list them.",
+				"If it asks a clarifying question about that, say you trust its judgment and want its recommendation.",
+				"Do not approve any plan, setup card, or build confirmation.",
+				"Once it has responded to the follow-up with an updated approach or a recommendation, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "complex",
+	"tags": ["intent-resolution", "inline", "paradigm-mismatch", "embed-agent", "tolerance"],
+	"datasets": ["agents", "agents-tolerance"],
+	"processExpectations": [
+		"The follow-up is handled in one of two accepted ways: the investigation is added as an embedded agent or open-ended AI step inside the proposed workflow (trigger and Slack posting stay fixed), or the agent asks/flags the paradigm question before changing the design — it does not silently re-anchor the whole automation to a standalone n8n Agent.",
+		"The investigation request is not flattened into a fixed transform — the updated approach treats 'figure out what's wrong' as open-ended per-failure analysis, not a keyword filter or static categorization."
+	]
+}
