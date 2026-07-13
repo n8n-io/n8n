@@ -143,7 +143,7 @@ describe('telegramSendAndWaitWebhook', () => {
 		expect(result).toEqual({ noWebhookResponse: true });
 	});
 
-	it('answers with an unauthorized alert and does not resume when the approver list rejects the sender', async () => {
+	it('answers with an unauthorized alert, responds 200, and does not resume when the approver list rejects the sender', async () => {
 		webhookFns.getBodyData.mockReturnValue(makeCallbackQueryBody({ from: { id: 111 } }));
 		webhookFns.getNodeParameter.mockImplementation((name: unknown) => {
 			if (name === 'chatApproval') return true;
@@ -155,6 +155,9 @@ describe('telegramSendAndWaitWebhook', () => {
 		webhookFns.getHeaderData.mockReturnValue({
 			'x-telegram-bot-api-secret-token': VALID_SECRET_TOKEN,
 		});
+		const status = vi.fn().mockReturnThis();
+		const send = vi.fn();
+		webhookFns.getResponseObject.mockReturnValue({ status, send } as never);
 
 		const result = await telegramSendAndWaitWebhook.call(webhookFns);
 
@@ -164,6 +167,9 @@ describe('telegramSendAndWaitWebhook', () => {
 			text: 'Nope.',
 			show_alert: true,
 		});
+		// Telegram must get a response here, or it times out and retries the tap.
+		expect(status).toHaveBeenCalledWith(200);
+		expect(send).toHaveBeenCalledWith('');
 		expect(result).toEqual({ noWebhookResponse: true });
 	});
 

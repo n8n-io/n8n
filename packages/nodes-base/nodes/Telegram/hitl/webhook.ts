@@ -137,6 +137,9 @@ export async function telegramSendAndWaitWebhook(
 		} catch {
 			// intentional: notifying the unauthorized user is best-effort
 		}
+		// `noWebhookResponse: true` means the response was already sent; without this,
+		// Telegram never gets one and eventually times out and retries the tap.
+		res.status(200).send('');
 		return { noWebhookResponse: true };
 	}
 
