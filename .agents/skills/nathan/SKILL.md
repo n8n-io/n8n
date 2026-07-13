@@ -17,8 +17,14 @@ the same commands from the repo via `pnpm nathan`.
    build takes. The `npx localtunnel` fallback frequently drops mid-deploy and
    loses the reply. Check with `command -v cloudflared` — **if it's missing, ask
    the user to run `brew install cloudflared` before deploying.**
-2. **`NATHAN_TOKEN` must be in `.env.local`** (gitignored) or the environment.
-   The command errors clearly if it's not set — ask the user to add it.
+2. **A Nathan token is needed.** On first run the script prints a form link
+   (`https://internal.users.n8n.cloud/form/d6d34a2f-4899-4ee8-afc8-f8c41a8a243d`),
+   the user logs in with their n8n account, pastes the token back, and it's
+   cached to `~/.n8n/nathan-token` for future runs. **The paste prompt only works
+   in an interactive terminal** — if you're running non-interactively (agent /
+   background), ask the user to run `pnpm nathan help` once themselves to set it
+   up (or to export `NATHAN_TOKEN`). Resolution order: `NATHAN_TOKEN` env →
+   `~/.n8n/nathan-token` → `.env.local`.
 
 ## Offer a test instance after a PR
 

@@ -14,8 +14,10 @@
 // Requires NATHAN_TOKEN (put it in .env.local — gitignored). A public tunnel is
 // opened via `cloudflared` (preferred) or `npx localtunnel` as a fallback.
 import http from 'node:http';
+import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import readline from 'node:readline/promises';
 import { spawn, spawnSync } from 'node:child_process';
 
 const WEBHOOK = 'https://internal.users.n8n.cloud/webhook/85070485-140c-46e8-9b4b-d161bf7ee1ac';
@@ -75,8 +77,16 @@ if (process.argv.includes('--selftest')) {
 	process.exit(0);
 }
 
-// --- token: prefer the NATHAN_TOKEN env var; fall back to .env.local / .env --
-let token = process.env.NATHAN_TOKEN;
+// --- token: NATHAN_TOKEN env → ~/.n8n/nathan-token → .env files → prompt ------
+const TOKEN_FORM_URL = 'https://internal.users.n8n.cloud/form/d6d34a2f-4899-4ee8-afc8-f8c41a8a243d';
+const tokenFile = path.join(os.homedir(), '.n8n', 'nathan-token');
+const readSavedToken = () => { try { return fs.readFileSync(tokenFile, 'utf8').trim() || null; } catch { return null; } };
+function saveToken(t) {
+	fs.mkdirSync(path.dirname(tokenFile), { recursive: true });
+	fs.writeFileSync(tokenFile, `${t}\n`, { mode: 0o600 });
+}
+
+let token = process.env.NATHAN_TOKEN || readSavedToken();
 if (!token) {
 	const root = path.resolve(import.meta.dirname, '..');
 	for (const dir of [process.cwd(), root])
@@ -86,9 +96,17 @@ if (!token) {
 	token = process.env.NATHAN_TOKEN;
 }
 if (!token) {
-	console.error('NATHAN_TOKEN is not set. Export it in your shell, or add it to .env.local (gitignored) at the repo root:\n  export NATHAN_TOKEN=<token from the Nathan Slack bot>\n  # or in .env.local:  NATHAN_TOKEN=<token>');
-	process.exit(1);
+	console.error(`\nNo Nathan token found. Get one here:\n  ${TOKEN_FORM_URL}\n  → log in with your n8n account and copy the token from the response.\n`);
+	if (process.stdin.isTTY) {
+		const rl = readline.createInterface({ input: process.stdin, output: process.stderr });
+		token = (await rl.question('Paste your Nathan token here: ')).trim();
+		rl.close();
+		if (token) { saveToken(token); console.error(`\nSaved to ${tokenFile} — future runs will reuse it.\n`); }
+	} else {
+		console.error(`Then save it to ${tokenFile} (or set NATHAN_TOKEN) and re-run.`);
+	}
 }
+if (!token) process.exit(1);
 
 const text = process.argv.slice(2).join(' ').trim() || 'help';
 if (text.startsWith('local')) {
