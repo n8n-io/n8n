@@ -2281,6 +2281,7 @@ describe('TelemetryEventRelay', () => {
 					workflows: 3,
 					folders: 1,
 					credentials: 2,
+					dataTables: 1,
 					variables: 4,
 				},
 			};
@@ -2292,6 +2293,7 @@ describe('TelemetryEventRelay', () => {
 				workflow_count: 3,
 				folder_count: 1,
 				credential_count: 2,
+				data_table_count: 1,
 				variable_count: 4,
 			});
 		});

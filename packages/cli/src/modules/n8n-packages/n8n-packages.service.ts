@@ -9,6 +9,7 @@ import { N8nPackageParser } from './engine/n8n-package-parser';
 import { ProjectPackageImporter } from './engine/project-package-importer';
 import { WorkflowPackageImporter } from './engine/workflow-package-importer';
 import { CredentialExporter } from './entities/credential/credential.exporter';
+import { DataTableExporter } from './entities/data-table/data-table.exporter';
 import { FolderExporter } from './entities/folder/folder.exporter';
 import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
@@ -28,6 +29,7 @@ import {
 	type PackageManifest,
 	packageManifestSchema,
 } from './spec/manifest.schema';
+import type { PackageRequirements } from './spec/requirements.schema';
 
 @Service()
 export class N8nPackagesService {
@@ -36,6 +38,7 @@ export class N8nPackagesService {
 		private readonly workflowExporter: WorkflowExporter,
 		private readonly folderExporter: FolderExporter,
 		private readonly credentialExporter: CredentialExporter,
+		private readonly dataTableExporter: DataTableExporter,
 		private readonly variableExporter: VariableExporter,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly packageParser: N8nPackageParser,
@@ -97,6 +100,14 @@ export class N8nPackagesService {
 			projectTargetsById: projectExportResult?.projectTargetsById,
 		});
 
+		const dataTableExportResult = await this.dataTableExporter.export({
+			user: request.user,
+			requirements: requirements.dataTables,
+			writer,
+			// Routes project-owned data tables into their project namespace; others stay top-level.
+			projectTargetsById: projectExportResult?.projectTargetsById,
+		});
+
 		const variableExportResult = await this.variableExporter.export({
 			user: request.user,
 			requirements: requirements.variables,
@@ -116,6 +127,12 @@ export class N8nPackagesService {
 			...(projectExportResult?.workflowEntries ?? []),
 		];
 
+		const manifestRequirements = this.buildManifestRequirements(
+			credentialExportResult.requirements,
+			dataTableExportResult.requirements,
+			variableExportResult.requirements,
+		);
+
 		const manifest = packageManifestSchema.parse({
 			packageFormatVersion: FORMAT_VERSION,
 			exportedAt: new Date().toISOString(),
@@ -127,19 +144,7 @@ export class N8nPackagesService {
 			...(variableExportResult.entries.length > 0
 				? { variables: variableExportResult.entries }
 				: {}),
-			...(credentialExportResult.requirements.length > 0 ||
-			variableExportResult.requirements.length > 0
-				? {
-						requirements: {
-							...(credentialExportResult.requirements.length > 0
-								? { credentials: credentialExportResult.requirements }
-								: {}),
-							...(variableExportResult.requirements.length > 0
-								? { variables: variableExportResult.requirements }
-								: {}),
-						},
-					}
-				: {}),
+			...(manifestRequirements ? { requirements: manifestRequirements } : {}),
 			...(allWorkflowsInPackage.length > 0 ? { workflows: allWorkflowsInPackage } : {}),
 			...(allFolders.length > 0 ? { folders: allFolders } : {}),
 			...(projectExportResult?.entries ? { projects: projectExportResult.entries } : {}),
@@ -164,6 +169,7 @@ export class N8nPackagesService {
 				workflows: allWorkflowsInPackage.length,
 				folders: allFolders.length,
 				credentials: credentialExportResult.entries.length,
+				dataTables: dataTableExportResult.entries.length,
 				variables: variableExportResult.entries.length,
 			},
 		});
@@ -183,6 +189,19 @@ export class N8nPackagesService {
 	filterWorkflowsAlreadyInFolders(workflowsInFolders: ManifestEntry[] = [], workflowIds: string[]) {
 		const folderWorkflowIds = new Set(workflowsInFolders.map((entry) => entry.id) ?? []);
 		return workflowIds.filter((id) => !folderWorkflowIds.has(id));
+	}
+
+	private buildManifestRequirements(
+		credentials: PackageRequirements['credentials'],
+		dataTables: PackageRequirements['dataTables'],
+		variables: PackageRequirements['variables'],
+	): PackageRequirements | undefined {
+		const requirements: PackageRequirements = {
+			...(credentials?.length ? { credentials } : {}),
+			...(dataTables?.length ? { dataTables } : {}),
+			...(variables?.length ? { variables } : {}),
+		};
+		return Object.keys(requirements).length > 0 ? requirements : undefined;
 	}
 }
 

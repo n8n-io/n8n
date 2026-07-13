@@ -129,6 +129,7 @@ export type ExportPackageEventCounts = {
 	workflows: number;
 	folders: number;
 	credentials: number;
+	dataTables: number;
 	variables: number;
 };
 

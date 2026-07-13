@@ -9,6 +9,8 @@ import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import { CredentialRequirementsExtractor } from '../credential/credential-requirements.extractor';
 import type { WorkflowCredentialRequirement } from '../credential/credential.types';
+import { DataTableRequirementsExtractor } from '../data-table/data-table-requirements.extractor';
+import type { WorkflowDataTableRequirement } from '../data-table/data-table.types';
 import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
 import type { WorkflowExportRequirements } from '../requirements.types';
 import { VariableRequirementsExtractor } from '../variable/variable-requirements.extractor';
@@ -34,6 +36,7 @@ export class WorkflowExporter {
 		private readonly workflowFinder: WorkflowFinderService,
 		private readonly workflowSerializer: WorkflowSerializer,
 		private readonly credentialRequirementsExtractor: CredentialRequirementsExtractor,
+		private readonly dataTableRequirementsExtractor: DataTableRequirementsExtractor,
 		private readonly variableRequirementsExtractor: VariableRequirementsExtractor,
 	) {}
 
@@ -54,6 +57,7 @@ export class WorkflowExporter {
 
 		const entries: ManifestEntry[] = [];
 		const credentials: WorkflowCredentialRequirement[] = [];
+		const dataTables: WorkflowDataTableRequirement[] = [];
 		const variables: WorkflowVariableRequirement[] = [];
 		const fileNames = new UniqueFilenameAllocator(
 			request.basePrefix ? `${request.basePrefix}/workflows` : 'workflows',
@@ -74,9 +78,10 @@ export class WorkflowExporter {
 			});
 
 			credentials.push(...this.credentialRequirementsExtractor.extract(workflow));
+			dataTables.push(...this.dataTableRequirementsExtractor.extract(workflow));
 			variables.push(...this.variableRequirementsExtractor.extract(workflow));
 		}
 
-		return { entries, requirements: { credentials, variables } };
+		return { entries, requirements: { credentials, dataTables, variables } };
 	}
 }
