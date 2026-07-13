@@ -1,0 +1,25 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_574de801a499a2::t_217ec8a8f1f1c4 378-416
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_574de801a499a2::t_8b2aea3a4dbadc 11,20-23,25-26,56-71,78-79,81-82,88-100,113-114,119,131-132,134
+  s_574de801a499a2::t_debda284784237 24
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_574de801a499a2::t_16c4fabd8ae863 13-16,50-63,78-90,112-118
+  s_574de801a499a2::t_583f706f7d964a 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a3440272eca67dd71387b096828eb745b5634f82",
+  "prompts": {},
+  "sessions": {
+    "s_574de801a499a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce9e9826-ea55-4907-9c77-610e1d7f982f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}
