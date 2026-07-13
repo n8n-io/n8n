@@ -10,19 +10,13 @@ import { NodeApiError } from 'n8n-workflow';
 
 import { capitalize } from '../../../../../utils/utilities';
 
-/**
- * Credential-name literal of the shared `microsoftEntraServicePrincipalApi`
- * (app-only) credential. Used as both the `authentication` selector value and
- * the credential type, so a rename stays in one place.
- */
 export const SERVICE_PRINCIPAL_AUTH = 'microsoftEntraServicePrincipalApi';
 
 export type SharePointCredentialType = 'microsoftOAuth2Api' | typeof SERVICE_PRINCIPAL_AUTH;
 
 export const DEFAULT_GRAPH_BASE_URL = 'https://graph.microsoft.com';
 
-// Graph permissions per `resource:operation`, consulted on a 403 so the error
-// can name what's missing. Every action ticket adds its own row.
+// Consulted on 403s so the error names the missing permission; each action adds its row.
 export const REQUIRED_PERMISSIONS: Record<string, { delegated: string; application: string }> = {
 	'list:get': {
 		delegated: 'Sites.Read.All',
@@ -30,16 +24,10 @@ export const REQUIRED_PERMISSIONS: Record<string, { delegated: string; applicati
 	},
 };
 
-/**
- * Allow-list resolver for the `authentication` selector: anything other than
- * the Service Principal value (incl. the load-options fallback `0`) resolves
- * to the generic Graph credential. v2 never offers the legacy v1 credential.
- */
 export function getSharePointCredentialType(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 ): SharePointCredentialType {
-	// `0` is the execute item index; in load-options contexts getNodeParameter
-	// treats the 2nd arg as the FALLBACK value, so don't switch to the 3-arg form.
+	// In load-options contexts the 2nd arg is the fallback, not an item index — keep the 2-arg form
 	const selected = this.getNodeParameter('authentication', 0);
 	return selected === SERVICE_PRINCIPAL_AUTH ? SERVICE_PRINCIPAL_AUTH : 'microsoftOAuth2Api';
 }
@@ -82,8 +70,7 @@ export async function microsoftApiRequest(
 		method,
 		body,
 		qs,
-		// An explicit `uri` is passed through VERBATIM — next-page links returned
-		// by Graph (@odata.nextLink) must never be rebuilt.
+		// An explicit `uri` (e.g. a next-page link from Graph) is used verbatim
 		uri: uri ?? `${baseUrl}${resource}`,
 		json: true,
 	};
@@ -91,19 +78,15 @@ export async function microsoftApiRequest(
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);
 		}
-		// The Service Principal credential is not an `oAuth2Api` parent type — it
-		// mints a bearer via preAuthentication + attaches it via authenticate, so it
-		// must go through `requestWithAuthentication` (core's single 401-retry re-runs
-		// the token mint). OAuth2 credentials keep using `requestOAuth2`.
+		// The SP credential is not an oAuth2Api type, so it can't go through requestOAuth2
 		if (isServicePrincipal) {
 			return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 		}
 		return await this.helpers.requestOAuth2.call(this, credentialType, options);
 	} catch (error) {
 		if (isServicePrincipal) {
-			// App-only error bodies can carry correlation IDs and reflected input —
-			// throw a sanitized static message + status instead of the raw body.
-			// The status lives on `httpCode` (string) when wrapped by NodeApiError.
+			// App-only error bodies can include internal identifiers — surface only a
+			// fixed message + status (which lives on `httpCode` as a string when wrapped)
 			const rawCode = error?.httpCode ?? error?.statusCode;
 			const httpCode: number | undefined =
 				rawCode === undefined || rawCode === null ? undefined : Number(rawCode);
@@ -145,8 +128,7 @@ export async function microsoftApiRequest(
 		const errorOptions: IDataObject = {};
 		const statusCode = Number(error?.statusCode ?? error?.httpCode);
 		if (statusCode === 403) {
-			// A 403 can mean a missing scope OR a granted scope without access to the
-			// target site. Callers (e.g. site search) key off httpCode '403'.
+			// Missing scope OR no access to the site; callers key off httpCode '403'
 			const permissions = lookupRequiredPermissions.call(this);
 			errorOptions.message = permissions
 				? `Microsoft Graph refused this request. The credential may be missing the ${permissions.delegated} permission, or the signed-in account may not have access to this resource`
