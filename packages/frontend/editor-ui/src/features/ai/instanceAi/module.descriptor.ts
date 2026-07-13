@@ -15,8 +15,7 @@ import {
 	ensurePersonalProjectId,
 	provisionLaunchedThread,
 } from './composables/useInstanceAiHandoff';
-import { canMessageInstanceAi } from './instanceAiPermissions';
-import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
+import { useInstanceAiAvailable } from './composables/useInstanceAiAvailability';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const InstanceAiView = async () => await import('./InstanceAiView.vue');
@@ -54,9 +53,10 @@ export const InstanceAiModule: FrontendModuleDescription = {
 						}
 						const templateId = raw;
 
-						// Whoever can't use the assistant still gets the template.
-						const settings = useInstanceAiSettingsStore();
-						if (settings.isInstanceAiDisabled || !canMessageInstanceAi()) {
+						// Same canonical gate as the button and website beacon, so the guard
+						// never refuses an entry point they advertise. Whoever can't use
+						// the assistant still gets the template.
+						if (!useInstanceAiAvailable().value) {
 							return { name: VIEWS.TEMPLATE_SETUP, params: { id: templateId } };
 						}
 
