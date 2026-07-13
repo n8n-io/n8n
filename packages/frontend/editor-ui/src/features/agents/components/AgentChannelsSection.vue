@@ -125,6 +125,7 @@ function handleChannelConnected(channelType: string) {
 	const channels = Array.from(new Set([...props.connectedTriggers, channelType]));
 	emit('update:connected-triggers', channels);
 	emit('trigger-added', { triggerType: channelType, triggers: channels });
+	void loadChannelDetails();
 }
 
 function handleChannelDisconnected(channelType: string) {
