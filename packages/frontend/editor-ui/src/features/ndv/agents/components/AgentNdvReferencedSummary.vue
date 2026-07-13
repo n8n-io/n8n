@@ -83,6 +83,7 @@ const chips = computed(() => {
 			cfg.tools,
 			(id) => agentRecord.value?.tools?.[id]?.descriptor.name,
 		),
+		mcpServers: (cfg.mcpServers ?? []).map((server) => ({ name: server.name })),
 		skills: appliedSkills.value.map(({ id, skill }) => ({ id, name: skill.name })),
 		tasks: [],
 	};

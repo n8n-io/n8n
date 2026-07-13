@@ -169,6 +169,11 @@ export interface AgentCapabilitySkill {
 	name: string;
 }
 
+/** MCP servers are named connections; the name is also the SDK tool-name prefix. */
+export interface AgentCapabilityMcpServer {
+	name: string;
+}
+
 export interface AgentCapabilityTask {
 	id: string;
 	name: string;
@@ -182,6 +187,11 @@ export interface AgentCapabilitySummary {
 	model: AgentCapabilityModel | null;
 	channels: AgentCapabilityChannel[];
 	tools: AgentCapabilityTool[];
+	/**
+	 * Optional so summaries persisted/produced before the field existed keep
+	 * deserializing; consumers treat absence as "no MCP servers".
+	 */
+	mcpServers?: AgentCapabilityMcpServer[];
 	skills: AgentCapabilitySkill[];
 	tasks: AgentCapabilityTask[];
 }

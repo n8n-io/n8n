@@ -44,8 +44,7 @@ export function createDefaultInlineAgent(): InlineAgentConfig {
 
 /**
  * Shape an inline config like a saved agent's capability summary so surfaces
- * (canvas card chips, model row) can reuse the saved-agent rendering. MCP
- * servers are omitted, matching saved-agent summaries.
+ * (canvas card chips, model row) can reuse the saved-agent rendering.
  */
 export function inlineAgentToCapabilitySummary(
 	nodeId: string,
@@ -60,6 +59,7 @@ export function inlineAgentToCapabilitySummary(
 		model: parsedModel ? { provider: parsedModel.provider, model: parsedModel.name } : null,
 		channels: [],
 		tools: toCapabilitySummaryTools(config.tools),
+		mcpServers: (config.mcpServers ?? []).map((server) => ({ name: server.name })),
 		skills: [],
 		tasks: [],
 	};
