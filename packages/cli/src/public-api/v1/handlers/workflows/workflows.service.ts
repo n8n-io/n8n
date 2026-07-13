@@ -76,8 +76,7 @@ export async function createWorkflow(
 
 	return await Container.get(WorkflowCreationService).createWorkflow(user, workflow, {
 		projectId,
-		// For create, both null and undefined mean "project root" (a new workflow
-		// has no parent folder), so normalise null to undefined for the service.
+		// Both null and undefined mean "project root", resolve to undefined
 		parentFolderId: parentFolderId ?? undefined,
 		publicApi: true,
 		source: 'api',
