@@ -13,6 +13,7 @@ import {
 	buildCredentialResolutionNote,
 	resolveCredentials,
 } from './resolve-credentials';
+import { resolvedCredentialSchema } from './resolved-credential.schema';
 import { analyzeWorkflow, stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import {
 	combineWarnings,
@@ -292,9 +293,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				mockedNodeNames: z.array(z.string()).optional(),
 				mockedCredentialTypes: z.array(z.string()).optional(),
 				mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
-				resolvedCredentialsByNode: z
-					.record(z.array(z.object({ type: z.string(), id: z.string(), name: z.string() })))
-					.optional(),
+				resolvedCredentialsByNode: z.record(z.array(resolvedCredentialSchema)).optional(),
 				credentialResolutionNote: z.string().optional(),
 				referencedWorkflowIds: z.array(z.string()).optional(),
 				hasUnresolvedPlaceholders: z.boolean().optional(),

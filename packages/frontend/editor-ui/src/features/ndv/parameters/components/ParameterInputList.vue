@@ -5,6 +5,7 @@ import type {
 	FilterValue,
 	INodeParameters,
 	INodeProperties,
+	INodePropertyOptions,
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import {
@@ -20,6 +21,7 @@ import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { useMessage } from '@/app/composables/useMessage';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import {
+	AGENT_NODE_TYPE,
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	KEEP_AUTH_IN_NDV_FOR_NODES,
@@ -86,6 +88,7 @@ type Props = {
 	removeLastParameterMargin?: boolean;
 	newlyAddedParameters?: Set<string>;
 	optionsOverrides?: ParameterOptionsOverrides;
+	assignmentCollectionEditableValueIndices?: Record<string, number[]>;
 	layout?: 'inline';
 };
 
@@ -143,6 +146,16 @@ onErrorCaptured((e, component) => {
 
 const node = computed(() => props.node ?? ndvStore.value.activeNode);
 
+// Whether the active Agent v3+ node has a Chat Trigger (or Manual Chat Trigger) in its
+// main-connection ancestry. Used as a reactive dependency of the parameter watch so the
+// prompt-source dropdown re-filters when a chat trigger is wired/removed while the NDV is open.
+const hasChatOrManualChatParent = computed(() =>
+	Boolean(
+		node.value &&
+			workflowDocumentStore?.value?.checkIfNodeHasChatOrManualChatParent(node.value.name),
+	),
+);
+
 const nodeType = computed(() => {
 	if (node.value) {
 		return nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion);
@@ -171,7 +184,7 @@ const parameterItems = ref<ParameterComputedData[]>([]);
 let previousParameterNames: string[] = [];
 
 throttledWatch(
-	[() => props.parameters, () => props.nodeValues, node],
+	[() => props.parameters, () => props.nodeValues, node, hasChatOrManualChatParent],
 	async () => {
 		// Pre-calculate disabled state map
 		const disabledMap: Record<string, boolean> = {};
@@ -206,6 +219,12 @@ throttledWatch(
 			node.value.parameters.resume === 'form'
 		) {
 			filteredParameters = updateWaitParameters(parameters, node.value.name);
+		} else if (
+			node.value &&
+			node.value.type === AGENT_NODE_TYPE &&
+			(node.value.typeVersion ?? 0) >= 3.1
+		) {
+			filteredParameters = updateAgentParameters(parameters, node.value.name);
 		} else {
 			filteredParameters = parameters;
 		}
@@ -386,6 +405,37 @@ function updateWaitParameters(parameters: INodeProperties[], nodeName: string) {
 	}
 
 	return parameters;
+}
+
+// Agent v3+ 'auto' prompt source reads the message from a connected chat trigger
+// (Chat Trigger or Manual Chat Trigger). Keep it visible, but disable it when neither
+// is in the node's main-connection ancestry so users can still discover the mode.
+function updateAgentParameters(parameters: INodeProperties[], nodeName: string) {
+	const hasChatParent =
+		workflowDocumentStore?.value?.checkIfNodeHasChatOrManualChatParent(nodeName);
+	if (hasChatParent) {
+		return parameters;
+	}
+
+	return parameters.map((parameter) => {
+		if (parameter.name !== 'promptType') return parameter;
+		return {
+			...parameter,
+			options: (parameter.options as INodePropertyOptions[]).map((option) => {
+				if (option.value !== 'auto') {
+					return option;
+				}
+
+				return {
+					...option,
+					disabled: true,
+					description:
+						option.description ??
+						i18n.baseText('parameterInputList.autoRequiresChatTriggerDescription'),
+				};
+			}),
+		};
+	});
 }
 
 function updateFormParameters(parameters: INodeProperties[], nodeName: string) {
@@ -922,6 +972,8 @@ watch(
 				:is-read-only="isReadOnly"
 				:default-type="item.parameter.typeOptions?.assignment?.defaultType"
 				:disable-type="item.parameter.typeOptions?.assignment?.disableType"
+				:options-overrides="optionsOverrides"
+				:editable-value-indices="assignmentCollectionEditableValueIndices?.[item.parameter.name]"
 				@value-changed="valueChanged"
 			/>
 			<div v-else-if="credentialsParameterIndex !== index" class="parameter-item">

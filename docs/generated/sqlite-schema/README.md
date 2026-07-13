@@ -63,6 +63,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [installed_nodes](installed_nodes.md) | 4 |  | table |
 | [installed_packages](installed_packages.md) | 6 |  | table |
 | [instance_ai_checkpoints](instance_ai_checkpoints.md) | 8 |  | table |
+| [instance_ai_events](instance_ai_events.md) | 7 |  | table |
 | [instance_ai_iteration_logs](instance_ai_iteration_logs.md) | 6 |  | table |
 | [instance_ai_mcp_registry_connections](instance_ai_mcp_registry_connections.md) | 7 |  | table |
 | [instance_ai_messages](instance_ai_messages.md) | 8 |  | table |
@@ -92,7 +93,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [role_mapping_rule](role_mapping_rule.md) | 7 |  | table |
 | [role_mapping_rule_project](role_mapping_rule_project.md) | 2 |  | table |
 | [role_scope](role_scope.md) | 2 |  | table |
-| [scheduled_job](scheduled_job.md) | 17 |  | table |
+| [scheduled_job](scheduled_job.md) | 19 |  | table |
 | [scheduled_task](scheduled_task.md) | 16 |  | table |
 | [scope](scope.md) | 3 |  | table |
 | [secrets_provider_connection](secrets_provider_connection.md) | 7 |  | table |
@@ -210,6 +211,7 @@ erDiagram
 "insights_raw" }o--|| "insights_metadata" : "FOREIGN KEY (metaId) REFERENCES insights_metadata (metaId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "installed_nodes" }o--|| "installed_packages" : "FOREIGN KEY (package) REFERENCES installed_packages (packageName) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
 "instance_ai_checkpoints" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"instance_ai_events" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_iteration_logs" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_mcp_registry_connections" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_mcp_registry_connections" }o--|| "mcp_registry_server" : "FOREIGN KEY (serverSlug) REFERENCES mcp_registry_server (slug) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -811,6 +813,15 @@ erDiagram
   varchar threadId FK
   datetime_3_ updatedAt
 }
+"instance_ai_events" {
+  datetime_3_ createdAt
+  TEXT payload
+  varchar_64_ runId
+  INTEGER seq PK
+  varchar threadId PK
+  varchar_64_ type
+  datetime_3_ updatedAt
+}
 "instance_ai_iteration_logs" {
   datetime_3_ createdAt
   TEXT entry
@@ -1096,6 +1107,8 @@ erDiagram
   datetime_3_ nextRunAt
   varchar_36_ nodeId
   TEXT payload
+  INT recurrenceSize
+  varchar_16_ recurrenceUnit
   varchar_128_ taskType
   varchar_64_ timezone
   datetime_3_ updatedAt

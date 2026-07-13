@@ -1994,6 +1994,7 @@ export interface INodePropertyOptions {
 	value: string | number | boolean;
 	action?: string;
 	description?: string;
+	disabled?: boolean;
 	builderHint?: IParameterBuilderHint;
 	routing?: INodePropertyRouting;
 	outputConnectionType?: NodeConnectionType;

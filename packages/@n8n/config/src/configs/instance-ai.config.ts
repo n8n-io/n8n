@@ -4,7 +4,7 @@ import { Config, Env } from '../decorators';
 
 @Config
 export class InstanceAiConfig {
-	/** LLM model in provider/model format (e.g. "anthropic/claude-opus-4-8"). */
+	/** LLM model in provider/model format, or a bare model name for a custom endpoint. */
 	@Env('N8N_INSTANCE_AI_MODEL')
 	model: string = 'anthropic/claude-opus-4-8';
 

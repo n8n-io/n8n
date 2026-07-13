@@ -159,6 +159,17 @@ vi.mock('../composables/useAgentPermissions', () => ({
 	useAgentPermissions: () => agentPermissionsMock,
 }));
 
+const favoritesStoreMock = vi.hoisted(() => ({
+	isFavorite: vi.fn(() => false),
+	toggleFavorite: vi.fn().mockResolvedValue(undefined),
+	renameFavorite: vi.fn(),
+	removeFavoriteLocally: vi.fn(),
+}));
+
+vi.mock('@/app/stores/favorites.store', () => ({
+	useFavoritesStore: () => favoritesStoreMock,
+}));
+
 // Real ref so the view's `watch(config, ...)` fires and populates `localConfig`.
 // Tests that need an unbuilt agent flip this to empty instructions before render.
 interface TestAgentConfig {
@@ -535,6 +546,10 @@ describe('AgentBuilderView — preview routing', () => {
 		showErrorMock.mockReset();
 		fetchConfigMock.mockClear();
 		showErrorMock.mockReset();
+		favoritesStoreMock.isFavorite.mockReturnValue(false);
+		favoritesStoreMock.toggleFavorite.mockClear();
+		favoritesStoreMock.renameFavorite.mockClear();
+		favoritesStoreMock.removeFavoriteLocally.mockClear();
 	});
 
 	it('renders the build chat in the editing experience without the old mode toggle', async () => {
@@ -896,6 +911,10 @@ describe('AgentBuilderView — three-column shell', () => {
 		uploadAgentFilesMock.mockResolvedValue([]);
 		showErrorMock.mockReset();
 		fetchConfigMock.mockClear();
+		favoritesStoreMock.isFavorite.mockReturnValue(false);
+		favoritesStoreMock.toggleFavorite.mockClear();
+		favoritesStoreMock.renameFavorite.mockClear();
+		favoritesStoreMock.removeFavoriteLocally.mockClear();
 	});
 
 	it('hides the build chat by default while keeping the editor visible', async () => {
@@ -1217,6 +1236,27 @@ describe('AgentBuilderView — three-column shell', () => {
 		);
 	});
 
+	it('toggles the favorite from the header menu', async () => {
+		const wrapper = await renderView();
+
+		wrapper
+			.findComponent({ name: 'AgentBuilderHeader' })
+			.vm.$emit('header-action', 'toggleFavorite');
+		await flushPromises();
+
+		expect(favoritesStoreMock.toggleFavorite).toHaveBeenCalledWith('a1', 'agent');
+	});
+
+	it('updates the favorite name in the sidebar when the agent is renamed', async () => {
+		const wrapper = await renderView();
+
+		wrapper
+			.findComponent({ name: 'AgentBuilderEditorColumn' })
+			.vm.$emit('update:config', { name: 'Renamed Agent' });
+
+		expect(favoritesStoreMock.renameFavorite).toHaveBeenCalledWith('a1', 'agent', 'Renamed Agent');
+	});
+
 	it('exports the current agent config as a JSON file from the header menu', async () => {
 		Object.defineProperty(URL, 'createObjectURL', {
 			configurable: true,
@@ -1282,6 +1322,11 @@ describe('AgentBuilderView — three-column shell', () => {
 			importedConfig,
 		);
 		expect((wrapper.vm as unknown as { agent: { name: string } }).agent.name).toBe(
+			'Imported agent',
+		);
+		expect(favoritesStoreMock.renameFavorite).toHaveBeenLastCalledWith(
+			'a1',
+			'agent',
 			'Imported agent',
 		);
 

@@ -16,7 +16,7 @@ type SelectRef = InstanceType<typeof MCPWorkflowsSelect>;
 
 const props = defineProps<{
 	data: {
-		onEnableMcpAccess: (workflowId: string) => Promise<void>;
+		onEnableMcpAccess: (workflowIds: string[]) => Promise<void>;
 	};
 }>();
 
@@ -24,13 +24,13 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 
 const isSaving = ref(false);
-const selectedWorkflowId = ref<string>();
+const selectedWorkflowIds = ref<string[]>([]);
 const selectRef = ref<SelectRef | null>(null);
 const modalBus = createEventBus();
 const closedByAction = ref(false);
 const docsLink = `${MCP_DOCS_PAGE_URL}#${ELIGIBLE_WORKFLOWS_DOCS_SECTION}`;
 
-const canSave = computed(() => !!selectedWorkflowId.value);
+const canSave = computed(() => selectedWorkflowIds.value.length > 0);
 
 const cancel = (close: () => void) => {
 	closedByAction.value = true;
@@ -39,14 +39,15 @@ const cancel = (close: () => void) => {
 };
 
 async function save(close: () => void) {
-	if (!selectedWorkflowId.value) return;
+	if (selectedWorkflowIds.value.length === 0) return;
 
 	isSaving.value = true;
 	try {
-		await props.data.onEnableMcpAccess(selectedWorkflowId.value);
+		await props.data.onEnableMcpAccess(selectedWorkflowIds.value);
 		closedByAction.value = true;
 		telemetry.track('User selected workflow from list', {
-			workflowId: selectedWorkflowId.value,
+			workflowIds: selectedWorkflowIds.value,
+			count: selectedWorkflowIds.value.length,
 		});
 		close();
 	} finally {
@@ -99,7 +100,7 @@ onBeforeUnmount(() => {
 				/>
 				<MCPWorkflowsSelect
 					ref="selectRef"
-					v-model="selectedWorkflowId"
+					v-model="selectedWorkflowIds"
 					:placeholder="i18n.baseText('settings.mcp.connectWorkflows.input.placeholder')"
 					:disabled="isSaving"
 					@ready="onSelectReady"

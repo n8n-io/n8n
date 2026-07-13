@@ -1,4 +1,4 @@
-import type { InstanceAiEvent } from '@n8n/api-types';
+import { INSTANCE_AI_EPHEMERAL_EVENT_TYPES, type InstanceAiEvent } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { StoredEvent } from '@n8n/instance-ai';
@@ -24,10 +24,10 @@ import { InstanceAiEventLogRepository } from '../repositories/instance-ai-event-
  * Both are complete; a block always flushes before the fact that follows it,
  * so any cursor taken from a structural fact replays exactly the missing tail.
  *
- * Must mirror INSTANCE_AI_EPHEMERAL_EVENT_TYPES (the frontend's SSE dedup
- * gate, #33915); swap to that shared const once it reaches this branch's base.
+ * The ephemeral list is shared with the frontend's SSE dedup gate
+ * (INSTANCE_AI_EPHEMERAL_EVENT_TYPES, #33915) so the two sides cannot drift.
  */
-const EPHEMERAL_TYPES = new Set(['text-delta', 'reasoning-delta', 'status', 'filesystem-request']);
+const EPHEMERAL_TYPES = INSTANCE_AI_EPHEMERAL_EVENT_TYPES;
 
 /** Retries per batch on (threadId, seq) PK collision before giving up. */
 const MAX_APPEND_ATTEMPTS = 5;
