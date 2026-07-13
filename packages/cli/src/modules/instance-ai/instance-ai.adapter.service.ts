@@ -49,7 +49,11 @@ import {
 	WorkflowSaveConflictError,
 } from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { CONFIG_EVALS_FLAG, upsertEvaluationConfigSchema } from '@n8n/api-types';
+import {
+	CONFIG_EVALUATIONS_FLAG,
+	CONFIG_EVALUATIONS_ENABLED_VARIANT,
+	upsertEvaluationConfigSchema,
+} from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES, Time } from '@n8n/constants';
 import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
@@ -346,11 +350,12 @@ export class InstanceAiAdapterService {
 		}
 	}
 
-	/** Per-user gate for config-based evals (`088_instance_ai_config_evals`).
-	 *  Fails closed: `getFeatureFlags` returns `{}` on a PostHog outage. */
+	/** Per-user gate for config-based evals: on when the config-evaluations
+	 *  experiment is on the enabled variant, so we never create evals the user
+	 *  can't run. Fails closed: `getFeatureFlags` returns `{}` on a PostHog outage. */
 	async isConfigEvalsEnabled(user: User): Promise<boolean> {
 		const flags = await Container.get(PostHogClient).getFeatureFlags(user);
-		return flags?.[CONFIG_EVALS_FLAG] === true;
+		return flags?.[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT;
 	}
 
 	private buildAiGatewayNodeMeta(

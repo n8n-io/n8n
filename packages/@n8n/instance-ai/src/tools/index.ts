@@ -100,7 +100,7 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 	];
 
 	// eval-config is flag-gated: the adapter only wires evaluationConfigService
-	// when `088_instance_ai_config_evals` is on, so presence = expose the tool.
+	// when `088_config_evaluations` is on, so presence = expose the tool.
 	if (context.evaluationConfigService) {
 		tools.push([DOMAIN_TOOL_IDS.EVAL_CONFIG, loadEvalConfigTool().createEvalConfigTool(context)]);
 	}
@@ -133,7 +133,7 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 	];
 
 	// eval-config is flag-gated: the adapter only wires evaluationConfigService
-	// when `088_instance_ai_config_evals` is on, so presence = expose the tool.
+	// when `088_config_evaluations` is on, so presence = expose the tool.
 	if (context.evaluationConfigService) {
 		tools.push([DOMAIN_TOOL_IDS.EVAL_CONFIG, loadEvalConfigTool().createEvalConfigTool(context)]);
 	}
