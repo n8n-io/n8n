@@ -1,6 +1,6 @@
 {
   "name": "@n8n/workflow-sdk",
-  "version": "0.22.0",
+  "version": "0.23.0",
   "description": "TypeScript SDK for programmatically creating n8n workflows",
   "exports": {
     ".": {
@@ -94,6 +94,7 @@
     "@types/lodash": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "adm-zip": "^0.5.16",
+    "typescript": "catalog:",
     "vitest": "catalog:"
   },
   "dependencies": {

@@ -8,8 +8,6 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { usePostHog } from '@/app/stores/posthog.store';
-import { CANVAS_NODES_GROUPING_EXPERIMENT } from '@/app/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 
 const trackSpy = vi.hoisted(() => vi.fn());
@@ -41,9 +39,6 @@ describe('useCanvasNodeGroupOperationGuards', () => {
 		const workflowsStore = useWorkflowsStore();
 		workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowsStore.workflowId),
-		);
-		vi.spyOn(usePostHog(), 'isFeatureEnabled').mockImplementation(
-			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
 		);
 	});
 

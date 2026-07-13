@@ -60,6 +60,14 @@ export class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_QUEUE_METRICS_INTERVAL')
 	queueMetricsInterval: number = 20;
 
+	/** Whether to include Durable Scheduler metrics (queue depth, scheduling lag, dispatches, retries, dead-letters). */
+	@Env('N8N_METRICS_INCLUDE_SCHEDULER_METRICS')
+	includeSchedulerMetrics: boolean = false;
+
+	/** How often (in seconds) the scheduler gauge queries are refreshed (cache TTL). */
+	@Env('N8N_METRICS_SCHEDULER_INTERVAL')
+	schedulerMetricsInterval: number = 20;
+
 	/** How often (in seconds) to update active workflow metric */
 	@Env('N8N_METRICS_ACTIVE_WORKFLOW_METRIC_INTERVAL')
 	activeWorkflowCountInterval: number = 60;

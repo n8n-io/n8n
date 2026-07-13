@@ -45,6 +45,14 @@ export async function buildCredentialMap(
 	return map;
 }
 
+/** A credential the resolver attached to a node without an explicit id in the source. */
+export interface ResolvedCredential {
+	/** Credential type key on the node, e.g. "openAiApi". */
+	type: string;
+	id: string;
+	name: string;
+}
+
 /** Result of credential resolution — mock metadata for the simulation plan. */
 export interface CredentialResolutionResult {
 	/** Node names whose credentials were mocked. */
@@ -53,6 +61,30 @@ export interface CredentialResolutionResult {
 	mockedCredentialTypes: string[];
 	/** Map of node name → credential types that were mocked on that node. */
 	mockedCredentialsByNode: Record<string, string[]>;
+	/**
+	 * Map of node name → credentials the resolver attached automatically
+	 * (restored from the saved workflow or auto-bound to the sole existing
+	 * candidate). These nodes are already connected — the agent must not ask
+	 * the user to connect or create them.
+	 */
+	resolvedCredentialsByNode: Record<string, ResolvedCredential[]>;
+}
+
+/**
+ * Human-readable summary of automatically attached credentials, meant to be
+ * relayed on the build result so the agent knows setup is not needed for them.
+ */
+export function buildCredentialResolutionNote(
+	resolvedCredentialsByNode: Record<string, ResolvedCredential[]>,
+): string | undefined {
+	const parts: string[] = [];
+	for (const [nodeName, resolved] of Object.entries(resolvedCredentialsByNode)) {
+		for (const credential of resolved) {
+			parts.push(`"${credential.name}" (${credential.type}) on node "${nodeName}"`);
+		}
+	}
+	if (parts.length === 0) return undefined;
+	return `Connected existing credential(s) automatically: ${parts.join('; ')}. These are already set up — do not ask the user to connect or create them, and do not route them to credential setup.`;
 }
 
 /**
@@ -75,6 +107,7 @@ export async function resolveCredentials(
 	const mockedNodeNames: string[] = [];
 	const mockedCredentialTypesSet = new Set<string>();
 	const mockedCredentialsByNode: Record<string, string[]> = {};
+	const resolvedCredentialsByNode: Record<string, ResolvedCredential[]> = {};
 
 	// Build a map of existing credentials by node name (for updates)
 	const existingCredsByNode = new Map<string, Record<string, unknown>>();
@@ -104,9 +137,21 @@ export async function resolveCredentials(
 			// when the LLM drops the id during an edit — e.g., emits newCredential('name')
 			// without the id, which serializes to undefined).
 			const existingCreds = node.name ? existingCredsByNode.get(node.name) : undefined;
+
+			const recordResolvedCredential = (id: string, name: string) => {
+				if (!node.name) return;
+				resolvedCredentialsByNode[node.name] ??= [];
+				resolvedCredentialsByNode[node.name].push({ type: key, id, name });
+			};
+
 			const restoreExistingCredential = () => {
-				if (!existingCreds?.[key]) return false;
-				creds[key] = existingCreds[key];
+				const restored = existingCreds?.[key];
+				if (!restored) return false;
+				creds[key] = restored;
+				const restoredId = getCredentialId(restored);
+				if (restoredId) {
+					recordResolvedCredential(restoredId, getCredentialName(restored) ?? restoredId);
+				}
 				cleanupMockPinData(json, node.name);
 				return true;
 			};
@@ -146,6 +191,7 @@ export async function resolveCredentials(
 			if (credentialsForType?.length === 1) {
 				const [credential] = credentialsForType;
 				creds[key] = { id: credential.id, name: credential.name };
+				recordResolvedCredential(credential.id, credential.name);
 				cleanupMockPinData(json, node.name);
 				continue;
 			}
@@ -166,6 +212,7 @@ export async function resolveCredentials(
 		mockedNodeNames,
 		mockedCredentialTypes: [...mockedCredentialTypesSet],
 		mockedCredentialsByNode,
+		resolvedCredentialsByNode,
 	};
 }
 
@@ -176,6 +223,15 @@ function getCredentialId(value: unknown): string | undefined {
 	if (typeof id !== 'string' || id.trim() === '') return undefined;
 
 	return id;
+}
+
+function getCredentialName(value: unknown): string | undefined {
+	if (typeof value !== 'object' || value === null || !('name' in value)) return undefined;
+
+	const { name } = value;
+	if (typeof name !== 'string' || name.trim() === '') return undefined;
+
+	return name;
 }
 
 function isKnownCredentialForType(

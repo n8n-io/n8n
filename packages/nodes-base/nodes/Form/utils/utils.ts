@@ -406,7 +406,7 @@ export function addFormResponseDataToReturnItem(
 		if (field.fieldType === 'number') {
 			value = Number(value);
 		}
-		if (field.fieldType === 'text') {
+		if (field.fieldType === 'text' || field.fieldType === 'email') {
 			value = String(value).trim();
 		}
 		if (
@@ -518,6 +518,10 @@ export async function prepareFormReturnItem(
 	returnItem.json.submittedAt = DateTime.now().setZone(timezone).toISO();
 
 	returnItem.json.formMode = mode;
+
+	if (context.getNodeParameter('options.showHeaders', false)) {
+		returnItem.json.headers = context.getHeaderData();
+	}
 
 	if (
 		context.getNode().type === FORM_TRIGGER_NODE_TYPE &&

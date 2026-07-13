@@ -9,13 +9,20 @@ import { I18nT } from 'vue-i18n';
 import { toDayMonth, toTime } from '@/app/utils/formatters/dateFormatter';
 import LogsViewNodeName from '@/features/execution/logs/components/LogsViewNodeName.vue';
 import {
+	getGroupExecutionStatus,
+	getGroupTiming,
 	getSubtreeTotalConsumedTokens,
 	hasSubExecution,
 } from '@/features/execution/logs/logs.utils';
 import { useTimestamp } from '@vueuse/core';
-import type { LatestNodeInfo, LogEntry } from '@/features/execution/logs/logs.types';
+import {
+	type LatestNodeInfo,
+	type LogEntry,
+	isGroupLog,
+	isNodeLog,
+} from '@/features/execution/logs/logs.types';
 
-import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import AnimatedSpinner from '@/app/components/AnimatedSpinner.vue';
 const props = defineProps<{
 	data: LogEntry;
@@ -39,20 +46,50 @@ const container = useTemplateRef('containerRef');
 const locale = useI18n();
 const now = useTimestamp({ interval: 1000 });
 const nodeTypeStore = useNodeTypesStore();
-const type = computed(() => nodeTypeStore.getNodeType(props.data.node.type));
-const isRunning = computed(() => props.data.runData?.executionStatus === 'running');
-const isWaiting = computed(() => props.data.runData?.executionStatus === 'waiting');
+const nodeData = computed(() => (isNodeLog(props.data) ? props.data : undefined));
+const groupData = computed(() => (isGroupLog(props.data) ? props.data : undefined));
+const runData = computed(() => nodeData.value?.runData);
+const type = computed(() =>
+	nodeData.value ? nodeTypeStore.getNodeType(nodeData.value.node.type) : null,
+);
+const displayName = computed(() =>
+	groupData.value
+		? groupData.value.group.name
+		: (props.latestInfo?.name ?? nodeData.value?.node.name ?? ''),
+);
+// Groups have no run data of their own; derive their status from members
+const groupStatus = computed(() =>
+	groupData.value ? getGroupExecutionStatus(groupData.value) : undefined,
+);
+const isRunning = computed(() =>
+	groupData.value ? groupStatus.value === 'running' : runData.value?.executionStatus === 'running',
+);
+const isWaiting = computed(() =>
+	groupData.value ? groupStatus.value === 'waiting' : runData.value?.executionStatus === 'waiting',
+);
 const isSettled = computed(() => !isRunning.value && !isWaiting.value);
-const isError = computed(() => !!props.data.runData?.error);
+const isError = computed(() =>
+	groupData.value ? groupData.value.hasError : !!runData.value?.error,
+);
 const statusTextKeyPath = computed<BaseTextKey>(() =>
 	isSettled.value ? 'logs.overview.body.summaryText.in' : 'logs.overview.body.summaryText.for',
 );
+// Groups have no run data of their own; aggregate their members instead.
+// Feed the live clock while unsettled so the total ticks up during execution.
+const groupTiming = computed(() =>
+	groupData.value
+		? getGroupTiming(groupData.value, isSettled.value ? undefined : now.value)
+		: undefined,
+);
+const startTime = computed(() =>
+	groupData.value ? groupTiming.value?.startTime : runData.value?.startTime,
+);
 const startedAtText = computed(() => {
-	if (props.data.runData === undefined) {
+	if (startTime.value === undefined) {
 		return '—';
 	}
 
-	const time = new Date(props.data.runData.startTime);
+	const time = new Date(startTime.value);
 
 	return locale.baseText('logs.overview.body.started', {
 		interpolate: {
@@ -60,17 +97,32 @@ const startedAtText = computed(() => {
 		},
 	});
 });
-const statusText = computed(() => upperFirst(props.data.runData?.executionStatus ?? ''));
-const timeText = computed(() =>
-	props.data.runData
+const statusText = computed(() =>
+	upperFirst(groupData.value ? (groupStatus.value ?? '') : (runData.value?.executionStatus ?? '')),
+);
+const timeText = computed(() => {
+	if (groupData.value) {
+		if (!groupTiming.value) {
+			return undefined;
+		}
+
+		return locale.displayTimer(
+			isSettled.value
+				? groupTiming.value.executionTime
+				: Math.floor(groupTiming.value.executionTime / 1000) * 1000,
+			true,
+		);
+	}
+
+	return runData.value
 		? locale.displayTimer(
 				isSettled.value
-					? props.data.runData.executionTime
-					: Math.floor((now.value - props.data.runData.startTime) / 1000) * 1000,
+					? runData.value.executionTime
+					: Math.floor((now.value - runData.value.startTime) / 1000) * 1000,
 				true,
 			)
-		: undefined,
-);
+		: undefined;
+});
 
 const subtreeConsumedTokens = computed(() =>
 	props.shouldShowTokenCountColumn ? getSubtreeTotalConsumedTokens(props.data, false) : undefined,
@@ -141,10 +193,10 @@ watch(
 			}"
 		/>
 		<div :class="$style.background" :style="{ '--indent-depth': indents.length }" />
-		<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
+		<NodeIcon v-if="!groupData" :node-type="type" :size="16" :class="$style.icon" />
 		<LogsViewNodeName
-			:class="$style.name"
-			:name="latestInfo?.name ?? props.data.node.name"
+			:class="[$style.name, groupData ? $style.groupName : '']"
+			:name="displayName"
 			:is-error="isError"
 			:is-deleted="latestInfo?.deleted ?? false"
 		/>
@@ -192,33 +244,54 @@ watch(
 			icon="triangle-alert"
 			:class="$style.compactErrorIcon"
 		/>
-		<N8nIconButton
-			variant="ghost"
+		<N8nTooltip
 			v-if="canOpenNdv && (!isCompact || !props.latestInfo?.deleted)"
-			size="small"
-			icon="square-pen"
-			icon-size="medium"
-			:style="{
-				visibility: props.data.isSubExecution ? 'hidden' : undefined,
-			}"
-			:disabled="props.latestInfo?.deleted"
-			:class="$style.openNdvButton"
-			:aria-label="locale.baseText('logs.overview.body.open')"
-			@click.stop="emit('openNdv')"
-		/>
-		<N8nIconButton
-			variant="ghost"
+			:content="locale.baseText('logs.overview.body.openTooltip')"
+			as-child
+		>
+			<N8nIconButton
+				v-if="!groupData && canOpenNdv && (!isCompact || !props.latestInfo?.deleted)"
+				variant="ghost"
+				size="small"
+				icon="square-pen"
+				icon-size="medium"
+				:style="{
+					visibility: props.data.isSubExecution ? 'hidden' : undefined,
+				}"
+				:disabled="props.latestInfo?.deleted"
+				:class="$style.openNdvButton"
+				:aria-label="locale.baseText('logs.overview.body.open')"
+				@click.stop="emit('openNdv')"
+			/>
+		</N8nTooltip>
+		<N8nTooltip
 			v-if="
 				!isCompact ||
 				(!props.isReadOnly && !props.latestInfo?.deleted && !props.latestInfo?.disabled)
 			"
-			size="small"
-			icon="play"
-			:aria-label="locale.baseText('logs.overview.body.run')"
-			:class="[$style.partialExecutionButton, indents.length > 0 ? $style.unavailable : '']"
-			:disabled="props.latestInfo?.deleted || props.latestInfo?.disabled"
-			@click.stop="emit('triggerPartialExecution')"
-		/>
+			:content="locale.baseText('logs.overview.body.run')"
+			as-child
+		>
+			<N8nIconButton
+				v-if="
+					!groupData &&
+					(!isCompact ||
+						(!props.isReadOnly && !props.latestInfo?.deleted && !props.latestInfo?.disabled))
+				"
+				variant="ghost"
+				size="small"
+				icon="play"
+				:aria-label="locale.baseText('logs.overview.body.run')"
+				:class="[$style.partialExecutionButton, indents.length > 0 ? $style.unavailable : '']"
+				:disabled="props.latestInfo?.deleted || props.latestInfo?.disabled"
+				@click.stop="emit('triggerPartialExecution')"
+			/>
+		</N8nTooltip>
+		<!-- Groups omit the action buttons above; reserve their width so columns stay aligned with node rows -->
+		<template v-if="groupData && !isCompact">
+			<div v-if="canOpenNdv" :class="$style.buttonSpacer" />
+			<div :class="$style.buttonSpacer" />
+		</template>
 		<template v-if="isCompact && !hasChildren">
 			<AnimatedSpinner v-if="isRunning" :class="$style.statusIcon" />
 			<N8nIcon v-else-if="isWaiting" icon="status-waiting" :class="$style.statusIcon" />
@@ -314,8 +387,6 @@ watch(
 }
 
 .icon {
-	/* stylelint-disable-next-line @n8n/css-var-naming */
-	margin-left: var(--row-gap-thickness);
 	flex-grow: 0;
 	flex-shrink: 0;
 }
@@ -324,6 +395,11 @@ watch(
 	flex-basis: 0;
 	flex-grow: 1;
 	padding-inline-start: 0;
+}
+
+/* Groups have no icon, so inset the label to match where node labels start */
+.groupName {
+	padding-inline-start: var(--spacing--2xs);
 }
 
 .timeTook {
@@ -403,6 +479,13 @@ watch(
 
 .toggleButton {
 	display: inline-flex;
+}
+
+/* Matches a single small icon button's footprint (row padding comes from .container > *) */
+.buttonSpacer {
+	flex-grow: 0;
+	flex-shrink: 0;
+	width: var(--height--sm);
 }
 
 .statusIcon {

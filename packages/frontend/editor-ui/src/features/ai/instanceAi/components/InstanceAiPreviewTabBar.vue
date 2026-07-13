@@ -169,12 +169,6 @@ async function handleCopyLink(tab: ArtifactTab) {
 </template>
 
 <style lang="scss" module>
-@property --left--fade {
-	syntax: '<length>';
-	inherits: false;
-	initial-value: 0;
-}
-
 @property --right--fade {
 	syntax: '<length>';
 	inherits: false;
@@ -182,13 +176,6 @@ async function handleCopyLink(tab: ArtifactTab) {
 }
 
 @keyframes scrollfade {
-	0.1% {
-		--left--fade: 0;
-	}
-	10%,
-	100% {
-		--left--fade: 3rem;
-	}
 	0%,
 	90% {
 		--right--fade: 3rem;
@@ -217,14 +204,9 @@ async function handleCopyLink(tab: ArtifactTab) {
 	scrollbar-width: none;
 	position: relative;
 
-	// Scroll-driven edge fade only where supported; otherwise it pins a permanent left fade that hides the first tab
+	// Scroll-driven right edge fade only where supported.
 	@supports (animation-timeline: scroll()) {
-		mask: linear-gradient(
-			to right,
-			#0000,
-			#ffff var(--left--fade) calc(100% - var(--right--fade)),
-			#0000
-		);
+		mask: linear-gradient(to right, #ffff 0 calc(100% - var(--right--fade)), #0000);
 		animation: scrollfade;
 		animation-timeline: --scrollfade;
 		scroll-timeline: --scrollfade x;

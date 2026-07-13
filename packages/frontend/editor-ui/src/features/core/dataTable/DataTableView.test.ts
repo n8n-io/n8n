@@ -34,9 +34,10 @@ vi.mock('@n8n/i18n', async (importOriginal) => {
 			baseText: vi.fn((key: string) => {
 				if (key === 'dataTable.dataTables') return 'Data Tables';
 				if (key === 'projects.menu.personal') return 'Personal';
-				if (key === 'dataTable.empty.label') return 'No data tables';
-				if (key === 'dataTable.empty.description') return 'No data tables description';
-				if (key === 'dataTable.empty.button.label') return 'Create data table';
+				if (key === 'dataTable.empty.heading') return 'Create your first data table';
+				if (key === 'dataTable.empty.description')
+					return 'Add your first data table to get started';
+				if (key === 'dataTable.add.button.label') return 'Create data table';
 				if (key === 'generic.rename') return 'Rename';
 				if (key === 'generic.delete') return 'Delete';
 				if (key === 'generic.clear') return 'Clear';
@@ -206,14 +207,17 @@ describe('DataTableView', () => {
 			const { getByTestId } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(getByTestId('empty-data-table-action-box')).toBeInTheDocument();
+			const emptyBox = getByTestId('empty-resources-list');
+			expect(emptyBox).toBeInTheDocument();
+			expect(emptyBox).toHaveTextContent('Create your first data table');
+			expect(emptyBox).toHaveTextContent('Create data table');
 		});
 
 		it('should enable the create button when user can create and env is not read-only', async () => {
 			const { getByTestId } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			const button = getByTestId('empty-data-table-action-box').querySelector('button');
+			const button = getByTestId('empty-resources-list').querySelector('button');
 			expect(button).not.toBeDisabled();
 		});
 
@@ -239,7 +243,7 @@ describe('DataTableView', () => {
 			const { getByTestId } = renderWithInlineTooltip();
 			await waitAllPromises();
 
-			const box = getByTestId('empty-data-table-action-box');
+			const box = getByTestId('empty-resources-list');
 			expect(box.querySelector('button')).toBeDisabled();
 			expect(box).toHaveTextContent('readOnlyEnv.cantAdd.any');
 		});
@@ -252,7 +256,7 @@ describe('DataTableView', () => {
 			const { getByTestId } = renderWithInlineTooltip();
 			await waitAllPromises();
 
-			const box = getByTestId('empty-data-table-action-box');
+			const box = getByTestId('empty-resources-list');
 			expect(box.querySelector('button')).toBeDisabled();
 			expect(box).toHaveTextContent('dataTable.empty.button.disabled.tooltip');
 		});
@@ -267,7 +271,7 @@ describe('DataTableView', () => {
 			const { getByTestId } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			const emptyBox = getByTestId('empty-data-table-action-box');
+			const emptyBox = getByTestId('empty-resources-list');
 			expect(emptyBox).toBeInTheDocument();
 		});
 	});

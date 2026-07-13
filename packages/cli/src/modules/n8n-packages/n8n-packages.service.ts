@@ -5,20 +5,28 @@ import type { Readable } from 'node:stream';
 import { N8N_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
 
-import { ImportPipeline } from './engine/import-pipeline';
+import { N8nPackageParser } from './engine/n8n-package-parser';
+import { ProjectPackageImporter } from './engine/project-package-importer';
+import { WorkflowPackageImporter } from './engine/workflow-package-importer';
 import { CredentialExporter } from './entities/credential/credential.exporter';
 import { FolderExporter } from './entities/folder/folder.exporter';
 import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
+import { TarPackageReader } from './io/tar/tar-package-reader';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
+import { PackageImportConfig } from './n8n-packages.config';
 import type {
 	ExportPackageRequest,
 	ImportPackageRequest,
 	ImportResult,
 } from './n8n-packages.types';
 import { FORMAT_VERSION } from './spec/constants';
-import { type ManifestEntry, packageManifestSchema } from './spec/manifest.schema';
+import {
+	type ManifestEntry,
+	type PackageManifest,
+	packageManifestSchema,
+} from './spec/manifest.schema';
 
 @Service()
 export class N8nPackagesService {
@@ -28,7 +36,10 @@ export class N8nPackagesService {
 		private readonly folderExporter: FolderExporter,
 		private readonly credentialExporter: CredentialExporter,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly importPipeline: ImportPipeline,
+		private readonly packageParser: N8nPackageParser,
+		private readonly packageImportConfig: PackageImportConfig,
+		private readonly projectPackageImporter: ProjectPackageImporter,
+		private readonly workflowPackageImporter: WorkflowPackageImporter,
 		private readonly eventService: EventService,
 	) {}
 
@@ -73,17 +84,26 @@ export class N8nPackagesService {
 		const requirements = mergeRequirements(
 			workflowExportResult?.requirements,
 			folderExportResult?.requirements,
+			projectExportResult?.requirements,
 		);
 
 		const credentialExportResult = await this.credentialExporter.export({
 			user: request.user,
 			requirements: requirements.credentials,
 			writer,
+			// Routes project-owned credentials into their project namespace; others stay top-level.
+			projectTargetsById: projectExportResult?.projectTargetsById,
 		});
+
+		const allFolders = [
+			...(folderExportResult?.entries ?? []),
+			...(projectExportResult?.folderEntries ?? []),
+		];
 
 		const allWorkflowsInPackage = [
 			...(workflowExportResult?.entries ?? []),
 			...(folderExportResult?.workflowEntries ?? []),
+			...(projectExportResult?.workflowEntries ?? []),
 		];
 
 		const manifest = packageManifestSchema.parse({
@@ -98,7 +118,7 @@ export class N8nPackagesService {
 				? { requirements: { credentials: credentialExportResult.requirements } }
 				: {}),
 			...(allWorkflowsInPackage.length > 0 ? { workflows: allWorkflowsInPackage } : {}),
-			...(folderExportResult?.entries ? { folders: folderExportResult.entries } : {}),
+			...(allFolders.length > 0 ? { folders: allFolders } : {}),
 			...(projectExportResult?.entries ? { projects: projectExportResult.entries } : {}),
 		});
 
@@ -119,7 +139,7 @@ export class N8nPackagesService {
 				: {}),
 			counts: {
 				workflows: allWorkflowsInPackage.length,
-				folders: folderExportResult?.entries.length ?? 0,
+				folders: allFolders.length,
 				credentials: credentialExportResult.entries.length,
 			},
 		});
@@ -128,11 +148,20 @@ export class N8nPackagesService {
 	}
 
 	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {
-		return await this.importPipeline.run(request);
+		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
+		const manifest = await this.packageParser.getManifest(reader);
+		if (isProjectPackage(manifest)) {
+			return await this.projectPackageImporter.import(request, reader, manifest);
+		}
+		return await this.workflowPackageImporter.import(request, reader, manifest);
 	}
 
 	filterWorkflowsAlreadyInFolders(workflowsInFolders: ManifestEntry[] = [], workflowIds: string[]) {
 		const folderWorkflowIds = new Set(workflowsInFolders.map((entry) => entry.id) ?? []);
 		return workflowIds.filter((id) => !folderWorkflowIds.has(id));
 	}
+}
+
+function isProjectPackage(manifest: PackageManifest): boolean {
+	return (manifest.projects?.length ?? 0) > 0;
 }

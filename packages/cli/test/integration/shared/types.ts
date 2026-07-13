@@ -73,7 +73,7 @@ export interface SetupProps {
 	enabledFeatures?: BooleanLicenseFeature[];
 	quotas?: Partial<{ [K in NumericLicenseFeature]: number }>;
 	modules?: ModuleName[];
-	/** Override the default Jest timeout (ms) for the shared `beforeAll` setup hook. */
+	/** Override the default test timeout (ms) for the shared `beforeAll` setup hook. */
 	setupTimeout?: number;
 }
 

@@ -1,8 +1,18 @@
 import { testDb } from '@n8n/backend-test-utils';
-import type { ScheduledJob as ScheduledJobEntity } from '@n8n/db';
-import { DbConnectionOptions, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
+import type {
+	NewScheduledJob,
+	ScheduledJob as ScheduledJobEntity,
+	ScheduledTask as ScheduledTaskEntity,
+	TerminalTaskStatus,
+} from '@n8n/db';
+import {
+	DbConnectionOptions,
+	ScheduledJobRepository,
+	ScheduledTask,
+	ScheduledTaskRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, In } from '@n8n/typeorm';
 
 // SKIP LOCKED and truly parallel writes only apply on Postgres; the local sqlite driver
 // serializes every writer through a single lock. Tests that need real parallelism are
@@ -66,6 +76,26 @@ describe('scheduled repositories', () => {
 				intervalSeconds: 60,
 				enabled: true,
 				nextRunAt: secondsFromNow(-60),
+				maxAttempts: 1,
+				...overrides,
+			}),
+		);
+	}
+
+	/** Insert a task in a given lifecycle state; `scheduledFor` is made unique per row. */
+	let taskSequence = 0;
+	async function createTask(
+		jobId: number,
+		overrides: Partial<ScheduledTaskEntity> = {},
+	): Promise<ScheduledTaskEntity> {
+		const scheduledFor = secondsFromNow(-++taskSequence);
+		return await taskRepository.save(
+			taskRepository.create({
+				jobId,
+				taskType: 'scheduleTrigger',
+				payload: {},
+				scheduledFor,
+				runAt: scheduledFor,
 				maxAttempts: 1,
 				...overrides,
 			}),
@@ -312,12 +342,124 @@ describe('scheduled repositories', () => {
 		});
 	});
 
+	describe('ScheduledJobRepository.insertMany', () => {
+		/** A minimal interval job row for insertMany; bookkeeping columns take their defaults. */
+		const newJobRow = (
+			name: string,
+			overrides: Partial<NewScheduledJob> = {},
+		): NewScheduledJob => ({
+			name,
+			workflowId: null,
+			nodeId: null,
+			taskType: 'scheduleTrigger',
+			payload: {},
+			kind: 'interval',
+			cronExpression: null,
+			timezone: null,
+			recurrenceUnit: null,
+			recurrenceSize: null,
+			intervalSeconds: 60,
+			fireAt: null,
+			nextRunAt: secondsFromNow(-60),
+			...overrides,
+		});
+
+		it('inserts new rows and returns one id per input job, in input order', async () => {
+			const jobs = [newJobRow('wf:node:0'), newJobRow('wf:node:1')];
+
+			const ids = await dataSource.transaction(
+				async (trx) => await jobRepository.insertMany(trx, jobs),
+			);
+
+			expect(ids).toHaveLength(2);
+			// The returned ids must line up with the input order by name, so the caller's
+			// index-based zip attributes each id to the right job.
+			const stored = await jobRepository.findBy({ name: In(['wf:node:0', 'wf:node:1']) });
+			const idByName = new Map(stored.map((row) => [row.name, row.id]));
+			expect(ids).toEqual([idByName.get('wf:node:0'), idByName.get('wf:node:1')]);
+		});
+
+		it('returns the existing id for a name already taken, without duplicating the row', async () => {
+			// A prior writer already holds `wf:node:0`; a second provisioning run inserts it
+			// again alongside a fresh name. orIgnore skips the taken row, and the read-back by
+			// name still yields the taken row's id rather than a gap.
+			const [firstId] = await dataSource.transaction(
+				async (trx) => await jobRepository.insertMany(trx, [newJobRow('wf:node:0')]),
+			);
+
+			const ids = await dataSource.transaction(
+				async (trx) =>
+					await jobRepository.insertMany(trx, [newJobRow('wf:node:0'), newJobRow('wf:node:1')]),
+			);
+
+			expect(ids[0]).toBe(firstId);
+			expect(ids[1]).not.toBe(firstId);
+			// Only one row named `wf:node:0`: the second insert converged on the first's row.
+			expect(await jobRepository.countBy({ name: 'wf:node:0' })).toBe(1);
+			expect(await jobRepository.countBy({ name: 'wf:node:1' })).toBe(1);
+		});
+
+		// Postgres only: two transactions inserting the same name at once. The unique index
+		// lets exactly one row win; both callers read the winner's id back by name rather than
+		// the loser getting a gap from the skipped RETURNING row.
+		//
+		// runnerB draws from the secondary pool so both transactions are genuinely held open at
+		// once (the main pool is capped at a single connection in CI). A inserts and holds the
+		// new row's uncommitted unique-index entry; B's insert of the same name blocks on it
+		// until A commits, then `orIgnore` skips and B reads A's row back by name.
+		it.skipIf(!isPostgres)(
+			'converges on a single row when two transactions insert the same name at once',
+			async () => {
+				const runnerA = dataSource.createQueryRunner();
+				const runnerB = secondaryDataSource!.createQueryRunner();
+				let first: number[];
+				let second: number[];
+				try {
+					await runnerA.connect();
+					await runnerB.connect();
+					await runnerA.startTransaction();
+					await runnerB.startTransaction();
+
+					first = await jobRepository.insertMany(runnerA.manager, [newJobRow('wf:node:0')]);
+
+					// Start B's insert while A's transaction is still open; it blocks on A's
+					// uncommitted row, so don't await it until A has committed.
+					const secondPromise = jobRepository.insertMany(runnerB.manager, [newJobRow('wf:node:0')]);
+					await runnerA.commitTransaction();
+					second = await secondPromise;
+					await runnerB.commitTransaction();
+				} finally {
+					// Free the runners (runnerA holds the single main-pool connection) before the
+					// assertions below query through the main DataSource.
+					await runnerA.release();
+					await runnerB.release();
+				}
+
+				expect(await jobRepository.countBy({ name: 'wf:node:0' })).toBe(1);
+				const stored = await jobRepository.findOneByOrFail({ name: 'wf:node:0' });
+				// Neither caller came back empty; both point at the surviving row.
+				expect(first).toEqual([stored.id]);
+				expect(second).toEqual([stored.id]);
+			},
+		);
+
+		it('rejects a call made outside a transaction', async () => {
+			// The plain DataSource manager has no queryRunner, which is how the guard detects
+			// a call made outside `dataSource.transaction`.
+			await expect(
+				jobRepository.insertMany(dataSource.manager, [newJobRow('wf:node:0')]),
+			).rejects.toThrow('insertMany must run within a transaction');
+
+			expect(await jobRepository.countBy({ name: 'wf:node:0' })).toBe(0);
+		});
+	});
+
 	describe('ScheduledTaskRepository.insertIgnoringDuplicates', () => {
 		it('inserts occurrences and returns how many were recorded', async () => {
 			const job = await createJob();
 			const scheduledFor = secondsFromNow(-60);
 
-			const recorded = await dataSource.transaction(
+			const result = await dataSource.transaction(
 				async (trx) =>
 					await taskRepository.insertIgnoringDuplicates(trx, [
 						{
@@ -331,10 +473,39 @@ describe('scheduled repositories', () => {
 					]),
 			);
 
-			expect(recorded).toBe(1);
+			expect(result.recorded).toBe(1);
 			const stored = await taskRepository.findBy({ jobId: job.id });
 			expect(stored).toHaveLength(1);
 			expect(stored[0].scheduledFor.getTime()).toBe(scheduledFor.getTime());
+		});
+
+		// Postgres only: SQLite's driver never surfaces RETURNING rows from a raw
+		// insert, so row identity for tracing is a Postgres-only capability.
+		it.skipIf(!isPostgres)('returns the identity of each newly created row', async () => {
+			const job = await createJob();
+			const scheduledFor = secondsFromNow(-60);
+
+			const result = await dataSource.transaction(
+				async (trx) =>
+					await taskRepository.insertIgnoringDuplicates(trx, [
+						{
+							jobId: job.id,
+							taskType: 'scheduleTrigger',
+							payload: {},
+							scheduledFor,
+							runAt: scheduledFor,
+							maxAttempts: 1,
+						},
+					]),
+			);
+
+			expect(result.created).toHaveLength(1);
+			const stored = await taskRepository.findOneByOrFail({ jobId: job.id });
+			expect(result.created[0]).toEqual({
+				id: stored.id,
+				jobId: job.id,
+				taskType: 'scheduleTrigger',
+			});
 		});
 
 		it('is idempotent on (jobId, scheduledFor): a duplicate is skipped and not counted', async () => {
@@ -356,8 +527,8 @@ describe('scheduled repositories', () => {
 				async (trx) => await taskRepository.insertIgnoringDuplicates(trx, [occurrence]),
 			);
 
-			expect(first).toBe(1);
-			expect(second).toBe(0);
+			expect(first.recorded).toBe(1);
+			expect(second.recorded).toBe(0);
 			expect(await taskRepository.findBy({ jobId: job.id })).toHaveLength(1);
 		});
 
@@ -377,11 +548,11 @@ describe('scheduled repositories', () => {
 				};
 			});
 
-			const recorded = await dataSource.transaction(
+			const result = await dataSource.transaction(
 				async (trx) => await taskRepository.insertIgnoringDuplicates(trx, occurrences),
 			);
 
-			expect(recorded).toBe(2500);
+			expect(result.recorded).toBe(2500);
 			expect(await taskRepository.countBy({ jobId: job.id })).toBe(2500);
 		});
 
@@ -410,9 +581,260 @@ describe('scheduled repositories', () => {
 					),
 				]);
 
-				expect(first + second).toBe(1);
+				expect(first.recorded + second.recorded).toBe(1);
 				expect(await taskRepository.findBy({ jobId: job.id })).toHaveLength(1);
 			},
 		);
+	});
+
+	describe('ScheduledTaskRepository.deleteFinishedOlderThan', () => {
+		const HOUR_MS = 60 * 60 * 1000;
+
+		it('deletes only rows in the given statuses finished before the cutoff', async () => {
+			const job = await createJob();
+			await createTask(job.id, { status: 'succeeded', finishedAt: secondsFromNow(-7200) });
+			await createTask(job.id, { status: 'cancelled', finishedAt: secondsFromNow(-7200) });
+			const freshSucceeded = await createTask(job.id, {
+				status: 'succeeded',
+				finishedAt: secondsFromNow(-60),
+			});
+			const oldFailed = await createTask(job.id, {
+				status: 'failed',
+				finishedAt: secondsFromNow(-7200),
+			});
+			const pending = await createTask(job.id, { status: 'pending' });
+			const running = await createTask(job.id, {
+				status: 'running',
+				claimedBy: 'main-1',
+				leaseExpiresAt: secondsFromNow(-7200),
+			});
+
+			const deleted = await taskRepository.deleteFinishedOlderThan({
+				statuses: ['succeeded', 'cancelled'],
+				olderThanMs: HOUR_MS,
+				limit: 100,
+			});
+
+			// Both expired clean rows went; the fresh one, other statuses, and
+			// live rows (no finishedAt) survived.
+			expect(deleted).toBe(2);
+			const survivors = new Set((await taskRepository.find()).map((t) => t.id));
+			expect(survivors).toEqual(new Set([freshSucceeded.id, oldFailed.id, pending.id, running.id]));
+		});
+
+		it('deletes the oldest rows first when the limit caps a batch', async () => {
+			const job = await createJob();
+			await createTask(job.id, { status: 'succeeded', finishedAt: secondsFromNow(-4 * 3600) });
+			await createTask(job.id, { status: 'succeeded', finishedAt: secondsFromNow(-3 * 3600) });
+			const youngest = await createTask(job.id, {
+				status: 'succeeded',
+				finishedAt: secondsFromNow(-2 * 3600),
+			});
+
+			const deleted = await taskRepository.deleteFinishedOlderThan({
+				statuses: ['succeeded'],
+				olderThanMs: HOUR_MS,
+				limit: 2,
+			});
+
+			expect(deleted).toBe(2);
+			const remaining = await taskRepository.find();
+			expect(remaining.map((t) => t.id)).toEqual([youngest.id]);
+		});
+
+		it('never deletes a terminal row missing finishedAt', async () => {
+			const job = await createJob();
+			// Transitions always set finishedAt; a row without it has no provable
+			// age, so retention must leave it alone rather than guess.
+			const untimed = await createTask(job.id, { status: 'succeeded', finishedAt: null });
+
+			const deleted = await taskRepository.deleteFinishedOlderThan({
+				statuses: ['succeeded'],
+				olderThanMs: 0,
+				limit: 100,
+			});
+
+			expect(deleted).toBe(0);
+			expect((await taskRepository.find()).map((t) => t.id)).toEqual([untimed.id]);
+		});
+
+		it('deletes nothing when no statuses are given', async () => {
+			const job = await createJob();
+			await createTask(job.id, { status: 'succeeded', finishedAt: secondsFromNow(-7200) });
+
+			const deleted = await taskRepository.deleteFinishedOlderThan({
+				statuses: [],
+				olderThanMs: HOUR_MS,
+				limit: 100,
+			});
+
+			expect(deleted).toBe(0);
+			expect(await taskRepository.count()).toBe(1);
+		});
+
+		it('rejects live statuses before touching any row', async () => {
+			const job = await createJob();
+			const oldPending = await createTask(job.id, { status: 'pending' });
+
+			// The type already forbids this; the cast simulates a value smuggled
+			// past it (an untyped caller), which the runtime guard must stop.
+			await expect(
+				taskRepository.deleteFinishedOlderThan({
+					statuses: ['pending' as TerminalTaskStatus, 'succeeded'],
+					olderThanMs: 0,
+					limit: 100,
+				}),
+			).rejects.toThrow('only deletes terminal tasks, got: pending');
+			expect((await taskRepository.find()).map((t) => t.id)).toEqual([oldPending.id]);
+		});
+
+		it('rejects a non-integer limit before touching any row', async () => {
+			const job = await createJob();
+			await createTask(job.id, { status: 'succeeded', finishedAt: secondsFromNow(-7200) });
+
+			await expect(
+				taskRepository.deleteFinishedOlderThan({
+					statuses: ['succeeded'],
+					olderThanMs: HOUR_MS,
+					limit: 1.5,
+				}),
+			).rejects.toThrow('needs an integer limit, got: 1.5');
+			expect(await taskRepository.count()).toBe(1);
+		});
+
+		it('treats a non-positive limit as a no-op batch', async () => {
+			const job = await createJob();
+			await createTask(job.id, { status: 'succeeded', finishedAt: secondsFromNow(-7200) });
+
+			const deleted = await taskRepository.deleteFinishedOlderThan({
+				statuses: ['succeeded'],
+				olderThanMs: HOUR_MS,
+				limit: 0,
+			});
+
+			expect(deleted).toBe(0);
+			expect(await taskRepository.count()).toBe(1);
+		});
+
+		// Postgres only: while another transaction holds eligible rows locked,
+		// FOR UPDATE SKIP LOCKED must hand the concurrent batch the remaining rows
+		// instead of blocking on (or double-deleting) the locked ones. On sqlite
+		// the single-writer lock serializes the two, so there is nothing to skip.
+		it.skipIf(!isPostgres)(
+			'skips rows another transaction holds locked and deletes the rest',
+			async () => {
+				const job = await createJob();
+				const lockedOlder = await createTask(job.id, {
+					status: 'succeeded',
+					finishedAt: secondsFromNow(-4 * 3600),
+				});
+				const lockedNewer = await createTask(job.id, {
+					status: 'succeeded',
+					finishedAt: secondsFromNow(-3 * 3600),
+				});
+				await createTask(job.id, {
+					status: 'succeeded',
+					finishedAt: secondsFromNow(-2 * 3600),
+				});
+
+				// The holder draws from the secondary pool so its transaction stays
+				// open while the delete runs on the main pool.
+				const runner = secondaryDataSource!.createQueryRunner();
+				try {
+					await runner.connect();
+					await runner.startTransaction();
+					await runner.manager
+						.getRepository(ScheduledTask)
+						.createQueryBuilder('task')
+						.setLock('pessimistic_write')
+						.whereInIds([lockedOlder.id, lockedNewer.id])
+						.getMany();
+
+					const deleted = await taskRepository.deleteFinishedOlderThan({
+						statuses: ['succeeded'],
+						olderThanMs: HOUR_MS,
+						limit: 10,
+					});
+
+					// Only the unlocked row went, even though the locked ones are older.
+					expect(deleted).toBe(1);
+					const survivors = new Set((await taskRepository.find()).map((t) => t.id));
+					expect(survivors).toEqual(new Set([lockedOlder.id, lockedNewer.id]));
+
+					await runner.rollbackTransaction();
+				} finally {
+					await runner.release();
+				}
+
+				// With the lock released, the next batch reaps what was skipped.
+				const rest = await taskRepository.deleteFinishedOlderThan({
+					statuses: ['succeeded'],
+					olderThanMs: HOUR_MS,
+					limit: 10,
+				});
+				expect(rest).toBe(2);
+				expect(await taskRepository.count()).toBe(0);
+			},
+		);
+	});
+
+	describe('ScheduledTaskRepository.getMetricSnapshot', () => {
+		it('reports queue depth counts and the oldest due pending age', async () => {
+			const job = await createJob();
+			const now = new Date();
+
+			// Two due pending rows (runAt in the past) and one not-yet-due pending row.
+			const dueOld = await createTask(job.id, {
+				status: 'pending',
+				runAt: new Date(now.getTime() - 120_000),
+			});
+			await createTask(job.id, { status: 'pending', runAt: new Date(now.getTime() - 30_000) });
+			await createTask(job.id, { status: 'pending', runAt: new Date(now.getTime() + 3_600_000) });
+			// A running row, plus terminal rows that must not be counted.
+			await createTask(job.id, {
+				status: 'running',
+				claimedBy: 'main-1',
+				leaseExpiresAt: new Date(now.getTime() + 60_000),
+			});
+			await createTask(job.id, { status: 'succeeded', finishedAt: secondsFromNow(-60) });
+			await createTask(job.id, { status: 'failed', finishedAt: secondsFromNow(-60) });
+
+			const snapshot = await taskRepository.getMetricSnapshot();
+
+			expect(snapshot.pending).toBe(3); // both due rows plus the future one
+			expect(snapshot.due).toBe(2); // only the two past-runAt rows are actionable
+			expect(snapshot.running).toBe(1);
+			// Lag tracks the oldest DUE pending row, not the future one. Measured against
+			// DB-now, so it's at least the row's age at seed time, plus the small elapsed
+			// time until the query ran.
+			const seededAgeMs = now.getTime() - dueOld.runAt.getTime();
+			expect(snapshot.oldestPendingAgeMs).toBeGreaterThanOrEqual(seededAgeMs);
+			expect(snapshot.oldestPendingAgeMs).toBeLessThan(seededAgeMs + 60_000);
+		});
+
+		it('returns a null oldest age when no pending row is due', async () => {
+			const job = await createJob();
+			const now = new Date();
+
+			await createTask(job.id, { status: 'pending', runAt: new Date(now.getTime() + 3_600_000) });
+			await createTask(job.id, {
+				status: 'running',
+				claimedBy: 'main-1',
+				leaseExpiresAt: new Date(now.getTime() + 60_000),
+			});
+
+			const snapshot = await taskRepository.getMetricSnapshot();
+
+			expect(snapshot.pending).toBe(1);
+			expect(snapshot.due).toBe(0);
+			expect(snapshot.running).toBe(1);
+			expect(snapshot.oldestPendingAgeMs).toBeNull();
+		});
+
+		it('reports all-zero counts and a null age on an empty queue', async () => {
+			const snapshot = await taskRepository.getMetricSnapshot();
+
+			expect(snapshot).toEqual({ pending: 0, due: 0, running: 0, oldestPendingAgeMs: null });
+		});
 	});
 });
