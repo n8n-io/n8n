@@ -2385,5 +2385,37 @@ describe('ParameterInputList', () => {
 			expect(container.querySelector('[path="chatApproval"]')).toBeInTheDocument();
 			expect(container.querySelector('[path="chatApprovalOptions"]')).toBeInTheDocument();
 		});
+
+		it('reveals the advanced HITL parameters once the flag resolves after mount', async () => {
+			// PostHog flags resolve asynchronously after the app boots, so the NDV can
+			// mount before the real flag value is known. The parameter list must pick
+			// up the flag turning on afterwards, not just at initial render.
+			vi.useFakeTimers();
+			try {
+				const flagEnabled = ref(false);
+				mockedStore(usePostHog).isFeatureEnabled.mockImplementation(() => flagEnabled.value);
+				ndvStore.activeNode = telegramNode;
+
+				const { container } = renderComponent({
+					props: {
+						parameters: telegramParameters,
+						nodeValues: TEST_NODE_VALUES,
+					},
+				});
+				await flushPromises();
+
+				expect(container.querySelector('[path="chatApproval"]')).not.toBeInTheDocument();
+
+				flagEnabled.value = true;
+				await nextTick();
+				await vi.advanceTimersByTimeAsync(250);
+				await flushPromises();
+
+				expect(container.querySelector('[path="chatApproval"]')).toBeInTheDocument();
+				expect(container.querySelector('[path="chatApprovalOptions"]')).toBeInTheDocument();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
 	});
 });
