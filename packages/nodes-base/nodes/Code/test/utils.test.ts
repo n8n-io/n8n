@@ -1,7 +1,34 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { makeResolverFromLegacyOptions, NodeVM } from 'vm2';
 
-import { addPostExecutionWarning } from '../utils';
+import { addPostExecutionWarning, generateScript } from '../utils';
+
+it('should resolve external modules outside the process working directory', async () => {
+	const originalCwd = process.cwd();
+	const isolatedCwd = mkdtempSync(join(tmpdir(), 'n8n-code-node-'));
+
+	try {
+		process.chdir(isolatedCwd);
+
+		const resolver = makeResolverFromLegacyOptions({
+			external: { modules: ['lodash'], transitive: false },
+			builtin: [],
+		});
+		const vm = new NodeVM({ require: resolver });
+
+		await expect(vm.run(generateScript("return typeof require('lodash').chunk"))).resolves.toBe(
+			'function',
+		);
+	} finally {
+		process.chdir(originalCwd);
+		rmSync(isolatedCwd, { recursive: true, force: true });
+	}
+});
 
 describe('addPostExecutionWarning', () => {
 	const context = mock<IExecuteFunctions>();

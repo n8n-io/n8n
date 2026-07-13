@@ -1,3 +1,5 @@
+import { join } from 'node:path';
+
 import type { INodeExecutionData, IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { VMScript } from 'vm2';
 
@@ -66,16 +68,18 @@ Error.prepareStackTrace = (err, structuredStackTrace) => {
 };
 `;
 
+const SCRIPT_FILENAME = join(__dirname, 'Code');
+
 export function generateScript(jsCode: string) {
 	return new VMScript(
 		`module.exports = async function() {${jsCode}\n}() ${PREPARE_STACKTRACE}`,
-		'Code',
+		SCRIPT_FILENAME,
 	);
 }
 
 export function generateSortingScript(jsCode: string) {
 	return new VMScript(
 		`module.exports = items.sort((a, b) => { ${jsCode} }) ${PREPARE_STACKTRACE}`,
-		'Code',
+		SCRIPT_FILENAME,
 	);
 }
