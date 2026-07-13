@@ -239,7 +239,7 @@ export class AgentsBuilderService {
 		const finalInstructions = session?.instructionsAddendum
 			? `${instructions}\n\n${session.instructionsAddendum}`
 			: instructions;
-		const runtimeSkills = getBuilderRuntimeSkills();
+		const runtimeSkills = getBuilderRuntimeSkills(session?.excludeTools);
 
 		const tools = this.agentsBuilderToolsService.getTools(
 			agentId,

@@ -284,21 +284,36 @@ describe('AgentsBuilderService session isolation', () => {
 
 	it('omits standard tools named in session.excludeTools while still registering the rest', async () => {
 		const { service, user, credentialProvider } = setup({
-			json: [fakeTool('ask_question'), fakeTool('read_config')],
+			json: [fakeTool('ask_questions'), fakeTool('read_config')],
 			shared: [fakeTool('ask_credential')],
 		});
 
 		await drain(
 			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
 				threadId: 'ia-builder:t:agent-1',
-				excludeTools: ['ask_question'],
+				excludeTools: ['ask_questions'],
 			}),
 		);
 
-		expect(agentsSdkMocks.registeredToolNames).not.toContain('ask_question');
+		expect(agentsSdkMocks.registeredToolNames).not.toContain('ask_questions');
 		expect(agentsSdkMocks.registeredToolNames).toEqual(
 			expect.arrayContaining(['read_config', 'ask_credential']),
 		);
+	});
+
+	it('omits the integrations skill when session.excludeTools excludes configure_channel', async () => {
+		const { service, user, credentialProvider } = setup();
+
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
+				threadId: 'ia-builder:t:agent-1',
+				excludeTools: ['configure_channel'],
+			}),
+		);
+
+		expect(agentsSdkMocks.skillsCalls).toHaveLength(1);
+		const skills = agentsSdkMocks.skillsCalls[0] as Array<{ id: string }>;
+		expect(skills.some((skill) => skill.id === 'agent-builder-integrations')).toBe(false);
 	});
 
 	it('includes the integrations skill without a session', async () => {
