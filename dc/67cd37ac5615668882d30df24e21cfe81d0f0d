@@ -1,0 +1,50 @@
+packages/cli/src/public-api/v1/handlers/credentials/credentials.handler.ts
+  h_435b1d7d3e52c0 199
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_59bc2f63755e6b::t_6e7f4002209e72 20
+  s_59bc2f63755e6b::t_115961725cbd01 31
+  s_59bc2f63755e6b::t_58cc5a098ee34c 153
+  s_59bc2f63755e6b::t_dc9f4fcb447de4 459-468
+  s_59bc2f63755e6b::t_4ed0a616a6e5cd 664-668
+  s_59bc2f63755e6b::t_22bc5a372b8feb 135
+  s_59bc2f63755e6b::t_fdb6b6d334a52b 150-152,154-157
+packages/cli/test/integration/public-api/credentials.test.ts
+  s_59bc2f63755e6b::t_9f63b50c755542 22-23
+  s_59bc2f63755e6b::t_09064252fd8d10 462-470,472-480
+packages/cli/src/public-api/v1/handlers/workflows/workflows.handler.ts
+  h_435b1d7d3e52c0 4,187
+packages/cli/src/public-api/v1/handlers/data-tables/__tests__/data-tables.handler.test.ts
+  s_59bc2f63755e6b::t_2b0ce8b834f3d2 14
+  s_59bc2f63755e6b::t_4523d498294c50 122-135
+  s_59bc2f63755e6b::t_2490c6fdc9f6cb 37-39
+packages/cli/src/public-api/v1/handlers/data-tables/data-tables.handler.ts
+  h_435b1d7d3e52c0 7,85,87,98
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_59bc2f63755e6b::t_83ad51d2494ee2 47-53
+  s_59bc2f63755e6b::t_cf139cc6129d53 5200-5261
+packages/cli/src/workflows/workflows.controller.ts
+  h_435b1d7d3e52c0 34,664
+packages/cli/src/public-api/v1/handlers/workflows/workflows.service.ts
+  h_435b1d7d3e52c0 10,47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "dc67cd37ac5615668882d30df24e21cfe81d0f0d",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_59bc2f63755e6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "453ece46-b0c6-4be5-bed7-4af644ba3d29",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

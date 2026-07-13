@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Kafka/Kafka.node.ts
+  s_b874bfae5cbe1c::t_1cee1f4c63ca98 357,359-368
+packages/nodes-base/nodes/Kafka/test/Kafka.node.test.ts
+  s_b874bfae5cbe1c::t_e7fd89e0be927c 143,147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "6c5214916e539cae4060d06f200e05bc7094a686",
+  "prompts": {},
+  "sessions": {
+    "s_b874bfae5cbe1c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3edf96de-b41a-4c24-b80d-bd021acf77bb",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

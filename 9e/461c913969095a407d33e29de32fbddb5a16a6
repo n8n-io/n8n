@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/executionStarted.ts
+  s_ccec85ec2bb9da::t_e1dbfd92154c4e 47-51
+packages/frontend/editor-ui/src/app/stores/subworkflowProgress.store.test.ts
+  s_ccec85ec2bb9da::t_ec96cd33c0c583 97,111,114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "9e461c913969095a407d33e29de32fbddb5a16a6",
+  "prompts": {},
+  "sessions": {
+    "s_ccec85ec2bb9da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69be5006-a611-47c9-ae9f-7c51c628fdce",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guillaume Jacquart <jacquart.guillaume@gmail.com>"
+    }
+  }
+}

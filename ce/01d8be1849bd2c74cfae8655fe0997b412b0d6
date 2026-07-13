@@ -1,0 +1,14 @@
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  h_8fb27e0cdf6d1e 71-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ce01d8be1849bd2c74cfae8655fe0997b412b0d6",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

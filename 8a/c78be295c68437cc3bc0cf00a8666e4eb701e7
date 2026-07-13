@@ -1,0 +1,42 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_80d185abd37303::t_a94244f81ffd49 186
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_80d185abd37303::t_2b162e1b1f027c 664-675,677,684
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_80d185abd37303::t_eebfcbf3ec3897 85-93,149-153,165,211,216,230,258,275-280
+  s_80d185abd37303::t_396f9c815cec5e 281-282
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderMainTabs.ts
+  s_80d185abd37303::t_917419f05a920e 9,11,19,26,34,37,53,63-87
+packages/frontend/editor-ui/src/features/agents/components/AgentFilesPanel.vue
+  s_80d185abd37303::t_5a1e76e01b21ce 4-5,7,10-15,39-40,47,49,57,65-73,76-78,97-117,135-145,147-148,150-155,160-161,163-197,199-201,203-211,213-227,239,242-243,250-254,257-258,261-265,270,273,275-276,278-280,283-347
+  s_80d185abd37303::t_ac1cc6e6567869 157-159
+  s_80d185abd37303::t_10e3313ac89709 149
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_80d185abd37303::t_2b16ccfe734ff8 6789,6791,6987
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentFilesPanel.test.ts
+  s_80d185abd37303::t_c6ed841f246293 56,100
+  s_80d185abd37303::t_97917ef113ab90 73
+  s_80d185abd37303::t_ae6ef5556e528a 9-22,40-42,45-46,50-55,57-58,87-99,101-105,107,109
+  s_80d185abd37303::t_786d585670ff02 25-32,43-44,106
+  s_80d185abd37303::t_df95435204c975 108
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_80d185abd37303::t_e26fefb9889c0c 136,138-149
+  s_80d185abd37303::t_ee7100d5fee949 137
+  s_80d185abd37303::t_9d1abc71b2c9e7 150-152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "8ac78be295c68437cc3bc0cf00a8666e4eb701e7",
+  "prompts": {},
+  "sessions": {
+    "s_80d185abd37303": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2231-958a-77f0-881a-1fca61d763de",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

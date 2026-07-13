@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/components/ExposeAllWorkflowsToMcpModal.vue
+  h_df158766ffbd97 77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "49323c8f92fd670607f3f125e074b6ff39fcfe62",
+  "prompts": {},
+  "humans": {
+    "h_df158766ffbd97": {
+      "author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,68 @@
+packages/frontend/editor-ui/src/features/agents/utils/write-todos-tool.ts
+  s_33f375acd99f4a::t_642a4170be12cd 101,129
+  s_33f375acd99f4a::t_d6ad4bafaac8ed 4-8
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/displayGroups.ts
+  s_6e06771097abf4::t_69985ae368fe9e 44-46,66-68
+  s_33f375acd99f4a::t_e3ac0062fe540b 1-43,47-65,69-81
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_33f375acd99f4a::t_e652d4ce74dc81 1,6-13,15-102
+  s_33f375acd99f4a::t_66386492f0dd02 2-5
+  s_33f375acd99f4a::t_77b67ca5c67fc2 14
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/interactionRegistry.test.ts
+  s_6e06771097abf4::t_69985ae368fe9e 3-6
+  s_33f375acd99f4a::t_28904492b5579d 21
+  s_33f375acd99f4a::t_81c400c4f00851 1-2,7-20,22-36
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/messageMappers.test.ts
+  s_33f375acd99f4a::t_d550d8a6d08c7f 1-73
+packages/frontend/editor-ui/src/features/agents/composables/agentChatMessages.ts
+  s_33f375acd99f4a::t_7c103eb5678532 1-22
+packages/frontend/editor-ui/src/features/agents/components/interactive/InteractiveCard.vue
+  s_33f375acd99f4a::t_8ca3a9c88ea4f0 9-13,46-70,73-112,119-121,123
+  s_6e06771097abf4::t_69985ae368fe9e 71-72
+packages/frontend/editor-ui/src/features/agents/utils/delegate-tool.ts
+  s_33f375acd99f4a::t_81a4a2ba2f0460 1
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/constants.ts
+  s_33f375acd99f4a::t_1ed2fd02882710 1-25
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/interactiveSummary.ts
+  s_33f375acd99f4a::t_f7cfb663c977eb 1-65
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_33f375acd99f4a::t_d97ad71d3a8db1 1-16,21-237
+  s_33f375acd99f4a::t_f3090f005bdb94 17-20
+packages/frontend/editor-ui/src/features/agents/utils/interactive-summary.ts
+  s_33f375acd99f4a::t_81a4a2ba2f0460 1
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/displayGroups.test.ts
+  s_33f375acd99f4a::t_e0e0d30c023c4c 1-45
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/components/InteractionRenderer.vue
+  s_33f375acd99f4a::t_1cc356e19ca9af 1-50
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/delegateTool.ts
+  s_33f375acd99f4a::t_9031f06123ba26 42-44
+  s_33f375acd99f4a::t_1fa284ed11daa4 1-41,45-145
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/interactionRegistry.ts
+  s_33f375acd99f4a::t_7b17c81cbf585f 1-27
+packages/frontend/editor-ui/src/features/agents/constants.ts
+  s_33f375acd99f4a::t_112bcf83069613 31-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "f88d360f44fb9608e6f1ba7171e1018316670225",
+  "prompts": {},
+  "sessions": {
+    "s_33f375acd99f4a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eacb1-b12a-7273-a974-911d7b1543ff",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_6e06771097abf4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b3c7bb4-2a4f-497e-966d-6b2a50495f9d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

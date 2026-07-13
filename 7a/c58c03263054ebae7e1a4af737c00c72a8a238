@@ -1,0 +1,48 @@
+packages/cli/src/modules/source-control.ee/__tests__/source-control-import.service.ee.test.ts
+  s_de882004f15807::t_dec71593ac9d48 107
+packages/cli/src/modules/mcp/__tests__/update-workflow.tool.test.ts
+  s_de882004f15807::t_f25e3c9e1277f4 10
+  s_de882004f15807::t_4e4ea4542c5ebb 424-440
+packages/cli/src/workflow-helpers.ts
+  s_de882004f15807::t_637bd074a2a4fb 9-10,12,18,20
+  s_de882004f15807::t_37d190b6ec9b7c 146-175,178-180,184-188,202-205,223-290
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  ai_agent 339-341,350
+  s_de882004f15807::t_2d5078136021d8 345-349,351-354,356-363
+  s_de882004f15807::t_5fb8f880313233 337-338,342-344
+packages/cli/test/integration/environments/source-control-import.service.test.ts
+  s_de882004f15807::t_8df6ea99f40a88 116
+packages/cli/src/__tests__/workflow-helpers.test.ts
+  s_de882004f15807::t_c76d114f98777e 30
+  s_de882004f15807::t_263172f00084f3 481
+  s_de882004f15807::t_5b8fab0b068276 624
+  s_de882004f15807::t_d4e1444ba78a61 458-471,473-480,482-490,494-497,503-506,510,512-532,538-545,551-558,564-574,580-623,625-739,742-743,746-755
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  s_de882004f15807::t_d10651a28505d9 144
+  s_de882004f15807::t_cd1661c115f7e0 52
+  s_de882004f15807::t_d530e4aa65c88c 759
+packages/cli/src/workflows/workflow.service.ts
+  s_de882004f15807::t_180539715fdeab 421-428
+  s_de882004f15807::t_32201adf6677fd 375-385
+packages/cli/src/workflows/workflow-creation.service.ts
+  s_de882004f15807::t_f0008319355821 125
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_de882004f15807::t_52395afb3e861c 1118
+  ai_agent 1988-2006
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7ac58c03263054ebae7e1a4af737c00c72a8a238",
+  "prompts": {},
+  "sessions": {
+    "s_de882004f15807": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b483a2c-7da0-4f22-9ee2-29b3907f3af4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}
