@@ -225,8 +225,7 @@ export async function autoPopulateNodeCredentials(
  * - `Node credential assigned` — the cross-surface attribution funnel shared with
  *   the canvas and Instance AI, for every slot that actually received a credential.
  *   The actor is `mcp`; `credential_kind` maps the slot's origin (`aiGateway` → n8n
- *   Connect, `user` → BYOK). `workflowId` is omitted for create — the workflow is
- *   not persisted yet.
+ *   Connect, `user` → BYOK).
  */
 export function trackAutoassignOutcomes(
 	telemetry: Telemetry,

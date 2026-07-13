@@ -1,7 +1,7 @@
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import type { INode } from 'n8n-workflow';
 
-import { stripToolSuffix } from '../../mcp-ai-gateway.helper';
+import { stripToolSuffix } from '@/utils';
 
 /** Sentinel key the gateway uses for nodes with a flat `operation` param (no resource). */
 const OPERATION_ONLY = '__operation_only__';

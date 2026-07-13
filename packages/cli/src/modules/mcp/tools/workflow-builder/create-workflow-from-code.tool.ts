@@ -302,14 +302,6 @@ export const createCreateWorkflowFromCodeTool = (
 				effectiveProjectId,
 				aiGatewayService,
 			);
-			const nodeTypesByName = new Map(newWorkflow.nodes.map((n) => [n.name, n.type]));
-			trackAutoassignOutcomes(
-				telemetry,
-				user.id,
-				'create_workflow_from_code',
-				autoAssignOutcomes,
-				nodeTypesByName,
-			);
 
 			// Explicit credential ids in the generated code bypass auto-assignment,
 			// so verify they're reachable from the target project. This matches the
@@ -338,6 +330,16 @@ export const createCreateWorkflowFromCodeTool = (
 				versionName: versionMetadata.name,
 				versionDescription: versionMetadata.description,
 			});
+
+			const nodeTypesByName = new Map(savedWorkflow.nodes.map((n) => [n.name, n.type]));
+			trackAutoassignOutcomes(
+				telemetry,
+				user.id,
+				'create_workflow_from_code',
+				autoAssignOutcomes,
+				nodeTypesByName,
+				savedWorkflow.id,
+			);
 
 			const baseUrl = urlService.getInstanceBaseUrl();
 			const workflowUrl = `${baseUrl}/workflow/${savedWorkflow.id}`;

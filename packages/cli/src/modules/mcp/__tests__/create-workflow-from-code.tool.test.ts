@@ -802,6 +802,37 @@ describe('create-workflow-from-code MCP tool', () => {
 			});
 		});
 
+		test('tracks auto-assign outcomes with the persisted workflow id after save', async () => {
+			mockAutoPopulateNodeCredentials.mockResolvedValue({
+				assignments: [],
+				skippedHttpNodes: [],
+				outcomes: [
+					{
+						nodeName: 'OpenAI',
+						credentialType: 'openAiApi',
+						source: 'aiGateway',
+						hadUserCredential: false,
+						aiGatewayAvailable: true,
+					},
+				],
+			});
+
+			await callHandler({ code: 'const wf = ...' });
+
+			expect(mockTrackAutoassignOutcomes).toHaveBeenCalledTimes(1);
+			const trackArgs = mockTrackAutoassignOutcomes.mock.calls[0];
+			expect(trackArgs[2]).toBe('create_workflow_from_code');
+			expect(trackArgs[5]).toBe('wf-saved-1');
+		});
+
+		test('does not track auto-assign outcomes when the save fails', async () => {
+			createWorkflowMock.mockRejectedValueOnce(new Error('save failed'));
+
+			await callHandler({ code: 'const wf = ...' });
+
+			expect(mockTrackAutoassignOutcomes).not.toHaveBeenCalled();
+		});
+
 		test('refuses to save when an agent is wired as a tool to another agent', async () => {
 			mockParseAndValidate.mockResolvedValue({
 				workflow: {

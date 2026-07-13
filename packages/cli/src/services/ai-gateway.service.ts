@@ -7,7 +7,7 @@ import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IHttpRequestMethods } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
@@ -42,6 +42,13 @@ export class AiGatewayService {
 	private gatewayConfig: AiGatewayConfigDto | null = null;
 	private configFetchedAt = 0;
 	private static readonly CONFIG_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+	/**
+	 * Timestamp of the last failed config fetch. A failure is cached briefly so a
+	 * down gateway isn't re-hit on every `isAvailable()` call (fired per MCP tool call).
+	 */
+	private configFetchFailedAt = 0;
+	private static readonly CONFIG_FAILURE_TTL_MS = 60 * 1000; // 1 minute
 
 	private static readonly GATEWAY_PATH_PREFIX = '/v1/gateway';
 
@@ -308,23 +315,37 @@ export class AiGatewayService {
 	async getGatewayConfig(): Promise<AiGatewayConfigDto> {
 		if (!this.isConfigStale()) return this.gatewayConfig!;
 
-		const baseUrl = this.requireBaseUrl();
-
-		const data = await this.gatewayRequest<unknown>(
-			{
-				method: 'GET',
-				url: `${baseUrl}/v1/gateway/config`,
-			},
-			'Failed to fetch AI Gateway config',
-		);
-		const parsed = AiGatewayConfigDto.safeParse(data);
-		if (!parsed.success) {
-			throw new UserError('AI Gateway returned an invalid config response.');
+		// Throttle re-fetching after a recent failure so a down gateway isn't hit on every call.
+		if (
+			this.configFetchFailedAt > 0 &&
+			Date.now() - this.configFetchFailedAt < AiGatewayService.CONFIG_FAILURE_TTL_MS
+		) {
+			throw new OperationalError('AI Gateway config fetch recently failed; retry is throttled.');
 		}
 
-		this.gatewayConfig = parsed.data;
-		this.configFetchedAt = Date.now();
-		return parsed.data;
+		const baseUrl = this.requireBaseUrl();
+
+		try {
+			const data = await this.gatewayRequest<unknown>(
+				{
+					method: 'GET',
+					url: `${baseUrl}/v1/gateway/config`,
+				},
+				'Failed to fetch AI Gateway config',
+			);
+			const parsed = AiGatewayConfigDto.safeParse(data);
+			if (!parsed.success) {
+				throw new UserError('AI Gateway returned an invalid config response.');
+			}
+
+			this.gatewayConfig = parsed.data;
+			this.configFetchedAt = Date.now();
+			this.configFetchFailedAt = 0;
+			return parsed.data;
+		} catch (error) {
+			this.configFetchFailedAt = Date.now();
+			throw error;
+		}
 	}
 
 	/**

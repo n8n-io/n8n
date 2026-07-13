@@ -765,6 +765,49 @@ describe('AiGatewayService', () => {
 
 			dateSpy.mockRestore();
 		});
+
+		it('caches a failed fetch and does not re-fetch within the failure TTL', async () => {
+			requestMock.mockResolvedValue(fail(503));
+			const service = makeService();
+			const dateSpy = vi.spyOn(Date, 'now');
+			const now = 1_700_000_000_000;
+
+			dateSpy.mockReturnValue(now);
+			await expect(service.getGatewayConfig()).rejects.toThrow();
+			expect(requestMock).toHaveBeenCalledTimes(1);
+
+			// Within the 60s failure window — throttled, no new request
+			dateSpy.mockReturnValue(now + 30 * 1000);
+			await expect(service.getGatewayConfig()).rejects.toThrow();
+			expect(requestMock).toHaveBeenCalledTimes(1);
+
+			// Past the failure window — retries
+			dateSpy.mockReturnValue(now + 60 * 1000 + 1);
+			await expect(service.getGatewayConfig()).rejects.toThrow();
+			expect(requestMock).toHaveBeenCalledTimes(2);
+
+			dateSpy.mockRestore();
+		});
+
+		it('clears the failure throttle after a successful fetch', async () => {
+			const service = makeService();
+			const dateSpy = vi.spyOn(Date, 'now');
+			const now = 1_700_000_000_000;
+
+			dateSpy.mockReturnValue(now);
+			requestMock.mockResolvedValueOnce(fail(503));
+			await expect(service.getGatewayConfig()).rejects.toThrow();
+			expect(requestMock).toHaveBeenCalledTimes(1);
+
+			// Past the failure window — a retry succeeds and clears the marker
+			dateSpy.mockReturnValue(now + 60 * 1000 + 1);
+			requestMock.mockResolvedValueOnce(ok(MOCK_GATEWAY_CONFIG));
+			const result = await service.getGatewayConfig();
+			expect(result).toEqual(MOCK_GATEWAY_CONFIG);
+			expect(requestMock).toHaveBeenCalledTimes(2);
+
+			dateSpy.mockRestore();
+		});
 	});
 
 	describe('token cache size limit', () => {
