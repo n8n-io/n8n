@@ -1978,11 +1978,9 @@ export class InstanceAiService {
 		// build_agent flow persists configs from workspace files, so the skill
 		// needs both the agents module and the sandbox workspace. Hide it when
 		// either is unavailable.
-		// Per-user feature-flag skill gates: hide flag-gated skills (e.g. the
-		// config-evals skill) from users without the flag. `filterRuntimeSkillSource`
-		// returns a filtered copy and recomputes the skills hash, so the process-level
-		// catalog cache is preserved. Applied to the base source so every derived
-		// source (with/without agent-builder, materialized, catalog) inherits it.
+		// Per-user skill gate: hide flag-gated skills via filterRuntimeSkillSource
+		// (filtered copy, cache preserved). Applied to the base so every derived
+		// source (agent-builder variants, materialized, catalog) inherits it.
 		const flagDisabledSkillIds = disabledInstanceAiSkillIds({ configEvalsEnabled });
 		const allRuntimeSkills =
 			flagDisabledSkillIds.length > 0

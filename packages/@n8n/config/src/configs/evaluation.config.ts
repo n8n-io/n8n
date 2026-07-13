@@ -23,17 +23,9 @@ export class EvaluationConfig {
 	@Env('N8N_EVAL_COLLECTIONS_ENABLED')
 	collectionsEnabled: boolean = false;
 
-	/**
-	 * Force-enable Instance AI's config-based evaluation capability (the
-	 * `eval-config` tool + config-evals skill).
-	 *
-	 * Operator-level override of the `088_instance_ai_config_evals` PostHog
-	 * rollout flag. When `true`, the capability is available regardless of
-	 * PostHog cohort (useful for local dev, QA, and self-hosted without
-	 * PostHog). When `false` (default), PostHog is the source of truth.
-	 *
-	 * Cannot force-disable: `false` defers to PostHog, it is not a kill-switch.
-	 */
+	/** Force-enable Instance AI's config-based eval capability, overriding the
+	 *  `088_instance_ai_config_evals` flag. `false` (default) defers to PostHog —
+	 *  not a kill-switch. */
 	@Env('N8N_INSTANCE_AI_CONFIG_EVALS_ENABLED')
 	configEvalsEnabled: boolean = false;
 }

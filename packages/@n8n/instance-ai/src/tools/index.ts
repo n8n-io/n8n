@@ -99,9 +99,8 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
 	];
 
-	// Config-based evals are gated behind the `088_instance_ai_config_evals`
-	// PostHog flag: the adapter only wires `evaluationConfigService` when the
-	// flag is on, so its presence is the signal to expose the tool.
+	// eval-config is flag-gated: the adapter only wires evaluationConfigService
+	// when `088_instance_ai_config_evals` is on, so presence = expose the tool.
 	if (context.evaluationConfigService) {
 		tools.push([DOMAIN_TOOL_IDS.EVAL_CONFIG, loadEvalConfigTool().createEvalConfigTool(context)]);
 	}
@@ -133,9 +132,8 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
 	];
 
-	// Config-based evals are gated behind the `088_instance_ai_config_evals`
-	// PostHog flag: the adapter only wires `evaluationConfigService` when the
-	// flag is on, so its presence is the signal to expose the tool.
+	// eval-config is flag-gated: the adapter only wires evaluationConfigService
+	// when `088_instance_ai_config_evals` is on, so presence = expose the tool.
 	if (context.evaluationConfigService) {
 		tools.push([DOMAIN_TOOL_IDS.EVAL_CONFIG, loadEvalConfigTool().createEvalConfigTool(context)]);
 	}

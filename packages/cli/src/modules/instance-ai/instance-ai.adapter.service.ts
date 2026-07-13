@@ -277,9 +277,8 @@ export class InstanceAiAdapterService {
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
 			 *  assistant can create one via the create_agent tool. */
 			agentId?: string;
-			/** Gate for config-based evals (`088_instance_ai_config_evals`). Resolved
-			 *  per-user by the caller via `isConfigEvalsEnabled`. When falsy, the
-			 *  eval-config service is not wired and the tool is not exposed. */
+			/** Per-user config-evals gate (via `isConfigEvalsEnabled`). Falsy →
+			 *  eval-config service/tool not wired. */
 			configEvalsEnabled?: boolean;
 		},
 	): InstanceAiContext {
@@ -341,13 +340,8 @@ export class InstanceAiAdapterService {
 		}
 	}
 
-	/**
-	 * Per-user gate for the config-based eval capability, backed by the
-	 * `088_instance_ai_config_evals` PostHog flag (operator override via
-	 * `N8N_INSTANCE_AI_CONFIG_EVALS_ENABLED`). `getFeatureFlags` swallows PostHog
-	 * errors and returns `{}`, so an outage fails closed (capability disabled).
-	 * Pass the result into `createContext({ configEvalsEnabled })`.
-	 */
+	/** Per-user gate for config-based evals (`088_instance_ai_config_evals`).
+	 *  Fails closed: `getFeatureFlags` returns `{}` on a PostHog outage. */
 	async isConfigEvalsEnabled(user: User): Promise<boolean> {
 		const flags = await Container.get(PostHogClient).getFeatureFlags(user);
 		return flags?.[CONFIG_EVALS_FLAG] === true;
