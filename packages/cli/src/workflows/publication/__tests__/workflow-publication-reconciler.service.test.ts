@@ -8,6 +8,7 @@ import type {
 import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter, InstanceSettings, Span, Tracing } from 'n8n-core';
 
+import type { EventService } from '@/events/event.service';
 import type { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
 
 import type { WorkflowPublicationOutboxConsumer } from '../workflow-publication-outbox-consumer';
@@ -25,6 +26,7 @@ const outboxConsumer = mock<WorkflowPublicationOutboxConsumer>();
 const instanceSettings = mock<InstanceSettings>({ isLeader: true });
 const errorReporter = mock<ErrorReporter>();
 const tracing = mock<Tracing>();
+const eventService = mock<EventService>();
 
 let service: WorkflowPublicationReconciler;
 
@@ -59,6 +61,7 @@ beforeEach(() => {
 		instanceSettings,
 		errorReporter,
 		tracing,
+		eventService,
 	);
 });
 
@@ -125,6 +128,10 @@ describe('WorkflowPublicationReconciler', () => {
 			expect(outboxRepository.enqueueByWorkflowIds).toHaveBeenCalledWith(['wf-1']);
 			expect(outboxConsumer.startPolling).toHaveBeenCalled();
 			expect(outboxConsumer.drainPending).toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'workflow-publication-reconciliation',
+				expect.objectContaining({ result: 'success', deficientCount: 1 }),
+			);
 		});
 
 		it('does nothing when every desired trigger is registered', async () => {
@@ -172,6 +179,10 @@ describe('WorkflowPublicationReconciler', () => {
 
 			await expect(service.reconcile()).resolves.toBeUndefined();
 			expect(errorReporter.error).toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'workflow-publication-reconciliation',
+				expect.objectContaining({ result: 'failure' }),
+			);
 		});
 
 		it('does not run when the instance is no longer leader', async () => {

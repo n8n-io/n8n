@@ -105,6 +105,7 @@ describe('PrometheusWorkflowPublicationMetricsService', () => {
 					'n8n_workflow_publication_outbox_record_outcomes_total',
 					'n8n_workflow_publication_trigger_node_operations_total',
 					'n8n_workflow_publication_outbox_cleanup_deleted_records_total',
+					'n8n_workflow_publication_reconciliation_deficient_workflows_total',
 				]),
 			);
 
@@ -116,6 +117,7 @@ describe('PrometheusWorkflowPublicationMetricsService', () => {
 					'n8n_workflow_publication_outbox_record_duration_seconds',
 					'n8n_workflow_publication_trigger_operation_duration_seconds',
 					'n8n_workflow_publication_outbox_cleanup_duration_seconds',
+					'n8n_workflow_publication_reconciliation_duration_seconds',
 				]),
 			);
 		});
@@ -175,6 +177,17 @@ describe('PrometheusWorkflowPublicationMetricsService', () => {
 
 			expect(mockCounterInc).toHaveBeenCalledWith(9);
 			expect(mockHistogramObserve).toHaveBeenCalledWith({ result: 'success' }, 1);
+		});
+
+		it('records reconciliation deficient count and duration', () => {
+			eventHandler('workflow-publication-reconciliation')!({
+				result: 'success',
+				deficientCount: 2,
+				durationMs: 500,
+			} as never);
+
+			expect(mockCounterInc).toHaveBeenCalledWith(2);
+			expect(mockHistogramObserve).toHaveBeenCalledWith({ result: 'success' }, 0.5);
 		});
 	});
 

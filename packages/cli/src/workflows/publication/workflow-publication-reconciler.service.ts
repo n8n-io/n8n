@@ -9,6 +9,7 @@ import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators'
 import { Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings, SpanStatus, Tracing } from 'n8n-core';
 
+import { EventService } from '@/events/event.service';
 import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
 
 import { WorkflowPublicationOutboxConsumer } from './workflow-publication-outbox-consumer';
@@ -45,6 +46,7 @@ export class WorkflowPublicationReconciler {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly errorReporter: ErrorReporter,
 		private readonly tracing: Tracing,
+		private readonly eventService: EventService,
 	) {
 		this.logger = logger.scoped('workflow-publication');
 	}
@@ -59,6 +61,12 @@ export class WorkflowPublicationReconciler {
 		if (this.reconcileInterval) void this.reconcile();
 	}
 
+	/**
+	 * Deliberately no immediate pass on takeover: `PublishedWorkflowEnqueuer`
+	 * already re-enqueues every active workflow at that moment, and the
+	 * consumed-record race this loop recovers can only materialize after that
+	 * enqueue — the first interval pass catches it.
+	 */
 	@OnLeaderTakeover()
 	startReconciler() {
 		if (!this.workflowsConfig.useWorkflowPublicationService) return;
@@ -97,6 +105,7 @@ export class WorkflowPublicationReconciler {
 		await this.tracing.startSpan(
 			{ name: 'Publication trigger reconciliation', op: 'publication.reconcile' },
 			async (span) => {
+				const startedAt = Date.now();
 				try {
 					const deficient = await this.findDeficientWorkflows();
 
@@ -112,9 +121,19 @@ export class WorkflowPublicationReconciler {
 					}
 
 					span.setStatus({ code: SpanStatus.ok });
+					this.eventService.emit('workflow-publication-reconciliation', {
+						result: 'success',
+						deficientCount: deficient.length,
+						durationMs: Date.now() - startedAt,
+					});
 				} catch (error) {
 					span.setStatus({ code: SpanStatus.error });
 					this.errorReporter.error(error, { shouldBeLogged: true });
+					this.eventService.emit('workflow-publication-reconciliation', {
+						result: 'failure',
+						deficientCount: 0,
+						durationMs: Date.now() - startedAt,
+					});
 				}
 			},
 		);
