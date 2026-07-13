@@ -185,6 +185,77 @@ describe('Aws Credential', () => {
 			);
 		});
 
+		describe('PrivateLink (vpce) endpoints', () => {
+			it.each([
+				{
+					host: 'vpce-0abc123.bedrock-runtime.us-east-1.vpce.amazonaws.com',
+					path: '/model/anthropic.claude-v2/invoke',
+					region: 'us-east-1',
+				},
+				{
+					host: 'vpce-0abc123.bedrock-agent.us-east-1.vpce.amazonaws.com',
+					path: '/agents/',
+					region: 'us-east-1',
+				},
+				{
+					host: 'vpce-0abc123.bedrock-agent-runtime.us-east-1.vpce.amazonaws.com',
+					path: '/agents/agent-id/agentAliases/alias-id/sessions/session-id/text',
+					region: 'us-east-1',
+				},
+				{
+					host: 'vpce-0abc123.bedrock-data-automation.us-east-1.vpce.amazonaws.com',
+					path: '/projects/',
+					region: 'us-east-1',
+				},
+				{
+					host: 'vpce-0abc123.bedrock-data-automation-runtime.us-east-1.vpce.amazonaws.com',
+					path: '/invocations',
+					region: 'us-east-1',
+				},
+			])(
+				'should sign vpce $host requests with the Bedrock service namespace',
+				async ({ host, path, region }) => {
+					const result = await aws.authenticate(credentials, {
+						...requestOptions,
+						baseURL: '',
+						url: `https://${host}${path}`,
+					});
+
+					expect(MockSignatureV4).toHaveBeenCalledWith(
+						expect.objectContaining({
+							service: 'bedrock',
+							region,
+						}),
+					);
+					expect(mockSmithySignFn).toHaveBeenCalledWith(
+						expect.objectContaining({ hostname: host, path }),
+					);
+					expect(result.url).toBe(`https://${host}${path}`);
+				},
+			);
+
+			it('should sign a vpce host for a non-Bedrock service using its own service name', async () => {
+				const host = 'vpce-0abc123.sqs.us-west-2.vpce.amazonaws.com';
+				const path = '/';
+				const result = await aws.authenticate(credentials, {
+					...requestOptions,
+					baseURL: '',
+					url: `https://${host}${path}`,
+				});
+
+				expect(MockSignatureV4).toHaveBeenCalledWith(
+					expect.objectContaining({
+						service: 'sqs',
+						region: 'us-west-2',
+					}),
+				);
+				expect(mockSmithySignFn).toHaveBeenCalledWith(
+					expect.objectContaining({ hostname: host, path }),
+				);
+				expect(result.url).toBe(`https://${host}${path}`);
+			});
+		});
+
 		it('should handle an IRequestOptions object with form instead of body', async () => {
 			const result = await aws.authenticate({ ...credentials }, {
 				...requestOptions,

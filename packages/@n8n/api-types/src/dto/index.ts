@@ -111,6 +111,13 @@ export {
 } from './workflows/base-workflow.dto';
 export { CreateWorkflowDto } from './workflows/create-workflow.dto';
 export { UpdateWorkflowDto } from './workflows/update-workflow.dto';
+export {
+	ManualRunDto,
+	type ManualRunPayload,
+	type FullManualExecutionFromKnownTriggerPayload,
+	type FullManualExecutionFromUnknownTriggerPayload,
+	type PartialManualExecutionToDestinationPayload,
+} from './workflows/manual-run.dto';
 export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';
 export { TransferWorkflowBodyDto } from './workflows/transfer.dto';
 export { ActivateWorkflowDto } from './workflows/activate-workflow.dto';
@@ -240,6 +247,10 @@ export {
 	SecuritySettingsDto,
 	UpdateSecuritySettingsDto,
 } from './security-settings/security-settings.dto';
+export {
+	UpdateSecurityPolicyDto,
+	type SecurityPolicyResponse,
+} from './security-settings/security-policy.dto';
 
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
 export { UpdateWorkflowHistoryVersionDto } from './workflow-history/update-workflow-history-version.dto';

@@ -249,6 +249,10 @@ const canWrite = computed(() => {
 	return canCreate.value || canEdit.value;
 });
 
+// Switching a credential's type in either direction requires the createEndUser
+// permission — the change affects every user's own connection, not just the caller's.
+const canSelectEndUserType = computed(() => !!props.credentialPermissions.createEndUser);
+
 // Connecting an existing private credential only needs the `connect` capability
 // (no edit rights); shared/static credentials store the token on the shared
 // credential itself, so connecting them follows the write permission.
@@ -446,7 +450,8 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 						isPrivateCredentialsEnabled &&
 						// Only OAuth credentials can be dynamic for now, as they are the only ones with the managed authorize endpoint
 						isOAuthType &&
-						canWrite
+						canWrite &&
+						canSelectEndUserType
 					"
 					:model-value="Boolean(isResolvable)"
 					:info-tip="i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.infoTip')"
