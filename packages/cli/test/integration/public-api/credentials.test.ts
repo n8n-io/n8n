@@ -923,6 +923,29 @@ describe('PATCH /credentials/:id', () => {
 		expect(updatedCredential.isResolvable).toBe(true);
 	});
 
+	test('should not allow a project editor to switch a credential to end-user via the public API', async () => {
+		const project = await createTeamProject();
+		await linkUserToProject(member, project, 'project:editor');
+		const credential = await saveCredential(dbCredential(), { project });
+
+		const response = await authMemberAgent
+			.patch(`/credentials/${credential.id}`)
+			.send({ isResolvable: true });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should allow the owner to switch a credential to end-user via the public API', async () => {
+		const credential = await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${credential.id}`)
+			.send({ isResolvable: true });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.isResolvable).toBe(true);
+	});
+
 	test('should fail to update isGlobal when sharing is not licensed', async () => {
 		const savedCredential = await saveCredential(dbCredential(), { user: owner });
 
