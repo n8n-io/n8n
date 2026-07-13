@@ -687,7 +687,7 @@ describe('parseAwsUrl', () => {
 
 	it('prefers the rightmost supported region when a bucket label is itself named like a region', () => {
 		const url = new URL('https://us-east-2.s3.us-east-1.amazonaws.com/key');
-		expect(parseAwsUrl(url)).toEqual({ service: 'us-east-2', region: 'us-east-1' });
+		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: 'us-east-1' });
 	});
 
 	it('parses a legacy SQS hostname (the service slot yields the region label, a known limitation)', () => {
@@ -695,14 +695,34 @@ describe('parseAwsUrl', () => {
 		expect(parseAwsUrl(url)).toEqual({ service: 'us-east-2', region: 'us-east-2' });
 	});
 
-	it('parses an S3 access-point hostname (the service slot yields the access-point name, a known limitation)', () => {
+	it('parses an S3 access-point hostname', () => {
 		const url = new URL('https://myap-123456789012.s3-accesspoint.us-west-2.amazonaws.com/');
-		expect(parseAwsUrl(url)).toEqual({ service: 'myap-123456789012', region: 'us-west-2' });
+		expect(parseAwsUrl(url)).toEqual({ service: 's3-accesspoint', region: 'us-west-2' });
 	});
 
 	it('parses an API Gateway execute-api hostname', () => {
 		const url = new URL('https://myapi123.execute-api.us-west-2.amazonaws.com/prod/resource');
-		expect(parseAwsUrl(url)).toEqual({ service: 'myapi123', region: 'us-west-2' });
+		expect(parseAwsUrl(url)).toEqual({ service: 'execute-api', region: 'us-west-2' });
+	});
+
+	it('parses a virtual-hosted S3 bucket hostname', () => {
+		const url = new URL('https://bucket.s3.us-east-1.amazonaws.com/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: 'us-east-1' });
+	});
+
+	it('parses a legacy fips-prefixed hostname', () => {
+		const url = new URL('https://fips.sqs.us-east-1.amazonaws.com/123456789012/my-queue');
+		expect(parseAwsUrl(url)).toEqual({ service: 'sqs', region: 'us-east-1' });
+	});
+
+	it('resolves the service label even when the bucket is named exactly like the region', () => {
+		const url = new URL('https://us-east-1.s3.us-east-1.amazonaws.com/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: 'us-east-1' });
+	});
+
+	it('skips the dualstack qualifier when resolving the service at depth', () => {
+		const url = new URL('https://bucket.s3.dualstack.us-east-1.amazonaws.com/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: 'us-east-1' });
 	});
 
 	it('surfaces a mistyped region label via the shape fallback', () => {
@@ -1035,9 +1055,58 @@ describe('awsGetSignInOptionsAndUpdateRequest', () => {
 			// mapping instead would sign with the unknown name bedrock-runtime-fips.
 			expect(signOpts.service).toBe('bedrock');
 		});
+
+		it('strips the -fips suffix for services without a signing-name mapping', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{ uri: 'https://lambda-fips.us-east-1.amazonaws.com/', headers: {} } as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('lambda');
+		});
 	});
 
-	describe('unsupported region labels on AWS endpoint hosts', () => {
+	describe('endpoints with qualifier labels left of the service', () => {
+		it('signs an API Gateway invoke URL with the execute-api service', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://myapi123.execute-api.us-west-2.amazonaws.com/prod/x',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('execute-api');
+			expect(signOpts.region).toBe('us-west-2');
+		});
+
+		it('signs an S3 access-point host under the s3 service name', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://myap-123456789012.s3-accesspoint.us-west-2.amazonaws.com/object',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('s3');
+			expect(signOpts.region).toBe('us-west-2');
+		});
+	});
+
+	describe('region labels that cannot be adopted on AWS endpoint hosts', () => {
 		it('throws for a mistyped region label', () => {
 			const call = () =>
 				awsGetSignInOptionsAndUpdateRequest(
@@ -1134,6 +1203,24 @@ describe('awsGetSignInOptionsAndUpdateRequest', () => {
 			);
 
 			expect(signOpts.region).toBe('us-west-2');
+		});
+
+		it('adopts a recognized region label from a deep custom-host label position', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://proxy.api.us-east-1.example.com/x',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'eu-central-1',
+			);
+
+			expect(signOpts.region).toBe('us-east-1');
+			// The service rule applies to custom hosts too: the label left of the region.
+			expect(signOpts.service).toBe('api');
 		});
 
 		it('keeps the credential region when a custom host label is region-shaped but unsupported', () => {

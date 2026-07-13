@@ -56,7 +56,6 @@ function shouldStringifyBody<T>(value: T, headers: IDataObject): boolean {
  * reject the request with `SignatureDoesNotMatch`.
  *
  * Endpoints that already match their signing name fall through unchanged.
- * FIPS endpoint subdomains (`<service>-fips`) sign with the base service name.
  *
  * @param service - Service name as extracted from the endpoint hostname
  * @returns The SigV4 signing service name
@@ -67,9 +66,9 @@ function getAwsSigningService(service: string): string {
 	const baseService = service.replace(/-fips$/, '');
 	// Virtual-hosted-style S3 requests arrive as `<bucket>.s3` (the node builds the
 	// endpoint `<bucket>.s3.<region>.amazonaws.com`). They all sign under the `s3`
-	// signing name. aws4 derived this by inspecting the host; smithy does not, so we
-	// normalize it here.
-	if (baseService === 's3' || baseService.endsWith('.s3')) {
+	// signing name, as do S3 access-point endpoints (`s3-accesspoint`). aws4 derived
+	// this by inspecting the host; smithy does not, so we normalize it here.
+	if (baseService === 's3' || baseService === 's3-accesspoint' || baseService.endsWith('.s3')) {
 		return 's3';
 	}
 	switch (baseService) {
@@ -230,11 +229,15 @@ export const AWS_REGION_SHAPE_PATTERN = /^[a-z]{2}(-[a-z]+)+-\d+$/;
  * Some AWS services are global and don't have a region. Recognizes both
  * public endpoints (`<service>.<region>.amazonaws.com`, including dual-stack
  * and FIPS variants) and PrivateLink endpoints
- * (`vpce-<id>.<service>.<region>.vpce.amazonaws.com`).
+ * (`vpce-<id>.<service>.<region>.vpce.amazonaws.com`), which return their
+ * positional service and region labels verbatim.
  *
- * The region is the rightmost hostname label that is a supported AWS region,
- * else the rightmost region-shaped label, else null. It is not validated
- * against the supported region list; callers must check it (e.g. with
+ * On public endpoints the region is the rightmost hostname label that is a
+ * supported AWS region, else the rightmost region-shaped label, else null.
+ * The service is the label left of the region (skipping a `dualstack`
+ * qualifier) when qualifier labels such as a bucket name or API id precede
+ * it, otherwise the first label. The region is not validated against the
+ * supported region list; callers must check it (e.g. with
  * {@link assertSupportedAwsRegion}) before using it for signing.
  *
  * @param url - The AWS service URL to parse
@@ -264,7 +267,17 @@ export function parseAwsUrl(url: URL): { region: string | null; service: string 
 	const region =
 		findRightmost(isSupportedAwsRegion) ??
 		findRightmost((label) => AWS_REGION_SHAPE_PATTERN.test(label));
-	return { service: labels[0], region };
+	let service = labels[0];
+	const regionIdx = region ? labels.lastIndexOf(region) : -1;
+	if (regionIdx >= 2) {
+		// AWS hostnames place the service label immediately left of the region
+		// (qualifiers like bucket/API-id/access-point names sit further left);
+		// dual-stack endpoints interpose a 'dualstack' qualifier — skip it.
+		let serviceIdx = regionIdx - 1;
+		if (labels[serviceIdx] === 'dualstack' && serviceIdx > 0) serviceIdx--;
+		service = labels[serviceIdx];
+	}
+	return { service, region };
 }
 
 /**
