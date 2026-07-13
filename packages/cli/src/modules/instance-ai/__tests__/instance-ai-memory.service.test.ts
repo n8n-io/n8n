@@ -449,6 +449,102 @@ describe('InstanceAiMemoryService.deleteThread', () => {
 	});
 });
 
+describe('InstanceAiMemoryService.ensureThread launch metadata', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('writes source/origin/sourceContext into metadata when creating', async () => {
+		mockGetThread.mockResolvedValueOnce(null);
+		mockSaveThreadWithProject.mockResolvedValueOnce({
+			id: 'thread-1',
+			title: '',
+			resourceId: 'user-1',
+			metadata: {
+				source: 'template-view',
+				origin: 'internal',
+				sourceContext: { templateId: '42' },
+			},
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+		});
+
+		const service = createService();
+		const result = await service.ensureThread('user-1', 'thread-1', 'project-1', {
+			source: 'template-view',
+			origin: 'internal',
+			sourceContext: { templateId: '42' },
+		});
+
+		expect(mockSaveThreadWithProject).toHaveBeenCalledWith(
+			{
+				id: 'thread-1',
+				resourceId: 'user-1',
+				title: '',
+				metadata: {
+					source: 'template-view',
+					origin: 'internal',
+					sourceContext: { templateId: '42' },
+				},
+			},
+			'project-1',
+		);
+		expect(result.created).toBe(true);
+	});
+
+	it('omits sourceContext from metadata when not provided', async () => {
+		mockGetThread.mockResolvedValueOnce(null);
+		mockSaveThreadWithProject.mockResolvedValueOnce({
+			id: 'thread-2',
+			title: '',
+			resourceId: 'user-1',
+			metadata: { source: 'website-template', origin: 'external' },
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+		});
+
+		const service = createService();
+		await service.ensureThread('user-1', 'thread-2', 'project-1', {
+			source: 'website-template',
+			origin: 'external',
+		});
+
+		expect(mockSaveThreadWithProject).toHaveBeenCalledWith(
+			{
+				id: 'thread-2',
+				resourceId: 'user-1',
+				title: '',
+				metadata: {
+					source: 'website-template',
+					origin: 'external',
+				},
+			},
+			'project-1',
+		);
+	});
+
+	it('does not pass metadata when the thread already exists', async () => {
+		mockGetThread.mockResolvedValueOnce({
+			id: 'thread-existing',
+			title: 'Existing',
+			resourceId: 'user-1',
+			metadata: { foo: 'bar' },
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+		});
+
+		const service = createService();
+		const result = await service.ensureThread('user-1', 'thread-existing', 'project-1', {
+			source: 'template-view',
+			origin: 'internal',
+			sourceContext: { templateId: '42' },
+		});
+
+		expect(result.created).toBe(false);
+		expect(mockSaveThreadWithProject).not.toHaveBeenCalled();
+	});
+});
+
 describe('InstanceAiMemoryService.deleteThreadsForUser', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();

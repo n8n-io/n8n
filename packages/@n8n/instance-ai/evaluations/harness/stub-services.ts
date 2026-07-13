@@ -303,6 +303,7 @@ export async function createStubServices(
 		credentialService,
 		nodeService,
 		dataTableService,
+		workflowTemplateService: { getTemplate: async () => ({ available: false as const }) },
 	};
 
 	return { context, capturedWorkflows };

@@ -1,10 +1,16 @@
 import { useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
-import type { InstanceAiHandoffContext, InstanceAiWorkflowAttachment } from '@n8n/api-types';
+import type {
+	InstanceAiHandoffContext,
+	InstanceAiThreadOrigin,
+	InstanceAiThreadSource,
+	InstanceAiWorkflowAttachment,
+} from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import type { InstanceAiCredentialContext } from '@/app/composables/useInstanceAiEditorCapability';
 import { useToast } from '@/app/composables/useToast';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
@@ -60,6 +66,22 @@ export function buildInstanceAiCredentialHandoffContext(
 	};
 }
 
+/** Where a launched thread came from — persisted on the thread and tracked by `syncThread`. */
+export interface InstanceAiThreadLaunch {
+	source: InstanceAiThreadSource;
+	origin: InstanceAiThreadOrigin;
+	sourceContext?: Record<string, unknown>;
+}
+
+/**
+ * Stash the opening message for a thread the current context can't send itself
+ * (a new tab, a router guard). The destination thread view consumes it after
+ * hydration + SSE connect (see consumePendingFirstMessage) and sends it there.
+ */
+export function stashPendingFirstMessage(threadId: string, payload: PendingFirstMessage): void {
+	localStorage.setItem(pendingFirstMessageKey(threadId), JSON.stringify(payload));
+}
+
 /**
  * Consume the opening message a new-tab hand-off stashed here. A separate window
  * can't send it (the destination loads before the BE persists it), so it does.
@@ -73,6 +95,40 @@ export function consumePendingFirstMessage(threadId: string): PendingFirstMessag
 	} catch {
 		return null;
 	}
+}
+
+/** Resolve the personal project a launched thread binds to, loading it on first use. */
+export async function ensurePersonalProjectId(): Promise<string | null> {
+	const projectsStore = useProjectsStore();
+	if (!projectsStore.personalProject) {
+		try {
+			await projectsStore.getPersonalProject();
+		} catch {
+			return null;
+		}
+	}
+	return projectsStore.personalProject?.id ?? null;
+}
+
+/**
+ * Provision a launched thread the destination view will send for: mint the id,
+ * persist it, and stash the opening message. Shared by the deep-link router
+ * guard and the new-tab hand-off, which both hand off delivery to the view.
+ * Returns the thread id, or null if persistence failed.
+ */
+export async function provisionLaunchedThread(
+	projectId: string,
+	payload: PendingFirstMessage,
+	launch?: InstanceAiThreadLaunch,
+): Promise<string | null> {
+	const threadId = uuidv4();
+	try {
+		await useInstanceAiStore().syncThread(threadId, projectId, launch);
+	} catch {
+		return null;
+	}
+	stashPendingFirstMessage(threadId, payload);
+	return threadId;
 }
 
 // One hand-off at a time across all entry points (module-level to share the guard).
@@ -93,41 +149,48 @@ export function useInstanceAiHandoff() {
 		message: string,
 		attachments?: InstanceAiWorkflowAttachment[],
 		prepare?: (threadId: string) => void,
-		options?: { newTab?: boolean; context?: InstanceAiHandoffContext },
+		options?: {
+			newTab?: boolean;
+			context?: InstanceAiHandoffContext;
+			launch?: InstanceAiThreadLaunch;
+		},
 	): Promise<void> {
 		// Drop re-entrant clicks — each call mints a fresh thread, so spam would duplicate.
 		if (handoffInFlight) return;
 		handoffInFlight = true;
 		try {
-			const threadId = uuidv4();
-			// Open the tab now, inside the click gesture, so it isn't popup-blocked.
-			const tab = options?.newTab ? window.open('', '_blank') : null;
-			// Persist the thread on the BE before navigating — `/assistant/:threadId`
-			// expects an existing thread.
-			try {
-				await instanceAiStore.syncThread(threadId, projectId);
-			} catch {
-				tab?.close();
-				toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
-				return;
-			}
-			const route = { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } };
 			if (options?.newTab) {
-				// Separate window: the destination's runtime sends the message (see
-				// consumePendingFirstMessage); sending here races backend persistence.
-				localStorage.setItem(
-					pendingFirstMessageKey(threadId),
-					JSON.stringify({ message, attachments, context: options?.context }),
+				// Open the tab now, inside the click gesture, so it isn't popup-blocked.
+				// The destination view sends the stashed message (sending here would
+				// race backend persistence in the separate window).
+				const tab = window.open('', '_blank');
+				const threadId = await provisionLaunchedThread(
+					projectId,
+					{ message, attachments, context: options?.context },
+					options?.launch,
 				);
+				if (!threadId) {
+					tab?.close();
+					toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
+					return;
+				}
+				const route = { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } };
 				if (tab) tab.location.href = router.resolve(route).href;
 				else await router.push(route); // popup blocked → same tab; it consumes the message
 				return;
 			}
-			// Same tab: seed the runtime, send, and redirect — it survives the in-store nav.
+			// Same tab: send through a runtime seeded here, which survives the navigation.
+			const threadId = uuidv4();
+			try {
+				await instanceAiStore.syncThread(threadId, projectId, options?.launch);
+			} catch {
+				toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
+				return;
+			}
 			const thread = instanceAiStore.getOrCreateRuntime(threadId, projectId);
 			prepare?.(threadId);
 			void thread.sendMessage(message, attachments, rootStore.pushRef, options?.context);
-			await router.push(route);
+			await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
 		} finally {
 			handoffInFlight = false;
 		}
