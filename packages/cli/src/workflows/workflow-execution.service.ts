@@ -126,7 +126,11 @@ export class WorkflowExecutionService {
 		workflowData.active = false;
 		workflowData.activeVersionId = null;
 
-		// TODO: Will be fixed on the FE side with CAT-1808
+		// The UI can send runData alongside triggerToStartFrom, but a trigger
+		// means a full run, so stale runData must not demote it to a partial
+		// execution. ManualRunDto already strips it for endpoint traffic; this
+		// keeps the same precedence for direct callers.
+		// TODO: Remove once the FE stops sending it (CAT-1808)
 		if ('triggerToStartFrom' in payload) {
 			Reflect.deleteProperty(payload, 'runData');
 		}
