@@ -59,10 +59,14 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: () => ({ goToUpgrade: vi.fn() }),
 }));
 
+const mockRouteState = vi.hoisted(() => ({
+	params: { threadId: 'thread-1' } as { threadId?: string },
+}));
+
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRoute: () => ({
-		params: { threadId: 'thread-1' },
+		params: mockRouteState.params,
 		path: '/instance-ai/thread-1',
 		matched: [],
 		fullPath: '/instance-ai/thread-1',
@@ -70,7 +74,15 @@ vi.mock('vue-router', async (importOriginal) => ({
 		hash: '',
 		meta: {},
 	}),
-	useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+	useRouter: () => ({
+		push: vi.fn(),
+		replace: vi.fn(),
+		currentRoute: {
+			get value() {
+				return { params: mockRouteState.params };
+			},
+		},
+	}),
 }));
 
 vi.mock('@vueuse/core', async (importOriginal) => ({
@@ -146,6 +158,24 @@ const InstanceAiWorkflowPreviewStub = defineComponent({
 	},
 });
 
+const InstanceAiAgentPreviewStub = defineComponent({
+	name: 'InstanceAiAgentPreviewStub',
+	props: {
+		agentId: { type: String, required: true },
+		projectId: { type: String, required: true },
+		refreshKey: { type: Number, required: true },
+	},
+	setup(props) {
+		return () =>
+			h('div', {
+				'data-test-id': 'instance-ai-agent-preview-stub',
+				'data-agent-id': props.agentId,
+				'data-project-id': props.projectId,
+				'data-refresh-key': String(props.refreshKey),
+			});
+	},
+});
+
 const InstanceAiConfirmationPanelStub = defineComponent({
 	name: 'InstanceAiConfirmationPanelStub',
 	props: {
@@ -164,6 +194,7 @@ const renderView = createComponentRenderer(InstanceAiThreadView, {
 		stubs: {
 			InstanceAiInput: InstanceAiInputStub,
 			InstanceAiWorkflowPreview: InstanceAiWorkflowPreviewStub,
+			InstanceAiAgentPreview: InstanceAiAgentPreviewStub,
 			InstanceAiConfirmationPanel: InstanceAiConfirmationPanelStub,
 			AgentSection: { template: '<div data-test-id="agent-section-stub" />' },
 			InstanceAiDataTablePreview: { template: '<div data-test-id="data-table-preview-stub" />' },
@@ -311,6 +342,7 @@ describe('InstanceAiThreadView', () => {
 		inputFocusSpy.mockClear();
 		telemetryTrackSpy.mockClear();
 		planEditSubmitState.message = 'Make the plan simpler';
+		mockRouteState.params = { threadId: 'thread-1' };
 	});
 
 	afterEach(() => {
@@ -531,6 +563,104 @@ describe('InstanceAiThreadView', () => {
 		expect(getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
 	});
 
+	it('renders the agent artifact preview when an agent is created', async () => {
+		thread.producedArtifacts = new Map([
+			['agent-1', { type: 'agent', id: 'agent-1', projectId: 'proj-1', name: 'SEO Auditor' }],
+		]) as typeof thread.producedArtifacts;
+
+		const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		thread.messages.push({
+			id: 'msg-agent',
+			role: 'assistant',
+			content: '',
+			reasoning: '',
+			isStreaming: false,
+			createdAt: '2026-04-01T00:00:00.000Z',
+			agentTree: {
+				agentId: 'agent-builder',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				timeline: [],
+				children: [],
+				toolCalls: [
+					{
+						toolCallId: 'tc-create-agent',
+						toolName: 'agent_builder',
+						args: { action: 'create_agent' },
+						isLoading: false,
+						result: {
+							ok: true,
+							agentId: 'agent-1',
+							projectId: 'proj-1',
+							name: 'SEO Auditor',
+						},
+					},
+				],
+			},
+		} as never);
+
+		const preview = await findByTestId('instance-ai-agent-preview-stub');
+
+		expect(preview).toHaveAttribute('data-agent-id', 'agent-1');
+		expect(preview).toHaveAttribute('data-project-id', 'proj-1');
+		expect(preview).toHaveAttribute('data-refresh-key', '1');
+	});
+
+	it('closes the agent artifact preview from the wrapper toggle', async () => {
+		thread.producedArtifacts = new Map([
+			['agent-1', { type: 'agent', id: 'agent-1', projectId: 'proj-1', name: 'SEO Auditor' }],
+		]) as typeof thread.producedArtifacts;
+
+		const user = userEvent.setup();
+		const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		thread.messages.push({
+			id: 'msg-agent',
+			role: 'assistant',
+			content: '',
+			reasoning: '',
+			isStreaming: false,
+			createdAt: '2026-04-01T00:00:00.000Z',
+			agentTree: {
+				agentId: 'agent-builder',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				timeline: [],
+				children: [],
+				toolCalls: [
+					{
+						toolCallId: 'tc-create-agent',
+						toolName: 'agent_builder',
+						args: { action: 'create_agent' },
+						isLoading: false,
+						result: {
+							ok: true,
+							agentId: 'agent-1',
+							projectId: 'proj-1',
+							name: 'SEO Auditor',
+						},
+					},
+				],
+			},
+		} as never);
+
+		await findByTestId('instance-ai-agent-preview-stub');
+		const previewPanel = await findByTestId('instance-ai-preview-panel');
+		expect(previewPanel).toBeVisible();
+
+		await user.click(await findByTestId('instance-ai-artifacts-preview-toggle'));
+
+		await vi.waitFor(() => {
+			expect(previewPanel).not.toBeVisible();
+		});
+		expect(queryByTestId('instance-ai-agent-preview-stub')).not.toBeInTheDocument();
+	});
+
 	describe('Fix with AI card', () => {
 		const failureReport: WorkflowFailuresReport = {
 			workflowId: 'wf-1',
@@ -721,6 +851,28 @@ describe('InstanceAiThreadView', () => {
 			expect(thread.clearPlanUpdatePending).toHaveBeenCalledWith('req-plan');
 		});
 		expect(thread.resolveConfirmation).not.toHaveBeenCalled();
+	});
+
+	describe('runtime disposal on unmount', () => {
+		it('keeps the runtime when unmounting while the route still points at the thread', () => {
+			// A duplicate instance created and discarded during a layout transition
+			// (e.g. an editor hand-off) unmounts while the route still shows the
+			// thread — it must not tear down the runtime the live instance renders.
+			const { unmount } = renderView({ props: { threadId: 'thread-1' } });
+
+			unmount();
+
+			expect(store.disposeRuntime).not.toHaveBeenCalled();
+		});
+
+		it('disposes the runtime when unmounting after the route left the thread', () => {
+			const { unmount } = renderView({ props: { threadId: 'thread-1' } });
+
+			mockRouteState.params = { threadId: 'thread-2' };
+			unmount();
+
+			expect(store.disposeRuntime).toHaveBeenCalledWith('thread-1');
+		});
 	});
 
 	it('keeps normal composer submissions as chat messages', async () => {

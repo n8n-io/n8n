@@ -11,6 +11,7 @@ import AgentChatMessageList from './AgentChatMessageList.vue';
 import type { AgentJsonConfig } from '../types';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
+import { AGENT_BUILDER_PROMPT_MAX_LENGTH } from '../constants';
 
 const props = withDefaults(
 	defineProps<{
@@ -319,6 +320,7 @@ onBeforeUnmount(() => {
 					isPreparingToSend ||
 					(isStreaming && messagingState !== 'receiving')
 				"
+				:max-length="endpoint === 'build' ? AGENT_BUILDER_PROMPT_MAX_LENGTH : undefined"
 				data-testid="chat-input"
 				@submit="onSubmit"
 				@stop="stopGenerating"

@@ -17,6 +17,7 @@ export interface ImportPackageFields {
 	bindings?: string;
 	workflowConflictPolicy: string;
 	workflowIdPolicy?: string;
+	folderConflictPolicy?: string;
 }
 
 export class ApiError extends Error {
