@@ -376,13 +376,19 @@ onBeforeUnmount(() => {
 }
 
 .tagDuplicateBeam {
-	background-color: light-dark(var(--color--purple-100), var(--color--purple-950));
-	color: light-dark(var(--color--purple-700), var(--color--purple-300));
-	animation: tag-duplicate-fill var(--duration--slow) linear 1 forwards;
+	--tag-duplicate--duration: var(--duration--slow);
+	--tag-duplicate--color--background: light-dark(
+		var(--color--purple-100),
+		var(--color--purple-950)
+	);
+	--tag-duplicate--color--text: light-dark(var(--color--purple-700), var(--color--purple-300));
+
+	background-color: var(--tag-duplicate--color--background);
+	color: var(--tag-duplicate--color--text);
+	animation: tag-duplicate-fill var(--tag-duplicate--duration) linear 1 forwards;
 
 	.tagDelete {
-		color: light-dark(var(--color--purple-500), var(--color--purple-400));
-		animation: tag-duplicate-delete-fade var(--duration--slow) linear 1 forwards;
+		color: inherit;
 	}
 
 	&::before {
@@ -413,17 +419,13 @@ onBeforeUnmount(() => {
 		-webkit-mask-composite: xor;
 		mask-composite: exclude;
 		animation:
-			tag-duplicate-beam-spin var(--duration--slow) cubic-bezier(0.55, 0.05, 0.2, 1) 1,
-			tag-duplicate-beam-fade var(--duration--slow) linear 1 forwards;
+			tag-duplicate-beam-spin var(--tag-duplicate--duration) cubic-bezier(0.55, 0.05, 0.2, 1) 1,
+			tag-duplicate-beam-fade var(--tag-duplicate--duration) linear 1 forwards;
 	}
 
 	@media (prefers-reduced-motion: reduce) {
 		border-color: var(--focus--border-color);
 		animation: none;
-
-		.tagDelete {
-			animation: none;
-		}
 
 		&::before {
 			animation: none;
@@ -458,24 +460,13 @@ onBeforeUnmount(() => {
 @keyframes tag-duplicate-fill {
 	0%,
 	45% {
-		background-color: light-dark(var(--color--purple-100), var(--color--purple-950));
-		color: light-dark(var(--color--purple-700), var(--color--purple-300));
+		background-color: var(--tag-duplicate--color--background);
+		color: var(--tag-duplicate--color--text);
 	}
 
 	100% {
 		background-color: var(--tag--color--background);
 		color: var(--tag--color--text);
-	}
-}
-
-@keyframes tag-duplicate-delete-fade {
-	0%,
-	45% {
-		color: light-dark(var(--color--purple-500), var(--color--purple-400));
-	}
-
-	100% {
-		color: var(--color--text--tint-1);
 	}
 }
 
