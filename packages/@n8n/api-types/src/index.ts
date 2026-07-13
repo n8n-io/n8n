@@ -283,6 +283,7 @@ export {
 	WEB_SEARCH_GRANT_KEY,
 	parseDomainAccessGrants,
 	instanceAiEventTypeSchema,
+	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
 	instanceAiRunStatusSchema,
 	instanceAiConfirmationSeveritySchema,
 	instanceAiAgentStatusSchema,

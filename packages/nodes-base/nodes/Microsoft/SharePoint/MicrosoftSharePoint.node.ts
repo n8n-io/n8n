@@ -21,10 +21,10 @@ export class MicrosoftSharePoint extends VersionedNodeType {
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new MicrosoftSharePointV1(baseDescription),
-			// v2 is under construction (ENT-170). The editor and AI builder surface
-			// the highest registered version regardless of defaultVersion, so v2
-			// must stay unregistered until launch (ENT-190). Uncomment locally to
-			// test v2 work.
+			// v2 is under construction. The editor and AI builder surface the
+			// highest registered version regardless of defaultVersion, so v2 must
+			// stay unregistered until the launch ticket flips the default.
+			// Uncomment locally to test v2 work.
 			// 2: new MicrosoftSharePointV2(baseDescription),
 		};
 
