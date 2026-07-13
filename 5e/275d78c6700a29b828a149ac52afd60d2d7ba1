@@ -1,0 +1,51 @@
+packages/workflow/src/interfaces.ts
+  h_435b1d7d3e52c0 3330-3331
+packages/cli/src/services/__tests__/oauth-token-verifier-proxy.service.test.ts
+  s_dfb8ec3982b7d7::t_f09331fceed069 14
+packages/cli/src/modules/__tests__/main-only-modules.test.ts
+  h_435b1d7d3e52c0 15,19
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/__tests__/McpTrigger.node.test.ts
+  s_dfb8ec3982b7d7::t_9f1b42e0af94ea 1-6
+  s_dfb8ec3982b7d7::t_c5d7e742a0556b 392-439,441-482
+  s_dfb8ec3982b7d7::t_9a1da52a9570b2 95,101-107
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.module.test.ts
+  s_dfb8ec3982b7d7::t_4d6282efc1d9a5 7
+  s_dfb8ec3982b7d7::t_115b3e7af03119 1,4-5,8-9,11
+  s_dfb8ec3982b7d7::t_f54b5269e7e521 2-3,6,10,12-13
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/n8n-oauth2-auth.ts
+  h_435b1d7d3e52c0 25,29
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_dfb8ec3982b7d7::t_f158c8772e1d96 61
+packages/core/src/execution-engine/node-execution-context/webhook-context.ts
+  h_435b1d7d3e52c0 123-128,136
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpTrigger.node.ts
+  h_435b1d7d3e52c0 99
+  s_dfb8ec3982b7d7::t_3dee8963e856fc 6
+packages/core/src/execution-engine/node-execution-context/utils/webhook-helper-functions.ts
+  h_435b1d7d3e52c0 45-50
+packages/cli/src/workflow-execute-additional-data.ts
+  h_435b1d7d3e52c0 672-673
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/webhook-helper-functions.test.ts
+  s_dfb8ec3982b7d7::t_fe7611315609df 150-192,194-198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "5e275d78c6700a29b828a149ac52afd60d2d7ba1",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_dfb8ec3982b7d7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "03f4de03-6052-41a5-9588-4f87fddadd68",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

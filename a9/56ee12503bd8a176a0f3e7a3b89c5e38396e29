@@ -1,0 +1,22 @@
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/common.descriptions.ts
+  s_37e451fff42af7::t_7cb88245d936d8 54-57,59
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/common.descriptions.test.ts
+  s_37e451fff42af7::t_5e43fa734f0fb4 8
+  s_37e451fff42af7::t_d60f925e3140f9 1-7,9-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "a956ee12503bd8a176a0f3e7a3b89c5e38396e29",
+  "prompts": {},
+  "sessions": {
+    "s_37e451fff42af7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9285862-7af0-4e1d-89ba-8bd58c2f345d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

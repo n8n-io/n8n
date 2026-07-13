@@ -1,0 +1,27 @@
+packages/cli/src/modules/agents/builder/interactive/llm-provider-defaults.ts
+  s_70fb4223a7d1db::t_8195c17abb2e33 41
+packages/@n8n/ai-utilities/src/model-discovery/providers/google.ts
+  s_70fb4223a7d1db::t_9af4b5044413c2 5-9,14-15
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/methods/searchModels.ts
+  s_70fb4223a7d1db::t_664de27b2bf78f 5-6,11-12,15-17,19,21
+packages/@n8n/ai-utilities/src/model-discovery/__tests__/model-discovery.test.ts
+  s_70fb4223a7d1db::t_6d0703738e7179 98,110-113
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/methods/__tests__/searchModels.test.ts
+  s_70fb4223a7d1db::t_db1ec19463e8db 139-159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "bbec1450fd96008c5c03ef6e98c70173dc030e63",
+  "prompts": {},
+  "sessions": {
+    "s_70fb4223a7d1db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bf21fcf-13a0-4245-8181-bb4439b4ca9f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/core/src/errors/error-reporter.ts
+  s_4f0e194d0e87c0::t_531f5d52f4607c 213
+packages/core/src/observability/tracing/sentry-tracing.ts
+  s_4f0e194d0e87c0::t_531f5d52f4607c 10,18-22
+packages/core/src/observability/tracing/__tests__/sentry-tracing.test.ts
+  s_4f0e194d0e87c0::t_531f5d52f4607c 6,18,69,137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ddc37b28dcf270f3e521e5f8f21664f0f695ea47",
+  "prompts": {},
+  "sessions": {
+    "s_4f0e194d0e87c0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efeeb-6fbc-70b1-bd1d-4290bee9707c",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

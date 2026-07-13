@@ -1,0 +1,31 @@
+packages/@n8n/instance-ai/src/skills/skill-gates.ts
+  s_e3f94b9fd16cbd::t_5beee6deea2a97 1-38
+packages/@n8n/instance-ai/src/index.ts
+  s_e3f94b9fd16cbd::t_3f5447f0619a5f 249-253
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_e3f94b9fd16cbd::t_baa8e0438caa21 33
+  s_e3f94b9fd16cbd::t_eb1b1221ec954e 1981-1990
+packages/@n8n/instance-ai/src/skills/__tests__/skill-gates.test.ts
+  s_e3f94b9fd16cbd::t_9659061b074ab2 1-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "05640aa7cd3ca1a7c44ec62d6b5aa67371b278f0",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_e3f94b9fd16cbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4dd59d7d-fa76-4956-a49d-751dbc6cde33",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

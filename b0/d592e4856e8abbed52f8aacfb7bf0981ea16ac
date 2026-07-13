@@ -1,0 +1,25 @@
+packages/cli/src/workflows/publication/__tests__/published-workflow-enqueuer.test.ts
+  s_7de970a796cb99::t_84a456a34c74d5 6,8,14,18
+packages/cli/src/commands/start.ts
+  s_7de970a796cb99::t_84a456a34c74d5 300-301,307,431-432,441
+packages/cli/test/integration/workflows/workflow-publication-outbox-consumer.test.ts
+  s_7de970a796cb99::t_84a456a34c74d5 26,227
+packages/cli/src/workflows/publication/published-workflow-enqueuer.ts
+  s_7de970a796cb99::t_84a456a34c74d5 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b0d592e4856e8abbed52f8aacfb7bf0981ea16ac",
+  "prompts": {},
+  "sessions": {
+    "s_7de970a796cb99": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f62a054f-5d45-407f-925f-ca757e8963c9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

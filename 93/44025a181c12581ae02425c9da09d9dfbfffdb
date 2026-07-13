@@ -1,0 +1,29 @@
+packages/cli/src/modules/n8n-packages/package-failure-classifier.ts
+  s_565c23fd14164a::t_ea689cf53fb561 12,23
+packages/cli/src/modules/n8n-packages/__tests__/package-failure-classifier.test.ts
+  s_565c23fd14164a::t_e2ebcb1a12f8c4 12,20
+packages/cli/src/modules/n8n-packages/entities/package-export.errors.ts
+  s_565c23fd14164a::t_b1d762550d9044 9-11
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_565c23fd14164a::t_4df50c9f108cb3 12,182
+packages/cli/src/public-api/v1/handlers/n8n-packages/__tests__/n8n-packages.handler.test.ts
+  s_565c23fd14164a::t_aeb5e600273d6d 18,232,234-239
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow.integration.test.ts
+  s_565c23fd14164a::t_cdb70943c58938 15,155-162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9344025a181c12581ae02425c9da09d9dfbfffdb",
+  "prompts": {},
+  "sessions": {
+    "s_565c23fd14164a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4b2c-b9c8-7082-8044-22883b8e65fe",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

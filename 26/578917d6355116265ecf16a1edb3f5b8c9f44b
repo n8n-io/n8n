@@ -1,0 +1,42 @@
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_ebed264646b651::t_f8b48570a93ec4 91,94-97
+packages/cli/src/modules/n8n-packages/__tests__/import-pipeline.integration.test.ts
+  s_ebed264646b651::t_425f1c8441e4d0 1204-1250
+  s_ebed264646b651::t_285a0f8c7b4978 7
+packages/cli/src/modules/n8n-packages/engine/import-pipeline.ts
+  s_ebed264646b651::t_a14970abb04b92 143,148-149
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/importBlockingIssue.yml
+  s_ebed264646b651::t_69c83b36bc5ee9 74,80-88
+packages/cli/src/modules/n8n-packages/entities/credential/credential.types.ts
+  s_ebed264646b651::t_1c85459b954d3f 17-21,27-30
+packages/cli/src/modules/n8n-packages/entities/credential/id-based-credential-matcher.ts
+  s_ebed264646b651::t_32271015c63e5c 30-34,36,44-46,51-52,55,61
+  s_ebed264646b651::t_8a9c8cb9acf250 9-13
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_ebed264646b651::t_edd2124a822e79 18-19
+  s_ebed264646b651::t_f002874585ecde 98-138
+packages/cli/src/modules/n8n-packages/entities/credential/credential-matcher.ts
+  s_ebed264646b651::t_e25e00f2aebf41 59-60
+  s_ebed264646b651::t_a7567ed2224803 122-137
+  s_ebed264646b651::t_2b6b66ed75fd3a 20-32,47-58,61-64,68-73,77-81,85
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-matcher.test.ts
+  s_ebed264646b651::t_9f51479e75994f 131
+  s_ebed264646b651::t_b1b17a9d98a800 19-20
+  s_ebed264646b651::t_984d6cb4aeb7a9 233-285
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "26578917d6355116265ecf16a1edb3f5b8c9f44b",
+  "prompts": {},
+  "sessions": {
+    "s_ebed264646b651": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "58721556-b4cd-4bbb-8d5e-536c0598b37e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}
