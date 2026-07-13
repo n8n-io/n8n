@@ -21,12 +21,12 @@ export interface ExpiredLeaseRef {
 /**
  * One expired-lease row the sweep decides on. It carries the full claimed-task
  * shape so a pre-dispatch row can be salvaged (dispatched) before being given up
- * on, plus `startedAt`: the effect-boundary marker. `null` means the owner died
- * before dispatch, so the occurrence's effect never happened. The storage layer's
- * full task row has these and more, so it fits without adapting.
+ * on, plus `dispatchedAt`: the effect-boundary marker. `null` means the owner was
+ * lost before dispatch, so the occurrence's effect never happened. The storage
+ * layer's full task row has these and more, so it fits without adapting.
  */
 export interface ExpiredLeaseRow extends ClaimedTask {
-	startedAt: Date | null;
+	dispatchedAt: Date | null;
 }
 
 /**
@@ -129,12 +129,12 @@ export async function reap(
 			const ref = { id: task.id, claimedEpoch: task.leaseEpoch };
 			if (nextAttempts >= task.maxAttempts) {
 				// Last attempt: the row is terminally resolved either way, so it counts as
-				// dead-lettered. The effect boundary decides how. If the owner died after
-				// dispatch (`startedAt` set), the effect already happened: complete it as
+				// dead-lettered. The effect boundary decides how. If the owner was lost after
+				// dispatch (`dispatchedAt` set), the effect already happened: complete it as
 				// succeeded rather than record a failure for work that was done, and never
-				// dispatch it again. If it died before dispatch, the effect never happened:
+				// dispatch it again. If it was lost before dispatch, the effect never happened:
 				// salvage it with one final dispatch, then dead-letter it as failed.
-				if (task.startedAt !== null) {
+				if (task.dispatchedAt !== null) {
 					const affected = await store.completeExpired(ref);
 					deadLettered += affected;
 					if (affected > 0) {

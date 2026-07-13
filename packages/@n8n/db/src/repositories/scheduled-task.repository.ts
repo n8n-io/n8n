@@ -1,6 +1,6 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, type EntityManager, In, Repository } from '@n8n/typeorm';
+import { DataSource, type EntityManager, In, IsNull, Repository } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -284,34 +284,45 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	}
 
 	/**
-	 * Pre-dispatch ownership check: whether this `claim` still owns a live row
-	 * (`running`, same `host` and `leaseEpoch`). `true` means go ahead and dispatch;
-	 * `false` means the row was deleted or reclaimed, so skip. Read-only — the dispatch
-	 * marker is written only once the handler reports its effect handed off (see
-	 * {@link markDispatched}), never speculatively before dispatch. Uses `EXISTS` (not a
-	 * count) since only presence matters, so the DB can stop at the first matching row.
+	 * Pre-dispatch mutex: atomically claim the sole right to run this occurrence's
+	 * handler for this lease, and refresh the lease for the execution window
+	 * (`leaseExpiresAt = now + leaseMs`). Guarded on the `claim` AND `startedAt IS
+	 * NULL`, so the compare-and-set stamps `startedAt` and returns 1 for the single
+	 * winner; a second fire on the same lease, or a fire on a row already reclaimed
+	 * (epoch bumped) or deleted, matches no row and returns 0. 0 means do not run the
+	 * handler. This is the executor's at-most-once-execute-per-lease guarantee; a
+	 * redelivery only wins after a reclaim cleared `startedAt`.
 	 */
-	async confirmClaim(claim: HostedClaimedRef): Promise<boolean> {
-		return await this.existsBy({
-			id: claim.id,
-			status: ScheduledTaskStatus.Running,
-			claimedBy: claim.host,
-			leaseEpoch: claim.claimedEpoch,
-		});
+	async beginDispatch(claim: HostedClaimedRef, leaseMs: number): Promise<number> {
+		// Object criteria (not a raw where string) so TypeORM quotes the camelCase
+		// `claimedBy`/`leaseEpoch`/`startedAt` columns correctly on Postgres.
+		const result = await this.update(
+			{
+				id: claim.id,
+				status: ScheduledTaskStatus.Running,
+				claimedBy: claim.host,
+				leaseEpoch: claim.claimedEpoch,
+				startedAt: IsNull(),
+			},
+			{
+				startedAt: () => dbNowLiteral(this.isPostgres),
+				leaseExpiresAt: () => dbNowPlusMsLiteral(this.isPostgres, leaseMs),
+			},
+		);
+		return result.affected ?? 0;
 	}
 
 	/**
-	 * Stamp `startedAt`, the dispatch marker, once the handler reports its effect was
-	 * handed off. Guarded so it only affects the row this `claim` still owns; 0 rows
-	 * is a benign no-op (the row was reclaimed meanwhile — the new owner stamps its
-	 * own). Deliberately not fenced on `startedAt IS NULL`: the scheduler is
-	 * at-least-once, so a redelivered occurrence is allowed back to its handler; the
-	 * marker only records that a dispatch happened, so the reaper can avoid recording
-	 * a handled occurrence as failed.
+	 * Stamp `dispatchedAt`, the effect-boundary marker, once the handler reports its
+	 * effect was handed off. Guarded so it only affects the row this `claim` still
+	 * owns; 0 rows is a benign no-op (the row was reclaimed meanwhile — the new owner
+	 * stamps its own). Unlike {@link beginDispatch} it is not fenced on the marker
+	 * being null: the scheduler is at-least-once, so this only records that the effect
+	 * happened, letting the reaper complete rather than redeliver the occurrence.
 	 */
 	async markDispatched(claim: HostedClaimedRef): Promise<number> {
 		return await this.runGuardedUpdate(claim, {
-			startedAt: () => dbNowLiteral(this.isPostgres),
+			dispatchedAt: () => dbNowLiteral(this.isPostgres),
 		});
 	}
 
@@ -354,9 +365,10 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			errorMessage,
 			claimedBy: null,
 			leaseExpiresAt: null,
-			// The next attempt sets its own start; clear this one's so a pending row
-			// doesn't carry a stale `startedAt`.
+			// The next attempt re-acquires the dispatch mutex and stamps its own markers;
+			// clear both so a pending row carries no stale `startedAt`/`dispatchedAt`.
 			startedAt: null,
+			dispatchedAt: null,
 		});
 	}
 
@@ -373,6 +385,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			claimedBy: null,
 			leaseExpiresAt: null,
 			startedAt: null,
+			dispatchedAt: null,
 		});
 	}
 
@@ -463,12 +476,12 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			claimedBy: null,
 			leaseExpiresAt: null,
 			errorMessage,
-			// `startedAt` is deliberately preserved (not cleared): it is the dispatch
-			// marker, recording that this occurrence's effect already happened. It does
-			// not fence the redelivery (the scheduler is at-least-once, so a reclaimed row
-			// is fired again); it lets the reaper resolve a later last-attempt expiry as
-			// completed rather than failed. A row that died before dispatch keeps
-			// `startedAt` null.
+			// Reclaim is the pre-dispatch path (the reaper only reclaims a row whose
+			// `dispatchedAt` is null; a dispatched one is completed instead). Clear
+			// `startedAt` so the redelivery can re-acquire the dispatch mutex; `dispatchedAt`
+			// is already null here, cleared alongside to keep the pending row clean.
+			startedAt: null,
+			dispatchedAt: null,
 		});
 	}
 

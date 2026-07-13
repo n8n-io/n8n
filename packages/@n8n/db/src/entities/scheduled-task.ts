@@ -158,10 +158,25 @@ export class ScheduledTask extends WithCreatedAt {
 	leaseEpoch: number;
 
 	/**
-	 * When the current try started running.
+	 * When the current attempt started running, i.e. when the executor handed the
+	 * occurrence to its handler. Set by the executor's pre-dispatch compare-and-set
+	 * *before* the handler runs (guarded on this being `null`), so it doubles as the
+	 * mutex that runs each occurrence at most once per lease. Cleared when the row
+	 * goes back to `pending` (reclaim, reschedule, release) so a redelivery can
+	 * re-acquire it.
 	 */
 	@DateTimeColumn({ nullable: true })
 	startedAt: Date | null;
+
+	/**
+	 * When the current attempt handed off its effect, i.e. when the handler reported
+	 * dispatch. `null` until then, and a crash between {@link startedAt} and here
+	 * leaves it `null`. The reaper reads this, not {@link startedAt}, to resolve an
+	 * expired lease: set means the effect happened (complete it, never redeliver),
+	 * `null` means it did not (redeliver, so the run is not lost).
+	 */
+	@DateTimeColumn({ nullable: true })
+	dispatchedAt: Date | null;
 
 	/**
 	 * When this run finished, whether it succeeded or failed.

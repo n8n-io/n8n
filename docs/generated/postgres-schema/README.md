@@ -93,7 +93,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.role_mapping_rule_project](public.role_mapping_rule_project.md) | 2 |  | BASE TABLE |
 | [public.role_scope](public.role_scope.md) | 2 |  | BASE TABLE |
 | [public.scheduled_job](public.scheduled_job.md) | 19 |  | BASE TABLE |
-| [public.scheduled_task](public.scheduled_task.md) | 16 |  | BASE TABLE |
+| [public.scheduled_task](public.scheduled_task.md) | 17 |  | BASE TABLE |
 | [public.scope](public.scope.md) | 3 |  | BASE TABLE |
 | [public.secrets_provider_connection](public.secrets_provider_connection.md) | 7 |  | BASE TABLE |
 | [public.settings](public.settings.md) | 3 |  | BASE TABLE |
@@ -1120,6 +1120,7 @@ erDiagram
   integer attempts
   varchar_255_ claimedBy
   timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone dispatchedAt
   text errorMessage
   timestamp_3__with_time_zone finishedAt
   bigint id

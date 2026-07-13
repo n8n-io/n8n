@@ -169,7 +169,7 @@ describe('scheduler across two mains over one database', () => {
 		const job = await createJob({ maxAttempts: 3 });
 		const past = new Date(Date.now() - 60_000);
 		// main-a claimed this occurrence for its final attempt, then died before
-		// dispatching it (no `startedAt`). No attempts remain, so the reaper can't
+		// dispatching it (no `dispatchedAt`). No attempts remain, so the reaper can't
 		// retry it; under at-least-once it gives the occurrence one final salvage run
 		// so it isn't silently lost, then resolves the row terminally.
 		const doomed = await taskRepo.save(
@@ -210,7 +210,7 @@ describe('scheduler across two mains over one database', () => {
 	it('completes a dispatched claim stranded on its last attempt without re-running it', async () => {
 		const job = await createJob({ maxAttempts: 3 });
 		const past = new Date(Date.now() - 60_000);
-		// main-a dispatched this occurrence (its `startedAt` is set) then died before
+		// main-a dispatched this occurrence (its `dispatchedAt` is set) then died before
 		// recording the outcome. Its effect already happened, so the reaper must not
 		// re-run it nor blame it: it completes the row as succeeded.
 		const dispatched = await taskRepo.save(
@@ -224,7 +224,7 @@ describe('scheduler across two mains over one database', () => {
 				claimedBy: 'main-a',
 				leaseExpiresAt: new Date(Date.now() - 1000),
 				leaseEpoch: 1,
-				startedAt: past,
+				dispatchedAt: past,
 				attempts: 2,
 				maxAttempts: 3,
 			}),

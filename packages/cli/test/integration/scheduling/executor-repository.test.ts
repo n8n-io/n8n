@@ -219,31 +219,70 @@ describe('ScheduledTaskRepository executor methods', () => {
 			return { id: claimed.id, epoch: claimed.leaseEpoch };
 		}
 
-		it('confirmClaim reports ownership without writing, and rejects a non-owner host', async () => {
+		it('beginDispatch takes the dispatch mutex for the owner, stamps startedAt, refreshes the lease, and refuses a non-owner', async () => {
 			const { id, epoch } = await claimOne();
+			const leaseBefore = (await reload(id)).leaseExpiresAt!.getTime();
 
-			// Read-only: a non-owner sees nothing, and neither call touches startedAt.
-			expect(await taskRepository.confirmClaim({ host: HOST_B, id, claimedEpoch: epoch })).toBe(
-				false,
-			);
-			expect(await taskRepository.confirmClaim({ host: HOST_A, id, claimedEpoch: epoch })).toBe(
-				true,
-			);
+			// Non-owner wins no row and writes nothing.
+			expect(
+				await taskRepository.beginDispatch({ host: HOST_B, id, claimedEpoch: epoch }, 120_000),
+			).toBe(0);
 			expect((await reload(id)).startedAt).toBeNull();
+
+			// Owner wins the mutex: 1 row, startedAt stamped, lease pushed out for the run.
+			expect(
+				await taskRepository.beginDispatch({ host: HOST_A, id, claimedEpoch: epoch }, 120_000),
+			).toBe(1);
+			const row = await reload(id);
+			expect(row.startedAt).not.toBeNull();
+			expect(row.leaseExpiresAt!.getTime()).toBeGreaterThan(leaseBefore);
 		});
 
-		it('markDispatched stamps startedAt for the owner, and is a no-op for a non-owner host', async () => {
+		it('beginDispatch is a one-shot per lease: a second call wins no row', async () => {
+			const { id, epoch } = await claimOne();
+
+			expect(
+				await taskRepository.beginDispatch({ host: HOST_A, id, claimedEpoch: epoch }, 60_000),
+			).toBe(1);
+			// startedAt is now set, so the mutex is taken: the handler cannot be run twice on
+			// this lease (the executor's at-most-once-execute guarantee).
+			expect(
+				await taskRepository.beginDispatch({ host: HOST_A, id, claimedEpoch: epoch }, 60_000),
+			).toBe(0);
+		});
+
+		it('serialises concurrent beginDispatch calls: exactly one wins the mutex', async () => {
+			// The at-most-once-execute guarantee under contention: several fires racing the
+			// same claim (e.g. a duplicated timer, or a reclaim in flight) must not all run
+			// the handler. The `startedAt IS NULL` guard plus row locking make the UPDATE an
+			// atomic compare-and-set, so exactly one call affects the row and gets 1.
+			const { id, epoch } = await claimOne();
+
+			const results = await Promise.all(
+				Array.from(
+					{ length: 5 },
+					async () =>
+						await taskRepository.beginDispatch({ host: HOST_A, id, claimedEpoch: epoch }, 60_000),
+				),
+			);
+
+			expect(results.filter((n) => n === 1)).toHaveLength(1); // exactly one winner
+			expect(results.filter((n) => n === 0)).toHaveLength(4); // the rest are benign no-ops
+			expect((await reload(id)).startedAt).not.toBeNull();
+		});
+
+		it('markDispatched stamps dispatchedAt for the owner, and is a no-op for a non-owner host', async () => {
 			const { id, epoch } = await claimOne();
 
 			expect(await taskRepository.markDispatched({ host: HOST_B, id, claimedEpoch: epoch })).toBe(
 				0,
 			);
-			expect((await reload(id)).startedAt).toBeNull();
+			expect((await reload(id)).dispatchedAt).toBeNull();
 
 			expect(await taskRepository.markDispatched({ host: HOST_A, id, claimedEpoch: epoch })).toBe(
 				1,
 			);
-			expect((await reload(id)).startedAt).not.toBeNull();
+			expect((await reload(id)).dispatchedAt).not.toBeNull();
 		});
 
 		it('markDispatched is not fenced on an existing marker (at-least-once allows redelivery)', async () => {
@@ -252,14 +291,14 @@ describe('ScheduledTaskRepository executor methods', () => {
 			expect(await taskRepository.markDispatched({ host: HOST_A, id, claimedEpoch: epoch })).toBe(
 				1,
 			);
-			expect((await reload(id)).startedAt).not.toBeNull();
+			expect((await reload(id)).dispatchedAt).not.toBeNull();
 
 			// A redelivered occurrence is allowed back to its handler, so a second
-			// markDispatched at the same claim still lands (no startedAt IS NULL fence).
+			// markDispatched at the same claim still lands (no dispatchedAt IS NULL fence).
 			expect(await taskRepository.markDispatched({ host: HOST_A, id, claimedEpoch: epoch })).toBe(
 				1,
 			);
-			expect((await reload(id)).startedAt).not.toBeNull();
+			expect((await reload(id)).dispatchedAt).not.toBeNull();
 		});
 
 		it('completeTask marks succeeded for the owner only', async () => {
@@ -361,7 +400,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 
 			const row = await reload(id);
 			expect(row.status).toBe('running');
-			expect(row.startedAt).toBeNull();
+			expect(row.dispatchedAt).toBeNull();
 		});
 
 		it('treats a transition on a deleted row as a benign no-op (cascade-delete safety)', async () => {
@@ -440,7 +479,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 					claimedEpoch: start.epoch - 1,
 				}),
 			).toBe(0);
-			expect((await reload(start.id)).startedAt).toBeNull();
+			expect((await reload(start.id)).dispatchedAt).toBeNull();
 
 			const fail = await claimOne();
 			expect(
@@ -512,7 +551,10 @@ describe('ScheduledTaskRepository executor methods', () => {
 				claimedBy: HOST_A,
 				leaseExpiresAt: past(),
 				leaseEpoch: 1,
+				// A fully-progressed running row: started, then dispatched, then its lease lapsed.
+				// Pre-dispatch cases override `dispatchedAt: null`.
 				startedAt: past(),
+				dispatchedAt: past(),
 				maxAttempts: 3,
 				...overrides,
 			});
@@ -574,8 +616,14 @@ describe('ScheduledTaskRepository executor methods', () => {
 				expect(row.runAt.getTime()).toBeGreaterThan(Date.now());
 			});
 
-			it('preserves startedAt (the dispatch marker) across a reclaim so a later expiry resolves honestly', async () => {
-				const task = await createExpiredRunning({ leaseEpoch: 2, startedAt: past() });
+			it('clears the dispatch mutex (startedAt) on reclaim so the redelivery can re-acquire it', async () => {
+				// Reclaim is the pre-dispatch path: the reaper only reclaims a row whose
+				// effect never landed (`dispatchedAt` null).
+				const task = await createExpiredRunning({
+					leaseEpoch: 2,
+					startedAt: past(),
+					dispatchedAt: null,
+				});
 
 				expect(
 					await taskRepository.reclaimExpired(
@@ -585,10 +633,11 @@ describe('ScheduledTaskRepository executor methods', () => {
 					),
 				).toBe(1);
 
-				// startedAt survives the reclaim: it records that the effect happened, so a
-				// later last-attempt expiry can be completed rather than recorded failed.
-				// It does not fence the redelivery (at-least-once runs the handler again).
-				expect((await reload(task.id)).startedAt).not.toBeNull();
+				// startedAt is cleared so the next attempt re-acquires the beginDispatch mutex,
+				// and dispatchedAt stays null (the effect still has not happened).
+				const row = await reload(task.id);
+				expect(row.startedAt).toBeNull();
+				expect(row.dispatchedAt).toBeNull();
 			});
 
 			it('is a no-op at a stale epoch (a concurrent reaper already reclaimed it)', async () => {

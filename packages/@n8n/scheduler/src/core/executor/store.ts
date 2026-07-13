@@ -45,14 +45,17 @@ export interface ExecutorTaskStore {
 	claimDueTasks(batch: ClaimDueTasksBatch): Promise<ClaimedTask[]>;
 
 	/**
-	 * Pre-dispatch ownership check: `true` when the claim still owns a live row,
-	 * `false` when the row was deleted or reclaimed (skip the dispatch). Read-only.
+	 * Pre-dispatch mutex: atomically claim the sole right to run this occurrence's
+	 * handler for this lease and refresh the lease (`leaseExpiresAt = now + leaseMs`)
+	 * for the execution window. Returns rows affected: 1 for the single winner, 0 when
+	 * the row was deleted, reclaimed, or already dispatched on this lease. 0 means do
+	 * not run the handler. This is the executor's at-most-once-execute-per-lease guard.
 	 */
-	confirmClaim(claim: ClaimedTaskRef): Promise<boolean>;
+	beginDispatch(claim: ClaimedTaskRef, leaseMs: number): Promise<number>;
 
 	/**
-	 * Stamp the dispatch marker (`startedAt`) once the handler reports its effect
-	 * handed off. Guarded on the claim; 0 rows affected is a benign no-op.
+	 * Stamp the effect-boundary marker (`dispatchedAt`) once the handler reports its
+	 * effect handed off. Guarded on the claim; 0 rows affected is a benign no-op.
 	 */
 	markDispatched(claim: ClaimedTaskRef): Promise<number>;
 

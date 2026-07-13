@@ -26,12 +26,12 @@ const claimedTask = (id: string): ClaimedTask => ({
 /**
  * The claim/dispatch exactly-once invariant, fuzzed over randomised batches:
  * every claimed task dispatches to its handler at most once, and a task whose
- * `confirmClaim` guard finds nothing to start (already reclaimed or deleted) is
- * never dispatched. Store, registry and timer are all mocked, and each fire
- * callback is invoked by hand, so the detached-fire path stays deterministic.
+ * `beginDispatch` mutex wins no row (already reclaimed or deleted) is never
+ * dispatched. Store, registry and timer are all mocked, and each fire callback is
+ * invoked by hand, so the detached-fire path stays deterministic.
  */
 describe('Executor claim/dispatch (fast-check)', () => {
-	it('dispatches each claimed task at most once, and never dispatches one whose confirmClaim found nothing to start', async () => {
+	it('dispatches each claimed task at most once, and never dispatches one whose beginDispatch won no row', async () => {
 		await fc.assert(
 			fc.asyncProperty(
 				fc.uniqueArray(
@@ -51,10 +51,10 @@ describe('Executor claim/dispatch (fast-check)', () => {
 					registry.resolve.mockReturnValue(handler);
 					store.claimDueTasks.mockResolvedValue(tasks);
 					// One resolved value per task, in claim order. `claimAndSchedule` schedules
-					// them in that order, and each callback below calls `confirmClaim`
+					// them in that order, and each callback below calls `beginDispatch`
 					// synchronously before its first await, so the queued values line up.
 					for (const entry of entries) {
-						store.confirmClaim.mockResolvedValueOnce(entry.started);
+						store.beginDispatch.mockResolvedValueOnce(entry.started ? 1 : 0);
 					}
 					store.completeTask.mockResolvedValue(1);
 

@@ -68,8 +68,8 @@ describe('executor claims far enough ahead to fire on time', () => {
 			);
 		}
 
-		async confirmClaim(): Promise<boolean> {
-			return await Promise.resolve(true);
+		async beginDispatch(): Promise<number> {
+			return await Promise.resolve(1);
 		}
 		async markDispatched(): Promise<number> {
 			return await Promise.resolve(1);

@@ -40,7 +40,7 @@ describe('scheduler execution over the storage bindings', () => {
 			execute: async (task, onDispatch) => {
 				executed.push(task);
 				// The fake's effect is the push above; report it so the task carries its
-				// dispatch marker (startedAt) like a real handler would.
+				// effect marker (dispatchedAt) like a real handler would.
 				onDispatch();
 			},
 		});
@@ -102,7 +102,9 @@ describe('scheduler execution over the storage bindings', () => {
 		expect(executed[0].payload).toEqual({ answer: 42 });
 		const done = await taskRepo.findOneByOrFail({ jobId: job.id });
 		expect(done.finishedAt).not.toBeNull();
+		// beginDispatch stamped startedAt, and the handler's onDispatch stamped dispatchedAt.
 		expect(done.startedAt).not.toBeNull();
+		expect(done.dispatchedAt).not.toBeNull();
 		// Terminal rows keep the claim as the record of who ran them.
 		expect(done.claimedBy).toMatch(/^main-/);
 	}, 15_000);

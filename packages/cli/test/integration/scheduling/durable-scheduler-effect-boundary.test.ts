@@ -228,7 +228,8 @@ describe('durable scheduler effect boundary', () => {
 			claimedBy: 'main-dead',
 			leaseExpiresAt: past(),
 			leaseEpoch: 1,
-			startedAt: null,
+			// `dispatchedAt` null is what the reaper reads to choose salvage over complete.
+			dispatchedAt: null,
 			attempts: 0,
 			maxAttempts: 1,
 		});
@@ -258,7 +259,7 @@ describe('durable scheduler effect boundary', () => {
 		// reaper below reads it — this is the deterministic post-dispatch state.
 		await scheduler.execute();
 		await waitFor(
-			async () => (await taskRepo.findOneByOrFail({ id: taskRow.id })).startedAt !== null,
+			async () => (await taskRepo.findOneByOrFail({ id: taskRow.id })).dispatchedAt !== null,
 		);
 		expect(dispatchSpy).toHaveBeenCalledTimes(1);
 

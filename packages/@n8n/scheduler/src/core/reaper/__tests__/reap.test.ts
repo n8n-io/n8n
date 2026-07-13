@@ -14,8 +14,8 @@ const expiredTask = (overrides: Partial<ExpiredLeaseRow> = {}): ExpiredLeaseRow 
 	attempts: 0,
 	maxAttempts: 3,
 	leaseEpoch: 1,
-	// Pre-dispatch by default; post-dispatch tests set a concrete `startedAt`.
-	startedAt: null,
+	// Pre-dispatch by default; post-dispatch tests set a concrete `dispatchedAt`.
+	dispatchedAt: null,
 	...overrides,
 });
 
@@ -97,7 +97,7 @@ describe('reap', () => {
 	it('salvages a pre-dispatch occurrence it dead-letters, dispatching it once', async () => {
 		const { store, onDeadLetter } = setup();
 		const dispatch = vi.fn().mockResolvedValue(undefined);
-		const task = expiredTask({ attempts: 0, maxAttempts: 1, startedAt: null });
+		const task = expiredTask({ attempts: 0, maxAttempts: 1, dispatchedAt: null });
 		store.findExpiredLeases.mockResolvedValue([task]);
 
 		const result = await reap(store, { batchSize: 100 }, { onDeadLetter }, dispatch);
@@ -115,7 +115,7 @@ describe('reap', () => {
 		const dispatch = vi.fn().mockResolvedValue(undefined);
 		store.deadLetterExpired.mockResolvedValue(0); // another actor decided the row first
 		store.findExpiredLeases.mockResolvedValue([
-			expiredTask({ attempts: 0, maxAttempts: 1, startedAt: null }),
+			expiredTask({ attempts: 0, maxAttempts: 1, dispatchedAt: null }),
 		]);
 
 		const result = await reap(store, { batchSize: 100 }, {}, dispatch);
@@ -127,8 +127,8 @@ describe('reap', () => {
 	it('completes a post-dispatch expired lease as succeeded instead of failing it', async () => {
 		const { store, onCompletedAfterDispatch, onDeadLetter } = setup();
 		const dispatch = vi.fn().mockResolvedValue(undefined);
-		// startedAt set: the effect already happened before the lease lapsed.
-		const task = expiredTask({ attempts: 0, maxAttempts: 1, startedAt: new Date() });
+		// dispatchedAt set: the effect already happened before the lease lapsed.
+		const task = expiredTask({ attempts: 0, maxAttempts: 1, dispatchedAt: new Date() });
 		store.findExpiredLeases.mockResolvedValue([task]);
 
 		const result = await reap(

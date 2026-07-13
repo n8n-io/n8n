@@ -53,12 +53,21 @@ export interface ExecutorHooks {
 /**
  * Claims due tasks, fires each at its `runAt`, dispatches to the handler registered
  * for its `taskType`, and records the outcome. Runs on every main; the claim's
- * locking guarantees no two instances *claim* a task at once. Ownership only lasts
- * as long as the lease: an owner stalled past it can still be mid-handler while the
- * reaper reclaims the row and another instance claims it, so two handlers can
- * overlap for one task. The contract is at-least-once — a redelivered occurrence is
- * run again — and duplicate effects are suppressed best-effort by the unique
- * `deduplicationKey` index on `execution_entity`, not by the claim.
+ * locking guarantees no two instances *claim* a task at once. Before running a
+ * handler the executor takes a pre-dispatch mutex ({@link ExecutorTaskStore.beginDispatch}):
+ * an atomic compare-and-set that stamps `startedAt` and returns 1 for a single
+ * winner, so the handler runs at most once per lease. That same write refreshes the
+ * lease, giving the handler a full lease for its execution window.
+ *
+ * The contract is at-least-once. Ownership only lasts as long as the lease: if an
+ * owner is lost past it (crash or partition), the reaper reclaims the row, clears
+ * `startedAt`, and another instance re-acquires the mutex and runs the handler again
+ * so the occurrence is not lost. A genuinely stalled-but-alive owner keeps its
+ * (refreshed) lease, so it is not reclaimed and no second handler overlaps it. The
+ * one residual overlap is a partitioned owner still running while its lease is
+ * reclaimed; there the unique `deduplicationKey` index on `execution_entity`
+ * suppresses the duplicate effect. That index, not the claim, is the effect-level
+ * backstop.
  *
  * This is the executor logic only: a driver (the multi-main loop) calls
  * {@link claimAndSchedule} on a cadence and supplies the instance host id. The
@@ -70,8 +79,7 @@ export interface ExecutorHooks {
  * past its lease and is reaped can't write its stale result over the recovered run:
  * while the row sits `pending` the `status = 'running'` guard rejects it, and once
  * another claim takes it the epoch has advanced, so the stale owner's guarded update
- * matches no row. Handlers are still expected to hand off quickly; the lease-renewal
- * heartbeat for longer ones is future work.
+ * matches no row.
  *
  * Persistence sits behind the {@link ExecutorTaskStore} it is given, so this is only
  * the algorithm and a fake store is enough to test it.
@@ -214,11 +222,13 @@ export class Executor {
 			return { outcome: 'skipped-no-handler' };
 		}
 
-		// Read-only ownership check. False => deleted or reclaimed; don't dispatch work
-		// that is gone or no longer ours. The dispatch marker is written only once the
-		// handler reports its effect handed off (below), never speculatively here.
-		const owned = await this.store.confirmClaim(claim);
-		if (!owned) {
+		// Pre-dispatch mutex: atomically claim the sole right to run this occurrence's
+		// handler for this lease, and refresh the lease for the execution window. 0 rows
+		// => the row is gone, was reclaimed (epoch bumped), or was already dispatched on
+		// this lease; in every case don't run the handler. This compare-and-set, not the
+		// later marker, is what keeps the executor from calling a handler twice per lease.
+		const won = await this.store.beginDispatch(claim, this.leaseMs);
+		if (won === 0) {
 			return { outcome: 'skipped-not-owned' };
 		}
 
@@ -233,10 +243,10 @@ export class Executor {
 		this.hooks.onDispatch?.(task.taskType, lagSeconds);
 
 		// The handler reports the instant its effect was handed off; persist it as the
-		// task's dispatch marker so the reaper can tell an occurrence that ran from one
+		// `dispatchedAt` marker so the reaper can tell an occurrence that ran from one
 		// that never did. The write is kicked off from the (synchronous) callback and its
 		// promise captured, then settled before any terminal write below so the marker
-		// can't land on — and be rejected by — an already-terminal row. A failed marker
+		// can't land on (and be rejected by) an already-terminal row. A failed marker
 		// write is reported, not thrown: losing it only costs a redelivery, which the
 		// at-least-once contract accepts. `??=` makes a second onDispatch call a no-op.
 		let dispatchMark: Promise<void> | undefined;
