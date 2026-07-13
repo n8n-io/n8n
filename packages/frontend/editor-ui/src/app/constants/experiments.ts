@@ -140,6 +140,9 @@ export const INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_EXPERIMENT = createExperiment(
 	'094_instance_ai_browser_credential_setup',
 );
 
+export const EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT = createExperiment(
+	'095_expose_all_workflows_to_mcp',
+);
 export const ENHANCED_HITL_SLACK_EXPERIMENT = createExperiment('096_enhanced_hitl_slack');
 export const ENHANCED_HITL_TELEGRAM_EXPERIMENT = createExperiment('097_enhanced_hitl_telegram');
 export const ENHANCED_HITL_GMAIL_EXPERIMENT = createExperiment('098_enhanced_hitl_gmail');
@@ -183,4 +186,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	ENHANCED_HITL_SLACK_EXPERIMENT.name,
 	ENHANCED_HITL_TELEGRAM_EXPERIMENT.name,
 	ENHANCED_HITL_GMAIL_EXPERIMENT.name,
+	EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT.name,
 ];

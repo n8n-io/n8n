@@ -48,9 +48,9 @@ describe('computeNextRunAt', () => {
 				cronExpression: '0 0 0 * * *',
 				timezone: null,
 			};
-			expect(() => computeNextRunAt(schedule, new Date('2026-01-10T12:00:00Z'))).toThrow(
-				InvalidScheduleError,
-			);
+			const compute = () => computeNextRunAt(schedule, new Date('2026-01-10T12:00:00Z'));
+			expect(compute).toThrow(InvalidScheduleError);
+			expect(compute).toThrow(/timezone must be resolved to a concrete zone/);
 		});
 
 		it('throws InvalidScheduleError on an out-of-range expression', () => {
@@ -62,6 +62,20 @@ describe('computeNextRunAt', () => {
 			expect(() => computeNextRunAt(schedule, new Date('2026-01-10T00:00:00Z'))).toThrow(
 				InvalidScheduleError,
 			);
+		});
+
+		// validateSchedule only checks the expression's own syntax; it never sees `after`,
+		// so a corrupt `after` (e.g. from a damaged nextRunAt column) reaches cron-parser's
+		// own evaluation and must still be wrapped as InvalidScheduleError, not thrown raw.
+		it('wraps a cron-parser failure caused by a corrupt `after` instant', () => {
+			const schedule: CronSchedule = {
+				kind: 'cron',
+				cronExpression: '0 0 0 * * *',
+				timezone: 'UTC',
+			};
+			const compute = () => computeNextRunAt(schedule, new Date('nope'));
+			expect(compute).toThrow(InvalidScheduleError);
+			expect(compute).toThrow(/Failed to evaluate cron expression/);
 		});
 	});
 

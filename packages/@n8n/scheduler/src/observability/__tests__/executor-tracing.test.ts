@@ -153,6 +153,7 @@ describe('withHandoffTracing', () => {
 		expect(options.op).toBe('scheduler.handoff');
 		expect(options.attributes).toEqual({
 			[SCHEDULER_ATTRIBUTES.taskId]: task.id,
+			[SCHEDULER_ATTRIBUTES.jobId]: task.jobId,
 			[SCHEDULER_ATTRIBUTES.taskType]: task.taskType,
 		});
 		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
