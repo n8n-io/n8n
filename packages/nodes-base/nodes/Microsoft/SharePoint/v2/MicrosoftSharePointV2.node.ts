@@ -2,8 +2,8 @@ import type { INodeType, INodeTypeBaseDescription, INodeTypeDescription } from '
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 // Blank shell for the Graph-based v2 rebuild; credentials, actions, and
-// pickers arrive in follow-up tickets. Only registered when
-// N8N_MICROSOFT_SHAREPOINT_V2 is set — see MicrosoftSharePoint.node.ts.
+// pickers arrive in follow-up tickets. Not registered yet — uncomment the
+// registration in MicrosoftSharePoint.node.ts to test locally.
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Microsoft SharePoint',
 	name: 'microsoftSharePoint',
