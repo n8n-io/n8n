@@ -156,5 +156,7 @@ describe('workflowActivated', () => {
 		// The stored expectedChecksum must be the post-publish value; otherwise the next
 		// autosave of the position change 409s with "Workflow was changed by someone else".
 		expect(workflowDocumentStore.checksum).toBe('checksum-after-publish');
+		// The in-progress edits must survive: reconcile the checksum, never re-hydrate.
+		expect(mockCanvasOperations.initializeWorkspace).not.toHaveBeenCalled();
 	});
 });
