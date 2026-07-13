@@ -5,12 +5,6 @@
 			"status": "covered",
 			"nodeOperation": "audit:generate"
 		},
-		"GET /settings/security-policy": {
-			"status": "gap"
-		},
-		"PUT /settings/security-policy": {
-			"status": "gap"
-		},
 		"GET /credentials": {
 			"status": "gap"
 		},
@@ -173,6 +167,12 @@
 			"status": "gap"
 		},
 		"POST /source-control/pull": {
+			"status": "gap"
+		},
+		"GET /settings/security-policy": {
+			"status": "gap"
+		},
+		"PUT /settings/security-policy": {
 			"status": "gap"
 		},
 		"POST /variables": {

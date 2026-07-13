@@ -26,14 +26,34 @@ class FakeRepo {
 	/** Fail the next N appends with a NON-constraint error (e.g. connectivity). */
 	failNextAppendsTransient = 0;
 
+	/** Commit the rows, then fail the response (a lost ack after COMMIT). */
+	commitThenFailNextAppends = 0;
+
+	/** Fail the next N maxSeq reads (seq seeding hits a transient DB error). */
+	failNextMaxSeq = 0;
+
 	async maxSeq(_threadId: string): Promise<number> {
+		if (this.failNextMaxSeq > 0) {
+			this.failNextMaxSeq--;
+			throw new Error('connect ETIMEDOUT');
+		}
 		return this.rows.length ? this.rows[this.rows.length - 1].seq : 0;
+	}
+
+	async payloadAt(_threadId: string, seq: number): Promise<string | null> {
+		const row = this.rows.find((r) => r.seq === seq);
+		return row ? JSON.stringify(row.event) : null;
 	}
 
 	async appendBatch(_threadId: string, firstSeq: number, events: InstanceAiEvent[]) {
 		if (this.failNextAppendsTransient > 0) {
 			this.failNextAppendsTransient--;
 			throw new Error('connect ETIMEDOUT');
+		}
+		if (this.commitThenFailNextAppends > 0) {
+			this.commitThenFailNextAppends--;
+			events.forEach((event, i) => this.rows.push({ seq: firstSeq + i, event }));
+			throw new Error('read ECONNRESET');
 		}
 		const conflict =
 			this.failNextAppends > 0 ||
@@ -261,6 +281,69 @@ describe('DurableEventLog', () => {
 		expect(metrics.drain.appendFailures).toBe(0);
 		expect(repo.rows.find((r) => r.event.type === 'tool-call')?.seq).toBe(1);
 		expect(emitted.find((e) => e.live)?.id).toBe(1);
+	});
+
+	it('does not duplicate a batch whose append committed but lost its response', async () => {
+		const repo = new FakeRepo();
+		repo.commitThenFailNextAppends = 1; // COMMIT succeeded, the ack was lost
+		const { log, metrics } = buildLog(repo);
+
+		const emitted = await publishAll(log, [toolCall('tc-1')]);
+
+		// Exactly one row: the retry detected the committed batch instead of
+		// re-appending it under fresh seqs.
+		expect(repo.rows.map((r) => [r.seq, r.event.type])).toEqual([[1, 'tool-call']]);
+		expect(metrics.drain.appendConflicts).toBe(0);
+		expect(metrics.drain.appendFailures).toBe(0);
+		expect(metrics.drain.rowsWritten).toBe(1);
+		expect(emitted.find((e) => e.live)?.id).toBe(1);
+	});
+
+	it('retries when seeding the sequence fails instead of rejecting the drain', async () => {
+		const repo = new FakeRepo();
+		repo.failNextMaxSeq = 1; // the currentSeq() seed read hits a transient error
+		const { log, metrics } = buildLog(repo);
+
+		const emitted = await publishAll(log, [toolCall('tc-1')]);
+
+		expect(metrics.drain.appendConflicts).toBe(0);
+		expect(repo.rows.map((r) => r.seq)).toEqual([1]);
+		expect(emitted.find((e) => e.live)?.id).toBe(1);
+	});
+
+	it('serializes flush() through the drain so a concurrent fact cannot outrun its block', async () => {
+		const repo = new FakeRepo();
+		const { log } = buildLog(repo);
+		const emitted: DrainedEvent[] = [];
+		const collect = (drained: DrainedEvent) => emitted.push(drained);
+
+		log.publish(THREAD, textDelta('streamed tail'), collect);
+		// A flush (idle timer / shutdown) and a structural fact race: the flush
+		// marker was queued first, so the block must persist before the fact.
+		const flushed = log.flush(THREAD);
+		log.publish(THREAD, toolCall('tc-1'), collect);
+		await flushed;
+		await log.flush(THREAD);
+
+		expect(repo.rows.map((r) => [r.seq, r.event.type])).toEqual([
+			[1, 'text-block'],
+			[2, 'tool-call'],
+		]);
+	});
+
+	it('getNextEventId reflects rows appended by another writer', async () => {
+		const repo = new FakeRepo();
+		const { log } = buildLog(repo);
+		await publishAll(log, [toolCall('tc-1'), toolCall('tc-2')]);
+
+		// A sibling main appends directly to the shared table.
+		repo.rows.push({
+			seq: 3,
+			event: { type: 'status', runId: 'run-sibling', agentId: 'a', payload: { message: 'x' } },
+		});
+
+		// The cursor authority is the DB, not this main's last-append cache.
+		expect(await log.getNextEventId(THREAD)).toBe(4);
 	});
 
 	it('drops the batch after exhausting retries but still delivers live', async () => {

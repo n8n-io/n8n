@@ -51,6 +51,15 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 		return bytes;
 	}
 
+	/**
+	 * Raw payload at an exact (threadId, seq), or null. Used by the writer to
+	 * detect whether an append whose response was lost actually committed.
+	 */
+	async payloadAt(threadId: string, seq: number): Promise<string | null> {
+		const row = await this.findOne({ where: { threadId, seq } });
+		return row?.payload ?? null;
+	}
+
 	async getAfter(threadId: string, afterSeq: number): Promise<StoredEvent[]> {
 		const rows = await this.find({
 			where: { threadId, seq: MoreThan(afterSeq) },
