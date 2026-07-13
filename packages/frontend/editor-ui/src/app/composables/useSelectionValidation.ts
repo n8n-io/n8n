@@ -75,6 +75,24 @@ export function useSelectionValidation() {
 		});
 	}
 
+	/**
+	 * Resolves a prospective group selection: drops ids that don't resolve to a
+	 * node, expands the rest with their attached sub-nodes, and validates the
+	 * result. Returns the expanded member ids when groupable, null otherwise.
+	 *
+	 * Group creation eligibility and execution must both go through this so the
+	 * checked selection and the created group can't diverge (e.g. stale ids
+	 * being validated away but still persisted as group members).
+	 */
+	function resolveGroupableNodeIds(nodeIds: string[]): string[] | null {
+		const store = workflowDocumentStore.value;
+		const resolvedIds = nodeIds.filter((id) => store?.getNodeById(id));
+		if (resolvedIds.length === 0) return null;
+
+		const expandedIds = expandSelectionWithSubNodes(resolvedIds);
+		return isSelectionGroupable(expandedIds).valid ? expandedIds : null;
+	}
+
 	function getValidationInput(nodeIds: string[], connectionsBySourceNode?: IConnections) {
 		const store = workflowDocumentStore.value;
 		const expression = store?.getExpressionHandler();
@@ -97,5 +115,10 @@ export function useSelectionValidation() {
 		};
 	}
 
-	return { isSelectionExtractable, isSelectionGroupable, expandSelectionWithSubNodes };
+	return {
+		isSelectionExtractable,
+		isSelectionGroupable,
+		expandSelectionWithSubNodes,
+		resolveGroupableNodeIds,
+	};
 }

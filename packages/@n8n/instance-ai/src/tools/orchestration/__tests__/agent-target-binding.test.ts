@@ -1,9 +1,6 @@
-import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { ThreadRecord } from '../../../storage/thread-patch';
-import type { InstanceAiAgentBuilderService, InstanceAiContext } from '../../../types';
+import type { InstanceAiContext } from '../../../types';
 import { resolveAgentBuilderTarget, saveAgentBuilderTarget } from '../agent-target-binding';
-import { createReadConfigTool } from '../config-tools';
-import { createListAgentsTool, createListWorkflowsTool } from '../creation-tools';
 
 /** In-memory thread store shared across "turns" (fresh contexts). */
 function createThreadMemory(initialMetadata: Record<string, unknown> = {}) {
@@ -68,49 +65,29 @@ describe('agent-builder target binding', () => {
 		await expect(resolveAgentBuilderTarget(invalid)).resolves.toBeUndefined();
 	});
 
-	it('falls back to in-memory storage when thread memory is unavailable', async () => {
-		const context = createContext();
+	it('warns and no-ops when saving without thread persistence available', async () => {
+		const context = createContext({ threadMemory: undefined, threadId: undefined });
 		await saveAgentBuilderTarget(context, TARGET);
-		context.agentBuilderTarget = undefined;
-		await expect(resolveAgentBuilderTarget(context)).resolves.toEqual(TARGET);
+		expect(context.logger?.warn).toHaveBeenCalledWith(
+			expect.stringContaining('no thread persistence available'),
+			expect.objectContaining({ agentId: TARGET.agentId }),
+		);
 	});
 
-	it('lets read_config resolve the agent in a later turn from the persisted binding', async () => {
-		const threadMemory = createThreadMemory({ instanceAiAgentBuilderTarget: TARGET });
-		const getConfigSnapshot = vi
-			.fn()
-			.mockResolvedValue({ config: null, updatedAt: null, versionId: null });
-		const context = createContext({
-			threadMemory,
-			agentBuilderService: { getConfigSnapshot } as unknown as InstanceAiAgentBuilderService,
-		});
+	it('propagates a metadata read failure instead of falling back to undefined', async () => {
+		const threadMemory = createThreadMemory();
+		threadMemory.getThread.mockRejectedValue(new Error('storage unavailable'));
+		const context = createContext({ threadMemory });
 
-		const result = await executeTool<{ ok: boolean }>(createReadConfigTool(context), {}, {});
-
-		expect(result.ok).toBe(true);
-		expect(getConfigSnapshot).toHaveBeenCalledWith('agent-1', 'project-1');
+		await expect(resolveAgentBuilderTarget(context)).rejects.toThrow('storage unavailable');
+		expect(context.agentBuilderTarget).toBeUndefined();
 	});
 
-	it('scopes list_workflows and list_agents to the binding project on a later turn', async () => {
-		// Binding says project-1; the fresh run's context.projectId is a different
-		// project. Both listing tools must use the binding's project, not the run's.
-		const threadMemory = createThreadMemory({ instanceAiAgentBuilderTarget: TARGET });
-		const listAttachableWorkflows = vi.fn().mockResolvedValue([]);
-		const listAllProjectAgents = vi.fn().mockResolvedValue([]);
-		const service = {
-			listAttachableWorkflows,
-			listAllProjectAgents,
-		} as unknown as InstanceAiAgentBuilderService;
-		const context = createContext({
-			threadMemory,
-			projectId: 'other-project',
-			agentBuilderService: service,
-		});
+	it('propagates a metadata write failure instead of claiming success', async () => {
+		const threadMemory = createThreadMemory();
+		threadMemory.patchThread.mockRejectedValue(new Error('storage unavailable'));
+		const context = createContext({ threadMemory });
 
-		await executeTool(createListWorkflowsTool(context), {}, {});
-		expect(listAttachableWorkflows).toHaveBeenCalledWith('project-1', undefined);
-
-		await executeTool(createListAgentsTool(context), {}, {});
-		expect(listAllProjectAgents).toHaveBeenCalledWith('project-1');
+		await expect(saveAgentBuilderTarget(context, TARGET)).rejects.toThrow('storage unavailable');
 	});
 });

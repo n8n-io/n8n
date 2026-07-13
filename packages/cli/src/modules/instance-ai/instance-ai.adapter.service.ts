@@ -120,7 +120,8 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
-import { InstanceAiAgentBuilderAdapterService } from '@/modules/agents/instance-ai-agent-builder.adapter';
+import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
+import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { NodeCatalogService } from '@/node-catalog';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
@@ -276,7 +277,7 @@ export class InstanceAiAdapterService {
 			/** Eval-only: restrict the credential `list()` view to these IDs. */
 			credentialIdAllowlist?: string[];
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
-			 *  assistant can create one via the create_agent tool. */
+			 *  assistant can create one via the build-agent tool. */
 			agentId?: string;
 		},
 	): InstanceAiContext {
@@ -288,7 +289,7 @@ export class InstanceAiAdapterService {
 		// the network, and telemetry must never block context creation.
 		void this.trackGatewayAvailability();
 
-		const agentBuilderAdapter = this.getAgentBuilderAdapter();
+		const builderDelegateAdapter = this.getBuilderDelegateAdapter();
 		return {
 			userId: user.id,
 			projectId,
@@ -312,13 +313,36 @@ export class InstanceAiAdapterService {
 			logger: this.logger,
 			nodeTypesProvider: this.nodeTypes,
 			allowSendingParameterValues: this.allowSendingParameterValues,
-			...(agentBuilderAdapter
-				? { agentBuilderService: agentBuilderAdapter.createAdapter(user, projectId) }
-				: {}),
-			...(agentBuilderAdapter && agentId && projectId
+			...(builderDelegateAdapter && agentId && projectId
 				? { agentBuilderTarget: { agentId, projectId } }
 				: {}),
+			...(builderDelegateAdapter && projectId
+				? {
+						builderDelegate: builderDelegateAdapter.createDelegate(
+							user,
+							projectId,
+							new AgentsCredentialProvider(this.credentialsService, projectId, user),
+						),
+					}
+				: {}),
 		};
+	}
+
+	/**
+	 * Resolve the builder-delegate adapter only when the `agents` module is
+	 * active. The adapter class is statically imported (so its `@Service` is
+	 * always registered), so the module-enabled check is what gates
+	 * agent-building. Returns null when the module is off, so `builderDelegate`
+	 * (and the build-agent sub-agent tool it powers) is simply absent from the
+	 * context.
+	 */
+	private getBuilderDelegateAdapter(): InstanceAiBuilderDelegateAdapterService | null {
+		if (!Container.get(ModuleRegistry).isActive('agents')) return null;
+		try {
+			return Container.get(InstanceAiBuilderDelegateAdapterService);
+		} catch {
+			return null;
+		}
 	}
 
 	/**
@@ -337,22 +361,6 @@ export class InstanceAiAdapterService {
 		if (!this.license.isLicensed(LICENSE_FEATURES.AI_GATEWAY)) return null;
 		try {
 			return await this.aiGatewayService.getGatewayConfig();
-		} catch {
-			return null;
-		}
-	}
-
-	/**
-	 * Resolve the agent-builder adapter only when the `agents` module is active.
-	 * The adapter class is statically imported (so its `@Service` is always
-	 * registered), so the module-enabled check is what gates
-	 * agent-building. Returns null when the module is off, so the tools are simply
-	 * absent.
-	 */
-	private getAgentBuilderAdapter(): InstanceAiAgentBuilderAdapterService | null {
-		if (!Container.get(ModuleRegistry).isActive('agents')) return null;
-		try {
-			return Container.get(InstanceAiAgentBuilderAdapterService);
 		} catch {
 			return null;
 		}
