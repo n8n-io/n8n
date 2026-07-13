@@ -1030,6 +1030,12 @@ type CronRecurrenceRule =
 			typeInterval: 'hours' | 'days' | 'weeks' | 'months';
 	  };
 
+/**
+ * @deprecated Remnant of the legacy in-memory scheduling path. `registerCron`
+ * takes {@link Cron}, not this type; the durable scheduler path never uses it.
+ * Only `ScheduledTaskManager` and its helper still reference it (and only for
+ * `CronContext['recurrence']`). Slated to go away with `ScheduledTaskManager`.
+ */
 export type CronContext = {
 	nodeId: string;
 	workflowId: string;
