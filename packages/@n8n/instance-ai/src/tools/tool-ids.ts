@@ -29,6 +29,7 @@ export const ORCHESTRATION_TOOL_IDS = {
 	VERIFY_BUILT_WORKFLOW: 'verify-built-workflow',
 	REPORT_VERIFICATION_VERDICT: 'report-verification-verdict',
 	APPLY_WORKFLOW_CREDENTIALS: 'apply-workflow-credentials',
+	BUILD_AGENT: 'build-agent',
 } as const;
 
 export const WORKSPACE_TOOL_IDS = {
