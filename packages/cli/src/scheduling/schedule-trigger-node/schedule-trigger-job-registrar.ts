@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Schedule } from '@n8n/scheduler';
-import { computeFirstRunAt } from '@n8n/scheduler';
+import { computeFirstRunAt, scheduleFingerprint } from '@n8n/scheduler';
 import type { Cron, INode, SchedulingFunctions, Workflow } from 'n8n-workflow';
 import { SCHEDULE_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
@@ -12,52 +12,53 @@ import { SCHEDULE_TRIGGER_TASK_TYPE } from './schedule-trigger-task';
 
 /** One rule of a Schedule Trigger node, ready to persist as a durable job. */
 interface CollectedSchedule {
+	/** The rule's cadence, already mapped to its scheduler kind (see {@link ScheduleTriggerJobRegistrar.toSchedule}). */
 	schedule: Schedule;
 	/**
-	 * The first fire, computed ungated at collect time: the legacy engine always
-	 * fires a fresh rule at its next instant, and every later fire chains from this
-	 * anchor through the materializer. `null` for a degenerate rule the legacy
-	 * engine would never fire (see {@link isDegenerateRecurrence}).
+	 * The first fire, computed ungated at collect time:
+	 * the legacy engine always fires a fresh rule at its next instant,
+	 * and every later fire chains from this anchor through the materializer.
+	 * `null` for a degenerate rule the legacy engine would never fire (see {@link isDegenerateRecurrence}).
 	 */
 	firstRunAt: Date | null;
 }
 
 /**
- * Registers a Schedule Trigger node's rules as durable `scheduled_job` rows —
- * the publication activation path's counterpart to the in-memory
- * `ScheduledTaskManager`, chosen per instance by `N8N_SCHEDULER_ENABLED`.
+ * Registers a Schedule Trigger node's rules as durable `scheduled_job` rows.
+ * The publication activation path's counterpart to the in-memory `ScheduledTaskManager`.
  *
- * The node stays engine-agnostic: during activation its `trigger()` runs
- * unchanged and calls `registerCron` as always, but the execution context hands
- * it this service's collector instead of the in-memory registrar. Collection is
- * synchronous (`registerCron` returns `void`), so the rules are persisted right
+ * Collection is synchronous, so the rules are persisted right
  * after the node finishes registering, by {@link commit}.
  *
- * Each rule is stored under the best-fitting scheduler kind (see
- * {@link toSchedule}): a fixed second/minute cadence as `interval`, an
- * every-Nth-period calendar cadence as `recurring_cron`, and everything else
- * (including a raw cron field) as plain `cron`.
+ * Each rule is stored under the best-fitting scheduler kind (see {@link toSchedule}):
+ * - a fixed second/minute cadence as `interval`
+ * - an every-Nth-period calendar cadence as `recurring_cron`
+ * - and everything else (including a raw cron field) as plain `cron`.
  *
- * Committing provisions the node's jobs in place rather than rewriting them
- * wholesale: a job whose definition is unchanged keeps its row — its id anchors
- * the `(jobId, scheduledFor)` task
- * identity and the execution dedup key, so re-activation (a re-published
- * version, a leader takeover replaying active workflows) cannot double-fire
- * instants already queued or run. Only a changed rule restarts its clock, and
- * its still-pending occurrences are withdrawn with it.
+ * Committing provisions the node's jobs in place rather than rewriting them wholesale:
+ * - a job whose definition is unchanged keeps its row
+ * - its id anchors the `(jobId, scheduledFor)` task identity and the execution dedup key,
+ * 	 so re-activation cannot double-fire instants already queued or run.
+ * - only a changed rule restarts its clock, and its still-pending occurrences are withdrawn with it.
  *
- * Durable jobs track the *published* state of a workflow, not this instance's
- * leadership: rows are written on activation and deleted on deactivation
- * ({@link remove}) or by FK cascade when the published version goes away —
+ * Durable jobs track the *published* state of a workflow, not this instance's leadership:
+ * rows are written on activation and deleted on deactivation ({@link remove})
+ * or by FK cascade when the published version goes away;
  * never on leader stepdown or shutdown, which tear down only in-memory state.
  */
 @Service()
 export class ScheduleTriggerJobRegistrar {
-	/** Rules collected from a node's `trigger()` run, awaiting {@link commit}. */
+	/**
+	 * Rules collected from a node's `trigger()` run, awaiting {@link commit},
+	 * keyed by {@link pendingKey}. An entry exists only between
+	 * {@link createCollector} and the {@link commit}/{@link discard} that consumes it.
+	 */
 	private readonly pending = new Map<string, CollectedSchedule[]>();
 
+	/** Whether this instance diverts schedule trigger registrations to durable jobs. */
 	private readonly intercepting: boolean;
 
+	/** Instance-default timezone, used to resolve a null cron timezone for the first-run math only. */
 	private readonly defaultTimezone: string;
 
 	/** How a fixed second/minute interval is represented (see `SchedulerConfig`). */
@@ -69,27 +70,36 @@ export class ScheduleTriggerJobRegistrar {
 		workflowsConfig: WorkflowsConfig,
 		private readonly jobProvisioner: DurableJobProvisioner,
 	) {
-		// The durable engine only takes over on the publication activation path;
-		// the legacy ActiveWorkflowManager keeps its in-memory timers untouched.
 		this.intercepting =
 			globalConfig.scheduler.enabled && workflowsConfig.useWorkflowPublicationService;
 		this.defaultTimezone = globalConfig.generic.timezone;
 		this.triggerNodeMode = globalConfig.scheduler.triggerNodeMode;
 		this.logger = this.logger.scoped('scheduler');
+
+		if (globalConfig.scheduler.enabled && !workflowsConfig.useWorkflowPublicationService) {
+			this.logger.warn(
+				'N8N_SCHEDULER_ENABLED is set but the workflow publication service is disabled. The durable scheduler cannot take over schedule triggers, which keep using the legacy in-memory engine.',
+			);
+		}
 	}
 
-	/** Whether this node's cron registrations should divert to durable jobs. */
+	/**
+	 * @param node The trigger node about to register its cron rules.
+	 * @returns `true` to hand the node a durable collector, `false` to leave it on the legacy path.
+	 */
 	interceptsNode(node: INode): boolean {
 		return this.intercepting && node.type === SCHEDULE_TRIGGER_NODE_TYPE;
 	}
 
 	/**
 	 * The scheduling functions handed to an intercepted node's trigger context.
-	 * Each `registerCron` call picks the rule's kind and plans its first fire
-	 * synchronously — an invalid cron expression throws right there, inside the
-	 * node's own error handling, exactly as the in-memory registrar would.
-	 * Creating a collector replaces any half-collected rules from a previous
-	 * failed attempt for the same node.
+	 * Each `registerCron` call picks the rule's kind and plans its first fire synchronously.
+	 *
+	 * Creating a collector replaces any half-collected rules from a previous failed attempt for the same node.
+	 *
+	 * @param workflow The activating workflow, read for its id and timezone setting.
+	 * @param node The Schedule Trigger node whose rules are being collected.
+	 * @returns Scheduling functions whose `registerCron` collects rules for {@link commit}.
 	 */
 	createCollector(workflow: Workflow, node: INode): SchedulingFunctions {
 		const timezone = explicitTimezone(workflow);
@@ -111,9 +121,7 @@ export class ScheduleTriggerJobRegistrar {
 					);
 					collected.push({ schedule, firstRunAt: null });
 				} else {
-					// Validates the expression/timezone and returns the first instant. A null
-					// (instance-default) timezone is resolved for the math while staying null
-					// in the stored row. `computeFirstRunAt` throws on a malformed rule.
+					// Validates the expression/timezone and returns the first instant.
 					const computed = computeFirstRunAt(
 						withResolvedTimezone(schedule, this.defaultTimezone),
 						new Date(),
@@ -131,10 +139,16 @@ export class ScheduleTriggerJobRegistrar {
 	 * - A second/minute cadence becomes an `interval` job in `new` mode (a steady
 	 *   elapsed-time cadence); in `legacy` mode it stays the node's plain cron so
 	 *   fires remain clock-aligned.
-	 * - An every-Nth-period calendar cadence (`recurrence.activated`, stride ≥ 2)
+	 * - An every-Nth-period calendar cadence (`recurrence.activated`, stride >= 2)
 	 *   becomes a `recurring_cron` job: the node's cron anchor plus the gate.
 	 * - Everything else — a stride-1 calendar cadence and a raw cron field — is a
 	 *   plain `cron` job.
+	 *
+	 * @param expression The node's cron expression (the anchor for calendar cadences).
+	 * @param timezone The rule's timezone, or `null` for the instance default.
+	 * @param recurrence The node's every-Nth-period gate, if any.
+	 * @param source Which field drove the cadence (`seconds`/`minutes`) and its size.
+	 * @returns The chosen scheduler {@link Schedule} for this rule.
 	 */
 	private toSchedule(
 		expression: Cron['expression'],
@@ -167,20 +181,27 @@ export class ScheduleTriggerJobRegistrar {
 	/**
 	 * Persist the rules collected for one node, reconciling them against the
 	 * node's existing jobs (see the class doc for why unchanged jobs must keep
-	 * their rows). A no-op when nothing was collected — the node wasn't
-	 * intercepted. Consumes the pending rules either way.
+	 * their rows).
+	 *
+	 * @param workflowId The activating workflow whose collected rules to persist.
+	 * @param nodeId The Schedule Trigger node those rules belong to.
 	 */
 	async commit(workflowId: string, nodeId: string): Promise<void> {
 		const key = pendingKey(workflowId, nodeId);
 		const collected = this.pending.get(key);
 		if (collected !== undefined) {
 			this.pending.delete(key);
-
-			const desired = collected.map(({ schedule, firstRunAt }, ruleIndex) => ({
-				name: `${workflowId}:${nodeId}:${ruleIndex}`,
-				schedule,
-				firstRunAt,
-			}));
+			const seen = new Map<string, number>();
+			const desired = collected.map(({ schedule, firstRunAt }) => {
+				const fingerprint = scheduleFingerprint(schedule, firstRunAt !== null);
+				const occurrence = seen.get(fingerprint) ?? 0;
+				seen.set(fingerprint, occurrence + 1);
+				return {
+					name: `${workflowId}:${nodeId}:${fingerprint}:${occurrence}`,
+					schedule,
+					firstRunAt,
+				};
+			});
 
 			const payload: ScheduleTriggerTaskPayload = { workflowId, nodeId };
 			const summary = await this.jobProvisioner.provision(
@@ -202,7 +223,12 @@ export class ScheduleTriggerJobRegistrar {
 		}
 	}
 
-	/** Drop collected-but-uncommitted rules after a failed activation. */
+	/**
+	 * Drop collected-but-uncommitted rules after a failed activation.
+	 *
+	 * @param workflowId The workflow whose pending rules to discard.
+	 * @param nodeId The Schedule Trigger node those rules belong to.
+	 */
 	discard(workflowId: string, nodeId: string): void {
 		this.pending.delete(pendingKey(workflowId, nodeId));
 	}
@@ -213,6 +239,9 @@ export class ScheduleTriggerJobRegistrar {
 	 * activation may have persisted rows while the durable engine was on, and
 	 * leaving them behind would re-fire the node if durability is later
 	 * re-enabled. Deprovision is a no-op when no such rows exist.
+	 *
+	 * @param workflowId The deactivating workflow whose durable jobs to delete.
+	 * @param nodeId The Schedule Trigger node those jobs belong to.
 	 */
 	async remove(workflowId: string, nodeId: string): Promise<void> {
 		await this.jobProvisioner.deprovision(workflowId, nodeId);
@@ -221,11 +250,6 @@ export class ScheduleTriggerJobRegistrar {
 
 const pendingKey = (workflowId: string, nodeId: string): string => `${workflowId}:${nodeId}`;
 
-/**
- * The workflow's own timezone setting, or `null` for "instance default" —
- * stored unresolved so a later change of the instance default reaches the
- * schedule without a re-publication.
- */
 function explicitTimezone(workflow: Workflow): string | null {
 	const timezone = workflow.settings?.timezone;
 	return typeof timezone === 'string' && timezone !== '' && timezone !== 'DEFAULT'
@@ -234,18 +258,19 @@ function explicitTimezone(workflow: Workflow): string | null {
 }
 
 /**
- * A rule the legacy recurrence check treats as clock-dead: an activated gate
- * whose interval size is falsy (`0`/`NaN`), which `recurrenceCheck` rejects on
- * every tick via `if (!intervalSize) return false`. A negative size is *not*
- * degenerate — legacy fires it on every candidate tick, so it falls through to
- * the plain-cron representation (`intervalSize >= 2` in {@link toSchedule} is
- * likewise false, so it never becomes a `recurring_cron` gate).
+ * True for a rule that can never fire: recurrence is activated but its
+ * interval size is `0` or `NaN`. For such a rule the legacy engine's
+ * `recurrenceCheck` returns false on every tick (`if (!intervalSize) return
+ * false`), so it never runs.
+ *
+ * A *negative* interval size is not degenerate: the legacy engine fires it on
+ * every tick, and {@link toSchedule} matches that by mapping it to a plain
+ * cron job (it also fails the `intervalSize >= 2` check there).
  */
 function isDegenerateRecurrence(recurrence: Cron['recurrence']): boolean {
 	return recurrence?.activated === true && !recurrence.intervalSize;
 }
 
-/** Resolve a null (instance-default) cron timezone for the recurrence math only. */
 function withResolvedTimezone(schedule: Schedule, defaultTimezone: string): Schedule {
 	if (schedule.kind === 'cron' || schedule.kind === 'recurring_cron') {
 		return { ...schedule, timezone: schedule.timezone ?? defaultTimezone };

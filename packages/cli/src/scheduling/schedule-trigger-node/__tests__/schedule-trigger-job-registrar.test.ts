@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type { CronDefinition } from '@n8n/scheduler';
@@ -16,6 +17,9 @@ const NEXT_NINE = new Date('2026-01-05T09:00:00.000Z');
 
 const WORKFLOW_ID = 'wf-1';
 const NODE_ID = 'node-1';
+
+/** `<workflowId>:<nodeId>:<definition fingerprint>:<occurrence>` */
+const jobNamePattern = new RegExp(`^${WORKFLOW_ID}:${NODE_ID}:[0-9a-f]{16}:\\d+$`);
 
 const workflow = { id: WORKFLOW_ID, settings: {} } as unknown as Workflow;
 const scheduleNode = mock<INode>({ id: NODE_ID, type: SCHEDULE_TRIGGER_NODE_TYPE });
@@ -79,7 +83,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 	});
 
 	describe('collect and commit', () => {
-		it('provisions one desired job per rule, named by rule index, with the first fire planned', async () => {
+		it('provisions one desired job per rule, named by its definition, with the first fire planned', async () => {
 			const registrar = makeRegistrar();
 			const collector = registrar.createCollector(workflow, scheduleNode);
 			collector.registerCron(dailyAtNine, vi.fn());
@@ -94,12 +98,12 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
 				[
 					{
-						name: `${WORKFLOW_ID}:${NODE_ID}:0`,
+						name: expect.stringMatching(jobNamePattern),
 						schedule: { kind: 'cron', cronExpression: '0 0 9 * * *', timezone: null },
 						firstRunAt: NEXT_NINE,
 					},
 					{
-						name: `${WORKFLOW_ID}:${NODE_ID}:1`,
+						name: expect.stringMatching(jobNamePattern),
 						schedule: {
 							kind: 'recurring_cron',
 							cronExpression: '0 0 9 * * 1',
@@ -112,6 +116,42 @@ describe('ScheduleTriggerJobRegistrar', () => {
 					},
 				],
 			);
+		});
+
+		it('a rule keeps its name when rules are inserted before it or reordered', async () => {
+			// A positional name would shift here and needlessly redefine the job,
+			// restarting its clock; the definition-derived name must not move.
+			const registrar = makeRegistrar();
+			registrar.createCollector(workflow, scheduleNode).registerCron(dailyAtNine, vi.fn());
+			await registrar.commit(WORKFLOW_ID, NODE_ID);
+			const firstNames = jobProvisioner.provision.mock.calls.at(-1)![4].map((job) => job.name);
+
+			const reordered = registrar.createCollector(workflow, scheduleNode);
+			reordered.registerCron(everyThreeWeeksMonday, vi.fn());
+			reordered.registerCron(dailyAtNine, vi.fn());
+			await registrar.commit(WORKFLOW_ID, NODE_ID);
+			const secondNames = jobProvisioner.provision.mock.calls.at(-1)![4].map((job) => job.name);
+
+			// dailyAtNine moved from index 0 to index 1, but its name is unchanged.
+			expect(secondNames[1]).toBe(firstNames[0]);
+			expect(secondNames[0]).not.toBe(firstNames[0]);
+		});
+
+		it('identical duplicate rules get distinct names, stable by occurrence', async () => {
+			const registrar = makeRegistrar();
+			const collector = registrar.createCollector(workflow, scheduleNode);
+			collector.registerCron(dailyAtNine, vi.fn());
+			collector.registerCron(dailyAtNine, vi.fn());
+
+			await registrar.commit(WORKFLOW_ID, NODE_ID);
+
+			const desired = jobProvisioner.provision.mock.calls.at(-1)![4];
+			const [first, second] = desired.map((job) => job.name);
+			expect(first).not.toBe(second);
+			// Same definition, so same fingerprint: only the occurrence ordinal differs.
+			expect(first.replace(/:\d+$/, '')).toBe(second.replace(/:\d+$/, ''));
+			expect(first.endsWith(':0')).toBe(true);
+			expect(second.endsWith(':1')).toBe(true);
 		});
 
 		it("passes the workflow's own timezone, and null for the instance default", async () => {
@@ -289,6 +329,44 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			await makeRegistrar({ schedulerEnabled: false }).remove(WORKFLOW_ID, NODE_ID);
 
 			expect(jobProvisioner.deprovision).toHaveBeenCalledWith(WORKFLOW_ID, NODE_ID);
+		});
+	});
+
+	describe('configuration warning', () => {
+		// The registrar scopes its logger, so warnings land on the scoped instance.
+		const construct = ({ schedulerEnabled = true, publicationEnabled = true } = {}) => {
+			const scopedLogger = mockLogger();
+			const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
+			new ScheduleTriggerJobRegistrar(
+				logger,
+				mock<GlobalConfig>({
+					scheduler: { enabled: schedulerEnabled },
+					generic: { timezone: 'UTC' },
+				}),
+				mock<WorkflowsConfig>({ useWorkflowPublicationService: publicationEnabled }),
+				jobProvisioner,
+			);
+			return scopedLogger;
+		};
+
+		it('warns when the durable scheduler is enabled but the publication service is off', () => {
+			const logger = construct({ schedulerEnabled: true, publicationEnabled: false });
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('workflow publication service is disabled'),
+			);
+		});
+
+		it('does not warn when both the durable scheduler and the publication service are on', () => {
+			const logger = construct({ schedulerEnabled: true, publicationEnabled: true });
+
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		it('does not warn when the durable scheduler is off', () => {
+			const logger = construct({ schedulerEnabled: false, publicationEnabled: false });
+
+			expect(logger.warn).not.toHaveBeenCalled();
 		});
 	});
 });
