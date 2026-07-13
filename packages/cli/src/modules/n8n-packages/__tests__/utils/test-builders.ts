@@ -75,40 +75,32 @@ export async function buildWorkflowReferencingCredential({
 	});
 }
 
-interface BuildWorkflowReferencingDataTableOptions {
+interface BuildWorkflowReferencingDataTablesOptions {
 	name: string;
 	project: Project;
-	dataTableId: string;
-	/** Places the workflow inside a folder, so folder-with-workflows export can pick it up. */
+	references: Array<{ dataTableId: string; mode?: 'id' | 'list' }>;
 	parentFolder?: Folder;
 }
 
-/**
- * Creates a one-node workflow whose Data Table node references a table by id
- * (resourceLocator `mode: 'id'`), without requiring the table row to exist.
- * Useful for orphan and forbidden-access cases.
- */
-export async function buildWorkflowReferencingDataTable({
+export async function buildWorkflowReferencingDataTables({
 	name,
 	project,
-	dataTableId,
+	references,
 	parentFolder,
-}: BuildWorkflowReferencingDataTableOptions): Promise<WorkflowEntity> {
+}: BuildWorkflowReferencingDataTablesOptions): Promise<WorkflowEntity> {
 	return await createWorkflow(
 		{
 			name,
-			nodes: [
-				{
-					id: 'n1',
-					name: 'Data table',
-					type: 'n8n-nodes-base.dataTable',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {
-						dataTableId: { __rl: true, mode: 'id', value: dataTableId },
-					},
+			nodes: references.map((reference, index) => ({
+				id: `n${index + 1}`,
+				name: `Data table ${index + 1}`,
+				type: 'n8n-nodes-base.dataTable',
+				typeVersion: 1,
+				position: [index * 100, 0],
+				parameters: {
+					dataTableId: { __rl: true, mode: reference.mode ?? 'id', value: reference.dataTableId },
 				},
-			],
+			})),
 			connections: {},
 			parentFolder,
 		},
