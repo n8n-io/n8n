@@ -7,5 +7,5 @@ export type {
 	TagsInputTagUi,
 	TagsInputValue,
 } from './TagsInput.types';
-// Re-export for composition: Combobox `#input`, custom `#tag` content
-export { TagsInputInput, TagsInputItemDelete, TagsInputItemText } from 'reka-ui';
+
+export { TagsInputInput, TagsInputItemDelete, TagsInputItemText } from './reka-ui';

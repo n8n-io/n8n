@@ -1,10 +1,10 @@
 import type { InputSize } from '../../../components/N8nInput/Input.types';
 import type {
 	AcceptableInputValue,
+	TagsInputInputProps,
 	TagsInputRootEmits,
 	TagsInputRootProps,
-	TagsInputInputProps,
-} from '../../utils/reka-ui';
+} from './reka-ui';
 
 export type TagsInputValue = AcceptableInputValue;
 
@@ -30,7 +30,6 @@ export type TagsInputSlots = {
 		disabled?: boolean;
 		class: string;
 	}) => unknown;
-	/** Replace tag content inside the item chrome. Prefer `TagsInputItemText` / `TagsInputItemDelete` for a11y. */
 	tag?: (props: {
 		value: TagsInputValue;
 		displayValue: string;

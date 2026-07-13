@@ -1,13 +1,5 @@
 <script setup lang="ts">
 import { reactivePick } from '@vueuse/core';
-import {
-	TagsInputInput,
-	TagsInputItem,
-	TagsInputItemDelete,
-	TagsInputItemText,
-	TagsInputRoot,
-	useForwardPropsEmits,
-} from 'reka-ui';
 import { useCssModule, useTemplateRef } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
@@ -19,6 +11,14 @@ import type {
 	TagsInputSlots,
 	TagsInputValue,
 } from './TagsInput.types';
+import {
+	TagsInputInput,
+	TagsInputItem,
+	TagsInputItemDelete,
+	TagsInputItemText,
+	TagsInputRoot,
+	useForwardPropsEmits,
+} from './reka-ui';
 
 defineOptions({ inheritAttrs: false });
 
