@@ -5,6 +5,7 @@ import { serializeBindings } from '../n8n-packages.types';
 import type {
 	ImportCredentialSummary,
 	ImportedFolderSummary,
+	ImportedProjectSummary,
 	ImportPackageSummary,
 	ImportResult,
 	PackageImportBindings,
@@ -25,6 +26,7 @@ export function buildImportResult(input: {
 	projectId: string | null;
 	workflows: WorkflowImportOutcome[];
 	folders: ImportedFolderSummary[];
+	projects: ImportedProjectSummary[];
 	bindings: PackageImportBindings;
 	credentials?: ImportCredentialSummary;
 }): ImportResult {
@@ -41,6 +43,7 @@ export function buildImportResult(input: {
 			status,
 		})),
 		folders: input.folders,
+		projects: input.projects,
 		bindings: serializeBindings(input.bindings),
 		credentials: input.credentials ?? { matched: [], stubbed: [] },
 	};

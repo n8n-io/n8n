@@ -83,6 +83,7 @@ export class WorkflowPackageImporter {
 			projectId: context.projectId,
 			workflows: imported.workflowOutcomes,
 			folders: imported.folderSummaries,
+			projects: [],
 			bindings: imported.bindings,
 			credentials: {
 				matched: imported.credentialResult.matched,

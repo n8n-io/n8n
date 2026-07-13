@@ -12,6 +12,9 @@ const apiKeyCreds = z.object({
  */
 export const PROVIDER_CREDENTIAL_SCHEMAS = {
 	openai: apiKeyCreds,
+	custom: apiKeyCreds.extend({
+		baseURL: z.string().min(1, 'baseURL is required'),
+	}),
 	anthropic: apiKeyCreds,
 	google: apiKeyCreds,
 	xai: apiKeyCreds,
