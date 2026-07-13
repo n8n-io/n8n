@@ -22,15 +22,16 @@ function isLoopbackHost(hostname: string): boolean {
 
 /**
  * Whether `url` looks like a live Telegram Trigger webhook on this instance: same
- * origin, and routed through the live-webhook path family, not just any endpoint
- * that happens to share the origin (e.g. our own fixed HITL endpoint under a
- * different mount, or something unrelated entirely).
+ * origin, and routed through the live-webhook path family under the same
+ * reverse-proxy prefix (if any), not just any endpoint that happens to share the
+ * origin (e.g. our own fixed HITL endpoint under a different mount, or something
+ * unrelated entirely).
  */
-function isLikelyTriggerWebhook(url: string, origin: string): boolean {
+function isLikelyTriggerWebhook(url: string, origin: string, reverseProxyPrefix: string): boolean {
 	try {
 		const parsed = new URL(url);
 		if (parsed.origin !== origin) return false;
-		const liveWebhookSegment = `/${Container.get(GlobalConfig).endpoints.webhook}/`;
+		const liveWebhookSegment = `${reverseProxyPrefix}/${Container.get(GlobalConfig).endpoints.webhook}/`;
 		return parsed.pathname.startsWith(liveWebhookSegment);
 	} catch {
 		return false;
@@ -134,7 +135,15 @@ export async function prepareChatApproval(context: IExecuteFunctions): Promise<b
 		return true;
 	}
 
-	if (isLikelyTriggerWebhook(currentUrl, origin)) {
+	// `path` is "<reverse-proxy prefix>/<webhookWaiting segment>"; strip the segment
+	// name back off to get the bare prefix shared by every endpoint family on this
+	// instance, live webhooks included.
+	const waitingSegment = `/${Container.get(GlobalConfig).endpoints.webhookWaiting}`;
+	const reverseProxyPrefix = path.endsWith(waitingSegment)
+		? path.slice(0, path.length - waitingSegment.length)
+		: '';
+
+	if (isLikelyTriggerWebhook(currentUrl, origin, reverseProxyPrefix)) {
 		if (allowedUpdates.length === 0 || allowedUpdates.includes('callback_query')) {
 			// A Telegram Trigger on this instance owns the webhook and forwards HITL
 			// callbacks to us; see TelegramTrigger.node.ts.

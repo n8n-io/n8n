@@ -163,6 +163,31 @@ describe('prepareChatApproval', () => {
 		);
 	});
 
+	it('coexists with a same-instance trigger behind a reverse-proxy path prefix', async () => {
+		// The Trigger's live-webhook URL carries the same reverse-proxy prefix as our
+		// own signed resume URL; recognizing it must account for that prefix too.
+		const context = makeContext();
+		context.getNodeParameter.mockImplementation((name: unknown) =>
+			name === 'responseType' ? 'approval' : true,
+		);
+		context.getSignedResumeUrl.mockReturnValue(
+			'https://mybot.example.com/n8n-instance/webhook-waiting/42/node-1?approved=true&signature=abc',
+		);
+		mockWebhookInfo({
+			url: 'https://mybot.example.com/n8n-instance/webhook/abc123/webhook',
+			allowed_updates: ['callback_query'],
+		});
+
+		const effective = await prepareChatApproval(context);
+
+		expect(effective).toBe(true);
+		expect(genericFunctions.apiRequest).not.toHaveBeenCalledWith(
+			'POST',
+			'setWebhook',
+			expect.anything(),
+		);
+	});
+
 	it('coexists when the same-instance trigger has no allowed_updates filter (implicit all)', async () => {
 		const context = makeContext();
 		context.getNodeParameter.mockImplementation((name: unknown) =>
