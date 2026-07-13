@@ -18,6 +18,7 @@ import {
 	isAgentModelProvider,
 } from '@/features/agents/model-providers';
 import { useModelCatalog } from '@/features/agents/composables/useModelCatalog';
+import { toCapabilitySummaryTools } from '@/features/agents/utils/capabilitySummaryTools';
 import { parseModelString } from '@/features/agents/utils/model-string';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import CanvasNodeAgentChips from '@/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeAgentChips.vue';
@@ -78,23 +79,10 @@ const chips = computed(() => {
 		name: cfg.name,
 		model: null,
 		channels: [],
-		tools: (cfg.tools ?? []).map((tool) => {
-			if (tool.type === 'node') {
-				return {
-					type: 'node' as const,
-					name: tool.name,
-					nodeType: tool.node.nodeType,
-					nodeTypeVersion: tool.node.nodeTypeVersion,
-				};
-			}
-			if (tool.type === 'workflow') {
-				return { type: 'workflow' as const, name: tool.name ?? tool.workflow };
-			}
-			return {
-				type: 'custom' as const,
-				name: agentRecord.value?.tools?.[tool.id]?.descriptor.name ?? tool.id,
-			};
-		}),
+		tools: toCapabilitySummaryTools(
+			cfg.tools,
+			(id) => agentRecord.value?.tools?.[id]?.descriptor.name,
+		),
 		skills: appliedSkills.value.map(({ id, skill }) => ({ id, name: skill.name })),
 		tasks: [],
 	};

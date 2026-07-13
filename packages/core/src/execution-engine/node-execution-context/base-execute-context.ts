@@ -198,7 +198,8 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			throw new OperationalError('Either an agent id or an inline agent definition is required');
 		}
 
-		const threadId = agentInfo.sessionId?.trim() || `${executionId}-${itemIndex}`;
+		const callerSessionId = agentInfo.sessionId?.trim();
+		const threadId = callerSessionId || `${executionId}-${itemIndex}`;
 
 		const inputDataScope = agentInfo.inputDataScope ?? 'item';
 		const mainBranches = this.inputData?.main ?? [];
@@ -220,6 +221,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			inputData: scopedInput,
 			inputDataScope,
 			exposeWorkflowData: agentInfo.exposeWorkflowData ?? false,
+			hasCallerSessionId: Boolean(callerSessionId),
 			nodes: Object.values(this.workflow.nodes).map(({ name, type }) => ({ name, type })),
 			runExecutionData: this.runExecutionData,
 		};

@@ -697,6 +697,8 @@ describe('AgentExecutionOrchestratorService', () => {
 			const workflowContext: ExecuteAgentWorkflowContext = {
 				workflowId: 'wf-1',
 				callingNodeName: 'Message an Agent',
+				// Memory is injected only for caller-supplied session ids.
+				hasCallerSessionId: true,
 				nodes: [],
 				runExecutionData: { resultData: { runData: {} } } as unknown as IRunExecutionData,
 			};
@@ -764,6 +766,38 @@ describe('AgentExecutionOrchestratorService', () => {
 			);
 		});
 
+		it('injects no memory when the caller supplied no session id (nothing to continue)', async () => {
+			const { service, reconstructionService } = makeService();
+			const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+			reconstructionService.reconstructFromResolvedSource.mockResolvedValue(runtime);
+			Object.assign(runtime.agent, { tool: vi.fn(), declaredTools: [] });
+
+			const workflowContext: ExecuteAgentWorkflowContext = {
+				workflowId: 'wf-1',
+				callingNodeName: 'Message an Agent',
+				hasCallerSessionId: false,
+				nodes: [],
+				runExecutionData: { resultData: { runData: {} } } as unknown as IRunExecutionData,
+			};
+
+			await service.executeInlineForWorkflow(
+				inlinePayload,
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+				userId,
+				'production',
+				undefined,
+				workflowContext,
+			);
+
+			const [source] = reconstructionService.reconstructFromResolvedSource.mock.calls[0];
+			// A per-call thread can never be continued — persisting it would only
+			// accumulate rows no session UI or cleanup path can reach.
+			expect(source.config).not.toHaveProperty('memory');
+		});
+
 		it.each([
 			['skills', { skills: [{ type: 'skill', id: 'triage' }] }],
 			// Memory is injected server-side; the node cannot configure it.
@@ -820,6 +854,97 @@ describe('AgentExecutionOrchestratorService', () => {
 					projectId,
 				),
 			).rejects.toThrow(UserError);
+			expect(reconstructionService.reconstructFromResolvedSource).not.toHaveBeenCalled();
+		});
+
+		it('tracks a failed inline turn before rethrowing a stream reader error', async () => {
+			const { service, reconstructionService, telemetry } = makeService();
+			const runtime = makeRuntime();
+			runtime.agent.stream.mockResolvedValue({
+				stream: makeFailingStream(new Error('reader failed while consuming stream')),
+			});
+			reconstructionService.reconstructFromResolvedSource.mockResolvedValue(runtime);
+
+			await expect(
+				service.executeInlineForWorkflow(
+					inlinePayload,
+					'hello',
+					'execution-1',
+					'thread-1',
+					projectId,
+				),
+			).rejects.toThrow('reader failed while consuming stream');
+
+			// Telemetry fires even for failed runs — the rethrow happens after.
+			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith(
+				expect.objectContaining({ agent_type: 'inline', turn_status: 'failed' }),
+			);
+		});
+
+		it('surfaces inline compile failures as an OperationalError', async () => {
+			const { service, reconstructionService } = makeService();
+			reconstructionService.reconstructFromResolvedSource.mockRejectedValue(new Error('boom'));
+
+			const execution = service.executeInlineForWorkflow(
+				inlinePayload,
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+			);
+
+			await expect(execution).rejects.toThrow(OperationalError);
+			await expect(execution).rejects.toThrow('Failed to compile agent: boom');
+		});
+
+		it('rejects a malformed $fromAI expression in a node tool before compiling', async () => {
+			const { service, reconstructionService } = makeService();
+
+			const execution = service.executeInlineForWorkflow(
+				{
+					config: {
+						...inlinePayload.config,
+						tools: [
+							{
+								type: 'node',
+								name: 'HTTP Request',
+								node: {
+									nodeType: 'n8n-nodes-base.httpRequestTool',
+									nodeTypeVersion: 4.4,
+									nodeParameters: { url: '={{ $fromAI( }}' },
+								},
+							},
+						],
+					} as unknown as typeof inlinePayload.config,
+				},
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+			);
+
+			await expect(execution).rejects.toThrow(UserError);
+			await expect(execution).rejects.toThrow('Invalid $fromAI expression');
+			expect(reconstructionService.reconstructFromResolvedSource).not.toHaveBeenCalled();
+		});
+
+		it('rejects approval-gated tools, which could never resume in workflow context', async () => {
+			const { service, reconstructionService } = makeService();
+
+			await expect(
+				service.executeInlineForWorkflow(
+					{
+						config: {
+							...inlinePayload.config,
+							tools: [{ type: 'workflow', workflow: 'Lookup', requireApproval: true }],
+						} as unknown as typeof inlinePayload.config,
+					},
+					'hello',
+					'execution-1',
+					'thread-1',
+					projectId,
+				),
+			).rejects.toThrow('Invalid inline agent configuration');
 			expect(reconstructionService.reconstructFromResolvedSource).not.toHaveBeenCalled();
 		});
 	});

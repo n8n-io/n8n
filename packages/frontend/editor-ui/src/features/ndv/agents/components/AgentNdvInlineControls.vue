@@ -10,11 +10,9 @@
  * are saved-agent features — the builder banner above nudges users there.
  */
 import { computed, inject } from 'vue';
-import { useDebounceFn } from '@vueuse/core';
 import { N8nInput, N8nInputLabel, N8nSectionHeader } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
-import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
 import AgentInfoPanel from '@/features/agents/components/AgentInfoPanel.vue';
 import AgentCapabilitiesSection from '@/features/agents/components/AgentCapabilitiesSection.vue';
 
@@ -41,13 +39,14 @@ const canUpdate = computed(() => !props.isReadOnly);
 
 const actions = computed(() => inline?.actions);
 
-// Debounced: each write runs the full parameter pipeline, so per-keystroke
-// commits would be needlessly heavy.
-const onNameUpdate = useDebounceFn((value: string) => {
+// Eager, not debounced: writes are local node-parameter edits (workflow
+// persistence has its own debounce), and a deferred write could fire after a
+// node switch and land on the wrong node.
+function onNameUpdate(value: string) {
 	const name = value.trim();
 	if (!name || name === localConfig.value?.name) return;
 	inline?.scheduleConfigUpdate({ name });
-}, getDebounceTime(DEBOUNCE_TIME.INPUT.TEXT_CHANGE));
+}
 </script>
 
 <template>
@@ -64,6 +63,7 @@ const onNameUpdate = useDebounceFn((value: string) => {
 				:placeholder="i18n.baseText('agentNode.ndv.inline.name.placeholder')"
 				:disabled="!canUpdate"
 				size="small"
+				:maxlength="128"
 				data-test-id="agent-ndv-inline-name"
 				@update:model-value="onNameUpdate"
 			/>
@@ -75,6 +75,7 @@ const onNameUpdate = useDebounceFn((value: string) => {
 				:project-id="projectId"
 				:disabled="!canUpdate"
 				embedded
+				immediate-updates
 				instructions-max-height="240px"
 				:show-instructions-toolbar="false"
 				@update:config="inline?.scheduleConfigUpdate"

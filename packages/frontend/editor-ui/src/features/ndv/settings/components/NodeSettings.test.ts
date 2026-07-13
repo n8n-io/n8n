@@ -76,7 +76,26 @@ const agentNodeType = {
 	inputs: ['main'],
 	outputs: ['main'],
 	properties: [
-		{ displayName: 'Agent', name: 'agentId', type: 'agentSelector', default: '' },
+		// Mirrors the real v2 node: agentSource gates the agentId selector, and
+		// the inline definition lives in a hidden parameter.
+		{
+			displayName: 'Agent Source',
+			name: 'agentSource',
+			type: 'options',
+			options: [
+				{ name: 'Saved Agent', value: 'referenced' },
+				{ name: 'Inline Agent', value: 'inline' },
+			],
+			default: 'referenced',
+		},
+		{
+			displayName: 'Agent',
+			name: 'agentId',
+			type: 'agentSelector',
+			default: { __rl: true, mode: 'list', value: '' },
+			displayOptions: { show: { agentSource: ['referenced'] } },
+		},
+		{ displayName: 'Inline Agent', name: 'inlineAgent', type: 'hidden', default: {} },
 		{ displayName: 'Message', name: 'text', type: 'string', default: '' },
 		{
 			displayName: 'Advanced',
@@ -94,10 +113,11 @@ interface RenderOptions {
 	node?: typeof httpNode;
 	nodeType?: INodeTypeDescription;
 	provide?: Record<symbol, unknown>;
+	stubs?: Record<string, unknown>;
 }
 
 const renderNodeSettings = (options: RenderOptions = {}) => {
-	const { runData, node = httpNode, nodeType = httpNodeType, provide = {} } = options;
+	const { runData, node = httpNode, nodeType = httpNodeType, provide = {}, stubs = {} } = options;
 	const pinia = createTestingPinia({ stubActions: false });
 	setActivePinia(pinia);
 
@@ -137,7 +157,7 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 		shallowRef(useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))),
 	);
 
-	return createComponentRenderer(NodeSettings, {
+	const renderResult = createComponentRenderer(NodeSettings, {
 		global: {
 			provide,
 			stubs: {
@@ -159,6 +179,7 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 				AgentNdvBuilderBanner: true,
 				AgentNdvReferencedSummary: true,
 				AgentNdvInlineControls: true,
+				...stubs,
 			},
 		},
 	})({
@@ -171,6 +192,8 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 			executable: false,
 		},
 	});
+
+	return { ...renderResult, workflowDocumentStore };
 };
 
 describe('NodeSettings', () => {
@@ -269,6 +292,55 @@ describe('NodeSettings', () => {
 			await findByTestId('tab-params');
 			expect(container.querySelector('agent-ndv-builder-banner-stub')).toBeNull();
 			expect(container.querySelector('agent-ndv-referenced-summary-stub')).toBeNull();
+		});
+
+		it('re-points an inline node at a saved agent in a single referenced-mode commit', async () => {
+			const inlineAgentNode = createTestNode({
+				name: 'Message an Agent',
+				type: MESSAGE_AN_AGENT_NODE_TYPE,
+				typeVersion: 2,
+				parameters: { agentSource: 'inline' },
+			});
+			const agentReference = {
+				__rl: true,
+				mode: 'list',
+				value: 'agent-9',
+				cachedResultName: 'Drafted',
+			};
+
+			const { findByTestId, workflowDocumentStore } = renderNodeSettings({
+				node: inlineAgentNode,
+				nodeType: agentNodeType,
+				provide: {
+					[NdvAgentConfigKey as symbol]: { mode: ref('inline') } as UseNdvAgentConfigReturn,
+				},
+				stubs: {
+					// The banner's draft-creation flow ends in this emit; the stub only
+					// needs to fire it with the new saved agent's resource locator.
+					AgentNdvBuilderBanner: {
+						template:
+							'<button data-test-id="set-agent-reference-stub" @click="$emit(\'set-agent-reference\', agentReference)" />',
+						emits: ['set-agent-reference'],
+						data: () => ({ agentReference }),
+					},
+				},
+			});
+
+			await fireEvent.click(await findByTestId('set-agent-reference-stub'));
+
+			// One commit flips the node back to referenced mode AND points it at the
+			// new agent — a two-commit sequence would leave an inconsistent
+			// intermediate state (e.g. inline mode with a dangling reference).
+			expect(workflowDocumentStore.setNodeParameters).toHaveBeenCalledTimes(1);
+			expect(workflowDocumentStore.setNodeParameters).toHaveBeenCalledWith(
+				expect.objectContaining({
+					name: inlineAgentNode.name,
+					value: expect.objectContaining({
+						agentId: agentReference,
+						agentSource: 'referenced',
+					}),
+				}),
+			);
 		});
 	});
 });

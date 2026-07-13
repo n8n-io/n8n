@@ -13,12 +13,6 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
-// Flush the name input's debounce synchronously.
-vi.mock('@vueuse/core', async (importOriginal) => ({
-	...(await importOriginal<object>()),
-	useDebounceFn: (fn: (...args: unknown[]) => unknown) => fn,
-}));
-
 const CapabilitiesStub = {
 	name: 'AgentCapabilitiesSection',
 	props: [

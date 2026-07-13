@@ -259,10 +259,20 @@ function getAgentSource(ctx: IExecuteFunctions, itemIndex: number): ExecuteAgent
 	return { agentId: agentIdRlc.value };
 }
 
+/**
+ * The persisted thread key is `workflow:project-<projectId>:<sessionId>` and
+ * thread id columns are varchar(128); a 36-char project id leaves 74 chars
+ * for the caller's session id. Checked at execution time because the
+ * parameter is typically an expression, invisible to edit-time validation.
+ */
+const SESSION_ID_MAX_LENGTH = 74;
+
 /** Shared execution for every version. */
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
 	const returnData: INodeExecutionData[] = [];
+	// v2 renamed the primary output `response` → `text`
+	const responseKey = this.getNode().typeVersion >= 2 ? 'text' : 'response';
 	const executionId = this.getExecutionId() ?? crypto.randomUUID();
 	// `invokeMode` lives in the `advanced` collection; unset means the default.
 	const invokeMode = this.getNodeParameter('advanced.invokeMode', 0, 'allItems') as string;
@@ -280,6 +290,14 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			};
 			const sessionIdOverride = advanced.sessionId?.trim();
 			const allowOtherNodesData = advanced.allowOtherNodesData ?? false;
+
+			if (sessionIdOverride && sessionIdOverride.length > SESSION_ID_MAX_LENGTH) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Session ID must be at most ${SESSION_ID_MAX_LENGTH} characters (got ${sessionIdOverride.length})`,
+					{ itemIndex: i },
+				);
+			}
 
 			if (!prompt.trim()) {
 				throw new NodeOperationError(this.getNode(), 'Prompt cannot be empty', {
@@ -304,7 +322,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			returnData.push({
 				json: {
-					text: result.response,
+					[responseKey]: result.response,
 					structuredOutput: (result.structuredOutput ?? null) as IDataObject | null,
 					usage: result.usage as unknown as IDataObject,
 					toolCalls: result.toolCalls as unknown as IDataObject[],

@@ -11,10 +11,14 @@ import {
 /**
  * Tools allowed on inline agents. Custom (code) tools are excluded — their
  * bodies live on the agent entity, which inline agents don't have.
+ * `requireApproval` is rejected: a suspended run cannot resume in workflow
+ * context (execution throws on suspension, and inline runtimes have no
+ * checkpoint storage), so an approval-gated tool would be configurable but
+ * guaranteed to fail.
  */
 const InlineAgentToolConfigSchema = z.discriminatedUnion('type', [
-	WorkflowToolJsonConfigSchema,
-	NodeToolJsonConfigSchema,
+	WorkflowToolJsonConfigSchema.omit({ requireApproval: true }).strict(),
+	NodeToolJsonConfigSchema.omit({ requireApproval: true }).strict(),
 ]);
 
 /**

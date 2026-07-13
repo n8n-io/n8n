@@ -29,10 +29,15 @@ export async function validateNodeToolConfigs(
 
 	if (nodeTools.length === 0) return null;
 
-	const { setSchemaBaseDirs, validateNodeConfig } = await import('@n8n/workflow-sdk');
+	const { getSchemaBaseDirs, setSchemaBaseDirs, validateNodeConfig } = await import(
+		'@n8n/workflow-sdk'
+	);
 
+	// setSchemaBaseDirs clears the SDK's module-global schema cache even when
+	// the dirs are unchanged — and this now runs per item on the inline agent
+	// execution path, so only (re)set on an actual change.
 	const dirs = resolveBuiltinNodeDefinitionDirs();
-	if (dirs.length > 0) {
+	if (dirs.length > 0 && dirs.join('\n') !== getSchemaBaseDirs().join('\n')) {
 		setSchemaBaseDirs(dirs);
 	}
 

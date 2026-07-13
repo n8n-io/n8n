@@ -2,6 +2,7 @@ import type { AgentCapabilitySummary, InlineAgentConfig } from '@n8n/api-types';
 
 import type { INodeUi } from '@/Interface';
 
+import { toCapabilitySummaryTools } from './capabilitySummaryTools';
 import { parseModelString } from './model-string';
 
 export type AgentSourceMode = 'referenced' | 'inline';
@@ -58,16 +59,7 @@ export function inlineAgentToCapabilitySummary(
 		name: config.name,
 		model: parsedModel ? { provider: parsedModel.provider, model: parsedModel.name } : null,
 		channels: [],
-		tools: (config.tools ?? []).map((tool) =>
-			tool.type === 'node'
-				? {
-						type: 'node' as const,
-						name: tool.name,
-						nodeType: tool.node.nodeType,
-						nodeTypeVersion: tool.node.nodeTypeVersion,
-					}
-				: { type: 'workflow' as const, name: tool.name ?? tool.workflow },
-		),
+		tools: toCapabilitySummaryTools(config.tools),
 		skills: [],
 		tasks: [],
 	};

@@ -2154,6 +2154,13 @@ export interface ExecuteAgentWorkflowContext {
 	inputDataScope?: 'item' | 'all';
 	/** Whether to attach the `fetch_workflow_context` tool. */
 	exposeWorkflowData?: boolean;
+	/**
+	 * Whether the caller supplied an explicit session id (vs the derived
+	 * per-call thread id). Inline agents persist conversation memory only when
+	 * true — a derived thread is never continued, so persisting it would only
+	 * accumulate unreachable rows.
+	 */
+	hasCallerSessionId?: boolean;
 	/** Name and type of every node in the calling workflow. */
 	nodes: Array<{ name: string; type: string }>;
 	/** The calling execution's run data (read-only by convention). */
@@ -2195,8 +2202,14 @@ export interface ExecuteAgentData {
 	session: {
 		agentId: string;
 		projectId: string;
-		/** The threadId persisted to the agent session. May be a caller-provided override. */
+		/**
+		 * Caller-facing session id: the override the caller supplied, or the
+		 * derived per-call id. Safe to feed back into the node's Session ID
+		 * parameter to continue the conversation.
+		 */
 		sessionId: string;
+		/** The internally scoped thread id the session was persisted under (deep-link key). */
+		threadId: string;
 	} | null;
 }
 

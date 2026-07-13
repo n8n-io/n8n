@@ -536,7 +536,13 @@ function onSetAgentReference(value: INodeParameterResourceLocator) {
 	// agent; a node sitting in inline mode must switch back to referenced in
 	// the same commit (its inlineAgent parameter is retained for toggling back).
 	if (agentNdvMode.value === 'inline') {
-		valueChanged({ name: 'parameters', value: { agentId: value, agentSource: 'referenced' } });
+		// The multi-parameter commit path expects full `parameters.<name>` keys
+		// (updateParameterByPath strips the first segment) — bare keys would
+		// collapse to an empty path and silently drop both writes.
+		valueChanged({
+			name: 'parameters',
+			value: { 'parameters.agentId': value, 'parameters.agentSource': 'referenced' },
+		});
 		return;
 	}
 	valueChanged({ name: 'parameters.agentId', value });

@@ -401,7 +401,7 @@ export async function executeAgent(
 
 	const useDraftVersion = isManualOrChatExecution(executionMode);
 
-	return await agentExecutionOrchestratorService.executeForWorkflow(
+	const result = await agentExecutionOrchestratorService.executeForWorkflow(
 		source.agentId,
 		message,
 		executionId,
@@ -412,6 +412,14 @@ export async function executeAgent(
 		outputSchema,
 		workflowContext,
 	);
+
+	// Callers see the session id they supplied (or the derived per-call id), so
+	// feeding the output back into the node's Session ID continues the same
+	// conversation instead of re-prefixing. The scoped thread key stays
+	// internal, surfaced only as `session.threadId` for session deep links.
+	return result.session
+		? { ...result, session: { ...result.session, sessionId: threadId } }
+		: result;
 }
 
 async function listAgents(userId: string): Promise<Array<{ id: string; name: string }>> {

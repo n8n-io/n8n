@@ -677,6 +677,36 @@ describe('Telemetry', () => {
 			expect(payload).not.toHaveProperty('cost_avg');
 			expect(payload).not.toHaveProperty('tool_call_count_p50');
 			expect(payload).not.toHaveProperty('num_skills_p75');
+			// Saved agents carry no agent_type (the exact toEqual above also
+			// guards against it sneaking in).
+			expect(payload).not.toHaveProperty('agent_type');
+		});
+
+		test('should carry agent_type through to the flushed payload for inline runs', () => {
+			telemetry.trackAgentTurnFinished({
+				agent_id: 'inline:wf-1:Message an Agent',
+				agent_type: 'inline',
+				thread_id: 'thread-1',
+				run_type: 'production',
+				turn_status: 'succeeded',
+				configuration,
+				latency_ms: 100,
+				cost: 10,
+				tool_call_count: 1,
+			});
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentSessionMetrics();
+
+			const payload = spyTrack.mock.calls.find(
+				([eventName]) => eventName === 'Agent session metrics',
+			)?.[1];
+			expect(payload).toEqual(
+				expect.objectContaining({
+					agent_id: 'inline:wf-1:Message an Agent',
+					agent_type: 'inline',
+				}),
+			);
 			expect(telemetry.getAgentSessionMetricsBuffer()).toEqual({});
 		});
 

@@ -880,7 +880,9 @@ export class AgentExecutionOrchestratorService {
 
 		return this.buildWorkflowResult({
 			run,
-			session: { agentId, projectId, sessionId: threadId },
+			// sessionId here is still the scoped thread key — executeAgent remaps it
+			// to the caller-facing id; this method never sees the unscoped one.
+			session: { agentId, projectId, sessionId: threadId, threadId },
 			outputSchema,
 		});
 	}
@@ -888,11 +890,11 @@ export class AgentExecutionOrchestratorService {
 	/**
 	 * Execute an inline agent embedded in a workflow node's parameters. There is
 	 * no entity, so published/draft gating does not apply — the embedded config
-	 * is always what runs. Conversation-thread memory persists (the thread
-	 * tables carry no agent FK), so a caller-supplied session id continues the
-	 * conversation across executions; but no session is *recorded* for the
-	 * sessions UI (`agent_execution_threads.agentId` is an FK to `agents`), so
-	 * the result carries `session: null`.
+	 * is always what runs. When the caller supplies a session id, conversation-
+	 * thread memory persists (the thread tables carry no agent FK) so that id
+	 * continues the conversation across executions; but no session is *recorded*
+	 * for the sessions UI (`agent_execution_threads.agentId` is an FK to
+	 * `agents`), so the result carries `session: null`.
 	 */
 	async executeInlineForWorkflow(
 		inlineAgent: InlineAgentPayload,
@@ -909,22 +911,27 @@ export class AgentExecutionOrchestratorService {
 	): Promise<ExecuteAgentData> {
 		const config = await this.validateInlineAgentConfig(inlineAgent);
 
-		// Session memory: inline agents always run with plain conversation-thread
-		// memory, so a caller-supplied session id continues the same conversation
-		// across executions (threads are keyed by threadId alone — no agent
-		// entity involved). Injected server-side, never part of the node's
+		// Session memory: when the caller supplied a session id, inline agents run
+		// with plain conversation-thread memory so that id continues the same
+		// conversation across executions (threads are keyed by threadId alone — no
+		// agent entity involved). Injected server-side, never part of the node's
 		// config: long-term memory (observational/episodic) stays off because it
-		// accumulates under the agent id, and inline agents only have a
-		// synthetic, node-rename-sensitive one.
-		const runtimeConfig: AgentJsonConfig = {
-			...config,
-			memory: {
-				enabled: true,
-				storage: 'n8n',
-				observationalMemory: { enabled: false },
-				episodicMemory: { enabled: false },
-			},
-		};
+		// accumulates under the agent id, and inline agents only have a synthetic,
+		// node-rename-sensitive one. Without a session id the thread is per-call
+		// and can never be continued, so nothing is persisted — inline runs record
+		// no session, which would otherwise grow unreachable thread/message rows.
+		const persistMemory = workflowContext?.hasCallerSessionId === true;
+		const runtimeConfig: AgentJsonConfig = persistMemory
+			? {
+					...config,
+					memory: {
+						enabled: true,
+						storage: 'n8n',
+						observationalMemory: { enabled: false },
+						episodicMemory: { enabled: false },
+					},
+				}
+			: config;
 
 		const credentialProvider = createAgentCredentialProvider(this.credentialsService, projectId);
 
@@ -986,8 +993,10 @@ export class AgentExecutionOrchestratorService {
 	/**
 	 * Validate the node-supplied inline definition into a runnable config.
 	 * The strict schema rejects capabilities inline agents don't support
-	 * (skills, memory, sub-agents, MCP servers, custom tools, the options
-	 * block), so saved-agent-only features can't sneak in through raw JSON.
+	 * (skills, memory, sub-agents, custom tools, the options block), so
+	 * saved-agent-only features can't sneak in through raw JSON. See
+	 * `InlineAgentJsonConfigSchema` for the authoritative allowlist (MCP
+	 * servers are deliberately allowed).
 	 */
 	private async validateInlineAgentConfig(payload: InlineAgentPayload): Promise<AgentJsonConfig> {
 		const parsed = RunnableInlineAgentConfigSchema.safeParse({

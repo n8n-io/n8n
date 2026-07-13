@@ -14,6 +14,8 @@ type MessageAgentSession = {
 	agentId: string;
 	projectId: string;
 	sessionId: string;
+	/** Persisted thread key; absent in output from executions before it was added. */
+	threadId?: string;
 };
 
 function isMessageAgentSession(value: unknown): value is MessageAgentSession {
@@ -77,7 +79,9 @@ export function useMessageAgentSessionLink(logEntry: ComputedRef<LogEntry | unde
 				params: {
 					projectId: session.projectId,
 					agentId: session.agentId,
-					threadId: session.sessionId,
+					// Sessions are persisted under the scoped thread key; sessionId is
+					// the caller-facing id (older executions carried only sessionId).
+					threadId: session.threadId ?? session.sessionId,
 				},
 			}).href;
 		} catch {
