@@ -99,6 +99,8 @@ interface IAgentSessionMetricsBuffer {
 export class Telemetry {
 	private rudderStack?: RudderStack;
 
+	private userCloudId?: string;
+
 	private pulseIntervalReference: NodeJS.Timeout;
 
 	private executionCountsBuffer: IExecutionsBuffer = {};
@@ -549,6 +551,10 @@ export class Telemetry {
 		}
 	}
 
+	setUserCloudId(userCloudId?: string) {
+		this.userCloudId = userCloudId;
+	}
+
 	track(eventName: string, properties: ITelemetryTrackProperties = {}) {
 		if (!this.rudderStack) {
 			return;
@@ -567,7 +573,7 @@ export class Telemetry {
 			userId: `${instanceId}${user_id ? `#${user_id}` : ''}`,
 			event: eventName,
 			properties: updatedProperties,
-			context: {},
+			context: this.userCloudId ? { traits: { user_cloud_id: this.userCloudId } } : {},
 		};
 
 		// Build the actual payload that will be sent to RudderStack (with fake IP)

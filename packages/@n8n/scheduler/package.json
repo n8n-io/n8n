@@ -11,6 +11,7 @@
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
+    "mutate": "node ../../../scripts/mutation-health/mutate.mjs --package-dir packages/@n8n/scheduler",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "vitest run --passWithNoTests",
     "test:unit": "vitest run --passWithNoTests",
@@ -38,8 +39,11 @@
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@stryker-mutator/core": "catalog:",
+    "@stryker-mutator/vitest-runner": "catalog:",
     "@types/luxon": "catalog:",
     "@vitest/coverage-v8": "catalog:",
+    "fast-check": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"

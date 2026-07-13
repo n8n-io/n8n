@@ -75,6 +75,7 @@ import {
 	effectiveTimeoutMs,
 	runWorkflowTestCase,
 	runWithConcurrency,
+	workflowExpectedForCase,
 	type BuildResult,
 } from '../harness/runner';
 import {
@@ -551,6 +552,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		| 'seedFile'
 		| 'priorConversation'
 		| 'seedThread'
+		| 'executionScenarios'
+		| 'outcomeExpectations'
 	> & { timeoutMs: number };
 	interface LaneState {
 		runner: Lane;
@@ -589,6 +592,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 						claimedWorkflowIds: lane.claimedWorkflowIds,
 						logger,
 						laneTag,
+						workflowExpected: workflowExpectedForCase(buildArgs),
 					}),
 				{
 					name: 'workflow_build',
@@ -742,6 +746,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					seedFile: entry.seedFile,
 					priorConversation: entry.priorConversation,
 					seedThread: entry.seedThread,
+					executionScenarios: entry.executionScenarios,
+					outcomeExpectations: entry.outcomeExpectations,
 					timeoutMs,
 				});
 				const buildDurationMs = Date.now() - start;
@@ -832,6 +838,34 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			return verdicts && verdicts.length > 0 ? { ...output, expectationResults: verdicts } : output;
 		};
 
+		// Build-only case — the build plus its expectation judging (in getOrBuild) is the
+		// whole test; skip execution. The sentinel's outcome IS the expectation verdicts,
+		// so LangSmith pass metrics stay truthful for scenario-less cases. Checked before
+		// the workflowId guard because answer-only cases legitimately end without a
+		// workflow (workflowExpectedForCase).
+		if (inputs.scenarioName === BUILD_ONLY_SCENARIO_NAME && build.success) {
+			const verdicts = await verdictsPromise;
+			const outcome = sentinelOutcomeFromVerdicts(verdicts);
+			return {
+				buildSuccess: true,
+				workflowId: build.workflowId,
+				passed: outcome.passed,
+				score: outcome.score,
+				reasoning: outcome.reasoning,
+				failureCategory: outcome.failureCategory,
+				...(outcome.incomplete ? { incomplete: true } : {}),
+				execErrors: [],
+				buildDurationMs,
+				execDurationMs: 0,
+				nodeCount: build.workflowJsons[0]?.nodes.length ?? 0,
+				threadId: build.threadId,
+				workflowChecks: build.workflowChecks,
+				workflowJson: build.workflowJsons[0],
+				buildTrace: build.buildTrace,
+				...(verdicts && verdicts.length > 0 ? { expectationResults: verdicts } : {}),
+			};
+		}
+
 		if (!build.success || !build.workflowId) {
 			return await attachExpectations({
 				buildSuccess: false,
@@ -850,32 +884,6 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				buildTrace: build.buildTrace,
 				planRejections: build.proxyDecisionStats?.rejection ?? 0,
 			});
-		}
-
-		// Build-only case — the build plus its expectation judging (in getOrBuild) is the
-		// whole test; skip execution. The sentinel's outcome IS the expectation verdicts,
-		// so LangSmith pass metrics stay truthful for scenario-less cases.
-		if (inputs.scenarioName === BUILD_ONLY_SCENARIO_NAME) {
-			const verdicts = await verdictsPromise;
-			const outcome = sentinelOutcomeFromVerdicts(verdicts);
-			return {
-				buildSuccess: build.success,
-				workflowId: build.workflowId,
-				passed: outcome.passed,
-				score: outcome.score,
-				reasoning: outcome.reasoning,
-				failureCategory: outcome.failureCategory,
-				...(outcome.incomplete ? { incomplete: true } : {}),
-				execErrors: [],
-				buildDurationMs,
-				execDurationMs: 0,
-				nodeCount: build.workflowJsons[0]?.nodes.length ?? 0,
-				threadId: build.threadId,
-				workflowChecks: build.workflowChecks,
-				workflowJson: build.workflowJsons[0],
-				buildTrace: build.buildTrace,
-				...(verdicts && verdicts.length > 0 ? { expectationResults: verdicts } : {}),
-			};
 		}
 
 		const execStart = Date.now();

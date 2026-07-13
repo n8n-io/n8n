@@ -184,6 +184,18 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	}
 
 	/**
+	 * Delete the still-pending occurrences of the given job ids.
+	 */
+	async deletePendingByJobIds(manager: EntityManager, jobIds: number[]): Promise<void> {
+		if (jobIds.length > 0) {
+			await manager.delete(ScheduledTask, {
+				jobId: In(jobIds),
+				status: ScheduledTaskStatus.Pending,
+			});
+		}
+	}
+
+	/**
 	 * Claim up to `batchSize` due `pending` tasks for this instance: set them
 	 * `running`, set `claimedBy`/`leaseExpiresAt` and bump `leaseEpoch` (the fencing
 	 * token). Due-ness uses the DB clock, and reaches `lookaheadMs` into the future
