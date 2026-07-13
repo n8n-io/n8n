@@ -27,9 +27,11 @@ export interface ProtectedResource {
 	getResourceUrl(): string;
 
 	/**
-	 * Every resource URL this resource is served at: the canonical URL first,
-	 * then configured aliases (e.g. a dedicated MCP base URL on split-hostname
-	 * deployments). Treated as `[getResourceUrl()]` when not implemented.
+	 * Every resource URL this resource is served at, canonical URL
+	 * (`getResourceUrl()`) first. A configured MCP base URL becomes the
+	 * canonical entry, and the instance-base-URL-derived resource follows so
+	 * clients using the instance hostname keep working. Treated as
+	 * `[getResourceUrl()]` when not implemented.
 	 */
 	getResourceUrls?(): string[];
 
