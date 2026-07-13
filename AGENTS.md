@@ -22,6 +22,9 @@ frontend, and extensible node-based workflow engine.
   suggested by Linear, **unless it is a security fix** (see Security Fix
   Hygiene below)
 - Use mermaid diagrams in MD files when you need to visualise something
+- **Developing v3 features:** land normal feature work on `master` behind an
+  opt-in flag; introduce breaking changes only on the `3.x` branch. See
+  [.github/DEVELOPING_V3.md](.github/DEVELOPING_V3.md).
 
 ## Agent Skills and Claude Code Plugin
 
@@ -122,7 +125,7 @@ The monorepo is organized into these key packages:
 
 - **Frontend:** Vue 3 + TypeScript + Vite + Pinia + Storybook UI Library
 - **Backend:** Node.js + TypeScript + Express + TypeORM
-- **Testing:** Jest (unit) + Playwright (E2E)
+- **Testing:** Vitest (unit) + Playwright (E2E)
 - **Database:** TypeORM with SQLite/PostgreSQL support
 - **Code Quality:** Biome (for formatting) + ESLint + lefthook git hooks
 
@@ -201,7 +204,7 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
 - **For Vitest packages that use `@n8n/di` decorators**, use `createVitestConfigWithDecorators` from `@n8n/vitest-config/node-decorators`. It enables SWC `decoratorMetadata` (esbuild doesn't emit it) and externalizes workspace packages that register services (`@n8n/di`, `@n8n/config`, `@n8n/constants`, `n8n-workflow`) so a single DI `Container` instance is shared across the runtime. Loading them through Vitest's pipeline alongside their CJS dist produces two `Container`s and `Container.get(...)` returns `undefined`.
 
 What we use for testing and writing tests:
-- For testing nodes and other backend components, we use Jest for unit tests. Examples can be found in `packages/nodes-base/nodes/**/*test*`.
+- For testing nodes and other backend components, we use Vitest for unit tests. Examples can be found in `packages/nodes-base/nodes/**/*test*`.
 - We use `nock` for server mocking
 - For frontend we use `vitest`
 - For E2E tests we use Playwright. Run with `pnpm --filter=n8n-playwright test:local`.
@@ -261,6 +264,18 @@ titles, test descriptions, and Linear URLs.
 - **Code comments:** Do not describe the attack scenario in comments.
 - **Linear references:** Never include the URL slug
   (e.g. `.../N8N-1234/fix-ssrf-vulnerability`).
+
+### Customer Confidentiality
+
+**This is a public repository.** Never mention customer names in any
+public-facing artifact — not all customers have agreed to be named publicly,
+and naming them can reveal security-relevant details about their setup.
+
+This applies to PR titles and descriptions, branch names, commit messages,
+code, code comments, test names and test data, and fixtures. When implementing
+a customer request, describe the use case neutrally (e.g. "a customer with a
+large multi-main setup", not the company name) and use generic placeholder
+names (e.g. `Acme Corp`) in tests and examples.
 
 ## Github Guidelines
 - When creating a PR, use the conventions in

@@ -1,6 +1,7 @@
 import robot from '@jitsi/robotjs';
 import type { Mock, Mocked } from 'vitest';
 
+import type { ModuleContext } from '../types';
 import { MouseKeyboardModule } from './index';
 import {
 	mouseMoveTool,
@@ -253,7 +254,8 @@ describe('keyboard_shortcut', () => {
 	);
 });
 
-describe('MouseKeyboardModule.isSupported', () => {
+describe('MouseKeyboardModule.activate', () => {
+	const MODULE_CTX = {} as ModuleContext;
 	const originalWaylandDisplay = process.env.WAYLAND_DISPLAY;
 	const originalDisplay = process.env.DISPLAY;
 
@@ -276,19 +278,19 @@ describe('MouseKeyboardModule.isSupported', () => {
 		process.env.WAYLAND_DISPLAY = 'wayland-0';
 		delete process.env.DISPLAY;
 
-		const result = await MouseKeyboardModule.isSupported();
+		const result = await MouseKeyboardModule.activate(MODULE_CTX);
 
-		expect(result).toBe(false);
+		expect(result.supported).toBe(false);
 	});
 
-	it('returns true when robot loads successfully', async () => {
+	it('is supported when robot loads successfully', async () => {
 		delete process.env.WAYLAND_DISPLAY;
 		process.env.DISPLAY = ':0';
 
 		// The mock is already set up with getMousePos returning undefined (no throw)
-		const result = await MouseKeyboardModule.isSupported();
+		const result = await MouseKeyboardModule.activate(MODULE_CTX);
 
-		expect(result).toBe(true);
+		expect(result.supported).toBe(true);
 	});
 
 	it('returns false when robot native bindings fail to load', async () => {
@@ -306,10 +308,10 @@ describe('MouseKeyboardModule.isSupported', () => {
 		}));
 
 		const { MouseKeyboardModule: IsolatedModule } = await import('./index');
-		const result = await IsolatedModule.isSupported();
+		const result = await IsolatedModule.activate(MODULE_CTX);
 
 		vi.doUnmock('@jitsi/robotjs');
 
-		expect(result).toBe(false);
+		expect(result.supported).toBe(false);
 	});
 });

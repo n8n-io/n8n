@@ -14,6 +14,12 @@ import { TimeZoneSchema } from './timezone.schema';
  */
 export const UNLIMITED_CREDITS = -1;
 
+/**
+ * Transient setup-state tag for an AI Gateway managed credential selection.
+ * Handlers convert this tag to the Ai Gateway managed credential shape.
+ */
+export const AI_GATEWAY_MANAGED_TAG = '__AI_GATEWAY_MANAGED__';
+
 // ---------------------------------------------------------------------------
 // Session grant keys ("always allow")
 // ---------------------------------------------------------------------------
@@ -28,6 +34,52 @@ export const UNLIMITED_CREDITS = -1;
  */
 export function buildRunWorkflowSessionGrantKey(workflowId: string): string {
 	return `executions:run:${workflowId}`;
+}
+
+// --- Domain-access grants ("always allow" for web access) ---
+// These keys mirror the research tool's action names (`fetch-url`, `web-search`) the same
+// way `executions:run:<id>` mirrors the executions `run` action, so a persisted grant row
+// names the exact tool action the user approved.
+
+/** Grant key for persistently allowing fetches from a specific host. */
+export function buildFetchUrlGrantKey(host: string): string {
+	return `fetch-url:${host}`;
+}
+
+/** Grant key for allowing fetches from any host (blanket allow). */
+export const FETCH_URL_ALLOW_ALL_GRANT_KEY = 'fetch-url:*';
+
+/** Grant key for persistently allowing web search. */
+export const WEB_SEARCH_GRANT_KEY = 'web-search';
+
+/** Domain-access state reconstructed from a set of persisted grant keys. */
+export interface DomainAccessGrants {
+	approvedDomains: Set<string>;
+	allDomainsApproved: boolean;
+	webSearchApproved: boolean;
+}
+
+/**
+ * Parse persisted grant keys back into domain-access state. Single source of truth for the
+ * key format ↔ tracker state mapping; ignores unrelated grant keys (e.g. `executions:run:*`).
+ */
+export function parseDomainAccessGrants(keys: ReadonlySet<string>): DomainAccessGrants {
+	const approvedDomains = new Set<string>();
+	let allDomainsApproved = false;
+	let webSearchApproved = false;
+
+	const fetchUrlPrefix = 'fetch-url:';
+	for (const key of keys) {
+		if (key === FETCH_URL_ALLOW_ALL_GRANT_KEY) {
+			allDomainsApproved = true;
+		} else if (key === WEB_SEARCH_GRANT_KEY) {
+			webSearchApproved = true;
+		} else if (key.startsWith(fetchUrlPrefix)) {
+			approvedDomains.add(key.slice(fetchUrlPrefix.length));
+		}
+	}
+
+	return { approvedDomains, allDomainsApproved, webSearchApproved };
 }
 
 // ---------------------------------------------------------------------------
@@ -50,9 +102,12 @@ export const instanceAiEventTypeSchema = z.enum([
 	'agent-completed',
 	'text-delta',
 	'reasoning-delta',
+	'text-block',
+	'reasoning-block',
 	'tool-call',
 	'tool-result',
 	'tool-error',
+	'tool-interrupted',
 	'confirmation-request',
 	'tasks-update',
 	'filesystem-request',
@@ -66,7 +121,10 @@ export type InstanceAiEventType = z.infer<typeof instanceAiEventTypeSchema>;
 // Run status
 // ---------------------------------------------------------------------------
 
-export const instanceAiRunStatusSchema = z.enum(['completed', 'cancelled', 'error']);
+// 'interrupted' (durable-log RFC, resilience phase): appended by the
+// interrupted-run sweep for a run whose process died mid-flight — the fold
+// renders every in-flight item as terminated, no walk-and-mutate.
+export const instanceAiRunStatusSchema = z.enum(['completed', 'cancelled', 'error', 'interrupted']);
 export type InstanceAiRunStatus = z.infer<typeof instanceAiRunStatusSchema>;
 
 // ---------------------------------------------------------------------------
@@ -83,13 +141,7 @@ export type InstanceAiConfirmationSeverity = z.infer<typeof instanceAiConfirmati
 export const instanceAiAgentStatusSchema = z.enum(['active', 'completed', 'cancelled', 'error']);
 export type InstanceAiAgentStatus = z.infer<typeof instanceAiAgentStatusSchema>;
 
-export const instanceAiAgentKindSchema = z.enum([
-	'builder',
-	'data-table',
-	'delegate',
-	'planner',
-	'eval-setup',
-]);
+export const instanceAiAgentKindSchema = z.enum(['builder', 'data-table', 'planner', 'eval-setup']);
 export type InstanceAiAgentKind = z.infer<typeof instanceAiAgentKindSchema>;
 
 // ---------------------------------------------------------------------------
@@ -144,9 +196,10 @@ export const runFinishPayloadSchema = z.object({
 });
 
 export const agentSpawnedTargetResourceSchema = z.object({
-	type: z.enum(['workflow', 'data-table', 'credential', 'other']),
+	type: z.enum(['workflow', 'data-table', 'credential', 'agent', 'other']),
 	id: z.string().optional(),
 	name: z.string().optional(),
+	projectId: z.string().optional(),
 });
 export type InstanceAiTargetResource = z.infer<typeof agentSpawnedTargetResourceSchema>;
 
@@ -218,7 +271,15 @@ export const workflowSetupNodeSchema = z.object({
 		type: z.string(),
 		typeVersion: z.number(),
 		parameters: z.record(z.unknown()),
-		credentials: z.record(z.object({ id: z.string(), name: z.string() })).optional(),
+		// `id` is null only when `__aiGatewayManaged` is true
+		credentials: z
+			.record(
+				z.union([
+					z.object({ id: z.string(), name: z.string() }),
+					z.object({ id: z.null(), name: z.string(), __aiGatewayManaged: z.literal(true) }),
+				]),
+			)
+			.optional(),
 		position: z.tuple([z.number(), z.number()]),
 		id: z.string(),
 	}),
@@ -348,6 +409,12 @@ export type GatewayConfirmationRequiredPayload = z.infer<
 
 // ---------------------------------------------------------------------------
 
+export const channelConfigSchema = z.object({
+	integrationType: z.string(),
+	agentId: z.string(),
+});
+export type InstanceAiChannelConfig = z.infer<typeof channelConfigSchema>;
+
 export const confirmationInputTypeSchema = z.enum([
 	'approval',
 	'text',
@@ -422,6 +489,11 @@ export const confirmationRequestPayloadSchema = z.object({
 	resourceDecision: gatewayConfirmationRequiredPayloadSchema
 		.optional()
 		.describe('Gateway resource-access decision data (inputType=resource-decision)'),
+	channelConfig: channelConfigSchema
+		.optional()
+		.describe(
+			'When present, renders agent chat-channel setup UI for this integration type and agent',
+		),
 });
 export type InstanceAiConfirmationRequestPayload = z.infer<typeof confirmationRequestPayloadSchema>;
 
@@ -454,6 +526,7 @@ export function isDisplayableConfirmationRequest(
 	if (hasItems(payload.setupRequests)) return true;
 	if (hasItems(payload.credentialRequests)) return true;
 	if (payload.domainAccess) return true;
+	if (payload.channelConfig) return true;
 
 	const inputType = payload.inputType ?? 'approval';
 	switch (inputType) {
@@ -639,9 +712,27 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		...eventBase,
 		payload: reasoningDeltaPayloadSchema,
 	}),
+	// Coalesced full text/reasoning of one streamed segment, produced by the
+	// durable event log (deltas are live-only and never persisted). On replay the
+	// reducer REPLACES the segment's streamed deltas, so a client that reconnects
+	// mid-block cannot see partial text twice.
+	z.object({ type: z.literal('text-block'), ...eventBase, payload: textDeltaPayloadSchema }),
+	z.object({
+		type: z.literal('reasoning-block'),
+		...eventBase,
+		payload: reasoningDeltaPayloadSchema,
+	}),
 	z.object({ type: z.literal('tool-call'), ...eventBase, payload: toolCallPayloadSchema }),
 	z.object({ type: z.literal('tool-result'), ...eventBase, payload: toolResultPayloadSchema }),
 	z.object({ type: z.literal('tool-error'), ...eventBase, payload: toolErrorPayloadSchema }),
+	// Durable-log RFC (resilience phase): appended by the interrupted-run sweep
+	// for a tool call that was in flight when the process died. Same payload
+	// shape as tool-error; the effect is unverified, never re-executed blindly.
+	z.object({
+		type: z.literal('tool-interrupted'),
+		...eventBase,
+		payload: toolErrorPayloadSchema,
+	}),
 	z.object({
 		type: z.literal('confirmation-request'),
 		...eventBase,
@@ -815,6 +906,7 @@ export interface InstanceAiConfirmation {
 	introMessage?: string;
 	tasks?: TaskList;
 	resourceDecision?: GatewayConfirmationRequiredPayload;
+	channelConfig?: InstanceAiChannelConfig;
 	expired?: boolean;
 }
 
@@ -827,7 +919,6 @@ export interface InstanceAiToolCallState {
 	isLoading: boolean;
 	renderHint?:
 		| 'tasks'
-		| 'delegate'
 		| 'builder'
 		| 'researcher'
 		| 'data-table'
@@ -843,6 +934,7 @@ export interface InstanceAiToolCallState {
 
 export type InstanceAiTimelineEntry =
 	| { type: 'text'; content: string; responseId?: string }
+	| { type: 'reasoning'; content: string; responseId?: string }
 	| { type: 'tool-call'; toolCallId: string; responseId?: string }
 	| { type: 'child'; agentId: string; responseId?: string };
 
@@ -852,7 +944,7 @@ export interface InstanceAiAgentNode {
 	tools?: string[];
 	/** Background task ID — present only for background agents. */
 	taskId?: string;
-	/** Agent kind for card dispatch (builder, data-table, delegate, planner, eval-setup). */
+	/** Agent kind for card dispatch (builder, data-table, planner, eval-setup). */
 	kind?: InstanceAiAgentKind;
 	/** Short display title, e.g. "Building workflow". */
 	title?: string;
@@ -866,10 +958,14 @@ export interface InstanceAiAgentNode {
 	statusMessage?: string;
 	status: InstanceAiAgentStatus;
 	textContent: string;
+	/**
+	 * Full concatenated reasoning across the run. Kept as an aggregate for
+	 * previews and old snapshots — per-stage reasoning lives in `timeline`.
+	 */
 	reasoning: string;
 	toolCalls: InstanceAiToolCallState[];
 	children: InstanceAiAgentNode[];
-	/** Chronological ordering of text segments, tool calls, and sub-agents. */
+	/** Chronological ordering of text/reasoning segments, tool calls, and sub-agents. */
 	timeline: InstanceAiTimelineEntry[];
 	/** Latest task list — updated by tasks-update events. */
 	tasks?: TaskList;
@@ -882,7 +978,12 @@ export interface InstanceAiAgentNode {
 		provider?: string;
 		technicalDetails?: string;
 	};
+	/** Why a `cancelled` run stopped — lets the UI attribute it (user vs timeout vs shutdown). */
+	cancellationReason?: InstanceAiCancellationReason;
 }
+
+/** Semantic cause of a cancelled run, mapped from the backend's run-finish reason. */
+export type InstanceAiCancellationReason = 'user' | 'timeout' | 'shutdown' | 'interrupted';
 
 export interface InstanceAiMessage {
 	id: string;
@@ -1029,6 +1130,7 @@ export interface InstanceAiMemoryTaskSnapshot {
 export interface InstanceAiThreadStatusResponse {
 	hasActiveRun: boolean;
 	isSuspended: boolean;
+	runId?: string;
 	backgroundTasks: Array<{
 		taskId: string;
 		role: string;
@@ -1042,6 +1144,11 @@ export interface InstanceAiThreadStatusResponse {
 	}>;
 	/** In-flight observational-memory jobs (observer/reflector). Used by eval harnesses. */
 	memoryTasks?: InstanceAiMemoryTaskSnapshot[];
+}
+
+export interface InstanceAiConfirmResponse {
+	ok: true;
+	runId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -1153,7 +1260,6 @@ export function isInstanceAiSandboxProvider(value: unknown): value is InstanceAi
 
 export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
-	subAgentMaxSteps: number;
 	permissions: InstanceAiPermissions;
 	mcpServers: string;
 	mcpAccessEnabled: boolean;
@@ -1170,7 +1276,6 @@ export interface InstanceAiAdminSettingsResponse {
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	enabled: z.boolean().optional(),
-	subAgentMaxSteps: z.number().int().positive().optional(),
 	permissions: instanceAiPermissionsSchema.partial().optional(),
 	mcpServers: z.string().optional(),
 	mcpAccessEnabled: z.boolean().optional(),
@@ -1228,13 +1333,23 @@ export interface InstanceAiMcpConnectionResponse {
 	credentialId: string;
 	credentialName: string;
 	credentialType: string;
+	toolFilter: InstanceAiMcpConnectionToolFilterResponse | null;
 	createdAt: string;
 	updatedAt: string;
 }
 
+export interface InstanceAiMcpConnectionToolFilterResponse {
+	mode: 'allow' | 'exclude';
+	tools: string[];
+}
+
+export interface InstanceAiMcpConnectionToolResponse {
+	name: string;
+	description?: string;
+}
+
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
 	if (toolName === 'task-control') return 'tasks';
-	if (toolName === 'delegate') return 'delegate';
 	if (toolName === 'build-workflow' || toolName === 'build-workflow-with-agent') return 'builder';
 	if (toolName === 'research-with-agent') return 'researcher';
 	if (toolName === 'create-tasks') return 'planner';

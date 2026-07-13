@@ -1,4 +1,4 @@
-name: 'Test: Instance AI Exec Evals'
+name: 'Instance AI Evals: Experiments'
 
 on:
   workflow_call:
@@ -53,6 +53,11 @@ on:
         required: false
         type: string
         default: ''
+      model:
+        description: 'Model override for all Instance AI agents in the lane backends, provider/model format. Empty = backend default.'
+        required: false
+        type: string
+        default: ''
   workflow_dispatch:
     inputs:
       branch:
@@ -77,6 +82,10 @@ on:
         default: '3'
       experiment-name:
         description: 'LangSmith experiment name (instance-ai-baseline refreshes the baseline)'
+        required: false
+        default: ''
+      model:
+        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). For experiments: anthropic/claude-sonnet-4-6, anthropic/claude-sonnet-5.'
         required: false
         default: ''
 
@@ -124,9 +133,14 @@ jobs:
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
           DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY }}
+          # LangSmith creds for backend thread traces, routed to the same
+          # dedicated project as the eval CLI to keep the 'instance-ai' corpus clean.
+          LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
+          LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
           # Prefer head_ref: inputs.branch may be a merge ref (refs/pull/N/merge).
           SANDBOX_NAME_PREFIX: evals-ci-${{ github.head_ref || inputs.branch || github.ref_name }}
           SANDBOX_PROVIDER: ${{ inputs.sandbox-provider || 'n8n-sandbox' }}
+          INSTANCE_AI_MODEL: ${{ inputs.model }}
         run: |
           # Build provider-specific env args
           SANDBOX_ARGS=()
@@ -151,6 +165,12 @@ jobs:
             NETWORK_ARGS+=(--network n8n-eval-net)
           fi
 
+          # Model override for A/B experiments; empty = backend default (instance-ai.config.ts)
+          MODEL_ARGS=()
+          if [ -n "$INSTANCE_AI_MODEL" ]; then
+            MODEL_ARGS+=(-e N8N_INSTANCE_AI_MODEL="$INSTANCE_AI_MODEL")
+          fi
+
           IFS=',' read -ra PORTS <<< "$LANE_PORTS"
           for i in "${!PORTS[@]}"; do
             port="${PORTS[$i]}"
@@ -163,6 +183,11 @@ jobs:
               -e N8N_AI_ASSISTANT_BASE_URL="" \
               -e N8N_INSTANCE_AI_SANDBOX_ENABLED=true \
               "${SANDBOX_ARGS[@]}" \
+              "${MODEL_ARGS[@]}" \
+              -e LANGSMITH_TRACING=true \
+              -e LANGSMITH_API_KEY="$LANGSMITH_API_KEY" \
+              -e LANGSMITH_ENDPOINT="$LANGSMITH_ENDPOINT" \
+              -e LANGSMITH_PROJECT=instance-ai-evals \
               -e N8N_LICENSE_ACTIVATION_KEY="$N8N_LICENSE_ACTIVATION_KEY" \
               -e N8N_LICENSE_CERT="$N8N_LICENSE_CERT" \
               -e N8N_ENCRYPTION_KEY="$N8N_ENCRYPTION_KEY" \
@@ -206,13 +231,14 @@ jobs:
               }'
           done
 
-      # Belt-and-suspenders: env vars set sandbox config but persisted admin
+      # Belt-and-suspenders: env vars set sandbox/model config but persisted
       # settings can override. Per-lane assertion catches env-injection hiccups
-      # or unexpected DB-side state. A single misconfigured lane would
-      # silently route some builds through tool mode and pollute results.
-      - name: Assert sandbox is enabled on every lane
+      # or unexpected DB-side state. A single misconfigured lane would silently
+      # route some builds through tool mode or the wrong model and pollute results.
+      - name: Assert sandbox and model config on every lane
         env:
           SANDBOX_PROVIDER: ${{ inputs.sandbox-provider || 'n8n-sandbox' }}
+          INSTANCE_AI_MODEL: ${{ inputs.model }}
         run: |
           IFS=',' read -ra PORTS <<< "$LANE_PORTS"
           bad=0
@@ -232,9 +258,22 @@ jobs:
             else
               echo "  lane $lane: sandboxEnabled=true sandboxProvider=$SANDBOX_PROVIDER ok"
             fi
+            # /preferences returns the effective model name (user pref || config),
+            # i.e. the name part of provider/model.
+            if [ -n "$INSTANCE_AI_MODEL" ]; then
+              effective=$(curl -sf -b "/tmp/cookies-$port.txt" \
+                "http://localhost:$port/rest/instance-ai/preferences" \
+                | jq -r '.data.modelName')
+              if [ "$effective" != "${INSTANCE_AI_MODEL##*/}" ]; then
+                echo "::error::lane $lane (port $port): expected model '${INSTANCE_AI_MODEL##*/}', got '$effective'"
+                bad=$((bad+1))
+              else
+                echo "  lane $lane: model=$effective ok"
+              fi
+            fi
           done
           if [ "$bad" -gt 0 ]; then
-            echo "::error::$bad lane(s) misconfigured - eval would mix sandbox + tool-mode builds"
+            echo "::error::$bad lane(s) misconfigured - eval results would mix configurations"
             exit 1
           fi
 
@@ -291,6 +330,7 @@ jobs:
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
+          EVALS_LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
         run: |
           # Layer 2 — defense in depth: explicitly mask each secret's value.
           # ::add-mask:: is a single-line workflow command. Multi-line secrets
@@ -298,7 +338,7 @@ jobs:
           # a time, otherwise only the first line is registered.
           for v in "$EVALS_ANTHROPIC_KEY" "$DAYTONA_API_KEY" \
                    "$N8N_LICENSE_ACTIVATION_KEY" "$N8N_LICENSE_CERT" \
-                   "$N8N_ENCRYPTION_KEY"; do
+                   "$N8N_ENCRYPTION_KEY" "$EVALS_LANGSMITH_API_KEY"; do
             [ -z "$v" ] && continue
             while IFS= read -r line; do
               [ -n "$line" ] && echo "::add-mask::$line"

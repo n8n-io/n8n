@@ -1,3 +1,4 @@
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import type { WorkflowJSON, NodeJSON } from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
 
@@ -26,7 +27,11 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 			getWorkflowHead: vi.fn(),
 			getWorkflowSnapshot: vi.fn(),
 			createFromWorkflowJSON: vi.fn(),
-			updateFromWorkflowJSON: vi.fn(),
+			updateFromWorkflowJSON: vi.fn().mockResolvedValue({
+				id: 'wf-1',
+				versionId: 'v-next',
+				checksum: 'checksum-next',
+			}),
 			archive: vi.fn(),
 			unarchive: vi.fn(),
 			publish: vi.fn(),
@@ -285,6 +290,34 @@ describe('buildSetupRequests', () => {
 		const result = await buildSetupRequests(context, node);
 
 		expect(result[0].needsAction).toBe(false);
+	});
+
+	it('keeps AI Gateway-managed credentials complete without testing them', async () => {
+		(context.nodeService.getDescription as Mock).mockResolvedValue({
+			group: [],
+			credentials: [{ name: 'googlePalmApi' }],
+		});
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Gemini', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+
+		const node = makeNode({
+			name: 'Gemini',
+			type: 'n8n-nodes-base.lmChatGoogleGemini',
+			credentials: {
+				googlePalmApi: { id: null, name: '', __aiGatewayManaged: true },
+			} as unknown as NodeJSON['credentials'],
+		});
+		const result = await buildSetupRequests(context, node);
+
+		expect(result[0].isAutoApplied).toBeFalsy();
+		expect(result[0].needsAction).toBe(false);
+		expect(result[0].node.credentials?.googlePalmApi).toEqual({
+			id: null,
+			name: '',
+			__aiGatewayManaged: true,
+		});
+		expect(context.credentialService.test).not.toHaveBeenCalled();
 	});
 
 	it('sets needsAction=true when credential test fails', async () => {
@@ -1008,7 +1041,11 @@ describe('applyNodeChanges', () => {
 		(context.credentialService.get as Mock).mockImplementation(
 			async (id: string) => await Promise.resolve({ id, name: `Cred ${id}` }),
 		);
-		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(undefined);
+		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+			id: 'wf-1',
+			versionId: 'v-1',
+			checksum: 'checksum-1',
+		});
 
 		const result = await applyNodeChanges(
 			context,
@@ -1028,7 +1065,11 @@ describe('applyNodeChanges', () => {
 		const wfJson = makeWorkflowJSON([makeNode({ name: 'Slack', id: 'n1' })]);
 		(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(wfJson);
 		(context.credentialService.get as Mock).mockResolvedValue(undefined);
-		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(undefined);
+		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+			id: 'wf-1',
+			versionId: 'v-1',
+			checksum: 'checksum-1',
+		});
 
 		const result = await applyNodeChanges(context, 'wf-1', {
 			Slack: { slackApi: 'nonexistent' },
@@ -1077,7 +1118,11 @@ describe('applyNodeChanges', () => {
 				},
 			],
 		});
-		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(undefined);
+		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+			id: 'wf-1',
+			versionId: 'v-1',
+			checksum: 'checksum-1',
+		});
 
 		await applyNodeChanges(context, 'wf-1');
 
@@ -1106,7 +1151,11 @@ describe('applyNodeChanges', () => {
 			id: 'cred-1',
 			name: 'My Header Auth',
 		});
-		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(undefined);
+		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+			id: 'wf-1',
+			versionId: 'v-1',
+			checksum: 'checksum-1',
+		});
 
 		await applyNodeChanges(context, 'wf-1', {
 			'HTTP Request': { httpHeaderAuth: 'cred-1' },
@@ -1119,6 +1168,28 @@ describe('applyNodeChanges', () => {
 		const savedNode = savedJson.nodes.find((n) => n.name === 'HTTP Request');
 		expect(savedNode?.credentials).toEqual({
 			httpHeaderAuth: { id: 'cred-1', name: 'My Header Auth' },
+		});
+	});
+
+	it('applies AI Gateway-managed credentials from the setup tag', async () => {
+		const node = makeNode({ name: 'Gemini', type: 'n8n-nodes-base.lmChatGoogleGemini' });
+		const wfJson = makeWorkflowJSON([node]);
+		(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(wfJson);
+		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+			id: 'wf-1',
+			versionId: 'v-1',
+			checksum: 'checksum-1',
+		});
+
+		const result = await applyNodeChanges(context, 'wf-1', {
+			Gemini: { googlePalmApi: AI_GATEWAY_MANAGED_TAG },
+		});
+
+		expect(result.applied).toEqual(['Gemini']);
+		expect(result.failed).toEqual([]);
+		expect(context.credentialService.get).not.toHaveBeenCalled();
+		expect(node.credentials).toEqual({
+			googlePalmApi: { id: null, name: '', __aiGatewayManaged: true },
 		});
 	});
 
@@ -1137,7 +1208,11 @@ describe('applyNodeChanges', () => {
 			group: [],
 			credentials: [],
 		});
-		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(undefined);
+		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+			id: 'wf-1',
+			versionId: 'v-1',
+			checksum: 'checksum-1',
+		});
 
 		const result = await applyNodeChanges(context, 'wf-1', undefined, {
 			'HTTP Request': { url: 'https://example.com/api' },
@@ -1173,7 +1248,11 @@ describe('applyNodeChanges', () => {
 			group: [],
 			credentials: [],
 		});
-		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(undefined);
+		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+			id: 'wf-1',
+			versionId: 'v-1',
+			checksum: 'checksum-1',
+		});
 
 		const result = await applyNodeChanges(context, 'wf-1', undefined, {
 			channelId: { __rl: true, mode: 'name', value: '#berlin-weather-rain' },
@@ -1213,7 +1292,11 @@ describe('applyNodeChanges', () => {
 			group: [],
 			credentials: [],
 		});
-		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(undefined);
+		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+			id: 'wf-1',
+			versionId: 'v-1',
+			checksum: 'checksum-1',
+		});
 
 		await applyNodeChanges(context, 'wf-1');
 
@@ -1426,6 +1509,23 @@ describe('applyNodeCredentials — credential ownership revalidation', () => {
 		expect(result.applied).toEqual(['Slack']);
 		expect(result.failed).toEqual([]);
 		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith('wf-1', wfJson);
+	});
+
+	it('applies AI Gateway-managed credentials from the setup tag', async () => {
+		const node = makeNode({ name: 'Gemini', type: 'n8n-nodes-base.lmChatGoogleGemini' });
+		const wfJson = makeWorkflowJSON([node]);
+		(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(wfJson);
+
+		const result = await applyNodeCredentials(context, 'wf-1', {
+			Gemini: { googlePalmApi: AI_GATEWAY_MANAGED_TAG },
+		});
+
+		expect(context.credentialService.get).not.toHaveBeenCalled();
+		expect(node.credentials).toEqual({
+			googlePalmApi: { id: null, name: '', __aiGatewayManaged: true },
+		});
+		expect(result.applied).toEqual(['Gemini']);
+		expect(result.failed).toEqual([]);
 	});
 
 	it('does not write a credential the user cannot access', async () => {

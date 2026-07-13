@@ -8,7 +8,7 @@
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
-import { mkdirSync, writeFileSync } from 'fs';
+import { mkdirSync, unlinkSync, writeFileSync } from 'fs';
 import { Client } from 'langsmith';
 import { evaluate } from 'langsmith/evaluation';
 import type { EvaluationResult } from 'langsmith/evaluation';
@@ -18,25 +18,32 @@ import { join } from 'path';
 
 import { aggregateResults, passAtK, passHatK } from './aggregator';
 import { parseCliArgs, partialIsolationWarning } from './args';
+import type { CliArgs } from './args';
 import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
 import { LaneAllocator } from './lane-allocator';
 import { expandWithIterations, partitionRoundRobin } from './lanes';
 import {
+	buildWorkflowViaMcp,
+	stageLaneMcpConfig,
+	unsupportedMcpBuildSetupFields,
+	type McpBuildSettings,
+} from './mcp-builder';
+import {
 	isPlainObject,
 	parseTargetOutput,
 	reshapeLangSmithRuns,
+	sentinelOutcomeFromVerdicts,
 	type TargetOutput,
 } from './reshape';
 import { aggregateWorkflowChecks, statusMap } from '../binaryChecks/aggregate';
 import { selectAuthorExpectations } from '../build-expectations/select';
 import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
 import { N8nClient } from '../clients/n8n-client';
+import { bucketFromEvaluation } from '../comparison/bucket-from-evaluation';
 import {
 	compareBuckets,
 	type ComparisonOutcome,
 	type ComparisonResult,
-	type ExperimentBucket,
-	type ScenarioCounts,
 } from '../comparison/compare';
 import { fetchBaselineBucket, findLatestBaseline } from '../comparison/fetch-baseline';
 import {
@@ -49,6 +56,7 @@ import { cleanupCredentials } from '../credentials/seeder';
 import { loadTestCases } from '../data/source';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import { captureThreadRunDebug } from '../harness/capture-run-debug';
+import { EVAL_WORKSPACE_NAME, resolveEvalWorkspaceId } from '../harness/langsmith-seed';
 import { createLogger } from '../harness/logger';
 import type { EvalLogger } from '../harness/logger';
 import {
@@ -64,10 +72,17 @@ import {
 	executeScenario,
 	cleanupBuild,
 	runWorkflowChecks,
+	effectiveTimeoutMs,
 	runWorkflowTestCase,
 	runWithConcurrency,
+	workflowExpectedForCase,
 	type BuildResult,
 } from '../harness/runner';
+import {
+	extractErrorMessage,
+	MAX_EXEC_ATTEMPTS,
+	shouldRetryScenarioExecution,
+} from '../harness/transient-error';
 import {
 	BUILD_ONLY_SCENARIO_NAME,
 	syncDataset,
@@ -101,15 +116,118 @@ interface Lane {
 	claimedWorkflowIds: Set<string>;
 	/** Credentials created for test cases on this lane; cleaned up after the run. */
 	createdCredentialIds: Set<string>;
+	/** Workflows built/fetched on THIS lane to delete after the run (opt-in). Kept
+	 *  per-lane because prebuilt/MCP-built workflows only exist on their own lane —
+	 *  deleting them via another lane's client would 404. */
+	workflowIdsToDelete: Set<string>;
+	/** Staged `claude` MCP config for this lane (`--build-via-mcp` only). Points
+	 *  `claude -p` at this lane's own MCP server + minted API key. Cleaned up on exit. */
+	mcpConfigPath?: string;
+}
+
+/** One `claude` build's Anthropic spend (`--build-via-mcp` only). Mirrors
+ *  McpBuildResult: the numbers cover the LAST attempt, so totals are a lower
+ *  bound when retries happened (same semantics as the manifest flow's stats). */
+interface McpBuildSpend {
+	costUsd: number;
+	turns: number;
 }
 
 interface RunConfig {
-	args: ReturnType<typeof parseCliArgs>;
+	args: CliArgs;
 	lanes: Lane[];
 	logger: EvalLogger;
 	testCasesWithFiles: WorkflowTestCaseWithFile[];
 	prebuiltManifest?: PrebuiltManifest;
-	prebuiltWorkflowIdsToDelete?: Set<string>;
+	/** When true, workflows built/fetched this run are deleted afterwards: prebuilt
+	 *  workflows opted in via --delete-prebuilt-workflows, or throwaway workflows
+	 *  built by --build-via-mcp (unless --keep-workflows). Tracked per-lane on
+	 *  `lane.workflowIdsToDelete`. */
+	cleanupBuiltWorkflows: boolean;
+	/** Directory for per-build `claude` logs (`--build-via-mcp` only). */
+	mcpBuildLogDir?: string;
+	/** Per-build `claude` spend, appended by buildWorkflowViaMcpOnLane across all
+	 *  lanes (`--build-via-mcp` only; stays empty otherwise). Aggregated into
+	 *  LangSmith experiment metadata and eval-results.json — the run's only spend
+	 *  record beyond raw session logs, for a suite that's manual-only due to cost. */
+	mcpBuildSpend: McpBuildSpend[];
+}
+
+/** Map eval CLI args to the shared MCP builder's settings. */
+function mcpBuildSettingsFromArgs(args: CliArgs): McpBuildSettings {
+	return {
+		serverName: args.mcpServerName,
+		model: args.buildModel,
+		maxAttempts: args.buildMaxAttempts,
+		mcpTimeoutMs: args.buildMcpTimeoutMs,
+		buildTimeoutMs: args.buildTimeoutMs,
+		buildCwd: args.buildCwd,
+	};
+}
+
+/**
+ * Build a workflow on `lane` by driving that lane's MCP server with `claude -p`,
+ * then adapt it into a BuildResult by fetching it back (prebuilt-style) — so the
+ * verify path is identical to `--prebuilt-workflows`. Never throws: a failed
+ * build resolves to an unsuccessful BuildResult. The workflow lives on `lane`,
+ * so the caller must verify it on that same lane.
+ */
+async function buildWorkflowViaMcpOnLane(config: {
+	lane: Lane;
+	conversation: WorkflowTestCase['conversation'];
+	slug: string;
+	iteration: number;
+	args: CliArgs;
+	logDir: string;
+	logger: EvalLogger;
+	/** Run-wide spend collector; every attempt is recorded, success or not. */
+	buildSpend: McpBuildSpend[];
+}): Promise<BuildResult> {
+	const { lane, conversation, slug, iteration, args, logDir, logger, buildSpend } = config;
+	if (!lane.mcpConfigPath) {
+		return {
+			success: false,
+			error: `Lane ${lane.baseUrl} has no staged MCP config — cannot build via MCP`,
+			workflowJsons: [],
+			createdWorkflowIds: [],
+			createdDataTableIds: [],
+		};
+	}
+
+	const result = await buildWorkflowViaMcp({
+		conversation: conversation ?? [],
+		slug,
+		iteration,
+		mcpConfigPath: lane.mcpConfigPath,
+		settings: mcpBuildSettingsFromArgs(args),
+		logDir,
+		log: (message) => logger.info(message),
+	});
+
+	// Record spend whether or not the build produced a workflow — failed builds
+	// cost money too, and this is the run's spend record.
+	buildSpend.push({ costUsd: result.cost, turns: result.turns });
+
+	// Register for cleanup the moment the id exists. If the fetch-back below
+	// fails, the failure BuildResult carries no workflowId, so success-guarded
+	// bookkeeping at the call sites would never see it and the workflow would
+	// survive the run despite cleanup being on. On this path cleanup is exactly
+	// !keepWorkflows (--delete-prebuilt-workflows is rejected with --build-via-mcp).
+	if (result.workflowId && !args.keepWorkflows) {
+		lane.workflowIdsToDelete.add(result.workflowId);
+	}
+
+	if (!result.workflowId) {
+		return {
+			success: false,
+			error: `MCP build produced no workflow (${result.failureReason ?? 'unknown'})`,
+			workflowJsons: [],
+			createdWorkflowIds: [],
+			createdDataTableIds: [],
+		};
+	}
+
+	return await fetchPrebuiltBuild(lane.client, result.workflowId, logger);
 }
 
 async function main(): Promise<void> {
@@ -161,6 +279,53 @@ async function main(): Promise<void> {
 		testCasesWithFiles = covered;
 	}
 
+	// `claude -p` builds get only the flattened conversation — build-side setup
+	// (credentials, seeds) is orchestrator-only. Skip cases that declare it
+	// rather than building them without prerequisites and reporting misleading
+	// failures (mirrors the prebuilt-coverage partition above).
+	if (args.buildViaMcp) {
+		const skippedMcp: string[] = [];
+		testCasesWithFiles = testCasesWithFiles.filter(({ testCase, fileSlug }) => {
+			const fields = unsupportedMcpBuildSetupFields(testCase);
+			if (fields.length === 0) return true;
+			skippedMcp.push(`${fileSlug} (${fields.join(', ')})`);
+			return false;
+		});
+		if (skippedMcp.length > 0) {
+			logger.warn(
+				`MCP build: skipping ${String(skippedMcp.length)} selected case(s) with setup fields the \`claude\` build path cannot honor: ${skippedMcp.join('; ')}`,
+			);
+		}
+		if (testCasesWithFiles.length === 0) {
+			throw new Error(
+				'--build-via-mcp supports none of the selected test cases (all declare orchestrator-only setup fields) — nothing to run.',
+			);
+		}
+	}
+
+	// Per-build `claude` logs (--build-via-mcp only). One shared dir; filenames
+	// are slug/iteration/attempt-scoped so concurrent lanes never collide.
+	const mcpBuildLogDir = args.buildViaMcp
+		? join(args.outputDir ?? process.cwd(), 'mcp-build-logs')
+		: undefined;
+	if (mcpBuildLogDir) mkdirSync(mcpBuildLogDir, { recursive: true });
+
+	// Remove staged MCP configs (they embed the lane's bearer token) on exit,
+	// belt-and-suspenders alongside the explicit finally cleanup below.
+	// Registered before lane init and populated as configs are staged, so a
+	// lane failing setup can't strand another lane's already-staged token file.
+	const stagedMcpConfigPaths: string[] = [];
+	const cleanupStagedMcpConfigs = () => {
+		for (const path of stagedMcpConfigPaths) {
+			try {
+				unlinkSync(path);
+			} catch {
+				// best-effort
+			}
+		}
+	};
+	if (args.buildViaMcp) process.on('exit', cleanupStagedMcpConfigs);
+
 	// One lane per base URL. The LangSmith path then uses a work-stealing
 	// allocator (lane-allocator.ts) to dispatch builds across lanes; the direct
 	// path partitions test cases statically per lane.
@@ -183,23 +348,55 @@ async function main(): Promise<void> {
 				logger.info(`Skipped MCP registry seed (test endpoint unavailable)${tag}`);
 			}
 
+			// --build-via-mcp: enable MCP, mint this lane's own API key, and stage a
+			// `claude` MCP config pointing at this lane's MCP server. Each lane is a
+			// self-contained build+verify target — a workflow built here is verified
+			// here, so N lanes parallelize the whole pipeline within one process.
+			let mcpConfigPath: string | undefined;
+			if (args.buildViaMcp) {
+				await client.enableMcpAccess();
+				const apiKey = await client.rotateMcpApiKey();
+				mcpConfigPath = stageLaneMcpConfig({
+					serverName: args.mcpServerName,
+					url: `${baseUrl}/mcp-server/http`,
+					apiKey,
+				});
+				stagedMcpConfigPaths.push(mcpConfigPath);
+				logger.info(`Staged MCP build config${tag}`);
+			}
+
 			const preRunWorkflowIds = await snapshotWorkflowIds(client);
 			const claimedWorkflowIds = new Set<string>();
 			const createdCredentialIds = new Set<string>();
-			return { client, baseUrl, preRunWorkflowIds, claimedWorkflowIds, createdCredentialIds };
+			const workflowIdsToDelete = new Set<string>();
+			return {
+				client,
+				baseUrl,
+				preRunWorkflowIds,
+				claimedWorkflowIds,
+				createdCredentialIds,
+				workflowIdsToDelete,
+				mcpConfigPath,
+			};
 		}),
 	);
 
 	const startTime = Date.now();
-	const prebuiltWorkflowIdsToDelete = args.deletePrebuiltWorkflows ? new Set<string>() : undefined;
+	// Delete workflows after the run when they're throwaway: prebuilt opt-in
+	// (--delete-prebuilt-workflows) or MCP builds (--build-via-mcp, unless
+	// --keep-workflows). Tracked per-lane on lane.workflowIdsToDelete.
+	const cleanupBuiltWorkflows =
+		args.deletePrebuiltWorkflows || (args.buildViaMcp && !args.keepWorkflows);
 
 	try {
 		const hasLangSmith = Boolean(process.env.LANGSMITH_API_KEY);
 
 		let evaluation: MultiRunEvaluation;
 		let experimentName: string | undefined;
+		let experimentUrl: string | undefined;
 		let outcome: ComparisonOutcome | undefined;
 		let slugByTestCase: Map<WorkflowTestCase, string> | undefined;
+		const mcpBuildSpend: McpBuildSpend[] = [];
 
 		if (hasLangSmith) {
 			logger.info('LangSmith API key detected, using evaluate() with experiment tracking');
@@ -209,10 +406,13 @@ async function main(): Promise<void> {
 				logger,
 				testCasesWithFiles,
 				prebuiltManifest,
-				prebuiltWorkflowIdsToDelete,
+				cleanupBuiltWorkflows,
+				mcpBuildLogDir,
+				mcpBuildSpend,
 			});
 			evaluation = langsmithRun.evaluation;
 			experimentName = langsmithRun.experimentName;
+			experimentUrl = langsmithRun.experimentUrl;
 			outcome = langsmithRun.outcome;
 			slugByTestCase = langsmithRun.slugByTestCase;
 		} else {
@@ -223,7 +423,9 @@ async function main(): Promise<void> {
 				logger,
 				testCasesWithFiles,
 				prebuiltManifest,
-				prebuiltWorkflowIdsToDelete,
+				cleanupBuiltWorkflows,
+				mcpBuildLogDir,
+				mcpBuildSpend,
 			});
 			evaluation = directRun.evaluation;
 			slugByTestCase = directRun.slugByTestCase;
@@ -243,6 +445,8 @@ async function main(): Promise<void> {
 			slugByTestCase,
 			ciRerunHint(),
 			gate,
+			mcpBuildSpend,
+			experimentUrl,
 		);
 		console.log(`Results:    ${jsonPath}`);
 		console.log(`PR comment: ${prCommentPath}`);
@@ -255,14 +459,18 @@ async function main(): Promise<void> {
 			'\n' + formatComparisonTerminal(evaluation, outcome, { commitSha, slugByTestCase, gate }),
 		);
 	} finally {
-		if (prebuiltWorkflowIdsToDelete && lanes[0]) {
-			await cleanupPrebuiltWorkflows(lanes[0].client, prebuiltWorkflowIdsToDelete, logger);
-		}
+		// Per-lane cleanup: each lane only holds the workflows built/fetched on it,
+		// so delete them via that lane's own client (multi-lane MCP builds spread
+		// workflows across lanes; a single-lane cleanup would 404 on the rest).
 		await Promise.all(
 			lanes.map(async (lane) => {
+				if (cleanupBuiltWorkflows && lane.workflowIdsToDelete.size > 0) {
+					await cleanupPrebuiltWorkflows(lane.client, lane.workflowIdsToDelete, logger);
+				}
 				await cleanupCredentials(lane.client, [...lane.createdCredentialIds]).catch(() => {});
 			}),
 		);
+		cleanupStagedMcpConfigs();
 	}
 }
 
@@ -273,17 +481,27 @@ async function main(): Promise<void> {
 async function runWithLangSmith(config: RunConfig): Promise<{
 	evaluation: MultiRunEvaluation;
 	experimentName: string;
+	experimentUrl: string | undefined;
 	outcome: ComparisonOutcome | undefined;
 	slugByTestCase: Map<WorkflowTestCase, string>;
 }> {
-	const { args, lanes, logger, testCasesWithFiles, prebuiltManifest, prebuiltWorkflowIdsToDelete } =
-		config;
+	const {
+		args,
+		lanes,
+		logger,
+		testCasesWithFiles,
+		prebuiltManifest,
+		cleanupBuiltWorkflows,
+		mcpBuildLogDir,
+		mcpBuildSpend,
+	} = config;
 
 	if (testCasesWithFiles.length === 0) {
 		logger.info('No workflow test cases selected (check --source / --filter / --exclude / --tier)');
 		return {
 			evaluation: { totalRuns: 0, testCases: [] },
 			experimentName: '',
+			experimentUrl: undefined,
 			outcome: { kind: 'no_baseline' },
 			slugByTestCase: new Map(),
 		};
@@ -294,7 +512,14 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	const isolationWarning = partialIsolationWarning(args.dataset, args.baselinePrefix);
 	if (isolationWarning) logger.warn(isolationWarning);
 
-	const lsClient = new Client();
+	// Pin eval writes to the eval workspace; our PAT would otherwise default to Prod.
+	const workspaceId = await resolveEvalWorkspaceId();
+	if (workspaceId) {
+		logger.info(
+			`Pinning eval experiments to LangSmith workspace "${EVAL_WORKSPACE_NAME}" (${workspaceId})`,
+		);
+	}
+	const lsClient = new Client(workspaceId ? { workspaceId } : {});
 	const datasetName = await syncDataset(lsClient, args.dataset, logger, testCasesWithFiles);
 
 	// Stash transcripts by threadId so reshapeLangSmithRuns can merge them in —
@@ -327,7 +552,9 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		| 'seedFile'
 		| 'priorConversation'
 		| 'seedThread'
-	>;
+		| 'executionScenarios'
+		| 'outcomeExpectations'
+	> & { timeoutMs: number };
 	interface LaneState {
 		runner: Lane;
 		activeBuilds: number;
@@ -338,6 +565,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			scenario: ExecutionScenario;
 			workflowJsons: BuildResult['workflowJsons'];
 			buildTrace?: BuildResult['buildTrace'];
+			timeoutMs: number;
 		}) => Promise<Awaited<ReturnType<typeof executeScenario>>>;
 	}
 
@@ -359,11 +587,12 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 						priorConversation: buildArgs.priorConversation,
 						seedThread: buildArgs.seedThread,
 						createdCredentialIds: lane.createdCredentialIds,
-						timeoutMs: args.timeoutMs,
+						timeoutMs: buildArgs.timeoutMs,
 						preRunWorkflowIds: lane.preRunWorkflowIds,
 						claimedWorkflowIds: lane.claimedWorkflowIds,
 						logger,
 						laneTag,
+						workflowExpected: workflowExpectedForCase(buildArgs),
 					}),
 				{
 					name: 'workflow_build',
@@ -378,6 +607,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					scenario: ExecutionScenario;
 					workflowJsons: BuildResult['workflowJsons'];
 					buildTrace?: BuildResult['buildTrace'];
+					timeoutMs: number;
 				}) =>
 					await executeScenario(
 						lane.client,
@@ -385,7 +615,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 						execArgs.scenario,
 						execArgs.workflowJsons,
 						logger,
-						args.timeoutMs,
+						execArgs.timeoutMs,
 						undefined,
 						execArgs.buildTrace,
 						args.pinAiRoots,
@@ -420,6 +650,52 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		const existing = buildCache.get(key);
 		if (existing) return await existing;
 		const promise = (async () => {
+			if (args.buildViaMcp) {
+				// Fused MCP build: acquire a lane (work-stealing, capped per-lane),
+				// drive its MCP server with `claude` to build the workflow, then
+				// verify on that SAME lane. This is what lets N lanes parallelize the
+				// whole build+verify pipeline in one process (no manifest, no merge).
+				const entry = testCaseByFileSlug.get(fileSlug);
+				if (!entry) throw new Error(`No conversation found for fileSlug=${fileSlug}`);
+				const lane = await allocator.acquire(fileSlug);
+				const start = Date.now();
+				let build: BuildResult;
+				try {
+					build = await buildWorkflowViaMcpOnLane({
+						lane: lane.runner,
+						conversation: entry.conversation,
+						slug: fileSlug,
+						iteration,
+						args,
+						logDir: mcpBuildLogDir ?? process.cwd(),
+						logger,
+						buildSpend: mcpBuildSpend,
+					});
+				} finally {
+					// Release as soon as the build (incl. fetch-back) is done — the
+					// LLM-judged bookkeeping below needs only the fetched JSON, and
+					// holding the slot through it would idle the lane's build capacity.
+					allocator.release(lane, fileSlug);
+				}
+				const buildDurationMs = Date.now() - start;
+				// Cleanup registration happens inside buildWorkflowViaMcpOnLane (as soon
+				// as `claude` reports the id), so even a failed fetch-back is covered.
+				buildDurations.set(key, buildDurationMs);
+				stashTranscript(build);
+				// isPrebuilt=true: MCP builds have no build transcript, so only
+				// outcome expectations are judged (against the workflow), like prebuilt.
+				stashBuildExpectations(key, fileSlug, build, true);
+				stashRunDebug(lane.runner.client, build);
+				if (build.success && !build.workflowChecks) {
+					build.workflowChecks = await runWorkflowChecks({
+						workflow: build.workflowJsons[0],
+						prompt: conversationUserTurnsAsText(entry.conversation ?? []),
+						agentText: undefined,
+						logger,
+					});
+				}
+				return { build, lane, buildDurationMs };
+			}
 			const prebuiltId = pickPrebuiltWorkflowId(prebuiltManifest, fileSlug, iteration);
 			if (prebuiltId !== undefined) {
 				// Prebuilt path: no orchestrator concurrency to manage — just
@@ -428,8 +704,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				const lane = laneStates[0];
 				const start = Date.now();
 				const build = await fetchPrebuiltBuild(lane.runner.client, prebuiltId, logger);
-				if (build.success && build.workflowId) {
-					prebuiltWorkflowIdsToDelete?.add(build.workflowId);
+				if (cleanupBuiltWorkflows && build.success && build.workflowId) {
+					lane.runner.workflowIdsToDelete.add(build.workflowId);
 				}
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
@@ -457,6 +733,12 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			if (!entry) throw new Error(`No conversation found for fileSlug=${fileSlug}`);
 			try {
 				const start = Date.now();
+				const timeoutMs = effectiveTimeoutMs(entry.complexity, args.timeoutMs);
+				if (timeoutMs !== args.timeoutMs) {
+					logger.info(
+						`  Complex case: per-iteration budget ${String(Math.round(timeoutMs / 1000))}s [${fileSlug}]`,
+					);
+				}
 				const build = await lane.tracedBuild({
 					conversation: entry.conversation,
 					messageBudget: entry.messageBudget,
@@ -464,6 +746,9 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					seedFile: entry.seedFile,
 					priorConversation: entry.priorConversation,
 					seedThread: entry.seedThread,
+					executionScenarios: entry.executionScenarios,
+					outcomeExpectations: entry.outcomeExpectations,
+					timeoutMs,
 				});
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
@@ -491,7 +776,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	}
 
 	// Judge author expectations once per build (off the scenario critical path);
-	// reshapeLangSmithRuns awaits and merges the verdicts by the build-cache key.
+	// reshapeLangSmithRuns awaits and merges the verdicts by the build-cache key,
+	// and target() embeds them in run outputs so baseline fetches can score them.
 	// Full builds judge process + outcome against the real transcript; prebuilt/MCP
 	// builds (no transcript) judge only outcome expectations against the workflow,
 	// with the authored conversation as request context — mirroring the direct loop.
@@ -541,8 +827,47 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			buildDurationMs,
 		} = await getOrBuild(iteration, inputs.testCaseFile);
 
-		if (!build.success || !build.workflowId) {
+		// Stashed at build time with a `.catch` attached, so awaiting never rejects.
+		// Awaited only after each branch's own work is done, keeping the judge off
+		// the scenario critical path while persisting verdicts to run outputs.
+		const verdictsPromise = buildExpectationsByKey.get(
+			`${String(iteration)}:${inputs.testCaseFile}`,
+		);
+		const attachExpectations = async (output: TargetOutput): Promise<TargetOutput> => {
+			const verdicts = await verdictsPromise;
+			return verdicts && verdicts.length > 0 ? { ...output, expectationResults: verdicts } : output;
+		};
+
+		// Build-only case — the build plus its expectation judging (in getOrBuild) is the
+		// whole test; skip execution. The sentinel's outcome IS the expectation verdicts,
+		// so LangSmith pass metrics stay truthful for scenario-less cases. Checked before
+		// the workflowId guard because answer-only cases legitimately end without a
+		// workflow (workflowExpectedForCase).
+		if (inputs.scenarioName === BUILD_ONLY_SCENARIO_NAME && build.success) {
+			const verdicts = await verdictsPromise;
+			const outcome = sentinelOutcomeFromVerdicts(verdicts);
 			return {
+				buildSuccess: true,
+				workflowId: build.workflowId,
+				passed: outcome.passed,
+				score: outcome.score,
+				reasoning: outcome.reasoning,
+				failureCategory: outcome.failureCategory,
+				...(outcome.incomplete ? { incomplete: true } : {}),
+				execErrors: [],
+				buildDurationMs,
+				execDurationMs: 0,
+				nodeCount: build.workflowJsons[0]?.nodes.length ?? 0,
+				threadId: build.threadId,
+				workflowChecks: build.workflowChecks,
+				workflowJson: build.workflowJsons[0],
+				buildTrace: build.buildTrace,
+				...(verdicts && verdicts.length > 0 ? { expectationResults: verdicts } : {}),
+			};
+		}
+
+		if (!build.success || !build.workflowId) {
+			return await attachExpectations({
 				buildSuccess: false,
 				passed: false,
 				score: 0,
@@ -557,33 +882,12 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				threadId: build.threadId,
 				workflowChecks: build.workflowChecks,
 				buildTrace: build.buildTrace,
-			};
-		}
-
-		// Build-only case — the build plus its expectation judging (in getOrBuild) is the whole
-		// test; skip execution. A failed build returns above with its error reasoning; reflect
-		// the real build status here rather than assuming success.
-		if (inputs.scenarioName === BUILD_ONLY_SCENARIO_NAME) {
-			return {
-				buildSuccess: build.success,
-				workflowId: build.workflowId,
-				passed: false,
-				score: 0,
-				reasoning: 'Build-only case — graded by process/outcome expectations',
-				execErrors: [],
-				buildDurationMs,
-				execDurationMs: 0,
-				nodeCount: build.workflowJsons[0]?.nodes.length ?? 0,
-				threadId: build.threadId,
-				workflowChecks: build.workflowChecks,
-				workflowJson: build.workflowJsons[0],
-				buildTrace: build.buildTrace,
-			};
+				planRejections: build.proxyDecisionStats?.rejection ?? 0,
+			});
 		}
 
 		const execStart = Date.now();
 		const nodeCount = build.workflowJsons[0]?.nodes.length ?? 0;
-		const maxExecAttempts = 5;
 		let result;
 		for (let attempt = 1; ; attempt++) {
 			try {
@@ -592,24 +896,17 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					scenario,
 					workflowJsons: build.workflowJsons,
 					buildTrace: build.buildTrace,
+					timeoutMs: effectiveTimeoutMs(
+						testCaseByFileSlug.get(inputs.testCaseFile)?.complexity,
+						args.timeoutMs,
+					),
 				});
 				break;
 			} catch (error: unknown) {
-				const baseError = error instanceof Error ? error : new Error(String(error));
-				const cause = baseError.cause;
-				const causeText =
-					cause instanceof Error ? cause.message : typeof cause === 'string' ? cause : undefined;
-				const errorMessage =
-					causeText && causeText !== baseError.message
-						? `${baseError.message}: ${causeText}`
-						: baseError.message;
-				const isTransient =
-					/fetch failed|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|socket hang up/i.test(
-						errorMessage,
-					);
-				if (isTransient && attempt < maxExecAttempts) {
+				const errorMessage = extractErrorMessage(error);
+				if (shouldRetryScenarioExecution(errorMessage, attempt)) {
 					logger.warn(
-						`    [${scenario.name}] execution attempt ${attempt}/${maxExecAttempts} failed (${errorMessage}); retrying`,
+						`    [${scenario.name}] execution attempt ${attempt}/${MAX_EXEC_ATTEMPTS} failed (${errorMessage}); retrying`,
 					);
 					await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
 					continue;
@@ -619,7 +916,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				// escape to LangSmith, come back as a Run with null outputs, and be
 				// misclassified as builder regressions by the feedback extractor.
 				logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
-				return {
+				return await attachExpectations({
 					buildSuccess: true,
 					workflowId: build.workflowId,
 					passed: false,
@@ -634,7 +931,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					workflowChecks: build.workflowChecks,
 					workflowJson: build.workflowJsons[0],
 					buildTrace: build.buildTrace,
-				};
+					planRejections: build.proxyDecisionStats?.rejection ?? 0,
+				});
 			}
 		}
 		const execDurationMs = Date.now() - execStart;
@@ -644,14 +942,16 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		const failureCategory = result.success ? undefined : result.failureCategory;
 		const rootCause = result.success ? undefined : result.rootCause;
 
-		return {
+		return await attachExpectations({
 			buildSuccess: true,
 			workflowId: build.workflowId,
+			scenarioWorkflowId: result.workflowId,
 			passed: result.success,
 			score: result.score,
 			reasoning: result.reasoning,
 			failureCategory,
 			rootCause,
+			...(result.incomplete ? { incomplete: true } : {}),
 			execErrors: result.evalResult?.errors ?? [],
 			evalResult: result.evalResult,
 			buildDurationMs,
@@ -661,7 +961,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			workflowChecks: build.workflowChecks,
 			workflowJson: build.workflowJsons[0],
 			buildTrace: build.buildTrace,
-		};
+			planRejections: build.proxyDecisionStats?.rejection ?? 0,
+		});
 	};
 
 	const feedbackExtractor = ({ run }: { run: Run }): EvaluationResult[] => {
@@ -670,12 +971,18 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		// 'none' for passed scenarios so the column shows a full categorical
 		// breakdown instead of blank cells.
 		const failureCategory = output.passed ? 'none' : (output.failureCategory ?? 'unknown');
+		// Verifier-incomplete runs get no scenario_pass score so LangSmith
+		// experiment averages match the local evaluated-only pass rate.
 		const feedback: EvaluationResult[] = [
-			{
-				key: 'scenario_pass',
-				score: output.score,
-				comment: output.reasoning || undefined,
-			},
+			...(output.incomplete
+				? []
+				: [
+						{
+							key: 'scenario_pass',
+							score: output.score,
+							comment: output.reasoning || undefined,
+						},
+					]),
 			{
 				key: 'failure_category',
 				value: failureCategory,
@@ -692,10 +999,15 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		if (output.buildDurationMs !== undefined) {
 			feedback.push({ key: 'build_duration_s', score: output.buildDurationMs / 1000 });
 		}
+		// Deterministic conversation counter (per evals rubric) — a navigation/feature
+		// signal for the HOW judges, not a gating check.
+		if (output.planRejections !== undefined) {
+			feedback.push({ key: 'plan_rejection_count', score: output.planRejections });
+		}
 		// Skip N/A so LangSmith column averages reduce to per-check pass-rate.
 		if (output.workflowChecks) {
 			for (const outcome of output.workflowChecks) {
-				if (outcome.status === 'n_a') continue;
+				if (outcome.status === 'n_a' || outcome.status === 'error') continue;
 				feedback.push({
 					key: `evals.workflows.${outcome.dimension}.${outcome.name}`,
 					score: outcome.status === 'pass' ? 1 : 0,
@@ -778,6 +1090,10 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			buildDurations,
 			totalDurationMs,
 			logger,
+			// Only meaningful when we drove the build via MCP; otherwise the builder
+			// is the in-n8n agent and args.buildModel is unused.
+			buildModel: args.buildViaMcp ? args.buildModel : undefined,
+			mcpBuildSpend,
 		});
 
 		await writePerRunPassMetrics({
@@ -803,9 +1119,15 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			testCasesWithFiles.map(({ testCase, fileSlug }) => [testCase, fileSlug]),
 		);
 
+		// Best-effort: the report link is nice-to-have, never run-fatal.
+		const experimentUrl = await lsClient
+			.getProjectUrl({ projectName: experimentResults.experimentName })
+			.catch(() => undefined);
+
 		return {
 			evaluation,
 			experimentName: experimentResults.experimentName,
+			experimentUrl,
 			outcome,
 			slugByTestCase,
 		};
@@ -867,6 +1189,15 @@ async function updateExperimentAggregates(config: {
 	buildDurations: Map<string, number>;
 	totalDurationMs: number;
 	logger: EvalLogger;
+	/** MCP build model (only meaningful for --build-via-mcp). Recorded as
+	 *  experiment metadata so LangSmith can surface/filter it as a column — the
+	 *  built-in "Models" column stays empty because the external `claude` build
+	 *  isn't traced as an LLM run. */
+	buildModel?: string;
+	/** Per-build `claude` spend (--build-via-mcp only; empty otherwise). Recorded
+	 *  next to build_model so the experiment carries its own cost record — the
+	 *  external build isn't traced, so LangSmith can't compute this itself. */
+	mcpBuildSpend?: McpBuildSpend[];
 }): Promise<void> {
 	const { lsClient, experimentName, runs, evaluation, buildDurations, totalDurationMs, logger } =
 		config;
@@ -882,12 +1213,15 @@ async function updateExperimentAggregates(config: {
 	const avgExecMs =
 		execTimes.length > 0 ? execTimes.reduce((sum, d) => sum + d, 0) / execTimes.length : 0;
 
+	const spend = summarizeMcpBuildSpend(config.mcpBuildSpend);
 	const aggregates = {
 		duration_s: Math.round(totalDurationMs / 100) / 10,
 		avg_build_s: Math.round(avgBuildMs / 100) / 10,
 		avg_exec_s: Math.round(avgExecMs / 100) / 10,
 		unique_builds: uniqueBuilds,
 		pass_rate_per_iter: computePassRatePerIter(evaluation),
+		...(config.buildModel ? { build_model: config.buildModel } : {}),
+		...(spend ? { total_build_cost_usd: spend.totalCostUsd, avg_build_turns: spend.avgTurns } : {}),
 	};
 
 	try {
@@ -905,6 +1239,25 @@ async function updateExperimentAggregates(config: {
 		const msg = error instanceof Error ? error.message : String(error);
 		logger.verbose(`Could not update experiment metadata: ${msg}`);
 	}
+}
+
+/**
+ * Sum per-build `claude` spend into run-level numbers, or undefined when no
+ * MCP builds were recorded (so non-MCP runs add nothing to their outputs).
+ * Last-attempt semantics (see McpBuildSpend): totals are a lower bound when
+ * builds were retried.
+ */
+function summarizeMcpBuildSpend(
+	spend: McpBuildSpend[] | undefined,
+): { builds: number; totalCostUsd: number; avgTurns: number } | undefined {
+	if (!spend || spend.length === 0) return undefined;
+	const totalCost = spend.reduce((sum, s) => sum + s.costUsd, 0);
+	const totalTurns = spend.reduce((sum, s) => sum + s.turns, 0);
+	return {
+		builds: spend.length,
+		totalCostUsd: Math.round(totalCost * 100) / 100,
+		avgTurns: Math.round((totalTurns / spend.length) * 10) / 10,
+	};
 }
 
 /**
@@ -928,6 +1281,9 @@ async function writePerRunPassMetrics(config: {
 		if (!exampleId) continue;
 		const output = parseTargetOutput(run.outputs);
 		if (!output) continue;
+		// Incomplete rows (judge/verifier dead) carry no verdict — keep them out of
+		// the pass_at_k/pass_hat_k denominator, mirroring feedbackExtractor.
+		if (output.incomplete) continue;
 		const entry = byExample.get(exampleId) ?? { runIds: [], passed: 0, total: 0 };
 		entry.runIds.push(run.id);
 		entry.total++;
@@ -963,7 +1319,7 @@ async function runDirectLoop(config: RunConfig): Promise<{
 	evaluation: MultiRunEvaluation;
 	slugByTestCase: Map<WorkflowTestCase, string>;
 }> {
-	const { args, lanes, logger, testCasesWithFiles, prebuiltManifest, prebuiltWorkflowIdsToDelete } =
+	const { args, lanes, logger, testCasesWithFiles, prebuiltManifest, cleanupBuiltWorkflows } =
 		config;
 
 	const slugByTestCase = new Map<WorkflowTestCase, string>(
@@ -988,7 +1344,11 @@ async function runDirectLoop(config: RunConfig): Promise<{
 	const indexed = testCasesWithFiles.map((tc, origIdx) => ({ tc, origIdx }));
 	const buckets = partitionRoundRobin(indexed, lanes.length);
 
-	// Iterations are independent — run them in parallel.
+	// Iterations are independent — run them in parallel. NOTE: this makes the
+	// 4-per-lane build cap apply per iteration (lanes × iterations × 4 builds at
+	// peak), which is why --build-via-mcp never reaches this loop: parseCliArgs
+	// requires LangSmith for that mode, whose allocator caps builds per lane
+	// globally.
 	const allRunResults: WorkflowTestCaseResult[][] = await Promise.all(
 		Array.from({ length: args.iterations }, async (_unused, iter) => {
 			if (args.iterations > 1) {
@@ -1023,10 +1383,11 @@ async function runDirectLoop(config: RunConfig): Promise<{
 							});
 							if (
 								prebuiltWorkflowId !== undefined &&
+								cleanupBuiltWorkflows &&
 								result.workflowBuildSuccess &&
 								result.workflowId
 							) {
-								prebuiltWorkflowIdsToDelete?.add(result.workflowId);
+								lane.workflowIdsToDelete.add(result.workflowId);
 							}
 							return result;
 						},
@@ -1106,7 +1467,7 @@ function computeAggregateMetrics(evaluation: MultiRunEvaluation): AggregateMetri
 	// Units = scenarios + evaluated build-expectations — mirrors the per-card badge
 	// and the terminal per-case table so the headline rate can't disagree with them.
 	const units = testCases.flatMap((tc) => [
-		...tc.executionScenarios,
+		...tc.executionScenarios.filter((sa) => sa.evaluatedCount > 0),
 		...tc.buildExpectations.filter((ea) => ea.evaluatedCount > 0),
 	]);
 	const total = units.length;
@@ -1139,8 +1500,10 @@ function computePassRatePerIter(evaluation: MultiRunEvaluation): string {
 		let total = 0;
 		for (const tc of testCases) {
 			for (const sa of tc.executionScenarios) {
+				const runResult = sa.runs[i];
+				if (runResult?.incomplete) continue;
 				total++;
-				if (sa.runs[i]?.success) passed++;
+				if (runResult?.success) passed++;
 			}
 			// Count each scored verdict in this iteration directly — skips incomplete
 			// (build-failed) verdicts and is robust to duplicate expectation strings.
@@ -1150,7 +1513,7 @@ function computePassRatePerIter(evaluation: MultiRunEvaluation): string {
 				if (verdict.pass) passed++;
 			}
 		}
-		rates.push(`${String(total > 0 ? Math.round((passed / total) * 100) : 0)}%`);
+		rates.push(total > 0 ? `${String(Math.round((passed / total) * 100))}%` : 'n/a');
 	}
 	return rates.join(' / ');
 }
@@ -1176,6 +1539,8 @@ function writeEvalResults(
 	slugByTestCase: Map<WorkflowTestCase, string> | undefined,
 	rerun: RerunHint | undefined,
 	gate: GateResult | undefined,
+	mcpBuildSpend?: McpBuildSpend[],
+	experimentUrl?: string,
 ): { jsonPath: string; prCommentPath: string } {
 	const { totalRuns, testCases } = evaluation;
 	const metrics = computeAggregateMetrics(evaluation);
@@ -1183,12 +1548,16 @@ function writeEvalResults(
 	const result = outcome?.kind === 'ok' ? outcome.result : undefined;
 
 	const checksSummary = aggregateWorkflowChecks(evaluation);
+	// `claude` build spend (--build-via-mcp only) — keeps a cost record in the
+	// artifact even when LangSmith isn't configured.
+	const buildSpendSummary = summarizeMcpBuildSpend(mcpBuildSpend);
 
 	const report = {
 		timestamp: new Date().toISOString(),
 		duration,
 		totalRuns,
 		experimentName,
+		experimentUrl,
 		summary: {
 			testCases: testCases.length,
 			built: metrics.built,
@@ -1197,6 +1566,7 @@ function writeEvalResults(
 			passHatK: metrics.passHatK,
 			passRatePerIter: metrics.passRatePerIter,
 			...(checksSummary ? { workflowChecks: checksSummary } : {}),
+			...(buildSpendSummary ? { mcpBuild: buildSpendSummary } : {}),
 		},
 		// Structured comparison payload only — the rendered markdown lives in
 		// the sibling `eval-pr-comment.md` file so consumers can pick the format
@@ -1233,12 +1603,14 @@ function writeEvalResults(
 			scenarios: tc.executionScenarios.map((sa) => ({
 				name: sa.scenario.name,
 				passCount: sa.passCount,
+				evaluatedCount: sa.evaluatedCount,
 				totalRuns,
 				passAtK: terminalRate(sa.passAtK),
 				passHatK: terminalRate(sa.passHatK),
 				runs: sa.runs.map((sr, runIndex) => ({
-					workflowId: tc.runs[runIndex]?.workflowId ?? null,
+					workflowId: sr.workflowId ?? tc.runs[runIndex]?.workflowId ?? null,
 					passed: sr.success,
+					...(sr.incomplete ? { incomplete: true } : {}),
 					score: sr.score,
 					reasoning: sr.reasoning,
 					failureCategory: sr.failureCategory,
@@ -1261,7 +1633,14 @@ function writeEvalResults(
 	const prCommentPath = join(targetDir, 'eval-pr-comment.md');
 	writeFileSync(
 		prCommentPath,
-		formatComparisonMarkdown(evaluation, outcome, { commitSha, slugByTestCase, rerun, gate }),
+		formatComparisonMarkdown(evaluation, outcome, {
+			commitSha,
+			slugByTestCase,
+			rerun,
+			gate,
+			passMetrics: { passAtK: metrics.passAtK, passHatK: metrics.passHatK },
+			experimentUrl,
+		}),
 	);
 
 	return { jsonPath, prCommentPath };
@@ -1275,7 +1654,7 @@ function serializeComparison(result: ComparisonResult): {
 	pr: { experimentName: string };
 	baseline: { experimentName: string };
 	aggregate: ComparisonResult['aggregate'];
-	scenarios: ComparisonResult['scenarios'];
+	evaluationUnits: ComparisonResult['evaluationUnits'];
 	prOnly: ComparisonResult['prOnly'];
 	baselineOnly: ComparisonResult['baselineOnly'];
 	failureCategories: ComparisonResult['failureCategories'];
@@ -1284,7 +1663,7 @@ function serializeComparison(result: ComparisonResult): {
 		pr: result.pr,
 		baseline: result.baseline,
 		aggregate: result.aggregate,
-		scenarios: result.scenarios,
+		evaluationUnits: result.evaluationUnits,
 		prOnly: result.prOnly,
 		baselineOnly: result.baselineOnly,
 		failureCategories: result.failureCategories,
@@ -1337,56 +1716,6 @@ async function tryRunComparison(config: {
 		logger.warn(`Comparison vs baseline failed: ${msg}`);
 		return { kind: 'fetch_failed', error: msg };
 	}
-}
-
-/**
- * Project the in-memory MultiRunEvaluation onto the bucket shape used by
- * fetchBaselineBucket, keyed by `${fileSlug}/${scenarioName}`.
- *
- * Looks up `fileSlug` by test case reference rather than array index — the
- * comparison key depends on getting the right slug, and zipping by index
- * silently miscompares if anything ever reorders the aggregate.
- */
-function bucketFromEvaluation(
-	evaluation: MultiRunEvaluation,
-	testCasesWithFiles: WorkflowTestCaseWithFile[],
-	experimentName: string,
-): ExperimentBucket {
-	const slugByTestCase = new Map(
-		testCasesWithFiles.map(({ testCase, fileSlug }) => [testCase, fileSlug]),
-	);
-	const scenarios = new Map<string, ScenarioCounts>();
-	const failureCategoryTotals: Record<string, number> = {};
-	let trialTotal = 0;
-	for (const tc of evaluation.testCases) {
-		const fileSlug = slugByTestCase.get(tc.testCase);
-		if (!fileSlug) {
-			throw new Error(
-				`bucketFromEvaluation: no fileSlug for test case "${caseDisplayPrompt(tc.testCase, tc.runs[0]?.transcript).slice(0, 60)}"`,
-			);
-		}
-		const total = tc.runs.length;
-		for (const sa of tc.executionScenarios) {
-			const key = `${fileSlug}/${sa.scenario.name}`;
-			const failureCategories: Record<string, number> = {};
-			for (const sr of sa.runs) {
-				trialTotal++;
-				if (!sr.success && sr.failureCategory) {
-					failureCategories[sr.failureCategory] = (failureCategories[sr.failureCategory] ?? 0) + 1;
-					failureCategoryTotals[sr.failureCategory] =
-						(failureCategoryTotals[sr.failureCategory] ?? 0) + 1;
-				}
-			}
-			scenarios.set(key, {
-				testCaseFile: fileSlug,
-				scenarioName: sa.scenario.name,
-				passed: sa.passCount,
-				total,
-				failureCategories,
-			});
-		}
-	}
-	return { experimentName, scenarios, failureCategoryTotals, trialTotal };
 }
 
 main().catch((error) => {

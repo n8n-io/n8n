@@ -29,11 +29,18 @@ const {
 	appSettingsStoreMock,
 	replaceMock,
 	showErrorMock,
+	templateExamplesStoreMock,
+	templateExamplesEnabled,
+	telemetryTrack,
 } = vi.hoisted(() => ({
+	templateExamplesStoreMock: {
+		hasLoadFailed: false,
+	},
+	templateExamplesEnabled: { value: false },
 	experimentMocks: {
 		proactiveAgentEnabled: { value: false },
 		promptSuggestionsV2Enabled: { value: false },
-		workflowPreviewEnabled: { value: false },
+		workflowPreviewEnabled: { value: true }, // Experiment cleanup: remove with InstanceAiWorkflowPreviewSuggestionsExperiment
 		splitBelowInputVariant: { value: false },
 		personalizedPromptVariant: { value: undefined as string | undefined },
 		personalizedPromptFormat: { value: null as 'cards' | 'list' | null },
@@ -93,6 +100,7 @@ const {
 	personalizedPromptSuggestionsComponent: { name: 'InstanceAiPersonalizedPromptSuggestionsStub' },
 	replaceMock: vi.fn(),
 	showErrorMock: vi.fn(),
+	telemetryTrack: vi.fn(),
 }));
 
 vi.mock('@/experiments/instanceAiProactiveAgent', () => ({
@@ -220,12 +228,49 @@ vi.mock('@/experiments/instanceAiWorkflowPreviewSuggestions', () => ({
 	getPreviewWorkflow: () => null,
 }));
 
+vi.mock('@/experiments/instanceAiTemplateExamples', async () => {
+	const { computed, h } = await import('vue');
+	type VueSetupContext = {
+		emit: (event: string, ...args: unknown[]) => void;
+	};
+	return {
+		useInstanceAiTemplateExamplesExperiment: () => ({
+			isFeatureEnabled: computed(() => templateExamplesEnabled.value),
+			currentVariant: computed(() => (templateExamplesEnabled.value ? 'variant' : 'control')),
+		}),
+		useInstanceAiTemplateExamplesStore: () => templateExamplesStoreMock,
+		TEMPLATE_PROMPT_SUFFIX:
+			'\n\nAsk me questions to narrow down my use case and the tools I use to best personalize the example for my needs.',
+		TemplateExamplesCatalog: {
+			name: 'TemplateExamplesCatalogStub',
+			emits: ['hover-prompt', 'hover-end', 'select-prompt'],
+			setup(_props: Record<string, unknown>, { emit }: VueSetupContext) {
+				return () =>
+					h('div', { 'data-test-id': 'template-examples-catalog' }, [
+						h(
+							'button',
+							{
+								'data-test-id': 'template-example-card',
+								onClick: () => emit('select-prompt', 'Build me an invoice automation'),
+							},
+							'example card',
+						),
+					]);
+			},
+		},
+	};
+});
+
 vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: () => ({ goToUpgrade: vi.fn() }),
 }));
 
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showError: showErrorMock }),
+}));
+
+vi.mock('@/app/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: telemetryTrack }),
 }));
 
 vi.mock('@/app/stores/cloudPlan.store', () => ({
@@ -266,14 +311,19 @@ const InstanceAiInputStub = defineComponent({
 	emits: ['submit'],
 	setup(props, { emit, expose, slots }) {
 		const i18n = useI18n();
+		const currentText = ref('');
 		expose({
 			focus: vi.fn(),
+			setText: (text: string) => {
+				currentText.value = text;
+			},
 			// Mirror the real submitSuggestion: resolve the prompt + emit submit.
 			submitSuggestion: (payload: { promptKey: BaseTextKey }) =>
 				emit('submit', i18n.baseText(payload.promptKey)),
 		});
 		return () =>
 			h('div', { 'data-test-id': 'instance-ai-input-stub' }, [
+				h('span', { 'data-test-id': 'instance-ai-input-text' }, currentText.value),
 				h(
 					'span',
 					{ 'data-test-id': 'instance-ai-input-suggestions' },
@@ -322,7 +372,7 @@ const InstanceAiInputStub = defineComponent({
 					'button',
 					{
 						'data-test-id': 'instance-ai-input-stub-submit',
-						onClick: () => emit('submit', 'hello'),
+						onClick: () => emit('submit', currentText.value || 'hello'),
 					},
 					'submit',
 				),
@@ -389,16 +439,19 @@ describe('InstanceAiEmptyView', () => {
 		store.getOrCreateRuntime.mockReturnValue(thread);
 		experimentMocks.proactiveAgentEnabled.value = false;
 		experimentMocks.promptSuggestionsV2Enabled.value = false;
-		experimentMocks.workflowPreviewEnabled.value = false;
+		experimentMocks.workflowPreviewEnabled.value = true; // Experiment cleanup: remove with InstanceAiWorkflowPreviewSuggestionsExperiment
 		experimentMocks.splitBelowInputVariant.value = false;
 		experimentMocks.personalizedPromptVariant.value = undefined;
 		experimentMocks.personalizedPromptFormat.value = null;
 		experimentMocks.personalizedPromptTreatmentEnabled.value = false;
 		experimentMocks.personalizedPromptProfileOverride.value = null;
 		experimentMocks.resolvePersonalizedPromptSuggestions.mockClear();
+		telemetryTrack.mockClear();
 		cloudPlanStoreMock.state.initialized = false;
 		cloudPlanStoreMock.currentUserCloudInfo = null;
 		appSettingsStoreMock.isCloudDeployment = false;
+		templateExamplesStoreMock.hasLoadFailed = false;
+		templateExamplesEnabled.value = false;
 	});
 
 	afterEach(() => {
@@ -409,13 +462,15 @@ describe('InstanceAiEmptyView', () => {
 
 	it('passes the fixed suggestions to the empty-state composer', () => {
 		const { getByTestId, getByText } = renderView();
-		// 4 suggestions in INSTANCE_AI_EMPTY_STATE_SUGGESTIONS — suggestions array
-		// renders as its `.length`.
-		expect(getByText('AI Assistant')).toBeVisible();
+		expect(getByText('What do you want to automate?')).toBeVisible();
 		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('4');
-		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('unset');
-		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent('unset');
-		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent('unset');
+		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('set');
+		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
+			'v3-workflow-preview',
+		);
+		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
+			'experiments.instanceAiWorkflowPreviewSuggestions.input.placeholder',
+		);
 	});
 
 	it('passes v2 copy, suggestions, component, and catalog version when prompt suggestions v2 is enabled', () => {
@@ -652,6 +707,83 @@ describe('InstanceAiEmptyView', () => {
 		expect(queryByTestId('instance-ai-split-empty-state')).not.toBeInTheDocument();
 	});
 
+	it('tracks personalized prompt suggestions exposure for the control variant', () => {
+		experimentMocks.personalizedPromptVariant.value = 'control';
+
+		renderView();
+
+		const exposureCalls = telemetryTrack.mock.calls.filter(
+			([event]) => event === 'Instance AI personalized prompt suggestions exposed',
+		);
+
+		expect(exposureCalls).toHaveLength(1);
+		expect(exposureCalls[0]).toEqual([
+			'Instance AI personalized prompt suggestions exposed',
+			{
+				variant: 'control',
+				'$feature/093_instance_ai_personalized_prompt_suggestions': 'control',
+			},
+		]);
+	});
+
+	it('tracks personalized prompt suggestions exposure for treatment variants', () => {
+		experimentMocks.personalizedPromptVariant.value = 'variant-cards';
+		experimentMocks.personalizedPromptFormat.value = 'cards';
+		experimentMocks.personalizedPromptTreatmentEnabled.value = true;
+
+		renderView();
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			'Instance AI personalized prompt suggestions exposed',
+			{
+				variant: 'variant-cards',
+				'$feature/093_instance_ai_personalized_prompt_suggestions': 'variant-cards',
+			},
+		);
+	});
+
+	it('does not track personalized prompt suggestions exposure when split empty state is active', () => {
+		experimentMocks.personalizedPromptVariant.value = 'control';
+		experimentMocks.splitBelowInputVariant.value = true;
+
+		renderView();
+
+		expect(telemetryTrack).not.toHaveBeenCalledWith(
+			'Instance AI personalized prompt suggestions exposed',
+			expect.anything(),
+		);
+	});
+
+	it('does not track personalized prompt suggestions exposure when the proactive starter is active', () => {
+		experimentMocks.personalizedPromptVariant.value = 'control';
+		experimentMocks.proactiveAgentEnabled.value = true;
+
+		renderView();
+
+		expect(telemetryTrack).not.toHaveBeenCalledWith(
+			'Instance AI personalized prompt suggestions exposed',
+			expect.anything(),
+		);
+	});
+
+	it('does not track personalized prompt suggestions exposure when workflow builder is unavailable', () => {
+		experimentMocks.personalizedPromptVariant.value = 'control';
+		useSettingsStore().moduleSettings = {
+			'instance-ai': {
+				...defaultModuleSettings,
+				sandboxEnabled: false,
+				workflowBuilderAvailable: false,
+			},
+		};
+
+		renderView();
+
+		expect(telemetryTrack).not.toHaveBeenCalledWith(
+			'Instance AI personalized prompt suggestions exposed',
+			expect.anything(),
+		);
+	});
+
 	it('renders the proactive starter and hides the split layout when both 082 and 089 are enabled', () => {
 		experimentMocks.proactiveAgentEnabled.value = true;
 		experimentMocks.splitBelowInputVariant.value = true;
@@ -722,5 +854,20 @@ describe('InstanceAiEmptyView', () => {
 		expect(store.getOrCreateRuntime).not.toHaveBeenCalled();
 		expect(thread.sendMessage).not.toHaveBeenCalled();
 		expect(replaceMock).not.toHaveBeenCalled();
+	});
+
+	it('injects the prompt into the input when a template example card is clicked', async () => {
+		templateExamplesEnabled.value = true;
+
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('template-examples-catalog')).toBeInTheDocument();
+
+		await fireEvent.click(getByTestId('template-example-card'));
+		await flushPromises();
+
+		expect(getByTestId('instance-ai-input-text')).toHaveTextContent(
+			'Build me an invoice automation',
+		);
 	});
 });

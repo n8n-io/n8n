@@ -20,7 +20,11 @@ export interface MockQuirk {
 	 * service equality OR any hostname pattern matching is enough to apply.
 	 */
 	hostnames?: string[];
-	/** `${METHOD} ${path}` pattern (no query, no host). Omit to apply service-wide. */
+	/**
+	 * `${METHOD} ${path}` pattern (no query, no host). A `*` path segment
+	 * matches exactly one segment — use it for dynamic IDs (see the Gmail
+	 * messages.get entry). Omit to apply service-wide.
+	 */
 	endpoint?: string;
 	guidance: string;
 	rationale: string;
@@ -29,6 +33,14 @@ export interface MockQuirk {
 }
 
 export const MOCK_QUIRKS: MockQuirk[] = [
+	{
+		service: 'Anthropic',
+		guidance:
+			'Anthropic Messages API (`POST /v1/messages`) → JSON `{ "id": "msg_01AbCd...", "type": "message", "role": "assistant", "model": "<from request>", "content": [{ "type": "text", "text": "<answer>" }], "stop_reason": "end_turn", "stop_sequence": null, "usage": { "input_tokens": 100, "output_tokens": 50 } }`. `content` MUST be an ARRAY of content-block objects — NEVER a plain string (the n8n node calls `response.content.filter(...)` and crashes on a string). When the request has `tools` and the scenario implies a tool call, use a `{ "type": "tool_use", "id": "toolu_01...", "name": "<tool>", "input": { ... } }` block and `stop_reason: "tool_use"`.',
+		rationale:
+			"The n8n Anthropic node filters response.content by block type; a string content field throws 'content.filter is not a function'. Observed as the residual mock_issue in eval run 28667058059 (daily-slack-summary/empty-channel).",
+		addedAt: '2026-07-03',
+	},
 	{
 		service: 'Notion',
 		guidance:
@@ -51,6 +63,7 @@ export const MOCK_QUIRKS: MockQuirk[] = [
 		service: 'Openai',
 		guidance:
 			'OpenAI endpoints commonly seen in workflows:\n' +
+			'  * `POST /v1/responses` (Responses API) → JSON `{ "id": "resp_abc123", "object": "response", "status": "completed", "model": "<from request>", "output": [{ "type": "message", "id": "msg_abc123", "status": "completed", "role": "assistant", "content": [{ "type": "output_text", "text": "<answer>", "annotations": [] }] }], "usage": { "input_tokens": 100, "output_tokens": 50, "total_tokens": 150 } }`. The `output` ARRAY is REQUIRED — consumers read `output[].content[].text` and crash without it. NEVER return `{ "content": ... }` or a chat-completions `choices` shape for this endpoint.\n' +
 			'  * `POST /v1/audio/transcriptions` and `POST /v1/audio/translations` → JSON `{ "text": "<plausible transcript>", ... }`. The request multipart body has been redacted (you will see `__redacted: "multipart"`); derive the transcript from scenario/node hints when present, otherwise return a short generic English sentence.\n' +
 			'  * `POST /v1/images/generations` → JSON `{ "created": <unix>, "data": [{ "url": "https://example.invalid/img.png", "revised_prompt": "..." }] }`. If the request body has `response_format: "b64_json"`, replace `url` with `b64_json` containing a tiny base64 PNG-like blob (literal value `iVBORw0KGgo` is fine — the eval harness does not decode it).\n' +
 			'  * `GET /v1/files/{file_id}/content` → BINARY (`type: "binary"`). Use `contentType` matching the file MIME if known, else `application/octet-stream`. The metadata sibling `GET /v1/files/{file_id}` is JSON.\n' +
@@ -58,6 +71,20 @@ export const MOCK_QUIRKS: MockQuirk[] = [
 		rationale:
 			'OpenAI mixes JSON, binary, and base64-in-JSON across endpoints, and AI workflow scenarios depend on the transcript text being plausibly downstream-matchable.',
 		addedAt: '2026-05-19',
+	},
+	{
+		service: 'Gmail',
+		hostnames: ['gmail.googleapis.com', 'www.googleapis.com'],
+		guidance:
+			'Gmail message reads are TWO-STEP with distinct shapes. Pick by path:\n' +
+			'  * `GET /gmail/v1/users/{userId}/messages` (list) → `{ "messages": [{ "id", "threadId" }, ...], "resultSizeEstimate" }` — ID stubs ONLY, no subjects or bodies; the workflow fetches each message in a follow-up GET.\n' +
+			'  * `GET /gmail/v1/users/{userId}/messages/{id}` (single message) → the FULL Message resource: `{ id, threadId, labelIds, snippet, internalDate, payload }` where `payload` = `{ mimeType, headers: [{ name: "Subject"|"From"|"To"|"Date", value }, ...], body: { size, data } }`. Body text lives ONLY under `payload.body.data` as BASE64URL-encoded content (base64 with `-`/`_`) — never plain text at the top level, never a flattened `{ subject, from, body }` object. KEEP IT TINY: the decoded body must be ONE short sentence (≤ 80 chars) so the base64url string stays short — never encode long documents; n8n decodes it and downstream logic only needs the gist.\n' +
+			'  * Each message GET must return the DISTINCT email for THAT id — match the id against the scenario/context enumeration (subjects, senders) and never repeat the same subject/body across different ids.\n' +
+			'  * `?format=raw` (the n8n Gmail node uses this when simple=false) → `{ id, threadId, labelIds, snippet, internalDate, raw }` where `raw` is the ENTIRE RFC822 message source written as PLAIN multi-line text — the harness applies the base64url transport encoding for you; never pre-encode it. Keep it TINY: a minimal message — `From:`/`To:`/`Subject:`/`Date:` headers, a blank line, then a one-line body (≤ 80 chars). The node Buffer-decodes `raw`; omitting it crashes the workflow.\n' +
+			'  * `?format=metadata` → headers only, no `body.data` and no `raw`.',
+		rationale:
+			"Digest/inbox workflows list message IDs then GET each message; the LLM otherwise returns flattened subject/body objects (Gmail node's payload/base64url parsing yields empty fields) or identical content for every id (digest misses the scenario's distinct emails). Size cap prevents bulk base64 generation from doubling per-request latency and timing out scenarios.",
+		addedAt: '2026-07-03',
 	},
 	{
 		service: 'Googleapis',
@@ -80,6 +107,18 @@ export const MOCK_QUIRKS: MockQuirk[] = [
 		rationale:
 			'The Gmail node consumes `responseData.messages` from the list call; a bare array yields zero items with no error. Observed as the residual mock_issue in eval run mock-robustness-fixes-n3 (daily-gmail-action-digest).',
 		addedAt: '2026-06-12',
+	},
+	{
+		service: 'Googleapis',
+		endpoint: 'GET /gmail/v1/users/*/messages/*',
+		guidance:
+			'Gmail messages.get — the response shape depends on the `format` query param, and the n8n Gmail node crashes on the wrong one:\n' +
+			'  * `format=raw` (what the node sends whenever "Simplify" is off): the message JSON MUST include `raw` containing the FULL RFC822 email source — header lines (`From:`, `To:`, `Subject:`, `Date:`, `Content-Type:`), a blank line, then the body — alongside `id`, `threadId`, `labelIds`, `sizeEstimate`. Write `raw` as PLAIN multi-line text; the harness applies the base64 transport encoding for you. Prefer a simple single-part `Content-Type: text/plain; charset="UTF-8"` message unless the scenario needs attachments. NEVER answer a `format=raw` request with a `payload`-only message — the node decodes `raw` unconditionally.\n' +
+			'  * `format=metadata` → `{ id, threadId, labelIds, snippet, sizeEstimate, payload: { headers: [{ name, value }, ...] } }` — headers array only, no body data, no `raw`.\n' +
+			'  * `format=full` → `payload` tree where EVERY leaf part carries `body: { size: <n>, data: "<base64url>" }`; multipart containers use `mimeType: "multipart/..."`, `body: { size: 0 }`, and a `parts` array. Never emit a leaf part whose `body` has only `size` — nodes decode `body.data` and crash on undefined.',
+		rationale:
+			'The Gmail node fetches messages with format=raw and runs Buffer.from(message.raw, "base64") unconditionally; a payload-style mock without `raw` crashes it ("first argument must be of type string... Received undefined" — observed in eval run 28593025895, emails-with-action-items). Multipart `full` responses with data-less leaf parts crash the decode path the same way.',
+		addedAt: '2026-07-02',
 	},
 	{
 		service: 'Slack',
@@ -134,9 +173,22 @@ export const MOCK_QUIRKS: MockQuirk[] = [
 			'S3 mixes binary and empty responses on the same path skeleton; downstream nodes (Extract from File, image processing) expect a real file body for GET.',
 		addedAt: '2026-05-19',
 	},
+	{
+		service: 'Generativelanguage',
+		hostnames: ['generativelanguage.googleapis.com'],
+		guidance:
+			'Google Gemini `POST /v1beta/models/{model}:generateContent` (also `/v1/...`) → the FULL Gemini envelope: `{ "candidates": [{ "content": { "parts": [{ "text": "<answer>" }], "role": "model" }, "finishReason": "STOP", "index": 0 }], "usageMetadata": { "promptTokenCount": 10, "candidatesTokenCount": 20, "totalTokenCount": 30 } }`. The `candidates[].content.parts[].text` path is REQUIRED — the n8n Gemini node reads exactly that and yields nothing (or crashes) without it. NEVER return a bare `{ "text": ... }`, `{ "content": ... }`, or the answer object at the top level. When the request demands JSON output (`generationConfig.responseMimeType: "application/json"`, a `responseSchema`, or prompt instructions for a JSON document), the JSON goes INSIDE `parts[0].text` as a STRING — still wrapped in the full envelope.',
+		rationale:
+			'The Gemini node parses candidates[].content.parts; bare payload objects yield empty output that downstream IF/parse nodes then misroute. Observed as mock_issue rows in run 29012884140 (whatsapp-faq-assistant, weekly-social-content-scheduler).',
+		addedAt: '2026-07-09',
+	},
 ];
 
-/** Exact match on `${METHOD} ${pathname}` (case-insensitive), or any endpoint if `quirk.endpoint` is omitted. Exported for testing. */
+/**
+ * Match on `${METHOD} ${pathname}` (case-insensitive; `*` in the pattern path
+ * matches one path segment), or any endpoint if `quirk.endpoint` is omitted.
+ * Exported for testing.
+ */
 export function quirkMatches(
 	quirk: MockQuirk,
 	service: string,
@@ -151,8 +203,27 @@ export function quirkMatches(
 		quirk.hostnames.some((pattern) => hostnameMatchesPattern(pattern, hostname));
 	if (!serviceMatch && !hostnameMatch) return false;
 	if (!quirk.endpoint) return true;
-	const key = `${method.toUpperCase()} ${pathname}`;
-	return quirk.endpoint.toUpperCase() === key.toUpperCase();
+	return endpointMatchesPattern(quirk.endpoint, method, pathname);
+}
+
+/**
+ * Match an endpoint pattern (`METHOD /path`, `*` = one path segment) against a
+ * request method + pathname. Case-insensitive; without `*` it's an exact match.
+ * Exported for testing.
+ */
+export function endpointMatchesPattern(pattern: string, method: string, pathname: string): boolean {
+	const spaceIdx = pattern.indexOf(' ');
+	if (spaceIdx === -1) return false;
+	const patternMethod = pattern.slice(0, spaceIdx);
+	const patternPath = pattern.slice(spaceIdx + 1);
+	if (patternMethod.toUpperCase() !== method.toUpperCase()) return false;
+	if (!patternPath.includes('*')) {
+		return patternPath.toUpperCase() === pathname.toUpperCase();
+	}
+	const parts = patternPath
+		.split('/')
+		.map((p) => (p === '*' ? '[^/]+' : p.replace(/[.+^${}()|[\]\\?*]/g, '\\$&')));
+	return new RegExp(`^${parts.join('/')}$`, 'i').test(pathname);
 }
 
 /** Returns all matching guidance lines (composes service-wide + endpoint-specific). */

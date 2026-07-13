@@ -56,6 +56,7 @@ import type { SourceControlPreferencesService } from '@/modules/source-control.e
 import type { NodeTypes } from '@/node-types';
 import type { RoleService } from '@/services/role.service';
 import type { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Telemetry } from '@/telemetry';
 
 vi.mock('@/permissions.ee/check-access');
@@ -152,6 +153,7 @@ const service = new InstanceAiAdapterService(
 	aiBuilderTemporaryWorkflowRepository,
 	mock<SsrfProtectionService>(),
 	mock<OutboundHttp>(),
+	mock<AiGatewayService>(),
 );
 
 const user = mock<User>({

@@ -1,0 +1,36 @@
+{
+	"description": "When the user asks for evaluations / test cases after building a single-agent AI workflow (the agent reads the form field directly via $json), the agent should wire node-based eval nodes into the workflow. Measures eval-creation quality: given a request, does the agent actually produce a working node-based evaluation? Build-only (process + outcome); no executionScenarios because the eval branch reads an (unmocked) Data Table. Whether the agent PROACTIVELY offers evals is tested separately in ai-agent-proactively-offers-evals.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build a workflow with a form where people submit a customer-support question (their name and their question). An AI agent should read the submitted question and write a helpful, friendly reply shown back on the form's completion screen."
+		},
+		{
+			"role": "assistant",
+			"text": "Got it — I'll build that now."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[After the agent finishes building the workflow and any normal post-build follow-ups (testing, error workflow, etc.), you want evaluations / test cases added for the AI replies.",
+				"If the agent proactively offers to add test cases or evaluations, accept. If it does NOT offer, ask it plainly to add some test cases / evaluations so you can check the AI's answers stay correct over time when you tweak the prompt or model. Do not use the words 'node' or 'config' — just ask for test cases / evaluations in a user's plain terms.",
+				"If it recommends a metric (for example 'correctness') and asks you to approve, approve it. If it asks you to choose metrics from a list, pick correctness. Once it has set up the evaluation, let it finish. Keep every message short and natural.]"
+			]
+		}
+	],
+	"messageBudget": 12,
+	"complexity": "medium",
+	"tags": ["behaviour", "build", "evals", "eval-wiring", "ai-agent", "form"],
+	"triggerType": "form",
+	"datasets": ["evals", "full"],
+	"processExpectations": [
+		"When the user asked for evaluations / test cases, the agent set them up rather than refusing or dropping the request — it proceeded to configure the evaluation (e.g. proposing or confirming a metric such as correctness) and reported adding the eval setup.",
+		"The agent created the evaluation's Data Table (with input columns derived from the agent's inputs, plus an expected-output column for the judged metric) and populated it with at least one test/sample row — it did not leave the dataset empty or defer it to 'later'."
+	],
+	"outcomeExpectations": [
+		"The final workflow contains n8n evaluation nodes added on top of the original AI agent workflow: an Evaluation Trigger (`n8n-nodes-base.evaluationTrigger`) and at least one Evaluation node (`n8n-nodes-base.evaluation`).",
+		"The evaluation nodes are wired to the AI agent: the Evaluation Trigger feeds the agent's input, and the agent's output flows into an Evaluation node that gates a dedicated eval branch (set-outputs → set-metrics) separate from the agent's normal reply path.",
+		"The evaluation is backed by a real dataset: the Evaluation Trigger references an n8n Data Table by id (its `dataTableId` resource-locator holds a real table id, not left empty or deferred).",
+		"The original workflow still functions: the AI agent that answers the submitted support question and returns the reply on the form is intact, and its production path was preserved rather than replaced by the evaluation setup."
+	]
+}

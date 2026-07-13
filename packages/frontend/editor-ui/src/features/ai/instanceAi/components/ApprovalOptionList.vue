@@ -115,7 +115,7 @@ function onKeydown(event: KeyboardEvent) {
 }
 
 .footer {
-	padding: 0;
+	padding: var(--spacing--2xs) var(--spacing--sm) var(--spacing--sm);
 }
 
 .row {

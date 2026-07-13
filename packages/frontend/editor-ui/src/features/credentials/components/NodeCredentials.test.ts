@@ -1,4 +1,4 @@
-import { shallowRef, ref, computed } from 'vue';
+import { shallowRef, ref, computed, nextTick } from 'vue';
 import { describe, it, vi, beforeEach } from 'vitest';
 import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -30,10 +30,22 @@ import {
 } from '@/app/stores/workflowDocument.store';
 
 const trackMock = vi.hoisted(() => vi.fn());
+const authorizeMock = vi.hoisted(() => vi.fn().mockResolvedValue(true));
 
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: trackMock }),
 }));
+
+// Keep the real composable (quick-connect tests need it); stub only `authorize`.
+vi.mock('../composables/useCredentialOAuth', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../composables/useCredentialOAuth')>();
+	return {
+		useCredentialOAuth: () => ({
+			...actual.useCredentialOAuth(),
+			authorize: authorizeMock,
+		}),
+	};
+});
 
 vi.mock('@/app/composables/useAiGateway', () => ({
 	useAiGateway: vi.fn(() => ({
@@ -229,6 +241,25 @@ describe('NodeCredentials', () => {
 		await userEvent.click(credentialsSelect);
 
 		expect(screen.queryByText('OpenAi account')).toBeInTheDocument();
+	});
+
+	it('renders standalone when no active workflow document store is provided', () => {
+		// Instance AI credential card: rendered standalone, outside a loaded
+		// workflow document. The strict injectNDVStore() used to throw here on the
+		// immediate parameters watch, tearing down the card (mount/unmount flicker).
+		workflowDocumentStoreRef.value = null;
+		credentialsStore.state.credentials = {
+			c8vqdPpPClh4TgIO: createCredential(),
+		};
+
+		expect(() =>
+			renderComponent(
+				{ props: { node: httpNode, overrideCredType: 'openAiApi', standalone: true } },
+				{ merge: true },
+			),
+		).not.toThrow();
+
+		expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
 	});
 
 	it('should refresh credentials from the server when mounted on an existing node', () => {
@@ -1143,6 +1174,7 @@ describe('NodeCredentials', () => {
 				isCredentialTypeSupported: vi.fn((credType: string) => credType === 'googlePalmApi'),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
+				isActionOptionVisible: vi.fn(() => true),
 				isNodePropertyHidden: vi.fn(() => false),
 				balance: computed(() => undefined),
 				budget: computed(() => undefined),
@@ -1218,6 +1250,7 @@ describe('NodeCredentials', () => {
 					isCredentialTypeSupported: vi.fn(() => false),
 					isNodeTypeVersionSupported: vi.fn(() => true),
 					isActionSupported: vi.fn(() => true),
+					isActionOptionVisible: vi.fn(() => true),
 					isNodePropertyHidden: vi.fn(() => false),
 					balance: computed(() => undefined),
 					budget: computed(() => undefined),
@@ -1248,6 +1281,7 @@ describe('NodeCredentials', () => {
 					isCredentialTypeSupported: vi.fn(() => false),
 					isNodeTypeVersionSupported: vi.fn(() => true),
 					isActionSupported: vi.fn(() => true),
+					isActionOptionVisible: vi.fn(() => true),
 					isNodePropertyHidden: vi.fn(() => false),
 					balance: computed(() => undefined),
 					budget: computed(() => undefined),
@@ -1333,6 +1367,7 @@ describe('NodeCredentials', () => {
 					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
 					isNodeTypeVersionSupported: vi.fn(() => false),
 					isActionSupported: vi.fn(() => true),
+					isActionOptionVisible: vi.fn(() => true),
 					isNodePropertyHidden: vi.fn(() => false),
 					balance: computed(() => undefined),
 					budget: computed(() => undefined),
@@ -1367,6 +1402,7 @@ describe('NodeCredentials', () => {
 					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
 					isNodeTypeVersionSupported: vi.fn(() => true),
 					isActionSupported: vi.fn(() => true),
+					isActionOptionVisible: vi.fn(() => true),
 					isNodePropertyHidden: vi.fn(() => false),
 					balance: computed(() => undefined),
 					budget: computed(() => undefined),
@@ -1401,6 +1437,7 @@ describe('NodeCredentials', () => {
 					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
 					isNodeTypeVersionSupported: vi.fn(() => false),
 					isActionSupported: vi.fn(() => true),
+					isActionOptionVisible: vi.fn(() => true),
 					isNodePropertyHidden: vi.fn(() => false),
 					balance: computed(() => undefined),
 					budget: computed(() => undefined),
@@ -1440,6 +1477,7 @@ describe('NodeCredentials', () => {
 					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
 					isNodeTypeVersionSupported: vi.fn(() => false),
 					isActionSupported: vi.fn(() => true),
+					isActionOptionVisible: vi.fn(() => true),
 					isNodePropertyHidden: vi.fn(() => false),
 					balance: computed(() => undefined),
 					budget: computed(() => undefined),
@@ -1499,6 +1537,141 @@ describe('NodeCredentials', () => {
 				name: '',
 				__aiGatewayManaged: true,
 			});
+		});
+
+		it('should auto-enable gateway credential on mount when the current action is supported', () => {
+			credentialsStore.state.credentials = {};
+			const nodeWithAction: INodeUi = {
+				...googleAiNode,
+				parameters: { resource: 'chat', operation: 'message' },
+			};
+			ndvStore.activeNode = nodeWithAction;
+
+			const { emitted } = renderComponent({
+				props: { node: nodeWithAction, overrideCredType: 'googlePalmApi' },
+				global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
+			});
+
+			expect(emitted('credentialSelected')).toBeTruthy();
+			const payload = ((emitted('credentialSelected')[0] as unknown[]) ?? [])[0] as {
+				properties: { credentials: Record<string, unknown> };
+			};
+			expect(payload.properties.credentials['googlePalmApi']).toEqual({
+				id: null,
+				name: '',
+				__aiGatewayManaged: true,
+			});
+		});
+
+		it('should not auto-enable gateway credential on mount when the current action is unsupported', () => {
+			vi.mocked(useAiGateway).mockReturnValue({
+				isEnabled: computed(() => true),
+				isCredentialTypeSupported: vi.fn((credType: string) => credType === 'googlePalmApi'),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+				isActionSupported: vi.fn(() => false),
+				isActionOptionVisible: vi.fn(() => true),
+				isNodePropertyHidden: vi.fn(() => false),
+				balance: computed(() => undefined),
+				budget: computed(() => undefined),
+				fetchConfig: vi.fn().mockResolvedValue(undefined),
+				fetchWallet: vi.fn().mockResolvedValue(undefined),
+				saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+				fetchError: computed(() => null),
+			});
+			credentialsStore.state.credentials = {};
+			const nodeWithAction: INodeUi = {
+				...googleAiNode,
+				parameters: { resource: 'chat', operation: 'unsupportedOp' },
+			};
+			ndvStore.activeNode = nodeWithAction;
+
+			const { emitted } = renderComponent({
+				props: { node: nodeWithAction, overrideCredType: 'googlePalmApi' },
+				global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
+			});
+
+			expect(emitted('credentialSelected')).toBeFalsy();
+		});
+
+		it('should not redirect an empty node onto n8n Connect when a supported action is picked later', async () => {
+			credentialsStore.state.credentials = {};
+			const nodeWithAction: INodeUi = {
+				...googleAiNode,
+				parameters: { resource: 'chat', operation: 'message' },
+				credentials: {},
+			};
+			ndvStore.activeNode = nodeWithAction;
+
+			const { emitted } = renderComponent({
+				props: { node: nodeWithAction, overrideCredType: 'googlePalmApi' },
+				global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
+			});
+
+			const gatewayEmitCount = () =>
+				(
+					(emitted('credentialSelected') ?? []) as Array<
+						[{ properties: { credentials: Record<string, { __aiGatewayManaged?: boolean }> } }]
+					>
+				).filter((e) => e[0]?.properties?.credentials?.googlePalmApi?.__aiGatewayManaged === true)
+					.length;
+
+			// n8n Connect is auto-selected once, as the initial default.
+			expect(gatewayEmitCount()).toBe(1);
+
+			// Re-trigger the credential-options watch, as changing the action would.
+			credentialsStore.state.credentials = {
+				other: { id: 'other', name: 'Other', type: 'otherApi' } as never,
+			};
+			await nextTick();
+
+			// The action change must not redirect the user back onto n8n Connect.
+			expect(gatewayEmitCount()).toBe(1);
+		});
+
+		it('should not switch a user-selected own credential to n8n Connect when the action changes', async () => {
+			const ownCred = {
+				id: 'cred-1',
+				name: 'My Google Key',
+				type: 'googlePalmApi',
+				isManaged: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+			};
+			credentialsStore.state.credentials = { 'cred-1': ownCred };
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(ownCred);
+
+			const nodeWithOwnCred: INodeUi = {
+				...googleAiNode,
+				parameters: { resource: 'scrape', operation: 'scrape' },
+				credentials: { googlePalmApi: { id: 'cred-1', name: 'My Google Key' } },
+			};
+			ndvStore.activeNode = nodeWithOwnCred;
+
+			const { emitted } = renderComponent({
+				props: { node: nodeWithOwnCred, overrideCredType: 'googlePalmApi' },
+				global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
+			});
+
+			const gatewayEmitCount = () =>
+				(
+					(emitted('credentialSelected') ?? []) as Array<
+						[{ properties: { credentials: Record<string, { __aiGatewayManaged?: boolean }> } }]
+					>
+				).filter((e) => e[0]?.properties?.credentials?.googlePalmApi?.__aiGatewayManaged === true)
+					.length;
+
+			// The own credential is kept as-is; n8n Connect is never auto-selected.
+			expect(gatewayEmitCount()).toBe(0);
+
+			// Re-trigger the credential-options watch, as changing the action would.
+			credentialsStore.state.credentials = {
+				'cred-1': ownCred,
+				other: { id: 'other', name: 'Other', type: 'otherApi' } as never,
+			};
+			await nextTick();
+
+			// Still no switch to n8n Connect after the re-evaluation.
+			expect(gatewayEmitCount()).toBe(0);
 		});
 
 		it('should emit credentialSelected restoring credentials when toggled OFF with available credentials', async () => {
@@ -1660,7 +1833,7 @@ describe('NodeCredentials', () => {
 			name: 'My Slack',
 			type: 'openAiApi',
 			isResolvable: true,
-			scopes: ['credential:update'],
+			scopes: ['credential:update', 'credential:connect'],
 		});
 
 		const notionNode: INodeUi = {
@@ -1694,42 +1867,42 @@ describe('NodeCredentials', () => {
 			expect(screen.queryByTestId('node-credential-private-icon')).not.toBeInTheDocument();
 		});
 
-		it('renders the private callout when a private credential is selected', async () => {
+		it('renders the private connection row when a private credential is selected', async () => {
 			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
 
-			expect(screen.getByTestId('node-credential-private-callout')).toBeInTheDocument();
+			expect(screen.getByTestId('node-credential-private-row')).toBeInTheDocument();
 		});
 
-		it('does not render the callout for a static credential', async () => {
+		it('does not render the connection row for a static credential', async () => {
 			credentialsStore.state.credentials = {
 				c8vqdPpPClh4TgIO: createCredential({ isResolvable: false }),
 			};
 			renderComponent({ props: { node: httpNode, overrideCredType: 'openAiApi' } });
 
-			expect(screen.queryByTestId('node-credential-private-callout')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('node-credential-private-row')).not.toBeInTheDocument();
 		});
 
-		it('shows connected status row when connectedByMe is true', async () => {
+		it('shows the Connected dropdown when connectedByMe is true', async () => {
 			credentialsStore.state.credentials = {
 				'private-cred-id': { ...privateCredential, connectedByMe: true },
 			};
 			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
 
-			expect(screen.getByText('Your account is connected')).toBeInTheDocument();
+			expect(screen.getByTestId('node-credential-private-connected-actions')).toBeInTheDocument();
 			expect(screen.queryByTestId('node-credential-private-connect')).not.toBeInTheDocument();
 		});
 
-		it('shows the connect prompt with a Connect button when connectedByMe is false', async () => {
+		it('shows the Connect button when connectedByMe is false', async () => {
 			credentialsStore.state.credentials = {
 				'private-cred-id': { ...privateCredential, connectedByMe: false },
 			};
 			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
 
-			expect(screen.getByText('Connect your account')).toBeInTheDocument();
 			expect(screen.getByTestId('node-credential-private-connect')).toBeInTheDocument();
+			expect(screen.getByTestId('node-credential-private-connect')).toBeEnabled();
 		});
 
-		it('hides the Connect button when the user lacks update permission', async () => {
+		it('disables the Connect button when the user lacks connect permission', async () => {
 			credentialsStore.state.credentials = {
 				'private-cred-id': {
 					...privateCredential,
@@ -1739,11 +1912,36 @@ describe('NodeCredentials', () => {
 			};
 			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
 
-			expect(screen.getByText('Connect your account')).toBeInTheDocument();
-			expect(screen.queryByTestId('node-credential-private-connect')).not.toBeInTheDocument();
+			expect(screen.getByTestId('node-credential-private-connect')).toBeDisabled();
 		});
 
-		it('clicking the Connect button calls uiStore.openExistingCredential with the credential id', async () => {
+		it('disables the Connect button in readonly (execution view) mode', async () => {
+			credentialsStore.state.credentials = {
+				'private-cred-id': { ...privateCredential, connectedByMe: false },
+			};
+			renderComponent({
+				props: { node: notionNode, overrideCredType: 'openAiApi', readonly: true },
+			});
+
+			expect(screen.getByTestId('node-credential-private-connect')).toBeDisabled();
+		});
+
+		it('disables the Connected actions dropdown in readonly (execution view) mode', async () => {
+			credentialsStore.state.credentials = {
+				'private-cred-id': { ...privateCredential, connectedByMe: true },
+			};
+			renderComponent({
+				props: { node: notionNode, overrideCredType: 'openAiApi', readonly: true },
+			});
+
+			const dropdown = screen.getByTestId('node-credential-private-connected-actions');
+			await userEvent.click(dropdown);
+
+			// The connected/disconnect actions menu must not open while readonly
+			expect(screen.queryByText('Disconnect')).not.toBeInTheDocument();
+		});
+
+		it('clicking the Connect button runs the OAuth flow without opening the edit modal', async () => {
 			credentialsStore.state.credentials = {
 				'private-cred-id': { ...privateCredential, connectedByMe: false },
 			};
@@ -1751,30 +1949,48 @@ describe('NodeCredentials', () => {
 
 			await userEvent.click(screen.getByTestId('node-credential-private-connect'));
 
-			expect(uiStore.openExistingCredential).toHaveBeenCalledWith(
-				'private-cred-id',
-				expect.any(Object),
+			expect(authorizeMock).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'private-cred-id' }),
 			);
+			expect(uiStore.openExistingCredential).not.toHaveBeenCalled();
 		});
 
-		it('still renders the callout when the workflow uses the default (system) resolver', async () => {
+		it('connects via OAuth even when the user has edit rights (single flow for all)', async () => {
+			credentialsStore.state.credentials = {
+				'private-cred-id': {
+					...privateCredential,
+					connectedByMe: false,
+					scopes: ['credential:update', 'credential:connect'],
+				},
+			};
+			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
+
+			await userEvent.click(screen.getByTestId('node-credential-private-connect'));
+
+			expect(authorizeMock).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'private-cred-id' }),
+			);
+			expect(uiStore.openExistingCredential).not.toHaveBeenCalled();
+		});
+
+		it('still renders the connection row when the workflow uses the default (system) resolver', async () => {
 			workflowDocumentStore.mergeSettings({ credentialResolverId: SYSTEM_RESOLVER_ID });
 			credentialsStore.state.credentials = {
 				'private-cred-id': { ...privateCredential, connectedByMe: false },
 			};
 			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
 
-			expect(screen.getByTestId('node-credential-private-callout')).toBeInTheDocument();
+			expect(screen.getByTestId('node-credential-private-row')).toBeInTheDocument();
 		});
 
-		it('hides the callout when the workflow uses a non-default resolver', async () => {
+		it('hides the connection row when the workflow uses a non-default resolver', async () => {
 			workflowDocumentStore.mergeSettings({ credentialResolverId: 'slack-resolver' });
 			credentialsStore.state.credentials = {
 				'private-cred-id': { ...privateCredential, connectedByMe: false },
 			};
 			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
 
-			expect(screen.queryByTestId('node-credential-private-callout')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('node-credential-private-row')).not.toBeInTheDocument();
 		});
 	});
 });

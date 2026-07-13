@@ -44,6 +44,7 @@ const resource = (scopes: string[]): ProtectedResource => ({
 	id: 'instance-mcp',
 	getResourceUrl: () => 'https://n8n.test/mcp-server/http',
 	getAudiences: () => ['https://n8n.test/mcp-server/http'],
+	authorize: async () => true,
 	scopes,
 });
 

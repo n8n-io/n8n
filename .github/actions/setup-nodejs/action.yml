@@ -17,7 +17,7 @@ inputs:
   build-command:
     description: 'Command to execute for building the project or an optional command. Leave empty to skip build step.'
     required: false
-    default: 'pnpm build:unchecked'
+    default: 'pnpm build'
   install-command:
     description: 'Command to execute for installing project dependencies. Leave empty to skip install step.'
     required: false

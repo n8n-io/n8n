@@ -7,6 +7,16 @@ export interface ExecutionResult {
 	finishedAt?: string;
 }
 
+/**
+ * A user-triggered (non-agent) preview run remembered on the thread runtime so it
+ * survives the preview canvas remounting on a tab switch and is re-seeded on remount.
+ */
+export interface RememberedManualExecution {
+	executionId: string;
+	// Agent run shown when the user took over; a different current one means the agent ran again since.
+	agentExecutionId: string | undefined;
+}
+
 export interface BuildResult {
 	workflowId: string;
 	/** Unique per build — changes even when the same workflow is rebuilt. */
@@ -30,6 +40,16 @@ export interface DataTableResult {
 	/** Unique per operation — changes even when the same table is modified again. */
 	toolCallId: string;
 }
+
+export interface AgentArtifactResult {
+	agentId: string;
+	projectId?: string;
+	/** Unique per operation — changes even when the same agent is modified again. */
+	toolCallId: string;
+	kind: 'created' | 'mutated';
+}
+
+type AgentArtifactTarget = Pick<AgentArtifactResult, 'agentId' | 'projectId'>;
 
 /**
  * Walks an agent tree depth-first (most recent last) and returns the workflowId
@@ -321,6 +341,75 @@ export function getLatestDataTableResult(node: InstanceAiAgentNode): DataTableRe
 			}
 		}
 	}
+	return undefined;
+}
+
+const AGENT_BUILDER_MUTATING_ACTIONS = new Set([
+	'build_agent',
+	'create_skill',
+	'create_task',
+	'build_custom_tool',
+]);
+
+function getAgentTarget(node: InstanceAiAgentNode): AgentArtifactTarget | undefined {
+	if (node.targetResource?.type !== 'agent' || typeof node.targetResource.id !== 'string') {
+		return undefined;
+	}
+	return {
+		agentId: node.targetResource.id,
+		...(typeof node.targetResource.projectId === 'string'
+			? { projectId: node.targetResource.projectId }
+			: {}),
+	};
+}
+
+export function getLatestAgentArtifactResult(
+	node: InstanceAiAgentNode,
+	fallbackTarget?: AgentArtifactTarget,
+): AgentArtifactResult | undefined {
+	const target = getAgentTarget(node) ?? fallbackTarget;
+
+	for (let i = node.children.length - 1; i >= 0; i--) {
+		const childResult = getLatestAgentArtifactResult(node.children[i], target);
+		if (childResult) return childResult;
+	}
+
+	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
+		const tc = node.toolCalls[i];
+		if (tc.isLoading || !tc.result || typeof tc.result !== 'object') continue;
+		const result = tc.result as Record<string, unknown>;
+		const args = tc.args as Record<string, unknown> | undefined;
+
+		if (
+			tc.toolName === 'agent_builder' &&
+			args?.action === 'create_agent' &&
+			result.ok === true &&
+			typeof result.agentId === 'string'
+		) {
+			return {
+				agentId: result.agentId,
+				...(typeof result.projectId === 'string' ? { projectId: result.projectId } : {}),
+				toolCallId: tc.toolCallId,
+				kind: 'created',
+			};
+		}
+
+		if (
+			target &&
+			((tc.toolName === 'agent_builder' &&
+				typeof args?.action === 'string' &&
+				AGENT_BUILDER_MUTATING_ACTIONS.has(args.action) &&
+				result.ok === true) ||
+				(tc.toolName === 'configure_channel' && 'connected' in result))
+		) {
+			return {
+				...target,
+				toolCallId: tc.toolCallId,
+				kind: 'mutated',
+			};
+		}
+	}
+
 	return undefined;
 }
 

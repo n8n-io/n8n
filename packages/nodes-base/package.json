@@ -1,11 +1,13 @@
 {
   "name": "n8n-nodes-base",
-  "version": "2.29.0",
+  "version": "2.30.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "typesVersions": {
     "*": {
-      "aws-credentials": ["dist/credentials/common/aws/index.d.ts"]
+      "aws-credentials": [
+        "dist/credentials/common/aws/index.d.ts"
+      ]
     }
   },
   "scripts": {
@@ -22,7 +24,7 @@
     "watch": "tsc-watch -p tsconfig.build.cjs.json --onCompilationComplete \"pnpm copy-nodes-json && tsc-alias -p tsconfig.build.cjs.json\" --onSuccess \"pnpm n8n-generate-metadata\"",
     "test": "vitest run",
     "test:unit": "vitest run",
-    "test:changed": "janitor test-scoped --runner=vitest",
+    "test:changed": "janitor test-scoped",
     "test:dev": "vitest --silent=false",
     "test:integration:skip": "vitest run --config vitest.integration.config.ts"
   },
@@ -917,13 +919,17 @@
     "n8n-containers": "workspace:*",
     "n8n-core": "workspace:*",
     "reflect-metadata": "catalog:",
+    "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },
   "dependencies": {
+    "@aws-crypto/sha256-js": "5.2.0",
     "@aws-sdk/credential-providers": "3.808.0",
     "@smithy/node-http-handler": "4.5.0",
+    "@smithy/protocol-http": "5.3.12",
+    "@smithy/signature-v4": "5.3.5",
     "@smithy/types": "4.13.1",
     "@n8n/backend-network": "workspace:*",
     "@kafkajs/confluent-schema-registry": "3.8.0",
@@ -949,7 +955,7 @@
     "eventsource": "2.0.2",
     "fast-glob": "catalog:",
     "fastest-levenshtein": "catalog:",
-    "fflate": "0.7.4",
+    "fflate": "catalog:",
     "form-data": "catalog:",
     "generate-schema": "2.6.0",
     "get-system-fonts": "2.0.2",

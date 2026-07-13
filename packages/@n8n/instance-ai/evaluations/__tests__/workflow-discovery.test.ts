@@ -1,6 +1,6 @@
 import type { Mock } from 'vitest';
 
-import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
+import { N8nApiError, type N8nClient, type WorkflowResponse } from '../clients/n8n-client';
 import { buildAgentOutcome } from '../outcome/workflow-discovery';
 import type { EventOutcome } from '../types';
 
@@ -99,5 +99,84 @@ describe('buildAgentOutcome', () => {
 
 		expect(outcome.workflowsCreated.map((wf) => wf.id)).toEqual(['thread-workflow']);
 		expect(listWorkflows).not.toHaveBeenCalled();
+	});
+});
+
+describe('buildAgentOutcome phantom-id handling', () => {
+	/** Client whose getWorkflow resolves per id: a WorkflowResponse, or a thrown error. */
+	function clientWith(byId: Record<string, WorkflowResponse | Error>): N8nClient {
+		return {
+			getWorkflow: vi.fn(async (id: string) => {
+				const entry = byId[id];
+				if (entry === undefined) throw new N8nApiError(`Workflow ${id} not found`, 404);
+				if (entry instanceof Error) throw entry;
+				return await Promise.resolve(entry);
+			}),
+			listExecutions: vi.fn().mockResolvedValue([]),
+		} as unknown as N8nClient;
+	}
+
+	function outcomeWithIds(workflowIds: string[]): EventOutcome {
+		return { ...emptyEventOutcome, workflowIds };
+	}
+
+	it('drops phantom ids (404) so a real workflow becomes workflowsCreated[0]', async () => {
+		// An agent-invented id echoed by a failed build-workflow bind, then the real save.
+		const client = clientWith({ 'real-id': workflow('real-id') });
+
+		const outcome = await buildAgentOutcome(client, outcomeWithIds(['pokemon-digest', 'real-id']));
+
+		expect(outcome.workflowsCreated.map((wf) => wf.id)).toEqual(['real-id']);
+		expect(outcome.workflowJsons.map((wf) => wf.id)).toEqual(['real-id']);
+	});
+
+	it('drops inaccessible ids (403)', async () => {
+		const client = clientWith({
+			forbidden: new N8nApiError('Workflow forbidden not accessible', 403),
+			'real-id': workflow('real-id'),
+		});
+
+		const outcome = await buildAgentOutcome(client, outcomeWithIds(['forbidden', 'real-id']));
+
+		expect(outcome.workflowsCreated.map((wf) => wf.id)).toEqual(['real-id']);
+	});
+
+	it('keeps a stub for transport-level fetch failures, ordered after real workflows', async () => {
+		const client = clientWith({
+			flaky: new TypeError('fetch failed'),
+			'real-id': workflow('real-id'),
+		});
+
+		const outcome = await buildAgentOutcome(client, outcomeWithIds(['flaky', 'real-id']));
+
+		expect(outcome.workflowsCreated.map((wf) => wf.id)).toEqual(['real-id', 'flaky']);
+		expect(outcome.workflowsCreated[1].name).toBe('(fetch failed)');
+		expect(outcome.workflowJsons.map((wf) => wf.id)).toEqual(['real-id']);
+	});
+
+	it('returns no workflows when every candidate id is phantom', async () => {
+		const outcome = await buildAgentOutcome(
+			clientWith({}),
+			outcomeWithIds(['made-up', 'also-fake']),
+		);
+
+		expect(outcome.workflowsCreated).toEqual([]);
+	});
+
+	it('logs dropped phantom ids when a logger is provided', async () => {
+		const logger = { warn: vi.fn() };
+		const client = clientWith({ 'real-id': workflow('real-id') });
+
+		await buildAgentOutcome(
+			client,
+			outcomeWithIds(['phantom-slug', 'real-id']),
+			undefined,
+			undefined,
+			{
+				logger,
+			},
+		);
+
+		expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('phantom-slug'));
 	});
 });

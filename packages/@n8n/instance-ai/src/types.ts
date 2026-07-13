@@ -9,9 +9,12 @@ import type {
 	ModelConfig as NativeModelConfig,
 	ScopedMemoryTaskEvent,
 	Telemetry,
+	ToolDescriptor,
 	Workspace,
 } from '@n8n/agents';
 import type {
+	AgentJsonConfig,
+	AgentTaskConfig,
 	TaskList,
 	InstanceAiFileAttachment,
 	InstanceAiPermissions,
@@ -68,14 +71,22 @@ export interface WorkflowDetail extends WorkflowSummary {
 	nodes: WorkflowNode[];
 	connections: Record<string, unknown>;
 	settings?: Record<string, unknown>;
+	/** SHA-256 checksum of workflow content fields — used for optimistic-concurrency saves. */
+	checksum?: string;
 }
 
 export interface WorkflowNode {
 	name: string;
 	type: string;
+	typeVersion?: number;
 	parameters?: Record<string, unknown>;
 	position: number[];
 	webhookId?: string;
+}
+
+export interface ExecutionNodeError {
+	nodeName: string;
+	message?: string;
 }
 
 export interface ExecutionResult {
@@ -88,6 +99,8 @@ export interface ExecutionResult {
 	 * nothing" apart from "never reached".
 	 */
 	executedNodeNames?: string[];
+	/** Node-level errors from run data, including continue-on-fail errors. */
+	nodeErrors?: ExecutionNodeError[];
 	/** Name of the last node the execution processed, when available. */
 	lastNodeExecuted?: string;
 	error?: string;
@@ -264,8 +277,9 @@ export interface InstanceAiWorkflowService {
 		scope?: 'project' | 'instance';
 	}): Promise<WorkflowSummary[]>;
 	get(workflowId: string): Promise<WorkflowDetail>;
-	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode). */
-	getAsWorkflowJSON(workflowId: string): Promise<WorkflowJSON>;
+	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode).
+	 *  Pass a versionId to get a past version's graph instead of the current draft. */
+	getAsWorkflowJSON(workflowId: string, versionId?: string): Promise<WorkflowJSON>;
 	/** Cheap version-only lookup. The adapter projects just `versionId` and
 	 *  `updatedAt` from the workflow row, skipping `nodes`/`connections`/etc.
 	 *  Use to validate per-session caches when the body isn't needed. */
@@ -285,7 +299,7 @@ export interface InstanceAiWorkflowService {
 	updateFromWorkflowJSON(
 		workflowId: string,
 		json: WorkflowJSON,
-		options?: { projectId?: string },
+		options?: { projectId?: string; expectedChecksum?: string },
 	): Promise<WorkflowDetail>;
 	archive(workflowId: string): Promise<void>;
 	unarchive(workflowId: string): Promise<void>;
@@ -381,6 +395,15 @@ export interface CredentialTypeSearchResult {
 	displayName: string;
 }
 
+/** An HTTP-usable credential type with the API host(s) it authenticates against,
+ *  derived from credential metadata. Used to steer the builder toward predefined
+ *  credentials instead of generic auth. */
+export interface CredentialHostInfo {
+	type: string;
+	displayName?: string;
+	hosts: string[];
+}
+
 export interface InstanceAiCredentialService {
 	/**
 	 * List credentials.
@@ -409,7 +432,13 @@ export interface InstanceAiCredentialService {
 	): CredentialFieldInfo[] | Promise<CredentialFieldInfo[]>;
 	/** Search available credential types by keyword. Returns matching types with display names. */
 	searchCredentialTypes?(query: string): Promise<CredentialTypeSearchResult[]>;
+	/** HTTP-usable credential types with the API host(s) they authenticate against,
+	 *  derived from credential metadata. Powers steering generic HTTP-node auth toward
+	 *  a predefined credential when one already exists for the target service. */
+	listHttpCredentialHosts?(): Promise<CredentialHostInfo[]>;
 	getAccountContext?(credentialId: string): Promise<{ accountIdentifier?: string }>;
+	/** Whether the given credential type is supported by AI Gateway. */
+	isAiGatewayCredentialType?(credType: string): Promise<boolean>;
 }
 
 export interface CredentialFieldInfo {
@@ -451,7 +480,7 @@ export interface InstanceAiNodeService {
 	getDescription(nodeType: string, version?: number): Promise<NodeDescription>;
 	/** Return all node types with the richer fields needed by NodeSearchEngine. */
 	listSearchable(): Promise<SearchableNodeDescription[]>;
-	/** Return the TypeScript type definition for a node (from dist/node-definitions/). */
+	/** Return the TypeScript type definition for a node, resolved by the host n8n instance. */
 	getNodeTypeDefinition?(
 		nodeType: string,
 		options?: {
@@ -609,6 +638,65 @@ export interface InstanceAiDataTableService {
 	): Promise<{ deletedCount: number; dataTableId: string; tableName: string; projectId: string }>;
 }
 
+// ── Evaluation configs (config-based evals) ──────────────────────────────────
+
+/** Preset LLM-judge metrics supported by config-based evals — mirrors
+ *  `llmJudgeMetricPresetSchema` in `@n8n/api-types`. */
+export type EvaluationConfigMetricPreset = 'correctness' | 'helpfulness';
+
+/** A single LLM-judge metric on a config-based eval. `actualAnswer`/`userQuery`/
+ *  `expectedAnswer` are n8n expressions resolved against the eval run. */
+export interface EvaluationConfigMetricInput {
+	name: string;
+	preset: EvaluationConfigMetricPreset;
+	provider: string;
+	credentialId: string;
+	model: string;
+	outputType: 'numeric' | 'boolean';
+	actualAnswer: string;
+	userQuery?: string;
+	expectedAnswer?: string;
+	prompt?: string;
+}
+
+/** Payload for creating/updating a config-based eval. The dataset is a Data
+ *  Table the caller already created (via the data-tables tool). */
+export interface UpsertEvaluationConfigInput {
+	name: string;
+	startNodeName: string;
+	endNodeName: string;
+	dataTableId: string;
+	metrics: EvaluationConfigMetricInput[];
+}
+
+/** A config-based eval as surfaced to the agent. */
+export interface EvaluationConfigSummary {
+	id: string;
+	workflowId: string;
+	name: string;
+	status: 'valid' | 'invalid';
+	invalidReason: string | null;
+	startNodeName: string;
+	endNodeName: string;
+	metrics: Array<{ id: string; name: string; type: string }>;
+	datasetSource: string;
+	dataTableId?: string;
+}
+
+/** Create/read/update config-based evaluations attached to a workflow via the
+ *  evaluation-config API (distinct from on-canvas eval nodes). */
+export interface InstanceAiEvaluationConfigService {
+	list(workflowId: string): Promise<EvaluationConfigSummary[]>;
+	get(workflowId: string, configId: string): Promise<EvaluationConfigSummary | null>;
+	create(workflowId: string, input: UpsertEvaluationConfigInput): Promise<EvaluationConfigSummary>;
+	update(
+		workflowId: string,
+		configId: string,
+		input: UpsertEvaluationConfigInput,
+	): Promise<EvaluationConfigSummary>;
+	delete(workflowId: string, configId: string): Promise<void>;
+}
+
 // ── Web Research ────────────────────────────────────────────────────────────
 
 export interface FetchedPage {
@@ -717,6 +805,191 @@ export interface InstanceAiWorkspaceService {
 	): Promise<{ deletedCount: number }>;
 }
 
+// ── Agent builder service ────────────────────────────────────────────────────
+
+/** Persisted agent config plus the freshness metadata the builder hashes. */
+export interface AgentConfigSnapshot {
+	config: AgentJsonConfig | null;
+	updatedAt: string | null;
+	versionId: string | null;
+}
+
+/** Reusable target-agent skill body (mirrors `agentSkillSchema` in `@n8n/api-types`). */
+export interface AgentBuilderSkill {
+	name: string;
+	description: string;
+	instructions: string;
+}
+
+/** A chat platform that can be added to the target agent's `integrations` array. */
+export interface ChatIntegrationInfo {
+	type: string;
+	credentialTypes: string[];
+	capabilities?: string[];
+	useIntegrationWhen?: string[];
+	useNodeToolWhen?: string[];
+}
+
+/** A published, same-project agent that can be attached as a sub-agent. */
+export interface ProjectAgentSummary {
+	agentId: string;
+	name: string;
+}
+
+/** A model option returned by the host model lookup, keyed by provider/credential. */
+export interface AgentModelOption {
+	name: string;
+	value: string;
+}
+
+/**
+ * Points the host model lookup at the chat-model node whose search/load-options
+ * method returns the live list of model ids for a provider. Mirrors the CLI
+ * agent builder's `ModelLookupConfig`.
+ */
+export type ModelLookupConfig =
+	| { kind: 'listSearch'; nodeType: string; version: number; methodName: string }
+	| { kind: 'loadOptionsRouting'; nodeType: string; version: number; propertyName: string };
+
+export interface McpServerSearchResult {
+	name: string;
+	title?: string;
+	description?: string;
+	url: string;
+	transport: string;
+	authentication?: string;
+	credentialType?: string;
+	tools: Array<{ name: string; title?: string }>;
+	metadata?: Record<string, unknown>;
+}
+
+export interface McpServerVerifyParams {
+	name: string;
+	url: string;
+	transport: 'sse' | 'streamableHttp';
+	authentication: string;
+	/** Credential id (from the credentials tool, action "list"); required when authentication is not "none". */
+	credentialId?: string;
+	connectionTimeoutMs?: number;
+}
+
+export type McpServerVerifyResult =
+	| { ok: true; tools: Array<{ name: string; description?: string }> }
+	| { ok: false; error: string };
+
+/** A workflow that can be attached to the agent as a `type: "workflow"` tool. */
+export interface AttachableWorkflow {
+	name: string;
+	active: boolean;
+	triggerType: string;
+}
+
+/** Inputs for resolving a node parameter's live options (resource locator / load options). */
+export interface ResolveResourceLocatorParams {
+	nodeType: string;
+	nodeTypeVersion: number;
+	parameterPath: string;
+	nodeParameters?: Record<string, unknown>;
+	credentials?: Record<string, { id: string; name: string }>;
+	filter?: string;
+	paginationToken?: string;
+}
+
+/**
+ * Host-backed operations for building n8n *Agents* (the `AgentJsonConfig`
+ * artifact: instructions, model, tools, skills, tasks, integrations, sub-agents).
+ *
+ * Only the irreducible I/O lives here — reading/persisting the config, creating
+ * skills/tasks/custom tools, and reaching the MCP registry / model catalog. All
+ * validation, hashing, RFC-6902 patching, and `$fromAI` dynamic-selector
+ * enforcement is reimplemented in the tool handlers, not delegated here. The CLI
+ * provides the adapter; pure-package contexts leave this undefined.
+ *
+ * Scope model: the mutating methods (`createAgent`, `updateConfig`, `createSkill`,
+ * `createTask`, `buildCustomTool`) are asserted by the host adapter against the
+ * caller's agent project scopes (`agent:create` / `agent:update`). The read
+ * methods are intentionally NOT independently scope-checked — they operate on the
+ * project the session is already bound to, so any participant of that Instance AI
+ * session may read agent config and metadata. The one exception is
+ * `listAttachableWorkflows`: workflows are a separate resource, so it is filtered
+ * to the caller's `workflow:read` access rather than every workflow in the project.
+ */
+export interface InstanceAiAgentBuilderService {
+	/**
+	 * Create a new empty agent and return its identity. When `projectId` is
+	 * omitted the host resolves a default (personal) project. The returned
+	 * `projectId` is the resolved one the agent was created in, so the caller can
+	 * bind the run to it. The host is responsible for persisting this binding to
+	 * thread state so later turns stay targeted at the same agent.
+	 */
+	createAgent(
+		name: string,
+		projectId?: string,
+	): Promise<{ agentId: string; projectId: string; name: string }>;
+	getConfigSnapshot(agentId: string, projectId: string): Promise<AgentConfigSnapshot>;
+	updateConfig(
+		agentId: string,
+		projectId: string,
+		config: AgentJsonConfig,
+	): Promise<AgentConfigSnapshot>;
+	createSkill(
+		agentId: string,
+		projectId: string,
+		skill: AgentBuilderSkill,
+	): Promise<{ id: string; skill: AgentBuilderSkill }>;
+	createTask(
+		agentId: string,
+		projectId: string,
+		task: AgentTaskConfig & { enabled: boolean },
+	): Promise<{ id: string; name: string; objective: string; cronExpression: string }>;
+	/** Sandbox-validate custom tool TypeScript source and return its descriptor. */
+	describeCustomTool(code: string): Promise<ToolDescriptor>;
+	/** Compile and persist a previously-described custom tool against the agent. */
+	buildCustomTool(
+		agentId: string,
+		projectId: string,
+		code: string,
+		descriptor: ToolDescriptor,
+	): Promise<{ id: string }>;
+	listChatIntegrations(): Promise<ChatIntegrationInfo[]>;
+	listProjectAgents(projectId: string, excludeAgentId: string): Promise<ProjectAgentSummary[]>;
+	/**
+	 * Every agent in the project (no exclude, no published-only filter), for
+	 * discovery flows like "which agents exist here?" Resolves a default
+	 * project when `projectId` is omitted (mirrors `listAttachableWorkflows`).
+	 * Scoped to `agent:read`.
+	 */
+	listAllProjectAgents(projectId?: string): Promise<ProjectAgentSummary[]>;
+	/** Live model ids for a credential, via the provider's chat-model node lookup (drives resolve_llm). */
+	listModels(
+		credentialId: string,
+		credentialType: string,
+		lookup: ModelLookupConfig,
+	): Promise<AgentModelOption[]>;
+	searchMcpServers(queries: string[]): Promise<McpServerSearchResult[]>;
+	verifyMcpServer(params: McpServerVerifyParams): Promise<McpServerVerifyResult>;
+	/**
+	 * Search the node catalog for agent-tool-capable nodes (host applies the tool
+	 * filter). Returns a pass-through result blob the tool relays to the model.
+	 */
+	searchNodes(queries: string[]): Promise<unknown>;
+	/**
+	 * Resolve a node parameter's live options (resourceLocator / loadOptionsMethod /
+	 * loadOptions routing) using the full credentials map. Returns a pass-through
+	 * result blob the tool relays to the model (host owns the dynamic-params runtime).
+	 */
+	resolveResourceLocatorOptions(params: ResolveResourceLocatorParams): Promise<unknown>;
+	/**
+	 * Workflows attachable as `type: "workflow"` tools (filtered to supported
+	 * triggers). Scoped to the caller's `workflow:read` access — it never returns
+	 * workflows the user cannot already see.
+	 */
+	listAttachableWorkflows(
+		projectId: string | undefined,
+		searchTerm?: string,
+	): Promise<AttachableWorkflow[]>;
+}
+
 // ── Local gateway status ─────────────────────────────────────────────────────
 
 export type LocalGatewayStatus =
@@ -732,12 +1005,28 @@ export type LocalGatewayStatus =
 
 export interface InstanceAiContext {
 	userId: string;
+	/**
+	 * Trace handle for the current agent run, threaded in from the orchestration
+	 * context. Lets domain tools (e.g. build-workflow) emit explicit child runs
+	 * that land on the active trace. Absent outside a traced run.
+	 */
+	tracing?: InstanceAiTraceContext;
 	projectId?: string;
 	workflowService: InstanceAiWorkflowService;
 	executionService: InstanceAiExecutionService;
 	credentialService: InstanceAiCredentialService;
 	nodeService: InstanceAiNodeService;
 	dataTableService: InstanceAiDataTableService;
+	/** Optional — present when the host wires config-based eval support. */
+	evaluationConfigService?: InstanceAiEvaluationConfigService;
+	/**
+	 * Host-backed agent-building operations. Present only when the instance
+	 * exposes agent-building (the agent-builder skill loads the deferred tools
+	 * that consume it). Undefined in pure-package / workflow-only contexts.
+	 */
+	agentBuilderService?: InstanceAiAgentBuilderService;
+	/** The target n8n Agent being built/edited. Required for agent-builder tools. */
+	agentBuilderTarget?: { agentId: string; projectId: string };
 	webResearchService?: InstanceAiWebResearchService;
 	/** Curated workflow-template provider — materializes `knowledge-base/templates/` in the sandbox. */
 	templatesService?: BuilderTemplatesService;
@@ -844,9 +1133,15 @@ export interface TaskStorage {
 
 // ── Planned task graphs ─────────────────────────────────────────────────────
 
-export const PLANNED_TASK_KINDS = ['delegate', 'build-workflow', 'checkpoint'] as const;
-export const STORED_PLANNED_TASK_KINDS = PLANNED_TASK_KINDS;
-export type PlannedTaskKind = (typeof STORED_PLANNED_TASK_KINDS)[number];
+export const PLANNED_TASK_KINDS = ['build-workflow', 'checkpoint'] as const;
+/** Legacy kinds still accepted when loading persisted graphs; failed at dispatch time. */
+export const LEGACY_PLANNED_TASK_KINDS = ['delegate'] as const;
+export const STORED_PLANNED_TASK_KINDS = [
+	...PLANNED_TASK_KINDS,
+	...LEGACY_PLANNED_TASK_KINDS,
+] as const;
+export type PlannedTaskKind = (typeof PLANNED_TASK_KINDS)[number];
+export type StoredPlannedTaskKind = (typeof STORED_PLANNED_TASK_KINDS)[number];
 
 export interface PlannedTask {
 	id: string;
@@ -854,7 +1149,6 @@ export interface PlannedTask {
 	kind: PlannedTaskKind;
 	spec: string;
 	deps: string[];
-	tools?: string[];
 	/** Existing workflow ID for build-workflow tasks that modify an existing workflow. */
 	workflowId?: string;
 	/**
@@ -867,7 +1161,8 @@ export interface PlannedTask {
 
 export type PlannedTaskStatus = 'planned' | 'running' | 'succeeded' | 'failed' | 'cancelled';
 
-export interface PlannedTaskRecord extends PlannedTask {
+export interface PlannedTaskRecord extends Omit<PlannedTask, 'kind'> {
+	kind: StoredPlannedTaskKind;
 	status: PlannedTaskStatus;
 	agentId?: string;
 	backgroundTaskId?: string;
@@ -995,7 +1290,7 @@ export type CheckpointSettleResult =
 	| {
 			ok: false;
 			reason: 'not-found' | 'wrong-kind' | 'wrong-status';
-			actual?: { kind?: PlannedTaskKind; status?: PlannedTaskStatus };
+			actual?: { kind?: StoredPlannedTaskKind; status?: PlannedTaskStatus };
 	  };
 
 // ── MCP ──────────────────────────────────────────────────────────────────────
@@ -1015,6 +1310,12 @@ export interface McpServerConfig {
 	 * in a custom `fetch` implementation).
 	 */
 	cacheKey?: string;
+	metadata?: {
+		/** Registry slug for Instance AI MCP registry servers. */
+		serverSlug?: string;
+		/** User who owns the registry MCP connection. */
+		userId?: string;
+	};
 }
 
 // ── Memory ───────────────────────────────────────────────────────────────────
@@ -1091,6 +1392,9 @@ export interface InstanceAiTraceRunInit {
 
 export interface InstanceAiTraceRunFinishOptions {
 	outputs?: unknown;
+	/** Skip structural sanitization for `outputs` — for pre-bounded machine payloads
+	 *  whose consumer needs lossless structure. Export-time scrubbing still applies. */
+	rawOutputs?: boolean;
 	metadata?: Record<string, unknown>;
 	error?: string;
 }
@@ -1129,6 +1433,9 @@ export interface InstanceAiTraceContext {
 		parentRun: InstanceAiTraceRun,
 		options: InstanceAiTraceRunInit,
 	) => Promise<InstanceAiTraceRun>;
+	/** False once the turn's trace runtime is shut down — runs created through a
+	 *  stale handle (e.g. a tool resumed in a later turn) export nothing. */
+	isLive?: () => boolean;
 	withRunTree: <T>(run: InstanceAiTraceRun, fn: () => Promise<T>) => Promise<T>;
 	withActiveSpan: <T>(run: InstanceAiTraceRun, fn: () => Promise<T>) => Promise<T>;
 	toHeaders: (run: InstanceAiTraceRun) => Record<string, string>;
@@ -1190,7 +1497,7 @@ export interface SpawnBackgroundTaskOptions {
 	/**
 	 * Link this background task to a running checkpoint in the planned-task
 	 * graph. Set when the orchestrator spawns a detached sub-agent (builder,
-	 * research, data-table, delegate) from inside a
+	 * research, data-table) from inside a
 	 * `<planned-task-follow-up type="checkpoint">` turn. The post-run safety
 	 * net defers failing the checkpoint while a child with this id is still
 	 * running, and settlement re-emits the checkpoint follow-up when the last
@@ -1231,7 +1538,7 @@ export interface WorkflowTaskService {
 	updateBuildOutcome(workItemId: string, update: Partial<WorkflowBuildOutcome>): Promise<void>;
 }
 
-// ── Orchestration context (plan + delegate tools) ───────────────────────────
+// ── Orchestration context (plan tools) ──────────────────────────────────────
 
 export interface OrchestrationContext {
 	threadId: string;
@@ -1242,7 +1549,6 @@ export interface OrchestrationContext {
 	orchestratorAgentId: string;
 	modelId: ModelConfig;
 	checkpointStore?: CheckpointStore;
-	subAgentMaxSteps: number;
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
 	/** Output-redaction policy for sub-agent streams: omit for the safe default, or `false` to disable. */

@@ -1,4 +1,4 @@
-import { formatPemBlock } from '@n8n/utils';
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import FormData from 'form-data';
 import get from 'lodash/get';
 import isPlainObject from 'lodash/isPlainObject';
@@ -313,4 +313,4 @@ export const getAllowedDomains = (
 	node: INode,
 	credentialData: ICredentialDataDecryptedObject,
 ): string | undefined =>
-	getCredentialAllowedDomains({ node, credentialData, surface: 'HTTP Request' });
+	getCredentialAllowedDomains({ node, credentialData, surface: 'HTTP Request or GraphQL' });

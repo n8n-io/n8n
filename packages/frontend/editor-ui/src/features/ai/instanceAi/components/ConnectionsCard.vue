@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { N8nButton, N8nDropdownMenu, N8nHeading, N8nIconButton } from '@n8n/design-system';
-import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nIconButton } from '@n8n/design-system';
+import type { IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
@@ -18,13 +18,16 @@ import { useInstanceAiMcpTelemetry } from '../instanceAiMcp.telemetry';
 import ConnectionRow, { ConnectionRowIcon } from './ConnectionRow.vue';
 import { iconForTool } from '../toolIcons';
 import type { McpRegistryServerIconResponse } from '@n8n/api-types';
+import {
+	BROWSER_USE_CONNECTION_TYPE,
+	COMPUTER_USE_CONNECTION_TYPE,
+	type BrowserUseConnectionType,
+	type ComputerUseConnectionType,
+} from '../constants';
 
-type SingletonConnectionType = 'computer-use' | 'browser-use';
+type SingletonConnectionType = ComputerUseConnectionType | BrowserUseConnectionType;
 type RowAction = 'connect' | 'disconnect' | 'settings' | 'remove';
 type ConnectionStatus = 'connected' | 'waiting' | 'disconnected';
-type AddConnectionType = SingletonConnectionType | 'mcp';
-
-type SidebarRowIcon = SingletonConnectionType | 'mcp';
 
 const i18n = useI18n();
 const uiStore = useUIStore();
@@ -42,8 +45,8 @@ const props = defineProps<{
 const isMcpEnabled = computed(() => isMcpFeatureEnabled.value && store.settings?.mcpAccessEnabled);
 const singletonConnections = computed(() => {
 	const filteredTypes: SingletonConnectionType[] = [];
-	if (!isBrowserUseEnabled.value) filteredTypes.push('browser-use');
-	if (!isComputerUseEnabled.value) filteredTypes.push('computer-use');
+	if (!isBrowserUseEnabled.value) filteredTypes.push(BROWSER_USE_CONNECTION_TYPE);
+	if (!isComputerUseEnabled.value) filteredTypes.push(COMPUTER_USE_CONNECTION_TYPE);
 	return !filteredTypes.length
 		? store.connections
 		: store.connections.filter(({ type }) => !filteredTypes.includes(type));
@@ -69,55 +72,28 @@ if (isMcpFeatureEnabled.value) {
 	void mcpStore.fetchConnections();
 }
 
-const ICON_MAP: Record<SidebarRowIcon, IconName> = {
-	'computer-use': 'mouse-pointer',
-	'browser-use': 'globe',
-	mcp: 'mcp',
+const ICON_MAP: Record<SingletonConnectionType, IconName> = {
+	[COMPUTER_USE_CONNECTION_TYPE]: 'mouse-pointer',
+	[BROWSER_USE_CONNECTION_TYPE]: 'globe',
 };
 
-const baseAddItems = computed<Array<DropdownMenuItemProps<AddConnectionType>>>(() => {
-	const items: Array<DropdownMenuItemProps<AddConnectionType>> = [];
-
-	if (isComputerUseEnabled.value) {
-		items.push({
-			id: 'computer-use',
-			label: i18n.baseText('instanceAi.connections.add.computerUse'),
-			icon: { type: 'icon', value: ICON_MAP['computer-use'] },
-		});
-	}
-
-	if (isMcpEnabled.value) {
-		items.push({
-			id: 'mcp',
-			label: i18n.baseText('instanceAi.connections.add.mcp'),
-			icon: { type: 'icon', value: ICON_MAP.mcp },
-		});
-	}
-
-	return items;
-});
-
-const addItems = computed<Array<DropdownMenuItemProps<AddConnectionType>>>(() => {
+const hasAddableComputerUse = computed(() => {
+	if (!isComputerUseEnabled.value) return false;
+	if (store.isLocalGatewayDisabledByAdmin) return false;
 	const addedSingletonConnections = new Set(
 		singletonConnections.value.map((connection) => connection.type),
 	);
-	return baseAddItems.value.filter((item) => {
-		if (item.id === 'computer-use') {
-			if (store.isLocalGatewayDisabledByAdmin) return false;
-			if (addedSingletonConnections.has(item.id)) return false;
-		}
-		return true;
-	});
+	return !addedSingletonConnections.has(COMPUTER_USE_CONNECTION_TYPE);
 });
 
-const hasAddableConnection = computed(() => addItems.value.length > 0);
+const hasAddableConnection = computed(() => isMcpEnabled.value || hasAddableComputerUse.value);
 const addConnectionLabel = computed(() => i18n.baseText('instanceAi.connections.add.label'));
 
 function getSingletonRowActions(
 	type: SingletonConnectionType,
 	status: ConnectionStatus,
 ): RowAction[] {
-	if (type === 'browser-use') {
+	if (type === BROWSER_USE_CONNECTION_TYPE) {
 		return status === 'connected' ? ['disconnect'] : ['connect'];
 	}
 	if (status === 'connected') return ['settings', 'disconnect', 'remove'];
@@ -134,14 +110,14 @@ function getIconForConnection(icons: McpRegistryServerIconResponse[]) {
 
 async function openSingletonModal(type: SingletonConnectionType) {
 	if (
-		type === 'computer-use' &&
+		type === COMPUTER_USE_CONNECTION_TYPE &&
 		!store.isLocalGatewayDisabledByAdmin &&
 		store.isLocalGatewayDisabled
 	) {
 		await store.persistLocalGatewayPreference(false);
 	}
 
-	if (type === 'computer-use') {
+	if (type === COMPUTER_USE_CONNECTION_TYPE) {
 		uiStore.openModal(INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY);
 	} else {
 		uiStore.openModal(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY);
@@ -149,30 +125,20 @@ async function openSingletonModal(type: SingletonConnectionType) {
 }
 
 function openToolsConnectionModal() {
-	mcpTelemetry.trackAddMenuMcpSelected();
-	mcpTelemetry.trackModalOpened();
+	mcpTelemetry.trackToolsListOpened();
 	uiStore.openModal(INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY);
 }
 
-function handleAddSelect(type: AddConnectionType) {
-	if (type === 'mcp') {
-		openToolsConnectionModal();
-		return;
-	}
-
-	void openSingletonModal(type);
-}
-
 async function handleSingletonDisconnect(type: SingletonConnectionType) {
-	if (type === 'computer-use') {
+	if (type === COMPUTER_USE_CONNECTION_TYPE) {
 		await store.disconnectComputerUse();
-	} else if (type === 'browser-use') {
+	} else if (type === BROWSER_USE_CONNECTION_TYPE) {
 		await store.disconnectBrowserUse();
 	}
 }
 
 async function handleSingletonRemove(type: SingletonConnectionType) {
-	if (type === 'computer-use') {
+	if (type === COMPUTER_USE_CONNECTION_TYPE) {
 		await store.removeComputerUse();
 	}
 }
@@ -186,7 +152,6 @@ function openMcpSettings(connectionId: string) {
 	if (connection) {
 		mcpTelemetry.trackSettingsOpened(connection.serverSlug);
 	}
-	mcpTelemetry.trackModalOpened();
 	uiStore.openModalWithData({
 		name: INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 		data: { connectionId },
@@ -201,23 +166,15 @@ function openMcpSettings(connectionId: string) {
 				{{ i18n.baseText('instanceAi.connections.title') }}
 			</N8nHeading>
 			<div v-if="hasAddableConnection" :class="$style.headerActions">
-				<N8nDropdownMenu
-					:items="addItems"
-					placement="bottom-end"
-					:portal-target="props.dropdownPortalTarget"
+				<N8nIconButton
+					icon="plus"
+					variant="ghost"
+					size="small"
+					icon-size="medium"
+					:aria-label="addConnectionLabel"
 					data-test-id="instance-ai-connections-add"
-					@select="handleAddSelect"
-				>
-					<template #trigger>
-						<N8nIconButton
-							icon="plus"
-							variant="ghost"
-							size="small"
-							icon-size="medium"
-							:aria-label="addConnectionLabel"
-						/>
-					</template>
-				</N8nDropdownMenu>
+					@click="openToolsConnectionModal()"
+				/>
 			</div>
 		</div>
 
@@ -251,21 +208,14 @@ function openMcpSettings(connectionId: string) {
 		</div>
 
 		<div v-else :class="$style.empty">
-			<span>{{
-				i18n.baseText(
-					isComputerUseEnabled
-						? 'instanceAi.connections.empty.title'
-						: 'instanceAi.connections.empty.titleNoComputerUse',
-				)
-			}}</span>
+			<span>{{ i18n.baseText('instanceAi.connections.empty.title') }}</span>
 			<N8nButton
-				v-if="isComputerUseEnabled"
+				v-if="hasAddableConnection"
 				:label="i18n.baseText('instanceAi.connections.empty.cta')"
 				variant="outline"
 				size="small"
-				:disabled="store.isLocalGatewayDisabledByAdmin"
 				data-test-id="instance-ai-connections-empty-cta"
-				@click="openSingletonModal('computer-use')"
+				@click="openToolsConnectionModal()"
 			/>
 		</div>
 	</div>
