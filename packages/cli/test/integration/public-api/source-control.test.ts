@@ -331,3 +331,136 @@ describe('POST /source-control/push (Public API)', () => {
 		expect(response.text).toBe('Git push failed');
 	});
 });
+
+describe('GET /source-control/status (Public API)', () => {
+	const testServer = setupTestServer({ endpointGroups: ['publicApi'] });
+	mockInstance(Telemetry);
+
+	let owner: User;
+
+	beforeAll(async () => {
+		owner = await createOwnerWithApiKey();
+	});
+
+	beforeEach(() => {
+		testServer.license.reset();
+		vi.restoreAllMocks();
+	});
+
+	const statusUrl = '/source-control/status';
+
+	const sourceControlledFileFixture = (id: string): SourceControlledFile => ({
+		file: `workflows/${id}.json`,
+		id,
+		name: `Workflow ${id}`,
+		type: 'workflow',
+		status: 'modified',
+		location: 'local',
+		conflict: false,
+		updatedAt: '2024-01-01T00:00:00.000Z',
+	});
+
+	const connectLicensed = () => {
+		testServer.license.enable('feat:sourceControl');
+		vi.spyOn(
+			Container.get(SourceControlPreferencesService),
+			'isSourceControlConnected',
+		).mockReturnValue(true);
+	};
+
+	it('should return 401 when API key is missing', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().get(statusUrl);
+
+		expect(response.status).toBe(401);
+		expect(response.body).toHaveProperty('message', "'X-N8N-API-KEY' header required");
+	});
+
+	it('should return 401 when API key is invalid', async () => {
+		const response = await testServer.publicApiAgentWithApiKey('not-a-real-api-key').get(statusUrl);
+
+		expect(response.status).toBe(401);
+		expect(response.body).toHaveProperty('message');
+	});
+
+	it('should return 403 when API key lacks the scope for the requested direction', async () => {
+		connectLicensed();
+		const member = await createMemberWithApiKey({ scopes: ['tag:list'] });
+
+		const response = await testServer.publicApiAgentFor(member).get(statusUrl);
+
+		expect(response.status).toBe(403);
+		expect(response.body).toEqual({ message: 'Forbidden' });
+	});
+
+	it('should return 401 when Source Control is not licensed', async () => {
+		const response = await testServer.publicApiAgentFor(owner).get(statusUrl);
+
+		expect(response.status).toBe(401);
+		expect(response.body).toEqual({
+			status: 'Error',
+			message: 'Source Control feature is not licensed',
+		});
+	});
+
+	it('should return 400 when licensed but Source Control is not connected', async () => {
+		testServer.license.enable('feat:sourceControl');
+
+		const response = await testServer.publicApiAgentFor(owner).get(statusUrl);
+
+		expect(response.status).toBe(400);
+		expect(response.body).toEqual({
+			status: 'Error',
+			message: 'Source Control is not connected to a repository',
+		});
+	});
+
+	it('should return 200 with the push diff by default', async () => {
+		connectLicensed();
+
+		const files = [sourceControlledFileFixture('wf-1'), sourceControlledFileFixture('wf-2')];
+		const statusSpy = vi
+			.spyOn(Container.get(SourceControlService), 'getStatus')
+			.mockResolvedValue(files);
+
+		const response = await testServer.publicApiAgentFor(owner).get(statusUrl);
+
+		expect(response.status).toBe(200);
+		expect(response.body).toEqual(files);
+		expect(statusSpy).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ direction: 'push', verbose: false }),
+		);
+	});
+
+	it('should compute the pull diff when direction=pull', async () => {
+		connectLicensed();
+
+		const statusSpy = vi
+			.spyOn(Container.get(SourceControlService), 'getStatus')
+			.mockResolvedValue([]);
+
+		const response = await testServer
+			.publicApiAgentFor(owner)
+			.get(statusUrl)
+			.query({ direction: 'pull' });
+
+		expect(response.status).toBe(200);
+		expect(statusSpy).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ direction: 'pull' }),
+		);
+	});
+
+	it('should return 400 as plain text when getStatus throws', async () => {
+		connectLicensed();
+
+		vi.spyOn(Container.get(SourceControlService), 'getStatus').mockRejectedValue(
+			new Error('Git status failed'),
+		);
+
+		const response = await testServer.publicApiAgentFor(owner).get(statusUrl);
+
+		expect(response.status).toBe(400);
+		expect(response.text).toBe('Git status failed');
+	});
+});

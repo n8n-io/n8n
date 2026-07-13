@@ -1,7 +1,9 @@
 import { PullWorkFolderRequestDto, PushWorkFolderRequestDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { ApiKeyScope } from '@n8n/permissions';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import {
 	getTrackingInformationFromPostPushResult,
@@ -9,15 +11,35 @@ import {
 	isSourceControlLicensed,
 } from '@/modules/source-control.ee/source-control-helper.ee';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
+import { SourceControlGetStatus } from '@/modules/source-control.ee/types/source-control-get-status';
 
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
-import { apiKeyHasScopeWithGlobalScopeFallback } from '../../shared/middlewares/global.middleware';
+import {
+	apiKeyHasScopeWithGlobalScopeFallback,
+	publicApiCompositeScope,
+} from '../../shared/middlewares/global.middleware';
 
 type SourceControlHandlers = {
 	pull: PublicAPIEndpoint<AuthenticatedRequest>;
 	push: PublicAPIEndpoint<AuthenticatedRequest>;
+	status: PublicAPIEndpoint<AuthenticatedRequest>;
 };
+
+// A status preview requires the scope for the direction it plans: reading a
+// push diff needs push, reading a pull diff needs pull. Enforced in-handler
+// because the required scope depends on the request's `direction`.
+const STATUS_SCOPES = 'sourceControl:pull,sourceControl:push';
+
+function assertStatusApiKeyScope(req: AuthenticatedRequest, direction: 'push' | 'pull') {
+	const apiKeyScopes = req.tokenGrant?.apiKeyScopes;
+	const requiredScope: ApiKeyScope =
+		direction === 'pull' ? 'sourceControl:pull' : 'sourceControl:push';
+	if (!apiKeyScopes?.includes(requiredScope)) {
+		throw new ForbiddenError('Forbidden');
+	}
+}
 
 const sourceControlHandlers: SourceControlHandlers = {
 	pull: [
@@ -94,6 +116,41 @@ const sourceControlHandlers: SourceControlHandlers = {
 					});
 				}
 				return res.status(result.statusCode).json({ files: result.statusResult, commit });
+			} catch (error) {
+				return res.status(400).send((error as { message: string }).message);
+			}
+		},
+	],
+
+	status: [
+		publicApiCompositeScope(STATUS_SCOPES),
+		async (req, res) => {
+			const sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
+			if (!isSourceControlLicensed()) {
+				return res
+					.status(401)
+					.json({ status: 'Error', message: 'Source Control feature is not licensed' });
+			}
+			if (!sourceControlPreferencesService.isSourceControlConnected()) {
+				return res
+					.status(400)
+					.json({ status: 'Error', message: 'Source Control is not connected to a repository' });
+			}
+
+			const direction = req.query.direction === 'pull' ? 'pull' : 'push';
+			assertStatusApiKeyScope(req, direction);
+			await Container.get(SourceControlScopedService).ensureIsAllowedToGetStatus(req);
+
+			try {
+				// Force a non-verbose diff so the response is a flat SourceControlledFile[]
+				// that maps directly onto the push endpoint's `fileNames` input.
+				const options = new SourceControlGetStatus({
+					direction,
+					preferLocalVersion: true,
+					verbose: false,
+				});
+				const files = await Container.get(SourceControlService).getStatus(req.user, options);
+				return res.status(200).json(files);
 			} catch (error) {
 				return res.status(400).send((error as { message: string }).message);
 			}

@@ -104,6 +104,8 @@ paths:
     $ref: './handlers/source-control/spec/paths/sourceControl.yml'
   /source-control/push:
     $ref: './handlers/source-control/spec/paths/sourceControlPush.yml'
+  /source-control/status:
+    $ref: './handlers/source-control/spec/paths/sourceControlStatus.yml'
   /variables:
     $ref: './handlers/variables/spec/paths/variables.yml'
   /variables/{id}:
