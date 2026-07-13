@@ -74,3 +74,36 @@ export async function buildWorkflowReferencingCredential({
 		parentFolder,
 	});
 }
+
+interface BuildWorkflowReferencingDataTablesOptions {
+	name: string;
+	project: Project;
+	references: Array<{ dataTableId: string; mode?: 'id' | 'list' }>;
+	parentFolder?: Folder;
+}
+
+export async function buildWorkflowReferencingDataTables({
+	name,
+	project,
+	references,
+	parentFolder,
+}: BuildWorkflowReferencingDataTablesOptions): Promise<WorkflowEntity> {
+	return await createWorkflow(
+		{
+			name,
+			nodes: references.map((reference, index) => ({
+				id: `n${index + 1}`,
+				name: `Data table ${index + 1}`,
+				type: 'n8n-nodes-base.dataTable',
+				typeVersion: 1,
+				position: [index * 100, 0],
+				parameters: {
+					dataTableId: { __rl: true, mode: reference.mode ?? 'id', value: reference.dataTableId },
+				},
+			})),
+			connections: {},
+			parentFolder,
+		},
+		project,
+	);
+}
