@@ -685,7 +685,7 @@ describe('parseAwsUrl', () => {
 		expect(parseAwsUrl(url)).toEqual({ service: 's3-fips', region: 'us-east-1' });
 	});
 
-	it('prefers the rightmost supported region when a bucket label is itself named like a region', () => {
+	it('prefers the rightmost region-shaped label when a bucket label is itself named like a region', () => {
 		const url = new URL('https://us-east-2.s3.us-east-1.amazonaws.com/key');
 		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: 'us-east-1' });
 	});
@@ -725,6 +725,16 @@ describe('parseAwsUrl', () => {
 		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: 'us-east-1' });
 	});
 
+	it('keeps dualstack as the service when it is the first label (no qualifier skip below index 0)', () => {
+		const url = new URL('https://dualstack.us-east-1.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'dualstack', region: 'us-east-1' });
+	});
+
+	it('lets a supported bucket label not shadow an unsupported label in the region slot', () => {
+		const url = new URL('https://us-east-1.s3.eu-central-9.amazonaws.com/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: 'eu-central-9' });
+	});
+
 	it('surfaces a mistyped region label via the shape fallback', () => {
 		const url = new URL('https://lambda.us-esat-1.amazonaws.com/');
 		expect(parseAwsUrl(url)).toEqual({ service: 'lambda', region: 'us-esat-1' });
@@ -738,6 +748,11 @@ describe('parseAwsUrl', () => {
 	it('surfaces a region-shaped label for a not-yet-supported region', () => {
 		const url = new URL('https://lambda.eu-central-9.amazonaws.com/');
 		expect(parseAwsUrl(url)).toEqual({ service: 'lambda', region: 'eu-central-9' });
+	});
+
+	it('surfaces a region-shaped label with a four-letter partition prefix', () => {
+		const url = new URL('https://lambda.eusc-de-east-1.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'lambda', region: 'eusc-de-east-1' });
 	});
 
 	it('returns a null region when the label is not region-shaped (missing-hyphen typo)', () => {
@@ -768,9 +783,9 @@ describe('parseAwsUrl', () => {
 
 describe('AWS_REGION_SHAPE_PATTERN', () => {
 	it('matches every supported region name', () => {
-		// Invariant: the shape fallback must be at least as wide as the supported list.
-		// If AWS ships a region with a new prefix shape, widen the pattern alongside
-		// regions.ts instead of letting the fallback silently degrade for that shape.
+		// Invariant: the pattern must match every supported region, since the scan in
+		// parseAwsUrl only considers region-shaped labels. If AWS ships a region with
+		// a new prefix shape, widen the pattern alongside regions.ts.
 		const nonMatching = regions
 			.filter((r) => !AWS_REGION_SHAPE_PATTERN.test(r.name))
 			.map((r) => r.name);
@@ -1104,6 +1119,22 @@ describe('awsGetSignInOptionsAndUpdateRequest', () => {
 			expect(signOpts.service).toBe('s3');
 			expect(signOpts.region).toBe('us-west-2');
 		});
+
+		it('signs an S3 Control host under the s3 service name', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://123456789012.s3-control.us-east-1.amazonaws.com/',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('s3');
+		});
 	});
 
 	describe('region labels that cannot be adopted on AWS endpoint hosts', () => {
@@ -1135,6 +1166,36 @@ describe('awsGetSignInOptionsAndUpdateRequest', () => {
 
 			expect(call).toThrow(UserError);
 			expect(call).toThrow('eu-central-9');
+		});
+
+		it('throws for an unsupported region slot even when a bucket label is a supported region', () => {
+			const call = () =>
+				awsGetSignInOptionsAndUpdateRequest(
+					{ uri: 'https://us-east-1.s3.eu-central-9.amazonaws.com/key', headers: {} } as any,
+					baseCredentials,
+					'',
+					'GET',
+					'',
+					'us-east-1',
+				);
+
+			expect(call).toThrow(UserError);
+			expect(call).toThrow('eu-central-9');
+		});
+
+		it('throws for a not-yet-supported region with a four-letter partition prefix', () => {
+			const call = () =>
+				awsGetSignInOptionsAndUpdateRequest(
+					{ uri: 'https://lambda.eusc-de-east-1.amazonaws.com/', headers: {} } as any,
+					baseCredentials,
+					'',
+					'GET',
+					'',
+					'us-east-1',
+				);
+
+			expect(call).toThrow(UserError);
+			expect(call).toThrow('eusc-de-east-1');
 		});
 
 		it.each(['https://lambda.us-east1.amazonaws.com/', 'https://foo.bar.amazonaws.com/'])(

@@ -66,9 +66,15 @@ function getAwsSigningService(service: string): string {
 	const baseService = service.replace(/-fips$/, '');
 	// Virtual-hosted-style S3 requests arrive as `<bucket>.s3` (the node builds the
 	// endpoint `<bucket>.s3.<region>.amazonaws.com`). They all sign under the `s3`
-	// signing name, as do S3 access-point endpoints (`s3-accesspoint`). aws4 derived
-	// this by inspecting the host; smithy does not, so we normalize it here.
-	if (baseService === 's3' || baseService === 's3-accesspoint' || baseService.endsWith('.s3')) {
+	// signing name, as do S3 access-point (`s3-accesspoint`) and S3 Control
+	// (`s3-control`) endpoints. aws4 derived this by inspecting the host; smithy
+	// does not, so we normalize it here.
+	if (
+		baseService === 's3' ||
+		baseService === 's3-accesspoint' ||
+		baseService === 's3-control' ||
+		baseService.endsWith('.s3')
+	) {
 		return 's3';
 	}
 	switch (baseService) {
@@ -218,11 +224,13 @@ export function assertSupportedAwsRegion(region: unknown): asserts region is AWS
 }
 
 /**
- * Shape of an AWS region label (`us-east-1`, `us-gov-west-1`). Fallback only:
- * lets a mistyped or not-yet-supported region reach the caller's validation
- * instead of being silently dropped.
+ * Shape of an AWS region label: a 2-4 letter partition prefix (`us`, `eusc`),
+ * one or more word components, and a numeric suffix (`us-east-1`,
+ * `us-gov-west-1`, `eusc-de-east-1`). Deliberately shape-only: a mistyped or
+ * not-yet-supported region must reach the caller's validation instead of
+ * being silently dropped.
  */
-export const AWS_REGION_SHAPE_PATTERN = /^[a-z]{2}(-[a-z]+)+-\d+$/;
+export const AWS_REGION_SHAPE_PATTERN = /^[a-z]{2,4}(-[a-z]+)+-\d+$/;
 
 /**
  * Parses an AWS service URL to extract the service name and region.
@@ -232,13 +240,13 @@ export const AWS_REGION_SHAPE_PATTERN = /^[a-z]{2}(-[a-z]+)+-\d+$/;
  * (`vpce-<id>.<service>.<region>.vpce.amazonaws.com`), which return their
  * positional service and region labels verbatim.
  *
- * On public endpoints the region is the rightmost hostname label that is a
- * supported AWS region, else the rightmost region-shaped label, else null.
- * The service is the label left of the region (skipping a `dualstack`
- * qualifier) when qualifier labels such as a bucket name or API id precede
- * it, otherwise the first label. The region is not validated against the
- * supported region list; callers must check it (e.g. with
- * {@link assertSupportedAwsRegion}) before using it for signing.
+ * On all other hostnames (public AWS endpoints and custom hosts) the region
+ * is the rightmost region-shaped label, or null when no label matches. The
+ * service is the label left of the region (skipping a `dualstack` qualifier)
+ * when qualifier labels such as a bucket name or API id precede it, otherwise
+ * the first label. The region is not validated against the supported region
+ * list; callers must check it (e.g. with {@link assertSupportedAwsRegion})
+ * before using it for signing.
  *
  * @param url - The AWS service URL to parse
  * @returns Object containing the service name and region (null for global services)
@@ -254,27 +262,25 @@ export function parseAwsUrl(url: URL): { region: string | null; service: string 
 	}
 	// Handle both .amazonaws.com and .amazonaws.com.cn domains
 	const labels = hostname.replace(/\.amazonaws\.com.*$/, '').split('.');
-	// AWS places the region closest to the domain suffix; dualstack/fips/access-point
-	// labels — and bucket names, which may themselves look like a region — sit further
-	// left. Scan right-to-left: prefer the rightmost supported region, else the
-	// rightmost region-shaped label so unknown regions still fail validation downstream.
-	const findRightmost = (test: (label: string) => boolean): string | null => {
-		for (let i = labels.length - 1; i >= 0; i--) {
-			if (test(labels[i])) return labels[i];
+	// The region is the rightmost region-shaped label: AWS puts the region closest to
+	// the domain suffix, and supported-ness is the caller's decision — checking it here
+	// would let a bucket/qualifier label that happens to be a known region shadow a
+	// mistyped or not-yet-supported label in the real region slot.
+	let regionIdx = -1;
+	for (let i = labels.length - 1; i >= 0; i--) {
+		if (AWS_REGION_SHAPE_PATTERN.test(labels[i])) {
+			regionIdx = i;
+			break;
 		}
-		return null;
-	};
-	const region =
-		findRightmost(isSupportedAwsRegion) ??
-		findRightmost((label) => AWS_REGION_SHAPE_PATTERN.test(label));
+	}
+	const region = regionIdx === -1 ? null : labels[regionIdx];
 	let service = labels[0];
-	const regionIdx = region ? labels.lastIndexOf(region) : -1;
 	if (regionIdx >= 2) {
 		// AWS hostnames place the service label immediately left of the region
 		// (qualifiers like bucket/API-id/access-point names sit further left);
 		// dual-stack endpoints interpose a 'dualstack' qualifier — skip it.
 		let serviceIdx = regionIdx - 1;
-		if (labels[serviceIdx] === 'dualstack' && serviceIdx > 0) serviceIdx--;
+		if (labels[serviceIdx] === 'dualstack') serviceIdx--;
 		service = labels[serviceIdx];
 	}
 	return { service, region };
