@@ -3129,7 +3129,6 @@
 	"settings.opentelemetry.unsavedChanges.saveAndLeave": "Save and leave",
 	"settings.mcp": "Instance-level MCP",
 	"settings.mcp.description": "Connect MCP clients like Claude Code and Cursor to build, run, and iterate on workflows in your instance",
-	"settings.mcp.preview.tooltip": "This feature is in preview. Expect improvements and changes over time.",
 	"settings.mcp.header.toggle.enabled": "Enabled",
 	"settings.mcp.header.toggle.disabled": "Disabled",
 	"settings.mcp.actionBox.heading": "Connect AI assistants to build and run workflows",
