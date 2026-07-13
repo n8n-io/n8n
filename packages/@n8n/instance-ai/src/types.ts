@@ -225,6 +225,25 @@ export interface NodeSummary {
 	description: string;
 	group: string[];
 	version: number;
+	/** Present when the node is reachable via n8n Connect on this instance. */
+	aiGateway?: AiGatewayNodeMeta;
+}
+
+/**
+ * Metadata about how a node is reachable via the AI Gateway (n8n Connect).
+ * Attached to node results only when the instance is licensed for the
+ * gateway AND the node is listed in the gateway config. Absence means either
+ * "not licensed" or "not supported" — consumers treat both the same.
+ *
+ * `operations` mirrors the gateway config's `supportedActions[nodeName]`:
+ * a map from resource name to allowed operations. Nodes without a resource
+ * dimension use the marker key `'__operation_only__'`.
+ */
+export interface AiGatewayNodeMeta {
+	supported: true;
+	operations?: Record<string, string[]>;
+	minVersion?: number;
+	hiddenProperties?: string[];
 }
 
 export interface NodeDescription extends NodeSummary {
@@ -247,6 +266,7 @@ export interface NodeDescription extends NodeSummary {
 	webhooks?: unknown[];
 	polling?: boolean;
 	triggerPanel?: unknown;
+	aiGateway?: AiGatewayNodeMeta;
 }
 
 // ── Service interfaces ───────────────────────────────────────────────────────
@@ -439,6 +459,8 @@ export interface InstanceAiCredentialService {
 	getAccountContext?(credentialId: string): Promise<{ accountIdentifier?: string }>;
 	/** Whether the given credential type is supported by AI Gateway. */
 	isAiGatewayCredentialType?(credType: string): Promise<boolean>;
+	/** List all credential types supported by n8n Connect on this instance. */
+	listAiGatewayCredentialTypes?(): Promise<string[]>;
 }
 
 export interface CredentialFieldInfo {
@@ -476,7 +498,7 @@ export interface ExploreResourcesResult {
 }
 
 export interface InstanceAiNodeService {
-	listAvailable(options?: { query?: string }): Promise<NodeSummary[]>;
+	listAvailable(options?: { query?: string; n8nConnectOnly?: boolean }): Promise<NodeSummary[]>;
 	getDescription(nodeType: string, version?: number): Promise<NodeDescription>;
 	/** Return all node types with the richer fields needed by NodeSearchEngine. */
 	listSearchable(): Promise<SearchableNodeDescription[]>;
@@ -535,6 +557,7 @@ export interface SearchableNodeDescription {
 		inputs?: Record<string, { required: boolean; displayOptions?: Record<string, unknown> }>;
 		outputs?: Record<string, { required?: boolean; displayOptions?: Record<string, unknown> }>;
 	};
+	aiGateway?: AiGatewayNodeMeta;
 }
 
 // ── Data table shapes ────────────────────────────────────────────────────────

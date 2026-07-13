@@ -215,6 +215,32 @@ export function assertSupportedAwsRegion(region: unknown): asserts region is AWS
 }
 
 /**
+ * Validates a user-supplied Bedrock endpoint override and returns the resolved URL.
+ * Substitutes the `{region}` placeholder after the region itself is validated, and
+ * requires an `http:`/`https:` scheme. The value is credential-holder-configured and
+ * treated as trusted; no host allow-listing / SSRF check is applied on this path.
+ *
+ * @throws {UserError} When the region is unsupported, the URL is malformed, or the scheme is not http/https.
+ */
+export function validateBedrockEndpointOverride(override: string, region: AWSRegion): string {
+	assertSupportedAwsRegion(region);
+	const resolved = override.replace(/\{region\}/g, region);
+	let url: URL;
+	try {
+		url = new URL(resolved);
+	} catch {
+		// Don't echo the raw value; it may contain URL userinfo (user:pass@host).
+		throw new UserError('Bedrock endpoint is not a valid URL');
+	}
+	if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+		throw new UserError('Bedrock endpoint must use the http or https scheme');
+	}
+	// Strip a trailing slash only: on the SDK client's `endpoint` it would serialize
+	// operation paths as `//model/...`. Everything else the user configured is preserved.
+	return url.toString().replace(/\/$/, '');
+}
+
+/**
  * Parses an AWS service URL to extract the service name and region.
  * Some AWS services are global and don't have a region. Recognizes both
  * public endpoints (`<service>.<region>.amazonaws.com`) and PrivateLink
@@ -357,6 +383,18 @@ export function awsGetSignInOptionsAndUpdateRequest(
 			// If no endpoint is set, we try to decompose the path and use the default endpoint
 			const customUrl = new URL(`${requestOptions.baseURL!}${requestOptions.url}${path}`);
 			({ service, region } = resolveServiceAndRegion(customUrl, service, region));
+			// Swap only the host: signing service and region stay derived from the default
+			// host above, so a custom endpoint can never change how the request is signed.
+			if (service === 'bedrock' && credentials.bedrockEndpoint) {
+				const override = new URL(
+					validateBedrockEndpointOverride(credentials.bedrockEndpoint, region),
+				);
+				customUrl.protocol = override.protocol;
+				customUrl.host = override.host;
+				if (override.pathname !== '/') {
+					customUrl.pathname = override.pathname.replace(/\/+$/, '') + customUrl.pathname;
+				}
+			}
 			if (service === 'sts') {
 				try {
 					customUrl.searchParams.set('Action', 'GetCallerIdentity');
