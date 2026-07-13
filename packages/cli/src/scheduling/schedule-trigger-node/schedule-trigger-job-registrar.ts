@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Schedule } from '@n8n/scheduler';
-import { computeFirstRunAt, scheduleFingerprint } from '@n8n/scheduler';
+import { computeFirstRunAt, scheduleFingerprint, validateSchedule } from '@n8n/scheduler';
 import type { Cron, INode, SchedulingFunctions, Workflow } from 'n8n-workflow';
 import { SCHEDULE_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
@@ -113,8 +113,14 @@ export class ScheduleTriggerJobRegistrar {
 				if (isDegenerateRecurrence(recurrence)) {
 					// The legacy engine never fires such a rule (its recurrence check
 					// rejects every tick), so mirror that as a job with no next run
-					// instead of failing an activation that used to succeed. No first
-					// run to compute: the row is stored clock-dead and never claimed.
+					// instead of failing an activation that used to succeed. The rule
+					// must still be well-formed: the legacy engine parses the
+					// expression/timezone at registration, before its recurrence check
+					// ever runs, so a malformed rule fails activation regardless of
+					// the gate. No first run to compute: the row is stored clock-dead
+					// and never claimed.
+					validateSchedule(schedule);
+
 					this.logger.warn(
 						'Schedule trigger rule has a non-positive recurrence interval; it will never fire',
 						{ workflowId: workflow.id, nodeId: node.id },

@@ -220,6 +220,24 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			).toThrow();
 		});
 
+		it('rejects an invalid cron expression even when the recurrence gate makes the rule never fire', () => {
+			// The legacy engine parses the expression at registration, before its
+			// recurrence check ever runs, so a malformed rule fails activation
+			// regardless of the gate; the clock-dead shortcut must not skip that.
+			const registrar = makeRegistrar();
+			const collector = registrar.createCollector(workflow, scheduleNode);
+
+			expect(() =>
+				collector.registerCron(
+					{
+						expression: '99 99 99 * * *' as CronExpression,
+						recurrence: { activated: true, index: 0, intervalSize: 0, typeInterval: 'weeks' },
+					},
+					vi.fn(),
+				),
+			).toThrow();
+		});
+
 		it('mirrors a never-firing legacy rule (zero interval) as a job with no next run', async () => {
 			const registrar = makeRegistrar();
 			const collector = registrar.createCollector(workflow, scheduleNode);
