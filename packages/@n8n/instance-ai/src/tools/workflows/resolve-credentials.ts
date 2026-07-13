@@ -9,7 +9,11 @@
 
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
+import { AI_GATEWAY_CREDENTIAL, N8N_CONNECT_DISPLAY_NAME } from './credential-utils';
+import type { ResolvedCredential } from './resolved-credential.schema';
 import type { InstanceAiContext } from '../../types';
+
+export type { ResolvedCredential };
 
 /** Flat credential entry — preserves duplicates of the same type. */
 export interface CredentialEntry {
@@ -45,14 +49,6 @@ export async function buildCredentialMap(
 	return map;
 }
 
-/** A credential the resolver attached to a node without an explicit id in the source. */
-export interface ResolvedCredential {
-	/** Credential type key on the node, e.g. "openAiApi". */
-	type: string;
-	id: string;
-	name: string;
-}
-
 /** Result of credential resolution — mock metadata for the simulation plan. */
 export interface CredentialResolutionResult {
 	/** Node names whose credentials were mocked. */
@@ -77,14 +73,28 @@ export interface CredentialResolutionResult {
 export function buildCredentialResolutionNote(
 	resolvedCredentialsByNode: Record<string, ResolvedCredential[]>,
 ): string | undefined {
-	const parts: string[] = [];
+	const storedParts: string[] = [];
+	const gatewayParts: string[] = [];
 	for (const [nodeName, resolved] of Object.entries(resolvedCredentialsByNode)) {
 		for (const credential of resolved) {
-			parts.push(`"${credential.name}" (${credential.type}) on node "${nodeName}"`);
+			const label = `(${credential.type}) on node "${nodeName}"`;
+			if (credential.id === null) gatewayParts.push(label);
+			else storedParts.push(`"${credential.name}" ${label}`);
 		}
 	}
-	if (parts.length === 0) return undefined;
-	return `Connected existing credential(s) automatically: ${parts.join('; ')}. These are already set up — do not ask the user to connect or create them, and do not route them to credential setup.`;
+	if (storedParts.length === 0 && gatewayParts.length === 0) return undefined;
+
+	const sentences: string[] = [];
+	if (storedParts.length > 0) {
+		sentences.push(`Connected existing credential(s) automatically: ${storedParts.join('; ')}.`);
+	}
+	if (gatewayParts.length > 0) {
+		sentences.push(`Using n8n Connect (zero-setup) for: ${gatewayParts.join('; ')}.`);
+	}
+	sentences.push(
+		'These are already set up — do not ask the user to connect or create them, and do not route them to credential setup.',
+	);
+	return sentences.join(' ');
 }
 
 /**
@@ -108,6 +118,19 @@ export async function resolveCredentials(
 	const mockedCredentialTypesSet = new Set<string>();
 	const mockedCredentialsByNode: Record<string, string[]> = {};
 	const resolvedCredentialsByNode: Record<string, ResolvedCredential[]> = {};
+
+	// n8n Connect support is process-global config; memoize per type for this call.
+	const gatewaySupportCache = new Map<string, boolean>();
+	const isGatewayCredentialType = async (credType: string): Promise<boolean> => {
+		if (!ctx.credentialService.isAiGatewayCredentialType) return false;
+		const cached = gatewaySupportCache.get(credType);
+		if (cached !== undefined) return cached;
+		const supported = await ctx.credentialService
+			.isAiGatewayCredentialType(credType)
+			.catch(() => false);
+		gatewaySupportCache.set(credType, supported);
+		return supported;
+	};
 
 	// Build a map of existing credentials by node name (for updates)
 	const existingCredsByNode = new Map<string, Record<string, unknown>>();
@@ -171,6 +194,37 @@ export async function resolveCredentials(
 				}
 			};
 
+			// Wire n8n Connect: attach the managed marker so the saved workflow runs
+			// zero-setup in production, and record it as resolved so the agent treats
+			// the node as connected (no credential-setup routing). The node stays in
+			// the simulation set (`nodeMocked`) so verification pins it instead of
+			// spending gateway quota, but it is NOT added to `mockedCredentialsByNode`
+			// — that channel means "needs a real credential", which this node doesn't.
+			const attachGatewayCredential = () => {
+				creds[key] = { ...AI_GATEWAY_CREDENTIAL, name: N8N_CONNECT_DISPLAY_NAME };
+				nodeMocked = true;
+				if (node.name) {
+					resolvedCredentialsByNode[node.name] ??= [];
+					resolvedCredentialsByNode[node.name].push({
+						type: key,
+						id: null,
+						name: N8N_CONNECT_DISPLAY_NAME,
+						__aiGatewayManaged: true,
+					});
+				}
+			};
+
+			// Prefer n8n Connect over mocking when the type is gateway-supported and
+			// the user has no stored credential of their own for it.
+			const mockOrAttachGateway = async () => {
+				const hasStored = (availableCredentials?.get(key)?.length ?? 0) > 0;
+				if (!hasStored && (await isGatewayCredentialType(key))) {
+					attachGatewayCredential();
+					return;
+				}
+				mockCredential();
+			};
+
 			if (value !== undefined && value !== null) {
 				if (isKnownCredentialForType(value, key, availableCredentials)) {
 					cleanupMockPinData(json, node.name);
@@ -179,7 +233,7 @@ export async function resolveCredentials(
 				if (restoreExistingCredential()) {
 					continue;
 				}
-				mockCredential();
+				await mockOrAttachGateway();
 				continue;
 			}
 
@@ -196,11 +250,10 @@ export async function resolveCredentials(
 				continue;
 			}
 
-			// Mock — remove the credential key and produce sidecar verification data.
-			// The credential key is deleted so the saved workflow doesn't reference a
-			// non-existent credential. Verification pin data is produced so the execution
-			// engine can skip this node during test runs.
-			mockCredential();
+			// No stored credential and not gateway-supported — mock: remove the
+			// credential key and produce sidecar verification data so the execution
+			// engine skips this node during test runs.
+			await mockOrAttachGateway();
 		}
 
 		if (nodeMocked && node.name) {

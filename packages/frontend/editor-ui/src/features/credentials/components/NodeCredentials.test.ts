@@ -31,6 +31,7 @@ import {
 
 const trackMock = vi.hoisted(() => vi.fn());
 const authorizeMock = vi.hoisted(() => vi.fn().mockResolvedValue(true));
+const n8nCreditsCredentialSelectionEnabled = vi.hoisted(() => ({ value: false }));
 
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: trackMock }),
@@ -56,6 +57,12 @@ vi.mock('@/app/composables/useAiGateway', () => ({
 		fetchConfig: vi.fn().mockResolvedValue(undefined),
 		fetchWallet: vi.fn().mockResolvedValue(undefined),
 		saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+	})),
+}));
+
+vi.mock('@/experiments/n8nCreditsCredentialSelection', () => ({
+	useN8nCreditsCredentialSelectionExperiment: vi.fn(() => ({
+		isFeatureEnabled: n8nCreditsCredentialSelectionEnabled,
 	})),
 }));
 
@@ -175,6 +182,7 @@ describe('NodeCredentials', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		n8nCreditsCredentialSelectionEnabled.value = false;
 
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
@@ -553,6 +561,31 @@ describe('NodeCredentials', () => {
 				},
 				currentNodeName: 'OpenAI no creds',
 				type: 'openAiApi',
+			});
+		});
+
+		it("emits 'Node credential assigned' with source user and kind own on manual selection", async () => {
+			const openAiNodeWithCred: INodeUi = {
+				...openAiNodeNoCreds,
+				credentials: { openAiApi: { id: 'c8vqdPpPClh4TgIO', name: 'OpenAi account' } },
+			};
+			ndvStore.activeNode = openAiNodeWithCred;
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential(),
+				secondCred: createCredential({ id: 'secondCred', name: 'OpenAi account 2' }),
+			};
+
+			renderComponent({ props: { node: openAiNodeWithCred } }, { merge: true });
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+			await userEvent.click(screen.getByText('OpenAi account 2'));
+
+			expect(trackMock).toHaveBeenCalledWith('Node credential assigned', {
+				credential_type: 'openAiApi',
+				node_type: openAiNodeWithCred.type,
+				workflow_id: expect.any(String),
+				credential_kind: 'own',
+				source: 'user',
 			});
 		});
 	});
@@ -1563,6 +1596,57 @@ describe('NodeCredentials', () => {
 			});
 		});
 
+		it('should not auto-enable gateway credential when the credential selection experiment is enabled', () => {
+			n8nCreditsCredentialSelectionEnabled.value = true;
+			credentialsStore.state.credentials = {};
+			const nodeWithAction: INodeUi = {
+				...googleAiNode,
+				parameters: { resource: 'chat', operation: 'message' },
+			};
+			ndvStore.activeNode = nodeWithAction;
+
+			const { emitted } = renderComponent({
+				props: { node: nodeWithAction, overrideCredType: 'googlePalmApi' },
+				global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
+			});
+
+			expect(emitted('credentialSelected')).toBeFalsy();
+		});
+
+		it('should auto-select an own credential when one is available', () => {
+			const ownCred = {
+				id: 'cred-1',
+				name: 'My Google Key',
+				type: 'googlePalmApi',
+				isManaged: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+			};
+			credentialsStore.state.credentials = { 'cred-1': ownCred };
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(ownCred);
+
+			const nodeWithoutCred: INodeUi = {
+				...googleAiNode,
+				credentials: {},
+				parameters: { resource: 'chat', operation: 'message' },
+			};
+			ndvStore.activeNode = nodeWithoutCred;
+
+			const { emitted } = renderComponent({
+				props: { node: nodeWithoutCred, overrideCredType: 'googlePalmApi' },
+				global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
+			});
+
+			expect(emitted('credentialSelected')).toBeTruthy();
+			const payload = ((emitted('credentialSelected')[0] as unknown[]) ?? [])[0] as {
+				properties: { credentials: Record<string, unknown> };
+			};
+			expect(payload.properties.credentials['googlePalmApi']).toEqual({
+				id: 'cred-1',
+				name: 'My Google Key',
+			});
+		});
+
 		it('should not auto-enable gateway credential on mount when the current action is unsupported', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: computed(() => true),
@@ -1752,9 +1836,21 @@ describe('NodeCredentials', () => {
 					mode: 'n8n_connect',
 					workflow_id: expect.any(String),
 				});
+				expect(trackMock).toHaveBeenCalledWith('Node credential assigned', {
+					credential_type: 'googlePalmApi',
+					node_type: googleAiNode.type,
+					workflow_id: expect.any(String),
+					credential_kind: 'n8n_connect',
+					source: 'user',
+				});
 			});
 
 			it('should track telemetry with mode "own" when toggled OFF by user', async () => {
+				// A stored credential exists, so toggling off restores it (BYOK) rather
+				// than clearing the slot.
+				credentialsStore.state.credentials = {
+					'palm-1': createCredential({ id: 'palm-1', name: 'My Palm', type: 'googlePalmApi' }),
+				};
 				const nodeWithGateway: INodeUi = {
 					...googleAiNode,
 					credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
@@ -1774,6 +1870,33 @@ describe('NodeCredentials', () => {
 					mode: 'own',
 					workflow_id: expect.any(String),
 				});
+				expect(trackMock).toHaveBeenCalledWith('Node credential assigned', {
+					credential_type: 'googlePalmApi',
+					node_type: googleAiNode.type,
+					workflow_id: expect.any(String),
+					credential_kind: 'own',
+					source: 'user',
+				});
+			});
+
+			it('does not track "Node credential assigned" when toggling off clears the slot', async () => {
+				// No stored credential to restore → the slot is deleted, so no BYOK
+				// assignment should be recorded (only the toggle event fires).
+				credentialsStore.state.credentials = {};
+				const nodeWithGateway: INodeUi = {
+					...googleAiNode,
+					credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
+				};
+				ndvStore.activeNode = nodeWithGateway;
+
+				renderComponent({
+					props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' },
+					global: { stubs: { AiGatewaySelector: toggleOffStub } },
+				});
+
+				await userEvent.click(screen.getByTestId('ai-gateway-toggle-off'));
+
+				expect(trackMock).not.toHaveBeenCalledWith('Node credential assigned', expect.anything());
 			});
 
 			it('should not track telemetry when toggled ON automatically on mount', () => {
@@ -1789,6 +1912,22 @@ describe('NodeCredentials', () => {
 					'User toggled n8n connect credential',
 					expect.anything(),
 				);
+				expect(trackMock).not.toHaveBeenCalledWith('Node credential assigned', expect.anything());
+			});
+
+			it('does not emit "Node credential assigned" in standalone mode (backend attributes it)', async () => {
+				ndvStore.activeNode = googleAiNode;
+
+				renderComponent({
+					props: { node: googleAiNode, overrideCredType: 'googlePalmApi', standalone: true },
+					global: { stubs: { AiGatewaySelector: toggleOnStub } },
+				});
+
+				await userEvent.click(screen.getByTestId('ai-gateway-toggle-on'));
+
+				// The Instance AI setup card hosts NodeCredentials in standalone mode;
+				// the confirmed selection is counted server-side as source: 'instance-ai-*'.
+				expect(trackMock).not.toHaveBeenCalledWith('Node credential assigned', expect.anything());
 			});
 		});
 
