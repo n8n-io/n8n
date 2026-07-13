@@ -1,4 +1,4 @@
-import { shallowRef, ref, computed } from 'vue';
+import { shallowRef, ref, computed, nextTick } from 'vue';
 import { describe, it, vi, beforeEach } from 'vitest';
 import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -31,6 +31,7 @@ import {
 
 const trackMock = vi.hoisted(() => vi.fn());
 const authorizeMock = vi.hoisted(() => vi.fn().mockResolvedValue(true));
+const n8nCreditsCredentialSelectionEnabled = vi.hoisted(() => ({ value: false }));
 
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: trackMock }),
@@ -56,6 +57,12 @@ vi.mock('@/app/composables/useAiGateway', () => ({
 		fetchConfig: vi.fn().mockResolvedValue(undefined),
 		fetchWallet: vi.fn().mockResolvedValue(undefined),
 		saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+	})),
+}));
+
+vi.mock('@/experiments/n8nCreditsCredentialSelection', () => ({
+	useN8nCreditsCredentialSelectionExperiment: vi.fn(() => ({
+		isFeatureEnabled: n8nCreditsCredentialSelectionEnabled,
 	})),
 }));
 
@@ -175,6 +182,7 @@ describe('NodeCredentials', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		n8nCreditsCredentialSelectionEnabled.value = false;
 
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
@@ -1530,6 +1538,192 @@ describe('NodeCredentials', () => {
 				name: '',
 				__aiGatewayManaged: true,
 			});
+		});
+
+		it('should auto-enable gateway credential on mount when the current action is supported', () => {
+			credentialsStore.state.credentials = {};
+			const nodeWithAction: INodeUi = {
+				...googleAiNode,
+				parameters: { resource: 'chat', operation: 'message' },
+			};
+			ndvStore.activeNode = nodeWithAction;
+
+			const { emitted } = renderComponent({
+				props: { node: nodeWithAction, overrideCredType: 'googlePalmApi' },
+				global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
+			});
+
+			expect(emitted('credentialSelected')).toBeTruthy();
+			const payload = ((emitted('credentialSelected')[0] as unknown[]) ?? [])[0] as {
+				properties: { credentials: Record<string, unknown> };
+			};
+			expect(payload.properties.credentials['googlePalmApi']).toEqual({
+				id: null,
+				name: '',
+				__aiGatewayManaged: true,
+			});
+		});
+
+		it('should not auto-enable gateway credential when the credential selection experiment is enabled', () => {
+			n8nCreditsCredentialSelectionEnabled.value = true;
+			credentialsStore.state.credentials = {};
+			const nodeWithAction: INodeUi = {
+				...googleAiNode,
+				parameters: { resource: 'chat', operation: 'message' },
+			};
+			ndvStore.activeNode = nodeWithAction;
+
+			const { emitted } = renderComponent({
+				props: { node: nodeWithAction, overrideCredType: 'googlePalmApi' },
+				global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
+			});
+
+			expect(emitted('credentialSelected')).toBeFalsy();
+		});
+
+		it('should auto-select an own credential when one is available', () => {
+			const ownCred = {
+				id: 'cred-1',
+				name: 'My Google Key',
+				type: 'googlePalmApi',
+				isManaged: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+			};
+			credentialsStore.state.credentials = { 'cred-1': ownCred };
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(ownCred);
+
+			const nodeWithoutCred: INodeUi = {
+				...googleAiNode,
+				credentials: {},
+				parameters: { resource: 'chat', operation: 'message' },
+			};
+			ndvStore.activeNode = nodeWithoutCred;
+
+			const { emitted } = renderComponent({
+				props: { node: nodeWithoutCred, overrideCredType: 'googlePalmApi' },
+				global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
+			});
+
+			expect(emitted('credentialSelected')).toBeTruthy();
+			const payload = ((emitted('credentialSelected')[0] as unknown[]) ?? [])[0] as {
+				properties: { credentials: Record<string, unknown> };
+			};
+			expect(payload.properties.credentials['googlePalmApi']).toEqual({
+				id: 'cred-1',
+				name: 'My Google Key',
+			});
+		});
+
+		it('should not auto-enable gateway credential on mount when the current action is unsupported', () => {
+			vi.mocked(useAiGateway).mockReturnValue({
+				isEnabled: computed(() => true),
+				isCredentialTypeSupported: vi.fn((credType: string) => credType === 'googlePalmApi'),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+				isActionSupported: vi.fn(() => false),
+				isActionOptionVisible: vi.fn(() => true),
+				isNodePropertyHidden: vi.fn(() => false),
+				balance: computed(() => undefined),
+				budget: computed(() => undefined),
+				fetchConfig: vi.fn().mockResolvedValue(undefined),
+				fetchWallet: vi.fn().mockResolvedValue(undefined),
+				saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+				fetchError: computed(() => null),
+			});
+			credentialsStore.state.credentials = {};
+			const nodeWithAction: INodeUi = {
+				...googleAiNode,
+				parameters: { resource: 'chat', operation: 'unsupportedOp' },
+			};
+			ndvStore.activeNode = nodeWithAction;
+
+			const { emitted } = renderComponent({
+				props: { node: nodeWithAction, overrideCredType: 'googlePalmApi' },
+				global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
+			});
+
+			expect(emitted('credentialSelected')).toBeFalsy();
+		});
+
+		it('should not redirect an empty node onto n8n Connect when a supported action is picked later', async () => {
+			credentialsStore.state.credentials = {};
+			const nodeWithAction: INodeUi = {
+				...googleAiNode,
+				parameters: { resource: 'chat', operation: 'message' },
+				credentials: {},
+			};
+			ndvStore.activeNode = nodeWithAction;
+
+			const { emitted } = renderComponent({
+				props: { node: nodeWithAction, overrideCredType: 'googlePalmApi' },
+				global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
+			});
+
+			const gatewayEmitCount = () =>
+				(
+					(emitted('credentialSelected') ?? []) as Array<
+						[{ properties: { credentials: Record<string, { __aiGatewayManaged?: boolean }> } }]
+					>
+				).filter((e) => e[0]?.properties?.credentials?.googlePalmApi?.__aiGatewayManaged === true)
+					.length;
+
+			// n8n Connect is auto-selected once, as the initial default.
+			expect(gatewayEmitCount()).toBe(1);
+
+			// Re-trigger the credential-options watch, as changing the action would.
+			credentialsStore.state.credentials = {
+				other: { id: 'other', name: 'Other', type: 'otherApi' } as never,
+			};
+			await nextTick();
+
+			// The action change must not redirect the user back onto n8n Connect.
+			expect(gatewayEmitCount()).toBe(1);
+		});
+
+		it('should not switch a user-selected own credential to n8n Connect when the action changes', async () => {
+			const ownCred = {
+				id: 'cred-1',
+				name: 'My Google Key',
+				type: 'googlePalmApi',
+				isManaged: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+			};
+			credentialsStore.state.credentials = { 'cred-1': ownCred };
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(ownCred);
+
+			const nodeWithOwnCred: INodeUi = {
+				...googleAiNode,
+				parameters: { resource: 'scrape', operation: 'scrape' },
+				credentials: { googlePalmApi: { id: 'cred-1', name: 'My Google Key' } },
+			};
+			ndvStore.activeNode = nodeWithOwnCred;
+
+			const { emitted } = renderComponent({
+				props: { node: nodeWithOwnCred, overrideCredType: 'googlePalmApi' },
+				global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
+			});
+
+			const gatewayEmitCount = () =>
+				(
+					(emitted('credentialSelected') ?? []) as Array<
+						[{ properties: { credentials: Record<string, { __aiGatewayManaged?: boolean }> } }]
+					>
+				).filter((e) => e[0]?.properties?.credentials?.googlePalmApi?.__aiGatewayManaged === true)
+					.length;
+
+			// The own credential is kept as-is; n8n Connect is never auto-selected.
+			expect(gatewayEmitCount()).toBe(0);
+
+			// Re-trigger the credential-options watch, as changing the action would.
+			credentialsStore.state.credentials = {
+				'cred-1': ownCred,
+				other: { id: 'other', name: 'Other', type: 'otherApi' } as never,
+			};
+			await nextTick();
+
+			// Still no switch to n8n Connect after the re-evaluation.
+			expect(gatewayEmitCount()).toBe(0);
 		});
 
 		it('should emit credentialSelected restoring credentials when toggled OFF with available credentials', async () => {

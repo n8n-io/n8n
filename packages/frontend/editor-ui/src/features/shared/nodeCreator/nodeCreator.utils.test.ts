@@ -5,12 +5,16 @@ import type {
 	SimplifiedNodeType,
 } from '@/Interface';
 import {
+	extractAiGatewaySection,
 	finalizeItems,
 	formatTriggerActionName,
 	filterAndSearchNodes,
 	groupItemsInSections,
+	matchesAliasForConnectBoost,
 	prepareCommunityNodeDetailsViewStack,
 	removeTrailingTrigger,
+	searchNodes,
+	showsAiGatewaySection,
 	sortNodeCreateElements,
 	shouldShowCommunityNodeDetails,
 	getHumanInTheLoopActions,
@@ -31,8 +35,9 @@ import { createTestingPinia } from '@pinia/testing';
 
 import { mock } from 'vitest-mock-extended';
 import type { ViewStack } from './composables/useViewStacks';
-import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import {
+	DEFAULT_SUBCATEGORY,
 	DISCORD_NODE_TYPE,
 	MICROSOFT_TEAMS_NODE_TYPE,
 	AI_CATEGORY_OTHER_TOOLS,
@@ -43,6 +48,8 @@ import {
 	AI_SUBCATEGORY,
 	HITL_SUBCATEGORY,
 	HUMAN_IN_THE_LOOP_CATEGORY,
+	REGULAR_NODE_CREATOR_VIEW,
+	TRIGGER_NODE_CREATOR_VIEW,
 } from '@/app/constants';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -779,7 +786,7 @@ describe('NodeCreator - utils', () => {
 
 		it('should show Free credits badge when latest version meets the minimum', () => {
 			const [result] = finalizeItems([makeGatewayNode()]) as NodeCreateElement[];
-			expect(result.properties.tag).toEqual({ text: expect.any(String), pill: true });
+			expect(result.properties.tag).toEqual({ text: 'Free credits', pill: true });
 		});
 
 		it('should suppress Free credits badge when latest version is below the minimum', () => {
@@ -850,6 +857,271 @@ describe('NodeCreator - utils', () => {
 
 			const [result] = finalizeItems([makeGatewayNode('unknownTool')]) as NodeCreateElement[];
 			expect(result.properties.tag).toBeUndefined();
+		});
+	});
+
+	describe('showsAiGatewaySection', () => {
+		it.each<[string, ViewStack, boolean]>([
+			['Language Models list', { connectionType: NodeConnectionTypes.AiLanguageModel }, true],
+			[
+				'nodes panel "Action in an app"',
+				{ rootView: REGULAR_NODE_CREATOR_VIEW, subcategory: DEFAULT_SUBCATEGORY },
+				true,
+			],
+			['tools panel "Action in an app"', { subcategory: AI_CATEGORY_OTHER_TOOLS }, true],
+			[
+				'trigger panel "On app event"',
+				{ rootView: TRIGGER_NODE_CREATOR_VIEW, subcategory: DEFAULT_SUBCATEGORY },
+				false,
+			],
+			[
+				'any view while searching',
+				{ connectionType: NodeConnectionTypes.AiLanguageModel, search: 'gpt' },
+				false,
+			],
+			['unrelated subcategory', { subcategory: AI_CATEGORY_VECTOR_STORES }, false],
+		])('%s -> %s', (_, stack, expected) => {
+			expect(showsAiGatewaySection(stack)).toBe(expected);
+		});
+
+		it('should return false without a stack', () => {
+			expect(showsAiGatewaySection(undefined)).toBe(false);
+		});
+	});
+
+	describe('extractAiGatewaySection', () => {
+		const makeNode = (name: string) => mockNodeCreateElement({ key: name }, { name });
+
+		beforeEach(() => {
+			vi.mocked(useSettingsStore).mockReturnValue({
+				isAiGatewayEnabled: true,
+			} as unknown as ReturnType<typeof useSettingsStore>);
+			vi.mocked(useAiGatewayStore).mockReturnValue({
+				isNodeSupported: vi.fn((name: string) => name.startsWith('supported')),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+			} as unknown as ReturnType<typeof useAiGatewayStore>);
+			vi.mocked(useNodeTypesStore).mockReturnValue({
+				getNodeVersions: vi.fn(() => [1]),
+			} as unknown as ReturnType<typeof useNodeTypesStore>);
+		});
+
+		it('should split gateway-supported nodes into an Included in n8n section', () => {
+			const supported = makeNode('supportedNode');
+			const other = makeNode('otherNode');
+
+			const result = extractAiGatewaySection([supported, other]);
+
+			expect(result).not.toBeNull();
+			expect(result?.section.key).toBe('n8nConnect');
+			expect(result?.section.title).toBe('Included in n8n');
+			expect(result?.section.trailing).toBe('creditsBalance');
+			expect(result?.section.showSeparator).toBe(true);
+			expect(result?.section.children.map((child) => child.key)).toEqual(['supportedNode']);
+			expect(result?.rest).toEqual([other]);
+		});
+
+		it('should tag section children with the Free credits pill', () => {
+			const result = extractAiGatewaySection([makeNode('supportedNode')]);
+			const [child] = result?.section.children as NodeCreateElement[];
+			expect(child.properties.tag).toEqual({ text: 'Free credits', pill: true });
+		});
+
+		it('should return null when no node is gateway-supported', () => {
+			expect(extractAiGatewaySection([makeNode('otherNode')])).toBeNull();
+		});
+
+		it('should return null when the gateway is disabled', () => {
+			vi.mocked(useSettingsStore).mockReturnValue({
+				isAiGatewayEnabled: false,
+			} as unknown as ReturnType<typeof useSettingsStore>);
+
+			expect(extractAiGatewaySection([makeNode('supportedNode')])).toBeNull();
+		});
+	});
+
+	describe('matchesAliasForConnectBoost', () => {
+		it('should match an exact alias', () => {
+			expect(matchesAliasForConnectBoost('scrape', ['scrape'])).toBe(true);
+		});
+
+		it('should match an exact alias below 3 characters', () => {
+			expect(matchesAliasForConnectBoost('ai', ['ai'])).toBe(true);
+		});
+
+		it('should match case-insensitively', () => {
+			expect(matchesAliasForConnectBoost('SCRAPE', ['Scrape'])).toBe(true);
+		});
+
+		it('should match a whole-alias prefix of 3+ characters', () => {
+			expect(matchesAliasForConnectBoost('scr', ['scrape'])).toBe(true);
+			expect(matchesAliasForConnectBoost('scra', ['scrape'])).toBe(true);
+		});
+
+		it('should not match a partial prefix below 3 characters', () => {
+			expect(matchesAliasForConnectBoost('sc', ['scrape'])).toBe(false);
+		});
+
+		it('should match an alias-token prefix', () => {
+			expect(matchesAliasForConnectBoost('pdf', ['pdf parser'])).toBe(true);
+			expect(matchesAliasForConnectBoost('pars', ['pdf parser'])).toBe(true);
+		});
+
+		it('should not match a fuzzy subsequence', () => {
+			// 'shee' appears in-order in 'search engine' but no token starts with it
+			expect(matchesAliasForConnectBoost('shee', ['search engine'])).toBe(false);
+		});
+
+		it('should not match an empty query', () => {
+			expect(matchesAliasForConnectBoost('', ['scrape'])).toBe(false);
+		});
+
+		// The 3-char threshold exists specifically so short aliases like `ocr` and
+		// `pdf` stay boostable while 1-2 char partials remain noise-free.
+		it.each<[string, string[], boolean]>([
+			['serp', ['serp'], true],
+			['fetch', ['fetch'], true],
+			['browse', ['browser', 'browse'], true],
+			['ocr', ['ocr'], true],
+			['pdf', ['pdf', 'parse'], true],
+			['scrap', ['scrape'], true],
+			['inv', ['invoice'], true],
+			['invoice', ['pdf', 'extract', 'ocr', 'invoice', 'scan', 'parse'], true],
+			['oc', ['ocr'], false],
+			['pd', ['pdf'], false],
+		])('matches "%s" against %j -> %s', (query, aliases, expected) => {
+			expect(matchesAliasForConnectBoost(query, aliases)).toBe(expected);
+		});
+	});
+
+	describe('searchNodes - n8n Connect boost', () => {
+		const makeNode = (name: string, displayName: string, alias: string[] = []) =>
+			mockNodeCreateElement(
+				{ key: name },
+				{ name, displayName, codex: { categories: [], subcategories: {}, alias } },
+			);
+
+		const mockStores = ({
+			gatewayEnabled = true,
+			supportedNodes = [] as string[],
+			versionSupported = true,
+		} = {}) => {
+			vi.mocked(useSettingsStore).mockReturnValue({
+				isAskAiEnabled: true,
+				isAiGatewayEnabled: gatewayEnabled,
+			} as unknown as ReturnType<typeof useSettingsStore>);
+			vi.mocked(useAiGatewayStore).mockReturnValue({
+				isNodeSupported: vi.fn((name: string) => supportedNodes.includes(name)),
+				isNodeTypeVersionSupported: vi.fn(() => versionSupported),
+			} as unknown as ReturnType<typeof useAiGatewayStore>);
+			vi.mocked(useNodeTypesStore).mockReturnValue({
+				getNodeVersions: vi.fn(() => [1]),
+			} as unknown as ReturnType<typeof useNodeTypesStore>);
+		};
+
+		// Two nodes with the same alias: without the boost the earlier item wins
+		// the tie, so connect ranking first proves the boost was applied.
+		const plainNode = makeNode('plainNode', 'Plain Node', ['scrape']);
+		const connectNode = makeNode('connectNode', 'Connect Node', ['scrape']);
+
+		it('should rank a Connect node above an equal non-Connect match on alias prefix', () => {
+			mockStores({ supportedNodes: ['connectNode'] });
+
+			const result = searchNodes('scra', [plainNode, connectNode]);
+			expect(result.map((item) => item.key)).toEqual(['connectNode', 'plainNode']);
+		});
+
+		it('should not boost when the gateway is disabled', () => {
+			mockStores({ gatewayEnabled: false, supportedNodes: ['connectNode'] });
+
+			const result = searchNodes('scra', [plainNode, connectNode]);
+			expect(result.map((item) => item.key)).toEqual(['plainNode', 'connectNode']);
+		});
+
+		it('should not boost a node missing from the gateway config', () => {
+			mockStores({ supportedNodes: [] });
+
+			const result = searchNodes('scra', [plainNode, connectNode]);
+			expect(result.map((item) => item.key)).toEqual(['plainNode', 'connectNode']);
+		});
+
+		it('should not boost a node whose latest version is below the gateway minimum', () => {
+			mockStores({ supportedNodes: ['connectNode'], versionSupported: false });
+
+			const result = searchNodes('scra', [plainNode, connectNode]);
+			expect(result.map((item) => item.key)).toEqual(['plainNode', 'connectNode']);
+		});
+
+		it('should boost a Tool-suffixed node via its base name', () => {
+			mockStores({ supportedNodes: ['connect'] });
+			const plainTool = makeNode('plainTool', 'Plain Tool', ['scrape']);
+			const connectTool = makeNode('connectTool', 'Connect Tool', ['scrape']);
+
+			const result = searchNodes('scra', [plainTool, connectTool]);
+			expect(result.map((item) => item.key)).toEqual(['connectTool', 'plainTool']);
+		});
+
+		it('should not boost on a fuzzy subsequence match and keep the intent match on top', () => {
+			mockStores({ supportedNodes: ['firecrawl'] });
+			const sheets = makeNode('googleSheets', 'Google Sheets');
+			const firecrawl = makeNode('firecrawl', 'Firecrawl', ['search engine']);
+
+			const result = searchNodes('shee', [firecrawl, sheets]);
+			expect(result[0].key).toEqual('googleSheets');
+		});
+
+		// The boost must apply to both core and community nodes as long as they are
+		// listed as AI Gateway-supported.
+		it('should boost both core and community Connect nodes above a non-Connect node', () => {
+			const core = makeNode('n8n-nodes-base.brave', 'Brave', ['serp']);
+			const community = makeNode('@mendable/n8n-nodes-firecrawl.firecrawl', 'Firecrawl', ['serp']);
+			const plain = makeNode('plainNode', 'Plain Node', ['serp']);
+			mockStores({ supportedNodes: [core.key, community.key] });
+
+			const keys = searchNodes('serp', [plain, core, community]).map((item) => item.key);
+
+			expect(keys[2]).toBe('plainNode');
+			expect(keys.slice(0, 2)).toEqual(expect.arrayContaining([core.key, community.key]));
+		});
+
+		it('should not boost a supported node that has no alias metadata', () => {
+			mockStores({ supportedNodes: ['connectNoAlias'] });
+			// codex present but without an `alias` array exercises the `?? []` fallback:
+			// with no aliases there is nothing to match, so no boost is applied.
+			const connectNoAlias = mockNodeCreateElement(
+				{ key: 'connectNoAlias' },
+				{
+					name: 'connectNoAlias',
+					displayName: 'Scrape Tool',
+					codex: { categories: [], subcategories: {} },
+				},
+			);
+			const plain = mockNodeCreateElement(
+				{ key: 'plainNode' },
+				{
+					name: 'plainNode',
+					displayName: 'Scrape Tool',
+					codex: { categories: [], subcategories: {} },
+				},
+			);
+
+			const keys = searchNodes('scrape', [plain, connectNoAlias]).map((item) => item.key);
+			expect(keys).toEqual(['plainNode', 'connectNoAlias']);
+		});
+
+		it('should not boost non-node items even when their name is gateway-supported', () => {
+			mockStores({ supportedNodes: ['connectAction'] });
+			const plain = makeNode('plainNode', 'Serp Tool', ['serp']);
+			// An action element that matches by alias and is "supported": the type guard
+			// must skip it, so it is never boosted above the (unboosted) node.
+			const action = mockActionCreateElement(undefined, {
+				name: 'connectAction',
+				displayName: 'Serp Action',
+				codex: { label: 'Serp', categories: [], alias: ['serp'] },
+			} as unknown as Partial<ActionTypeDescription>);
+			action.key = 'connectAction';
+
+			const keys = searchNodes('serp', [plain, action]).map((item) => item.key);
+			expect(keys[0]).toBe('plainNode');
 		});
 	});
 

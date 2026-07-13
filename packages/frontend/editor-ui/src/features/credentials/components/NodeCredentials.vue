@@ -48,6 +48,7 @@ import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import CredentialPrivateConnectionRow from './CredentialPrivateConnectionRow.vue';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import AiGatewaySelector from '@/app/components/AiGatewaySelector.vue';
+import { useN8nCreditsCredentialSelectionExperiment } from '@/experiments/n8nCreditsCredentialSelection';
 
 import {
 	N8nButton,
@@ -133,6 +134,8 @@ const { canOAuthCredentialQuickConnect, hasManualCredentialInputFields, authoriz
 	useCredentialOAuth();
 
 const aiGateway = useAiGateway();
+const { isFeatureEnabled: shouldShowOwnCredentialFirst } =
+	useN8nCreditsCredentialSelectionExperiment();
 const hideAskAssistant = computed(() => props.hideAskAssistant || isToolContext);
 
 const canCreateCredentials = computed(
@@ -248,6 +251,16 @@ const isDefaultResolver = computed(() => {
 	return !resolverId || resolverId === SYSTEM_RESOLVER_ID;
 });
 
+// Nodes without an operation selected are treated as supported so gateway
+// auto-selection still works for operation-agnostic nodes.
+const isCurrentActionSupported = computed(() => {
+	const params = props.node.parameters;
+	const operation = params.operation as string | undefined;
+	if (!operation) return true;
+	const resource = params.resource as string | undefined;
+	return aiGateway.isActionSupported(node.value.type, resource, operation);
+});
+
 watch(
 	() => props.node.parameters,
 	(newValue, oldValue) => {
@@ -272,11 +285,17 @@ watch(
 	{ immediate: true, deep: true },
 );
 
+let hasEvaluatedCredentials = false;
+
 // Select most recent credential by default
 watch(
 	credentialTypesNodeDescriptionDisplayed,
 	(types) => {
 		if (props.skipAutoSelect) return;
+		if (types.length === 0) return;
+
+		const isInitialEvaluation = !hasEvaluatedCredentials;
+		hasEvaluatedCredentials = true;
 
 		if (
 			aiGateway.isEnabled.value &&
@@ -289,17 +308,20 @@ watch(
 			}
 		}
 
-		if (types.length === 0 || !isEmpty(selected.value)) return;
+		if (!isEmpty(selected.value)) return;
 
 		const allOptions = types.map((type) => type.options).flat();
 
 		if (allOptions.length === 0) {
-			// No credentials configured — auto-enable AI Gateway for supported types
-			if (aiGateway.isEnabled.value) {
+			// No credentials configured — auto-enable AI Gateway for supported types,
+			// but only on the initial setup so a later action change doesn't redirect
+			// the user onto n8n credits. The experiment variant leaves it unselected.
+			if (aiGateway.isEnabled.value && isInitialEvaluation && !shouldShowOwnCredentialFirst.value) {
 				for (const { type } of types) {
 					if (
 						aiGateway.isCredentialTypeSupported(type.name) &&
-						aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion)
+						aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion) &&
+						isCurrentActionSupported.value
 					) {
 						onAiGatewaySelector(type.name, true, false);
 					}

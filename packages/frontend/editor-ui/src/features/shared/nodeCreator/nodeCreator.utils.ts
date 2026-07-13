@@ -28,6 +28,7 @@ import {
 	HUMAN_IN_THE_LOOP_CATEGORY,
 	MICROSOFT_TEAMS_NODE_TYPE,
 	RECOMMENDED_NODES,
+	REGULAR_NODE_CREATOR_VIEW,
 } from '@/app/constants';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -45,7 +46,7 @@ import type { NodeIconSource } from '@/app/utils/nodeIcon';
 import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { INodeOutputConfiguration, NodeConnectionType } from 'n8n-workflow';
-import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { CommunityNodeDetails, ViewStack } from './composables/useViewStacks';
 
 const COMMUNITY_NODE_TYPE_PREVIEW_TOKEN = '-preview';
@@ -129,6 +130,84 @@ export function removeTrailingTrigger(searchFilter: string) {
 	return searchFilter;
 }
 
+// Modest on purpose: high-confidence matches on other nodes should still win.
+const AI_GATEWAY_SEARCH_BOOST = 75;
+const AI_GATEWAY_BOOST_MIN_QUERY_LENGTH = 3;
+
+/**
+ * 1. exact alias match (any query length): `scrape` -> `scrape`
+ * 2. whole-alias prefix match at 3+ chars: `scra` -> `scrape`
+ * 3. alias-token prefix match at 3+ chars: `pdf` -> `pdf parser`
+ */
+export function matchesAliasForConnectBoost(query: string, aliases: string[]): boolean {
+	const queryLower = query.toLowerCase();
+
+	return aliases.some((alias) => {
+		const aliasLower = alias.toLowerCase();
+
+		if (aliasLower === queryLower) return true;
+
+		if (queryLower.length < AI_GATEWAY_BOOST_MIN_QUERY_LENGTH) return false;
+
+		if (aliasLower.startsWith(queryLower)) return true;
+
+		return aliasLower.split(/\s+/).some((token) => token.startsWith(queryLower));
+	});
+}
+
+function stripAiGatewayToolSuffix(nodeName: string): string {
+	return nodeName.replace(/HitlTool$/, '').replace(/Tool$/, '');
+}
+
+function isAiGatewayEligibleNode(nodeName: string): boolean {
+	if (!useSettingsStore().isAiGatewayEnabled) return false;
+
+	const aiGatewayStore = useAiGatewayStore();
+	const baseName = stripAiGatewayToolSuffix(nodeName);
+	const candidates = [
+		nodeName,
+		baseName,
+		removePreviewToken(nodeName),
+		removePreviewToken(baseName),
+	];
+	const supportedName = candidates.find((n) => aiGatewayStore.isNodeSupported(n));
+	if (!supportedName) return false;
+
+	return aiGatewayStore.isNodeTypeVersionSupported(
+		supportedName,
+		getLatestKnownVersion(supportedName),
+	);
+}
+
+function getLatestKnownVersion(nodeName: string): number {
+	const nodeTypesStore = useNodeTypesStore();
+	const versions = nodeTypesStore.getNodeVersions(nodeName);
+	if (versions.length > 0) return Math.max(...versions);
+
+	const communityVersion = nodeTypesStore.communityNodeType(nodeName)?.nodeDescription?.version;
+	if (Array.isArray(communityVersion)) return Math.max(...communityVersion);
+	return communityVersion ?? 1;
+}
+
+function getAiGatewaySearchBoosts(
+	query: string,
+	items: INodeCreateElement[],
+): Record<string, number> {
+	if (query === '' || !useSettingsStore().isAiGatewayEnabled) return {};
+
+	const boosts: Record<string, number> = {};
+	for (const item of items) {
+		if (item.type !== 'node') continue;
+
+		const aliases = item.properties.codex?.alias ?? [];
+		if (!matchesAliasForConnectBoost(query, aliases)) continue;
+		if (!isAiGatewayEligibleNode(item.properties.name)) continue;
+
+		boosts[item.key] = AI_GATEWAY_SEARCH_BOOST;
+	}
+	return boosts;
+}
+
 export function searchNodes(
 	searchFilter: string,
 	items: INodeCreateElement[],
@@ -145,7 +224,15 @@ export function searchNodes(
 	// Please update the snapshots per the README next to the snapshots if you modify items significantly.
 	const searchResults = sublimeSearch<INodeCreateElement>(trimmedFilter, items) || [];
 
-	const reRankedResults = reRankSearchResults(searchResults, additionalFactors);
+	const aiGatewayBoost = getAiGatewaySearchBoosts(
+		trimmedFilter,
+		searchResults.map(({ item }) => item),
+	);
+
+	const reRankedResults = reRankSearchResults(searchResults, {
+		...additionalFactors,
+		aiGatewayBoost,
+	});
 
 	return reRankedResults.map(({ item }) => item);
 }
@@ -290,6 +377,51 @@ export const removePreviewToken = (key: string) =>
 
 export const isNodePreviewKey = (key = '') => key.includes(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN);
 
+/**
+ * Whether the given view stack should render the "n8n Connect" section at the
+ * top. Never shown while searching — search results stay a flat ranked list.
+ */
+export function showsAiGatewaySection(stack: ViewStack | undefined): boolean {
+	if (!stack || stack.search) return false;
+	return (
+		// Language Models list
+		stack.connectionType === NodeConnectionTypes.AiLanguageModel ||
+		// Nodes panel > "Action in an app"
+		(stack.rootView === REGULAR_NODE_CREATOR_VIEW && stack.subcategory === DEFAULT_SUBCATEGORY) ||
+		// Tools panel > "Action in an app"
+		stack.subcategory === AI_CATEGORY_OTHER_TOOLS
+	);
+}
+
+/**
+ * Splits AI gateway-supported nodes out of `items` into a dedicated "n8n Connect"
+ * section (rendered at the top with the wallet balance in its header).
+ * Returns null when there is nothing to extract.
+ */
+export function extractAiGatewaySection(
+	items: INodeCreateElement[],
+): { section: SectionCreateElement; rest: INodeCreateElement[] } | null {
+	const supported: INodeCreateElement[] = [];
+	const rest: INodeCreateElement[] = [];
+	for (const item of items) {
+		const isSupported = item.type === 'node' && isAiGatewayEligibleNode(item.properties.name);
+		(isSupported ? supported : rest).push(item);
+	}
+	if (supported.length === 0) return null;
+
+	return {
+		section: {
+			type: 'section',
+			key: 'n8nConnect',
+			title: i18n.baseText('nodeCreator.sectionNames.includedInN8n'),
+			children: finalizeItems(sortNodeCreateElements(supported)),
+			showSeparator: true,
+			trailing: 'creditsBalance',
+		},
+		rest,
+	};
+}
+
 function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 	if (element.type !== 'node') return element;
 
@@ -313,24 +445,11 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 			type: 'info',
 			text: i18n.baseText('generic.betaProper'),
 		};
-	} else if (useSettingsStore().isAiGatewayEnabled) {
-		const aiGatewayStore = useAiGatewayStore();
-		// Tool-variant node types carry a "Tool" suffix (e.g. "llamaParsePlatformTool"),
-		// but the gateway config lists the base name ("llamaParsePlatform").
-		const baseName = element.properties.name.replace(/Tool$/, '');
-		const supportedName = [element.properties.name, baseName].find((n) =>
-			aiGatewayStore.isNodeSupported(n),
-		);
-		if (supportedName) {
-			const versions = useNodeTypesStore().getNodeVersions(supportedName);
-			const latestVersion = versions.length > 0 ? Math.max(...versions) : 1;
-			if (aiGatewayStore.isNodeTypeVersionSupported(supportedName, latestVersion)) {
-				element.properties.tag = {
-					text: i18n.baseText('generic.freeCredits'),
-					pill: true,
-				};
-			}
-		}
+	} else if (isAiGatewayEligibleNode(element.properties.name)) {
+		element.properties.tag = {
+			text: i18n.baseText('generic.freeCredits'),
+			pill: true,
+		};
 	}
 
 	return element;
