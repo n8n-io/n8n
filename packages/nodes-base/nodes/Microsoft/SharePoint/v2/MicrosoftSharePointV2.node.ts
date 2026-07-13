@@ -2,8 +2,8 @@ import type { INodeType, INodeTypeBaseDescription, INodeTypeDescription } from '
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 // Graph-based v2 rebuild in progress; actions, transport, and pickers arrive
-// in follow-up tickets (ENT-179+). Not registered yet — uncomment the
-// registration in MicrosoftSharePoint.node.ts to test locally.
+// in follow-up tickets. Not registered yet — uncomment the registration in
+// MicrosoftSharePoint.node.ts to test locally.
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Microsoft SharePoint',
 	name: 'microsoftSharePoint',
