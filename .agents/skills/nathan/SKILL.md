@@ -27,11 +27,33 @@ the same commands from the repo via `pnpm nathan`.
   mkdir -p ~/.n8n && printf '%s\n' '<PASTED_TOKEN>' > ~/.n8n/nathan-token && chmod 600 ~/.n8n/nathan-token
   ```
 
-## Offer a test instance after a PR
+## Offer a test instance
 
-After you open a PR, **offer the user a live test instance for the branch.** Don't
-just ask a bare yes/no — look at the diff and **propose a sensible profile**, then
-let them confirm or adjust. For example:
+### Only when it's worth it
+
+Use judgement — don't offer for every branch. **Offer** when the change is
+something a person would actually want to click through in a running instance:
+
+- New features / feature branches
+- UI / editor changes, node changes, workflow-execution or behaviour changes
+- Larger or user-facing diffs
+
+**Skip the offer** (a test instance adds nothing) for:
+
+- Dev tooling, CI, build config, scripts (like this one)
+- Docs-only or tests-only changes
+- Tiny bug fixes, no-behaviour-change refactors, dependency bumps
+
+When skipping, don't nag — at most mention once that a test instance is available
+on request.
+
+### Offer after opening a PR, and re-offer on push
+
+After you open a PR for a branch that warrants it, **offer a live test instance.**
+Also **re-offer whenever you `git push` new commits** to such a branch — the
+deployed instance reflects the pushed code, so a new push means a new build worth
+redeploying. Don't just ask a bare yes/no — look at the diff and **propose a
+sensible profile**, then let them confirm or adjust. For example:
 
 > "Want a test instance for this? Based on the diff I'd deploy it with instance AI
 > enabled (`--ai`) since it touches the AI assistant. Sound good, or a different
