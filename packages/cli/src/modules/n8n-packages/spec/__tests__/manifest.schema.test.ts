@@ -45,6 +45,20 @@ describe('packageManifestSchema', () => {
 		expect(() => packageManifestSchema.parse(manifest)).toThrow(/duplicate credential id/i);
 	});
 
+	it('rejects duplicate data table ids in requirements.dataTables', () => {
+		const manifest = {
+			...validManifest,
+			requirements: {
+				dataTables: [
+					{ id: 'dt-1', name: 'A', sourceProjectId: 'proj-1', usedByWorkflows: ['wf-abc'] },
+					{ id: 'dt-1', name: 'B', sourceProjectId: 'proj-1', usedByWorkflows: ['wf-abc'] },
+				],
+			},
+		};
+
+		expect(() => packageManifestSchema.parse(manifest)).toThrow(/duplicate data table id/i);
+	});
+
 	it('preserves a folders section', () => {
 		const manifest = {
 			...validManifest,

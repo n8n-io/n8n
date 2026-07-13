@@ -286,6 +286,91 @@ describe('executeResumableStream', () => {
 		expect(secondText?.responseId).toBe('agent-run-1:step:2');
 	});
 
+	it('mints a synthetic per-segment responseId when the provider supplies none', async () => {
+		const eventBus = createEventBus();
+
+		// No start-step chunks at all; some providers never emit them. Deltas
+		// must still carry a responseId (segment identity keys the run reducer's
+		// block replace semantics), one per contiguous delta run.
+		await executeResumableStream({
+			agent: {},
+			stream: {
+				runId: 'agent-run-1',
+				fullStream: fromChunks([
+					textChunk('First'),
+					textChunk(' segment'),
+					{
+						type: 'tool-call',
+						toolCallId: 'tool-call-1',
+						toolName: 'test-tool',
+						input: {},
+					},
+					textChunk('Second segment'),
+				]),
+			},
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus,
+				signal: new AbortController().signal,
+				logger: createLogger(),
+			},
+			control: { mode: 'manual' },
+		});
+
+		const publishedEvents = eventBus.publish.mock.calls.map(([, event]) => event as PublishedEvent);
+		// The output redactor may merge contiguous deltas, so match by prefix.
+		const first = publishedEvents.find((event) => event.payload?.text?.startsWith('First'));
+		const toolCall = publishedEvents.find((event) => event.type === 'tool-call');
+		const second = publishedEvents.find((event) => event.payload?.text === 'Second segment');
+
+		expect(first?.responseId).toBeDefined();
+		// Sticky for the whole segment (the closing structural fact inherits it,
+		// mirroring provider-supplied step ids)...
+		expect(toolCall?.responseId).toBe(first?.responseId);
+		// ...and rolled after it, so two segments never share an id.
+		expect(second?.responseId).toBeDefined();
+		expect(second?.responseId).not.toBe(first?.responseId);
+	});
+
+	it('rolls the synthetic responseId at a finish-step boundary that maps to no event', async () => {
+		const eventBus = createEventBus();
+
+		// finish-step publishes nothing, but it still separates two segments; a
+		// sticky synthetic id across it would let the reducer's id-keyed replace
+		// pair blocks from different steps.
+		await executeResumableStream({
+			agent: {},
+			stream: {
+				runId: 'agent-run-1',
+				fullStream: fromChunks([
+					textChunk('First step text'),
+					{ type: 'finish-step' },
+					textChunk('Second step text'),
+				]),
+			},
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus,
+				signal: new AbortController().signal,
+				logger: createLogger(),
+			},
+			control: { mode: 'manual' },
+		});
+
+		const publishedEvents = eventBus.publish.mock.calls.map(([, event]) => event as PublishedEvent);
+		// The output redactor may merge contiguous deltas, so match by prefix.
+		const first = publishedEvents.find((event) => event.payload?.text?.startsWith('First'));
+		const second = publishedEvents.find((event) => event.payload?.text?.startsWith('Second'));
+
+		expect(first?.responseId).toBeDefined();
+		expect(second?.responseId).toBeDefined();
+		expect(second?.responseId).not.toBe(first?.responseId);
+	});
+
 	it('stops consuming after a requested handoff while publishing the current tool result', async () => {
 		const eventBus = createEventBus();
 		let shouldStop = false;
@@ -402,6 +487,9 @@ describe('executeResumableStream', () => {
 			'thread-1',
 			expect.objectContaining({
 				type: 'text-delta',
+				// Correction lines are their own segments: each carries a unique
+				// synthetic responseId so the reducer never merges them.
+				responseId: expect.stringContaining(':correction:') as string,
 				payload: { text: '\n[USER CORRECTION]: Prefer Slack instead of email\n' },
 			}),
 		);
