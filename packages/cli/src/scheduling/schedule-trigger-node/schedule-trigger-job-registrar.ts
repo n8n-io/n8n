@@ -201,14 +201,15 @@ export class ScheduleTriggerJobRegistrar {
 	 * - A second/minute cadence becomes an `interval` job in `new` mode (a steady
 	 *   elapsed-time cadence); in `legacy` mode it stays the node's plain cron so
 	 *   fires remain clock-aligned.
-	 * - An every-Nth-period calendar cadence (`recurrence.activated`, stride >= 2)
-	 *   becomes a `recurring_cron` job: the node's cron anchor plus the gate.
-	 * - Everything else — a stride-1 calendar cadence and a raw cron field — is a
+	 * - "Every N days/weeks/months" with N >= 2 becomes a `recurring_cron` job:
+	 *   the cron expression names the candidate instants and the job fires on
+	 *   every Nth of them.
+	 * - Everything else — "every 1 day/week/month" and a raw cron field — is a
 	 *   plain `cron` job.
 	 *
 	 * @param expression The node's cron expression (the anchor for calendar cadences).
 	 * @param timezone The rule's timezone, or `null` for the instance default.
-	 * @param recurrence The node's every-Nth-period gate, if any.
+	 * @param recurrence The node's "every N periods" setting; `intervalSize` is that N.
 	 * @param source Which field drove the cadence (`seconds`/`minutes`) and its size.
 	 * @returns The chosen scheduler {@link Schedule} for this rule.
 	 */
@@ -227,6 +228,12 @@ export class ScheduleTriggerJobRegistrar {
 			return { kind: 'interval', intervalSeconds };
 		}
 
+		// `intervalSize` is the N in the node's "every N days/weeks/months". Only
+		// N >= 2 needs the recurring_cron wrapper: with N = 1 every candidate
+		// instant fires, which the cron expression alone already expresses (the
+		// engine rejects a recurrenceSize of 1 to keep one representation per
+		// rule). N = 0/NaN never fires (see isDegenerateRecurrence) and a negative
+		// N fires on every instant in the legacy engine; both are plain crons here.
 		if (recurrence?.activated && recurrence.intervalSize >= 2) {
 			return {
 				kind: 'recurring_cron',
