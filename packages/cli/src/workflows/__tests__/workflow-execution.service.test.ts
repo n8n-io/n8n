@@ -417,9 +417,11 @@ describe('WorkflowExecutionService', () => {
 				dirtyNodeNames: [],
 			} as WorkflowRequest.ManualRunPayload;
 
-			jest
-				.spyOn(nodeTypes, 'getByNameAndVersion')
-				.mockReturnValueOnce(mock<INodeType>({ description: { group: [] } }));
+			// Not jest.spyOn/vi.spyOn: the mock proxy exposes mock methods
+			// directly, keeping this test agnostic of the test runner
+			nodeTypes.getByNameAndVersion.mockReturnValueOnce(
+				mock<INodeType>({ description: { group: [] } }),
+			);
 			workflowRunner.run.mockResolvedValue(executionId);
 
 			const result = await workflowExecutionService.executeManually(workflowData, runPayload, user);
