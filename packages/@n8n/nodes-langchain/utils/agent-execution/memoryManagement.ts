@@ -267,7 +267,7 @@ export async function saveToMemory(
 	steps?: ToolCallData[],
 	previousStepsCount?: number,
 ): Promise<void> {
-	if (!output || !memory) {
+	if (output == null || !memory) {
 		return;
 	}
 
